@@ -1,0 +1,765 @@
+{
+  "nids_rules": [
+
+    {
+      "_comment": "PACKET ANOMALY DETECTION"
+    },
+    
+    {
+      "rule_id": "R0001",
+      "name": "TCP XMAS Scan (Standard)",
+      "category": "Reconnaissance",
+      "layer": "L4",
+      "fast_pattern": "FPU",
+      "match_pattern": "FLAGS:FPU",
+      "regex_pattern": "FLAGS:(FPU|0x29|XMAS_SCAN_STD)",
+      "severity": "Medium",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0002",
+      "name": "TCP FIN Scan",
+      "category": "Reconnaissance",
+      "layer": "L4",
+      "fast_pattern": "FLAGS:F",
+      "match_pattern": "0x01",
+      "regex_pattern": "FLAGS:F|0x01|FIN_SCAN",
+      "severity": "Medium",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0003",
+      "name": "TCP NULL Scan",
+      "category": "Reconnaissance",
+      "layer": "L4",
+      "fast_pattern": "NONE",
+      "match_pattern": "FLAGS:NONE",
+      "regex_pattern": "FLAGS:NONE|0x00|NULL_SCAN",
+      "severity": "Medium",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0006",
+      "name": "TCP SYN Stealth Scan",
+      "category": "Reconnaissance",
+      "layer": "L4",
+      "fast_pattern": "SYN_STEALTH",
+      "match_pattern": "FLAGS:S",
+      "regex_pattern": "INFO:SYN_STEALTH|FLAGS:S|0x02",
+      "severity": "Medium",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0007",
+      "name": "TCP ACK Scan (Firewall Probe)",
+      "category": "Reconnaissance",
+      "layer": "L4",
+      "fast_pattern": "ACK_SCAN",
+      "match_pattern": "FLAGS:A",
+      "regex_pattern": "INFO:ACK_SCAN|FLAGS:A|0x10",
+      "severity": "Low",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0008",
+      "name": "UDP Port Scan",
+      "category": "Reconnaissance",
+      "layer": "L4",
+      "fast_pattern": "UDP_SCAN",
+      "match_pattern": "PROTO:UDP",
+      "regex_pattern": "INFO:UDP_SCAN|PROTO:UDP",
+      "severity": "Low",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0009",
+      "name": "TCP Window Scan",
+      "category": "Reconnaissance",
+      "layer": "L4",
+      "fast_pattern": "WINDOW_SCAN",
+      "match_pattern": "WIN:",
+      "regex_pattern": "INFO:WINDOW_SCAN|WIN:[1-9][0-9]*",
+      "severity": "Low",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0010",
+      "name": "ICMP Timestamp Request",
+      "category": "Reconnaissance",
+      "layer": "L3",
+      "fast_pattern": "ICMP_TS",
+      "match_pattern": "TYPE:13",
+      "regex_pattern": "INFO:ICMP_TS|TYPE:13",
+      "severity": "Low",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0011",
+      "name": "ICMP Address Mask Scan",
+      "category": "Reconnaissance",
+      "layer": "L3",
+      "fast_pattern": "ICMP_MASK",
+      "match_pattern": "TYPE:17",
+      "regex_pattern": "INFO:ICMP_MASK|TYPE:17",
+      "severity": "Low",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0020",
+      "name": "NetBIOS Name Discovery",
+      "category": "Reconnaissance",
+      "layer": "L4",
+      "fast_pattern": "NETBIOS_SCAN",
+      "match_pattern": "PORT:137",
+      "regex_pattern": "INFO:NETBIOS_SCAN|PORT:137",
+      "severity": "Low",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0031",
+      "name": "ICMP Flood",
+      "category": "DoS",
+      "layer": "L3",
+      "fast_pattern": "ICMP_FLOOD",
+      "match_pattern": "TYPE:8",
+      "regex_pattern": "INFO:ICMP_FLOOD|TYPE:8|COUNT:>100",
+      "severity": "High",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0032",
+      "name": "IGMP Membership Query Flood",
+      "category": "DoS",
+      "layer": "L3",
+      "fast_pattern": "IGMP_FLOOD",
+      "match_pattern": "PROTO:IGMP",
+      "regex_pattern": "INFO:IGMP_FLOOD|PROTO:IGMP",
+      "severity": "Medium",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0040",
+      "name": "TCP Connection Exhaustion",
+      "category": "DoS",
+      "layer": "L4",
+      "fast_pattern": "CONN_EXHAUST",
+      "match_pattern": "ESTABLISHED",
+      "regex_pattern": "INFO:CONN_EXHAUST|ESTABLISHED\\s*>\\s*1000",
+      "severity": "High",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0041",
+      "name": "Ping of Death",
+      "category": "DoS",
+      "layer": "L3",
+      "fast_pattern": "POD",
+      "match_pattern": "SIZE:>65535",
+      "regex_pattern": "INFO:POD|SIZE:>(6553[5-9]|655[4-9][0-9]|65[6-9][0-9]{2}|6[6-9][0-9]{3}|[7-9][0-9]{4})",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0042",
+      "name": "Smurf Attack",
+      "category": "DoS",
+      "layer": "L3",
+      "fast_pattern": "SMURF",
+      "match_pattern": "ICMP_ECHO_BROADCAST",
+      "regex_pattern": "INFO:SMURF|ICMP_ECHO_BROADCAST",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0043",
+      "name": "Fraggle Attack",
+      "category": "DoS",
+      "layer": "L4",
+      "fast_pattern": "FRAGGLE",
+      "match_pattern": "UDP_ECHO_7",
+      "regex_pattern": "INFO:FRAGGLE|UDP_ECHO_7",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0052",
+      "name": "TCP Resubmission Flood",
+      "category": "DoS",
+      "layer": "L4",
+      "fast_pattern": "TCP_RESUB",
+      "match_pattern": "RETRANSMIT_COUNT",
+      "regex_pattern": "INFO:TCP_RESUB|RETRANSMIT_COUNT\\s*>\\s*50",
+      "severity": "Medium",
+      "action": "Alert"
+    },
+
+    {
+      "_comment": "PROTOCOL ANOMALY"
+    },
+    
+    {
+      "rule_id": "R0004",
+      "name": "ARP Network Sweep",
+      "category": "Reconnaissance",
+      "layer": "L2_PIPE",
+      "fast_pattern": "ARP_SWEEP",
+      "match_pattern": "DST_MAC:ff:ff:ff:ff:ff:ff",
+      "regex_pattern": "OP:1|DST_MAC:ff:ff:ff:ff:ff:ff|INFO:ARP_SWEEP",
+      "severity": "Low",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0021",
+      "name": "VLAN Tag Probing",
+      "category": "Reconnaissance",
+      "layer": "L2_PIPE",
+      "fast_pattern": "VLAN_PROBE",
+      "match_pattern": "DOT1Q",
+      "regex_pattern": "INFO:VLAN_PROBE|DOT1Q",
+      "severity": "Medium",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0044",
+      "name": "Land Attack (Same Src/Dst)",
+      "category": "DoS",
+      "layer": "L3",
+      "fast_pattern": "LAND_ATTACK",
+      "match_pattern": "SRC_IP==DST_IP",
+      "regex_pattern": "INFO:LAND_ATTACK|SRC_IP==DST_IP",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0045",
+      "name": "BGP Session Reset",
+      "category": "DoS",
+      "layer": "L4",
+      "fast_pattern": "BGP_RESET",
+      "match_pattern": "PORT:179",
+      "regex_pattern": "INFO:BGP_RESET|PORT:179|FLAGS:R",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0116",
+      "name": "Anomaly (Unknown IP Proto)",
+      "category": "Anomaly",
+      "layer": "L3",
+      "fast_pattern": "ZERO_DAY",
+      "match_pattern": "PROTO_NUM:253",
+      "regex_pattern": "INFO:ZERO_DAY|PROTO_NUM:253",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+
+    {
+      "_comment": "APPLICATION HEADER ANALYSIS"
+    },
+    
+    {
+      "rule_id": "R0012",
+      "name": "Service Version Fingerprint",
+      "category": "Reconnaissance",
+      "layer": "L7",
+      "fast_pattern": "VER_SCAN",
+      "match_pattern": "nmap",
+      "regex_pattern": "INFO:VER_SCAN|nmap|zgrab|masscan",
+      "severity": "Medium",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0016",
+      "name": "SSH Banner Grabbing",
+      "category": "Reconnaissance",
+      "layer": "L7",
+      "fast_pattern": "SSH_GRAB",
+      "match_pattern": "SSH-2.0-",
+      "regex_pattern": "INFO:SSH_GRAB|SSH-2\\.0-",
+      "severity": "Low",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0017",
+      "name": "HTTP OPTIONS Method Probe",
+      "category": "Reconnaissance",
+      "layer": "L7",
+      "fast_pattern": "HTTP_PROBE",
+      "match_pattern": "OPTIONS / HTTP/1.1",
+      "regex_pattern": "INFO:HTTP_PROBE|OPTIONS\\s+/\\s+HTTP/1\\.1",
+      "severity": "Low",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0018",
+      "name": "SSL/TLS Cipher Suite Scan",
+      "category": "Reconnaissance",
+      "layer": "L7",
+      "fast_pattern": "SSL_SCAN",
+      "match_pattern": "Client Hello",
+      "regex_pattern": "INFO:SSL_SCAN|Client\\s+Hello",
+      "severity": "Low",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0024",
+      "name": "SIP Options Scan (VoIP)",
+      "category": "Reconnaissance",
+      "layer": "L7",
+      "fast_pattern": "SIP_SCAN",
+      "match_pattern": "OPTIONS sip:",
+      "regex_pattern": "INFO:SIP_SCAN|OPTIONS\\s+sip:",
+      "severity": "Low",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0025",
+      "name": "UPnP Device Discovery",
+      "category": "Reconnaissance",
+      "layer": "L7",
+      "fast_pattern": "UPNP_DISC",
+      "match_pattern": "ssdp:discover",
+      "regex_pattern": "INFO:UPNP_DISC|ssdp:discover",
+      "severity": "Low",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0081",
+      "name": "Server-Side Request Forgery (SSRF - Metadata)",
+      "category": "Web Attack",
+      "layer": "L7",
+      "fast_pattern": "SSRF_META",
+      "match_pattern": "169.254.169.254",
+      "regex_pattern": "INFO:SSRF_META|169\\.254\\.169\\.254",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0120",
+      "name": "Anomaly (Giant HTTP Header)",
+      "category": "Anomaly",
+      "layer": "L7",
+      "fast_pattern": "GIANT_HEADER",
+      "match_pattern": "HEADER_SIZE:>8192",
+      "regex_pattern": "INFO:GIANT_HEADER|HEADER_SIZE\\s*>\\s*8192",
+      "severity": "High",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0126",
+      "name": "Anomaly (Bot User-Agent)",
+      "category": "Anomaly",
+      "layer": "L7",
+      "fast_pattern": "UA_BOT",
+      "match_pattern": "Python-urllib",
+      "regex_pattern": "INFO:UA_BOT|Python-urllib|Wget",
+      "severity": "Medium",
+      "action": "Alert"
+    },
+
+    {
+      "_comment": "CONTENT-BASED DETECTION"
+    },
+    
+    {
+      "rule_id": "R0056",
+      "name": "SQL Injection (Auth Bypass)",
+      "category": "Injection",
+      "layer": "L7",
+      "fast_pattern": "SQLI_BYPASS",
+      "match_pattern": "' OR 1=1",
+      "regex_pattern": "'\\s*OR\\s*1=1|'\\s*OR\\s*'1'='1|INFO:SQLI_BYPASS",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0057",
+      "name": "SQL Injection (Time-based)",
+      "category": "Injection",
+      "layer": "L7",
+      "fast_pattern": "SQLI_TIME",
+      "match_pattern": "SLEEP(",
+      "regex_pattern": "SLEEP[(]|WAITFOR\\s+DELAY|INFO:SQLI_TIME",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0058",
+      "name": "OS Command Injection (Pipe)",
+      "category": "System Compromise",
+      "layer": "L7_PIPE",
+      "fast_pattern": "OS_CMD_PIPE",
+      "match_pattern": "; cat",
+      "regex_pattern": ";\\\\s*cat|\\\\|\\\\s*ls|INFO:OS_CMD_PIPE",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0059",
+      "name": "Cross-Site Scripting (Basic)",
+      "category": "Web Attack",
+      "layer": "L7",
+      "fast_pattern": "XSS_BASIC",
+      "match_pattern": "<script>",
+      "regex_pattern": "<script>|alert[(]|INFO:XSS_BASIC",
+      "severity": "High",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0060",
+      "name": "SSRF (Localhost Access)",
+      "category": "Web Attack",
+      "layer": "L7",
+      "fast_pattern": "SSRF_LOCAL",
+      "match_pattern": "127.0.0.1",
+      "regex_pattern": "127\\.0\\.0\\.1|localhost|INFO:SSRF_LOCAL",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0061",
+      "name": "SQL Injection (Boolean-based)",
+      "category": "Injection",
+      "layer": "L7",
+      "fast_pattern": "SQLI_BOOL",
+      "match_pattern": "' AND 1=1",
+      "regex_pattern": "INFO:SQLI_BOOL|'\\\\s*AND\\\\s*1=1|'\\\\s*AND\\\\s*1=2",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0062",
+      "name": "SQL Injection (Error-based)",
+      "category": "Injection",
+      "layer": "L7",
+      "fast_pattern": "SQLI_ERR",
+      "match_pattern": "GROUP BY CONCAT",
+      "regex_pattern": "INFO:SQLI_ERR|GROUP\\\\s+BY\\\\s+CONCAT|EXTRACTVALUE",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0063",
+      "name": "SQL Injection (Out-of-band)",
+      "category": "Injection",
+      "layer": "L7",
+      "fast_pattern": "SQLI_OOB",
+      "match_pattern": "UTL_HTTP",
+      "regex_pattern": "INFO:SQLI_OOB|UTL_HTTP|xp_cmdshell",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0064",
+      "name": "OS Command Injection (Semicolon)",
+      "category": "Injection",
+      "layer": "L7_PIPE",
+      "fast_pattern": "OSI_SEMI",
+      "match_pattern": "; id",
+      "regex_pattern": "INFO:OSI_SEMI|;\\\\s*id|;\\\\s*whoami",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0065",
+      "name": "OS Command Injection (Backticks)",
+      "category": "Injection",
+      "layer": "L7_PIPE",
+      "fast_pattern": "OSI_TICK",
+      "match_pattern": "`id`",
+      "regex_pattern": "INFO:OSI_TICK|`id`|`ls`",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0071",
+      "name": "Server Side Template Injection (SSTI)",
+      "category": "Web Attack",
+      "layer": "L7",
+      "fast_pattern": "SSTI",
+      "match_pattern": "{{",
+      "regex_pattern": "INFO:SSTI|\\{\\{|\\$\\{|\\{%",
+      "severity": "High",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0072",
+      "name": "PHP Object Injection",
+      "category": "Injection",
+      "layer": "L7",
+      "fast_pattern": "PHP_OBJ",
+      "match_pattern": "unserialize(",
+      "regex_pattern": "INFO:PHP_OBJ|O:[0-9]+:\"|unserialize[(]",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0073",
+      "name": "Local File Inclusion (LFI)",
+      "category": "Web Attack",
+      "layer": "L7",
+      "fast_pattern": "LFI",
+      "match_pattern": "/etc/passwd",
+      "regex_pattern": "INFO:LFI|/etc/passwd|/proc/self",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0074",
+      "name": "Remote File Inclusion (RFI)",
+      "category": "Web Attack",
+      "layer": "L7",
+      "fast_pattern": "RFI",
+      "match_pattern": "http://",
+      "regex_pattern": "INFO:RFI|http://|https://|ftp://",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0075",
+      "name": "XML External Entity (XXE)",
+      "category": "Web Attack",
+      "layer": "L7",
+      "fast_pattern": "XXE",
+      "match_pattern": "<!DOCTYPE",
+      "regex_pattern": "INFO:XXE|<!DOCTYPE|ENTITY|SYSTEM",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0088",
+      "name": "GraphQL Injection",
+      "category": "Injection",
+      "layer": "L7",
+      "fast_pattern": "GQL_INJ",
+      "match_pattern": "__schema",
+      "regex_pattern": "INFO:GQL_INJ|__schema|IntrospectionQuery",
+      "severity": "High",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0089",
+      "name": "SMTP Injection",
+      "category": "Injection",
+      "layer": "L7",
+      "fast_pattern": "SMTP_INJ",
+      "match_pattern": "RCPT TO:",
+      "regex_pattern": "INFO:SMTP_INJ|RCPT\\\\s+TO:|MAIL\\\\s+FROM:",
+      "severity": "High",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0090",
+      "name": "Clickjacking Attempt",
+      "category": "Web Attack",
+      "layer": "L7",
+      "fast_pattern": "CLICKJACK",
+      "match_pattern": "X-Frame-Options",
+      "regex_pattern": "INFO:CLICKJACK|X-Frame-Options",
+      "severity": "Low",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0130",
+      "name": "Zero-Day (JS Eval)",
+      "category": "Anomaly",
+      "layer": "L7",
+      "fast_pattern": "JS_EVAL",
+      "match_pattern": "eval(atob(",
+      "regex_pattern": "INFO:JS_EVAL|eval[(]atob[(]",
+      "severity": "High",
+      "action": "Alert"
+    },
+
+    {
+      "_comment": "SIGNATURE-BASED DETECTION"
+    },
+    
+    {
+      "rule_id": "R0078",
+      "name": "Log4Shell Attempt",
+      "category": "Injection",
+      "layer": "L7",
+      "fast_pattern": "LOG4SHELL",
+      "match_pattern": "${jndi:",
+      "regex_pattern": "INFO:LOG4SHELL|\\\\$\\\\{jndi:",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0101",
+      "name": "Exfil (Password File Read)",
+      "category": "Exfiltration",
+      "layer": "L7_PIPE",
+      "fast_pattern": "EXFIL_PASS",
+      "match_pattern": "root:x:0:0",
+      "regex_pattern": "INFO:EXFIL_PASS|root:x:0:0|/etc/shadow",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0102",
+      "name": "Exfil (Private Key Leak)",
+      "category": "Exfiltration",
+      "layer": "L7_PIPE",
+      "fast_pattern": "EXFIL_KEY",
+      "match_pattern": "BEGIN RSA PRIVATE KEY",
+      "regex_pattern": "INFO:EXFIL_KEY|BEGIN\\\\s+RSA\\\\s+PRIVATE\\\\s+KEY",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0129",
+      "name": "Zero-Day (Shellcode Slide)",
+      "category": "Anomaly",
+      "layer": "L7_PIPE",
+      "fast_pattern": "SHELL_SLIDE",
+      "match_pattern": "\\x90\\x90",
+      "regex_pattern": "INFO:SHELL_SLIDE|\\\\\\\\x90\\\\\\\\x90",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+
+    {
+      "_comment": "DATA LOGIC ANOMALY"
+    },
+    
+    {
+      "rule_id": "R0070",
+      "name": "XPath Injection",
+      "category": "Injection",
+      "layer": "L7",
+      "fast_pattern": "XPATH_INJ",
+      "match_pattern": "' or count(/*)",
+      "regex_pattern": "INFO:XPATH_INJ|'\\\\s*or\\\\s*count\\\\\\\\(/\\\\\\\\*\\\\\\\\)",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0117",
+      "name": "Anomaly (Impossible Business Logic)",
+      "category": "Anomaly",
+      "layer": "L7_PIPE",
+      "fast_pattern": "BIZ_LOGIC",
+      "match_pattern": "balance < 0",
+      "regex_pattern": "INFO:BIZ_LOGIC|balance\\\\s*<\\\\s*0",
+      "severity": "High",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0127",
+      "name": "Anomaly (Broken JSON)",
+      "category": "Anomaly",
+      "layer": "L7_PIPE",
+      "fast_pattern": "BAD_JSON",
+      "match_pattern": "{{",
+      "regex_pattern": "INFO:BAD_JSON|\\\\{\\\\{|\\\\}\\\\}",
+      "severity": "High",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0128",
+      "name": "Anomaly (High Frequency Pipe)",
+      "category": "Anomaly",
+      "layer": "L7_PIPE",
+      "fast_pattern": "PIPE_BURST",
+      "match_pattern": "RATE:>500/S",
+      "regex_pattern": "INFO:PIPE_BURST|RATE:>500/S",
+      "severity": "High",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0131",
+      "name": "Master Anomaly Check",
+      "category": "Anomaly",
+      "layer": "L7_PIPE",
+      "fast_pattern": "MASTER_ANOMALY",
+      "match_pattern": "UNDEFINED_FLOW",
+      "regex_pattern": "INFO:MASTER_ANOMALY|UNDEFINED_FLOW",
+      "severity": "High",
+      "action": "Alert"
+    },
+
+    {
+      "_comment": "DATA EXFILTRATION DETECTION"
+    },
+    
+    {
+      "rule_id": "R0067",
+      "name": "Cross-Site Scripting (DOM-based)",
+      "category": "Web Attack",
+      "layer": "L7",
+      "fast_pattern": "XSS_DOM",
+      "match_pattern": "#.innerHTML",
+      "regex_pattern": "INFO:XSS_DOM|#\\.innerHTML|#\\.document",
+      "severity": "High",
+      "action": "Alert"
+    },
+    {
+      "rule_id": "R0068",
+      "name": "LDAP Injection",
+      "category": "Injection",
+      "layer": "L7",
+      "fast_pattern": "LDAP_INJ",
+      "match_pattern": "*)(|(uid=",
+      "regex_pattern": "INFO:LDAP_INJ|[*][)][(]|[(]uid=",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0091",
+      "name": "DNS Tunneling (TXT Query)",
+      "category": "Exfiltration",
+      "layer": "L7_PIPE",
+      "fast_pattern": "DNS_TUNNEL_TXT",
+      "match_pattern": "DNS_QUERY:",
+      "regex_pattern": "INFO:DNS_TUNNEL_TXT|DNS_QUERY:[a-zA-Z0-9]{32,}\\\\.|HEX_DATA:.*[a-f0-9]{64,}",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0106",
+      "name": "Exfil (Credit Card Number)",
+      "category": "Exfiltration",
+      "layer": "L7_PIPE",
+      "fast_pattern": "EXFIL_CC",
+      "match_pattern": "4",
+      "regex_pattern": "INFO:EXFIL_CC|4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0107",
+      "name": "Exfil (SSN/National ID)",
+      "category": "Exfiltration",
+      "layer": "L7_PIPE",
+      "fast_pattern": "EXFIL_SSN",
+      "match_pattern": "-",
+      "regex_pattern": "INFO:EXFIL_SSN|[0-9]{3}-[0-9]{2}-[0-9]{4}",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0108",
+      "name": "Exfil (Database Dump)",
+      "category": "Exfiltration",
+      "layer": "L7_PIPE",
+      "fast_pattern": "EXFIL_DB",
+      "match_pattern": "INSERT INTO",
+      "regex_pattern": "INFO:EXFIL_DB|INSERT\\\\s+INTO|CREATE\\\\s+TABLE",
+      "severity": "Critical",
+      "action": "Drop"
+    },
+    {
+      "rule_id": "R0109",
+      "name": "Exfil (Configuration Leak)",
+      "category": "Exfiltration",
+      "layer": "L7_PIPE",
+      "fast_pattern": "EXFIL_CONF",
+      "match_pattern": "db_password=",
+      "regex_pattern": "INFO:EXFIL_CONF|db_password=|SECRET_KEY=",
+      "severity": "Critical",
+      "action": "Drop"
+    }
+  ]
+}

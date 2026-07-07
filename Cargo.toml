@@ -1,0 +1,8 @@
+[package]
+name = "windows_sec_monitor"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "sec_monitor"
+crate-type = ["cdylib", "staticlib"]
