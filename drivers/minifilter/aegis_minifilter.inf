@@ -1,0 +1,80 @@
+; =====================================================================
+; aegis_minifilter.inf — INF file สำหรับ install Minifilter driver
+; ---------------------------------------------------------------------
+;   ใช้คำสั่ง:  fltmc load AegisMinifilter
+;              sc create AegisMinifilter type= filesys binPath=...
+;   หรือ:      pnputil /add-driver aegis_minifilter.inf /install
+;
+;   ต้องเปิด Test Signing ก่อน: bcdedit /set testsigning on (restart)
+; =====================================================================
+
+[Version]
+Signature   = "$Windows NT$"
+Class       = ActivityMonitor
+ClassGuid   = {b86dff51-a31e-4bac-b3cf-e8cfe75c9fc2}
+Provider    = %ProviderName%
+CatalogFile = aegis_minifilter.cat
+DriverVer   = 01/01/2026,1.0.0.0
+PnpLockdown = 1
+
+[DestinationDirs]
+DefaultDestDir = 12 ; %windir%\System32\drivers
+AegisMini.Files.Driver  = 12
+AegisMini.Files.Inf     = 17 ; %windir%\inf
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+aegis_minifilter.sys  = 1,,
+aegis_minifilter.inf  = 1,,
+
+; =====================================================================
+; Default install sections
+; =====================================================================
+[DefaultInstall.NTamd64.10.0...19041]
+CopyFiles = AegisMini.Files.Driver, AegisMini.Files.Inf
+
+[DefaultInstall.NTamd64.10.0...19041.Services]
+AddService = AegisMinifilter,,AegisMini.Service
+
+; =====================================================================
+; Service configuration
+; =====================================================================
+[AegisMini.Service]
+DisplayName    = %ServiceName%
+Description    = %ServiceDesc%
+ServiceType    = 2  ; SERVICE_FILE_SYSTEM_DRIVER
+StartType      = 3  ; SERVICE_DEMAND_START
+ErrorControl   = 1  ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\aegis_minifilter.sys
+LoadOrderGroup = "FSFilter Activity Monitor"
+AddReg         = AegisMini.AddRegistry
+
+; =====================================================================
+// Registry: altitude, supported features, etc.
+; =====================================================================
+[AegisMini.AddRegistry]
+HKR,"Instances","DefaultInstance",0x00000000,%DefaultInstance%
+HKR,"Instances\"%DefaultInstance%,"Altitude",0x00000000,%Altitude%
+HKR,"Instances\"%DefaultInstance%,"Flags",0x00010000,0x0
+
+; =====================================================================
+; File copy
+; =====================================================================
+[AegisMini.Files.Driver]
+aegis_minifilter.sys
+
+[AegisMini.Files.Inf]
+aegis_minifilter.inf
+
+; =====================================================================
+; Strings
+; =====================================================================
+[Strings]
+ProviderName      = "Aegis NIDS Project"
+DiskName          = "Aegis Minifilter Installation Disk"
+ServiceName       = "Aegis Minifilter"
+ServiceDesc       = "File and process monitoring minifilter for Aegis NIDS"
+DefaultInstance   = "AegisMinifilter Default Instance"
+Altitude          = "370000"
