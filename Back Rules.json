@@ -1,10 +1,8 @@
 {
   "nids_rules": [
-
     {
       "_comment": "PACKET ANOMALY DETECTION"
     },
-    
     {
       "rule_id": "R0001",
       "name": "TCP XMAS Scan (Standard)",
@@ -192,11 +190,9 @@
       "severity": "Medium",
       "action": "Alert"
     },
-
     {
       "_comment": "PROTOCOL ANOMALY"
     },
-    
     {
       "rule_id": "R0004",
       "name": "ARP Network Sweep",
@@ -252,11 +248,9 @@
       "severity": "Critical",
       "action": "Drop"
     },
-
     {
       "_comment": "APPLICATION HEADER ANALYSIS"
     },
-    
     {
       "rule_id": "R0012",
       "name": "Service Version Fingerprint",
@@ -356,13 +350,11 @@
       "severity": "Medium",
       "action": "Alert"
     },
-
     {
       "_comment": "CONTENT-BASED DETECTION"
     },
-    
     {
-      "rule_id": "R0056",
+      "rule_id": "R9056",
       "name": "SQL Injection (Auth Bypass)",
       "category": "Injection",
       "layer": "L7",
@@ -395,7 +387,7 @@
       "action": "Drop"
     },
     {
-      "rule_id": "R0059",
+      "rule_id": "R9059",
       "name": "Cross-Site Scripting (Basic)",
       "category": "Web Attack",
       "layer": "L7",
@@ -450,7 +442,7 @@
       "action": "Drop"
     },
     {
-      "rule_id": "R0064",
+      "rule_id": "R9064",
       "name": "OS Command Injection (Semicolon)",
       "category": "Injection",
       "layer": "L7_PIPE",
@@ -570,11 +562,9 @@
       "severity": "High",
       "action": "Alert"
     },
-
     {
       "_comment": "SIGNATURE-BASED DETECTION"
     },
-    
     {
       "rule_id": "R0078",
       "name": "Log4Shell Attempt",
@@ -619,11 +609,9 @@
       "severity": "Critical",
       "action": "Drop"
     },
-
     {
       "_comment": "DATA LOGIC ANOMALY"
     },
-    
     {
       "rule_id": "R0070",
       "name": "XPath Injection",
@@ -679,11 +667,9 @@
       "severity": "High",
       "action": "Alert"
     },
-
     {
       "_comment": "DATA EXFILTRATION DETECTION"
     },
-    
     {
       "rule_id": "R0067",
       "name": "Cross-Site Scripting (DOM-based)",

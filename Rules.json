@@ -4,7 +4,7 @@
             "rule_id": "R0056",
             "name": "SQL Injection (Auth Bypass)",
             "category": "Injection",
-            "layer": "NETWORK",
+            "layer": "L7",
             "fast_pattern": "SQLI_BYPASS",
             "match_pattern": "' OR 1=1",
             "regex_pattern": "'\\s*OR\\s*1=1|'\\s*OR\\s*'1'='1|INFO:SQLI_BYPASS",
@@ -15,7 +15,7 @@
             "rule_id": "R0064",
             "name": "OS Command Injection (Semicolon)",
             "category": "Injection",
-            "layer": "NETWORK",
+            "layer": "L7_PIPE",
             "fast_pattern": "OSI_SEMI",
             "match_pattern": ";|whoami",
             "regex_pattern": "INFO:OSI_SEMI|;\\\\s*id|;\\\\s*whoami",
@@ -26,7 +26,7 @@
             "rule_id": "R0059",
             "name": "Cross-Site Scripting (Basic)",
             "category": "Web Attack",
-            "layer": "NETWORK",
+            "layer": "L7",
             "fast_pattern": "XSS_BASIC",
             "match_pattern": "<script>",
             "regex_pattern": "<script>|alert[(]|INFO:XSS_BASIC",
@@ -34,10 +34,10 @@
             "action": "Alert"
         },
         {
-            "rule_id": "R9001",
+            "rule_id": "R0088",
             "name": "Path Traversal (Sensitive)",
             "category": "Infiltration",
-            "layer": "NETWORK",
+            "layer": "L7",
             "fast_pattern": "PATH_TRAV",
             "match_pattern": "/etc/passwd",
             "regex_pattern": "\\.\\./\\.\\./|/etc/passwd|/windows/win.ini",
@@ -45,183 +45,15 @@
             "action": "Block"
         },
         {
-            "rule_id": "R9002",
+            "rule_id": "R0001",
             "name": "DOSS",
             "category": "Custom Rule",
-            "layer": "NETWORK",
+            "layer": "L7_CUSTOM",
             "fast_pattern": "CUSTOM",
-            "match_pattern": "ping",
+            "match_pattern": "",
             "regex_pattern": "ping",
             "severity": "High",
-            "action": "Alert"
-        },
-
-        {
-            "_comment": "KERNEL_FILE LAYER — file integrity / ransomware indicators"
-        },
-        {
-            "rule_id": "R1001",
-            "name": "Suspicious write to System32",
-            "category": "File Integrity",
-            "layer": "KERNEL_FILE",
-            "fast_pattern": "System32",
-            "match_pattern": "\\Windows\\System32",
-            "file_operations": ["CREATE", "WRITE"],
-            "severity": "Critical",
-            "action": "Alert"
-        },
-        {
-            "rule_id": "R1002",
-            "name": "Ransomware file rename pattern",
-            "category": "Malware",
-            "layer": "KERNEL_FILE",
-            "fast_pattern": ".encrypted",
-            "match_pattern": ".encrypted|.locked|.crypto|.enc",
-            "file_operations": ["RENAME"],
-            "severity": "Critical",
-            "action": "Block"
-        },
-        {
-            "rule_id": "R1003",
-            "name": "Write to Startup folder",
-            "category": "Persistence",
-            "layer": "KERNEL_FILE",
-            "fast_pattern": "Startup",
-            "match_pattern": "\\Start Menu\\Programs\\Startup",
-            "file_operations": ["CREATE", "WRITE"],
-            "severity": "High",
-            "action": "Alert"
-        },
-        {
-            "rule_id": "R1004",
-            "name": "DLL drop in System32",
-            "category": "Persistence",
-            "layer": "KERNEL_FILE",
-            "fast_pattern": "System32",
-            "match_pattern": "\\Windows\\System32\\",
-            "file_operations": ["CREATE"],
-            "severity": "High",
-            "action": "Alert"
-        },
-        {
-            "rule_id": "R1005",
-            "name": "Hosts file modification",
-            "category": "Persistence",
-            "layer": "KERNEL_FILE",
-            "fast_pattern": "hosts",
-            "match_pattern": "\\drivers\\etc\\hosts",
-            "file_operations": ["WRITE"],
-            "severity": "Critical",
-            "action": "Alert"
-        },
-
-        {
-            "_comment": "KERNEL_PROCESS LAYER — process creation / execution indicators"
-        },
-        {
-            "rule_id": "R2001",
-            "name": "Suspicious process: mimikatz",
-            "category": "Credential Theft",
-            "layer": "KERNEL_PROCESS",
-            "fast_pattern": "mimikatz",
-            "match_pattern": "mimikatz|sekurlsa|lsass",
-            "severity": "Critical",
-            "action": "Block"
-        },
-        {
-            "rule_id": "R2002",
-            "name": "Process hollowing indicator (svchost outside services.exe)",
-            "category": "Evasion",
-            "layer": "KERNEL_PROCESS",
-            "fast_pattern": "svchost",
-            "match_pattern": "svchost.exe",
-            "parent_exclude": ["services.exe"],
-            "severity": "High",
-            "action": "Alert"
-        },
-        {
-            "rule_id": "R2003",
-            "name": "PowerShell download cradle",
-            "category": "Execution",
-            "layer": "KERNEL_PROCESS",
-            "fast_pattern": "powershell",
-            "match_pattern": "powershell.exe -enc|powershell.exe -e |powershell.exe IEX|powershell.exe Net.WebClient",
-            "severity": "Critical",
-            "action": "Alert"
-        },
-        {
-            "rule_id": "R2004",
-            "name": "Suspicious LOLBin: certutil.exe for download",
-            "category": "Execution",
-            "layer": "KERNEL_PROCESS",
-            "fast_pattern": "certutil",
-            "match_pattern": "certutil.exe -urlcache|-split",
-            "severity": "High",
-            "action": "Alert"
-        },
-        {
-            "rule_id": "R2005",
-            "name": "Suspicious process: procdump against lsass",
-            "category": "Credential Theft",
-            "layer": "KERNEL_PROCESS",
-            "fast_pattern": "procdump",
-            "match_pattern": "procdump.exe",
-            "severity": "Critical",
-            "action": "Alert"
-        },
-
-        {
-            "_comment": "PIPE_MONITOR LAYER — named pipe abuse indicators"
-        },
-        {
-            "rule_id": "R3001",
-            "name": "Cobalt Strike default named pipe",
-            "category": "C2",
-            "layer": "PIPE_MONITOR",
-            "fast_pattern": "MSSE-",
-            "match_pattern": "\\MSSE-|\\msagent_|\\postex_|\\status_",
-            "severity": "Critical",
-            "action": "Alert"
-        },
-        {
-            "rule_id": "R3002",
-            "name": "PsExec service pipe detected",
-            "category": "Lateral Movement",
-            "layer": "PIPE_MONITOR",
-            "fast_pattern": "psexec",
-            "match_pattern": "\\psexecsvc|\\PSEXESVC",
-            "severity": "High",
-            "action": "Alert"
-        },
-        {
-            "rule_id": "R3003",
-            "name": "Cobalt Strike anonymous pipe",
-            "category": "C2",
-            "layer": "PIPE_MONITOR",
-            "fast_pattern": "anonymous",
-            "match_pattern": "\\匿名|\\anon",
-            "severity": "Critical",
-            "action": "Alert"
-        },
-        {
-            "rule_id": "R3004",
-            "name": "Meterpreter pipe",
-            "category": "C2",
-            "layer": "PIPE_MONITOR",
-            "fast_pattern": "meterpreter",
-            "match_pattern": "\\meterpreter|\\ Rex ",
-            "severity": "Critical",
-            "action": "Alert"
-        },
-        {
-            "rule_id": "R3005",
-            "name": "Atexec service pipe",
-            "category": "Lateral Movement",
-            "layer": "PIPE_MONITOR",
-            "fast_pattern": "atsvc",
-            "match_pattern": "\\atsvc",
-            "severity": "High",
-            "action": "Alert"
+            "action": "BLOCK"
         }
     ]
 }

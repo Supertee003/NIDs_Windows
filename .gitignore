@@ -1,0 +1,59 @@
+# =====================================================================
+# AEGIS NIDS — .gitignore
+# =====================================================================
+
+# --- Rust build output ---
+target/
+**/*.rs.bk
+
+# --- Zig build output ---
+zig-out/
+.zig-cache/
+
+# --- Compiled binaries (build artifacts) ---
+*.exe
+*.dll
+*.pdb
+*.obj
+*.lib
+*.exp
+*.so
+*.dylib
+
+# --- Driver build artifacts ---
+*.sys
+*.cat
+*.cer
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.pytest_cache/
+venv/
+.venv/
+
+# --- Go ---
+*.test
+*.out
+
+# --- Generated files ---
+threat_graph.html
+aegis_threat_map.html
+
+# --- Runtime data ---
+logs/anomalous.json
+logs/*.log
+
+# --- IDE / Editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# --- OS ---
+desktop.ini
