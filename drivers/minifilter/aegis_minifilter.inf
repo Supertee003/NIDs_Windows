@@ -1,0 +1,54 @@
+; aegis_minifilter.inf — AEGIS NIDS Minifilter Driver Installation INF
+; Install via: fltmc load aegis_minifilter
+; Requires: Test Signing enabled (bcdedit /set testsigning on)
+
+[Version]
+Signature   = $Windows NT$
+Class       = FSFilter
+ClassGuid   = {5537E1C4-3E44-4E0A-9B6C-42E6BC454A7B}
+Provider    = %ProviderString%
+DriverVer   = 07/14/2026,1.0.0
+CatalogFile = aegis_minifilter.cat
+
+[DestinationDirs]
+DefaultDestDir = 12 ; Winnt\System32\drivers
+AegisMF.DriverFiles = 12
+
+[SourceDisksNames]
+1 = %DiskName%,,
+
+[SourceDisksFiles]
+aegis_minifilter.sys = 1
+
+[Manufacturer]
+%ManufacturerName% = Standard
+
+[Standard]
+%AegisMF.DeviceDesc% = AegisMF_Install, AEGIS_MINIFILTER
+
+[AegisMF_Install.NT]
+CopyFiles = AegisMF.DriverFiles
+
+[AegisMF.DriverFiles]
+aegis_minifilter.sys,,,2
+
+[AegisMF_Install.NT.Services]
+AddService = AegisMinifilter,, AegisMF_Service
+
+[AegisMF_Service]
+DisplayName    = %ServiceDesc%
+ServiceType    = 2       ; SERVICE_FILE_SYSTEM_DRIVER
+StartType      = 3       ; SERVICE_DEMAND_START
+ErrorControl   = 1       ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\aegis_minifilter.sys
+AddReg         = AegisMF_Params
+
+[AegisMF_Params]
+HKR, "Parameters", "Altitude", 0x00010001, 370000
+
+[Strings]
+ProviderString     = "AEGIS NIDS Project"
+ManufacturerName   = "AEGIS"
+DiskName           = "AEGIS Minifilter Driver Installation Disk"
+AegisMF.DeviceDesc = "AEGIS NIDS Minifilter File/Process Monitor"
+ServiceDesc        = "AEGIS NIDS Minifilter Driver"

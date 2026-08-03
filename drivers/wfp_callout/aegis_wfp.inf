@@ -1,0 +1,54 @@
+; aegis_wfp.inf — AEGIS NIDS WFP Callout Driver Installation INF
+; Install via: netcfg -v -l aegis_wfp.inf -c s -i AegisWfpCallout
+; Requires: Test Signing enabled (bcdedit /set testsigning on)
+
+[Version]
+Signature   = $Windows NT$
+Class       = WFPCALLOUTS
+ClassGuid   = {57465043-616D-4951-9226-2D3C8E9E9E30}
+Provider    = %ProviderString%
+DriverVer   = 07/14/2026,1.0.0
+CatalogFile = aegis_wfp.cat
+
+[DestinationDirs]
+DefaultDestDir = 12 ; Winnt\System32\drivers
+AegisWfp.DriverFiles = 12
+
+[SourceDisksNames]
+1 = %DiskName%,,
+
+[SourceDisksFiles]
+aegis_wfp.sys = 1
+
+[Manufacturer]
+%ManufacturerName% = Standard
+
+[Standard]
+%AegisWfp.DeviceDesc% = AegisWfp_Install, AEGIS_WFP_CALLOUT
+
+[AegisWfp_Install.NT]
+CopyFiles = AegisWfp.DriverFiles
+
+[AegisWfp.DriverFiles]
+aegis_wfp.sys,,,2
+
+[AegisWfp_Install.NT.Services]
+AddService = AegisWfp,, AegisWfp_Service
+
+[AegisWfp_Service]
+DisplayName    = %ServiceDesc%
+ServiceType    = 1       ; SERVICE_KERNEL_DRIVER
+StartType      = 3       ; SERVICE_DEMAND_START
+ErrorControl   = 1       ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\aegis_wfp.sys
+AddReg         = AegisWfp_Params
+
+[AegisWfp_Params]
+HKR, "Parameters", "RingBufferSize", 0x00010001, 2097152  ; 2MB
+
+[Strings]
+ProviderString     = "AEGIS NIDS Project"
+ManufacturerName   = "AEGIS"
+DiskName           = "AEGIS WFP Callout Driver Installation Disk"
+AegisWfp.DeviceDesc = "AEGIS NIDS WFP Network Capture Callout"
+ServiceDesc        = "AEGIS NIDS WFP Callout Driver"

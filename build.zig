@@ -14,8 +14,13 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(exe); // สั่งติดตั้งไฟล์ที่ build เสร็จแล้วลงในโฟลเดอร์ zig-out/bin
     exe.linkLibC();
 
-    exe.addLibraryPath(.{ .cwd_relative = "D:/NIDs_Windows/target/release" });
+    // Rust FFI (sec_monitor.dll) — Tier-0 Memory Safety Shield
+    exe.addLibraryPath(.{ .cwd_relative = "target/release" });
     exe.linkSystemLibrary("sec_monitor");
+
+    // C++ IPC Bridge (aegis_ipc.dll) — เชื่อม Zig Core ↔ Bridge ↔ Dashboard
+    exe.addLibraryPath(.{ .cwd_relative = "build/Release" });
+    exe.linkSystemLibrary("aegis_ipc");
 
     const run_cmd = b.addRunArtifact(exe); // สร้างคำสั่งสำหรับรันโปรแกรม
     run_cmd.step.dependOn(b.getInstallStep()); // กำหนดว่าต้อง build เสร็จก่อนถึงจะรันได้

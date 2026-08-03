@@ -29,6 +29,98 @@ extern "kernel32" fn ReadFile(
 ) i32;
 
 // =================================================================
+// [ C++ IPC BRIDGE FFI — extern "C" ABI ]
+// ประกาศฟังก์ชันจาก aegis_ipc.dll (C++ Bridge) สำหรับส่ง event
+// จาก Zig Core (Tier-1) ไปยัง C++ Bridge → Python Brain → Dashboard
+// =================================================================
+const AegisIpcEvent = extern struct {
+    event_type: u32,       // EventType: 0=NETWORK, 1=KERNEL_FILE, 2=KERNEL_PROCESS, 3=PIPE
+    source_ip: u32,        // IPv4 source
+    dest_ip: u32,          // IPv4 destination
+    source_port: u16,      // Source port
+    dest_port: u16,        // Destination port
+    protocol: u8,          // 6=TCP, 17=UDP, 1=ICMP
+    direction: u8,         // 0=inbound, 1=outbound
+    layer_id: u8,          // Layer where event originated
+    tier_result: u8,       // 0=NoMatch, 1=Tier1, 2=Tier2, 3=Tier3
+    payload_length: u32,   // Length of payload
+    rule_id: u32,          // Matched rule ID
+    severity: u32,         // 0=Low, 1=Medium, 2=High, 3=Critical
+    reserved: u32,         // Reserved
+    timestamp: u64,        // Event timestamp (ms since epoch)
+    source_pid: u32,       // PID of the process
+    defcon_impact: u32,    // DEFCON level impact (1-5)
+};
+
+extern fn aegis_bridge_init() i32;
+extern fn aegis_bridge_shutdown() i32;
+extern fn aegis_bridge_push_event(event: *const AegisIpcEvent) i32;
+extern fn aegis_bridge_get_defcon() u8;
+extern fn aegis_bridge_get_event_count() u32;
+
+var bridge_initialized: bool = false;
+
+/// Helper: Push Tier-1 match result to C++ Bridge
+fn pushTier1Match(
+    event_type: u32,
+    rule_id: u32,
+    severity: u32,
+    payload_ptr: [*]const u8,
+    payload_len: u32,
+    is_pipe: bool,
+) i32 {
+    if (!bridge_initialized) return -1;
+    const event: AegisIpcEvent = .{
+        .event_type = event_type,
+        .source_ip = 0,               // ยังไม่มี 5-tuple ใน Phase 1
+        .dest_ip = 0,
+        .source_port = 0,
+        .dest_port = 0,
+        .protocol = if (is_pipe) 0 else 6, // TCP=6
+        .direction = 0,                // inbound
+        .layer_id = if (is_pipe) 3 else 0, // 3=PIPE, 0=NETWORK
+        .tier_result = 1,              // Tier-1 fast match
+        .payload_length = payload_len,
+        .rule_id = rule_id,
+        .severity = severity,
+        .reserved = 0,
+        .timestamp = @intCast(std.time.milliTimestamp()),
+        .source_pid = 0,
+        .defcon_impact = 4,            // ELEVATED (will be recalculated)
+    };
+    return aegis_bridge_push_event(&event);
+}
+
+/// Helper: Push forwarded (no Tier-1 match) event to C++ Bridge
+fn pushForwardedEvent(
+    event_type: u32,
+    payload_ptr: [*]const u8,
+    payload_len: u32,
+    is_pipe: bool,
+) i32 {
+    if (!bridge_initialized) return -1;
+    const event: AegisIpcEvent = .{
+        .event_type = event_type,
+        .source_ip = 0,
+        .dest_ip = 0,
+        .source_port = 0,
+        .dest_port = 0,
+        .protocol = if (is_pipe) 0 else 6,
+        .direction = 0,
+        .layer_id = if (is_pipe) 3 else 0,
+        .tier_result = 0,              // No match — needs Tier-2
+        .payload_length = payload_len,
+        .rule_id = 0,
+        .severity = 0,
+        .reserved = 0,
+        .timestamp = @intCast(std.time.milliTimestamp()),
+        .source_pid = 0,
+        .defcon_impact = 5,            // SAFE (no match yet)
+    };
+    return aegis_bridge_push_event(&event);
+}
+
+// =================================================================
 // [ นำเข้าฟังก์ชันจาก RUST DLL (Memory Safety Shield) ]
 // =================================================================
 extern "c" fn validate_payload_safety(data: [*]const u8, len: usize) bool;
@@ -324,7 +416,17 @@ pub fn inspect_packet(data: []const u8, is_pipe: bool) !bool {
         // 2. ส่ง Log ด้วย Dynamic Allocator
         try send_to_brain(allocator, alert);
 
-        // 3. 🛡️ หัวใจสำคัญ: แยกการทำงานตาม Policy ของคุณ
+        // 3. 🔗 Push Tier-1 match to C++ Bridge (ส่ง event ไป Dashboard)
+        const severity_val: u32 = val: {
+            if (std.mem.eql(u8, rule.severity, "Critical")) break :val 3;
+            if (std.mem.eql(u8, rule.severity, "High")) break :val 2;
+            if (std.mem.eql(u8, rule.severity, "Medium")) break :val 1;
+            break :val 0; // Low
+        };
+        const event_type_val: u32 = if (is_pipe) 3 else 0;
+        _ = pushTier1Match(event_type_val, rule.crc32, severity_val, data.ptr, @intCast(data.len), is_pipe);
+
+        // 4. 🛡️ หัวใจสำคัญ: แยกการทำงานตาม Policy ของคุณ
         if (std.mem.eql(u8, rule.action, "Block")) {
             // กรณี Block: Zig ตัดการเชื่อมต่อทันที
             std.debug.print("\x1b[31;1m[ AEGIS CORE ] !!! BLOCK !!! Connection Terminated: {s}\x1b[0m\n", .{rule.name});
@@ -345,6 +447,11 @@ pub fn inspect_packet(data: []const u8, is_pipe: bool) !bool {
 
         // ใช้ dynamic allocator ส่ง forward_msg (แก้ปัญหา Buffer เต็ม)
         try send_to_brain(allocator, forward_msg);
+
+        // 🔗 Push forwarded event to C++ Bridge (ส่งให้ Tier-2 ตรวจสอบต่อ)
+        const event_type_val: u32 = if (is_pipe) 3 else 0;
+        _ = pushForwardedEvent(event_type_val, data.ptr, @intCast(data.len), is_pipe);
+
         return true;
     }
 }
@@ -439,6 +546,22 @@ fn tcp_listener() !void {
 
 pub fn analyze_packets(allocator: std.mem.Allocator) void {
     std.debug.print("\n--- AEGIS CORE: 3-TIER ENGINE ACTIVE ---\n", .{});
+
+    // 🔗 Initialize C++ IPC Bridge
+    const bridge_rc = aegis_bridge_init();
+    if (bridge_rc == 0) {
+        bridge_initialized = true;
+        std.debug.print("\x1b[32m[BRIDGE] C++ IPC Bridge initialized — Zig Core connected\x1b[0m\n", .{});
+    } else {
+        std.debug.print("\x1b[33m[BRIDGE] Warning: Bridge init failed (rc={d}), running without Bridge\x1b[0m\n", .{bridge_rc});
+    }
+    defer {
+        if (bridge_initialized) {
+            _ = aegis_bridge_shutdown();
+            std.debug.print("[BRIDGE] C++ IPC Bridge shutdown\n", .{});
+        }
+    }
+
     udp_log_addr = net.Address.parseIp4("127.0.0.1", 9999) catch unreachable;
     udp_log_sock = posix.socket(udp_log_addr.any.family, posix.SOCK.DGRAM, 0) catch unreachable;
 
@@ -446,8 +569,23 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
         std.debug.print("Failed to load rules: {}\n", .{err});
     };
 
+    // Show Bridge status periodically
+    const t_bridge_status = std.Thread.spawn(.{}, bridgeStatusReporter, .{}) catch null;
+    if (t_bridge_status) |t| t.detach();
+
     const t_pipe = std.Thread.spawn(.{}, pipe_listener, .{}) catch return;
     const t_tcp = std.Thread.spawn(.{}, tcp_listener, .{}) catch return;
     t_pipe.join();
     t_tcp.join();
+}
+
+/// Background thread: Print Bridge stats every 30 seconds
+fn bridgeStatusReporter() void {
+    while (true) {
+        std.time.sleep(30 * std.time.ns_per_s);
+        if (!bridge_initialized) continue;
+        const count = aegis_bridge_get_event_count();
+        const defcon = aegis_bridge_get_defcon();
+        std.debug.print("[BRIDGE] Events in queue: {d} | DEFCON: {d}\n", .{ count, defcon });
+    }
 }

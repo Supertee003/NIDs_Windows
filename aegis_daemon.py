@@ -47,39 +47,46 @@ DAEMON_LOG = LOGS_DIR / "daemon.log"
 
 SUBSYSTEMS = [
     {
+        "name": "bridge",
+        "description": "AEGIS Bridge (C++) — IPC hub + Packet Parser + DEFCON aggregator",
+        "start_cmd": "build\\Release\\aegis_bridge.exe",
+        "stop_pattern": "aegis_bridge.exe",
+        "pid_file": "bridge.pid",
+    },
+    {
         "name": "core",
-        "description": "AEGIS Core (Zig) — NIDS engine + 5 threads",
+        "description": "AEGIS Core (Zig) — Tier-1 Aho-Corasick pattern matching",
         "start_cmd": "zig build run",
         "stop_pattern": "aegis-nids.exe",
         "pid_file": "core.pid",
     },
     {
         "name": "brain",
-        "description": "AEGIS Brain (Python) — Tier-2/3 regex + IPS",
+        "description": "AEGIS Brain (Python) — Tier-2 regex + IPS policy enforcement",
         "start_cmd": "python windows_brain.py",
         "stop_pattern": "windows_brain.py",
         "pid_file": "brain.pid",
     },
     {
-        "name": "dashboard",
-        "description": "AEGIS Dashboard (Python) — TUI log viewer",
-        "start_cmd": "python Dashboard.py",
-        "stop_pattern": "Dashboard.py",
-        "pid_file": "dashboard.pid",
+        "name": "mouth",
+        "description": "AEGIS Mouth (Rust) — Tier-3 behavioral validation + DEFCON display",
+        "start_cmd": "cargo run --release",
+        "stop_pattern": "windows_sec_monitor.exe",
+        "pid_file": "mouth.pid",
     },
     {
         "name": "nose",
-        "description": "AEGIS Nose (Go) — Goroutines-based perf monitor",
+        "description": "AEGIS Nose (Go) — 3 Goroutines perf monitor + DEFCON calculator",
         "start_cmd": "go run windows_perf.go",
         "stop_pattern": "windows_perf",
         "pid_file": "nose.pid",
     },
     {
-        "name": "mouth",
-        "description": "AEGIS Mouth (Rust) — DEFCON display",
-        "start_cmd": "rustc windows_sec_monitor.rs -o windows_sec_monitor.exe && windows_sec_monitor.exe",
-        "stop_pattern": "windows_sec_monitor.exe",
-        "pid_file": "mouth.pid",
+        "name": "dashboard",
+        "description": "AEGIS Dashboard (Next.js) — Web UI Command Center",
+        "start_cmd": "npm run dev",
+        "stop_pattern": "next-server",
+        "pid_file": "dashboard.pid",
     },
 ]
 
@@ -185,6 +192,30 @@ def cmd_start(args):
         log(f"Rust build failed: {result.stderr}", "ERROR")
         return False
     log("Rust FFI build OK")
+
+    # Build C++ IPC Bridge (Zig + Python ต้องการ aegis_ipc.dll)
+    log("Building C++ IPC Bridge (aegis_ipc.dll)...")
+    # CMake configure
+    result = subprocess.run(
+        ["cmake", "-B", "build", "-DCMAKE_BUILD_TYPE=Release"],
+        cwd=BASE_DIR,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        log(f"CMake configure failed: {result.stderr}", "ERROR")
+        return False
+    # CMake build
+    result = subprocess.run(
+        ["cmake", "--build", "build", "--config", "Release"],
+        cwd=BASE_DIR,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        log(f"CMake build failed: {result.stderr}", "ERROR")
+        return False
+    log("C++ IPC Bridge build OK")
 
     # Start each subsystem
     started = 0
