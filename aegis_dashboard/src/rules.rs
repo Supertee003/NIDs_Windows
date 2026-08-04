@@ -1,4 +1,3 @@
-@@ -0,0 +1,91 @@
 /**
  * aegis_dashboard/src/rules.rs — NIDS Rules loader from Rules.json
  */

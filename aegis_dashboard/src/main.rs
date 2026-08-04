@@ -1,4 +1,3 @@
-@@ -0,0 +1,593 @@
 /**
  * aegis_dashboard/src/main.rs — AEGIS NIDS Security Dashboard
  *
@@ -152,9 +151,9 @@ impl AegisDashboard {
                 dest_ip: bridge_ffi::ip_to_string(evt_dest_ip),
                 source_port: evt_source_port as u16,
                 dest_port: evt_dest_port as u16,
-                protocol: bridge_ffi::protocol_name(evt_protocol).to_string(),
+                protocol: bridge_ffi::protocol_name(evt_protocol as u32).to_string(),
                 message: format!("Tier-{} match on {} layer",
-                    evt_tier_result, bridge_ffi::event_type_name(evt_event_type)),
+                    evt_tier_result, bridge_ffi::event_type_name(evt_event_type as u32)),
                 timestamp: chrono::Utc::now().to_rfc3339(),
                 acknowledged: false,
             };

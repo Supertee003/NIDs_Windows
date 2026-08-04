@@ -1,4 +1,3 @@
-@@ -0,0 +1,407 @@
 /**
  * aegis_packet_parser.hpp — AEGIS NIDS Packet Parser Engine (C++ Header)
  *
