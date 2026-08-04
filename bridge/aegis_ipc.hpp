@@ -1,3 +1,4 @@
+@@ -0,0 +1,352 @@
 /**
  * aegis_ipc.hpp — AEGIS NIDS Inter-Process Communication Bridge (C++ Header)
  *

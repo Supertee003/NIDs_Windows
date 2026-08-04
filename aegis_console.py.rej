@@ -1,0 +1,370 @@
+diff a/aegis_console.py b/aegis_console.py	(rejected hunks)
+@@ -1,4 +1,4 @@
+- """
++"""
+ AEGIS NIDS — Console UI (v2 — Bridge Integration)
+ ====================================================
+ Menu-driven launcher + rule management + threat graph viewer + Bridge status
+@@ -8,31 +8,21 @@ Changes from v1:
+   - Added Bridge test option (run test_e2e.py)
+   - Show 5-tuple info in rule display (target_ports, target_protocols)
+   - Import aegis_bridge_ctypes for Bridge integration
+- """
+- import os
++"""
++import os
+ import sys
+- import json
+- import subprocess
+- import webbrowser
+-
++import json
++import subprocess
+ import webbrowser
++import time
+ 
+- import aegis_graph
++import aegis_graph
+ 
+-# 🔗 C++ IPC Bridge integration
++# C++ IPC Bridge integration
+ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "bridge"))
+ try:
+     import aegis_bridge_ctypes as bridge
+     BRIDGE_AVAILABLE = True
+-except ImportError:
+-    BRIDGE_AVAILABLE = False
+-
+- RULES_FILE = "Rules.json"
+-GRAPH_HTML_FILE = "threat_graph.html"
+-
+-
+- def clear_screen():
+-
+ except ImportError:
+     BRIDGE_AVAILABLE = False
+ 
+@@ -41,25 +31,27 @@ GRAPH_HTML_FILE = "threat_graph.html"
+ 
+ 
+ def clear_screen():
+-     try:
+-         with open(RULES_FILE, "r", encoding="utf-8") as f:
+-             data = json.load(f)
+-             if "nids_rules" not in data:
+-                 data["nids_rules"] = []
+-             return data
+-
+-        return data
++    os.system('cls' if os.name == 'nt' else 'clear')
++
++
++def load_rules():
+     try:
+         with open(RULES_FILE, "r", encoding="utf-8") as f:
+             data = json.load(f)
+             if "nids_rules" not in data:
+                 data["nids_rules"] = []
+             return data
+-         json.dump(data, f, indent=4, ensure_ascii=False)
++    except (FileNotFoundError, json.JSONDecodeError):
++        return {"nids_rules": []}
++
++
++def save_rules(rules):
++    with open(RULES_FILE, "w", encoding="utf-8") as f:
++        json.dump(rules, f, indent=4, ensure_ascii=False)
+ 
+ 
+ def show_bridge_status():
+-    """แสดงสถานะ C++ IPC Bridge — DEFCON, event count, subsystem health"""
++    """Show C++ IPC Bridge status — DEFCON, event count, subsystem health"""
+     print("\n" + "=" * 60)
+     print("  AEGIS BRIDGE — IPC Status")
+     print("=" * 60)
+@@ -69,7 +61,6 @@ def show_bridge_status():
+         print("  Run: cmake -B build && cmake --build build --config Release")
+         return
+ 
+-    # Initialize Bridge for status check
+     rc = bridge.bridge_init()
+     if rc != 0:
+         print(f"  [!] Bridge init failed (rc={rc}) — aegis_ipc.dll not found?")
+@@ -115,99 +106,14 @@ def show_bridge_status():
+     print("=" * 60)
+ 
+ 
+- def manage_rules_ui():
+-     while True:
+-         clear_screen()
+-
+-    with open(RULES_FILE, "w", encoding="utf-8") as f:
+-         print("=======================================================================")
+-         print("                 AEGIS NIDS - RULE MANAGEMENT UI                       ")
+-         print("=======================================================================")
+-        print(f"{'ID':<8} | {'Layer':<14} | {'Attack Name':<32} | {'Policy':<8} | {'Ports':<12} | {'Proto'}")
+-        print("-" * 100)
+-
+-         for r in rules.get("nids_rules", []):
+-             if '_comment' in r:
+-                 continue
+-             policy = r.get('action', 'Alert')
+-             layer = r.get('layer', '?')
+-            target_ports = r.get('target_ports', [])
+-            target_protocols = r.get('target_protocols', [])
+-
+-             if policy.upper() in ("BLOCK", "DROP"):
+-                policy_display = f"\033[91;1m{policy}\033[0m"
+-             else:
+-                policy_display = f"\033[93;1m{policy}\033[0m"
+-
+-            ports_str = ",".join(str(p) for p in target_ports) if target_ports else "*"
+-            proto_str = ",".join(target_protocols) if target_protocols else "*"
+-
+-            print(f"{r.get('rule_id', 'N/A'):<8} | {layer:<14} | {r.get('name', 'N/A'):<32} | {policy_display:<17} | {ports_str:<12} | {proto_str}")
+-
+-         print("\n[Options]")
+-         print("  [T]oggle Action  : เปลี่ยนสถานะการป้องกัน")
+-
+-    try:
+-        # DEFCON level
+-        defcon = bridge.get_defcon_level()
+-        label = bridge.get_defcon_label()
+-        desc = bridge.get_defcon_description()
+-
+-        defcon_colors = {1: '\033[91;1m', 2: '\033[91m', 3: '\033[93;1m', 4: '\033[93m', 5: '\033[92m'}
+-        color = defcon_colors.get(defcon, '\033[0m')
+-        reset = '\033[0m'
+-             for r in rules.get("nids_rules", []):
+-                 if r.get("rule_id", "").upper() == target_id:
+-                     current = r.get("action", "Alert")
+-                     if current.upper() in ("BLOCK", "DROP"):
+-                         r["action"] = "Alert"
+-                     else:
+-
+-        print(f"  Events Queue : {event_count}")
+-        print(f"  Dropped      : {dropped}")
+-
+-        # Test push/pop
+-        rc = bridge.push_event(
+-            event_type=0, source_ip=0, dest_ip=0,
+-            source_port=0, dest_port=0, protocol=6,
+-            tier_result=1, rule_id=0, severity=0,
+-        )
+-        print(f"  Push Test    : {'OK' if rc == 0 else f'FAILED (rc={rc})'}")
+-
+-        if rc == 0:
+-            event = bridge.pop_event()
+-            if event:
+-                print(f"  Pop Test     : OK (rule_id={event.rule_id}, tier={event.tier_result})")
+-            else:
+-                print(f"  Pop Test     : FAILED (no event returned)")
+-
+-    finally:
+-        bridge.bridge_shutdown()
+-
+-             else:
+-                 new_action = "Alert"
+-
+-            # Optional: target_ports and target_protocols
+-            ports_input = input("Target Ports (comma-separated, e.g., 80,443 or * for all) [*]: ").strip()
+-            target_ports = []
+-            if ports_input and ports_input != "*":
+-                try:
+-                    target_ports = [int(p.strip()) for p in ports_input.split(",") if p.strip()]
+-                except ValueError:
+-                    pass
+-
+-            proto_input = input("Target Protocols (comma-separated, e.g., TCP,UDP or * for all) [*]: ").strip().upper()
+-            target_protocols = []
+-            if proto_input and proto_input != "*":
+-                target_protocols = [p.strip() for p in proto_input.split(",") if p.strip()]
+-
+-            # Auto-derive fast_pattern
+-             new_fast_pattern = "CUSTOM"
+-             if new_regex and len(new_regex) >= 3:
+-                 fp = ""
+-                 for c in new_regex:
+-                     if c.isalnum():
++def manage_rules_ui():
++    while True:
++        clear_screen()
++        rules = load_rules()
+ 
++        print("=======================================================================")
++        print("                 AEGIS NIDS - RULE MANAGEMENT UI                       ")
++        print("=======================================================================")
+         print(f"{'ID':<8} | {'Layer':<14} | {'Attack Name':<32} | {'Policy':<8} | {'Ports':<12} | {'Proto'}")
+         print("-" * 100)
+ 
+@@ -220,31 +126,25 @@ def show_bridge_status():
+             target_protocols = r.get('target_protocols', [])
+ 
+             if policy.upper() in ("BLOCK", "DROP"):
+-                 "match_pattern": "",
+-                 "regex_pattern": new_regex,
+-                 "severity": "High",
+-                "action": new_action,
+-             }
+-            if target_ports:
+-                new_rule["target_ports"] = target_ports
+-            if target_protocols:
+-                new_rule["target_protocols"] = target_protocols
++                policy_display = f"\033[91;1m{policy}\033[0m"
++            else:
++                policy_display = f"\033[93;1m{policy}\033[0m"
+ 
+-             rules.setdefault("nids_rules", []).append(new_rule)
+-             save_rules(rules)
+-             print(f"\n[+] สร้างกฎ {new_id} สำเร็จ! ระบบจะทำการโหลดกฎใหม่โดยอัตโนมัติ")
++            ports_str = ",".join(str(p) for p in target_ports) if target_ports else "*"
++            proto_str = ",".join(target_protocols) if target_protocols else "*"
+ 
++            print(f"{r.get('rule_id', 'N/A'):<8} | {layer:<14} | {r.get('name', 'N/A'):<32} | {policy_display:<17} | {ports_str:<12} | {proto_str}")
+ 
+         print("\n[Options]")
+-        print("  [T]oggle Action  : เปลี่ยนสถานะการป้องกัน")
+-        print("  [A]dd Rule       : เพิ่มกฎการตรวจจับใหม่")
+-             rules_list = rules.get("nids_rules", [])
+-             initial_count = len(rules_list)
++        print("  [T]oggle Action  : Change defense policy")
++        print("  [A]dd Rule       : Add new detection rule")
++        print("  [D]elete Rule    : Remove a rule")
++        print("  [B]ack           : Return to main menu")
+ 
+-             rules["nids_rules"] = [r for r in rules_list if r.get("rule_id", "").upper() != target_id]
+-
+-             if len(rules["nids_rules"]) < initial_count:
++        choice = input("\nSelect (T/A/D/B): ").strip().upper()
+ 
++        if choice == 'T':
++            target_id = input("Enter Rule ID to toggle (e.g., R0001): ").strip().upper()
+             found = False
+             for r in rules.get("nids_rules", []):
+                 if r.get("rule_id", "").upper() == target_id:
+@@ -254,49 +154,24 @@ def show_bridge_status():
+                     else:
+                         r["action"] = "Block"
+                     save_rules(rules)
+-                    print(f"\n[+] กฎ {target_id} เปลี่ยนเป็น '{r['action']}' เรียบร้อยแล้ว!")
++                    print(f"\n[+] Rule {target_id} changed to '{r['action']}' successfully!")
+                     found = True
+                     break
+             if not found:
+-                print(f"\n[-] ไม่พบ Rule ID '{target_id}' ในระบบ")
+- def main_menu():
+-     while True:
+-         clear_screen()
+-
+-        # Show Bridge DEFCON in header
+-        defcon_str = ""
+-        if BRIDGE_AVAILABLE:
+-            try:
+-                rc = bridge.bridge_init()
+-                if rc == 0:
+-                    defcon = bridge.get_defcon_level()
+-                    label = bridge.get_defcon_label()
+-                    defcon_colors = {1: '\033[91;1m', 2: '\033[91m', 3: '\033[93;1m', 4: '\033[93m', 5: '\033[92m'}
+-                    color = defcon_colors.get(defcon, '\033[0m')
+-                    defcon_str = f" | DEFCON: {color}{defcon} {label}\033[0m"
+-                    bridge.bridge_shutdown()
+-            except Exception:
+-                pass
+-
+-         print("========================================")
+-        print(f"      AEGIS NIDS - COMMAND CENTER{defcon_str}")
+-         print("========================================")
+-        print(" 1. [RUN]    Launch NIDS Subsystems")
+-        print(" 2. [RULES]  Manage Detection Rules")
+-        print(" 3. [LOGS]   Reset Anomalous Logs")
+-        print(" 4. [GRAPH]  Generate & View Threat Map")
+-        print(" 5. [BRIDGE] Bridge Status & Test")
+-        print(" 6. [TEST]   Run E2E Integration Test")
+-        print(" 7. [EXIT]   Shutdown Console")
+-         print("----------------------------------------")
+-        choice = input("Select Option (1-7): ").strip()
++                print(f"\n[-] Rule ID '{target_id}' not found")
++            time.sleep(1.5)
+ 
+-         if choice == '1':
+-            print("[!] Booting Zig Core, Brain, Bridge, and Sensors...")
+-             subprocess.Popen(
+-                 ["cmd", "/c", "start", "AEGIS Launcher", "run_aegis.bat"],
+-                 shell=True
++        elif choice == 'A':
++            new_id = input("New Rule ID (e.g., R0099): ").strip().upper()
++            new_name = input("Rule Name: ").strip()
++            new_regex = input("Regex Pattern: ").strip()
++            new_action = input("Action (Alert/Block) [Alert]: ").strip()
++            if not new_action:
++                new_action = "Alert"
+ 
++            # Optional: target_ports and target_protocols
++            ports_input = input("Target Ports (comma-separated, e.g., 80,443 or * for all) [*]: ").strip()
++            target_ports = []
+             if ports_input and ports_input != "*":
+                 try:
+                     target_ports = [int(p.strip()) for p in ports_input.split(",") if p.strip()]
+@@ -323,38 +198,9 @@ def show_bridge_status():
+             new_rule = {
+                 "rule_id": new_id,
+                 "name": new_name,
+-             input("\nPress Enter to return...")
+-
+-         elif choice == '5':
+-            show_bridge_status()
+-            input("\nPress Enter to return...")
+-
+-        elif choice == '6':
+-            print("\n[!] Running E2E Integration Test...")
+-            try:
+-                result = subprocess.run(
+-                    [sys.executable, "test_e2e.py"],
+-                    capture_output=False,
+-                    text=True,
+-                    timeout=60,
+-                )
+-                if result.returncode == 0:
+-                    print("\n[+] All tests passed!")
+-                else:
+-                    print(f"\n[-] Some tests failed (exit code: {result.returncode})")
+-            except FileNotFoundError:
+-                print("[-] test_e2e.py not found")
+-            except subprocess.TimeoutExpired:
+-                print("[-] Test timed out (60s)")
+-            except Exception as e:
+-                print(f"[-] Error: {e}")
+-            input("\nPress Enter to return...")
+-
+-        elif choice == '7':
+-             print("[!] Shutting down console...")
+-             break
+-
+-
++                "match_pattern": "",
++                "regex_pattern": new_regex,
++                "severity": "High",
+                 "action": new_action,
+             }
+             if target_ports:
+@@ -364,7 +210,7 @@ def show_bridge_status():
+ 
+             rules.setdefault("nids_rules", []).append(new_rule)
+             save_rules(rules)
+-            print(f"\n[+] สร้างกฎ {new_id} สำเร็จ! ระบบจะทำการโหลดกฎใหม่โดยอัตโนมัติ")
++            print(f"\n[+] Rule {new_id} created successfully! System will auto-reload.")
+             time.sleep(1.5)
+ 
+         elif choice == 'D':
+@@ -376,9 +222,9 @@ def show_bridge_status():
+ 
+             if len(rules["nids_rules"]) < initial_count:
+                 save_rules(rules)
+-                print(f"\n[+] ลบกฎ {target_id} ออกจากระบบเรียบร้อยแล้ว!")
++                print(f"\n[+] Rule {target_id} deleted successfully!")
+             else:
+-                print(f"\n[-] ไม่พบ Rule ID '{target_id}' ในระบบ")
++                print(f"\n[-] Rule ID '{target_id}' not found")
+             time.sleep(1.5)
+ 
+         elif choice == 'B':

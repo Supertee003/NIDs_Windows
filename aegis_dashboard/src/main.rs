@@ -1,3 +1,4 @@
+@@ -0,0 +1,593 @@
 /**
  * aegis_dashboard/src/main.rs — AEGIS NIDS Security Dashboard
  *

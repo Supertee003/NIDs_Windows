@@ -1,3 +1,4 @@
+@@ -0,0 +1,297 @@
 /**
  * aegis_dashboard/src/db.rs — SQLite database layer for AEGIS Dashboard
  *

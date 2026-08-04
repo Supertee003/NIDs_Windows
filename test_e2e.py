@@ -1,3 +1,4 @@
+@@ -0,0 +1,498 @@
 """
 AEGIS NIDS — End-to-End Integration Test (Phase 1)
 ====================================================
@@ -156,11 +157,7 @@ def test_python_bridge():
 
     # Test 2g: push_tier2_match
     rc = bridge.push_tier2_match(
-<<<<<<< ours
-        rule_id="R0056",
-=======
         rule_id=56,
->>>>>>> theirs
         src_ip="192.168.1.1",
         dst_ip="192.168.1.2",
         src_port=12345,

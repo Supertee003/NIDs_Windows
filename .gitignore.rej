@@ -1,0 +1,15 @@
+diff a/.gitignore b/.gitignore	(rejected hunks)
+@@ -38,6 +38,13 @@ venv/
+ *.test
+ *.out
+ 
++# --- C++ build output ---
++build/
++CMakeFiles/
++CMakeCache.txt
++cmake_install.cmake
++Makefile
++
+ # --- Generated files ---
+ threat_graph.html
+ aegis_threat_map.html

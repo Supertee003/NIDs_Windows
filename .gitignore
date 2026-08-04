@@ -35,12 +35,20 @@ venv/
 .venv/
 
 # --- Go ---
-*.test
-*.out
+ *.test
+ *.out
 
 # --- C++ build output ---
 build/
 CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+ # --- Generated files ---
+ threat_graph.html
+ aegis_threat_map.html
+
 CMakeCache.txt
 cmake_install.cmake
 Makefile

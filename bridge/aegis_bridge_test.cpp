@@ -1,3 +1,4 @@
+@@ -0,0 +1,192 @@
 /**
  * aegis_bridge_test.cpp — AEGIS IPC Bridge Unit Tests
  *

@@ -1,3 +1,4 @@
+@@ -0,0 +1,214 @@
 /**
  * aegis_dashboard/src/bridge_ffi.rs — Bridge FFI bindings for egui Dashboard
  *
@@ -8,30 +9,30 @@
  * reading from SQLite database + Rules.json file.
  */
 
-use std::os::raw::{c_int, c_uint, c_ulong, c_char};
+use std::os::raw::{c_int, c_uint, c_ulong, c_char, c_ushort, c_uchar};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 static BRIDGE_AVAILABLE: AtomicBool = AtomicBool::new(false);
 
-// ====== IPC Event (matches C++ IpcEvent — 48 bytes) ======
+// ====== IPC Event (matches C++ IpcEvent — must match aegis_ipc.hpp exactly) ======
 #[repr(C, packed)]
 pub struct IpcEvent {
-    pub event_type:      c_uint,
-    pub source_ip:       c_uint,
-    pub dest_ip:         c_uint,
-    pub source_port:     c_uint,
-    pub dest_port:       c_uint,
-    pub protocol:        c_uint,
-    pub direction:       c_uint,
-    pub layer_id:        c_uint,
-    pub tier_result:     c_uint,
-    pub payload_length:  c_uint,
-    pub rule_id:         c_uint,
-    pub severity:        c_uint,
-    pub reserved:        c_uint,
-    pub timestamp:       c_ulong,
-    pub source_pid:      c_uint,
-    pub defcon_impact:   c_uint,
+    pub event_type:      c_uint,      // EventType: u32
+    pub source_ip:       c_uint,      // IPv4: u32
+    pub dest_ip:         c_uint,      // IPv4: u32
+    pub source_port:     c_ushort,    // uint16_t
+    pub dest_port:       c_ushort,    // uint16_t
+    pub protocol:        c_uchar,     // uint8_t (6=TCP, 17=UDP)
+    pub direction:       c_uchar,     // uint8_t (0=in, 1=out)
+    pub layer_id:        c_uchar,     // uint8_t
+    pub tier_result:     c_uchar,     // uint8_t
+    pub payload_length:  c_uint,      // u32
+    pub rule_id:         c_uint,      // u32
+    pub severity:        c_uint,      // u32
+    pub reserved:        c_uint,      // u32
+    pub timestamp:       c_ulong,     // u64
+    pub source_pid:      c_uint,      // u32
+    pub defcon_impact:   c_uint,      // u32
 }
 
 // ====== Bridge FFI Declarations ======

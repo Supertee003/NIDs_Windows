@@ -1,3 +1,4 @@
+@@ -0,0 +1,117 @@
 /**
  * aegis_minifilter.c — AEGIS NIDS Minifilter Driver Entry & Registration
  *

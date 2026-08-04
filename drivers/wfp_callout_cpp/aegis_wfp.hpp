@@ -1,3 +1,4 @@
+@@ -0,0 +1,358 @@
 /**
  * aegis_wfp.hpp — AEGIS NIDS WFP Callout Driver Shared Header (C++ Edition)
  *

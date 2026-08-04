@@ -1,3 +1,4 @@
+@@ -0,0 +1,238 @@
 @echo off
 REM =====================================================================
 REM build_drivers.bat — AEGIS NIDS Kernel Driver Build Script

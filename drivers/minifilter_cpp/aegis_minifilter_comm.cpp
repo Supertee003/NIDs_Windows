@@ -1,3 +1,4 @@
+@@ -0,0 +1,121 @@
 /**
  * aegis_minifilter_comm.cpp — AEGIS NIDS Communication Port (C++ Edition)
  *

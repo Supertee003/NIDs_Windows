@@ -1,3 +1,4 @@
+@@ -0,0 +1,390 @@
 /**
  * aegis_ipc.cpp — AEGIS NIDS IPC Bridge Implementation (C++ Edition)
  *
@@ -292,8 +293,6 @@ int32_t aegis_bridge_push_event(const Aegis::Bridge::IpcEvent* event) {
         return -2;
     }
 
-<<<<<<< ours
-=======
     // Auto-update DEFCON after each event push
     // severity >= 3 → critical, tier_result == 3 → kernel threat
     uint32_t total    = g_defcon.TotalAlerts() + 1;
@@ -306,7 +305,6 @@ int32_t aegis_bridge_push_event(const Aegis::Bridge::IpcEvent* event) {
     g_defcon.SetBlockedIpCount(blocked);
     g_defcon.Calculate();
 
->>>>>>> theirs
     return 0;
 }
 

@@ -1,3 +1,4 @@
+@@ -0,0 +1,128 @@
 /**
  * aegis_minifilter.cpp — AEGIS NIDS Minifilter Driver Entry & Registration (C++ Edition)
  *

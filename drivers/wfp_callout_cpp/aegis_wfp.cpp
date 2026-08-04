@@ -1,3 +1,4 @@
+@@ -0,0 +1,221 @@
 /**
  * aegis_wfp.cpp — AEGIS NIDS WFP Callout Driver Entry Point (C++ Edition)
  *

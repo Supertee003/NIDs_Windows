@@ -1,3 +1,4 @@
+@@ -0,0 +1,54 @@
 ; aegis_minifilter.inf — AEGIS NIDS Minifilter Driver Installation INF
 ; Install via: fltmc load aegis_minifilter
 ; Requires: Test Signing enabled (bcdedit /set testsigning on)

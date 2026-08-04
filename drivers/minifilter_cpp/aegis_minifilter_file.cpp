@@ -1,3 +1,4 @@
+@@ -0,0 +1,125 @@
 /**
  * aegis_minifilter_file.cpp — AEGIS NIDS File Operation Callbacks (C++ Edition)
  *

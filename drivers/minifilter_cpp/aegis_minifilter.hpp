@@ -1,3 +1,4 @@
+@@ -0,0 +1,274 @@
 /**
  * aegis_minifilter.hpp — AEGIS NIDS Minifilter Driver Shared Header (C++ Edition)
  *

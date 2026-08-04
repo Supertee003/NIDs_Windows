@@ -1,0 +1,892 @@
+From c3f88d7169e88f28b1c0cf9aba76bf34f42280ce Mon Sep 17 00:00:00 2001
+From: Z User <z@container>
+Date: Tue, 4 Aug 2026 19:47:35 +0000
+Subject: [PATCH] =?UTF-8?q?fix:=20resolve=20all=20critical=20issues=20?=
+ =?UTF-8?q?=E2=80=94=20system=20should=20now=20be=20runnable?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+CRITICAL fixes:
+- aegis_console.py: Complete rewrite (file was corrupted with duplicate/interleaved functions)
+- test_e2e.py: Resolve merge conflict (rule_id=56 integer for c_uint32)
+- bridge/aegis_bridge_ctypes.py: Resolve merge conflict (type coercion for rule_id)
+- bridge/aegis_ipc.cpp: Resolve merge conflict (auto-DEFCON update after push)
+- pipe_monitor.zig: Resolve 6 merge conflicts (whitespace-only)
+- windows_capture.zig: Remove duplicate code block (lines 79-118)
+
+HIGH fixes:
+- nids_analyze.zig: Add PacketContext + WfpEventHeader structs, add inspect_packet_ctx()
+- nids_capture.zig: Use inspect_packet_ctx() instead of mismatched inspect_packet()
+- windows_capture.zig: Use inspect_packet_ctx() for PacketContext calls
+- aegis_dashboard/src/bridge_ffi.rs: Fix IpcEvent field sizes (c_ushort/c_uchar to match C++)
+- bridge/aegis_bridge_ffi.rs: Same IpcEvent field size fix
+- build.zig: Add Linux fallback library paths (build/ + bridge/)
+
+MEDIUM:
+- nids_capture.zig: Remove duplicate comment
+- Python deps: networkx + pyvis installed
+---
+ aegis_console.py                  | 272 +++++++-----------------------
+ aegis_dashboard/src/bridge_ffi.rs |  36 ++--
+ bridge/aegis_bridge_ctypes.py     |   4 -
+ bridge/aegis_bridge_ffi.rs        |  36 ++--
+ bridge/aegis_ipc.cpp              |   3 -
+ build.zig                         |  10 +-
+ nids_analyze.zig                  |  40 +++++
+ nids_capture.zig                  |   7 +-
+ pipe_monitor.zig                  |  40 -----
+ test_e2e.py                       |   4 -
+ windows_capture.zig               |  64 ++-----
+ 11 files changed, 156 insertions(+), 360 deletions(-)
+
+diff --git a/aegis_console.py b/aegis_console.py
+index 84ee857..d43bba2 100755
+--- a/aegis_console.py
++++ b/aegis_console.py
+@@ -1,4 +1,4 @@
+- """
++"""
+ AEGIS NIDS — Console UI (v2 — Bridge Integration)
+ ====================================================
+ Menu-driven launcher + rule management + threat graph viewer + Bridge status
+@@ -8,31 +8,21 @@ Changes from v1:
+   - Added Bridge test option (run test_e2e.py)
+   - Show 5-tuple info in rule display (target_ports, target_protocols)
+   - Import aegis_bridge_ctypes for Bridge integration
+- """
+- import os
++"""
++import os
+ import sys
+- import json
+- import subprocess
+- import webbrowser
+-
++import json
++import subprocess
+ import webbrowser
++import time
+ 
+- import aegis_graph
++import aegis_graph
+ 
+-# 🔗 C++ IPC Bridge integration
++# C++ IPC Bridge integration
+ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "bridge"))
+ try:
+     import aegis_bridge_ctypes as bridge
+     BRIDGE_AVAILABLE = True
+-except ImportError:
+-    BRIDGE_AVAILABLE = False
+-
+- RULES_FILE = "Rules.json"
+-GRAPH_HTML_FILE = "threat_graph.html"
+-
+-
+- def clear_screen():
+-
+ except ImportError:
+     BRIDGE_AVAILABLE = False
+ 
+@@ -41,25 +31,27 @@ GRAPH_HTML_FILE = "threat_graph.html"
+ 
+ 
+ def clear_screen():
+-     try:
+-         with open(RULES_FILE, "r", encoding="utf-8") as f:
+-             data = json.load(f)
+-             if "nids_rules" not in data:
+-                 data["nids_rules"] = []
+-             return data
+-
+-        return data
++    os.system('cls' if os.name == 'nt' else 'clear')
++
++
++def load_rules():
+     try:
+         with open(RULES_FILE, "r", encoding="utf-8") as f:
+             data = json.load(f)
+             if "nids_rules" not in data:
+                 data["nids_rules"] = []
+             return data
+-         json.dump(data, f, indent=4, ensure_ascii=False)
++    except (FileNotFoundError, json.JSONDecodeError):
++        return {"nids_rules": []}
++
++
++def save_rules(rules):
++    with open(RULES_FILE, "w", encoding="utf-8") as f:
++        json.dump(rules, f, indent=4, ensure_ascii=False)
+ 
+ 
+ def show_bridge_status():
+-    """แสดงสถานะ C++ IPC Bridge — DEFCON, event count, subsystem health"""
++    """Show C++ IPC Bridge status — DEFCON, event count, subsystem health"""
+     print("\n" + "=" * 60)
+     print("  AEGIS BRIDGE — IPC Status")
+     print("=" * 60)
+@@ -69,7 +61,6 @@ def show_bridge_status():
+         print("  Run: cmake -B build && cmake --build build --config Release")
+         return
+ 
+-    # Initialize Bridge for status check
+     rc = bridge.bridge_init()
+     if rc != 0:
+         print(f"  [!] Bridge init failed (rc={rc}) — aegis_ipc.dll not found?")
+@@ -115,99 +106,14 @@ def show_bridge_status():
+     print("=" * 60)
+ 
+ 
+- def manage_rules_ui():
+-     while True:
+-         clear_screen()
+-
+-    with open(RULES_FILE, "w", encoding="utf-8") as f:
+-         print("=======================================================================")
+-         print("                 AEGIS NIDS - RULE MANAGEMENT UI                       ")
+-         print("=======================================================================")
+-        print(f"{'ID':<8} | {'Layer':<14} | {'Attack Name':<32} | {'Policy':<8} | {'Ports':<12} | {'Proto'}")
+-        print("-" * 100)
+-
+-         for r in rules.get("nids_rules", []):
+-             if '_comment' in r:
+-                 continue
+-             policy = r.get('action', 'Alert')
+-             layer = r.get('layer', '?')
+-            target_ports = r.get('target_ports', [])
+-            target_protocols = r.get('target_protocols', [])
+-
+-             if policy.upper() in ("BLOCK", "DROP"):
+-                policy_display = f"\033[91;1m{policy}\033[0m"
+-             else:
+-                policy_display = f"\033[93;1m{policy}\033[0m"
+-
+-            ports_str = ",".join(str(p) for p in target_ports) if target_ports else "*"
+-            proto_str = ",".join(target_protocols) if target_protocols else "*"
+-
+-            print(f"{r.get('rule_id', 'N/A'):<8} | {layer:<14} | {r.get('name', 'N/A'):<32} | {policy_display:<17} | {ports_str:<12} | {proto_str}")
+-
+-         print("\n[Options]")
+-         print("  [T]oggle Action  : เปลี่ยนสถานะการป้องกัน")
+-
+-    try:
+-        # DEFCON level
+-        defcon = bridge.get_defcon_level()
+-        label = bridge.get_defcon_label()
+-        desc = bridge.get_defcon_description()
+-
+-        defcon_colors = {1: '\033[91;1m', 2: '\033[91m', 3: '\033[93;1m', 4: '\033[93m', 5: '\033[92m'}
+-        color = defcon_colors.get(defcon, '\033[0m')
+-        reset = '\033[0m'
+-             for r in rules.get("nids_rules", []):
+-                 if r.get("rule_id", "").upper() == target_id:
+-                     current = r.get("action", "Alert")
+-                     if current.upper() in ("BLOCK", "DROP"):
+-                         r["action"] = "Alert"
+-                     else:
+-
+-        print(f"  Events Queue : {event_count}")
+-        print(f"  Dropped      : {dropped}")
+-
+-        # Test push/pop
+-        rc = bridge.push_event(
+-            event_type=0, source_ip=0, dest_ip=0,
+-            source_port=0, dest_port=0, protocol=6,
+-            tier_result=1, rule_id=0, severity=0,
+-        )
+-        print(f"  Push Test    : {'OK' if rc == 0 else f'FAILED (rc={rc})'}")
+-
+-        if rc == 0:
+-            event = bridge.pop_event()
+-            if event:
+-                print(f"  Pop Test     : OK (rule_id={event.rule_id}, tier={event.tier_result})")
+-            else:
+-                print(f"  Pop Test     : FAILED (no event returned)")
+-
+-    finally:
+-        bridge.bridge_shutdown()
+-
+-             else:
+-                 new_action = "Alert"
+-
+-            # Optional: target_ports and target_protocols
+-            ports_input = input("Target Ports (comma-separated, e.g., 80,443 or * for all) [*]: ").strip()
+-            target_ports = []
+-            if ports_input and ports_input != "*":
+-                try:
+-                    target_ports = [int(p.strip()) for p in ports_input.split(",") if p.strip()]
+-                except ValueError:
+-                    pass
+-
+-            proto_input = input("Target Protocols (comma-separated, e.g., TCP,UDP or * for all) [*]: ").strip().upper()
+-            target_protocols = []
+-            if proto_input and proto_input != "*":
+-                target_protocols = [p.strip() for p in proto_input.split(",") if p.strip()]
+-
+-            # Auto-derive fast_pattern
+-             new_fast_pattern = "CUSTOM"
+-             if new_regex and len(new_regex) >= 3:
+-                 fp = ""
+-                 for c in new_regex:
+-                     if c.isalnum():
++def manage_rules_ui():
++    while True:
++        clear_screen()
++        rules = load_rules()
+ 
++        print("=======================================================================")
++        print("                 AEGIS NIDS - RULE MANAGEMENT UI                       ")
++        print("=======================================================================")
+         print(f"{'ID':<8} | {'Layer':<14} | {'Attack Name':<32} | {'Policy':<8} | {'Ports':<12} | {'Proto'}")
+         print("-" * 100)
+ 
+@@ -220,31 +126,25 @@ def show_bridge_status():
+             target_protocols = r.get('target_protocols', [])
+ 
+             if policy.upper() in ("BLOCK", "DROP"):
+-                 "match_pattern": "",
+-                 "regex_pattern": new_regex,
+-                 "severity": "High",
+-                "action": new_action,
+-             }
+-            if target_ports:
+-                new_rule["target_ports"] = target_ports
+-            if target_protocols:
+-                new_rule["target_protocols"] = target_protocols
++                policy_display = f"\033[91;1m{policy}\033[0m"
++            else:
++                policy_display = f"\033[93;1m{policy}\033[0m"
+ 
+-             rules.setdefault("nids_rules", []).append(new_rule)
+-             save_rules(rules)
+-             print(f"\n[+] สร้างกฎ {new_id} สำเร็จ! ระบบจะทำการโหลดกฎใหม่โดยอัตโนมัติ")
++            ports_str = ",".join(str(p) for p in target_ports) if target_ports else "*"
++            proto_str = ",".join(target_protocols) if target_protocols else "*"
+ 
++            print(f"{r.get('rule_id', 'N/A'):<8} | {layer:<14} | {r.get('name', 'N/A'):<32} | {policy_display:<17} | {ports_str:<12} | {proto_str}")
+ 
+         print("\n[Options]")
+-        print("  [T]oggle Action  : เปลี่ยนสถานะการป้องกัน")
+-        print("  [A]dd Rule       : เพิ่มกฎการตรวจจับใหม่")
+-             rules_list = rules.get("nids_rules", [])
+-             initial_count = len(rules_list)
++        print("  [T]oggle Action  : Change defense policy")
++        print("  [A]dd Rule       : Add new detection rule")
++        print("  [D]elete Rule    : Remove a rule")
++        print("  [B]ack           : Return to main menu")
+ 
+-             rules["nids_rules"] = [r for r in rules_list if r.get("rule_id", "").upper() != target_id]
+-
+-             if len(rules["nids_rules"]) < initial_count:
++        choice = input("\nSelect (T/A/D/B): ").strip().upper()
+ 
++        if choice == 'T':
++            target_id = input("Enter Rule ID to toggle (e.g., R0001): ").strip().upper()
+             found = False
+             for r in rules.get("nids_rules", []):
+                 if r.get("rule_id", "").upper() == target_id:
+@@ -254,49 +154,24 @@ def show_bridge_status():
+                     else:
+                         r["action"] = "Block"
+                     save_rules(rules)
+-                    print(f"\n[+] กฎ {target_id} เปลี่ยนเป็น '{r['action']}' เรียบร้อยแล้ว!")
++                    print(f"\n[+] Rule {target_id} changed to '{r['action']}' successfully!")
+                     found = True
+                     break
+             if not found:
+-                print(f"\n[-] ไม่พบ Rule ID '{target_id}' ในระบบ")
+- def main_menu():
+-     while True:
+-         clear_screen()
+-
+-        # Show Bridge DEFCON in header
+-        defcon_str = ""
+-        if BRIDGE_AVAILABLE:
+-            try:
+-                rc = bridge.bridge_init()
+-                if rc == 0:
+-                    defcon = bridge.get_defcon_level()
+-                    label = bridge.get_defcon_label()
+-                    defcon_colors = {1: '\033[91;1m', 2: '\033[91m', 3: '\033[93;1m', 4: '\033[93m', 5: '\033[92m'}
+-                    color = defcon_colors.get(defcon, '\033[0m')
+-                    defcon_str = f" | DEFCON: {color}{defcon} {label}\033[0m"
+-                    bridge.bridge_shutdown()
+-            except Exception:
+-                pass
+-
+-         print("========================================")
+-        print(f"      AEGIS NIDS - COMMAND CENTER{defcon_str}")
+-         print("========================================")
+-        print(" 1. [RUN]    Launch NIDS Subsystems")
+-        print(" 2. [RULES]  Manage Detection Rules")
+-        print(" 3. [LOGS]   Reset Anomalous Logs")
+-        print(" 4. [GRAPH]  Generate & View Threat Map")
+-        print(" 5. [BRIDGE] Bridge Status & Test")
+-        print(" 6. [TEST]   Run E2E Integration Test")
+-        print(" 7. [EXIT]   Shutdown Console")
+-         print("----------------------------------------")
+-        choice = input("Select Option (1-7): ").strip()
++                print(f"\n[-] Rule ID '{target_id}' not found")
++            time.sleep(1.5)
+ 
+-         if choice == '1':
+-            print("[!] Booting Zig Core, Brain, Bridge, and Sensors...")
+-             subprocess.Popen(
+-                 ["cmd", "/c", "start", "AEGIS Launcher", "run_aegis.bat"],
+-                 shell=True
++        elif choice == 'A':
++            new_id = input("New Rule ID (e.g., R0099): ").strip().upper()
++            new_name = input("Rule Name: ").strip()
++            new_regex = input("Regex Pattern: ").strip()
++            new_action = input("Action (Alert/Block) [Alert]: ").strip()
++            if not new_action:
++                new_action = "Alert"
+ 
++            # Optional: target_ports and target_protocols
++            ports_input = input("Target Ports (comma-separated, e.g., 80,443 or * for all) [*]: ").strip()
++            target_ports = []
+             if ports_input and ports_input != "*":
+                 try:
+                     target_ports = [int(p.strip()) for p in ports_input.split(",") if p.strip()]
+@@ -323,38 +198,9 @@ def show_bridge_status():
+             new_rule = {
+                 "rule_id": new_id,
+                 "name": new_name,
+-             input("\nPress Enter to return...")
+-
+-         elif choice == '5':
+-            show_bridge_status()
+-            input("\nPress Enter to return...")
+-
+-        elif choice == '6':
+-            print("\n[!] Running E2E Integration Test...")
+-            try:
+-                result = subprocess.run(
+-                    [sys.executable, "test_e2e.py"],
+-                    capture_output=False,
+-                    text=True,
+-                    timeout=60,
+-                )
+-                if result.returncode == 0:
+-                    print("\n[+] All tests passed!")
+-                else:
+-                    print(f"\n[-] Some tests failed (exit code: {result.returncode})")
+-            except FileNotFoundError:
+-                print("[-] test_e2e.py not found")
+-            except subprocess.TimeoutExpired:
+-                print("[-] Test timed out (60s)")
+-            except Exception as e:
+-                print(f"[-] Error: {e}")
+-            input("\nPress Enter to return...")
+-
+-        elif choice == '7':
+-             print("[!] Shutting down console...")
+-             break
+-
+-
++                "match_pattern": "",
++                "regex_pattern": new_regex,
++                "severity": "High",
+                 "action": new_action,
+             }
+             if target_ports:
+@@ -364,7 +210,7 @@ def show_bridge_status():
+ 
+             rules.setdefault("nids_rules", []).append(new_rule)
+             save_rules(rules)
+-            print(f"\n[+] สร้างกฎ {new_id} สำเร็จ! ระบบจะทำการโหลดกฎใหม่โดยอัตโนมัติ")
++            print(f"\n[+] Rule {new_id} created successfully! System will auto-reload.")
+             time.sleep(1.5)
+ 
+         elif choice == 'D':
+@@ -376,9 +222,9 @@ def show_bridge_status():
+ 
+             if len(rules["nids_rules"]) < initial_count:
+                 save_rules(rules)
+-                print(f"\n[+] ลบกฎ {target_id} ออกจากระบบเรียบร้อยแล้ว!")
++                print(f"\n[+] Rule {target_id} deleted successfully!")
+             else:
+-                print(f"\n[-] ไม่พบ Rule ID '{target_id}' ในระบบ")
++                print(f"\n[-] Rule ID '{target_id}' not found")
+             time.sleep(1.5)
+ 
+         elif choice == 'B':
+diff --git a/aegis_dashboard/src/bridge_ffi.rs b/aegis_dashboard/src/bridge_ffi.rs
+index 89e650f..c6b4371 100644
+--- a/aegis_dashboard/src/bridge_ffi.rs
++++ b/aegis_dashboard/src/bridge_ffi.rs
+@@ -8,30 +8,30 @@
+  * reading from SQLite database + Rules.json file.
+  */
+ 
+-use std::os::raw::{c_int, c_uint, c_ulong, c_char};
++use std::os::raw::{c_int, c_uint, c_ulong, c_char, c_ushort, c_uchar};
+ use std::sync::atomic::{AtomicBool, Ordering};
+ 
+ static BRIDGE_AVAILABLE: AtomicBool = AtomicBool::new(false);
+ 
+-// ====== IPC Event (matches C++ IpcEvent — 48 bytes) ======
++// ====== IPC Event (matches C++ IpcEvent — must match aegis_ipc.hpp exactly) ======
+ #[repr(C, packed)]
+ pub struct IpcEvent {
+-    pub event_type:      c_uint,
+-    pub source_ip:       c_uint,
+-    pub dest_ip:         c_uint,
+-    pub source_port:     c_uint,
+-    pub dest_port:       c_uint,
+-    pub protocol:        c_uint,
+-    pub direction:       c_uint,
+-    pub layer_id:        c_uint,
+-    pub tier_result:     c_uint,
+-    pub payload_length:  c_uint,
+-    pub rule_id:         c_uint,
+-    pub severity:        c_uint,
+-    pub reserved:        c_uint,
+-    pub timestamp:       c_ulong,
+-    pub source_pid:      c_uint,
+-    pub defcon_impact:   c_uint,
++    pub event_type:      c_uint,      // EventType: u32
++    pub source_ip:       c_uint,      // IPv4: u32
++    pub dest_ip:         c_uint,      // IPv4: u32
++    pub source_port:     c_ushort,    // uint16_t
++    pub dest_port:       c_ushort,    // uint16_t
++    pub protocol:        c_uchar,     // uint8_t (6=TCP, 17=UDP)
++    pub direction:       c_uchar,     // uint8_t (0=in, 1=out)
++    pub layer_id:        c_uchar,     // uint8_t
++    pub tier_result:     c_uchar,     // uint8_t
++    pub payload_length:  c_uint,      // u32
++    pub rule_id:         c_uint,      // u32
++    pub severity:        c_uint,      // u32
++    pub reserved:        c_uint,      // u32
++    pub timestamp:       c_ulong,     // u64
++    pub source_pid:      c_uint,      // u32
++    pub defcon_impact:   c_uint,      // u32
+ }
+ 
+ // ====== Bridge FFI Declarations ======
+diff --git a/bridge/aegis_bridge_ctypes.py b/bridge/aegis_bridge_ctypes.py
+index 86ba02c..4ac6e7b 100755
+--- a/bridge/aegis_bridge_ctypes.py
++++ b/bridge/aegis_bridge_ctypes.py
+@@ -164,11 +164,7 @@ def push_event(event_type, source_ip, dest_ip, source_port, dest_port,
+     event.layer_id       = 0 if event_type == 0 else event_type
+     event.tier_result    = tier_result   # 2 = Tier-2 regex match
+     event.payload_length = 0
+-<<<<<<< ours
+-    event.rule_id        = rule_id
+-=======
+     event.rule_id        = int(rule_id) if isinstance(rule_id, (str, float)) else rule_id
+->>>>>>> theirs
+     event.severity       = severity
+     event.reserved       = 0
+     event.timestamp      = 0
+diff --git a/bridge/aegis_bridge_ffi.rs b/bridge/aegis_bridge_ffi.rs
+index 059f583..4708e9d 100755
+--- a/bridge/aegis_bridge_ffi.rs
++++ b/bridge/aegis_bridge_ffi.rs
+@@ -8,27 +8,27 @@
+  * Architecture: Rust Mouth → C++ Bridge (via these externs) → Go Nose
+  */
+ 
+-use std::os::raw::{c_int, c_uint, c_ulong, c_char};
++use std::os::raw::{c_int, c_uint, c_ulong, c_char, c_ushort, c_uchar};
+ 
+-// ====== IPC Event Structure (matches C++ IpcEvent — 48 bytes) ======
++// ====== IPC Event Structure (matches C++ IpcEvent exactly — see aegis_ipc.hpp) ======
+ #[repr(C, packed)]
+ pub struct AegisIpcEvent {
+-    pub event_type:      c_uint,   // 0=NETWORK, 1=KERNEL_FILE, 2=KERNEL_PROCESS, 3=L2_PIPE
+-    pub source_ip:       c_uint,
+-    pub dest_ip:         c_uint,
+-    pub source_port:     c_uint,   // u16 in C++ but c_uint for ABI alignment
+-    pub dest_port:       c_uint,
+-    pub protocol:        c_uint,   // u8 in C++
+-    pub direction:       c_uint,
+-    pub layer_id:        c_uint,
+-    pub tier_result:     c_uint,
+-    pub payload_length:  c_uint,
+-    pub rule_id:         c_uint,
+-    pub severity:        c_uint,
+-    pub reserved:        c_uint,
+-    pub timestamp:       c_ulong,  // u64
+-    pub source_pid:      c_uint,
+-    pub defcon_impact:   c_uint,
++    pub event_type:      c_uint,      // 0=NETWORK, 1=KERNEL_FILE, 2=KERNEL_PROCESS, 3=L2_PIPE
++    pub source_ip:       c_uint,      // IPv4: u32
++    pub dest_ip:         c_uint,      // IPv4: u32
++    pub source_port:     c_ushort,    // uint16_t
++    pub dest_port:       c_ushort,    // uint16_t
++    pub protocol:        c_uchar,     // uint8_t (6=TCP, 17=UDP)
++    pub direction:       c_uchar,     // uint8_t (0=in, 1=out)
++    pub layer_id:        c_uchar,     // uint8_t
++    pub tier_result:     c_uchar,     // uint8_t
++    pub payload_length:  c_uint,      // u32
++    pub rule_id:         c_uint,      // u32
++    pub severity:        c_uint,      // u32
++    pub reserved:        c_uint,      // u32
++    pub timestamp:       c_ulong,     // u64
++    pub source_pid:      c_uint,      // u32
++    pub defcon_impact:   c_uint,      // u32
+ }
+ 
+ // ====== IPC Command Structure ======
+diff --git a/bridge/aegis_ipc.cpp b/bridge/aegis_ipc.cpp
+index e3ec8eb..04ae908 100755
+--- a/bridge/aegis_ipc.cpp
++++ b/bridge/aegis_ipc.cpp
+@@ -292,8 +292,6 @@ int32_t aegis_bridge_push_event(const Aegis::Bridge::IpcEvent* event) {
+         return -2;
+     }
+ 
+-<<<<<<< ours
+-=======
+     // Auto-update DEFCON after each event push
+     // severity >= 3 → critical, tier_result == 3 → kernel threat
+     uint32_t total    = g_defcon.TotalAlerts() + 1;
+@@ -306,7 +304,6 @@ int32_t aegis_bridge_push_event(const Aegis::Bridge::IpcEvent* event) {
+     g_defcon.SetBlockedIpCount(blocked);
+     g_defcon.Calculate();
+ 
+->>>>>>> theirs
+     return 0;
+ }
+ 
+diff --git a/build.zig b/build.zig
+index 6b35c92..765315e 100644
+--- a/build.zig
++++ b/build.zig
+@@ -11,15 +11,19 @@ pub fn build(b: *std.Build) void {
+         .optimize = optimize, // ใส่ optimize ลงใน executable options โดยตรง
+     });
+ 
+-    b.installArtifact(exe); // สั่งติดตั้งไฟล์ที่ build เสร็จแล้วลงในโฟลเดอร์ zig-out/bin
++    b.installArtifact(exe); // Install built binary to zig-out/bin
+     exe.linkLibC();
+ 
+-    // Rust FFI (sec_monitor.dll) — Tier-0 Memory Safety Shield
++    // Rust FFI (sec_monitor.dll / libsec_monitor.so) — Tier-0 Memory Safety Shield
+     exe.addLibraryPath(.{ .cwd_relative = "target/release" });
+     exe.linkSystemLibrary("sec_monitor");
+ 
+-    // C++ IPC Bridge (aegis_ipc.dll) — เชื่อม Zig Core ↔ Bridge ↔ Dashboard
++    // C++ IPC Bridge (aegis_ipc.dll / libaegis_ipc.so) — Zig Core ↔ Bridge ↔ Dashboard
++    // On Windows: build/Release/  (MSVC default)
++    // On Linux:   build/         (Makefile default)
+     exe.addLibraryPath(.{ .cwd_relative = "build/Release" });
++    exe.addLibraryPath(.{ .cwd_relative = "build" });         // Linux fallback
++    exe.addLibraryPath(.{ .cwd_relative = "bridge" });        // Pre-built fallback
+     exe.linkSystemLibrary("aegis_ipc");
+ 
+     const run_cmd = b.addRunArtifact(exe); // สร้างคำสั่งสำหรับรันโปรแกรม
+diff --git a/nids_analyze.zig b/nids_analyze.zig
+index 6f0dd98..49fbad7 100644
+--- a/nids_analyze.zig
++++ b/nids_analyze.zig
+@@ -60,6 +60,37 @@ extern fn aegis_bridge_get_event_count() u32;
+ 
+ var bridge_initialized: bool = false;
+ 
++// =================================================================
++// [ PACKET CONTEXT & WFP EVENT HEADER — 5-TUPLE METADATA ]
++// Used by windows_capture.zig and nids_capture.zig to pass
++// full 5-tuple context from kernel drivers to the analysis engine.
++// =================================================================
++
++/// WFP Event Header sent by kernel driver (44 bytes)
++pub const WfpEventHeader = extern struct {
++    source_ip: u32,
++    dest_ip: u32,
++    source_port: u16,
++    dest_port: u16,
++    protocol: u8,       // 6=TCP, 17=UDP, 1=ICMP
++    direction: u8,      // 0=inbound, 1=outbound
++    layer_id: u8,       // WFP layer where event originated
++    payload_length: u32,
++    reserved: [16]u8 = [_]u8{0} ** 16, // padding to 44 bytes
++};
++
++/// Packet context — 5-tuple metadata passed from capture layer
++pub const PacketContext = struct {
++    source_ip: u32 = 0,
++    dest_ip: u32 = 0,
++    source_port: u16 = 0,
++    dest_port: u16 = 0,
++    protocol: u8 = 6,   // default TCP
++    direction: u8 = 0,  // default inbound
++    layer_id: u8 = 0,   // default NETWORK layer
++    is_pipe: bool = false,
++};
++
+ /// Helper: Push Tier-1 match result to C++ Bridge
+ fn pushTier1Match(
+     event_type: u32,
+@@ -353,6 +384,15 @@ fn send_to_brain(allocator: std.mem.Allocator, msg: anytype) !void {
+ }
+ 
+ // --- [ 3-TIER FAST THREAT ANALYSIS ENGINE ] ---
++
++/// Convenience overload: inspect with PacketContext (full 5-tuple from kernel drivers)
++pub fn inspect_packet_ctx(data: []const u8, ctx: PacketContext) !bool {
++    // TODO: In future, pass ctx fields to C++ Bridge for richer events
++    // For now, delegate to the simple inspect_packet with is_pipe flag
++    return inspect_packet(data, ctx.is_pipe);
++}
++
++/// Original entry point: inspect with just data + is_pipe flag
+ pub fn inspect_packet(data: []const u8, is_pipe: bool) !bool {
+     // Check TCP socket
+     std.debug.print("[DEBUG] Analyzing data from {s}, size: {} bytes\n", .{ if (is_pipe) "PIPE" else "TCP", data.len });
+diff --git a/nids_capture.zig b/nids_capture.zig
+index 2ea917d..d0bf921 100755
+--- a/nids_capture.zig
++++ b/nids_capture.zig
+@@ -90,16 +90,13 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) !void
+                     .layer_id = 3,  // L2_PIPE
+                 };
+ 
+-                const is_safe = try nids_analyze.inspect_packet(payload, ctx);
++                const is_safe = try nids_analyze.inspect_packet_ctx(payload, ctx);
+                  if (!is_safe) {
+                      std.debug.print("\\x1b[31;1m[IPC SENSOR] 🚨 Threat blocked at Named Pipe!\\x1b[0m\\n", .{});
+                  }
+              }
+ 
+-             // 4. ตัดการเชื่อมต่อของ Python นัดเดิม เพื่อเตรียมท่อให้พร้อมรับนัดถัดไป
+-
+-
+-            // 4. ตัดการเชื่อมต่อของ Python นัดเดิม เพื่อเตรียมท่อให้พร้อมรับนัดถัดไป
++             // 4. Disconnect old Python connection, prepare pipe for next client
+             _ = DisconnectNamedPipe(handle);
+         } else {
+             // หากเกิด Error ให้พักเล็กน้อยแล้ววนลูปใหม่
+diff --git a/pipe_monitor.zig b/pipe_monitor.zig
+index 608c3e9..b6f392c 100755
+--- a/pipe_monitor.zig
++++ b/pipe_monitor.zig
+@@ -53,50 +53,28 @@ fn isSuspiciousPipe(pipe_name: []const u8) ?[]const u8 {
+ // ====== Scan named pipes — returns list of suspicious pipes found ======
+ pub fn scanPipes() ![]PipeEvent {
+     var events = std.ArrayList(PipeEvent).init(allocator);
+-<<<<<<< ours
+-    
+-    // On Windows, we would enumerate \\.\pipe\* using NtQueryDirectoryFile
+-    // or Win32 FindFirstFile/FindNextFile on the pipe namespace.
+-    // For now, we log a placeholder — real implementation uses Win32 API.
+-    
+-=======
+ 
+     // On Windows, we would enumerate \\.\pipe\* using NtQueryDirectoryFile
+     // or Win32 FindFirstFile/FindNextFile on the pipe namespace.
+     // For now, we log a placeholder — real implementation uses Win32 API.
+ 
+->>>>>>> theirs
+     // NOTE: This is a Linux-compatible stub. On Windows, the actual pipe
+     // enumeration uses kernel32.FindFirstFileW("\\\\.\\pipe\\*").
+     // The Zig stdlib doesn't have a direct pipe enumeration API,
+     // so we must use Win32 API bindings when building for Windows.
+-<<<<<<< ours
+-    
+-    // Print scan status
+-    std.log.info("[Pipe Monitor] Scanning named pipes... (alert-only mode)", .{});
+-    
+-=======
+ 
+     // Print scan status
+     std.log.info("[Pipe Monitor] Scanning named pipes... (alert-only mode)", .{});
+ 
+->>>>>>> theirs
+     // In production Windows build, this function:
+     // 1. Calls FindFirstFileW("\\\\.\\pipe\\*", ...) to enumerate all pipes
+     // 2. For each pipe name, checks against SUSPICIOUS_PIPE_PATTERNS
+     // 3. Creates PipeEvent for suspicious matches
+     // 4. Sends events to nids_analyze via channel or shared queue
+-<<<<<<< ours
+-    
+-    // Update stats
+-    stats.last_scan_time = std.time.milliTimestamp();
+-    
+-=======
+ 
+     // Update stats
+     stats.last_scan_time = std.time.milliTimestamp();
+ 
+->>>>>>> theirs
+     return events.toOwnedSlice();
+ }
+ 
+@@ -112,17 +90,10 @@ pub fn printStats() void {
+ // ====== Main pipe monitor loop (Thread 5) ======
+ pub fn pipeMonitorLoop() !void {
+     std.log.info("[Pipe Monitor] Thread 5 started — scanning every 5 seconds", .{});
+-<<<<<<< ours
+-    
+-    while (true) {
+-        const events = try scanPipes();
+-        
+-=======
+ 
+     while (true) {
+         const events = try scanPipes();
+ 
+->>>>>>> theirs
+         // Process suspicious events
+         for (events) |event| {
+             if (event.risk_level.len > 0) {
+@@ -133,26 +104,15 @@ pub fn pipeMonitorLoop() !void {
+                     event.risk_level,
+                 });
+                 stats.suspicious_pipes += 1;
+-<<<<<<< ours
+-                
+-=======
+ 
+->>>>>>> theirs
+                 // TODO: Send event to nids_analyze.inspect_pipe_event()
+                 // via inter-thread channel or atomic queue
+             }
+         }
+-<<<<<<< ours
+-        
+-        allocator.free(events);
+-        printStats();
+-        
+-=======
+ 
+         allocator.free(events);
+         printStats();
+ 
+->>>>>>> theirs
+         // Scan every 5 seconds (configurable)
+         std.time.sleep(5 * std.time.ns_per_s);
+     }
+diff --git a/test_e2e.py b/test_e2e.py
+index 87e723a..786a769 100644
+--- a/test_e2e.py
++++ b/test_e2e.py
+@@ -156,11 +156,7 @@ def test_python_bridge():
+ 
+     # Test 2g: push_tier2_match
+     rc = bridge.push_tier2_match(
+-<<<<<<< ours
+-        rule_id="R0056",
+-=======
+         rule_id=56,
+->>>>>>> theirs
+         src_ip="192.168.1.1",
+         dst_ip="192.168.1.2",
+         src_port=12345,
+diff --git a/windows_capture.zig b/windows_capture.zig
+index db189a8..e0be08a 100755
+--- a/windows_capture.zig
++++ b/windows_capture.zig
+@@ -20,18 +20,18 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
+     const reader = wfp_file.reader();
+     var buffer: [8192]u8 = undefined;
+ 
+-     while (true) {
+-         const bytes_read = reader.read(&buffer) catch 0;
+-         if (bytes_read > 0) {
++    while (true) {
++        const bytes_read = reader.read(&buffer) catch 0;
++        if (bytes_read > 0) {
+ 
+             // ==============================================================
+-            // Parse WFP EventHeader (44 bytes) เพื่อดึง 5-tuple
+-            // WFP driver ส่ง: EventHeader + payload ต่อเนื่องกัน
++            // Parse WFP EventHeader (44 bytes) for 5-tuple
++            // WFP driver sends: EventHeader + payload contiguously
+             // ==============================================================
+             if (bytes_read >= @sizeOf(nids_analyze.WfpEventHeader)) {
+                 const header: *align(1) const nids_analyze.WfpEventHeader = @ptrCast(buffer[0..@sizeOf(nids_analyze.WfpEventHeader)]);
+ 
+-                // สร้าง PacketContext จาก 5-tuple ที่ได้จาก kernel driver
++                // Build PacketContext from 5-tuple from kernel driver
+                 const ctx = nids_analyze.PacketContext{
+                     .source_ip = header.source_ip,
+                     .dest_ip = header.dest_ip,
+@@ -43,74 +43,34 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
+                     .is_pipe = false,
+                 };
+ 
+-                // Payload อยู่หลัง EventHeader
++                // Payload follows EventHeader
+                 const payload_start = @sizeOf(nids_analyze.WfpEventHeader);
+                 const payload_end = @min(bytes_read, payload_start + header.payload_length);
+                 if (payload_end > payload_start) {
+                     const payload = buffer[payload_start..payload_end];
+ 
+-                    const is_safe = nids_analyze.inspect_packet(payload, ctx) catch |err| {
++                    const is_safe = nids_analyze.inspect_packet_ctx(payload, ctx) catch |err| {
+                         std.debug.print("\x1b[31m[!] Analyze Error: {}\x1b[0m\n", .{err});
+                         return;
+                     };
+ 
+                     if (!is_safe) {
+-                        std.debug.print("\x1b[31;1m[WFP SENSOR] 🚨 Dropped Malicious Network Packet! src_ip=0x{x}\x1b[0m\n", .{header.source_ip});
++                        std.debug.print("\x1b[31;1m[WFP SENSOR] Dropped Malicious Network Packet! src_ip=0x{x}\x1b[0m\n", .{header.source_ip});
+                     }
+                 }
+             } else {
+-                // ข้อมูลน้อยกว่า EventHeader — ส่งเป็น raw payload แบบเดิม
++                // Less than EventHeader — send as raw payload
+                 const payload = buffer[0..bytes_read];
+                 const ctx = nids_analyze.PacketContext{
+                     .protocol = 6,  // assume TCP
+                     .is_pipe = false,
+                 };
+-                const is_safe = nids_analyze.inspect_packet(payload, ctx) catch |err| {
++                const is_safe = nids_analyze.inspect_packet_ctx(payload, ctx) catch |err| {
+                     std.debug.print("\x1b[31m[!] Analyze Error: {}\x1b[0m\n", .{err});
+                     return;
+                 };
+                 if (!is_safe) {
+-                    std.debug.print("\x1b[31;1m[WFP SENSOR] 🚨 Dropped Malicious Network Packet!\x1b[0m\n", .{});
+-                }
+-             }
+-         } else {
+-             std.time.sleep(10 * std.time.ns_per_ms);
+-
+-                    .dest_port = header.dest_port,
+-                    .protocol = header.protocol,
+-                    .direction = header.direction,
+-                    .layer_id = header.layer_id,
+-                    .is_pipe = false,
+-                };
+-
+-                // Payload อยู่หลัง EventHeader
+-                const payload_start = @sizeOf(nids_analyze.WfpEventHeader);
+-                const payload_end = @min(bytes_read, payload_start + header.payload_length);
+-                if (payload_end > payload_start) {
+-                    const payload = buffer[payload_start..payload_end];
+-
+-                    const is_safe = nids_analyze.inspect_packet(payload, ctx) catch |err| {
+-                        std.debug.print("\x1b[31m[!] Analyze Error: {}\x1b[0m\n", .{err});
+-                        return;
+-                    };
+-
+-                    if (!is_safe) {
+-                        std.debug.print("\x1b[31;1m[WFP SENSOR] 🚨 Dropped Malicious Network Packet! src_ip=0x{x}\x1b[0m\n", .{header.source_ip});
+-                    }
+-                }
+-            } else {
+-                // ข้อมูลน้อยกว่า EventHeader — ส่งเป็น raw payload แบบเดิม
+-                const payload = buffer[0..bytes_read];
+-                const ctx = nids_analyze.PacketContext{
+-                    .protocol = 6,  // assume TCP
+-                    .is_pipe = false,
+-                };
+-                const is_safe = nids_analyze.inspect_packet(payload, ctx) catch |err| {
+-                    std.debug.print("\x1b[31m[!] Analyze Error: {}\x1b[0m\n", .{err});
+-                    return;
+-                };
+-                if (!is_safe) {
+-                    std.debug.print("\x1b[31;1m[WFP SENSOR] 🚨 Dropped Malicious Network Packet!\x1b[0m\n", .{});
++                    std.debug.print("\x1b[31;1m[WFP SENSOR] Dropped Malicious Network Packet!\x1b[0m\n", .{});
+                 }
+             }
+         } else {
+-- 
+2.47.3
+

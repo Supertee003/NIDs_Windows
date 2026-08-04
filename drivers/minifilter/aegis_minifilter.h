@@ -1,3 +1,4 @@
+@@ -0,0 +1,50 @@
 /**
  * aegis_minifilter.h — AEGIS NIDS Minifilter Driver Shared Header
  *

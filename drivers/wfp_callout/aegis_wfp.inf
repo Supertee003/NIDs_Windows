@@ -1,3 +1,4 @@
+@@ -0,0 +1,54 @@
 ; aegis_wfp.inf — AEGIS NIDS WFP Callout Driver Installation INF
 ; Install via: netcfg -v -l aegis_wfp.inf -c s -i AegisWfpCallout
 ; Requires: Test Signing enabled (bcdedit /set testsigning on)

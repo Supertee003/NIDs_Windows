@@ -1,0 +1,107 @@
+diff a/windows_capture.zig b/windows_capture.zig	(rejected hunks)
+@@ -20,18 +20,18 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
+     const reader = wfp_file.reader();
+     var buffer: [8192]u8 = undefined;
+ 
+-     while (true) {
+-         const bytes_read = reader.read(&buffer) catch 0;
+-         if (bytes_read > 0) {
++    while (true) {
++        const bytes_read = reader.read(&buffer) catch 0;
++        if (bytes_read > 0) {
+ 
+             // ==============================================================
+-            // Parse WFP EventHeader (44 bytes) เพื่อดึง 5-tuple
+-            // WFP driver ส่ง: EventHeader + payload ต่อเนื่องกัน
++            // Parse WFP EventHeader (44 bytes) for 5-tuple
++            // WFP driver sends: EventHeader + payload contiguously
+             // ==============================================================
+             if (bytes_read >= @sizeOf(nids_analyze.WfpEventHeader)) {
+                 const header: *align(1) const nids_analyze.WfpEventHeader = @ptrCast(buffer[0..@sizeOf(nids_analyze.WfpEventHeader)]);
+ 
+-                // สร้าง PacketContext จาก 5-tuple ที่ได้จาก kernel driver
++                // Build PacketContext from 5-tuple from kernel driver
+                 const ctx = nids_analyze.PacketContext{
+                     .source_ip = header.source_ip,
+                     .dest_ip = header.dest_ip,
+@@ -43,74 +43,34 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
+                     .is_pipe = false,
+                 };
+ 
+-                // Payload อยู่หลัง EventHeader
++                // Payload follows EventHeader
+                 const payload_start = @sizeOf(nids_analyze.WfpEventHeader);
+                 const payload_end = @min(bytes_read, payload_start + header.payload_length);
+                 if (payload_end > payload_start) {
+                     const payload = buffer[payload_start..payload_end];
+ 
+-                    const is_safe = nids_analyze.inspect_packet(payload, ctx) catch |err| {
++                    const is_safe = nids_analyze.inspect_packet_ctx(payload, ctx) catch |err| {
+                         std.debug.print("\x1b[31m[!] Analyze Error: {}\x1b[0m\n", .{err});
+                         return;
+                     };
+ 
+                     if (!is_safe) {
+-                        std.debug.print("\x1b[31;1m[WFP SENSOR] 🚨 Dropped Malicious Network Packet! src_ip=0x{x}\x1b[0m\n", .{header.source_ip});
++                        std.debug.print("\x1b[31;1m[WFP SENSOR] Dropped Malicious Network Packet! src_ip=0x{x}\x1b[0m\n", .{header.source_ip});
+                     }
+                 }
+             } else {
+-                // ข้อมูลน้อยกว่า EventHeader — ส่งเป็น raw payload แบบเดิม
++                // Less than EventHeader — send as raw payload
+                 const payload = buffer[0..bytes_read];
+                 const ctx = nids_analyze.PacketContext{
+                     .protocol = 6,  // assume TCP
+                     .is_pipe = false,
+                 };
+-                const is_safe = nids_analyze.inspect_packet(payload, ctx) catch |err| {
++                const is_safe = nids_analyze.inspect_packet_ctx(payload, ctx) catch |err| {
+                     std.debug.print("\x1b[31m[!] Analyze Error: {}\x1b[0m\n", .{err});
+                     return;
+                 };
+                 if (!is_safe) {
+-                    std.debug.print("\x1b[31;1m[WFP SENSOR] 🚨 Dropped Malicious Network Packet!\x1b[0m\n", .{});
+-                }
+-             }
+-         } else {
+-             std.time.sleep(10 * std.time.ns_per_ms);
+-
+-                    .dest_port = header.dest_port,
+-                    .protocol = header.protocol,
+-                    .direction = header.direction,
+-                    .layer_id = header.layer_id,
+-                    .is_pipe = false,
+-                };
+-
+-                // Payload อยู่หลัง EventHeader
+-                const payload_start = @sizeOf(nids_analyze.WfpEventHeader);
+-                const payload_end = @min(bytes_read, payload_start + header.payload_length);
+-                if (payload_end > payload_start) {
+-                    const payload = buffer[payload_start..payload_end];
+-
+-                    const is_safe = nids_analyze.inspect_packet(payload, ctx) catch |err| {
+-                        std.debug.print("\x1b[31m[!] Analyze Error: {}\x1b[0m\n", .{err});
+-                        return;
+-                    };
+-
+-                    if (!is_safe) {
+-                        std.debug.print("\x1b[31;1m[WFP SENSOR] 🚨 Dropped Malicious Network Packet! src_ip=0x{x}\x1b[0m\n", .{header.source_ip});
+-                    }
+-                }
+-            } else {
+-                // ข้อมูลน้อยกว่า EventHeader — ส่งเป็น raw payload แบบเดิม
+-                const payload = buffer[0..bytes_read];
+-                const ctx = nids_analyze.PacketContext{
+-                    .protocol = 6,  // assume TCP
+-                    .is_pipe = false,
+-                };
+-                const is_safe = nids_analyze.inspect_packet(payload, ctx) catch |err| {
+-                    std.debug.print("\x1b[31m[!] Analyze Error: {}\x1b[0m\n", .{err});
+-                    return;
+-                };
+-                if (!is_safe) {
+-                    std.debug.print("\x1b[31;1m[WFP SENSOR] 🚨 Dropped Malicious Network Packet!\x1b[0m\n", .{});
++                    std.debug.print("\x1b[31;1m[WFP SENSOR] Dropped Malicious Network Packet!\x1b[0m\n", .{});
+                 }
+             }
+         } else {

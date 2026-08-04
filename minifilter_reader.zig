@@ -1,3 +1,4 @@
+@@ -0,0 +1,89 @@
 //! minifilter_reader.zig — AEGIS NIDS Minifilter Reader (Thread 4)
 //!
 //! Reads file/process events from the AEGIS minifilter driver via

@@ -1,0 +1,55 @@
+diff a/nids_analyze.zig b/nids_analyze.zig	(rejected hunks)
+@@ -60,6 +60,37 @@ extern fn aegis_bridge_get_event_count() u32;
+ 
+ var bridge_initialized: bool = false;
+ 
++// =================================================================
++// [ PACKET CONTEXT & WFP EVENT HEADER — 5-TUPLE METADATA ]
++// Used by windows_capture.zig and nids_capture.zig to pass
++// full 5-tuple context from kernel drivers to the analysis engine.
++// =================================================================
++
++/// WFP Event Header sent by kernel driver (44 bytes)
++pub const WfpEventHeader = extern struct {
++    source_ip: u32,
++    dest_ip: u32,
++    source_port: u16,
++    dest_port: u16,
++    protocol: u8,       // 6=TCP, 17=UDP, 1=ICMP
++    direction: u8,      // 0=inbound, 1=outbound
++    layer_id: u8,       // WFP layer where event originated
++    payload_length: u32,
++    reserved: [16]u8 = [_]u8{0} ** 16, // padding to 44 bytes
++};
++
++/// Packet context — 5-tuple metadata passed from capture layer
++pub const PacketContext = struct {
++    source_ip: u32 = 0,
++    dest_ip: u32 = 0,
++    source_port: u16 = 0,
++    dest_port: u16 = 0,
++    protocol: u8 = 6,   // default TCP
++    direction: u8 = 0,  // default inbound
++    layer_id: u8 = 0,   // default NETWORK layer
++    is_pipe: bool = false,
++};
++
+ /// Helper: Push Tier-1 match result to C++ Bridge
+ fn pushTier1Match(
+     event_type: u32,
+@@ -353,6 +384,15 @@ fn send_to_brain(allocator: std.mem.Allocator, msg: anytype) !void {
+ }
+ 
+ // --- [ 3-TIER FAST THREAT ANALYSIS ENGINE ] ---
++
++/// Convenience overload: inspect with PacketContext (full 5-tuple from kernel drivers)
++pub fn inspect_packet_ctx(data: []const u8, ctx: PacketContext) !bool {
++    // TODO: In future, pass ctx fields to C++ Bridge for richer events
++    // For now, delegate to the simple inspect_packet with is_pipe flag
++    return inspect_packet(data, ctx.is_pipe);
++}
++
++/// Original entry point: inspect with just data + is_pipe flag
+ pub fn inspect_packet(data: []const u8, is_pipe: bool) !bool {
+     // Check TCP socket
+     std.debug.print("[DEBUG] Analyzing data from {s}, size: {} bytes\n", .{ if (is_pipe) "PIPE" else "TCP", data.len });

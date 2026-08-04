@@ -23,13 +23,13 @@ GRAPH_HTML_FILE = "threat_graph.html"  # ต้องตรงกับ aegis_gr
 
 
 def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')
+     try:
+         with open(RULES_FILE, "r", encoding="utf-8") as f:
+             data = json.load(f)
+             if "nids_rules" not in data:
+                 data["nids_rules"] = []
+             return data
 
-
-def load_rules():
-    if not os.path.exists(RULES_FILE):
-        data = {"nids_rules": []}
-        save_rules(data)
         return data
     try:
         with open(RULES_FILE, "r", encoding="utf-8") as f:
@@ -151,9 +151,9 @@ def manage_rules_ui():
 
             if len(rules["nids_rules"]) < initial_count:
                 save_rules(rules)
-                print(f"\n[+] ลบกฎ {target_id} ออกจากระบบเรียบร้อยแล้ว!")
+                print(f"\n[+] Rule {target_id} deleted successfully!")
             else:
-                print(f"\n[-] ไม่พบ Rule ID '{target_id}' ในระบบ")
+                print(f"\n[-] Rule ID '{target_id}' not found")
             time.sleep(1.5)
 
         elif choice == 'B':

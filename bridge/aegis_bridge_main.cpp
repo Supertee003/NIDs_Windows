@@ -1,3 +1,4 @@
+@@ -0,0 +1,219 @@
 /**
  * aegis_bridge_main.cpp — AEGIS IPC Bridge Standalone Executable
  *

@@ -11,15 +11,19 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize, // ใส่ optimize ลงใน executable options โดยตรง
     });
 
-    b.installArtifact(exe); // สั่งติดตั้งไฟล์ที่ build เสร็จแล้วลงในโฟลเดอร์ zig-out/bin
+    b.installArtifact(exe); // Install built binary to zig-out/bin
     exe.linkLibC();
 
-    // Rust FFI (sec_monitor.dll) — Tier-0 Memory Safety Shield
+    // Rust FFI (sec_monitor.dll / libsec_monitor.so) — Tier-0 Memory Safety Shield
     exe.addLibraryPath(.{ .cwd_relative = "target/release" });
     exe.linkSystemLibrary("sec_monitor");
 
-    // C++ IPC Bridge (aegis_ipc.dll) — เชื่อม Zig Core ↔ Bridge ↔ Dashboard
+    // C++ IPC Bridge (aegis_ipc.dll / libaegis_ipc.so) — Zig Core ↔ Bridge ↔ Dashboard
+    // On Windows: build/Release/  (MSVC default)
+    // On Linux:   build/         (Makefile default)
     exe.addLibraryPath(.{ .cwd_relative = "build/Release" });
+    exe.addLibraryPath(.{ .cwd_relative = "build" });         // Linux fallback
+    exe.addLibraryPath(.{ .cwd_relative = "bridge" });        // Pre-built fallback
     exe.linkSystemLibrary("aegis_ipc");
 
     const run_cmd = b.addRunArtifact(exe); // สร้างคำสั่งสำหรับรันโปรแกรม

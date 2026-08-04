@@ -1,3 +1,4 @@
+@@ -0,0 +1,122 @@
 /**
  * aegis_bridge_ffi.rs — Rust FFI Bindings for C++ IPC Bridge
  *
@@ -8,27 +9,27 @@
  * Architecture: Rust Mouth → C++ Bridge (via these externs) → Go Nose
  */
 
-use std::os::raw::{c_int, c_uint, c_ulong, c_char};
+use std::os::raw::{c_int, c_uint, c_ulong, c_char, c_ushort, c_uchar};
 
-// ====== IPC Event Structure (matches C++ IpcEvent — 48 bytes) ======
+// ====== IPC Event Structure (matches C++ IpcEvent exactly — see aegis_ipc.hpp) ======
 #[repr(C, packed)]
 pub struct AegisIpcEvent {
-    pub event_type:      c_uint,   // 0=NETWORK, 1=KERNEL_FILE, 2=KERNEL_PROCESS, 3=L2_PIPE
-    pub source_ip:       c_uint,
-    pub dest_ip:         c_uint,
-    pub source_port:     c_uint,   // u16 in C++ but c_uint for ABI alignment
-    pub dest_port:       c_uint,
-    pub protocol:        c_uint,   // u8 in C++
-    pub direction:       c_uint,
-    pub layer_id:        c_uint,
-    pub tier_result:     c_uint,
-    pub payload_length:  c_uint,
-    pub rule_id:         c_uint,
-    pub severity:        c_uint,
-    pub reserved:        c_uint,
-    pub timestamp:       c_ulong,  // u64
-    pub source_pid:      c_uint,
-    pub defcon_impact:   c_uint,
+    pub event_type:      c_uint,      // 0=NETWORK, 1=KERNEL_FILE, 2=KERNEL_PROCESS, 3=L2_PIPE
+    pub source_ip:       c_uint,      // IPv4: u32
+    pub dest_ip:         c_uint,      // IPv4: u32
+    pub source_port:     c_ushort,    // uint16_t
+    pub dest_port:       c_ushort,    // uint16_t
+    pub protocol:        c_uchar,     // uint8_t (6=TCP, 17=UDP)
+    pub direction:       c_uchar,     // uint8_t (0=in, 1=out)
+    pub layer_id:        c_uchar,     // uint8_t
+    pub tier_result:     c_uchar,     // uint8_t
+    pub payload_length:  c_uint,      // u32
+    pub rule_id:         c_uint,      // u32
+    pub severity:        c_uint,      // u32
+    pub reserved:        c_uint,      // u32
+    pub timestamp:       c_ulong,     // u64
+    pub source_pid:      c_uint,      // u32
+    pub defcon_impact:   c_uint,      // u32
 }
 
 // ====== IPC Command Structure ======

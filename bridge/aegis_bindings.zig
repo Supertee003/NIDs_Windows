@@ -1,3 +1,4 @@
+@@ -0,0 +1,106 @@
 /**
  * aegis_bindings.zig — Zig FFI Bindings for C++ IPC Bridge
  *
