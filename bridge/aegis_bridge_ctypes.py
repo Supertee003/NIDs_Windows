@@ -164,7 +164,11 @@ def push_event(event_type, source_ip, dest_ip, source_port, dest_port,
     event.layer_id       = 0 if event_type == 0 else event_type
     event.tier_result    = tier_result   # 2 = Tier-2 regex match
     event.payload_length = 0
+<<<<<<< ours
     event.rule_id        = rule_id
+=======
+    event.rule_id        = int(rule_id) if isinstance(rule_id, (str, float)) else rule_id
+>>>>>>> theirs
     event.severity       = severity
     event.reserved       = 0
     event.timestamp      = 0

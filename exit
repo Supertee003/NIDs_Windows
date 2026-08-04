@@ -1,0 +1,92 @@
+[33mcommit 64fc3963555ca521edf35c007a2af318532f29b7[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: supertee003 <supertee003@gmail.com>
+Date:   Tue Aug 4 05:45:53 2026 +0700
+
+    commit
+
+[33mcommit d7252e0438bb8c3471c58861c4cc34d7244c7050[m
+Author: supertee003 <supertee003@gmail.com>
+Date:   Sun Jul 26 02:24:39 2026 +0700
+
+    fix
+
+[33mcommit 717cadfec7e434b5615586e10e682ab97aa49595[m
+Author: supertee003 <supertee003@gmail.com>
+Date:   Sat Jul 18 01:50:34 2026 +0700
+
+    fix
+
+[33mcommit 91c0b1615e744602297cb31edbaa50a7cfda88f4[m
+Author: AEGIS Dev <aegis-dev@example.com>
+Date:   Tue Jul 14 20:05:33 2026 +0000
+
+    feat: 3-Layer NIDS expansion (WFP + Minifilter + Pipe Monitor)
+    
+    Step 0 — Bug Fixes & Stabilize
+    - Fix build.zig: change absolute D:/NIDs_Windows path to relative 'target/release'
+    - Fix nids_analyze.zig: case-insensitive action comparison (Block/BLOCK/block)
+    - Integrate AtomicThreatTracker (was declared but never used)
+    - Fix windows_capture.zig: 30s retry loop instead of forever sleep on driver missing
+    - Fix windows_brain.py: add missing run_regex_scan() + apply_firewall_policy() functions
+    - Fix windows_brain.py: un-comment firewall block (IPS enabled, requires Admin)
+    - Fix windows_perf.go: replace rand.Intn() fake data with real log file stats
+    - Remove duplicate root lib.rs (kept src/lib.rs per Cargo convention)
+    - Fix Rules.json rule_id conflicts (R0088 → R9001, R0001 → R9002)
+    
+    Step 1 — Zig Event Model
+    - Add EventSource enum (TCP_SOCKET, WFP_PACKET, KERNEL_FILE, KERNEL_PROCESS,
+      KERNEL_REGISTRY, PIPE_MONITOR, PIPE_IPC)
+    - Add EventHeader extern struct (40 bytes, matches kernel AEGIS_EVENT_HEADER)
+    - Add IOCTL codes (IOCTL_AEGIS_READ_EVENTS, BLOCK_FLOW, GET_STATS)
+    - Add inspect_event(header, payload) — routes to inspect_network_payload or
+      inspect_path_event based on event_type
+    - Refactor inspect_packet(data, is_pipe) as backward-compat wrapper
+    - Add layer-based rule filtering (rules for KERNEL_FILE only match file events)
+    - Add path-based substring match (case-insensitive) for kernel events
+    - Add file_operations filter (CREATE/WRITE/RENAME/DELETE)
+    - Add parent_exclude filter for process events
+    
+    Step 1b — New User-Mode Threads
+    - Add minifilter_reader.zig: FilterConnectCommunicationPort + FilterGetMessage loop
+    - Add pipe_monitor.zig: poll \\./pipe/ directory every 2s, detect new pipes,
+      emit PIPE_MONITOR events
+    
+    Step 1c — Update Main + WFP Reader
+    - Update nids_main.zig: spawn 5 threads (analyze + sensor pipe + WFP + minifilter + pipe monitor)
+    - Rewrite windows_capture.zig: use CreateFileA + DeviceIoControl + IOCTL_AEGIS_READ_EVENTS
+      to batch-read events from kernel ring buffer
+    - Update build.zig: link fltlib for FilterManager user-mode API, add 'test' step
+    
+    Step 2 — Rules Layering
+    - Rewrite Rules.json: add 'layer' field to every rule, normalize existing rules
+      to 'NETWORK' layer
+    - Add 5 KERNEL_FILE rules (System32 write, ransomware rename, Startup folder, etc.)
+    - Add 5 KERNEL_PROCESS rules (mimikatz, svchost hollowing, PowerShell cradle, etc.)
+    - Add 5 PIPE_MONITOR rules (Cobalt Strike, PsExec, Meterpreter, atexec)
+    
+    Step 3 — WFP Driver Skeleton (drivers/wfp_callout/)
+    - aegis_wfp.h: shared header (AEGIS_EVENT_HEADER, IOCTL codes, ring buffer config)
+    - aegis_wfp.c: DriverEntry/Unload, device creation, symbolic link
+    - aegis_wfp_callout.c: WFP callout registration + classify function (5-tuple + NBL payload)
+    - aegis_wfp_comm.c: ring buffer + IOCTL dispatch (READ_EVENTS, BLOCK_FLOW, GET_STATS)
+    - aegis_wfp.inf: driver installation INF
+    - README.md: build/install/test instructions
+    
+    Step 4 — Minifilter Driver Skeleton (drivers/minifilter/)
+    - aegis_minifilter.h: shared header + callback prototypes
+    - aegis_minifilter.c: DriverEntry/Unload, FLT_REGISTRATION, process notify
+    - aegis_minifilter_file.c: Pre-operation callbacks (CREATE/WRITE/SET_INFO)
+    - aegis_minifilter_proc.c: PsSetCreateProcessNotifyRoutineEx callback
+    - aegis_minifilter_comm.c: FilterCommunicationPort kernel-side (connect/disconnect/send)
+    - aegis_minifilter.inf: driver installation INF (altitude 370000)
+    - README.md: build/install/test instructions
+    
+    Verification
+    - Add comprehensive README.md at project root with architecture diagram,
+      quick start, build instructions, rules format, troubleshooting
+
+[33mcommit b7d221074302057766b3a298e3048dc6a01c765e[m
+Author: supertee003 <supertee003@gmail.com>
+Date:   Tue Jul 7 19:11:35 2026 +0700
+
+    commit

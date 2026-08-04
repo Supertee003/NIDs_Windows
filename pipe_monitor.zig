@@ -53,28 +53,50 @@ fn isSuspiciousPipe(pipe_name: []const u8) ?[]const u8 {
 // ====== Scan named pipes — returns list of suspicious pipes found ======
 pub fn scanPipes() ![]PipeEvent {
     var events = std.ArrayList(PipeEvent).init(allocator);
+<<<<<<< ours
     
     // On Windows, we would enumerate \\.\pipe\* using NtQueryDirectoryFile
     // or Win32 FindFirstFile/FindNextFile on the pipe namespace.
     // For now, we log a placeholder — real implementation uses Win32 API.
     
+=======
+
+    // On Windows, we would enumerate \\.\pipe\* using NtQueryDirectoryFile
+    // or Win32 FindFirstFile/FindNextFile on the pipe namespace.
+    // For now, we log a placeholder — real implementation uses Win32 API.
+
+>>>>>>> theirs
     // NOTE: This is a Linux-compatible stub. On Windows, the actual pipe
     // enumeration uses kernel32.FindFirstFileW("\\\\.\\pipe\\*").
     // The Zig stdlib doesn't have a direct pipe enumeration API,
     // so we must use Win32 API bindings when building for Windows.
+<<<<<<< ours
     
     // Print scan status
     std.log.info("[Pipe Monitor] Scanning named pipes... (alert-only mode)", .{});
     
+=======
+
+    // Print scan status
+    std.log.info("[Pipe Monitor] Scanning named pipes... (alert-only mode)", .{});
+
+>>>>>>> theirs
     // In production Windows build, this function:
     // 1. Calls FindFirstFileW("\\\\.\\pipe\\*", ...) to enumerate all pipes
     // 2. For each pipe name, checks against SUSPICIOUS_PIPE_PATTERNS
     // 3. Creates PipeEvent for suspicious matches
     // 4. Sends events to nids_analyze via channel or shared queue
+<<<<<<< ours
     
     // Update stats
     stats.last_scan_time = std.time.milliTimestamp();
     
+=======
+
+    // Update stats
+    stats.last_scan_time = std.time.milliTimestamp();
+
+>>>>>>> theirs
     return events.toOwnedSlice();
 }
 
@@ -90,10 +112,17 @@ pub fn printStats() void {
 // ====== Main pipe monitor loop (Thread 5) ======
 pub fn pipeMonitorLoop() !void {
     std.log.info("[Pipe Monitor] Thread 5 started — scanning every 5 seconds", .{});
+<<<<<<< ours
     
     while (true) {
         const events = try scanPipes();
         
+=======
+
+    while (true) {
+        const events = try scanPipes();
+
+>>>>>>> theirs
         // Process suspicious events
         for (events) |event| {
             if (event.risk_level.len > 0) {
@@ -104,15 +133,26 @@ pub fn pipeMonitorLoop() !void {
                     event.risk_level,
                 });
                 stats.suspicious_pipes += 1;
+<<<<<<< ours
                 
+=======
+
+>>>>>>> theirs
                 // TODO: Send event to nids_analyze.inspect_pipe_event()
                 // via inter-thread channel or atomic queue
             }
         }
+<<<<<<< ours
         
         allocator.free(events);
         printStats();
         
+=======
+
+        allocator.free(events);
+        printStats();
+
+>>>>>>> theirs
         // Scan every 5 seconds (configurable)
         std.time.sleep(5 * std.time.ns_per_s);
     }

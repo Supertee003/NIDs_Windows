@@ -292,6 +292,21 @@ int32_t aegis_bridge_push_event(const Aegis::Bridge::IpcEvent* event) {
         return -2;
     }
 
+<<<<<<< ours
+=======
+    // Auto-update DEFCON after each event push
+    // severity >= 3 → critical, tier_result == 3 → kernel threat
+    uint32_t total    = g_defcon.TotalAlerts() + 1;
+    uint32_t critical = g_defcon.CriticalCount() + (event->severity >= 3 ? 1 : 0);
+    uint32_t kernel   = g_defcon.KernelThreats() + (event->tier_result == 3 ? 1 : 0);
+    uint32_t blocked  = g_defcon.BlockedIpCount();
+    g_defcon.SetTotalAlerts(total);
+    g_defcon.SetCriticalCount(critical);
+    g_defcon.SetKernelThreats(kernel);
+    g_defcon.SetBlockedIpCount(blocked);
+    g_defcon.Calculate();
+
+>>>>>>> theirs
     return 0;
 }
 
