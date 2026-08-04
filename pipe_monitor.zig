@@ -1,4 +1,3 @@
-@@ -0,0 +1,119 @@
 //! pipe_monitor.zig — AEGIS NIDS Pipe Monitor Sensor (Thread 5)
 //!
 //! Polls \\.\pipe\* every 5 seconds and checks for suspicious named pipes.

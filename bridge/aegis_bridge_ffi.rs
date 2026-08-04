@@ -1,4 +1,3 @@
-@@ -0,0 +1,122 @@
 /**
  * aegis_bridge_ffi.rs — Rust FFI Bindings for C++ IPC Bridge
  *

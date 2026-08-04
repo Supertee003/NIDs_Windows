@@ -1,4 +1,3 @@
-@@ -0,0 +1,214 @@
 /**
  * aegis_dashboard/src/bridge_ffi.rs — Bridge FFI bindings for egui Dashboard
  *

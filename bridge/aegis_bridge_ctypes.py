@@ -1,4 +1,3 @@
-@@ -0,0 +1,332 @@
 """
 aegis_bridge_ctypes.py — Python ctypes Bindings for C++ IPC Bridge
 

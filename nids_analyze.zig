@@ -25,8 +25,8 @@ extern "kernel32" fn ReadFile(
     lpBuffer: [*]u8,
     nNumberOfBytesToRead: u32,
     lpNumberOfBytesRead: ?*u32,
-     lpOverlapped: ?*anyopaque,
- ) i32;
+    lpOverlapped: ?*anyopaque,
+) i32;
 
 // =================================================================
 // [ C++ IPC BRIDGE FFI — extern "C" ABI ]
@@ -256,16 +256,15 @@ const AtomicThreatTracker = struct {
     }
 };
 
- }
+var global_attacker_tracker: AtomicThreatTracker = .{};
 
- // --- [ 3-TIER FAST THREAT ANALYSIS ENGINE ] ---
-pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
-     // Check TCP socket
-    std.debug.print("[DEBUG] Analyzing data from {s}, size: {} bytes, src_ip=0x{x}, dst_port={d}\n", .{ if (ctx.is_pipe) "PIPE" else "TCP", data.len, ctx.source_ip, ctx.dest_port });
-
-     // 🛡️ [ด่านหน้าสุด: RUST MEMORY SAFETY CHECK] 🛡️
-     if (!validate_payload_safety(data.ptr, data.len)) return false;
-
+pub const SecureRule = struct {
+    name: []const u8,
+    fast_pattern: []const u8,
+    match_pattern: []const u8,
+    regex_pattern: []const u8,
+    severity: []const u8,
+    action: []const u8,
     crc32: u32,
 };
 
@@ -311,37 +310,22 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
         std.debug.print("\x1b[31m[ERROR] JSON Parse Failed: {}\x1b[0m\n", .{err});
         return;
     };
-         const alert = .{
-             .timestamp = std.time.timestamp(),
-             .attack_type = rule.name,
-            .policy = rule.action,
-             .reason = "Tier-1 Fast Pattern Match",
-            .source = if (ctx.is_pipe) "WFP_PIPE" else "TCP_SOCKET",
-             .raw_payload = data,
-            .source_ip = ctx.source_ip,
-            .dest_ip = ctx.dest_ip,
-            .source_port = ctx.source_port,
-            .dest_port = ctx.dest_port,
-            .protocol = ctx.protocol,
-         };
+    defer parsed.deinit();
 
-         // 2. ส่ง Log ด้วย Dynamic Allocator
-         try send_to_brain(allocator, alert);
+    var new_set = try allocator.create(SecureRuleSet);
+    new_set.allocator = allocator;
+    new_set.ac_engine = try AhoCorasick.init(allocator);
 
-        // 3. 🔗 Push Tier-1 match to C++ Bridge (ส่ง event พร้อม 5-tuple ไป Dashboard)
-        const severity_val: u32 = val: {
-            if (std.mem.eql(u8, rule.severity, "Critical")) break :val 3;
-            if (std.mem.eql(u8, rule.severity, "High")) break :val 2;
-            if (std.mem.eql(u8, rule.severity, "Medium")) break :val 1;
-            break :val 0; // Low
-        };
-        _ = pushTier1Match(ctx, rule.crc32, severity_val, @intCast(data.len));
-
-        // 4. 🛡️ หัวใจสำคัญ: แยกการทำงานตาม Policy ของคุณ
-         if (std.mem.eql(u8, rule.action, "Block")) {
-             // กรณี Block: Zig ตัดการเชื่อมต่อทันที
-             std.debug.print("\x1b[31;1m[ AEGIS CORE ] !!! BLOCK !!! Connection Terminated: {s}\x1b[0m\n", .{rule.name});
-
+    var temp_sig_list = std.ArrayListAligned(SecureRule, 8).init(allocator);
+    errdefer {
+        for (temp_sig_list.items) |*sig| {
+            allocator.free(sig.name);
+            allocator.free(sig.fast_pattern);
+            allocator.free(sig.match_pattern);
+            allocator.free(sig.regex_pattern);
+            allocator.free(sig.severity);
+        }
+        temp_sig_list.deinit();
         new_set.ac_engine.deinit();
         allocator.destroy(new_set);
     }
@@ -350,28 +334,18 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
     for (parsed.value.nids_rules) |sig| {
         var active_fast_pattern: []const u8 = sig.fast_pattern;
         if (active_fast_pattern.len == 0) {
-             .attack_type = "Unmatched: Deep Inspection Required",
-             .policy = "Pending",
-             .reason = "Forwarded: No Tier-1 Match",
-            .source = if (ctx.is_pipe) "WFP_PIPE" else "TCP_SOCKET",
-             .raw_payload = data,
-            .source_ip = ctx.source_ip,
-            .dest_ip = ctx.dest_ip,
-            .source_port = ctx.source_port,
-            .dest_port = ctx.dest_port,
-            .protocol = ctx.protocol,
-         };
+            if (sig.match_pattern.len > 0) {
+                if (std.mem.indexOfAny(u8, sig.match_pattern, "|()[{\\.*+?^$")) |idx| {
+                    active_fast_pattern = sig.match_pattern[0..idx];
+                } else {
+                    active_fast_pattern = sig.match_pattern;
+                }
+            } else {
+                continue;
+            }
+        }
 
-         // ใช้ dynamic allocator ส่ง forward_msg (แก้ปัญหา Buffer เต็ม)
-         try send_to_brain(allocator, forward_msg);
-
-        // 🔗 Push forwarded event to C++ Bridge (ส่งพร้อม 5-tuple ให้ Tier-2 ตรวจสอบต่อ)
-        _ = pushForwardedEvent(ctx, @intCast(data.len));
-
-         return true;
-     }
- }
-
+        if (active_fast_pattern.len < 3) continue;
 
         var hash = std.hash.Crc32.init();
         hash.update(active_fast_pattern);
@@ -382,28 +356,23 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
             .regex_pattern = try allocator.dupe(u8, sig.regex_pattern),
             .severity = try allocator.dupe(u8, sig.severity),
             .action = try allocator.dupe(u8, sig.action),
-     defer _ = active_threads.fetchSub(1, .monotonic);
-     _ = active_threads.fetchAdd(1, .monotonic);
+            .crc32 = hash.final(),
+        });
 
-    // Named Pipe ไม่มี 5-tuple — ใช้ default values
-    const ctx = PacketContext{
-        .is_pipe = true,
-        .layer_id = 3,  // L2_PIPE
-    };
+        try new_set.ac_engine.insert(temp_sig_list.items[valid_rule_count].fast_pattern, valid_rule_count);
+        valid_rule_count += 1;
+    }
 
-     var buf: [4096]u8 = undefined;
-     while (true) {
-         var bytes_read: u32 = 0;
-         const success = ReadFile(hPipe, &buf, buf.len, &bytes_read, null);
-         if (success == 0 or bytes_read == 0) break;
-        const is_safe = inspect_packet(buf[0..bytes_read], ctx) catch true;
-         if (!is_safe) {
-             break; // 💥 เตะ Hacker ออกจาก Named Pipe ทันที!
-         }
-     }
- }
+    try new_set.ac_engine.buildFailureLinks();
+    new_set.signatures = try temp_sig_list.toOwnedSlice();
+    const old_set = active_ruleset.swap(new_set, .release);
+    if (old_set) |old| {
+        old.deinit();
+    }
 
-
+    std.debug.print("\x1b[32m[ENTERPRISE SECURITY] Successfully loaded {d} secure rules.\x1b[0m\n", .{valid_rule_count});
+}
+// UDP send to brain
 // --- ปรับปรุงฟังก์ชันส่งข้อมูลให้ใช้ Allocator ---
 fn send_to_brain(allocator: std.mem.Allocator, msg: anytype) !void {
     // ใช้ ArrayList ร่วมกับ allocator เพื่อจองหน่วยความจำตามจริง

@@ -1,4 +1,3 @@
-@@ -0,0 +1,390 @@
 /**
  * aegis_ipc.cpp — AEGIS NIDS IPC Bridge Implementation (C++ Edition)
  *
