@@ -15,11 +15,14 @@ else()
 endif()
 
 # ====== Compiler Flags ======
-# No exceptions (kernel-compatible / embedded-friendly)
+# MSVC: /EHsc = C++ exceptions + extern"C" never throws (needed by UCRT)
+# GCC/Clang: -fno-exceptions not used — UCRT stdio requires exception support
 if(MSVC)
-    add_compile_options(/EHs-c- /W4)
+    add_compile_options(/EHsc /W4)
+    # Prevent winsock.h / winsock2.h conflict
+    add_definitions(-DWIN32_LEAN_AND_MEAN -DNOGDI -DNOMINMAX)
 else()
-    add_compile_options(-fno-exceptions -Wall -Wextra -Wpedantic)
+    add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
 # ====== Bridge Shared Library (DLL / .so) ======

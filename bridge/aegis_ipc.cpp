@@ -12,8 +12,11 @@
 #include "aegis_ipc.hpp"
 
 #ifdef _WIN32
-#include <windows.h>
+// winsock2.h MUST come before windows.h to avoid redefinition errors
+// (winsock.h is pulled in by windows.h and conflicts with winsock2.h)
 #include <winsock2.h>
+#include <ws2tcpip.h>
+#include <windows.h>
 #else
 #include <unistd.h>
 #include <sys/socket.h>
