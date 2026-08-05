@@ -16,7 +16,13 @@ import subprocess
 import webbrowser
 import time
 
-import aegis_graph
+# Optional: aegis_graph requires networkx + pyvis
+try:
+    import aegis_graph
+    AEGIS_GRAPH_AVAILABLE = True
+except ImportError:
+    AEGIS_GRAPH_AVAILABLE = False
+
 
 # C++ IPC Bridge integration
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "bridge"))
@@ -269,10 +275,17 @@ def main_menu():
 
         if choice == '1':
             print("[!] Booting Zig Core, Brain, Bridge, and Sensors...")
-            subprocess.Popen(
-                ["cmd", "/c", "start", "AEGIS Launcher", "run_aegis.bat"],
-                shell=True
-            )
+            if os.name == 'nt':
+                subprocess.Popen(
+                    ["cmd", "/c", "start", "AEGIS Launcher", "run_aegis.bat"],
+                    shell=True
+                )
+            else:
+                # Linux/macOS fallback
+                subprocess.Popen(
+                    ["bash", "run_aegis.bat"],
+                    cwd=os.path.dirname(os.path.abspath(__file__)) or "."
+                )
             input("\nPress Enter to return...")
 
         elif choice == '2':
@@ -280,11 +293,17 @@ def main_menu():
 
         elif choice == '3':
             os.makedirs("logs", exist_ok=True)
-            open("logs/anomalous.json", "w").close()
+            with open("logs/anomalous.json", "w") as f:
+                pass  # truncate file
             print("[+] Logs cleared successfully.")
             input("\nPress Enter...")
 
         elif choice == '4':
+            if not AEGIS_GRAPH_AVAILABLE:
+                print("\n[-] Threat graph unavailable - missing dependencies.")
+                print("    Install: pip install networkx pyvis")
+                input("\nPress Enter to return...")
+                continue
             print("\n[!] Generating Advanced Threat Analysis Graph...")
             try:
                 aegis_graph.generate_threat_graph()

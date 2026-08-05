@@ -268,7 +268,11 @@ def test_defcon_calculation():
                 f"defcon={defcon}")
 
     # Test 4b: Push 1 alert → DEFCON 4 (ELEVATED)
-    bridge.push_event(0, 0, 0, 0, 0, 6, 0, 1, 0, 1)  # severity=1
+    bridge.push_event(
+        event_type=0, source_ip=0, dest_ip=0,
+        source_port=0, dest_port=0, protocol=6,
+        tier_result=0, rule_id=1, severity=1,
+    )
     bridge.update_defcon(critical=0, blocked=0, kernel=0, total=1)
     defcon = bridge.get_defcon_level()
     test_result("DEFCON 4 (ELEVATED) — 1 alert", defcon == 4,
@@ -276,14 +280,22 @@ def test_defcon_calculation():
 
     # Test 4c: Push 5+ alerts → DEFCON 3 (HIGH)
     for i in range(5):
-        bridge.push_event(0, 0, 0, 0, 0, 6, 0, 1, 0, 1)
+        bridge.push_event(
+            event_type=0, source_ip=0, dest_ip=0,
+            source_port=0, dest_port=0, protocol=6,
+            tier_result=0, rule_id=1, severity=1,
+        )
     bridge.update_defcon(critical=0, blocked=0, kernel=0, total=6)
     defcon = bridge.get_defcon_level()
     test_result("DEFCON 3 (HIGH) — 5+ alerts", defcon == 3,
                 f"defcon={defcon}")
 
     # Test 4d: Push critical → DEFCON 3 (HIGH)
-    bridge.push_event(0, 0, 0, 0, 0, 6, 0, 3, 0, 3)  # severity=3 (Critical)
+    bridge.push_event(
+        event_type=0, source_ip=0, dest_ip=0,
+        source_port=0, dest_port=0, protocol=6,
+        tier_result=0, rule_id=3, severity=3,  # severity=3 (Critical)
+    )
     bridge.update_defcon(critical=1, blocked=0, kernel=0, total=7)
     defcon = bridge.get_defcon_level()
     test_result("DEFCON 3 (HIGH) — 1+ critical", defcon <= 3,

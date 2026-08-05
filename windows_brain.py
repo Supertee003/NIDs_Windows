@@ -163,7 +163,10 @@ def poll_bridge_events():
         # Process Tier-1 events from Zig Core that need Tier-2 inspection
         if event.tier_result == 1:  # Tier-1 match from Zig
             defcon = bridge.get_defcon_level()
-            label = bridge.get_defcon_label() if BRIDGE_AVAILABLE else "UNKNOWN"
+            try:
+                label = bridge.get_defcon_label() if BRIDGE_AVAILABLE else "UNKNOWN"
+            except Exception:
+                label = "UNKNOWN"
             print(f"{UI.CYAN}[BRIDGE]{UI.RESET} Tier-1 event received — "
                   f"Rule ID: {event.rule_id} | DEFCON: {defcon} ({label})")
 

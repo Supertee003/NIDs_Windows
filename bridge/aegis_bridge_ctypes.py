@@ -212,7 +212,10 @@ def update_defcon(critical, blocked, kernel, total):
 def get_defcon_label():
     """Get DEFCON level label string."""
     if _bridge_get_defcon_label:
-        return _bridge_get_defcon_label().decode('utf-8')
+        result = _bridge_get_defcon_label()
+        if result is not None:
+            return result.decode('utf-8')
+        # NULL return from C function - use fallback
     level = get_defcon_level()
     return DEFCON_LABELS.get(level, "UNKNOWN")
 
@@ -220,7 +223,10 @@ def get_defcon_label():
 def get_defcon_description():
     """Get DEFCON level description string."""
     if _bridge_get_defcon_desc:
-        return _bridge_get_defcon_desc().decode('utf-8')
+        result = _bridge_get_defcon_desc()
+        if result is not None:
+            return result.decode('utf-8')
+        # NULL return from C function - use fallback
     level = get_defcon_level()
     return DEFCON_DESCRIPTIONS.get(level, "Unknown DEFCON level")
 
@@ -250,9 +256,14 @@ def unblock_ip(ip_string):
 
 def _ip_to_int(ip_string):
     """Convert IP string (e.g., '192.168.1.1') to uint32."""
-    parts = ip_string.split('.')
-    return struct.unpack('>I', struct.pack('BBBB',
-        int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3])))[0]
+    try:
+        parts = ip_string.split('.')
+        if len(parts) != 4:
+            return 0
+        return struct.unpack('>I', struct.pack('BBBB',
+            int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3])))[0]
+    except (ValueError, IndexError):
+        return 0
 
 
 def _int_to_ip(ip_int):

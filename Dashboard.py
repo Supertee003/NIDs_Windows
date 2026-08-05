@@ -93,7 +93,7 @@ def main():
                 action_color = C.RED if policy in ["DROP", "BLOCK"] else C.YELLOW
 
                 print(f"{C.CYAN}│{C.RESET} {ts:<10} │ {source:<23} │ {attack:<25} │ {action_color}{policy:<10}{C.RESET} {C.CYAN}│{C.RESET}")
-            except:
+            except (json.JSONDecodeError, KeyError, ValueError):
                 continue
                 
         print(f"{C.CYAN}└{'─'*78}┘{C.RESET}")
