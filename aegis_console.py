@@ -23,7 +23,6 @@ try:
 except ImportError:
     AEGIS_GRAPH_AVAILABLE = False
 
-
 # C++ IPC Bridge integration
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "bridge"))
 try:
