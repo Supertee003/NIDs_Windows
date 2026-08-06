@@ -4,7 +4,16 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+
+    // Optional: link C++ IPC Bridge and Rust FFI
+    // Use: zig build -Dlink-bridge -Dlink-rust
+    // Without flags: builds standalone (no DLL dependencies)
+    const link_bridge = b.option(bool, "link-bridge", "Link C++ IPC Bridge (aegis_ipc)") orelse false;
+    const link_rust = b.option(bool, "link-rust", "Link Rust FFI (sec_monitor)") orelse false;
+>>>>>>> fix: Brain UnboundLocalError, Zig optional linking, DLL search paths, build_all.bat Zig flags
 
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -63,14 +72,20 @@ pub fn build(b: *std.Build) void {
         exe.addLibraryPath(.{ .cwd_relative = "build" });
         exe.linkSystemLibrary("aegis_ipc");
     }
+<<<<<<< HEAD
 =======
 >>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 =======
 >>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
+=======
+>>>>>>> fix: Brain UnboundLocalError, Zig optional linking, DLL search paths, build_all.bat Zig flags
 
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
 
+<<<<<<< HEAD
+>>>>>>> fix: Brain UnboundLocalError, Zig optional linking, DLL search paths, build_all.bat Zig flags
+=======
 >>>>>>> fix: Brain UnboundLocalError, Zig optional linking, DLL search paths, build_all.bat Zig flags
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
