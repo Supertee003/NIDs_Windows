@@ -201,15 +201,6 @@ fn bridgeShutdown() i32 {
 }
 
 // =================================================================
-<<<<<<< HEAD
-// [ PACKET CONTEXT & WFP EVENT HEADER — 5-TUPLE METADATA ]
-// Used by windows_capture.zig and nids_capture.zig to pass
-// full 5-tuple context from kernel drivers to the analysis engine.
-// =================================================================
-
-/// WFP Event Header sent by kernel driver (44 bytes)
-pub const WfpEventHeader = extern struct {
-=======
 // [ PACKET CONTEXT — 5-tuple สำหรับส่งผ่านระบบ ]
 // =================================================================
 pub const PacketContext = struct {
@@ -228,62 +219,10 @@ pub const PacketContext = struct {
 // =================================================================
 pub const WfpEventHeader = extern struct {
     event_type: u32,
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
     source_ip: u32,
     dest_ip: u32,
     source_port: u16,
     dest_port: u16,
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-    protocol: u8,       // 6=TCP, 17=UDP, 1=ICMP
-    direction: u8,      // 0=inbound, 1=outbound
-    layer_id: u8,       // WFP layer where event originated
-    payload_length: u32,
-    reserved: [16]u8 = [_]u8{0} ** 16, // padding to 44 bytes
-};
-
-/// Packet context — 5-tuple metadata passed from capture layer
-pub const PacketContext = struct {
-    source_ip: u32 = 0,
-    dest_ip: u32 = 0,
-    source_port: u16 = 0,
-    dest_port: u16 = 0,
-    protocol: u8 = 6,   // default TCP
-    direction: u8 = 0,  // default inbound
-    layer_id: u8 = 0,   // default NETWORK layer
-    is_pipe: bool = false,
-};
-
-=======
-    protocol: u8,
-    direction: u8,
-    layer_id: u8,
-    flags: u8,
-    payload_length: u32,
-=======
-    protocol: u8,
-    direction: u8,
-    layer_id: u8,
-    flags: u8,
-    payload_length: u32,
-=======
-    protocol: u8,
-    direction: u8,
-    layer_id: u8,
-    flags: u8,
-    payload_length: u32,
-=======
     protocol: u8,
     direction: u8,
     layer_id: u8,
@@ -298,7 +237,6 @@ pub const PacketContext = struct {
 /// Helper: Push Tier-1 match result to C++ Bridge
 fn pushTier1Match(
     ctx: PacketContext,
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
     rule_id: u32,
     severity: u32,
     reserved: u32,
@@ -338,17 +276,6 @@ fn pushTier1Match(
     if (fn_bridge_push_event == null) return -1;
     if (!bridge_initialized) return -1;
     const event: AegisIpcEvent = .{
-<<<<<<< HEAD
-        .event_type = event_type,
-        .source_ip = 0,               // ยังไม่มี 5-tuple ใน Phase 1
-        .dest_ip = 0,
-        .source_port = 0,
-        .dest_port = 0,
-        .protocol = if (is_pipe) 0 else 6, // TCP=6
-        .direction = 0,                // inbound
-        .layer_id = if (is_pipe) 3 else 0, // 3=PIPE, 0=NETWORK
-        .tier_result = 1,              // Tier-1 fast match
-=======
         .event_type = if (ctx.is_pipe) 3 else 0,
         .source_ip = ctx.source_ip,
         .dest_ip = ctx.dest_ip,
@@ -358,16 +285,6 @@ fn pushTier1Match(
         .direction = ctx.direction,
         .layer_id = ctx.layer_id,
         .tier_result = 1,
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
         .payload_length = payload_len,
         .rule_id = rule_id,
         .severity = severity,
@@ -379,23 +296,6 @@ fn pushTier1Match(
     return fn_bridge_push_event.?(&event);
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-/// Helper: Push forwarded (no Tier-1 match) event to C++ Bridge
-=======
-/// Helper: Push forwarded event to C++ Bridge
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
-/// Helper: Push forwarded event to C++ Bridge
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
-/// Helper: Push forwarded event to C++ Bridge
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
-/// Helper: Push forwarded event to C++ Bridge
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 fn pushForwardedEvent(
     event_type: u32,
     payload_ptr: [*]const u8,
@@ -405,17 +305,7 @@ fn pushForwardedEvent(
     if (fn_bridge_push_event == null) return -1;
     if (!bridge_initialized) return -1;
     const event: AegisIpcEvent = .{
-<<<<<<< HEAD
-        .event_type = event_type,
-        .source_ip = 0,
-        .dest_ip = 0,
-        .source_port = 0,
-        .dest_port = 0,
-        .protocol = if (is_pipe) 0 else 6,
-        .direction = 0,
-        .layer_id = if (is_pipe) 3 else 0,
-        .tier_result = 0,              // No match — needs Tier-2
-=======
+
         .event_type = if (ctx.is_pipe) 3 else 0,
         .source_ip = ctx.source_ip,
         .dest_ip = ctx.dest_ip,
@@ -425,16 +315,6 @@ fn pushForwardedEvent(
         .direction = ctx.direction,
         .layer_id = ctx.layer_id,
         .tier_result = 0,
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
         .payload_length = payload_len,
         .rule_id = 0,
         .severity = 0,
@@ -678,42 +558,10 @@ fn send_to_brain(allocator: std.mem.Allocator, msg: anytype) !void {
 }
 
 // --- [ 3-TIER FAST THREAT ANALYSIS ENGINE ] ---
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 
-/// Convenience overload: inspect with PacketContext (full 5-tuple from kernel drivers)
-pub fn inspect_packet_ctx(data: []const u8, ctx: PacketContext) !bool {
-    // TODO: In future, pass ctx fields to C++ Bridge for richer events
-    // For now, delegate to the simple inspect_packet with is_pipe flag
-    return inspect_packet(data, ctx.is_pipe);
-}
-
-/// Original entry point: inspect with just data + is_pipe flag
-pub fn inspect_packet(data: []const u8, is_pipe: bool) !bool {
-    // Check TCP socket
-    std.debug.print("[DEBUG] Analyzing data from {s}, size: {} bytes\n", .{ if (is_pipe) "PIPE" else "TCP", data.len });
-=======
-pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
-    std.debug.print("[DEBUG] Analyzing data from {s}, size: {} bytes, src_ip=0x{x}, dst_port={d}\n", .{ if (ctx.is_pipe) "PIPE" else "TCP", data.len, ctx.source_ip, ctx.dest_port });
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-
-=======
 pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
     std.debug.print("[DEBUG] Analyzing data from {s}, size: {} bytes, src_ip=0x{x}, dst_port={d}\n", .{ if (ctx.is_pipe) "PIPE" else "TCP", data.len, ctx.source_ip, ctx.dest_port });
 
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
-pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
-    std.debug.print("[DEBUG] Analyzing data from {s}, size: {} bytes, src_ip=0x{x}, dst_port={d}\n", .{ if (ctx.is_pipe) "PIPE" else "TCP", data.len, ctx.source_ip, ctx.dest_port });
-
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
-pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
-    std.debug.print("[DEBUG] Analyzing data from {s}, size: {} bytes, src_ip=0x{x}, dst_port={d}\n", .{ if (ctx.is_pipe) "PIPE" else "TCP", data.len, ctx.source_ip, ctx.dest_port });
-
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
     // 🛡️ [Rust Memory Safety Check — runtime loaded]
     if (!validatePayloadSafety(data.ptr, data.len)) return false;
 
@@ -769,35 +617,13 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
 
         try send_to_brain(allocator, alert);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-        // 3. 🔗 Push Tier-1 match to C++ Bridge (ส่ง event ไป Dashboard)
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
         const severity_val: u32 = val: {
             if (std.mem.eql(u8, rule.severity, "Critical")) break :val 3;
             if (std.mem.eql(u8, rule.severity, "High")) break :val 2;
             if (std.mem.eql(u8, rule.severity, "Medium")) break :val 1;
             break :val 0;
         };
-<<<<<<< HEAD
-<<<<<<< HEAD
-        const event_type_val: u32 = if (is_pipe) 3 else 0;
-        _ = pushTier1Match(event_type_val, rule.crc32, severity_val, data.ptr, @intCast(data.len), is_pipe);
-=======
         _ = pushTier1Match(ctx, rule.crc32, severity_val, @intCast(u32, @min(data.len, std.math.maxInt(u32))));
->>>>>>> fix(zig-core): 18 compilation fixes for Zig 0.13/0.14 compatibility
-=======
-        _ = pushTier1Match(ctx, rule.crc32, severity_val, @intCast(u32, @min(data.len, std.math.maxInt(u32))));
->>>>>>> fix(zig-0.13.0+bridge): all-in-one patch for Zig 0.13.0 compilation + bridge charset
 
         if (std.mem.eql(u8, rule.action, "Block")) {
             std.debug.print("\x1b[31;1m[ AEGIS CORE ] !!! BLOCK !!! Connection Terminated: {s}\x1b[0m\n", .{rule.name});
@@ -816,31 +642,7 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
         };
 
         try send_to_brain(allocator, forward_msg);
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-        // 🔗 Push forwarded event to C++ Bridge (ส่งให้ Tier-2 ตรวจสอบต่อ)
-        const event_type_val: u32 = if (is_pipe) 3 else 0;
-        _ = pushForwardedEvent(event_type_val, data.ptr, @intCast(data.len), is_pipe);
-=======
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-        _ = pushForwardedEvent(ctx, @intCast(data.len));
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
         _ = pushForwardedEvent(ctx, @intCast(u32, @min(data.len, std.math.maxInt(u32))));
->>>>>>> fix(zig-core): 18 compilation fixes for Zig 0.13/0.14 compatibility
-=======
-        _ = pushForwardedEvent(ctx, @intCast(u32, @min(data.len, std.math.maxInt(u32))));
->>>>>>> fix(zig-0.13.0+bridge): all-in-one patch for Zig 0.13.0 compilation + bridge charset
 
         return true;
     }
@@ -858,23 +660,11 @@ fn handle_pipe_client(hPipe: win.HANDLE) void {
     defer _ = active_threads.fetchSub(1, .monotonic);
     _ = active_threads.fetchAdd(1, .monotonic);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
     const ctx = PacketContext{
         .is_pipe = true,
         .layer_id = 3,
     };
 
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
     var buf: [4096]u8 = undefined;
     while (true) {
         var bytes_read: u32 = 0;
@@ -919,24 +709,12 @@ fn handle_tcp_client(stream: net.Stream) void {
     defer connection_semaphore.post();
     defer _ = active_threads.fetchSub(1, .monotonic);
     _ = active_threads.fetchAdd(1, .monotonic);
-
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
     const src_ip: u32 = blk: {
-        const sa = @as(*const std.posix.sockaddr.in, @ptrCast(@alignCast(&remote_addr.any)));
+        const sa: *const std.posix.sockaddr_in = @ptrCast(@alignCast(&remote_addr.any));
         break :blk sa.addr;
     };
     const src_port: u16 = blk: {
-        const sa = @as(*const std.posix.sockaddr.in, @ptrCast(@alignCast(&remote_addr.any)));
+        const sa: *const std.posix.sockaddr_in = @ptrCast(@alignCast(&remote_addr.any));
         break :blk std.mem.bigToNative(u16, sa.port);
     };
 
@@ -948,8 +726,6 @@ fn handle_tcp_client(stream: net.Stream) void {
         .layer_id = 0,
         .is_pipe = false,
     };
-
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
     var buf: [16384]u8 = undefined;
     while (true) {
         const len = stream.read(&buf) catch break;
