@@ -177,6 +177,8 @@ def poll_bridge_events():
 # ====== Main Brain Loop ======
 
 def main():
+    global BRIDGE_AVAILABLE
+
     os.makedirs("logs", exist_ok=True)
 
     print(f"{UI.CYAN}--- AEGIS BRAIN: TIER-2 DEEP INSPECTION ENGINE ACTIVE ---{UI.RESET}")

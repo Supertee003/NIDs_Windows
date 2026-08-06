@@ -22,14 +22,16 @@ import platform
 _is_windows = platform.system() == "Windows"
 _lib_name = "aegis_ipc.dll" if _is_windows else "libaegis_ipc.so"
 
-# Search in multiple locations
+# Search in multiple locations (ordered by likelihood)
 _base_dir = os.path.dirname(os.path.abspath(__file__))
 _dll_paths = [
-    os.path.join(_base_dir, _lib_name),
-    os.path.join(_base_dir, "..", "bridge", _lib_name),
-    os.path.join(_base_dir, "..", "build", _lib_name),
-    os.path.join(_base_dir, "build", _lib_name),
-    os.path.join(_base_dir, "..", "target", "release", _lib_name),
+    os.path.join(_base_dir, _lib_name),                          # bridge/
+    os.path.join(_base_dir, "..", "bridge", _lib_name),          # ./bridge/
+    os.path.join(_base_dir, "..", "build", "Release", _lib_name),  # build/Release/ (MSVC)
+    os.path.join(_base_dir, "..", "build", "Debug", _lib_name),    # build/Debug/ (MSVC)
+    os.path.join(_base_dir, "..", "build", _lib_name),           # build/ (MinGW/single-config)
+    os.path.join(_base_dir, "build", _lib_name),                 # alternate
+    os.path.join(_base_dir, "..", "target", "release", _lib_name),  # target/release/ (Rust-like)
 ]
 
 _bridge_dll = None

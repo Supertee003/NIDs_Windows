@@ -1,34 +1,45 @@
-const std = @import("std"); // นำเข้าไลบรารีมาตรฐานของ Zig
+const std = @import("std");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{}); // กำหนด Target OS (เช่น Windows x86_64)
-    const optimize = b.standardOptimizeOption(.{}); // กำหนดการ Optimize โค้ด
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+
+    // Optional: link C++ IPC Bridge and Rust FFI
+    // Use: zig build -Dlink-bridge -Dlink-rust
+    // Without flags: builds standalone (no DLL dependencies)
+    const link_bridge = b.option(bool, "link-bridge", "Link C++ IPC Bridge (aegis_ipc)") orelse false;
+    const link_rust = b.option(bool, "link-rust", "Link Rust FFI (sec_monitor)") orelse false;
 
     const exe = b.addExecutable(.{
-        .name = "aegis-nids", // ชื่อไฟล์ .exe ที่จะได้
-        .root_source_file = b.path("nids_main.zig"), // ไฟล์เริ่มต้น (เปลี่ยนจาก .root_module กลับมาเป็นแบบ 0.13.0)
-        .target = target, // ใส่ target ลงใน executable options โดยตรง
-        .optimize = optimize, // ใส่ optimize ลงใน executable options โดยตรง
+        .name = "aegis-nids",
+        .root_source_file = b.path("nids_main.zig"),
+        .target = target,
+        .optimize = optimize,
     });
 
-    b.installArtifact(exe); // Install built binary to zig-out/bin
+    b.installArtifact(exe);
     exe.linkLibC();
 
-    // Rust FFI (sec_monitor.dll / libsec_monitor.so) — Tier-0 Memory Safety Shield
-    exe.addLibraryPath(.{ .cwd_relative = "target/release" });
-    exe.linkSystemLibrary("sec_monitor");
+    // Rust FFI (sec_monitor.dll) — Tier-0 Memory Safety Shield
+    // Only link if -Dlink-rust is set AND the library exists
+    if (link_rust) {
+        exe.addLibraryPath(.{ .cwd_relative = "target/release" });
+        exe.linkSystemLibrary("sec_monitor");
+    }
 
-    // C++ IPC Bridge (aegis_ipc.dll / libaegis_ipc.so) — Zig Core ↔ Bridge ↔ Dashboard
-    // On Windows: build/Release/  (MSVC default)
-    // On Linux:   build/         (Makefile default)
-    exe.addLibraryPath(.{ .cwd_relative = "build/Release" });
-    exe.addLibraryPath(.{ .cwd_relative = "build" });         // Linux fallback
-    exe.addLibraryPath(.{ .cwd_relative = "bridge" });        // Pre-built fallback
-    exe.linkSystemLibrary("aegis_ipc");
+    // C++ IPC Bridge (aegis_ipc.dll) — Zig Core ↔ Bridge ↔ Dashboard
+    // Only link if -Dlink-bridge is set AND the library exists
+    if (link_bridge) {
+        // MSVC multi-config: build/Release or build/Debug
+        exe.addLibraryPath(.{ .cwd_relative = "build/Release" });
+        exe.addLibraryPath(.{ .cwd_relative = "build/Debug" });
+        exe.addLibraryPath(.{ .cwd_relative = "build" });
+        exe.linkSystemLibrary("aegis_ipc");
+    }
 
-    const run_cmd = b.addRunArtifact(exe); // สร้างคำสั่งสำหรับรันโปรแกรม
-    run_cmd.step.dependOn(b.getInstallStep()); // กำหนดว่าต้อง build เสร็จก่อนถึงจะรันได้
+    const run_cmd = b.addRunArtifact(exe);
+    run_cmd.step.dependOn(b.getInstallStep());
 
-    const run_step = b.step("run", "Run the app"); // สร้าง step ชื่อ "run" สำหรับใช้คำสั่ง zig build run
-    run_step.dependOn(&run_cmd.step); // เชื่อมโยง step run กับคำสั่งรัน
+    const run_step = b.step("run", "Run the app");
+    run_step.dependOn(&run_cmd.step);
 }
