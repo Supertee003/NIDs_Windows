@@ -83,6 +83,7 @@ if %errorlevel% neq 0 (
 )
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 zig build
 =======
 REM Build Zig with optional bridge/rust linking
@@ -99,6 +100,9 @@ zig build %ZIG_FLAGS%
 =======
 zig build
 >>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
+=======
+zig build
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 if %errorlevel% neq 0 (
     echo   [FAIL] Zig build failed
     set /a FAIL+=1
@@ -106,10 +110,14 @@ if %errorlevel% neq 0 (
 )
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 echo   [OK] Zig Core: zig-out/bin/aegis-nids.exe (DLLs loaded at runtime)
 =======
 echo   [OK] Zig Core: zig-out/bin/aegis-nids.exe
 >>>>>>> fix: Brain UnboundLocalError, Zig optional linking, DLL search paths, build_all.bat Zig flags
+=======
+echo   [OK] Zig Core: zig-out/bin/aegis-nids.exe (DLLs loaded at runtime)
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 =======
 echo   [OK] Zig Core: zig-out/bin/aegis-nids.exe (DLLs loaded at runtime)
 >>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
