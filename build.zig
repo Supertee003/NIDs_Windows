@@ -6,6 +6,7 @@ pub fn build(b: *std.Build) void {
 <<<<<<< HEAD
 =======
 
+<<<<<<< HEAD
     // Optional: link C++ IPC Bridge and Rust FFI
     // Use: zig build -Dlink-bridge -Dlink-rust
     // Without flags: builds standalone (no DLL dependencies)
@@ -13,6 +14,8 @@ pub fn build(b: *std.Build) void {
     const link_rust = b.option(bool, "link-rust", "Link Rust FFI (sec_monitor)") orelse false;
 >>>>>>> fix: Brain UnboundLocalError, Zig optional linking, DLL search paths, build_all.bat Zig flags
 
+=======
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
     const exe = b.addExecutable(.{
         .name = "aegis-nids",
         .root_source_file = b.path("nids_main.zig"),
@@ -24,10 +27,14 @@ pub fn build(b: *std.Build) void {
     exe.linkLibC();
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
     // NOTE: No linkSystemLibrary needed!
     // aegis_ipc.dll and sec_monitor.dll are loaded at runtime
     // via std.DynLib (like Python ctypes) — no link-time dependency.
     // This allows Zig to build completely standalone.
+<<<<<<< HEAD
 
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
@@ -49,6 +56,8 @@ pub fn build(b: *std.Build) void {
         exe.addLibraryPath(.{ .cwd_relative = "build" });
         exe.linkSystemLibrary("aegis_ipc");
     }
+=======
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
