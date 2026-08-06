@@ -789,11 +789,15 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
             break :val 0;
         };
 <<<<<<< HEAD
+<<<<<<< HEAD
         const event_type_val: u32 = if (is_pipe) 3 else 0;
         _ = pushTier1Match(event_type_val, rule.crc32, severity_val, data.ptr, @intCast(data.len), is_pipe);
 =======
         _ = pushTier1Match(ctx, rule.crc32, severity_val, @intCast(u32, @min(data.len, std.math.maxInt(u32))));
 >>>>>>> fix(zig-core): 18 compilation fixes for Zig 0.13/0.14 compatibility
+=======
+        _ = pushTier1Match(ctx, rule.crc32, severity_val, @intCast(u32, @min(data.len, std.math.maxInt(u32))));
+>>>>>>> fix(zig-0.13.0+bridge): all-in-one patch for Zig 0.13.0 compilation + bridge charset
 
         if (std.mem.eql(u8, rule.action, "Block")) {
             std.debug.print("\x1b[31;1m[ AEGIS CORE ] !!! BLOCK !!! Connection Terminated: {s}\x1b[0m\n", .{rule.name});
@@ -817,6 +821,7 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 
         // 🔗 Push forwarded event to C++ Bridge (ส่งให้ Tier-2 ตรวจสอบต่อ)
         const event_type_val: u32 = if (is_pipe) 3 else 0;
@@ -833,6 +838,9 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
 =======
         _ = pushForwardedEvent(ctx, @intCast(u32, @min(data.len, std.math.maxInt(u32))));
 >>>>>>> fix(zig-core): 18 compilation fixes for Zig 0.13/0.14 compatibility
+=======
+        _ = pushForwardedEvent(ctx, @intCast(u32, @min(data.len, std.math.maxInt(u32))));
+>>>>>>> fix(zig-0.13.0+bridge): all-in-one patch for Zig 0.13.0 compilation + bridge charset
 
         return true;
     }

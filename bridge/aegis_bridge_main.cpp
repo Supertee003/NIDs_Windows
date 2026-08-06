@@ -47,14 +47,18 @@ int main(int argc, char* argv[]) {
     }
 
     // ====== Banner ======
+    // Set console to UTF-8 on Windows for proper box-drawing display
+#ifdef _WIN32
+    SetConsoleOutputCP(65001);
+#endif
     fprintf(stdout, "\n");
-    fprintf(stdout, "╔══════════════════════════════════════════════════════╗\n");
-    fprintf(stdout, "║          AEGIS NIDS — IPC Bridge (C++)              ║\n");
-    fprintf(stdout, "║          Multi-Language Hybrid Architecture          ║\n");
-    fprintf(stdout, "╠══════════════════════════════════════════════════════╣\n");
-    fprintf(stdout, "║  Zig Core + Python Brain + Rust Shield + Go Nose    ║\n");
-    fprintf(stdout, "║  C++ Drivers + C++ Bridge                            ║\n");
-    fprintf(stdout, "╚══════════════════════════════════════════════════════╝\n");
+    fprintf(stdout, "+======================================================+\n");
+    fprintf(stdout, "|          AEGIS NIDS - IPC Bridge (C++)              |\n");
+    fprintf(stdout, "|          Multi-Language Hybrid Architecture          |\n");
+    fprintf(stdout, "+------------------------------------------------------+\n");
+    fprintf(stdout, "|  Zig Core + Python Brain + Rust Shield + Go Nose    |\n");
+    fprintf(stdout, "|  C++ Drivers + C++ Bridge                            |\n");
+    fprintf(stdout, "+======================================================+\n");
     fprintf(stdout, "\n");
 
     // ====== Initialize Bridge ======

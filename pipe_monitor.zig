@@ -74,9 +74,12 @@ pub fn scanPipes() ![]PipeEvent {
 
     // Update stats
 <<<<<<< HEAD
+<<<<<<< HEAD
     stats.last_scan_time = std.time.milliTimestamp();
 
 =======
+=======
+>>>>>>> fix(zig-0.13.0+bridge): all-in-one patch for Zig 0.13.0 compilation + bridge charset
     stats.last_scan_time = @bitCast(std.time.milliTimestamp());
     
 >>>>>>> fix(zig-0.13.0): comprehensive compilation fixes for Zig 0.13.0 compatibility
