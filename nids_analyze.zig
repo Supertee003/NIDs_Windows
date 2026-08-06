@@ -221,6 +221,9 @@ pub const WfpEventHeader = extern struct {
     event_type: u32,
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
+=======
 >>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 =======
 >>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
@@ -230,6 +233,7 @@ pub const WfpEventHeader = extern struct {
     dest_ip: u32,
     source_port: u16,
     dest_port: u16,
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -270,6 +274,22 @@ pub const PacketContext = struct {
     layer_id: u8,
     flags: u8,
     payload_length: u32,
+=======
+    protocol: u8,
+    direction: u8,
+    layer_id: u8,
+    flags: u8,
+    payload_length: u32,
+    rule_id: u32,
+    severity: u32,
+    reserved: u32,
+    timestamp: u64,
+};
+
+/// Helper: Push Tier-1 match result to C++ Bridge
+fn pushTier1Match(
+    ctx: PacketContext,
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
     rule_id: u32,
     severity: u32,
     reserved: u32,
@@ -331,6 +351,9 @@ fn pushTier1Match(
         .tier_result = 1,
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
+=======
 >>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 =======
 >>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
@@ -350,7 +373,11 @@ fn pushTier1Match(
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /// Helper: Push forwarded (no Tier-1 match) event to C++ Bridge
+=======
+/// Helper: Push forwarded event to C++ Bridge
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 =======
 /// Helper: Push forwarded event to C++ Bridge
 >>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
@@ -391,6 +418,9 @@ fn pushForwardedEvent(
         .tier_result = 0,
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
+=======
 >>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 =======
 >>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
@@ -645,6 +675,7 @@ fn send_to_brain(allocator: std.mem.Allocator, msg: anytype) !void {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 /// Convenience overload: inspect with PacketContext (full 5-tuple from kernel drivers)
 pub fn inspect_packet_ctx(data: []const u8, ctx: PacketContext) !bool {
@@ -662,6 +693,11 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
     std.debug.print("[DEBUG] Analyzing data from {s}, size: {} bytes, src_ip=0x{x}, dst_port={d}\n", .{ if (ctx.is_pipe) "PIPE" else "TCP", data.len, ctx.source_ip, ctx.dest_port });
 >>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 
+=======
+pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
+    std.debug.print("[DEBUG] Analyzing data from {s}, size: {} bytes, src_ip=0x{x}, dst_port={d}\n", .{ if (ctx.is_pipe) "PIPE" else "TCP", data.len, ctx.source_ip, ctx.dest_port });
+
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 =======
 pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
     std.debug.print("[DEBUG] Analyzing data from {s}, size: {} bytes, src_ip=0x{x}, dst_port={d}\n", .{ if (ctx.is_pipe) "PIPE" else "TCP", data.len, ctx.source_ip, ctx.dest_port });
@@ -730,7 +766,10 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         // 3. 🔗 Push Tier-1 match to C++ Bridge (ส่ง event ไป Dashboard)
+=======
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 =======
 >>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 =======
@@ -766,11 +805,14 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 
         // 🔗 Push forwarded event to C++ Bridge (ส่งให้ Tier-2 ตรวจสอบต่อ)
         const event_type_val: u32 = if (is_pipe) 3 else 0;
         _ = pushForwardedEvent(event_type_val, data.ptr, @intCast(data.len), is_pipe);
 =======
+=======
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 =======
 >>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 =======
@@ -797,7 +839,10 @@ fn handle_pipe_client(hPipe: win.HANDLE) void {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 =======
 >>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 =======
@@ -856,7 +901,10 @@ fn handle_tcp_client(stream: net.Stream) void {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 =======
 >>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 =======
