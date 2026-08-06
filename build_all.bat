@@ -81,22 +81,13 @@ if %errorlevel% neq 0 (
     set /a SKIP+=1
     goto step5
 )
-REM Build Zig with optional bridge/rust linking
-REM Only add -Dlink-bridge / -Dlink-rust if the DLLs exist
-set ZIG_FLAGS=
-if exist "build\Release\aegis_ipc.dll" (
-    set ZIG_FLAGS=%ZIG_FLAGS% -Dlink-bridge
-)
-if exist "target\release\sec_monitor.dll" (
-    set ZIG_FLAGS=%ZIG_FLAGS% -Dlink-rust
-)
-zig build %ZIG_FLAGS%
+zig build
 if %errorlevel% neq 0 (
     echo   [FAIL] Zig build failed
     set /a FAIL+=1
     goto step5
 )
-echo   [OK] Zig Core: zig-out/bin/aegis-nids.exe
+echo   [OK] Zig Core: zig-out/bin/aegis-nids.exe (DLLs loaded at runtime)
 set /a PASS+=1
 
 :step5

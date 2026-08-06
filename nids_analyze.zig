@@ -29,38 +29,170 @@ extern "kernel32" fn ReadFile(
 ) i32;
 
 // =================================================================
-// [ C++ IPC BRIDGE FFI — extern "C" ABI ]
-// ประกาศฟังก์ชันจาก aegis_ipc.dll (C++ Bridge) สำหรับส่ง event
-// จาก Zig Core (Tier-1) ไปยัง C++ Bridge → Python Brain → Dashboard
+// [ C++ IPC BRIDGE — RUNTIME DYNAMIC LOADING (std.DynLib) ]
+// Instead of extern declarations (which require link-time DLL),
+// we load aegis_ipc.dll at runtime using std.DynLib.
+// This allows Zig to build standalone without the DLL.
 // =================================================================
+
 const AegisIpcEvent = extern struct {
-    event_type: u32,       // EventType: 0=NETWORK, 1=KERNEL_FILE, 2=KERNEL_PROCESS, 3=PIPE
-    source_ip: u32,        // IPv4 source
-    dest_ip: u32,          // IPv4 destination
-    source_port: u16,      // Source port
-    dest_port: u16,        // Destination port
-    protocol: u8,          // 6=TCP, 17=UDP, 1=ICMP
-    direction: u8,         // 0=inbound, 1=outbound
-    layer_id: u8,          // Layer where event originated
-    tier_result: u8,       // 0=NoMatch, 1=Tier1, 2=Tier2, 3=Tier3
-    payload_length: u32,   // Length of payload
-    rule_id: u32,          // Matched rule ID
-    severity: u32,         // 0=Low, 1=Medium, 2=High, 3=Critical
-    reserved: u32,         // Reserved
-    timestamp: u64,        // Event timestamp (ms since epoch)
-    source_pid: u32,       // PID of the process
-    defcon_impact: u32,    // DEFCON level impact (1-5)
+    event_type: u32,
+    source_ip: u32,
+    dest_ip: u32,
+    source_port: u16,
+    dest_port: u16,
+    protocol: u8,
+    direction: u8,
+    layer_id: u8,
+    tier_result: u8,
+    payload_length: u32,
+    rule_id: u32,
+    severity: u32,
+    reserved: u32,
+    timestamp: u64,
+    source_pid: u32,
+    defcon_impact: u32,
 };
 
-extern fn aegis_bridge_init() i32;
-extern fn aegis_bridge_shutdown() i32;
-extern fn aegis_bridge_push_event(event: *const AegisIpcEvent) i32;
-extern fn aegis_bridge_get_defcon() u8;
-extern fn aegis_bridge_get_event_count() u32;
+// Bridge function signatures (for std.DynLib symbol lookup)
+const FnBridgeInit = *const fn () callconv(.c) i32;
+const FnBridgeShutdown = *const fn () callconv(.c) i32;
+const FnBridgePushEvent = *const fn (*const AegisIpcEvent) callconv(.c) i32;
+const FnBridgeGetDefcon = *const fn () callconv(.c) u8;
+const FnBridgeGetEventCount = *const fn () callconv(.c) u32;
+
+// Rust FFI function signature
+const FnValidatePayloadSafety = *const fn ([*]const u8, usize) callconv(.c) bool;
+
+// Runtime-loaded function pointers (null = not available)
+var fn_bridge_init: ?FnBridgeInit = null;
+var fn_bridge_shutdown: ?FnBridgeShutdown = null;
+var fn_bridge_push_event: ?FnBridgePushEvent = null;
+var fn_bridge_get_defcon: ?FnBridgeGetDefcon = null;
+var fn_bridge_get_event_count: ?FnBridgeGetEventCount = null;
+var fn_validate_payload_safety: ?FnValidatePayloadSafety = null;
 
 var bridge_initialized: bool = false;
+var bridge_dll: ?std.DynLib = null;
+var rust_dll: ?std.DynLib = null;
+
+/// Try to load aegis_ipc.dll at runtime
+fn loadBridgeDll() void {
+    const dll_names = [_][]const u8{
+        "aegis_ipc.dll",
+        "libaegis_ipc.so",
+    };
+    const search_paths = [_][]const u8{
+        "bridge",
+        "build",
+        "build\\Release",
+        "build\\Debug",
+        "target\\release",
+        ".",
+    };
+
+    for (dll_names) |dll_name| {
+        // Try search paths first
+        for (search_paths) |dir| {
+            var path_buf: [512]u8 = undefined;
+            const path = std.fmt.bufPrint(&path_buf, "{s}\\{s}", .{ dir, dll_name }) catch continue;
+            if (std.DynLib.open(path)) |lib| {
+                bridge_dll = lib;
+                std.debug.print("[BRIDGE] Loaded: {s}\n", .{path});
+                break;
+            } else |_| {}
+        }
+        // Try system path
+        if (bridge_dll == null) {
+            if (std.DynLib.open(dll_name)) |lib| {
+                bridge_dll = lib;
+                std.debug.print("[BRIDGE] Loaded from system path: {s}\n", .{dll_name});
+            } else |_| {}
+        }
+        if (bridge_dll != null) break;
+    }
+
+    if (bridge_dll) |lib| {
+        fn_bridge_init = lib.lookup(FnBridgeInit, "aegis_bridge_init");
+        fn_bridge_shutdown = lib.lookup(FnBridgeShutdown, "aegis_bridge_shutdown");
+        fn_bridge_push_event = lib.lookup(FnBridgePushEvent, "aegis_bridge_push_event");
+        fn_bridge_get_defcon = lib.lookup(FnBridgeGetDefcon, "aegis_bridge_get_defcon");
+        fn_bridge_get_event_count = lib.lookup(FnBridgeGetEventCount, "aegis_bridge_get_event_count");
+
+        if (fn_bridge_init != null) {
+            std.debug.print("\x1b[32m[BRIDGE] C++ IPC Bridge symbols resolved\x1b[0m\n", .{});
+        } else {
+            std.debug.print("\x1b[33m[BRIDGE] Warning: DLL loaded but symbols not found\x1b[0m\n", .{});
+        }
+    } else {
+        std.debug.print("\x1b[33m[BRIDGE] Warning: aegis_ipc.dll not found — running without Bridge\x1b[0m\n", .{});
+    }
+}
+
+/// Try to load sec_monitor.dll at runtime (Rust FFI)
+fn loadRustDll() void {
+    const dll_names = [_][]const u8{
+        "sec_monitor.dll",
+        "libsec_monitor.so",
+    };
+    const search_paths = [_][]const u8{
+        "target\\release",
+        "target\\debug",
+        ".",
+    };
+
+    for (dll_names) |dll_name| {
+        for (search_paths) |dir| {
+            var path_buf: [512]u8 = undefined;
+            const path = std.fmt.bufPrint(&path_buf, "{s}\\{s}", .{ dir, dll_name }) catch continue;
+            if (std.DynLib.open(path)) |lib| {
+                rust_dll = lib;
+                std.debug.print("[RUST] Loaded: {s}\n", .{path});
+                break;
+            } else |_| {}
+        }
+        if (rust_dll == null) {
+            if (std.DynLib.open(dll_name)) |lib| {
+                rust_dll = lib;
+                std.debug.print("[RUST] Loaded from system path: {s}\n", .{dll_name});
+            } else |_| {}
+        }
+        if (rust_dll != null) break;
+    }
+
+    if (rust_dll) |lib| {
+        fn_validate_payload_safety = lib.lookup(FnValidatePayloadSafety, "validate_payload_safety");
+        if (fn_validate_payload_safety != null) {
+            std.debug.print("\x1b[32m[RUST] Tier-0 Memory Safety Shield active\x1b[0m\n", .{});
+        }
+    } else {
+        std.debug.print("\x1b[33m[RUST] Warning: sec_monitor.dll not found — running without Memory Safety Shield\x1b[0m\n", .{});
+    }
+}
+
+/// Initialize bridge at runtime
+fn bridgeInit() i32 {
+    if (fn_bridge_init) |f| {
+        const rc = f();
+        if (rc == 0) {
+            bridge_initialized = true;
+        }
+        return rc;
+    }
+    return -1; // Not available
+}
+
+/// Shutdown bridge at runtime
+fn bridgeShutdown() i32 {
+    if (fn_bridge_shutdown) |f| {
+        bridge_initialized = false;
+        return f();
+    }
+    return 0;
+}
 
 // =================================================================
+<<<<<<< HEAD
 // [ PACKET CONTEXT & WFP EVENT HEADER — 5-TUPLE METADATA ]
 // Used by windows_capture.zig and nids_capture.zig to pass
 // full 5-tuple context from kernel drivers to the analysis engine.
@@ -68,10 +200,31 @@ var bridge_initialized: bool = false;
 
 /// WFP Event Header sent by kernel driver (44 bytes)
 pub const WfpEventHeader = extern struct {
+=======
+// [ PACKET CONTEXT — 5-tuple สำหรับส่งผ่านระบบ ]
+// =================================================================
+pub const PacketContext = struct {
+    source_ip: u32 = 0,
+    dest_ip: u32 = 0,
+    source_port: u16 = 0,
+    dest_port: u16 = 0,
+    protocol: u8 = 0,
+    direction: u8 = 0,
+    layer_id: u8 = 0,
+    is_pipe: bool = false,
+};
+
+// =================================================================
+// [ WFP EVENT HEADER — 44 bytes จาก kernel driver ]
+// =================================================================
+pub const WfpEventHeader = extern struct {
+    event_type: u32,
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
     source_ip: u32,
     dest_ip: u32,
     source_port: u16,
     dest_port: u16,
+<<<<<<< HEAD
     protocol: u8,       // 6=TCP, 17=UDP, 1=ICMP
     direction: u8,      // 0=inbound, 1=outbound
     layer_id: u8,       // WFP layer where event originated
@@ -91,6 +244,19 @@ pub const PacketContext = struct {
     is_pipe: bool = false,
 };
 
+=======
+    protocol: u8,
+    direction: u8,
+    layer_id: u8,
+    flags: u8,
+    payload_length: u32,
+    rule_id: u32,
+    severity: u32,
+    reserved: u32,
+    timestamp: u64,
+};
+
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 /// Helper: Push Tier-1 match result to C++ Bridge
 fn pushTier1Match(
     event_type: u32,
@@ -100,8 +266,10 @@ fn pushTier1Match(
     payload_len: u32,
     is_pipe: bool,
 ) i32 {
+    if (fn_bridge_push_event == null) return -1;
     if (!bridge_initialized) return -1;
     const event: AegisIpcEvent = .{
+<<<<<<< HEAD
         .event_type = event_type,
         .source_ip = 0,               // ยังไม่มี 5-tuple ใน Phase 1
         .dest_ip = 0,
@@ -111,26 +279,43 @@ fn pushTier1Match(
         .direction = 0,                // inbound
         .layer_id = if (is_pipe) 3 else 0, // 3=PIPE, 0=NETWORK
         .tier_result = 1,              // Tier-1 fast match
+=======
+        .event_type = if (ctx.is_pipe) 3 else 0,
+        .source_ip = ctx.source_ip,
+        .dest_ip = ctx.dest_ip,
+        .source_port = ctx.source_port,
+        .dest_port = ctx.dest_port,
+        .protocol = ctx.protocol,
+        .direction = ctx.direction,
+        .layer_id = ctx.layer_id,
+        .tier_result = 1,
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
         .payload_length = payload_len,
         .rule_id = rule_id,
         .severity = severity,
         .reserved = 0,
         .timestamp = @intCast(std.time.milliTimestamp()),
         .source_pid = 0,
-        .defcon_impact = 4,            // ELEVATED (will be recalculated)
+        .defcon_impact = 4,
     };
-    return aegis_bridge_push_event(&event);
+    return fn_bridge_push_event.?(&event);
 }
 
+<<<<<<< HEAD
 /// Helper: Push forwarded (no Tier-1 match) event to C++ Bridge
+=======
+/// Helper: Push forwarded event to C++ Bridge
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 fn pushForwardedEvent(
     event_type: u32,
     payload_ptr: [*]const u8,
     payload_len: u32,
     is_pipe: bool,
 ) i32 {
+    if (fn_bridge_push_event == null) return -1;
     if (!bridge_initialized) return -1;
     const event: AegisIpcEvent = .{
+<<<<<<< HEAD
         .event_type = event_type,
         .source_ip = 0,
         .dest_ip = 0,
@@ -140,21 +325,36 @@ fn pushForwardedEvent(
         .direction = 0,
         .layer_id = if (is_pipe) 3 else 0,
         .tier_result = 0,              // No match — needs Tier-2
+=======
+        .event_type = if (ctx.is_pipe) 3 else 0,
+        .source_ip = ctx.source_ip,
+        .dest_ip = ctx.dest_ip,
+        .source_port = ctx.source_port,
+        .dest_port = ctx.dest_port,
+        .protocol = ctx.protocol,
+        .direction = ctx.direction,
+        .layer_id = ctx.layer_id,
+        .tier_result = 0,
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
         .payload_length = payload_len,
         .rule_id = 0,
         .severity = 0,
         .reserved = 0,
         .timestamp = @intCast(std.time.milliTimestamp()),
         .source_pid = 0,
-        .defcon_impact = 5,            // SAFE (no match yet)
+        .defcon_impact = 5,
     };
-    return aegis_bridge_push_event(&event);
+    return fn_bridge_push_event.?(&event);
 }
 
-// =================================================================
-// [ นำเข้าฟังก์ชันจาก RUST DLL (Memory Safety Shield) ]
-// =================================================================
-extern "c" fn validate_payload_safety(data: [*]const u8, len: usize) bool;
+/// Validate payload using Rust Memory Safety Shield (runtime loaded)
+fn validatePayloadSafety(data: [*]const u8, len: usize) bool {
+    if (fn_validate_payload_safety) |f| {
+        return f(data, len);
+    }
+    // Rust Shield not available — allow by default
+    return true;
+}
 
 // =================================================================
 // [ TIER 1: AHO-CORASICK FAST PATTERN ENGINE ]
@@ -373,17 +573,16 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
     std.debug.print("\x1b[32m[ENTERPRISE SECURITY] Successfully loaded {d} secure rules.\x1b[0m\n", .{valid_rule_count});
 }
 // UDP send to brain
-// --- ปรับปรุงฟังก์ชันส่งข้อมูลให้ใช้ Allocator ---
 fn send_to_brain(allocator: std.mem.Allocator, msg: anytype) !void {
-    // ใช้ ArrayList ร่วมกับ allocator เพื่อจองหน่วยความจำตามจริง
     var string = std.ArrayList(u8).init(allocator);
-    defer string.deinit(); // คืนหน่วยความจำเมื่อส่งเสร็จ
+    defer string.deinit();
 
     try std.json.stringify(msg, .{}, string.writer());
     _ = posix.sendto(udp_log_sock, string.items, 0, &udp_log_addr.any, udp_log_addr.getOsSockLen()) catch {};
 }
 
 // --- [ 3-TIER FAST THREAT ANALYSIS ENGINE ] ---
+<<<<<<< HEAD
 
 /// Convenience overload: inspect with PacketContext (full 5-tuple from kernel drivers)
 pub fn inspect_packet_ctx(data: []const u8, ctx: PacketContext) !bool {
@@ -396,17 +595,21 @@ pub fn inspect_packet_ctx(data: []const u8, ctx: PacketContext) !bool {
 pub fn inspect_packet(data: []const u8, is_pipe: bool) !bool {
     // Check TCP socket
     std.debug.print("[DEBUG] Analyzing data from {s}, size: {} bytes\n", .{ if (is_pipe) "PIPE" else "TCP", data.len });
+=======
+pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
+    std.debug.print("[DEBUG] Analyzing data from {s}, size: {} bytes, src_ip=0x{x}, dst_port={d}\n", .{ if (ctx.is_pipe) "PIPE" else "TCP", data.len, ctx.source_ip, ctx.dest_port });
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 
-    // 🛡️ [ด่านหน้าสุด: RUST MEMORY SAFETY CHECK] 🛡️
-    if (!validate_payload_safety(data.ptr, data.len)) return false;
+    // 🛡️ [Rust Memory Safety Check — runtime loaded]
+    if (!validatePayloadSafety(data.ptr, data.len)) return false;
 
     const current_ruleset = active_ruleset.load(.acquire) orelse return false;
-    const allocator = current_ruleset.allocator; // ดึง Allocator มาใช้
+    const allocator = current_ruleset.allocator;
 
     var curr: usize = 0;
     var final_matched_rule: ?*const SecureRule = null;
 
-    // --- [ TIER 1: สแกนความเร็วแสงด้วย Aho-Corasick ] ---
+    // --- [ TIER 1: Aho-Corasick ] ---
     for (data) |char| {
         const c = @as(usize, char);
         curr = current_ruleset.ac_engine.nodes.items[curr].next[c];
@@ -417,7 +620,6 @@ pub fn inspect_packet(data: []const u8, is_pipe: bool) !bool {
                 const rule = &current_ruleset.signatures[idx];
                 var is_tier2_match = true;
 
-                // --- [ 🛡️ TIER 2: ยืนยัน Logical AND (Smart Hybrid Match) ] ---
                 if (rule.match_pattern.len > 0) {
                     var match_iter = std.mem.splitSequence(u8, rule.match_pattern, "|");
                     while (match_iter.next()) |keyword| {
@@ -442,8 +644,6 @@ pub fn inspect_packet(data: []const u8, is_pipe: bool) !bool {
     }
 
     if (final_matched_rule) |rule| {
-
-        // 1. ส่งข้อมูลไปให้ Brain เขียน Log ก่อนเสมอ (เพื่อให้ 3 การแสดงผลทำงาน)
         const alert = .{
             .timestamp = std.time.timestamp(),
             .attack_type = rule.name,
@@ -453,29 +653,28 @@ pub fn inspect_packet(data: []const u8, is_pipe: bool) !bool {
             .raw_payload = data,
         };
 
-        // 2. ส่ง Log ด้วย Dynamic Allocator
         try send_to_brain(allocator, alert);
 
+<<<<<<< HEAD
         // 3. 🔗 Push Tier-1 match to C++ Bridge (ส่ง event ไป Dashboard)
+=======
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
         const severity_val: u32 = val: {
             if (std.mem.eql(u8, rule.severity, "Critical")) break :val 3;
             if (std.mem.eql(u8, rule.severity, "High")) break :val 2;
             if (std.mem.eql(u8, rule.severity, "Medium")) break :val 1;
-            break :val 0; // Low
+            break :val 0;
         };
         const event_type_val: u32 = if (is_pipe) 3 else 0;
         _ = pushTier1Match(event_type_val, rule.crc32, severity_val, data.ptr, @intCast(data.len), is_pipe);
 
-        // 4. 🛡️ หัวใจสำคัญ: แยกการทำงานตาม Policy ของคุณ
         if (std.mem.eql(u8, rule.action, "Block")) {
-            // กรณี Block: Zig ตัดการเชื่อมต่อทันที
             std.debug.print("\x1b[31;1m[ AEGIS CORE ] !!! BLOCK !!! Connection Terminated: {s}\x1b[0m\n", .{rule.name});
             return false;
         }
 
         return true;
     } else {
-        // 3. กรณีไม่พบ Fast Pattern -> ส่งต่อให้ Brain ตรวจ Regex ต่อ (Forward)
         const forward_msg = .{
             .timestamp = std.time.timestamp(),
             .attack_type = "Unmatched: Deep Inspection Required",
@@ -485,12 +684,15 @@ pub fn inspect_packet(data: []const u8, is_pipe: bool) !bool {
             .raw_payload = data,
         };
 
-        // ใช้ dynamic allocator ส่ง forward_msg (แก้ปัญหา Buffer เต็ม)
         try send_to_brain(allocator, forward_msg);
+<<<<<<< HEAD
 
         // 🔗 Push forwarded event to C++ Bridge (ส่งให้ Tier-2 ตรวจสอบต่อ)
         const event_type_val: u32 = if (is_pipe) 3 else 0;
         _ = pushForwardedEvent(event_type_val, data.ptr, @intCast(data.len), is_pipe);
+=======
+        _ = pushForwardedEvent(ctx, @intCast(data.len));
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 
         return true;
     }
@@ -502,12 +704,20 @@ pub fn inspect_packet(data: []const u8, is_pipe: bool) !bool {
 fn handle_pipe_client(hPipe: win.HANDLE) void {
     defer {
         _ = DisconnectNamedPipe(hPipe);
-        win.CloseHandle(hPipe); // ปิดท่อสื่อสาร
+        win.CloseHandle(hPipe);
     }
     defer connection_semaphore.post();
     defer _ = active_threads.fetchSub(1, .monotonic);
     _ = active_threads.fetchAdd(1, .monotonic);
 
+<<<<<<< HEAD
+=======
+    const ctx = PacketContext{
+        .is_pipe = true,
+        .layer_id = 3,
+    };
+
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
     var buf: [4096]u8 = undefined;
     while (true) {
         var bytes_read: u32 = 0;
@@ -516,7 +726,7 @@ fn handle_pipe_client(hPipe: win.HANDLE) void {
         if (success == 0 or bytes_read == 0) break;
         const is_safe = inspect_packet(buf[0..bytes_read], true) catch true;
         if (!is_safe) {
-            break; // 💥 เตะ Hacker ออกจาก Named Pipe ทันที!
+            break;
         }
         // inspect_packet(buf[0..bytes_read], true) catch {};
     }
@@ -525,15 +735,13 @@ fn handle_pipe_client(hPipe: win.HANDLE) void {
 fn pipe_listener() !void {
     const pipe_name = "\\\\.\\pipe\\aegis_nids";
     while (true) {
-        // ใช้ CreateNamedPipeA ที่ประกาศเป็น extern
         const hPipe = CreateNamedPipeA(pipe_name, 3, 0, 255, 4096, 4096, 0, null);
         if (hPipe == win.INVALID_HANDLE_VALUE) return;
 
-        // ใช้ ConnectNamedPipe ที่ประกาศเป็น extern
         const connected = ConnectNamedPipe(hPipe, null);
         const err = win.kernel32.GetLastError();
 
-        if (connected != 0 or @intFromEnum(err) == 535) { // 535 = ERROR_PIPE_CONNECTED
+        if (connected != 0 or @intFromEnum(err) == 535) {
             connection_semaphore.wait();
             const t = std.Thread.spawn(.{}, handle_pipe_client, .{hPipe}) catch {
                 _ = DisconnectNamedPipe(hPipe);
@@ -555,13 +763,34 @@ fn handle_tcp_client(stream: net.Stream) void {
     defer _ = active_threads.fetchSub(1, .monotonic);
     _ = active_threads.fetchAdd(1, .monotonic);
 
+<<<<<<< HEAD
+=======
+    const src_ip: u32 = blk: {
+        const sa = @as(*const std.posix.sockaddr.in, @ptrCast(@alignCast(&remote_addr.any)));
+        break :blk sa.addr;
+    };
+    const src_port: u16 = blk: {
+        const sa = @as(*const std.posix.sockaddr.in, @ptrCast(@alignCast(&remote_addr.any)));
+        break :blk std.mem.bigToNative(u16, sa.port);
+    };
+
+    const ctx = PacketContext{
+        .source_ip = src_ip,
+        .source_port = src_port,
+        .dest_port = 12345,
+        .protocol = 6,
+        .layer_id = 0,
+        .is_pipe = false,
+    };
+
+>>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
     var buf: [16384]u8 = undefined;
     while (true) {
         const len = stream.read(&buf) catch break;
         if (len == 0) break;
         const is_safe = inspect_packet(buf[0..len], false) catch true;
         if (!is_safe) {
-            break; // 💥 เตะ Hacker ออกจาก TCP ทันที!
+            break;
         }
         // inspect_packet(buf[0..len], false) catch {};
     }
@@ -587,19 +816,22 @@ fn tcp_listener() !void {
 pub fn analyze_packets(allocator: std.mem.Allocator) void {
     std.debug.print("\n--- AEGIS CORE: 3-TIER ENGINE ACTIVE ---\n", .{});
 
-    // 🔗 Initialize C++ IPC Bridge
-    const bridge_rc = aegis_bridge_init();
+    // 🔗 Load C++ IPC Bridge DLL at runtime (no link-time dependency)
+    loadBridgeDll();
+    loadRustDll();
+
+    // Initialize Bridge if loaded
+    const bridge_rc = bridgeInit();
     if (bridge_rc == 0) {
-        bridge_initialized = true;
         std.debug.print("\x1b[32m[BRIDGE] C++ IPC Bridge initialized — Zig Core connected\x1b[0m\n", .{});
-    } else {
+    } else if (fn_bridge_init != null) {
         std.debug.print("\x1b[33m[BRIDGE] Warning: Bridge init failed (rc={d}), running without Bridge\x1b[0m\n", .{bridge_rc});
     }
     defer {
-        if (bridge_initialized) {
-            _ = aegis_bridge_shutdown();
-            std.debug.print("[BRIDGE] C++ IPC Bridge shutdown\n", .{});
-        }
+        _ = bridgeShutdown();
+        if (bridge_dll) |*lib| lib.close();
+        if (rust_dll) |*lib| lib.close();
+        std.debug.print("[BRIDGE] C++ IPC Bridge shutdown\n", .{});
     }
 
     udp_log_addr = net.Address.parseIp4("127.0.0.1", 9999) catch unreachable;
@@ -609,7 +841,6 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
         std.debug.print("Failed to load rules: {}\n", .{err});
     };
 
-    // Show Bridge status periodically
     const t_bridge_status = std.Thread.spawn(.{}, bridgeStatusReporter, .{}) catch null;
     if (t_bridge_status) |t| t.detach();
 
@@ -624,8 +855,12 @@ fn bridgeStatusReporter() void {
     while (true) {
         std.time.sleep(30 * std.time.ns_per_s);
         if (!bridge_initialized) continue;
-        const count = aegis_bridge_get_event_count();
-        const defcon = aegis_bridge_get_defcon();
-        std.debug.print("[BRIDGE] Events in queue: {d} | DEFCON: {d}\n", .{ count, defcon });
+        if (fn_bridge_get_event_count) |get_count| {
+            if (fn_bridge_get_defcon) |get_defcon| {
+                const count = get_count();
+                const defcon = get_defcon();
+                std.debug.print("[BRIDGE] Events in queue: {d} | DEFCON: {d}\n", .{ count, defcon });
+            }
+        }
     }
 }
