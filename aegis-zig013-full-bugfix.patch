@@ -1,0 +1,109 @@
+diff --git a/aegis_console.py b/aegis_console.py
+index 7ff50c4..002c793 100755
+--- a/aegis_console.py
++++ b/aegis_console.py
+@@ -307,7 +307,7 @@ def main_menu():
+ 
+         elif choice == '3':
+             os.makedirs("logs", exist_ok=True)
+-            with open("logs/anomalous.json", "w") as f:
++            with open("logs/anomalous.json", "w", encoding="utf-8") as f:
+                 pass  # truncate file
+             print("[+] Logs cleared successfully.")
+             input("\nPress Enter...")
+diff --git a/nids_analyze.zig b/nids_analyze.zig
+index ea9bcf4..5b36ed8 100755
+--- a/nids_analyze.zig
++++ b/nids_analyze.zig
+@@ -64,14 +64,14 @@ const AegisIpcEvent = extern struct {
+ };
+ 
+ // Bridge function signatures (for std.DynLib symbol lookup)
+-const FnBridgeInit = *const fn () callconv(.c) i32;
+-const FnBridgeShutdown = *const fn () callconv(.c) i32;
+-const FnBridgePushEvent = *const fn (*const AegisIpcEvent) callconv(.c) i32;
+-const FnBridgeGetDefcon = *const fn () callconv(.c) u8;
+-const FnBridgeGetEventCount = *const fn () callconv(.c) u32;
++const FnBridgeInit = *const fn () callconv(.C) i32;
++const FnBridgeShutdown = *const fn () callconv(.C) i32;
++const FnBridgePushEvent = *const fn (*const AegisIpcEvent) callconv(.C) i32;
++const FnBridgeGetDefcon = *const fn () callconv(.C) u8;
++const FnBridgeGetEventCount = *const fn () callconv(.C) u32;
+ 
+ // Rust FFI function signature
+-const FnValidatePayloadSafety = *const fn ([*]const u8, usize) callconv(.c) bool;
++const FnValidatePayloadSafety = *const fn ([*]const u8, usize) callconv(.C) bool;
+ 
+ // Runtime-loaded function pointers (null = not available)
+ var fn_bridge_init: ?FnBridgeInit = null;
+@@ -121,12 +121,12 @@ fn loadBridgeDll() void {
+         if (bridge_dll != null) break;
+     }
+ 
+-    if (bridge_dll) |lib| {
+-        fn_bridge_init = lib.lookup(FnBridgeInit, "aegis_bridge_init");
+-        fn_bridge_shutdown = lib.lookup(FnBridgeShutdown, "aegis_bridge_shutdown");
+-        fn_bridge_push_event = lib.lookup(FnBridgePushEvent, "aegis_bridge_push_event");
+-        fn_bridge_get_defcon = lib.lookup(FnBridgeGetDefcon, "aegis_bridge_get_defcon");
+-        fn_bridge_get_event_count = lib.lookup(FnBridgeGetEventCount, "aegis_bridge_get_event_count");
++    if (bridge_dll != null) {
++        fn_bridge_init = bridge_dll.?.lookup(FnBridgeInit, "aegis_bridge_init");
++        fn_bridge_shutdown = bridge_dll.?.lookup(FnBridgeShutdown, "aegis_bridge_shutdown");
++        fn_bridge_push_event = bridge_dll.?.lookup(FnBridgePushEvent, "aegis_bridge_push_event");
++        fn_bridge_get_defcon = bridge_dll.?.lookup(FnBridgeGetDefcon, "aegis_bridge_get_defcon");
++        fn_bridge_get_event_count = bridge_dll.?.lookup(FnBridgeGetEventCount, "aegis_bridge_get_event_count");
+ 
+         if (fn_bridge_init != null) {
+             std.debug.print("\x1b[32m[BRIDGE] C++ IPC Bridge symbols resolved\x1b[0m\n", .{});
+@@ -169,8 +169,8 @@ fn loadRustDll() void {
+         if (rust_dll != null) break;
+     }
+ 
+-    if (rust_dll) |lib| {
+-        fn_validate_payload_safety = lib.lookup(FnValidatePayloadSafety, "validate_payload_safety");
++    if (rust_dll != null) {
++        fn_validate_payload_safety = rust_dll.?.lookup(FnValidatePayloadSafety, "validate_payload_safety");
+         if (fn_validate_payload_safety != null) {
+             std.debug.print("\x1b[32m[RUST] Tier-0 Memory Safety Shield active\x1b[0m\n", .{});
+         }
+@@ -433,7 +433,7 @@ pub const SecureRuleSet = struct {
+ };
+ 
+ var active_ruleset: std.atomic.Value(?*SecureRuleSet) = std.atomic.Value(?*SecureRuleSet).init(null);
+-var connection_semaphore: std.Thread.Semaphore = std.Thread.Semaphore.init(100);
++var connection_semaphore: std.Thread.Semaphore = .{ .permits = 100 };
+ var active_threads: std.atomic.Value(u32) = std.atomic.Value(u32).init(0);
+ var udp_log_sock: posix.socket_t = undefined;
+ var udp_log_addr: net.Address = undefined;
+@@ -593,7 +593,7 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
+             if (std.mem.eql(u8, rule.severity, "Medium")) break :val 1;
+             break :val 0;
+         };
+-        _ = pushTier1Match(ctx, rule.crc32, severity_val, @intCast(u32, @min(data.len, @as(usize, std.math.maxInt(u32)))));
++        _ = pushTier1Match(ctx, rule.crc32, severity_val, @intCast(@min(data.len, @as(usize, std.math.maxInt(u32)))));
+ 
+         if (std.mem.eql(u8, rule.action, "Block")) {
+             std.debug.print("\x1b[31;1m[ AEGIS CORE ] !!! BLOCK !!! Connection Terminated: {s}\x1b[0m\n", .{rule.name});
+@@ -617,7 +617,7 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
+         };
+ 
+         try send_to_brain(allocator, forward_msg);
+-        _ = pushForwardedEvent(ctx, @intCast(u32, @min(data.len, @as(usize, std.math.maxInt(u32)))));
++        _ = pushForwardedEvent(ctx, @intCast(@min(data.len, @as(usize, std.math.maxInt(u32)))));
+ 
+         return true;
+     }
+@@ -684,11 +684,11 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address) void {
+     _ = active_threads.fetchAdd(1, .monotonic);
+ 
+     const src_ip: u32 = blk: {
+-        const sa: *const std.posix.sockaddr_in = @ptrCast(@alignCast(&remote_addr.any));
++        const sa: *const std.posix.sockaddr.in = @ptrCast(@alignCast(&remote_addr.any));
+         break :blk sa.addr;
+     };
+     const src_port: u16 = blk: {
+-        const sa: *const std.posix.sockaddr_in = @ptrCast(@alignCast(&remote_addr.any));
++        const sa: *const std.posix.sockaddr.in = @ptrCast(@alignCast(&remote_addr.any));
+         break :blk std.mem.bigToNative(u16, sa.port);
+     };
+ 

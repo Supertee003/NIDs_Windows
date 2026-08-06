@@ -233,37 +233,6 @@ pub const WfpEventHeader = extern struct {
     reserved: u32,
     timestamp: u64,
 };
-
-/// Helper: Push Tier-1 match result to C++ Bridge
-fn pushTier1Match(
-    ctx: PacketContext,
-    rule_id: u32,
-    severity: u32,
-    reserved: u32,
-    timestamp: u64,
-};
-
-/// Helper: Push Tier-1 match result to C++ Bridge
-fn pushTier1Match(
-    ctx: PacketContext,
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-    rule_id: u32,
-    severity: u32,
-    reserved: u32,
-    timestamp: u64,
-};
-
-/// Helper: Push Tier-1 match result to C++ Bridge
-fn pushTier1Match(
-    ctx: PacketContext,
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-    rule_id: u32,
-    severity: u32,
-    reserved: u32,
-    timestamp: u64,
-};
-
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 /// Helper: Push Tier-1 match result to C++ Bridge
 fn pushTier1Match(
     event_type: u32,
@@ -305,7 +274,6 @@ fn pushForwardedEvent(
     if (fn_bridge_push_event == null) return -1;
     if (!bridge_initialized) return -1;
     const event: AegisIpcEvent = .{
-
         .event_type = if (ctx.is_pipe) 3 else 0,
         .source_ip = ctx.source_ip,
         .dest_ip = ctx.dest_ip,
