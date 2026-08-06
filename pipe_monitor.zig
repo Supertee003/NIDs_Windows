@@ -73,8 +73,13 @@ pub fn scanPipes() ![]PipeEvent {
     // 4. Sends events to nids_analyze via channel or shared queue
 
     // Update stats
+<<<<<<< HEAD
     stats.last_scan_time = std.time.milliTimestamp();
 
+=======
+    stats.last_scan_time = @bitCast(std.time.milliTimestamp());
+    
+>>>>>>> fix(zig-0.13.0): comprehensive compilation fixes for Zig 0.13.0 compatibility
     return events.toOwnedSlice();
 }
 
@@ -83,7 +88,7 @@ pub fn printStats() void {
     std.log.info("[Pipe Monitor Stats] Total pipes: {}, Suspicious: {}, Last scan: {}ms ago", .{
         stats.total_pipes,
         stats.suspicious_pipes,
-        std.time.milliTimestamp() - stats.last_scan_time,
+        @as(u64, @bitCast(std.time.milliTimestamp())) -% stats.last_scan_time,
     });
 }
 

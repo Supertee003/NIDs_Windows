@@ -13,7 +13,7 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
     std.debug.print("[SENSOR 2] Kernel WFP Capture Ready - Waiting for real traffic...\n", .{});
     const wfp_device_name = "\\\\.\\AegisWfpDevice";
 
-    const wfp_file = std.fs.openFileAbsolute(wfp_device_name, .{ .mode = .read_only }) catch |err| {
+    const wfp_file = std.fs.openFileAbsolute(wfp_device_name, .{}) catch |err| {
         std.debug.print("[!] WFP Driver not found (Error: {}). Pausing sensor...\n", .{err});
         while (true) {
             std.time.sleep(10 * std.time.ns_per_s);

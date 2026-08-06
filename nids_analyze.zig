@@ -33,6 +33,10 @@ extern "kernel32" fn ReadFile(
     lpOverlapped: ?*anyopaque,
 ) win.BOOL;
 
+// GetLastError — declared as extern for maximum Zig version compatibility
+// (std.os.windows.GetLastError path changed between Zig versions)
+extern "kernel32" fn GetLastError() u32;
+
 // =================================================================
 // [ C++ IPC BRIDGE — RUNTIME DYNAMIC LOADING (std.DynLib) ]
 // Instead of extern declarations (which require link-time DLL),
@@ -83,7 +87,7 @@ var rust_dll: ?std.DynLib = null;
 
 /// Try to load aegis_ipc.dll at runtime
 fn loadBridgeDll() void {
-    const dll_names = [_][]const u8{
+    const dll_names = [_][:0]const u8{
         "aegis_ipc.dll",
         "libaegis_ipc.so",
     };
@@ -100,8 +104,8 @@ fn loadBridgeDll() void {
         // Try search paths first
         for (search_paths) |dir| {
             var path_buf: [512]u8 = undefined;
-            const path = std.fmt.bufPrint(&path_buf, "{s}\\{s}", .{ dir, dll_name }) catch continue;
-            if (std.DynLib.openZ(path)) |lib| {
+            const path = std.fmt.bufPrintZ(&path_buf, "{s}\\{s}", .{ dir, dll_name }) catch continue;
+            if (std.DynLib.open(path)) |lib| {
                 bridge_dll = lib;
                 std.debug.print("[BRIDGE] Loaded: {s}\n", .{path});
                 break;
@@ -109,7 +113,7 @@ fn loadBridgeDll() void {
         }
         // Try system path
         if (bridge_dll == null) {
-            if (std.DynLib.openZ(dll_name)) |lib| {
+            if (std.DynLib.open(dll_name)) |lib| {
                 bridge_dll = lib;
                 std.debug.print("[BRIDGE] Loaded from system path: {s}\n", .{dll_name});
             } else |_| {}
@@ -136,7 +140,7 @@ fn loadBridgeDll() void {
 
 /// Try to load sec_monitor.dll at runtime (Rust FFI)
 fn loadRustDll() void {
-    const dll_names = [_][]const u8{
+    const dll_names = [_][:0]const u8{
         "sec_monitor.dll",
         "libsec_monitor.so",
     };
@@ -149,15 +153,15 @@ fn loadRustDll() void {
     for (dll_names) |dll_name| {
         for (search_paths) |dir| {
             var path_buf: [512]u8 = undefined;
-            const path = std.fmt.bufPrint(&path_buf, "{s}\\{s}", .{ dir, dll_name }) catch continue;
-            if (std.DynLib.openZ(path)) |lib| {
+            const path = std.fmt.bufPrintZ(&path_buf, "{s}\\{s}", .{ dir, dll_name }) catch continue;
+            if (std.DynLib.open(path)) |lib| {
                 rust_dll = lib;
                 std.debug.print("[RUST] Loaded: {s}\n", .{path});
                 break;
             } else |_| {}
         }
         if (rust_dll == null) {
-            if (std.DynLib.openZ(dll_name)) |lib| {
+            if (std.DynLib.open(dll_name)) |lib| {
                 rust_dll = lib;
                 std.debug.print("[RUST] Loaded from system path: {s}\n", .{dll_name});
             } else |_| {}
@@ -642,9 +646,7 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
 
         if (active_fast_pattern.len < 3) continue;
 
-        const Crc32Hash = std.hash.crc.Crc32WithPoly(.IEEE);
-        var hash = Crc32Hash.init();
-        hash.update(active_fast_pattern);
+        const crc = std.hash.Crc32.hash(active_fast_pattern);
         try temp_sig_list.append(.{
             .name = try allocator.dupe(u8, sig.name),
             .fast_pattern = try allocator.dupe(u8, active_fast_pattern),
@@ -652,7 +654,7 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
             .regex_pattern = try allocator.dupe(u8, sig.regex_pattern),
             .severity = try allocator.dupe(u8, sig.severity),
             .action = try allocator.dupe(u8, sig.action),
-            .crc32 = hash.final(),
+            .crc32 = crc,
         });
 
         try new_set.ac_engine.insert(temp_sig_list.items[valid_rule_count].fast_pattern, valid_rule_count);
@@ -886,9 +888,9 @@ fn pipe_listener() !void {
         if (hPipe == win.INVALID_HANDLE_VALUE) return;
 
         const connected = ConnectNamedPipe(hPipe, null);
-        const err = win.GetLastError();
+        const err = GetLastError();
 
-        if (connected != 0 or @intFromEnum(err) == 535) {
+        if (connected != 0 or err == 535) {
             connection_semaphore.wait();
             const t = std.Thread.spawn(.{}, handle_pipe_client, .{hPipe}) catch {
                 _ = DisconnectNamedPipe(hPipe);
@@ -992,12 +994,8 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
 
     udp_log_addr = net.Address.parseIp4("127.0.0.1", 9999) catch unreachable;
 
-    // WSAStartup required on Windows before any socket operations
-    if (builtin.os.tag == .windows) {
-        var wsadata: std.os.windows.ws2_32.WSAData = undefined;
-        _ = std.os.windows.ws2_32.WSAStartup(0x0202, &wsadata) catch unreachable;
-    }
-
+    // Note: Zig 0.13.0 std.posix.socket auto-initializes Winsock (WSAStartup)
+    // on Windows. No explicit WSAStartup call needed.
     udp_log_sock = posix.socket(udp_log_addr.any.family, posix.SOCK.DGRAM, 0) catch unreachable;
 
     reload_rules_atomic(allocator) catch |err| {

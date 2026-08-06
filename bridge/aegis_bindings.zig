@@ -7,7 +7,13 @@
  * into the C++ Bridge and receive DEFCON state.
  *
  * Architecture: Zig Core → C++ Bridge (via these externs) → Python Brain
+ *
+ * ⚠️ NOTE: This file uses link-time extern declarations (requires aegis_ipc.dll
+ * at link time). For runtime-loaded DLL (no link dependency), see nids_analyze.zig
+ * which uses std.DynLib instead. This file is kept for reference / optional use.
  */
+
+const std = @import("std");
 
 // ====== IPC Event Structure (matches C++ IpcEvent — 48 bytes) ======
 const AegisIpcEvent = extern struct {
@@ -101,5 +107,3 @@ pub fn getDefconLabel() [:0]const u8 {
     const ptr = aegis_bridge_get_defcon_label();
     return std.mem.sliceTo(ptr, 0);
 }
-
-const std = @import("std");

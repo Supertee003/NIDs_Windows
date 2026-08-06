@@ -29,6 +29,9 @@ extern "kernel32" fn ReadFile(
     lpOverlapped: ?*anyopaque,
 ) win.BOOL;
 
+// GetLastError — declared as extern for maximum Zig version compatibility
+extern "kernel32" fn GetLastError() u32;
+
 // ค่าคงที่สำหรับ Windows Pipe
 const PIPE_ACCESS_DUPLEX = 0x00000003;
 const PIPE_TYPE_MESSAGE = 0x00000004;
@@ -71,9 +74,9 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) !void 
     while (true) {
         // รอจนกว่าจะมี Client (Python) เชื่อมต่อเข้ามา
         const connected = ConnectNamedPipe(handle, null) != 0;
-        const err = win.GetLastError();
+        const err = GetLastError();
 
-        if (connected or @intFromEnum(err) == 535) {
+        if (connected or err == 535) {
 
             // 3. อ่านข้อมูล Payload ที่ถูกส่งเข้ามา
             var bytes_read: u32 = 0;
