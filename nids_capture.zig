@@ -1,6 +1,11 @@
 const std = @import("std");
 const win = std.os.windows;
 const nids_analyze = @import("nids_analyze.zig");
+const builtin = @import("builtin");
+
+comptime {
+    if (builtin.os.tag != .windows) @compileError("nids_capture requires Windows target — uses kernel32 Named Pipes");
+}
 
 // ประกาศใช้งาน Windows API สำหรับสร้างและจัดการ Named Pipe (IPC)
 extern "kernel32" fn CreateNamedPipeA(
@@ -66,9 +71,9 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) !void 
     while (true) {
         // รอจนกว่าจะมี Client (Python) เชื่อมต่อเข้ามา
         const connected = ConnectNamedPipe(handle, null) != 0;
-        const err = win.kernel32.GetLastError();
+        const err = win.GetLastError();
 
-        if (connected or err == win.Win32Error.PIPE_CONNECTED) {
+        if (connected or @intFromEnum(err) == 535) {
 
             // 3. อ่านข้อมูล Payload ที่ถูกส่งเข้ามา
             var bytes_read: u32 = 0;

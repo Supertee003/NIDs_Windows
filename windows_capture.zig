@@ -1,5 +1,10 @@
 const std = @import("std");
 const nids_analyze = @import("nids_analyze.zig");
+const builtin = @import("builtin");
+
+comptime {
+    if (builtin.os.tag != .windows) @compileError("windows_capture requires Windows target — uses WFP kernel driver");
+}
 
 pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
     _ = allocator;

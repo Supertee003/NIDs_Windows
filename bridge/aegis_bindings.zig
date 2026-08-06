@@ -99,8 +99,7 @@ pub fn getDefconLevel() u8 {
 // ====== Helper: Get DEFCON label as Zig string ======
 pub fn getDefconLabel() [:0]const u8 {
     const ptr = aegis_bridge_get_defcon_label();
-    const len = std.mem.len(ptr);
-    return ptr[0..len :0];
+    return std.mem.sliceTo(ptr, 0);
 }
 
 const std = @import("std");

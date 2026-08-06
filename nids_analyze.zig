@@ -2,6 +2,11 @@ const std = @import("std");
 const net = std.net;
 const win = std.os.windows;
 const posix = std.posix;
+const builtin = @import("builtin");
+
+comptime {
+    if (builtin.os.tag != .windows) @compileError("nids_analyze requires Windows target — uses kernel32 Named Pipes");
+}
 
 // =================================================================
 // [ EXTERN DECLARATIONS FOR WINDOWS NAMED PIPES ]
@@ -18,15 +23,15 @@ extern "kernel32" fn CreateNamedPipeA(
     lpSecurityAttributes: ?*anyopaque,
 ) win.HANDLE;
 
-extern "kernel32" fn ConnectNamedPipe(hNamedPipe: win.HANDLE, lpOverlapped: ?*anyopaque) i32;
-extern "kernel32" fn DisconnectNamedPipe(hNamedPipe: win.HANDLE) i32;
+extern "kernel32" fn ConnectNamedPipe(hNamedPipe: win.HANDLE, lpOverlapped: ?*anyopaque) win.BOOL;
+extern "kernel32" fn DisconnectNamedPipe(hNamedPipe: win.HANDLE) win.BOOL;
 extern "kernel32" fn ReadFile(
     hFile: win.HANDLE,
     lpBuffer: [*]u8,
     nNumberOfBytesToRead: u32,
     lpNumberOfBytesRead: ?*u32,
     lpOverlapped: ?*anyopaque,
-) i32;
+) win.BOOL;
 
 // =================================================================
 // [ C++ IPC BRIDGE — RUNTIME DYNAMIC LOADING (std.DynLib) ]
@@ -96,7 +101,7 @@ fn loadBridgeDll() void {
         for (search_paths) |dir| {
             var path_buf: [512]u8 = undefined;
             const path = std.fmt.bufPrint(&path_buf, "{s}\\{s}", .{ dir, dll_name }) catch continue;
-            if (std.DynLib.open(path)) |lib| {
+            if (std.DynLib.openZ(path)) |lib| {
                 bridge_dll = lib;
                 std.debug.print("[BRIDGE] Loaded: {s}\n", .{path});
                 break;
@@ -104,7 +109,7 @@ fn loadBridgeDll() void {
         }
         // Try system path
         if (bridge_dll == null) {
-            if (std.DynLib.open(dll_name)) |lib| {
+            if (std.DynLib.openZ(dll_name)) |lib| {
                 bridge_dll = lib;
                 std.debug.print("[BRIDGE] Loaded from system path: {s}\n", .{dll_name});
             } else |_| {}
@@ -145,14 +150,14 @@ fn loadRustDll() void {
         for (search_paths) |dir| {
             var path_buf: [512]u8 = undefined;
             const path = std.fmt.bufPrint(&path_buf, "{s}\\{s}", .{ dir, dll_name }) catch continue;
-            if (std.DynLib.open(path)) |lib| {
+            if (std.DynLib.openZ(path)) |lib| {
                 rust_dll = lib;
                 std.debug.print("[RUST] Loaded: {s}\n", .{path});
                 break;
             } else |_| {}
         }
         if (rust_dll == null) {
-            if (std.DynLib.open(dll_name)) |lib| {
+            if (std.DynLib.openZ(dll_name)) |lib| {
                 rust_dll = lib;
                 std.debug.print("[RUST] Loaded from system path: {s}\n", .{dll_name});
             } else |_| {}
@@ -363,7 +368,7 @@ fn pushTier1Match(
         .rule_id = rule_id,
         .severity = severity,
         .reserved = 0,
-        .timestamp = @intCast(std.time.milliTimestamp()),
+        .timestamp = @bitCast(std.time.milliTimestamp()),
         .source_pid = 0,
         .defcon_impact = 4,
     };
@@ -430,7 +435,7 @@ fn pushForwardedEvent(
         .rule_id = 0,
         .severity = 0,
         .reserved = 0,
-        .timestamp = @intCast(std.time.milliTimestamp()),
+        .timestamp = @bitCast(std.time.milliTimestamp()),
         .source_pid = 0,
         .defcon_impact = 5,
     };
@@ -578,7 +583,7 @@ pub const SecureRuleSet = struct {
 };
 
 var active_ruleset: std.atomic.Value(?*SecureRuleSet) = std.atomic.Value(?*SecureRuleSet).init(null);
-var connection_semaphore: std.Thread.Semaphore = .{ .permits = 100 };
+var connection_semaphore: std.Thread.Semaphore = std.Thread.Semaphore.init(100);
 var active_threads: std.atomic.Value(u32) = std.atomic.Value(u32).init(0);
 var udp_log_sock: posix.socket_t = undefined;
 var udp_log_addr: net.Address = undefined;
@@ -606,7 +611,7 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
     new_set.allocator = allocator;
     new_set.ac_engine = try AhoCorasick.init(allocator);
 
-    var temp_sig_list = std.ArrayListAligned(SecureRule, 8).init(allocator);
+    var temp_sig_list = std.ArrayList(SecureRule).init(allocator);
     errdefer {
         for (temp_sig_list.items) |*sig| {
             allocator.free(sig.name);
@@ -637,7 +642,8 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
 
         if (active_fast_pattern.len < 3) continue;
 
-        var hash = std.hash.Crc32.init();
+        const Crc32Hash = std.hash.crc.Crc32WithPoly(.IEEE);
+        var hash = Crc32Hash.init();
         hash.update(active_fast_pattern);
         try temp_sig_list.append(.{
             .name = try allocator.dupe(u8, sig.name),
@@ -664,11 +670,9 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
 }
 // UDP send to brain
 fn send_to_brain(allocator: std.mem.Allocator, msg: anytype) !void {
-    var string = std.ArrayList(u8).init(allocator);
-    defer string.deinit();
-
-    try std.json.stringify(msg, .{}, string.writer());
-    _ = posix.sendto(udp_log_sock, string.items, 0, &udp_log_addr.any, udp_log_addr.getOsSockLen()) catch {};
+    const json_str = try std.json.stringifyAlloc(allocator, msg, .{});
+    defer allocator.free(json_str);
+    _ = posix.sendto(udp_log_sock, json_str, 0, &udp_log_addr.any, udp_log_addr.getOsSockLen()) catch {};
 }
 
 // --- [ 3-TIER FAST THREAT ANALYSIS ENGINE ] ---
@@ -753,7 +757,7 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
 
     if (final_matched_rule) |rule| {
         const alert = .{
-            .timestamp = std.time.timestamp(),
+            .timestamp = @as(u64, @bitCast(std.time.milliTimestamp())),
             .attack_type = rule.name,
             .policy = rule.action, // ส่งค่า "Block" หรือ "Drop" จาก Rules.json
             .reason = "Tier-1 Fast Pattern Match",
@@ -782,8 +786,12 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
             if (std.mem.eql(u8, rule.severity, "Medium")) break :val 1;
             break :val 0;
         };
+<<<<<<< HEAD
         const event_type_val: u32 = if (is_pipe) 3 else 0;
         _ = pushTier1Match(event_type_val, rule.crc32, severity_val, data.ptr, @intCast(data.len), is_pipe);
+=======
+        _ = pushTier1Match(ctx, rule.crc32, severity_val, @intCast(u32, @min(data.len, std.math.maxInt(u32))));
+>>>>>>> fix(zig-core): 18 compilation fixes for Zig 0.13/0.14 compatibility
 
         if (std.mem.eql(u8, rule.action, "Block")) {
             std.debug.print("\x1b[31;1m[ AEGIS CORE ] !!! BLOCK !!! Connection Terminated: {s}\x1b[0m\n", .{rule.name});
@@ -793,7 +801,7 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
         return true;
     } else {
         const forward_msg = .{
-            .timestamp = std.time.timestamp(),
+            .timestamp = @as(u64, @bitCast(std.time.milliTimestamp())),
             .attack_type = "Unmatched: Deep Inspection Required",
             .policy = "Pending",
             .reason = "Forwarded: No Tier-1 Match",
@@ -802,6 +810,7 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
         };
 
         try send_to_brain(allocator, forward_msg);
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -819,6 +828,9 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
 >>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
         _ = pushForwardedEvent(ctx, @intCast(data.len));
 >>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
+=======
+        _ = pushForwardedEvent(ctx, @intCast(u32, @min(data.len, std.math.maxInt(u32))));
+>>>>>>> fix(zig-core): 18 compilation fixes for Zig 0.13/0.14 compatibility
 
         return true;
     }
@@ -874,7 +886,7 @@ fn pipe_listener() !void {
         if (hPipe == win.INVALID_HANDLE_VALUE) return;
 
         const connected = ConnectNamedPipe(hPipe, null);
-        const err = win.kernel32.GetLastError();
+        const err = win.GetLastError();
 
         if (connected != 0 or @intFromEnum(err) == 535) {
             connection_semaphore.wait();
@@ -941,7 +953,7 @@ fn handle_tcp_client(stream: net.Stream) void {
 }
 
 fn tcp_listener() !void {
-    var addr = net.Address.parseIp4("0.0.0.0", 12345) catch return;
+    const addr = net.Address.parseIp4("0.0.0.0", 12345) catch return;
     var server = addr.listen(.{ .reuse_address = true }) catch return;
     defer server.deinit();
 
@@ -979,6 +991,13 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
     }
 
     udp_log_addr = net.Address.parseIp4("127.0.0.1", 9999) catch unreachable;
+
+    // WSAStartup required on Windows before any socket operations
+    if (builtin.os.tag == .windows) {
+        var wsadata: std.os.windows.ws2_32.WSAData = undefined;
+        _ = std.os.windows.ws2_32.WSAStartup(0x0202, &wsadata) catch unreachable;
+    }
+
     udp_log_sock = posix.socket(udp_log_addr.any.family, posix.SOCK.DGRAM, 0) catch unreachable;
 
     reload_rules_atomic(allocator) catch |err| {
