@@ -81,15 +81,7 @@ if %errorlevel% neq 0 (
     set /a SKIP+=1
     goto step5
 )
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-zig build
-=======
-=======
->>>>>>> fix: Brain UnboundLocalError, Zig optional linking, DLL search paths, build_all.bat Zig flags
+
 REM Build Zig with optional bridge/rust linking
 REM Only add -Dlink-bridge / -Dlink-rust if the DLLs exist
 set ZIG_FLAGS=
@@ -100,47 +92,14 @@ if exist "target\release\sec_monitor.dll" (
     set ZIG_FLAGS=%ZIG_FLAGS% -Dlink-rust
 )
 zig build %ZIG_FLAGS%
-<<<<<<< HEAD
->>>>>>> fix: Brain UnboundLocalError, Zig optional linking, DLL search paths, build_all.bat Zig flags
-=======
-zig build
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
-zig build
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
->>>>>>> fix: Brain UnboundLocalError, Zig optional linking, DLL search paths, build_all.bat Zig flags
-=======
-zig build
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
 if %errorlevel% neq 0 (
     echo   [FAIL] Zig build failed
     set /a FAIL+=1
     goto step5
 )
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-echo   [OK] Zig Core: zig-out/bin/aegis-nids.exe (DLLs loaded at runtime)
-=======
-echo   [OK] Zig Core: zig-out/bin/aegis-nids.exe
->>>>>>> fix: Brain UnboundLocalError, Zig optional linking, DLL search paths, build_all.bat Zig flags
-=======
-echo   [OK] Zig Core: zig-out/bin/aegis-nids.exe (DLLs loaded at runtime)
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
-echo   [OK] Zig Core: zig-out/bin/aegis-nids.exe (DLLs loaded at runtime)
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-=======
-echo   [OK] Zig Core: zig-out/bin/aegis-nids.exe
->>>>>>> fix: Brain UnboundLocalError, Zig optional linking, DLL search paths, build_all.bat Zig flags
-=======
-echo   [OK] Zig Core: zig-out/bin/aegis-nids.exe (DLLs loaded at runtime)
->>>>>>> fix(zig): replace extern declarations with std.DynLib runtime loading
-set /a PASS+=1
 
+echo   [OK] Zig Core: zig-out/bin/aegis-nids.exe
+set /a PASS+=1
 :step5
 echo [5/5] egui Dashboard...
 if not exist "aegis_dashboard\Cargo.toml" (

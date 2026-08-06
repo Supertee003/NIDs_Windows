@@ -10,21 +10,21 @@ const std = @import("std");
 
 // ====== Suspicious Named Pipe Patterns (from Rules.json PIPE_MONITOR rules) ======
 const SUSPICIOUS_PIPE_PATTERNS = [_][]const u8{
-    "MSSE-",           // Cobalt Strike (R3001)
-    "postex_",         // Cobalt Strike post-exploitation
-    "status_",         // Cobalt Strike status pipe
-    "psexec",          // PsExec remote execution (R3002)
-    "PAExec",          // PsExec variant
-    "meterpreter",     // Meterpreter (R3004)
-    "atsvc",           // atexec scheduled task (R3005)
-    "anonymous",       // Anonymous pipe (R3003)
+    "MSSE-", // Cobalt Strike (R3001)
+    "postex_", // Cobalt Strike post-exploitation
+    "status_", // Cobalt Strike status pipe
+    "psexec", // PsExec remote execution (R3002)
+    "PAExec", // PsExec variant
+    "meterpreter", // Meterpreter (R3004)
+    "atsvc", // atexec scheduled task (R3005)
+    "anonymous", // Anonymous pipe (R3003)
 };
 
 // ====== Pipe Event — sent to nids_analyze for rule matching ======
 pub const PipeEvent = struct {
     pipe_name: []const u8,
-    event_type: []const u8,  // "PIPE_CREATED", "PIPE_CONNECTED", "PIPE_ALERT"
-    risk_level: []const u8,  // "Critical", "High", "Medium"
+    event_type: []const u8, // "PIPE_CREATED", "PIPE_CONNECTED", "PIPE_ALERT"
+    risk_level: []const u8, // "Critical", "High", "Medium"
     matched_rule: []const u8 = "",
     timestamp: u64 = 0,
 };
@@ -73,16 +73,9 @@ pub fn scanPipes() ![]PipeEvent {
     // 4. Sends events to nids_analyze via channel or shared queue
 
     // Update stats
-<<<<<<< HEAD
-<<<<<<< HEAD
-    stats.last_scan_time = std.time.milliTimestamp();
 
-=======
-=======
->>>>>>> fix(zig-0.13.0+bridge): all-in-one patch for Zig 0.13.0 compilation + bridge charset
     stats.last_scan_time = @bitCast(std.time.milliTimestamp());
-    
->>>>>>> fix(zig-0.13.0): comprehensive compilation fixes for Zig 0.13.0 compatibility
+
     return events.toOwnedSlice();
 }
 

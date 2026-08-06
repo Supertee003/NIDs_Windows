@@ -1,0 +1,78 @@
+From 5b9cfec5dd6abdd5f26d3b83325a18c21af77388 Mon Sep 17 00:00:00 2001
+From: Z User <z@container>
+Date: Thu, 6 Aug 2026 17:37:05 +0000
+Subject: [PATCH] fix(zig-0.13.0): resolve 5 compile errors in nids_analyze.zig
+ and windows_capture.zig
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Fix 1: @min heterogeneous types in nids_analyze.zig lines 596, 620
+  - @min(data.len, std.math.maxInt(u32)) — data.len is usize, maxInt(u32) is u32
+  - Fix: @min(data.len, @as(usize, std.math.maxInt(u32)))
+
+Fix 2: std.posix.sockaddr.in does not exist in Zig 0.13.0
+  - Lines 687, 691: @as(*const std.posix.sockaddr.in, ...)
+  - Fix: Use std.posix.sockaddr_in directly with type annotation
+  - const sa: *const std.posix.sockaddr_in = @ptrCast(@alignCast(...))
+
+Fix 3: @min heterogeneous types in windows_capture.zig line 53
+  - payload_start + header.payload_length — usize + u32 type mismatch
+  - Fix: payload_start + @as(usize, header.payload_length)
+---
+ nids_analyze.zig    | 8 ++++----
+ windows_capture.zig | 2 +-
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/nids_analyze.zig b/nids_analyze.zig
+index e5ef3af..ea9bcf4 100755
+--- a/nids_analyze.zig
++++ b/nids_analyze.zig
+@@ -593,7 +593,7 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
+             if (std.mem.eql(u8, rule.severity, "Medium")) break :val 1;
+             break :val 0;
+         };
+-        _ = pushTier1Match(ctx, rule.crc32, severity_val, @intCast(u32, @min(data.len, std.math.maxInt(u32))));
++        _ = pushTier1Match(ctx, rule.crc32, severity_val, @intCast(u32, @min(data.len, @as(usize, std.math.maxInt(u32)))));
+ 
+         if (std.mem.eql(u8, rule.action, "Block")) {
+             std.debug.print("\x1b[31;1m[ AEGIS CORE ] !!! BLOCK !!! Connection Terminated: {s}\x1b[0m\n", .{rule.name});
+@@ -617,7 +617,7 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
+         };
+ 
+         try send_to_brain(allocator, forward_msg);
+-        _ = pushForwardedEvent(ctx, @intCast(u32, @min(data.len, std.math.maxInt(u32))));
++        _ = pushForwardedEvent(ctx, @intCast(u32, @min(data.len, @as(usize, std.math.maxInt(u32)))));
+ 
+         return true;
+     }
+@@ -684,11 +684,11 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address) void {
+     _ = active_threads.fetchAdd(1, .monotonic);
+ 
+     const src_ip: u32 = blk: {
+-        const sa = @as(*const std.posix.sockaddr.in, @ptrCast(@alignCast(&remote_addr.any)));
++        const sa: *const std.posix.sockaddr_in = @ptrCast(@alignCast(&remote_addr.any));
+         break :blk sa.addr;
+     };
+     const src_port: u16 = blk: {
+-        const sa = @as(*const std.posix.sockaddr.in, @ptrCast(@alignCast(&remote_addr.any)));
++        const sa: *const std.posix.sockaddr_in = @ptrCast(@alignCast(&remote_addr.any));
+         break :blk std.mem.bigToNative(u16, sa.port);
+     };
+ 
+diff --git a/windows_capture.zig b/windows_capture.zig
+index a015242..bd496e7 100755
+--- a/windows_capture.zig
++++ b/windows_capture.zig
+@@ -50,7 +50,7 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
+ 
+                 // Payload อยู่หลัง EventHeader
+                 const payload_start = @sizeOf(nids_analyze.WfpEventHeader);
+-                const payload_end = @min(bytes_read, payload_start + header.payload_length);
++                const payload_end = @min(bytes_read, payload_start + @as(usize, header.payload_length));
+                 if (payload_end > payload_start) {
+                     const payload = buffer[payload_start..payload_end];
+ 
+-- 
+2.47.3
+

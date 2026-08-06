@@ -22,10 +22,6 @@ try:
     AEGIS_GRAPH_AVAILABLE = True
 except ImportError:
     AEGIS_GRAPH_AVAILABLE = False
-<<<<<<< HEAD
-=======
-
->>>>>>> fix: runtime safety — optional aegis_graph, NULL-safe ctypes, keyword args in tests, bare except cleanup
 
 # C++ IPC Bridge integration
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "bridge"))
