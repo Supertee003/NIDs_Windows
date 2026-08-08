@@ -1,13 +1,8 @@
 const std = @import("std");
 const win = std.os.windows;
 const nids_analyze = @import("nids_analyze.zig");
-const builtin = @import("builtin");
 
-comptime {
-    if (builtin.os.tag != .windows) @compileError("nids_capture requires Windows target — uses kernel32 Named Pipes");
-}
-
-// ประกาศใช้งาน Windows API สำหรับสร้างและจัดการ Named Pipe (IPC)
+// Windows API declarations for Named Pipe (IPC)
 extern "kernel32" fn CreateNamedPipeA(
     lpName: [*:0]const u8,
     dwOpenMode: u32,
@@ -29,10 +24,7 @@ extern "kernel32" fn ReadFile(
     lpOverlapped: ?*anyopaque,
 ) win.BOOL;
 
-// GetLastError — declared as extern for maximum Zig version compatibility
-extern "kernel32" fn GetLastError() u32;
-
-// ค่าคงที่สำหรับ Windows Pipe
+// Windows Pipe constants
 const PIPE_ACCESS_DUPLEX = 0x00000003;
 const PIPE_TYPE_MESSAGE = 0x00000004;
 const PIPE_READMODE_MESSAGE = 0x00000002;
@@ -43,19 +35,18 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) !void 
     _ = allocator;
     _ = address;
 
-    // ชื่อ Pipe ต้องตรงกับในไฟล์ Python (R0064.py, R0106.py)
     const pipe_name = "\\\\.\\pipe\\aegis_sensor_pipe";
 
     std.debug.print("[IPC SENSOR] Initializing Named Pipe Server...\n", .{});
 
-    // 1. สร้างท่อ Named Pipe
+    // 1. Create Named Pipe
     const handle = CreateNamedPipeA(
         pipe_name,
         PIPE_ACCESS_DUPLEX,
         PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
         PIPE_UNLIMITED_INSTANCES,
-        4096, // Out Buffer Size
-        4096, // In Buffer Size
+        4096,
+        4096,
         0,
         null,
     );
@@ -70,15 +61,14 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) !void 
 
     std.debug.print("[IPC SENSOR] Listening on {s} - Waiting for Python scripts...\n", .{pipe_name});
 
-    // 2. ลูปเปิดรับการเชื่อมต่อจาก Python
+    // 2. Accept connections from Python
     while (true) {
-        // รอจนกว่าจะมี Client (Python) เชื่อมต่อเข้ามา
         const connected = ConnectNamedPipe(handle, null) != 0;
-        const err = GetLastError();
+        const err = win.kernel32.GetLastError();
 
-        if (connected or err == 535) {
+        if (connected or err == win.Win32Error.PIPE_CONNECTED) {
 
-            // 3. อ่านข้อมูล Payload ที่ถูกส่งเข้ามา
+            // 3. Read payload
             var bytes_read: u32 = 0;
             const read_success = ReadFile(
                 handle,
@@ -92,20 +82,21 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) !void 
                 const payload = buffer[0..bytes_read];
                 std.debug.print("[IPC SENSOR] Captured Pipe Payload ({} bytes)\n", .{bytes_read});
 
-                // ==============================================================
-                // ⚠️ เอาคอมเมนต์ออก เพื่อส่งข้อมูลไปให้ nids_analyze ตรวจสอบ!
-                const is_safe = try nids_analyze.inspect_packet(payload, true);
+                // Named Pipe has no 5-tuple — use PacketContext with defaults
+                const ctx = nids_analyze.PacketContext{
+                    .is_pipe = true,
+                    .layer_id = 3,  // L2_PIPE
+                };
+
+                const is_safe = try nids_analyze.inspect_packet(payload, ctx);
                 if (!is_safe) {
-                    std.debug.print("\\x1b[31;1m[IPC SENSOR] 🚨 Threat blocked at Named Pipe!\\x1b[0m\\n", .{});
-                    // เราจะแค่ Print หรือจะเพิ่มลอจิกอื่นๆ ตรงนี้ก็ได้ครับ เพราะในเซ็นเซอร์เราจัดการได้อิสระ
+                    std.debug.print("\\x1b[31;1m[IPC SENSOR] Threat blocked at Named Pipe!\\x1b[0m\\n", .{});
                 }
-                // ==============================================================
             }
 
-            // 4. ตัดการเชื่อมต่อของ Python นัดเดิม เพื่อเตรียมท่อให้พร้อมรับนัดถัดไป
+            // 4. Disconnect for next client
             _ = DisconnectNamedPipe(handle);
         } else {
-            // หากเกิด Error ให้พักเล็กน้อยแล้ววนลูปใหม่
             std.time.sleep(10 * std.time.ns_per_ms);
         }
     }

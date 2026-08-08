@@ -19,8 +19,166 @@ Bridge Integration (Phase 1):
 """
 
 import json, os, socket, re, sys, time
+import struct
 import subprocess
 from datetime import datetime
+
+# ====== MessagePack + Length-Prefix Framing (Fix #2) ======
+# Format: [4 bytes: payload length (big-endian)] + [MsgPack payload]
+# Fallback to JSON if MsgPack unavailable (graceful degradation)
+try:
+    import msgpack
+    MSGPACK_AVAILABLE = True
+except ImportError:
+    MSGPACK_AVAILABLE = False
+    print("[AEGIS BRAIN] Warning: msgpack not installed — pip install msgpack")
+    print("[AEGIS BRAIN] Falling back to JSON (less efficient)")
+
+MAX_UDP_PAYLOAD = 65535  # UDP max payload size
+
+# ====== Sanity Check + Circuit Breaker + Sequence Tracking (Enhancement) ======
+class UdpCircuitBreaker:
+    """Circuit Breaker สำหรับ Zig→Brain UDP channel.
+    ถ้า decode ล้มติดต่อกันเกิน threshold → เปิด circuit (หยุดรับชั่วคราว)
+    """
+    def __init__(self, fail_threshold=10, open_duration=5.0):
+        self.fail_threshold = fail_threshold
+        self.open_duration = open_duration
+        self.fail_count = 0
+        self.state = "closed"  # closed / open / half-open
+        self.open_until = 0.0
+
+    def allow(self):
+        import time
+        if self.state == "open":
+            if time.monotonic() >= self.open_until:
+                self.state = "half-open"
+                return True
+            return False
+        return True
+
+    def record_success(self):
+        if self.state == "half-open":
+            self.state = "closed"
+        self.fail_count = 0
+
+    def record_failure(self):
+        self.fail_count += 1
+        if self.fail_count >= self.fail_threshold:
+            import time
+            self.state = "open"
+            self.open_until = time.monotonic() + self.open_duration
+            print(f"[CB] Brain Circuit Breaker OPEN — {self.fail_count} decode failures, backing off {self.open_duration}s")
+
+brain_circuit_breaker = UdpCircuitBreaker()
+
+# Sequence number tracking for UDP reordering detection
+_last_sequence: int = 0
+_reorder_count: int = 0
+_gap_count: int = 0
+
+def sanity_check_decoded(data: dict) -> bool:
+    """Sanity check ข้อมูลหลัง decode — ป้องกัน corrupted data จาก UDP errors.
+    ตรวจ: required fields, type validity, range validity, not empty.
+    """
+    if not isinstance(data, dict):
+        return False
+    # Required fields from Zig alert
+    required = ["attack_type", "policy", "source"]
+    for field in required:
+        if field not in data:
+            return False
+        val = data[field]
+        if not isinstance(val, (str, int, float)):
+            return False
+    # IP should be uint32 (0 to 4294967295) or string
+    for ip_field in ["source_ip", "dest_ip"]:
+        if ip_field in data:
+            ip = data[ip_field]
+            if isinstance(ip, int) and (ip < 0 or ip > 0xFFFFFFFF):
+                return False
+    # Port should be 0-65535
+    for port_field in ["source_port", "dest_port"]:
+        if port_field in data:
+            port = data[port_field]
+            if isinstance(port, int) and (port < 0 or port > 65535):
+                return False
+    # Protocol should be 0-255
+    if "protocol" in data:
+        proto = data["protocol"]
+        if isinstance(proto, int) and (proto < 0 or proto > 255):
+            return False
+    return True
+
+def track_sequence(data: dict):
+    """Track sequence numbers to detect UDP reordering/gaps.
+    Zig can optionally include 'seq' field in MsgPack payloads.
+    """
+    global _last_sequence, _reorder_count, _gap_count
+    seq = data.get("seq")
+    if seq is None:
+        return  # No sequence tracking
+    if isinstance(seq, int) and seq > 0:
+        if seq < _last_sequence:
+            _reorder_count += 1
+            if _reorder_count % 100 == 1:
+                print(f"[UDP] Reordering detected: seq={seq} < last={_last_sequence} (total reorder: {_reorder_count})")
+        elif seq > _last_sequence + 1:
+            gap = seq - _last_sequence - 1
+            _gap_count += gap
+            if _gap_count > 100 and _gap_count % 100 == 0:
+                print(f"[UDP] Packet loss: gap of {gap} after seq={_last_sequence} (total gaps: {_gap_count})")
+        _last_sequence = max(_last_sequence, seq)
+
+
+def recv_length_prefixed(sock, timeout=1.0):
+    """
+    Read a length-prefixed message from UDP socket.
+    Format: [4B length BE] + [MsgPack payload]
+    Returns decoded dict or None on error.
+    """
+    sock.settimeout(timeout)
+    try:
+        msg_bytes, addr = sock.recvfrom(MAX_UDP_PAYLOAD)
+    except socket.timeout:
+        return None, None
+
+    if len(msg_bytes) < 4:
+        # Too short for length prefix — try JSON fallback
+        try:
+            raw = msg_bytes.decode("utf-8", errors="ignore").strip()
+            return json.loads(raw), addr
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return None, addr
+
+    # Read 4-byte length prefix (big-endian)
+    payload_len = struct.unpack(">I", msg_bytes[:4])[0]
+    payload = msg_bytes[4:]
+
+    # Verify payload length matches
+    if payload_len > 0 and len(payload) >= payload_len:
+        payload = payload[:payload_len]
+
+    # Try MsgPack decode first
+    if MSGPACK_AVAILABLE:
+        try:
+            decoded = msgpack.unpackb(payload, raw=False)
+            if isinstance(decoded, dict):
+                return decoded, addr
+        except Exception:
+            pass
+
+    # Fallback: try JSON
+    try:
+        raw = payload.decode("utf-8", errors="ignore").strip()
+        return json.loads(raw), addr
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        # Last resort: try the entire message as JSON (legacy compatibility)
+        try:
+            raw = msg_bytes.decode("utf-8", errors="ignore").strip()
+            return json.loads(raw), addr
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return None, addr
 
 # 🔗 C++ IPC Bridge — เชื่อม Brain ↔ Bridge ↔ Dashboard
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "bridge"))
@@ -237,12 +395,30 @@ def main():
             poll_bridge_events()
 
         try:
-            sock.settimeout(1.0)  # 1-second timeout for Bridge polling
-            msg_bytes, addr = sock.recvfrom(65535)
-            raw_payload = msg_bytes.decode("utf-8", errors="ignore").strip()
+            # Read length-prefixed MsgPack message (Fix #2)
+            # Format: [4B length BE] + [MsgPack payload]
+            # Fallback to JSON if MsgPack unavailable
+            # Circuit Breaker: ถ้าเปิด → skip recv ชั่วคราว
+            if not brain_circuit_breaker.allow():
+                continue
 
-            # Parse incoming JSON from Zig Core
-            log_entry = json.loads(raw_payload)
+            log_entry, addr = recv_length_prefixed(sock, timeout=1.0)
+            if log_entry is None:
+                continue  # No valid message — normal timeout or decode error
+
+            # Sanity Check: verify decoded data is valid (Enhancement)
+            if not sanity_check_decoded(log_entry):
+                brain_circuit_breaker.record_failure()
+                print(f"[SANITY] Invalid alert data from {addr} — skipping")
+                continue
+
+            brain_circuit_breaker.record_success()
+
+            # Sequence tracking: detect UDP reordering/gaps
+            track_sequence(log_entry)
+
+            # Convert MsgPack integer IP to dotted notation (if needed)
+            # MsgPack sends source_ip as integer from Zig
             source = log_entry.get("source", "UNKNOWN")
             ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -288,7 +464,8 @@ def main():
             # Case 2: No Tier-1 Match — Brain must run full regex scan
             #   Zig sends: raw_payload with reason "Forwarded: No Tier-1 Match"
             # =========================================================
-            payload = log_entry.get("raw_payload", raw_payload)
+            raw_payload_str = str(log_entry)
+            payload = log_entry.get("raw_payload", raw_payload_str)
 
             result = run_regex_scan(payload, tier2_engine, rules_data)
             if result:
@@ -331,7 +508,9 @@ def main():
         except json.JSONDecodeError as e:
             print(f"{UI.YELLOW}[!] JSON Decode Error from {addr}: {e}{UI.RESET}")
         except Exception as e:
-            print(f"{UI.DANGER}[ERROR]{UI.RESET} {e}")
+            # Graceful degradation: ไม่ crash ถ้าเกิดข้อผิดพลาด
+            # ระบบยังรอรับ UDP packet ต่อไป
+            print(f"{UI.DANGER}[ERROR]{UI.RESET} {e} (continuing in degraded mode)")
 
 if __name__ == "__main__":
     try:

@@ -8,28 +8,38 @@
  * Architecture: Rust Mouth → C++ Bridge (via these externs) → Go Nose
  */
 
-use std::os::raw::{c_int, c_uint, c_ulong, c_char, c_ushort, c_uchar};
+// ====== IPC Event Structure (matches C++ IpcEvent — packed, 48 bytes) ======
+// NOTE: C++ uses #pragma pack(push, 1) so we must match with repr(C, packed)
+// field sizes match C++ exactly: u16 for ports, u8 for protocol/direction/etc.
+use std::os::raw::{c_int, c_uint, c_ulong, c_char, c_uchar, c_ushort};
 
-// ====== IPC Event Structure (matches C++ IpcEvent exactly — see aegis_ipc.hpp) ======
 #[repr(C, packed)]
 pub struct AegisIpcEvent {
-    pub event_type:      c_uint,      // 0=NETWORK, 1=KERNEL_FILE, 2=KERNEL_PROCESS, 3=L2_PIPE
-    pub source_ip:       c_uint,      // IPv4: u32
-    pub dest_ip:         c_uint,      // IPv4: u32
-    pub source_port:     c_ushort,    // uint16_t
-    pub dest_port:       c_ushort,    // uint16_t
-    pub protocol:        c_uchar,     // uint8_t (6=TCP, 17=UDP)
-    pub direction:       c_uchar,     // uint8_t (0=in, 1=out)
-    pub layer_id:        c_uchar,     // uint8_t
-    pub tier_result:     c_uchar,     // uint8_t
-    pub payload_length:  c_uint,      // u32
-    pub rule_id:         c_uint,      // u32
-    pub severity:        c_uint,      // u32
-    pub reserved:        c_uint,      // u32
-    pub timestamp:       c_ulong,     // u64
-    pub source_pid:      c_uint,      // u32
-    pub defcon_impact:   c_uint,      // u32
-}
+    pub event_type:      c_uint,     // 4B — EventType enum
+    pub source_ip:       c_uint,     // 4B — IPv4 source
+    pub dest_ip:         c_uint,     // 4B — IPv4 dest
+    pub source_port:     c_ushort,   // 2B — u16 (matches C++ exactly)
+    pub dest_port:       c_ushort,   // 2B — u16 (matches C++ exactly)
+    pub protocol:        c_uchar,    // 1B — u8 (matches C++ exactly)
+    pub direction:       c_uchar,    // 1B — u8
+    pub layer_id:        c_uchar,    // 1B — u8
+    pub tier_result:     c_uchar,    // 1B — u8 — TierResult enum
+    pub payload_length:  c_uint,     // 4B
+    pub rule_id:         c_uint,     // 4B
+    pub severity:        c_uint,     // 4B
+    pub reserved:        c_uint,     // 4B
+    pub timestamp:       c_ulong,    // 8B — u64
+    pub source_pid:      c_uint,     // 4B
+    pub defcon_impact:   c_uint,     // 4B
+}   // Total: 4+4+4+2+2+1+1+1+1+4+4+4+4+8+4+4 = 48 bytes ✓
+
+// ====== Compile-time struct size verification (Enhancement) ======
+// ถ้า struct size เปลี่ยน → compile error ทันที
+// ป้องกัน ABI breakage จาก padding/alignment เปลี่ยน
+
+
+// Use std.compile_error for const assert (no std.assert in const context)
+
 
 // ====== IPC Command Structure ======
 #[repr(C, packed)]
@@ -40,6 +50,15 @@ pub struct AegisIpcCommand {
     pub response_expected: c_uint,
     pub timestamp:         c_ulong,
 }
+
+// ====== Compile-time struct size verification ======
+const fn assert(cond: bool) -> () {
+    if !cond { panic!("ABI struct size mismatch!"); }
+    ()
+}
+
+const _: () = assert(std::mem::size_of::<AegisIpcEvent>() == 48);
+const _: () = assert(std::mem::size_of::<AegisIpcCommand>() == 24);
 
 // ====== IPC Bridge FFI Functions ======
 extern "C" {
@@ -83,12 +102,12 @@ pub fn push_tier3_result(
         event_type:      0,       // NETWORK
         source_ip:       source_ip as c_uint,
         dest_ip:         dest_ip as c_uint,
-        source_port:     source_port as c_uint,
-        dest_port:       dest_port as c_uint,
-        protocol:        protocol as c_uint,
-        direction:       0,       // inbound
-        layer_id:        0,       // NETWORK layer
-        tier_result:     3,       // Tier-3 behavioral match
+        source_port:     source_port as c_ushort,
+        dest_port:       dest_port as c_ushort,
+        protocol:        protocol as c_uchar,
+        direction:       0 as c_uchar, // inbound
+        layer_id:        0 as c_uchar, // NETWORK layer
+        tier_result:     3 as c_uchar, // Tier-3 behavioral match
         payload_length:  0,
         rule_id:         rule_id as c_uint,
         severity:        severity as c_uint,

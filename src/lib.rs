@@ -17,6 +17,20 @@
 // =====================================================================
 
 use std::slice;
+use std::sync::atomic::AtomicUsize;
+
+// ====== Metric Counters for Health State Changes (Enhancement) ======
+// ใช้สำหรับ monitoring: ถ้า reject_count พุ่ง → อาจมี attack
+// ถ้า panic_count > 0 → FFI มีปัญหา ต้อง investigate
+// ถ้า accept_count ต่ำ → อาจมี false positive
+// All counters are mutable statics (safe in single-writer FFI context)
+static mut ACCEPT_COUNT: u64 = 0;
+static mut REJECT_COUNT: u64 = 0;
+static mut REJECT_SUSPICIOUS_SIZE: u64 = 0;
+static mut REJECT_NOP_SLED: u64 = 0;
+static mut REJECT_OVERFLOW: u64 = 0;
+static mut REJECT_MALFORMED: u64 = 0;
+static mut PANIC_COUNT: u64 = 0;
 
 // =====================================================================
 // CONFIG: Thresholds สำหรับ Tier-3 checks
@@ -34,32 +48,67 @@ const METASPLOIT_MARKER: [u8; 8] = *b"meterpre"; // meterpreter string
 // =====================================================================
 // MAIN FFI ENTRY POINT
 // =====================================================================
+// IMPORTANT: Return u8 (not bool) for C ABI compatibility!
+// C bool size varies by platform (1 byte on MSVC, 4 bytes on some GCC)
+// Using u8 eliminates ABI mismatch: 0 = unsafe, 1 = safe
+//
+// CRITICAL: Rust panic MUST NOT cross FFI boundary!
+// If any check panics, catch_unwind returns 0 (unsafe) instead of UB.
+// This is a fundamental safety rule: FFI functions must be panic-safe.
 #[no_mangle]
-pub extern "C" fn validate_payload_safety(data: *const u8, len: usize) -> bool {
+pub extern "C" fn validate_payload_safety(data: *const u8, len: usize) -> u8 {
+    // ====== Catch Unwind: prevent panic from crossing FFI boundary ======
+    // If the inner function panics, we return 0 (unsafe) instead of UB.
+    // This is MANDATORY for extern "C" functions per Rust RFC.
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        validate_payload_safety_inner(data, len)
+    })) {
+        Ok(result) => result,
+        Err(_) => {
+            // Panic caught! Increment metric, return unsafe
+            unsafe { PANIC_COUNT += 1; }
+            0 // Treat as unsafe — conservative default
+        }
+    }
+}
+
+/// Inner implementation — may panic (caught by outer wrapper)
+/// Uses Borrow/Slice (zero-copy) instead of ownership transfer:
+///   - payload: &[u8] is a borrowed slice — no allocation, no ownership move
+///   - The caller (Zig) owns the data; Rust only borrows it for inspection
+///   - This follows Rust's ownership rules: borrow, don't move
+fn validate_payload_safety_inner(data: *const u8, len: usize) -> u8 {
     // 1. ป้องกัน Null Pointer + Zero-length (DoS / malformed input)
     if data.is_null() || len == 0 {
-        return false;
+        unsafe { REJECT_COUNT += 1; }
+        return 0; // unsafe
     }
 
-    // 2. สร้าง Slice อ่านข้อมูลแบบ Zero-copy (Ownership โดย Rust แต่ไม่ free)
+    // 2. สร้าง Slice อ่านข้อมูลแบบ Zero-copy (Borrow — ไม่ move ownership)
+    //    Ownership: Zig เป็นเจ้าของ data, Rust เพียง borrow เพื่ออ่าน
     let payload = unsafe { slice::from_raw_parts(data, len) };
 
     // 3. Tier-3 Behavior Validation — เรียกตามลำดับความรุนแรง
     if check_suspicious_size(payload) {
-        return false;
+        unsafe { REJECT_COUNT += 1; REJECT_SUSPICIOUS_SIZE += 1; }
+        return 0; // unsafe
     }
     if check_nop_sled(payload) {
-        return false;
+        unsafe { REJECT_COUNT += 1; REJECT_NOP_SLED += 1; }
+        return 0; // unsafe
     }
     if check_buffer_overflow_pattern(payload) {
-        return false;
+        unsafe { REJECT_COUNT += 1; REJECT_OVERFLOW += 1; }
+        return 0; // unsafe
     }
     if check_malformed_headers(payload) {
-        return false;
+        unsafe { REJECT_COUNT += 1; REJECT_MALFORMED += 1; }
+        return 0; // unsafe
     }
 
     // ผ่านการตรวจสอบทั้งหมด — ปลอดภัย ส่งต่อไป Tier-1
-    true
+    unsafe { ACCEPT_COUNT += 1; }
+    1 // safe
 }
 
 // =====================================================================
@@ -225,7 +274,167 @@ pub extern "C" fn tier3_check_count() -> u32 {
 /// คืนชื่อ version ของ Tier-3 shield (สำหรับ log)
 #[no_mangle]
 pub extern "C" fn tier3_version() -> *const u8 {
-    b"Tier-3 Memory Safety Shield v2.0\0".as_ptr()
+    b"Tier-3 Memory Safety Shield v3.0 (u8-ABI)\0".as_ptr()
+}
+
+// =====================================================================
+// SELF-TEST — เรียกจาก Zig หลัง load DLL เพื่อ verify ว่า FFI ทำงาน
+// =====================================================================
+
+/// FFI Self-Test: return 0xA5A5A5A5 if the Shield works correctly
+/// Zig calls this after loading sec_monitor.dll to verify:
+///   1. Symbol lookup succeeded
+///   2. Calling convention matches
+///   3. Return value size is correct (u32)
+#[no_mangle]
+pub extern "C" fn tier3_self_test() -> u32 {
+    // Test 1: Validate a safe payload should return 1 (safe)
+    let safe = b"GET / HTTP/1.1\r\n";
+    let safe_result = validate_payload_safety(safe.as_ptr(), safe.len());
+
+    // Test 2: Validate null should return 0 (unsafe)
+    let null_result = validate_payload_safety(std::ptr::null(), 0);
+
+    // If both tests pass, return magic value
+    if safe_result == 1 && null_result == 0 {
+        0xA5A5A5A5  // Magic: Shield works!
+    } else {
+        0xDEADDEAD  // Shield is broken!
+    }
+}
+
+/// FFI Ping: Simple function that returns input + 1
+/// Used to verify basic FFI call mechanism
+#[no_mangle]
+pub extern "C" fn tier3_ping(val: u32) -> u32 {
+    val.wrapping_add(1)
+}
+
+// =====================================================================
+// METRIC API — สำหรับ monitoring health state changes via FFI
+// =====================================================================
+
+/// Get all Tier-3 metrics as packed u64 values
+/// Returns [accept_count, reject_count, panic_count] via output pointers
+#[no_mangle]
+pub extern "C" fn tier3_get_metrics(
+    out_accept: *mut u64,
+    out_reject: *mut u64,
+    out_panic: *mut u64,
+) {
+    unsafe {
+        if !out_accept.is_null() { *out_accept = ACCEPT_COUNT; }
+        if !out_reject.is_null() { *out_reject = REJECT_COUNT; }
+        if !out_panic.is_null() { *out_panic = PANIC_COUNT; }
+    }
+}
+
+/// Get per-category reject counts
+#[no_mangle]
+pub extern "C" fn tier3_get_reject_detail(
+    out_suspicious_size: *mut u64,
+    out_nop_sled: *mut u64,
+    out_overflow: *mut u64,
+    out_malformed: *mut u64,
+) {
+    unsafe {
+        if !out_suspicious_size.is_null() { *out_suspicious_size = REJECT_SUSPICIOUS_SIZE; }
+        if !out_nop_sled.is_null() { *out_nop_sled = REJECT_NOP_SLED; }
+        if !out_overflow.is_null() { *out_overflow = REJECT_OVERFLOW; }
+        if !out_malformed.is_null() { *out_malformed = REJECT_MALFORMED; }
+    }
+}
+
+// =====================================================================
+// QSBR (Quiescent State-Based RCU) — สำหรับ Rust side shared data access
+// =====================================================================
+// QSBR เป็น variant ของ RCU ที่เหมาะกับ Rust:
+//   - Thread ประกาศ "quiescent state" เมื่อไม่ได้อ่าน shared data
+//   - Reclamation เกิดขึ้นเมื่อทุก thread ผ่าน quiescent state
+//   - ไม่ต้องมี epoch counter (เบากว่า EBR)
+//
+// ใน AEGIS: Zig ใช้ EBR, Rust ใช้ QSBR เมื่อต้อง access shared state
+//           ผ่าน C++ Bridge (เช่น DEFCON counters)
+
+pub mod qsbr {
+    use std::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
+
+    const MAX_QSBR_THREADS: usize = 64;
+
+    #[allow(dead_code)]
+    static GLOBAL_EPOCH: AtomicUsize = AtomicUsize::new(1);
+    static THREAD_COUNT: AtomicUsize = AtomicUsize::new(0);
+    static QUIESCENT: [AtomicBool; MAX_QSBR_THREADS] = {
+        const FALSE: AtomicBool = AtomicBool::new(true); // Start as quiescent
+        [FALSE; MAX_QSBR_THREADS]
+    };
+
+    /// Register current thread for QSBR — returns slot index
+    pub fn register() -> usize {
+        let slot = THREAD_COUNT.fetch_add(1, Ordering::Relaxed);
+        if slot < MAX_QSBR_THREADS {
+            QUIESCENT[slot].store(true, Ordering::Release);
+        }
+        slot
+    }
+
+    /// Unregister thread from QSBR
+    pub fn unregister(slot: usize) {
+        if slot < MAX_QSBR_THREADS {
+            QUIESCENT[slot].store(false, Ordering::Release);
+        }
+        THREAD_COUNT.fetch_sub(1, Ordering::Relaxed);
+    }
+
+    /// Enter read-side critical section
+    pub fn read_lock(slot: usize) {
+        if slot < MAX_QSBR_THREADS {
+            QUIESCENT[slot].store(false, Ordering::Release);
+        }
+    }
+
+    /// Leave read-side critical section (announce quiescent state)
+    pub fn read_unlock(slot: usize) {
+        if slot < MAX_QSBR_THREADS {
+            QUIESCENT[slot].store(true, Ordering::Release);
+        }
+    }
+
+    /// Check if all threads are in quiescent state (safe to reclaim)
+    /// Memory Barrier: Uses Acquire/Release ordering to ensure
+    /// all prior reads from shared data are visible before reclaim
+    pub fn all_quiescent() -> bool {
+        // Full memory barrier before checking — ensures all prior
+        // reads from shared data are complete and visible
+        std::sync::atomic::fence(Ordering::SeqCst);
+        let count = THREAD_COUNT.load(Ordering::Acquire);
+        for i in 0..count.min(MAX_QSBR_THREADS) {
+            if !QUIESCENT[i].load(Ordering::Acquire) {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Bounded deferred queue with backpressure (Enhancement)
+    /// ถ้า pending reclaims เกิน MAX_PENDING → force reclaim
+    const MAX_PENDING_RECLAIMS: usize = 128;
+    static PENDING_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+    pub fn defer_reclaim() -> bool {
+        let count = PENDING_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
+        if count > MAX_PENDING_RECLAIMS {
+            // Backpressure: too many pending — force reclaim
+            PENDING_COUNT.store(0, Ordering::Release);
+            false // Caller should reclaim now
+        } else {
+            true // OK to defer
+        }
+    }
+
+    pub fn complete_reclaim() {
+        PENDING_COUNT.fetch_sub(1, Ordering::Relaxed);
+    }
 }
 
 // =====================================================================
@@ -238,84 +447,87 @@ mod tests {
     #[test]
     fn test_safe_payload_passes() {
         let safe = b"GET /index.html HTTP/1.1\r\nHost: example.com\r\n\r\n";
-        assert!(validate_payload_safety(safe.as_ptr(), safe.len()));
+        assert_eq!(validate_payload_safety(safe.as_ptr(), safe.len()), 1);
     }
 
     #[test]
     fn test_null_pointer_rejected() {
-        assert!(!validate_payload_safety(std::ptr::null(), 0));
+        assert_eq!(validate_payload_safety(std::ptr::null(), 0), 0);
     }
 
     #[test]
     fn test_zero_length_rejected() {
         let empty: [u8; 0] = [];
-        assert!(!validate_payload_safety(empty.as_ptr(), 0));
+        assert_eq!(validate_payload_safety(empty.as_ptr(), 0), 0);
     }
 
     #[test]
     fn test_nop_sled_detected() {
-        // 100 NOP bytes — definitely a sled (>50 threshold + matches 8-byte marker)
         let sled = [0x90u8; 100];
-        assert!(!validate_payload_safety(sled.as_ptr(), sled.len()));
+        assert_eq!(validate_payload_safety(sled.as_ptr(), sled.len()), 0);
     }
 
     #[test]
     fn test_short_nop_sequence_passes() {
-        // 3 NOP bytes embedded in normal traffic — too short to be a sled
-        // (NOP sled threshold = 50, SHELLCODE_MARKER = 8 bytes)
         let payload = b"GET /index.html HTTP/1.1\x90\x90\x90\r\nHost: example.com\r\n\r\n";
-        assert!(validate_payload_safety(payload.as_ptr(), payload.len()));
+        assert_eq!(validate_payload_safety(payload.as_ptr(), payload.len()), 1);
     }
 
     #[test]
     fn test_broken_nop_sled_passes() {
-        // 60 NOP bytes broken in the middle → two runs of 30 each (both < 50)
-        // and no 8-consecutive NOPs after breaking every 7 bytes
-        let mut broken = [0x41u8; 100]; // fill with 'A' (non-NOP)
-        // Insert short NOP runs (7 bytes each, separated by 'A')
+        let mut broken = [0x41u8; 100];
         for i in 0..100 {
             if i % 8 < 7 {
                 broken[i] = 0x90;
             }
         }
-        // Max NOP run = 7 (< 8-byte marker, < 50 threshold) → should pass
-        assert!(validate_payload_safety(broken.as_ptr(), broken.len()));
+        assert_eq!(validate_payload_safety(broken.as_ptr(), broken.len()), 1);
     }
 
     #[test]
     fn test_oversized_packet_detected() {
         let big = vec![0x41u8; 70000];
-        // ไม่ใช่ valid IP header → should be rejected
-        assert!(!validate_payload_safety(big.as_ptr(), big.len()));
+        assert_eq!(validate_payload_safety(big.as_ptr(), big.len()), 0);
     }
 
     #[test]
     fn test_heap_spray_detected() {
         let spray = [0x0cu8; 250];
-        assert!(!validate_payload_safety(spray.as_ptr(), spray.len()));
+        assert_eq!(validate_payload_safety(spray.as_ptr(), spray.len()), 0);
     }
 
     #[test]
     fn test_meterpreter_string_detected() {
         let meterpreter = b"POST /meterpreter HTTP/1.1\r\n";
-        assert!(!validate_payload_safety(meterpreter.as_ptr(), meterpreter.len()));
+        assert_eq!(validate_payload_safety(meterpreter.as_ptr(), meterpreter.len()), 0);
     }
 
     #[test]
     fn test_all_zero_payload_detected() {
         let zeros = [0x00u8; 16];
-        assert!(!validate_payload_safety(zeros.as_ptr(), zeros.len()));
+        assert_eq!(validate_payload_safety(zeros.as_ptr(), zeros.len()), 0);
     }
 
     #[test]
     fn test_all_ff_payload_detected() {
         let ffs = [0xFFu8; 16];
-        assert!(!validate_payload_safety(ffs.as_ptr(), ffs.len()));
+        assert_eq!(validate_payload_safety(ffs.as_ptr(), ffs.len()), 0);
     }
 
     #[test]
     fn test_repeated_pattern_detected() {
         let pattern = b"ababababababababab";
-        assert!(!validate_payload_safety(pattern.as_ptr(), pattern.len()));
+        assert_eq!(validate_payload_safety(pattern.as_ptr(), pattern.len()), 0);
+    }
+
+    #[test]
+    fn test_self_test_returns_magic() {
+        assert_eq!(tier3_self_test(), 0xA5A5A5A5);
+    }
+
+    #[test]
+    fn test_ping_returns_increment() {
+        assert_eq!(tier3_ping(41), 42);
+        assert_eq!(tier3_ping(0), 1);
     }
 }

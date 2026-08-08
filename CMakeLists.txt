@@ -34,6 +34,19 @@ add_library(aegis_ipc SHARED
 target_include_directories(aegis_ipc PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
+# Pre-link: Delete old DLL if locked by another process
+# LNK1104 fix — try to remove the DLL before linker writes to it
+if(MSVC)
+    add_custom_command(TARGET aegis_ipc PRE_LINK
+        COMMAND ${CMAKE_COMMAND} -E remove -f
+            "${CMAKE_BINARY_DIR}/Release/aegis_ipc.dll"
+            "${CMAKE_BINARY_DIR}/Release/aegis_ipc.lib"
+            "${CMAKE_BINARY_DIR}/$<CONFIG>/aegis_ipc.dll"
+            "${CMAKE_BINARY_DIR}/$<CONFIG>/aegis_ipc.lib"
+        COMMENT "[AEGIS] Removing old aegis_ipc.dll before linking..."
+    )
+endif()
+
 
 # ====== Bridge Standalone Executable ======
 add_executable(aegis_bridge

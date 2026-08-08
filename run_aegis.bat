@@ -3,11 +3,23 @@ echo ===================================================
 echo      Cleaning up old Aegis processes...
 echo ===================================================
 :: ปิด process เก่า ๆ ก่อน start ใหม่
+:: ปิด process เก่าๆ ก่อน start ใหม่ — ต้อง kill ให้หมดเพื่อปล่อย aegis_ipc.dll lock
 taskkill /F /IM aegis-nids.exe >nul 2>&1
 taskkill /F /IM aegis_bridge.exe >nul 2>&1
+taskkill /F /IM aegis_bridge_test.exe >nul 2>&1
 taskkill /F /IM windows_sec_monitor.exe >nul 2>&1
-taskkill /F /IM python.exe /FI "WINDOWTITLE eq AEGIS*" >nul 2>&1
-taskkill /F /IM go.exe /FI "WINDOWTITLE eq AEGIS*" >nul 2>&1
+taskkill /F /IM aegis-dashboard.exe >nul 2>&1
+:: Kill Python processes that loaded aegis_ipc.dll via ctypes
+taskkill /F /FI "WINDOWTITLE eq AEGIS BRAIN*" >nul 2>&1
+taskkill /F /FI "WINDOWTITLE eq AEGIS CORE*" >nul 2>&1
+taskkill /F /FI "WINDOWTITLE eq AEGIS NOSE*" >nul 2>&1
+taskkill /F /FI "WINDOWTITLE eq AEGIS MOUTH*" >nul 2>&1
+taskkill /F /FI "WINDOWTITLE eq AEGIS DASHBOARD*" >nul 2>&1
+:: Wait for DLL release
+timeout /t 1 /nobreak >nul
+:: Try deleting old DLL to prevent LNK1104
+del /F /Q "build\Release\aegis_ipc.dll" >nul 2>&1
+
 
 echo ===================================================
 echo      [1/6] Building C++ IPC Bridge (CMake)...
@@ -77,10 +89,14 @@ start "AEGIS BRAIN (Python)" cmd /k "python windows_brain.py"
 echo [6/6] Starting remaining subsystems...
 timeout /t 1 /nobreak > NUL
 start "AEGIS NOSE (Go)" cmd /k "go run windows_perf.go"
-start "AEGIS MOUTH (Rust)" cmd /k "rustc windows_sec_monitor.rs && windows_sec_monitor.exe"
+start "AEGIS MOUTH (Rust)" cmd /k "cargo build --release && target\release\sec_monitor.dll"
 
 echo.
 echo ===================================================
+echo  Starting AEGIS Dashboard...
+start "AEGIS DASHBOARD (Rust)" cmd /k "cd aegis-dashboard-rust && cargo run --release"
+timeout /t 1 /nobreak > NUL
+
 echo  All subsystems started!
 echo  - AEGIS BRIDGE (C++)       : IPC hub + Packet Parser + DEFCON
 echo  - AEGIS CORE (Zig)         : NIDS engine + 5 threads + Bridge
@@ -95,6 +111,6 @@ echo.
 echo  Optional: run 'python aegis_console.py' in another terminal
 echo  for rule management UI + threat graph viewer.
 echo.
-echo  Next.js Dashboard: cd to dashboard dir and run 'npm run dev'
+echo  Rust Dashboard: cd aegis-dashboard-rust && cargo run --release
 echo.
 pause
