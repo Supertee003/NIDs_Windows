@@ -5,4 +5,8 @@ edition = "2021"
 
 [lib]
 name = "sec_monitor"
-crate-type = ["cdylib", "staticlib"]
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[[bin]]
+name = "windows_sec_monitor"
+path = "windows_sec_monitor.rs"

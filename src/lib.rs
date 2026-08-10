@@ -17,8 +17,6 @@
 // =====================================================================
 
 use std::slice;
-use std::sync::atomic::AtomicUsize;
-
 // ====== Metric Counters for Health State Changes (Enhancement) ======
 // ใช้สำหรับ monitoring: ถ้า reject_count พุ่ง → อาจมี attack
 // ถ้า panic_count > 0 → FFI มีปัญหา ต้อง investigate

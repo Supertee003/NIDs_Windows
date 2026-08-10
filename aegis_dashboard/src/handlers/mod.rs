@@ -12,6 +12,7 @@ use tokio::sync::broadcast;
 use dashmap::DashMap;
 
 /// Shared application state
+#[derive(Clone)]
 pub struct AppState {
     pub tx: broadcast::Sender<String>,
     pub stats: Arc<DashMap<String, u64>>,

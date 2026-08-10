@@ -19,11 +19,16 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(exe);
     exe.linkLibC();
 
+    // Link ws2_32 for Winsock2 ioctlsocket() (non-blocking UDP socket on Windows)
+    exe.linkSystemLibrary("ws2_32");
+
+    // Link ws2_32 for Winsock2 ioctlsocket() (non-blocking UDP socket on Windows)
+    exe.linkSystemLibrary("ws2_32");
+
     // Rust FFI (sec_monitor.dll) — Tier-0 Memory Safety Shield
     // Only link if -Dlink-rust is set AND the library exists
     if (link_rust) {
         exe.addLibraryPath(.{ .cwd_relative = "target/release" });
-        exe.linkSystemLibrary("sec_monitor");
     }
 
     // C++ IPC Bridge (aegis_ipc.dll) — Zig Core ↔ Bridge ↔ Dashboard
@@ -33,7 +38,6 @@ pub fn build(b: *std.Build) void {
         exe.addLibraryPath(.{ .cwd_relative = "build/Release" });
         exe.addLibraryPath(.{ .cwd_relative = "build/Debug" });
         exe.addLibraryPath(.{ .cwd_relative = "build" });
-        exe.linkSystemLibrary("aegis_ipc");
     }
 
     const run_cmd = b.addRunArtifact(exe);

@@ -651,7 +651,7 @@ pub const SecureRuleSet = struct {
 //        ปลอดภัยกว่า RCU เต็มรูปแบบ และใช้ได้กับ Zig 0.13.0
 // =================================================================
 var active_ruleset: std.atomic.Value(?*SecureRuleSet) = std.atomic.Value(?*SecureRuleSet).init(null);
-var connection_semaphore = std.Thread.Semaphore = .{ .permits = 100 };
+var connection_semaphore: std.Thread.Semaphore = .{ .permits = 100 };
 var active_threads: std.atomic.Value(u32) = std.atomic.Value(u32).init(0);
 var udp_log_sock: posix.socket_t = undefined;
 var udp_log_addr: net.Address = undefined;
@@ -1071,7 +1071,7 @@ const CircuitBreaker = struct {
     open_until: std.atomic.Value(i64) = std.atomic.Value(i64).init(0),
 
     const FAIL_THRESHOLD: u32 = 5;        // Open after 5 consecutive fails
-    const OPEN_DURATION_NS: i64 = 10 * std.time.ns_per_s; // Stay open 10s
+    const OPEN_DURATION_NS: i64 = @as(i64, 10 * std.time.ns_per_s); // Stay open 10s
     const HALF_OPEN_SUCCESS: u32 = 2;     // Close after 2 successes in half-open
 
     pub fn isOpen(self: *CircuitBreaker) bool {
@@ -1132,7 +1132,7 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
     //   ป้องกัน long-running inspect จับ epoch ไว้นานเกิน → ทำให้ reclaim ไม่ทัน
     const ebr_slot = ebrEnter();
     defer ebrLeave(ebr_slot);
-    const ebr_enter_time = std.time.nanoTimestamp();
+    const ebr_enter_time = @as(i64, @intCast(std.time.nanoTimestamp()));
 
     const current_ruleset = active_ruleset.load(.acquire) orelse return false;
     const allocator = current_ruleset.allocator;
@@ -1177,7 +1177,7 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
     // Critical Section Timeout Check (Enhancement):
     // ถ้า inspect ใช้เวลาเกิน 50ms → ปล่อย epoch ชั่วคราวและ re-acquire
     // ป้องกัน long-running packet (jumbo frame, deep scan) จับ epoch นานเกิน
-    const elapsed_ns = std.time.nanoTimestamp() - ebr_enter_time;
+    const elapsed_ns = @as(i64, @intCast(std.time.nanoTimestamp())) - ebr_enter_time;
     if (elapsed_ns > @as(i128, @intCast(50 * std.time.ns_per_ms))) {
         ebrLeave(ebr_slot);
         std.debug.print("[EBR] Critical section timeout ({d}ms) — re-acquiring epoch\n", .{@divTrunc(elapsed_ns, @as(i128, @intCast(std.time.ns_per_ms)))});
