@@ -1,522 +1,497 @@
 """
-AEGIS BRAIN — Tier-2 Deep Inspection Engine (Python)
-====================================================
-UDP listener on 127.0.0.1:9999 receives suspicious packets from Zig Core.
-Runs regex-based deep inspection against compiled rule patterns.
-Enforces IPS policy via Windows Firewall (netsh advfirewall) + C++ Bridge.
+windows_brain.py — AEGIS NIDS Analysis Brain (Layer 4: Python)
 
-3-Layer Architecture:
-  - NETWORK layer: TCP/WFP captured packets (source: L7, L4, L3)
-  - KERNEL_FILE layer: Minifilter filesystem events (source: L7_PIPE, KERNEL_FILE)
-  - KERNEL_PROCESS layer: Process create/exit events (source: KERNEL_PROCESS)
-  - PIPE_MONITOR layer: Named Pipe events (source: L2_PIPE)
+Tier-2 analysis engine that performs deep inspection beyond what the
+Zig Aho-Corasick matcher handles. Responsibilities:
+  - Regex-based protocol anomaly detection
+  - Heuristic malware behavior scoring
+  - TLS certificate chain validation
+  - DNS tunneling detection
+  - Payload entropy analysis (calls Cython accelerator)
 
-Bridge Integration (Phase 1):
-  - Import aegis_bridge_ctypes for C++ IPC Bridge
-  - Push Tier-2 match results to Bridge (for Dashboard)
-  - Use Bridge DEFCON level for IPS policy decisions
-  - Pop events from Bridge queue for cross-subsystem communication
+SecDevOps + Forensics + Hook techniques are applied HERE (analysis phase only):
+  - Pre-analysis hooks:  Inspect packet before regex matching
+  - Post-analysis hooks: Modify verdict after scoring
+  - Forensic hooks:      Trigger Rust shield SHA-256 for evidence preservation
+
+Language: Python 3.11+ (Cython hotspots in .pyx files)
 """
 
-import json, os, socket, re, sys, time
+import ctypes
+import json
+import logging
+import re
 import struct
-import subprocess
-from datetime import datetime
+import time
+import threading
+from collections import defaultdict
+from dataclasses import dataclass, field
+from enum import IntEnum
+from pathlib import Path
+from typing import Callable, Optional
 
-# ====== MessagePack + Length-Prefix Framing (Fix #2) ======
-# Format: [4 bytes: payload length (big-endian)] + [MsgPack payload]
-# Fallback to JSON if MsgPack unavailable (graceful degradation)
+# ─── Logging ───
+logger = logging.getLogger("aegis.brain")
+logger.setLevel(logging.DEBUG)
+
+# ─── ctypes Bridge to Rust Shield (libaegis_shield) ───
 try:
-    import msgpack
-    MSGPACK_AVAILABLE = True
-except ImportError:
-    MSGPACK_AVAILABLE = False
-    print("[AEGIS BRAIN] Warning: msgpack not installed — pip install msgpack")
-    print("[AEGIS BRAIN] Falling back to JSON (less efficient)")
+    _shield = ctypes.CDLL("aegis_shield")
+    _shield.aegis_shield_init.restype = ctypes.c_int32
+    _shield.aegis_shield_submit_packet.restype = ctypes.c_int32
+    _shield.aegis_shield_get_forensic_hash.restype = ctypes.c_int32
+    _shield.aegis_shield_shutdown.restype = None
+    SHIELD_AVAILABLE = True
+except OSError:
+    logger.warning("Rust shield library not found — forensic hashing disabled")
+    SHIELD_AVAILABLE = False
 
-MAX_UDP_PAYLOAD = 65535  # UDP max payload size
-
-# ====== Sanity Check + Circuit Breaker + Sequence Tracking (Enhancement) ======
-class UdpCircuitBreaker:
-    """Circuit Breaker สำหรับ Zig→Brain UDP channel.
-    ถ้า decode ล้มติดต่อกันเกิน threshold → เปิด circuit (หยุดรับชั่วคราว)
-    """
-    def __init__(self, fail_threshold=10, open_duration=5.0):
-        self.fail_threshold = fail_threshold
-        self.open_duration = open_duration
-        self.fail_count = 0
-        self.state = "closed"  # closed / open / half-open
-        self.open_until = 0.0
-
-    def allow(self):
-        import time
-        if self.state == "open":
-            if time.monotonic() >= self.open_until:
-                self.state = "half-open"
-                return True
-            return False
-        return True
-
-    def record_success(self):
-        if self.state == "half-open":
-            self.state = "closed"
-        self.fail_count = 0
-
-    def record_failure(self):
-        self.fail_count += 1
-        if self.fail_count >= self.fail_threshold:
-            import time
-            self.state = "open"
-            self.open_until = time.monotonic() + self.open_duration
-            print(f"[CB] Brain Circuit Breaker OPEN — {self.fail_count} decode failures, backing off {self.open_duration}s")
-
-brain_circuit_breaker = UdpCircuitBreaker()
-
-# Sequence number tracking for UDP reordering detection
-_last_sequence: int = 0
-_reorder_count: int = 0
-_gap_count: int = 0
-
-def sanity_check_decoded(data: dict) -> bool:
-    """Sanity check ข้อมูลหลัง decode — ป้องกัน corrupted data จาก UDP errors.
-    ตรวจ: required fields, type validity, range validity, not empty.
-    """
-    if not isinstance(data, dict):
-        return False
-    # Required fields from Zig alert
-    required = ["attack_type", "policy", "source"]
-    for field in required:
-        if field not in data:
-            return False
-        val = data[field]
-        if not isinstance(val, (str, int, float)):
-            return False
-    # IP should be uint32 (0 to 4294967295) or string
-    for ip_field in ["source_ip", "dest_ip"]:
-        if ip_field in data:
-            ip = data[ip_field]
-            if isinstance(ip, int) and (ip < 0 or ip > 0xFFFFFFFF):
-                return False
-    # Port should be 0-65535
-    for port_field in ["source_port", "dest_port"]:
-        if port_field in data:
-            port = data[port_field]
-            if isinstance(port, int) and (port < 0 or port > 65535):
-                return False
-    # Protocol should be 0-255
-    if "protocol" in data:
-        proto = data["protocol"]
-        if isinstance(proto, int) and (proto < 0 or proto > 255):
-            return False
-    return True
-
-def track_sequence(data: dict):
-    """Track sequence numbers to detect UDP reordering/gaps.
-    Zig can optionally include 'seq' field in MsgPack payloads.
-    """
-    global _last_sequence, _reorder_count, _gap_count
-    seq = data.get("seq")
-    if seq is None:
-        return  # No sequence tracking
-    if isinstance(seq, int) and seq > 0:
-        if seq < _last_sequence:
-            _reorder_count += 1
-            if _reorder_count % 100 == 1:
-                print(f"[UDP] Reordering detected: seq={seq} < last={_last_sequence} (total reorder: {_reorder_count})")
-        elif seq > _last_sequence + 1:
-            gap = seq - _last_sequence - 1
-            _gap_count += gap
-            if _gap_count > 100 and _gap_count % 100 == 0:
-                print(f"[UDP] Packet loss: gap of {gap} after seq={_last_sequence} (total gaps: {_gap_count})")
-        _last_sequence = max(_last_sequence, seq)
-
-
-def recv_length_prefixed(sock, timeout=1.0):
-    """
-    Read a length-prefixed message from UDP socket.
-    Format: [4B length BE] + [MsgPack payload]
-    Returns decoded dict or None on error.
-    """
-    sock.settimeout(timeout)
-    try:
-        msg_bytes, addr = sock.recvfrom(MAX_UDP_PAYLOAD)
-    except socket.timeout:
-        return None, None
-
-    if len(msg_bytes) < 4:
-        # Too short for length prefix — try JSON fallback
-        try:
-            raw = msg_bytes.decode("utf-8", errors="ignore").strip()
-            return json.loads(raw), addr
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            return None, addr
-
-    # Read 4-byte length prefix (big-endian)
-    payload_len = struct.unpack(">I", msg_bytes[:4])[0]
-    payload = msg_bytes[4:]
-
-    # Verify payload length matches
-    if payload_len > 0 and len(payload) >= payload_len:
-        payload = payload[:payload_len]
-
-    # Try MsgPack decode first
-    if MSGPACK_AVAILABLE:
-        try:
-            decoded = msgpack.unpackb(payload, raw=False)
-            if isinstance(decoded, dict):
-                return decoded, addr
-        except Exception:
-            pass
-
-    # Fallback: try JSON
-    try:
-        raw = payload.decode("utf-8", errors="ignore").strip()
-        return json.loads(raw), addr
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        # Last resort: try the entire message as JSON (legacy compatibility)
-        try:
-            raw = msg_bytes.decode("utf-8", errors="ignore").strip()
-            return json.loads(raw), addr
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            return None, addr
-
-# 🔗 C++ IPC Bridge — เชื่อม Brain ↔ Bridge ↔ Dashboard
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "bridge"))
+# ─── ctypes Bridge to IPC DLL (aegis_ipc.dll) ───
 try:
-    import aegis_bridge_ctypes as bridge
-    BRIDGE_AVAILABLE = True
+    _ipc = ctypes.CDLL("aegis_ipc")
+    _ipc.aegis_ipc_init.restype = ctypes.c_int32
+    _ipc.aegis_ipc_get_stats.restype = ctypes.c_int32
+    IPC_AVAILABLE = True
+except OSError:
+    logger.warning("IPC bridge DLL not found — stats unavailable")
+    IPC_AVAILABLE = False
+
+
+# ═══════════════════════════════════════════════════════════════
+# Data Structures
+# ═══════════════════════════════════════════════════════════════
+
+class Severity(IntEnum):
+    INFO     = 0
+    LOW      = 1
+    MEDIUM   = 2
+    HIGH     = 3
+    CRITICAL = 4
+
+
+class HookAction(IntEnum):
+    PASS     = 0   # Continue normal processing
+    DROP     = 1   # Silently discard
+    ALERT    = 2   # Raise alert, continue
+    PRESERVE = 3   # Alert + forensic preservation
+
+
+@dataclass
+class PacketContext:
+    """Context passed to all analysis hooks."""
+    src_ip: int
+    dst_ip: int
+    src_port: int
+    dst_port: int
+    ip_proto: int
+    payload: bytes
+    timestamp_ms: int
+    stream_id: int = 0
+    process_id: int = 0
+    direction: int = 0  # 0=inbound, 1=outbound
+
+
+@dataclass
+class AnalysisVerdict:
+    """Result of analysis for a single packet/stream."""
+    action: HookAction = HookAction.PASS
+    severity: Severity = Severity.INFO
+    rule_name: str = ""
+    rule_id: int = 0
+    score: float = 0.0          # Heuristic score [0.0, 1.0]
+    forensic_hash: Optional[bytes] = None  # SHA-256 if preserved
+    tags: list = field(default_factory=list)
+
+
+# ═══════════════════════════════════════════════════════════════
+# Hook System (Analysis-Phase Intercept Framework)
+# ═══════════════════════════════════════════════════════════════
+
+PreHookFn = Callable[[PacketContext], HookAction]
+PostHookFn = Callable[[PacketContext, AnalysisVerdict], HookAction]
+
+
+class HookRegistry:
+    """
+    Central registry for analysis-phase hooks.
+    Hooks implement SecDevOps, forensics, and penetration-testing
+    interceptors WITHOUT modifying core analysis logic.
+    """
+    MAX_HOOKS = 32
+
+    def __init__(self):
+        self._pre_hooks: list[PreHookFn] = []
+        self._post_hooks: list[PostHookFn] = []
+
+    def register_pre(self, hook: PreHookFn) -> None:
+        if len(self._pre_hooks) >= self.MAX_HOOKS:
+            raise RuntimeError(f"Max pre-hooks ({self.MAX_HOOKS}) exceeded")
+        self._pre_hooks.append(hook)
+        logger.debug(f"Registered pre-hook: {hook.__name__}")
+
+    def register_post(self, hook: PostHookFn) -> None:
+        if len(self._post_hooks) >= self.MAX_HOOKS:
+            raise RuntimeError(f"Max post-hooks ({self.MAX_HOOKS}) exceeded")
+        self._post_hooks.append(hook)
+        logger.debug(f"Registered post-hook: {hook.__name__}")
+
+    def run_pre(self, ctx: PacketContext) -> HookAction:
+        """Run all pre-hooks. Returns first non-PASS action or PASS."""
+        for hook in self._pre_hooks:
+            result = hook(ctx)
+            if result != HookAction.PASS:
+                return result
+        return HookAction.PASS
+
+    def run_post(self, ctx: PacketContext, verdict: AnalysisVerdict) -> HookAction:
+        """Run all post-hooks. Returns aggregated action."""
+        final_action = HookAction.PASS
+        for hook in self._post_hooks:
+            result = hook(ctx, verdict)
+            if result > final_action:  # PRESERVE > ALERT > DROP > PASS
+                final_action = result
+        return final_action
+
+
+# ═══════════════════════════════════════════════════════════════
+# Detection Rules
+# ═══════════════════════════════════════════════════════════════
+
+@dataclass
+class DetectionRule:
+    id: int
+    name: str
+    severity: Severity
+    pattern: str            # Regex pattern
+    category: str           # "exploit", "malware", "anomaly", "forensic"
+    description: str = ""
+    enabled: bool = True
+    _compiled: re.Pattern = field(default=None, repr=False, init=False)
+
+    def __post_init__(self):
+        if self.pattern:
+            try:
+                self._compiled = re.compile(self.pattern, re.DOTALL | re.IGNORECASE)
+            except re.error as e:
+                logger.error(f"Rule {self.id} '{self.name}': invalid regex: {e}")
+                self.enabled = False
+
+    def match(self, payload: bytes) -> Optional[re.Match]:
+        if not self.enabled or not self._compiled:
+            return None
+        return self._compiled.search(payload)
+
+
+class RuleEngine:
+    """Manages detection rules loaded from Rules.json."""
+
+    def __init__(self):
+        self.rules: dict[int, DetectionRule] = {}
+        self._lock = threading.RLock()
+
+    def load_from_file(self, path: Path) -> int:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        count = 0
+        with self._lock:
+            for rule_data in data.get("rules", []):
+                rule = DetectionRule(
+                    id=rule_data["id"],
+                    name=rule_data["name"],
+                    severity=Severity(rule_data.get("severity", 2)),
+                    pattern=rule_data.get("pattern", ""),
+                    category=rule_data.get("category", "anomaly"),
+                    description=rule_data.get("description", ""),
+                    enabled=rule_data.get("enabled", True),
+                )
+                self.rules[rule.id] = rule
+                count += 1
+        logger.info(f"Loaded {count} rules from {path}")
+        return count
+
+    def match_all(self, payload: bytes) -> list[tuple[DetectionRule, re.Match]]:
+        results = []
+        with self._lock:
+            for rule in self.rules.values():
+                m = rule.match(payload)
+                if m:
+                    results.append((rule, m))
+        return results
+
+
+# ═══════════════════════════════════════════════════════════════
+# Cython Accelerator Imports (5 hotspots)
+# ═══════════════════════════════════════════════════════════════
+
+try:
+    from aegis_hotspots import entropy_calc      as _cy_entropy
+    from aegis_hotspots import pattern_scan      as _cy_pattern_scan
+    from aegis_hotspots import stream_reassemble as _cy_stream_reassemble
+    from aegis_hotspots import ip_reputation     as _cy_ip_reputation
+    from aegis_hotspots import payload_classify  as _cy_payload_classify
+    CYTHON_AVAILABLE = True
 except ImportError:
-    print("[AEGIS BRAIN] Warning: aegis_bridge_ctypes not found — running without Bridge")
-    BRIDGE_AVAILABLE = False
+    CYTHON_AVAILABLE = False
+    _cy_entropy = None
+    _cy_pattern_scan = None
+    _cy_stream_reassemble = None
+    _cy_ip_reputation = None
+    _cy_payload_classify = None
 
-LOG_FILE = "logs/anomalous.json"
-RULES_FILE = "Rules.json"
-MAX_PAYLOAD_SIZE = 4096
 
-class UI:
-    DANGER = '\033[91;1m'
-    CYAN = '\033[96m'
-    YELLOW = '\033[93m'
-    GREEN = '\033[92m'
-    RESET = '\033[0m'
+def compute_entropy(payload: bytes) -> float:
+    """Calculate Shannon entropy of payload. Cython-accelerated if available."""
+    if CYTHON_AVAILABLE and _cy_entropy:
+        return _cy_entropy(payload)
+    # Pure Python fallback
+    if not payload:
+        return 0.0
+    freq = defaultdict(int)
+    for b in payload:
+        freq[b] += 1
+    length = len(payload)
+    import math
+    entropy = 0.0
+    for count in freq.values():
+        p = count / length
+        if p > 0:
+            entropy -= p * math.log2(p)
+    return entropy
 
-# ====== Rule Loading ======
 
-def load_rules():
-    """Load Rules.json, skip _comment entries."""
-    if os.path.exists(RULES_FILE):
-        with open(RULES_FILE, "r", encoding="utf-8") as f:
-            raw = json.load(f)
-        # Filter out _comment pseudo-rules
-        rules = [r for r in raw.get("nids_rules", [])
-                 if isinstance(r, dict) and "rule_id" in r]
-        return {"nids_rules": rules}
-    return {"nids_rules": []}
+# ═══════════════════════════════════════════════════════════════
+# Built-in Hooks (SecDevOps + Forensics + Penetration Testing)
+# ═══════════════════════════════════════════════════════════════
 
-# ====== Firewall IPS ======
+def hook_blacklist_check(ctx: PacketContext) -> HookAction:
+    """Pre-hook: Check source/dest IP against threat intel blacklist."""
+    BLACKLIST = {0x0A000001, 0xC0A80001}  # Example IPs
+    if ctx.src_ip in BLACKLIST or ctx.dst_ip in BLACKLIST:
+        return HookAction.ALERT
+    return HookAction.PASS
 
-def apply_firewall_block(ip_address, rule_name="AEGIS"):
-    """Block attacker IP via Windows Firewall (netsh advfirewall)."""
-    fw_rule_name = f"AEGIS_BLOCK_{ip_address}"
+
+def hook_entropy_anomaly(ctx: PacketContext) -> HookAction:
+    """Pre-hook: Flag payloads with very high entropy (possible encryption/packing)."""
+    if len(ctx.payload) > 64:
+        entropy = compute_entropy(ctx.payload)
+        if entropy > 7.5:  # Very high entropy — suspicious
+            return HookAction.ALERT
+    return HookAction.PASS
+
+
+def hook_forensic_preserve(ctx: PacketContext, verdict: AnalysisVerdict) -> HookAction:
+    """Post-hook: Preserve evidence for high-severity alerts (chain-of-custody)."""
+    if verdict.severity >= Severity.HIGH:
+        return HookAction.PRESERVE
+    return HookAction.PASS
+
+
+def hook_chain_of_custody(ctx: PacketContext, verdict: AnalysisVerdict) -> HookAction:
+    """Post-hook: Ensure forensic integrity via Rust shield SHA-256."""
+    if verdict.action == HookAction.PRESERVE and SHIELD_AVAILABLE:
+        # Submit to Rust shield for forensic hashing
+        meta = AegisPktMetaC(
+            size=0, orig_len=len(ctx.payload), timestamp=ctx.timestamp_ms,
+            layer_id=0, direction=ctx.direction, process_id=ctx.process_id,
+            ip_proto=ctx.ip_proto, _pad=0,
+            src_ip=ctx.src_ip, dst_ip=ctx.dst_ip,
+            src_port=ctx.src_port, dst_port=ctx.dst_port,
+        )
+        _shield.aegis_shield_submit_packet(
+            ctypes.byref(meta), ctx.payload, len(ctx.payload), None, 0
+        )
+    return HookAction.PASS
+
+
+def hook_suspicious_ports(ctx: PacketContext) -> HookAction:
+    """Pre-hook: Flag connections to/from suspicious ports."""
+    SUSPICIOUS_PORTS = {4444, 5555, 6666, 6667, 8888, 31337}
+    if ctx.src_port in SUSPICIOUS_PORTS or ctx.dst_port in SUSPICIOUS_PORTS:
+        return HookAction.ALERT
+    return HookAction.PASS
+
+
+# ctypes structure for Rust shield FFI
+class AegisPktMetaC(ctypes.Structure):
+    _fields_ = [
+        ("size", ctypes.c_uint32), ("orig_len", ctypes.c_uint32),
+        ("timestamp", ctypes.c_uint64), ("layer_id", ctypes.c_uint16),
+        ("direction", ctypes.c_uint16), ("process_id", ctypes.c_uint32),
+        ("ip_proto", ctypes.c_uint16), ("_pad", ctypes.c_uint16),
+        ("src_ip", ctypes.c_uint32), ("dst_ip", ctypes.c_uint32),
+        ("src_port", ctypes.c_uint16), ("dst_port", ctypes.c_uint16),
+    ]
+
+
+# ═══════════════════════════════════════════════════════════════
+# Analysis Brain
+# ═══════════════════════════════════════════════════════════════
+
+class AnalysisBrain:
+    """
+    Tier-2 deep inspection engine with hook pipeline.
+
+    Pipeline per packet:
+      1. Pre-hooks (blacklist, entropy, suspicious ports)
+      2. Regex rule matching (RuleEngine)
+      3. Heuristic scoring (entropy, port, protocol)
+      4. Post-hooks (forensic preserve, chain-of-custody)
+      5. Verdict emission
+    """
+
+    def __init__(self, rules_path: Optional[Path] = None):
+        self.hooks = HookRegistry()
+        self.rules = RuleEngine()
+        self.stats = {"packets": 0, "alerts": 0, "preserved": 0}
+        self._lock = threading.Lock()
+
+        # Register built-in hooks
+        self.hooks.register_pre(hook_blacklist_check)
+        self.hooks.register_pre(hook_entropy_anomaly)
+        self.hooks.register_pre(hook_suspicious_ports)
+        self.hooks.register_post(hook_forensic_preserve)
+        self.hooks.register_post(hook_chain_of_custody)
+
+        # Load rules if provided
+        if rules_path and rules_path.exists():
+            self.rules.load_from_file(rules_path)
+
+        logger.info("AnalysisBrain initialized with %d rules, %d pre-hooks, %d post-hooks",
+                     len(self.rules.rules), len(self.hooks._pre_hooks), len(self.hooks._post_hooks))
+
+    def analyze(self, ctx: PacketContext) -> AnalysisVerdict:
+        """Main analysis pipeline for a single packet."""
+        with self._lock:
+            self.stats["packets"] += 1
+
+        # Phase 1: Pre-hooks
+        pre_result = self.hooks.run_pre(ctx)
+        if pre_result == HookAction.DROP:
+            return AnalysisVerdict(action=HookAction.DROP, severity=Severity.INFO)
+
+        # Phase 2: Regex rule matching
+        verdict = AnalysisVerdict()
+        matches = self.rules.match_all(ctx.payload)
+
+        if matches:
+            # Take highest-severity match
+            best_rule, best_match = max(matches, key=lambda x: x[0].severity)
+            verdict.rule_id = best_rule.id
+            verdict.rule_name = best_rule.name
+            verdict.severity = best_rule.severity
+            verdict.action = HookAction.ALERT
+            verdict.score = self._compute_score(ctx, best_rule, best_match)
+            verdict.tags = [best_rule.category]
+
+        # Phase 3: Heuristic scoring (even without rule match)
+        if verdict.score == 0.0:
+            verdict.score = self._heuristic_score(ctx)
+
+        # Phase 4: Post-hooks
+        post_result = self.hooks.run_post(ctx, verdict)
+        if post_result > verdict.action:
+            verdict.action = post_result
+
+        # Update stats
+        if verdict.action in (HookAction.ALERT, HookAction.PRESERVE):
+            with self._lock:
+                self.stats["alerts"] += 1
+        if verdict.action == HookAction.PRESERVE:
+            with self._lock:
+                self.stats["preserved"] += 1
+
+        return verdict
+
+    def _compute_score(self, ctx: PacketContext, rule: DetectionRule,
+                       match: re.Match) -> float:
+        """Compute threat score [0.0, 1.0] based on multiple factors."""
+        score = 0.0
+
+        # Rule severity contribution
+        score += rule.severity / 4.0 * 0.4  # Max 0.4 from severity
+
+        # Payload entropy contribution
+        if len(ctx.payload) > 0:
+            entropy = compute_entropy(ctx.payload)
+            score += (entropy / 8.0) * 0.3  # Max 0.3 from entropy
+
+        # Match position contribution (early match = more suspicious)
+        if match.start() < len(ctx.payload) * 0.1:
+            score += 0.15  # Match in first 10% of payload
+
+        # Port contribution
+        SUSPICIOUS = {4444, 5555, 6667, 31337}
+        if ctx.dst_port in SUSPICIOUS:
+            score += 0.15
+
+        return min(score, 1.0)
+
+    def _heuristic_score(self, ctx: PacketContext) -> float:
+        """Heuristic scoring when no regex rule matches."""
+        score = 0.0
+        if len(ctx.payload) > 64:
+            entropy = compute_entropy(ctx.payload)
+            if entropy > 7.5:
+                score += 0.3  # High entropy without match
+        if ctx.dst_port in {4444, 5555, 6667, 31337}:
+            score += 0.2
+        return min(score, 1.0)
+
+    def get_stats(self) -> dict:
+        with self._lock:
+            return dict(self.stats)
+
+
+# ═══════════════════════════════════════════════════════════════
+# Daemon & Console Integration
+# ═══════════════════════════════════════════════════════════════
+
+class AegisDaemon:
+    """Background daemon that runs the analysis brain continuously."""
+
+    def __init__(self, brain: AnalysisBrain):
+        self.brain = brain
+        self._running = False
+        self._thread: Optional[threading.Thread] = None
+
+    def start(self) -> None:
+        self._running = True
+        self._thread = threading.Thread(target=self._run_loop, daemon=True)
+        self._thread.start()
+        logger.info("AEGIS Daemon started")
+
+    def stop(self) -> None:
+        self._running = False
+        if self._thread:
+            self._thread.join(timeout=5.0)
+        logger.info("AEGIS Daemon stopped")
+
+    def _run_loop(self) -> None:
+        while self._running:
+            time.sleep(0.1)  # Main loop — packets arrive via IPC from Zig
+
+
+def main() -> None:
+    """Entry point for standalone brain execution."""
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s [%(name)s] %(levelname)s: %(message)s"
+    )
+
+    rules_path = Path(__file__).parent.parent / "config" / "Rules.json"
+    brain = AnalysisBrain(rules_path=rules_path)
+    daemon = AegisDaemon(brain)
+    daemon.start()
+
     try:
-        cmd = [
-            "netsh", "advfirewall", "firewall", "add", "rule",
-            f"name={fw_rule_name}",
-            "dir=in",
-            "action=block",
-            f"remoteip={ip_address}",
-            f"description=Blocked by Aegis NIDS Tier-2 Rule {rule_name}"
-        ]
-        subprocess.run(cmd, capture_output=True, check=True)
-        print(f"{UI.DANGER}[IPS] IP {ip_address} has been BLOCKED by Rule: {rule_name}{UI.RESET}")
+        while True:
+            time.sleep(1)
+            stats = brain.get_stats()
+            logger.info("Stats: %s", stats)
+    except KeyboardInterrupt:
+        daemon.stop()
 
-        # 🔗 Push block to C++ Bridge (for Dashboard DEFCON update)
-        if BRIDGE_AVAILABLE:
-            bridge.block_ip(ip_address)
-            bridge.update_defcon(
-                critical=0, blocked=1, kernel=0, total=1
-            )
-
-        return True
-    except Exception as e:
-        print(f"{UI.YELLOW}[!] Failed to block IP {ip_address}: {e}{UI.RESET}")
-        return False
-
-# ====== Regex Engine ======
-
-def compile_tier2_rules(rules_data):
-    """Compile all regex/match patterns from rules into fast regex objects."""
-    compiled = {}
-    for r in rules_data.get("nids_rules", []):
-        name = r.get("name", "")
-        regex_str = r.get("regex_pattern", "")
-        match_str = r.get("match_pattern", "")
-
-        # Prefer regex_pattern first (most specific)
-        if regex_str:
-            try:
-                compiled[name] = re.compile(regex_str, re.DOTALL)
-            except Exception as e:
-                print(f"{UI.YELLOW}[!] Invalid regex in {name}: {e}{UI.RESET}")
-
-        # Fall back to match_pattern (literal string match)
-        elif match_str:
-            try:
-                escaped = re.escape(match_str)
-                # Allow hex escapes to remain as literal patterns
-                escaped = escaped.replace(r"\\x", r"\x")
-                compiled[name] = re.compile(escaped, re.DOTALL)
-            except Exception as e:
-                print(f"{UI.YELLOW}[!] Error compiling match_pattern for {name}: {e}{UI.RESET}")
-
-    return compiled
-
-def run_regex_scan(payload, tier2_engine, rules_data):
-    """
-    Scan a payload against all compiled Tier-2 regex rules.
-    Returns (rule_name, policy, rule_id, severity) if match found, else None.
-    """
-    safe_payload = str(payload)[:MAX_PAYLOAD_SIZE]
-
-    for r in rules_data.get("nids_rules", []):
-        name = r.get("name", "")
-        rule_id = r.get("rule_id", "UNKNOWN")
-        regex_matcher = tier2_engine.get(name)
-
-        if regex_matcher and regex_matcher.search(safe_payload):
-            policy = r.get("action", "Alert").upper()
-            severity_str = r.get("severity", "Medium")
-            severity_map = {"Low": 0, "Medium": 1, "High": 2, "Critical": 3}
-            severity = severity_map.get(severity_str, 1)
-            return (name, policy, rule_id, severity)
-
-    return None
-
-# ====== Log Writing ======
-
-def write_anomaly_log(log_entry, attack_type, policy, rule_id, status="DETECTED"):
-    """Write an anomaly log entry to anomalous.json."""
-    log_entry["attack_type"] = attack_type
-    log_entry["policy"] = policy
-    log_entry["rule_id"] = rule_id
-    log_entry["status"] = status
-    log_entry["brain_timestamp"] = datetime.now().isoformat()
-
-    with open(LOG_FILE, "a", encoding="utf-8") as f:
-        f.write(json.dumps(log_entry) + "\n")
-
-# ====== Bridge Event Polling ======
-
-def poll_bridge_events():
-    """Poll C++ Bridge for events from other subsystems (Zig, Rust, Go)."""
-    if not BRIDGE_AVAILABLE:
-        return
-
-    count = bridge.get_event_count()
-    for _ in range(min(count, 50)):  # Process up to 50 events per poll
-        event = bridge.pop_event()
-        if event is None:
-            break
-
-        # Process Tier-1 events from Zig Core that need Tier-2 inspection
-        if event.tier_result == 1:  # Tier-1 match from Zig
-            defcon = bridge.get_defcon_level()
-            try:
-                label = bridge.get_defcon_label() if BRIDGE_AVAILABLE else "UNKNOWN"
-            except Exception:
-                label = "UNKNOWN"
-            print(f"{UI.CYAN}[BRIDGE]{UI.RESET} Tier-1 event received — "
-                  f"Rule ID: {event.rule_id} | DEFCON: {defcon} ({label})")
-
-        elif event.tier_result == 0:  # Forwarded — no Tier-1 match
-            # These events need Tier-2 regex inspection
-            pass  # Already handled via UDP from Zig
-
-# ====== Main Brain Loop ======
-
-def main():
-    global BRIDGE_AVAILABLE
-
-    os.makedirs("logs", exist_ok=True)
-
-    print(f"{UI.CYAN}--- AEGIS BRAIN: TIER-2 DEEP INSPECTION ENGINE ACTIVE ---{UI.RESET}")
-
-    # 🔗 Initialize C++ IPC Bridge
-    if BRIDGE_AVAILABLE:
-        rc = bridge.bridge_init()
-        if rc == 0:
-            print(f"{UI.GREEN}[BRIDGE] C++ IPC Bridge initialized — Python Brain connected{UI.RESET}")
-        else:
-            print(f"{UI.YELLOW}[BRIDGE] Warning: Bridge init failed (rc={rc}), running in standalone mode{UI.RESET}")
-            BRIDGE_AVAILABLE = False
-    else:
-        print(f"{UI.YELLOW}[BRIDGE] aegis_bridge_ctypes not available — running in standalone mode{UI.RESET}")
-
-    rules_data = load_rules()
-    tier2_engine = compile_tier2_rules(rules_data)
-    print(f"{UI.GREEN}[*] Compiled {len(tier2_engine)} regex rules for Deep Inspection.{UI.RESET}")
-
-    # Show Bridge DEFCON status
-    if BRIDGE_AVAILABLE:
-        defcon = bridge.get_defcon_level()
-        label = bridge.get_defcon_label()
-        print(f"{UI.GREEN}[BRIDGE] Current DEFCON: {defcon} ({label}){UI.RESET}")
-
-    UDP_IP = "127.0.0.1"
-    UDP_PORT = 9999
-
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind((UDP_IP, UDP_PORT))
-
-    print(f"{UI.GREEN}[*] Listening for Tier-1 Suspects on UDP {UDP_IP}:{UDP_PORT}...{UI.RESET}")
-
-    # Hot-reload: watch Rules.json mtime for changes
-    last_rule_mod_time = os.path.getmtime(RULES_FILE) if os.path.exists(RULES_FILE) else 0
-
-    # Bridge event polling counter
-    bridge_poll_counter = 0
-
-    while True:
-        # --- Hot-reload check ---
-        if os.path.exists(RULES_FILE):
-            current_mod_time = os.path.getmtime(RULES_FILE)
-            if current_mod_time > last_rule_mod_time:
-                print(f"{UI.YELLOW}[!] Policy changed. Reloading Tier-2 Brain...{UI.RESET}")
-                rules_data = load_rules()
-                tier2_engine = compile_tier2_rules(rules_data)
-                last_rule_mod_time = current_mod_time
-                print(f"{UI.GREEN}[*] Re-compiled {len(tier2_engine)} regex rules.{UI.RESET}")
-
-        # 🔗 Poll Bridge events every 10 iterations
-        bridge_poll_counter += 1
-        if bridge_poll_counter >= 10 and BRIDGE_AVAILABLE:
-            bridge_poll_counter = 0
-            poll_bridge_events()
-
-        try:
-            # Read length-prefixed MsgPack message (Fix #2)
-            # Format: [4B length BE] + [MsgPack payload]
-            # Fallback to JSON if MsgPack unavailable
-            # Circuit Breaker: ถ้าเปิด → skip recv ชั่วคราว
-            if not brain_circuit_breaker.allow():
-                continue
-
-            log_entry, addr = recv_length_prefixed(sock, timeout=1.0)
-            if log_entry is None:
-                continue  # No valid message — normal timeout or decode error
-
-            # Sanity Check: verify decoded data is valid (Enhancement)
-            if not sanity_check_decoded(log_entry):
-                brain_circuit_breaker.record_failure()
-                print(f"[SANITY] Invalid alert data from {addr} — skipping")
-                continue
-
-            brain_circuit_breaker.record_success()
-
-            # Sequence tracking: detect UDP reordering/gaps
-            track_sequence(log_entry)
-
-            # Convert MsgPack integer IP to dotted notation (if needed)
-            # MsgPack sends source_ip as integer from Zig
-            source = log_entry.get("source", "UNKNOWN")
-            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-            # Extract attacker IP from Zig packet data
-            src_ip = log_entry.get("src_ip", log_entry.get("source_ip", "Unknown"))
-            # Zig may send "WFP_PIPE" / "TCP_SOCKET" as source — use addr as fallback
-            if src_ip in ("WFP_PIPE", "TCP_SOCKET", "UNKNOWN", "Unknown", None):
-                src_ip = addr[0] if addr else "Unknown"
-
-            # =========================================================
-            # Case 1: Zig already matched (Fast Pattern / Tier-1 Verified)
-            #   Zig sends: attack_type, policy, severity, rule_id
-            #   Brain only enforces IPS if policy requires blocking
-            # =========================================================
-            if log_entry.get("attack_type") and log_entry.get("reason") != "Forwarded: No Tier-1 Match":
-                attack_type = log_entry.get("attack_type", "Unknown")
-                policy = log_entry.get("policy", "Alert").upper()
-                rule_id = log_entry.get("rule_id", "UNKNOWN")
-                severity = log_entry.get("severity", "High")
-
-                # 🔗 Use Bridge IPS decision for Tier-1 verified alerts
-                if BRIDGE_AVAILABLE:
-                    severity_map = {"Low": 0, "Medium": 1, "High": 2, "Critical": 3}
-                    sev_int = severity_map.get(severity, 1)
-                    ips_decision = bridge.ips_decide(rule_id, sev_int, src_ip, policy.lower())
-                    if ips_decision == "block":
-                        policy = "BLOCK"
-
-                print(f"{UI.CYAN}[TIER-1 VERIFIED]{UI.RESET} {ts} | {attack_type} | Policy: {policy} | Severity: {severity}")
-
-                # Enforce IPS: block attacker IP if policy is DROP/BLOCK
-                status = "DETECTED"
-                if policy in ("DROP", "BLOCK") and src_ip != "Unknown":
-                    if apply_firewall_block(src_ip, rule_id):
-                        status = "BLOCKED"
-                    else:
-                        status = "BLOCK_FAILED"
-
-                write_anomaly_log(log_entry, attack_type, policy, rule_id, status)
-                continue
-
-            # =========================================================
-            # Case 2: No Tier-1 Match — Brain must run full regex scan
-            #   Zig sends: raw_payload with reason "Forwarded: No Tier-1 Match"
-            # =========================================================
-            raw_payload_str = str(log_entry)
-            payload = log_entry.get("raw_payload", raw_payload_str)
-
-            result = run_regex_scan(payload, tier2_engine, rules_data)
-            if result:
-                match_name, match_policy, match_rule_id, match_severity = result
-                print(f"{UI.DANGER}[TIER-2 MATCH]{UI.RESET} {ts} | Threat: {match_name} | Policy: {match_policy} | Src: {src_ip}")
-
-                # 🔗 Push Tier-2 match to C++ Bridge (for Dashboard)
-                if BRIDGE_AVAILABLE:
-                    bridge.push_tier2_match(
-                        rule_id=match_rule_id,
-                        src_ip=src_ip if src_ip != "Unknown" else "0.0.0.0",
-                        dst_ip="0.0.0.0",
-                        src_port=0,
-                        dst_port=0,
-                        protocol=6,
-                        severity=match_severity,
-                    )
-                    # Use Bridge IPS decision for Tier-2 matches
-                    ips_decision = bridge.ips_decide(
-                        match_rule_id, match_severity, src_ip, match_policy.lower()
-                    )
-                    if ips_decision == "block":
-                        match_policy = "BLOCK"
-
-                # Enforce IPS
-                status = "DETECTED"
-                if match_policy in ("DROP", "BLOCK") and src_ip != "Unknown":
-                    if apply_firewall_block(src_ip, match_rule_id):
-                        status = "BLOCKED"
-                    else:
-                        status = "BLOCK_FAILED"
-
-                write_anomaly_log(log_entry, match_name, match_policy, match_rule_id, status)
-            else:
-                print(f"[INFO] {ts} | Packet from {source} inspected — no Tier-2 match found.")
-
-        except socket.timeout:
-            # No UDP data — normal, allows Bridge polling
-            continue
-        except json.JSONDecodeError as e:
-            print(f"{UI.YELLOW}[!] JSON Decode Error from {addr}: {e}{UI.RESET}")
-        except Exception as e:
-            # Graceful degradation: ไม่ crash ถ้าเกิดข้อผิดพลาด
-            # ระบบยังรอรับ UDP packet ต่อไป
-            print(f"{UI.DANGER}[ERROR]{UI.RESET} {e} (continuing in degraded mode)")
 
 if __name__ == "__main__":
-    try:
-        main()
-    finally:
-        # 🔗 Shutdown Bridge on exit
-        if BRIDGE_AVAILABLE:
-            bridge.bridge_shutdown()
-            print("[BRIDGE] C++ IPC Bridge shutdown — Python Brain disconnected")
+    main()

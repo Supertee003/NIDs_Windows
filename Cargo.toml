@@ -1,12 +1,22 @@
 [package]
-name = "windows_sec_monitor"
+name = "aegis-shield"
 version = "0.1.0"
 edition = "2021"
+description = "AEGIS NIDS Memory Safety Shield — FFI wrapper, QSBR RCU, Forensic SHA-256"
 
 [lib]
-name = "sec_monitor"
-crate-type = ["cdylib", "staticlib", "rlib"]
+crate-type = ["cdylib", "rlib"]
 
-[[bin]]
-name = "windows_sec_monitor"
-path = "windows_sec_monitor.rs"
+[dependencies]
+# Zero external dependencies — all crypto and concurrency is pure Rust
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.dev]
+opt-level = 0
+debug = true

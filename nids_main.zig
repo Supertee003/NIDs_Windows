@@ -1,31 +1,51 @@
+//! nids_main.zig — AEGIS NIDS Main Entry Point (Layer 2: Zig)
+//!
+//! Initializes all subsystems and starts the capture/analysis loop.
+//! This is the native entry point; Python orchestration calls this
+//! via the ctypes bridge.
+
 const std = @import("std");
-const nids_analyze = @import("nids_analyze.zig");
-const windows_capture = @import("windows_capture.zig");
-const nids_capture = @import("nids_capture.zig");
+const capture = @import("nids_capture.zig");
+const analyze = @import("nids_analyze.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    std.fs.cwd().makeDir("logs") catch |err| {
-        if (err != error.PathAlreadyExists) std.debug.print("Log dir status: {}\n", .{err});
+    std.log.info("AEGIS NIDS Core starting...", .{});
+
+    // ── Default intrusion detection patterns ──
+    const patterns = [_][]const u8{
+        // Web attack signatures
+        "UNION SELECT",
+        "' OR 1=1--",
+        "<script>",
+        "../etc/passwd",
+        "cmd.exe",
+
+        // Shellcode markers
+        "\xFF\xD8\xFF",      // JPEG magic (steganography carrier)
+        "\x4D\x5A",          // PE executable (MZ header)
+
+        // C2 patterns
+        "POST /gate",
+        "GET /beacon",
+        "Content-Type: application/octet-stream",
     };
 
-    std.debug.print("===========================================\n", .{});
-    std.debug.print(" Aegis NIDS Core [Hybrid Architecture] Start\n", .{});
-    std.debug.print("===========================================\n", .{});
+    // ── Initialize subsystems ──
+    try capture.init(allocator, &patterns);
+    try analyze.init(allocator);
 
-    // 1. รันสมองกลก่อน
-    const t_analyze = try std.Thread.spawn(.{}, nids_analyze.analyze_packets, .{allocator});
-    std.time.sleep(500 * std.time.ns_per_ms); // รอให้สมองพร้อม
+    std.log.info("AEGIS NIDS Core initialized — {} patterns loaded", .{patterns.len});
 
-    // 2. รันเซ็นเซอร์ตากับหู พร้อมส่ง IP ให้ทำงานสัมพันธ์กัน
-    const t_pipe_cap = try std.Thread.spawn(.{}, nids_capture.capture_packets, .{ allocator, "127.0.0.1" });
-    const t_tcp_cap = try std.Thread.spawn(.{}, windows_capture.capture_packets, .{ allocator, "127.0.0.1" });
+    // ── Start capture loop ──
+    try capture.run();
 
-    // ให้ Main Thread รอไปตลอดกาล
-    t_analyze.join();
-    t_pipe_cap.join();
-    t_tcp_cap.join();
+    // ── Cleanup ──
+    analyze.deinit();
+    capture.deinit();
+
+    std.log.info("AEGIS NIDS Core stopped", .{});
 }

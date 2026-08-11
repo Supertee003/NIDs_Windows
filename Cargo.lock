@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "windows_sec_monitor"
+name = "aegis-shield"
 version = "0.1.0"
