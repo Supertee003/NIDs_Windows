@@ -81,11 +81,12 @@ pub fn scanPipes() ![]PipeEvent {
 
 // ====== Print stats summary ======
 pub fn printStats() void {
-    std.log.info("[Pipe Monitor Stats] Total pipes: {}, Suspicious: {}, Last scan: {}ms ago", .{
+    std.log.info("[Pipe Monitor Stats] Total pipes: {d}, Suspicious: {d}, Last scan: {d}ms ago", .{
         stats.total_pipes,
         stats.suspicious_pipes,
         @as(u64, @bitCast(std.time.milliTimestamp())) -% stats.last_scan_time,
-    });
+    }
+        );
 }
 
 // ====== Main pipe monitor loop (Thread 5) ======
@@ -98,12 +99,13 @@ pub fn pipeMonitorLoop() !void {
         // Process suspicious events
         for (events) |event| {
             if (event.risk_level.len > 0) {
-                std.log.warn("[Pipe Monitor ALERT] {} pipe '{}' — Rule: {} — Risk: {}", .{
+                std.log.warn("[Pipe Monitor ALERT] {s} pipe '{s}' — Rule: {s} — Risk: {d}", .{
                     event.event_type,
                     event.pipe_name,
                     event.matched_rule,
                     event.risk_level,
-                });
+                }
+                    );
                 stats.suspicious_pipes += 1;
 
                 // TODO: Send event to nids_analyze.inspect_pipe_event()

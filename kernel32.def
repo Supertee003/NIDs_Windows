@@ -1,0 +1,6 @@
+LIBRARY kernel32
+EXPORTS
+    CreateNamedPipeA
+    ConnectNamedPipe
+    DisconnectNamedPipe
+    ReadFile

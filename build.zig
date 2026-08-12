@@ -6,7 +6,8 @@ pub fn build(b: *std.Build) void {
 
     // Optional: link C++ IPC Bridge and Rust FFI
     // Use: zig build -Dlink-bridge -Dlink-rust
-    // Without flags: builds standalone (no DLL dependencies)
+    // Without flags: builds standalone (no DLL dependencies at link time)
+    // DLLs are loaded at runtime via std.DynLib (graceful degradation)
     const link_bridge = b.option(bool, "link-bridge", "Link C++ IPC Bridge (aegis_ipc)") orelse false;
     const link_rust = b.option(bool, "link-rust", "Link Rust FFI (sec_monitor)") orelse false;
     const exe = b.addExecutable(.{
@@ -17,28 +18,29 @@ pub fn build(b: *std.Build) void {
     });
 
     b.installArtifact(exe);
-    exe.linkLibC();
+    // exe.linkLibC(); // removed: causing 0xC000007B
 
-    // Link ws2_32 for Winsock2 ioctlsocket() (non-blocking UDP socket on Windows)
+    // Link ws2_32 for Winsock2 (system DLL, always available)
     exe.linkSystemLibrary("ws2_32");
 
-    // Link ws2_32 for Winsock2 ioctlsocket() (non-blocking UDP socket on Windows)
-    exe.linkSystemLibrary("ws2_32");
-
-    // Rust FFI (sec_monitor.dll) — Tier-0 Memory Safety Shield
-    // Only link if -Dlink-rust is set AND the library exists
-    if (link_rust) {
-        exe.addLibraryPath(.{ .cwd_relative = "target/release" });
-    }
-
-    // C++ IPC Bridge (aegis_ipc.dll) — Zig Core ↔ Bridge ↔ Dashboard
-    // Only link if -Dlink-bridge is set AND the library exists
+    // Only link optional DLLs when flags are set
+    // Without flags: exe starts standalone, loads DLLs at runtime via std.DynLib
     if (link_bridge) {
-        // MSVC multi-config: build/Release or build/Debug
+        exe.addLibraryPath(.{ .cwd_relative = "build" });
         exe.addLibraryPath(.{ .cwd_relative = "build/Release" });
         exe.addLibraryPath(.{ .cwd_relative = "build/Debug" });
-        exe.addLibraryPath(.{ .cwd_relative = "build" });
+        exe.linkSystemLibrary("aegis_ipc");
+        exe.linkSystemLibrary("aegis_packet_parser");
     }
+
+    if (link_rust) {
+        exe.addLibraryPath(.{ .cwd_relative = "build" });
+        exe.addLibraryPath(.{ .cwd_relative = "target/release" });
+        exe.linkSystemLibrary("aegis_shield");
+    }
+
+    // kernel32 is always available on Windows (extern "kernel32" works natively)
+    // No need to explicitly linkSystemLibrary for it
 
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());

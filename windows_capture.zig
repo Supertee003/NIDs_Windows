@@ -9,7 +9,7 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
     const wfp_device_name = "\\\\.\\AegisWfpDevice";
 
     const wfp_file = std.fs.openFileAbsolute(wfp_device_name, .{}) catch |err| {
-        std.debug.print("[!] WFP Driver not found (Error: {}). Pausing sensor...\n", .{err});
+        std.debug.print("[!] WFP Driver not found (Error: {any}). Pausing sensor...\n", .{err});
         while (true) {
             std.time.sleep(10 * std.time.ns_per_s);
         }
@@ -46,9 +46,10 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
                 if (payload_end > payload_start) {
                     const payload = buffer[payload_start..payload_end];
 
-                    const is_safe = nids_analyze.inspect_packet(payload, ctx) catch |err| {
-                        std.debug.print("\x1b[31m[!] Analyze Error: {}\x1b[0m\n", .{err});
-                        return;
+                    const is_safe = nids_analyze.inspect_packet(payload, ctx) catch |err| blk: {
+                        std.log.warn("[WFP SENSOR] Analyze error: {any} — event allowed (fail-open)", .{err});
+                        _ = nids_analyze.g_analyze_errors.fetchAdd(1, .seq_cst);
+                        break :blk true; // fail-open: allow packet on analysis error
                     };
 
                     if (!is_safe) {
@@ -62,10 +63,7 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
                     .protocol = 6,  // assume TCP
                     .is_pipe = false,
                 };
-                const is_safe = nids_analyze.inspect_packet(payload, ctx) catch |err| {
-                    std.debug.print("\x1b[31m[!] Analyze Error: {}\x1b[0m\n", .{err});
-                    return;
-                };
+                const is_safe = nids_analyze.inspect_packet(payload, ctx) catch true;
                 if (!is_safe) {
                     std.debug.print("\x1b[31;1m[WFP SENSOR] Dropped Malicious Network Packet!\x1b[0m\n", .{});
                 }

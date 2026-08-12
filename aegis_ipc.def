@@ -1,0 +1,6 @@
+LIBRARY aegis_ipc
+EXPORTS
+    aegis_ipc_init
+    aegis_ipc_read_packet
+    aegis_ipc_get_stats
+    aegis_ipc_shutdown

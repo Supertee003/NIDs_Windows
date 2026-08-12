@@ -38,7 +38,7 @@ pub fn main() !void {
     try capture.init(allocator, &patterns);
     try analyze.init(allocator);
 
-    std.log.info("AEGIS NIDS Core initialized — {} patterns loaded", .{patterns.len});
+    std.log.info("AEGIS NIDS Core initialized — {d} patterns loaded", .{patterns.len});
 
     // ── Start capture loop ──
     try capture.run();
