@@ -1,49 +1,34 @@
-﻿const std = @import("std");
+const std = @import("std");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    // Main NIDS executable
-    const nids = b.addExecutable(.{
-        .name = "aegis_nids",
-        .root_source_file = b.path("src/nids_main.zig"),
+    const exe = b.addExecutable(.{
+        .name = "aegis-nids",
+        .root_source_file = b.path("core/src/nids_main.zig"),
         .target = target,
         .optimize = optimize,
     });
 
-    // Capture module
-    const capture = b.addExecutable(.{
-        .name = "aegis_capture",
-        .root_source_file = b.path("src/nids_capture.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
+    b.installArtifact(exe);
 
-    // Analyze module
-    const analyze = b.addExecutable(.{
-        .name = "aegis_analyze",
-        .root_source_file = b.path("src/nids_analyze.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
+    // NOTE: linkLibC() removed — it was causing 0xC000007B (STATUS_INVALID_IMAGE_FORMAT)
+    // on Windows when the matching VC++ Redistributable was absent.
+    // Our code only uses extern "kernel32" (Windows API) which Zig links natively.
+    // No libc functions (printf, malloc, etc.) are called from C code.
+    //
+    // If you add C interop that truly needs libc, uncomment the line below:
+    // exe.linkLibC();
 
-    // Pipe monitor
-    const pipe_mon = b.addExecutable(.{
-        .name = "aegis_pipe_monitor",
-        .root_source_file = b.path("src/pipe_monitor.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
+    // NOTE: No linkSystemLibrary needed!
+    // aegis_ipc.dll and sec_monitor.dll are loaded at runtime
+    // via std.DynLib (like Python ctypes) — no link-time dependency.
+    // This allows Zig to build completely standalone.
 
-    const install_nids = b.addInstallArtifact(nids);
-    const install_capture = b.addInstallArtifact(capture);
-    const install_analyze = b.addInstallArtifact(analyze);
-    const install_pipe = b.addInstallArtifact(pipe_mon);
+    const run_cmd = b.addRunArtifact(exe);
+    run_cmd.step.dependOn(b.getInstallStep());
 
-    const build_all = b.step("all", "Build all NIDS components");
-    build_all.dependOn(&install_nids.step);
-    build_all.dependOn(&install_capture.step);
-    build_all.dependOn(&install_analyze.step);
-    build_all.dependOn(&install_pipe.step);
+    const run_step = b.step("run", "Run the app");
+    run_step.dependOn(&run_cmd.step);
 }

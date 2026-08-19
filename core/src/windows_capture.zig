@@ -56,7 +56,7 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
                     };
 
                     if (!is_safe) {
-                        std.debug.print("\x1b[31;1m[WFP SENSOR] 🚨 Dropped Malicious Network Packet! src_ip=0x{x}\x1b[0m\n", .{header.source_ip});
+                        std.debug.print("[WFP SENSOR] 🚨 Dropped Malicious Network Packet! src_ip=0x{x}\n", .{header.source_ip});
                     }
                 }
             } else {
@@ -72,7 +72,7 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
                         break :blk true; // fail-open: allow packet on analysis error
                     };
                 if (!is_safe) {
-                    std.debug.print("\x1b[31;1m[WFP SENSOR] 🚨 Dropped Malicious Network Packet!\x1b[0m\n", .{});
+                    std.debug.print("[WFP SENSOR] 🚨 Dropped Malicious Network Packet!\n", .{});
                 }
             }
         } else {

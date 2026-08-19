@@ -10,7 +10,7 @@
  */
 
 // ====== IPC Event Structure (matches C++ IpcEvent — 48 bytes) ======
-const AegisIpcEvent = extern struct {
+const AegisIpcEvent = packed struct {
     event_type: u32,
     source_ip: u32,
     dest_ip: u32,
@@ -30,7 +30,7 @@ const AegisIpcEvent = extern struct {
 };
 
 // ====== IPC Command Structure ======
-const AegisIpcCommand = extern struct {
+const AegisIpcCommand = packed struct {
     command_id: u32,
     target_subsystem: u32,
     payload_size: u32,

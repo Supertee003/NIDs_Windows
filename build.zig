@@ -6,7 +6,7 @@ pub fn build(b: *std.Build) void {
 
     const exe = b.addExecutable(.{
         .name = "aegis-nids",
-        .root_source_file = b.path("core/nids_main.zig"),
+        .root_source_file = b.path("core/src/nids_main.zig"),
         .target = target,
         .optimize = optimize,
     });

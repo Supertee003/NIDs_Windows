@@ -52,17 +52,17 @@ const AegisIpcEvent = packed struct {
     timestamp: u64,
     source_pid: u32,
     defcon_impact: u32,
-};
+}
 
 // Bridge function signatures (for std.DynLib symbol lookup)
-const FnBridgeInit = *const fn () callconv(.C) i32;
-const FnBridgeShutdown = *const fn () callconv(.C) i32;
-const FnBridgePushEvent = *const fn (*const AegisIpcEvent) callconv(.C) i32;
-const FnBridgeGetDefcon = *const fn () callconv(.C) u8;
-const FnBridgeGetEventCount = *const fn () callconv(.C) u32;
+const FnBridgeInit = *const fn () callconv(.c) i32;
+const FnBridgeShutdown = *const fn () callconv(.c) i32;
+const FnBridgePushEvent = *const fn (*const AegisIpcEvent) callconv(.c) i32;
+const FnBridgeGetDefcon = *const fn () callconv(.c) u8;
+const FnBridgeGetEventCount = *const fn () callconv(.c) u32;
 
 // Rust FFI function signature
-const FnValidatePayloadSafety = *const fn ([*]const u8, usize) callconv(.C) bool;
+const FnValidatePayloadSafety = *const fn ([*]const u8, usize) callconv(.c) bool;
 
 // Runtime-loaded function pointers (null = not available)
 var fn_bridge_init: ?FnBridgeInit = null;
@@ -81,7 +81,7 @@ fn loadBridgeDll() void {
     const dll_names = [_][]const u8{
         "aegis_ipc.dll",
         "libaegis_ipc.so",
-    };
+    }
     const search_paths = [_][]const u8{
         "bridge",
         "build",
@@ -89,7 +89,7 @@ fn loadBridgeDll() void {
         "build\\Debug",
         "target\\release",
         ".",
-    };
+    }
 
     for (dll_names) |dll_name| {
         // Try search paths first
@@ -112,7 +112,7 @@ fn loadBridgeDll() void {
         if (bridge_dll != null) break;
     }
 
-    if (bridge_dll) |*lib| {
+    if (bridge_dll) |lib| {
         fn_bridge_init = lib.lookup(FnBridgeInit, "aegis_bridge_init");
         fn_bridge_shutdown = lib.lookup(FnBridgeShutdown, "aegis_bridge_shutdown");
         fn_bridge_push_event = lib.lookup(FnBridgePushEvent, "aegis_bridge_push_event");
@@ -120,12 +120,12 @@ fn loadBridgeDll() void {
         fn_bridge_get_event_count = lib.lookup(FnBridgeGetEventCount, "aegis_bridge_get_event_count");
 
         if (fn_bridge_init != null) {
-            std.debug.print("\x1b[32m[BRIDGE] C++ IPC Bridge symbols resolved\x1b[0m\n", .{});
+            std.debug.print("[BRIDGE] C++ IPC Bridge symbols resolved\n", .{});
         } else {
-            std.debug.print("\x1b[33m[BRIDGE] Warning: DLL loaded but symbols not found\x1b[0m\n", .{});
+            std.debug.print("[BRIDGE] Warning: DLL loaded but symbols not found\n", .{});
         }
     } else {
-        std.debug.print("\x1b[33m[BRIDGE] Warning: aegis_ipc.dll not found — running without Bridge\x1b[0m\n", .{});
+        std.debug.print("[BRIDGE] Warning: aegis_ipc.dll not found — running without Bridge\n", .{});
     }
 }
 
@@ -134,12 +134,12 @@ fn loadRustDll() void {
     const dll_names = [_][]const u8{
         "sec_monitor.dll",
         "libsec_monitor.so",
-    };
+    }
     const search_paths = [_][]const u8{
         "target\\release",
         "target\\debug",
         ".",
-    };
+    }
 
     for (dll_names) |dll_name| {
         for (search_paths) |dir| {
@@ -160,13 +160,13 @@ fn loadRustDll() void {
         if (rust_dll != null) break;
     }
 
-    if (rust_dll) |*lib| {
+    if (rust_dll) |lib| {
         fn_validate_payload_safety = lib.lookup(FnValidatePayloadSafety, "validate_payload_safety");
         if (fn_validate_payload_safety != null) {
-            std.debug.print("\x1b[32m[RUST] Tier-0 Memory Safety Shield active\x1b[0m\n", .{});
+            std.debug.print("[RUST] Tier-0 Memory Safety Shield active\n", .{});
         }
     } else {
-        std.debug.print("\x1b[33m[RUST] Warning: sec_monitor.dll not found — running without Memory Safety Shield\x1b[0m\n", .{});
+        std.debug.print("[RUST] Warning: sec_monitor.dll not found — running without Memory Safety Shield\n", .{});
     }
 }
 
@@ -203,7 +203,7 @@ pub const PacketContext = struct {
     direction: u8 = 0,
     layer_id: u8 = 0,
     is_pipe: bool = false,
-};
+}
 
 // =================================================================
 // [ WFP EVENT HEADER — 44 bytes จาก kernel driver ]
@@ -223,7 +223,7 @@ pub const WfpEventHeader = extern struct {
     severity: u32,
     reserved: u32,
     timestamp: u64,
-};
+}
 
 /// Helper: Push Tier-1 match result to C++ Bridge
 fn pushTier1Match(
@@ -251,7 +251,7 @@ fn pushTier1Match(
         .timestamp = @as(u64, @intCast(std.time.milliTimestamp())),
         .source_pid = 0,
         .defcon_impact = 4,
-    };
+    }
     return fn_bridge_push_event.?(&event);
 }
 
@@ -279,7 +279,7 @@ fn pushForwardedEvent(
         .timestamp = @as(u64, @intCast(std.time.milliTimestamp())),
         .source_pid = 0,
         .defcon_impact = 5,
-    };
+    }
     return fn_bridge_push_event.?(&event);
 }
 
@@ -300,7 +300,7 @@ const AhoCorasick = struct {
         next: [256]usize,
         fail: usize,
         matches: std.ArrayList(usize),
-    };
+    }
     nodes: std.ArrayList(Node),
     allocator: std.mem.Allocator,
 
@@ -308,7 +308,7 @@ const AhoCorasick = struct {
         var ac = AhoCorasick{
             .nodes = std.ArrayList(Node).init(allocator),
             .allocator = allocator,
-        };
+        }
         _ = try ac.addNode();
         return ac;
     }
@@ -326,7 +326,7 @@ const AhoCorasick = struct {
             .next = [_]usize{std.math.maxInt(usize)} ** 256,
             .fail = 0,
             .matches = std.ArrayList(usize).init(self.allocator),
-        };
+        }
         try self.nodes.append(node);
         return idx;
     }
@@ -376,7 +376,7 @@ const AhoCorasick = struct {
             }
         }
     }
-};
+}
 
 const ThreatState = enum(u8) { CLEAN = 0, SUSPICIOUS = 1, VERIFIED = 2, BLOCKED = 3 };
 const AtomicThreatTracker = struct {
@@ -390,7 +390,7 @@ const AtomicThreatTracker = struct {
     pub fn reset(self: *AtomicThreatTracker) void {
         self.state.store(@intFromEnum(ThreatState.CLEAN), .release);
     }
-};
+}
 
 var global_attacker_tracker: AtomicThreatTracker = .{};
 
@@ -402,7 +402,7 @@ pub const SecureRule = struct {
     severity: []const u8,
     action: []const u8,
     crc32: u32,
-};
+}
 
 pub const SecureRuleSet = struct {
     allocator: std.mem.Allocator,
@@ -421,7 +421,7 @@ pub const SecureRuleSet = struct {
         self.ac_engine.deinit();
         self.allocator.destroy(self);
     }
-};
+}
 
 var active_ruleset: std.atomic.Value(?*SecureRuleSet) = std.atomic.Value(?*SecureRuleSet).init(null);
 var connection_semaphore: std.Thread.Semaphore = .{ .permits = 100 };
@@ -434,7 +434,7 @@ var udp_log_addr: net.Address = undefined;
 // --- [ RULE LOADING ] ---
 pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
     const file = std.fs.cwd().openFile("Rules.json", .{}) catch |err| {
-        std.debug.print("\x1b[31m[ERROR] Cannot open Rules.json: {any}\x1b[0m\n", .{err});
+        std.debug.print("[ERROR] Cannot open Rules.json: {any}\n", .{err});
         return;
     };
     defer file.close();
@@ -445,7 +445,7 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
     const TempRuleSet = struct { nids_rules: []TempRule };
 
     const parsed = std.json.parseFromSlice(TempRuleSet, allocator, content, .{ .ignore_unknown_fields = true }) catch |err| {
-        std.debug.print("\x1b[31m[ERROR] JSON Parse Failed: {any}\x1b[0m\n", .{err});
+        std.debug.print("[ERROR] JSON Parse Failed: {any}\n", .{err});
         return;
     };
     defer parsed.deinit();
@@ -508,7 +508,7 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
         old.deinit();
     }
 
-    std.debug.print("\x1b[32m[ENTERPRISE SECURITY] Successfully loaded {d} secure rules.\x1b[0m\n", .{valid_rule_count});
+    std.debug.print("[ENTERPRISE SECURITY] Successfully loaded {d} secure rules.\n", .{valid_rule_count});
 }
 // UDP send to brain
 fn send_to_brain(allocator: std.mem.Allocator, msg: anytype) !void {
@@ -580,7 +580,7 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
             .source_port = ctx.source_port,
             .dest_port = ctx.dest_port,
             .protocol = ctx.protocol,
-        };
+        }
 
         try send_to_brain(allocator, alert);
 
@@ -589,11 +589,11 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
             if (std.mem.eql(u8, rule.severity, "High")) break :val 2;
             if (std.mem.eql(u8, rule.severity, "Medium")) break :val 1;
             break :val 0;
-        };
+        }
         _ = pushTier1Match(ctx, rule.crc32, severity_val, @as(u32, @intCast(data.len)));
 
         if (std.mem.eql(u8, rule.action, "Block")) {
-            std.debug.print("\x1b[31;1m[ AEGIS CORE ] !!! BLOCK !!! Connection Terminated: {s}\x1b[0m\n", .{rule.name});
+            std.debug.print("[ AEGIS CORE ] !!! BLOCK !!! Connection Terminated: {s}\n", .{rule.name});
             return false;
         }
 
@@ -611,7 +611,7 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
             .source_port = ctx.source_port,
             .dest_port = ctx.dest_port,
             .protocol = ctx.protocol,
-        };
+        }
 
         try send_to_brain(allocator, forward_msg);
         _ = pushForwardedEvent(ctx, @as(u32, @intCast(data.len)));
@@ -635,7 +635,7 @@ fn handle_pipe_client(hPipe: win.HANDLE) void {
     const ctx = PacketContext{
         .is_pipe = true,
         .layer_id = 3,
-    };
+    }
 
     var buf: [4096]u8 = undefined;
     while (true) {
@@ -645,7 +645,7 @@ fn handle_pipe_client(hPipe: win.HANDLE) void {
         const is_safe = inspect_packet(buf[0..bytes_read], ctx) catch true;
         if (!is_safe) {
             break;
-        }
+};
     }
 }
 
@@ -665,7 +665,7 @@ fn pipe_listener() !void {
                 win.CloseHandle(hPipe);
                 connection_semaphore.post();
                 continue;
-            };
+};
             t.detach();
         } else {
             _ = DisconnectNamedPipe(hPipe);
@@ -683,11 +683,11 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address) void {
     const src_ip: u32 = blk: {
         const sa = @as(*const std.posix.sockaddr.in, @ptrCast(@alignCast(&remote_addr.any)));
         break :blk sa.addr;
-    };
+    }
     const src_port: u16 = blk: {
         const sa = @as(*const std.posix.sockaddr.in, @ptrCast(@alignCast(&remote_addr.any)));
         break :blk std.mem.bigToNative(u16, sa.port);
-    };
+    }
 
     const ctx = PacketContext{
         .source_ip = src_ip,
@@ -696,7 +696,7 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address) void {
         .protocol = 6,
         .layer_id = 0,
         .is_pipe = false,
-    };
+    }
 
     var buf: [16384]u8 = undefined;
     while (true) {
@@ -705,7 +705,7 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address) void {
         const is_safe = inspect_packet(buf[0..len], ctx) catch true;
         if (!is_safe) {
             break;
-        }
+};
     }
 }
 
@@ -721,7 +721,7 @@ fn tcp_listener() !void {
             conn.stream.close();
             connection_semaphore.post();
             continue;
-        };
+};
         t.detach();
     }
 }
@@ -736,9 +736,9 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
     // Initialize Bridge if loaded
     const bridge_rc = bridgeInit();
     if (bridge_rc == 0) {
-        std.debug.print("\x1b[32m[BRIDGE] C++ IPC Bridge initialized — Zig Core connected\x1b[0m\n", .{});
+        std.debug.print("[BRIDGE] C++ IPC Bridge initialized — Zig Core connected\n", .{});
     } else if (fn_bridge_init != null) {
-        std.debug.print("\x1b[33m[BRIDGE] Warning: Bridge init failed (rc={d}), running without Bridge\x1b[0m\n", .{bridge_rc});
+        std.debug.print("[BRIDGE] Warning: Bridge init failed (rc={d}), running without Bridge\n", .{bridge_rc});
     }
     defer {
         _ = bridgeShutdown();
@@ -752,12 +752,12 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
         if (posix.socket(addr.any.family, posix.SOCK.DGRAM, 0)) |sock| {
             udp_log_sock = sock;
             udp_log_available = true;
-            std.debug.print("\x1b[32m[BRIDGE] UDP brain logger connected to 127.0.0.1:9999\x1b[0m\n", .{});
+            std.debug.print("[BRIDGE] UDP brain logger connected to 127.0.0.1:9999\n", .{});
         } else |_| {
-            std.debug.print("\x1b[33m[WARN] Failed to create UDP socket — brain logging disabled\x1b[0m\n", .{});
+            std.debug.print("[WARN] Failed to create UDP socket — brain logging disabled\n", .{});
         }
     } else |_| {
-        std.debug.print("\x1b[33m[WARN] Failed to parse UDP log address — brain logging disabled\x1b[0m\n", .{});
+        std.debug.print("[WARN] Failed to parse UDP log address — brain logging disabled\n", .{});
     }
 
     reload_rules_atomic(allocator) catch |err| {
