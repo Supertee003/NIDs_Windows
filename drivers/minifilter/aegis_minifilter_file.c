@@ -1,4 +1,3 @@
-@@ -0,0 +1,145 @@
 /**
  * aegis_minifilter_file.c — AEGIS NIDS Minifilter File Operation Callbacks
  *

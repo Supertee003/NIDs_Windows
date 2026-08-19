@@ -46,19 +46,27 @@ int main(int argc, char* argv[]) {
         if (strcmp(argv[i], "--json") == 0) jsonMode = true;
     }
 
-    // ====== Banner ======
-    // Set console to UTF-8 on Windows for proper box-drawing display
+    // ====== Set console to UTF-8 (fixes box-drawing mojibake on Windows) ======
 #ifdef _WIN32
     SetConsoleOutputCP(65001);
+    SetConsoleCP(65001);
 #endif
+
+    // ====== Banner (64-char wide, ANSI colored) ======
+    const char* RST = "\x1b[0m";
+    const char* BLD = "\x1b[1m";
+    const char* CYN = "\x1b[96m";
+    const char* GRN = "\x1b[92m";
+    const char* YEL = "\x1b[93m";
+    const char* DIM = "\x1b[2m";
+
     fprintf(stdout, "\n");
-    fprintf(stdout, "+======================================================+\n");
-    fprintf(stdout, "|          AEGIS NIDS - IPC Bridge (C++)              |\n");
-    fprintf(stdout, "|          Multi-Language Hybrid Architecture          |\n");
-    fprintf(stdout, "+------------------------------------------------------+\n");
-    fprintf(stdout, "|  Zig Core + Python Brain + Rust Shield + Go Nose    |\n");
-    fprintf(stdout, "|  C++ Drivers + C++ Bridge                            |\n");
-    fprintf(stdout, "+======================================================+\n");
+    fprintf(stdout, "%s╔════════════════════════════════════════════════════════════╗%s\n", CYN, RST);
+    fprintf(stdout, "%s║%s %sAEGIS NIDS — IPC Bridge (C++)%s %sv2.0%s                %s║%s\n", CYN, RST, BLD, RST, DIM, RST, CYN, RST);
+    fprintf(stdout, "%s║%s %sMulti-Language Hybrid Architecture — Event Queue Hub%s  %s║%s\n", CYN, RST, DIM, RST, CYN, RST);
+    fprintf(stdout, "%s╠════════════════════════════════════════════════════════════╣%s\n", CYN, RST);
+    fprintf(stdout, "%s║%s %sZig Core%s · %sPython Brain%s · %sRust Shield%s · %sGo Nose%s  %s║%s\n", CYN, RST, GRN, RST, GRN, RST, GRN, RST, GRN, RST, CYN, RST);
+    fprintf(stdout, "%s╚════════════════════════════════════════════════════════════╝%s\n", CYN, RST);
     fprintf(stdout, "\n");
 
     // ====== Initialize Bridge ======

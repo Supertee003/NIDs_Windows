@@ -242,53 +242,6 @@ void NamedPipeChannel::Disconnect() {
     m_connected = false;
 }
 
-// ====== Graceful Degradation: Auto-Reconnect with Backoff ======
-// ถ้า Named Pipe ขาด → พยายามเชื่อมต่อใหม่ด้วย exponential backoff
-// สูงสุด 5 ครั้ง (1s, 2s, 4s, 8s, 16s)
-bool NamedPipeChannel::Reconnect(int maxRetries) {
-    if (m_pipeName[0] == '\0') return false;  // No pipe name set
-
-    for (int attempt = 0; attempt < maxRetries; ++attempt) {
-        int backoffMs = (1 << attempt) * 1000;  // 1s, 2s, 4s, 8s, 16s
-        if (attempt > 0) {
-            fprintf(stdout, "[AEGIS Bridge] Reconnect attempt %d/%d (backoff %dms)\n",
-                attempt + 1, maxRetries, backoffMs);
-#ifdef _WIN32
-            Sleep(backoffMs);
-#else
-            usleep(backoffMs * 1000);
-#endif
-        }
-
-        Disconnect();
-        if (ConnectClient(m_pipeName)) {
-            fprintf(stdout, "[AEGIS Bridge] Reconnected successfully: %s\n", m_pipeName);
-            return true;
-        }
-    }
-
-    fprintf(stderr, "[AEGIS Bridge] Reconnect failed after %d attempts — channel degraded\n", maxRetries);
-    return false;
-}
-
-// ====== Health Check: Ping/Pong via IpcCommand ======
-bool NamedPipeChannel::HealthCheck() {
-    if (!m_connected) return false;
-
-    IpcCommand ping = {};
-    ping.command_id = 0x08;       // kCmdHealthCheck
-    ping.target_subsystem = 5;    // kSubsystemBridge
-    ping.payload_size = 0;
-    ping.response_expected = 1;
-    ping.timestamp = 0;
-
-    if (!SendCommand(ping)) {
-        m_connected = false;
-        return false;
-    }
-    return true;
-}
-
 } // namespace Bridge
 } // namespace Aegis
 

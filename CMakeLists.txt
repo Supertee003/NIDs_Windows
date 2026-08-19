@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+﻿cmake_minimum_required(VERSION 3.16)
 project(aegis_ipc_bridge VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -16,7 +16,7 @@ endif()
 
 # ====== Compiler Flags ======
 # MSVC: /EHsc = C++ exceptions + extern"C" never throws (needed by UCRT)
-# GCC/Clang: -fno-exceptions not used — UCRT stdio requires exception support
+# GCC/Clang: -fno-exceptions not used â€” UCRT stdio requires exception support
 if(MSVC)
     add_compile_options(/EHsc /W4)
     # Prevent winsock.h / winsock2.h conflict
@@ -34,19 +34,6 @@ add_library(aegis_ipc SHARED
 target_include_directories(aegis_ipc PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
-# Pre-link: Delete old DLL if locked by another process
-# LNK1104 fix — try to remove the DLL before linker writes to it
-if(MSVC)
-    add_custom_command(TARGET aegis_ipc PRE_LINK
-        COMMAND ${CMAKE_COMMAND} -E remove -f
-            "${CMAKE_BINARY_DIR}/Release/aegis_ipc.dll"
-            "${CMAKE_BINARY_DIR}/Release/aegis_ipc.lib"
-            "${CMAKE_BINARY_DIR}/$<CONFIG>/aegis_ipc.dll"
-            "${CMAKE_BINARY_DIR}/$<CONFIG>/aegis_ipc.lib"
-        COMMENT "[AEGIS] Removing old aegis_ipc.dll before linking..."
-    )
-endif()
-
 
 # ====== Bridge Standalone Executable ======
 add_executable(aegis_bridge
@@ -75,3 +62,4 @@ install(TARGETS aegis_ipc aegis_bridge aegis_bridge_test
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
 )
+add_subdirectory(bridge)

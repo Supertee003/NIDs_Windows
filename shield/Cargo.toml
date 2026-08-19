@@ -1,0 +1,11 @@
+﻿[package]
+name = "aegis-shield"
+version = "0.1.0"
+edition = "2021"
+description = "AEGIS NIDS Shield - Tier-3 FFI Layer"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+name = "aegis_shield"
+
+[dependencies]

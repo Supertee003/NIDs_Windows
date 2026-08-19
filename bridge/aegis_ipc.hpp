@@ -309,9 +309,7 @@ public:
     // Receive an IpcEvent
     bool ReceiveEvent(IpcEvent& event);
 
-    void Disconnect();    bool Reconnect(int maxRetries = 5);   // Graceful degradation: auto-reconnect with backoff
-    bool HealthCheck();                    // Ping/pong health check via IpcCommand
-
+    void Disconnect();
     bool IsConnected() const { return m_connected; }
 };
 

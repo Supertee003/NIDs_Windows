@@ -1,521 +1,345 @@
 """
-aegis_bridge_ctypes.py — Python ↔ Native FFI Bridge (Cross-layer)
+aegis_bridge_ctypes.py — Python ctypes Bindings for C++ IPC Bridge
 
-Provides ctypes-based access to:
-  - Zig capture/analysis layer (aegis_capture.dll, aegis_analyze.dll)
-  - Rust shield layer (aegis_shield.dll)
-  - C++ IPC bridge (aegis_ipc.dll)
-  - C++ packet parser (aegis_packet_parser.dll)
-  - Go performance monitor (via named pipe)
+Python Brain (Tier-2) uses ctypes to call the C++ IPC Bridge DLL.
+This enables Python to:
+  - Push regex inspection results (Tier-2 matches) to the Bridge
+  - Receive events from Zig Core (Tier-1) for deep inspection
+  - Request IPS blocking of malicious IPs
+  - Get DEFCON level for IPS policy decisions
 
-All native calls go through this bridge with proper error handling
-and type safety. The Python brain (windows_brain.py) uses this
-bridge for all inter-layer communication.
+Architecture: Python Brain → C++ Bridge (via ctypes) → Dashboard
+Build: The aegis_ipc.dll must be built and placed in the project directory
 """
 
 import ctypes
-import logging
+import os
 import struct
-import threading
-from pathlib import Path
-from typing import Optional
+import platform
 
-logger = logging.getLogger("aegis.bridge")
+# ====== Load C++ IPC Bridge Shared Library ======
+# Platform: Windows = .dll, Linux = .so, macOS = .dylib
+_is_windows = platform.system() == "Windows"
+_lib_name = "aegis_ipc.dll" if _is_windows else "libaegis_ipc.so"
 
-# ─── C-ABI Structure Definitions (matching kernel/Zig/Rust) ───
+# Search in multiple locations (ordered by likelihood)
+_base_dir = os.path.dirname(os.path.abspath(__file__))
+_dll_paths = [
+    os.path.join(_base_dir, _lib_name),                          # bridge/
+    os.path.join(_base_dir, "..", "bridge", _lib_name),          # ./bridge/
+    os.path.join(_base_dir, "..", "build", "Release", _lib_name),  # build/Release/ (MSVC)
+    os.path.join(_base_dir, "..", "build", "Debug", _lib_name),    # build/Debug/ (MSVC)
+    os.path.join(_base_dir, "..", "build", _lib_name),           # build/ (MinGW/single-config)
+    os.path.join(_base_dir, "build", _lib_name),                 # alternate
+    os.path.join(_base_dir, "..", "target", "release", _lib_name),  # target/release/ (Rust-like)
+]
 
-class AegisPktMetaC(ctypes.Structure):
-    """Packet metadata — matches AegisPktMeta in Zig/Rust/C/C++.
-    Includes Semi-NIDS fields (threat_score, confidence, risk_flags)
-    that are set by the Rust correlation engine and read by the W!FP kernel driver.
-    """
+_bridge_dll = None
+for path in _dll_paths:
+    abs_path = os.path.abspath(path)
+    if os.path.exists(abs_path):
+        _bridge_dll = ctypes.CDLL(abs_path)
+        break
+
+if _bridge_dll is None:
+    # Try system path as last resort
+    try:
+        _bridge_dll = ctypes.CDLL(_lib_name)
+    except OSError:
+        print("[AEGIS Bridge] Warning: aegis_ipc.dll not found — running in standalone mode")
+        _bridge_dll = None
+
+
+# ====== IPC Event Structure (48 bytes — matches C++ IpcEvent) ======
+class AegisIpcEvent(ctypes.Structure):
     _pack_ = 1
     _fields_ = [
-        ("size",        ctypes.c_uint32),
-        ("orig_len",    ctypes.c_uint32),
-        ("timestamp",   ctypes.c_uint64),
-        ("layer_id",    ctypes.c_uint16),
-        ("direction",   ctypes.c_uint16),
-        ("process_id",  ctypes.c_uint32),
-        ("ip_proto",    ctypes.c_uint16),
-        ("_pad",        ctypes.c_uint16),
-        ("src_ip",      ctypes.c_uint32),
-        ("dst_ip",      ctypes.c_uint32),
-        ("src_port",    ctypes.c_uint16),
-        ("dst_port",    ctypes.c_uint16),
-        # Semi-NIDS fields (set by Rust correlation, read by WFP kernel)
-        ("threat_score", ctypes.c_int32),    # 0-100 (x10 fixed-point: 600 = 60.0)
-        ("confidence",   ctypes.c_uint8),    # 0=Unknown,1=Low,2=Medium,3=High,4=Critical
-        ("risk_flags",   ctypes.c_uint32),   # Bitfield of matched rules
+        ("event_type",      ctypes.c_uint32),   # 0=NETWORK, 1=KERNEL_FILE, 2=KERNEL_PROCESS, 3=L2_PIPE
+        ("source_ip",       ctypes.c_uint32),   # IPv4 source
+        ("dest_ip",         ctypes.c_uint32),   # IPv4 destination
+        ("source_port",     ctypes.c_uint16),   # Source port
+        ("dest_port",       ctypes.c_uint16),   # Destination port
+        ("protocol",        ctypes.c_uint8),    # 6=TCP, 17=UDP, 1=ICMP
+        ("direction",       ctypes.c_uint8),    # 0=inbound, 1=outbound
+        ("layer_id",        ctypes.c_uint8),    # Layer where event originated
+        ("tier_result",     ctypes.c_uint8),    # 0=NoMatch, 1=Tier1, 2=Tier2, 3=Tier3
+        ("payload_length",  ctypes.c_uint32),   # Payload length
+        ("rule_id",         ctypes.c_uint32),   # Matched rule ID
+        ("severity",        ctypes.c_uint32),   # 0=Low, 1=Medium, 2=High, 3=Critical
+        ("reserved",        ctypes.c_uint32),   # Reserved
+        ("timestamp",       ctypes.c_uint64),   # Event timestamp (ms since epoch)
+        ("source_pid",      ctypes.c_uint32),   # PID of source process
+        ("defcon_impact",   ctypes.c_uint32),   # DEFCON impact level (1-5)
     ]
 
 
-# ─── Semi-NIDS Stats Structure (matches Rust SemiNidsStats #[repr(C)]) ───
-
-class SemiNidsStatsC(ctypes.Structure):
-    """Engine statistics — matches SemiNidsStats in Rust semi_nids.rs.
-
-    Fields (must match Rust layout exactly for correct FFI):
-      total_evaluated: u64, total_passed: u64, total_alerted: u64,
-      total_blocked: u64, total_rate_limited: u64, total_fail_open_passes: u64,
-      total_human_decisions: u64, permanent_blocks: u32, temporary_blocks: u32,
-      fail_open_active: bool, load_state: u8 (LoadState), current_pps: u64
-    """
+# ====== IPC Command Structure ======
+class AegisIpcCommand(ctypes.Structure):
     _pack_ = 1
     _fields_ = [
-        ("total_evaluated",      ctypes.c_uint64),
-        ("total_passed",         ctypes.c_uint64),
-        ("total_alerted",        ctypes.c_uint64),
-        ("total_blocked",        ctypes.c_uint64),
-        ("total_rate_limited",   ctypes.c_uint64),
-        ("total_fail_open_passes", ctypes.c_uint64),
-        ("total_human_decisions", ctypes.c_uint64),
-        ("permanent_blocks",     ctypes.c_uint32),
-        ("temporary_blocks",     ctypes.c_uint32),
-        ("fail_open_active",     ctypes.c_bool),
-        ("load_state",           ctypes.c_uint8),   # LoadState enum: 0-3
-        ("current_pps",          ctypes.c_uint64),
+        ("command_id",        ctypes.c_uint32),
+        ("target_subsystem",  ctypes.c_uint32),
+        ("payload_size",      ctypes.c_uint32),
+        ("response_expected", ctypes.c_uint32),
+        ("timestamp",         ctypes.c_uint64),
     ]
 
 
-class AegisFileEventC(ctypes.Structure):
-    """File event — matches AegisFileEvent in C++."""
-    _pack_ = 1
-    _fields_ = [
-        ("size",        ctypes.c_uint32),
-        ("timestamp",   ctypes.c_uint64),
-        ("pid",         ctypes.c_uint32),
-        ("tid",         ctypes.c_uint32),
-        ("event_type",  ctypes.c_uint16),
-        ("file_size_hi", ctypes.c_uint16),
-        ("file_size_lo", ctypes.c_uint32),
-        ("path_len",    ctypes.c_uint16),
-        ("_pad",        ctypes.c_uint16),
-        ("path",        ctypes.c_wchar * 520),
-    ]
+# ====== DEFCON Levels ======
+DEFCON_1_MAXIMUM  = 1   # 10+ critical OR 5+ blocks OR kernel threats
+DEFCON_2_SEVERE   = 2   # 5+ critical OR 3+ blocks
+DEFCON_3_HIGH     = 3   # 5+ alerts OR 1+ critical
+DEFCON_4_ELEVATED = 4   # 1-5 alerts
+DEFCON_5_SAFE     = 5   # 0 alerts
+
+DEFCON_LABELS = {
+    1: "MAXIMUM",
+    2: "SEVERE",
+    3: "HIGH",
+    4: "ELEVATED",
+    5: "SAFE",
+}
+
+DEFCON_DESCRIPTIONS = {
+    1: "10+ critical alerts OR 5+ blocked IPs OR kernel-level threats detected",
+    2: "5+ critical alerts OR 3+ blocked IPs — active threat campaign",
+    3: "5+ alerts OR 1+ critical — significant threat activity",
+    4: "1-5 alerts — low-level threat activity observed",
+    5: "No alerts — all systems nominal",
+}
 
 
-class AegisRingHeaderC(ctypes.Structure):
-    """Ring buffer header — matches AegisRingHeader in C."""
-    _pack_ = 1
-    _fields_ = [
-        ("write_pos",     ctypes.c_uint32),
-        ("read_pos",      ctypes.c_uint32),
-        ("capacity",      ctypes.c_uint32),
-        ("packet_count",  ctypes.c_uint32),
-        ("dropped_count", ctypes.c_uint32),
-    ]
+# ====== Bridge Function Wrappers ======
+def _get_func(name, arg_types=None, restype=ctypes.c_int32):
+    """Get a function from the DLL with type annotations."""
+    if _bridge_dll is None:
+        return None
+    func = getattr(_bridge_dll, name, None)
+    if func is None:
+        return None
+    if arg_types:
+        func.argtypes = arg_types
+    func.restype = restype
+    return func
 
 
-# ─── Native Library Loader ───
-
-class NativeLibrary:
-    """Thread-safe loader for a native shared library with C-ABI."""
-
-    def __init__(self, name: str, search_paths: list[Path] = None):
-        self.name = name
-        self._lib: Optional[ctypes.CDLL] = None
-        self._lock = threading.Lock()
-        self._search_paths = search_paths or [
-            Path("."), Path("kernel/ipc"), Path("shield_rust/target/release"),
-            Path("capture_zig/zig-out"), Path("kernel/packet_parser"),
-        ]
-
-    def load(self) -> bool:
-        """Attempt to load the library from search paths."""
-        with self._lock:
-            if self._lib is not None:
-                return True
-
-            for path in self._search_paths:
-                try:
-                    full_path = path / self.name
-                    self._lib = ctypes.CDLL(str(full_path))
-                    logger.info(f"Loaded native library: {full_path}")
-                    return True
-                except OSError:
-                    continue
-
-            # Try system library path
-            try:
-                self._lib = ctypes.CDLL(self.name)
-                logger.info(f"Loaded system library: {self.name}")
-                return True
-            except OSError:
-                pass
-
-            logger.warning(f"Failed to load native library: {self.name}")
-            return False
-
-    @property
-    def lib(self) -> Optional[ctypes.CDLL]:
-        return self._lib
-
-    def is_loaded(self) -> bool:
-        return self._lib is not None
+# ====== Initialization ======
+_bridge_init = _get_func("aegis_bridge_init", restype=ctypes.c_int32)
+_bridge_shutdown = _get_func("aegis_bridge_shutdown", restype=ctypes.c_int32)
 
 
-# ─── Bridge Instances ───
-
-ipc_bridge      = NativeLibrary("aegis_ipc.dll")
-packet_parser   = NativeLibrary("aegis_packet_parser.dll")
-shield_bridge   = NativeLibrary("aegis_shield.dll")
-capture_bridge  = NativeLibrary("aegis_capture.dll")
-
-
-# ─── IPC Bridge Functions ───
-
-def ipc_init() -> bool:
-    """Initialize IPC bridge — map kernel ring buffers."""
-    if not ipc_bridge.load():
-        return False
-    ipc_bridge.lib.aegis_ipc_init.restype = ctypes.c_int32
-    rc = ipc_bridge.lib.aegis_ipc_init()
-    return rc == 0
+def bridge_init():
+    """Initialize the C++ IPC Bridge. Returns 0 on success."""
+    if _bridge_init:
+        return _bridge_init()
+    return -1
 
 
-def ipc_read_packet(meta_buf: AegisPktMetaC, payload_buf: ctypes.Array,
-                    buf_size: ctypes.POINTER) -> int:
-    """Read next packet from WFP ring buffer."""
-    if not ipc_bridge.is_loaded():
-        return -1
-    ipc_bridge.lib.aegis_ipc_read_packet.restype = ctypes.c_int32
-    return ipc_bridge.lib.aegis_ipc_read_packet(
-        ctypes.byref(meta_buf), payload_buf, buf_size
-    )
+def bridge_shutdown():
+    """Shutdown the C++ IPC Bridge. Returns 0 on success."""
+    if _bridge_shutdown:
+        return _bridge_shutdown()
+    return -1
 
 
-def ipc_get_stats() -> dict:
-    """Get WFP ring buffer statistics."""
-    if not ipc_bridge.is_loaded():
-        return {}
-    packets = ctypes.c_uint32()
-    dropped = ctypes.c_uint32()
-    ipc_bridge.lib.aegis_ipc_get_stats.restype = ctypes.c_int32
-    ipc_bridge.lib.aegis_ipc_get_stats(
-        ctypes.byref(packets), ctypes.byref(dropped)
-    )
-    return {"packets": packets.value, "dropped": dropped.value}
+# ====== Event Passing ======
+_bridge_push = _get_func("aegis_bridge_push_event",
+    [ctypes.POINTER(AegisIpcEvent)], ctypes.c_int32)
+_bridge_pop = _get_func("aegis_bridge_pop_event",
+    [ctypes.POINTER(AegisIpcEvent)], ctypes.c_int32)
 
 
-# ─── Shield Bridge Functions ───
-
-def shield_init() -> bool:
-    """Initialize Rust memory safety shield."""
-    if not shield_bridge.load():
-        return False
-    shield_bridge.lib.aegis_shield_init.restype = ctypes.c_int32
-    return shield_bridge.lib.aegis_shield_init() == 0
-
-
-def shield_submit_packet(meta: AegisPktMetaC, payload: bytes,
-                         pattern_ids: list[int]) -> int:
-    """Submit matched packet to Rust shield for forensic hashing."""
-    if not shield_bridge.is_loaded():
+def push_event(event_type, source_ip, dest_ip, source_port, dest_port,
+               protocol, tier_result, rule_id, severity, direction=0):
+    """Push an event to the C++ Bridge event queue."""
+    if _bridge_push is None:
         return -1
 
-    # Convert pattern IDs to C array
-    n = len(pattern_ids)
-    c_ids = (ctypes.c_uint32 * n)(*pattern_ids) if n > 0 else None
+    event = AegisIpcEvent()
+    event.event_type     = event_type
+    event.source_ip      = source_ip
+    event.dest_ip        = dest_ip
+    event.source_port    = source_port
+    event.dest_port      = dest_port
+    event.protocol       = protocol
+    event.direction      = direction
+    event.layer_id       = 0 if event_type == 0 else event_type
+    event.tier_result    = tier_result   # 2 = Tier-2 regex match
+    event.payload_length = 0
+    event.rule_id        = int(rule_id) if isinstance(rule_id, (str, float)) else rule_id
+    event.severity       = severity
+    event.reserved       = 0
+    event.timestamp      = 0
+    event.source_pid     = 0
+    event.defcon_impact  = severity if severity >= 3 else 4
 
-    shield_bridge.lib.aegis_shield_submit_packet.restype = ctypes.c_int32
-    return shield_bridge.lib.aegis_shield_submit_packet(
-        ctypes.byref(meta), payload, len(payload),
-        c_ids, n
-    )
+    return _bridge_push(ctypes.byref(event))
 
 
-def shield_get_forensic_hash() -> Optional[bytes]:
-    """Get the latest forensic SHA-256 hash from Rust shield."""
-    if not shield_bridge.is_loaded():
+def pop_event():
+    """Pop an event from the C++ Bridge event queue. Returns AegisIpcEvent or None."""
+    if _bridge_pop is None:
         return None
 
-    hash_buf = (ctypes.c_uint8 * 32)()
-    shield_bridge.lib.aegis_shield_get_forensic_hash.restype = ctypes.c_int32
-    rc = shield_bridge.lib.aegis_shield_get_forensic_hash(hash_buf)
-    if rc != 0:
-        return None
-    return bytes(hash_buf)
+    event = AegisIpcEvent()
+    result = _bridge_pop(ctypes.byref(event))
+    if result == 0:
+        return event
+    return None
 
 
-def shield_shutdown() -> None:
-    """Shutdown Rust shield and release resources."""
-    if shield_bridge.is_loaded():
-        shield_bridge.lib.aegis_shield_shutdown()
+# ====== DEFCON ======
+_bridge_get_defcon = _get_func("aegis_bridge_get_defcon", restype=ctypes.c_uint8)
+_bridge_update_defcon = _get_func("aegis_bridge_update_defcon",
+    [ctypes.c_uint32, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_uint32], None)
+_bridge_get_defcon_label = _get_func("aegis_bridge_get_defcon_label",
+    restype=ctypes.c_char_p)
+_bridge_get_defcon_desc = _get_func("aegis_bridge_get_defcon_description",
+    restype=ctypes.c_char_p)
 
 
-# ─── Semi-NIDS Bridge Functions (Property 1, 2, 3) ───
-
-def semi_nids_init() -> bool:
-    """Initialize Rust Semi-NIDS engine (adaptive drop + fail-open + human-in-loop)."""
-    if not shield_bridge.load():
-        return False
-    shield_bridge.lib.aegis_semi_nids_init.restype = ctypes.c_int32
-    return shield_bridge.lib.aegis_semi_nids_init() == 0
+def get_defcon_level():
+    """Get current DEFCON level (1-5)."""
+    if _bridge_get_defcon:
+        return _bridge_get_defcon()
+    return DEFCON_5_SAFE
 
 
-def semi_nids_evaluate(src_ip: int, dst_ip: int, src_port: int, dst_port: int,
-                       ip_proto: int, threat_score: float, confidence: int,
-                       risk_flags: int, process_id: int) -> int:
-    """Evaluate threat → returns SemiNidsDecision (0-5).
-
-    Decision codes:
-      0=Pass, 1=AlertOnly, 2=RateLimit, 3=Block, 4=BlockAndPreserve, 5=PendingHuman
-
-    Rust FFI: aegis_semi_nids_evaluate(src_ip, dst_ip, src_port, dst_port,
-                                       ip_proto, threat_score, confidence,
-                                       risk_flags, process_id) -> u8
-    """
-    if not shield_bridge.is_loaded():
-        return 0  # Pass
-    shield_bridge.lib.aegis_semi_nids_evaluate.restype = ctypes.c_uint8
-    shield_bridge.lib.aegis_semi_nids_evaluate.argtypes = [
-        ctypes.c_uint32,  # src_ip
-        ctypes.c_uint32,  # dst_ip
-        ctypes.c_uint16,  # src_port
-        ctypes.c_uint16,  # dst_port
-        ctypes.c_uint8,   # ip_proto
-        ctypes.c_double,  # threat_score
-        ctypes.c_uint8,   # confidence
-        ctypes.c_uint32,  # risk_flags
-        ctypes.c_uint32,  # process_id
-    ]
-    return shield_bridge.lib.aegis_semi_nids_evaluate(
-        ctypes.c_uint32(src_ip), ctypes.c_uint32(dst_ip),
-        ctypes.c_uint16(src_port), ctypes.c_uint16(dst_port),
-        ctypes.c_uint8(ip_proto),
-        ctypes.c_double(threat_score),
-        ctypes.c_uint8(confidence),
-        ctypes.c_uint32(risk_flags),
-        ctypes.c_uint32(process_id),
-    )
+def update_defcon(critical, blocked, kernel, total):
+    """Update DEFCON counters from subsystems."""
+    if _bridge_update_defcon:
+        _bridge_update_defcon(critical, blocked, kernel, total)
 
 
-def semi_nids_set_policy(alert_id: int, decision: int) -> int:
-    """Human sets policy on a pending alert (Property 3: Interactive Control Loop).
+def get_defcon_label():
+    """Get DEFCON level label string."""
+    if _bridge_get_defcon_label:
+        result = _bridge_get_defcon_label()
+        if result is not None:
+            return result.decode('utf-8')
+        # NULL return from C function - use fallback
+    level = get_defcon_level()
+    return DEFCON_LABELS.get(level, "UNKNOWN")
 
-    decision codes: 1=Block, 2=BlockTemp, 3=Whitelist, 4=Ignore, 5=Escalate
-    """
-    if not shield_bridge.is_loaded():
+
+def get_defcon_description():
+    """Get DEFCON level description string."""
+    if _bridge_get_defcon_desc:
+        result = _bridge_get_defcon_desc()
+        if result is not None:
+            return result.decode('utf-8')
+        # NULL return from C function - use fallback
+    level = get_defcon_level()
+    return DEFCON_DESCRIPTIONS.get(level, "Unknown DEFCON level")
+
+
+# ====== IPS ======
+_bridge_block_ip = _get_func("aegis_bridge_block_ip",
+    [ctypes.c_uint32], ctypes.c_int32)
+_bridge_unblock_ip = _get_func("aegis_bridge_unblock_ip",
+    [ctypes.c_uint32], ctypes.c_int32)
+
+
+def block_ip(ip_string):
+    """Block an IP address via WFP callout (IPS enforcement)."""
+    if _bridge_block_ip is None:
         return -1
-    shield_bridge.lib.aegis_semi_nids_set_policy.restype = ctypes.c_int32
-    return shield_bridge.lib.aegis_semi_nids_set_policy(
-        ctypes.c_uint64(alert_id), ctypes.c_uint8(decision)
-    )
+    ip_int = _ip_to_int(ip_string)
+    return _bridge_block_ip(ip_int)
 
 
-def semi_nids_get_pending_count() -> int:
-    """Get number of alerts pending human decision."""
-    if not shield_bridge.is_loaded():
+def unblock_ip(ip_string):
+    """Unblock a previously blocked IP address."""
+    if _bridge_unblock_ip is None:
+        return -1
+    ip_int = _ip_to_int(ip_string)
+    return _bridge_unblock_ip(ip_int)
+
+
+def _ip_to_int(ip_string):
+    """Convert IP string (e.g., '192.168.1.1') to uint32."""
+    try:
+        parts = ip_string.split('.')
+        if len(parts) != 4:
+            return 0
+        return struct.unpack('>I', struct.pack('BBBB',
+            int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3])))[0]
+    except (ValueError, IndexError):
         return 0
-    shield_bridge.lib.aegis_semi_nids_get_pending_count.restype = ctypes.c_uint32
-    return shield_bridge.lib.aegis_semi_nids_get_pending_count()
 
 
-def semi_nids_block_ip(ip: int, reason: int = 0) -> int:
-    """Block an IP immediately at kernel level.
+def _int_to_ip(ip_int):
+    """Convert uint32 to IP string."""
+    return '.'.join(str((ip_int >> i) & 0xFF) for i in (0, 8, 16, 24))
 
-    Rust FFI: aegis_semi_nids_block_ip(ip: u32, reason: u32) -> i32
-    """
-    if not shield_bridge.is_loaded():
-        return -1
-    shield_bridge.lib.aegis_semi_nids_block_ip.restype = ctypes.c_int32
-    shield_bridge.lib.aegis_semi_nids_block_ip.argtypes = [
-        ctypes.c_uint32, ctypes.c_uint32
-    ]
-    return shield_bridge.lib.aegis_semi_nids_block_ip(
-        ctypes.c_uint32(ip), ctypes.c_uint32(reason)
+
+# ====== Statistics ======
+_bridge_get_event_count = _get_func("aegis_bridge_get_event_count",
+    restype=ctypes.c_uint32)
+_bridge_get_dropped = _get_func("aegis_bridge_get_dropped_count",
+    restype=ctypes.c_uint32)
+
+
+def get_event_count():
+    """Get number of events currently in the queue."""
+    if _bridge_get_event_count:
+        return _bridge_get_event_count()
+    return 0
+
+
+def get_dropped_count():
+    """Get number of events dropped due to queue overflow."""
+    if _bridge_get_dropped:
+        return _bridge_get_dropped()
+    return 0
+
+
+# ====== Tier-2 Helper: Push regex inspection result ======
+def push_tier2_match(rule_id, src_ip, dst_ip, src_port, dst_port, protocol, severity):
+    """Push a Tier-2 (Python Brain) regex match result to the Bridge."""
+    return push_event(
+        event_type=0,          # NETWORK
+        source_ip=_ip_to_int(src_ip) if isinstance(src_ip, str) else src_ip,
+        dest_ip=_ip_to_int(dst_ip) if isinstance(dst_ip, str) else dst_ip,
+        source_port=src_port,
+        dest_port=dst_port,
+        protocol=protocol,
+        tier_result=2,         # Tier-2 regex match
+        rule_id=rule_id,
+        severity=severity,
+        direction=0,
     )
 
 
-def semi_nids_unblock_ip(ip: int) -> int:
-    """Remove IP from block list (whitelist)."""
-    if not shield_bridge.is_loaded():
-        return -1
-    shield_bridge.lib.aegis_semi_nids_unblock_ip.restype = ctypes.c_int32
-    return shield_bridge.lib.aegis_semi_nids_unblock_ip(ctypes.c_uint32(ip))
-
-
-def semi_nids_update_load(cpu_pct: int, queue_pct: int, pps: int) -> None:
-    """Update load metrics from Go perf monitor (Property 2: Fail-Open)."""
-    if not shield_bridge.is_loaded():
-        return
-    shield_bridge.lib.aegis_semi_nids_update_load(
-        ctypes.c_uint8(cpu_pct), ctypes.c_uint8(queue_pct), ctypes.c_uint64(pps)
-    )
-
-
-def semi_nids_fail_open_status() -> dict:
-    """Query fail-open status (Property 2: Graceful Degradation).
-
-    Rust FFI: aegis_semi_nids_fail_open_status(out_active, out_cpu_pct, out_queue_pct) -> u8
-    Returns load_state (0-3) + active/cpu/queue details.
+# ====== Tier-2 Helper: IPS Decision ======
+def ips_decide(rule_id, severity, src_ip, action="alert"):
     """
-    if not shield_bridge.is_loaded():
-        return {"load_state": 0, "active": False, "cpu_pct": 0, "queue_pct": 0}
-    out_active = ctypes.c_bool()
-    out_cpu = ctypes.c_uint8()
-    out_queue = ctypes.c_uint8()
-    shield_bridge.lib.aegis_semi_nids_fail_open_status.restype = ctypes.c_uint8
-    shield_bridge.lib.aegis_semi_nids_fail_open_status.argtypes = [
-        ctypes.POINTER(ctypes.c_bool),
-        ctypes.POINTER(ctypes.c_uint8),
-        ctypes.POINTER(ctypes.c_uint8),
-    ]
-    load_state = shield_bridge.lib.aegis_semi_nids_fail_open_status(
-        ctypes.byref(out_active), ctypes.byref(out_cpu), ctypes.byref(out_queue)
-    )
-    return {
-        "load_state": load_state,
-        "active": out_active.value,
-        "cpu_pct": out_cpu.value,
-        "queue_pct": out_queue.value,
-    }
+    Make an IPS decision based on rule severity and DEFCON level.
 
+    Args:
+        rule_id: Matched rule ID (e.g., 'R0056')
+        severity: Rule severity (0-3)
+        src_ip: Source IP address
+        action: Default action from rule ('alert' or 'block')
 
-def semi_nids_get_pending(index: int) -> dict:
-    """Get pending alert details by index (for console/UI polling).
-
-    Rust FFI: aegis_semi_nids_get_pending(index, out_alert_id, out_src_ip,
-                                           out_threat_score, out_confidence,
-                                           out_decision) -> i32
+    Returns:
+        Decision string: 'allow', 'alert', or 'block'
     """
-    if not shield_bridge.is_loaded():
-        return {}
-    out_alert_id = ctypes.c_uint64(0)
-    out_src_ip = ctypes.c_uint32(0)
-    out_threat_score = ctypes.c_double(0.0)
-    out_confidence = ctypes.c_uint8(0)
-    out_decision = ctypes.c_uint8(0)
-    shield_bridge.lib.aegis_semi_nids_get_pending.restype = ctypes.c_int32
-    shield_bridge.lib.aegis_semi_nids_get_pending.argtypes = [
-        ctypes.c_uint32,                       # index
-        ctypes.POINTER(ctypes.c_uint64),       # out_alert_id
-        ctypes.POINTER(ctypes.c_uint32),       # out_src_ip
-        ctypes.POINTER(ctypes.c_double),       # out_threat_score
-        ctypes.POINTER(ctypes.c_uint8),        # out_confidence
-        ctypes.POINTER(ctypes.c_uint8),        # out_decision
-    ]
-    rc = shield_bridge.lib.aegis_semi_nids_get_pending(
-        ctypes.c_uint32(index),
-        ctypes.byref(out_alert_id), ctypes.byref(out_src_ip),
-        ctypes.byref(out_threat_score), ctypes.byref(out_confidence),
-        ctypes.byref(out_decision),
-    )
-    if rc != 0:
-        return {}
-    return {
-        "alert_id": out_alert_id.value,
-        "src_ip": out_src_ip.value,
-        "threat_score": out_threat_score.value,
-        "confidence": out_confidence.value,
-        "decision": out_decision.value,
-    }
+    defcon = get_defcon_level()
 
+    # DEFCON 1-2: Block all threats automatically
+    if defcon <= DEFCON_2_SEVERE and severity >= 2:
+        block_ip(src_ip)
+        return "block"
 
-def semi_nids_get_stats() -> dict:
-    """Get Semi-NIDS engine statistics.
+    # DEFCON 3-4: Block critical, alert others
+    if severity >= 3:
+        block_ip(src_ip)
+        return "block"
 
-    Rust FFI: aegis_semi_nids_get_stats(out_stats: *mut SemiNidsStats) -> i32
-    Passes a single struct pointer matching Rust SemiNidsStats layout.
-    """
-    if not shield_bridge.is_loaded():
-        return {}
-    stats = SemiNidsStatsC()
-    shield_bridge.lib.aegis_semi_nids_get_stats.restype = ctypes.c_int32
-    shield_bridge.lib.aegis_semi_nids_get_stats.argtypes = [
-        ctypes.POINTER(SemiNidsStatsC)
-    ]
-    rc = shield_bridge.lib.aegis_semi_nids_get_stats(ctypes.byref(stats))
-    if rc != 0:
-        return {}
-    return {
-        "total_evaluated":      stats.total_evaluated,
-        "total_passed":        stats.total_passed,
-        "total_alerted":       stats.total_alerted,
-        "total_blocked":       stats.total_blocked,
-        "total_rate_limited":  stats.total_rate_limited,
-        "total_fail_open_passes": stats.total_fail_open_passes,
-        "total_human_decisions": stats.total_human_decisions,
-        "permanent_blocks":    stats.permanent_blocks,
-        "temporary_blocks":    stats.temporary_blocks,
-        "fail_open_active":   stats.fail_open_active,
-        "load_state":         stats.load_state,
-        "current_pps":        stats.current_pps,
-    }
+    # DEFCON 5: Follow rule's default action
+    if action == "block" and severity >= 2:
+        block_ip(src_ip)
+        return "block"
 
-
-def semi_nids_maintenance() -> int:
-    """Run periodic maintenance (expire temp blocks, clean up).
-
-    Rust FFI: aegis_semi_nids_maintenance() -> u32
-    Returns number of expired temp blocks.
-    """
-    if not shield_bridge.is_loaded():
-        return 0
-    shield_bridge.lib.aegis_semi_nids_maintenance.restype = ctypes.c_uint32
-    return shield_bridge.lib.aegis_semi_nids_maintenance()
-
-
-def semi_nids_shutdown() -> None:
-    """Shutdown Semi-NIDS engine and release resources.
-
-    Rust FFI: aegis_semi_nids_shutdown() (returns void)
-    """
-    if shield_bridge.is_loaded():
-        shield_bridge.lib.aegis_semi_nids_shutdown.restype = None
-        shield_bridge.lib.aegis_semi_nids_shutdown()
-
-
-# ─── Initialization ───
-
-def init_all() -> bool:
-    """Initialize all native bridges including Semi-NIDS engine."""
-    success = True
-    if not ipc_init():
-        logger.warning("IPC bridge init failed")
-        success = False
-    if not shield_init():
-        logger.warning("Shield bridge init failed")
-        success = False
-    if not semi_nids_init():
-        logger.warning("Semi-NIDS engine init failed")
-        # Not fatal — system can operate in legacy mode
-    return success
-
-
-def shutdown_all() -> None:
-    """Shutdown all native bridges."""
-    semi_nids_shutdown()
-    shield_shutdown()
-
-
-# ─── Correlation Engine Bridge Functions ───
-
-def correlation_init() -> bool:
-    """Initialize Rust cross-vector correlation engine."""
-    if not shield_bridge.load():
-        return False
-    shield_bridge.lib.aegis_correlation_init.restype = ctypes.c_int32
-    return shield_bridge.lib.aegis_correlation_init() == 0
-
-
-def correlation_update_load(pps: int) -> None:
-    """Update correlation engine with current PPS from Go perf monitor.
-
-    Rust FFI: aegis_correlation_update_load(pps: u64)
-    """
-    if shield_bridge.is_loaded():
-        shield_bridge.lib.aegis_correlation_update_load.restype = None
-        shield_bridge.lib.aegis_correlation_update_load.argtypes = [ctypes.c_uint64]
-        shield_bridge.lib.aegis_correlation_update_load(ctypes.c_uint64(pps))
-
-
-def correlation_shutdown() -> None:
-    """Shutdown correlation engine and release resources.
-
-    Rust FFI: aegis_correlation_shutdown()
-    """
-    if shield_bridge.is_loaded():
-        shield_bridge.lib.aegis_correlation_shutdown.restype = None
-        shield_bridge.lib.aegis_correlation_shutdown()
+    return action if action in ("alert", "block") else "alert"

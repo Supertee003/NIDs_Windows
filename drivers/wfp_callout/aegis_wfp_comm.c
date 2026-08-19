@@ -1,4 +1,3 @@
-@@ -0,0 +1,105 @@
 /**
  * aegis_wfp_comm.c — AEGIS NIDS WFP Ring Buffer Communication Layer
  *
