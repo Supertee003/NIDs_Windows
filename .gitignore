@@ -1,18 +1,19 @@
-# =====================================================================
-# AEGIS NIDS — .gitignore
+﻿# =====================================================================
+# AEGIS NIDS - .gitignore
 # =====================================================================
 
-# --- Rust build output ---
+# --- Rust ---
 target/
 **/*.rs.bk
 
-# --- Zig build output ---
+# --- Zig ---
 zig-out/
 .zig-cache/
 
-# --- Compiled binaries (build artifacts) ---
+# --- Compiled binaries ---
 *.exe
 *.dll
+*.dll.a
 *.pdb
 *.obj
 *.lib
@@ -20,10 +21,21 @@ zig-out/
 *.so
 *.dylib
 
-# --- Driver build artifacts ---
+# --- Driver build ---
 *.sys
 *.cat
 *.cer
+
+# --- C++ build ---
+build/
+build_cmake/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# --- Dist (build output) ---
+dist/
 
 # --- Python ---
 __pycache__/
@@ -35,30 +47,8 @@ venv/
 .venv/
 
 # --- Go ---
- *.test
- *.out
-
-# --- C++ build output ---
-build/
-CMakeFiles/
-CMakeCache.txt
-cmake_install.cmake
-Makefile
-
- # --- Generated files ---
- threat_graph.html
- aegis_threat_map.html
-
-CMakeCache.txt
-cmake_install.cmake
-Makefile
-
-# --- C++ build output ---
-build/
-CMakeFiles/
-CMakeCache.txt
-cmake_install.cmake
-Makefile
+*.test
+*.out
 
 # --- Generated files ---
 threat_graph.html
@@ -69,6 +59,7 @@ logs/anomalous.json
 logs/*.log
 
 # --- IDE / Editor ---
+.vs/
 .vscode/
 .idea/
 *.swp
@@ -79,3 +70,14 @@ Thumbs.db
 
 # --- OS ---
 desktop.ini
+
+# --- Project scripts (local use) ---
+commit_all_fixes.ps1
+fix_*.ps1
+build_cmake_simple.ps1
+build_bridge_cmake.ps1
+deploy_*.ps1
+verify_*.ps1
+apply_shield_fix.ps1
+round5_cleanup.ps1
+clean_aegis.bat
