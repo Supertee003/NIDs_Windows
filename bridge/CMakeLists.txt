@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+﻿cmake_minimum_required(VERSION 3.16)
 project(aegis_ipc_bridge VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -16,7 +16,7 @@ endif()
 
 # ====== Compiler Flags ======
 # MSVC: /EHsc = C++ exceptions + extern"C" never throws (needed by UCRT)
-# GCC/Clang: -fno-exceptions not used — UCRT stdio requires exception support
+# GCC/Clang: -fno-exceptions not used â€” UCRT stdio requires exception support
 if(MSVC)
     add_compile_options(/EHsc /W4)
     # Prevent winsock.h / winsock2.h conflict
@@ -43,6 +43,9 @@ add_library(aegis_ipc SHARED
     aegis_ipc.cpp
     aegis_packet_parser.cpp
 )
+
+# MinGW: remove lib prefix so output is aegis_ipc.dll not libaegis_ipc.dll
+set_target_properties(aegis_ipc PROPERTIES PREFIX "")
 
 target_include_directories(aegis_ipc PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
