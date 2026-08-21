@@ -1,0 +1,8 @@
+test_ndis.c
+NDIS_HANDLE: NOT DEFINED
+NET_BUFFER_LIST: NOT DEFINED
+PNET_BUFFER_LIST: NOT DEFINED
+D:\NIDs_Windows\drivers\wfp_callout\test_ndis.c(24): error C2065: 'PNET_BUFFER_LIST': undeclared identifier
+D:\NIDs_Windows\drivers\wfp_callout\test_ndis.c(24): error C2146: syntax error: missing ';' before identifier 'nbl'
+D:\NIDs_Windows\drivers\wfp_callout\test_ndis.c(24): error C2065: 'nbl': undeclared identifier
+D:\NIDs_Windows\drivers\wfp_callout\test_ndis.c(24): warning C4047: '=': 'int' differs in levels of indirection from 'void *'

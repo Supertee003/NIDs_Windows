@@ -1,7 +1,7 @@
-/**
- * aegis_minifilter_comm.c — AEGIS NIDS Minifilter Communication Port
+﻿/**
+ * aegis_minifilter_comm.c - AEGIS NIDS Minifilter Communication Port
  *
- * Creates FilterCommunicationPort for kernel→user mode messaging.
+ * Creates FilterCommunicationPort for kernel->user mode messaging.
  * The Zig minifilter_reader.zig connects to this port and receives
  * AEGIS_FILE_EVENT structures for each suspicious file/process event.
  */
@@ -88,7 +88,7 @@ NTSTATUS AegisFilterConnect(PFLT_PORT* serverPort, PFLT_PORT* clientPort)
     InitializeObjectAttributes(&oa, &portName, OBJ_KERNEL_HANDLE | OBJ_CASE_INSENSITIVE, NULL, sd);
 
     status = FltCreateCommunicationPort(g_FilterHandle, serverPort, &oa,
-        AegisFilterConnectNotify, AegisFilterDisconnectNotify, AegisFilterMessageNotify, 1);
+        NULL, AegisFilterConnectNotify, AegisFilterDisconnectNotify, AegisFilterMessageNotify, 1);
 
     FltFreeSecurityDescriptor(sd);
 

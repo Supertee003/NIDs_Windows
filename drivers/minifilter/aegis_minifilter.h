@@ -1,5 +1,5 @@
-/**
- * aegis_minifilter.h — AEGIS NIDS Minifilter Driver Shared Header
+﻿/**
+ * aegis_minifilter.h â€” AEGIS NIDS Minifilter Driver Shared Header
  *
  * Defines shared structures between kernel-mode minifilter driver
  * and user-mode Zig reader (minifilter_reader.zig) via FilterCommunicationPort.
@@ -10,13 +10,13 @@
  * Monitors:
  *   - File operations: IRP_MJ_CREATE, IRP_MJ_WRITE, IRP_MJ_SET_INFORMATION
  *   - Process creation/exit: PsSetCreateProcessNotifyRoutineEx
- *   - Communication via FilterCommunicationPort kernel→user mode
+ *   - Communication via FilterCommunicationPort kernelâ†’user mode
  */
 
 #ifndef AEGIS_MINIFILTER_H
 #define AEGIS_MINIFILTER_H
 
-#include <fltdefs.h>
+#include <fltKernel.h>
 
 // ====== Minifilter Altitude ======
 // 370000 = FSFilter Anti-Virus (between HSM and Encryption)
@@ -46,5 +46,9 @@ typedef struct _AEGIS_FILE_EVENT {
 // ====== Max message sizes ======
 #define AEGIS_MAX_MSG_SIZE      4096
 #define AEGIS_MAX_FILE_NAME     260
+
+
+/* Global filter handle (defined in aegis_minifilter.c) */
+extern PFLT_FILTER g_FilterHandle;
 
 #endif // AEGIS_MINIFILTER_H

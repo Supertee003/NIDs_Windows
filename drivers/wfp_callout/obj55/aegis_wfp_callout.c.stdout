@@ -1,0 +1,2 @@
+aegis_wfp_callout.c
+D:\NIDs_Windows\drivers\wfp_callout\aegis_wfp_callout.c(56): warning C4113: 'void (__cdecl *)(const FWPS_INCOMING_VALUES0 *,const FWPS_INCOMING_METADATA_VALUES0 *,void *,const void *,const FWPS_FILTER0 *,UINT64,FWPS_CLASSIFY_OUT0 *)' differs in parameter lists from 'FWPS_CALLOUT_CLASSIFY_FN0'

@@ -1,5 +1,5 @@
-/**
- * aegis_minifilter.c — AEGIS NIDS Minifilter Driver Entry & Registration
+﻿/**
+ * aegis_minifilter.c â€” AEGIS NIDS Minifilter Driver Entry & Registration
  *
  * Registers the minifilter at altitude 370000 (Anti-Virus layer),
  * sets up process notification callback, and creates communication port
@@ -43,6 +43,9 @@ const FLT_CONTEXT_REGISTRATION contextRegistration[] = {
     { FLT_CONTEXT_END }
 };
 
+
+// Forward declaration for FLT_REGISTRATION FilterUnloadCallback
+NTSTATUS AegisFilterUnload(FLT_FILTER_UNLOAD_FLAGS flags);
 const FLT_REGISTRATION filterRegistration = {
     .Size = sizeof(FLT_REGISTRATION),
     .Version = FLT_REGISTRATION_VERSION,
@@ -53,10 +56,7 @@ const FLT_REGISTRATION filterRegistration = {
     .InstanceSetupCallback = NULL,
     .InstanceQueryTeardownCallback = NULL,
     .InstanceTeardownStartCallback = NULL,
-    .InstanceTeardownCompleteCallback = NULL,
-    .Altitude = AEGIS_MINIFILTER_ALTITUDE,
-    .Name = L"AegisMinifilter",
-};
+    .InstanceTeardownCompleteCallback = NULL,};
 
 // ====== DriverEntry ======
 extern NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
@@ -89,7 +89,7 @@ extern NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING Registr
         return status;
     }
 
-    DbgPrint("[AEGIS Minifilter] Started — Altitude 370000 (Anti-Virus layer)\n");
+    DbgPrint("[AEGIS Minifilter] Started â€” Altitude 370000 (Anti-Virus layer)\n");
     return STATUS_SUCCESS;
 }
 
@@ -115,3 +115,4 @@ NTSTATUS AegisFilterUnload(FLT_FILTER_UNLOAD_FLAGS flags)
     DbgPrint("[AEGIS Minifilter] Unloaded\n");
     return STATUS_SUCCESS;
 }
+
