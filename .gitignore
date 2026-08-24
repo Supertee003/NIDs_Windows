@@ -65,3 +65,16 @@ cmake_install.cmake
 
 # === Round deployment scripts (temporary) ===
 round*.ps1
+
+# === Stale source directory (old build target, replaced by core/) ===
+core/src/
+
+# === Distribution artifacts ===
+dist/
+*.sys
+
+# === Zig cache ===
+.zig-cache/
+
+# === BP backup files (stale build point snapshots) ===
+*.bp*_backup

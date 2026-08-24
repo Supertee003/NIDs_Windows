@@ -1,4 +1,4 @@
-//! wfp_ioctl.zig - AEGIS NIDS WFP Driver IOCTL Bridge (M2)
+﻿//! wfp_ioctl.zig - AEGIS NIDS WFP Driver IOCTL Bridge (M2)
 //!
 //! Provides user-mode functions to communicate with the AEGIS WFP
 //! kernel driver (aegis_wfp.sys) via DeviceIoControl.
@@ -29,9 +29,9 @@ fn CTL_CODE(device_type: u32, function: u32, method: u32, access: u32) u32 {
 
 pub const IOCTL_AEGIS_READ_EVENTS = CTL_CODE(FILE_DEVICE_NETWORK, 0x800, METHOD_BUFFERED, FILE_READ_DATA);
 pub const IOCTL_AEGIS_BLOCK_FLOW  = CTL_CODE(FILE_DEVICE_NETWORK, 0x801, METHOD_BUFFERED, FILE_WRITE_DATA);
-pub const 
 // ====== BP20: Unblock Flow IOCTL ======
-pub const IOCTL_AEGIS_UNBLOCK_FLOW = CTL_CODE(FILE_DEVICE_NETWORK, 0x803, METHOD_BUFFERED, FILE_WRITE_DATA);IOCTL_AEGIS_GET_STATS   = CTL_CODE(FILE_DEVICE_NETWORK, 0x802, METHOD_BUFFERED, FILE_READ_DATA);
+pub const IOCTL_AEGIS_UNBLOCK_FLOW = CTL_CODE(FILE_DEVICE_NETWORK, 0x803, METHOD_BUFFERED, FILE_WRITE_DATA);
+pub const IOCTL_AEGIS_GET_STATS   = CTL_CODE(FILE_DEVICE_NETWORK, 0x802, METHOD_BUFFERED, FILE_READ_DATA);
 
 // ============================================================
 // WFP Event Header (must match aegis_wfp.h AEGIS_EVENT_HEADER)
@@ -412,5 +412,6 @@ pub fn unblock_ip_str(ip_str: []const u8) bool {
 test "IOCTL codes match WFP protocol spec" {
     try std.testing.expect(IOCTL_AEGIS_READ_EVENTS == 0x00126000);
     try std.testing.expect(IOCTL_AEGIS_BLOCK_FLOW == 0x0012A004);
-    try std.testing.expect(IOCTL_AEGIS_GET_STATS == 0x00126008);`n    try std.testing.expect(IOCTL_AEGIS_UNBLOCK_FLOW == 0x0012A00C);
+    try std.testing.expect(IOCTL_AEGIS_GET_STATS == 0x00126008);
+    try std.testing.expect(IOCTL_AEGIS_UNBLOCK_FLOW == 0x0012A00C);
 }

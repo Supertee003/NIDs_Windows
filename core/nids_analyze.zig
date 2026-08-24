@@ -56,6 +56,7 @@ fn ctrlHandler(ctrl_type: u32) callconv(.C) i32 {
     // BP184: Handle multiple shutdown signals (CTRL+C, CTRL+BREAK, window close)
     if (ctrl_type == 2 or ctrl_type == 5 or ctrl_type == 1) {
         g_shutdown_requested.store(true, .release);
+        bridge_init.requestShutdown(); // BP-FIX: also signal T2-T5 threads
         std.debug.print("\x1b[33m[SHUTDOWN] Signal {} received -- draining connections...\x1b[0m\n", .{ctrl_type});
         return 1;
     }
@@ -533,6 +534,8 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
     // BP162: Increment ruleset version on successful reload
     _ = g_ruleset_version.fetchAdd(1, .release);
     std.debug.print("\x1b[32m[ANALYZE] Loaded {d} secure rules (v{d})\x1b[0m\n", .{ valid_rule_count, g_ruleset_version.load(.acquire) });
+    // BP229: Rule reload success via std.log.info (release-build visible)
+    std.log.info("[ANALYZE] Loaded {d} rules (v{d})", .{ valid_rule_count, g_ruleset_version.load(.acquire) });
 }
 
 // =================================================================
@@ -1042,7 +1045,7 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
             std.debug.print("  [TCP] Read error, closing connection\n", .{});
             // BP209: TCP read error visible in release builds
             std.log.warn("[TCP] Read error, closing connection", .{});
-            g_analyze_errors.fetchAdd(1, .relaxed);
+            _ = g_analyze_errors.fetchAdd(1, .relaxed);
             break;
         };
         _bp94_last_act_ns = std.time.nanoTimestamp();
@@ -1116,7 +1119,7 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
         for (buf[0..len]) |*b| b.* = 0;
         if (!is_safe) {
             // BP174: Consistent relaxed ordering (error counter needs no synchronization)
-            g_analyze_errors.fetchAdd(1, .relaxed);
+            _ = g_analyze_errors.fetchAdd(1, .relaxed);
             std.debug.print("  [TCP] Unsafe packet detected, closing connection\n", .{});
             // BP204: Log BLOCK events via std.log for release build visibility
             std.log.warn("[BLOCK] Unsafe packet from {d}.{d}.{d}.{d}:{d}, connection terminated", .{
@@ -1357,10 +1360,12 @@ fn bridgeStatusReporter() void {
             }
         }
         // BP221: Key periodic metrics via std.log for release-build visibility
-        std.log.info("[STATUS] threads={d} conn={d} errors={d} matches={d} fwd={d} det={d}%", .{
+        // BP231: Added rej={d} for security rejection visibility
+        std.log.info("[STATUS] threads={d} conn={d} errors={d} rej={d} matches={d} fwd={d} det={d}%", .{
             active_threads.load(.acquire),
             g_total_connections.load(.acquire),
             g_analyze_errors.load(.relaxed),
+            g_rejected_connections.load(.relaxed),
             g_total_matches.load(.relaxed),
             g_total_forwarded.load(.relaxed),
             _det_rate,
@@ -1370,10 +1375,12 @@ fn bridgeStatusReporter() void {
     // Shutdown summary (runs once after while-loop exits)
     std.debug.print("\n=== AEGIS SHUTDOWN SUMMARY ===\n", .{});
     // BP219: Key shutdown metrics via std.log for release-build log persistence
-    std.log.info("[SHUTDOWN] conn={d} bytes={d} errors={d} matches={d} fwd={d} ipc={d} uptime={d}s", .{
+    // BP231: Added rej={d} for security rejection visibility in shutdown summary
+    std.log.info("[SHUTDOWN] conn={d} bytes={d} errors={d} rej={d} matches={d} fwd={d} ipc={d} uptime={d}s", .{
         g_total_connections.load(.acquire),
         g_total_bytes.load(.relaxed),
         g_analyze_errors.load(.relaxed),
+        g_rejected_connections.load(.relaxed),
         g_total_matches.load(.relaxed),
         g_total_forwarded.load(.relaxed),
         g_bridge_ipc_pushes.load(.relaxed),
@@ -1480,6 +1487,10 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
     std.debug.print("  Rule limit: {d} | Pipe max: {d} pkts / {}MB\n", .{RULES_MAX_COUNT, PIPE_MAX_PACKETS, PIPE_MAX_BYTES / (1024 * 1024)});
     std.debug.print("  Max payload: {}B | Max rule file: {}MB\n", .{ANALYZE_MAX_PAYLOAD, RULES_MAX_FILE_SIZE / (1024 * 1024)});
     std.debug.print("-----------------------------------\n", .{});
+    // BP228: Security config summary via std.log.info (release-build visible)
+    std.log.info("[INIT] Security: port={d} sema=100 tcp_buf={}B pipe_buf={}B idle={d}ms max_sess={d}s", .{
+        AEGIS_TCP_PORT, TCP_BUFFER_SIZE, PIPE_BUFFER_SIZE, TCP_IDLE_TIMEOUT_MS, TCP_MAX_SESSION_S,
+    });
     std.debug.print("[INIT] Starting network listeners...\n", .{});
 
     // BP213: Register CTRL+C handler in main thread (not just status reporter)
