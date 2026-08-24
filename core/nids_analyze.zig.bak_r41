@@ -260,8 +260,6 @@ var g_total_matches: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 // BP206: Bridge IPC push counter (for detecting IPC failures vs matches+forwards)
 var g_bridge_ipc_pushes: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 var g_start_time_ns: i64 = 0;
-// BP227: Connection rejection counter (security actions, separate from errors)
-var g_rejected_connections: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 // BP223: TCP port configurable via AEGIS_TCP_PORT env var (default 12345)
 var AEGIS_TCP_PORT: u16 = 12345;
 
@@ -624,11 +622,7 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
     }
 
     // BP152: Safe ruleset acquisition with reference counting
-    // BP225: Log when ruleset is unavailable (diagnostic for unexpected null)
-    const current_ruleset = acquireRuleset() orelse {
-        std.log.warn("[ANALYZE] Ruleset unavailable, forwarding without inspection", .{});
-        return true;
-    };
+    const current_ruleset = acquireRuleset() orelse return true;
     defer current_ruleset.release();
     const allocator = current_ruleset.allocator;
 
@@ -893,7 +887,6 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
                 _ = DisconnectNamedPipe(hPipe);
                 win.CloseHandle(hPipe);
                 _ = g_analyze_errors.fetchAdd(1, .relaxed);
-                _ = g_rejected_connections.fetchAdd(1, .relaxed);
                 continue;
             }
             // BP189: Relaxed for pure counter (ordering not needed for increment)
@@ -920,7 +913,6 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
             // BP209: Security event visible in release builds
             std.log.warn("[PIPE] Rejected non-admin pipe connection (err={})", .{err});
             _ = g_analyze_errors.fetchAdd(1, .relaxed);
-            _ = g_rejected_connections.fetchAdd(1, .relaxed);
             _ = DisconnectNamedPipe(hPipe);
             win.CloseHandle(hPipe);
         }
@@ -1219,7 +1211,6 @@ fn tcp_listener(allocator: std.mem.Allocator) !void {
             std.log.warn("[TCP] Rejected non-private source: {}", .{conn.address});
             conn.stream.close();
             _ = g_analyze_errors.fetchAdd(1, .relaxed);
-            _ = g_rejected_connections.fetchAdd(1, .relaxed);
             continue;
         }
         // BP156: Per-IP connection rate limiting
@@ -1228,7 +1219,6 @@ fn tcp_listener(allocator: std.mem.Allocator) !void {
             std.log.warn("[TCP] Rate-limited source: {}", .{conn.address});
             conn.stream.close();
             _ = g_analyze_errors.fetchAdd(1, .relaxed);
-            _ = g_rejected_connections.fetchAdd(1, .relaxed);
             continue;
         }
         // BP187: Warn when connection limit is approaching
@@ -1242,7 +1232,6 @@ fn tcp_listener(allocator: std.mem.Allocator) !void {
             std.log.warn("[SEMAPHORE] TCP: connection limit reached (100), rejecting {}", .{conn.address});
             conn.stream.close();
             _ = g_analyze_errors.fetchAdd(1, .relaxed);
-            _ = g_rejected_connections.fetchAdd(1, .relaxed);
             continue;
         }
         // BP189: Relaxed for pure counter
@@ -1326,8 +1315,6 @@ fn bridgeStatusReporter() void {
         std.debug.print("  Conn rate: ~{d}/min\n", .{conn_per_min});
         // BP91: Total errors in periodic status
         std.debug.print("  Total errors: {d}\n", .{g_analyze_errors.load(.relaxed)});
-        // BP227: Report security rejections separately from errors
-        std.debug.print("  Security rejections: {d}\n", .{g_rejected_connections.load(.relaxed)});
         // BP165: Safe ruleset access via acquireRuleset (prevents UAF during reload)
         const rs165 = acquireRuleset();
         if (rs165) |rs| {
@@ -1383,8 +1370,6 @@ fn bridgeStatusReporter() void {
     // BP179: Total bytes in shutdown summary
     std.debug.print("  Total bytes processed: {d}\n", .{g_total_bytes.load(.relaxed)});
     std.debug.print("  Analyze errors: {d}\n", .{g_analyze_errors.load(.relaxed)});
-    // BP227: Security rejections in shutdown summary
-    std.debug.print("  Security rejections: {d}\n", .{g_rejected_connections.load(.relaxed)});
     const sh_conn: u64 = @intCast(g_total_connections.load(.acquire));
     const sh_err: u64 = @intCast(g_analyze_errors.load(.relaxed));
     const clean_rate: u64 = if (sh_conn > sh_err) (sh_conn - sh_err) * 100 / sh_conn else 0;
@@ -1436,19 +1421,13 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
     if (std.fs.cwd().statFile("Rules.json")) |stat| {
         if (stat.size > RULES_MAX_FILE_SIZE) {
             std.debug.print("\x1b[31m[ERROR] Rules.json exceeds 10MB ({d} bytes) - refusing to load\x1b[0m\n", .{stat.size});
-            // BP224: Pre-flight failure visible in release builds
-            std.log.err("[RULES] Rules.json exceeds 10MB ({d} bytes) - refusing to load", .{stat.size});
         } else if (stat.size == 0) {
             std.debug.print("\x1b[33m[WARN] Rules.json is empty (0 bytes)\x1b[0m\n", .{});
-            // BP224: Pre-flight warning visible in release builds
-            std.log.warn("[RULES] Rules.json is empty (0 bytes) - engine starts without rules", .{});
         } else {
             std.debug.print("[RULES] Rules.json found ({d} bytes)\n", .{stat.size});
         }
     } else |err| {
         std.debug.print("\x1b[33m[WARN] Rules.json not found ({}) - engine starts with empty ruleset\x1b[0m\n", .{err});
-        // BP224: Pre-flight warning visible in release builds
-        std.log.warn("[RULES] Rules.json not found ({}) - engine starts with empty ruleset", .{err});
     }
 
     const _bp91_rl_start = std.time.nanoTimestamp();
@@ -1466,8 +1445,6 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
     // BP223: Override TCP port from environment variable (before listeners start)
     if (std.process.getenv("AEGIS_TCP_PORT")) |port_str| {
         AEGIS_TCP_PORT = std.fmt.parseInt(u16, port_str, 10) catch AEGIS_TCP_PORT;
-        // BP226: Log port override for operational confirmation
-        std.log.info("[INIT] TCP port overridden to {d} via AEGIS_TCP_PORT env", .{AEGIS_TCP_PORT});
     }
     // BP178: Log security configuration at startup for operational verification
     std.debug.print("\n--- AEGIS Security Configuration ---\n", .{});

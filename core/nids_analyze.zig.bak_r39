@@ -257,13 +257,8 @@ var g_pipe_connections: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 var g_total_forwarded: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 // BP197: Global total match counter (avoids summing per-rule every 30s)
 var g_total_matches: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
-// BP206: Bridge IPC push counter (for detecting IPC failures vs matches+forwards)
-var g_bridge_ipc_pushes: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 var g_start_time_ns: i64 = 0;
-// BP227: Connection rejection counter (security actions, separate from errors)
-var g_rejected_connections: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
-// BP223: TCP port configurable via AEGIS_TCP_PORT env var (default 12345)
-var AEGIS_TCP_PORT: u16 = 12345;
+const AEGIS_TCP_PORT: u16 = 12345;
 
 // BP162: Ruleset version counter (incremented on each successful reload)
 var g_ruleset_version: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
@@ -392,9 +387,6 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
 
     var skipped_count: usize = 0;
     var valid_rule_count: usize = 0;
-    // BP207: StringHashMap for O(1) duplicate detection (was O(n) per rule)
-    var _seen_patterns = std.StringHashMap(usize).init(allocator);
-    defer _seen_patterns.deinit();
     for (parsed.value.nids_rules) |sig| {
         // BP142: Validate rule fields before processing
         if (sig.name.len == 0) {
@@ -438,19 +430,20 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
 
         // BP146: Duplicate fast_pattern detection
         // BP200: Actually skip duplicate patterns (was logging but still inserting into AC engine)
-        // BP207: O(1) lookup via StringHashMap (was O(n) per rule -> O(n^2) total)
-        const _dup_gop = _seen_patterns.getOrPut(active_fast_pattern) catch {
-            skipped_count += 1;
-            continue;
-        };
-        if (_dup_gop.found_existing) {
-            std.log.warn("[ANALYZE] Duplicate fast_pattern in \"{s}\" (also in \"{s}\") - skipping", .{
-                sig.name, temp_sig_list.items[_dup_gop.value_ptr.*].name,
-            });
+        var _is_dup = false;
+        for (0..valid_rule_count) |prev_idx| {
+            if (std.mem.eql(u8, temp_sig_list.items[prev_idx].fast_pattern, active_fast_pattern)) {
+                std.log.warn("[ANALYZE] Duplicate fast_pattern in \"{s}\" (also in \"{s}\") - skipping", .{
+                    sig.name, temp_sig_list.items[prev_idx].name,
+                });
+                _is_dup = true;
+                break;
+            }
+        }
+        if (_is_dup) {
             skipped_count += 1;
             continue;
         }
-        _dup_gop.value_ptr.* = valid_rule_count;
 
         var hash = std.hash.Crc32.init();
         hash.update(active_fast_pattern);
@@ -564,8 +557,6 @@ fn pushTier1Match(
         .source_pid = 0,
         .defcon_impact = 4,
     };
-    // BP206: Count bridge IPC pushes for operational visibility
-    _ = g_bridge_ipc_pushes.fetchAdd(1, .relaxed);
     _ = bridge_init.pushEvent(&event);
 }
 
@@ -592,8 +583,6 @@ fn pushForwardedEvent(
         .source_pid = 0,
         .defcon_impact = 5,
     };
-    // BP206: Count bridge IPC pushes for operational visibility
-    _ = g_bridge_ipc_pushes.fetchAdd(1, .relaxed);
     _ = bridge_init.pushEvent(&event);
 }
 
@@ -605,30 +594,23 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
     // Rust Memory Safety Shield (via bridge_init)
     // BP196: Log payload safety validation failures for forensics
     if (!bridge_init.validatePayloadSafety(data.ptr, data.len)) {
-        // BP217: Skip inspection but don't terminate connection (return true = continue session)
-        std.log.warn("[ANALYZE] Payload safety check failed, skipping inspection ({}B from {}:{d})", .{
+        std.log.warn("[ANALYZE] Payload safety check failed ({}B from {}:{d})", .{
             data.len,
             if (ctx.is_pipe) "PIPE" else "TCP",
             ctx.source_port,
         });
-        return true;
+        return false;
     }
 
     // BP21: Payload size sanity check
     if (data.len < 1) return true;
     if (data.len > ANALYZE_MAX_PAYLOAD) {
         std.debug.print("[WARN] Payload size {d} exceeds 64KB limit - skipping deep analysis\n", .{data.len});
-        // BP211: Oversized payload visible in release builds (potential inspection bypass)
-        std.log.warn("[ANALYZE] Payload {d}B exceeds 64KB limit, skipping inspection", .{data.len});
         return true;
     }
 
     // BP152: Safe ruleset acquisition with reference counting
-    // BP225: Log when ruleset is unavailable (diagnostic for unexpected null)
-    const current_ruleset = acquireRuleset() orelse {
-        std.log.warn("[ANALYZE] Ruleset unavailable, forwarding without inspection", .{});
-        return true;
-    };
+    const current_ruleset = acquireRuleset() orelse return true;
     defer current_ruleset.release();
     const allocator = current_ruleset.allocator;
 
@@ -710,14 +692,6 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
 
         if (std.mem.eql(u8, rule.action, "Block")) {
             std.debug.print("\x1b[31;1m[ANALYZE] !!! BLOCK !!! {s}\x1b[0m\n", .{rule.name});
-            // BP204: BLOCK action must be visible in release builds (debug.print compiled out)
-            // BP208: Convert network byte order to host for correct IP display
-            const _log_ip = std.mem.bigToNative(u32, ctx.source_ip);
-            std.log.warn("[BLOCK] Rule matched: {s} (severity={s}) from {d}.{d}.{d}.{d}:{d}", .{
-                rule.name, rule.severity,
-                (_log_ip >> 24) & 0xFF, (_log_ip >> 16) & 0xFF,
-                (_log_ip >> 8) & 0xFF, _log_ip & 0xFF, ctx.source_port,
-            });
             return false;
         }
 
@@ -732,8 +706,7 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
             .policy = "Pending",
             .reason = "Forwarded: No Tier-1 Match",
             .source = if (ctx.is_pipe) "WFP_PIPE" else "TCP_SOCKET",
-            // BP212: Truncate forward payload to limit IPC size and data exposure
-            .raw_payload = if (data.len > ALERT_MAX_PAYLOAD_PREVIEW) data[0..ALERT_MAX_PAYLOAD_PREVIEW] else data,
+            .raw_payload = data,
             .source_ip = ctx.source_ip,
             .dest_ip = ctx.dest_ip,
             .source_port = ctx.source_port,
@@ -788,15 +761,11 @@ fn handle_pipe_client(hPipe: win.HANDLE, allocator: std.mem.Allocator) void {
         std.log.info("[PIPE] Session stats: {d} packets, {d} bytes", .{ pipe_pkt_count, pipe_byte_count });
     }
     while (true) {
-        // BP216: Check both shutdown flags (CTRL+C sets g_shutdown_requested, bridge sets g_shutdown)
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
-        if (g_shutdown_requested.load(.acquire)) break;
         // BP193: PeekNamedPipe polling for shutdown-responsive reads
         var _data_ready = false;
         while (!_data_ready) {
             if (bridge_init.g_shutdown.load(.seq_cst)) break;
-            // BP220: Check CTRL+C flag in inner poll loop for responsive shutdown
-            if (g_shutdown_requested.load(.acquire)) break;
             var _avail: u32 = 0;
             if (PeekNamedPipe(hPipe, null, 0, null, &_avail, null) == 0) break;
             if (_avail > 0) {
@@ -867,8 +836,6 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
             _ = g_analyze_errors.fetchAdd(1, .relaxed);
             const backoff_s = @divTrunc(pipe_retry_ns, std.time.ns_per_s);
             std.debug.print("[PIPE_LISTENER] CreateNamedPipeA failed (err={}), retrying in {d}s\n", .{pipe_err, backoff_s});
-            // BP209: Pipe creation failure visible in release builds
-            std.log.warn("[PIPE] CreateNamedPipeA failed (err={}), retrying in {d}s", .{pipe_err, backoff_s});
             // BP155: Exponential backoff (1s -> 2s -> 4s -> ... -> 30s max)
             std.time.sleep(pipe_retry_ns);
             pipe_retry_ns = @min(pipe_retry_ns * 2, pipe_max_backoff_ns);
@@ -887,15 +854,7 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
             if (_pipe_active >= 90) {
                 std.log.warn("[SEMAPHORE] Pipe: connection limit approaching ({d}/100 active)", .{_pipe_active});
             }
-            // BP205: Use tryWait to prevent blocking during shutdown with full semaphore
-            if (!connection_semaphore.tryWait()) {
-                std.log.warn("[SEMAPHORE] Pipe: connection limit reached (100), rejecting client", .{});
-                _ = DisconnectNamedPipe(hPipe);
-                win.CloseHandle(hPipe);
-                _ = g_analyze_errors.fetchAdd(1, .relaxed);
-                _ = g_rejected_connections.fetchAdd(1, .relaxed);
-                continue;
-            }
+            connection_semaphore.wait();
             // BP189: Relaxed for pure counter (ordering not needed for increment)
             _ = g_total_connections.fetchAdd(1, .relaxed);
             // BP180: Track pipe connections
@@ -905,8 +864,6 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
             std.log.info("[PIPE] Handling pipe client", .{});
             const t = std.Thread.spawn(.{}, handle_pipe_client, .{ hPipe, allocator }) catch |err| {
                 std.debug.print("\x1b[33m[ANALYZE] Failed to spawn handle_pipe_client: {}\x1b[0m\n", .{err});
-                // BP215: Thread spawn failure visible in release (resource exhaustion = potential DoS)
-                std.log.warn("[PIPE] Failed to spawn handler thread: {}", .{err});
                 _ = g_analyze_errors.fetchAdd(1, .relaxed);
                 _ = DisconnectNamedPipe(hPipe);
                 win.CloseHandle(hPipe);
@@ -917,10 +874,7 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
         } else {
             // BP123: Log rejected non-admin pipe connection
             std.debug.print("[PIPE-LISTEN] Rejected non-admin pipe connection (err={})\n", .{err});
-            // BP209: Security event visible in release builds
-            std.log.warn("[PIPE] Rejected non-admin pipe connection (err={})", .{err});
             _ = g_analyze_errors.fetchAdd(1, .relaxed);
-            _ = g_rejected_connections.fetchAdd(1, .relaxed);
             _ = DisconnectNamedPipe(hPipe);
             win.CloseHandle(hPipe);
         }
@@ -941,12 +895,10 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
     // BP188: Acquire ordering ensures handler sees parent's prior state
     _ = active_threads.fetchAdd(1, .acquire);
 
-    const src_ip_net: u32 = blk: {
+    const src_ip: u32 = blk: {
         const sa = @as(*const std.posix.sockaddr.in, @ptrCast(@alignCast(&remote_addr.any)));
         break :blk sa.addr;
     };
-    // BP208: Host byte order for log display (network byte order reserved for bridge IPC)
-    const src_ip = std.mem.bigToNative(u32, src_ip_net);
     const src_port: u16 = blk: {
         const sa = @as(*const std.posix.sockaddr.in, @ptrCast(@alignCast(&remote_addr.any)));
         break :blk std.mem.bigToNative(u16, sa.port);
@@ -954,11 +906,6 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
 
     // BP112: TCP client connected log
     std.debug.print("[TCP] Opened: {d}.{d}.{d}.{d}:{d}\n", .{
-        (src_ip >> 24) & 0xFF, (src_ip >> 16) & 0xFF,
-        (src_ip >> 8) & 0xFF, src_ip & 0xFF, src_port,
-    });
-    // BP210: Connection tracking visible in release builds
-    std.log.info("[TCP] Opened: {d}.{d}.{d}.{d}:{d}", .{
         (src_ip >> 24) & 0xFF, (src_ip >> 16) & 0xFF,
         (src_ip >> 8) & 0xFF, src_ip & 0xFF, src_port,
     });
@@ -976,11 +923,6 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
     defer {
         const dur_s: u64 = @intCast((std.time.nanoTimestamp() - start_ns) / std.time.ns_per_s);
         std.debug.print("[TCP] Closed: {d}.{d}.{d}.{d}:{d} dur={d}s\n", .{
-            (src_ip >> 24) & 0xFF, (src_ip >> 16) & 0xFF,
-            (src_ip >> 8) & 0xFF, src_ip & 0xFF, src_port, dur_s,
-        });
-        // BP210: Connection close visible in release builds
-        std.log.info("[TCP] Closed: {d}.{d}.{d}.{d}:{d} dur={d}s", .{
             (src_ip >> 24) & 0xFF, (src_ip >> 16) & 0xFF,
             (src_ip >> 8) & 0xFF, src_ip & 0xFF, src_port, dur_s,
         });
@@ -1013,7 +955,7 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
     }
 
     const ctx = PacketContext{
-        .source_ip = src_ip_net,
+        .source_ip = src_ip,
         .source_port = src_port,
         .dest_port = AEGIS_TCP_PORT,
         .protocol = 6,
@@ -1023,9 +965,7 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
 
     var buf: [TCP_BUFFER_SIZE]u8 = undefined;
     while (true) {
-        // BP216: Check both shutdown flags for responsive CTRL+C shutdown
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
-        if (g_shutdown_requested.load(.acquire)) break;
         // BP94: Idle timeout check
         {
             const _idle_ms = @divTrunc(std.time.nanoTimestamp() - _bp94_last_act_ns, 1_000_000);
@@ -1040,8 +980,6 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
         }
         const len = stream.read(&buf) catch {
             std.debug.print("  [TCP] Read error, closing connection\n", .{});
-            // BP209: TCP read error visible in release builds
-            std.log.warn("[TCP] Read error, closing connection", .{});
             g_analyze_errors.fetchAdd(1, .relaxed);
             break;
         };
@@ -1065,15 +1003,11 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
         const elapsed_s: u64 = @intCast((std.time.nanoTimestamp() - start_ns) / std.time.ns_per_s);
         if (elapsed_s > TCP_MAX_SESSION_S) {
             std.debug.print("  [TCP] Max duration ({d}s) reached, closing\n", .{TCP_MAX_SESSION_S});
-            // BP209: Session limit visible in release builds
-            std.log.warn("[TCP] Max session duration ({d}s) reached", .{TCP_MAX_SESSION_S});
             break;
         }
         // BP172: Defense-in-depth oversized read (threshold matches actual buffer capacity)
         if (len > TCP_BUFFER_SIZE) {
             std.debug.print("  [TCP] Oversized read: {d} bytes (buf={d}), closing\n", .{ len, TCP_BUFFER_SIZE });
-            // BP209: Defense-in-depth event visible in release builds
-            std.log.warn("[TCP] Oversized read: {d}B (buf={d}), closing", .{ len, TCP_BUFFER_SIZE });
             break;
         }
         bytes_read += len;
@@ -1107,8 +1041,6 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
         }
         if (packet_count > TCP_MAX_PACKETS) {
             std.debug.print("  [TCP] Max packets ({d}) reached\n", .{TCP_MAX_PACKETS});
-            // BP209: Packet limit visible in release builds
-            std.log.warn("[TCP] Max packets ({d}) reached", .{TCP_MAX_PACKETS});
             break;
         }
         const is_safe = inspect_packet(buf[0..len], ctx) catch true;
@@ -1118,11 +1050,6 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
             // BP174: Consistent relaxed ordering (error counter needs no synchronization)
             g_analyze_errors.fetchAdd(1, .relaxed);
             std.debug.print("  [TCP] Unsafe packet detected, closing connection\n", .{});
-            // BP204: Log BLOCK events via std.log for release build visibility
-            std.log.warn("[BLOCK] Unsafe packet from {d}.{d}.{d}.{d}:{d}, connection terminated", .{
-                (src_ip >> 24) & 0xFF, (src_ip >> 16) & 0xFF,
-                (src_ip >> 8) & 0xFF, src_ip & 0xFF, src_port,
-            });
             break;
         }
     }
@@ -1199,8 +1126,6 @@ fn tcp_listener(allocator: std.mem.Allocator) !void {
     // BP158: Explicit listen backlog
     var server = addr.listen(.{ .reuse_address = true, .backlog = TCP_LISTEN_BACKLOG }) catch |err| {
         std.debug.print("[TCP] Listen failed: {} - TCP listener not started\n", .{err});
-        // BP218: TCP listen failure visible in release builds
-        std.log.err("[TCP] Listen failed: {} - TCP listener not started", .{err});
         return;
     };
     // BP114: TCP listener ready log
@@ -1219,7 +1144,6 @@ fn tcp_listener(allocator: std.mem.Allocator) !void {
             std.log.warn("[TCP] Rejected non-private source: {}", .{conn.address});
             conn.stream.close();
             _ = g_analyze_errors.fetchAdd(1, .relaxed);
-            _ = g_rejected_connections.fetchAdd(1, .relaxed);
             continue;
         }
         // BP156: Per-IP connection rate limiting
@@ -1228,7 +1152,6 @@ fn tcp_listener(allocator: std.mem.Allocator) !void {
             std.log.warn("[TCP] Rate-limited source: {}", .{conn.address});
             conn.stream.close();
             _ = g_analyze_errors.fetchAdd(1, .relaxed);
-            _ = g_rejected_connections.fetchAdd(1, .relaxed);
             continue;
         }
         // BP187: Warn when connection limit is approaching
@@ -1237,14 +1160,7 @@ fn tcp_listener(allocator: std.mem.Allocator) !void {
         if (_tcp_active >= 90) {
             std.log.warn("[SEMAPHORE] TCP: connection limit approaching ({d}/100 active)", .{_tcp_active});
         }
-        // BP205: Use tryWait to prevent blocking during shutdown with full semaphore
-        if (!connection_semaphore.tryWait()) {
-            std.log.warn("[SEMAPHORE] TCP: connection limit reached (100), rejecting {}", .{conn.address});
-            conn.stream.close();
-            _ = g_analyze_errors.fetchAdd(1, .relaxed);
-            _ = g_rejected_connections.fetchAdd(1, .relaxed);
-            continue;
-        }
+        connection_semaphore.wait();
         // BP189: Relaxed for pure counter
         _ = g_total_connections.fetchAdd(1, .relaxed);
         _bp93_accept_count += 1;
@@ -1253,8 +1169,6 @@ fn tcp_listener(allocator: std.mem.Allocator) !void {
         }
         const t = std.Thread.spawn(.{}, handle_tcp_client, .{ conn.stream, conn.address, allocator }) catch |err| {
             std.debug.print("\x1b[33m[ANALYZE] Failed to spawn handle_tcp_client: {}\x1b[0m\n", .{err});
-            // BP215: Thread spawn failure visible in release (resource exhaustion = potential DoS)
-            std.log.warn("[TCP] Failed to spawn handler thread: {}", .{err});
             _ = g_analyze_errors.fetchAdd(1, .relaxed);
             conn.stream.close();
             connection_semaphore.post();
@@ -1301,8 +1215,6 @@ fn bridgeStatusReporter() void {
         std.debug.print("  Pipe connections: {d}\n", .{g_pipe_connections.load(.relaxed)});
         // BP194: Report forwarded packet count
         std.debug.print("  Forwarded (unmatched): {d}\n", .{g_total_forwarded.load(.relaxed)});
-        // BP206: Report bridge IPC push count
-        std.debug.print("  Bridge IPC pushes: {d}\n", .{g_bridge_ipc_pushes.load(.relaxed)});
         // BP198: Detection efficiency metric
         const _m = g_total_matches.load(.relaxed);
         const _f = g_total_forwarded.load(.relaxed);
@@ -1326,8 +1238,6 @@ fn bridgeStatusReporter() void {
         std.debug.print("  Conn rate: ~{d}/min\n", .{conn_per_min});
         // BP91: Total errors in periodic status
         std.debug.print("  Total errors: {d}\n", .{g_analyze_errors.load(.relaxed)});
-        // BP227: Report security rejections separately from errors
-        std.debug.print("  Security rejections: {d}\n", .{g_rejected_connections.load(.relaxed)});
         // BP165: Safe ruleset access via acquireRuleset (prevents UAF during reload)
         const rs165 = acquireRuleset();
         if (rs165) |rs| {
@@ -1356,35 +1266,14 @@ fn bridgeStatusReporter() void {
                 }
             }
         }
-        // BP221: Key periodic metrics via std.log for release-build visibility
-        std.log.info("[STATUS] threads={d} conn={d} errors={d} matches={d} fwd={d} det={d}%", .{
-            active_threads.load(.acquire),
-            g_total_connections.load(.acquire),
-            g_analyze_errors.load(.relaxed),
-            g_total_matches.load(.relaxed),
-            g_total_forwarded.load(.relaxed),
-            _det_rate,
-        });
         std.debug.print("  ---\n", .{});
     }
     // Shutdown summary (runs once after while-loop exits)
     std.debug.print("\n=== AEGIS SHUTDOWN SUMMARY ===\n", .{});
-    // BP219: Key shutdown metrics via std.log for release-build log persistence
-    std.log.info("[SHUTDOWN] conn={d} bytes={d} errors={d} matches={d} fwd={d} ipc={d} uptime={d}s", .{
-        g_total_connections.load(.acquire),
-        g_total_bytes.load(.relaxed),
-        g_analyze_errors.load(.relaxed),
-        g_total_matches.load(.relaxed),
-        g_total_forwarded.load(.relaxed),
-        g_bridge_ipc_pushes.load(.relaxed),
-        @intCast((std.time.nanoTimestamp() - g_start_time_ns) / std.time.ns_per_s),
-    });
     std.debug.print("  Total connections: {d}\n", .{g_total_connections.load(.acquire)});
     // BP179: Total bytes in shutdown summary
     std.debug.print("  Total bytes processed: {d}\n", .{g_total_bytes.load(.relaxed)});
     std.debug.print("  Analyze errors: {d}\n", .{g_analyze_errors.load(.relaxed)});
-    // BP227: Security rejections in shutdown summary
-    std.debug.print("  Security rejections: {d}\n", .{g_rejected_connections.load(.relaxed)});
     const sh_conn: u64 = @intCast(g_total_connections.load(.acquire));
     const sh_err: u64 = @intCast(g_analyze_errors.load(.relaxed));
     const clean_rate: u64 = if (sh_conn > sh_err) (sh_conn - sh_err) * 100 / sh_conn else 0;
@@ -1396,8 +1285,6 @@ fn bridgeStatusReporter() void {
     std.debug.print("  Pipe connections: {d}\n", .{g_pipe_connections.load(.relaxed)});
     // BP194: Forwarded packets in shutdown summary
     std.debug.print("  Forwarded (unmatched): {d}\n", .{g_total_forwarded.load(.relaxed)});
-    // BP206: Bridge IPC pushes in shutdown summary
-    std.debug.print("  Bridge IPC pushes: {d}\n", .{g_bridge_ipc_pushes.load(.relaxed)});
     // BP201: Matches and detection rate in shutdown summary
     const sh_matches: u64 = g_total_matches.load(.relaxed);
     const sh_fwd: u64 = g_total_forwarded.load(.relaxed);
@@ -1423,8 +1310,6 @@ fn bridgeStatusReporter() void {
 
 pub fn analyze_packets(allocator: std.mem.Allocator) void {
     std.debug.print("\n--- AEGIS CORE: 3-TIER ENGINE ACTIVE ---\n", .{});
-    // BP222: Startup marker visible in release builds
-    std.log.info("[INIT] AEGIS Core 3-Tier Engine starting", .{});
     g_start_time_ns = std.time.nanoTimestamp();
     std.debug.print("[INIT] All subsystems ready. Entering analysis loop.\n", .{});
 
@@ -1436,26 +1321,18 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
     if (std.fs.cwd().statFile("Rules.json")) |stat| {
         if (stat.size > RULES_MAX_FILE_SIZE) {
             std.debug.print("\x1b[31m[ERROR] Rules.json exceeds 10MB ({d} bytes) - refusing to load\x1b[0m\n", .{stat.size});
-            // BP224: Pre-flight failure visible in release builds
-            std.log.err("[RULES] Rules.json exceeds 10MB ({d} bytes) - refusing to load", .{stat.size});
         } else if (stat.size == 0) {
             std.debug.print("\x1b[33m[WARN] Rules.json is empty (0 bytes)\x1b[0m\n", .{});
-            // BP224: Pre-flight warning visible in release builds
-            std.log.warn("[RULES] Rules.json is empty (0 bytes) - engine starts without rules", .{});
         } else {
             std.debug.print("[RULES] Rules.json found ({d} bytes)\n", .{stat.size});
         }
     } else |err| {
         std.debug.print("\x1b[33m[WARN] Rules.json not found ({}) - engine starts with empty ruleset\x1b[0m\n", .{err});
-        // BP224: Pre-flight warning visible in release builds
-        std.log.warn("[RULES] Rules.json not found ({}) - engine starts with empty ruleset", .{err});
     }
 
     const _bp91_rl_start = std.time.nanoTimestamp();
     reload_rules_atomic(allocator) catch |reload_err| {
         std.debug.print("[ANALYZE] Failed to load rules: {}\n", .{reload_err});
-        // BP218: Rule load failure visible in release builds
-        std.log.err("[ANALYZE] Failed to load rules: {}", .{reload_err});
     };
     const _bp91_rl_dur_ms = @divTrunc(std.time.nanoTimestamp() - _bp91_rl_start, 1_000_000);
     std.log.info("[ANALYZE] Rules initialized in {d}ms", .{_bp91_rl_dur_ms});
@@ -1463,12 +1340,6 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
 
     // Background: print bridge stats every 30 seconds
     std.debug.print("[INIT] Rules loading completed\n", .{});
-    // BP223: Override TCP port from environment variable (before listeners start)
-    if (std.process.getenv("AEGIS_TCP_PORT")) |port_str| {
-        AEGIS_TCP_PORT = std.fmt.parseInt(u16, port_str, 10) catch AEGIS_TCP_PORT;
-        // BP226: Log port override for operational confirmation
-        std.log.info("[INIT] TCP port overridden to {d} via AEGIS_TCP_PORT env", .{AEGIS_TCP_PORT});
-    }
     // BP178: Log security configuration at startup for operational verification
     std.debug.print("\n--- AEGIS Security Configuration ---\n", .{});
     std.debug.print("  TCP Port: {d} (backlog={d})\n", .{AEGIS_TCP_PORT, TCP_LISTEN_BACKLOG});
@@ -1482,19 +1353,8 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
     std.debug.print("-----------------------------------\n", .{});
     std.debug.print("[INIT] Starting network listeners...\n", .{});
 
-    // BP213: Register CTRL+C handler in main thread (not just status reporter)
-    // Ensures graceful shutdown even if status reporter thread fails to spawn
-    _ = SetConsoleCtrlHandler(ctrlHandler, 1);
-
-    const t_status_opt: ?std.Thread = blk: {
-        const t = std.Thread.spawn(.{}, bridgeStatusReporter, .{}) catch |err| {
-            std.debug.print("\x1b[33m[ANALYZE] Status reporter failed to spawn: {}\x1b[0m\n", .{err});
-            std.log.warn("[ANALYZE] Status reporter failed to spawn: {}", .{err});
-            break :blk null;
-        };
-        break :blk t;
-    };
-    if (t_status_opt) |t| t.detach();
+    const t_status = std.Thread.spawn(.{}, bridgeStatusReporter, .{}) catch null;
+    if (t_status) |t| t.detach();
 
     // Run accept-loop listeners (these block forever)
     std.log.info("[ANALYZE] Starting listener threads", .{});
@@ -1502,14 +1362,9 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
         std.debug.print("\x1b[33m[ANALYZE] Pipe listener failed to spawn: {}\x1b[0m\n", .{err});
         return;
     };
-    // BP214: TCP spawn failure should not orphan pipe listener thread
-    const t_tcp_opt: ?std.Thread = blk: {
-        const t = std.Thread.spawn(.{}, tcp_listener, .{allocator}) catch |err| {
-            std.debug.print("\x1b[33m[ANALYZE] TCP listener failed to spawn: {}\x1b[0m\n", .{err});
-            std.log.warn("[ANALYZE] TCP listener failed to spawn: {}", .{err});
-            break :blk null;
-        };
-        break :blk t;
+    const t_tcp = std.Thread.spawn(.{}, tcp_listener, .{allocator}) catch |err| {
+        std.debug.print("\x1b[33m[ANALYZE] TCP listener failed to spawn: {}\x1b[0m\n", .{err});
+        return;
     };
 
     std.log.info("[ANALYZE] All listeners started", .{});
@@ -1520,10 +1375,7 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
     const drain_start = std.time.nanoTimestamp();
     t_pipe.join();
     std.debug.print("[SHUTDOWN] Pipe listener stopped\n", .{});
-    // BP214: Conditional join - TCP may not have spawned
-    if (t_tcp_opt) |t_tcp| {
-        t_tcp.join();
-    }
+    t_tcp.join();
     const drain_ms = @divTrunc(std.time.nanoTimestamp() - drain_start, 1_000_000);
     const drain_remaining = active_threads.load(.seq_cst);
     // BP163: Warn if drain took too long or handler threads remain

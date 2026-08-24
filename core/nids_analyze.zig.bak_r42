@@ -260,10 +260,7 @@ var g_total_matches: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 // BP206: Bridge IPC push counter (for detecting IPC failures vs matches+forwards)
 var g_bridge_ipc_pushes: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 var g_start_time_ns: i64 = 0;
-// BP227: Connection rejection counter (security actions, separate from errors)
-var g_rejected_connections: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
-// BP223: TCP port configurable via AEGIS_TCP_PORT env var (default 12345)
-var AEGIS_TCP_PORT: u16 = 12345;
+const AEGIS_TCP_PORT: u16 = 12345;
 
 // BP162: Ruleset version counter (incremented on each successful reload)
 var g_ruleset_version: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
@@ -605,13 +602,12 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
     // Rust Memory Safety Shield (via bridge_init)
     // BP196: Log payload safety validation failures for forensics
     if (!bridge_init.validatePayloadSafety(data.ptr, data.len)) {
-        // BP217: Skip inspection but don't terminate connection (return true = continue session)
-        std.log.warn("[ANALYZE] Payload safety check failed, skipping inspection ({}B from {}:{d})", .{
+        std.log.warn("[ANALYZE] Payload safety check failed ({}B from {}:{d})", .{
             data.len,
             if (ctx.is_pipe) "PIPE" else "TCP",
             ctx.source_port,
         });
-        return true;
+        return false;
     }
 
     // BP21: Payload size sanity check
@@ -624,11 +620,7 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
     }
 
     // BP152: Safe ruleset acquisition with reference counting
-    // BP225: Log when ruleset is unavailable (diagnostic for unexpected null)
-    const current_ruleset = acquireRuleset() orelse {
-        std.log.warn("[ANALYZE] Ruleset unavailable, forwarding without inspection", .{});
-        return true;
-    };
+    const current_ruleset = acquireRuleset() orelse return true;
     defer current_ruleset.release();
     const allocator = current_ruleset.allocator;
 
@@ -788,15 +780,11 @@ fn handle_pipe_client(hPipe: win.HANDLE, allocator: std.mem.Allocator) void {
         std.log.info("[PIPE] Session stats: {d} packets, {d} bytes", .{ pipe_pkt_count, pipe_byte_count });
     }
     while (true) {
-        // BP216: Check both shutdown flags (CTRL+C sets g_shutdown_requested, bridge sets g_shutdown)
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
-        if (g_shutdown_requested.load(.acquire)) break;
         // BP193: PeekNamedPipe polling for shutdown-responsive reads
         var _data_ready = false;
         while (!_data_ready) {
             if (bridge_init.g_shutdown.load(.seq_cst)) break;
-            // BP220: Check CTRL+C flag in inner poll loop for responsive shutdown
-            if (g_shutdown_requested.load(.acquire)) break;
             var _avail: u32 = 0;
             if (PeekNamedPipe(hPipe, null, 0, null, &_avail, null) == 0) break;
             if (_avail > 0) {
@@ -893,7 +881,6 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
                 _ = DisconnectNamedPipe(hPipe);
                 win.CloseHandle(hPipe);
                 _ = g_analyze_errors.fetchAdd(1, .relaxed);
-                _ = g_rejected_connections.fetchAdd(1, .relaxed);
                 continue;
             }
             // BP189: Relaxed for pure counter (ordering not needed for increment)
@@ -920,7 +907,6 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
             // BP209: Security event visible in release builds
             std.log.warn("[PIPE] Rejected non-admin pipe connection (err={})", .{err});
             _ = g_analyze_errors.fetchAdd(1, .relaxed);
-            _ = g_rejected_connections.fetchAdd(1, .relaxed);
             _ = DisconnectNamedPipe(hPipe);
             win.CloseHandle(hPipe);
         }
@@ -1023,9 +1009,7 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
 
     var buf: [TCP_BUFFER_SIZE]u8 = undefined;
     while (true) {
-        // BP216: Check both shutdown flags for responsive CTRL+C shutdown
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
-        if (g_shutdown_requested.load(.acquire)) break;
         // BP94: Idle timeout check
         {
             const _idle_ms = @divTrunc(std.time.nanoTimestamp() - _bp94_last_act_ns, 1_000_000);
@@ -1199,8 +1183,6 @@ fn tcp_listener(allocator: std.mem.Allocator) !void {
     // BP158: Explicit listen backlog
     var server = addr.listen(.{ .reuse_address = true, .backlog = TCP_LISTEN_BACKLOG }) catch |err| {
         std.debug.print("[TCP] Listen failed: {} - TCP listener not started\n", .{err});
-        // BP218: TCP listen failure visible in release builds
-        std.log.err("[TCP] Listen failed: {} - TCP listener not started", .{err});
         return;
     };
     // BP114: TCP listener ready log
@@ -1219,7 +1201,6 @@ fn tcp_listener(allocator: std.mem.Allocator) !void {
             std.log.warn("[TCP] Rejected non-private source: {}", .{conn.address});
             conn.stream.close();
             _ = g_analyze_errors.fetchAdd(1, .relaxed);
-            _ = g_rejected_connections.fetchAdd(1, .relaxed);
             continue;
         }
         // BP156: Per-IP connection rate limiting
@@ -1228,7 +1209,6 @@ fn tcp_listener(allocator: std.mem.Allocator) !void {
             std.log.warn("[TCP] Rate-limited source: {}", .{conn.address});
             conn.stream.close();
             _ = g_analyze_errors.fetchAdd(1, .relaxed);
-            _ = g_rejected_connections.fetchAdd(1, .relaxed);
             continue;
         }
         // BP187: Warn when connection limit is approaching
@@ -1242,7 +1222,6 @@ fn tcp_listener(allocator: std.mem.Allocator) !void {
             std.log.warn("[SEMAPHORE] TCP: connection limit reached (100), rejecting {}", .{conn.address});
             conn.stream.close();
             _ = g_analyze_errors.fetchAdd(1, .relaxed);
-            _ = g_rejected_connections.fetchAdd(1, .relaxed);
             continue;
         }
         // BP189: Relaxed for pure counter
@@ -1326,8 +1305,6 @@ fn bridgeStatusReporter() void {
         std.debug.print("  Conn rate: ~{d}/min\n", .{conn_per_min});
         // BP91: Total errors in periodic status
         std.debug.print("  Total errors: {d}\n", .{g_analyze_errors.load(.relaxed)});
-        // BP227: Report security rejections separately from errors
-        std.debug.print("  Security rejections: {d}\n", .{g_rejected_connections.load(.relaxed)});
         // BP165: Safe ruleset access via acquireRuleset (prevents UAF during reload)
         const rs165 = acquireRuleset();
         if (rs165) |rs| {
@@ -1356,35 +1333,14 @@ fn bridgeStatusReporter() void {
                 }
             }
         }
-        // BP221: Key periodic metrics via std.log for release-build visibility
-        std.log.info("[STATUS] threads={d} conn={d} errors={d} matches={d} fwd={d} det={d}%", .{
-            active_threads.load(.acquire),
-            g_total_connections.load(.acquire),
-            g_analyze_errors.load(.relaxed),
-            g_total_matches.load(.relaxed),
-            g_total_forwarded.load(.relaxed),
-            _det_rate,
-        });
         std.debug.print("  ---\n", .{});
     }
     // Shutdown summary (runs once after while-loop exits)
     std.debug.print("\n=== AEGIS SHUTDOWN SUMMARY ===\n", .{});
-    // BP219: Key shutdown metrics via std.log for release-build log persistence
-    std.log.info("[SHUTDOWN] conn={d} bytes={d} errors={d} matches={d} fwd={d} ipc={d} uptime={d}s", .{
-        g_total_connections.load(.acquire),
-        g_total_bytes.load(.relaxed),
-        g_analyze_errors.load(.relaxed),
-        g_total_matches.load(.relaxed),
-        g_total_forwarded.load(.relaxed),
-        g_bridge_ipc_pushes.load(.relaxed),
-        @intCast((std.time.nanoTimestamp() - g_start_time_ns) / std.time.ns_per_s),
-    });
     std.debug.print("  Total connections: {d}\n", .{g_total_connections.load(.acquire)});
     // BP179: Total bytes in shutdown summary
     std.debug.print("  Total bytes processed: {d}\n", .{g_total_bytes.load(.relaxed)});
     std.debug.print("  Analyze errors: {d}\n", .{g_analyze_errors.load(.relaxed)});
-    // BP227: Security rejections in shutdown summary
-    std.debug.print("  Security rejections: {d}\n", .{g_rejected_connections.load(.relaxed)});
     const sh_conn: u64 = @intCast(g_total_connections.load(.acquire));
     const sh_err: u64 = @intCast(g_analyze_errors.load(.relaxed));
     const clean_rate: u64 = if (sh_conn > sh_err) (sh_conn - sh_err) * 100 / sh_conn else 0;
@@ -1423,8 +1379,6 @@ fn bridgeStatusReporter() void {
 
 pub fn analyze_packets(allocator: std.mem.Allocator) void {
     std.debug.print("\n--- AEGIS CORE: 3-TIER ENGINE ACTIVE ---\n", .{});
-    // BP222: Startup marker visible in release builds
-    std.log.info("[INIT] AEGIS Core 3-Tier Engine starting", .{});
     g_start_time_ns = std.time.nanoTimestamp();
     std.debug.print("[INIT] All subsystems ready. Entering analysis loop.\n", .{});
 
@@ -1436,26 +1390,18 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
     if (std.fs.cwd().statFile("Rules.json")) |stat| {
         if (stat.size > RULES_MAX_FILE_SIZE) {
             std.debug.print("\x1b[31m[ERROR] Rules.json exceeds 10MB ({d} bytes) - refusing to load\x1b[0m\n", .{stat.size});
-            // BP224: Pre-flight failure visible in release builds
-            std.log.err("[RULES] Rules.json exceeds 10MB ({d} bytes) - refusing to load", .{stat.size});
         } else if (stat.size == 0) {
             std.debug.print("\x1b[33m[WARN] Rules.json is empty (0 bytes)\x1b[0m\n", .{});
-            // BP224: Pre-flight warning visible in release builds
-            std.log.warn("[RULES] Rules.json is empty (0 bytes) - engine starts without rules", .{});
         } else {
             std.debug.print("[RULES] Rules.json found ({d} bytes)\n", .{stat.size});
         }
     } else |err| {
         std.debug.print("\x1b[33m[WARN] Rules.json not found ({}) - engine starts with empty ruleset\x1b[0m\n", .{err});
-        // BP224: Pre-flight warning visible in release builds
-        std.log.warn("[RULES] Rules.json not found ({}) - engine starts with empty ruleset", .{err});
     }
 
     const _bp91_rl_start = std.time.nanoTimestamp();
     reload_rules_atomic(allocator) catch |reload_err| {
         std.debug.print("[ANALYZE] Failed to load rules: {}\n", .{reload_err});
-        // BP218: Rule load failure visible in release builds
-        std.log.err("[ANALYZE] Failed to load rules: {}", .{reload_err});
     };
     const _bp91_rl_dur_ms = @divTrunc(std.time.nanoTimestamp() - _bp91_rl_start, 1_000_000);
     std.log.info("[ANALYZE] Rules initialized in {d}ms", .{_bp91_rl_dur_ms});
@@ -1463,12 +1409,6 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
 
     // Background: print bridge stats every 30 seconds
     std.debug.print("[INIT] Rules loading completed\n", .{});
-    // BP223: Override TCP port from environment variable (before listeners start)
-    if (std.process.getenv("AEGIS_TCP_PORT")) |port_str| {
-        AEGIS_TCP_PORT = std.fmt.parseInt(u16, port_str, 10) catch AEGIS_TCP_PORT;
-        // BP226: Log port override for operational confirmation
-        std.log.info("[INIT] TCP port overridden to {d} via AEGIS_TCP_PORT env", .{AEGIS_TCP_PORT});
-    }
     // BP178: Log security configuration at startup for operational verification
     std.debug.print("\n--- AEGIS Security Configuration ---\n", .{});
     std.debug.print("  TCP Port: {d} (backlog={d})\n", .{AEGIS_TCP_PORT, TCP_LISTEN_BACKLOG});

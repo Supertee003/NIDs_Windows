@@ -1,4 +1,4 @@
-﻿//! nids_analyze.zig - AEGIS NIDS 3-Tier Analysis Engine (Thread 1)
+//! nids_analyze.zig - AEGIS NIDS 3-Tier Analysis Engine (Thread 1)
 //!
 //! Core threat analysis engine using Aho-Corasick pattern matching.
 //! Loads rules from Rules.json, runs pipe + TCP listeners,
