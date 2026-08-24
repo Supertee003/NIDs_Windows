@@ -631,6 +631,8 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
     if (data.len > ANALYZE_MAX_PAYLOAD) {
         std.log.warn("[ANALYZE] Payload {d} exceeds limit (max={d}) - skipping deep analysis", .{data.len, ANALYZE_MAX_PAYLOAD});
         std.debug.print("[WARN] Payload size {d} exceeds limit (max={d}B) - skipping deep analysis\n", .{data.len, ANALYZE_MAX_PAYLOAD});
+        // BP211: Oversized payload visible in release builds (potential inspection bypass)
+        std.log.warn("[ANALYZE] Payload {d}B exceeds 64KB limit, skipping inspection", .{data.len});
         return true;
     }
 
@@ -861,7 +863,6 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
         SDDL_ADMIN_ONLY, SDDL_REVISION, &pipe_sd, null,
     ) != 0) {
         sec_attr.lpSecurityDescriptor = pipe_sd;
-        std.log.info("[PIPE] ACL: Admin-only (SDDL)", .{});
         std.debug.print("[PIPE_LISTENER] ACL: Admin-only (SDDL)\n", .{});
     } else {
         // BP192: Release-visible warning for security misconfiguration
@@ -1505,7 +1506,7 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
     std.debug.print("-----------------------------------\n", .{});
     // BP228: Security config summary via std.log.info (release-build visible)
     std.log.info("[INIT] Security: port={d} sema={d} tcp_buf={}B pipe_buf={}B idle={d}ms max_sess={d}s", .{
-        AEGIS_TCP_PORT, MAX_CONCURRENT_CONNECTIONS, TCP_BUFFER_SIZE, PIPE_BUFFER_SIZE, TCP_IDLE_TIMEOUT_MS, TCP_MAX_SESSION_S,
+        AEGIS_TCP_PORT, TCP_BUFFER_SIZE, PIPE_BUFFER_SIZE, TCP_IDLE_TIMEOUT_MS, TCP_MAX_SESSION_S,
     });
     std.debug.print("[INIT] Starting network listeners...\n", .{});
 

@@ -170,14 +170,12 @@ pub fn init() bool {
 
     if (handle == INVALID_HANDLE_VALUE) {
         const err = GetLastError();
-        std.log.err("[WFP IOCTL] Cannot open {}: error=0x{x}", .{ WFP_DEVICE_NAME, err });
         std.debug.print("[WFP IOCTL] Cannot open {}: error=0x{x}\n", .{ WFP_DEVICE_NAME, err });
         return false;
     }
 
     g_device = handle;
     g_initialized = true;
-    std.log.info("[WFP IOCTL] Device opened successfully", .{});
     std.debug.print("[WFP IOCTL] Device opened successfully\n", .{});
     return true;
 }
@@ -189,7 +187,6 @@ pub fn shutdown() void {
         g_device = null;
     }
     g_initialized = false;
-    std.log.info("[WFP IOCTL] Device closed", .{});
     std.debug.print("[WFP IOCTL] Device closed\n", .{});
 }
 

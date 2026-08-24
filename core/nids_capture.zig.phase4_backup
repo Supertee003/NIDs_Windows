@@ -62,7 +62,6 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
 
     const pipe_name = "\\\\.\\pipe\\aegis_sensor_pipe";
 
-    std.log.info("[PIPE SENSOR] Initializing Named Pipe Server", .{});
     std.debug.print("[PIPE SENSOR] Initializing Named Pipe Server...\n", .{});
 
         // BP19: Create admin-only security descriptor for pipe
@@ -76,7 +75,6 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
         SDDL_ADMIN_ONLY, SDDL_REVISION, &pipe_sd, null,
     ) != 0) {
         sec_attr.lpSecurityDescriptor = pipe_sd;
-        std.log.info("[IPC SENSOR] Pipe ACL: Admin-only (SDDL)", .{});
         std.debug.print("[IPC SENSOR] Pipe ACL: Admin-only (SDDL enforced)\n", .{});
     } else {
         std.log.warn("[PIPE] Failed to set admin-only ACL - pipe may accept non-admin connections", .{});
@@ -95,7 +93,6 @@ const handle = CreateNamedPipeA(
     );
 
     if (handle == win.INVALID_HANDLE_VALUE) {
-        std.log.err("[IPC SENSOR] Failed to create Named Pipe", .{});
         std.debug.print("[-] IPC Error: Failed to create Named Pipe.\n", .{});
         return;
     }
@@ -103,7 +100,6 @@ const handle = CreateNamedPipeA(
 
     var buffer: [4096]u8 = undefined;
 
-    std.log.info("[PIPE SENSOR] Listening on {} - Waiting for scripts", .{pipe_name});
     std.debug.print("[PIPE SENSOR] Listening on {} - Waiting for Python scripts...\n", .{pipe_name});
 
     while (true) {
@@ -124,7 +120,6 @@ const handle = CreateNamedPipeA(
 
             if (read_success and bytes_read > 0) {
                 const payload = buffer[0..bytes_read];
-                std.log.info("[PIPE SENSOR] Captured Pipe Payload ({} bytes)", .{bytes_read});
                 std.debug.print("[PIPE SENSOR] Captured Pipe Payload ({} bytes)\n", .{bytes_read});
 
                 const ctx = nids_analyze.PacketContext{

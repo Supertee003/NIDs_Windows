@@ -109,7 +109,6 @@ var g_driver_connected: bool = false;
 /// BP4: Returns void (not !void) to avoid thread panic on error.
 pub fn minifilterReaderLoop() void {
     std.debug.print("[MINI] Thread 4 started - connecting to minifilter driver...\n", .{});
-    std.log.info("[MINI] Thread 4 started - connecting to minifilter driver", .{});
 
     var hPort: HANDLE = INVALID_HANDLE_VALUE;
     var retry_count: u32 = 0;
@@ -129,13 +128,11 @@ pub fn minifilterReaderLoop() void {
         if (hr >= 0) {
             g_driver_connected = true;
             std.debug.print("\x1b[32m[MINI] Connected to AegisMinifilterPort\x1b[0m\n", .{});
-            std.log.info("[MINI] Connected to AegisMinifilterPort", .{});
             break;
         }
 
         retry_count += 1;
         if (retry_count == 1) {
-            std.log.warn("[MINI] Driver not available (hr=0x{x}), retrying every 10s", .{@as(u32, @bitCast(hr))});
             std.debug.print("\x1b[33m[MINI] Driver not available (hr=0x{x}), retrying every 10s\x1b[0m\n", .{@as(u32, @bitCast(hr))});
         }
         std.time.sleep(10 * std.time.ns_per_s);
@@ -151,7 +148,6 @@ pub fn minifilterReaderLoop() void {
     var msg_buf: [1024]u8 align(@alignOf(AegisFileEvent)) = undefined;
 
     std.debug.print("[MINI] Reading events from kernel...\n", .{});
-    std.log.info("[MINI] Reading events from kernel", .{});
 
     while (true) {
 
@@ -196,8 +192,6 @@ pub fn minifilterReaderLoop() void {
 
                 if (evt.severity >= 2) {
                     std.log.warn("[ALERT] MINI {} | {} | PID={} | sev={} | {}", .{
-                        evt_type, op_str, evt.process_id, sev_str, name_str
-                    });
                     std.debug.print("\x1b[31;1m[MINI ALERT] {} | {} | PID={} | sev={} | {}\x1b[0m\n", .{
                         evt_type, op_str, evt.process_id, sev_str, name_str
                     });

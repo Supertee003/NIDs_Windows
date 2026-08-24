@@ -8,20 +8,16 @@ const bridge_init = @import("bridge_init.zig");
 const nids_analyze = @import("nids_analyze.zig");
 const wfp_ioctl = @import("wfp_ioctl.zig");
 
-const WFP_EVENT_BUFFER_SIZE: usize = 65536;
-
 pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
     _ = address;
     _ = allocator;
 
-    std.log.info("[SENSOR 2] WFP Capture - connecting to kernel driver", .{});
     std.debug.print("[SENSOR 2] WFP Capture - connecting to kernel driver...\n", .{});
 
     // BP2: If bridge_init already opened the WFP device, don't reopen
     var did_open = false;
     if (!wfp_ioctl.isConnected()) {
         if (!wfp_ioctl.init()) {
-            std.log.warn("[SENSOR 2] WFP Driver not available, retrying every 10s", .{});
             std.debug.print("[SENSOR 2] WFP Driver not available. Waiting...\n", .{});
             while (true) {
                 if (bridge_init.g_shutdown.load(.seq_cst)) break;
@@ -33,15 +29,13 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
             did_open = true;
         }
     } else {
-        std.log.info("[SENSOR 2] WFP device already connected via bridge_init", .{});
         std.debug.print("[SENSOR 2] WFP device already connected via bridge_init\n", .{});
     }
     if (did_open) defer wfp_ioctl.shutdown();
 
-    std.log.info("[SENSOR 2] Reading events from kernel ring buffer", .{});
     std.debug.print("[SENSOR 2] Reading events from kernel ring buffer...\n", .{});
 
-    var event_buf: [WFP_EVENT_BUFFER_SIZE]u8 = undefined;
+    var event_buf: [65536]u8 = undefined;
     var poll_count: u64 = 0;
 
     while (true) {

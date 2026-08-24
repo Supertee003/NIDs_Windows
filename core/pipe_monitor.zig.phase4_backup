@@ -118,9 +118,6 @@ fn scanPipes() void {
     }
 
     g_total_scans += 1;
-    std.log.info("[PM] Scan #{d}: {d} pipes, {d} suspicious", .{
-        g_total_scans, pipe_count, suspicious_count
-    });
     std.debug.print("[PM] Scan #{d}: {d} pipes, {d} suspicious\n", .{
         g_total_scans, pipe_count, suspicious_count
     });
@@ -154,7 +151,6 @@ pub fn printStats() void {
 /// Main pipe monitor loop (Thread 5)
 /// BP1: No longer takes allocator - uses stack/local allocation only
 pub fn pipeMonitorLoop() void {
-    std.log.info("[PM] Thread 5 started - scanning pipes every 10s", .{});
     std.debug.print("[PM] Thread 5 started - scanning pipes every 10s\n", .{});
 
     // Initial delay to let system settle
