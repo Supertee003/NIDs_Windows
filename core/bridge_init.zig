@@ -1,4 +1,4 @@
-//! bridge_init.zig - AEGIS NIDS Unified Bridge Initialization (M3)
+﻿//! bridge_init.zig - AEGIS NIDS Unified Bridge Initialization (M3)
 //!
 //! Centralized startup/shutdown for ALL bridge connections.
 //! Called from nids_main.zig before spawning sensor threads.
@@ -97,6 +97,7 @@ fn initWfpIoctl() void {
     if (wfp_ioctl.init()) {
         g_state.wfp_ioctl = true;
     } else {
+        std.log.warn("[INIT] WFP IOCTL: device not available (driver not loaded?)", .{});
         std.debug.print("[INIT] WFP IOCTL: device not available (driver not loaded?)\n", .{});
     }
 }
@@ -130,6 +131,7 @@ fn initCppBridge() void {
             const path = std.fmt.bufPrint(&path_buf, "{s}\\{s}", .{ dir, dll_name }) catch continue;
             if (std.DynLib.open(path)) |lib| {
                 g_bridge_dll = lib;
+                std.log.info("[INIT] C++ Bridge loaded: {s}", .{path});
                 std.debug.print("[INIT] C++ Bridge loaded: {s}\n", .{path});
                 break;
             } else |_| {}
@@ -137,6 +139,7 @@ fn initCppBridge() void {
         if (g_bridge_dll == null) {
             if (std.DynLib.open(dll_name)) |lib| {
                 g_bridge_dll = lib;
+                std.log.info("[INIT] C++ Bridge loaded from system: {s}", .{dll_name});
                 std.debug.print("[INIT] C++ Bridge loaded from system: {s}\n", .{dll_name});
             } else |_| {}
         }
@@ -155,14 +158,18 @@ fn initCppBridge() void {
             if (rc == 0) {
                 g_bridge_initialized = true;
                 g_state.cpp_bridge = true;
+                std.log.info("[INIT] C++ IPC Bridge initialized (rc=0)", .{});
                 std.debug.print("\x1b[32m[INIT] C++ IPC Bridge initialized (rc=0)\x1b[0m\n", .{});
             } else {
+                std.log.warn("[INIT] C++ Bridge init failed (rc={d})", .{rc});
                 std.debug.print("\x1b[33m[INIT] C++ Bridge init failed (rc={d})\x1b[0m\n", .{rc});
             }
         } else {
+            std.log.warn("[INIT] C++ Bridge DLL loaded but symbols not found", .{});
             std.debug.print("\x1b[33m[INIT] C++ Bridge DLL loaded but symbols not found\x1b[0m\n", .{});
         }
     } else {
+        std.log.warn("[INIT] aegis_ipc.dll not found - running without C++ Bridge", .{});
         std.debug.print("\x1b[33m[INIT] aegis_ipc.dll not found - running without C++ Bridge\x1b[0m\n", .{});
     }
 }
@@ -203,6 +210,7 @@ fn initRustShield() void {
             const path = std.fmt.bufPrint(&path_buf, "{s}\\{s}", .{ dir, dll_name }) catch continue;
             if (std.DynLib.open(path)) |lib| {
                 g_rust_dll = lib;
+                std.log.info("[INIT] Rust Shield loaded: {s}", .{path});
                 std.debug.print("[INIT] Rust Shield loaded: {s}\n", .{path});
                 break;
             } else |_| {}
@@ -210,6 +218,7 @@ fn initRustShield() void {
         if (g_rust_dll == null) {
             if (std.DynLib.open(dll_name)) |lib| {
                 g_rust_dll = lib;
+                std.log.info("[INIT] Rust Shield from system: {s}", .{dll_name});
                 std.debug.print("[INIT] Rust Shield from system: {s}\n", .{dll_name});
             } else |_| {}
         }
@@ -220,9 +229,11 @@ fn initRustShield() void {
         fn_validate_payload_safety = lib.lookup(FnValidatePayloadSafety, "validate_payload_safety");
         if (fn_validate_payload_safety != null) {
             g_state.rust_shield = true;
+            std.log.info("[INIT] Rust Memory Safety Shield active", .{});
             std.debug.print("\x1b[32m[INIT] Rust Memory Safety Shield active\x1b[0m\n", .{});
         }
     } else {
+        std.log.warn("[INIT] sec_monitor.dll not found - running without Shield", .{});
         std.debug.print("\x1b[33m[INIT] sec_monitor.dll not found - running without Shield\x1b[0m\n", .{});
     }
 }
@@ -245,11 +256,14 @@ fn initUdpBrain() void {
             g_udp_sock = sock;
             g_udp_available = true;
             g_state.udp_brain = true;
+            std.log.info("[INIT] UDP brain logger on 127.0.0.1:9999", .{});
             std.debug.print("\x1b[32m[INIT] UDP brain logger on 127.0.0.1:9999\x1b[0m\n", .{});
         } else |_| {
+            std.log.warn("[INIT] UDP socket failed - brain logging disabled", .{});
             std.debug.print("\x1b[33m[INIT] UDP socket failed - brain logging disabled\x1b[0m\n", .{});
         }
     } else |_| {
+        std.log.warn("[INIT] UDP parse failed - brain logging disabled", .{});
         std.debug.print("\x1b[33m[INIT] UDP parse failed - brain logging disabled\x1b[0m\n", .{});
     }
 }
@@ -277,11 +291,13 @@ pub var g_shutdown = std.atomic.Value(bool).init(false);
 /// Signal all threads to exit. Safe to call multiple times.
 pub fn requestShutdown() void {
     if (!g_shutdown.load(.seq_cst)) {
+        std.log.warn("[SHUTDOWN] Signal received, draining threads", .{});
         std.debug.print("\x1b[33m[SHUTDOWN] Signal received, draining threads...\x1b[0m\n", .{});
     }
     g_shutdown.store(true, .seq_cst);
 }
 pub fn initAll() void {
+    std.log.info("[INIT] AEGIS BRIDGE INITIALIZATION", .{});
     std.debug.print("\n--- AEGIS BRIDGE INITIALIZATION ---\n", .{});
 
     // 1. WFP kernel driver IOCTL (M2)
@@ -301,6 +317,13 @@ pub fn initAll() void {
         @as(u32, @intFromBool(g_state.cpp_bridge)) +
         @as(u32, @intFromBool(g_state.rust_shield)) +
         @as(u32, @intFromBool(g_state.udp_brain));
+    std.log.info("[INIT] Bridge status: {d}/4 active (wfp={} cpp={} rust={} udp={})", .{
+        active,
+        g_state.wfp_ioctl,
+        g_state.cpp_bridge,
+        g_state.rust_shield,
+        g_state.udp_brain,
+    });
     std.debug.print("[INIT] Bridge status: {d}/4 active\n", .{active});
     std.debug.print("[INIT]   WFP IOCTL:    {s}\n", .{if (g_state.wfp_ioctl) "OK" else "--"});
     std.debug.print("[INIT]   C++ Bridge:  {s}\n", .{if (g_state.cpp_bridge) "OK" else "--"});
@@ -310,6 +333,7 @@ pub fn initAll() void {
 
 /// Shutdown ALL bridges. Call on process exit.
 pub fn shutdownAll() void {
+    std.log.info("[SHUTDOWN] AEGIS BRIDGE SHUTDOWN", .{});
     std.debug.print("\n--- AEGIS BRIDGE SHUTDOWN ---\n", .{});
     shutdownUdpBrain();
     shutdownCppBridge();
@@ -375,7 +399,9 @@ pub fn sendToBrain(allocator: std.mem.Allocator, comptime T: type, msg: T) void 
     var string = std.ArrayList(u8).init(allocator);
     defer string.deinit();
     std.json.stringify(msg, .{}, string.writer()) catch return;
-    _ = posix.sendto(g_udp_sock, string.items, 0, &g_udp_addr.any, g_udp_addr.getOsSockLen()) catch {};
+    _ = posix.sendto(g_udp_sock, string.items, 0, &g_udp_addr.any, g_udp_addr.getOsSockLen()) catch |err| {
+        std.log.warn("[BRAIN] UDP send failed: {}", .{err});
+    };
 }
 
 /// Block IP via WFP IOCTL (convenience wrapper).

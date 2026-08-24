@@ -57,6 +57,7 @@ fn ctrlHandler(ctrl_type: u32) callconv(.C) i32 {
     if (ctrl_type == 2 or ctrl_type == 5 or ctrl_type == 1) {
         g_shutdown_requested.store(true, .release);
         bridge_init.requestShutdown(); // BP-FIX: also signal T2-T5 threads
+        std.log.warn("[SHUTDOWN] Signal {} received -- draining connections", .{ctrl_type});
         std.debug.print("\x1b[33m[SHUTDOWN] Signal {} received -- draining connections...\x1b[0m\n", .{ctrl_type});
         return 1;
     }
@@ -246,7 +247,8 @@ pub const SecureRuleSet = struct {
 // =================================================================
 
 var active_ruleset: std.atomic.Value(?*SecureRuleSet) = std.atomic.Value(?*SecureRuleSet).init(null);
-var connection_semaphore: std.Thread.Semaphore = .{ .permits = 100 };
+const MAX_CONCURRENT_CONNECTIONS: u32 = 100;
+var connection_semaphore: std.Thread.Semaphore = .{ .permits = MAX_CONCURRENT_CONNECTIONS };
 var active_threads: std.atomic.Value(u32) = std.atomic.Value(u32).init(0);
 pub var g_analyze_errors: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 var g_total_connections: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
@@ -342,6 +344,7 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
     defer g_rules_loading.store(false, .release);
 
     const file = std.fs.cwd().openFile("Rules.json", .{}) catch |open_err| {
+        std.log.warn("[ANALYZE] Cannot open Rules.json: {}", .{open_err});
         std.debug.print("\x1b[33m[ANALYZE] Cannot open Rules.json: {}\x1b[0m\n", .{open_err});
         return;
     };
@@ -569,7 +572,10 @@ fn pushTier1Match(
     };
     // BP206: Count bridge IPC pushes for operational visibility
     _ = g_bridge_ipc_pushes.fetchAdd(1, .relaxed);
-    _ = bridge_init.pushEvent(&event);
+    const push_rc = bridge_init.pushEvent(&event);
+    if (push_rc != 0) {
+        std.log.warn("[BRIDGE] pushEvent failed (rc={d})", .{push_rc});
+    }
 }
 
 /// Push forwarded (unmatched) event to C++ Bridge
@@ -597,7 +603,10 @@ fn pushForwardedEvent(
     };
     // BP206: Count bridge IPC pushes for operational visibility
     _ = g_bridge_ipc_pushes.fetchAdd(1, .relaxed);
-    _ = bridge_init.pushEvent(&event);
+    const push_rc = bridge_init.pushEvent(&event);
+    if (push_rc != 0) {
+        std.log.warn("[BRIDGE] pushEvent failed (rc={d})", .{push_rc});
+    }
 }
 
 // =================================================================
@@ -620,7 +629,8 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
     // BP21: Payload size sanity check
     if (data.len < 1) return true;
     if (data.len > ANALYZE_MAX_PAYLOAD) {
-        std.debug.print("[WARN] Payload size {d} exceeds 64KB limit - skipping deep analysis\n", .{data.len});
+        std.log.warn("[ANALYZE] Payload {d} exceeds limit (max={d}) - skipping deep analysis", .{data.len, ANALYZE_MAX_PAYLOAD});
+        std.debug.print("[WARN] Payload size {d} exceeds limit (max={d}B) - skipping deep analysis\n", .{data.len, ANALYZE_MAX_PAYLOAD});
         // BP211: Oversized payload visible in release builds (potential inspection bypass)
         std.log.warn("[ANALYZE] Payload {d}B exceeds 64KB limit, skipping inspection", .{data.len});
         return true;
@@ -826,7 +836,11 @@ fn handle_pipe_client(hPipe: win.HANDLE, allocator: std.mem.Allocator) void {
             std.log.warn("[PIPE] Session byte limit ({}MB) reached, closing", .{PIPE_MAX_BYTES / (1024 * 1024)});
             break;
         }
-        const is_safe = inspect_packet(buf[0..bytes_read], ctx) catch true;
+        const is_safe = inspect_packet(buf[0..bytes_read], ctx) catch |analyze_err| blk: {
+            std.log.warn("[PIPE] inspect_packet error: {}", .{analyze_err});
+            _ = g_analyze_errors.fetchAdd(1, .relaxed);
+            break :blk true;
+        };
         // BP157: Zeroize buffer to reduce plaintext exposure in memory
         for (buf[0..bytes_read]) |*b| b.* = 0;
         if (!is_safe) break;
@@ -887,12 +901,12 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
             // BP187: Warn when connection limit is approaching
             // BP189: Acquire for fresh value in warning check
             const _pipe_active = active_threads.load(.acquire);
-            if (_pipe_active >= 90) {
-                std.log.warn("[SEMAPHORE] Pipe: connection limit approaching ({d}/100 active)", .{_pipe_active});
+            if (_pipe_active >= MAX_CONCURRENT_CONNECTIONS * 9 / 10) {
+                std.log.warn("[SEMAPHORE] Pipe: connection limit approaching ({d}/{} active)", .{ _pipe_active, MAX_CONCURRENT_CONNECTIONS });
             }
             // BP205: Use tryWait to prevent blocking during shutdown with full semaphore
             if (!connection_semaphore.tryWait()) {
-                std.log.warn("[SEMAPHORE] Pipe: connection limit reached (100), rejecting client", .{});
+                std.log.warn("[SEMAPHORE] Pipe: connection limit reached ({d}), rejecting client", .{MAX_CONCURRENT_CONNECTIONS});
                 _ = DisconnectNamedPipe(hPipe);
                 win.CloseHandle(hPipe);
                 _ = g_analyze_errors.fetchAdd(1, .relaxed);
@@ -1114,7 +1128,11 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
             std.log.warn("[TCP] Max packets ({d}) reached", .{TCP_MAX_PACKETS});
             break;
         }
-        const is_safe = inspect_packet(buf[0..len], ctx) catch true;
+        const is_safe = inspect_packet(buf[0..len], ctx) catch |analyze_err| blk: {
+            std.log.warn("[TCP] inspect_packet error: {}", .{analyze_err});
+            _ = g_analyze_errors.fetchAdd(1, .relaxed);
+            break :blk true;
+        };
         // BP157: Zeroize buffer to reduce plaintext exposure in memory
         for (buf[0..len]) |*b| b.* = 0;
         if (!is_safe) {
@@ -1237,12 +1255,12 @@ fn tcp_listener(allocator: std.mem.Allocator) !void {
         // BP187: Warn when connection limit is approaching
         // BP189: Acquire for fresh value in warning check
         const _tcp_active = active_threads.load(.acquire);
-        if (_tcp_active >= 90) {
-            std.log.warn("[SEMAPHORE] TCP: connection limit approaching ({d}/100 active)", .{_tcp_active});
+        if (_tcp_active >= MAX_CONCURRENT_CONNECTIONS * 9 / 10) {
+            std.log.warn("[SEMAPHORE] TCP: connection limit approaching ({d}/{} active)", .{ _tcp_active, MAX_CONCURRENT_CONNECTIONS });
         }
         // BP205: Use tryWait to prevent blocking during shutdown with full semaphore
         if (!connection_semaphore.tryWait()) {
-            std.log.warn("[SEMAPHORE] TCP: connection limit reached (100), rejecting {}", .{conn.address});
+            std.log.warn("[SEMAPHORE] TCP: connection limit reached ({d}), rejecting {}", .{ MAX_CONCURRENT_CONNECTIONS, conn.address });
             conn.stream.close();
             _ = g_analyze_errors.fetchAdd(1, .relaxed);
             _ = g_rejected_connections.fetchAdd(1, .relaxed);
@@ -1278,7 +1296,6 @@ fn tcp_listener(allocator: std.mem.Allocator) !void {
 
 fn bridgeStatusReporter() void {
     // Register CTRL+C handler for graceful shutdown
-    _ = SetConsoleCtrlHandler(ctrlHandler, 1);
     while (true) {
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
         // BP175: Also check g_shutdown_requested (CTRL+C sets this, not g_shutdown)
@@ -1479,7 +1496,7 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
     // BP178: Log security configuration at startup for operational verification
     std.debug.print("\n--- AEGIS Security Configuration ---\n", .{});
     std.debug.print("  TCP Port: {d} (backlog={d})\n", .{AEGIS_TCP_PORT, TCP_LISTEN_BACKLOG});
-    std.debug.print("  Max concurrent connections: 100 (semaphore)\n", .{});
+    std.debug.print("  Max concurrent connections: {d} (semaphore)\n", .{MAX_CONCURRENT_CONNECTIONS});
     std.debug.print("  TCP buffer: {}B | Pipe buffer: {}B\n", .{TCP_BUFFER_SIZE, PIPE_BUFFER_SIZE});
     std.debug.print("  TCP idle timeout: {d}ms | Max session: {d}s\n", .{TCP_IDLE_TIMEOUT_MS, TCP_MAX_SESSION_S});
     std.debug.print("  TCP max packets: {d} | Pkt rate limit: {d}/s\n", .{TCP_MAX_PACKETS, PKT_RATE_LIMIT_MAX});
@@ -1488,7 +1505,7 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
     std.debug.print("  Max payload: {}B | Max rule file: {}MB\n", .{ANALYZE_MAX_PAYLOAD, RULES_MAX_FILE_SIZE / (1024 * 1024)});
     std.debug.print("-----------------------------------\n", .{});
     // BP228: Security config summary via std.log.info (release-build visible)
-    std.log.info("[INIT] Security: port={d} sema=100 tcp_buf={}B pipe_buf={}B idle={d}ms max_sess={d}s", .{
+    std.log.info("[INIT] Security: port={d} sema={d} tcp_buf={}B pipe_buf={}B idle={d}ms max_sess={d}s", .{
         AEGIS_TCP_PORT, TCP_BUFFER_SIZE, PIPE_BUFFER_SIZE, TCP_IDLE_TIMEOUT_MS, TCP_MAX_SESSION_S,
     });
     std.debug.print("[INIT] Starting network listeners...\n", .{});
@@ -1510,6 +1527,7 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
     // Run accept-loop listeners (these block forever)
     std.log.info("[ANALYZE] Starting listener threads", .{});
     const t_pipe = std.Thread.spawn(.{}, pipe_listener, .{allocator}) catch |err| {
+        std.log.warn("[ANALYZE] Pipe listener failed to spawn: {}", .{err});
         std.debug.print("\x1b[33m[ANALYZE] Pipe listener failed to spawn: {}\x1b[0m\n", .{err});
         return;
     };

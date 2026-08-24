@@ -1,4 +1,4 @@
-//! windows_capture.zig - AEGIS NIDS WFP Kernel Traffic Reader (Thread 3)
+﻿//! windows_capture.zig - AEGIS NIDS WFP Kernel Traffic Reader (Thread 3)
 //!
 //! M4+BP2: Uses wfp_ioctl.read_events(). If WFP device was already
 //! opened by bridge_init.initAll(), skips re-opening.
@@ -91,7 +91,10 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
                     const b = (ctx.source_ip >> 8) & 0xFF;
                     const c = (ctx.source_ip >> 16) & 0xFF;
                     const d = (ctx.source_ip >> 24) & 0xFF;
-                    std.debug.print("\x1b[31;1m[WFP SENSOR] BLOCKED {}.{}.{}.{}:{} rule={d}\x1b[0m\n", .{
+                    std.log.warn("[BLOCK] WFP SENSOR {}.{},{}.{}:{} rule={d}", .{
+                        a, b, c, d, ctx.dest_port, header.rule_id
+                    });
+                    std.debug.print("\x1b[31;1m[WFP SENSOR] BLOCKED {}.{},{}.{}:{} rule={d}\x1b[0m\n", .{
                         a, b, c, d, ctx.dest_port, header.rule_id
                     });
                     if (header.severity >= 2) {

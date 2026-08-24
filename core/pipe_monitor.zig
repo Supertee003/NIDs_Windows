@@ -1,4 +1,4 @@
-//! pipe_monitor.zig - AEGIS NIDS Pipe Monitor Sensor (Thread 5)
+﻿//! pipe_monitor.zig - AEGIS NIDS Pipe Monitor Sensor (Thread 5)
 //!
 //! Polls \\.
 \pipe\* and checks for suspicious named pipes.
@@ -137,6 +137,7 @@ fn printAlert(name_wide: []const u16, pattern: []const u8) void {
     }
     const name_str = buf[0..len];
 
+    std.log.warn("[PM ALERT] Suspicious pipe: {s} (matched: {s})", .{ name_str, pattern });
     std.debug.print("\x1b[31;1m[PM ALERT] Suspicious pipe: {s} (matched: {s})\x1b[0m\n", .{ name_str, pattern });
 }
 

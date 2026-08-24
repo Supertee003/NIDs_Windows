@@ -1,4 +1,4 @@
-//! minifilter_reader.zig - AEGIS NIDS Minifilter Reader (Thread 4)
+﻿//! minifilter_reader.zig - AEGIS NIDS Minifilter Reader (Thread 4)
 //!
 //! Reads file/process events from the AEGIS minifilter driver via
 //! FilterCommunicationPort (FilterGetMessage API). Converts kernel
@@ -191,6 +191,7 @@ pub fn minifilterReaderLoop() void {
                 const sev_str = severityToString(evt.severity);
 
                 if (evt.severity >= 2) {
+                    std.log.warn("[ALERT] MINI {} | {} | PID={} | sev={} | {}", .{
                     std.debug.print("\x1b[31;1m[MINI ALERT] {} | {} | PID={} | sev={} | {}\x1b[0m\n", .{
                         evt_type, op_str, evt.process_id, sev_str, name_str
                     });

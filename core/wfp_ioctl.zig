@@ -231,7 +231,9 @@ pub fn block_ip(ipv4: u32) bool {
 
     // Track in user-mode table
     g_blocked_lock.lock();
-    _ = addBlockedIp(ipv4);
+    if (!addBlockedIp(ipv4)) {
+        std.log.warn("[WFP] Blocked IP table full ({} entries), tracking overflow", .{MAX_BLOCKED_IPS});
+    }
     g_blocked_lock.unlock();
 
     const a = (ipv4 >> 0) & 0xFF;

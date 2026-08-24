@@ -1,4 +1,4 @@
-//! nids_capture.zig - AEGIS NIDS Named Pipe IPC Sensor (Thread 2)
+﻿//! nids_capture.zig - AEGIS NIDS Named Pipe IPC Sensor (Thread 2)
 //!
 //! Creates a named pipe server (\\.\pipe\aegis_sensor_pipe) that
 //! accepts connections from Python sensor scripts. Payloads received
@@ -77,6 +77,7 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
         sec_attr.lpSecurityDescriptor = pipe_sd;
         std.debug.print("[IPC SENSOR] Pipe ACL: Admin-only (SDDL enforced)\n", .{});
     } else {
+        std.log.warn("[PIPE] Failed to set admin-only ACL - pipe may accept non-admin connections", .{});
         std.debug.print("[IPC SENSOR] WARNING: Failed to set pipe ACL, using default\n", .{});
     }
     defer if (pipe_sd) |sd| { _ = LocalFree(sd); };
@@ -132,7 +133,8 @@ const handle = CreateNamedPipeA(
                     break :blk true;
                 };
                 if (!is_safe) {
-                    std.debug.print("\x1b[31;1m[PIPE SENSOR] Threat blocked at Named Pipe!\x1b[0m\n", .{});
+                    std.log.warn("[BLOCK] Threat blocked at Named Pipe sensor", .{});
+                std.debug.print("\x1b[31;1m[PIPE SENSOR] Threat blocked at Named Pipe!\x1b[0m\n", .{});
                 }
             }
 
