@@ -1,83 +1,67 @@
-﻿# =====================================================================
-# AEGIS NIDS - .gitignore
-# =====================================================================
-
-# --- Rust ---
-target/
-**/*.rs.bk
-
-# --- Zig ---
+﻿# === Build Artifacts ===
 zig-out/
-.zig-cache/
-
-# --- Compiled binaries ---
+build/
+target/
+*.obj
+*.o
 *.exe
 *.dll
-*.dll.a
 *.pdb
-*.obj
 *.lib
 *.exp
-*.so
-*.dylib
 
-# --- Driver build ---
-*.sys
-*.cat
-*.cer
+# === Backup Files (REMOVE FROM GIT) ===
+*.bak
+*.bak_*
+*.bak_r*
 
-# --- C++ build ---
-build/
-build_cmake/
-CMakeFiles/
-CMakeCache.txt
-cmake_install.cmake
-Makefile
+# === Empty/Temp Build Logs ===
+build_*.txt
+build_*.stderr.txt
+build_*.stdout.txt
+verify_build.*
 
-# --- Dist (build output) ---
-dist/
+# === PID Files ===
+logs/pids/
+*.pid
 
-# --- Python ---
-__pycache__/
-*.py[cod]
-*$py.class
-*.pyo
-.pytest_cache/
-venv/
-.venv/
-
-# --- Go ---
-*.test
-*.out
-
-# --- Generated files ---
-threat_graph.html
-aegis_threat_map.html
-
-# --- Runtime data ---
-logs/anomalous.json
+# === Logs ===
+*.log
 logs/*.log
 
-# --- IDE / Editor ---
+# === Config Backups ===
+config/Back_*.json
+
+# === Standalone fixed file (should be in core/) ===
+nids_analyze_fixed.zig
+
+# === OS Files ===
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# === Python ===
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# === Rust ===
+target/
+Cargo.lock
+
+# === CMake ===
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+
+# === IDE ===
 .vs/
-.vscode/
 .idea/
 *.swp
 *.swo
 *~
-.DS_Store
-Thumbs.db
 
-# --- OS ---
-desktop.ini
-
-# --- Project scripts (local use) ---
-commit_all_fixes.ps1
-fix_*.ps1
-build_cmake_simple.ps1
-build_bridge_cmake.ps1
-deploy_*.ps1
-verify_*.ps1
-apply_shield_fix.ps1
-round5_cleanup.ps1
-clean_aegis.bat
+# === Round deployment scripts (temporary) ===
+round*.ps1
