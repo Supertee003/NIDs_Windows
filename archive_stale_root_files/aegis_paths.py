@@ -1,5 +1,0 @@
-﻿BRIDGE = r"D:\NIDs_Windows\build\Release\aegis_bridge.exe"
-CORE = r"D:\NIDs_Windows\zig-out\bin\aegis-nids.exe"
-BRAIN = r"D:\NIDs_Windows\windows_brain.py"
-NOSE = r"D:\NIDs_Windows\aegis-nose.exe"
-MOUTH = r"NOT_FOUND"

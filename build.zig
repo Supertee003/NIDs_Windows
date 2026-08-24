@@ -11,7 +11,16 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    b.installArtifact(exe);
+
+
+    // Install Rules.json alongside exe so analyze_packets can find it
+    const rules_src = b.path("config/Rules.json");
+    const rules_install = b.addInstallFileWithDir(rules_src, .bin, "Rules.json");
+    exe.step.dependOn(&rules_install.step);
+
+    // Also install to project root for `zig build run` (which runs from project dir)
+    b.installFile("config/Rules.json", "Rules.json");
+
 
     // NOTE: linkLibC() removed — it was causing 0xC000007B (STATUS_INVALID_IMAGE_FORMAT)
     // on Windows when the matching VC++ Redistributable was absent.

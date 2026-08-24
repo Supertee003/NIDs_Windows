@@ -1,0 +1,6 @@
+Microsoft (R) Incremental Linker Version 14.44.35228.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+aegis_wfp.obj : error LNK2019: unresolved external symbol AegisWfpCreateClose referenced in function DriverEntry
+aegis_wfp.obj : error LNK2019: unresolved external symbol AegisWfpDeviceControl referenced in function DriverEntry
+D:\NIDs_Windows\drivers\wfp_callout\aegis_wfp.sys : fatal error LNK1120: 2 unresolved externals

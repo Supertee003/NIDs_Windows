@@ -1,0 +1,4 @@
+aegis_minifilter_comm.c
+D:\NIDs_Windows\drivers\minifilter\aegis_minifilter_comm.c(90): error C2065: 'g_FilterHandle': undeclared identifier
+D:\NIDs_Windows\drivers\minifilter\aegis_minifilter_comm.c(90): warning C4047: 'function': 'PFLT_FILTER' differs in levels of indirection from 'int'
+D:\NIDs_Windows\drivers\minifilter\aegis_minifilter_comm.c(90): warning C4024: 'FltCreateCommunicationPort': different types for formal and actual parameter 1

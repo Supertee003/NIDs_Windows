@@ -1,0 +1,840 @@
+﻿//! nids_analyze.zig - AEGIS NIDS 3-Tier Analysis Engine (Thread 1)
+//!
+//! Core threat analysis engine using Aho-Corasick pattern matching.
+//! Loads rules from Rules.json, runs pipe + TCP listeners,
+//! and delegates bridge/brain functions to bridge_init.zig.
+//!
+//! Bridge loading is handled by bridge_init.initAll() in nids_main.zig.
+//! This module only uses bridge_init re-exports for runtime operations.
+
+const std = @import("std");
+const net = std.net;
+const win = std.os.windows;
+const posix = std.posix;
+const bridge_init = @import("bridge_init.zig");
+
+// =================================================================
+// [ WIN32 NAMED PIPE FFI ]
+// =================================================================
+
+extern "kernel32" fn CreateNamedPipeA(
+    lpName: [*:0]const u8,
+    dwOpenMode: u32,
+    dwPipeMode: u32,
+    nMaxInstances: u32,
+    nOutBufferSize: u32,
+    nInBufferSize: u32,
+    nDefaultTimeOut: u32,
+    lpSecurityAttributes: ?*anyopaque,
+) win.HANDLE;
+
+extern "kernel32" fn ConnectNamedPipe(hNamedPipe: win.HANDLE, lpOverlapped: ?*anyopaque) i32;
+extern "kernel32" fn DisconnectNamedPipe(hNamedPipe: win.HANDLE) i32;
+extern "kernel32" fn ReadFile(
+    hFile: win.HANDLE,
+    lpBuffer: [*]u8,
+    nNumberOfBytesToRead: u32,
+    lpNumberOfBytesRead: ?*u32,
+    lpOverlapped: ?*anyopaque,
+) i32;// ====== BP19: Admin-Only Pipe ACL via SDDL ======
+
+// SIGINT (CTRL+C) handler for graceful shutdown
+const HandlerRoutine = *const fn (u32) callconv(.C) i32;
+extern "kernel32" fn SetConsoleCtrlHandler(handler: ?HandlerRoutine, add: i32) i32;
+
+fn ctrlHandler(ctrl_type: u32) callconv(.C) i32 {
+    if (ctrl_type == 2) { // CTRL_C_EVENT
+        g_shutdown_requested.store(true, .release);
+        std.debug.print("\x1b[33m[SHUTDOWN] CTRL+C received -- draining connections...\x1b[0m\n", .{});
+        return 1;
+    }
+    return 0;
+}
+
+/// Global shutdown flag set by SIGINT handler for graceful termination
+pub var g_shutdown_requested: std.atomic.Value(bool) = std.atomic.Value(bool).init(false);
+extern "advapi32" fn ConvertStringSecurityDescriptorToSecurityDescriptorA(
+    StringSecurityDescriptor: [*:0]const u8,
+    StringSDRevision: u32,
+    SecurityDescriptor: *?*anyopaque,
+    SecurityDescriptorSize: ?*u32,
+) i32;
+
+extern "kernel32" fn LocalFree(hMem: ?*anyopaque) ?*anyopaque;
+
+const SDDL_ADMIN_ONLY = "D:(A;;GA;;;BA)";
+const SDDL_REVISION: u32 = 1;
+
+const AegisSecurityAttributes = extern struct {
+    nLength: u32,
+    lpSecurityDescriptor: ?*anyopaque,
+    bInheritHandle: i32,
+};
+
+
+// =================================================================
+// [ PACKET CONTEXT ]
+// =================================================================
+
+pub const PacketContext = struct {
+    source_ip: u32 = 0,
+    dest_ip: u32 = 0,
+    source_port: u16 = 0,
+    dest_port: u16 = 0,
+    protocol: u8 = 0,
+    direction: u8 = 0,
+    layer_id: u8 = 0,
+    is_pipe: bool = false,
+};
+
+// =================================================================
+// [ AHO-CORASICK FAST PATTERN ENGINE ]
+// =================================================================
+
+const AhoCorasick = struct {
+    pub const Node = struct {
+        next: [256]usize,
+        fail: usize,
+        matches: std.ArrayList(usize),
+    };
+    nodes: std.ArrayList(Node),
+    allocator: std.mem.Allocator,
+
+    pub fn init(allocator: std.mem.Allocator) !AhoCorasick {
+        var ac = AhoCorasick{
+            .nodes = std.ArrayList(Node).init(allocator),
+            .allocator = allocator,
+        };
+        _ = try ac.addNode();
+        return ac;
+    }
+
+    pub fn deinit(self: *AhoCorasick) void {
+        for (self.nodes.items) |*node| {
+            node.matches.deinit();
+        }
+        self.nodes.deinit();
+    }
+
+    fn addNode(self: *AhoCorasick) !usize {
+        const idx = self.nodes.items.len;
+        const node = Node{
+            .next = [_]usize{std.math.maxInt(usize)} ** 256,
+            .fail = 0,
+            .matches = std.ArrayList(usize).init(self.allocator),
+        };
+        try self.nodes.append(node);
+        return idx;
+    }
+
+    pub fn insert(self: *AhoCorasick, pattern: []const u8, rule_idx: usize) !void {
+        if (pattern.len == 0) return;
+        var curr: usize = 0;
+        for (pattern) |char| {
+            const c = @as(usize, char);
+            if (self.nodes.items[curr].next[c] == std.math.maxInt(usize)) {
+                const next_node = try self.addNode();
+                self.nodes.items[curr].next[c] = next_node;
+            }
+            curr = self.nodes.items[curr].next[c];
+        }
+        try self.nodes.items[curr].matches.append(rule_idx);
+    }
+
+    pub fn buildFailureLinks(self: *AhoCorasick) !void {
+        var queue = std.ArrayList(usize).init(self.allocator);
+        defer queue.deinit();
+
+        for (0..256) |c| {
+            const next_node = self.nodes.items[0].next[c];
+            if (next_node != std.math.maxInt(usize)) {
+                self.nodes.items[next_node].fail = 0;
+                try queue.append(next_node);
+            } else {
+                self.nodes.items[0].next[c] = 0;
+            }
+        }
+
+        var head: usize = 0;
+        while (head < queue.items.len) {
+            const u = queue.items[head];
+            head += 1;
+
+            for (0..256) |c| {
+                const v = self.nodes.items[u].next[c];
+                if (v != std.math.maxInt(usize)) {
+                    const fail_node = self.nodes.items[u].fail;
+                    self.nodes.items[v].fail = self.nodes.items[fail_node].next[c];
+                    try queue.append(v);
+                } else {
+                    self.nodes.items[u].next[c] = self.nodes.items[self.nodes.items[u].fail].next[c];
+                }
+            }
+        }
+    }
+};
+
+// =================================================================
+// [ THREAT TRACKING ]
+// =================================================================
+
+const ThreatState = enum(u8) { CLEAN = 0, SUSPICIOUS = 1, VERIFIED = 2, BLOCKED = 3 };
+
+const AtomicThreatTracker = struct {
+    state: std.atomic.Value(u8) = std.atomic.Value(u8).init(@intFromEnum(ThreatState.CLEAN)),
+    pub fn step1_markSuspicious(self: *AtomicThreatTracker) bool {
+        return self.state.cmpxchgStrong(@intFromEnum(ThreatState.CLEAN), @intFromEnum(ThreatState.SUSPICIOUS), .acquire, .monotonic) == null;
+    }
+    pub fn step2_verifyThreat(self: *AtomicThreatTracker) bool {
+        return self.state.cmpxchgStrong(@intFromEnum(ThreatState.SUSPICIOUS), @intFromEnum(ThreatState.VERIFIED), .acquire, .monotonic) == null;
+    }
+    pub fn reset(self: *AtomicThreatTracker) void {
+        self.state.store(@intFromEnum(ThreatState.CLEAN), .release);
+    }
+};
+
+var global_attacker_tracker: AtomicThreatTracker = .{};
+
+// =================================================================
+// [ SECURE RULE SET ]
+// =================================================================
+
+pub const SecureRule = struct {
+    name: []const u8,
+    fast_pattern: []const u8,
+    match_pattern: []const u8,
+    regex_pattern: []const u8,
+    severity: []const u8,
+    action: []const u8,
+    crc32: u32,
+};
+
+pub const SecureRuleSet = struct {
+    allocator: std.mem.Allocator,
+    signatures: []const SecureRule = &[_]SecureRule{},
+    ac_engine: AhoCorasick,
+
+    pub fn deinit(self: *SecureRuleSet) void {
+        for (self.signatures) |sig| {
+            self.allocator.free(sig.name);
+            self.allocator.free(sig.fast_pattern);
+            self.allocator.free(sig.match_pattern);
+            self.allocator.free(sig.regex_pattern);
+            self.allocator.free(sig.severity);
+        }
+        self.allocator.free(self.signatures);
+        self.ac_engine.deinit();
+        self.allocator.destroy(self);
+    }
+};
+
+// =================================================================
+// [ GLOBAL STATE ]
+// =================================================================
+
+var active_ruleset: std.atomic.Value(?*SecureRuleSet) = std.atomic.Value(?*SecureRuleSet).init(null);
+var connection_semaphore: std.Thread.Semaphore = .{ .permits = 100 };
+var active_threads: std.atomic.Value(u32) = std.atomic.Value(u32).init(0);
+pub var g_analyze_errors: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+
+// =================================================================
+// [ RULE LOADING ]
+// =================================================================
+
+pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
+    const file = std.fs.cwd().openFile("Rules.json", .{}) catch |open_err| {
+        std.debug.print("\x1b[33m[ANALYZE] Cannot open Rules.json: {}\x1b[0m\n", .{open_err});
+        return;
+    };
+    defer file.close();
+    const content = try file.readToEndAlloc(allocator, 2 * 1024 * 1024);
+    defer allocator.free(content);
+
+    const TempRule = struct {
+        name: []const u8,
+        fast_pattern: []const u8 = "",
+        match_pattern: []const u8 = "",
+        regex_pattern: []const u8 = "",
+        severity: []const u8 = "Alert",
+        action: []const u8 = "Alert",
+    };
+    const TempRuleSet = struct { nids_rules: []TempRule };
+
+    const parsed = std.json.parseFromSlice(TempRuleSet, allocator, content, .{ .ignore_unknown_fields = true }) catch |parse_err| {
+        std.debug.print("\x1b[31m[ANALYZE] JSON Parse Failed: {}\x1b[0m\n", .{parse_err});
+        return;
+    };
+    defer parsed.deinit();
+
+    var new_set = try allocator.create(SecureRuleSet);
+    new_set.allocator = allocator;
+    new_set.ac_engine = try AhoCorasick.init(allocator);
+
+    var temp_sig_list = std.ArrayListAligned(SecureRule, 8).init(allocator);
+    errdefer {
+        for (temp_sig_list.items) |*sig| {
+            allocator.free(sig.name);
+            allocator.free(sig.fast_pattern);
+            allocator.free(sig.match_pattern);
+            allocator.free(sig.regex_pattern);
+            allocator.free(sig.severity);
+        }
+        temp_sig_list.deinit();
+        new_set.ac_engine.deinit();
+        allocator.destroy(new_set);
+    }
+
+    var valid_rule_count: usize = 0;
+    for (parsed.value.nids_rules) |sig| {
+        var active_fast_pattern: []const u8 = sig.fast_pattern;
+        if (active_fast_pattern.len == 0) {
+            if (sig.match_pattern.len > 0) {
+                if (std.mem.indexOfAny(u8, sig.match_pattern, "|()[{\\.*+?^$")) |idx| {
+                    active_fast_pattern = sig.match_pattern[0..idx];
+                } else {
+                    active_fast_pattern = sig.match_pattern;
+                }
+            } else {
+                continue;
+            }
+        }
+
+        if (active_fast_pattern.len < 3) continue;
+
+        var hash = std.hash.Crc32.init();
+        hash.update(active_fast_pattern);
+        try temp_sig_list.append(.{
+            .name = try allocator.dupe(u8, sig.name),
+            .fast_pattern = try allocator.dupe(u8, active_fast_pattern),
+            .match_pattern = try allocator.dupe(u8, sig.match_pattern),
+            .regex_pattern = try allocator.dupe(u8, sig.regex_pattern),
+            .severity = try allocator.dupe(u8, sig.severity),
+            .action = try allocator.dupe(u8, sig.action),
+            .crc32 = hash.final(),
+        });
+
+        try new_set.ac_engine.insert(temp_sig_list.items[valid_rule_count].fast_pattern, valid_rule_count);
+        valid_rule_count += 1;
+    }
+
+    try new_set.ac_engine.buildFailureLinks();
+    new_set.signatures = try temp_sig_list.toOwnedSlice();
+    const old_set = active_ruleset.swap(new_set, .release);
+    if (old_set) |old| {
+        old.deinit();
+    }
+
+    std.debug.print("\x1b[32m[ANALYZE] Loaded {d} secure rules\x1b[0m\n", .{valid_rule_count});
+}
+
+// =================================================================
+// [ BRIDGE HELPERS Ã¢â‚¬â€ delegate to bridge_init ]
+// =================================================================
+
+/// Push Tier-1 match event to C++ Bridge via bridge_init
+fn pushTier1Match(
+    ctx: PacketContext,
+    rule_id: u32,
+    severity: u32,
+    payload_len: u32,
+) void {
+    const event: bridge_init.AegisIpcEvent = .{
+        .event_type = if (ctx.is_pipe) 3 else 0,
+        .source_ip = ctx.source_ip,
+        .dest_ip = ctx.dest_ip,
+        .source_port = ctx.source_port,
+        .dest_port = ctx.dest_port,
+        .protocol = ctx.protocol,
+        .direction = ctx.direction,
+        .layer_id = ctx.layer_id,
+        .tier_result = 1,
+        .payload_length = payload_len,
+        .rule_id = rule_id,
+        .severity = severity,
+        .reserved = 0,
+        .timestamp = @as(u64, @intCast(std.time.milliTimestamp())),
+        .source_pid = 0,
+        .defcon_impact = 4,
+    };
+    _ = bridge_init.pushEvent(&event);
+}
+
+/// Push forwarded (unmatched) event to C++ Bridge
+fn pushForwardedEvent(
+    ctx: PacketContext,
+    payload_len: u32,
+) void {
+    const event: bridge_init.AegisIpcEvent = .{
+        .event_type = if (ctx.is_pipe) 3 else 0,
+        .source_ip = ctx.source_ip,
+        .dest_ip = ctx.dest_ip,
+        .source_port = ctx.source_port,
+        .dest_port = ctx.dest_port,
+        .protocol = ctx.protocol,
+        .direction = ctx.direction,
+        .layer_id = ctx.layer_id,
+        .tier_result = 0,
+        .payload_length = payload_len,
+        .rule_id = 0,
+        .severity = 0,
+        .reserved = 0,
+        .timestamp = @as(u64, @intCast(std.time.milliTimestamp())),
+        .source_pid = 0,
+        .defcon_impact = 5,
+    };
+    _ = bridge_init.pushEvent(&event);
+}
+
+// =================================================================
+// [ 3-TIER FAST THREAT ANALYSIS ENGINE ]
+// =================================================================
+
+pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
+    // Rust Memory Safety Shield (via bridge_init)
+    if (!bridge_init.validatePayloadSafety(data.ptr, data.len)) return false;
+    // BP21: Payload size sanity check
+    if (data.len < 1) return true;
+    if (data.len > 65536) {
+        std.debug.print("[WARN] Payload size {d} exceeds 64KB limit - skipping deep analysis\n", .{data.len});
+        return true;
+    }
+
+    const current_ruleset = active_ruleset.load(.acquire) orelse return true;
+    const allocator = current_ruleset.allocator;
+
+    var curr: usize = 0;
+    var final_matched_rule: ?*const SecureRule = null;
+
+    // --- [ TIER 1: Aho-Corasick ] ---
+    for (data) |char| {
+        const c = @as(usize, char);
+        curr = current_ruleset.ac_engine.nodes.items[curr].next[c];
+
+        var temp = curr;
+        while (temp != 0) {
+            for (current_ruleset.ac_engine.nodes.items[temp].matches.items) |idx| {
+                const rule = &current_ruleset.signatures[idx];
+                var is_tier2_match = true;
+
+                if (rule.match_pattern.len > 0) {
+                    var match_iter = std.mem.splitSequence(u8, rule.match_pattern, "|");
+                    while (match_iter.next()) |keyword| {
+                        if (keyword.len == 0) continue;
+                        if (std.mem.indexOfAny(u8, keyword, "()[{\\.*+?^$") != null) continue;
+                        if (std.mem.indexOf(u8, data, keyword) == null) {
+                            is_tier2_match = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (is_tier2_match) {
+                    final_matched_rule = rule;
+                    break;
+                }
+            }
+            if (final_matched_rule != null) break;
+            temp = current_ruleset.ac_engine.nodes.items[temp].fail;
+        }
+        if (final_matched_rule != null) break;
+    }
+
+    if (final_matched_rule) |rule| {
+        // Alert to brain via UDP (bridge_init)
+        const alert = .{
+            .timestamp = std.time.timestamp(),
+            .attack_type = rule.name,
+            .policy = rule.action,
+            .reason = "Tier-1 Fast Pattern Match",
+            .source = if (ctx.is_pipe) "WFP_PIPE" else "TCP_SOCKET",
+            .raw_payload = data,
+            .source_ip = ctx.source_ip,
+            .dest_ip = ctx.dest_ip,
+            .source_port = ctx.source_port,
+            .dest_port = ctx.dest_port,
+            .protocol = ctx.protocol,
+        };
+        bridge_init.sendToBrain(allocator, @TypeOf(alert), alert);
+
+        const severity_val: u32 = sev: {
+            if (std.mem.eql(u8, rule.severity, "Critical")) break :sev 3;
+            if (std.mem.eql(u8, rule.severity, "High")) break :sev 2;
+            if (std.mem.eql(u8, rule.severity, "Medium")) break :sev 1;
+            break :sev 0;
+        };
+        pushTier1Match(ctx, rule.crc32, severity_val, @as(u32, @intCast(data.len)));
+
+        if (std.mem.eql(u8, rule.action, "Block")) {
+            std.debug.print("\x1b[31;1m[ANALYZE] !!! BLOCK !!! {s}\x1b[0m\n", .{rule.name});
+            return false;
+        }
+
+        return true;
+    } else {
+        // Forward to brain for deep inspection
+        const forward_msg = .{
+            .timestamp = std.time.timestamp(),
+            .attack_type = "Unmatched: Deep Inspection Required",
+            .policy = "Pending",
+            .reason = "Forwarded: No Tier-1 Match",
+            .source = if (ctx.is_pipe) "WFP_PIPE" else "TCP_SOCKET",
+            .raw_payload = data,
+            .source_ip = ctx.source_ip,
+            .dest_ip = ctx.dest_ip,
+            .source_port = ctx.source_port,
+            .dest_port = ctx.dest_port,
+            .protocol = ctx.protocol,
+        };
+        bridge_init.sendToBrain(allocator, @TypeOf(forward_msg), forward_msg);
+        pushForwardedEvent(ctx, @as(u32, @intCast(data.len)));
+
+        return true;
+    }
+}
+
+// =================================================================
+// [ NAMED PIPE LISTENER ]
+// =================================================================
+
+fn handle_pipe_client(hPipe: win.HANDLE, allocator: std.mem.Allocator) void {
+    const start_ns = std.time.nanoTimestamp();
+    std.debug.print("  [PIPE] Session started\n", .{});
+
+    defer {
+        const dur_s: u64 = @intCast((std.time.nanoTimestamp() - start_ns) / std.time.ns_per_s);
+        std.debug.print("[PIPE] Session closed: dur={d}s\n", .{dur_s});
+    }
+    defer {
+        _ = DisconnectNamedPipe(hPipe);
+        win.CloseHandle(hPipe);
+    }
+    defer connection_semaphore.post();
+    defer _ = active_threads.fetchSub(1, .monotonic);
+    _ = active_threads.fetchAdd(1, .monotonic);
+
+    const ctx = PacketContext{
+        .is_pipe = true,
+        .layer_id = 3,
+    };
+
+    var buf: [4096]u8 = undefined;
+    while (true) {
+        if (bridge_init.g_shutdown.load(.seq_cst)) break;
+        var bytes_read: u32 = 0;
+        const success = ReadFile(hPipe, &buf, buf.len, &bytes_read, null);
+        if (success == 0 or bytes_read == 0) break;
+        const is_safe = inspect_packet(buf[0..bytes_read], ctx) catch true;
+        if (!is_safe) break;
+    }
+}
+
+fn pipe_listener(allocator: std.mem.Allocator) !void {
+    // BP19: Setup admin-only security descriptor (once, before loop)
+    var pipe_sd: ?*anyopaque = null;
+    var sec_attr = AegisSecurityAttributes{
+        .nLength = @sizeOf(AegisSecurityAttributes),
+        .lpSecurityDescriptor = null,
+        .bInheritHandle = 0,
+    };
+    if (ConvertStringSecurityDescriptorToSecurityDescriptorA(
+        SDDL_ADMIN_ONLY, SDDL_REVISION, &pipe_sd, null,
+    ) != 0) {
+        sec_attr.lpSecurityDescriptor = pipe_sd;
+        std.debug.print("[PIPE_LISTENER] ACL: Admin-only (SDDL)\n", .{});
+    } else {
+        std.debug.print("[PIPE_LISTENER] WARNING: Failed to set pipe ACL\n", .{});
+    }
+    defer if (pipe_sd) |sd| { _ = LocalFree(sd); };
+    const pipe_name = "\\\\.\\pipe\\aegis_nids";
+    std.debug.print("[PIPE] Listener ready, waiting for admin connections.\n", .{});
+    while (!g_shutdown_requested.load(.acquire)) {
+        if (bridge_init.g_shutdown.load(.seq_cst)) break;
+        const hPipe = CreateNamedPipeA(pipe_name, 3, 0, 255, 4096, 4096, 0, @ptrCast(&sec_attr));
+        if (hPipe == win.INVALID_HANDLE_VALUE) {
+            _ = g_analyze_errors.fetchAdd(1, .monotonic);
+            std.debug.print("[PIPE_LISTENER] CreateNamedPipeA failed, retrying in 1s\n", .{});
+            std.time.sleep(1 * std.time.ns_per_s);
+            continue;
+        }
+
+        const connected = ConnectNamedPipe(hPipe, null);
+        const err = win.kernel32.GetLastError();
+
+        if (connected != 0 or @intFromEnum(err) == 535) {
+            connection_semaphore.wait();
+            _ = g_total_connections.fetchAdd(1, .monotonic);
+            std.debug.print("[PIPE] Admin client connected via named pipe\n", .{});
+            const t = std.Thread.spawn(.{}, handle_pipe_client, .{ hPipe, allocator }) catch {
+                _ = g_analyze_errors.fetchAdd(1, .monotonic);
+                _ = DisconnectNamedPipe(hPipe);
+                win.CloseHandle(hPipe);
+                connection_semaphore.post();
+                continue;
+            };
+            t.detach();
+        } else {
+            _ = g_analyze_errors.fetchAdd(1, .monotonic);
+            _ = DisconnectNamedPipe(hPipe);
+            win.CloseHandle(hPipe);
+        }
+    }
+    std.debug.print("[PIPE] Listener shut down gracefully.\n", .{});
+}
+
+// =================================================================
+// [ TCP LISTENER ]
+// =================================================================
+
+fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: std.mem.Allocator) void {
+    defer stream.close();
+    defer connection_semaphore.post();
+    defer _ = active_threads.fetchSub(1, .monotonic);
+    _ = active_threads.fetchAdd(1, .monotonic);
+
+    const src_ip: u32 = blk: {
+        const sa = @as(*const std.posix.sockaddr.in, @ptrCast(@alignCast(&remote_addr.any)));
+        break :blk sa.addr;
+    };
+    const src_port: u16 = blk: {
+        const sa = @as(*const std.posix.sockaddr.in, @ptrCast(@alignCast(&remote_addr.any)));
+        break :blk std.mem.bigToNative(u16, sa.port);
+    };
+    var bytes_read: u64 = 0;
+    var packet_count: u64 = 0;
+    var peak_buf: u64 = 0; // BP88: Peak buffer tracking
+    // BP81: Connection open log
+    std.debug.print("[TCP] Opened: {d}.{d}.{d}.{d}:{d}\n", .{src_ip[0], src_ip[1], src_ip[2], src_ip[3], src_port});
+    const start_ns = std.time.nanoTimestamp();
+    var _bp92_ttfb_ns: i64 = 0;
+    var _bp94_last_act_ns: i64 = std.time.nanoTimestamp();
+    defer {
+        const dur_s: u64 = @intCast((std.time.nanoTimestamp() - start_ns) / std.time.ns_per_s);
+        std.debug.print("[TCP] Closed: {d}.{d}.{d}.{d}:{d} dur={d}s\n", .{
+            (src_ip >> 24) & 0xFF, (src_ip >> 16) & 0xFF,
+            (src_ip >> 8) & 0xFF, src_ip & 0xFF, src_port, dur_s,
+        });
+        std.debug.print("    Bytes: {d}\n", .{bytes_read});
+        const bps: u64 = if (dur_s > 0) (bytes_read / dur_s) else 0;
+        std.debug.print("    Avg throughput: {d} B/s\n", .{bps});
+        std.debug.print("    Packets: {d}\n", .{packet_count});
+        // BP86: Shutdown reason indicator
+        if (bridge_init.g_shutdown.load(.seq_cst)) {
+            std.debug.print("    Reason: shutdown signal\n", .{});
+        }
+            // BP88: Peak buffer log
+            std.debug.print("    Peak buffer: {d} bytes\n", .{peak_buf});
+    }
+        (src_ip >> 24) & 0xFF, (src_ip >> 16) & 0xFF,
+        (src_ip >> 8) & 0xFF, src_ip & 0xFF, src_port,
+    });
+
+    const ctx = PacketContext{
+        .source_ip = src_ip,
+        .source_port = src_port,
+        .dest_port = AEGIS_TCP_PORT,
+        .protocol = 6,
+        .layer_id = 0,
+        .is_pipe = false,
+    };
+
+    var buf: [16384]u8 = undefined;
+    while (true) {
+        if (bridge_init.g_shutdown.load(.seq_cst)) break;
+        {
+            const _idle_ms = @divTrunc(std.time.nanoTimestamp() - _bp94_last_act_ns, 1_000_000);
+            if (_idle_ms > 60000) {
+                std.log.warn("[TCP] Idle {}:{} for {d}ms", .{src_ip, src_port, _idle_ms});
+            }
+        }
+        const len = stream.read(&buf) catch {
+        // BP88: Track peak buffer usage
+        if (len > peak_buf) peak_buf = len;
+        if (_bp92_ttfb_ns == 0) {
+            _bp92_ttfb_ns = std.time.nanoTimestamp();
+            const _bp92_ttfb_ms = @divTrunc(_bp92_ttfb_ns - start_ns, 1_000_000);
+            std.log.info("[TCP] TTFB {d}ms from {}", .{_bp92_ttfb_ms, src_ip});
+        }
+        _bp94_last_act_ns = std.time.nanoTimestamp();
+            std.debug.print("  [TCP] Read error, closing connection\n", .{});
+            g_analyze_errors.fetchAdd(1, .seq_cst);
+        };
+        const elapsed_s: u64 = @intCast((std.time.nanoTimestamp() - start_ns) / std.time.ns_per_s);
+        if (elapsed_s > 300) {
+            std.debug.print("  [TCP] Max duration (300s) reached, closing\n", .{});
+            break;
+        }
+        if (len > 65535) {
+            std.debug.print("  [TCP] Oversized read: {d} bytes, closing\n", .{len});
+            break;
+        }
+        }
+            break;
+            std.debug.print("  [TCP] Connection closed by peer (EOF)\n", .{});
+        if (len == 0) {
+        bytes_read += len;
+        packet_count += 1;
+        if (packet_count > 1_000_000) {
+            std.debug.print("  [TCP] Max packets (1M) reached\n", .{});
+            break;
+        }
+        const is_safe = inspect_packet(buf[0..len], ctx) catch true;
+            g_analyze_errors.fetchAdd(1, .seq_cst);
+        }
+            break;
+            g_analyze_errors.fetchAdd(1, .seq_cst);
+            std.debug.print("  [TCP] Unsafe packet detected, closing connection\n", .{});
+        if (!is_safe) {
+    }
+}
+
+fn tcp_listener(allocator: std.mem.Allocator) !void {
+    // BP80: Listener startup log
+    std.debug.print("[TCP-Listener] Started, accepting connections\n", .{});
+    var addr = net.Address.parseIp4("0.0.0.0", AEGIS_TCP_PORT) catch return;
+    var server = addr.listen(.{ .reuse_address = true }) catch |err| {
+        std.debug.print("[TCP] Listen failed: {} - TCP listener not started\n", .{err});
+        return;
+    };
+    std.debug.print("[TCP] Listening on 0.0.0.0:12345\n", .{});
+    defer server.deinit();
+
+    while (!g_shutdown_requested.load(.acquire)) {
+
+        if (bridge_init.g_shutdown.load(.seq_cst)) break;
+        const conn = server.accept() catch |err| {
+            std.log.warn("[TCP] Accept error: {}", .{err});
+            continue;
+        };
+        connection_semaphore.wait();
+        _ = g_total_connections.fetchAdd(1, .monotonic);
+        _bp93_accept_count += 1;         if (_bp93_accept_count % 100 == 0) {             std.log.info("[TCP-LISTEN] Total accepted: {d} connections", .{_bp93_accept_count});         }
+        const t = std.Thread.spawn(.{}, handle_tcp_client, .{ conn.stream, conn.address, allocator }) catch {
+            _ = g_analyze_errors.fetchAdd(1, .monotonic);
+            conn.stream.close();
+            connection_semaphore.post();
+            continue;
+        };
+        t.detach();
+    }
+    std.debug.print("[TCP] Listener shut down gracefully.\n", .{});
+}
+
+// =================================================================
+// [ BRIDGE STATUS REPORTER ]
+// =================================================================
+
+fn bridgeStatusReporter() void {
+
+    // Register CTRL+C handler for graceful shutdown
+    _ = SetConsoleCtrlHandler(ctrlHandler, 1);
+    while (true) {
+        if (bridge_init.g_shutdown.load(.seq_cst)) break;
+        std.time.sleep(30 * std.time.ns_per_s);
+        std.debug.print("\n--- Status Report ---\n", .{});
+        bridge_init.printStatus();
+        std.debug.print("  Active threads: {d}  |  Analyze errors: {d}\n", .{
+            // BP89: Epoch timestamp for log correlation
+            const cycle_ts = std.time.timestamp();
+            std.debug.print("  Timestamp: {d}s (epoch)\n", .{cycle_ts});
+            active_threads.load(.monotonic),
+            g_analyze_errors.load(.monotonic),
+        });
+        std.debug.print("  Total connections served: {d}\n", .{g_total_connections.load(.monotonic)});
+        const up_s: u64 = @intCast((std.time.nanoTimestamp() - g_start_time_ns) / std.time.ns_per_s);
+        std.debug.print("  Uptime: {d}m {d}s\n", .{up_s / 60, up_s % 60});
+    if (bridge_init.g_shutdown.load(.seq_cst)) {
+        std.debug.print("  Status: SHUTTING DOWN\n", .{});
+    } else {
+        std.debug.print("  Status: ACTIVE\n", .{});
+    }
+        const errs: u64 = @intCast(g_analyze_errors.load(.seq_cst));
+        const err_per_min: u64 = if (up_s > 0) errs * 60 / up_s else 0;
+        std.debug.print("  Error rate: ~{d} errors/min\n", .{err_per_min});
+        const conn_per_min: u64 = if (up_s > 0) @intCast(g_total_connections.load(.monotonic)) * 60 / up_s else 0;
+        std.debug.print("  Conn rate: ~{d}/min\n", .{conn_per_min});
+    std.debug.print("  ---\n", .{});
+    }
+        // BP91: Total errors in periodic status
+        std.debug.print("  Total errors: {d}\n", .{g_analyze_errors.load(.monotonic)});
+    std.debug.print("\n=== AEGIS SHUTDOWN SUMMARY ===\n", .{});
+    std.debug.print("  Total connections: {d}\n", .{g_total_connections.load(.monotonic)});
+    std.debug.print("  Analyze errors: {d}\n", .{g_analyze_errors.load(.monotonic)});
+    const sh_conn: u64 = @intCast(g_total_connections.load(.monotonic));
+    const sh_err: u64 = @intCast(g_analyze_errors.load(.monotonic));
+    const clean_rate: u64 = if (sh_conn > sh_err) (sh_conn - sh_err) * 100 / sh_conn else 0;
+    std.debug.print("  Clean rate: {d}%\n", .{clean_rate});
+    std.debug.print("  Active threads at exit: {d}\n", .{active_threads.load(.seq_cst)});
+    const fin_s: u64 = @intCast((std.time.nanoTimestamp() - g_start_time_ns) / std.time.ns_per_s);
+    std.debug.print("  Uptime: {d}m {d}s\n", .{fin_s / 60, fin_s % 60});
+    std.debug.print("================================\n", .{});
+}
+
+// =================================================================
+// [ MAIN ENTRY: Thread 1 ]
+// =================================================================
+
+pub fn analyze_packets(allocator: std.mem.Allocator) void {
+    std.debug.print("\n--- AEGIS CORE: 3-TIER ENGINE ACTIVE ---\n", .{});
+    g_start_time_ns = std.time.nanoTimestamp();
+    const _bp91_rl_dur_ms = @divTrunc(std.time.nanoTimestamp() - _bp91_rl_start, 1_000_000);     std.log.info("[ANALYZE] Rules initialized in {d}ms", .{_bp91_rl_dur_ms});
+    std.debug.print("[INIT] All subsystems ready. Entering analysis loop.\n", .{});
+
+    // Load rules from Rules.json
+    std.debug.print("[INIT] Loading detection rules...\n", .{});
+    
+    // BP22: Pre-flight check for Rules.json
+    std.debug.print("[RULES] Checking Rules.json...\n", .{});
+    if (std.fs.cwd().statFile("Rules.json")) |stat| {
+        if (stat.size > 10 * 1024 * 1024) {
+            std.debug.print("\x1b[31m[ERROR] Rules.json exceeds 10MB ({d} bytes) - refusing to load\x1b[0m\n", .{stat.size});
+        } else if (stat.size == 0) {
+            std.debug.print("\x1b[33m[WARN] Rules.json is empty (0 bytes)\x1b[0m\n", .{});
+        } else {
+            std.debug.print("[RULES] Rules.json found ({d} bytes)\n", .{stat.size});
+        }
+    } else |err| {
+        std.debug.print("\x1b[33m[WARN] Rules.json not found ({}) - engine starts with empty ruleset\x1b[0m\n", .{err});
+    }
+reload_rules_atomic(allocator) catch |reload_err| {
+        std.debug.print("[ANALYZE] Failed to load rules: {}\n", .{reload_err});
+    };
+
+    // Background: print bridge stats every 30 seconds
+    std.debug.print("[INIT] Rules loading completed\n", .{});
+
+    std.debug.print("[INIT] Starting network listeners...\n", .{});
+
+    const t_status = std.Thread.spawn(.{}, bridgeStatusReporter, .{}) catch null;
+    if (t_status) |t| t.detach();
+
+    // Run accept-loop listeners (these block forever)
+    const t_pipe = std.Thread.spawn(.{}, pipe_listener, .{allocator}) catch {
+        std.debug.print("\x1b[33m[ANALYZE] Pipe listener failed to spawn\x1b[0m\n", .{});
+        return;
+    };
+    const t_tcp = std.Thread.spawn(.{}, tcp_listener, .{allocator}) catch {
+        std.debug.print("\x1b[33m[ANALYZE] TCP listener failed to spawn\x1b[0m\n", .{});
+        return;
+    std.debug.print("[INIT] All systems operational\n", .{});
+
+    };
+
+    t_pipe.join();
+    t_tcp.join();
+}
+test "payloadHex converts bytes to lowercase hex" {
+    const data = [_]u8{ 0xDE, 0xAD, 0xBE, 0xEF };
+    const hex = payloadHex(&data, 4);
+    try std.testing.expect(std.mem.eql(u8, &hex, "deadbeef"));
+}
+
+test "payloadHex truncates to max_len" {
+    const data = [_]u8{ 0x01, 0x02, 0x03, 0x04, 0x05 };
+    const hex = payloadHex(&data, 3);
+    try std.testing.expect(std.mem.eql(u8, &hex, "010203"));
+}
+
+test "payloadHex handles empty input" {
+    const data = [_]u8{};
+    const hex = payloadHex(&data, 4);
+    try std.testing.expect(std.mem.eql(u8, &hex, "00000000"));

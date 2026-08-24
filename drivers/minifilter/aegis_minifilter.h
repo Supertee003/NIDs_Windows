@@ -1,54 +1,55 @@
-﻿/**
- * aegis_minifilter.h â€” AEGIS NIDS Minifilter Driver Shared Header
- *
- * Defines shared structures between kernel-mode minifilter driver
- * and user-mode Zig reader (minifilter_reader.zig) via FilterCommunicationPort.
- *
- * Architecture: Kernel-mode C++ driver (KERNEL_FILE/KERNEL_PROCESS layer
- * of 3-Layer Architecture)
- *
- * Monitors:
- *   - File operations: IRP_MJ_CREATE, IRP_MJ_WRITE, IRP_MJ_SET_INFORMATION
- *   - Process creation/exit: PsSetCreateProcessNotifyRoutineEx
- *   - Communication via FilterCommunicationPort kernelâ†’user mode
- */
-
-#ifndef AEGIS_MINIFILTER_H
-#define AEGIS_MINIFILTER_H
+/* aegis_minifilter.h - AEGIS NIDS Minifilter Header (C5) */
+#ifndef _AEGIS_MINIFILTER_H_
+#define _AEGIS_MINIFILTER_H_
 
 #include <fltKernel.h>
 
-// ====== Minifilter Altitude ======
-// 370000 = FSFilter Anti-Virus (between HSM and Encryption)
-#define AEGIS_MINIFILTER_ALTITUDE  L"370000"
+/* Altitude from INF: 370000 (Anti-Virus) */
+#define AEGIS_MINIFILTER_ALTITUDE   L"370000"
+#define AEGIS_FILTER_PORT_NAME      L"\AegisMinifilterPort"
 
-// ====== AEGIS File/Process Event ======
-#pragma pack(push, 1)
-typedef struct _AEGIS_FILE_EVENT {
-    UINT32  event_type;     // 1=KERNEL_FILE, 2=KERNEL_PROCESS
-    UINT32  operation;      // IRP_MJ_CREATE, IRP_MJ_WRITE, etc. or PROCESS_CREATE/EXIT
-    UINT32  file_name_len;  // Length of file name string following this header
-    UINT32  process_id;     // PID of the process performing the operation
-    UINT32  rule_id;        // Matched rule ID (0 if no match yet)
-    UINT32  severity;       // 0=Low, 1=Medium, 2=High, 3=Critical
-    UINT32  reserved;
-    UINT64  timestamp;      // Event timestamp
-} AEGIS_FILE_EVENT;
-#pragma pack(pop)
+/* C5: Event types */
+#define AEGIS_EVT_FILE              1
+#define AEGIS_EVT_PROC_CREATE       2
+#define AEGIS_EVT_PROC_EXIT         3
 
-// ====== Process Event Types ======
-#define AEGIS_PROCESS_CREATE    0x100
-#define AEGIS_PROCESS_EXIT      0x101
+/* C5: Ring buffer */
+#define AEGIS_RING_SIZE             (64 * 1024)
 
-// ====== Communication Port ======
-#define AEGIS_FILTER_PORT_NAME  L"\\AegisMinifilterPort"
+/* C5: User->Kernel message commands */
+#define AEGIS_MSG_READ_EVENTS       1
+#define AEGIS_MSG_GET_STATS         2
 
-// ====== Max message sizes ======
-#define AEGIS_MAX_MSG_SIZE      4096
-#define AEGIS_MAX_FILE_NAME     260
+/* C5: Event record - fixed size for ring buffer */
+typedef struct _AEGIS_EVENT_RECORD {
+    ULONG           EventType;
+    ULONG           Size;
+    ULONG           ProcessId;
+    ULONG           ParentPid;
+    LARGE_INTEGER   Timestamp;
+    NTSTATUS        Status;
+    USHORT          NameLen;
+    WCHAR           Path[220];
+} AEGIS_EVENT_RECORD, *PAEGIS_EVENT_RECORD;
 
+/* C5: Ring buffer structure */
+typedef struct _AEGIS_RING_BUFFER {
+    PUCHAR              Data;
+    ULONG               Size;
+    volatile ULONG      Head;
+    volatile ULONG      Tail;
+    volatile ULONG      TotalEvents;
+    volatile ULONG      DroppedEvents;
+    KSPIN_LOCK          Lock;
+} AEGIS_RING_BUFFER, *PAEGIS_RING_BUFFER;
 
-/* Global filter handle (defined in aegis_minifilter.c) */
-extern PFLT_FILTER g_FilterHandle;
+/* C5: Ring used-bytes macro (handles wrap-around) */
+#define AEGIS_RING_USED(r) ((r)->Head >= (r)->Tail ? \
+    ((r)->Head - (r)->Tail) : ((r)->Size - (r)->Tail + (r)->Head))
 
-#endif // AEGIS_MINIFILTER_H
+/* Globals (defined in aegis_minifilter.c) */
+extern PFLT_FILTER        g_FilterHandle;
+extern PFLT_PORT          g_ServerPort;
+extern PAEGIS_RING_BUFFER g_EventRing;
+
+#endif /* _AEGIS_MINIFILTER_H_ */

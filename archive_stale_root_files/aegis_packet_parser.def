@@ -1,3 +1,0 @@
-LIBRARY aegis_packet_parser
-EXPORTS
-    aegis_quick_classify

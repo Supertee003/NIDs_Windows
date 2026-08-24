@@ -1,0 +1,2 @@
+aegis_wfp_comm.c
+D:\NIDs_Windows\drivers\wfp_callout\aegis_wfp_comm.c(105): error C2065: 'FWP_MATCH_TYPE_EQUAL': undeclared identifier

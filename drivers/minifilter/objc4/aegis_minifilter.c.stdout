@@ -1,0 +1,10 @@
+aegis_minifilter.c
+D:\NIDs_Windows\drivers\minifilter\aegis_minifilter.c(58): error C2065: 'AegisFilterUnload': undeclared identifier
+D:\NIDs_Windows\drivers\minifilter\aegis_minifilter.c(63): error C2039: 'Altitude': is not a member of '_FLT_REGISTRATION'
+C:\Program Files (x86)\Windows Kits\10\\Include\10.0.28000.0\km\fltKernel.h(2310): note: see declaration of '_FLT_REGISTRATION'
+D:\NIDs_Windows\drivers\minifilter\aegis_minifilter.c(64): error C2039: 'Name': is not a member of '_FLT_REGISTRATION'
+C:\Program Files (x86)\Windows Kits\10\\Include\10.0.28000.0\km\fltKernel.h(2310): note: see declaration of '_FLT_REGISTRATION'
+D:\NIDs_Windows\drivers\minifilter\aegis_minifilter.c(52): error C2099: initializer is not a constant
+D:\NIDs_Windows\drivers\minifilter\aegis_minifilter.c(63): warning C4047: 'initializing': 'PFLT_INSTANCE_TEARDOWN_CALLBACK' differs in levels of indirection from 'unsigned short [7]'
+D:\NIDs_Windows\drivers\minifilter\aegis_minifilter.c(64): warning C4047: 'initializing': 'PFLT_GENERATE_FILE_NAME' differs in levels of indirection from 'unsigned short [16]'
+D:\NIDs_Windows\drivers\minifilter\aegis_minifilter.c(108): warning C4013: 'FltStopFiltering' undefined; assuming extern returning int

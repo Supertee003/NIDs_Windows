@@ -1,0 +1,2 @@
+aegis_minifilter_file.c
+D:\NIDs_Windows\drivers\minifilter\aegis_minifilter_file.c(53): warning C4013: 'AegisRingWriteEvent' undefined; assuming extern returning int

@@ -1,0 +1,3 @@
+aegis_wfp_callout.c
+D:\NIDs_Windows\drivers\wfp_callout\aegis_wfp_callout.c(79): error C2039: 'layerId': is not a member of 'FWPS_FILTER0_'
+C:\Program Files (x86)\Windows Kits\10\\Include\10.0.28000.0\shared\fwpstypes.h(91): note: see declaration of 'FWPS_FILTER0_'

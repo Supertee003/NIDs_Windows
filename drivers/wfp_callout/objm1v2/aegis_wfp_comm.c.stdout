@@ -1,0 +1,6 @@
+aegis_wfp_comm.c
+D:\NIDs_Windows\drivers\wfp_callout\aegis_wfp_comm.c(25): error C2011: '_AEGIS_RING_STATS': 'struct' type redefinition
+D:\NIDs_Windows\drivers\wfp_callout\aegis_wfp.h(57): note: see declaration of '_AEGIS_RING_STATS'
+D:\NIDs_Windows\drivers\wfp_callout\aegis_wfp_comm.c(44): error C2039: 'overflowCount': is not a member of '_AEGIS_RING_STATS'
+D:\NIDs_Windows\drivers\wfp_callout\aegis_wfp.h(57): note: see declaration of '_AEGIS_RING_STATS'
+D:\NIDs_Windows\drivers\wfp_callout\aegis_wfp_comm.c(120): warning C4047: '=': 'UINT64 *' differs in levels of indirection from 'int'
