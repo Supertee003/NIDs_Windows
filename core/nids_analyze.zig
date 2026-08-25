@@ -914,8 +914,10 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
         std.log.info("[PIPE] ACL: Admin-only (SDDL)", .{});
         std.debug.print("[PIPE_LISTENER] ACL: Admin-only (SDDL)\n", .{});
     } else {
-        // BP192: Release-visible warning for security misconfiguration
-        std.log.warn("[PIPE] Failed to set admin-only ACL - pipe may accept non-admin connections", .{});
+        // P-08 CRITICAL FIX: SDDL failure = fail-closed (was fail-open with warning only)
+        // Refuse to start pipe listener if admin-only ACL cannot be enforced
+        std.log.err("[PIPE] CRITICAL: SDDL conversion failed - REFUSING to start pipe listener (fail-closed)", .{});
+        return;
     }
     defer if (pipe_sd) |sd| { _ = LocalFree(sd); };
     const pipe_name = "\\\\.\\pipe\\aegis_nids";

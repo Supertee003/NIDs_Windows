@@ -12,6 +12,33 @@ const WFP_EVENT_BUFFER_SIZE: usize = 65536;
 // BP-L13: Stats poll interval (iterations between stats prints)
 const WFP_STATS_POLL_INTERVAL: u64 = 300;
 
+/// P-05: Validate that a source IP is safe to block via WFP.
+/// Prevents attacker from spoofing source IP to use NIDS as L3 DoS amplifier
+/// against arbitrary LAN hosts (including localhost, broadcast, multicast).
+/// Returns true only for routable unicast IPs (not loopback/broadcast/multicast).
+fn isBlockableSourceIp(source_ip_net: u32) bool {
+    // Convert from network byte order (big-endian) to host byte order
+    const ip = std.mem.bigToNative(u32, source_ip_net);
+    const a = (ip >> 24) & 0xFF;
+    const b = (ip >> 16) & 0xFF;
+
+    // 0.0.0.0/8 - "This host" (don't block)
+    if (a == 0) return false;
+    // 127.0.0.0/8 - loopback (don't block - would break local services)
+    if (a == 127) return false;
+    // 169.254.0.0/16 - link-local (don't block - DHCP/ARP context)
+    if (a == 169 and b == 254) return false;
+    // 224.0.0.0/4 - multicast (don't block)
+    if (a >= 224 and a <= 239) return false;
+    // 240.0.0.0/4 - reserved (don't block)
+    if (a >= 240) return false;
+    // 255.255.255.255 - broadcast (don't block)
+    if (ip == 0xFFFFFFFF) return false;
+
+    // Only block routable unicast IPs (RFC1918 + public)
+    return true;
+}
+
 /// Thread 3 entry point: WFP Kernel Traffic Sensor.
 ///
 /// Reads network events from the AEGIS WFP kernel driver ring buffer via
@@ -124,8 +151,14 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
                     std.debug.print("\x1b[31;1m[WFP SENSOR] BLOCKED {}.{}.{}.{}:{} rule={d}\x1b[0m\n", .{
                         a, b, c, d, ctx.dest_port, header.rule_id
                     });
+                    // P-05 CRITICAL FIX: Validate source IP before blocking
+                    // Prevents attacker from spoofing source to use NIDS as DoS amplifier
                     if (header.severity >= 2) {
-                        _ = wfp_ioctl.block_ip(ctx.source_ip);
+                        if (isBlockableSourceIp(ctx.source_ip)) {
+                            _ = wfp_ioctl.block_ip(ctx.source_ip);
+                        } else {
+                            std.log.warn("[WFP] Refusing to block non-routable source IP: {}.{}.{}.{}", .{ a, b, c, d });
+                        }
                     }
                 }
             }

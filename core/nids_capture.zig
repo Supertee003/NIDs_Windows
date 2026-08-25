@@ -99,8 +99,11 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
         std.log.info("[PIPE SENSOR] Pipe ACL: Admin-only (SDDL)", .{});
         std.debug.print("[PIPE SENSOR] Pipe ACL: Admin-only (SDDL enforced)\n", .{});
     } else {
-        std.log.warn("[PIPE SENSOR] Failed to set admin-only ACL - pipe may accept non-admin connections", .{});
-        std.debug.print("[PIPE SENSOR] WARNING: Failed to set pipe ACL, using default\n", .{});
+        // P-08 CRITICAL FIX: SDDL failure = fail-closed (was fail-open with NULL DACL)
+        // NULL security descriptor uses default DACL which may allow non-admin connections
+        std.log.err("[PIPE SENSOR] CRITICAL: SDDL conversion failed - REFUSING to create pipe (fail-closed)", .{});
+        std.debug.print("\x1b[31m[PIPE SENSOR] CRITICAL: SDDL failed - refusing to create pipe (fail-closed)\x1b[0m\n", .{});
+        return;
     }
     defer if (pipe_sd) |sd| { _ = LocalFree(sd); };
     // BP-O2: Add FILE_FLAG_OVERLAPPED for shutdown-responsive ConnectNamedPipe

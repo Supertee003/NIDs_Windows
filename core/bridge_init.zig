@@ -122,13 +122,13 @@ fn initCppBridge() void {
         "aegis_ipc.dll",
         "libaegis_ipc.so",
     };
+    // B-01 CRITICAL FIX: Removed "." (CWD) from search paths to prevent DLL planting
+    // An attacker with write access to CWD could drop a malicious aegis_ipc.dll
     const search_paths = [_][]const u8{
         "bridge",
         "build",
         "build\\Release",
         "build\\Debug",
-        "target\\release",
-        ".",
     };
 
     for (dll_names) |dll_name| {
@@ -204,10 +204,11 @@ fn initRustShield() void {
         "sec_monitor.dll",
         "libsec_monitor.so",
     };
+    // B-01 CRITICAL FIX: Removed "." (CWD) from search paths to prevent DLL planting
     const search_paths = [_][]const u8{
         "target\\release",
         "target\\debug",
-        ".",
+        "shield\\target\\release",
     };
 
     for (dll_names) |dll_name| {
@@ -237,10 +238,16 @@ fn initRustShield() void {
             g_state.rust_shield = true;
             std.log.info("[INIT] Rust Memory Safety Shield active", .{});
             std.debug.print("\x1b[32m[INIT] Rust Memory Safety Shield active\x1b[0m\n", .{});
+        } else {
+            // P-01 CRITICAL FIX: Symbol missing in DLL is a fail-open risk
+            // Log as error so operators see the Tier-3 bypass immediately
+            std.log.err("[INIT] CRITICAL: sec_monitor.dll loaded but 'validate_payload_safety' symbol missing - Tier-3 BYPASSED", .{});
+            std.debug.print("\x1b[31m[INIT] CRITICAL: sec_monitor.dll symbol missing - Tier-3 fail-open!\x1b[0m\n", .{});
         }
     } else {
-        std.log.warn("[INIT] sec_monitor.dll not found - running without Shield", .{});
-        std.debug.print("\x1b[33m[INIT] sec_monitor.dll not found - running without Shield\x1b[0m\n", .{});
+        // P-01: Shield missing entirely - log as error, not warning
+        std.log.err("[INIT] CRITICAL: sec_monitor.dll not found - Tier-3 Memory Safety Shield BYPASSED (fail-open)", .{});
+        std.debug.print("\x1b[31m[INIT] CRITICAL: Tier-3 shield missing - fail-open mode!\x1b[0m\n", .{});
     }
 }
 

@@ -272,13 +272,18 @@ pub fn minifilterReaderLoop() void {
                                 const name_len = @min(evt.file_name_len, msg_buf.len - name_offset);
                                 const file_name = msg_buf[name_offset .. name_offset + name_len];
 
+                                // P-13 FIX: Proper UTF-8 passthrough instead of ASCII-only filter
+                                // (was: ch >= 0x20 and ch < 0x7F — dropped CJK/emoji paths silently)
                                 var name_buf: [512]u8 = undefined;
                                 var name_len_out: usize = 0;
                                 for (file_name) |ch| {
-                                    if (ch >= 0x20 and ch < 0x7F and name_len_out < name_buf.len) {
+                                    if (ch >= 0x20 and name_len_out < name_buf.len) {
+                                        // Pass through printable bytes (includes UTF-8 multi-byte sequences
+                                        // from the kernel's WCHAR→CHAR conversion)
                                         name_buf[name_len_out] = ch;
                                         name_len_out += 1;
-                                    } else if (name_len_out > 0) {
+                                    } else if (ch == 0) {
+                                        // Null terminator — stop
                                         break;
                                     }
                                 }

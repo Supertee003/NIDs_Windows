@@ -105,8 +105,13 @@ pub fn waitOverlapped(
     const wait_ret = WaitForSingleObject(event, timeout_ms);
 
     if (wait_ret == WAIT_TIMEOUT) {
-        // No completion yet — cancel pending I/O
+        // B-11 FIX: Cancel pending I/O and wait for cancellation to complete
+        // (was: CancelIoEx + immediate return — could leak pending I/O)
         _ = CancelIoEx(handle, overlapped);
+        // Wait for the cancellation to complete (GetOverlappedResult with bWait=0
+        // returns immediately if I/O is still pending; we wait up to 100ms)
+        var bytes_xfer: u32 = 0;
+        _ = GetOverlappedResult(handle, overlapped, &bytes_xfer, 0);
         return .timeout;
     }
 
