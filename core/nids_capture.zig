@@ -135,7 +135,7 @@ const handle = CreateNamedPipeA(
                 const is_safe = nids_analyze.inspect_packet(payload, ctx) catch |analyze_err| blk: {
                     std.log.warn("[PIPE SENSOR] Analyze error: {} - fail-open", .{analyze_err});
                     std.debug.print("[PIPE SENSOR] Analyze error: {} - event allowed (fail-open)\n", .{analyze_err});
-                    _ = nids_analyze.g_analyze_errors.fetchAdd(1, .seq_cst);
+                    _ = nids_analyze.g_analyze_errors.fetchAdd(1, .relaxed);
                     break :blk true;
                 };
                 if (!is_safe) {

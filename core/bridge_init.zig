@@ -325,6 +325,11 @@ pub fn initAll() void {
         g_state.udp_brain,
     });
     std.debug.print("[INIT] Bridge status: {d}/4 active\n", .{active});
+    // BP-L15: Bridge status summary visible in release builds via std.log
+    std.log.info("[INIT]   WFP IOCTL:    {s}", .{if (g_state.wfp_ioctl) "OK" else "--"});
+    std.log.info("[INIT]   C++ Bridge:  {s}", .{if (g_state.cpp_bridge) "OK" else "--"});
+    std.log.info("[INIT]   Rust Shield: {s}", .{if (g_state.rust_shield) "OK" else "--"});
+    std.log.info("[INIT]   UDP Brain:   {s}", .{if (g_state.udp_brain) "OK" else "--"});
     std.debug.print("[INIT]   WFP IOCTL:    {s}\n", .{if (g_state.wfp_ioctl) "OK" else "--"});
     std.debug.print("[INIT]   C++ Bridge:  {s}\n", .{if (g_state.cpp_bridge) "OK" else "--"});
     std.debug.print("[INIT]   Rust Shield: {s}\n", .{if (g_state.rust_shield) "OK" else "--"});
@@ -368,12 +373,15 @@ pub fn pushEvent(event: *const AegisIpcEvent) i32 {
     return -1;
 }
 
+// BP-M18: Default DEFCON level (normal = 5)
+const DEFCON_DEFAULT: u8 = 5;
+
 /// Get current DEFCON level from C++ bridge.
 pub fn getDefcon() u8 {
     if (fn_bridge_get_defcon) |f| {
         return f();
     }
-    return 5; // default: normal
+    return DEFCON_DEFAULT; // BP-M18: named default
 }
 
 /// Get event count from C++ bridge queue.
@@ -424,10 +432,13 @@ pub fn printStatus() void {
     if (g_bridge_initialized) {
         const count = getBridgeEventCount();
         const defcon = getDefcon();
+        // BP-L15: Bridge status visible in release builds via std.log
+        std.log.info("[BRIDGE] C++ queue: {d} events | DEFCON: {d}", .{ count, defcon });
         std.debug.print("[BRIDGE] C++ queue: {d} events | DEFCON: {d}\n", .{ count, defcon });
     }
     if (g_state.wfp_ioctl) {
         if (getWfpStats()) |stats| {
+            std.log.info("[BRIDGE] WFP ring: {d}/{} bytes", .{ stats.currentUsedBytes, stats.capacity });
             std.debug.print("[BRIDGE] WFP ring: {d}/{} bytes\n", .{ stats.currentUsedBytes, stats.capacity });
         }
     }

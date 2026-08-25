@@ -280,8 +280,9 @@ pub fn unblock_ip(ipv4: u32) bool {
     std.log.info("[WFP IOCTL] UNBLOCKED {}.{}.{}.{} (tracking only)", .{ a, b, c, d });
     std.debug.print("[WFP IOCTL] UNBLOCKED {}.{}.{}.{} (tracking only - kernel IOCTL pending)\n", .{ a, b, c, d });
 
-    // TODO: When kernel adds IOCTL_AEGIS_UNBLOCK_FLOW (sends filterId for
-    // FwpmFilterDeleteById), call DeviceIoControl here with the stored filter ID.
+    // TODO: When kernel driver implements IOCTL_AEGIS_UNBLOCK_FLOW handler
+    // (already defined as IOCTL_AEGIS_UNBLOCK_FLOW at top of file), call
+    // DeviceIoControl here with the stored filter ID for FwpmFilterDeleteById.
     return true;
 }
 
@@ -306,12 +307,15 @@ pub fn read_events(out_buf: []u8) u32 {
     if (g_device == null) return 0;
 
     var bytes_returned: DWORD = 0;
+    // BP-S3: Safe cast to prevent panic on >4GiB buffers (defense-in-depth)
+    const buf_size: u32 = std.math.cast(u32, out_buf.len) orelse 0;
+    if (buf_size == 0) return 0;
     const ok = DeviceIoControl(
         g_device.?,
         IOCTL_AEGIS_READ_EVENTS,
         null, 0,            // no input buffer
         out_buf.ptr,
-        @intCast(out_buf.len),
+        buf_size,
         &bytes_returned,
         null,
     );
@@ -320,6 +324,8 @@ pub fn read_events(out_buf: []u8) u32 {
         const err = GetLastError();
         // STATUS_NO_MORE_ENTRIES (0x8000001A) is not a real error - just empty
         if (err != 0x8000001A) {
+            // BP-L14: read_events error visible in release builds
+            std.log.warn("[WFP IOCTL] read_events failed: error=0x{x}", .{err});
             std.debug.print("[WFP IOCTL] read_events failed: error=0x{x}\n", .{err});
         }
         return 0;
@@ -406,6 +412,8 @@ pub fn parseIpv4(str: []const u8) ?u32 {
 /// Block an IP from a "a.b.c.d" string.
 pub fn block_ip_str(ip_str: []const u8) bool {
     const ip = parseIpv4(ip_str) orelse {
+        // BP-L14: Invalid IP warning visible in release builds
+        std.log.warn("[WFP IOCTL] Invalid IP: {s}", .{ip_str});
         std.debug.print("[WFP IOCTL] Invalid IP: {s}\n", .{ip_str});
         return false;
     };
@@ -415,6 +423,8 @@ pub fn block_ip_str(ip_str: []const u8) bool {
 /// Unblock an IP from a "a.b.c.d" string.
 pub fn unblock_ip_str(ip_str: []const u8) bool {
     const ip = parseIpv4(ip_str) orelse {
+        // BP-L14: Invalid IP warning visible in release builds
+        std.log.warn("[WFP IOCTL] Invalid IP: {s}", .{ip_str});
         std.debug.print("[WFP IOCTL] Invalid IP: {s}\n", .{ip_str});
         return false;
     };

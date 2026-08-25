@@ -8,7 +8,7 @@
 //! Architecture: User-mode Zig reader (KERNEL_FILE/KERNEL_PROCESS layer)
 //! Communication: FilterGetMessage() from kernel -> Zig event processing
 //!
-//! BP4: std.log -> std.debug.print, !void -> void
+//! BP4: std.debug.print (debug-only) + std.log.* (release-visible), !void -> void
 
 const std = @import("std");
 const bridge_init = @import("bridge_init.zig");
@@ -202,6 +202,10 @@ pub fn minifilterReaderLoop() void {
                         evt_type, op_str, evt.process_id, sev_str, name_str
                     });
                 } else {
+                    // BP-L17: Low-severity event logged via std.log for release visibility
+                    std.log.info("[MINI] {} | {} | PID={} | {}", .{
+                        evt_type, op_str, evt.process_id, name_str
+                    });
                     std.debug.print("[MINI] {} | {} | PID={} | {}\n", .{
                         evt_type, op_str, evt.process_id, name_str
                     });

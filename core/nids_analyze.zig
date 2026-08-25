@@ -80,6 +80,15 @@ extern "kernel32" fn LocalFree(hMem: ?*anyopaque) ?*anyopaque;
 const SDDL_ADMIN_ONLY = "D:(A;;GA;;;BA)";
 const SDDL_REVISION: u32 = 1;
 
+// BP-M13: Pipe mode constants (duplicated from nids_capture.zig — should be shared later)
+const PIPE_ACCESS_DUPLEX: u32 = 0x00000003;
+const PIPE_TYPE_MESSAGE: u32 = 0x00000004;
+const PIPE_READMODE_MESSAGE: u32 = 0x00000002;
+const PIPE_WAIT: u32 = 0x00000000;
+
+// BP-M15: Internet protocol numbers (IANA assignments)
+const IPPROTO_TCP: u8 = 6;
+
 const AegisSecurityAttributes = extern struct {
     nLength: u32,
     lpSecurityDescriptor: ?*anyopaque,
@@ -337,6 +346,9 @@ const PIPE_READ_POLL_MS: u64 = 100;
 // [ RULE LOADING ]
 // =================================================================
 
+// BP-F7: reload_rules_atomic should propagate errors (was silently swallowing)
+//         Old behavior: catch -> return; (success) → caller thinks rules loaded
+//         New behavior: catch -> log + return err → caller knows rules failed
 pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
     // BP154: Prevent concurrent reloads (avoid double-free / corruption)
     if (g_rules_loading.swap(true, .acq_rel)) {
@@ -348,7 +360,7 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
     const file = std.fs.cwd().openFile("Rules.json", .{}) catch |open_err| {
         std.log.warn("[ANALYZE] Cannot open Rules.json: {}", .{open_err});
         std.debug.print("\x1b[33m[ANALYZE] Cannot open Rules.json: {}\x1b[0m\n", .{open_err});
-        return;
+        return open_err;
     };
     defer file.close();
     const content = try file.readToEndAlloc(allocator, RULES_MAX_READ_SIZE);
@@ -368,7 +380,7 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
     const parsed = std.json.parseFromSlice(TempRuleSet, allocator, content, .{ .ignore_unknown_fields = true }) catch |parse_err| {
         std.log.warn("[ANALYZE] Rule parse error", .{});
         std.debug.print("\x1b[31m[ANALYZE] JSON Parse Failed: {}\x1b[0m\n", .{parse_err});
-        return;
+        return parse_err;
     };
     defer parsed.deinit();
 
@@ -526,7 +538,7 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
     // BP195: Time the failure link construction (can be slow for large rule sets)
     const _bp195_bfl_start = std.time.nanoTimestamp();
     try new_set.ac_engine.buildFailureLinks();
-    const _bp195_bfl_ms = @divTrunc(std.time.nanoTimestamp() - _bp195_bfl_start, 1_000_000);
+    const _bp195_bfl_ms = @divTrunc(@max(@as(i128, 0), std.time.nanoTimestamp() - _bp195_bfl_start), 1_000_000);
     std.log.info("[ANALYZE] Failure links built in {d}ms", .{_bp195_bfl_ms});
     new_set.signatures = try temp_sig_list.toOwnedSlice();
     new_set.match_counts = match_counts_alloc;
@@ -568,7 +580,7 @@ fn pushTier1Match(
         .rule_id = rule_id,
         .severity = severity,
         .reserved = 0,
-        .timestamp = @as(u64, @intCast(std.time.milliTimestamp())),
+        .timestamp = @as(u64, @bitCast(std.time.milliTimestamp())),
         .source_pid = 0,
         .defcon_impact = 4,
     };
@@ -599,7 +611,7 @@ fn pushForwardedEvent(
         .rule_id = 0,
         .severity = 0,
         .reserved = 0,
-        .timestamp = @as(u64, @intCast(std.time.milliTimestamp())),
+        .timestamp = @as(u64, @bitCast(std.time.milliTimestamp())),
         .source_pid = 0,
         .defcon_impact = 5,
     };
@@ -714,9 +726,7 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
             if (std.mem.eql(u8, rule.severity, "Medium")) break :sev 1;
             break :sev 0;
         };
-        pushTier1Match(ctx, rule.crc32, severity_val, @as(u32, @intCast(data.len)));
-
-        // BP119: Match detail log for forensic analysis
+        pushTier1Match(ctx, rule.crc32, severity_val, std.math.cast(u32, data.len) orelse ANALYZE_MAX_PAYLOAD);
         std.log.info("[MATCH] {s} (severity={s}, action={s}, payload={d}B)", .{
             rule.name, rule.severity, rule.action, data.len,
         });
@@ -754,7 +764,7 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
             .protocol = ctx.protocol,
         };
         bridge_init.sendToBrain(allocator, @TypeOf(forward_msg), forward_msg);
-        pushForwardedEvent(ctx, @as(u32, @intCast(data.len)));
+        pushForwardedEvent(ctx, std.math.cast(u32, data.len) orelse ANALYZE_MAX_PAYLOAD);
         // BP194: Track forwarded packets for operational visibility
         _ = g_total_forwarded.fetchAdd(1, .relaxed);
 
@@ -773,7 +783,7 @@ fn handle_pipe_client(hPipe: win.HANDLE, allocator: std.mem.Allocator) void {
     std.log.info("[PIPE] Admin client connected via named pipe", .{});
 
     defer {
-        const dur_s: u64 = @intCast((std.time.nanoTimestamp() - start_ns) / std.time.ns_per_s);
+        const dur_s: u64 = @as(u64, @intCast(@max(0, std.time.nanoTimestamp() - start_ns))) / std.time.ns_per_s;
         std.debug.print("[PIPE] Session closed: dur={d}s\n", .{dur_s});
     }
     defer {
@@ -846,7 +856,7 @@ fn handle_pipe_client(hPipe: win.HANDLE, allocator: std.mem.Allocator) void {
         if (!is_safe) break;
     }
     // BP111: Session duration log
-    const _bp111_dur_ms = @divTrunc(std.time.nanoTimestamp() - start_ns, 1_000_000);
+    const _bp111_dur_ms = @divTrunc(@max(@as(i128, 0), std.time.nanoTimestamp() - start_ns), 1_000_000);
     std.log.info("[PIPE] Session complete: {d}ms", .{_bp111_dur_ms});
 }
 
@@ -878,7 +888,8 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
     const pipe_max_backoff_ns: u64 = 30 * std.time.ns_per_s;
     while (!g_shutdown_requested.load(.acquire)) {
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
-        const hPipe = CreateNamedPipeA(pipe_name, 3, 0, PIPE_MAX_INSTANCES, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 0, @ptrCast(&sec_attr));
+        // BP-M13: PIPE_WAIT preserves byte-stream mode (matches admin client expectations)
+        const hPipe = CreateNamedPipeA(pipe_name, PIPE_ACCESS_DUPLEX, PIPE_WAIT, PIPE_MAX_INSTANCES, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 0, @ptrCast(&sec_attr));
         if (hPipe == win.INVALID_HANDLE_VALUE) {
             // BP133: Log Windows error code on CreateNamedPipeA failure
             const pipe_err = win.kernel32.GetLastError();
@@ -898,7 +909,7 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
         const connected = ConnectNamedPipe(hPipe, null);
         const err = win.kernel32.GetLastError();
 
-        if (connected != 0 or @intFromEnum(err) == 535) {
+        if (connected != 0 or err == win.Win32Error.PIPE_CONNECTED) {
             // BP187: Warn when connection limit is approaching
             // BP189: Acquire for fresh value in warning check
             const _pipe_active = active_threads.load(.acquire);
@@ -992,7 +1003,7 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
     var pkt_rate_window_ns: i64 = std.time.nanoTimestamp();
 
     defer {
-        const dur_s: u64 = @intCast((std.time.nanoTimestamp() - start_ns) / std.time.ns_per_s);
+        const dur_s: u64 = @as(u64, @intCast(@max(@as(i128, 0), std.time.nanoTimestamp() - start_ns))) / std.time.ns_per_s;
         std.debug.print("[TCP] Closed: {d}.{d}.{d}.{d}:{d} dur={d}s\n", .{
             (src_ip >> 24) & 0xFF, (src_ip >> 16) & 0xFF,
             (src_ip >> 8) & 0xFF, src_ip & 0xFF, src_port, dur_s,
@@ -1034,7 +1045,7 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
         .source_ip = src_ip_net,
         .source_port = src_port,
         .dest_port = AEGIS_TCP_PORT,
-        .protocol = 6,
+        .protocol = IPPROTO_TCP, // BP-M15: named constant (was magic 6)
         .layer_id = 0,
         .is_pipe = false,
     };
@@ -1080,7 +1091,7 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
                 (src_ip >> 8) & 0xFF, src_ip & 0xFF,
             });
         }
-        const elapsed_s: u64 = @intCast((std.time.nanoTimestamp() - start_ns) / std.time.ns_per_s);
+        const elapsed_s: u64 = @as(u64, @intCast(@max(@as(i128, 0), std.time.nanoTimestamp() - start_ns))) / std.time.ns_per_s;
         if (elapsed_s > TCP_MAX_SESSION_S) {
             std.debug.print("  [TCP] Max duration ({d}s) reached, closing\n", .{TCP_MAX_SESSION_S});
             // BP209: Session limit visible in release builds
@@ -1148,7 +1159,7 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
             break;
         }
     }
-    const _bp110_dur_ms = @divTrunc(std.time.nanoTimestamp() - start_ns, 1_000_000);
+    const _bp110_dur_ms = @divTrunc(@max(@as(i128, 0), std.time.nanoTimestamp() - start_ns), 1_000_000);
     std.log.info("[TCP] Session complete: {d}ms", .{_bp110_dur_ms});
 }
 
@@ -1315,7 +1326,7 @@ fn bridgeStatusReporter() void {
             g_analyze_errors.load(.relaxed),
         });
         std.debug.print("  Total connections served: {d}\n", .{g_total_connections.load(.acquire)});
-        const up_s: u64 = @intCast((std.time.nanoTimestamp() - g_start_time_ns) / std.time.ns_per_s);
+        const up_s: u64 = @as(u64, @intCast(@max(@as(i128, 0), std.time.nanoTimestamp() - g_start_time_ns))) / std.time.ns_per_s;
         std.debug.print("  Uptime: {d}m {d}s\n", .{up_s / 60, up_s % 60});
         // BP179: Report total bytes processed
         std.debug.print("  Total bytes processed: {d}\n", .{g_total_bytes.load(.relaxed)});
@@ -1395,6 +1406,8 @@ fn bridgeStatusReporter() void {
     std.debug.print("\n=== AEGIS SHUTDOWN SUMMARY ===\n", .{});
     // BP219: Key shutdown metrics via std.log for release-build log persistence
     // BP231: Added rej={d} for security rejection visibility in shutdown summary
+    // BP-L12: Add std.log for shutdown summary header and key metrics
+    std.log.info("[SHUTDOWN] === AEGIS SHUTDOWN SUMMARY ===", .{});
     std.log.info("[SHUTDOWN] conn={d} bytes={d} errors={d} rej={d} matches={d} fwd={d} ipc={d} uptime={d}s", .{
         g_total_connections.load(.acquire),
         g_total_bytes.load(.relaxed),
@@ -1403,7 +1416,7 @@ fn bridgeStatusReporter() void {
         g_total_matches.load(.relaxed),
         g_total_forwarded.load(.relaxed),
         g_bridge_ipc_pushes.load(.relaxed),
-        @intCast((std.time.nanoTimestamp() - g_start_time_ns) / std.time.ns_per_s),
+        @intCast(@max(@as(i128, 0), std.time.nanoTimestamp() - g_start_time_ns) / std.time.ns_per_s),
     });
     std.debug.print("  Total connections: {d}\n", .{g_total_connections.load(.acquire)});
     // BP179: Total bytes in shutdown summary
@@ -1416,7 +1429,7 @@ fn bridgeStatusReporter() void {
     const clean_rate: u64 = if (sh_conn > sh_err) (sh_conn - sh_err) * 100 / sh_conn else 0;
     std.debug.print("  Clean rate: {d}%\n", .{clean_rate});
     std.debug.print("  Active threads at exit: {d}\n", .{active_threads.load(.seq_cst)});
-    const fin_s: u64 = @intCast((std.time.nanoTimestamp() - g_start_time_ns) / std.time.ns_per_s);
+    const fin_s: u64 = @as(u64, @intCast(@max(@as(i128, 0), std.time.nanoTimestamp() - g_start_time_ns))) / std.time.ns_per_s;
     std.debug.print("  Uptime: {d}m {d}s\n", .{fin_s / 60, fin_s % 60});
     // BP185: Pipe connections and throughput in shutdown summary
     std.debug.print("  Pipe connections: {d}\n", .{g_pipe_connections.load(.relaxed)});
@@ -1432,6 +1445,8 @@ fn bridgeStatusReporter() void {
     std.debug.print("  Detection rate: {d}%\n", .{sh_det});
     // BP202: Ruleset info in shutdown summary
     std.debug.print("  Ruleset version: v{d}\n", .{g_ruleset_version.load(.acquire)});
+    // BP-L12: Ruleset version visible in release builds
+    std.log.info("[SHUTDOWN] Ruleset version: v{d}", .{g_ruleset_version.load(.acquire)});
     const rs202 = acquireRuleset();
     if (rs202) |rs| {
         defer rs.release();
@@ -1483,7 +1498,7 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
         // BP218: Rule load failure visible in release builds
         std.log.err("[ANALYZE] Failed to load rules: {}", .{reload_err});
     };
-    const _bp91_rl_dur_ms = @divTrunc(std.time.nanoTimestamp() - _bp91_rl_start, 1_000_000);
+    const _bp91_rl_dur_ms = @divTrunc(@max(@as(i128, 0), std.time.nanoTimestamp() - _bp91_rl_start), 1_000_000);
     std.log.info("[ANALYZE] Rules initialized in {d}ms", .{_bp91_rl_dur_ms});
     std.log.info("[ANALYZE] Rules ready, starting packet analysis", .{});
 
@@ -1531,6 +1546,10 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
     const t_pipe = std.Thread.spawn(.{}, pipe_listener, .{allocator}) catch |err| {
         std.log.warn("[ANALYZE] Pipe listener failed to spawn: {}", .{err});
         std.debug.print("\x1b[33m[ANALYZE] Pipe listener failed to spawn: {}\x1b[0m\n", .{err});
+        // BP-F6: Signal shutdown so detached status reporter + T2-T5 threads exit cleanly
+        // (was: return immediately, orphaning the already-spawned status reporter thread)
+        bridge_init.requestShutdown();
+        g_shutdown_requested.store(true, .release);
         return;
     };
     // BP214: TCP spawn failure should not orphan pipe listener thread
@@ -1556,7 +1575,7 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
     if (t_tcp_opt) |t_tcp| {
         t_tcp.join();
     }
-    const drain_ms = @divTrunc(std.time.nanoTimestamp() - drain_start, 1_000_000);
+    const drain_ms = @divTrunc(@max(@as(i128, 0), std.time.nanoTimestamp() - drain_start), 1_000_000);
     const drain_remaining = active_threads.load(.seq_cst);
     // BP163: Warn if drain took too long or handler threads remain
     if (drain_ms > 5000 or drain_remaining > 0) {

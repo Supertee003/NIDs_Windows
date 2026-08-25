@@ -29,6 +29,13 @@ const win = std.os.windows;
 const HANDLE = win.HANDLE;
 const INVALID_HANDLE_VALUE: HANDLE = @ptrFromInt(@as(usize, @bitCast(@as(isize, -1))));
 
+// BP-M17: Named constants for magic numbers
+const MAX_PATH_W: usize = 260;       // Win32 MAX_PATH wide-char limit
+const PM_ALERT_BUF: usize = 300;     // printAlert ASCII conversion buffer
+const PM_ASCII_MAX: u16 = 128;       // ASCII printable boundary
+const PM_INITIAL_DELAY_S: u64 = 3;  // Settle delay before first scan
+const PM_SCAN_INTERVAL_S: u64 = 10; // Scan interval between pipe sweeps
+
 const WIN32_FIND_DATAW = extern struct {
     dwFileAttributes: u32,
     ftCreationTime: u64,
@@ -38,7 +45,7 @@ const WIN32_FIND_DATAW = extern struct {
     nFileSizeLow: u32,
     dwReserved0: u32,
     dwReserved1: u32,
-    cFileName: [260]u16,
+    cFileName: [MAX_PATH_W]u16,
     cAlternateFileName: [14]u16,
 };
 
@@ -128,10 +135,10 @@ fn scanPipes() void {
 
 fn printAlert(name_wide: []const u16, pattern: []const u8) void {
     // Convert wide name to ASCII for printing
-    var buf: [300]u8 = undefined;
+    var buf: [PM_ALERT_BUF]u8 = undefined;
     var len: usize = 0;
     for (name_wide) |ch| {
-        if (ch < 128 and len < buf.len) {
+        if (ch < PM_ASCII_MAX and len < buf.len) {
             buf[len] = @intCast(ch);
             len += 1;
         } else {
@@ -146,6 +153,10 @@ fn printAlert(name_wide: []const u16, pattern: []const u8) void {
 
 /// Print cumulative statistics
 pub fn printStats() void {
+    // BP-L16: Stats visible in release builds via std.log
+    std.log.info("[PM] Stats: {d} scans, {d} total suspicious pipes found", .{
+        g_total_scans, g_suspicious_found
+    });
     std.debug.print("[PM] Stats: {d} scans, {d} total suspicious pipes found\n", .{
         g_total_scans, g_suspicious_found
     });
@@ -158,13 +169,13 @@ pub fn pipeMonitorLoop() void {
     std.debug.print("[PM] Thread 5 started - scanning pipes every 10s\n", .{});
 
     // Initial delay to let system settle
-    std.time.sleep(3 * std.time.ns_per_s);
+    std.time.sleep(PM_INITIAL_DELAY_S * std.time.ns_per_s);
 
     while (true) {
 
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
         scanPipes();
         printStats();
-        std.time.sleep(10 * std.time.ns_per_s);
+        std.time.sleep(PM_SCAN_INTERVAL_S * std.time.ns_per_s);
     }
 }

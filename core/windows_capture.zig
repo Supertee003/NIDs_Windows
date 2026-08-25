@@ -9,6 +9,8 @@ const nids_analyze = @import("nids_analyze.zig");
 const wfp_ioctl = @import("wfp_ioctl.zig");
 
 const WFP_EVENT_BUFFER_SIZE: usize = 65536;
+// BP-L13: Stats poll interval (iterations between stats prints)
+const WFP_STATS_POLL_INTERVAL: u64 = 300;
 
 pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
     _ = address;
@@ -51,8 +53,11 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
 
         if (bytes_read == 0) {
             poll_count += 1;
-            if (poll_count % 300 == 0) {
+            if (poll_count % WFP_STATS_POLL_INTERVAL == 0) {
                 if (wfp_ioctl.get_stats()) |stats| {
+                    std.log.info("[SENSOR 2] WFP ring: {d}/{} bytes", .{
+                        stats.currentUsedBytes, stats.capacity
+                    });
                     std.debug.print("[SENSOR 2] WFP ring: {d}/{} bytes\n", .{
                         stats.currentUsedBytes, stats.capacity
                     });
@@ -98,7 +103,8 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
                     const c = (ctx.source_ip >> 8) & 0xFF;
                     const b = (ctx.source_ip >> 16) & 0xFF;
                     const a = (ctx.source_ip >> 24) & 0xFF;
-                    std.log.warn("[BLOCK] WFP SENSOR {}.{}.{}.{}:{} rule={d}", .{
+                    // BP-L13: BLOCKED alert visible in release builds via std.log
+                    std.log.warn("[BLOCK] WFP SENSOR {}.{}.{}.{}:{} rule={d} (BLOCKED)", .{
                         a, b, c, d, ctx.dest_port, header.rule_id
                     });
                     std.debug.print("\x1b[31;1m[WFP SENSOR] BLOCKED {}.{}.{}.{}:{} rule={d}\x1b[0m\n", .{
