@@ -104,29 +104,15 @@ const AegisSecurityAttributes = extern struct {
 // Phase 8: Replaces indefinite ConnectNamedPipe/server.accept blocking
 // with overlapped I/O + WaitForSingleObject(timeout) pattern.
 // On shutdown: CancelIoEx cancels pending I/O immediately.
+// Phase 9: Consolidated declarations into shared win32_io.zig module.
 
-const OVERLAPPED = extern struct {
-    internal: usize,
-    internal_high: usize,
-    offset: u32,
-    offset_high: u32,
-    event: ?*anyopaque,
-};
-
-extern "kernel32" fn CreateEventA(
-    lpEventAttributes: ?*anyopaque, bManualReset: i32, bInitialState: i32, lpName: ?[*:0]const u8,
-) ?*anyopaque;
-extern "kernel32" fn WaitForSingleObject(hHandle: ?*anyopaque, dwMilliseconds: u32) u32;
-extern "kernel32" fn GetOverlappedResult(
-    hFile: win.HANDLE, lpOverlapped: *OVERLAPPED, lpNumberOfBytesTransferred: *u32, bWait: i32,
-) i32;
-extern "kernel32" fn CancelIoEx(hFile: win.HANDLE, lpOverlapped: ?*OVERLAPPED) i32;
-extern "kernel32" fn ResetEvent(hEvent: ?*anyopaque) i32;
-
-const FILE_FLAG_OVERLAPPED: u32 = 0x40000000;
-const ERROR_IO_PENDING: u32 = 997;
-const WAIT_OBJECT_0: u32 = 0;
-const WAIT_TIMEOUT: u32 = 258;
+const win32_io = @import("win32_io.zig");
+const OVERLAPPED = win32_io.OVERLAPPED;
+const FILE_FLAG_OVERLAPPED = win32_io.FILE_FLAG_OVERLAPPED;
+const ERROR_IO_PENDING = win32_io.ERROR_IO_PENDING;
+const WAIT_OBJECT_0 = win32_io.WAIT_OBJECT_0;
+const WAIT_TIMEOUT = win32_io.WAIT_TIMEOUT;
+const IO_POLL_TIMEOUT_MS = win32_io.IO_POLL_TIMEOUT_MS;
 
 // BP-O1: Winsock2 FFI for shutdown-responsive TCP accept
 const WSAPollfd = extern struct { fd: usize, events: i16, revents: i16 };
@@ -940,7 +926,8 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
     const pipe_max_backoff_ns: u64 = 30 * std.time.ns_per_s;
 
     // BP-O2: Create event for overlapped ConnectNamedPipe (shutdown-responsive)
-    const io_event = CreateEventA(null, 1, 0, null) orelse {
+    // Phase 9: Uses win32_io.createIoEvent() helper
+    const io_event = win32_io.createIoEvent() orelse {
         std.log.err("[PIPE] CreateEventA failed - cannot use overlapped I/O", .{});
         return;
     };
@@ -968,9 +955,10 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
         pipe_retry_ns = 1 * std.time.ns_per_s;
 
         // BP-O2: Overlapped ConnectNamedPipe with 1s timeout for shutdown responsiveness
+        // Phase 9: Uses win32_io helper constants and functions
         var overlapped: OVERLAPPED = std.mem.zeroes(OVERLAPPED);
         overlapped.event = io_event;
-        _ = ResetEvent(io_event);
+        _ = win32_io.ResetEvent(io_event);
         const connect_rc = ConnectNamedPipe(hPipe, &overlapped);
         const err = win.kernel32.GetLastError();
 
@@ -979,29 +967,29 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
         // err=PIPE_CONNECTED means client connected between CreateNamedPipe and ConnectNamedPipe
         const connected = (connect_rc != 0) or (err == win.Win32Error.PIPE_CONNECTED);
         if (!connected and err == ERROR_IO_PENDING) {
-            // BP-O2: Wait for client with 1s timeout, then check shutdown flag
-            const wait_ret = WaitForSingleObject(io_event, 1000);
-            if (wait_ret == WAIT_TIMEOUT) {
-                // No client yet — check shutdown and retry ConnectNamedPipe
-                _ = CancelIoEx(hPipe, &overlapped);
-                _ = win.CloseHandle(hPipe);
-                continue;
-            }
-            if (wait_ret != WAIT_OBJECT_0) {
-                std.log.warn("[PIPE] WaitForSingleObject failed: {d}", .{wait_ret});
-                _ = win.CloseHandle(hPipe);
-                std.time.sleep(100 * std.time.ns_per_ms);
-                continue;
-            }
-            // Event signaled — verify with GetOverlappedResult
-            var bytes_xfer: u32 = 0;
-            if (GetOverlappedResult(hPipe, &overlapped, &bytes_xfer, 0) == 0) {
-                const io_err = win.kernel32.GetLastError();
-                if (io_err != win.Win32Error.PIPE_CONNECTED) {
-                    std.log.warn("[PIPE] GetOverlappedResult failed: {d}", .{io_err});
+            // BP-O2: Wait for client with 1s timeout via shared helper
+            const wait_result = win32_io.waitOverlapped(hPipe, &overlapped, io_event, IO_POLL_TIMEOUT_MS);
+            switch (wait_result) {
+                .timeout => {
+                    // No client yet — check shutdown and retry ConnectNamedPipe
                     _ = win.CloseHandle(hPipe);
                     continue;
-                }
+                },
+                .wait_error => {
+                    std.log.warn("[PIPE] WaitForSingleObject failed", .{});
+                    _ = win.CloseHandle(hPipe);
+                    std.time.sleep(100 * std.time.ns_per_ms);
+                    continue;
+                },
+                .result_error => {
+                    const io_err = win.kernel32.GetLastError();
+                    if (io_err != win.Win32Error.PIPE_CONNECTED) {
+                        std.log.warn("[PIPE] GetOverlappedResult failed: {d}", .{io_err});
+                        _ = win.CloseHandle(hPipe);
+                        continue;
+                    }
+                },
+                .completed, .completed_after_wait => {},
             }
         } else if (!connected) {
             // Unexpected error from ConnectNamedPipe
