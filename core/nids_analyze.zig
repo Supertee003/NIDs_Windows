@@ -1733,3 +1733,100 @@ test "payloadHex handles empty input" {
     const hex = payloadHex(&data, 4);
     try std.testing.expect(std.mem.eql(u8, &hex, "00000000"));
 }
+
+// ============================================================
+// Phase 10: Unit tests for AhoCorasick engine and TCP source validation
+// ============================================================
+
+test "AhoCorasick init creates root node" {
+    const allocator = std.testing.allocator;
+    var ac = try AhoCorasick.init(allocator);
+    defer ac.deinit();
+    try std.testing.expect(ac.nodes.items.len == 1); // root node
+}
+
+test "AhoCorasick insert adds nodes for pattern" {
+    const allocator = std.testing.allocator;
+    var ac = try AhoCorasick.init(allocator);
+    defer ac.deinit();
+    try ac.insert("abc", 0);
+    // "abc" should create 3 new nodes (root + 3 = 4)
+    try std.testing.expect(ac.nodes.items.len == 4);
+}
+
+test "AhoCorasick insert empty pattern does nothing" {
+    const allocator = std.testing.allocator;
+    var ac = try AhoCorasick.init(allocator);
+    defer ac.deinit();
+    try ac.insert("", 0);
+    try std.testing.expect(ac.nodes.items.len == 1); // only root
+}
+
+test "AhoCorasick buildFailureLinks succeeds with patterns" {
+    const allocator = std.testing.allocator;
+    var ac = try AhoCorasick.init(allocator);
+    defer ac.deinit();
+    try ac.insert("he", 0);
+    try ac.insert("she", 1);
+    try ac.insert("his", 2);
+    try ac.buildFailureLinks();
+    // Should not crash and should have correct node count
+    try std.testing.expect(ac.nodes.items.len > 5);
+}
+
+test "isAllowedTcpSource accepts loopback 127.0.0.1" {
+    const addr = net.Address.parseIp4("127.0.0.1", 12345) catch return error.TestFailed;
+    try std.testing.expect(isAllowedTcpSource(addr));
+}
+
+test "isAllowedTcpSource accepts RFC1918 10.x.x.x" {
+    const addr = net.Address.parseIp4("10.0.0.1", 80) catch return error.TestFailed;
+    try std.testing.expect(isAllowedTcpSource(addr));
+}
+
+test "isAllowedTcpSource accepts RFC1918 192.168.x.x" {
+    const addr = net.Address.parseIp4("192.168.1.1", 443) catch return error.TestFailed;
+    try std.testing.expect(isAllowedTcpSource(addr));
+}
+
+test "isAllowedTcpSource accepts RFC1918 172.16-31.x.x" {
+    const addr = net.Address.parseIp4("172.16.0.1", 8080) catch return error.TestFailed;
+    try std.testing.expect(isAllowedTcpSource(addr));
+}
+
+test "isAllowedTcpSource rejects 172.32.x.x (out of RFC1918 range)" {
+    const addr = net.Address.parseIp4("172.32.0.1", 80) catch return error.TestFailed;
+    try std.testing.expect(!isAllowedTcpSource(addr));
+}
+
+test "isAllowedTcpSource rejects public IP 8.8.8.8" {
+    const addr = net.Address.parseIp4("8.8.8.8", 53) catch return error.TestFailed;
+    try std.testing.expect(!isAllowedTcpSource(addr));
+}
+
+test "isAllowedTcpSource accepts link-local 169.254.x.x" {
+    const addr = net.Address.parseIp4("169.254.1.1", 80) catch return error.TestFailed;
+    try std.testing.expect(isAllowedTcpSource(addr));
+}
+
+test "isAllowedTcpSource rejects 0.0.0.0" {
+    const addr = net.Address.parseIp4("0.0.0.0", 80) catch return error.TestFailed;
+    try std.testing.expect(!isAllowedTcpSource(addr));
+}
+
+test "checkIpRateLimit allows first connection from new IP" {
+    // Reset state for deterministic test
+    @memset(&ip_rate_table, ip_rate_zero);
+    try std.testing.expect(checkIpRateLimit(0x0A000001)); // 10.0.0.1
+}
+
+test "checkIpRateLimit enforces max connections per IP" {
+    @memset(&ip_rate_table, ip_rate_zero);
+    // Fill up to RATE_LIMIT_MAX_CONNS for one IP
+    var i: u32 = 0;
+    while (i < RATE_LIMIT_MAX_CONNS) : (i += 1) {
+        try std.testing.expect(checkIpRateLimit(0x0A000001));
+    }
+    // Next connection should be rejected
+    try std.testing.expect(!checkIpRateLimit(0x0A000001));
+}

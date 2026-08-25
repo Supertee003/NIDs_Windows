@@ -436,3 +436,111 @@ test "IOCTL codes match WFP protocol spec" {
     try std.testing.expect(IOCTL_AEGIS_GET_STATS == 0x00126008);
     try std.testing.expect(IOCTL_AEGIS_UNBLOCK_FLOW == 0x0012A00C);
 }
+
+// ============================================================
+// Phase 10: Unit tests for pure functions
+// ============================================================
+
+test "formatIpv4 renders dotted-quad correctly" {
+    var buf: [16]u8 = undefined;
+    // 192.168.1.100 in network byte order = 0xC0A80164
+    const result = formatIpv4(0xC0A80164, &buf);
+    try std.testing.expect(std.mem.eql(u8, result, "192.168.1.100"));
+}
+
+test "formatIpv4 renders loopback address" {
+    var buf: [16]u8 = undefined;
+    // 127.0.0.1 in network byte order = 0x7F000001
+    const result = formatIpv4(0x7F000001, &buf);
+    try std.testing.expect(std.mem.eql(u8, result, "127.0.0.1"));
+}
+
+test "formatIpv4 renders 0.0.0.0" {
+    var buf: [16]u8 = undefined;
+    const result = formatIpv4(0, &buf);
+    try std.testing.expect(std.mem.eql(u8, result, "0.0.0.0"));
+}
+
+test "parseIpv4 parses valid dotted-quad" {
+    // 10.0.0.1 in network byte order = 0x0A000001
+    const result = parseIpv4("10.0.0.1") orelse return error.TestFailed;
+    try std.testing.expect(result == 0x0A000001);
+}
+
+test "parseIpv4 parses 192.168.1.100" {
+    const result = parseIpv4("192.168.1.100") orelse return error.TestFailed;
+    try std.testing.expect(result == 0xC0A80164);
+}
+
+test "parseIpv4 rejects invalid input" {
+    try std.testing.expect(parseIpv4("256.0.0.1") == null); // octet > 255
+    try std.testing.expect(parseIpv4("10.0.0") == null); // only 3 octets
+    try std.testing.expect(parseIpv4("10.0.0.1.2") == null); // too many octets
+    try std.testing.expect(parseIpv4("abc.def.ghi.jkl") == null); // non-numeric
+    try std.testing.expect(parseIpv4("") == null); // empty
+}
+
+test "parseIpv4 rejects octets over 255" {
+    try std.testing.expect(parseIpv4("10.0.0.256") == null);
+    try std.testing.expect(parseIpv4("10.0.0.999") == null);
+}
+
+test "parseIpv4 and formatIpv4 round-trip" {
+    var buf: [16]u8 = undefined;
+    const original: u32 = 0xC0A80164; // 192.168.1.100
+    const parsed = parseIpv4("192.168.1.100") orelse return error.TestFailed;
+    try std.testing.expect(parsed == original);
+    const formatted = formatIpv4(parsed, &buf);
+    try std.testing.expect(std.mem.eql(u8, formatted, "192.168.1.100"));
+}
+
+test "addBlockedIp and findBlockedIndex track IPs" {
+    // Reset state for deterministic test
+    g_blocked_count = 0;
+    @memset(g_blocked_ips[0..], 0);
+
+    try std.testing.expect(addBlockedIp(0xC0A80164)); // 192.168.1.100
+    try std.testing.expect(g_blocked_count == 1);
+    try std.testing.expect(findBlockedIndex(0xC0A80164) != null);
+
+    // Adding same IP again should succeed (idempotent)
+    try std.testing.expect(addBlockedIp(0xC0A80164));
+    try std.testing.expect(g_blocked_count == 1); // count unchanged
+}
+
+test "removeBlockedIp removes tracked IP" {
+    g_blocked_count = 0;
+    @memset(g_blocked_ips[0..], 0);
+
+    _ = addBlockedIp(0x0A000001); // 10.0.0.1
+    _ = addBlockedIp(0x0A000002); // 10.0.0.2
+    try std.testing.expect(g_blocked_count == 2);
+
+    try std.testing.expect(removeBlockedIp(0x0A000001));
+    try std.testing.expect(g_blocked_count == 1);
+    try std.testing.expect(findBlockedIndex(0x0A000001) == null);
+    try std.testing.expect(findBlockedIndex(0x0A000002) != null);
+}
+
+test "removeBlockedIp returns false for untracked IP" {
+    g_blocked_count = 0;
+    @memset(g_blocked_ips[0..], 0);
+
+    try std.testing.expect(!removeBlockedIp(0xC0A80164));
+}
+
+test "addBlockedIp respects MAX_BLOCKED_IPS limit" {
+    g_blocked_count = 0;
+    @memset(g_blocked_ips[0..], 0);
+
+    // Fill table to capacity
+    var i: u32 = 0;
+    while (i < MAX_BLOCKED_IPS) : (i += 1) {
+        try std.testing.expect(addBlockedIp(0x0A000000 + i));
+    }
+    try std.testing.expect(g_blocked_count == MAX_BLOCKED_IPS);
+
+    // Next add should fail (table full)
+    try std.testing.expect(!addBlockedIp(0xFFFFFFFF));
+    try std.testing.expect(g_blocked_count == MAX_BLOCKED_IPS);
+}

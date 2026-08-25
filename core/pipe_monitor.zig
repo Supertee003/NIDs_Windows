@@ -178,3 +178,60 @@ pub fn pipeMonitorLoop() void {
         std.time.sleep(PM_SCAN_INTERVAL_S * std.time.ns_per_s);
     }
 }
+
+// ============================================================
+// Phase 10: Unit tests for suspicious pipe pattern matching
+// ============================================================
+
+test "isSuspiciousPipe detects Cobalt Strike MSSE pattern" {
+    // "MSSE-1234" as UTF-16LE
+    const pipe_name = [_]u16{ 'M', 'S', 'S', 'E', '-', '1', '2', '3', '4' };
+    const result = isSuspiciousPipe(&pipe_name);
+    try std.testing.expect(result != null);
+    try std.testing.expect(std.mem.eql(u8, result.?, "MSSE-"));
+}
+
+test "isSuspiciousPipe detects PsExec pattern" {
+    const pipe_name = [_]u16{ 'p', 's', 'e', 'x', 'e', 'c', '-', 's', 'v', 'c' };
+    const result = isSuspiciousPipe(&pipe_name);
+    try std.testing.expect(result != null);
+}
+
+test "isSuspiciousPipe detects meterpreter pattern (case-insensitive)" {
+    const pipe_name = [_]u16{ 'M', 'E', 'T', 'E', 'R', 'P', 'R', 'E', 'T', 'E', 'R' };
+    const result = isSuspiciousPipe(&pipe_name);
+    try std.testing.expect(result != null);
+    try std.testing.expect(std.mem.eql(u8, result.?, "meterpreter"));
+}
+
+test "isSuspiciousPipe returns null for benign pipe" {
+    const pipe_name = [_]u16{ 's', 'q', 'l', 'q', 'u', 'e', 'r', 'y' };
+    const result = isSuspiciousPipe(&pipe_name);
+    try std.testing.expect(result == null);
+}
+
+test "isSuspiciousPipe returns null for empty pipe name" {
+    const pipe_name = [_]u16{};
+    const result = isSuspiciousPipe(&pipe_name);
+    try std.testing.expect(result == null);
+}
+
+test "isSuspiciousPipe handles short names that don't match any pattern" {
+    const pipe_name = [_]u16{ 'a', 'b', 'c' };
+    const result = isSuspiciousPipe(&pipe_name);
+    try std.testing.expect(result == null);
+}
+
+test "isSuspiciousPipe detects atsvc pattern" {
+    const pipe_name = [_]u16{ 'a', 't', 's', 'v', 'c' };
+    const result = isSuspiciousPipe(&pipe_name);
+    try std.testing.expect(result != null);
+    try std.testing.expect(std.mem.eql(u8, result.?, "atsvc"));
+}
+
+test "isSuspiciousPipe handles non-ASCII characters gracefully" {
+    // Unicode chars above 128 should not crash, just not match
+    const pipe_name = [_]u16{ 0x4E2D, 0x6587, 0x7BA1, 0x9053 }; // Chinese chars
+    const result = isSuspiciousPipe(&pipe_name);
+    try std.testing.expect(result == null);
+}
