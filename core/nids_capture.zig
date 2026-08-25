@@ -56,6 +56,28 @@ const PIPE_READMODE_MESSAGE = 0x00000002;
 const PIPE_WAIT = 0x00000000;
 const PIPE_UNLIMITED_INSTANCES = 255;
 
+// BP-O2: Overlapped I/O for shutdown-responsive ConnectNamedPipe (Phase 8)
+const OVERLAPPED = extern struct {
+    internal: usize,
+    internal_high: usize,
+    offset: u32,
+    offset_high: u32,
+    event: ?*anyopaque,
+};
+extern "kernel32" fn CreateEventA(
+    lpEventAttributes: ?*anyopaque, bManualReset: i32, bInitialState: i32, lpName: ?[*:0]const u8,
+) ?*anyopaque;
+extern "kernel32" fn WaitForSingleObject(hHandle: ?*anyopaque, dwMilliseconds: u32) u32;
+extern "kernel32" fn GetOverlappedResult(
+    hFile: win.HANDLE, lpOverlapped: *OVERLAPPED, lpNumberOfBytesTransferred: *u32, bWait: i32,
+) i32;
+extern "kernel32" fn CancelIoEx(hFile: win.HANDLE, lpOverlapped: ?*OVERLAPPED) i32;
+extern "kernel32" fn ResetEvent(hEvent: ?*anyopaque) i32;
+const FILE_FLAG_OVERLAPPED: u32 = 0x40000000;
+const ERROR_IO_PENDING: u32 = 997;
+const WAIT_OBJECT_0: u32 = 0;
+const WAIT_TIMEOUT: u32 = 258;
+
 /// Thread 2 entry point: Named Pipe IPC Sensor.
 ///
 /// Creates a named pipe server (\\.\pipe\aegis_sensor_pipe) that accepts
@@ -93,9 +115,10 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
         std.debug.print("[PIPE SENSOR] WARNING: Failed to set pipe ACL, using default\n", .{});
     }
     defer if (pipe_sd) |sd| { _ = LocalFree(sd); };
+    // BP-O2: Add FILE_FLAG_OVERLAPPED for shutdown-responsive ConnectNamedPipe
     const handle = CreateNamedPipeA(
         pipe_name,
-        PIPE_ACCESS_DUPLEX,
+        PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
         PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
         PIPE_UNLIMITED_INSTANCES,
         4096,
@@ -111,6 +134,13 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
     }
     defer win.CloseHandle(handle);
 
+    // BP-O2: Create event for overlapped ConnectNamedPipe
+    const io_event = CreateEventA(null, 1, 0, null) orelse {
+        std.log.err("[PIPE SENSOR] CreateEventA failed - cannot use overlapped I/O", .{});
+        return;
+    };
+    defer _ = win.CloseHandle(io_event);
+
     var buffer: [4096]u8 = undefined;
 
     std.log.info("[PIPE SENSOR] Listening on {} - Waiting for scripts", .{pipe_name});
@@ -119,10 +149,47 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
     while (true) {
 
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
-        const connected = ConnectNamedPipe(handle, null) != 0;
+        // BP-O2: Overlapped ConnectNamedPipe with 1s timeout for shutdown responsiveness
+        var overlapped: OVERLAPPED = std.mem.zeroes(OVERLAPPED);
+        overlapped.event = io_event;
+        _ = ResetEvent(io_event);
+        const connect_rc = ConnectNamedPipe(handle, &overlapped);
         const err = win.kernel32.GetLastError();
 
-        if (connected or err == win.Win32Error.PIPE_CONNECTED) {
+        // Overlapped: connect_rc=0 + ERROR_IO_PENDING = pending (expected)
+        // connect_rc!=0 = completed synchronously
+        // err=PIPE_CONNECTED = client connected between Create and Connect
+        const connected = (connect_rc != 0) or (err == win.Win32Error.PIPE_CONNECTED);
+        if (!connected and err == ERROR_IO_PENDING) {
+            // Wait for client with 1s timeout, then check shutdown flag
+            const wait_ret = WaitForSingleObject(io_event, 1000);
+            if (wait_ret == WAIT_TIMEOUT) {
+                // No client yet — cancel pending I/O and retry
+                _ = CancelIoEx(handle, &overlapped);
+                continue;
+            }
+            if (wait_ret != WAIT_OBJECT_0) {
+                std.log.warn("[PIPE SENSOR] WaitForSingleObject failed: {d}", .{wait_ret});
+                std.time.sleep(100 * std.time.ns_per_ms);
+                continue;
+            }
+            // Event signaled — verify with GetOverlappedResult
+            var bytes_xfer: u32 = 0;
+            if (GetOverlappedResult(handle, &overlapped, &bytes_xfer, 0) == 0) {
+                const io_err = win.kernel32.GetLastError();
+                if (io_err != win.Win32Error.PIPE_CONNECTED) {
+                    std.log.warn("[PIPE SENSOR] GetOverlappedResult failed: {d}", .{io_err});
+                    continue;
+                }
+            }
+        } else if (!connected) {
+            std.log.warn("[PIPE SENSOR] ConnectNamedPipe failed: {d}", .{err});
+            std.time.sleep(100 * std.time.ns_per_ms);
+            continue;
+        }
+
+        // Connected — read data from client
+        {
             var bytes_read: u32 = 0;
             const read_success = ReadFile(
                 handle,
@@ -155,8 +222,6 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
             }
 
             _ = DisconnectNamedPipe(handle);
-        } else {
-            std.time.sleep(10 * std.time.ns_per_ms);
         }
     }
 }

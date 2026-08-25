@@ -75,6 +75,30 @@ const HRESULT = i32;
 // (HRESULT_FROM_WIN32(ERROR_NO_MORE_ITEMS) = 0x8000001A)
 const STATUS_NO_MORE_ENTRIES: u32 = 0x8000001A;
 
+// BP-O3: Overlapped I/O for shutdown-responsive FilterGetMessage (Phase 8)
+const OVERLAPPED = extern struct {
+    internal: usize,
+    internal_high: usize,
+    offset: u32,
+    offset_high: u32,
+    event: ?*anyopaque,
+};
+extern "kernel32" fn CreateEventA(
+    lpEventAttributes: ?*anyopaque, bManualReset: i32, bInitialState: i32, lpName: ?[*:0]const u8,
+) ?*anyopaque;
+extern "kernel32" fn WaitForSingleObject(hHandle: ?*anyopaque, dwMilliseconds: u32) u32;
+extern "kernel32" fn GetOverlappedResult(
+    hFile: win.HANDLE, lpOverlapped: *OVERLAPPED, lpNumberOfBytesTransferred: *u32, bWait: i32,
+) i32;
+extern "kernel32" fn CancelIoEx(hFile: win.HANDLE, lpOverlapped: ?*OVERLAPPED) i32;
+extern "kernel32" fn ResetEvent(hEvent: ?*anyopaque) i32;
+const FILE_FLAG_OVERLAPPED: u32 = 0x40000000;
+const ERROR_IO_PENDING: u32 = 997;
+const WAIT_OBJECT_0: u32 = 0;
+const WAIT_TIMEOUT: u32 = 258;
+// HRESULT_FROM_WIN32(ERROR_IO_PENDING) = 0x800703E7
+const HRESULT_PENDING: u32 = 0x800703E7;
+
 // FilterGetMessage is in fltlib.dll - declare as extern
 extern "fltlib" fn FilterConnectCommunicationPort(
     lpPortName: [*:0]const u16,
@@ -155,20 +179,33 @@ pub fn minifilterReaderLoop() void {
     // Message buffer: AegisFileEvent header (40 bytes) + file name (512 max)
     var msg_buf: [1024]u8 align(@alignOf(AegisFileEvent)) = undefined;
 
+    // BP-O3: Create event for overlapped FilterGetMessage (shutdown-responsive)
+    const io_event = CreateEventA(null, 1, 0, null) orelse {
+        std.log.err("[MINI] CreateEventA failed - cannot use overlapped I/O", .{});
+        return;
+    };
+    defer if (io_event) |e| { _ = win.CloseHandle(e); };
+
     std.debug.print("[MINI] Reading events from kernel...\n", .{});
     std.log.info("[MINI] Reading events from kernel", .{});
 
     while (true) {
 
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
+        // BP-O3: Overlapped FilterGetMessage with 1s timeout for shutdown responsiveness
+        var overlapped: OVERLAPPED = std.mem.zeroes(OVERLAPPED);
+        overlapped.event = io_event;
+        _ = ResetEvent(io_event);
         const hr = FilterGetMessage(
             hPort,
             @ptrCast(&msg_buf),
             msg_buf.len,
-            null,  // not overlapped
+            &overlapped,
         );
 
+        const hr_u32 = @as(u32, @bitCast(hr));
         if (hr >= 0) {
+            // Completed synchronously — process immediately
             g_events_received += 1;
 
             // Parse the AEGIS_FILE_EVENT header
@@ -219,14 +256,73 @@ pub fn minifilterReaderLoop() void {
                 g_events_processed += 1;
             }
         } else {
-            // FilterGetMessage failed - check for ERROR_NO_MORE_ITEMS
-            const err_code = @as(u32, @bitCast(hr));
-            if (err_code == STATUS_NO_MORE_ENTRIES) {
+            // BP-O3: Overlapped I/O pending or error
+            if (hr_u32 == HRESULT_PENDING) {
+                // I/O is pending — wait with 1s timeout for shutdown responsiveness
+                const wait_ret = WaitForSingleObject(io_event, 1000);
+                if (wait_ret == WAIT_TIMEOUT) {
+                    // No message yet — cancel pending I/O and check shutdown
+                    _ = CancelIoEx(hPort, &overlapped);
+                    continue;
+                }
+                if (wait_ret != WAIT_OBJECT_0) {
+                    std.log.warn("[MINI] WaitForSingleObject failed: {d}", .{wait_ret});
+                    std.time.sleep(100 * std.time.ns_per_ms);
+                    continue;
+                }
+                // Event signaled — message available, process it
+                var bytes_xfer: u32 = 0;
+                if (GetOverlappedResult(hPort, &overlapped, &bytes_xfer, 0) != 0) {
+                    g_events_received += 1;
+                    // Parse the AEGIS_FILE_EVENT header
+                    if (msg_buf.len >= @sizeOf(AegisFileEvent)) {
+                        const evt: *align(1) const AegisFileEvent =
+                            @ptrCast(msg_buf[0..@sizeOf(AegisFileEvent)]);
+
+                        const name_offset = @sizeOf(AegisFileEvent);
+                        const name_len = @min(evt.file_name_len, msg_buf.len - name_offset);
+                        const file_name = msg_buf[name_offset .. name_offset + name_len];
+
+                        var name_buf: [512]u8 = undefined;
+                        var name_len_out: usize = 0;
+                        for (file_name) |ch| {
+                            if (ch >= 0x20 and ch < 0x7F and name_len_out < name_buf.len) {
+                                name_buf[name_len_out] = ch;
+                                name_len_out += 1;
+                            } else if (name_len_out > 0) {
+                                break;
+                            }
+                        }
+                        const name_str = name_buf[0..name_len_out];
+
+                        const evt_type = eventTypeToString(evt.event_type);
+                        const op_str = operationToString(evt.operation);
+                        const sev_str = severityToString(evt.severity);
+
+                        if (evt.severity >= 2) {
+                            std.log.warn("[ALERT] MINI {} | {} | PID={} | sev={} | {}", .{
+                                evt_type, op_str, evt.process_id, sev_str, name_str
+                            });
+                            std.debug.print("\x1b[31;1m[MINI ALERT] {} | {} | PID={} | sev={} | {}\x1b[0m\n", .{
+                                evt_type, op_str, evt.process_id, sev_str, name_str
+                            });
+                        } else {
+                            std.log.info("[MINI] {} | {} | PID={} | {}", .{
+                                evt_type, op_str, evt.process_id, name_str
+                            });
+                            std.debug.print("[MINI] {} | {} | PID={} | {}\n", .{
+                                evt_type, op_str, evt.process_id, name_str
+                            });
+                        }
+                        g_events_processed += 1;
+                    }
+                }
+            } else if (hr_u32 == STATUS_NO_MORE_ENTRIES) {
                 // No more items - normal, just wait and retry
                 std.time.sleep(100 * std.time.ns_per_ms);
             } else {
-                std.log.warn("[MINI] FilterGetMessage error: 0x{x}", .{err_code});
-                std.debug.print("[MINI] FilterGetMessage error: 0x{x}\n", .{err_code});
+                std.log.warn("[MINI] FilterGetMessage error: 0x{x}", .{hr_u32});
+                std.debug.print("[MINI] FilterGetMessage error: 0x{x}\n", .{hr_u32});
                 std.time.sleep(1 * std.time.ns_per_s);
             }
         }

@@ -98,6 +98,41 @@ const AegisSecurityAttributes = extern struct {
     bInheritHandle: i32,
 };
 
+// =================================================================
+// [ BP-O1/O2: OVERLAPPED I/O — shutdown-responsive blocking calls ]
+// =================================================================
+// Phase 8: Replaces indefinite ConnectNamedPipe/server.accept blocking
+// with overlapped I/O + WaitForSingleObject(timeout) pattern.
+// On shutdown: CancelIoEx cancels pending I/O immediately.
+
+const OVERLAPPED = extern struct {
+    internal: usize,
+    internal_high: usize,
+    offset: u32,
+    offset_high: u32,
+    event: ?*anyopaque,
+};
+
+extern "kernel32" fn CreateEventA(
+    lpEventAttributes: ?*anyopaque, bManualReset: i32, bInitialState: i32, lpName: ?[*:0]const u8,
+) ?*anyopaque;
+extern "kernel32" fn WaitForSingleObject(hHandle: ?*anyopaque, dwMilliseconds: u32) u32;
+extern "kernel32" fn GetOverlappedResult(
+    hFile: win.HANDLE, lpOverlapped: *OVERLAPPED, lpNumberOfBytesTransferred: *u32, bWait: i32,
+) i32;
+extern "kernel32" fn CancelIoEx(hFile: win.HANDLE, lpOverlapped: ?*OVERLAPPED) i32;
+extern "kernel32" fn ResetEvent(hEvent: ?*anyopaque) i32;
+
+const FILE_FLAG_OVERLAPPED: u32 = 0x40000000;
+const ERROR_IO_PENDING: u32 = 997;
+const WAIT_OBJECT_0: u32 = 0;
+const WAIT_TIMEOUT: u32 = 258;
+
+// BP-O1: Winsock2 FFI for shutdown-responsive TCP accept
+const WSAPollfd = extern struct { fd: usize, events: i16, revents: i16 };
+extern "ws2_32" fn WSAPoll(fds: [*]WSAPollfd, nfds: u32, timeout: i32) i32;
+const POLLIN: i16 = 0x001;
+
 
 // =================================================================
 // [ PACKET CONTEXT ]
@@ -903,10 +938,19 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
     // BP155: Exponential backoff for pipe creation retries
     var pipe_retry_ns: u64 = 1 * std.time.ns_per_s;
     const pipe_max_backoff_ns: u64 = 30 * std.time.ns_per_s;
+
+    // BP-O2: Create event for overlapped ConnectNamedPipe (shutdown-responsive)
+    const io_event = CreateEventA(null, 1, 0, null) orelse {
+        std.log.err("[PIPE] CreateEventA failed - cannot use overlapped I/O", .{});
+        return;
+    };
+    defer _ = win.CloseHandle(io_event);
+
     while (!g_shutdown_requested.load(.acquire)) {
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
         // BP-M13: PIPE_WAIT preserves byte-stream mode (matches admin client expectations)
-        const hPipe = CreateNamedPipeA(pipe_name, PIPE_ACCESS_DUPLEX, PIPE_WAIT, PIPE_MAX_INSTANCES, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 0, @ptrCast(&sec_attr));
+        // BP-O2: Add FILE_FLAG_OVERLAPPED for shutdown-responsive ConnectNamedPipe
+        const hPipe = CreateNamedPipeA(pipe_name, PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED, PIPE_WAIT, PIPE_MAX_INSTANCES, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 0, @ptrCast(&sec_attr));
         if (hPipe == win.INVALID_HANDLE_VALUE) {
             // BP133: Log Windows error code on CreateNamedPipeA failure
             const pipe_err = win.kernel32.GetLastError();
@@ -923,10 +967,51 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
         // BP155: Reset backoff on successful pipe creation
         pipe_retry_ns = 1 * std.time.ns_per_s;
 
-        const connected = ConnectNamedPipe(hPipe, null);
+        // BP-O2: Overlapped ConnectNamedPipe with 1s timeout for shutdown responsiveness
+        var overlapped: OVERLAPPED = std.mem.zeroes(OVERLAPPED);
+        overlapped.event = io_event;
+        _ = ResetEvent(io_event);
+        const connect_rc = ConnectNamedPipe(hPipe, &overlapped);
         const err = win.kernel32.GetLastError();
 
-        if (connected != 0 or err == win.Win32Error.PIPE_CONNECTED) {
+        // Overlapped I/O: connect_rc=0 + ERROR_IO_PENDING means "pending" (expected)
+        // connect_rc!=0 means "completed synchronously" (client already connected)
+        // err=PIPE_CONNECTED means client connected between CreateNamedPipe and ConnectNamedPipe
+        const connected = (connect_rc != 0) or (err == win.Win32Error.PIPE_CONNECTED);
+        if (!connected and err == ERROR_IO_PENDING) {
+            // BP-O2: Wait for client with 1s timeout, then check shutdown flag
+            const wait_ret = WaitForSingleObject(io_event, 1000);
+            if (wait_ret == WAIT_TIMEOUT) {
+                // No client yet — check shutdown and retry ConnectNamedPipe
+                _ = CancelIoEx(hPipe, &overlapped);
+                _ = win.CloseHandle(hPipe);
+                continue;
+            }
+            if (wait_ret != WAIT_OBJECT_0) {
+                std.log.warn("[PIPE] WaitForSingleObject failed: {d}", .{wait_ret});
+                _ = win.CloseHandle(hPipe);
+                std.time.sleep(100 * std.time.ns_per_ms);
+                continue;
+            }
+            // Event signaled — verify with GetOverlappedResult
+            var bytes_xfer: u32 = 0;
+            if (GetOverlappedResult(hPipe, &overlapped, &bytes_xfer, 0) == 0) {
+                const io_err = win.kernel32.GetLastError();
+                if (io_err != win.Win32Error.PIPE_CONNECTED) {
+                    std.log.warn("[PIPE] GetOverlappedResult failed: {d}", .{io_err});
+                    _ = win.CloseHandle(hPipe);
+                    continue;
+                }
+            }
+        } else if (!connected) {
+            // Unexpected error from ConnectNamedPipe
+            std.log.warn("[PIPE] ConnectNamedPipe failed: {d}", .{err});
+            _ = win.CloseHandle(hPipe);
+            std.time.sleep(100 * std.time.ns_per_ms);
+            continue;
+        }
+
+        {
             // BP187: Warn when connection limit is approaching
             // BP189: Acquire for fresh value in warning check
             const _pipe_active = active_threads.load(.acquire);
@@ -960,15 +1045,6 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
                 continue;
             };
             t.detach();
-        } else {
-            // BP123: Log rejected non-admin pipe connection
-            std.debug.print("[PIPE-LISTEN] Rejected non-admin pipe connection (err={})\n", .{err});
-            // BP209: Security event visible in release builds
-            std.log.warn("[PIPE] Rejected non-admin pipe connection (err={})", .{err});
-            _ = g_analyze_errors.fetchAdd(1, .relaxed);
-            _ = g_rejected_connections.fetchAdd(1, .relaxed);
-            _ = DisconnectNamedPipe(hPipe);
-            win.CloseHandle(hPipe);
         }
     }
     std.debug.print("[PIPE] Listener shut down gracefully.\n", .{});
@@ -1261,6 +1337,19 @@ fn tcp_listener(allocator: std.mem.Allocator) !void {
     var _bp93_accept_count: u64 = 0;
     while (!g_shutdown_requested.load(.acquire)) {
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
+        // BP-O1: WSAPoll with 1s timeout for shutdown-responsive accept()
+        // (was: server.accept() blocked indefinitely until client connected)
+        var poll_fds = [_]WSAPollfd{
+            .{ .fd = server.listen_socket, .events = POLLIN, .revents = 0 },
+        };
+        const poll_ret = WSAPoll(&poll_fds, 1, 1000);
+        if (poll_ret == 0) continue; // timeout — check shutdown flag
+        if (poll_ret < 0) {
+            std.log.warn("[TCP] WSAPoll error, retrying", .{});
+            std.time.sleep(100 * std.time.ns_per_ms);
+            continue;
+        }
+        // Socket is readable — accept() won't block
         const conn = server.accept() catch |err| {
             std.log.warn("[TCP] Accept error: {}", .{err});
             continue;
