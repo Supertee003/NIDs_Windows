@@ -216,6 +216,7 @@ pub fn minifilterReaderLoop() void {
                 // No more items - normal, just wait and retry
                 std.time.sleep(100 * std.time.ns_per_ms);
             } else {
+                std.log.warn("[MINI] FilterGetMessage error: 0x{x}", .{err_code});
                 std.debug.print("[MINI] FilterGetMessage error: 0x{x}\n", .{err_code});
                 std.time.sleep(1 * std.time.ns_per_s);
             }

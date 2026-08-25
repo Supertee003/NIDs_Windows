@@ -93,14 +93,15 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
                 };
 
                 if (!is_safe) {
-                    const a = (ctx.source_ip >> 0) & 0xFF;
-                    const b = (ctx.source_ip >> 8) & 0xFF;
-                    const c = (ctx.source_ip >> 16) & 0xFF;
-                    const d = (ctx.source_ip >> 24) & 0xFF;
-                    std.log.warn("[BLOCK] WFP SENSOR {}.{},{}.{}:{} rule={d}", .{
+                    // Network byte order: extract MSB-first for human-readable IP
+                    const d = (ctx.source_ip >> 0) & 0xFF;
+                    const c = (ctx.source_ip >> 8) & 0xFF;
+                    const b = (ctx.source_ip >> 16) & 0xFF;
+                    const a = (ctx.source_ip >> 24) & 0xFF;
+                    std.log.warn("[BLOCK] WFP SENSOR {}.{}.{}.{}:{} rule={d}", .{
                         a, b, c, d, ctx.dest_port, header.rule_id
                     });
-                    std.debug.print("\x1b[31;1m[WFP SENSOR] BLOCKED {}.{},{}.{}:{} rule={d}\x1b[0m\n", .{
+                    std.debug.print("\x1b[31;1m[WFP SENSOR] BLOCKED {}.{}.{}.{}:{} rule={d}\x1b[0m\n", .{
                         a, b, c, d, ctx.dest_port, header.rule_id
                     });
                     if (header.severity >= 2) {

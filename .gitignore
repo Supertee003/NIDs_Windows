@@ -78,3 +78,6 @@ dist/
 
 # === BP backup files (stale build point snapshots) ===
 *.bp*_backup
+
+# === Phase deployment backup files ===
+*.phase*_backup

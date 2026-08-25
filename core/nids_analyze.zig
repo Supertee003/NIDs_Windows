@@ -53,8 +53,10 @@ const HandlerRoutine = *const fn (u32) callconv(.C) i32;
 extern "kernel32" fn SetConsoleCtrlHandler(handler: ?HandlerRoutine, add: i32) i32;
 
 fn ctrlHandler(ctrl_type: u32) callconv(.C) i32 {
-    // BP184: Handle multiple shutdown signals (CTRL+C, CTRL+BREAK, window close)
-    if (ctrl_type == 2 or ctrl_type == 5 or ctrl_type == 1) {
+    // BP184: Handle all shutdown signals for graceful termination
+    //   0=CTRL_C_EVENT, 1=CTRL_BREAK_EVENT, 2=CTRL_CLOSE_EVENT,
+    //   5=CTRL_LOGOFF_EVENT, 6=CTRL_SHUTDOWN_EVENT
+    if (ctrl_type == 0 or ctrl_type == 1 or ctrl_type == 2 or ctrl_type == 5 or ctrl_type == 6) {
         g_shutdown_requested.store(true, .release);
         bridge_init.requestShutdown(); // BP-FIX: also signal T2-T5 threads
         std.log.warn("[SHUTDOWN] Signal {} received -- draining connections", .{ctrl_type});
@@ -1224,6 +1226,7 @@ fn tcp_listener(allocator: std.mem.Allocator) !void {
         return;
     };
     // BP114: TCP listener ready log
+    std.log.info("[TCP] Listening on 0.0.0.0:{d}", .{AEGIS_TCP_PORT});
     std.debug.print("[TCP] Listening on 0.0.0.0:{d}\n", .{AEGIS_TCP_PORT});
     defer server.deinit();
 
@@ -1541,6 +1544,7 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
     };
 
     std.log.info("[ANALYZE] All listeners started", .{});
+    std.log.info("[INIT] All systems operational", .{});
     std.debug.print("[INIT] All systems operational\n", .{});
 
     // BP140: Graceful shutdown drain with logging

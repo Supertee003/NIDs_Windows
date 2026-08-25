@@ -211,6 +211,7 @@ pub fn isConnected() bool {
 /// @return true if IOCTL succeeded
 pub fn block_ip(ipv4: u32) bool {
     if (g_device == null) {
+        std.log.warn("[WFP IOCTL] block_ip: device not open", .{});
         std.debug.print("[WFP IOCTL] block_ip: device not open\n", .{});
         return false;
     }
@@ -228,6 +229,7 @@ pub fn block_ip(ipv4: u32) bool {
 
     if (ok == 0) {
         const err = GetLastError();
+        std.log.err("[WFP IOCTL] block_ip(0x{x}) failed: error=0x{x}", .{ ipv4, err });
         std.debug.print("[WFP IOCTL] block_ip(0x{x}) failed: error=0x{x}\n", .{ ipv4, err });
         return false;
     }
@@ -239,10 +241,12 @@ pub fn block_ip(ipv4: u32) bool {
     }
     g_blocked_lock.unlock();
 
-    const a = (ipv4 >> 0) & 0xFF;
-    const b = (ipv4 >> 8) & 0xFF;
-    const c = (ipv4 >> 16) & 0xFF;
-    const d = (ipv4 >> 24) & 0xFF;
+    // Network byte order: extract MSB-first for human-readable IP
+    const d = (ipv4 >> 0) & 0xFF;
+    const c = (ipv4 >> 8) & 0xFF;
+    const b = (ipv4 >> 16) & 0xFF;
+    const a = (ipv4 >> 24) & 0xFF;
+    std.log.info("[WFP IOCTL] BLOCKED {}.{}.{}.{} (IOCTL sent)", .{ a, b, c, d });
     std.debug.print("[WFP IOCTL] BLOCKED {}.{}.{}.{} (IOCTL sent)\n", .{ a, b, c, d });
     return true;
 }
@@ -260,18 +264,20 @@ pub fn unblock_ip(ipv4: u32) bool {
     g_blocked_lock.unlock();
 
     if (!removed) {
-        const a = (ipv4 >> 0) & 0xFF;
-        const b = (ipv4 >> 8) & 0xFF;
-        const c = (ipv4 >> 16) & 0xFF;
-        const d = (ipv4 >> 24) & 0xFF;
+        const d = (ipv4 >> 0) & 0xFF;
+        const c = (ipv4 >> 8) & 0xFF;
+        const b = (ipv4 >> 16) & 0xFF;
+        const a = (ipv4 >> 24) & 0xFF;
+        std.log.warn("[WFP IOCTL] unblock_ip({}.{}.{}.{}): not in blocked table", .{ a, b, c, d });
         std.debug.print("[WFP IOCTL] unblock_ip({}.{}.{}.{}): not in blocked table\n", .{ a, b, c, d });
         return false;
     }
 
-    const a = (ipv4 >> 0) & 0xFF;
-    const b = (ipv4 >> 8) & 0xFF;
-    const c = (ipv4 >> 16) & 0xFF;
-    const d = (ipv4 >> 24) & 0xFF;
+    const d = (ipv4 >> 0) & 0xFF;
+    const c = (ipv4 >> 8) & 0xFF;
+    const b = (ipv4 >> 16) & 0xFF;
+    const a = (ipv4 >> 24) & 0xFF;
+    std.log.info("[WFP IOCTL] UNBLOCKED {}.{}.{}.{} (tracking only)", .{ a, b, c, d });
     std.debug.print("[WFP IOCTL] UNBLOCKED {}.{}.{}.{} (tracking only - kernel IOCTL pending)\n", .{ a, b, c, d });
 
     // TODO: When kernel adds IOCTL_AEGIS_UNBLOCK_FLOW (sends filterId for
