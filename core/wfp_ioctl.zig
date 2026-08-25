@@ -103,7 +103,7 @@ extern "kernel32" fn GetLastError() DWORD;
 // ============================================================
 // Blocked IP Tracking Table (user-mode)
 // ============================================================
-// Stores (ipv4 -> filter_count) for tracking what we've blocked.
+// Stores blocked ipv4 addresses for user-mode tracking.
 // Future: when kernel adds IOCTL_AEGIS_UNBLOCK_FLOW, we can
 // implement real unblock by calling FwpmFilterDeleteById.
 

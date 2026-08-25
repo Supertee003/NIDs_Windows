@@ -36,7 +36,7 @@ extern "kernel32" fn ReadFile(
     nNumberOfBytesToRead: u32,
     lpNumberOfBytesRead: ?*u32,
     lpOverlapped: ?*anyopaque,
-) i32; // ====== BP19: Admin-Only Pipe ACL via SDDL ======
+) i32;
 
 // BP192: PeekNamedPipe for shutdown-responsive pipe reads
 extern "kernel32" fn PeekNamedPipe(
@@ -47,6 +47,9 @@ extern "kernel32" fn PeekNamedPipe(
     lpTotalBytesAvail: ?*u32,
     lpBytesLeftThisMessage: ?*u32,
 ) i32;
+
+// ====== BP19: Admin-Only Pipe ACL via SDDL ======
+// (SDDL string and AegisSecurityAttributes declared below)
 
 // SIGINT (CTRL+C) handler for graceful shutdown
 const HandlerRoutine = *const fn (u32) callconv(.C) i32;
@@ -627,6 +630,20 @@ fn pushForwardedEvent(
 // [ 3-TIER FAST THREAT ANALYSIS ENGINE ]
 // =================================================================
 
+/// Inspect a packet/payload through the 3-tier threat analysis engine.
+///
+/// Tiers:
+///   1. Aho-Corasick fast pattern matching (in-memory)
+///   2. Substring keyword verification (Tier-1 matches)
+///   3. Forward to Python brain via UDP for deep inspection (no Tier-1/2 match)
+///
+/// Returns:
+///   - `true`  if the packet is SAFE (no block action triggered, or no match)
+///   - `false` if a rule with action="Block" matched (caller should terminate session)
+///   - `error.X` if a fatal error occurred (caller may choose fail-open via catch)
+///
+/// Side effects: pushes match/forward events to C++ bridge via IPC, sends
+/// alerts to Python brain via UDP, increments global match/forward counters.
 pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
     // Rust Memory Safety Shield (via bridge_init)
     // BP196: Log payload safety validation failures for forensics
@@ -1307,8 +1324,11 @@ fn tcp_listener(allocator: std.mem.Allocator) !void {
 // [ BRIDGE STATUS REPORTER ]
 // =================================================================
 
+/// Background thread that prints periodic status reports every 30 seconds
+/// and a final shutdown summary when the engine exits.
+/// Note: CTRL+C handler is registered separately in analyze_packets() via
+/// SetConsoleCtrlHandler; this thread only reports status, not signal handling.
 fn bridgeStatusReporter() void {
-    // Register CTRL+C handler for graceful shutdown
     while (true) {
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
         // BP175: Also check g_shutdown_requested (CTRL+C sets this, not g_shutdown)
@@ -1369,9 +1389,10 @@ fn bridgeStatusReporter() void {
             std.debug.print("  Rule matches: {d} (v{d})\n", .{ g_total_matches.load(.relaxed), g_ruleset_version.load(.acquire) });
             // BP181: Report AC engine size (memory usage proxy)
             std.debug.print("  AC engine nodes: {d}\n", .{rs.ac_engine.nodes.items.len});
-            // BP199: Report top-5 matched rules for operational visibility
-            var _reported: [5]usize = [_]usize{std.math.maxInt(usize)} ** 5;
-            for (0..5) |rank| {
+            // BP199: Report top-N matched rules for operational visibility
+            const TOP_N_RULES: usize = 5;
+            var _reported: [TOP_N_RULES]usize = [_]usize{std.math.maxInt(usize)} ** TOP_N_RULES;
+            for (0..TOP_N_RULES) |rank| {
                 var _bi: usize = 0;
                 var _bc: u64 = 0;
                 for (rs.match_counts, 0..) |*mc, i| {
@@ -1462,6 +1483,17 @@ fn bridgeStatusReporter() void {
 // [ MAIN ENTRY: Thread 1 ]
 // =================================================================
 
+/// Main entry point for Thread 1 (3-Tier Analysis Engine).
+///
+/// Orchestrates:
+///   1. Loads detection rules from Rules.json (atomic reload)
+///   2. Registers CTRL+C handler for graceful shutdown
+///   3. Spawns background status reporter thread (detached)
+///   4. Spawns pipe_listener and tcp_listener threads (blocking accept loops)
+///   5. Joins both listeners and drains handler threads on shutdown
+///
+/// On pipe_listener spawn failure: signals shutdown and returns immediately
+/// (F6 fix - prevents orphaning the status reporter thread).
 pub fn analyze_packets(allocator: std.mem.Allocator) void {
     std.debug.print("\n--- AEGIS CORE: 3-TIER ENGINE ACTIVE ---\n", .{});
     // BP222: Startup marker visible in release builds
@@ -1588,6 +1620,10 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
 // [ UTILITY: payloadHex ]
 // =================================================================
 
+/// Convert binary data to lowercase hex string for diagnostics.
+/// Truncates to `max_len` bytes, padding with '0' if input is shorter.
+/// Returns a fixed-size array of length `max_len * 2`.
+/// Currently used only by tests; reserved for future match-alert hex dumps.
 fn payloadHex(data: []const u8, comptime max_len: usize) [max_len * 2]u8 {
     const hex_chars = "0123456789abcdef";
     var result: [max_len * 2]u8 = undefined;

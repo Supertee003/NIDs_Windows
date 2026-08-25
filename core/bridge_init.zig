@@ -19,6 +19,12 @@ pub const AEGIS_BUILD = "zig-0.13";
 const wfp_ioctl = @import("wfp_ioctl.zig");
 const win = std.os.windows;
 
+// BP-I2: Named constants for UDP Brain logger configuration
+const UDP_BRAIN_IP = "127.0.0.1";
+const UDP_BRAIN_PORT: u16 = 9999;
+// BP-M18: Default DEFCON level (normal = 5)
+const DEFCON_DEFAULT: u8 = 5;
+
 // ============================================================
 // Bridge Status Flags
 // ============================================================
@@ -250,14 +256,14 @@ fn shutdownRustShield() void {
 // ============================================================
 
 fn initUdpBrain() void {
-    if (net.Address.parseIp4("127.0.0.1", 9999)) |addr| {
+    if (net.Address.parseIp4(UDP_BRAIN_IP, UDP_BRAIN_PORT)) |addr| {
         g_udp_addr = addr;
         if (posix.socket(addr.any.family, posix.SOCK.DGRAM, 0)) |sock| {
             g_udp_sock = sock;
             g_udp_available = true;
             g_state.udp_brain = true;
-            std.log.info("[INIT] UDP brain logger on 127.0.0.1:9999", .{});
-            std.debug.print("\x1b[32m[INIT] UDP brain logger on 127.0.0.1:9999\x1b[0m\n", .{});
+            std.log.info("[INIT] UDP brain logger on {s}:{d}", .{ UDP_BRAIN_IP, UDP_BRAIN_PORT });
+            std.debug.print("\x1b[32m[INIT] UDP brain logger on {s}:{d}\x1b[0m\n", .{ UDP_BRAIN_IP, UDP_BRAIN_PORT });
         } else |_| {
             std.log.warn("[INIT] UDP socket failed - brain logging disabled", .{});
             std.debug.print("\x1b[33m[INIT] UDP socket failed - brain logging disabled\x1b[0m\n", .{});
@@ -280,12 +286,13 @@ fn shutdownUdpBrain() void {
 // PUBLIC API
 // ============================================================
 
-/// Initialize ALL bridges. Call once at startup before spawning threads.
-
 // ====== BP8: Global Shutdown Flag ======
-/// Set by Ctrl-C handler. Thread loops should check this periodically.
-/// Current implementation uses ExitProcess for immediate termination;
-/// this flag enables future non-blocking I/O with graceful drain.
+/// Set by CTRL+C handler (see nids_analyze.ctrlHandler).
+/// Thread loops should check this periodically (typically every iteration
+/// or every 10-100ms in blocking calls) for graceful drain on shutdown.
+///
+/// Phase 5 (F3) replaced ExitProcess with graceful shutdown via this flag;
+/// status reporter + sensor threads now exit cleanly when this is set.
 pub var g_shutdown = std.atomic.Value(bool).init(false);
 
 /// Signal all threads to exit. Safe to call multiple times.
@@ -296,6 +303,11 @@ pub fn requestShutdown() void {
     }
     g_shutdown.store(true, .seq_cst);
 }
+
+/// Initialize ALL bridges. Call once at startup before spawning threads.
+/// Initializes WFP IOCTL, C++ IPC DLL, Rust Shield DLL, and UDP Brain logger.
+/// Bridges that fail to initialize are logged but do not abort startup
+/// (the NIDS runs in degraded mode without that specific bridge).
 pub fn initAll() void {
     std.log.info("[INIT] AEGIS BRIDGE INITIALIZATION", .{});
     std.debug.print("\n--- AEGIS BRIDGE INITIALIZATION ---\n", .{});
@@ -372,9 +384,6 @@ pub fn pushEvent(event: *const AegisIpcEvent) i32 {
     }
     return -1;
 }
-
-// BP-M18: Default DEFCON level (normal = 5)
-const DEFCON_DEFAULT: u8 = 5;
 
 /// Get current DEFCON level from C++ bridge.
 pub fn getDefcon() u8 {

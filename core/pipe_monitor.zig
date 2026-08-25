@@ -1,7 +1,6 @@
 ﻿//! pipe_monitor.zig - AEGIS NIDS Pipe Monitor Sensor (Thread 5)
 //!
-//! Polls \\.
-\pipe\* and checks for suspicious named pipes.
+//! Polls \\.\pipe\* and checks for suspicious named pipes.
 //! Matches against known attack tool patterns (Cobalt Strike, PsExec, etc.)
 //!
 //! BP1 Fix: Removed module-level GPA, uses std.debug.print,
@@ -33,7 +32,7 @@ const INVALID_HANDLE_VALUE: HANDLE = @ptrFromInt(@as(usize, @bitCast(@as(isize, 
 const MAX_PATH_W: usize = 260;       // Win32 MAX_PATH wide-char limit
 const PM_ALERT_BUF: usize = 300;     // printAlert ASCII conversion buffer
 const PM_ASCII_MAX: u16 = 128;       // ASCII printable boundary
-const PM_INITIAL_DELAY_S: u64 = 3;  // Settle delay before first scan
+const PM_INITIAL_DELAY_S: u64 = 3;   // Settle delay before first scan
 const PM_SCAN_INTERVAL_S: u64 = 10; // Scan interval between pipe sweeps
 
 const WIN32_FIND_DATAW = extern struct {
@@ -165,8 +164,8 @@ pub fn printStats() void {
 /// Main pipe monitor loop (Thread 5)
 /// BP1: No longer takes allocator - uses stack/local allocation only
 pub fn pipeMonitorLoop() void {
-    std.log.info("[PM] Thread 5 started - scanning pipes every 10s", .{});
-    std.debug.print("[PM] Thread 5 started - scanning pipes every 10s\n", .{});
+    std.log.info("[PM] Thread 5 started - scanning pipes every {d}s", .{PM_SCAN_INTERVAL_S});
+    std.debug.print("[PM] Thread 5 started - scanning pipes every {d}s\n", .{PM_SCAN_INTERVAL_S});
 
     // Initial delay to let system settle
     std.time.sleep(PM_INITIAL_DELAY_S * std.time.ns_per_s);

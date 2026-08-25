@@ -32,6 +32,8 @@ pub const PROCESS_CREATE = 0x100;
 pub const PROCESS_EXIT = 0x101;
 
 // ====== Convert event fields to string ======
+
+/// Map event_type enum value to human-readable string (e.g. "KERNEL_FILE").
 pub fn eventTypeToString(event_type: u32) []const u8 {
     return switch (event_type) {
         EVENT_KERNEL_FILE => "KERNEL_FILE",
@@ -40,6 +42,7 @@ pub fn eventTypeToString(event_type: u32) []const u8 {
     };
 }
 
+/// Map IRP/process operation code to human-readable string (e.g. "IRP_MJ_CREATE").
 pub fn operationToString(operation: u32) []const u8 {
     return switch (operation) {
         0x00 => "IRP_MJ_CREATE",
@@ -51,6 +54,7 @@ pub fn operationToString(operation: u32) []const u8 {
     };
 }
 
+/// Map severity level (0-3) to human-readable string (e.g. "High").
 pub fn severityToString(severity: u32) []const u8 {
     return switch (severity) {
         0 => "Low",
@@ -67,7 +71,9 @@ const HANDLE = win.HANDLE;
 const INVALID_HANDLE_VALUE: HANDLE = @ptrFromInt(@as(usize, @bitCast(@as(isize, -1))));
 const HRESULT = i32;
 
-const FILTER_COMMUNICATION_PORT_READ_MESSAGE = 0x0001;
+// BP-I1: Named constant for FilterGetMessage "no more entries" status
+// (HRESULT_FROM_WIN32(ERROR_NO_MORE_ITEMS) = 0x8000001A)
+const STATUS_NO_MORE_ENTRIES: u32 = 0x8000001A;
 
 // FilterGetMessage is in fltlib.dll - declare as extern
 extern "fltlib" fn FilterConnectCommunicationPort(
@@ -92,7 +98,6 @@ extern "fltlib" fn FilterCloseCommunicationPort(hPort: HANDLE) HRESULT;
 const MINIFILTER_PORT = [_:0]u16{
     '\', '\', 'A', 'e', 'g', 'i', 's', 'M', 'i', 'n', 'i', 'f', 'i', 'l', 't', 'e', 'r', 'P', 'o', 'r', 't'
 };
-
 
 // BP11: Verify port name starts with backslash at compile time
 comptime {
@@ -216,7 +221,7 @@ pub fn minifilterReaderLoop() void {
         } else {
             // FilterGetMessage failed - check for ERROR_NO_MORE_ITEMS
             const err_code = @as(u32, @bitCast(hr));
-            if (err_code == 0x8000001A) {
+            if (err_code == STATUS_NO_MORE_ENTRIES) {
                 // No more items - normal, just wait and retry
                 std.time.sleep(100 * std.time.ns_per_ms);
             } else {

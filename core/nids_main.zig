@@ -30,7 +30,8 @@ pub fn main() !void {
         }
     };
 
-    std.log.info("[MAIN] AEGIS NIDS v2.1 - 5-Thread Architecture", .{});
+    // BP-I3: Use AEGIS_VERSION constant from bridge_init (was hardcoded "v2.1")
+    std.log.info("[MAIN] AEGIS NIDS {s} - 5-Thread Architecture", .{bridge_init.AEGIS_VERSION});
 
     // Initialize all bridges (WFP, C++ IPC, Rust Shield, UDP Brain)
     bridge_init.initAll();

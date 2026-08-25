@@ -12,6 +12,20 @@ const WFP_EVENT_BUFFER_SIZE: usize = 65536;
 // BP-L13: Stats poll interval (iterations between stats prints)
 const WFP_STATS_POLL_INTERVAL: u64 = 300;
 
+/// Thread 3 entry point: WFP Kernel Traffic Sensor.
+///
+/// Reads network events from the AEGIS WFP kernel driver ring buffer via
+/// DeviceIoControl (IOCTL_AEGIS_READ_EVENTS). Each event is parsed as
+/// WfpEventHeader + payload, then forwarded to nids_analyze.inspect_packet().
+///
+/// If the WFP device is not available, retries every 10 seconds until the
+/// driver loads. If a packet matches a high-severity rule (severity >= 2),
+/// calls wfp_ioctl.block_ip() to install a kernel WFP block filter.
+///
+/// Parameters `allocator` and `address` are currently unused (reserved for
+/// future filtering features).
+///
+/// Loops forever until bridge_init.g_shutdown is set by CTRL+C handler.
 pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
     _ = address;
     _ = allocator;

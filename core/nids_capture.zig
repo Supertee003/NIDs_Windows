@@ -56,6 +56,16 @@ const PIPE_READMODE_MESSAGE = 0x00000002;
 const PIPE_WAIT = 0x00000000;
 const PIPE_UNLIMITED_INSTANCES = 255;
 
+/// Thread 2 entry point: Named Pipe IPC Sensor.
+///
+/// Creates a named pipe server (\\.\pipe\aegis_sensor_pipe) that accepts
+/// connections from Python sensor scripts. Payloads received via the pipe
+/// are forwarded to nids_analyze.inspect_packet() for 3-tier threat analysis.
+///
+/// Parameters `allocator` and `address` are currently unused (reserved for
+/// future filtering/logging features).
+///
+/// Loops forever until bridge_init.g_shutdown is set by CTRL+C handler.
 pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
     _ = allocator;
     _ = address;
@@ -65,7 +75,7 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
     std.log.info("[PIPE SENSOR] Initializing Named Pipe Server", .{});
     std.debug.print("[PIPE SENSOR] Initializing Named Pipe Server...\n", .{});
 
-        // BP19: Create admin-only security descriptor for pipe
+    // BP19: Create admin-only security descriptor for pipe
     var pipe_sd: ?*anyopaque = null;
     var sec_attr = AegisSecurityAttributes{
         .nLength = @sizeOf(AegisSecurityAttributes),
@@ -76,14 +86,14 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
         SDDL_ADMIN_ONLY, SDDL_REVISION, &pipe_sd, null,
     ) != 0) {
         sec_attr.lpSecurityDescriptor = pipe_sd;
-        std.log.info("[IPC SENSOR] Pipe ACL: Admin-only (SDDL)", .{});
-        std.debug.print("[IPC SENSOR] Pipe ACL: Admin-only (SDDL enforced)\n", .{});
+        std.log.info("[PIPE SENSOR] Pipe ACL: Admin-only (SDDL)", .{});
+        std.debug.print("[PIPE SENSOR] Pipe ACL: Admin-only (SDDL enforced)\n", .{});
     } else {
-        std.log.warn("[PIPE] Failed to set admin-only ACL - pipe may accept non-admin connections", .{});
-        std.debug.print("[IPC SENSOR] WARNING: Failed to set pipe ACL, using default\n", .{});
+        std.log.warn("[PIPE SENSOR] Failed to set admin-only ACL - pipe may accept non-admin connections", .{});
+        std.debug.print("[PIPE SENSOR] WARNING: Failed to set pipe ACL, using default\n", .{});
     }
     defer if (pipe_sd) |sd| { _ = LocalFree(sd); };
-const handle = CreateNamedPipeA(
+    const handle = CreateNamedPipeA(
         pipe_name,
         PIPE_ACCESS_DUPLEX,
         PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
@@ -95,7 +105,7 @@ const handle = CreateNamedPipeA(
     );
 
     if (handle == win.INVALID_HANDLE_VALUE) {
-        std.log.err("[IPC SENSOR] Failed to create Named Pipe", .{});
+        std.log.err("[PIPE SENSOR] Failed to create Named Pipe", .{});
         std.debug.print("[-] IPC Error: Failed to create Named Pipe.\n", .{});
         return;
     }
@@ -140,7 +150,7 @@ const handle = CreateNamedPipeA(
                 };
                 if (!is_safe) {
                     std.log.warn("[BLOCK] Threat blocked at Named Pipe sensor", .{});
-                std.debug.print("\x1b[31;1m[PIPE SENSOR] Threat blocked at Named Pipe!\x1b[0m\n", .{});
+                    std.debug.print("\x1b[31;1m[PIPE SENSOR] Threat blocked at Named Pipe!\x1b[0m\n", .{});
                 }
             }
 
