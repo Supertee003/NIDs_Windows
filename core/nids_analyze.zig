@@ -12,6 +12,7 @@ const net = std.net;
 const win = std.os.windows;
 const posix = std.posix;
 const bridge_init = @import("bridge_init.zig");
+const forensic_log = @import("forensic_log.zig");
 
 // =================================================================
 // [ WIN32 NAMED PIPE FFI ]
@@ -133,6 +134,8 @@ pub const PacketContext = struct {
     direction: u8 = 0,
     layer_id: u8 = 0,
     is_pipe: bool = false,
+    // IR-03: Session ID for cross-tier event correlation (Zig AC -> C++ bridge -> Python brain)
+    session_id: u64 = 0,
 };
 
 // =================================================================
@@ -286,6 +289,13 @@ const MAX_CONCURRENT_CONNECTIONS: u32 = 100;
 var connection_semaphore: std.Thread.Semaphore = .{ .permits = MAX_CONCURRENT_CONNECTIONS };
 var active_threads: std.atomic.Value(u32) = std.atomic.Value(u32).init(0);
 pub var g_analyze_errors: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+// IR-10: Per-class error counters (was single g_analyze_errors mixing 8+ error types)
+pub var g_conn_rejected_rate_limit: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+pub var g_conn_rejected_acl: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+pub var g_conn_rejected_sema: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+pub var g_analyze_panic: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+pub var g_oversized_read: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+pub var g_thread_spawn_fail: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 var g_total_connections: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 // BP179: Global total bytes processed counter
 var g_total_bytes: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
@@ -768,6 +778,8 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
         std.log.info("[MATCH] {s} (severity={s}, action={s}, payload={d}B)", .{
             rule.name, rule.severity, rule.action, data.len,
         });
+        // IR-01/IR-08: Write structured forensic log for MATCH events
+        forensic_log.logMatch(rule.name, ctx.source_ip, ctx.source_port, ctx.session_id, g_ruleset_version.load(.acquire), data);
 
         if (std.mem.eql(u8, rule.action, "Block")) {
             std.debug.print("\x1b[31;1m[ANALYZE] !!! BLOCK !!! {s}\x1b[0m\n", .{rule.name});
@@ -779,6 +791,8 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
                 (_log_ip >> 24) & 0xFF, (_log_ip >> 16) & 0xFF,
                 (_log_ip >> 8) & 0xFF, _log_ip & 0xFF, ctx.source_port,
             });
+            // IR-01: Write CRITICAL forensic log for BLOCK events (with fsync for durability)
+            forensic_log.logBlock(rule.name, ctx.source_ip, ctx.source_port, ctx.session_id, g_ruleset_version.load(.acquire), data);
             return false;
         }
 
@@ -805,6 +819,8 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
         pushForwardedEvent(ctx, std.math.cast(u32, data.len) orelse ANALYZE_MAX_PAYLOAD);
         // BP194: Track forwarded packets for operational visibility
         _ = g_total_forwarded.fetchAdd(1, .relaxed);
+        // IR-01: Write forensic log for FORWARD events (info level, no fsync)
+        forensic_log.logForward(ctx.source_ip, ctx.source_port, ctx.session_id, data);
 
         return true;
     }
@@ -837,6 +853,7 @@ fn handle_pipe_client(hPipe: win.HANDLE, allocator: std.mem.Allocator) void {
     const ctx = PacketContext{
         .is_pipe = true,
         .layer_id = 3,
+        .session_id = forensic_log.nextSessionId(), // IR-03: session ID for correlation
     };
 
     var buf: [PIPE_BUFFER_SIZE]u8 = undefined;
@@ -1131,6 +1148,7 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
         .protocol = IPPROTO_TCP, // BP-M15: named constant (was magic 6)
         .layer_id = 0,
         .is_pipe = false,
+        .session_id = forensic_log.nextSessionId(), // IR-03: session ID for correlation
     };
 
     var buf: [TCP_BUFFER_SIZE]u8 = undefined;

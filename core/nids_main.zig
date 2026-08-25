@@ -18,6 +18,7 @@ const windows_capture = @import("windows_capture.zig");
 const nids_capture = @import("nids_capture.zig");
 const minifilter_reader = @import("minifilter_reader.zig");
 const pipe_monitor = @import("pipe_monitor.zig");
+const forensic_log = @import("forensic_log.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -29,6 +30,10 @@ pub fn main() !void {
             std.log.err("[MAIN] Failed to create logs dir: {}", .{err});
         }
     };
+
+    // IR-01: Initialize persistent forensic logger (logs/aegis_core.ndjson)
+    forensic_log.init();
+    defer forensic_log.shutdown();
 
     // BP-I3: Use AEGIS_VERSION constant from bridge_init (was hardcoded "v2.1")
     std.log.info("[MAIN] AEGIS NIDS {s} - 5-Thread Architecture", .{bridge_init.AEGIS_VERSION});

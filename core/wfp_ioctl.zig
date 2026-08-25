@@ -13,6 +13,39 @@
 const std = @import("std");
 
 // ============================================================
+// IR-02: Persist blocked IPs to logs/blocked_ips.json
+// Allows IR analysts to enumerate blocked IPs after restart
+// ============================================================
+
+fn persistBlockedIps() void {
+    const file = std.fs.cwd().createFile("logs\\blocked_ips.json", .{ .truncate = true }) catch return;
+    defer file.close();
+
+    g_blocked_lock.lock();
+    defer g_blocked_lock.unlock();
+
+    var buf: [4096]u8 = undefined;
+    var fbs = std.io.fixedBufferStream(&buf);
+    const writer = fbs.writer();
+
+    writer.print("[", .{}) catch return;
+    var i: u32 = 0;
+    while (i < g_blocked_count) : (i += 1) {
+        const ip = g_blocked_ips[i];
+        const a = (ip >> 24) & 0xFF;
+        const b = (ip >> 16) & 0xFF;
+        const c = (ip >> 8) & 0xFF;
+        const d = ip & 0xFF;
+        if (i > 0) writer.print(",", .{}) catch return;
+        writer.print("\"{d}.{d}.{d}.{d}\"", .{ a, b, c, d }) catch return;
+    }
+    writer.print("]\n", .{}) catch return;
+
+    const written = fbs.getWritten();
+    _ = file.writeAll(written) catch return;
+}
+
+// ============================================================
 // IOCTL Code Constants (must match aegis_wfp.h CTL_CODE macro)
 // ============================================================
 // CTL_CODE(DeviceType, Function, Method, Access)
@@ -240,6 +273,9 @@ pub fn block_ip(ipv4: u32) bool {
         std.log.warn("[WFP] Blocked IP table full ({} entries), tracking overflow", .{MAX_BLOCKED_IPS});
     }
     g_blocked_lock.unlock();
+
+    // IR-02: Persist blocked IPs to logs/blocked_ips.json for IR analysts
+    persistBlockedIps();
 
     // Network byte order: extract MSB-first for human-readable IP
     const d = (ipv4 >> 0) & 0xFF;
