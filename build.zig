@@ -62,6 +62,7 @@ pub fn build(b: *std.Build) void {
         "core/nose_contract.zig",
         "core/detection_interface.zig",
         "core/policy_contract.zig",
+        "core/golden_path_test.zig",
     };
 
     for (test_files) |test_file| {

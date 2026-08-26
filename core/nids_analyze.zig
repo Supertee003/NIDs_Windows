@@ -13,6 +13,10 @@ const win = std.os.windows;
 const posix = std.posix;
 const bridge_init = @import("bridge_init.zig");
 const forensic_log = @import("forensic_log.zig");
+// Phase 29: Blueprint modules
+const canonical = @import("canonical_event.zig");
+const detection = @import("detection_interface.zig");
+const policy = @import("policy_contract.zig");
 
 // =================================================================
 // [ WIN32 NAMED PIPE FFI ]
@@ -383,6 +387,33 @@ var g_start_time_ns: i64 = 0;
 var g_rejected_connections: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 // BP223: TCP port configurable via AEGIS_TCP_PORT env var (default 12345)
 var AEGIS_TCP_PORT: u16 = 12345;
+
+// Phase 29: Blueprint Detection Manager + Policy Engine + PEP
+var g_detection_mgr: detection.DetectionManager = undefined;
+var g_policy_engine: policy.PolicyEngine = undefined;
+var g_pep: policy.PEP = undefined;
+var g_blueprint_initialized: bool = false;
+var g_rust_shield_detections: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+
+/// Phase 29: Rust Shield scan function (Tier-3 behavioral detector).
+/// Bridges bridge_init.validatePayloadSafety() to the Detection Interface.
+fn rustShieldScan(payload: []const u8, ctx: *const canonical.CanonicalEvent) detection.DetectionResult {
+    _ = ctx;
+    // Call Rust Shield via bridge_init
+    if (!bridge_init.validatePayloadSafety(payload.ptr, payload.len)) {
+        _ = g_rust_shield_detections.fetchAdd(1, .monotonic);
+        // Shield detected unsafe payload — report as high-severity match
+        return .{
+            .verdict = .match_alert,
+            .rule_id = 0x52555354, // "RUST"
+            .rule_hash = 0x52555354,
+            .severity = 2, // High
+            .rule_name = "Rust Shield Behavioral",
+            .ruleset_version = g_ruleset_version.load(.acquire),
+        };
+    }
+    return detection.DetectionResult.noMatch();
+}
 
 // BP162: Ruleset version counter (incremented on each successful reload)
 var g_ruleset_version: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
@@ -1844,13 +1875,15 @@ fn bridgeStatusReporter() void {
         }
         // BP221: Key periodic metrics via std.log for release-build visibility
         // BP231: Added rej={d} for security rejection visibility
-        std.log.info("[STATUS] threads={d} conn={d} errors={d} rej={d} matches={d} fwd={d} det={d}%", .{
+        // Phase 29: Added rust= for Rust Shield detections
+        std.log.info("[STATUS] threads={d} conn={d} errors={d} rej={d} matches={d} fwd={d} rust={d} det={d}%", .{
             active_threads.load(.acquire),
             g_total_connections.load(.acquire),
             g_analyze_errors.load(.relaxed),
             g_rejected_connections.load(.relaxed),
             g_total_matches.load(.relaxed),
             g_total_forwarded.load(.relaxed),
+            g_rust_shield_detections.load(.relaxed),
             _det_rate,
         });
         std.debug.print("  ---\n", .{});
@@ -1931,6 +1964,24 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
     // BP222: Startup marker visible in release builds
     std.log.info("[INIT] AEGIS Core 3-Tier Engine starting", .{});
     g_start_time_ns = std.time.nanoTimestamp();
+
+    // Phase 29: Initialize Blueprint Detection Manager + Policy Engine + PEP + Rust Shield
+    g_detection_mgr = detection.DetectionManager.init();
+    g_policy_engine = policy.PolicyEngine.init();
+    g_pep = policy.PEP.init();
+    // Register default policy rules
+    _ = g_policy_engine.registerRule(.{ .min_severity = 3, .required_verdict = .match_block, .action = .block, .description = "Block Critical severity" });
+    _ = g_policy_engine.registerRule(.{ .min_severity = 2, .required_verdict = .match_block, .action = .block, .description = "Block High severity" });
+    _ = g_policy_engine.registerRule(.{ .min_severity = 1, .required_verdict = .match_alert, .action = .alert, .description = "Alert Medium+ severity" });
+    // Phase 29: Register Rust Shield as Tier-3 detector
+    _ = g_detection_mgr.register(.{
+        .name = "Tier-3 Rust Shield",
+        .detector_type = .tier3_behavioral,
+        .is_active = true,
+        .scan_fn = &rustShieldScan,
+    });
+    g_blueprint_initialized = true;
+    std.log.info("[INIT] Blueprint Detection+Policy+PEP+RustShield initialized", .{});
 
     // P-07: Initialize rate-limit hash map (was fixed-size array)
     initRateLimitTable(allocator);
