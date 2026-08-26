@@ -103,6 +103,61 @@ var g_brain_spool_tail: usize = 0;
 var g_brain_spool_count: usize = 0;
 var g_brain_spool_lock: std.Thread.Mutex = .{};
 pub var g_brain_dropped_events: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+var g_spool_drain_running: bool = false;
+
+/// GAP-3: Background thread that drains the spool queue.
+/// Retries failed UDP sends every 100ms until queue is empty.
+/// Exits when shutdown is requested or UDP becomes unavailable.
+fn spoolDrainThread() void {
+    std.log.info("[BRAIN] Spool drain thread started", .{});
+    defer std.log.info("[BRAIN] Spool drain thread exiting", .{});
+
+    while (true) {
+        if (g_shutdown.load(.seq_cst)) break;
+        if (!g_udp_available) break;
+
+        // Pop one event from spool (FIFO)
+        var msg_to_send: ?[]const u8 = null;
+        {
+            g_brain_spool_lock.lock();
+            defer g_brain_spool_lock.unlock();
+
+            if (g_brain_spool_count > 0) {
+                msg_to_send = g_brain_spool[g_brain_spool_tail];
+                g_brain_spool[g_brain_spool_tail] = null;
+                g_brain_spool_tail = (g_brain_spool_tail + 1) % BRAIN_SPOOL_MAX;
+                g_brain_spool_count -= 1;
+            }
+        }
+
+        if (msg_to_send) |msg| {
+            // Try to send
+            const send_result = posix.sendto(g_udp_sock, msg, 0, &g_udp_addr.any, g_udp_addr.getOsSockLen());
+            if (send_result) |_| {
+                // Success - free the message
+                g_brain_allocator.free(msg);
+            } else |_| {
+                // Still failing - put it back at the head and wait
+                g_brain_spool_lock.lock();
+                g_brain_spool_head = (g_brain_spool_head + BRAIN_SPOOL_MAX - 1) % BRAIN_SPOOL_MAX;
+                g_brain_spool[g_brain_spool_head] = msg;
+                g_brain_spool_count += 1;
+                g_brain_spool_lock.unlock();
+                std.time.sleep(1 * std.time.ns_per_s); // Wait 1s before retry
+            }
+        } else {
+            // Queue empty - short sleep
+            std.time.sleep(100 * std.time.ns_per_ms);
+        }
+    }
+}
+
+// Allocator for spool messages (uses GPA from main)
+var g_brain_allocator: std.mem.Allocator = undefined;
+
+pub fn setBrainAllocator(allocator: std.mem.Allocator) void {
+    g_brain_allocator = allocator;
+}
 
 // ============================================================
 // 1. WFP IOCTL Bridge (M2)
@@ -340,6 +395,16 @@ pub fn initAll() void {
     // 4. UDP Brain Logger
     initUdpBrain();
 
+    // GAP-3: Start spool drain thread (retries failed UDP sends)
+    if (g_udp_available) {
+        const drain_thread = std.Thread.spawn(.{}, spoolDrainThread, .{}) catch |err| {
+            std.log.warn("[INIT] Spool drain thread failed to spawn: {}", .{err});
+        };
+        if (drain_thread) |_| {
+            g_spool_drain_running = true;
+        }
+    }
+
     // Summary
     const active = @as(u32, @intFromBool(g_state.wfp_ioctl)) +
         @as(u32, @intFromBool(g_state.cpp_bridge)) +
@@ -441,8 +506,8 @@ pub fn sendToBrain(allocator: std.mem.Allocator, comptime T: type, msg: T) void 
         g_brain_spool_lock.lock();
         defer g_brain_spool_lock.unlock();
         if (g_brain_spool_count < BRAIN_SPOOL_MAX) {
-            // Copy message into spool (truncating if too large)
-            const msg_copy = allocator.dupe(u8, string.items) catch return;
+            // Copy message into spool (uses global brain allocator for drain thread)
+            const msg_copy = g_brain_allocator.dupe(u8, string.items) catch return;
             g_brain_spool[g_brain_spool_head] = msg_copy;
             g_brain_spool_head = (g_brain_spool_head + 1) % BRAIN_SPOOL_MAX;
             g_brain_spool_count += 1;

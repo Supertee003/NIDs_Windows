@@ -31,14 +31,36 @@ except ImportError:
     print("[AEGIS BRAIN] Warning: aegis_bridge_ctypes not found — running without Bridge")
     BRIDGE_AVAILABLE = False
 
-# ⚡ Import Cython Hotspots
+# ⚡ Import Cython Hotspots (Phase 19 GAP-1: Wire Phase 17 module)
+# Old: tried pyximport with broken brain/cython/aegis_hotspot.pyx (never compiled)
+# New: uses compiled aegis_brain_cython module (Phase 17)
 try:
-    import pyximport; pyximport.install(setup_args={"script_args":["--compiler=msvc"], "options":{"build_ext":{"compiler":"msvc"}}})
-    from cython.aegis_hotspot import scan_nop_sled, scan_shellcode_markers, detect_repeated_byte
-    CYTHON_AVAILABLE = True
+    from aegis_brain_cython.bridge import (
+        scan_payload as cython_scan_payload,
+        get_severity as cython_get_severity,
+        compute_defcon as cython_compute_defcon,
+        is_available as cython_is_available,
+    )
+    CYTHON_AVAILABLE = cython_is_available()
+    if CYTHON_AVAILABLE:
+        print("[AEGIS BRAIN] Cython acceleration active (aegis_brain_cython.fast_scan)")
 except ImportError as e:
-    print(f"[AEGIS BRAIN] Warning: Cython aegis_hotspot not found ({e}) — falling back to pure Python regex only")
+    print(f"[AEGIS BRAIN] Warning: aegis_brain_cython not found ({e}) — using pure Python")
     CYTHON_AVAILABLE = False
+    # Fallback stubs
+    def cython_scan_payload(payload, patterns):
+        for i, p in enumerate(patterns):
+            if p in payload:
+                return (i, p)
+        return (-1, None)
+    def cython_get_severity(s):
+        return {"Low": 0, "Medium": 1, "High": 2, "Critical": 3}.get(s, -1)
+    def cython_compute_defcon(c, b, m, f):
+        if c >= 1: return 1
+        if b >= 3: return 2
+        if m >= 10: return 3
+        if m >= 1: return 4
+        return 5
 
 LOG_FILE = "logs/anomalous.json"
 RULES_FILE = os.path.join(os.path.dirname(__file__), "..", "config", "Rules.json")

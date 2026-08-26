@@ -1506,35 +1506,43 @@ const IpRateEntry = struct {
 };
 
 const ip_rate_zero: IpRateEntry = .{ .ip = 0, .count = 0, .window_start_ns = 0 };
-var ip_rate_table: [RATE_LIMIT_MAX_IPS]IpRateEntry = [_]IpRateEntry{ip_rate_zero} ** RATE_LIMIT_MAX_IPS;
+// P-07 FIX: Replaced fixed-size array with std.AutoHashMap for O(1) lookup
+// (was: fixed array of 128 slots, fail-open when full)
+var ip_rate_table: std.AutoHashMap(u32, IpRateEntry) = undefined;
+var ip_rate_table_initialized: bool = false;
+var ip_rate_table_lock: std.Thread.Mutex = .{};
+
+fn initRateLimitTable(allocator: std.mem.Allocator) void {
+    ip_rate_table = std.AutoHashMap(u32, IpRateEntry).init(allocator);
+    ip_rate_table_initialized = true;
+}
 
 fn checkIpRateLimit(raw_addr: u32) bool {
+    if (!ip_rate_table_initialized) return true; // fail-open if not initialized
     const ip = std.mem.bigToNative(u32, raw_addr);
     const now = std.time.nanoTimestamp();
-    var free_slot: ?usize = null;
-    for (0..RATE_LIMIT_MAX_IPS) |i| {
-        if (ip_rate_table[i].count > 0) {
-            // BP186: Clean expired entries (opportunistic, reclaims slots for other IPs)
-            if (now - ip_rate_table[i].window_start_ns > RATE_LIMIT_WINDOW_NS) {
-                ip_rate_table[i] = ip_rate_zero;
-                continue;
-            }
-            if (ip_rate_table[i].ip == ip) {
-                ip_rate_table[i].count += 1;
-                return ip_rate_table[i].count <= RATE_LIMIT_MAX_CONNS;
-            }
+
+    ip_rate_table_lock.lock();
+    defer ip_rate_table_lock.unlock();
+
+    // Check if IP exists in hash map
+    if (ip_rate_table.getPtr(ip)) |entry| {
+        // BP186: Clean expired entries
+        if (now - entry.window_start_ns > RATE_LIMIT_WINDOW_NS) {
+            entry.* = .{ .ip = ip, .count = 1, .window_start_ns = now };
+            return true;
         }
-        if (ip_rate_table[i].count == 0 and free_slot == null) {
-            free_slot = i;
-        }
+        entry.count += 1;
+        return entry.count <= RATE_LIMIT_MAX_CONNS;
     }
-    if (free_slot) |slot| {
-        ip_rate_table[slot] = .{ .ip = ip, .count = 1, .window_start_ns = now };
-        return true;
-    }
-    // BP191: Log when rate limit table is exhausted (fail-open security decision)
-    std.log.warn("[RATELIMIT] IP table full ({d} entries), fail-open for new IP", .{RATE_LIMIT_MAX_IPS});
-    return true; // Table full, fail-open
+
+    // New IP - add to map (no fail-open, hash map grows dynamically)
+    ip_rate_table.put(ip, .{ .ip = ip, .count = 1, .window_start_ns = now }) catch {
+        // OOM - fail-closed for safety (P-07: was fail-open)
+        std.log.warn("[RATELIMIT] HashMap allocation failed, rejecting connection", .{});
+        return false;
+    };
+    return true;
 }
 
 // BP153: TCP source IP allowlist -- only allow loopback and RFC1918 private ranges
@@ -1880,6 +1888,9 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
     // BP222: Startup marker visible in release builds
     std.log.info("[INIT] AEGIS Core 3-Tier Engine starting", .{});
     g_start_time_ns = std.time.nanoTimestamp();
+
+    // P-07: Initialize rate-limit hash map (was fixed-size array)
+    initRateLimitTable(allocator);
     std.debug.print("[INIT] All subsystems ready. Entering analysis loop.\n", .{});
 
     // Load rules from Rules.json

@@ -159,12 +159,82 @@ def trigger_reload():
     return 0
 
 
+# ============================================================
+# OPS-2: HMAC-SHA256 tamper-evidence generator (IR-13)
+# ============================================================
+
+def generate_hmac():
+    """Generate HMAC-SHA256 of Rules.json and write to Rules.json.hmac."""
+    import hashlib
+    import hmac as hmac_module
+
+    if not RULES_FILE.exists():
+        print(f"[ERROR] Rules file not found: {RULES_FILE}", file=sys.stderr)
+        return 1
+
+    # Read HMAC key from env or use default
+    hmac_key = os.getenv("AEGIS_RULES_HMAC_KEY", "AEGIS_NIDS_INTEGRITY_KEY_v1")
+    if not os.getenv("AEGIS_RULES_HMAC_KEY"):
+        print("[WARN] Using default HMAC key (set AEGIS_RULES_HMAC_KEY env var for production)", file=sys.stderr)
+
+    # Read Rules.json content
+    content = RULES_FILE.read_bytes()
+
+    # Compute HMAC-SHA256
+    hmac_obj = hmac_module.new(hmac_key.encode('utf-8'), content, hashlib.sha256)
+    hmac_hex = hmac_obj.hexdigest()
+
+    # Write to Rules.json.hmac
+    hmac_file = RULES_FILE.parent / "Rules.json.hmac"
+    hmac_file.write_text(hmac_hex)
+
+    print(f"[OK] HMAC-SHA256 generated: {hmac_hex[:16]}...")
+    print(f"     Written to: {hmac_file}")
+    print(f"     Key source: {'env var' if os.getenv('AEGIS_RULES_HMAC_KEY') else 'default'}")
+    return 0
+
+
+def verify_hmac():
+    """Verify HMAC-SHA256 of Rules.json against Rules.json.hmac."""
+    import hashlib
+    import hmac as hmac_module
+
+    if not RULES_FILE.exists():
+        print(f"[ERROR] Rules file not found: {RULES_FILE}", file=sys.stderr)
+        return 1
+
+    hmac_file = RULES_FILE.parent / "Rules.json.hmac"
+    if not hmac_file.exists():
+        print(f"[ERROR] HMAC file not found: {hmac_file}", file=sys.stderr)
+        print("       Run: python aegis_rules.py --sign", file=sys.stderr)
+        return 1
+
+    hmac_key = os.getenv("AEGIS_RULES_HMAC_KEY", "AEGIS_NIDS_INTEGRITY_KEY_v1")
+    content = RULES_FILE.read_bytes()
+    stored_hmac = hmac_file.read_text().strip()
+
+    # Compute HMAC-SHA256
+    hmac_obj = hmac_module.new(hmac_key.encode('utf-8'), content, hashlib.sha256)
+    computed_hmac = hmac_obj.hexdigest()
+
+    if stored_hmac == computed_hmac:
+        print(f"[OK] HMAC verified: {computed_hmac[:16]}...")
+        return 0
+    else:
+        print(f"[FAIL] HMAC MISMATCH - TAMPER DETECTED!")
+        print(f"       Stored:   {stored_hmac[:16]}...")
+        print(f"       Computed: {computed_hmac[:16]}...")
+        return 1
+
+
 def main():
     parser = argparse.ArgumentParser(description="AEGIS NIDS Rule Management CLI")
     parser.add_argument("--detail", metavar="NAME", help="Show detailed rule info")
     parser.add_argument("--stats", action="store_true", help="Show rule match statistics")
     parser.add_argument("--validate", action="store_true", help="Validate rule file syntax")
     parser.add_argument("--reload", action="store_true", help="Trigger hot-reload via mtime touch")
+    parser.add_argument("--sign", action="store_true", help="Generate HMAC-SHA256 for tamper-evidence (OPS-2/IR-13)")
+    parser.add_argument("--verify", action="store_true", help="Verify Rules.json HMAC signature")
     args = parser.parse_args()
 
     if args.detail:
@@ -175,6 +245,10 @@ def main():
         return validate_rules()
     if args.reload:
         return trigger_reload()
+    if args.sign:
+        return generate_hmac()
+    if args.verify:
+        return verify_hmac()
 
     return list_rules()
 

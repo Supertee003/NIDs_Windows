@@ -42,6 +42,9 @@ pub fn main() !void {
     // BP-I3: Use AEGIS_VERSION constant from bridge_init (was hardcoded "v2.1")
     std.log.info("[MAIN] AEGIS NIDS {s} - 5-Thread Architecture", .{bridge_init.AEGIS_VERSION});
 
+    // GAP-3: Set brain allocator for spool queue drain thread
+    bridge_init.setBrainAllocator(allocator);
+
     // Initialize all bridges (WFP, C++ IPC, Rust Shield, UDP Brain)
     bridge_init.initAll();
     defer bridge_init.shutdownAll();
