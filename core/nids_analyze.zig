@@ -271,7 +271,7 @@ fn computeRuleHash(pattern: []const u8) u64 {
 
     // Handle remaining bytes
     var last_block: u64 = (@as(u64, msg_len & 0xff) << 56);
-    var remaining = pattern[offset..];
+    const remaining = pattern[offset..];
     for (remaining, 0..) |b, i| last_block |= @as(u64, b) << @intCast(i * 8);
 
     v3 ^= last_block;
@@ -293,7 +293,7 @@ fn computeRuleHash(pattern: []const u8) u64 {
         v0 +%= v3; v3 = (v3 << 21) | (v3 >> 43); v3 ^= v0;
         v2 +%= v1; v1 = (v1 << 17) | (v1 >> 47); v1 ^= v2; v2 = (v2 << 32) | (v2 >> 32);
     }
-    hash = v0 ^% v1 ^% v2 ^% v3;
+    hash = v0 ^ v1 ^ v2 ^ v3;
     return hash;
 }
 
@@ -1062,6 +1062,7 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
 // =================================================================
 
 fn handle_pipe_client(hPipe: win.HANDLE, allocator: std.mem.Allocator) void {
+    _ = allocator; // reserved for future use
     const start_ns = std.time.nanoTimestamp();
     std.debug.print("  [PIPE] Session started\n", .{});
     // BP112: Pipe client connected log
@@ -1281,10 +1282,10 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
             std.debug.print("[PIPE] Admin client connected via named pipe\n", .{});
             std.log.info("[PIPE-LISTEN] Spawned handler thread", .{});
             std.log.info("[PIPE] Handling pipe client", .{});
-            const t = std.Thread.spawn(.{}, handle_pipe_client, .{ hPipe, allocator }) catch |err| {
-                std.debug.print("\x1b[33m[ANALYZE] Failed to spawn handle_pipe_client: {}\x1b[0m\n", .{err});
+            const t = std.Thread.spawn(.{}, handle_pipe_client, .{ hPipe, allocator }) catch |spawn_err| {
+                std.debug.print("\x1b[33m[ANALYZE] Failed to spawn handle_pipe_client: {}\x1b[0m\n", .{spawn_err});
                 // BP215: Thread spawn failure visible in release (resource exhaustion = potential DoS)
-                std.log.warn("[PIPE] Failed to spawn handler thread: {}", .{err});
+                std.log.warn("[PIPE] Failed to spawn handler thread: {}", .{spawn_err});
                 _ = g_analyze_errors.fetchAdd(1, .relaxed);
                 _ = DisconnectNamedPipe(hPipe);
                 win.CloseHandle(hPipe);
@@ -1303,6 +1304,8 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
 // =================================================================
 
 fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: std.mem.Allocator) void {
+    _ = allocator; // reserved for future use
+    _ = remote_addr; // already extracted via sockaddr cast above
     defer stream.close();
     defer connection_semaphore.post();
     // BP188: Release ordering ensures handler writes visible before decrement
@@ -1767,10 +1770,10 @@ fn bridgeStatusReporter() void {
         }
         // BP91: Error rate and connection rate
         // BP174: Consistent relaxed ordering for error counter reads
-        const errs: u64 = @intCast(g_analyze_errors.load(.relaxed));
+        const errs: u64 = @as(u64, g_analyze_errors.load(.relaxed));
         const err_per_min: u64 = if (up_s > 0) errs * 60 / up_s else 0;
         std.debug.print("  Error rate: ~{d} errors/min\n", .{err_per_min});
-        const conn_per_min: u64 = if (up_s > 0) @intCast(g_total_connections.load(.acquire)) * 60 / up_s else 0;
+        const conn_per_min: u64 = if (up_s > 0) @as(u64, g_total_connections.load(.acquire)) * 60 / up_s else 0;
         std.debug.print("  Conn rate: ~{d}/min\n", .{conn_per_min});
         // BP91: Total errors in periodic status
         std.debug.print("  Total errors: {d}\n", .{g_analyze_errors.load(.relaxed)});
@@ -1840,8 +1843,8 @@ fn bridgeStatusReporter() void {
     std.debug.print("  Analyze errors: {d}\n", .{g_analyze_errors.load(.relaxed)});
     // BP227: Security rejections in shutdown summary
     std.debug.print("  Security rejections: {d}\n", .{g_rejected_connections.load(.relaxed)});
-    const sh_conn: u64 = @intCast(g_total_connections.load(.acquire));
-    const sh_err: u64 = @intCast(g_analyze_errors.load(.relaxed));
+    const sh_conn: u64 = @as(u64, g_total_connections.load(.acquire));
+    const sh_err: u64 = @as(u64, g_analyze_errors.load(.relaxed));
     const clean_rate: u64 = if (sh_conn > sh_err) (sh_conn - sh_err) * 100 / sh_conn else 0;
     std.debug.print("  Clean rate: {d}%\n", .{clean_rate});
     std.debug.print("  Active threads at exit: {d}\n", .{active_threads.load(.seq_cst)});

@@ -142,7 +142,7 @@ extern "kernel32" fn GetLastError() DWORD;
 
 const MAX_BLOCKED_IPS = 256;
 
-var g_blocked_ips: [MAX_BLOCKED_IPS]u32 = @splat(0);
+var g_blocked_ips: [MAX_BLOCKED_IPS]u32 = [_]u32{0} ** MAX_BLOCKED_IPS;
 var g_blocked_count: u32 = 0;
 var g_blocked_lock: std.Thread.Mutex = .{};
 
@@ -405,22 +405,24 @@ pub fn get_stats() ?WfpRingStats {
 
 /// Format an IPv4 (network byte order) as "a.b.c.d" string.
 pub fn formatIpv4(ipv4: u32, buf: []u8) []const u8 {
-    const a = (ipv4 >> 0) & 0xFF;
-    const b = (ipv4 >> 8) & 0xFF;
-    const c = (ipv4 >> 16) & 0xFF;
-    const d = (ipv4 >> 24) & 0xFF;
+    // FIX: MSB-first extraction (was LSB-first, producing reversed IP)
+    const a = (ipv4 >> 24) & 0xFF;
+    const b = (ipv4 >> 16) & 0xFF;
+    const c = (ipv4 >> 8) & 0xFF;
+    const d = (ipv4 >> 0) & 0xFF;
     return std.fmt.bufPrint(buf, "{}.{}.{}.{}", .{ a, b, c, d }) catch "?.?.?.?";
 }
 
 /// Parse "a.b.c.d" string to network-byte-order u32.
 pub fn parseIpv4(str: []const u8) ?u32 {
-    var parts: [4]u8 = undefined;
+    var parts: [4]u16 = undefined; // FIX: u16 to avoid overflow on "256"
     var part_idx: usize = 0;
-    var current: u8 = 0;
+    var current: u16 = 0;
 
     for (str) |ch| {
         if (ch == '.') {
             if (part_idx >= 3) return null;
+            if (current > 255) return null;
             parts[part_idx] = current;
             part_idx += 1;
             current = 0;
@@ -432,13 +434,14 @@ pub fn parseIpv4(str: []const u8) ?u32 {
         }
     }
     if (part_idx != 3) return null;
+    if (current > 255) return null;
     parts[3] = current;
 
-    // Network byte order: d.c.b.a as u32
-    return @as(u32, parts[0]) |
-        (@as(u32, parts[1]) << 8) |
-        (@as(u32, parts[2]) << 16) |
-        (@as(u32, parts[3]) << 24);
+    // Network byte order (MSB first): a.b.c.d → (a<<24)|(b<<16)|(c<<8)|d
+    return (@as(u32, @intCast(parts[0])) << 24) |
+        (@as(u32, @intCast(parts[1])) << 16) |
+        (@as(u32, @intCast(parts[2])) << 8) |
+        @as(u32, @intCast(parts[3]));
 }
 
 // ============================================================

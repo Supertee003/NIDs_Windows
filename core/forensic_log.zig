@@ -118,10 +118,9 @@ pub const Timestamp = struct {
 // ============================================================
 // IR-06: Log rotation (100MB or 24h, keep 7 files)
 // ============================================================
+// Note: LOG_MAX_FILE_SIZE and LOG_MAX_FILES already declared at top of file
 
-const LOG_MAX_FILE_SIZE: u64 = 100 * 1024 * 1024; // 100 MB
 const LOG_MAX_AGE_S: u64 = 24 * 60 * 60; // 24 hours
-const LOG_MAX_FILES: u32 = 7; // Keep 7 rotated files
 
 var g_last_rotation_check_ns: i128 = 0;
 const ROTATION_CHECK_INTERVAL_NS: i128 = 60 * std.time.ns_per_s; // Check every 60s
@@ -147,7 +146,7 @@ fn checkRotation(handle: win.HANDLE) void {
     g_log_handle = null;
 
     // Shift older files: .6 -> .7, .5 -> .6, ..., .1 -> .2
-    var i: u32 = LOG_MAX_FILES;
+    var i: u32 = @intCast(LOG_MAX_FILES);
     while (i > 1) : (i -= 1) {
         var old_buf: [256]u8 = undefined;
         var new_buf: [256]u8 = undefined;
@@ -162,8 +161,13 @@ fn checkRotation(handle: win.HANDLE) void {
     // Reopen new file
     const path_w = std.unicode.utf8ToUtf16LeStringLiteral("logs\\aegis_core.ndjson");
     const new_handle = win.kernel32.CreateFileW(
-        path_w, win.GENERIC_WRITE, win.FILE_SHARE_READ, null,
-        win.OPEN_ALWAYS, win.FILE_ATTRIBUTE_NORMAL, null,
+        path_w,
+        win.GENERIC_WRITE,
+        win.FILE_SHARE_READ,
+        null,
+        win.OPEN_ALWAYS,
+        win.FILE_ATTRIBUTE_NORMAL,
+        null,
     );
     if (new_handle != win.INVALID_HANDLE_VALUE) {
         g_log_handle = new_handle;

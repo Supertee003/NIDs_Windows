@@ -108,7 +108,7 @@ extern "fltlib" fn FilterCloseCommunicationPort(hPort: HANDLE) HRESULT;
 
 // Port name as UTF-16LE
 const MINIFILTER_PORT = [_:0]u16{
-    '\', '\', 'A', 'e', 'g', 'i', 's', 'M', 'i', 'n', 'i', 'f', 'i', 'l', 't', 'e', 'r', 'P', 'o', 'r', 't'
+    '\\', '\\', 'A', 'e', 'g', 'i', 's', 'M', 'i', 'n', 'i', 'f', 'i', 'l', 't', 'e', 'r', 'P', 'o', 'r', 't'
 };
 
 // BP11: Verify port name starts with backslash at compile time

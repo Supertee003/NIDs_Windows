@@ -143,7 +143,6 @@ test "OVERLAPPED struct size matches Win32 ABI" {
     // Win32 OVERLAPPED is 32 bytes on 64-bit Windows:
     //   internal (8) + internal_high (8) + offset (4) + offset_high (4) + padding (4) + event (8)
     // Zig's extern struct should match exactly.
-    const expected_size = @as(usize, if (@sizeOf(usize) == 8) 40 else 20);
     try std.testing.expect(@sizeOf(OVERLAPPED) >= 16);
 }
 

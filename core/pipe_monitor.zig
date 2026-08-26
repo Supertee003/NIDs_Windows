@@ -55,7 +55,7 @@ extern "kernel32" fn FindNextFileW(hFindFile: HANDLE, lpFindFileData: *WIN32_FIN
 extern "kernel32" fn FindClose(hFindFile: HANDLE) i32;
 
 const PIPE_SEARCH_PATH = [_:0]u16{
-    '\', '\', '.', '\', 'p', 'i', 'p', 'e', '\', '*'
+    '\\', '\\', '.', '\\', 'p', 'i', 'p', 'e', '\\', '*'
 };
 
 // ====== Pipe Statistics ======
