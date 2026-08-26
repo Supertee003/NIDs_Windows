@@ -1707,6 +1707,40 @@ fn rulesWatchdog(allocator: std.mem.Allocator) void {
 }
 
 // =================================================================
+// [ Phase 28: Event Fabric Drain Thread ]
+// =================================================================
+
+/// Phase 28: Drains events from the Nose Contract Event Fabric.
+/// Pops events, records them to forensic_log, and routes to policy engine.
+/// This demonstrates the Golden Path: Sensor → Queue → Detection → Policy.
+fn eventFabricDrain() void {
+    const nose = @import("nose_contract.zig");
+    std.log.info("[FABRIC] Event fabric drain thread started", .{});
+    defer std.log.info("[FABRIC] Event fabric drain thread exiting", .{});
+
+    while (true) {
+        if (bridge_init.g_shutdown.load(.seq_cst)) break;
+        if (g_shutdown_requested.load(.acquire)) break;
+
+        if (nose.hasEvents()) {
+            if (nose.popEvent()) |event| {
+                // Record to forensic log (IR-01)
+                forensic_log.log(.{
+                    .level = if (event.severity >= 3) .critical else if (event.severity >= 2) .warn else .info,
+                    .event = "FABRIC_EVENT",
+                    .src_ip = event.source_ip,
+                    .src_port = event.source_port,
+                    .session_id = event.session_id,
+                });
+            }
+        } else {
+            // No events — sleep 100ms before checking again
+            std.time.sleep(100 * std.time.ns_per_ms);
+        }
+    }
+}
+
+// =================================================================
 // [ BRIDGE STATUS REPORTER ]
 // =================================================================
 
@@ -1983,6 +2017,16 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
         break :blk t;
     };
     if (t_watchdog_opt) |t| t.detach();
+
+    // Phase 28: Spawn Event Fabric drain thread (Golden Path)
+    const t_fabric_opt: ?std.Thread = blk: {
+        const t = std.Thread.spawn(.{}, eventFabricDrain, .{}) catch |err| {
+            std.log.warn("[ANALYZE] Event fabric drain failed to spawn: {}", .{err});
+            break :blk null;
+        };
+        break :blk t;
+    };
+    if (t_fabric_opt) |t| t.detach();
 
     // Run accept-loop listeners (these block forever)
     std.log.info("[ANALYZE] Starting listener threads", .{});

@@ -7,6 +7,8 @@ const std = @import("std");
 const bridge_init = @import("bridge_init.zig");
 const nids_analyze = @import("nids_analyze.zig");
 const wfp_ioctl = @import("wfp_ioctl.zig");
+// Phase 28: Blueprint Nose Contract for event submission
+const nose = @import("nose_contract.zig");
 
 const WFP_EVENT_BUFFER_SIZE: usize = 65536;
 // BP-L13: Stats poll interval (iterations between stats prints)
@@ -133,6 +135,23 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
 
             if (payload_end > payload_start) {
                 const payload = event_buf[payload_start..payload_end];
+
+                // Phase 28: Submit event to Event Fabric (Nose Contract)
+                {
+                    var sensor_event = nose.createEvent(.wfp_sensor);
+                    sensor_event.event_type = .forward;
+                    sensor_event.source_ip = ctx.source_ip;
+                    sensor_event.source_port = ctx.source_port;
+                    sensor_event.payload_length = @intCast(payload.len);
+                    sensor_event.protocol = ctx.protocol;
+                    sensor_event.layer_id = ctx.layer_id;
+                    sensor_event.timestamp_ms = std.time.milliTimestamp();
+                    const submit_result = nose.submitEvent(sensor_event);
+                    if (submit_result != .accepted) {
+                        std.log.warn("[WFP SENSOR] Event Fabric submit failed: {s}", .{@tagName(submit_result)});
+                    }
+                }
+
                 const is_safe = nids_analyze.inspect_packet(payload, ctx) catch |err| blk: {
                     std.log.warn("[WFP SENSOR] Analyze error: {} - fail-open", .{err});
                     break :blk true;

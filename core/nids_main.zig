@@ -19,6 +19,8 @@ const nids_capture = @import("nids_capture.zig");
 const minifilter_reader = @import("minifilter_reader.zig");
 const pipe_monitor = @import("pipe_monitor.zig");
 const forensic_log = @import("forensic_log.zig");
+// Phase 28: Blueprint Nose Contract + Event Fabric
+const nose = @import("nose_contract.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -38,6 +40,17 @@ pub fn main() !void {
     // IR-01: Initialize persistent forensic logger (logs/aegis_core.ndjson)
     forensic_log.init();
     defer forensic_log.shutdown();
+
+    // Phase 28: Initialize Event Fabric (Nose Contract, AEGIS-006)
+    nose.initFabric(allocator, .{
+        .capacity_per_priority = 256,
+        .validate_on_submit = true,
+    }) catch |err| {
+        std.log.err("[MAIN] Failed to init Event Fabric: {}", .{err});
+        return err;
+    };
+    defer nose.shutdownFabric(allocator);
+    std.log.info("[MAIN] Event Fabric initialized (Nose Contract active)", .{});
 
     // BP-I3: Use AEGIS_VERSION constant from bridge_init (was hardcoded "v2.1")
     std.log.info("[MAIN] AEGIS NIDS {s} - 5-Thread Architecture", .{bridge_init.AEGIS_VERSION});

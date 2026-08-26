@@ -65,6 +65,8 @@ const ERROR_IO_PENDING = win32_io.ERROR_IO_PENDING;
 const WAIT_OBJECT_0 = win32_io.WAIT_OBJECT_0;
 const WAIT_TIMEOUT = win32_io.WAIT_TIMEOUT;
 const IO_POLL_TIMEOUT_MS = win32_io.IO_POLL_TIMEOUT_MS;
+// Phase 28: Blueprint Nose Contract for event submission
+const nose = @import("nose_contract.zig");
 
 /// Thread 2 entry point: Named Pipe IPC Sensor.
 ///
@@ -198,6 +200,20 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
                     .is_pipe = true,
                     .layer_id = 3,
                 };
+
+                // Phase 28: Submit event to Event Fabric (Nose Contract)
+                {
+                    var sensor_event = nose.createEvent(.pipe_sensor);
+                    sensor_event.event_type = .forward;
+                    sensor_event.payload_length = @intCast(payload.len);
+                    sensor_event.layer_id = 3;
+                    sensor_event.is_pipe = 1;
+                    sensor_event.timestamp_ms = std.time.milliTimestamp();
+                    const submit_result = nose.submitEvent(sensor_event);
+                    if (submit_result != .accepted) {
+                        std.log.warn("[PIPE SENSOR] Event Fabric submit failed: {s}", .{@tagName(submit_result)});
+                    }
+                }
 
                 const is_safe = nids_analyze.inspect_packet(payload, ctx) catch |analyze_err| blk: {
                     std.log.warn("[PIPE SENSOR] Analyze error: {} - fail-open", .{analyze_err});
