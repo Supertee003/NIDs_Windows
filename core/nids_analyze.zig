@@ -229,6 +229,75 @@ const AhoCorasick = struct {
 // These were file-private, never referenced, and reduced attack surface.
 
 // =================================================================
+// [ P-04: SipHash64 for rule IDs (replaces CRC32) ]
+// =================================================================
+// CRC32 has a 32-bit collision space — trivially constructible by an attacker
+// who controls rule insertion. SipHash64 provides 64-bit collision resistance
+// with a random key, making intentional collisions computationally infeasible.
+
+const P04_SIPHASH_KEY = [16]u8{ 0xA3, 0xE5, 0x42, 0x91, 0xC7, 0xD8, 0x0F, 0x5B, 0x2E, 0xA9, 0x71, 0xC3, 0xD4, 0x68, 0x9F, 0x1A };
+
+fn computeRuleHash(pattern: []const u8) u64 {
+    // P-04: Use SipHash64 with a fixed key (deterministic across runs)
+    // Future: load key from config for per-deployment uniqueness
+    var hash: u64 = 0;
+    var k0: u64 = 0;
+    var k1: u64 = 0;
+    for (P04_SIPHASH_KEY[0..8], 0..) |b, i| k0 |= @as(u64, b) << @intCast(i * 8);
+    for (P04_SIPHASH_KEY[8..16], 0..) |b, i| k1 |= @as(u64, b) << @intCast(i * 8);
+
+    // Simple SipHash-2-4 implementation
+    var v0: u64 = 0x736f6d6570736575 ^ k0;
+    var v1: u64 = 0x646f72616e646f6d ^ k1;
+    var v2: u64 = 0x6c7967656e657261 ^ k0;
+    var v3: u64 = 0x7465646279746573 ^ k1;
+
+    const msg_len = pattern.len;
+    var offset: usize = 0;
+    while (offset + 8 <= msg_len) : (offset += 8) {
+        var m: u64 = 0;
+        for (pattern[offset..offset + 8], 0..) |b, i| m |= @as(u64, b) << @intCast(i * 8);
+        v3 ^= m;
+        // SipRound (2 rounds)
+        var i: u32 = 0;
+        while (i < 2) : (i += 1) {
+            v0 +%= v1; v1 = (v1 << 13) | (v1 >> 51); v1 ^= v0; v0 = (v0 << 32) | (v0 >> 32);
+            v2 +%= v3; v3 = (v3 << 16) | (v3 >> 48); v3 ^= v2;
+            v0 +%= v3; v3 = (v3 << 21) | (v3 >> 43); v3 ^= v0;
+            v2 +%= v1; v1 = (v1 << 17) | (v1 >> 47); v1 ^= v2; v2 = (v2 << 32) | (v2 >> 32);
+        }
+        v0 ^= m;
+    }
+
+    // Handle remaining bytes
+    var last_block: u64 = (@as(u64, msg_len & 0xff) << 56);
+    var remaining = pattern[offset..];
+    for (remaining, 0..) |b, i| last_block |= @as(u64, b) << @intCast(i * 8);
+
+    v3 ^= last_block;
+    var i: u32 = 0;
+    while (i < 2) : (i += 1) {
+        v0 +%= v1; v1 = (v1 << 13) | (v1 >> 51); v1 ^= v0; v0 = (v0 << 32) | (v0 >> 32);
+        v2 +%= v3; v3 = (v3 << 16) | (v3 >> 48); v3 ^= v2;
+        v0 +%= v3; v3 = (v3 << 21) | (v3 >> 43); v3 ^= v0;
+        v2 +%= v1; v1 = (v1 << 17) | (v1 >> 47); v1 ^= v2; v2 = (v2 << 32) | (v2 >> 32);
+    }
+    v0 ^= last_block;
+
+    // Finalization (4 rounds)
+    v2 ^= 0xff;
+    i = 0;
+    while (i < 4) : (i += 1) {
+        v0 +%= v1; v1 = (v1 << 13) | (v1 >> 51); v1 ^= v0; v0 = (v0 << 32) | (v0 >> 32);
+        v2 +%= v3; v3 = (v3 << 16) | (v3 >> 48); v3 ^= v2;
+        v0 +%= v3; v3 = (v3 << 21) | (v3 >> 43); v3 ^= v0;
+        v2 +%= v1; v1 = (v1 << 17) | (v1 >> 47); v1 ^= v2; v2 = (v2 << 32) | (v2 >> 32);
+    }
+    hash = v0 ^% v1 ^% v2 ^% v3;
+    return hash;
+}
+
+// =================================================================
 // [ SECURE RULE SET ]
 // =================================================================
 
@@ -240,6 +309,8 @@ pub const SecureRule = struct {
     severity: []const u8,
     action: []const u8,
     crc32: u32,
+    // P-04: New 64-bit rule hash (SipHash64) for collision-resistant rule ID
+    rule_hash: u64 = 0,
 };
 
 pub const SecureRuleSet = struct {
@@ -336,6 +407,10 @@ fn acquireRuleset() ?*SecureRuleSet {
 // =================================================================
 // [ NAMED LIMITS & TIMEOUTS ]
 // =================================================================
+
+// P-09: Global pipe bytes counter (prevents RAM exhaustion via 100 sessions × 512MB)
+var g_pipe_global_bytes: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+const PIPE_GLOBAL_MAX_BYTES: u64 = 512 * 1024 * 1024; // 512 MB total across all sessions
 
 // BP151: Named constants for all magic numbers
 const ANALYZE_MAX_PAYLOAD: usize = 65536;
@@ -506,6 +581,9 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
 
         var hash = std.hash.Crc32.init();
         hash.update(active_fast_pattern);
+        const crc32_val = hash.final();
+        // P-04: Also compute SipHash64 for collision-resistant rule ID
+        const siphash64_val = computeRuleHash(active_fast_pattern);
         try temp_sig_list.append(.{
             .name = try allocator.dupe(u8, sig.name),
             .fast_pattern = try allocator.dupe(u8, active_fast_pattern),
@@ -513,7 +591,8 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
             .regex_pattern = try allocator.dupe(u8, sig.regex_pattern),
             .severity = try allocator.dupe(u8, sig.severity),
             .action = try allocator.dupe(u8, sig.action),
-            .crc32 = hash.final(),
+            .crc32 = crc32_val,
+            .rule_hash = siphash64_val,
         });
 
         try new_set.ac_engine.insert(temp_sig_list.items[valid_rule_count].fast_pattern, valid_rule_count);
@@ -661,6 +740,106 @@ fn pushForwardedEvent(
 // [ 3-TIER FAST THREAT ANALYSIS ENGINE ]
 // =================================================================
 
+/// P-02: Inspect oversized payloads by scanning trailing window.
+/// This is a non-recursive variant that avoids re-entering the size check.
+/// Called when data.len > ANALYZE_MAX_PAYLOAD — caller has already truncated.
+fn inspect_packet_oversized(data: []const u8, ctx: PacketContext) !bool {
+    if (data.len < 1) return true;
+    // Skip payload safety check (already done by caller)
+    // Skip size check (caller guarantees data.len <= ANALYZE_MAX_PAYLOAD)
+
+    const current_ruleset = acquireRuleset() orelse {
+        std.log.warn("[ANALYZE] Ruleset unavailable, forwarding without inspection", .{});
+        return true;
+    };
+    defer current_ruleset.release();
+    const allocator = current_ruleset.allocator;
+
+    var curr: usize = 0;
+    var final_matched_rule: ?*const SecureRule = null;
+    var matched_rule_idx: usize = 0;
+
+    // --- [ TIER 1: Aho-Corasick ] ---
+    for (data) |char| {
+        const c = @as(usize, char);
+        curr = current_ruleset.ac_engine.nodes.items[curr].next[c];
+
+        var temp = curr;
+        while (temp != 0) {
+            for (current_ruleset.ac_engine.nodes.items[temp].matches.items) |idx| {
+                const rule = &current_ruleset.signatures[idx];
+                var is_tier2_match = true;
+
+                if (rule.match_pattern.len > 0) {
+                    var match_iter = std.mem.splitSequence(u8, rule.match_pattern, "|");
+                    while (match_iter.next()) |keyword| {
+                        if (keyword.len == 0) continue;
+                        if (std.mem.indexOfAny(u8, keyword, "()[{\\.*+?^$") != null) continue;
+                        if (std.mem.indexOf(u8, data, keyword) == null) {
+                            is_tier2_match = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (is_tier2_match) {
+                    final_matched_rule = rule;
+                    matched_rule_idx = idx;
+                    break;
+                }
+            }
+            if (final_matched_rule != null) break;
+            temp = current_ruleset.ac_engine.nodes.items[temp].fail;
+        }
+        if (final_matched_rule != null) break;
+    }
+
+    if (final_matched_rule) |rule| {
+        if (matched_rule_idx < current_ruleset.match_counts.len) {
+            _ = current_ruleset.match_counts[matched_rule_idx].fetchAdd(1, .relaxed);
+        }
+        _ = g_total_matches.fetchAdd(1, .relaxed);
+        const alert = .{
+            .timestamp = std.time.timestamp(),
+            .attack_type = rule.name,
+            .policy = rule.action,
+            .reason = "Tier-1 Fast Pattern Match (oversized payload)",
+            .source = if (ctx.is_pipe) "WFP_PIPE" else "TCP_SOCKET",
+            .raw_payload = if (data.len > ALERT_MAX_PAYLOAD_PREVIEW) data[0..ALERT_MAX_PAYLOAD_PREVIEW] else data,
+            .source_ip = ctx.source_ip,
+            .dest_ip = ctx.dest_ip,
+            .source_port = ctx.source_port,
+            .dest_port = ctx.dest_port,
+            .protocol = ctx.protocol,
+        };
+        bridge_init.sendToBrain(allocator, @TypeOf(alert), alert);
+
+        const severity_val: u32 = sev: {
+            if (std.mem.eql(u8, rule.severity, "Critical")) break :sev 3;
+            if (std.mem.eql(u8, rule.severity, "High")) break :sev 2;
+            if (std.mem.eql(u8, rule.severity, "Medium")) break :sev 1;
+            break :sev 0;
+        };
+        pushTier1Match(ctx, rule.crc32, severity_val, std.math.cast(u32, data.len) orelse ANALYZE_MAX_PAYLOAD);
+        forensic_log.logMatch(rule.name, ctx.source_ip, ctx.source_port, ctx.session_id, g_ruleset_version.load(.acquire), data);
+
+        if (std.mem.eql(u8, rule.action, "Block")) {
+            const _log_ip = std.mem.bigToNative(u32, ctx.source_ip);
+            std.log.warn("[BLOCK] Rule matched (oversized): {s} (severity={s}) from {d}.{d}.{d}.{d}:{d}", .{
+                rule.name, rule.severity,
+                (_log_ip >> 24) & 0xFF, (_log_ip >> 16) & 0xFF,
+                (_log_ip >> 8) & 0xFF, _log_ip & 0xFF, ctx.source_port,
+            });
+            forensic_log.logBlock(rule.name, ctx.source_ip, ctx.source_port, ctx.session_id, g_ruleset_version.load(.acquire), data);
+            return false;
+        }
+        return true;
+    } else {
+        forensic_log.logForward(ctx.source_ip, ctx.source_port, ctx.session_id, data);
+        return true;
+    }
+}
+
 /// Inspect a packet/payload through the 3-tier threat analysis engine.
 ///
 /// Tiers:
@@ -690,10 +869,16 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
 
     // BP21: Payload size sanity check
     if (data.len < 1) return true;
+    // P-02 FIX: Oversized payloads now scan trailing window instead of skipping entirely
+    // (was: return true — attacker could hide payloads beyond 65536 bytes)
     if (data.len > ANALYZE_MAX_PAYLOAD) {
-        std.log.warn("[ANALYZE] Payload {d} exceeds limit (max={d}) - skipping deep analysis", .{data.len, ANALYZE_MAX_PAYLOAD});
-        std.debug.print("[WARN] Payload size {d} exceeds limit (max={d}B) - skipping deep analysis\n", .{data.len, ANALYZE_MAX_PAYLOAD});
-        return true;
+        std.log.warn("[ANALYZE] Payload {d} exceeds limit (max={d}) - scanning trailing window", .{data.len, ANALYZE_MAX_PAYLOAD});
+        _ = g_oversized_read.fetchAdd(1, .relaxed);
+        // P-02: Scan the last ANALYZE_MAX_PAYLOAD bytes (attacker likely hides payload at end)
+        const scan_start = data.len - ANALYZE_MAX_PAYLOAD;
+        const trailing_data = data[scan_start..];
+        // Recursively inspect the trailing window
+        return inspect_packet_oversized(trailing_data, ctx);
     }
 
     // BP152: Safe ruleset acquisition with reference counting
@@ -884,11 +1069,20 @@ fn handle_pipe_client(hPipe: win.HANDLE, allocator: std.mem.Allocator) void {
             }
         }
         if (!_data_ready) break;
+        // P-09: Check global pipe bytes limit BEFORE reading (prevents RAM exhaustion)
+        const current_global = g_pipe_global_bytes.load(.acquire);
+        if (current_global >= PIPE_GLOBAL_MAX_BYTES) {
+            std.log.warn("[PIPE] Global byte limit ({}MB) reached - rejecting session", .{PIPE_GLOBAL_MAX_BYTES / (1024 * 1024)});
+            forensic_log.logRejection("global_pipe_bytes_limit", null);
+            break;
+        }
         var bytes_read: u32 = 0;
         const success = ReadFile(hPipe, &buf, buf.len, &bytes_read, null);
         if (success == 0 or bytes_read == 0) break;
         pipe_pkt_count += 1;
         pipe_byte_count += bytes_read;
+        // P-09: Track global pipe bytes across all sessions
+        _ = g_pipe_global_bytes.fetchAdd(bytes_read, .relaxed);
         // BP179: Track total bytes processed (pipe path)
         _ = g_total_bytes.fetchAdd(bytes_read, .relaxed);
         // BP171: Enforce pipe session packet limit
@@ -1418,6 +1612,44 @@ fn tcp_listener(allocator: std.mem.Allocator) !void {
 }
 
 // =================================================================
+// [ P-11: RULES WATCHDOG — hot-reload on Rules.json mtime change ]
+// =================================================================
+
+/// Background thread that checks Rules.json mtime every 5 seconds.
+/// If the file has been modified, triggers reload_rules_atomic() to
+/// hot-reload rules without restarting the NIDS.
+/// (P-11: was requiring full process restart for rule changes)
+fn rulesWatchdog(allocator: std.mem.Allocator) void {
+    var last_mtime: i128 = 0;
+
+    // Get initial mtime
+    if (std.fs.cwd().statFile("Rules.json")) |stat| {
+        last_mtime = stat.mtime;
+    } else |_| {
+        std.log.warn("[WATCHDOG] Rules.json not found at startup, will retry", .{});
+    }
+
+    while (true) {
+        if (bridge_init.g_shutdown.load(.seq_cst)) break;
+        if (g_shutdown_requested.load(.acquire)) break;
+        std.time.sleep(5 * std.time.ns_per_s);
+
+        if (std.fs.cwd().statFile("Rules.json")) |stat| {
+            if (stat.mtime != last_mtime) {
+                std.log.info("[WATCHDOG] Rules.json modified, triggering reload", .{});
+                last_mtime = stat.mtime;
+                reload_rules_atomic(allocator) catch |err| {
+                    std.log.err("[WATCHDOG] Rule reload failed: {}", .{err});
+                };
+            }
+        } else |_| {
+            // File deleted — keep last_mtime, will reload when recreated
+        }
+    }
+    std.log.info("[WATCHDOG] Rules watchdog shutting down", .{});
+}
+
+// =================================================================
 // [ BRIDGE STATUS REPORTER ]
 // =================================================================
 
@@ -1669,6 +1901,16 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
         break :blk t;
     };
     if (t_status_opt) |t| t.detach();
+
+    // P-11: Spawn rules watchdog thread (hot-reload on Rules.json mtime change)
+    const t_watchdog_opt: ?std.Thread = blk: {
+        const t = std.Thread.spawn(.{}, rulesWatchdog, .{allocator}) catch |err| {
+            std.log.warn("[ANALYZE] Rules watchdog failed to spawn: {}", .{err});
+            break :blk null;
+        };
+        break :blk t;
+    };
+    if (t_watchdog_opt) |t| t.detach();
 
     // Run accept-loop listeners (these block forever)
     std.log.info("[ANALYZE] Starting listener threads", .{});

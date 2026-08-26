@@ -31,6 +31,15 @@ except ImportError:
     print("[AEGIS BRAIN] Warning: aegis_bridge_ctypes not found — running without Bridge")
     BRIDGE_AVAILABLE = False
 
+# ⚡ Import Cython Hotspots
+try:
+    import pyximport; pyximport.install(setup_args={"script_args":["--compiler=msvc"], "options":{"build_ext":{"compiler":"msvc"}}})
+    from cython.aegis_hotspot import scan_nop_sled, scan_shellcode_markers, detect_repeated_byte
+    CYTHON_AVAILABLE = True
+except ImportError as e:
+    print(f"[AEGIS BRAIN] Warning: Cython aegis_hotspot not found ({e}) — falling back to pure Python regex only")
+    CYTHON_AVAILABLE = False
+
 LOG_FILE = "logs/anomalous.json"
 RULES_FILE = os.path.join(os.path.dirname(__file__), "..", "config", "Rules.json")
 MAX_PAYLOAD_SIZE = 4096
@@ -209,6 +218,8 @@ def main():
     rules_data = load_rules()
     tier2_engine = compile_tier2_rules(rules_data)
     print(f"{UI.GREEN}[*] Compiled {len(tier2_engine)} regex rules for Deep Inspection.{UI.RESET}")
+    if CYTHON_AVAILABLE:
+        print(f"{UI.GREEN}[*] Cython Hotspots ENABLED (C-Speed Pre-filtering).{UI.RESET}")
 
     # Show Bridge DEFCON status
     if BRIDGE_AVAILABLE:
@@ -301,7 +312,73 @@ def main():
             #   Zig sends: raw_payload with reason "Forwarded: No Tier-1 Match"
             # =========================================================
             payload = log_entry.get("raw_payload", raw_payload)
+            payload_bytes = payload.encode("utf-8", errors="ignore")
 
+            # --- ⚡ Cython Fast-Path Pre-filter (C-Speed) ---
+            cython_matched = False
+            if CYTHON_AVAILABLE:
+                # 1. Check for NOP Sled
+                found, count, offset = scan_nop_sled(payload_bytes, 50)
+                if found:
+                    match_name = f"NOP Sled Detected (len={count})"
+                    match_policy = "BLOCK"
+                    match_rule_id = "CYTHON-001"
+                    match_severity = 3  # Critical
+                    cython_matched = True
+                
+                # 2. Check for Shellcode Markers
+                if not cython_matched:
+                    markers = scan_shellcode_markers(payload_bytes)
+                    if markers:
+                        marker_names = ", ".join([m[0] for m in markers])
+                        match_name = f"Shellcode Markers: {marker_names}"
+                        match_policy = "BLOCK"
+                        match_rule_id = "CYTHON-002"
+                        match_severity = 3  # Critical
+                        cython_matched = True
+                
+                # 3. Check for Heap Spray
+                if not cython_matched:
+                    found, byte_val, run_length, offset = detect_repeated_byte(payload_bytes, 200)
+                    if found:
+                        match_name = f"Heap Spray Detected (byte={hex(byte_val)}, len={run_length})"
+                        match_policy = "BLOCK"
+                        match_rule_id = "CYTHON-003"
+                        match_severity = 3  # Critical
+                        cython_matched = True
+
+            if cython_matched:
+                print(f"{UI.DANGER}[CYTHON MATCH]{UI.RESET} {ts} | Threat: {match_name} | Policy: {match_policy} | Src: {src_ip}")
+                
+                # 🔗 Push Tier-2 match to C++ Bridge (for Dashboard)
+                if BRIDGE_AVAILABLE:
+                    bridge.push_tier2_match(
+                        rule_id=match_rule_id,
+                        src_ip=src_ip if src_ip != "Unknown" else "0.0.0.0",
+                        dst_ip="0.0.0.0",
+                        src_port=0,
+                        dst_port=0,
+                        protocol=6,
+                        severity=match_severity,
+                    )
+                    ips_decision = bridge.ips_decide(
+                        match_rule_id, match_severity, src_ip, match_policy.lower()
+                    )
+                    if ips_decision == "block":
+                        match_policy = "BLOCK"
+
+                # Enforce IPS
+                status = "DETECTED"
+                if match_policy in ("DROP", "BLOCK") and src_ip != "Unknown":
+                    if apply_firewall_block(src_ip, match_rule_id):
+                        status = "BLOCKED"
+                    else:
+                        status = "BLOCK_FAILED"
+
+                write_anomaly_log(log_entry, match_name, match_policy, match_rule_id, status)
+                continue  # Skip regex scan if Cython already found a critical threat
+
+            # --- 🐌 Pure Python Regex Scan (Fallback) ---
             result = run_regex_scan(payload, tier2_engine, rules_data)
             if result:
                 match_name, match_policy, match_rule_id, match_severity = result

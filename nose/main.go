@@ -1,4 +1,4 @@
-﻿package main
+package main
 
 // =====================================================================
 // main.go — AEGIS NOSE (Go) v5.0 Entry Point
@@ -19,11 +19,17 @@ import (
         "fmt"
         "os"
         "time"
+        "flag"
+        "encoding/json"
 
         tea "github.com/charmbracelet/bubbletea"
 )
 
 func main() {
+        // Parse command line flags
+        headless := flag.Bool("headless", false, "Run in headless mode (no TUI, output JSON to stdout)")
+        flag.Parse()
+
         // Create buffered channels for collector data
         resourceCh := make(chan ResourceData, 4)
         trafficCh := make(chan TrafficData, 4)
@@ -33,22 +39,50 @@ func main() {
         startTime := time.Now()
 
         // Launch 3 collector goroutines
-        // (each runs independently, writing to its channel at its own interval)
         go resourceCollector(resourceCh, startTime)
         go trafficCollector(trafficCh)
         go threatCollector(threatCh)
 
-        // Create bubbletea program
-        p := tea.NewProgram(
-                initialModel(resourceCh, trafficCh, threatCh, startTime),
-                // NOTE: Do NOT use tea.WithAltScreen() — รันใน cmd /k window
-                //       alt screen อาจทำให้หน้าต่าง minimized ไม่แสดงเนื้อหา
-                tea.WithMouseCellMotion(),
-        )
+        if *headless {
+                // HEADLESS MODE: Continuously print JSON metrics to stdout
+                fmt.Fprintf(os.Stderr, "[AEGIS NOSE] Running in Headless Mode (JSON to stdout)...\n")
+                
+                ticker := time.NewTicker(2 * time.Second)
+                defer ticker.Stop()
+                
+                for range ticker.C {
+                        var resData ResourceData
+                        var trafData TrafficData
+                        var thrData ThreatData
+                        
+                        // Non-blocking read from channels
+                        select { case resData = <-resourceCh: default: }
+                        select { case trafData = <-trafficCh: default: }
+                        select { case thrData = <-threatCh: default: }
 
-        // Run the TUI (blocks until quit)
-        if _, err := p.Run(); err != nil {
-                fmt.Fprintf(os.Stderr, "[AEGIS NOSE] Error: %v\n", err)
-                os.Exit(1)
+                        // Construct unified JSON state
+                        state := map[string]interface{}{
+                                "timestamp": time.Now().Format(time.RFC3339),
+                                "resource": resData,
+                                "traffic": trafData,
+                                "threat": thrData,
+                        }
+                        
+                        jsonBytes, err := json.Marshal(state)
+                        if err == nil {
+                                fmt.Println(string(jsonBytes))
+                        }
+                }
+        } else {
+                // TUI MODE: Run bubbletea program
+                p := tea.NewProgram(
+                        initialModel(resourceCh, trafficCh, threatCh, startTime),
+                        tea.WithMouseCellMotion(),
+                )
+
+                if _, err := p.Run(); err != nil {
+                        fmt.Fprintf(os.Stderr, "[AEGIS NOSE] Error: %v\n", err)
+                        os.Exit(1)
+                }
         }
 }

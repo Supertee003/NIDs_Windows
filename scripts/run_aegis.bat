@@ -510,7 +510,19 @@ if exist "build\Release\aegis_bridge.exe" (
     echo  [FAIL] aegis_bridge.exe not found!
 )
 echo       Waiting for IPC hub to initialize...
-timeout /t 3 /nobreak >nul
+set "WAIT_TRIES=0"
+:wait_bridge
+tasklist /NH 2>nul | find /I "aegis_bridge.exe" >nul
+if %errorlevel% neq 0 (
+    set /a WAIT_TRIES+=1
+    if !WAIT_TRIES! lss 10 (
+        timeout /t 1 /nobreak >nul
+        goto wait_bridge
+    ) else (
+        echo  [WARN] Bridge did not start in time.
+    )
+)
+timeout /t 1 /nobreak >nul
 
 :: -- 4.2 Core (Zig) - needs Bridge + DLL --
 echo  [4.2] Starting Zig Core...
@@ -527,7 +539,18 @@ if exist "zig-out\bin\aegis-nids.exe" (
     )
 )
 echo       Waiting for Core threads to spawn...
-timeout /t 3 /nobreak >nul
+set "WAIT_TRIES=0"
+:wait_core
+tasklist /NH 2>nul | find /I "aegis-nids.exe" >nul
+if %errorlevel% neq 0 (
+    set /a WAIT_TRIES+=1
+    if !WAIT_TRIES! lss 10 (
+        timeout /t 1 /nobreak >nul
+        goto wait_core
+    ) else (
+        echo  [WARN] Core did not start in time.
+    )
+)
 
 :: -- 4.3 Brain (Python) - needs Bridge IPC --
 echo  [4.3] Starting Python Brain...
@@ -538,7 +561,18 @@ if exist "brain\windows_brain.py" (
     echo  [FAIL] brain\windows_brain.py not found!
 )
 echo       Waiting for Brain to load rules...
-timeout /t 2 /nobreak >nul
+set "WAIT_TRIES=0"
+:wait_brain
+wmic process where "Name='python.exe'" get CommandLine 2>nul | find /I "windows_brain" >nul
+if %errorlevel% neq 0 (
+    set /a WAIT_TRIES+=1
+    if !WAIT_TRIES! lss 10 (
+        timeout /t 1 /nobreak >nul
+        goto wait_brain
+    ) else (
+        echo  [WARN] Brain did not start in time.
+    )
+)
 
 :: -- 4.4 Nose (Go) - BEST PRACTICE: Use pre-compiled binary --
 ::  Production: dist\nose_dashboard.exe (no 'go run' in production!)
@@ -593,7 +627,7 @@ if exist "dist\windows_sec_monitor.exe" (
 
 echo.
 echo       Waiting for all subsystems to stabilize...
-timeout /t 3 /nobreak >nul
+timeout /t 1 /nobreak >nul
 
 :: -- Write PID files for started subsystems (best practice: PID lifecycle) --
 ::  Uses wmic/tasklist to find PIDs by image name, writes to logs\pids\
