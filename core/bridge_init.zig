@@ -75,6 +75,11 @@ var fn_bridge_get_defcon: ?FnBridgeGetDefcon = null;
 var fn_bridge_get_event_count: ?FnBridgeGetEventCount = null;
 var g_bridge_initialized: bool = false;
 
+// B-03: RwLock for function pointer table (prevents TOCTOU during shutdown)
+// Readers (pushEvent, getDefcon, etc.) acquire shared lock
+// Writers (shutdownCppBridge) acquire exclusive lock before nulling pointers
+var g_fn_lock: std.Thread.RwLock = .{};
+
 // ============================================================
 // Rust Safety Shield DLL
 // ============================================================
@@ -245,6 +250,11 @@ fn initCppBridge() void {
 }
 
 fn shutdownCppBridge() void {
+    // B-03: Acquire exclusive lock before nulling function pointers
+    // (prevents concurrent readers from using freed pointers)
+    g_fn_lock.lock();
+    defer g_fn_lock.unlock();
+
     if (fn_bridge_shutdown) |f| {
         _ = f();
     }
@@ -459,7 +469,10 @@ pub fn isWfpReady() bool {
 }
 
 /// Push event to C++ bridge (returns 0 on success, -1 if unavailable).
+/// B-03: Uses shared lock (RwLock) to prevent TOCTOU during shutdown.
 pub fn pushEvent(event: *const AegisIpcEvent) i32 {
+    g_fn_lock.lockShared();
+    defer g_fn_lock.unlockShared();
     if (fn_bridge_push_event) |f| {
         return f(event);
     }
@@ -467,7 +480,10 @@ pub fn pushEvent(event: *const AegisIpcEvent) i32 {
 }
 
 /// Get current DEFCON level from C++ bridge.
+/// B-03: Uses shared lock (RwLock) to prevent TOCTOU during shutdown.
 pub fn getDefcon() u8 {
+    g_fn_lock.lockShared();
+    defer g_fn_lock.unlockShared();
     if (fn_bridge_get_defcon) |f| {
         return f();
     }
@@ -475,7 +491,10 @@ pub fn getDefcon() u8 {
 }
 
 /// Get event count from C++ bridge queue.
+/// B-03: Uses shared lock (RwLock) to prevent TOCTOU during shutdown.
 pub fn getBridgeEventCount() u32 {
+    g_fn_lock.lockShared();
+    defer g_fn_lock.unlockShared();
     if (fn_bridge_get_event_count) |f| {
         return f();
     }

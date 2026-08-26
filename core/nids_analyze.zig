@@ -481,9 +481,9 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
         var hmac_buf: [64]u8 = undefined; // hex-encoded SHA-256 = 64 chars
         const hmac_len = hmac_file.readAll(&hmac_buf) catch 0;
         if (hmac_len > 0) {
-            // Compute HMAC-SHA256 of Rules.json content
-            const IR13_HMAC_KEY = "AEGIS_NIDS_INTEGRITY_KEY_v1";
-            var hmac = std.crypto.auth.hmac.sha2.HmacSha256.init(IR13_HMAC_KEY);
+            // OPS-5: Read HMAC key from env var (was hardcoded)
+            const hmac_key = std.process.getenv("AEGIS_RULES_HMAC_KEY") orelse "AEGIS_NIDS_INTEGRITY_KEY_v1";
+            var hmac = std.crypto.auth.hmac.sha2.HmacSha256.init(hmac_key);
             hmac.update(content);
             var computed: [32]u8 = undefined;
             hmac.final(&computed);

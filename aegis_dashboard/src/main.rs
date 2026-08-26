@@ -20,20 +20,29 @@ use std::time::Instant;
 // DATA TYPES
 // =====================================================================
 
+// GAP-4: Updated AlertEntry to match aegis_core.ndjson schema (was anomalous.json)
 #[derive(Debug, Deserialize, Default, Clone)]
 struct AlertEntry {
     #[serde(default)]
-    timestamp: f64,
+    ts_ms: i64,
     #[serde(default)]
-    attack_type: String,
+    mono_ns: i64,
     #[serde(default)]
-    source: String,
+    level: String,
     #[serde(default)]
-    policy: String,
+    event: String,
     #[serde(default)]
-    severity: String,
+    rule: String,
     #[serde(default)]
-    rule_id: String,
+    src_ip: String,
+    #[serde(default)]
+    src_port: i64,
+    #[serde(default)]
+    session_id: i64,
+    #[serde(default)]
+    ruleset_version: i64,
+    #[serde(default)]
+    payload_len: i64,
 }
 
 #[derive(Debug, Deserialize, Default, Clone)]
@@ -78,7 +87,8 @@ impl AegisDashboard {
             total_critical: 0,
             defcon_level: 5,
             last_refresh: Instant::now(),
-            log_path: base.join("logs").join("anomalous.json"),
+            // GAP-4: Read aegis_core.ndjson (was anomalous.json - old Brain format)
+            log_path: base.join("logs").join("aegis_core.ndjson"),
             rules_path: base.join("Rules.json"),
             auto_refresh: true,
             refresh_interval: 1.0,
@@ -100,11 +110,11 @@ impl AegisDashboard {
                 }
                 if let Ok(entry) = serde_json::from_str::<AlertEntry>(line) {
                     self.total_alerts += 1;
-                    let policy = entry.policy.to_uppercase();
-                    if policy == "BLOCK" || policy == "DROP" {
+                    let event_type = entry.event.to_uppercase();
+                    if event_type == "BLOCK" || event_type == "IP_BLOCKED" {
                         self.total_blocked += 1;
                     }
-                    if entry.severity == "Critical" {
+                    if entry.level == "critical" {
                         self.total_critical += 1;
                     }
                     self.alerts.push(entry);
