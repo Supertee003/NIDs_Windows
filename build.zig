@@ -58,6 +58,10 @@ pub fn build(b: *std.Build) void {
         "core/canonical_event.zig",
         "core/wire_event.zig",
         "core/event_queue.zig",
+        "core/priority_queue.zig",
+        "core/nose_contract.zig",
+        "core/detection_interface.zig",
+        "core/policy_contract.zig",
     };
 
     for (test_files) |test_file| {
