@@ -55,6 +55,9 @@ pub fn build(b: *std.Build) void {
         "core/minifilter_reader.zig",
         "core/win32_io.zig",
         "core/forensic_log.zig",
+        "core/canonical_event.zig",
+        "core/wire_event.zig",
+        "core/event_queue.zig",
     };
 
     for (test_files) |test_file| {

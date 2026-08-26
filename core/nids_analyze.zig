@@ -1305,7 +1305,7 @@ fn pipe_listener(allocator: std.mem.Allocator) !void {
 
 fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: std.mem.Allocator) void {
     _ = allocator; // reserved for future use
-    _ = remote_addr; // already extracted via sockaddr cast above
+    // remote_addr is used below for src_ip extraction
     defer stream.close();
     defer connection_semaphore.post();
     // BP188: Release ordering ensures handler writes visible before decrement
@@ -1529,7 +1529,7 @@ fn initRateLimitTable(allocator: std.mem.Allocator) void {
 fn checkIpRateLimit(raw_addr: u32) bool {
     if (!ip_rate_table_initialized) return true; // fail-open if not initialized
     const ip = std.mem.bigToNative(u32, raw_addr);
-    const now = std.time.nanoTimestamp();
+    const now: i64 = @intCast(std.time.nanoTimestamp());
 
     ip_rate_table_lock.lock();
     defer ip_rate_table_lock.unlock();
@@ -2149,13 +2149,30 @@ test "isAllowedTcpSource rejects 0.0.0.0" {
 }
 
 test "checkIpRateLimit allows first connection from new IP" {
-    // Reset state for deterministic test
-    @memset(&ip_rate_table, ip_rate_zero);
+    // P-07: Initialize hash map for test (analyze_packets not called in test mode)
+    if (!ip_rate_table_initialized) {
+        ip_rate_table = std.AutoHashMap(u32, IpRateEntry).init(std.testing.allocator);
+        ip_rate_table_initialized = true;
+    }
+    defer {
+        ip_rate_table.deinit();
+        ip_rate_table_initialized = false;
+    }
+    ip_rate_table.clearRetainingCapacity();
     try std.testing.expect(checkIpRateLimit(0x0A000001)); // 10.0.0.1
 }
 
 test "checkIpRateLimit enforces max connections per IP" {
-    @memset(&ip_rate_table, ip_rate_zero);
+    // P-07: Initialize hash map for test (analyze_packets not called in test mode)
+    if (!ip_rate_table_initialized) {
+        ip_rate_table = std.AutoHashMap(u32, IpRateEntry).init(std.testing.allocator);
+        ip_rate_table_initialized = true;
+    }
+    defer {
+        ip_rate_table.deinit();
+        ip_rate_table_initialized = false;
+    }
+    ip_rate_table.clearRetainingCapacity();
     // Fill up to RATE_LIMIT_MAX_CONNS for one IP
     var i: u32 = 0;
     while (i < RATE_LIMIT_MAX_CONNS) : (i += 1) {
