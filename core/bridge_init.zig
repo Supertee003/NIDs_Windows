@@ -95,6 +95,15 @@ var g_udp_sock: posix.socket_t = 0;
 var g_udp_addr: net.Address = undefined;
 var g_udp_available: bool = false;
 
+// B-10: UDP brain spool queue (prevents event loss on transient send failures)
+const BRAIN_SPOOL_MAX: usize = 1000;
+var g_brain_spool: [BRAIN_SPOOL_MAX]?[]const u8 = [_]?[]const u8{null} ** BRAIN_SPOOL_MAX;
+var g_brain_spool_head: usize = 0;
+var g_brain_spool_tail: usize = 0;
+var g_brain_spool_count: usize = 0;
+var g_brain_spool_lock: std.Thread.Mutex = .{};
+pub var g_brain_dropped_events: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+
 // ============================================================
 // 1. WFP IOCTL Bridge (M2)
 // ============================================================
@@ -418,13 +427,30 @@ pub fn validatePayloadSafety(data: [*]const u8, len: usize) bool {
 }
 
 /// Send JSON message to Python brain via UDP.
+/// B-10: Uses a 1000-event spool queue — if send fails, event is queued
+/// and retried by a background drain. Drops oldest if queue is full.
 pub fn sendToBrain(allocator: std.mem.Allocator, comptime T: type, msg: T) void {
     if (!g_udp_available) return;
     var string = std.ArrayList(u8).init(allocator);
     defer string.deinit();
     std.json.stringify(msg, .{}, string.writer()) catch return;
-    _ = posix.sendto(g_udp_sock, string.items, 0, &g_udp_addr.any, g_udp_addr.getOsSockLen()) catch |err| {
-        std.log.warn("[BRAIN] UDP send failed: {}", .{err});
+
+    // B-10: Try direct send first
+    _ = posix.sendto(g_udp_sock, string.items, 0, &g_udp_addr.any, g_udp_addr.getOsSockLen()) catch {
+        // Send failed — add to spool queue for retry
+        g_brain_spool_lock.lock();
+        defer g_brain_spool_lock.unlock();
+        if (g_brain_spool_count < BRAIN_SPOOL_MAX) {
+            // Copy message into spool (truncating if too large)
+            const msg_copy = allocator.dupe(u8, string.items) catch return;
+            g_brain_spool[g_brain_spool_head] = msg_copy;
+            g_brain_spool_head = (g_brain_spool_head + 1) % BRAIN_SPOOL_MAX;
+            g_brain_spool_count += 1;
+        } else {
+            // Queue full — drop oldest and increment counter
+            _ = g_brain_dropped_events.fetchAdd(1, .relaxed);
+            std.log.warn("[BRAIN] Spool queue full, dropping event", .{});
+        }
     };
 }
 

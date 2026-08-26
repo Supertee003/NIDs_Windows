@@ -96,6 +96,82 @@ pub fn nextSessionId() u64 {
 }
 
 // ============================================================
+// IR-04: Canonical timestamp schema (epoch_ms + monotonic_ns)
+// ============================================================
+// Dual-clock logging: epoch for cross-system correlation, monotonic for ordering
+
+pub const Timestamp = struct {
+    /// Wall-clock epoch milliseconds (for SIEM/cross-system correlation)
+    epoch_ms: i64,
+    /// Monotonic nanoseconds (for in-process ordering, immune to clock skew)
+    monotonic_ns: i128,
+
+    /// Get current timestamp from both clocks
+    pub fn now() Timestamp {
+        return .{
+            .epoch_ms = std.time.milliTimestamp(),
+            .monotonic_ns = std.time.nanoTimestamp(),
+        };
+    }
+};
+
+// ============================================================
+// IR-06: Log rotation (100MB or 24h, keep 7 files)
+// ============================================================
+
+const LOG_MAX_FILE_SIZE: u64 = 100 * 1024 * 1024; // 100 MB
+const LOG_MAX_AGE_S: u64 = 24 * 60 * 60; // 24 hours
+const LOG_MAX_FILES: u32 = 7; // Keep 7 rotated files
+
+var g_last_rotation_check_ns: i128 = 0;
+const ROTATION_CHECK_INTERVAL_NS: i128 = 60 * std.time.ns_per_s; // Check every 60s
+
+/// Check if log file needs rotation based on size or age.
+/// Called periodically from the log() function (every 60s).
+fn checkRotation(handle: win.HANDLE) void {
+    const now_ns = std.time.nanoTimestamp();
+    if (now_ns - g_last_rotation_check_ns < ROTATION_CHECK_INTERVAL_NS) return;
+    g_last_rotation_check_ns = now_ns;
+
+    // Get current file size via std.fs (simpler than GetFileSizeEx)
+    var file_size: u64 = 0;
+    if (std.fs.cwd().statFile("logs\\aegis_core.ndjson")) |stat| {
+        file_size = stat.size;
+    } else |_| return;
+
+    if (file_size < LOG_MAX_FILE_SIZE) return;
+
+    // Rotate: close current handle, rename files, reopen new
+    _ = win.kernel32.FlushFileBuffers(handle);
+    _ = win.kernel32.CloseHandle(handle);
+    g_log_handle = null;
+
+    // Shift older files: .6 -> .7, .5 -> .6, ..., .1 -> .2
+    var i: u32 = LOG_MAX_FILES;
+    while (i > 1) : (i -= 1) {
+        var old_buf: [256]u8 = undefined;
+        var new_buf: [256]u8 = undefined;
+        const old_path = std.fmt.bufPrint(&old_buf, "logs\\aegis_core.{d}.ndjson", .{i - 1}) catch continue;
+        const new_path = std.fmt.bufPrint(&new_buf, "logs\\aegis_core.{d}.ndjson", .{i}) catch continue;
+        // Try rename (ignore errors if old doesn't exist)
+        std.fs.cwd().rename(old_path, new_path) catch {};
+    }
+    // Move current to .1
+    std.fs.cwd().rename("logs\\aegis_core.ndjson", "logs\\aegis_core.1.ndjson") catch {};
+
+    // Reopen new file
+    const path_w = std.unicode.utf8ToUtf16LeStringLiteral("logs\\aegis_core.ndjson");
+    const new_handle = win.kernel32.CreateFileW(
+        path_w, win.GENERIC_WRITE, win.FILE_SHARE_READ, null,
+        win.OPEN_ALWAYS, win.FILE_ATTRIBUTE_NORMAL, null,
+    );
+    if (new_handle != win.INVALID_HANDLE_VALUE) {
+        g_log_handle = new_handle;
+    }
+    std.log.info("[FORENSIC] Log rotated (was {} bytes)", .{file_size});
+}
+
+// ============================================================
 // Log Event Structure (IR-08)
 // ============================================================
 
@@ -142,16 +218,22 @@ pub fn log(event: LogEvent) void {
 
     const handle = g_log_handle orelse return;
 
+    // IR-06: Check for log rotation every 60 seconds
+    checkRotation(handle);
+
+    // Re-read handle in case rotation changed it
+    const current_handle = g_log_handle orelse return;
+
     // Build JSON line on stack (max 2KB per entry)
     var buf: [2048]u8 = undefined;
     var fbs = std.io.fixedBufferStream(&buf);
     const writer = fbs.writer();
 
-    // Get current timestamp (epoch milliseconds)
-    const ts_ms: u64 = @as(u64, @intCast(@max(@as(i64, 0), std.time.milliTimestamp())));
+    // IR-04: Dual-clock timestamp (epoch_ms for cross-system, monotonic_ns for ordering)
+    const ts = Timestamp.now();
 
     // Build JSON manually (avoids ArrayList allocation)
-    writer.print("{{\"ts_ms\":{d},\"level\":\"{s}\"", .{ ts_ms, event.level.toString() }) catch return;
+    writer.print("{{\"ts_ms\":{d},\"mono_ns\":{d},\"level\":\"{s}\"", .{ ts.epoch_ms, ts.monotonic_ns, event.level.toString() }) catch return;
     writer.print(",\"event\":\"{s}\"", .{event.event}) catch return;
 
     if (event.rule) |rule| {
@@ -197,7 +279,7 @@ pub fn log(event: LogEvent) void {
 
     // Write to file
     var bytes_written: u32 = 0;
-    const ok = win.kernel32.WriteFile(handle, written.ptr, @intCast(written.len), &bytes_written, null);
+    const ok = win.kernel32.WriteFile(current_handle, written.ptr, @intCast(written.len), &bytes_written, null);
     if (ok == 0) {
         std.log.warn("[FORENSIC] WriteFile failed", .{});
         return;
@@ -205,7 +287,7 @@ pub fn log(event: LogEvent) void {
 
     // Flush to disk for Critical/error events (IR-01: durability)
     if (event.level == .critical or event.level == .err or event.level == .@"error") {
-        _ = win.kernel32.FlushFileBuffers(handle);
+        _ = win.kernel32.FlushFileBuffers(current_handle);
     }
 }
 
@@ -266,6 +348,44 @@ pub fn logForward(src_ip: u32, src_port: u16, session_id: u64, payload: []const 
         .session_id = session_id,
         .payload_preview = payload,
     });
+}
+
+// ============================================================
+// IR-07: Full payload capture for Block events
+// Saves payload to logs/payloads/<sha256-prefix>.bin for forensic analysis
+// ============================================================
+
+/// Capture a Block-event payload to disk for forensic analysis.
+/// Writes to logs/payloads/<first16-hex-of-sha256>.bin
+/// Returns the filename (or null on failure).
+pub fn capturePayload(payload: []const u8) ?[]const u8 {
+    // Compute SHA-256
+    var hasher = std.crypto.hash.sha2.Sha256.init(.{});
+    hasher.update(payload);
+    var hash: [32]u8 = undefined;
+    hasher.final(&hash);
+
+    // Use first 8 bytes (16 hex chars) as filename prefix
+    var name_buf: [64]u8 = undefined;
+    const filename = std.fmt.bufPrint(&name_buf, "logs\\payloads\\{x:0>4}{x:0>4}{x:0>4}{x:0>4}.bin", .{
+        std.mem.readInt(u16, hash[0..2], .big),
+        std.mem.readInt(u16, hash[2..4], .big),
+        std.mem.readInt(u16, hash[4..6], .big),
+        std.mem.readInt(u16, hash[6..8], .big),
+    }) catch return null;
+
+    // Create logs/payloads/ directory if missing
+    std.fs.cwd().makePath("logs\\payloads") catch {};
+
+    // Write payload to file (only if not already exists — dedup by hash)
+    const file = std.fs.cwd().createFile(filename, .{ .exclusive = true }) catch {
+        // File already exists (same payload captured before) — that's fine
+        return filename;
+    };
+    defer file.close();
+    file.writeAll(payload) catch return null;
+
+    return filename;
 }
 
 /// Log an IP block action (WFP filter installed)

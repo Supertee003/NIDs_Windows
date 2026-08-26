@@ -473,6 +473,42 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
     };
     defer file.close();
     const content = try file.readToEndAlloc(allocator, RULES_MAX_READ_SIZE);
+
+    // IR-13: Verify HMAC-SHA256 of Rules.json (tamper-evidence)
+    // If Rules.json.hmac exists, refuse to load if signature doesn't match
+    if (std.fs.cwd().openFile("Rules.json.hmac", .{})) |hmac_file| {
+        defer hmac_file.close();
+        var hmac_buf: [64]u8 = undefined; // hex-encoded SHA-256 = 64 chars
+        const hmac_len = hmac_file.readAll(&hmac_buf) catch 0;
+        if (hmac_len > 0) {
+            // Compute HMAC-SHA256 of Rules.json content
+            const IR13_HMAC_KEY = "AEGIS_NIDS_INTEGRITY_KEY_v1";
+            var hmac = std.crypto.auth.hmac.sha2.HmacSha256.init(IR13_HMAC_KEY);
+            hmac.update(content);
+            var computed: [32]u8 = undefined;
+            hmac.final(&computed);
+            // Convert computed to hex for comparison
+            var computed_hex: [64]u8 = undefined;
+            const hex_chars = "0123456789abcdef";
+            for (computed, 0..) |b, i| {
+                computed_hex[i * 2] = hex_chars[b >> 4];
+                computed_hex[i * 2 + 1] = hex_chars[b & 0x0F];
+            }
+            const stored_hmac = hmac_buf[0..hmac_len];
+            if (!std.mem.eql(u8, stored_hmac, &computed_hex)) {
+                std.log.err("[ANALYZE] CRITICAL: Rules.json HMAC mismatch - TAMPER DETECTED, refusing to load", .{});
+                forensic_log.log(.{
+                    .level = .critical,
+                    .event = "RULES_TAMPER_DETECTED",
+                    .extra = "Rules.json HMAC mismatch",
+                });
+                return error.RulesTamperDetected;
+            }
+            std.log.info("[ANALYZE] Rules.json HMAC verified (IR-13 tamper-evidence)", .{});
+        }
+    } else |_| {
+        // No HMAC file — skip verification (first run or not configured)
+    }
     std.log.info("[ANALYZE] Rule file: {d} bytes", .{content.len});
     defer allocator.free(content);
 
@@ -978,6 +1014,10 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
             });
             // IR-01: Write CRITICAL forensic log for BLOCK events (with fsync for durability)
             forensic_log.logBlock(rule.name, ctx.source_ip, ctx.source_port, ctx.session_id, g_ruleset_version.load(.acquire), data);
+            // IR-07: Capture full payload for forensic analysis (logs/payloads/<sha256>.bin)
+            if (forensic_log.capturePayload(data)) |payload_file| {
+                std.log.info("[FORENSIC] Payload captured to {s}", .{payload_file});
+            }
             return false;
         }
 
@@ -1662,7 +1702,19 @@ fn bridgeStatusReporter() void {
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
         // BP175: Also check g_shutdown_requested (CTRL+C sets this, not g_shutdown)
         if (g_shutdown_requested.load(.acquire)) break;
-        std.time.sleep(30 * std.time.ns_per_s);
+        // IR-12: Shutdown-responsive sleep (was 30s blocking — now polls every 1s)
+        // Allows graceful shutdown within ~1 second instead of waiting up to 30s
+        var slept_ns: u64 = 0;
+        const IR12_POLL_INTERVAL_NS: u64 = 1 * std.time.ns_per_s;
+        const IR12_TARGET_SLEEP_NS: u64 = 30 * std.time.ns_per_s;
+        while (slept_ns < IR12_TARGET_SLEEP_NS) {
+            if (bridge_init.g_shutdown.load(.seq_cst)) break;
+            if (g_shutdown_requested.load(.acquire)) break;
+            std.time.sleep(IR12_POLL_INTERVAL_NS);
+            slept_ns += IR12_POLL_INTERVAL_NS;
+        }
+        if (bridge_init.g_shutdown.load(.seq_cst)) break;
+        if (g_shutdown_requested.load(.acquire)) break;
         std.debug.print("\n--- Status Report ---\n", .{});
         bridge_init.printStatus();
         // BP89: Epoch timestamp for log correlation
