@@ -210,7 +210,9 @@ public:
 
 // ====== Shared Memory Ring Buffer (User-Mode) ======
 // For high-throughput event passing between subsystems via shared memory.
-// Uses mutex instead of spinlock (user-mode appropriate).
+// B-06 FIX: Added std::mutex for thread-safety (was data race on m_head/m_tail/m_count)
+#include <mutex>
+
 template<typename T>
 class SharedRingBuffer {
     T*       m_buffer;
@@ -219,6 +221,7 @@ class SharedRingBuffer {
     uint32_t m_tail;       // Write position
     uint32_t m_count;      // Number of items in buffer
     uint32_t m_dropped;    // Events dropped due to overflow
+    std::mutex m_mutex;    // B-06: Thread-safety for concurrent Push/Pop
 
 public:
     SharedRingBuffer() : m_buffer(nullptr), m_capacity(0),
@@ -226,9 +229,7 @@ public:
 
     bool Initialize(uint32_t capacity) {
         m_capacity = capacity;
-        // In production, use shared memory (CreateFileMapping/MapViewOfFile)
-        // For now, use simple heap allocation
-        m_buffer = new T[capacity];  // Note: user-mode, so new is OK
+        m_buffer = new T[capacity];
         if (!m_buffer) return false;
         memset(m_buffer, 0, sizeof(T) * capacity);
         m_head = 0;
@@ -239,6 +240,7 @@ public:
     }
 
     void Destroy() {
+        std::lock_guard<std::mutex> lock(m_mutex);
         if (m_buffer) {
             delete[] m_buffer;
             m_buffer = nullptr;
@@ -246,7 +248,9 @@ public:
     }
 
     // Push an event (returns false if buffer full — event dropped)
+    // B-06: Now thread-safe via std::lock_guard
     bool Push(const T& event) {
+        std::lock_guard<std::mutex> lock(m_mutex);
         if (m_count >= m_capacity) {
             m_dropped++;
             return false;
@@ -258,7 +262,9 @@ public:
     }
 
     // Pop an event (returns false if buffer empty)
+    // B-06: Now thread-safe via std::lock_guard
     bool Pop(T& event) {
+        std::lock_guard<std::mutex> lock(m_mutex);
         if (m_count == 0) return false;
         event = m_buffer[m_head];
         m_head = (m_head + 1) % m_capacity;
@@ -266,10 +272,22 @@ public:
         return true;
     }
 
-    uint32_t Count()   const { return m_count; }
-    uint32_t Dropped() const { return m_dropped; }
-    bool     IsEmpty() const { return m_count == 0; }
-    bool     IsFull()  const { return m_count >= m_capacity; }
+    uint32_t Count() {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_count;
+    }
+    uint32_t Dropped() {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_dropped;
+    }
+    bool IsEmpty() {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_count == 0;
+    }
+    bool IsFull() {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_count >= m_capacity;
+    }
 };
 
 // ====== Named Pipe Channel ======

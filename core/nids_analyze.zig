@@ -716,6 +716,9 @@ fn pushTier1Match(
     payload_len: u32,
 ) void {
     const event: bridge_init.AegisIpcEvent = .{
+        .magic = bridge_init.AEGIS_IPC_MAGIC,
+        .version = bridge_init.AEGIS_IPC_VERSION,
+        .struct_size = @sizeOf(bridge_init.AegisIpcEvent),
         .event_type = if (ctx.is_pipe) 3 else 0,
         .source_ip = ctx.source_ip,
         .dest_ip = ctx.dest_ip,
@@ -747,6 +750,9 @@ fn pushForwardedEvent(
     payload_len: u32,
 ) void {
     const event: bridge_init.AegisIpcEvent = .{
+        .magic = bridge_init.AEGIS_IPC_MAGIC,
+        .version = bridge_init.AEGIS_IPC_VERSION,
+        .struct_size = @sizeOf(bridge_init.AegisIpcEvent),
         .event_type = if (ctx.is_pipe) 3 else 0,
         .source_ip = ctx.source_ip,
         .dest_ip = ctx.dest_ip,

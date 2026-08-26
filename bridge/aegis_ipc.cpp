@@ -344,18 +344,50 @@ void aegis_bridge_update_defcon(uint32_t critical, uint32_t blocked,
         level, DefconAggregator::LevelLabel(level), critical, blocked, kernel, total);
 }
 
+// B-07 FIX: Implemented block_ip via Windows Firewall (netsh advfirewall)
+// (was: fprintf only — no actual blocking, returned false success)
 int32_t aegis_bridge_block_ip(uint32_t ip) {
     uint8_t* bytes = reinterpret_cast<uint8_t*>(&ip);
-    fprintf(stdout, "[AEGIS Bridge] IPS: Block IP %d.%d.%d.%d\n",
+    // Network byte order: bytes[0] is MSB (first octet)
+    char ip_str[16];
+    snprintf(ip_str, sizeof(ip_str), "%d.%d.%d.%d",
         bytes[0], bytes[1], bytes[2], bytes[3]);
-    return 0;
+
+    char cmd[256];
+    snprintf(cmd, sizeof(cmd),
+        "netsh advfirewall firewall add rule name=\"AEGIS_BLOCK_%s\" "
+        "dir=in action=block remoteip=%s", ip_str, ip_str);
+
+    int result = system(cmd);
+    if (result == 0) {
+        fprintf(stdout, "[AEGIS Bridge] IPS: Blocked IP %s via Windows Firewall\n", ip_str);
+        return 0;
+    } else {
+        fprintf(stderr, "[AEGIS Bridge] IPS: Failed to block IP %s (error=%d)\n", ip_str, result);
+        return -1;
+    }
 }
 
+// B-07 FIX: Implemented unblock_ip via Windows Firewall
 int32_t aegis_bridge_unblock_ip(uint32_t ip) {
     uint8_t* bytes = reinterpret_cast<uint8_t*>(&ip);
-    fprintf(stdout, "[AEGIS Bridge] IPS: Unblock IP %d.%d.%d.%d\n",
+    char ip_str[16];
+    snprintf(ip_str, sizeof(ip_str), "%d.%d.%d.%d",
         bytes[0], bytes[1], bytes[2], bytes[3]);
-    return 0;
+
+    char cmd[256];
+    snprintf(cmd, sizeof(cmd),
+        "netsh advfirewall firewall delete rule name=\"AEGIS_BLOCK_%s\"",
+        ip_str);
+
+    int result = system(cmd);
+    if (result == 0) {
+        fprintf(stdout, "[AEGIS Bridge] IPS: Unblocked IP %s\n", ip_str);
+        return 0;
+    } else {
+        fprintf(stderr, "[AEGIS Bridge] IPS: Failed to unblock IP %s (error=%d)\n", ip_str, result);
+        return -1;
+    }
 }
 
 int32_t aegis_bridge_send_command(const Aegis::Bridge::IpcCommand* cmd) {

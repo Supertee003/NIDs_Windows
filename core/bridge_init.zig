@@ -42,7 +42,15 @@ var g_state = BridgeState{};
 // C++ IPC Bridge DLL (runtime loaded, same as nids_analyze.zig)
 // ============================================================
 
+// B-05: Magic + version fields for ABI safety
+// If Zig and C++ have different struct layouts, validation fails immediately
+pub const AEGIS_IPC_MAGIC: u32 = 0x41454749; // "AEGI" in ASCII
+pub const AEGIS_IPC_VERSION: u16 = 1;
+
 pub const AegisIpcEvent = extern struct {
+    magic: u32,        // B-05: 0x41454749 ("AEGI") - validates struct layout
+    version: u16,      // B-05: struct version (bump on schema change)
+    struct_size: u16,  // B-05: sizeof(AegisIpcEvent) for forward compatibility
     event_type: u32,
     source_ip: u32,
     dest_ip: u32,
@@ -60,6 +68,14 @@ pub const AegisIpcEvent = extern struct {
     source_pid: u32,
     defcon_impact: u32,
 };
+
+/// B-05: Validate that an IpcEvent has correct magic + version
+pub fn validateIpcEvent(event: *const AegisIpcEvent) bool {
+    if (event.magic != AEGIS_IPC_MAGIC) return false;
+    if (event.version != AEGIS_IPC_VERSION) return false;
+    if (event.struct_size != @sizeOf(AegisIpcEvent)) return false;
+    return true;
+}
 
 const FnBridgeInit = *const fn () callconv(.C) i32;
 const FnBridgeShutdown = *const fn () callconv(.C) i32;
