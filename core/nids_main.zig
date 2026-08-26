@@ -25,6 +25,10 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
+    // UX-12: Enable Virtual Terminal Processing for ANSI color codes on Windows
+    // (Without this, \x1b[31;1m appears as literal text on Windows 10 <= 1809)
+    enableVirtualTerminal();
+
     std.fs.cwd().makeDir("logs") catch |err| {
         if (err != error.PathAlreadyExists) {
             std.log.err("[MAIN] Failed to create logs dir: {}", .{err});
@@ -99,4 +103,29 @@ pub fn main() !void {
     if (t_pmon) |t| t.join();
 
     std.log.info("[MAIN] Shutdown complete", .{});
+}
+
+// ============================================================
+// UX-12: Enable Virtual Terminal Processing for ANSI color codes
+// ============================================================
+
+const ENABLE_VIRTUAL_TERMINAL_PROCESSING: u32 = 0x0004;
+const STD_OUTPUT_HANDLE: u32 = @bitCast(@as(i32, -11));
+const STD_ERROR_HANDLE: u32 = @bitCast(@as(i32, -12));
+
+extern "kernel32" fn GetStdHandle(nStdHandle: u32) ?*anyopaque;
+extern "kernel32" fn GetConsoleMode(hConsoleHandle: ?*anyopaque, lpMode: *u32) i32;
+extern "kernel32" fn SetConsoleMode(hConsoleHandle: ?*anyopaque, dwMode: u32) i32;
+
+fn enableVirtualTerminal() void {
+    // Enable VT processing on stdout
+    const stdout = GetStdHandle(STD_OUTPUT_HANDLE) orelse return;
+    var mode: u32 = 0;
+    if (GetConsoleMode(stdout, &mode) == 0) return;
+    _ = SetConsoleMode(stdout, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+
+    // Enable VT processing on stderr (for std.log.warn/err)
+    const stderr = GetStdHandle(STD_ERROR_HANDLE) orelse return;
+    if (GetConsoleMode(stderr, &mode) == 0) return;
+    _ = SetConsoleMode(stderr, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 }

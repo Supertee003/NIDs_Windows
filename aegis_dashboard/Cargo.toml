@@ -11,6 +11,17 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 chrono = "0.4"
 
+# UX-01 FIX: Added missing dependencies required by handlers/, udp.rs, db.rs, ws.rs, bridge_ffi.rs
+axum = "0.7"
+tokio = { version = "1", features = ["full"] }
+dashmap = "6"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+rusqlite = { version = "0.31", features = ["bundled"] }
+uuid = { version = "1", features = ["v4"] }
+futures-util = "0.3"
+libloading = "0.8"
+
 [profile.release]
 opt-level = 3
 lto = true

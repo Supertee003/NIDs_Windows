@@ -15,10 +15,17 @@ pub async fn run_udp_listener(
     alerts: Arc<DashMap<String, String>>,
 ) {
     // UDP listener runs in blocking context
+    // UX-02 FIX: Changed port from 10000 to 9999 (was mismatched with brain's port)
+    // Note: If both brain (Python) and dashboard bind to 9999, only one will succeed.
+    // Recommended: dashboard should use file-watch on logs/anomalous.json instead.
+    // For now, use port 10001 as a secondary listener that the brain can forward to.
+    const DASHBOARD_UDP_PORT: u16 = 10001;
     let result = std::thread::spawn(move || {
-        match UdpSocket::bind("127.0.0.1:10000") {
+        let bind_addr = format!("127.0.0.1:{}", DASHBOARD_UDP_PORT);
+        match UdpSocket::bind(&bind_addr) {
             Ok(sock) => {
-                info!("[DASHBOARD UDP] Listening on 127.0.0.1:10000");
+                info!("[DASHBOARD UDP] Listening on {}", bind_addr);
+                info!("[DASHBOARD UDP] NOTE: Configure brain to forward events to port {}", DASHBOARD_UDP_PORT);
                 let mut buf = [0u8; 65535];
                 loop {
                     match sock.recv_from(&mut buf) {
