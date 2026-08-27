@@ -34,9 +34,9 @@ pub const CanonicalEvent = extern struct {
     struct_size: u16,       // sizeof(CanonicalEvent) for forward compat
     event_id: u64,          // Unique ID (atomic counter)
 
-    // --- Timestamps (IR-04 dual-clock, STEP 1: ABI-safe u64) ---
-    timestamp_ms: u64,      // Wall-clock epoch milliseconds (was i64)
-    monotonic_ns: u64,      // Monotonic nanoseconds (was i128 — not portable ABI)
+    // --- Timestamps (IR-04 dual-clock) ---
+    timestamp_ms: i64,      // Wall-clock epoch milliseconds
+    monotonic_ns: i128,     // Monotonic nanoseconds (in-process ordering)
 
     // --- Source Identification ---
     source: EventSource,   // Which subsystem produced this event
@@ -150,8 +150,8 @@ pub fn create(source: EventSource) CanonicalEvent {
         .version = EVENT_VERSION,
         .struct_size = EVENT_SCHEMA_SIZE,
         .event_id = nextEventId(),
-        .timestamp_ms = @as(u64, @intCast(@max(@as(i64, 0), std.time.milliTimestamp()))),
-        .monotonic_ns = @as(u64, @intCast(@max(@as(i128, 0), std.time.nanoTimestamp()))),
+        .timestamp_ms = std.time.milliTimestamp(),
+        .monotonic_ns = std.time.nanoTimestamp(),
         .source = source,
         .source_ip = 0,
         .source_port = 0,
