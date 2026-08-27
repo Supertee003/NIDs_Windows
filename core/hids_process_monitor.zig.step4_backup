@@ -224,7 +224,7 @@ test "STEP4: process events use nose_integration.submit (pressure-aware)" {
     defer nose.shutdownFabric(std.testing.allocator);
     nose_int.init(.{ .seed = 42 });
     nose_int.resetStats();
-    const fabric = @import("event_fabric.zig");
+    var fabric = @import("event_fabric.zig");
     fabric.resetMetrics();
 
     // Under low pressure, event should be accepted
