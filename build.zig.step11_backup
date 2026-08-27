@@ -39,8 +39,8 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run unit tests");
 
     // List all Zig source files that contain tests
-    // STEP 3-11: see prior comments
-    // STEP 12: added core/perf_benchmark.zig
+    // STEP 3-10: see prior comments
+    // STEP 11: added core/runtime_golden_path_test.zig
     const test_files = [_][]const u8{
         "core/nids_analyze.zig",
         "core/wfp_ioctl.zig",
@@ -61,7 +61,6 @@ pub fn build(b: *std.Build) void {
         "core/policy_integration.zig", // STEP 9: NEW
         "core/forensics_integration.zig", // STEP 10: NEW
         "core/runtime_golden_path_test.zig", // STEP 11: NEW
-        "core/perf_benchmark.zig", // STEP 12: NEW
         "core/nose_contract.zig",
         "core/detection_interface.zig",
         "core/policy_contract.zig",

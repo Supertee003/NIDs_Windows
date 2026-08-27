@@ -1,0 +1,598 @@
+//! runtime_golden_path_test.zig - AEGIS Runtime Golden Path E2E Tests (STEP 11)
+//!
+//! Comprehensive end-to-end tests covering the COMPLETE Golden Path:
+//!   Sensor -> nose_int.submit (STEP 4)
+//!     -> fabric.popEvent (STEP 3)
+//!       -> rag_int.enrichEvent (STEP 8)
+//!         -> flow_int.processEvent (STEP 5)
+//!           -> detection_int.processEvent (STEP 6)
+//!             -> correlation_int.submitDetectionContext (STEP 7)
+//!               -> policy_int.evaluateAndEnforce (STEP 9)
+//!                 -> forensics_int.logPipelineResult (STEP 10)
+//!
+//! Test scenarios:
+//!   1. Full pipeline single-event (benign traffic)
+//!   2. APT attack scenario (full escalation: RAG -> severity 3 -> DEFCON 1 -> BLOCK -> PEP)
+//!   3. Cross-tier correlation (network + host events same session_id)
+//!   4. Forensics replay (query after pipeline)
+//!   5. Multi-thread stress (concurrent sensor submission)
+//!   6. Backpressure handling (queue saturated -> sampling drops low-priority)
+
+const std = @import("std");
+const canonical = @import("canonical_event.zig");
+const nose = @import("nose_contract.zig");
+const nose_int = @import("nose_integration.zig");
+const fabric = @import("event_fabric.zig");
+const flow_int = @import("flow_integration.zig");
+const flow = @import("flow_engine.zig");
+const detection_int = @import("detection_integration.zig");
+const detection = @import("detection_interface.zig");
+const correlation_int = @import("correlation_integration.zig");
+const rag_int = @import("rag_integration.zig");
+const policy_int = @import("policy_integration.zig");
+const forensics_int = @import("forensics_integration.zig");
+const policy = @import("policy_contract.zig");
+
+// ============================================================
+// Test helpers: initialize ALL integration layers in correct order
+// ============================================================
+
+fn initAllLayers() void {
+    nose.initFabric(std.testing.allocator, .{ .capacity_per_priority = 64 }) catch {};
+    nose_int.init(.{ .seed = 42, .high_drop_low = true, .saturated_drop_low_and_normal = true });
+    flow_int.init();
+    detection_int.init(detection_int.EscalationThresholds.default());
+    correlation_int.init();
+    rag_int.init();
+    policy_int.init();
+    forensics_int.init();
+}
+
+fn shutdownAllLayers() void {
+    forensics_int.shutdown();
+    policy_int.shutdown();
+    rag_int.shutdown();
+    correlation_int.shutdown();
+    flow_int.shutdown();
+    nose_int.resetStats();
+    nose.shutdownFabric(std.testing.allocator);
+}
+
+fn resetAllStats() void {
+    nose_int.resetStats();
+    detection_int.resetStats();
+    correlation_int.resetStats();
+    rag_int.resetStats();
+    policy_int.resetStats();
+    forensics_int.resetStats();
+}
+
+// ============================================================
+// Test detector (for full pipeline tests with detection)
+// ============================================================
+
+fn runtimeTestDetector(payload: []const u8, ctx: *const canonical.CanonicalEvent) detection.DetectionResult {
+    _ = ctx;
+    if (std.mem.indexOf(u8, payload, "malware") != null) {
+        return .{
+            .verdict = .match_block,
+            .rule_id = 100,
+            .rule_hash = 0xABCDEF,
+            .severity = 3,
+            .rule_name = "RUNTIME_MALWARE",
+            .ruleset_version = 1,
+        };
+    }
+    if (std.mem.indexOf(u8, payload, "suspicious") != null) {
+        return .{
+            .verdict = .match_alert,
+            .rule_id = 200,
+            .rule_hash = 0x123456,
+            .severity = 2,
+            .rule_name = "RUNTIME_SUSPICIOUS",
+            .ruleset_version = 1,
+        };
+    }
+    return detection.DetectionResult.noMatch();
+}
+
+fn makeNetworkEvent(source_ip: u32, session_id: u64, payload_len: u32) canonical.CanonicalEvent {
+    var event = canonical.create(.wfp_sensor);
+    event.event_type = .forward;
+    event.source_ip = source_ip;
+    event.dest_ip = 0x0A000001;
+    event.source_port = 12345;
+    event.dest_port = 80;
+    event.protocol = 6;
+    event.payload_length = payload_len;
+    event.is_pipe = 0;
+    event.session_id = session_id;
+    return event;
+}
+
+fn makeHostEvent(session_id: u64, severity: u8) canonical.CanonicalEvent {
+    var event = canonical.create(.minifilter);
+    event.event_type = .session_start;
+    event.source_ip = 0;
+    event.is_pipe = 1;
+    event.session_id = session_id;
+    event.severity = severity;
+    return event;
+}
+
+// ============================================================
+// Test 1: Full pipeline single-event (benign traffic)
+// ============================================================
+
+test "STEP11: full pipeline processes benign event end-to-end" {
+    initAllLayers();
+    defer shutdownAllLayers();
+    resetAllStats();
+
+    const event = makeNetworkEvent(0xC0A80164, 1001, 256);
+
+    // Process through full pipeline
+    const result = policy_int.processEventFullPipeline(event, null, &.{});
+
+    // Verify each stage ran:
+    // - Flow tracking: packet_count >= 1
+    try std.testing.expect(result.det_ctx.flow_context.packet_count >= 1);
+    // - Correlation: incident created
+    try std.testing.expect(result.corr_result.incident_index != null);
+    try std.testing.expect(!result.corr_result.linked_to_existing);
+    // - RAG: no match (benign IP)
+    try std.testing.expect(!result.enrichment.matched);
+    // - Policy: allow (no threat, no detection match)
+    try std.testing.expect(result.policy_result.decision == .allow);
+
+    // Log to forensics
+    forensics_int.logPipelineResult(result);
+
+    // Verify forensics captured the record
+    const stats = forensics_int.getStats();
+    try std.testing.expect(stats.total_records == 1);
+
+    // Verify replay query works
+    const replay = forensics_int.query(.{ .session_id = 1001 });
+    try std.testing.expect(replay.total_matched == 1);
+}
+
+// ============================================================
+// Test 2: APT attack scenario (full escalation)
+// ============================================================
+
+test "STEP11: APT attack triggers full escalation chain" {
+    initAllLayers();
+    defer shutdownAllLayers();
+    resetAllStats();
+
+    // Add APT threat intel
+    _ = rag_int.addThreat(.{
+        .ip = 0xC0A81010,
+        .severity = 3,
+        .confidence = 95,
+        .source = "apt_intel",
+        .category = .apt,
+        .first_seen_ms = 0,
+        .last_seen_ms = 0,
+    });
+
+    const event = makeNetworkEvent(0xC0A81010, 2002, 100);
+
+    const result = policy_int.processEventFullPipeline(event, null, &.{});
+    forensics_int.logPipelineResult(result);
+
+    // Verify full escalation:
+    // 1. RAG matched APT
+    try std.testing.expect(result.enrichment.matched);
+    try std.testing.expect(result.enrichment.enrichment.threat_category == .apt);
+    try std.testing.expect(result.enrichment.enrichment.confidence == 95);
+
+    // 2. Severity escalated to critical (3)
+    try std.testing.expect(result.det_ctx.event.severity == 3);
+
+    // 3. DEFCON 1 (derived from severity 3)
+    try std.testing.expect(result.policy_result.context.defcon_level == 1);
+
+    // 4. Policy decision: BLOCK
+    try std.testing.expect(result.policy_result.decision == .block);
+
+    // 5. PEP enforced (event mutated with policy_action=block)
+    try std.testing.expect(result.policy_result.event.policy_action == .block);
+
+    // 6. Forensics captured the BLOCK decision
+    const replay = forensics_int.query(.{ .session_id = 2002, .decisions_only = true });
+    try std.testing.expect(replay.total_matched == 1);
+}
+
+// ============================================================
+// Test 3: Cross-tier correlation (network + host same session)
+// ============================================================
+
+test "STEP11: cross-tier events linked by session_id" {
+    initAllLayers();
+    defer shutdownAllLayers();
+    resetAllStats();
+
+    // Phase 1: network event from external IP
+    const net_event = makeNetworkEvent(0xC0A80164, 3003, 100);
+    const net_result = policy_int.processEventFullPipeline(net_event, null, &.{});
+    forensics_int.logPipelineResult(net_result);
+
+    try std.testing.expect(!net_result.corr_result.linked_to_existing);
+    const net_incident_idx = net_result.corr_result.incident_index.?;
+
+    // Phase 2: host event (process spawn) — same session_id
+    const host_event = makeHostEvent(3003, 3); // critical severity
+    const host_result = policy_int.processEventFullPipeline(host_event, null, &.{});
+    forensics_int.logPipelineResult(host_result);
+
+    // Verify linked to same incident
+    try std.testing.expect(host_result.corr_result.linked_to_existing);
+    try std.testing.expect(host_result.corr_result.incident_index.? == net_incident_idx);
+    try std.testing.expect(host_result.corr_result.incident_event_count == 2);
+
+    // Verify incident severity escalated to 3 (host event was critical)
+    try std.testing.expect(host_result.corr_result.incident_severity >= 3);
+
+    // Verify forensics captured both events
+    const replay = forensics_int.query(.{ .session_id = 3003 });
+    try std.testing.expect(replay.total_matched == 2);
+}
+
+// ============================================================
+// Test 4: Forensics replay with filters
+// ============================================================
+
+test "STEP11: forensics replay supports multiple query filters" {
+    initAllLayers();
+    defer shutdownAllLayers();
+    resetAllStats();
+
+    // Add APT threat
+    _ = rag_int.addThreat(.{
+        .ip = 0xC0A81010,
+        .severity = 3,
+        .confidence = 95,
+        .source = "apt",
+        .category = .apt,
+        .first_seen_ms = 0,
+        .last_seen_ms = 0,
+    });
+
+    // Process 5 events: 2 benign, 1 APT, 2 threat-intel match (malicious seed)
+    const events = [_]canonical.CanonicalEvent{
+        makeNetworkEvent(0xC0A80202, 4001, 100), // benign
+        makeNetworkEvent(0xC0A80203, 4002, 100), // benign
+        makeNetworkEvent(0xC0A81010, 4003, 100), // APT
+        makeNetworkEvent(0x0A000099, 4004, 100), // malicious (seed)
+        makeNetworkEvent(0x0A000099, 4005, 100), // malicious (seed)
+    };
+
+    for (events) |ev| {
+        const result = policy_int.processEventFullPipeline(ev, null, &.{});
+        forensics_int.logPipelineResult(result);
+    }
+
+    // Query 1: all records
+    const all = forensics_int.query(.{});
+    try std.testing.expect(all.total_matched == 5);
+
+    // Query 2: threat intel only
+    const threat_only = forensics_int.query(.{ .threat_intel_only = true });
+    try std.testing.expect(threat_only.total_matched == 3); // APT + 2 malicious
+
+    // Query 3: decisions only (APT -> block, malicious -> alert)
+    const decisions = forensics_int.query(.{ .decisions_only = true });
+    try std.testing.expect(decisions.total_matched == 3);
+
+    // Query 4: min_severity = 3 (APT only)
+    const critical = forensics_int.query(.{ .min_severity = 3 });
+    try std.testing.expect(critical.total_matched == 1);
+
+    // Query 5: by source_ip
+    const by_ip = forensics_int.query(.{ .source_ip = 0x0A000099 });
+    try std.testing.expect(by_ip.total_matched == 2);
+}
+
+// ============================================================
+// Test 5: Multi-thread stress (concurrent submission)
+// ============================================================
+
+const StressContext = struct {
+    thread_id: u32,
+    events_per_thread: u32,
+    errors: *u64,
+};
+
+fn stressThread(ctx: StressContext) void {
+    var i: u32 = 0;
+    while (i < ctx.events_per_thread) : (i += 1) {
+        var event = canonical.create(.wfp_sensor);
+        event.event_type = .forward;
+        event.source_ip = 0xC0A80200 + ctx.thread_id;
+        event.dest_ip = 0x0A000001;
+        event.source_port = @intCast(10000 + ctx.thread_id * 100 + i);
+        event.dest_port = 80;
+        event.protocol = 6;
+        event.payload_length = 100;
+        event.is_pipe = 0;
+        event.session_id = @as(u64, ctx.thread_id) * 10000 + i;
+
+        // Submit through pressure-aware path
+        const result = nose_int.submit(event);
+        if (result != .accepted and result != .dropped_at_source and result != .dropped_by_fabric) {
+            _ = @atomicRmw(u64, ctx.errors, .Add, 1, .monotonic);
+        }
+    }
+}
+
+test "STEP11: multi-thread concurrent submission is thread-safe" {
+    initAllLayers();
+    defer shutdownAllLayers();
+    resetAllStats();
+
+    const num_threads: u32 = 3;
+    const events_per_thread: u32 = 20;
+    var errors: u64 = 0;
+
+    var threads: [num_threads]std.Thread = undefined;
+    var i: u32 = 0;
+    while (i < num_threads) : (i += 1) {
+        threads[i] = std.Thread.spawn(.{}, stressThread, .{.{
+            .thread_id = i,
+            .events_per_thread = events_per_thread,
+            .errors = &errors,
+        }}) catch {
+            errors += 1;
+            continue;
+        };
+    }
+
+    // Wait for all threads
+    for (threads) |t| {
+        t.join();
+    }
+
+    try std.testing.expect(errors == 0);
+
+    // Verify all events were submitted (some may be dropped at source due to pressure)
+    const stats = nose_int.getStats();
+    try std.testing.expect(stats.total_submits == num_threads * events_per_thread);
+    try std.testing.expect(stats.accepted + stats.dropped_at_source + stats.dropped_by_fabric == num_threads * events_per_thread);
+
+    // Verify forensics ring is consistent
+    const forensic_stats = forensics_int.getStats();
+    try std.testing.expect(forensic_stats.total_records <= num_threads * events_per_thread);
+}
+
+// ============================================================
+// Test 6: Backpressure handling (queue saturated -> sampling)
+// ============================================================
+
+test "STEP11: backpressure triggers source-level sampling" {
+    initAllLayers();
+    defer shutdownAllLayers();
+    resetAllStats();
+
+    // Use small capacity to trigger saturation quickly
+    nose.shutdownFabric(std.testing.allocator);
+    nose.initFabric(std.testing.allocator, .{ .capacity_per_priority = 4 }) catch {};
+    nose_int.init(.{
+        .seed = 42,
+        .high_drop_low = true,
+        .saturated_drop_low_and_normal = true,
+        .medium_low_drop_fraction = 0.0, // no sampling at medium
+    });
+
+    // Fill HIGH queue to capacity (4 events)
+    var i: u32 = 0;
+    while (i < 4) : (i += 1) {
+        var event = canonical.create(.wfp_sensor);
+        event.event_type = .block; // HIGH priority
+        event.source_ip = 0xC0A80100 + i;
+        event.dest_ip = 0x0A000001;
+        event.source_port = @as(u16, @intCast(12345 + i));
+        event.dest_port = 80;
+        event.protocol = 6;
+        event.payload_length = 100;
+        event.is_pipe = 0;
+        event.session_id = 5000 + i;
+        try std.testing.expect(nose_int.submit(event) == .accepted);
+    }
+
+    // Queue is now saturated (HIGH priority queue full)
+    try std.testing.expect(fabric.currentPressure() == .saturated);
+
+    // Submit a LOW-priority event — should be dropped at source
+    var low_event = canonical.create(.wfp_sensor);
+    low_event.event_type = .forward; // LOW priority
+    low_event.source_ip = 0xC0A80202;
+    low_event.dest_ip = 0x0A000001;
+    low_event.source_port = 54321;
+    low_event.dest_port = 80;
+    low_event.protocol = 6;
+    low_event.payload_length = 100;
+    low_event.is_pipe = 0;
+    low_event.session_id = 5999;
+
+    const result = nose_int.submit(low_event);
+    try std.testing.expect(result == .dropped_at_source);
+
+    // Verify stats
+    const stats = nose_int.getStats();
+    try std.testing.expect(stats.dropped_at_source >= 1);
+}
+
+// ============================================================
+// Test 7: Detection + policy integration (malware payload)
+// ============================================================
+
+test "STEP11: detection match flows through policy to PEP" {
+    initAllLayers();
+    defer shutdownAllLayers();
+    resetAllStats();
+
+    var dm = detection.DetectionManager.init();
+    _ = dm.register(.{
+        .name = "RuntimeTestDetector",
+        .detector_type = .tier1_aho_corasick,
+        .is_active = true,
+        .scan_fn = &runtimeTestDetector,
+    });
+
+    const event = makeNetworkEvent(0xC0A80202, 6001, 100);
+    const payload = "this contains malware signature";
+
+    const result = policy_int.processEventFullPipeline(event, &dm, payload);
+    forensics_int.logPipelineResult(result);
+
+    // Detector matched with BLOCK verdict
+    try std.testing.expect(result.det_ctx.matched);
+    try std.testing.expect(result.det_ctx.verdict == .match_block);
+
+    // Policy escalated to BLOCK (severity 3 -> block_critical rule)
+    try std.testing.expect(result.policy_result.decision == .block);
+
+    // PEP enforced
+    try std.testing.expect(result.policy_result.event.policy_action == .block);
+
+    // Flow risk score updated by detection — note: det_ctx.flow_context is a
+    // snapshot taken BEFORE detection_int.updateRiskScore() ran, so we must
+    // query flow_int directly to see the updated risk score.
+    const updated_flow = flow_int.getFlowTable().?.lookup(.{
+        .src_ip = event.source_ip,
+        .dst_ip = event.dest_ip,
+        .src_port = event.source_port,
+        .dst_port = event.dest_port,
+        .protocol = event.protocol,
+    });
+    try std.testing.expect(updated_flow != null);
+    try std.testing.expect(updated_flow.?.risk_score > 0); // severity 3 * 80 = 240
+
+    // Forensics captured BLOCK decision
+    const replay = forensics_int.query(.{ .session_id = 6001, .decisions_only = true });
+    try std.testing.expect(replay.total_matched == 1);
+}
+
+// ============================================================
+// Test 8: Timeline reconstruction
+// ============================================================
+
+test "STEP11: incident timeline reconstruction" {
+    initAllLayers();
+    defer shutdownAllLayers();
+    resetAllStats();
+
+    const session_id: u64 = 7007;
+
+    // Simulate multi-stage attack:
+    // 1. Network scan (low severity)
+    var scan_event = makeNetworkEvent(0xC0A80164, session_id, 64);
+    scan_event.severity = 1;
+    forensics_int.logPipelineResult(policy_int.processEventFullPipeline(scan_event, null, &.{}));
+
+    // 2. Suspicious payload (alert)
+    var alert_event = makeNetworkEvent(0xC0A80164, session_id, 256);
+    alert_event.severity = 2;
+    forensics_int.logPipelineResult(policy_int.processEventFullPipeline(alert_event, null, &.{}));
+
+    // 3. Critical block (APT)
+    _ = rag_int.addThreat(.{
+        .ip = 0xC0A80164,
+        .severity = 3,
+        .confidence = 95,
+        .source = "apt",
+        .category = .apt,
+        .first_seen_ms = 0,
+        .last_seen_ms = 0,
+    });
+    const block_event = makeNetworkEvent(0xC0A80164, session_id, 100);
+    forensics_int.logPipelineResult(policy_int.processEventFullPipeline(block_event, null, &.{}));
+
+    // Reconstruct timeline
+    const timeline = try forensics_int.buildTimeline(std.testing.allocator, session_id, 10);
+    defer std.testing.allocator.free(timeline);
+
+    try std.testing.expect(timeline.len == 3);
+
+    // Timeline should be newest-first
+    try std.testing.expect(timeline[0].severity == 3); // APT block
+    try std.testing.expect(timeline[0].decision == .block);
+    try std.testing.expect(timeline[1].severity == 2); // alert
+    try std.testing.expect(timeline[2].severity == 1); // scan (low)
+}
+
+// ============================================================
+// Test 9: Full pipeline stats consistency
+// ============================================================
+
+test "STEP11: pipeline stats are consistent across layers" {
+    initAllLayers();
+    defer shutdownAllLayers();
+    resetAllStats();
+
+    // Process 3 events
+    var i: u64 = 0;
+    while (i < 3) : (i += 1) {
+        const event = makeNetworkEvent(0xC0A80202 + @as(u32, @intCast(i)), 8000 + i, 100);
+        const result = policy_int.processEventFullPipeline(event, null, &.{});
+        forensics_int.logPipelineResult(result);
+    }
+
+    // Verify each layer's stats
+    const flow_stats = flow_int.getStats();
+    const corr_stats = correlation_int.getStats();
+    const rag_stats = rag_int.getStats();
+    const policy_stats = policy_int.getStats();
+    const forensic_stats = forensics_int.getStats();
+
+    // Note: fabric (nose) stats are 0 because processEventFullPipeline
+    // is a direct API call that skips the queue. To exercise fabric stats,
+    // events must be submitted via nose_int.submit() then popped + processed.
+    // Here we only verify the downstream layers that processEventFullPipeline
+    // touches directly.
+
+    // Flow engine should have 3 flows (different source IPs)
+    try std.testing.expect(flow_stats.active_flows == 3);
+
+    // Correlation: 3 incidents (different session_ids)
+    try std.testing.expect(corr_stats.active_incidents == 3);
+
+    // RAG: 3 queries (one per event)
+    try std.testing.expect(rag_stats.total_enriched == 3);
+
+    // Policy: 3 evaluations
+    try std.testing.expect(policy_stats.total_evaluations == 3);
+
+    // Forensics: 3 records
+    try std.testing.expect(forensic_stats.total_records == 3);
+}
+
+// ============================================================
+// Test 10: Integration shutdown is clean (no leaks)
+// ============================================================
+
+test "STEP11: integration shutdown is clean" {
+    // Initialize
+    initAllLayers();
+    resetAllStats();
+
+    // Process some events
+    var i: u64 = 0;
+    while (i < 5) : (i += 1) {
+        const event = makeNetworkEvent(0xC0A80202, 9000 + i, 100);
+        const result = policy_int.processEventFullPipeline(event, null, &.{});
+        forensics_int.logPipelineResult(result);
+    }
+
+    // Shutdown should not crash
+    shutdownAllLayers();
+
+    // Verify all layers report uninitialized
+    try std.testing.expect(!forensics_int.isInitialized());
+    try std.testing.expect(!policy_int.isInitialized());
+    try std.testing.expect(!rag_int.isInitialized());
+    try std.testing.expect(!correlation_int.isInitialized());
+    try std.testing.expect(!flow_int.isInitialized());
+}
