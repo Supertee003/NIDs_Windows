@@ -1746,6 +1746,7 @@ fn rulesWatchdog(allocator: std.mem.Allocator) void {
 /// This demonstrates the Golden Path: Sensor → Queue → Detection → Policy.
 fn eventFabricDrain() void {
     const nose = @import("nose_contract.zig");
+    const detection_int = @import("detection_integration.zig");
     const correlation_int = @import("correlation_integration.zig");
     std.log.info("[FABRIC] Event fabric drain thread started", .{});
     defer std.log.info("[FABRIC] Event fabric drain thread exiting", .{});
