@@ -68,6 +68,7 @@ pub fn build(b: *std.Build) void {
         "core/xdr_correlator.zig",
         "core/rag_intelligence.zig",
         "core/policy_ir.zig",
+        "core/sprint2_e2e_test.zig",
     };
 
     for (test_files) |test_file| {
