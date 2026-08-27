@@ -130,7 +130,7 @@ pub fn submitWireEvent(wire_bytes: []const u8) SubmitResult {
         return .rejected;
     };
 
-    return submitEvent(event);
+    return submitEvent(event.*);
 }
 
 /// Pop the next event for processing (detection layer calls this).

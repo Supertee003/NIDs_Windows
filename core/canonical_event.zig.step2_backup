@@ -177,127 +177,18 @@ pub fn create(source: EventSource) CanonicalEvent {
 }
 
 // ============================================================
-// Serialization (STEP 2: explicit field-by-field encoding, no memcpy)
+// Serialization (for IPC/Wire transport, AEGIS-003)
 // ============================================================
 
-/// Wire payload size (matches shared/protocol/wire_v1.md offset table)
-pub const WIRE_PAYLOAD_SIZE: usize = 109;
-
-/// Serialize CanonicalEvent to bytes via explicit field-by-field encoding.
-/// STEP 2: No memcpy, no pointer cast, no compiler-padding dependency.
-/// All fields little-endian, fixed-width.
-pub fn serializeToBytes(event: *const CanonicalEvent, buf: []u8) !usize {
-    if (buf.len < WIRE_PAYLOAD_SIZE) return error.BufferTooSmall;
-
-    var off: usize = 0;
-
-    // --- Header (16 bytes) ---
-    std.mem.writeInt(u32, buf[off..][0..4], event.magic, .little); off += 4;
-    std.mem.writeInt(u16, buf[off..][0..2], event.version, .little); off += 2;
-    std.mem.writeInt(u16, buf[off..][0..2], event.struct_size, .little); off += 2;
-    std.mem.writeInt(u64, buf[off..][0..8], event.event_id, .little); off += 8;
-
-    // --- Timestamps (16 bytes) ---
-    std.mem.writeInt(u64, buf[off..][0..8], event.timestamp_ms, .little); off += 8;
-    std.mem.writeInt(u64, buf[off..][0..8], event.monotonic_ns, .little); off += 8;
-
-    // --- Source Identification ---
-    buf[off] = @intFromEnum(event.source); off += 1;
-    std.mem.writeInt(u32, buf[off..][0..4], event.source_ip, .little); off += 4;
-    std.mem.writeInt(u16, buf[off..][0..2], event.source_port, .little); off += 2;
-    std.mem.writeInt(u32, buf[off..][0..4], event.dest_ip, .little); off += 4;
-    std.mem.writeInt(u16, buf[off..][0..2], event.dest_port, .little); off += 2;
-    std.mem.writeInt(u64, buf[off..][0..8], event.session_id, .little); off += 8;
-
-    // --- Protocol ---
-    buf[off] = event.protocol; off += 1;
-    buf[off] = event.direction; off += 1;
-    buf[off] = event.layer_id; off += 1;
-    buf[off] = event.is_pipe; off += 1;
-
-    // --- Detection Results ---
-    std.mem.writeInt(u32, buf[off..][0..4], @intFromEnum(event.event_type), .little); off += 4;
-    buf[off] = event.severity; off += 1;
-    std.mem.writeInt(u32, buf[off..][0..4], event.rule_id, .little); off += 4;
-    std.mem.writeInt(u64, buf[off..][0..8], event.ruleset_version, .little); off += 8;
-
-    // --- Payload Reference ---
-    std.mem.writeInt(u32, buf[off..][0..4], event.payload_length, .little); off += 4;
-    std.mem.writeInt(u64, buf[off..][0..8], event.payload_hash, .little); off += 8;
-
-    // --- Policy/Enforcement ---
-    buf[off] = @intFromEnum(event.policy_action); off += 1;
-    buf[off] = event.enforcement_status; off += 1;
-    buf[off] = event.defcon_impact; off += 1;
-    std.mem.writeInt(u32, buf[off..][0..4], event.context_flags, .little); off += 4;
-
-    // --- Reserved ---
-    @memcpy(buf[off..][0..16], &event.reserved); off += 16;
-
-    return off; // Should be 109
-}
-
-/// Deserialize bytes into CanonicalEvent via explicit field-by-field decoding.
-/// STEP 2: No pointer cast, no alignment dependency.
-pub fn deserializeFromBytes(bytes: []const u8) ?CanonicalEvent {
-    if (bytes.len < WIRE_PAYLOAD_SIZE) return null;
-
-    var event: CanonicalEvent = undefined;
-    var off: usize = 0;
-
-    // --- Header ---
-    event.magic = std.mem.readInt(u32, bytes[off..][0..4], .little); off += 4;
-    event.version = std.mem.readInt(u16, bytes[off..][0..2], .little); off += 2;
-    event.struct_size = std.mem.readInt(u16, bytes[off..][0..2], .little); off += 2;
-    event.event_id = std.mem.readInt(u64, bytes[off..][0..8], .little); off += 8;
-
-    // --- Timestamps ---
-    event.timestamp_ms = std.mem.readInt(u64, bytes[off..][0..8], .little); off += 8;
-    event.monotonic_ns = std.mem.readInt(u64, bytes[off..][0..8], .little); off += 8;
-
-    // --- Source ---
-    event.source = @enumFromInt(bytes[off]); off += 1;
-    event.source_ip = std.mem.readInt(u32, bytes[off..][0..4], .little); off += 4;
-    event.source_port = std.mem.readInt(u16, bytes[off..][0..2], .little); off += 2;
-    event.dest_ip = std.mem.readInt(u32, bytes[off..][0..4], .little); off += 4;
-    event.dest_port = std.mem.readInt(u16, bytes[off..][0..2], .little); off += 2;
-    event.session_id = std.mem.readInt(u64, bytes[off..][0..8], .little); off += 8;
-
-    // --- Protocol ---
-    event.protocol = bytes[off]; off += 1;
-    event.direction = bytes[off]; off += 1;
-    event.layer_id = bytes[off]; off += 1;
-    event.is_pipe = bytes[off]; off += 1;
-
-    // --- Detection ---
-    event.event_type = @enumFromInt(std.mem.readInt(u32, bytes[off..][0..4], .little)); off += 4;
-    event.severity = bytes[off]; off += 1;
-    event.rule_id = std.mem.readInt(u32, bytes[off..][0..4], .little); off += 4;
-    event.ruleset_version = std.mem.readInt(u64, bytes[off..][0..8], .little); off += 8;
-
-    // --- Payload ---
-    event.payload_length = std.mem.readInt(u32, bytes[off..][0..4], .little); off += 4;
-    event.payload_hash = std.mem.readInt(u64, bytes[off..][0..8], .little); off += 8;
-
-    // --- Policy ---
-    event.policy_action = @enumFromInt(bytes[off]); off += 1;
-    event.enforcement_status = bytes[off]; off += 1;
-    event.defcon_impact = bytes[off]; off += 1;
-    event.context_flags = std.mem.readInt(u32, bytes[off..][0..4], .little); off += 4;
-
-    // --- Reserved ---
-    @memcpy(&event.reserved, bytes[off..][0..16]); off += 16;
-
-    if (!validate(&event)) return null;
-    return event;
-}
-
-// Legacy compatibility (delegates to new explicit encoding)
+/// Serialize CanonicalEvent to bytes (for named pipe / UDP / shared memory).
+/// Returns the byte slice pointing into the event struct.
 pub fn serialize(event: *const CanonicalEvent) []const u8 {
     const ptr: [*]const u8 = @ptrCast(event);
     return ptr[0..@sizeOf(CanonicalEvent)];
 }
 
+/// Deserialize bytes into CanonicalEvent.
+/// Returns null if validation fails (wrong magic/version).
 pub fn deserialize(bytes: []const u8) ?*const CanonicalEvent {
     if (bytes.len < @sizeOf(CanonicalEvent)) return null;
     const event: *const CanonicalEvent = @ptrCast(@alignCast(bytes.ptr));
@@ -384,79 +275,4 @@ test "EventSource enum values" {
 test "PolicyAction enum values" {
     try std.testing.expect(@intFromEnum(PolicyAction.allow) == 0);
     try std.testing.expect(@intFromEnum(PolicyAction.block) == 2);
-}
-
-// ============================================================
-// STEP 2: Explicit encoding tests
-// ============================================================
-
-test "STEP2: serializeToBytes produces WIRE_PAYLOAD_SIZE bytes" {
-    var event = create(.wfp_sensor);
-    event.event_type = .block;
-    event.severity = 3;
-    event.rule_id = 0x12345678;
-    event.source_ip = 0xC0A80164;
-
-    var buf: [128]u8 = undefined;
-    const written = try serializeToBytes(&event, &buf);
-    try std.testing.expect(written == WIRE_PAYLOAD_SIZE);
-    try std.testing.expect(written == 109);
-}
-
-test "STEP2: deserializeFromBytes round-trip" {
-    var event = create(.pipe_sensor);
-    event.event_type = .match_;
-    event.severity = 2;
-    event.rule_id = 0xABCDEF;
-    event.source_ip = 0x0A000001;
-    event.source_port = 8080;
-    event.session_id = 42;
-    event.payload_length = 256;
-
-    var buf: [128]u8 = undefined;
-    const written = try serializeToBytes(&event, &buf);
-
-    const restored = deserializeFromBytes(buf[0..written]);
-    try std.testing.expect(restored != null);
-    try std.testing.expect(restored.?.event_type == .match_);
-    try std.testing.expect(restored.?.severity == 2);
-    try std.testing.expect(restored.?.rule_id == 0xABCDEF);
-    try std.testing.expect(restored.?.source_ip == 0x0A000001);
-    try std.testing.expect(restored.?.source_port == 8080);
-    try std.testing.expect(restored.?.session_id == 42);
-    try std.testing.expect(restored.?.payload_length == 256);
-}
-
-test "STEP2: deserializeFromBytes rejects short buffer" {
-    const short = [_]u8{0} ** 50;
-    try std.testing.expect(deserializeFromBytes(&short) == null);
-}
-
-test "STEP2: deserializeFromBytes rejects wrong magic" {
-    var event = create(.zig_core);
-    var buf: [128]u8 = undefined;
-    _ = try serializeToBytes(&event, &buf);
-    // Corrupt magic
-    buf[0] = 0x00;
-    try std.testing.expect(deserializeFromBytes(&buf) == null);
-}
-
-test "STEP2: explicit encoding matches wire_v1.md offset table" {
-    var event = create(.wfp_sensor);
-    event.magic = 0x41454731;
-    event.version = 1;
-    event.event_id = 12345;
-
-    var buf: [128]u8 = undefined;
-    _ = try serializeToBytes(&event, &buf);
-
-    // Verify magic at offset 0 (4 bytes, little-endian)
-    try std.testing.expect(buf[0] == 0x31); // LSB of 0x41454731
-    try std.testing.expect(buf[1] == 0x47);
-    try std.testing.expect(buf[2] == 0x45);
-    try std.testing.expect(buf[3] == 0x41);
-
-    // Verify version at offset 4 (2 bytes)
-    try std.testing.expect(buf[4] == 1);
-    try std.testing.expect(buf[5] == 0);
 }
