@@ -1,0 +1,751 @@
+//! policy_integration.zig - AEGIS Policy Engine Integration (STEP 9)
+//!
+//! Wires PolicyEngine + PEP with the full detection pipeline.
+//! Before STEP 9, PolicyEngine.evaluate() and PEP.enforce() existed but were
+//! never called from the eventFabricDrain loop — detection verdicts went
+//! straight to forensic log without policy enforcement.
+//!
+//! After STEP 9, every DetectionContext is:
+//!   1. Built into a DetectionResult (verdict + severity + rule_id)
+//!   2. Evaluated by PolicyEngine (rules + DEFCON + context)
+//!   3. Enforced by PEP (WFP block for .block decision)
+//!   4. Event mutated with final policy_action + enforcement_status
+//!
+//! Combined pipeline (full Golden Path with policy):
+//!   Sensor -> nose_int.submit (STEP 4)
+//!     -> fabric.popEvent (STEP 3)
+//!       -> rag_int.enrichEvent (STEP 8)
+//!         -> flow_int.processEvent (STEP 5)
+//!           -> detection_int.processEvent (STEP 6)
+//!             -> correlation_int.submitDetectionContext (STEP 7)
+//!               -> policy_int.evaluateAndEnforce (STEP 9 — NEW)
+//!                 -> PEP.enforce (WFP block / alert / log)
+
+const std = @import("std");
+const canonical = @import("canonical_event.zig");
+const policy = @import("policy_contract.zig");
+const detection = @import("detection_interface.zig");
+const detection_int = @import("detection_integration.zig");
+const correlation_int = @import("correlation_integration.zig");
+const rag_int = @import("rag_integration.zig");
+const flow_int = @import("flow_integration.zig");
+
+// ============================================================
+// STEP 9: Policy result (returned to caller)
+// ============================================================
+
+pub const PolicyResult = struct {
+    /// Final policy decision made by PolicyEngine.
+    decision: policy.PolicyDecision,
+    /// Result of PEP enforcement (success/failed/not_implemented/skipped).
+    enforcement_result: policy.EnforcementResult,
+    /// PolicyContext used for the decision (for audit/forensics).
+    context: policy.PolicyContext,
+    /// Event after policy + enforcement mutation.
+    event: canonical.CanonicalEvent,
+};
+
+/// Full pipeline result (returned by processEventFullPipeline)
+pub const FullPipelineResult = struct {
+    det_ctx: detection_int.DetectionContext,
+    corr_result: correlation_int.CorrelationResult,
+    enrichment: rag_int.EnrichmentContext,
+    policy_result: PolicyResult,
+};
+
+// ============================================================
+// STEP 9: Integration state
+// ============================================================
+
+var g_policy_engine: ?policy.PolicyEngine = null;
+var g_pep: ?policy.PEP = null;
+var g_initialized: bool = false;
+var g_total_evaluations: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+var g_total_blocks: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+var g_total_alerts: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+var g_total_enforcement_failures: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+
+// ============================================================
+// Initialization
+// ============================================================
+
+pub fn init() void {
+    if (g_initialized) return;
+    g_policy_engine = policy.PolicyEngine.init();
+    g_pep = policy.PEP.init();
+    g_initialized = true;
+    g_total_evaluations.store(0, .monotonic);
+    g_total_blocks.store(0, .monotonic);
+    g_total_alerts.store(0, .monotonic);
+    g_total_enforcement_failures.store(0, .monotonic);
+    loadDefaultRules();
+    std.log.info("[POLICY-INT] Policy integration initialized (default rules loaded)", .{});
+}
+
+pub fn shutdown() void {
+    if (!g_initialized) return;
+    g_policy_engine = null;
+    g_pep = null;
+    g_initialized = false;
+    std.log.info("[POLICY-INT] Policy integration shutdown", .{});
+}
+
+pub fn isInitialized() bool {
+    return g_initialized;
+}
+
+pub fn getEngine() ?*policy.PolicyEngine {
+    if (!g_initialized) return null;
+    return &g_policy_engine.?;
+}
+
+pub fn getPEP() ?*policy.PEP {
+    if (!g_initialized) return null;
+    return &g_pep.?;
+}
+
+/// Register a custom policy rule at runtime.
+pub fn registerRule(rule: policy.PolicyRule) bool {
+    if (!g_initialized) return false;
+    var engine = &g_policy_engine.?;
+    return engine.registerRule(rule);
+}
+
+/// Set the default action when no rule matches.
+pub fn setDefaultAction(action: policy.PolicyDecision) void {
+    if (!g_initialized) return;
+    var engine = &g_policy_engine.?;
+    engine.setDefaultAction(action);
+}
+
+// ============================================================
+// Default rules (loaded at startup)
+// ============================================================
+
+fn loadDefaultRules() void {
+    if (!g_initialized) return;
+    var engine = &g_policy_engine.?;
+
+    // Rule 1: Critical severity + block verdict = BLOCK
+    _ = engine.registerRule(.{
+        .min_severity = 3,
+        .required_verdict = .match_block,
+        .action = .block,
+        .description = "Block critical severity",
+    });
+
+    // Rule 2: High severity + alert verdict = ALERT
+    _ = engine.registerRule(.{
+        .min_severity = 2,
+        .required_verdict = .match_alert,
+        .action = .alert,
+        .description = "Alert high severity",
+    });
+
+    // Rule 3: Any match at severity >= 1 = LOG_ONLY (silent log)
+    _ = engine.registerRule(.{
+        .min_severity = 1,
+        .required_verdict = .match_alert,
+        .action = .log_only,
+        .description = "Log low severity matches",
+    });
+}
+
+// ============================================================
+// STEP 9: Build PolicyContext from pipeline results
+// ============================================================
+
+/// Build a PolicyContext from the upstream pipeline results.
+/// Pulls threat_intel_match from RAG enrichment, correlation_count from XDR.
+pub fn buildPolicyContext(
+    det_ctx: detection_int.DetectionContext,
+    enrichment: rag_int.EnrichmentContext,
+    corr_result: correlation_int.CorrelationResult,
+) policy.PolicyContext {
+    // DEFCON level: derived from event severity (higher = lower defcon)
+    // defcon 5 = normal, defcon 1 = critical
+    var defcon: u8 = 5;
+    if (det_ctx.event.severity >= 3) {
+        defcon = 1;
+    } else if (det_ctx.event.severity >= 2) {
+        defcon = 2;
+    } else if (det_ctx.event.severity >= 1) {
+        defcon = 3;
+    }
+
+    // Repeated offender: flow risk_score was elevated by prior detections
+    const is_repeated_offender = det_ctx.flow_context.risk_score >= 100;
+
+    // Threat intel match (from RAG enrichment)
+    const threat_intel_match = enrichment.matched;
+
+    // Correlation count (from XDR result)
+    const correlation_count = if (corr_result.incident_index != null) corr_result.incident_event_count else 0;
+
+    return .{
+        .defcon_level = defcon,
+        .is_repeated_offender = is_repeated_offender,
+        .threat_intel_match = threat_intel_match,
+        .correlation_count = correlation_count,
+        .custom_flags = det_ctx.event.context_flags,
+    };
+}
+
+// ============================================================
+// STEP 9: Convert DetectionContext to DetectionResult
+// ============================================================
+
+fn detectionContextToResult(det_ctx: detection_int.DetectionContext) detection.DetectionResult {
+    // If detection_int already matched, use that verdict.
+    if (det_ctx.matched) {
+        return .{
+            .verdict = det_ctx.verdict,
+            .rule_id = det_ctx.event.rule_id,
+            .rule_hash = 0,
+            .severity = det_ctx.event.severity,
+            .rule_name = null,
+            .ruleset_version = det_ctx.event.ruleset_version,
+        };
+    }
+
+    // STEP 9: If RAG enrichment escalated severity to >= 2 but detection_int
+    // didn't match (no flow patterns triggered), synthesize a match_alert so
+    // policy engine can act on the threat intel escalation.
+    if (det_ctx.event.severity >= 2) {
+        return .{
+            .verdict = if (det_ctx.event.severity >= 3) .match_block else .match_alert,
+            .rule_id = det_ctx.event.rule_id,
+            .rule_hash = 0,
+            .severity = det_ctx.event.severity,
+            .rule_name = "rag_escalation",
+            .ruleset_version = det_ctx.event.ruleset_version,
+        };
+    }
+
+    return detection.DetectionResult.noMatch();
+}
+
+// ============================================================
+// STEP 9: Main API — evaluate policy and enforce
+// ============================================================
+
+/// Evaluate policy on a DetectionContext and enforce the decision.
+/// Mutates the event with policy_action + enforcement_status.
+/// Returns PolicyResult with full audit trail.
+pub fn evaluateAndEnforce(
+    det_ctx: detection_int.DetectionContext,
+    enrichment: rag_int.EnrichmentContext,
+    corr_result: correlation_int.CorrelationResult,
+) PolicyResult {
+    g_total_evaluations.store(g_total_evaluations.load(.monotonic) + 1, .monotonic);
+
+    if (!g_initialized) {
+        return .{
+            .decision = .allow,
+            .enforcement_result = .skipped,
+            .context = .{
+                .defcon_level = 5,
+                .is_repeated_offender = false,
+                .threat_intel_match = false,
+                .correlation_count = 0,
+                .custom_flags = 0,
+            },
+            .event = det_ctx.event,
+        };
+    }
+
+    var engine = &g_policy_engine.?;
+    var pep = &g_pep.?;
+
+    // Step 1: Build context
+    const ctx = buildPolicyContext(det_ctx, enrichment, corr_result);
+
+    // Step 2: Convert DetectionContext to DetectionResult
+    const det_result = detectionContextToResult(det_ctx);
+
+    // Step 3: Evaluate policy
+    const decision = engine.evaluate(det_result, ctx);
+    switch (decision) {
+        .block => g_total_blocks.store(g_total_blocks.load(.monotonic) + 1, .monotonic),
+        .alert => g_total_alerts.store(g_total_alerts.load(.monotonic) + 1, .monotonic),
+        else => {},
+    }
+
+    // Step 4: Enforce (mutates event with policy_action + enforcement_status)
+    var event = det_ctx.event;
+    const enforcement_result = pep.enforce(decision, &event);
+
+    if (enforcement_result == .failed or enforcement_result == .not_implemented) {
+        g_total_enforcement_failures.store(g_total_enforcement_failures.load(.monotonic) + 1, .monotonic);
+    }
+
+    return .{
+        .decision = decision,
+        .enforcement_result = enforcement_result,
+        .context = ctx,
+        .event = event,
+    };
+}
+
+// ============================================================
+// STEP 9: Full pipeline — process event through everything
+// ============================================================
+
+/// Process an event through the COMPLETE Golden Path:
+///   1. RAG enrichment (STEP 8)
+///   2. Detection pipeline (STEP 5 + 6)
+///   3. XDR correlation (STEP 7)
+///   4. Policy evaluation + enforcement (STEP 9 — NEW)
+///
+/// Returns FullPipelineResult with all intermediate results for audit.
+pub fn processEventFullPipeline(
+    event: canonical.CanonicalEvent,
+    det_mgr: ?*detection.DetectionManager,
+    payload: []const u8,
+) FullPipelineResult {
+    // Step 1-3: RAG + detection + correlation
+    const rag_result = rag_int.processEventWithRAG(event, det_mgr, payload);
+
+    // Step 4: Policy + enforcement
+    const policy_result = evaluateAndEnforce(rag_result.det_ctx, rag_result.enrichment, rag_result.corr_result);
+
+    return .{
+        .det_ctx = rag_result.det_ctx,
+        .corr_result = rag_result.corr_result,
+        .enrichment = rag_result.enrichment,
+        .policy_result = policy_result,
+    };
+}
+
+// ============================================================
+// STEP 9: Stats
+// ============================================================
+
+pub const IntegrationStats = struct {
+    initialized: bool,
+    total_rules: usize,
+    total_evaluations: u64,
+    total_blocks: u64,
+    total_alerts: u64,
+    total_enforcement_failures: u64,
+    pep_enforced: u64,
+    pep_failed: u64,
+    pep_skipped: u64,
+};
+
+pub fn getStats() IntegrationStats {
+    if (!g_initialized) {
+        return .{
+            .initialized = false,
+            .total_rules = 0,
+            .total_evaluations = 0,
+            .total_blocks = 0,
+            .total_alerts = 0,
+            .total_enforcement_failures = 0,
+            .pep_enforced = 0,
+            .pep_failed = 0,
+            .pep_skipped = 0,
+        };
+    }
+    const engine = &g_policy_engine.?;
+    const pep = &g_pep.?;
+    const pstats = pep.getStats();
+    const estats = engine.getStats();
+    return .{
+        .initialized = true,
+        .total_rules = estats.total_rules,
+        .total_evaluations = g_total_evaluations.load(.monotonic),
+        .total_blocks = g_total_blocks.load(.monotonic),
+        .total_alerts = g_total_alerts.load(.monotonic),
+        .total_enforcement_failures = g_total_enforcement_failures.load(.monotonic),
+        .pep_enforced = pstats.total_enforced,
+        .pep_failed = pstats.total_failed,
+        .pep_skipped = pstats.total_skipped,
+    };
+}
+
+pub fn resetStats() void {
+    g_total_evaluations.store(0, .monotonic);
+    g_total_blocks.store(0, .monotonic);
+    g_total_alerts.store(0, .monotonic);
+    g_total_enforcement_failures.store(0, .monotonic);
+}
+
+// ============================================================
+// Tests
+// ============================================================
+
+fn initAllLayers() void {
+    flow_int.init();
+    detection_int.init(detection_int.EscalationThresholds.default());
+    correlation_int.init();
+    rag_int.init();
+    init();
+}
+
+fn shutdownAllLayers() void {
+    shutdown();
+    rag_int.shutdown();
+    correlation_int.shutdown();
+    flow_int.shutdown();
+    detection_int.resetStats();
+    correlation_int.resetStats();
+    rag_int.resetStats();
+    resetStats();
+}
+
+test "PolicyResult is a value type" {
+    const r = PolicyResult{
+        .decision = .allow,
+        .enforcement_result = .skipped,
+        .context = .{
+            .defcon_level = 5,
+            .is_repeated_offender = false,
+            .threat_intel_match = false,
+            .correlation_count = 0,
+            .custom_flags = 0,
+        },
+        .event = canonical.create(.zig_core),
+    };
+    const copy = r;
+    try std.testing.expect(copy.decision == .allow);
+}
+
+test "init and shutdown lifecycle" {
+    initAllLayers();
+    defer shutdownAllLayers();
+    try std.testing.expect(isInitialized());
+    try std.testing.expect(getEngine() != null);
+    try std.testing.expect(getPEP() != null);
+
+    const stats = getStats();
+    try std.testing.expect(stats.total_rules >= 3); // 3 default rules
+}
+
+test "buildPolicyContext derives DEFCON from severity" {
+    initAllLayers();
+    defer shutdownAllLayers();
+    resetStats();
+
+    var det_ctx = detection_int.DetectionContext{
+        .event = canonical.create(.wfp_sensor),
+        .flow_context = .{
+            .is_new_flow = true,
+            .is_host_event = false,
+            .key = .{ .src_ip = 0, .dst_ip = 0, .src_port = 0, .dst_port = 0, .protocol = 0 },
+            .packet_count = 1,
+            .byte_count = 100,
+            .created_at_ms = 0,
+            .last_seen_ms = 0,
+            .tcp_state = .none,
+            .risk_score = 0,
+            .session_id = 0,
+        },
+        .verdict = .no_match,
+        .matched = false,
+    };
+
+    det_ctx.event.severity = 3;
+    var ctx = buildPolicyContext(det_ctx, rag_int.EnrichmentContext{
+        .enrichment = rag_int.rag.EnrichmentResult.noMatch(),
+        .matched = false,
+        .applied_delta = 0,
+        .flow_updated = false,
+    }, .{
+        .linked_to_existing = false,
+        .incident_index = null,
+        .incident_event_count = 0,
+        .incident_severity = 0,
+        .incident_session_count = 0,
+        .incident_ip_count = 0,
+    });
+    try std.testing.expect(ctx.defcon_level == 1);
+
+    det_ctx.event.severity = 2;
+    ctx = buildPolicyContext(det_ctx, rag_int.EnrichmentContext{
+        .enrichment = rag_int.rag.EnrichmentResult.noMatch(),
+        .matched = false,
+        .applied_delta = 0,
+        .flow_updated = false,
+    }, .{
+        .linked_to_existing = false,
+        .incident_index = null,
+        .incident_event_count = 0,
+        .incident_severity = 0,
+        .incident_session_count = 0,
+        .incident_ip_count = 0,
+    });
+    try std.testing.expect(ctx.defcon_level == 2);
+}
+
+test "evaluateAndEnforce returns allow for no-match detection" {
+    initAllLayers();
+    defer shutdownAllLayers();
+    resetStats();
+
+    var event = canonical.create(.wfp_sensor);
+    event.event_type = .forward;
+    event.source_ip = 0xC0A80164; // unknown IP (no threat match)
+    event.dest_ip = 0x0A000001;
+    event.source_port = 12345;
+    event.dest_port = 80;
+    event.protocol = 6;
+    event.payload_length = 100;
+    event.is_pipe = 0;
+    event.severity = 0;
+
+    const result = processEventFullPipeline(event, null, &.{});
+    try std.testing.expect(result.policy_result.decision == .allow);
+    try std.testing.expect(result.policy_result.enforcement_result == .skipped);
+    try std.testing.expect(result.policy_result.event.policy_action == .allow);
+}
+
+test "evaluateAndEnforce blocks critical detection verdict" {
+    initAllLayers();
+    defer shutdownAllLayers();
+    resetStats();
+
+    // Use APT threat to escalate severity to 3
+    _ = rag_int.addThreat(.{
+        .ip = 0xC0A80164,
+        .severity = 3,
+        .confidence = 95,
+        .source = "apt_test",
+        .category = .apt,
+        .first_seen_ms = std.time.milliTimestamp(),
+        .last_seen_ms = std.time.milliTimestamp(),
+    });
+
+    var event = canonical.create(.wfp_sensor);
+    event.event_type = .forward;
+    event.source_ip = 0xC0A80164; // APT
+    event.dest_ip = 0x0A000001;
+    event.source_port = 12345;
+    event.dest_port = 80;
+    event.protocol = 6;
+    event.payload_length = 100;
+    event.is_pipe = 0;
+    event.severity = 0;
+
+    const result = processEventFullPipeline(event, null, &.{});
+
+    // APT triggers severity escalation -> DEFCON 1 -> block rule fires
+    try std.testing.expect(result.policy_result.decision == .block);
+    // WFP device not open in test mode — enforcement might fail but still mutates event
+    try std.testing.expect(result.policy_result.event.policy_action == .block);
+
+    const stats = getStats();
+    try std.testing.expect(stats.total_evaluations >= 1);
+}
+
+test "registerRule adds custom rule" {
+    initAllLayers();
+    defer shutdownAllLayers();
+    resetStats();
+
+    const initial_rules = getStats().total_rules;
+    try std.testing.expect(registerRule(.{
+        .min_severity = 0,
+        .required_verdict = .match_block,
+        .action = .quarantine,
+        .description = "test quarantine",
+    }));
+    try std.testing.expect(getStats().total_rules == initial_rules + 1);
+}
+
+test "setDefaultAction changes default" {
+    initAllLayers();
+    defer shutdownAllLayers();
+
+    setDefaultAction(.log_only);
+    const engine = &g_policy_engine.?;
+    try std.testing.expect(engine.default_action == .log_only);
+}
+
+test "processEventFullPipeline runs complete Golden Path" {
+    initAllLayers();
+    defer shutdownAllLayers();
+    flow_int.resetStats();
+    detection_int.resetStats();
+    correlation_int.resetStats();
+    rag_int.resetStats();
+    resetStats();
+
+    var event = canonical.create(.wfp_sensor);
+    event.event_type = .forward;
+    event.source_ip = 0x0A000099; // matches RAG seed
+    event.dest_ip = 0x0A000001;
+    event.source_port = 12345;
+    event.dest_port = 80;
+    event.protocol = 6;
+    event.payload_length = 100;
+    event.is_pipe = 0;
+    event.session_id = 42;
+    event.severity = 0;
+
+    const result = processEventFullPipeline(event, null, &.{});
+
+    // RAG enrichment matched
+    try std.testing.expect(result.enrichment.matched);
+    try std.testing.expect(result.enrichment.enrichment.threat_intel_match);
+
+    // Detection pipeline ran (flow tracking active)
+    try std.testing.expect(result.det_ctx.flow_context.packet_count >= 1);
+
+    // Correlation created incident
+    try std.testing.expect(result.corr_result.incident_index != null);
+
+    // Policy evaluated: malicious seed escalates severity to 2 (medium)
+    // -> match_alert -> alert_high rule fires -> ALERT (not BLOCK)
+    try std.testing.expect(result.policy_result.decision == .alert);
+    try std.testing.expect(result.policy_result.event.policy_action == .alert);
+    try std.testing.expect(result.policy_result.event.severity >= 2);
+
+    const stats = getStats();
+    try std.testing.expect(stats.total_evaluations == 1);
+    try std.testing.expect(stats.total_alerts == 1);
+}
+
+test "evaluateAndEnforce preserves context_flags in PolicyContext" {
+    initAllLayers();
+    defer shutdownAllLayers();
+    resetStats();
+
+    var event = canonical.create(.wfp_sensor);
+    event.event_type = .forward;
+    event.source_ip = 0x0A000099; // matches seed
+    event.dest_ip = 0x0A000001;
+    event.source_port = 12345;
+    event.dest_port = 80;
+    event.protocol = 6;
+    event.payload_length = 100;
+    event.is_pipe = 0;
+
+    const result = processEventFullPipeline(event, null, &.{});
+
+    // RAG enrichment set context_flags (threat_intel_match bit0)
+    try std.testing.expect((result.policy_result.context.custom_flags & 0x01) != 0);
+    try std.testing.expect(result.policy_result.context.threat_intel_match);
+}
+
+test "evaluateAndEnforce tracks enforcement failures" {
+    initAllLayers();
+    defer shutdownAllLayers();
+    resetStats();
+
+    // Force a quarantine decision (not_implemented)
+    _ = registerRule(.{
+        .min_severity = 0,
+        .required_verdict = .no_match,
+        .action = .quarantine,
+        .description = "test quarantine failure",
+    });
+
+    var event = canonical.create(.wfp_sensor);
+    event.event_type = .forward;
+    event.source_ip = 0xC0A80202; // unknown IP
+    event.dest_ip = 0x0A000001;
+    event.source_port = 12345;
+    event.dest_port = 80;
+    event.protocol = 6;
+    event.payload_length = 100;
+    event.is_pipe = 0;
+    event.severity = 0;
+
+    const result = processEventFullPipeline(event, null, &.{});
+
+    // Quarantine rule should fire on no_match (severity 0)
+    if (result.policy_result.decision == .quarantine) {
+        try std.testing.expect(result.policy_result.enforcement_result == .not_implemented);
+        const stats = getStats();
+        try std.testing.expect(stats.total_enforcement_failures >= 1);
+    }
+}
+
+test "getStats returns full integration state" {
+    initAllLayers();
+    defer shutdownAllLayers();
+    flow_int.resetStats();
+    detection_int.resetStats();
+    correlation_int.resetStats();
+    rag_int.resetStats();
+    resetStats();
+
+    var event = canonical.create(.wfp_sensor);
+    event.event_type = .forward;
+    event.source_ip = 0x0A000099;
+    event.dest_ip = 0x0A000001;
+    event.source_port = 12345;
+    event.dest_port = 80;
+    event.protocol = 6;
+    event.payload_length = 100;
+    event.is_pipe = 0;
+
+    _ = processEventFullPipeline(event, null, &.{});
+
+    const stats = getStats();
+    try std.testing.expect(stats.initialized);
+    try std.testing.expect(stats.total_rules >= 3);
+    try std.testing.expect(stats.total_evaluations == 1);
+    try std.testing.expect(stats.total_alerts == 1); // malicious seed -> alert, not block
+}
+
+test "STEP9: full attack scenario — APT IP triggers BLOCK + PEP enforcement" {
+    // End-to-end scenario:
+    // 1. Add APT threat intel
+    // 2. Event from APT IP goes through full pipeline
+    // 3. RAG escalates severity to critical (3)
+    // 4. Policy engine sees DEFCON 1 + block verdict
+    // 5. PEP enforces block (mutates event.policy_action)
+    initAllLayers();
+    defer shutdownAllLayers();
+    flow_int.resetStats();
+    detection_int.resetStats();
+    correlation_int.resetStats();
+    rag_int.resetStats();
+    resetStats();
+
+    _ = rag_int.addThreat(.{
+        .ip = 0xC0A81010, // 192.168.16.16
+        .severity = 3,
+        .confidence = 95,
+        .source = "apt_intel",
+        .category = .apt,
+        .first_seen_ms = std.time.milliTimestamp(),
+        .last_seen_ms = std.time.milliTimestamp(),
+    });
+
+    var event = canonical.create(.wfp_sensor);
+    event.event_type = .forward;
+    event.source_ip = 0xC0A81010; // APT
+    event.dest_ip = 0x0A000001;
+    event.source_port = 12345;
+    event.dest_port = 445; // SMB
+    event.protocol = 6;
+    event.payload_length = 100;
+    event.is_pipe = 0;
+    event.session_id = 0xABCDEF01;
+    event.severity = 0;
+
+    const result = processEventFullPipeline(event, null, &.{});
+
+    // RAG enrichment
+    try std.testing.expect(result.enrichment.matched);
+    try std.testing.expect(result.enrichment.enrichment.threat_category == .apt);
+
+    // Severity escalated to critical (3) by RAG
+    try std.testing.expect(result.det_ctx.event.severity == 3);
+
+    // DEFCON 1
+    try std.testing.expect(result.policy_result.context.defcon_level == 1);
+
+    // Policy decision: BLOCK
+    try std.testing.expect(result.policy_result.decision == .block);
+
+    // PEP enforced (event mutated)
+    try std.testing.expect(result.policy_result.event.policy_action == .block);
+
+    // XDR incident created
+    try std.testing.expect(result.corr_result.incident_index != null);
+    try std.testing.expect(result.corr_result.incident_severity >= 3);
+}

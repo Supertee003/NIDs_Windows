@@ -1746,7 +1746,8 @@ fn rulesWatchdog(allocator: std.mem.Allocator) void {
 /// This demonstrates the Golden Path: Sensor → Queue → Detection → Policy.
 fn eventFabricDrain() void {
     const nose = @import("nose_contract.zig");
-    const policy_int = @import("policy_integration.zig");
+    const correlation_int = @import("correlation_integration.zig");
+    const rag_int = @import("rag_integration.zig");
     std.log.info("[FABRIC] Event fabric drain thread started", .{});
     defer std.log.info("[FABRIC] Event fabric drain thread exiting", .{});
 
@@ -1765,15 +1766,16 @@ fn eventFabricDrain() void {
                     .session_id = event.session_id,
                 });
 
-                // STEP 9: Process event through the COMPLETE Golden Path.
+                // STEP 8: Process event through RAG-enriched detection pipeline.
                 // Pipeline: RAG enrich -> flow update -> escalation -> detectors
-                //           -> XDR correlation -> policy evaluation -> PEP enforcement
-                // (single combined call to policy_int.processEventFullPipeline)
-                const result = policy_int.processEventFullPipeline(event, &g_detection_mgr, &.{});
+                //           -> XDR correlation (single combined call).
+                // RAG enriches event with threat intel (context_flags, severity,
+                // flow risk_score) BEFORE detection runs, so detectors can use
+                // threat intel context for stateful decisions.
+                const result = rag_int.processEventWithRAG(event, &g_detection_mgr, &.{});
                 const det_ctx = result.det_ctx;
                 const corr_result = result.corr_result;
                 const enrichment = result.enrichment;
-                const policy_result = result.policy_result;
 
                 // Log threat intel match (RAG enrichment)
                 if (enrichment.matched) {
@@ -1795,7 +1797,7 @@ fn eventFabricDrain() void {
                     });
                 }
 
-                // Log XDR correlation result (incident linking)
+                // STEP 7: Log correlation result (incident linking)
                 if (corr_result.incident_index != null) {
                     if (corr_result.linked_to_existing) {
                         forensic_log.log(.{
@@ -1803,25 +1805,6 @@ fn eventFabricDrain() void {
                             .event = "XDR_CORRELATION",
                             .src_ip = det_ctx.event.source_ip,
                             .session_id = det_ctx.event.session_id,
-                        });
-                    }
-                }
-
-                // STEP 9: Log policy decision + enforcement result
-                if (policy_result.decision != .allow) {
-                    forensic_log.log(.{
-                        .level = if (policy_result.decision == .block) .critical else .warn,
-                        .event = "POLICY_DECISION",
-                        .src_ip = policy_result.event.source_ip,
-                        .session_id = policy_result.event.session_id,
-                    });
-
-                    if (policy_result.enforcement_result == .failed) {
-                        forensic_log.log(.{
-                            .level = .critical,
-                            .event = "PEP_ENFORCEMENT_FAILED",
-                            .src_ip = policy_result.event.source_ip,
-                            .session_id = policy_result.event.session_id,
                         });
                     }
                 }

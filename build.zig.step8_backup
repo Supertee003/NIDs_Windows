@@ -45,7 +45,6 @@ pub fn build(b: *std.Build) void {
     // STEP 6: added core/detection_integration.zig
     // STEP 7: added core/correlation_integration.zig
     // STEP 8: added core/rag_integration.zig
-    // STEP 9: added core/policy_integration.zig
     const test_files = [_][]const u8{
         "core/nids_analyze.zig",
         "core/wfp_ioctl.zig",
@@ -63,7 +62,6 @@ pub fn build(b: *std.Build) void {
         "core/detection_integration.zig", // STEP 6: NEW
         "core/correlation_integration.zig", // STEP 7: NEW
         "core/rag_integration.zig", // STEP 8: NEW
-        "core/policy_integration.zig", // STEP 9: NEW
         "core/nose_contract.zig",
         "core/detection_interface.zig",
         "core/policy_contract.zig",
