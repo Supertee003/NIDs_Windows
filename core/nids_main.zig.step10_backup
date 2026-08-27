@@ -32,7 +32,6 @@ const detection_int = @import("detection_integration.zig");
 const correlation_int = @import("correlation_integration.zig");
 const rag_int = @import("rag_integration.zig");
 const policy_int = @import("policy_integration.zig");
-const forensics_int = @import("forensics_integration.zig");
 const policy_ir = @import("policy_ir.zig");
 
 pub fn main() !void {
@@ -132,14 +131,6 @@ pub fn main() !void {
     policy_int.init();
     defer policy_int.shutdown();
     std.log.info("[MAIN] Policy Integration initialized (PEP enforcement active)", .{});
-
-    // STEP 10: Initialize Forensics Integration layer.
-    // Captures full pipeline results (RAG + detection + correlation + policy)
-    // into an in-memory ring buffer (4096 entries) for fast replay queries,
-    // and also writes structured NDJSON entries to the persistent forensic log.
-    forensics_int.init();
-    defer forensics_int.shutdown();
-    std.log.info("[MAIN] Forensics Integration initialized (replay API active)", .{});
 
     // Phase 37: Initialize Policy IR with default rules
     var policy_builder = policy_ir.PolicyIRBuilder.init("AEGIS Default Policy v1");

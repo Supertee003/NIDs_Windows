@@ -1747,7 +1747,6 @@ fn rulesWatchdog(allocator: std.mem.Allocator) void {
 fn eventFabricDrain() void {
     const nose = @import("nose_contract.zig");
     const policy_int = @import("policy_integration.zig");
-    const forensics_int = @import("forensics_integration.zig");
     std.log.info("[FABRIC] Event fabric drain thread started", .{});
     defer std.log.info("[FABRIC] Event fabric drain thread exiting", .{});
 
@@ -1826,11 +1825,6 @@ fn eventFabricDrain() void {
                         });
                     }
                 }
-
-                // STEP 10: Log full pipeline result to forensics integration.
-                // Captures RAG + detection + correlation + policy fields in a
-                // single structured record (in-memory ring + disk NDJSON).
-                forensics_int.logPipelineResult(result);
             }
         } else {
             // No events — sleep 100ms before checking again
