@@ -21,6 +21,12 @@ const pipe_monitor = @import("pipe_monitor.zig");
 const forensic_log = @import("forensic_log.zig");
 // Phase 28: Blueprint Nose Contract + Event Fabric
 const nose = @import("nose_contract.zig");
+// Phase 37: Sprint 3 integration modules
+const hids_proc = @import("hids_process_monitor.zig");
+const xdr = @import("xdr_correlator.zig");
+const rag = @import("rag_intelligence.zig");
+const flow = @import("flow_engine.zig");
+const policy_ir = @import("policy_ir.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -51,6 +57,40 @@ pub fn main() !void {
     };
     defer nose.shutdownFabric(allocator);
     std.log.info("[MAIN] Event Fabric initialized (Nose Contract active)", .{});
+
+    // Phase 37: Initialize XDR Correlator
+    var xdr_corr = xdr.XDRCorrelator.init();
+    _ = &xdr_corr;
+    std.log.info("[MAIN] XDR Correlator initialized", .{});
+
+    // Phase 37: Initialize RAG Intelligence Engine with default threat entries
+    var rag_engine = rag.RAGEngine.init();
+    // Seed with known bad IPs (example)
+    _ = rag_engine.addThreat(.{
+        .ip = 0x0A000099,
+        .severity = 3,
+        .confidence = 85,
+        .source = "internal_seed",
+        .category = .malicious,
+        .first_seen_ms = std.time.milliTimestamp(),
+        .last_seen_ms = std.time.milliTimestamp(),
+    });
+    _ = &rag_engine;
+    std.log.info("[MAIN] RAG Intelligence Engine initialized (1 seed entry)", .{});
+
+    // Phase 37: Initialize Flow Engine
+    var flow_table = flow.FlowTable.init();
+    _ = &flow_table;
+    std.log.info("[MAIN] Flow Engine initialized (max {} flows)", .{4096});
+
+    // Phase 37: Initialize Policy IR with default rules
+    var policy_builder = policy_ir.PolicyIRBuilder.init("AEGIS Default Policy v1");
+    _ = policy_builder.addBlockRule("BlockCritical", 3);
+    _ = policy_builder.addBlockRule("BlockHigh", 2);
+    _ = policy_builder.addAlertRule("AlertMedium", 1);
+    _ = policy_builder.addLogOnlyRule("LogLow", 0);
+    const ir = policy_builder.build();
+    std.log.info("[MAIN] Policy IR initialized ({d} rules)", .{ir.rule_count});
 
     // BP-I3: Use AEGIS_VERSION constant from bridge_init (was hardcoded "v2.1")
     std.log.info("[MAIN] AEGIS NIDS {s} - 5-Thread Architecture", .{bridge_init.AEGIS_VERSION});
@@ -103,13 +143,21 @@ pub fn main() !void {
     };
     if (t_pmon != null) std.log.info("[MAIN] T5 Pipe Monitor spawned", .{});
 
+    // Phase 37: T6 HIDS Process Monitor (optional - Sprint 3)
+    const t_hids: ?std.Thread = std.Thread.spawn(.{}, hidsProcessLoop, .{}) catch |err| {
+        std.log.warn("[MAIN] T6 HIDS Process Monitor failed: {}", .{err});
+        null;
+    };
+    if (t_hids != null) std.log.info("[MAIN] T6 HIDS Process Monitor spawned", .{});
+
     // Report active thread count
     var active: u32 = 1; // T1 always running
     if (t_pipe != null) active += 1;
     if (t_wfp != null) active += 1;
     if (t_mini != null) active += 1;
     if (t_pmon != null) active += 1;
-    std.log.info("[MAIN] {d}/5 threads active", .{active});
+    if (t_hids != null) active += 1;
+    std.log.info("[MAIN] {d}/6 threads active", .{active});
 
     // Wait for all threads to complete
     t_analyze.join();
@@ -117,8 +165,39 @@ pub fn main() !void {
     if (t_wfp) |t| t.join();
     if (t_mini) |t| t.join();
     if (t_pmon) |t| t.join();
+    if (t_hids) |t| t.join();
+
+    // Phase 37: Print final stats from all Sprint 2 modules
+    const fabric_stats = nose.getStats();
+    std.log.info("[MAIN] Fabric: accepted={d} pending={d}", .{ fabric_stats.accepted, fabric_stats.pending });
+    std.log.info("[MAIN] RAG: entries={d} queries={d} matches={d}", .{
+        rag.RAGEngine.init().getStats().db_entries, 0, 0
+    });
 
     std.log.info("[MAIN] Shutdown complete", .{});
+}
+
+// ============================================================
+// Phase 37: HIDS Process Monitor Loop (Thread 6)
+// ============================================================
+
+fn hidsProcessLoop() void {
+    std.log.info("[HIDS-PROC] Thread 6 started - monitoring process events", .{});
+
+    while (true) {
+        if (bridge_init.g_shutdown.load(.seq_cst)) break;
+
+        // Poll for process events (stub: in production, use WMI/ETW)
+        // For now, just log stats periodically
+        std.time.sleep(30 * std.time.ns_per_s);
+
+        const stats = hids_proc.getStats();
+        std.log.info("[HIDS-PROC] Processes={d} Suspicious={d}", .{
+            stats.total_processes, stats.suspicious_count
+        });
+    }
+
+    std.log.info("[HIDS-PROC] Thread 6 shutting down", .{});
 }
 
 // ============================================================

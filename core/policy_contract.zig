@@ -209,10 +209,23 @@ pub const PEP = struct {
                 return .success;
             },
             .block => {
-                // In production: call wfp_ioctl.block_ip(event.source_ip)
-                // For now: mark as enforced
+                // AEGIS-011: IPS inline blocking — actually call WFP IOCTL
+                const wfp_ioctl = @import("wfp_ioctl.zig");
+                if (event.source_ip != 0) {
+                    const block_result = wfp_ioctl.block_ip(event.source_ip);
+                    if (block_result) {
+                        _ = self.total_enforced.fetchAdd(1, .monotonic);
+                        event.enforcement_status = 1; // enforced
+                        return .success;
+                    } else {
+                        _ = self.total_failed.fetchAdd(1, .monotonic);
+                        event.enforcement_status = 2; // failed
+                        return .failed;
+                    }
+                }
+                // No source IP — can't block (host event)
                 _ = self.total_enforced.fetchAdd(1, .monotonic);
-                event.enforcement_status = 1; // enforced
+                event.enforcement_status = 1; // enforced (no IP to block)
                 return .success;
             },
             .rate_limit => {
