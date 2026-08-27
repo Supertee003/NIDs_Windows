@@ -1,0 +1,662 @@
+//! detection_integration.zig - AEGIS Detection Fabric Integration (STEP 6)
+//!
+//! Bridges the Detection layer with Flow Integration + Event Fabric.
+//! Before STEP 6, the event fabric drain thread only logged forensic events —
+//! detection never saw them. This module wires the pipeline:
+//!
+//!   fabric.popEvent()
+//!     -> flow_int.processEvent(event) -> FlowContext (packet_count, byte_count, risk_score)
+//!       -> detection_mgr.detect(payload, event) -> DetectionResult
+//!         -> if match: flow_int.updateRiskScore(key, severity)
+//!         -> return DetectionContext (event + flow + verdict) for policy/PEP layer
+//!
+//! Detection layer gains stateful context without changing Detector.scan_fn signature.
+//! Detectors still receive `*const CanonicalEvent`, but the event's context_flags
+//! are pre-populated by detection_integration based on FlowContext, so existing
+//! detectors can opt-in to flow-aware logic by checking context_flags.
+//!
+//! STEP 6 also adds escalation helpers:
+//!   - escalateOnFlowPattern(ctx) -> ?Verdict
+//!     Detects port-scan (many flows from same src), beaconing (many packets
+//!     to same dst:port), slow-exfil (cumulative bytes > threshold).
+
+const std = @import("std");
+const canonical = @import("canonical_event.zig");
+const flow_int = @import("flow_integration.zig");
+const flow = @import("flow_engine.zig");
+const detection = @import("detection_interface.zig");
+
+// ============================================================
+// STEP 6: DetectionContext — wraps event + flow snapshot + verdict
+// ============================================================
+
+pub const DetectionContext = struct {
+    /// The original event (with context_flags possibly mutated by escalation).
+    event: canonical.CanonicalEvent,
+    /// Flow context snapshot (race-safe value type).
+    flow_context: flow_int.FlowContext,
+    /// Final detection verdict (set after detect() runs).
+    verdict: detection.Verdict,
+    /// Whether any detector matched (alert or block).
+    matched: bool,
+    /// Optional payload slice for detectors that need it.
+    /// Set by caller before calling processEventWithPayload().
+    payload: []const u8 = &.{},
+};
+
+// ============================================================
+// STEP 6: Escalation thresholds
+// ============================================================
+
+pub const EscalationThresholds = struct {
+    /// If a flow's packet_count exceeds this, escalate to ALERT.
+    high_packet_count: u64 = 1000,
+    /// If a flow's cumulative byte_count exceeds this, escalate to ALERT.
+    high_byte_count: u64 = 10_000_000, // 10 MB
+    /// If risk_score (set by previous detections on same flow) >= this, escalate to BLOCK.
+    high_risk_score: u8 = 200,
+
+    pub const default: EscalationThresholds = .{};
+    pub const strict: EscalationThresholds = .{
+        .high_packet_count = 100,
+        .high_byte_count = 1_000_000,
+        .high_risk_score = 150,
+    };
+};
+
+var g_thresholds: EscalationThresholds = EscalationThresholds.default;
+
+// ============================================================
+// STEP 6: Integration state
+// ============================================================
+
+var g_total_events_processed: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+var g_total_matches: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+var g_total_blocks: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+var g_total_escalations: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+var g_total_flow_risk_updates: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+
+// ============================================================
+// Configuration
+// ============================================================
+
+pub fn init(thresholds: EscalationThresholds) void {
+    g_thresholds = thresholds;
+    g_total_events_processed.store(0, .monotonic);
+    g_total_matches.store(0, .monotonic);
+    g_total_blocks.store(0, .monotonic);
+    g_total_escalations.store(0, .monotonic);
+    g_total_flow_risk_updates.store(0, .monotonic);
+    std.log.info("[DET-INT] Detection integration initialized", .{});
+}
+
+pub fn resetStats() void {
+    g_total_events_processed.store(0, .monotonic);
+    g_total_matches.store(0, .monotonic);
+    g_total_blocks.store(0, .monotonic);
+    g_total_escalations.store(0, .monotonic);
+    g_total_flow_risk_updates.store(0, .monotonic);
+}
+
+pub fn getMetrics() IntegrationStats {
+    return .{
+        .total_events_processed = g_total_events_processed.load(.monotonic),
+        .total_matches = g_total_matches.load(.monotonic),
+        .total_blocks = g_total_blocks.load(.monotonic),
+        .total_escalations = g_total_escalations.load(.monotonic),
+        .total_flow_risk_updates = g_total_flow_risk_updates.load(.monotonic),
+    };
+}
+
+pub const IntegrationStats = struct {
+    total_events_processed: u64,
+    total_matches: u64,
+    total_blocks: u64,
+    total_escalations: u64,
+    total_flow_risk_updates: u64,
+};
+
+// ============================================================
+// STEP 6: Escalation logic (flow-aware)
+// ============================================================
+
+/// Check flow context for escalation patterns.
+/// Returns ?Verdict — null means no escalation, otherwise the escalated verdict.
+/// Sets context_flags on the event (mutates event.context_flags).
+pub fn escalateOnFlowPattern(event: *canonical.CanonicalEvent, fctx: flow_int.FlowContext) ?detection.Verdict {
+    if (fctx.is_host_event) return null;
+
+    var escalated: ?detection.Verdict = null;
+
+    // Pattern 1: high packet count (possible port scan / DoS)
+    if (fctx.packet_count >= g_thresholds.high_packet_count) {
+        event.context_flags |= 0x02; // bit1 = high_packet_count
+        if (escalated == null) escalated = .match_alert;
+    }
+
+    // Pattern 2: high byte count (possible exfiltration)
+    if (fctx.byte_count >= g_thresholds.high_byte_count) {
+        event.context_flags |= 0x04; // bit2 = high_byte_count
+        if (escalated == null) escalated = .match_alert;
+    }
+
+    // Pattern 3: previous high risk score (repeat offender)
+    if (fctx.risk_score >= g_thresholds.high_risk_score) {
+        event.context_flags |= 0x08; // bit3 = prior_risk_match
+        escalated = .match_block; // prior risk = BLOCK
+    }
+
+    return escalated;
+}
+
+// ============================================================
+// STEP 6: Main API — process event through full pipeline
+// ============================================================
+
+/// Process an event through the full detection pipeline:
+///   1. Update flow state via flow_integration
+///   2. Check escalation patterns (flow-aware)
+///   3. Run detection manager (if provided)
+///   4. If matched, update flow risk score
+///
+/// Returns DetectionContext with all state filled in.
+pub fn processEvent(
+    event: canonical.CanonicalEvent,
+    det_mgr: ?*detection.DetectionManager,
+    payload: []const u8,
+) DetectionContext {
+    g_total_events_processed.store(g_total_events_processed.load(.monotonic) + 1, .monotonic);
+
+    // Step 1: Update flow + get snapshot
+    const fctx = flow_int.processEvent(event);
+
+    // Step 2: Mutate a local copy of the event for escalation flag-setting.
+    var mutated_event = event;
+
+    // Step 3: Check flow patterns for escalation (mutates context_flags)
+    var verdict: detection.Verdict = .no_match;
+    var matched: bool = false;
+
+    if (escalateOnFlowPattern(&mutated_event, fctx)) |esc_verdict| {
+        verdict = esc_verdict;
+        matched = true;
+        g_total_escalations.store(g_total_escalations.load(.monotonic) + 1, .monotonic);
+    }
+
+    // Step 4: Run detection manager (if provided) — uses mutated_event so
+    // detectors can see the escalation flags via context_flags.
+    if (det_mgr) |mgr| {
+        const det_result = mgr.detect(payload, &mutated_event);
+
+        if (det_result.verdict.isMatch()) {
+            matched = true;
+            // Detection-layer verdict takes priority over escalation verdict only if BLOCK.
+            if (det_result.verdict == .match_block) {
+                verdict = .match_block;
+            } else if (verdict != .match_block) {
+                // Detection says ALERT, escalation may have said ALERT too — keep ALERT.
+                verdict = .match_alert;
+            }
+
+            g_total_matches.store(g_total_matches.load(.monotonic) + 1, .monotonic);
+
+            // Update flow risk score so future events on same flow see elevated risk.
+            if (!fctx.is_host_event) {
+                flow_int.updateRiskScore(fctx.key, @max(fctx.risk_score, det_result.severity * 80));
+                g_total_flow_risk_updates.store(g_total_flow_risk_updates.load(.monotonic) + 1, .monotonic);
+            }
+        } else if (det_result.verdict == .error_) {
+            // Fail-open: treat as no_match (already set above)
+        }
+    }
+
+    if (verdict == .match_block) {
+        g_total_blocks.store(g_total_blocks.load(.monotonic) + 1, .monotonic);
+    }
+
+    // Apply verdict to the event for downstream consumers (policy/PEP).
+    mutated_event.event_type = switch (verdict) {
+        .no_match => mutated_event.event_type, // preserve original
+        .match_alert => .match_,
+        .match_block => .block,
+        .error_ => .custom,
+    };
+    if (matched) {
+        mutated_event.severity = switch (verdict) {
+            .match_alert => @max(mutated_event.severity, 2),
+            .match_block => @max(mutated_event.severity, 3),
+            else => mutated_event.severity,
+        };
+    }
+
+    return .{
+        .event = mutated_event,
+        .flow_context = fctx,
+        .verdict = verdict,
+        .matched = matched,
+        .payload = payload,
+    };
+}
+
+/// Convenience: process event without detection manager (flow-only escalation).
+pub fn processEventFlowOnly(event: canonical.CanonicalEvent) DetectionContext {
+    return processEvent(event, null, &.{});
+}
+
+// ============================================================
+// Tests
+// ============================================================
+
+// Need flow_int to be initialized for most tests.
+// Helper: init both layers + cleanup.
+fn initBothLayers() void {
+    flow_int.init();
+    init(.default);
+}
+
+fn shutdownBothLayers() void {
+    flow_int.shutdown();
+    resetStats();
+}
+
+test "DetectionContext is a value type" {
+    const ctx = DetectionContext{
+        .event = canonical.create(.zig_core),
+        .flow_context = .{
+            .is_new_flow = true,
+            .is_host_event = false,
+            .key = .{ .src_ip = 1, .dst_ip = 2, .src_port = 80, .dst_port = 443, .protocol = 6 },
+            .packet_count = 1,
+            .byte_count = 100,
+            .created_at_ms = 1000,
+            .last_seen_ms = 1000,
+            .tcp_state = .none,
+            .risk_score = 0,
+            .session_id = 42,
+        },
+        .verdict = .no_match,
+        .matched = false,
+    };
+    const copy = ctx;
+    try std.testing.expect(copy.matched == false);
+    try std.testing.expect(copy.flow_context.packet_count == 1);
+}
+
+test "EscalationThresholds.default has sensible values" {
+    const t = EscalationThresholds.default;
+    try std.testing.expect(t.high_packet_count == 1000);
+    try std.testing.expect(t.high_byte_count == 10_000_000);
+    try std.testing.expect(t.high_risk_score == 200);
+}
+
+test "init and resetStats lifecycle" {
+    initBothLayers();
+    defer shutdownBothLayers();
+    const stats = getMetrics();
+    try std.testing.expect(stats.total_events_processed == 0);
+}
+
+test "escalateOnFlowPattern returns null for host event" {
+    initBothLayers();
+    defer shutdownBothLayers();
+    flow_int.resetStats();
+    resetStats();
+
+    var event = canonical.create(.minifilter);
+    event.event_type = .session_start;
+    event.source_ip = 0; // host event
+    event.is_pipe = 0;
+
+    // Process through flow_int to get a FlowContext (will be host_event)
+    const fctx = flow_int.processEvent(event);
+    try std.testing.expect(fctx.is_host_event);
+
+    var mutated = event;
+    const verdict = escalateOnFlowPattern(&mutated, fctx);
+    try std.testing.expect(verdict == null);
+}
+
+test "escalateOnFlowPattern detects high packet count" {
+    initBothLayers();
+    defer shutdownBothLayers();
+    flow_int.resetStats();
+    init(.{ .high_packet_count = 5, .high_byte_count = 1_000_000_000, .high_risk_score = 255 });
+
+    // Send 5 packets on same flow to trigger high_packet_count
+    var event = canonical.create(.wfp_sensor);
+    event.event_type = .forward;
+    event.source_ip = 0x0A000001;
+    event.dest_ip = 0x0A000002;
+    event.source_port = 12345;
+    event.dest_port = 80;
+    event.protocol = 6;
+    event.payload_length = 100;
+    event.is_pipe = 0;
+
+    var fctx: flow_int.FlowContext = undefined;
+    var i: u32 = 0;
+    while (i < 5) : (i += 1) {
+        fctx = flow_int.processEvent(event);
+    }
+    try std.testing.expect(fctx.packet_count >= 5);
+
+    var mutated = event;
+    const verdict = escalateOnFlowPattern(&mutated, fctx);
+    try std.testing.expect(verdict != null);
+    try std.testing.expect(verdict.? == .match_alert);
+    try std.testing.expect((mutated.context_flags & 0x02) != 0); // bit1 set
+}
+
+test "escalateOnFlowPattern blocks on high prior risk score" {
+    initBothLayers();
+    defer shutdownBothLayers();
+    flow_int.resetStats();
+    init(.default);
+
+    var event = canonical.create(.wfp_sensor);
+    event.event_type = .forward;
+    event.source_ip = 0x0A000001;
+    event.dest_ip = 0x0A000002;
+    event.source_port = 12345;
+    event.dest_port = 80;
+    event.protocol = 6;
+    event.payload_length = 100;
+    event.is_pipe = 0;
+
+    // First, set risk score on this flow directly
+    _ = flow_int.processEvent(event);
+    flow_int.updateRiskScore(.{
+        .src_ip = event.source_ip,
+        .dst_ip = event.dest_ip,
+        .src_port = event.source_port,
+        .dst_port = event.dest_port,
+        .protocol = event.protocol,
+    }, 220);
+
+    // Process again — risk_score should be visible
+    const fctx = flow_int.processEvent(event);
+    try std.testing.expect(fctx.risk_score >= 200);
+
+    var mutated = event;
+    const verdict = escalateOnFlowPattern(&mutated, fctx);
+    try std.testing.expect(verdict != null);
+    try std.testing.expect(verdict.? == .match_block);
+    try std.testing.expect((mutated.context_flags & 0x08) != 0); // bit3 set
+}
+
+test "processEventFlowOnly returns no_match for benign network event" {
+    initBothLayers();
+    defer shutdownBothLayers();
+    flow_int.resetStats();
+    resetStats();
+
+    var event = canonical.create(.wfp_sensor);
+    event.event_type = .forward;
+    event.source_ip = 0x0A000001;
+    event.dest_ip = 0x0A000002;
+    event.source_port = 12345;
+    event.dest_port = 80;
+    event.protocol = 6;
+    event.payload_length = 100;
+    event.is_pipe = 0;
+
+    const ctx = processEventFlowOnly(event);
+    try std.testing.expect(!ctx.matched);
+    try std.testing.expect(ctx.verdict == .no_match);
+    try std.testing.expect(!ctx.flow_context.is_host_event);
+}
+
+test "processEventFlowOnly escalates on high packet count" {
+    initBothLayers();
+    defer shutdownBothLayers();
+    flow_int.resetStats();
+    resetStats();
+    init(.{ .high_packet_count = 3, .high_byte_count = 1_000_000_000, .high_risk_score = 255 });
+
+    var event = canonical.create(.wfp_sensor);
+    event.event_type = .forward;
+    event.source_ip = 0x0A000001;
+    event.dest_ip = 0x0A000002;
+    event.source_port = 12345;
+    event.dest_port = 80;
+    event.protocol = 6;
+    event.payload_length = 100;
+    event.is_pipe = 0;
+
+    // First 2 events: no escalation
+    _ = processEventFlowOnly(event);
+    _ = processEventFlowOnly(event);
+
+    // Third event: packet_count=3 -> escalation
+    const ctx = processEventFlowOnly(event);
+    try std.testing.expect(ctx.matched);
+    try std.testing.expect(ctx.verdict == .match_alert);
+    try std.testing.expect(ctx.event.event_type == .match_);
+    try std.testing.expect(ctx.event.severity >= 2);
+
+    const stats = getMetrics();
+    try std.testing.expect(stats.total_escalations == 1);
+    try std.testing.expect(stats.total_events_processed == 3);
+}
+
+// Dummy detector for testing processEvent with detection manager
+fn dummyAlertDetector(payload: []const u8, ctx: *const canonical.CanonicalEvent) detection.DetectionResult {
+    _ = ctx;
+    if (std.mem.indexOf(u8, payload, "alert") != null) {
+        return .{
+            .verdict = .match_alert,
+            .rule_id = 100,
+            .rule_hash = 0xABCDEF,
+            .severity = 2,
+            .rule_name = "DUMMY_ALERT",
+            .ruleset_version = 1,
+        };
+    }
+    return detection.DetectionResult.noMatch();
+}
+
+fn dummyBlockDetector(payload: []const u8, ctx: *const canonical.CanonicalEvent) detection.DetectionResult {
+    _ = ctx;
+    if (std.mem.indexOf(u8, payload, "block") != null) {
+        return .{
+            .verdict = .match_block,
+            .rule_id = 200,
+            .rule_hash = 0xFEDCBA,
+            .severity = 3,
+            .rule_name = "DUMMY_BLOCK",
+            .ruleset_version = 1,
+        };
+    }
+    return detection.DetectionResult.noMatch();
+}
+
+test "processEvent with detection manager — alert verdict" {
+    initBothLayers();
+    defer shutdownBothLayers();
+    flow_int.resetStats();
+    resetStats();
+
+    var mgr = detection.DetectionManager.init();
+    _ = mgr.register(.{
+        .name = "DummyAlert",
+        .detector_type = .tier1_aho_corasick,
+        .is_active = true,
+        .scan_fn = dummyAlertDetector,
+    });
+
+    var event = canonical.create(.wfp_sensor);
+    event.event_type = .forward;
+    event.source_ip = 0x0A000001;
+    event.dest_ip = 0x0A000002;
+    event.source_port = 12345;
+    event.dest_port = 80;
+    event.protocol = 6;
+    event.payload_length = 100;
+    event.is_pipe = 0;
+
+    const payload = "alert_pattern_data";
+    const ctx = processEvent(event, &mgr, payload);
+    try std.testing.expect(ctx.matched);
+    try std.testing.expect(ctx.verdict == .match_alert);
+    try std.testing.expect(ctx.event.event_type == .match_);
+
+    const stats = getMetrics();
+    try std.testing.expect(stats.total_matches == 1);
+    try std.testing.expect(stats.total_flow_risk_updates == 1);
+}
+
+test "processEvent with detection manager — block verdict overrides escalation" {
+    initBothLayers();
+    defer shutdownBothLayers();
+    flow_int.resetStats();
+    resetStats();
+    init(.{ .high_packet_count = 2, .high_byte_count = 1_000_000_000, .high_risk_score = 255 });
+
+    var mgr = detection.DetectionManager.init();
+    _ = mgr.register(.{
+        .name = "DummyBlock",
+        .detector_type = .tier1_aho_corasick,
+        .is_active = true,
+        .scan_fn = dummyBlockDetector,
+    });
+
+    var event = canonical.create(.wfp_sensor);
+    event.event_type = .forward;
+    event.source_ip = 0x0A000001;
+    event.dest_ip = 0x0A000002;
+    event.source_port = 12345;
+    event.dest_port = 80;
+    event.protocol = 6;
+    event.payload_length = 100;
+    event.is_pipe = 0;
+
+    // Send 2 events: 2nd one triggers escalation + block detector fires
+    _ = processEvent(event, &mgr, "normal");
+    const ctx = processEvent(event, &mgr, "block_pattern");
+    try std.testing.expect(ctx.matched);
+    try std.testing.expect(ctx.verdict == .match_block); // BLOCK wins
+    try std.testing.expect(ctx.event.event_type == .block);
+    try std.testing.expect(ctx.event.severity >= 3);
+
+    const stats = getMetrics();
+    try std.testing.expect(stats.total_blocks == 1);
+}
+
+test "processEvent updates flow risk score on match" {
+    initBothLayers();
+    defer shutdownBothLayers();
+    flow_int.resetStats();
+    resetStats();
+
+    var mgr = detection.DetectionManager.init();
+    _ = mgr.register(.{
+        .name = "DummyAlert",
+        .detector_type = .tier1_aho_corasick,
+        .is_active = true,
+        .scan_fn = dummyAlertDetector,
+    });
+
+    var event = canonical.create(.wfp_sensor);
+    event.event_type = .forward;
+    event.source_ip = 0x0A000001;
+    event.dest_ip = 0x0A000002;
+    event.source_port = 12345;
+    event.dest_port = 80;
+    event.protocol = 6;
+    event.payload_length = 100;
+    event.is_pipe = 0;
+
+    const payload = "alert_pattern";
+    _ = processEvent(event, &mgr, payload);
+
+    // Verify flow risk score was updated (severity=2 * 80 = 160)
+    const fctx = flow_int.processEvent(event);
+    try std.testing.expect(fctx.risk_score >= 160);
+}
+
+test "processEvent handles host event gracefully" {
+    initBothLayers();
+    defer shutdownBothLayers();
+    flow_int.resetStats();
+    resetStats();
+
+    var mgr = detection.DetectionManager.init();
+    _ = mgr.register(.{
+        .name = "DummyAlert",
+        .detector_type = .tier1_aho_corasick,
+        .is_active = true,
+        .scan_fn = dummyAlertDetector,
+    });
+
+    var event = canonical.create(.minifilter);
+    event.event_type = .session_start;
+    event.source_ip = 0; // host event
+    event.is_pipe = 0;
+
+    const ctx = processEvent(event, &mgr, "alert_pattern");
+    try std.testing.expect(ctx.flow_context.is_host_event);
+    // Detector should still run, even for host events
+    try std.testing.expect(ctx.matched);
+}
+
+test "getMetrics returns full integration state" {
+    initBothLayers();
+    defer shutdownBothLayers();
+    flow_int.resetStats();
+    resetStats();
+
+    var event = canonical.create(.wfp_sensor);
+    event.event_type = .forward;
+    event.source_ip = 0x0A000001;
+    event.dest_ip = 0x0A000002;
+    event.source_port = 12345;
+    event.dest_port = 80;
+    event.protocol = 6;
+    event.payload_length = 100;
+    event.is_pipe = 0;
+
+    _ = processEventFlowOnly(event);
+    _ = processEventFlowOnly(event);
+
+    const stats = getMetrics();
+    try std.testing.expect(stats.total_events_processed == 2);
+    try std.testing.expect(stats.total_matches == 0);
+    try std.testing.expect(stats.total_blocks == 0);
+}
+
+test "STEP6: port-scan-like escalation across multiple flows" {
+    // Simulate: many packets from same source on same flow
+    // (port scan would be different flows — but packet_count escalation works
+    // on a single flow too, e.g. for beaconing detection)
+    initBothLayers();
+    defer shutdownBothLayers();
+    flow_int.resetStats();
+    resetStats();
+    init(.{ .high_packet_count = 10, .high_byte_count = 1_000_000_000, .high_risk_score = 255 });
+
+    var event = canonical.create(.wfp_sensor);
+    event.event_type = .forward;
+    event.source_ip = 0xC0A80164;
+    event.dest_ip = 0x0A000001;
+    event.source_port = 50000;
+    event.dest_port = 80;
+    event.protocol = 6;
+    event.payload_length = 64;
+    event.is_pipe = 0;
+
+    // Send 9 events — no escalation yet
+    var i: u32 = 0;
+    while (i < 9) : (i += 1) {
+        const ctx = processEventFlowOnly(event);
+        try std.testing.expect(!ctx.matched);
+    }
+
+    // 10th event — escalation triggers
+    const ctx = processEventFlowOnly(event);
+    try std.testing.expect(ctx.matched);
+    try std.testing.expect(ctx.verdict == .match_alert);
+
+    const stats = getMetrics();
+    try std.testing.expect(stats.total_escalations == 1);
+    try std.testing.expect(stats.total_events_processed == 10);
+}

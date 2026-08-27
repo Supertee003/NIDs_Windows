@@ -103,7 +103,7 @@ pub fn main() !void {
     // Wires flow_integration + detection_manager together — events popped from
     // fabric are processed through the full pipeline (flow update + escalation +
     // detector scan + risk-score annotation).
-    detection_int.init(detection_int.EscalationThresholds.default());
+    detection_int.init(.default);
     std.log.info("[MAIN] Detection Integration initialized (flow-aware detection active)", .{});
 
     // Phase 37: Initialize Policy IR with default rules
