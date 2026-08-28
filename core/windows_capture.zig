@@ -1,4 +1,4 @@
-﻿//! windows_capture.zig - AEGIS NIDS WFP Kernel Traffic Reader (Thread 3)
+//! windows_capture.zig - AEGIS NIDS WFP Kernel Traffic Reader (Thread 3)
 //!
 //! M4+BP2: Uses wfp_ioctl.read_events(). If WFP device was already
 //! opened by bridge_init.initAll(), skips re-opening.
@@ -81,7 +81,7 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
         std.log.info("[SENSOR 2] WFP device already connected via bridge_init", .{});
         std.debug.print("[SENSOR 2] WFP device already connected via bridge_init\n", .{});
     }
-    if (did_open) defer wfp_ioctl.shutdown();
+    if (did_open) { defer wfp_ioctl.shutdown(); }
 
     std.log.info("[SENSOR 2] Reading events from kernel ring buffer", .{});
     std.debug.print("[SENSOR 2] Reading events from kernel ring buffer...\n", .{});
@@ -101,7 +101,7 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
                     std.log.info("[SENSOR 2] WFP ring: {d}/{} bytes", .{
                         stats.currentUsedBytes, stats.capacity
                     });
-                    std.debug.print("[SENSOR 2] WFP ring: {d}/{} bytes\n", .{
+                    std.debug.print("[SENSOR 2] WFP ring: {d}/{any} bytes\n", .{
                         stats.currentUsedBytes, stats.capacity
                     });
                 }

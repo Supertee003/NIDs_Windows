@@ -65,7 +65,8 @@ pub fn init() void {
     }
 
     // Seek to end for append
-    _ = win.kernel32.SetFilePointer(handle, 0, null, win.FILE_END);
+    var file_pos: win.LARGE_INTEGER = 0;
+        _ = win.kernel32.SetFilePointerEx(handle, 0, &file_pos, win.FILE_END);
 
     g_log_handle = handle;
     g_initialized = true;

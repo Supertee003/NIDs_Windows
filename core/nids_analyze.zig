@@ -1,4 +1,4 @@
-﻿//! nids_analyze.zig - AEGIS NIDS 3-Tier Analysis Engine (Thread 1)
+//! nids_analyze.zig - AEGIS NIDS 3-Tier Analysis Engine (Thread 1)
 //!
 //! Core threat analysis engine using Aho-Corasick pattern matching.
 //! Loads rules from Rules.json, runs pipe + TCP listeners,
@@ -716,7 +716,7 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
     }
 
     // BP195: Time the failure link construction (can be slow for large rule sets)
-    const _bp195_bfl_start = std.time.nanoTimestamp();
+    const _bp195_bfl_start = @as(i64, @intCast(std.time.nanoTimestamp()));
     try new_set.ac_engine.buildFailureLinks();
     const _bp195_bfl_ms = @divTrunc(@max(@as(i128, 0), std.time.nanoTimestamp() - _bp195_bfl_start), 1_000_000);
     std.log.info("[ANALYZE] Failure links built in {d}ms", .{_bp195_bfl_ms});
@@ -1094,7 +1094,7 @@ pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
 
 fn handle_pipe_client(hPipe: win.HANDLE, allocator: std.mem.Allocator) void {
     _ = allocator; // reserved for future use
-    const start_ns = std.time.nanoTimestamp();
+    const start_ns = @as(i64, @intCast(std.time.nanoTimestamp()));
     std.debug.print("  [PIPE] Session started\n", .{});
     // BP112: Pipe client connected log
     std.log.info("[PIPE] Admin client connected via named pipe", .{});
@@ -1366,15 +1366,15 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
         (src_ip >> 8) & 0xFF, src_ip & 0xFF, src_port,
     });
 
-    const start_ns = std.time.nanoTimestamp();
+    const start_ns = @as(i64, @intCast(std.time.nanoTimestamp()));
     var _bp92_ttfb_ns: i64 = 0;
-    var _bp94_last_act_ns: i64 = std.time.nanoTimestamp();
+    var _bp94_last_act_ns: i64 = @as(i64, @intCast(std.time.nanoTimestamp()));
     var bytes_read: u64 = 0;
     var packet_count: u64 = 0;
     var peak_buf: u64 = 0;
     // BP166: Per-client packet rate tracking (local state, no mutex needed)
     var pkt_rate_count: u64 = 0;
-    var pkt_rate_window_ns: i64 = std.time.nanoTimestamp();
+    var pkt_rate_window_ns: i64 = @as(i64, @intCast(std.time.nanoTimestamp()));
 
     defer {
         const dur_s: u64 = @as(u64, @intCast(@max(@as(i128, 0), std.time.nanoTimestamp() - start_ns))) / std.time.ns_per_s;
@@ -1449,7 +1449,7 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
             _ = g_analyze_errors.fetchAdd(1, .relaxed);
             break;
         };
-        _bp94_last_act_ns = std.time.nanoTimestamp();
+        _bp94_last_act_ns = @as(i64, @intCast(std.time.nanoTimestamp()));
         if (len == 0) {
             std.debug.print("  [TCP] Connection closed by peer (EOF)\n", .{});
             break;
@@ -1458,7 +1458,7 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
         if (len > peak_buf) peak_buf = len;
         // BP92: TTFB tracking
         if (_bp92_ttfb_ns == 0) {
-            _bp92_ttfb_ns = std.time.nanoTimestamp();
+            _bp92_ttfb_ns = @as(i64, @intCast(std.time.nanoTimestamp()));
             const _bp92_ttfb_ms = @divTrunc(_bp92_ttfb_ns - start_ns, 1_000_000);
             std.log.info("[TCP] TTFB {d}ms from {d}.{d}.{d}.{d}", .{
                 _bp92_ttfb_ms,
@@ -1487,7 +1487,7 @@ fn handle_tcp_client(stream: net.Stream, remote_addr: net.Address, allocator: st
         // BP166: Per-client packet rate limiting
         pkt_rate_count += 1;
         {
-            const _now_ns = std.time.nanoTimestamp();
+            const _now_ns = @as(i64, @intCast(std.time.nanoTimestamp()));
             if (_now_ns - pkt_rate_window_ns >= PKT_RATE_WINDOW_NS) {
                 if (pkt_rate_count > PKT_RATE_LIMIT_MAX) {
                     std.log.warn("[TCP] Packet rate exceeded: {d} pkt/s from {d}.{d}.{d}.{d}:{d}", .{
@@ -2031,7 +2031,7 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
     std.debug.print("\n--- AEGIS CORE: 3-TIER ENGINE ACTIVE ---\n", .{});
     // BP222: Startup marker visible in release builds
     std.log.info("[INIT] AEGIS Core 3-Tier Engine starting", .{});
-    g_start_time_ns = std.time.nanoTimestamp();
+    g_start_time_ns = @as(i64, @intCast(std.time.nanoTimestamp()));
 
     // Phase 29: Initialize Blueprint Detection Manager + Policy Engine + PEP + Rust Shield
     g_detection_mgr = detection.DetectionManager.init();
@@ -2078,7 +2078,7 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
         std.log.warn("[RULES] Rules.json not found ({}) - engine starts with empty ruleset", .{err});
     }
 
-    const _bp91_rl_start = std.time.nanoTimestamp();
+    const _bp91_rl_start = @as(i64, @intCast(std.time.nanoTimestamp()));
     reload_rules_atomic(allocator) catch |reload_err| {
         std.debug.print("[ANALYZE] Failed to load rules: {}\n", .{reload_err});
         // BP218: Rule load failure visible in release builds
@@ -2100,11 +2100,11 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
     std.debug.print("\n--- AEGIS Security Configuration ---\n", .{});
     std.debug.print("  TCP Port: {d} (backlog={d})\n", .{AEGIS_TCP_PORT, TCP_LISTEN_BACKLOG});
     std.debug.print("  Max concurrent connections: {d} (semaphore)\n", .{MAX_CONCURRENT_CONNECTIONS});
-    std.debug.print("  TCP buffer: {}B | Pipe buffer: {}B\n", .{TCP_BUFFER_SIZE, PIPE_BUFFER_SIZE});
+    std.debug.print("  TCP buffer: {any}B | Pipe buffer: {any}B\n", .{TCP_BUFFER_SIZE, PIPE_BUFFER_SIZE});
     std.debug.print("  TCP idle timeout: {d}ms | Max session: {d}s\n", .{TCP_IDLE_TIMEOUT_MS, TCP_MAX_SESSION_S});
     std.debug.print("  TCP max packets: {d} | Pkt rate limit: {d}/s\n", .{TCP_MAX_PACKETS, PKT_RATE_LIMIT_MAX});
     std.debug.print("  Per-IP limit: {d} conns/60s (max {d} IPs)\n", .{RATE_LIMIT_MAX_CONNS, RATE_LIMIT_MAX_IPS});
-    std.debug.print("  Rule limit: {d} | Pipe max: {d} pkts / {}MB\n", .{RULES_MAX_COUNT, PIPE_MAX_PACKETS, PIPE_MAX_BYTES / (1024 * 1024)});
+    std.debug.print("  Rule limit: {d} | Pipe max: {d} pkts / {any}MB\n", .{RULES_MAX_COUNT, PIPE_MAX_PACKETS, PIPE_MAX_BYTES / (1024 * 1024)});
     std.debug.print("  Max payload: {}B | Max rule file: {}MB\n", .{ANALYZE_MAX_PAYLOAD, RULES_MAX_FILE_SIZE / (1024 * 1024)});
     std.debug.print("-----------------------------------\n", .{});
     // BP228: Security config summary via std.log.info (release-build visible)
@@ -2174,7 +2174,7 @@ pub fn analyze_packets(allocator: std.mem.Allocator) void {
 
     // BP140: Graceful shutdown drain with logging
     std.debug.print("[SHUTDOWN] Draining connections (waiting for listeners to stop)...\n", .{});
-    const drain_start = std.time.nanoTimestamp();
+    const drain_start = @as(i64, @intCast(std.time.nanoTimestamp()));
     t_pipe.join();
     std.debug.print("[SHUTDOWN] Pipe listener stopped\n", .{});
     // BP214: Conditional join - TCP may not have spawned

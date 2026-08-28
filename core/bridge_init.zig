@@ -1,4 +1,4 @@
-﻿//! bridge_init.zig - AEGIS NIDS Unified Bridge Initialization (M3)
+//! bridge_init.zig - AEGIS NIDS Unified Bridge Initialization (M3)
 //!
 //! Centralized startup/shutdown for ALL bridge connections.
 //! Called from nids_main.zig before spawning sensor threads.

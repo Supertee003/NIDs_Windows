@@ -1,4 +1,4 @@
-﻿//! nids_capture.zig - AEGIS NIDS Named Pipe IPC Sensor (Thread 2)
+//! nids_capture.zig - AEGIS NIDS Named Pipe IPC Sensor (Thread 2)
 //!
 //! Creates a named pipe server (\\.\pipe\aegis_sensor_pipe) that
 //! accepts connections from Python sensor scripts. Payloads received

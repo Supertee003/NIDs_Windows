@@ -1,4 +1,4 @@
-﻿//! nids_main.zig - AEGIS NIDS Main Entry Point
+//! nids_main.zig - AEGIS NIDS Main Entry Point
 //!
 //! 5-Thread Architecture:
 //!   T1: 3-Tier Analysis Engine (nids_analyze.zig)
@@ -68,7 +68,7 @@ pub fn main() !void {
     // STEP 4: Initialize Nose Integration layer with default sampling policy.
     // Sensors that call nose_int.submit() will get pressure-aware sampling +
     // backoff behavior automatically.
-    nose_int.init(.default);
+    nose_int.init(nose_int.SamplingPolicy.default);
     std.log.info("[MAIN] Nose Integration initialized (pressure-aware sampling active)", .{});
 
     // Phase 37: Initialize XDR Correlator

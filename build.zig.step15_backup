@@ -22,10 +22,10 @@ pub fn build(b: *std.Build) void {
 
     // STEP 15: Embed version info via build options
     const options = b.addOptions();
-    options.addOption(u32, "version_major", version_major);
-    options.addOption(u32, "version_minor", version_minor);
-    options.addOption(u32, "version_patch", version_patch);
-    options.addOption(bool, "release", release_mode);
+    options.add(u32, "version_major", version_major);
+    options.add(u32, "version_minor", version_minor);
+    options.add(u32, "version_patch", version_patch);
+    options.add(bool, "release", release_mode);
     exe.root_module.addOptions("aegis_build", options);
 
     const rules_src = b.path("config/Rules.json");
@@ -48,10 +48,10 @@ pub fn build(b: *std.Build) void {
         .optimize = .ReleaseFast,
     });
     const release_options = b.addOptions();
-    release_options.addOption(u32, "version_major", version_major);
-    release_options.addOption(u32, "version_minor", version_minor);
-    release_options.addOption(u32, "version_patch", version_patch);
-    release_options.addOption(bool, "release", true);
+    release_options.add(u32, "version_major", version_major);
+    release_options.add(u32, "version_minor", version_minor);
+    release_options.add(u32, "version_patch", version_patch);
+    release_options.add(bool, "release", true);
     release_exe.root_module.addOptions("aegis_build", release_options);
     const release_install = b.addInstallArtifact(release_exe, .{
         .dest_dir = .{ .override = .bin },
