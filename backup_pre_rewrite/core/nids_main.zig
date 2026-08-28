@@ -1,0 +1,284 @@
+//! nids_main.zig - AEGIS NIDS Main Entry Point
+//!
+//! 5-Thread Architecture:
+//!   T1: 3-Tier Analysis Engine (nids_analyze.zig)
+//!   T2: Named Pipe IPC Sensor (nids_capture.zig)
+//!   T3: WFP Kernel Traffic Sensor (windows_capture.zig)
+//!   T4: Minifilter Event Reader (minifilter_reader.zig)
+//!   T5: Named Pipe Scanner (pipe_monitor.zig)
+//!
+//! BP-FIX: Removed std.os.exit(0) from Ctrl+C handler (was skipping all defers),
+//!         added bridge_init import, removed unused ANSI color constants,
+//!         added bridge_init.initAll() call, use optional thread pattern.
+
+const std = @import("std");
+const bridge_init = @import("bridge_init.zig");
+const nids_analyze = @import("nids_analyze.zig");
+const windows_capture = @import("windows_capture.zig");
+const nids_capture = @import("nids_capture.zig");
+const minifilter_reader = @import("minifilter_reader.zig");
+const pipe_monitor = @import("pipe_monitor.zig");
+const forensic_log = @import("forensic_log.zig");
+// Phase 28: Blueprint Nose Contract + Event Fabric
+const nose = @import("nose_contract.zig");
+const nose_int = @import("nose_integration.zig");
+// Phase 37: Sprint 3 integration modules
+const hids_proc = @import("hids_process_monitor.zig");
+const xdr = @import("xdr_correlator.zig");
+const rag = @import("rag_intelligence.zig");
+const flow = @import("flow_engine.zig");
+const flow_int = @import("flow_integration.zig");
+const detection_int = @import("detection_integration.zig");
+const correlation_int = @import("correlation_integration.zig");
+const rag_int = @import("rag_integration.zig");
+const policy_int = @import("policy_integration.zig");
+const forensics_int = @import("forensics_integration.zig");
+const policy_ir = @import("policy_ir.zig");
+
+pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    // UX-12: Enable Virtual Terminal Processing for ANSI color codes on Windows
+    // (Without this, \x1b[31;1m appears as literal text on Windows 10 <= 1809)
+    enableVirtualTerminal();
+
+    std.fs.cwd().makeDir("logs") catch |err| {
+        if (err != error.PathAlreadyExists) {
+            std.log.err("[MAIN] Failed to create logs dir: {}", .{err});
+        }
+    };
+
+    // IR-01: Initialize persistent forensic logger (logs/aegis_core.ndjson)
+    forensic_log.init();
+    defer forensic_log.shutdown();
+
+    // Phase 28: Initialize Event Fabric (Nose Contract, AEGIS-006)
+    nose.initFabric(allocator, .{
+        .capacity_per_priority = 256,
+        .validate_on_submit = true,
+    }) catch |err| {
+        std.log.err("[MAIN] Failed to init Event Fabric: {}", .{err});
+        return err;
+    };
+    defer nose.shutdownFabric(allocator);
+    std.log.info("[MAIN] Event Fabric initialized (Nose Contract active)", .{});
+
+    // STEP 4: Initialize Nose Integration layer with default sampling policy.
+    // Sensors that call nose_int.submit() will get pressure-aware sampling +
+    // backoff behavior automatically.
+    nose_int.init(nose_int.SamplingPolicy.default);
+    std.log.info("[MAIN] Nose Integration initialized (pressure-aware sampling active)", .{});
+
+    // Phase 37: Initialize XDR Correlator
+    var xdr_corr = xdr.XDRCorrelator.init();
+    _ = &xdr_corr;
+    std.log.info("[MAIN] XDR Correlator initialized", .{});
+
+    // Phase 37: Initialize RAG Intelligence Engine with default threat entries
+    var rag_engine = rag.RAGEngine.init();
+    // Seed with known bad IPs (example)
+    _ = rag_engine.addThreat(.{
+        .ip = 0x0A000099,
+        .severity = 3,
+        .confidence = 85,
+        .source = "internal_seed",
+        .category = .malicious,
+        .first_seen_ms = std.time.milliTimestamp(),
+        .last_seen_ms = std.time.milliTimestamp(),
+    });
+    _ = &rag_engine;
+    std.log.info("[MAIN] RAG Intelligence Engine initialized (1 seed entry)", .{});
+
+    // Phase 37: Initialize Flow Engine (legacy table — kept for backward compat with sprint2 tests)
+    var flow_table = flow.FlowTable.init();
+    _ = &flow_table;
+    std.log.info("[MAIN] Flow Engine initialized (max {} flows)", .{4096});
+
+    // STEP 5: Initialize Flow Integration layer (single source of truth for runtime).
+    // Sensors' events are processed through flow_integration.processEvent() in the
+    // detection loop, providing FlowContext to detectors for stateful decisions.
+    flow_int.init();
+    defer flow_int.shutdown();
+    std.log.info("[MAIN] Flow Integration initialized (event-driven flow tracking)", .{});
+
+    // STEP 6: Initialize Detection Integration layer.
+    // Wires flow_integration + detection_manager together — events popped from
+    // fabric are processed through the full pipeline (flow update + escalation +
+    // detector scan + risk-score annotation).
+    detection_int.init(detection_int.EscalationThresholds.default());
+    std.log.info("[MAIN] Detection Integration initialized (flow-aware detection active)", .{});
+
+    // STEP 7: Initialize Correlation Integration layer.
+    // Wires detection results into XDR correlator — events with same session_id
+    // are linked into cross-tier incidents (network attack + host process + file write).
+    correlation_int.init();
+    defer correlation_int.shutdown();
+    std.log.info("[MAIN] Correlation Integration initialized (XDR cross-tier linking active)", .{});
+
+    // STEP 8: Initialize RAG Intelligence Integration layer.
+    // Wires threat intel DB with detection pipeline — events are enriched
+    // with threat intel (context_flags, severity escalation, flow risk_score
+    // adjustment) BEFORE detection runs. Default seeds are loaded at startup.
+    rag_int.init();
+    defer rag_int.shutdown();
+    std.log.info("[MAIN] RAG Integration initialized (threat intel enrichment active)", .{});
+
+    // STEP 9: Initialize Policy Integration layer.
+    // Wires PolicyEngine + PEP with the detection pipeline. Every event flows
+    // through RAG -> detection -> correlation -> policy evaluation -> PEP enforcement.
+    // Default rules are loaded at startup (block critical, alert high, log low).
+    policy_int.init();
+    defer policy_int.shutdown();
+    std.log.info("[MAIN] Policy Integration initialized (PEP enforcement active)", .{});
+
+    // STEP 10: Initialize Forensics Integration layer.
+    // Captures full pipeline results (RAG + detection + correlation + policy)
+    // into an in-memory ring buffer (4096 entries) for fast replay queries,
+    // and also writes structured NDJSON entries to the persistent forensic log.
+    forensics_int.init();
+    defer forensics_int.shutdown();
+    std.log.info("[MAIN] Forensics Integration initialized (replay API active)", .{});
+
+    // Phase 37: Initialize Policy IR with default rules
+    var policy_builder = policy_ir.PolicyIRBuilder.init("AEGIS Default Policy v1");
+    _ = policy_builder.addBlockRule("BlockCritical", 3);
+    _ = policy_builder.addBlockRule("BlockHigh", 2);
+    _ = policy_builder.addAlertRule("AlertMedium", 1);
+    _ = policy_builder.addLogOnlyRule("LogLow", 0);
+    const ir = policy_builder.build();
+    std.log.info("[MAIN] Policy IR initialized ({d} rules)", .{ir.rule_count});
+
+    // BP-I3: Use AEGIS_VERSION constant from bridge_init (was hardcoded "v2.1")
+    std.log.info("[MAIN] AEGIS NIDS {s} - 5-Thread Architecture", .{bridge_init.AEGIS_VERSION});
+
+    // GAP-3: Set brain allocator for spool queue drain thread
+    bridge_init.setBrainAllocator(allocator);
+
+    // Initialize all bridges (WFP, C++ IPC, Rust Shield, UDP Brain)
+    bridge_init.initAll();
+    defer bridge_init.shutdownAll();
+
+    // T1: 3-Tier Analysis Engine (required - fail if can't spawn)
+    const t_analyze = std.Thread.spawn(.{}, nids_analyze.analyze_packets, .{allocator}) catch |err| {
+        std.log.err("[MAIN] T1 Analyze failed to spawn: {}", .{err});
+        return err;
+    };
+    std.log.info("[MAIN] T1 Analyze spawned", .{});
+
+    // Give analyzer time to initialize rules before other sensors connect
+    std.time.sleep(500 * std.time.ns_per_ms);
+
+    // T2: Named Pipe IPC Sensor (optional - sensor pipe for Python scripts)
+    const t_pipe: ?std.Thread = blk: {
+        const t = std.Thread.spawn(.{}, nids_capture.capture_packets, .{ allocator, "127.0.0.1" }) catch |err| {
+            std.log.warn("[MAIN] T2 Pipe Sensor failed: {}", .{err});
+            break :blk null;
+        };
+        break :blk t;
+    };
+    if (t_pipe != null) std.log.info("[MAIN] T2 Pipe Sensor spawned", .{});
+
+    // T3: WFP Kernel Traffic Sensor (optional - requires kernel driver)
+    const t_wfp: ?std.Thread = std.Thread.spawn(.{}, windows_capture.capture_packets, .{ allocator, "127.0.0.1" }) catch |err| {
+        std.log.warn("[MAIN] T3 WFP Capture failed: {}", .{err});
+        null;
+    };
+    if (t_wfp != null) std.log.info("[MAIN] T3 WFP Capture spawned", .{});
+
+    // T4: Minifilter Event Reader (optional - requires kernel driver)
+    const t_mini: ?std.Thread = std.Thread.spawn(.{}, minifilter_reader.minifilterReaderLoop, .{}) catch |err| {
+        std.log.warn("[MAIN] T4 Minifilter failed: {}", .{err});
+        null;
+    };
+    if (t_mini != null) std.log.info("[MAIN] T4 Minifilter spawned", .{});
+
+    // T5: Named Pipe Scanner (optional)
+    const t_pmon: ?std.Thread = std.Thread.spawn(.{}, pipe_monitor.pipeMonitorLoop, .{}) catch |err| {
+        std.log.warn("[MAIN] T5 Pipe Monitor failed: {}", .{err});
+        null;
+    };
+    if (t_pmon != null) std.log.info("[MAIN] T5 Pipe Monitor spawned", .{});
+
+    // Phase 37: T6 HIDS Process Monitor (optional - Sprint 3)
+    const t_hids: ?std.Thread = std.Thread.spawn(.{}, hidsProcessLoop, .{}) catch |err| {
+        std.log.warn("[MAIN] T6 HIDS Process Monitor failed: {}", .{err});
+        null;
+    };
+    if (t_hids != null) std.log.info("[MAIN] T6 HIDS Process Monitor spawned", .{});
+
+    // Report active thread count
+    var active: u32 = 1; // T1 always running
+    if (t_pipe != null) active += 1;
+    if (t_wfp != null) active += 1;
+    if (t_mini != null) active += 1;
+    if (t_pmon != null) active += 1;
+    if (t_hids != null) active += 1;
+    std.log.info("[MAIN] {d}/6 threads active", .{active});
+
+    // Wait for all threads to complete
+    t_analyze.join();
+    if (t_pipe) |t| t.join();
+    if (t_wfp) |t| t.join();
+    if (t_mini) |t| t.join();
+    if (t_pmon) |t| t.join();
+    if (t_hids) |t| t.join();
+
+    // Phase 37: Print final stats from all Sprint 2 modules
+    const fabric_stats = nose.getStats();
+    std.log.info("[MAIN] Fabric: accepted={d} pending={d}", .{ fabric_stats.accepted, fabric_stats.pending });
+    std.log.info("[MAIN] RAG: entries={d} queries={d} matches={d}", .{
+        rag.RAGEngine.init().getStats().db_entries, 0, 0
+    });
+
+    std.log.info("[MAIN] Shutdown complete", .{});
+}
+
+// ============================================================
+// Phase 37: HIDS Process Monitor Loop (Thread 6)
+// ============================================================
+
+fn hidsProcessLoop() void {
+    std.log.info("[HIDS-PROC] Thread 6 started - monitoring process events", .{});
+
+    while (true) {
+        if (bridge_init.g_shutdown.load(.seq_cst)) break;
+
+        // Poll for process events (stub: in production, use WMI/ETW)
+        // For now, just log stats periodically
+        std.time.sleep(30 * std.time.ns_per_s);
+
+        const stats = hids_proc.getStats();
+        std.log.info("[HIDS-PROC] Processes={d} Suspicious={d}", .{
+            stats.total_processes, stats.suspicious_count
+        });
+    }
+
+    std.log.info("[HIDS-PROC] Thread 6 shutting down", .{});
+}
+
+// ============================================================
+// UX-12: Enable Virtual Terminal Processing for ANSI color codes
+// ============================================================
+
+const ENABLE_VIRTUAL_TERMINAL_PROCESSING: u32 = 0x0004;
+const STD_OUTPUT_HANDLE: u32 = @bitCast(@as(i32, -11));
+const STD_ERROR_HANDLE: u32 = @bitCast(@as(i32, -12));
+
+extern "kernel32" fn GetStdHandle(nStdHandle: u32) ?*anyopaque;
+extern "kernel32" fn GetConsoleMode(hConsoleHandle: ?*anyopaque, lpMode: *u32) i32;
+extern "kernel32" fn SetConsoleMode(hConsoleHandle: ?*anyopaque, dwMode: u32) i32;
+
+fn enableVirtualTerminal() void {
+    // Enable VT processing on stdout
+    const stdout = GetStdHandle(STD_OUTPUT_HANDLE) orelse return;
+    var mode: u32 = 0;
+    if (GetConsoleMode(stdout, &mode) == 0) return;
+    _ = SetConsoleMode(stdout, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+
+    // Enable VT processing on stderr (for std.log.warn/err)
+    const stderr = GetStdHandle(STD_ERROR_HANDLE) orelse return;
+    if (GetConsoleMode(stderr, &mode) == 0) return;
+    _ = SetConsoleMode(stderr, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+}

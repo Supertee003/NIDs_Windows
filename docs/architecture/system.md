@@ -1,131 +1,140 @@
-# AEGIS System Architecture (STEP 0 — Baseline Freeze)
+# AEGIS NIDS — System Architecture (Rewrite v3.0)
 
-## Status: FROZEN — No architectural changes without ADR
+## Status: FROZEN — Changes require ADR
 
-## Dependency Map
+## Overview
+
+AEGIS NIDS is a Windows-native Security Event Fabric + Detection + Correlation + Intelligence + Policy Enforcement Platform.
 
 ```
-                    ┌─────────────┐
-                    │  Windows OS │
-                    │  (kernel32) │
-                    └──────┬──────┘
-                           │
-              ┌────────────┼────────────┐
-              │            │            │
-        ┌─────▼─────┐ ┌───▼───┐ ┌─────▼─────┐
-        │ WFP Driver │ │ ETW   │ │ Minifilter │
-        │ (aegis_wfp) │ │ /WMI  │ │  Driver    │
-        └─────┬──────┘ └───┬───┘ └─────┬──────┘
-              │            │            │
-              ▼            ▼            ▼
-     ┌────────────────────────────────────────┐
-     │           Zig Core (core/*.zig)         │
-     │                                        │
-     │  T1: nids_analyze     ← AC Engine      │
-     │  T2: nids_capture     ← Pipe Sensor    │
-     │  T3: windows_capture  ← WFP Reader     │
-     │  T4: minifilter_reader ← FS Events     │
-     │  T5: pipe_monitor      ← Pipe Scanner  │
-     │  T6: hids_process_monitor ← Proc Events│
-     │                                        │
-     │  Blueprint Modules:                    │
-     │  ├── canonical_event.zig  ← Event v1  │
-     │  ├── wire_event.zig       ← Wire v1   │
-     │  ├── event_queue.zig      ← Queue     │
-     │  ├── priority_queue.zig  ← 3-Lane    │
-     │  ├── nose_contract.zig    ← Fabric    │
-     │  ├── detection_interface.zig ← Det API │
-     │  ├── policy_contract.zig  ← Policy+PEP│
-     │  ├── flow_engine.zig     ← Flow State │
-     │  ├── xdr_correlator.zig  ← XDR Link  │
-     │  ├── rag_intelligence.zig ← Threat    │
-     │  ├── policy_ir.zig       ← Policy IR  │
-     │  ├── hids_process_monitor.zig ← HIDS  │
-     │  ├── forensic_log.zig    ← NDJSON     │
-     │  └── win32_io.zig        ← Overlapped │
-     └───────────┬────────────────────────────┘
-                 │
-        ┌────────┼────────┐
-        │        │        │
-   ┌────▼──┐ ┌──▼───┐ ┌─▼────────┐
-   │ C++   │ │ Rust  │ │ Python   │
-   │Bridge │ │Shield │ │ Brain    │
-   │(DLL)  │ │(DLL)  │ │          │
-   │       │ │       │ │ +Cython  │
-   │DEFCON │ │Tier-3 │ │ +RAG     │
-   │Ring   │ │Safety │ │ +IPS     │
-   └───┬───┘ └───┬──┘ └────┬─────┘
-       │         │           │
-       └─────────┴───────────┘
-                 │
-          ┌──────▼──────┐
-          │ Go          │
-          │ Aggregator  │
-          │             │
-          │ REST API    │
-          │ Dedup       │
-          │ Correlation │
-          │ Timeline    │
-          └─────────────┘
+                              AEGIS
+                                │
+                ┌───────────────┴───────────────┐
+                │                               │
+             NETWORK                          HOST
+                │                               │
+              WFP                          Minifilter
+                │                               │
+                └───────────────┬───────────────┘
+                                ▼
+                              NOSE
+                                │
+                        Canonical Event
+                                │
+                           Validation
+                                │
+                       Event Fabric Queue
+                                │
+                      Runtime Dispatcher
+                                │
+            ┌───────────────────┼───────────────────┐
+            │                   │                   │
+           FLOW             DETECTION          TELEMETRY
+            │                   │
+            └───────────────────┘
+                     │
+                 EVIDENCE
+                     │
+                CORRELATION
+                     │
+              ENTITY / INCIDENT
+                     │
+          ┌──────────┴──────────┐
+          │                     │
+    Threat Intelligence      Brain
+          │                     │
+          └──────────┬──────────┘
+                     │
+                    RAG
+                     │
+                  VERDICT
+                     │
+                   POLICY
+                     │
+                 POLICY IR
+                     │
+                  RUST
+                     │
+                    PEP
+                     │
+                 WFP/HOST
+                     │
+                   ACTION
+                     │
+                FORENSICS
+                     │
+                  REPLAY
 ```
+
+## Design Principles
+
+1. **ไม่ Big Bang** — Extract → Redirect → Verify → Deprecate → Remove
+2. **ห้ามสอง source of truth** — แต่ละ responsibility มี owner เดียว
+3. **แม่นก่อนเร็ว** — correctness > performance
+4. **Nose ไม่ฉลาด** — แม่นก่อนเร็ว, event ที่ผิดตั้งแต่ต้นแก้ไม่ได้
+5. **Detection = evidence producer** — ไม่ใช่ decision maker
+6. **Brain = advisor** — ไม่ใช่ enforcer
+7. **Policy = plan** — ไม่ใช่ action ตรงๆ
+8. **Rust = security authority** — validate + execute, ไม่รับ arbitrary input
 
 ## Module Inventory
 
-### Core Zig Modules (24 files, ~9,460 lines)
+### Core Runtime (Zig)
+| Module | Responsibility |
+|--------|---------------|
+| `core/canonical_event.zig` | Single event schema (source of truth) |
+| `core/wire_event.zig` | Explicit wire format (field-by-field, no memcpy) |
+| `core/event_queue.zig` | Thread-safe ring buffer |
+| `core/priority_queue.zig` | 3-priority event routing |
+| `core/nose_contract.zig` | Sensor → Fabric interface |
+| `core/event_fabric.zig` | Runtime subsystem (pressure, backpressure, metrics) |
+| `core/runtime/dispatcher.zig` | (NEW) Pipeline dispatcher |
+| `core/runtime/pipeline.zig` | (NEW) Pipeline stages |
+| `core/runtime/lifecycle.zig` | (NEW) Init/shutdown lifecycle |
+| `core/runtime/worker.zig` | (NEW) Worker threads |
+| `core/runtime/shutdown.zig` | (NEW) Graceful shutdown |
 
-| File | Lines | Role | Creates Events? | Modifies Events? | Reads Events? |
-|------|-------|------|-----------------|-------------------|---------------|
-| nids_main.zig | 226 | Entry point, 6-thread orchestrator | No | No | No |
-| nids_analyze.zig | 2,278 | 3-tier detection + listeners | No | Yes (sets verdict) | Yes |
-| nids_capture.zig | 233 | Pipe IPC sensor | Yes (forward) | No | No |
-| windows_capture.zig | 187 | WFP kernel sensor | Yes (forward) | No | No |
-| minifilter_reader.zig | 344 | Filesystem sensor | Yes (forward) | No | No |
-| pipe_monitor.zig | 237 | Pipe name scanner | Yes (forward) | No | No |
-| wfp_ioctl.zig | 585 | WFP IOCTL + IP block | No | No | No |
-| bridge_init.zig | 587 | C++/Rust DLL + UDP brain | No | No | No |
-| forensic_log.zig | 438 | NDJSON persistent logger | No | No | Yes |
-| win32_io.zig | 166 | Overlapped I/O helpers | No | No | No |
-| canonical_event.zig | 278 | Event model v1 | Yes (create) | Yes (fields) | Yes |
-| wire_event.zig | 241 | Wire format v1 | No | No | Yes |
-| event_queue.zig | 234 | Thread-safe queue | No | No | Yes |
-| priority_queue.zig | 290 | 3-priority queue | No | No | Yes |
-| nose_contract.zig | 317 | Sensor→Fabric contract | Yes (submit) | Yes (validate) | Yes |
-| detection_interface.zig | 331 | Detection API + manager | No | Yes (verdict) | Yes |
-| policy_contract.zig | 378 | Policy + PEP | No | Yes (decision) | Yes |
-| flow_engine.zig | 273 | Flow state tracking | No | Yes (flow state) | Yes |
-| xdr_correlator.zig | 357 | Cross-tier correlation | No | Yes (incidents) | Yes |
-| rag_intelligence.zig | 351 | Threat intel + RAG | No | Yes (context_flags) | Yes |
-| policy_ir.zig | 306 | Policy IR v1 | No | No | Yes |
-| hids_process_monitor.zig | 195 | HIDS process events | Yes (submit) | No | No |
-| golden_path_test.zig | 362 | E2E tests | No | No | No |
-| sprint2_e2e_test.zig | 363 | Sprint 2 E2E tests | No | No | No |
+### Detection (Zig)
+| Module | Responsibility |
+|--------|---------------|
+| `core/detection_interface.zig` | Detector trait + DetectionManager |
+| `core/analyze/detectors/` | (NEW) Detector implementations |
+| `core/analyze/evidence/` | (NEW) Evidence model + aggregator |
 
-### External Modules
+### Flow (Zig)
+| Module | Responsibility |
+|--------|---------------|
+| `core/flow_engine.zig` | FlowKey + FlowState + FlowTable (will be rewritten to hash-based) |
 
-| Module | Language | Role | Lines |
-|--------|----------|------|-------|
-| bridge/aegis_ipc.cpp | C++ | IPC ring buffer + DEFCON + IPS | 425 |
-| bridge/aegis_ipc.hpp | C++ | Header (SharedRingBuffer + IpcEvent) | 370 |
-| shield/src/lib.rs | Rust | Memory safety (Tier-3) | 146 |
-| brain/windows_brain.py | Python | Alert processing + IPS | 454 |
-| brain/aegis_brain_cython/ | Cython | Hot-path acceleration | 440 |
-| go/aggregator/ | Go | Alert dedup + correlation + REST | 911 |
-| aegis_dashboard/ | Rust | egui dashboard | 340 |
-| scripts/aegis_*.py | Python | CLI tools (8 scripts) | ~1,500 |
+### Policy (Zig + Rust)
+| Module | Responsibility |
+|--------|---------------|
+| `core/policy_contract.zig` | PolicyDecision + PolicyRule + PolicyEngine + PEP |
+| `core/policy_ir.zig` | PolicyIR + PolicyIRBuilder |
 
-## Key Questions (must be answerable from source)
+### Windows Integration
+| Module | Responsibility |
+|--------|---------------|
+| `core/wfp_ioctl.zig` | WFP kernel driver IOCTL bridge |
+| `core/nids_capture.zig` | Named pipe IPC sensor |
+| `core/windows_capture.zig` | WFP event reader |
+| `core/pipe_monitor.zig` | Named pipe interceptor |
+| `core/minifilter_reader.zig` | Minifilter event reader |
+| `core/hids_process_monitor.zig` | HIDS process events |
+| `core/forensic_log.zig` | NDJSON persistent logger |
+| `core/win32_io.zig` | Win32 I/O helpers |
+| `core/bridge_init.zig` | C++ bridge initialization |
 
-| Question | Answer | Source File |
-|----------|--------|-------------|
-| ใครสร้าง event? | Sensors (T2-T6) | nids_capture, windows_capture, minifilter_reader, hids_process_monitor |
-| ใครแก้ event? | nose_contract (validate), detection_interface (verdict), policy_contract (decision+action) | nose_contract.zig, detection_interface.zig, policy_contract.zig |
-| ใครอ่าน event? | forensic_log (archive), Go aggregator (replay), eventFabricDrain (drain) | forensic_log.zig, go/aggregator/ |
-| ใครตัดสินใจ? | PolicyEngine (evaluate) | policy_contract.zig |
-| ใคร enforce? | PEP (enforce → wfp_ioctl.block_ip) | policy_contract.zig → wfp_ioctl.zig |
+## Answer Key: Who Does What?
 
-## Acceptance Criteria
-
-- [x] No subsystem has overlapping ownership
-- [x] Every module has a clear single responsibility
-- [x] Dependency graph has no cycles
-- [x] Event creation/modification/reading is documented per module
+| Question | Answer |
+|----------|--------|
+| ใครสร้าง event? | Sensors (WFP, Minifilter, Pipe, HIDS) |
+| ใคร validate? | Nose Contract (magic + version + struct_size) |
+| ใคร enqueue? | Event Fabric (via nose.submit) |
+| ใครอ่าน? | Runtime Dispatcher (pops from Fabric) |
+| ใครสร้าง evidence? | Detectors (via DetectionManager) |
+| ใครสร้าง verdict? | Verdict Aggregator (from evidence[]) |
+| ใครตัดสิน policy? | PolicyEngine (from verdict + context) |
+| ใคร enforce? | Rust PEP (validate → execute) |
+| ใครเก็บ forensic? | Forensics Integration (ring + NDJSON) |

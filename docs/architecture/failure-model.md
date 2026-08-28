@@ -1,105 +1,128 @@
-# AEGIS Failure Model (STEP 0 — Baseline Freeze)
+# AEGIS NIDS — Failure Model (Rewrite v3.0)
 
-## Failure Modes by Layer
+## Failure Layers (8 layers, each with explicit handling)
 
-### Layer 1: Sensors
-| Failure | Current Behavior | Correct? | Fix Needed |
-|---------|------------------|----------|------------|
-| WFP driver not loaded | Retries every 10s (overlapped I/O) | ✅ | None |
-| Named pipe creation fails | Exponential backoff (1s→30s) | ✅ | None |
-| Minifilter port unavailable | Retries every 10s | ✅ | None |
-| HIDS process scan fails | Sleeps 30s, retries | ⚠️ (stub) | Wire to ETW/WMI |
-| Sensor → Fabric submit fails | Logs warning, continues | ✅ | None |
-
-### Layer 2: Nose Contract (Event Fabric)
-| Failure | Current Behavior | Correct? | Fix Needed |
-|---------|------------------|----------|------------|
-| Invalid event (wrong magic) | Returns .rejected, increments counter | ✅ | None |
-| Queue full (overflow) | Drops event, increments counter | ⚠️ | Add backpressure (STEP 16) |
-| Event Fabric not initialized | Returns .not_initialized | ✅ | None |
-| CRC32 mismatch (wire) | Returns .rejected | ✅ | None |
-
-### Layer 3: Detection
-| Failure | Current Behavior | Correct? | Fix Needed |
-|---------|------------------|----------|------------|
-| AC Engine panic | catch → fail-open (return true) | ⚠️ | Should be fail-closed for Block rules |
-| Rust Shield not loaded | Fail-open (validatePayloadSafety returns true) | ⚠️ | P-01: logged as CRITICAL |
-| DetectionManager error | Returns DetectionResult.error | ✅ | None |
-| Ruleset null (not loaded) | Fail-open (return true) | ⚠️ | Should be fail-closed |
-
-### Layer 4: Policy
-| Failure | Current Behavior | Correct? | Fix Needed |
-|---------|------------------|----------|------------|
-| No policy rule matches | Returns default_action (allow) | ✅ | None |
-| DEFCON 1 + match | Escalates to BLOCK | ✅ | None |
-| Policy reload during evaluation | RwLock protects fn pointers | ✅ | None |
-
-### Layer 5: Enforcement (PEP)
-| Failure | Current Behavior | Correct? | Fix Needed |
-|---------|------------------|----------|------------|
-| WFP device not open | block_ip returns false → .failed | ✅ | None |
-| Block IP table full (256) | addBlockedIp returns false | ⚠️ | Use HashMap (like rate-limit) |
-| Quarantine action | Returns .not_implemented | ⚠️ | Implement or remove |
-| Python Brain bypasses PEP | Calls netsh directly | ❌ | Fix: route through PEP |
-
-### Layer 6: Forensics
-| Failure | Current Behavior | Correct? | Fix Needed |
-|---------|------------------|----------|------------|
-| Log file write fails | Logs warning, continues | ⚠️ | Should alert operator |
-| Log rotation fails | Silently catches error | ❌ | Log rotation failure |
-| Disk full | WriteFile fails silently | ❌ | Add disk space check |
-| Payload capture fails | Returns null, continues | ✅ | None |
-
-### Layer 7: Concurrency
-| Failure | Current Behavior | Correct? | Fix Needed |
-|---------|------------------|----------|------------|
-| Thread spawn fails | Logs warning, continues without thread | ✅ | None |
-| Shutdown race (fn pointers) | RwLock protects | ✅ | None |
-| Rule reload TOCTOU | Hazard-pointer pattern (retain/release) | ✅ | None |
-| UDP send fails | Spool queue (1000 events) + drain thread | ✅ | None |
-| Spool queue full | Drops oldest + counter | ⚠️ | Monitor drops metric |
-
-### Layer 8: Cross-Language
-| Failure | Current Behavior | Correct? | Fix Needed |
-|---------|------------------|----------|------------|
-| C++ DLL not found | Runs without bridge (degraded) | ✅ | None |
-| Rust DLL not found | Fail-open (CRITICAL log) | ⚠️ | P-01 fixed |
-| DLL signature mismatch | No verification (B-02 open) | ❌ | Add WinVerifyTrust |
-| IPC struct ABI drift | magic+version check (B-05) | ✅ | None |
-| Ring buffer data race | std::mutex (B-06 fixed) | ✅ | None |
-
-## Failure Classification
-
-### Fail-Open (risky — may miss attacks)
-| Component | Condition | Risk |
-|-----------|-----------|------|
-| AC Engine panic | catch → return true | Medium — attack may pass |
-| Rust Shield not loaded | validatePayloadSafety returns true | High — Tier-3 bypassed |
-| Ruleset null | return true | High — no detection |
-| Detection error | return true | Medium |
-
-### Fail-Closed (safe — may block benign traffic)
-| Component | Condition | Risk |
-|-----------|-----------|------|
-| SDDL failure | Refuse to create pipe | Low — no sensor, but safe |
-| Rate-limit HashMap OOM | Reject connection | Low — better safe |
-| PEP block_ip fails | Return .failed | Low — logged for retry |
-
-## Backpressure (not yet implemented — STEP 16)
-
+### Layer 1: Sensor Failure
 ```
-Queue 0-70%   → NORMAL (all priorities processed)
-Queue 70-85%  → MONITOR (log warning)
-Queue 85-95%  → PRIORITIZE SECURITY (drop LOW priority)
-Queue 95-100%  → EMERGENCY (drop LOW+NORMAL, keep HIGH only)
-Queue 100%    → EMERGENCY MODE (reject new submissions, alert)
+WFP driver not loaded
+  → fabric.submitEvent returns false
+  → sensor logs warning, continues trying
+  → system runs in NIDS-only mode (no IPS)
 ```
 
-## Acceptance Criteria
+### Layer 2: Nose Validation Failure
+```
+Event with wrong magic/version
+  → nose.submit returns .rejected
+  → event dropped, never enters fabric
+  → rejection counter incremented
+```
 
-- [x] All failure modes documented
-- [x] Fail-open vs fail-closed classified
-- [ ] Backpressure implemented (STEP 16)
-- [ ] Python Brain PEP bypass fixed
-- [ ] Block IP table → HashMap
-- [ ] Quarantine implemented or removed
+### Layer 3: Event Fabric Overflow
+```
+Queue full (saturated)
+  → nose.submit returns .dropped_at_source (for LOW priority)
+  → or .dropped_by_fabric (for HIGH priority after backoff)
+  → pressure level reported to sensors
+  → sensors can reduce sampling rate
+```
+
+### Layer 4: Detection Error
+```
+Detector panics or returns error
+  → DetectionResult.errorResult() returned
+  → fail-open: treated as no_match (not block)
+  → error counter incremented
+  → detector can be marked inactive
+```
+
+### Layer 5: Correlation Failure
+```
+XDR correlator table full (256 incidents)
+  → submitEvent returns null (table full)
+  → event still processed, just not correlated
+  → system continues without correlation
+```
+
+### Layer 6: Policy/PEP Failure
+```
+WFP IOCTL fails (device not open)
+  → PEP.enforce returns .failed
+  → event marked enforcement_status=2 (failed)
+  → policy decision still recorded in forensics
+  → system runs in detection-only mode (no enforcement)
+```
+
+### Layer 7: Forensics Failure
+```
+Disk full / write error
+  → forensic_log.log silently drops (no crash)
+  → in-memory ring buffer still works
+  → system continues with degraded forensics
+```
+
+### Layer 8: Cross-Language Failure
+```
+Python Brain unreachable (UDP timeout)
+  → brain detector returns no_match
+  → DEFCON stays at previous level
+  → system continues without brain intelligence
+
+Rust Shield unavailable (FFI link error)
+  → shield detector returns no_match
+  → system continues without behavioral analysis
+
+Go Aggregator down (REST API fails)
+  → alerts not aggregated
+  → forensics log still written
+  → system continues without alert aggregation
+```
+
+## Fault Injection States
+
+| Fault | System State | Detection | Result |
+|-------|-------------|-----------|--------|
+| WFP down | DEGRADED | IOCTL returns false | NIDS-only mode |
+| Driver down | DEGRADED | Device handle null | No kernel events |
+| Queue full | RUNNING | Pressure = saturated | Source sampling active |
+| Brain down | DEGRADED | UDP timeout | No brain intelligence |
+| RAG down | DEGRADED | Lookup returns no match | No threat enrichment |
+| Policy invalid | DEGRADED | Validation fails | Default action (allow) |
+| IPC broken | DEGRADED | FFI call fails | Stub fallback |
+| Rust shield down | DEGRADED | FFI link fails | No behavioral analysis |
+| Disk full | DEGRADED | Write fails | Ring buffer only |
+| Forensic logger down | DEGRADED | Log call fails | In-memory only |
+
+## Fail-Open vs Fail-Closed
+
+### Fail-Open (traffic continues)
+- Detection error → no_match (not block)
+- Brain unreachable → no brain input
+- RAG down → no threat enrichment
+- Correlation full → no correlation
+- Forensics full → ring buffer only
+
+### Fail-Closed (traffic blocked)
+- DEFCON 1 → block all matches
+- Policy rule: severity >= 3 + match_block → BLOCK
+- APT threat intel match → severity escalation → BLOCK
+
+### Principle
+> Detection errors fail-open (better to miss than to false-positive block)
+> Policy decisions fail-closed (when threat is confirmed, block)
+> PEP enforcement failure is logged, not retried (don't block forever on broken WFP)
+
+## Graceful Shutdown
+
+```
+1. Stop accepting new events (sensors stop)
+2. Drain queue (process remaining events)
+3. Flush forensics (write pending NDJSON)
+4. Close file handles
+5. Free memory
+6. Exit clean (exit code 0)
+```
+
+### Timeout
+- Drain timeout: 30 seconds
+- If drain doesn't complete → force flush + exit (exit code 1)
