@@ -1,0 +1,180 @@
+//! runtime/lifecycle.zig - AEGIS Runtime Lifecycle (Rewrite Phase 5, Hotfix 5)
+//!
+//! Manages init/shutdown of all subsystems in correct order.
+//! main() calls runtime.start() and runtime.shutdown() - nothing else.
+//!
+//! Hotfix 5 changes:
+//!   1. start() now allows restart from .stopped (fixes "double start is no-op" test)
+//!      - Old: if (g_state != .init) return;
+//!      - New: switch on g_state, only bail if .starting or .running
+//!   2. Removed nose_int.shutdown() call (function does not exist in nose_integration.zig)
+//!      - nose_integration has no resources to free; resetStats() is enough for tests
+//!   3. shutdown() resets g_state to .init at the end so tests can re-run cleanly
+
+const std = @import("std");
+const canonical = @import("canonical_event.zig");
+const fabric = @import("event_fabric.zig");
+const nose = @import("nose_contract.zig");
+const nose_int = @import("nose_integration.zig");
+const forensic_log = @import("forensic_log.zig");
+
+// ============================================================
+// Lifecycle states
+// ============================================================
+
+pub const State = enum(u8) {
+    init = 0,
+    starting = 1,
+    running = 2,
+    draining = 3,
+    stopped = 4,
+
+    pub fn toString(self: State) []const u8 {
+        return switch (self) {
+            .init => "INIT",
+            .starting => "STARTING",
+            .running => "RUNNING",
+            .draining => "DRAINING",
+            .stopped => "STOPPED",
+        };
+    }
+};
+
+var g_state: State = .init;
+var g_allocator: ?std.mem.Allocator = null;
+
+// ============================================================
+// Start (init all subsystems in order)
+// ============================================================
+
+pub fn start(allocator: std.mem.Allocator) !void {
+    // Hotfix 5: allow start() to proceed from .init, .stopped, or .draining.
+    // Only bail if we are already .starting or .running (true no-op).
+    switch (g_state) {
+        .starting, .running => return,
+        .init, .stopped, .draining => {},
+    }
+    g_state = .starting;
+    g_allocator = allocator;
+
+    // 1. Forensic logger (needs to log everything from start)
+    forensic_log.init();
+    defer if (g_state != .running) forensic_log.shutdown();
+
+    // 2. Event Fabric (queue must be ready before sensors)
+    try nose.initFabric(allocator, .{ .capacity_per_priority = 256 });
+    defer if (g_state != .running) nose.shutdownFabric(allocator);
+
+    // 3. Nose Contract (validation must be ready before events)
+    // (nose_contract delegates to event_fabric, already initialized)
+
+    // 4. Nose Integration (pressure-aware sampling)
+    nose_int.init(.default);
+
+    // Phase 6+: Flow engine
+    // Phase 7+: Detection
+    // Phase 9+: Correlation
+    // Phase 10+: Threat intel
+    // Phase 11+: Brain
+    // Phase 12+: Policy
+    // Phase 13+: Rust PEP
+
+    g_state = .running;
+    std.log.info("[RUNTIME] Started (state={s})", .{g_state.toString()});
+}
+
+// ============================================================
+// Shutdown (reverse order)
+// ============================================================
+
+pub fn shutdown() void {
+    if (g_state == .stopped) return;
+    if (g_state == .init) return;
+    g_state = .draining;
+
+    const allocator = g_allocator orelse {
+        g_state = .init;
+        return;
+    };
+
+    // Drain queue (process remaining events)
+    const dispatcher = @import("dispatcher.zig");
+    _ = dispatcher.drainQueue(1000);
+
+    // Shutdown in reverse order
+    // Hotfix 5: nose_integration has no shutdown() - just reset stats
+    nose_int.resetStats();
+    nose.shutdownFabric(allocator);
+    forensic_log.shutdown();
+
+    // Hotfix 5: reset to .init so tests can re-run
+    g_state = .init;
+    g_allocator = null;
+    std.log.info("[RUNTIME] Stopped", .{});
+}
+
+// ============================================================
+// State queries
+// ============================================================
+
+pub fn getState() State {
+    return g_state;
+}
+
+pub fn isRunning() bool {
+    return g_state == .running;
+}
+
+pub fn getAllocator() ?std.mem.Allocator {
+    return g_allocator;
+}
+
+// ============================================================
+// Tests
+// ============================================================
+
+test "State.toString returns readable names" {
+    try std.testing.expect(std.mem.eql(u8, State.init.toString(), "INIT"));
+    try std.testing.expect(std.mem.eql(u8, State.running.toString(), "RUNNING"));
+    try std.testing.expect(std.mem.eql(u8, State.stopped.toString(), "STOPPED"));
+}
+
+test "start and shutdown lifecycle" {
+    // Clean state - shutdown if running
+    if (fabric.isInitialized()) {
+        shutdown();
+    }
+
+    try start(std.testing.allocator);
+    try std.testing.expect(isRunning());
+
+    shutdown();
+    try std.testing.expect(!isRunning());
+    // Hotfix 5: after shutdown, state resets to .init (not .stopped)
+    try std.testing.expect(getState() == .init);
+}
+
+test "double start is no-op" {
+    if (fabric.isInitialized()) {
+        shutdown();
+    }
+
+    try start(std.testing.allocator);
+    // Second start() should be a no-op because state is .running
+    try start(std.testing.allocator);
+    try std.testing.expect(isRunning());
+
+    shutdown();
+}
+
+test "double shutdown is no-op" {
+    if (fabric.isInitialized()) {
+        shutdown();
+    }
+
+    try start(std.testing.allocator);
+    shutdown();
+    // Second shutdown() should be a no-op because state is .init
+    shutdown();
+    try std.testing.expect(getState() == .init);
+}

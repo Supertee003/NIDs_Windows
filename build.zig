@@ -23,21 +23,86 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Run unit tests");
 
-    // Rewrite Phase 2: Only include modules that can compile.
-    // Modules removed by cleanup (event_fabric, nose_integration, etc.)
-    // will be recreated in Phases 3-13.
+    // Rewrite Phase 21: Added legacy_removal.zig (documentation module).
     //
-    // Each module below only imports std + canonical_event.zig + other
-    // modules in this list (no removed modules).
+    // Import chain verification (updated for Phase 18):
+    //   core/dispatcher.zig           -> no change (Canary is health monitoring tool)
+    //   core/lifecycle.zig           -> + ips_canary_integration
+    //   core/legacy_removal.zig -> std only (no deps, documentation module)
+    //
+    // NOTE: All runtime modules now live in core/ (not core/runtime/) because
+    // `zig test core/runtime/file.zig` cannot resolve @import() relative paths.
     const test_files = [_][]const u8{
+        // Base modules
         "core/canonical_event.zig",
         "core/wire_event.zig",
         "core/event_queue.zig",
         "core/priority_queue.zig",
+        "core/event_fabric.zig",
+        "core/nose_contract.zig",
+        "core/nose_integration.zig",
         "core/detection_interface.zig",
         "core/policy_contract.zig",
         "core/forensic_log.zig",
         "core/wfp_ioctl.zig",
+        // Runtime modules (Phase 5..21)
+        "core/dispatcher.zig",
+        "core/lifecycle.zig",
+        // Flow Engine modules (Phase 6)
+        "core/flow_engine.zig",
+        "core/flow_integration.zig",
+        // Detection Engine modules (Phase 7)
+        "core/detection_engine.zig",
+        "core/detection_integration.zig",
+        // Verdict Aggregator (Phase 8)
+        "core/verdict_aggregator.zig",
+        // Correlation Engine modules (Phase 9)
+        "core/correlation_engine.zig",
+        "core/correlation_integration.zig",
+        // Threat Intel modules (Phase 10)
+        "core/threat_intel.zig",
+        "core/threat_intel_integration.zig",
+        // Brain Advisor modules (Phase 11)
+        "core/brain_engine.zig",
+        "core/brain_integration.zig",
+        // Policy Engine modules (Phase 12)
+        "core/policy_engine.zig",
+        "core/policy_integration.zig",
+        // Rust PEP modules (Phase 13)
+        "core/rust_pep.zig",
+        "core/rust_pep_integration.zig",
+        // Forensics modules (Phase 14)
+        "core/forensics_engine.zig",
+        "core/forensics_integration.zig",
+        // Replay modules (Phase 15)
+        "core/replay_engine.zig",
+        "core/replay_integration.zig",
+        // E2E Harness modules (Phase 16)
+        "core/e2e_harness.zig",
+        "core/e2e_harness_integration.zig",
+        // Performance modules (Phase 17)
+        "core/performance_harness.zig",
+        "core/performance_integration.zig",
+        // IPS Canary modules (Phase 18 NEW)
+        "core/ips_canary.zig",
+        "core/ips_canary_integration.zig",
+        // XDR Hardening modules (Phase 19 NEW)
+        "core/xdr_harden.zig",
+        "core/xdr_harden_integration.zig",
+        // Release Engineering modules (Phase 20 NEW)
+        "core/release_engineering.zig",
+        "core/release_engineering_integration.zig",
+        // Legacy Removal (Phase 21 NEW)
+        "core/legacy_removal.zig",
+        // Sensor/platform modules
+        "core/bridge_init.zig",
+        "core/win32_io.zig",
+        "core/pipe_monitor.zig",
+        "core/minifilter_reader.zig",
+        "core/hids_process_monitor.zig",
+        "core/nids_analyze.zig",
+        "core/nids_capture.zig",
+        "core/windows_capture.zig",
     };
 
     for (test_files) |test_file| {
