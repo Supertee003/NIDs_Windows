@@ -1,9 +1,9 @@
-//! lifecycle.zig - AEGIS Runtime Lifecycle (Rewrite Phase 22)
+//! lifecycle.zig - AEGIS Runtime Lifecycle (Rewrite Phase 21)
 //!
 //! Manages init/shutdown of all subsystems in correct order.
 //! main() calls runtime.start() and runtime.shutdown() - nothing else.
 //!
-//! Phase 22: Added RAG (Retrieval Augmented Generation, fail-soft context enrichment).
+//! Phase 21: Legacy Removal (document deprecated modules, migration paths).
 
 const std = @import("std");
 const canonical = @import("canonical_event.zig");
@@ -24,7 +24,6 @@ const perf_int = @import("performance_integration.zig");
 const canary_int = @import("ips_canary_integration.zig");
 const xdr_int = @import("xdr_harden_integration.zig");
 const release_int = @import("release_engineering_integration.zig");
-const rag_int = @import("rag_integration.zig");
 const forensic_log = @import("forensic_log.zig");
 
 // ============================================================
@@ -139,10 +138,6 @@ pub fn start(allocator: std.mem.Allocator) !void {
     release_int.init();
     defer if (g_state != .running) release_int.shutdown();
 
-    // 20. RAG (Phase 22) - Retrieval Augmented Generation, fail-soft context
-    rag_int.init();
-    defer if (g_state != .running) rag_int.shutdown();
-
     g_state = .running;
     std.log.info("[RUNTIME] Started (state={s})", .{g_state.toString()});
 }
@@ -166,8 +161,6 @@ pub fn shutdown() void {
     _ = dispatcher.drainQueue(1000);
 
     // Shutdown in reverse order:
-    // 20. RAG (Phase 22)
-    rag_int.shutdown();
     // 19. Release Engineering (Phase 20)
     release_int.shutdown();
     // 18. XDR Hardening (Phase 19)
@@ -286,7 +279,6 @@ test "lifecycle: all subsystems initialized after start" {
     try std.testing.expect(canary_int.isInitialized());
     try std.testing.expect(xdr_int.isInitialized());
     try std.testing.expect(release_int.isInitialized());
-    try std.testing.expect(rag_int.isInitialized());
 
     const dispatcher = @import("dispatcher.zig");
     try std.testing.expect(dispatcher.isAggregatorInitialized());
@@ -306,6 +298,5 @@ test "lifecycle: all subsystems initialized after start" {
     try std.testing.expect(!canary_int.isInitialized());
     try std.testing.expect(!xdr_int.isInitialized());
     try std.testing.expect(!release_int.isInitialized());
-    try std.testing.expect(!rag_int.isInitialized());
     try std.testing.expect(!dispatcher.isAggregatorInitialized());
 }

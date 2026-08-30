@@ -23,13 +23,12 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Run unit tests");
 
-    // Rewrite Phase 22: Added rag_engine.zig + rag_integration.zig.
+    // Rewrite Phase 21: Added legacy_removal.zig (documentation module).
     //
     // Import chain verification (updated for Phase 18):
     //   core/dispatcher.zig           -> no change (Canary is health monitoring tool)
     //   core/lifecycle.zig           -> + ips_canary_integration
-    //   core/rag_engine.zig -> canonical_event + detection_engine + threat_intel (all exist)
-    //   core/rag_integration.zig -> canonical_event + rag_engine (exists)
+    //   core/legacy_removal.zig -> std only (no deps, documentation module)
     //
     // NOTE: All runtime modules now live in core/ (not core/runtime/) because
     // `zig test core/runtime/file.zig` cannot resolve @import() relative paths.
@@ -46,7 +45,7 @@ pub fn build(b: *std.Build) void {
         "core/policy_contract.zig",
         "core/forensic_log.zig",
         "core/wfp_ioctl.zig",
-        // Runtime modules (Phase 5..22)
+        // Runtime modules (Phase 5..21)
         "core/dispatcher.zig",
         "core/lifecycle.zig",
         // Flow Engine modules (Phase 6)
@@ -95,9 +94,6 @@ pub fn build(b: *std.Build) void {
         "core/release_engineering_integration.zig",
         // Legacy Removal (Phase 21 NEW)
         "core/legacy_removal.zig",
-        // RAG modules (Phase 22 NEW)
-        "core/rag_engine.zig",
-        "core/rag_integration.zig",
         // Sensor/platform modules
         "core/bridge_init.zig",
         "core/win32_io.zig",
