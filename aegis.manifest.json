@@ -1,0 +1,36 @@
+{
+  "git_commit": "to-be-filled-by-ci",
+  "core_version": "G23",
+  "event_schema_version": 1,
+  "wire_version": 1,
+  "ruleset_version": 1,
+  "policy_version": 1,
+  "brain_version": "4.0",
+  "shield_version": "1.0",
+  "nose_version": "1.0",
+  "driver_version": "1.0",
+  "compiler_versions": {
+    "zig": "0.13.0",
+    "rust": "stable",
+    "go": "1.21",
+    "python": "3.10"
+  },
+  "build_time": "to-be-filled-by-ci",
+  "proof_modules": 21,
+  "test_targets": 84,
+  "compliance_mapping": {
+    "soc2": "maps to control objectives (not certified)",
+    "iso27001": "maps to control objectives (not certified)",
+    "nist_csf": "maps to control objectives (not certified)"
+  },
+  "architecture": {
+    "runtime_spine": "single path (core/dispatcher.zig)",
+    "enforcement_authority": "Rust PEP (shield/)",
+    "forensic_authority": "Zig (core/forensics_engine.zig)",
+    "canonical_doc": "docs/architecture/ARCHITECTURE_CANONICAL.md"
+  },
+  "deferred_items": {
+    "pep_quarantine": "deferred (see docs/PEP_QUARANTINE_STATUS.md)",
+    "wfp_ioctl": "tracking-only mode (see docs/WFP_IOCTL_STATUS.md)"
+  }
+}

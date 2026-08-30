@@ -1,0 +1,30 @@
+path,semantic_position,language,runtime_status,authority,primary_owner,inputs,outputs,dependents,replacement,tests,notes
+core/canonical_event.zig,NORMALIZE,Zig,ACTIVE,Contract authority,Zig core,sensors,CanonicalEvent,all pipeline stages,,contract_freeze tests,Immutable after observation
+core/wire_event.zig,TRANSPORT,Zig,ACTIVE,Wire authority,Zig core,sensors,WireEvent,bridge/brain/shield,,wire tests,Fixed width + explicit endian
+core/event_fabric.zig,SCHEDULE,Zig,ACTIVE,Queue authority,Zig core,canonical_event,PrioritizedEvent,dispatcher,fabric_accounting.zig,Priority queue + backpressure
+core/dispatcher.zig,OPERATE,Zig,ACTIVE,Runtime orchestration,Zig core,event_fabric,pipeline results,lifecycle,nids_main.zig,8-stage pipeline orchestrator
+core/lifecycle.zig,OPERATE,Zig,ACTIVE,Lifecycle authority,Zig core,all subsystems,init/shutdown,nids_main.zig,,Init/shutdown ordering
+core/flow_engine.zig,STATE,Zig,ACTIVE,Flow authority,Zig core,canonical_event,FlowUpdate,flow_state_proof.zig,flow_state_proof.zig,Atomic upsert + eviction
+core/detection_engine.zig,DETECT,Zig,ACTIVE,Detection authority,Zig core,canonical_event + flow,DetectionEvidence,verdict_aggregator,detection_fabric_proof.zig,Evidence producer (NOT enforcer)
+core/verdict_aggregator.zig,DETECT,Zig,ACTIVE,Verdict authority,Zig core,DetectionEvidence,AggregatedVerdict,correlation,,6-state verdict model
+core/correlation_engine.zig,CORRELATE,Zig,ACTIVE,Correlation authority,Zig core,verdict + flow,CorrelationAlert,intelligence,correlation_proof.zig,Entity graph (9 types)
+core/threat_intel.zig,INTELLIGENCE,Zig,ACTIVE,Threat intel authority,Zig core,canonical_event,ThreatIntelMatch,policy,intelligence_proof.zig,Operational (IP/domain/hash/rep)
+core/brain_engine.zig,INTELLIGENCE,Zig,ACTIVE,Brain advisory,Zig core,verdict + alerts + ti,BrainAdvice,policy,brain_proof.zig,Advisory only (fail-soft)
+core/policy_engine.zig,DECIDE,Zig,ACTIVE,Policy authority,Zig core,event + verdict + advice,EnforcementDecision,rust_pep,policy_plane_proof.zig,Decides (NOT executes)
+core/rust_pep.zig,ENFORCE,Zig,ACTIVE,PEP authority,Rust shield,EnforcementDecision,EnforcementResult,forensics,pep_enforcement_proof.zig,Validate + execute + defer
+core/forensics_engine.zig,REMEMBER,Zig,ACTIVE,Forensic authority,Zig core,all pipeline results,ForensicRecord,forensic_log,forensic_replay_proof.zig,Complete decision trace
+core/forensic_log.zig,REMEMBER,Zig,ACTIVE,Logging authority,Zig core,LogEvent,NDJSON log,SIEM,,Append-only + rotation + dual-clock
+core/audit_trail_proof.zig,PROVE,Zig,PROOF,Test-only,Zig proof,audit actions,AuditTrail verification,,audit_trail_proof.zig,G14 proof
+core/backup_recovery_proof.zig,PROVE,Zig,PROOF,Test-only,Zig proof,system state,Snapshot/Restore verification,,backup_recovery_proof.zig,G17 proof
+core/nids_analyze.zig,OPERATE,Zig,DEPRECATED,Legacy migration,Zig core,,delegates to dispatcher,dispatcher,nids_analyze.zig,Replaced by dispatcher wrapper (G22)
+core/legacy_removal.zig,OPERATE,Zig,ADAPTER,Migration controller,Zig core,legacy entries,removal tracking,,legacy_removal.zig,Migration proof tool
+nose/,OBSERVE,Go,ACTIVE,Sensor ingestion,Go nose,Windows network,raw events,bridge,,Nose sensor
+bridge/,TRANSPORT,C++,ACTIVE,IPC bridge,C++ bridge,nose + core,IPC messages,brain/shield,,C++ IPC adapter
+brain/,INTELLIGENCE,Python,ACTIVE,Brain advisory,Python brain,events + alerts,BrainAdvice,core,,Python advisory layer
+shield/,ENFORCE,Rust,ACTIVE,PEP authority,Rust shield,EnforcementDecision,EnforcementResult,drivers,,Rust enforcement boundary
+mouth/,OPERATE,Rust,ACTIVE,DEFCON TUI,Rust mouth,health + defcon,operator UI,,DEFCON TUI
+drivers/,OBSERVE,C,ACTIVE,Kernel capture,C drivers,Windows kernel,raw packets/events,bridge,,WFP + minifilter drivers
+config/Rules.json,NORMALIZE,JSON,ACTIVE,Detection rules,Operator,manual,rule definitions,detection_engine,,Hot-reloadable
+config/aegis.conf,OPERATE,INI,ACTIVE,System config,Operator,manual,config sections,all subsystems,,Hot-reloadable
+scripts/,OPERATE,PowerShell,ACTIVE,Deploy scripts,Operator,deploy .ps1,deployed files,,Deploy + management
+tests/,PROVE,Multi,TEST,Behavioral tests,QA,test sources,test results,,,Cross-language tests
