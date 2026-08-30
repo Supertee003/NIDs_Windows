@@ -1,3 +1,0 @@
-aegis_wfp.c
-D:\NIDs_Windows\drivers\wfp_callout\aegis_wfp.c(66): error C2065: 'AegisWfpUnload': undeclared identifier
-D:\NIDs_Windows\drivers\wfp_callout\aegis_wfp.c(66): warning C4047: '=': 'PDRIVER_UNLOAD' differs in levels of indirection from 'int'

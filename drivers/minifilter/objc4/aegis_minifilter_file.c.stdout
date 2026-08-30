@@ -1,2 +1,0 @@
-aegis_minifilter_file.c
-D:\NIDs_Windows\drivers\minifilter\aegis_minifilter_file.c(41): warning C4090: '=': different 'const' qualifiers

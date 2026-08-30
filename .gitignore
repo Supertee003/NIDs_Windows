@@ -81,3 +81,18 @@ dist/
 
 # === Phase deployment backup files ===
 *.phase*_backup
+
+# --- G0 additions ---
+# G0: Repository Consolidation additions
+backup_phase*/
+backup_hotfix*/
+backup_pre_rewrite/
+*.pyd
+release/
+obj*/
+objc*/
+*.orphan
+.vscode/
+logs/*.ndjson
+logs/*.json
+phase*_*.ps1

@@ -1,8 +1,0 @@
-aegis_wfp_callout.c
-D:\NIDs_Windows\drivers\wfp_callout\aegis_wfp_callout.c(72): error C2065: 'FWPS_FIELD_INBOUND_TRANSPORT_V4_REMOTE_PORT': undeclared identifier
-D:\NIDs_Windows\drivers\wfp_callout\aegis_wfp_callout.c(77): error C2065: 'FWPS_FIELD_INBOUND_TRANSPORT_V4_LOCAL_PORT': undeclared identifier
-D:\NIDs_Windows\drivers\wfp_callout\aegis_wfp_callout.c(81): error C2039: 'currentLayerId': is not a member of 'FWPS_INCOMING_METADATA_VALUES0_'
-C:\Program Files (x86)\Windows Kits\10\\Include\10.0.28000.0\km\fwpsk.h(2308): note: see declaration of 'FWPS_INCOMING_METADATA_VALUES0_'
-D:\NIDs_Windows\drivers\wfp_callout\aegis_wfp_callout.c(196): warning C4113: 'void (__cdecl *)(const FWPS_INCOMING_VALUES0 *,const FWPS_INCOMING_METADATA_VALUES0 *,void *,const void *,const FWPS_FILTER0 *,UINT64,FWPS_CLASSIFY_OUT0 *)' differs in parameter lists from 'FWPS_CALLOUT_CLASSIFY_FN0'
-D:\NIDs_Windows\drivers\wfp_callout\aegis_wfp_callout.c(222): error C2440: '=': cannot convert from 'int' to 'FWP_VALUE0'
-D:\NIDs_Windows\drivers\wfp_callout\aegis_wfp_callout.c(227): warning C4133: 'function': incompatible types - from 'UINT32 *' to 'UINT64 *'
