@@ -31,6 +31,7 @@
   },
   "deferred_items": {
     "pep_quarantine": "deferred (see docs/PEP_QUARANTINE_STATUS.md)",
-    "wfp_ioctl": "tracking-only mode (see docs/WFP_IOCTL_STATUS.md)"
+    "wfp_ioctl": "tracking-only mode (see docs/WFP_IOCTL_STATUS.md)",
+    "policy_signing": "not production-ready (see docs/ai-context/06-security-boundary.md) - requires real crypto, key handling, verification, version, expiry, rollback"
   }
 }
