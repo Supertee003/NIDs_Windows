@@ -23,13 +23,13 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Run unit tests");
 
-    // Rewrite Phase 26: Added ips_simulation.zig + ips_simulation_integration.zig.
+    // Rewrite Phase 23: Added hids_engine.zig + hids_integration.zig.
     //
     // Import chain verification (updated for Phase 18):
     //   core/dispatcher.zig           -> no change (Canary is health monitoring tool)
     //   core/lifecycle.zig           -> + ips_canary_integration
-    //   core/ips_simulation.zig -> std only (no deps)
-    //   core/ips_simulation_integration.zig -> ips_simulation (exists)
+    //   core/hids_engine.zig -> canonical_event (exists)
+    //   core/hids_integration.zig -> canonical_event + hids_engine (exists)
     //
     // NOTE: All runtime modules now live in core/ (not core/runtime/) because
     // `zig test core/runtime/file.zig` cannot resolve @import() relative paths.
@@ -46,7 +46,7 @@ pub fn build(b: *std.Build) void {
         "core/policy_contract.zig",
         "core/forensic_log.zig",
         "core/wfp_ioctl.zig",
-        // Runtime modules (Phase 5..26)
+        // Runtime modules (Phase 5..23)
         "core/dispatcher.zig",
         "core/lifecycle.zig",
         // Flow Engine modules (Phase 6)
@@ -101,15 +101,6 @@ pub fn build(b: *std.Build) void {
         // HIDS modules (Phase 23 NEW)
         "core/hids_engine.zig",
         "core/hids_integration.zig",
-        // Concurrency Hardening modules (Phase 24 NEW)
-        "core/concurrency_harden.zig",
-        "core/concurrency_harden_integration.zig",
-        // Fault Injection modules (Phase 25 NEW)
-        "core/fault_injection.zig",
-        "core/fault_injection_integration.zig",
-        // IPS Simulation modules (Phase 26 NEW)
-        "core/ips_simulation.zig",
-        "core/ips_simulation_integration.zig",
         // Sensor/platform modules
         "core/bridge_init.zig",
         "core/win32_io.zig",
