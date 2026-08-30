@@ -1,9 +1,9 @@
-//! lifecycle.zig - AEGIS Runtime Lifecycle (Rewrite G8 Brain)
+//! lifecycle.zig - AEGIS Runtime Lifecycle (Rewrite G6 Correlation)
 //!
 //! Manages init/shutdown of all subsystems in correct order.
 //! main() calls runtime.start() and runtime.shutdown() - nothing else.
 //!
-//! G8: Added Brain Proof (advisory only, fail-soft when Brain down, 5 capabilities).
+//! G6: Added Correlation Proof (entity schema lock, 8 relationships, incident graph).
 
 const std = @import("std");
 const canonical = @import("canonical_event.zig");

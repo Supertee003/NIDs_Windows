@@ -1,9 +1,9 @@
-//! lifecycle.zig - AEGIS Runtime Lifecycle (Rewrite G8 Brain)
+//! lifecycle.zig - AEGIS Runtime Lifecycle (Rewrite G4 Flow State)
 //!
 //! Manages init/shutdown of all subsystems in correct order.
 //! main() calls runtime.start() and runtime.shutdown() - nothing else.
 //!
-//! G8: Added Brain Proof (advisory only, fail-soft when Brain down, 5 capabilities).
+//! G4: Added Flow State Proof (FlowSnapshot API, atomic upsert, eviction verification, stress test).
 
 const std = @import("std");
 const canonical = @import("canonical_event.zig");

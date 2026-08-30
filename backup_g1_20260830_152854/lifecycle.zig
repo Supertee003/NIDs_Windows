@@ -1,9 +1,9 @@
-//! lifecycle.zig - AEGIS Runtime Lifecycle (Rewrite G8 Brain)
+//! lifecycle.zig - AEGIS Runtime Lifecycle (Rewrite G1 Contract Freeze)
 //!
 //! Manages init/shutdown of all subsystems in correct order.
 //! main() calls runtime.start() and runtime.shutdown() - nothing else.
 //!
-//! G8: Added Brain Proof (advisory only, fail-soft when Brain down, 5 capabilities).
+//! G1: Added Contract Freeze (Canonical Event, Wire ABI, Cross-language vectors).
 
 const std = @import("std");
 const canonical = @import("canonical_event.zig");

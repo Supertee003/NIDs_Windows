@@ -23,12 +23,12 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Run unit tests");
 
-    // G21: Added final_integration_proof.zig (end-to-end, cross-cutting, resilience, compliance).
+    // G20: Added documentation_proof.zig (API reference, runbooks, architecture).
     //
     // Import chain verification (updated for Phase 18):
     //   core/dispatcher.zig           -> no change (Canary is health monitoring tool)
     //   core/lifecycle.zig           -> + ips_canary_integration
-    //   core/final_integration_proof.zig -> self-contained (no runtime module imports)
+    //   core/documentation_proof.zig -> self-contained (no runtime module imports)
     //
     // NOTE: All runtime modules now live in core/ (not core/runtime/) because
     // `zig test core/runtime/file.zig` cannot resolve @import() relative paths.
@@ -152,8 +152,6 @@ pub fn build(b: *std.Build) void {
         "core/compliance_proof.zig",
         // Documentation Proof (G20 NEW)
         "core/documentation_proof.zig",
-        // Final Integration Proof (G21 NEW)
-        "core/final_integration_proof.zig",
         // Sensor/platform modules
         "core/bridge_init.zig",
         "core/win32_io.zig",

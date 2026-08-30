@@ -1,9 +1,9 @@
-//! lifecycle.zig - AEGIS Runtime Lifecycle (Rewrite G8 Brain)
+//! lifecycle.zig - AEGIS Runtime Lifecycle (Rewrite G3 Runtime Spine)
 //!
 //! Manages init/shutdown of all subsystems in correct order.
 //! main() calls runtime.start() and runtime.shutdown() - nothing else.
 //!
-//! G8: Added Brain Proof (advisory only, fail-soft when Brain down, 5 capabilities).
+//! G3: Added Runtime Spine (module classification, lifecycle pattern, worker model, golden path tracing).
 
 const std = @import("std");
 const canonical = @import("canonical_event.zig");
