@@ -1,9 +1,9 @@
-//! lifecycle.zig - AEGIS Runtime Lifecycle (Rewrite Phase 27)
+//! lifecycle.zig - AEGIS Runtime Lifecycle (Rewrite Phase 26)
 //!
 //! Manages init/shutdown of all subsystems in correct order.
 //! main() calls runtime.start() and runtime.shutdown() - nothing else.
 //!
-//! Phase 27: Added TypeScript Policy Plane (Policy IR, compiler, simulator).
+//! Phase 26: Added IPS Simulation (AUDIT->SIMULATE->CANARY->ENFORCE, rollback).
 
 const std = @import("std");
 const canonical = @import("canonical_event.zig");
@@ -29,7 +29,6 @@ const hids_int = @import("hids_integration.zig");
 const conc_int = @import("concurrency_harden_integration.zig");
 const fault_int = @import("fault_injection_integration.zig");
 const ips_sim_int = @import("ips_simulation_integration.zig");
-const policy_plane_int = @import("policy_plane_integration.zig");
 const forensic_log = @import("forensic_log.zig");
 
 // ============================================================
@@ -164,10 +163,6 @@ pub fn start(allocator: std.mem.Allocator) !void {
     ips_sim_int.init();
     defer if (g_state != .running) ips_sim_int.shutdown();
 
-    // 25. Policy Plane (Phase 27) - TypeScript policy IR, compiler, simulator
-    policy_plane_int.init();
-    defer if (g_state != .running) policy_plane_int.shutdown();
-
     g_state = .running;
     std.log.info("[RUNTIME] Started (state={s})", .{g_state.toString()});
 }
@@ -191,8 +186,6 @@ pub fn shutdown() void {
     _ = dispatcher.drainQueue(1000);
 
     // Shutdown in reverse order:
-    // 25. Policy Plane (Phase 27)
-    policy_plane_int.shutdown();
     // 24. IPS Simulation (Phase 26)
     ips_sim_int.shutdown();
     // 23. Fault Injection (Phase 25)
@@ -326,7 +319,6 @@ test "lifecycle: all subsystems initialized after start" {
     try std.testing.expect(conc_int.isInitialized());
     try std.testing.expect(fault_int.isInitialized());
     try std.testing.expect(ips_sim_int.isInitialized());
-    try std.testing.expect(policy_plane_int.isInitialized());
 
     const dispatcher = @import("dispatcher.zig");
     try std.testing.expect(dispatcher.isAggregatorInitialized());
@@ -351,6 +343,5 @@ test "lifecycle: all subsystems initialized after start" {
     try std.testing.expect(!conc_int.isInitialized());
     try std.testing.expect(!fault_int.isInitialized());
     try std.testing.expect(!ips_sim_int.isInitialized());
-    try std.testing.expect(!policy_plane_int.isInitialized());
     try std.testing.expect(!dispatcher.isAggregatorInitialized());
 }
