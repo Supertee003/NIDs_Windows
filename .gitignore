@@ -1,98 +1,71 @@
-﻿# === Build Artifacts ===
+# AEGIS NIDS .gitignore
+
+# Zig build artifacts
+zig-cache/
 zig-out/
-build/
-target/
-*.obj
-*.o
 *.exe
-*.dll
 *.pdb
-*.lib
-*.exp
+*.ilk
+*.obj
 
-# === Backup Files (REMOVE FROM GIT) ===
-*.bak
-*.bak_*
-*.bak_r*
-
-# === Empty/Temp Build Logs ===
-build_*.txt
-build_*.stderr.txt
-build_*.stdout.txt
-verify_build.*
-
-# === PID Files ===
-logs/pids/
-*.pid
-
-# === Logs ===
-*.log
-logs/*.log
-
-# === Config Backups ===
-config/Back_*.json
-
-# === Standalone fixed file (should be in core/) ===
-nids_analyze_fixed.zig
-
-# === OS Files ===
-Thumbs.db
-.DS_Store
-desktop.ini
-
-# === Python ===
-__pycache__/
-*.pyc
-*.pyo
-.venv/
-venv/
-
-# === Rust ===
+# Rust build artifacts
 target/
-Cargo.lock
+**/*.rs.bk
 
-# === CMake ===
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
+# Go build artifacts
+*.exe
+*.test
+*.out
 
-# === IDE ===
-.vs/
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Backup directories (NEVER commit these)
+backup_phase*/
+backup_hotfix*/
+backup_pre_rewrite/
+backup_g*/
+backup_*/
+
+# Logs
+logs/
+*.log
+*.ndjson
+*.ndjson.*
+
+# IDE
+.vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# === Round deployment scripts (temporary) ===
-round*.ps1
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# === Stale source directory (old build target, replaced by core/) ===
-core/src/
+# Secrets (never commit credentials)
+.env
+.env.local
+secrets/
+*.key
+*.pem
+*.p12
 
-# === Distribution artifacts ===
-dist/
-*.sys
+# Kernel driver build artifacts
+drivers/**/*.sys
+drivers/**/*.inf
+drivers/**/*.cat
 
-# === Zig cache ===
-.zig-cache/
-
-# === BP backup files (stale build point snapshots) ===
-*.bp*_backup
-
-# === Phase deployment backup files ===
-*.phase*_backup
-
-# --- G0 additions ---
-# G0: Repository Consolidation additions
-backup_phase*/
-backup_hotfix*/
-backup_pre_rewrite/
-*.pyd
-release/
-obj*/
-objc*/
-*.orphan
-.vscode/
-logs/*.ndjson
-logs/*.json
-phase*_*.ps1
+# CMake build artifacts (C++ bridge)
+cmake-build-*/
+CMakeFiles/
+cmake_install.cmake
+Makefile

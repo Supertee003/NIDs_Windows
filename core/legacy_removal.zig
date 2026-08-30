@@ -72,7 +72,7 @@ pub const LEGACY_MODULES = [_]LegacyEntry{
         .name = "nids_analyze.zig",
         .status = .can_remove,
         .replacement = "dispatcher.zig",
-        .notes = "Phase 5: dispatcher replaced eventFabricDrain. nids_analyze is now a thin stub.",
+        .notes = "Phase 5: dispatcher replaced eventFabricDrain. G22: nids_analyze is now a dispatcher wrapper (stub replaced).",
     },
     .{
         .name = "detection_interface.zig",

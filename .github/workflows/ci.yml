@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Build & Test
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+
+      - name: Verify Zig version
+        run: zig version
+
+      - name: Build
+        run: zig build
+
+      - name: Run all tests
+        run: zig build test
+
+      - name: Test G1-G21 proof modules individually
+        if: failure()
+        run: |
+          $proofModules = @(
+            'core\contract_freeze.zig',
+            'core\fabric_accounting.zig',
+            'core\runtime_spine.zig',
+            'core\flow_state_proof.zig',
+            'core\detection_fabric_proof.zig',
+            'core\correlation_proof.zig',
+            'core\intelligence_proof.zig',
+            'core\brain_proof.zig',
+            'core\policy_plane_proof.zig',
+            'core\pep_enforcement_proof.zig',
+            'core\forensic_replay_proof.zig',
+            'core\config_reload_proof.zig',
+            'core\health_monitoring_proof.zig',
+            'core\audit_trail_proof.zig',
+            'core\telemetry_export_proof.zig',
+            'core\siem_integration_proof.zig',
+            'core\backup_recovery_proof.zig',
+            'core\performance_tuning_proof.zig',
+            'core\compliance_proof.zig',
+            'core\documentation_proof.zig',
+            'core\final_integration_proof.zig'
+          )
+          foreach ($mod in $proofModules) {
+            Write-Host "Testing $mod..." -ForegroundColor Cyan
+            & zig test $mod 2>&1 | Out-Host
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "  [PASS] $mod" -ForegroundColor Green
+            } else {
+              Write-Host "  [FAIL] $mod" -ForegroundColor Red
+            }
+          }
+
+  lint:
+    name: Lint (Zig fmt check)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+
+      - name: Check formatting
+        run: zig fmt --check core/*.zig build.zig
+        continue-on-error: true

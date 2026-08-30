@@ -1,0 +1,331 @@
+//! detection_interface.zig - AEGIS Detection Interface (Phase 26, AEGIS-007)
+//!
+//! Abstracts the detection layer so that detection engines (Tier-1 AC,
+//! Tier-2 Regex, Tier-3 Behavioral) can be swapped without touching
+//! the sensor or policy layers.
+//!
+//! Blueprint principle: "Detection MUST NOT call WFP" — this interface
+//! returns verdicts, it does NOT execute enforcement actions.
+
+const std = @import("std");
+const canonical = @import("canonical_event.zig");
+
+// ============================================================
+// Detection Verdict (AEGIS-007)
+// ============================================================
+
+pub const Verdict = enum(u8) {
+    no_match = 0,     // No rule matched, forward for deeper inspection
+    match_alert = 1,  // Rule matched, action=Alert
+    match_block = 2,  // Rule matched, action=Block
+    error_ = 255,     // Detection error (fail-open: treat as no_match)
+
+    pub fn isBlock(self: Verdict) bool {
+        return self == .match_block;
+    }
+
+    pub fn isMatch(self: Verdict) bool {
+        return self == .match_alert or self == .match_block;
+    }
+};
+
+// ============================================================
+// Detection Result (returned by detectors)
+// ============================================================
+
+pub const DetectionResult = struct {
+    verdict: Verdict,
+    rule_id: u32,           // 0 if no match
+    rule_hash: u64,         // SipHash64 (P-04), 0 if no match
+    severity: u8,           // 0-3, 0 if no match
+    rule_name: ?[]const u8, // null if no match
+    ruleset_version: u64,   // Which ruleset produced this result
+
+    pub fn noMatch() DetectionResult {
+        return .{
+            .verdict = .no_match,
+            .rule_id = 0,
+            .rule_hash = 0,
+            .severity = 0,
+            .rule_name = null,
+            .ruleset_version = 0,
+        };
+    }
+
+    pub fn errorResult() DetectionResult {
+        return .{
+            .verdict = .error_,
+            .rule_id = 0,
+            .rule_hash = 0,
+            .severity = 0,
+            .rule_name = null,
+            .ruleset_version = 0,
+        };
+    }
+};
+
+// ============================================================
+// Detector Interface (AEGIS-007)
+// ============================================================
+// Each detection tier implements this interface.
+// The Detection Manager calls all tiers in order and aggregates results.
+
+pub const DetectorType = enum(u8) {
+    tier1_aho_corasick = 0,  // Fast pattern matching (Zig)
+    tier2_regex = 1,         // Regex verification (Python/Cython)
+    tier3_behavioral = 2,    // Behavioral analysis (Rust Shield)
+    custom = 255,
+};
+
+pub const Detector = struct {
+    /// Name of this detector (e.g., "Tier-1 AhoCorasick")
+    name: []const u8,
+    /// Detector type
+    detector_type: DetectorType,
+    /// Whether this detector is active (false if DLL not loaded, etc.)
+    is_active: bool,
+    /// Function pointer to the actual scan function
+    scan_fn: *const fn (payload: []const u8, ctx: *const canonical.CanonicalEvent) DetectionResult,
+
+    /// Run detection on a payload.
+    pub fn scan(self: *const Detector, payload: []const u8, ctx: *const canonical.CanonicalEvent) DetectionResult {
+        if (!self.is_active) return DetectionResult.noMatch();
+        return self.scan_fn(payload, ctx);
+    }
+};
+
+// ============================================================
+// Detection Manager (AEGIS-007)
+// ============================================================
+// Orchestrates multiple detectors. Calls each in priority order.
+// First BLOCK verdict wins. If no BLOCK, first ALERT wins.
+// If no ALERT, returns no_match (forward for deeper inspection).
+
+pub const MAX_DETECTORS: usize = 8;
+
+pub const DetectionManager = struct {
+    detectors: [MAX_DETECTORS]?Detector,
+    count: usize,
+    total_scans: std.atomic.Value(u64),
+    total_matches: std.atomic.Value(u64),
+    total_blocks: std.atomic.Value(u64),
+    total_errors: std.atomic.Value(u64),
+
+    pub fn init() DetectionManager {
+        return .{
+            .detectors = [_]?Detector{null} ** MAX_DETECTORS,
+            .count = 0,
+            .total_scans = std.atomic.Value(u64).init(0),
+            .total_matches = std.atomic.Value(u64).init(0),
+            .total_blocks = std.atomic.Value(u64).init(0),
+            .total_errors = std.atomic.Value(u64).init(0),
+        };
+    }
+
+    /// Register a detector. Returns false if at capacity.
+    pub fn register(self: *DetectionManager, detector: Detector) bool {
+        if (self.count >= MAX_DETECTORS) return false;
+        self.detectors[self.count] = detector;
+        self.count += 1;
+        return true;
+    }
+
+    /// Run all detectors on a payload. Returns aggregated result.
+    /// Priority: BLOCK > ALERT > no_match. First BLOCK wins.
+    pub fn detect(self: *DetectionManager, payload: []const u8, ctx: *const canonical.CanonicalEvent) DetectionResult {
+        _ = self.total_scans.fetchAdd(1, .monotonic);
+
+        var best_result = DetectionResult.noMatch();
+
+        for (0..self.count) |i| {
+            if (self.detectors[i]) |*det| {
+                const result = det.scan(payload, ctx);
+
+                switch (result.verdict) {
+                    .match_block => {
+                        _ = self.total_blocks.fetchAdd(1, .monotonic);
+                        _ = self.total_matches.fetchAdd(1, .monotonic);
+                        return result; // BLOCK wins immediately
+                    },
+                    .match_alert => {
+                        _ = self.total_matches.fetchAdd(1, .monotonic);
+                        if (best_result.verdict == .no_match) {
+                            best_result = result; // First ALERT
+                        }
+                    },
+                    .error_ => {
+                        _ = self.total_errors.fetchAdd(1, .monotonic);
+                    },
+                    .no_match => {},
+                }
+            }
+        }
+
+        return best_result;
+    }
+
+    /// Get statistics for monitoring.
+    pub fn getStats(self: *DetectionManager) DetectionStats {
+        return .{
+            .active_detectors = self.countActive(),
+            .total_scans = self.total_scans.load(.monotonic),
+            .total_matches = self.total_matches.load(.monotonic),
+            .total_blocks = self.total_blocks.load(.monotonic),
+            .total_errors = self.total_errors.load(.monotonic),
+        };
+    }
+
+    fn countActive(self: *DetectionManager) usize {
+        var active: usize = 0;
+        for (0..self.count) |i| {
+            if (self.detectors[i]) |det| {
+                if (det.is_active) active += 1;
+            }
+        }
+        return active;
+    }
+};
+
+pub const DetectionStats = struct {
+    active_detectors: usize,
+    total_scans: u64,
+    total_matches: u64,
+    total_blocks: u64,
+    total_errors: u64,
+};
+
+// ============================================================
+// Tests (AEGIS-007)
+// ============================================================
+
+fn dummyScanNoMatch(payload: []const u8, ctx: *const canonical.CanonicalEvent) DetectionResult {
+    _ = payload;
+    _ = ctx;
+    return DetectionResult.noMatch();
+}
+
+fn dummyScanAlert(payload: []const u8, ctx: *const canonical.CanonicalEvent) DetectionResult {
+    _ = payload;
+    _ = ctx;
+    return .{
+        .verdict = .match_alert,
+        .rule_id = 1,
+        .rule_hash = 0xABCD,
+        .severity = 1,
+        .rule_name = "test_alert",
+        .ruleset_version = 1,
+    };
+}
+
+fn dummyScanBlock(payload: []const u8, ctx: *const canonical.CanonicalEvent) DetectionResult {
+    _ = payload;
+    _ = ctx;
+    return .{
+        .verdict = .match_block,
+        .rule_id = 2,
+        .rule_hash = 0xDEAD,
+        .severity = 3,
+        .rule_name = "test_block",
+        .ruleset_version = 1,
+    };
+}
+
+fn dummyScanError(payload: []const u8, ctx: *const canonical.CanonicalEvent) DetectionResult {
+    _ = payload;
+    _ = ctx;
+    return DetectionResult.errorResult();
+}
+
+test "Verdict.isBlock and isMatch" {
+    try std.testing.expect(Verdict.match_block.isBlock());
+    try std.testing.expect(Verdict.match_block.isMatch());
+    try std.testing.expect(!Verdict.match_alert.isBlock());
+    try std.testing.expect(Verdict.match_alert.isMatch());
+    try std.testing.expect(!Verdict.no_match.isMatch());
+}
+
+test "DetectionResult.noMatch" {
+    const r = DetectionResult.noMatch();
+    try std.testing.expect(r.verdict == .no_match);
+    try std.testing.expect(r.rule_id == 0);
+}
+
+test "DetectionManager init" {
+    var dm = DetectionManager.init();
+    try std.testing.expect(dm.count == 0);
+}
+
+test "DetectionManager register" {
+    var dm = DetectionManager.init();
+    try std.testing.expect(dm.register(.{
+        .name = "T1",
+        .detector_type = .tier1_aho_corasick,
+        .is_active = true,
+        .scan_fn = &dummyScanNoMatch,
+    }));
+    try std.testing.expect(dm.count == 1);
+}
+
+test "DetectionManager no_match when all detectors pass" {
+    var dm = DetectionManager.init();
+    _ = dm.register(.{ .name = "T1", .detector_type = .tier1_aho_corasick, .is_active = true, .scan_fn = &dummyScanNoMatch });
+    _ = dm.register(.{ .name = "T2", .detector_type = .tier2_regex, .is_active = true, .scan_fn = &dummyScanNoMatch });
+
+    const ctx = canonical.create(.zig_core);
+    const result = dm.detect("test payload", &ctx);
+    try std.testing.expect(result.verdict == .no_match);
+}
+
+test "DetectionManager BLOCK wins over ALERT" {
+    var dm = DetectionManager.init();
+    _ = dm.register(.{ .name = "T1", .detector_type = .tier1_aho_corasick, .is_active = true, .scan_fn = &dummyScanAlert });
+    _ = dm.register(.{ .name = "T3", .detector_type = .tier3_behavioral, .is_active = true, .scan_fn = &dummyScanBlock });
+
+    const ctx = canonical.create(.zig_core);
+    const result = dm.detect("test", &ctx);
+    try std.testing.expect(result.verdict == .match_block);
+    try std.testing.expect(result.rule_id == 2);
+}
+
+test "DetectionManager first ALERT wins" {
+    var dm = DetectionManager.init();
+    _ = dm.register(.{ .name = "T1", .detector_type = .tier1_aho_corasick, .is_active = true, .scan_fn = &dummyScanAlert });
+    _ = dm.register(.{ .name = "T2", .detector_type = .tier2_regex, .is_active = true, .scan_fn = &dummyScanAlert });
+
+    const ctx = canonical.create(.zig_core);
+    const result = dm.detect("test", &ctx);
+    try std.testing.expect(result.verdict == .match_alert);
+    try std.testing.expect(result.rule_id == 1); // First detector's result
+}
+
+test "DetectionManager error does not affect verdict" {
+    var dm = DetectionManager.init();
+    _ = dm.register(.{ .name = "T1", .detector_type = .tier1_aho_corasick, .is_active = true, .scan_fn = &dummyScanError });
+    _ = dm.register(.{ .name = "T2", .detector_type = .tier2_regex, .is_active = true, .scan_fn = &dummyScanAlert });
+
+    const ctx = canonical.create(.zig_core);
+    const result = dm.detect("test", &ctx);
+    try std.testing.expect(result.verdict == .match_alert);
+}
+
+test "DetectionManager inactive detector is skipped" {
+    var dm = DetectionManager.init();
+    _ = dm.register(.{ .name = "T1", .detector_type = .tier1_aho_corasick, .is_active = false, .scan_fn = &dummyScanBlock });
+
+    const ctx = canonical.create(.zig_core);
+    const result = dm.detect("test", &ctx);
+    try std.testing.expect(result.verdict == .no_match);
+}
+
+test "DetectionManager getStats" {
+    var dm = DetectionManager.init();
+    _ = dm.register(.{ .name = "T1", .detector_type = .tier1_aho_corasick, .is_active = true, .scan_fn = &dummyScanBlock });
+
+    const ctx = canonical.create(.zig_core);
+    _ = dm.detect("payload", &ctx);
+
+    const stats = dm.getStats();
+    try std.testing.expect(stats.active_detectors == 1);
+    try std.testing.expect(stats.total_scans == 1);
+    try std.testing.expect(stats.total_blocks == 1);
+}
