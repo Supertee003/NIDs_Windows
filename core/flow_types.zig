@@ -15,6 +15,9 @@ const canonical = @import("canonical_event.zig");
 /// Default idle timeout: 60 seconds of no packets -> flow is evicted.
 pub const FLOW_IDLE_TIMEOUT_NS: i128 = 60 * std.time.ns_per_s;
 
+/// Default max flow table size. Beyond this, oldest flows are evicted.
+pub const FLOW_TABLE_MAX: usize = 65536;
+
 /// Eviction batch size when table is full.
 pub const EVICT_BATCH_SIZE: usize = 64;
 

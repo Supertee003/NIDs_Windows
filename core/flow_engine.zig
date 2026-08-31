@@ -20,6 +20,7 @@ pub const Flow = flow_types.Flow;
 pub const FlowUpdateKind = flow_types.FlowUpdateKind;
 pub const FlowUpdate = flow_types.FlowUpdate;
 pub const FLOW_IDLE_TIMEOUT_NS = flow_types.FLOW_IDLE_TIMEOUT_NS;
+pub const FLOW_TABLE_MAX = flow_types.FLOW_TABLE_MAX;
 pub const EVICT_BATCH_SIZE = flow_types.EVICT_BATCH_SIZE;
 
 // ============================================================
@@ -47,7 +48,7 @@ pub const FlowEngine = struct {
             .allocator = allocator,
             .map = flow_types.FlowMap.init(allocator),
             .idle_timeout_ns = FLOW_IDLE_TIMEOUT_NS,
-            .max_flows = 65536,
+            .max_flows = FLOW_TABLE_MAX,
             .total_created = 0,
             .total_expired = 0,
             .total_ended = 0,

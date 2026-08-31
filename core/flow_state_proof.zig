@@ -108,7 +108,7 @@ pub const EvictionPolicy = struct {
     pub fn default() EvictionPolicy {
         return .{
             .idle_timeout_ns = flow_engine.FLOW_IDLE_TIMEOUT_NS,
-            // G37: .max_flows = flow.FLOW_TABLE_MAX,
+            .max_flows = flow_engine.FLOW_TABLE_MAX,
             .evict_batch_size = flow_engine.EVICT_BATCH_SIZE,
         };
     }
