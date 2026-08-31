@@ -44,6 +44,9 @@ pub fn main() !void {
     // (Without this, \x1b[31;1m appears as literal text on Windows 10 <= 1809)
     enableVirtualTerminal();
 
+    // Install Ctrl+C handler for graceful daemon shutdown (zig build run)
+    installCtrlHandler();
+
     std.fs.cwd().makeDir("logs") catch |err| {
         if (err != error.PathAlreadyExists) {
             std.log.err("[MAIN] Failed to create logs dir: {any}", .{err});
@@ -277,6 +280,35 @@ const STD_ERROR_HANDLE: u32 = @bitCast(@as(i32, -12));
 extern "kernel32" fn GetStdHandle(nStdHandle: u32) ?*anyopaque;
 extern "kernel32" fn GetConsoleMode(hConsoleHandle: ?*anyopaque, lpMode: *u32) i32;
 extern "kernel32" fn SetConsoleMode(hConsoleHandle: ?*anyopaque, dwMode: u32) i32;
+
+// ============================================================
+// Ctrl+C graceful shutdown handler
+// ============================================================
+// The NIDS is a long-running daemon that only exits when the user presses
+// Ctrl+C. Without a console control handler there is no path to set
+// bridge_init.g_shutdown, so `zig build run` would run forever with no way
+// to stop it gracefully.
+
+const CTRL_C_EVENT: u32 = 0;
+const TRUE: i32 = 1;
+
+extern "kernel32" fn SetConsoleCtrlHandler(
+    handler: ?*const fn (ctrl_type: u32) callconv(.C) i32,
+    add: i32,
+) i32;
+
+// Handler called by the OS when Ctrl+C is pressed. Returns TRUE to indicate
+// the signal was handled so the process isn't terminated immediately.
+fn ctrlHandler(ctrl_type: u32) callconv(.C) i32 {
+    _ = ctrl_type;
+    bridge_init.requestShutdown();
+    return TRUE;
+}
+
+/// Install the Ctrl+C handler so the daemon can drain threads and exit.
+fn installCtrlHandler() void {
+    _ = SetConsoleCtrlHandler(ctrlHandler, TRUE);
+}
 
 fn enableVirtualTerminal() void {
     // Enable VT processing on stdout

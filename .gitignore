@@ -1,4 +1,4 @@
-# AEGIS NIDS .gitignore
+﻿# AEGIS NIDS .gitignore
 
 # Zig build artifacts
 zig-cache/
@@ -69,3 +69,19 @@ cmake-build-*/
 CMakeFiles/
 cmake_install.cmake
 Makefile
+
+# Build cache (with dot)
+.zig-cache/
+
+# Backup files
+*.bak
+*_backup
+**/*_backup
+
+# Build logs
+build_*.txt
+verify_build.*
+
+# Stray root files
+threat_graph.html
+IDEA.md

@@ -1,4 +1,4 @@
-const std = @import("std");
+﻿const std = @import("std");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -164,6 +164,10 @@ pub fn build(b: *std.Build) void {
         "core/nids_analyze.zig",
         "core/nids_capture.zig",
         "core/windows_capture.zig",
+        "core/flow_types.zig",
+        "core/xdr_correlator.zig",
+        "core/rag_intelligence.zig",
+        "core/policy_ir.zig",
     };
 
     for (test_files) |test_file| {

@@ -1,4 +1,4 @@
-name: CI - Cross-Language Matrix
+﻿name: CI - Cross-Language Matrix
 
 on:
   push:
@@ -179,12 +179,38 @@ jobs:
         run: |
           if (Test-Path brain/) {
             cd brain && python -m pytest tests/ 2>$null
-            if ($LASTEXITCODE -ne 0) {
-              Write-Host "Brain tests failed or no tests found"
-            }
+            if ($LASTEXITCODE -ne 0) { Write-Host "Brain tests failed"; exit 1 }
           }
         shell: pwsh
 
+
+  # Stage 7: Cross-language contract vectors
+  contract-vectors:
+    name: Stage 7 - Cross-Language Contract Vectors
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+      - name: Verify wire event round-trip
+        run: |
+          if (Test-Path core\wire_event.zig) {
+            & zig test core\wire_event.zig 2>&1 | Out-Host
+            if ( -ne 0) { exit 1 }
+          }
+      - name: Verify canonical event schema
+        run: |
+          if (Test-Path core\canonical_event.zig) {
+            & zig test core\canonical_event.zig 2>&1 | Out-Host
+            if ( -ne 0) { exit 1 }
+          }
+      - name: Verify contract freeze
+        run: |
+          if (Test-Path core\contract_freeze.zig) {
+            & zig test core\contract_freeze.zig 2>&1 | Out-Host
+            if ( -ne 0) { exit 1 }
+          }
   # Stage 8: Static analysis (formatting - HARD gate)
   lint:
     name: Stage 8 - Static Analysis (Hard Gate)
@@ -230,6 +256,38 @@ jobs:
             fi
           fi
 
+
+  # Stage 10: Integration tests
+  integration-tests:
+    name: Stage 10 - Integration Tests
+    runs-on: windows-latest
+    needs: [zig]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+      - name: Build executable
+        run: zig build
+      - name: Verify executable exists
+        run: |
+          if (-not (Test-Path "zig-out\bin\aegis-nids.exe")) {
+            Write-Host "FAIL: aegis-nids.exe not produced"
+            exit 1
+          }
+          Write-Host "PASS: aegis-nids.exe produced"
+      - name: Run G21 final integration proof
+        run: |
+          if (Test-Path core\final_integration_proof.zig) {
+            & zig test core\final_integration_proof.zig 2>&1 | Out-Host
+            if ( -ne 0) { exit 1 }
+          }
+      - name: Run G11 forensic replay proof
+        run: |
+          if (Test-Path core\forensic_replay_proof.zig) {
+            & zig test core\forensic_replay_proof.zig 2>&1 | Out-Host
+            if ( -ne 0) { exit 1 }
+          }
   # Stage 11: Build manifest validation
   manifest:
     name: Stage 11 - Build Manifest
