@@ -19,6 +19,87 @@ const fabric = @import("event_fabric.zig");
 const dispatcher = @import("dispatcher.zig");
 
 // ============================================================
+// Legacy Sensor API (PacketContext / inspect_packet)
+// ============================================================
+// Restored for backward compatibility with the legacy named-pipe (T2)
+// and WFP kernel (T3) sensors, which construct a PacketContext and call
+// inspect_packet() for inline packet inspection before forwarding.
+
+/// Context describing a single observed packet/session. Passed to
+/// inspect_packet() by the legacy sensors.
+pub const PacketContext = struct {
+    source_ip: u32 = 0,
+    dest_ip: u32 = 0,
+    source_port: u16 = 0,
+    dest_port: u16 = 0,
+    protocol: u8 = 0,
+    direction: u8 = 0,
+    layer_id: u8 = 0,
+    is_pipe: bool = false,
+    /// Session ID for cross-tier event correlation.
+    session_id: u64 = 0,
+};
+
+/// Lifetime count of analysis errors (legacy sensors read this).
+pub var g_analyze_errors: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+
+/// Max bytes examined during a single scan.
+const SCAN_LIMIT: usize = 65536;
+
+/// Built-in signature table (name, severity, byte pattern).
+/// These are simple, self-contained substring signatures that don't require
+/// an external ruleset file. A full ruleset engine lives in the dispatcher
+/// pipeline; inspect_packet() provides a lightweight inline quick-check for
+/// the legacy sensors.
+const Signature = struct {
+    name: []const u8,
+    severity: u8, // 0=low .. 3=critical
+    pattern: []const u8,
+};
+
+const SIGNATURES = [_]Signature{
+    .{ .name = "webshell_php", .severity = 3, .pattern = "<?php system(" },
+    .{ .name = "webshell_asp", .severity = 3, .pattern = "<%execute(" },
+    .{ .name = "cmd_exec_win", .severity = 3, .pattern = "cmd.exe /c " },
+    .{ .name = "shell_sh", .severity = 3, .pattern = "#!/bin/sh" },
+    .{ .name = "powershell_encoded", .severity = 2, .pattern = "-EncodedCommand" },
+    .{ .name = "sql_injection_union", .severity = 2, .pattern = "union select" },
+    .{ .name = "sqli_single_quote", .severity = 2, .pattern = "' or 1=1" },
+    .{ .name = "cross_site_scripting", .severity = 2, .pattern = "<script>" },
+    .{ .name = "path_traversal", .severity = 2, .pattern = "../.." },
+};
+
+/// Inline packet inspection used by the legacy sensors (T2 pipe, T3 WFP).
+/// Returns `!bool` where `true` = safe (continue), `false` = threat (block).
+/// On any internal error it fails open (returns true).
+pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
+    // Empty payload - nothing to inspect.
+    if (data.len == 0) return true;
+
+    var scan: []const u8 = data;
+    if (data.len > SCAN_LIMIT) {
+        // P-02 style: score the trailing window where attackers hide payload.
+        scan = data[data.len - SCAN_LIMIT ..];
+    }
+
+    // Scan for known malicious byte patterns.
+    for (SIGNATURES) |sig| {
+        if (std.mem.indexOf(u8, scan, sig.pattern) != null) {
+            std.log.warn("[ANALYZE] Threat: {s} (sev={d}) on {s}:{d} {s}", .{
+                sig.name,
+                sig.severity,
+                if (ctx.is_pipe) "PIPE" else "TCP",
+                ctx.source_port,
+                if (ctx.is_pipe) "payload" else "packet",
+            });
+            return false; // block
+        }
+    }
+
+    return true;
+}
+
+// ============================================================
 // Analysis Thread Entry Point
 // ============================================================
 

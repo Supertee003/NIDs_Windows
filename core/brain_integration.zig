@@ -10,7 +10,7 @@
 
 const std = @import("std");
 const canonical = @import("canonical_event.zig");
-const flow = @import("flow_engine.zig");
+const flow_types = @import("flow_types.zig");
 const detection = @import("detection_engine.zig");
 const verdict_agg = @import("verdict_aggregator.zig");
 const correlation = @import("correlation_engine.zig");
@@ -68,7 +68,7 @@ pub fn advise(
     av: verdict_agg.AggregatedVerdict,
     alerts: [3]?correlation.CorrelationAlert,
     ti_match: threat_intel.ThreatIntelMatch,
-    flow_update: ?flow.FlowUpdate,
+    flow_update: ?flow_types.FlowUpdate,
 ) brain.BrainAdvice {
     if (!g_initialized) {
         return .{

@@ -7,7 +7,7 @@
 
 const std = @import("std");
 const canonical = @import("canonical_event.zig");
-const flow = @import("flow_engine.zig");
+// G37: const flow = @import("flow_engine.zig");
 
 // ============================================================
 // Correlation Rule (AEGIS-013)
@@ -21,7 +21,7 @@ pub const CorrelationRule = struct {
     required_events: []const canonical.EventType,
     time_window_ms: i64,
     escalation_level: u8, // 0-3 severity to set
-    min_events: u8,       // minimum number of matching events to trigger
+    min_events: u8, // minimum number of matching events to trigger
 };
 
 // ============================================================
@@ -236,9 +236,17 @@ test "Incident addSessionId deduplicates" {
 
 test "Incident addSourceIp deduplicates" {
     var inc = Incident{
-        .incident_id = 1, .first_seen_ms = 0, .last_seen_ms = 0, .event_count = 0,
-        .severity = 0, .rule_name = "t", .session_ids = [_]u64{0} ** 16, .session_count = 0,
-        .source_ips = [_]u32{0} ** 8, .ip_count = 0, .event_types = 0,
+        .incident_id = 1,
+        .first_seen_ms = 0,
+        .last_seen_ms = 0,
+        .event_count = 0,
+        .severity = 0,
+        .rule_name = "t",
+        .session_ids = [_]u64{0} ** 16,
+        .session_count = 0,
+        .source_ips = [_]u32{0} ** 8,
+        .ip_count = 0,
+        .event_types = 0,
     };
     inc.addSourceIp(0x0A000001);
     inc.addSourceIp(0x0A000001);
@@ -248,9 +256,17 @@ test "Incident addSourceIp deduplicates" {
 
 test "Incident hasEventType" {
     var inc = Incident{
-        .incident_id = 1, .first_seen_ms = 0, .last_seen_ms = 0, .event_count = 0,
-        .severity = 0, .rule_name = "t", .session_ids = [_]u64{0} ** 16, .session_count = 0,
-        .source_ips = [_]u32{0} ** 8, .ip_count = 0, .event_types = 0,
+        .incident_id = 1,
+        .first_seen_ms = 0,
+        .last_seen_ms = 0,
+        .event_count = 0,
+        .severity = 0,
+        .rule_name = "t",
+        .session_ids = [_]u64{0} ** 16,
+        .session_count = 0,
+        .source_ips = [_]u32{0} ** 8,
+        .ip_count = 0,
+        .event_types = 0,
     };
     inc.addEventType(.block);
     try std.testing.expect(inc.hasEventType(.block));

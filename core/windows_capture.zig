@@ -81,7 +81,9 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
         std.log.info("[SENSOR 2] WFP device already connected via bridge_init", .{});
         std.debug.print("[SENSOR 2] WFP device already connected via bridge_init\n", .{});
     }
-    if (did_open) { defer wfp_ioctl.shutdown(); }
+    if (did_open) {
+        defer wfp_ioctl.shutdown();
+    }
 
     std.log.info("[SENSOR 2] Reading events from kernel ring buffer", .{});
     std.debug.print("[SENSOR 2] Reading events from kernel ring buffer...\n", .{});
@@ -90,7 +92,6 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
     var poll_count: u64 = 0;
 
     while (true) {
-
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
         const bytes_read = wfp_ioctl.read_events(&event_buf);
 
@@ -98,12 +99,8 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
             poll_count += 1;
             if (poll_count % WFP_STATS_POLL_INTERVAL == 0) {
                 if (wfp_ioctl.get_stats()) |stats| {
-                    std.log.info("[SENSOR 2] WFP ring: {d}/{} bytes", .{
-                        stats.currentUsedBytes, stats.capacity
-                    });
-                    std.debug.print("[SENSOR 2] WFP ring: {d}/{any} bytes\n", .{
-                        stats.currentUsedBytes, stats.capacity
-                    });
+                    std.log.info("[SENSOR 2] WFP ring: {d}/{d} bytes", .{ stats.currentUsedBytes, stats.capacity });
+                    std.debug.print("[SENSOR 2] WFP ring: {d}/{d} bytes\n", .{ stats.currentUsedBytes, stats.capacity });
                 }
             }
             std.time.sleep(100 * std.time.ns_per_ms);
@@ -130,8 +127,7 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
             };
 
             const payload_start = offset + header_size;
-            const payload_end = @min(@as(usize, bytes_read),
-                payload_start + header.payload_length);
+            const payload_end = @min(@as(usize, bytes_read), payload_start + header.payload_length);
 
             if (payload_end > payload_start) {
                 const payload = event_buf[payload_start..payload_end];
@@ -145,7 +141,7 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
                     sensor_event.payload_length = @intCast(payload.len);
                     sensor_event.protocol = ctx.protocol;
                     sensor_event.layer_id = ctx.layer_id;
-                    sensor_event.timestamp_ms = std.time.milliTimestamp();
+                    sensor_event.timestamp_ms = @intCast(std.time.milliTimestamp());
                     const submit_result = nose.submitEvent(sensor_event);
                     if (submit_result != .accepted) {
                         std.log.warn("[WFP SENSOR] Event Fabric submit failed: {s}", .{@tagName(submit_result)});
@@ -153,7 +149,7 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
                 }
 
                 const is_safe = nids_analyze.inspect_packet(payload, ctx) catch |err| blk: {
-                    std.log.warn("[WFP SENSOR] Analyze error: {} - fail-open", .{err});
+                    std.log.warn("[WFP SENSOR] Analyze error: {any} - fail-open", .{err});
                     break :blk true;
                 };
 
@@ -164,19 +160,15 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
                     const b = (ctx.source_ip >> 16) & 0xFF;
                     const a = (ctx.source_ip >> 24) & 0xFF;
                     // BP-L13: BLOCKED alert visible in release builds via std.log
-                    std.log.warn("[BLOCK] WFP SENSOR {}.{}.{}.{}:{} rule={d} (BLOCKED)", .{
-                        a, b, c, d, ctx.dest_port, header.rule_id
-                    });
-                    std.debug.print("\x1b[31;1m[WFP SENSOR] BLOCKED {}.{}.{}.{}:{} rule={d}\x1b[0m\n", .{
-                        a, b, c, d, ctx.dest_port, header.rule_id
-                    });
+                    std.log.warn("[BLOCK] WFP SENSOR {d}.{d}.{d}.{d}:{any} rule={d} (BLOCKED)", .{ a, b, c, d, ctx.dest_port, header.rule_id });
+                    std.debug.print("\x1b[31;1m[WFP SENSOR] BLOCKED {d}.{d}.{d}.{d}:{any} rule={d}\x1b[0m\n", .{ a, b, c, d, ctx.dest_port, header.rule_id });
                     // P-05 CRITICAL FIX: Validate source IP before blocking
                     // Prevents attacker from spoofing source to use NIDS as DoS amplifier
                     if (header.severity >= 2) {
                         if (isBlockableSourceIp(ctx.source_ip)) {
                             _ = wfp_ioctl.block_ip(ctx.source_ip);
                         } else {
-                            std.log.warn("[WFP] Refusing to block non-routable source IP: {}.{}.{}.{}", .{ a, b, c, d });
+                            std.log.warn("[WFP] Refusing to block non-routable source IP: {d}.{d}.{d}.{d}", .{ a, b, c, d });
                         }
                     }
                 }

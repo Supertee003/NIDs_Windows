@@ -247,7 +247,7 @@ pub fn popEvent() ?canonical.CanonicalEvent {
         const event = queue.pop() orelse return null;
         _ = g_total_popped.fetchAdd(1, .monotonic);
 
-        const pop_ns = std.time.nanoTimestamp();
+        const pop_ns = @as(i64, @intCast(std.time.nanoTimestamp()));
         const delta_ns = lookupAndClearLatency(event.event_id, pop_ns);
         if (delta_ns > 0) {
             g_last_pop_latency_ns = delta_ns;

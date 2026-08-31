@@ -20,7 +20,7 @@
 
 const std = @import("std");
 const canonical = @import("canonical_event.zig");
-const flow = @import("flow_engine.zig");
+const flow_types = @import("flow_types.zig");
 const detection = @import("detection_engine.zig");
 const verdict_agg = @import("verdict_aggregator.zig");
 const correlation = @import("correlation_engine.zig");
@@ -135,7 +135,7 @@ pub const BrainEngine = struct {
         av: verdict_agg.AggregatedVerdict,
         alerts: [3]?correlation.CorrelationAlert,
         ti_match: threat_intel.ThreatIntelMatch,
-        flow_update: ?flow.FlowUpdate,
+        flow_update: ?flow_types.FlowUpdate,
     ) BrainAdvice {
         self.total_advice += 1;
 
@@ -691,14 +691,14 @@ test "advise: flow anomaly contributes to score" {
     };
 
     // Flow with high packet count, high byte count, long duration, rule matched
-    const key = flow.FlowKey{
+    const key = flow_types.FlowKey{
         .ip_a = 0x0A000001,
         .port_a = 12345,
         .ip_b = 0x0A000002,
         .port_b = 80,
         .protocol = 6,
     };
-    const upd = flow.FlowUpdate{
+    const upd = flow_types.FlowUpdate{
         .kind = .flow_updated,
         .key = key,
         .flow = .{

@@ -29,7 +29,7 @@
 const std = @import("std");
 const canonical = @import("canonical_event.zig");
 const detection = @import("detection_engine.zig");
-const flow = @import("flow_engine.zig");
+const flow_types = @import("flow_types.zig");
 
 // ============================================================
 // Constants
@@ -156,7 +156,7 @@ pub const VerdictAggregator = struct {
     pub fn aggregate(
         self: *VerdictAggregator,
         evidence: detection.EvidenceList,
-        flow_update: ?flow.FlowUpdate,
+        flow_update: ?flow_types.FlowUpdate,
         event_id: u64,
     ) AggregatedVerdict {
         self.total_aggregations += 1;
@@ -543,14 +543,14 @@ test "aggregate: escalation rule 1 (SUSPICIOUS + high flow severity -> MALICIOUS
     });
 
     // Flow with max_severity = 3 (critical)
-    const key = flow.FlowKey{
+    const key = flow_types.FlowKey{
         .ip_a = 0x0A000001,
         .port_a = 12345,
         .ip_b = 0x0A000002,
         .port_b = 80,
         .protocol = 6,
     };
-    const upd = flow.FlowUpdate{
+    const upd = flow_types.FlowUpdate{
         .kind = .flow_updated,
         .key = key,
         .flow = .{
@@ -595,14 +595,14 @@ test "aggregate: escalation rule 2 (OBSERVE + high packet count -> SUSPICIOUS)" 
     });
 
     // Flow with packet_count > ESCALATION_PACKET_THRESHOLD (200)
-    const key = flow.FlowKey{
+    const key = flow_types.FlowKey{
         .ip_a = 0x0A000001,
         .port_a = 12345,
         .ip_b = 0x0A000002,
         .port_b = 80,
         .protocol = 6,
     };
-    const upd = flow.FlowUpdate{
+    const upd = flow_types.FlowUpdate{
         .kind = .flow_updated,
         .key = key,
         .flow = .{

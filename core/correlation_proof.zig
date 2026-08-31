@@ -8,7 +8,7 @@
 
 const std = @import("std");
 const canonical = @import("canonical_event.zig");
-const flow = @import("flow_engine.zig");
+// G37: const flow = @import("flow_engine.zig");
 const detection = @import("detection_engine.zig");
 const correlation = @import("correlation_engine.zig");
 
@@ -356,10 +356,15 @@ test "Incident isComplete" {
 
 test "buildIncident creates complete incident" {
     const inc = buildIncident(
-        42, 1234, "malware.exe",
-        100, "payload.dll",
-        200, 0x08080808,
-        300, "c2_ip",
+        42,
+        1234,
+        "malware.exe",
+        100,
+        "payload.dll",
+        200,
+        0x08080808,
+        300,
+        "c2_ip",
     );
     try std.testing.expect(inc.id == 42);
     try std.testing.expect(inc.isComplete());
@@ -372,10 +377,15 @@ test "buildIncident creates complete incident" {
 test "G6 Exit Gate: Process + File + Flow + IOC in one incident" {
     // v5.0 Section 31: combine into one incident
     const inc = buildIncident(
-        1, 1234, "malware.exe",
-        100, "payload.dll",
-        200, 0x08080808,
-        300, "c2_ip",
+        1,
+        1234,
+        "malware.exe",
+        100,
+        "payload.dll",
+        200,
+        0x08080808,
+        300,
+        "c2_ip",
     );
 
     // Verify all 4 entity types present

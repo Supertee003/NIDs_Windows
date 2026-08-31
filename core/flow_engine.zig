@@ -6,210 +6,29 @@
 //! Architecture:
 //!   Event Fabric -> Dispatcher -> Flow Engine -> (future) Detection
 //!
-//! Flow Key (5-tuple, canonical direction):
-//!   - For TCP/UDP: {min(src,dst)_ip, min(src,dst)_port, max_ip, max_port, protocol}
-//!     Canonicalized so both directions of a bidirectional flow map to same key.
-//!   - For non-IP events (is_pipe=1, host events): use session_id as fallback key.
-//!
-//! Flow State Machine:
-//!   new -> established -> closing -> closed
-//!   (Idle timeout moves any state -> closed after FLOW_IDLE_TIMEOUT_NS)
-//!
-//! Output (Evidence Producer pattern, NOT event mutation):
-//!   - FlowUpdate struct returned by value from processEvent()
-//!   - Dispatcher decides what to do with it (log, pass to detection, etc.)
-//!   - Original event is NOT modified.
+//! Types (FlowKey, Flow, FlowUpdate, etc.) live in flow_types.zig.
+//! This file contains only the FlowEngine implementation.
 
 const std = @import("std");
 const canonical = @import("canonical_event.zig");
+const flow_types = @import("flow_types.zig");
 
-// ============================================================
-// Constants
-// ============================================================
-
-/// Default idle timeout: 60 seconds of no packets -> flow is evicted.
-pub const FLOW_IDLE_TIMEOUT_NS: i128 = 60 * std.time.ns_per_s;
-
-/// Default max flow table size. Beyond this, oldest flows are evicted.
-pub const FLOW_TABLE_MAX: usize = 65536;
-
-/// Eviction batch size when table is full.
-pub const EVICT_BATCH_SIZE: usize = 64;
-
-// ============================================================
-// Flow Key (canonical 5-tuple)
-// ============================================================
-
-/// Canonical 5-tuple flow key. Both directions of a bidirectional flow
-/// map to the same key via min/max canonicalization.
-pub const FlowKey = struct {
-    /// Lower of {src_ip, dst_ip} - ensures direction-independent key
-    ip_a: u32,
-    /// Lower of {src_port, dst_port} (when ip_a == ip_b, ports break the tie)
-    port_a: u16,
-    /// Higher of {src_ip, dst_ip}
-    ip_b: u32,
-    /// Higher of {src_port, dst_port}
-    port_b: u16,
-    /// IP protocol (TCP=6, UDP=17, etc.)
-    protocol: u8,
-
-    /// Compute the canonical key from a CanonicalEvent.
-    /// For non-IP events (is_pipe=1), uses session_id packed into ip_a/port_a.
-    pub fn fromEvent(event: canonical.CanonicalEvent) FlowKey {
-        // Non-IP / host events: use session_id as the discriminator.
-        if (event.is_pipe != 0 or event.source_ip == 0) {
-            return .{
-                .ip_a = @truncate(event.session_id),
-                .port_a = @truncate(event.session_id >> 32),
-                .ip_b = 0,
-                .port_b = 0,
-                .protocol = event.protocol,
-            };
-        }
-
-        // IP events: canonicalize by (ip, port) tuple ordering.
-        if (event.source_ip < event.dest_ip or
-            (event.source_ip == event.dest_ip and event.source_port <= event.dest_port))
-        {
-            return .{
-                .ip_a = event.source_ip,
-                .port_a = event.source_port,
-                .ip_b = event.dest_ip,
-                .port_b = event.dest_port,
-                .protocol = event.protocol,
-            };
-        } else {
-            return .{
-                .ip_a = event.dest_ip,
-                .port_a = event.dest_port,
-                .ip_b = event.source_ip,
-                .port_b = event.source_port,
-                .protocol = event.protocol,
-            };
-        }
-    }
-
-    /// Stable hash for hashmap use.
-    pub fn hash(self: FlowKey) u64 {
-        // FNV-1a inspired mix; good enough for in-memory table.
-        var h: u64 = 0xcbf29ce484222325;
-        const fields = [_]u64{
-            self.ip_a,
-            self.port_a,
-            self.ip_b,
-            self.port_b,
-            self.protocol,
-        };
-        for (fields) |f| {
-            h ^= f;
-            h *%= 0x100000001b3;
-        }
-        return h;
-    }
-
-    pub fn eql(a: FlowKey, b: FlowKey) bool {
-        return a.ip_a == b.ip_a and a.port_a == b.port_a and
-            a.ip_b == b.ip_b and a.port_b == b.port_b and a.protocol == b.protocol;
-    }
-};
-
-// ============================================================
-// Flow State
-// ============================================================
-
-pub const FlowState = enum(u8) {
-    /// Just saw first packet, no SYN seen yet (or non-TCP).
-    new = 0,
-    /// TCP SYN+SYN-ACK seen, or first packet for UDP/ICMP.
-    established = 1,
-    /// TCP FIN seen, waiting for final ACK.
-    closing = 2,
-    /// Fully closed (FIN+ACK both directions) or evicted by timeout.
-    closed = 3,
-
-    pub fn toString(self: FlowState) []const u8 {
-        return switch (self) {
-            .new => "NEW",
-            .established => "ESTABLISHED",
-            .closing => "CLOSING",
-            .closed => "CLOSED",
-        };
-    }
-};
-
-/// Tracked flow record.
-pub const Flow = struct {
-    key: FlowKey,
-    state: FlowState,
-    /// First packet timestamp (monotonic ns).
-    start_ns: i128,
-    /// Last packet timestamp (monotonic ns).
-    last_seen_ns: i128,
-    /// Total packets observed (both directions).
-    packet_count: u64,
-    /// Total bytes observed (sum of payload_length).
-    byte_count: u64,
-    /// Distinct session_ids seen on this flow (for correlation).
-    session_id_set: u8,
-    /// Last session_id seen (for correlation continuity).
-    last_session_id: u64,
-    /// Direction of the first packet seen (0=inbound, 1=outbound).
-    initial_direction: u8,
-    /// Highest severity event seen on this flow (0=Low..3=Critical).
-    max_severity: u8,
-    /// True if any rule has matched on this flow.
-    rule_matched: bool,
-    /// Last rule_id that matched (0 if none).
-    last_rule_id: u32,
-};
-
-// ============================================================
-// Flow Update (evidence producer output)
-// ============================================================
-
-/// What kind of flow update this is.
-pub const FlowUpdateKind = enum(u8) {
-    /// First packet seen on a new flow.
-    flow_created = 0,
-    /// Subsequent packet on existing flow.
-    flow_updated = 1,
-    /// Flow transitioned to a new state (e.g., new -> established).
-    flow_state_changed = 2,
-    /// Flow was evicted due to idle timeout.
-    flow_expired = 3,
-    /// Flow completed (FIN+ACK both directions, or session_end event).
-    flow_ended = 4,
-};
-
-/// Output struct returned by processEvent(). Passed by value (cheap: ~96 bytes).
-/// Dispatcher decides what to do with it.
-pub const FlowUpdate = struct {
-    kind: FlowUpdateKind,
-    key: FlowKey,
-    flow: Flow,
-    /// The event_id that triggered this update (for correlation).
-    triggering_event_id: u64,
-};
+// Re-export types for backward compatibility
+pub const FlowKey = flow_types.FlowKey;
+pub const FlowState = flow_types.FlowState;
+pub const Flow = flow_types.Flow;
+pub const FlowUpdateKind = flow_types.FlowUpdateKind;
+pub const FlowUpdate = flow_types.FlowUpdate;
+pub const FLOW_IDLE_TIMEOUT_NS = flow_types.FLOW_IDLE_TIMEOUT_NS;
+pub const EVICT_BATCH_SIZE = flow_types.EVICT_BATCH_SIZE;
 
 // ============================================================
 // Flow Engine
 // ============================================================
 
-const FlowMap = std.HashMap(FlowKey, Flow, FlowKeyContext, std.hash_map.default_max_load_percentage);
-
-const FlowKeyContext = struct {
-    pub fn hash(_: @This(), k: FlowKey) u64 {
-        return k.hash();
-    }
-    pub fn eql(_: @This(), a: FlowKey, b: FlowKey) bool {
-        return FlowKey.eql(a, b);
-    }
-};
-
 pub const FlowEngine = struct {
     allocator: std.mem.Allocator,
-    map: FlowMap,
+    map: flow_types.FlowMap,
     idle_timeout_ns: i128,
     max_flows: usize,
     /// Total flows created (lifetime counter).
@@ -226,9 +45,9 @@ pub const FlowEngine = struct {
     pub fn init(allocator: std.mem.Allocator) FlowEngine {
         return .{
             .allocator = allocator,
-            .map = FlowMap.init(allocator),
+            .map = flow_types.FlowMap.init(allocator),
             .idle_timeout_ns = FLOW_IDLE_TIMEOUT_NS,
-            .max_flows = FLOW_TABLE_MAX,
+            .max_flows = 65536,
             .total_created = 0,
             .total_expired = 0,
             .total_ended = 0,
@@ -254,33 +73,30 @@ pub const FlowEngine = struct {
         const now_ns = event.monotonic_ns;
 
         // Check if flow already exists
-        if (self.map.getPtr(key)) |flow| {
+        if (self.map.getPtr(key)) |flow_entry| {
             // Update existing flow
-            const old_state = flow.state;
-            updateFlowState(flow, event, now_ns);
+            const old_state = flow_entry.state;
+            updateFlowState(flow_entry, event, now_ns);
 
             self.total_packets += 1;
             self.total_bytes += event.payload_length;
 
             return .{
-                .kind = if (flow.state != old_state) .flow_state_changed else .flow_updated,
+                .kind = if (flow_entry.state != old_state) .flow_state_changed else .flow_updated,
                 .key = key,
-                .flow = flow.*,
+                .flow = flow_entry.*,
                 .triggering_event_id = event.event_id,
             };
         }
 
         // New flow — first check if table is full, evict if needed.
-        // Scale eviction count with table size: 1% of max, min 1, max EVICT_BATCH_SIZE.
-        // (Old bug: always passed EVICT_BATCH_SIZE=64 which evicted ALL flows
-        // when max_flows was small, e.g. in tests with max_flows=4.)
         if (self.map.count() >= self.max_flows) {
             const evict_count = @min(EVICT_BATCH_SIZE, @max(@as(usize, 1), self.max_flows / 100));
             self.evictOldest(evict_count);
         }
 
         // Create new flow
-        const flow = Flow{
+        const new_flow = Flow{
             .key = key,
             .state = initStateFromEvent(event),
             .start_ns = now_ns,
@@ -295,13 +111,11 @@ pub const FlowEngine = struct {
             .last_rule_id = event.rule_id,
         };
 
-        self.map.put(key, flow) catch {
-            // Allocation failure — degrade gracefully by returning flow_updated
-            // without storing. (Production: log + metric.)
+        self.map.put(key, new_flow) catch {
             return .{
                 .kind = .flow_updated,
                 .key = key,
-                .flow = flow,
+                .flow = new_flow,
                 .triggering_event_id = event.event_id,
             };
         };
@@ -313,7 +127,7 @@ pub const FlowEngine = struct {
         return .{
             .kind = .flow_created,
             .key = key,
-            .flow = flow,
+            .flow = new_flow,
             .triggering_event_id = event.event_id,
         };
     }
@@ -340,11 +154,9 @@ pub const FlowEngine = struct {
     }
 
     /// Force-remove the N oldest flows (by last_seen_ns).
-    /// Used when table is full and a new flow must be inserted.
     fn evictOldest(self: *FlowEngine, n: usize) void {
         if (self.map.count() == 0) return;
 
-        // Collect candidates with their last_seen_ns
         const Candidate = struct { key: FlowKey, ts: i128 };
         var candidates = std.ArrayList(Candidate).init(self.allocator);
         defer candidates.deinit();
@@ -358,7 +170,6 @@ pub const FlowEngine = struct {
             }) catch break;
         }
 
-        // Sort by last_seen_ns ascending (oldest first) using std.mem.sort
         const lessThan = struct {
             fn lt(_: void, a: Candidate, b: Candidate) bool {
                 return a.ts < b.ts;
@@ -388,63 +199,51 @@ pub const FlowEngine = struct {
 // Internal helpers
 // ============================================================
 
-/// Determine initial flow state from the first packet.
 fn initStateFromEvent(event: canonical.CanonicalEvent) FlowState {
-    // TCP session_start event -> established immediately (or new if just SYN).
-    // For UDP/ICMP and other protocols, treat as established on first packet.
     if (event.event_type == .session_start) return .established;
     if (event.event_type == .session_end) return .closed;
     if (event.protocol == 6) {
-        // TCP without session_start — assume mid-stream capture, mark new.
         return .new;
     }
-    // UDP/ICMP/other — established on first packet.
     return .established;
 }
 
-/// Update flow state machine based on new event.
-fn updateFlowState(flow: *Flow, event: canonical.CanonicalEvent, now_ns: i128) void {
-    flow.last_seen_ns = now_ns;
-    flow.packet_count += 1;
-    flow.byte_count += event.payload_length;
+fn updateFlowState(flow_entry: *Flow, event: canonical.CanonicalEvent, now_ns: i128) void {
+    flow_entry.last_seen_ns = now_ns;
+    flow_entry.packet_count += 1;
+    flow_entry.byte_count += event.payload_length;
 
-    // Track distinct session_ids (rough hash-set approximation: count bit changes)
-    if (event.session_id != flow.last_session_id) {
-        flow.session_id_set +%= 1;
-        flow.last_session_id = event.session_id;
+    if (event.session_id != flow_entry.last_session_id) {
+        flow_entry.session_id_set +%= 1;
+        flow_entry.last_session_id = event.session_id;
     }
 
-    // Track max severity
-    if (event.severity > flow.max_severity) {
-        flow.max_severity = event.severity;
+    if (event.severity > flow_entry.max_severity) {
+        flow_entry.max_severity = event.severity;
     }
 
-    // Track rule matches
     if (event.rule_id != 0) {
-        flow.rule_matched = true;
-        flow.last_rule_id = event.rule_id;
+        flow_entry.rule_matched = true;
+        flow_entry.last_rule_id = event.rule_id;
     }
 
-    // State transitions
-    switch (flow.state) {
+    switch (flow_entry.state) {
         .new => {
             if (event.event_type == .session_start or event.protocol != 6) {
-                flow.state = .established;
+                flow_entry.state = .established;
             }
         },
         .established => {
             if (event.event_type == .session_end) {
-                flow.state = .closing;
+                flow_entry.state = .closing;
             }
         },
         .closing => {
             if (event.event_type == .session_end) {
-                flow.state = .closed;
+                flow_entry.state = .closed;
             }
         },
-        .closed => {
-            // Closed flows stay closed (until evicted by sweep).
-        },
+        .closed => {},
     }
 }
 
@@ -454,14 +253,14 @@ fn updateFlowState(flow: *Flow, event: canonical.CanonicalEvent, now_ns: i128) v
 
 test "FlowKey.fromEvent canonicalizes bidirectional flows" {
     var e1 = canonical.create(.wfp_sensor);
-    e1.source_ip = 0x0A000001; // 10.0.0.1
+    e1.source_ip = 0x0A000001;
     e1.source_port = 12345;
-    e1.dest_ip = 0x0A000002; // 10.0.0.2
+    e1.dest_ip = 0x0A000002;
     e1.dest_port = 80;
     e1.protocol = 6;
 
     var e2 = canonical.create(.wfp_sensor);
-    e2.source_ip = 0x0A000002; // 10.0.0.2 (reversed)
+    e2.source_ip = 0x0A000002;
     e2.source_port = 80;
     e2.dest_ip = 0x0A000001;
     e2.dest_port = 12345;
@@ -472,22 +271,22 @@ test "FlowKey.fromEvent canonicalizes bidirectional flows" {
 
     try std.testing.expect(FlowKey.eql(k1, k2));
     try std.testing.expect(k1.ip_a == 0x0A000001);
-    try std.testing.expect(k1.port_a == 12345); // port paired with ip_a (source_port when source_ip is lower)
+    try std.testing.expect(k1.port_a == 12345);
     try std.testing.expect(k1.ip_b == 0x0A000002);
-    try std.testing.expect(k1.port_b == 80); // port paired with ip_b
+    try std.testing.expect(k1.port_b == 80);
 }
 
 test "FlowKey.fromEvent handles same-IP flows (port breaks tie)" {
     var e1 = canonical.create(.wfp_sensor);
     e1.source_ip = 0x0A000001;
     e1.source_port = 5000;
-    e1.dest_ip = 0x0A000001; // same IP
+    e1.dest_ip = 0x0A000001;
     e1.dest_port = 80;
     e1.protocol = 6;
 
     var e2 = canonical.create(.wfp_sensor);
     e2.source_ip = 0x0A000001;
-    e2.source_port = 80; // reversed
+    e2.source_port = 80;
     e2.dest_ip = 0x0A000001;
     e2.dest_port = 5000;
     e2.protocol = 6;
@@ -495,7 +294,7 @@ test "FlowKey.fromEvent handles same-IP flows (port breaks tie)" {
     const k1 = FlowKey.fromEvent(e1);
     const k2 = FlowKey.fromEvent(e2);
     try std.testing.expect(FlowKey.eql(k1, k2));
-    try std.testing.expect(k1.port_a == 80); // lower port first
+    try std.testing.expect(k1.port_a == 80);
 }
 
 test "FlowKey.fromEvent uses session_id for non-IP events" {
@@ -506,9 +305,6 @@ test "FlowKey.fromEvent uses session_id for non-IP events" {
     e.protocol = 0;
 
     const k = FlowKey.fromEvent(e);
-    // session_id = 0xDEADBEEFCAFE as u64 = 0x0000DEADBEEFCAFE
-    // Lower 32 bits (@truncate to u32) = 0xBEEFCAFE
-    // Upper 32 bits (session_id >> 32) = 0x0000DEAD, @truncate to u16 = 0xDEAD
     try std.testing.expect(k.ip_a == 0xBEEFCAFE);
     try std.testing.expect(k.port_a == 0xDEAD);
     try std.testing.expect(k.ip_b == 0);
@@ -551,7 +347,6 @@ test "FlowEngine: second packet updates existing flow" {
 
     _ = engine.processEvent(event);
 
-    // Second packet: reverse direction (should map to same flow)
     event.source_ip = 0x0A000002;
     event.source_port = 80;
     event.dest_ip = 0x0A000001;
@@ -562,11 +357,11 @@ test "FlowEngine: second packet updates existing flow" {
     const update = engine.processEvent(event);
 
     try std.testing.expect(update.kind == .flow_updated);
-    try std.testing.expect(engine.count() == 1); // still one flow
+    try std.testing.expect(engine.count() == 1);
     try std.testing.expect(update.flow.packet_count == 2);
     try std.testing.expect(update.flow.byte_count == 300);
     try std.testing.expect(update.flow.last_session_id == 2);
-    try std.testing.expect(update.flow.session_id_set == 2); // 2 distinct sessions
+    try std.testing.expect(update.flow.session_id_set == 2);
 }
 
 test "FlowEngine: session_start transitions new -> established" {
@@ -580,18 +375,15 @@ test "FlowEngine: session_start transitions new -> established" {
     event.dest_port = 80;
     event.protocol = 6;
 
-    // First packet: new flow, TCP, no session_start -> state = .new
     const upd1 = engine.processEvent(event);
     try std.testing.expect(upd1.kind == .flow_created);
     try std.testing.expect(upd1.flow.state == .new);
 
-    // Second packet: session_start -> transitions to .established
     event.event_type = .session_start;
     const upd2 = engine.processEvent(event);
     try std.testing.expect(upd2.kind == .flow_state_changed);
     try std.testing.expect(upd2.flow.state == .established);
 
-    // Third packet: no transition (stays established)
     event.event_type = .forward;
     const upd3 = engine.processEvent(event);
     try std.testing.expect(upd3.kind == .flow_updated);
@@ -610,7 +402,7 @@ test "FlowEngine: session_end transitions established -> closing -> closed" {
     event.protocol = 6;
     event.event_type = .session_start;
 
-    _ = engine.processEvent(event); // -> established
+    _ = engine.processEvent(event);
 
     event.event_type = .session_end;
     const upd1 = engine.processEvent(event);
@@ -627,9 +419,9 @@ test "FlowEngine: UDP flow starts established" {
     var event = canonical.create(.wfp_sensor);
     event.source_ip = 0x0A000001;
     event.source_port = 5353;
-    event.dest_ip = 0xE00000FB; // 224.0.0.251 (mDNS)
+    event.dest_ip = 0xE00000FB;
     event.dest_port = 5353;
-    event.protocol = 17; // UDP
+    event.protocol = 17;
 
     const update = engine.processEvent(event);
     try std.testing.expect(update.flow.state == .established);
@@ -662,7 +454,7 @@ test "FlowEngine: tracks max severity and rule matches" {
 test "FlowEngine: sweepExpired evicts idle flows" {
     var engine = FlowEngine.init(std.testing.allocator);
     defer engine.deinit();
-    engine.configure(100 * std.time.ns_per_ms, 1000); // 100ms timeout
+    engine.configure(100 * std.time.ns_per_ms, 1000);
 
     var event = canonical.create(.wfp_sensor);
     event.source_ip = 0x0A000001;
@@ -676,12 +468,10 @@ test "FlowEngine: sweepExpired evicts idle flows" {
     _ = engine.processEvent(event);
     try std.testing.expect(engine.count() == 1);
 
-    // Sweep at t=50ms -> flow not yet expired
     var n = engine.sweepExpired(50 * std.time.ns_per_ms);
     try std.testing.expect(n == 0);
     try std.testing.expect(engine.count() == 1);
 
-    // Sweep at t=200ms -> flow expired (idle > 100ms)
     n = engine.sweepExpired(200 * std.time.ns_per_ms);
     try std.testing.expect(n == 1);
     try std.testing.expect(engine.count() == 0);
@@ -691,7 +481,7 @@ test "FlowEngine: sweepExpired evicts idle flows" {
 test "FlowEngine: evicts oldest when table is full" {
     var engine = FlowEngine.init(std.testing.allocator);
     defer engine.deinit();
-    engine.configure(std.time.ns_per_s, 4); // very small table
+    engine.configure(std.time.ns_per_s, 4);
 
     var i: u32 = 0;
     while (i < 4) : (i += 1) {
@@ -706,7 +496,6 @@ test "FlowEngine: evicts oldest when table is full" {
     }
     try std.testing.expect(engine.count() == 4);
 
-    // Insert 5th flow — should evict the oldest (i=0)
     var event5 = canonical.create(.wfp_sensor);
     event5.source_ip = 0x0A00000A;
     event5.source_port = 9999;
@@ -716,17 +505,14 @@ test "FlowEngine: evicts oldest when table is full" {
     event5.monotonic_ns = 100;
 
     _ = engine.processEvent(event5);
-    try std.testing.expect(engine.count() == 4); // still 4 (evicted 1, added 1)
+    try std.testing.expect(engine.count() == 4);
     try std.testing.expect(engine.total_expired == 1);
 
-    // Verify the oldest flow (i=0) is gone.
-    // i=0: source_ip=0x0A000000, source_port=1000, dest_ip=0x0A0000FF, dest_port=80
-    // source_ip < dest_ip, so ip_a=source_ip, port_a=source_port=1000, port_b=dest_port=80
     const old_key = FlowKey{
         .ip_a = 0x0A000000,
-        .port_a = 1000, // source_port (paired with ip_a which is the lower IP)
+        .port_a = 1000,
         .ip_b = 0x0A0000FF,
-        .port_b = 80, // dest_port (paired with ip_b)
+        .port_b = 80,
         .protocol = 6,
     };
     try std.testing.expect(engine.getFlow(old_key) == null);
@@ -744,14 +530,13 @@ test "FlowEngine: lifetime stats accumulate correctly" {
     var engine = FlowEngine.init(std.testing.allocator);
     defer engine.deinit();
 
-    // Create 3 distinct flows, 5 packets each
     var i: u32 = 0;
     while (i < 3) : (i += 1) {
         var j: u32 = 0;
         while (j < 5) : (j += 1) {
             var event = canonical.create(.wfp_sensor);
             event.source_ip = 0x0A000000 + i;
-            event.source_port = @intCast(1000 + i); // varies per flow i, not per packet j
+            event.source_port = @intCast(1000 + i);
             event.dest_ip = 0x0A0000FF;
             event.dest_port = 80;
             event.protocol = 6;

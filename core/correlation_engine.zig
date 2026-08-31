@@ -21,7 +21,7 @@
 
 const std = @import("std");
 const canonical = @import("canonical_event.zig");
-const flow = @import("flow_engine.zig");
+const flow_types = @import("flow_types.zig");
 const detection = @import("detection_engine.zig");
 const verdict_agg = @import("verdict_aggregator.zig");
 
@@ -87,7 +87,7 @@ pub const EntityKey = struct {
         return .{ .entity_type = .session, .id = session_id };
     }
 
-    pub fn fromFlowKey(key: flow.FlowKey) EntityKey {
+    pub fn fromFlowKey(key: flow_types.FlowKey) EntityKey {
         return .{ .entity_type = .flow, .id = key.hash() };
     }
 
@@ -313,7 +313,7 @@ pub const CorrelationEngine = struct {
     pub fn processVerdict(
         self: *CorrelationEngine,
         event: canonical.CanonicalEvent,
-        flow_update: ?flow.FlowUpdate,
+        flow_update: ?flow_types.FlowUpdate,
         av: verdict_agg.AggregatedVerdict,
     ) [3]?CorrelationAlert {
         var alerts: [3]?CorrelationAlert = .{ null, null, null };
@@ -539,7 +539,7 @@ test "EntityKey.fromSessionId packs correctly" {
 }
 
 test "EntityKey.fromFlowKey hashes consistently" {
-    const fk = flow.FlowKey{
+    const fk = flow_types.FlowKey{
         .ip_a = 0x0A000001,
         .port_a = 12345,
         .ip_b = 0x0A000002,

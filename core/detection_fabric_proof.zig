@@ -9,7 +9,7 @@
 
 const std = @import("std");
 const canonical = @import("canonical_event.zig");
-const flow = @import("flow_engine.zig");
+const flow_types = @import("flow_types.zig");
 const detection = @import("detection_engine.zig");
 
 // ============================================================
@@ -22,7 +22,7 @@ const detection = @import("detection_engine.zig");
 
 pub const DetectorInput = struct {
     event: canonical.CanonicalEvent,
-    flow_update: ?flow.FlowUpdate,
+    flow_update: ?flow_types.FlowUpdate,
 };
 
 pub const DetectorOutput = struct {
@@ -226,7 +226,7 @@ pub const EvidenceTracer = struct {
 /// A test detector that can be registered without touching Fabric/Dispatcher/Policy.
 pub fn testDetectorAnalyze(
     event: canonical.CanonicalEvent,
-    flow_update: ?flow.FlowUpdate,
+    flow_update: ?flow_types.FlowUpdate,
 ) detection.DetectionEvidence {
     _ = flow_update;
 
@@ -240,7 +240,7 @@ pub fn testDetectorAnalyze(
             .severity = 2,
             .description = "test detector: connection to known C2 port 4444",
             .indicators = detection.Indicator.RULE_MATCH,
-            .flow_key = flow.FlowKey.fromEvent(event),
+            .flow_key = flow_types.FlowKey.fromEvent(event),
             .event_id = event.event_id,
             .timestamp_ns = event.monotonic_ns,
         };

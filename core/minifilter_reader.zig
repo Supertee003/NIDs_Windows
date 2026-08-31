@@ -1,4 +1,4 @@
-﻿//! minifilter_reader.zig - AEGIS NIDS Minifilter Reader (Thread 4)
+//! minifilter_reader.zig - AEGIS NIDS Minifilter Reader (Thread 4)
 //!
 //! Reads file/process events from the AEGIS minifilter driver via
 //! FilterCommunicationPort (FilterGetMessage API). Converts kernel
@@ -15,14 +15,14 @@ const bridge_init = @import("bridge_init.zig");
 
 // ====== AEGIS File/Process Event (matches kernel struct) ======
 pub const AegisFileEvent = extern struct {
-    event_type: u32,      // 1=KERNEL_FILE, 2=KERNEL_PROCESS
-    operation: u32,       // IRP_MJ_CREATE/WRITE/etc. or PROCESS_CREATE/EXIT
-    file_name_len: u32,   // Length of file name following this header
-    process_id: u32,      // PID of the process
-    rule_id: u32,         // Matched rule ID
-    severity: u32,        // 0=Low, 1=Medium, 2=High, 3=Critical
+    event_type: u32, // 1=KERNEL_FILE, 2=KERNEL_PROCESS
+    operation: u32, // IRP_MJ_CREATE/WRITE/etc. or PROCESS_CREATE/EXIT
+    file_name_len: u32, // Length of file name following this header
+    process_id: u32, // PID of the process
+    rule_id: u32, // Matched rule ID
+    severity: u32, // 0=Low, 1=Medium, 2=High, 3=Critical
     reserved: u32,
-    timestamp: u64,       // Event timestamp
+    timestamp: u64, // Event timestamp
 };
 
 // ====== Event type constants ======
@@ -104,12 +104,8 @@ extern "fltlib" fn FilterGetMessage(
     lpOverlapped: ?*anyopaque,
 ) HRESULT;
 
-extern "fltlib" fn FilterCloseCommunicationPort(hPort: HANDLE) HRESULT;
-
 // Port name as UTF-16LE
-const MINIFILTER_PORT = [_:0]u16{
-    '\\', '\\', 'A', 'e', 'g', 'i', 's', 'M', 'i', 'n', 'i', 'f', 'i', 'l', 't', 'e', 'r', 'P', 'o', 'r', 't'
-};
+const MINIFILTER_PORT = [_:0]u16{ '\\', '\\', 'A', 'e', 'g', 'i', 's', 'M', 'i', 'n', 'i', 'f', 'i', 'l', 't', 'e', 'r', 'P', 'o', 'r', 't' };
 
 // BP11: Verify port name starts with backslash at compile time
 comptime {
@@ -136,10 +132,10 @@ pub fn minifilterReaderLoop() void {
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
         const hr = FilterConnectCommunicationPort(
             &MINIFILTER_PORT,
-            0,          // no options
-            null,       // no context
-            0,          // context size
-            null,       // not overlapped
+            0, // no options
+            null, // no context
+            0, // context size
+            null, // not overlapped
             &hPort,
         );
 
@@ -159,7 +155,10 @@ pub fn minifilterReaderLoop() void {
     }
     defer {
         if (hPort != INVALID_HANDLE_VALUE) {
-            _ = FilterCloseCommunicationPort(hPort);
+            // FilterCloseCommunicationPort is not exported by fltlib.dll on this
+            // platform; the comm port handle is a regular kernel handle that can
+            // be released via CloseHandle.
+            _ = win.CloseHandle(hPort);
         }
         g_driver_connected = false;
     }
@@ -173,13 +172,12 @@ pub fn minifilterReaderLoop() void {
         std.log.err("[MINI] CreateEventA failed - cannot use overlapped I/O", .{});
         return;
     };
-    defer if (io_event) |e| { _ = win.CloseHandle(e); };
+    defer _ = win.CloseHandle(io_event);
 
     std.debug.print("[MINI] Reading events from kernel...\n", .{});
     std.log.info("[MINI] Reading events from kernel", .{});
 
     while (true) {
-
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
         // BP-O3: Overlapped FilterGetMessage with 1s timeout for shutdown responsiveness
         // Phase 9: Uses win32_io helper constants
@@ -227,20 +225,12 @@ pub fn minifilterReaderLoop() void {
                 const sev_str = severityToString(evt.severity);
 
                 if (evt.severity >= 2) {
-                    std.log.warn("[ALERT] MINI {} | {} | PID={} | sev={} | {}", .{
-                        evt_type, op_str, evt.process_id, sev_str, name_str
-                    });
-                    std.debug.print("\x1b[31;1m[MINI ALERT] {} | {} | PID={} | sev={} | {}\x1b[0m\n", .{
-                        evt_type, op_str, evt.process_id, sev_str, name_str
-                    });
+                    std.log.warn("[ALERT] MINI {any} | {any} | PID={d} | sev={any} | {any}", .{ evt_type, op_str, evt.process_id, sev_str, name_str });
+                    std.debug.print("\x1b[31;1m[MINI ALERT] {any} | {any} | PID={d} | sev={any} | {any}\x1b[0m\n", .{ evt_type, op_str, evt.process_id, sev_str, name_str });
                 } else {
                     // BP-L17: Low-severity event logged via std.log for release visibility
-                    std.log.info("[MINI] {} | {} | PID={} | {}", .{
-                        evt_type, op_str, evt.process_id, name_str
-                    });
-                    std.debug.print("[MINI] {} | {} | PID={} | {}\n", .{
-                        evt_type, op_str, evt.process_id, name_str
-                    });
+                    std.log.info("[MINI] {any} | {any} | PID={d} | {any}", .{ evt_type, op_str, evt.process_id, name_str });
+                    std.debug.print("[MINI] {any} | {any} | PID={d} | {any}\n", .{ evt_type, op_str, evt.process_id, name_str });
                 }
 
                 g_events_processed += 1;
@@ -294,19 +284,11 @@ pub fn minifilterReaderLoop() void {
                                 const sev_str = severityToString(evt.severity);
 
                                 if (evt.severity >= 2) {
-                                    std.log.warn("[ALERT] MINI {} | {} | PID={} | sev={} | {}", .{
-                                        evt_type, op_str, evt.process_id, sev_str, name_str
-                                    });
-                                    std.debug.print("\x1b[31;1m[MINI ALERT] {} | {} | PID={} | sev={} | {}\x1b[0m\n", .{
-                                        evt_type, op_str, evt.process_id, sev_str, name_str
-                                    });
+                                    std.log.warn("[ALERT] MINI {any} | {any} | PID={d} | sev={any} | {any}", .{ evt_type, op_str, evt.process_id, sev_str, name_str });
+                                    std.debug.print("\x1b[31;1m[MINI ALERT] {any} | {any} | PID={d} | sev={any} | {any}\x1b[0m\n", .{ evt_type, op_str, evt.process_id, sev_str, name_str });
                                 } else {
-                                    std.log.info("[MINI] {} | {} | PID={} | {}", .{
-                                        evt_type, op_str, evt.process_id, name_str
-                                    });
-                                    std.debug.print("[MINI] {} | {} | PID={} | {}\n", .{
-                                        evt_type, op_str, evt.process_id, name_str
-                                    });
+                                    std.log.info("[MINI] {any} | {any} | PID={d} | {any}", .{ evt_type, op_str, evt.process_id, name_str });
+                                    std.debug.print("[MINI] {any} | {any} | PID={d} | {any}\n", .{ evt_type, op_str, evt.process_id, name_str });
                                 }
                                 g_events_processed += 1;
                             }

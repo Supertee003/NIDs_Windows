@@ -96,7 +96,10 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
         .bInheritHandle = 0,
     };
     if (ConvertStringSecurityDescriptorToSecurityDescriptorA(
-        SDDL_ADMIN_ONLY, SDDL_REVISION, &pipe_sd, null,
+        SDDL_ADMIN_ONLY,
+        SDDL_REVISION,
+        &pipe_sd,
+        null,
     ) != 0) {
         sec_attr.lpSecurityDescriptor = pipe_sd;
         std.log.info("[PIPE SENSOR] Pipe ACL: Admin-only (SDDL)", .{});
@@ -108,7 +111,9 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
         std.debug.print("\x1b[31m[PIPE SENSOR] CRITICAL: SDDL failed - refusing to create pipe (fail-closed)\x1b[0m\n", .{});
         return;
     }
-    defer if (pipe_sd) |sd| { _ = LocalFree(sd); };
+    defer if (pipe_sd) |sd| {
+        _ = LocalFree(sd);
+    };
     // BP-O2: Add FILE_FLAG_OVERLAPPED for shutdown-responsive ConnectNamedPipe
     const handle = CreateNamedPipeA(
         pipe_name,
@@ -138,11 +143,10 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
 
     var buffer: [4096]u8 = undefined;
 
-    std.log.info("[PIPE SENSOR] Listening on {} - Waiting for scripts", .{pipe_name});
-    std.debug.print("[PIPE SENSOR] Listening on {} - Waiting for Python scripts...\n", .{pipe_name});
+    std.log.info("[PIPE SENSOR] Listening on {s} - Waiting for scripts", .{pipe_name});
+    std.debug.print("[PIPE SENSOR] Listening on {s} - Waiting for Python scripts...\n", .{pipe_name});
 
     while (true) {
-
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
         // BP-O2: Overlapped ConnectNamedPipe with 1s timeout for shutdown responsiveness
         // Phase 9: Uses win32_io helper constants and functions
@@ -156,7 +160,7 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
         // connect_rc!=0 = completed synchronously
         // err=PIPE_CONNECTED = client connected between Create and Connect
         const connected = (connect_rc != 0) or (err == win.Win32Error.PIPE_CONNECTED);
-        if (!connected and err == ERROR_IO_PENDING) {
+        if (!connected and @intFromEnum(err) == ERROR_IO_PENDING) {
             // Wait for client with 1s timeout via shared helper
             const wait_result = win32_io.waitOverlapped(handle, &overlapped, io_event, IO_POLL_TIMEOUT_MS);
             switch (wait_result) {
@@ -194,8 +198,8 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
 
             if (read_success and bytes_read > 0) {
                 const payload = buffer[0..bytes_read];
-                std.log.info("[PIPE SENSOR] Captured Pipe Payload ({} bytes)", .{bytes_read});
-                std.debug.print("[PIPE SENSOR] Captured Pipe Payload ({} bytes)\n", .{bytes_read});
+                std.log.info("[PIPE SENSOR] Captured Pipe Payload ({d} bytes)", .{bytes_read});
+                std.debug.print("[PIPE SENSOR] Captured Pipe Payload ({d} bytes)\n", .{bytes_read});
 
                 const ctx = nids_analyze.PacketContext{
                     .is_pipe = true,
@@ -209,7 +213,7 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
                     sensor_event.payload_length = @intCast(payload.len);
                     sensor_event.layer_id = 3;
                     sensor_event.is_pipe = 1;
-                    sensor_event.timestamp_ms = std.time.milliTimestamp();
+                    sensor_event.timestamp_ms = @intCast(std.time.milliTimestamp());
                     // STEP 4: use nose_integration.submit() for backpressure-aware sampling
                     const submit_result = nose_int.submit(sensor_event);
                     switch (submit_result) {
@@ -227,9 +231,9 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
                 }
 
                 const is_safe = nids_analyze.inspect_packet(payload, ctx) catch |analyze_err| blk: {
-                    std.log.warn("[PIPE SENSOR] Analyze error: {} - fail-open", .{analyze_err});
-                    std.debug.print("[PIPE SENSOR] Analyze error: {} - event allowed (fail-open)\n", .{analyze_err});
-                    _ = nids_analyze.g_analyze_errors.fetchAdd(1, .relaxed);
+                    std.log.warn("[PIPE SENSOR] Analyze error: {any} - fail-open", .{analyze_err});
+                    std.debug.print("[PIPE SENSOR] Analyze error: {any} - event allowed (fail-open)\n", .{analyze_err});
+                    _ = nids_analyze.g_analyze_errors.fetchAdd(1, .monotonic);
                     break :blk true;
                 };
                 if (!is_safe) {

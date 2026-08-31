@@ -10,7 +10,7 @@
 
 const std = @import("std");
 const canonical = @import("canonical_event.zig");
-const flow = @import("flow_engine.zig");
+const flow_types = @import("flow_types.zig");
 const detection = @import("detection_engine.zig");
 
 // ============================================================
@@ -71,7 +71,7 @@ pub fn resetStats() void {
 /// Returns empty list if not initialized.
 pub fn analyze(
     event: canonical.CanonicalEvent,
-    flow_update: ?flow.FlowUpdate,
+    flow_update: ?flow_types.FlowUpdate,
 ) detection.EvidenceList {
     if (!g_initialized) return detection.EvidenceList.init();
     if (g_engine) |*engine| {

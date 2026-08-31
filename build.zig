@@ -14,6 +14,7 @@ pub fn build(b: *std.Build) void {
     const rules_src = b.path("config/Rules.json");
     const rules_install = b.addInstallFileWithDir(rules_src, .bin, "Rules.json");
     exe.step.dependOn(&rules_install.step);
+    b.installArtifact(exe);
     b.installFile("config/Rules.json", "Rules.json");
 
     const run_cmd = b.addRunArtifact(exe);

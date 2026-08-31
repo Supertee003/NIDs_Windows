@@ -10,7 +10,7 @@
 
 const std = @import("std");
 const canonical = @import("canonical_event.zig");
-const flow = @import("flow_engine.zig");
+const flow_types = @import("flow_types.zig");
 const verdict_agg = @import("verdict_aggregator.zig");
 const correlation = @import("correlation_engine.zig");
 
@@ -69,7 +69,7 @@ pub fn resetStats() void {
 /// Returns empty array (all null) if not initialized.
 pub fn processVerdict(
     event: canonical.CanonicalEvent,
-    flow_update: ?flow.FlowUpdate,
+    flow_update: ?flow_types.FlowUpdate,
     av: verdict_agg.AggregatedVerdict,
 ) [3]?correlation.CorrelationAlert {
     if (!g_initialized) return .{ null, null, null };

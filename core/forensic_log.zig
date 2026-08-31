@@ -43,7 +43,7 @@ pub fn init() void {
 
     // Ensure logs/ directory exists
     std.fs.cwd().makePath("logs") catch |err| {
-        std.log.err("[FORENSIC] Failed to create logs/ dir: {}", .{err});
+        std.log.err("[FORENSIC] Failed to create logs/ dir: {any}", .{err});
         return;
     };
 
@@ -129,7 +129,7 @@ const ROTATION_CHECK_INTERVAL_NS: i128 = 60 * std.time.ns_per_s; // Check every 
 /// Check if log file needs rotation based on size or age.
 /// Called periodically from the log() function (every 60s).
 fn checkRotation(handle: win.HANDLE) void {
-    const now_ns = std.time.nanoTimestamp();
+    const now_ns = @as(i64, @intCast(std.time.nanoTimestamp()));
     if (now_ns - g_last_rotation_check_ns < ROTATION_CHECK_INTERVAL_NS) return;
     g_last_rotation_check_ns = now_ns;
 
@@ -173,7 +173,7 @@ fn checkRotation(handle: win.HANDLE) void {
     if (new_handle != win.INVALID_HANDLE_VALUE) {
         g_log_handle = new_handle;
     }
-    std.log.info("[FORENSIC] Log rotated (was {} bytes)", .{file_size});
+    std.log.info("[FORENSIC] Log rotated (was {d} bytes)", .{file_size});
 }
 
 // ============================================================

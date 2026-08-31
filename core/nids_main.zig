@@ -26,7 +26,7 @@ const nose_int = @import("nose_integration.zig");
 const hids_proc = @import("hids_process_monitor.zig");
 const xdr = @import("xdr_correlator.zig");
 const rag = @import("rag_intelligence.zig");
-const flow = @import("flow_engine.zig");
+// const flow = @import("flow_engine.zig"); // G32: removed (dispatcher handles flow)
 const flow_int = @import("flow_integration.zig");
 const detection_int = @import("detection_integration.zig");
 const correlation_int = @import("correlation_integration.zig");
@@ -46,7 +46,7 @@ pub fn main() !void {
 
     std.fs.cwd().makeDir("logs") catch |err| {
         if (err != error.PathAlreadyExists) {
-            std.log.err("[MAIN] Failed to create logs dir: {}", .{err});
+            std.log.err("[MAIN] Failed to create logs dir: {any}", .{err});
         }
     };
 
@@ -59,7 +59,7 @@ pub fn main() !void {
         .capacity_per_priority = 256,
         .validate_on_submit = true,
     }) catch |err| {
-        std.log.err("[MAIN] Failed to init Event Fabric: {}", .{err});
+        std.log.err("[MAIN] Failed to init Event Fabric: {any}", .{err});
         return err;
     };
     defer nose.shutdownFabric(allocator);
@@ -91,15 +91,15 @@ pub fn main() !void {
     _ = &rag_engine;
     std.log.info("[MAIN] RAG Intelligence Engine initialized (1 seed entry)", .{});
 
-    // Phase 37: Initialize Flow Engine (legacy table — kept for backward compat with sprint2 tests)
-    var flow_table = flow.FlowTable.init();
-    _ = &flow_table;
-    std.log.info("[MAIN] Flow Engine initialized (max {} flows)", .{4096});
+    // Phase 37: Initialize Flow Engine (legacy table — kept for backward compat with sprint2 tests)`
+    // G32: FlowTable removed - dispatcher handles flow tracking
+    // G34: _ = &flow_table;
+    std.log.info("[MAIN] Flow Engine initialized (max {any} flows)", .{4096});
 
     // STEP 5: Initialize Flow Integration layer (single source of truth for runtime).
     // Sensors' events are processed through flow_integration.processEvent() in the
     // detection loop, providing FlowContext to detectors for stateful decisions.
-    flow_int.init();
+    flow_int.init(allocator);
     defer flow_int.shutdown();
     std.log.info("[MAIN] Flow Integration initialized (event-driven flow tracking)", .{});
 
@@ -107,13 +107,13 @@ pub fn main() !void {
     // Wires flow_integration + detection_manager together — events popped from
     // fabric are processed through the full pipeline (flow update + escalation +
     // detector scan + risk-score annotation).
-    detection_int.init(detection_int.EscalationThresholds.default());
+    detection_int.init();
     std.log.info("[MAIN] Detection Integration initialized (flow-aware detection active)", .{});
 
     // STEP 7: Initialize Correlation Integration layer.
     // Wires detection results into XDR correlator — events with same session_id
     // are linked into cross-tier incidents (network attack + host process + file write).
-    correlation_int.init();
+    correlation_int.init(allocator);
     defer correlation_int.shutdown();
     std.log.info("[MAIN] Correlation Integration initialized (XDR cross-tier linking active)", .{});
 
@@ -161,8 +161,8 @@ pub fn main() !void {
     defer bridge_init.shutdownAll();
 
     // T1: 3-Tier Analysis Engine (required - fail if can't spawn)
-    const t_analyze = std.Thread.spawn(.{}, nids_analyze.analyze_packets, .{allocator}) catch |err| {
-        std.log.err("[MAIN] T1 Analyze failed to spawn: {}", .{err});
+    const t_analyze = std.Thread.spawn(.{}, nids_analyze.analyzeThreadFn, .{}) catch |err| {
+        std.log.err("[MAIN] T1 Analyze failed to spawn: {any}", .{err});
         return err;
     };
     std.log.info("[MAIN] T1 Analyze spawned", .{});
@@ -173,7 +173,7 @@ pub fn main() !void {
     // T2: Named Pipe IPC Sensor (optional - sensor pipe for Python scripts)
     const t_pipe: ?std.Thread = blk: {
         const t = std.Thread.spawn(.{}, nids_capture.capture_packets, .{ allocator, "127.0.0.1" }) catch |err| {
-            std.log.warn("[MAIN] T2 Pipe Sensor failed: {}", .{err});
+            std.log.warn("[MAIN] T2 Pipe Sensor failed: {any}", .{err});
             break :blk null;
         };
         break :blk t;
@@ -181,30 +181,42 @@ pub fn main() !void {
     if (t_pipe != null) std.log.info("[MAIN] T2 Pipe Sensor spawned", .{});
 
     // T3: WFP Kernel Traffic Sensor (optional - requires kernel driver)
-    const t_wfp: ?std.Thread = std.Thread.spawn(.{}, windows_capture.capture_packets, .{ allocator, "127.0.0.1" }) catch |err| {
-        std.log.warn("[MAIN] T3 WFP Capture failed: {}", .{err});
-        null;
+    const t_wfp: ?std.Thread = blk: {
+        const t = std.Thread.spawn(.{}, windows_capture.capture_packets, .{ allocator, "127.0.0.1" }) catch |err| {
+            std.log.warn("[MAIN] T3 WFP Capture failed: {any}", .{err});
+            break :blk null;
+        };
+        break :blk t;
     };
     if (t_wfp != null) std.log.info("[MAIN] T3 WFP Capture spawned", .{});
 
     // T4: Minifilter Event Reader (optional - requires kernel driver)
-    const t_mini: ?std.Thread = std.Thread.spawn(.{}, minifilter_reader.minifilterReaderLoop, .{}) catch |err| {
-        std.log.warn("[MAIN] T4 Minifilter failed: {}", .{err});
-        null;
+    const t_mini: ?std.Thread = blk: {
+        const t = std.Thread.spawn(.{}, minifilter_reader.minifilterReaderLoop, .{}) catch |err| {
+            std.log.warn("[MAIN] T4 Minifilter failed: {any}", .{err});
+            break :blk null;
+        };
+        break :blk t;
     };
     if (t_mini != null) std.log.info("[MAIN] T4 Minifilter spawned", .{});
 
     // T5: Named Pipe Scanner (optional)
-    const t_pmon: ?std.Thread = std.Thread.spawn(.{}, pipe_monitor.pipeMonitorLoop, .{}) catch |err| {
-        std.log.warn("[MAIN] T5 Pipe Monitor failed: {}", .{err});
-        null;
+    const t_pmon: ?std.Thread = blk: {
+        const t = std.Thread.spawn(.{}, pipe_monitor.pipeMonitorLoop, .{}) catch |err| {
+            std.log.warn("[MAIN] T5 Pipe Monitor failed: {any}", .{err});
+            break :blk null;
+        };
+        break :blk t;
     };
     if (t_pmon != null) std.log.info("[MAIN] T5 Pipe Monitor spawned", .{});
 
     // Phase 37: T6 HIDS Process Monitor (optional - Sprint 3)
-    const t_hids: ?std.Thread = std.Thread.spawn(.{}, hidsProcessLoop, .{}) catch |err| {
-        std.log.warn("[MAIN] T6 HIDS Process Monitor failed: {}", .{err});
-        null;
+    const t_hids: ?std.Thread = blk: {
+        const t = std.Thread.spawn(.{}, hidsProcessLoop, .{}) catch |err| {
+            std.log.warn("[MAIN] T6 HIDS Process Monitor failed: {any}", .{err});
+            break :blk null;
+        };
+        break :blk t;
     };
     if (t_hids != null) std.log.info("[MAIN] T6 HIDS Process Monitor spawned", .{});
 
@@ -228,9 +240,7 @@ pub fn main() !void {
     // Phase 37: Print final stats from all Sprint 2 modules
     const fabric_stats = nose.getStats();
     std.log.info("[MAIN] Fabric: accepted={d} pending={d}", .{ fabric_stats.accepted, fabric_stats.pending });
-    std.log.info("[MAIN] RAG: entries={d} queries={d} matches={d}", .{
-        rag.RAGEngine.init().getStats().db_entries, 0, 0
-    });
+    std.log.info("[MAIN] RAG: entries={d} queries={d} matches={d}", .{ rag_engine.getStats().db_entries, 0, 0 });
 
     std.log.info("[MAIN] Shutdown complete", .{});
 }
@@ -250,9 +260,7 @@ fn hidsProcessLoop() void {
         std.time.sleep(30 * std.time.ns_per_s);
 
         const stats = hids_proc.getStats();
-        std.log.info("[HIDS-PROC] Processes={d} Suspicious={d}", .{
-            stats.total_processes, stats.suspicious_count
-        });
+        std.log.info("[HIDS-PROC] Processes={d} Suspicious={d}", .{ stats.total_processes, stats.suspicious_count });
     }
 
     std.log.info("[HIDS-PROC] Thread 6 shutting down", .{});

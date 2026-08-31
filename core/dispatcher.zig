@@ -16,6 +16,7 @@ const std = @import("std");
 const canonical = @import("canonical_event.zig");
 const fabric = @import("event_fabric.zig");
 const flow_int = @import("flow_integration.zig");
+const flow_types = @import("flow_types.zig");
 const detection_int = @import("detection_integration.zig");
 const verdict_agg = @import("verdict_aggregator.zig");
 const correlation_int = @import("correlation_integration.zig");
@@ -55,7 +56,7 @@ pub fn isAggregatorInitialized() bool {
 /// Process a single event through the pipeline.
 pub fn processEvent(event: canonical.CanonicalEvent) void {
     // Phase 6: route through Flow Engine
-    var flow_update_opt: ?@import("flow_engine.zig").FlowUpdate = null;
+    var flow_update_opt: ?flow_types.FlowUpdate = null;
 
     if (flow_int.isInitialized()) {
         flow_update_opt = flow_int.processEvent(event);

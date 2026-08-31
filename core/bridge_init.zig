@@ -112,7 +112,7 @@ var fn_validate_payload_safety: ?FnValidatePayloadSafety = null;
 const net = std.net;
 const posix = std.posix;
 
-var g_udp_sock: posix.socket_t = 0;
+var g_udp_sock: posix.socket_t = undefined;
 var g_udp_addr: net.Address = undefined;
 var g_udp_available: bool = false;
 
@@ -423,12 +423,10 @@ pub fn initAll() void {
 
     // GAP-3: Start spool drain thread (retries failed UDP sends)
     if (g_udp_available) {
-        const drain_thread = std.Thread.spawn(.{}, spoolDrainThread, .{}) catch |err| {
-            std.log.warn("[INIT] Spool drain thread failed to spawn: {}", .{err});
+        _ = std.Thread.spawn(.{}, spoolDrainThread, .{}) catch |err| {
+            std.log.warn("[INIT] Spool drain thread failed to spawn: {any}", .{err});
         };
-        if (drain_thread) |_| {
-            g_spool_drain_running = true;
-        }
+        g_spool_drain_running = true;
     }
 
     // Summary
@@ -436,7 +434,7 @@ pub fn initAll() void {
         @as(u32, @intFromBool(g_state.cpp_bridge)) +
         @as(u32, @intFromBool(g_state.rust_shield)) +
         @as(u32, @intFromBool(g_state.udp_brain));
-    std.log.info("[INIT] Bridge status: {d}/4 active (wfp={} cpp={} rust={} udp={})", .{
+    std.log.info("[INIT] Bridge status: {d}/4 active (wfp={any} cpp={any} rust={any} udp={any})", .{
         active,
         g_state.wfp_ioctl,
         g_state.cpp_bridge,
@@ -548,7 +546,7 @@ pub fn sendToBrain(allocator: std.mem.Allocator, comptime T: type, msg: T) void 
             g_brain_spool_count += 1;
         } else {
             // Queue full — drop oldest and increment counter
-            _ = g_brain_dropped_events.fetchAdd(1, .relaxed);
+            _ = g_brain_dropped_events.fetchAdd(1, .monotonic);
             std.log.warn("[BRAIN] Spool queue full, dropping event", .{});
         }
     };
@@ -580,8 +578,8 @@ pub fn printStatus() void {
     }
     if (g_state.wfp_ioctl) {
         if (getWfpStats()) |stats| {
-            std.log.info("[BRIDGE] WFP ring: {d}/{} bytes", .{ stats.currentUsedBytes, stats.capacity });
-            std.debug.print("[BRIDGE] WFP ring: {d}/{} bytes\n", .{ stats.currentUsedBytes, stats.capacity });
+            std.log.info("[BRIDGE] WFP ring: {d}/{d} bytes", .{ stats.currentUsedBytes, stats.capacity });
+            std.debug.print("[BRIDGE] WFP ring: {d}/{d} bytes\n", .{ stats.currentUsedBytes, stats.capacity });
         }
     }
 }

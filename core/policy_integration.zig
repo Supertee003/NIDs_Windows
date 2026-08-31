@@ -10,7 +10,7 @@
 
 const std = @import("std");
 const canonical = @import("canonical_event.zig");
-const flow = @import("flow_engine.zig");
+// G37: const flow = @import("flow_engine.zig");
 const detection = @import("detection_engine.zig");
 const verdict_agg = @import("verdict_aggregator.zig");
 const correlation = @import("correlation_engine.zig");

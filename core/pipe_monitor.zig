@@ -1,4 +1,4 @@
-﻿//! pipe_monitor.zig - AEGIS NIDS Pipe Monitor Sensor (Thread 5)
+//! pipe_monitor.zig - AEGIS NIDS Pipe Monitor Sensor (Thread 5)
 //!
 //! Polls \\.\pipe\* and checks for suspicious named pipes.
 //! Matches against known attack tool patterns (Cobalt Strike, PsExec, etc.)
@@ -11,16 +11,16 @@ const bridge_init = @import("bridge_init.zig");
 
 // ====== Suspicious Named Pipe Patterns ======
 const SUSPICIOUS_PIPE_PATTERNS = [_][]const u8{
-    "MSSE-",           // Cobalt Strike (R3001)
-    "postex_",         // Cobalt Strike post-exploitation
-    "status_",         // Cobalt Strike status pipe
-    "psexec",          // PsExec remote execution (R3002)
-    "PAExec",          // PsExec variant
-    "meterpreter",     // Meterpreter (R3004)
-    "atsvc",           // atexec scheduled task (R3005)
-    "anonymous",       // Anonymous pipe (R3003)
-    "MSF",             // Metasploit
-    "msf",             // Metasploit lowercase
+    "MSSE-", // Cobalt Strike (R3001)
+    "postex_", // Cobalt Strike post-exploitation
+    "status_", // Cobalt Strike status pipe
+    "psexec", // PsExec remote execution (R3002)
+    "PAExec", // PsExec variant
+    "meterpreter", // Meterpreter (R3004)
+    "atsvc", // atexec scheduled task (R3005)
+    "anonymous", // Anonymous pipe (R3003)
+    "MSF", // Metasploit
+    "msf", // Metasploit lowercase
 };
 
 // ====== Win32 FFI for pipe enumeration ======
@@ -29,10 +29,10 @@ const HANDLE = win.HANDLE;
 const INVALID_HANDLE_VALUE: HANDLE = @ptrFromInt(@as(usize, @bitCast(@as(isize, -1))));
 
 // BP-M17: Named constants for magic numbers
-const MAX_PATH_W: usize = 260;       // Win32 MAX_PATH wide-char limit
-const PM_ALERT_BUF: usize = 300;     // printAlert ASCII conversion buffer
-const PM_ASCII_MAX: u16 = 128;       // ASCII printable boundary
-const PM_INITIAL_DELAY_S: u64 = 3;   // Settle delay before first scan
+const MAX_PATH_W: usize = 260; // Win32 MAX_PATH wide-char limit
+const PM_ALERT_BUF: usize = 300; // printAlert ASCII conversion buffer
+const PM_ASCII_MAX: u16 = 128; // ASCII printable boundary
+const PM_INITIAL_DELAY_S: u64 = 3; // Settle delay before first scan
 const PM_SCAN_INTERVAL_S: u64 = 10; // Scan interval between pipe sweeps
 
 const WIN32_FIND_DATAW = extern struct {
@@ -44,7 +44,7 @@ const WIN32_FIND_DATAW = extern struct {
     nFileSizeLow: u32,
     dwReserved0: u32,
     dwReserved1: u32,
-    cFileName: [MAX_PATH_W]u16,
+    cFileName: [MAX_PATH_W:0]u16,
     cAlternateFileName: [14]u16,
 };
 
@@ -54,9 +54,7 @@ extern "kernel32" fn FindFirstFileW(lpFileName: [*:0]const u16, lpFindFileData: 
 extern "kernel32" fn FindNextFileW(hFindFile: HANDLE, lpFindFileData: *WIN32_FIND_DATAW) i32;
 extern "kernel32" fn FindClose(hFindFile: HANDLE) i32;
 
-const PIPE_SEARCH_PATH = [_:0]u16{
-    '\\', '\\', '.', '\\', 'p', 'i', 'p', 'e', '\\', '*'
-};
+const PIPE_SEARCH_PATH = [_:0]u16{ '\\', '\\', '.', '\\', 'p', 'i', 'p', 'e', '\\', '*' };
 
 // ====== Pipe Statistics ======
 var g_total_scans: u32 = 0;
@@ -100,7 +98,7 @@ fn scanPipes() void {
     // First file
     if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY == 0) {
         pipe_count += 1;
-        const name_len = std.mem.lenZ(&find_data.cFileName);
+        const name_len = std.mem.indexOfSentinel(u16, 0, &find_data.cFileName);
         const name = find_data.cFileName[0..name_len];
         if (isSuspiciousPipe(name)) |pattern| {
             suspicious_count += 1;
@@ -109,11 +107,9 @@ fn scanPipes() void {
         }
     }
 
-    // Remaining files
     while (FindNextFileW(hFind, &find_data) != 0) {
         if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY == 0) {
-            pipe_count += 1;
-            const name_len = std.mem.lenZ(&find_data.cFileName);
+            const name_len = std.mem.indexOfSentinel(u16, 0, &find_data.cFileName);
             const name = find_data.cFileName[0..name_len];
             if (isSuspiciousPipe(name)) |pattern| {
                 suspicious_count += 1;
@@ -124,12 +120,8 @@ fn scanPipes() void {
     }
 
     g_total_scans += 1;
-    std.log.info("[PM] Scan #{d}: {d} pipes, {d} suspicious", .{
-        g_total_scans, pipe_count, suspicious_count
-    });
-    std.debug.print("[PM] Scan #{d}: {d} pipes, {d} suspicious\n", .{
-        g_total_scans, pipe_count, suspicious_count
-    });
+    std.log.info("[PM] Scan #{d}: {d} pipes, {d} suspicious", .{ g_total_scans, pipe_count, suspicious_count });
+    std.debug.print("[PM] Scan #{d}: {d} pipes, {d} suspicious\n", .{ g_total_scans, pipe_count, suspicious_count });
 }
 
 fn printAlert(name_wide: []const u16, pattern: []const u8) void {
@@ -153,12 +145,8 @@ fn printAlert(name_wide: []const u16, pattern: []const u8) void {
 /// Print cumulative statistics
 pub fn printStats() void {
     // BP-L16: Stats visible in release builds via std.log
-    std.log.info("[PM] Stats: {d} scans, {d} total suspicious pipes found", .{
-        g_total_scans, g_suspicious_found
-    });
-    std.debug.print("[PM] Stats: {d} scans, {d} total suspicious pipes found\n", .{
-        g_total_scans, g_suspicious_found
-    });
+    std.log.info("[PM] Stats: {d} scans, {d} total suspicious pipes found", .{ g_total_scans, g_suspicious_found });
+    std.debug.print("[PM] Stats: {d} scans, {d} total suspicious pipes found\n", .{ g_total_scans, g_suspicious_found });
 }
 
 /// Main pipe monitor loop (Thread 5)
@@ -171,7 +159,6 @@ pub fn pipeMonitorLoop() void {
     std.time.sleep(PM_INITIAL_DELAY_S * std.time.ns_per_s);
 
     while (true) {
-
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
         scanPipes();
         printStats();

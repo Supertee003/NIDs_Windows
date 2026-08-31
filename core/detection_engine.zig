@@ -22,7 +22,7 @@
 
 const std = @import("std");
 const canonical = @import("canonical_event.zig");
-const flow = @import("flow_engine.zig");
+const flow_types = @import("flow_types.zig");
 
 // ============================================================
 // Verdict (6-state model, formalized in Phase 8)
@@ -98,7 +98,7 @@ pub const DetectionEvidence = struct {
     severity: u8, // 0-3 (matches CanonicalEvent.severity)
     description: []const u8, // static string, no allocation
     indicators: u32, // bitfield of Indicator flags
-    flow_key: ?flow.FlowKey, // null if not flow-related
+    flow_key: ?flow_types.FlowKey, // null if not flow-related
     event_id: u64,
     timestamp_ns: i128,
 
@@ -148,7 +148,7 @@ pub const DetectorVTable = struct {
     /// MUST NOT mutate the event or flow.
     analyze_fn: *const fn (
         event: canonical.CanonicalEvent,
-        flow_update: ?flow.FlowUpdate,
+        flow_update: ?flow_types.FlowUpdate,
     ) DetectionEvidence,
 };
 
@@ -169,7 +169,7 @@ pub const DetectorId = struct {
 
 pub fn ruleMatchAnalyze(
     event: canonical.CanonicalEvent,
-    flow_update: ?flow.FlowUpdate,
+    flow_update: ?flow_types.FlowUpdate,
 ) DetectionEvidence {
     _ = flow_update; // rule match doesn't use flow context
 
@@ -182,7 +182,7 @@ pub fn ruleMatchAnalyze(
             .severity = event.severity,
             .description = "rule matched",
             .indicators = Indicator.RULE_MATCH,
-            .flow_key = flow.FlowKey.fromEvent(event),
+            .flow_key = flow_types.FlowKey.fromEvent(event),
             .event_id = event.event_id,
             .timestamp_ns = event.monotonic_ns,
         };
@@ -207,7 +207,7 @@ const PORT_SCAN_PACKET_THRESHOLD: u64 = 20;
 
 pub fn portScanAnalyze(
     event: canonical.CanonicalEvent,
-    flow_update: ?flow.FlowUpdate,
+    flow_update: ?flow_types.FlowUpdate,
 ) DetectionEvidence {
     // Need flow context to check packet count
     const upd = flow_update orelse {
@@ -245,7 +245,7 @@ const HIGH_RATE_PACKET_THRESHOLD: u64 = 100;
 
 pub fn highRateAnalyze(
     event: canonical.CanonicalEvent,
-    flow_update: ?flow.FlowUpdate,
+    flow_update: ?flow_types.FlowUpdate,
 ) DetectionEvidence {
     const upd = flow_update orelse {
         return DetectionEvidence.benign(DetectorId.high_rate, event.event_id, event.monotonic_ns);
@@ -363,7 +363,7 @@ pub const DetectionEngine = struct {
     pub fn analyze(
         self: *DetectionEngine,
         event: canonical.CanonicalEvent,
-        flow_update: ?flow.FlowUpdate,
+        flow_update: ?flow_types.FlowUpdate,
     ) EvidenceList {
         var list = EvidenceList.init();
         self.total_analyzed += 1;
@@ -594,11 +594,11 @@ test "DetectionEngine.analyze with high-packet-count flow triggers port_scan" {
     event.protocol = 6;
 
     // Create a flow update with high packet count
-    const upd = flow.FlowUpdate{
+    const upd = flow_types.FlowUpdate{
         .kind = .flow_updated,
-        .key = flow.FlowKey.fromEvent(event),
+        .key = flow_types.FlowKey.fromEvent(event),
         .flow = .{
-            .key = flow.FlowKey.fromEvent(event),
+            .key = flow_types.FlowKey.fromEvent(event),
             .state = .new,
             .start_ns = 0,
             .last_seen_ns = 1000,
@@ -638,11 +638,11 @@ test "DetectionEngine.analyze with very-high-packet-count flow triggers high_rat
     event.dest_port = 80;
     event.protocol = 6;
 
-    const upd = flow.FlowUpdate{
+    const upd = flow_types.FlowUpdate{
         .kind = .flow_updated,
-        .key = flow.FlowKey.fromEvent(event),
+        .key = flow_types.FlowKey.fromEvent(event),
         .flow = .{
-            .key = flow.FlowKey.fromEvent(event),
+            .key = flow_types.FlowKey.fromEvent(event),
             .state = .established,
             .start_ns = 0,
             .last_seen_ns = 1000,

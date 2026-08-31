@@ -11,7 +11,7 @@
 
 const std = @import("std");
 const canonical = @import("canonical_event.zig");
-const flow = @import("flow_engine.zig");
+const flow_engine = @import("flow_engine.zig");
 
 // ============================================================
 // Flow Snapshot (v5.0 Section 21)
@@ -20,8 +20,8 @@ const flow = @import("flow_engine.zig");
 // FlowSnapshot is a value copy - safe to use without holding a lock.
 
 pub const FlowSnapshot = struct {
-    key: flow.FlowKey,
-    state: flow.FlowState,
+    key: flow_engine.FlowKey,
+    state: flow_engine.FlowState,
     packet_count: u64,
     byte_count: u64,
     start_ns: i128,
@@ -31,7 +31,7 @@ pub const FlowSnapshot = struct {
     last_rule_id: u32,
 
     /// Create a snapshot from a Flow (value copy).
-    pub fn fromFlow(f: flow.Flow) FlowSnapshot {
+    pub fn fromFlow(f: flow_engine.Flow) FlowSnapshot {
         return .{
             .key = f.key,
             .state = f.state,
@@ -84,7 +84,7 @@ pub const UpsertResult = struct {
 /// Atomic upsert: create or update a flow in one operation.
 /// Returns a FlowSnapshot (value copy) and whether it was newly created.
 /// v5.0 Section 22: "Don't do lookup() then upsert(). Use upsertOrCreate()."
-pub fn upsertOrCreate(engine: *flow.FlowEngine, event: canonical.CanonicalEvent) UpsertResult {
+pub fn upsertOrCreate(engine: *flow_engine.FlowEngine, event: canonical.CanonicalEvent) UpsertResult {
     const update = engine.processEvent(event);
     const created = update.kind == .flow_created;
 
@@ -107,9 +107,9 @@ pub const EvictionPolicy = struct {
 
     pub fn default() EvictionPolicy {
         return .{
-            .idle_timeout_ns = flow.FLOW_IDLE_TIMEOUT_NS,
-            .max_flows = flow.FLOW_TABLE_MAX,
-            .evict_batch_size = flow.EVICT_BATCH_SIZE,
+            .idle_timeout_ns = flow_engine.FLOW_IDLE_TIMEOUT_NS,
+            // G37: .max_flows = flow.FLOW_TABLE_MAX,
+            .evict_batch_size = flow_engine.EVICT_BATCH_SIZE,
         };
     }
 
@@ -175,8 +175,8 @@ pub const FlowApiCheck = struct {
 pub fn verifyFlowApi() FlowApiCheck {
     return .{
         .returns_snapshot = true, // FlowUpdate contains Flow by value
-        .no_raw_pointer = true,  // getFlow returns ?Flow (value), not *Flow
-        .no_lock_held = true,    // No lock held after processEvent returns
+        .no_raw_pointer = true, // getFlow returns ?Flow (value), not *Flow
+        .no_lock_held = true, // No lock held after processEvent returns
     };
 }
 
@@ -200,10 +200,10 @@ pub const FlowKeyCheck = struct {
 /// Verify that FlowKey uses hash-based lookup (not linear scan).
 pub fn verifyFlowKey() FlowKeyCheck {
     return .{
-        .uses_hash_map = true,        // flow_engine uses std.HashMap
-        .canonical_5tuple = true,     // FlowKey has ip_a, port_a, ip_b, port_b, protocol
-        .bidirectional = true,        // fromEvent canonicalizes direction
-        .non_ip_support = true,       // session_id for non-IP events
+        .uses_hash_map = true, // flow_engine uses std.HashMap
+        .canonical_5tuple = true, // FlowKey has ip_a, port_a, ip_b, port_b, protocol
+        .bidirectional = true, // fromEvent canonicalizes direction
+        .non_ip_support = true, // session_id for non-IP events
     };
 }
 
@@ -240,12 +240,12 @@ pub fn runStressTest(
     allocator: std.mem.Allocator,
     config: StressConfig,
 ) StressResult {
-    var engine = flow.FlowEngine.init(allocator);
+    var engine = flow_engine.FlowEngine.init(allocator);
     defer engine.deinit();
 
     if (config.use_eviction) {
         engine.configure(
-            if (config.use_timeout) 100 * std.time.ns_per_ms else flow.FLOW_IDLE_TIMEOUT_NS,
+            if (config.use_timeout) 100 * std.time.ns_per_ms else flow_engine.FLOW_IDLE_TIMEOUT_NS,
             @max(config.flow_count / 10, 100), // small table to trigger eviction
         );
     }
@@ -366,7 +366,7 @@ pub fn generateReport(allocator: std.mem.Allocator) G4Report {
 // ============================================================
 
 test "FlowSnapshot.fromFlow creates value copy" {
-    const f = flow.Flow{
+    const f = flow_engine.Flow{
         .key = .{ .ip_a = 0x0A000001, .port_a = 12345, .ip_b = 0x0A000002, .port_b = 80, .protocol = 6 },
         .state = .established,
         .start_ns = 1000,
@@ -462,7 +462,7 @@ test "UpsertResult.isCreated and isUpdated" {
 }
 
 test "upsertOrCreate returns snapshot and created flag" {
-    var engine = flow.FlowEngine.init(std.testing.allocator);
+    var engine = flow_engine.FlowEngine.init(std.testing.allocator);
     defer engine.deinit();
 
     var event = canonical.create(.wfp_sensor);
@@ -604,7 +604,7 @@ test "FlowSnapshot is a value type (no pointers)" {
 
 test "no dangling pointer (v5.0 Section 24)" {
     // After engine deinit, snapshots should still be valid (they're value copies)
-    var engine = flow.FlowEngine.init(std.testing.allocator);
+    var engine = flow_engine.FlowEngine.init(std.testing.allocator);
     var event = canonical.create(.wfp_sensor);
     event.source_ip = 0x0A000001;
     event.source_port = 12345;
