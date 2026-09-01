@@ -18,8 +18,229 @@
 use std::env;
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Seek, SeekFrom, Write};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::thread;
+
+// G35: Health-check named pipe server (Gate-A conformance).
+// Spawns a detached thread that listens on `\\.\pipe\aegis-mouth-health`
+// for {"op":"HEALTH"} probes and returns a JSON response matching
+// RUNTIME_CONTRACT.md §4.1.
+#[cfg(windows)]
+mod health_pipe {
+    use std::os::windows::io::AsRawHandle;
+    use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+    use std::thread;
+    use std::time::{Duration, Instant};
+
+    // Windows API constants
+    const PIPE_ACCESS_DUPLEX: u32 = 0x00000003;
+    const PIPE_TYPE_MESSAGE: u32 = 0x00000004;
+    const PIPE_READMODE_MESSAGE: u32 = 0x00000002;
+    const PIPE_WAIT: u32 = 0x00000000;
+    const PIPE_UNLIMITED_INSTANCES: u32 = 255;
+    const ERROR_PIPE_CONNECTED: u32 = 0x217;
+    const ERROR_IO_PENDING: u32 = 0x3E5;
+    const FILE_FLAG_OVERLAPPED: u32 = 0x40000000;
+    const INFINITE: u32 = 0xFFFFFFFF;
+    const WAIT_TIMEOUT: u32 = 0x102;
+    const WAIT_OBJECT_0: u32 = 0;
+
+    #[repr(C)]
+    #[derive(Default)]
+    struct Overlapped {
+        internal: usize,
+        internal_high: usize,
+        offset: u32,
+        offset_high: u32,
+        h_event: *mut std::ffi::c_void,
+    }
+
+    extern "system" {
+        fn CreateNamedPipeA(
+            name: *const u8,
+            open_mode: u32,
+            pipe_mode: u32,
+            max_instances: u32,
+            out_buf_size: u32,
+            in_buf_size: u32,
+            default_timeout: u32,
+            security: *mut std::ffi::c_void,
+        ) -> *mut std::ffi::c_void;
+        fn ConnectNamedPipe(
+            handle: *mut std::ffi::c_void,
+            overlapped: *mut Overlapped,
+        ) -> i32;
+        fn GetLastError() -> u32;
+        fn ReadFile(
+            handle: *mut std::ffi::c_void,
+            buffer: *mut u8,
+            bytes_to_read: u32,
+            bytes_read: *mut u32,
+            overlapped: *mut Overlapped,
+        ) -> i32;
+        fn WriteFile(
+            handle: *mut std::ffi::c_void,
+            buffer: *const u8,
+            bytes_to_write: u32,
+            bytes_written: *mut u32,
+            overlapped: *mut Overlapped,
+        ) -> i32;
+        fn FlushFileBuffers(handle: *mut std::ffi::c_void) -> i32;
+        fn CloseHandle(handle: *mut std::ffi::c_void) -> i32;
+        fn GetTickCount64() -> u64;
+        fn GetCurrentProcessId() -> u32;
+        fn CreateEventW(
+            attrs: *mut std::ffi::c_void,
+            manual_reset: i32,
+            initial_state: i32,
+            name: *const u16,
+        ) -> *mut std::ffi::c_void;
+        fn WaitForSingleObject(handle: *mut std::ffi::c_void, ms: u32) -> u32;
+        fn CancelIoEx(
+            handle: *mut std::ffi::c_void,
+            overlapped: *mut Overlapped,
+        ) -> i32;
+        fn GetOverlappedResult(
+            handle: *mut std::ffi::c_void,
+            overlapped: *mut Overlapped,
+            bytes: *mut u32,
+            wait: i32,
+        ) -> i32;
+    }
+
+    pub static SHUTDOWN: AtomicBool = AtomicBool::new(false);
+    pub static IN_EVENTS: AtomicU64 = AtomicU64::new(0);
+    pub static OUT_EVENTS: AtomicU64 = AtomicU64::new(0);
+    pub static ERRORS: AtomicU64 = AtomicU64::new(0);
+    pub static DROPPED: AtomicU64 = AtomicU64::new(0);
+    pub static LAST_EVENT_TICK: AtomicU64 = AtomicU64::new(0);
+    pub static START_TICK: std::sync::Once = std::sync::Once::new();
+    pub static mut START_INSTANT: Option<Instant> = None;
+
+    const PIPE_NAME: &[u8] = b"\\\\.\\pipe\\aegis-mouth-health\0";
+
+    pub fn server_loop(start_time: Instant) {
+        START_TICK.call_once(|| unsafe { START_INSTANT = Some(start_time) });
+
+        while !SHUTDOWN.load(Ordering::Acquire) {
+            unsafe {
+                let h_pipe = CreateNamedPipeA(
+                    PIPE_NAME.as_ptr(),
+                    PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
+                    PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
+                    PIPE_UNLIMITED_INSTANCES,
+                    4096, 4096, 0,
+                    std::ptr::null_mut(),
+                );
+                if h_pipe.is_null() || h_pipe as usize == usize::MAX {
+                    thread::sleep(Duration::from_millis(50));
+                    continue;
+                }
+
+                let h_event = CreateEventW(
+                    std::ptr::null_mut(), 1, 0, std::ptr::null(),
+                );
+                if h_event.is_null() {
+                    CloseHandle(h_pipe);
+                    thread::sleep(Duration::from_millis(50));
+                    continue;
+                }
+
+                let mut overlapped: Overlapped = Default::default();
+                overlapped.h_event = h_event;
+                let connected = ConnectNamedPipe(h_pipe, &mut overlapped);
+                if connected == 0 {
+                    let err = GetLastError();
+                    if err != ERROR_IO_PENDING && err != ERROR_PIPE_CONNECTED {
+                        CloseHandle(h_pipe);
+                        CloseHandle(h_event);
+                        continue;
+                    }
+                }
+
+                let wait_result = WaitForSingleObject(h_event, 250);
+                if wait_result == WAIT_TIMEOUT {
+                    if SHUTDOWN.load(Ordering::Acquire) {
+                        CancelIoEx(h_pipe, &mut overlapped);
+                        CloseHandle(h_pipe);
+                        CloseHandle(h_event);
+                        break;
+                    }
+                    CancelIoEx(h_pipe, &mut overlapped);
+                    CloseHandle(h_pipe);
+                    CloseHandle(h_event);
+                    continue;
+                }
+                if wait_result != WAIT_OBJECT_0 {
+                    CloseHandle(h_pipe);
+                    CloseHandle(h_event);
+                    continue;
+                }
+
+                // Read request (we don't care about content, just respond).
+                let mut req = [0u8; 128];
+                let mut req_len: u32 = 0;
+                let mut read_ov: Overlapped = Default::default();
+                read_ov.h_event = h_event;
+                ReadFile(h_pipe, req.as_mut_ptr(), req.len() as u32, &mut req_len, &mut read_ov);
+                GetOverlappedResult(h_pipe, &mut read_ov, &mut req_len, 1);
+
+                // Build JSON response.
+                let now = GetTickCount64();
+                let last_event = LAST_EVENT_TICK.load(Ordering::Acquire);
+                let last_event_ms: u64 = if last_event > 0 { now.saturating_sub(last_event) } else { 0 };
+                let uptime_ms = start_time.elapsed().as_millis() as u64;
+                let latency_start = now;
+
+                let json = format!(
+                    "{{\"op\":\"HEALTH\",\"state\":\"RUNNING\",\"status\":\"OK\",\
+                     \"component\":\"mouth\",\"subsystem\":\"mouth\",\
+                     \"version\":\"1.0.0\",\
+                     \"pid\":{},\"uptime_ms\":{},\
+                     \"last_event_ms\":{},\"probe_latency_ms\":{},\
+                     \"counters\":{{\"in_events\":{},\"out_events\":{},\
+                     \"errors\":{},\"dropped\":{}}},\
+                     \"deps\":[{{\"name\":\"core\",\"state\":\"RUNNING\"}}]}}",
+                    GetCurrentProcessId(),
+                    uptime_ms,
+                    last_event_ms,
+                    GetTickCount64().saturating_sub(latency_start),
+                    IN_EVENTS.load(Ordering::Acquire),
+                    OUT_EVENTS.load(Ordering::Acquire),
+                    ERRORS.load(Ordering::Acquire),
+                    DROPPED.load(Ordering::Acquire),
+                );
+
+                let mut written: u32 = 0;
+                let mut write_ov: Overlapped = Default::default();
+                write_ov.h_event = h_event;
+                WriteFile(
+                    h_pipe,
+                    json.as_ptr(),
+                    json.len() as u32,
+                    &mut written,
+                    &mut write_ov,
+                );
+                GetOverlappedResult(h_pipe, &mut write_ov, &mut written, 1);
+                FlushFileBuffers(h_pipe);
+                CloseHandle(h_pipe);
+                CloseHandle(h_event);
+            }
+        }
+    }
+
+    /// Spawn the health server on a detached thread.
+    pub fn spawn(start_time: Instant) {
+        thread::spawn(move || {
+            server_loop(start_time);
+        });
+    }
+
+    /// Signal the health server to exit (called from main on shutdown).
+    pub fn shutdown() {
+        SHUTDOWN.store(true, Ordering::Release);
+    }
+}
 
 // =====================================================================
 // CLI ARGS (best practice: --log + --refresh, matching NOSE)
@@ -662,6 +883,14 @@ fn render_dashboard(
 
 fn main() {
     let config = parse_args();
+
+    let start_time = Instant::now();
+
+    // G35: spawn HEALTH pipe server (Gate-A conformance).
+    // The thread runs in detached mode and exits when SHUTDOWN is set
+    // or the process terminates.
+    #[cfg(windows)]
+    health_pipe::spawn(start_time);
 
     let mut cum_stats = CumulativeStats::new();
     let mut tail = TailReader::new(&config.log_path);

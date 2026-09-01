@@ -200,6 +200,10 @@ fn enableVirtualTerminal() void {
 // Implements \\.\pipe\aegis-core-health (RUNTIME_CONTRACT.md §4).
 // Serves one probe per connection on a message-mode pipe, then
 // recreates the pipe for the next probe.
+//
+// G35 fix: previously used `while (true)` with blocking ConnectNamedPipe,
+// which caused `t_health.join()` to hang on shutdown. Now uses overlapped
+// I/O + polling so the loop exits when g_shutdown_requested is set.
 // ============================================================
 
 const PipeAccessDuplex: u32 = 0x00000003;
@@ -208,6 +212,20 @@ const PipeReadmodeMessage: u32 = 0x00000002;
 const PipeWaitMode: u32 = 0x00000000;
 const PipeUnlimitedInstances: u32 = 255;
 const ErrorPipeConnected: u32 = 0x217;
+const ErrorIoPending: u32 = 0x3E5;
+const FileFlagOverlapped: u32 = 0x40000000;
+const Infinite: u32 = 0xFFFFFFFF;
+const WaitTimeout: u32 = 0x102;
+const WaitObject0: u32 = 0;
+
+// OVERLAPPED struct for overlapped I/O on Windows.
+const Overlapped = extern struct {
+    internal: usize = 0,
+    internal_high: usize = 0,
+    offset_low: u32 = 0,
+    offset_high: u32 = 0,
+    h_event: ?*anyopaque = null,
+};
 
 const health = struct {
     extern "kernel32" fn CreateNamedPipeA(
@@ -229,51 +247,180 @@ const health = struct {
     extern "kernel32" fn GetTickCount64() u64;
     extern "kernel32" fn GetCurrentProcessId() u32;
     extern "kernel32" fn Sleep(dwMilliseconds: u32) void;
+    extern "kernel32" fn CreateEventW(lpEventAttributes: ?*anyopaque, bManualReset: i32, bInitialState: i32, lpName: ?[*:0]const u16) ?*anyopaque;
+    extern "kernel32" fn WaitForSingleObject(hHandle: ?*anyopaque, dwMilliseconds: u32) u32;
+    extern "kernel32" fn CancelIoEx(hFile: ?*anyopaque, lpOverlapped: ?*anyopaque) i32;
+    extern "kernel32" fn GetOverlappedResult(hFile: ?*anyopaque, lpOverlapped: ?*anyopaque, lpNumberOfBytesTransferred: *u32, bWait: i32) i32;
 };
+
+// INVALID_HANDLE_VALUE on Windows is (HANDLE)-1, which on 64-bit is 0xFFFFFFFFFFFFFFFF.
+// In Zig, we represent this as a pointer with the maximum usize value.
+const INVALID_HANDLE_VALUE: *anyopaque = @ptrFromInt(@as(usize, @bitCast(@as(isize, -1))));
 
 var g_start_tick: u64 = 0;
 
+// G35: track when the last event was processed (set by other threads,
+// read by health server). Atomic so concurrent access is safe.
+var g_last_event_tick: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+
+// G35: counters updated by other threads, read by health server.
+var g_in_events: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+var g_out_events: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+var g_errors: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+var g_dropped: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+
+/// Called by other subsystems (T1-T5) to record that an event was processed.
+/// This makes `last_event_ms` in the HEALTH response meaningful.
+pub fn recordEventProcessed() void {
+    g_last_event_tick.store(health.GetTickCount64(), .release);
+    _ = g_in_events.fetchAdd(1, .monotonic);
+}
+
+/// Called by other subsystems when an event is emitted downstream.
+pub fn recordEventEmitted() void {
+    _ = g_out_events.fetchAdd(1, .monotonic);
+}
+
+/// Called when an error occurs (failed send, parse error, etc.).
+pub fn recordError() void {
+    _ = g_errors.fetchAdd(1, .monotonic);
+}
+
+/// Called when an event was dropped (queue full, etc.).
+pub fn recordDropped() void {
+    _ = g_dropped.fetchAdd(1, .monotonic);
+}
+
 fn healthServerLoop() void {
     const pipe_name = "\\\\.\\pipe\\aegis-core-health";
-    var buf: [512]u8 = undefined;
-    while (true) {
+    var buf: [768]u8 = undefined;
+
+    // G35: poll shutdown flag in the loop. Use overlapped I/O with a
+    // 250ms wait timeout so we can re-check the flag periodically.
+    // g_shutdown_requested is set by the CTRL+C handler in nids_analyze.
+
+    while (!nids_analyze.g_shutdown_requested.load(.acquire) and
+           !bridge_init.g_shutdown.load(.seq_cst))
+    {
         const h_pipe = health.CreateNamedPipeA(
             pipe_name,
-            PipeAccessDuplex,
+            PipeAccessDuplex | FileFlagOverlapped,
             PipeTypeMessage | PipeReadmodeMessage | PipeWaitMode,
             PipeUnlimitedInstances,
             4096, 4096,
             0, null,
         );
-        if (h_pipe == null or h_pipe.? == @as(*anyopaque, @ptrFromInt(std.math.maxInt(usize)))) {
+        if (h_pipe == null or h_pipe.? == INVALID_HANDLE_VALUE) {
             health.Sleep(50);
             continue;
         }
         const hp = h_pipe.?;
 
-        const connected = health.ConnectNamedPipe(hp, null);
-        if (connected == 0 and health.GetLastError() != ErrorPipeConnected) {
+        // Create an auto-reset event for overlapped I/O (standard idiom:
+        // a manual-reset event stays signaled after the first completion,
+        // which makes WaitForSingleObject return instantly and
+        // GetOverlappedResult busy-spin until the next completion).
+        const h_event = health.CreateEventW(null, 0, 0, null) orelse {
             _ = health.CloseHandle(hp);
+            health.Sleep(50);
             continue;
+        };
+
+        var overlapped: Overlapped = .{ .h_event = h_event };
+        const connected = health.ConnectNamedPipe(hp, @ptrCast(&overlapped));
+
+        // ConnectNamedPipe returns 0 on failure. If GetLastError is
+        // ERROR_IO_PENDING, the operation is in progress (expected for
+        // overlapped I/O). If it's ERROR_PIPE_CONNECTED, the client
+        // already connected before we called ConnectNamedPipe, in which
+        // case there is NO pending operation and the event will never
+        // signal — we must skip the wait and serve immediately.
+        var serve_now = false;
+        if (connected == 0) {
+            const err = health.GetLastError();
+            if (err == ErrorPipeConnected) {
+                serve_now = true;
+            } else if (err != ErrorIoPending) {
+                _ = health.CloseHandle(hp);
+                _ = health.CloseHandle(h_event);
+                continue;
+            }
         }
 
+        if (!serve_now) {
+            // Wait for the connection with a 250ms timeout so we can
+            // re-check the shutdown flag periodically.
+            const wait_result = health.WaitForSingleObject(h_event, 250);
+            if (wait_result == WaitTimeout) {
+                // No client connected within 250ms. Check shutdown flag.
+                if (nids_analyze.g_shutdown_requested.load(.acquire) or
+                    bridge_init.g_shutdown.load(.seq_cst))
+                {
+                    _ = health.CancelIoEx(hp, @ptrCast(&overlapped));
+                    _ = health.CloseHandle(hp);
+                    _ = health.CloseHandle(h_event);
+                    break;
+                }
+                // Not shutting down yet — close this pipe instance and recreate.
+                _ = health.CancelIoEx(hp, @ptrCast(&overlapped));
+                _ = health.CloseHandle(hp);
+                _ = health.CloseHandle(h_event);
+                continue;
+            }
+            if (wait_result != WaitObject0) {
+                // Some other error — clean up and try again.
+                _ = health.CloseHandle(hp);
+                _ = health.CloseHandle(h_event);
+                continue;
+            }
+        }
+
+        // Connection established. Read the request.
         var req: [128]u8 = undefined;
         var req_len: u32 = 0;
-        _ = health.ReadFile(hp, &req, req.len, &req_len, null);
+        var read_overlapped: Overlapped = .{ .h_event = h_event };
+        _ = health.ReadFile(hp, &req, req.len, &req_len, @ptrCast(&read_overlapped));
+        _ = health.GetOverlappedResult(hp, @ptrCast(&read_overlapped), &req_len, 1);
 
-        const latency_start = health.GetTickCount64();
+        // Build the JSON response with all schema-required fields.
+        const now_tick = health.GetTickCount64();
+        const latency_start = now_tick;
+        const last_event = g_last_event_tick.load(.acquire);
+        const last_event_ms: u64 = if (last_event > 0) now_tick -| last_event else 0;
+
         const json = std.fmt.bufPrint(&buf,
-            "{{\"op\":\"HEALTH\",\"state\":\"RUNNING\",\"status\":\"OK\",\"component\":\"core\",\"subsystem\":\"core\",\"version\":\"{s}\",\"pid\":{d},\"uptime_ms\":{d},\"probe_latency_ms\":{d},\"deps\":[{{\"name\":\"bridge\",\"state\":\"RUNNING\"}}]}}",
+            "{{\"op\":\"HEALTH\",\"state\":\"RUNNING\",\"status\":\"OK\"," ++
+            "\"component\":\"core\",\"subsystem\":\"core\"," ++
+            "\"version\":\"{s}\",\"pid\":{d},\"uptime_ms\":{d}," ++
+            "\"last_event_ms\":{d},\"probe_latency_ms\":{d}," ++
+            "\"counters\":{{\"in_events\":{d},\"out_events\":{d}," ++
+            "\"errors\":{d},\"dropped\":{d}}}," ++
+            "\"deps\":[{{\"name\":\"bridge\",\"state\":\"RUNNING\"}}]}}",
             .{
                 bridge_init.AEGIS_VERSION,
                 health.GetCurrentProcessId(),
-                health.GetTickCount64() - g_start_tick,
+                now_tick - g_start_tick,
+                last_event_ms,
                 health.GetTickCount64() - latency_start,
+                g_in_events.load(.acquire),
+                g_out_events.load(.acquire),
+                g_errors.load(.acquire),
+                g_dropped.load(.acquire),
             },
-        ) catch continue;
+        ) catch {
+            _ = health.CloseHandle(hp);
+            _ = health.CloseHandle(h_event);
+            continue;
+        };
+
         var written: u32 = 0;
-        _ = health.WriteFile(hp, json.ptr, @intCast(json.len), &written, null);
+        var write_overlapped: Overlapped = .{ .h_event = h_event };
+        _ = health.WriteFile(hp, json.ptr, @intCast(json.len), &written, @ptrCast(&write_overlapped));
+        _ = health.GetOverlappedResult(hp, @ptrCast(&write_overlapped), &written, 1);
         _ = health.FlushFileBuffers(hp);
         _ = health.CloseHandle(hp);
+        _ = health.CloseHandle(h_event);
     }
+
+    std.log.info("[MAIN] T6 Health server loop exited", .{});
 }

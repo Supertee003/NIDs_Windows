@@ -48,6 +48,15 @@ static const char* kHealthPipeName = "\\\\.\\pipe\\aegis-bridge-health";
 
 static unsigned long long g_start_ms = 0;
 
+// G35: atomic counters + last-event tracker (read by health thread,
+// written by main thread when events arrive).
+#include <atomic>
+static std::atomic<unsigned long long> g_last_event_ms{0};
+static std::atomic<unsigned long long> g_in_events{0};
+static std::atomic<unsigned long long> g_out_events{0};
+static std::atomic<unsigned long long> g_errors{0};
+static std::atomic<unsigned long long> g_dropped{0};
+
 static unsigned long long now_monotonic_ms() {
 #ifdef _WIN32
     return (unsigned long long)GetTickCount64();
@@ -62,12 +71,17 @@ static unsigned long long now_monotonic_ms() {
 // Runs on a detached thread. Serves one health probe at a time on a
 // single-instance message-mode pipe, then recreates the pipe for the
 // next probe. The process kills this thread on exit (daemon semantics).
+//
+// G35 fix: previously used `while (g_running)` with blocking ConnectNamedPipe.
+// Now uses overlapped I/O + 250ms wait timeout so the loop can exit
+// promptly when g_running becomes false.
 static void health_server_routine() {
 #ifdef _WIN32
+    const DWORD PIPE_TIMEOUT_MS = 250;
     while (g_running) {
         HANDLE hPipe = CreateNamedPipeA(
             kHealthPipeName,
-            PIPE_ACCESS_DUPLEX,
+            PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
             PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
             PIPE_UNLIMITED_INSTANCES,
             4096, 4096,
@@ -77,37 +91,82 @@ static void health_server_routine() {
             continue;
         }
 
-        if (g_running) {
-            BOOL connected = ConnectNamedPipe(hPipe, NULL);
-            if (!connected && GetLastError() != ERROR_PIPE_CONNECTED) {
+        // Create event for overlapped ConnectNamedPipe.
+        HANDLE hEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
+        if (hEvent == NULL) {
+            CloseHandle(hPipe);
+            Sleep(50);
+            continue;
+        }
+
+        OVERLAPPED ol = {};
+        ol.hEvent = hEvent;
+        BOOL connected = ConnectNamedPipe(hPipe, &ol);
+        if (!connected) {
+            DWORD err = GetLastError();
+            if (err != ERROR_IO_PENDING && err != ERROR_PIPE_CONNECTED) {
                 CloseHandle(hPipe);
+                CloseHandle(hEvent);
                 continue;
             }
         }
-        if (!g_running) {
+
+        DWORD waitResult = WaitForSingleObject(hEvent, PIPE_TIMEOUT_MS);
+        if (waitResult == WAIT_TIMEOUT) {
+            // No client connected within 250ms. Check shutdown flag.
+            CancelIoEx(hPipe, &ol);
             CloseHandle(hPipe);
-            break;
+            CloseHandle(hEvent);
+            continue;
+        }
+        if (waitResult != WAIT_OBJECT_0) {
+            CloseHandle(hPipe);
+            CloseHandle(hEvent);
+            continue;
         }
 
         DWORD bytesRead = 0;
         char request[256] = {0};
-        ReadFile(hPipe, request, sizeof(request) - 1, &bytesRead, NULL);
+        OVERLAPPED readOl = {};
+        readOl.hEvent = hEvent;
+        ReadFile(hPipe, request, sizeof(request) - 1, &bytesRead, &readOl);
+        DWORD transferred = 0;
+        GetOverlappedResult(hPipe, &readOl, &transferred, TRUE);
 
-        unsigned long long probe_start = now_monotonic_ms();
-        char response[512];
+        // Build JSON response with full schema per RUNTIME_CONTRACT.md §4.1.
+        unsigned long long now_ms = now_monotonic_ms();
+        unsigned long long probe_start = now_ms;
+        unsigned long long last_event = g_last_event_ms.load(std::memory_order_acquire);
+        unsigned long long last_event_age = (last_event > 0) ? (now_ms - last_event) : 0;
+
+        char response[768];
         int n = snprintf(response, sizeof(response),
             "{\"op\":\"HEALTH\",\"state\":\"RUNNING\",\"status\":\"OK\","
             "\"component\":\"bridge\",\"subsystem\":\"bridge\","
             "\"version\":\"" AEGIS_BRIDGE_VERSION "\","
-            "\"pid\":%lu,\"uptime_ms\":%llu,\"probe_latency_ms\":%llu}",
+            "\"pid\":%lu,\"uptime_ms\":%llu,"
+            "\"last_event_ms\":%llu,\"probe_latency_ms\":%llu,"
+            "\"counters\":{\"in_events\":%llu,\"out_events\":%llu,"
+            "\"errors\":%llu,\"dropped\":%llu},"
+            "\"deps\":[{\"name\":\"core\",\"state\":\"RUNNING\"}]}",
             (unsigned long)GetCurrentProcessId(),
-            now_monotonic_ms() - g_start_ms,
-            now_monotonic_ms() - probe_start);
+            now_ms - g_start_ms,
+            last_event_age,
+            now_monotonic_ms() - probe_start,
+            g_in_events.load(std::memory_order_acquire),
+            g_out_events.load(std::memory_order_acquire),
+            g_errors.load(std::memory_order_acquire),
+            g_dropped.load(std::memory_order_acquire));
 
         DWORD bytesWritten = 0;
-        WriteFile(hPipe, response, (DWORD)n, &bytesWritten, NULL);
+        OVERLAPPED writeOl = {};
+        writeOl.hEvent = hEvent;
+        WriteFile(hPipe, response, (DWORD)n, &bytesWritten, &writeOl);
+        DWORD writeTransferred = 0;
+        GetOverlappedResult(hPipe, &writeOl, &writeTransferred, TRUE);
         FlushFileBuffers(hPipe);
         CloseHandle(hPipe);
+        CloseHandle(hEvent);
     }
 #endif
 }
@@ -270,6 +329,10 @@ int main(int argc, char* argv[]) {
         // Check for events and print them
         Aegis::Bridge::IpcEvent event;
         if (aegis_bridge_pop_event(&event) == 0) {
+            // G35: update health counters for the HEALTH probe response.
+            g_in_events.fetch_add(1, std::memory_order_relaxed);
+            g_last_event_ms.store(now_monotonic_ms(), std::memory_order_relaxed);
+
             if (jsonMode) {
                 // JSON output (for Dashboard WebSocket to consume)
                 fprintf(stdout,

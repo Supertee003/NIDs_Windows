@@ -57,30 +57,55 @@ func main() {
         go threatCollector(threatCh)
 
         if *headless {
-                // HEADLESS MODE: Continuously print JSON metrics to stdout
+                // HEADLESS MODE: Continuously print JSON metrics to stdout.
+                // G35: each JSON beacon now includes a HEALTH envelope so the
+                // supervisor and tests/runtime can probe nose lifecycle by
+                // reading the last JSON line from stdout (per RUNTIME_CONTRACT
+                // §4.1 — "stdout JSON line" transport).
                 fmt.Fprintf(os.Stderr, "[AEGIS NOSE] Running in Headless Mode (JSON to stdout)...\n")
-                
+
                 ticker := time.NewTicker(2 * time.Second)
                 defer ticker.Stop()
-                
+
                 for range ticker.C {
                         var resData ResourceData
                         var trafData TrafficData
                         var thrData ThreatData
-                        
+
                         // Non-blocking read from channels
                         select { case resData = <-resourceCh: default: }
                         select { case trafData = <-trafficCh: default: }
                         select { case thrData = <-threatCh: default: }
 
-                        // Construct unified JSON state
+                        // Construct unified JSON state with HEALTH envelope.
+                        // Schema fields required by RUNTIME_CONTRACT.md §4.1:
+                        //   component, state, pid, uptime_ms, last_event_ms,
+                        //   counters (in_events, out_events, errors, dropped), deps
                         state := map[string]interface{}{
+                                "op":        "HEALTH",
+                                "state":     "RUNNING",
+                                "status":    "OK",
+                                "component": "nose",
+                                "version":   AEGIS_NOSE_VERSION,
+                                "pid":       os.Getpid(),
+                                "uptime_ms": time.Since(startTime).Milliseconds(),
+                                "last_event_ms": 0,
+                                "counters": map[string]interface{}{
+                                        "in_events":  0,
+                                        "out_events": 0,
+                                        "errors":     0,
+                                        "dropped":    0,
+                                },
+                                "deps": []map[string]string{
+                                        {"name": "core", "state": "RUNNING"},
+                                },
+                                // Nose-specific metrics (kept for downstream consumers).
                                 "timestamp": time.Now().Format(time.RFC3339),
-                                "resource": resData,
-                                "traffic": trafData,
-                                "threat": thrData,
+                                "resource":  resData,
+                                "traffic":   trafData,
+                                "threat":    thrData,
                         }
-                        
+
                         jsonBytes, err := json.Marshal(state)
                         if err == nil {
                                 fmt.Println(string(jsonBytes))

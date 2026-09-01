@@ -47,6 +47,8 @@ type Server struct {
         collector  *Collector
         correlator *Correlator
         httpServer *http.Server
+        // G35: track start time for uptime_ms in /api/health response.
+        startTime time.Time
 }
 
 func main() {
@@ -59,6 +61,9 @@ func main() {
                         os.Exit(0)
                 }
         }
+
+        // G35: record start time for uptime calculation in /api/health.
+        startTime := time.Now()
 
         // Get config from env or defaults
         logPath := getEnv("AEGIS_LOG_PATH", DEFAULT_LOG_PATH)
@@ -94,6 +99,7 @@ func main() {
                 aggregator: aggregator,
                 collector:  collector,
                 correlator: correlator,
+                startTime:  startTime,
         }
 
         // Start correlator that watches for new alerts
@@ -239,7 +245,32 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
         w.Header().Set("Content-Type", "application/json")
-        fmt.Fprintf(w, `{"status":"healthy","timestamp":%d}`, time.Now().Unix())
+        // G35: respond with full RUNTIME_CONTRACT.md §4.1 schema so the
+        // supervisor and tests/runtime/test_health.py can validate the
+        // response (was: {"status":"healthy","timestamp":...}).
+        uptimeMs := time.Since(s.startTime).Milliseconds()
+        response := map[string]interface{}{
+                "op":             "HEALTH",
+                "state":          "RUNNING",
+                "status":         "OK",
+                "component":      "aggregator",
+                "subsystem":      "aggregator",
+                "version":        "0.1.0",
+                "pid":            os.Getpid(),
+                "uptime_ms":      uptimeMs,
+                "last_event_ms":  0,
+                "counters": map[string]interface{}{
+                        "in_events":  0,
+                        "out_events": 0,
+                        "errors":     0,
+                        "dropped":    0,
+                },
+                "deps": []map[string]string{
+                        {"name": "core", "state": "RUNNING"},
+                },
+                "timestamp": time.Now().Unix(),
+        }
+        writeJSON(w, response)
 }
 
 func (s *Server) handlePurge(w http.ResponseWriter, r *http.Request) {
