@@ -1,4 +1,4 @@
-﻿name: CI - Cross-Language Matrix
+name: CI - Cross-Language Matrix
 
 on:
   push:
@@ -326,3 +326,31 @@ jobs:
         with:
           name: aegis-manifest
           path: aegis.manifest.json
+
+  # Stage 12: Runtime contract tests (Gates A-F)
+  runtime-contract:
+    name: Stage 12 - Runtime Contract Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pytest
+        run: pip install pytest
+      - name: Run runtime contract tests
+        run: |
+          echo "Running 241 runtime contract tests (Gates A-F)..."
+          python -m pytest tests/runtime/ -v --tb=short
+      - name: Verify aegisctl CLI
+        run: |
+          python scripts/aegisctl.py --help
+          python scripts/aegisctl.py version
+          python scripts/aegisctl.py status
+          python scripts/aegisctl.py diagnose
+      - name: Verify rules validation
+        run: |
+          python scripts/aegisctl.py rules validate
+      - name: Verify canary test definitions
+        run: |
+          python -c "import json; data=json.load(open('config/canary_tests.json')); print(f'Canary tests: {len(data[\"tests\"])}'); assert len(data['tests']) == 10"
