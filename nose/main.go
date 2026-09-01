@@ -25,7 +25,20 @@ import (
         tea "github.com/charmbracelet/bubbletea"
 )
 
+// AEGIS_NOSE_VERSION is the SEMVER reported by `aegis-nose --version`.
+// Parsed by tests/runtime/test_version.py.
+const AEGIS_NOSE_VERSION = "5.0.0"
+
 func main() {
+        // G27 Gate-A: --version flag. Print SEMVER + exit 0 before any
+        // flag.Parse() so it works even if other flags are malformed.
+        for _, arg := range os.Args[1:] {
+                if arg == "--version" || arg == "-v" || arg == "-V" {
+                        fmt.Printf("aegis-nose %s\n", AEGIS_NOSE_VERSION)
+                        os.Exit(0)
+                }
+        }
+
         // Parse command line flags
         headless := flag.Bool("headless", false, "Run in headless mode (no TUI, output JSON to stdout)")
         flag.Parse()

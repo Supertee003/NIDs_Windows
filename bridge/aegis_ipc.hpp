@@ -23,6 +23,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <mutex>
 
 // ====== Namespace ======
 namespace Aegis {
@@ -211,7 +212,8 @@ public:
 // ====== Shared Memory Ring Buffer (User-Mode) ======
 // For high-throughput event passing between subsystems via shared memory.
 // B-06 FIX: Added std::mutex for thread-safety (was data race on m_head/m_tail/m_count)
-#include <mutex>
+// G26 FIX: <mutex> moved to top-of-file include block (was inside namespace,
+// which caused MSVC C2323 on operator new/delete).
 
 template<typename T>
 class SharedRingBuffer {

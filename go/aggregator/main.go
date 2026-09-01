@@ -20,152 +20,162 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"path/filepath"
-	"strconv"
-	"syscall"
-	"time"
+        "encoding/json"
+        "fmt"
+        "log"
+        "net/http"
+        "os"
+        "os/signal"
+        "path/filepath"
+        "strconv"
+        "syscall"
+        "time"
 
-	"github.com/google/uuid"
+        "github.com/google/uuid"
 )
 
 const (
-	DEFAULT_LOG_PATH    = "logs/aegis_core.ndjson"
-	DEFAULT_API_PORT    = 9200
-	DEFAULT_MAX_ALERTS  = 10000
-	DEFAULT_MAX_AGE_HRS = 24
+        DEFAULT_LOG_PATH    = "logs/aegis_core.ndjson"
+        DEFAULT_API_PORT    = 9200
+        DEFAULT_MAX_ALERTS  = 10000
+        DEFAULT_MAX_AGE_HRS = 24
 )
 
 // Server holds all components
 type Server struct {
-	aggregator *AlertAggregator
-	collector  *Collector
-	correlator *Correlator
-	httpServer *http.Server
+        aggregator *AlertAggregator
+        collector  *Collector
+        correlator *Correlator
+        httpServer *http.Server
 }
 
 func main() {
-	// Get config from env or defaults
-	logPath := getEnv("AEGIS_LOG_PATH", DEFAULT_LOG_PATH)
-	apiPort := getEnvInt("AEGIS_API_PORT", DEFAULT_API_PORT)
-	maxAlerts := getEnvInt("AEGIS_MAX_ALERTS", DEFAULT_MAX_ALERTS)
+        // G27 Gate-A: --version flag. Print SEMVER + exit 0 before any
+        // initialization so the supervisor (and tests/runtime/test_version.py)
+        // can verify the binary is present and reports a parseable version.
+        for _, arg := range os.Args[1:] {
+                if arg == "--version" || arg == "-v" || arg == "-V" {
+                        fmt.Println("aegis-aggregator 0.1.0")
+                        os.Exit(0)
+                }
+        }
 
-	// Resolve absolute path
-	absLogPath, err := filepath.Abs(logPath)
-	if err != nil {
-		log.Fatalf("Failed to resolve log path: %v", err)
-	}
+        // Get config from env or defaults
+        logPath := getEnv("AEGIS_LOG_PATH", DEFAULT_LOG_PATH)
+        apiPort := getEnvInt("AEGIS_API_PORT", DEFAULT_API_PORT)
+        maxAlerts := getEnvInt("AEGIS_MAX_ALERTS", DEFAULT_MAX_ALERTS)
 
-	log.Printf("[AGGREGATOR] AEGIS NIDS Alert Aggregator starting")
-	log.Printf("[AGGREGATOR] Log file: %s", absLogPath)
-	log.Printf("[AGGREGATOR] API port: %d", apiPort)
-	log.Printf("[AGGREGATOR] Max alerts: %d", maxAlerts)
+        // Resolve absolute path
+        absLogPath, err := filepath.Abs(logPath)
+        if err != nil {
+                log.Fatalf("Failed to resolve log path: %v", err)
+        }
 
-	// Initialize components
-	aggregator := NewAlertAggregator(maxAlerts)
-	correlator := NewCorrelator(24 * time.Hour)
+        log.Printf("[AGGREGATOR] AEGIS NIDS Alert Aggregator starting")
+        log.Printf("[AGGREGATOR] Log file: %s", absLogPath)
+        log.Printf("[AGGREGATOR] API port: %d", apiPort)
+        log.Printf("[AGGREGATOR] Max alerts: %d", maxAlerts)
 
-	collector, err := NewCollector(absLogPath, aggregator)
-	if err != nil {
-		log.Fatalf("Failed to create collector: %v", err)
-	}
+        // Initialize components
+        aggregator := NewAlertAggregator(maxAlerts)
+        correlator := NewCorrelator(24 * time.Hour)
 
-	if err := collector.Start(); err != nil {
-		log.Fatalf("Failed to start collector: %v", err)
-	}
+        collector, err := NewCollector(absLogPath, aggregator)
+        if err != nil {
+                log.Fatalf("Failed to create collector: %v", err)
+        }
 
-	// Create server
-	server := &Server{
-		aggregator: aggregator,
-		collector:  collector,
-		correlator: correlator,
-	}
+        if err := collector.Start(); err != nil {
+                log.Fatalf("Failed to start collector: %v", err)
+        }
 
-	// Start correlator that watches for new alerts
-	go server.correlateAlerts()
+        // Create server
+        server := &Server{
+                aggregator: aggregator,
+                collector:  collector,
+                correlator: correlator,
+        }
 
-	// Start purge goroutine (every 5 min)
-	go server.purgeLoop()
+        // Start correlator that watches for new alerts
+        go server.correlateAlerts()
 
-	// Setup HTTP server
-	mux := http.NewServeMux()
-	mux.HandleFunc("/api/alerts", server.handleAlerts)
-	mux.HandleFunc("/api/alerts/critical", server.handleCriticalAlerts)
-	mux.HandleFunc("/api/alerts/", server.handleAlertByHash)
-	mux.HandleFunc("/api/sessions", server.handleSessions)
-	mux.HandleFunc("/api/sessions/", server.handleSessionByID)
-	mux.HandleFunc("/api/stats", server.handleStats)
-	mux.HandleFunc("/api/health", server.handleHealth)
-	mux.HandleFunc("/api/purge", server.handlePurge)
-	mux.HandleFunc("/", server.handleRoot)
+        // Start purge goroutine (every 5 min)
+        go server.purgeLoop()
 
-	server.httpServer = &http.Server{
-		Addr:    fmt.Sprintf(":%d", apiPort),
-		Handler: mux,
-	}
+        // Setup HTTP server
+        mux := http.NewServeMux()
+        mux.HandleFunc("/api/alerts", server.handleAlerts)
+        mux.HandleFunc("/api/alerts/critical", server.handleCriticalAlerts)
+        mux.HandleFunc("/api/alerts/", server.handleAlertByHash)
+        mux.HandleFunc("/api/sessions", server.handleSessions)
+        mux.HandleFunc("/api/sessions/", server.handleSessionByID)
+        mux.HandleFunc("/api/stats", server.handleStats)
+        mux.HandleFunc("/api/health", server.handleHealth)
+        mux.HandleFunc("/api/purge", server.handlePurge)
+        mux.HandleFunc("/", server.handleRoot)
 
-	// Start HTTP server
-	go func() {
-		log.Printf("[AGGREGATOR] REST API available at http://localhost:%d", apiPort)
-		if err := server.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("HTTP server error: %v", err)
-		}
-	}()
+        server.httpServer = &http.Server{
+                Addr:    fmt.Sprintf(":%d", apiPort),
+                Handler: mux,
+        }
 
-	// Wait for shutdown signal
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	<-sigCh
+        // Start HTTP server
+        go func() {
+                log.Printf("[AGGREGATOR] REST API available at http://localhost:%d", apiPort)
+                if err := server.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+                        log.Fatalf("HTTP server error: %v", err)
+                }
+        }()
 
-	log.Printf("[AGGREGATOR] Shutting down...")
-	collector.Stop()
-	server.httpServer.Close()
-	log.Printf("[AGGREGATOR] Shutdown complete")
+        // Wait for shutdown signal
+        sigCh := make(chan os.Signal, 1)
+        signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+        <-sigCh
+
+        log.Printf("[AGGREGATOR] Shutting down...")
+        collector.Stop()
+        server.httpServer.Close()
+        log.Printf("[AGGREGATOR] Shutdown complete")
 }
 
 // correlateAlerts feeds alerts to the correlator
 func (s *Server) correlateAlerts() {
-	// Poll aggregator for new alerts and feed to correlator
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
+        // Poll aggregator for new alerts and feed to correlator
+        ticker := time.NewTicker(1 * time.Second)
+        defer ticker.Stop()
 
-	seen := make(map[string]bool)
+        seen := make(map[string]bool)
 
-	for range ticker.C {
-		alerts := s.aggregator.GetAll()
-		for _, a := range alerts {
-			if !seen[a.Hash] {
-				seen[a.Hash] = true
-				s.correlator.AddEvent(a)
-			}
-		}
-	}
+        for range ticker.C {
+                alerts := s.aggregator.GetAll()
+                for _, a := range alerts {
+                        if !seen[a.Hash] {
+                                seen[a.Hash] = true
+                                s.correlator.AddEvent(a)
+                        }
+                }
+        }
 }
 
 // purgeLoop periodically purges old alerts and sessions
 func (s *Server) purgeLoop() {
-	ticker := time.NewTicker(5 * time.Minute)
-	defer ticker.Stop()
+        ticker := time.NewTicker(5 * time.Minute)
+        defer ticker.Stop()
 
-	for range ticker.C {
-		purgedAlerts := s.aggregator.PurgeOlder(DEFAULT_MAX_AGE_HRS * time.Hour)
-		purgedSessions := s.correlator.PurgeOlder()
-		if purgedAlerts > 0 || purgedSessions > 0 {
-			log.Printf("[AGGREGATOR] Purged %d alerts, %d sessions", purgedAlerts, purgedSessions)
-		}
-	}
+        for range ticker.C {
+                purgedAlerts := s.aggregator.PurgeOlder(DEFAULT_MAX_AGE_HRS * time.Hour)
+                purgedSessions := s.correlator.PurgeOlder()
+                if purgedAlerts > 0 || purgedSessions > 0 {
+                        log.Printf("[AGGREGATOR] Purged %d alerts, %d sessions", purgedAlerts, purgedSessions)
+                }
+        }
 }
 
 // HTTP Handlers
 
 func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-	fmt.Fprintf(w, `<html><body>
+        w.Header().Set("Content-Type", "text/html")
+        fmt.Fprintf(w, `<html><body>
 <h1>AEGIS NIDS Alert Aggregator</h1>
 <ul>
 <li><a href="/api/alerts">/api/alerts</a> - All alerts</li>
@@ -178,109 +188,109 @@ func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
-	alerts := s.aggregator.GetAll()
-	writeJSON(w, alerts)
+        alerts := s.aggregator.GetAll()
+        writeJSON(w, alerts)
 }
 
 func (s *Server) handleCriticalAlerts(w http.ResponseWriter, r *http.Request) {
-	alerts := s.aggregator.GetCritical()
-	writeJSON(w, alerts)
+        alerts := s.aggregator.GetCritical()
+        writeJSON(w, alerts)
 }
 
 func (s *Server) handleAlertByHash(w http.ResponseWriter, r *http.Request) {
-	hash := r.URL.Path[len("/api/alerts/"):]
-	if hash == "" {
-		http.Error(w, "Hash required", http.StatusBadRequest)
-		return
-	}
-	alert := s.aggregator.GetByHash(hash)
-	if alert == nil {
-		http.Error(w, "Alert not found", http.StatusNotFound)
-		return
-	}
-	writeJSON(w, alert)
+        hash := r.URL.Path[len("/api/alerts/"):]
+        if hash == "" {
+                http.Error(w, "Hash required", http.StatusBadRequest)
+                return
+        }
+        alert := s.aggregator.GetByHash(hash)
+        if alert == nil {
+                http.Error(w, "Alert not found", http.StatusNotFound)
+                return
+        }
+        writeJSON(w, alert)
 }
 
 func (s *Server) handleSessions(w http.ResponseWriter, r *http.Request) {
-	sessions := s.correlator.GetTopSessions(20)
-	writeJSON(w, sessions)
+        sessions := s.correlator.GetTopSessions(20)
+        writeJSON(w, sessions)
 }
 
 func (s *Server) handleSessionByID(w http.ResponseWriter, r *http.Request) {
-	idStr := r.URL.Path[len("/api/sessions/"):]
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		http.Error(w, "Invalid session ID", http.StatusBadRequest)
-		return
-	}
-	timeline := s.correlator.FormatTimeline(id)
-	w.Header().Set("Content-Type", "text/plain")
-	fmt.Fprint(w, timeline)
+        idStr := r.URL.Path[len("/api/sessions/"):]
+        id, err := strconv.ParseInt(idStr, 10, 64)
+        if err != nil {
+                http.Error(w, "Invalid session ID", http.StatusBadRequest)
+                return
+        }
+        timeline := s.correlator.FormatTimeline(id)
+        w.Header().Set("Content-Type", "text/plain")
+        fmt.Fprint(w, timeline)
 }
 
 func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
-	stats := map[string]interface{}{
-		"total_alerts":   s.aggregator.Count(),
-		"total_sessions": s.correlator.GetSessionCount(),
-		"timestamp":      time.Now().Unix(),
-	}
-	writeJSON(w, stats)
+        stats := map[string]interface{}{
+                "total_alerts":   s.aggregator.Count(),
+                "total_sessions": s.correlator.GetSessionCount(),
+                "timestamp":      time.Now().Unix(),
+        }
+        writeJSON(w, stats)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, `{"status":"healthy","timestamp":%d}`, time.Now().Unix())
+        w.Header().Set("Content-Type", "application/json")
+        fmt.Fprintf(w, `{"status":"healthy","timestamp":%d}`, time.Now().Unix())
 }
 
 func (s *Server) handlePurge(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "POST required", http.StatusMethodNotAllowed)
-		return
-	}
+        if r.Method != "POST" {
+                http.Error(w, "POST required", http.StatusMethodNotAllowed)
+                return
+        }
 
-	var req struct {
-		MaxAgeHours int `json:"max_age_hours"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		return
-	}
+        var req struct {
+                MaxAgeHours int `json:"max_age_hours"`
+        }
+        if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+                http.Error(w, "Invalid JSON", http.StatusBadRequest)
+                return
+        }
 
-	if req.MaxAgeHours == 0 {
-		req.MaxAgeHours = DEFAULT_MAX_AGE_HRS
-	}
+        if req.MaxAgeHours == 0 {
+                req.MaxAgeHours = DEFAULT_MAX_AGE_HRS
+        }
 
-	purged := s.aggregator.PurgeOlder(time.Duration(req.MaxAgeHours) * time.Hour)
-	writeJSON(w, map[string]int{"purged": purged})
+        purged := s.aggregator.PurgeOlder(time.Duration(req.MaxAgeHours) * time.Hour)
+        writeJSON(w, map[string]int{"purged": purged})
 }
 
 // generateUUID creates a new UUID string
 func generateUUID() string {
-	return uuid.New().String()
+        return uuid.New().String()
 }
 
 // writeJSON writes a JSON response
 func writeJSON(w http.ResponseWriter, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
-	}
+        w.Header().Set("Content-Type", "application/json")
+        if err := json.NewEncoder(w).Encode(data); err != nil {
+                http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+        }
 }
 
 // getEnv gets env var or returns default
 func getEnv(key, defaultVal string) string {
-	if val := os.Getenv(key); val != "" {
-		return val
-	}
-	return defaultVal
+        if val := os.Getenv(key); val != "" {
+                return val
+        }
+        return defaultVal
 }
 
 // getEnvInt gets env var as int or returns default
 func getEnvInt(key string, defaultVal int) int {
-	if val := os.Getenv(key); val != "" {
-		if i, err := strconv.Atoi(val); err == nil {
-			return i
-		}
-	}
-	return defaultVal
+        if val := os.Getenv(key); val != "" {
+                if i, err := strconv.Atoi(val); err == nil {
+                        return i
+                }
+        }
+        return defaultVal
 }

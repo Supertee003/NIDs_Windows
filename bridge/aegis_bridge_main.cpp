@@ -11,6 +11,7 @@
  *   ./aegis_bridge              # Run interactively
  *   ./aegis_bridge --test       # Run self-test + exit
  *   ./aegis_bridge --json       # Output events as JSON lines
+ *   ./aegis_bridge --version    # Print version + exit (Gate-A conformance)
  */
 
 #include "aegis_ipc.hpp"
@@ -20,6 +21,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <csignal>
+#include <thread>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -27,9 +29,88 @@
 #else
 #include <unistd.h>
 #include <signal.h>
+#include <time.h>
 #endif
 
+// ====== AEGIS version constant (single source of truth) ======
+// Bumped on every release. Parsed by tests/runtime/test_version.py via
+// the SEMVER pattern (major.minor.patch with optional -suffix).
+#define AEGIS_BRIDGE_VERSION "1.0.0"
+
 static volatile bool g_running = true;
+
+// ====== Health-check named pipe (§4 / §4.1 of RUNTIME_CONTRACT.md) ======
+// Exposes `\\.\pipe\aegis-bridge-health` so the supervisor and the runtime
+// tests can probe the lifecycle state without spawning a child process.
+#ifdef _WIN32
+static const char* kHealthPipeName = "\\\\.\\pipe\\aegis-bridge-health";
+#endif
+
+static unsigned long long g_start_ms = 0;
+
+static unsigned long long now_monotonic_ms() {
+#ifdef _WIN32
+    return (unsigned long long)GetTickCount64();
+#else
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (unsigned long long)ts.tv_sec * 1000u
+         + (unsigned long long)(ts.tv_nsec / 1000000);
+#endif
+}
+
+// Runs on a detached thread. Serves one health probe at a time on a
+// single-instance message-mode pipe, then recreates the pipe for the
+// next probe. The process kills this thread on exit (daemon semantics).
+static void health_server_routine() {
+#ifdef _WIN32
+    while (g_running) {
+        HANDLE hPipe = CreateNamedPipeA(
+            kHealthPipeName,
+            PIPE_ACCESS_DUPLEX,
+            PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
+            PIPE_UNLIMITED_INSTANCES,
+            4096, 4096,
+            0, NULL);
+        if (hPipe == INVALID_HANDLE_VALUE) {
+            Sleep(50);
+            continue;
+        }
+
+        if (g_running) {
+            BOOL connected = ConnectNamedPipe(hPipe, NULL);
+            if (!connected && GetLastError() != ERROR_PIPE_CONNECTED) {
+                CloseHandle(hPipe);
+                continue;
+            }
+        }
+        if (!g_running) {
+            CloseHandle(hPipe);
+            break;
+        }
+
+        DWORD bytesRead = 0;
+        char request[256] = {0};
+        ReadFile(hPipe, request, sizeof(request) - 1, &bytesRead, NULL);
+
+        unsigned long long probe_start = now_monotonic_ms();
+        char response[512];
+        int n = snprintf(response, sizeof(response),
+            "{\"op\":\"HEALTH\",\"state\":\"RUNNING\",\"status\":\"OK\","
+            "\"component\":\"bridge\",\"subsystem\":\"bridge\","
+            "\"version\":\"" AEGIS_BRIDGE_VERSION "\","
+            "\"pid\":%lu,\"uptime_ms\":%llu,\"probe_latency_ms\":%llu}",
+            (unsigned long)GetCurrentProcessId(),
+            now_monotonic_ms() - g_start_ms,
+            now_monotonic_ms() - probe_start);
+
+        DWORD bytesWritten = 0;
+        WriteFile(hPipe, response, (DWORD)n, &bytesWritten, NULL);
+        FlushFileBuffers(hPipe);
+        CloseHandle(hPipe);
+    }
+#endif
+}
 
 void signal_handler(int sig) {
     (void)sig;
@@ -44,6 +125,17 @@ int main(int argc, char* argv[]) {
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--test") == 0) testMode = true;
         if (strcmp(argv[i], "--json") == 0) jsonMode = true;
+        // G27 Gate-A: --version flag. Prints SEMVER and exits 0 so the
+        // supervisor (and tests/runtime/test_version.py) can verify the
+        // binary is present and reports a parseable version.
+        if (strcmp(argv[i], "--version") == 0) {
+            printf("aegis-bridge %s\n", AEGIS_BRIDGE_VERSION);
+            return 0;
+        }
+        if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "-V") == 0) {
+            printf("aegis-bridge %s\n", AEGIS_BRIDGE_VERSION);
+            return 0;
+        }
     }
 
     // ====== Set console to UTF-8 (fixes box-drawing mojibake on Windows) ======
@@ -70,6 +162,7 @@ int main(int argc, char* argv[]) {
     fprintf(stdout, "\n");
 
     // ====== Initialize Bridge ======
+    g_start_ms = now_monotonic_ms();
     int32_t result = aegis_bridge_init();
     if (result != 0) {
         fprintf(stderr, "[AEGIS Bridge] Initialization FAILED (code %d)\n", result);
@@ -167,6 +260,10 @@ int main(int argc, char* argv[]) {
 
     fprintf(stdout, "[AEGIS Bridge] Running in daemon mode (Ctrl+C to stop)\n");
     fprintf(stdout, "[AEGIS Bridge] Waiting for events from subsystems...\n\n");
+
+    // ====== Health-check server (named pipe, Gate-A) ======
+    std::thread healthThread(health_server_routine);
+    healthThread.detach();
 
     uint32_t tickCount = 0;
     while (g_running) {

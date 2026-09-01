@@ -256,24 +256,24 @@ impl eframe::App for AegisDashboard {
                 egui_extras::TableBuilder::new(ui)
                     .column(Column::exact(70.0))   // Time
                     .column(Column::exact(120.0))  // Source
-                    .column(Column::remainder())   // Attack Type
-                    .column(Column::exact(80.0))   // Severity
-                    .column(Column::exact(70.0))   // Policy
+                    .column(Column::remainder())   // Event
+                    .column(Column::exact(80.0))   // Level
+                    .column(Column::exact(70.0))   // Rule
                     .header(20.0, |mut header| {
                         header.col(|ui| { ui.strong("Time"); });
                         header.col(|ui| { ui.strong("Source"); });
-                        header.col(|ui| { ui.strong("Attack Type"); });
-                        header.col(|ui| { ui.strong("Severity"); });
-                        header.col(|ui| { ui.strong("Policy"); });
+                        header.col(|ui| { ui.strong("Event"); });
+                        header.col(|ui| { ui.strong("Level"); });
+                        header.col(|ui| { ui.strong("Rule"); });
                     })
                     .body(|mut body| {
                         // Show newest first
                         for entry in self.alerts.iter().rev() {
                             body.row(16.0, |mut row| {
-                                // Timestamp
+                                // Timestamp (ts_ms is milliseconds since epoch)
                                 row.col(|ui| {
-                                    let ts = if entry.timestamp > 0.0 {
-                                        let secs = entry.timestamp as i64;
+                                    let ts = if entry.ts_ms > 0 {
+                                        let secs = entry.ts_ms / 1000;
                                         let datetime = chrono::DateTime::from_timestamp(secs, 0)
                                             .unwrap_or_default();
                                         datetime.format("%H:%M:%S").to_string()
@@ -282,30 +282,46 @@ impl eframe::App for AegisDashboard {
                                     };
                                     ui.label(ts);
                                 });
-                                // Source
-                                row.col(|ui| { ui.label(&entry.source); });
-                                // Attack type
-                                row.col(|ui| { ui.label(&entry.attack_type); });
-                                // Severity
+                                // Source IP
                                 row.col(|ui| {
-                                    let color = if entry.severity == "Critical" {
-                                        egui::Color32::RED
-                                    } else if entry.severity == "High" {
-                                        egui::Color32::from_rgb(255, 165, 0)
+                                    let src = if entry.src_ip.is_empty() {
+                                        "-".to_string()
                                     } else {
-                                        egui::Color32::YELLOW
+                                        entry.src_ip.clone()
                                     };
-                                    ui.colored_label(color, &entry.severity);
+                                    ui.label(src);
                                 });
-                                // Policy
+                                // Event
                                 row.col(|ui| {
-                                    let policy = entry.policy.to_uppercase();
-                                    let color = if policy == "BLOCK" || policy == "DROP" {
-                                        egui::Color32::RED
+                                    let ev = if entry.event.is_empty() {
+                                        "-".to_string()
                                     } else {
-                                        egui::Color32::YELLOW
+                                        entry.event.clone()
                                     };
-                                    ui.colored_label(color, &policy);
+                                    ui.label(ev);
+                                });
+                                // Level (was severity)
+                                row.col(|ui| {
+                                    let level = entry.level.clone();
+                                    let color = if level == "Critical" || level == "critical" {
+                                        egui::Color32::RED
+                                    } else if level == "High" || level == "high" {
+                                        egui::Color32::from_rgb(255, 165, 0)
+                                    } else if level == "Medium" || level == "medium" {
+                                        egui::Color32::YELLOW
+                                    } else {
+                                        egui::Color32::from_rgb(180, 180, 180)
+                                    };
+                                    ui.colored_label(color, &level);
+                                });
+                                // Rule (was policy)
+                                row.col(|ui| {
+                                    let rule = if entry.rule.is_empty() {
+                                        "-".to_string()
+                                    } else {
+                                        entry.rule.clone()
+                                    };
+                                    ui.label(rule);
                                 });
                             });
                         }
@@ -325,6 +341,19 @@ impl eframe::App for AegisDashboard {
 // =====================================================================
 
 fn main() -> eframe::Result<()> {
+    // G32 Gate-A: --version flag. Print SEMVER + exit 0 BEFORE eframe
+    // initializes so the supervisor (and tests/runtime/test_version.py)
+    // can verify the binary is present and reports a parseable version.
+    // Without this, `aegis_dashboard --version` opens a GUI window and
+    // never exits (G30 reported TIMEOUT).
+    let args: Vec<String> = std::env::args().collect();
+    for arg in args.iter().skip(1) {
+        if arg == "--version" || arg == "-v" || arg == "-V" {
+            println!("aegis-dashboard 0.1.0");
+            std::process::exit(0);
+        }
+    }
+
     let mut app = AegisDashboard::new();
     app.refresh_data();
 
@@ -332,7 +361,7 @@ fn main() -> eframe::Result<()> {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([1200.0, 700.0])
             .with_min_inner_size([800.0, 500.0])
-            .with_title("AEGIS NIDS — Dashboard (Rust egui)"),
+            .with_title("AEGIS NIDS -- Dashboard (Rust egui)"),
         ..Default::default()
     };
 

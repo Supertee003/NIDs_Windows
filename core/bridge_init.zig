@@ -16,6 +16,10 @@ const std = @import("std");
 
 pub const AEGIS_VERSION = "1.0.0-dev";
 pub const AEGIS_BUILD = "zig-0.13";
+// G27 Gate-A: shield DLL version embedded in core's --version output.
+// Mirror of the Rust crate version in shield/Cargo.toml. Update both
+// together on shield releases.
+pub const SHIELD_VERSION = "0.1.0";
 const wfp_ioctl = @import("wfp_ioctl.zig");
 const win = std.os.windows;
 
@@ -112,7 +116,12 @@ var fn_validate_payload_safety: ?FnValidatePayloadSafety = null;
 const net = std.net;
 const posix = std.posix;
 
-var g_udp_sock: posix.socket_t = undefined;
+// G28 fix: On Windows, posix.socket_t is a pointer type (SOCKET), so we
+// cannot initialize to the integer literal 0. Use null-aware pattern:
+//   - On Linux, socket_t is i32; init to -1 (invalid).
+//   - On Windows, socket_t is a pointer; init to null (via optional).
+// We declare as `?posix.socket_t` to make this portable.
+var g_udp_sock: ?posix.socket_t = null;
 var g_udp_addr: net.Address = undefined;
 var g_udp_available: bool = false;
 
@@ -152,13 +161,25 @@ fn spoolDrainThread() void {
         }
 
         if (msg_to_send) |msg| {
-            // Try to send
-            const send_result = posix.sendto(g_udp_sock, msg, 0, &g_udp_addr.any, g_udp_addr.getOsSockLen());
-            if (send_result) |_| {
-                // Success - free the message
-                g_brain_allocator.free(msg);
-            } else |_| {
-                // Still failing - put it back at the head and wait
+            // G28: g_udp_sock is now optional; unwrap it. If we have a
+            // valid socket, try a non-blocking send. If the socket is null
+            // or the send fails, put the message back at the head.
+            if (g_udp_sock) |sock| {
+                const send_result = posix.sendto(sock, msg, 0, &g_udp_addr.any, g_udp_addr.getOsSockLen());
+                if (send_result) |_| {
+                    // Success - free the message
+                    g_brain_allocator.free(msg);
+                } else |_| {
+                    // Still failing - put it back at the head and wait
+                    g_brain_spool_lock.lock();
+                    g_brain_spool_head = (g_brain_spool_head + BRAIN_SPOOL_MAX - 1) % BRAIN_SPOOL_MAX;
+                    g_brain_spool[g_brain_spool_head] = msg;
+                    g_brain_spool_count += 1;
+                    g_brain_spool_lock.unlock();
+                    std.time.sleep(1 * std.time.ns_per_s); // Wait 1s before retry
+                }
+            } else {
+                // No socket available; put message back at the head and wait
                 g_brain_spool_lock.lock();
                 g_brain_spool_head = (g_brain_spool_head + BRAIN_SPOOL_MAX - 1) % BRAIN_SPOOL_MAX;
                 g_brain_spool[g_brain_spool_head] = msg;
@@ -373,7 +394,11 @@ fn initUdpBrain() void {
 
 fn shutdownUdpBrain() void {
     if (g_udp_available) {
-        posix.close(g_udp_sock);
+        // G28: g_udp_sock is now optional; unwrap before close.
+        if (g_udp_sock) |sock| {
+            posix.close(sock);
+        }
+        g_udp_sock = null;
         g_udp_available = false;
         g_state.udp_brain = false;
     }
@@ -422,11 +447,20 @@ pub fn initAll() void {
     initUdpBrain();
 
     // GAP-3: Start spool drain thread (retries failed UDP sends)
+    // G28 fix: use blk: pattern so the catch block can return void while
+    // the spawn still produces a Thread on the success path. Without this
+    // the types are incompatible (Thread vs void) on Zig 0.13.0.
     if (g_udp_available) {
-        _ = std.Thread.spawn(.{}, spoolDrainThread, .{}) catch |err| {
-            std.log.warn("[INIT] Spool drain thread failed to spawn: {any}", .{err});
+        const drain_thread: ?std.Thread = blk: {
+            const t = std.Thread.spawn(.{}, spoolDrainThread, .{}) catch |err| {
+                std.log.warn("[INIT] Spool drain thread failed to spawn: {}", .{err});
+                break :blk null;
+            };
+            break :blk t;
         };
-        g_spool_drain_running = true;
+        if (drain_thread) |_| {
+            g_spool_drain_running = true;
+        }
     }
 
     // Summary
@@ -434,7 +468,7 @@ pub fn initAll() void {
         @as(u32, @intFromBool(g_state.cpp_bridge)) +
         @as(u32, @intFromBool(g_state.rust_shield)) +
         @as(u32, @intFromBool(g_state.udp_brain));
-    std.log.info("[INIT] Bridge status: {d}/4 active (wfp={any} cpp={any} rust={any} udp={any})", .{
+    std.log.info("[INIT] Bridge status: {d}/4 active (wfp={} cpp={} rust={} udp={})", .{
         active,
         g_state.wfp_ioctl,
         g_state.cpp_bridge,
@@ -533,23 +567,25 @@ pub fn sendToBrain(allocator: std.mem.Allocator, comptime T: type, msg: T) void 
     defer string.deinit();
     std.json.stringify(msg, .{}, string.writer()) catch return;
 
-    // B-10: Try direct send first
-    _ = posix.sendto(g_udp_sock, string.items, 0, &g_udp_addr.any, g_udp_addr.getOsSockLen()) catch {
-        // Send failed — add to spool queue for retry
-        g_brain_spool_lock.lock();
-        defer g_brain_spool_lock.unlock();
-        if (g_brain_spool_count < BRAIN_SPOOL_MAX) {
-            // Copy message into spool (uses global brain allocator for drain thread)
-            const msg_copy = g_brain_allocator.dupe(u8, string.items) catch return;
-            g_brain_spool[g_brain_spool_head] = msg_copy;
-            g_brain_spool_head = (g_brain_spool_head + 1) % BRAIN_SPOOL_MAX;
-            g_brain_spool_count += 1;
-        } else {
-            // Queue full — drop oldest and increment counter
-            _ = g_brain_dropped_events.fetchAdd(1, .monotonic);
-            std.log.warn("[BRAIN] Spool queue full, dropping event", .{});
-        }
-    };
+    // B-10: Try direct send first (G28: unwrap optional g_udp_sock)
+    if (g_udp_sock) |sock| {
+        _ = posix.sendto(sock, string.items, 0, &g_udp_addr.any, g_udp_addr.getOsSockLen()) catch {
+            // Send failed — add to spool queue for retry
+            g_brain_spool_lock.lock();
+            defer g_brain_spool_lock.unlock();
+            if (g_brain_spool_count < BRAIN_SPOOL_MAX) {
+                // Copy message into spool (uses global brain allocator for drain thread)
+                const msg_copy = g_brain_allocator.dupe(u8, string.items) catch return;
+                g_brain_spool[g_brain_spool_head] = msg_copy;
+                g_brain_spool_head = (g_brain_spool_head + 1) % BRAIN_SPOOL_MAX;
+                g_brain_spool_count += 1;
+            } else {
+                // Queue full — drop oldest and increment counter
+                _ = g_brain_dropped_events.fetchAdd(1, .monotonic);
+                std.log.warn("[BRAIN] Spool queue full, dropping event", .{});
+            }
+        };
+    }
 }
 
 /// Block IP via WFP IOCTL (convenience wrapper).
@@ -578,8 +614,8 @@ pub fn printStatus() void {
     }
     if (g_state.wfp_ioctl) {
         if (getWfpStats()) |stats| {
-            std.log.info("[BRIDGE] WFP ring: {d}/{d} bytes", .{ stats.currentUsedBytes, stats.capacity });
-            std.debug.print("[BRIDGE] WFP ring: {d}/{d} bytes\n", .{ stats.currentUsedBytes, stats.capacity });
+            std.log.info("[BRIDGE] WFP ring: {d}/{} bytes", .{ stats.currentUsedBytes, stats.capacity });
+            std.debug.print("[BRIDGE] WFP ring: {d}/{} bytes\n", .{ stats.currentUsedBytes, stats.capacity });
         }
     }
 }

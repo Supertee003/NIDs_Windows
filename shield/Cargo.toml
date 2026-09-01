@@ -6,6 +6,6 @@ description = "AEGIS NIDS Shield - Tier-3 FFI Layer"
 
 [lib]
 crate-type = ["cdylib", "staticlib"]
-name = "aegis_shield"
+name = "sec_monitor"
 
 [dependencies]

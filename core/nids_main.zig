@@ -1,11 +1,12 @@
 //! nids_main.zig - AEGIS NIDS Main Entry Point
 //!
-//! 5-Thread Architecture:
+//! Thread Architecture:
 //!   T1: 3-Tier Analysis Engine (nids_analyze.zig)
 //!   T2: Named Pipe IPC Sensor (nids_capture.zig)
 //!   T3: WFP Kernel Traffic Sensor (windows_capture.zig)
 //!   T4: Minifilter Event Reader (minifilter_reader.zig)
 //!   T5: Named Pipe Scanner (pipe_monitor.zig)
+//!   T6: Health-check Named Pipe (aegis-core-health, Gate-A)
 //!
 //! BP-FIX: Removed std.os.exit(0) from Ctrl+C handler (was skipping all defers),
 //!         added bridge_init import, removed unused ANSI color constants,
@@ -21,35 +22,44 @@ const pipe_monitor = @import("pipe_monitor.zig");
 const forensic_log = @import("forensic_log.zig");
 // Phase 28: Blueprint Nose Contract + Event Fabric
 const nose = @import("nose_contract.zig");
-const nose_int = @import("nose_integration.zig");
-// Phase 37: Sprint 3 integration modules
-const hids_proc = @import("hids_process_monitor.zig");
-const xdr = @import("xdr_correlator.zig");
-const rag = @import("rag_intelligence.zig");
-// const flow = @import("flow_engine.zig"); // G32: removed (dispatcher handles flow)
-const flow_int = @import("flow_integration.zig");
-const detection_int = @import("detection_integration.zig");
-const correlation_int = @import("correlation_integration.zig");
-const rag_int = @import("rag_integration.zig");
-const policy_int = @import("policy_integration.zig");
-const forensics_int = @import("forensics_integration.zig");
-const policy_ir = @import("policy_ir.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
+    g_start_tick = health.GetTickCount64();
+
+    // G27 Gate-A: --version flag. Print SEMVER + exit 0 so the supervisor
+    // (and tests/runtime/test_version.py) can verify the binary reports a
+    // parseable version. Also embeds the shield DLL version (shield is a
+    // delegate probe per COMPONENT_MATRIX.md §2.1).
+    //
+    // G32 fix: write directly to file descriptor 1 (stdout) via std.posix.write
+    // to bypass any Zig-side buffering. On Zig 0.13.0 + Windows, the
+    // buffered writer returned by getStdOut().writer() may not auto-flush
+    // when stdout is a pipe (subprocess capture). Direct write() guarantees
+    // the bytes reach the OS before main() returns.
+    const argv = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, argv);
+    for (argv[1..]) |arg| {
+        if (std.mem.eql(u8, arg, "--version") or
+            std.mem.eql(u8, arg, "-v") or
+            std.mem.eql(u8, arg, "-V"))
+        {
+            const msg = "aegis-nids " ++ bridge_init.AEGIS_VERSION ++
+                        " shield=" ++ bridge_init.SHIELD_VERSION ++ "\n";
+            std.io.getStdOut().writeAll(msg) catch {};
+            return;
+        }
+    }
 
     // UX-12: Enable Virtual Terminal Processing for ANSI color codes on Windows
     // (Without this, \x1b[31;1m appears as literal text on Windows 10 <= 1809)
     enableVirtualTerminal();
 
-    // Install Ctrl+C handler for graceful daemon shutdown (zig build run)
-    installCtrlHandler();
-
     std.fs.cwd().makeDir("logs") catch |err| {
         if (err != error.PathAlreadyExists) {
-            std.log.err("[MAIN] Failed to create logs dir: {any}", .{err});
+            std.log.err("[MAIN] Failed to create logs dir: {}", .{err});
         }
     };
 
@@ -62,96 +72,11 @@ pub fn main() !void {
         .capacity_per_priority = 256,
         .validate_on_submit = true,
     }) catch |err| {
-        std.log.err("[MAIN] Failed to init Event Fabric: {any}", .{err});
+        std.log.err("[MAIN] Failed to init Event Fabric: {}", .{err});
         return err;
     };
     defer nose.shutdownFabric(allocator);
     std.log.info("[MAIN] Event Fabric initialized (Nose Contract active)", .{});
-
-    // STEP 4: Initialize Nose Integration layer with default sampling policy.
-    // Sensors that call nose_int.submit() will get pressure-aware sampling +
-    // backoff behavior automatically.
-    nose_int.init(nose_int.SamplingPolicy.default);
-    std.log.info("[MAIN] Nose Integration initialized (pressure-aware sampling active)", .{});
-
-    // Phase 37: Initialize XDR Correlator
-    var xdr_corr = xdr.XDRCorrelator.init();
-    _ = &xdr_corr;
-    std.log.info("[MAIN] XDR Correlator initialized", .{});
-
-    // Phase 37: Initialize RAG Intelligence Engine with default threat entries
-    var rag_engine = rag.RAGEngine.init();
-    // Seed with known bad IPs (example)
-    _ = rag_engine.addThreat(.{
-        .ip = 0x0A000099,
-        .severity = 3,
-        .confidence = 85,
-        .source = "internal_seed",
-        .category = .malicious,
-        .first_seen_ms = std.time.milliTimestamp(),
-        .last_seen_ms = std.time.milliTimestamp(),
-    });
-    _ = &rag_engine;
-    std.log.info("[MAIN] RAG Intelligence Engine initialized (1 seed entry)", .{});
-
-    // Phase 37: Initialize Flow Engine (legacy table — kept for backward compat with sprint2 tests)`
-    // G32: FlowTable removed - dispatcher handles flow tracking
-    // G34: _ = &flow_table;
-    std.log.info("[MAIN] Flow Engine initialized (max {any} flows)", .{4096});
-
-    // STEP 5: Initialize Flow Integration layer (single source of truth for runtime).
-    // Sensors' events are processed through flow_integration.processEvent() in the
-    // detection loop, providing FlowContext to detectors for stateful decisions.
-    flow_int.init(allocator);
-    defer flow_int.shutdown();
-    std.log.info("[MAIN] Flow Integration initialized (event-driven flow tracking)", .{});
-
-    // STEP 6: Initialize Detection Integration layer.
-    // Wires flow_integration + detection_manager together — events popped from
-    // fabric are processed through the full pipeline (flow update + escalation +
-    // detector scan + risk-score annotation).
-    detection_int.init();
-    std.log.info("[MAIN] Detection Integration initialized (flow-aware detection active)", .{});
-
-    // STEP 7: Initialize Correlation Integration layer.
-    // Wires detection results into XDR correlator — events with same session_id
-    // are linked into cross-tier incidents (network attack + host process + file write).
-    correlation_int.init(allocator);
-    defer correlation_int.shutdown();
-    std.log.info("[MAIN] Correlation Integration initialized (XDR cross-tier linking active)", .{});
-
-    // STEP 8: Initialize RAG Intelligence Integration layer.
-    // Wires threat intel DB with detection pipeline — events are enriched
-    // with threat intel (context_flags, severity escalation, flow risk_score
-    // adjustment) BEFORE detection runs. Default seeds are loaded at startup.
-    rag_int.init();
-    defer rag_int.shutdown();
-    std.log.info("[MAIN] RAG Integration initialized (threat intel enrichment active)", .{});
-
-    // STEP 9: Initialize Policy Integration layer.
-    // Wires PolicyEngine + PEP with the detection pipeline. Every event flows
-    // through RAG -> detection -> correlation -> policy evaluation -> PEP enforcement.
-    // Default rules are loaded at startup (block critical, alert high, log low).
-    policy_int.init();
-    defer policy_int.shutdown();
-    std.log.info("[MAIN] Policy Integration initialized (PEP enforcement active)", .{});
-
-    // STEP 10: Initialize Forensics Integration layer.
-    // Captures full pipeline results (RAG + detection + correlation + policy)
-    // into an in-memory ring buffer (4096 entries) for fast replay queries,
-    // and also writes structured NDJSON entries to the persistent forensic log.
-    forensics_int.init();
-    defer forensics_int.shutdown();
-    std.log.info("[MAIN] Forensics Integration initialized (replay API active)", .{});
-
-    // Phase 37: Initialize Policy IR with default rules
-    var policy_builder = policy_ir.PolicyIRBuilder.init("AEGIS Default Policy v1");
-    _ = policy_builder.addBlockRule("BlockCritical", 3);
-    _ = policy_builder.addBlockRule("BlockHigh", 2);
-    _ = policy_builder.addAlertRule("AlertMedium", 1);
-    _ = policy_builder.addLogOnlyRule("LogLow", 0);
-    const ir = policy_builder.build();
-    std.log.info("[MAIN] Policy IR initialized ({d} rules)", .{ir.rule_count});
 
     // BP-I3: Use AEGIS_VERSION constant from bridge_init (was hardcoded "v2.1")
     std.log.info("[MAIN] AEGIS NIDS {s} - 5-Thread Architecture", .{bridge_init.AEGIS_VERSION});
@@ -164,8 +89,8 @@ pub fn main() !void {
     defer bridge_init.shutdownAll();
 
     // T1: 3-Tier Analysis Engine (required - fail if can't spawn)
-    const t_analyze = std.Thread.spawn(.{}, nids_analyze.analyzeThreadFn, .{}) catch |err| {
-        std.log.err("[MAIN] T1 Analyze failed to spawn: {any}", .{err});
+    const t_analyze = std.Thread.spawn(.{}, nids_analyze.analyze_packets, .{allocator}) catch |err| {
+        std.log.err("[MAIN] T1 Analyze failed to spawn: {}", .{err});
         return err;
     };
     std.log.info("[MAIN] T1 Analyze spawned", .{});
@@ -176,7 +101,7 @@ pub fn main() !void {
     // T2: Named Pipe IPC Sensor (optional - sensor pipe for Python scripts)
     const t_pipe: ?std.Thread = blk: {
         const t = std.Thread.spawn(.{}, nids_capture.capture_packets, .{ allocator, "127.0.0.1" }) catch |err| {
-            std.log.warn("[MAIN] T2 Pipe Sensor failed: {any}", .{err});
+            std.log.warn("[MAIN] T2 Pipe Sensor failed: {}", .{err});
             break :blk null;
         };
         break :blk t;
@@ -186,7 +111,7 @@ pub fn main() !void {
     // T3: WFP Kernel Traffic Sensor (optional - requires kernel driver)
     const t_wfp: ?std.Thread = blk: {
         const t = std.Thread.spawn(.{}, windows_capture.capture_packets, .{ allocator, "127.0.0.1" }) catch |err| {
-            std.log.warn("[MAIN] T3 WFP Capture failed: {any}", .{err});
+            std.log.warn("[MAIN] T3 WFP Capture failed: {}", .{err});
             break :blk null;
         };
         break :blk t;
@@ -196,7 +121,7 @@ pub fn main() !void {
     // T4: Minifilter Event Reader (optional - requires kernel driver)
     const t_mini: ?std.Thread = blk: {
         const t = std.Thread.spawn(.{}, minifilter_reader.minifilterReaderLoop, .{}) catch |err| {
-            std.log.warn("[MAIN] T4 Minifilter failed: {any}", .{err});
+            std.log.warn("[MAIN] T4 Minifilter failed: {}", .{err});
             break :blk null;
         };
         break :blk t;
@@ -206,22 +131,24 @@ pub fn main() !void {
     // T5: Named Pipe Scanner (optional)
     const t_pmon: ?std.Thread = blk: {
         const t = std.Thread.spawn(.{}, pipe_monitor.pipeMonitorLoop, .{}) catch |err| {
-            std.log.warn("[MAIN] T5 Pipe Monitor failed: {any}", .{err});
+            std.log.warn("[MAIN] T5 Pipe Monitor failed: {}", .{err});
             break :blk null;
         };
         break :blk t;
     };
     if (t_pmon != null) std.log.info("[MAIN] T5 Pipe Monitor spawned", .{});
 
-    // Phase 37: T6 HIDS Process Monitor (optional - Sprint 3)
-    const t_hids: ?std.Thread = blk: {
-        const t = std.Thread.spawn(.{}, hidsProcessLoop, .{}) catch |err| {
-            std.log.warn("[MAIN] T6 HIDS Process Monitor failed: {any}", .{err});
+    // T6: Health-check named pipe (Gate-A) - \\.\pipe\aegis-core-health
+    // Exposes the lifecycle state so the supervisor and runtime tests can
+    // probe core health without spawning a child process (contract §4).
+    const t_health: ?std.Thread = blk: {
+        const t = std.Thread.spawn(.{}, healthServerLoop, .{}) catch |err| {
+            std.log.warn("[MAIN] T6 Health server failed: {}", .{err});
             break :blk null;
         };
         break :blk t;
     };
-    if (t_hids != null) std.log.info("[MAIN] T6 HIDS Process Monitor spawned", .{});
+    if (t_health != null) std.log.info("[MAIN] T6 Health server spawned", .{});
 
     // Report active thread count
     var active: u32 = 1; // T1 always running
@@ -229,7 +156,7 @@ pub fn main() !void {
     if (t_wfp != null) active += 1;
     if (t_mini != null) active += 1;
     if (t_pmon != null) active += 1;
-    if (t_hids != null) active += 1;
+    if (t_health != null) active += 1;
     std.log.info("[MAIN] {d}/6 threads active", .{active});
 
     // Wait for all threads to complete
@@ -238,35 +165,9 @@ pub fn main() !void {
     if (t_wfp) |t| t.join();
     if (t_mini) |t| t.join();
     if (t_pmon) |t| t.join();
-    if (t_hids) |t| t.join();
-
-    // Phase 37: Print final stats from all Sprint 2 modules
-    const fabric_stats = nose.getStats();
-    std.log.info("[MAIN] Fabric: accepted={d} pending={d}", .{ fabric_stats.accepted, fabric_stats.pending });
-    std.log.info("[MAIN] RAG: entries={d} queries={d} matches={d}", .{ rag_engine.getStats().db_entries, 0, 0 });
+    if (t_health) |t| t.join();
 
     std.log.info("[MAIN] Shutdown complete", .{});
-}
-
-// ============================================================
-// Phase 37: HIDS Process Monitor Loop (Thread 6)
-// ============================================================
-
-fn hidsProcessLoop() void {
-    std.log.info("[HIDS-PROC] Thread 6 started - monitoring process events", .{});
-
-    while (true) {
-        if (bridge_init.g_shutdown.load(.seq_cst)) break;
-
-        // Poll for process events (stub: in production, use WMI/ETW)
-        // For now, just log stats periodically
-        std.time.sleep(30 * std.time.ns_per_s);
-
-        const stats = hids_proc.getStats();
-        std.log.info("[HIDS-PROC] Processes={d} Suspicious={d}", .{ stats.total_processes, stats.suspicious_count });
-    }
-
-    std.log.info("[HIDS-PROC] Thread 6 shutting down", .{});
 }
 
 // ============================================================
@@ -281,35 +182,6 @@ extern "kernel32" fn GetStdHandle(nStdHandle: u32) ?*anyopaque;
 extern "kernel32" fn GetConsoleMode(hConsoleHandle: ?*anyopaque, lpMode: *u32) i32;
 extern "kernel32" fn SetConsoleMode(hConsoleHandle: ?*anyopaque, dwMode: u32) i32;
 
-// ============================================================
-// Ctrl+C graceful shutdown handler
-// ============================================================
-// The NIDS is a long-running daemon that only exits when the user presses
-// Ctrl+C. Without a console control handler there is no path to set
-// bridge_init.g_shutdown, so `zig build run` would run forever with no way
-// to stop it gracefully.
-
-const CTRL_C_EVENT: u32 = 0;
-const TRUE: i32 = 1;
-
-extern "kernel32" fn SetConsoleCtrlHandler(
-    handler: ?*const fn (ctrl_type: u32) callconv(.C) i32,
-    add: i32,
-) i32;
-
-// Handler called by the OS when Ctrl+C is pressed. Returns TRUE to indicate
-// the signal was handled so the process isn't terminated immediately.
-fn ctrlHandler(ctrl_type: u32) callconv(.C) i32 {
-    _ = ctrl_type;
-    bridge_init.requestShutdown();
-    return TRUE;
-}
-
-/// Install the Ctrl+C handler so the daemon can drain threads and exit.
-fn installCtrlHandler() void {
-    _ = SetConsoleCtrlHandler(ctrlHandler, TRUE);
-}
-
 fn enableVirtualTerminal() void {
     // Enable VT processing on stdout
     const stdout = GetStdHandle(STD_OUTPUT_HANDLE) orelse return;
@@ -321,4 +193,87 @@ fn enableVirtualTerminal() void {
     const stderr = GetStdHandle(STD_ERROR_HANDLE) orelse return;
     if (GetConsoleMode(stderr, &mode) == 0) return;
     _ = SetConsoleMode(stderr, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+}
+
+// ============================================================
+// T6 Health-check named pipe (Gate-A conformance)
+// Implements \\.\pipe\aegis-core-health (RUNTIME_CONTRACT.md §4).
+// Serves one probe per connection on a message-mode pipe, then
+// recreates the pipe for the next probe.
+// ============================================================
+
+const PipeAccessDuplex: u32 = 0x00000003;
+const PipeTypeMessage: u32 = 0x00000004;
+const PipeReadmodeMessage: u32 = 0x00000002;
+const PipeWaitMode: u32 = 0x00000000;
+const PipeUnlimitedInstances: u32 = 255;
+const ErrorPipeConnected: u32 = 0x217;
+
+const health = struct {
+    extern "kernel32" fn CreateNamedPipeA(
+        lpName: [*:0]const u8,
+        dwOpenMode: u32,
+        dwPipeMode: u32,
+        nMaxInstances: u32,
+        nOutBufferSize: u32,
+        nInBufferSize: u32,
+        nDefaultTimeOut: u32,
+        lpSecurityAttributes: ?*anyopaque,
+    ) ?*anyopaque;
+    extern "kernel32" fn ConnectNamedPipe(hNamedPipe: *anyopaque, lpOverlapped: ?*anyopaque) i32;
+    extern "kernel32" fn GetLastError() u32;
+    extern "kernel32" fn ReadFile(hFile: *anyopaque, lpBuffer: [*]u8, nNumberOfBytesToRead: u32, lpNumberOfBytesRead: *u32, lpOverlapped: ?*anyopaque) i32;
+    extern "kernel32" fn WriteFile(hFile: *anyopaque, lpBuffer: [*]const u8, nNumberOfBytesToWrite: u32, lpNumberOfBytesWritten: *u32, lpOverlapped: ?*anyopaque) i32;
+    extern "kernel32" fn FlushFileBuffers(hFile: *anyopaque) i32;
+    extern "kernel32" fn CloseHandle(hObject: *anyopaque) i32;
+    extern "kernel32" fn GetTickCount64() u64;
+    extern "kernel32" fn GetCurrentProcessId() u32;
+    extern "kernel32" fn Sleep(dwMilliseconds: u32) void;
+};
+
+var g_start_tick: u64 = 0;
+
+fn healthServerLoop() void {
+    const pipe_name = "\\\\.\\pipe\\aegis-core-health";
+    var buf: [512]u8 = undefined;
+    while (true) {
+        const h_pipe = health.CreateNamedPipeA(
+            pipe_name,
+            PipeAccessDuplex,
+            PipeTypeMessage | PipeReadmodeMessage | PipeWaitMode,
+            PipeUnlimitedInstances,
+            4096, 4096,
+            0, null,
+        );
+        if (h_pipe == null or h_pipe.? == @as(*anyopaque, @ptrFromInt(std.math.maxInt(usize)))) {
+            health.Sleep(50);
+            continue;
+        }
+        const hp = h_pipe.?;
+
+        const connected = health.ConnectNamedPipe(hp, null);
+        if (connected == 0 and health.GetLastError() != ErrorPipeConnected) {
+            _ = health.CloseHandle(hp);
+            continue;
+        }
+
+        var req: [128]u8 = undefined;
+        var req_len: u32 = 0;
+        _ = health.ReadFile(hp, &req, req.len, &req_len, null);
+
+        const latency_start = health.GetTickCount64();
+        const json = std.fmt.bufPrint(&buf,
+            "{{\"op\":\"HEALTH\",\"state\":\"RUNNING\",\"status\":\"OK\",\"component\":\"core\",\"subsystem\":\"core\",\"version\":\"{s}\",\"pid\":{d},\"uptime_ms\":{d},\"probe_latency_ms\":{d},\"deps\":[{{\"name\":\"bridge\",\"state\":\"RUNNING\"}}]}}",
+            .{
+                bridge_init.AEGIS_VERSION,
+                health.GetCurrentProcessId(),
+                health.GetTickCount64() - g_start_tick,
+                health.GetTickCount64() - latency_start,
+            },
+        ) catch continue;
+        var written: u32 = 0;
+        _ = health.WriteFile(hp, json.ptr, @intCast(json.len), &written, null);
+        _ = health.FlushFileBuffers(hp);
+        _ = health.CloseHandle(hp);
+    }
 }

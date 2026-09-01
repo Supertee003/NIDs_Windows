@@ -28,7 +28,8 @@ cmake --build build --config Release
 # 3. Build Rust Shield (produces sec_monitor.dll)
 cd ../shield
 cargo build --release
-copy target\release\aegis_shield.dll ..\sec_monitor.dll
+rem The crate's lib name is "sec_monitor", so cargo emits
+rem shield\target\release\sec_monitor.dll directly (loaded by the Zig core).
 
 # 4. Build Dashboard (produces aegis_dashboard.exe)
 cd ../aegis_dashboard

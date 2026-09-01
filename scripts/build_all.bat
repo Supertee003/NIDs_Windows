@@ -51,8 +51,8 @@ echo       AEGIS NIDS - Build All Components (Phase B)
 echo  ===================================================
 echo.
 
-REM ====== [1/5] C++ IPC Bridge ======
-echo [1/5] C++ IPC Bridge (CMake)...
+REM ====== [1/7] C++ IPC Bridge ======
+echo [1/7] C++ IPC Bridge (CMake)...
 where cmake >nul 2>&1
 if %errorlevel% neq 0 (
     echo   [SKIP] cmake not found
@@ -75,7 +75,7 @@ echo   [OK] C++ Bridge: aegis_ipc.dll + aegis_bridge.exe + aegis_bridge_test.exe
 set /a PASS+=1
 
 :step2
-echo [2/5] Rust Tier-3 Shield (sec_monitor.dll)...
+echo [2/7] Rust Tier-3 Shield (sec_monitor.dll)...
 where cargo >nul 2>&1
 if %errorlevel% neq 0 (
     echo   [SKIP] cargo not found
@@ -92,7 +92,7 @@ echo   [OK] Rust FFI: shield/target/release/sec_monitor.dll
 set /a PASS+=1
 
 :step3
-echo [3/5] Go Nose (nose_dashboard.exe)...
+echo [3/7] Go Nose (nose_dashboard.exe)...
 where go >nul 2>&1
 if %errorlevel% neq 0 (
     echo   [SKIP] go not found
@@ -109,7 +109,7 @@ echo   [OK] Go Nose: dist\nose_dashboard.exe
 set /a PASS+=1
 
 :step4
-echo [4/5] Zig Tier-1 Core...
+echo [4/7] Zig Tier-1 Core...
 where zig >nul 2>&1
 if %errorlevel% neq 0 (
     echo   [SKIP] zig not found
@@ -126,17 +126,17 @@ echo   [OK] Zig Core: zig-out/bin/aegis-nids.exe (DLLs loaded at runtime)
 set /a PASS+=1
 
 :step5
-echo [5/5] egui Dashboard...
+echo [5/7] egui Dashboard...
 if not exist "aegis_dashboard\Cargo.toml" (
     echo   [SKIP] aegis_dashboard/Cargo.toml not found
     set /a SKIP+=1
-    goto summary
+    goto step6
 )
 where cargo >nul 2>&1
 if %errorlevel% neq 0 (
     echo   [SKIP] cargo not found
     set /a SKIP+=1
-    goto summary
+    goto step6
 )
 cd aegis_dashboard
 cargo build --release
@@ -144,10 +144,60 @@ if %errorlevel% neq 0 (
     echo   [FAIL] egui Dashboard build failed
     set /a FAIL+=1
     cd ..
-    goto summary
+    goto step6
 )
 cd ..
 echo   [OK] egui Dashboard: aegis_dashboard/target/release/aegis_dashboard.exe
+set /a PASS+=1
+
+:step6
+echo [6/7] Rust Mouth (DEFCON TUI)...
+if not exist "mouth\windows_sec_monitor.rs" (
+    echo   [SKIP] mouth/windows_sec_monitor.rs not found
+    set /a SKIP+=1
+    goto step7
+)
+where rustc >nul 2>&1
+if %errorlevel% neq 0 (
+    echo   [SKIP] rustc not found - install Rust or use rustup
+    set /a SKIP+=1
+    goto step7
+)
+REM G34: build Mouth to dist/ (was: mouth/windows_sec_monitor.exe)
+REM      using rustc directly because mouth/ has no Cargo.toml.
+if not exist dist mkdir dist
+rustc -O mouth\windows_sec_monitor.rs -o dist\windows_sec_monitor.exe
+if %errorlevel% neq 0 (
+    echo   [FAIL] Rust Mouth build failed
+    set /a FAIL+=1
+    goto step7
+)
+echo   [OK] Rust Mouth: dist\windows_sec_monitor.exe
+set /a PASS+=1
+
+:step7
+echo [7/7] Go Aggregator (REST API)...
+if not exist "go\aggregator\main.go" (
+    echo   [SKIP] go/aggregator/main.go not found
+    set /a SKIP+=1
+    goto summary
+)
+where go >nul 2>&1
+if %errorlevel% neq 0 (
+    echo   [SKIP] go not found
+    set /a SKIP+=1
+    goto summary
+)
+cd go\aggregator
+go build -o aegis-aggregator.exe .
+if %errorlevel% neq 0 (
+    echo   [FAIL] Go Aggregator build failed
+    set /a FAIL+=1
+    cd ..\..
+    goto summary
+)
+cd ..\..
+echo   [OK] Go Aggregator: go\aggregator\aegis-aggregator.exe
 set /a PASS+=1
 
 :summary

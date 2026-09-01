@@ -33,6 +33,17 @@ struct Config {
 
 fn parse_args() -> Config {
     let args: Vec<String> = env::args().collect();
+
+    // G27 Gate-A: --version flag. Print SEMVER + exit 0 before any other
+    // parsing so the supervisor (and tests/runtime/test_version.py) can
+    // verify the binary is present and reports a parseable version.
+    for arg in args.iter().skip(1) {
+        if arg == "--version" || arg == "-v" || arg == "-V" {
+            println!("aegis-mouth 1.0.0");
+            std::process::exit(0);
+        }
+    }
+
     let mut log_path = "logs/anomalous.json".to_string();
     let mut refresh_ms: u64 = 1000;
 

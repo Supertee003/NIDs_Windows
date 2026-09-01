@@ -22,6 +22,32 @@ import json, os, socket, re, sys, time
 import subprocess
 from datetime import datetime
 
+# Reconfigure stdout/stderr to UTF-8 on Windows so we can print Unicode
+# box-drawing characters (used in the banner below) without crashing on
+# consoles that default to cp1252. On Python 3.7+ this is safe; on older
+# Python the reconfigure call is a no-op (AttributeError is caught).
+# This is required for the runtime contract: every component MUST be able
+# to print its banner without raising UnicodeEncodeError. See
+# docs/runtime/RUNTIME_CONTRACT.md §8 (logging contract) and the Gate-A
+# conformance checklist in §9.
+for _stream_name in ("stdout", "stderr"):
+    _stream = getattr(sys, _stream_name, None)
+    if _stream is None:
+        continue
+    _reconfigure = getattr(_stream, "reconfigure", None)
+    if _reconfigure is None:
+        # Python < 3.7 or a custom stream without reconfigure(); fall back
+        # to wrapping with a utf-8 writer.
+        import io
+        setattr(sys, _stream_name, io.TextIOWrapper(
+            _stream.buffer, encoding="utf-8", errors="replace", line_buffering=True,
+        ))
+    else:
+        try:
+            _reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass  # best-effort; if it fails we fall through to errors="replace"
+
 # 🔗 C++ IPC Bridge — เชื่อม Brain ↔ Bridge ↔ Dashboard
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "shared"))
 try:
@@ -30,6 +56,17 @@ try:
 except ImportError:
     print("[AEGIS BRAIN] Warning: aegis_bridge_ctypes not found — running without Bridge")
     BRIDGE_AVAILABLE = False
+
+# G27 Gate-A: Runtime counters for the HEALTH probe response.
+# These counters are populated by the main event loop and read by the
+# HEALTH handler so the supervisor can verify the brain is processing
+# events (not just running).
+IN_EVENT_COUNT  = 0
+OUT_EVENT_COUNT = 0
+ERROR_COUNT     = 0
+DROPPED_COUNT   = 0
+LAST_EVENT_TS   = 0.0
+BRAIN_START_MS  = int(time.time() * 1000)
 
 # ⚡ Import Cython Hotspots (Phase 19 GAP-1: Wire Phase 17 module)
 # Old: tried pyximport with broken brain/cython/aegis_hotspot.pyx (never compiled)
@@ -212,6 +249,18 @@ def poll_bridge_events():
 
 def main():
     global BRIDGE_AVAILABLE
+    # G27 Gate-A: these globals are mutated by the event loop and read by
+    # the HEALTH probe handler (defined inline in the loop below).
+    global IN_EVENT_COUNT, OUT_EVENT_COUNT, ERROR_COUNT, DROPPED_COUNT
+    global LAST_EVENT_TS
+
+    # G27 Gate-A: --version flag. Print SEMVER + exit 0 so the supervisor
+    # (and tests/runtime/test_version.py) can verify the brain reports a
+    # parseable version. Must run BEFORE any other initialization (so a
+    # missing DLL or Cython module does not mask the version output).
+    if "--version" in sys.argv or "-v" in sys.argv or "-V" in sys.argv:
+        print("aegis-brain 2.0.0")
+        sys.exit(0)
 
     os.makedirs("logs", exist_ok=True)
 
@@ -286,10 +335,45 @@ def main():
             msg_bytes, addr = sock.recvfrom(65535)
             raw_payload = msg_bytes.decode("utf-8", errors="ignore").strip()
 
+            # G27 Gate-A: HEALTH probe. The supervisor sends a single-packet
+            # JSON {"op":"HEALTH"} and expects a single-packet JSON response
+            # matching the schema in RUNTIME_CONTRACT.md §4.1. This unblocks
+            # TestBrainLifecycle in tests/runtime/test_harness_integration.py.
+            try:
+                health_check = json.loads(raw_payload)
+                if isinstance(health_check, dict) and health_check.get("op") == "HEALTH":
+                    health_response = {
+                        "component":     "brain",
+                        "state":         "RUNNING",
+                        "pid":           os.getpid(),
+                        "uptime_ms":     int(time.time() * 1000 - BRAIN_START_MS),
+                        "last_event_ms": int((time.time() - LAST_EVENT_TS) * 1000) if LAST_EVENT_TS else 0,
+                        "counters": {
+                            "in_events":  IN_EVENT_COUNT,
+                            "out_events": OUT_EVENT_COUNT,
+                            "errors":     ERROR_COUNT,
+                            "dropped":    DROPPED_COUNT,
+                        },
+                        "deps": [
+                            {"name": "core", "state": "RUNNING" if BRIDGE_AVAILABLE else "DEGRADED"},
+                        ],
+                    }
+                    sock.sendto(
+                        json.dumps(health_response).encode("utf-8"),
+                        addr,
+                    )
+                    continue
+            except (json.JSONDecodeError, ValueError):
+                pass  # Not a HEALTH request; fall through to normal handling
+
             # Parse incoming JSON from Zig Core
             log_entry = json.loads(raw_payload)
             source = log_entry.get("source", "UNKNOWN")
             ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            # G27 Gate-A: increment health counters for the HEALTH probe.
+            IN_EVENT_COUNT += 1
+            LAST_EVENT_TS = time.time()
 
             # Extract attacker IP from Zig packet data
             src_ip = log_entry.get("src_ip", log_entry.get("source_ip", "Unknown"))
