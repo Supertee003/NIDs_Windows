@@ -85,3 +85,11 @@ verify_build.*
 # Stray root files
 threat_graph.html
 IDEA.md
+
+# G42 cleanup: ensure backup files are ignored
+*.bak_*
+*.phase*_backup
+*.phase*backup
+brain/aegis_brain_cython/fast_scan.c
+brain/aegis_brain_cython/*.c
+
