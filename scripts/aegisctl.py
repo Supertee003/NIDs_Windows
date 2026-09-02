@@ -188,6 +188,50 @@ def _is_component_running(component: dict) -> bool:
     return True
 
 
+def _rotate_log(log_file: Path, max_generations: int = 3) -> None:
+    """Rotate a log file when it exceeds the size limit.
+
+    Renames:  <name>.log -> <name>.1.log
+              <name>.1.log -> <name>.2.log
+              <name>.2.log -> <name>.3.log (deleted if > max_generations)
+    Then truncates the original.
+    """
+    if not log_file.exists():
+        return
+    stem = log_file.stem
+    suffix = log_file.suffix
+    parent = log_file.parent
+
+    # Shift existing rotated files (3 -> delete, 2 -> 3, 1 -> 2)
+    for gen in range(max_generations, 0, -1):
+        older = parent / f"{stem}.{gen}{suffix}"
+        if gen == max_generations:
+            if older.exists():
+                try:
+                    older.unlink()
+                except OSError:
+                    pass
+        else:
+            newer = parent / f"{stem}.{gen}{suffix}"
+            if newer.exists():
+                try:
+                    newer.rename(older)
+                except OSError:
+                    pass
+
+    # Rotate current log to .1
+    rotated = parent / f"{stem}.1{suffix}"
+    try:
+        log_file.rename(rotated)
+    except OSError:
+        # If rename fails (e.g. file locked on Windows), truncate in place
+        try:
+            log_file.write_bytes(b"")
+        except OSError:
+            pass
+
+
+
 def _start_command(component: dict) -> list[str]:
     """Build the command to start a component.
     Mirrors the start commands from docs/runtime/LOCAL_RUNBOOK.md.
@@ -339,6 +383,12 @@ def cmd_start(args: argparse.Namespace) -> int:
             # On Linux: just Popen with stdout/stderr to log files.
             log_file = REPO_ROOT / "logs" / f"{c['name']}.log"
             log_file.parent.mkdir(parents=True, exist_ok=True)
+
+            # G45: Log rotation -- if the log file exceeds 10 MB, rotate it.
+            MAX_LOG_SIZE = 10 * 1024 * 1024  # 10 MB
+            if log_file.exists() and log_file.stat().st_size > MAX_LOG_SIZE:
+                _rotate_log(log_file)
+
             log_handle = open(log_file, "ab")
             kwargs = {
                 "cwd": str(REPO_ROOT),
@@ -2012,6 +2062,282 @@ def cmd_quarantine(args: argparse.Namespace) -> int:
         return 2
 
 
+# =====================================================================
+# G45 - Production features (siem/logs export)
+# =====================================================================
+
+
+def cmd_siem(args: argparse.Namespace) -> int:
+    """SIEM export commands (export events in syslog/CEF/JSON format)."""
+    subcmd = args.subcommand
+    if subcmd == "export":
+        return _siem_export(args)
+    elif subcmd == "syslog":
+        return _siem_syslog(args)
+    else:
+        print(f"ERROR: unknown siem subcommand: {subcmd!r}")
+        return 2
+
+
+def _siem_export(args: argparse.Namespace) -> int:
+    """Export forensic events in SIEM-compatible format (JSON array or CEF)."""
+    if not FORENSIC_LOG.exists():
+        print(f"No log file found: {FORENSIC_LOG}")
+        return 1
+
+    if not args.output:
+        print("ERROR: --output is required for 'siem export'")
+        return 2
+
+    output_path = Path(args.output)
+    if not output_path.is_absolute():
+        output_path = REPO_ROOT / args.output
+
+    fmt = args.format or "json"
+    if fmt not in ("json", "cef", "syslog"):
+        print(f"ERROR: --format must be json/cef/syslog, got {fmt!r}")
+        return 2
+
+    records = []
+    try:
+        with open(FORENSIC_LOG, "r", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    records.append(json.loads(line))
+                except (json.JSONDecodeError, ValueError):
+                    continue
+    except OSError as e:
+        print(f"ERROR reading log: {e}")
+        return 1
+
+    if not records:
+        print("No records to export")
+        return 0
+
+    # Apply severity filter if specified
+    if args.severity:
+        records = [r for r in records if r.get("level", r.get("severity", "")).lower()
+                   == args.severity.lower()]
+
+    # Apply limit if specified
+    if args.limit and len(records) > args.limit:
+        records = records[-args.limit:]
+
+    try:
+        with open(output_path, "w", encoding="utf-8") as f:
+            if fmt == "json":
+                json.dump(records, f, indent=2, ensure_ascii=False)
+            elif fmt == "cef":
+                # Common Event Format (CEF) -- used by Splunk, ArcSight
+                for r in records:
+                    ts = r.get("ts_ms", r.get("timestamp", 0))
+                    severity = r.get("level", r.get("severity", "Info"))
+                    event = r.get("event", r.get("attack_type", "Unknown"))
+                    src = r.get("src_ip", "0.0.0.0")
+                    rule = r.get("rule", r.get("rule_id", "Unknown"))
+                    # CEF: CEF:Version|Vendor|Product|DevVersion|SignatureID|Name|Severity|Extension
+                    f.write(f"CEF:0|AEGIS|NIDS|1.0|{rule}|{event}|{severity}|"
+                            f"src={src} rt={ts} act={r.get('action', 'alert')}\n")
+            elif fmt == "syslog":
+                # Syslog format (RFC 5424 simplified)
+                import datetime
+                for r in records:
+                    ts = r.get("ts_ms", 0)
+                    if ts:
+                        dt = datetime.datetime.fromtimestamp(ts / 1000 if ts > 1e12 else ts)
+                        timestamp = dt.strftime("%b %d %H:%M:%S")
+                    else:
+                        timestamp = datetime.datetime.now().strftime("%b %d %H:%M:%S")
+                    severity = r.get("level", r.get("severity", "INFO"))
+                    event = r.get("event", r.get("attack_type", "Unknown"))
+                    src = r.get("src_ip", "0.0.0.0")
+                    rule = r.get("rule", r.get("rule_id", "Unknown"))
+                    # Syslog: <priority>timestamp hostname program[pid]: message
+                    priority = {"Critical": 2, "High": 4, "Medium": 6, "Low": 7}.get(severity, 6)
+                    f.write(f"<{priority}>{timestamp} aegis-nids aegis[{os.getpid()}]: "
+                            f"[{severity}] {event} src={src} rule={rule}\n")
+    except OSError as e:
+        print(f"ERROR writing output: {e}")
+        return 1
+
+    print(f"Exported {len(records)} records to {output_path}")
+    print(f"Format: {fmt}")
+    if args.severity:
+        print(f"Filter: severity={args.severity}")
+    if args.limit:
+        print(f"Limit: last {args.limit} records")
+    return 0
+
+
+def _siem_syslog(args: argparse.Namespace) -> int:
+    """Stream events to a syslog server via UDP."""
+    if not FORENSIC_LOG.exists():
+        print(f"No log file found: {FORENSIC_LOG}")
+        return 1
+
+    host = args.host or "127.0.0.1"
+    port = args.port or 514
+
+    records = []
+    try:
+        with open(FORENSIC_LOG, "r", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    records.append(json.loads(line))
+                except (json.JSONDecodeError, ValueError):
+                    continue
+    except OSError as e:
+        print(f"ERROR reading log: {e}")
+        return 1
+
+    if not records:
+        print("No records to stream")
+        return 0
+
+    # Apply severity filter
+    if args.severity:
+        records = [r for r in records if r.get("level", r.get("severity", "")).lower()
+                   == args.severity.lower()]
+
+    # Apply limit
+    if args.limit and len(records) > args.limit:
+        records = records[-args.limit:]
+
+    import datetime
+    sent = 0
+    failed = 0
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.settimeout(2.0)
+            for r in records:
+                ts = r.get("ts_ms", 0)
+                if ts:
+                    dt = datetime.datetime.fromtimestamp(ts / 1000 if ts > 1e12 else ts)
+                    timestamp = dt.strftime("%b %d %H:%M:%S")
+                else:
+                    timestamp = datetime.datetime.now().strftime("%b %d %H:%M:%S")
+                severity = r.get("level", r.get("severity", "INFO"))
+                event = r.get("event", r.get("attack_type", "Unknown"))
+                src = r.get("src_ip", "0.0.0.0")
+                rule = r.get("rule", r.get("rule_id", "Unknown"))
+                priority = {"Critical": 2, "High": 4, "Medium": 6, "Low": 7}.get(severity, 6)
+                message = f"<{priority}>{timestamp} aegis-nids aegis: [{severity}] {event} src={src} rule={rule}\n"
+                try:
+                    s.sendto(message.encode("utf-8"), (host, port))
+                    sent += 1
+                except (socket.timeout, OSError):
+                    failed += 1
+    except Exception as e:
+        print(f"ERROR: {e}")
+        return 1
+
+    print(f"Syslog stream: {sent} sent, {failed} failed -> {host}:{port}")
+    return 0 if failed == 0 else 1
+
+
+def cmd_logs(args: argparse.Namespace) -> int:
+    """Log management commands (rotate/clean/size)."""
+    subcmd = args.subcommand
+    if subcmd == "rotate":
+        return _logs_rotate(args)
+    elif subcmd == "clean":
+        return _logs_clean(args)
+    elif subcmd == "size":
+        return _logs_size(args)
+    else:
+        print(f"ERROR: unknown logs subcommand: {subcmd!r}")
+        return 2
+
+
+def _logs_rotate(args: argparse.Namespace) -> int:
+    """Rotate all log files that exceed the size threshold."""
+    logs_dir = REPO_ROOT / "logs"
+    if not logs_dir.exists():
+        print("No logs directory found.")
+        return 0
+
+    max_size = (args.max_size or 10) * 1024 * 1024  # default 10 MB
+    rotated = 0
+    skipped = 0
+
+    for log_file in logs_dir.glob("*.log"):
+        if log_file.stat().st_size > max_size:
+            _rotate_log(log_file)
+            print(f"  [ROTATED] {log_file.name} ({log_file.stat().st_size // 1024} KB -> 0)")
+            rotated += 1
+        else:
+            size_kb = log_file.stat().st_size // 1024
+            print(f"  [OK]      {log_file.name} ({size_kb} KB)")
+            skipped += 1
+
+    print(f"\nRotated: {rotated}, OK: {skipped}")
+    return 0
+
+
+def _logs_clean(args: argparse.Namespace) -> int:
+    """Truncate all log files to 0 bytes."""
+    logs_dir = REPO_ROOT / "logs"
+    if not logs_dir.exists():
+        print("No logs directory found.")
+        return 0
+
+    cleaned = 0
+    for log_file in logs_dir.glob("*.log"):
+        try:
+            log_file.write_bytes(b"")
+            cleaned += 1
+            print(f"  [CLEANED] {log_file.name}")
+        except OSError:
+            print(f"  [SKIP]    {log_file.name} (locked?)")
+
+    # Also clean rotated logs if --all flag
+    if args.all:
+        for rotated in logs_dir.glob("*.log.*"):
+            try:
+                rotated.unlink()
+                print(f"  [DELETED] {rotated.name}")
+            except OSError:
+                pass
+
+    print(f"\nCleaned: {cleaned} log files")
+    return 0
+
+
+def _logs_size(args: argparse.Namespace) -> int:
+    """Show size of all log files."""
+    logs_dir = REPO_ROOT / "logs"
+    if not logs_dir.exists():
+        print("No logs directory found.")
+        return 0
+
+    total_size = 0
+    print(f"\n{'Log File':<30} {'Size':>12}")
+    print("-" * 45)
+    for log_file in sorted(logs_dir.glob("*.log*")):
+        size = log_file.stat().st_size
+        total_size += size
+        if size > 1024 * 1024:
+            size_str = f"{size / (1024 * 1024):.1f} MB"
+        elif size > 1024:
+            size_str = f"{size / 1024:.1f} KB"
+        else:
+            size_str = f"{size} B"
+        print(f"  {log_file.name:<28} {size_str:>12}")
+    print("-" * 45)
+    if total_size > 1024 * 1024:
+        total_str = f"{total_size / (1024 * 1024):.1f} MB"
+    else:
+        total_str = f"{total_size / 1024:.1f} KB"
+    print(f"  {'TOTAL':<28} {total_str:>12}")
+    return 0
+
+
 def _quarantine_add(args: argparse.Namespace) -> int:
     """Quarantine an IP (block all traffic + alert).
 
@@ -2283,6 +2609,35 @@ def main() -> int:
     p_q_rm.add_argument("--ip", required=True, help="IP address to release")
     quar_sub.add_parser("list", help="List all quarantined IPs")
     p.set_defaults(func=cmd_quarantine)
+
+    # --- G45 - Production features (siem/logs) ---
+
+    # siem (with subcommands: export/syslog)
+    p = sub.add_parser("siem", help="SIEM export (export/syslog)")
+    siem_sub = p.add_subparsers(dest="subcommand", required=True, metavar="SUBCOMMAND")
+    p_exp = siem_sub.add_parser("export", help="Export events to file (JSON/CEF/syslog format)")
+    p_exp.add_argument("--output", "-o", required=True, help="Output file path")
+    p_exp.add_argument("--format", "-f", choices=["json", "cef", "syslog"], default="json",
+                       help="Output format (default: json)")
+    p_exp.add_argument("--severity", help="Filter by severity (Low/Medium/High/Critical)")
+    p_exp.add_argument("--limit", type=int, help="Export only the last N records")
+    p.set_defaults(func=cmd_siem)
+    p_sys = siem_sub.add_parser("syslog", help="Stream events to syslog server via UDP")
+    p_sys.add_argument("--host", default="127.0.0.1", help="Syslog server host (default: 127.0.0.1)")
+    p_sys.add_argument("--port", type=int, default=514, help="Syslog server port (default: 514)")
+    p_sys.add_argument("--severity", help="Filter by severity")
+    p_sys.add_argument("--limit", type=int, help="Stream only the last N records")
+    p.set_defaults(func=cmd_siem)
+
+    # logs (with subcommands: rotate/clean/size)
+    p = sub.add_parser("logs", help="Log management (rotate/clean/size)")
+    logs_sub = p.add_subparsers(dest="subcommand", required=True, metavar="SUBCOMMAND")
+    p_rot = logs_sub.add_parser("rotate", help="Rotate log files that exceed size threshold")
+    p_rot.add_argument("--max-size", type=int, default=10, help="Max size in MB before rotation (default: 10)")
+    p_clean = logs_sub.add_parser("clean", help="Truncate all log files to 0 bytes")
+    p_clean.add_argument("--all", action="store_true", help="Also delete rotated log files (*.log.*)")
+    logs_sub.add_parser("size", help="Show size of all log files")
+    p.set_defaults(func=cmd_logs)
 
     args = parser.parse_args()
     return args.func(args)
