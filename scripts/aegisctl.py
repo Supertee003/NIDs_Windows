@@ -20,7 +20,7 @@ Commands:
     restart    Restart a single component (stop + wait + start).
     diagnose   Collect diagnostic info: versions, status, health, logs.
 
-This is v1 of aegisctl per the strategy RUN_FIRST → VERIFY → CONNECT → CONTROL.
+This is v1 of aegisctl per the strategy RUN_FIRST -> VERIFY -> CONNECT -> CONTROL.
 It implements the minimal control plane required to operate a single-host AEGIS
 deployment:
     - Read-only: version, status, health, diagnose
@@ -1518,7 +1518,7 @@ def _canary_run(args: argparse.Namespace) -> int:
                 s.settimeout(2.0)
                 s.sendto(payload, ("127.0.0.1", 9999))
             print(f"  Sent via UDP to 127.0.0.1:9999")
-            # Mark as "sent" — actual detection verification would require
+            # Mark as "sent" -- actual detection verification would require
             # checking the forensic log for the expected rule_id.
             result = {
                 "name": name,

@@ -93,3 +93,12 @@ IDEA.md
 brain/aegis_brain_cython/fast_scan.c
 brain/aegis_brain_cython/*.c
 
+
+# G43 audit additions
+*.pyc
+logs/pids/
+*.dll
+*.o
+*.exp
+*.lib
+.pytest_cache/
