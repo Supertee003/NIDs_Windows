@@ -1,0 +1,69 @@
+{
+  "version": "1.0.0",
+  "comment": "Single source of truth for component registry. Used by aegisctl AND tests.",
+  "components": [
+    {
+      "name": "bridge",
+      "binary": "dist/aegis_bridge.exe",
+      "language": "C++",
+      "health_transport": "pipe",
+      "health_endpoint": "\\\\.\\pipe\\aegis-bridge-health",
+      "required": true,
+      "gate": "A"
+    },
+    {
+      "name": "core",
+      "binary": "zig-out/bin/aegis-nids.exe",
+      "language": "Zig",
+      "health_transport": "pipe",
+      "health_endpoint": "\\\\.\\pipe\\aegis-core-health",
+      "required": true,
+      "gate": "A"
+    },
+    {
+      "name": "brain",
+      "binary": "brain/windows_brain.py",
+      "language": "Python+Cython",
+      "health_transport": "udp",
+      "health_endpoint": "127.0.0.1:9999",
+      "required": true,
+      "gate": "A"
+    },
+    {
+      "name": "nose",
+      "binary": "dist/nose_dashboard.exe",
+      "language": "Go",
+      "health_transport": "stdout",
+      "health_endpoint": "logs/nose.log",
+      "required": false,
+      "gate": "A"
+    },
+    {
+      "name": "mouth",
+      "binary": "dist/windows_sec_monitor.exe",
+      "language": "Rust",
+      "health_transport": "pipe",
+      "health_endpoint": "\\\\.\\pipe\\aegis-mouth-health",
+      "required": false,
+      "gate": "A"
+    },
+    {
+      "name": "shield",
+      "binary": "shield/target/release/sec_monitor.dll",
+      "language": "Rust",
+      "health_transport": "delegate",
+      "health_endpoint": "core",
+      "required": true,
+      "gate": "A"
+    },
+    {
+      "name": "aggregator",
+      "binary": "go/aggregator/aegis-aggregator.exe",
+      "language": "Go",
+      "health_transport": "tcp",
+      "health_endpoint": "127.0.0.1:9200",
+      "required": false,
+      "gate": "A"
+    }
+  ]
+}

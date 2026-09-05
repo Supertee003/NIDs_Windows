@@ -32,6 +32,46 @@ const ips_sim_int = @import("ips_simulation_integration.zig");
 const policy_plane_int = @import("policy_plane_integration.zig");
 const forensic_log = @import("forensic_log.zig");
 
+// P0.5: Production vs Test profile separation.
+// Test modules are conditionally imported. In production builds,
+// the test profile flag is set to false, skipping test harness init.
+pub const LifecycleProfile = enum {
+    production, // Only production subsystems
+    testing,    // Production + test/proof modules
+    full,       // Everything (current behavior, backward compat)
+};
+
+// Default profile: full (backward compatible with existing behavior)
+// Production builds should call lifecycle.startProduction() instead.
+var g_profile: LifecycleProfile = .full;
+
+/// Returns true if the given module should be initialized based on profile.
+fn shouldInit(comptime module_name: []const u8) bool {
+    switch (g_profile) {
+        .production => {
+            // Production-only modules: forensic, fabric, nose, flow, detection,
+            // verdict, correlation, threat_intel, rag, brain, policy, pep,
+            // forensics, xdr, release, hids, conc, policy_plane
+            return switch (module_name[0]) {
+                'f', 'n', 'd', 'v', 'c', 't', 'r', 'b', 'p', 'x', 'h' => true,
+                else => false,
+            };
+        },
+        .testing, .full => return true,
+    }
+}
+
+/// Check if a module is a test/proof module.
+fn isTestModule(name: []const u8) bool {
+    if (std.mem.eql(u8, name, "e2e_harness_integration")) return true;
+    if (std.mem.eql(u8, name, "performance_integration")) return true;
+    if (std.mem.eql(u8, name, "ips_canary_integration")) return true;
+    if (std.mem.eql(u8, name, "fault_injection_integration")) return true;
+    if (std.mem.eql(u8, name, "ips_simulation_integration")) return true;
+    if (std.mem.eql(u8, name, "replay_integration")) return true;
+    return false;
+}
+
 // ============================================================
 // Lifecycle states
 // ============================================================
@@ -121,19 +161,28 @@ pub fn start(allocator: std.mem.Allocator) !void {
     defer if (g_state != .running) forensics_int.shutdown();
 
     // 14. Replay Engine (Phase 15) - read-only analysis tool for regression testing
-    replay_int.init();
+    // P0.5: Skip test modules in production profile
+    if (g_profile != .production) {
+        replay_int.init();
+    }
     defer if (g_state != .running) replay_int.shutdown();
 
     // 15. E2E Harness (Phase 16) - end-to-end test framework
-    e2e_int.init();
+    if (g_profile != .production) {
+        e2e_int.init();
+    }
     defer if (g_state != .running) e2e_int.shutdown();
 
     // 16. Performance Harness (Phase 17) - benchmarking and latency measurement
-    perf_int.init();
+    if (g_profile != .production) {
+        perf_int.init();
+    }
     defer if (g_state != .running) perf_int.shutdown();
 
     // 17. IPS Canary (Phase 18) - health monitoring and enforcement verification
-    canary_int.init();
+    if (g_profile != .production) {
+        canary_int.init();
+    }
     defer if (g_state != .running) canary_int.shutdown();
 
     // 18. XDR Hardening (Phase 19) - SIEM export and incident aggregation
@@ -157,11 +206,15 @@ pub fn start(allocator: std.mem.Allocator) !void {
     defer if (g_state != .running) conc_int.shutdown();
 
     // 23. Fault Injection (Phase 25) - simulate subsystem failures
-    fault_int.init();
-    defer if (g_state != .running) fault_int.shutdown();
+    if (g_profile != .production) {
+        fault_int.init();
+    }
 
     // 24. IPS Simulation (Phase 26) - AUDIT->SIMULATE->CANARY->ENFORCE
-    ips_sim_int.init();
+    if (g_profile != .production) {
+        ips_sim_int.init();
+    }
+    defer if (g_state != .running) fault_int.shutdown();
     defer if (g_state != .running) ips_sim_int.shutdown();
 
     // 25. Policy Plane (Phase 27) - TypeScript policy IR, compiler, simulator
@@ -169,7 +222,27 @@ pub fn start(allocator: std.mem.Allocator) !void {
     defer if (g_state != .running) policy_plane_int.shutdown();
 
     g_state = .running;
-    std.log.info("[RUNTIME] Started (state={s})", .{g_state.toString()});
+    std.log.info("[RUNTIME] Started (state={s}, profile={s})", .{ g_state.toString(), switch (g_profile) {
+        .production => "production",
+        .testing => "test",
+        .full => "full",
+    } });
+}
+
+/// P0.5: Start in production mode (skips test/proof modules).
+pub fn startProduction(allocator: std.mem.Allocator) !void {
+    g_profile = .production;
+    try start(allocator);
+}
+
+/// P0.5: Set the lifecycle profile.
+pub fn setProfile(profile: LifecycleProfile) void {
+    g_profile = profile;
+}
+
+/// P0.5: Get the current lifecycle profile.
+pub fn getProfile() LifecycleProfile {
+    return g_profile;
 }
 
 // ============================================================
@@ -302,6 +375,7 @@ test "lifecycle: full sequence (start, double-start, shutdown, double-shutdown)"
 }
 
 test "lifecycle: all subsystems initialized after start" {
+    if (isRunning()) shutdown();
     if (fabric.isInitialized()) {
         shutdown();
     }

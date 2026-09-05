@@ -236,13 +236,18 @@ pub fn testDetectorAnalyze(
             .verdict = .suspicious,
             .detector_id = 99, // test detector ID
             .rule_id = 0xC2,
+            .rule_version = 0,
             .confidence = 75,
             .severity = 2,
+            .signal_type = 0,
             .description = "test detector: connection to known C2 port 4444",
             .indicators = detection.Indicator.RULE_MATCH,
             .flow_key = flow_types.FlowKey.fromEvent(event),
             .event_id = event.event_id,
             .timestamp_ns = event.monotonic_ns,
+            .producer = "",
+            .provenance = "",
+            .created_at = 0,
         };
     }
     return detection.DetectionEvidence.benign(99, event.event_id, event.monotonic_ns);
@@ -393,13 +398,18 @@ test "EvidenceTracer trace and findByEventId" {
         .verdict = .suspicious,
         .detector_id = 1,
         .rule_id = 0xDEAD,
+        .rule_version = 0,
         .confidence = 80,
         .severity = 2,
+        .signal_type = 0,
         .description = "test",
         .indicators = detection.Indicator.RULE_MATCH,
         .flow_key = null,
         .event_id = 100,
         .timestamp_ns = 1000,
+        .producer = "",
+        .provenance = "",
+        .created_at = 0,
     };
     tracer.trace(evidence1, .suspicious);
 
@@ -407,13 +417,18 @@ test "EvidenceTracer trace and findByEventId" {
         .verdict = .malicious,
         .detector_id = 2,
         .rule_id = 0xBEEF,
+        .rule_version = 0,
         .confidence = 90,
         .severity = 3,
+        .signal_type = 0,
         .description = "test2",
         .indicators = detection.Indicator.RULE_MATCH,
         .flow_key = null,
         .event_id = 100,
         .timestamp_ns = 2000,
+        .producer = "",
+        .provenance = "",
+        .created_at = 0,
     };
     tracer.trace(evidence2, .malicious);
 
@@ -429,13 +444,18 @@ test "EvidenceTracer canTraceVerdict" {
         .verdict = .suspicious,
         .detector_id = 1,
         .rule_id = 0xDEAD,
+        .rule_version = 0,
         .confidence = 80,
         .severity = 2,
+        .signal_type = 0,
         .description = "test",
         .indicators = detection.Indicator.RULE_MATCH,
         .flow_key = null,
         .event_id = 42,
         .timestamp_ns = 1000,
+        .producer = "",
+        .provenance = "",
+        .created_at = 0,
     };
     tracer.trace(evidence, .suspicious);
 

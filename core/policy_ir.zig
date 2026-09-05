@@ -4,11 +4,11 @@
 //! It defines rules that the PolicyEngine can evaluate at runtime.
 //!
 //! Blueprint: "TypeScript/JavaScript | Policy authoring, policy control plane"
-//! TypeScript compiles YAML/JSON policy definitions → PolicyIR → Zig loads at runtime.
+//! TypeScript compiles YAML/JSON policy definitions -> PolicyIR -> Zig loads at runtime.
 //!
 //! This module defines:
 //!   1. PolicyIR schema (versioned, loadable from JSON)
-//!   2. PolicyIRLoader (parses JSON → PolicyRule array)
+//!   2. PolicyIRLoader (parses JSON -> PolicyRule array)
 //!   3. PolicyIRValidator (checks rules for conflicts/coverage)
 //!   4. Integration with existing PolicyEngine (register loaded rules)
 
@@ -33,8 +33,11 @@ pub const PolicyIRHeader = struct {
 
 pub const PolicyIRRule = struct {
     // Match criteria
+    id: u16,
     min_severity: u8,
+    max_severity: u8,
     required_verdict: detection.Verdict,
+    condition_count: u8,
     // Decision
     action: policy.PolicyDecision,
     // Metadata
@@ -125,8 +128,11 @@ pub const PolicyIRBuilder = struct {
 
     pub fn addBlockRule(self: *PolicyIRBuilder, name: []const u8, min_severity: u8) *PolicyIRBuilder {
         var rule = PolicyIRRule{
+            .id = 0,
             .min_severity = min_severity,
+            .max_severity = 3,
             .required_verdict = .match_block,
+            .condition_count = 0,
             .action = .block,
             .name = [_]u8{0} ** 64,
             .name_len = 0,
@@ -144,8 +150,11 @@ pub const PolicyIRBuilder = struct {
 
     pub fn addAlertRule(self: *PolicyIRBuilder, name: []const u8, min_severity: u8) *PolicyIRBuilder {
         var rule = PolicyIRRule{
+            .id = 0,
             .min_severity = min_severity,
+            .max_severity = 3,
             .required_verdict = .match_alert,
+            .condition_count = 0,
             .action = .alert,
             .name = [_]u8{0} ** 64,
             .name_len = 0,
@@ -163,8 +172,11 @@ pub const PolicyIRBuilder = struct {
 
     pub fn addLogOnlyRule(self: *PolicyIRBuilder, name: []const u8, min_severity: u8) *PolicyIRBuilder {
         var rule = PolicyIRRule{
+            .id = 0,
             .min_severity = min_severity,
+            .max_severity = 3,
             .required_verdict = .match_alert,
+            .condition_count = 0,
             .action = .log_only,
             .name = [_]u8{0} ** 64,
             .name_len = 0,
@@ -275,8 +287,11 @@ test "PolicyIR loadInto skips disabled rules" {
 
 test "PolicyIRRule getName and getDescription" {
     var rule = PolicyIRRule{
+        .id = 0,
         .min_severity = 2,
+        .max_severity = 3,
         .required_verdict = .match_block,
+        .condition_count = 0,
         .action = .block,
         .name = [_]u8{0} ** 64,
         .name_len = 0,
@@ -303,4 +318,416 @@ test "PolicyIRBuilder chaining" {
     try std.testing.expect(ir.rules[0].getName().len > 0);
     try std.testing.expect(ir.rules[1].getName().len > 0);
     try std.testing.expect(ir.rules[2].getName().len > 0);
+}
+
+// ============================================================
+// P1.1: Typed Policy Values (Phase I)
+//
+// Master Plan requires typed values instead of numeric-only semantics.
+// This tagged union replaces the old numeric-only value model.
+// ============================================================
+
+pub const PolicyValue = union(enum) {
+    // Numeric types
+    uint64: u64,
+    int64: i64,
+    bool_value: bool,
+
+    // String types
+    string: []const u8,
+    string_list: [][16]u8, // bounded string list (max 16 chars each)
+
+    // Network types
+    ipv4: u32,            // network byte order
+    cidr: struct { ip: u32, prefix: u8 },
+    port: u16,
+    port_range: struct { start: u16, end: u16 },
+
+    // Time types
+    time_window: struct { start_ms: u64, end_ms: u64 },
+    duration_ms: u64,
+
+    // Enum
+    enum_value: struct { tag: []const u8, value: u16 },
+
+    // References
+    ip_set_ref: []const u8, // name of an IP set to look up
+
+    pub fn isNumeric(self: PolicyValue) bool {
+        return switch (self) {
+            .uint64, .int64, .bool_value, .port, .duration_ms => true,
+            else => false,
+        };
+    }
+
+    pub fn isString(self: PolicyValue) bool {
+        return switch (self) {
+            .string, .string_list, .ip_set_ref => true,
+            else => false,
+        };
+    }
+
+    pub fn isNetwork(self: PolicyValue) bool {
+        return switch (self) {
+            .ipv4, .cidr, .port, .port_range, .ip_set_ref => true,
+            else => false,
+        };
+    }
+
+    pub fn isTime(self: PolicyValue) bool {
+        return switch (self) {
+            .time_window, .duration_ms => true,
+            else => false,
+        };
+    }
+
+    /// Returns a string representation for logging/debugging.
+    pub fn typeName(self: PolicyValue) []const u8 {
+        return switch (self) {
+            .uint64 => "UInt64",
+            .int64 => "Int64",
+            .bool_value => "Bool",
+            .string => "String",
+            .string_list => "StringList",
+            .ipv4 => "IPv4",
+            .cidr => "CIDR",
+            .port => "Port",
+            .port_range => "PortRange",
+            .time_window => "TimeWindow",
+            .duration_ms => "DurationMs",
+            .enum_value => "Enum",
+            .ip_set_ref => "IPSetRef",
+        };
+    }
+};
+
+// ============================================================
+// P1.1: Policy Condition (uses typed values)
+// ============================================================
+
+pub const PolicyCondition = struct {
+    field_name: []const u8,     // e.g., "src_ip", "dst_port", "severity"
+    operator: PolicyOperator,
+    value: PolicyValue,
+
+    pub fn matches(self: PolicyCondition, actual: PolicyValue) bool {
+        return switch (self.operator) {
+            .eq => self.valueMatches(actual),
+            .ne => !self.valueMatches(actual),
+            .gt => self.valueGt(actual),
+            .lt => self.valueLt(actual),
+            .in_set => self.valueInSet(actual),
+            .in_range => self.valueInRange(actual),
+        };
+    }
+
+    fn valueMatches(self: PolicyCondition, actual: PolicyValue) bool {
+        // Simple equality check for same-type values
+        return switch (self.value) {
+            .uint64 => |v| switch (actual) { .uint64 => |a| v == a, else => false },
+            .int64 => |v| switch (actual) { .int64 => |a| v == a, else => false },
+            .bool_value => |v| switch (actual) { .bool_value => |a| v == a, else => false },
+            .string => |v| switch (actual) { .string => |a| std.mem.eql(u8, v, a), else => false },
+            .ipv4 => |v| switch (actual) { .ipv4 => |a| v == a, else => false },
+            .port => |v| switch (actual) { .port => |a| v == a, else => false },
+            else => false,
+        };
+    }
+
+    fn valueGt(self: PolicyCondition, actual: PolicyValue) bool {
+        return switch (self.value) {
+            .uint64 => |v| switch (actual) { .uint64 => |a| a > v, else => false },
+            .int64 => |v| switch (actual) { .int64 => |a| a > v, else => false },
+            .port => |v| switch (actual) { .port => |a| a > v, else => false },
+            else => false,
+        };
+    }
+
+    fn valueLt(self: PolicyCondition, actual: PolicyValue) bool {
+        return switch (self.value) {
+            .uint64 => |v| switch (actual) { .uint64 => |a| a < v, else => false },
+            .int64 => |v| switch (actual) { .int64 => |a| a < v, else => false },
+            .port => |v| switch (actual) { .port => |a| a < v, else => false },
+            else => false,
+        };
+    }
+
+    fn valueInSet(self: PolicyCondition, actual: PolicyValue) bool {
+        // For IP set references, always false (needs external lookup)
+        _ = self;
+        _ = actual;
+        return false; // Placeholder: needs IP set resolver
+    }
+
+    fn valueInRange(self: PolicyCondition, actual: PolicyValue) bool {
+        return switch (self.value) {
+            .port_range => |pr| switch (actual) {
+                .port => |a| a >= pr.start and a <= pr.end,
+                else => false,
+            },
+            .time_window => |tw| switch (actual) {
+                .uint64 => |a| a >= tw.start_ms and a <= tw.end_ms,
+                else => false,
+            },
+            else => false,
+        };
+    }
+};
+
+pub const PolicyOperator = enum {
+    eq,        // equals
+    ne,        // not equals
+    gt,        // greater than
+    lt,        // less than
+    in_set,    // in IP set
+    in_range,  // in port/time range
+};
+
+// ============================================================
+// P1.1: Conflict Resolution (deterministic)
+//
+// Master Plan tie-break:
+//   1. priority DESC (higher priority wins)
+//   2. specificity DESC (more conditions = more specific)
+//   3. explicit deny/allow precedence (deny wins ties)
+//   4. rule_id ASC (lower rule_id breaks final tie)
+// ============================================================
+
+pub const ConflictResolver = struct {
+    /// Compare two rules by the deterministic tie-break algorithm.
+    /// Returns true if rule_a should win over rule_b.
+    pub fn shouldWin(a: PolicyIRRule, b: PolicyIRRule) bool {
+        // 1. Priority DESC (higher priority wins)
+        if (a.priority != b.priority) return a.priority > b.priority;
+
+        // 2. Specificity DESC (more conditions = more specific)
+        // (Using condition_count as proxy for specificity)
+        if (a.condition_count != b.condition_count) {
+            return a.condition_count > b.condition_count;
+        }
+
+        // 3. Explicit deny precedence (Block > Alert > LogOnly)
+        const a_rank: u8 = switch (a.action) {
+            .block => 4, .quarantine => 3, .alert => 2, .rate_limit => 1, .log_only => 1, .allow => 0,
+        };
+        const b_rank: u8 = switch (b.action) {
+            .block => 4, .quarantine => 3, .alert => 2, .rate_limit => 1, .log_only => 1, .allow => 0,
+        };
+        if (a_rank != b_rank) return a_rank > b_rank;
+
+        // 4. rule_id ASC (lower rule_id wins)
+        return a.id < b.id;
+    }
+};
+
+// ============================================================
+// P1.1: Policy Simulator (shows conflict resolution)
+// ============================================================
+
+pub const SimulationResult = struct {
+    winner: ?PolicyIRRule,
+    losers: [MAX_POLICY_IR_RULES]PolicyIRRule,
+    loser_count: usize,
+    reason: []const u8,
+};
+
+/// Simulate which rule would win for a given set of candidate rules.
+pub fn simulateConflict(candidates: []const PolicyIRRule) SimulationResult {
+    if (candidates.len == 0) {
+        return .{
+            .winner = null,
+            .losers = undefined,
+            .loser_count = 0,
+            .reason = "no candidates",
+        };
+    }
+
+    var winner_idx: usize = 0;
+    var losers: [MAX_POLICY_IR_RULES]PolicyIRRule = undefined;
+    var loser_count: usize = 0;
+
+    for (candidates[1..], 1..) |rule, i| {
+        if (ConflictResolver.shouldWin(rule, candidates[winner_idx])) {
+            losers[loser_count] = candidates[winner_idx];
+            loser_count += 1;
+            winner_idx = i;
+        } else {
+            losers[loser_count] = rule;
+            loser_count += 1;
+        }
+    }
+
+    return .{
+        .winner = candidates[winner_idx],
+        .losers = losers,
+        .loser_count = loser_count,
+        .reason = "priority > specificity > deny > rule_id",
+    };
+}
+
+// ============================================================
+// P1.1: Tests
+// ============================================================
+
+test "P1.1: PolicyValue types" {
+    const v1: PolicyValue = .{ .uint64 = 42 };
+    try std.testing.expect(v1.isNumeric());
+    try std.testing.expect(!v1.isString());
+
+    const v2: PolicyValue = .{ .string = "hello" };
+    try std.testing.expect(v2.isString());
+    try std.testing.expect(!v2.isNumeric());
+
+    const v3: PolicyValue = .{ .ipv4 = 0x0A000001 };
+    try std.testing.expect(v3.isNetwork());
+
+    const v4: PolicyValue = .{ .port = 8080 };
+    try std.testing.expect(v4.isNetwork());
+    try std.testing.expect(v4.isNumeric());
+
+    const v5: PolicyValue = .{ .time_window = .{ .start_ms = 0, .end_ms = 1000 } };
+    try std.testing.expect(v5.isTime());
+
+    try std.testing.expect(std.mem.eql(u8, v1.typeName(), "UInt64"));
+    try std.testing.expect(std.mem.eql(u8, v2.typeName(), "String"));
+    try std.testing.expect(std.mem.eql(u8, v3.typeName(), "IPv4"));
+}
+
+test "P1.1: PolicyCondition eq matches" {
+    const cond = PolicyCondition{
+        .field_name = "dst_port",
+        .operator = .eq,
+        .value = .{ .port = 80 },
+    };
+    try std.testing.expect(cond.matches(.{ .port = 80 }));
+    try std.testing.expect(!cond.matches(.{ .port = 443 }));
+}
+
+test "P1.1: PolicyCondition in_range matches" {
+    const cond = PolicyCondition{
+        .field_name = "dst_port",
+        .operator = .in_range,
+        .value = .{ .port_range = .{ .start = 80, .end = 90 } },
+    };
+    try std.testing.expect(cond.matches(.{ .port = 80 }));
+    try std.testing.expect(cond.matches(.{ .port = 85 }));
+    try std.testing.expect(cond.matches(.{ .port = 90 }));
+    try std.testing.expect(!cond.matches(.{ .port = 79 }));
+    try std.testing.expect(!cond.matches(.{ .port = 91 }));
+}
+
+test "P1.1: ConflictResolver priority DESC" {
+    var name_a: [64]u8 = [_]u8{0} ** 64;
+    name_a[0] = 'A';
+    var name_b: [64]u8 = [_]u8{0} ** 64;
+    name_b[0] = 'B';
+    const rule_a = PolicyIRRule{
+        .id = 1, .priority = 10, .action = .alert,
+        .condition_count = 1, .min_severity = 0, .max_severity = 3,
+        .name = name_a, .name_len = 1, .description = [_]u8{0} ** 128, .desc_len = 0,
+        .required_verdict = .no_match, .enabled = true,
+    };
+    const rule_b = PolicyIRRule{
+        .id = 2, .priority = 20, .action = .block,
+        .condition_count = 1, .min_severity = 0, .max_severity = 3,
+        .name = name_b, .name_len = 1, .description = [_]u8{0} ** 128, .desc_len = 0,
+        .required_verdict = .no_match, .enabled = true,
+    };
+    // B has higher priority -> B should win
+    try std.testing.expect(ConflictResolver.shouldWin(rule_b, rule_a));
+    try std.testing.expect(!ConflictResolver.shouldWin(rule_a, rule_b));
+}
+
+test "P1.1: ConflictResolver specificity DESC (same priority)" {
+    var name_a: [64]u8 = [_]u8{0} ** 64;
+    name_a[0] = 'A';
+    var name_b: [64]u8 = [_]u8{0} ** 64;
+    name_b[0] = 'B';
+    const rule_a = PolicyIRRule{
+        .id = 1, .priority = 10, .action = .alert,
+        .condition_count = 2, .min_severity = 0, .max_severity = 3,
+        .name = name_a, .name_len = 1, .description = [_]u8{0} ** 128, .desc_len = 0,
+        .required_verdict = .no_match, .enabled = true,
+    };
+    const rule_b = PolicyIRRule{
+        .id = 2, .priority = 10, .action = .alert,
+        .condition_count = 1, .min_severity = 0, .max_severity = 3,
+        .name = name_b, .name_len = 1, .description = [_]u8{0} ** 128, .desc_len = 0,
+        .required_verdict = .no_match, .enabled = true,
+    };
+    // A has more conditions -> A should win
+    try std.testing.expect(ConflictResolver.shouldWin(rule_a, rule_b));
+}
+
+test "P1.1: ConflictResolver deny precedence (same priority + specificity)" {
+    var name_a: [64]u8 = [_]u8{0} ** 64;
+    name_a[0] = 'A';
+    var name_b: [64]u8 = [_]u8{0} ** 64;
+    name_b[0] = 'B';
+    const rule_a = PolicyIRRule{
+        .id = 1, .priority = 10, .action = .alert,
+        .condition_count = 1, .min_severity = 0, .max_severity = 3,
+        .name = name_a, .name_len = 1, .description = [_]u8{0} ** 128, .desc_len = 0,
+        .required_verdict = .no_match, .enabled = true,
+    };
+    const rule_b = PolicyIRRule{
+        .id = 2, .priority = 10, .action = .block,
+        .condition_count = 1, .min_severity = 0, .max_severity = 3,
+        .name = name_b, .name_len = 1, .description = [_]u8{0} ** 128, .desc_len = 0,
+        .required_verdict = .no_match, .enabled = true,
+    };
+    // B is block (deny) -> B should win over A (alert)
+    try std.testing.expect(ConflictResolver.shouldWin(rule_b, rule_a));
+}
+
+test "P1.1: ConflictResolver rule_id ASC (all else equal)" {
+    var name_a: [64]u8 = [_]u8{0} ** 64;
+    name_a[0] = 'A';
+    var name_b: [64]u8 = [_]u8{0} ** 64;
+    name_b[0] = 'B';
+    const rule_a = PolicyIRRule{
+        .id = 1, .priority = 10, .action = .alert,
+        .condition_count = 1, .min_severity = 0, .max_severity = 3,
+        .name = name_a, .name_len = 1, .description = [_]u8{0} ** 128, .desc_len = 0,
+        .required_verdict = .no_match, .enabled = true,
+    };
+    const rule_b = PolicyIRRule{
+        .id = 2, .priority = 10, .action = .alert,
+        .condition_count = 1, .min_severity = 0, .max_severity = 3,
+        .name = name_b, .name_len = 1, .description = [_]u8{0} ** 128, .desc_len = 0,
+        .required_verdict = .no_match, .enabled = true,
+    };
+    // All else equal, lower rule_id wins -> A should win
+    try std.testing.expect(ConflictResolver.shouldWin(rule_a, rule_b));
+}
+
+test "P1.1: simulateConflict returns winner" {
+    var name_low: [64]u8 = [_]u8{0} ** 64;
+    name_low[0] = 'l'; name_low[1] = 'o'; name_low[2] = 'w';
+    var name_high: [64]u8 = [_]u8{0} ** 64;
+    name_high[0] = 'h'; name_high[1] = 'i'; name_high[2] = 'g'; name_high[3] = 'h';
+    var name_mid: [64]u8 = [_]u8{0} ** 64;
+    name_mid[0] = 'm'; name_mid[1] = 'i'; name_mid[2] = 'd';
+    const rules = [_]PolicyIRRule{
+        .{ .id = 1, .priority = 5, .action = .alert, .condition_count = 1,
+           .min_severity = 0, .max_severity = 3, .name = name_low, .name_len = 3,
+           .description = [_]u8{0} ** 128, .desc_len = 0, .required_verdict = .no_match, .enabled = true },
+        .{ .id = 2, .priority = 10, .action = .block, .condition_count = 1,
+           .min_severity = 0, .max_severity = 3, .name = name_high, .name_len = 4,
+           .description = [_]u8{0} ** 128, .desc_len = 0, .required_verdict = .no_match, .enabled = true },
+        .{ .id = 3, .priority = 7, .action = .alert, .condition_count = 1,
+           .min_severity = 0, .max_severity = 3, .name = name_mid, .name_len = 3,
+           .description = [_]u8{0} ** 128, .desc_len = 0, .required_verdict = .no_match, .enabled = true },
+    };
+    const result = simulateConflict(&rules);
+    try std.testing.expect(result.winner != null);
+    try std.testing.expect(result.winner.?.id == 2); // highest priority
+    try std.testing.expect(result.loser_count == 2);
+    try std.testing.expect(result.reason.len > 0);
+}
+
+test "P1.1: simulateConflict empty returns null winner" {
+    const result = simulateConflict(&[_]PolicyIRRule{});
+    try std.testing.expect(result.winner == null);
+    try std.testing.expect(result.loser_count == 0);
 }

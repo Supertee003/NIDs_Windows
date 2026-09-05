@@ -67,9 +67,12 @@ NTSTATUS DriverEntry(
     DriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL]  = AegisWfpDeviceControl;
     DriverObject->DriverUnload                           = AegisWfpUnload;
 
-    /* 4. Initialize 2 MB ring buffer (spinlock-protected) */
+    /* 4. Initialize 2 MB ring buffer (spinlock-protected).
+     * Use ExAllocatePoolWithTag (classic API, available since Windows 2000)
+     * rather than ExAllocatePool2 (Win10 2004+ only) so the driver builds
+     * against any WDK version without forward-declaring the prototype. */
     KeInitializeSpinLock(&g_RingLock);
-    g_RingBuffer = ExAllocatePool2(POOL_FLAG_NON_PAGED,
+    g_RingBuffer = ExAllocatePoolWithTag(NonPagedPool,
         g_RingBufferSize, 'AEGS');
     if (!g_RingBuffer) {
         DbgPrint("[AEGIS WFP] Ring buffer alloc failed\n");

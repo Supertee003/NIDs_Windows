@@ -10,7 +10,9 @@
 //!    "session_id": 42, "ruleset_version": 3, "payload_sha256": "abc123..."}
 
 const std = @import("std");
-const win = std.os.windows;
+const builtin = @import("builtin");
+const is_windows = builtin.os.tag == .windows;
+const win = if (is_windows) std.os.windows else struct {};
 
 // ============================================================
 // Configuration
@@ -24,7 +26,8 @@ const LOG_MAX_FILES: usize = 7; // Keep 7 rotated files
 // Module State
 // ============================================================
 
-var g_log_handle: ?win.HANDLE = null;
+var g_log_handle: ?win.HANDLE = if (is_windows) null else null;
+var g_log_file: ?std.fs.File = null;
 var g_log_mutex: std.Thread.Mutex = .{};
 var g_session_counter: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 var g_initialized: bool = false;
@@ -41,34 +44,50 @@ pub fn init() void {
 
     if (g_initialized) return;
 
-    // Ensure logs/ directory exists
+    // Ensure logs/ directory exists (cross-platform)
     std.fs.cwd().makePath("logs") catch |err| {
-        std.log.err("[FORENSIC] Failed to create logs/ dir: {any}", .{err});
+        std.log.err("[FORENSIC] Failed to create logs/ dir: {}", .{err});
         return;
     };
 
-    // Open log file for append (create if missing)
-    const path_w = std.unicode.utf8ToUtf16LeStringLiteral(LOG_FILE_PATH);
-    const handle = win.kernel32.CreateFileW(
-        path_w,
-        win.GENERIC_WRITE,
-        win.FILE_SHARE_READ,
-        null,
-        win.OPEN_ALWAYS,
-        win.FILE_ATTRIBUTE_NORMAL,
-        null,
-    );
+    if (is_windows) {
+        // Windows path: use Win32 API for shared-write access
+        const path_w = std.unicode.utf8ToUtf16LeStringLiteral(LOG_FILE_PATH);
+        const handle = win.kernel32.CreateFileW(
+            path_w,
+            win.GENERIC_WRITE,
+            win.FILE_SHARE_READ,
+            null,
+            win.OPEN_ALWAYS,
+            win.FILE_ATTRIBUTE_NORMAL,
+            null,
+        );
 
-    if (handle == win.INVALID_HANDLE_VALUE) {
-        std.log.err("[FORENSIC] Failed to open log file: {s}", .{LOG_FILE_PATH});
-        return;
+        if (handle == win.INVALID_HANDLE_VALUE) {
+            std.log.err("[FORENSIC] Failed to open log file: {s}", .{LOG_FILE_PATH});
+            return;
+        }
+
+        // Seek to end for append (SetFilePointerEx - zig 0.13 dropped SetFilePointer)
+        var new_pos: i64 = 0;
+        _ = win.kernel32.SetFilePointerEx(handle, 0, &new_pos, win.FILE_END);
+
+        g_log_handle = handle;
+    } else {
+        // POSIX Host: use std.fs.File for append
+        const file = std.fs.cwd().createFile(LOG_FILE_PATH, .{ .read = false, .truncate = false }) catch |err| {
+            std.log.err("[FORENSIC] Failed to open log file: {s} ({})", .{ LOG_FILE_PATH, err });
+            return;
+        };
+        // Seek to end for append
+        file.seekFromEnd(0) catch |err| {
+            std.log.err("[FORENSIC] Failed to seek: {}", .{err});
+            file.close();
+            return;
+        };
+        g_log_file = file;
     }
 
-    // Seek to end for append
-    var file_pos: win.LARGE_INTEGER = 0;
-        _ = win.kernel32.SetFilePointerEx(handle, 0, &file_pos, win.FILE_END);
-
-    g_log_handle = handle;
     g_initialized = true;
     std.log.info("[FORENSIC] Logger initialized: {s}", .{LOG_FILE_PATH});
 }
@@ -78,10 +97,17 @@ pub fn shutdown() void {
     g_log_mutex.lock();
     defer g_log_mutex.unlock();
 
-    if (g_log_handle) |handle| {
-        _ = win.kernel32.FlushFileBuffers(handle);
-        _ = win.CloseHandle(handle);
-        g_log_handle = null;
+    if (is_windows) {
+        if (g_log_handle) |handle| {
+            _ = win.kernel32.FlushFileBuffers(handle);
+            _ = win.CloseHandle(handle);
+            g_log_handle = null;
+        }
+    } else {
+        if (g_log_file) |*f| {
+            f.close();
+            g_log_file = null;
+        }
     }
     g_initialized = false;
 }
@@ -129,7 +155,7 @@ const ROTATION_CHECK_INTERVAL_NS: i128 = 60 * std.time.ns_per_s; // Check every 
 /// Check if log file needs rotation based on size or age.
 /// Called periodically from the log() function (every 60s).
 fn checkRotation(handle: win.HANDLE) void {
-    const now_ns = @as(i64, @intCast(std.time.nanoTimestamp()));
+    const now_ns = std.time.nanoTimestamp();
     if (now_ns - g_last_rotation_check_ns < ROTATION_CHECK_INTERVAL_NS) return;
     g_last_rotation_check_ns = now_ns;
 
@@ -173,7 +199,7 @@ fn checkRotation(handle: win.HANDLE) void {
     if (new_handle != win.INVALID_HANDLE_VALUE) {
         g_log_handle = new_handle;
     }
-    std.log.info("[FORENSIC] Log rotated (was {d} bytes)", .{file_size});
+    std.log.info("[FORENSIC] Log rotated (was {} bytes)", .{file_size});
 }
 
 // ============================================================

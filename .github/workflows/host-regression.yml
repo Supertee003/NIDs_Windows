@@ -1,0 +1,146 @@
+# ============================================================
+# AEGIS NIDS - G25: Host Regression (Phase T + Phase K)
+# ============================================================
+# Runs the full logic-layer regression on Linux Host.
+# This complements the Windows-target CI in ci.yml by validating
+# that every Zig source file compiles standalone on Host AND that
+# the Python runtime contract tests pass.
+#
+# Triggered on every push and pull request.
+# ============================================================
+name: Host Regression (Phase T+K)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  # ============================================================
+  # Phase T: Python runtime contract tests (9 files in tests/runtime/)
+  # ============================================================
+  phase-t-runtime-contract:
+    name: Phase T - Runtime Contract Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install pytest
+        run: pip install pytest
+      - name: Run runtime contract tests
+        run: |
+          if [ -d tests/runtime ]; then
+            cd tests/runtime
+            for f in test_*.py; do
+              echo "::group::$f"
+              python -m pytest "$f" -v --tb=short --no-header -q
+              rc=$?
+              echo "::endgroup::"
+              if [ $rc -ne 0 ]; then
+                echo "::error::$f FAILED (exit $rc)"
+                exit 1
+              fi
+              echo "[PASS] $f"
+            done
+            echo ""
+            echo "=== Phase T: ALL TESTS PASSED ==="
+          else
+            echo "::warning::tests/runtime/ directory not found - skipping Phase T"
+          fi
+
+  # ============================================================
+  # Phase K: Zig per-file compile + test (skip platform-specific)
+  # ============================================================
+  phase-k-zig-logic:
+    name: Phase K - Zig Logic Layer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Zig 0.13.0
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+      - name: Run per-file tests (Phase K)
+        run: |
+          if [ ! -d core ]; then
+            echo "::error::core/ directory not found"
+            exit 1
+          fi
+
+          # Platform-specific files that cannot compile on Linux Host
+          SKIP_FILES="bridge_init.zig hids_process_monitor.zig minifilter_reader.zig nids_analyze.zig nids_capture.zig nids_main.zig pipe_monitor.zig wfp_ioctl.zig win32_io.zig windows_capture.zig"
+
+          pass_count=0
+          fail_count=0
+          skip_count=0
+
+          for f in core/*.zig; do
+            fname=$(basename "$f")
+
+            # Check skip list
+            skip=false
+            for s in $SKIP_FILES; do
+              if [ "$fname" = "$s" ]; then
+                skip=true
+                break
+              fi
+            done
+
+            if [ "$skip" = "true" ]; then
+              echo "[SKIP] $fname (platform-specific)"
+              skip_count=$((skip_count + 1))
+              continue
+            fi
+
+            echo "::group::$fname"
+            output=$(zig test "$f" -lc 2>&1)
+            rc=$?
+            echo "$output" | tail -5
+            echo "::endgroup::"
+
+            if [ $rc -eq 0 ]; then
+              echo "[PASS] $fname"
+              pass_count=$((pass_count + 1))
+            else
+              echo "::error::$fname FAILED (exit $rc)"
+              fail_count=$((fail_count + 1))
+            fi
+          done
+
+          echo ""
+          echo "============================================================"
+          echo "Phase K Summary"
+          echo "============================================================"
+          echo "  Passed:  $pass_count"
+          echo "  Failed:  $fail_count"
+          echo "  Skipped: $skip_count (platform-specific)"
+          echo ""
+
+          if [ $fail_count -gt 0 ]; then
+            echo "::error::Phase K failed with $fail_count failures"
+            exit 1
+          fi
+
+          echo "=== Phase K: ALL TESTS PASSED ==="
+
+  # ============================================================
+  # Summary gate - both phases must pass
+  # ============================================================
+  host-regression-summary:
+    name: Host Regression Summary
+    needs: [phase-t-runtime-contract, phase-k-zig-logic]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Both phases passed
+        run: |
+          echo "============================================================"
+          echo "G25 Host Regression - PASSED"
+          echo "============================================================"
+          echo "  Phase T (Python runtime contract): PASS"
+          echo "  Phase K (Zig per-file compile+test): PASS"
+          echo ""
+          echo "Logic layer is green on Host."
+          echo "See G25_host_regression_deploy.ps1 to deploy to Windows target."

@@ -144,7 +144,7 @@ pub const ReplayEngine = struct {
         self.stats.total_replayed += 1;
 
         const confidence_delta: i16 = @as(i16, replayed.aggregated_confidence) - @as(i16, original.aggregated_confidence);
-        const threat_score_delta: i16 = @as(i16, replayed.brain_threat_score) - @as(i16, original.brain_threat_score);
+        const threat_score_delta: i16 = @as(i16, @intCast(replayed.brain_threat_score)) - @as(i16, @intCast(original.brain_threat_score));
 
         // Determine diff kind (priority order: verdict > action > pep > confidence > threat_score)
         var diff: DiffKind = .no_diff;

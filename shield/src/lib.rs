@@ -1,6 +1,8 @@
 //! AEGIS Shield - Tier-3 FFI Layer
 //! Provides C-compatible interface for the AEGIS NIDS scoring and validation engine.
 
+pub mod windows_enforce;
+
 use std::os::raw::{c_int, c_char};
 use std::ffi::CStr;
 

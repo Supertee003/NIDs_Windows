@@ -1776,7 +1776,19 @@ def cmd_block(args: argparse.Namespace) -> int:
 
 
 def _block_add(args: argparse.Namespace) -> int:
-    """Block an IP address (add to blocked_ips.json + signal core if running)."""
+    """Block an IP address.
+
+    P0.4 fix: aegisctl does NOT directly modify enforcement state.
+    It writes a REQUEST to the block list file, then signals core to
+    apply the block through the Rust PEP (proper enforcement boundary).
+    The block list file is a REQUEST queue, not a direct enforcement
+    mechanism. Core reads it and routes through Rust PEP for actual
+    WFP IOCTL enforcement.
+
+    WARNING: Direct writes to blocked_ips.json are a REQUEST, not
+    enforcement. The Rust PEP must validate + authorize before
+    actual enforcement occurs.
+    """
     if not args.ip:
         print("ERROR: --ip is required for 'block add'")
         return 2

@@ -579,16 +579,16 @@ if %errorlevel% neq 0 (
 ::  Fallback: build on-the-fly only if no binary exists
 echo  [4.4] Starting Go Nose (TUI dashboard)...
 if exist "dist\nose_dashboard.exe" (
-    start "AEGIS NOSE [Go]" cmd /k "chcp 65001 >nul & dist\nose_dashboard.exe --log logs\anomalous.json --refresh 1000"
-    echo       dist\nose_dashboard.exe --log logs\anomalous.json --refresh 1000
+    start "AEGIS NOSE (Go)" /MIN cmd /k "dist\nose_dashboard.exe"
+    echo       dist\nose_dashboard.exe  -  TUI dashboard in minimized window
 ) else if exist "nose\main.go" (
-    echo  [WARN] No pre-built Nose binary. Building on-the-fly -- not for production
+    echo  [WARN] No pre-built Nose binary. Building on-the-fly...
     where go >nul 2>&1
-    if %errorlevel% equ 0 (
+    if !errorlevel! equ 0 (
         cd nose && go build -o ..\dist\nose_dashboard.exe . 2>nul && cd ..
         if exist "dist\nose_dashboard.exe" (
-            start "AEGIS NOSE [Go]" cmd /k "chcp 65001 >nul & dist\nose_dashboard.exe --log logs\anomalous.json --refresh 1000"
-            echo       dist\nose_dashboard.exe --log logs\anomalous.json --refresh 1000 [built on-the-fly]
+            start "AEGIS NOSE (Go)" /MIN cmd /k "dist\nose_dashboard.exe"
+            echo       dist\nose_dashboard.exe  -  TUI dashboard built on-the-fly
         ) else (
             cd .. 2>nul
             echo  [FAIL] Go Nose build failed!
@@ -600,21 +600,18 @@ if exist "dist\nose_dashboard.exe" (
     echo  [SKIP] Nose not available
 )
 
-:: -- 4.5 Mouth (Rust) - BEST PRACTICE: pre-compiled binary + CLI args --
-::  Uses --log for anomalous event logging, --refresh for poll interval
-::  visible window (consistent with all other subsystems)
 echo  [4.5] Starting Rust Mouth (sole DEFCON TUI)...
 if exist "dist\windows_sec_monitor.exe" (
-    start "AEGIS MOUTH [Rust]" cmd /k "chcp 65001 >nul & dist\windows_sec_monitor.exe --log logs\anomalous.json --refresh 1000"
+    start "AEGIS MOUTH (Rust)" /MIN cmd /k "dist\windows_sec_monitor.exe --log logs\anomalous.json --refresh 1000"
     echo       dist\windows_sec_monitor.exe --log logs\anomalous.json --refresh 1000
 ) else if exist "mouth\windows_sec_monitor.rs" (
-    echo  [WARN] No pre-built Mouth binary. Compiling on-the-fly -- not for production
+    echo  [WARN] No pre-built Mouth binary. Compiling on-the-fly...
     where rustc >nul 2>&1
-    if %errorlevel% equ 0 (
+    if !errorlevel! equ 0 (
         rustc -O mouth\windows_sec_monitor.rs -o dist\windows_sec_monitor.exe 2>nul
         if exist "dist\windows_sec_monitor.exe" (
-            start "AEGIS MOUTH [Rust]" cmd /k "chcp 65001 >nul & dist\windows_sec_monitor.exe --log logs\anomalous.json --refresh 1000"
-            echo       dist\windows_sec_monitor.exe --log ... [compiled on-the-fly]
+            start "AEGIS MOUTH (Rust)" /MIN cmd /k "dist\windows_sec_monitor.exe --log logs\anomalous.json --refresh 1000"
+            echo       dist\windows_sec_monitor.exe --log ... compiled on-the-fly
         ) else (
             echo  [FAIL] Rust Mouth compile failed!
         )
