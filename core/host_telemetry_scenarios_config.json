@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "module": "host_telemetry_scenarios",
+  "phase": "37-ext-2",
+  "kill_switch": {
+    "enabled": false,
+    "comment": "OFF by default. Scenarios are test scaffolding; production should use real adapters."
+  },
+  "scenario_catalog": [
+    {
+      "name": "credential-dump",
+      "events": 3,
+      "mitre": "T1003",
+      "mitre_name": "Credential Dumping",
+      "description": "LSASS dump file created in temp folder + exfil socket to C2:8888"
+    },
+    {
+      "name": "command-execution",
+      "events": 4,
+      "mitre": "T1059",
+      "mitre_name": "Command and Scripting Interpreter",
+      "description": "cmd.exe -> powershell.exe -enc -> curl.exe -> HTTP download"
+    },
+    {
+      "name": "ransomware",
+      "events": 7,
+      "mitre": "T1486",
+      "mitre_name": "Data Encrypted for Impact",
+      "description": "Unsigned ransomware binary + 5 mass file_modify events + ransom note"
+    },
+    {
+      "name": "valid-accounts",
+      "events": 3,
+      "mitre": "T1078",
+      "mitre_name": "Valid Accounts",
+      "description": "Admin SID logon + lateral SMB socket + cmd.exe escalation"
+    },
+    {
+      "name": "webshell",
+      "events": 4,
+      "mitre": "T1190",
+      "mitre_name": "Exploit Public-Facing Application",
+      "description": "Webshell dropped in inetpub + w3wp.exe -> cmd.exe -> reverse shell"
+    },
+    {
+      "name": "full-kill-chain",
+      "events": 8,
+      "mitre": "T1190+T1486",
+      "mitre_name": "Webshell + Ransomware",
+      "description": "Combined attack chain: webshell drops ransomware, mass encryption follows"
+    }
+  ],
+  "detection_coverage": {
+    "parent_child_anomaly": "office-spawning-shell (currently WINWORD/EXCEL/POWERPNT/OUTLOOK -> cmd/powershell/wscript/cscript/mshta/rundll32/regsvr32)",
+    "unsigned_elevated": "HIGH/SYSTEM integrity with is_signed=false",
+    "unsigned_system_path": "unsigned binary in System32/SysWOW64/Windows paths",
+    "file_integrity_mismatch": "SHA-256 hash differs from baseline",
+    "file_integrity_deleted": "baseline path removed",
+    "registry_persistence_key": "HKLM/HKCU Run/RunOnce/Services/Winlogon changes",
+    "registry_critical_key": "SAM/SECURITY/Lsa/Policies/System changes",
+    "network_host_correlation": "ML flow verdict (score>=0.70) attributed to PID via socket table"
+  },
+  "future_scenario_candidates": [
+    "T1003.001 LSASS Memory dump (more specific than current T1003)",
+    "T1059.001 PowerShell (already covered partially by command-execution)",
+    "T1059.003 Windows Command Shell (already covered partially)",
+    "T1059.005 Visual Basic (script-based attack)",
+    "T1059.006 Python (script-based attack)",
+    "T1486 - covered (ransomware scenario)",
+    "T1078 - covered (valid-accounts scenario)",
+    "T1190 - covered (webshell scenario)",
+    "T1547.001 - covered in Ext 1 (persistence scenario)",
+    "T1566.001 - covered in Ext 1 (macro-dropper scenario)",
+    "T1021 - covered in Ext 1 (lateral-movement scenario)",
+    "T1027 - covered in Ext 1 (unsigned-system scenario)"
+  ]
+}

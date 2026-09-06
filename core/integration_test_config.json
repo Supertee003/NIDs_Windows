@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "module": "integration_test",
+  "phase": 44,
+  "kill_switch": {
+    "enabled": false,
+    "comment": "OFF by default. Integration tests are no-ops until explicitly enabled."
+  },
+  "component_coverage": {
+    "MockTelemetrySource": "Phase 37 Ext 1 - scripted attack events",
+    "HostTelemetry": "Phase 37 - process/FIM/registry/socket tracking",
+    "EnhancedDetectorAggregator": "Phase 37 Ext 3 - extended detection rules",
+    "FederationCodec": "Phase 39 Ext 1 - wire format encode/decode",
+    "ClusterCoord": "Phase 39 - cross-node incident aggregation",
+    "ScriptedScenarios": "Phase 37 Ext 2 - MITRE ATT&CK patterns"
+  },
+  "scenarios": [
+    {
+      "name": "single-node-attack",
+      "description": "Macro-dropper scenario -> EventPump -> HostTelemetry -> ML verdict -> CRITICAL incident",
+      "expected_events": 4,
+      "expected_incidents": 1,
+      "expected_suspicions": 2
+    },
+    {
+      "name": "cross-node-campaign",
+      "description": "3 nodes report same C2 IP -> CrossNodeIncidentAggregator -> CRITICAL escalation",
+      "expected_events": 3,
+      "expected_incidents": 1
+    },
+    {
+      "name": "federation-failover",
+      "description": "Encode 3 message types -> decode -> verify fields preserved",
+      "expected_events": 3,
+      "expected_incidents": 3
+    },
+    {
+      "name": "full-kill-chain",
+      "description": "Webshell -> ransomware (8 events) -> process/FIM/socket tracking",
+      "expected_events": 8,
+      "expected_processes": 3,
+      "expected_sockets": 1,
+      "expected_fim_creates": 4
+    },
+    {
+      "name": "detector-aggregation",
+      "description": "w3wp -> cmd with -enc cmdline -> 2 detectors fire simultaneously",
+      "expected_suspicions": 2
+    },
+    {
+      "name": "multi-source-correlation",
+      "description": "2 sources (process + socket) -> MultiSourcePump -> ML verdict -> attributed incident",
+      "expected_events": 2,
+      "expected_incidents": 1
+    }
+  ]
+}

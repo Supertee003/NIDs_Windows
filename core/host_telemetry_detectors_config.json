@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "module": "host_telemetry_detectors",
+  "phase": "37-ext-3",
+  "kill_switch": {
+    "enabled": false,
+    "comment": "OFF by default. Extended detectors are no-ops until explicitly enabled. Per-node enforcement stays in WFP kernel driver."
+  },
+  "per_detector_enables": {
+    "enable_extended_parents": true,
+    "enable_cmdline_anomaly": true,
+    "enable_process_injection": true,
+    "comment": "Each detector can be independently toggled for partial rollouts."
+  },
+  "extended_parent_detector": {
+    "web_servers": ["w3wp.exe", "apache.exe", "nginx.exe", "httpd.exe", "iisexpress.exe"],
+    "service_hosts": ["svchost.exe", "services.exe", "csrss.exe", "lsass.exe"],
+    "sql_servers": ["sqlservr.exe", "mysqld.exe", "postgres.exe", "oracle.exe"],
+    "mail_servers": ["exim.exe", "postfix.exe", "dovecot.exe", "sendmail.exe"],
+    "shells": ["cmd.exe", "powershell.exe", "pwsh.exe", "wscript.exe", "cscript.exe", "mshta.exe", "rundll32.exe", "regsvr32.exe"],
+    "comment": "Parent categories extended beyond Phase 37 core (which only flags office apps)."
+  },
+  "cmdline_anomaly_detector": {
+    "encoded_command_flags": ["-enc", "-EncodedCommand"],
+    "download_cradle_tokens": ["IEX", "Invoke-Expression", "Net.WebClient", "DownloadString", "Invoke-WebRequest", "iwr", "curl"],
+    "suspicious_url_patterns": ["http://", "https://"],
+    "base64_min_payload_len": 32,
+    "comment": "Detects PowerShell encoded commands (T1059.001), download cradles, and URL-in-cmdline patterns."
+  },
+  "process_injection_detector": {
+    "temp_folder_patterns": ["\\temp\\", "\\users\\public\\", "\\appdata\\local\\temp\\", "\\windows\\temp\\"],
+    "pattern_1": "isInTempFolder(img) AND ppid != 0 -> process_injection_virtual_alloc",
+    "pattern_2": "integrity.isElevated() AND isInTempFolder(img) AND !is_signed -> process_injection_write_memory",
+    "comment": "Approximate T1055 detection via image-path heuristics. Full detection would require ETW Thread/VM hooks (future Ext)."
+  },
+  "mitre_coverage": {
+    "T1190": "web_server_spawning_shell (w3wp/apache/nginx -> shell)",
+    "T1078": "service_host_spawning_shell (svchost -> shell)",
+    "T1059": "encoded_command_payload + download_cradle (powershell -enc, IEX)",
+    "T1055": "process_injection_virtual_alloc/write_memory (temp folder execution)"
+  }
+}

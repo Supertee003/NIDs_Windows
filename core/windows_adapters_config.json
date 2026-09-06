@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "module": "windows_adapters",
+  "phase": "37-ext-4",
+  "kill_switch": {
+    "enabled": false,
+    "comment": "OFF by default. Real Windows adapters are no-ops until explicitly enabled. Stubs on Linux for host testing."
+  },
+  "platform_detection": {
+    "method": "builtin.os.tag == .windows",
+    "linux_behavior": "Stub implementations (return null events, graceful degradation)",
+    "windows_behavior": "Real implementations using Win32 APIs",
+    "comment": "Same code compiles on both platforms; runtime behavior differs via builtin.os.tag guards."
+  },
+  "adapters": [
+    {
+      "name": "EtwProcessSource",
+      "windows_api": "CreateToolhelp32Snapshot + Process32First/Next",
+      "linux_stub": "Returns null (no process events)",
+      "implements": "HostTelemetrySource vtable",
+      "detects": "process_create, process_exit (via PID diffing)",
+      "future_ext": "Full ETW via OpenTrace/StartTrace/ProcessTrace (Phase 37 Ext 7)"
+    },
+    {
+      "name": "FimReadDirectorySource",
+      "windows_api": "ReadDirectoryChangesW + OVERLAPPED I/O",
+      "linux_stub": "Returns null (no file events)",
+      "implements": "HostTelemetrySource vtable",
+      "detects": "file_create, file_modify, file_delete",
+      "watch_path": "Configurable per-instance (e.g. C:\\Windows\\System32)"
+    },
+    {
+      "name": "RegNotifySource",
+      "windows_api": "RegNotifyChangeKeyValue + WaitForMultipleObjects",
+      "linux_stub": "Returns null (no registry events)",
+      "implements": "HostTelemetrySource vtable",
+      "detects": "registry_set_value, registry_create_key, registry_delete_key",
+      "max_watched_keys": 32,
+      "default_keys": "6 (Run, RunOnce, Services, SAM, SECURITY, Lsa)"
+    }
+  ],
+  "bundle": {
+    "name": "WindowsAdapterBundle",
+    "convenience": "Initializes all 3 adapters together with shared config",
+    "multi_source_pump": "Compatible with mock.MultiSourcePump for unified event ingestion",
+    "default_registry_keys": "Installs same 6 persistence/critical keys as TrieRegistryWatch"
+  },
+  "deployment": {
+    "linux": "Stubs compile and run; graceful degradation (no real telemetry)",
+    "windows": "Real adapters activate; capture actual process/file/registry events",
+    "testing": "Interface contract tested on both platforms; real Windows impl requires Windows host"
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "module": "cluster_coord",
+  "phase": 39,
+  "kill_switch": {
+    "enabled": false,
+    "comment": "OFF by default. Detection/attribution only; per-node enforcement stays in WFP kernel driver. Set true to activate cluster coordination."
+  },
+  "identity": {
+    "node_id": 0,
+    "cluster_name": "aegis-cluster",
+    "role": "sensor",
+    "comment": "node_id MUST be unique within the cluster. role: sensor | coordinator | aggregator."
+  },
+  "heartbeat": {
+    "interval_ms": 5000,
+    "timeout_ms": 15000,
+    "dead_threshold": 3,
+    "comment": "Each missed heartbeat degrades health: healthy -> degraded -> unhealthy -> dead. dead_threshold = misses before DEAD state."
+  },
+  "cross_node_aggregation": {
+    "window_ms": 30000,
+    "escalate_at_node_count": 2,
+    "critical_node_count": 3,
+    "comment": "Same source IP hitting N nodes within window_ms escalates severity. 2 nodes -> HIGH; 3+ -> CRITICAL."
+  },
+  "threat_intel": {
+    "max_entries": 1024,
+    "eviction_policy": "lowest_confidence",
+    "comment": "When full, evict the entry with lowest confidence score."
+  },
+  "leader_election": {
+    "interval_ms": 30000,
+    "algorithm": "deterministic_ring",
+    "comment": "Highest active NodeId wins. Simple and deterministic - no Paxos/Raft complexity needed for NIDS cluster."
+  },
+  "federation_protocol": {
+    "message_types": [
+      "HEARTBEAT",
+      "NODE_JOIN",
+      "NODE_LEAVE",
+      "INCIDENT_REPORT",
+      "THREAT_INTEL_SHARE",
+      "LEADER_ANNOUNCE",
+      "LEADER_REQUEST"
+    ],
+    "transport": "TBD - adapter choice: gRPC / ZeroMQ / REST",
+    "comment": "Core module is transport-agnostic; adapters feed messages via ClusterCoord.ingest(msg)."
+  },
+  "node_capacity": {
+    "max_nodes": 64,
+    "max_incidents": 512,
+    "max_threat_intel": 1024,
+    "max_reporting_nodes_per_incident": 8,
+    "max_reasons_per_incident": 6
+  },
+  "severity_policy": {
+    "info": "below_threshold_or_benign",
+    "low": "single-node, non-critical",
+    "medium": "single-node suspicious",
+    "high": "2+ nodes report same source (cross-node escalation)",
+    "critical": "3+ nodes OR ML score >= 0.90 OR critical reason"
+  }
+}

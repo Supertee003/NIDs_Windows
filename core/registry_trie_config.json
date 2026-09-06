@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "module": "registry_trie",
+  "phase": 42,
+  "kill_switch": {
+    "enabled": false,
+    "comment": "OFF by default. Trie is a no-op until explicitly enabled. Drop-in replacement for RegistryWatchQueue."
+  },
+  "trie_params": {
+    "max_nodes": 512,
+    "max_registered_keys": 64,
+    "alphabet_size": 128,
+    "max_key_len": 256,
+    "comment": "512 nodes support ~16 typical Windows registry paths (avg 32 chars each). 128-char alphabet covers ASCII."
+  },
+  "benchmark_baseline": {
+    "linear_scan_ops_per_sec": 462020,
+    "trie_ops_per_sec": 1280587,
+    "speedup_factor": 2.77,
+    "test_iterations": 50000,
+    "test_keys": 11,
+    "comment": "Measured on Linux host. Trie is O(key_len) vs linear O(N x key_len). Speedup grows with N."
+  },
+  "migration_guide": {
+    "step_1": "Import registry_trie.zig in your module",
+    "step_2": "Replace ht.RegistryWatchQueue.init() with trie.TrieRegistryWatch.init(.{.enabled=true})",
+    "step_3": "Replace queue.enqueue(ev) with trie_queue.enqueue(ev) (same return type: ?ht.SuspicionReason)",
+    "step_4": "Replace queue.drain(&out) with trie_queue.drain(&out) (same signature)",
+    "step_5": "Replace queue.total_persistence_hits with trie_queue.total_persistence_hits (same field)",
+    "compatibility": "100% API-compatible drop-in replacement. Same defaults (6 persistence + 5 critical keys)."
+  }
+}
