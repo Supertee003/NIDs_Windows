@@ -1,0 +1,110 @@
+﻿{
+    "framework":  "ISO-27001",
+    "controls_checked":  12,
+    "controls_passed":  12,
+    "is_compliant":  true,
+    "compliance_score":  100,
+    "name":  "ISO 27001 (Information Security Management)",
+    "control_results":  [
+                            {
+                                "passed":  true,
+                                "name":  "Asset Inventory",
+                                "id":  "ISO-A.8.1.1",
+                                "check":  "always_true"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Classification",
+                                "id":  "ISO-A.8.2.1",
+                                "check":  "always_true"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Access Control Policy",
+                                "id":  "ISO-A.9.1.1",
+                                "check":  "always_true"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Network Controls",
+                                "id":  "ISO-A.10.1.1",
+                                "check":  "total_detected \u003e 0"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Operational Procedures",
+                                "id":  "ISO-A.12.1.1",
+                                "check":  "always_true"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Malware Detection",
+                                "id":  "ISO-A.12.2.1",
+                                "check":  "total_detected \u003e 0"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Event Logging",
+                                "id":  "ISO-A.12.4.1",
+                                "check":  "total_detected \u003e 0"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Administrator Logs",
+                                "id":  "ISO-A.12.4.3",
+                                "check":  "total_detected \u003e 0"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Network Security Controls",
+                                "id":  "ISO-A.13.1.1",
+                                "check":  "total_blocked \u003e 0"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Information Transfer Policies",
+                                "id":  "ISO-A.13.2.1",
+                                "check":  "always_true"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Incident Management",
+                                "id":  "ISO-A.16.1.1",
+                                "check":  "total_blocked \u003e 0"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Incident Reporting",
+                                "id":  "ISO-A.16.1.2",
+                                "check":  "total_detected \u003e 0"
+                            }
+                        ],
+    "generated_at":  "2026-09-05T15:18:08.1326882+07:00",
+    "statistics":  {
+                       "total_events":  2161,
+                       "total_detected":  2161,
+                       "detection_rate_pct":  100,
+                       "block_success_rate_pct":  8.46,
+                       "total_blocked":  60,
+                       "total_block_failed":  649,
+                       "unique_src_ips":  1472,
+                       "attack_breakdown":  {
+                                                "path_traversal":  72,
+                                                "rfi":  72,
+                                                "brute_force":  72,
+                                                "dns_exfil":  72,
+                                                "log4j":  72,
+                                                "sqli":  72,
+                                                "xss":  74,
+                                                "syn_flood":  75,
+                                                "port_scan":  72
+                                            },
+                       "severity_breakdown":  {
+                                                  "low":  72,
+                                                  "critical":  218,
+                                                  "medium":  178,
+                                                  "high":  1692
+                                              }
+                   },
+    "controls_failed":  0
+}

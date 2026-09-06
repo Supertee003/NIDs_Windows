@@ -1,0 +1,356 @@
+name: CI - Cross-Language Matrix
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  # Stage 1: Repository hygiene
+  hygiene:
+    name: Stage 1 - Repository Hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for tracked backup files
+        run: |
+          if git ls-files | grep -qE 'backup_g|backup_phase|\.phase.*_backup|build_.*\.txt|verify_build\.'; then
+            echo "FAIL: Tracked backup/build files found"
+            git ls-files | grep -E 'backup_g|backup_phase|\.phase.*_backup|build_.*\.txt|verify_build\.'
+            exit 1
+          fi
+          echo "PASS: No tracked backup files"
+      - name: Check for tracked .zig-cache
+        run: |
+          if git ls-files | grep -q '^\.zig-cache/'; then
+            echo "FAIL: .zig-cache is tracked"
+            exit 1
+          fi
+          echo "PASS: .zig-cache not tracked"
+      - name: Check .gitignore covers backup_g*
+        run: |
+          if ! grep -q 'backup_g' .gitignore; then
+            echo "FAIL: .gitignore missing backup_g* pattern"
+            exit 1
+          fi
+          echo "PASS: .gitignore covers backup_g*"
+
+  # Stage 2: Zig build/test
+  zig:
+    name: Stage 2 - Zig Build & Test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+      - name: Build
+        run: zig build
+      - name: Run all tests (84 targets)
+        run: zig build test
+      - name: Test G1-G21 proof modules individually
+        if: failure()
+        run: |
+          $proofModules = @(
+            'core\contract_freeze.zig',
+            'core\fabric_accounting.zig',
+            'core\runtime_spine.zig',
+            'core\flow_state_proof.zig',
+            'core\detection_fabric_proof.zig',
+            'core\correlation_proof.zig',
+            'core\intelligence_proof.zig',
+            'core\brain_proof.zig',
+            'core\policy_plane_proof.zig',
+            'core\pep_enforcement_proof.zig',
+            'core\forensic_replay_proof.zig',
+            'core\config_reload_proof.zig',
+            'core\health_monitoring_proof.zig',
+            'core\audit_trail_proof.zig',
+            'core\telemetry_export_proof.zig',
+            'core\siem_integration_proof.zig',
+            'core\backup_recovery_proof.zig',
+            'core\performance_tuning_proof.zig',
+            'core\compliance_proof.zig',
+            'core\documentation_proof.zig',
+            'core\final_integration_proof.zig'
+          )
+          foreach ($mod in $proofModules) {
+            Write-Host "Testing $mod..." -ForegroundColor Cyan
+            & zig test $mod 2>&1 | Out-Host
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "  [PASS] $mod" -ForegroundColor Green
+            } else {
+              Write-Host "  [FAIL] $mod" -ForegroundColor Red
+            }
+          }
+
+  # Stage 3: C/C++ build
+  cpp:
+    name: Stage 3 - C/C++ Build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1
+      - name: Build C++ bridge
+        run: |
+          if (Test-Path CMakeLists.txt) {
+            cmake -B build -S .
+            cmake --build build
+          } else {
+            Write-Host "No CMakeLists.txt found - skipping C++ build"
+          }
+        shell: pwsh
+
+  # Stage 4: Rust build/test
+  rust:
+    name: Stage 4 - Rust Build & Test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build shield
+        run: |
+          if (Test-Path shield/Cargo.toml) {
+            cd shield && cargo build --release
+          } else {
+            Write-Host "No shield/Cargo.toml found - skipping"
+          }
+        shell: pwsh
+      - name: Build mouth
+        run: |
+          if (Test-Path mouth/Cargo.toml) {
+            cd mouth && cargo build --release
+          } else {
+            Write-Host "No mouth/Cargo.toml found - skipping"
+          }
+        shell: pwsh
+      - name: Test Rust components
+        run: |
+          if (Test-Path shield/Cargo.toml) {
+            cd shield && cargo test
+          }
+          if (Test-Path mouth/Cargo.toml) {
+            cd mouth && cargo test
+          }
+        shell: pwsh
+
+  # Stage 5: Go build/test
+  go:
+    name: Stage 5 - Go Build & Test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      - name: Build nose
+        run: |
+          if (Test-Path nose/go.mod) {
+            cd nose && go build ./...
+          } else {
+            Write-Host "No nose/go.mod found - skipping"
+          }
+        shell: pwsh
+      - name: Test nose
+        run: |
+          if (Test-Path nose/go.mod) {
+            cd nose && go test ./...
+          }
+        shell: pwsh
+
+  # Stage 6: Python/Cython tests
+  python:
+    name: Stage 6 - Python/Cython Tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: |
+          if (Test-Path brain/requirements.txt) {
+            pip install -r brain/requirements.txt
+          }
+        shell: pwsh
+      - name: Run brain tests
+        run: |
+          if (Test-Path brain/) {
+            cd brain && python -m pytest tests/ 2>$null
+            if ($LASTEXITCODE -ne 0) { Write-Host "Brain tests failed"; exit 1 }
+          }
+        shell: pwsh
+
+
+  # Stage 7: Cross-language contract vectors
+  contract-vectors:
+    name: Stage 7 - Cross-Language Contract Vectors
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+      - name: Verify wire event round-trip
+        run: |
+          if (Test-Path core\wire_event.zig) {
+            & zig test core\wire_event.zig 2>&1 | Out-Host
+            if ( -ne 0) { exit 1 }
+          }
+      - name: Verify canonical event schema
+        run: |
+          if (Test-Path core\canonical_event.zig) {
+            & zig test core\canonical_event.zig 2>&1 | Out-Host
+            if ( -ne 0) { exit 1 }
+          }
+      - name: Verify contract freeze
+        run: |
+          if (Test-Path core\contract_freeze.zig) {
+            & zig test core\contract_freeze.zig 2>&1 | Out-Host
+            if ( -ne 0) { exit 1 }
+          }
+  # Stage 8: Static analysis (formatting - HARD gate)
+  lint:
+    name: Stage 8 - Static Analysis (Hard Gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+      - name: Check formatting (HARD gate - no continue-on-error)
+        run: zig fmt --check core/*.zig build.zig
+
+  # Stage 9: Security checks
+  security:
+    name: Stage 9 - Security Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for policy bypass patterns
+        run: |
+          # Ensure no detection module calls PEP directly
+          if grep -r "rust_pep" core/detection_engine.zig 2>/dev/null; then
+            echo "FAIL: detection_engine calls rust_pep directly"
+            exit 1
+          fi
+          echo "PASS: No policy bypass detected"
+      - name: Check for Brain enforcement
+        run: |
+          # Ensure Brain does not execute enforcement
+          if grep -rE "block_ip|kill_process|quarantine" brain/ --include="*.py" 2>/dev/null | grep -v "# "; then
+            echo "WARNING: Brain contains enforcement-like calls (review needed)"
+          else
+            echo "PASS: Brain does not enforce"
+          fi
+      - name: Check audit trail hash chain
+        run: |
+          if [ -f core/audit_trail_proof.zig ]; then
+            if grep -q "verifyChain" core/audit_trail_proof.zig; then
+              echo "PASS: Audit trail hash chain verification present"
+            else
+              echo "FAIL: Audit trail missing hash chain verification"
+              exit 1
+            fi
+          fi
+
+
+  # Stage 10: Integration tests
+  integration-tests:
+    name: Stage 10 - Integration Tests
+    runs-on: windows-latest
+    needs: [zig]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+      - name: Build executable
+        run: zig build
+      - name: Verify executable exists
+        run: |
+          if (-not (Test-Path "zig-out\bin\aegis-nids.exe")) {
+            Write-Host "FAIL: aegis-nids.exe not produced"
+            exit 1
+          }
+          Write-Host "PASS: aegis-nids.exe produced"
+      - name: Run G21 final integration proof
+        run: |
+          if (Test-Path core\final_integration_proof.zig) {
+            & zig test core\final_integration_proof.zig 2>&1 | Out-Host
+            if ( -ne 0) { exit 1 }
+          }
+      - name: Run G11 forensic replay proof
+        run: |
+          if (Test-Path core\forensic_replay_proof.zig) {
+            & zig test core\forensic_replay_proof.zig 2>&1 | Out-Host
+            if ( -ne 0) { exit 1 }
+          }
+  # Stage 11: Build manifest validation
+  manifest:
+    name: Stage 11 - Build Manifest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate build manifest
+        run: |
+          cat > aegis.manifest.json << EOF
+          {
+            "git_commit": "${{ github.sha }}",
+            "core_version": "G23",
+            "event_schema_version": 1,
+            "wire_version": 1,
+            "ruleset_version": 1,
+            "policy_version": 1,
+            "brain_version": "4.0",
+            "shield_version": "1.0",
+            "nose_version": "1.0",
+            "driver_version": "1.0",
+            "compiler_versions": {
+              "zig": "0.13.0",
+              "rust": "stable",
+              "go": "1.21",
+              "python": "3.10"
+            },
+            "build_time": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "proof_modules": 21,
+            "test_targets": 84
+          }
+          EOF
+          echo "Build manifest generated:"
+          cat aegis.manifest.json
+      - name: Upload manifest artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: aegis-manifest
+          path: aegis.manifest.json
+
+  # Stage 12: Runtime contract tests (Gates A-F)
+  runtime-contract:
+    name: Stage 12 - Runtime Contract Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pytest
+        run: pip install pytest
+      - name: Run runtime contract tests
+        run: |
+          echo "Running 241 runtime contract tests (Gates A-F)..."
+          python -m pytest tests/runtime/ -v --tb=short
+      - name: Verify aegisctl CLI
+        run: |
+          python scripts/aegisctl.py --help
+          python scripts/aegisctl.py version
+          python scripts/aegisctl.py status
+          python scripts/aegisctl.py diagnose
+      - name: Verify rules validation
+        run: |
+          python scripts/aegisctl.py rules validate
+      - name: Verify canary test definitions
+        run: |
+          python -c "import json; data=json.load(open('config/canary_tests.json')); print(f'Canary tests: {len(data[\"tests\"])}'); assert len(data['tests']) == 10"

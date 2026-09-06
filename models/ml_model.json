@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "name": "aegis-flow-anomaly-v1",
+  "trained_at": "2026-09-05T15:10:24Z",
+  "dataset": "synthetic-v1",
+  "features": [
+    "pkts_per_sec",
+    "bytes_per_sec",
+    "syn_ratio",
+    "rst_ratio",
+    "unique_dst_ports",
+    "unique_dst_ips",
+    "inbound_ratio",
+    "mean_payload_len"
+  ],
+  "mean": [
+    57.177207,
+    3388.300201,
+    0.362966,
+    0.177766,
+    7.904464,
+    1.355655,
+    0.639015,
+    232.354969
+  ],
+  "std": [
+    103.342172,
+    6184.160542,
+    0.345327,
+    0.262632,
+    13.344925,
+    0.539589,
+    0.206481,
+    228.446856
+  ],
+  "weights": [
+    0.858244,
+    0.385864,
+    1.242869,
+    0.796663,
+    0.239367,
+    -0.552984,
+    0.742625,
+    -1.317753
+  ],
+  "bias": 0.210555,
+  "confidence_threshold": 0.7,
+  "metrics": {
+    "accuracy": 0.9938,
+    "precision": 1.0,
+    "recall": 0.9874,
+    "f1": 0.9937,
+    "samples": 960
+  }
+}

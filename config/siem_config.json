@@ -1,0 +1,88 @@
+{
+  "siem_forwarder": {
+    "enabled": false,
+    "format": "ndjson",
+    "transport": "file",
+    "destination": "logs/siem_forward.json",
+    "batch_size": 100,
+    "flush_interval_ms": 5000,
+    "retry_count": 3,
+    "retry_delay_ms": 1000,
+    "include_fields": [
+      "timestamp",
+      "attack_type",
+      "src_ip",
+      "dst_ip",
+      "severity",
+      "policy",
+      "rule_id",
+      "status"
+    ]
+  },
+  "formats": {
+    "ndjson": {
+      "description": "Newline-Delimited JSON (default, for Elasticsearch/Logstash)",
+      "example": "{\"timestamp\":1693900000,\"attack_type\":\"SQLI\",\"src_ip\":\"10.0.0.1\",...}"
+    },
+    "cef": {
+      "description": "Common Event Format (for Splunk, QRadar, ArcSight)",
+      "example": "CEF:0|AEGIS|NIDS|5.0|R001|SQLI|10|src=10.0.0.1 dst=10.0.0.2 spt=12345 dpt=80 proto=TCP policy=BLOCK status=DETECTED"
+    },
+    "syslog": {
+      "description": "RFC 5424 Syslog (for traditional SIEM, rsyslog, syslog-ng)",
+      "example": "<4>1 1693900000 - AEGIS NIDS - - - attack_type=SQLI src=10.0.0.1 dst=10.0.0.2 severity=Critical status=DETECTED"
+    }
+  },
+  "transports": {
+    "file": {
+      "description": "Local file append (default, for testing)",
+      "destination_format": "path/to/file.json"
+    },
+    "http": {
+      "description": "HTTP POST to collector endpoint",
+      "destination_format": "http://host:port/path",
+      "note": "Not yet implemented (Phase 33.1)"
+    },
+    "https": {
+      "description": "HTTPS POST to collector endpoint",
+      "destination_format": "https://host:port/path",
+      "note": "Not yet implemented (Phase 33.1)"
+    },
+    "tcp": {
+      "description": "TCP socket (for syslog collectors)",
+      "destination_format": "host:port",
+      "note": "Not yet implemented (Phase 33.1)"
+    },
+    "udp": {
+      "description": "UDP socket (for syslog collectors)",
+      "destination_format": "host:port",
+      "note": "Not yet implemented (Phase 33.1)"
+    }
+  },
+  "integration_points": {
+    "splunk": {
+      "format": "cef",
+      "transport": "http",
+      "destination": "http://splunk-collector:8088/services/collector",
+      "note": "Set format=cef, transport=http, configure HEC token in HTTP headers"
+    },
+    "elasticsearch": {
+      "format": "ndjson",
+      "transport": "http",
+      "destination": "http://elastic:9200/aegis-events/_bulk",
+      "note": "Set format=ndjson, transport=http, uses bulk API"
+    },
+    "logstash": {
+      "format": "ndjson",
+      "transport": "tcp",
+      "destination": "logstash-host:5044",
+      "note": "Set format=ndjson, transport=tcp, configure Logstash beats input"
+    },
+    "rsyslog": {
+      "format": "syslog",
+      "transport": "udp",
+      "destination": "syslog-host:514",
+      "note": "Set format=syslog, transport=udp, standard syslog port"
+    }
+  }
+}
