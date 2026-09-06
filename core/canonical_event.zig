@@ -70,9 +70,63 @@ pub const CanonicalEvent = extern struct {
     defcon_impact: u8,      // 1-5 (5=normal, 1=critical)
     context_flags: u32,     // Bitfield: bit0=threat_intel_match, bit1=correlation_match, etc.
 
-    // --- Reserved for future expansion ---
-    reserved: [16]u8,       // Zero-filled, available for v2 fields
+    // --- Reserved: v1 extension area (G2 frozen layout, see RESERVED_* below) ---
+    reserved: [16]u8,       // Offset table in shared/protocol/wire_v1.md
 };
+
+// ============================================================
+// G2: Frozen reserved-area layout (host/process/node identity)
+// De-facto layout of hids_engine.zig formalized as contract.
+// Wire size and struct size are UNCHANGED (ABI-safe, still v1).
+// ============================================================
+
+/// reserved[0..4]  = process_id (u32 LE) — host telemetry PID
+/// reserved[4..8]  = parent_process_id (u32 LE)
+/// reserved[8]     = process event type (HIDS ProcessEventType)
+/// reserved[9]     = process integrity level
+/// reserved[10]    = HIDS flag
+/// reserved[11..15]= node_id (u32 LE) — host identity for federation/cluster
+/// reserved[15]    = confidence (0-100, 0 = unknown; detector confidence)
+
+pub const RES_OFF_PID: usize = 0;
+pub const RES_OFF_PPID: usize = 4;
+pub const RES_OFF_PROC_TYPE: usize = 8;
+pub const RES_OFF_INTEGRITY: usize = 9;
+pub const RES_OFF_HIDS_FLAG: usize = 10;
+pub const RES_OFF_NODE_ID: usize = 11;
+pub const RES_OFF_CONFIDENCE: usize = 15;
+
+/// Set process identity (host telemetry provenance).
+pub fn setProcessIdentity(event: *CanonicalEvent, pid: u32, ppid: u32) void {
+    std.mem.writeInt(u32, event.reserved[RES_OFF_PID..][0..4], pid, .little);
+    std.mem.writeInt(u32, event.reserved[RES_OFF_PPID..][0..4], ppid, .little);
+}
+
+pub fn getProcessId(event: *const CanonicalEvent) u32 {
+    return std.mem.readInt(u32, event.reserved[RES_OFF_PID..][0..4], .little);
+}
+
+pub fn getParentProcessId(event: *const CanonicalEvent) u32 {
+    return std.mem.readInt(u32, event.reserved[RES_OFF_PPID..][0..4], .little);
+}
+
+/// Set originating node identity (federation host identity).
+pub fn setNodeId(event: *CanonicalEvent, node_id: u32) void {
+    std.mem.writeInt(u32, event.reserved[RES_OFF_NODE_ID..][0..4], node_id, .little);
+}
+
+pub fn getNodeId(event: *const CanonicalEvent) u32 {
+    return std.mem.readInt(u32, event.reserved[RES_OFF_NODE_ID..][0..4], .little);
+}
+
+/// Detector confidence 0-100 (0 = unknown). Values >100 are clamped.
+pub fn setConfidence(event: *CanonicalEvent, confidence: u8) void {
+    event.reserved[RES_OFF_CONFIDENCE] = @min(confidence, 100);
+}
+
+pub fn getConfidence(event: *const CanonicalEvent) u8 {
+    return event.reserved[RES_OFF_CONFIDENCE];
+}
 
 // ============================================================
 // Enums (must match across all languages)
@@ -88,6 +142,11 @@ pub const EventSource = enum(u8) {
     cpp_bridge = 6,
     rust_shield = 7,
     go_aggregator = 8,
+    // G2 additive sources (network + host + federation in one schema)
+    npcap_sensor = 9,
+    host_telemetry = 10,
+    ml_detector = 11,
+    cluster_federation = 12,
     external = 255,
 };
 
@@ -441,8 +500,7 @@ test "STEP2: deserializeFromBytes rejects wrong magic" {
     try std.testing.expect(deserializeFromBytes(&buf) == null);
 }
 
-test "STEP2: explicit encoding matches wire_v1.md offset table" {
-    var event = create(.wfp_sensor);
+test "STEP2: explicit encoding matches wire_v1.md offset table" {    var event = create(.wfp_sensor);
     event.magic = 0x41454731;
     event.version = 1;
     event.event_id = 12345;
@@ -459,4 +517,49 @@ test "STEP2: explicit encoding matches wire_v1.md offset table" {
     // Verify version at offset 4 (2 bytes)
     try std.testing.expect(buf[4] == 1);
     try std.testing.expect(buf[5] == 0);
+}
+
+// ============================================================
+// G2: reserved-area contract tests (host/process/node identity)
+// ============================================================
+
+test "G2: process identity round-trip" {
+    var event = create(.host_telemetry);
+    setProcessIdentity(&event, 4242, 800);
+    try std.testing.expect(getProcessId(&event) == 4242);
+    try std.testing.expect(getParentProcessId(&event) == 800);
+}
+
+test "G2: node id and confidence round-trip through wire bytes" {
+    var event = create(.cluster_federation);
+    setNodeId(&event, 0xDEADBEEF);
+    setConfidence(&event, 95);
+
+    var buf: [128]u8 = undefined;
+    const written = try serializeToBytes(&event, &buf);
+    const restored = deserializeFromBytes(buf[0..written]).?;
+
+    try std.testing.expect(getNodeId(&restored) == 0xDEADBEEF);
+    try std.testing.expect(getConfidence(&restored) == 95);
+}
+
+test "G2: confidence clamps to 100" {
+    var event = create(.npcap_sensor);
+    setConfidence(&event, 255);
+    try std.testing.expect(getConfidence(&event) == 100);
+    setConfidence(&event, 0);
+    try std.testing.expect(getConfidence(&event) == 0);
+}
+
+test "G2: new EventSource values are additive and stable" {
+    try std.testing.expect(@intFromEnum(EventSource.npcap_sensor) == 9);
+    try std.testing.expect(@intFromEnum(EventSource.host_telemetry) == 10);
+    try std.testing.expect(@intFromEnum(EventSource.ml_detector) == 11);
+    try std.testing.expect(@intFromEnum(EventSource.cluster_federation) == 12);
+    try std.testing.expect(@intFromEnum(EventSource.external) == 255);
+}
+
+test "G2: struct size unchanged after reserved-layout formalization" {
+    try std.testing.expect(EVENT_SCHEMA_SIZE == @sizeOf(CanonicalEvent));
+    try std.testing.expect(WIRE_PAYLOAD_SIZE == 109);
 }

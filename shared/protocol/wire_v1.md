@@ -84,7 +84,14 @@ Offset  Size  Field
 87      1     enforcement_status
 88      1     defcon_impact
 89      4     context_flags
-93      16    reserved (zero-filled)
+93      16    reserved — G2 frozen layout:
+              [0..4]   process_id (u32 LE, 0 = N/A)
+              [4..8]   parent_process_id (u32 LE)
+              [8]      process event type (HIDS)
+              [9]      process integrity level
+              [10]     HIDS flag
+              [11..15] node_id (u32 LE, 0 = unknown) — federation host identity
+              [15]     confidence (0-100, 0 = unknown)
 Total:  109 bytes
 ```
 
