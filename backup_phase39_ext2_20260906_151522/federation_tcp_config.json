@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "module": "federation_tcp",
+  "phase": "39-ext-2",
+  "kill_switch": {
+    "enabled": false,
+    "comment": "OFF by default. TCP transport is no-op until explicitly enabled. Per-node enforcement stays in WFP kernel driver."
+  },
+  "server_side": {
+    "bind_addr": "127.0.0.1:7931",
+    "listen_backlog": 32,
+    "comment": "bind_addr port 0 = OS-assigned ephemeral (useful for tests). Production: fixed port like 7931."
+  },
+  "client_side": {
+    "connect_addr": "127.0.0.1:7931",
+    "comment": "Remote address to connect to. Empty = client mode disabled (server-only)."
+  },
+  "socket_timeouts_ms": {
+    "recv": 1000,
+    "send": 5000,
+    "connect": 5000,
+    "comment": "Blocking sockets with SO_RCVTIMEO/SO_SNDTIMEO. recv returns Timeout (WouldBlock) instead of hanging forever."
+  },
+  "socket_options": {
+    "tcp_nodelay": true,
+    "so_reuseaddr": true,
+    "comment": "TCP_NODELAY disables Nagle for low-latency federation messages. SO_REUSEADDR allows quick rebind after restart."
+  },
+  "reconnect": {
+    "initial_backoff_ms": 1,
+    "max_backoff_ms": 30000,
+    "multiplier": 2.0,
+    "max_attempts": 10,
+    "comment": "Exponential backoff on connect failure. After max_attempts, gives up (caller can reset)."
+  },
+  "frame_protocol": {
+    "header_length_bytes": 12,
+    "max_frame_size_bytes": 4096,
+    "checksum": "CRC32 (inherited from Phase 39 Ext 1 federation_codec)",
+    "comment": "TCP is a byte stream, not a message stream. FramedReader reassembles 12-byte header + payload from arbitrary recv chunks."
+  },
+  "error_handling": {
+    "not_connected": "send/recv attempted before connect or after disconnect",
+    "connection_reset": "peer closed connection (graceful or abrupt)",
+    "timeout": "SO_RCVTIMEO elapsed without data",
+    "send_failed": "send() syscall returned error (e.g. EPIPE)",
+    "comment": "Errors propagate as TransportError; FederationFacade (Phase 39 Ext 1) handles reconnect via ConnectionManager."
+  }
+}

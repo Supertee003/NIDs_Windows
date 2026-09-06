@@ -1,0 +1,98 @@
+﻿{
+    "framework":  "HIPAA",
+    "controls_checked":  10,
+    "controls_passed":  7,
+    "is_compliant":  false,
+    "compliance_score":  70,
+    "name":  "HIPAA (Health Insurance Portability and Accountability Act)",
+    "control_results":  [
+                            {
+                                "passed":  true,
+                                "name":  "Audit Controls",
+                                "id":  "HIPAA-164.312(b)",
+                                "check":  "total_detected \u003e 0"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Integrity Controls",
+                                "id":  "HIPAA-164.312(c)(1)",
+                                "check":  "total_detected \u003e 0"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Person Authentication",
+                                "id":  "HIPAA-164.312(d)",
+                                "check":  "always_true"
+                            },
+                            {
+                                "passed":  false,
+                                "name":  "Transmission Security",
+                                "id":  "HIPAA-164.312(e)(1)",
+                                "check":  "total_blocked \u003e 0"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Encryption",
+                                "id":  "HIPAA-164.312(e)(2)(ii)",
+                                "check":  "always_true"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Sanction Policy",
+                                "id":  "HIPAA-164.308(a)(1)(ii)(C)",
+                                "check":  "always_true"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Workforce Security",
+                                "id":  "HIPAA-164.308(a)(3)",
+                                "check":  "always_true"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Security Awareness",
+                                "id":  "HIPAA-164.308(a)(5)",
+                                "check":  "always_true"
+                            },
+                            {
+                                "passed":  false,
+                                "name":  "Security Incident",
+                                "id":  "HIPAA-164.308(a)(6)",
+                                "check":  "total_blocked \u003e 0"
+                            },
+                            {
+                                "passed":  false,
+                                "name":  "Access Control",
+                                "id":  "HIPAA-164.312(a)(1)",
+                                "check":  "total_blocked \u003e 0"
+                            }
+                        ],
+    "generated_at":  "2026-09-05T13:45:32.4804668+07:00",
+    "statistics":  {
+                       "total_events":  1801,
+                       "total_detected":  1801,
+                       "detection_rate_pct":  100,
+                       "block_success_rate_pct":  0,
+                       "total_blocked":  0,
+                       "total_block_failed":  469,
+                       "unique_src_ips":  1472,
+                       "attack_breakdown":  {
+                                                "path_traversal":  32,
+                                                "rfi":  32,
+                                                "brute_force":  32,
+                                                "dns_exfil":  32,
+                                                "log4j":  32,
+                                                "sqli":  32,
+                                                "xss":  34,
+                                                "syn_flood":  35,
+                                                "port_scan":  32
+                                            },
+                       "severity_breakdown":  {
+                                                  "low":  32,
+                                                  "critical":  98,
+                                                  "medium":  98,
+                                                  "high":  1572
+                                              }
+                   },
+    "controls_failed":  3
+}

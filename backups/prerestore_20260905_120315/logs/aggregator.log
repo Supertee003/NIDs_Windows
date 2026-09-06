@@ -1,0 +1,20 @@
+2026/09/01 23:21:38 [AGGREGATOR] AEGIS NIDS Alert Aggregator starting
+2026/09/01 23:21:38 [AGGREGATOR] Log file: D:\NIDs_Windows\logs\aegis_core.ndjson
+2026/09/01 23:21:38 [AGGREGATOR] API port: 9200
+2026/09/01 23:21:38 [AGGREGATOR] Max alerts: 10000
+2026/09/01 23:21:38 [AGGREGATOR] REST API available at http://localhost:9200
+2026/09/02 00:41:11 [AGGREGATOR] AEGIS NIDS Alert Aggregator starting
+2026/09/02 00:41:11 [AGGREGATOR] Log file: D:\NIDs_Windows\logs\aegis_core.ndjson
+2026/09/02 00:41:11 [AGGREGATOR] API port: 9200
+2026/09/02 00:41:11 [AGGREGATOR] Max alerts: 10000
+2026/09/02 00:41:11 [AGGREGATOR] REST API available at http://localhost:9200
+2026/09/02 01:49:35 [AGGREGATOR] AEGIS NIDS Alert Aggregator starting
+2026/09/02 01:49:35 [AGGREGATOR] Log file: D:\NIDs_Windows\logs\aegis_core.ndjson
+2026/09/02 01:49:35 [AGGREGATOR] API port: 9200
+2026/09/02 01:49:35 [AGGREGATOR] Max alerts: 10000
+2026/09/02 01:49:35 [AGGREGATOR] REST API available at http://localhost:9200
+2026/09/02 16:07:15 [AGGREGATOR] AEGIS NIDS Alert Aggregator starting
+2026/09/02 16:07:15 [AGGREGATOR] Log file: D:\NIDs_Windows\logs\aegis_core.ndjson
+2026/09/02 16:07:15 [AGGREGATOR] API port: 9200
+2026/09/02 16:07:15 [AGGREGATOR] Max alerts: 10000
+2026/09/02 16:07:15 [AGGREGATOR] REST API available at http://localhost:9200

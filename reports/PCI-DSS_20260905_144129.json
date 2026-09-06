@@ -1,0 +1,98 @@
+﻿{
+    "framework":  "PCI-DSS",
+    "controls_checked":  10,
+    "controls_passed":  9,
+    "is_compliant":  true,
+    "compliance_score":  90,
+    "name":  "PCI-DSS (Payment Card Industry Data Security Standard)",
+    "control_results":  [
+                            {
+                                "passed":  true,
+                                "name":  "Audit Logging Enabled",
+                                "id":  "PCI-10.1",
+                                "check":  "total_detected \u003e 0"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Security Event Logging",
+                                "id":  "PCI-10.2",
+                                "check":  "total_detected \u003e 0"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Event Detail Capture",
+                                "id":  "PCI-10.3",
+                                "check":  "total_detected \u003e 0"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Time Synchronization",
+                                "id":  "PCI-10.4",
+                                "check":  "always_true"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Audit Log Protection",
+                                "id":  "PCI-10.5",
+                                "check":  "always_true"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Log Review",
+                                "id":  "PCI-10.6",
+                                "check":  "total_detected \u003e 0"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Log Retention",
+                                "id":  "PCI-10.7",
+                                "check":  "always_true"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Vulnerability Scanning",
+                                "id":  "PCI-11.4",
+                                "check":  "total_detected \u003e 0"
+                            },
+                            {
+                                "passed":  true,
+                                "name":  "Intrusion Detection",
+                                "id":  "PCI-11.5",
+                                "check":  "total_detected \u003e 0"
+                            },
+                            {
+                                "passed":  false,
+                                "name":  "Incident Response",
+                                "id":  "PCI-12.10",
+                                "check":  "total_blocked \u003e 0"
+                            }
+                        ],
+    "generated_at":  "2026-09-05T14:41:29.7979779+07:00",
+    "statistics":  {
+                       "total_events":  2071,
+                       "total_detected":  2071,
+                       "detection_rate_pct":  100,
+                       "block_success_rate_pct":  0,
+                       "total_blocked":  0,
+                       "total_block_failed":  649,
+                       "unique_src_ips":  1472,
+                       "attack_breakdown":  {
+                                                "path_traversal":  62,
+                                                "rfi":  62,
+                                                "brute_force":  62,
+                                                "dns_exfil":  62,
+                                                "log4j":  62,
+                                                "sqli":  62,
+                                                "xss":  64,
+                                                "syn_flood":  65,
+                                                "port_scan":  62
+                                            },
+                       "severity_breakdown":  {
+                                                  "low":  62,
+                                                  "critical":  188,
+                                                  "medium":  158,
+                                                  "high":  1662
+                                              }
+                   },
+    "controls_failed":  1
+}

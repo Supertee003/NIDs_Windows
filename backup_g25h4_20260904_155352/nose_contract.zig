@@ -1,0 +1,325 @@
+//! nose_contract.zig - AEGIS Nose → Event Fabric Contract (Phase 25, AEGIS-006)
+//!
+//! Defines the contract between Sensors (Nose) and the Event Fabric (Queue).
+//! Sensors MUST use this interface to submit events — they MUST NOT
+//! write directly to queues or call detection engines.
+//!
+//! Contract:
+//!   1. Sensor creates CanonicalEvent via nose_createEvent()
+//!   2. Sensor fills in detection-specific fields
+//!   3. Sensor calls nose_submitEvent() — this validates and enqueues
+//!   4. Event Fabric routes to appropriate priority queue
+//!   5. Detection layer pops from queue and processes
+//!
+//! This ensures:
+//!   - All events pass through validation before entering the fabric
+//!   - Sensors cannot bypass the queue (no direct detection calls)
+//!   - Priority is auto-determined from event type
+//!   - Wire format is enforced (magic + version check)
+
+const std = @import("std");
+const canonical = @import("canonical_event.zig");
+const wire = @import("wire_event.zig");
+const pq = @import("priority_queue.zig");
+
+// ============================================================
+// Nose Contract Types (AEGIS-006)
+// ============================================================
+
+/// Result of submitting an event to the Event Fabric.
+pub const SubmitResult = enum {
+    accepted,     // Event successfully enqueued
+    rejected,     // Event failed validation (invalid magic/version)
+    dropped,      // Queue full, event dropped
+    dropped_at_source,  // v5.0: Event dropped at sensor before reaching fabric
+    not_initialized, // Fabric not initialized
+};
+
+/// Configuration for the Event Fabric.
+pub const FabricConfig = struct {
+    capacity_per_priority: usize = 256,
+    validate_on_submit: bool = true,
+    enforce_wire_format: bool = false, // If true, events must arrive in wire format
+};
+
+// ============================================================
+// Event Fabric State (AEGIS-006)
+// ============================================================
+
+var g_fabric_initialized: bool = false;
+var g_priority_queue: ?pq.PriorityQueue = null;
+var g_config: FabricConfig = .{};
+var g_total_accepted: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+var g_total_rejected: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+var g_total_dropped: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+
+// ============================================================
+// Initialization
+// ============================================================
+
+/// Initialize the Event Fabric with configuration.
+/// Call once at startup before any sensor submits events.
+pub fn initFabric(allocator: std.mem.Allocator, config: FabricConfig) !void {
+    if (g_fabric_initialized) return;
+    g_config = config;
+    g_priority_queue = try pq.PriorityQueue.init(allocator, config.capacity_per_priority);
+    g_fabric_initialized = true;
+    std.log.info("[NOSE] Event Fabric initialized (capacity={d}/queue)", .{config.capacity_per_priority});
+}
+
+/// Shutdown the Event Fabric.
+pub fn shutdownFabric(allocator: std.mem.Allocator) void {
+    if (!g_fabric_initialized) return;
+    if (g_priority_queue) |*queue| {
+        queue.deinit(allocator);
+    }
+    g_priority_queue = null;
+    g_fabric_initialized = false;
+    std.log.info("[NOSE] Event Fabric shutdown (accepted={d} rejected={d} dropped={d})", .{
+        g_total_accepted.load(.monotonic),
+        g_total_rejected.load(.monotonic),
+        g_total_dropped.load(.monotonic),
+    });
+}
+
+/// Returns true if the Event Fabric is currently initialized.
+/// (Public accessor so event_fabric.zig facade does not need to peek
+/// at internal state.)
+pub fn isFabricInitialized() bool {
+    return g_fabric_initialized;
+}
+
+// ============================================================
+// Sensor Interface (AEGIS-006: Nose contract)
+// ============================================================
+
+/// Create a new event for submission. Sensors call this, fill in fields, then submit.
+/// This is the ONLY way sensors should create events.
+pub fn createEvent(source: canonical.EventSource) canonical.CanonicalEvent {
+    return canonical.create(source);
+}
+
+/// Submit an event to the Event Fabric.
+/// Validates event schema, determines priority, and enqueues.
+/// Returns SubmitResult indicating what happened.
+pub fn submitEvent(event: canonical.CanonicalEvent) SubmitResult {
+    if (!g_fabric_initialized) return .not_initialized;
+
+    // Validate event schema (AEGIS-002)
+    if (g_config.validate_on_submit) {
+        if (!canonical.validate(&event)) {
+            _ = g_total_rejected.fetchAdd(1, .monotonic);
+            return .rejected;
+        }
+    }
+
+    // Enqueue with auto-priority
+    if (g_priority_queue) |*queue| {
+        if (queue.push(event)) {
+            _ = g_total_accepted.fetchAdd(1, .monotonic);
+            return .accepted;
+        } else {
+            _ = g_total_dropped.fetchAdd(1, .monotonic);
+            return .dropped;
+        }
+    }
+
+    return .not_initialized;
+}
+
+/// Submit an event from wire format (for external sensors via IPC).
+/// Deserializes the wire frame, validates, and enqueues.
+pub fn submitWireEvent(wire_bytes: []const u8) SubmitResult {
+    if (!g_fabric_initialized) return .not_initialized;
+
+    // Deserialize wire frame
+    const event = wire.deserializeEvent(wire_bytes) orelse {
+        _ = g_total_rejected.fetchAdd(1, .monotonic);
+        return .rejected;
+    };
+
+    return submitEvent(event.*);
+}
+
+/// Pop the next event for processing (detection layer calls this).
+/// Returns null if fabric is empty or not initialized.
+pub fn popEvent() ?canonical.CanonicalEvent {
+    if (!g_fabric_initialized) return null;
+    if (g_priority_queue) |*queue| {
+        return queue.pop();
+    }
+    return null;
+}
+
+/// Check if the Event Fabric has events ready.
+pub fn hasEvents() bool {
+    if (!g_fabric_initialized) return false;
+    if (g_priority_queue) |*queue| {
+        return !queue.isEmpty();
+    }
+    return false;
+}
+
+/// Get total events waiting in all priority queues.
+pub fn pendingCount() usize {
+    if (!g_fabric_initialized) return 0;
+    if (g_priority_queue) |*queue| {
+        return queue.len();
+    }
+    return 0;
+}
+
+/// Get fabric statistics for monitoring.
+pub fn getStats() FabricStats {
+    if (!g_fabric_initialized or g_priority_queue == null) {
+        return .{
+            .initialized = false,
+            .pending = 0,
+            .accepted = 0,
+            .rejected = 0,
+            .dropped = 0,
+        };
+    }
+    var queue = &g_priority_queue.?;
+    const qstats = queue.getStats();
+    return .{
+        .initialized = true,
+        .pending = qstats.high_count + qstats.normal_count + qstats.low_count,
+        .accepted = g_total_accepted.load(.monotonic),
+        .rejected = g_total_rejected.load(.monotonic),
+        .dropped = g_total_dropped.load(.monotonic),
+        .high_pending = qstats.high_count,
+        .normal_pending = qstats.normal_count,
+        .low_pending = qstats.low_count,
+    };
+}
+
+pub const FabricStats = struct {
+    initialized: bool,
+    pending: usize,
+    accepted: u64,
+    rejected: u64,
+    dropped: u64,
+    high_pending: usize = 0,
+    normal_pending: usize = 0,
+    low_pending: usize = 0,
+};
+
+// ============================================================
+// Tests (AEGIS-006: Nose contract)
+// ============================================================
+
+test "createEvent returns valid CanonicalEvent" {
+    const event = createEvent(.zig_core);
+    try std.testing.expect(canonical.validate(&event));
+    try std.testing.expect(event.source == .zig_core);
+}
+
+test "submitEvent before init returns not_initialized" {
+    // Reset state
+    g_fabric_initialized = false;
+    const event = createEvent(.zig_core);
+    try std.testing.expect(submitEvent(event) == .not_initialized);
+}
+
+test "submitEvent accepts valid event" {
+    // Init fabric
+    try initFabric(std.testing.allocator, .{ .capacity_per_priority = 16 });
+    defer shutdownFabric(std.testing.allocator);
+
+    var event = createEvent(.wfp_sensor);
+    event.event_type = .block;
+    const result = submitEvent(event);
+    try std.testing.expect(result == .accepted);
+}
+
+test "submitEvent rejects invalid event" {
+    try initFabric(std.testing.allocator, .{ .capacity_per_priority = 16 });
+    defer shutdownFabric(std.testing.allocator);
+
+    var event = createEvent(.zig_core);
+    event.magic = 0xDEADBEEF; // Corrupt magic
+    try std.testing.expect(submitEvent(event) == .rejected);
+}
+
+test "submitEvent drops on overflow" {
+    try initFabric(std.testing.allocator, .{ .capacity_per_priority = 2 });
+    defer shutdownFabric(std.testing.allocator);
+
+    var event = createEvent(.zig_core);
+    event.event_type = .block;
+
+    try std.testing.expect(submitEvent(event) == .accepted);
+    try std.testing.expect(submitEvent(event) == .accepted);
+    try std.testing.expect(submitEvent(event) == .dropped); // Queue full
+}
+
+test "popEvent returns null when empty" {
+    try initFabric(std.testing.allocator, .{ .capacity_per_priority = 16 });
+    defer shutdownFabric(std.testing.allocator);
+    try std.testing.expect(popEvent() == null);
+}
+
+test "popEvent returns highest priority first" {
+    try initFabric(std.testing.allocator, .{ .capacity_per_priority = 16 });
+    defer shutdownFabric(std.testing.allocator);
+
+    var low_e = createEvent(.pipe_sensor);
+    low_e.event_type = .forward;
+    low_e.event_id = 100;
+    _ = submitEvent(low_e);
+
+    var high_e = createEvent(.wfp_sensor);
+    high_e.event_type = .block;
+    high_e.event_id = 200;
+    _ = submitEvent(high_e);
+
+    const popped = popEvent().?;
+    try std.testing.expect(popped.event_id == 200); // High priority first
+}
+
+test "hasEvents and pendingCount" {
+    try initFabric(std.testing.allocator, .{ .capacity_per_priority = 16 });
+    defer shutdownFabric(std.testing.allocator);
+
+    try std.testing.expect(!hasEvents());
+    try std.testing.expect(pendingCount() == 0);
+
+    var event = createEvent(.zig_core);
+    event.event_type = .match_;
+    _ = submitEvent(event);
+
+    try std.testing.expect(hasEvents());
+    try std.testing.expect(pendingCount() == 1);
+}
+
+test "getStats tracks all counters" {
+    try initFabric(std.testing.allocator, .{ .capacity_per_priority = 16 });
+    defer shutdownFabric(std.testing.allocator);
+
+    // Reset global counters (previous tests may have incremented them)
+    g_total_accepted.store(0, .monotonic);
+    g_total_rejected.store(0, .monotonic);
+    g_total_dropped.store(0, .monotonic);
+
+    var e1 = createEvent(.zig_core);
+    e1.event_type = .block;
+    _ = submitEvent(e1);
+
+    var e2 = createEvent(.zig_core);
+    e2.event_type = .forward;
+    _ = submitEvent(e2);
+
+    const stats = getStats();
+    try std.testing.expect(stats.initialized);
+    try std.testing.expect(stats.pending == 2);
+    try std.testing.expect(stats.accepted == 2);
+    try std.testing.expect(stats.high_pending == 1);
+    try std.testing.expect(stats.low_pending == 1);
+}
+
+test "FabricConfig defaults" {
+    const config = FabricConfig{};
+    try std.testing.expect(config.capacity_per_priority == 256);
+    try std.testing.expect(config.validate_on_submit == true);
+}

@@ -1,0 +1,76 @@
+{
+  "timestamp": "2026-09-05T11:16:54.374165",
+  "system": {
+    "wfp_driver_running": true,
+    "subsystems_running": [
+      "brain",
+      "bridge",
+      "core",
+      "mouth",
+      "nose"
+    ]
+  },
+  "throughput": {
+    "events_sent": 100,
+    "events_logged": 100,
+    "send_duration_s": 0.02,
+    "total_duration_s": 3.022,
+    "events_per_second": 33.1,
+    "detection_rate_pct": 100.0,
+    "block_ok": 0,
+    "block_failed": 0,
+    "top_attack_types": {
+      "BENCH-0": 10,
+      "BENCH-1": 10,
+      "BENCH-2": 10,
+      "BENCH-3": 10,
+      "BENCH-4": 10
+    }
+  },
+  "duration_test": {
+    "duration_target_s": 10,
+    "duration_actual_s": 10.0,
+    "events_sent": 71229,
+    "events_logged": 1390,
+    "send_eps": 7122.9,
+    "process_eps": 139.0
+  },
+  "resources": {
+    "brain": {
+      "pid": 18008,
+      "cpu_pct": 0.0,
+      "rss_mb": 87.51953125,
+      "vms_mb": 73.56640625
+    },
+    "bridge": {
+      "pid": 6836,
+      "cpu_pct": 0.0,
+      "rss_mb": 4.79296875,
+      "vms_mb": 1.15625
+    },
+    "core": {
+      "pid": 8980,
+      "cpu_pct": 0.1,
+      "rss_mb": 9.8828125,
+      "vms_mb": 194.53125
+    },
+    "mouth": {
+      "pid": 22708,
+      "cpu_pct": 0.1,
+      "rss_mb": 4.19921875,
+      "vms_mb": 0.859375
+    },
+    "nose": {
+      "pid": 23272,
+      "cpu_pct": 4.4,
+      "rss_mb": 16.01953125,
+      "vms_mb": 21.05859375
+    }
+  },
+  "summary": {
+    "peak_eps": 33.1,
+    "sustained_eps": 139.0,
+    "block_enforcement": "ACTIVE",
+    "detection_rate": 100.0
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "module": "host_telemetry_mock",
+  "phase": "37-ext-1",
+  "kill_switch": {
+    "enabled": false,
+    "comment": "OFF by default. Mock source is a no-op until explicitly enabled. Real adapters (ETW/FIM/RegNotify) will respect the same kill switch."
+  },
+  "replay": {
+    "tick_ns": 1000000,
+    "loop_on_exhausted": false,
+    "jitter_ns": 0,
+    "comment": "tick_ns = 1ms between events by default. jitter_ns > 0 adds random delay for stress tests. loop_on_exhausted=true replays scenario forever (load testing)."
+  },
+  "scenario_library": [
+    {
+      "name": "macro-dropper",
+      "events": 4,
+      "mitre": "T1566.001 (Spearphishing Attachment)",
+      "description": "WINWORD.EXE -> cmd.exe -> dropper.exe -> C2 socket (198.51.100.7:4444)"
+    },
+    {
+      "name": "persistence",
+      "events": 2,
+      "mitre": "T1547.001 + T1571 (Boot Autostart + C2)",
+      "description": "svchost.exe hash tamper + HKLM Run\\Backdoor key set"
+    },
+    {
+      "name": "unsigned-system",
+      "events": 1,
+      "mitre": "T1027 (Obfuscated Files)",
+      "description": "Unsigned SYSTEM-integrity binary in System32 spawns"
+    },
+    {
+      "name": "lateral-movement",
+      "events": 5,
+      "mitre": "T1021 (Remote Services)",
+      "description": "Process opens TCP sockets to ports 445/3389/22/135/139 on internal hosts"
+    }
+  ],
+  "adapter_contract": {
+    "interface": "HostTelemetrySource { nextEvent, name, isExhausted, reset }",
+    "implementations": [
+      "MockTelemetrySource (this module - host-testable on Linux)",
+      "EtwProcessSource (future - Windows ETW Kernel-Process provider)",
+      "FimSource (future - ReadDirectoryChangesW)",
+      "RegNotifySource (future - RegNotifyChangeKeyValue)",
+      "EtwWinsockSource (future - ETW Winsock-APM for socket events)"
+    ],
+    "comment": "All real adapters MUST implement HostTelemetrySource so they can be pumped via EventPump or MultiSourcePump. MockTelemetrySource is the reference implementation and the test bed."
+  }
+}

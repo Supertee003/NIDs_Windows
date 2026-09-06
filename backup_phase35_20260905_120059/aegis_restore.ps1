@@ -1,0 +1,386 @@
+# ============================================================
+# AEGIS NIDS - Phase 35: Restore Script
+# ============================================================
+# Restores AEGIS NIDS state from a backup archive.
+# Safe to run: does NOT modify running AEGIS unless -Apply is used.
+#
+# Usage:
+#   powershell -ExecutionPolicy Bypass -File .\aegis_restore.ps1 -Backup backups\backup_20260905_103000.zip
+#   powershell -ExecutionPolicy Bypass -File .\aegis_restore.ps1 -Backup backups\backup_*.zip -Latest
+#   powershell -ExecutionPolicy Bypass -File .\aegis_restore.ps1 -List
+#   powershell -ExecutionPolicy Bypass -File .\aegis_restore.ps1 -Backup <path> -Apply
+# ============================================================
+
+param(
+    [string]$Backup,
+    [switch]$Latest,
+    [switch]$List,
+    [switch]$Apply,
+    [switch]$DryRun
+)
+
+$ErrorActionPreference = 'Stop'
+
+$repoRoot = (Get-Location).Path
+
+Write-Host ""
+Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host " AEGIS NIDS - Phase 35: Restore" -ForegroundColor White
+Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host ""
+
+# ============================================================
+# Mode: List backups
+# ============================================================
+
+if ($List) {
+    Write-Host "[MODE] List available backups" -ForegroundColor Cyan
+    Write-Host ""
+
+    $backupsDir = Join-Path $repoRoot 'backups'
+    if (-not (Test-Path $backupsDir)) {
+        Write-Host "  No backups directory found." -ForegroundColor Yellow
+        Write-Host "  Run aegis_backup.ps1 first." -ForegroundColor Gray
+        exit 0
+    }
+
+    $backups = Get-ChildItem -Path $backupsDir -Filter 'backup_*.zip' -ErrorAction SilentlyContinue |
+               Sort-Object Name -Descending
+
+    if ($backups.Count -eq 0) {
+        Write-Host "  No backup archives found." -ForegroundColor Yellow
+        exit 0
+    }
+
+    Write-Host "  Available backups (newest first):" -ForegroundColor White
+    Write-Host ""
+
+    for ($i = 0; $i -lt $backups.Count; $i++) {
+        $b = $backups[$i]
+        $sizeMB = [math]::Round($b.Length / 1MB, 2)
+        $timestamp = $b.BaseName -replace 'backup_', ''
+        $date = [datetime]::ParseExact($timestamp, 'yyyyMMdd_HHmmss', $null)
+
+        Write-Host "  [$($i + 1)] $($b.Name)" -ForegroundColor Cyan
+        Write-Host "      Date: $($date.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor Gray
+        Write-Host "      Size: $sizeMB MB" -ForegroundColor Gray
+        Write-Host "      Path: $($b.FullName)" -ForegroundColor Gray
+        Write-Host ""
+    }
+
+    Write-Host "  To restore: .\aegis_restore.ps1 -Backup backups\<name>.zip -Apply" -ForegroundColor Green
+    exit 0
+}
+
+# ============================================================
+# Find backup archive
+# ============================================================
+
+if ($Latest) {
+    Write-Host "[MODE] Restore latest backup" -ForegroundColor Cyan
+    $backupsDir = Join-Path $repoRoot 'backups'
+    $latest = Get-ChildItem -Path $backupsDir -Filter 'backup_*.zip' -ErrorAction SilentlyContinue |
+              Sort-Object Name -Descending | Select-Object -First 1
+
+    if (-not $latest) {
+        Write-Host "  [ERROR] No backups found in $backupsDir" -ForegroundColor Red
+        exit 1
+    }
+
+    $Backup = $latest.FullName
+    Write-Host "  Latest backup: $($latest.Name)" -ForegroundColor Green
+}
+
+if (-not $Backup) {
+    Write-Host "[ERROR] No backup specified." -ForegroundColor Red
+    Write-Host "  Usage: .\aegis_restore.ps1 -Backup <path> [-Apply]" -ForegroundColor Yellow
+    Write-Host "  Or:    .\aegis_restore.ps1 -Latest -Apply" -ForegroundColor Yellow
+    Write-Host "  Or:    .\aegis_restore.ps1 -List" -ForegroundColor Yellow
+    exit 1
+}
+
+# Resolve full path
+if (-not (Test-Path $Backup)) {
+    # Try relative to repo root
+    $fullPath = Join-Path $repoRoot $Backup
+    if (Test-Path $fullPath) {
+        $Backup = $fullPath
+    } else {
+        Write-Host "[ERROR] Backup file not found: $Backup" -ForegroundColor Red
+        exit 1
+    }
+}
+
+Write-Host "  Backup: $Backup" -ForegroundColor Green
+
+# ============================================================
+# Extract backup archive
+# ============================================================
+
+Write-Host ""
+Write-Host "[STEP 1] Extracting backup archive..." -ForegroundColor Cyan
+
+$tempDir = Join-Path $env:TEMP "aegis_restore_$(Get-Date -Format 'yyyyMMddHHmmss')"
+New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
+
+try {
+    Expand-Archive -Path $Backup -DestinationPath $tempDir -Force
+    Write-Host "  [OK] Extracted to: $tempDir" -ForegroundColor Green
+} catch {
+    Write-Host "  [ERROR] Failed to extract: $_" -ForegroundColor Red
+    exit 1
+}
+
+# ============================================================
+# Read manifest
+# ============================================================
+
+Write-Host ""
+Write-Host "[STEP 2] Reading backup manifest..." -ForegroundColor Cyan
+
+$manifestPath = Join-Path $tempDir 'manifest.json'
+if (-not (Test-Path $manifestPath)) {
+    Write-Host "  [ERROR] manifest.json not found in backup" -ForegroundColor Red
+    exit 1
+}
+
+$manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+Write-Host "  [OK] Manifest loaded" -ForegroundColor Green
+Write-Host "      Backup date: $($manifest.backup_date)" -ForegroundColor Gray
+Write-Host "      Total files: $($manifest.total_files)" -ForegroundColor Gray
+Write-Host "      Mode: $($manifest.mode)" -ForegroundColor Gray
+Write-Host ""
+
+# Show what's in the backup
+Write-Host "  Backup contents:" -ForegroundColor White
+Write-Host "    config:  $($manifest.contents.config)" -ForegroundColor Gray
+Write-Host "    core:    $($manifest.contents.core)" -ForegroundColor Gray
+Write-Host "    logs:    $($manifest.contents.logs)" -ForegroundColor Gray
+Write-Host "    system:  $($manifest.contents.system)" -ForegroundColor Gray
+Write-Host "    git:     $($manifest.contents.git)" -ForegroundColor Gray
+
+if ($manifest.system_state) {
+    Write-Host ""
+    Write-Host "  System state at backup time:" -ForegroundColor White
+    Write-Host "    WFP driver running: $($manifest.system_state.wfp_driver_running)" -ForegroundColor Gray
+    Write-Host "    Test signing:       $($manifest.system_state.test_signing_enabled)" -ForegroundColor Gray
+    Write-Host "    Test cert:          $($manifest.system_state.test_cert_thumbprint)" -ForegroundColor Gray
+}
+
+# ============================================================
+# Dry run mode - just show what would be restored
+# ============================================================
+
+if ($DryRun -and -not $Apply) {
+    Write-Host ""
+    Write-Host "[DRY RUN] What would be restored (use -Apply to actually restore):" -ForegroundColor Yellow
+
+    $restoreItems = @(
+        @{Src = (Join-Path $tempDir 'config'); Dst = (Join-Path $repoRoot 'config'); Label = 'config/'},
+        @{Src = (Join-Path $tempDir 'core'); Dst = (Join-Path $repoRoot 'core'); Label = 'core/'},
+        @{Src = (Join-Path $tempDir 'logs'); Dst = (Join-Path $repoRoot 'logs'); Label = 'logs/'},
+        @{Src = (Join-Path $tempDir 'build.zig'); Dst = (Join-Path $repoRoot 'build.zig'); Label = 'build.zig'}
+    )
+
+    foreach ($item in $restoreItems) {
+        if (Test-Path $item.Src) {
+            Write-Host "    [WOULD RESTORE] $($item.Label) -> $($item.Dst)" -ForegroundColor Yellow
+        }
+    }
+
+    Write-Host ""
+    Write-Host "  To actually restore:" -ForegroundColor Cyan
+    Write-Host "    .\aegis_restore.ps1 -Backup `"$Backup`" -Apply" -ForegroundColor White
+    exit 0
+}
+
+# ============================================================
+# Apply mode - actually restore files
+# ============================================================
+
+if (-not $Apply) {
+    Write-Host ""
+    Write-Host "[INFO] Dry run mode (no changes made)" -ForegroundColor Yellow
+    Write-Host "  To restore: add -Apply flag" -ForegroundColor Cyan
+    Write-Host "  To preview: this output (DryRun complete)" -ForegroundColor Gray
+    exit 0
+}
+
+Write-Host ""
+Write-Host "[STEP 3] Stopping AEGIS (if running)..." -ForegroundColor Cyan
+
+# Stop AEGIS subsystems gracefully
+$stopScript = Join-Path $repoRoot 'scripts\stop_aegis.bat'
+if (Test-Path $stopScript) {
+    Write-Host "  Running: scripts\stop_aegis.bat" -ForegroundColor Gray
+    & cmd /c $stopScript 2>&1 | Out-Null
+} else {
+    Write-Host "  [SKIP] stop_aegis.bat not found" -ForegroundColor Yellow
+}
+
+Start-Sleep -Seconds 2
+
+# ============================================================
+# Create pre-restore backup of current state
+# ============================================================
+
+Write-Host ""
+Write-Host "[STEP 4] Creating pre-restore backup..." -ForegroundColor Cyan
+
+$preRestoreDir = Join-Path $repoRoot "backups\prerestore_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+New-Item -ItemType Directory -Force -Path $preRestoreDir | Out-Null
+
+$preRestoreItems = @(
+    @{Src = 'config'; Dst = 'config'},
+    @{Src = 'core'; Dst = 'core'},
+    @{Src = 'logs'; Dst = 'logs'},
+    @{Src = 'build.zig'; Dst = 'build.zig'}
+)
+
+foreach ($item in $preRestoreItems) {
+    $srcPath = Join-Path $repoRoot $item.Src
+    if (Test-Path $srcPath) {
+        Copy-Item -Path $srcPath -Destination (Join-Path $preRestoreDir $item.Dst) -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+Write-Host "  [OK] Pre-restore backup: $preRestoreDir" -ForegroundColor Green
+Write-Host "       (If restore fails, recover from here)" -ForegroundColor Gray
+
+# ============================================================
+# Restore files
+# ============================================================
+
+Write-Host ""
+Write-Host "[STEP 5] Restoring files from backup..." -ForegroundColor Cyan
+
+$restoredCount = 0
+
+# Restore config/
+$configSrc = Join-Path $tempDir 'config'
+if (Test-Path $configSrc) {
+    $configDst = Join-Path $repoRoot 'config'
+    if (Test-Path $configDst) {
+        Copy-Item -Path "$configSrc\*" -Destination $configDst -Recurse -Force
+    } else {
+        Copy-Item -Path $configSrc -Destination $configDst -Recurse -Force
+    }
+    $configFiles = (Get-ChildItem -Path $configSrc -Recurse -File | Measure-Object).Count
+    Write-Host "  [OK] config/ restored ($configFiles files)" -ForegroundColor Green
+    $restoredCount += $configFiles
+}
+
+# Restore core/
+$coreSrc = Join-Path $tempDir 'core'
+if (Test-Path $coreSrc) {
+    $coreDst = Join-Path $repoRoot 'core'
+    Copy-Item -Path "$coreSrc\*" -Destination $coreDst -Recurse -Force
+    $coreFiles = (Get-ChildItem -Path $coreSrc -Recurse -File | Measure-Object).Count
+    Write-Host "  [OK] core/ restored ($coreFiles files)" -ForegroundColor Green
+    $restoredCount += $coreFiles
+}
+
+# Restore logs/ (append, don't overwrite existing)
+$logsSrc = Join-Path $tempDir 'logs'
+if (Test-Path $logsSrc) {
+    $logsDst = Join-Path $repoRoot 'logs'
+    if (-not (Test-Path $logsDst)) {
+        New-Item -ItemType Directory -Force -Path $logsDst | Out-Null
+    }
+    # Copy log files (backup logs go to logs/restored_<timestamp>/)
+    $restoredLogsDir = Join-Path $logsDst "restored_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+    New-Item -ItemType Directory -Force -Path $restoredLogsDir | Out-Null
+    Copy-Item -Path "$logsSrc\*" -Destination $restoredLogsDir -Recurse -Force
+    $logFiles = (Get-ChildItem -Path $logsSrc -Recurse -File | Measure-Object).Count
+    Write-Host "  [OK] logs/ restored to $restoredLogsDir ($logFiles files)" -ForegroundColor Green
+    Write-Host "       (Existing logs preserved, backup logs in restored_*)" -ForegroundColor Gray
+    $restoredCount += $logFiles
+}
+
+# Restore build.zig
+$buildSrc = Join-Path $tempDir 'build.zig'
+if (Test-Path $buildSrc) {
+    Copy-Item -Path $buildSrc -Destination (Join-Path $repoRoot 'build.zig') -Force
+    Write-Host "  [OK] build.zig restored" -ForegroundColor Green
+    $restoredCount++
+}
+
+# Restore scripts/ if present
+$scriptsSrc = Join-Path $tempDir 'scripts'
+if (Test-Path $scriptsSrc) {
+    $scriptsDst = Join-Path $repoRoot 'scripts'
+    Copy-Item -Path "$scriptsSrc\*" -Destination $scriptsDst -Recurse -Force
+    $scriptFiles = (Get-ChildItem -Path $scriptsSrc -Recurse -File | Measure-Object).Count
+    Write-Host "  [OK] scripts/ restored ($scriptFiles files)" -ForegroundColor Green
+    $restoredCount += $scriptFiles
+}
+
+Write-Host ""
+Write-Host "  Total files restored: $restoredCount" -ForegroundColor Green
+
+# ============================================================
+# Restore system state (if applicable)
+# ============================================================
+
+Write-Host ""
+Write-Host "[STEP 6] Checking system state..." -ForegroundColor Cyan
+
+# WFP driver - check if backup had it running
+if ($manifest.system_state.wfp_driver_running) {
+    $currentWfp = & sc.exe query aegis_wfp 2>&1 | Out-String
+    if ($currentWfp -match 'RUNNING') {
+        Write-Host "  [OK] WFP driver still running" -ForegroundColor Green
+    } else {
+        Write-Host "  [WARN] WFP driver was running at backup time but is NOT running now" -ForegroundColor Yellow
+        Write-Host "         To restore: run install_wfp_driver_embedded.ps1" -ForegroundColor Gray
+    }
+} else {
+    Write-Host "  [INFO] WFP driver was not running at backup time" -ForegroundColor Gray
+}
+
+# Test signing mode
+if ($manifest.system_state.test_signing_enabled) {
+    $bcd = & bcdedit /enum '{current}' 2>&1 | Out-String
+    if ($bcd -match 'testsigning\s+Yes') {
+        Write-Host "  [OK] Test signing still enabled" -ForegroundColor Green
+    } else {
+        Write-Host "  [WARN] Test signing was enabled at backup but is NOT now" -ForegroundColor Yellow
+        Write-Host "         To enable: bcdedit /set testsigning on (requires reboot)" -ForegroundColor Gray
+    }
+}
+
+# ============================================================
+# Cleanup temp directory
+# ============================================================
+
+Write-Host ""
+Write-Host "[STEP 7] Cleaning up..." -ForegroundColor Cyan
+
+Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+Write-Host "  [OK] Temp directory cleaned" -ForegroundColor Green
+
+# ============================================================
+# SUMMARY
+# ============================================================
+
+Write-Host ""
+Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host "RESTORE COMPLETE" -ForegroundColor Green
+Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Restored from: $Backup" -ForegroundColor White
+Write-Host "Backup date:   $($manifest.backup_date)" -ForegroundColor Gray
+Write-Host "Files restored: $restoredCount" -ForegroundColor Green
+Write-Host ""
+Write-Host "Pre-restore backup: $preRestoreDir" -ForegroundColor Yellow
+Write-Host "  (If something is wrong, restore from here)" -ForegroundColor Gray
+Write-Host ""
+Write-Host "Next steps:" -ForegroundColor White
+Write-Host "  1. Verify build:  zig build test" -ForegroundColor Cyan
+Write-Host "  2. Start AEGIS:   .\scripts\run_aegis.bat" -ForegroundColor Cyan
+Write-Host "  3. Check health:  python phase31_dashboard.py" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "To rollback this restore:" -ForegroundColor Yellow
+Write-Host "  .\aegis_restore.ps1 -Backup `"$preRestoreDir`" -Apply" -ForegroundColor White
+Write-Host ""
+Write-Host "=== AEGIS NIDS PHASE 35 RESTORE COMPLETE ===" -ForegroundColor Green

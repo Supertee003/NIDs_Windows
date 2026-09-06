@@ -1,0 +1,6 @@
+D:/NIDs_Windows/build/CMakeFiles/aegis_ipc.dir
+D:/NIDs_Windows/build/CMakeFiles/aegis_bridge.dir
+D:/NIDs_Windows/build/CMakeFiles/aegis_bridge_test.dir
+D:/NIDs_Windows/build/CMakeFiles/INSTALL.dir
+D:/NIDs_Windows/build/CMakeFiles/ALL_BUILD.dir
+D:/NIDs_Windows/build/CMakeFiles/ZERO_CHECK.dir
