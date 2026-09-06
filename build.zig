@@ -112,6 +112,7 @@ pub fn build(b: *std.Build) void {
         "core/ips_simulation_integration.zig",
         // Policy Plane modules (Phase 27 NEW)
         "core/policy_plane.zig",
+        "core/policy_signing.zig",
         "core/policy_plane_integration.zig",
         // Contract Freeze (G1 NEW)
         "core/contract_freeze.zig",

@@ -58,10 +58,17 @@
 - Brain/RAG: ตาม lifecycle เป็น advisor + fail-soft context, ไม่มี enforce path
 
 
-## G9 — Policy Signing ⚠️ MOCK → อยู่ระหว่าง implement
+## G9 — Policy Security Gate ✅ UNIT-VERIFIED (commit หลังจากนี้)
 
-- `core/policy_plane.zig:281` ยอมรับใน code: Ed25519 ยังไม่ implement
-  ("signature = first 8 bytes" เป็น stub)
-- Zig std มี `std.crypto.sign.Ed25519` ใช้ได้จริง → แผน: implement signature
-  verify จริงใน policy_plane (ตาม G9 requirements: SHA-256 + Ed25519 + key id +
-  expiry + reject TAMPERED/EXPIRED/ROLLBACK)
+- พบ stub เดิม (`policy_plane.zig:281`): signature = SHA-256 fingerprint ไม่มี Ed25519
+- **แก้แล้ว:** `core/policy_signing.zig` (additive, ไม่แก้ policy_plane) —
+  sign/verify จริงด้วย `std.crypto.sign.Ed25519`, canonical digest ครอบ
+  magic/version/rule_count/hash/policy_version/expiry, key_id + trusted key
+  table + rollback tracker (highest accepted version)
+- Verification: VALID / TAMPERED / INVALID_SIGNATURE / UNKNOWN_KEY /
+  EXPIRED_POLICY / ROLLBACK ครบตาม report §9
+- Proof (exit gates ครบ): 1-byte policy flip → fail, 1-byte signature flip →
+  INVALID_SIGNATURE, unknown key → UNKNOWN_KEY, expired → EXPIRED_POLICY,
+  v10 แล้ว v9 → ROLLBACK; ทดสอบผ่านทั้งหมด, ผูกเข้า `build.zig` test list แล้ว
+- เหลือสำหรับ production: key management/persistence ของ highest version
+  (G17 installer/config preservation)
