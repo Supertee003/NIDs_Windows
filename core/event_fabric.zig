@@ -28,6 +28,37 @@ var g_submit_count: u64 = 0;
 var g_pop_count: u64 = 0;
 var g_drop_count: u64 = 0;
 
+// G4: per-reason accounting (drop must have a reason + metric)
+var g_acc_rejected: u64 = 0; // validation failure (magic/version/size)
+var g_acc_dropped_fabric: u64 = 0; // queue full / priority overflow
+var g_acc_not_initialized: u64 = 0; // submit before initFabric
+
+/// G4 accounting snapshot. Identity (must always hold):
+///   submitted == accepted + rejected + dropped_by_fabric + not_initialized
+pub const Accounting = struct {
+    submitted: u64,
+    accepted: u64,
+    rejected: u64,
+    dropped_by_fabric: u64,
+    not_initialized: u64,
+
+    pub fn identityHolds(self: Accounting) bool {
+        return self.submitted ==
+            self.accepted + self.rejected + self.dropped_by_fabric + self.not_initialized;
+    }
+};
+
+/// G4: per-reason fabric accounting for monitoring/metrics export.
+pub fn getAccounting() Accounting {
+    return .{
+        .submitted = g_submit_count,
+        .accepted = g_submit_count - g_drop_count,
+        .rejected = g_acc_rejected,
+        .dropped_by_fabric = g_acc_dropped_fabric,
+        .not_initialized = g_acc_not_initialized,
+    };
+}
+
 /// Returns true if the Event Fabric is currently initialized.
 pub fn isInitialized() bool {
     return nose.isFabricInitialized();
@@ -40,6 +71,12 @@ pub fn submitEvent(event: canonical.CanonicalEvent) bool {
     const result = nose.submitEvent(event);
     if (result != .accepted) {
         g_drop_count += 1;
+        switch (result) {
+            .rejected => g_acc_rejected += 1,
+            .dropped_at_source, .dropped_by_fabric => g_acc_dropped_fabric += 1,
+            .not_initialized => g_acc_not_initialized += 1,
+            .accepted => unreachable,
+        }
         return false;
     }
     return true;
@@ -127,4 +164,31 @@ test "event_fabric.popEvent returns events in FIFO order within priority" {
         try std.testing.expect(ev.event_id == 100 + i);
     }
     try std.testing.expect(popEvent() == null);
+}
+
+test "G4: accounting identity holds across accept/reject/uninitialized" {
+    if (isInitialized()) {
+        nose.shutdownFabric(std.testing.allocator);
+    }
+
+    // not_initialized path
+    var event = canonical.create(.zig_core);
+    event.event_type = .block;
+    try std.testing.expect(!submitEvent(event));
+
+    // initialized: accepted + rejected paths
+    nose.initFabric(std.testing.allocator, .{ .capacity_per_priority = 4 }) catch {};
+    defer nose.shutdownFabric(std.testing.allocator);
+
+    try std.testing.expect(submitEvent(event)); // accepted
+
+    var bad = canonical.create(.zig_core);
+    bad.magic = 0xDEAD; // invalid -> rejected
+    try std.testing.expect(!submitEvent(bad));
+
+    const acc = getAccounting();
+    try std.testing.expect(acc.identityHolds());
+    try std.testing.expect(acc.rejected >= 1);
+    try std.testing.expect(acc.not_initialized >= 1);
+    try std.testing.expect(acc.accepted >= 1);
 }
