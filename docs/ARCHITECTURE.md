@@ -1,128 +1,79 @@
-# AEGIS NIDS Architecture (Phase 20, DOC-1)
+# AEGIS NIDs Windows — Canonical Architecture (G1)
 
-## Overview
+**สถานะ:** เอกสารนี้คือ **Single Source of Truth** ทาง architecture (ตั้งแต่ 2026-09-06)
+**ที่มา:** รวมจาก README.md (root) + PHASE32–44 READMEs (archive ไว้ที่ `docs/archive/`)
+**Baseline:** ดู `docs/BASELINE_20260906.md`
 
-AEGIS NIDS is a multi-language Network Intrusion Detection System with 8 components:
+---
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    AEGIS NIDS Architecture                  │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐       │
-│  │ T1: Zig │  │ T2: Zig │  │ T3: Zig │  │ T4: Zig │       │
-│  │ Analyze │  │ Pipe    │  │ WFP     │  │ Miniflt │       │
-│  │ Engine  │  │ Sensor  │  │ Capture │  │ Reader  │       │
-│  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘       │
-│       │            │            │            │             │
-│       └────────────┴────────────┴────────────┘             │
-│                          │                                  │
-│           ┌──────────────┼──────────────┐                  │
-│           ▼              ▼              ▼                   │
-│  ┌─────────────┐ ┌────────────┐ ┌──────────────┐         │
-│  │ C++ Bridge  │ │ Python     │ │ Go           │         │
-│  │ (aegis_ipc) │ │ Brain      │ │ Aggregator   │         │
-│  │ IPC + DEFCON│ │ IPS + Rules│ │ Dedup + API  │         │
-│  └─────────────┘ └────────────┘ └──────────────┘         │
-│                         │                                  │
-│           ┌─────────────┼─────────────┐                   │
-│           ▼             ▼             ▼                    │
-│  ┌──────────────┐ ┌──────────┐ ┌──────────────┐          │
-│  │ Rust Shield  │ │ Forensic │ │ Cython       │          │
-│  │ (sec_mon)    │ │ Logger   │ │ Acceleration │          │
-│  │ Tier-3 Safety│ │ NDJSON   │ │ fast_scan.pyx│          │
-│  └──────────────┘ └──────────┘ └──────────────┘          │
-│                                                             │
-│  ┌─────────────────────────────────────────────┐           │
-│  │        Python CLI Tools (scripts/)           │           │
-│  │  status | alerts | rules | block | metrics   │           │
-│  │  notifier | defcon | api                     │           │
-│  └─────────────────────────────────────────────┘           │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+## 1. Authority Model (ห้ามแก้)
+
+```text
+Nose (Go/C)      = sensor — observe only, no policy authority
+Core (Zig)       = runtime — no direct enforcement
+Brain (Python)   = advisory — cannot enforce
+Shield (Rust)    = PEP — FINAL enforcement authority
+Mouth (Rust)     = display only
+WFP driver       = kernel enforcement, สั่งได้จาก Shield/PEP path เท่านั้น
 ```
 
-## Components
+ทุก module ใหม่ต้องเข้ากฎ: Detection/Correlation/Cluster ส่ง **evidence** เท่านั้น
+การ block/kill/quarantine เกิดที่ WFP ผ่าน Rust PEP เท่านั้น
 
-### 1. Zig Core (`core/`, ~4900 lines)
-- **nids_main.zig** — Entry point, 5-thread orchestration
-- **nids_analyze.zig** — 3-tier threat analysis (Aho-Corasick + rules + brain)
-- **nids_capture.zig** — Named pipe IPC sensor (Python → Zig)
-- **windows_capture.zig** — WFP kernel traffic sensor
-- **minifilter_reader.zig** — Filesystem minifilter event reader
-- **pipe_monitor.zig** — Suspicious pipe name scanner
-- **wfp_ioctl.zig** — WFP driver IOCTL bridge (block/unblock IPs)
-- **bridge_init.zig** — C++/Rust DLL loading + UDP brain
-- **forensic_log.zig** — NDJSON persistent logger with rotation
-- **win32_io.zig** — Shared overlapped I/O helpers
+## 2. Pipeline
 
-### 2. Python Brain (`brain/windows_brain.py`)
-- Receives alerts via UDP from Zig Core
-- Tier-2 regex scanning
-- Windows Firewall IPS (netsh advfirewall)
-- Uses Cython acceleration (aegis_brain_cython)
-
-### 3. C++ Bridge (`bridge/aegis_ipc.cpp`)
-- IPC ring buffer for cross-language event passing
-- DEFCON level aggregator
-- IP block/unblock (B-07: implemented via netsh)
-
-### 4. Rust Shield (`shield/`)
-- Tier-3 memory safety validation
-- Payload behavioral analysis
-
-### 5. Rust Dashboard (`aegis_dashboard/`)
-- egui desktop UI + axum web API
-- Reads `logs/aegis_core.ndjson` (GAP-4 fix)
-
-### 6. Cython Module (`brain/aegis_brain_cython/`)
-- `fast_scan.pyx` — 6 native C functions
-- Transparent Python fallback via `bridge.py`
-
-### 7. Go Aggregator (`go/aggregator/`)
-- Real-time NDJSON file watcher (fsnotify)
-- Alert deduplication (SHA-256 hash)
-- Session correlation (session_id)
-- REST API on :9200
-
-### 8. Python CLI Tools (`scripts/`)
-- `aegis_status.py` — 5-subsystem health check
-- `aegis_alerts.py` — Alert viewer + acknowledgement
-- `aegis_rules.py` — Rule management + HMAC signing
-- `aegis_block.py` / `aegis_unblock.py` — Manual IP block/unblock
-- `aegis_metrics.py` — Prometheus /metrics endpoint (:9100)
-- `aegis_notifier.py` — Email/webhook/syslog notifications
-- `aegis_defcon.py` — Centralized DEFCON calculation
-- `aegis_api.py` — Go aggregator REST API client
-
-## Data Flow
-
-1. **Traffic enters** → WFP kernel driver captures → `windows_capture.zig`
-2. **Pipe input** → Python sensor → `nids_capture.zig`
-3. **Analysis** → `nids_analyze.zig` (Aho-Corasick + Tier-2 + Tier-3)
-4. **Alert** → `forensic_log.zig` (NDJSON) + `bridge_init.sendToBrain()` (UDP)
-5. **Brain** → `windows_brain.py` receives UDP → IPS decision → log
-6. **Aggregator** → Go watches NDJSON → dedup + correlation → REST API
-7. **Dashboard** → reads NDJSON + queries Go API → display
-
-## Port Allocation
-
-| Port | Protocol | Component |
-|------|----------|-----------|
-| 9999 | UDP | Brain (Python) |
-| 12345 | TCP | Zig Core (admin pipe listener) |
-| 9100 | HTTP | Prometheus metrics |
-| 9200 | HTTP | Go aggregator REST API |
-| 10001 | UDP | Dashboard listener (brain forwards) |
-
-## File Layout
-
+```text
+Npcap capture (passive) ──────┐
+Host telemetry (ETW/FIM/Reg) ─┤→ CanonicalEvent → EventPump → HostTelemetry
+ML flow detector ─────────────┘        → incidents → ClusterCoord → XdrEngine (CEF→SIEM)
+                                       → enforcement = WFP (Shield only)
 ```
-logs/
-├── aegis_core.ndjson       # Forensic log (NDJSON, rotated at 100MB)
-├── aegis_core.1.ndjson     # Rotated log
-├── blocked_ips.json        # Current blocked IPs
-├── acknowledged_alerts.json # Alert ack state
-└── payloads/               # Captured Block-event payloads
-    └── <sha256-prefix>.bin
-```
+
+## 3. Component Map — Phase 32–44 (สถานะตามจริง ตาม Rule 3)
+
+| Phase | Component | ไฟล์ | สถานะ |
+|---|---|---|---|
+| 32 | Npcap capture sensor | `core/npcap_capture.zig` | REAL (field-verified, passive only) |
+| 33 | SIEM forwarder | `core/siem_forwarder.zig` | PARTIAL — file transport เท่านั้น, http/tcp ⏳ |
+| 35 | Backup/Recovery | `aegis_backup.ps1` / `aegis_restore.ps1` | REAL (scripts) |
+| 36 | ML flow detector | `core/ml_detector.zig` | REAL inference — model ฝึกจาก **synthetic** data, ยัง**ไม่ได้ wire** เข้า pipeline |
+| 37 | HIDS correlation | `core/host_telemetry.zig` | LOGIC REAL — รอ adapters ป้อน event จริง |
+| 37E1 | Mock telemetry source | `core/host_telemetry_mock.zig` | MOCK — test scaffolding เท่านั้น |
+| 37E2 | MITRE scenario library | `core/host_telemetry_scenarios.zig` | MOCK (test) |
+| 37E3 | Extended detectors | `core/host_telemetry_detectors.zig` | REAL heuristics; injection detector **ถูกแทนด้วย Ext7** |
+| 37E4 | Windows adapters (polling) | `core/windows_adapters.zig` | REAL on Windows (HOST-VERIFIED บางส่วน) — **ถูกแทนด้วย Ext5 ด้าน latency** |
+| 37E5 | ETW realtime source | `core/etw_realtime.zig` | REAL on Windows, stub on Linux |
+| 37E7 | T1055 injection detector | `core/injection_detector.zig` | REAL-time ETW path, ยังไม่ผ่าน Windows-host verification |
+| 39 | Cluster coordination | `core/cluster_coord.zig` | LOGIC REAL — federation transport ต่องานเพิ่ม |
+| 39E1 | Federation codec | `core/federation_codec.zig` | REAL (CRC32 = bit-flip detection ไม่ใช่ tamper resistance) |
+| 39E2 | TCP transport | `core/federation_tcp.zig` | REAL — **plaintext** |
+| 39E3 | TLS/mTLS | `core/federation_tls.zig` | **MOCK (passthrough)** — production ต้องแทนด้วย SChannel/CNG (G14) |
+| 40 | Compliance reporter | `compliance_reporter.zig` | CHECK-THE-BOX — หลาย control เป็น `always_true`, ไม่ใช่ compliance assessment จริง |
+| 41 | Perf benchmark | `core/perf_benchmark.zig` | REAL (source = mock event source) |
+| 42 | Registry trie | `core/registry_trie.zig` | REAL, drop-in ของ RegistryWatchQueue |
+| 43 | Federation bench | `core/federation_bench.zig` | REAL (loopback, in-process) |
+| 44 | E2E integration test | `core/integration_test.zig` | REAL modules + **scripted mock source** |
+
+**กติกา:** ห้ามอ้าง component เป็น "production" เกินสถานะในตารางนี้
+
+## 4. Contradictions ที่ resolved แล้ว
+
+1. **Kill switch wording** — ทุกที่หมายความเดียวกัน: detection ปิด default, เปิดด้วย `enabled=true` (config จริง `kill_switch.enabled=false`)
+2. **Phase number collision** — "Phase 40" ปรากฏสองความหมาย (rollback ในตารางเก่า / compliance reporter ใน README จริง) → ใช้ตาม PHASE40_README.md = Compliance Reporting
+3. **Superseded modules** — Ext3 injection heuristic < Ext7; Ext4 polling < Ext5 ETW (Ext4 ยังใช้ได้เป็น fallback แต่ Ext5 คือ production path)
+4. **Phase 37 README tier table** — ผิดเรื่อง Phase 33/34 → ใช้ตาม README ของแต่ละ phase
+
+## 5. Integration Gaps ที่เหลือ (ตรงกับ Gates ใน report)
+
+- G2: Canonical Event ยังต้อง freeze ข้าม network/host/federation
+- G8/G11: ETW/FIM/Reg จริงต้องพิสูจน์บน Windows host + event ID เดียวตลอด path
+- G10: Rust PEP ↔ WFP kernel bridge ยัง "fallback to in-memory" (device access denied ใน test env ต้อง elevated shell)
+- G12: WFP จริงยังไม่ผ่าน E2E proof
+- G14: Federation TLS ยัง passthrough — ห้ามใช้ production
+- ML (Phase 36) ยังไม่ wire เข้า pipeline จริง
+- ระบบ compliance สองชุด (`compliance_proof.zig` G19 กับ Phase 40 reporter) ต้องรวมหรือแยกบทบาทชัด
+
+## 6. เอกสาร archive
+
+`PHASE*_README.md` ทั้ง 20 ไฟล์และ `ARCHITECTURE_phase20.md` ย้ายไป `docs/archive/` —
+อ้างอิงเชิงประวัติศาสตร์เท่านั้น หากเนื้อหาขัดกับเอกสารนี้ **เอกสารนี้ชนะ**
