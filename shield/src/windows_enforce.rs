@@ -505,7 +505,7 @@ mod win_transport {
     const GENERIC_WRITE: u32 = 0x4000_0000;
     const GENERIC_READ: u32 = 0x8000_0000;
     const OPEN_EXISTING: u32 = 3;
-    const INVALID_HANDLE_VALUE: RawHandle = -1 as RawHandle;
+    const INVALID_HANDLE_VALUE: RawHandle = usize::MAX as RawHandle;
 
     /// Send one command to \\.\\AegisWfp via DeviceIoControl.
     pub fn send(cmd: &Command) -> Result<u32, String> {

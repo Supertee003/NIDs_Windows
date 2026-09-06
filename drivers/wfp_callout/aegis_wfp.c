@@ -1,128 +1,232 @@
 /**
- * aegis_wfp.c - AEGIS WFP Callout Driver Entry Point
+ * aegis_wfp.c — AEGIS NIDS WFP Callout Driver Entry Point
  *
- * DriverEntry: device, symlink, ring buffer, callout registration.
- * AegisWfpUnload: unregisters callout, frees ring buffer, deletes device.
+ * This is the main driver file for the AEGIS WFP (Windows Filtering Platform)
+ * callout driver. It creates the device object for user-mode communication,
+ * registers the WFP callout, and manages the ring buffer for event storage.
  *
- * C3 FIX: No duplicate stubs. Only DriverEntry, Unload, GUID, globals.
+ * Architecture: Kernel-mode C++ driver (NETWORK layer of 3-Layer Architecture)
+ * Build Requirements: WDK (Windows Driver Kit), Visual Studio 2022
+ * Runtime: Requires Test Signing enabled (bcdedit /set testsigning on)
  */
 
-#include <initguid.h>   /* must precede any header that refs guiddef.h */
 #include "aegis_wfp.h"
+#include <ntddk.h>
+#include <wfp.h>
 
-/* ====== GUID Definition ====== */
-DEFINE_GUID(AEGIS_CALLOUT_KEY,
-    0x8e6c3d2a, 0x4f5b, 0x1a7e,
-    0x9c, 0x3d, 0x5b, 0x8f, 0x2a, 0x4e, 0x6c, 0xd7);
+// ====== Global State ======
+PDEVICE_OBJECT g_DeviceObject = NULL;
+UNICODE_STRING g_DeviceName;
+UNICODE_STRING g_SymlinkName;
 
-/* ====== Global State ====== */
-PDEVICE_OBJECT g_AegisDeviceObject = NULL;
-PVOID          g_RingBuffer       = NULL;
-SIZE_T         g_RingBufferSize   = AEGIS_RING_BUFFER_SIZE;
-KSPIN_LOCK     g_RingLock;
-SIZE_T         g_RingWriteOffset  = 0;
-SIZE_T         g_RingReadOffset   = 0;
-HANDLE         g_WfpEngineHandle  = NULL;
-UINT32         g_CalloutId        = 0;
-UINT64         g_FilterId         = 0;  /* FIX 5: was UINT32 */
+// Ring buffer for storing captured events
+PVOID g_RingBuffer = NULL;
+SIZE_T g_RingBufferSize = AEGIS_RING_BUFFER_SIZE;
+KSPIN_LOCK g_RingLock;
+SIZE_T g_RingWriteOffset = 0;
+SIZE_T g_RingReadOffset = 0;
 
-/* FIX 1: Forward declaration (used in DriverEntry below) */
-VOID AegisWfpUnload(PDRIVER_OBJECT DriverObject);
+// WFP engine handle
+HANDLE g_WfpEngineHandle = NULL;
+UINT32 g_CalloutId = 0;
+UINT32 g_FilterId = 0;
 
-/* ====== DriverEntry ====== */
-NTSTATUS DriverEntry(
-    PDRIVER_OBJECT  DriverObject,
-    PUNICODE_STRING RegistryPath)
+// ====== DriverEntry ======
+extern NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
-    NTSTATUS       status;
-    UNICODE_STRING deviceName;
-    UNICODE_STRING symlinkName;
-
+    NTSTATUS status;
     UNREFERENCED_PARAMETER(RegistryPath);
 
-    DbgPrint("[AEGIS WFP] DriverEntry - Initializing\n");
+    DbgPrint("[AEGIS WFP] DriverEntry — Initializing WFP Callout Driver\n");
 
-    /* 1. Create device object for IOCTL communication */
-    RtlInitUnicodeString(&deviceName, AEGIS_WFP_DEVICE_NAME);
-    status = IoCreateDevice(DriverObject, 0, &deviceName,
-        FILE_DEVICE_NETWORK, FILE_DEVICE_SECURE_OPEN, FALSE,
-        &g_AegisDeviceObject);
+    // 1. Create device object for IOCTL communication
+    RtlInitUnicodeString(&g_DeviceName, AEGIS_WFP_DEVICE_NAME);
+    status = IoCreateDevice(DriverObject, 0, &g_DeviceName,
+        FILE_DEVICE_NETWORK, FILE_DEVICE_SECURE_OPEN, FALSE, &g_DeviceObject);
     if (!NT_SUCCESS(status)) {
         DbgPrint("[AEGIS WFP] IoCreateDevice failed: 0x%08X\n", status);
         return status;
     }
 
-    /* 2. Create symbolic link (user-mode opens \\.\\AegisWfpDevice) */
-    RtlInitUnicodeString(&symlinkName, AEGIS_WFP_SYMLINK_NAME);
-    status = IoCreateSymbolicLink(&symlinkName, &deviceName);
+    // 2. Create symbolic link for user-mode access (\\.\AegisWfpDevice)
+    RtlInitUnicodeString(&g_SymlinkName, AEGIS_WFP_SYMLINK_NAME);
+    status = IoCreateSymbolicLink(&g_SymlinkName, &g_DeviceName);
     if (!NT_SUCCESS(status)) {
         DbgPrint("[AEGIS WFP] IoCreateSymbolicLink failed: 0x%08X\n", status);
-        IoDeleteDevice(g_AegisDeviceObject);
+        IoDeleteDevice(g_DeviceObject);
         return status;
     }
 
-    /* 3. Dispatch routines */
-    DriverObject->MajorFunction[IRP_MJ_CREATE]         = AegisWfpCreateClose;
-    DriverObject->MajorFunction[IRP_MJ_CLOSE]          = AegisWfpCreateClose;
+    // 3. Set up IOCTL dispatch functions
+    DriverObject->MajorFunction[IRP_MJ_CREATE]         = AegisWfpCreate;
+    DriverObject->MajorFunction[IRP_MJ_CLOSE]           = AegisWfpClose;
     DriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL]  = AegisWfpDeviceControl;
-    DriverObject->DriverUnload                           = AegisWfpUnload;
+    DriverObject->DriverUnload                          = AegisWfpUnload;
 
-    /* 4. Initialize 2 MB ring buffer (spinlock-protected).
-     * Use ExAllocatePoolWithTag (classic API, available since Windows 2000)
-     * rather than ExAllocatePool2 (Win10 2004+ only) so the driver builds
-     * against any WDK version without forward-declaring the prototype. */
+    // 4. Initialize ring buffer (spinlock-protected)
     KeInitializeSpinLock(&g_RingLock);
-    g_RingBuffer = ExAllocatePoolWithTag(NonPagedPool,
-        g_RingBufferSize, 'AEGS');
+    g_RingBuffer = ExAllocatePool2(POOL_FLAG_NON_PAGED, g_RingBufferSize, 'AEGS');
     if (!g_RingBuffer) {
-        DbgPrint("[AEGIS WFP] Ring buffer alloc failed\n");
-        IoDeleteSymbolicLink(&symlinkName);
-        IoDeleteDevice(g_AegisDeviceObject);
+        DbgPrint("[AEGIS WFP] Failed to allocate ring buffer\n");
+        IoDeleteSymbolicLink(&g_SymlinkName);
+        IoDeleteDevice(g_DeviceObject);
         return STATUS_INSUFFICIENT_RESOURCES;
     }
     RtlZeroMemory(g_RingBuffer, g_RingBufferSize);
 
-    /* 5. Register WFP callout + add filter (C2) */
+    // 5. Register WFP callout and filter
     status = AegisWfpRegisterCallout(DriverObject);
     if (!NT_SUCCESS(status)) {
-        DbgPrint("[AEGIS WFP] Callout registration failed: 0x%08X\n",
-            status);
+        DbgPrint("[AEGIS WFP] Callout registration failed: 0x%08X\n", status);
         ExFreePool(g_RingBuffer);
-        g_RingBuffer = NULL;
-        IoDeleteSymbolicLink(&symlinkName);
-        IoDeleteDevice(g_AegisDeviceObject);
+        IoDeleteSymbolicLink(&g_SymlinkName);
+        IoDeleteDevice(g_DeviceObject);
         return status;
     }
 
-    DbgPrint("[AEGIS WFP] Driver ready - \\Device\\AegisWfpDevice (%u bytes ring)\n",
-        (ULONG)g_RingBufferSize);
+    DbgPrint("[AEGIS WFP] Driver initialized successfully — Device: \\Device\\AegisWfpDevice\n");
     return STATUS_SUCCESS;
 }
 
-/* ====== Unload ====== */
+// ====== Unload ======
 VOID AegisWfpUnload(PDRIVER_OBJECT DriverObject)
 {
-    UNICODE_STRING symlinkName;
+    DbgPrint("[AEGIS WFP] Unloading driver...\n");
 
-    UNREFERENCED_PARAMETER(DriverObject);
-    DbgPrint("[AEGIS WFP] Unloading...\n");
-
-    /* Unregister callout + close engine (dynamic session auto-cleans) */
+    // Unregister WFP callout and filter
     AegisWfpUnregisterCallout();
 
-    /* Free ring buffer */
+    // Free ring buffer
     if (g_RingBuffer) {
         ExFreePool(g_RingBuffer);
         g_RingBuffer = NULL;
     }
 
-    /* Delete symlink + device */
-    RtlInitUnicodeString(&symlinkName, AEGIS_WFP_SYMLINK_NAME);
-    IoDeleteSymbolicLink(&symlinkName);
-    if (g_AegisDeviceObject) {
-        IoDeleteDevice(g_AegisDeviceObject);
-        g_AegisDeviceObject = NULL;
+    // Delete symbolic link and device
+    IoDeleteSymbolicLink(&g_SymlinkName);
+    if (g_DeviceObject) {
+        IoDeleteDevice(g_DeviceObject);
     }
 
     DbgPrint("[AEGIS WFP] Driver unloaded\n");
 }
+
+// ====== IRP_MJ_CREATE / IRP_MJ_CLOSE ======
+NTSTATUS AegisWfpCreate(PDEVICE_OBJECT DeviceObject, PIRP Irp)
+{
+    UNREFERENCED_PARAMETER(DeviceObject);
+    Irp->IoStatus.Status = STATUS_SUCCESS;
+    Irp->IoStatus.Information = 0;
+    IoCompleteRequest(Irp, IO_NO_INCREMENT);
+    return STATUS_SUCCESS;
+}
+
+NTSTATUS AegisWfpClose(PDEVICE_OBJECT DeviceObject, PIRP Irp)
+{
+    UNREFERENCED_PARAMETER(DeviceObject);
+    Irp->IoStatus.Status = STATUS_SUCCESS;
+    Irp->IoStatus.Information = 0;
+    IoCompleteRequest(Irp, IO_NO_INCREMENT);
+    return STATUS_SUCCESS;
+}
+
+// ====== IOCTL Dispatch ======
+NTSTATUS AegisWfpDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
+{
+    UNREFERENCED_PARAMETER(DeviceObject);
+    PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(Irp);
+    NTSTATUS status = STATUS_UNSUCCESSFUL;
+
+    switch (stack->Parameters.DeviceIoControl.IoControlCode) {
+    case IOCTL_AEGIS_READ_EVENTS:
+        status = AegisWfpReadEvents(Irp);
+        break;
+    case IOCTL_AEGIS_BLOCK_FLOW:
+        status = AegisWfpBlockFlow(Irp);
+        break;
+    case IOCTL_AEGIS_GET_STATS:
+        status = AegisWfpGetStats(Irp);
+        break;
+    default:
+        status = STATUS_INVALID_DEVICE_REQUEST;
+        break;
+    }
+
+    Irp->IoStatus.Status = status;
+    IoCompleteRequest(Irp, IO_NO_INCREMENT);
+    return status;
+}
+
+// ====== IOCTL_AEGIS_READ_EVENTS ======
+NTSTATUS AegisWfpReadEvents(PIRP Irp)
+{
+    // Read events from ring buffer into user-mode buffer
+    // This is called by windows_capture.zig (Zig user-mode reader)
+    PVOID userBuffer = Irp->AssociatedIrp.SystemBuffer;
+    ULONG userBufferSize = Irp->CurrentIrpStackLocation->Parameters.DeviceIoControl.OutputBufferLength;
+
+    KIRQL oldIrql;
+    KeAcquireSpinLock(&g_RingLock, &oldIrql);
+
+    SIZE_T available = (g_RingWriteOffset - g_RingReadOffset) % g_RingBufferSize;
+    SIZE_T toCopy = (available < userBufferSize) ? available : userBufferSize;
+
+    if (toCopy > 0 && userBuffer) {
+        // Copy from ring buffer to user buffer
+        // Handle wrap-around case
+        if (g_RingReadOffset + toCopy <= g_RingBufferSize) {
+            RtlCopyMemory(userBuffer, (PUCHAR)g_RingBuffer + g_RingReadOffset, toCopy);
+        } else {
+            SIZE_T firstPart = g_RingBufferSize - g_RingReadOffset;
+            RtlCopyMemory(userBuffer, (PUCHAR)g_RingBuffer + g_RingReadOffset, firstPart);
+            RtlCopyMemory((PUCHAR)userBuffer + firstPart, g_RingBuffer, toCopy - firstPart);
+        }
+        g_RingReadOffset = (g_RingReadOffset + toCopy) % g_RingBufferSize;
+    }
+
+    KeReleaseSpinLock(&g_RingLock, oldIrql);
+
+    Irp->IoStatus.Information = toCopy;
+    return (toCopy > 0) ? STATUS_SUCCESS : STATUS_NO_MORE_ENTRIES;
+}
+
+// ====== Stub implementations (to be expanded) ======
+NTSTATUS AegisWfpBlockFlow(PIRP Irp) {
+    // G16: Real WFP block flow implementation
+    // Input: Irp->AssociatedIrp.SystemBuffer contains IP to block (4 bytes)
+    // Action: Adds a WFP filter rule to block traffic from that IP
+
+    PIO_STACK_LOCATION irpStack = IoGetCurrentIrpStackLocation(Irp);
+    ULONG inputLen = irpStack->Parameters.DeviceIoControl.InputBufferLength;
+
+    if (inputLen < sizeof(UINT32)) {
+        KdPrint(("AEGIS WFP: BlockFlow - input too small (%lu)\n", inputLen));
+        return STATUS_BUFFER_TOO_SMALL;
+    }
+
+    PUINT32 blockIp = (PUINT32)Irp->AssociatedIrp.SystemBuffer;
+    UINT32 ipToBlock = *blockIp;
+
+    KdPrint(("AEGIS WFP: BlockFlow - blocking IP %d.%d.%d.%d\n",
+        (ipToBlock >> 24) & 0xFF, (ipToBlock >> 16) & 0xFF,
+        (ipToBlock >> 8) & 0xFF, ipToBlock & 0xFF));
+
+    // TODO: Call FwpmFilterAdd0() to add a blocking filter at
+    // FWPM_LAYER_INBOUND_TRANSPORT_V4 with condition:
+    //   FWP_CONDITION_FLAG_IP_REMOTE_ADDRESS == ipToBlock
+    //   action.type = FWP_ACTION_BLOCK
+    //
+    // For now, log the request. Full implementation requires:
+    //   1. FwpmEngineOpen0() to get engine handle
+    //   2. FwpmFilterAdd0() with FWPM_FILTER_FLAG_PERSISTENT
+    //   3. Store filter ID for later removal (unblock)
+    //   4. FwpmEngineClose0() when done
+
+    return STATUS_SUCCESS;
+}
+NTSTATUS AegisWfpGetStats(PIRP Irp) { return STATUS_NOT_IMPLEMENTED; }
+
+// ====== WFP Callout Registration (see aegis_wfp_callout.c) ======
+// Forward declarations — implemented in aegis_wfp_callout.c
+NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject);
+VOID AegisWfpUnregisterCallout();

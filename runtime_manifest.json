@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "generated": "2026-09-07",
+  "modules": {
+    "nids_main.zig": { "classification": "production", "role": "entrypoint", "init_order": 1, "golden_path": true },
+    "nids_analyze.zig": { "classification": "production", "role": "dispatcher+detector", "init_order": 2, "golden_path": true },
+    "nids_capture.zig": { "classification": "production", "role": "sensor", "init_order": 3, "golden_path": true },
+    "windows_capture.zig": { "classification": "production", "role": "sensor", "init_order": 4, "golden_path": true },
+    "bridge/aegis_ipc.cpp": { "classification": "production", "role": "ipc-bridge", "init_order": 2, "golden_path": true },
+    "src/lib.rs": { "classification": "production", "role": "pep+detector", "init_order": 2, "golden_path": true },
+    "windows_brain.py": { "classification": "production", "role": "detector", "init_order": 3, "golden_path": true },
+    "windows_perf.go": { "classification": "tool", "role": "observability", "init_order": 5, "golden_path": false },
+    "aegis_daemon.py": { "classification": "tool", "role": "lifecycle", "init_order": 0, "golden_path": false },
+    "pipe_monitor.zig": { "classification": "scaffold", "role": "sensor", "init_order": 99, "golden_path": false },
+    "minifilter_reader.zig": { "classification": "scaffold", "role": "sensor", "init_order": 99, "golden_path": false }
+  },
+  "init_order": [
+    "aegis_daemon.py (tool, optional)",
+    "nids_main.zig → analyze_packets()",
+    "  loadBridgeDll() + loadRustDll() + bridgeInit() + reload_rules_atomic()",
+    "  bridgeStatusReporter + pipe_listener + tcp_listener threads",
+    "nids_capture.capture_packets() thread",
+    "windows_capture.capture_packets() thread"
+  ],
+  "golden_path": [
+    "sensor", "→ inspect_packet", "→ Rust validate_payload_safety",
+    "→ Aho-Corasick", "→ AtomicThreatTracker", "→ send_to_brain",
+    "→ pushTier1Match", "→ pep_enforce_action (if Block)"
+  ]
+}

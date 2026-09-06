@@ -1,0 +1,36 @@
+{
+  "version": "1.0.0",
+  "build_date": "2026-09-07",
+  "commit": "HEAD",
+  "components": {
+    "aegis-nids.exe": {"source": "nids_main.zig", "language": "Zig", "compiler": "zig 0.13.0"},
+    "sec_monitor.dll": {"source": "src/lib.rs", "language": "Rust", "compiler": "cargo 1.75+"},
+    "aegis_ipc.dll": {"source": "bridge/aegis_ipc.cpp", "language": "C++17", "compiler": "cmake 3.16+"},
+    "aegis_bridge.exe": {"source": "bridge/aegis_bridge_main.cpp", "language": "C++17", "compiler": "cmake"},
+    "windows_brain.py": {"source": "windows_brain.py", "language": "Python 3.8+", "runtime": "python"},
+    "windows_perf.exe": {"source": "windows_perf.go", "language": "Go 1.22", "compiler": "go build"},
+    "aegisctl": {"source": "aegisctl.py", "language": "Python", "runtime": "python"},
+    "aegis_wfp.sys": {"source": "drivers/wfp_callout/aegis_wfp.c", "language": "C (WDK)", "compiler": "cl.exe + WDK"},
+    "aegis_minifilter.sys": {"source": "drivers/minifilter/aegis_minifilter.c", "language": "C (WDK)", "compiler": "cl.exe + WDK"}
+  },
+  "dependencies": {
+    "zig": "0.13.0",
+    "rust": "1.75+",
+    "go": "1.22",
+    "python": "3.8+",
+    "cmake": "3.16+",
+    "wdk": "10 or 11 (for driver build)"
+  },
+  "schema_versions": {
+    "canonical_event": 2,
+    "wire_protocol": 1,
+    "policy_ir": 1,
+    "pep_abi": 2
+  },
+  "security": {
+    "policy_signing": "Ed25519 (G9 design)",
+    "transport_security": "TLS/mTLS via SChannel (G18 design)",
+    "enforcement_authority": "Rust PEP (pep_enforce_action)",
+    "authority_matrix": "docs/architecture/authority-matrix.md"
+  }
+}
