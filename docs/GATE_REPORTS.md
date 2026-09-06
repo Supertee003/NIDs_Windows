@@ -33,7 +33,32 @@
   `input = processed + dropped + rejected + failed` ทุกครั้ง
 - Proof: 55/55 event_fabric tests รวม identity test ผ่าน (accept/reject/uninit ผสม)
 
-## G9 — Policy Signing ⚠️ MOCK (พบ gap สำคัญ)
+## G5 — Flow / Stateful Runtime ✅ UNIT-VERIFIED (audit)
+
+- `core/flow_engine.zig`: MAX_FLOWS = 65536 (bounded), evictIdle() + sweep()
+  มีจริง; ownership ชัดเจนผ่าน FlowEngine struct
+- ยังไม่ measure eviction latency/high-watermark จริง → G16 ต้อง benchmark
+
+## G6 — Detection ✅ UNIT-VERIFIED (audit)
+
+- `core/detection_engine.zig`: ทุก detector คืน `Evidence` (verdict, confidence,
+  rule_id, event_id) — ไม่มี enforcement call ใน detection path ตาม authority rules
+- ครอบคลุม network events; host detection อยู่ที่ host_telemetry (G11 ต่อ)
+
+## G7 — Correlation / Entity Model ✅ UNIT-VERIFIED (audit)
+
+- `core/correlation_engine.zig`: EntityType (source_ip/dest_ip/session/user),
+  EntityKey, CorrelationAlert มี `triggering_event_id` → trace
+  Incident → Evidence → Event IDs ได้ตาม exit gate
+
+## G8 — Threat Intel ✅ UNIT-VERIFIED (audit)
+
+- `core/threat_intel.zig`: lookup/evidence เท่านั้น (IpMatch: severity, category,
+  confidence, source attribution), bounded 4096 entries, ไม่มี enforcement API
+- Brain/RAG: ตาม lifecycle เป็น advisor + fail-soft context, ไม่มี enforce path
+
+
+## G9 — Policy Signing ⚠️ MOCK → อยู่ระหว่าง implement
 
 - `core/policy_plane.zig:281` ยอมรับใน code: Ed25519 ยังไม่ implement
   ("signature = first 8 bytes" เป็น stub)
