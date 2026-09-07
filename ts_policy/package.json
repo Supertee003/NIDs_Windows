@@ -1,0 +1,24 @@
+{
+  "name": "aegis-ts-policy",
+  "version": "1.0.0",
+  "description": "AEGIS TypeScript Policy Plane (T6): authoring + compiler + typed Policy IR + seal. Advisory only — never enforces.",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --import tsx tests/*.test.ts",
+    "test:basic": "node --test --import tsx tests/typed_values.test.ts tests/compiler.test.ts tests/seal.test.ts",
+    "test:contract": "node --test --import tsx tests/cross_language_contract.test.ts",
+    "test:safety": "node --test --import tsx tests/no_enforcement.test.ts tests/no_post_seal_mutation.test.ts",
+    "test:all": "node --test --import tsx tests/typed_values.test.ts tests/compiler.test.ts tests/seal.test.ts tests/cross_language_contract.test.ts tests/no_enforcement.test.ts tests/no_post_seal_mutation.test.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "tsx": "^4.7.0",
+    "@types/node": "^20.0.0"
+  }
+}

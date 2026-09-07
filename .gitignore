@@ -54,6 +54,11 @@ brain/cython/*.c
 brain/cython/build/
 brain/aegis_brain_cython/build/
 
+# TypeScript / Node (ts_policy/)
+ts_policy/node_modules/
+ts_policy/dist/
+ts_policy/*.tsbuildinfo
+
 # IDE
 .vscode/
 .idea/
