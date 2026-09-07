@@ -1,65 +1,69 @@
-﻿cmake_minimum_required(VERSION 3.16)
-project(aegis_ipc_bridge VERSION 1.0.0 LANGUAGES CXX)
+# I01 - CMakeLists for native C components (WFP kernel callout, ETW helpers, FIM)
+cmake_minimum_required(VERSION 3.20)
+project(aegis_native C)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-# ====== Platform Detection ======
-if(WIN32)
-    message(STATUS "[AEGIS Bridge] Building for Windows")
-    add_definitions(-D_AEGIS_WINDOWS)
-else()
-    message(STATUS "[AEGIS Bridge] Building for Linux")
-    add_definitions(-D_AEGIS_LINUX)
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
 endif()
 
-# ====== Compiler Flags ======
-# MSVC: /EHsc = C++ exceptions + extern"C" never throws (needed by UCRT)
-# GCC/Clang: -fno-exceptions not used â€” UCRT stdio requires exception support
-if(MSVC)
-    add_compile_options(/EHsc /W4)
-    # Prevent winsock.h / winsock2.h conflict
-    add_definitions(-DWIN32_LEAN_AND_MEAN -DNOGDI -DNOMINMAX)
-else()
-    add_compile_options(-Wall -Wextra -Wpedantic)
-endif()
-
-# ====== Bridge Shared Library (DLL / .so) ======
-add_library(aegis_ipc SHARED
-    bridge/aegis_ipc.cpp
-    bridge/aegis_packet_parser.cpp
+# Compiler flags
+add_compile_options(
+    /W4 /WX- /permissive- /utf-8
+    /D_CRT_SECURE_NO_WARNINGS
+    /DWIN32_LEAN_AND_MEAN
+    /DNOMINMAX
+    /DUNICODE /D_UNICODE
 )
 
-target_include_directories(aegis_ipc PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
+# ----- WFP User-mode Helper Library (links to aegis_nids.exe) -----
+add_library(aegis_wfp_user SHARED
+    src/windows/aegis_wfp.c
+    src/windows/wfp_ioctl.c
+)
+target_link_libraries(aegis_wfp_user PRIVATE
+    fwpuclnt
+    rpcrt4
+    kernel32
+    advapi32
+)
+target_include_directories(aegis_wfp_user PRIVATE
+    src/windows
+    ${CMAKE_SOURCE_DIR}
 )
 
-# ====== Bridge Standalone Executable ======
-add_executable(aegis_bridge
-    bridge/aegis_bridge_main.cpp
-    bridge/aegis_ipc.cpp
-    bridge/aegis_packet_parser.cpp
+# ----- ETW Native Helper -----
+add_library(aegis_etw_helper SHARED
+    src/windows/etw_native.c
+)
+target_link_libraries(aegis_etw_helper PRIVATE
+    tdh
+    advapi32
+    kernel32
 )
 
-target_include_directories(aegis_bridge PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
+# ----- FIM Native Helper -----
+add_library(aegis_fim_helper SHARED
+    src/windows/fim_native.c
+)
+target_link_libraries(aegis_fim_helper PRIVATE
+    kernel32
+    advapi32
 )
 
-# ====== Bridge Test Executable ======
-add_executable(aegis_bridge_test
-    bridge/aegis_bridge_test.cpp
-    bridge/aegis_ipc.cpp
-    bridge/aegis_packet_parser.cpp
-)
-
-target_include_directories(aegis_bridge_test PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
-# ====== Install ======
-install(TARGETS aegis_ipc aegis_bridge aegis_bridge_test
+# Install rules
+install(TARGETS aegis_wfp_user aegis_etw_helper aegis_fim_helper
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
 )
-add_subdirectory(bridge)
+
+# Optionally build kernel-mode driver (requires WDK)
+option(BUILD_KERNEL_DRIVER "Build the WFP kernel-mode callout driver" OFF)
+if(BUILD_KERNEL_DRIVER)
+    # User must have WDK installed and EWDK environment
+    add_subdirectory(kernel/wfp_callout)
+endif()

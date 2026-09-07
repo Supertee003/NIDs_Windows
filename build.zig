@@ -1,188 +1,131 @@
+// I01 - Repository Bootstrap: build.zig
+// AEGIS NIDS v5.0+ â€” Master Build File
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
-    const optimize = b.standardOptimizeOption(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = .{ .os_tag = .windows, .cpu_arch = .x86_64 },
+    });
+    const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseSafe });
 
+    // ----- Core NIDS Executable -----
     const exe = b.addExecutable(.{
-        .name = "aegis-nids",
-        .root_source_file = b.path("core/nids_main.zig"),
+        .name = "aegis_nids",
+        .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
+    exe.linkLibC();
 
-    const rules_src = b.path("config/Rules.json");
-    const rules_install = b.addInstallFileWithDir(rules_src, .bin, "Rules.json");
-    exe.step.dependOn(&rules_install.step);
+    // Link Windows system libraries
+    exe.linkSystemLibrary("ws2_32");
+    exe.linkSystemLibrary("advapi32");
+    exe.linkSystemLibrary("kernel32");
+    exe.linkSystemLibrary("user32");
+    exe.linkSystemLibrary("ole32");
+    exe.linkSystemLibrary("secur32");
+    exe.linkSystemLibrary("ntdll");
+    exe.linkSystemLibrary("tdh"); // ETW TDH helpers
+
+    // Npcap (located via NPCAP_DIR env, %LOCALAPPDATA%\NpcapSDK, or C:\Npcap)
+    var npcap_inc: ?[]const u8 = null;
+    var npcap_lib: ?[]const u8 = null;
+    if (std.process.getEnvVarOwned(b.allocator, "NPCAP_DIR")) |npcap_dir| {
+        npcap_inc = b.pathJoin(&.{ npcap_dir, "Include" });
+        npcap_lib = b.pathJoin(&.{ npcap_dir, "Lib", "x64" });
+    } else |_| {
+        if (std.process.getEnvVarOwned(b.allocator, "LOCALAPPDATA")) |local| {
+            const sdk_lib = b.pathJoin(&.{ local, "NpcapSDK", "Lib", "x64" });
+            if (std.fs.cwd().access(sdk_lib, .{})) |_| {
+                npcap_inc = b.pathJoin(&.{ local, "NpcapSDK", "Include" });
+                npcap_lib = sdk_lib;
+            } else |_| {}
+        } else |_| {}
+        if (npcap_lib == null) {
+            npcap_inc = "C:/Npcap/Include";
+            npcap_lib = "C:/Npcap/Lib/x64";
+        }
+    }
+    exe.addIncludePath(.{ .cwd_relative = npcap_inc.? });
+    exe.addLibraryPath(.{ .cwd_relative = npcap_lib.? });
+    exe.linkSystemLibrary("wpcap");
+    exe.linkSystemLibrary("Packet");
+
     b.installArtifact(exe);
-    b.installFile("config/Rules.json", "Rules.json");
 
+    // ----- Rust PEP import library (aegis_pep.dll built via `cargo build --release`) -----
+    if (std.fs.cwd().access("target/release/aegis_pep.dll.lib", .{})) |_| {
+        std.fs.cwd().copyFile(
+            "target/release/aegis_pep.dll.lib",
+            std.fs.cwd(),
+            "target/release/aegis_pep.lib",
+            .{},
+        ) catch {};
+        exe.addLibraryPath(.{ .cwd_relative = "target/release" });
+        exe.linkSystemLibrary("aegis_pep");
+    } else |_| {
+        std.debug.print("WARNING: target/release/aegis_pep.dll.lib not found; run `cargo build --release` first\n", .{});
+    }
+
+    // ----- Run Step -----
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
-    const run_step = b.step("run", "Run the app");
+    if (b.args) |args| run_cmd.addArgs(args);
+    const run_step = b.step("run", "Run AEGIS NIDS");
     run_step.dependOn(&run_cmd.step);
 
-    const test_step = b.step("test", "Run unit tests");
+    // ----- Tests -----
+    const tests = b.addTest(.{
+        .root_source_file = b.path("src/all_tests.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    tests.linkLibC();
 
-    // G21: Added final_integration_proof.zig (end-to-end, cross-cutting, resilience, compliance).
-    //
-    // Import chain verification (updated for Phase 18):
-    //   core/dispatcher.zig           -> no change (Canary is health monitoring tool)
-    //   core/lifecycle.zig           -> + ips_canary_integration
-    //   core/final_integration_proof.zig -> self-contained (no runtime module imports)
-    //
-    // NOTE: All runtime modules now live in core/ (not core/runtime/) because
-    // `zig test core/runtime/file.zig` cannot resolve @import() relative paths.
-    const test_files = [_][]const u8{
-        // Base modules
-        "core/canonical_event.zig",
-        "core/wire_event.zig",
-        "core/event_queue.zig",
-        "core/priority_queue.zig",
-        "core/event_fabric.zig",
-        "core/nose_contract.zig",
-        "core/nose_integration.zig",
-        "core/detection_interface.zig",
-        "core/policy_contract.zig",
-        "core/forensic_log.zig",
-        "core/wfp_ioctl.zig",
-        // Runtime modules (Phase 5..27)
-        "core/dispatcher.zig",
-        "core/lifecycle.zig",
-        // Flow Engine modules (Phase 6)
-        "core/flow_engine.zig",
-        "core/flow_integration.zig",
-        // Detection Engine modules (Phase 7)
-        "core/detection_engine.zig",
-        "core/detection_integration.zig",
-        // Verdict Aggregator (Phase 8)
-        "core/verdict_aggregator.zig",
-        // Correlation Engine modules (Phase 9)
-        "core/correlation_engine.zig",
-        "core/correlation_integration.zig",
-        // Threat Intel modules (Phase 10)
-        "core/threat_intel.zig",
-        "core/threat_intel_integration.zig",
-        // Brain Advisor modules (Phase 11)
-        "core/brain_engine.zig",
-        "core/brain_integration.zig",
-        // Policy Engine modules (Phase 12)
-        "core/policy_engine.zig",
-        "core/policy_integration.zig",
-        // Rust PEP modules (Phase 13)
-        "core/rust_pep.zig",
-        "core/rust_pep_integration.zig",
-        // Forensics modules (Phase 14)
-        "core/forensics_engine.zig",
-        "core/forensics_integration.zig",
-        // Replay modules (Phase 15)
-        "core/replay_engine.zig",
-        "core/replay_integration.zig",
-        // E2E Harness modules (Phase 16)
-        "core/e2e_harness.zig",
-        "core/e2e_harness_integration.zig",
-        // Performance modules (Phase 17)
-        "core/performance_harness.zig",
-        "core/performance_integration.zig",
-        // IPS Canary modules (Phase 18 NEW)
-        "core/ips_canary.zig",
-        "core/ips_canary_integration.zig",
-        // XDR Hardening modules (Phase 19 NEW)
-        "core/xdr_harden.zig",
-        "core/xdr_harden_integration.zig",
-        // Release Engineering modules (Phase 20 NEW)
-        "core/release_engineering.zig",
-        "core/release_engineering_integration.zig",
-        // Legacy Removal (Phase 21 NEW)
-        "core/legacy_removal.zig",
-        // RAG modules (Phase 22 NEW)
-        "core/rag_engine.zig",
-        "core/rag_integration.zig",
-        // HIDS modules (Phase 23 NEW)
-        "core/hids_engine.zig",
-        "core/hids_integration.zig",
-        // Concurrency Hardening modules (Phase 24 NEW)
-        "core/concurrency_harden.zig",
-        "core/concurrency_harden_integration.zig",
-        // Fault Injection modules (Phase 25 NEW)
-        "core/fault_injection.zig",
-        "core/fault_injection_integration.zig",
-        // IPS Simulation modules (Phase 26 NEW)
-        "core/ips_simulation.zig",
-        "core/ips_simulation_integration.zig",
-        // Policy Plane modules (Phase 27 NEW)
-        "core/policy_plane.zig",
-        "core/policy_signing.zig",
-        "core/policy_plane_integration.zig",
-        // Contract Freeze (G1 NEW)
-        "core/contract_freeze.zig",
-        // Fabric Accounting (G2 NEW)
-        "core/fabric_accounting.zig",
-        // Runtime Spine (G3 NEW)
-        "core/runtime_spine.zig",
-        // Flow State Proof (G4 NEW)
-        "core/flow_state_proof.zig",
-        // Detection Fabric Proof (G5 NEW)
-        "core/detection_fabric_proof.zig",
-        // Correlation Proof (G6 NEW)
-        "core/correlation_proof.zig",
-        // Intelligence Proof (G7 NEW)
-        "core/intelligence_proof.zig",
-        // Brain Proof (G8 NEW)
-        "core/brain_proof.zig",
-        // Policy Plane Proof (G9 NEW)
-        "core/policy_plane_proof.zig",
-        // PEP Enforcement Proof (G10 NEW)
-        "core/pep_enforcement_proof.zig",
-        // Forensic Replay Proof (G11 NEW)
-        "core/forensic_replay_proof.zig",
-        // Config Reload Proof (G12 NEW)
-        "core/config_reload_proof.zig",
-        // Health Monitoring Proof (G13 NEW)
-        "core/health_monitoring_proof.zig",
-        // Audit Trail Proof (G14 NEW)
-        "core/audit_trail_proof.zig",
-        // Telemetry Export Proof (G15 NEW)
-        "core/telemetry_export_proof.zig",
-        // SIEM Integration Proof (G16 NEW)
-        "core/siem_integration_proof.zig",
-        // Backup & Recovery Proof (G17 NEW)
-        "core/backup_recovery_proof.zig",
-        // Performance Tuning Proof (G18 NEW)
-        "core/performance_tuning_proof.zig",
-        // Compliance Proof (G19 NEW)
-        "core/compliance_proof.zig",
-        // Documentation Proof (G20 NEW)
-        "core/documentation_proof.zig",
-        // Final Integration Proof (G21 NEW)
-        "core/final_integration_proof.zig",
-        // Sensor/platform modules
-        "core/bridge_init.zig",
-        "core/win32_io.zig",
-        "core/pipe_monitor.zig",
-        "core/minifilter_reader.zig",
-        "core/hids_process_monitor.zig",
-        "core/nids_analyze.zig",
-        "core/nids_capture.zig",
-        "core/windows_capture.zig",
-        "core/flow_types.zig",
-        "core/xdr_correlator.zig",
-        "core/rag_intelligence.zig",
-        "core/policy_ir.zig",
-        "core/xdr_incident_graph.zig",
-        "core/fault_matrix.zig",
-        "core/release_provenance.zig",
-        "core/wfp_production.zig",
-        "core/canary_progression.zig",
-    };
+    // Windows system libs used by test modules (ETW via tdh)
+    tests.linkSystemLibrary("tdh");
+    tests.linkSystemLibrary("advapi32");
+    tests.linkSystemLibrary("ntdll");
 
-    for (test_files) |test_file| {
-        const tests = b.addTest(.{
-            .root_source_file = b.path(test_file),
-            .target = target,
-            .optimize = optimize,
-        });
-        const run_tests = b.addRunArtifact(tests);
-        test_step.dependOn(&run_tests.step);
+    // Native helper DLLs (aegis_etw_helper / aegis_fim_helper).
+    // Real builds come from CMake; for unit tests we link the zig cc stubs.
+    if (std.fs.cwd().access("target/helpers/aegis_etw_helper.lib", .{})) |_| {
+        tests.addLibraryPath(.{ .cwd_relative = "target/helpers" });
+        tests.linkSystemLibrary("aegis_etw_helper");
+        tests.linkSystemLibrary("aegis_fim_helper");
+    } else |_| {
+        std.debug.print("WARNING: target/helpers/aegis_*_helper.lib not found; build test stubs via zig cc\n", .{});
     }
+
+    // Rust PEP import library (pep_bindings.zig is reached by unit tests
+    // through the policy stub, so the tests artifact must resolve -laegis_pep).
+    if (std.fs.cwd().access("target/release/aegis_pep.dll.lib", .{})) |_| {
+        std.fs.cwd().copyFile(
+            "target/release/aegis_pep.dll.lib",
+            std.fs.cwd(),
+            "target/release/aegis_pep.lib",
+            .{},
+        ) catch {};
+        tests.addLibraryPath(.{ .cwd_relative = "target/release" });
+        tests.linkSystemLibrary("aegis_pep");
+    } else |_| {
+        std.debug.print("WARNING: target/release/aegis_pep.dll.lib not found for tests; run `cargo build --release` first\n", .{});
+    }
+
+    const run_tests = b.addRunArtifact(tests);
+    run_tests.addPathDir(b.pathFromRoot("target/helpers"));
+    run_tests.addPathDir(b.pathFromRoot("target/release"));
+    const test_step = b.step("test", "Run unit tests");
+    test_step.dependOn(&run_tests.step);
+
+    // ----- Fuzz target -----
+    const fuzz = b.addExecutable(.{
+        .name = "aegis_fuzz",
+        .root_source_file = b.path("src/fuzz_entry.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(fuzz);
+    const fuzz_step = b.step("fuzz", "Build fuzz targets");
+    fuzz_step.dependOn(b.getInstallStep());
 }

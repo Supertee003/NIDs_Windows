@@ -1,0 +1,1042 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "AEGIS-NIDS-5.0.0",
+  "documentNamespace": "https://aegis.local/spdx/5.0.0",
+  "creationInfo": {
+    "creators": [
+      "Organization: AEGIS",
+      "Tool: release_engineering.py"
+    ],
+    "created": "2026-09-06T22:18:02.985333+00:00"
+  },
+  "packages": [
+    {
+      "name": "main.zig",
+      "SPDXID": "SPDXRef-0f0e99b0",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "3de06cadcaa23e9320f7837c489c53ceca33447911190fe237911df4587e90cd"
+        }
+      ],
+      "filePath": "src/main.zig"
+    },
+    {
+      "name": "trust_store.zig",
+      "SPDXID": "SPDXRef-a1f0f821",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "2b9d57d9f943d6b3020a9bb9ad8d5d49a2d02f10546812fae26e63447c24c51e"
+        }
+      ],
+      "filePath": "src/policy/trust_store.zig"
+    },
+    {
+      "name": "policy_ir.zig",
+      "SPDXID": "SPDXRef-9e2ece20",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "cd356a50687175d25a6a5686e51330770938639089e47aa342538efe74e6fed9"
+        }
+      ],
+      "filePath": "src/policy/policy_ir.zig"
+    },
+    {
+      "name": "pep_bindings.zig",
+      "SPDXID": "SPDXRef-b4f8dbbb",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "ebe8fa51b8904293e30925116576d193e0639f8e4eafa6d4f7c0bcba534167eb"
+        }
+      ],
+      "filePath": "src/policy/pep_bindings.zig"
+    },
+    {
+      "name": "action_dispatcher.zig",
+      "SPDXID": "SPDXRef-815e5d8e",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "6fea33586a3d3ef61ae74f528dec95553dd87b166d0c3474477a2e106595d04a"
+        }
+      ],
+      "filePath": "src/policy/action_dispatcher.zig"
+    },
+    {
+      "name": "all_tests.zig",
+      "SPDXID": "SPDXRef-097c397b",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "cd6aa16b96b5dfcee211a417283d5f2a89ac0d12d100870c36e74a222f9959e3"
+        }
+      ],
+      "filePath": "src/tests/all_tests.zig"
+    },
+    {
+      "name": "fuzz_main.zig",
+      "SPDXID": "SPDXRef-10530de8",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "700ba3fd7717c5f9cbd8709a26e559354bbcb53f9659416ea58a028181bfe2e6"
+        }
+      ],
+      "filePath": "src/tests/fuzz_main.zig"
+    },
+    {
+      "name": "replay_engine.zig",
+      "SPDXID": "SPDXRef-734f484e",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "01b4fe3522676ee8655afc98855364c3c5dab47913a9a71f49f040d126e69c43"
+        }
+      ],
+      "filePath": "src/forensic/replay_engine.zig"
+    },
+    {
+      "name": "forensic_pipeline.zig",
+      "SPDXID": "SPDXRef-b71f9342",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "79ffd8c170caa65433d8610f6ba61db56537900b593898420f3d021b474350c8"
+        }
+      ],
+      "filePath": "src/forensic/forensic_pipeline.zig"
+    },
+    {
+      "name": "npcap_adapter.zig",
+      "SPDXID": "SPDXRef-d5d286ef",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "99c55ed7104a55c8a4732c6d62313d3bdec6d396e8b7a7ee6091d7469480efdc"
+        }
+      ],
+      "filePath": "src/capture/npcap_adapter.zig"
+    },
+    {
+      "name": "flow_table.zig",
+      "SPDXID": "SPDXRef-0f892999",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "b03bc2ef128599bc4e501a5cf9255f0794fecd18bb2bb8edfc50aea28715321a"
+        }
+      ],
+      "filePath": "src/capture/flow_table.zig"
+    },
+    {
+      "name": "stream_reassembly.zig",
+      "SPDXID": "SPDXRef-cf89b0d6",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "b7834ade00a00cb16f8bad4d06dbe3880090912c109210011ef303d06e6141da"
+        }
+      ],
+      "filePath": "src/capture/stream_reassembly.zig"
+    },
+    {
+      "name": "packet_decoder.zig",
+      "SPDXID": "SPDXRef-5e576b49",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "d52699b398813117c65ecf6ca725d80a51a6957e047e58b05a196a250773d0c8"
+        }
+      ],
+      "filePath": "src/capture/packet_decoder.zig"
+    },
+    {
+      "name": "fault_injection.zig",
+      "SPDXID": "SPDXRef-4848b6a6",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "5ecdd092e3e859e756dcc08002289d68d8bc8d08d2a044288ee6e0b67d3b6e65"
+        }
+      ],
+      "filePath": "src/reliability/fault_injection.zig"
+    },
+    {
+      "name": "latency_histogram.zig",
+      "SPDXID": "SPDXRef-fb79d2f3",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "3c1836f014f96e751704128785cabf42e34c69a1cc0c50f6d70e9f4253f303e0"
+        }
+      ],
+      "filePath": "src/reliability/latency_histogram.zig"
+    },
+    {
+      "name": "security_check.zig",
+      "SPDXID": "SPDXRef-b8711e92",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "48c1dfbf82e6100ec11b1c7afd64e3481c0acc78189ae48910acc63ec53ec153"
+        }
+      ],
+      "filePath": "src/reliability/security_check.zig"
+    },
+    {
+      "name": "watchdog.zig",
+      "SPDXID": "SPDXRef-2dfa2e32",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "ba07f2a6c2af1c9c8dd9160a285a73bad7f65f88d94ca95d18705373ebe55c22"
+        }
+      ],
+      "filePath": "src/reliability/watchdog.zig"
+    },
+    {
+      "name": "xdr_engine.zig",
+      "SPDXID": "SPDXRef-3f3c392a",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "4ff02ee8b6b732454bc8e9175cd2cd51425b2d737ebd7e8d8a892482c3872ea2"
+        }
+      ],
+      "filePath": "src/xdr/xdr_engine.zig"
+    },
+    {
+      "name": "memory_pool.zig",
+      "SPDXID": "SPDXRef-29cc41c3",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "a25a55192f10ea3d6443cd163fd7dd0de20d81bf63b1ac4227d8f93e0b32e160"
+        }
+      ],
+      "filePath": "src/core/memory_pool.zig"
+    },
+    {
+      "name": "diagnostics.zig",
+      "SPDXID": "SPDXRef-fac506ab",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "3f9ed8f24bf171681e2d8bf21bc50d98ad6f92f1b5c337aa1c9e9298ac0295fe"
+        }
+      ],
+      "filePath": "src/core/diagnostics.zig"
+    },
+    {
+      "name": "event.zig",
+      "SPDXID": "SPDXRef-d1edc17e",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "91e962fe5959f7da8575d81dd2731fe8f7beb51a94b1284b7b3cc523c4f0a0ee"
+        }
+      ],
+      "filePath": "src/contract/event.zig"
+    },
+    {
+      "name": "runtime_manifest.zig",
+      "SPDXID": "SPDXRef-0875f36c",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "e993d9e7010f93171d6cbd6cf18a9575fd34022c1c04c492e37234ca69c48ff0"
+        }
+      ],
+      "filePath": "src/contract/runtime_manifest.zig"
+    },
+    {
+      "name": "aggregator.zig",
+      "SPDXID": "SPDXRef-4e62377e",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "80b02e8596e4d22a4807ef58eb98dad7b61a5821c9a2f2b1da8bd9ab2f6bcdc3"
+        }
+      ],
+      "filePath": "src/federation/aggregator.zig"
+    },
+    {
+      "name": "cluster_coord.zig",
+      "SPDXID": "SPDXRef-1745abdb",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "2f64476fa676216a386d20588a102afe49fd7134243638e0eba4af126f05c101"
+        }
+      ],
+      "filePath": "src/federation/cluster_coord.zig"
+    },
+    {
+      "name": "node_registry.zig",
+      "SPDXID": "SPDXRef-9a5a896d",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "f156ac8b343c9b8eb67deeea428357317e960d3bee65157a3baa63424d4a7529"
+        }
+      ],
+      "filePath": "src/federation/node_registry.zig"
+    },
+    {
+      "name": "etw_native.c",
+      "SPDXID": "SPDXRef-8561cd7d",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "508050eef55a264b6a41fc2f313e58706fdd25e55f1f8d2125363cdf9bdcdc24"
+        }
+      ],
+      "filePath": "src/windows/etw_native.c"
+    },
+    {
+      "name": "injection_detector.zig",
+      "SPDXID": "SPDXRef-9f3a905a",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "62f45be705c7f4a4f025aa4a5c3af2dd210e5712976ebe7f773cbda87777859b"
+        }
+      ],
+      "filePath": "src/windows/injection_detector.zig"
+    },
+    {
+      "name": "fim.zig",
+      "SPDXID": "SPDXRef-a4581ea8",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "382b98068ae0fec3c1b235eed9bdcad52a12601bd4bf3a4c94974505e61d264d"
+        }
+      ],
+      "filePath": "src/windows/fim.zig"
+    },
+    {
+      "name": "etw_realtime.zig",
+      "SPDXID": "SPDXRef-0bc00180",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "b39f0e272c8fd6c8f43c267ba4ca1c978af72df49fb9cd35ef9511f0755ec4c0"
+        }
+      ],
+      "filePath": "src/windows/etw_realtime.zig"
+    },
+    {
+      "name": "fim_native.c",
+      "SPDXID": "SPDXRef-645173ae",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "1af194e28873b7c518f20e5457e1d3ef85b7cae81b7b5050e25e7d2b77da9732"
+        }
+      ],
+      "filePath": "src/windows/fim_native.c"
+    },
+    {
+      "name": "registry_monitor.zig",
+      "SPDXID": "SPDXRef-16e2ba81",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "4e3e6fe2df0059d6c62d3c88dcdeca75bd4bc37440732ac8f07b1fc910f7b7dc"
+        }
+      ],
+      "filePath": "src/windows/registry_monitor.zig"
+    },
+    {
+      "name": "host_telemetry.zig",
+      "SPDXID": "SPDXRef-52b90fbe",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "09060a714204ea589d8fb7c08b840ff9f865ed88b099813c3e3891577c97b8ca"
+        }
+      ],
+      "filePath": "src/windows/host_telemetry.zig"
+    },
+    {
+      "name": "aegis_wfp.c",
+      "SPDXID": "SPDXRef-b9fb6df5",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "a795bc8f14ec82a9afcfd1ebca096074a86f63f48ac59e1919bf0f2b363aad8e"
+        }
+      ],
+      "filePath": "src/windows/aegis_wfp.c"
+    },
+    {
+      "name": "correlator.zig",
+      "SPDXID": "SPDXRef-713b2bb5",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "f84ebfbb64f351011efde4119e322663a09bd92b406a5a9db072b43d8c1ae5d5"
+        }
+      ],
+      "filePath": "src/detection/correlator.zig"
+    },
+    {
+      "name": "signature_engine.zig",
+      "SPDXID": "SPDXRef-a7bbf08c",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "57acabd1ecde847869f6588afb608e152340f58da2baacbe70bd278fb5529eea"
+        }
+      ],
+      "filePath": "src/detection/signature_engine.zig"
+    },
+    {
+      "name": "proto_anomaly.zig",
+      "SPDXID": "SPDXRef-8a9450d8",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "767d37e0e7643d587c455880ecc3f8c41fae9110fc020ab24e1bc631b7a15526"
+        }
+      ],
+      "filePath": "src/detection/proto_anomaly.zig"
+    },
+    {
+      "name": "threat_tracker.zig",
+      "SPDXID": "SPDXRef-75614f75",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "2571b6fbdf3f6f7a203cb3be3feb5cf54d3f92b0302eef33b3040ae4043724d6"
+        }
+      ],
+      "filePath": "src/detection/threat_tracker.zig"
+    },
+    {
+      "name": "anomaly_detector.zig",
+      "SPDXID": "SPDXRef-c6a7a16a",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "607587cd9aa3d0d08fcc9004e7fc5fe6d5dacc4d90d87f60ddf56e84d212254e"
+        }
+      ],
+      "filePath": "src/detection/anomaly_detector.zig"
+    },
+    {
+      "name": "parsers.zig",
+      "SPDXID": "SPDXRef-4250ed48",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "b3758737531c002bd97a6bf9f7f492510f2f57276ce9cc9d8297c3f61d7be442"
+        }
+      ],
+      "filePath": "src/capture/proto/parsers.zig"
+    },
+    {
+      "name": "lib.rs",
+      "SPDXID": "SPDXRef-fa9cf6dd",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "e771b5deb37f2a0ac339a1185d8ed638e5aab31a531e02690a0a672d357dc372"
+        }
+      ],
+      "filePath": "rust-src/lib.rs"
+    },
+    {
+      "name": "release_engineering.py",
+      "SPDXID": "SPDXRef-7423e4c0",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "f64963a8a1280dd0fa29d225b1339ad3132d4837f18bfa23336167dc9c49d92d"
+        }
+      ],
+      "filePath": "tools/release_engineering.py"
+    },
+    {
+      "name": "aegisctl.py",
+      "SPDXID": "SPDXRef-4656a8c6",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "4bb8e33bc096815db27957a372000e9cc08a7533550b73adf34911697ad73cb9"
+        }
+      ],
+      "filePath": "tools/aegisctl.py"
+    },
+    {
+      "name": "config_validator.py",
+      "SPDXID": "SPDXRef-73a0a69d",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "12594c03285ab621ba4d278283eef4a2e3caa7dc03521d58ff5510482b25d99a"
+        }
+      ],
+      "filePath": "tools/config_validator.py"
+    },
+    {
+      "name": "backup_recovery.py",
+      "SPDXID": "SPDXRef-42b56bc3",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "ccc63bfd586170798ca6be1219bbcdcd4250946866aa85647f2244874a9fb0eb"
+        }
+      ],
+      "filePath": "tools/backup_recovery.py"
+    },
+    {
+      "name": "installer.py",
+      "SPDXID": "SPDXRef-fa2e3afc",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "63d155d21af99fc0705dc20f2dfdf03fef350087e70046e686abaa000e3f358d"
+        }
+      ],
+      "filePath": "tools/installer.py"
+    },
+    {
+      "name": "cluster.example.json",
+      "SPDXID": "SPDXRef-c14643ef",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "5a83bb91a0a3a80bb25a3689b927a4d3f8b601acd7198f9700ee0b15ae913e56"
+        }
+      ],
+      "filePath": "configs/cluster.example.json"
+    },
+    {
+      "name": "schema.json",
+      "SPDXID": "SPDXRef-d8ea7044",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "12fa3903f118c7d0debdcbf43067c31b77acbc93a877f6e6f62f230da2a7d0b5"
+        }
+      ],
+      "filePath": "configs/schema.json"
+    },
+    {
+      "name": "runtime.json",
+      "SPDXID": "SPDXRef-9ff67b90",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "128722b583cccd887e02ed8178f76f5fcc392d22dee8fe4d10078dba451b4ae0"
+        }
+      ],
+      "filePath": "configs/runtime.json"
+    },
+    {
+      "name": "_runtime_normalized.json",
+      "SPDXID": "SPDXRef-96fbf6c1",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "534a132ba5904d5dcb7300ce87e95f7171350cd1f6664f06c8629499a8c440ab"
+        }
+      ],
+      "filePath": "configs/_runtime_normalized.json"
+    },
+    {
+      "name": "test_golden_path.py",
+      "SPDXID": "SPDXRef-c93eadc6",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "421f3bf6b4b7abd4a979306afd2e71a6fdd3d1ead1c1c2477686dee7bc69393b"
+        }
+      ],
+      "filePath": "tests/test_golden_path.py"
+    },
+    {
+      "name": "build.zig",
+      "SPDXID": "SPDXRef-fb590ebb",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "8d9ae0d6f2d8e34a159a3471d3a656732b37646b14822118cecca1f32f8cc1fe"
+        }
+      ],
+      "filePath": "build.zig"
+    },
+    {
+      "name": "Cargo.toml",
+      "SPDXID": "SPDXRef-45bd3a3b",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "aad6e0e5305e080779da4d6953df706030bcbc8b177402ac5ae199e40b7c2b75"
+        }
+      ],
+      "filePath": "Cargo.toml"
+    },
+    {
+      "name": "CMakeLists.txt",
+      "SPDXID": "SPDXRef-0b264a9e",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "c87e5f3740b50db65409f16436d94e3eab925ec7b40ff38356a0b3ec3557a31e"
+        }
+      ],
+      "filePath": "CMakeLists.txt"
+    },
+    {
+      "name": "requirements.txt",
+      "SPDXID": "SPDXRef-853badd5",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "d367ab023525b9c55d0c409bb733114445abed1590b74fe73b187f3b7f47c390"
+        }
+      ],
+      "filePath": "requirements.txt"
+    },
+    {
+      "name": ".gitignore",
+      "SPDXID": "SPDXRef-9f215899",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "e540fea1f29d6564679dae4ff7bb85a5e7323eac4406cd406334ca911b3be467"
+        }
+      ],
+      "filePath": ".gitignore"
+    },
+    {
+      "name": "ROADMAP.md",
+      "SPDXID": "SPDXRef-a7bee7c6",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "29794fc528b08966c162dc3bf69cdb86baec68ec37c8b4ddf39f39ca3f14e40b"
+        }
+      ],
+      "filePath": "ROADMAP.md"
+    },
+    {
+      "name": "Rules.json",
+      "SPDXID": "SPDXRef-8668e034",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "af384acb04b8629376311bc412acf135250d9d45bc82e3a8402a9c1e140025f6"
+        }
+      ],
+      "filePath": "Rules.json"
+    }
+  ]
+}

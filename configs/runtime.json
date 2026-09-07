@@ -1,0 +1,52 @@
+{
+  "version": "5.0",
+  "interface": {
+    "device": "\\Device\\NPF_{00000000-0000-0000-0000-000000000000}",
+    "snaplen": 65535,
+    "promiscuous": true,
+    "buffer_size_mb": 16
+  },
+  "capture": {
+    "ring_buffer_entries": 65536,
+    "flow_table_entries": 4096,
+    "flow_eviction_timeout_sec": 60
+  },
+  "detection": {
+    "signature_rules_path": "Rules.json",
+    "anomaly_alpha": 0.05,
+    "anomaly_z_threshold": 3.0,
+    "correlation_window_sec": 300
+  },
+  "policy": {
+    "default_action": "alert",
+    "pep_enabled": true,
+    "two_person_rule_for_block": false
+  },
+  "forensic": {
+    "ring_size_mb": 64,
+    "delete_on_close_panic": true
+  },
+  "windows": {
+    "etw_enabled": true,
+    "etw_providers": ["kernel_process", "kernel_file", "kernel_registry", "kernel_image"],
+    "fim_paths": [
+      "C:\\Windows\\System32",
+      "C:\\Windows\\SysWOW64",
+      "C:\\Windows\\System32\\drivers\\etc"
+    ],
+    "registry_rules": [
+      { "path": "HKLM\\System\\CurrentControlSet\\Services\\AegisNids", "rule_id": 1 },
+      { "path": "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", "rule_id": 2 },
+      { "path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", "rule_id": 3 }
+    ]
+  },
+  "federation": {
+    "enabled": false,
+    "node_id": "node-01",
+    "heartbeat_ms": 1000
+  },
+  "reliability": {
+    "watchdog_timeout_ms": 5000,
+    "auto_restart": true
+  }
+}

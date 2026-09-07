@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AEGIS NIDS Configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "capture", "detection", "policy", "forensic"],
+  "properties": {
+    "version": { "type": "string", "enum": ["5.0", "5.0.1", "5.1"] },
+    "interface": {
+      "type": "object",
+      "properties": {
+        "device": { "type": "string", "default": "\\Device\\NPF_{GUID}" },
+        "snaplen": { "type": "integer", "minimum": 68, "maximum": 65535, "default": 65535 },
+        "promiscuous": { "type": "boolean", "default": true },
+        "buffer_size_mb": { "type": "integer", "minimum": 1, "maximum": 256, "default": 16 }
+      }
+    },
+    "capture": {
+      "type": "object",
+      "properties": {
+        "ring_buffer_entries": { "type": "integer", "minimum": 1024, "maximum": 262144, "default": 65536 },
+        "flow_table_entries": { "type": "integer", "minimum": 256, "maximum": 65536, "default": 4096 },
+        "flow_eviction_timeout_sec": { "type": "integer", "minimum": 5, "maximum": 3600, "default": 60 }
+      }
+    },
+    "detection": {
+      "type": "object",
+      "properties": {
+        "signature_rules_path": { "type": "string" },
+        "anomaly_alpha": { "type": "number", "minimum": 0.001, "maximum": 0.5, "default": 0.05 },
+        "anomaly_z_threshold": { "type": "number", "minimum": 1.0, "maximum": 10.0, "default": 3.0 },
+        "correlation_window_sec": { "type": "integer", "minimum": 1, "maximum": 86400, "default": 300 }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "properties": {
+        "default_action": { "type": "string", "enum": ["pass", "log", "alert", "block"], "default": "alert" },
+        "pep_enabled": { "type": "boolean", "default": true },
+        "two_person_rule_for_block": { "type": "boolean", "default": false }
+      }
+    },
+    "forensic": {
+      "type": "object",
+      "properties": {
+        "ring_size_mb": { "type": "integer", "minimum": 4, "maximum": 1024, "default": 64 },
+        "delete_on_close_panic": { "type": "boolean", "default": true }
+      }
+    },
+    "windows": {
+      "type": "object",
+      "properties": {
+        "etw_enabled": { "type": "boolean", "default": true },
+        "etw_providers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["kernel_process", "kernel_file", "kernel_registry", "kernel_image"]
+        },
+        "fim_paths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["C:\\Windows\\System32", "C:\\Windows\\SysWOW64"]
+        },
+        "registry_rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string" },
+              "rule_id": { "type": "integer" }
+            },
+            "required": ["path", "rule_id"]
+          }
+        }
+      }
+    },
+    "federation": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "node_id": { "type": "string" },
+        "cluster_secret": { "type": "string" },
+        "tls_cert": { "type": "string" },
+        "tls_key": { "type": "string" },
+        "peers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "host": { "type": "string" },
+              "port": { "type": "integer" }
+            },
+            "required": ["host", "port"]
+          }
+        },
+        "heartbeat_ms": { "type": "integer", "minimum": 100, "maximum": 60000, "default": 1000 }
+      }
+    },
+    "reliability": {
+      "type": "object",
+      "properties": {
+        "watchdog_timeout_ms": { "type": "integer", "minimum": 500, "maximum": 60000, "default": 5000 },
+        "auto_restart": { "type": "boolean", "default": true }
+      }
+    }
+  }
+}

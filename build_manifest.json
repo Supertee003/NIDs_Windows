@@ -1,36 +1,400 @@
 {
-  "version": "1.0.0",
-  "build_date": "2026-09-07",
-  "commit": "HEAD",
-  "components": {
-    "aegis-nids.exe": {"source": "nids_main.zig", "language": "Zig", "compiler": "zig 0.13.0"},
-    "sec_monitor.dll": {"source": "src/lib.rs", "language": "Rust", "compiler": "cargo 1.75+"},
-    "aegis_ipc.dll": {"source": "bridge/aegis_ipc.cpp", "language": "C++17", "compiler": "cmake 3.16+"},
-    "aegis_bridge.exe": {"source": "bridge/aegis_bridge_main.cpp", "language": "C++17", "compiler": "cmake"},
-    "windows_brain.py": {"source": "windows_brain.py", "language": "Python 3.8+", "runtime": "python"},
-    "windows_perf.exe": {"source": "windows_perf.go", "language": "Go 1.22", "compiler": "go build"},
-    "aegisctl": {"source": "aegisctl.py", "language": "Python", "runtime": "python"},
-    "aegis_wfp.sys": {"source": "drivers/wfp_callout/aegis_wfp.c", "language": "C (WDK)", "compiler": "cl.exe + WDK"},
-    "aegis_minifilter.sys": {"source": "drivers/minifilter/aegis_minifilter.c", "language": "C (WDK)", "compiler": "cl.exe + WDK"}
+  "schema_version": "1.0",
+  "product": "AEGIS NIDS",
+  "version": "5.0.0",
+  "build_date": "2026-09-06T22:18:02.985333+00:00",
+  "build_host": "c-6a9cf7fa-14d96228-60d4babf067f",
+  "platform": {
+    "os": "windows",
+    "arch": "x86_64",
+    "min_os_version": "Windows 10 1809"
   },
-  "dependencies": {
+  "languages": {
     "zig": "0.13.0",
-    "rust": "1.75+",
-    "go": "1.22",
-    "python": "3.8+",
-    "cmake": "3.16+",
-    "wdk": "10 or 11 (for driver build)"
+    "rust": "1.78.0",
+    "python": "3.11+",
+    "c": "MSVC 19.38+ (Visual Studio 2022)"
   },
-  "schema_versions": {
-    "canonical_event": 2,
-    "wire_protocol": 1,
-    "policy_ir": 1,
-    "pep_abi": 2
+  "components": [
+    {
+      "id": "core",
+      "name": "aegis_nids.exe",
+      "language": "zig",
+      "type": "executable"
+    },
+    {
+      "id": "pep",
+      "name": "aegis_pep.dll",
+      "language": "rust",
+      "type": "library"
+    },
+    {
+      "id": "wfp_user",
+      "name": "aegis_wfp_user.dll",
+      "language": "c",
+      "type": "library"
+    },
+    {
+      "id": "etw_helper",
+      "name": "aegis_etw_helper.dll",
+      "language": "c",
+      "type": "library"
+    },
+    {
+      "id": "fim_helper",
+      "name": "aegis_fim_helper.dll",
+      "language": "c",
+      "type": "library"
+    },
+    {
+      "id": "aegisctl",
+      "name": "aegisctl.py",
+      "language": "python",
+      "type": "script"
+    },
+    {
+      "id": "installer",
+      "name": "installer.py",
+      "language": "python",
+      "type": "script"
+    },
+    {
+      "id": "backup",
+      "name": "backup_recovery.py",
+      "language": "python",
+      "type": "script"
+    }
+  ],
+  "modules": {
+    "I01": "build.zig, Cargo.toml, CMakeLists.txt, .github/workflows/ci.yml",
+    "I02": "src/contract/event.zig",
+    "I03": "src/contract/runtime_manifest.zig",
+    "I04": "src/core/memory_pool.zig",
+    "I05": "src/core/diagnostics.zig",
+    "I06": "src/capture/npcap_adapter.zig",
+    "I07": "src/capture/packet_decoder.zig",
+    "I08": "src/capture/flow_table.zig",
+    "I09": "src/capture/proto/parsers.zig",
+    "I10": "src/capture/stream_reassembly.zig",
+    "I11": "src/detection/signature_engine.zig",
+    "I12": "src/detection/anomaly_detector.zig",
+    "I13": "src/detection/proto_anomaly.zig",
+    "I14": "src/detection/correlator.zig",
+    "I15": "src/detection/threat_tracker.zig",
+    "I16": "src/policy/policy_ir.zig",
+    "I17": "src/policy/trust_store.zig",
+    "I18": "rust-src/lib.rs, src/policy/pep_bindings.zig",
+    "I19": "src/policy/action_dispatcher.zig",
+    "I20": "src/forensic/forensic_pipeline.zig",
+    "I21": "src/forensic/replay_engine.zig",
+    "II01": "src/windows/etw_realtime.zig, src/windows/etw_native.c",
+    "II02": "src/windows/fim.zig, src/windows/fim_native.c",
+    "II03": "src/windows/registry_monitor.zig",
+    "II04": "src/windows/injection_detector.zig",
+    "II05": "src/windows/aegis_wfp.c",
+    "II06": "src/windows/host_telemetry.zig",
+    "II07": "src/reliability/watchdog.zig",
+    "II08": "src/reliability/security_check.zig",
+    "II09": "src/reliability/latency_histogram.zig",
+    "II10": "tools/config_validator.py, configs/schema.json",
+    "II11": "src/reliability/fault_injection.zig",
+    "II12": "src/federation/cluster_coord.zig",
+    "II13": "src/federation/node_registry.zig",
+    "II14": "src/federation/aggregator.zig",
+    "II15": "rust-src/lib.rs (federation_tls module)",
+    "II16": "src/xdr/xdr_engine.zig",
+    "II17": "tools/aegisctl.py",
+    "II18": "tools/installer.py, installer/aegis.nsi",
+    "II19": "tools/backup_recovery.py",
+    "II20": ".github/workflows/ci.yml",
+    "II21": "tests/test_golden_path.py",
+    "II22": "tools/release_engineering.py"
   },
-  "security": {
-    "policy_signing": "Ed25519 (G9 design)",
-    "transport_security": "TLS/mTLS via SChannel (G18 design)",
-    "enforcement_authority": "Rust PEP (pep_enforce_action)",
-    "authority_matrix": "docs/architecture/authority-matrix.md"
-  }
+  "artifacts": [
+    {
+      "path": "src/main.zig",
+      "size": 5388,
+      "sha256": "3de06cadcaa23e9320f7837c489c53ceca33447911190fe237911df4587e90cd"
+    },
+    {
+      "path": "src/policy/trust_store.zig",
+      "size": 6037,
+      "sha256": "2b9d57d9f943d6b3020a9bb9ad8d5d49a2d02f10546812fae26e63447c24c51e"
+    },
+    {
+      "path": "src/policy/policy_ir.zig",
+      "size": 6845,
+      "sha256": "cd356a50687175d25a6a5686e51330770938639089e47aa342538efe74e6fed9"
+    },
+    {
+      "path": "src/policy/pep_bindings.zig",
+      "size": 4937,
+      "sha256": "ebe8fa51b8904293e30925116576d193e0639f8e4eafa6d4f7c0bcba534167eb"
+    },
+    {
+      "path": "src/policy/action_dispatcher.zig",
+      "size": 5929,
+      "sha256": "6fea33586a3d3ef61ae74f528dec95553dd87b166d0c3474477a2e106595d04a"
+    },
+    {
+      "path": "src/tests/all_tests.zig",
+      "size": 1724,
+      "sha256": "cd6aa16b96b5dfcee211a417283d5f2a89ac0d12d100870c36e74a222f9959e3"
+    },
+    {
+      "path": "src/tests/fuzz_main.zig",
+      "size": 1089,
+      "sha256": "700ba3fd7717c5f9cbd8709a26e559354bbcb53f9659416ea58a028181bfe2e6"
+    },
+    {
+      "path": "src/forensic/replay_engine.zig",
+      "size": 8123,
+      "sha256": "01b4fe3522676ee8655afc98855364c3c5dab47913a9a71f49f040d126e69c43"
+    },
+    {
+      "path": "src/forensic/forensic_pipeline.zig",
+      "size": 6801,
+      "sha256": "79ffd8c170caa65433d8610f6ba61db56537900b593898420f3d021b474350c8"
+    },
+    {
+      "path": "src/capture/npcap_adapter.zig",
+      "size": 8040,
+      "sha256": "99c55ed7104a55c8a4732c6d62313d3bdec6d396e8b7a7ee6091d7469480efdc"
+    },
+    {
+      "path": "src/capture/flow_table.zig",
+      "size": 8091,
+      "sha256": "b03bc2ef128599bc4e501a5cf9255f0794fecd18bb2bb8edfc50aea28715321a"
+    },
+    {
+      "path": "src/capture/stream_reassembly.zig",
+      "size": 7009,
+      "sha256": "b7834ade00a00cb16f8bad4d06dbe3880090912c109210011ef303d06e6141da"
+    },
+    {
+      "path": "src/capture/packet_decoder.zig",
+      "size": 8684,
+      "sha256": "d52699b398813117c65ecf6ca725d80a51a6957e047e58b05a196a250773d0c8"
+    },
+    {
+      "path": "src/reliability/fault_injection.zig",
+      "size": 4499,
+      "sha256": "5ecdd092e3e859e756dcc08002289d68d8bc8d08d2a044288ee6e0b67d3b6e65"
+    },
+    {
+      "path": "src/reliability/latency_histogram.zig",
+      "size": 5685,
+      "sha256": "3c1836f014f96e751704128785cabf42e34c69a1cc0c50f6d70e9f4253f303e0"
+    },
+    {
+      "path": "src/reliability/security_check.zig",
+      "size": 3498,
+      "sha256": "48c1dfbf82e6100ec11b1c7afd64e3481c0acc78189ae48910acc63ec53ec153"
+    },
+    {
+      "path": "src/reliability/watchdog.zig",
+      "size": 5859,
+      "sha256": "ba07f2a6c2af1c9c8dd9160a285a73bad7f65f88d94ca95d18705373ebe55c22"
+    },
+    {
+      "path": "src/xdr/xdr_engine.zig",
+      "size": 6133,
+      "sha256": "4ff02ee8b6b732454bc8e9175cd2cd51425b2d737ebd7e8d8a892482c3872ea2"
+    },
+    {
+      "path": "src/core/memory_pool.zig",
+      "size": 9962,
+      "sha256": "a25a55192f10ea3d6443cd163fd7dd0de20d81bf63b1ac4227d8f93e0b32e160"
+    },
+    {
+      "path": "src/core/diagnostics.zig",
+      "size": 7502,
+      "sha256": "3f9ed8f24bf171681e2d8bf21bc50d98ad6f92f1b5c337aa1c9e9298ac0295fe"
+    },
+    {
+      "path": "src/contract/event.zig",
+      "size": 4943,
+      "sha256": "91e962fe5959f7da8575d81dd2731fe8f7beb51a94b1284b7b3cc523c4f0a0ee"
+    },
+    {
+      "path": "src/contract/runtime_manifest.zig",
+      "size": 5822,
+      "sha256": "e993d9e7010f93171d6cbd6cf18a9575fd34022c1c04c492e37234ca69c48ff0"
+    },
+    {
+      "path": "src/federation/aggregator.zig",
+      "size": 4290,
+      "sha256": "80b02e8596e4d22a4807ef58eb98dad7b61a5821c9a2f2b1da8bd9ab2f6bcdc3"
+    },
+    {
+      "path": "src/federation/cluster_coord.zig",
+      "size": 6854,
+      "sha256": "2f64476fa676216a386d20588a102afe49fd7134243638e0eba4af126f05c101"
+    },
+    {
+      "path": "src/federation/node_registry.zig",
+      "size": 5042,
+      "sha256": "f156ac8b343c9b8eb67deeea428357317e960d3bee65157a3baa63424d4a7529"
+    },
+    {
+      "path": "src/windows/etw_native.c",
+      "size": 6466,
+      "sha256": "508050eef55a264b6a41fc2f313e58706fdd25e55f1f8d2125363cdf9bdcdc24"
+    },
+    {
+      "path": "src/windows/injection_detector.zig",
+      "size": 7994,
+      "sha256": "62f45be705c7f4a4f025aa4a5c3af2dd210e5712976ebe7f773cbda87777859b"
+    },
+    {
+      "path": "src/windows/fim.zig",
+      "size": 4897,
+      "sha256": "382b98068ae0fec3c1b235eed9bdcad52a12601bd4bf3a4c94974505e61d264d"
+    },
+    {
+      "path": "src/windows/etw_realtime.zig",
+      "size": 5530,
+      "sha256": "b39f0e272c8fd6c8f43c267ba4ca1c978af72df49fb9cd35ef9511f0755ec4c0"
+    },
+    {
+      "path": "src/windows/fim_native.c",
+      "size": 2978,
+      "sha256": "1af194e28873b7c518f20e5457e1d3ef85b7cae81b7b5050e25e7d2b77da9732"
+    },
+    {
+      "path": "src/windows/registry_monitor.zig",
+      "size": 6019,
+      "sha256": "4e3e6fe2df0059d6c62d3c88dcdeca75bd4bc37440732ac8f07b1fc910f7b7dc"
+    },
+    {
+      "path": "src/windows/host_telemetry.zig",
+      "size": 4446,
+      "sha256": "09060a714204ea589d8fb7c08b840ff9f865ed88b099813c3e3891577c97b8ca"
+    },
+    {
+      "path": "src/windows/aegis_wfp.c",
+      "size": 5831,
+      "sha256": "a795bc8f14ec82a9afcfd1ebca096074a86f63f48ac59e1919bf0f2b363aad8e"
+    },
+    {
+      "path": "src/detection/correlator.zig",
+      "size": 8182,
+      "sha256": "f84ebfbb64f351011efde4119e322663a09bd92b406a5a9db072b43d8c1ae5d5"
+    },
+    {
+      "path": "src/detection/signature_engine.zig",
+      "size": 9070,
+      "sha256": "57acabd1ecde847869f6588afb608e152340f58da2baacbe70bd278fb5529eea"
+    },
+    {
+      "path": "src/detection/proto_anomaly.zig",
+      "size": 4837,
+      "sha256": "767d37e0e7643d587c455880ecc3f8c41fae9110fc020ab24e1bc631b7a15526"
+    },
+    {
+      "path": "src/detection/threat_tracker.zig",
+      "size": 8219,
+      "sha256": "2571b6fbdf3f6f7a203cb3be3feb5cf54d3f92b0302eef33b3040ae4043724d6"
+    },
+    {
+      "path": "src/detection/anomaly_detector.zig",
+      "size": 4234,
+      "sha256": "607587cd9aa3d0d08fcc9004e7fc5fe6d5dacc4d90d87f60ddf56e84d212254e"
+    },
+    {
+      "path": "src/capture/proto/parsers.zig",
+      "size": 12539,
+      "sha256": "b3758737531c002bd97a6bf9f7f492510f2f57276ce9cc9d8297c3f61d7be442"
+    },
+    {
+      "path": "rust-src/lib.rs",
+      "size": 10130,
+      "sha256": "e771b5deb37f2a0ac339a1185d8ed638e5aab31a531e02690a0a672d357dc372"
+    },
+    {
+      "path": "tools/release_engineering.py",
+      "size": 9288,
+      "sha256": "f64963a8a1280dd0fa29d225b1339ad3132d4837f18bfa23336167dc9c49d92d"
+    },
+    {
+      "path": "tools/aegisctl.py",
+      "size": 10583,
+      "sha256": "4bb8e33bc096815db27957a372000e9cc08a7533550b73adf34911697ad73cb9"
+    },
+    {
+      "path": "tools/config_validator.py",
+      "size": 4304,
+      "sha256": "12594c03285ab621ba4d278283eef4a2e3caa7dc03521d58ff5510482b25d99a"
+    },
+    {
+      "path": "tools/backup_recovery.py",
+      "size": 7393,
+      "sha256": "ccc63bfd586170798ca6be1219bbcdcd4250946866aa85647f2244874a9fb0eb"
+    },
+    {
+      "path": "tools/installer.py",
+      "size": 6087,
+      "sha256": "63d155d21af99fc0705dc20f2dfdf03fef350087e70046e686abaa000e3f358d"
+    },
+    {
+      "path": "configs/cluster.example.json",
+      "size": 355,
+      "sha256": "5a83bb91a0a3a80bb25a3689b927a4d3f8b601acd7198f9700ee0b15ae913e56"
+    },
+    {
+      "path": "configs/schema.json",
+      "size": 3894,
+      "sha256": "12fa3903f118c7d0debdcbf43067c31b77acbc93a877f6e6f62f230da2a7d0b5"
+    },
+    {
+      "path": "configs/runtime.json",
+      "size": 1404,
+      "sha256": "128722b583cccd887e02ed8178f76f5fcc392d22dee8fe4d10078dba451b4ae0"
+    },
+    {
+      "path": "configs/_runtime_normalized.json",
+      "size": 1499,
+      "sha256": "534a132ba5904d5dcb7300ce87e95f7171350cd1f6664f06c8629499a8c440ab"
+    },
+    {
+      "path": "tests/test_golden_path.py",
+      "size": 9934,
+      "sha256": "421f3bf6b4b7abd4a979306afd2e71a6fdd3d1ead1c1c2477686dee7bc69393b"
+    },
+    {
+      "path": "build.zig",
+      "size": 2584,
+      "sha256": "8d9ae0d6f2d8e34a159a3471d3a656732b37646b14822118cecca1f32f8cc1fe"
+    },
+    {
+      "path": "Cargo.toml",
+      "size": 1044,
+      "sha256": "aad6e0e5305e080779da4d6953df706030bcbc8b177402ac5ae199e40b7c2b75"
+    },
+    {
+      "path": "CMakeLists.txt",
+      "size": 1617,
+      "sha256": "c87e5f3740b50db65409f16436d94e3eab925ec7b40ff38356a0b3ec3557a31e"
+    },
+    {
+      "path": "requirements.txt",
+      "size": 489,
+      "sha256": "d367ab023525b9c55d0c409bb733114445abed1590b74fe73b187f3b7f47c390"
+    },
+    {
+      "path": ".gitignore",
+      "size": 430,
+      "sha256": "e540fea1f29d6564679dae4ff7bb85a5e7323eac4406cd406334ca911b3be467"
+    },
+    {
+      "path": "ROADMAP.md",
+      "size": 6244,
+      "sha256": "29794fc528b08966c162dc3bf69cdb86baec68ec37c8b4ddf39f39ca3f14e40b"
+    },
+    {
+      "path": "Rules.json",
+      "size": 9619,
+      "sha256": "af384acb04b8629376311bc412acf135250d9d45bc82e3a8402a9c1e140025f6"
+    }
+  ]
 }

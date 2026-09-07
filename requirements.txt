@@ -1,0 +1,35 @@
+# AEGIS NIDS v5.0+ â€” Dependencies
+# Python control plane & tooling
+
+# Core runtime
+pyyaml>=6.0.1
+jsonschema>=4.21
+psutil>=5.9
+
+# Crypto & TLS
+cryptography>=42.0
+
+# IPC & RPC
+pywin32>=306 ; sys_platform == "win32"
+
+# Installer
+nsist>=2.6 ; sys_platform == "win32"
+
+# Observability
+prometheus-client>=0.20
+
+# Tests
+pytest>=8.0
+pytest-cov>=5.0
+
+# Build / release
+build>=1.2
+setuptools>=69.5
+
+# Linting
+ruff>=0.4
+mypy>=1.10
+
+# Config schema
+tomli>=2.0 ; python_version < "3.11"
+tomli-w>=1.0

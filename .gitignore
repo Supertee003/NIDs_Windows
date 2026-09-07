@@ -1,0 +1,50 @@
+# Build artifacts
+zig-out/
+zig-cache/
+target/
+build/
+dist/
+*.exe
+*.dll
+*.lib
+*.obj
+*.pdb
+*.sys
+*.pdb
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Configs with secrets
+.env
+.env.local
+configs/secrets/*.key
+configs/secrets/*.pem
+configs/secrets/*.pfx
+
+# Logs
+*.log
+logs/
+
+# Package
+*.msi
+*.nupkg
+*.snap
