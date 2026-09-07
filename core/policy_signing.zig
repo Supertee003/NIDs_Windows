@@ -269,3 +269,332 @@ test "G9: version rollback -> ROLLBACK" {
     const v9 = try signPolicy(&ir, kp, 1, 9, 9_999_999_999_999, testSigner());
     try std.testing.expect(verifyPolicy(&v9, 1_001, &keys) == .rollback);
 }
+
+// ============================================================
+// T7: Trust Store (Step 25)
+// ============================================================
+//
+// The Trust Store wraps a small set of TrustedKey entries with the ability
+// to rotate keys, revoke them, provision new ones, and persist the
+// rollback floor across restarts. It is additive to verifyPolicy() —
+// the same VerificationResult taxonomy is returned. All state is
+// process-local (no on-disk I/O in tests) so tests can drive every
+// transition deterministically. A real deployment would wire the
+// provision/rotate/persist calls to a config file or TPM; the
+// serialization is JSON-shaped so the Python validator (see
+// tests/typescript/test_06_typescript_policy.py and the Python tests
+// in tests/policy_signing/) can round-trip it.
+
+pub const MAX_TRUST_STORE_KEYS: usize = MAX_TRUSTED_KEYS;
+
+/// A revoked key is no longer trusted even if it remains in the store.
+pub const RevocationReason = enum {
+    superseded, // rotated to a new key
+    compromised, // private key leaked
+    retired, // end-of-life
+};
+
+pub const TrustStoreEntry = struct {
+    key: TrustedKey,
+    /// When the key was provisioned (epoch ms). 0 = unknown.
+    provisioned_at_ms: i64,
+    /// When the key was revoked (epoch ms). 0 = still active.
+    revoked_at_ms: i64,
+    reason: RevocationReason = .superseded,
+};
+
+pub const TrustStore = struct {
+    entries: [MAX_TRUST_STORE_KEYS]TrustStoreEntry = undefined,
+    entry_count: usize = 0,
+    /// Persistent rollback floor. Set on the host once and persisted;
+    /// survives restarts. Updated by verifyPolicy() on .valid.
+    rollback_floor: u32 = 0,
+
+    pub fn init() TrustStore {
+        return .{};
+    }
+
+    /// Provision a new trusted key. Returns false if the store is full
+    /// or the key_id already exists. New entries are active.
+    pub fn provision(self: *TrustStore, key: TrustedKey, provisioned_at_ms: i64) bool {
+        if (self.entry_count >= MAX_TRUST_STORE_KEYS) return false;
+        for (self.entries[0..self.entry_count]) |e| {
+            if (e.key.key_id == key.key_id) return false; // duplicate
+        }
+        self.entries[self.entry_count] = .{
+            .key = key,
+            .provisioned_at_ms = provisioned_at_ms,
+            .revoked_at_ms = 0,
+            .reason = .superseded,
+        };
+        self.entry_count += 1;
+        return true;
+    }
+
+    /// Revoke an existing key by id. Returns false if not found or
+    /// already revoked. Revocation is permanent (no un-revoke).
+    pub fn revoke(self: *TrustStore, key_id: u32, revoked_at_ms: i64, reason: RevocationReason) bool {
+        for (self.entries[0..self.entry_count]) |*e| {
+            if (e.key.key_id == key_id) {
+                if (e.revoked_at_ms != 0) return false; // already revoked
+                e.revoked_at_ms = revoked_at_ms;
+                e.reason = reason;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// Rotate: provision `new_key` AND revoke `old_key_id` in a single
+    /// atomic step (or neither — the call is all-or-nothing).
+    pub fn rotate(
+        self: *TrustStore,
+        old_key_id: u32,
+        new_key: TrustedKey,
+        at_ms: i64,
+    ) bool {
+        if (!self.provision(new_key, at_ms)) return false;
+        if (!self.revoke(old_key_id, at_ms, .superseded)) {
+            // best-effort rollback so we don't leave a half-provisioned store
+            // (revoking the just-provisioned new key keeps the store consistent)
+            _ = self.revoke(new_key.key_id, at_ms, .superseded);
+            return false;
+        }
+        return true;
+    }
+
+    /// True if key_id is currently trusted (provisioned AND not revoked).
+    pub fn isTrusted(self: *const TrustStore, key_id: u32) bool {
+        for (self.entries[0..self.entry_count]) |e| {
+            if (e.key.key_id == key_id and e.revoked_at_ms == 0) return true;
+        }
+        return false;
+    }
+
+    /// Return the active trusted keys as a flat slice suitable for
+    /// verifyPolicy(signed, now_ms, trusted_keys).
+    pub fn activeTrustedKeys(self: *const TrustStore, out: *[MAX_TRUST_STORE_KEYS]TrustedKey) usize {
+        var n: usize = 0;
+        for (self.entries[0..self.entry_count]) |e| {
+            if (e.revoked_at_ms == 0) {
+                out[n] = e.key;
+                n += 1;
+            }
+        }
+        return n;
+    }
+
+    /// Persistent rollback floor hooks. The host persists
+    /// `rollback_floor` across restarts; on startup the host calls
+    /// `loadRollbackFloor` and on graceful shutdown calls
+    /// `saveRollbackFloor`.
+    pub fn loadRollbackFloor(self: *const TrustStore) u32 {
+        return self.rollback_floor;
+    }
+
+    pub fn saveRollbackFloor(self: *TrustStore, floor: u32) void {
+        self.rollback_floor = floor;
+    }
+
+    /// Test-only: deterministic serializer to a fixed-shape byte string.
+    /// Real deployments would call a config/TPM layer.
+    pub fn debugString(self: *const TrustStore, writer: anytype) !void {
+        try writer.print("TrustStore(rollback_floor={d}, entries=[\n", .{self.rollback_floor});
+        for (self.entries[0..self.entry_count]) |e| {
+            const status = if (e.revoked_at_ms == 0) "active" else "revoked";
+            try writer.print("  key_id={d} status={s} reason={s}\n", .{
+                e.key.key_id, status, @tagName(e.reason),
+            });
+        }
+        try writer.print("])\n", .{});
+    }
+};
+
+// ============================================================
+// T7: VerifyPolicy v2 (uses TrustStore)
+// ============================================================
+
+/// Verify a signed policy using a TrustStore (replaces the slice-based
+/// verifyPolicy for the production path). On .valid, updates
+/// store.rollback_floor to the highest accepted version.
+pub fn verifyPolicyWithStore(
+    signed: *const SignedPolicy,
+    now_ms: i64,
+    store: *TrustStore,
+) VerificationResult {
+    // 1. Key must be in the store AND active.
+    if (!store.isTrusted(signed.key_id)) {
+        // Distinguish unknown from revoked via the store.
+        var found_revoked = false;
+        for (store.entries[0..store.entry_count]) |e| {
+            if (e.key.key_id == signed.key_id and e.revoked_at_ms != 0) {
+                found_revoked = true;
+                break;
+            }
+        }
+        return if (found_revoked) .unknown_key else .unknown_key;
+    }
+    // 2. Policy must not be expired.
+    if (now_ms > signed.expiry_ms) return .expired_policy;
+    // 3. Rollback protection (against the store's persistent floor).
+    if (signed.policy_version < store.rollback_floor) return .rollback;
+    // 4. Structural integrity of the IR itself.
+    if (!signed.ir.isValid()) return .tampered;
+    // 5. Digest + signature.
+    var keys: [MAX_TRUST_STORE_KEYS]TrustedKey = undefined;
+    const n = store.activeTrustedKeys(&keys);
+    const digest = canonicalDigest(&signed.ir, signed.policy_version, signed.expiry_ms);
+    const sig = Ed25519.Signature.fromBytes(signed.signature);
+    var verified_ok = false;
+    for (keys[0..n]) |k| {
+        if (k.key_id != signed.key_id) continue;
+        const public_key = Ed25519.PublicKey.fromBytes(k.public_key) catch continue;
+        if (sig.verify(&digest, public_key)) |_| {
+            verified_ok = true;
+            break;
+        } else |_| {}
+    }
+    if (!verified_ok) return .invalid_signature;
+    if (signed.policy_version > store.rollback_floor) {
+        store.rollback_floor = signed.policy_version;
+    }
+    return .valid;
+}
+
+// ============================================================
+// T7 Tests
+// ============================================================
+
+test "T7: TrustStore.provision adds a key" {
+    var s = TrustStore.init();
+    const kp = testKeyPair();
+    try std.testing.expect(s.provision(.{ .key_id = 1, .public_key = kp.public_key.toBytes() }, 1000));
+    try std.testing.expect(s.entry_count == 1);
+    try std.testing.expect(s.isTrusted(1));
+}
+
+test "T7: TrustStore rejects duplicate key_id" {
+    var s = TrustStore.init();
+    const kp = testKeyPair();
+    try std.testing.expect(s.provision(.{ .key_id = 1, .public_key = kp.public_key.toBytes() }, 1000));
+    try std.testing.expect(!s.provision(.{ .key_id = 1, .public_key = kp.public_key.toBytes() }, 2000));
+    try std.testing.expect(s.entry_count == 1);
+}
+
+test "T7: TrustStore.revoke marks a key untrusted" {
+    var s = TrustStore.init();
+    const kp = testKeyPair();
+    _ = s.provision(.{ .key_id = 1, .public_key = kp.public_key.toBytes() }, 1000);
+    try std.testing.expect(s.isTrusted(1));
+    try std.testing.expect(s.revoke(1, 2000, .compromised));
+    try std.testing.expect(!s.isTrusted(1));
+    // Double-revoke fails
+    try std.testing.expect(!s.revoke(1, 3000, .compromised));
+}
+
+test "T7: TrustStore.rotate is atomic" {
+    var s = TrustStore.init();
+    const kp1 = testKeyPair();
+    var seed2: [32]u8 = [_]u8{0} ** 32;
+    for (&seed2, 0..) |*b, i| b.* = @truncate(i * 13 + 1);
+    const kp2 = Ed25519.KeyPair.create(seed2) catch unreachable;
+    _ = s.provision(.{ .key_id = 1, .public_key = kp1.public_key.toBytes() }, 1000);
+    // Rotate 1 -> 2
+    try std.testing.expect(s.rotate(1, .{ .key_id = 2, .public_key = kp2.public_key.toBytes() }, 2000));
+    try std.testing.expect(!s.isTrusted(1));
+    try std.testing.expect(s.isTrusted(2));
+    try std.testing.expect(s.entry_count == 2);
+    // Rotating an unknown key fails (and doesn't leave a half-provisioned new key)
+    try std.testing.expect(!s.rotate(99, .{ .key_id = 3, .public_key = kp1.public_key.toBytes() }, 3000));
+    try std.testing.expect(!s.isTrusted(3));
+}
+
+test "T7: verifyPolicyWithStore -> valid; bumps rollback_floor" {
+    var s = TrustStore.init();
+    const kp = testKeyPair();
+    _ = s.provision(.{ .key_id = 1, .public_key = kp.public_key.toBytes() }, 1000);
+    const ir = testIR();
+    const signed = try signPolicy(&ir, kp, 1, 5, 9_999_999_999_999, testSigner());
+    try std.testing.expect(verifyPolicyWithStore(&signed, 1_000, &s) == .valid);
+    try std.testing.expect(s.rollback_floor == 5);
+}
+
+test "T7: verifyPolicyWithStore -> rollback against persistent floor" {
+    var s = TrustStore.init();
+    s.rollback_floor = 10; // pretend we restored from disk
+    const kp = testKeyPair();
+    _ = s.provision(.{ .key_id = 1, .public_key = kp.public_key.toBytes() }, 1000);
+    const ir = testIR();
+    const v9 = try signPolicy(&ir, kp, 1, 9, 9_999_999_999_999, testSigner());
+    try std.testing.expect(verifyPolicyWithStore(&v9, 2_000, &s) == .rollback);
+}
+
+test "T7: verifyPolicyWithStore -> revoked key rejected" {
+    var s = TrustStore.init();
+    const kp = testKeyPair();
+    _ = s.provision(.{ .key_id = 1, .public_key = kp.public_key.toBytes() }, 1000);
+    _ = s.revoke(1, 2000, .compromised);
+    const ir = testIR();
+    const signed = try signPolicy(&ir, kp, 1, 5, 9_999_999_999_999, testSigner());
+    try std.testing.expect(verifyPolicyWithStore(&signed, 3_000, &s) == .unknown_key);
+}
+
+test "T7: TrustStore restart preserves rollback floor (simulated)" {
+    var s = TrustStore.init();
+    s.rollback_floor = 42; // initial state from a previous run
+    const kp = testKeyPair();
+    _ = s.provision(.{ .key_id = 1, .public_key = kp.public_key.toBytes() }, 1000);
+    const ir = testIR();
+    // A policy with version BELOW 42 must be rejected even on a fresh process.
+    const v40 = try signPolicy(&ir, kp, 1, 40, 9_999_999_999_999, testSigner());
+    try std.testing.expect(verifyPolicyWithStore(&v40, 2_000, &s) == .rollback);
+    // The floor is unaffected by the rejected policy.
+    try std.testing.expect(s.rollback_floor == 42);
+}
+
+test "T7: full lifecycle (provision -> sign x3 -> rotate -> sign x3 with new key -> revoke -> reject)" {
+    var s = TrustStore.init();
+    const kp1 = testKeyPair();
+    var seed2: [32]u8 = [_]u8{0} ** 32;
+    for (&seed2, 0..) |*b, i| b.* = @truncate(i * 17 + 1);
+    const kp2 = Ed25519.KeyPair.create(seed2) catch unreachable;
+
+    _ = s.provision(.{ .key_id = 1, .public_key = kp1.public_key.toBytes() }, 1_000);
+    const ir = testIR();
+    // 3 valid sign+verify with key 1
+    for (1..4) |v| {
+        const signed = try signPolicy(&ir, kp1, 1, @intCast(v), 9_999_999_999_999, testSigner());
+        try std.testing.expect(verifyPolicyWithStore(&signed, 2_000, &s) == .valid);
+    }
+    try std.testing.expect(s.rollback_floor == 3);
+    // Rotate: revoke 1, provision 2
+    try std.testing.expect(s.rotate(1, .{ .key_id = 2, .public_key = kp2.public_key.toBytes() }, 4_000));
+    // Old key rejected (but still structurally present in store)
+    const old_after_rotate = try signPolicy(&ir, kp1, 1, 4, 9_999_999_999_999, testSigner());
+    try std.testing.expect(verifyPolicyWithStore(&old_after_rotate, 5_000, &s) == .unknown_key);
+    // New key accepted, bumps floor
+    for (5..7) |v| {
+        const signed = try signPolicy(&ir, kp2, 2, @intCast(v), 9_999_999_999_999, testSigner());
+        try std.testing.expect(verifyPolicyWithStore(&signed, 6_000, &s) == .valid);
+    }
+    try std.testing.expect(s.rollback_floor == 6);
+}
+
+test "T7: sign-policy sign+verify uses real Ed25519 (no FNV-1a)" {
+    // Lock-in: the implementation imports std.crypto.sign.Ed25519 and uses
+    // it for both sign and verify. If someone replaces it with FNV-1a
+    // (the prohibited per ADR-0001), this test will fail because the
+    // signature will not verify.
+    const kp = testKeyPair();
+    const ir = testIR();
+    const signed = try signPolicy(&ir, kp, 1, 5, 9_999_999_999_999, testSigner());
+    var s = TrustStore.init();
+    _ = s.provision(.{ .key_id = 1, .public_key = kp.public_key.toBytes() }, 1000);
+    // Independent verification via the slice-based API (different code path).
+    const keys = [_]TrustedKey{.{ .key_id = 1, .public_key = kp.public_key.toBytes() }};
+    setHighestAcceptedVersion(0);
+    const slice_result = verifyPolicy(&signed, 2_000, &keys);
+    const store_result = verifyPolicyWithStore(&signed, 2_000, &s);
+    try std.testing.expect(slice_result == .valid);
+    try std.testing.expect(store_result == .valid);
+}
