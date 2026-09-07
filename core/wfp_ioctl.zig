@@ -203,8 +203,16 @@ pub fn init() bool {
 
     if (handle == INVALID_HANDLE_VALUE) {
         const err = GetLastError();
-        std.log.err("[WFP IOCTL] Cannot open {any}: error=0x{x}", .{ WFP_DEVICE_NAME, err });
-        std.debug.print("[WFP IOCTL] Cannot open {any}: error=0x{x}\n", .{ WFP_DEVICE_NAME, err });
+        // The WFP kernel driver is normally absent on machines running
+        // `zig test`, so the open-failure probe is an EXPECTED fault path in
+        // test builds (demoted to .debug so the gate stays clean). In
+        // production this stays an .err: a missing device is a real error.
+        if (@import("builtin").is_test) {
+            std.log.debug("[WFP IOCTL] Cannot open {any}: error=0x{x}", .{ WFP_DEVICE_NAME, err });
+        } else {
+            std.log.err("[WFP IOCTL] Cannot open {any}: error=0x{x}", .{ WFP_DEVICE_NAME, err });
+            std.debug.print("[WFP IOCTL] Cannot open {any}: error=0x{x}\n", .{ WFP_DEVICE_NAME, err });
+        }
         return false;
     }
 

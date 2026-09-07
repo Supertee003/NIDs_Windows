@@ -89,6 +89,27 @@ pub fn isFabricInitialized() bool {
     return g_fabric_initialized;
 }
 
+/// Returns the active FabricConfig (set at initFabric time).
+/// (Public accessor for the fabric facade's backpressure tracking.)
+pub fn getConfig() FabricConfig {
+    return g_config;
+}
+
+pub const PRIORITY_COUNT: usize = 3;
+
+/// Returns the pending count per priority level.
+/// (Public accessor for the fabric facade's backpressure tracking.)
+pub fn pendingByPriority() [PRIORITY_COUNT]usize {
+    var counts = [_]usize{ 0, 0, 0 };
+    if (!g_fabric_initialized) return counts;
+    if (g_priority_queue) |*queue| {
+        counts[0] = queue.lenByPriority(pq.Priority.high);
+        counts[1] = queue.lenByPriority(pq.Priority.normal);
+        counts[2] = queue.lenByPriority(pq.Priority.low);
+    }
+    return counts;
+}
+
 // ============================================================
 // Sensor Interface (AEGIS-006: Nose contract)
 // ============================================================

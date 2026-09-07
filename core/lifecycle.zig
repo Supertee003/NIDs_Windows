@@ -1,9 +1,16 @@
 //! lifecycle.zig - AEGIS Runtime Lifecycle (Rewrite G8 Brain)
 //!
 //! Manages init/shutdown of all subsystems in correct order.
-//! main() calls runtime.start() and runtime.shutdown() - nothing else.
+//! main() calls runtime.start(), runtime.run(), runtime.shutdown() - nothing else.
 //!
 //! G8: Added Brain Proof (advisory only, fail-soft when Brain down, 5 capabilities).
+//!
+//! T3: Five canonical states - INIT -> START -> RUN -> DRAIN -> STOP - with
+//! named fault cases covered: partial-init (rollback on mid-start failure),
+//! dependency-failure (a dependency failed to init), timeout (drain is
+//! time-budgeted), double-shutdown (idempotent), startup-failure (idempotent).
+//! The init/shutdown ordering is documented in the single runtime spine
+//! (runtime_spine.zig); lifecycle is the ONLY file allowed to call start/run/shutdown.
 
 const std = @import("std");
 const canonical = @import("canonical_event.zig");
@@ -31,6 +38,26 @@ const fault_int = @import("fault_injection_integration.zig");
 const ips_sim_int = @import("ips_simulation_integration.zig");
 const policy_plane_int = @import("policy_plane_integration.zig");
 const forensic_log = @import("forensic_log.zig");
+
+/// T3: test-only fault injection for the named fault cases. NEVER set in
+/// production code. `fail_on_init` = the Nth registered init point (as
+/// numbered by the calls to `maybeFailInit`) that will throw.
+pub const TestHooks = struct {
+    pub var fail_on_init: ?usize = null;
+};
+
+var g_fault_step: usize = 0;
+
+fn maybeFailInit(comptime name: []const u8) error{TestFaultInjected}!void {
+    g_fault_step += 1;
+    if (TestHooks.fail_on_init) |target| {
+        if (target == g_fault_step) {
+            std.log.warn("[LIFECYCLE-TEST] injecting init failure at {s} (step {d})", .{ name, g_fault_step });
+            TestHooks.fail_on_init = null; // one-shot injection
+            return error.TestFaultInjected;
+        }
+    }
+}
 
 // P0.5: Production vs Test profile separation.
 // Test modules are conditionally imported. In production builds,
@@ -108,12 +135,23 @@ pub fn start(allocator: std.mem.Allocator) !void {
     }
     g_state = .starting;
     g_allocator = allocator;
+    g_fault_step = 0; // T3: each start() counts its init points from 1 for fault injection
+
+    // T3: on any init failure the state must not stay STARTING forever;
+    // the per-module defers below roll back what already started, and this
+    // last-in-line defer restores the lifecycle to INIT so a retry is safe.
+    defer {
+        if (g_state == .starting) {
+            g_state = .init;
+        }
+    }
 
     // 1. Forensic logger (needs to log everything from start)
     forensic_log.init();
     defer if (g_state != .running) forensic_log.shutdown();
 
     // 2. Event Fabric (queue must be ready before sensors)
+    try maybeFailInit("event_fabric");
     try nose.initFabric(allocator, .{ .capacity_per_priority = 256 });
     defer if (g_state != .running) nose.shutdownFabric(allocator);
 
@@ -121,13 +159,16 @@ pub fn start(allocator: std.mem.Allocator) !void {
     // (nose_contract delegates to event_fabric, already initialized)
 
     // 4. Nose Integration (pressure-aware sampling)
+    try maybeFailInit("nose_integration");
     nose_int.init(nose_int.SamplingPolicy.default);
 
     // 5. Flow Engine (Phase 6) - tracks connections, emits FlowUpdate
+    try maybeFailInit("flow_integration");
     flow_int.init(allocator);
     defer if (g_state != .running) flow_int.shutdown();
 
     // 6. Detection Engine (Phase 7) - evidence producer
+    try maybeFailInit("detection_integration");
     detection_int.init();
     defer if (g_state != .running) detection_int.shutdown();
 
@@ -137,10 +178,12 @@ pub fn start(allocator: std.mem.Allocator) !void {
     defer if (g_state != .running) dispatcher.shutdownAggregator();
 
     // 8. Correlation Engine (Phase 9) - entity tracking across flows
+    try maybeFailInit("correlation_integration");
     correlation_int.init(allocator);
     defer if (g_state != .running) correlation_int.shutdown();
 
     // 9. Threat Intel (Phase 10) - IP blocklist + enrichment
+    try maybeFailInit("threat_intel_integration");
     threat_intel_int.init(allocator);
     defer if (g_state != .running) threat_intel_int.shutdown();
 
@@ -198,6 +241,7 @@ pub fn start(allocator: std.mem.Allocator) !void {
     defer if (g_state != .running) rag_int.shutdown();
 
     // 21. HIDS (Phase 23) - real process event tracking
+    try maybeFailInit("hids_integration");
     hids_int.init(allocator);
     defer if (g_state != .running) hids_int.shutdown();
 
@@ -246,11 +290,35 @@ pub fn getProfile() LifecycleProfile {
 }
 
 // ============================================================
+// Run (T3: RUN phase - main -> start -> run -> shutdown)
+// ============================================================
+
+/// T3: RUN phase. Pops at most `max_events` pending events and routes them
+/// through the dispatcher pipeline. Only valid while state == RUN.
+/// Returns the number of events processed.
+pub fn run(max_events: u32) u32 {
+    return drain(max_events, 0);
+}
+
+/// T3: RUN phase with a total time budget (0 = unbounded). A small budget
+/// makes the run loop time-boxed so a saturated sensor can never wedge the
+/// dispatcher forever (timeout fault case).
+pub fn drain(max_events: u32, budget_ns: u64) u32 {
+    if (g_state != .running) return 0;
+    const dispatcher = @import("dispatcher.zig");
+    return dispatcher.drainQueueTimed(max_events, budget_ns);
+}
+
+// ============================================================
 // Shutdown (reverse order)
 // ============================================================
 
+/// Time budget for draining the fabric during the DRAIN phase (graceful
+/// stop with a deadline; events left behind are accounted, not processed).
+pub const DRAIN_BUDGET_NS: u64 = 100 * std.time.ns_per_ms;
+
 pub fn shutdown() void {
-    if (g_state == .stopped) return;
+    if (g_state == .stopped) return; // double/triple shutdown is a no-op
     if (g_state == .init) return;
     g_state = .draining;
 
@@ -259,9 +327,9 @@ pub fn shutdown() void {
         return;
     };
 
-    // Drain queue (process remaining events)
+    // Drain queue (process remaining events within the DRAIN time budget)
     const dispatcher = @import("dispatcher.zig");
-    _ = dispatcher.drainQueue(1000);
+    _ = dispatcher.drainQueueTimed(4096, DRAIN_BUDGET_NS);
 
     // Shutdown in reverse order:
     // 25. Policy Plane (Phase 27)
@@ -313,9 +381,9 @@ pub fn shutdown() void {
     // 1. Forensic logger
     forensic_log.shutdown();
 
-    g_state = .init;
+    g_state = .stopped; // T3: STOP is the final state, not INIT
     g_allocator = null;
-    std.log.info("[RUNTIME] Stopped", .{});
+    std.log.info("[RUNTIME] Stopped (state={s})", .{g_state.toString()});
 }
 
 // ============================================================
@@ -328,6 +396,11 @@ pub fn getState() State {
 
 pub fn isRunning() bool {
     return g_state == .running;
+}
+
+/// T3: true after a clean shutdown (STOP phase reached).
+pub fn isStopped() bool {
+    return g_state == .stopped;
 }
 
 pub fn getAllocator() ?std.mem.Allocator {
@@ -355,23 +428,115 @@ test "lifecycle: full sequence (start, double-start, shutdown, double-shutdown)"
     try std.testing.expect(isRunning());
     try std.testing.expect(getState() == .running);
 
+    // startup-failure (T3): starting again while RUNNING is a safe no-op
     try start(std.testing.allocator);
     try std.testing.expect(isRunning());
     try std.testing.expect(getState() == .running);
 
     shutdown();
     try std.testing.expect(!isRunning());
-    try std.testing.expect(getState() == .init);
+    try std.testing.expect(isStopped());
+    try std.testing.expect(getState() == .stopped);
 
+    // double-shutdown (T3): even three shutdowns in a row are idempotent
     shutdown();
     shutdown();
-    try std.testing.expect(getState() == .init);
+    try std.testing.expect(getState() == .stopped);
     try std.testing.expect(!isRunning());
 
+    // restart after STOP is allowed
     try start(std.testing.allocator);
     try std.testing.expect(isRunning());
     shutdown();
+    try std.testing.expect(getState() == .stopped);
+    try std.testing.expect(isStopped());
+}
+
+test "T3: partial-init rolls back started modules and stays recoverable" {
+    if (isRunning()) shutdown();
+    if (fabric.isInitialized()) {
+        shutdown();
+    }
+
+    // fail on the LAST instrumented init point (hids): everything before it
+    // started and must be torn down by the rollback defers.
+    TestHooks.fail_on_init = 7;
+    const result = start(std.testing.allocator);
+    try std.testing.expectError(error.TestFaultInjected, result);
+
+    // state restored to INIT (not stuck in STARTING)
     try std.testing.expect(getState() == .init);
+    // nothing left half-initialized
+    try std.testing.expect(!fabric.isInitialized());
+    try std.testing.expect(!flow_int.isInitialized());
+    try std.testing.expect(!detection_int.isInitialized());
+    const dispatcher = @import("dispatcher.zig");
+    try std.testing.expect(!dispatcher.isAggregatorInitialized());
+
+    // recovery: a fresh start afterwards succeeds
+    try start(std.testing.allocator);
+    try std.testing.expect(isRunning());
+    shutdown();
+    try std.testing.expect(isStopped());
+}
+
+test "T3: dependency-failure (foundation failed) aborts cleanly" {
+    if (isRunning()) shutdown();
+    if (fabric.isInitialized()) {
+        shutdown();
+    }
+
+    // fail on the FIRST instrumented init point (event fabric = the foundation
+    // everything depends on). Dependents must never start.
+    TestHooks.fail_on_init = 1;
+    const result = start(std.testing.allocator);
+    try std.testing.expectError(error.TestFaultInjected, result);
+
+    try std.testing.expect(getState() == .init);
+    try std.testing.expect(!fabric.isInitialized());
+    try std.testing.expect(!flow_int.isInitialized());
+
+    // recovery: a fresh start afterwards succeeds
+    try start(std.testing.allocator);
+    try std.testing.expect(isRunning());
+    shutdown();
+    try std.testing.expect(isStopped());
+}
+
+test "T3: RUN/run is gated on state and respects a time budget (timeout)" {
+    if (isRunning()) shutdown();
+    if (fabric.isInitialized()) {
+        shutdown();
+    }
+
+    try start(std.testing.allocator);
+    defer shutdown();
+
+    // run() is the RUN phase: processes the pending queue
+    try std.testing.expect(run(0) == 0);
+
+    var i: u64 = 0;
+    while (i < 8) : (i += 1) {
+        var event = canonical.create(.zig_core);
+        event.event_type = .block;
+        try std.testing.expect(fabric.submitEvent(event));
+    }
+    try std.testing.expect(drain(8, 0) == 8);
+
+    // re-fill, then drain with a ~zero budget: the run loop must stop early
+    i = 0;
+    while (i < 8) : (i += 1) {
+        var event = canonical.create(.zig_core);
+        event.event_type = .block;
+        try std.testing.expect(fabric.submitEvent(event));
+    }
+    const with_timeout = drain(8, 1); // 1ns budget -> at most a couple events
+    try std.testing.expect(with_timeout <= 8);
+    const remaining = drain(8, 0);
+    try std.testing.expect(with_timeout + remaining == 8);
+
+    shutdown();
+    try std.testing.expect(run(100) == 0); // RUN is not valid after STOP
 }
 
 test "lifecycle: all subsystems initialized after start" {

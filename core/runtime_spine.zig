@@ -1,10 +1,16 @@
-//! runtime_spine.zig - AEGIS G3 Runtime Spine (v5.0 Section 15-19)
+//! runtime_spine.zig - AEGIS G3/T3 Runtime Spine (v5.0 Section 15-19)
 //!
 //! F06: Runtime dispatcher proof.
 //! v5.0 Section 16: Separate Runtime from Tooling
 //!   Production runtime: Fabric, Flow, Detection, Verdict, Correlation,
 //!     Threat Intel, Brain, Policy, PEP, Forensics
 //!   Tooling: Replay, E2E, Performance, Canary, Fault Injection, Release
+//!
+//! T3: This file is the SINGLE runtime spine. It is the one authoritative
+//! registry of every runtime module (production + optional + tooling + proof),
+//! its init order, its shutdown order (reverse of init), and whether it sits
+//! on the golden path. No other file may maintain a second module list with
+//! different ordering (violated = "duplicate spine").
 //!
 //! v5.0 Section 17: Lifecycle
 //!   main -> runtime.start() -> runtime.run() -> runtime.shutdown()
@@ -22,7 +28,7 @@
 const std = @import("std");
 
 // ============================================================
-// Module Classification (v5.0 Section 16)
+// Module Classification (v5.0 Section 16 + T3)
 // ============================================================
 
 pub const ModuleCategory = enum(u8) {
@@ -32,12 +38,18 @@ pub const ModuleCategory = enum(u8) {
     tooling = 1,
     /// Base infrastructure - shared by both.
     base = 2,
+    /// Optional runtime - started in every profile but not on the golden path.
+    optional = 3,
+    /// Proof - benchmark/proof/validation modules, never in production.
+    proof = 4,
 
     pub fn toString(self: ModuleCategory) []const u8 {
         return switch (self) {
             .production => "PRODUCTION",
             .tooling => "TOOLING",
             .base => "BASE",
+            .optional => "OPTIONAL",
+            .proof => "PROOF",
         };
     }
 
@@ -48,13 +60,20 @@ pub const ModuleCategory = enum(u8) {
     pub fn isTooling(self: ModuleCategory) bool {
         return self == .tooling;
     }
+
+    /// True if this category is started in the production profile.
+    pub fn runsInProduction(self: ModuleCategory) bool {
+        return self == .production or self == .optional or self == .base;
+    }
 };
 
 pub const ModuleInfo = struct {
     name: []const u8,
     category: ModuleCategory,
-    /// Init step number (order matters).
+    /// Init step number (order matters). Must be unique across all modules.
     init_order: u8,
+    /// Shutdown step number (reverse of init order). Unique across all modules.
+    shutdown_order: u8,
     /// Whether this module is required for Golden Path.
     golden_path: bool,
 };
@@ -65,46 +84,102 @@ pub const ModuleInfo = struct {
 
 /// Production runtime modules (v5.0 Section 16).
 /// These MUST be initialized for the system to function.
+/// Golden-path ONLY modules: every production module must be on the golden path.
 pub const PRODUCTION_MODULES = [_]ModuleInfo{
-    .{ .name = "forensic_log", .category = .production, .init_order = 1, .golden_path = true },
-    .{ .name = "event_fabric", .category = .production, .init_order = 2, .golden_path = true },
-    .{ .name = "nose_integration", .category = .production, .init_order = 4, .golden_path = true },
-    .{ .name = "flow_integration", .category = .production, .init_order = 5, .golden_path = true },
-    .{ .name = "detection_integration", .category = .production, .init_order = 6, .golden_path = true },
-    .{ .name = "verdict_aggregator", .category = .production, .init_order = 7, .golden_path = true },
-    .{ .name = "correlation_integration", .category = .production, .init_order = 8, .golden_path = true },
-    .{ .name = "threat_intel_integration", .category = .production, .init_order = 9, .golden_path = true },
-    .{ .name = "brain_integration", .category = .production, .init_order = 10, .golden_path = true },
-    .{ .name = "policy_integration", .category = .production, .init_order = 11, .golden_path = true },
-    .{ .name = "rust_pep_integration", .category = .production, .init_order = 12, .golden_path = true },
-    .{ .name = "forensics_integration", .category = .production, .init_order = 13, .golden_path = true },
+    .{ .name = "forensic_log", .category = .production, .init_order = 1, .shutdown_order = 25, .golden_path = true },
+    .{ .name = "event_fabric", .category = .production, .init_order = 2, .shutdown_order = 24, .golden_path = true },
+    .{ .name = "nose_integration", .category = .production, .init_order = 4, .shutdown_order = 22, .golden_path = true },
+    .{ .name = "flow_integration", .category = .production, .init_order = 5, .shutdown_order = 21, .golden_path = true },
+    .{ .name = "detection_integration", .category = .production, .init_order = 6, .shutdown_order = 20, .golden_path = true },
+    .{ .name = "verdict_aggregator", .category = .production, .init_order = 7, .shutdown_order = 19, .golden_path = true },
+    .{ .name = "correlation_integration", .category = .production, .init_order = 8, .shutdown_order = 18, .golden_path = true },
+    .{ .name = "threat_intel_integration", .category = .production, .init_order = 9, .shutdown_order = 17, .golden_path = true },
+    .{ .name = "brain_integration", .category = .production, .init_order = 10, .shutdown_order = 16, .golden_path = true },
+    .{ .name = "policy_integration", .category = .production, .init_order = 11, .shutdown_order = 15, .golden_path = true },
+    .{ .name = "rust_pep_integration", .category = .production, .init_order = 12, .shutdown_order = 14, .golden_path = true },
+    .{ .name = "forensics_integration", .category = .production, .init_order = 13, .shutdown_order = 13, .golden_path = true },
 };
 
-/// Tooling modules (v5.0 Section 16).
-/// These are optional and should NOT be required by production runtime.
+/// Optional runtime modules (T3). Started in every profile but NOT on the
+/// golden path and not required for the core pipeline to function.
+pub const OPTIONAL_MODULES = [_]ModuleInfo{
+    .{ .name = "xdr_harden_integration", .category = .optional, .init_order = 18, .shutdown_order = 8, .golden_path = false },
+    .{ .name = "release_engineering_integration", .category = .optional, .init_order = 19, .shutdown_order = 7, .golden_path = false },
+    .{ .name = "rag_integration", .category = .optional, .init_order = 20, .shutdown_order = 6, .golden_path = false },
+    .{ .name = "hids_integration", .category = .optional, .init_order = 21, .shutdown_order = 5, .golden_path = false },
+    .{ .name = "concurrency_harden_integration", .category = .optional, .init_order = 22, .shutdown_order = 4, .golden_path = false },
+    .{ .name = "policy_plane_integration", .category = .optional, .init_order = 25, .shutdown_order = 1, .golden_path = false },
+};
+
+/// Tooling modules (v5.0 Section 16 + T3).
+/// Optional, never required by production runtime.
 pub const TOOLING_MODULES = [_]ModuleInfo{
-    .{ .name = "replay_integration", .category = .tooling, .init_order = 14, .golden_path = false },
-    .{ .name = "e2e_harness_integration", .category = .tooling, .init_order = 15, .golden_path = false },
-    .{ .name = "performance_integration", .category = .tooling, .init_order = 16, .golden_path = false },
-    .{ .name = "ips_canary_integration", .category = .tooling, .init_order = 17, .golden_path = false },
-    .{ .name = "xdr_integration", .category = .tooling, .init_order = 18, .golden_path = false },
-    .{ .name = "release_engineering_integration", .category = .tooling, .init_order = 19, .golden_path = false },
-    .{ .name = "rag_integration", .category = .tooling, .init_order = 20, .golden_path = false },
-    .{ .name = "hids_integration", .category = .tooling, .init_order = 21, .golden_path = false },
-    .{ .name = "concurrency_integration", .category = .tooling, .init_order = 22, .golden_path = false },
-    .{ .name = "fault_injection_integration", .category = .tooling, .init_order = 23, .golden_path = false },
-    .{ .name = "ips_simulation_integration", .category = .tooling, .init_order = 24, .golden_path = false },
-    .{ .name = "policy_plane_integration", .category = .tooling, .init_order = 25, .golden_path = false },
+    .{ .name = "replay_integration", .category = .tooling, .init_order = 14, .shutdown_order = 12, .golden_path = false },
+};
+
+/// Proof modules (T3). Benchmark/proof/validation, NEVER part of the
+/// production profile. Kept separate from tooling so production startup is
+/// provably free of test/benchmark code.
+pub const PROOF_MODULES = [_]ModuleInfo{
+    .{ .name = "e2e_harness_integration", .category = .proof, .init_order = 15, .shutdown_order = 11, .golden_path = false },
+    .{ .name = "performance_integration", .category = .proof, .init_order = 16, .shutdown_order = 10, .golden_path = false },
+    .{ .name = "ips_canary_integration", .category = .proof, .init_order = 17, .shutdown_order = 9, .golden_path = false },
+    .{ .name = "fault_injection_integration", .category = .proof, .init_order = 23, .shutdown_order = 3, .golden_path = false },
+    .{ .name = "ips_simulation_integration", .category = .proof, .init_order = 24, .shutdown_order = 2, .golden_path = false },
 };
 
 /// Base infrastructure modules.
 pub const BASE_MODULES = [_]ModuleInfo{
-    .{ .name = "canonical_event", .category = .base, .init_order = 0, .golden_path = true },
-    .{ .name = "wire_event", .category = .base, .init_order = 0, .golden_path = false },
-    .{ .name = "event_queue", .category = .base, .init_order = 0, .golden_path = false },
-    .{ .name = "priority_queue", .category = .base, .init_order = 0, .golden_path = false },
-    .{ .name = "nose_contract", .category = .base, .init_order = 3, .golden_path = true },
+    .{ .name = "canonical_event", .category = .base, .init_order = 0, .shutdown_order = 0, .golden_path = true },
+    .{ .name = "wire_event", .category = .base, .init_order = 0, .shutdown_order = 0, .golden_path = false },
+    .{ .name = "event_queue", .category = .base, .init_order = 0, .shutdown_order = 0, .golden_path = false },
+    .{ .name = "priority_queue", .category = .base, .init_order = 0, .shutdown_order = 0, .golden_path = false },
+    .{ .name = "nose_contract", .category = .base, .init_order = 3, .shutdown_order = 23, .golden_path = true },
 };
+
+/// Highest init order assigned to any runtime (non-base) module.
+/// Shutdown is its mirror image: a module with init_order N starts first and
+/// shuts down last (shutdown_order = MAX_RUNTIME_INIT_ORDER + 1 - init_order).
+pub const MAX_RUNTIME_INIT_ORDER: u8 = 25;
+
+/// The complete runtime module set (spine). Every runtime module appears
+/// exactly once -> single source of truth (no duplicate spine).
+pub const ALL_RUNTIME_MODULES = PRODUCTION_MODULES ++ OPTIONAL_MODULES ++ TOOLING_MODULES ++ PROOF_MODULES;
+
+/// Returns the number of runtime modules (excludes base infrastructure).
+pub fn runtimeModuleCount() usize {
+    return ALL_RUNTIME_MODULES.len;
+}
+
+/// T3: true if every runtime module name is unique (no duplicate spine).
+pub fn namesAreUnique() bool {
+    for (ALL_RUNTIME_MODULES, 0..) |m, i| {
+        for (ALL_RUNTIME_MODULES[i + 1 ..]) |other| {
+            if (std.mem.eql(u8, m.name, other.name)) return false;
+        }
+    }
+    return true;
+}
+
+/// T3: true if every init_order is unique across the spine.
+pub fn initOrdersAreUnique() bool {
+    for (ALL_RUNTIME_MODULES, 0..) |m, i| {
+        for (ALL_RUNTIME_MODULES[i + 1 ..]) |other| {
+            if (m.init_order == other.init_order) return false;
+        }
+    }
+    return true;
+}
+
+/// T3: shutdown orders are init orders mirrored around the midpoint, so
+/// tearing down in shutdown_order sequence is exactly the reverse of startup.
+pub fn shutdownOrdersMirrorInit() bool {
+    for (ALL_RUNTIME_MODULES) |m| {
+        const expected: u8 = MAX_RUNTIME_INIT_ORDER + 1 - m.init_order;
+        if (m.shutdown_order != expected) return false;
+    }
+    return true;
+}
 
 // ============================================================
 // Lifecycle Verification (v5.0 Section 17)
@@ -140,9 +215,10 @@ pub fn verifyLifecyclePattern() LifecycleCheck {
     // In the current implementation, lifecycle.zig has:
     // - start(allocator) -> initializes all subsystems in order
     // - shutdown() -> shuts down in reverse order
-    // - No explicit run() yet, but dispatcher.drainQueue() serves as the run loop
+    // - run() -> dispatcher.drainQueue() serves as the run loop
 
-    // Check that production modules are initialized before tooling
+    // T3: production modules must all initialize before any optional,
+    // tooling, or proof module may start.
     const prod_max_order = blk: {
         var max: u8 = 0;
         for (PRODUCTION_MODULES) |m| {
@@ -151,26 +227,26 @@ pub fn verifyLifecyclePattern() LifecycleCheck {
         break :blk max;
     };
 
-    const tooling_min_order = blk: {
+    const non_prod_min_order = blk: {
         var min: u8 = 255;
-        for (TOOLING_MODULES) |m| {
+        for (OPTIONAL_MODULES ++ TOOLING_MODULES ++ PROOF_MODULES) |m| {
             if (m.init_order < min) min = m.init_order;
         }
         break :blk min;
     };
 
-    if (prod_max_order < tooling_min_order) {
+    if (prod_max_order < non_prod_min_order) {
         return .{
             .phase = .start,
             .passed = true,
-            .description = "production modules initialized before tooling (correct ordering)",
+            .description = "production modules initialized before optional/tooling/proof (correct ordering)",
         };
     }
 
     return .{
         .phase = .start,
         .passed = false,
-        .description = "tooling modules initialized before production (wrong ordering)",
+        .description = "non-production modules initialized before production (wrong ordering)",
     };
 }
 
@@ -385,21 +461,26 @@ pub const GoldenPathResult = struct {
 
 pub const RuntimeSpineReport = struct {
     production_module_count: usize,
+    optional_module_count: usize,
     tooling_module_count: usize,
+    proof_module_count: usize,
     base_module_count: usize,
     lifecycle_pattern_ok: bool,
     worker_model_ok: bool,
     golden_path_stages: u8,
 
     pub fn isComplete(self: RuntimeSpineReport) bool {
-        return self.lifecycle_pattern_ok and self.worker_model_ok;
+        return self.lifecycle_pattern_ok and self.worker_model_ok and
+            self.production_module_count == PRODUCTION_MODULES.len;
     }
 };
 
 pub fn generateReport() RuntimeSpineReport {
     return .{
         .production_module_count = PRODUCTION_MODULES.len,
+        .optional_module_count = OPTIONAL_MODULES.len,
         .tooling_module_count = TOOLING_MODULES.len,
+        .proof_module_count = PROOF_MODULES.len,
         .base_module_count = BASE_MODULES.len,
         .lifecycle_pattern_ok = verifyLifecyclePattern().passed,
         .worker_model_ok = verifyWorkerModel().uses_dispatcher_worker,
@@ -415,6 +496,8 @@ test "ModuleCategory.toString" {
     try std.testing.expect(std.mem.eql(u8, ModuleCategory.production.toString(), "PRODUCTION"));
     try std.testing.expect(std.mem.eql(u8, ModuleCategory.tooling.toString(), "TOOLING"));
     try std.testing.expect(std.mem.eql(u8, ModuleCategory.base.toString(), "BASE"));
+    try std.testing.expect(std.mem.eql(u8, ModuleCategory.optional.toString(), "OPTIONAL"));
+    try std.testing.expect(std.mem.eql(u8, ModuleCategory.proof.toString(), "PROOF"));
 }
 
 test "ModuleCategory.isProduction and isTooling" {
@@ -424,34 +507,62 @@ test "ModuleCategory.isProduction and isTooling" {
     try std.testing.expect(!ModuleCategory.production.isTooling());
 }
 
+test "ModuleCategory.runsInProduction" {
+    try std.testing.expect(ModuleCategory.production.runsInProduction());
+    try std.testing.expect(ModuleCategory.optional.runsInProduction());
+    try std.testing.expect(ModuleCategory.base.runsInProduction());
+    try std.testing.expect(!ModuleCategory.tooling.runsInProduction());
+    try std.testing.expect(!ModuleCategory.proof.runsInProduction());
+}
+
 test "PRODUCTION_MODULES has 12 entries" {
     try std.testing.expect(PRODUCTION_MODULES.len == 12);
 }
 
-test "TOOLING_MODULES has 12 entries" {
-    try std.testing.expect(TOOLING_MODULES.len == 12);
+test "OPTIONAL_MODULES has 6 entries" {
+    try std.testing.expect(OPTIONAL_MODULES.len == 6);
+}
+
+test "TOOLING_MODULES has 1 entry (replay)" {
+    try std.testing.expect(TOOLING_MODULES.len == 1);
+    try std.testing.expect(std.mem.eql(u8, TOOLING_MODULES[0].name, "replay_integration"));
+}
+
+test "PROOF_MODULES has 5 entries" {
+    try std.testing.expect(PROOF_MODULES.len == 5);
 }
 
 test "BASE_MODULES has 5 entries" {
     try std.testing.expect(BASE_MODULES.len == 5);
 }
 
-test "production modules initialized before tooling" {
-    // v5.0 Section 16: production runtime must not depend on tooling
-    const check = verifyLifecyclePattern();
-    try std.testing.expect(check.passed);
+test "T3: spine covers all 24 runtime modules exactly once (no duplicate spine)" {
+    try std.testing.expect(runtimeModuleCount() == 24);
+    try std.testing.expect(ALL_RUNTIME_MODULES.len == 24);
+    try std.testing.expect(namesAreUnique());
 }
 
-test "all production modules are on golden path" {
+test "T3: init orders are unique across the spine" {
+    try std.testing.expect(initOrdersAreUnique());
+}
+
+test "T3: shutdown orders mirror init orders (reverse startup)" {
+    try std.testing.expect(shutdownOrdersMirrorInit());
+}
+
+test "T3: every golden-path module is production, every production module is on the golden path" {
     for (PRODUCTION_MODULES) |m| {
         try std.testing.expect(m.golden_path == true);
     }
-}
-
-test "no tooling module is on golden path" {
-    for (TOOLING_MODULES) |m| {
+    for (OPTIONAL_MODULES ++ TOOLING_MODULES ++ PROOF_MODULES) |m| {
         try std.testing.expect(m.golden_path == false);
     }
+}
+
+test "production modules initialized before optional/tooling/proof" {
+    // v5.0 Section 16: production runtime must not depend on tooling
+    const check = verifyLifecyclePattern();
+    try std.testing.expect(check.passed);
 }
 
 test "LifecyclePhase.toString" {
@@ -565,7 +676,9 @@ test "GoldenPathTracer clear" {
 test "RuntimeSpineReport isComplete" {
     const report = generateReport();
     try std.testing.expect(report.production_module_count == 12);
-    try std.testing.expect(report.tooling_module_count == 12);
+    try std.testing.expect(report.optional_module_count == 6);
+    try std.testing.expect(report.tooling_module_count == 1);
+    try std.testing.expect(report.proof_module_count == 5);
     try std.testing.expect(report.base_module_count == 5);
     try std.testing.expect(report.isComplete());
 }

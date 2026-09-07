@@ -63,10 +63,16 @@ pub const FlowKey = struct {
     }
 
     /// Compute a 64-bit hash of the normalized key.
+    /// Hashes each field individually so struct padding (undefined bytes) never
+    /// leaks into the hash. Hash is deterministic for a given key.
     pub fn hash(self: FlowKey) u64 {
         const n = self.normalize();
         var hasher = std.hash.Wyhash.init(0xAE615);
-        hasher.update(std.mem.asBytes(&n));
+        hasher.update(std.mem.asBytes(&n.ip_a));
+        hasher.update(std.mem.asBytes(&n.port_a));
+        hasher.update(std.mem.asBytes(&n.ip_b));
+        hasher.update(std.mem.asBytes(&n.port_b));
+        hasher.update(std.mem.asBytes(&n.protocol));
         return hasher.final();
     }
 
@@ -291,6 +297,12 @@ pub const FlowEngine = struct {
     now_ns: i128,
     total_created: u64,
     total_expired: u64,
+    total_evicted: u64,
+    max_flows: usize,
+
+    /// T3: guards the table so a shared engine is safe across sensor threads.
+    /// `.{}` is a valid initializer (impl: Impl = .{}).
+    mutex: std.Thread.Mutex = .{},
 
     pub fn init(allocator: std.mem.Allocator) FlowEngine {
         return .{
@@ -299,6 +311,8 @@ pub const FlowEngine = struct {
             .now_ns = std.time.nanoTimestamp(),
             .total_created = 0,
             .total_expired = 0,
+            .total_evicted = 0,
+            .max_flows = MAX_FLOWS,
         };
     }
 
@@ -309,6 +323,12 @@ pub const FlowEngine = struct {
     /// Atomic upsert (v5.0 Section 22). Returns a FlowSnapshot value copy
     /// and whether the flow was newly created.
     pub fn upsertOrCreate(self: *FlowEngine, key: FlowKey) !UpsertResult {
+        self.mutex.lock();
+        defer self.mutex.unlock();
+        return self.upsertOrCreateLocked(key);
+    }
+
+    fn upsertOrCreateLocked(self: *FlowEngine, key: FlowKey) !UpsertResult {
         const nkey = key.normalize();
         const h = nkey.hash();
         const now = self.now_ns;
@@ -323,6 +343,7 @@ pub const FlowEngine = struct {
         }
         gop.value_ptr.* = Flow.fromKey(nkey, now);
         self.total_created += 1;
+        self.enforceCapacity();
         return .{
             .snapshot = FlowSnapshot.fromFlow(gop.value_ptr.*),
             .created = true,
@@ -332,6 +353,18 @@ pub const FlowEngine = struct {
     /// Process a packet observation, returning a FlowUpdate describing what
     /// happened. Caller uses this to drive detection correlation.
     pub fn processPacket(
+        self: *FlowEngine,
+        key: FlowKey,
+        bytes: u32,
+        severity: u8,
+        rule_id: u32,
+    ) !FlowUpdate {
+        self.mutex.lock();
+        defer self.mutex.unlock();
+        return self.processPacketLocked(key, bytes, severity, rule_id);
+    }
+
+    fn processPacketLocked(
         self: *FlowEngine,
         key: FlowKey,
         bytes: u32,
@@ -352,6 +385,7 @@ pub const FlowEngine = struct {
             gop.value_ptr.* = Flow.fromKey(nkey, now);
             gop.value_ptr.observe(bytes, now, severity, rule_id);
             self.total_created += 1;
+            self.enforceCapacity();
         }
 
         const kind: FlowUpdateKind = if (!gop.found_existing) .flow_created
@@ -368,6 +402,8 @@ pub const FlowEngine = struct {
 
     /// Mark a flow as ended (FIN/RST observed).
     pub fn endFlow(self: *FlowEngine, key: FlowKey) ?FlowUpdate {
+        self.mutex.lock();
+        defer self.mutex.unlock();
         const nkey = key.normalize();
         const h = nkey.hash();
         const entry = self.flows.getPtr(h) orelse return null;
@@ -381,6 +417,8 @@ pub const FlowEngine = struct {
 
     /// Evict idle flows. Returns count evicted.
     pub fn evictIdle(self: *FlowEngine) usize {
+        self.mutex.lock();
+        defer self.mutex.unlock();
         var to_remove = std.ArrayList(u64).init(self.allocator);
         defer to_remove.deinit();
 
@@ -400,15 +438,27 @@ pub const FlowEngine = struct {
     }
 
     /// Returns the number of active flows.
-    pub fn count(self: FlowEngine) usize {
+    pub fn count(self: *FlowEngine) usize {
+        self.mutex.lock();
+        defer self.mutex.unlock();
         return self.flows.count();
     }
 
-
+    /// T3: value-returning lookup. Callers receive a plain value copy and can
+    /// never hold onto (or mutate) interior table memory. Returns null if the
+    /// flow does not exist.
+    pub fn get(self: *FlowEngine, key: FlowKey) ?Flow {
+        self.mutex.lock();
+        defer self.mutex.unlock();
+        const entry = self.flows.getPtr(key.normalize().hash()) orelse return null;
+        return entry.*;
+    }
 
     /// Sweep (evict) expired flows based on a given "now" timestamp (v5.0 proof API).
     /// Returns count of flows evicted.
     pub fn sweepExpired(self: *FlowEngine, now_ns: i128) u64 {
+        self.mutex.lock();
+        defer self.mutex.unlock();
         var to_remove = std.ArrayList(u64).init(self.allocator);
         defer to_remove.deinit();
 
@@ -428,16 +478,41 @@ pub const FlowEngine = struct {
     }
 
     pub fn setNow(self: *FlowEngine, now_ns: i128) void {
+        self.mutex.lock();
+        defer self.mutex.unlock();
         self.now_ns = now_ns;
     }
 
     /// Configure idle timeout and max flow count (v5.0 Section 23 - proof module API).
     /// Used by flow_state_proof.zig to trigger eviction scenarios.
     pub fn configure(self: *FlowEngine, idle_timeout_ns: i128, max_flows: usize) void {
-        _ = self;
-        _ = max_flows;
+        self.mutex.lock();
+        defer self.mutex.unlock();
         // Set the module-level idle timeout so all Flow.isIdle() checks use it.
         g_idle_timeout_ns = idle_timeout_ns;
+        self.max_flows = max_flows;
+    }
+
+    /// T3: capacity enforcement. When the table exceeds max_flows, the
+    /// least-recently-seen flow is evicted until back under the cap. This
+    /// bounds memory under unbounded flows rather than silently growing.
+    /// Caller MUST hold the mutex.
+    fn enforceCapacity(self: *FlowEngine) void {
+        while (self.flows.count() > self.max_flows) {
+            var victim_key: ?u64 = null;
+            var victim_seen: i128 = std.math.maxInt(i128);
+            var it = self.flows.iterator();
+            while (it.next()) |kv| {
+                if (kv.value_ptr.last_seen_ns < victim_seen) {
+                    victim_seen = kv.value_ptr.last_seen_ns;
+                    victim_key = kv.key_ptr.*;
+                }
+            }
+            const k = victim_key orelse return;
+            _ = self.flows.remove(k);
+            self.total_expired += 1;
+            self.total_evicted += 1;
+        }
     }
 
     /// Process a CanonicalEvent (v5.0 Section 22 - proof module API).
@@ -445,6 +520,8 @@ pub const FlowEngine = struct {
     /// Uses event.monotonic_ns as the current time so proof modules can
     /// simulate time progression by setting event.monotonic_ns.
     pub fn processEvent(self: *FlowEngine, event: canonical.CanonicalEvent) FlowUpdate {
+        self.mutex.lock();
+        defer self.mutex.unlock();
         // Override engine now_ns with event's monotonic_ns (proof modules set this)
         if (event.monotonic_ns > 0) self.now_ns = event.monotonic_ns;
         const key = FlowKey{
@@ -457,7 +534,7 @@ pub const FlowEngine = struct {
         const bytes = if (event.payload_length > 0) event.payload_length else 64;
         // processPacket is fallible (hashmap allocation) - we panic on failure
         // because the proof module API expects infallible behavior.
-        return self.processPacket(key, bytes, event.severity, event.rule_id) catch unreachable;
+        return self.processPacketLocked(key, bytes, event.severity, event.rule_id) catch unreachable;
     }
 };
 
@@ -651,4 +728,169 @@ test "FlowUpdate.isCreated and isExpired classify kind correctly" {
     };
     try std.testing.expect(!upd2.isCreated());
     try std.testing.expect(upd2.isExpired());
+}
+
+// ============================================================
+// T3 tests: thread-safety, capacity, lifetime, stress (1M)
+// ============================================================
+
+const T3_Threads = 4;
+const T3_PerThread = 250;
+const T3_SharedPackets = 200;
+
+const T3_SharedKey = FlowKey{
+    .ip_a = 0x0A000009,
+    .port_a = 60606,
+    .ip_b = 0x0A00000A,
+    .port_b = 80,
+    .protocol = 6,
+};
+
+const T3Ctx = struct {
+    engine: *FlowEngine,
+    id: usize,
+};
+
+fn t3Worker(ctx: *T3Ctx) void {
+    var i: usize = 0;
+    while (i < T3_PerThread) : (i += 1) {
+        const key = FlowKey{
+            .ip_a = 0x0A000001,
+            .port_a = @intCast(1000 + ctx.id * T3_PerThread + i),
+            .ip_b = 0x0A000002,
+            .port_b = 80,
+            .protocol = 6,
+        };
+        _ = ctx.engine.processPacket(key, 64, 0, 0) catch return;
+    }
+    var j: usize = 0;
+    while (j < T3_SharedPackets) : (j += 1) {
+        _ = ctx.engine.processPacket(T3_SharedKey, 64, 0, 0) catch return;
+    }
+}
+
+test "T3: value semantics -- returned flows/snapshots are copies, not interior pointers" {
+    var engine = FlowEngine.init(std.testing.allocator);
+    defer engine.deinit();
+    const key = FlowKey{ .ip_a = 1, .port_a = 1, .ip_b = 2, .port_b = 2, .protocol = 6 };
+
+    var upd = try engine.processPacket(key, 100, 1, 0x1111);
+    try std.testing.expectEqual(@as(u64, 1), upd.flow.packet_count);
+
+    // Mutating the returned value must NOT reach the table.
+    upd.flow.packet_count = 0xDEAD;
+    upd.flow.byte_count = 777;
+    upd.flow.last_rule_id = 0xBAD;
+
+    const upd2 = try engine.processPacket(key, 50, 2, 0);
+    try std.testing.expectEqual(@as(u64, 2), upd2.flow.packet_count);
+    try std.testing.expectEqual(@as(u64, 150), upd2.flow.byte_count);
+    // rule_id is sticky: observe only records a non-zero rule.
+    try std.testing.expectEqual(@as(u32, 0x1111), upd2.flow.last_rule_id);
+    try std.testing.expectEqual(@as(u8, 2), upd2.flow.max_severity);
+
+    // Snapshot copies are independent too.
+    const r1 = try engine.upsertOrCreate(key);
+    const actual_before = r1.snapshot.packet_count;
+    var snap = r1.snapshot;
+    snap.packet_count = 0xBEEF;
+    try std.testing.expectEqual(actual_before, r1.snapshot.packet_count);
+    try std.testing.expectEqual(actual_before + 1, (try engine.upsertOrCreate(key)).snapshot.packet_count);
+
+    // get() returns a value; mutating the copy is inert.
+    const f = (engine.get(key) orelse unreachable);
+    var copy = f;
+    copy.state = .ended;
+    try std.testing.expect((engine.get(key) orelse unreachable).state == .established);
+}
+
+test "T3: FlowEngine is thread-safe under concurrent inserts" {
+    var engine = FlowEngine.init(std.heap.page_allocator);
+    defer engine.deinit();
+    engine.configure(FLOW_IDLE_TIMEOUT_NS, 1_000_000);
+
+    var ctxs: [T3_Threads]T3Ctx = undefined;
+    var threads: [T3_Threads]std.Thread = undefined;
+    for (0..T3_Threads) |t| {
+        ctxs[t] = .{ .engine = &engine, .id = t };
+        threads[t] = try std.Thread.spawn(.{}, t3Worker, .{&ctxs[t]});
+    }
+    for (threads) |th| th.join();
+
+    try std.testing.expectEqual(@as(u64, T3_Threads * T3_PerThread + 1), engine.total_created);
+    try std.testing.expectEqual(@as(usize, T3_Threads * T3_PerThread + 1), engine.count());
+    // All shared-key packets merged into a single flow (no lost updates).
+    // The creation counts as one observe, so total = 4 * 200 = 800.
+    const shared = engine.get(T3_SharedKey) orelse unreachable;
+    try std.testing.expectEqual(@as(u64, T3_Threads * T3_SharedPackets), shared.packet_count);
+}
+
+test "T3: max_flows is enforced with LRU eviction" {
+    var engine = FlowEngine.init(std.testing.allocator);
+    defer engine.deinit();
+    engine.configure(FLOW_IDLE_TIMEOUT_NS, 1000);
+
+    var i: usize = 0;
+    while (i < 5000) : (i += 1) {
+        const key = FlowKey{
+            .ip_a = @intCast(1 + i),
+            .port_a = 12345,
+            .ip_b = 0x0A000002,
+            .port_b = 80,
+            .protocol = 6,
+        };
+        _ = try engine.processPacket(key, 64, 0, 0);
+    }
+
+    try std.testing.expect(engine.count() <= 1000);
+    try std.testing.expectEqual(@as(u64, 5000), engine.total_created);
+    try std.testing.expectEqual(@as(u64, 4000), engine.total_evicted);
+    try std.testing.expectEqual(@as(u64, 4000), engine.total_expired);
+}
+
+test "T3: stress 10K distinct flows round-trip with idle sweep" {
+    var engine = FlowEngine.init(std.testing.allocator);
+    defer engine.deinit();
+    engine.configure(FLOW_IDLE_TIMEOUT_NS, 20_000);
+
+    var i: usize = 0;
+    while (i < 10_000) : (i += 1) {
+        const key = FlowKey{
+            .ip_a = @intCast(i + 1),
+            .port_a = 12345,
+            .ip_b = 0x0A000002,
+            .port_b = 80,
+            .protocol = 6,
+        };
+        _ = try engine.processPacket(key, 64, 0, 0);
+    }
+    try std.testing.expectEqual(@as(usize, 10_000), engine.count());
+    try std.testing.expectEqual(@as(u64, 10_000), engine.total_created);
+
+    engine.setNow(engine.now_ns + FLOW_IDLE_TIMEOUT_NS + 1);
+    try std.testing.expectEqual(@as(usize, 10_000), engine.evictIdle());
+    try std.testing.expectEqual(@as(usize, 0), engine.count());
+}
+
+test "T3: stress 100K and 1M distinct flows under capacity" {
+    const cases = [_]usize{ 100_000, 1_000_000 };
+    for (cases) |n| {
+        var engine = FlowEngine.init(std.heap.page_allocator);
+        defer engine.deinit();
+        engine.configure(FLOW_IDLE_TIMEOUT_NS, 2 * @as(usize, n));
+
+        var i: usize = 0;
+        while (i < n) : (i += 1) {
+            const key = FlowKey{
+                .ip_a = @intCast(i),
+                .port_a = 1024,
+                .ip_b = @intCast(i >> 8),
+                .port_b = @intCast((i >> 16) & 0xFF),
+                .protocol = 6,
+            };
+            _ = try engine.processPacket(key, 64, 0, 0);
+        }
+        try std.testing.expectEqual(@as(usize, n), engine.count());
+        try std.testing.expectEqual(@as(u64, n), engine.total_created);
+    }
 }
