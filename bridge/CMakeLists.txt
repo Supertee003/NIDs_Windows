@@ -91,8 +91,53 @@ target_include_directories(aegis_bridge_test PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
+# ====== T9: Windows Telemetry Adapter Framework =====
+# The adapter framework provides the C-ABI that Zig's windows_adapters.zig
+# binds to (core/cpp_adapter.zig). It implements four adapter kinds:
+# Process, Fim (file integrity), Registry, and Etw. The framework
+# encodes events as canonical frames that the Zig core normalizes into
+# CanonicalEvent (core/canonical_event.zig).
+
+add_library(aegis_adapter SHARED
+    aegis_adapter.cpp
+)
+
+# MinGW: remove lib prefix
+set_target_properties(aegis_adapter PROPERTIES PREFIX "")
+
+target_include_directories(aegis_adapter PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+set_target_properties(aegis_adapter PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/../dist"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/../dist"
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/../dist"
+)
+foreach(CONFIG_TYPE DEBUG RELEASE RELWITHDEBINFO MINSIZEREL)
+    string(TOUPPER ${CONFIG_TYPE} CONFIG_UPPER)
+    set_target_properties(aegis_adapter PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY_${CONFIG_UPPER} "${CMAKE_SOURCE_DIR}/../dist"
+        LIBRARY_OUTPUT_DIRECTORY_${CONFIG_UPPER} "${CMAKE_SOURCE_DIR}/../dist"
+        ARCHIVE_OUTPUT_DIRECTORY_${CONFIG_UPPER} "${CMAKE_SOURCE_DIR}/../dist"
+    )
+endforeach()
+
+# T9 adapter framework self-test executable
+add_executable(aegis_adapter_selftest
+    aegis_adapter_selftest_main.cpp
+    aegis_adapter.cpp
+)
+
+target_include_directories(aegis_adapter_selftest PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+set_target_properties(aegis_adapter_selftest PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/../dist"
+)
+
 # ====== Install ======
-install(TARGETS aegis_ipc aegis_bridge aegis_bridge_test
+install(TARGETS aegis_ipc aegis_bridge aegis_bridge_test aegis_adapter aegis_adapter_selftest
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
 )

@@ -554,17 +554,28 @@ test "WindowsAdapterConfig defaults - kill switch OFF" {
 }
 
 test "isWindows and platformName" {
-    // On Linux host, isWindows() returns false
-    try std.testing.expect(!isWindows());
-    try std.testing.expectEqualStrings("Linux", platformName());
+    // The implementation must return the host's actual platform.
+    const actual_is_windows = builtin.os.tag == .windows;
+    try std.testing.expectEqual(actual_is_windows, isWindows());
+    if (actual_is_windows) {
+        try std.testing.expectEqualStrings("Windows", platformName());
+    } else if (builtin.os.tag == .linux) {
+        try std.testing.expectEqualStrings("Linux", platformName());
+    } else if (builtin.os.tag == .macos) {
+        try std.testing.expectEqualStrings("macOS", platformName());
+    }
 }
 
-test "PlatformCapabilities detect on Linux" {
+test "PlatformCapabilities detect matches the host" {
+    // The capability detection must report the right capabilities for
+    // the host the test runs on. On Windows: all capabilities are
+    // available. On non-Windows: all are stub.
     const caps = PlatformCapabilities.detect();
-    try std.testing.expect(!caps.process_tracking);
-    try std.testing.expect(!caps.file_integrity);
-    try std.testing.expect(!caps.registry_watch);
-    try std.testing.expect(!caps.real_capture);
+    const actual_is_windows = builtin.os.tag == .windows;
+    try std.testing.expectEqual(actual_is_windows, caps.real_capture);
+    try std.testing.expectEqual(actual_is_windows, caps.process_tracking);
+    try std.testing.expectEqual(actual_is_windows, caps.file_integrity);
+    try std.testing.expectEqual(actual_is_windows, caps.registry_watch);
 }
 
 test "PlatformCapabilities print" {
@@ -573,8 +584,18 @@ test "PlatformCapabilities print" {
     const caps = PlatformCapabilities.detect();
     try caps.print(stream.writer());
     const out = stream.getWritten();
-    try std.testing.expect(std.mem.indexOf(u8, out, "Linux") != null);
-    try std.testing.expect(std.mem.indexOf(u8, out, "stub") != null);
+    // The print output must show the capability flags. On Windows: all
+    // are YES (real). On non-Windows: all are NO (stub).
+    if (builtin.os.tag == .windows) {
+        try std.testing.expect(std.mem.indexOf(u8, out, "Process tracking") != null);
+        try std.testing.expect(std.mem.indexOf(u8, out, "File integrity") != null);
+        try std.testing.expect(std.mem.indexOf(u8, out, "Registry watch") != null);
+        try std.testing.expect(std.mem.indexOf(u8, out, "Real capture") != null);
+        // On Windows, real_capture is YES
+        try std.testing.expect(std.mem.indexOf(u8, out, "YES") != null);
+    } else {
+        try std.testing.expect(std.mem.indexOf(u8, out, "stub") != null);
+    }
 }
 
 test "AdapterSourceState toString" {
