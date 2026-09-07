@@ -88,10 +88,10 @@ def cmd_status(args: argparse.Namespace) -> int:
         client = AegisClient()
         resp = client._send("status")
     except AegisCtlError as e:
-        print(f"âŒ AEGIS daemon not reachable: {e}", file=sys.stderr)
+        print(f"[!]  AEGIS daemon not reachable: {e}", file=sys.stderr)
         return 2
     if not resp.get("ok"):
-        print(f"âŒ {resp.get('error', 'unknown error')}", file=sys.stderr)
+        print(f"[!]  {resp.get('error', 'unknown error')}", file=sys.stderr)
         return 1
     data = resp.get("data", {})
     print(f"AEGIS NIDS v{data.get('version', '?')}")
@@ -102,7 +102,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     print(f"  Incidents:     {data.get('incidents_open', 0):,}")
     print(f"  Watchdog:      {data.get('watchdog_alerts', 0):,} alerts")
     if data.get("degraded"):
-        print(f"  âš  Degraded: {data.get('degrade_reason')}")
+        print(f"  ! Degraded: {data.get('degrade_reason')}")
     return 0
 
 
@@ -111,17 +111,27 @@ def cmd_start(args: argparse.Namespace) -> int:
         subprocess.run(["sc", "start", "AegisNids"], check=False)
     else:
         subprocess.run(["systemctl", "start", "aegis-nids"], check=False)
-    print("âœ… AEGIS NIDS start signal sent")
+    print("[OK]  AEGIS NIDS start signal sent")
     return 0
 
 
 def cmd_stop(args: argparse.Namespace) -> int:
-    if os.name == "nt":
-        subprocess.run(["sc", "stop", "AegisNids"], check=False)
-    else:
-        subprocess.run(["systemctl", "stop", "aegis-nids"], check=False)
-    print("âœ… AEGIS NIDS stop signal sent")
-    return 0
+    try:
+        client = AegisClient()
+        resp = client._send("daemon.shutdown")
+        if resp.get("ok"):
+            print("OK: AEGIS NIDS shutdown signal sent via control pipe")
+            return 0
+        print(f"! {resp.get('error', 'unknown error')}", file=sys.stderr)
+        return 1
+    except AegisCtlError:
+        # Daemon not reachable via pipe -> fall back to service control
+        if os.name == "nt":
+            subprocess.run(["sc", "stop", "AegisNids"], check=False)
+        else:
+            subprocess.run(["systemctl", "stop", "aegis-nids"], check=False)
+        print("OK: AEGIS NIDS stop signal sent via service control")
+        return 0
 
 
 def cmd_restart(args: argparse.Namespace) -> int:
@@ -132,8 +142,12 @@ def cmd_restart(args: argparse.Namespace) -> int:
 
 
 def cmd_rules_list(args: argparse.Namespace) -> int:
-    client = AegisClient()
-    resp = client._send("rules.list")
+    try:
+        client = AegisClient()
+        resp = client._send("rules.list")
+    except AegisCtlError as e:
+        print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
+        return 2
     rules = resp.get("data", {}).get("rules", [])
     if not rules:
         print("(no rules loaded)")
@@ -145,18 +159,26 @@ def cmd_rules_list(args: argparse.Namespace) -> int:
 
 
 def cmd_rules_reload(args: argparse.Namespace) -> int:
-    client = AegisClient()
-    resp = client._send("rules.reload")
+    try:
+        client = AegisClient()
+        resp = client._send("rules.reload")
+    except AegisCtlError as e:
+        print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
+        return 2
     if resp.get("ok"):
-        print(f"âœ… Reloaded {resp['data'].get('rules_loaded', 0)} rules")
+        print(f"[OK]  Reloaded {resp['data'].get('rules_loaded', 0)} rules")
         return 0
-    print(f"âŒ {resp.get('error')}", file=sys.stderr)
+    print(f"[!]  {resp.get('error')}", file=sys.stderr)
     return 1
 
 
 def cmd_incidents(args: argparse.Namespace) -> int:
-    client = AegisClient()
-    resp = client._send("incidents.list", {"severity_min": args.severity})
+    try:
+        client = AegisClient()
+        resp = client._send("incidents.list", {"severity_min": args.severity})
+    except AegisCtlError as e:
+        print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
+        return 2
     incs = resp.get("data", {}).get("incidents", [])
     if not incs:
         print("(no open incidents)")
@@ -167,8 +189,12 @@ def cmd_incidents(args: argparse.Namespace) -> int:
 
 
 def cmd_federation(args: argparse.Namespace) -> int:
-    client = AegisClient()
-    resp = client._send("federation.status")
+    try:
+        client = AegisClient()
+        resp = client._send("federation.status")
+    except AegisCtlError as e:
+        print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
+        return 2
     data = resp.get("data", {})
     print(f"Federation: {'enabled' if data.get('enabled') else 'disabled'}")
     if data.get("enabled"):
@@ -181,8 +207,12 @@ def cmd_federation(args: argparse.Namespace) -> int:
 
 
 def cmd_metrics(args: argparse.Namespace) -> int:
-    client = AegisClient()
-    resp = client._send("metrics.snapshot")
+    try:
+        client = AegisClient()
+        resp = client._send("metrics.snapshot")
+    except AegisCtlError as e:
+        print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
+        return 2
     data = resp.get("data", {})
     if args.json:
         print(json.dumps(data, indent=2))
@@ -197,12 +227,12 @@ def cmd_health(args: argparse.Namespace) -> int:
     try:
         resp = client._send("health.check")
     except AegisCtlError as e:
-        print(f"âŒ Daemon not reachable: {e}")
+        print(f"[!]  Daemon not reachable: {e}")
         return 2
     checks = resp.get("data", {}).get("checks", [])
     all_ok = True
     for c in checks:
-        status = "âœ…" if c.get("ok") else "âŒ"
+        status = "[OK] " if c.get("ok") else "[!] "
         print(f"  {status} {c.get('name')}: {c.get('detail', '')}")
         if not c.get("ok"):
             all_ok = False

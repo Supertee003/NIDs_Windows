@@ -7479,6 +7479,159 @@ extern "kernel32" fn ConnectNamedPipe(
 
 extern "kernel32" fn DisconnectNamedPipe(hNamedPipe: std.os.windows.HANDLE) std.os.windows.BOOL;
 
+extern "kernel32" fn CreateFileW(
+    lpFileName: [*:0]const u16,
+    dwDesiredAccess: std.os.windows.DWORD,
+    dwShareMode: std.os.windows.DWORD,
+    lpSecurityAttributes: ?*std.os.windows.SECURITY_ATTRIBUTES,
+    dwCreationDisposition: std.os.windows.DWORD,
+    dwFlagsAndAttributes: std.os.windows.DWORD,
+    hTemplateFile: ?std.os.windows.HANDLE,
+) std.os.windows.HANDLE;
+
+const GENERIC_READ_V: std.os.windows.DWORD = 0x80000000;
+const GENERIC_WRITE_V: std.os.windows.DWORD = 0x40000000;
+const OPEN_EXISTING_V: std.os.windows.DWORD = 3;
+const FILE_ATTRIBUTE_NORMAL_V: std.os.windows.DWORD = 0x80;
+
+// --- Windows ACL construction (advapi32) ---
+const SET_ACCESS_V: std.os.windows.DWORD = 0x00000001;
+const NO_INHERITANCE_V: std.os.windows.DWORD = 0x00000000;
+const TRUSTEE_IS_SID_V: std.os.windows.DWORD = 0x00000003;
+const TRUSTEE_IS_UNKNOWN_V: std.os.windows.DWORD = 0x00000000;
+const SECURITY_DESCRIPTOR_REVISION_V: std.os.windows.DWORD = 1;
+
+const TRUSTEE = extern struct {
+    pMultipleTrustee: ?*TRUSTEE,
+    MultipleTrusteeOperation: std.os.windows.DWORD,
+    TrusteeForm: std.os.windows.DWORD,
+    TrusteeType: std.os.windows.DWORD,
+    ptstrName: ?*anyopaque,
+};
+
+const EXPLICIT_ACCESS = extern struct {
+    grfAccessPermissions: std.os.windows.DWORD,
+    grfAccessMode: std.os.windows.DWORD,
+    grfInheritance: std.os.windows.DWORD,
+    Trustee: TRUSTEE,
+};
+
+const SECURITY_DESCRIPTOR = extern struct {
+    Revision: u8,
+    Sbz1: u8,
+    Control: u16,
+    Owner: ?*anyopaque,
+    Group: ?*anyopaque,
+    Sacl: ?*anyopaque,
+    Dacl: ?*anyopaque,
+};
+
+extern "advapi32" fn ConvertStringSidToSidW(lpStringSid: [*:0]const u16, sid: *?*anyopaque) std.os.windows.BOOL;
+extern "advapi32" fn SetEntriesInAclW(
+    cCountOfExplicitEntries: std.os.windows.DWORD,
+    pListOfExplicitEntries: ?*const EXPLICIT_ACCESS,
+    oldAcl: ?*anyopaque,
+    newAcl: *?*anyopaque,
+) std.os.windows.BOOL;
+extern "advapi32" fn InitializeSecurityDescriptor(sd: *SECURITY_DESCRIPTOR, dwRevision: std.os.windows.DWORD) std.os.windows.BOOL;
+extern "advapi32" fn SetSecurityDescriptorDacl(
+    sd: *SECURITY_DESCRIPTOR,
+    bDaclPresent: std.os.windows.BOOL,
+    dacl: ?*anyopaque,
+    bDaclDefaulted: std.os.windows.BOOL,
+) std.os.windows.BOOL;
+
+// --- Windows service support (advapi32 / SCM) ---
+const SERVICE_WIN32_OWN_PROCESS: std.os.windows.DWORD = 0x00000010;
+const SERVICE_STOPPED: std.os.windows.DWORD = 0x00000001;
+const SERVICE_START_PENDING: std.os.windows.DWORD = 0x00000002;
+const SERVICE_STOP_PENDING: std.os.windows.DWORD = 0x00000003;
+const SERVICE_RUNNING: std.os.windows.DWORD = 0x00000004;
+const SERVICE_ACCEPT_STOP: std.os.windows.DWORD = 0x00000001;
+const SERVICE_CONTROL_STOP: std.os.windows.DWORD = 0x00000001;
+const SERVICE_CONTROL_INTERROGATE: std.os.windows.DWORD = 0x00000004;
+const ERROR_FAILED_SERVICE_CONTROLLER_CONNECT: u32 = 1063;
+const NO_ERROR: u32 = 0;
+
+const SERVICE_STATUS = extern struct {
+    dwServiceType: std.os.windows.DWORD,
+    dwCurrentState: std.os.windows.DWORD,
+    dwControlsAccepted: std.os.windows.DWORD,
+    dwWin32ExitCode: std.os.windows.DWORD,
+    dwServiceSpecificExitCode: std.os.windows.DWORD,
+    dwCheckPoint: std.os.windows.DWORD,
+    dwWaitHint: std.os.windows.DWORD,
+};
+
+const SERVICE_TABLE_ENTRYW = extern struct {
+    lpServiceName: ?[*:0]const u16,
+    lpServiceProc: ?*const fn (std.os.windows.DWORD, [*][*:0]u16) callconv(.C) void,
+};
+
+extern "advapi32" fn StartServiceCtrlDispatcherW(lpServiceTable: [*]const SERVICE_TABLE_ENTRYW) std.os.windows.BOOL;
+extern "advapi32" fn RegisterServiceCtrlHandlerW(lpServiceName: [*:0]const u16, lpHandlerProc: ?*const fn (std.os.windows.DWORD) callconv(.C) std.os.windows.DWORD) ?*anyopaque;
+extern "advapi32" fn SetServiceStatus(hServiceStatus: ?*anyopaque, lpServiceStatus: *SERVICE_STATUS) std.os.windows.BOOL;
+
+var g_stop_requested = std.atomic.Value(bool).init(false);
+var g_svc_handle: ?*anyopaque = null;
+var g_svc_status = SERVICE_STATUS{
+    .dwServiceType = SERVICE_WIN32_OWN_PROCESS,
+    .dwCurrentState = SERVICE_STOPPED,
+    .dwControlsAccepted = SERVICE_ACCEPT_STOP,
+    .dwWin32ExitCode = NO_ERROR,
+    .dwServiceSpecificExitCode = 0,
+    .dwCheckPoint = 0,
+    .dwWaitHint = 0,
+};
+
+fn setServiceStatus(state: std.os.windows.DWORD, checkpoint: std.os.windows.DWORD) void {
+    g_svc_status.dwCurrentState = state;
+    g_svc_status.dwCheckPoint = checkpoint;
+    if (g_svc_handle != null) {
+        _ = SetServiceStatus(g_svc_handle, &g_svc_status);
+    }
+}
+
+fn wakeControlPipe() void {
+    var scratch: [128]u16 = undefined;
+    const n = std.unicode.utf8ToUtf16Le(scratch[0..100], control_pipe_name) catch return;
+    scratch[n] = 0;
+    const name_z: [*:0]const u16 = @ptrCast(&scratch);
+    const h = CreateFileW(name_z, GENERIC_READ_V | GENERIC_WRITE_V, 0, null, OPEN_EXISTING_V, FILE_ATTRIBUTE_NORMAL_V, null);
+    if (h != std.os.windows.INVALID_HANDLE_VALUE) {
+        _ = std.os.windows.CloseHandle(h);
+    }
+}
+
+fn serviceControlHandler(dwControl: std.os.windows.DWORD) callconv(.C) std.os.windows.DWORD {
+    switch (dwControl) {
+        SERVICE_CONTROL_STOP => {
+            g_stop_requested.store(true, .release);
+            setServiceStatus(SERVICE_STOP_PENDING, 1);
+            wakeControlPipe();
+            return NO_ERROR;
+        },
+        else => return NO_ERROR,
+    }
+}
+
+fn serviceMain(dwArgc: std.os.windows.DWORD, lpArgv: [*][*:0]u16) callconv(.C) void {
+    _ = dwArgc;
+    _ = lpArgv;
+    var name_buf: [32]u16 = undefined;
+    const name = "AegisNids";
+    const n = std.unicode.utf8ToUtf16Le(name_buf[0 .. name.len], name) catch return;
+    name_buf[n] = 0;
+    const handle = RegisterServiceCtrlHandlerW(@ptrCast(&name_buf), serviceControlHandler);
+    if (handle == null) return;
+    g_svc_handle = handle;
+    setServiceStatus(SERVICE_START_PENDING, 0);
+    defer setServiceStatus(SERVICE_STOPPED, 0);
+    runDaemon() catch |err| {
+        diag.err("service main error: {}", .{err});
+    };
+}
+
 fn utf16zFromSlice(a: std.mem.Allocator, s: []const u8) ![*:0]const u16 {
     const buf = try a.alloc(u16, s.len + 1);
     const n = std.unicode.utf8ToUtf16Le(buf[0..s.len], s) catch return error.InvalidUtf8;
@@ -7566,6 +7719,7 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
     }
 
     if (std.mem.eql(u8, cmd, "daemon.shutdown")) {
+        g_stop_requested.store(true, .release);
         sendResponse(a, pipe, true, null);
         return true;
     }
@@ -7580,6 +7734,46 @@ fn serveWindowsPipe(caps: *const manifest.Capability, start_ns: i128) !void {
     defer arena.deinit();
     const pipe_name_z = try utf16zFromSlice(arena.allocator(), control_pipe_name);
 
+    // Grant Everyone read/write on the pipe: service runs as SYSTEM and
+    // operator clients (aegisctl) run as ordinary users.
+    var sa = w.SECURITY_ATTRIBUTES{
+        .nLength = @sizeOf(w.SECURITY_ATTRIBUTES),
+        .lpSecurityDescriptor = null,
+        .bInheritHandle = 0,
+    };
+    var sid: ?*anyopaque = null;
+    var acl: ?*anyopaque = null;
+    var sd: SECURITY_DESCRIPTOR = undefined;
+    defer if (sid != null) w.LocalFree(sid.?);
+    defer if (acl != null) w.LocalFree(acl.?);
+    const world_sid_z = "S-1-1-0";
+    const world_buf = try arena.allocator().alloc(u16, world_sid_z.len + 1);
+    _ = std.unicode.utf8ToUtf16Le(world_buf[0..world_sid_z.len], world_sid_z) catch unreachable;
+    world_buf[world_sid_z.len] = 0;
+    if (ConvertStringSidToSidW(@ptrCast(world_buf), &sid) != 0) {
+        if (sid) |s| {
+            var ea: EXPLICIT_ACCESS = .{
+                .grfAccessPermissions = GENERIC_READ_V | GENERIC_WRITE_V,
+                .grfAccessMode = SET_ACCESS_V,
+                .grfInheritance = NO_INHERITANCE_V,
+                .Trustee = .{
+                    .pMultipleTrustee = null,
+                    .MultipleTrusteeOperation = 0,
+                    .TrusteeForm = TRUSTEE_IS_SID_V,
+                    .TrusteeType = TRUSTEE_IS_UNKNOWN_V,
+                    .ptstrName = s,
+                },
+            };
+            if (SetEntriesInAclW(1, &ea, null, &acl) != 0) {
+                if (InitializeSecurityDescriptor(&sd, SECURITY_DESCRIPTOR_REVISION_V) != 0) {
+                    if (SetSecurityDescriptorDacl(&sd, 1, acl, 0) != 0) {
+                        sa.lpSecurityDescriptor = &sd;
+                    }
+                }
+            }
+        }
+    }
+
     const pipe = CreateNamedPipeW(
         pipe_name_z,
         PIPE_ACCESS_DUPLEX,
@@ -7588,7 +7782,7 @@ fn serveWindowsPipe(caps: *const manifest.Capability, start_ns: i128) !void {
         CONTROL_PIPE_BUFFER_SIZE,
         CONTROL_PIPE_BUFFER_SIZE,
         0,
-        null,
+        if (sa.lpSecurityDescriptor != null) &sa else null,
     );
     if (pipe == w.INVALID_HANDLE_VALUE) {
         diag.err("control pipe CreateNamedPipeW failed", .{});
@@ -7597,7 +7791,7 @@ fn serveWindowsPipe(caps: *const manifest.Capability, start_ns: i128) !void {
     defer _ = w.CloseHandle(pipe);
     diag.info("control pipe ready at {s}", .{control_pipe_name});
 
-    while (true) {
+    while (!g_stop_requested.load(.acquire)) {
         const ok = ConnectNamedPipe(pipe, null);
         if (ok == 0) {
             if (w.kernel32.GetLastError() != .PIPE_CONNECTED) {
@@ -7619,12 +7813,12 @@ fn serveWindowsPipe(caps: *const manifest.Capability, start_ns: i128) !void {
         }
 
         _ = DisconnectNamedPipe(pipe);
-        if (shutdown) break;
+        if (shutdown or g_stop_requested.load(.acquire)) break;
         std.time.sleep(20 * std.time.ns_per_ms);
     }
 }
 
-pub fn main() !void {
+fn runDaemon() !void {
     diag.info("AEGIS NIDS v5.0+ starting up", .{});
 
     // 1. Diagnostics
@@ -7700,6 +7894,7 @@ pub fn main() !void {
     // 9. Main loop
     const start_ns = std.time.nanoTimestamp();
     if (builtin.os.tag == .windows) {
+        setServiceStatus(SERVICE_RUNNING, 0);
         serveWindowsPipe(&caps, start_ns) catch |err| {
             diag.err("control server error: {}", .{err});
         };
@@ -7713,6 +7908,29 @@ pub fn main() !void {
     }
 
     diag.info("AEGIS NIDS shutting down", .{});
+}
+
+pub fn main() !void {
+    if (builtin.os.tag == .windows) {
+        const w = std.os.windows;
+        const empty_name: [1]u16 = .{0};
+        var table: [2]SERVICE_TABLE_ENTRYW = .{
+            .{ .lpServiceName = @ptrCast(&empty_name), .lpServiceProc = serviceMain },
+            .{ .lpServiceName = null, .lpServiceProc = null },
+        };
+        const rc = StartServiceCtrlDispatcherW(&table);
+        if (rc != 0) {
+            // SCM ran us as a service; dispatcher only returns after stop.
+            return;
+        }
+        const err = w.kernel32.GetLastError();
+        if (err != @as(w.Win32Error, @enumFromInt(ERROR_FAILED_SERVICE_CONTROLLER_CONNECT))) {
+            diag.err("StartServiceCtrlDispatcherW failed: {}", .{@intFromEnum(err)});
+            return;
+        }
+    }
+    // Not launched by the service controller -> console/foreground mode.
+    try runDaemon();
 }
 
 test "main compiles" {
@@ -11082,10 +11300,10 @@ def cmd_status(args: argparse.Namespace) -> int:
         client = AegisClient()
         resp = client._send("status")
     except AegisCtlError as e:
-        print(f"âŒ AEGIS daemon not reachable: {e}", file=sys.stderr)
+        print(f"[!]  AEGIS daemon not reachable: {e}", file=sys.stderr)
         return 2
     if not resp.get("ok"):
-        print(f"âŒ {resp.get('error', 'unknown error')}", file=sys.stderr)
+        print(f"[!]  {resp.get('error', 'unknown error')}", file=sys.stderr)
         return 1
     data = resp.get("data", {})
     print(f"AEGIS NIDS v{data.get('version', '?')}")
@@ -11096,7 +11314,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     print(f"  Incidents:     {data.get('incidents_open', 0):,}")
     print(f"  Watchdog:      {data.get('watchdog_alerts', 0):,} alerts")
     if data.get("degraded"):
-        print(f"  âš  Degraded: {data.get('degrade_reason')}")
+        print(f"  ! Degraded: {data.get('degrade_reason')}")
     return 0
 
 
@@ -11105,17 +11323,27 @@ def cmd_start(args: argparse.Namespace) -> int:
         subprocess.run(["sc", "start", "AegisNids"], check=False)
     else:
         subprocess.run(["systemctl", "start", "aegis-nids"], check=False)
-    print("âœ… AEGIS NIDS start signal sent")
+    print("[OK]  AEGIS NIDS start signal sent")
     return 0
 
 
 def cmd_stop(args: argparse.Namespace) -> int:
-    if os.name == "nt":
-        subprocess.run(["sc", "stop", "AegisNids"], check=False)
-    else:
-        subprocess.run(["systemctl", "stop", "aegis-nids"], check=False)
-    print("âœ… AEGIS NIDS stop signal sent")
-    return 0
+    try:
+        client = AegisClient()
+        resp = client._send("daemon.shutdown")
+        if resp.get("ok"):
+            print("OK: AEGIS NIDS shutdown signal sent via control pipe")
+            return 0
+        print(f"! {resp.get('error', 'unknown error')}", file=sys.stderr)
+        return 1
+    except AegisCtlError:
+        # Daemon not reachable via pipe -> fall back to service control
+        if os.name == "nt":
+            subprocess.run(["sc", "stop", "AegisNids"], check=False)
+        else:
+            subprocess.run(["systemctl", "stop", "aegis-nids"], check=False)
+        print("OK: AEGIS NIDS stop signal sent via service control")
+        return 0
 
 
 def cmd_restart(args: argparse.Namespace) -> int:
@@ -11126,8 +11354,12 @@ def cmd_restart(args: argparse.Namespace) -> int:
 
 
 def cmd_rules_list(args: argparse.Namespace) -> int:
-    client = AegisClient()
-    resp = client._send("rules.list")
+    try:
+        client = AegisClient()
+        resp = client._send("rules.list")
+    except AegisCtlError as e:
+        print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
+        return 2
     rules = resp.get("data", {}).get("rules", [])
     if not rules:
         print("(no rules loaded)")
@@ -11139,18 +11371,26 @@ def cmd_rules_list(args: argparse.Namespace) -> int:
 
 
 def cmd_rules_reload(args: argparse.Namespace) -> int:
-    client = AegisClient()
-    resp = client._send("rules.reload")
+    try:
+        client = AegisClient()
+        resp = client._send("rules.reload")
+    except AegisCtlError as e:
+        print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
+        return 2
     if resp.get("ok"):
-        print(f"âœ… Reloaded {resp['data'].get('rules_loaded', 0)} rules")
+        print(f"[OK]  Reloaded {resp['data'].get('rules_loaded', 0)} rules")
         return 0
-    print(f"âŒ {resp.get('error')}", file=sys.stderr)
+    print(f"[!]  {resp.get('error')}", file=sys.stderr)
     return 1
 
 
 def cmd_incidents(args: argparse.Namespace) -> int:
-    client = AegisClient()
-    resp = client._send("incidents.list", {"severity_min": args.severity})
+    try:
+        client = AegisClient()
+        resp = client._send("incidents.list", {"severity_min": args.severity})
+    except AegisCtlError as e:
+        print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
+        return 2
     incs = resp.get("data", {}).get("incidents", [])
     if not incs:
         print("(no open incidents)")
@@ -11161,8 +11401,12 @@ def cmd_incidents(args: argparse.Namespace) -> int:
 
 
 def cmd_federation(args: argparse.Namespace) -> int:
-    client = AegisClient()
-    resp = client._send("federation.status")
+    try:
+        client = AegisClient()
+        resp = client._send("federation.status")
+    except AegisCtlError as e:
+        print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
+        return 2
     data = resp.get("data", {})
     print(f"Federation: {'enabled' if data.get('enabled') else 'disabled'}")
     if data.get("enabled"):
@@ -11175,8 +11419,12 @@ def cmd_federation(args: argparse.Namespace) -> int:
 
 
 def cmd_metrics(args: argparse.Namespace) -> int:
-    client = AegisClient()
-    resp = client._send("metrics.snapshot")
+    try:
+        client = AegisClient()
+        resp = client._send("metrics.snapshot")
+    except AegisCtlError as e:
+        print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
+        return 2
     data = resp.get("data", {})
     if args.json:
         print(json.dumps(data, indent=2))
@@ -11191,12 +11439,12 @@ def cmd_health(args: argparse.Namespace) -> int:
     try:
         resp = client._send("health.check")
     except AegisCtlError as e:
-        print(f"âŒ Daemon not reachable: {e}")
+        print(f"[!]  Daemon not reachable: {e}")
         return 2
     checks = resp.get("data", {}).get("checks", [])
     all_ok = True
     for c in checks:
-        status = "âœ…" if c.get("ok") else "âŒ"
+        status = "[OK] " if c.get("ok") else "[!] "
         print(f"  {status} {c.get('name')}: {c.get('detail', '')}")
         if not c.get("ok"):
             all_ok = False
