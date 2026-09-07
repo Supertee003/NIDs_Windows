@@ -246,6 +246,7 @@ fn makeAdvice(kind: brain.BrainAdviceKind, score: u16, rec: detection.Verdict, o
         .signal_correlation = 0,
         .signal_threat_intel = 0,
         .signal_flow_anomaly = 0,
+        .signal_rag = 0,
         .event_id = event_id,
     };
 }

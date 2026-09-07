@@ -448,7 +448,7 @@ fn processBrain(ctx: *StageContext) void {
     const event = ctx.event;
     var advice: brain_engine.BrainAdvice = undefined;
     if (brain_int.isInitialized()) {
-        advice = brain_int.advise(event, ctx.av, ctx.alerts, ctx.ti_match, ctx.flow_update);
+        advice = brain_int.advise(event, ctx.av, ctx.alerts, ctx.ti_match, ctx.flow_update, ctx.rag_ctx);
         if (advice.recommendsChange()) {
             std.log.info("[BRAIN] Advice {s}: score={d} recommend={s} (was {s}) confidence={d} event_id={d} rag_ctx={s}", .{
                 advice.kind.toString(),
@@ -480,6 +480,7 @@ fn processBrain(ctx: *StageContext) void {
             .signal_correlation = 0,
             .signal_threat_intel = 0,
             .signal_flow_anomaly = 0,
+            .signal_rag = 0,
             .event_id = event.event_id,
         };
     }

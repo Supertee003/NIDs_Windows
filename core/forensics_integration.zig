@@ -107,6 +107,7 @@ test "forensics_integration: full lifecycle" {
         .signal_correlation = 0,
         .signal_threat_intel = 0,
         .signal_flow_anomaly = 0,
+        .signal_rag = 0,
         .event_id = 1,
     };
     const decision = policy.EnforcementDecision{
@@ -170,6 +171,7 @@ test "forensics_integration: returns 0 when not initialized" {
         .signal_correlation = 0,
         .signal_threat_intel = 0,
         .signal_flow_anomaly = 0,
+        .signal_rag = 0,
         .event_id = 0,
     };
     const decision = policy.EnforcementDecision{

@@ -112,6 +112,7 @@ test "policy_integration: full lifecycle" {
         .signal_correlation = 0,
         .signal_threat_intel = 0,
         .signal_flow_anomaly = 0,
+        .signal_rag = 0,
         .event_id = 1,
     };
 
@@ -149,6 +150,7 @@ test "policy_integration: returns allow when not initialized" {
         .signal_correlation = 0,
         .signal_threat_intel = 0,
         .signal_flow_anomaly = 0,
+        .signal_rag = 0,
         .event_id = 1,
     };
     const d = evaluate(event, av, alerts, ti, advice);

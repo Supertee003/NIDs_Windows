@@ -8,6 +8,7 @@ const flow = @import("flow_engine.zig");
 const verdict_agg = @import("verdict_aggregator.zig");
 const correlation = @import("correlation_engine.zig");
 const threat_intel = @import("threat_intel.zig");
+const rag = @import("rag_engine.zig");
 const brain = @import("brain_engine.zig");
 
 var g_advisor: ?brain.BrainAdvisor = null;
@@ -39,6 +40,7 @@ pub fn advise(
     alerts: [correlation.MAX_ALERTS_PER_VERDICT]?correlation.CorrelationAlert,
     ti_match: threat_intel.ThreatIntelMatch,
     flow_update: ?flow.FlowUpdate,
+    rag_ctx: rag.RagContext,
 ) brain.BrainAdvice {
     g_total_advices += 1;
     if (!g_initialized) {
@@ -53,11 +55,12 @@ pub fn advise(
             .signal_correlation = 0,
             .signal_threat_intel = 0,
             .signal_flow_anomaly = 0,
+            .signal_rag = 0,
             .event_id = av.event_id,
         };
     }
     if (g_advisor) |*advisor| {
-        const advice = advisor.advise(event, av, alerts, ti_match, flow_update);
+        const advice = advisor.advise(event, av, alerts, ti_match, flow_update, rag_ctx);
         if (advice.recommendsChange()) g_total_escalations += 1;
         return advice;
     }
@@ -72,6 +75,7 @@ pub fn advise(
         .signal_correlation = 0,
         .signal_threat_intel = 0,
         .signal_flow_anomaly = 0,
+        .signal_rag = 0,
         .event_id = av.event_id,
     };
 }
@@ -106,8 +110,9 @@ test "brain_integration: full lifecycle" {
     };
     const alerts: [3]?correlation.CorrelationAlert = .{ null, null, null };
     const ti = threat_intel.ThreatIntelMatch{ .src_match = null, .dst_match = null, .event_id = 1 };
+    const rag_ctx = rag.RagContext{ .available = false, .match_count = 0, .context_summary = "", .references = undefined, .reference_count = 0, .confidence = 0, .primary_category = .unknown, .event_id = 0 };
 
-    const advice = advise(event, av, alerts, ti, null);
+    const advice = advise(event, av, alerts, ti, null, rag_ctx);
     try std.testing.expect(advice.kind == .insufficient_data);
     try std.testing.expect(getStats().total_advices == 1);
 }
@@ -126,6 +131,7 @@ test "brain_integration: returns insufficient_data when not initialized" {
     };
     const alerts: [3]?correlation.CorrelationAlert = .{ null, null, null };
     const ti = threat_intel.ThreatIntelMatch{ .src_match = null, .dst_match = null, .event_id = 1 };
-    const advice = advise(event, av, alerts, ti, null);
+    const rag_ctx = rag.RagContext{ .available = false, .match_count = 0, .context_summary = "", .references = undefined, .reference_count = 0, .confidence = 0, .primary_category = .unknown, .event_id = 0 };
+    const advice = advise(event, av, alerts, ti, null, rag_ctx);
     try std.testing.expect(advice.kind == .insufficient_data);
 }

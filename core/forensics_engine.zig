@@ -241,6 +241,7 @@ fn makeTestInputs(event_id: u64, verdict: detection.Verdict) struct {
             .signal_correlation = 0,
             .signal_threat_intel = 0,
             .signal_flow_anomaly = 0,
+            .signal_rag = 0,
             .event_id = event_id,
         },
         .decision = .{
