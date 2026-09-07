@@ -2,6 +2,12 @@
 
 **Status:** Locked by ADR-0001  
 **Date:** 2026-09-02  
+**T1 recon (2026-09-07):** Re-confirmed under the 64-step plan. Decisions:
+canonical runtime = `core/` (build switch to core deferred to T2/T3); enforcement
+authority stays `shield/src/lib.rs` (Rust PEP); `rust-src/lib.rs` (aegis_pep) is
+a PEP FFI currently linked by build.zig that MUST be redirected/merged into
+`shield/` in T8; `shield_rust/` is a stale near-duplicate, untracked at T1.
+Authority invariants below are unchanged.  
 
 ## Authority Invariants
 
