@@ -25,6 +25,7 @@ pytest-cov>=5.0
 # Build / release
 build>=1.2
 setuptools>=69.5
+Cython>=3.0  # T5b: required to build brain/cython/*.pyx accelerators
 
 # Linting
 ruff>=0.4

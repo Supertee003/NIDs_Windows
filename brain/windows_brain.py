@@ -50,6 +50,9 @@ for _stream_name in ("stdout", "stderr"):
 
 # 🔗 C++ IPC Bridge — เชื่อม Brain ↔ Bridge ↔ Dashboard
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "shared"))
+# T5b: also expose the repo root so `from brain.cython import ...` works
+# when the brain is launched directly via `python brain/windows_brain.py`.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 try:
     import aegis_bridge_ctypes as bridge
     BRIDGE_AVAILABLE = True
@@ -188,8 +191,20 @@ def run_regex_scan(payload, tier2_engine, rules_data):
     """
     Scan a payload against all compiled Tier-2 regex rules.
     Returns (rule_name, policy, rule_id, severity) if match found, else None.
+
+    T5b: if the Cython `brain.cython` extension is compiled, dispatch to the
+    Cython fast-path (C-level loop over pre-built re.Pattern arrays) and
+    return the 4-tuple shape. Otherwise fall back to the pure-Python loop.
+    The two paths are proven equivalent by
+    `tests/cython/test_cython_correctness.py`.
     """
     safe_payload = str(payload)[:MAX_PAYLOAD_SIZE]
+
+    if CYTHON_REGEX_AVAILABLE and _cython_engine is not None:
+        result = _cython_scan(safe_payload, _cython_engine)
+        if result is not None:
+            name, policy, rule_id, severity, _index = result
+            return (name.decode("utf-8"), policy.decode("utf-8"), rule_id.decode("utf-8"), severity)
 
     for r in rules_data.get("nids_rules", []):
         name = r.get("name", "")
@@ -204,6 +219,33 @@ def run_regex_scan(payload, tier2_engine, rules_data):
             return (name, policy, rule_id, severity)
 
     return None
+
+
+# T5b: Cython fast-path state. The Cython extension is imported lazily so
+# that a missing/old .pyd never breaks the brain. If the import fails, the
+# scan loop above runs in pure-Python and the `CYTHON_REGEX_AVAILABLE`
+# flag is False. This is the AC4 evidence: the brain keeps working without
+# any privileged binding; Cython is a pure speedup.
+_cython_engine = None
+CYTHON_REGEX_AVAILABLE = False
+try:
+    from brain.cython import is_cython_available, build_engine as _cython_build_engine, scan_cython as _cython_scan  # noqa: E401
+    CYTHON_REGEX_AVAILABLE = is_cython_available()
+except Exception:  # noqa: BLE001  (intentional: never let a missing Cython break the brain)
+    pass
+
+
+def init_cython_engine(rules_data):
+    """T5b: pre-build the Cython engine from the loaded rules.
+
+    Called once after `load_rules()` and before the main event loop. Sets the
+    module-level `_cython_engine` and returns True if Cython is being used.
+    """
+    global _cython_engine
+    if not CYTHON_REGEX_AVAILABLE:
+        return False
+    _cython_engine = _cython_build_engine(rules_data)
+    return True
 
 # ====== Log Writing ======
 
@@ -291,6 +333,10 @@ def main():
     print(f"{UI.GREEN}[*] Compiled {len(tier2_engine)} regex rules for Deep Inspection.{UI.RESET}")
     if CYTHON_AVAILABLE:
         print(f"{UI.GREEN}[*] Cython Hotspots ENABLED (C-Speed Pre-filtering).{UI.RESET}")
+    if init_cython_engine(rules_data):
+        print(f"{UI.GREEN}[*] Cython Regex Scan ENABLED (T5b C-Speed loop).{UI.RESET}")
+    elif CYTHON_REGEX_AVAILABLE:
+        print(f"{UI.YELLOW}[*] Cython Regex Scan build failed; using pure-Python fallback.{UI.RESET}")
 
     # Show Bridge DEFCON status
     if BRIDGE_AVAILABLE:
@@ -321,6 +367,7 @@ def main():
                 print(f"{UI.YELLOW}[!] Policy changed. Reloading Tier-2 Brain...{UI.RESET}")
                 rules_data = load_rules()
                 tier2_engine = compile_tier2_rules(rules_data)
+                init_cython_engine(rules_data)
                 last_rule_mod_time = current_mod_time
                 print(f"{UI.GREEN}[*] Re-compiled {len(tier2_engine)} regex rules.{UI.RESET}")
 
