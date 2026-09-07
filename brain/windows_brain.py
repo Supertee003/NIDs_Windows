@@ -3,7 +3,14 @@ AEGIS BRAIN — Tier-2 Deep Inspection Engine (Python)
 ====================================================
 UDP listener on 127.0.0.1:9999 receives suspicious packets from Zig Core.
 Runs regex-based deep inspection against compiled rule patterns.
-Enforces IPS policy via Windows Firewall (netsh advfirewall) + C++ Bridge.
+
+T8 (Step 26) ADVISORY-ONLY: This brain is now advisory + request-only.
+It does NOT directly execute enforcement. Privileged actions are
+requested through `request_enforcement_via_pep` (aegisctl -> IPC ->
+dispatcher -> rust_pep_integration -> aegis_pep_evaluate in the Rust
+PEP). The Rust PEP is the final security authority (ADR-0001). The
+brain never invokes netsh, iptables, the C++ Bridge block_ip, or
+directly mutates WFP. See `apply_firewall_block` below.
 
 3-Layer Architecture:
   - NETWORK layer: TCP/WFP captured packets (source: L7, L4, L3)
@@ -130,33 +137,93 @@ def load_rules():
     return {"nids_rules": []}
 
 # ====== Firewall IPS ======
+#
+# T8 (Step 26) architectural invariant: NO Python / Go / TypeScript /
+# Brain / RAG / CLI / Detection path may reach enforcement except
+# through the Rust PEP (ADR-0001, shield/src/pep.rs). The brain
+# therefore routes block requests to aegisctl (which submits a
+# control request via IPC -> dispatcher -> rust_pep_integration ->
+# aegis_pep_evaluate). The brain itself is now advisory: it detects,
+# classifies, and **requests** enforcement; it never executes it
+# directly. The subprocess.netsh and bridge.block_ip direct calls
+# that existed here before T8 have been removed; the brain's job is
+# to emit a request and wait for the result.
+
+AEGISCTL_BIN = os.environ.get("AEGISCTL_BIN", "python")
+AEGISCTL_PATH = os.environ.get(
+    "AEGISCTL_PATH",
+    os.path.join(os.path.dirname(__file__), "..", "scripts", "aegisctl.py"),
+)
+
+
+def request_enforcement_via_pep(
+    action: str,
+    target_ip: str,
+    target_port: int,
+    rule_id: str,
+    reason: str,
+) -> tuple[str, str]:
+    """Submit a privileged action to the Rust PEP via aegisctl.
+
+    Returns (status, message) where status is one of
+    ACCEPTED / REJECTED / DEFERRED / FAILED / NO_OP (mirrors the
+    shield::pep::PepStatus set). The aegisctl binary dispatches via
+    the dispatcher -> rust_pep_integration -> aegis_pep_evaluate path;
+    this function is a thin wrapper and holds no authority.
+
+    In environments where aegisctl is not available (e.g. unit tests
+    without a supervisor), the function falls back to returning
+    FAILED with a diagnostic, NOT to any direct enforcement. This
+    keeps the brain from re-introducing a bypass.
+    """
+    import subprocess as _sp
+    if not os.path.exists(AEGISCTL_PATH):
+        return ("FAILED", f"aegisctl not found at {AEGISCTL_PATH}")
+    try:
+        proc = _sp.run(
+            [
+                AEGISCTL_BIN, AEGISCTL_PATH,
+                "block", target_ip,
+                "--rule-id", rule_id,
+                "--reason", reason,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        # aegisctl exits 0 on accepted, non-zero on rejected/failed.
+        if proc.returncode == 0:
+            return ("ACCEPTED", proc.stdout.strip())
+        return ("REJECTED", proc.stderr.strip() or proc.stdout.strip())
+    except _sp.TimeoutExpired:
+        return ("DEFERRED", "aegisctl timed out (PEP deferred the request)")
+    except Exception as e:
+        return ("FAILED", f"aegisctl error: {e}")
+
 
 def apply_firewall_block(ip_address, rule_name="AEGIS"):
-    """Block attacker IP via Windows Firewall (netsh advfirewall)."""
-    fw_rule_name = f"AEGIS_BLOCK_{ip_address}"
-    try:
-        cmd = [
-            "netsh", "advfirewall", "firewall", "add", "rule",
-            f"name={fw_rule_name}",
-            "dir=in",
-            "action=block",
-            f"remoteip={ip_address}",
-            f"description=Blocked by Aegis NIDS Tier-2 Rule {rule_name}"
-        ]
-        subprocess.run(cmd, capture_output=True, check=True)
-        print(f"{UI.DANGER}[IPS] IP {ip_address} has been BLOCKED by Rule: {rule_name}{UI.RESET}")
-
-        # 🔗 Push block to C++ Bridge (for Dashboard DEFCON update)
+    """Request a block via aegisctl -> Rust PEP. The brain itself
+    does NOT execute the firewall mutation; the Rust PEP is the
+    sole authority (T8)."""
+    print(f"{UI.YELLOW}[IPS] Requesting block for {ip_address} via Rust PEP (rule {rule_name})...{UI.RESET}")
+    status, message = request_enforcement_via_pep(
+        action="block",
+        target_ip=ip_address,
+        target_port=0,
+        rule_id=rule_name,
+        reason=f"Aegis Tier-2 deep inspection match (rule {rule_name})",
+    )
+    if status == "ACCEPTED":
+        print(f"{UI.DANGER}[IPS] Block for {ip_address} ACCEPTED by Rust PEP{UI.RESET}")
+        # Bridge update is for the dashboard; not enforcement.
         if BRIDGE_AVAILABLE:
-            bridge.block_ip(ip_address)
-            bridge.update_defcon(
-                critical=0, blocked=1, kernel=0, total=1
-            )
-
+            try:
+                bridge.update_defcon(critical=0, blocked=1, kernel=0, total=1)
+            except Exception:
+                pass
         return True
-    except Exception as e:
-        print(f"{UI.YELLOW}[!] Failed to block IP {ip_address}: {e}{UI.RESET}")
-        return False
+    print(f"{UI.YELLOW}[!] Block for {ip_address} {status}: {message}{UI.RESET}")
+    return False
 
 # ====== Regex Engine ======
 

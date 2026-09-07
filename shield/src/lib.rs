@@ -2,6 +2,7 @@
 //! Provides C-compatible interface for the AEGIS NIDS scoring and validation engine.
 
 pub mod windows_enforce;
+pub mod pep;
 
 use std::os::raw::{c_int, c_char};
 use std::ffi::CStr;
@@ -317,5 +318,237 @@ mod tests {
         assert!(!p.is_null());
         let cstr = unsafe { std::ffi::CStr::from_ptr(p) };
         assert!(!cstr.to_bytes().is_empty());
+    }
+}
+
+// ============================================================
+// T8: Rust PEP C-ABI shim (Step 26)
+// ============================================================
+//
+// The PEP is exposed to Zig (and any FFI caller) via a stable C-ABI.
+// The shim converts raw C inputs into the safe Rust `PepRequest`,
+// invokes the safe `pep::evaluate`, and writes the result into a
+// caller-provided out-parameter. This is the ONLY exposed C entry
+// point for privileged action authorization.
+
+/// C-ABI input (caller-allocated, caller-owned).
+#[repr(C)]
+pub struct PepRequestC {
+    pub request_id: u64,
+    pub event_id: u64,
+    pub policy_id: u32,
+    pub policy_version: u32,
+    /// Must be a valid `Action` byte (0..=5). Otherwise the PEP
+    /// returns REJECTED with reason "unknown action".
+    pub action: u8,
+    /// Target IPv4 in host byte order.
+    pub target_ip: u32,
+    pub target_port: u16,
+    /// Null-terminated UTF-8 auth token. May not be null. Empty
+    /// string is REJECTED.
+    pub auth_token: *const c_char,
+}
+
+/// C-ABI output (caller-allocated; 32 bytes).
+///
+/// Layout (must match `shield/include/shield.h::pep_result_t` if/when
+/// that header is generated; for now both sides agree on the same
+/// field order):
+///   [0]   status  (u8)
+///   [1]   action  (u8)
+///   [2..10]  request_id (u64 LE)
+///   [10..14] policy_id  (u32 LE)
+///   [14..22] timestamp_ms (i64 LE)
+///   [22..26] auth_token_hash (u64 LE -- but only first 4 bytes used to fit)
+///   [26..30] reserved
+///   [30..32] reason_len (u16 LE) -- the reason string is in a separate
+///           caller buffer; this field is the byte count copied there.
+#[repr(C)]
+pub struct PepResultC {
+    pub status: u8,
+    pub action: u8,
+    pub request_id: u64,
+    pub policy_id: u32,
+    pub policy_version: u32,
+    pub timestamp_ms: i64,
+    pub auth_token_hash: u64,
+    pub reason_len: u16,
+}
+
+/// Reason string table — fixed so the C side doesn't need to allocate.
+/// Indexed by `PepStatus` value. (Status values 0..=4 -> reasons 0..=4.)
+const REASONS: [&str; 5] = [
+    "all checks passed",
+    "rejected by policy",
+    "deferred",
+    "executor failed",
+    "no-op (already in target state)",
+];
+
+/// C entry point: evaluate a PepRequest and write the result.
+///
+/// `result_out` must be a valid pointer to a `PepResultC` allocated by
+/// the caller. `reason_out` must point to at least 64 bytes; the
+/// reason string is truncated to 63 bytes + NUL.
+///
+/// Returns 0 on success, -1 if any required pointer is null.
+#[no_mangle]
+pub unsafe extern "C" fn aegis_pep_evaluate(
+    req: *const PepRequestC,
+    result_out: *mut PepResultC,
+    reason_out: *mut c_char,
+    reason_out_len: usize,
+) -> c_int {
+    if req.is_null() || result_out.is_null() || reason_out.is_null() {
+        return -1;
+    }
+    let r = &*req;
+    // Convert the auth_token C string to &'static str (the PEP signature
+    // requires 'static; this is fine for the C-ABI lifetime which is
+    // bounded by the call).
+    let auth_token: &str = if r.auth_token.is_null() {
+        ""
+    } else {
+        match CStr::from_ptr(r.auth_token).to_str() {
+            Ok(s) => s,
+            Err(_) => "",
+        }
+    };
+    let action = match pep::Action::from_u8(r.action) {
+        Some(a) => a,
+        None => {
+            // Unknown action -> Rejected. Build a minimal trace + write.
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis() as i64)
+                .unwrap_or(0);
+            (*result_out) = PepResultC {
+                status: pep::PepStatus::Rejected as u8,
+                action: r.action,
+                request_id: r.request_id,
+                policy_id: r.policy_id,
+                policy_version: r.policy_version,
+                timestamp_ms: now,
+                auth_token_hash: 0,
+                reason_len: 0,
+            };
+    let reason = REASONS[pep::PepStatus::Rejected as usize];
+            let bytes = reason.as_bytes();
+            let n = bytes.len().min(reason_out_len.saturating_sub(1));
+            std::ptr::copy_nonoverlapping(bytes.as_ptr() as *const c_char, reason_out, n);
+            *reason_out.add(n) = 0;
+            (*result_out).reason_len = n as u16;
+            return 0;
+        }
+    };
+    let pep_req = pep::PepRequest {
+        request_id: r.request_id,
+        event_id: r.event_id,
+        policy_id: r.policy_id,
+        policy_version: r.policy_version,
+        action,
+        target_ip: r.target_ip,
+        target_port: r.target_port,
+        auth_token: unsafe {
+            // SAFETY: the lifetime is bounded by this call. The caller
+            // (Zig core or a test) must keep the auth token buffer alive
+            // for the duration of `aegis_pep_evaluate`. We transmute to
+            // &'static str to satisfy the `PepRequest` signature.
+            std::mem::transmute::<&str, &'static str>(auth_token)
+        },
+    };
+    let (status, trace) = pep::evaluate(&pep_req);
+    (*result_out) = PepResultC {
+        status: status as u8,
+        action: trace.action as u8,
+        request_id: trace.request_id,
+        policy_id: trace.policy_id,
+        policy_version: trace.policy_version,
+        timestamp_ms: trace.timestamp_ms,
+        auth_token_hash: trace.auth_token_hash,
+        reason_len: 0,
+    };
+    let reason = REASONS[status as usize];
+    let bytes = reason.as_bytes();
+    let n = bytes.len().min(reason_out_len.saturating_sub(1));
+    std::ptr::copy_nonoverlapping(bytes.as_ptr() as *const c_char, reason_out, n);
+    *reason_out.add(n) = 0;
+    (*result_out).reason_len = n as u16;
+    0
+}
+
+/// Number of PEP statuses (for the Zig side to know the reason table).
+#[no_mangle]
+pub extern "C" fn aegis_pep_status_count() -> u32 {
+    5
+}
+
+/// PEP version string.
+#[no_mangle]
+pub extern "C" fn aegis_pep_version() -> *const c_char {
+    b"aegis-pep 1.0.0\0".as_ptr() as *const c_char
+}
+
+#[cfg(test)]
+mod pep_abi_tests {
+    use super::*;
+    use std::ffi::CString;
+
+    fn make_c_request_with_auth() -> (PepRequestC, CString) {
+        let auth = CString::new("tpm-sentinel").unwrap();
+        // 10.0.0.5 = 0x0A << 24 | 0 << 16 | 0 << 8 | 5
+        let target_ip: u32 = (10u32 << 24) | 5;
+        let req = PepRequestC {
+            request_id: 100,
+            event_id: 42,
+            policy_id: 7,
+            policy_version: 5,
+            action: pep::Action::Block as u8,
+            target_ip,
+            target_port: 80,
+            auth_token: auth.as_ptr(),
+        };
+        (req, auth) // caller must keep auth alive for the duration of the call
+    }
+
+    #[test]
+    fn abi_accepts_legitimate_block() {
+        let (req, _auth) = make_c_request_with_auth();
+        let mut result = unsafe { std::mem::zeroed::<PepResultC>() };
+        let mut reason = [0u8; 64];
+        let rc = unsafe { aegis_pep_evaluate(&req, &mut result, reason.as_mut_ptr() as *mut c_char, reason.len()) };
+        assert_eq!(rc, 0, "rc was {}; reason={:?}", rc, std::str::from_utf8(&reason[..result.reason_len as usize]).unwrap_or("<bad utf8>"));
+        assert_eq!(result.status, pep::PepStatus::Accepted as u8);
+        assert_eq!(result.request_id, 100);
+        assert_eq!(result.policy_id, 7);
+        assert!(result.reason_len > 0);
+    }
+
+    #[test]
+    fn abi_rejects_null_inputs() {
+        let mut result = unsafe { std::mem::zeroed::<PepResultC>() };
+        let mut reason = [0u8; 64];
+        let rc = unsafe {
+            aegis_pep_evaluate(
+                std::ptr::null(),
+                &mut result,
+                reason.as_mut_ptr() as *mut c_char,
+                reason.len(),
+            )
+        };
+        assert_eq!(rc, -1);
+    }
+
+    #[test]
+    fn abi_status_count_is_5() {
+        assert_eq!(aegis_pep_status_count(), 5);
+    }
+
+    #[test]
+    fn abi_version_is_nonempty() {
+        let p = aegis_pep_version();
+        assert!(!p.is_null());
+        let s = unsafe { CStr::from_ptr(p) };
+        assert!(!s.to_bytes().is_empty());
     }
 }

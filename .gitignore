@@ -59,6 +59,17 @@ ts_policy/node_modules/
 ts_policy/dist/
 ts_policy/*.tsbuildinfo
 
+# Rust (shield/)
+shield/target/
+shield/Cargo.lock
+# Generated Rust deps (use cargo to regenerate)
+**/Cargo.lock
+# Rust build artifacts that are regenerable
+*.rlib
+*.rmeta
+*.d
+*.timestamp
+
 # IDE
 .vscode/
 .idea/
