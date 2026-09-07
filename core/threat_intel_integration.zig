@@ -6,6 +6,7 @@
 const std = @import("std");
 const canonical = @import("canonical_event.zig");
 const threat_intel = @import("threat_intel.zig");
+const detection = @import("detection_engine.zig");
 
 var g_db: ?threat_intel.ThreatIntelDb = null;
 var g_initialized: bool = false;
@@ -53,6 +54,14 @@ pub fn enrichEvent(event: canonical.CanonicalEvent) threat_intel.ThreatIntelMatc
     return .{ .src_match = null, .dst_match = null, .event_id = event.event_id };
 }
 
+/// T4: normalize a TI feed match into canonical evidence for the evidence chain.
+/// Feeds are evidence producers only - no path to policy mutation.
+pub fn enrichEvidence(event: canonical.CanonicalEvent) ?detection.Evidence {
+    if (!g_initialized) return null;
+    const match = enrichEvent(event);
+    return match.toEvidence(event, 1);
+}
+
 pub fn getStats() struct { total_enriched: u64, total_matches: u64 } {
     return .{ .total_enriched = g_total_enriched, .total_matches = g_total_matches };
 }
@@ -91,4 +100,21 @@ test "threat_intel_integration: returns no match when not initialized" {
     event.source_ip = 0x08080808;
     const m = enrichEvent(event);
     try std.testing.expect(!m.hasMatch());
+}
+
+test "T4: threat_intel_integration.enrichEvidence normalizes feed to evidence" {
+    if (isInitialized()) shutdown();
+    init(std.testing.allocator);
+    defer shutdown();
+
+    var event = canonical.create(.wfp_sensor);
+    event.event_id = 99;
+    event.source_ip = 0x08080808; // builtin malware_c2
+    event.dest_ip = 0x0A000002;
+
+    const e = (enrichEvidence(event) orelse return error.NoEvidence);
+    try std.testing.expectEqual(@as(u32, detection.DetectorId.threat_intel_match), e.detector_id);
+    try std.testing.expect(e.verdict == .critical);
+    try std.testing.expect(std.mem.eql(u8, e.producer, "threat_intel"));
+    try std.testing.expect(std.mem.eql(u8, e.provenance, "builtin_malware_c2"));
 }

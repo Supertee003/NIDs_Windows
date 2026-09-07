@@ -187,7 +187,9 @@ const StageContext = struct {
     evidence_count: usize = 0,
     av: verdict_agg.AggregatedVerdict = undefined,
     alerts: CorrelationAlerts = .{ null, null, null },
+    incident: ?correlation_engine.Incident = null,
     ti_match: threat_intel.ThreatIntelMatch = undefined,
+    ti_evidence: ?detection.Evidence = null,
     rag_ctx: rag_engine.RagContext = undefined,
     advice: brain_engine.BrainAdvice = undefined,
     decision: policy_engine.EnforcementDecision = undefined,
@@ -321,6 +323,10 @@ fn processVerdict(ctx: *StageContext) bool {
 }
 
 /// Phase 9: route through Correlation Engine (entity tracking).
+/// T4: also feeds the detection evidence directly into correlation. Evidence
+/// is the detection output (never enforcement) and correlation emits incident
+/// records with incident_id, entity, evidence graph, and confidence whenever
+/// the same entity is tagged by evidence from multiple source categories.
 fn processCorrelation(ctx: *StageContext) void {
     const event = ctx.event;
     var alerts: CorrelationAlerts = .{ null, null, null };
@@ -337,11 +343,26 @@ fn processCorrelation(ctx: *StageContext) void {
                 });
             }
         }
+        if (ctx.evidence_count > 0) {
+            ctx.incident = correlation_int.processEvidence(event, ctx.evidence_list);
+            if (ctx.incident) |inc| {
+                std.log.warn("[CORRELATION] Incident #{d} entity={s}:{x} verdict={s} confidence={d} categories={d}", .{
+                    inc.incident_id,
+                    inc.entity_key.entity_type.toString(),
+                    inc.entity_key.ip,
+                    inc.verdict.toString(),
+                    inc.confidence,
+                    inc.categoryCount(),
+                });
+            }
+        }
     }
     ctx.alerts = alerts;
 }
 
 /// Phase 10: enrich with Threat Intel context (advisor, not enforcer).
+/// T4: normalize a feed match into canonical evidence on the evidence chain.
+/// Threat Intel stays evidence-only - it never emits an enforcement action.
 fn processThreatIntel(ctx: *StageContext) void {
     const event = ctx.event;
     var ti_match: threat_intel.ThreatIntelMatch = .{
@@ -349,6 +370,7 @@ fn processThreatIntel(ctx: *StageContext) void {
         .dst_match = null,
         .event_id = event.event_id,
     };
+    ctx.ti_evidence = null;
     if (threat_intel_int.isInitialized()) {
         ti_match = threat_intel_int.enrichEvent(event);
         if (ti_match.hasMatch()) {
@@ -362,6 +384,14 @@ fn processThreatIntel(ctx: *StageContext) void {
                 std.log.info("[THREAT-INTEL] Match for event_id={d}: max_severity={s}", .{
                     event.event_id,
                     max_sev.toString(),
+                });
+            }
+            ctx.ti_evidence = threat_intel_int.enrichEvidence(event);
+            if (ctx.ti_evidence) |e| {
+                std.log.info("[THREAT-INTEL] Normalized evidence: detector={d} verdict={s} provenance={s}", .{
+                    e.detector_id,
+                    e.verdict.toString(),
+                    e.provenance,
                 });
             }
         }
