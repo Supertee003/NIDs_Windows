@@ -129,6 +129,62 @@ pub fn getConfidence(event: *const CanonicalEvent) u8 {
 }
 
 // ============================================================
+// T2: Canonical identity accessors (Step 9 contract)
+// The T2 contract requires unique/known identity fields:
+//   event_id, source_id, source_type, timestamp, schema_version,
+//   provenance, host identity, process identity, network identity.
+// All map onto the frozen 109-byte wire — this is the single
+// source-of-truth mapping shared by Go/C++/Rust/Python bindings.
+// ============================================================
+
+/// schema_version  ≡ version field (wire offset 4, u16 LE).
+pub fn getSchemaVersion(event: *const CanonicalEvent) u16 {
+    return event.version;
+}
+
+/// source_type ≡ source (u8 enum). See SourceKind.classify() for the
+/// canonical many-to-one mapping required by T2 (network/host/.../replay).
+pub fn getSourceType(event: *const CanonicalEvent) EventSource {
+    return event.source;
+}
+
+/// source_id ≡ session_id (u64). AEGIS IR-03 cross-tier correlation ID;
+/// T2 requires a stable per-source ID and session_id is the frozen field
+/// reserved for that role. node_id covers host identity separately.
+pub fn getSourceId(event: *const CanonicalEvent) u64 {
+    return event.session_id;
+}
+
+pub fn setSourceId(event: *CanonicalEvent, source_id: u64) void {
+    event.session_id = source_id;
+}
+
+/// provenance ≡ (source, layer_id, is_pipe): which subsystem at which
+/// pipeline layer produced the event. layer_id is the provenance layer.
+pub fn getProvenance(event: *const CanonicalEvent) struct { source: EventSource, layer_id: u8, is_pipe: u8 } {
+    return .{ .source = event.source, .layer_id = event.layer_id, .is_pipe = event.is_pipe };
+}
+
+/// host identity ≡ node_id (reserved[11..15], u32 LE).
+pub fn getHostIdentity(event: *const CanonicalEvent) u32 {
+    return getNodeId(event);
+}
+
+pub fn setHostIdentity(event: *CanonicalEvent, node_id: u32) void {
+    setNodeId(event, node_id);
+}
+
+/// process identity ≡ (pid, ppid) in reserved[0..8].
+pub fn getProcessIdentity(event: *const CanonicalEvent) struct { pid: u32, ppid: u32 } {
+    return .{ .pid = getProcessId(event), .ppid = getParentProcessId(event) };
+}
+
+/// network identity ≡ 5-tuple (source_ip/port, dest_ip/port, protocol).
+pub fn getNetworkIdentity(event: *const CanonicalEvent) struct { source_ip: u32, source_port: u16, dest_ip: u32, dest_port: u16, protocol: u8 } {
+    return .{ .source_ip = event.source_ip, .source_port = event.source_port, .dest_ip = event.dest_ip, .dest_port = event.dest_port, .protocol = event.protocol };
+}
+
+// ============================================================
 // Enums (must match across all languages)
 // ============================================================
 
@@ -147,7 +203,44 @@ pub const EventSource = enum(u8) {
     host_telemetry = 10,
     ml_detector = 11,
     cluster_federation = 12,
+    // T2 additive sources (Go Nose capture + C++ adapter framework)
+    process_sensor = 13,
+    file_sensor = 14,
+    registry_sensor = 15,
+    replay_sensor = 16,
     external = 255,
+};
+
+/// T2: canonical source-kind classification. Maps every EventSource to one
+/// of the required T2 source kinds (network/host/process/file/registry/
+/// ML/federation/replay). Cross-language consumers (Go/C++/Rust/Python)
+/// MUST agree on this classification.
+pub const SourceKind = enum(u8) {
+    network = 0,
+    host = 1,
+    process = 2,
+    file = 3,
+    registry = 4,
+    ml = 5,
+    federation = 6,
+    replay = 7,
+    core = 8,
+    external = 255,
+
+    pub fn classify(source: EventSource) SourceKind {
+        return switch (source) {
+            .wfp_sensor, .npcap_sensor => .network,
+            .host_telemetry, .minifilter, .pipe_monitor, .pipe_sensor => .host,
+            .process_sensor => .process,
+            .file_sensor => .file,
+            .registry_sensor => .registry,
+            .ml_detector => .ml,
+            .cluster_federation => .federation,
+            .replay_sensor => .replay,
+            .zig_core, .cpp_bridge, .go_aggregator, .python_brain, .rust_shield => .core,
+            .external => .external,
+        };
+    }
 };
 
 pub const EventType = enum(u32) {
@@ -562,4 +655,162 @@ test "G2: new EventSource values are additive and stable" {
 test "G2: struct size unchanged after reserved-layout formalization" {
     try std.testing.expect(EVENT_SCHEMA_SIZE == @sizeOf(CanonicalEvent));
     try std.testing.expect(WIRE_PAYLOAD_SIZE == 109);
+}
+
+// ============================================================
+// T2 (Step 9): Canonical identity contract tests
+// ============================================================
+
+test "T2: new EventSource values are additive and stable" {
+    try std.testing.expect(@intFromEnum(EventSource.process_sensor) == 13);
+    try std.testing.expect(@intFromEnum(EventSource.file_sensor) == 14);
+    try std.testing.expect(@intFromEnum(EventSource.registry_sensor) == 15);
+    try std.testing.expect(@intFromEnum(EventSource.replay_sensor) == 16);
+    try std.testing.expect(@intFromEnum(EventSource.external) == 255);
+}
+
+test "T2: SourceKind.classify covers all required T2 kinds" {
+    try std.testing.expect(SourceKind.classify(.npcap_sensor) == .network);
+    try std.testing.expect(SourceKind.classify(.wfp_sensor) == .network);
+    try std.testing.expect(SourceKind.classify(.host_telemetry) == .host);
+    try std.testing.expect(SourceKind.classify(.process_sensor) == .process);
+    try std.testing.expect(SourceKind.classify(.file_sensor) == .file);
+    try std.testing.expect(SourceKind.classify(.registry_sensor) == .registry);
+    try std.testing.expect(SourceKind.classify(.ml_detector) == .ml);
+    try std.testing.expect(SourceKind.classify(.cluster_federation) == .federation);
+    try std.testing.expect(SourceKind.classify(.replay_sensor) == .replay);
+    try std.testing.expect(SourceKind.classify(.zig_core) == .core);
+    try std.testing.expect(SourceKind.classify(.external) == .external);
+}
+
+test "T2: source classification round-trips through wire bytes" {
+    var event = create(.process_sensor);
+    setProcessIdentity(&event, 4242, 800);
+    setHostIdentity(&event, 777);
+    setSourceId(&event, 99);
+
+    var buf: [128]u8 = undefined;
+    const written = try serializeToBytes(&event, &buf);
+    const restored = deserializeFromBytes(buf[0..written]).?;
+
+    try std.testing.expect(getSourceType(&restored) == .process_sensor);
+    try std.testing.expect(SourceKind.classify(getSourceType(&restored)) == .process);
+    try std.testing.expect(getProcessIdentity(&restored).pid == 4242);
+    try std.testing.expect(getProcessIdentity(&restored).ppid == 800);
+    try std.testing.expect(getHostIdentity(&restored) == 777);
+    try std.testing.expect(getSourceId(&restored) == 99);
+}
+
+test "T2: network identity is the frozen 5-tuple" {
+    var event = create(.npcap_sensor);
+    event.source_ip = 0xC0A80164;
+    event.source_port = 49152;
+    event.dest_ip = 0xAC1F0A0A;
+    event.dest_port = 443;
+    event.protocol = 6;
+
+    const nid = getNetworkIdentity(&event);
+    try std.testing.expect(nid.source_ip == 0xC0A80164);
+    try std.testing.expect(nid.source_port == 49152);
+    try std.testing.expect(nid.dest_ip == 0xAC1F0A0A);
+    try std.testing.expect(nid.dest_port == 443);
+    try std.testing.expect(nid.protocol == 6);
+}
+
+test "T2: provenance and schema version accessors" {
+    var event = create(.cpp_bridge);
+    event.layer_id = 1;
+    event.is_pipe = 0;
+    try std.testing.expect(getSchemaVersion(&event) == EVENT_VERSION);
+    const p = getProvenance(&event);
+    try std.testing.expect(p.source == .cpp_bridge);
+    try std.testing.expect(p.layer_id == 1);
+    try std.testing.expect(p.is_pipe == 0);
+}
+
+// T2: golden-vector compatibility test. This byte sequence is the frozen
+// wire encoding of the event built below. Go/C++/Rust/Python bindings that
+// emit CanonicalEvents MUST reproduce these bytes byte-for-byte. If a
+// cross-language binding disagrees, this test is the arbiter (see
+// docs/contracts/canonical-event-v1.md).
+test "T2: golden-vector wire output matches cross-language contract" {
+    var event = create(.npcap_sensor);
+    event.event_id = 0x1122334455667788;
+    event.timestamp_ms = 0xAABBCCDDEEFF0011;
+    event.monotonic_ns = 0x9988776655443322;
+    event.source_ip = 0xC0A80164;
+    event.source_port = 49152;
+    event.dest_ip = 0xAC1F0A0A;
+    event.dest_port = 443;
+    event.session_id = 0xDEADBEEFCAFEBABE;
+    event.protocol = 6;
+    event.direction = 0;
+    event.layer_id = 0;
+    event.is_pipe = 0;
+    event.event_type = .match_;
+    event.severity = 2;
+    event.rule_id = 0x01020304;
+    event.ruleset_version = 7;
+    event.payload_length = 1500;
+    event.payload_hash = 0x0BADF00DBEEFDEAD;
+    event.policy_action = .alert;
+    event.enforcement_status = 1;
+    event.defcon_impact = 4;
+    event.context_flags = 0x00000003;
+    setProcessIdentity(&event, 4242, 800);
+    setNodeId(&event, 0x00007B00);
+    setConfidence(&event, 95);
+
+    const golden = [_]u8{
+        0x31, 0x47, 0x45, 0x41, 0x01, 0x00, 0x80, 0x00,
+        0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11,
+        0x11, 0x00, 0xFF, 0xEE, 0xDD, 0xCC, 0xBB, 0xAA,
+        0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99,
+        0x09, 0x64, 0x01, 0xA8, 0xC0, 0x00, 0xC0, 0x0A,
+        0x0A, 0x1F, 0xAC, 0xBB, 0x01, 0xBE, 0xBA, 0xFE,
+        0xCA, 0xEF, 0xBE, 0xAD, 0xDE, 0x06, 0x00, 0x00,
+        0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x04, 0x03,
+        0x02, 0x01, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0xDC, 0x05, 0x00, 0x00, 0xAD, 0xDE,
+        0xEF, 0xBE, 0x0D, 0xF0, 0xAD, 0x0B, 0x01, 0x01,
+        0x04, 0x03, 0x00, 0x00, 0x00, 0x92, 0x10, 0x00,
+        0x00, 0x20, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x7B, 0x00, 0x00, 0x5F,
+    };
+    try std.testing.expectEqual(golden.len, WIRE_PAYLOAD_SIZE); // 109
+
+    var buf: [128]u8 = undefined;
+    const written = try serializeToBytes(&event, &buf);
+    try std.testing.expect(written == golden.len);
+    try std.testing.expectEqualSlices(u8, &golden, buf[0..written]);
+}
+
+test "T2: golden vector deserializes to canonical identity fields" {
+    const golden = [_]u8{
+        0x31, 0x47, 0x45, 0x41, 0x01, 0x00, 0x80, 0x00,
+        0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11,
+        0x11, 0x00, 0xFF, 0xEE, 0xDD, 0xCC, 0xBB, 0xAA,
+        0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99,
+        0x09, 0x64, 0x01, 0xA8, 0xC0, 0x00, 0xC0, 0x0A,
+        0x0A, 0x1F, 0xAC, 0xBB, 0x01, 0xBE, 0xBA, 0xFE,
+        0xCA, 0xEF, 0xBE, 0xAD, 0xDE, 0x06, 0x00, 0x00,
+        0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x04, 0x03,
+        0x02, 0x01, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0xDC, 0x05, 0x00, 0x00, 0xAD, 0xDE,
+        0xEF, 0xBE, 0x0D, 0xF0, 0xAD, 0x0B, 0x01, 0x01,
+        0x04, 0x03, 0x00, 0x00, 0x00, 0x92, 0x10, 0x00,
+        0x00, 0x20, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x7B, 0x00, 0x00, 0x5F,
+    };
+
+    const restored = deserializeFromBytes(&golden).?;
+    try std.testing.expect(SourceKind.classify(getSourceType(&restored)) == .network);
+    try std.testing.expect(getNetworkIdentity(&restored).source_ip == 0xC0A80164);
+    try std.testing.expect(getProcessIdentity(&restored).pid == 4242);
+    try std.testing.expect(getProcessIdentity(&restored).ppid == 800);
+    try std.testing.expect(getHostIdentity(&restored) == 0x00007B00);
+    try std.testing.expect(getConfidence(&restored) == 95);
+    try std.testing.expect(restored.payload_length == 1500);
+    try std.testing.expect(restored.rule_id == 0x01020304);
+    try std.testing.expect(restored.event_type == .match_);
 }

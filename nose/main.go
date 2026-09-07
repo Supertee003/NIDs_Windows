@@ -21,6 +21,7 @@ import (
         "time"
         "flag"
         "encoding/json"
+        "os/signal"
 
         tea "github.com/charmbracelet/bubbletea"
 )
@@ -39,9 +40,21 @@ func main() {
                 }
         }
 
-        // Parse command line flags
-        headless := flag.Bool("headless", false, "Run in headless mode (no TUI, output JSON to stdout)")
-        flag.Parse()
+// Parse command line flags
+		headless := flag.Bool("headless", false, "Run in headless mode (no TUI, output JSON to stdout)")
+		capture := flag.Bool("capture", false, "Run packet capture (Go Nose) -> CanonicalEvent -> Zig pipe")
+		capturePipe := flag.String("pipe", nosePipeName, "Named pipe consumer (Zig core) for -capture")
+		captureIface := flag.String("iface", "", "Capture interface name (empty = auto-select) for -capture")
+		selfTest := flag.Bool("capture-self-test", false, "Run capture encoder self-test then exit")
+		flag.Parse()
+
+		if *selfTest {
+			if err := captureSelfTest(); err != nil {
+				fmt.Fprintf(os.Stderr, "[AEGIS NOSE] self-test failed: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		}
 
         // Create buffered channels for collector data
         resourceCh := make(chan ResourceData, 4)
@@ -50,6 +63,22 @@ func main() {
 
         // Record start time
         startTime := time.Now()
+
+        // CAPTURE MODE: acquisition-only packet capture feeding the Zig core.
+        if *capture {
+                stop := make(chan struct{})
+                go func() {
+                        if err := runCapture(*captureIface, *capturePipe, stop); err != nil {
+                                fmt.Fprintf(os.Stderr, "[AEGIS NOSE] capture error: %v\n", err)
+                                os.Exit(1)
+                        }
+                }()
+                sig := make(chan os.Signal, 1)
+                signal.Notify(sig, os.Interrupt)
+                <-sig
+                close(stop)
+                return
+        }
 
         // Launch 3 collector goroutines
         go resourceCollector(resourceCh, startTime)

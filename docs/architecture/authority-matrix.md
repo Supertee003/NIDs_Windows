@@ -6,7 +6,7 @@
 
 | Concern | Authority | Component | Language | Status |
 |---|---|---|---|---|
-| Canonical Event | `IpcEvent` struct | `bridge/aegis_ipc.hpp` | C++ (source of truth) | S3 |
+| Canonical Event | `CanonicalEvent` | `core/canonical_event.zig` | Zig (source of truth, per ADR-0003) | S3 |
 | Flow State | `FlowTable` | `nids_analyze.zig` | Zig | S3 |
 | Detection Evidence | `inspect_packet()` | `nids_analyze.zig` / `windows_brain.py` / `src/lib.rs` | Zig/Python/Rust | S4 |
 | Correlation | `AtomicThreatTracker` | `nids_analyze.zig` | Zig | S3 |
@@ -16,6 +16,17 @@
 | Forensics | `ForensicRecord` + JSONL | `nids_analyze.zig` (G11) | Zig | S2 |
 | Control | `aegisctl` (G26) | future | — | S0 |
 | Federation | `ClusterCoord` (G17) | future | Zig | S1 |
+
+## Legacy Authorities (superseded, do not extend)
+
+- `bridge/aegis_ipc.hpp` `IpcEvent` = LEGACY (72-byte, schema_version 2). Was the C++ "source of truth" pre-ADR-0003; event authority moved to Zig `core/canonical_event.zig` (109-byte wire, "AEG1" magic, v1). Keep for compat only; new code MUST emit the canonical wire.
+- `src/contract/event.zig` `IpcEvent` = LEGACY (80-byte, magic 0xAE615011, v5).
+- `core/npcap_capture.zig` = LEGACY packet capture. Packet capture moved to Go Nose (`nose/capture.go` via gopacket/npcap) per ADR-0003; keep npcap_capture.zig for reference only.
+
+## Captured-Source Ownership (ADR-0003)
+
+- Windows networking + Go Nose = network capture owner (gopacket/npcap), acquisition-only.
+- C++ adapters (`bridge/aegis_adapter.hpp/.cpp`) = ETW / FIM / Registry / Process owner, via start/stop/poll/callback/health/error over C ABI to Zig.
 
 ## Architecture Layers
 

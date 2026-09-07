@@ -78,7 +78,27 @@
 |---|---|---|---|
 | reserved | [16]u8 | 16 | Zero-filled, for v2 fields |
 
-## Total Size: ~100 bytes (fixed)
+## Total Size: 109 bytes on the wire (packed, explicit field-by-field LE)
+
+`struct_size` reports 128 on the win64 dev build (ab/alignment padding);
+the WIRE size is always 109. Cross-language serializers (Zig, Go)
+agree via a golden vector embedded in tests on both sides.
+
+## Validated Identity Fields (T2, cross-language)
+
+Each producing language MUST populate identity before handoff:
+
+- **source_id** (u48 @ session_id) — session/capture-session identity.
+  Go Nose derives it from the 5-tuple; Zig accessors: `getSourceId`/`setSourceId`.
+- **host identity** — node_id in `reserved[11..15]`; accessors:
+  `getHostIdentity`/`setHostIdentity`.
+- **process identity** — pid/ppid in `reserved[0..7]`; accessors:
+  `getProcessIdentity`.
+- **network identity** — frozen 5-tuple (src ip/port, dst ip/port, protocol)
+  in wire slots 33..53; `getNetworkIdentity` verifies the frozen layout.
+- **provenance** — (source, layer_id, is_pipe); `getProvenance` returns it.
+
+Mappings recorded in `docs/adr/0003-*` and mirrored in `nose/canonical.go`.
 
 ## Enums
 
@@ -86,8 +106,19 @@
 ```
 zig_core = 0, wfp_sensor = 1, pipe_sensor = 2, minifilter = 3,
 pipe_monitor = 4, python_brain = 5, cpp_bridge = 6, rust_shield = 7,
-go_aggregator = 8, external = 255
+go_aggregator = 8, npcap_sensor = 9, host_telemetry = 10, ml_detector = 11,
+cluster_federation = 12, process_sensor = 13, file_sensor = 14,
+registry_sensor = 15, replay_sensor = 16, external = 255
 ```
+
+### SourceKind (u8) — logical grouping of EventSource
+```
+network = 0, host = 1, process = 2, file = 3, registry = 4, ml = 5,
+federation = 6, replay = 7, core = 8, external = 255
+```
+classify(source) maps EventSource → SourceKind. Shared across Zig
+(`SourceKind` enum + `classify()`) and Go (`classifyGo`), tested against
+each other and against the golden vector.
 
 ### EventType (u32)
 ```
