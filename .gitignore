@@ -1,7 +1,11 @@
 # Build artifacts
 zig-out/
+.zig-cache/
 zig-cache/
 target/
+shield/target/
+aegis_dashboard/target/
+aegis_dashboard/.cargo/
 build/
 dist/
 *.exe
@@ -10,7 +14,24 @@ dist/
 *.obj
 *.pdb
 *.sys
-*.pdb
+*.exp
+*.ilk
+*.rlib
+*.rmeta
+*.d
+*.timestamp
+
+# Backup / snapshot artifacts (untracked at T1; keep on disk only)
+backup_*/
+backups/
+*.bak.*
+*.g58_backup
+*.phase16_backup
+*.phase20_backup
+*.phase21_backup
+
+# Stale duplicate crate (untracked at T1, preserved on disk for reference)
+shield_rust/
 
 # Python
 __pycache__/
@@ -43,6 +64,7 @@ configs/secrets/*.pfx
 # Logs
 *.log
 logs/
+*.ndjson
 
 # Package
 *.msi
