@@ -35,7 +35,12 @@ pub const RING_BUFFER_CAPACITY: usize = 4096;
 // ============================================================
 
 pub const PipelineResult = struct {
+    /// Unique ID of the event that drove this pipeline result.
     event_id: u64,
+    /// Unique ID of the forensic trace entry (assigned by logResult).
+    /// Survives into replay so a replayed decision can be traced back to
+    /// the exact forensic record that produced it.
+    forensic_id: u64 = 0,
     timestamp_ns: i128,
     source_ip: u32,
     dest_ip: u32,
@@ -115,8 +120,10 @@ pub const ForensicsEngine = struct {
             _ = i;
         }
 
+        const seq = self.next_sequence;
         const result = PipelineResult{
             .event_id = event.event_id,
+            .forensic_id = seq,
             .timestamp_ns = event.monotonic_ns,
             .source_ip = event.source_ip,
             .dest_ip = event.dest_ip,
@@ -148,7 +155,6 @@ pub const ForensicsEngine = struct {
             .pep_blocked_ip = pep_result.blocked_ip,
         };
 
-        const seq = self.next_sequence;
         const idx = self.head;
         self.ring[idx] = .{
             .result = result,
@@ -284,6 +290,33 @@ test "ForensicsEngine.logResult returns increasing sequence numbers" {
     try std.testing.expect(seq2 == 2);
     try std.testing.expect(engine.count == 2);
     try std.testing.expect(engine.total_logged == 2);
+}
+
+test "ForensicsEngine.logResult assigns per-record forensic_id" {
+    var engine = ForensicsEngine.init();
+    const inputs = makeTestInputs(77, .suspicious);
+    const seq = engine.logResult(inputs.event, inputs.av, inputs.alerts, inputs.ti, inputs.advice, inputs.decision, inputs.pep_result);
+    try std.testing.expect(seq == 1);
+
+    const rec = engine.getBySequence(seq) orelse {
+        try std.testing.expect(false);
+        return;
+    };
+    // forensic_id == sequence of the trace entry; unique + monotonic.
+    try std.testing.expectEqual(@as(u64, 1), rec.result.forensic_id);
+    try std.testing.expectEqual(rec.sequence, rec.result.forensic_id);
+
+    // Second record gets a distinct forensic_id.
+    const inputs2 = makeTestInputs(78, .malicious);
+    const seq2 = engine.logResult(inputs2.event, inputs2.av, inputs2.alerts, inputs2.ti, inputs2.advice, inputs2.decision, inputs2.pep_result);
+    const rec2 = engine.getBySequence(seq2) orelse {
+        try std.testing.expect(false);
+        return;
+    };
+    try std.testing.expect(rec2.result.forensic_id != rec.result.forensic_id);
+    try std.testing.expect(rec2.result.forensic_id == 2);
+    // The event that produced the record survives too (event_id intact).
+    try std.testing.expectEqual(@as(u64, 78), rec2.result.event_id);
 }
 
 test "ForensicsEngine.logResult stores all fields" {
