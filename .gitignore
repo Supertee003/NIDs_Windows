@@ -115,3 +115,6 @@ configs/secrets/*.pfx
 
 # Query tool temp file
 query
+
+# Runtime-generated version stamp (refreshed on every build)
+aegis_runtime_stamp.txt
