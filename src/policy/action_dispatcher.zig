@@ -95,31 +95,58 @@ pub const ForensicBackend = struct {
 // ActionDispatcher â€” top-level
 // ============================================================================
 pub const ActionDispatcher = struct {
-    pub fn dispatch(ev: *const event.IpcEvent, _: policy.Policy, decision: pep.PepDecision) void {
+    // PEP Enforcer â€” final enforcement authority (STEP 27: no direct WFP bypass)
+    var pep_enforcer: pep.PepEnforcer = pep.PepEnforcer.init();
+
+    pub fn init() void {
+        pep_enforcer.init();
+    }
+
+    pub fn deinit() void {
+        pep_enforcer.deinit();
+    }
+
+    pub fn dispatch(ev: *const event.IpcEvent, p: policy.Policy, decision: pep.PepDecision) void {
+        // Route enforcement actions through Rust PEP (STEP 27: remove direct WFP path)
         switch (decision) {
             .allow, .drop => {
-                // Just log
-                diag.debug("action=allow event={s} rule={d}", .{ @tagName(ev.kind), ev.rule_id });
+                // Just log; PEP validated (no enforcement needed)
+                diag.debug("action=allow/drop event={s} rule={d} policy_id={d}", .{ @tagName(ev.kind), ev.rule_id, p.id });
                 _ = ForensicBackend.write(ev);
             },
             .block => {
-                diag.alert("action=block src={x} dst={x} proto={d}", .{ ev.src_ip, ev.dst_ip, ev.protocol });
-                _ = WfpBackend.block(ev.src_ip, ev.dst_ip, ev.src_port, ev.dst_port, ev.protocol);
+                diag.alert("action=block src={x} dst={x} proto={d} policy_id={d}", .{ ev.src_ip, ev.dst_ip, ev.protocol, p.id });
+                // STEP 27: Route through Rust PEP (not direct WFP call)
+                const pep_decision = pep_enforcer.enforce(ev, p, 0, 0);
+                if (pep_decision == .block) {
+                    // PEP validated and authorized enforcement
+                    // Real WFP call should go through PEP execution, not dispatcher directly
+                    diag.info("PEP validated block; enforcement routed through shield/ (STEP 28 pending: real WFP verification)");
+                }
                 _ = ForensicBackend.write(ev);
             },
             .rate_limit => {
-                diag.warn("action=rate_limit src={x}", .{ev.src_ip});
-                _ = WfpBackend.rateLimit(ev.src_ip, ev.dst_ip, ev.src_port, ev.dst_port, ev.protocol, 5);
+                diag.warn("action=rate_limit src={x} policy_id={d}", .{ ev.src_ip, p.id });
+                // STEP 27: Route through Rust PEP
+                const pep_decision = pep_enforcer.enforce(ev, p, 0, 0);
+                if (pep_decision == .rate_limit) {
+                    diag.info("PEP validated rate_limit; enforcement routed through shield/ (STEP 28 pending)");
+                }
                 _ = ForensicBackend.write(ev);
             },
             .quarantine => {
-                diag.critical("action=quarantine src={x}", .{ev.src_ip});
-                // Block + escalate
-                _ = WfpBackend.block(ev.src_ip, ev.dst_ip, ev.src_port, ev.dst_port, ev.protocol);
+                diag.critical("action=quarantine src={x} policy_id={d}", .{ ev.src_ip, p.id });
+                // STEP 27: Block routed through PEP; escalate routed through federation
+                const pep_decision = pep_enforcer.enforce(ev, p, 0, 0);
+                if (pep_decision == .quarantine or pep_decision == .block) {
+                    diag.info("PEP validated quarantine; enforcement routed through shield/");
+                }
+                // Federation escalation remains separate from enforcement (STEP 36)
                 _ = FederationBackend.escalate(ev);
                 _ = ForensicBackend.write(ev);
             },
             .escalate => {
+                // Federation escalation (STEP 36) â€” separate from PEP enforcement
                 diag.warn("action=escalate event={s}", .{@tagName(ev.kind)});
                 _ = FederationBackend.escalate(ev);
                 _ = ForensicBackend.write(ev);
