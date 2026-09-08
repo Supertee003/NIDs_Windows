@@ -25,6 +25,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Text encoding guard (UTF-8, no BOM, LF in Zig sources)
+        run: |
+          # Step 2 guard: core/ was once stored as UTF-16LE, which made it
+          # invisible to grep/AI analysis, uncompilable by Zig, and unreadable
+          # by the contract tests. Fail fast if any UTF-16/BOM file or CRLF
+          # Zig source re-enters the repository.
+          bad=0
+          while IFS= read -r f; do
+            b=$(head -c 2 "$f" | od -An -tx1 | tr -d ' \n')
+            if [ "$b" = "fffe" ] || [ "$b" = "feff" ]; then
+              echo "::error file=$f::UTF-16 BOM detected - convert to UTF-8 (no BOM)"
+              bad=$((bad + 1))
+            fi
+          done < <(git ls-files)
+          while IFS= read -r f; do
+            echo "::error file=$f::CRLF line endings detected - use LF"
+            bad=$((bad + 1))
+          done < <(grep -rlU $'\r' --include='*.zig' src core 2>/dev/null || true)
+          if [ $bad -gt 0 ]; then
+            echo "::error::$bad encoding violation(s) found"
+            exit 1
+          fi
+          echo "Encoding guard: OK"
       - uses: actions/setup-python@v4
         with:
           python-version: '3.11'
