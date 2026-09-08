@@ -2,8 +2,8 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "581ba47",
-  "build_date": "2026-09-08T08:23:52.884098+00:00",
+  "source_commit": "741e4dd",
+  "build_date": "2026-09-08T08:49:36.889655+00:00",
   "build_host": "windows",
   "platform": {
     "os": "windows",
@@ -12,7 +12,7 @@
   },
   "languages": {
     "zig": "0.13.0",
-    "rust": "1.78.0",
+    "rust": "1.88.0",
     "python": "3.11+",
     "cython": "3.0+",
     "c/cpp": "MSVC 19.38+ (Visual Studio 2022)",
@@ -27,7 +27,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "581ba47",
+      "commit": "741e4dd",
       "source": "core/"
     },
     {
@@ -37,7 +37,7 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "581ba47",
+      "commit": "741e4dd",
       "source": "shield/"
     },
     {
@@ -47,7 +47,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "581ba47",
+      "commit": "741e4dd",
       "source": "native/"
     },
     {
@@ -57,7 +57,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "581ba47",
+      "commit": "741e4dd",
       "source": "native/"
     },
     {
@@ -67,7 +67,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "581ba47",
+      "commit": "741e4dd",
       "source": "native/"
     },
     {
@@ -77,7 +77,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-build-test",
-      "commit": "581ba47",
+      "commit": "741e4dd",
       "source": "go/"
     },
     {
@@ -87,7 +87,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-build-test",
-      "commit": "581ba47",
+      "commit": "741e4dd",
       "source": "go/aggregator/"
     },
     {
@@ -97,7 +97,7 @@
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "581ba47",
+      "commit": "741e4dd",
       "source": "scripts/aegisctl.py"
     },
     {
@@ -107,7 +107,7 @@
       "type": "script",
       "required": true,
       "ci_job": "package-release",
-      "commit": "581ba47",
+      "commit": "741e4dd",
       "source": "tools/installer.py"
     },
     {
@@ -117,7 +117,7 @@
       "type": "toolchain",
       "required": true,
       "ci_job": "ts-policy-build",
-      "commit": "581ba47",
+      "commit": "741e4dd",
       "source": "ts_policy/"
     },
     {
@@ -127,7 +127,7 @@
       "type": "library",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "581ba47",
+      "commit": "741e4dd",
       "source": "brain/"
     }
   ],
@@ -180,7 +180,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "size": 4716,
-      "sha256": "717c8263e651237cca29aaa5de5ea6222d1781a76fcd07a108c3c631edc4407d",
+      "sha256": "e3cec03b1554d907b7712a2dd57aad79432e2f3a8d526f70771272d72c9ab882",
       "language": "yaml"
     },
     {
@@ -204,7 +204,7 @@
     {
       "path": "Cargo.toml",
       "size": 1044,
-      "sha256": "aad6e0e5305e080779da4d6953df706030bcbc8b177402ac5ae199e40b7c2b75",
+      "sha256": "64ba395f30b834eab61d7623e48ccf2e48272a60510ddec6655bc66260eb06b5",
       "language": "data"
     },
     {
@@ -2022,7 +2022,7 @@
     {
       "path": "tools/release_engineering.py",
       "size": 14377,
-      "sha256": "6dc3e7dac8403b7061a953541bb0916ab294ae97cd71c4d5c4bef87f13276c59",
+      "sha256": "f053dc9a40748d4b92e6df5aea721f95dd7dcadd01d00be7c7b96b0f1a595bf1",
       "language": "python/cython"
     },
     {

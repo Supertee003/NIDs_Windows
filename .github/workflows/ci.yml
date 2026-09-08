@@ -9,7 +9,7 @@ on:
 
 env:
   ZIG_VERSION: "0.13.0"
-  RUST_VERSION: "1.78.0"
+  RUST_VERSION: "1.88.0"
 
 jobs:
   zig-build-test:

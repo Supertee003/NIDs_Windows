@@ -3,7 +3,7 @@
 name = "aegis_pep"
 version = "5.0.0"
 edition = "2021"
-rust-version = "1.75"
+rust-version = "1.88"
 authors = ["AEGIS Team"]
 description = "Policy Enforcement Point and Federation TLS for AEGIS NIDS"
 license = "MIT"

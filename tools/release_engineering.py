@@ -136,7 +136,7 @@ def generate_manifest(version: str) -> Dict[str, Any]:
         },
         "languages": {
             "zig": "0.13.0",
-            "rust": "1.78.0",
+            "rust": "1.88.0",
             "python": "3.11+",
             "cython": "3.0+",
             "c/cpp": "MSVC 19.38+ (Visual Studio 2022)",
