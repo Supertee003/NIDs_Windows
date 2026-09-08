@@ -1,12 +1,12 @@
 //! windows_capture.zig - AEGIS NIDS WFP Kernel Traffic Reader (Thread 3)
 //!
-//! M4+BP2: Uses wfp_ioctl.read_events(). If WFP device was already
+//! M4+BP2: Uses rust_pep.read_events(). If WFP device was already
 //! opened by bridge_init.initAll(), skips re-opening.
 
 const std = @import("std");
 const bridge_init = @import("bridge_init.zig");
 const nids_analyze = @import("nids_analyze.zig");
-const wfp_ioctl = @import("wfp_ioctl.zig");
+const rust_pep = @import("rust_pep.zig");
 // Phase 28: Blueprint Nose Contract for event submission
 const nose = @import("nose_contract.zig");
 
@@ -49,7 +49,7 @@ fn isBlockableSourceIp(source_ip_net: u32) bool {
 ///
 /// If the WFP device is not available, retries every 10 seconds until the
 /// driver loads. If a packet matches a high-severity rule (severity >= 2),
-/// calls wfp_ioctl.block_ip() to install a kernel WFP block filter.
+/// calls rust_pep.block_ip() to install a kernel WFP block filter.
 ///
 /// Parameters `allocator` and `address` are currently unused (reserved for
 /// future filtering features).
@@ -64,14 +64,14 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
 
     // BP2: If bridge_init already opened the WFP device, don't reopen
     var did_open = false;
-    if (!wfp_ioctl.isConnected()) {
-        if (!wfp_ioctl.init()) {
+    if (!rust_pep.wfpIsConnected()) {
+        if (!rust_pep.wfpInit()) {
             std.log.warn("[SENSOR 2] WFP Driver not available, retrying every 10s", .{});
             std.debug.print("[SENSOR 2] WFP Driver not available. Waiting...\n", .{});
             while (true) {
                 if (bridge_init.g_shutdown.load(.seq_cst)) break;
                 std.time.sleep(10 * std.time.ns_per_s);
-                if (wfp_ioctl.init()) break;
+                if (rust_pep.wfpInit()) break;
             }
             did_open = true;
         } else {
@@ -82,7 +82,7 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
         std.debug.print("[SENSOR 2] WFP device already connected via bridge_init\n", .{});
     }
     if (did_open) {
-        defer wfp_ioctl.shutdown();
+        defer rust_pep.wfpShutdown();
     }
 
     std.log.info("[SENSOR 2] Reading events from kernel ring buffer", .{});
@@ -93,12 +93,12 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
 
     while (true) {
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
-        const bytes_read = wfp_ioctl.read_events(&event_buf);
+        const bytes_read = rust_pep.read_events(&event_buf);
 
         if (bytes_read == 0) {
             poll_count += 1;
             if (poll_count % WFP_STATS_POLL_INTERVAL == 0) {
-                if (wfp_ioctl.get_stats()) |stats| {
+                if (rust_pep.get_stats()) |stats| {
                     std.log.info("[SENSOR 2] WFP ring: {d}/{d} bytes", .{ stats.currentUsedBytes, stats.capacity });
                     std.debug.print("[SENSOR 2] WFP ring: {d}/{d} bytes\n", .{ stats.currentUsedBytes, stats.capacity });
                 }
@@ -108,11 +108,11 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
         }
 
         poll_count = 0;
-        const header_size = @sizeOf(wfp_ioctl.WfpEventHeader);
+        const header_size = @sizeOf(rust_pep.WfpEventHeader);
         var offset: usize = 0;
 
         while (offset + header_size <= bytes_read) {
-            const header: *align(1) const wfp_ioctl.WfpEventHeader =
+            const header: *align(1) const rust_pep.WfpEventHeader =
                 @ptrCast(event_buf[offset..][0..header_size]);
 
             const ctx = nids_analyze.PacketContext{
@@ -166,7 +166,7 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
                     // Prevents attacker from spoofing source to use NIDS as DoS amplifier
                     if (header.severity >= 2) {
                         if (isBlockableSourceIp(ctx.source_ip)) {
-                            _ = wfp_ioctl.block_ip(ctx.source_ip);
+                            _ = rust_pep.block_ip(ctx.source_ip);
                         } else {
                             std.log.warn("[WFP] Refusing to block non-routable source IP: {d}.{d}.{d}.{d}", .{ a, b, c, d });
                         }

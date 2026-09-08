@@ -210,9 +210,10 @@ pub const PEP = struct {
             },
             .block => {
                 // AEGIS-011: IPS inline blocking — actually call WFP IOCTL
-                const wfp_ioctl = @import("wfp_ioctl.zig");
+                // through the Rust PEP path (T11: single PEP path to enforcement)
+                const pep = @import("rust_pep.zig");
                 if (event.source_ip != 0) {
-                    const block_result = wfp_ioctl.block_ip(event.source_ip);
+                    const block_result = pep.block_ip(event.source_ip);
                     if (block_result) {
                         _ = self.total_enforced.fetchAdd(1, .monotonic);
                         event.enforcement_status = 1; // enforced

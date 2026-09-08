@@ -20,7 +20,7 @@ pub const AEGIS_BUILD = "zig-0.13";
 // Mirror of the Rust crate version in shield/Cargo.toml. Update both
 // together on shield releases.
 pub const SHIELD_VERSION = "0.1.0";
-const wfp_ioctl = @import("wfp_ioctl.zig");
+const rust_pep = @import("rust_pep.zig");
 const win = std.os.windows;
 
 // BP-I2: Named constants for UDP Brain logger configuration
@@ -206,7 +206,7 @@ pub fn setBrainAllocator(allocator: std.mem.Allocator) void {
 // ============================================================
 
 fn initWfpIoctl() void {
-    if (wfp_ioctl.init()) {
+    if (rust_pep.wfpInit()) {
         g_state.wfp_ioctl = true;
     } else {
         std.log.warn("[INIT] WFP IOCTL: device not available (driver not loaded?)", .{});
@@ -215,7 +215,7 @@ fn initWfpIoctl() void {
 }
 
 fn shutdownWfpIoctl() void {
-    wfp_ioctl.shutdown();
+    rust_pep.wfpShutdown();
     g_state.wfp_ioctl = false;
 }
 
@@ -513,7 +513,7 @@ pub fn isBridgeReady() bool {
 
 /// Check if WFP IOCTL device is connected.
 pub fn isWfpReady() bool {
-    return wfp_ioctl.isConnected();
+    return rust_pep.wfpIsConnected();
 }
 
 /// Push event to C++ bridge (returns 0 on success, -1 if unavailable).
@@ -590,17 +590,17 @@ pub fn sendToBrain(allocator: std.mem.Allocator, comptime T: type, msg: T) void 
 
 /// Block IP via WFP IOCTL (convenience wrapper).
 pub fn blockIp(ipv4: u32) bool {
-    return wfp_ioctl.block_ip(ipv4);
+    return rust_pep.block_ip(ipv4);
 }
 
 /// Read events from WFP driver ring buffer.
 pub fn readWfpEvents(buf: []u8) u32 {
-    return wfp_ioctl.read_events(buf);
+    return rust_pep.read_events(buf);
 }
 
 /// Get WFP ring buffer stats.
-pub fn getWfpStats() ?wfp_ioctl.WfpRingStats {
-    return wfp_ioctl.get_stats();
+pub fn getWfpStats() ?rust_pep.WfpRingStats {
+    return rust_pep.get_stats();
 }
 
 /// Print bridge status (call periodically from a status thread).

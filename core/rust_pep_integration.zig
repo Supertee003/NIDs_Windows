@@ -6,7 +6,6 @@ const std = @import("std");
 const canonical = @import("canonical_event.zig");
 const policy = @import("policy_engine.zig");
 const rust_pep = @import("rust_pep.zig");
-const wfp_ioctl = @import("wfp_ioctl.zig");  // Phase 28: WFP kernel bridge
 
 var g_pep: ?rust_pep.RustPep = null;
 var g_initialized: bool = false;
@@ -17,8 +16,8 @@ var g_total_blocks: u64 = 0;
 pub fn init() void {
     if (g_initialized) return;
     g_pep = rust_pep.RustPep.init(g_allocator);
-    // Phase 28: Initialize WFP kernel bridge
-    if (wfp_ioctl.init()) {
+    // Phase 28: Initialize WFP kernel bridge (via rust_pep, the single PEP path)
+    if (rust_pep.wfpInit()) {
         std.log.info("[RUST-PEP] WFP kernel bridge connected (real BLOCK enforcement active)", .{});
     } else {
         std.log.warn("[RUST-PEP] WFP kernel bridge NOT connected (fallback to in-memory only)", .{});
@@ -33,8 +32,8 @@ pub fn isInitialized() bool { return g_initialized; }
 
 pub fn shutdown() void {
     if (!g_initialized) return;
-    // Phase 28: Shutdown WFP kernel bridge
-    wfp_ioctl.shutdown();
+// Phase 28: Shutdown WFP kernel bridge
+    rust_pep.wfpShutdown();
     if (g_pep) |*pep| pep.deinit();
     g_pep = null;
     g_initialized = false;

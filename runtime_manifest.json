@@ -175,11 +175,8 @@
       "last_verified_commit": "98e5dc09"
     },
     "core/wfp_production.zig": {
-      "classification": "production",
-      "role": "Zig WFP contract mirror",
-      "golden_path": true,
       "status": "REAL",
-      "last_verified_commit": "98e5dc09"
+      "golden_path": true
     },
     "core/wfp_ioctl.zig": {
       "classification": "production",
@@ -487,6 +484,7 @@
     "enforcement authority: shield/src/lib.rs (Rust PEP), per ADR-0001",
     "no path to WFP bypasses Rust PEP",
     "aegisctl requests only, never bypasses PEP",
-    "host-network source: core/npcap_capture.zig (single authoritative source for Windows host network + process telemetry; one model -> CanonicalEvent -> Zig Flow)"
+    "host-network source: core/npcap_capture.zig (single authoritative source for Windows host network + process telemetry; one model -> CanonicalEvent -> Zig Flow)",
+    "WFP enforcement authority: core/wfp_production.zig (single authoritative enforcement module for Windows WFP; Rust PEP only path)"
   ]
 }

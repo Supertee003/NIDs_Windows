@@ -284,6 +284,46 @@ pub fn isCriticalInfra(ip: u32) bool {
 }
 
 // ============================================================
+// WFP IOCTL transport re-exports (T11)
+//
+// The Rust PEP is the ONLY path to enforcement. These functions
+// wrap the low-level WFP device transport so no other module
+// needs to import wfp_ioctl.zig directly. Any module that needs
+// to talk to the WFP device must go through rust_pep.
+// ============================================================
+
+pub const WfpRingStats = wfp_ioctl.WfpRingStats;
+pub const WfpEventHeader = wfp_ioctl.WfpEventHeader;
+
+pub fn wfpInit() bool {
+    return wfp_ioctl.init();
+}
+
+pub fn wfpShutdown() void {
+    wfp_ioctl.shutdown();
+}
+
+pub fn wfpIsConnected() bool {
+    return wfp_ioctl.isConnected();
+}
+
+pub fn block_ip(ipv4: u32) bool {
+    return wfp_ioctl.block_ip(ipv4);
+}
+
+pub fn unblock_ip(ipv4: u32) bool {
+    return wfp_ioctl.unblock_ip(ipv4);
+}
+
+pub fn read_events(out_buf: []u8) u32 {
+    return wfp_ioctl.read_events(out_buf);
+}
+
+pub fn get_stats() ?WfpRingStats {
+    return wfp_ioctl.get_stats();
+}
+
+// ============================================================
 // Tests
 // ============================================================
 
