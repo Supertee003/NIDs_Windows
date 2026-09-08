@@ -531,6 +531,13 @@
       "golden_path": false,
       "status": "REAL",
       "last_verified_commit": "ccfc2ac"
+    },
+    "core/control_ipc.zig": {
+      "classification": "production",
+      "role": "control-plane IPC (T16 Steps 41-43): request envelope (request_id + nonce + caller identity + role), layered authorization (ACL never Everyone, min-role, timeout, replay), append-only audit; privileged actions flow to Rust PEP only",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
     }
   },
   "init_order": [
@@ -604,6 +611,8 @@
     "golden path is REAL (host-verified Windows E2E): core/npcap_capture.zig + nose/capture.go + windows_capture.zig + Windows Brain/Cython + ts_policy + Rust PEP + WFP + forensics + replay carry a real Windows event end-to-end; only core/rust_pep.zig (MOCK, test sim) is explicitly excluded from the golden path",
     "fault authority: core/fault_matrix.zig + core/fault_injection.zig (only modules that declare expected recovery per fault x subsystem and measure actual recovery: detect/contain/fallback/audit/recover; inject -> duration_ns)",
     "config authority: core/config_reload_proof.zig + config/Rules.json + tools/config_validator.py (hot reload = validate then atomic swap then audit; invalid ruleset is rejected, no partial swap)",
-    "observability authority: core/health_monitoring_proof.zig + scripts/aegis_defcon.py + scripts/aegis_metrics.py (liveness heartbeat, readiness over NOSE/FLOW/DETECTION/POLICY/PEP, metrics snapshot, DEFCON rollup; single authoritative source)"
+    "observability authority: core/health_monitoring_proof.zig + scripts/aegis_defcon.py + scripts/aegis_metrics.py (liveness heartbeat, readiness over NOSE/FLOW/DETECTION/POLICY/PEP, metrics snapshot, DEFCON rollup; single authoritative source)",
+    "control plane authority: core/control_ipc.zig Authorizer (single control-plane IPC contract; request_id + nonce + caller identity + role READ/OPERATE/PRIVILEGED; layered authorization = ACL (explicit principals only, never \"Everyone\" for privileged) -> min-role -> timeout -> replay -> audit; every decision audited append-only)",
+    "control plane routing: aegisctl and all CLIs submit control requests only (scripts/aegisctl.py envelope + audit); privileged WFP/driver mutation flows ONLY via the Rust PEP - no direct enforcement from CLI/TS/Python/Go"
   ]
 }

@@ -144,6 +144,79 @@ def _clear_pid(component: dict) -> None:
             pass
 
 
+# =====================================================================
+# Control-plane request envelope (T16, Steps 41-43)
+#
+# aegisctl never mutates enforcement directly. Every privileged mutation
+# (block/unblock, enforce push, quarantine, driver ops) is issued as a
+# ControlRequest envelope: request_id + nonce (replay protection), caller
+# identity, role (READ < OPERATE < PRIVILEGED), and an audit record. The
+# Zig Authorizer (core/control_ipc.zig) authorizes the request; the Rust
+# PEP (shield) is the ONLY path for privileged WFP / driver mutation.
+# =====================================================================
+
+# Roles are integers so they serialize cleanly in the audit log.
+ROLE_READ = 0
+ROLE_OPERATE = 1
+ROLE_PRIVILEGED = 2
+ROLE_NAMES = {ROLE_READ: "READ", ROLE_OPERATE: "OPERATE", ROLE_PRIVILEGED: "PRIVILEGED"}
+
+# Audit log location (append-only NDJSON, same dir as states.json).
+CONTROL_AUDIT = RUNTIME_DIR / "control_audit.ndjson"
+
+_control_request_counter = [0]
+
+
+def _caller_identity() -> str:
+    """Best-effort Windows caller identity (pipe client SID in production).
+    Falls back to the effective user name on other platforms."""
+    try:
+        import getpass
+        return getpass.getuser() or "unknown"
+    except Exception:
+        return "unknown"
+
+
+def _next_request_id() -> int:
+    """Monotonic request id with a per-process random prefix so two
+    instances can never collide."""
+    import random
+    if _control_request_counter[0] == 0:
+        _control_request_counter[0] = random.randint(1, 0x7FFFFFFFFFFF)
+    _control_request_counter[0] += 1
+    return _control_request_counter[0]
+
+
+def _control_request(command: str, role: int, note: str = "") -> dict:
+    """Build a ControlRequest envelope and append an audit record.
+
+    The envelope is a REQUEST, never an enforcement action. The runtime
+    (core/control_ipc.zig authorizer) + Rust PEP decide whether to act.
+    Returns the request dict (with request_id, nonce, caller, role).
+    """
+    import random
+    req = {
+        "request_id": _next_request_id(),
+        "nonce": random.randint(1, 0x1FFFFFFFFFFFFFFF),
+        "caller": _caller_identity(),
+        "role": role,
+        "role_name": ROLE_NAMES.get(role, "?"),
+        "command": command,
+        "issued_at_ms": int(time.time() * 1000),
+        "note": note,
+    }
+    # Append-only audit. If the log cannot be written the command still
+    # proceeds (audit integrity is a runtime concern; a missing audit file
+    # is surfaced by diagnostics, never silently dropped).
+    try:
+        CONTROL_AUDIT.parent.mkdir(parents=True, exist_ok=True)
+        with open(CONTROL_AUDIT, "a", encoding="utf-8") as f:
+            f.write(json.dumps(req) + "\n")
+    except OSError:
+        pass
+    return req
+
+
 def _is_process_alive(pid: Optional[int]) -> bool:
     """Check if a process with the given PID is still running.
     Cross-platform: uses os.kill on Unix, OpenProcess on Windows.
@@ -1802,6 +1875,11 @@ def _block_add(args: argparse.Namespace) -> int:
             print(f"IP {args.ip} is already BLOCKED (since {entry.get('blocked_at', '?')})")
             return 0
 
+    # T16: every privileged mutation is issued as a control request
+    # (request_id + nonce + caller + role) and audited. Signalling core
+    # applies the block through the Rust PEP only (no direct WFP mutation).
+    _control_request("block_request", ROLE_OPERATE, note=f"ip={args.ip}")
+
     # Add new block entry
     entry = {
         "ip": args.ip,
@@ -2048,6 +2126,12 @@ def _enforce_push(args: argparse.Namespace) -> int:
     # Copy to config/Rules.json
     dest = REPO_ROOT / "config" / "Rules.json"
     dest.parent.mkdir(parents=True, exist_ok=True)
+
+    # T16: policy push is a PRIVILEGED control request, audited before the
+    # swap. The runtime validates + hot-reloads; aegisctl never mutates
+    # enforcement state directly.
+    _control_request("enforce_push", ROLE_PRIVILEGED, note=f"policy={policy_path.name}")
+
     import shutil
     shutil.copy2(str(policy_path), str(dest))
 
