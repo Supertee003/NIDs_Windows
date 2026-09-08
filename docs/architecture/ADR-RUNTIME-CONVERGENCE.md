@@ -18,6 +18,16 @@ All other entry points are classified as:
 - **Installer** (`tools/installer.py` — CONSUMES build artifacts, not a runtime)
 - **Operational tooling** (`scripts/*.bat`, `scripts/*.ps1`)
 
+### `core/` vs `src/` — Directory Distinction
+
+| Directory | Status | Contents | Build Role |
+|-----------|--------|----------|------------|
+| `src/` | **PRODUCTION** | `main.zig` + 10 subdirs (contract, capture, core, detection, federation, forensic, policy, reliability, windows, xdr) | ✅ `zig build` → `aegis_nids.exe` |
+| `src/core/` | Production subset | `diagnostics.zig`, `memory_pool.zig` | ✅ Imported by `src/main.zig` |
+| `core/` (root) | **LEGACY** (NOT in build) | 100+ old stubs from earlier phases (brain, cluster, dispatcher, federation, etc.) | ❌ NOT imported by anything in `src/` |
+
+**Key:** Root `core/` was the original module location before the `src/` restructure. It is NOT part of the current build. All production imports go through `src/`.
+
 ## Runtime Inventory
 
 ### 1. Production Runtime (ONE)
