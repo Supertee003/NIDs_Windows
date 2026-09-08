@@ -75,11 +75,13 @@ jobs:
           fi
 
   # ============================================================
-  # Phase K: Zig per-file compile + test (skip platform-specific)
+  # Phase K: Zig per-file syntax gate
   # ============================================================
-  # Step 2 cleanup: the legacy core/ directory was removed; the
-  # canonical runtime lives in src/. Compile every src/ file that is
-  # host-compatible and skip the Windows-specific ones (Npcap / Win32).
+  # Step 2: the canonical runtime lives in src/. Cross-directory
+  # imports (src/contract, src/core, ...) make standalone `zig test`
+  # impossible for nested files, so the host gate is a per-file
+  # `zig ast-check` (syntax/AST). Full semantic coverage runs as
+  # `zig build test` in ci.yml on Windows.
   # ============================================================
   phase-k-zig-logic:
     name: Phase K - Zig Logic Layer
@@ -90,53 +92,28 @@ jobs:
         uses: goto-bus-stop/setup-zig@v2
         with:
           version: 0.13.0
-      - name: Run per-file tests (Phase K)
+      - name: Run per-file syntax gate (Phase K)
         run: |
           if [ ! -d src ]; then
             echo "::error::src/ directory not found"
             exit 1
           fi
 
-          # Windows-specific files that cannot compile on Linux Host
-          # (Npcap / Win32 APIs), plus the aggregate entrypoints that
-          # link the full runtime.
-          SKIP_PATTERNS="src/main.zig src/all_tests.zig src/fuzz_entry.zig src/capture/npcap_adapter.zig src/tests/capture/npcap_adapter.zig src/windows/ src/tests/windows/"
-
           pass_count=0
           fail_count=0
-          skip_count=0
 
           while IFS= read -r f; do
-            fname="$f"
-
-            # Check skip list
-            skip=false
-            for s in $SKIP_PATTERNS; do
-              case "$fname" in
-                $s*)
-                  skip=true
-                  break
-                  ;;
-              esac
-            done
-
-            if [ "$skip" = "true" ]; then
-              echo "[SKIP] $fname (Windows-specific)"
-              skip_count=$((skip_count + 1))
-              continue
-            fi
-
-            echo "::group::$fname"
-            output=$(zig test "$f" -lc 2>&1)
+            echo "::group::$f"
+            output=$(zig ast-check "$f" 2>&1)
             rc=$?
             echo "$output" | tail -5
             echo "::endgroup::"
 
             if [ $rc -eq 0 ]; then
-              echo "[PASS] $fname"
+              echo "[PASS] $f"
               pass_count=$((pass_count + 1))
             else
-              echo "::error::$fname FAILED (exit $rc)"
+              echo "::error file=$f::AST/syntax check failed"
               fail_count=$((fail_count + 1))
             fi
           done < <(find src -type f -name '*.zig' | sort)
@@ -147,7 +124,6 @@ jobs:
           echo "============================================================"
           echo "  Passed:  $pass_count"
           echo "  Failed:  $fail_count"
-          echo "  Skipped: $skip_count (Windows-specific)"
           echo ""
 
           if [ $fail_count -gt 0 ]; then

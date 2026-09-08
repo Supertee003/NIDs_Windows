@@ -1,4 +1,7 @@
 path,semantic_position,language,runtime_status,authority,primary_owner,inputs,outputs,dependents,replacement,tests,notes
+# NOTE (Step 2, 2026-09-08): rows below describe the legacy core/ dev tree
+# (retained, tracked, NOT in production build). Live production modules live
+# under src/ (build.zig -> src/main.zig). Kept as historical registry.
 core/canonical_event.zig,NORMALIZE,Zig,ACTIVE,Contract authority,Zig core,sensors,CanonicalEvent,all pipeline stages,,contract_freeze tests,Immutable after observation
 core/wire_event.zig,TRANSPORT,Zig,ACTIVE,Wire authority,Zig core,sensors,WireEvent,bridge/brain/shield,,wire tests,Fixed width + explicit endian
 core/event_fabric.zig,SCHEDULE,Zig,ACTIVE,Queue authority,Zig core,canonical_event,PrioritizedEvent,dispatcher,fabric_accounting.zig,Priority queue + backpressure

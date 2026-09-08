@@ -4,6 +4,14 @@
 **Date**: 2026-08-31
 **Supersedes**: All previous architecture documents (see DEPRECATION_MAP.md)
 
+> **⚠️ 2026-09-08 BUILD-TRUTH OVERRIDE (Step 2):** This document describes the
+> legacy `core/` module layout and is retained for historical/contract context.
+> The **one production runtime is `src/`** — `build.zig` builds and tests
+> `src/main.zig` only; the installer and golden path package `src/` artifacts.
+> `core/` is the retained original development tree: tracked, UTF-8 normalized,
+> but NOT in the production build. Treat all `core/...` paths in the body below
+> as legacy references; live `src/...` equivalents carry current authority.
+
 ---
 
 ## Purpose

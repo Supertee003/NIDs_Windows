@@ -2,9 +2,9 @@
   "schema_version": 3,
   "generated": "2026-09-07",
   "baseline_commit": "a775c0d",
-  "canonical_runtime": "core/",
-  "canonical_entrypoint": "core/nids_main.zig (bootstrap) -> core/dispatcher.zig (sole orchestrator)",
-  "build_reality_note": "T1 decision: canonical runtime = core/ per ADR-0001. Current build.zig builds src/main.zig (legacy-to-migrate). Build switch to core/ is deferred to T2/T3.",
+  "canonical_runtime": "src/",
+  "canonical_entrypoint": "src/main.zig (bootstrap, built by build.zig) -> src/policy/action_dispatcher.zig (pipeline orchestrator)",
+  "build_reality_note": "Step 2 truth (2026-09-08): build.zig builds and tests src/main.zig only (ONE BUILD truth). core/ is the retained original development tree (UTF-8 normalized) - tracked for reference and contract-test context, NOT part of the production build, installer, or golden path. Module entries below with core/ paths are historical G-plan contracts kept for the restored T8-T19 tests; src/ modules carry the live authority.",
   "modules": {
     ".github/workflows/ci.yml": {
       "classification": "ci",

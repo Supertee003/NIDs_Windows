@@ -2,8 +2,8 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "68de942",
-  "build_date": "2026-09-08T17:54:36.012074+00:00",
+  "source_commit": "836ccde",
+  "build_date": "2026-09-08T18:11:34.493570+00:00",
   "build_host": "windows",
   "platform": {
     "os": "windows",
@@ -27,7 +27,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "68de942",
+      "commit": "836ccde",
       "source": "core/"
     },
     {
@@ -37,7 +37,7 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "68de942",
+      "commit": "836ccde",
       "source": "shield/"
     },
     {
@@ -47,7 +47,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "68de942",
+      "commit": "836ccde",
       "source": "native/"
     },
     {
@@ -57,7 +57,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "68de942",
+      "commit": "836ccde",
       "source": "native/"
     },
     {
@@ -67,7 +67,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "68de942",
+      "commit": "836ccde",
       "source": "native/"
     },
     {
@@ -77,7 +77,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-build-test",
-      "commit": "68de942",
+      "commit": "836ccde",
       "source": "go/"
     },
     {
@@ -87,7 +87,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-build-test",
-      "commit": "68de942",
+      "commit": "836ccde",
       "source": "go/aggregator/"
     },
     {
@@ -97,7 +97,7 @@
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "68de942",
+      "commit": "836ccde",
       "source": "scripts/aegisctl.py"
     },
     {
@@ -107,7 +107,7 @@
       "type": "script",
       "required": true,
       "ci_job": "package-release",
-      "commit": "68de942",
+      "commit": "836ccde",
       "source": "tools/installer.py"
     },
     {
@@ -117,7 +117,7 @@
       "type": "toolchain",
       "required": true,
       "ci_job": "ts-policy-build",
-      "commit": "68de942",
+      "commit": "836ccde",
       "source": "ts_policy/"
     },
     {
@@ -127,7 +127,7 @@
       "type": "library",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "68de942",
+      "commit": "836ccde",
       "source": "brain/"
     }
   ],
@@ -185,8 +185,8 @@
     },
     {
       "path": ".github/workflows/host-regression.yml",
-      "size": 6572,
-      "sha256": "46c8de60cbc4d79127ade7a79510654ce74c464fd6628ada2ee089cb78df62b7",
+      "size": 5761,
+      "sha256": "b4220e74fd81783bd075f40b524b7d6f92c0a6c93a4bd484688066a726a865f1",
       "language": "yaml"
     },
     {
@@ -1577,8 +1577,8 @@
     },
     {
       "path": "runtime_manifest.json",
-      "size": 42874,
-      "sha256": "0f6c8fdd0c95bf72eba7482af3d6a0842635ea523d9cf3ed31603920e9b7246d",
+      "size": 43163,
+      "sha256": "4ac80af9237ec1a67f9d055225c454faede1efce4ae33c9f55862fd0fad46762",
       "language": "json"
     },
     {
