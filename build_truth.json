@@ -1,0 +1,52 @@
+{
+  "zig build": {
+    "status": "OK",
+    "exit_code": 0,
+    "stderr": ""
+  },
+  "zig build test": {
+    "status": "OK",
+    "exit_code": 0,
+    "stderr": "test\n+- run test stderr\n[INFO] test message 42\n[INFO] TrustStore: generated key kind=6 purpose=1\n[INFO] TrustStore: generated key kind=6 purpose=2\n[INFO] TrustStore: generated key kind=6 purpose=3\n[INFO] TrustStore: generated key kind=6 purpose=4\n[DEBUG] action=allow event=dns_query rule=0\n[ALERT] action=block src=0 dst=0 proto=0\n[ERROR] aegis_fim_start failed for /tmp\n[INFO] registry change matched rule 42: HKLM\\System\\CurrentControlSet\\Services\\AEGIS\\Start\n[ALERT] INJECTION DETECTED: pattern=v"
+  },
+  "cargo build --release": {
+    "status": "OK",
+    "exit_code": 0,
+    "stderr": "Finished `release` profile [optimized] target(s) in 3.93s"
+  },
+  "cargo test --release": {
+    "status": "OK",
+    "exit_code": 0,
+    "stderr": "Compiling ring v0.17.14\n   Compiling aws-lc-sys v0.45.0\n   Compiling aws-lc-rs v1.18.1\n   Compiling rustls-webpki v0.103.15\n   Compiling rustls v0.23.43\n   Compiling aegis_pep v5.0.0 (D:\\NIDs_Windows)\n    Finished `release` profile [optimized] target(s) in 28.99s\n     Running unittests rust-src\\lib.rs (target\\release\\deps\\aegis_pep-d6c4cc5e8eff804a.exe)\n   Doc-tests aegis_pep"
+  },
+  "cmake -B build -S .": {
+    "status": "OK",
+    "exit_code": 0,
+    "stderr": ""
+  },
+  "cmake --build build --config Release": {
+    "status": "OK",
+    "exit_code": 0,
+    "stderr": ""
+  },
+  "artifact:aegis_nids.exe": {
+    "exists": true,
+    "path": "zig-out/bin/aegis_nids.exe"
+  },
+  "artifact:aegis_pep.dll": {
+    "exists": true,
+    "path": "target/release/aegis_pep.dll"
+  },
+  "artifact:aegis_wfp_user.dll": {
+    "exists": true,
+    "path": "build/Release/aegis_wfp_user.dll"
+  },
+  "artifact:aegis_etw_helper.dll": {
+    "exists": true,
+    "path": "build/Release/aegis_etw_helper.dll"
+  },
+  "artifact:aegis_fim_helper.dll": {
+    "exists": true,
+    "path": "build/Release/aegis_fim_helper.dll"
+  }
+}
