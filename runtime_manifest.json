@@ -6,6 +6,97 @@
   "canonical_entrypoint": "core/nids_main.zig (bootstrap) -> core/dispatcher.zig (sole orchestrator)",
   "build_reality_note": "T1 decision: canonical runtime = core/ per ADR-0001. Current build.zig builds src/main.zig (legacy-to-migrate). Build switch to core/ is deferred to T2/T3.",
   "modules": {
+    ".github/workflows/ci.yml": {
+      "classification": "ci",
+      "role": "cross-language CI: zig/rust/c/cpp/python(+cython)/go/typescript build+test, security scan, ci-matrix gate, package-release (T17 AC2)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    ".github/workflows/host-regression.yml": {
+      "classification": "ci",
+      "role": "host regression: runtime contract (phase-t) + per-file Zig (phase-k) (T17 AC2)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "brain/aegis_brain_cython/fast_scan.pyx": {
+      "classification": "production",
+      "role": "Phase 17 Cython literal-payload scan accelerator (built artifact present in build/, used by windows_brain as substring pre-filter)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "brain/cython/cython_regex_scan.pyx": {
+      "classification": "production",
+      "role": "T5b Cython accelerator for run_regex_scan (C-level loop over pre-built re.Pattern arrays; 1.74x speedup over pure-Python fallback; no policy/PEP/Windows-privilege path)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "brain/windows_brain.py": {
+      "classification": "production",
+      "role": "Python advisory brain (T5b Cython + T8 advisory-only: brain requests enforcement via aegisctl -> IPC -> dispatcher -> Rust PEP; never netsh/firewall/bridge.block_ip directly)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "bridge/": {
+      "classification": "production",
+      "role": "C++ IPC bridge + T9 host adapter framework (aegis_adapter.{hpp,cpp} for ETW/FIM/Registry/Process via C-ABI; built via bridge/CMakeLists.txt; 100/100 windows_adapters tests + 9/9 T9 Python contract tests)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "a775c0d"
+    },
+    "bridge/aegis_adapter.cpp": {
+      "classification": "production",
+      "role": "C++ adapter implementation (vtable + extern C)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "a775c0d"
+    },
+    "bridge/aegis_adapter.hpp": {
+      "classification": "production",
+      "role": "C++ adapter framework (ETW/FIM/Registry/Process) C ABI",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "a775c0d"
+    },
+    "build_manifest.json": {
+      "classification": "release",
+      "role": "build/release manifest v2: source_commit + per-component commit/required/ci_job + 300+ artifact SHA-256 digests (T17 AC3)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "ci_coverage.json": {
+      "classification": "config",
+      "role": "CI matrix: Zig/Rust/C++/Python/Cython/Go/TypeScript/contract/static-analysis/windows-host/driver/packaging jobs + required/optional flags (T17 AC2)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "config/Rules.json": {
+      "classification": "production",
+      "role": "canonical runtime config (policy rules); hot-reload target",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
+    },
+    "core/authority_review.zig": {
+      "classification": "production",
+      "role": "Final authority review (T19 AC4, Step 59): AUTHORITY_CHECKLIST of twelve clauses (sensor/detector/brain/go/typescript never enforce; RAG never authorizes; C++ never bypasses the PEP; policy never executes; CLI never bypasses authorization; Rust PEP is final authority; Windows complies and audits); review() is authoritative only when every row holds (fail-closed); 8 tests",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "c13b357"
+    },
+    "core/brain_engine.zig": {
+      "classification": "production",
+      "role": "advisory brain (RAG-aware scoring with signal_rag, false-positive rebuttal, no enforcement path; 135/135 tests incl T5a)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
     "core/canonical_event.zig": {
       "classification": "production",
       "role": "canonical event schema (single authority, ADR-0003; source types + identity accessors, 28/28 tests incl golden vector)",
@@ -13,47 +104,47 @@
       "status": "REAL",
       "last_verified_commit": "a775c0d"
     },
-    "core/event_fabric.zig": {
+    "core/cluster_coord.zig": {
       "classification": "production",
-      "role": "event queue/backpressure",
+      "role": "federation: ClusterCoord facade (heartbeat timeout, leader election, cross-node incident aggregation, TI broadcast, message schema); remote reports only, enforcement stays local (T13 REAL)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "new"
+    },
+    "core/config_reload_proof.zig": {
+      "classification": "production",
+      "role": "config hot reload: Rules.json mtime watchdog -> validate -> atomic swap (RCU) -> version tracking -> audit; no restart. (Step 44)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
+    },
+    "core/control_ipc.zig": {
+      "classification": "production",
+      "role": "control-plane IPC (T16 Steps 41-43): request envelope (request_id + nonce + caller identity + role), layered authorization (ACL never Everyone, min-role, timeout, replay), append-only audit; privileged actions flow to Rust PEP only",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
+    },
+    "core/correlation_engine.zig": {
+      "classification": "production",
+      "role": "evidence -> incident correlation (incident_id + entity + evidence graph + multi-category confidence; 80/80 tests incl T4)",
       "golden_path": true,
       "status": "REAL",
       "last_verified_commit": "98e5dc09"
     },
-    "core/event_queue.zig": {
+    "core/cpp_adapter.zig": {
       "classification": "production",
-      "role": "queue primitive",
+      "role": "Zig C-ABI binding to C++ adapter framework",
       "golden_path": true,
       "status": "REAL",
-      "last_verified_commit": "98e5dc09"
+      "last_verified_commit": "a775c0d"
     },
-    "core/priority_queue.zig": {
+    "core/decision_trace.zig": {
       "classification": "production",
-      "role": "priority queue",
-      "golden_path": true,
+      "role": "Decision trace (T19 AC1, Step 56): mandated 8-link chain action -> pep_request -> policy -> verdict -> evidence -> correlation -> event -> source in root-cause order with strict-order append + complete() + rootSource(); ActionKind.isPrivileged (block/quarantine/rate_limit); TraceStore.record/registerAction/auditCoverage -> all_traced or listed untraced ids; 7 tests",
+      "golden_path": false,
       "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "core/fabric_accounting.zig": {
-      "classification": "production",
-      "role": "event fate accounting",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "core/flow_engine.zig": {
-      "classification": "production",
-      "role": "flow state (thread-safe tables, LRU capacity cap, snapshot-value API; 20/20 tests incl T3 stress 10K/100K/1M)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "core/flow_types.zig": {
-      "classification": "production",
-      "role": "flow type defs",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
+      "last_verified_commit": "c13b357"
     },
     "core/detection_engine.zig": {
       "classification": "production",
@@ -69,157 +160,6 @@
       "status": "PARTIAL",
       "last_verified_commit": "98e5dc09"
     },
-    "core/verdict_aggregator.zig": {
-      "classification": "production",
-      "role": "evidence -> verdict",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "a642264"
-    },
-    "core/correlation_engine.zig": {
-      "classification": "production",
-      "role": "evidence -> incident correlation (incident_id + entity + evidence graph + multi-category confidence; 80/80 tests incl T4)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "core/threat_intel.zig": {
-      "classification": "production",
-      "role": "external intelligence enrichment (feed -> canonical evidence, evidence-only no policy path; 80/80 tests incl T4)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "core/rag_engine.zig": {
-      "classification": "production",
-      "role": "context enrichment (IP/rule_id retrieval, confidence ranking, MITRE ATT&CK references, fail-soft; 102/102 tests)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "core/brain_engine.zig": {
-      "classification": "production",
-      "role": "advisory brain (RAG-aware scoring with signal_rag, false-positive rebuttal, no enforcement path; 135/135 tests incl T5a)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "core/rag_intelligence.zig": {
-      "classification": "production",
-      "role": "rag pipeline",
-      "golden_path": false,
-      "status": "PARTIAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "core/policy_engine.zig": {
-      "classification": "production",
-      "role": "final decision authority",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "a642264"
-    },
-    "core/policy_ir.zig": {
-      "classification": "production",
-      "role": "policy IR",
-      "golden_path": false,
-      "status": "PARTIAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "core/policy_signing.zig": {
-      "classification": "production",
-      "role": "ed25519 signing + TrustStore (rotation, revocation, persistent rollback floor, restart, real Ed25519 + SHA-256; 36/36 tests incl G9 + T7)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "core/policy_plane.zig": {
-      "classification": "production",
-      "role": "policy control plane",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "a642264"
-    },
-    "core/rust_pep.zig": {
-      "classification": "test-sim",
-      "role": "zig-side PEP sim for tests only",
-      "golden_path": false,
-      "status": "MOCK",
-      "last_verified_commit": "98e5dc09"
-    },
-    "shield/src/lib.rs": {
-      "classification": "production",
-      "role": "Rust PEP (final enforcement authority, ADR-0001; T8 adds PepRequest/PepResult/PepTrace + aegis_pep_evaluate C-ABI; 38/38 tests incl T8 PEP + Tier-3 + C-ABI)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "shield/src/pep.rs": {
-      "classification": "production",
-      "role": "T8 Rust PEP safe module (#![forbid(unsafe_code)]; 5-status taxonomy + full decision trace; 12 PEP unit tests)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "shield/src/windows_enforce.rs": {
-      "classification": "production",
-      "role": "WFP enforcement adapter (T8 hooks into the Rust PEP; WFP separation deferred to T11)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "rust-src/lib.rs": {
-      "classification": "redirect-to-shield",
-      "role": "aegis_pep PEP FFI (currently linked by build.zig; to be merged into shield in T8)",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "core/wfp_production.zig": {
-      "status": "REAL",
-      "golden_path": true
-    },
-    "core/wfp_ioctl.zig": {
-      "classification": "production",
-      "role": "WFP ioctl (test-aware device-open probe; prod keeps err+print)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "core/forensics_engine.zig": {
-      "classification": "production",
-      "role": "immutable trace (ring buffer; event->evidence->verdict->policy->PEP->action->result full-chain; REAL)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "core/forensic_log.zig": {
-      "classification": "production",
-      "role": "forensic log (append-only NDJSON + payload capture; appends hash chain in forensic_replay_proof; REAL)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "core/replay_engine.zig": {
-      "classification": "production",
-      "role": "replay (compare original vs replayed decision, diff + reason; REAL)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "core/runtime_spine.zig": {
-      "classification": "production",
-      "role": "runtime spine (module registry/order, golden-path tracer; 26/26 tests)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "core/lifecycle.zig": {
-      "classification": "production",
-      "role": "lifecycle (INIT/START/RUN/DRAIN/STOP, rollback + fault tests; 514/514 tests)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
     "core/dispatcher.zig": {
       "classification": "production",
       "role": "SOLE orchestrator (10 pipeline stage helpers + T4 evidence->incident + TI evidence normalization + T5a RAG-aware brain, timed drain + TTL expiry, fate ledger; 288/288 tests)",
@@ -227,240 +167,26 @@
       "status": "REAL",
       "last_verified_commit": "98e5dc09"
     },
-    "core/nose_contract.zig": {
+    "core/event_fabric.zig": {
       "classification": "production",
-      "role": "nose contract",
+      "role": "event queue/backpressure",
       "golden_path": true,
       "status": "REAL",
       "last_verified_commit": "98e5dc09"
     },
-    "nose/": {
+    "core/event_queue.zig": {
       "classification": "production",
-      "role": "Go Nose acquisition (capture + pipe sink, ADR-0003)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "a775c0d"
-    },
-    "nose/canonical.go": {
-      "classification": "production",
-      "role": "Go CanonicalEvent 109B serializer (golden vector)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "a775c0d"
-    },
-    "nose/capture.go": {
-      "classification": "production",
-      "role": "gopacket/npcap live capture -> canonical frames",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "a775c0d"
-    },
-    "nose/pipe_writer.go": {
-      "classification": "production",
-      "role": "named-pipe sink .\\pipe\\aegis_nose (u32 len + 109B)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "a775c0d"
-    },
-    "nose/canonical_test.go": {
-      "classification": "test",
-      "role": "golden-vector + schema + classify tests",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "a775c0d"
-    },
-    "go/": {
-      "classification": "production",
-      "role": "Go collectors/transport",
+      "role": "queue primitive",
       "golden_path": true,
       "status": "REAL",
       "last_verified_commit": "98e5dc09"
     },
-    "brain/windows_brain.py": {
+    "core/fabric_accounting.zig": {
       "classification": "production",
-      "role": "Python advisory brain (T5b Cython + T8 advisory-only: brain requests enforcement via aegisctl -> IPC -> dispatcher -> Rust PEP; never netsh/firewall/bridge.block_ip directly)",
+      "role": "event fate accounting",
       "golden_path": true,
       "status": "REAL",
       "last_verified_commit": "98e5dc09"
-    },
-    "brain/cython/cython_regex_scan.pyx": {
-      "classification": "production",
-      "role": "T5b Cython accelerator for run_regex_scan (C-level loop over pre-built re.Pattern arrays; 1.74x speedup over pure-Python fallback; no policy/PEP/Windows-privilege path)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "brain/aegis_brain_cython/fast_scan.pyx": {
-      "classification": "production",
-      "role": "Phase 17 Cython literal-payload scan accelerator (built artifact present in build/, used by windows_brain as substring pre-filter)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "ts_policy/": {
-      "classification": "production",
-      "role": "T6 TypeScript Policy Plane (authoring + compiler + typed Policy IR + seal; advisory only, no enforcement path; 67/67 TS tests + 9/9 Python wrapper tests pass)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "ts_policy/src/compiler.ts": {
-      "classification": "production",
-      "role": "T6 TypeScript Policy Compiler (deterministic conflict resolution: priority DESC > specificity DESC > rule_id ASC; SHA-256 hash; JSON-canonical IR bytes)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "ts_policy/src/seal.ts": {
-      "classification": "production",
-      "role": "T6 TypeScript Policy Seal (SHA-256 HMAC + Object.freeze + Readonly<>; no post-signature mutation path)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "bridge/": {
-      "classification": "production",
-      "role": "C++ IPC bridge + T9 host adapter framework (aegis_adapter.{hpp,cpp} for ETW/FIM/Registry/Process via C-ABI; built via bridge/CMakeLists.txt; 100/100 windows_adapters tests + 9/9 T9 Python contract tests)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "a775c0d"
-    },
-    "core/windows_adapters.zig": {
-      "classification": "production",
-      "role": "T9 Zig Windows telemetry adapter framework (EtwProcessSource, FimReadDirectorySource, RegNotifySource; 100/100 tests on Windows host; reach Zig via core/cpp_adapter.zig C-ABI; no policy/enforcement authority)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "core/cpp_adapter.zig": {
-      "classification": "production",
-      "role": "Zig C-ABI binding to C++ adapter framework",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "a775c0d"
-    },
-    "bridge/aegis_adapter.hpp": {
-      "classification": "production",
-      "role": "C++ adapter framework (ETW/FIM/Registry/Process) C ABI",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "a775c0d"
-    },
-    "bridge/aegis_adapter.cpp": {
-      "classification": "production",
-      "role": "C++ adapter implementation (vtable + extern C)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "a775c0d"
-    },
-    "core/nose_pipe_reader.zig": {
-      "classification": "production",
-      "role": "named-pipe server -> nose_contract.submitEvent",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "a775c0d"
-    },
-    "core/nose_pipe_e2e_cli.zig": {
-      "classification": "test",
-      "role": "E2E harness: pipe server + fabric sink CLI",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "a775c0d"
-    },
-    "drivers/": {
-      "classification": "production",
-      "role": "kernel WFP driver",
-      "golden_path": false,
-      "status": "PARTIAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "core/nids_main.zig": {
-      "classification": "legacy",
-      "role": "old bootstrap (superseded by src/main.zig; keep for audit)",
-      "golden_path": false,
-      "status": "LEGACY",
-      "last_verified_commit": "98e5dc09"
-    },
-    "core/nids_analyze.zig": {
-      "classification": "legacy",
-      "role": "legacy analysis engine (must not compete per ADR-0001)",
-      "golden_path": false,
-      "status": "LEGACY",
-      "last_verified_commit": "98e5dc09"
-    },
-    "src/main.zig": {
-      "classification": "legacy-to-migrate",
-      "role": "current build entrypoint; migrate to core/ in T2/T3",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "src/": {
-      "classification": "legacy-to-migrate",
-      "role": "legacy modular runtime (contract/capture/detection/policy/forensic/windows/reliability/federation/xdr)",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "tests/": {
-      "classification": "test",
-      "role": "test corpus",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "src/tests/": {
-      "classification": "test",
-      "role": "unit test harnesses",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "scripts/aegisctl.py": {
-      "classification": "control",
-      "role": "control-plane CLI (requests only, never bypasses PEP)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "98e5dc09"
-    },
-    "core/npcap_capture.zig": {
-      "status": "REAL",
-      "golden_path": true
-    },
-    "core/cluster_coord.zig": {
-      "classification": "production",
-      "role": "federation: ClusterCoord facade (heartbeat timeout, leader election, cross-node incident aggregation, TI broadcast, message schema); remote reports only, enforcement stays local (T13 REAL)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "new"
-    },
-    "core/federation_codec.zig": {
-      "classification": "production",
-      "role": "federation codec: FrameHeader (magic/version/msg_type/CRC32) + ClusterMessage encode/decode with identity + timestamp + seq (T13 REAL)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "new"
-    },
-    "core/federation_tls.zig": {
-      "classification": "production",
-      "role": "federation TLS/mTLS transport: CertificateValidator rejects expired/CN-mismatch/self-signed/unknown-CA/revoked; require_client_cert mTLS; SChannel on Windows, host-test mock on Linux (T13 REAL)",
-      "golden_path": true,
-      "status": "REAL",
-      "last_verified_commit": "new"
-    },
-    "core/federation_tcp.zig": {
-      "classification": "test",
-      "role": "plaintext TCP transport for host tests only; production federation uses TLS (no plaintext production transport) (T13)",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "new"
-    },
-    "core/fault_matrix.zig": {
-      "classification": "production",
-      "role": "fault matrix: FaultKind x Subsystem -> expected recovery behavior + max_recovery_ms; drill runner audits observed recovery (detect/contain/fallback/audit/recover) (Steps 39-40)",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "ccfc2ac"
     },
     "core/fault_injection.zig": {
       "classification": "production",
@@ -476,89 +202,12 @@
       "status": "REAL",
       "last_verified_commit": "ccfc2ac"
     },
-    "core/reliability.zig": {
+    "core/fault_matrix.zig": {
       "classification": "production",
-      "role": "reliability building blocks: watchdog/recover, input security, latency histogram, config schema, canary, IPS shadow/production, XDR, federation security, health status (Steps 39-40)",
+      "role": "fault matrix: FaultKind x Subsystem -> expected recovery behavior + max_recovery_ms; drill runner audits observed recovery (detect/contain/fallback/audit/recover) (Steps 39-40)",
       "golden_path": false,
       "status": "REAL",
       "last_verified_commit": "ccfc2ac"
-    },
-    "core/config_reload_proof.zig": {
-      "classification": "production",
-      "role": "config hot reload: Rules.json mtime watchdog -> validate -> atomic swap (RCU) -> version tracking -> audit; no restart. (Step 44)",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "ccfc2ac"
-    },
-    "core/health_monitoring_proof.zig": {
-      "classification": "production",
-      "role": "health monitoring: liveness heartbeat, readiness (NOSE/FLOW/DETECTION/POLICY/PEP), metrics snapshot, DEFCON rollup. (Step 45)",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "ccfc2ac"
-    },
-    "tools/config_validator.py": {
-      "classification": "production",
-      "role": "external config validator: validates Rules.json (schema/version/safe-fallback gate before load)",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "ccfc2ac"
-    },
-    "scripts/aegis_defcon.py": {
-      "classification": "production",
-      "role": "DEFCON rollup emitter",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "ccfc2ac"
-    },
-    "scripts/aegis_metrics.py": {
-      "classification": "production",
-      "role": "metrics snapshot exporter",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "ccfc2ac"
-    },
-    "config/Rules.json": {
-      "classification": "production",
-      "role": "canonical runtime config (policy rules); hot-reload target",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "ccfc2ac"
-    },
-    "tests/runtime/test_health.py": {
-      "classification": "test",
-      "role": "health-probe contract tests (17 tests)",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "ccfc2ac"
-    },
-    "core/control_ipc.zig": {
-      "classification": "production",
-      "role": "control-plane IPC (T16 Steps 41-43): request envelope (request_id + nonce + caller identity + role), layered authorization (ACL never Everyone, min-role, timeout, replay), append-only audit; privileged actions flow to Rust PEP only",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "ccfc2ac"
-    },
-    "core/perf_benchmark.zig": {
-      "classification": "production",
-      "role": "performance benchmark suite (T17 AC1): 6 Zig throughput suites + p50/p95/p99 latency percentiles (LatencyPercentiles, collectLatency); QPC high-res timer on Windows; 160 tests",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "4bd6769"
-    },
-    "core/perf_benchmark_cli.zig": {
-      "classification": "tooling",
-      "role": "performance CLI: quick/demo/full/latency modes + threshold checker (T17 AC1 recording)",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "4bd6769"
-    },
-    "core/perf_benchmark_config.json": {
-      "classification": "config",
-      "role": "benchmark suite thresholds + production capacity guide (T17 AC1)",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "4bd6769"
     },
     "core/federation_bench.zig": {
       "classification": "production",
@@ -577,6 +226,136 @@
     "core/federation_bench_config.json": {
       "classification": "config",
       "role": "federation benchmark configuration (T17 AC1)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "core/federation_codec.zig": {
+      "classification": "production",
+      "role": "federation codec: FrameHeader (magic/version/msg_type/CRC32) + ClusterMessage encode/decode with identity + timestamp + seq (T13 REAL)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "new"
+    },
+    "core/federation_tcp.zig": {
+      "classification": "test",
+      "role": "plaintext TCP transport for host tests only; production federation uses TLS (no plaintext production transport) (T13)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "new"
+    },
+    "core/federation_tls.zig": {
+      "classification": "production",
+      "role": "federation TLS/mTLS transport: CertificateValidator rejects expired/CN-mismatch/self-signed/unknown-CA/revoked; require_client_cert mTLS; SChannel on Windows, host-test mock on Linux (T13 REAL)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "new"
+    },
+    "core/flow_engine.zig": {
+      "classification": "production",
+      "role": "flow state (thread-safe tables, LRU capacity cap, snapshot-value API; 20/20 tests incl T3 stress 10K/100K/1M)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "core/flow_types.zig": {
+      "classification": "production",
+      "role": "flow type defs",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "core/forensic_log.zig": {
+      "classification": "production",
+      "role": "forensic log (append-only NDJSON + payload capture; appends hash chain in forensic_replay_proof; REAL)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "core/forensics_engine.zig": {
+      "classification": "production",
+      "role": "immutable trace (ring buffer; event->evidence->verdict->policy->PEP->action->result full-chain; REAL)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "core/health_monitoring_proof.zig": {
+      "classification": "production",
+      "role": "health monitoring: liveness heartbeat, readiness (NOSE/FLOW/DETECTION/POLICY/PEP), metrics snapshot, DEFCON rollup. (Step 45)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
+    },
+    "core/ips_canary_order.zig": {
+      "classification": "production",
+      "role": "IPS canary order (T18 AC1, Steps 53): mandated Detection Only -> Shadow -> Canary -> Limited Enforcement -> Expanded Enforcement with fail-closed promotion gates (observations/bad-rate/dwell/human approval for limited->expanded) + canary scope/target/expiry (auto rollback) + auto/manual rollback + bounded transition audit; canary stage pinned to TEST-NET-3 (203.0.113.0/24, CANA magic); 18 tests",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "668f860"
+    },
+    "core/lifecycle.zig": {
+      "classification": "production",
+      "role": "lifecycle (INIT/START/RUN/DRAIN/STOP, rollback + fault tests; 514/514 tests)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "core/nids_analyze.zig": {
+      "classification": "legacy",
+      "role": "legacy analysis engine (must not compete per ADR-0001)",
+      "golden_path": false,
+      "status": "LEGACY",
+      "last_verified_commit": "98e5dc09"
+    },
+    "core/nids_main.zig": {
+      "classification": "legacy",
+      "role": "old bootstrap (superseded by src/main.zig; keep for audit)",
+      "golden_path": false,
+      "status": "LEGACY",
+      "last_verified_commit": "98e5dc09"
+    },
+    "core/nose_contract.zig": {
+      "classification": "production",
+      "role": "nose contract",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "core/nose_pipe_e2e_cli.zig": {
+      "classification": "test",
+      "role": "E2E harness: pipe server + fabric sink CLI",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "a775c0d"
+    },
+    "core/nose_pipe_reader.zig": {
+      "classification": "production",
+      "role": "named-pipe server -> nose_contract.submitEvent",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "a775c0d"
+    },
+    "core/npcap_capture.zig": {
+      "status": "REAL",
+      "golden_path": true
+    },
+    "core/perf_benchmark.zig": {
+      "classification": "production",
+      "role": "performance benchmark suite (T17 AC1): 6 Zig throughput suites + p50/p95/p99 latency percentiles (LatencyPercentiles, collectLatency); QPC high-res timer on Windows; 160 tests",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "core/perf_benchmark_cli.zig": {
+      "classification": "tooling",
+      "role": "performance CLI: quick/demo/full/latency modes + threshold checker (T17 AC1 recording)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "core/perf_benchmark_config.json": {
+      "classification": "config",
+      "role": "benchmark suite thresholds + production capacity guide (T17 AC1)",
       "golden_path": false,
       "status": "REAL",
       "last_verified_commit": "4bd6769"
@@ -602,6 +381,62 @@
       "status": "REAL",
       "last_verified_commit": "4bd6769"
     },
+    "core/policy_engine.zig": {
+      "classification": "production",
+      "role": "final decision authority",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "a642264"
+    },
+    "core/policy_ir.zig": {
+      "classification": "production",
+      "role": "policy IR",
+      "golden_path": false,
+      "status": "PARTIAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "core/policy_plane.zig": {
+      "classification": "production",
+      "role": "policy control plane",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "a642264"
+    },
+    "core/policy_signing.zig": {
+      "classification": "production",
+      "role": "ed25519 signing + TrustStore (rotation, revocation, persistent rollback floor, restart, real Ed25519 + SHA-256; 36/36 tests incl G9 + T7)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "core/priority_queue.zig": {
+      "classification": "production",
+      "role": "priority queue",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "core/rag_engine.zig": {
+      "classification": "production",
+      "role": "context enrichment (IP/rule_id retrieval, confidence ranking, MITRE ATT&CK references, fail-soft; 102/102 tests)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "core/rag_intelligence.zig": {
+      "classification": "production",
+      "role": "rag pipeline",
+      "golden_path": false,
+      "status": "PARTIAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "core/real_ips_path.zig": {
+      "classification": "production",
+      "role": "Real IPS path (T18 AC2, Step 54): ordered chain Real Telemetry -> Detection -> Verdict -> Policy -> Signature Verification -> Rust PEP -> WFP -> Real Block; enforcement matrix across allow/block/quarantine/rate-limit/expiry/revoke/rollback/driver-unavailable (fail-closed: blocking never silently allowed when WFP driver is gone); durable rule lifecycle + bounded audit; 14 tests",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "668f860"
+    },
     "core/release_engineering.zig": {
       "classification": "production",
       "role": "release metadata + metrics export (16 tests) (T17 AC3)",
@@ -623,9 +458,244 @@
       "status": "REAL",
       "last_verified_commit": "4bd6769"
     },
-    "build_manifest.json": {
-      "classification": "release",
-      "role": "build/release manifest v2: source_commit + per-component commit/required/ci_job + 300+ artifact SHA-256 digests (T17 AC3)",
+    "core/reliability.zig": {
+      "classification": "production",
+      "role": "reliability building blocks: watchdog/recover, input security, latency histogram, config schema, canary, IPS shadow/production, XDR, federation security, health status (Steps 39-40)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
+    },
+    "core/replay_engine.zig": {
+      "classification": "production",
+      "role": "replay (compare original vs replayed decision, diff + reason; REAL)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "core/replayable_security.zig": {
+      "classification": "production",
+      "role": "Replayable security (T19 AC3, Step 58): SecurityReplay.replay re-lets an historical outcome against new rules_version/policy_version/context_version and reports difference (none/verdict_changed/action_changed) attributed to the exact atom delta in reason (reason_buf owned by the result); summarize() -> ReplayStats regression readout; 8 tests",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "c13b357"
+    },
+    "core/runtime_spine.zig": {
+      "classification": "production",
+      "role": "runtime spine (module registry/order, golden-path tracer; 26/26 tests)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "core/rust_pep.zig": {
+      "classification": "test-sim",
+      "role": "zig-side PEP sim for tests only",
+      "golden_path": false,
+      "status": "MOCK",
+      "last_verified_commit": "98e5dc09"
+    },
+    "core/shadow_decision.zig": {
+      "classification": "production",
+      "role": "Shadow decision (T19 AC2, Step 57): ShadowEngine.compare of every shadow candidate against the live decision across six dimensions (decision/evidence/confidence/false-positive/policy-version/detector-version); candidate_enforce forcibly cleared (shadow NEVER enforces); ShadowOutcome agree/differ with per-dimension differs(); 9 tests",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "c13b357"
+    },
+    "core/threat_intel.zig": {
+      "classification": "production",
+      "role": "external intelligence enrichment (feed -> canonical evidence, evidence-only no policy path; 80/80 tests incl T4)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "core/verdict_aggregator.zig": {
+      "classification": "production",
+      "role": "evidence -> verdict",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "a642264"
+    },
+    "core/wfp_ioctl.zig": {
+      "classification": "production",
+      "role": "WFP ioctl (test-aware device-open probe; prod keeps err+print)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "core/wfp_production.zig": {
+      "status": "REAL",
+      "golden_path": true
+    },
+    "core/windows_adapters.zig": {
+      "classification": "production",
+      "role": "T9 Zig Windows telemetry adapter framework (EtwProcessSource, FimReadDirectorySource, RegNotifySource; 100/100 tests on Windows host; reach Zig via core/cpp_adapter.zig C-ABI; no policy/enforcement authority)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "core/xdr_incident_fabric.zig": {
+      "classification": "production",
+      "role": "XDR multi-source incident fabric (T18 AC3, Step 55): Entity -> Evidence -> Incident -> Decision -> Action combining nine source categories (Network/Host/Process/File/Registry/Identity/Threat Intel/Historical/Federation); a single incident holds evidence from 2+ source categories (distinctSources >= 2); severity aggregation maps to monitor/rate-limit/quarantine/block with dispatched_to_pep dispatch; fixed-capacity fail-soft; 12 tests",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "668f860"
+    },
+    "docs/gates/T17_benchmark_results.md": {
+      "classification": "doc",
+      "role": "recorded per-language benchmark results: throughput + p50/p95/p99 on Windows host (T17 AC1)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "drivers/": {
+      "classification": "production",
+      "role": "kernel WFP driver",
+      "golden_path": false,
+      "status": "PARTIAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "go/": {
+      "classification": "production",
+      "role": "Go collectors/transport",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "nose/": {
+      "classification": "production",
+      "role": "Go Nose acquisition (capture + pipe sink, ADR-0003)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "a775c0d"
+    },
+    "nose/canonical.go": {
+      "classification": "production",
+      "role": "Go CanonicalEvent 109B serializer (golden vector)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "a775c0d"
+    },
+    "nose/canonical_test.go": {
+      "classification": "test",
+      "role": "golden-vector + schema + classify tests",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "a775c0d"
+    },
+    "nose/capture.go": {
+      "classification": "production",
+      "role": "gopacket/npcap live capture -> canonical frames",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "a775c0d"
+    },
+    "nose/pipe_writer.go": {
+      "classification": "production",
+      "role": "named-pipe sink .\\pipe\\aegis_nose (u32 len + 109B)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "a775c0d"
+    },
+    "rust-src/lib.rs": {
+      "classification": "redirect-to-shield",
+      "role": "aegis_pep PEP FFI (currently linked by build.zig; to be merged into shield in T8)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "scripts/aegis_defcon.py": {
+      "classification": "production",
+      "role": "DEFCON rollup emitter",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
+    },
+    "scripts/aegis_metrics.py": {
+      "classification": "production",
+      "role": "metrics snapshot exporter",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
+    },
+    "scripts/aegisctl.py": {
+      "classification": "control",
+      "role": "control-plane CLI (requests only, never bypasses PEP)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "shield/src/lib.rs": {
+      "classification": "production",
+      "role": "Rust PEP (final enforcement authority, ADR-0001; T8 adds PepRequest/PepResult/PepTrace + aegis_pep_evaluate C-ABI; 38/38 tests incl T8 PEP + Tier-3 + C-ABI)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "shield/src/pep.rs": {
+      "classification": "production",
+      "role": "T8 Rust PEP safe module (#![forbid(unsafe_code)]; 5-status taxonomy + full decision trace; 12 PEP unit tests)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "shield/src/windows_enforce.rs": {
+      "classification": "production",
+      "role": "WFP enforcement adapter (T8 hooks into the Rust PEP; WFP separation deferred to T11)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "src/": {
+      "classification": "legacy-to-migrate",
+      "role": "legacy modular runtime (contract/capture/detection/policy/forensic/windows/reliability/federation/xdr)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "src/main.zig": {
+      "classification": "legacy-to-migrate",
+      "role": "current build entrypoint; migrate to core/ in T2/T3",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "src/tests/": {
+      "classification": "test",
+      "role": "unit test harnesses",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "tests/": {
+      "classification": "test",
+      "role": "test corpus",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "98e5dc09"
+    },
+    "tests/runtime/test_health.py": {
+      "classification": "test",
+      "role": "health-probe contract tests (17 tests)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
+    },
+    "tools/ci_coverage.py": {
+      "classification": "tooling",
+      "role": "cross-language CI matrix checker: required missing = FAIL, optional = PASS (T17 AC2)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "tools/config_validator.py": {
+      "classification": "production",
+      "role": "external config validator: validates Rules.json (schema/version/safe-fallback gate before load)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
+    },
+    "tools/installer.py": {
+      "classification": "tooling",
+      "role": "NSIS installer generator CONSUMING build_manifest.json components; installs manifest + preserves data (config/policy/trust/audit/forensic) on uninstall/upgrade (T17 AC4)",
       "golden_path": false,
       "status": "REAL",
       "last_verified_commit": "4bd6769"
@@ -637,27 +707,6 @@
       "status": "REAL",
       "last_verified_commit": "4bd6769"
     },
-    "tools/installer.py": {
-      "classification": "tooling",
-      "role": "NSIS installer generator CONSUMING build_manifest.json components; installs manifest + preserves data (config/policy/trust/audit/forensic) on uninstall/upgrade (T17 AC4)",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "4bd6769"
-    },
-    "tools/ci_coverage.py": {
-      "classification": "tooling",
-      "role": "cross-language CI matrix checker: required missing = FAIL, optional = PASS (T17 AC2)",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "4bd6769"
-    },
-    "ci_coverage.json": {
-      "classification": "config",
-      "role": "CI matrix: Zig/Rust/C++/Python/Cython/Go/TypeScript/contract/static-analysis/windows-host/driver/packaging jobs + required/optional flags (T17 AC2)",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "4bd6769"
-    },
     "tools/upgrade_rollback.py": {
       "classification": "tooling",
       "role": "upgrade/rollback/recovery orchestration: snapshot/report/rollback with measured RPO/RTO + restore_success; preserves data plane (T17 AC5)",
@@ -665,47 +714,26 @@
       "status": "REAL",
       "last_verified_commit": "4bd6769"
     },
-    "docs/gates/T17_benchmark_results.md": {
-      "classification": "doc",
-      "role": "recorded per-language benchmark results: throughput + p50/p95/p99 on Windows host (T17 AC1)",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "4bd6769"
-    },
-    ".github/workflows/ci.yml": {
-      "classification": "ci",
-      "role": "cross-language CI: zig/rust/c/cpp/python(+cython)/go/typescript build+test, security scan, ci-matrix gate, package-release (T17 AC2)",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "4bd6769"
-    },
-    ".github/workflows/host-regression.yml": {
-      "classification": "ci",
-      "role": "host regression: runtime contract (phase-t) + per-file Zig (phase-k) (T17 AC2)",
-      "golden_path": false,
-      "status": "REAL",
-      "last_verified_commit": "4bd6769"
-    },
-    "core/ips_canary_order.zig": {
+    "ts_policy/": {
       "classification": "production",
-      "role": "IPS canary order (T18 AC1, Steps 53): mandated Detection Only -> Shadow -> Canary -> Limited Enforcement -> Expanded Enforcement with fail-closed promotion gates (observations/bad-rate/dwell/human approval for limited->expanded) + canary scope/target/expiry (auto rollback) + auto/manual rollback + bounded transition audit; canary stage pinned to TEST-NET-3 (203.0.113.0/24, CANA magic); 18 tests",
-      "golden_path": false,
+      "role": "T6 TypeScript Policy Plane (authoring + compiler + typed Policy IR + seal; advisory only, no enforcement path; 67/67 TS tests + 9/9 Python wrapper tests pass)",
+      "golden_path": true,
       "status": "REAL",
-      "last_verified_commit": "668f860"
+      "last_verified_commit": "98e5dc09"
     },
-    "core/real_ips_path.zig": {
+    "ts_policy/src/compiler.ts": {
       "classification": "production",
-      "role": "Real IPS path (T18 AC2, Step 54): ordered chain Real Telemetry -> Detection -> Verdict -> Policy -> Signature Verification -> Rust PEP -> WFP -> Real Block; enforcement matrix across allow/block/quarantine/rate-limit/expiry/revoke/rollback/driver-unavailable (fail-closed: blocking never silently allowed when WFP driver is gone); durable rule lifecycle + bounded audit; 14 tests",
-      "golden_path": false,
+      "role": "T6 TypeScript Policy Compiler (deterministic conflict resolution: priority DESC > specificity DESC > rule_id ASC; SHA-256 hash; JSON-canonical IR bytes)",
+      "golden_path": true,
       "status": "REAL",
-      "last_verified_commit": "668f860"
+      "last_verified_commit": "98e5dc09"
     },
-    "core/xdr_incident_fabric.zig": {
+    "ts_policy/src/seal.ts": {
       "classification": "production",
-      "role": "XDR multi-source incident fabric (T18 AC3, Step 55): Entity -> Evidence -> Incident -> Decision -> Action combining nine source categories (Network/Host/Process/File/Registry/Identity/Threat Intel/Historical/Federation); a single incident holds evidence from 2+ source categories (distinctSources >= 2); severity aggregation maps to monitor/rate-limit/quarantine/block with dispatched_to_pep dispatch; fixed-capacity fail-soft; 12 tests",
-      "golden_path": false,
+      "role": "T6 TypeScript Policy Seal (SHA-256 HMAC + Object.freeze + Readonly<>; no post-signature mutation path)",
+      "golden_path": true,
       "status": "REAL",
-      "last_verified_commit": "668f860"
+      "last_verified_commit": "98e5dc09"
     }
   },
   "init_order": [
@@ -789,6 +817,10 @@
     "upgrade/rollback authority: tools/upgrade_rollback.py snapshots and restores the data plane and measures RPO/RTO/restore_success (docs/runbooks/RB-005-config-rollback.md documents the <5s atomic config swap)",
     "canary order authority: core/ips_canary_order.zig enforces the mandated order Detection Only -> Shadow -> Canary -> Limited Enforcement -> Expanded Enforcement; canary stage applies ONLY to canary TEST-NET-3 traffic (203.0.113.0/24), limited_enforcement only inside the declared scope block, expanded_enforcement at real traffic; scope/target/expiry/rollback/audit carried by CanarySpec; promotion gates fail-closed (observations, fail-rate <= max_fail_bps, dwell) and human approval is required for limited -> expanded",
     "real IPS path authority: core/real_ips_path.zig walks Real Telemetry -> Detection -> Verdict -> Policy -> Signature Verification -> Rust PEP -> WFP -> Real Block in strict order; enforcement matrix covers allow/block/quarantine/rate-limit/expiry/revoke/rollback/driver-unavailable; driver-unavailable is FAIL-CLOSED (a blocking decision is never silently upgraded to allow)",
-    "XDR multi-source authority: core/xdr_incident_fabric.zig drives Entity -> Evidence -> Incident -> Decision -> Action; a single incident must hold evidence from multiple source categories (distinctSources >= 2) across Network/Host/Process/File/Registry/Identity/Threat Intel/Historical/Federation; enforcement decisions are dispatched_to_pep for PEP action"
+    "XDR multi-source authority: core/xdr_incident_fabric.zig drives Entity -> Evidence -> Incident -> Decision -> Action; a single incident must hold evidence from multiple source categories (distinctSources >= 2) across Network/Host/Process/File/Registry/Identity/Threat Intel/Historical/Federation; enforcement decisions are dispatched_to_pep for PEP action",
+    "decision trace authority: core/decision_trace.zig walks action -> pep_request -> policy -> verdict -> evidence -> correlation -> event -> source in one root-cause order; every trace appends in strict order and completes; privileged actions (block/quarantine/rate_limit) are isPrivileged and audited via TraceStore.auditCoverage (all_traced or untraced ids listed)",
+    "shadow decision authority: core/shadow_decision.zig compares every shadow candidate against the live decision across decision/evidence/confidence/false-positive/policy-version/detector-version dimensions; a shadow candidate NEVER enforces (candidate_enforce forcibly cleared, candidate_enforced always false)",
+    "security replay authority: core/replayable_security.zig re-lets historical outcomes against new rules_version/policy_version/context_version and attributes every verdict_changed/action_changed to the exact atom version delta in reason",
+    "final authority review: core/authority_review.zig enforces the twelve-accountability checklist (sensors/detectors/Brain/Go/TypeScript never enforce; RAG never authorizes; C++ never bypasses the PEP; policy never executes; the CLI never bypasses authorization; the Rust PEP is the final authority; Windows follows the PEP result with every privileged action audited) and is authoritative only when all twelve clauses hold"
   ]
 }
