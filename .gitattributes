@@ -3,3 +3,4 @@
 # regeneration (core.autocrlf true would otherwise flip them to CRLF and
 # break the build-manifest drift gate).
 installer/*.nsi text eol=lf
+scripts/verify_release.ps1 text eol=lf
