@@ -15,7 +15,7 @@ jobs:
   zig-build-test:
     name: Zig Build & Test
     runs-on: windows-latest
-    needs: [rust-pep-build]
+    needs: [rust-pep-build, c-native-build]
     steps:
       - uses: actions/checkout@v4
       - name: Install Zig
@@ -40,6 +40,11 @@ jobs:
         with:
           name: aegis_pep_dll
           path: target/release
+      - name: Download native helper artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: native_helpers
+          path: target/helpers
       - name: Build
         run: zig build
       - name: Test
@@ -75,6 +80,15 @@ jobs:
         run: cmake -B build -S .
       - name: Build
         run: cmake --build build --config Release
+      - name: Upload native helper artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: native_helpers
+          path: |
+            build/Release/aegis_etw_helper.dll
+            build/Release/aegis_etw_helper.lib
+            build/Release/aegis_fim_helper.dll
+            build/Release/aegis_fim_helper.lib
 
   python-tests:
     name: Python Control Plane Tests
