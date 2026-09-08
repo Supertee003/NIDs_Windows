@@ -6,16 +6,16 @@
 
 | Concern | Authority | Component | Language | Status |
 |---|---|---|---|---|
-| Canonical Event | `CanonicalEvent` | `core/canonical_event.zig` | Zig (source of truth, per ADR-0003) | S3 |
-| Flow State | `FlowTable` | `nids_analyze.zig` | Zig | S3 |
+| Canonical Event | `CanonicalEvent` | `src/contract/event.zig` (production) / `core/canonical_event.zig` (legacy) | Zig (source of truth, per ADR-0003) | S3 |
+| Flow State | `FlowTable` | `src/capture/flow_table.zig` (production) / `core/flow_engine.zig` (legacy) | Zig | S3 |
 | Detection Evidence | `inspect_packet()` | `nids_analyze.zig` / `windows_brain.py` / `src/lib.rs` | Zig/Python/Rust | S4 |
 | Correlation | `AtomicThreatTracker` | `nids_analyze.zig` | Zig | S3 |
 | Verdict | `AtomicThreatTracker.getState()` | `nids_analyze.zig` | Zig | S3 |
 | Policy | `PolicyIR` + Ed25519 | `nids_analyze.zig` (G9) | Zig | S2 |
 | Enforcement | `pep_enforce_action()` | `src/lib.rs` | Rust | S3 |
 | Forensics | `ForensicRecord` + JSONL | `nids_analyze.zig` (G11) | Zig | S2 |
-| Control | `aegisctl` (G26) | future | — | S0 |
-| Federation | `ClusterCoord` (G17) | future | Zig | S1 |
+| Control | `aegisctl` | `tools/aegisctl.py` (production CLI; authorization/replay/audit partial per Step 42) | â€” | S0 |
+| Federation | `ClusterCoord` / `FederationCodec` | `core/federation_*.zig` / `core/federation_tls.zig` (production framework; multi-node verification unverified per Step 53) | Zig | S1 |
 
 ## Legacy Authorities (superseded, do not extend)
 
@@ -31,9 +31,9 @@
 ## Architecture Layers
 
 ```
-DATA PLANE:     Sensors → inspect_packet → Canonical Event → Flow → Detection
-CONTROL PLANE:  aegisctl → Control Request → Policy → Rust PEP → Windows
-SECURITY PLANE: Detection → Correlation → Policy → Ed25519 → Rust PEP
+DATA PLANE:     Sensors â†’ inspect_packet â†’ Canonical Event â†’ Flow â†’ Detection
+CONTROL PLANE:  aegisctl â†’ Control Request â†’ Policy â†’ Rust PEP â†’ Windows
+SECURITY PLANE: Detection â†’ Correlation â†’ Policy â†’ Ed25519 â†’ Rust PEP
 OBSERVABILITY:  EventAccounting + FlowTable + PEP stats + DEFCON + JSONL logs
 ```
 
@@ -45,9 +45,9 @@ OBSERVABILITY:  EventAccounting + FlowTable + PEP stats + DEFCON + JSONL logs
 
 ## Forbidden Crossings
 
-- Sensor → enforcement: FORBIDDEN (calls inspect_packet only)
-- Detector → enforcement: FORBIDDEN (returns evidence)
-- Brain → enforcement: FORBIDDEN (IPS is separate function)
-- RAG → ALLOW/BLOCK: FORBIDDEN (context only)
-- CLI → direct OS enforcement: FORBIDDEN (goes through PEP)
-- Policy → execute action: FORBIDDEN (decides; PEP executes)
+- Sensor â†’ enforcement: FORBIDDEN (calls inspect_packet only)
+- Detector â†’ enforcement: FORBIDDEN (returns evidence)
+- Brain â†’ enforcement: FORBIDDEN (IPS is separate function)
+- RAG â†’ ALLOW/BLOCK: FORBIDDEN (context only)
+- CLI â†’ direct OS enforcement: FORBIDDEN (goes through PEP)
+- Policy â†’ execute action: FORBIDDEN (decides; PEP executes)
