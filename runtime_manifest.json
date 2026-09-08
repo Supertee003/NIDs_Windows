@@ -187,23 +187,23 @@
     },
     "core/forensics_engine.zig": {
       "classification": "production",
-      "role": "immutable trace",
+      "role": "immutable trace (ring buffer; event->evidence->verdict->policy->PEP->action->result full-chain; REAL)",
       "golden_path": true,
-      "status": "PARTIAL",
+      "status": "REAL",
       "last_verified_commit": "98e5dc09"
     },
     "core/forensic_log.zig": {
       "classification": "production",
-      "role": "forensic log",
+      "role": "forensic log (append-only NDJSON + payload capture; appends hash chain in forensic_replay_proof; REAL)",
       "golden_path": true,
-      "status": "PARTIAL",
+      "status": "REAL",
       "last_verified_commit": "98e5dc09"
     },
     "core/replay_engine.zig": {
       "classification": "production",
-      "role": "replay",
+      "role": "replay (compare original vs replayed decision, diff + reason; REAL)",
       "golden_path": true,
-      "status": "PARTIAL",
+      "status": "REAL",
       "last_verified_commit": "98e5dc09"
     },
     "core/runtime_spine.zig": {
@@ -485,6 +485,10 @@
     "no path to WFP bypasses Rust PEP",
     "aegisctl requests only, never bypasses PEP",
     "host-network source: core/npcap_capture.zig (single authoritative source for Windows host network + process telemetry; one model -> CanonicalEvent -> Zig Flow)",
-    "WFP enforcement authority: core/wfp_production.zig (single authoritative enforcement module for Windows WFP; Rust PEP only path)"
+    "WFP enforcement authority: core/wfp_production.zig (single authoritative enforcement module for Windows WFP; Rust PEP only path)",
+    "forensics authority: core/forensics_engine.zig (single authoritative immutable trace across the full chain event->evidence->verdict->policy->signature->PEP->action->result, append-only)",
+    "forensic log authority: core/forensic_log.zig (append-only NDJSON, no edit/delete; rolling hash chain via forensic_replay_proof verifyImmutability)",
+    "replay authority: core/replay_engine.zig (only module that reproduces original vs replayed decisions; reports diff + reason)",
+    "forensic trace and replay consistent: replay consumes forensics PipelineResult, no forensic inconsistency"
   ]
 }

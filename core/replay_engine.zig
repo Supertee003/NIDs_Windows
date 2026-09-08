@@ -87,6 +87,37 @@ pub const ReplayResult = struct {
     pub fn isImprovement(self: ReplayResult) bool {
         return self.diff.isRegression() and self.more_restrictive;
     }
+
+    /// Human-readable reason describing WHY the replay differs from the
+    /// original decision (T12 AC2: "report difference + reason").
+    pub fn reason(self: ReplayResult) []const u8 {
+        if (self.diff == .verdict_changed) {
+            return "verdict changed";
+        }
+        if (self.diff == .action_changed) {
+            if (self.more_restrictive) return "policy action more restrictive";
+            if (self.less_restrictive) return "policy action less restrictive";
+            return "policy action changed";
+        }
+        if (self.diff == .pep_status_changed) {
+            if (self.more_restrictive) return "PEP enforcement more restrictive";
+            if (self.less_restrictive) return "PEP enforcement less restrictive";
+            return "PEP status changed";
+        }
+        if (self.diff == .confidence_shift) {
+            if (self.confidence_delta > 0) {
+                return "confidence increased significantly";
+            }
+            return "confidence decreased significantly";
+        }
+        if (self.diff == .threat_score_shift) {
+            if (self.threat_score_delta > 0) {
+                return "threat score increased significantly";
+            }
+            return "threat score decreased significantly";
+        }
+        return "no difference";
+    }
 };
 
 // ============================================================
@@ -524,4 +555,36 @@ test "resetStats zeroes all counters" {
     try std.testing.expect(engine.stats.total_replayed == 0);
     try std.testing.expect(engine.stats.total_diffs == 0);
     try std.testing.expect(engine.stats.total_matches == 0);
+}
+
+test "ReplayResult.reason reports a human-readable difference" {
+    var engine = ReplayEngine.init();
+
+    // No diff
+    const no_diff = engine.compare(
+        makeResult(1, .benign, 50, .allow, .no_op, 10),
+        makeResult(1, .benign, 50, .allow, .no_op, 10),
+    );
+    try std.testing.expect(std.mem.eql(u8, no_diff.reason(), "no difference"));
+
+    // Verdict changed
+    const verdict = engine.compare(
+        makeResult(2, .benign, 50, .allow, .no_op, 10),
+        makeResult(2, .suspicious, 70, .alert, .no_op, 50),
+    );
+    try std.testing.expect(std.mem.eql(u8, verdict.reason(), "verdict changed"));
+
+    // Action changed (regression)
+    const action = engine.compare(
+        makeResult(3, .malicious, 90, .block, .executed, 80),
+        makeResult(3, .malicious, 90, .allow, .no_op, 80),
+    );
+    try std.testing.expect(std.mem.eql(u8, action.reason(), "policy action less restrictive"));
+
+    // Confidence shift up
+    const confidence = engine.compare(
+        makeResult(4, .suspicious, 50, .alert, .no_op, 50),
+        makeResult(4, .suspicious, 80, .alert, .no_op, 50),
+    );
+    try std.testing.expect(std.mem.eql(u8, confidence.reason(), "confidence increased significantly"));
 }
