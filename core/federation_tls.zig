@@ -57,6 +57,10 @@ pub const TlsConfig = struct {
     /// Expected server Common Name (for hostname verification)
     expected_cn: [MAX_CN_LEN]u8 = [_]u8{0} ** MAX_CN_LEN,
     expected_cn_len: u8 = 0,
+    /// Trusted CA fingerprint (SHA-256 of the CA cert DER). Certs not
+    /// issued by this CA are rejected as unknown-CA.
+    ca_fingerprint: [32]u8 = [_]u8{0} ** 32,
+    ca_fingerprint_len: u8 = 0,
     /// Handshake timeout
     handshake_timeout_ms: i64 = TLS_HANDSHAKE_TIMEOUT_MS,
     /// Allow self-signed certificates (for testing; false in production)
@@ -128,6 +132,9 @@ pub const CertificateInfo = struct {
     is_self_signed: bool = false,
     is_ca: bool = false,
     fingerprint: [32]u8 = [_]u8{0} ** 32, // SHA-256 of DER
+    issuer_ca_fingerprint: [32]u8 = [_]u8{0} ** 32, // SHA-256 of issuing CA's DER
+    issuer_ca_fingerprint_len: u8 = 0,
+    revoked: bool = false, // from CRL/OCSP
 
     pub fn cnStr(self: *const CertificateInfo) []const u8 {
         return self.cn[0..self.cn_len];
@@ -178,11 +185,34 @@ pub const CertificateValidator = struct {
             return error.CertValidationFailed;
         }
 
-        // In a real implementation, we'd also:
-        // 1. Verify the cert chain against the CA cert
-        // 2. Check CRL/OCSP for revocation (if check_revocation is true)
-        // 3. Verify the signature on the cert
-        // For now, these are stubs (the interface is tested)
+        // Check revocation (CRL/OCSP) before chain trust.
+        // A revoked cert is rejected regardless of CA chain status.
+        if (self.config.check_revocation and cert.revoked) {
+            return error.CertRevoked;
+        }
+
+        // Check CA chain: the issuing CA fingerprint must match the
+        // configured trusted CA, otherwise the certificate is untrusted
+        // (unknown CA / issuer).
+        if (self.config.ca_fingerprint_len > 0 and cert.issuer_ca_fingerprint_len > 0) {
+            const expected = self.config.ca_fingerprint[0..self.config.ca_fingerprint_len];
+            const actual = cert.issuer_ca_fingerprint[0..cert.issuer_ca_fingerprint_len];
+            if (!std.mem.eql(u8, expected, actual)) {
+                return error.CertNotFound;
+            }
+        } else if (self.config.ca_fingerprint_len > 0 and !cert.is_self_signed) {
+            // CA is configured but the cert carries no issuer fingerprint,
+            // so it cannot possibly chain to the trusted CA.
+            return error.CertNotFound;
+        } else if (self.config.check_revocation and !cert.is_self_signed and cert.issuer_ca_fingerprint_len == 0) {
+            // Chain verification not possible -> treat as untrusted.
+            return error.CertNotFound;
+        }
+
+        // NOTE: signature verification and additional chain path building
+        // are platform-specific (SChannel handles them). The checks above
+        // cover expiry, CN, self-signed, revocation, and unknown-CA at the
+        // protocol layer; SChannel performs full chain validation.
     }
 
     /// Load a certificate from a file path. Returns parsed CertificateInfo.
@@ -505,15 +535,86 @@ test "CertificateInfo isExpired" {
 }
 
 test "CertificateValidator validate - valid cert" {
-    const validator = CertificateValidator.init(.{ .enabled = true });
+    var config = TlsConfig{ .enabled = true, .check_revocation = false };
+    const fp: [32]u8 = [_]u8{0xAA} ** 32;
+    config.ca_fingerprint = fp;
+    config.ca_fingerprint_len = 32;
+    const validator = CertificateValidator.init(config);
     var cert = CertificateInfo{};
     const cn = "aegis-sensor.example.com";
     @memcpy(cert.cn[0..cn.len], cn);
     cert.cn_len = cn.len;
     cert.not_before_ns = 1_000;
     cert.not_after_ns = 2_000;
+    cert.issuer_ca_fingerprint = fp;
+    cert.issuer_ca_fingerprint_len = 32;
 
     try validator.validate(cert, 1_500); // should succeed
+}
+
+test "CertificateValidator validate - unknown CA rejected" {
+    var config = TlsConfig{ .enabled = true, .check_revocation = false };
+    const trusted_fp: [32]u8 = [_]u8{0xAA} ** 32;
+    config.ca_fingerprint = trusted_fp;
+    config.ca_fingerprint_len = 32;
+    const validator = CertificateValidator.init(config);
+    var cert = CertificateInfo{};
+    const cn = "attacker.example.com";
+    @memcpy(cert.cn[0..cn.len], cn);
+    cert.cn_len = cn.len;
+    cert.not_before_ns = 1_000;
+    cert.not_after_ns = 2_000;
+    // Signed by an unknown CA (different fingerprint), not self-signed
+    const other_fp: [32]u8 = [_]u8{0xBB} ** 32;
+    cert.issuer_ca_fingerprint = other_fp;
+    cert.issuer_ca_fingerprint_len = 32;
+
+    try std.testing.expectError(error.CertNotFound, validator.validate(cert, 1_500));
+}
+
+test "CertificateValidator validate - unknown CA (misissued root) rejected" {
+    var config = TlsConfig{ .enabled = true, .check_revocation = false };
+    config.ca_fingerprint_len = 32; // trusted CA configured
+    const validator = CertificateValidator.init(config);
+    var cert = CertificateInfo{};
+    cert.not_before_ns = 1_000;
+    cert.not_after_ns = 2_000;
+    // No issuer fingerprint, not self-signed -> cannot chain
+    try std.testing.expectError(error.CertNotFound, validator.validate(cert, 1_500));
+}
+
+test "CertificateValidator validate - revoked cert rejected" {
+    const validator = CertificateValidator.init(.{ .enabled = true, .check_revocation = true });
+    var cert = CertificateInfo{};
+    cert.not_before_ns = 1_000;
+    cert.not_after_ns = 2_000;
+    cert.revoked = true;
+
+    try std.testing.expectError(error.CertRevoked, validator.validate(cert, 1_500));
+}
+
+test "CertificateValidator validate - cert rotation accepted after revalidate" {
+    var config = TlsConfig{ .enabled = true, .check_revocation = false };
+    const fp: [32]u8 = [_]u8{0xAA} ** 32;
+    config.ca_fingerprint = fp;
+    config.ca_fingerprint_len = 32;
+    const validator = CertificateValidator.init(config);
+
+    // Old cert: expired.
+    var old = CertificateInfo{};
+    old.not_before_ns = 1_000;
+    old.not_after_ns = 2_000;
+    old.issuer_ca_fingerprint = fp;
+    old.issuer_ca_fingerprint_len = 32;
+    try std.testing.expectError(error.CertExpired, validator.validate(old, 3_000));
+
+    // Rotated cert (new key/cert from same CA): valid again.
+    var new_cert = CertificateInfo{};
+    new_cert.not_before_ns = 2_500;
+    new_cert.not_after_ns = 5_000;
+    new_cert.issuer_ca_fingerprint = fp;
+    new_cert.issuer_ca_fingerprint_len = 32;
+    try validator.validate(new_cert, 3_000);
 }
 
 test "CertificateValidator validate - expired cert" {

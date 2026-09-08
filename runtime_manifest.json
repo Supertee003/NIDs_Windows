@@ -426,6 +426,34 @@
     "core/npcap_capture.zig": {
       "status": "REAL",
       "golden_path": true
+    },
+    "core/cluster_coord.zig": {
+      "classification": "production",
+      "role": "federation: ClusterCoord facade (heartbeat timeout, leader election, cross-node incident aggregation, TI broadcast, message schema); remote reports only, enforcement stays local (T13 REAL)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "new"
+    },
+    "core/federation_codec.zig": {
+      "classification": "production",
+      "role": "federation codec: FrameHeader (magic/version/msg_type/CRC32) + ClusterMessage encode/decode with identity + timestamp + seq (T13 REAL)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "new"
+    },
+    "core/federation_tls.zig": {
+      "classification": "production",
+      "role": "federation TLS/mTLS transport: CertificateValidator rejects expired/CN-mismatch/self-signed/unknown-CA/revoked; require_client_cert mTLS; SChannel on Windows, host-test mock on Linux (T13 REAL)",
+      "golden_path": true,
+      "status": "REAL",
+      "last_verified_commit": "new"
+    },
+    "core/federation_tcp.zig": {
+      "classification": "test",
+      "role": "plaintext TCP transport for host tests only; production federation uses TLS (no plaintext production transport) (T13)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "new"
     }
   },
   "init_order": [
@@ -474,6 +502,8 @@
     "policy signing (ed25519)",
     "rust pep (enforcement authority)",
     "wfp (windows enforcement)",
+    "federation (cross-node incident + TI + heartbeat sharing)",
+    "federation TLS (mTLS transport, no plaintext production)",
     "forensics (immutable trace)",
     "replay"
   ],
@@ -489,6 +519,9 @@
     "forensics authority: core/forensics_engine.zig (single authoritative immutable trace across the full chain event->evidence->verdict->policy->signature->PEP->action->result, append-only)",
     "forensic log authority: core/forensic_log.zig (append-only NDJSON, no edit/delete; rolling hash chain via forensic_replay_proof verifyImmutability)",
     "replay authority: core/replay_engine.zig (only module that reproduces original vs replayed decisions; reports diff + reason)",
-    "forensic trace and replay consistent: replay consumes forensics PipelineResult, no forensic inconsistency"
+    "forensic trace and replay consistent: replay consumes forensics PipelineResult, no forensic inconsistency",
+    "federation authority: core/cluster_coord.zig + core/federation_codec.zig (message schema + cross-node exchange; federation: reports only, enforcement stays local)",
+    "federation transport is TLS (no plaintext production transport): production federation MUST route through core/federation_tls.zig (mTLS, SChannel on Windows); core/federation_tcp.zig is host-test only",
+    "TLS validation authority: core/federation_tls.zig CertificateValidator (only cert authority; rejects expired, CN mismatch, self-signed, unknown CA, revoked)"
   ]
 }

@@ -772,6 +772,7 @@ pub const ClusterMessage = struct {
     from_node_id: u32,
     to_node_id: u32 = 0, // 0 = broadcast
     timestamp_ns: i64 = 0,
+    seq: u32 = 0, // per-sender monotonic sequence (order + replay detection)
     // Payloads (only one relevant per msg_type)
     node: ?ClusterNode = null,
     incident_source_ip: [4]u8 = .{ 0, 0, 0, 0 },

@@ -324,6 +324,7 @@ pub fn encode(msg: cc.ClusterMessage, out: []u8) EncodeError!usize {
     writeU32(payload[0..], &p_off, msg.from_node_id);
     writeU32(payload[0..], &p_off, msg.to_node_id);
     writeI64(payload[0..], &p_off, msg.timestamp_ns);
+    writeU32(payload[0..], &p_off, msg.seq);
 
     // Optional node payload (for NODE_JOIN / HEARTBEAT with announcement)
     const has_node: u8 = if (msg.node != null) 1 else 0;
@@ -420,6 +421,7 @@ pub fn decode(buf: []const u8) DecodeError!cc.ClusterMessage {
     msg.from_node_id = readU32(payload, &p_off);
     msg.to_node_id = readU32(payload, &p_off);
     msg.timestamp_ns = readI64(payload, &p_off);
+    msg.seq = readU32(payload, &p_off);
 
     const has_node = readU8(payload, &p_off);
     if (has_node == 1) {
@@ -962,6 +964,7 @@ test "encode/decode heartbeat roundtrip" {
         .from_node_id = 5,
         .to_node_id = 0,
         .timestamp_ns = 1_000_000_000,
+        .seq = 42,
     };
     var buf: [MAX_FRAME_SIZE]u8 = undefined;
     const n = try encode(msg, &buf);
@@ -972,6 +975,7 @@ test "encode/decode heartbeat roundtrip" {
     try std.testing.expectEqual(@as(u32, 5), decoded.from_node_id);
     try std.testing.expectEqual(@as(u32, 0), decoded.to_node_id);
     try std.testing.expectEqual(@as(i64, 1_000_000_000), decoded.timestamp_ns);
+    try std.testing.expectEqual(@as(u32, 42), decoded.seq);
 }
 
 test "encode/decode incident_report roundtrip" {
