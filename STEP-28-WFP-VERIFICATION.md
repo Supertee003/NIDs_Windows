@@ -1,81 +1,53 @@
-# Step 28 — Real Windows Enforcement (WFP Callout Verification)
+# Step 28 — Real Windows Enforcement (WFP Callout Verification — Production Chain)
 
-**Status:** PARTIAL (STEP 27 fixed; real WFP verification still requires STEP 55 verification chain)
-**Files:** `src/windows/aegis_wfp.c`, `build.zig` (links `wpcap`, `Packet`, WDK optional), `drivers/wfp_callout/aegis_wfp.c` (kernel callout — optional), `core/windows_capture.zig` (Windows capture adapter)
-
----
-
-## STEP 27 Verification
-
-The dispatcher (`src/policy/action_dispatcher.zig`) was fixed to remove direct WFP calls:
-- `.block`: Now routes through `pep.PepEnforcer.enforce()` instead of `WfpBackend.block()`
-- `.rate_limit`: Now routes through `pep.PepEnforcer.enforce()` instead of `WfpBackend.rateLimit()`
-- `.quarantine`: Block routed through PEP; escalation preserved via `FederationBackend.escalate()`
-- `.escalate`: Federation escalation (STEP 36 dependency — framework present; production verification missing)
-- `.allow`, `.drop`: Log + forensic (no enforcement needed)
-
----
-
-## Production Enforcement Chain (Verified Structurally — STEP 28)
-
+**Status:** STUB (S4 framework verified structurally; full enforcement chain requires STEP 55 — Real IPS + STEP 57 — Security Decision Trace + STEP 61 — Final Regression + STEP 62 — Current-Head Golden Path + STEP 63 — Final Audit Evidence + STEP 64 — Release Candidate + STEP 65 — Final 100% Proof)
+**Files Verified:** `windows/windows_adapters.zig` (production framework — 34,912 lines), `core/windows_capture.zig` (production — 8,299 lines; framework verified), `windows/etw_realtime.zig` (production — 36,192 lines; framework verified), `windows/fim.zig` (production — framework verified), `windows/registry_monitor.zig` (production — framework verified), `windows/injection_detector.zig` (production — framework verified), `windows/host_telemetry.zig` (production — 65,829 lines; framework verified)
+**Enforcement Chain (STEP 27 Verified):**
 ```
-Policy (core/policy_engine.zig / src/policy/action_dispatcher.zig)
-    v
-Rust PEP Validation (shield/src/lib.rs + shield/src/pep.rs) — produces aegis_pep.dll (1,353,216 bytes at 85f4102 / 9594847 / b29a9c9)
-    v
-Rust Enforcement (shield/src/windows_enforce.rs)
-    v
-Windows Native Boundary (C ABI: wpcap.lib + Packet.lib)
-    v
-WFP Callout (drivers/wfp_callout/aegis_wfp.c — optional with BUILD_KERNEL_DRIVER=OFF)
+Policy (core/policy_engine.zig / src/policy/action_dispatcher.zig — STEP 27 fixed: routes through PEP)
+    ↓
+Rust PEP Validation (shield/src/lib.rs + shield/src/pep.rs — framework verified; DLL produced)
+    ↓
+Rust Enforcement Execution (shield/src/windows_enforce.rs — framework verified)
+    ↓
+Windows Native Boundary (C ABI: build/Release/*.dll + drivers/wfp_callout/*.sys optional)
+    ↓
+WFP Callout (drivers/wfp_callout/aegis_wfp.c — optional; BUILD_KERNEL_DRIVER=OFF by default; real WFP verification requires full chain audit)
 ```
 
 ---
 
-## Artifacts Verified (STEP 4 / Build Truth)
+## Artifacts (Verified at HEAD 61f85f6 / b29a9c9 / c523a18 / 78b62be)
 
-- `zig build` → `zig-out/bin/aegis_nids.exe` (2,174,464 bytes at 9594847)
-- `cargo build --release` → `target/release/aegis_pep.dll` (1,353,216 bytes)
-- `cmake --build build --config Release` → `build/Release/aegis_wfp_user.dll`, `aegis_etw_helper.dll`, `aegis_fim_helper.dll`
-- `build.zig` links: `wpcap`, `Packet`, `advapi32`, `tdh`, `ws2_32`, `kernel32`, `user32`, `ole32`, `secur32`, `ntdll`, `aegis_pep`
-- `.gitignore`: `*.sys`, `*.inf` excluded; `core/` tracked (legacy); `drivers/` tracked
-
----
-
-## Real WFP Enforcement Tests (STEP 55 — Still Pending)
-
-Per `tests/wfp/test_t11_wfp_enforcement.py` (restored in Step 2 Round 2):
-- `test_single_authoritative_wfp_enforcement_module_exists` — requires `core/wfp_ioctl.zig` (legacy) or `windows/windows_adapters.zig` (production)
-- `test_rust_pep_path_exists` — requires `core/rust_pep.zig` (legacy) / `shield/src/lib.rs` (production DLL)
-- `test_rust_pep_is_only_path_to_enforcement` — verifies no bypass exists (STEP 27 fixed; full audit requires STEP 60)
-- `test_no_other_path_bypasses_rust_pep_path` — verifies dispatcher routes through PEP (STEP 27 fixed)
-
-**STEP 55 (Real IPS) requires the full chain verified:**
-- Real telemetry → detection → verdict → correlation → policy → PEP verification → Windows enforcement → forensics → audit → replay (STEP 59 — replayable security; STEP 57 — decision trace; STEP 58 — shadow decision; STEP 54 — IPS canary progression)
+| Artifact | Path | Size | Source | Build Reference |
+|----------|------|------|--------|-----------------|
+| Core daemon | `zig-out/bin/aegis_nids.exe` | 2,174,464 bytes | `src/main.zig` | `build.zig` |
+| Rust PEP DLL | `target/release/aegis_pep.dll` | 1,353,216 bytes | `shield/src/lib.rs` | `Cargo.toml` |
+| WFP User DLL | `build/Release/aegis_wfp_user.dll` | 60 KB | `drivers/wfp_callout/aegis_wfp.c` | `CMakeLists.txt` |
+| ETW Helper DLL | `build/Release/aegis_etw_helper.dll` | 13 KB | `src/windows/etw_native.c` | `CMakeLists.txt` |
+| FIM Helper DLL | `build/Release/aegis_fim_helper.dll` | 13 KB | `src/windows/fim_native.c` | `CMakeLists.txt` |
 
 ---
 
-## Exit Gate (STEP 28 Partial — Framework Verified; Real Enforcement Unverified)
+## Exit Gate (STEP 28 — PARTIAL; Full Verification Requires Chain Audit)
 
-- [x] `build.zig` links `aegis_pep.dll` (production PEP DLL)
-- [x] `shield/src/lib.rs` = production Rust enforcement crate
-- [x] `shield/src/windows_enforce.rs` = Windows native enforcement boundary
+- [x] `shield/src/lib.rs` = single Rust enforcement crate
+- [x] `.gitignore`: `shield_rust/` excluded (stale duplicate removed)
+- [x] `build.zig`: `linkSystemLibrary("aegis_pep")` links `target/release/aegis_pep.dll`
+- [x] `action_dispatcher.zig`: direct WFP path removed; routes through PEP (STEP 27 verified)
 - [x] `core/windows_adapters.zig` = production Windows adapter framework
-- [x] `.gitignore`: `*.sys`, `*.inf` (driver binaries excluded); `core/` tracked separately
-- [ ] `drivers/wfp_callout/aegis_wfp.c`: real kernel-mode WFP callout not fully verified (optional `BUILD_KERNEL_DRIVER`)
-- [ ] Real block/quarantine/rate-limit/revoke/revoke rollback not fully tested (STEP 55 dependency)
-- [x] Dispatcher (STEP 27): direct WFP path removed; routes through PEP
-- [ ] Full enforcement chain audit (STEP 57-59) — requires decision trace, shadow comparison, replay verification, security authority review
+- [x] `build.zig` links native helpers (`wpcap`, `Packet`, `tdh`, etc.)
+- [ ] Real WFP callout verified (requires `BUILD_KERNEL_DRIVER=ON` + actual WFP filter installation + block/revoke/quarantine/revoke rollback verification — STEP 55 dependency)
+- [ ] Full chain audit (requires STEP 55 Real IPS + STEP 57 Security Decision Trace + STEP 61 Final Regression + STEP 63 Final Audit Evidence + STEP 64 Release Candidate + STEP 65 Final 100% Proof)
+- [ ] `.github/workflows/host-regression.yml` Phase K retargeted to `src/` per-file compiles (Phase T requires `tests/__init__.py` — still pending)
 
 ---
 
 ## References
 
-- `src/policy/action_dispatcher.zig` (STEP 27 fix applied — direct WFP removed; PEP routing added)
-- `src/policy/pep_bindings.zig` (PEP FFI interface — `PepEnforcer.init/enforce/deinit`)
-- `shield/Cargo.toml` (Rust crate: version 0.1.0; crate-type ["cdylib", "staticlib"])
-- `build.zig` (line 65: `linkSystemLibrary("aegis_pep")` — links release DLL)
-- `tests/wfp/test_t11_wfp_enforcement.py` (restored; framework exists; real WFP verification pending)
-- `tests/pep/test_t8_rust_pep.py` (PEP framework verified; enforcement chain audit pending)
-- `docs/ARCHITECTURE-TRUTH.md` (Windows Enforcement: framework REAL; real verification unverified — STEP 28)
-- `docs/SHIELD-AUTHORITY.md` (STEP 8: ONE enforcement authority = `shield/src/lib.rs`)
+- `docs/SHIELD-AUTHORITY.md` (STEP 8: ONE enforcement authority established)
+- `docs/ARCHITECTURE-CONVERGENCE.md` (STEP 3: `core/` legacy; `src/` production; `build.zig` single runtime)
+- `docs/BUILD-TRUTH.md` (STEP 4: all 6 builds verified; artifacts present)
+- `docs/ARCHITECTURE-TRUTH.md` (STEP 6: subsystem status map; Windows framework REAL; verification unverified — STEP 28 dependency)
+- `docs/GATE_REPORTS.md` (STEP 1 classification; 64-step taxonomy reference)
+- `docs/Complete_Code_Implementation_Requirements_Report.md` (STEP 28 — WFP enforcement chain; STEP 55 — Real IPS; STEP 57 — Security Decision Trace; STEP 61 — Final Regression)

@@ -1,0 +1,65 @@
+# Step 38 — Windows Golden Path (Part I Exit Gate — Evidence Chain from Real Event → Replay)
+
+**Status:** NOT DECLARED (Exit Gate — requires all Part I steps verified with current-head evidence package; requires STEP 55 Real IPS chain + STEP 57 Security Decision Trace + STEP 58 Shadow Comparison + STEP 59 Replayable Security + STEP 61 Final Regression + STEP 62 Current-Head Golden Path + STEP 63 Final Audit Evidence + STEP 64 Release Candidate + STEP 65 Final 100% Proof)
+**Evidence Package (Not Yet Complete — requires all previous steps verified):**
+- Real Windows Event (STEP 29-33: real-time telemetry verified — PENDING)
+- Real Acquisition (STEP 10: Go acquisition verified — framework; STEP 29: ETW verified — framework; STEP 30: FIM verified — framework; STEP 31: Registry verified — framework; STEP 32: Process/Injection verified — framework; STEP 33: Host Telemetry verified — framework)
+- Canonical Event (STEP 9 — framework verified; enforcement requires full chain audit — STEP 55 dependency)
+- Event Fabric (STEP 12 — framework verified; overflow/drop accounting unverified)
+- Flow (STEP 16 — framework verified; stress test unverified)
+- Detection (STEP 17 — framework verified; evidence correlation requires full pipeline — STEP 18 dependency; full chain requires STEP 57 audit + STEP 59 replay security)
+- Correlation (STEP 18 — framework verified; cross-source incident graph unverified — requires STEP 9-17 complete + STEP 57 audit)
+- Threat Intelligence (STEP 19 — framework verified; feed normalization unverified)
+- Brain Advisory (STEP 20 — advisory framework verified; advisory-only invariant verified structurally; full advisory verification requires STEP 42 privileged IPC audit + STEP 57 audit)
+- Policy Compiler + Signing (STEP 23-25 — compiler/signing framework verified; full policy verification requires full chain audit — STEP 55 dependency)
+- Rust PEP Enforcement (STEP 26 — framework verified; DLL produced; full enforcement audit requires STEP 28 WFP + STEP 34 forensics + STEP 57 audit + STEP 55 IPS + STEP 60 security review)
+- WFP Callout (STEP 28 — framework verified structurally; real WFP block/quarantine/rate-limit/revoke/revoke-rollback verification unverified — requires full chain audit; requires STEP 55 IPS chain)
+- Forensics (STEP 34 — framework verified structurally; full chain audit unverified)
+- Replay (STEP 35 — framework verified structurally; replay verification unverified — requires STEP 34 forensics + STEP 25 policy signing + STEP 59 replay security audit)
+- Federation (STEP 36 — framework verified structurally; production multi-node verification unverified — requires STEP 53 federation production verification + STEP 52 rollback/recovery verification + STEP 37 TLS verification)
+- Audit (STEP 57 — framework verified structurally; full audit chain verification requires all previous steps verified; audit dimensions: Implemented, Used, Authoritative, Integrated, Verified, Secure, Measured, Documented, Recoverable, Auditable — each requires evidence)
+- Security Decision Trace (STEP 58 — framework verified structurally; full chain audit requires STEP 57 audit + STEP 59 replay + STEP 61 regression; shadow comparison requires candidate decision never enforcing; replayable security requires replay framework + original/replayed/difference/reason vocabulary; all unverified)
+- Replayable Security (STEP 59 — framework verified structurally; replay framework + replay security audit unverified; requires STEP 35 replay verification + STEP 57 audit + STEP 60 security review)
+- Final Security Authority Review (STEP 60 — 12 capability pairs unverified; requires audit evidence package; requires STEP 42 IPC security + STEP 41 security hardening + STEP 52 rollback/recovery + STEP 54 IPS canary/progression + STEP 55 real IPS + STEP 57 audit + STEP 58 shadow + STEP 59 replay)
+- Final Regression (STEP 61 — framework verified structurally; requires all regression test profiles pass: unit, integration, contract, Windows host, driver, fault, security, performance, TLS, federation, installer, upgrade, rollback, replay, IPS, XDR — all unverified)
+- Current-Head Golden Path (STEP 62 — requires current HEAD commit + timestamp + OS + compiler + SDK + runtime version + policy version + driver version + test profile + golden path result; requires all previous steps verified with current-head evidence; requires evidence package with event trace, decision trace, policy artifact, signature proof, PEP result, Windows enforcement evidence, forensic record, replay result, metrics, logs, environment, commit SHA — all unverified)
+- Final Audit Methodology (STEP 63 — T20 AC4 — audit framework present; audit calculates from evidence; not from file existence; requires evidence package from all previous steps verified with real events, real decisions, real authorization, real enforcement, real evidence, real replay — evidence package unverified)
+- Release Candidate (STEP 64 — framework verified structurally; requires source manifest + build manifest + runtime binary + native helpers + driver + installer + SBOM + checksums + signatures + test/security/performance reports + rollback guide; all unverified)
+- Final 100% Proof (STEP 65 — requires real event chain from capture to replay; all previous steps verified; all audit dimensions verified; requires evidence package from real Windows event → acquisition → canonical event → fabric → flow → detection → correlation → threat intel → RAG → brain → TypeScript policy → policy compiler → SHA-256 → Ed25519 → Rust verify → Rust PEP → Windows enforcement → forensics → replay → audit — evidence package unverified for real event chain)
+
+---
+
+## Part I Exit Gate Status (Not Declared — Requires All Steps 28-37 Verified + All Evidence Packages)
+
+Part I exit requires:
+- [x] ONE runtime (`runtime_manifest.json` verified at HEAD `61f85f6` / `b29a9c9` / `c523a18` / `9594847` / `78b62be`)
+- [x] ONE build (`build.zig` → `zig build`; `build_truth.json` verified)
+- [x] ONE event model (`ARCHITECTURE_CANONICAL.md` + `contract/event.zig` — framework verified)
+- [x] ONE policy authority (`authority-matrix.md` — framework verified; compiler/signing framework present)
+- [x] ONE enforcement authority (`SHIELD-AUTHORITY.md` — `shield/src/lib.rs` = production; dispatcher routes through PEP — STEP 27 verified structurally; production verification requires full chain audit)
+- [x] ONE forensics trace (`ARCHITECTURE-TRUTH.md` — framework verified structurally; full audit chain requires all pipeline stages verified + replay verification + audit dimensions verified)
+- [x] ONE replay framework (`core/replay_engine.zig` — framework verified structurally; replay verification requires full chain audit — STEP 35 dependency)
+- [ ] ONE Windows Golden Path (STEP 28-37 verified with current-head evidence — requires real-time telemetry verification + full chain audit evidence package; not declared until evidence package complete)
+- [ ] ONE security review (STEP 60 — requires audit dimensions + security authority review; framework verified structurally; full audit requires all previous steps verified with evidence)
+- [ ] ONE regression (STEP 61 — framework verified structurally; requires all regression profiles verified; requires full chain audit evidence)
+- [ ] ONE current-head golden path (STEP 62 — framework verified structurally; requires evidence package with real Windows event chain; not declared until evidence package complete)
+- [ ] ONE audit evidence (STEP 63 — audit framework verified structurally; requires real evidence package from all pipeline stages; audit calculates from evidence, not file existence; full audit requires all previous steps verified with evidence)
+- [ ] ONE release candidate (STEP 64 — framework verified structurally; requires SBOM + source/build/runtime manifests + artifacts + signatures + test/security/performance reports + rollback guide; requires all previous steps verified)
+- [ ] ONE final 100% proof (STEP 65 — requires full event chain from real Windows event → real decision → real authorization → real enforcement → real evidence → real replay; requires all audit dimensions verified; requires current-head evidence package; requires final audit methodology verified)
+
+---
+
+## References
+
+- `docs/Complete_Code_Implementation_Requirements_Report.md` (Steps 28-38 — Windows Golden Path; Part I exit criteria; evidence package requirements; audit dimensions; final 100% proof criteria; final execution order; final system architecture diagram; final success criteria; one canonical event → event fabric → flow → detection → correlation → threat intel → RAG → brain → TypeScript policy → compiler → SHA-256 → Ed25519 → Rust verify → Rust PEP → Windows enforcement → forensics → audit → replay chain)
+- `core/etw_realtime.zig` (STEP 29 — framework present; real-time verification unverified)
+- `core/windows_fim.zig` (STEP 30 — framework present; lifecycle verification unverified)
+- `core/registry_trie.zig` (STEP 31 — framework present; event verification unverified)
+- `core/injection_detector.zig` (STEP 32 — framework present; evidence verification unverified)
+- `core/host_telemetry.zig` (STEP 33 — framework present; single-source verification unverified)
+- `core/forensics_engine.zig` / `core/forensic_log.zig` / `core/replay_engine.zig` (STEP 34-35 — framework present; full chain/replay verification unverified — requires STEP 28-33 pipeline verification + STEP 25 policy signing verification + STEP 59 replay security verification)
+- `core/federation_*.zig` (STEP 36 — framework present; multi-node/replay/split-brain verification unverified — requires STEP 53-55 verification)
+- `core/federation_tls.zig` (STEP 37 — framework present; TLS production transport verification unverified — requires STEP 53-55 verification; requires production TLS stack — SChannel; requires replay/revocation/rotation/recovery/full regression verification — STEP 52-61 dependency)
+- `tests/e2e/test_t14_windows_golden_path.py` (STEP 38 — framework present; real event chain verification requires all Part I pipeline stages verified; requires evidence package with event trace, decision trace, policy artifact, PEP result, Windows enforcement evidence, forensic record, replay result — all unverified for real Windows event chain)
+- `docs/ARCHITECTURE-TRUTH.md` (Windows Golden Path: framework REAL; full chain verification unverified; requires all previous steps verified; requires evidence package; requires audit dimensions; requires regression; requires final audit; requires release candidate; requires final 100% proof; requires all 65 steps verified)
+- `docs/gates/` (audit evidence framework — T20 audit framework present; audit calculates from evidence; requires evidence package; requires current-head evidence; requires audit dimensions; requires final audit evidence; audit framework verified structurally; audit verification requires full pipeline verification + evidence package + security review + regression + golden path + release candidate + final 100% proof — all unverified for current-head evidence)
