@@ -693,12 +693,40 @@
       "status": "REAL",
       "last_verified_commit": "ccfc2ac"
     },
+    "tools/final_audit.py": {
+      "classification": "tooling",
+      "role": "final 100% audit gate (T20 AC4): Part I per-module dims, Part II crash/golden-path security, Part III coverage, authority invariants; --check declares 100% PRODUCTION VERIFIED (Steps 59-64)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "266c2bc"
+    },
+    "tools/final_regression.py": {
+      "classification": "tooling",
+      "role": "final regression gate (T20 AC1): 16-subsystem matrix (unit/integration/contracts/windows-host/driver/fault/security/performance/tls/federation/installer/upgrade/rollback/replay/ips/xdr) + full-suite tally (Step 60)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "266c2bc"
+    },
+    "tools/golden_path_evidence.py": {
+      "classification": "tooling",
+      "role": "golden path evidence packager (T20 AC2): 13-section evidence (commit_sha/env/logs/metrics/event/decision trace/policy/signature/pep/wfp/windows/forensics/replay) pinned to a commit dir (Step 61)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "266c2bc"
+    },
     "tools/installer.py": {
       "classification": "tooling",
       "role": "NSIS installer generator CONSUMING build_manifest.json components; installs manifest + preserves data (config/policy/trust/audit/forensic) on uninstall/upgrade (T17 AC4)",
       "golden_path": false,
       "status": "REAL",
       "last_verified_commit": "4bd6769"
+    },
+    "tools/release_candidate.py": {
+      "classification": "tooling",
+      "role": "release candidate assembler (T20 AC3): SBOM + SHA256SUMS + signatures.json + reports + KNOWN_LIMITATIONS + ROLLBACK, --verify (Step 62)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "266c2bc"
     },
     "tools/release_engineering.py": {
       "classification": "tooling",
@@ -795,7 +823,7 @@
     "no path to WFP bypasses Rust PEP",
     "aegisctl requests only, never bypasses PEP",
     "host-network source: core/npcap_capture.zig (single authoritative source for Windows host network + process telemetry; one model -> CanonicalEvent -> Zig Flow)",
-    "WFP enforcement authority: core/wfp_production.zig (single authoritative enforcement module for Windows WFP; Rust PEP only path)",
+    "WFP enforcement authority: core/wfp_production.zig (single authoritative enforcement module for Windows WFP; Rust PEP only path) WFP driver product artifacts: drivers/wfp_callout/aegis_wfp.sys + aegis_minifilter.sys (kernel enforcement; Rust PEP only path)",
     "forensics authority: core/forensics_engine.zig (single authoritative immutable trace across the full chain event->evidence->verdict->policy->signature->PEP->action->result, append-only)",
     "forensic log authority: core/forensic_log.zig (append-only NDJSON, no edit/delete; rolling hash chain via forensic_replay_proof verifyImmutability)",
     "replay authority: core/replay_engine.zig (only module that reproduces original vs replayed decisions; reports diff + reason)",
@@ -805,7 +833,7 @@
     "TLS validation authority: core/federation_tls.zig CertificateValidator (only cert authority; rejects expired, CN mismatch, self-signed, unknown CA, revoked)",
     "identifier integrity: event_id (core/canonical_event.zig), incident_id (core/correlation_engine.zig Incident), policy_id/policy_version (core/policy_signing.zig SignedPolicy -> shield/src/pep.rs PepTrace), request_id (shield/src/pep.rs PepRequest/PepTrace), forensic_id (core/forensics_engine.zig PipelineResult, forensic_id = sequence) all survive the full golden path to forensics + replay",
     "golden path is REAL (host-verified Windows E2E): core/npcap_capture.zig + nose/capture.go + windows_capture.zig + Windows Brain/Cython + ts_policy + Rust PEP + WFP + forensics + replay carry a real Windows event end-to-end; only core/rust_pep.zig (MOCK, test sim) is explicitly excluded from the golden path",
-    "fault authority: core/fault_matrix.zig + core/fault_injection.zig (only modules that declare expected recovery per fault x subsystem and measure actual recovery: detect/contain/fallback/audit/recover; inject -> duration_ns)",
+    "fault authority: core/fault_matrix.zig + core/fault_injection.zig (only modules that declare expected recovery per fault x subsystem and measure actual recovery: detect/contain/fallback/audit/recover; inject -> duration_ns) reliability building blocks (watchdog/recover) live in core/reliability.zig (Steps 39-40)",
     "config authority: core/config_reload_proof.zig + config/Rules.json + tools/config_validator.py (hot reload = validate then atomic swap then audit; invalid ruleset is rejected, no partial swap)",
     "observability authority: core/health_monitoring_proof.zig + scripts/aegis_defcon.py + scripts/aegis_metrics.py (liveness heartbeat, readiness over NOSE/FLOW/DETECTION/POLICY/PEP, metrics snapshot, DEFCON rollup; single authoritative source)",
     "control plane authority: core/control_ipc.zig Authorizer (single control-plane IPC contract; request_id + nonce + caller identity + role READ/OPERATE/PRIVILEGED; layered authorization = ACL (explicit principals only, never \"Everyone\" for privileged) -> min-role -> timeout -> replay -> audit; every decision audited append-only)",
@@ -821,6 +849,10 @@
     "decision trace authority: core/decision_trace.zig walks action -> pep_request -> policy -> verdict -> evidence -> correlation -> event -> source in one root-cause order; every trace appends in strict order and completes; privileged actions (block/quarantine/rate_limit) are isPrivileged and audited via TraceStore.auditCoverage (all_traced or untraced ids listed)",
     "shadow decision authority: core/shadow_decision.zig compares every shadow candidate against the live decision across decision/evidence/confidence/false-positive/policy-version/detector-version dimensions; a shadow candidate NEVER enforces (candidate_enforce forcibly cleared, candidate_enforced always false)",
     "security replay authority: core/replayable_security.zig re-lets historical outcomes against new rules_version/policy_version/context_version and attributes every verdict_changed/action_changed to the exact atom version delta in reason",
-    "final authority review: core/authority_review.zig enforces the twelve-accountability checklist (sensors/detectors/Brain/Go/TypeScript never enforce; RAG never authorizes; C++ never bypasses the PEP; policy never executes; the CLI never bypasses authorization; the Rust PEP is the final authority; Windows follows the PEP result with every privileged action audited) and is authoritative only when all twelve clauses hold"
+    "final authority review: core/authority_review.zig enforces the twelve-accountability checklist (sensors/detectors/Brain/Go/TypeScript never enforce; RAG never authorizes; C++ never bypasses the PEP; policy never executes; the CLI never bypasses authorization; the Rust PEP is the final authority; Windows follows the PEP result with every privileged action audited) and is authoritative only when all twelve clauses hold",
+    "final regression gate: python tools/final_regression.py is the sole AC1 gate; all 16 produced-path subsystems must PASS before a release candidate may be declared (Step 60)",
+    "golden path evidence authority: python tools/golden_path_evidence.py is the sole AC2 evidence packager; its 13 sections cover commit, environment, logs, metrics, event trace, decision trace, policy artifact, signature proof, PEP result, WFP result, windows evidence, forensic record, replay result (Step 61)",
+    "release candidate authority: python tools/release_candidate.py is the sole AC3 assembler producing SBOM.json + SHA256SUMS + signatures.json + reports + KNOWN_LIMITATIONS.md + ROLLBACK.md with a --verify gate (Step 62)",
+    "100% audit authority: python tools/final_audit.py --check is the sole AC4 gate that may declare 100% PRODUCTION VERIFIED; declaration rides on Part I dims + Part II verification + golden-path declared (Steps 59-64)"
   ]
 }
