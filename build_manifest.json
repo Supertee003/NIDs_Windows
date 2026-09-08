@@ -2,8 +2,8 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "0c74e3f",
-  "build_date": "2026-09-08T07:14:00.804833+00:00",
+  "source_commit": "581ba47",
+  "build_date": "2026-09-08T08:23:52.884098+00:00",
   "build_host": "windows",
   "platform": {
     "os": "windows",
@@ -27,7 +27,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "0c74e3f",
+      "commit": "581ba47",
       "source": "core/"
     },
     {
@@ -37,7 +37,7 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "0c74e3f",
+      "commit": "581ba47",
       "source": "shield/"
     },
     {
@@ -47,7 +47,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "0c74e3f",
+      "commit": "581ba47",
       "source": "native/"
     },
     {
@@ -57,7 +57,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "0c74e3f",
+      "commit": "581ba47",
       "source": "native/"
     },
     {
@@ -67,7 +67,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "0c74e3f",
+      "commit": "581ba47",
       "source": "native/"
     },
     {
@@ -77,7 +77,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-build-test",
-      "commit": "0c74e3f",
+      "commit": "581ba47",
       "source": "go/"
     },
     {
@@ -87,7 +87,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-build-test",
-      "commit": "0c74e3f",
+      "commit": "581ba47",
       "source": "go/aggregator/"
     },
     {
@@ -97,7 +97,7 @@
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "0c74e3f",
+      "commit": "581ba47",
       "source": "scripts/aegisctl.py"
     },
     {
@@ -107,7 +107,7 @@
       "type": "script",
       "required": true,
       "ci_job": "package-release",
-      "commit": "0c74e3f",
+      "commit": "581ba47",
       "source": "tools/installer.py"
     },
     {
@@ -117,7 +117,7 @@
       "type": "toolchain",
       "required": true,
       "ci_job": "ts-policy-build",
-      "commit": "0c74e3f",
+      "commit": "581ba47",
       "source": "ts_policy/"
     },
     {
@@ -127,7 +127,7 @@
       "type": "library",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "0c74e3f",
+      "commit": "581ba47",
       "source": "brain/"
     }
   ],
@@ -179,8 +179,8 @@
   "artifacts": [
     {
       "path": ".github/workflows/ci.yml",
-      "size": 3961,
-      "sha256": "6cc9ab1b2be64e8240861f31d8cef031c527011da3cc8fdeae1de23ea2e065db",
+      "size": 4716,
+      "sha256": "717c8263e651237cca29aaa5de5ea6222d1781a76fcd07a108c3c631edc4407d",
       "language": "yaml"
     },
     {
@@ -1637,8 +1637,8 @@
     },
     {
       "path": "requirements.txt",
-      "size": 564,
-      "sha256": "456bf23f5b91257657cb4e154a22459536604d6d41765bafaa74a1d83f3d0fa6",
+      "size": 514,
+      "sha256": "7149ed6728530bb15743bce2b5b19b744872ea1bd9bb417a91df8028f969d398",
       "language": "data"
     },
     {
