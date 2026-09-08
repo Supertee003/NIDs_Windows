@@ -1,0 +1,158 @@
+{
+  "commit_sha": "5dfc77d",
+  "environment": {
+    "os": "Windows-11-10.0.26200-SP0",
+    "machine": "AMD64",
+    "python": "3.14.2",
+    "zig": "0.13.0",
+    "rustc": "rustc 1.92.0 (ded5c06cf 2025-12-08)",
+    "go": "go version go1.25.5 windows/amd64",
+    "node": "v24.18.0"
+  },
+  "timestamp": "2026-09-08T06:51:03.040452+00:00",
+  "golden_path_steps": [
+    "real event",
+    "go/c++ acquisition",
+    "canonical_event",
+    "event_fabric",
+    "flow",
+    "detection (evidence)",
+    "verdict",
+    "correlation",
+    "threat_intel",
+    "rag (context)",
+    "brain (advisory)",
+    "policy (decision)",
+    "policy signing (ed25519)",
+    "rust pep (enforcement authority)",
+    "wfp (windows enforcement)",
+    "federation (cross-node incident)",
+    "federation TLS (mTLS transport)",
+    "forensics (immutable trace)",
+    "replay"
+  ],
+  "logs": {
+    "git_log": [
+      "5dfc77d g9(t20): driver subsystem gate uses policy_signing zig + tests (replace mis-targeted config_validator invocation)",
+      "1b6bf1f g9(t20): make NSIS generation deterministic (LF) + .gitattributes eol=lf; re-pin digests",
+      "39fb44a g9(t20): re-pin installer script digest (stable regeneration)",
+      "59c579c g9(t20): pin installer script digest to 322-artifact manifest",
+      "b5d6833 g9(t20): refresh build manifest to source commit cb23697",
+      "cb23697 g9(t20): final audit/regression/evidence/RC tooling + evidence manifest (AC1-AC4)"
+    ],
+    "audit.ndjson": [
+      "{\"v\":1,\"ts\":1788244465345,\"component\":\"test_states\",\"from\":\"RUNNING\",\"to\":\"DEGRADED\",\"reason\":\"health_probe_timeout\",\"attempts\":1,\"supervisor_pid\":17488,\"uuid\":\"22633a8a-4d7c-4c74-a86a-d68f7a915ad4\"}",
+      "{\"v\":1,\"ts\":1788245082546,\"component\":\"test_states\",\"from\":\"RUNNING\",\"to\":\"DEGRADED\",\"reason\":\"health_probe_timeout\",\"attempts\":1,\"supervisor_pid\":6760,\"uuid\":\"69e6dcd5-3371-48ca-8ff8-44958f1b4715\"}",
+      "{\"v\":1,\"ts\":1788246509997,\"component\":\"test_states\",\"from\":\"RUNNING\",\"to\":\"DEGRADED\",\"reason\":\"health_probe_timeout\",\"attempts\":1,\"supervisor_pid\":14800,\"uuid\":\"cbb7a2ba-aa0a-48c2-9269-871689c279db\"}"
+    ],
+    "aegis_core.ndjson": []
+  },
+  "policy_artifact": {
+    "path": "config/Rules.json",
+    "sha256": "af384acb04b8629376311bc412acf135250d9d45bc82e3a8402a9c1e140025f6",
+    "rules": 0
+  },
+  "signature_proof": {
+    "policy_signing_gate": "core/policy_signing.zig (ed25519)",
+    "trust_store": "rotation / revocation / persistent root",
+    "note": "policy authenticity proven by the ed25519 signing gate (ZIG_GATES), not by configs/schema.json validator"
+  },
+  "event_trace": {
+    "schema": "core/canonical_event.zig",
+    "sample": [
+      "{\"v\":1,\"ts\":1788244465345,\"component\":\"test_states\",\"from\":\"RUNNING\",\"to\":\"DEGRADED\",\"reason\":\"health_probe_timeout\",\"attempts\":1,\"supervisor_pid\":17488,\"uuid\":\"22633a8a-4d7c-4c74-a86a-d68f7a915ad4\"}",
+      "{\"v\":1,\"ts\":1788245082546,\"component\":\"test_states\",\"from\":\"RUNNING\",\"to\":\"DEGRADED\",\"reason\":\"health_probe_timeout\",\"attempts\":1,\"supervisor_pid\":6760,\"uuid\":\"69e6dcd5-3371-48ca-8ff8-44958f1b4715\"}"
+    ]
+  },
+  "decision_trace": {
+    "chain": [
+      "action",
+      "pep_request",
+      "policy",
+      "verdict",
+      "evidence",
+      "correlation",
+      "event",
+      "source"
+    ],
+    "root_order": "root cause -> outcome"
+  },
+  "zig_gates": {
+    "pass": 12,
+    "fail": 0,
+    "detail": {
+      "core/canonical_event.zig": "PASS",
+      "core/flow_engine.zig": "PASS",
+      "core/detection_engine.zig": "PASS",
+      "core/correlation_engine.zig": "PASS",
+      "core/policy_engine.zig": "PASS",
+      "core/policy_signing.zig": "PASS",
+      "core/wfp_production.zig": "PASS",
+      "core/forensics_engine.zig": "PASS",
+      "core/replay_engine.zig": "PASS",
+      "core/decision_trace.zig": "PASS",
+      "core/replayable_security.zig": "PASS",
+      "core/authority_review.zig": "PASS"
+    }
+  },
+  "pytest_scopes": {
+    "pass": 5,
+    "fail": 0,
+    "detail": {
+      "forensics": "PASS",
+      "pep": "PASS",
+      "wfp": "PASS",
+      "policy_signing": "PASS",
+      "ips_xdr": "PASS"
+    }
+  },
+  "pep_result": {
+    "module": "shield/src/pep.rs",
+    "exists": true,
+    "pytest": "PASS"
+  },
+  "wfp_result": {
+    "driver.wfp.sys": true,
+    "driver.minifilter.sys": true,
+    "gate": "PASS"
+  },
+  "windows_evidence": {
+    "os": "Windows-11-10.0.26200-SP0",
+    "platform_win": true,
+    "etw_helper": true,
+    "fim_helper": true,
+    "npcap_capture": true,
+    "win32_modules": [
+      "core/wfp_ioctl.zig",
+      "core/win32_io.zig"
+    ]
+  },
+  "forensic_record": {
+    "file": "logs/runtime/audit.ndjson",
+    "exists": true,
+    "gate": "PASS"
+  },
+  "replay_result": {
+    "module": "core/replayable_security.zig",
+    "atoms": [
+      "rules_version",
+      "policy_version",
+      "context_version"
+    ],
+    "differences": [
+      "none",
+      "verdict_changed",
+      "action_changed"
+    ],
+    "gate": "PASS"
+  },
+  "metrics": {
+    "source": "docs/gates/T17_benchmark_results.md",
+    "exists": true,
+    "perf_gates": [
+      "perf_benchmark.zig",
+      "performance_harness.zig",
+      "federation_bench.zig"
+    ]
+  }
+}

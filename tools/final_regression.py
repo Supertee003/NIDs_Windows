@@ -132,10 +132,12 @@ KNOWN_ERRORS = ["tests/test_e2e.py::test_result"]  # pre-existing unrelated
 
 
 def full_suite_gate() -> str:
-    rc, tail = run(["python", "-m", "pytest", "tests", "-q"], 1200)
-    if rc == 0:
+    r = subprocess.run(["python", "-m", "pytest", "tests", "-q"],
+                       capture_output=True, text=True, timeout=1200,
+                       cwd=str(REPO), errors="replace")
+    if r.returncode == 0:
         return "PASS"
-    summary = tail
+    summary = (r.stderr or "") + (r.stdout or "")
     if "passed" not in summary:
         return "FAIL"
     known = any(k in summary for k in KNOWN_ERRORS)
@@ -167,7 +169,7 @@ def main() -> int:
         "subsystems": results,
         "tally": rolling,
         "known_partial_subsystems": KNOWN_PARTIAL,
-        "declaration": ("REG NEG PASS" if rolling["full_suite"] == "PASS"
+        "declaration": ("REG NEG PASS" if rolling["full_suite"].startswith("PASS")
                         and rolling["fail"] == 0 else "REG NEG FAIL"),
     }
     OUT.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n",

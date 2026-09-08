@@ -2,8 +2,8 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "5dfc77d",
-  "build_date": "2026-09-08T06:58:05.025444+00:00",
+  "source_commit": "0c74e3f",
+  "build_date": "2026-09-08T07:14:00.804833+00:00",
   "build_host": "windows",
   "platform": {
     "os": "windows",
@@ -27,7 +27,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "5dfc77d",
+      "commit": "0c74e3f",
       "source": "core/"
     },
     {
@@ -37,7 +37,7 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "5dfc77d",
+      "commit": "0c74e3f",
       "source": "shield/"
     },
     {
@@ -47,7 +47,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "5dfc77d",
+      "commit": "0c74e3f",
       "source": "native/"
     },
     {
@@ -57,7 +57,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "5dfc77d",
+      "commit": "0c74e3f",
       "source": "native/"
     },
     {
@@ -67,7 +67,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "5dfc77d",
+      "commit": "0c74e3f",
       "source": "native/"
     },
     {
@@ -77,7 +77,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-build-test",
-      "commit": "5dfc77d",
+      "commit": "0c74e3f",
       "source": "go/"
     },
     {
@@ -87,7 +87,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-build-test",
-      "commit": "5dfc77d",
+      "commit": "0c74e3f",
       "source": "go/aggregator/"
     },
     {
@@ -97,7 +97,7 @@
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "5dfc77d",
+      "commit": "0c74e3f",
       "source": "scripts/aegisctl.py"
     },
     {
@@ -107,7 +107,7 @@
       "type": "script",
       "required": true,
       "ci_job": "package-release",
-      "commit": "5dfc77d",
+      "commit": "0c74e3f",
       "source": "tools/installer.py"
     },
     {
@@ -117,7 +117,7 @@
       "type": "toolchain",
       "required": true,
       "ci_job": "ts-policy-build",
-      "commit": "5dfc77d",
+      "commit": "0c74e3f",
       "source": "ts_policy/"
     },
     {
@@ -127,7 +127,7 @@
       "type": "library",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "5dfc77d",
+      "commit": "0c74e3f",
       "source": "brain/"
     }
   ],
@@ -1620,7 +1620,7 @@
     {
       "path": "installer/aegis.nsi",
       "size": 5086,
-      "sha256": "61fafc648d2e4c332796b776db2c019f87574a4825fae06821a4966924236014",
+      "sha256": "0d22e079e896001ae88613ace61b958daae098c5b45c4210539b954bb1189889",
       "language": "script"
     },
     {
@@ -1997,8 +1997,8 @@
     },
     {
       "path": "tools/final_regression.py",
-      "size": 9875,
-      "sha256": "3d096ac6c33ef3263485718de9f450a7d707da3a0b1f1db0d2b5ea4f41c92228",
+      "size": 10048,
+      "sha256": "0ae03f2bee0efadd274f38559a52beffb0aff9d18735c770c87670ca92b8e83d",
       "language": "python/cython"
     },
     {

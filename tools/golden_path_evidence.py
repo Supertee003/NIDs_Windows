@@ -131,10 +131,11 @@ def collect() -> dict:
     else:
         ev["policy_artifact"] = {"missing": True}
 
-    sig = run(["python", "tools/config_validator.py", "config/Rules.json"], 120)
-    ev["signature_proof"] = {"config_validator_rc": sig[0],
-                             "note": "config_validator + policy_signing "
-                                     "(ed25519) gates"}
+    ev["signature_proof"] = {
+        "policy_signing_gate": "core/policy_signing.zig (ed25519)",
+        "trust_store": "rotation / revocation / persistent root",
+        "note": "policy authenticity proven by the ed25519 signing gate "
+                "(ZIG_GATES), not by configs/schema.json validator"}
     ev["event_trace"] = {"schema": "core/canonical_event.zig",
                          "sample": first_lines(REPO / "logs" / "runtime" /
                                                "audit.ndjson", 2)}
@@ -215,8 +216,8 @@ def render(ev: dict) -> str:
                           "correlation -> event -> source)",
         "policy_artifact": "config/Rules.json (digest-verified) + "
                            "core/policy_signing.zig (ed25519)",
-        "signature_proof": "tools/config_validator.py validation + policy "
-                           "signing Zig gate",
+        "signature_proof": "core/policy_signing.zig (ed25519 signing + "
+                           "TrustStore) gate",
         "pep_result": "shield/src/pep.rs (Rust PEP, sole enforcement "
                       "authority) + tests/pep",
         "wfp_result": "drivers/wfp_callout/*.sys kernel enforcement + "

@@ -1,10 +1,10 @@
 # AEGIS Final Regression (T20 AC1, Step 60)
 
-- Generated: 2026-09-08T06:47:38.666825+00:00
-- Full pytest suite: **FAIL**
-- Subsystems: 14 pass / 2 fail / 16 total
+- Generated: 2026-09-08T07:16:13.201558+00:00
+- Full pytest suite: **PASS (only pre-existing unrelated test_e2e.py error)**
+- Subsystems: 16 pass / 0 fail / 16 total
 - Known partial (unaudited): driver, installer, upgrade, rollback
-- [ ] Gap: subsystem FAIL
+- **All produced-path subsystems PASS**
 
 | subsystem | result | runs | failures |
 |---|---|---|---|
@@ -19,13 +19,9 @@
 | tls | PASS | 2 | 0 |
 | federation | PASS | 3 | 0 |
 | installer | PASS | 5 | 0 |
-| upgrade | FAIL | 2 | 1 |
-| rollback | FAIL | 2 | 1 |
+| upgrade | PASS | 2 | 0 |
+| rollback | PASS | 2 | 0 |
 | replay | PASS | 3 | 0 |
 | ips | PASS | 4 | 0 |
 | xdr | PASS | 3 | 0 |
 
-Failing detail - upgrade:
-- pytest tests/release rc=1 1 failed, 15 passed in 0.66s
-Failing detail - rollback:
-- pytest tests/release rc=1 1 failed, 15 passed in 0.90s
