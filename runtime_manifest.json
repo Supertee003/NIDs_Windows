@@ -538,6 +538,153 @@
       "golden_path": false,
       "status": "REAL",
       "last_verified_commit": "ccfc2ac"
+    },
+    "core/perf_benchmark.zig": {
+      "classification": "production",
+      "role": "performance benchmark suite (T17 AC1): 6 Zig throughput suites + p50/p95/p99 latency percentiles (LatencyPercentiles, collectLatency); QPC high-res timer on Windows; 160 tests",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "core/perf_benchmark_cli.zig": {
+      "classification": "tooling",
+      "role": "performance CLI: quick/demo/full/latency modes + threshold checker (T17 AC1 recording)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "core/perf_benchmark_config.json": {
+      "classification": "config",
+      "role": "benchmark suite thresholds + production capacity guide (T17 AC1)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "core/federation_bench.zig": {
+      "classification": "production",
+      "role": "cross-node federation benchmarks (heartbeat/incident/intel/multi-stream/failover), QPC timer; 119 tests (T17 AC1)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "core/federation_bench_cli.zig": {
+      "classification": "tooling",
+      "role": "federation benchmark CLI (T17 AC1)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "core/federation_bench_config.json": {
+      "classification": "config",
+      "role": "federation benchmark configuration (T17 AC1)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "core/performance_harness.zig": {
+      "classification": "production",
+      "role": "performance harness: events/sec, queue depth, drop rate (19 tests) (T17 AC1)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "core/performance_integration.zig": {
+      "classification": "production",
+      "role": "performance integration proof (20 tests) (T17 AC1)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "core/performance_tuning_proof.zig": {
+      "classification": "production",
+      "role": "performance tuning authority (33 tests) (T17 AC1)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "core/release_engineering.zig": {
+      "classification": "production",
+      "role": "release metadata + metrics export (16 tests) (T17 AC3)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "core/release_engineering_integration.zig": {
+      "classification": "production",
+      "role": "release engineering integration proof (17 tests) (T17 AC3)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "core/release_provenance.zig": {
+      "classification": "production",
+      "role": "artifact provenance manifest: SHA-256 fingerprints, timing-safe compare (10 tests) (T17 AC3)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "build_manifest.json": {
+      "classification": "release",
+      "role": "build/release manifest v2: source_commit + per-component commit/required/ci_job + 300+ artifact SHA-256 digests (T17 AC3)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "tools/release_engineering.py": {
+      "classification": "tooling",
+      "role": "build manifest generator + SBOM + --verify digest anti-drift gate (T17 AC3)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "tools/installer.py": {
+      "classification": "tooling",
+      "role": "NSIS installer generator CONSUMING build_manifest.json components; installs manifest + preserves data (config/policy/trust/audit/forensic) on uninstall/upgrade (T17 AC4)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "tools/ci_coverage.py": {
+      "classification": "tooling",
+      "role": "cross-language CI matrix checker: required missing = FAIL, optional = PASS (T17 AC2)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "ci_coverage.json": {
+      "classification": "config",
+      "role": "CI matrix: Zig/Rust/C++/Python/Cython/Go/TypeScript/contract/static-analysis/windows-host/driver/packaging jobs + required/optional flags (T17 AC2)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "tools/upgrade_rollback.py": {
+      "classification": "tooling",
+      "role": "upgrade/rollback/recovery orchestration: snapshot/report/rollback with measured RPO/RTO + restore_success; preserves data plane (T17 AC5)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    "docs/gates/T17_benchmark_results.md": {
+      "classification": "doc",
+      "role": "recorded per-language benchmark results: throughput + p50/p95/p99 on Windows host (T17 AC1)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    ".github/workflows/ci.yml": {
+      "classification": "ci",
+      "role": "cross-language CI: zig/rust/c/cpp/python(+cython)/go/typescript build+test, security scan, ci-matrix gate, package-release (T17 AC2)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
+    },
+    ".github/workflows/host-regression.yml": {
+      "classification": "ci",
+      "role": "host regression: runtime contract (phase-t) + per-file Zig (phase-k) (T17 AC2)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "4bd6769"
     }
   },
   "init_order": [
@@ -613,6 +760,11 @@
     "config authority: core/config_reload_proof.zig + config/Rules.json + tools/config_validator.py (hot reload = validate then atomic swap then audit; invalid ruleset is rejected, no partial swap)",
     "observability authority: core/health_monitoring_proof.zig + scripts/aegis_defcon.py + scripts/aegis_metrics.py (liveness heartbeat, readiness over NOSE/FLOW/DETECTION/POLICY/PEP, metrics snapshot, DEFCON rollup; single authoritative source)",
     "control plane authority: core/control_ipc.zig Authorizer (single control-plane IPC contract; request_id + nonce + caller identity + role READ/OPERATE/PRIVILEGED; layered authorization = ACL (explicit principals only, never \"Everyone\" for privileged) -> min-role -> timeout -> replay -> audit; every decision audited append-only)",
-    "control plane routing: aegisctl and all CLIs submit control requests only (scripts/aegisctl.py envelope + audit); privileged WFP/driver mutation flows ONLY via the Rust PEP - no direct enforcement from CLI/TS/Python/Go"
+    "control plane routing: aegisctl and all CLIs submit control requests only (scripts/aegisctl.py envelope + audit); privileged WFP/driver mutation flows ONLY via the Rust PEP - no direct enforcement from CLI/TS/Python/Go",
+    "performance authority: core/perf_benchmark.zig + core/federation_bench.zig record throughput + p50/p95/p99 (LatencyPercentiles, collectLatency) on the QPC high-res timer; events/sec + queue depth + drop rate from core/performance_harness.zig; CPU/memory/latency snapshot from scripts/aegis_metrics.py; results recorded at docs/gates/T17_benchmark_results.md",
+    "CI matrix authority: tools/ci_coverage.py + ci_coverage.json gate every required language/project to a real workflow job (required missing = FAIL, optional missing = PASS, documented); matrix checked in ci.yml ci-matrix job",
+    "build provenance authority: build_manifest.json v2 records source_commit + per-component commit/required/ci_job + SHA-256 per artifact; tools/release_engineering.py --verify fails on any digest drift so every artifact maps back to its source commit",
+    "installer authority: tools/installer.py consumes build_manifest.json components (no hand-embedded source snapshots) and installs the manifest; installer preserves user data (uninstall/upgrade preserves the data plane) (config/Rules.json, policy, trust store, audit, forensics) under $INSTDIR\\data",
+    "upgrade/rollback authority: tools/upgrade_rollback.py snapshots and restores the data plane and measures RPO/RTO/restore_success (docs/runbooks/RB-005-config-rollback.md documents the <5s atomic config swap)"
   ]
 }

@@ -26,6 +26,24 @@ ROOT = Path(__file__).parent.parent
 VERSION = "5.0.0"
 MANIFEST_PATH = ROOT / "build_manifest.json"
 
+# Path fragments that never become release artifacts (build/tool caches).
+EXCLUDE_PARTS = ("node_modules", ".zig-cache", ".zig-cache", ".git", "target",
+                 "__pycache__", ".venv", "venv", "zig-out", "dist", "eggs")
+
+
+def git_source_commit() -> str:
+    """Short SHA of the source commit every artifact maps back to."""
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=str(ROOT), capture_output=True, text=True, timeout=10,
+        )
+        if out.returncode == 0:
+            return out.stdout.strip()
+    except Exception:
+        pass
+    return "unknown"
+
 
 def file_sha256(path: Path) -> str:
     h = hashlib.sha256()
@@ -36,19 +54,37 @@ def file_sha256(path: Path) -> str:
 
 
 def collect_artifacts() -> List[Dict[str, Any]]:
-    """Collect all source + build artifacts with their hashes."""
+    """Collect all source + build artifacts with their hashes.
+
+    Maps to the actual repository layout (T17): walks the implementation
+    source trees that ship in a release and assigns each artifact its
+    SHA-256 digest. Every entry is later cross-checked against the working
+    tree by --verify (an artifact maps to the source commit because the
+    digest is recorded at that commit).
+    """
     artifacts: List[Dict[str, Any]] = []
-    include_dirs = ["src", "rust-src", "tools", "configs", "tests", "kernel", "installer"]
+    include_dirs = ["core", "shield", "scripts", "tools", "config", "installer",
+                    "go", "brain", "ts_policy", "bridge"]
     include_files = ["build.zig", "Cargo.toml", "CMakeLists.txt", "requirements.txt",
-                     ".gitignore", "ROADMAP.md", "Rules.json"]
+                     ".gitignore", "ROADMAP.md", "Rules.json", "runtime_manifest.json",
+                     "ci_coverage.json", ".github/workflows/ci.yml",
+                     ".github/workflows/host-regression.yml"]
     for d in include_dirs:
-        for p in (ROOT / d).rglob("*") if (ROOT / d).exists() else []:
-            if p.is_file():
-                artifacts.append({
-                    "path": str(p.relative_to(ROOT)).replace("\\", "/"),
-                    "size": p.stat().st_size,
-                    "sha256": file_sha256(p),
-                })
+        base = ROOT / d
+        if not base.exists():
+            continue
+        for p in base.rglob("*"):
+            if not p.is_file():
+                continue
+            rel = str(p.relative_to(ROOT)).replace("\\", "/")
+            if any(part in rel for part in EXCLUDE_PARTS):
+                continue
+            artifacts.append({
+                "path": rel,
+                "size": p.stat().st_size,
+                "sha256": file_sha256(p),
+                "language": _detect_language(rel),
+            })
     for f in include_files:
         p = ROOT / f
         if p.exists():
@@ -56,15 +92,41 @@ def collect_artifacts() -> List[Dict[str, Any]]:
                 "path": str(p.relative_to(ROOT)).replace("\\", "/"),
                 "size": p.stat().st_size,
                 "sha256": file_sha256(p),
+                "language": _detect_language(f),
             })
+    artifacts.sort(key=lambda a: a["path"])
     return artifacts
 
 
+def _detect_language(rel: str) -> str:
+    if rel.endswith(".zig"):
+        return "zig"
+    if rel.endswith(".rs"):
+        return "rust"
+    if rel.endswith(".go"):
+        return "go"
+    if rel.endswith((".py", ".pyx", ".pyi")):
+        return "python/cython"
+    if rel.endswith((".ts", ".tsx")):
+        return "typescript"
+    if rel.endswith((".c", ".cpp", ".h", ".hpp", ".cc")):
+        return "c/c++"
+    if rel.endswith(".json"):
+        return "json"
+    if rel.endswith((".yml", ".yaml")):
+        return "yaml"
+    if rel.endswith((".nsi", ".ps1", ".bat")):
+        return "script"
+    return "data"
+
+
 def generate_manifest(version: str) -> Dict[str, Any]:
+    commit = git_source_commit()
     manifest: Dict[str, Any] = {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "product": "AEGIS NIDS",
         "version": version,
+        "source_commit": commit,
         "build_date": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "build_host": os.uname().nodename if hasattr(os, "uname") else "windows",
         "platform": {
@@ -76,17 +138,34 @@ def generate_manifest(version: str) -> Dict[str, Any]:
             "zig": "0.13.0",
             "rust": "1.78.0",
             "python": "3.11+",
-            "c": "MSVC 19.38+ (Visual Studio 2022)",
+            "cython": "3.0+",
+            "c/cpp": "MSVC 19.38+ (Visual Studio 2022)",
+            "go": "1.22+",
+            "typescript": "5.x (node 20)",
         },
         "components": [
-            {"id": "core", "name": "aegis_nids.exe", "language": "zig", "type": "executable"},
-            {"id": "pep", "name": "aegis_pep.dll", "language": "rust", "type": "library"},
-            {"id": "wfp_user", "name": "aegis_wfp_user.dll", "language": "c", "type": "library"},
-            {"id": "etw_helper", "name": "aegis_etw_helper.dll", "language": "c", "type": "library"},
-            {"id": "fim_helper", "name": "aegis_fim_helper.dll", "language": "c", "type": "library"},
-            {"id": "aegisctl", "name": "aegisctl.py", "language": "python", "type": "script"},
-            {"id": "installer", "name": "installer.py", "language": "python", "type": "script"},
-            {"id": "backup", "name": "backup_recovery.py", "language": "python", "type": "script"},
+            {"id": "core", "name": "aegis_nids.exe", "language": "zig", "type": "executable",
+             "required": True, "ci_job": "zig-build-test", "commit": commit, "source": "core/"},
+            {"id": "pep", "name": "aegis_pep.dll", "language": "rust", "type": "library",
+             "required": True, "ci_job": "rust-pep-build", "commit": commit, "source": "shield/"},
+            {"id": "wfp_user", "name": "aegis_wfp_user.dll", "language": "c", "type": "library",
+             "required": True, "ci_job": "c-native-build", "commit": commit, "source": "native/"},
+            {"id": "etw_helper", "name": "aegis_etw_helper.dll", "language": "c", "type": "library",
+             "required": True, "ci_job": "c-native-build", "commit": commit, "source": "native/"},
+            {"id": "fim_helper", "name": "aegis_fim_helper.dll", "language": "c", "type": "library",
+             "required": True, "ci_job": "c-native-build", "commit": commit, "source": "native/"},
+            {"id": "nose", "name": "nose_dashboard.exe", "language": "go", "type": "executable",
+             "required": False, "ci_job": "go-build-test", "commit": commit, "source": "go/"},
+            {"id": "aggregator", "name": "aegis-aggregator.exe", "language": "go", "type": "executable",
+             "required": False, "ci_job": "go-build-test", "commit": commit, "source": "go/aggregator/"},
+            {"id": "aegisctl", "name": "scripts/aegisctl.py", "language": "python", "type": "script",
+             "required": True, "ci_job": "python-tests", "commit": commit, "source": "scripts/aegisctl.py"},
+            {"id": "installer", "name": "tools/installer.py", "language": "python", "type": "script",
+             "required": True, "ci_job": "package-release", "commit": commit, "source": "tools/installer.py"},
+            {"id": "ts-policy", "name": "ts_policy", "language": "typescript", "type": "toolchain",
+             "required": True, "ci_job": "ts-policy-build", "commit": commit, "source": "ts_policy/"},
+            {"id": "brain", "name": "brain/aegis_brain_cython/fast_scan.pyx", "language": "cython", "type": "library",
+             "required": True, "ci_job": "python-tests", "commit": commit, "source": "brain/"},
         ],
         "modules": {
             "I01": "build.zig, Cargo.toml, CMakeLists.txt, .github/workflows/ci.yml",
@@ -170,18 +249,52 @@ def generate_sbom(manifest: Dict[str, Any]) -> Dict[str, Any]:
     return sbom
 
 
+def verify_manifest() -> int:
+    """Recompute SHA-256 digests for artifacts present in the working tree
+    and compare with build_manifest.json. Any mismatch -> FAIL (the release
+    artifact no longer maps to the recorded source commit)."""
+    if not MANIFEST_PATH.exists():
+        print("build_manifest.json not found - run --manifest first", file=sys.stderr)
+        return 2
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    mismatches: List[str] = []
+    checked = 0
+    missing = 0
+    for art in manifest.get("artifacts", []):
+        p = ROOT / art["path"]
+        if not p.exists():
+            missing += 1
+            continue
+        checked += 1
+        if p.stat().st_size != art["size"] or file_sha256(p) != art["sha256"]:
+            mismatches.append(art["path"])
+    print(f"Artifacts checked: {checked} (present), missing (not built locally): {missing}")
+    if mismatches:
+        print("FAIL - artifacts drifted from recorded commit digests:")
+        for m in mismatches:
+            print(f"  - {m}")
+        return 1
+    print(f"OK - {checked} artifacts match their recorded digests "
+          f"(source_commit={manifest.get('source_commit', '?')})")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="AEGIS release engineering")
     parser.add_argument("--manifest", action="store_true", help="Generate build_manifest.json")
     parser.add_argument("--sbom", action="store_true", help="Generate SBOM (SPDX 2.3)")
     parser.add_argument("--package", action="store_true", help="Package release artifacts")
+    parser.add_argument("--verify", action="store_true", help="Verify artifact digests vs manifest")
     parser.add_argument("--version", default=VERSION)
     args = parser.parse_args()
+
+    if args.verify:
+        return verify_manifest()
 
     if args.manifest or args.sbom or args.package:
         manifest = generate_manifest(args.version)
         if args.manifest:
-            MANIFEST_PATH.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+            MANIFEST_PATH.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
             print(f"âœ… Manifest written: {MANIFEST_PATH}")
             print(f"   Components: {len(manifest['components'])}")
             print(f"   Modules: {len(manifest['modules'])}")

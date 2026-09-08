@@ -82,6 +82,51 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: 0
 
+  go-build-test:
+    name: Go Build & Test (capture/aggregator)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Build Go modules
+        run: |
+          cd go/aggregator
+          go build ./...
+      - name: Test Go modules
+        run: |
+          cd go/aggregator
+          go test ./...
+
+  ts-policy-build:
+    name: TypeScript Policy Build & Test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        run: cd ts_policy && npm ci
+      - name: Typecheck
+        run: cd ts_policy && npm run typecheck
+      - name: Run TS policy tests
+        run: cd ts_policy && npm run test:all
+
+  ci-matrix:
+    name: Cross-language CI Matrix (required missing = FAIL)
+    runs-on: ubuntu-latest
+    needs: [zig-build-test, rust-pep-build, c-native-build, python-tests,
+            go-build-test, ts-policy-build, security-scan]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check CI matrix coverage semantics
+        run: python tools/ci_coverage.py
+
   package-release:
     name: Package Release
     needs: [zig-build-test, rust-pep-build, c-native-build, python-tests]

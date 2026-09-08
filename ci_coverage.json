@@ -1,0 +1,116 @@
+{
+  "schema_version": "1.0",
+  "product": "AEGIS NIDS",
+  "workflows": [
+    ".github/workflows/ci.yml",
+    ".github/workflows/host-regression.yml",
+    ".github/workflows/release.yml"
+  ],
+  "gate_semantics": "A required project without a CI job is a FAIL; an optional project without a CI job is reported and treated as PASS (documented gap, does not turn the matrix red).",
+  "projects": [
+    {
+      "id": "zig",
+      "language": "zig",
+      "job": "zig-build-test",
+      "required": true,
+      "command": "zig build && zig build test",
+      "covers": "core engine, dispatcher chain, forensics/replay, control IPC"
+    },
+    {
+      "id": "rust",
+      "language": "rust",
+      "job": "rust-pep-build",
+      "required": true,
+      "command": "cargo build --release && cargo test --release",
+      "covers": "PEP (sole enforcement authority), federation TLS"
+    },
+    {
+      "id": "cpp",
+      "language": "c/c++",
+      "job": "c-native-build",
+      "required": true,
+      "command": "cmake -B build -S . && cmake --build build --config Release",
+      "covers": "WFP/ETW/FIM native helpers, bridge"
+    },
+    {
+      "id": "python",
+      "language": "python",
+      "job": "python-tests",
+      "required": true,
+      "command": "python -m pytest tests/ -q",
+      "covers": "control plane, contract tests, aegisctl, health/metrics/defcon scripts"
+    },
+    {
+      "id": "cython",
+      "language": "cython",
+      "job": "python-tests",
+      "required": true,
+      "command": "python -m pytest tests/cython/ -q",
+      "covers": "brain feature extraction, cython regex fast scan, numeric batch"
+    },
+    {
+      "id": "go",
+      "language": "go",
+      "job": "go-build-test",
+      "required": true,
+      "command": "cd go/aggregator && go build ./... && go test ./...",
+      "covers": "capture (nose), aggregator, collector"
+    },
+    {
+      "id": "typescript",
+      "language": "typescript",
+      "job": "ts-policy-build",
+      "required": true,
+      "command": "cd ts_policy && npm ci && npm run typecheck && npm run test:all",
+      "covers": "policy compiler, seal signing, controls pre/post seal mutation"
+    },
+    {
+      "id": "contract",
+      "language": "python",
+      "job": "phase-t-runtime-contract",
+      "required": true,
+      "command": "python -m pytest tests/runtime tests/contracts -q",
+      "covers": "runtime contract tests, ABI/size checks"
+    },
+    {
+      "id": "static-analysis",
+      "language": "mixed",
+      "job": "security-scan",
+      "required": true,
+      "command": "trivy fs --severity HIGH,CRITICAL --exit-code 0",
+      "covers": "SBOM/static vulnerability scan"
+    },
+    {
+      "id": "integration",
+      "language": "python",
+      "job": "phase-t-runtime-contract",
+      "required": false,
+      "command": "python -m pytest tests/integration -q",
+      "covers": "cross-module integration suite"
+    },
+    {
+      "id": "windows-host",
+      "language": "mixed",
+      "job": "zig-build-test",
+      "required": true,
+      "command": "zig test core/*.zig -lc",
+      "covers": "Windows host regression (runner is windows-latest)"
+    },
+    {
+      "id": "driver",
+      "language": "c",
+      "job": "c-native-build",
+      "required": false,
+      "command": "cmake --build build --config Release (driver artifacts)",
+      "covers": "WFP kernel callout driver packaging (optional at gate)"
+    },
+    {
+      "id": "packaging",
+      "language": "python",
+      "job": "package-release",
+      "required": false,
+      "command": "python tools/installer.py --package --output aegis_setup.exe",
+      "covers": "installer + SBOM + release manifest published on tags"
+    }
+  ]
+}

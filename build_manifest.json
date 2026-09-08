@@ -1,9 +1,10 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "build_date": "2026-09-06T22:18:02.985333+00:00",
-  "build_host": "c-6a9cf7fa-14d96228-60d4babf067f",
+  "source_commit": "4bd6769",
+  "build_date": "2026-09-08T05:31:22.720708+00:00",
+  "build_host": "windows",
   "platform": {
     "os": "windows",
     "arch": "x86_64",
@@ -13,56 +14,121 @@
     "zig": "0.13.0",
     "rust": "1.78.0",
     "python": "3.11+",
-    "c": "MSVC 19.38+ (Visual Studio 2022)"
+    "cython": "3.0+",
+    "c/cpp": "MSVC 19.38+ (Visual Studio 2022)",
+    "go": "1.22+",
+    "typescript": "5.x (node 20)"
   },
   "components": [
     {
       "id": "core",
       "name": "aegis_nids.exe",
       "language": "zig",
-      "type": "executable"
+      "type": "executable",
+      "required": true,
+      "ci_job": "zig-build-test",
+      "commit": "4bd6769",
+      "source": "core/"
     },
     {
       "id": "pep",
       "name": "aegis_pep.dll",
       "language": "rust",
-      "type": "library"
+      "type": "library",
+      "required": true,
+      "ci_job": "rust-pep-build",
+      "commit": "4bd6769",
+      "source": "shield/"
     },
     {
       "id": "wfp_user",
       "name": "aegis_wfp_user.dll",
       "language": "c",
-      "type": "library"
+      "type": "library",
+      "required": true,
+      "ci_job": "c-native-build",
+      "commit": "4bd6769",
+      "source": "native/"
     },
     {
       "id": "etw_helper",
       "name": "aegis_etw_helper.dll",
       "language": "c",
-      "type": "library"
+      "type": "library",
+      "required": true,
+      "ci_job": "c-native-build",
+      "commit": "4bd6769",
+      "source": "native/"
     },
     {
       "id": "fim_helper",
       "name": "aegis_fim_helper.dll",
       "language": "c",
-      "type": "library"
+      "type": "library",
+      "required": true,
+      "ci_job": "c-native-build",
+      "commit": "4bd6769",
+      "source": "native/"
+    },
+    {
+      "id": "nose",
+      "name": "nose_dashboard.exe",
+      "language": "go",
+      "type": "executable",
+      "required": false,
+      "ci_job": "go-build-test",
+      "commit": "4bd6769",
+      "source": "go/"
+    },
+    {
+      "id": "aggregator",
+      "name": "aegis-aggregator.exe",
+      "language": "go",
+      "type": "executable",
+      "required": false,
+      "ci_job": "go-build-test",
+      "commit": "4bd6769",
+      "source": "go/aggregator/"
     },
     {
       "id": "aegisctl",
-      "name": "aegisctl.py",
+      "name": "scripts/aegisctl.py",
       "language": "python",
-      "type": "script"
+      "type": "script",
+      "required": true,
+      "ci_job": "python-tests",
+      "commit": "4bd6769",
+      "source": "scripts/aegisctl.py"
     },
     {
       "id": "installer",
-      "name": "installer.py",
+      "name": "tools/installer.py",
       "language": "python",
-      "type": "script"
+      "type": "script",
+      "required": true,
+      "ci_job": "package-release",
+      "commit": "4bd6769",
+      "source": "tools/installer.py"
     },
     {
-      "id": "backup",
-      "name": "backup_recovery.py",
-      "language": "python",
-      "type": "script"
+      "id": "ts-policy",
+      "name": "ts_policy",
+      "language": "typescript",
+      "type": "toolchain",
+      "required": true,
+      "ci_job": "ts-policy-build",
+      "commit": "4bd6769",
+      "source": "ts_policy/"
+    },
+    {
+      "id": "brain",
+      "name": "brain/aegis_brain_cython/fast_scan.pyx",
+      "language": "cython",
+      "type": "library",
+      "required": true,
+      "ci_job": "python-tests",
+      "commit": "4bd6769",
+      "source": "brain/"
     }
   ],
   "modules": {
@@ -112,289 +178,1870 @@
   },
   "artifacts": [
     {
-      "path": "src/main.zig",
-      "size": 5388,
-      "sha256": "3de06cadcaa23e9320f7837c489c53ceca33447911190fe237911df4587e90cd"
+      "path": ".github/workflows/ci.yml",
+      "size": 3961,
+      "sha256": "6cc9ab1b2be64e8240861f31d8cef031c527011da3cc8fdeae1de23ea2e065db",
+      "language": "yaml"
     },
     {
-      "path": "src/policy/trust_store.zig",
-      "size": 6037,
-      "sha256": "2b9d57d9f943d6b3020a9bb9ad8d5d49a2d02f10546812fae26e63447c24c51e"
+      "path": ".github/workflows/host-regression.yml",
+      "size": 5074,
+      "sha256": "9f93f0b63edcc2fcf2f4a1cce3368e961ee657bf3159ce568c8c631cec444290",
+      "language": "yaml"
     },
     {
-      "path": "src/policy/policy_ir.zig",
-      "size": 6845,
-      "sha256": "cd356a50687175d25a6a5686e51330770938639089e47aa342538efe74e6fed9"
-    },
-    {
-      "path": "src/policy/pep_bindings.zig",
-      "size": 4937,
-      "sha256": "ebe8fa51b8904293e30925116576d193e0639f8e4eafa6d4f7c0bcba534167eb"
-    },
-    {
-      "path": "src/policy/action_dispatcher.zig",
-      "size": 5929,
-      "sha256": "6fea33586a3d3ef61ae74f528dec95553dd87b166d0c3474477a2e106595d04a"
-    },
-    {
-      "path": "src/tests/all_tests.zig",
-      "size": 1724,
-      "sha256": "cd6aa16b96b5dfcee211a417283d5f2a89ac0d12d100870c36e74a222f9959e3"
-    },
-    {
-      "path": "src/tests/fuzz_main.zig",
-      "size": 1089,
-      "sha256": "700ba3fd7717c5f9cbd8709a26e559354bbcb53f9659416ea58a028181bfe2e6"
-    },
-    {
-      "path": "src/forensic/replay_engine.zig",
-      "size": 8123,
-      "sha256": "01b4fe3522676ee8655afc98855364c3c5dab47913a9a71f49f040d126e69c43"
-    },
-    {
-      "path": "src/forensic/forensic_pipeline.zig",
-      "size": 6801,
-      "sha256": "79ffd8c170caa65433d8610f6ba61db56537900b593898420f3d021b474350c8"
-    },
-    {
-      "path": "src/capture/npcap_adapter.zig",
-      "size": 8040,
-      "sha256": "99c55ed7104a55c8a4732c6d62313d3bdec6d396e8b7a7ee6091d7469480efdc"
-    },
-    {
-      "path": "src/capture/flow_table.zig",
-      "size": 8091,
-      "sha256": "b03bc2ef128599bc4e501a5cf9255f0794fecd18bb2bb8edfc50aea28715321a"
-    },
-    {
-      "path": "src/capture/stream_reassembly.zig",
-      "size": 7009,
-      "sha256": "b7834ade00a00cb16f8bad4d06dbe3880090912c109210011ef303d06e6141da"
-    },
-    {
-      "path": "src/capture/packet_decoder.zig",
-      "size": 8684,
-      "sha256": "d52699b398813117c65ecf6ca725d80a51a6957e047e58b05a196a250773d0c8"
-    },
-    {
-      "path": "src/reliability/fault_injection.zig",
-      "size": 4499,
-      "sha256": "5ecdd092e3e859e756dcc08002289d68d8bc8d08d2a044288ee6e0b67d3b6e65"
-    },
-    {
-      "path": "src/reliability/latency_histogram.zig",
-      "size": 5685,
-      "sha256": "3c1836f014f96e751704128785cabf42e34c69a1cc0c50f6d70e9f4253f303e0"
-    },
-    {
-      "path": "src/reliability/security_check.zig",
-      "size": 3498,
-      "sha256": "48c1dfbf82e6100ec11b1c7afd64e3481c0acc78189ae48910acc63ec53ec153"
-    },
-    {
-      "path": "src/reliability/watchdog.zig",
-      "size": 5859,
-      "sha256": "ba07f2a6c2af1c9c8dd9160a285a73bad7f65f88d94ca95d18705373ebe55c22"
-    },
-    {
-      "path": "src/xdr/xdr_engine.zig",
-      "size": 6133,
-      "sha256": "4ff02ee8b6b732454bc8e9175cd2cd51425b2d737ebd7e8d8a892482c3872ea2"
-    },
-    {
-      "path": "src/core/memory_pool.zig",
-      "size": 9962,
-      "sha256": "a25a55192f10ea3d6443cd163fd7dd0de20d81bf63b1ac4227d8f93e0b32e160"
-    },
-    {
-      "path": "src/core/diagnostics.zig",
-      "size": 7502,
-      "sha256": "3f9ed8f24bf171681e2d8bf21bc50d98ad6f92f1b5c337aa1c9e9298ac0295fe"
-    },
-    {
-      "path": "src/contract/event.zig",
-      "size": 4943,
-      "sha256": "91e962fe5959f7da8575d81dd2731fe8f7beb51a94b1284b7b3cc523c4f0a0ee"
-    },
-    {
-      "path": "src/contract/runtime_manifest.zig",
-      "size": 5822,
-      "sha256": "e993d9e7010f93171d6cbd6cf18a9575fd34022c1c04c492e37234ca69c48ff0"
-    },
-    {
-      "path": "src/federation/aggregator.zig",
-      "size": 4290,
-      "sha256": "80b02e8596e4d22a4807ef58eb98dad7b61a5821c9a2f2b1da8bd9ab2f6bcdc3"
-    },
-    {
-      "path": "src/federation/cluster_coord.zig",
-      "size": 6854,
-      "sha256": "2f64476fa676216a386d20588a102afe49fd7134243638e0eba4af126f05c101"
-    },
-    {
-      "path": "src/federation/node_registry.zig",
-      "size": 5042,
-      "sha256": "f156ac8b343c9b8eb67deeea428357317e960d3bee65157a3baa63424d4a7529"
-    },
-    {
-      "path": "src/windows/etw_native.c",
-      "size": 6466,
-      "sha256": "508050eef55a264b6a41fc2f313e58706fdd25e55f1f8d2125363cdf9bdcdc24"
-    },
-    {
-      "path": "src/windows/injection_detector.zig",
-      "size": 7994,
-      "sha256": "62f45be705c7f4a4f025aa4a5c3af2dd210e5712976ebe7f773cbda87777859b"
-    },
-    {
-      "path": "src/windows/fim.zig",
-      "size": 4897,
-      "sha256": "382b98068ae0fec3c1b235eed9bdcad52a12601bd4bf3a4c94974505e61d264d"
-    },
-    {
-      "path": "src/windows/etw_realtime.zig",
-      "size": 5530,
-      "sha256": "b39f0e272c8fd6c8f43c267ba4ca1c978af72df49fb9cd35ef9511f0755ec4c0"
-    },
-    {
-      "path": "src/windows/fim_native.c",
-      "size": 2978,
-      "sha256": "1af194e28873b7c518f20e5457e1d3ef85b7cae81b7b5050e25e7d2b77da9732"
-    },
-    {
-      "path": "src/windows/registry_monitor.zig",
-      "size": 6019,
-      "sha256": "4e3e6fe2df0059d6c62d3c88dcdeca75bd4bc37440732ac8f07b1fc910f7b7dc"
-    },
-    {
-      "path": "src/windows/host_telemetry.zig",
-      "size": 4446,
-      "sha256": "09060a714204ea589d8fb7c08b840ff9f865ed88b099813c3e3891577c97b8ca"
-    },
-    {
-      "path": "src/windows/aegis_wfp.c",
-      "size": 5831,
-      "sha256": "a795bc8f14ec82a9afcfd1ebca096074a86f63f48ac59e1919bf0f2b363aad8e"
-    },
-    {
-      "path": "src/detection/correlator.zig",
-      "size": 8182,
-      "sha256": "f84ebfbb64f351011efde4119e322663a09bd92b406a5a9db072b43d8c1ae5d5"
-    },
-    {
-      "path": "src/detection/signature_engine.zig",
-      "size": 9070,
-      "sha256": "57acabd1ecde847869f6588afb608e152340f58da2baacbe70bd278fb5529eea"
-    },
-    {
-      "path": "src/detection/proto_anomaly.zig",
-      "size": 4837,
-      "sha256": "767d37e0e7643d587c455880ecc3f8c41fae9110fc020ab24e1bc631b7a15526"
-    },
-    {
-      "path": "src/detection/threat_tracker.zig",
-      "size": 8219,
-      "sha256": "2571b6fbdf3f6f7a203cb3be3feb5cf54d3f92b0302eef33b3040ae4043724d6"
-    },
-    {
-      "path": "src/detection/anomaly_detector.zig",
-      "size": 4234,
-      "sha256": "607587cd9aa3d0d08fcc9004e7fc5fe6d5dacc4d90d87f60ddf56e84d212254e"
-    },
-    {
-      "path": "src/capture/proto/parsers.zig",
-      "size": 12539,
-      "sha256": "b3758737531c002bd97a6bf9f7f492510f2f57276ce9cc9d8297c3f61d7be442"
-    },
-    {
-      "path": "rust-src/lib.rs",
-      "size": 10130,
-      "sha256": "e771b5deb37f2a0ac339a1185d8ed638e5aab31a531e02690a0a672d357dc372"
-    },
-    {
-      "path": "tools/release_engineering.py",
-      "size": 9288,
-      "sha256": "f64963a8a1280dd0fa29d225b1339ad3132d4837f18bfa23336167dc9c49d92d"
-    },
-    {
-      "path": "tools/aegisctl.py",
-      "size": 10583,
-      "sha256": "4bb8e33bc096815db27957a372000e9cc08a7533550b73adf34911697ad73cb9"
-    },
-    {
-      "path": "tools/config_validator.py",
-      "size": 4304,
-      "sha256": "12594c03285ab621ba4d278283eef4a2e3caa7dc03521d58ff5510482b25d99a"
-    },
-    {
-      "path": "tools/backup_recovery.py",
-      "size": 7393,
-      "sha256": "ccc63bfd586170798ca6be1219bbcdcd4250946866aa85647f2244874a9fb0eb"
-    },
-    {
-      "path": "tools/installer.py",
-      "size": 6087,
-      "sha256": "63d155d21af99fc0705dc20f2dfdf03fef350087e70046e686abaa000e3f358d"
-    },
-    {
-      "path": "configs/cluster.example.json",
-      "size": 355,
-      "sha256": "5a83bb91a0a3a80bb25a3689b927a4d3f8b601acd7198f9700ee0b15ae913e56"
-    },
-    {
-      "path": "configs/schema.json",
-      "size": 3894,
-      "sha256": "12fa3903f118c7d0debdcbf43067c31b77acbc93a877f6e6f62f230da2a7d0b5"
-    },
-    {
-      "path": "configs/runtime.json",
-      "size": 1404,
-      "sha256": "128722b583cccd887e02ed8178f76f5fcc392d22dee8fe4d10078dba451b4ae0"
-    },
-    {
-      "path": "configs/_runtime_normalized.json",
-      "size": 1499,
-      "sha256": "534a132ba5904d5dcb7300ce87e95f7171350cd1f6664f06c8629499a8c440ab"
-    },
-    {
-      "path": "tests/test_golden_path.py",
-      "size": 9934,
-      "sha256": "421f3bf6b4b7abd4a979306afd2e71a6fdd3d1ead1c1c2477686dee7bc69393b"
-    },
-    {
-      "path": "build.zig",
-      "size": 2584,
-      "sha256": "8d9ae0d6f2d8e34a159a3471d3a656732b37646b14822118cecca1f32f8cc1fe"
-    },
-    {
-      "path": "Cargo.toml",
-      "size": 1044,
-      "sha256": "aad6e0e5305e080779da4d6953df706030bcbc8b177402ac5ae199e40b7c2b75"
+      "path": ".gitignore",
+      "size": 1379,
+      "sha256": "a9e696ba94709c3da20feed9009aa86790609e153200502798cab2a5adcfceb1",
+      "language": "data"
     },
     {
       "path": "CMakeLists.txt",
       "size": 1617,
-      "sha256": "c87e5f3740b50db65409f16436d94e3eab925ec7b40ff38356a0b3ec3557a31e"
+      "sha256": "c87e5f3740b50db65409f16436d94e3eab925ec7b40ff38356a0b3ec3557a31e",
+      "language": "data"
     },
     {
-      "path": "requirements.txt",
-      "size": 489,
-      "sha256": "d367ab023525b9c55d0c409bb733114445abed1590b74fe73b187f3b7f47c390"
-    },
-    {
-      "path": ".gitignore",
-      "size": 430,
-      "sha256": "e540fea1f29d6564679dae4ff7bb85a5e7323eac4406cd406334ca911b3be467"
+      "path": "Cargo.toml",
+      "size": 1044,
+      "sha256": "aad6e0e5305e080779da4d6953df706030bcbc8b177402ac5ae199e40b7c2b75",
+      "language": "data"
     },
     {
       "path": "ROADMAP.md",
-      "size": 6244,
-      "sha256": "29794fc528b08966c162dc3bf69cdb86baec68ec37c8b4ddf39f39ca3f14e40b"
+      "size": 6304,
+      "sha256": "f519aedcdd6be5ce93589f6d72a79aa50a51ad49bf50302866c600911fba5ea6",
+      "language": "data"
     },
     {
       "path": "Rules.json",
+      "size": 9624,
+      "sha256": "e4d76f55809b14fcb59ead4edabccac3b600eb22ee035cba589ce5391d4e9563",
+      "language": "json"
+    },
+    {
+      "path": "brain/__init__.py",
+      "size": 33,
+      "sha256": "3b335febf70fd1aa368e982e6f4d5e5fdff06f174460166dba2010828f0a250e",
+      "language": "python/cython"
+    },
+    {
+      "path": "brain/aegis_brain_cython/README.md",
+      "size": 1598,
+      "sha256": "e9377e2cffd18b7417bc5a8e4f8c6afffa8c498c3cd4ec73e7244fecb1764c20",
+      "language": "data"
+    },
+    {
+      "path": "brain/aegis_brain_cython/__init__.py",
+      "size": 444,
+      "sha256": "9e92b6bb0944fdf5b061c88d2f7d20966e787c02dd1495d77010ed24d4268493",
+      "language": "python/cython"
+    },
+    {
+      "path": "brain/aegis_brain_cython/bridge.py",
+      "size": 5081,
+      "sha256": "82d373e112762d0b3602f19d26f6a9849dc05de7613665d417c8b912aa31d4e0",
+      "language": "python/cython"
+    },
+    {
+      "path": "brain/aegis_brain_cython/build/lib.win-amd64-cpython-314/aegis_brain_cython/fast_scan.cp314-win_amd64.pyd",
+      "size": 55808,
+      "sha256": "2c0b116fc85b06652fe3903cce2f3bae05a957699b00782f1056a99b41509118",
+      "language": "data"
+    },
+    {
+      "path": "brain/aegis_brain_cython/build/temp.win-amd64-cpython-314/Release/NIDs_Windows/brain/aegis_brain_cython/fast_scan.cp314-win_amd64.exp",
+      "size": 821,
+      "sha256": "d65299edf7fafea5c1127919d7f6c1bb069c0c1e5aba7001d7919bd89d592a4a",
+      "language": "data"
+    },
+    {
+      "path": "brain/aegis_brain_cython/build/temp.win-amd64-cpython-314/Release/NIDs_Windows/brain/aegis_brain_cython/fast_scan.cp314-win_amd64.lib",
+      "size": 2048,
+      "sha256": "c4704be8dbb3444c32581f67ac2b14ba91237655a7859e02b111ad9eef6d6e76",
+      "language": "data"
+    },
+    {
+      "path": "brain/aegis_brain_cython/build/temp.win-amd64-cpython-314/Release/NIDs_Windows/brain/aegis_brain_cython/fast_scan.obj",
+      "size": 594541,
+      "sha256": "bed3c0741cf5ab2dcd9ed73b8295e692f99a073de3cc6cf044e69ecfb1f877de",
+      "language": "data"
+    },
+    {
+      "path": "brain/aegis_brain_cython/fast_scan.c",
+      "size": 475056,
+      "sha256": "050f714a745741c0a98282b1f088095e67534c9d9e5b2da172441e9d767aff65",
+      "language": "c/c++"
+    },
+    {
+      "path": "brain/aegis_brain_cython/fast_scan.cp314-win_amd64.pyd",
+      "size": 55808,
+      "sha256": "2c0b116fc85b06652fe3903cce2f3bae05a957699b00782f1056a99b41509118",
+      "language": "data"
+    },
+    {
+      "path": "brain/aegis_brain_cython/fast_scan.pyx",
+      "size": 7322,
+      "sha256": "1a7db5a13221644a65007767990f39e2d17f7248dbc50a2424db31db43f32a00",
+      "language": "python/cython"
+    },
+    {
+      "path": "brain/aegis_brain_cython/setup.py",
+      "size": 1287,
+      "sha256": "835b0dc7b725e8a9523112273f2a4e8d00ce7257a5a208e0061642e9c9652dc8",
+      "language": "python/cython"
+    },
+    {
+      "path": "brain/aegis_brain_cython/test_fast_scan.py",
+      "size": 4280,
+      "sha256": "7e85a136b367fc1f12b9c47e6acf4ee3bb30dc19c084095ea0c4452ab8051dd5",
+      "language": "python/cython"
+    },
+    {
+      "path": "brain/cython/__init__.py",
+      "size": 1601,
+      "sha256": "de8267f28068c24deecf2e186600c55fd078372573a11b46edf417f59e19c485",
+      "language": "python/cython"
+    },
+    {
+      "path": "brain/cython/_py_fallback.py",
+      "size": 3242,
+      "sha256": "3e37ead3950fcdbe2113315982131f7877ff4b7297726d2a93a482b1476829ab",
+      "language": "python/cython"
+    },
+    {
+      "path": "brain/cython/aegis_hotspot.c",
+      "size": 1227678,
+      "sha256": "8e142fbf2d634c8ba4ef40f830d29196ee22b3318ec073c0c793b2a8df8a5e67",
+      "language": "c/c++"
+    },
+    {
+      "path": "brain/cython/aegis_hotspot.cp314-win_amd64.pyd",
+      "size": 156160,
+      "sha256": "29645cd45198c806ea03808aff11881e214c2c19baa770a6c180992067767e7b",
+      "language": "data"
+    },
+    {
+      "path": "brain/cython/aegis_hotspot.pxd",
+      "size": 1434,
+      "sha256": "ac1dadcd689bda3b22b8114144217465fadb39c2b0d65ab3c7399ff905c3babc",
+      "language": "data"
+    },
+    {
+      "path": "brain/cython/aegis_hotspot.pyx",
+      "size": 10814,
+      "sha256": "16c8d5654e07051988f8be11cb5dcd3aee60c442f830db23e65d31da6345ce1f",
+      "language": "python/cython"
+    },
+    {
+      "path": "brain/cython/build/lib.win-amd64-cpython-314/aegis_hotspot.cp314-win_amd64.pyd",
+      "size": 156160,
+      "sha256": "29645cd45198c806ea03808aff11881e214c2c19baa770a6c180992067767e7b",
+      "language": "data"
+    },
+    {
+      "path": "brain/cython/build/lib.win-amd64-cpython-314/cython_regex_scan.cp314-win_amd64.pyd",
+      "size": 53760,
+      "sha256": "c070e7bd5f0b70b9abe7d0b0b5cff63398e441d309e9cc6b51db9751edf1e5e6",
+      "language": "data"
+    },
+    {
+      "path": "brain/cython/build/temp.win-amd64-cpython-314/Release/aegis_hotspot.cp314-win_amd64.exp",
+      "size": 791,
+      "sha256": "96af74ccc9bb7a2ee3063ba018dec24e01c073624d76ffb7896dc2e9be8000df",
+      "language": "data"
+    },
+    {
+      "path": "brain/cython/build/temp.win-amd64-cpython-314/Release/aegis_hotspot.cp314-win_amd64.lib",
+      "size": 2120,
+      "sha256": "05d187ec575c9bdbee6d8556a09de26bd7e0bb4c1b1e2c93f13d55d7b99e98cf",
+      "language": "data"
+    },
+    {
+      "path": "brain/cython/build/temp.win-amd64-cpython-314/Release/aegis_hotspot.obj",
+      "size": 1126966,
+      "sha256": "37eb87ad738b40dc24a7eb7ab5f421d742794a2453372dd59dd34d8dc4ba1dd2",
+      "language": "data"
+    },
+    {
+      "path": "brain/cython/build/temp.win-amd64-cpython-314/Release/cython_regex_scan.cp314-win_amd64.exp",
+      "size": 811,
+      "sha256": "20854e9a8aee795395b8ecd008c19438baa237e0d8c6dcc6400f32f483925b69",
+      "language": "data"
+    },
+    {
+      "path": "brain/cython/build/temp.win-amd64-cpython-314/Release/cython_regex_scan.cp314-win_amd64.lib",
+      "size": 2192,
+      "sha256": "1c7bb69f0a5bea30f20a303bca5edad7f5ade16551c7898eff97c2575a1ca42e",
+      "language": "data"
+    },
+    {
+      "path": "brain/cython/build/temp.win-amd64-cpython-314/Release/cython_regex_scan.obj",
+      "size": 541022,
+      "sha256": "017a298be4b3d5ae1724f4d499e8ae3052742ad9ca105b75c377c9262a254b2f",
+      "language": "data"
+    },
+    {
+      "path": "brain/cython/cython_regex_scan.c",
+      "size": 421867,
+      "sha256": "39d103629d3c8d061f1d5d312621723a11ed019f6b01c487510849fe28d65e74",
+      "language": "c/c++"
+    },
+    {
+      "path": "brain/cython/cython_regex_scan.cp314-win_amd64.pyd",
+      "size": 53760,
+      "sha256": "c070e7bd5f0b70b9abe7d0b0b5cff63398e441d309e9cc6b51db9751edf1e5e6",
+      "language": "data"
+    },
+    {
+      "path": "brain/cython/cython_regex_scan.pyx",
+      "size": 5339,
+      "sha256": "4b986347463552138668292c10deef33a477cc839e3cb5d22c43e1295a02d193",
+      "language": "python/cython"
+    },
+    {
+      "path": "brain/cython/setup.py",
+      "size": 1781,
+      "sha256": "b551a6458f2b8cc9e2cc827aef7f3f7de824c137800ec693d4d893f018735bb1",
+      "language": "python/cython"
+    },
+    {
+      "path": "brain/windows_brain.py",
+      "size": 28959,
+      "sha256": "434c5952046afac454f7be4a5de1aba3cb8847b398ec2d0442978722f4418113",
+      "language": "python/cython"
+    },
+    {
+      "path": "brain/windows_brain.py.phase19_backup",
+      "size": 18993,
+      "sha256": "899b8619e71d8013888926c2ea1789870db45ff1a2cc120f6279b8e12d2b26c0",
+      "language": "data"
+    },
+    {
+      "path": "bridge/CMakeLists.txt",
+      "size": 5098,
+      "sha256": "f39e199d57b94661097dc00b443683a725bfaa27102460c69c803823679a8f28",
+      "language": "data"
+    },
+    {
+      "path": "bridge/CMakeLists_bridge.txt",
+      "size": 3176,
+      "sha256": "0f47ae5049db07e15c4d8f7217865fc49eae0bee0bbce14771f0ad52c2981c9f",
+      "language": "data"
+    },
+    {
+      "path": "bridge/__init__.py",
+      "size": 33,
+      "sha256": "3b335febf70fd1aa368e982e6f4d5e5fdff06f174460166dba2010828f0a250e",
+      "language": "python/cython"
+    },
+    {
+      "path": "bridge/aegis_adapter.cpp",
+      "size": 15637,
+      "sha256": "0859d24049174f84dec1a74efa866974f80308824d1adddbebbcc3de0e2723ad",
+      "language": "c/c++"
+    },
+    {
+      "path": "bridge/aegis_adapter.hpp",
+      "size": 4424,
+      "sha256": "fa34e5d1d54f0a9b58bbae8d14eb585a7d0343755dc3724025667f438d8e06ea",
+      "language": "c/c++"
+    },
+    {
+      "path": "bridge/aegis_adapter_selftest_main.cpp",
+      "size": 1705,
+      "sha256": "347064af1b47f5b0350738a478b106ce0ce4edeedce93507f3b1c761ce3fe4f4",
+      "language": "c/c++"
+    },
+    {
+      "path": "bridge/aegis_bridge_ctypes.py",
+      "size": 12546,
+      "sha256": "26801bf70b964f1043976ab8806d4d1757ce414e0c6cf7d1d1b6f50e72c5b405",
+      "language": "python/cython"
+    },
+    {
+      "path": "bridge/aegis_bridge_main.cpp",
+      "size": 15958,
+      "sha256": "fb5fbde2560cd0667686dfdf0db6f422fe822959ef936bf34b780002b19cb246",
+      "language": "c/c++"
+    },
+    {
+      "path": "bridge/aegis_bridge_test.cpp",
+      "size": 8106,
+      "sha256": "953a58f7d62d9aa5632ac0ceef4d686abcaf224eddd67f638669095768825e6a",
+      "language": "c/c++"
+    },
+    {
+      "path": "bridge/aegis_ipc.cpp",
+      "size": 13003,
+      "sha256": "fad50cd9206d08ca42e5c3fbf7e5607124559a15be171fb79a94d964eb06b0d8",
+      "language": "c/c++"
+    },
+    {
+      "path": "bridge/aegis_ipc.cpp.phase21_backup",
+      "size": 11849,
+      "sha256": "63144bb7799c55ebcc6eaf237e4c3c4f837a048354504d598ae740c99b9dca2c",
+      "language": "data"
+    },
+    {
+      "path": "bridge/aegis_ipc.hpp",
+      "size": 14757,
+      "sha256": "170af4126c1686e5b1c6c75129428562520e266e9b17e79c0e21b5b24cdaa07a",
+      "language": "c/c++"
+    },
+    {
+      "path": "bridge/aegis_ipc.hpp.phase21_backup",
+      "size": 13096,
+      "sha256": "16912ff2e6da20a0637f34c856398d2196356582fa054fe1a2501892e9682b5c",
+      "language": "data"
+    },
+    {
+      "path": "bridge/aegis_packet_parser.cpp",
+      "size": 3875,
+      "sha256": "3a2c41dadd3446e1388b2d60a025bf7140581da63393d14c6fdb0fd67ff33e54",
+      "language": "c/c++"
+    },
+    {
+      "path": "bridge/aegis_packet_parser.hpp",
+      "size": 15287,
+      "sha256": "03944a223a9b92b1886124f9528fdc303bd6e023965a442a7b4e18abe3c604da",
+      "language": "c/c++"
+    },
+    {
+      "path": "bridge/bridge_status.py",
+      "size": 1493,
+      "sha256": "9a21a74ac70c1ed644d36876d379dac51f715c68d3e4007da785320cb591cbbd",
+      "language": "python/cython"
+    },
+    {
+      "path": "build.zig",
+      "size": 5163,
+      "sha256": "64ad35872f8e292c113c6e5e54f17a12a43167919c72d5d05d81785da4ba4ba6",
+      "language": "zig"
+    },
+    {
+      "path": "ci_coverage.json",
+      "size": 3680,
+      "sha256": "d6b4fc90e21d44fd720ff6cbd0878d3e5b37873274897614d4feba71158acbb4",
+      "language": "json"
+    },
+    {
+      "path": "config/Back_Rules.json",
+      "size": 21510,
+      "sha256": "1b8dab9096208cd94a24de263554ee9152193105457d73bf954a8181607a873a",
+      "language": "json"
+    },
+    {
+      "path": "config/Rules.json",
       "size": 9619,
-      "sha256": "af384acb04b8629376311bc412acf135250d9d45bc82e3a8402a9c1e140025f6"
+      "sha256": "af384acb04b8629376311bc412acf135250d9d45bc82e3a8402a9c1e140025f6",
+      "language": "json"
+    },
+    {
+      "path": "config/aegis.conf",
+      "size": 459,
+      "sha256": "db5da100ad38a89cea546a3014de01272de4d4c40787106ed41e93f67e2020ba",
+      "language": "data"
+    },
+    {
+      "path": "config/canary_tests.json",
+      "size": 5255,
+      "sha256": "7d7755176dff6197811ed6cb81bf34461e8aa7a6d52b07e85cbc89a0b68f3669",
+      "language": "json"
+    },
+    {
+      "path": "config/config/Back_Rules.json",
+      "size": 21510,
+      "sha256": "1b8dab9096208cd94a24de263554ee9152193105457d73bf954a8181607a873a",
+      "language": "json"
+    },
+    {
+      "path": "config/config/Rules.json",
+      "size": 9619,
+      "sha256": "af384acb04b8629376311bc412acf135250d9d45bc82e3a8402a9c1e140025f6",
+      "language": "json"
+    },
+    {
+      "path": "config/config/aegis.conf",
+      "size": 459,
+      "sha256": "db5da100ad38a89cea546a3014de01272de4d4c40787106ed41e93f67e2020ba",
+      "language": "data"
+    },
+    {
+      "path": "config/config/canary_tests.json",
+      "size": 5255,
+      "sha256": "7d7755176dff6197811ed6cb81bf34461e8aa7a6d52b07e85cbc89a0b68f3669",
+      "language": "json"
+    },
+    {
+      "path": "config/siem_config.json",
+      "size": 2824,
+      "sha256": "2669c86d8b635a20c1b994e5bae03b45cffa9a7ebe538650e7c6ea35e6c4dde7",
+      "language": "json"
+    },
+    {
+      "path": "config/workflows/ci.yml",
+      "size": 11514,
+      "sha256": "5dacf01fbb5b1c4a7ec25bcca916897f81a2d1cebf299d321a4bc046cc96fda8",
+      "language": "yaml"
+    },
+    {
+      "path": "config/workflows/host-regression.yml",
+      "size": 5074,
+      "sha256": "9f93f0b63edcc2fcf2f4a1cce3368e961ee657bf3159ce568c8c631cec444290",
+      "language": "yaml"
+    },
+    {
+      "path": "core/audit_trail_proof.zig",
+      "size": 34924,
+      "sha256": "031c4376b4d1dea12f8a394394d5742f14e977bbbb29cc803eabc2cb6065d00e",
+      "language": "zig"
+    },
+    {
+      "path": "core/backup_manager.zig",
+      "size": 8909,
+      "sha256": "bfd5f65621afb7255d3ba1918832803dbdb27fddd93396415e68d1ad59d74cd9",
+      "language": "zig"
+    },
+    {
+      "path": "core/backup_recovery_proof.zig",
+      "size": 33753,
+      "sha256": "5931d264a359f90ee522d30e01d07ff05270a7e18d06b9cdd527399c83ef8225",
+      "language": "zig"
+    },
+    {
+      "path": "core/brain_engine.zig",
+      "size": 21518,
+      "sha256": "c06978f31fbd29f7d0e883f083ae026049f0f85291c36f67742a378eb63d7d82",
+      "language": "zig"
+    },
+    {
+      "path": "core/brain_integration.zig",
+      "size": 4947,
+      "sha256": "3ee140777d59693a0a39f92054d09835e9329ac06d841f5201e0b03243c370b3",
+      "language": "zig"
+    },
+    {
+      "path": "core/brain_proof.zig",
+      "size": 14891,
+      "sha256": "b3163ef68fdfd796cd70b6a8fa7112515644fa624e6832e00184adcb3bf5136d",
+      "language": "zig"
+    },
+    {
+      "path": "core/bridge_init.zig",
+      "size": 24572,
+      "sha256": "01194e695786ef83069db709d06a5bcb4f5718b9aa913dba415567d717763ce5",
+      "language": "zig"
+    },
+    {
+      "path": "core/canary_progression.zig",
+      "size": 19395,
+      "sha256": "5a6510636765a4f076d077ab40a9ba48c52b053b243c004c3445f33879a5c715",
+      "language": "zig"
+    },
+    {
+      "path": "core/canonical_event.zig",
+      "size": 32404,
+      "sha256": "0220e2cc5220afb2b43708af7e0c2ffac87f35e4d9e35703c005be4c491a33f2",
+      "language": "zig"
+    },
+    {
+      "path": "core/cluster_cli.zig",
+      "size": 13260,
+      "sha256": "442807ffe6b55519e65bf7e1d71b8a7b6f5f164c2224bcadfd7171410c2c1855",
+      "language": "zig"
+    },
+    {
+      "path": "core/cluster_config.json",
+      "size": 2173,
+      "sha256": "a415fda1e86d04dd365ef95dd80108b5d9d577f609e4e9a08396a03c38491a80",
+      "language": "json"
+    },
+    {
+      "path": "core/cluster_coord.zig",
+      "size": 54912,
+      "sha256": "75616348df0f9189244962f0c364e13b83186f1f94e2bb706a90c3dab131a1db",
+      "language": "zig"
+    },
+    {
+      "path": "core/compliance_proof.zig",
+      "size": 28172,
+      "sha256": "c894e3bcfdb76d317aa15d827c799a8af942e219cce6468163113619c5548362",
+      "language": "zig"
+    },
+    {
+      "path": "core/compliance_reporter.zig",
+      "size": 29933,
+      "sha256": "11dccbf0265d040fc3761471f2cdddc8b10d257d136c42a8fba422b5a429cccf",
+      "language": "zig"
+    },
+    {
+      "path": "core/concurrency_harden.zig",
+      "size": 20425,
+      "sha256": "079d033e93e63963b64bc2a76867d32f0612e7841446e716fa3dd849dde02fac",
+      "language": "zig"
+    },
+    {
+      "path": "core/concurrency_harden_integration.zig",
+      "size": 3147,
+      "sha256": "09c19d87de9209f3ae370c80df31ccbe749df1562f336511ee0b4208873187ef",
+      "language": "zig"
+    },
+    {
+      "path": "core/config_reload_proof.zig",
+      "size": 40930,
+      "sha256": "8eb4f7106a42450dabd1c9ffdf35ca782d563cecd3f16be68815a6635dde4d51",
+      "language": "zig"
+    },
+    {
+      "path": "core/contract_freeze.zig",
+      "size": 19162,
+      "sha256": "69668f8115d437b5cda5a5ea3e4f00ca580525b6c487acb9093150a53337a192",
+      "language": "zig"
+    },
+    {
+      "path": "core/control_ipc.zig",
+      "size": 18308,
+      "sha256": "fb9164fef0cafec831e6ad5f4d2a5d470af346fdc0957cb71cfcd4c9d9f7caf8",
+      "language": "zig"
+    },
+    {
+      "path": "core/correlation_engine.zig",
+      "size": 26780,
+      "sha256": "a8a4af73ceddc09719ce8744d8eba65088566b96f934d8554ae54223f80c5d45",
+      "language": "zig"
+    },
+    {
+      "path": "core/correlation_integration.zig",
+      "size": 5730,
+      "sha256": "7e5fc380ab13c18e216061982205a4bbac6a95fa623ca9e6561a9f2f6ee48f76",
+      "language": "zig"
+    },
+    {
+      "path": "core/correlation_proof.zig",
+      "size": 14428,
+      "sha256": "eef0eecedee6b41de1fc54e4c4e272200c4fd2593ea4bef7f533f8802616cd06",
+      "language": "zig"
+    },
+    {
+      "path": "core/cpp_adapter.zig",
+      "size": 8716,
+      "sha256": "4fcbcc20ab4af317b0fec54229bfd49089f60d510a14b875eb92cae9b589945d",
+      "language": "zig"
+    },
+    {
+      "path": "core/detection_engine.zig",
+      "size": 21010,
+      "sha256": "2b029680d9de09a8bb22e59eb78205fb547c6297ab0e15fccda712c027904313",
+      "language": "zig"
+    },
+    {
+      "path": "core/detection_fabric_proof.zig",
+      "size": 19471,
+      "sha256": "c98d3c3d0b9d64f17eb9373855b471e28252a1429b2961e2c6f2d5b5164fbdac",
+      "language": "zig"
+    },
+    {
+      "path": "core/detection_integration.zig",
+      "size": 3449,
+      "sha256": "19c08d7b098c025cda969758064e1e232c62ec4ed6bcf2a96ab269ee60075103",
+      "language": "zig"
+    },
+    {
+      "path": "core/detection_interface.zig",
+      "size": 11878,
+      "sha256": "f361031e9a32405c1ef617cf1ed69cf149e6d2ea3d58ec3e25d4777474666fcf",
+      "language": "zig"
+    },
+    {
+      "path": "core/dispatcher.zig",
+      "size": 34716,
+      "sha256": "6f579f591b14b97a7862a8bb9948f3a1232538816fdc06ba556cabc1bf6d581b",
+      "language": "zig"
+    },
+    {
+      "path": "core/dispatcher_phase_b.zig",
+      "size": 24121,
+      "sha256": "47f711b1bb6964f5d20ce3dd647806b9abbeb3ef4fdf1bf6b6f17ae40e950eeb",
+      "language": "zig"
+    },
+    {
+      "path": "core/documentation_proof.zig",
+      "size": 26897,
+      "sha256": "166c36893cf637c3d55e4cc36198e3a4f28ff8a60ea1db66e8d4c9d5b30465aa",
+      "language": "zig"
+    },
+    {
+      "path": "core/e2e_harness.zig",
+      "size": 23095,
+      "sha256": "9f0e2f15ffb3f45506c53a1e7ee358eac7c0ab14c15b92b016b79fa0b38b7956",
+      "language": "zig"
+    },
+    {
+      "path": "core/e2e_harness_integration.zig",
+      "size": 7861,
+      "sha256": "c4f0a6352f9f97e72042e77e0bf08a8ddcf8ff796d39c1e6260c56116730fad8",
+      "language": "zig"
+    },
+    {
+      "path": "core/etw_realtime.zig",
+      "size": 31360,
+      "sha256": "89c9be57f8c29990ee5b2fb73269ef346126253b074f20de0e2e18a4fb21f7c3",
+      "language": "zig"
+    },
+    {
+      "path": "core/etw_realtime_cli.zig",
+      "size": 5959,
+      "sha256": "4e5ff00ac4af063aa5c312375825bbb7d6418b4b15eff4c016af5c31d7521cc8",
+      "language": "zig"
+    },
+    {
+      "path": "core/etw_realtime_config.json",
+      "size": 1221,
+      "sha256": "10ddeb1a6d8aaa1407e538878c7ad70a82c10926aed70a88d246718a511fdd35",
+      "language": "json"
+    },
+    {
+      "path": "core/event_fabric.zig",
+      "size": 14733,
+      "sha256": "4fc4c4f97b0779b6ed3f0322878959560ef15a311e37a6ceae824f75ef962376",
+      "language": "zig"
+    },
+    {
+      "path": "core/event_queue.zig",
+      "size": 7292,
+      "sha256": "3e96f688ab95dc38479d44e7571e038f2f10466354d57eb200c778dba43a34d9",
+      "language": "zig"
+    },
+    {
+      "path": "core/fabric_accounting.zig",
+      "size": 26379,
+      "sha256": "c577a08de622d34da3ab8bc12436ce152513adb345f0b2905f3e0793aedb1aab",
+      "language": "zig"
+    },
+    {
+      "path": "core/fault_injection.zig",
+      "size": 19218,
+      "sha256": "69162fe2ae573aa45a4a3eca042e2b2f7e973ac9d5c4d695d1a38f9aeafb74e6",
+      "language": "zig"
+    },
+    {
+      "path": "core/fault_injection_integration.zig",
+      "size": 4149,
+      "sha256": "264d156ab1ca59cbbfa4eb106056720e9f2da6602d835a174879077227ecbc6d",
+      "language": "zig"
+    },
+    {
+      "path": "core/fault_matrix.zig",
+      "size": 18576,
+      "sha256": "81f562efe6d9a18b12cbd2837daa152d89d204a3750c58720f99e6c8693762d9",
+      "language": "zig"
+    },
+    {
+      "path": "core/federation/federation.zig",
+      "size": 14081,
+      "sha256": "5232103571985d6ef38d44301c0cbdad886918c613cee125d3cde69a92d2c928",
+      "language": "zig"
+    },
+    {
+      "path": "core/federation_bench.zig",
+      "size": 35776,
+      "sha256": "896877bbc3602fe6ee39b9475860e118696188c836b600902a91dd4735866e05",
+      "language": "zig"
+    },
+    {
+      "path": "core/federation_bench_cli.zig",
+      "size": 5839,
+      "sha256": "094d29107acdbc097cd87a362d9380283a7726eda42185d42df5980f31f5db4f",
+      "language": "zig"
+    },
+    {
+      "path": "core/federation_bench_config.json",
+      "size": 2470,
+      "sha256": "5155d45d32089c5d172914656f72cab4b99fa98f048476a8534784a9ab50959d",
+      "language": "json"
+    },
+    {
+      "path": "core/federation_cli.zig",
+      "size": 11568,
+      "sha256": "efbf14ebaa5cefca9db230c20fa4328a3ed9c4c959e893190c46ae645a08790f",
+      "language": "zig"
+    },
+    {
+      "path": "core/federation_codec.zig",
+      "size": 53673,
+      "sha256": "feb3ebe62e02c394ef3170b725d4d276ce15759ff5e641aadcc5226bee7b05c6",
+      "language": "zig"
+    },
+    {
+      "path": "core/federation_config.json",
+      "size": 2423,
+      "sha256": "bec464f05022dec3c2fe25ae05a2cc6060d2ecc8b3456dab6ef89f005a947a76",
+      "language": "json"
+    },
+    {
+      "path": "core/federation_tcp.zig",
+      "size": 40878,
+      "sha256": "43bdb8d79b18e399f6f1f99fae74c61ca2d1a6186d74574a335069d1744cbe7a",
+      "language": "zig"
+    },
+    {
+      "path": "core/federation_tcp_cli.zig",
+      "size": 12907,
+      "sha256": "db694bee600036ec3f765661baac4d696a3a8b614590b077e60d1142e563be08",
+      "language": "zig"
+    },
+    {
+      "path": "core/federation_tcp_config.json",
+      "size": 1979,
+      "sha256": "0a400c81c1d015b484d2cbe2113881859d838616621aa2dd8da8a29b92435c08",
+      "language": "json"
+    },
+    {
+      "path": "core/federation_tls.zig",
+      "size": 34112,
+      "sha256": "038d953bd1e543f1842feac93806696d0c8c7953b1071a509f4ae6e4f7bbe0ac",
+      "language": "zig"
+    },
+    {
+      "path": "core/federation_tls_cli.zig",
+      "size": 6507,
+      "sha256": "6f75e7d7adc53f03b4a926673a3c4ca2e27c519f06e018dd74670cbd6c78c3c7",
+      "language": "zig"
+    },
+    {
+      "path": "core/federation_tls_config.json",
+      "size": 867,
+      "sha256": "229771f03b1d253b093acfba659cc57b1349628268fe47faf7821034f7701fac",
+      "language": "json"
+    },
+    {
+      "path": "core/final_integration_proof.zig",
+      "size": 28452,
+      "sha256": "38e3f67b9e960d1ef2f4b44979f4e4c5e76e80d1a70cf9cfc0224b6129fb78a1",
+      "language": "zig"
+    },
+    {
+      "path": "core/flow_engine.zig",
+      "size": 32090,
+      "sha256": "4a0904938e322818e14e219a67116949c40ff01c941a33d9d84fe5333749892b",
+      "language": "zig"
+    },
+    {
+      "path": "core/flow_integration.zig",
+      "size": 5893,
+      "sha256": "119a8ae02aac169d2c35a9c0d2077161f877be0a83b6783f6f1dca7adb02e572",
+      "language": "zig"
+    },
+    {
+      "path": "core/flow_state_proof.zig",
+      "size": 21531,
+      "sha256": "1f1d111fb693b11a6548ab7781fa041ae1c895c64a2787db6efce1a1fa61afbf",
+      "language": "zig"
+    },
+    {
+      "path": "core/flow_types.zig",
+      "size": 576,
+      "sha256": "9efa4362d32d49fde6a8c7d0120ea685bc60699e735ceaf4284a8ea35c35531a",
+      "language": "zig"
+    },
+    {
+      "path": "core/forensic_log.zig",
+      "size": 16145,
+      "sha256": "80400996aa10b7fbde17626d94baaaea094331c7cc7a5b83810a81dd8a1f4afe",
+      "language": "zig"
+    },
+    {
+      "path": "core/forensic_replay_proof.zig",
+      "size": 44802,
+      "sha256": "8e1ea52f7e54c2ed3a1400d3087f1f5750e35c891a6ecf3a8964ca3019dd2f18",
+      "language": "zig"
+    },
+    {
+      "path": "core/forensics_engine.zig",
+      "size": 14801,
+      "sha256": "0350bcee623d150d1374deb66b1c425a564c754668327b8f3053447bfa57172c",
+      "language": "zig"
+    },
+    {
+      "path": "core/forensics_integration.zig",
+      "size": 6335,
+      "sha256": "679f7818749839ff9681972535adf8a714de4f8caa0df5dbb69d2caf9797e7da",
+      "language": "zig"
+    },
+    {
+      "path": "core/health_monitoring_proof.zig",
+      "size": 37274,
+      "sha256": "6a51c9034f771677ccc85a68e3dfef048aee4ac7ccdfef4d461f9305aa0666b0",
+      "language": "zig"
+    },
+    {
+      "path": "core/hids_engine.zig",
+      "size": 30505,
+      "sha256": "fcce363939050c96e3679936101a5bc6ade0699c7a5184e8faa26115c9e00dbb",
+      "language": "zig"
+    },
+    {
+      "path": "core/hids_integration.zig",
+      "size": 5766,
+      "sha256": "87479df1f2b63eddb73a07f99fbddd7a9db68e4164dba60c6126fa0e0f20c3fe",
+      "language": "zig"
+    },
+    {
+      "path": "core/hids_process_monitor.zig",
+      "size": 2297,
+      "sha256": "f3bb9581c7e748fc49ab67ff46249e2bdd66037fe936eab799b07ce917505646",
+      "language": "zig"
+    },
+    {
+      "path": "core/host_correlator_config.json",
+      "size": 4095,
+      "sha256": "167e3aea0d4f4764157549959a43eaa29807d6ca86ddf9e7704cab7efbfa8c97",
+      "language": "json"
+    },
+    {
+      "path": "core/host_telemetry.zig",
+      "size": 65829,
+      "sha256": "b12c3a6d201f4a4200cb31e2574b749bd58ef61c5827a3aacdcd5805d058ad5e",
+      "language": "zig"
+    },
+    {
+      "path": "core/host_telemetry_cli.zig",
+      "size": 13466,
+      "sha256": "e3cec2a1e6a236381822e228aabd8e9a77a65f21ac0e48e0469b34c058a27670",
+      "language": "zig"
+    },
+    {
+      "path": "core/host_telemetry_detectors.zig",
+      "size": 39036,
+      "sha256": "68c5960a8f2c3a14f911be17365e46d16d40ce35d4aa9cea5ea9ea246b625abf",
+      "language": "zig"
+    },
+    {
+      "path": "core/host_telemetry_detectors_cli.zig",
+      "size": 13225,
+      "sha256": "ef68f7e8f0f34b36575487ec86ae1448c1b9a895b8e79df2182ead1adff22d97",
+      "language": "zig"
+    },
+    {
+      "path": "core/host_telemetry_detectors_config.json",
+      "size": 2336,
+      "sha256": "960518dd0bf04d09dc0cb78f3dfdb0518e516fd942be7a1f2af9f56684566b6f",
+      "language": "json"
+    },
+    {
+      "path": "core/host_telemetry_mock.zig",
+      "size": 35566,
+      "sha256": "6686e960727da03e61f433dd3554b366b106bd05a762b09942d448725ad960ce",
+      "language": "zig"
+    },
+    {
+      "path": "core/host_telemetry_mock_cli.zig",
+      "size": 12348,
+      "sha256": "9ab60118f7af5c5abda7bf5cb6419c54f130faa9cc800174b5ade0228782c716",
+      "language": "zig"
+    },
+    {
+      "path": "core/host_telemetry_mock_config.json",
+      "size": 2023,
+      "sha256": "8b773ea7020d2d9f71c998daf7ebc68f81fd8710477977fe7f87455c2334192d",
+      "language": "json"
+    },
+    {
+      "path": "core/host_telemetry_scenarios.zig",
+      "size": 29772,
+      "sha256": "3ac29c81f5782d3dd140c45f852b3810217c4152252447e3cf1de8b86f089dc9",
+      "language": "zig"
+    },
+    {
+      "path": "core/host_telemetry_scenarios_cli.zig",
+      "size": 12008,
+      "sha256": "8fe90b49a1a0933b36290c81569eeb9ce8730a86fa49e519cee13b206f227e70",
+      "language": "zig"
+    },
+    {
+      "path": "core/host_telemetry_scenarios_config.json",
+      "size": 3049,
+      "sha256": "4bfe27742f8aadc8b32493323fdd847778fb312fb85c971c247d7439d01787bf",
+      "language": "json"
+    },
+    {
+      "path": "core/injection_detector.zig",
+      "size": 36192,
+      "sha256": "1fa5b46f8c9aaba7f912d4bc54f90370fd71587ad6543fd883c0fe9a136b8104",
+      "language": "zig"
+    },
+    {
+      "path": "core/injection_detector_cli.zig",
+      "size": 5168,
+      "sha256": "35a50167b0419d45e56c7b6636658f9d2f26795ae7af09447bddbf9387e33508",
+      "language": "zig"
+    },
+    {
+      "path": "core/injection_detector_config.json",
+      "size": 1251,
+      "sha256": "2881c30eb3ce6b7e4f94760db8f56761723ccd72e139b135502077994bfad042",
+      "language": "json"
+    },
+    {
+      "path": "core/integration_test.zig",
+      "size": 27556,
+      "sha256": "fbabccee4e41b0668bc883488551506bf8647c1a650fe43a914c1334081d53e3",
+      "language": "zig"
+    },
+    {
+      "path": "core/integration_test_cli.zig",
+      "size": 4313,
+      "sha256": "16deb8ddb133a5b0259948a85d7de0a72af9960183def4f69e31a8fc8c09b956",
+      "language": "zig"
+    },
+    {
+      "path": "core/integration_test_config.json",
+      "size": 1977,
+      "sha256": "4fa64eede804fae072731b56ce9b30b08ef40ff0b88c072f4d12483591b30c3f",
+      "language": "json"
+    },
+    {
+      "path": "core/intelligence_proof.zig",
+      "size": 13055,
+      "sha256": "39fa5015b866e099e76520549de7d21ad9cf6740311ed791b822046a1fc89c0e",
+      "language": "zig"
+    },
+    {
+      "path": "core/ips_canary.zig",
+      "size": 30517,
+      "sha256": "b0a8fb107b8cb8dfe2e828326329113a8a2a10f639c6743c8bea6115cb70760e",
+      "language": "zig"
+    },
+    {
+      "path": "core/ips_canary_integration.zig",
+      "size": 9312,
+      "sha256": "d79df5720114ec7a6a0cb1fa4a70e2123d4ffc93ca52aa65d58d951437cf761a",
+      "language": "zig"
+    },
+    {
+      "path": "core/ips_simulation.zig",
+      "size": 23055,
+      "sha256": "b5e9e70e7a6eafd081ad839491188570fa5231be0dd591e8b08bc4f253162b8b",
+      "language": "zig"
+    },
+    {
+      "path": "core/ips_simulation_integration.zig",
+      "size": 4886,
+      "sha256": "57f4a54887af3d4aa3f7e6fc7cbb6fb1322472206e478d1b5d5555e9a7ba7453",
+      "language": "zig"
+    },
+    {
+      "path": "core/legacy_removal.zig",
+      "size": 8485,
+      "sha256": "eb35ef424b21cceea66a00ff157a6e9269dfe3e3505c23a1f7541b835dbb08e3",
+      "language": "zig"
+    },
+    {
+      "path": "core/lifecycle.zig",
+      "size": 22556,
+      "sha256": "b172beb61f63aee87a1b73224112ed57a20066ad67e2c488a63560e9360c6ed9",
+      "language": "zig"
+    },
+    {
+      "path": "core/minifilter_reader.zig",
+      "size": 14606,
+      "sha256": "a0ba15138fa9ed7e5747c7b9c71d6b50ec6f1be3c5353ee8ab5a3e5e1e7b4b72",
+      "language": "zig"
+    },
+    {
+      "path": "core/ml_detector.zig",
+      "size": 41129,
+      "sha256": "eea78c4e70d454c3fee8a1f36807fda4d48d6f5e4c42f5574036656820fd498c",
+      "language": "zig"
+    },
+    {
+      "path": "core/ml_test_cli.zig",
+      "size": 10798,
+      "sha256": "41adf98387800e43341d830d850d8af6d6175a3ba36b62eceacdbcda31e2d9cb",
+      "language": "zig"
+    },
+    {
+      "path": "core/nids_analyze.zig",
+      "size": 103606,
+      "sha256": "cc6e3d6d007b1484c2c8caee3bcdcfb4aea63d284d4f2a90882b6de5c5709445",
+      "language": "zig"
+    },
+    {
+      "path": "core/nids_capture.zig",
+      "size": 10379,
+      "sha256": "381dc60f8bfa982b37fe3132eb816b6044865d74da91a0f6f1be206cf67ddc0b",
+      "language": "zig"
+    },
+    {
+      "path": "core/nids_main.zig",
+      "size": 18354,
+      "sha256": "171103e70b8121397dbed472211924b4c4fec56afe162b3bca9b0f058f8359d6",
+      "language": "zig"
+    },
+    {
+      "path": "core/nose_contract.zig",
+      "size": 11940,
+      "sha256": "dfe69b4b8d15938b3986ebbd34507c377b01115f4b2fd6ddc754fbd9e653a07a",
+      "language": "zig"
+    },
+    {
+      "path": "core/nose_integration.zig",
+      "size": 4054,
+      "sha256": "64fde753ab2ac54f3922b3dfee06c884dc7ce7649c414c6a0594b93b2abdfac6",
+      "language": "zig"
+    },
+    {
+      "path": "core/nose_pipe_e2e_cli.zig",
+      "size": 2298,
+      "sha256": "c98209d587c95428bef614e76fab2e15004ae708619e548cd317f3ba0fc6a177",
+      "language": "zig"
+    },
+    {
+      "path": "core/nose_pipe_reader.zig",
+      "size": 8209,
+      "sha256": "ea32807eb952b563c7d995cd7aa9095c331068087c17234e61b83877941f68c7",
+      "language": "zig"
+    },
+    {
+      "path": "core/npcap_capture.zig",
+      "size": 67937,
+      "sha256": "e5b7980eee661d81c423569df46bb8e8cbb499303ab26f46d6aa6eb6357da44b",
+      "language": "zig"
+    },
+    {
+      "path": "core/npcap_test_live.zig",
+      "size": 19462,
+      "sha256": "f7274d9dacdba48df8ce3b4c44cbcff8a2a88a808ccde691eb0c5015a4bed137",
+      "language": "zig"
+    },
+    {
+      "path": "core/pep_enforcement_proof.zig",
+      "size": 42508,
+      "sha256": "11cb545807860cdb25d1e1bac0678f7abafa31f069d90502edb4d75fd86a06b5",
+      "language": "zig"
+    },
+    {
+      "path": "core/perf_benchmark.zig",
+      "size": 28631,
+      "sha256": "0044ad52864a1517beaa8a246b67666f6f9e26ecc058955190a57ce1fe93e007",
+      "language": "zig"
+    },
+    {
+      "path": "core/perf_benchmark_cli.zig",
+      "size": 7143,
+      "sha256": "08ca41adf7050dd606c584deff0dc0a7f76ac58edbb949e2d90b2f8645dd6285",
+      "language": "zig"
+    },
+    {
+      "path": "core/perf_benchmark_config.json",
+      "size": 2373,
+      "sha256": "20081abf87b4ee67d8c78f143608dc998824f9b2a13e0bfcf6737995c7936b68",
+      "language": "json"
+    },
+    {
+      "path": "core/performance_harness.zig",
+      "size": 25934,
+      "sha256": "0a243d7a1fa1898e3b766f5f472faefd67fb52c18d7f87ba08b51a7bb610ee7c",
+      "language": "zig"
+    },
+    {
+      "path": "core/performance_integration.zig",
+      "size": 7004,
+      "sha256": "f99f71dbdfd47c0b4789d89dc35b3fcdc980accfaf16eb4dee526f8723401187",
+      "language": "zig"
+    },
+    {
+      "path": "core/performance_tuning_proof.zig",
+      "size": 33092,
+      "sha256": "b55257385ff21f4f2876385201d1334ed8fd278f636f950353434a8fe526febf",
+      "language": "zig"
+    },
+    {
+      "path": "core/pipe_monitor.zig",
+      "size": 8428,
+      "sha256": "c24b1d449f6180a9af9b95ab0b0c76a5f877489a1d885d956f848bd61046fe02",
+      "language": "zig"
+    },
+    {
+      "path": "core/policy_contract.zig",
+      "size": 14649,
+      "sha256": "1784712596ef5f42f7897614010ce9d53e27c4249f0d972efdb6f6462362242c",
+      "language": "zig"
+    },
+    {
+      "path": "core/policy_engine.zig",
+      "size": 16894,
+      "sha256": "52da585240129cd761b41374351fe1e2460a5da4320b282ee11073d29e967174",
+      "language": "zig"
+    },
+    {
+      "path": "core/policy_integration.zig",
+      "size": 5239,
+      "sha256": "a97415258e2a1964bad3dc1fdbe8bc55909bad8aa8624285f488cc9d59f79957",
+      "language": "zig"
+    },
+    {
+      "path": "core/policy_ir.zig",
+      "size": 26296,
+      "sha256": "d958cfbd18280774c4d69e43aa7f3891540581a8bec91ec66fc08afca3554938",
+      "language": "zig"
+    },
+    {
+      "path": "core/policy_plane.zig",
+      "size": 23026,
+      "sha256": "c93f8a1f17b9950b9715ddbcdbfbcaab95abf2984516e84f148b4f6f9629be2c",
+      "language": "zig"
+    },
+    {
+      "path": "core/policy_plane_integration.zig",
+      "size": 4029,
+      "sha256": "090483be96992444ffa022c591e651a3649c53a5e63ec3be4ec00789aceaa4dc",
+      "language": "zig"
+    },
+    {
+      "path": "core/policy_plane_proof.zig",
+      "size": 25995,
+      "sha256": "505067f404d9c970d3a49f14611dfb3379d51e9d0a0e2443e90a0dfceb06fd5a",
+      "language": "zig"
+    },
+    {
+      "path": "core/policy_signing.zig",
+      "size": 24360,
+      "sha256": "a381c7bdd03cca9a6451f9c946df14e76aa33c0281e3b5ec2ba4c633d116d017",
+      "language": "zig"
+    },
+    {
+      "path": "core/priority_queue.zig",
+      "size": 9595,
+      "sha256": "867ca6db8903fdc5bcae69b66367c31eced48708ba2263cbe30c64599e88b7fb",
+      "language": "zig"
+    },
+    {
+      "path": "core/rag_engine.zig",
+      "size": 23418,
+      "sha256": "3d75f3c562e39920883c1312b5bd8eac630d5501b4805f2d0e90cec260e923cf",
+      "language": "zig"
+    },
+    {
+      "path": "core/rag_integration.zig",
+      "size": 5330,
+      "sha256": "3d99960adeff504242cb53a1be402946ff40c5c4e89ef80fef178c203621ee8d",
+      "language": "zig"
+    },
+    {
+      "path": "core/rag_intelligence.zig",
+      "size": 11633,
+      "sha256": "43d5ffe095b018962f7d2f83e0f9ba86e8aaada45e5a03ceec864c91341c7423",
+      "language": "zig"
+    },
+    {
+      "path": "core/registry_trie.zig",
+      "size": 29352,
+      "sha256": "d25aef2c09b47e4aec7de635041ed0cb60dae1be5888a1eac3413a329ce368ae",
+      "language": "zig"
+    },
+    {
+      "path": "core/registry_trie_cli.zig",
+      "size": 11228,
+      "sha256": "5034cbbbc69bccccf23d8170c69bcac5960e34dddf76b1e71e9ebb5ee84ed0e5",
+      "language": "zig"
+    },
+    {
+      "path": "core/registry_trie_config.json",
+      "size": 1376,
+      "sha256": "c89d9060ef1e2a4f7534e76438afbb2c5b666e2928ab7137041a74247287d555",
+      "language": "json"
+    },
+    {
+      "path": "core/release_engineering.zig",
+      "size": 17185,
+      "sha256": "0a7516fa9dc809ddfaa493f87c4baffb516df33adca9592d037da95a66c78b5f",
+      "language": "zig"
+    },
+    {
+      "path": "core/release_engineering_integration.zig",
+      "size": 3694,
+      "sha256": "4bb3db055edaf58642031dc6640b046b2681ab53608ae33169f03b786bd21ed3",
+      "language": "zig"
+    },
+    {
+      "path": "core/release_provenance.zig",
+      "size": 14866,
+      "sha256": "120c859bd1d7c1ae189dc1ac7d30dbe8c6f4c1d8b70c333abd49a11b8673698d",
+      "language": "zig"
+    },
+    {
+      "path": "core/reliability.zig",
+      "size": 21817,
+      "sha256": "360f15f78722e58ce73cef35dbb2337cfa600805c92a74760db6187e19be3953",
+      "language": "zig"
+    },
+    {
+      "path": "core/replay_engine.zig",
+      "size": 23479,
+      "sha256": "b4a29dd2874048b195f02e3cefdbec0c5caa077c9ebac8d3336451fb3de09797",
+      "language": "zig"
+    },
+    {
+      "path": "core/replay_integration.zig",
+      "size": 7863,
+      "sha256": "b91c70f2499567a695600dca6eacadec5f244aad42f4f6d544312feda202a978",
+      "language": "zig"
+    },
+    {
+      "path": "core/runtime_spine.zig",
+      "size": 26849,
+      "sha256": "948ec09d509acd63e662847fe2d0e0501139c2973b4c0b5dfa628827552560dc",
+      "language": "zig"
+    },
+    {
+      "path": "core/rust_pep.zig",
+      "size": 20672,
+      "sha256": "fc8163da81f8dd7c958d8e91d920b2fc9962e8095b45c7d67e8e201c657355e9",
+      "language": "zig"
+    },
+    {
+      "path": "core/rust_pep_integration.zig",
+      "size": 4263,
+      "sha256": "8dbe30a1ae5012dacf535e2f08ee6676d20efb7cf78b464126697849929355c8",
+      "language": "zig"
+    },
+    {
+      "path": "core/siem_forwarder.zig",
+      "size": 23300,
+      "sha256": "2357ec23741109bcb76b91a14f31d1f8075417fa5cf4cdb12e074340d2d2ce0b",
+      "language": "zig"
+    },
+    {
+      "path": "core/siem_integration_proof.zig",
+      "size": 29246,
+      "sha256": "5ba455d4d4cfe21d8610e596bec9218a06d15eb9b2ca2bde338432c4a65fc05a",
+      "language": "zig"
+    },
+    {
+      "path": "core/telemetry_export_proof.zig",
+      "size": 34194,
+      "sha256": "e8ec0429644e66a2006a59bfe96e690977817295c71077446abbba6d17fa8efd",
+      "language": "zig"
+    },
+    {
+      "path": "core/threat_intel.zig",
+      "size": 13758,
+      "sha256": "00cb6cec9349aa1230e5df6c0a743d4b99004fdd3c26e63799cd05bf2af2c5bf",
+      "language": "zig"
+    },
+    {
+      "path": "core/threat_intel_integration.zig",
+      "size": 4187,
+      "sha256": "544044af32936d80bc63800a36c409df71b6a48f7b7fb4bd94a6956866f3b46a",
+      "language": "zig"
+    },
+    {
+      "path": "core/verdict_aggregator.zig",
+      "size": 9583,
+      "sha256": "9b4c34d94bbc05cca1321d4887ec84b537f0fa067a1166e9c7c13e1ad27462a2",
+      "language": "zig"
+    },
+    {
+      "path": "core/wfp_ioctl.zig",
+      "size": 20652,
+      "sha256": "9012b77a4f5d7195ee1aab1a89da4d0e8591939c40444726ca9dbd5728fb9866",
+      "language": "zig"
+    },
+    {
+      "path": "core/wfp_production.zig",
+      "size": 44550,
+      "sha256": "27bbdcfa5eb3971ea69497b7a2805fb870dae24cf0c67544107a52ee10662668",
+      "language": "zig"
+    },
+    {
+      "path": "core/win32_io.zig",
+      "size": 5937,
+      "sha256": "aa0ae15622db2a65855f2d3a7e9d7038fab240ccb51c35962a1437cdbec9ae3d",
+      "language": "zig"
+    },
+    {
+      "path": "core/windows_adapters.zig",
+      "size": 34932,
+      "sha256": "f98175ca6484ba773bb0a20919b147017d3b928303159c048864cefd7f0a3398",
+      "language": "zig"
+    },
+    {
+      "path": "core/windows_adapters_cli.zig",
+      "size": 7766,
+      "sha256": "ed52e2d9c419587ecbc3b712dac728fc110cd1aa2a8233a2426fef203da5c611",
+      "language": "zig"
+    },
+    {
+      "path": "core/windows_adapters_config.json",
+      "size": 2350,
+      "sha256": "f42d54e0f412d5c7b60e86510b2cddd98b3753932eeefc26757c53e0596a6690",
+      "language": "json"
+    },
+    {
+      "path": "core/windows_capture.zig",
+      "size": 8299,
+      "sha256": "0b773463caad1e39b82ff1bb2bb638c6f837636c7abb5dd2553bf04a02cf7ecf",
+      "language": "zig"
+    },
+    {
+      "path": "core/wire_event.zig",
+      "size": 17456,
+      "sha256": "909a967eca1015877a888a2b6bd96b78a36a7d64bba0b2c9c6b4fd7f0da06124",
+      "language": "zig"
+    },
+    {
+      "path": "core/xdr_correlator.zig",
+      "size": 12189,
+      "sha256": "5bec59ae92a7f7865c2e18b0541ccbd8664641bdea6b288117bf9ac485042fda",
+      "language": "zig"
+    },
+    {
+      "path": "core/xdr_harden.zig",
+      "size": 22673,
+      "sha256": "83976e9a74b56a5b662da22601c74a9d19f70db7d3ef973ae78d3b73e82dba64",
+      "language": "zig"
+    },
+    {
+      "path": "core/xdr_harden_integration.zig",
+      "size": 6613,
+      "sha256": "149cf60b5a4ce499585f8012288fc126452cee70b9ff637378f48c20c376fcc1",
+      "language": "zig"
+    },
+    {
+      "path": "core/xdr_incident_graph.zig",
+      "size": 27374,
+      "sha256": "731816b38ce77d2c4b07523f1d7fe5fb2722241dc7167c903bd883b16d1e967c",
+      "language": "zig"
+    },
+    {
+      "path": "go/aggregator/README.md",
+      "size": 2313,
+      "sha256": "238de21560629718012d4ddb8628149b17bf17840ec70d507e4517a7b038690e",
+      "language": "data"
+    },
+    {
+      "path": "go/aggregator/aegis-aggregator.exe",
+      "size": 8941568,
+      "sha256": "e24d6165746cc9bd250290e73ec390ad08f9655cd8c3feba25d032c88cd1c566",
+      "language": "data"
+    },
+    {
+      "path": "go/aggregator/alert.go",
+      "size": 4524,
+      "sha256": "36e2f475bb670223256d93a67270a2da47597a2047c864eb6206dfdb70ab7183",
+      "language": "go"
+    },
+    {
+      "path": "go/aggregator/alert_test.go",
+      "size": 4061,
+      "sha256": "e350322df28f3ee54d4ee3d8b3019be774398a16fe593a1b8440f10c9e278879",
+      "language": "go"
+    },
+    {
+      "path": "go/aggregator/collector.go",
+      "size": 4389,
+      "sha256": "3aeeac97faf996147353d41e4f5cc6d5e7c3f7ad325ef2adee5e9feedad92ca8",
+      "language": "go"
+    },
+    {
+      "path": "go/aggregator/correlator.go",
+      "size": 3924,
+      "sha256": "ec4d04f21028c0cd6581724886fe0fd57f2e3d8bec8e4fbdc9db2f5040d2e059",
+      "language": "go"
+    },
+    {
+      "path": "go/aggregator/correlator_test.go",
+      "size": 3333,
+      "sha256": "5e30f7734d25dab43f03214db24ef76b94f0f76c62f1eb5a2a0bbcfcd08c20bd",
+      "language": "go"
+    },
+    {
+      "path": "go/aggregator/go.mod",
+      "size": 175,
+      "sha256": "44266a908b28d4d49118de29c96f17b2780ae9a600eb503a1627c5add68cd282",
+      "language": "data"
+    },
+    {
+      "path": "go/aggregator/go.sum",
+      "size": 489,
+      "sha256": "72be64f4f32284dd1e8b146790607e83a7c26260126d95ce5b8e045e3980c309",
+      "language": "data"
+    },
+    {
+      "path": "go/aggregator/main.go",
+      "size": 11476,
+      "sha256": "8379edf547c82c4b219174562cd1ae364aa41c8b22a617cfc4855f55a277e761",
+      "language": "go"
+    },
+    {
+      "path": "installer/aegis.nsi",
+      "size": 4037,
+      "sha256": "8cca9e6894886329cb0107fa167a4464bafa444b436c0a4b56441f61a61d218d",
+      "language": "script"
+    },
+    {
+      "path": "installer/aegis_nids_installer.nsi",
+      "size": 4569,
+      "sha256": "85c49a6264267baaeb2eabc500c6f22618e0493c8e06c8dd87566d56dd7a0fa6",
+      "language": "script"
+    },
+    {
+      "path": "installer/aegis_nids_v1.0.0_setup.exe",
+      "size": 555962,
+      "sha256": "45bda658a11bfc56fe1b6ad2e2aa52a095fa4fadd5fe17ebcf05e8a727729901",
+      "language": "data"
+    },
+    {
+      "path": "requirements.txt",
+      "size": 564,
+      "sha256": "456bf23f5b91257657cb4e154a22459536604d6d41765bafaa74a1d83f3d0fa6",
+      "language": "data"
+    },
+    {
+      "path": "runtime_manifest.json",
+      "size": 32789,
+      "sha256": "569f7b5626bf14538884439604fff39545fa9de5a966e576fa6fd69fa7ccb391",
+      "language": "json"
+    },
+    {
+      "path": "scripts/Dashboard.py",
+      "size": 4604,
+      "sha256": "19b9c8c2830c68cec263f030adc1d4379fa46651968f8c06cee91082604d67af",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/aegis_alerts.py",
+      "size": 6053,
+      "sha256": "954492217298ffda12ceceb44c95bdc9773a9eee01452c79b9a50af19da22ed1",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/aegis_api.py",
+      "size": 5262,
+      "sha256": "dca57565fc84ce6d9edc81f14b34c33b616c72f46ff2925bd997834a151d3662",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/aegis_block.py",
+      "size": 4310,
+      "sha256": "7580f2adb69f67d6b1ed56e89de6b5f2374770f7588fe5426c4d335271775438",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/aegis_console.py",
+      "size": 57714,
+      "sha256": "dd622fb36748a8d34257f6fb2f44c181b3e974d419970129654208c8ea782beb",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/aegis_daemon.py",
+      "size": 34079,
+      "sha256": "6a87c6d10c89d73f493f07e79cabf45ff3fbce58d0e948e922005cec52aa9b64",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/aegis_defcon.py",
+      "size": 5311,
+      "sha256": "0bf7e32fdbcdfffaf7d0e46301a6eed171b151eaa947ae77873048349d7c5b47",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/aegis_event_gen.py",
+      "size": 8180,
+      "sha256": "97dca2065228786d6c5b944fe48c0a20438277ccac93da049607c6e02a36f75c",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/aegis_graph.py",
+      "size": 2287,
+      "sha256": "cd754e00a43987737b684edb01c306e21551761869ac0492d50407d1ec52c252",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/aegis_metrics.py",
+      "size": 7082,
+      "sha256": "fc01b368af5a56c02624287a2f58eb9ac4867d288cff71e33a6ee79d5bffe354",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/aegis_notifier.py",
+      "size": 7450,
+      "sha256": "c096889be34ad23251aa8a0bc874b66287daa67a4194c419535e5c3d5a2c5878",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/aegis_rules.py",
+      "size": 8785,
+      "sha256": "b3f5be59f3f36a5c61db55a4161c787aa377085d040d01cbaddc1dad61f307a2",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/aegis_rules.py.phase19_backup",
+      "size": 6024,
+      "sha256": "1eda1f62b9e39d820147474700fdc94b342a8de9d6bbc50576d3e7e651f6bb1f",
+      "language": "data"
+    },
+    {
+      "path": "scripts/aegis_status.bat",
+      "size": 748,
+      "sha256": "93e01ffe0827cbe63dbd400a43e52e02629fa64bb155b0dd33b5c06faa939f15",
+      "language": "script"
+    },
+    {
+      "path": "scripts/aegis_status.py",
+      "size": 6676,
+      "sha256": "3275cff030eb6c2324deea6e2e1dfbe0a04aa8dbd92e6e1d86092ca0c50bd382",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/aegis_unblock.py",
+      "size": 3254,
+      "sha256": "ce9ea0d09e9e317e2e8283779dc019cac86c73957a370fe6a62865370becec9f",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/aegisctl.py",
+      "size": 104437,
+      "sha256": "77b9882baaace15cdcffb4569c6017a107c85605df23f3f842a8741fc2ff70c3",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/build_all.bat",
+      "size": 5687,
+      "sha256": "f24e525bd1e551aa58f13e32131cd5879076fafaef747df7770aa895096024cc",
+      "language": "script"
+    },
+    {
+      "path": "scripts/build_drivers.bat",
+      "size": 9880,
+      "sha256": "a707c39b4dec8ec394233aba45e35e9f1a7f9312b44fc6c2db75c8bf4b06df9c",
+      "language": "script"
+    },
+    {
+      "path": "scripts/clean_aegis.bat",
+      "size": 12281,
+      "sha256": "ebf9ba07e51b01f1a36c7de5883eb725f3bb40104229fe24d51ef9164e3d8d74",
+      "language": "script"
+    },
+    {
+      "path": "scripts/diag_aegis_dirs.bat",
+      "size": 3507,
+      "sha256": "8484a68399155bb5fdd9f71e38e2539e581e538d2ec998c9bd13d2c9a504a190",
+      "language": "script"
+    },
+    {
+      "path": "scripts/diag_deep.bat",
+      "size": 8094,
+      "sha256": "755cb2ae7760fd30f226811b533ea65ea80770a6891b99bb7bb588d1ac465f1f",
+      "language": "script"
+    },
+    {
+      "path": "scripts/doc_checker.py",
+      "size": 11263,
+      "sha256": "9ff5ed4ea5cbdbd96b4291e0f1ae7eae61815e7baebe0171f457f8cfba04c44e",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/install_drivers.bat",
+      "size": 8596,
+      "sha256": "142f08e4320138db3625a522c21b38ac22b06273f911eb0e357c768269334f4d",
+      "language": "script"
+    },
+    {
+      "path": "scripts/ml_train.py",
+      "size": 13019,
+      "sha256": "66939ceef3726f99460af54ce7427edb834964a1b8c5a037c4262c84a5043ab6",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/release_package.ps1",
+      "size": 6732,
+      "sha256": "e81d194742a6c51fc4c5a35c219fea7ebd998e45fc24ca1c224e499b8e8469bc",
+      "language": "script"
+    },
+    {
+      "path": "scripts/run_aegis.bat",
+      "size": 27886,
+      "sha256": "59c4712cb566e9552c7bbb15c6a0f85009450f9443592ef9683c8a77ea850320",
+      "language": "script"
+    },
+    {
+      "path": "scripts/run_aegis.bat.bak.20260904_200936",
+      "size": 28288,
+      "sha256": "4386110f7f9fb9c4734b8fb0bf817729a0d5016b86981b6558a4faffcdf58ded",
+      "language": "data"
+    },
+    {
+      "path": "scripts/run_aegis.bat.bak.20260904_220750",
+      "size": 28314,
+      "sha256": "e945167db48d9d60811f6c99176c689f472bdaa2063690a0bdea77ee06d5d381",
+      "language": "data"
+    },
+    {
+      "path": "scripts/run_aegis.bat.bak.20260904_223306",
+      "size": 28314,
+      "sha256": "e945167db48d9d60811f6c99176c689f472bdaa2063690a0bdea77ee06d5d381",
+      "language": "data"
+    },
+    {
+      "path": "scripts/run_aegis.bat.bak.20260904_225245",
+      "size": 28314,
+      "sha256": "e945167db48d9d60811f6c99176c689f472bdaa2063690a0bdea77ee06d5d381",
+      "language": "data"
+    },
+    {
+      "path": "scripts/run_aegis.bat.bak.20260905_092915",
+      "size": 28292,
+      "sha256": "3abe343538637d98910d46deface1d8aee269c4aefe570754fc0f8f0d19552a1",
+      "language": "data"
+    },
+    {
+      "path": "scripts/run_aegis.bat.bak.20260905_093548",
+      "size": 28273,
+      "sha256": "f7273d6672aced3105cbd516179ad27a1ec77a0ca1b41fa9febf2d30ea74418d",
+      "language": "data"
+    },
+    {
+      "path": "scripts/run_aegis.bat.bak.20260905_094308",
+      "size": 28273,
+      "sha256": "f7273d6672aced3105cbd516179ad27a1ec77a0ca1b41fa9febf2d30ea74418d",
+      "language": "data"
+    },
+    {
+      "path": "scripts/run_aegis.bat.bak.20260905_095053",
+      "size": 28261,
+      "sha256": "aa58a85f0e8c3abdea1846019e0ceba715847ad5b34f45ca6b517da62700c86e",
+      "language": "data"
+    },
+    {
+      "path": "scripts/setup_aegis.bat",
+      "size": 3379,
+      "sha256": "d3b8c2001105a28f1c2208271acb4c2ab96a698478d03a35ce15baed89850118",
+      "language": "script"
+    },
+    {
+      "path": "scripts/stop_aegis.bat",
+      "size": 1019,
+      "sha256": "773481fb7f252a096dfaa00160596f778080c6f808989c6534699e92961113b8",
+      "language": "script"
+    },
+    {
+      "path": "scripts/tests/aegis_mouth_test.py",
+      "size": 20163,
+      "sha256": "27017e735e94705bdfc239c93d70d99255828d06ca9f66134dd75dcfcdb1a2bd",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/tests/aegis_nose_test.py",
+      "size": 12789,
+      "sha256": "c2ff0b09845eb3cbb1ba5e8ff0c9efca153501eb1eb10530ed0e53e38884ebd1",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/tests/test_e2e.py",
+      "size": 17546,
+      "sha256": "a346a801a6482568217f1c9cf0158f965d149c7b6cf42740d6656e2f8cac131b",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/verify_release.ps1",
+      "size": 5101,
+      "sha256": "8b84e3c13d968e24e43f9b4ec99c55e4fa507ec54181b56f0ddfef2d065943f5",
+      "language": "script"
+    },
+    {
+      "path": "scripts/wdk_build_production.ps1",
+      "size": 13015,
+      "sha256": "94a92420ce2938ad71d225aefde427e286fce5173a4a3b23b807fff1c59494f3",
+      "language": "script"
+    },
+    {
+      "path": "scripts/wdk_build_production.ps1.g58_backup",
+      "size": 13015,
+      "sha256": "94a92420ce2938ad71d225aefde427e286fce5173a4a3b23b807fff1c59494f3",
+      "language": "data"
+    },
+    {
+      "path": "scripts/wfp_service.ps1",
+      "size": 5632,
+      "sha256": "591b231939e6c6d998348e07564f40178ae6f562970bafc2a8d119d73c8fb602",
+      "language": "script"
+    },
+    {
+      "path": "scripts/wfp_service.ps1.g58_backup",
+      "size": 5632,
+      "sha256": "591b231939e6c6d998348e07564f40178ae6f562970bafc2a8d119d73c8fb602",
+      "language": "data"
+    },
+    {
+      "path": "scripts/wfp_sign.ps1",
+      "size": 6802,
+      "sha256": "8dfee29993745206e2f28e957c4ea966b819f77c5c09e07c17eef13258ab94b5",
+      "language": "script"
+    },
+    {
+      "path": "scripts/wfp_sign.ps1.g58_backup",
+      "size": 5829,
+      "sha256": "f23baa663509fee74f84e80cfdfa785d7e5690e60b9260347b37eca79690af58",
+      "language": "data"
+    },
+    {
+      "path": "shield/Cargo.lock",
+      "size": 156,
+      "sha256": "437fe0e1f6624569c72ca969bc5f648604f6b96bfb43845d7034e7604e57e234",
+      "language": "data"
+    },
+    {
+      "path": "shield/Cargo.toml",
+      "size": 204,
+      "sha256": "137bd5a9da9f0140a5f673ea1735742a9e9a2a6c85d04ef4ba24c36ecb9932f9",
+      "language": "data"
+    },
+    {
+      "path": "shield/src/lib.rs",
+      "size": 17561,
+      "sha256": "ab80760e06bf70d2f23af798a78e045b3ab90419d0b0a685d533a2745e22b995",
+      "language": "rust"
+    },
+    {
+      "path": "shield/src/pep.rs",
+      "size": 12021,
+      "sha256": "5ae3cdbeaa2b340f6c557d6b4344a73a38b84aff5b04edf1edddcb37e7cd5ebf",
+      "language": "rust"
+    },
+    {
+      "path": "shield/src/windows_enforce.rs",
+      "size": 27227,
+      "sha256": "ab0321095ceaaadbbb2aa67e08d5a9f68e7394e5632019ab8520c1b4aae65619",
+      "language": "rust"
+    },
+    {
+      "path": "shield/src/windows_enforce.rs.g58_backup",
+      "size": 27219,
+      "sha256": "0bb99e5c0b6a86f07e242eca54a34ee7994646655f4d416ded9496964f9d18bf",
+      "language": "data"
+    },
+    {
+      "path": "tools/aegisctl.py",
+      "size": 11714,
+      "sha256": "7e713fbb52403abf5ce3d363dda363866a7d74576086ea954649210cd8c69372",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/backup_recovery.py",
+      "size": 7423,
+      "sha256": "517bd3cc560e9338ff478295dacd6297f76010a70e535e84397f7e1b24862920",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/ci_coverage.py",
+      "size": 4829,
+      "sha256": "27257bf8d79d888aeaef8740a4762ebbcb3efe414edd981196f7c6911fe76507",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/config_validator.py",
+      "size": 4315,
+      "sha256": "a549f8fd787421f26210e7ffd6b036c19f4be2c045adb21f553bf0b5dd0db815",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/installer.py",
+      "size": 11407,
+      "sha256": "4ef97f57f722e80a63e7954322a80846220551e40e48f794e97ad508e1910749",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/release_engineering.py",
+      "size": 14377,
+      "sha256": "6dc3e7dac8403b7061a953541bb0916ab294ae97cd71c4d5c4bef87f13276c59",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/upgrade_rollback.py",
+      "size": 7183,
+      "sha256": "238f87445731d0ae43ae56a1420962526d7dce9d792d0e13279b2317bc27fdc4",
+      "language": "python/cython"
+    },
+    {
+      "path": "ts_policy/package-lock.json",
+      "size": 16691,
+      "sha256": "fcac084bdce4c56544ae777e1b08f8ba6026796fe906498b82d34c6957c3d385",
+      "language": "json"
+    },
+    {
+      "path": "ts_policy/package.json",
+      "size": 1046,
+      "sha256": "3d56bcd9bad47dc464fe7383fc5989e3669281dd8ad5e0576e9e5192f56ca587",
+      "language": "json"
+    },
+    {
+      "path": "ts_policy/src/compiler.ts",
+      "size": 15769,
+      "sha256": "57877830e9f37e182727ce68f65c6dfecb27b857a10fdd18a9bec48b3e81af04",
+      "language": "typescript"
+    },
+    {
+      "path": "ts_policy/src/index.ts",
+      "size": 772,
+      "sha256": "3c8568ba38fafbc4f00d9d0489bc08462da1845cefa4377a034c53d27c7320a2",
+      "language": "typescript"
+    },
+    {
+      "path": "ts_policy/src/seal.ts",
+      "size": 6725,
+      "sha256": "4513a7a240e7964e71e4de9ed9d33e3639ace8413e76aee7aa759644855f8ed9",
+      "language": "typescript"
+    },
+    {
+      "path": "ts_policy/src/types.ts",
+      "size": 12993,
+      "sha256": "9f4c7625b0b91e73958fed84457e4f6cca340dc26e210d46b213bcf71bb8958f",
+      "language": "typescript"
+    },
+    {
+      "path": "ts_policy/tests/compiler.test.ts",
+      "size": 8719,
+      "sha256": "7cd67b24e0f7c78363583abe9092066966c194b48f7400914f6d9185e612ff55",
+      "language": "typescript"
+    },
+    {
+      "path": "ts_policy/tests/cross_language_contract.test.ts",
+      "size": 7741,
+      "sha256": "164d11b401bb977e3b60a35126d0d3d8c12464a2802a917d9bad9e5119ebfe7e",
+      "language": "typescript"
+    },
+    {
+      "path": "ts_policy/tests/no_enforcement.test.ts",
+      "size": 7877,
+      "sha256": "f37aeb0db1cc49b5e8fba24816555b8c9fa51c008c2e26d4954915bd11335cda",
+      "language": "typescript"
+    },
+    {
+      "path": "ts_policy/tests/no_post_seal_mutation.test.ts",
+      "size": 4759,
+      "sha256": "1e573684d24cc8b699118f2a24f2a329a70facb1114c7f4b57b9e8392f63cc5c",
+      "language": "typescript"
+    },
+    {
+      "path": "ts_policy/tests/seal.test.ts",
+      "size": 6105,
+      "sha256": "e8b402ceabd65b4bc5c866ae87dcd897bf961f43f9c32d725635e14dc2de0b50",
+      "language": "typescript"
+    },
+    {
+      "path": "ts_policy/tests/typed_values.test.ts",
+      "size": 4254,
+      "sha256": "05242478a16e49f3a056e8d24279b90bbd0d24a8a593148aad224d07f02b4519",
+      "language": "typescript"
+    },
+    {
+      "path": "ts_policy/tsconfig.json",
+      "size": 624,
+      "sha256": "5ef9387ce17e0aecbe623d3a6dbf8d7f68a31c0f6e4880f90808c922e437da3a",
+      "language": "json"
     }
   ]
 }

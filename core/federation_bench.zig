@@ -93,15 +93,21 @@ pub const FedBenchResult = struct {
 // ============================================================
 
 pub const FedBenchTimer = struct {
-    start_ns: i64,
-    end_ns: i64,
+    /// High-resolution timer (std.time.Timer = QueryPerformanceCounter on
+    /// Windows; nanoTimestamp has only ~ms resolution on Windows which made
+    /// fast benchmark loops report 0ns elapsed).
+    timer: std.time.Timer,
+    start_ns: i64 = 0,
+    end_ns: i64 = 0,
 
     pub fn start() FedBenchTimer {
-        return .{ .start_ns = @intCast(std.time.nanoTimestamp()), .end_ns = 0 };
+        var t = FedBenchTimer{ .timer = std.time.Timer.start() catch @panic("high-resolution timer unavailable") };
+        t.start_ns = @intCast(t.timer.read());
+        return t;
     }
 
     pub fn stop(self: *FedBenchTimer) void {
-        self.end_ns = @intCast(std.time.nanoTimestamp());
+        self.end_ns = @intCast(self.timer.read());
     }
 
     pub fn elapsedNs(self: FedBenchTimer) i64 {

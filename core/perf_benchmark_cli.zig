@@ -44,6 +44,11 @@ pub fn main() !void {
         return;
     }
 
+    if (std.mem.eql(u8, mode, "latency")) {
+        try runLatencyBenchmarks(alloc);
+        return;
+    }
+
     if (std.mem.eql(u8, mode, "scenario")) {
         if (args.len < 3) {
             std.debug.print("Usage: perf_benchmark_cli scenario <name>\n", .{});
@@ -63,6 +68,7 @@ fn printHelp() void {
     std.debug.print("  perf_benchmark_cli help                          - this screen\n", .{});
     std.debug.print("  perf_benchmark_cli quick                        - fast run (100 iters)\n", .{});
     std.debug.print("  perf_benchmark_cli demo                          - balanced run (1000 iters)\n", .{});
+    std.debug.print("  perf_benchmark_cli latency                      - p50/p95/p99 latency run\n", .{});
     std.debug.print("  perf_benchmark_cli full                          - full run (10000 iters)\n", .{});
     std.debug.print("  perf_benchmark_cli scenario <name>               - single benchmark\n", .{});
     std.debug.print("\nBenchmark names:\n", .{});
@@ -108,8 +114,27 @@ fn runBenchmarks(alloc: std.mem.Allocator, config: perf.BenchConfig) !void {
     }
 }
 
+fn runLatencyBenchmarks(alloc: std.mem.Allocator) !void {
+    const base = perf.BenchConfig{ .enabled = true, .iterations = 200, .warmup = 10, .collectLatency = true };
+    var runner = perf.BenchRunner.init(alloc, base);
+    defer runner.deinit();
+
+    try runner.run("ProcessTracker (100 creates)", &perf.processTrackerBenchCallback);
+    try runner.run("FileIntegrityStore (50 baselines + observes)", &perf.fimBenchCallback);
+    try runner.run("RegistryWatchQueue (100 enqueues)", &perf.registryBenchCallback);
+    try runner.runWithBytes("Federation codec (10 encode+decode)", 200, &perf.codecBenchCallback);
+    try runner.run("CrossNodeAggregator (50 reports)", &perf.aggregatorBenchCallback);
+    try runner.run("Full pipeline (4 events -> incidents)", &perf.fullPipelineBenchCallback);
+
+    var buf: [4096]u8 = undefined;
+    var stream = std.io.fixedBufferStream(&buf);
+    try runner.printReport(stream.writer());
+    std.debug.print("{s}\n", .{stream.getWritten()});
+}
+
 fn runSingleBenchmark(alloc: std.mem.Allocator, name: []const u8) !void {
     var runner = perf.BenchRunner.init(alloc, .{ .enabled = true, .iterations = 1000, .warmup = 50 });
+    defer runner.deinit();
     defer runner.deinit();
 
     if (std.mem.eql(u8, name, "process-tracker")) {

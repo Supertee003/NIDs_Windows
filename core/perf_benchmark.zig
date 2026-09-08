@@ -55,6 +55,8 @@ pub const BenchConfig = struct {
     batch_size: u32 = DEFAULT_BATCH_SIZE,
     /// Print progress every N iterations (0 = silent)
     progress_interval: u32 = 0,
+    /// Collect per-op latency samples so results carry p50/p95/p99.
+    collectLatency: bool = false,
 };
 
 // ============================================================
@@ -69,6 +71,7 @@ pub const BenchResult = struct {
     us_per_op: f64,
     bytes_processed: u64 = 0,
     throughput_mbps: f64 = 0.0,
+    latency: LatencyPercentiles = .{},
 
     pub fn print(self: BenchResult, writer: anytype) !void {
         try writer.print("  {s:<40} {d:>8} ops  {d:>10.0} ops/sec  {d:>8.2} us/op", .{
@@ -80,6 +83,11 @@ pub const BenchResult = struct {
         if (self.bytes_processed > 0) {
             try writer.print("  {d:>8.1} MB/s", .{self.throughput_mbps});
         }
+        if (self.latency.hasSamples()) {
+            try writer.print("  p50={d}ns p95={d}ns p99={d}ns", .{
+                self.latency.p50_ns, self.latency.p95_ns, self.latency.p99_ns,
+            });
+        }
         try writer.print("\n", .{});
     }
 };
@@ -89,15 +97,26 @@ pub const BenchResult = struct {
 // ============================================================
 
 pub const BenchTimer = struct {
-    start_ns: i64,
-    end_ns: i64,
+    /// High-resolution timer. Uses std.time.Timer which is backed by
+    /// QueryPerformanceCounter on Windows (std.time.nanoTimestamp has only
+    /// ~ms resolution on Windows and yields 0ns elapsed for fast loops).
+    timer: std.time.Timer,
+    start_ns: i64 = 0,
+    end_ns: i64 = 0,
 
     pub fn start() BenchTimer {
-        return .{ .start_ns = @intCast(std.time.nanoTimestamp()), .end_ns = 0 };
+        var t = BenchTimer{ .timer = std.time.Timer.start() catch @panic("high-resolution timer unavailable") };
+        t.start_ns = @intCast(t.timer.read());
+        return t;
     }
 
     pub fn stop(self: *BenchTimer) void {
-        self.end_ns = @intCast(std.time.nanoTimestamp());
+        self.end_ns = @intCast(self.timer.read());
+    }
+
+    /// Current reading in ns relative to timer start (for per-op sampling).
+    pub fn nowNs(self: *BenchTimer) i64 {
+        return @intCast(self.timer.read());
     }
 
     pub fn elapsedNs(self: BenchTimer) i64 {
@@ -116,6 +135,37 @@ pub const BenchTimer = struct {
 };
 
 // ============================================================
+// LatencyPercentiles (p50/p95/p99)
+// ============================================================
+
+pub const LatencyPercentiles = struct {
+    p50_ns: u64 = 0,
+    p95_ns: u64 = 0,
+    p99_ns: u64 = 0,
+    samples: u64 = 0,
+
+    /// Sorts `buf` in place and returns p50/p95/p99 latency (ns).
+    /// Needs >= 3 samples; otherwise returns all-zero (too few samples).
+    pub fn compute(buf: []u64) LatencyPercentiles {
+        if (buf.len < 3) return .{};
+        std.mem.sort(u64, buf, {}, std.sort.asc(u64));
+        const p50 = buf[(buf.len - 1) * 50 / 100];
+        const p95 = buf[(buf.len - 1) * 95 / 100];
+        const p99 = buf[(buf.len - 1) * 99 / 100];
+        return .{ .p50_ns = p50, .p95_ns = p95, .p99_ns = p99, .samples = buf.len };
+    }
+
+    /// Append to BenchResult.print output when samples were collected.
+    pub fn getLatencySum(self: LatencyPercentiles) u64 {
+        return self.p50_ns + self.p95_ns + self.p99_ns;
+    }
+
+    pub fn hasSamples(self: LatencyPercentiles) bool {
+        return self.samples >= 3;
+    }
+};
+
+// ============================================================
 // BenchRunner (executes benchmarks and collects results)
 // ============================================================
 
@@ -123,17 +173,20 @@ pub const BenchRunner = struct {
     config: BenchConfig,
     results: std.ArrayList(BenchResult),
     allocator: std.mem.Allocator,
+    latencies: std.ArrayList(u64),
 
     pub fn init(allocator: std.mem.Allocator, config: BenchConfig) BenchRunner {
         return .{
             .config = config,
             .results = std.ArrayList(BenchResult).init(allocator),
             .allocator = allocator,
+            .latencies = std.ArrayList(u64).init(allocator),
         };
     }
 
     pub fn deinit(self: *BenchRunner) void {
         self.results.deinit();
+        self.latencies.deinit();
     }
 
     /// Run a benchmark function with warmup + measured iterations.
@@ -155,13 +208,22 @@ pub const BenchRunner = struct {
         var timer = BenchTimer.start();
         i = 0;
         while (i < self.config.iterations) : (i += 1) {
-            callback(self.allocator, i);
+            if (self.config.collectLatency) {
+                const t0 = timer.nowNs();
+                callback(self.allocator, i);
+                const t1 = timer.nowNs();
+                const d = t1 - t0;
+                try self.latencies.append(@intCast(if (d < 0) 0 else d));
+            } else {
+                callback(self.allocator, i);
+            }
         }
         timer.stop();
 
         const elapsed_ns = timer.elapsedNs();
         const ops_per_sec = timer.opsPerSec(self.config.iterations);
         const us_per_op = @as(f64, @floatFromInt(elapsed_ns)) / @as(f64, @floatFromInt(self.config.iterations)) / 1000.0;
+        const percentiles = try self.percentileSnapshot();
 
         try self.results.append(.{
             .name = name,
@@ -169,7 +231,21 @@ pub const BenchRunner = struct {
             .total_ns = elapsed_ns,
             .ops_per_sec = ops_per_sec,
             .us_per_op = us_per_op,
+            .latency = percentiles,
         });
+        if (self.config.collectLatency) self.latencies.clearRetainingCapacity();
+    }
+
+    /// Compute p50/p95/p99 from the collected per-op latencies (resets
+    /// the collector so the next run starts clean).
+    fn percentileSnapshot(self: *BenchRunner) !LatencyPercentiles {
+        if (!self.config.collectLatency) return .{};
+        const n = self.latencies.items.len;
+        if (n < 3) return .{};
+        const buf = try self.allocator.dupe(u64, self.latencies.items);
+        defer self.allocator.free(buf);
+        const p = LatencyPercentiles.compute(buf);
+        return p;
     }
 
     /// Run a benchmark with bytes processed (for throughput measurement).
@@ -191,7 +267,15 @@ pub const BenchRunner = struct {
         var timer = BenchTimer.start();
         i = 0;
         while (i < self.config.iterations) : (i += 1) {
-            callback(self.allocator, i);
+            if (self.config.collectLatency) {
+                const t0 = timer.nowNs();
+                callback(self.allocator, i);
+                const t1 = timer.nowNs();
+                const d = t1 - t0;
+                try self.latencies.append(@intCast(if (d < 0) 0 else d));
+            } else {
+                callback(self.allocator, i);
+            }
         }
         timer.stop();
 
@@ -203,6 +287,7 @@ pub const BenchRunner = struct {
             @as(f64, @floatFromInt(total_bytes)) / elapsed_secs / (1024.0 * 1024.0)
         else
             0.0;
+        const percentiles = try self.percentileSnapshot();
 
         try self.results.append(.{
             .name = name,
@@ -212,7 +297,9 @@ pub const BenchRunner = struct {
             .us_per_op = @as(f64, @floatFromInt(elapsed_ns)) / @as(f64, @floatFromInt(self.config.iterations)) / 1000.0,
             .bytes_processed = total_bytes,
             .throughput_mbps = throughput_mbps,
+            .latency = percentiles,
         });
+        if (self.config.collectLatency) self.latencies.clearRetainingCapacity();
     }
 
     /// Print all results as a table.
@@ -463,6 +550,57 @@ test "BenchTimer opsPerSec" {
     timer.stop();
     const ops = timer.opsPerSec(1000);
     try std.testing.expect(ops > 0.0);
+}
+
+test "LatencyPercentiles p50/p95/p99" {
+    var samples = [_]u64{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+    const p = LatencyPercentiles.compute(&samples);
+    try std.testing.expectEqual(@as(u64, 10), p.samples);
+    // Sorted: index for p50 = 9*50/100 = 4 -> value 5;
+    //         index for p95 = 9*95/100 = 8 -> value 9;
+    //         index for p99 = 9*99/100 = 8 -> value 9.
+    try std.testing.expectEqual(@as(u64, 5), p.p50_ns);
+    try std.testing.expectEqual(@as(u64, 9), p.p95_ns);
+    try std.testing.expectEqual(@as(u64, 9), p.p99_ns);
+    try std.testing.expect(p.hasSamples());
+}
+
+test "LatencyPercentiles needs at least 3 samples" {
+    var two = [_]u64{ 1, 2 };
+    const p = LatencyPercentiles.compute(&two);
+    try std.testing.expect(!p.hasSamples());
+    try std.testing.expectEqual(@as(u64, 0), p.samples);
+}
+
+test "BenchResult print with latency percentiles" {
+    var buf: [256]u8 = undefined;
+    var stream = std.io.fixedBufferStream(&buf);
+    const r = BenchResult{
+        .name = "latency-bench",
+        .iterations = 1000,
+        .total_ns = 1_000_000,
+        .ops_per_sec = 1000.0,
+        .us_per_op = 1.0,
+        .latency = .{ .p50_ns = 100, .p95_ns = 200, .p99_ns = 300, .samples = 10 },
+    };
+    try r.print(stream.writer());
+    const out = stream.getWritten();
+    try std.testing.expect(std.mem.indexOf(u8, out, "p50=100ns") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "p99=300ns") != null);
+}
+
+test "BenchRunner run collects latency percentiles" {
+    var runner = BenchRunner.init(std.testing.allocator, .{
+        .enabled = true, .iterations = 100, .warmup = 5, .collectLatency = true,
+    });
+    defer runner.deinit();
+    try runner.run("latency-test", &processTrackerBenchCallback);
+    const r = runner.getResult("latency-test");
+    try std.testing.expect(r != null);
+    try std.testing.expectEqual(@as(u64, 100), r.?.latency.samples);
+    try std.testing.expect(r.?.latency.p50_ns > 0);
+    try std.testing.expect(r.?.latency.p95_ns >= r.?.latency.p50_ns);
+    try std.testing.expect(r.?.latency.p99_ns >= r.?.latency.p95_ns);
 }
 
 test "BenchResult print" {
