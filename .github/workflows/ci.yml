@@ -95,6 +95,10 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Force LF line endings
+        run: |
+          git config core.autocrlf false
+          git checkout -- .
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
