@@ -15,6 +15,7 @@ jobs:
   zig-build-test:
     name: Zig Build & Test
     runs-on: windows-latest
+    needs: [rust-pep-build]
     steps:
       - uses: actions/checkout@v4
       - name: Install Zig
@@ -34,6 +35,11 @@ jobs:
           Copy-Item (Join-Path (Join-Path $env:TEMP "npcap-sdk") "Lib") (Join-Path $dest "Lib") -Recurse -Force
           Test-Path (Join-Path $dest "Include\npcap.h")
           Test-Path (Join-Path $dest "Lib\x64\wpcap.lib")
+      - name: Download PEP artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: aegis_pep_dll
+          path: target/release
       - name: Build
         run: zig build
       - name: Test
@@ -56,7 +62,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: aegis_pep_dll
-          path: target/release/aegis_pep.dll
+          path: |
+            target/release/aegis_pep.dll
+            target/release/aegis_pep.dll.lib
 
   c-native-build:
     name: C Native Build
