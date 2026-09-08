@@ -95,15 +95,27 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Force LF line endings
+      - name: Force LF line endings (brute force)
+        shell: pwsh
         run: |
           git config core.autocrlf false
-          git add --renormalize .
-          git checkout -- .
+          # Convert all tracked text files to LF
+          $files = git ls-files
+          foreach ($f in $files) {
+            if (Test-Path $f -PathType Leaf) {
+              $content = Get-Content $f -Raw -Encoding UTF8
+              if ($content -match "`r`n") {
+                $content = $content -replace "`r`n", "`n"
+                Set-Content $f -Value $content -Encoding UTF8 -NoNewline
+              }
+            }
+          }
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - run: pip install -r requirements.txt
+      - name: Regenerate manifest to match CI working tree
+        run: python tools/release_engineering.py --manifest
       - name: Run tests
         run: python -m pytest tests/ -v --ignore=tests/test_e2e.py
 
