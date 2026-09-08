@@ -2,8 +2,8 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "f934f39",
-  "build_date": "2026-09-08T06:03:36.181029+00:00",
+  "source_commit": "cb23697",
+  "build_date": "2026-09-08T06:35:21.870664+00:00",
   "build_host": "windows",
   "platform": {
     "os": "windows",
@@ -27,7 +27,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "f934f39",
+      "commit": "cb23697",
       "source": "core/"
     },
     {
@@ -37,7 +37,7 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "f934f39",
+      "commit": "cb23697",
       "source": "shield/"
     },
     {
@@ -47,7 +47,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "f934f39",
+      "commit": "cb23697",
       "source": "native/"
     },
     {
@@ -57,7 +57,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "f934f39",
+      "commit": "cb23697",
       "source": "native/"
     },
     {
@@ -67,7 +67,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "f934f39",
+      "commit": "cb23697",
       "source": "native/"
     },
     {
@@ -77,7 +77,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-build-test",
-      "commit": "f934f39",
+      "commit": "cb23697",
       "source": "go/"
     },
     {
@@ -87,7 +87,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-build-test",
-      "commit": "f934f39",
+      "commit": "cb23697",
       "source": "go/aggregator/"
     },
     {
@@ -97,7 +97,7 @@
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "f934f39",
+      "commit": "cb23697",
       "source": "scripts/aegisctl.py"
     },
     {
@@ -107,7 +107,7 @@
       "type": "script",
       "required": true,
       "ci_job": "package-release",
-      "commit": "f934f39",
+      "commit": "cb23697",
       "source": "tools/installer.py"
     },
     {
@@ -117,7 +117,7 @@
       "type": "toolchain",
       "required": true,
       "ci_job": "ts-policy-build",
-      "commit": "f934f39",
+      "commit": "cb23697",
       "source": "ts_policy/"
     },
     {
@@ -127,7 +127,7 @@
       "type": "library",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "f934f39",
+      "commit": "cb23697",
       "source": "brain/"
     }
   ],
@@ -1619,8 +1619,8 @@
     },
     {
       "path": "installer/aegis.nsi",
-      "size": 4037,
-      "sha256": "8cca9e6894886329cb0107fa167a4464bafa444b436c0a4b56441f61a61d218d",
+      "size": 5206,
+      "sha256": "e8208d3aef36662cbadd930524d0e12590ed2ab46503e56ebbe1b381473bd142",
       "language": "script"
     },
     {
@@ -1643,8 +1643,8 @@
     },
     {
       "path": "runtime_manifest.json",
-      "size": 40202,
-      "sha256": "d5971cae454b59a3e0a736a4b1c785fd9a3c1de4cb320894b15999cfa9edc8c6",
+      "size": 42874,
+      "sha256": "0f6c8fdd0c95bf72eba7482af3d6a0842635ea523d9cf3ed31603920e9b7246d",
       "language": "json"
     },
     {
@@ -1990,9 +1990,33 @@
       "language": "python/cython"
     },
     {
+      "path": "tools/final_audit.py",
+      "size": 17359,
+      "sha256": "5a3c0fadc72a427ca078e5b679ece398d3f2ee3da0084c081bd778bdb47d3059",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/final_regression.py",
+      "size": 9424,
+      "sha256": "311b01800f6a171ce120ae67b0638aaaf16fd7e69cd879e90a67ff67780a5c46",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/golden_path_evidence.py",
+      "size": 11924,
+      "sha256": "6ba7b1c780351821dd541f9ec5b8a72f6676bde5875fbb8942e378c44c7df7e6",
+      "language": "python/cython"
+    },
+    {
       "path": "tools/installer.py",
       "size": 11407,
       "sha256": "4ef97f57f722e80a63e7954322a80846220551e40e48f794e97ad508e1910749",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/release_candidate.py",
+      "size": 8774,
+      "sha256": "014918a6da25fbc78be9236ceaa8746bf996d097f467b1eb9d117198ccd429eb",
       "language": "python/cython"
     },
     {
