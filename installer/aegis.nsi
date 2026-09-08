@@ -15,13 +15,13 @@ VIAddVersionKey "CompanyName" "AEGIS"
 VIAddVersionKey "LegalCopyright" "Copyright (c) 2026 AEGIS"
 VIAddVersionKey "FileVersion" "5.0.0.0"
 VIAddVersionKey "FileDescription" "AEGIS Network Intrusion Detection System"
-VIAddVersionKey "PrivateBuild" "f934f39"
+VIAddVersionKey "PrivateBuild" "cb23697"
 
 ; Config / policy / trust / audit / forensic data lives under data\ and is
 ; PRESERVED across uninstall, upgrade and reinstall (T17 AC5).
 !define AEGIS_DATA "$INSTDIR\data"
 !define AEGIS_BIN "$INSTDIR\bin"
-!define AEGIS_COMMIT "f934f39"
+!define AEGIS_COMMIT "cb23697"
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "LICENSE.txt"
