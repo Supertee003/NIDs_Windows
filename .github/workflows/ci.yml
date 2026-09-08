@@ -113,7 +113,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
       - run: pip install -r requirements.txt
+      - name: Build Cython extensions
+        run: |
+          cd brain/cython
+          python setup.py build_ext --inplace
       - name: Regenerate manifest to match CI working tree
         run: python tools/release_engineering.py --manifest
       - name: Run tests

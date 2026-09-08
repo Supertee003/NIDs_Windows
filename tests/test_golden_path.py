@@ -196,7 +196,7 @@ def test_rust_pep_builds() -> tuple[bool, str]:
         return True, "cargo not available; skipped"
     result = subprocess.run(
         [cargo, "check", "--manifest-path", str(ROOT / "Cargo.toml")],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True, text=True, timeout=180,
         cwd=str(ROOT)
     )
     if result.returncode != 0:
