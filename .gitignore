@@ -21,31 +21,24 @@ dist/
 *.d
 *.timestamp
 
-# Backup / snapshot artifacts (untracked at T1; keep on disk only)
-backup_*/
+# Backup / snapshot artifacts (Step 2: removed from disk; keep ignored so
+# any future snapshot tooling never re-enters the tree)
 backups/
+[Bb]ackup_*/
+*.bak
 *.bak.*
 *.g58_backup
 *.phase*_backup
-*.phase*_backup
 
-# Legacy core/ (old dev folder, replaced by src/)
-core/
-
-# Legacy release snapshots
+# Legacy core/ folder kept in git per request (original development work)
+# NOT part of production build (build.zig uses src/main.zig)
+# core/
 release/T20-final/
-
-# Stale duplicate crate (untracked at T1, preserved on disk for reference)
 shield_rust/
-
-# Third-party vendor libs
 lib/
-
-# Old legacy entrypoints
+models/ml_model.json
 nids_main.zig
 nids_analyze.zig
-
-# Stale embedded snapshots
 AEGIS_v5_fresh_deploy.ps1
 aegis_restore.bat
 aegis_restore.ps1.bak.*

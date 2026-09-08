@@ -54,6 +54,10 @@ jobs:
   # ============================================================
   # Phase K: Zig per-file compile + test (skip platform-specific)
   # ============================================================
+  # Step 2 cleanup: the legacy core/ directory was removed; the
+  # canonical runtime lives in src/. Compile every src/ file that is
+  # host-compatible and skip the Windows-specific ones (Npcap / Win32).
+  # ============================================================
   phase-k-zig-logic:
     name: Phase K - Zig Logic Layer
     runs-on: ubuntu-latest
@@ -65,32 +69,36 @@ jobs:
           version: 0.13.0
       - name: Run per-file tests (Phase K)
         run: |
-          if [ ! -d core ]; then
-            echo "::error::core/ directory not found"
+          if [ ! -d src ]; then
+            echo "::error::src/ directory not found"
             exit 1
           fi
 
-          # Platform-specific files that cannot compile on Linux Host
-          SKIP_FILES="bridge_init.zig hids_process_monitor.zig minifilter_reader.zig nids_analyze.zig nids_capture.zig nids_main.zig pipe_monitor.zig wfp_ioctl.zig win32_io.zig windows_capture.zig"
+          # Windows-specific files that cannot compile on Linux Host
+          # (Npcap / Win32 APIs), plus the aggregate entrypoints that
+          # link the full runtime.
+          SKIP_PATTERNS="src/main.zig src/all_tests.zig src/fuzz_entry.zig src/capture/npcap_adapter.zig src/tests/capture/npcap_adapter.zig src/windows/ src/tests/windows/"
 
           pass_count=0
           fail_count=0
           skip_count=0
 
-          for f in core/*.zig; do
-            fname=$(basename "$f")
+          while IFS= read -r f; do
+            fname="$f"
 
             # Check skip list
             skip=false
-            for s in $SKIP_FILES; do
-              if [ "$fname" = "$s" ]; then
-                skip=true
-                break
-              fi
+            for s in $SKIP_PATTERNS; do
+              case "$fname" in
+                $s*)
+                  skip=true
+                  break
+                  ;;
+              esac
             done
 
             if [ "$skip" = "true" ]; then
-              echo "[SKIP] $fname (platform-specific)"
+              echo "[SKIP] $fname (Windows-specific)"
               skip_count=$((skip_count + 1))
               continue
             fi
@@ -108,7 +116,7 @@ jobs:
               echo "::error::$fname FAILED (exit $rc)"
               fail_count=$((fail_count + 1))
             fi
-          done
+          done < <(find src -type f -name '*.zig' | sort)
 
           echo ""
           echo "============================================================"
@@ -116,7 +124,7 @@ jobs:
           echo "============================================================"
           echo "  Passed:  $pass_count"
           echo "  Failed:  $fail_count"
-          echo "  Skipped: $skip_count (platform-specific)"
+          echo "  Skipped: $skip_count (Windows-specific)"
           echo ""
 
           if [ $fail_count -gt 0 ]; then
