@@ -685,6 +685,27 @@
       "golden_path": false,
       "status": "REAL",
       "last_verified_commit": "4bd6769"
+    },
+    "core/ips_canary_order.zig": {
+      "classification": "production",
+      "role": "IPS canary order (T18 AC1, Steps 53): mandated Detection Only -> Shadow -> Canary -> Limited Enforcement -> Expanded Enforcement with fail-closed promotion gates (observations/bad-rate/dwell/human approval for limited->expanded) + canary scope/target/expiry (auto rollback) + auto/manual rollback + bounded transition audit; canary stage pinned to TEST-NET-3 (203.0.113.0/24, CANA magic); 18 tests",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "668f860"
+    },
+    "core/real_ips_path.zig": {
+      "classification": "production",
+      "role": "Real IPS path (T18 AC2, Step 54): ordered chain Real Telemetry -> Detection -> Verdict -> Policy -> Signature Verification -> Rust PEP -> WFP -> Real Block; enforcement matrix across allow/block/quarantine/rate-limit/expiry/revoke/rollback/driver-unavailable (fail-closed: blocking never silently allowed when WFP driver is gone); durable rule lifecycle + bounded audit; 14 tests",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "668f860"
+    },
+    "core/xdr_incident_fabric.zig": {
+      "classification": "production",
+      "role": "XDR multi-source incident fabric (T18 AC3, Step 55): Entity -> Evidence -> Incident -> Decision -> Action combining nine source categories (Network/Host/Process/File/Registry/Identity/Threat Intel/Historical/Federation); a single incident holds evidence from 2+ source categories (distinctSources >= 2); severity aggregation maps to monitor/rate-limit/quarantine/block with dispatched_to_pep dispatch; fixed-capacity fail-soft; 12 tests",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "668f860"
     }
   },
   "init_order": [
@@ -765,6 +786,9 @@
     "CI matrix authority: tools/ci_coverage.py + ci_coverage.json gate every required language/project to a real workflow job (required missing = FAIL, optional missing = PASS, documented); matrix checked in ci.yml ci-matrix job",
     "build provenance authority: build_manifest.json v2 records source_commit + per-component commit/required/ci_job + SHA-256 per artifact; tools/release_engineering.py --verify fails on any digest drift so every artifact maps back to its source commit",
     "installer authority: tools/installer.py consumes build_manifest.json components (no hand-embedded source snapshots) and installs the manifest; installer preserves user data (uninstall/upgrade preserves the data plane) (config/Rules.json, policy, trust store, audit, forensics) under $INSTDIR\\data",
-    "upgrade/rollback authority: tools/upgrade_rollback.py snapshots and restores the data plane and measures RPO/RTO/restore_success (docs/runbooks/RB-005-config-rollback.md documents the <5s atomic config swap)"
+    "upgrade/rollback authority: tools/upgrade_rollback.py snapshots and restores the data plane and measures RPO/RTO/restore_success (docs/runbooks/RB-005-config-rollback.md documents the <5s atomic config swap)",
+    "canary order authority: core/ips_canary_order.zig enforces the mandated order Detection Only -> Shadow -> Canary -> Limited Enforcement -> Expanded Enforcement; canary stage applies ONLY to canary TEST-NET-3 traffic (203.0.113.0/24), limited_enforcement only inside the declared scope block, expanded_enforcement at real traffic; scope/target/expiry/rollback/audit carried by CanarySpec; promotion gates fail-closed (observations, fail-rate <= max_fail_bps, dwell) and human approval is required for limited -> expanded",
+    "real IPS path authority: core/real_ips_path.zig walks Real Telemetry -> Detection -> Verdict -> Policy -> Signature Verification -> Rust PEP -> WFP -> Real Block in strict order; enforcement matrix covers allow/block/quarantine/rate-limit/expiry/revoke/rollback/driver-unavailable; driver-unavailable is FAIL-CLOSED (a blocking decision is never silently upgraded to allow)",
+    "XDR multi-source authority: core/xdr_incident_fabric.zig drives Entity -> Evidence -> Incident -> Decision -> Action; a single incident must hold evidence from multiple source categories (distinctSources >= 2) across Network/Host/Process/File/Registry/Identity/Threat Intel/Historical/Federation; enforcement decisions are dispatched_to_pep for PEP action"
   ]
 }

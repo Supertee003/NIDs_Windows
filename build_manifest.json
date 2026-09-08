@@ -2,8 +2,8 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "668f860",
-  "build_date": "2026-09-08T05:32:59.336797+00:00",
+  "source_commit": "da9556e",
+  "build_date": "2026-09-08T05:47:40.551648+00:00",
   "build_host": "windows",
   "platform": {
     "os": "windows",
@@ -27,7 +27,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "668f860",
+      "commit": "da9556e",
       "source": "core/"
     },
     {
@@ -37,7 +37,7 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "668f860",
+      "commit": "da9556e",
       "source": "shield/"
     },
     {
@@ -47,7 +47,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "668f860",
+      "commit": "da9556e",
       "source": "native/"
     },
     {
@@ -57,7 +57,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "668f860",
+      "commit": "da9556e",
       "source": "native/"
     },
     {
@@ -67,7 +67,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "668f860",
+      "commit": "da9556e",
       "source": "native/"
     },
     {
@@ -77,7 +77,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-build-test",
-      "commit": "668f860",
+      "commit": "da9556e",
       "source": "go/"
     },
     {
@@ -87,7 +87,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-build-test",
-      "commit": "668f860",
+      "commit": "da9556e",
       "source": "go/aggregator/"
     },
     {
@@ -97,7 +97,7 @@
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "668f860",
+      "commit": "da9556e",
       "source": "scripts/aegisctl.py"
     },
     {
@@ -107,7 +107,7 @@
       "type": "script",
       "required": true,
       "ci_job": "package-release",
-      "commit": "668f860",
+      "commit": "da9556e",
       "source": "tools/installer.py"
     },
     {
@@ -117,7 +117,7 @@
       "type": "toolchain",
       "required": true,
       "ci_job": "ts-policy-build",
-      "commit": "668f860",
+      "commit": "da9556e",
       "source": "ts_policy/"
     },
     {
@@ -127,7 +127,7 @@
       "type": "library",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "668f860",
+      "commit": "da9556e",
       "source": "brain/"
     }
   ],
@@ -1120,6 +1120,12 @@
       "language": "zig"
     },
     {
+      "path": "core/ips_canary_order.zig",
+      "size": 15835,
+      "sha256": "14963c13c329a5d0d12af07360799c14891c0d8abbaca6cbc0a37f7a360937a6",
+      "language": "zig"
+    },
+    {
       "path": "core/ips_simulation.zig",
       "size": 23055,
       "sha256": "b5e9e70e7a6eafd081ad839491188570fa5231be0dd591e8b08bc4f253162b8b",
@@ -1336,6 +1342,12 @@
       "language": "zig"
     },
     {
+      "path": "core/real_ips_path.zig",
+      "size": 13095,
+      "sha256": "b19bb4ebbf5eecf13a965a86fc5de6159e73b0bfc9564ae35209474553fba080",
+      "language": "zig"
+    },
+    {
       "path": "core/registry_trie.zig",
       "size": 29352,
       "sha256": "d25aef2c09b47e4aec7de635041ed0cb60dae1be5888a1eac3413a329ce368ae",
@@ -1510,6 +1522,12 @@
       "language": "zig"
     },
     {
+      "path": "core/xdr_incident_fabric.zig",
+      "size": 12858,
+      "sha256": "b7795669ac940451eb86302ba9ef4aecfc6dbb34584735685fff630774d2e2ee",
+      "language": "zig"
+    },
+    {
       "path": "core/xdr_incident_graph.zig",
       "size": 27374,
       "sha256": "731816b38ce77d2c4b07523f1d7fe5fb2722241dc7167c903bd883b16d1e967c",
@@ -1601,8 +1619,8 @@
     },
     {
       "path": "runtime_manifest.json",
-      "size": 32789,
-      "sha256": "569f7b5626bf14538884439604fff39545fa9de5a966e576fa6fd69fa7ccb391",
+      "size": 35842,
+      "sha256": "1b2e50cbfdbfe1427166fca2076d7a992b3f4f228e14a7ed5c30eafb6147f6be",
       "language": "json"
     },
     {
