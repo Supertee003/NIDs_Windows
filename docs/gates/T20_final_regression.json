@@ -1,7 +1,7 @@
 {
   "ticket": "T20 AC1",
   "step": 60,
-  "generated": "2026-09-08T06:31:51.653631+00:00",
+  "generated": "2026-09-08T06:47:38.666825+00:00",
   "subsystems": {
     "unit": {
       "result": "PASS",
@@ -61,7 +61,7 @@
           "target": "tests/runtime",
           "type": "pytest",
           "rc": 0,
-          "note": "239 passed, 9 skipped, 9 subtests passed in 18.45s"
+          "note": "239 passed, 9 skipped, 9 subtests passed in 18.14s"
         }
       ]
     },
@@ -80,7 +80,7 @@
           "target": "tests/cython",
           "type": "pytest",
           "rc": 0,
-          "note": "20 passed in 0.19s"
+          "note": "20 passed in 0.22s"
         }
       ]
     },
@@ -116,9 +116,9 @@
       ]
     },
     "driver": {
-      "result": "FAIL",
-      "runs": 3,
-      "failures": 1,
+      "result": "PASS",
+      "runs": 4,
+      "failures": 0,
       "details": [
         {
           "target": "core/wfp_production.zig",
@@ -127,16 +127,22 @@
           "note": "All 15 tests passed."
         },
         {
+          "target": "core/policy_signing.zig",
+          "type": "zig",
+          "rc": 0,
+          "note": "All 36 tests passed."
+        },
+        {
           "target": "tests/wfp",
           "type": "pytest",
           "rc": 0,
-          "note": "7 passed in 0.60s"
+          "note": "7 passed in 0.62s"
         },
         {
-          "target": "policy validator",
-          "type": "tool",
-          "rc": 1,
-          "note": "UnicodeEncodeError: 'charmap' codec can't encode character '\\x9d' in position 1: character maps to <undefined>"
+          "target": "tests/policy_signing",
+          "type": "pytest",
+          "rc": 0,
+          "note": "10 passed in 0.06s"
         }
       ]
     },
@@ -210,19 +216,19 @@
           "target": "tests/security",
           "type": "pytest",
           "rc": 0,
-          "note": "28 passed in 0.04s"
+          "note": "28 passed in 0.05s"
         },
         {
           "target": "tests/pep",
           "type": "pytest",
           "rc": 0,
-          "note": "9 passed in 0.36s"
+          "note": "9 passed in 0.35s"
         },
         {
           "target": "tests/policy_signing",
           "type": "pytest",
           "rc": 0,
-          "note": "10 passed in 0.07s"
+          "note": "10 passed in 0.06s"
         }
       ]
     },
@@ -302,9 +308,9 @@
       ]
     },
     "installer": {
-      "result": "FAIL",
+      "result": "PASS",
       "runs": 5,
-      "failures": 1,
+      "failures": 0,
       "details": [
         {
           "target": "core/release_engineering.zig",
@@ -327,8 +333,8 @@
         {
           "target": "tests/release",
           "type": "pytest",
-          "rc": 1,
-          "note": "1 failed, 15 passed in 0.68s"
+          "rc": 0,
+          "note": "16 passed in 0.60s"
         },
         {
           "target": "installer package",
@@ -366,7 +372,7 @@
           "target": "tests/release",
           "type": "pytest",
           "rc": 1,
-          "note": "1 failed, 15 passed in 0.65s"
+          "note": "1 failed, 15 passed in 0.90s"
         },
         {
           "target": "rollback report",
@@ -397,7 +403,7 @@
           "target": "tests/security",
           "type": "pytest",
           "rc": 0,
-          "note": "28 passed in 0.04s"
+          "note": "28 passed in 0.05s"
         }
       ]
     },
@@ -428,7 +434,7 @@
           "target": "tests/ips",
           "type": "pytest",
           "rc": 0,
-          "note": "17 passed in 0.03s"
+          "note": "17 passed in 0.06s"
         }
       ]
     },
@@ -447,20 +453,20 @@
           "target": "tests/ips",
           "type": "pytest",
           "rc": 0,
-          "note": "17 passed in 0.04s"
+          "note": "17 passed in 0.03s"
         },
         {
           "target": "tests/test_golden_path.py",
           "type": "pytest",
           "rc": 0,
-          "note": "10 passed, 10 warnings in 1.59s"
+          "note": "10 passed, 10 warnings in 1.79s"
         }
       ]
     }
   },
   "tally": {
-    "pass": 12,
-    "fail": 4,
+    "pass": 14,
+    "fail": 2,
     "full_suite": "FAIL"
   },
   "known_partial_subsystems": [

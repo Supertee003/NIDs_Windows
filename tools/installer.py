@@ -229,7 +229,7 @@ def generate_nsi(output_path: Path, version: str = "") -> int:
         f"source_commit={manifest.get('source_commit', 'unknown')}\n",
         encoding="utf-8",
     )
-    output_path.write_text(script, encoding="utf-8")
+    output_path.write_text(script, encoding="utf-8", newline="\n")
     print(f"NSIS script generated from build_manifest.json: {output_path}")
     return 0
 
@@ -261,7 +261,8 @@ def package_installer(nsi_path: Path, output_exe: Path) -> int:
     root = os.getcwd().replace("\\", "/")
     script_text = nsi_path.read_text(encoding="utf-8")
     if "!cd" not in script_text:
-        nsi_path.write_text(f'!cd "{root}"\n{script_text}', encoding="utf-8")
+        nsi_path.write_text(f'!cd "{root}"\n{script_text}', encoding="utf-8",
+                            newline="\n")
     cmd = [makensis, f"/DOUTPUT={output_exe}", str(nsi_path)]
     print(f"Running: {' '.join(cmd)}")
     rc = subprocess.run(cmd).returncode
