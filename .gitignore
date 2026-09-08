@@ -26,12 +26,30 @@ backup_*/
 backups/
 *.bak.*
 *.g58_backup
-*.phase16_backup
-*.phase20_backup
-*.phase21_backup
+*.phase*_backup
+*.phase*_backup
+
+# Legacy core/ (old dev folder, replaced by src/)
+core/
+
+# Legacy release snapshots
+release/T20-final/
 
 # Stale duplicate crate (untracked at T1, preserved on disk for reference)
 shield_rust/
+
+# Third-party vendor libs
+lib/
+
+# Old legacy entrypoints
+nids_main.zig
+nids_analyze.zig
+
+# Stale embedded snapshots
+AEGIS_v5_fresh_deploy.ps1
+aegis_restore.bat
+aegis_restore.ps1.bak.*
+ci_coverage.json
 
 # Python
 __pycache__/
