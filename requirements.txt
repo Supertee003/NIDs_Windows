@@ -12,9 +12,6 @@ cryptography>=42.0
 # IPC & RPC
 pywin32>=306 ; sys_platform == "win32"
 
-# Installer
-nsist>=2.6 ; sys_platform == "win32"
-
 # Observability
 prometheus-client>=0.20
 
