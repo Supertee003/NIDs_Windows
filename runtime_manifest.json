@@ -454,6 +454,83 @@
       "golden_path": false,
       "status": "REAL",
       "last_verified_commit": "new"
+    },
+    "core/fault_matrix.zig": {
+      "classification": "production",
+      "role": "fault matrix: FaultKind x Subsystem -> expected recovery behavior + max_recovery_ms; drill runner audits observed recovery (detect/contain/fallback/audit/recover) (Steps 39-40)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
+    },
+    "core/fault_injection.zig": {
+      "classification": "production",
+      "role": "fault injection engine: inject -> expected/actual behavior + duration_ns (measurable recovery, not log lines) (Steps 39-40)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
+    },
+    "core/fault_injection_integration.zig": {
+      "classification": "production",
+      "role": "fault injection full lifecycle integration (inject -> observe -> recover) (Steps 39-40)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
+    },
+    "core/reliability.zig": {
+      "classification": "production",
+      "role": "reliability building blocks: watchdog/recover, input security, latency histogram, config schema, canary, IPS shadow/production, XDR, federation security, health status (Steps 39-40)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
+    },
+    "core/config_reload_proof.zig": {
+      "classification": "production",
+      "role": "config hot reload: Rules.json mtime watchdog -> validate -> atomic swap (RCU) -> version tracking -> audit; no restart. (Step 44)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
+    },
+    "core/health_monitoring_proof.zig": {
+      "classification": "production",
+      "role": "health monitoring: liveness heartbeat, readiness (NOSE/FLOW/DETECTION/POLICY/PEP), metrics snapshot, DEFCON rollup. (Step 45)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
+    },
+    "tools/config_validator.py": {
+      "classification": "production",
+      "role": "external config validator: validates Rules.json (schema/version/safe-fallback gate before load)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
+    },
+    "scripts/aegis_defcon.py": {
+      "classification": "production",
+      "role": "DEFCON rollup emitter",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
+    },
+    "scripts/aegis_metrics.py": {
+      "classification": "production",
+      "role": "metrics snapshot exporter",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
+    },
+    "config/Rules.json": {
+      "classification": "production",
+      "role": "canonical runtime config (policy rules); hot-reload target",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
+    },
+    "tests/runtime/test_health.py": {
+      "classification": "test",
+      "role": "health-probe contract tests (17 tests)",
+      "golden_path": false,
+      "status": "REAL",
+      "last_verified_commit": "ccfc2ac"
     }
   },
   "init_order": [
@@ -524,6 +601,9 @@
     "federation transport is TLS (no plaintext production transport): production federation MUST route through core/federation_tls.zig (mTLS, SChannel on Windows); core/federation_tcp.zig is host-test only",
     "TLS validation authority: core/federation_tls.zig CertificateValidator (only cert authority; rejects expired, CN mismatch, self-signed, unknown CA, revoked)",
     "identifier integrity: event_id (core/canonical_event.zig), incident_id (core/correlation_engine.zig Incident), policy_id/policy_version (core/policy_signing.zig SignedPolicy -> shield/src/pep.rs PepTrace), request_id (shield/src/pep.rs PepRequest/PepTrace), forensic_id (core/forensics_engine.zig PipelineResult, forensic_id = sequence) all survive the full golden path to forensics + replay",
-    "golden path is REAL (host-verified Windows E2E): core/npcap_capture.zig + nose/capture.go + windows_capture.zig + Windows Brain/Cython + ts_policy + Rust PEP + WFP + forensics + replay carry a real Windows event end-to-end; only core/rust_pep.zig (MOCK, test sim) is explicitly excluded from the golden path"
+    "golden path is REAL (host-verified Windows E2E): core/npcap_capture.zig + nose/capture.go + windows_capture.zig + Windows Brain/Cython + ts_policy + Rust PEP + WFP + forensics + replay carry a real Windows event end-to-end; only core/rust_pep.zig (MOCK, test sim) is explicitly excluded from the golden path",
+    "fault authority: core/fault_matrix.zig + core/fault_injection.zig (only modules that declare expected recovery per fault x subsystem and measure actual recovery: detect/contain/fallback/audit/recover; inject -> duration_ns)",
+    "config authority: core/config_reload_proof.zig + config/Rules.json + tools/config_validator.py (hot reload = validate then atomic swap then audit; invalid ruleset is rejected, no partial swap)",
+    "observability authority: core/health_monitoring_proof.zig + scripts/aegis_defcon.py + scripts/aegis_metrics.py (liveness heartbeat, readiness over NOSE/FLOW/DETECTION/POLICY/PEP, metrics snapshot, DEFCON rollup; single authoritative source)"
   ]
 }
