@@ -26,6 +26,10 @@ comptime {
     _ = @import("tests/forensic/evidence_record.zig");
     _ = @import("tests/forensic/provenance.zig");
     _ = @import("tests/forensic/replay_integrity.zig");
+    _ = @import("tests/forensic/abi_contract.zig");
+    _ = @import("tests/forensic/integration_contract.zig");
+    _ = @import("tests/forensic/python_contract.zig");
+    _ = @import("tests/forensic/policy_contract.zig");
     _ = @import("tests/forensic/replay_engine.zig");
     _ = @import("tests/windows/etw_realtime.zig");
     _ = @import("tests/windows/fim.zig");
