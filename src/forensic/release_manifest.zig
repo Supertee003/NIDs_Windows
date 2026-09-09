@@ -254,3 +254,136 @@ test "ReleaseGate getChecklist" {
     try std.testing.expect(checklist[1].passed);
     try std.testing.expect(!checklist[2].passed);
 }
+
+// ============================================================================
+// REL-001: Build Reproducibility Comprehensive Tests
+// ============================================================================
+
+test "REL-001: ReleaseManifest empty not integrity" {
+    const manifest = ReleaseManifest.init();
+    try std.testing.expect(!manifest.verifyIntegrity());
+}
+
+test "REL-001: ReleaseManifest version only not integrity" {
+    var manifest = ReleaseManifest.init();
+    manifest.setVersion("1.0.0");
+    try std.testing.expect(!manifest.verifyIntegrity());
+}
+
+test "REL-001: ReleaseManifest commit only not integrity" {
+    var manifest = ReleaseManifest.init();
+    manifest.setGitCommit("abc123");
+    try std.testing.expect(!manifest.verifyIntegrity());
+}
+
+test "REL-001: ReleaseManifest version + commit = integrity" {
+    var manifest = ReleaseManifest.init();
+    manifest.setVersion("1.0.0");
+    manifest.setGitCommit("abc123");
+    try std.testing.expect(manifest.verifyIntegrity());
+}
+
+test "REL-001: ReleaseManifest addArtifact up to 8" {
+    var manifest = ReleaseManifest.init();
+    manifest.setVersion("1.0.0");
+    manifest.setGitCommit("abc123");
+    const hash = [_]u8{1} ** 32;
+    var i: u32 = 0;
+    while (i < 8) : (i += 1) {
+        const added = manifest.addArtifact("test.dll", "target/test.dll", 1024, hash);
+        try std.testing.expect(added);
+    }
+    try std.testing.expectEqual(@as(u32, 8), manifest.artifact_count);
+    // 9th should fail
+    try std.testing.expect(!manifest.addArtifact("extra.dll", "target/extra.dll", 512, hash));
+}
+
+test "REL-001: ReleaseManifest artifact hash stored correctly" {
+    var manifest = ReleaseManifest.init();
+    manifest.setVersion("1.0.0");
+    manifest.setGitCommit("abc123");
+    var hash: [32]u8 = undefined;
+    var i: u32 = 0;
+    while (i < 32) : (i += 1) {
+        hash[i] = @intCast(i);
+    }
+    _ = manifest.addArtifact("test.dll", "target/test.dll", 1024, hash);
+    try std.testing.expectEqual(hash, manifest.artifacts[0].sha256);
+}
+
+test "REL-001: verifyReproducibility requires timestamp" {
+    var manifest = ReleaseManifest.init();
+    manifest.setVersion("1.0.0");
+    manifest.setGitCommit("abc123");
+    manifest.build_timestamp = 0; // no timestamp
+    const hash = [_]u8{1} ** 32;
+    _ = manifest.addArtifact("test.dll", "target/test.dll", 1024, hash);
+    try std.testing.expect(!verifyReproducibility(&manifest));
+}
+
+test "REL-001: verifyReproducibility requires artifacts" {
+    var manifest = ReleaseManifest.init();
+    manifest.setVersion("1.0.0");
+    manifest.setGitCommit("abc123");
+    manifest.build_timestamp = 12345;
+    // No artifacts
+    try std.testing.expect(!verifyReproducibility(&manifest));
+}
+
+test "REL-001: verifyReproducibility requires artifact hash" {
+    var manifest = ReleaseManifest.init();
+    manifest.setVersion("1.0.0");
+    manifest.setGitCommit("abc123");
+    manifest.build_timestamp = 12345;
+    const zero_hash = [_]u8{0} ** 32;
+    _ = manifest.addArtifact("test.dll", "target/test.dll", 1024, zero_hash);
+    try std.testing.expect(!verifyReproducibility(&manifest));
+}
+
+test "REL-001: verifyReproducibility passes with all fields" {
+    var manifest = ReleaseManifest.init();
+    manifest.setVersion("1.0.0");
+    manifest.setGitCommit("abc123");
+    manifest.build_timestamp = 12345;
+    const hash = [_]u8{1} ** 32;
+    _ = manifest.addArtifact("test.dll", "target/test.dll", 1024, hash);
+    try std.testing.expect(verifyReproducibility(&manifest));
+}
+
+test "REL-001: ReleaseGate empty not ready" {
+    const gate = ReleaseGate.init();
+    try std.testing.expect(!gate.isReady());
+}
+
+test "REL-001: ReleaseGate 4 of 5 not ready" {
+    var gate = ReleaseGate.init();
+    gate.tests_passed = true;
+    gate.build_passed = true;
+    gate.security_review = true;
+    gate.performance_baseline = true;
+    // Missing: documentation
+    try std.testing.expect(!gate.isReady());
+}
+
+test "REL-001: ReleaseGate all 5 ready" {
+    var gate = ReleaseGate.init();
+    gate.tests_passed = true;
+    gate.build_passed = true;
+    gate.security_review = true;
+    gate.performance_baseline = true;
+    gate.documentation = true;
+    try std.testing.expect(gate.isReady());
+}
+
+test "REL-001: ReleaseGate getChecklist all passed" {
+    var gate = ReleaseGate.init();
+    gate.tests_passed = true;
+    gate.build_passed = true;
+    gate.security_review = true;
+    gate.performance_baseline = true;
+    gate.documentation = true;
+    const checklist = gate.getChecklist();
+    for (checklist) |item| {
+        try std.testing.expect(item.passed);
+    }
+}

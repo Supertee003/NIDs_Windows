@@ -289,3 +289,316 @@ test "RecoveryProcedure isCritical" {
     proc.priority = 0;
     try std.testing.expect(proc.isCritical());
 }
+
+// ============================================================================
+// REL-002: Installer Integrity Comprehensive Tests
+// ============================================================================
+
+test "REL-002: InstallerManifest empty not integrity" {
+    const manifest = InstallerManifest.init();
+    try std.testing.expect(!manifest.verifyIntegrity());
+}
+
+test "REL-002: InstallerManifest product name only = integrity" {
+    var manifest = InstallerManifest.init();
+    manifest.setProductName("AEGIS NIDS");
+    try std.testing.expect(manifest.verifyIntegrity());
+}
+
+test "REL-002: InstallerManifest addService up to 8" {
+    var manifest = InstallerManifest.init();
+    manifest.setProductName("AEGIS");
+    var i: u32 = 0;
+    while (i < 8) : (i += 1) {
+        const added = manifest.addService("svc", "Service", 0, "path");
+        try std.testing.expect(added);
+    }
+    try std.testing.expectEqual(@as(u32, 8), manifest.service_count);
+    // 9th should fail
+    try std.testing.expect(!manifest.addService("extra", "Extra", 0, "path"));
+}
+
+test "REL-002: InstallerManifest addDriver up to 4" {
+    var manifest = InstallerManifest.init();
+    manifest.setProductName("AEGIS");
+    var i: u32 = 0;
+    while (i < 4) : (i += 1) {
+        const added = manifest.addDriver("drv", "path", 1);
+        try std.testing.expect(added);
+    }
+    try std.testing.expectEqual(@as(u32, 4), manifest.driver_count);
+    // 5th should fail
+    try std.testing.expect(!manifest.addDriver("extra", "path", 1));
+}
+
+test "REL-002: InstallerManifest service fields stored correctly" {
+    var manifest = InstallerManifest.init();
+    manifest.setProductName("AEGIS");
+    _ = manifest.addService("aegis_svc", "AEGIS Service", 2, "C:\\aegis\\svc.exe");
+    try std.testing.expectEqual(@as(u32, 1), manifest.service_count);
+    try std.testing.expectEqual(@as(u8, 'a'), manifest.services[0].name[0]);
+}
+
+test "REL-002: InstallerManifest driver fields stored correctly" {
+    var manifest = InstallerManifest.init();
+    manifest.setProductName("AEGIS");
+    _ = manifest.addDriver("aegis_wfp", "C:\\aegis\\wfp.sys", 3);
+    try std.testing.expectEqual(@as(u32, 1), manifest.driver_count);
+    try std.testing.expectEqual(@as(u8, 3), manifest.drivers[0].service_type);
+}
+
+test "REL-002: UpgradePath empty is safe" {
+    const path = UpgradePath.init();
+    try std.testing.expect(path.isSafeUpgrade());
+    try std.testing.expectEqual(@as(u32, 0), path.step_count);
+}
+
+test "REL-002: UpgradePath with steps is safe" {
+    var path = UpgradePath.init();
+    _ = path.addMigrationStep("step1", "Step 1", 1);
+    _ = path.addMigrationStep("step2", "Step 2", 2);
+    try std.testing.expect(path.isSafeUpgrade());
+    try std.testing.expectEqual(@as(u32, 2), path.step_count);
+}
+
+test "REL-002: UpgradePath with reboot not safe" {
+    var path = UpgradePath.init();
+    _ = path.addMigrationStep("step1", "Step 1", 1);
+    path.requires_reboot = true;
+    try std.testing.expect(!path.isSafeUpgrade());
+}
+
+test "REL-002: UpgradePath step fields stored correctly" {
+    var path = UpgradePath.init();
+    _ = path.addMigrationStep("backup", "Backup database", 5);
+    try std.testing.expectEqual(@as(u32, 1), path.step_count);
+    try std.testing.expectEqual(@as(u32, 5), path.migration_steps[0].order);
+}
+
+test "REL-002: RecoveryProcedure empty not critical" {
+    const proc = RecoveryProcedure.init();
+    try std.testing.expect(!proc.isCritical());
+    try std.testing.expectEqual(@as(u32, 0), proc.step_count);
+}
+
+test "REL-002: RecoveryProcedure priority 0 is critical" {
+    var proc = RecoveryProcedure.init();
+    proc.priority = 0;
+    try std.testing.expect(proc.isCritical());
+}
+
+test "REL-002: RecoveryProcedure priority 1 not critical" {
+    var proc = RecoveryProcedure.init();
+    proc.priority = 1;
+    try std.testing.expect(!proc.isCritical());
+}
+
+test "REL-002: RecoveryProcedure addStep up to 8" {
+    var proc = RecoveryProcedure.init();
+    var i: u32 = 0;
+    while (i < 8) : (i += 1) {
+        const added = proc.addStep("step", "Step", 1);
+        try std.testing.expect(added);
+    }
+    try std.testing.expectEqual(@as(u32, 8), proc.step_count);
+    // 9th should fail
+    try std.testing.expect(!proc.addStep("extra", "Extra", 1));
+}
+
+test "REL-002: RecoveryProcedure step fields stored correctly" {
+    var proc = RecoveryProcedure.init();
+    _ = proc.addStep("stop_svc", "Stop service", 3);
+    try std.testing.expectEqual(@as(u32, 1), proc.step_count);
+    try std.testing.expectEqual(@as(u32, 3), proc.steps[0].order);
+}
+
+// ============================================================================
+// REL-003: Upgrade Path Comprehensive Tests
+// ============================================================================
+
+test "REL-003: UpgradePath default is safe in-place upgrade" {
+    const path = UpgradePath.init();
+    try std.testing.expect(path.isSafeUpgrade());
+    try std.testing.expectEqual(@as(u8, 0), path.upgrade_type);
+    try std.testing.expect(!path.requires_reboot);
+    try std.testing.expect(!path.backup_required);
+}
+
+test "REL-003: UpgradePath in-place upgrade (type 0)" {
+    var path = UpgradePath.init();
+    path.upgrade_type = 0;
+    @memcpy(path.from_version[0..5], "4.0.0");
+    @memcpy(path.to_version[0..5], "5.0.0");
+    try std.testing.expect(path.isSafeUpgrade());
+}
+
+test "REL-003: UpgradePath migration upgrade (type 1)" {
+    var path = UpgradePath.init();
+    path.upgrade_type = 1;
+    @memcpy(path.from_version[0..5], "3.0.0");
+    @memcpy(path.to_version[0..5], "5.0.0");
+    path.backup_required = true;
+    try std.testing.expect(!path.isSafeUpgrade());
+}
+
+test "REL-003: UpgradePath fresh install (type 2)" {
+    var path = UpgradePath.init();
+    path.upgrade_type = 2;
+    @memcpy(path.to_version[0..5], "5.0.0");
+    try std.testing.expect(path.isSafeUpgrade());
+}
+
+test "REL-003: UpgradePath addMigrationStep up to 8" {
+    var path = UpgradePath.init();
+    var i: u32 = 0;
+    while (i < 8) : (i += 1) {
+        const added = path.addMigrationStep("step", "Step", i);
+        try std.testing.expect(added);
+    }
+    try std.testing.expectEqual(@as(u32, 8), path.step_count);
+    // 9th should fail
+    try std.testing.expect(!path.addMigrationStep("extra", "Extra", 8));
+}
+
+test "REL-003: UpgradePath migration steps ordered correctly" {
+    var path = UpgradePath.init();
+    _ = path.addMigrationStep("backup", "Backup database", 1);
+    _ = path.addMigrationStep("migrate", "Migrate schema", 2);
+    _ = path.addMigrationStep("verify", "Verify integrity", 3);
+    try std.testing.expectEqual(@as(u32, 3), path.step_count);
+    try std.testing.expectEqual(@as(u32, 1), path.migration_steps[0].order);
+    try std.testing.expectEqual(@as(u32, 2), path.migration_steps[1].order);
+    try std.testing.expectEqual(@as(u32, 3), path.migration_steps[2].order);
+}
+
+test "REL-003: UpgradePath with reboot not safe" {
+    var path = UpgradePath.init();
+    path.requires_reboot = true;
+    try std.testing.expect(!path.isSafeUpgrade());
+}
+
+test "REL-003: UpgradePath with backup required not safe" {
+    var path = UpgradePath.init();
+    path.backup_required = true;
+    try std.testing.expect(!path.isSafeUpgrade());
+}
+
+test "REL-003: UpgradePath with reboot and backup not safe" {
+    var path = UpgradePath.init();
+    path.requires_reboot = true;
+    path.backup_required = true;
+    try std.testing.expect(!path.isSafeUpgrade());
+}
+
+test "REL-003: UpgradePath version fields stored correctly" {
+    var path = UpgradePath.init();
+    @memcpy(path.from_version[0..5], "4.2.1");
+    @memcpy(path.to_version[0..5], "5.0.0");
+    try std.testing.expectEqual(@as(u8, '4'), path.from_version[0]);
+    try std.testing.expectEqual(@as(u8, '.'), path.from_version[1]);
+    try std.testing.expectEqual(@as(u8, '5'), path.to_version[0]);
+}
+
+test "REL-003: UpgradePath migration step description stored correctly" {
+    var path = UpgradePath.init();
+    _ = path.addMigrationStep("migrate_db", "Migrate database schema from v4 to v5", 1);
+    try std.testing.expectEqual(@as(u8, 'M'), path.migration_steps[0].description[0]);
+    try std.testing.expectEqual(@as(u8, 'i'), path.migration_steps[0].description[1]);
+}
+
+test "REL-003: UpgradePath empty steps count is 0" {
+    const path = UpgradePath.init();
+    try std.testing.expectEqual(@as(u32, 0), path.step_count);
+}
+
+// ============================================================================
+// REL-004: Recovery Procedures Comprehensive Tests
+// ============================================================================
+
+test "REL-004: RecoveryProcedure default is low priority" {
+    const proc = RecoveryProcedure.init();
+    try std.testing.expectEqual(@as(u8, 3), proc.priority);
+    try std.testing.expect(!proc.isCritical());
+}
+
+test "REL-004: RecoveryProcedure critical priority (0)" {
+    var proc = RecoveryProcedure.init();
+    proc.priority = 0;
+    try std.testing.expect(proc.isCritical());
+}
+
+test "REL-004: RecoveryProcedure high priority (1)" {
+    var proc = RecoveryProcedure.init();
+    proc.priority = 1;
+    try std.testing.expect(!proc.isCritical());
+}
+
+test "REL-004: RecoveryProcedure medium priority (2)" {
+    var proc = RecoveryProcedure.init();
+    proc.priority = 2;
+    try std.testing.expect(!proc.isCritical());
+}
+
+test "REL-004: RecoveryProcedure low priority (3)" {
+    var proc = RecoveryProcedure.init();
+    proc.priority = 3;
+    try std.testing.expect(!proc.isCritical());
+}
+
+test "REL-004: RecoveryProcedure addStep up to 8" {
+    var proc = RecoveryProcedure.init();
+    var i: u32 = 0;
+    while (i < 8) : (i += 1) {
+        const added = proc.addStep("step", "Action", i);
+        try std.testing.expect(added);
+    }
+    try std.testing.expectEqual(@as(u32, 8), proc.step_count);
+    // 9th should fail
+    try std.testing.expect(!proc.addStep("extra", "Extra", 8));
+}
+
+test "REL-004: RecoveryProcedure steps ordered correctly" {
+    var proc = RecoveryProcedure.init();
+    _ = proc.addStep("stop_svc", "Stop service", 1);
+    _ = proc.addStep("backup_db", "Backup database", 2);
+    _ = proc.addStep("restore", "Restore from backup", 3);
+    try std.testing.expectEqual(@as(u32, 3), proc.step_count);
+    try std.testing.expectEqual(@as(u32, 1), proc.steps[0].order);
+    try std.testing.expectEqual(@as(u32, 2), proc.steps[1].order);
+    try std.testing.expectEqual(@as(u32, 3), proc.steps[2].order);
+}
+
+test "REL-004: RecoveryProcedure requires_admin flag" {
+    var proc = RecoveryProcedure.init();
+    try std.testing.expect(!proc.requires_admin);
+    proc.requires_admin = true;
+    try std.testing.expect(proc.requires_admin);
+}
+
+test "REL-004: RecoveryProcedure estimated_time_sec" {
+    var proc = RecoveryProcedure.init();
+    try std.testing.expectEqual(@as(u32, 0), proc.estimated_time_sec);
+    proc.estimated_time_sec = 300;
+    try std.testing.expectEqual(@as(u32, 300), proc.estimated_time_sec);
+}
+
+test "REL-004: RecoveryProcedure step name stored correctly" {
+    var proc = RecoveryProcedure.init();
+    _ = proc.addStep("stop_aegis", "Stop AEGIS service", 1);
+    try std.testing.expectEqual(@as(u8, 's'), proc.steps[0].name[0]);
+    try std.testing.expectEqual(@as(u8, 't'), proc.steps[0].name[1]);
+    try std.testing.expectEqual(@as(u8, 'o'), proc.steps[0].name[2]);
+}
+
+test "REL-004: RecoveryProcedure step action stored correctly" {
+    var proc = RecoveryProcedure.init();
+    _ = proc.addStep("stop", "net stop aegis_core", 1);
+    try std.testing.expectEqual(@as(u8, 'n'), proc.steps[0].action[0]);
+    try std.testing.expectEqual(@as(u8, 'e'), proc.steps[0].action[1]);
+    try std.testing.expectEqual(@as(u8, 't'), proc.steps[0].action[2]);
+}
+
+test "REL-004: RecoveryProcedure empty step count is 0" {
+    const proc = RecoveryProcedure.init();
+    try std.testing.expectEqual(@as(u32, 0), proc.step_count);
+}

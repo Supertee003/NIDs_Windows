@@ -254,3 +254,182 @@ test "ReleaseSignature verify fails with wrong hash" {
     sig.signature_hash = [_]u8{0xFF} ** 32;
     try std.testing.expect(!sig.verify());
 }
+
+// ============================================================================
+// VER-004: Release Checklist Comprehensive Tests
+// ============================================================================
+
+test "VER-004: ReleaseChecklist empty checklist not ready" {
+    const checklist = ReleaseChecklist.init();
+    try std.testing.expect(!checklist.isReady());
+    const progress = checklist.getProgress();
+    try std.testing.expectEqual(@as(u32, 0), progress.passed);
+    try std.testing.expectEqual(@as(u32, 17), progress.total);
+    try std.testing.expect(progress.percentage == 0.0);
+}
+
+test "VER-004: ReleaseChecklist build category only" {
+    var checklist = ReleaseChecklist.init();
+    checklist.build_passed = true;
+    checklist.tests_passed = true;
+    checklist.lint_passed = true;
+    checklist.typecheck_passed = true;
+    try std.testing.expect(!checklist.isReady());
+    const progress = checklist.getProgress();
+    try std.testing.expectEqual(@as(u32, 4), progress.passed);
+}
+
+test "VER-004: ReleaseChecklist security category only" {
+    var checklist = ReleaseChecklist.init();
+    checklist.security_audit = true;
+    checklist.no_secrets = true;
+    checklist.no_backdoors = true;
+    checklist.crypto_verified = true;
+    try std.testing.expect(!checklist.isReady());
+    const progress = checklist.getProgress();
+    try std.testing.expectEqual(@as(u32, 4), progress.passed);
+}
+
+test "VER-004: ReleaseChecklist performance category only" {
+    var checklist = ReleaseChecklist.init();
+    checklist.performance_baseline = true;
+    checklist.no_regressions = true;
+    checklist.memory_leaks = true;
+    try std.testing.expect(!checklist.isReady());
+    const progress = checklist.getProgress();
+    try std.testing.expectEqual(@as(u32, 3), progress.passed);
+}
+
+test "VER-004: ReleaseChecklist documentation category only" {
+    var checklist = ReleaseChecklist.init();
+    checklist.readme_updated = true;
+    checklist.changelog_updated = true;
+    checklist.api_docs = true;
+    try std.testing.expect(!checklist.isReady());
+    const progress = checklist.getProgress();
+    try std.testing.expectEqual(@as(u32, 3), progress.passed);
+}
+
+test "VER-004: ReleaseChecklist artifacts category only" {
+    var checklist = ReleaseChecklist.init();
+    checklist.binaries_built = true;
+    checklist.installers_ready = true;
+    checklist.checksums_generated = true;
+    try std.testing.expect(!checklist.isReady());
+    const progress = checklist.getProgress();
+    try std.testing.expectEqual(@as(u32, 3), progress.passed);
+}
+
+test "VER-004: ReleaseChecklist 16 of 17 not ready" {
+    var checklist = ReleaseChecklist.init();
+    checklist.build_passed = true;
+    checklist.tests_passed = true;
+    checklist.lint_passed = true;
+    checklist.typecheck_passed = true;
+    checklist.security_audit = true;
+    checklist.no_secrets = true;
+    checklist.no_backdoors = true;
+    checklist.crypto_verified = true;
+    checklist.performance_baseline = true;
+    checklist.no_regressions = true;
+    checklist.memory_leaks = true;
+    checklist.readme_updated = true;
+    checklist.changelog_updated = true;
+    checklist.api_docs = true;
+    checklist.binaries_built = true;
+    checklist.installers_ready = true;
+    // Missing: checksums_generated
+    try std.testing.expect(!checklist.isReady());
+    const progress = checklist.getProgress();
+    try std.testing.expectEqual(@as(u32, 16), progress.passed);
+}
+
+test "VER-004: ReleaseChecklist progress percentage" {
+    var checklist = ReleaseChecklist.init();
+    checklist.build_passed = true;
+    checklist.tests_passed = true;
+    checklist.lint_passed = true;
+    checklist.typecheck_passed = true;
+    const progress = checklist.getProgress();
+    // 4/17 ≈ 23.53%
+    try std.testing.expect(progress.percentage > 23.0);
+    try std.testing.expect(progress.percentage < 24.0);
+}
+
+test "VER-004: ReleaseChecklist getFailedChecks identifies all failures" {
+    var checklist = ReleaseChecklist.init();
+    checklist.build_passed = true;
+    checklist.tests_passed = true;
+    const checks = checklist.getFailedChecks();
+    try std.testing.expectEqual(@as(usize, 17), checks.len);
+    // First 2 passed
+    try std.testing.expect(checks[0].passed);
+    try std.testing.expect(checks[1].passed);
+    // Rest failed
+    var i: usize = 2;
+    while (i < 17) : (i += 1) {
+        try std.testing.expect(!checks[i].passed);
+    }
+}
+
+test "VER-004: ReleaseChecklist all categories complete" {
+    var checklist = ReleaseChecklist.init();
+    // Build
+    checklist.build_passed = true;
+    checklist.tests_passed = true;
+    checklist.lint_passed = true;
+    checklist.typecheck_passed = true;
+    // Security
+    checklist.security_audit = true;
+    checklist.no_secrets = true;
+    checklist.no_backdoors = true;
+    checklist.crypto_verified = true;
+    // Performance
+    checklist.performance_baseline = true;
+    checklist.no_regressions = true;
+    checklist.memory_leaks = true;
+    // Documentation
+    checklist.readme_updated = true;
+    checklist.changelog_updated = true;
+    checklist.api_docs = true;
+    // Artifacts
+    checklist.binaries_built = true;
+    checklist.installers_ready = true;
+    checklist.checksums_generated = true;
+    try std.testing.expect(checklist.isReady());
+    const progress = checklist.getProgress();
+    try std.testing.expectEqual(@as(u32, 17), progress.passed);
+    try std.testing.expect(progress.percentage == 100.0);
+}
+
+test "VER-004: ReleaseSignature determinism" {
+    var sig1 = ReleaseSignature.init();
+    @memcpy(sig1.version[0..5], "2.0.0");
+    @memcpy(sig1.git_commit[0..7], "deadbee");
+    sig1.build_timestamp = 9999999;
+    @memcpy(sig1.signed_by[0..6], "ci-bot");
+    const hash1 = sig1.computeHash();
+
+    var sig2 = ReleaseSignature.init();
+    @memcpy(sig2.version[0..5], "2.0.0");
+    @memcpy(sig2.git_commit[0..7], "deadbee");
+    sig2.build_timestamp = 9999999;
+    @memcpy(sig2.signed_by[0..6], "ci-bot");
+    const hash2 = sig2.computeHash();
+
+    try std.testing.expectEqual(hash1, hash2);
+}
+
+test "VER-004: ReleaseSignature different inputs produce different hashes" {
+    var sig1 = ReleaseSignature.init();
+    @memcpy(sig1.version[0..5], "1.0.0");
+    sig1.build_timestamp = 1000;
+    const hash1 = sig1.computeHash();
+
+    var sig2 = ReleaseSignature.init();
+    @memcpy(sig2.version[0..5], "1.0.1");
+    sig2.build_timestamp = 1000;
+    const hash2 = sig2.computeHash();
+
+    try std.testing.expect(!std.mem.eql(u8, &hash1, &hash2));
+}
