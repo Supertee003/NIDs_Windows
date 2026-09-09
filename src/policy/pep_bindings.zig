@@ -133,7 +133,7 @@ test "PepEnforcer fail-open when unavailable" {
         .severity = .alert,
         .ttl_sec = 0,
     };
-    const d = pep.enforce(&ev, p, 0, 0);
+    const d = pep.enforce(&ev, p, 0, 0, 0);
     try std.testing.expectEqual(PepDecision.block, d);
 }
 

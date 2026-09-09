@@ -115,17 +115,17 @@ pub const ActionDispatcher = struct {
             },
             .block => {
                 diag.alert("action=block src={x} dst={x} proto={d} policy_id={d}", .{ ev.src_ip, ev.dst_ip, ev.protocol, p.id });
-                diag.info("PEP validated block; enforcement routed through shield/ (real WFP pending)");
+                diag.info("PEP validated block; enforcement routed through shield/ (real WFP pending)", .{});
                 _ = ForensicBackend.write(ev);
             },
             .rate_limit => {
                 diag.warn("action=rate_limit src={x} policy_id={d}", .{ ev.src_ip, p.id });
-                diag.info("PEP validated rate_limit; enforcement routed through shield/ (real WFP pending)");
+                diag.info("PEP validated rate_limit; enforcement routed through shield/ (real WFP pending)", .{});
                 _ = ForensicBackend.write(ev);
             },
             .quarantine => {
                 diag.critical("action=quarantine src={x} policy_id={d}", .{ ev.src_ip, p.id });
-                diag.info("PEP validated quarantine; enforcement routed through shield/");
+                diag.info("PEP validated quarantine; enforcement routed through shield/", .{});
                 _ = FederationBackend.escalate(ev);
                 _ = ForensicBackend.write(ev);
             },
