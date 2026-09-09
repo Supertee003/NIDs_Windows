@@ -23,6 +23,9 @@ comptime {
     _ = @import("tests/policy/pep_bindings.zig");
     _ = @import("tests/policy/action_dispatcher.zig");
     _ = @import("tests/forensic/forensic_pipeline.zig");
+    _ = @import("tests/forensic/evidence_record.zig");
+    _ = @import("tests/forensic/provenance.zig");
+    _ = @import("tests/forensic/replay_integrity.zig");
     _ = @import("tests/forensic/replay_engine.zig");
     _ = @import("tests/windows/etw_realtime.zig");
     _ = @import("tests/windows/fim.zig");
