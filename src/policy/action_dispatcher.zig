@@ -165,3 +165,69 @@ test "ActionDispatcher dispatch block path (no WFP installed)" {
     // Without WFP installed, block is silently dropped
     try std.testing.expectEqual(@as(u32, 0), WfpBackend.active_filters);
 }
+
+test "ActionDispatcher dispatch alert path" {
+    var ev = event.IpcEvent.init(.tls_hello);
+    const p = policy.Policy{
+        .id = 3,
+        .name = "alert_tls",
+        .condition = .{ .clauses = &[_]policy.Clause{} },
+        .action = .alert,
+        .severity = .warning,
+        .ttl_sec = 0,
+    };
+    ActionDispatcher.dispatch(&ev, p, .allow);
+    // Alert with allow decision should not panic
+}
+
+test "ActionDispatcher dispatch quarantine path" {
+    var ev = event.IpcEvent.init(.packet_captured);
+    const p = policy.Policy{
+        .id = 4,
+        .name = "quarantine_pkt",
+        .condition = .{ .clauses = &[_]policy.Clause{} },
+        .action = .quarantine,
+        .severity = .critical,
+        .ttl_sec = 0,
+    };
+    ActionDispatcher.dispatch(&ev, p, .quarantine);
+    // Quarantine without WFP is silently dropped
+}
+
+test "ActionDispatcher dispatch escalate path" {
+    var ev = event.IpcEvent.init(.dns_query);
+    const p = policy.Policy{
+        .id = 5,
+        .name = "escalate_dns",
+        .condition = .{ .clauses = &[_]policy.Clause{} },
+        .action = .escalate,
+        .severity = .alert,
+        .ttl_sec = 0,
+    };
+    ActionDispatcher.dispatch(&ev, p, .escalate);
+    // Escalate should not panic
+}
+
+test "ActionDispatcher multiple dispatches do not interfere" {
+    var ev1 = event.IpcEvent.init(.dns_query);
+    var ev2 = event.IpcEvent.init(.tls_hello);
+    const p1 = policy.Policy{
+        .id = 10,
+        .name = "",
+        .condition = .{ .clauses = &[_]policy.Clause{} },
+        .action = .log,
+        .severity = .info,
+        .ttl_sec = 0,
+    };
+    const p2 = policy.Policy{
+        .id = 11,
+        .name = "",
+        .condition = .{ .clauses = &[_]policy.Clause{} },
+        .action = .alert,
+        .severity = .warning,
+        .ttl_sec = 0,
+    };
+    ActionDispatcher.dispatch(&ev1, p1, .allow);
+    ActionDispatcher.dispatch(&ev2, p2, .allow);
+    // Both should complete without panic
+}

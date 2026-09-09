@@ -225,3 +225,68 @@ test "PolicySet string match" {
     const p = ps.evaluate(ctx).?;
     try std.testing.expectEqual(Action.block, p.action);
 }
+
+test "PolicySet multiple rules returns first match" {
+    var ps = PolicySet.init(std.testing.allocator);
+    defer ps.deinit();
+    // Rule 1: matches dns_query
+    var preds1 = try std.testing.allocator.alloc(Predicate, 1);
+    preds1[0] = .{ .field = .kind, .op = .eq, .value_int = @intFromEnum(event.EventKind.dns_query) };
+    var clauses1 = try std.testing.allocator.alloc(Clause, 1);
+    clauses1[0] = .{ .predicates = preds1 };
+    try ps.add(.{
+        .id = 1,
+        .name = try std.testing.allocator.dupe(u8, "first_match"),
+        .condition = .{ .clauses = clauses1 },
+        .action = .log,
+        .severity = .info,
+        .ttl_sec = 0,
+    });
+    // Rule 2: also matches dns_query
+    var preds2 = try std.testing.allocator.alloc(Predicate, 1);
+    preds2[0] = .{ .field = .kind, .op = .eq, .value_int = @intFromEnum(event.EventKind.dns_query) };
+    var clauses2 = try std.testing.allocator.alloc(Clause, 1);
+    clauses2[0] = .{ .predicates = preds2 };
+    try ps.add(.{
+        .id = 2,
+        .name = try std.testing.allocator.dupe(u8, "second_match"),
+        .condition = .{ .clauses = clauses2 },
+        .action = .block,
+        .severity = .alert,
+        .ttl_sec = 3600,
+    });
+    var ev = event.IpcEvent.init(.dns_query);
+    const ctx = EvalContext{ .ev = &ev };
+    const p = ps.evaluate(ctx).?;
+    // Returns first matching rule (log), not highest priority
+    try std.testing.expectEqual(Action.log, p.action);
+}
+
+test "PolicySet empty evaluation returns null" {
+    var ps = PolicySet.init(std.testing.allocator);
+    defer ps.deinit();
+    var ev = event.IpcEvent.init(.dns_query);
+    const ctx = EvalContext{ .ev = &ev };
+    try std.testing.expect(ps.evaluate(ctx) == null);
+}
+
+test "PolicySet field kind match works" {
+    var ps = PolicySet.init(std.testing.allocator);
+    defer ps.deinit();
+    var preds = try std.testing.allocator.alloc(Predicate, 1);
+    preds[0] = .{ .field = .kind, .op = .eq, .value_int = @intFromEnum(event.EventKind.tls_hello) };
+    var clauses = try std.testing.allocator.alloc(Clause, 1);
+    clauses[0] = .{ .predicates = preds };
+    try ps.add(.{
+        .id = 1,
+        .name = try std.testing.allocator.dupe(u8, "tls_match"),
+        .condition = .{ .clauses = clauses },
+        .action = .alert,
+        .severity = .warning,
+        .ttl_sec = 600,
+    });
+    var ev = event.IpcEvent.init(.tls_hello);
+    const ctx = EvalContext{ .ev = &ev };
+    const p = ps.evaluate(ctx).?;
+    try std.testing.expectEqual(Action.alert, p.action);
+}

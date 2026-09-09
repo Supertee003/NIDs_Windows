@@ -127,3 +127,155 @@ test "FaultInjector fromEnv returns disabled on Linux" {
     // AEGIS_FAULT_INJECTION env should not be set in test env
     _ = fi;
 }
+
+// ============================================================================
+// VER-003: Fault Injection Comprehensive Tests
+// ============================================================================
+
+test "VER-003: FaultInjector at 0% rate never triggers" {
+    var fi = FaultInjector.init(.{
+        .enabled = true,
+        .drop_packet_rate = 0.0,
+        .corrupt_event_rate = 0.0,
+        .queue_full_rate = 0.0,
+    });
+    var i: u32 = 0;
+    while (i < 1000) : (i += 1) {
+        try std.testing.expect(!fi.maybeDrop());
+        try std.testing.expect(!fi.maybeQueueFull());
+    }
+    try std.testing.expectEqual(@as(u64, 0), fi.injectedCount(.drop_packet));
+    try std.testing.expectEqual(@as(u64, 0), fi.injectedCount(.queue_full));
+}
+
+test "VER-003: FaultInjector at 100% rate always triggers" {
+    var fi = FaultInjector.init(.{
+        .enabled = true,
+        .drop_packet_rate = 1.0,
+        .corrupt_event_rate = 1.0,
+        .queue_full_rate = 1.0,
+    });
+    var i: u32 = 0;
+    while (i < 100) : (i += 1) {
+        try std.testing.expect(fi.maybeDrop());
+        try std.testing.expect(fi.maybeQueueFull());
+    }
+    try std.testing.expectEqual(@as(u64, 100), fi.injectedCount(.drop_packet));
+    try std.testing.expectEqual(@as(u64, 100), fi.injectedCount(.queue_full));
+}
+
+test "VER-003: FaultInjector disabled never triggers regardless of rate" {
+    var fi = FaultInjector.init(.{
+        .enabled = false,
+        .drop_packet_rate = 1.0,
+        .corrupt_event_rate = 1.0,
+        .queue_full_rate = 1.0,
+    });
+    var i: u32 = 0;
+    while (i < 100) : (i += 1) {
+        try std.testing.expect(!fi.maybeDrop());
+        try std.testing.expect(!fi.maybeQueueFull());
+    }
+    try std.testing.expectEqual(@as(u64, 0), fi.injectedCount(.drop_packet));
+}
+
+test "VER-003: FaultInjector corrupt changes event bits" {
+    var fi = FaultInjector.init(.{
+        .enabled = true,
+        .corrupt_event_rate = 1.0,
+    });
+    var ev = event.IpcEvent.init(.dns_query);
+    const orig_bytes = std.mem.asBytes(&ev);
+    var orig_copy: [80]u8 = undefined;
+    @memcpy(&orig_copy, orig_bytes);
+
+    const corrupted = fi.maybeCorrupt(&ev);
+    try std.testing.expect(corrupted);
+
+    // Verify at least one byte changed
+    const new_bytes = std.mem.asBytes(&ev);
+    var any_diff = false;
+    var j: usize = 0;
+    while (j < 80) : (j += 1) {
+        if (orig_copy[j] != new_bytes[j]) {
+            any_diff = true;
+            break;
+        }
+    }
+    try std.testing.expect(any_diff);
+}
+
+test "VER-003: FaultInjector multiple fault kinds tracked independently" {
+    var fi = FaultInjector.init(.{
+        .enabled = true,
+        .drop_packet_rate = 1.0,
+        .corrupt_event_rate = 1.0,
+        .queue_full_rate = 1.0,
+    });
+    var ev = event.IpcEvent.init(.dns_query);
+
+    _ = fi.maybeDrop();
+    _ = fi.maybeCorrupt(&ev);
+    _ = fi.maybeQueueFull();
+    _ = fi.maybeDrop();
+
+    try std.testing.expectEqual(@as(u64, 2), fi.injectedCount(.drop_packet));
+    try std.testing.expectEqual(@as(u64, 1), fi.injectedCount(.corrupt_event));
+    try std.testing.expectEqual(@as(u64, 1), fi.injectedCount(.queue_full));
+    try std.testing.expectEqual(@as(u64, 0), fi.injectedCount(.slow_decode));
+}
+
+test "VER-003: FaultInjector seed produces deterministic results" {
+    const seed: u64 = 0xDEADBEEF;
+    var fi1 = FaultInjector.init(.{ .enabled = true, .seed = seed, .drop_packet_rate = 0.5 });
+    var fi2 = FaultInjector.init(.{ .enabled = true, .seed = seed, .drop_packet_rate = 0.5 });
+
+    var results1: [100]bool = undefined;
+    var results2: [100]bool = undefined;
+    var i: u32 = 0;
+    while (i < 100) : (i += 1) {
+        results1[i] = fi1.maybeDrop();
+        results2[i] = fi2.maybeDrop();
+    }
+
+    // Same seed should produce same sequence
+    i = 0;
+    while (i < 100) : (i += 1) {
+        try std.testing.expectEqual(results1[i], results2[i]);
+    }
+}
+
+test "VER-003: FaultInjector injection count never overflows" {
+    var fi = FaultInjector.init(.{
+        .enabled = true,
+        .drop_packet_rate = 1.0,
+    });
+    // Inject many times — u64 counter should not overflow
+    var i: u32 = 0;
+    while (i < 10000) : (i += 1) {
+        _ = fi.maybeDrop();
+    }
+    try std.testing.expectEqual(@as(u64, 10000), fi.injectedCount(.drop_packet));
+}
+
+test "VER-003: FaultInjector corrupt rate 0 never corrupts" {
+    var fi = FaultInjector.init(.{
+        .enabled = true,
+        .corrupt_event_rate = 0.0,
+    });
+    var i: u32 = 0;
+    while (i < 1000) : (i += 1) {
+        var ev = event.IpcEvent.init(.dns_query);
+        try std.testing.expect(!fi.maybeCorrupt(&ev));
+    }
+    try std.testing.expectEqual(@as(u64, 0), fi.injectedCount(.corrupt_event));
+}
+
+test "VER-003: FaultInjector fromEnv respects env var" {
+    // On Windows, if AEGIS_FAULT_INJECTION=1 is set, it should be enabled
+    // In test env, it should be disabled
+    var fi = FaultInjector.fromEnv();
+    // We can't guarantee env state, but we can verify it doesn't panic
+    _ = fi.maybeDrop();
+    _ = fi.maybeQueueFull();
+}

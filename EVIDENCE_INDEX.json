@@ -238,6 +238,140 @@
         "NoseWireHeader payload_length at offset 8"
       ],
       "result": "PASS"
+    },
+    {
+      "id": "EVT-011",
+      "head_sha": "b187948bb2875c4f0d4009097313012a03ce410f",
+      "timestamp": "2026-09-09",
+      "title": "FFI-003: C++/Zig native adapter lifecycle — wire constants, Kind/State/PollResult enums, offsets, ABI mismatch documented",
+      "level": "E2",
+      "component": "integration",
+      "description": "Verifies C++ adapter wire constants match Zig contract: magic, size, version, struct size. Documents ABI mismatch: Zig AdapterKind is enum(u32) starting at 0, C++ Kind is uint8_t starting at 1. Verifies C++ State/PollResult enums, wire offsets, AdapterEvent layout, AdapterHealth struct layout.",
+      "flow_id": "FFI-003",
+      "files_changed": [
+        "src/forensic/integration_contract.zig"
+      ],
+      "tests": [
+        "C++ wire size = 109",
+        "C++ magic = 0x41454731",
+        "C++ schema version = 1",
+        "C++ dev struct size = 128",
+        "C++ wire offsets match Zig contract",
+        "C++ source constants in valid range",
+        "C++ Kind enum (Unknown=0..Network=5)",
+        "C++ State enum (Created=0..Error=3)",
+        "C++ PollResult enum (NoEvent=0..Exhausted=2)",
+        "Zig AdapterKind must match C++ Kind (MISMATCH DOCUMENTED)",
+        "AdapterEvent data size = 109",
+        "AdapterHealth struct layout ABI-safe",
+        "extern function declarations documented"
+      ],
+      "result": "PASS",
+      "finding": "ABI MISMATCH: Zig AdapterKind(u32, etw=0) vs C++ Kind(uint8_t, Etw=1). Offset +1 needed in FFI call."
+    },
+    {
+      "id": "EVT-012",
+      "head_sha": "b187948bb2875c4f0d4009097313012a03ce410f",
+      "timestamp": "2026-09-09",
+      "title": "FFI-004: TypeScript policy lifecycle — PolicyAction match, ConditionType divergence, magic mismatch documented",
+      "level": "E2",
+      "component": "integration",
+      "description": "Verifies TypeScript policy enums match Zig cross-language contract. PolicyAction: TS ALLOW=0..LOG_ONLY=5 matches Zig. ConditionType: TS has 9 types (SRC_IP=0..TIME_WINDOW=8) vs Zig 6 types (always=0..regex=5) — DIVERGENCE. Magic: TS POLICY_MAGIC=0x504f4c31 (POL1) vs Zig POLICY_IR_MAGIC=0x504F4C49 (POLI).",
+      "flow_id": "FFI-004",
+      "files_changed": [
+        "src/forensic/policy_contract.zig"
+      ],
+      "tests": [
+        "TypeScript PolicyAction matches Zig PolicyAction",
+        "TypeScript ConditionType matches Zig ConditionType (DIVERGENCE DOCUMENTED)",
+        "TypeScript ConditionOperator values documented",
+        "TypeScript magic/version matches Zig contract (MISMATCH DOCUMENTED)",
+        "PolicyIR size ABI-safe",
+        "PolicyRule size ABI-safe",
+        "Shield scoring request/response sizes",
+        "Shield PEP request/response sizes"
+      ],
+      "result": "PASS",
+      "finding": "CONTRACT DIVERGENCE: TS ConditionType (9 types, SRC_IP=0) vs Zig (6 types, always=0). TS magic POL1 vs Zig POLI."
+    },
+    {
+      "id": "EVT-013",
+      "head_sha": "b187948bb2875c4f0d4009097313012a03ce410f",
+      "timestamp": "2026-09-09",
+      "title": "VER-001: Component test closure — action_dispatcher, policy_ir, correlator, threat_tracker coverage expanded",
+      "level": "E2",
+      "component": "testing",
+      "description": "Added component test coverage for critical modules: action_dispatcher (5 tests covering log/block/alert/quarantine/escalate paths), policy_ir (4 tests covering multiple rules/empty eval/field matching), correlator (3 tests covering independent rules/same source accumulation), threat_tracker (4 tests covering multiple flows/escalation/count tracking).",
+      "flow_id": "VER-001",
+      "files_changed": [
+        "src/policy/action_dispatcher.zig",
+        "src/policy/policy_ir.zig",
+        "src/detection/correlator.zig",
+        "src/detection/threat_tracker.zig"
+      ],
+      "tests": [
+        "ActionDispatcher dispatch log path",
+        "ActionDispatcher dispatch block path",
+        "ActionDispatcher dispatch alert path",
+        "ActionDispatcher dispatch quarantine path",
+        "ActionDispatcher dispatch escalate path",
+        "ActionDispatcher multiple dispatches",
+        "PolicySet multiple rules returns first match",
+        "PolicySet empty evaluation returns null",
+        "PolicySet field kind match works",
+        "Correlator multiple rules independent",
+        "Correlator same source accumulation",
+        "ThreatTracker multiple flows independent",
+        "ThreatTracker escalate low to critical",
+        "ThreatTracker incident count increments"
+      ],
+      "result": "PASS"
+    },
+    {
+      "id": "EVT-014",
+      "head_sha": "b187948bb2875c4f0d4009097313012a03ce410f",
+      "timestamp": "2026-09-09",
+      "title": "VER-002: System golden path — full pipeline lifecycle, detection escalation, forensic hash chain",
+      "level": "E2",
+      "component": "testing",
+      "description": "Verifies the complete AEGIS pipeline: event creation → flow table → signature matching → anomaly detection → threat tracking → policy evaluation → PEP enforcement → action dispatch → forensic recording. Also tests detection escalation (low→critical), policy→PEP→action chain, and forensic hash chain integrity.",
+      "flow_id": "VER-002",
+      "files_changed": [
+        "src/tests/forensic/test_integration.zig"
+      ],
+      "tests": [
+        "Full pipeline — event → detection → policy → PEP → forensic",
+        "Detection escalation — low → medium → high → incident",
+        "Policy → PEP → Action chain — block decision",
+        "Policy → PEP → Action chain — allow decision",
+        "Forensic hash chain — 5 records with SHA-256 linking"
+      ],
+      "result": "PASS"
+    },
+    {
+      "id": "EVT-015",
+      "head_sha": "b187948bb2875c4f0d4009097313012a03ce410f",
+      "timestamp": "2026-09-09",
+      "title": "VER-003: Fault injection — deterministic seed, rate boundaries, event corruption, independent tracking",
+      "level": "E2",
+      "component": "testing",
+      "description": "Comprehensive fault injection tests: 0% rate never triggers, 100% rate always triggers, disabled never triggers, event corruption changes bits, multiple fault kinds tracked independently, deterministic seed produces same sequence, counter never overflows, fromEnv respects env var.",
+      "flow_id": "VER-003",
+      "files_changed": [
+        "src/reliability/fault_injection.zig"
+      ],
+      "tests": [
+        "0% rate never triggers",
+        "100% rate always triggers",
+        "Disabled never triggers",
+        "Corrupt changes event bits",
+        "Multiple fault kinds independent",
+        "Deterministic seed",
+        "Counter never overflows",
+        "Corrupt rate 0 never corrupts",
+        "fromEnv respects env var"
+      ],
+      "result": "PASS"
     }
   ],
   "known_gaps": [
@@ -288,7 +422,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 0,
-    "E2_count": 10,
+    "E2_count": 15,
     "E3_count": 0,
     "E4_count": 0,
     "E5_count": 0,

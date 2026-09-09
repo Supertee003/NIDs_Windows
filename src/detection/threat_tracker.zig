@@ -215,3 +215,69 @@ test "ThreatTracker no incident below threshold" {
     try std.testing.expect(inc == null);
     try std.testing.expectEqual(@as(u32, 0), tt.incident_count);
 }
+
+test "ThreatTracker multiple flows tracked independently" {
+    var tt = ThreatTracker.init(std.testing.allocator);
+    defer tt.deinit();
+    // Flow A: high severity
+    var ev_a = event.IpcEvent.init(.signature_match);
+    ev_a.flow_id = 10;
+    ev_a.timestamp_ns = 1000;
+    ev_a.event_id = 1;
+    ev_a.src_ip = 0x0A000001;
+    ev_a.rule_id = 1;
+    _ = try tt.observeFlowThreat(&ev_a, 100);
+    // Flow B: low severity
+    var ev_b = event.IpcEvent.init(.signature_match);
+    ev_b.flow_id = 20;
+    ev_b.timestamp_ns = 2000;
+    ev_b.event_id = 2;
+    ev_b.src_ip = 0x0A000002;
+    ev_b.rule_id = 2;
+    const inc_b = try tt.observeFlowThreat(&ev_b, 20);
+    try std.testing.expect(inc_b == null);
+    // Flow A should still have incident
+    try std.testing.expectEqual(@as(u32, 1), tt.incident_count);
+}
+
+test "ThreatTracker escalate from low to critical" {
+    var tt = ThreatTracker.init(std.testing.allocator);
+    defer tt.deinit();
+    var ev = event.IpcEvent.init(.signature_match);
+    ev.flow_id = 30;
+    ev.src_ip = 0x0A000003;
+    ev.rule_id = 3;
+    // First observation: low severity
+    ev.timestamp_ns = 1000;
+    ev.event_id = 1;
+    const r1 = try tt.observeFlowThreat(&ev, 50);
+    try std.testing.expect(r1 == null);
+    // Second observation: crosses threshold
+    ev.timestamp_ns = 2000;
+    ev.event_id = 2;
+    const r2 = try tt.observeFlowThreat(&ev, 60);
+    try std.testing.expect(r2 != null);
+    try std.testing.expectEqual(@as(u32, 1), tt.incident_count);
+}
+
+test "ThreatTracker incident count increments" {
+    var tt = ThreatTracker.init(std.testing.allocator);
+    defer tt.deinit();
+    try std.testing.expectEqual(@as(u32, 0), tt.incident_count);
+    var ev = event.IpcEvent.init(.signature_match);
+    ev.flow_id = 40;
+    ev.src_ip = 0x0A000004;
+    ev.rule_id = 4;
+    ev.timestamp_ns = 1000;
+    ev.event_id = 1;
+    _ = try tt.observeFlowThreat(&ev, 100);
+    try std.testing.expectEqual(@as(u32, 1), tt.incident_count);
+    var ev2 = event.IpcEvent.init(.signature_match);
+    ev2.flow_id = 50;
+    ev2.src_ip = 0x0A000005;
+    ev2.rule_id = 5;
+    ev2.timestamp_ns = 2000;
+    ev2.event_id = 2;
+    _ = try tt.observeFlowThreat(&ev2, 100);
+    try std.testing.expectEqual(@as(u32, 2), tt.incident_count);
+}
