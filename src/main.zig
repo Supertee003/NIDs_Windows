@@ -340,7 +340,7 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
         const body = std.fmt.allocPrint(a, "{{\"incidents_open\":{},\"detections\":{},"anomalies":{},"correlations":{}}}", .{
             g_pipeline_events_processed - g_pipeline_detections,
             g_pipeline_detections,
-            g_pipeline_anomalies,
+            g_pipeline_policies_matched,
             g_pipeline_correlations,
         }) catch return false;
         sendResponse(a, pipe, true, body);
@@ -650,7 +650,7 @@ fn pipelineLoop(
     diag.info("pipeline loop stopped: processed={}, detections={}, policies_matched={}", .{
         g_pipeline_events_processed,
         g_pipeline_detections,
-        g_pipeline_anomalies,
+        g_pipeline_policies_matched,
     });
 }
 
@@ -751,7 +751,6 @@ fn captureThread() void {
     });
 }
 
-fn runDaemon() !void {
 fn runDaemon() !void {
     diag.info("AEGIS NIDS v5.0+ starting up", .{});
 
