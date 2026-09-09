@@ -26,6 +26,7 @@ const tracker = @import("detection/threat_tracker.zig");
 const policy = @import("policy/policy_ir.zig");
 const pep = @import("policy/pep_bindings.zig");
 const forensic = @import("forensic/forensic_pipeline.zig");
+const dispatcher = @import("policy/action_dispatcher.zig");
 const watchdog = @import("reliability/watchdog.zig");
 const sec_check = @import("reliability/security_check.zig");
 const hist = @import("reliability/latency_histogram.zig");
@@ -320,7 +321,7 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
     }
 
     if (std.mem.eql(u8, cmd, "incidents.list")) {
-        const body = std.fmt.allocPrint(a, "{{\"incidents_open\":{},\"detections\":{},"anomalies":{},"correlations":{}}}", .{
+        const body = std.fmt.allocPrint(a, "{{\"incidents_open\":{},\"detections\":{},\"anomalies\":{},\"correlations\":{}}}", .{
             g_pipeline_events_processed - g_pipeline_detections,
             g_pipeline_detections,
             g_pipeline_policies_matched,
@@ -604,6 +605,9 @@ fn processEvent(
     if (matched_policy) |pol| {
         pep_decision = pep_enf.enforce(ev, pol, 0, 0xFFFFFFFF); // caller_pid=0, all caps
         g_pipeline_detections += 1; // policy matched = detection event
+
+        // 6a. Action dispatch (execute enforcement action)
+        dispatcher.ActionDispatcher.dispatch(ev, pol, pep_decision);
     }
 
     // 7. Forensic recording (captures full pipeline result)
@@ -1006,6 +1010,8 @@ fn runDaemon() !void {
     // 7. Initialize PEP (PolicySet already loaded with policies from JSON)
     var pep_enf = pep.PepEnforcer.init();
     defer pep_enf.deinit();
+    dispatcher.ActionDispatcher.init();
+    defer dispatcher.ActionDispatcher.deinit();
 
     // 8. Federation/XDR (disabled in standalone mode)
 
@@ -1028,7 +1034,7 @@ fn runDaemon() !void {
         defer pipeline_thread.join();
 
         // Start capture thread (Npcap)
-        const capture_thread = std.Thread.spawn(.{}, captureThread, .{}) catch |err| {
+        _ = std.Thread.spawn(.{}, captureThread, .{}) catch |err| {
             diag.warn("failed to spawn capture thread: {} — capture disabled", .{err});
         };
 
