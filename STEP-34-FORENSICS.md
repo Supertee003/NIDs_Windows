@@ -1,4 +1,0 @@
-# Step 34 — Forensics (Full Chain Audit — Event → Evidence → Verdict → Policy → Signature → PEP → Action → Trace)
-
-**Status:** STUB (S2 framework — framework present; full chain audit verification missing; requires STEP 25 policy signing + STEP 26 PEP verification + STEP 28-33 real telemetry verification + STEP 57 audit trace + STEP 34 forensics pipeline audit + STEP 35 replay verification + STEP 61 regression + STEP 62 current-head evidence + STEP 63 audit evidence package)
-**Files:** `core/forensic_log.zig` (production audit framework — 18,408 lines; framework verified structurally; audit integrity unverified), `core/forensics_engine.zig` (production forensics framework — 16,145 lines; framework verified structurally; full chain audit unverified), `core/replay_engine.zig` (replay framework — 23,479 lines; framework verified structurally; replay verification unverified — STEP 35 dependency)

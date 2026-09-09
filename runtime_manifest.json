@@ -1,191 +1,100 @@
 {
-  "runtime_version": "5.0.0",
-  "entrypoint": "src/main.zig",
-  "production_binary": "zig-out/bin/aegis_nids.exe",
-  "source_commit": "85f4102",
-  "date": "2026-09-08",
-  "production_modules": 33,
-  "optional_modules": 0,
-  "tooling_modules": 3,
-  "legacy_modules": 159,
-  "init_order": [
-    "core/diagnostics.zig",
-    "core/memory_pool.zig",
-    "contract/event.zig",
-    "contract/runtime_manifest.zig",
-    "reliability/watchdog.zig",
-    "reliability/security_check.zig",
-    "windows/etw_realtime.zig",
-    "windows/fim.zig",
-    "windows/registry_monitor.zig",
-    "windows/injection_detector.zig",
-    "windows/host_telemetry.zig",
-    "capture/npcap_adapter.zig",
-    "capture/packet_decoder.zig",
-    "capture/flow_table.zig",
-    "capture/proto/parsers.zig",
-    "capture/stream_reassembly.zig",
-    "detection/signature_engine.zig",
-    "detection/anomaly_detector.zig",
-    "detection/proto_anomaly.zig",
-    "detection/correlator.zig",
-    "detection/threat_tracker.zig",
-    "policy/action_dispatcher.zig",
-    "policy/pep_bindings.zig",
-    "policy/policy_ir.zig",
-    "policy/trust_store.zig",
-    "forensic/forensic_pipeline.zig",
-    "forensic/replay_engine.zig",
-    "reliability/fault_injection.zig",
-    "reliability/latency_histogram.zig",
-    "federation/cluster_coord.zig",
-    "federation/node_registry.zig",
-    "federation/aggregator.zig",
-    "xdr/xdr_engine.zig"
-  ],
-  "shutdown_order": [
-    "xdr/xdr_engine.zig",
-    "federation/cluster_coord.zig",
-    "reliability/fault_injection.zig",
-    "reliability/watchdog.zig",
-    "windows/host_telemetry.zig",
-    "windows/injection_detector.zig",
-    "windows/etw_realtime.zig",
-    "windows/fim.zig",
-    "windows/registry_monitor.zig",
-    "capture/stream_reassembly.zig",
-    "capture/packet_decoder.zig",
-    "capture/flow_table.zig",
-    "detection/threat_tracker.zig",
-    "detection/correlator.zig",
-    "detection/anomaly_detector.zig",
-    "detection/signature_engine.zig",
-    "policy/action_dispatcher.zig",
-    "policy/pep_bindings.zig",
-    "forensic/replay_engine.zig",
-    "core/memory_pool.zig",
-    "core/diagnostics.zig",
-    "contract/event.zig",
-    "reliability/security_check.zig"
-  ],
-  "subsystems": [
-    "capture",
-    "contract",
-    "core",
-    "detection",
-    "federation",
-    "forensic",
-    "policy",
-    "reliability",
-    "windows",
-    "xdr"
-  ],
-  "subsystem_modules": {
-    "capture": [
-      "flow_table.zig",
-      "npcap_adapter.zig",
-      "packet_decoder.zig",
-      "parsers.zig",
-      "stream_reassembly.zig"
-    ],
-    "contract": [
-      "event.zig",
-      "runtime_manifest.zig"
-    ],
-    "core": [
-      "diagnostics.zig",
-      "memory_pool.zig"
-    ],
-    "detection": [
-      "anomaly_detector.zig",
-      "correlator.zig",
-      "proto_anomaly.zig",
-      "signature_engine.zig",
-      "threat_tracker.zig"
-    ],
-    "federation": [
-      "aggregator.zig",
-      "cluster_coord.zig",
-      "node_registry.zig"
-    ],
-    "forensic": [
-      "forensic_pipeline.zig",
-      "replay_engine.zig"
-    ],
-    "policy": [
-      "action_dispatcher.zig",
-      "pep_bindings.zig",
-      "policy_ir.zig",
-      "trust_store.zig"
-    ],
-    "reliability": [
-      "fault_injection.zig",
-      "latency_histogram.zig",
-      "security_check.zig",
-      "watchdog.zig"
-    ],
-    "windows": [
-      "etw_realtime.zig",
-      "fim.zig",
-      "host_telemetry.zig",
-      "injection_detector.zig",
-      "registry_monitor.zig"
-    ],
-    "xdr": [
-      "xdr_engine.zig"
-    ]
+  "schema_version": "1.0",
+  "generated_at": "2026-09-09T06:07:22.160641+00:00",
+  "head_sha": "4df3af3f84a1fdbf6d169231145e31e130e13027",
+  "canonical_source_root": "/",
+  "canonical_entrypoints": {
+    "zig_core_tier1": {
+      "file": "src/main.zig",
+      "language": "zig",
+      "role": "Tier-1: Runtime spine, capture, detection, correlation, policy orchestration, control pipe",
+      "build": "zig build",
+      "artifact": "zig-out/bin/aegis_nids.exe"
+    },
+    "rust_pep_tier3": {
+      "file": "rust-src/lib.rs",
+      "language": "rust",
+      "crate_name": "aegis_pep",
+      "role": "Tier-3: Policy Enforcement Point + Federation TLS",
+      "build": "cargo build --release",
+      "artifact": "target/release/aegis_pep.dll"
+    },
+    "go_nose": {
+      "file": "nose/main.go",
+      "language": "go",
+      "module": "aegis-nose",
+      "role": "Packet acquisition, flow collection, IPC reader, canonical event production",
+      "build": "cd nose && go build -o aegis-nose.exe .",
+      "artifact": "nose/aegis-nose.exe"
+    },
+    "cpp_native_helpers": {
+      "file": "src/windows/aegis_wfp.c",
+      "language": "c",
+      "role": "Native Windows adapters: WFP user-mode, ETW helpers, FIM",
+      "build": "cmake -B build && cmake --build build --config Release",
+      "artifacts": [
+        "build/Release/aegis_wfp_user.dll",
+        "build/Release/aegis_etw_helper.dll",
+        "build/Release/aegis_fim_helper.dll"
+      ]
+    },
+    "brain_tier2": {
+      "file": "brain/windows_brain.py",
+      "language": "python",
+      "role": "Tier-2: Threat analysis, regex scanning, analytics"
+    },
+    "ts_policy_compiler": {
+      "file": "ts_policy/src/index.ts",
+      "language": "typescript",
+      "role": "Policy authoring, simulation, compilation to Policy IR"
+    }
   },
-  "golden_path": [
-    "windows/host_telemetry.zig (host network telemetry)",
-    "capture/npcap_adapter.zig (packet capture)",
-    "contract/event.zig (canonical event)",
-    "core/memory_pool.zig (fabric)",
-    "capture/packet_decoder.zig (decoding)",
-    "detection/signature_engine.zig (signature detection)",
-    "detection/anomaly_detector.zig (anomaly detection)",
-    "detection/proto_anomaly.zig (protocol anomaly)",
-    "detection/correlator.zig (correlation)",
-    "detection/threat_tracker.zig (threat tracking)",
-    "federation/node_registry.zig (federation registry)",
-    "federation/aggregator.zig (aggregation)",
-    "federation/cluster_coord.zig (cluster coordination)",
-    "reliability/fault_injection.zig (fault injection framework)",
-    "reliability/watchdog.zig (reliability watchdog)",
-    "reliability/security_check.zig (security hardening)",
-    "reliability/latency_histogram.zig (performance telemetry)",
-    "core/diagnostics.zig (diagnostics)",
-    "reliability/fault_injection.zig (fault injection)",
-    "reliability/watchdog.zig (watchdog health)",
-    "core/diagnostics.zig (diagnostics)",
-    "reliability/security_check.zig (security check)"
-  ],
-  "ABI_versions": {
-    "zig_core": "v5.0.0",
-    "rust_pep": "v5.0.0",
-    "c_native": "v1.0.0",
-    "go_aggregator": "v1.0.0"
+  "canonical_artifacts": {
+    "zig_core": {
+      "path": "zig-out/bin/aegis_nids.exe",
+      "produced_by": "zig build",
+      "source": "src/main.zig"
+    },
+    "rust_pep": {
+      "path": "target/release/aegis_pep.dll",
+      "produced_by": "cargo build --release",
+      "source": "rust-src/lib.rs"
+    },
+    "cpp_wfp_user": {
+      "path": "build/Release/aegis_wfp_user.dll",
+      "produced_by": "cmake --build build --config Release",
+      "source": "src/windows/aegis_wfp.c"
+    },
+    "cpp_etw_helper": {
+      "path": "build/Release/aegis_etw_helper.dll",
+      "produced_by": "cmake --build build --config Release",
+      "source": "src/windows/etw_native.c"
+    },
+    "cpp_fim_helper": {
+      "path": "build/Release/aegis_fim_helper.dll",
+      "produced_by": "cmake --build build --config Release",
+      "source": "src/windows/fim_native.c"
+    },
+    "go_nose": {
+      "path": "nose/aegis-nose.exe",
+      "produced_by": "cd nose && go build -o aegis-nose.exe .",
+      "source": "nose/main.go"
+    }
   },
-  "schema_versions": {
-    "canonical_event": "v2.0.0",
-    "runtime_manifest": "v5.0.0",
-    "wire_protocol": "v1.0.0"
+  "canonical_config": {
+    "rules": "Rules.json"
   },
-  "notes": {
-    "production_entrypoint": "build.zig -> src/main.zig -> zig build -> zig-out/bin/aegis_nids.exe",
-    "legacy_folder": "core/ (100+ legacy modules from earlier phases; NOT in production build; tracked per user request)",
-    "production_subsystem": "src/core/ (diagnostics.zig, memory_pool.zig - active in build; 2 files)",
-    "test_only_entrypoint": "src/fuzz_entry.zig -> src/tests/fuzz_main.zig (fuzz harness; 1 file)",
-    "control_client": "tools/aegisctl.py (named-pipe client, connects to daemon; not a runtime)",
-    "installer": "tools/installer.py (consumes build_manifest.json, generates aegis_setup.exe; not a runtime)",
-    "step_27_action_dispatcher_gap": "STILL PENDING: ActionDispatcher in src/policy/action_dispatcher.zig must route through Rust PEP (STEP 27). Direct WFP callback path exists in production code but is being removed via ADR.",
-    "step_43_control_state_gap": "STILL PENDING: src/main.zig control responses (packets_captured: 0, flows_active: 0) must bind to real runtime metrics (STEP 43).",
-    "step_50_installer_gap": "STILL PENDING: AEGIS_v5_fresh_deploy.ps1 embeds stale CI/config; removed from git index; preserved locally for STEP 50 fix.",
-    "cleanup_status": "Step 2 complete (366 artifacts removed from git index); Step 3 ADR complete; Step 4 Build Truth verified (all 6 builds green, 5 artifacts present); .gitignore hardened with LF normalization.",
-    "run_time_manifest_step": 5,
-    "build_truth_verified": true,
-    "ci_status": "All 8 CI jobs pass (zig, rust, c, go, python, ts, security, ci-matrix)",
-    "python_tests_status": "436 passed, 23 skipped (after Cython build + cargo cache + timeout fix)",
-    "manifest_drift_fixed": true,
-    "core_restored_per_request": true
-  }
+  "canonical_test_root": "tests/",
+  "legacy_markers": {
+    "lib.rs (root)": "OBSOLETE - superseded by rust-src/lib.rs",
+    "Back Rules.json": "DUPLICATE of Rules.json",
+    "core/*.zig": "LEGACY proof/integration/CLI modules - NOT compiled by build.zig; src/*.zig is canonical",
+    "nids_main.zig (root)": "LEGACY - superseded by src/main.zig"
+  },
+  "invariants": [
+    "ONE production runtime (Zig core + Rust PEP + Go Nose + C++ native helpers)",
+    "NO build artifacts tracked",
+    "NO runtime state tracked",
+    "src/ = canonical source, core/ = legacy/experimental proof modules"
+  ]
 }

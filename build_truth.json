@@ -1,52 +1,83 @@
 {
-  "zig build": {
-    "status": "OK",
-    "exit_code": 0,
-    "stderr": ""
+  "schema_version": "1.0",
+  "generated_at": "2026-09-09T06:07:22.184546+00:00",
+  "head_sha": "4df3af3f84a1fdbf6d169231145e31e130e13027",
+  "build_commands": {
+    "zig": {
+      "command": "zig build",
+      "produces": [
+        "zig-out/bin/aegis_nids.exe"
+      ],
+      "source_root": "src/main.zig"
+    },
+    "rust": {
+      "command": "cargo build --release",
+      "produces": [
+        "target/release/aegis_pep.dll"
+      ],
+      "source_root": "rust-src/lib.rs"
+    },
+    "cpp": {
+      "command": "cmake -B build && cmake --build build --config Release",
+      "produces": [
+        "build/Release/aegis_wfp_user.dll",
+        "build/Release/aegis_etw_helper.dll",
+        "build/Release/aegis_fim_helper.dll"
+      ],
+      "source_root": "src/windows/aegis_wfp.c",
+      "notes": "CMake builds native helpers (WFP user, ETW, FIM)"
+    },
+    "go": {
+      "command": "cd nose && go build -o aegis-nose.exe .",
+      "produces": [
+        "nose/aegis-nose.exe"
+      ],
+      "source_root": "nose/main.go"
+    },
+    "typescript": {
+      "command": "cd ts_policy && npm run build",
+      "produces": [
+        "ts_policy/dist/"
+      ],
+      "source_root": "ts_policy/src/index.ts"
+    }
   },
-  "zig build test": {
-    "status": "OK",
-    "exit_code": 0,
-    "stderr": "test\n+- run test stderr\n[INFO] test message 42\n[INFO] TrustStore: generated key kind=6 purpose=1\n[INFO] TrustStore: generated key kind=6 purpose=2\n[INFO] TrustStore: generated key kind=6 purpose=3\n[INFO] TrustStore: generated key kind=6 purpose=4\n[DEBUG] action=allow event=dns_query rule=0\n[ALERT] action=block src=0 dst=0 proto=0\n[ERROR] aegis_fim_start failed for /tmp\n[INFO] registry change matched rule 42: HKLM\\System\\CurrentControlSet\\Services\\AEGIS\\Start\n[ALERT] INJECTION DETECTED: pattern=v"
-  },
-  "cargo build --release": {
-    "status": "OK",
-    "exit_code": 0,
-    "stderr": "Finished `release` profile [optimized] target(s) in 3.93s"
-  },
-  "cargo test --release": {
-    "status": "OK",
-    "exit_code": 0,
-    "stderr": "Compiling ring v0.17.14\n   Compiling aws-lc-sys v0.45.0\n   Compiling aws-lc-rs v1.18.1\n   Compiling rustls-webpki v0.103.15\n   Compiling rustls v0.23.43\n   Compiling aegis_pep v5.0.0 (D:\\NIDs_Windows)\n    Finished `release` profile [optimized] target(s) in 28.99s\n     Running unittests rust-src\\lib.rs (target\\release\\deps\\aegis_pep-d6c4cc5e8eff804a.exe)\n   Doc-tests aegis_pep"
-  },
-  "cmake -B build -S .": {
-    "status": "OK",
-    "exit_code": 0,
-    "stderr": ""
-  },
-  "cmake --build build --config Release": {
-    "status": "OK",
-    "exit_code": 0,
-    "stderr": ""
-  },
-  "artifact:aegis_nids.exe": {
-    "exists": true,
-    "path": "zig-out/bin/aegis_nids.exe"
-  },
-  "artifact:aegis_pep.dll": {
-    "exists": true,
-    "path": "target/release/aegis_pep.dll"
-  },
-  "artifact:aegis_wfp_user.dll": {
-    "exists": true,
-    "path": "build/Release/aegis_wfp_user.dll"
-  },
-  "artifact:aegis_etw_helper.dll": {
-    "exists": true,
-    "path": "build/Release/aegis_etw_helper.dll"
-  },
-  "artifact:aegis_fim_helper.dll": {
-    "exists": true,
-    "path": "build/Release/aegis_fim_helper.dll"
-  }
+  "ci_assertions": [
+    {
+      "name": "no_tracked_build_artifacts",
+      "command": "git ls-files | grep -E '\\.(exe|dll|pdb|obj|o|so|ilk|exp|lib)$'",
+      "expected_empty": true
+    },
+    {
+      "name": "no_tracked_cache_dirs",
+      "command": "git ls-files | grep -E '^(\\.zig-cache|target|__pycache__|zig-out|shield/target|build/|dist/)/'",
+      "expected_empty": true
+    },
+    {
+      "name": "no_tracked_runtime_state",
+      "command": "git ls-files | grep -E '^logs/'",
+      "expected_empty": true
+    },
+    {
+      "name": "no_legacy_root_lib_rs",
+      "command": "git ls-files lib.rs",
+      "expected_empty": true
+    },
+    {
+      "name": "no_duplicate_rules",
+      "command": "git ls-files 'Back Rules.json'",
+      "expected_empty": true
+    },
+    {
+      "name": "adr_exists",
+      "command": "test -f docs/adr/ADR-RUNTIME-CONVERGENCE.md",
+      "expected_empty": false
+    }
+  ],
+  "build_truth_status": "STEP_01_CORRECTED",
+  "notes": [
+    "PATCH-01: Corrected to match actual build.zig/Cargo.toml/CMakeLists.txt/nose/go.mod",
+    "Source of truth: build.zig (line 14: src/main.zig), Cargo.toml (aegis_pep), CMakeLists.txt (3 native helpers), nose/go.mod",
+    "End-to-end verification comes in STEP 36"
+  ]
 }
