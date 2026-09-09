@@ -30,7 +30,7 @@ extern "c" fn pcap_set_snaplen(p: *pcap_t, snaplen: c_int) c_int;
 extern "c" fn pcap_set_promisc(p: *pcap_t, promisc: c_int) c_int;
 extern "c" fn pcap_set_timeout(p: *pcap_t, to_ms: c_int) c_int;
 extern "c" fn pcap_set_buffer_size(p: *pcap_t, buffer_size: c_int) c_int;
-extern "c" fn pcap_next_ex(p: *pcap_t, hdr: *pcap_pkthdr, data: *[*]const u8) c_int;
+pub extern "c" fn pcap_next_ex(p: *pcap_t, hdr: *pcap_pkthdr, data: *[*]const u8) c_int;
 extern "c" fn pcap_close(p: *pcap_t) void;
 extern "c" fn pcap_geterr(p: *pcap_t) [*:0]const u8;
 extern "c" fn pcap_datalink(p: *pcap_t) c_int;
@@ -82,7 +82,7 @@ pub const NpcapAdapter = struct {
         var errbuf: [256]u8 = undefined;
         @memset(&errbuf, 0);
         const dev_z = std.mem.sliceTo(&cfg.device, 0);
-        const handle = pcap_create(dev_z.ptr, &errbuf) orelse {
+        const handle = pcap_create(@ptrCast(dev_z.ptr), &errbuf) orelse {
             diag.err("pcap_create failed: {s}", .{std.mem.sliceTo(&errbuf, 0)});
             return error.PcapCreateFailed;
         };

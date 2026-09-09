@@ -212,7 +212,7 @@ fn serviceMain(dwArgc: std.os.windows.DWORD, lpArgv: [*][*:0]u16) callconv(.C) v
     _ = lpArgv;
     var name_buf: [32]u16 = undefined;
     const name = "AegisNids";
-    const n = std.unicode.utf8ToUtf16Le(name_buf[0 .. name.len], name) catch return;
+    const n = std.unicode.utf8ToUtf16Le(name_buf[0..name.len], name) catch return;
     name_buf[n] = 0;
     const handle = RegisterServiceCtrlHandlerW(@ptrCast(&name_buf), serviceControlHandler);
     if (handle == null) return;
@@ -275,10 +275,10 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
             \\{{"version":"5.0.0","state":"running","uptime_sec":{},"packets_captured":{},"flows_active":{},"incidents_open":{},"watchdog_alerts":{},"degraded":false,"etw_enabled":{},"fim_enabled":{},"wfp_available":{},"nids_version":"5.0.0","rules_loaded":{},"pipeline_processed":{},"pipeline_detections":{},\"audit_id\":{}}}
         , .{
             uptime_sec,
-            @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.packets_captured.value)))),  // STEP 43: real packets metric (approximation; requires full capture framework verification — STEP 10 dependency)
-            @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.flows_active.value)))),  // STEP 43: real flows metric (approximation; requires flow framework verification — STEP 16 dependency)
+            @as(u32, @intCast(diag.metrics.packets_captured.get())), // STEP 43: real packets metric
+            @as(u32, @intCast(diag.metrics.flows_active.get())), // STEP 43: real flows metric
             g_incidents_open, // PATCH-19: real incident count from ThreatTracker
-            @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.errors.value)))),  // STEP 43: closest approximation (requires reliability framework verification — STEP 7 dependency)
+            @as(u32, @intCast(diag.metrics.errors.get())), // STEP 43: closest approximation
             caps.has_etw_realtime,
             caps.has_fim,
             caps.has_wfp_block,
@@ -286,7 +286,6 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
             g_pipeline_events_processed,
             g_pipeline_detections,
             g_pipeline_audit_id,
-            g_queue_drops,
         }) catch return false;
         sendResponse(a, pipe, true, body);
         return false;
@@ -301,18 +300,19 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
         // fim_enabled -> caps.has_fim (capabilities verified structurally)
         const body = std.fmt.allocPrint(a,
             \\{{"uptime_sec":{},"rules_loaded":{},"packets_captured":{},"flows_active":{},"incidents_open":{},"etw_enabled":{},"fim_enabled":{},"signatures_matched":{},"anomalies_detected":{},"blocks_issued":{},"federation_messages":{},"errors":{}}}
-        , .{ uptime_sec,
+        , .{
+            uptime_sec,
             g_rules_loaded, // PATCH-19: real rules loaded count
-            @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.packets_captured.value)))),
-            @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.flows_active.value)))),
+            @as(u32, @intCast(diag.metrics.packets_captured.get())),
+            @as(u32, @intCast(diag.metrics.flows_active.get())),
             g_incidents_open, // PATCH-19: real incident count
             caps.has_etw_realtime,
             caps.has_fim,
             g_pipeline_detections, // PATCH-19: real detection count
-            @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.anomalies_detected.value)))),
-            @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.blocks_issued.value)))),
-            @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.federation_messages.value)))),
-            @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.errors.value)))),
+            @as(u32, @intCast(diag.metrics.anomalies_detected.get())),
+            @as(u32, @intCast(diag.metrics.blocks_issued.get())),
+            @as(u32, @intCast(diag.metrics.federation_messages.get())),
+            @as(u32, @intCast(diag.metrics.errors.get())),
         }) catch return false;
         sendResponse(a, pipe, true, body);
         return false;
@@ -355,11 +355,10 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
         const body = std.fmt.allocPrint(a,
             \\{{"checks":[{{"name":"core","ok":true,"detail":"initialized"}},{{"name":"npcap","ok":{},"detail":"{s}"}},{{"name":"etw","ok":{},"detail":"{s}"}},{{"name":"fim","ok":{},"detail":"{s}"}},{{"name":"wfp","ok":{},"detail":"{s}"}}]}}
         , .{
-            caps.has_npcap, if (caps.has_npcap) "available" else "not-available",
+            caps.has_npcap,        if (caps.has_npcap) "available" else "not-available",
             caps.has_etw_realtime, if (caps.has_etw_realtime) "available" else "not-available",
-            caps.has_fim, if (caps.has_fim) "available" else "not-available",
-            caps.has_wfp_block, if (caps.has_wfp_block) "available" else "not-available",
-            g_pep_available, if (g_pep_available) "available" else "not-available",
+            caps.has_fim,          if (caps.has_fim) "available" else "not-available",
+            caps.has_wfp_block,    if (caps.has_wfp_block) "available" else "not-available",
         }) catch return false;
         sendResponse(a, pipe, true, body);
         return false;
@@ -725,7 +724,7 @@ fn processEvent(
     }
 
     // 3. Anomaly detection
-        const anom_key = anom.EntityKey{ .src_ip = blk: {
+    const anom_key = anom.EntityKey{ .src_ip = blk: {
         var ip: [16]u8 = [_]u8{0} ** 16;
         const src_b: [4]u8 = @bitCast(ev.src_ip);
         @memcpy(ip[0..4], &src_b);
@@ -819,15 +818,16 @@ fn pipelineLoop(
         }
 
         const maybe_qe = popEvent();
-        if (maybe_qe) |qe| {
+        if (maybe_qe) |qe_val| {
+            var qe = qe_val;
             // PATCH-30: Fault injection — maybe corrupt event
             _ = g_fi.maybeCorrupt(&qe.ev);
             // PATCH-31: Performance tracking
             const start = std.time.nanoTimestamp();
-            processEvent(&qe, ac, ad, ft, tt, ps, pep_enf, forensic_ring, rules_loaded, hist.Stage.pipeline) catch |err| {
+            processEvent(&qe, ac, ad, ft, tt, ps, pep_enf, forensic_ring, rules_loaded, hist.Stage.capture_to_decode) catch |err| {
                 diag.warn("pipeline processing error: {}", .{err});
             };
-            g_perf.observe(hist.Stage.pipeline, std.time.nanoTimestamp() - start);
+            g_perf.observe(hist.Stage.capture_to_decode, @intCast(std.time.nanoTimestamp() - start));
         } else {
             // No events — yield briefly
             std.time.sleep(1 * std.time.ns_per_ms);
@@ -848,7 +848,7 @@ fn packetCallback(ctx: *anyopaque, hdr: *const npcap.pcap_pkthdr, data: []const 
     if (data.len < 14) return; // Too short for Ethernet header
 
     // Parse Ethernet header (14 bytes)
-    const eth_proto: u16 = @intCast((data[12] << 8) | data[13]);
+    const eth_proto: u16 = @as(u16, data[12]) << 8 | data[13];
     const is_ipv4 = eth_proto == 0x0800;
     const is_ipv6 = eth_proto == 0x86DD;
     if (!is_ipv4 and !is_ipv6) return; // Only IP packets
@@ -870,8 +870,8 @@ fn packetCallback(ctx: *anyopaque, hdr: *const npcap.pcap_pkthdr, data: []const 
         // Parse TCP/UDP ports if applicable
         const transport_offset = ip_offset + ihl;
         if ((ev.protocol == 6 or ev.protocol == 17) and data.len >= transport_offset + 4) {
-            ev.src_port = @intCast((data[transport_offset] << 8) | data[transport_offset + 1]);
-            ev.dst_port = @intCast((data[transport_offset + 2] << 8) | data[transport_offset + 3]);
+            ev.src_port = @as(u16, data[transport_offset]) << 8 | data[transport_offset + 1];
+            ev.dst_port = @as(u16, data[transport_offset + 2]) << 8 | data[transport_offset + 3];
         }
     } else if (is_ipv6 and data.len >= 54) {
         // Parse IPv6 header (starts at offset 14, fixed 40 bytes)
@@ -886,15 +886,15 @@ fn packetCallback(ctx: *anyopaque, hdr: *const npcap.pcap_pkthdr, data: []const 
         // Parse TCP/UDP ports if applicable
         const transport_offset = ip6_offset + 40;
         if ((ev.protocol == 6 or ev.protocol == 17) and data.len >= transport_offset + 4) {
-            ev.src_port = @intCast((data[transport_offset] << 8) | data[transport_offset + 1]);
-            ev.dst_port = @intCast((data[transport_offset + 2] << 8) | data[transport_offset + 3]);
+            ev.src_port = @as(u16, data[transport_offset]) << 8 | data[transport_offset + 1];
+            ev.dst_port = @as(u16, data[transport_offset + 2]) << 8 | data[transport_offset + 3];
         }
     } else {
         return; // Not parseable
     }
 
     ev.payload_len = @intCast(@min(data.len, 65535));
-    ev.event_id = diag.metrics.packets_captured.value;
+    ev.event_id = diag.metrics.packets_captured.get();
 
     // Push event + full payload into pipeline queue
     if (!pushEvent(ev, data)) {
@@ -979,21 +979,21 @@ fn etwThread(source: *etw.EtwSource) void {
 /// ETW callback: converts ETW event record to IpcEvent and pushes to pipeline.
 fn etwCallback(ctx: *anyopaque, rec: *const etw.EtwEventRecord, ext_data: []const u8) void {
     _ = ctx;
-    var ev = event.IpcEvent.init(.etw_process_event);
-    ev.source = .host_etw;
-    ev.timestamp_ns = @intCast(rec.timestamp);
-    ev.event_id = diag.metrics.events_emitted.value;
+    var ev = event.IpcEvent.init(.etw_process_create);
+    ev.source = .capture_etw;
+    ev.timestamp_ns = @intCast(rec.timestamp_ns);
+    ev.event_id = diag.metrics.events_emitted.get();
 
     // Determine event kind from ETW opcode
     const opcode = rec.opcode;
     if (opcode == 1) { // Process Start
-        ev.kind = .etw_process_event;
+        ev.kind = .etw_process_create;
     } else if (opcode == 2) { // Process Stop
-        ev.kind = .etw_process_event;
+        ev.kind = .etw_process_exit;
     } else if (opcode == 0x0A or opcode == 0x0B) { // File Create/Delete
         ev.kind = .fim_change;
     } else if (opcode == 0x0E or opcode == 0x0F) { // Registry Create/Delete
-        ev.kind = .dns_query; // reuse kind for registry events
+        ev.kind = .reg_change;
     }
 
     // Push event + extended data as payload
@@ -1026,7 +1026,7 @@ fn fimThread(watcher: *fim_mod.FimWatcher) void {
         const data = watcher.poll();
         if (data.len > 0) {
             var ev = event.IpcEvent.init(.fim_change);
-            ev.source = .host_fim;
+            ev.source = .capture_fim;
             ev.timestamp_ns = @intCast(std.time.nanoTimestamp());
             _ = pushEvent(ev, data);
             diag.metrics.events_emitted.inc();
@@ -1052,7 +1052,7 @@ fn registryThread(monitor: *reg_mon.RegistryMonitor) void {
         const events = monitor.drain();
         for (events) |reg_ev| {
             var ev = event.IpcEvent.init(.dns_query); // reuse kind for registry
-            ev.source = .host_registry;
+            ev.source = .capture_registry;
             ev.timestamp_ns = @intCast(reg_ev.timestamp_ns);
             _ = pushEvent(ev, &[_]u8{});
             diag.metrics.events_emitted.inc();
@@ -1225,21 +1225,11 @@ fn runDaemon() !void {
 
             const action_val = pol_obj.get("action") orelse continue;
             if (action_val != .string) continue;
-            const pol_action: policy.Action = if (std.mem.eql(u8, action_val.string, "block")) .block
-                else if (std.mem.eql(u8, action_val.string, "alert")) .alert
-                else if (std.mem.eql(u8, action_val.string, "rate_limit")) .rate_limit
-                else if (std.mem.eql(u8, action_val.string, "quarantine")) .quarantine
-                else if (std.mem.eql(u8, action_val.string, "log")) .log
-                else if (std.mem.eql(u8, action_val.string, "escalate")) .escalate
-                else .pass;
+            const pol_action: policy.Action = if (std.mem.eql(u8, action_val.string, "block")) .block else if (std.mem.eql(u8, action_val.string, "alert")) .alert else if (std.mem.eql(u8, action_val.string, "rate_limit")) .rate_limit else if (std.mem.eql(u8, action_val.string, "quarantine")) .quarantine else if (std.mem.eql(u8, action_val.string, "log")) .log else if (std.mem.eql(u8, action_val.string, "escalate")) .escalate else .pass;
 
             const severity_val = pol_obj.get("severity") orelse continue;
             if (severity_val != .string) continue;
-            const pol_severity: event.EventSeverity = if (std.mem.eql(u8, severity_val.string, "critical")) .critical
-                else if (std.mem.eql(u8, severity_val.string, "alert")) .alert
-                else if (std.mem.eql(u8, severity_val.string, "warning")) .warning
-                else if (std.mem.eql(u8, severity_val.string, "error")) .@"error"
-                else .info;
+            const pol_severity: event.EventSeverity = if (std.mem.eql(u8, severity_val.string, "critical")) .critical else if (std.mem.eql(u8, severity_val.string, "alert")) .alert else if (std.mem.eql(u8, severity_val.string, "warning")) .warning else if (std.mem.eql(u8, severity_val.string, "error")) .@"error" else .info;
 
             const ttl_val = pol_obj.get("ttl_sec") orelse continue;
             if (ttl_val != .integer) continue;
@@ -1260,29 +1250,16 @@ fn runDaemon() !void {
                                     if (preds_val == .array and preds_val.array.items.len > 0) {
                                         const first_pred = preds_val.array.items[0];
                                         if (first_pred == .object) {
-                                            const field_str = first_pred.object.get("field") orelse .{ .string = "kind" };
-                                            const op_str = first_pred.object.get("op") orelse .{ .string = "eq" };
-                                            const val_int = first_pred.object.get("value_int") orelse .{ .integer = 0 };
+                                            const field_str = first_pred.object.get("field") orelse std.json.Value{ .string = "kind" };
+                                            const op_str = first_pred.object.get("op") orelse std.json.Value{ .string = "eq" };
+                                            const val_int = first_pred.object.get("value_int") orelse std.json.Value{ .integer = 0 };
 
                                             if (field_str == .string) {
-                                                preds[0].field = if (std.mem.eql(u8, field_str.string, "kind")) .kind
-                                                    else if (std.mem.eql(u8, field_str.string, "severity")) .severity
-                                                    else if (std.mem.eql(u8, field_str.string, "src_ip")) .src_ip
-                                                    else if (std.mem.eql(u8, field_str.string, "dst_ip")) .dst_ip
-                                                    else if (std.mem.eql(u8, field_str.string, "src_port")) .src_port
-                                                    else if (std.mem.eql(u8, field_str.string, "dst_port")) .dst_port
-                                                    else if (std.mem.eql(u8, field_str.string, "protocol")) .protocol
-                                                    else if (std.mem.eql(u8, field_str.string, "rule_id")) .rule_id
-                                                    else .kind;
+                                                preds[0].field = if (std.mem.eql(u8, field_str.string, "kind")) .kind else if (std.mem.eql(u8, field_str.string, "severity")) .severity else if (std.mem.eql(u8, field_str.string, "src_ip")) .src_ip else if (std.mem.eql(u8, field_str.string, "dst_ip")) .dst_ip else if (std.mem.eql(u8, field_str.string, "src_port")) .src_port else if (std.mem.eql(u8, field_str.string, "dst_port")) .dst_port else if (std.mem.eql(u8, field_str.string, "protocol")) .protocol else if (std.mem.eql(u8, field_str.string, "rule_id")) .rule_id else .kind;
                                             }
                                             if (op_str == .string) {
-                                                preds[0].op = if (std.mem.eql(u8, op_str.string, "eq")) .eq
-                                                    else if (std.mem.eql(u8, op_str.string, "ne")) .ne
-                                                    else if (std.mem.eql(u8, op_str.string, "gt")) .gt
-                                                    else if (std.mem.eql(u8, op_str.string, "lt")) .lt
-                                                    else if (std.mem.eql(u8, op_str.string, "gte")) .gt // simplified: gte -> gt
-                                                    else if (std.mem.eql(u8, op_str.string, "match")) .match
-                                                    else .eq;
+                                                preds[0].op = if (std.mem.eql(u8, op_str.string, "eq")) .eq else if (std.mem.eql(u8, op_str.string, "ne")) .ne else if (std.mem.eql(u8, op_str.string, "gt")) .gt else if (std.mem.eql(u8, op_str.string, "lt")) .lt else if (std.mem.eql(u8, op_str.string, "gte")) .gt // simplified: gte -> gt
+                                                else if (std.mem.eql(u8, op_str.string, "match")) .match else .eq;
                                             }
                                             if (val_int == .integer) {
                                                 preds[0].value_int = @intCast(val_int.integer);
@@ -1347,7 +1324,6 @@ fn runDaemon() !void {
     _ = g_wd.registerThread(watchdog.ThreadKind.host_telemetry, "registry");
     // 8. Federation/XDR (disabled in standalone mode)
 
-
     // PATCH-20: Initialize Windows Data Plane adapters (Phase 3)
     // These adapters feed real Windows telemetry into the pipeline.
     var etw_source = etw.EtwSource.init();
@@ -1358,7 +1334,7 @@ fn runDaemon() !void {
     var inj_detector = inj_det.InjectionDetector.init(std.heap.page_allocator, &inj_det.DEFAULT_RULES);
     defer inj_detector.deinit();
 
-    diag.info("AEGIS NIDS initialization complete — entering main loop", .{});    // 9. Main loop: pipeline processing + control pipe
+    diag.info("AEGIS NIDS initialization complete — entering main loop", .{}); // 9. Main loop: pipeline processing + control pipe
     const start_ns = std.time.nanoTimestamp();
     if (builtin.os.tag == .windows) {
         setServiceStatus(SERVICE_RUNNING, 0);

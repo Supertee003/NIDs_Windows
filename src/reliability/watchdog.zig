@@ -26,6 +26,8 @@ pub const ThreadKind = enum(u8) {
     federation = 8,
     etw_consumer = 9,
     fim_watcher = 10,
+    pipeline = 11,
+    host_telemetry = 12,
 };
 
 pub const ThreadHeartbeat = struct {
