@@ -19,34 +19,17 @@ const manifest = @import("contract/runtime_manifest.zig");
 const diag = @import("core/diagnostics.zig");
 const mem = @import("core/memory_pool.zig");
 const npcap = @import("capture/npcap_adapter.zig");
-const decoder = @import("capture/packet_decoder.zig");
 const flow = @import("capture/flow_table.zig");
-const parsers = @import("capture/proto/parsers.zig");
-const stream = @import("capture/stream_reassembly.zig");
 const sig = @import("detection/signature_engine.zig");
 const anom = @import("detection/anomaly_detector.zig");
-const proto_anom = @import("detection/proto_anomaly.zig");
-const corr = @import("detection/correlator.zig");
 const tracker = @import("detection/threat_tracker.zig");
 const policy = @import("policy/policy_ir.zig");
-const trust = @import("policy/trust_store.zig");
 const pep = @import("policy/pep_bindings.zig");
-const dispatcher = @import("policy/action_dispatcher.zig");
 const forensic = @import("forensic/forensic_pipeline.zig");
-const replay = @import("forensic/replay_engine.zig");
-const etw = @import("windows/etw_realtime.zig");
-const fim = @import("windows/fim.zig");
-const regmon = @import("windows/registry_monitor.zig");
-const inject = @import("windows/injection_detector.zig");
-const host_tel = @import("windows/host_telemetry.zig");
 const watchdog = @import("reliability/watchdog.zig");
 const sec_check = @import("reliability/security_check.zig");
 const hist = @import("reliability/latency_histogram.zig");
 const fault = @import("reliability/fault_injection.zig");
-const cluster = @import("federation/cluster_coord.zig");
-const nodes = @import("federation/node_registry.zig");
-const agg = @import("federation/aggregator.zig");
-const xdr = @import("xdr/xdr_engine.zig");
 
 // ============================================================================
 // Windows control plane: \\.\pipe\aegis_control named-pipe server
@@ -594,7 +577,13 @@ fn processEvent(
     }
 
     // 3. Anomaly detection
-    _ = ad.observe(ev.src_ip, 1, ev.timestamp_ns); // 1 = packet rate metric
+        const anom_key = anom.EntityKey{ .src_ip = blk: {
+        var ip: [16]u8 = [_]u8{0} ** 16;
+        const src_b: [4]u8 = @bitCast(ev.src_ip);
+        @memcpy(ip[0..4], &src_b);
+        break :blk ip;
+    }, .metric_kind = 1 }; // 1 = packet rate
+    _ = ad.observe(anom_key, 1.0) catch null;
 
     // 4. Threat tracking (if detection matched)
     if (matched_rule_id != 0) {
@@ -863,6 +852,8 @@ fn runDaemon() !void {
     }
 
     // 6b. Load policy rules from configs/policies.json
+    var ps = policy.PolicySet.init(std.heap.page_allocator);
+    defer ps.deinit();
     var policies_loaded: u32 = 0;
     blk: {
         const pol_path = "configs/policies.json";
@@ -1012,23 +1003,11 @@ fn runDaemon() !void {
     var tt = tracker.ThreatTracker.init(std.heap.page_allocator);
     defer tt.deinit();
 
-    // 7. Initialize policy & PEP
-    var ps = policy.PolicySet.init(std.heap.page_allocator);
-    defer ps.deinit();
-    var ts = trust.TrustStore.init(std.heap.page_allocator);
-    defer ts.deinit();
+    // 7. Initialize PEP (PolicySet already loaded with policies from JSON)
     var pep_enf = pep.PepEnforcer.init();
     defer pep_enf.deinit();
 
-    // 8. Initialize federation (if enabled)
-    const cc = cluster.ClusterCoord.init(1);
-    _ = cc;
-    var nr = nodes.NodeRegistry.init(std.heap.page_allocator, 1);
-    defer nr.deinit();
-    var ag = agg.Aggregator.init(std.heap.page_allocator);
-    defer ag.deinit();
-    var xdr_eng = xdr.XdrEngine.init(std.heap.page_allocator, &xdr.DEFAULT_RULES);
-    defer xdr_eng.deinit();
+    // 8. Federation/XDR (disabled in standalone mode)
 
     diag.info("AEGIS NIDS initialization complete Ã¢â‚¬â€ entering main loop", .{});
     _ = perf;

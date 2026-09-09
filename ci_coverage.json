@@ -1,0 +1,56 @@
+{
+    "gate_semantics": "required missing = FAIL; optional = PASS, documented",
+    "workflows": [
+        ".github/workflows/ci.yml"
+    ],
+    "projects": [
+        {
+            "id": "zig-core",
+            "language": "zig",
+            "job": "zig-build-test",
+            "required": true
+        },
+        {
+            "id": "rust-pep",
+            "language": "rust",
+            "job": "rust-pep-build",
+            "required": true
+        },
+        {
+            "id": "c-native",
+            "language": "c",
+            "job": "c-native-build",
+            "required": true
+        },
+        {
+            "id": "python-tests",
+            "language": "python",
+            "job": "python-tests",
+            "required": true
+        },
+        {
+            "id": "go-nose",
+            "language": "go",
+            "job": "go-build-test",
+            "required": true
+        },
+        {
+            "id": "ts-policy",
+            "language": "typescript",
+            "job": "ts-policy-build",
+            "required": true
+        },
+        {
+            "id": "security-scan",
+            "language": "yaml",
+            "job": "security-scan",
+            "required": true
+        },
+        {
+            "id": "ci-matrix",
+            "language": "python",
+            "job": "ci-matrix",
+            "required": true
+        }
+    ]
+}
