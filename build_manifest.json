@@ -2,8 +2,8 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "b2ceabf",
-  "build_date": "2026-09-09T08:19:56.650286+00:00",
+  "source_commit": "dca2b75",
+  "build_date": "2026-09-10T00:00:00.000000+00:00",
   "build_host": "windows",
   "platform": {
     "os": "windows",
@@ -27,8 +27,9 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "b2ceabf",
-      "source": "core/"
+      "commit": "dca2b75",
+      "source": "src/main.zig",
+      "build_command": "zig build"
     },
     {
       "id": "pep",
@@ -37,48 +38,64 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "b2ceabf",
-      "source": "shield/"
+      "commit": "dca2b75",
+      "source": "rust-src/lib.rs",
+      "build_command": "cargo build --release"
     },
     {
-      "id": "wfp_user",
+      "id": "native_wfp",
       "name": "aegis_wfp_user.dll",
       "language": "c",
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "b2ceabf",
-      "source": "native/"
+      "commit": "dca2b75",
+      "source": "src/windows/aegis_wfp.c",
+      "build_command": "cmake -B build && cmake --build build"
     },
     {
-      "id": "etw_helper",
+      "id": "native_etw",
       "name": "aegis_etw_helper.dll",
       "language": "c",
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "b2ceabf",
-      "source": "native/"
+      "commit": "dca2b75",
+      "source": "src/windows/etw_native.c",
+      "build_command": "cmake -B build && cmake --build build"
     },
     {
-      "id": "fim_helper",
+      "id": "native_fim",
       "name": "aegis_fim_helper.dll",
       "language": "c",
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "b2ceabf",
-      "source": "native/"
+      "commit": "dca2b75",
+      "source": "src/windows/fim_native.c",
+      "build_command": "cmake -B build && cmake --build build"
+    },
+    {
+      "id": "bridge",
+      "name": "aegis_ipc.dll",
+      "language": "c++",
+      "type": "library",
+      "required": true,
+      "ci_job": "bridge-build",
+      "commit": "dca2b75",
+      "source": "bridge/aegis_ipc.cpp",
+      "build_command": "cd bridge && cmake -B build && cmake --build build"
     },
     {
       "id": "nose",
-      "name": "nose_dashboard.exe",
+      "name": "aegis-nose.exe",
       "language": "go",
       "type": "executable",
-      "required": false,
+      "required": true,
       "ci_job": "go-build-test",
-      "commit": "b2ceabf",
-      "source": "go/"
+      "commit": "dca2b75",
+      "source": "nose/main.go",
+      "build_command": "cd nose && go build -o aegis-nose.exe ."
     },
     {
       "id": "aggregator",
@@ -87,28 +104,19 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-build-test",
-      "commit": "b2ceabf",
-      "source": "go/aggregator/"
+      "commit": "dca2b75",
+      "source": "go/aggregator/main.go",
+      "build_command": "cd go/aggregator && go build -o aegis-aggregator.exe ."
     },
     {
       "id": "aegisctl",
-      "name": "scripts/aegisctl.py",
+      "name": "aegisctl.py",
       "language": "python",
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "b2ceabf",
-      "source": "scripts/aegisctl.py"
-    },
-    {
-      "id": "installer",
-      "name": "tools/installer.py",
-      "language": "python",
-      "type": "script",
-      "required": true,
-      "ci_job": "package-release",
-      "commit": "b2ceabf",
-      "source": "tools/installer.py"
+      "commit": "dca2b75",
+      "source": "tools/aegisctl.py"
     },
     {
       "id": "ts-policy",
@@ -117,18 +125,19 @@
       "type": "toolchain",
       "required": true,
       "ci_job": "ts-policy-build",
-      "commit": "b2ceabf",
-      "source": "ts_policy/"
+      "commit": "dca2b75",
+      "source": "ts_policy/src/index.ts",
+      "build_command": "cd ts_policy && npm run build"
     },
     {
       "id": "brain",
-      "name": "brain/aegis_brain_cython/fast_scan.pyx",
-      "language": "cython",
-      "type": "library",
+      "name": "brain/windows_brain.py",
+      "language": "python",
+      "type": "module",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "b2ceabf",
-      "source": "brain/"
+      "commit": "dca2b75",
+      "source": "brain/windows_brain.py"
     }
   ],
   "modules": {

@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "generated_at": "2026-09-09T06:07:22.184546+00:00",
-  "head_sha": "4df3af3f84a1fdbf6d169231145e31e130e13027",
+  "head_sha": "dca2b75",
   "build_commands": {
     "zig": {
       "command": "zig build",
@@ -18,7 +18,7 @@
       "source_root": "rust-src/lib.rs"
     },
     "cpp": {
-      "command": "cmake -B build && cmake --build build --config Release",
+      "command": "cmake -B build && cmake --build build",
       "produces": [
         "build/Release/aegis_wfp_user.dll",
         "build/Release/aegis_etw_helper.dll",
@@ -26,6 +26,16 @@
       ],
       "source_root": "src/windows/aegis_wfp.c",
       "notes": "CMake builds native helpers (WFP user, ETW, FIM)"
+    },
+    "cpp_bridge": {
+      "command": "cd bridge && cmake -B build && cmake --build build",
+      "produces": [
+        "dist/aegis_ipc.dll",
+        "dist/aegis_adapter.dll",
+        "dist/aegis_bridge.exe"
+      ],
+      "source_root": "bridge/aegis_ipc.cpp",
+      "notes": "CMake builds C++ bridge (IPC, adapter, DEFCON)"
     },
     "go": {
       "command": "cd nose && go build -o aegis-nose.exe .",
@@ -74,10 +84,11 @@
       "expected_empty": false
     }
   ],
-  "build_truth_status": "STEP_01_CORRECTED",
+  "build_truth_status": "RT-01_CORRECTED",
   "notes": [
-    "PATCH-01: Corrected to match actual build.zig/Cargo.toml/CMakeLists.txt/nose/go.mod",
-    "Source of truth: build.zig (line 14: src/main.zig), Cargo.toml (aegis_pep), CMakeLists.txt (3 native helpers), nose/go.mod",
-    "End-to-end verification comes in STEP 36"
+    "RT-01: Corrected to match actual build.zig/Cargo.toml/CMakeLists.txt/bridge/CMakeLists.txt/nose/go.mod",
+    "Source of truth: build.zig (src/main.zig), Cargo.toml (rust-src/lib.rs), CMakeLists.txt (src/windows/*.c), bridge/CMakeLists.txt (bridge/*.cpp), nose/go.mod",
+    "All HEAD SHAs updated to dca2b75",
+    "Added bridge component (C++ IPC/adapter/DEFCON)"
   ]
 }

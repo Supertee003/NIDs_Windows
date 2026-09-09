@@ -1,7 +1,7 @@
 # AGENTS.md — AEGIS NIDS Windows
 ## Version 2.0 — Current-HEAD Vertical Slice Workflow
 
-**HEAD:** `b187948bb2875c4f0d4009097313012a03ce410f`
+**HEAD:** `dca2b75`
 **Applies to:** All human + AI agents contributing to AEGIS NIDS Windows
 
 ---

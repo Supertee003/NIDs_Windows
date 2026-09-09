@@ -1,7 +1,7 @@
 # AI_CONTEXT.md — AEGIS NIDS Windows
 ## Machine-Generated Current-HEAD Context Layer
 
-**HEAD:** `b187948bb2875c4f0d4009097313012a03ce410f`
+**HEAD:** `dca2b75`
 **BRANCH:** `main`
 **GENERATED:** 2026-09-09
 **GENERATOR:** OpenCode MiMo 2.5 Free
@@ -50,18 +50,20 @@ cd ts_policy && npm run build               → ts_policy/dist/      (policy aut
 
 ## 5. CURRENT PHASE
 
-**Phase 6 — Evidence & Forensics** (vertical slices completed)
-- FOR-001 Forensic Record Integrity ✅
-- FOR-002 Forensic Verification ✅
-- FOR-003 Replay Integrity ✅
+**TRUTH STABILIZATION** (RT-01 through RT-08)
 
-**Phase 7 — Multi-Language Integration** (patches 36-39 completed)
-**Phase 8 — Testing & Verification** (patches 40-43 completed)
-**Phase 9 — Release Engineering** (patches 44-46 completed)
+Previous phases (6-9) were implemented but verification levels vary:
+- Phase 6 (Forensics): IMPLEMENTED, verification E2 (unit tests only)
+- Phase 7 (FFI): IMPLEMENTED, verification E2 (unit tests only)
+- Phase 8 (Testing): IMPLEMENTED, verification E2 (unit tests only)
+- Phase 9 (Release): IMPLEMENTED, verification E2 (unit tests only)
 
 ## 6. ACTIVE BLOCKERS
 
-None currently. Previous blockers (aegis_fim_helper.dll linker error, stub crypto) are documented in EVIDENCE_INDEX.json.
+1. **GAP-002 (P1):** WFP enforcement not host-verified — needs E5 Windows host test
+2. **GAP-001 (P0):** Ed25519 production verification not complete — SHA-256 verified, Ed25519 requires ring crate
+3. **Build manifest conflicts:** build_manifest.json referenced wrong source roots (core/ vs src/) — NOW FIXED
+4. **Documentation drift:** Multiple truth sources had stale HEAD SHAs — NOW FIXED
 
 ## 7. CURRENT BUILD COMMANDS
 

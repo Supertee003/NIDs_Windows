@@ -1,33 +1,38 @@
 path,semantic_position,language,runtime_status,authority,primary_owner,inputs,outputs,dependents,replacement,tests,notes
-# NOTE (Step 2, 2026-09-08): rows below describe the legacy core/ dev tree
-# (retained, tracked, NOT in production build). Live production modules live
-# under src/ (build.zig -> src/main.zig). Kept as historical registry.
-core/canonical_event.zig,NORMALIZE,Zig,ACTIVE,Contract authority,Zig core,sensors,CanonicalEvent,all pipeline stages,,contract_freeze tests,Immutable after observation
-core/wire_event.zig,TRANSPORT,Zig,ACTIVE,Wire authority,Zig core,sensors,WireEvent,bridge/brain/shield,,wire tests,Fixed width + explicit endian
-core/event_fabric.zig,SCHEDULE,Zig,ACTIVE,Queue authority,Zig core,canonical_event,PrioritizedEvent,dispatcher,fabric_accounting.zig,Priority queue + backpressure
-core/dispatcher.zig,OPERATE,Zig,ACTIVE,Runtime orchestration,Zig core,event_fabric,pipeline results,lifecycle,nids_main.zig,8-stage pipeline orchestrator
-core/lifecycle.zig,OPERATE,Zig,ACTIVE,Lifecycle authority,Zig core,all subsystems,init/shutdown,nids_main.zig,,Init/shutdown ordering
-core/flow_engine.zig,STATE,Zig,ACTIVE,Flow authority,Zig core,canonical_event,FlowUpdate,flow_state_proof.zig,flow_state_proof.zig,Atomic upsert + eviction
-core/detection_engine.zig,DETECT,Zig,ACTIVE,Detection authority,Zig core,canonical_event + flow,DetectionEvidence,verdict_aggregator,detection_fabric_proof.zig,Evidence producer (NOT enforcer)
-core/verdict_aggregator.zig,DETECT,Zig,ACTIVE,Verdict authority,Zig core,DetectionEvidence,AggregatedVerdict,correlation,,6-state verdict model
-core/correlation_engine.zig,CORRELATE,Zig,ACTIVE,Correlation authority,Zig core,verdict + flow,CorrelationAlert,intelligence,correlation_proof.zig,Entity graph (9 types)
-core/threat_intel.zig,INTELLIGENCE,Zig,ACTIVE,Threat intel authority,Zig core,canonical_event,ThreatIntelMatch,policy,intelligence_proof.zig,Operational (IP/domain/hash/rep)
-core/brain_engine.zig,INTELLIGENCE,Zig,ACTIVE,Brain advisory,Zig core,verdict + alerts + ti,BrainAdvice,policy,brain_proof.zig,Advisory only (fail-soft)
-core/policy_engine.zig,DECIDE,Zig,ACTIVE,Policy authority,Zig core,event + verdict + advice,EnforcementDecision,rust_pep,policy_plane_proof.zig,Decides (NOT executes)
-core/rust_pep.zig,ENFORCE,Zig,ACTIVE,PEP authority,Rust shield,EnforcementDecision,EnforcementResult,forensics,pep_enforcement_proof.zig,Validate + execute + defer
-core/forensics_engine.zig,REMEMBER,Zig,ACTIVE,Forensic authority,Zig core,all pipeline results,ForensicRecord,forensic_log,forensic_replay_proof.zig,Complete decision trace
-core/forensic_log.zig,REMEMBER,Zig,ACTIVE,Logging authority,Zig core,LogEvent,NDJSON log,SIEM,,Append-only + rotation + dual-clock
-core/audit_trail_proof.zig,PROVE,Zig,PROOF,Test-only,Zig proof,audit actions,AuditTrail verification,,audit_trail_proof.zig,G14 proof
-core/backup_recovery_proof.zig,PROVE,Zig,PROOF,Test-only,Zig proof,system state,Snapshot/Restore verification,,backup_recovery_proof.zig,G17 proof
-core/nids_analyze.zig,OPERATE,Zig,DEPRECATED,Legacy migration,Zig core,,delegates to dispatcher,dispatcher,nids_analyze.zig,Replaced by dispatcher wrapper (G22)
-core/legacy_removal.zig,OPERATE,Zig,ADAPTER,Migration controller,Zig core,legacy entries,removal tracking,,legacy_removal.zig,Migration proof tool
-nose/,OBSERVE,Go,ACTIVE,Sensor ingestion,Go nose,Windows network,raw events,bridge,,Nose sensor
-bridge/,TRANSPORT,C++,ACTIVE,IPC bridge,C++ bridge,nose + core,IPC messages,brain/shield,,C++ IPC adapter
-brain/,INTELLIGENCE,Python,ACTIVE,Brain advisory,Python brain,events + alerts,BrainAdvice,core,,Python advisory layer
-shield/,ENFORCE,Rust,ACTIVE,PEP authority,Rust shield,EnforcementDecision,EnforcementResult,drivers,,Rust enforcement boundary
-mouth/,OPERATE,Rust,ACTIVE,DEFCON TUI,Rust mouth,health + defcon,operator UI,,DEFCON TUI
+# RT-02: LEGACY core/ modules — NOT compiled, NOT production. Live modules under src/.
+core/canonical_event.zig,NORMALIZE,Zig,LEGACY,Contract authority,Zig core,sensors,CanonicalEvent,all pipeline stages,src/contract/event.zig,,Superseded by src/contract/event.zig
+core/wire_event.zig,TRANSPORT,Zig,LEGACY,Wire authority,Zig core,sensors,WireEvent,bridge/brain/shield,src/contract/event.zig,,Superseded by src/contract/event.zig
+core/event_fabric.zig,SCHEDULE,Zig,LEGACY,Queue authority,Zig core,canonical_event,PrioritizedEvent,dispatcher,,,"Superseded by src/capture/flow_table.zig, src/detection/correlator.zig"
+core/dispatcher.zig,OPERATE,Zig,LEGACY,Runtime orchestration,Zig core,event_fabric,pipeline results,lifecycle,src/main.zig,,Superseded by src/main.zig pipeline
+core/lifecycle.zig,OPERATE,Zig,LEGACY,Lifecycle authority,Zig core,all subsystems,init/shutdown,src/main.zig,,Superseded by src/main.zig init/shutdown
+core/flow_engine.zig,STATE,Zig,LEGACY,Flow authority,Zig core,canonical_event,FlowUpdate,flow_state_proof.zig,src/capture/flow_table.zig,,Superseded by src/capture/flow_table.zig
+core/detection_engine.zig,DETECT,Zig,LEGACY,Detection authority,Zig core,canonical_event + flow,DetectionEvidence,verdict_aggregator,src/detection/signature_engine.zig + src/detection/anomaly_detector.zig,,Superseded by src/detection/*
+core/verdict_aggregator.zig,DETECT,Zig,LEGACY,Verdict authority,Zig core,DetectionEvidence,AggregatedVerdict,correlation,src/detection/threat_tracker.zig,,Superseded by src/detection/threat_tracker.zig
+core/correlation_engine.zig,CORRELATE,Zig,LEGACY,Correlation authority,Zig core,verdict + flow,CorrelationAlert,intelligence,src/detection/correlator.zig,,Superseded by src/detection/correlator.zig
+core/threat_intel.zig,INTELLIGENCE,Zig,LEGACY,Threat intel authority,Zig core,canonical_event,ThreatIntelMatch,policy,src/detection/threat_tracker.zig,,Superseded by src/detection/threat_tracker.zig
+core/brain_engine.zig,INTELLIGENCE,Zig,LEGACY,Brain advisory,Zig core,verdict + alerts + ti,BrainAdvice,policy,brain/windows_brain.py,,Superseded by brain/windows_brain.py
+core/policy_engine.zig,DECIDE,Zig,LEGACY,Policy authority,Zig core,event + verdict + advice,EnforcementDecision,rust_pep,src/policy/policy_ir.zig + src/policy/action_dispatcher.zig,,Superseded by src/policy/*
+core/rust_pep.zig,ENFORCE,Zig,LEGACY,PEP authority,Rust shield,EnforcementDecision,EnforcementResult,forensics,src/policy/pep_bindings.zig,,Superseded by src/policy/pep_bindings.zig + rust-src/lib.rs
+core/forensics_engine.zig,REMEMBER,Zig,LEGACY,Forensic authority,Zig core,all pipeline results,ForensicRecord,forensic_log,src/forensic/forensic_pipeline.zig,,Superseded by src/forensic/forensic_pipeline.zig
+core/forensic_log.zig,REMEMBER,Zig,LEGACY,Logging authority,Zig core,LogEvent,NDJSON log,SIEM,src/forensic/forensic_pipeline.zig,,Superseded by src/forensic/forensic_pipeline.zig
+core/audit_trail_proof.zig,PROVE,Zig,TEST,Test-only,Zig proof,audit actions,AuditTrail verification,,,audit_trail_proof.zig,Test-only proof
+core/backup_recovery_proof.zig,PROVE,Zig,TEST,Test-only,Zig proof,system state,Snapshot/Restore verification,,,backup_recovery_proof.zig,Test-only proof
+core/nids_analyze.zig,OPERATE,Zig,DEPRECATED,Legacy migration,Zig core,,delegates to dispatcher,dispatcher,src/main.zig,,Replaced by dispatcher wrapper (G22)
+core/legacy_removal.zig,OPERATE,Zig,ADAPTER,Migration controller,Zig core,legacy entries,removal tracking,,,legacy_removal.zig,Migration proof tool
+# RT-02: Active production modules
+src/,OPERATE,Zig,ACTIVE,Zig runtime authority,Zig core,windows events,security decisions,all subsystems,,Canonical Zig runtime
+rust-src/,ENFORCE,Rust,ACTIVE,PEP authority,Rust pep,EnforcementDecision,EnforcementResult,src/policy/pep_bindings.zig,,Canonical Rust PEP
+nose/,OBSERVE,Go,ACTIVE,Sensor ingestion,Go nose,Windows network,raw events,bridge,,Canonical Go acquisition
+bridge/,TRANSPORT,C++,ACTIVE,IPC bridge,C++ bridge,nose + src,IPC messages,brain/rust-src,,Canonical C++ bridge
+brain/,INTELLIGENCE,Python,ACTIVE,Brain advisory,Python brain,events + alerts,BrainAdvice,src/policy,,Canonical Python advisory
+ts_policy/,DECIDE,TypeScript,ACTIVE,Policy authoring,TS policy,policy rules,Policy IR,src/forensic/policy_contract.zig,,Canonical TypeScript policy
 drivers/,OBSERVE,C,ACTIVE,Kernel capture,C drivers,Windows kernel,raw packets/events,bridge,,WFP + minifilter drivers
-config/Rules.json,NORMALIZE,JSON,ACTIVE,Detection rules,Operator,manual,rule definitions,detection_engine,,Hot-reloadable
-config/aegis.conf,OPERATE,INI,ACTIVE,System config,Operator,manual,config sections,all subsystems,,Hot-reloadable
+config/Rules.json,NORMALIZE,JSON,ACTIVE,Detection rules,Operator,manual,rule definitions,src/detection/signature_engine.json,,Canonical detection rules
+config/aegis.conf,OPERATE,INI,ACTIVE,System config,Operator,manual,config sections,all subsystems,,Canonical system config
 scripts/,OPERATE,PowerShell,ACTIVE,Deploy scripts,Operator,deploy .ps1,deployed files,,Deploy + management
+tools/,OPERATE,Python,ACTIVE,Operational tools,Operator,maintenance scripts,maintenance results,,Operational tooling
 tests/,PROVE,Multi,TEST,Behavioral tests,QA,test sources,test results,,,Cross-language tests
+docs/,DOCUMENT,Multi,DOCS,Documentation,Author,specs,documentation,,,Project documentation
+# RT-02: Legacy directories — NOT compiled, NOT production
+core/,OPERATE,Zig,LEGACY,Legacy proof modules,Zig core,N/A,N/A,N/A,src/,"Superseded by src/, kept as historical reference"
+shield/,ENFORCE,Rust,LEGACY,Legacy Rust crate,Rust shield,N/A,N/A,N/A,rust-src/,"Superseded by root Cargo.toml + rust-src/"

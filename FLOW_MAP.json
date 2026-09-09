@@ -1,5 +1,5 @@
 {
-  "head_sha": "b187948bb2875c4f0d4009097313012a03ce410f",
+  "head_sha": "dca2b75",
   "created_at": "2026-09-09",
   "generator_version": "2.0",
   "flows": [
@@ -25,7 +25,7 @@
           "component": "go_nose",
           "input": "RawPacket",
           "output": "IpcEvent (80-byte canonical)",
-          "file": "nose/conical.go"
+          "file": "nose/canonical.go"
         },
         {
           "step": 3,

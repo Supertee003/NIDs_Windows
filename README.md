@@ -147,22 +147,23 @@ main()
 
 ## 13. Current Status
 
-**HEAD:** `b187948bb2875c4f0d4009097313012a03ce410f`
+**HEAD:** `dca2b75`
 **Branch:** `main`
-**Phase:** 6-9 complete (forensic, FFI, testing, release)
+**Phase:** Truth Stabilization (RT-01 through RT-08)
 
-| Component | Status | Evidence Level |
-|---|---|---|
-| Zig Core | IMPLEMENTED | E2 (unit tests) |
-| Rust PEP | IMPLEMENTED | E0-E2 (crypto stubs may exist) |
-| Go Nose | IMPLEMENTED | E1 (AST) |
-| C++ Native | IMPLEMENTED | E1 (AST) |
-| C++ Bridge | IMPLEMENTED | E1 (AST) |
-| Python Brain | IMPLEMENTED | E0 |
-| TypeScript Policy | IMPLEMENTED | E1 (typecheck) |
-| Forensic Pipeline | VERIFIED | E2 (unit tests) |
-| Replay Verifier | VERIFIED | E2 (unit tests) |
-| Decision Trace | VERIFIED | E2 (unit tests) |
+| Component | Implementation Status | Verification Status | Host Status |
+|---|---|---|---|
+| Zig Core | IMPLEMENTED | E2 (unit tests) | NOT_VERIFIED |
+| Rust PEP | IMPLEMENTED | E2 (SHA-256 verified, Ed25519 pending) | NOT_VERIFIED |
+| Go Nose | IMPLEMENTED | E1 (AST) | NOT_VERIFIED |
+| C++ Native | IMPLEMENTED | E1 (selftest passes) | NOT_VERIFIED |
+| C++ Bridge | IMPLEMENTED | E1 (selftest passes) | NOT_VERIFIED |
+| Python Brain | IMPLEMENTED | E0 | NOT_VERIFIED |
+| TypeScript Policy | IMPLEMENTED | E1 (typecheck) | NOT_VERIFIED |
+| Forensic Pipeline | IMPLEMENTED | E2 (unit tests) | NOT_VERIFIED |
+| Replay Verifier | IMPLEMENTED | E2 (unit tests) | NOT_VERIFIED |
+| Decision Trace | IMPLEMENTED | E2 (unit tests) | NOT_VERIFIED |
+| WFP Enforcement | INTEGRATED | E2 (API test) | NOT_VERIFIED |
 
 ## 14. Verification Levels
 

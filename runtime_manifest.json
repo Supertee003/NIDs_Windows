@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "generated_at": "2026-09-09T06:07:22.160641+00:00",
-  "head_sha": "4df3af3f84a1fdbf6d169231145e31e130e13027",
+  "head_sha": "dca2b75",
   "canonical_source_root": "/",
   "canonical_entrypoints": {
     "zig_core_tier1": {
@@ -31,11 +31,22 @@
       "file": "src/windows/aegis_wfp.c",
       "language": "c",
       "role": "Native Windows adapters: WFP user-mode, ETW helpers, FIM",
-      "build": "cmake -B build && cmake --build build --config Release",
+      "build": "cmake -B build && cmake --build build",
       "artifacts": [
         "build/Release/aegis_wfp_user.dll",
         "build/Release/aegis_etw_helper.dll",
         "build/Release/aegis_fim_helper.dll"
+      ]
+    },
+    "cpp_bridge": {
+      "file": "bridge/aegis_ipc.cpp",
+      "language": "c++",
+      "role": "C++ IPC bridge: event queue, DEFCON, IPS block/unblock, adapter management",
+      "build": "cd bridge && cmake -B build && cmake --build build",
+      "artifacts": [
+        "dist/aegis_ipc.dll",
+        "dist/aegis_adapter.dll",
+        "dist/aegis_bridge.exe"
       ]
     },
     "brain_tier2": {
@@ -79,22 +90,41 @@
       "path": "nose/aegis-nose.exe",
       "produced_by": "cd nose && go build -o aegis-nose.exe .",
       "source": "nose/main.go"
+    },
+    "cpp_bridge": {
+      "path": "dist/aegis_ipc.dll",
+      "produced_by": "cd bridge && cmake -B build && cmake --build build",
+      "source": "bridge/aegis_ipc.cpp"
+    },
+    "cpp_adapter": {
+      "path": "dist/aegis_adapter.dll",
+      "produced_by": "cd bridge && cmake -B build && cmake --build build",
+      "source": "bridge/aegis_adapter.cpp"
     }
   },
   "canonical_config": {
-    "rules": "Rules.json"
+    "rules": "config/Rules.json"
   },
+  "canonical_cli": "tools/aegisctl.py",
   "canonical_test_root": "tests/",
   "legacy_markers": {
     "lib.rs (root)": "OBSOLETE - superseded by rust-src/lib.rs",
-    "Back Rules.json": "DUPLICATE of Rules.json",
+    "Back Rules.json": "DUPLICATE of config/Rules.json",
+    "Rules.json (root)": "DUPLICATE of config/Rules.json - same content",
     "core/*.zig": "LEGACY proof/integration/CLI modules - NOT compiled by build.zig; src/*.zig is canonical",
-    "nids_main.zig (root)": "LEGACY - superseded by src/main.zig"
+    "nids_main.zig (root)": "LEGACY - superseded by src/main.zig",
+    "shield/": "LEGACY Rust crate - superseded by root Cargo.toml + rust-src/",
+    "native/": "DOES NOT EXIST - use src/windows/ for C native helpers",
+    "go/": "PARTIAL - go/aggregator/ exists but go/ root is not a module; nose/ is the Go source",
+    "aegisctl.py (root)": "LEGACY - superseded by tools/aegisctl.py (Gate C CLI)",
+    "scripts/aegisctl.py": "LEGACY - superseded by tools/aegisctl.py (Gate C CLI)"
   },
   "invariants": [
-    "ONE production runtime (Zig core + Rust PEP + Go Nose + C++ native helpers)",
+    "ONE production runtime (Zig core + Rust PEP + Go Nose + C native helpers + C++ bridge)",
     "NO build artifacts tracked",
     "NO runtime state tracked",
-    "src/ = canonical source, core/ = legacy/experimental proof modules"
+    "src/ = canonical Zig source, core/ = legacy/experimental proof modules",
+    "rust-src/ = canonical Rust PEP source, shield/ = legacy Rust crate",
+    "bridge/ = canonical C++ bridge, native/ = DOES NOT EXIST"
   ]
 }
