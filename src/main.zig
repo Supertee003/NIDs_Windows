@@ -26,6 +26,7 @@ const tracker = @import("detection/threat_tracker.zig");
 const policy = @import("policy/policy_ir.zig");
 const pep = @import("policy/pep_bindings.zig");
 const forensic = @import("forensic/forensic_pipeline.zig");
+const trace_mod = @import("forensic/decision_trace.zig");
 const dispatcher = @import("policy/action_dispatcher.zig");
 const watchdog = @import("reliability/watchdog.zig");
 const sec_check = @import("reliability/security_check.zig");
@@ -510,6 +511,7 @@ var g_policies_loaded: u32 = 0;
 var g_pipeline_policies_matched: u64 = 0;
 var g_pipeline_audit_id: u64 = 0; // PATCH-13: monotonic audit trail counter
 var g_pep_request_id: u64 = 0; // PATCH-25: unique PEP request ID counter
+var g_trace_id: u64 = 0; // PATCH-34: monotonic trace counter
 var g_wd: watchdog.ReliabilityWatchdog = undefined; // PATCH-29: global watchdog
 var g_fi: fault.FaultInjector = undefined; // PATCH-30: global fault injector
 var g_perf: hist.PerfTracker = undefined; // PATCH-31: global performance tracker
@@ -687,6 +689,10 @@ fn processEvent(
     const ev = &qe.ev;
     g_pipeline_events_processed += 1;
 
+    // PATCH-34: Create security decision trace (128 bytes on stack)
+    g_trace_id += 1;
+    var decision_trace = trace_mod.SecurityDecisionTrace.init(g_trace_id, ev);
+
     // 1. Flow table: lookup or create flow for this event's 5-tuple
     const src_ip_bytes: [16]u8 = blk: {
         var ip: [16]u8 = [_]u8{0} ** 16;
@@ -748,6 +754,13 @@ fn processEvent(
         }
     }
 
+    // PATCH-34: Record detection result in trace
+    decision_trace.setDetection(
+        matched_rule_id,
+        if (active_incident) |inc| @as(u64, inc.id) else @as(u64, 0),
+        if (active_incident) |inc| inc.severity else @as(u8, 0),
+    );
+
     // 5. Policy evaluation — use escalated severity for policy matching
     // PATCH-11: Build EvalContext with incident-aware severity
     var policy_action: policy.Action = .pass;
@@ -758,6 +771,8 @@ fn processEvent(
     if (ps.evaluate(eval_ctx)) |pol| {
         matched_policy = pol;
         policy_action = pol.action;
+        // PATCH-34: Record policy match in trace
+        decision_trace.setPolicy(pol.id, pol.version);
     }
 
     // 6. PEP enforcement (final authorization gate)
@@ -769,22 +784,34 @@ fn processEvent(
         pep_decision = pep_enf.enforce(&ev_copy, pol, 0, 0xFFFFFFFF, g_pep_request_id); // caller_pid=0, all caps
         g_pipeline_detections += 1; // policy matched = detection event
 
+        // PATCH-34: Record PEP decision in trace
+        decision_trace.setPepDecision(g_pep_request_id, @intFromEnum(pep_decision));
+
         // 6a. Action dispatch (execute enforcement action)
         // PATCH-12: dispatcher receives PEP decision — does NOT re-evaluate PEP
         dispatcher.ActionDispatcher.dispatch(&ev_copy, pol, pep_decision);
     }
 
-    // PATCH-13: Audit trace — every security decision gets a unique audit_id
-    // Records: event_id, audit_id, decision, policy_id, src_ip, dst_ip
+    // PATCH-13 + PATCH-34: Audit trace — every security decision gets a unique audit_id
     const audit_id = g_pipeline_audit_id;
     g_pipeline_audit_id += 1;
-    diag.info("AUDIT audit_id={} event_id={} decision={s} policy_id={} src={x} dst={x} proto={d}", .{
+    decision_trace.setAuditId(audit_id);
+
+    // PATCH-34: Structured audit log from trace
+    diag.info("AUDIT trace_id={} audit_id={} event_id={} rule={} incident={} policy={} pep_req={} decision={s} result={s} src={x}:{d} dst={x}:{d} proto={d}", .{
+        decision_trace.trace_id,
         audit_id,
         ev.event_id,
+        decision_trace.matched_rule_id,
+        decision_trace.incident_id,
+        decision_trace.policy_id,
+        decision_trace.pep_request_id,
         @tagName(pep_decision),
-        if (matched_policy) |pol| pol.id else @as(u32, 0),
+        @tagName(@as(trace_mod.TraceResult, @enumFromInt(decision_trace.result))),
         ev.src_ip,
+        ev.src_port,
         ev.dst_ip,
+        ev.dst_port,
         ev.protocol,
     });
 

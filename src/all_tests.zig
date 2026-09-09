@@ -23,9 +23,11 @@ comptime {
     _ = @import("tests/policy/pep_bindings.zig");
     _ = @import("tests/policy/action_dispatcher.zig");
     _ = @import("tests/forensic/forensic_pipeline.zig");
+    _ = @import("tests/forensic/decision_trace.zig");
     _ = @import("tests/forensic/evidence_record.zig");
     _ = @import("tests/forensic/provenance.zig");
     _ = @import("tests/forensic/replay_integrity.zig");
+    _ = @import("tests/forensic/replay_verifier.zig");
     _ = @import("tests/forensic/abi_contract.zig");
     _ = @import("tests/forensic/integration_contract.zig");
     _ = @import("tests/forensic/python_contract.zig");
