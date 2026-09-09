@@ -1,0 +1,298 @@
+{
+  "head_sha": "b187948bb2875c4f0d4009097313012a03ce410f",
+  "created_at": "2026-09-09",
+  "generator_version": "2.0",
+  "evidence_levels": {
+    "E0": "No evidence",
+    "E1": "Static inspection / AST analysis",
+    "E2": "Unit test proof",
+    "E3": "Component integration test",
+    "E4": "System integration test",
+    "E5": "Windows host verification",
+    "E6": "Production simulation",
+    "E7": "Release verification"
+  },
+  "evidence": [
+    {
+      "id": "EVT-001",
+      "head_sha": "b187948bb2875c4f0d4009097313012a03ce410f",
+      "timestamp": "2026-09-09",
+      "title": "Zig build test — all unit tests pass",
+      "level": "E2",
+      "component": "zig_core",
+      "command": "zig build test",
+      "expected": "All tests pass",
+      "actual": "ALL TESTS PASS",
+      "result": "PASS",
+      "files_verified": [
+        "src/all_tests.zig",
+        "src/contract/event.zig",
+        "src/core/diagnostics.zig",
+        "src/core/memory_pool.zig",
+        "src/capture/flow_table.zig",
+        "src/capture/packet_decoder.zig",
+        "src/detection/signature_engine.zig",
+        "src/detection/anomaly_detector.zig",
+        "src/detection/correlator.zig",
+        "src/detection/threat_tracker.zig",
+        "src/policy/policy_ir.zig",
+        "src/policy/pep_bindings.zig",
+        "src/policy/action_dispatcher.zig",
+        "src/forensic/forensic_pipeline.zig",
+        "src/forensic/decision_trace.zig",
+        "src/forensic/evidence_record.zig",
+        "src/forensic/provenance.zig",
+        "src/forensic/replay_integrity.zig",
+        "src/forensic/replay_verifier.zig",
+        "src/forensic/abi_contract.zig",
+        "src/forensic/integration_contract.zig",
+        "src/forensic/policy_contract.zig",
+        "src/forensic/python_contract.zig",
+        "src/forensic/release_manifest.zig",
+        "src/forensic/release_gate.zig",
+        "src/forensic/installer.zig",
+        "src/forensic/replay_engine.zig",
+        "src/reliability/watchdog.zig",
+        "src/reliability/security_check.zig",
+        "src/reliability/latency_histogram.zig",
+        "src/reliability/fault_injection.zig",
+        "src/federation/node_registry.zig",
+        "src/federation/cluster_coord.zig",
+        "src/federation/aggregator.zig",
+        "src/xdr/xdr_engine.zig",
+        "src/windows/etw_realtime.zig",
+        "src/windows/fim.zig",
+        "src/windows/registry_monitor.zig",
+        "src/windows/injection_detector.zig",
+        "src/windows/host_telemetry.zig"
+      ]
+    },
+    {
+      "id": "EVT-002",
+      "head_sha": "b187948bb2875c4f0d4009097313012a03ce410f",
+      "timestamp": "2026-09-09",
+      "title": "FOR-001: Forensic record integrity with embedded hash chain",
+      "level": "E2",
+      "component": "forensic",
+      "description": "Forensic ring buffer with record_seq, prev_hash, current_hash, CRC. Snapshot reads return allocated copies. Hash chain verified across ring wrap.",
+      "tests": [
+        "append and read record",
+        "ring wrap preserves valid records",
+        "corruption detection via CRC",
+        "corruption detection via hash mismatch",
+        "hash chain continuity across wrap",
+        "snapshot copy independent of ring"
+      ],
+      "result": "PASS"
+    },
+    {
+      "id": "EVT-003",
+      "head_sha": "b187948bb2875c4f0d4009097313012a03ce410f",
+      "timestamp": "2026-09-09",
+      "title": "FOR-002: Security decision trace",
+      "level": "E2",
+      "component": "forensic",
+      "description": "128-byte SecurityDecisionTrace struct. Wired into processEvent(). Structured audit log replacing simple AUDIT line.",
+      "tests": [
+        "init and validate",
+        "detection trace recording",
+        "policy+PEP trace recording",
+        "complete flow trace",
+        "asBytes serialization"
+      ],
+      "result": "PASS"
+    },
+    {
+      "id": "EVT-004",
+      "head_sha": "b187948bb2875c4f0d4009097313012a03ce410f",
+      "timestamp": "2026-09-09",
+      "title": "FOR-003: Replay verification with observe-only safety",
+      "level": "E2",
+      "component": "forensic",
+      "description": "ReplayVerifier orchestrates export→verify→replay→compare. ReplayMode.observe_only default ensures no live enforcement during replay.",
+      "tests": [
+        "export and verify records",
+        "record replay results",
+        "detect replay mismatch",
+        "deterministic replay hash"
+      ],
+      "result": "PASS"
+    },
+    {
+      "id": "EVT-005",
+      "head_sha": "b187948bb2875c4f0d4009097313012a03ce410f",
+      "timestamp": "2026-09-09",
+      "title": "FFI contracts: ABI, integration, policy, Python",
+      "level": "E2",
+      "component": "forensic",
+      "description": "Cross-language contract verification for Zig/Rust, Go/Zig, C++/Zig, TypeScript/Python boundaries.",
+      "tests": [
+        "ABI contract golden vector",
+        "integration contract verification",
+        "policy contract interface",
+        "Python contract ctypes/Cython"
+      ],
+      "result": "PASS"
+    },
+    {
+      "id": "EVT-006",
+      "head_sha": "b187948bb2875c4f0d4009097313012a03ce410f",
+      "timestamp": "2026-09-09",
+      "title": "Release engineering: manifest, gate, installer",
+      "level": "E2",
+      "component": "forensic",
+      "description": "Release manifest, gate verification, and installer contract for deployment pipeline.",
+      "tests": [
+        "release manifest generation",
+        "release gate checks",
+        "installer contract validation"
+      ],
+      "result": "PASS"
+    },
+    {
+      "id": "EVT-007",
+      "head_sha": "b187948bb2875c4f0d4009097313012a03ce410f",
+      "timestamp": "2026-09-09",
+      "title": "Testing: unit, integration, fault, release",
+      "level": "E2",
+      "component": "forensic",
+      "description": "Comprehensive test suites covering unit, integration, adversarial/fault injection, and release validation.",
+      "tests": [
+        "unit test coverage",
+        "integration test golden path",
+        "fault injection resilience",
+        "release validation"
+      ],
+      "result": "PASS"
+    },
+    {
+      "id": "EVT-008",
+      "head_sha": "b187948bb2875c4f0d4009097313012a03ce410f",
+      "timestamp": "2026-09-09",
+      "title": "FOR-CNC-001: Forensic concurrent integrity — 4 threads × 5 appends + concurrent read + dual-thread wrap",
+      "level": "E2",
+      "component": "forensic",
+      "description": "Three concurrent tests: (1) 4 threads each append 5 records, verify hash chain; (2) reader thread + writer thread run simultaneously, verify no corruption; (3) 2 threads each append 12 records to 4-slot ring, verify every retained record passes CRC + hash + full chain.",
+      "flow_id": "FOR-CNC-001",
+      "files_changed": [
+        "src/forensic/forensic_pipeline.zig"
+      ],
+      "tests": [
+        "concurrent append from 4 threads (20 records)",
+        "concurrent read while appending (reader + writer)",
+        "concurrent dual-thread append with wrap (24 records, 4-slot ring)"
+      ],
+      "result": "PASS",
+      "closes_gap": "GAP-003",
+      "evidence_level": "E2"
+    },
+    {
+      "id": "EVT-009",
+      "head_sha": "b187948bb2875c4f0d4009097313012a03ce410f",
+      "timestamp": "2026-09-09",
+      "title": "FFI-001: Zig/Rust PEP ABI verification — struct layout, offsets, enum values, function signatures",
+      "level": "E2",
+      "component": "policy",
+      "description": "Verifies Zig extern struct layouts match Rust #[repr(C)]: PepContext (24B), PepRequest (64B), PepResponse (16B). Verifies field offsets, PepDecision enum values (0-5), extern function declarations, and binary serialization roundtrip.",
+      "flow_id": "FFI-001",
+      "files_changed": [
+        "src/policy/pep_bindings.zig"
+      ],
+      "tests": [
+        "PepContext size = 24 bytes (matches Rust)",
+        "PepContext field offsets (0,4,8,16)",
+        "PepRequest size = 64 bytes (matches Rust)",
+        "PepRequest field offsets (0,8,16,20,24,26,28,32,40)",
+        "PepResponse size = 16 bytes (matches Rust)",
+        "PepResponse field offsets (0,4,8,12)",
+        "PepDecision enum values (0-5) match Rust constants",
+        "extern function declarations valid",
+        "PepRequest binary serialization roundtrip"
+      ],
+      "result": "PASS"
+    },
+    {
+      "id": "EVT-010",
+      "head_sha": "b187948bb2875c4f0d4009097313012a03ce410f",
+      "timestamp": "2026-09-09",
+      "title": "FFI-002: Go/Zig ownership & lifecycle — wire format, source/type/action constants, frame layout",
+      "level": "E2",
+      "component": "integration",
+      "description": "Verifies Go Nose wire format constants match Zig contract: magic (0x41454731), wire size (109B), schema version (1), dev struct size (128B). Verifies Go EventSource/EventType/PolicyAction constants, reserved area offsets, NoseWireFrame layout, and CRC32 field position.",
+      "flow_id": "FFI-002",
+      "files_changed": [
+        "src/forensic/integration_contract.zig"
+      ],
+      "tests": [
+        "Go wire magic = 0x41454731",
+        "Go wire size = 109 bytes",
+        "Go schema version = 1",
+        "Go dev struct size = 128",
+        "Go reserved area offsets (0,4,8,9,10,11,15)",
+        "Go wire frame nominal size = 125 bytes",
+        "Go source constants ordered correctly",
+        "Go event type constants match range",
+        "Go policy action constants match range",
+        "NoseWireFrame layout ABI-safe",
+        "NoseWireHeader CRC32 at offset 12",
+        "NoseWireHeader payload_length at offset 8"
+      ],
+      "result": "PASS"
+    }
+  ],
+  "known_gaps": [
+    {
+      "id": "GAP-001",
+      "severity": "P0",
+      "title": "Rust PEP crypto stubs",
+      "description": "Ed25519 signature verification and SHA-256 in rust-src/lib.rs may contain placeholders. Real crypto operations must be verified.",
+      "status": "OPEN",
+      "required_evidence": [
+        "known valid signature passes",
+        "known invalid signature fails",
+        "wrong key fails",
+        "mutated policy fails"
+      ]
+    },
+    {
+      "id": "GAP-002",
+      "severity": "P1",
+      "title": "WFP enforcement not host-verified",
+      "description": "WFP code exists but no Windows host test proves actual network filtering behavior.",
+      "status": "OPEN",
+      "required_evidence": [
+        "PEP authorization → filter operation → observed network effect → rollback"
+      ]
+    },
+    {
+      "id": "GAP-003",
+      "severity": "P1",
+      "title": "Forensic integrity under concurrency",
+      "description": "Forensic ring buffer concurrent read safety not proven with real Windows threads.",
+      "status": "CLOSED_BY_EVT-008",
+      "closed_at": "2026-09-09",
+      "evidence": "EVT-008: Three concurrent tests pass — 4-thread append, concurrent read+write, dual-thread wrap with per-record verification"
+    },
+    {
+      "id": "GAP-004",
+      "severity": "P2",
+      "title": "aegis_fim_helper.dll linker error",
+      "description": "C++ FIM helper DLL not built — linker error for missing symbol. Out of scope for Zig code.",
+      "status": "OPEN",
+      "required_evidence": [
+        "cmake build produces aegis_fim_helper.dll",
+        "Zig links against it successfully"
+      ]
+    }
+  ],
+  "evidence_level_summary": {
+    "E0_count": 0,
+    "E1_count": 0,
+    "E2_count": 10,
+    "E3_count": 0,
+    "E4_count": 0,
+    "E5_count": 0,
+    "E6_count": 0,
+    "E7_count": 0
+  }
+}

@@ -1,0 +1,164 @@
+{
+  "head_sha": "b187948bb2875c4f0d4009097313012a03ce410f",
+  "created_at": "2026-09-09",
+  "generator_version": "2.0",
+  "runtime_name": "AEGIS NIDS Windows",
+  "version": "5.0.0",
+  "components": [
+    {
+      "id": "zig_core",
+      "language": "Zig",
+      "tier": 1,
+      "role": "Runtime spine, capture, detection, correlation, policy orchestration, forensics",
+      "entrypoint": "src/main.zig",
+      "build_command": "zig build",
+      "artifact": "zig-out/bin/aegis_nids.exe",
+      "test_command": "zig build test",
+      "modules": [
+        {"name": "contract/event", "file": "src/contract/event.zig", "role": "Canonical 80-byte IPC event schema"},
+        {"name": "contract/runtime_manifest", "file": "src/contract/runtime_manifest.zig", "role": "Capability flags, limits, feature negotiation"},
+        {"name": "core/diagnostics", "file": "src/core/diagnostics.zig", "role": "Structured logging, metrics counters"},
+        {"name": "core/memory_pool", "file": "src/core/memory_pool.zig", "role": "Slab allocator, lock-free ring buffers"},
+        {"name": "capture/npcap_adapter", "file": "src/capture/npcap_adapter.zig", "role": "Npcap FFI: pcap_create/activate/next_ex"},
+        {"name": "capture/packet_decoder", "file": "src/capture/packet_decoder.zig", "role": "Ethernet/IPv4/IPv6/TCP/UDP decoder"},
+        {"name": "capture/flow_table", "file": "src/capture/flow_table.zig", "role": "Bidirectional flow table (4096-bucket hash)"},
+        {"name": "capture/stream_reassembly", "file": "src/capture/stream_reassembly.zig", "role": "TCP stream reassembly"},
+        {"name": "capture/proto/parsers", "file": "src/capture/proto/parsers.zig", "role": "L7 parsers: DNS, HTTP, TLS, SMB, RDP, Kerberos"},
+        {"name": "detection/signature_engine", "file": "src/detection/signature_engine.zig", "role": "Aho-Corasick multi-pattern matcher"},
+        {"name": "detection/anomaly_detector", "file": "src/detection/anomaly_detector.zig", "role": "EWMA+z-score anomaly detection"},
+        {"name": "detection/proto_anomaly", "file": "src/detection/proto_anomaly.zig", "role": "Protocol anomaly detection"},
+        {"name": "detection/correlator", "file": "src/detection/correlator.zig", "role": "Multi-event correlation"},
+        {"name": "detection/threat_tracker", "file": "src/detection/threat_tracker.zig", "role": "Atomic threat scoring + incident escalation"},
+        {"name": "policy/policy_ir", "file": "src/policy/policy_ir.zig", "role": "Policy IR DSL compiler"},
+        {"name": "policy/trust_store", "file": "src/policy/trust_store.zig", "role": "Trust store: key lifecycle, certificate validation"},
+        {"name": "policy/pep_bindings", "file": "src/policy/pep_bindings.zig", "role": "PEP FFI bindings (Zig side)"},
+        {"name": "policy/action_dispatcher", "file": "src/policy/action_dispatcher.zig", "role": "Enforcement action execution"},
+        {"name": "forensic/forensic_pipeline", "file": "src/forensic/forensic_pipeline.zig", "role": "64 MiB forensic ring buffer with hash chain"},
+        {"name": "forensic/decision_trace", "file": "src/forensic/decision_trace.zig", "role": "128-byte security decision trace"},
+        {"name": "forensic/evidence_record", "file": "src/forensic/evidence_record.zig", "role": "Evidence record with hash chain"},
+        {"name": "forensic/provenance", "file": "src/forensic/provenance.zig", "role": "Build provenance + release chain"},
+        {"name": "forensic/replay_engine", "file": "src/forensic/replay_engine.zig", "role": "PCAP replay with deterministic timing"},
+        {"name": "forensic/replay_integrity", "file": "src/forensic/replay_integrity.zig", "role": "Replay hash tracking + comparison"},
+        {"name": "forensic/replay_verifier", "file": "src/forensic/replay_verifier.zig", "role": "End-to-end replay verification"},
+        {"name": "forensic/abi_contract", "file": "src/forensic/abi_contract.zig", "role": "ABI contract verification"},
+        {"name": "forensic/integration_contract", "file": "src/forensic/integration_contract.zig", "role": "Cross-subsystem interface verification"},
+        {"name": "forensic/policy_contract", "file": "src/forensic/policy_contract.zig", "role": "Policy evaluation interface"},
+        {"name": "forensic/python_contract", "file": "src/forensic/python_contract.zig", "role": "Python/ctypes/Cython interface"},
+        {"name": "forensic/release_manifest", "file": "src/forensic/release_manifest.zig", "role": "Release artifact tracking"},
+        {"name": "forensic/release_gate", "file": "src/forensic/release_gate.zig", "role": "Pre-release verification"},
+        {"name": "forensic/installer", "file": "src/forensic/installer.zig", "role": "NSIS installer contract"},
+        {"name": "reliability/watchdog", "file": "src/reliability/watchdog.zig", "role": "Heartbeat-based liveness monitoring"},
+        {"name": "reliability/security_check", "file": "src/reliability/security_check.zig", "role": "Security self-hardening at startup"},
+        {"name": "reliability/latency_histogram", "file": "src/reliability/latency_histogram.zig", "role": "Pipeline latency tracking"},
+        {"name": "reliability/fault_injection", "file": "src/reliability/fault_injection.zig", "role": "Configurable fault injection"},
+        {"name": "federation/node_registry", "file": "src/federation/node_registry.zig", "role": "Cluster member tracking"},
+        {"name": "federation/cluster_coord", "file": "src/federation/cluster_coord.zig", "role": "Leader election, heartbeat"},
+        {"name": "federation/aggregator", "file": "src/federation/aggregator.zig", "role": "Multi-node event aggregation"},
+        {"name": "xdr/xdr_engine", "file": "src/xdr/xdr_engine.zig", "role": "Cross-layer detection and response"},
+        {"name": "windows/etw_realtime", "file": "src/windows/etw_realtime.zig", "role": "ETW real-time capture"},
+        {"name": "windows/fim", "file": "src/windows/fim.zig", "role": "File integrity monitoring"},
+        {"name": "windows/registry_monitor", "file": "src/windows/registry_monitor.zig", "role": "Registry change tracking"},
+        {"name": "windows/injection_detector", "file": "src/windows/injection_detector.zig", "role": "T1055 process injection detection"},
+        {"name": "windows/host_telemetry", "file": "src/windows/host_telemetry.zig", "role": "Host signal aggregation"}
+      ]
+    },
+    {
+      "id": "rust_pep",
+      "language": "Rust",
+      "tier": 3,
+      "role": "Policy Enforcement Point + Federation TLS",
+      "entrypoint": "rust-src/lib.rs",
+      "build_command": "cargo build --release",
+      "artifact": "target/release/aegis_pep.dll",
+      "dependencies": ["ring", "rustls", "windows", "serde", "parking_lot"]
+    },
+    {
+      "id": "go_nose",
+      "language": "Go",
+      "tier": 2,
+      "role": "Packet acquisition, flow collection, IPC reader",
+      "entrypoint": "nose/main.go",
+      "build_command": "cd nose && go build -o aegis-nose.exe .",
+      "artifact": "nose/aegis-nose.exe",
+      "dependencies": ["gopacket", "bubbletea"]
+    },
+    {
+      "id": "cpp_native",
+      "language": "C/C++",
+      "tier": 2,
+      "role": "Windows native adapters: WFP, ETW, FIM",
+      "entrypoint": "src/windows/aegis_wfp.c",
+      "build_command": "cmake -B build && cmake --build build",
+      "artifacts": [
+        "build/Release/aegis_wfp_user.dll",
+        "build/Release/aegis_etw_helper.dll",
+        "build/Release/aegis_fim_helper.dll"
+      ]
+    },
+    {
+      "id": "cpp_bridge",
+      "language": "C++",
+      "tier": 2,
+      "role": "IPC bridge + adapter framework",
+      "entrypoint": "bridge/aegis_bridge_main.cpp",
+      "build_command": "cmake -B bridge/build bridge && cmake --build bridge/build",
+      "artifacts": [
+        "dist/aegis_ipc.dll",
+        "dist/aegis_bridge.exe",
+        "dist/aegis_adapter.dll"
+      ]
+    },
+    {
+      "id": "brain",
+      "language": "Python",
+      "tier": 2,
+      "role": "Threat analysis, regex scanning, analytics",
+      "entrypoint": "brain/windows_brain.py",
+      "build_command": "(interpreted)"
+    },
+    {
+      "id": "ts_policy",
+      "language": "TypeScript",
+      "tier": 2,
+      "role": "Policy authoring, simulation, compilation",
+      "entrypoint": "ts_policy/src/index.ts",
+      "build_command": "cd ts_policy && npm run build",
+      "test_command": "cd ts_policy && npm run test"
+    },
+    {
+      "id": "aggregator",
+      "language": "Go",
+      "tier": 2,
+      "role": "Multi-node event aggregation",
+      "entrypoint": "go/aggregator/main.go",
+      "build_command": "cd go/aggregator && go build -o aggregator.exe ."
+    },
+    {
+      "id": "shield",
+      "language": "Rust",
+      "tier": 3,
+      "role": "Enforcement library (minimal/placeholder)",
+      "entrypoint": "shield/src/lib.rs",
+      "build_command": "cd shield && cargo build --release"
+    },
+    {
+      "id": "dashboard",
+      "language": "Rust",
+      "tier": 2,
+      "role": "Web dashboard backend (egui native GUI)",
+      "entrypoint": "aegis_dashboard/src/main.rs",
+      "build_command": "cd aegis_dashboard && cargo build --release"
+    }
+  ],
+  "legacy_markers": [
+    {"file": "lib.rs (root)", "reason": "Superseded by rust-src/lib.rs"},
+    {"file": "core/*.zig", "reason": "Legacy proof modules, NOT compiled by build.zig"},
+    {"file": "nids_main.zig (root)", "reason": "Superseded by src/main.zig"}
+  ],
+  "invariants": [
+    "ONE production runtime (Zig core + Rust PEP + Go Nose + C++ native helpers)",
+    "NO build artifacts tracked in git",
+    "NO runtime state tracked in git",
+    "src/ = canonical source; core/ = legacy/experimental proof modules"
+  ]
+}

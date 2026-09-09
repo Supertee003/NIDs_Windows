@@ -1,95 +1,126 @@
-# AGENTS.md â€” AEGIS NIDS Windows
+# AGENTS.md — AEGIS NIDS Windows
+## Version 2.0 — Current-HEAD Vertical Slice Workflow
 
-**Status:** STEP 01 â€” Repository + Runtime Truth
+**HEAD:** `b187948bb2875c4f0d4009097313012a03ce410f`
 **Applies to:** All human + AI agents contributing to AEGIS NIDS Windows
 
 ---
 
-## AI Command (Recite Before Any Code Change)
+## PRIME DIRECTIVE
 
-```
-Use the existing AEGIS repository as the source of truth.
+Do not patch files in isolation.
 
-Do not invent a new architecture.
+First understand the system behavior.
 
-Implement only the assigned step.
-
-Do not create a second runtime.
-
-Do not create a second Canonical Event.
-
-Do not create a second Policy Authority.
-
-Do not create a second Enforcement Authority.
-
-Do not bypass the Rust PEP.
-
-Do not promote mock, stub, scaffold, or placeholder code to production.
-
-Do not change unrelated files.
-
-Run the existing implementation before rewriting.
-
-Add tests and evidence for the change.
-
-If the requested change requires modifying an architecture boundary,
-contract, runtime order, authority, or language ownership,
-STOP and report the conflict before coding.
-```
+The unit of reasoning is: **SYSTEM FLOW**
+The unit of implementation is: **VERTICAL SLICE**
+The unit of modification is: **PATCH TRANSACTION**
+The unit of proof is: **EVIDENCE**
 
 ---
 
-## Source of Truth
+## CONTROL LOOP
+
+```
+CURRENT HEAD
+  ↓
+TRUTH SNAPSHOT
+  ↓
+SYSTEM MAP
+  ↓
+ONE FLOW CONTRACT
+  ↓
+ONE PATCH TRANSACTION
+  ↓
+REAL VERIFICATION
+  ↓
+EVIDENCE
+  ↓
+COMMIT
+  ↓
+REBASE SYSTEM MAP
+```
+
+After every patch, rebuild the machine maps. Never use a pre-patch architecture map as current truth.
+
+---
+
+## SOURCE OF TRUTH HIERARCHY
+
+When sources disagree, use this order:
+
+1. Actual runtime behavior
+2. Current source code at current HEAD
+3. Current build configuration
+4. Current-head machine-readable manifests
+5. AGENTS.md and ADRs
+6. Current-head evidence
+7. Reports tied to current HEAD
+8. README
+9. AI assumptions
+
+Never treat an old report as current truth. If a report contains a different HEAD SHA, mark it HISTORICAL.
+
+---
+
+## MACHINE-READABLE TRUTH
 
 | Artifact | Path | Role |
 |---|---|---|
-| Architecture decisions | `docs/adr/` | Formal ADRs |
-| File inventory | `inventory.json` | Tracked files + classifications |
-| Runtime declaration | `runtime_manifest.json` | Canonical entrypoints + artifacts |
-| Build truth | `build_truth.json` | Build commands â†’ artifact paths |
-| Reference map | `reference_map.json` | File â†’ role mapping |
-| This file | `AGENTS.md` | Workflow rules |
+| AI Context | `AI_CONTEXT.md` | First document an agent reads |
+| System map | `SYSTEM_MAP.json` | Component inventory + roles |
+| Flow map | `FLOW_MAP.json` | Data/decision/enforcement flows |
+| Authority map | `AUTHORITY_MAP.json` | Language ownership + security authority |
+| Contract map | `CONTRACT_MAP.json` | Cross-language contracts + schemas |
+| Evidence index | `EVIDENCE_INDEX.json` | All evidence artifacts |
+| Build truth | `build_truth.json` | Build commands → artifacts |
+| Runtime manifest | `runtime_manifest.json` | Canonical entrypoints |
+| Inventory | `inventory.json` | File inventory + classifications |
+| Reference map | `reference_map.json` | File → role mapping |
+
+Every machine map includes: `head_sha`, `created_at`, `generator_version`.
+
+If a map has a different HEAD than the current source, it is STALE. Do not use it as current truth.
 
 ---
 
-## Canonical Runtime (per ADR-RUNTIME-CONVERGENCE)
-
-Build order (build each component separately):
+## CANONICAL RUNTIME
 
 ```
-zig build                                   (Zig Tier-1: aegis_nids.exe)
-cargo build --release                       (Rust Tier-3: aegis_pep.dll)
-cmake -B build && cmake --build build       (C++: native helpers)
-cd nose && go build -o aegis-nose.exe .     (Go Nose: packet acquisition)
-python brain/windows_brain.py               (Python Tier-2: brain/analytics)
+zig build                                   → aegis_nids.exe       (Tier-1: runtime spine)
+cargo build --release                       → aegis_pep.dll        (Tier-3: Rust PEP)
+cmake -B build && cmake --build build       → 3 C DLLs             (native adapters)
+cd nose && go build -o aegis-nose.exe .     → aegis-nose.exe       (Go: packet acquisition)
+python brain/windows_brain.py               → (interpreted)        (Tier-2: analytics)
+cd ts_policy && npm run build               → ts_policy/dist/      (policy authoring, advisory)
 ```
 
-**ONE production runtime.**
+**ONE production runtime. No duplicates.**
 
 ---
 
-## Language Ownership
+## LANGUAGE OWNERSHIP
 
-| Language | Owns | Does NOT own |
+| Language | Owns | Does NOT Own |
 |---|---|---|
-| Zig | runtime fabric, event, flow, dispatcher, detection orchestration, correlation, forensics | privileged enforcement, crypto |
-| Go | packet acquisition (Nose), collectors, I/O, external feeds | policy, enforcement |
-| C++ | Windows native (ETW, FIM, Registry, process adapters) | policy decision, enforcement |
-| Python | Brain (Tier-2), analytics, RAG | privileged OS calls, enforcement |
-| Rust | crypto, trust, PEP, authorization, WFP, rollback security | detection logic |
-| TypeScript | policy authoring, simulation, dashboard | enforcement, runtime |
-| Cython | measured hot loops only (after profiling) | new logic |
+| Zig | Runtime fabric, event, flow, dispatcher, detection, correlation, forensics | Privileged enforcement, crypto |
+| Go | Packet acquisition (Nose), collectors, I/O | Policy, enforcement |
+| C++ | Windows native adapters (ETW, FIM, Registry, WFP) | Policy decision, enforcement |
+| Python | Brain (Tier-2), analytics, RAG | Privileged OS calls, enforcement |
+| Rust | Crypto, trust, PEP, authorization, WFP/security enforcement | Detection logic |
+| TypeScript | Policy authoring, simulation, compiler | Enforcement, runtime |
+| Cython | Measured Python hot loops only (after profiling) | New logic |
 
 ---
 
-## STOP-THE-LINE Triggers
+## STOP-THE-LINE TRIGGERS
 
 Halt all coding immediately and file an issue when any of these is detected:
 
 - ABI mismatch
 - Memory corruption / use-after-free
 - Race condition or deadlock
-- Event loss (silent)
+- Silent event loss
 - Policy bypass
 - PEP bypass
 - Unauthorized enforcement
@@ -97,76 +128,155 @@ Halt all coding immediately and file an issue when any of these is detected:
 - Privileged IPC exposure
 - Driver contract mismatch
 - Duplicate runtime
-- Duplicate policy authority
-- Duplicate enforcement authority
+- Duplicate authority
 - Forensic inconsistency
 - Production mock
 - Build/runtime mismatch
 - Stale evidence
+- Contradictory source-of-truth documents
+
+Do not work around these silently.
 
 ---
 
-## Pre-Commit Checks
+## CURRENT HEAD SNAPSHOT
+
+Before changing code, execute and record:
 
 ```powershell
+git rev-parse HEAD
+git branch --show-current
+git status --short
+git log -1 --oneline
+git ls-files
+```
+
+Read: `AI_CONTEXT.md`, `SYSTEM_MAP.json`, `FLOW_MAP.json`, `AUTHORITY_MAP.json`, `CONTRACT_MAP.json`, `EVIDENCE_INDEX.json`
+
+If any machine map has a different HEAD: MARK STALE. Do not use it as current truth.
+
+---
+
+## VERTICAL SLICE REQUIREMENT
+
+The slice must cross all relevant layers.
+
+Example FOR-001:
+```
+Event → forensic record → sequence → hash → CRC → persistence → read → verify → replay → audit → CLI → evidence
+```
+
+A vertical slice is not complete when only the storage struct changes.
+
+---
+
+## PATCH REQUIREMENTS
+
+Each patch must declare:
+
+```
+PATCH-ID
+FLOW-ID
+TARGET HEAD
+TARGET FILES
+TARGET SYMBOLS
+IN-SCOPE / OUT-OF-SCOPE
+CONTRACT IMPACT
+ABI IMPACT
+AUTHORITY IMPACT
+STATE IMPACT
+TEST IMPACT
+EVIDENCE IMPACT
+```
+
+Each patch must produce:
+
+```
+PATCH-ID
+FLOW-ID
+TARGET HEAD
+FINAL HEAD
+FILES CHANGED
+OLD FLOW → NEW FLOW
+INVARIANT
+BUILD RESULT
+TEST RESULT
+WINDOWS RESULT (if applicable)
+EVIDENCE LEVEL
+EVIDENCE ARTIFACTS
+ROLLBACK
+REMAINING RISK
+OPEN BLOCKERS
+COMPLETION GATE
+```
+
+---
+
+## POST-PATCH REBASELINE
+
+After every successful patch:
+
+1. Record final HEAD
+2. Rebuild affected machine maps
+3. Update evidence index
+4. Update current phase status
+5. Identify newly closed gaps
+6. Identify remaining blockers
+
+Do not continue using the pre-patch architecture map as if it were current.
+
+---
+
+## TEST MATRIX
+
+| Level | Description |
+|---|---|
+| E0 | No evidence |
+| E1 | Static inspection |
+| E2 | Unit test proof |
+| E3 | Component integration |
+| E4 | System integration |
+| E5 | Windows host verification |
+| E6 | Production simulation |
+| E7 | Release verification |
+
+Do not claim a higher level from a lower-level test.
+
+---
+
+## PRE-COMMIT CHECKS
+
+```powershell
+# No build artifacts tracked
 git ls-files | Select-String -Pattern '\.(exe|dll|pdb|obj|o|so|ilk|exp|lib)$'   # empty
+
+# No cache dirs tracked
 git ls-files | Select-String -Pattern '^(\.zig-cache|target|__pycache__|zig-out|shield/target|build/|dist/)/'  # empty
+
+# No runtime state tracked
 git ls-files | Select-String -Pattern '^logs/'   # empty
+
+# No legacy root lib.rs
 git ls-files lib.rs   # empty
-Test-Path docs/adr/ADR-RUNTIME-CONVERGENCE.md   # True
-Test-Path inventory.json   # True
-Test-Path runtime_manifest.json   # True
-Test-Path build_truth.json   # True
+
+# Required truth artifacts exist
+Test-Path AI_CONTEXT.md   # True
+Test-Path SYSTEM_MAP.json   # True
+Test-Path FLOW_MAP.json   # True
+Test-Path AUTHORITY_MAP.json   # True
+Test-Path CONTRACT_MAP.json   # True
+Test-Path EVIDENCE_INDEX.json   # True
 ```
 
 ---
 
-## STEP Completion Report Template
+## EXECUTION ORDER
 
 ```
-STEP:        NN
-TASK:        <one-line summary>
-LANGUAGE:    <primary language(s)>
-CURRENT COMMIT: <SHA>
-
-FILES CHANGED:        <list>
-FILES NOT CHANGED:    <list>
-
-CURRENT STATE:        <before>
-TARGET STATE:         <after>
-
-IMPLEMENTATION:       <what was done>
-INTEGRATION:          <how it connects>
-
-AUTHORITY:            <runtime | policy | pep | forensic | federation | xdr>
-
-REAL / MOCK / STUB:   <which parts are real>
-
-TESTS:                <what tests pass>
-FAILURE TESTS:        <negative/fault tests>
-
-WINDOWS STATUS:       <builds? runs?>
-
-SECURITY IMPACT:      <changed security-wise>
-PERFORMANCE IMPACT:   <changed perf-wise>
-REGRESSION:           <any broken test>
-
-REMAINING GAPS:        <what this step did NOT solve>
-EXIT GATE:             <PASS / FAIL>
-NEXT STEP:             <NN+1>
+Phase 6: Forensic Integrity          (FOR-001, FOR-002, FOR-003)
+Phase 7: Multi-Language Integration  (FFI-001, FFI-002, FFI-003, FFI-004)
+Phase 8: Testing & Verification      (VER-001, VER-002, VER-003, VER-004)
+Phase 9: Release Engineering         (REL-001, REL-002, REL-003, REL-004)
 ```
 
----
-
-## Execution Order
-
-```
-01 Repository inventory + runtime truth      â† CURRENT
-02 Repository cleanup
-03 Runtime convergence
-04 Build truth
-...
-60 Final 100%
-```
-
-**No step may begin until the previous step's Exit Gate = PASS.**
+No slice may begin until the previous slice's Completion Gate = PASS.

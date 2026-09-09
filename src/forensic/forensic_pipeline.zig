@@ -452,3 +452,171 @@ test "ForensicRing record_seq increments" {
     const hdr2 = std.mem.bytesAsValue(RecordHeader, rec2[0..@sizeOf(RecordHeader)]);
     try std.testing.expectEqual(@as(u64, 2), hdr2.record_seq);
 }
+
+// ============================================================================
+// FOR-CNC-001: Concurrent Integrity Tests
+// ============================================================================
+
+const CncWriterCtx = struct {
+    ring: *ForensicRing,
+    thread_id: u32,
+    count: u32,
+};
+
+fn cncWriterFn(ctx: *CncWriterCtx) void {
+    var i: u32 = 0;
+    while (i < ctx.count) : (i += 1) {
+        var ev = event.IpcEvent.init(.signature_match);
+        ev.now();
+        ev.event_id = @as(u64, ctx.thread_id) * 1000 + i;
+        _ = ctx.ring.append(&ev, "concurrent", 0, 0, 0, 0) catch break;
+    }
+}
+
+test "ForensicRing concurrent append from multiple threads" {
+    var ring = try ForensicRing.initMemory(std.testing.allocator, 16 * RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+
+    const num_threads = 4;
+    const per_thread = 5;
+    var threads: [num_threads]std.Thread = undefined;
+    var contexts: [num_threads]CncWriterCtx = undefined;
+
+    var t: u32 = 0;
+    while (t < num_threads) : (t += 1) {
+        contexts[t] = .{ .ring = &ring, .thread_id = t, .count = per_thread };
+        threads[t] = try std.Thread.spawn(.{}, cncWriterFn, .{&contexts[t]});
+    }
+
+    for (threads) |th| {
+        th.join();
+    }
+
+    // All threads wrote per_thread records
+    try std.testing.expectEqual(@as(u64, num_threads * per_thread), ring.recordCount());
+    // Hash chain should still be valid
+    try std.testing.expect(ring.verifyHashChain());
+}
+
+const CncReaderCtx = struct {
+    ring: *ForensicRing,
+    read_count: *std.atomic.Value(u32),
+    total: u32,
+};
+
+fn cncReaderFn(ctx: *CncReaderCtx) void {
+    var i: u32 = 0;
+    while (i < ctx.total) : (i += 1) {
+        const idx = @as(u64, i) % ctx.ring.recordCount();
+        if (ctx.ring.readRecord(idx, std.testing.allocator)) |rec| {
+            std.testing.allocator.free(rec);
+            _ = ctx.read_count.fetchAdd(1, .monotonic);
+        }
+    }
+}
+
+const CncLiveWriterCtx = struct {
+    ring: *ForensicRing,
+    count: u32,
+};
+
+fn cncLiveWriterFn(ctx: *CncLiveWriterCtx) void {
+    var i: u32 = 0;
+    while (i < ctx.count) : (i += 1) {
+        var ev = event.IpcEvent.init(.anomaly_detected);
+        ev.now();
+        ev.event_id = 100 + i;
+        _ = ctx.ring.append(&ev, "live", 0, 0, 0, 0) catch break;
+    }
+}
+
+test "ForensicRing concurrent read while appending" {
+    var ring = try ForensicRing.initMemory(std.testing.allocator, 8 * RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+
+    // Pre-populate with some records
+    var ev = event.IpcEvent.init(.signature_match);
+    ev.now();
+    var i: u32 = 0;
+    while (i < 4) : (i += 1) {
+        ev.event_id = i;
+        _ = try ring.append(&ev, "seed", 0, 0, 0, 0);
+    }
+
+    var read_count = std.atomic.Value(u32).init(0);
+    const read_total: u32 = 20;
+    const write_total: u32 = 8;
+
+    var r_ctx = CncReaderCtx{ .ring = &ring, .read_count = &read_count, .total = read_total };
+    var w_ctx = CncLiveWriterCtx{ .ring = &ring, .count = write_total };
+
+    var reader = try std.Thread.spawn(.{}, cncReaderFn, .{&r_ctx});
+    var writer = try std.Thread.spawn(.{}, cncLiveWriterFn, .{&w_ctx});
+
+    reader.join();
+    writer.join();
+
+    // Reader should have completed all reads
+    try std.testing.expect(read_count.load(.monotonic) >= read_total);
+    // Hash chain should still be valid
+    try std.testing.expect(ring.verifyHashChain());
+}
+
+const CncDualCtx = struct {
+    ring: *ForensicRing,
+    id: u32,
+    count: u32,
+};
+
+fn cncDualFn1(ctx: *CncDualCtx) void {
+    var i: u32 = 0;
+    while (i < ctx.count) : (i += 1) {
+        var ev = event.IpcEvent.init(.signature_match);
+        ev.now();
+        ev.event_id = @as(u64, ctx.id) * 100 + i;
+        _ = ctx.ring.append(&ev, "t1", 0, 0, 0, 0) catch break;
+    }
+}
+
+fn cncDualFn2(ctx: *CncDualCtx) void {
+    var i: u32 = 0;
+    while (i < ctx.count) : (i += 1) {
+        var ev = event.IpcEvent.init(.anomaly_detected);
+        ev.now();
+        ev.event_id = @as(u64, ctx.id) * 100 + i;
+        _ = ctx.ring.append(&ev, "t2", 0, 0, 0, 0) catch break;
+    }
+}
+
+test "ForensicRing concurrent append preserves record integrity" {
+    var ring = try ForensicRing.initMemory(std.testing.allocator, 4 * RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+
+    const N: u32 = 12; // More than capacity to force wrap
+
+    var c1 = CncDualCtx{ .ring = &ring, .id = 1, .count = N };
+    var c2 = CncDualCtx{ .ring = &ring, .id = 2, .count = N };
+
+    var t1 = try std.Thread.spawn(.{}, cncDualFn1, .{&c1});
+    var t2 = try std.Thread.spawn(.{}, cncDualFn2, .{&c2});
+
+    t1.join();
+    t2.join();
+
+    // Total records should be 2*N
+    try std.testing.expectEqual(@as(u64, 2 * N), ring.recordCount());
+
+    // Every retained record should pass CRC + hash verification
+    const num_slots = ring.capacity() / RECORD_BYTES;
+    const oldest: u64 = if (ring.recordCount() > num_slots) ring.recordCount() - num_slots else 0;
+    var idx = oldest;
+    while (idx < ring.recordCount()) : (idx += 1) {
+        const rec = ring.readRecord(idx, std.testing.allocator) orelse return error.OutOfMemory;
+        defer std.testing.allocator.free(rec);
+        try std.testing.expect(ForensicRing.verifyRecord(rec));
+        try std.testing.expect(ForensicRing.verifyRecordHash(rec));
+    }
+
+    // Full chain verification
+    try std.testing.expect(ring.verifyHashChain());
+}

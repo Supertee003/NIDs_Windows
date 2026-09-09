@@ -1,0 +1,355 @@
+{
+  "head_sha": "b187948bb2875c4f0d4009097313012a03ce410f",
+  "created_at": "2026-09-09",
+  "generator_version": "2.0",
+  "flows": [
+    {
+      "id": "DATA-001",
+      "name": "Packet Capture → Canonical Event → Detection → Policy → Enforcement → Audit → Forensics",
+      "type": "data_plane",
+      "description": "Primary network data path from packet capture to forensic recording",
+      "layers": [
+        {
+          "step": 1,
+          "name": "Packet Capture",
+          "owner": "Go Nose",
+          "component": "go_nose",
+          "input": "Raw network packets via Npcap",
+          "output": "RawPacket",
+          "file": "nose/capture.go"
+        },
+        {
+          "step": 2,
+          "name": "Canonical Event",
+          "owner": "Go Nose",
+          "component": "go_nose",
+          "input": "RawPacket",
+          "output": "IpcEvent (80-byte canonical)",
+          "file": "nose/conical.go"
+        },
+        {
+          "step": 3,
+          "name": "IPC Transport",
+          "owner": "Go → Zig",
+          "component": "ipc",
+          "input": "IpcEvent bytes",
+          "output": "EventQueue",
+          "file": "nose/pipe_writer.go"
+        },
+        {
+          "step": 4,
+          "name": "Flow Table",
+          "owner": "Zig",
+          "component": "zig_core",
+          "input": "IpcEvent",
+          "output": "FlowRecord",
+          "file": "src/capture/flow_table.zig"
+        },
+        {
+          "step": 5,
+          "name": "Detection",
+          "owner": "Zig",
+          "component": "zig_core",
+          "input": "FlowRecord + IpcEvent",
+          "output": "DetectionResult",
+          "file": "src/detection/signature_engine.zig"
+        },
+        {
+          "step": 6,
+          "name": "Correlation",
+          "owner": "Zig",
+          "component": "zig_core",
+          "input": "DetectionResult[]",
+          "output": "CorrelatedThreat",
+          "file": "src/detection/correlator.zig"
+        },
+        {
+          "step": 7,
+          "name": "Threat Tracking",
+          "owner": "Zig",
+          "component": "zig_core",
+          "input": "CorrelatedThreat",
+          "output": "Incident (if threshold crossed)",
+          "file": "src/detection/threat_tracker.zig"
+        },
+        {
+          "step": 8,
+          "name": "Policy Evaluation",
+          "owner": "Zig → Rust PEP",
+          "component": "rust_pep",
+          "input": "Incident + PolicyIR",
+          "output": "PEPDecision",
+          "file": "src/policy/pep_bindings.zig"
+        },
+        {
+          "step": 9,
+          "name": "Action Dispatch",
+          "owner": "Zig",
+          "component": "zig_core",
+          "input": "PEPDecision",
+          "output": "ActionResult",
+          "file": "src/policy/action_dispatcher.zig"
+        },
+        {
+          "step": 10,
+          "name": "Decision Trace",
+          "owner": "Zig",
+          "component": "zig_core",
+          "input": "full pipeline context",
+          "output": "SecurityDecisionTrace (128 bytes)",
+          "file": "src/forensic/decision_trace.zig"
+        },
+        {
+          "step": 11,
+          "name": "Forensic Record",
+          "owner": "Zig",
+          "component": "zig_core",
+          "input": "IpcEvent + DetectionResult + PEPDecision + DecisionTrace",
+          "output": "ForensicRecord (4KB slot with embedded hash chain)",
+          "file": "src/forensic/forensic_pipeline.zig"
+        },
+        {
+          "step": 12,
+          "name": "Audit",
+          "owner": "Zig",
+          "component": "zig_core",
+          "input": "full pipeline context",
+          "output": "AuditLog entry",
+          "file": "src/core/diagnostics.zig"
+        }
+      ]
+    },
+    {
+      "id": "CONTROL-001",
+      "name": "Operator → Control API → Authorization → State Mutation → Audit",
+      "type": "control_plane",
+      "description": "Operator command execution path",
+      "layers": [
+        {
+          "step": 1,
+          "name": "Operator Command",
+          "owner": "CLI/TUI/Web",
+          "input": "User command",
+          "output": "CommandRequest",
+          "file": "scripts/aegisctl.py"
+        },
+        {
+          "step": 2,
+          "name": "IPC Transport",
+          "owner": "CLI → Zig",
+          "input": "CommandRequest",
+          "output": "PipeMessage",
+          "file": "src/main.zig (named pipe server)"
+        },
+        {
+          "step": 3,
+          "name": "Authorization",
+          "owner": "Zig",
+          "input": "PipeMessage",
+          "output": "AuthorizedCommand",
+          "file": "src/main.zig"
+        },
+        {
+          "step": 4,
+          "name": "State Mutation",
+          "owner": "Zig",
+          "input": "AuthorizedCommand",
+          "output": "MutatedState",
+          "file": "src/main.zig"
+        },
+        {
+          "step": 5,
+          "name": "Postcondition Verification",
+          "owner": "Zig",
+          "input": "MutatedState",
+          "output": "VerifiedResult",
+          "file": "src/main.zig"
+        },
+        {
+          "step": 6,
+          "name": "Audit",
+          "owner": "Zig",
+          "input": "VerifiedResult",
+          "output": "AuditEntry",
+          "file": "src/core/diagnostics.zig"
+        }
+      ]
+    },
+    {
+      "id": "EVIDENCE-001",
+      "name": "Forensic Record → Verify → Replay → Compare → Evidence",
+      "type": "evidence_plane",
+      "description": "Forensic evidence verification and replay path",
+      "layers": [
+        {
+          "step": 1,
+          "name": "Record Export",
+          "owner": "Zig",
+          "input": "ForensicRing",
+          "output": "ExportedRecord[]",
+          "file": "src/forensic/replay_verifier.zig"
+        },
+        {
+          "step": 2,
+          "name": "Integrity Verify",
+          "owner": "Zig",
+          "input": "ExportedRecord[]",
+          "output": "IntegrityResult",
+          "file": "src/forensic/forensic_pipeline.zig"
+        },
+        {
+          "step": 3,
+          "name": "Original Hash",
+          "owner": "Zig",
+          "input": "IntegrityResult",
+          "output": "OriginalHash (SHA-256)",
+          "file": "src/forensic/replay_verifier.zig"
+        },
+        {
+          "step": 4,
+          "name": "Replay",
+          "owner": "Zig",
+          "input": "ExportedRecord[] + ReplayMode",
+          "output": "ReplayResult[]",
+          "file": "src/forensic/replay_verifier.zig"
+        },
+        {
+          "step": 5,
+          "name": "Compare",
+          "owner": "Zig",
+          "input": "OriginalDecision[] + ReplayDecision[]",
+          "output": "ReplayComparison",
+          "file": "src/forensic/replay_integrity.zig"
+        },
+        {
+          "step": 6,
+          "name": "Evidence Record",
+          "owner": "Zig",
+          "input": "ReplayComparison",
+          "output": "ReplayDecision (128 bytes)",
+          "file": "src/forensic/replay_verifier.zig"
+        }
+      ]
+    },
+    {
+      "id": "FORENSIC-001",
+      "name": "Event → Forensic Record → Hash Chain → CRC → Ring Buffer → Verification",
+      "type": "evidence_plane",
+      "description": "Forensic record lifecycle with embedded hash chain",
+      "layers": [
+        {
+          "step": 1,
+          "name": "Append",
+          "owner": "Zig",
+          "input": "IpcEvent + metadata",
+          "output": "RecordHeader (with record_seq, prev_hash, current_hash, CRC)",
+          "file": "src/forensic/forensic_pipeline.zig"
+        },
+        {
+          "step": 2,
+          "name": "Hash Chain",
+          "owner": "Zig",
+          "input": "prev_hash + event_bytes + metadata",
+          "output": "current_hash (SHA-256)",
+          "file": "src/forensic/forensic_pipeline.zig"
+        },
+        {
+          "step": 3,
+          "name": "CRC",
+          "owner": "Zig",
+          "input": "record bytes (excluding current_hash field)",
+          "output": "crc32",
+          "file": "src/forensic/forensic_pipeline.zig"
+        },
+        {
+          "step": 4,
+          "name": "Commit",
+          "owner": "Zig",
+          "input": "complete record",
+          "output": "committed to ring buffer",
+          "file": "src/forensic/forensic_pipeline.zig"
+        },
+        {
+          "step": 5,
+          "name": "Read (snapshot)",
+          "owner": "Zig",
+          "input": "slot index",
+          "output": "allocated copy (safe for concurrent readers)",
+          "file": "src/forensic/forensic_pipeline.zig"
+        },
+        {
+          "step": 6,
+          "name": "Verify",
+          "owner": "Zig",
+          "input": "record bytes",
+          "output": "valid_crc + valid_hash + chain_valid",
+          "file": "src/forensic/forensic_pipeline.zig"
+        }
+      ]
+    },
+    {
+      "id": "FFI-001",
+      "name": "Zig → Rust PEP FFI",
+      "type": "ffi_boundary",
+      "description": "Cross-language boundary between Zig runtime and Rust PEP",
+      "layers": [
+        {
+          "step": 1,
+          "name": "PEP Request",
+          "owner": "Zig",
+          "input": "PEPRequest struct",
+          "output": "FFI call to aegis_pep.dll",
+          "file": "src/policy/pep_bindings.zig"
+        },
+        {
+          "step": 2,
+          "name": "Rust Authorization",
+          "owner": "Rust",
+          "input": "PEPRequest (C ABI)",
+          "output": "PEPDecision",
+          "file": "rust-src/lib.rs"
+        },
+        {
+          "step": 3,
+          "name": "PEP Response",
+          "owner": "Rust → Zig",
+          "input": "PEPDecision",
+          "output": "PEPDecision struct to Zig",
+          "file": "src/policy/pep_bindings.zig"
+        }
+      ]
+    },
+    {
+      "id": "FFI-002",
+      "name": "Zig → C++ Native Adapter FFI",
+      "type": "ffi_boundary",
+      "description": "Cross-language boundary between Zig runtime and C++ native adapters",
+      "layers": [
+        {
+          "step": 1,
+          "name": "Adapter Call",
+          "owner": "Zig",
+          "input": "adapter request",
+          "output": "FFI call to C DLL",
+          "file": "src/windows/etw_realtime.zig"
+        },
+        {
+          "step": 2,
+          "name": "Native Processing",
+          "owner": "C++",
+          "input": "adapter request (C ABI)",
+          "output": "adapter response",
+          "file": "src/windows/etw_native.c"
+        },
+        {
+          "step": 3,
+          "name": "Adapter Response",
+          "owner": "C++ → Zig",
+          "input": "adapter response",
+          "output": "CanonicalEvent to Zig",
+          "file": "src/windows/etw_realtime.zig"
+        }
+      ]
+    }
+  ]
+}
