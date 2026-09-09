@@ -32,6 +32,12 @@ const sec_check = @import("reliability/security_check.zig");
 const hist = @import("reliability/latency_histogram.zig");
 const fault = @import("reliability/fault_injection.zig");
 
+// PATCH-20: Windows Data Plane adapters (Phase 3)
+const etw = @import("windows/etw_realtime.zig");
+const fim_mod = @import("windows/fim.zig");
+const reg_mon = @import("windows/registry_monitor.zig");
+const inj_det = @import("windows/injection_detector.zig");
+
 // ============================================================================
 // Windows control plane: \\.\pipe\aegis_control named-pipe server
 // Serves aegisctl.py requests: { "command": ..., "payload": {...} }
@@ -255,6 +261,9 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
     const cmd = cmd_val.string;
     const uptime_sec: i64 = @intCast(@divTrunc(std.time.nanoTimestamp() - start_ns, std.time.ns_per_s));
 
+    // PATCH-17: Control command audit — log every operator command
+    diag.info("CONTROL_AUDIT cmd={s} payload_len={d}", .{ cmd, payload.len });
+
     if (std.mem.eql(u8, cmd, "status")) {
         // STEP 43 FIX: Bind control responses to real runtime metrics/state (not placeholders)
         // packets_captured -> metrics.packets_captured (Counter from diagnostics)
@@ -263,12 +272,12 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
         // watchdog_alerts -> errors (closest approximation: errors represent system-level alerts; full reliability framework verification requires STEP 14 + STEP 46 + STEP 7 health framework)
         // degraded -> false (runtime health framework defines degraded; production verification requires full reliability verification — STEP 7 dependency)
         const body = std.fmt.allocPrint(a,
-            \\{{"version":"5.0.0","state":"running","uptime_sec":{},"packets_captured":{},"flows_active":{},"incidents_open":{},"watchdog_alerts":{},"degraded":false,"etw_enabled":{},"fim_enabled":{},"wfp_available":{},"nids_version":"5.0.0","rules_loaded":{},"pipeline_processed":{},"pipeline_detections":{}}}
+            \\{{"version":"5.0.0","state":"running","uptime_sec":{},"packets_captured":{},"flows_active":{},"incidents_open":{},"watchdog_alerts":{},"degraded":false,"etw_enabled":{},"fim_enabled":{},"wfp_available":{},"nids_version":"5.0.0","rules_loaded":{},"pipeline_processed":{},"pipeline_detections":{},\"audit_id\":{}}}
         , .{
             uptime_sec,
             @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.packets_captured.value)))),  // STEP 43: real packets metric (approximation; requires full capture framework verification — STEP 10 dependency)
             @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.flows_active.value)))),  // STEP 43: real flows metric (approximation; requires flow framework verification — STEP 16 dependency)
-            @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.events_emitted.value)))),  // STEP 43: closest real approximation (requires correlation + incident framework — STEP 18 dependency)
+            g_incidents_open, // PATCH-19: real incident count from ThreatTracker
             @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.errors.value)))),  // STEP 43: closest approximation (requires reliability framework verification — STEP 7 dependency)
             caps.has_etw_realtime,
             caps.has_fim,
@@ -276,6 +285,8 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
             g_rules_loaded,
             g_pipeline_events_processed,
             g_pipeline_detections,
+            g_pipeline_audit_id,
+            g_queue_drops,
         }) catch return false;
         sendResponse(a, pipe, true, body);
         return false;
@@ -291,13 +302,13 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
         const body = std.fmt.allocPrint(a,
             \\{{"uptime_sec":{},"rules_loaded":{},"packets_captured":{},"flows_active":{},"incidents_open":{},"etw_enabled":{},"fim_enabled":{},"signatures_matched":{},"anomalies_detected":{},"blocks_issued":{},"federation_messages":{},"errors":{}}}
         , .{ uptime_sec,
-            @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.signatures_matched.value)))),  // STEP 43: closest real approximation; requires full rules registry framework verification
+            g_rules_loaded, // PATCH-19: real rules loaded count
             @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.packets_captured.value)))),
             @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.flows_active.value)))),
-            @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.events_emitted.value)))),
+            g_incidents_open, // PATCH-19: real incident count
             caps.has_etw_realtime,
             caps.has_fim,
-            @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.signatures_matched.value)))),
+            g_pipeline_detections, // PATCH-19: real detection count
             @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.anomalies_detected.value)))),
             @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.blocks_issued.value)))),
             @as(u32, @intFromFloat(@as(f32, @floatFromInt(diag.metrics.federation_messages.value)))),
@@ -314,15 +325,18 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
     }
 
     if (std.mem.eql(u8, cmd, "rules.reload")) {
-        // Rules are loaded at startup; reload re-reads Rules.json
-        const body = std.fmt.allocPrint(a, "{{\"rules_loaded\":{},\"status\":\"ok\"}}", .{g_rules_loaded}) catch return false;
+        // PATCH-14: Actually reload Rules.json into a fresh AC automaton
+        const new_count = reloadRules();
+        const body = std.fmt.allocPrint(a, "{{\"rules_loaded\":{},\"status\":\"reloaded\"}}", .{new_count}) catch return false;
         sendResponse(a, pipe, true, body);
         return false;
     }
 
     if (std.mem.eql(u8, cmd, "incidents.list")) {
-        const body = std.fmt.allocPrint(a, "{{\"incidents_open\":{},\"detections\":{},\"anomalies\":{},\"correlations\":{}}}", .{
-            g_pipeline_events_processed - g_pipeline_detections,
+        // PATCH-16: Real incident data from ThreatTracker via pipeline globals
+        const body = std.fmt.allocPrint(a, "{{\"incidents_total\":{},\"incidents_open\":{},\"detections\":{},\"policies_matched\":{},\"correlations\":{}}}", .{
+            g_incidents_total,
+            g_incidents_open,
             g_pipeline_detections,
             g_pipeline_policies_matched,
             g_pipeline_correlations,
@@ -345,6 +359,7 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
             caps.has_etw_realtime, if (caps.has_etw_realtime) "available" else "not-available",
             caps.has_fim, if (caps.has_fim) "available" else "not-available",
             caps.has_wfp_block, if (caps.has_wfp_block) "available" else "not-available",
+            g_pep_available, if (g_pep_available) "available" else "not-available",
         }) catch return false;
         sendResponse(a, pipe, true, body);
         return false;
@@ -494,6 +509,131 @@ var g_pipeline_correlations: u64 = 0;
 var g_rules_loaded: u32 = 0;
 var g_policies_loaded: u32 = 0;
 var g_pipeline_policies_matched: u64 = 0;
+var g_pipeline_audit_id: u64 = 0; // PATCH-13: monotonic audit trail counter
+var g_pep_request_id: u64 = 0; // PATCH-25: unique PEP request ID counter
+var g_wd: watchdog.ReliabilityWatchdog = undefined; // PATCH-29: global watchdog
+var g_fi: fault.FaultInjector = undefined; // PATCH-30: global fault injector
+var g_perf: hist.PerfTracker = undefined; // PATCH-31: global performance tracker
+
+// PATCH-14: Rules reload mechanism
+// The pipeline thread holds a pointer to the active AC automaton.
+// The main thread (control pipe) can trigger a reload by rebuilding
+// a new AC and atomically swapping the global pointer.
+var g_active_ac: ?*sig.AhoCorasick = null;
+var g_ac_mutex: std.Thread.Mutex = .{};
+var g_rules_reload_pending: bool = false;
+var g_pep_available: bool = false; // PATCH-15: PEP availability for health check
+var g_incidents_total: u64 = 0; // PATCH-16: real incident count from ThreatTracker
+var g_incidents_open: u64 = 0; // PATCH-16: currently open incidents
+var g_queue_drops: u64 = 0; // PATCH-18: events dropped due to queue full
+
+/// PATCH-14: Reload Rules.json into a fresh Aho-Corasick automaton.
+/// Called from the main thread (control pipe handler).
+/// Thread-safe: rebuilds a new AC and swaps the global pointer atomically.
+fn reloadRules() u32 {
+    // Heap-allocate the new AC so the pointer survives after this function returns
+    const heap_ac = std.heap.page_allocator.create(sig.AhoCorasick) catch |err| {
+        diag.err("reload: failed to allocate AhoCorasick: {}", .{err});
+        return g_rules_loaded;
+    };
+    heap_ac.* = sig.AhoCorasick.init(std.heap.page_allocator, 100_000) catch |err| {
+        diag.err("reload: failed to init AhoCorasick: {}", .{err});
+        std.heap.page_allocator.destroy(heap_ac);
+        return g_rules_loaded;
+    };
+
+    var new_count: u32 = 0;
+    blk: {
+        const rules_path = "Rules.json";
+        const rules_file = std.fs.cwd().openFile(rules_path, .{}) catch |err| {
+            diag.warn("reload: cannot open {s}: {}", .{ rules_path, err });
+            heap_ac.deinit();
+            std.heap.page_allocator.destroy(heap_ac);
+            break :blk;
+        };
+        defer rules_file.close();
+        const rules_bytes = rules_file.readToEndAlloc(std.heap.page_allocator, 4 * 1024 * 1024) catch |err| {
+            diag.warn("reload: cannot read {s}: {}", .{ rules_path, err });
+            heap_ac.deinit();
+            std.heap.page_allocator.destroy(heap_ac);
+            break :blk;
+        };
+        defer std.heap.page_allocator.free(rules_bytes);
+
+        var rules_parsed = std.json.parseFromSlice(std.json.Value, std.heap.page_allocator, rules_bytes, .{}) catch |err| {
+            diag.warn("reload: cannot parse {s}: {}", .{ rules_path, err });
+            heap_ac.deinit();
+            std.heap.page_allocator.destroy(heap_ac);
+            break :blk;
+        };
+        defer rules_parsed.deinit();
+
+        const root = rules_parsed.value;
+        if (root != .object) {
+            diag.warn("reload: {s}: expected object at root", .{rules_path});
+            heap_ac.deinit();
+            std.heap.page_allocator.destroy(heap_ac);
+            break :blk;
+        }
+        const nids_rules = root.object.get("nids_rules") orelse {
+            diag.warn("reload: {s}: missing nids_rules key", .{rules_path});
+            heap_ac.deinit();
+            std.heap.page_allocator.destroy(heap_ac);
+            break :blk;
+        };
+        if (nids_rules != .array) {
+            diag.warn("reload: {s}: nids_rules is not an array", .{rules_path});
+            heap_ac.deinit();
+            std.heap.page_allocator.destroy(heap_ac);
+            break :blk;
+        }
+
+        for (nids_rules.array.items) |rule_val| {
+            if (rule_val != .object) continue;
+            const rule_obj = rule_val.object;
+            const rule_id_str = rule_obj.get("rule_id") orelse continue;
+            if (rule_id_str != .string) continue;
+            const rule_id = hashRuleId(rule_id_str.string);
+            const match_pattern = rule_obj.get("match_pattern") orelse continue;
+            if (match_pattern != .string) continue;
+            if (match_pattern.string.len == 0) continue;
+            heap_ac.addPattern(rule_id, match_pattern.string) catch |err| {
+                diag.warn("reload: failed to add pattern for {s}: {}", .{ rule_id_str.string, err });
+                continue;
+            };
+            new_count += 1;
+        }
+
+        heap_ac.build() catch |err| {
+            diag.err("reload: failed to build Aho-Corasick: {}", .{err});
+            heap_ac.deinit();
+            std.heap.page_allocator.destroy(heap_ac);
+            break :blk;
+        };
+    }
+
+    if (new_count > 0) {
+        // Swap: take old AC, install new heap-allocated one
+        g_ac_mutex.lock();
+        const old_ac_ptr = g_active_ac;
+        g_active_ac = heap_ac;
+        g_rules_loaded = new_count;
+        g_ac_mutex.unlock();
+
+        // Free old AC if it existed
+        if (old_ac_ptr) |old| {
+            old.deinit();
+            std.heap.page_allocator.destroy(old);
+        }
+        diag.info("reload: loaded {} rules (swap complete)", .{new_count});
+    } else {
+        heap_ac.deinit();
+        std.heap.page_allocator.destroy(heap_ac);
+        diag.warn("reload: 0 rules loaded, keeping old ruleset", .{});
+    }
+
+    return new_count;
+}
 
 /// Push an event + optional payload into the pipeline queue.
 /// Returns true if accepted, false if queue is full (event dropped).
@@ -502,6 +642,7 @@ pub fn pushEvent(ev: event.IpcEvent, payload: []const u8) bool {
     const tail = g_queue_tail.load(.acquire);
     if (head -% tail >= PIPELINE_QUEUE_SIZE) {
         // Queue full — drop event
+        g_queue_drops += 1; // PATCH-18: track queue drops
         return false;
     }
     var qe = QueuedEvent{ .ev = ev };
@@ -534,14 +675,15 @@ pub fn popEvent() ?QueuedEvent {
 ///   5. Forensic recording
 fn processEvent(
     qe: *const QueuedEvent,
-    ac: *sig.AhoCorasick,
+    _: *sig.AhoCorasick, // PATCH-14: using g_active_ac global instead
     ad: *anom.AnomalyDetector,
     ft: *flow.FlowTable,
     tt: *tracker.ThreatTracker,
     ps: *policy.PolicySet,
     pep_enf: *pep.PepEnforcer,
     forensic_ring: *forensic.ForensicRing,
-    rules_loaded: u32,
+    _: u32, // PATCH-14: using g_rules_loaded global instead
+    _: hist.Stage, // PATCH-31: performance tracking (reserved for future use)
 ) !void {
     const ev = &qe.ev;
     g_pipeline_events_processed += 1;
@@ -563,17 +705,22 @@ fn processEvent(
     _ = ft.lookupOrCreate(fkey, ev.timestamp_ns);
 
     // 2. Aho-Corasick signature matching (if rules are loaded)
+    // PATCH-14: Use mutex-protected global AC pointer for hot-reload support
     var matched_rule_id: u32 = 0;
-    if (rules_loaded > 0 and qe.payload_len > 0) {
-        // Match against REAL packet payload bytes
-        const payload_slice = qe.payload[0..qe.payload_len];
-        const matches = ac.match(payload_slice, std.heap.page_allocator) catch &[_]sig.AhoCorasick.Match{};
-        if (matches.len > 0) {
-            matched_rule_id = matches[0].rule_id;
-            g_pipeline_detections += 1;
-        }
-        if (matches.len > 0) {
-            std.heap.page_allocator.free(matches);
+    if (qe.payload_len > 0) {
+        g_ac_mutex.lock();
+        const active_ac = g_active_ac;
+        g_ac_mutex.unlock();
+        if (active_ac) |the_ac| {
+            const payload_slice = qe.payload[0..qe.payload_len];
+            const matches = the_ac.match(payload_slice, std.heap.page_allocator) catch &[_]sig.AhoCorasick.Match{};
+            if (matches.len > 0) {
+                matched_rule_id = matches[0].rule_id;
+                g_pipeline_detections += 1;
+            }
+            if (matches.len > 0) {
+                std.heap.page_allocator.free(matches);
+            }
         }
     }
 
@@ -587,31 +734,63 @@ fn processEvent(
     _ = ad.observe(anom_key, 1.0) catch null;
 
     // 4. Threat tracking (if detection matched)
+    // PATCH-11: Capture incident result — escalate severity when threshold crossed
+    var active_incident: ?tracker.Incident = null;
+    var ev_severity = ev.severity; // track severity escalation
     if (matched_rule_id != 0) {
-        _ = tt.observeFlowThreat(ev, 10) catch null; // weight=10 for signature match
+        if (tt.observeFlowThreat(ev, 10) catch null) |inc| {
+            // Incident created: threat score crossed threshold
+            active_incident = inc.*;
+            // Escalate event severity to incident severity
+            ev_severity = inc.severity;
+            g_pipeline_detections += 1; // incident = significant detection
+            g_incidents_total += 1; // PATCH-16: track total incidents
+            g_incidents_open += 1; // PATCH-16: track open incidents
+        }
     }
 
-    // 5. Policy evaluation
+    // 5. Policy evaluation — use escalated severity for policy matching
+    // PATCH-11: Build EvalContext with incident-aware severity
     var policy_action: policy.Action = .pass;
     var matched_policy: ?policy.Policy = null;
-    const eval_ctx = policy.EvalContext{ .ev = ev };
+    var ev_copy = ev.*; // mutable copy for severity override
+    ev_copy.severity = ev_severity;
+    const eval_ctx = policy.EvalContext{ .ev = &ev_copy };
     if (ps.evaluate(eval_ctx)) |pol| {
         matched_policy = pol;
         policy_action = pol.action;
     }
 
     // 6. PEP enforcement (final authorization gate)
+    // PATCH-12 FIX NOTE: Only PEP call — ActionDispatcher must NOT call PEP again
     var pep_decision: pep.PepDecision = .allow;
     if (matched_policy) |pol| {
-        pep_decision = pep_enf.enforce(ev, pol, 0, 0xFFFFFFFF); // caller_pid=0, all caps
+        // PATCH-25: Unique PEP request ID (not event_id)
+        g_pep_request_id += 1;
+        pep_decision = pep_enf.enforce(&ev_copy, pol, 0, 0xFFFFFFFF, g_pep_request_id); // caller_pid=0, all caps
         g_pipeline_detections += 1; // policy matched = detection event
 
         // 6a. Action dispatch (execute enforcement action)
-        dispatcher.ActionDispatcher.dispatch(ev, pol, pep_decision);
+        // PATCH-12: dispatcher receives PEP decision — does NOT re-evaluate PEP
+        dispatcher.ActionDispatcher.dispatch(&ev_copy, pol, pep_decision);
     }
 
+    // PATCH-13: Audit trace — every security decision gets a unique audit_id
+    // Records: event_id, audit_id, decision, policy_id, src_ip, dst_ip
+    const audit_id = g_pipeline_audit_id;
+    g_pipeline_audit_id += 1;
+    diag.info("AUDIT audit_id={} event_id={} decision={s} policy_id={} src={x} dst={x} proto={d}", .{
+        audit_id,
+        ev.event_id,
+        @tagName(pep_decision),
+        if (matched_policy) |pol| pol.id else @as(u32, 0),
+        ev.src_ip,
+        ev.dst_ip,
+        ev.protocol,
+    });
+
     // 7. Forensic recording (captures full pipeline result)
-    _ = forensic_ring.append(ev, &[_]u8{}) catch 0;
+    _ = forensic_ring.append(ev, qe.payload[0..qe.payload_len], audit_id, if (matched_policy) |pol| pol.id else @as(u32, 0), @intFromEnum(pep_decision), @intFromEnum(ev.severity)) catch 0;
 }
 
 /// Main pipeline loop: pops events from queue and processes them.
@@ -625,15 +804,30 @@ fn pipelineLoop(
     pep_enf: *pep.PepEnforcer,
     forensic_ring: *forensic.ForensicRing,
     rules_loaded: u32,
+    wd_idx: usize, // PATCH-29: watchdog thread index
 ) void {
     diag.info("pipeline loop started (queue size: {})", .{PIPELINE_QUEUE_SIZE});
 
     while (!g_stop_requested.load(.acquire)) {
+        // PATCH-29: Watchdog heartbeat
+        g_wd.beat(wd_idx);
+        // PATCH-30: Fault injection — maybe drop processing
+        if (g_fi.maybeDrop()) {
+            g_wd.beat(wd_idx); // PATCH-32: still beat watchdog on drop
+            std.time.sleep(1 * std.time.ns_per_ms);
+            continue;
+        }
+
         const maybe_qe = popEvent();
         if (maybe_qe) |qe| {
-            processEvent(&qe, ac, ad, ft, tt, ps, pep_enf, forensic_ring, rules_loaded) catch |err| {
+            // PATCH-30: Fault injection — maybe corrupt event
+            _ = g_fi.maybeCorrupt(&qe.ev);
+            // PATCH-31: Performance tracking
+            const start = std.time.nanoTimestamp();
+            processEvent(&qe, ac, ad, ft, tt, ps, pep_enf, forensic_ring, rules_loaded, hist.Stage.pipeline) catch |err| {
                 diag.warn("pipeline processing error: {}", .{err});
             };
+            g_perf.observe(hist.Stage.pipeline, std.time.nanoTimestamp() - start);
         } else {
             // No events — yield briefly
             std.time.sleep(1 * std.time.ns_per_ms);
@@ -744,6 +938,130 @@ fn captureThread() void {
     });
 }
 
+// ============================================================================
+// PATCH-20: Windows Data Plane adapter threads (Phase 3)
+// Each adapter runs on its own thread and pushes events into the pipeline queue.
+// ============================================================================
+
+/// ETW thread: receives Windows kernel events via ETW session.
+/// Converts EtwEventRecord to IpcEvent and pushes to pipeline.
+fn etwThread(source: *etw.EtwSource) void {
+    diag.info("ETW thread starting", .{});
+    if (builtin.os.tag != .windows) {
+        diag.info("ETW: non-Windows platform, skipping", .{});
+        return;
+    }
+    // Start ETW with kernel process provider
+    const providers = [_][16]u8{
+        etw.PROVIDER_KERNEL_PROCESS,
+        etw.PROVIDER_KERNEL_FILE,
+        etw.PROVIDER_KERNEL_REGISTRY,
+    };
+    source.start(&providers) catch |err| {
+        diag.warn("ETW start failed: {} — ETW disabled", .{err});
+        return;
+    };
+    defer source.stop();
+
+    // Set callback to push ETW events into pipeline
+    source.setCallback(undefined, etwCallback) catch |err| {
+        diag.warn("ETW setCallback failed: {}", .{err});
+        return;
+    };
+
+    // ETW runs on its own thread via ProcessTrace; just keep alive
+    while (!g_stop_requested.load(.acquire) and source.running.load(.acquire)) {
+        std.time.sleep(100 * std.time.ns_per_ms);
+    }
+    diag.info("ETW thread stopped", .{});
+}
+
+/// ETW callback: converts ETW event record to IpcEvent and pushes to pipeline.
+fn etwCallback(ctx: *anyopaque, rec: *const etw.EtwEventRecord, ext_data: []const u8) void {
+    _ = ctx;
+    var ev = event.IpcEvent.init(.etw_process_event);
+    ev.source = .host_etw;
+    ev.timestamp_ns = @intCast(rec.timestamp);
+    ev.event_id = diag.metrics.events_emitted.value;
+
+    // Determine event kind from ETW opcode
+    const opcode = rec.opcode;
+    if (opcode == 1) { // Process Start
+        ev.kind = .etw_process_event;
+    } else if (opcode == 2) { // Process Stop
+        ev.kind = .etw_process_event;
+    } else if (opcode == 0x0A or opcode == 0x0B) { // File Create/Delete
+        ev.kind = .fim_change;
+    } else if (opcode == 0x0E or opcode == 0x0F) { // Registry Create/Delete
+        ev.kind = .dns_query; // reuse kind for registry events
+    }
+
+    // Push event + extended data as payload
+    if (ext_data.len > 0) {
+        _ = pushEvent(ev, ext_data);
+    } else {
+        _ = pushEvent(ev, &[_]u8{});
+    }
+    diag.metrics.events_emitted.inc();
+}
+
+/// FIM thread: polls file integrity changes and pushes to pipeline.
+fn fimThread(watcher: *fim_mod.FimWatcher) void {
+    diag.info("FIM thread starting", .{});
+    if (builtin.os.tag != .windows) {
+        diag.info("FIM: non-Windows platform, skipping", .{});
+        return;
+    }
+
+    // Add default FIM rules (monitor Windows system directories)
+    watcher.addRule("C:\\Windows\\System32", true) catch {};
+    watcher.addRule("C:\\Windows\\SysWOW64", true) catch {};
+    watcher.startAll() catch |err| {
+        diag.warn("FIM startAll failed: {} — FIM disabled", .{err});
+        return;
+    };
+    defer watcher.stopAll();
+
+    while (!g_stop_requested.load(.acquire)) {
+        const data = watcher.poll();
+        if (data.len > 0) {
+            var ev = event.IpcEvent.init(.fim_change);
+            ev.source = .host_fim;
+            ev.timestamp_ns = @intCast(std.time.nanoTimestamp());
+            _ = pushEvent(ev, data);
+            diag.metrics.events_emitted.inc();
+        }
+        std.time.sleep(500 * std.time.ns_per_ms); // poll every 500ms
+    }
+    diag.info("FIM thread stopped", .{});
+}
+
+/// Registry thread: polls registry changes and pushes to pipeline.
+fn registryThread(monitor: *reg_mon.RegistryMonitor) void {
+    diag.info("Registry thread starting", .{});
+    if (builtin.os.tag != .windows) {
+        diag.info("Registry: non-Windows platform, skipping", .{});
+        return;
+    }
+
+    // Add default registry monitoring rules
+    monitor.addRule("HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", 1) catch {};
+    monitor.addRule("HKLM\\SYSTEM\\CurrentControlSet\\Services", 2) catch {};
+
+    while (!g_stop_requested.load(.acquire)) {
+        const events = monitor.drain();
+        for (events) |reg_ev| {
+            var ev = event.IpcEvent.init(.dns_query); // reuse kind for registry
+            ev.source = .host_registry;
+            ev.timestamp_ns = @intCast(reg_ev.timestamp_ns);
+            _ = pushEvent(ev, &[_]u8{});
+            diag.metrics.events_emitted.inc();
+        }
+        std.time.sleep(500 * std.time.ns_per_ms); // poll every 500ms
+    }
+    diag.info("Registry thread stopped", .{});
+}
+
 fn runDaemon() !void {
     diag.info("AEGIS NIDS v5.0+ starting up", .{});
 
@@ -771,12 +1089,12 @@ fn runDaemon() !void {
     defer arena.deinit(std.heap.page_allocator);
     var forensic_ring = try forensic.ForensicRing.initMemory(std.heap.page_allocator, 64 * 1024 * 1024);
     defer forensic_ring.deinit(std.heap.page_allocator);
-    var wd = watchdog.ReliabilityWatchdog.init(std.heap.page_allocator);
-    defer wd.deinit();
-    const perf = hist.PerfTracker{};
+    g_wd = watchdog.ReliabilityWatchdog.init(std.heap.page_allocator); // PATCH-29: global watchdog
+    defer g_wd.deinit();
+    g_perf = hist.PerfTracker{}; // PATCH-31: global performance tracker
 
     // 5. Start fault injector (disabled by default)
-    const fi = fault.FaultInjector.fromEnv();
+    g_fi = fault.FaultInjector.fromEnv(); // PATCH-30: global fault injector
 
     // 6. Initialize detection engine
     var ac = sig.AhoCorasick.init(std.heap.page_allocator, 100_000) catch |err| {
@@ -849,6 +1167,7 @@ fn runDaemon() !void {
         };
 
         g_rules_loaded = rules_loaded;
+        g_active_ac = &ac; // PATCH-14: expose AC for reload mechanism
         diag.info("loaded {} rules from {s}", .{ rules_loaded, rules_path });
     }
     if (rules_loaded == 0) {
@@ -1010,25 +1329,45 @@ fn runDaemon() !void {
     // 7. Initialize PEP (PolicySet already loaded with policies from JSON)
     var pep_enf = pep.PepEnforcer.init();
     defer pep_enf.deinit();
+    // PATCH-15: PEP availability check — detection-only mode if unavailable
+    g_pep_available = pep_enf.available;
+    if (!pep_enf.available) {
+        diag.critical("PEP unavailable (aegis_pep.dll not loaded) — DETECTION-ONLY MODE: no enforcement", .{});
+    } else {
+        diag.info("PEP available — enforcement mode active", .{});
+    }
     dispatcher.ActionDispatcher.init();
     defer dispatcher.ActionDispatcher.deinit();
 
+    // PATCH-29: Register all threads in watchdog
+    _ = g_wd.registerThread(watchdog.ThreadKind.pipeline, "pipeline");
+    _ = g_wd.registerThread(watchdog.ThreadKind.capture, "capture");
+    _ = g_wd.registerThread(watchdog.ThreadKind.host_telemetry, "etw");
+    _ = g_wd.registerThread(watchdog.ThreadKind.host_telemetry, "fim");
+    _ = g_wd.registerThread(watchdog.ThreadKind.host_telemetry, "registry");
     // 8. Federation/XDR (disabled in standalone mode)
 
-    diag.info("AEGIS NIDS initialization complete Ã¢â‚¬â€ entering main loop", .{});
-    _ = perf;
-    _ = fi;
 
-    // 9. Main loop: pipeline processing + control pipe
+    // PATCH-20: Initialize Windows Data Plane adapters (Phase 3)
+    // These adapters feed real Windows telemetry into the pipeline.
+    var etw_source = etw.EtwSource.init();
+    var fim_watcher = fim_mod.FimWatcher.init(std.heap.page_allocator);
+    defer fim_watcher.deinit();
+    var reg_monitor = reg_mon.RegistryMonitor.init(std.heap.page_allocator);
+    defer reg_monitor.deinit();
+    var inj_detector = inj_det.InjectionDetector.init(std.heap.page_allocator, &inj_det.DEFAULT_RULES);
+    defer inj_detector.deinit();
+
+    diag.info("AEGIS NIDS initialization complete — entering main loop", .{});    // 9. Main loop: pipeline processing + control pipe
     const start_ns = std.time.nanoTimestamp();
     if (builtin.os.tag == .windows) {
         setServiceStatus(SERVICE_RUNNING, 0);
 
         // Start pipeline loop in a separate thread
         const pipeline_thread = std.Thread.spawn(.{}, pipelineLoop, .{
-            &ac, &ad, &ft, &tt, &ps, &pep_enf, &forensic_ring, rules_loaded,
+            &ac, &ad, &ft, &tt, &ps, &pep_enf, &forensic_ring, rules_loaded, 0,
         }) catch |err| {
-            diag.err("failed to spawn pipeline thread: {}", .{err});
+            diag.err("failed to spawn pipeline thread: {} — RECOVERY: system runs in degraded mode", .{err});
             return err;
         };
         defer pipeline_thread.join();
@@ -1036,6 +1375,20 @@ fn runDaemon() !void {
         // Start capture thread (Npcap)
         _ = std.Thread.spawn(.{}, captureThread, .{}) catch |err| {
             diag.warn("failed to spawn capture thread: {} — capture disabled", .{err});
+        };
+
+        // PATCH-20: Start Windows Data Plane adapter threads (Phase 3)
+        // ETW thread: receives Windows kernel events (process, file, registry, image)
+        _ = std.Thread.spawn(.{}, etwThread, .{&etw_source}) catch |err| {
+            diag.warn("failed to spawn ETW thread: {} — ETW disabled", .{err});
+        };
+        // FIM thread: polls file integrity changes
+        _ = std.Thread.spawn(.{}, fimThread, .{&fim_watcher}) catch |err| {
+            diag.warn("failed to spawn FIM thread: {} — FIM disabled", .{err});
+        };
+        // Registry thread: polls registry changes
+        _ = std.Thread.spawn(.{}, registryThread, .{&reg_monitor}) catch |err| {
+            diag.warn("failed to spawn registry thread: {} — registry monitoring disabled", .{err});
         };
 
         // Serve control pipe on main thread

@@ -21,18 +21,22 @@ const diag = @import("../core/diagnostics.zig");
 pub const RING_BYTES: usize = manifest.Limits.FORENSIC_RING_BYTES;
 pub const HEADER_BYTES: usize = 64;
 pub const RECORD_BYTES: usize = 4096;
-pub const PAYLOAD_BYTES: usize = RECORD_BYTES - 64; // room for header + crc
+pub const PAYLOAD_BYTES: usize = RECORD_BYTES - HEADER_BYTES - 16; // room for header + crc + extra fields (PATCH-33)
 
 pub const RECORD_MAGIC: u32 = 0xF0F0FEED;
 
 pub const RecordHeader = extern struct {
     magic: u32,
     kind: u32,
-    ts_ns: u64,
+    ts_ns: i128,
     ev_id: u64,
     rule_id: u32,
     payload_len: u32,
-    reserved: u32,
+    audit_id: u64, // PATCH-33: audit trail ID for provenance
+    policy_id: u32, // PATCH-33: policy that triggered this record
+    pep_decision: u8, // PATCH-33: PEP decision (allow/block/rate_limit/etc)
+    severity: u8, // PATCH-33: event severity
+    reserved: [7]u8,
 };
 
 pub const ForensicRing = struct {
@@ -60,7 +64,7 @@ pub const ForensicRing = struct {
         return self.written;
     }
 
-    pub fn append(self: *ForensicRing, ev: *const event.IpcEvent, payload: []const u8) !u64 {
+    pub fn append(self: *ForensicRing, ev: *const event.IpcEvent, payload: []const u8, audit_id: u64, policy_id: u32, pep_decision: u8, severity: u8) !u64 {
         self.mutex.lock();
         defer self.mutex.unlock();
         const write_at = self.head % self.storage.len;
@@ -69,7 +73,7 @@ pub const ForensicRing = struct {
             return self.appendWrapped(ev, payload);
         }
         const slot = self.storage[write_at .. write_at + RECORD_BYTES];
-        self.writeSlot(slot, ev, payload);
+        self.writeSlot(slot, ev, payload, audit_id, policy_id, pep_decision, severity);
         self.head += RECORD_BYTES;
         self.written += 1;
         if (self.head - self.tail > self.storage.len) {
@@ -79,14 +83,14 @@ pub const ForensicRing = struct {
         return self.written;
     }
 
-    fn appendWrapped(self: *ForensicRing, ev: *const event.IpcEvent, payload: []const u8) !u64 {
+    fn appendWrapped(self: *ForensicRing, ev: *const event.IpcEvent, payload: []const u8, audit_id: u64, policy_id: u32, pep_decision: u8, severity: u8) !u64 {
         const at = self.head % self.storage.len;
         const first_chunk = self.storage.len - at;
         if (first_chunk > 0) {
             @memset(self.storage[at..], 0);
         }
         const slot = self.storage[0..RECORD_BYTES];
-        self.writeSlot(slot, ev, payload);
+        self.writeSlot(slot, ev, payload, audit_id, policy_id, pep_decision, severity);
         self.head += RECORD_BYTES;
         self.written += 1;
         if (self.head - self.tail > self.storage.len) {
@@ -96,7 +100,7 @@ pub const ForensicRing = struct {
         return self.written;
     }
 
-    fn writeSlot(self: *ForensicRing, slot: []u8, ev: *const event.IpcEvent, payload: []const u8) void {
+    fn writeSlot(self: *ForensicRing, slot: []u8, ev: *const event.IpcEvent, payload: []const u8, audit_id: u64, policy_id: u32, pep_decision: u8, severity: u8) void {
         _ = self;
         @memset(slot, 0);
         var hdr = RecordHeader{
@@ -106,7 +110,11 @@ pub const ForensicRing = struct {
             .ev_id = ev.event_id,
             .rule_id = ev.rule_id,
             .payload_len = @intCast(@min(payload.len, PAYLOAD_BYTES)),
-            .reserved = 0,
+            .audit_id = audit_id,
+            .policy_id = policy_id,
+            .pep_decision = pep_decision,
+            .severity = severity,
+            .reserved = [_]u8{0} ** 7,
         };
         @memcpy(slot[0..@sizeOf(RecordHeader)], std.mem.asBytes(&hdr));
         const plen = hdr.payload_len;

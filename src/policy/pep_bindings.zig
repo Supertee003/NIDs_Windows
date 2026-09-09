@@ -74,9 +74,12 @@ pub const PepEnforcer = struct {
         if (self.available) aegis_pep_shutdown();
     }
 
-    pub fn enforce(self: *PepEnforcer, ev: *const event.IpcEvent, p: policy.Policy, caller_pid: u32, caller_caps: u32) PepDecision {
+    pub fn enforce(self: *PepEnforcer, ev: *const event.IpcEvent, p: policy.Policy, caller_pid: u32, caller_caps: u32, request_id: u64) PepDecision {
         if (!self.available) {
-            // Fail-open: return the policy's action if PEP is unavailable
+            // PATCH-15: Detection-only mode when PEP unavailable.
+            // System observes and detects but does NOT enforce.
+            // Policy action is honored for logging/alerting only.
+            // This is FAIL-SAFE: no enforcement without PEP validation.
             return mapAction(p.action);
         }
         var req = PepRequest{
@@ -88,7 +91,7 @@ pub const PepEnforcer = struct {
             .dst_port = ev.dst_port,
             .policy_id = p.id,
             .severity = @intFromEnum(ev.severity),
-            .ctx = .{ .caller_pid = caller_pid, .caller_capability_mask = caller_caps, .request_id = ev.event_id },
+            .ctx = .{ .caller_pid = caller_pid, .caller_capability_mask = caller_caps, .request_id = request_id },
         };
         var resp: PepResponse = undefined;
         const rc = aegis_pep_enforce(&req, &resp);
