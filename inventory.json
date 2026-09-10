@@ -3,7 +3,7 @@
   "generated_at": "2026-09-10T00:00:00.000000+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "head_sha": "97dbfef",
+  "head_sha": "61c80ca3fa68bf4d1c589e953428c453d90774cf",
   "total_files": 595,
   "by_class": {
     "canonical-build": 61,
