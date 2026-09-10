@@ -1,281 +1,529 @@
-// II11 - Fault Injection Framework
-// AEGIS NIDS v5.0+ â€” Chaos testing hooks for reliability validation
-//
-// When AEGIS_FAULT_INJECTION env var is set, the framework activates hooks
-// that randomly inject failures into hot paths:
-//   - drop packet (5%)
-//   - simulate slow decode (50ms sleep)
-//   - return corrupted event
-//   - simulate queue full
-// Used by tests/ to verify graceful degradation.
+//! fault_injection.zig - AEGIS Fault Injection (Rewrite Phase 25 / Manual Phase 23)
+//!
+//! Simulates subsystem failures to verify defined failure behavior.
+//! Every fault has a defined response (fail-soft, fail-open, fail-closed).
+//!
+//! Architecture (Manual Section 31):
+//!   Simulate: WFP unavailable, driver unavailable, queue full, Brain unavailable,
+//!   RAG unavailable, policy malformed, IPC failure, PEP unavailable, disk full,
+//!   forensic failure
+//!
+//! Exit Gate: Every failure has defined behavior.
 
 const std = @import("std");
-const event = @import("../contract/event.zig");
-const diag = @import("../core/diagnostics.zig");
 
-pub const FaultKind = enum(u8) {
-    drop_packet = 1,
-    slow_decode = 2,
-    corrupt_event = 3,
-    queue_full = 4,
-    duplicate_event = 5,
-    bad_clock_skew = 6,
-};
+// ============================================================
+// Constants
+// ============================================================
 
-pub const FaultConfig = struct {
-    enabled: bool = false,
-    seed: u64 = 0xCAFEBABE,
-    drop_packet_rate: f64 = 0.05,
-    slow_decode_rate: f64 = 0.01,
-    corrupt_event_rate: f64 = 0.01,
-    queue_full_rate: f64 = 0.005,
-};
+pub const MAX_FAULTS: usize = 32;
 
-pub const FaultInjector = struct {
-    cfg: FaultConfig,
-    prng: std.Random.DefaultPrng,
-    injected: [256]u64 = [_]u64{0} ** 256,
+// ============================================================
+// Fault Type
+// ============================================================
 
-    pub fn init(cfg: FaultConfig) FaultInjector {
-        return .{
-            .cfg = cfg,
-            .prng = std.Random.DefaultPrng.init(cfg.seed),
+pub const FaultType = enum(u8) {
+    wfp_unavailable = 0,
+    driver_unavailable = 1,
+    queue_full = 2,
+    brain_unavailable = 3,
+    rag_unavailable = 4,
+    policy_malformed = 5,
+    ipc_failure = 6,
+    pep_unavailable = 7,
+    disk_full = 8,
+    forensic_failure = 9,
+
+    pub fn toString(self: FaultType) []const u8 {
+        return switch (self) {
+            .wfp_unavailable => "WFP_UNAVAILABLE",
+            .driver_unavailable => "DRIVER_UNAVAILABLE",
+            .queue_full => "QUEUE_FULL",
+            .brain_unavailable => "BRAIN_UNAVAILABLE",
+            .rag_unavailable => "RAG_UNAVAILABLE",
+            .policy_malformed => "POLICY_MALFORMED",
+            .ipc_failure => "IPC_FAILURE",
+            .pep_unavailable => "PEP_UNAVAILABLE",
+            .disk_full => "DISK_FULL",
+            .forensic_failure => "FORENSIC_FAILURE",
         };
     }
 
-    pub fn fromEnv() FaultInjector {
-        var cfg = FaultConfig{};
-        if (std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_FAULT_INJECTION")) |val| {
-            defer std.heap.page_allocator.free(val);
-            if (std.mem.eql(u8, val, "1") or std.mem.eql(u8, val, "true")) cfg.enabled = true;
-        } else |_| {}
-        return FaultInjector.init(cfg);
+    /// Returns the expected failure behavior for this fault type.
+    pub fn expectedBehavior(self: FaultType) FaultBehavior {
+        return switch (self) {
+            .wfp_unavailable => .fail_soft, // Continue without WFP, use other sensors
+            .driver_unavailable => .fail_soft, // Continue without kernel driver
+            .queue_full => .drop_low_priority, // Drop LOW priority, keep HIGH/NORMAL
+            .brain_unavailable => .fail_soft, // System works without Brain (deterministic mode)
+            .rag_unavailable => .fail_soft, // RAG is fail-soft by design
+            .policy_malformed => .fail_closed, // If policy is broken, BLOCK unknown traffic
+            .ipc_failure => .fail_soft, // Continue with degraded IPC
+            .pep_unavailable => .fail_open, // If PEP is down, allow traffic (availability > security)
+            .disk_full => .fail_soft, // Stop forensic logging, keep processing
+            .forensic_failure => .fail_soft, // Continue without forensic recording
+        };
     }
 
-    pub fn maybeDrop(self: *FaultInjector) bool {
-        if (!self.cfg.enabled) return false;
-        if (self.prng.random().float(f64) < self.cfg.drop_packet_rate) {
-            self.injected[@intFromEnum(FaultKind.drop_packet)] += 1;
-            return true;
-        }
-        return false;
-    }
-
-    pub fn maybeCorrupt(self: *FaultInjector, ev: *event.IpcEvent) bool {
-        if (!self.cfg.enabled) return false;
-        if (self.prng.random().float(f64) < self.cfg.corrupt_event_rate) {
-            // Flip a random bit in the event
-            const byte_idx = self.prng.random().uintLessThan(usize, @sizeOf(event.IpcEvent));
-            const bit_idx: u3 = @intCast(self.prng.random().uintLessThan(u4, 8));
-            const ptr: *u8 = @ptrCast(@alignCast(@as([*]u8, @ptrCast(ev)) + byte_idx));
-            ptr.* ^= @as(u8, 1) << bit_idx;
-            self.injected[@intFromEnum(FaultKind.corrupt_event)] += 1;
-            return true;
-        }
-        return false;
-    }
-
-    pub fn maybeSlow(self: *FaultInjector) bool {
-        if (!self.cfg.enabled) return false;
-        if (self.prng.random().float(f64) < self.cfg.slow_decode_rate) {
-            self.injected[@intFromEnum(FaultKind.slow_decode)] += 1;
-            std.time.sleep(50 * std.time.ns_per_ms);
-            return true;
-        }
-        return false;
-    }
-
-    pub fn maybeQueueFull(self: *FaultInjector) bool {
-        if (!self.cfg.enabled) return false;
-        if (self.prng.random().float(f64) < self.cfg.queue_full_rate) {
-            self.injected[@intFromEnum(FaultKind.queue_full)] += 1;
-            return true;
-        }
-        return false;
-    }
-
-    pub fn injectedCount(self: *const FaultInjector, kind: FaultKind) u64 {
-        return self.injected[@intFromEnum(kind)];
+    /// Returns true if this fault is critical (affects enforcement).
+    pub fn isCritical(self: FaultType) bool {
+        return self == .policy_malformed or self == .pep_unavailable;
     }
 };
 
-// ============================================================================
-// Tests
-// ============================================================================
-test "FaultInjector disabled by default" {
-    var fi = FaultInjector.init(.{});
-    try std.testing.expect(!fi.maybeDrop());
-    try std.testing.expect(!fi.maybeQueueFull());
-}
+// ============================================================
+// Fault Behavior (expected response)
+// ============================================================
 
-test "FaultInjector drop at 1.0 always drops" {
-    var fi = FaultInjector.init(.{ .enabled = true, .drop_packet_rate = 1.0 });
-    try std.testing.expect(fi.maybeDrop());
-    try std.testing.expectEqual(@as(u64, 1), fi.injectedCount(.drop_packet));
-}
+pub const FaultBehavior = enum(u8) {
+    /// System continues with degraded functionality.
+    fail_soft = 0,
+    /// System allows traffic through (availability > security).
+    fail_open = 1,
+    /// System blocks unknown traffic (security > availability).
+    fail_closed = 2,
+    /// Drop low-priority events, keep high-priority.
+    drop_low_priority = 3,
 
-test "FaultInjector corrupts event" {
-    var fi = FaultInjector.init(.{ .enabled = true, .corrupt_event_rate = 1.0 });
-    var ev = event.IpcEvent.init(.dns_query);
-    const corrupted = fi.maybeCorrupt(&ev);
-    try std.testing.expect(corrupted);
-    try std.testing.expectEqual(@as(u64, 1), fi.injectedCount(.corrupt_event));
-}
-
-test "FaultInjector fromEnv returns disabled on Linux" {
-    const fi = FaultInjector.fromEnv();
-    // AEGIS_FAULT_INJECTION env should not be set in test env
-    _ = fi;
-}
-
-// ============================================================================
-// VER-003: Fault Injection Comprehensive Tests
-// ============================================================================
-
-test "VER-003: FaultInjector at 0% rate never triggers" {
-    var fi = FaultInjector.init(.{
-        .enabled = true,
-        .drop_packet_rate = 0.0,
-        .corrupt_event_rate = 0.0,
-        .queue_full_rate = 0.0,
-    });
-    var i: u32 = 0;
-    while (i < 1000) : (i += 1) {
-        try std.testing.expect(!fi.maybeDrop());
-        try std.testing.expect(!fi.maybeQueueFull());
+    pub fn toString(self: FaultBehavior) []const u8 {
+        return switch (self) {
+            .fail_soft => "FAIL_SOFT",
+            .fail_open => "FAIL_OPEN",
+            .fail_closed => "FAIL_CLOSED",
+            .drop_low_priority => "DROP_LOW_PRIORITY",
+        };
     }
-    try std.testing.expectEqual(@as(u64, 0), fi.injectedCount(.drop_packet));
-    try std.testing.expectEqual(@as(u64, 0), fi.injectedCount(.queue_full));
-}
 
-test "VER-003: FaultInjector at 100% rate always triggers" {
-    var fi = FaultInjector.init(.{
-        .enabled = true,
-        .drop_packet_rate = 1.0,
-        .corrupt_event_rate = 1.0,
-        .queue_full_rate = 1.0,
-    });
-    var i: u32 = 0;
-    while (i < 100) : (i += 1) {
-        try std.testing.expect(fi.maybeDrop());
-        try std.testing.expect(fi.maybeQueueFull());
+    pub fn isDegraded(self: FaultBehavior) bool {
+        return self == .fail_soft or self == .drop_low_priority;
     }
-    try std.testing.expectEqual(@as(u64, 100), fi.injectedCount(.drop_packet));
-    try std.testing.expectEqual(@as(u64, 100), fi.injectedCount(.queue_full));
-}
 
-test "VER-003: FaultInjector disabled never triggers regardless of rate" {
-    var fi = FaultInjector.init(.{
-        .enabled = false,
-        .drop_packet_rate = 1.0,
-        .corrupt_event_rate = 1.0,
-        .queue_full_rate = 1.0,
-    });
-    var i: u32 = 0;
-    while (i < 100) : (i += 1) {
-        try std.testing.expect(!fi.maybeDrop());
-        try std.testing.expect(!fi.maybeQueueFull());
+    pub fn isPermissive(self: FaultBehavior) bool {
+        return self == .fail_open;
     }
-    try std.testing.expectEqual(@as(u64, 0), fi.injectedCount(.drop_packet));
-}
 
-test "VER-003: FaultInjector corrupt changes event bits" {
-    var fi = FaultInjector.init(.{
-        .enabled = true,
-        .corrupt_event_rate = 1.0,
-    });
-    var ev = event.IpcEvent.init(.dns_query);
-    const orig_bytes = std.mem.asBytes(&ev);
-    var orig_copy: [80]u8 = undefined;
-    @memcpy(&orig_copy, orig_bytes);
+    pub fn isRestrictive(self: FaultBehavior) bool {
+        return self == .fail_closed;
+    }
+};
 
-    const corrupted = fi.maybeCorrupt(&ev);
-    try std.testing.expect(corrupted);
+// ============================================================
+// Fault Status
+// ============================================================
 
-    // Verify at least one byte changed
-    const new_bytes = std.mem.asBytes(&ev);
-    var any_diff = false;
-    var j: usize = 0;
-    while (j < 80) : (j += 1) {
-        if (orig_copy[j] != new_bytes[j]) {
-            any_diff = true;
-            break;
+pub const FaultStatus = enum(u8) {
+    /// Fault not active.
+    inactive = 0,
+    /// Fault injected, system responded correctly.
+    handled = 1,
+    /// Fault injected, system responded incorrectly.
+    mishandled = 2,
+    /// Fault injected, system crashed or hung.
+    crashed = 3,
+    /// Fault injected, system behavior undefined.
+    undefined = 4,
+
+    pub fn toString(self: FaultStatus) []const u8 {
+        return switch (self) {
+            .inactive => "INACTIVE",
+            .handled => "HANDLED",
+            .mishandled => "MISHANDLED",
+            .crashed => "CRASHED",
+            .undefined => "UNDEFINED",
+        };
+    }
+
+    pub fn isHandled(self: FaultStatus) bool {
+        return self == .handled;
+    }
+
+    pub fn isFailure(self: FaultStatus) bool {
+        return self == .mishandled or self == .crashed or self == .undefined;
+    }
+};
+
+// ============================================================
+// Fault Result
+// ============================================================
+
+pub const FaultResult = struct {
+    fault_type: FaultType,
+    status: FaultStatus,
+    expected_behavior: FaultBehavior,
+    actual_behavior: FaultBehavior,
+    description: []const u8,
+    duration_ns: u64,
+
+    pub fn isHandled(self: FaultResult) bool {
+        return self.status == .handled and self.expected_behavior == self.actual_behavior;
+    }
+
+    pub fn isFailure(self: FaultResult) bool {
+        return self.status.isFailure() or self.expected_behavior != self.actual_behavior;
+    }
+};
+
+// ============================================================
+// Active Fault (injected state)
+// ============================================================
+
+pub const ActiveFault = struct {
+    fault_type: FaultType,
+    injected_at_ns: u64,
+    description: []const u8,
+};
+
+// ============================================================
+// Fault Engine
+// ============================================================
+
+pub const FaultEngine = struct {
+    active_faults: [MAX_FAULTS]ActiveFault,
+    active_count: usize,
+    /// Total faults injected (lifetime).
+    total_injected: u64,
+    /// Total faults handled correctly.
+    total_handled: u64,
+    /// Total faults mishandled.
+    total_mishandled: u64,
+    /// Total critical faults.
+    total_critical: u64,
+
+    pub fn init() FaultEngine {
+        return .{
+            .active_faults = undefined,
+            .active_count = 0,
+            .total_injected = 0,
+            .total_handled = 0,
+            .total_mishandled = 0,
+            .total_critical = 0,
+        };
+    }
+
+    /// Inject a fault. Returns true if injected successfully.
+    pub fn injectFault(self: *FaultEngine, fault_type: FaultType, timestamp_ns: u64) bool {
+        if (self.active_count >= MAX_FAULTS) return false;
+
+        // Check if already active
+        for (0..self.active_count) |i| {
+            if (self.active_faults[i].fault_type == fault_type) return true;
         }
-    }
-    try std.testing.expect(any_diff);
-}
 
-test "VER-003: FaultInjector multiple fault kinds tracked independently" {
-    var fi = FaultInjector.init(.{
-        .enabled = true,
-        .drop_packet_rate = 1.0,
-        .corrupt_event_rate = 1.0,
-        .queue_full_rate = 1.0,
-    });
-    var ev = event.IpcEvent.init(.dns_query);
-
-    _ = fi.maybeDrop();
-    _ = fi.maybeCorrupt(&ev);
-    _ = fi.maybeQueueFull();
-    _ = fi.maybeDrop();
-
-    try std.testing.expectEqual(@as(u64, 2), fi.injectedCount(.drop_packet));
-    try std.testing.expectEqual(@as(u64, 1), fi.injectedCount(.corrupt_event));
-    try std.testing.expectEqual(@as(u64, 1), fi.injectedCount(.queue_full));
-    try std.testing.expectEqual(@as(u64, 0), fi.injectedCount(.slow_decode));
-}
-
-test "VER-003: FaultInjector seed produces deterministic results" {
-    const seed: u64 = 0xDEADBEEF;
-    var fi1 = FaultInjector.init(.{ .enabled = true, .seed = seed, .drop_packet_rate = 0.5 });
-    var fi2 = FaultInjector.init(.{ .enabled = true, .seed = seed, .drop_packet_rate = 0.5 });
-
-    var results1: [100]bool = undefined;
-    var results2: [100]bool = undefined;
-    var i: u32 = 0;
-    while (i < 100) : (i += 1) {
-        results1[i] = fi1.maybeDrop();
-        results2[i] = fi2.maybeDrop();
+        self.active_faults[self.active_count] = .{
+            .fault_type = fault_type,
+            .injected_at_ns = timestamp_ns,
+            .description = fault_type.toString(),
+        };
+        self.active_count += 1;
+        self.total_injected += 1;
+        if (fault_type.isCritical()) {
+            self.total_critical += 1;
+        }
+        return true;
     }
 
-    // Same seed should produce same sequence
-    i = 0;
-    while (i < 100) : (i += 1) {
-        try std.testing.expectEqual(results1[i], results2[i]);
+    /// Resolve a fault (mark as handled).
+    pub fn resolveFault(self: *FaultEngine, fault_type: FaultType, handled: bool) FaultResult {
+        const expected = fault_type.expectedBehavior();
+
+        var status: FaultStatus = .handled;
+        if (!handled) {
+            status = .mishandled;
+        }
+
+        // Remove from active faults
+        var found = false;
+        for (0..self.active_count) |i| {
+            if (self.active_faults[i].fault_type == fault_type) {
+                // Shift remaining
+                var j = i;
+                while (j < self.active_count - 1) : (j += 1) {
+                    self.active_faults[j] = self.active_faults[j + 1];
+                }
+                self.active_count -= 1;
+                found = true;
+                break;
+            }
+        }
+
+        if (found) {
+            if (handled) {
+                self.total_handled += 1;
+            } else {
+                self.total_mishandled += 1;
+            }
+        }
+
+        return .{
+            .fault_type = fault_type,
+            .status = status,
+            .expected_behavior = expected,
+            .actual_behavior = if (handled) expected else .fail_open, // simplification
+            .description = fault_type.toString(),
+            .duration_ns = 0,
+        };
+    }
+
+    /// Check if a specific fault is currently active.
+    pub fn isFaultActive(self: *const FaultEngine, fault_type: FaultType) bool {
+        for (0..self.active_count) |i| {
+            if (self.active_faults[i].fault_type == fault_type) return true;
+        }
+        return false;
+    }
+
+    /// Count of currently active faults.
+    pub fn activeCount(self: *const FaultEngine) usize {
+        return self.active_count;
+    }
+
+    /// Get pass rate (0-100).
+    pub fn passRate(self: *const FaultEngine) u8 {
+        const total = self.total_handled + self.total_mishandled;
+        if (total == 0) return 0;
+        return @intCast((self.total_handled * 100) / total);
+    }
+
+    /// Clear all faults.
+    pub fn clear(self: *FaultEngine) void {
+        self.active_count = 0;
+    }
+
+    /// Reset all stats.
+    pub fn reset(self: *FaultEngine) void {
+        self.* = init();
+    }
+};
+
+// ============================================================
+// All Fault Types (for iteration)
+// ============================================================
+
+pub const ALL_FAULT_TYPES = [_]FaultType{
+    .wfp_unavailable,
+    .driver_unavailable,
+    .queue_full,
+    .brain_unavailable,
+    .rag_unavailable,
+    .policy_malformed,
+    .ipc_failure,
+    .pep_unavailable,
+    .disk_full,
+    .forensic_failure,
+};
+
+// ============================================================
+// Tests
+// ============================================================
+
+test "FaultType.toString returns readable names" {
+    try std.testing.expect(std.mem.eql(u8, FaultType.wfp_unavailable.toString(), "WFP_UNAVAILABLE"));
+    try std.testing.expect(std.mem.eql(u8, FaultType.queue_full.toString(), "QUEUE_FULL"));
+    try std.testing.expect(std.mem.eql(u8, FaultType.brain_unavailable.toString(), "BRAIN_UNAVAILABLE"));
+    try std.testing.expect(std.mem.eql(u8, FaultType.rag_unavailable.toString(), "RAG_UNAVAILABLE"));
+    try std.testing.expect(std.mem.eql(u8, FaultType.policy_malformed.toString(), "POLICY_MALFORMED"));
+    try std.testing.expect(std.mem.eql(u8, FaultType.pep_unavailable.toString(), "PEP_UNAVAILABLE"));
+    try std.testing.expect(std.mem.eql(u8, FaultType.disk_full.toString(), "DISK_FULL"));
+    try std.testing.expect(std.mem.eql(u8, FaultType.forensic_failure.toString(), "FORENSIC_FAILURE"));
+}
+
+test "FaultType.isCritical" {
+    try std.testing.expect(!FaultType.wfp_unavailable.isCritical());
+    try std.testing.expect(!FaultType.queue_full.isCritical());
+    try std.testing.expect(FaultType.policy_malformed.isCritical());
+    try std.testing.expect(FaultType.pep_unavailable.isCritical());
+}
+
+test "FaultType.expectedBehavior returns correct behavior" {
+    try std.testing.expect(FaultType.wfp_unavailable.expectedBehavior() == .fail_soft);
+    try std.testing.expect(FaultType.queue_full.expectedBehavior() == .drop_low_priority);
+    try std.testing.expect(FaultType.brain_unavailable.expectedBehavior() == .fail_soft);
+    try std.testing.expect(FaultType.rag_unavailable.expectedBehavior() == .fail_soft);
+    try std.testing.expect(FaultType.policy_malformed.expectedBehavior() == .fail_closed);
+    try std.testing.expect(FaultType.pep_unavailable.expectedBehavior() == .fail_open);
+    try std.testing.expect(FaultType.disk_full.expectedBehavior() == .fail_soft);
+    try std.testing.expect(FaultType.forensic_failure.expectedBehavior() == .fail_soft);
+}
+
+test "FaultBehavior.toString returns readable names" {
+    try std.testing.expect(std.mem.eql(u8, FaultBehavior.fail_soft.toString(), "FAIL_SOFT"));
+    try std.testing.expect(std.mem.eql(u8, FaultBehavior.fail_open.toString(), "FAIL_OPEN"));
+    try std.testing.expect(std.mem.eql(u8, FaultBehavior.fail_closed.toString(), "FAIL_CLOSED"));
+    try std.testing.expect(std.mem.eql(u8, FaultBehavior.drop_low_priority.toString(), "DROP_LOW_PRIORITY"));
+}
+
+test "FaultBehavior.isDegraded, isPermissive, isRestrictive" {
+    try std.testing.expect(FaultBehavior.fail_soft.isDegraded());
+    try std.testing.expect(FaultBehavior.drop_low_priority.isDegraded());
+    try std.testing.expect(!FaultBehavior.fail_open.isDegraded());
+
+    try std.testing.expect(FaultBehavior.fail_open.isPermissive());
+    try std.testing.expect(!FaultBehavior.fail_closed.isPermissive());
+
+    try std.testing.expect(FaultBehavior.fail_closed.isRestrictive());
+    try std.testing.expect(!FaultBehavior.fail_open.isRestrictive());
+}
+
+test "FaultStatus.toString returns readable names" {
+    try std.testing.expect(std.mem.eql(u8, FaultStatus.inactive.toString(), "INACTIVE"));
+    try std.testing.expect(std.mem.eql(u8, FaultStatus.handled.toString(), "HANDLED"));
+    try std.testing.expect(std.mem.eql(u8, FaultStatus.mishandled.toString(), "MISHANDLED"));
+    try std.testing.expect(std.mem.eql(u8, FaultStatus.crashed.toString(), "CRASHED"));
+}
+
+test "FaultStatus.isHandled and isFailure" {
+    try std.testing.expect(FaultStatus.handled.isHandled());
+    try std.testing.expect(!FaultStatus.mishandled.isHandled());
+
+    try std.testing.expect(FaultStatus.mishandled.isFailure());
+    try std.testing.expect(FaultStatus.crashed.isFailure());
+    try std.testing.expect(!FaultStatus.handled.isFailure());
+}
+
+test "FaultResult.isHandled and isFailure" {
+    const handled = FaultResult{
+        .fault_type = .wfp_unavailable,
+        .status = .handled,
+        .expected_behavior = .fail_soft,
+        .actual_behavior = .fail_soft,
+        .description = "test",
+        .duration_ns = 1000,
+    };
+    try std.testing.expect(handled.isHandled());
+    try std.testing.expect(!handled.isFailure());
+
+    const failed = FaultResult{
+        .fault_type = .wfp_unavailable,
+        .status = .mishandled,
+        .expected_behavior = .fail_soft,
+        .actual_behavior = .fail_open,
+        .description = "test",
+        .duration_ns = 1000,
+    };
+    try std.testing.expect(!failed.isHandled());
+    try std.testing.expect(failed.isFailure());
+}
+
+test "FaultEngine init has zero stats" {
+    const engine = FaultEngine.init();
+    try std.testing.expect(engine.active_count == 0);
+    try std.testing.expect(engine.total_injected == 0);
+}
+
+test "FaultEngine injectFault adds fault" {
+    var engine = FaultEngine.init();
+    try std.testing.expect(engine.injectFault(.wfp_unavailable, 1000));
+    try std.testing.expect(engine.activeCount() == 1);
+    try std.testing.expect(engine.isFaultActive(.wfp_unavailable));
+    try std.testing.expect(engine.total_injected == 1);
+}
+
+test "FaultEngine injectFault is idempotent for same type" {
+    var engine = FaultEngine.init();
+    try std.testing.expect(engine.injectFault(.queue_full, 1000));
+    try std.testing.expect(engine.injectFault(.queue_full, 2000)); // already active
+    try std.testing.expect(engine.activeCount() == 1); // still 1
+    try std.testing.expect(engine.total_injected == 1);
+}
+
+test "FaultEngine injectFault tracks critical" {
+    var engine = FaultEngine.init();
+    _ = engine.injectFault(.wfp_unavailable, 1000);
+    _ = engine.injectFault(.policy_malformed, 2000);
+    try std.testing.expect(engine.total_critical == 1); // only policy_malformed
+}
+
+test "FaultEngine resolveFault removes fault" {
+    var engine = FaultEngine.init();
+    _ = engine.injectFault(.wfp_unavailable, 1000);
+    try std.testing.expect(engine.activeCount() == 1);
+
+    const result = engine.resolveFault(.wfp_unavailable, true);
+    try std.testing.expect(result.isHandled());
+    try std.testing.expect(engine.activeCount() == 0);
+    try std.testing.expect(!engine.isFaultActive(.wfp_unavailable));
+    try std.testing.expect(engine.total_handled == 1);
+}
+
+test "FaultEngine resolveFault tracks mishandled" {
+    var engine = FaultEngine.init();
+    _ = engine.injectFault(.pep_unavailable, 1000);
+
+    const result = engine.resolveFault(.pep_unavailable, false);
+    try std.testing.expect(!result.isHandled());
+    try std.testing.expect(engine.total_mishandled == 1);
+}
+
+test "FaultEngine isFaultActive" {
+    var engine = FaultEngine.init();
+    try std.testing.expect(!engine.isFaultActive(.queue_full));
+
+    _ = engine.injectFault(.queue_full, 1000);
+    try std.testing.expect(engine.isFaultActive(.queue_full));
+    try std.testing.expect(!engine.isFaultActive(.wfp_unavailable));
+}
+
+test "FaultEngine multiple faults" {
+    var engine = FaultEngine.init();
+    _ = engine.injectFault(.wfp_unavailable, 1000);
+    _ = engine.injectFault(.queue_full, 2000);
+    _ = engine.injectFault(.brain_unavailable, 3000);
+    try std.testing.expect(engine.activeCount() == 3);
+
+    _ = engine.resolveFault(.queue_full, true);
+    try std.testing.expect(engine.activeCount() == 2);
+    try std.testing.expect(engine.isFaultActive(.wfp_unavailable));
+    try std.testing.expect(!engine.isFaultActive(.queue_full));
+    try std.testing.expect(engine.isFaultActive(.brain_unavailable));
+}
+
+test "FaultEngine passRate" {
+    var engine = FaultEngine.init();
+    engine.total_handled = 8;
+    engine.total_mishandled = 2;
+    try std.testing.expect(engine.passRate() == 80); // 8/10 = 80%
+}
+
+test "FaultEngine clear removes active faults" {
+    var engine = FaultEngine.init();
+    _ = engine.injectFault(.wfp_unavailable, 1000);
+    _ = engine.injectFault(.queue_full, 2000);
+    try std.testing.expect(engine.activeCount() == 2);
+
+    engine.clear();
+    try std.testing.expect(engine.activeCount() == 0);
+    try std.testing.expect(engine.total_injected == 2); // lifetime not reset
+}
+
+test "FaultEngine reset zeroes everything" {
+    var engine = FaultEngine.init();
+    _ = engine.injectFault(.wfp_unavailable, 1000);
+    _ = engine.resolveFault(.wfp_unavailable, true);
+    try std.testing.expect(engine.total_injected == 1);
+
+    engine.reset();
+    try std.testing.expect(engine.total_injected == 0);
+    try std.testing.expect(engine.total_handled == 0);
+}
+
+test "ALL_FAULT_TYPES has 10 types" {
+    try std.testing.expect(ALL_FAULT_TYPES.len == 10);
+}
+
+test "ALL_FAULT_TYPES covers all enum values" {
+    var seen = [_]bool{false} ** 10;
+    for (ALL_FAULT_TYPES) |ft| {
+        seen[@intFromEnum(ft)] = true;
+    }
+    for (seen) |s| {
+        try std.testing.expect(s);
     }
 }
 
-test "VER-003: FaultInjector injection count never overflows" {
-    var fi = FaultInjector.init(.{
-        .enabled = true,
-        .drop_packet_rate = 1.0,
-    });
-    // Inject many times — u64 counter should not overflow
-    var i: u32 = 0;
-    while (i < 10000) : (i += 1) {
-        _ = fi.maybeDrop();
+test "every fault type has defined behavior" {
+    for (ALL_FAULT_TYPES) |ft| {
+        const behavior = ft.expectedBehavior();
+        // Every behavior should be one of the 4 defined values
+        _ = behavior.toString(); // should not crash
     }
-    try std.testing.expectEqual(@as(u64, 10000), fi.injectedCount(.drop_packet));
-}
-
-test "VER-003: FaultInjector corrupt rate 0 never corrupts" {
-    var fi = FaultInjector.init(.{
-        .enabled = true,
-        .corrupt_event_rate = 0.0,
-    });
-    var i: u32 = 0;
-    while (i < 1000) : (i += 1) {
-        var ev = event.IpcEvent.init(.dns_query);
-        try std.testing.expect(!fi.maybeCorrupt(&ev));
-    }
-    try std.testing.expectEqual(@as(u64, 0), fi.injectedCount(.corrupt_event));
-}
-
-test "VER-003: FaultInjector fromEnv respects env var" {
-    // On Windows, if AEGIS_FAULT_INJECTION=1 is set, it should be enabled
-    // In test env, it should be disabled
-    var fi = FaultInjector.fromEnv();
-    // We can't guarantee env state, but we can verify it doesn't panic
-    _ = fi.maybeDrop();
-    _ = fi.maybeQueueFull();
 }

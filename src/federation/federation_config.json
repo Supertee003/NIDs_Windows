@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "module": "federation_codec",
+  "phase": "39-ext-1",
+  "kill_switch": {
+    "enabled": false,
+    "comment": "OFF by default. Federation traffic is no-op until explicitly enabled. Per-node enforcement stays in WFP kernel driver."
+  },
+  "wire_format": {
+    "magic": "0x41454749",
+    "magic_ascii": "AEGI",
+    "version": 1,
+    "header_length_bytes": 12,
+    "max_frame_size_bytes": 4096,
+    "max_payload_size_bytes": 4084,
+    "endian": "little-endian",
+    "checksum": "CRC32 (IEEE 802.3, polynomial 0xEDB88320)",
+    "checksum_purpose": "integrity (NOT cryptographic; catches bit-flips on the wire)"
+  },
+  "frame_layout": {
+    "offset_0_to_3": "magic (u32 LE) = 0x41_45_47_49",
+    "offset_3": "version (u8) = 1",
+    "offset_4": "msg_type (u8, MessageType enum value)",
+    "offset_5_to_6": "payload_len (u16 LE, max 4084)",
+    "offset_7_to_11": "crc32 (u32 LE) of payload bytes",
+    "offset_12_plus": "payload (msg_type-specific fields, length-prefixed)"
+  },
+  "connection_state_machine": {
+    "states": ["DISCONNECTED", "CONNECTING", "CONNECTED", "DEGRADED", "RECONNECTING"],
+    "transitions": {
+      "DISCONNECTED -> CONNECTING": "beginConnect()",
+      "CONNECTING -> CONNECTED": "markConnected()",
+      "CONNECTED -> DEGRADED": "markSendFailure() (first failure)",
+      "DEGRADED -> CONNECTED": "markSendSuccess() (recovery)",
+      "DEGRADED -> RECONNECTING": "beginReconnect() after backoff",
+      "RECONNECTING -> CONNECTED": "markConnected() on success",
+      "any -> DISCONNECTED": "disconnect() explicit shutdown"
+    },
+    "active_states": ["CONNECTED", "DEGRADED"]
+  },
+  "backoff_policy": {
+    "initial_ms": 1,
+    "multiplier": 2.0,
+    "max_ms": 30000,
+    "comment": "Exponential: 1ms, 2ms, 4ms, 8ms, ..., capped at 30s. Consecutive failures drive the exponent."
+  },
+  "outbound_queue": {
+    "max_entries": 256,
+    "drop_policy": "drop_oldest_on_overflow (default true)",
+    "max_attempts_per_message": 3,
+    "comment": "Ring buffer; oldest entry evicted on overflow when drop_oldest=true, else new entry rejected."
+  },
+  "transport": {
+    "interface": "Transport { send, recv, isConnected }",
+    "default_impl": "LoopbackTransport (in-process, for tests + same-node multi-instance)",
+    "production_impls": "TCP/Unix socket, gRPC, ZeroMQ (future adapters)",
+    "comment": "Transport is an abstract vtable; same code drives real network and tests."
+  }
+}

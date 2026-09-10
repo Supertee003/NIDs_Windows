@@ -1,10 +1,11 @@
 # AI_CONTEXT.md — AEGIS NIDS Windows
 ## Machine-Generated Current-HEAD Context Layer
 
-**HEAD:** `97dbfef`
+**HEAD:** `e6de1ae`
 **BRANCH:** `main`
 **GENERATED:** 2026-09-10
 **GENERATOR:** OpenCode MiMo 2.5 Free
+**ARCHITECTURE:** Hub-and-Spoke with Plane Separation
 
 ---
 
@@ -12,7 +13,83 @@
 
 AEGIS is a **Security Operations Machine** — a Windows-native Network Intrusion Detection System with seven-language architecture. It is NOT a single-file project. It is a runtime with capture, detection, policy, enforcement, forensics, and control planes.
 
-## 2. ONE RUNTIME
+**Architecture:** Hub-and-Spoke with Plane Separation
+- **Zig** = Runtime Spine (the hub)
+- **Go/C++** = Acquisition (sensors, adapters)
+- **Python/Cython** = Intelligence (Brain, RAG, analytics)
+- **Rust** = Security (PEP, crypto, WFP enforcement)
+- **TypeScript** = Control (policy authoring, CLI, UI)
+
+**Cython is a Python-to-native performance bridge, NOT the system integration bus.**
+
+## 2. ARCHITECTURE (Plane Separation)
+
+```
+                         ┌───────────────┐
+                         │ CLI / TUI /   │
+                         │ WEB / TS      │
+                         └───────┬───────┘
+                                 │
+                           Control Protocol
+                                 │
+                                 ▼
+                     ┌────────────────────┐
+                     │       ZIG          │
+                     │   RUNTIME SPINE    │
+                     │                    │
+                     │ Canonical Event    │
+                     │ Event Fabric       │
+                     │ Flow               │
+                     │ Detection          │
+                     │ Correlation        │
+                     │ Runtime State      │
+                     └──────┬──────┬──────┘
+                            │      │
+               ┌────────────┘      └────────────┐
+               │                                │
+               ▼                                ▼
+          GO / C / C++                       PYTHON
+          Sensors                            Brain/RAG
+               │                                │
+               └───────────┐      ┌────────────┘
+                           ▼      ▼
+                           CYTHON
+                              │
+                              ▼
+                        Native Compute
+
+                              │
+                              ▼
+                           POLICY
+                              │
+                              ▼
+                         RUST PEP
+                              │
+                      Authorization
+                              │
+                              ▼
+                    Windows Enforcement
+                              │
+                             WFP
+                              │
+                              ▼
+                     Audit / Forensics
+                              │
+                              ▼
+                       Observability
+```
+
+## 3. PLANES
+
+| Plane | Language | Role | Boundary |
+|---|---|---|---|
+| A: Acquisition | Go, C/C++ | Sensors, Windows adapters | C ABI → Zig |
+| B: Runtime | Zig | Spine, Event Fabric, Flow, Detection, Correlation | Hub |
+| C: Intelligence | Python, Cython | Brain, RAG, Analytics | Analytics Contract → Zig |
+| D: Security | Rust | PEP, Crypto, WFP enforcement | PEP ABI → Zig |
+| E: Control | TypeScript | Policy authoring, CLI, UI | Control Protocol → Zig |
+
+## 4. ONE RUNTIME
 
 ```
 zig build                                   → aegis_nids.exe       (Tier-1: runtime spine)
@@ -25,7 +102,17 @@ cd ts_policy && npm run typecheck && npm run test:all   → (advisory only, no o
 
 **ONE production runtime. No duplicates.**
 
-## 3. LANGUAGE OWNERSHIP
+## 5. CONTRACTS (5 Core Contracts)
+
+| Contract | ID | Description | Boundary |
+|---|---|---|---|
+| CONTRACT-01 | CANONICAL_EVENT | 109-byte event schema | All sensors → Zig |
+| CONTRACT-02 | PEP_ABI | PEP request/response (64/16 bytes) | Zig ↔ Rust |
+| CONTRACT-03 | RUNTIME_ABI | Module lifecycle + worker stages | Zig ↔ all |
+| CONTRACT-04 | CONTROL_PROTOCOL | JSON over named pipe | TS/CLI → Zig |
+| CONTRACT-05 | POLICY_IR | Policy AST (Action, Condition, Policy) | TS → Rust PEP |
+
+## 6. LANGUAGE OWNERSHIP
 
 | Language | Owns | Does NOT Own |
 |---|---|---|
@@ -35,9 +122,9 @@ cd ts_policy && npm run typecheck && npm run test:all   → (advisory only, no o
 | Python | Brain (Tier-2), analytics, RAG | Privileged OS calls, enforcement |
 | Rust | Crypto, trust, PEP, authorization, WFP/security enforcement | Detection logic |
 | TypeScript | Policy authoring, simulation, compiler | Enforcement, runtime |
-| Cython | Measured Python hot loops only (after profiling) | New logic |
+| Cython | Python-to-native performance bridge | New logic, system integration |
 
-## 4. AUTHORITY BOUNDARIES
+## 7. AUTHORITY BOUNDARIES
 
 - **Final enforcement authority:** Rust PEP (`rust-src/lib.rs`)
 - **Runtime orchestration:** Zig core (`src/main.zig`)
@@ -48,21 +135,42 @@ cd ts_policy && npm run typecheck && npm run test:all   → (advisory only, no o
 
 **Never bypass Rust PEP. Never create a second runtime. Never create a second enforcement authority.**
 
-## 5. CURRENT PHASE
+## 8. LANGUAGE INTEGRATION (Correct Paths)
 
-**TRUTH STABILIZATION** (RT-01 through RT-08)
+| Path | Boundary | Status |
+|---|---|---|
+| Go → C ABI → Zig | Acquisition | ✅ Correct |
+| C++ → C ABI → Zig | Native adapters | ✅ Correct |
+| Python ↔ Cython ↔ C/C++ | Performance bridge | ✅ Correct |
+| Zig ↔ Rust FFI | PEP enforcement | ✅ Correct |
+| TypeScript → Control Protocol → Zig | Policy/UI | ✅ Correct |
 
-Previous phases (6-9) were implemented but verification levels vary:
-- Phase 6 (Forensics): IMPLEMENTED, verification E2 (unit tests only)
-- Phase 7 (FFI): IMPLEMENTED, verification E2 (unit tests only)
-- Phase 8 (Testing): IMPLEMENTED, verification E2 (unit tests only)
-- Phase 9 (Release): IMPLEMENTED, verification E2 (unit tests only)
+## 9. LANGUAGE INTEGRATION (Wrong Paths - NEVER DO)
 
-## 6. ACTIVE BLOCKERS
+| Path | Why Wrong |
+|---|---|
+| Go → Rust PEP | Wrong authority boundary |
+| Python → WFP | Wrong security boundary |
+| TypeScript → native WFP | Wrong security boundary |
+| C++ → Rust → Zig → C++ | Cyclic architecture |
+| All languages → all languages | Architectural mesh |
+
+## 10. CURRENT PHASE
+
+**ARCHITECTURE STABILIZATION** (Hub-and-Spoke + Plane Separation)
+
+Previous phases:
+- Phase 6 (Forensics): IMPLEMENTED, verification E2
+- Phase 7 (FFI): IMPLEMENTED, verification E2
+- Phase 8 (Testing): IMPLEMENTED, verification E2
+- Phase 9 (Release): IMPLEMENTED, verification E2
+- Truth Stabilization: COMPLETED
+
+## 11. ACTIVE BLOCKERS
 
 None. All gaps closed. Exit Gate 13/13 PASS.
 
-## 7. CURRENT BUILD COMMANDS
+## 12. CURRENT BUILD COMMANDS
 
 ```powershell
 zig build                                   # Zig core
@@ -73,7 +181,7 @@ cd nose && go build -o aegis-nose.exe .     # Go Nose
 cd ts_policy && npm run test                # TypeScript tests
 ```
 
-## 8. CURRENT RUNTIME ENTRYPOINT
+## 13. CURRENT RUNTIME ENTRYPOINT
 
 `src/main.zig` — `main()` function
 
@@ -82,10 +190,11 @@ Startup sequence:
 main → init subsystems → start pipeline → start watchdog → start control pipe → start capture → run loop
 ```
 
-## 9. WHERE MACHINE-READABLE TRUTH IS STORED
+## 14. WHERE MACHINE-READABLE TRUTH IS STORED
 
 | Artifact | Path | Role |
 |---|---|---|
+| AI Context | `AI_CONTEXT.md` | First document an agent reads |
 | System map | `SYSTEM_MAP.json` | Component inventory + roles |
 | Flow map | `FLOW_MAP.json` | Data/decision/enforcement flows |
 | Authority map | `AUTHORITY_MAP.json` | Language ownership + security authority |
@@ -96,7 +205,7 @@ main → init subsystems → start pipeline → start watchdog → start control
 | Inventory | `inventory.json` | File inventory + classifications |
 | Reference map | `reference_map.json` | File → role mapping |
 
-## 10. WHAT THE AI MUST NEVER DO
+## 15. WHAT THE AI MUST NEVER DO
 
 1. Do not patch files in isolation — identify the system flow first
 2. Do not create a second runtime
@@ -111,3 +220,5 @@ main → init subsystems → start pipeline → start watchdog → start control
 11. Do not change unrelated files
 12. Do not use compilation as runtime proof
 13. Do not use unit tests as Windows-host proof
+14. Do not use Cython as the system integration bus
+15. Do not create language-to-language mesh (use hub-and-spoke)

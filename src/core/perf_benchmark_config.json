@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "module": "perf_benchmark",
+  "phase": 41,
+  "kill_switch": {
+    "enabled": false,
+    "comment": "OFF by default. Benchmarks are no-ops until explicitly enabled."
+  },
+  "iteration_params": {
+    "warmup": 50,
+    "iterations": 1000,
+    "batch_size": 100,
+    "comment": "warmup = unmeasured iterations to stabilize cache/JIT. iterations = measured iterations for ops/sec calculation."
+  },
+  "benchmark_suites": [
+    {
+      "name": "ProcessTracker",
+      "description": "100 process_create events per iteration",
+      "threshold_ops_per_sec": 1000,
+      "measures": "ProcessTracker.trackCreate() throughput (HashMap insert + parent-chain walking)"
+    },
+    {
+      "name": "FileIntegrityStore",
+      "description": "50 baseline + observe pairs per iteration",
+      "threshold_ops_per_sec": 500,
+      "measures": "StringHashMap insert + SHA-256 compare + observe() logic"
+    },
+    {
+      "name": "RegistryWatchQueue",
+      "description": "100 registry events per iteration",
+      "threshold_ops_per_sec": 5000,
+      "measures": "Ring buffer enqueue + matchKey() case-insensitive comparison"
+    },
+    {
+      "name": "FederationCodec",
+      "description": "10 encode+decode cycles per iteration",
+      "threshold_ops_per_sec": 10000,
+      "measures": "Wire format encode (header + payload + CRC32) + decode (validate + parse)"
+    },
+    {
+      "name": "CrossNodeAggregator",
+      "description": "50 incident reports per iteration",
+      "threshold_ops_per_sec": 1000,
+      "measures": "Aggregate key computation + HashMap lookup/insert + severity escalation"
+    },
+    {
+      "name": "FullPipeline",
+      "description": "4 events through EventPump -> HostTelemetry per iteration",
+      "threshold_ops_per_sec": 500,
+      "measures": "End-to-end: mock source -> ingestEvent -> ProcessTracker/FIM/Reg/Socket -> incidents"
+    }
+  ],
+  "production_capacity_guide": {
+    "codec_target": "10000+ ops/sec for federation heartbeat traffic (~8k heartbeats/sec from 100 nodes)",
+    "pipeline_target": "500+ ops/sec full pipeline (4 events each = 2000+ events/sec ingestion capacity)",
+    "registry_target": "5000+ ops/sec (registry events are bursty; need headroom for mass persistence-key changes)",
+    "comment": "Targets verified on Linux host. Windows performance may differ due to allocator and syscall overhead."
+  }
+}

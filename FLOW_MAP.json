@@ -1,17 +1,21 @@
 {
-  "head_sha": "97dbfef",
+  "head_sha": "e6de1ae",
   "created_at": "2026-09-10",
-  "generator_version": "2.0",
+  "generator_version": "3.0",
+  "architecture": "Hub-and-Spoke with Plane Separation",
   "flows": [
     {
       "id": "DATA-001",
       "name": "Packet Capture → Canonical Event → Detection → Policy → Enforcement → Audit → Forensics",
       "type": "data_plane",
+      "plane": "PLANE-A → PLANE-B → PLANE-D",
       "description": "Primary network data path from packet capture to forensic recording",
+      "boundary": "C ABI (Go → Zig) → PEP ABI (Zig → Rust)",
       "layers": [
         {
           "step": 1,
           "name": "Packet Capture",
+          "plane": "PLANE-A",
           "owner": "Go Nose",
           "component": "go_nose",
           "input": "Raw network packets via Npcap",
@@ -21,42 +25,49 @@
         {
           "step": 2,
           "name": "Canonical Event",
+          "plane": "PLANE-A",
           "owner": "Go Nose",
           "component": "go_nose",
           "input": "RawPacket",
-          "output": "IpcEvent (80-byte canonical)",
-          "file": "nose/canonical.go"
+          "output": "CanonicalEvent (109 bytes)",
+          "file": "nose/canonical.go",
+          "contract": "CONTRACT-01"
         },
         {
           "step": 3,
-          "name": "IPC Transport",
+          "name": "C ABI Transport",
+          "plane": "PLANE-A → PLANE-B",
           "owner": "Go → Zig",
-          "component": "ipc",
-          "input": "IpcEvent bytes",
+          "component": "c_abi",
+          "input": "CanonicalEvent bytes",
           "output": "EventQueue",
-          "file": "nose/pipe_writer.go"
+          "file": "nose/pipe_writer.go",
+          "boundary": "C ABI"
         },
         {
           "step": 4,
           "name": "Flow Table",
+          "plane": "PLANE-B",
           "owner": "Zig",
           "component": "zig_core",
-          "input": "IpcEvent",
+          "input": "CanonicalEvent",
           "output": "FlowRecord",
           "file": "src/capture/flow_table.zig"
         },
         {
           "step": 5,
           "name": "Detection",
+          "plane": "PLANE-B",
           "owner": "Zig",
           "component": "zig_core",
-          "input": "FlowRecord + IpcEvent",
+          "input": "FlowRecord + CanonicalEvent",
           "output": "DetectionResult",
           "file": "src/detection/signature_engine.zig"
         },
         {
           "step": 6,
           "name": "Correlation",
+          "plane": "PLANE-B",
           "owner": "Zig",
           "component": "zig_core",
           "input": "DetectionResult[]",
@@ -66,6 +77,7 @@
         {
           "step": 7,
           "name": "Threat Tracking",
+          "plane": "PLANE-B",
           "owner": "Zig",
           "component": "zig_core",
           "input": "CorrelatedThreat",
@@ -75,15 +87,19 @@
         {
           "step": 8,
           "name": "Policy Evaluation",
+          "plane": "PLANE-B → PLANE-D",
           "owner": "Zig → Rust PEP",
           "component": "rust_pep",
           "input": "Incident + PolicyIR",
           "output": "PEPDecision",
-          "file": "src/policy/pep_bindings.zig"
+          "file": "src/policy/pep_bindings.zig",
+          "contract": "CONTRACT-02",
+          "boundary": "PEP ABI"
         },
         {
           "step": 9,
           "name": "Action Dispatch",
+          "plane": "PLANE-B",
           "owner": "Zig",
           "component": "zig_core",
           "input": "PEPDecision",
@@ -93,6 +109,7 @@
         {
           "step": 10,
           "name": "Decision Trace",
+          "plane": "PLANE-B",
           "owner": "Zig",
           "component": "zig_core",
           "input": "full pipeline context",
@@ -102,15 +119,17 @@
         {
           "step": 11,
           "name": "Forensic Record",
+          "plane": "PLANE-B",
           "owner": "Zig",
           "component": "zig_core",
-          "input": "IpcEvent + DetectionResult + PEPDecision + DecisionTrace",
+          "input": "CanonicalEvent + DetectionResult + PEPDecision + DecisionTrace",
           "output": "ForensicRecord (4KB slot with embedded hash chain)",
           "file": "src/forensic/forensic_pipeline.zig"
         },
         {
           "step": 12,
           "name": "Audit",
+          "plane": "PLANE-B",
           "owner": "Zig",
           "component": "zig_core",
           "input": "full pipeline context",
@@ -123,11 +142,15 @@
       "id": "CONTROL-001",
       "name": "Operator → Control API → Authorization → State Mutation → Audit",
       "type": "control_plane",
+      "plane": "PLANE-E → PLANE-B",
       "description": "Operator command execution path",
+      "boundary": "Control Protocol (JSON over named pipe)",
+      "contract": "CONTRACT-04",
       "layers": [
         {
           "step": 1,
           "name": "Operator Command",
+          "plane": "PLANE-E",
           "owner": "CLI/TUI/Web",
           "input": "User command",
           "output": "CommandRequest",
@@ -135,23 +158,27 @@
         },
         {
           "step": 2,
-          "name": "IPC Transport",
+          "name": "Control Protocol Transport",
+          "plane": "PLANE-E → PLANE-B",
           "owner": "CLI → Zig",
-          "input": "CommandRequest",
+          "input": "CommandRequest (JSON)",
           "output": "PipeMessage",
-          "file": "src/main.zig (named pipe server)"
+          "file": "src/main.zig (named pipe server)",
+          "boundary": "Control Protocol"
         },
         {
           "step": 3,
           "name": "Authorization",
+          "plane": "PLANE-B",
           "owner": "Zig",
           "input": "PipeMessage",
           "output": "AuthorizedCommand",
-          "file": "src/main.zig"
+          "file": "src/policy/control_ipc.zig"
         },
         {
           "step": 4,
           "name": "State Mutation",
+          "plane": "PLANE-B",
           "owner": "Zig",
           "input": "AuthorizedCommand",
           "output": "MutatedState",
@@ -160,6 +187,7 @@
         {
           "step": 5,
           "name": "Postcondition Verification",
+          "plane": "PLANE-B",
           "owner": "Zig",
           "input": "MutatedState",
           "output": "VerifiedResult",
@@ -168,6 +196,7 @@
         {
           "step": 6,
           "name": "Audit",
+          "plane": "PLANE-B",
           "owner": "Zig",
           "input": "VerifiedResult",
           "output": "AuditEntry",
@@ -176,14 +205,63 @@
       ]
     },
     {
+      "id": "BRAIN-001",
+      "name": "Event → Brain Analysis → Threat Score → Zig",
+      "type": "intelligence_plane",
+      "plane": "PLANE-B → PLANE-C → PLANE-B",
+      "description": "Python Brain analytics path",
+      "boundary": "Analytics Contract",
+      "layers": [
+        {
+          "step": 1,
+          "name": "Analysis Request",
+          "plane": "PLANE-B",
+          "owner": "Zig",
+          "input": "CanonicalEvent",
+          "output": "AnalysisRequest",
+          "file": "src/detection/rag_engine.zig"
+        },
+        {
+          "step": 2,
+          "name": "Python Brain",
+          "plane": "PLANE-C",
+          "owner": "Python Brain",
+          "input": "AnalysisRequest",
+          "output": "ThreatScore",
+          "file": "brain/windows_brain.py"
+        },
+        {
+          "step": 3,
+          "name": "Cython Hot Loop",
+          "plane": "PLANE-C",
+          "owner": "Cython",
+          "input": "FeatureVector",
+          "output": "ComputedFeatures",
+          "file": "brain/**/*.pyx",
+          "note": "Cython is a performance bridge, NOT the system integration bus"
+        },
+        {
+          "step": 4,
+          "name": "Threat Score Response",
+          "plane": "PLANE-C → PLANE-B",
+          "owner": "Python → Zig",
+          "input": "ThreatScore",
+          "output": "UpdatedThreatLevel",
+          "file": "src/detection/rag_engine.zig"
+        }
+      ]
+    },
+    {
       "id": "EVIDENCE-001",
       "name": "Forensic Record → Verify → Replay → Compare → Evidence",
       "type": "evidence_plane",
+      "plane": "PLANE-B",
       "description": "Forensic evidence verification and replay path",
       "layers": [
         {
           "step": 1,
           "name": "Record Export",
+          "plane": "PLANE-B",
           "owner": "Zig",
           "input": "ForensicRing",
           "output": "ExportedRecord[]",
@@ -192,6 +270,7 @@
         {
           "step": 2,
           "name": "Integrity Verify",
+          "plane": "PLANE-B",
           "owner": "Zig",
           "input": "ExportedRecord[]",
           "output": "IntegrityResult",
@@ -200,6 +279,7 @@
         {
           "step": 3,
           "name": "Original Hash",
+          "plane": "PLANE-B",
           "owner": "Zig",
           "input": "IntegrityResult",
           "output": "OriginalHash (SHA-256)",
@@ -208,6 +288,7 @@
         {
           "step": 4,
           "name": "Replay",
+          "plane": "PLANE-B",
           "owner": "Zig",
           "input": "ExportedRecord[] + ReplayMode",
           "output": "ReplayResult[]",
@@ -216,6 +297,7 @@
         {
           "step": 5,
           "name": "Compare",
+          "plane": "PLANE-B",
           "owner": "Zig",
           "input": "OriginalDecision[] + ReplayDecision[]",
           "output": "ReplayComparison",
@@ -224,6 +306,7 @@
         {
           "step": 6,
           "name": "Evidence Record",
+          "plane": "PLANE-B",
           "owner": "Zig",
           "input": "ReplayComparison",
           "output": "ReplayDecision (128 bytes)",
@@ -232,102 +315,56 @@
       ]
     },
     {
-      "id": "FORENSIC-001",
-      "name": "Event → Forensic Record → Hash Chain → CRC → Ring Buffer → Verification",
-      "type": "evidence_plane",
-      "description": "Forensic record lifecycle with embedded hash chain",
-      "layers": [
-        {
-          "step": 1,
-          "name": "Append",
-          "owner": "Zig",
-          "input": "IpcEvent + metadata",
-          "output": "RecordHeader (with record_seq, prev_hash, current_hash, CRC)",
-          "file": "src/forensic/forensic_pipeline.zig"
-        },
-        {
-          "step": 2,
-          "name": "Hash Chain",
-          "owner": "Zig",
-          "input": "prev_hash + event_bytes + metadata",
-          "output": "current_hash (SHA-256)",
-          "file": "src/forensic/forensic_pipeline.zig"
-        },
-        {
-          "step": 3,
-          "name": "CRC",
-          "owner": "Zig",
-          "input": "record bytes (excluding current_hash field)",
-          "output": "crc32",
-          "file": "src/forensic/forensic_pipeline.zig"
-        },
-        {
-          "step": 4,
-          "name": "Commit",
-          "owner": "Zig",
-          "input": "complete record",
-          "output": "committed to ring buffer",
-          "file": "src/forensic/forensic_pipeline.zig"
-        },
-        {
-          "step": 5,
-          "name": "Read (snapshot)",
-          "owner": "Zig",
-          "input": "slot index",
-          "output": "allocated copy (safe for concurrent readers)",
-          "file": "src/forensic/forensic_pipeline.zig"
-        },
-        {
-          "step": 6,
-          "name": "Verify",
-          "owner": "Zig",
-          "input": "record bytes",
-          "output": "valid_crc + valid_hash + chain_valid",
-          "file": "src/forensic/forensic_pipeline.zig"
-        }
-      ]
-    },
-    {
       "id": "FFI-001",
-      "name": "Zig → Rust PEP FFI",
+      "name": "Zig ↔ Rust PEP FFI",
       "type": "ffi_boundary",
+      "plane": "PLANE-B ↔ PLANE-D",
       "description": "Cross-language boundary between Zig runtime and Rust PEP",
+      "contract": "CONTRACT-02",
+      "boundary": "PEP ABI (C ABI)",
       "layers": [
         {
           "step": 1,
           "name": "PEP Request",
+          "plane": "PLANE-B",
           "owner": "Zig",
-          "input": "PEPRequest struct",
+          "input": "PepRequest struct (64 bytes)",
           "output": "FFI call to aegis_pep.dll",
           "file": "src/policy/pep_bindings.zig"
         },
         {
           "step": 2,
           "name": "Rust Authorization",
+          "plane": "PLANE-D",
           "owner": "Rust",
-          "input": "PEPRequest (C ABI)",
-          "output": "PEPDecision",
+          "input": "PepRequest (C ABI)",
+          "output": "PepDecision",
           "file": "rust-src/lib.rs"
         },
         {
           "step": 3,
           "name": "PEP Response",
+          "plane": "PLANE-D → PLANE-B",
           "owner": "Rust → Zig",
-          "input": "PEPDecision",
-          "output": "PEPDecision struct to Zig",
+          "input": "PepResponse (16 bytes)",
+          "output": "PepDecision to Zig",
           "file": "src/policy/pep_bindings.zig"
         }
       ]
     },
     {
       "id": "FFI-002",
-      "name": "Zig → C++ Native Adapter FFI",
+      "name": "Zig ↔ C++ Native Adapter FFI",
       "type": "ffi_boundary",
+      "plane": "PLANE-B ↔ PLANE-A",
       "description": "Cross-language boundary between Zig runtime and C++ native adapters",
+      "contract": "CONTRACT-03",
+      "boundary": "C ABI",
       "layers": [
         {
           "step": 1,
           "name": "Adapter Call",
+          "plane": "PLANE-B",
           "owner": "Zig",
           "input": "adapter request",
           "output": "FFI call to C DLL",
@@ -336,6 +373,7 @@
         {
           "step": 2,
           "name": "Native Processing",
+          "plane": "PLANE-A",
           "owner": "C++",
           "input": "adapter request (C ABI)",
           "output": "adapter response",
@@ -344,10 +382,40 @@
         {
           "step": 3,
           "name": "Adapter Response",
+          "plane": "PLANE-A → PLANE-B",
           "owner": "C++ → Zig",
           "input": "adapter response",
           "output": "CanonicalEvent to Zig",
           "file": "src/windows/etw_realtime.zig"
+        }
+      ]
+    },
+    {
+      "id": "FFI-003",
+      "name": "Go ↔ Zig Acquisition FFI",
+      "type": "ffi_boundary",
+      "plane": "PLANE-A ↔ PLANE-B",
+      "description": "Cross-language boundary between Go sensors and Zig runtime",
+      "contract": "CONTRACT-01",
+      "boundary": "C ABI",
+      "layers": [
+        {
+          "step": 1,
+          "name": "Sensor Call",
+          "plane": "PLANE-A",
+          "owner": "Go",
+          "input": "CanonicalEvent",
+          "output": "FFI call to Zig",
+          "file": "nose/canonical.go"
+        },
+        {
+          "step": 2,
+          "name": "Event Ingestion",
+          "plane": "PLANE-B",
+          "owner": "Zig",
+          "input": "CanonicalEvent (C ABI)",
+          "output": "EventQueue",
+          "file": "src/contract/event_fabric.zig"
         }
       ]
     }

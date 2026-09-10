@@ -1,177 +1,199 @@
 {
-  "head_sha": "5f23e4f",
+  "head_sha": "e6de1ae",
   "created_at": "2026-09-10",
-  "generator_version": "2.0",
+  "generator_version": "3.0",
+  "architecture": "Hub-and-Spoke with Plane Separation",
+  "planes": [
+    {
+      "id": "PLANE-A",
+      "name": "Acquisition",
+      "description": "Sensors, packet capture, Windows native adapters",
+      "languages": ["Go", "C/C++"],
+      "boundary": "C ABI → Zig Runtime Spine",
+      "components": [
+        {
+          "id": "GO_NOSE",
+          "language": "Go",
+          "role": "Packet acquisition authority",
+          "scope": ["packet capture", "flow collection", "IPC reader", "canonical event production"],
+          "does_not_own": ["policy decisions", "enforcement", "detection logic"],
+          "files": ["nose/*.go", "go/aggregator/*.go"],
+          "boundary": "C ABI → Zig"
+        },
+        {
+          "id": "CPP_NATIVE",
+          "language": "C/C++",
+          "role": "Windows native adapter authority",
+          "scope": ["ETW event capture", "FIM file monitoring", "Registry change tracking", "WFP user-mode interface"],
+          "does_not_own": ["policy decisions", "enforcement", "detection logic"],
+          "files": ["src/windows/*.c", "bridge/*.cpp", "bridge/*.hpp"],
+          "boundary": "C ABI → Zig"
+        }
+      ]
+    },
+    {
+      "id": "PLANE-B",
+      "name": "Runtime",
+      "description": "Zig Runtime Spine - the hub of the system",
+      "languages": ["Zig"],
+      "boundary": "Hub (all spokes connect here)",
+      "components": [
+        {
+          "id": "ZIG_RUNTIME",
+          "language": "Zig",
+          "role": "Runtime orchestration authority",
+          "scope": [
+            "event fabric", "flow management", "detection orchestration",
+            "correlation", "action dispatch", "forensic recording",
+            "control pipe", "diagnostics"
+          ],
+          "does_not_own": ["privileged enforcement", "crypto operations", "policy signature verification"],
+          "files": [
+            "src/main.zig", "src/contract/*.zig", "src/capture/*.zig",
+            "src/detection/*.zig", "src/policy/policy_ir.zig", "src/policy/action_dispatcher.zig",
+            "src/forensic/*.zig", "src/reliability/*.zig", "src/federation/*.zig",
+            "src/xdr/*.zig", "src/windows/*.zig"
+          ],
+          "note": "Zig is the runtime spine - the hub. All languages connect through C ABI or FFI."
+        }
+      ]
+    },
+    {
+      "id": "PLANE-C",
+      "name": "Intelligence",
+      "description": "Python Brain, RAG, analytics, Cython hot loops",
+      "languages": ["Python", "Cython"],
+      "boundary": "Analytics Contract → Zig Runtime Spine",
+      "components": [
+        {
+          "id": "PYTHON_BRAIN",
+          "language": "Python",
+          "role": "Analytics authority",
+          "scope": ["threat analysis", "regex scanning", "analytics", "RAG", "model lifecycle"],
+          "does_not_own": ["privileged OS calls", "enforcement", "runtime orchestration"],
+          "files": ["brain/windows_brain.py", "brain/**/*.py"],
+          "boundary": "Analytics Contract → Zig"
+        },
+        {
+          "id": "CYTHON_BRIDGE",
+          "language": "Cython",
+          "role": "Python-to-native performance bridge",
+          "scope": ["feature extraction", "packet preprocessing", "batch analytics", "numerical loops"],
+          "does_not_own": ["new logic", "policy decisions", "enforcement"],
+          "files": ["brain/**/*.pyx"],
+          "boundary": "Python ↔ C/C++",
+          "note": "Cython is a performance bridge, NOT the system integration bus"
+        }
+      ]
+    },
+    {
+      "id": "PLANE-D",
+      "name": "Security",
+      "description": "Rust PEP, crypto, WFP enforcement",
+      "languages": ["Rust"],
+      "boundary": "PEP ABI → Zig Runtime Spine",
+      "components": [
+        {
+          "id": "RUST_PEP",
+          "language": "Rust",
+          "role": "Security enforcement authority",
+          "scope": [
+            "policy signature verification", "Ed25519 crypto", "TLS",
+            "WFP enforcement", "authorization decisions", "trust store management"
+          ],
+          "does_not_own": ["detection logic", "event fabric", "flow management", "forensic recording"],
+          "files": ["rust-src/lib.rs", "shield/src/*.rs"],
+          "boundary": "PEP ABI → Zig",
+          "is_final_enforcement": true,
+          "note": "There is exactly ONE security truth: the Rust PEP. No other component may claim final enforcement authority."
+        }
+      ]
+    },
+    {
+      "id": "PLANE-E",
+      "name": "Control",
+      "description": "TypeScript policy authoring, CLI, TUI, Web UI",
+      "languages": ["TypeScript", "Python"],
+      "boundary": "Control Protocol → Zig Runtime Spine",
+      "components": [
+        {
+          "id": "TYPESCRIPT_POLICY",
+          "language": "TypeScript",
+          "role": "Policy authoring authority",
+          "scope": ["policy DSL", "policy compilation", "policy simulation", "control/presentation layer"],
+          "does_not_own": ["enforcement", "runtime orchestration", "detection logic"],
+          "files": ["ts_policy/src/*.ts", "ts_policy/tests/*.ts"],
+          "boundary": "Control Protocol → Zig"
+        },
+        {
+          "id": "PYTHON_CLI",
+          "language": "Python",
+          "role": "CLI tooling",
+          "scope": ["aegisctl", "diagnostics", "management"],
+          "does_not_own": ["enforcement", "runtime orchestration"],
+          "files": ["scripts/*.py"],
+          "boundary": "Control Protocol → Zig"
+        }
+      ]
+    }
+  ],
+  "hub_and_spoke": {
+    "hub": "Zig Runtime Spine",
+    "spokes": [
+      {"language": "Go", "boundary": "C ABI", "direction": "inbound"},
+      {"language": "C/C++", "boundary": "C ABI", "direction": "inbound"},
+      {"language": "Python", "boundary": "Analytics Contract", "direction": "bidirectional"},
+      {"language": "Cython", "boundary": "Python ↔ C/C++", "direction": "internal"},
+      {"language": "Rust", "boundary": "PEP ABI", "direction": "bidirectional"},
+      {"language": "TypeScript", "boundary": "Control Protocol", "direction": "inbound"}
+    ],
+    "note": "Zig is the hub. All languages are spokes. No language-to-language mesh."
+  },
   "authorities": [
     {
-      "id": "ZIG_RUNTIME",
-      "language": "Zig",
-      "role": "Runtime orchestration authority",
-      "scope": [
-        "event fabric",
-        "flow management",
-        "detection orchestration",
-        "correlation",
-        "action dispatch",
-        "forensic recording",
-        "control pipe",
-        "diagnostics"
-      ],
-      "does_not_own": [
-        "privileged enforcement",
-        "crypto operations",
-        "policy signature verification"
-      ],
-      "files": [
-        "src/main.zig",
-        "src/contract/event.zig",
-        "src/capture/*.zig",
-        "src/detection/*.zig",
-        "src/policy/policy_ir.zig",
-        "src/policy/action_dispatcher.zig",
-        "src/forensic/*.zig",
-        "src/reliability/*.zig",
-        "src/federation/*.zig",
-        "src/xdr/*.zig",
-        "src/windows/*.zig"
-      ]
-    },
-    {
-      "id": "RUST_PEP",
-      "language": "Rust",
-      "role": "Security enforcement authority",
-      "scope": [
-        "policy signature verification",
-        "Ed25519 crypto",
-        "TLS",
-        "WFP enforcement",
-        "authorization decisions",
-        "trust store management",
-        "rollback security"
-      ],
-      "does_not_own": [
-        "detection logic",
-        "event fabric",
-        "flow management",
-        "forensic recording"
-      ],
-      "files": [
-        "rust-src/lib.rs",
-        "shield/src/*.rs"
-      ],
-      "is_final_enforcement": true
-    },
-    {
-      "id": "GO_NOSE",
-      "language": "Go",
-      "role": "Packet acquisition authority",
-      "scope": [
-        "packet capture",
-        "flow collection",
-        "IPC reader",
-        "canonical event production from packets"
-      ],
-      "does_not_own": [
-        "policy decisions",
-        "enforcement",
-        "detection logic"
-      ],
-      "files": [
-        "nose/*.go",
-        "go/aggregator/*.go"
-      ]
-    },
-    {
-      "id": "CPP_NATIVE",
-      "language": "C/C++",
-      "role": "Windows native adapter authority",
-      "scope": [
-        "ETW event capture",
-        "FIM file monitoring",
-        "Registry change tracking",
-        "WFP user-mode interface",
-        "IPC bridge"
-      ],
-      "does_not_own": [
-        "policy decisions",
-        "enforcement",
-        "detection logic"
-      ],
-      "files": [
-        "src/windows/*.c",
-        "bridge/*.cpp",
-        "bridge/*.hpp"
-      ]
-    },
-    {
-      "id": "PYTHON_BRAIN",
-      "language": "Python",
-      "role": "Analytics authority",
-      "scope": [
-        "threat analysis",
-        "regex scanning",
-        "analytics",
-        "RAG",
-        "model lifecycle"
-      ],
-      "does_not_own": [
-        "privileged OS calls",
-        "enforcement",
-        "runtime orchestration"
-      ],
-      "files": [
-        "brain/windows_brain.py",
-        "brain/**/*.py"
-      ]
-    },
-    {
-      "id": "TYPESCRIPT_POLICY",
-      "language": "TypeScript",
-      "role": "Policy authoring authority",
-      "scope": [
-        "policy DSL",
-        "policy compilation",
-        "policy simulation",
-        "control/presentation layer"
-      ],
-      "does_not_own": [
-        "enforcement",
-        "runtime orchestration",
-        "detection logic"
-      ],
-      "files": [
-        "ts_policy/src/*.ts",
-        "ts_policy/tests/*.ts"
-      ]
-    },
-    {
       "id": "SECURITY_TRUTH",
-      "name": "Security Truth",
-      "language": "Rust",
-      "authority": "Final security truth and enforcement authority",
-      "scope": [
-        "security enforcement",
-        "PEP validation",
-        "crypto verification"
-      ],
-      "files": [
-        "rust-src/lib.rs"
-      ]
-    },
-    {
-      "id": "RUST_PEP",
       "name": "Rust PEP",
       "language": "Rust",
-      "authority": "Policy Enforcement Point - final privileged authority",
-      "scope": [
-        "policy enforcement",
-        "authorization",
-        "WFP control"
-      ],
-      "files": [
-        "rust-src/lib.rs"
-      ],
+      "authority": "Final security truth and enforcement authority",
+      "scope": ["security enforcement", "PEP validation", "crypto verification"],
+      "files": ["rust-src/lib.rs"],
       "note": "There is exactly ONE security truth: the Rust PEP. No other component may claim final enforcement authority."
+    },
+    {
+      "id": "RUNTIME_TRUTH",
+      "name": "Zig Runtime",
+      "language": "Zig",
+      "authority": "Runtime orchestration authority",
+      "scope": ["event fabric", "flow management", "detection orchestration", "correlation", "action dispatch"],
+      "files": ["src/main.zig", "src/contract/*.zig"],
+      "note": "Zig is the runtime spine - the hub. All languages connect through C ABI or FFI."
+    },
+    {
+      "id": "ACQUISITION_TRUTH",
+      "name": "Go Nose",
+      "language": "Go",
+      "authority": "Packet acquisition authority",
+      "scope": ["packet capture", "flow collection", "IPC reader"],
+      "files": ["nose/*.go"],
+      "note": "Go is the acquisition authority - sensors and I/O."
+    },
+    {
+      "id": "ANALYTICS_TRUTH",
+      "name": "Python Brain",
+      "language": "Python",
+      "authority": "Analytics authority",
+      "scope": ["threat analysis", "RAG", "model lifecycle"],
+      "files": ["brain/**/*.py"],
+      "note": "Python is the analytics authority - Brain, RAG, research."
+    },
+    {
+      "id": "POLICY_TRUTH",
+      "name": "TypeScript Policy",
+      "language": "TypeScript",
+      "authority": "Policy authoring authority",
+      "scope": ["policy DSL", "policy compilation", "policy simulation"],
+      "files": ["ts_policy/src/*.ts"],
+      "note": "TypeScript is the policy authoring authority - DSL, compiler, simulation."
     }
   ],
   "invariants": [
@@ -181,7 +203,9 @@
     "No second runtime may exist",
     "No second Canonical Event may exist",
     "No second Policy Authority may exist",
-    "No second Enforcement Authority may exist"
+    "No second Enforcement Authority may exist",
+    "Zig is the runtime hub - all languages connect through C ABI or FFI",
+    "Cython is a performance bridge, NOT the system integration bus"
   ],
   "stop_the_line": [
     "ABI mismatch",

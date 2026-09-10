@@ -1,167 +1,195 @@
 {
-  "head_sha": "97dbfef",
+  "head_sha": "e6de1ae",
   "created_at": "2026-09-10",
-  "generator_version": "2.0",
+  "generator_version": "3.0",
+  "architecture": "Hub-and-Spoke with Plane Separation",
   "contracts": [
     {
-      "id": "CANONICAL_EVENT",
-      "name": "IpcEvent",
-      "file": "src/contract/event.zig",
-      "producer": "Go Nose / Zig Capture",
-      "consumer": "Zig Detection / Policy / Forensic / Federation",
-      "schema": "80-byte fixed-layout struct (extern)",
-      "version": "5.0",
-      "language": "Zig",
+      "id": "CONTRACT-01",
+      "name": "Canonical Event Schema",
+      "file": "shared/event/canonical_event.md",
+      "implementation": "src/contract/canonical_event.zig",
+      "c_header": "shared/schema/canonical_event_v1.h",
+      "producer": "All sensors (Go, C++, Zig, Python)",
+      "consumer": "All subsystems (Zig Runtime, Detection, Policy, Forensic)",
+      "schema": "109-byte extern struct (little-endian, fixed-width)",
+      "version": "1.0",
+      "magic": "0x41454731",
+      "languages": ["Zig", "C", "Rust", "Go", "Python"],
       "cross_language": true,
+      "frozen": true,
       "fields": {
-        "event_kind": "u8 (EventKind enum)",
-        "source": "u8 (EventSource enum)",
-        "severity": "u8",
-        "confidence": "u8",
-        "src_ip": "[4]u8",
-        "dst_ip": "[4]u8",
-        "src_port": "u16",
-        "dst_port": "u16",
-        "protocol": "u8",
-        "timestamp_ns": "i128",
-        "flow_id": "u64",
-        "rule_id": "u32",
-        "payload_len": "u16",
-        "payload_hash": "[32]u8"
+        "header": "magic(4) + version(2) + struct_size(2) + event_id(8) = 16 bytes",
+        "timestamps": "timestamp_ms(8) + monotonic_ns(8) = 16 bytes",
+        "source": "source(1) + source_ip(4) + source_port(2) + dest_ip(4) + dest_port(2) + session_id(8) = 21 bytes",
+        "protocol": "protocol(1) + direction(1) + layer_id(1) + is_pipe(1) = 4 bytes",
+        "detection": "event_type(4) + severity(1) + rule_id(4) + ruleset_version(8) = 17 bytes",
+        "payload": "payload_length(4) + payload_hash(8) = 12 bytes",
+        "policy": "policy_action(1) + enforcement_status(1) + defcon_impact(1) + context_flags(4) = 7 bytes",
+        "reserved": "reserved(16) = 16 bytes"
       }
     },
     {
-      "id": "PEP_ABI",
-      "name": "PEP FFI ABI",
-      "file": "src/policy/pep_bindings.zig",
+      "id": "CONTRACT-02",
+      "name": "PEP ABI (Policy Enforcement Point)",
+      "file": "shared/abi/pep_abi.md",
+      "implementation": "src/policy/pep_bindings.zig",
+      "rust_implementation": "rust-src/lib.rs",
       "producer": "Zig Runtime",
       "consumer": "Rust PEP (aegis_pep.dll)",
-      "schema": "C ABI function signatures",
-      "version": "5.0",
+      "schema": "C ABI function signatures + extern structs",
+      "version": "1.0",
       "languages": ["Zig", "Rust"],
       "cross_language": true,
+      "frozen": true,
+      "types": {
+        "PepDecision": "enum(u8): allow=0, block=1, rate_limit=2, quarantine=3, escalate=4, drop=5",
+        "PepContext": "extern struct (24 bytes): caller_pid, caller_capability_mask, request_id, reserved",
+        "PepRequest": "extern struct (64 bytes): decision_kind, flow_id, src/dst ip/port, policy_id, severity, ctx",
+        "PepResponse": "extern struct (16 bytes): decision, reason, quota_remaining, signed_by"
+      },
       "functions": [
-        "pep_request",
-        "pep_authorize",
-        "pep_get_version"
+        "aegis_pep_init() -> c_int",
+        "aegis_pep_shutdown() -> void",
+        "aegis_pep_enforce(req: *PepRequest, resp: *PepResponse) -> c_int",
+        "aegis_pep_quota_remaining(src_ip: u32) -> u32"
+      ],
+      "invariants": [
+        "Rust PEP is the ONLY final enforcement authority",
+        "No component may bypass PEP for privileged actions",
+        "PEP responses are signed (Ed25519) for audit trail"
       ]
     },
     {
-      "id": "FORENSIC_RECORD",
-      "name": "ForensicRecord",
-      "file": "src/forensic/forensic_pipeline.zig",
-      "producer": "Zig Forensic Pipeline",
-      "consumer": "Zig Forensic Query / Replay / CLI",
-      "schema": "4KB slot with RecordHeader + payload",
-      "version": "5.0",
-      "fields": {
-        "magic": "u32",
-        "record_seq": "u64",
-        "prev_hash": "[32]u8",
-        "current_hash": "[32]u8",
-        "event": "IpcEvent (80 bytes)",
-        "audit_id": "u64",
-        "policy_id": "u32",
-        "pep_decision": "u8",
-        "severity": "u8",
-        "crc32": "u32"
-      }
-    },
-    {
-      "id": "DECISION_TRACE",
-      "name": "SecurityDecisionTrace",
-      "file": "src/forensic/decision_trace.zig",
-      "producer": "Zig Pipeline",
-      "consumer": "Zig Forensic / Audit / CLI",
-      "schema": "128-byte extern struct",
+      "id": "CONTRACT-03",
+      "name": "Runtime ABI (Lifecycle)",
+      "file": "shared/abi/runtime_abi.md",
+      "implementation": "src/contract/runtime_spine.zig",
+      "producer": "Zig Runtime Spine",
+      "consumer": "All subsystems",
+      "schema": "Module lifecycle + worker stages + golden path",
       "version": "1.0",
-      "fields": {
-        "trace_id": "u64",
-        "event_id": "u64",
-        "incident_id": "u64",
-        "policy_id": "u64",
-        "policy_version": "u64",
-        "pep_request_id": "u64",
-        "pep_decision": "u8",
-        "enforcement_id": "u64",
-        "audit_id": "u64",
-        "timestamp_ns": "u64",
-        "actor": "u8",
-        "result": "u8"
+      "languages": ["Zig"],
+      "cross_language": false,
+      "frozen": true,
+      "modules": {
+        "production": "12 modules (core runtime)",
+        "acquisition": "4 modules (sensors)",
+        "intelligence": "4 modules (Python Brain, RAG)",
+        "security": "4 modules (Rust PEP, WFP)",
+        "control": "4 modules (TypeScript, CLI)",
+        "tooling": "4 modules (benchmarks, tests)",
+        "proof": "4 modules (verification)"
+      },
+      "worker_stages": [
+        "sensors", "event_fabric", "dispatcher", "analysis_workers",
+        "correlation", "policy", "pep", "forensics"
+      ],
+      "golden_path": [
+        "source", "fabric", "dispatcher", "flow", "detection", "verdict",
+        "correlation", "threat_intel", "brain", "policy", "pep", "forensics"
+      ]
+    },
+    {
+      "id": "CONTRACT-04",
+      "name": "Control Protocol (IPC)",
+      "file": "shared/protocol/control_protocol.md",
+      "implementation": "src/policy/control_ipc.zig",
+      "cli_implementation": "scripts/aegisctl.py",
+      "producer": "TypeScript/Python CLI",
+      "consumer": "Zig Runtime (named pipe)",
+      "schema": "JSON messages over named pipe",
+      "version": "1.0",
+      "magic": "0x4354524C",
+      "languages": ["TypeScript", "Python", "Zig"],
+      "cross_language": true,
+      "frozen": true,
+      "transport": "Named pipe: \\\\.\\pipe\\aegis_control",
+      "commands": {
+        "READ": ["status", "version", "health", "rules.list", "incidents.list", "federation.status"],
+        "OPERATE": ["rules.reload", "block.request", "unblock.request", "quarantine.request"],
+        "PRIVILEGED": ["daemon.shutdown"]
+      },
+      "authorization": {
+        "roles": "READ < OPERATE < PRIVILEGED",
+        "acl": "Explicit caller-to-role mapping (no catch-all)",
+        "freshness": "now_ms within [issued_at_ms, issued_at_ms + timeout_ms]",
+        "replay": "(request_id, nonce) pair consumed once"
       }
     },
     {
-      "id": "EVIDENCE_RECORD",
-      "name": "EvidenceRecord",
-      "file": "src/forensic/evidence_record.zig",
-      "producer": "Zig Forensic",
-      "consumer": "Zig Replay / CLI",
-      "schema": "EvidenceRecord struct with hash chain",
-      "version": "1.0"
-    },
-    {
-      "id": "REPLAY_DECISION",
-      "name": "ReplayDecision",
-      "file": "src/forensic/replay_verifier.zig",
-      "producer": "Zig Replay Verifier",
-      "consumer": "Zig Audit / CLI",
-      "schema": "extern struct (variable size)",
-      "version": "1.0"
-    },
+      "id": "CONTRACT-05",
+      "name": "Policy IR (Intermediate Representation)",
+      "file": "shared/policy/policy_ir.md",
+      "implementation": "src/policy/policy_ir.zig",
+      "compiler": "ts_policy/src/",
+      "producer": "TypeScript Policy Compiler",
+      "consumer": "Zig Policy Evaluator + Rust PEP",
+      "schema": "Policy AST structs (Action, FieldKind, Op, Predicate, Clause, Condition, Policy)",
+      "version": "5.0",
+      "magic": "0x50495231",
+      "languages": ["TypeScript", "Zig", "Rust"],
+      "cross_language": true,
+      "frozen": true,
+      "types": {
+        "Action": "enum(u8): pass=0, log=1, alert=2, rate_limit=3, block=4, quarantine=5, escalate=6",
+        "FieldKind": "enum(u8): kind=0, severity=1, source=2, src_ip=3, ..., rule_id=12",
+        "Op": "enum(u8): eq=0, ne=1, match=2, nomatch=3, lt=4, gt=5, in=6",
+        "Predicate": "struct: field, op, value_int, value_str",
+        "Clause": "struct: predicates (AND)",
+        "Condition": "struct: clauses (OR)",
+        "Policy": "struct: id, name, condition, action, severity, ttl_sec"
+      },
+      "signing": "Ed25519 signature over policy_id + condition + action + severity"
+    }
+  ],
+  "supplementary_contracts": [
     {
       "id": "WIRE_PROTOCOL",
       "name": "Wire Protocol v1",
       "file": "shared/protocol/wire_v1.h",
-      "producer": "C++ Bridge / Go Nose",
-      "consumer": "Zig Core",
-      "schema": "Binary event layout for IPC",
+      "implementation": "src/contract/wire_event.zig",
+      "schema": "Binary frame: 16-byte header + 109-byte payload = 125 bytes",
       "version": "1.0",
-      "languages": ["C", "Go", "Zig"],
-      "cross_language": true
+      "magic": "0x57455631"
     },
     {
-      "id": "CANONICAL_EVENT_C",
-      "name": "CanonicalEvent v1 (C header)",
-      "file": "shared/schema/canonical_event_v1.h",
-      "producer": "C++ Bridge",
-      "consumer": "Zig Core",
-      "schema": "C struct mirroring Zig IpcEvent",
-      "version": "1.0",
-      "languages": ["C", "Zig"],
-      "cross_language": true
-    },
-    {
-      "id": "POLICY_IR",
-      "name": "Policy IR",
-      "file": "src/policy/policy_ir.zig",
-      "producer": "TypeScript Policy Compiler",
-      "consumer": "Zig Policy Evaluator",
-      "schema": "Policy AST structs",
+      "id": "FORENSIC_RECORD",
+      "name": "Forensic Record",
+      "file": "src/forensic/forensic_pipeline.zig",
+      "schema": "4KB slot with RecordHeader (144 bytes) + payload + hash chain",
       "version": "5.0"
     },
     {
-      "id": "METRICS_CONTRACT",
-      "name": "Metrics",
-      "file": "src/core/diagnostics.zig",
-      "producer": "Zig Core",
-      "consumer": "CLI / TUI / Web / Dashboard",
-      "schema": "Atomic counters (packets, flows, anomalies, errors, etc.)",
-      "version": "5.0"
+      "id": "DECISION_TRACE",
+      "name": "Security Decision Trace",
+      "file": "src/forensic/decision_trace.zig",
+      "schema": "128-byte extern struct",
+      "version": "1.0"
     },
     {
-      "id": "CLI_CONTRACT",
-      "name": "CLI Control",
-      "file": "scripts/aegisctl.py",
-      "producer": "Python CLI",
-      "consumer": "Zig Core (named pipe)",
-      "schema": "JSON messages over named pipe",
-      "version": "5.0"
+      "id": "ERROR_CODES",
+      "name": "Error Codes",
+      "file": "shared/errors/error_codes.md",
+      "schema": "u32 error codes (0=success, 1-999=errors by category)",
+      "version": "1.0"
+    },
+    {
+      "id": "VERSION",
+      "name": "Version Definitions",
+      "file": "shared/version/version.md",
+      "schema": "Semantic versioning (MAJOR.MINOR.PATCH)",
+      "version": "1.0"
     }
   ],
   "invariants": [
     "Every cross-language contract has a defined schema and version",
     "No contract may be silently mutated",
     "ABI mismatches are STOP-THE-LINE",
-    "Producer and consumer must agree on struct layout and alignment"
+    "Producer and consumer must agree on struct layout and alignment",
+    "Canonical Event is the ONLY event schema",
+    "PEP ABI is the ONLY enforcement boundary",
+    "Control Protocol is the ONLY control-plane transport",
+    "Policy IR is the ONLY policy format"
   ]
 }

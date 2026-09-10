@@ -1,21 +1,65 @@
 {
-  "head_sha": "97dbfef",
+  "head_sha": "e6de1ae",
   "created_at": "2026-09-10",
-  "generator_version": "2.0",
+  "generator_version": "3.0",
+  "architecture": "Hub-and-Spoke with Plane Separation",
   "runtime_name": "AEGIS NIDS Windows",
   "version": "5.0.0",
+  "planes": [
+    {
+      "id": "PLANE-A",
+      "name": "Acquisition",
+      "description": "Sensors, packet capture, Windows native adapters",
+      "languages": ["Go", "C/C++"],
+      "boundary": "C ABI → Zig Runtime Spine"
+    },
+    {
+      "id": "PLANE-B",
+      "name": "Runtime",
+      "description": "Zig Runtime Spine - the hub of the system",
+      "languages": ["Zig"],
+      "boundary": "Hub (all spokes connect here)"
+    },
+    {
+      "id": "PLANE-C",
+      "name": "Intelligence",
+      "description": "Python Brain, RAG, analytics, Cython hot loops",
+      "languages": ["Python", "Cython"],
+      "boundary": "Analytics Contract → Zig Runtime Spine"
+    },
+    {
+      "id": "PLANE-D",
+      "name": "Security",
+      "description": "Rust PEP, crypto, WFP enforcement",
+      "languages": ["Rust"],
+      "boundary": "PEP ABI → Zig Runtime Spine"
+    },
+    {
+      "id": "PLANE-E",
+      "name": "Control",
+      "description": "TypeScript policy authoring, CLI, TUI, Web UI",
+      "languages": ["TypeScript", "Python"],
+      "boundary": "Control Protocol → Zig Runtime Spine"
+    }
+  ],
   "components": [
     {
       "id": "zig_core",
       "language": "Zig",
       "tier": 1,
-      "role": "Runtime spine, capture, detection, correlation, policy orchestration, forensics",
+      "plane": "PLANE-B",
+      "role": "Runtime spine: event fabric, flow, detection, correlation, policy orchestration, forensics",
       "entrypoint": "src/main.zig",
       "build_command": "zig build",
       "artifact": "zig-out/bin/aegis_nids.exe",
       "test_command": "zig build test",
+      "boundary": "Hub - all spokes connect here",
       "modules": [
-        {"name": "contract/event", "file": "src/contract/event.zig", "role": "Canonical 80-byte IPC event schema"},
+        {"name": "contract/canonical_event", "file": "src/contract/canonical_event.zig", "role": "Canonical Event v1 (109-byte extern struct)"},
+        {"name": "contract/event", "file": "src/contract/event.zig", "role": "IpcEvent (80-byte legacy IPC event)"},
+        {"name": "contract/wire_event", "file": "src/contract/wire_event.zig", "role": "Wire protocol v1 (125-byte frame)"},
+        {"name": "contract/event_fabric", "file": "src/contract/event_fabric.zig", "role": "Event Fabric facade"},
+        {"name": "contract/runtime_spine", "file": "src/contract/runtime_spine.zig", "role": "Runtime Spine: module registry, lifecycle"},
         {"name": "contract/runtime_manifest", "file": "src/contract/runtime_manifest.zig", "role": "Capability flags, limits, feature negotiation"},
         {"name": "core/diagnostics", "file": "src/core/diagnostics.zig", "role": "Structured logging, metrics counters"},
         {"name": "core/memory_pool", "file": "src/core/memory_pool.zig", "role": "Slab allocator, lock-free ring buffers"},
@@ -40,6 +84,7 @@
         {"name": "forensic/replay_engine", "file": "src/forensic/replay_engine.zig", "role": "PCAP replay with deterministic timing"},
         {"name": "forensic/replay_integrity", "file": "src/forensic/replay_integrity.zig", "role": "Replay hash tracking + comparison"},
         {"name": "forensic/replay_verifier", "file": "src/forensic/replay_verifier.zig", "role": "End-to-end replay verification"},
+        {"name": "forensic/siem_forwarder", "file": "src/forensic/siem_forwarder.zig", "role": "SIEM HTTP/TCP/UDP forwarding"},
         {"name": "forensic/abi_contract", "file": "src/forensic/abi_contract.zig", "role": "ABI contract verification"},
         {"name": "forensic/integration_contract", "file": "src/forensic/integration_contract.zig", "role": "Cross-subsystem interface verification"},
         {"name": "forensic/policy_contract", "file": "src/forensic/policy_contract.zig", "role": "Policy evaluation interface"},
@@ -66,26 +111,32 @@
       "id": "rust_pep",
       "language": "Rust",
       "tier": 3,
+      "plane": "PLANE-D",
       "role": "Policy Enforcement Point + Federation TLS",
       "entrypoint": "rust-src/lib.rs",
       "build_command": "cargo build --release",
       "artifact": "target/release/aegis_pep.dll",
-      "dependencies": ["ring", "rustls", "windows", "serde", "parking_lot"]
+      "dependencies": ["ring", "rustls", "windows", "serde", "parking_lot"],
+      "boundary": "PEP ABI → Zig",
+      "is_final_enforcement": true
     },
     {
       "id": "go_nose",
       "language": "Go",
       "tier": 2,
+      "plane": "PLANE-A",
       "role": "Packet acquisition, flow collection, IPC reader",
       "entrypoint": "nose/main.go",
       "build_command": "cd nose && go build -o aegis-nose.exe .",
       "artifact": "nose/aegis-nose.exe",
-      "dependencies": ["gopacket", "bubbletea"]
+      "dependencies": ["gopacket", "bubbletea"],
+      "boundary": "C ABI → Zig"
     },
     {
       "id": "cpp_native",
       "language": "C/C++",
       "tier": 2,
+      "plane": "PLANE-A",
       "role": "Windows native adapters: WFP, ETW, FIM",
       "entrypoint": "src/windows/aegis_wfp.c",
       "build_command": "cmake -B build && cmake --build build",
@@ -93,12 +144,14 @@
         "build/Release/aegis_wfp_user.dll",
         "build/Release/aegis_etw_helper.dll",
         "build/Release/aegis_fim_helper.dll"
-      ]
+      ],
+      "boundary": "C ABI → Zig"
     },
     {
       "id": "cpp_bridge",
       "language": "C++",
       "tier": 2,
+      "plane": "PLANE-A",
       "role": "IPC bridge + adapter framework",
       "entrypoint": "bridge/aegis_bridge_main.cpp",
       "build_command": "cmake -B bridge/build bridge && cmake --build bridge/build",
@@ -106,49 +159,60 @@
         "dist/aegis_ipc.dll",
         "dist/aegis_bridge.exe",
         "dist/aegis_adapter.dll"
-      ]
+      ],
+      "boundary": "C ABI → Zig"
     },
     {
       "id": "brain",
       "language": "Python",
       "tier": 2,
+      "plane": "PLANE-C",
       "role": "Threat analysis, regex scanning, analytics",
       "entrypoint": "brain/windows_brain.py",
-      "build_command": "(interpreted)"
+      "build_command": "(interpreted)",
+      "boundary": "Analytics Contract → Zig"
     },
     {
       "id": "ts_policy",
       "language": "TypeScript",
       "tier": 2,
+      "plane": "PLANE-E",
       "role": "Policy authoring, simulation, compilation",
       "entrypoint": "ts_policy/src/index.ts",
       "build_command": "cd ts_policy && npm run typecheck && npm run test:all",
       "test_command": "cd ts_policy && npm run test:all",
+      "boundary": "Control Protocol → Zig",
       "note": "Advisory only - no build output. Typecheck + test only."
     },
     {
       "id": "aggregator",
       "language": "Go",
       "tier": 2,
+      "plane": "PLANE-A",
       "role": "Multi-node event aggregation",
       "entrypoint": "go/aggregator/main.go",
-      "build_command": "cd go/aggregator && go build -o aggregator.exe ."
+      "build_command": "cd go/aggregator && go build -o aggregator.exe .",
+      "boundary": "C ABI → Zig"
     },
     {
       "id": "shield",
       "language": "Rust",
       "tier": 3,
+      "plane": "PLANE-D",
       "role": "Enforcement library (minimal/placeholder)",
       "entrypoint": "shield/src/lib.rs",
-      "build_command": "cd shield && cargo build --release"
+      "build_command": "cd shield && cargo build --release",
+      "boundary": "PEP ABI → Zig"
     },
     {
       "id": "dashboard",
       "language": "Rust",
       "tier": 2,
+      "plane": "PLANE-E",
       "role": "Web dashboard backend (egui native GUI)",
       "entrypoint": "aegis_dashboard/src/main.rs",
-      "build_command": "cd aegis_dashboard && cargo build --release"
+      "build_command": "cd aegis_dashboard && cargo build --release",
+      "boundary": "Control Protocol → Zig"
     }
   ],
   "legacy_markers": [
@@ -160,6 +224,8 @@
     "ONE production runtime (Zig core + Rust PEP + Go Nose + C++ native helpers)",
     "NO build artifacts tracked in git",
     "NO runtime state tracked in git",
-    "src/ = canonical source; core/ = legacy/experimental proof modules"
+    "src/ = canonical source; core/ = legacy/experimental proof modules",
+    "Zig is the runtime hub - all languages connect through C ABI or FFI",
+    "Cython is a performance bridge, NOT the system integration bus"
   ]
 }
