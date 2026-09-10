@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "generated_at": "2026-09-10T00:00:00.000000+00:00",
-  "head_sha": "5f23e4f",
+  "head_sha": "97dbfef",
   "canonical_source_root": "/",
   "canonical_entrypoints": {
     "zig_core_tier1": {

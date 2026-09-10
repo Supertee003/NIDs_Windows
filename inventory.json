@@ -1,8 +1,9 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-09-09T12:36:11.356000+00:00",
+  "generated_at": "2026-09-10T00:00:00.000000+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
+  "head_sha": "97dbfef",
   "total_files": 595,
   "by_class": {
     "canonical-build": 61,
@@ -12,6 +13,7 @@
     "canonical-test": 65,
     "canonical-config": 8
   },
+  "notes": "core/*.zig files are LEGACY - superseded by src/*.zig per runtime_manifest.json. canonical-source count includes legacy files that have not been removed yet.",
   "files": [
     {
       "path": ".github/workflows/ci.yml",

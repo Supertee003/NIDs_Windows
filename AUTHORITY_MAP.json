@@ -146,7 +146,31 @@
     },
     {
       "id": "SECURITY_TRUTH",
+      "name": "Security Truth",
+      "language": "Rust",
+      "authority": "Final security truth and enforcement authority",
+      "scope": [
+        "security enforcement",
+        "PEP validation",
+        "crypto verification"
+      ],
+      "files": [
+        "rust-src/lib.rs"
+      ]
+    },
+    {
       "id": "RUST_PEP",
+      "name": "Rust PEP",
+      "language": "Rust",
+      "authority": "Policy Enforcement Point - final privileged authority",
+      "scope": [
+        "policy enforcement",
+        "authorization",
+        "WFP control"
+      ],
+      "files": [
+        "rust-src/lib.rs"
+      ],
       "note": "There is exactly ONE security truth: the Rust PEP. No other component may claim final enforcement authority."
     }
   ],

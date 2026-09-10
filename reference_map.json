@@ -1,7 +1,8 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-09-09T12:36:11.358222+00:00",
+  "generated_at": "2026-09-10T00:00:00.000000+00:00",
   "generator": "generate_truth_artifacts.py",
+  "head_sha": "97dbfef",
   "total_files": 595,
   "by_role": {
     "build-config": 51,
@@ -1632,8 +1633,9 @@
       "role": "documentation"
     },
     "Rules.json": {
-      "class": "canonical-config",
-      "role": "config-data"
+      "class": "legacy",
+      "role": "config-data",
+      "note": "STALE/DUPLICATE - use config/Rules.json instead"
     },
     "runtime_manifest.json": {
       "class": "canonical-build",
