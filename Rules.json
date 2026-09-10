@@ -1,6 +1,6 @@
 {
-    "_comment": "AEGIS NIDS Rules â€” 3-Layer Architecture (Network + Kernel File/Process + Pipe Monitor)",
-    "_comment2": "Tier-1: Zig AC Automaton (fast_pattern), Tier-2: Python Regex (regex_pattern), Tier-3: Rust Memory Shield (behavior validation)",
+    "_comment": "DEPRECATED: This file is LEGACY. Use config/Rules.json instead.",
+    "_comment2": "AEGIS NIDS Rules — 3-Layer Architecture (Network + Kernel File/Process + Pipe Monitor)",
     "nids_rules": [
         {
             "rule_id": "R0056",

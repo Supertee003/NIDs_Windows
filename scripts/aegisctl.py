@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """
+DEPRECATED: This file is LEGACY. Use tools/aegisctl.py instead.
 aegisctl -- AEGIS NIDS Command/Control CLI (v1, Gate C)
 
 Usage:

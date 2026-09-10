@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-09-09T06:07:22.184546+00:00",
-  "head_sha": "dca2b75",
+  "generated_at": "2026-09-10T00:00:00.000000+00:00",
+  "head_sha": "5f23e4f",
   "build_commands": {
     "zig": {
       "command": "zig build",
@@ -88,7 +88,7 @@
   "notes": [
     "RT-01: Corrected to match actual build.zig/Cargo.toml/CMakeLists.txt/bridge/CMakeLists.txt/nose/go.mod",
     "Source of truth: build.zig (src/main.zig), Cargo.toml (rust-src/lib.rs), CMakeLists.txt (src/windows/*.c), bridge/CMakeLists.txt (bridge/*.cpp), nose/go.mod",
-    "All HEAD SHAs updated to dca2b75",
+    "All HEAD SHAs updated to 5f23e4f",
     "Added bridge component (C++ IPC/adapter/DEFCON)"
   ]
 }

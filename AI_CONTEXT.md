@@ -1,7 +1,7 @@
 # AI_CONTEXT.md — AEGIS NIDS Windows
 ## Machine-Generated Current-HEAD Context Layer
 
-**HEAD:** `e991909a`
+**HEAD:** `5f23e4f`
 **BRANCH:** `main`
 **GENERATED:** 2026-09-10
 **GENERATOR:** OpenCode MiMo 2.5 Free

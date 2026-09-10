@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-09-09T06:07:22.160641+00:00",
-  "head_sha": "dca2b75",
+  "generated_at": "2026-09-10T00:00:00.000000+00:00",
+  "head_sha": "5f23e4f",
   "canonical_source_root": "/",
   "canonical_entrypoints": {
     "zig_core_tier1": {
@@ -110,7 +110,7 @@
   "legacy_markers": {
     "lib.rs (root)": "OBSOLETE - superseded by rust-src/lib.rs",
     "Back Rules.json": "DUPLICATE of config/Rules.json",
-    "Rules.json (root)": "DUPLICATE of config/Rules.json - same content",
+    "Rules.json (root)": "DUPLICATE of config/Rules.json - different content, root is stale",
     "core/*.zig": "LEGACY proof/integration/CLI modules - NOT compiled by build.zig; src/*.zig is canonical",
     "nids_main.zig (root)": "LEGACY - superseded by src/main.zig",
     "shield/": "LEGACY Rust crate - superseded by root Cargo.toml + rust-src/",

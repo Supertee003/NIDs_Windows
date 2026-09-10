@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""G26: Control Plane — aegisctl CLI
+"""DEPRECATED: This file is LEGACY. Use tools/aegisctl.py instead.
+G26: Control Plane — aegisctl CLI
 Usage: python aegisctl.py <command> [args]
 Commands:
   status          - Show system status (DEFCON, events, flows, PEP stats)
