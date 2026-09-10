@@ -1,20 +1,24 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-09-10T00:00:00.000000+00:00",
+  "generated_at": "2026-09-10T11:43:00.309053+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "head_sha": "61c80ca3fa68bf4d1c589e953428c453d90774cf",
-  "total_files": 595,
+  "total_files": 582,
   "by_class": {
-    "canonical-build": 61,
-    "canonical-source": 314,
-    "canonical-docs": 134,
-    "unclassified": 0,
-    "canonical-test": 65,
-    "canonical-config": 8
+    "canonical-docs": 111,
+    "canonical-build": 64,
+    "canonical-source": 321,
+    "unclassified": 12,
+    "canonical-test": 67,
+    "canonical-config": 7
   },
-  "notes": "core/*.zig files are LEGACY - superseded by src/*.zig per runtime_manifest.json. canonical-source count includes legacy files that have not been removed yet.",
   "files": [
+    {
+      "path": ".git-ls-files.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 48408
+    },
     {
       "path": ".github/workflows/ci.yml",
       "class": "canonical-build",
@@ -46,22 +50,22 @@
       "size": 14325
     },
     {
-      "path": "AEGIS_SYSTEM_ANALYSIS_v2.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 19782
-    },
-    {
-      "path": "aegisctl.py",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 7613
-    },
-    {
       "path": "AGENTS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4727
+      "size": 7014
+    },
+    {
+      "path": "AI_CONTEXT.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 9411
+    },
+    {
+      "path": "AUTHORITY_MAP.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 9068
     },
     {
       "path": "brain/__init__.py",
@@ -83,8 +87,8 @@
     },
     {
       "path": "brain/aegis_brain_cython/fast_scan.pyx",
-      "class": "canonical-source",
-      "role": "cython-source",
+      "class": "unclassified",
+      "role": "other",
       "size": 7322
     },
     {
@@ -119,20 +123,20 @@
     },
     {
       "path": "brain/cython/aegis_hotspot.pxd",
-      "class": "canonical-source",
-      "role": "cython-definition",
+      "class": "unclassified",
+      "role": "other",
       "size": 1434
     },
     {
       "path": "brain/cython/aegis_hotspot.pyx",
-      "class": "canonical-source",
-      "role": "cython-source",
+      "class": "unclassified",
+      "role": "other",
       "size": 10814
     },
     {
       "path": "brain/cython/cython_regex_scan.pyx",
-      "class": "canonical-source",
-      "role": "cython-source",
+      "class": "unclassified",
+      "role": "other",
       "size": 5339
     },
     {
@@ -205,7 +209,7 @@
       "path": "bridge/aegis_packet_parser.cpp",
       "class": "canonical-source",
       "role": "source",
-      "size": 3875
+      "size": 3897
     },
     {
       "path": "bridge/aegis_packet_parser.hpp",
@@ -226,12 +230,6 @@
       "size": 5098
     },
     {
-      "path": "bridge/CMakeLists_bridge.txt",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 3176
-    },
-    {
       "path": "build.zig",
       "class": "canonical-source",
       "role": "source",
@@ -241,25 +239,25 @@
       "path": "build_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 59904
+      "size": 60561
     },
     {
       "path": "build_truth.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 2459
+      "size": 2936
     },
     {
       "path": "Cargo.lock",
       "class": "canonical-build",
       "role": "lockfile",
-      "size": 28076
+      "size": 29527
     },
     {
       "path": "Cargo.toml",
       "class": "canonical-build",
       "role": "rust-build",
-      "size": 1044
+      "size": 1057
     },
     {
       "path": "ci_coverage.json",
@@ -322,982 +320,16 @@
       "size": 3894
     },
     {
-      "path": "core/audit_trail_proof.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 34924
-    },
-    {
-      "path": "core/authority_review.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 7989
-    },
-    {
-      "path": "core/brain_engine.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 21518
-    },
-    {
-      "path": "core/brain_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 4947
-    },
-    {
-      "path": "core/brain_proof.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 14891
-    },
-    {
-      "path": "core/bridge_init.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 24581
-    },
-    {
-      "path": "core/canary_progression.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 19395
-    },
-    {
-      "path": "core/canonical_event.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 32437
-    },
-    {
-      "path": "core/cluster_cli.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 13260
-    },
-    {
-      "path": "core/cluster_config.json",
+      "path": "CONTRACT_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 2173
-    },
-    {
-      "path": "core/cluster_coord.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 54912
-    },
-    {
-      "path": "core/compliance_proof.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 28172
-    },
-    {
-      "path": "core/compliance_reporter.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 29933
-    },
-    {
-      "path": "core/concurrency_harden.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 20425
-    },
-    {
-      "path": "core/concurrency_harden_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 3147
-    },
-    {
-      "path": "core/config_reload_proof.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 40930
-    },
-    {
-      "path": "core/contract_freeze.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 19162
-    },
-    {
-      "path": "core/control_ipc.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 18309
-    },
-    {
-      "path": "core/correlation_engine.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 26780
-    },
-    {
-      "path": "core/correlation_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 5730
-    },
-    {
-      "path": "core/correlation_proof.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 14428
-    },
-    {
-      "path": "core/cpp_adapter.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 8731
-    },
-    {
-      "path": "core/decision_trace.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 7870
-    },
-    {
-      "path": "core/detection_engine.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 21010
-    },
-    {
-      "path": "core/detection_fabric_proof.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 19471
-    },
-    {
-      "path": "core/detection_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 3449
-    },
-    {
-      "path": "core/detection_interface.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 11881
-    },
-    {
-      "path": "core/dispatcher.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 34716
-    },
-    {
-      "path": "core/dispatcher_phase_b.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 24121
-    },
-    {
-      "path": "core/documentation_proof.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 26897
-    },
-    {
-      "path": "core/e2e_harness.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 23095
-    },
-    {
-      "path": "core/e2e_harness_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 7861
-    },
-    {
-      "path": "core/etw_realtime.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 31360
-    },
-    {
-      "path": "core/etw_realtime_cli.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 5959
-    },
-    {
-      "path": "core/etw_realtime_config.json",
-      "class": "canonical-build",
-      "role": "build-config",
-      "size": 1221
-    },
-    {
-      "path": "core/event_fabric.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 14733
-    },
-    {
-      "path": "core/event_queue.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 7292
-    },
-    {
-      "path": "core/fabric_accounting.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 26379
-    },
-    {
-      "path": "core/fault_injection.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 19218
-    },
-    {
-      "path": "core/fault_injection_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 4149
-    },
-    {
-      "path": "core/fault_matrix.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 18576
-    },
-    {
-      "path": "core/federation/federation.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 14081
-    },
-    {
-      "path": "core/federation_bench.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 35776
-    },
-    {
-      "path": "core/federation_bench_cli.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 5839
-    },
-    {
-      "path": "core/federation_bench_config.json",
-      "class": "canonical-build",
-      "role": "build-config",
-      "size": 2470
-    },
-    {
-      "path": "core/federation_cli.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 11568
-    },
-    {
-      "path": "core/federation_codec.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 53673
-    },
-    {
-      "path": "core/federation_config.json",
-      "class": "canonical-build",
-      "role": "build-config",
-      "size": 2423
-    },
-    {
-      "path": "core/federation_tcp.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 40878
-    },
-    {
-      "path": "core/federation_tcp_cli.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 12907
-    },
-    {
-      "path": "core/federation_tcp_config.json",
-      "class": "canonical-build",
-      "role": "build-config",
-      "size": 1979
-    },
-    {
-      "path": "core/federation_tls.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 34112
-    },
-    {
-      "path": "core/federation_tls_cli.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 6507
-    },
-    {
-      "path": "core/federation_tls_config.json",
-      "class": "canonical-build",
-      "role": "build-config",
-      "size": 867
-    },
-    {
-      "path": "core/final_integration_proof.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 28452
-    },
-    {
-      "path": "core/flow_engine.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 32090
-    },
-    {
-      "path": "core/flow_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 5893
-    },
-    {
-      "path": "core/flow_state_proof.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 21531
-    },
-    {
-      "path": "core/flow_types.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 576
-    },
-    {
-      "path": "core/forensic_log.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 16151
-    },
-    {
-      "path": "core/forensic_replay_proof.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 44802
-    },
-    {
-      "path": "core/forensics_engine.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 14801
-    },
-    {
-      "path": "core/forensics_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 6335
-    },
-    {
-      "path": "core/health_monitoring_proof.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 37274
-    },
-    {
-      "path": "core/hids_engine.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 30505
-    },
-    {
-      "path": "core/hids_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 5766
-    },
-    {
-      "path": "core/hids_process_monitor.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 2297
-    },
-    {
-      "path": "core/host_correlator_config.json",
-      "class": "canonical-build",
-      "role": "build-config",
-      "size": 4095
-    },
-    {
-      "path": "core/host_telemetry.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 65829
-    },
-    {
-      "path": "core/host_telemetry_cli.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 13466
-    },
-    {
-      "path": "core/host_telemetry_config.json",
-      "class": "canonical-build",
-      "role": "build-config",
-      "size": 488
-    },
-    {
-      "path": "core/host_telemetry_detectors.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 39036
-    },
-    {
-      "path": "core/host_telemetry_detectors_cli.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 13225
-    },
-    {
-      "path": "core/host_telemetry_detectors_config.json",
-      "class": "canonical-build",
-      "role": "build-config",
-      "size": 2336
-    },
-    {
-      "path": "core/host_telemetry_mock.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 35566
-    },
-    {
-      "path": "core/host_telemetry_mock_cli.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 12348
-    },
-    {
-      "path": "core/host_telemetry_mock_config.json",
-      "class": "canonical-build",
-      "role": "build-config",
-      "size": 2023
-    },
-    {
-      "path": "core/host_telemetry_scenarios.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 29772
-    },
-    {
-      "path": "core/host_telemetry_scenarios_cli.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 12008
-    },
-    {
-      "path": "core/host_telemetry_scenarios_config.json",
-      "class": "canonical-build",
-      "role": "build-config",
-      "size": 3049
-    },
-    {
-      "path": "core/injection_detector.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 36192
-    },
-    {
-      "path": "core/injection_detector_cli.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 5168
-    },
-    {
-      "path": "core/injection_detector_config.json",
-      "class": "canonical-build",
-      "role": "build-config",
-      "size": 1251
-    },
-    {
-      "path": "core/integration_test.zig",
-      "class": "canonical-test",
-      "role": "test-artifact",
-      "size": 27556
-    },
-    {
-      "path": "core/integration_test_cli.zig",
-      "class": "canonical-test",
-      "role": "test-artifact",
-      "size": 4313
-    },
-    {
-      "path": "core/integration_test_config.json",
-      "class": "canonical-build",
-      "role": "build-config",
-      "size": 1977
-    },
-    {
-      "path": "core/intelligence_proof.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 13055
-    },
-    {
-      "path": "core/ips_canary.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 30517
-    },
-    {
-      "path": "core/ips_canary_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 9312
-    },
-    {
-      "path": "core/ips_canary_order.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 15836
-    },
-    {
-      "path": "core/ips_simulation.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 23055
-    },
-    {
-      "path": "core/ips_simulation_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 4886
-    },
-    {
-      "path": "core/legacy_removal.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 8485
-    },
-    {
-      "path": "core/lifecycle.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 22556
-    },
-    {
-      "path": "core/minifilter_reader.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 14624
-    },
-    {
-      "path": "core/ml_detector.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 41129
-    },
-    {
-      "path": "core/ml_test_cli.zig",
-      "class": "canonical-test",
-      "role": "test-artifact",
-      "size": 10798
-    },
-    {
-      "path": "core/nids_analyze.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 103663
-    },
-    {
-      "path": "core/nids_capture.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 10382
-    },
-    {
-      "path": "core/nids_main.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 18372
-    },
-    {
-      "path": "core/nose_contract.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 11949
-    },
-    {
-      "path": "core/nose_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 4054
-    },
-    {
-      "path": "core/nose_pipe_e2e_cli.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 2299
-    },
-    {
-      "path": "core/nose_pipe_reader.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 8218
-    },
-    {
-      "path": "core/npcap_capture.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 67937
-    },
-    {
-      "path": "core/npcap_test_live.zig",
-      "class": "canonical-test",
-      "role": "test-artifact",
-      "size": 19462
-    },
-    {
-      "path": "core/pep_enforcement_proof.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 42508
-    },
-    {
-      "path": "core/perf_benchmark.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 28631
-    },
-    {
-      "path": "core/perf_benchmark_cli.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 7143
-    },
-    {
-      "path": "core/perf_benchmark_config.json",
-      "class": "canonical-build",
-      "role": "build-config",
-      "size": 2373
-    },
-    {
-      "path": "core/performance_harness.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 25934
-    },
-    {
-      "path": "core/performance_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 7004
-    },
-    {
-      "path": "core/performance_tuning_proof.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 33092
-    },
-    {
-      "path": "core/pipe_monitor.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 8428
-    },
-    {
-      "path": "core/policy_contract.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 14679
-    },
-    {
-      "path": "core/policy_engine.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 16894
-    },
-    {
-      "path": "core/policy_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 5239
-    },
-    {
-      "path": "core/policy_ir.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 26296
-    },
-    {
-      "path": "core/policy_plane.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 23026
-    },
-    {
-      "path": "core/policy_plane_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 4029
-    },
-    {
-      "path": "core/policy_plane_proof.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 25995
-    },
-    {
-      "path": "core/policy_signing.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 23766
-    },
-    {
-      "path": "core/priority_queue.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 9601
-    },
-    {
-      "path": "core/rag_engine.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 23418
-    },
-    {
-      "path": "core/rag_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 5330
-    },
-    {
-      "path": "core/rag_intelligence.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 11688
-    },
-    {
-      "path": "core/real_ips_path.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 13096
-    },
-    {
-      "path": "core/registry_trie.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 29361
-    },
-    {
-      "path": "core/registry_trie_cli.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 11228
-    },
-    {
-      "path": "core/registry_trie_config.json",
-      "class": "canonical-build",
-      "role": "build-config",
-      "size": 1376
-    },
-    {
-      "path": "core/release_engineering.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 17185
-    },
-    {
-      "path": "core/release_engineering_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 3694
-    },
-    {
-      "path": "core/release_provenance.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 14866
-    },
-    {
-      "path": "core/reliability.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 21889
-    },
-    {
-      "path": "core/replay_engine.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 23479
-    },
-    {
-      "path": "core/replay_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 7863
-    },
-    {
-      "path": "core/replayable_security.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 11155
-    },
-    {
-      "path": "core/runtime_spine.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 26849
-    },
-    {
-      "path": "core/rust_pep.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 20627
-    },
-    {
-      "path": "core/rust_pep_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 4250
-    },
-    {
-      "path": "core/shadow_decision.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 9139
-    },
-    {
-      "path": "core/siem_forwarder.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 23300
-    },
-    {
-      "path": "core/siem_integration_proof.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 29246
-    },
-    {
-      "path": "core/telemetry_export_proof.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 34194
-    },
-    {
-      "path": "core/threat_intel.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 13758
-    },
-    {
-      "path": "core/threat_intel_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 4187
-    },
-    {
-      "path": "core/verdict_aggregator.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 9583
-    },
-    {
-      "path": "core/wfp_ioctl.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 20649
-    },
-    {
-      "path": "core/wfp_production.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 44550
-    },
-    {
-      "path": "core/win32_io.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 5946
-    },
-    {
-      "path": "core/windows_adapters.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 34932
-    },
-    {
-      "path": "core/windows_adapters_cli.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 7766
-    },
-    {
-      "path": "core/windows_adapters_config.json",
-      "class": "canonical-build",
-      "role": "build-config",
-      "size": 2350
-    },
-    {
-      "path": "core/windows_capture.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 8120
-    },
-    {
-      "path": "core/wire_event.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 17462
-    },
-    {
-      "path": "core/xdr_correlator.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 12229
-    },
-    {
-      "path": "core/xdr_harden.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 22673
-    },
-    {
-      "path": "core/xdr_harden_integration.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 6613
-    },
-    {
-      "path": "core/xdr_incident_fabric.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 12859
-    },
-    {
-      "path": "core/xdr_incident_graph.zig",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 27374
+      "size": 8015
     },
     {
       "path": "debug.log",
-      "class": "delete",
-      "role": "runtime-state",
+      "class": "unclassified",
+      "role": "other",
       "size": 944
-    },
-    {
-      "path": "DEEP_AUDIT_REPORT.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 7374
-    },
-    {
-      "path": "DEVELOPMENT_ROADMAP.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 10322
     },
     {
       "path": "docs/adr/0001-architecture-lock.md",
@@ -1505,9 +537,9 @@
     },
     {
       "path": "docs/architecture/FILE_REGISTRY.csv",
-      "class": "canonical-metadata",
-      "role": "architecture-registry",
-      "size": 4412
+      "class": "unclassified",
+      "role": "other",
+      "size": 5537
     },
     {
       "path": "docs/architecture/language-ownership.md",
@@ -1598,132 +630,6 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 6946
-    },
-    {
-      "path": "docs/archive/ARCHITECTURE_phase20.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 7195
-    },
-    {
-      "path": "docs/archive/PHASE32_README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 11383
-    },
-    {
-      "path": "docs/archive/PHASE33_README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 4513
-    },
-    {
-      "path": "docs/archive/PHASE35_README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 6470
-    },
-    {
-      "path": "docs/archive/PHASE36_README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 8275
-    },
-    {
-      "path": "docs/archive/PHASE37_EXT1_README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 11436
-    },
-    {
-      "path": "docs/archive/PHASE37_EXT2_README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 12293
-    },
-    {
-      "path": "docs/archive/PHASE37_EXT3_README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 12201
-    },
-    {
-      "path": "docs/archive/PHASE37_EXT4_README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 8709
-    },
-    {
-      "path": "docs/archive/PHASE37_EXT5_README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 2240
-    },
-    {
-      "path": "docs/archive/PHASE37_EXT7_README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 2203
-    },
-    {
-      "path": "docs/archive/PHASE37_README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 12614
-    },
-    {
-      "path": "docs/archive/PHASE39_EXT1_README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 11367
-    },
-    {
-      "path": "docs/archive/PHASE39_EXT2_README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 12517
-    },
-    {
-      "path": "docs/archive/PHASE39_EXT3_README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 2355
-    },
-    {
-      "path": "docs/archive/PHASE39_README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 13393
-    },
-    {
-      "path": "docs/archive/PHASE40_README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 6948
-    },
-    {
-      "path": "docs/archive/PHASE41_README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 9526
-    },
-    {
-      "path": "docs/archive/PHASE42_README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 10037
-    },
-    {
-      "path": "docs/archive/PHASE43_README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 8621
-    },
-    {
-      "path": "docs/archive/PHASE44_README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 6394
     },
     {
       "path": "docs/BASELINE_20260906.md",
@@ -1972,6 +878,12 @@
       "size": 3376
     },
     {
+      "path": "docs/STEP06_completion_report.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 7785
+    },
+    {
       "path": "docs/STRUCTURE.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -1997,8 +909,8 @@
     },
     {
       "path": "drivers/minifilter/aegis_minifilter.inf",
-      "class": "canonical-build",
-      "role": "driver-install-config",
+      "class": "unclassified",
+      "role": "other",
       "size": 1464
     },
     {
@@ -2021,15 +933,15 @@
     },
     {
       "path": "drivers/wfp_callout/aegis_minifilter.inf",
-      "class": "canonical-build",
-      "role": "driver-install-config",
+      "class": "unclassified",
+      "role": "other",
       "size": 1464
     },
     {
       "path": "drivers/wfp_callout/aegis_wfp.c",
       "class": "canonical-source",
       "role": "source",
-      "size": 8288
+      "size": 13342
     },
     {
       "path": "drivers/wfp_callout/aegis_wfp.h",
@@ -2039,8 +951,8 @@
     },
     {
       "path": "drivers/wfp_callout/aegis_wfp.inf",
-      "class": "canonical-build",
-      "role": "driver-install-config",
+      "class": "unclassified",
+      "role": "other",
       "size": 1469
     },
     {
@@ -2056,81 +968,39 @@
       "size": 6445
     },
     {
-      "path": "go/aggregator/alert.go",
-      "class": "canonical-source",
-      "role": "go-source",
-      "size": 4524
-    },
-    {
-      "path": "go/aggregator/alert_test.go",
-      "class": "canonical-test",
-      "role": "test-artifact",
-      "size": 4061
-    },
-    {
-      "path": "go/aggregator/collector.go",
-      "class": "canonical-source",
-      "role": "go-source",
-      "size": 4389
-    },
-    {
-      "path": "go/aggregator/correlator.go",
-      "class": "canonical-source",
-      "role": "go-source",
-      "size": 3924
-    },
-    {
-      "path": "go/aggregator/correlator_test.go",
-      "class": "canonical-test",
-      "role": "test-artifact",
-      "size": 3333
-    },
-    {
-      "path": "go/aggregator/go.mod",
+      "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 175
+      "size": 34748
     },
     {
-      "path": "go/aggregator/go.sum",
+      "path": "FLOW_MAP.json",
       "class": "canonical-build",
-      "role": "lockfile",
-      "size": 489
-    },
-    {
-      "path": "go/aggregator/main.go",
-      "class": "canonical-source",
-      "role": "go-source",
-      "size": 11476
-    },
-    {
-      "path": "go/aggregator/README.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 2313
+      "role": "build-config",
+      "size": 12869
     },
     {
       "path": "installer/aegis.nsi",
-      "class": "canonical-deployment",
-      "role": "nsis-installer",
+      "class": "unclassified",
+      "role": "other",
       "size": 5086
     },
     {
-      "path": "installer/aegis_nids_installer.nsi",
-      "class": "canonical-deployment",
-      "role": "nsis-installer",
-      "size": 4569
+      "path": "inventory.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 88759
     },
     {
       "path": "Makefile",
-      "class": "canonical-build",
-      "role": "build-config",
+      "class": "unclassified",
+      "role": "other",
       "size": 520
     },
     {
       "path": "mouth/.gitignore",
-      "class": "canonical-metadata",
-      "role": "git-config",
+      "class": "unclassified",
+      "role": "other",
       "size": 32
     },
     {
@@ -2242,52 +1112,16 @@
       "size": 7148
     },
     {
-      "path": "PATCH10-14_EVIDENCE.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 8717
-    },
-    {
-      "path": "PATCH15-19_EVIDENCE.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 4811
-    },
-    {
-      "path": "PHASE3_EVIDENCE.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 4192
-    },
-    {
-      "path": "PHASE4_EVIDENCE.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 3545
-    },
-    {
-      "path": "PHASE5_EVIDENCE.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 3989
-    },
-    {
-      "path": "PHASE6_EVIDENCE.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 3321
-    },
-    {
-      "path": "RE_AUDIT_REPORT.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 2234
-    },
-    {
       "path": "README.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2029
+      "size": 10575
+    },
+    {
+      "path": "reference_map.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 70350
     },
     {
       "path": "requirements.txt",
@@ -2302,22 +1136,16 @@
       "size": 6304
     },
     {
-      "path": "Rules.json",
-      "class": "canonical-config",
-      "role": "config-data",
-      "size": 9624
-    },
-    {
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 3486
+      "size": 5071
     },
     {
       "path": "rust-src/lib.rs",
       "class": "canonical-source",
       "role": "source",
-      "size": 10828
+      "size": 19630
     },
     {
       "path": "sbom.spdx.json",
@@ -2408,12 +1236,6 @@
       "class": "canonical-source",
       "role": "source",
       "size": 3254
-    },
-    {
-      "path": "scripts/aegisctl.py",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 104437
     },
     {
       "path": "scripts/build_all.bat",
@@ -2542,10 +1364,46 @@
       "size": 33
     },
     {
+      "path": "shared/abi/pep_abi.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2853
+    },
+    {
+      "path": "shared/abi/runtime_abi.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2855
+    },
+    {
       "path": "shared/aegis_bridge_ctypes.py",
       "class": "canonical-source",
       "role": "source",
       "size": 11984
+    },
+    {
+      "path": "shared/errors/error_codes.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5055
+    },
+    {
+      "path": "shared/event/canonical_event.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3568
+    },
+    {
+      "path": "shared/policy/policy_ir.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2770
+    },
+    {
+      "path": "shared/protocol/control_protocol.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2541
     },
     {
       "path": "shared/protocol/protocol.md",
@@ -2590,6 +1448,12 @@
       "size": 3933
     },
     {
+      "path": "shared/version/version.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1820
+    },
+    {
       "path": "shared/wire/wire_codec.h",
       "class": "canonical-source",
       "role": "source",
@@ -2602,40 +1466,28 @@
       "size": 13984
     },
     {
-      "path": "shield/Cargo.lock",
-      "class": "canonical-build",
-      "role": "lockfile",
-      "size": 156
-    },
-    {
-      "path": "shield/Cargo.toml",
-      "class": "canonical-build",
-      "role": "rust-build",
-      "size": 204
-    },
-    {
-      "path": "shield/src/lib.rs",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 17561
-    },
-    {
-      "path": "shield/src/pep.rs",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 12021
-    },
-    {
-      "path": "shield/src/windows_enforce.rs",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 27227
-    },
-    {
       "path": "src/all_tests.zig",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 1921
+      "size": 2777
+    },
+    {
+      "path": "src/capture/flow_engine.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 32104
+    },
+    {
+      "path": "src/capture/flow_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 5907
+    },
+    {
+      "path": "src/capture/flow_state_proof.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 21545
     },
     {
       "path": "src/capture/flow_table.zig",
@@ -2644,16 +1496,70 @@
       "size": 8106
     },
     {
+      "path": "src/capture/flow_types.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 576
+    },
+    {
+      "path": "src/capture/minifilter_reader.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 14693
+    },
+    {
+      "path": "src/capture/nose_contract.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 12007
+    },
+    {
+      "path": "src/capture/nose_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 4068
+    },
+    {
+      "path": "src/capture/nose_pipe_e2e_cli.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 2299
+    },
+    {
+      "path": "src/capture/nose_pipe_reader.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 8256
+    },
+    {
       "path": "src/capture/npcap_adapter.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 8082
+      "size": 8096
+    },
+    {
+      "path": "src/capture/npcap_capture.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 67937
+    },
+    {
+      "path": "src/capture/npcap_test_live.zig",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 19462
     },
     {
       "path": "src/capture/packet_decoder.zig",
       "class": "canonical-source",
       "role": "production-source",
       "size": 8747
+    },
+    {
+      "path": "src/capture/pipe_monitor.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 8438
     },
     {
       "path": "src/capture/proto/parsers.zig",
@@ -2668,10 +1574,34 @@
       "size": 7044
     },
     {
+      "path": "src/capture/windows_capture.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 8146
+    },
+    {
+      "path": "src/contract/canonical_event.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 32437
+    },
+    {
       "path": "src/contract/event.zig",
       "class": "canonical-source",
       "role": "production-source",
       "size": 4951
+    },
+    {
+      "path": "src/contract/event_fabric.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 14754
+    },
+    {
+      "path": "src/contract/event_queue.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 7292
     },
     {
       "path": "src/contract/runtime_manifest.zig",
@@ -2680,10 +1610,154 @@
       "size": 6196
     },
     {
+      "path": "src/contract/runtime_spine.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 26849
+    },
+    {
+      "path": "src/contract/wire_event.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 17462
+    },
+    {
+      "path": "src/core/authority_review.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 7989
+    },
+    {
+      "path": "src/core/brain_engine.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 21608
+    },
+    {
+      "path": "src/core/brain_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 5024
+    },
+    {
+      "path": "src/core/brain_proof.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 14931
+    },
+    {
+      "path": "src/core/bridge_init.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 24581
+    },
+    {
+      "path": "src/core/canary_progression.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 19395
+    },
+    {
+      "path": "src/core/compliance_proof.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 28172
+    },
+    {
+      "path": "src/core/compliance_reporter.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 29947
+    },
+    {
+      "path": "src/core/concurrency_harden.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 20439
+    },
+    {
+      "path": "src/core/concurrency_harden_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 3147
+    },
+    {
+      "path": "src/core/config_reload_proof.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 40930
+    },
+    {
+      "path": "src/core/contract_freeze.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 19188
+    },
+    {
       "path": "src/core/diagnostics.zig",
       "class": "canonical-source",
       "role": "production-source",
       "size": 7552
+    },
+    {
+      "path": "src/core/documentation_proof.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 26897
+    },
+    {
+      "path": "src/core/e2e_harness.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 23144
+    },
+    {
+      "path": "src/core/e2e_harness_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 7946
+    },
+    {
+      "path": "src/core/fabric_accounting.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 26393
+    },
+    {
+      "path": "src/core/final_integration_proof.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 28452
+    },
+    {
+      "path": "src/core/host_correlator_config.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 4095
+    },
+    {
+      "path": "src/core/integration_test.zig",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 27630
+    },
+    {
+      "path": "src/core/integration_test_cli.zig",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 4313
+    },
+    {
+      "path": "src/core/integration_test_config.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1977
+    },
+    {
+      "path": "src/core/legacy_removal.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 8485
     },
     {
       "path": "src/core/memory_pool.zig",
@@ -2692,16 +1766,172 @@
       "size": 10043
     },
     {
+      "path": "src/core/nids_analyze.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 103849
+    },
+    {
+      "path": "src/core/nids_capture.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 10425
+    },
+    {
+      "path": "src/core/nids_main.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 18472
+    },
+    {
+      "path": "src/core/perf_benchmark.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 28683
+    },
+    {
+      "path": "src/core/perf_benchmark_cli.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 7143
+    },
+    {
+      "path": "src/core/perf_benchmark_config.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2373
+    },
+    {
+      "path": "src/core/performance_harness.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 25934
+    },
+    {
+      "path": "src/core/performance_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 7004
+    },
+    {
+      "path": "src/core/performance_tuning_proof.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 33092
+    },
+    {
+      "path": "src/core/priority_queue.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 9643
+    },
+    {
+      "path": "src/core/real_ips_path.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 13096
+    },
+    {
+      "path": "src/core/rust_pep.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 20661
+    },
+    {
+      "path": "src/core/rust_pep_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 4274
+    },
+    {
       "path": "src/detection/anomaly_detector.zig",
       "class": "canonical-source",
       "role": "production-source",
       "size": 4241
     },
     {
+      "path": "src/detection/correlation_engine.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 26805
+    },
+    {
+      "path": "src/detection/correlation_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 5755
+    },
+    {
+      "path": "src/detection/correlation_proof.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 14453
+    },
+    {
       "path": "src/detection/correlator.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 8412
+      "size": 10264
+    },
+    {
+      "path": "src/detection/detection_engine.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 21046
+    },
+    {
+      "path": "src/detection/detection_fabric_proof.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 19496
+    },
+    {
+      "path": "src/detection/detection_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 3474
+    },
+    {
+      "path": "src/detection/detection_interface.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 11903
+    },
+    {
+      "path": "src/detection/injection_detector.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 36205
+    },
+    {
+      "path": "src/detection/injection_detector_cli.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 5168
+    },
+    {
+      "path": "src/detection/injection_detector_config.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1251
+    },
+    {
+      "path": "src/detection/intelligence_proof.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 13069
+    },
+    {
+      "path": "src/detection/ml_detector.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 41129
+    },
+    {
+      "path": "src/detection/ml_test_cli.zig",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 10798
     },
     {
       "path": "src/detection/proto_anomaly.zig",
@@ -2710,16 +1940,52 @@
       "size": 4842
     },
     {
+      "path": "src/detection/rag_engine.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 23432
+    },
+    {
+      "path": "src/detection/rag_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 5344
+    },
+    {
+      "path": "src/detection/rag_intelligence.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 11825
+    },
+    {
       "path": "src/detection/signature_engine.zig",
       "class": "canonical-source",
       "role": "production-source",
       "size": 9163
     },
     {
+      "path": "src/detection/threat_intel.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 13772
+    },
+    {
+      "path": "src/detection/threat_intel_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 4201
+    },
+    {
       "path": "src/detection/threat_tracker.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 8249
+      "size": 10506
+    },
+    {
+      "path": "src/detection/verdict_aggregator.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 9608
     },
     {
       "path": "src/federation/aggregator.zig",
@@ -2728,10 +1994,100 @@
       "size": 4295
     },
     {
+      "path": "src/federation/cluster_cli.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 13260
+    },
+    {
+      "path": "src/federation/cluster_config.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2173
+    },
+    {
       "path": "src/federation/cluster_coord.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 6864
+      "size": 54912
+    },
+    {
+      "path": "src/federation/federation.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 14081
+    },
+    {
+      "path": "src/federation/federation_bench.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 35776
+    },
+    {
+      "path": "src/federation/federation_bench_cli.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 5839
+    },
+    {
+      "path": "src/federation/federation_bench_config.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2470
+    },
+    {
+      "path": "src/federation/federation_cli.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 11568
+    },
+    {
+      "path": "src/federation/federation_codec.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 53673
+    },
+    {
+      "path": "src/federation/federation_config.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2423
+    },
+    {
+      "path": "src/federation/federation_tcp.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 40878
+    },
+    {
+      "path": "src/federation/federation_tcp_cli.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 12907
+    },
+    {
+      "path": "src/federation/federation_tcp_config.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1979
+    },
+    {
+      "path": "src/federation/federation_tls.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 34112
+    },
+    {
+      "path": "src/federation/federation_tls_cli.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 6507
+    },
+    {
+      "path": "src/federation/federation_tls_config.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 867
     },
     {
       "path": "src/federation/node_registry.zig",
@@ -2740,16 +2096,148 @@
       "size": 5047
     },
     {
+      "path": "src/forensic/abi_contract.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 17922
+    },
+    {
+      "path": "src/forensic/audit_trail_proof.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 34924
+    },
+    {
+      "path": "src/forensic/decision_trace.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 7870
+    },
+    {
+      "path": "src/forensic/evidence_record.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 11609
+    },
+    {
+      "path": "src/forensic/forensic_log.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 16151
+    },
+    {
       "path": "src/forensic/forensic_pipeline.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 7586
+      "size": 24255
+    },
+    {
+      "path": "src/forensic/forensic_replay_proof.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 44802
+    },
+    {
+      "path": "src/forensic/forensics_engine.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 14893
+    },
+    {
+      "path": "src/forensic/forensics_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 6414
+    },
+    {
+      "path": "src/forensic/installer.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 21878
+    },
+    {
+      "path": "src/forensic/integration_contract.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 27812
+    },
+    {
+      "path": "src/forensic/policy_contract.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 13979
+    },
+    {
+      "path": "src/forensic/provenance.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 14305
+    },
+    {
+      "path": "src/forensic/python_contract.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 6887
+    },
+    {
+      "path": "src/forensic/release_gate.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 15554
+    },
+    {
+      "path": "src/forensic/release_manifest.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 13231
     },
     {
       "path": "src/forensic/replay_engine.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 8212
+      "size": 23537
+    },
+    {
+      "path": "src/forensic/replay_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 7963
+    },
+    {
+      "path": "src/forensic/replay_integrity.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 9958
+    },
+    {
+      "path": "src/forensic/replay_verifier.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 12953
+    },
+    {
+      "path": "src/forensic/replayable_security.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 11155
+    },
+    {
+      "path": "src/forensic/siem_forwarder.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 26175
+    },
+    {
+      "path": "src/forensic/siem_integration_proof.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 29246
+    },
+    {
+      "path": "src/forensic/telemetry_export_proof.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 34194
     },
     {
       "path": "src/fuzz_entry.zig",
@@ -2758,34 +2246,100 @@
       "size": 213
     },
     {
-      "path": "src/lib.rs",
-      "class": "canonical-source",
-      "role": "production-source",
-      "size": 22707
-    },
-    {
       "path": "src/main.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 64750
+      "size": 65082
     },
     {
       "path": "src/policy/action_dispatcher.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 6423
+      "size": 8471
+    },
+    {
+      "path": "src/policy/control_ipc.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 18309
+    },
+    {
+      "path": "src/policy/dispatcher.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 35002
+    },
+    {
+      "path": "src/policy/dispatcher_phase_b.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 24350
     },
     {
       "path": "src/policy/pep_bindings.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 5357
+      "size": 10915
+    },
+    {
+      "path": "src/policy/pep_enforcement_proof.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 42508
+    },
+    {
+      "path": "src/policy/policy_contract.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 14794
+    },
+    {
+      "path": "src/policy/policy_engine.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 16979
+    },
+    {
+      "path": "src/policy/policy_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 5300
     },
     {
       "path": "src/policy/policy_ir.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 6850
+      "size": 9379
+    },
+    {
+      "path": "src/policy/policy_plane.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 23026
+    },
+    {
+      "path": "src/policy/policy_plane_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 4029
+    },
+    {
+      "path": "src/policy/policy_plane_proof.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 25995
+    },
+    {
+      "path": "src/policy/policy_signing.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 23766
+    },
+    {
+      "path": "src/policy/shadow_decision.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 9139
     },
     {
       "path": "src/policy/trust_store.zig",
@@ -2794,16 +2348,76 @@
       "size": 6130
     },
     {
+      "path": "src/policy/wfp_ioctl.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 20649
+    },
+    {
+      "path": "src/policy/wfp_production.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 44550
+    },
+    {
       "path": "src/reliability/fault_injection.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 4514
+      "size": 19218
+    },
+    {
+      "path": "src/reliability/fault_injection_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 4149
+    },
+    {
+      "path": "src/reliability/fault_matrix.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 18576
+    },
+    {
+      "path": "src/reliability/health_monitoring_proof.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 37274
     },
     {
       "path": "src/reliability/latency_histogram.zig",
       "class": "canonical-source",
       "role": "production-source",
       "size": 5768
+    },
+    {
+      "path": "src/reliability/lifecycle.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 22853
+    },
+    {
+      "path": "src/reliability/release_engineering.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 17185
+    },
+    {
+      "path": "src/reliability/release_engineering_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 3694
+    },
+    {
+      "path": "src/reliability/release_provenance.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 14866
+    },
+    {
+      "path": "src/reliability/reliability.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 22091
     },
     {
       "path": "src/reliability/security_check.zig",
@@ -2815,7 +2429,7 @@
       "path": "src/reliability/watchdog.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 5874
+      "size": 5918
     },
     {
       "path": "src/tests/capture/flow_table.zig",
@@ -2920,16 +2534,112 @@
       "size": 257
     },
     {
+      "path": "src/tests/forensic/abi_contract.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 247
+    },
+    {
+      "path": "src/tests/forensic/decision_trace.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 253
+    },
+    {
+      "path": "src/tests/forensic/evidence_record.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 256
+    },
+    {
       "path": "src/tests/forensic/forensic_pipeline.zig",
       "class": "canonical-source",
       "role": "production-source",
       "size": 265
     },
     {
+      "path": "src/tests/forensic/installer.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 238
+    },
+    {
+      "path": "src/tests/forensic/integration_contract.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 271
+    },
+    {
+      "path": "src/tests/forensic/policy_contract.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 256
+    },
+    {
+      "path": "src/tests/forensic/provenance.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 241
+    },
+    {
+      "path": "src/tests/forensic/python_contract.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 256
+    },
+    {
+      "path": "src/tests/forensic/release_gate.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 247
+    },
+    {
+      "path": "src/tests/forensic/release_manifest.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 259
+    },
+    {
       "path": "src/tests/forensic/replay_engine.zig",
       "class": "canonical-source",
       "role": "production-source",
       "size": 253
+    },
+    {
+      "path": "src/tests/forensic/replay_integrity.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 259
+    },
+    {
+      "path": "src/tests/forensic/replay_verifier.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 256
+    },
+    {
+      "path": "src/tests/forensic/test_fault.zig",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 6788
+    },
+    {
+      "path": "src/tests/forensic/test_integration.zig",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 13616
+    },
+    {
+      "path": "src/tests/forensic/test_release.zig",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 6069
+    },
+    {
+      "path": "src/tests/forensic/test_unit.zig",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 5703
     },
     {
       "path": "src/tests/fuzz_main.zig",
@@ -3040,6 +2750,12 @@
       "size": 5757
     },
     {
+      "path": "src/windows/cpp_adapter.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 8796
+    },
+    {
       "path": "src/windows/etw_native.c",
       "class": "canonical-source",
       "role": "production-source",
@@ -3049,7 +2765,19 @@
       "path": "src/windows/etw_realtime.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 5777
+      "size": 31581
+    },
+    {
+      "path": "src/windows/etw_realtime_cli.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 5959
+    },
+    {
+      "path": "src/windows/etw_realtime_config.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1221
     },
     {
       "path": "src/windows/fim.zig",
@@ -3064,10 +2792,94 @@
       "size": 2983
     },
     {
+      "path": "src/windows/hids_engine.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 30519
+    },
+    {
+      "path": "src/windows/hids_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 5780
+    },
+    {
+      "path": "src/windows/hids_process_monitor.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 2311
+    },
+    {
       "path": "src/windows/host_telemetry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 4452
+      "size": 65829
+    },
+    {
+      "path": "src/windows/host_telemetry_cli.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 13466
+    },
+    {
+      "path": "src/windows/host_telemetry_config.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 488
+    },
+    {
+      "path": "src/windows/host_telemetry_detectors.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 39036
+    },
+    {
+      "path": "src/windows/host_telemetry_detectors_cli.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 13225
+    },
+    {
+      "path": "src/windows/host_telemetry_detectors_config.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2336
+    },
+    {
+      "path": "src/windows/host_telemetry_mock.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 35566
+    },
+    {
+      "path": "src/windows/host_telemetry_mock_cli.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 12348
+    },
+    {
+      "path": "src/windows/host_telemetry_mock_config.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2023
+    },
+    {
+      "path": "src/windows/host_telemetry_scenarios.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 29772
+    },
+    {
+      "path": "src/windows/host_telemetry_scenarios_cli.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 12008
+    },
+    {
+      "path": "src/windows/host_telemetry_scenarios_config.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 3049
     },
     {
       "path": "src/windows/injection_detector.zig",
@@ -3076,10 +2888,58 @@
       "size": 8005
     },
     {
+      "path": "src/windows/ips_canary.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 30574
+    },
+    {
+      "path": "src/windows/ips_canary_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 9425
+    },
+    {
+      "path": "src/windows/ips_canary_order.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 15836
+    },
+    {
+      "path": "src/windows/ips_simulation.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 23055
+    },
+    {
+      "path": "src/windows/ips_simulation_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 4886
+    },
+    {
       "path": "src/windows/registry_monitor.zig",
       "class": "canonical-source",
       "role": "production-source",
       "size": 6001
+    },
+    {
+      "path": "src/windows/registry_trie.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 29361
+    },
+    {
+      "path": "src/windows/registry_trie_cli.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 11228
+    },
+    {
+      "path": "src/windows/registry_trie_config.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1376
     },
     {
       "path": "src/windows/wfp_ioctl.c",
@@ -3088,10 +2948,70 @@
       "size": 4345
     },
     {
+      "path": "src/windows/win32_io.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 5946
+    },
+    {
+      "path": "src/windows/windows_adapters.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 34932
+    },
+    {
+      "path": "src/windows/windows_adapters_cli.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 7766
+    },
+    {
+      "path": "src/windows/windows_adapters_config.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2350
+    },
+    {
+      "path": "src/xdr/xdr_correlator.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 12351
+    },
+    {
       "path": "src/xdr/xdr_engine.zig",
       "class": "canonical-source",
       "role": "production-source",
       "size": 6148
+    },
+    {
+      "path": "src/xdr/xdr_harden.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 22730
+    },
+    {
+      "path": "src/xdr/xdr_harden_integration.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 6658
+    },
+    {
+      "path": "src/xdr/xdr_incident_fabric.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 12859
+    },
+    {
+      "path": "src/xdr/xdr_incident_graph.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 27374
+    },
+    {
+      "path": "SYSTEM_MAP.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 12466
     },
     {
       "path": "tests/__init__.py",
