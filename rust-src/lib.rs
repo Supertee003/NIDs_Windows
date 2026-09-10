@@ -25,11 +25,6 @@ pub fn verify_policy_signature(
     public_key: &[u8],
 ) -> bool {
     // Production: Ed25519 verify using ring crate
-    // Current: SHA-256 hash verification (Ed25519 requires ring dependency)
-    // Real implementation requires:
-    //   1. Load public key from trust store
-    //   2. Verify signature against policy_data hash
-    //   3. Check key_id, rotation, revocation, expiry
     if public_key.len() != 32 || signature.len() != 64 {
         return false;
     }
@@ -41,12 +36,21 @@ pub fn verify_policy_signature(
     if public_key.iter().all(|&b| b == 0) {
         return false;
     }
-    // Compute SHA-256 of policy_data and verify it matches signature[0..32]
-    // In production, this would be Ed25519.verify(policy_data, signature, public_key)
-    let hash = sha256_hash(policy_data);
-    // Compare first 32 bytes of signature with hash
-    // This is a simplified verification — real Ed25519 uses elliptic curve math
-    signature[0..32] == hash
+    // Real Ed25519 verification using ring crate
+    use ring::signature;
+    let public_key_bytes: [u8; 32] = match public_key.try_into() {
+        Ok(k) => k,
+        Err(_) => return false,
+    };
+    let signature_bytes: [u8; 64] = match signature.try_into() {
+        Ok(s) => s,
+        Err(_) => return false,
+    };
+    let pubkey = signature::UnparsedPublicKey::new(
+        &signature::ED25519,
+        &public_key_bytes[..],
+    );
+    pubkey.verify(policy_data, &signature_bytes).is_ok()
 }
 
 pub fn sha256_hash(data: &[u8]) -> [u8; 32] {
@@ -546,21 +550,63 @@ mod tests {
     }
 
     #[test]
-    fn verify_policy_signature_verifies_correct_hash() {
-        let policy = b"test policy data";
-        let key = [0x42u8; 32];
-        let hash = sha256_hash(policy);
-        let mut sig = [0u8; 64];
-        sig[0..32].copy_from_slice(&hash);
-        assert!(verify_policy_signature(policy, &sig, &key));
+    fn verify_policy_signature_verifies_real_ed25519() {
+        use ring::signature;
+        use ring::rand::SystemRandom;
+        use ring::signature::KeyPair;
+        // Generate real Ed25519 key pair
+        let pkcs8 = signature::Ed25519KeyPair::generate_pkcs8(&SystemRandom::new()).unwrap();
+        let key_pair = signature::Ed25519KeyPair::from_pkcs8(pkcs8.as_ref()).unwrap();
+        let public_key = key_pair.public_key();
+        // Sign real policy data
+        let policy = b"real policy data for signing";
+        let signature_bytes = key_pair.sign(policy);
+        // Verify should succeed
+        assert!(verify_policy_signature(
+            policy,
+            signature_bytes.as_ref(),
+            public_key.as_ref()
+        ));
     }
 
     #[test]
-    fn verify_policy_signature_rejects_wrong_hash() {
-        let policy = b"test policy data";
-        let key = [0x42u8; 32];
-        let mut sig = [0u8; 64];
-        sig[0..32].copy_from_slice(&[0xFFu8; 32]); // wrong hash
-        assert!(!verify_policy_signature(policy, &sig, &key));
+    fn verify_policy_signature_rejects_wrong_data() {
+        use ring::signature;
+        use ring::rand::SystemRandom;
+        use ring::signature::KeyPair;
+        // Generate real Ed25519 key pair
+        let pkcs8 = signature::Ed25519KeyPair::generate_pkcs8(&SystemRandom::new()).unwrap();
+        let key_pair = signature::Ed25519KeyPair::from_pkcs8(pkcs8.as_ref()).unwrap();
+        let public_key = key_pair.public_key();
+        // Sign one message, verify with different message
+        let policy1 = b"policy version 1";
+        let policy2 = b"policy version 2";
+        let signature_bytes = key_pair.sign(policy1);
+        // Verify with wrong data should fail
+        assert!(!verify_policy_signature(
+            policy2,
+            signature_bytes.as_ref(),
+            public_key.as_ref()
+        ));
+    }
+
+    #[test]
+    fn verify_policy_signature_rejects_wrong_key() {
+        use ring::signature;
+        use ring::rand::SystemRandom;
+        use ring::signature::KeyPair;
+        // Generate two different key pairs
+        let pkcs8_1 = signature::Ed25519KeyPair::generate_pkcs8(&SystemRandom::new()).unwrap();
+        let key_pair_1 = signature::Ed25519KeyPair::from_pkcs8(pkcs8_1.as_ref()).unwrap();
+        let pkcs8_2 = signature::Ed25519KeyPair::generate_pkcs8(&SystemRandom::new()).unwrap();
+        let key_pair_2 = signature::Ed25519KeyPair::from_pkcs8(pkcs8_2.as_ref()).unwrap();
+        // Sign with key1, verify with key2 should fail
+        let policy = b"policy signed with key1";
+        let signature_bytes = key_pair_1.sign(policy);
+        assert!(!verify_policy_signature(
+            policy,
+            signature_bytes.as_ref(),
+            key_pair_2.public_key().as_ref()
+        ));
     }
 }

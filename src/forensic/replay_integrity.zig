@@ -119,16 +119,21 @@ pub const ReplayComparison = struct {
     }
 
     /// Compare two hash trackers and return the comparison result.
+    /// WARNING: This is a simplified version that does not allocate.
+    /// For full comparison with mismatch details, use compareAlloc.
     pub fn compare(expected: *const ReplayHashTracker, actual: *const ReplayHashTracker) ReplayComparison {
-        // This is a placeholder; real implementation needs an allocator.
-        // Use compareAlloc instead.
-        _ = expected;
-        _ = actual;
+        const count = @min(expected.packet_hashes.items.len, actual.packet_hashes.items.len);
+        var mismatch_count: u32 = 0;
+        for (0..count) |i| {
+            if (!std.mem.eql(u8, &expected.packet_hashes.items[i], &actual.packet_hashes.items[i])) {
+                mismatch_count += 1;
+            }
+        }
         return .{
-            .match = true,
-            .total_packets = 0,
-            .mismatch_count = 0,
-            .mismatches = undefined, // caller must use compareAlloc
+            .match = mismatch_count == 0,
+            .total_packets = @intCast(count),
+            .mismatch_count = mismatch_count,
+            .mismatches = undefined, // caller must use compareAlloc for mismatch details
         };
     }
 

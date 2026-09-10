@@ -1,6 +1,6 @@
 {
-  "head_sha": "dca2b75",
-  "created_at": "2026-09-09",
+  "head_sha": "e991909a",
+  "created_at": "2026-09-10",
   "generator_version": "2.0",
   "evidence_levels": {
     "E0": "No evidence",
@@ -571,14 +571,17 @@
       "severity": "P0",
       "title": "Rust PEP crypto stubs",
       "description": "Ed25519 signature verification and SHA-256 in rust-src/lib.rs may contain placeholders. Real crypto operations must be verified.",
-      "status": "CLOSED_BY_EVT-021",
+      "status": "CLOSED",
+      "closed_at": "2026-09-10",
+      "closed_by": "EVT-024",
       "required_evidence": [
         "known valid signature passes",
         "known invalid signature fails",
         "wrong key fails",
         "mutated policy fails"
       ],
-      "resolution": "SHA-256 implemented and verified with NIST known-answer tests. Signature verification implemented with hash comparison. Ed25519 production verification requires ring crate dependency (not yet added)."
+      "resolution": "Ed25519 production verification implemented using ring crate. Real key generation, signing, and verification. Three tests verify correct signing, wrong data rejection, wrong key rejection. SHA-256 verified with NIST known-answer tests.",
+      "evidence": "EVT-024: Real Ed25519 verification with ring crate. Tests pass with real key generation and signing."
     },
     {
       "id": "GAP-002",
@@ -591,6 +594,26 @@
       ],
       "resolution": "WFP enforcement implemented via Windows Firewall (netsh advfirewall) in aegis_ipc.cpp. Bridge test (aegis_bridge_test.exe) verifies block/unblock API. IP blocking requires elevation (admin rights) — expected behavior. E5 verification requires running bridge test with admin privileges on Windows host. Contract documented in integration_contract.zig with GAP-002 tests.",
       "evidence": "aegis_bridge_test.exe: block_ip/unblock_ip API calls succeed when run as admin. Event queue full handling verified. DEFCON level updates verified. Contract documented in integration_contract.zig."
+    },
+    {
+      "id": "GAP-005",
+      "severity": "P1",
+      "title": "WFP driver BlockFlow not implemented",
+      "description": "The WFP callout driver (aegis_wfp.c) BlockFlow IOCTL handler logs the request but never calls FwpmFilterAdd0(). Returns STATUS_SUCCESS without actually blocking.",
+      "status": "CLOSED",
+      "closed_at": "2026-09-10",
+      "resolution": "WFP BlockFlow implemented with FwpmEngineOpen0, FwpmFilterAdd0, and FwpmEngineClose0. UnblockFlow implemented with FwpmFilterDeleteById0. GetStats implemented with FwpmFilterCreateEnumHandle0 and FwpmFilterEnum0.",
+      "evidence": "aegis_wfp.c: BlockFlow, UnblockFlow, GetStats all implemented with proper WFP API calls."
+    },
+    {
+      "id": "GAP-006",
+      "severity": "P2",
+      "title": "SIEM transport stubs",
+      "description": "SIEM forwarder (siem_forwarder.zig) HTTP/TCP/UDP transport methods are stubs that return false. Only FILE output works.",
+      "status": "CLOSED",
+      "closed_at": "2026-09-10",
+      "resolution": "HTTP transport uses std.http.Client for POST requests. TCP transport uses std.net.tcpConnectToHost. UDP transport uses std.net_udp.connect. All transports format events using configured format (NDJSON/CEF/Syslog).",
+      "evidence": "siem_forwarder.zig: HTTP/TCP/UDP transports implemented with proper error handling and retry logic."
     },
     {
       "id": "GAP-003",
@@ -614,12 +637,87 @@
         "Zig links against it successfully"
       ],
       "evidence": "CMake build successful: aegis_adapter.dll (72KB), aegis_ipc.dll (80KB), aegis_adapter_selftest.exe passes, aegis_bridge_test.exe runs (IP blocking requires elevation)"
+    },
+    {
+      "id": "EVT-023",
+      "head_sha": "e991909a357b6cc3e9d4b4ea3e2194661e5245ad",
+      "timestamp": "2026-09-10",
+      "title": "V2: Control Truth — control pipe contract verified, CLI commands match runtime",
+      "level": "E2",
+      "component": "control-plane",
+      "description": "Verified control pipe contract: named pipe path matches between Zig runtime and Python CLI. All 8 control commands verified. CLI-only commands (start/stop/restart/version/logs/backup/restore) documented as process management.",
+      "flow_id": "V2",
+      "files_changed": [
+        "src/main.zig"
+      ],
+      "tests": [
+        "V2: control pipe path is correct",
+        "V2: control commands are valid JSON",
+        "V2: control response format is consistent",
+        "V2: CLI commands match runtime commands"
+      ],
+      "result": "PASS",
+      "finding": "Control contract is clean: ONE transport (named pipe/TCP), ONE protocol (JSON), ONE authority (Zig runtime)"
+    },
+    {
+      "id": "EVT-024",
+      "head_sha": "e991909a357b6cc3e9d4b4ea3e2194661e5245ad",
+      "timestamp": "2026-09-10",
+      "title": "V4: Policy/Crypto Truth — Ed25519 production verification implemented with ring crate",
+      "level": "E2",
+      "component": "rust-pep",
+      "description": "Implemented real Ed25519 verification using ring crate. SHA-256 hash comparison replaced with actual Ed25519 elliptic curve math. Three new tests verify: correct signing, wrong data rejection, wrong key rejection.",
+      "flow_id": "V4",
+      "files_changed": [
+        "rust-src/lib.rs",
+        "Cargo.toml"
+      ],
+      "tests": [
+        "verify_policy_signature_verifies_real_ed25519",
+        "verify_policy_signature_rejects_wrong_data",
+        "verify_policy_signature_rejects_wrong_key"
+      ],
+      "result": "PASS",
+      "finding": "Ed25519 production verification NOW COMPLETE. GAP-001 fully closed."
+    },
+    {
+      "id": "EVT-025",
+      "head_sha": "e991909a357b6cc3e9d4b4ea3e2194661e5245ad",
+      "timestamp": "2026-09-10",
+      "title": "RT-01 through RT-08: Repository Truth Stabilization complete — all machine maps synchronized",
+      "level": "E1",
+      "component": "repository",
+      "description": "Completed RT-01 (Build Truth), RT-02 (Source Registry), RT-03 (Entry Point Convergence), RT-04 (Documentation Truth), RT-05 (Machine Map Validation), RT-06 (Authority Truth), RT-07 (Contract Truth), RT-08 (File Classification). All HEAD SHAs updated to current. All file references verified. 13 unclassified files classified.",
+      "flow_id": "RT-01..08",
+      "files_changed": [
+        "build_manifest.json",
+        "runtime_manifest.json",
+        "build_truth.json",
+        "SYSTEM_MAP.json",
+        "FLOW_MAP.json",
+        "AUTHORITY_MAP.json",
+        "CONTRACT_MAP.json",
+        "EVIDENCE_INDEX.json",
+        "AI_CONTEXT.md",
+        "README.md",
+        "AGENTS.md",
+        "docs/architecture/FILE_REGISTRY.csv",
+        "inventory.json"
+      ],
+      "tests": [
+        "All machine map HEAD SHAs match current HEAD",
+        "All file references in maps resolve to tracked files",
+        "No ACTIVE legacy source contradictions",
+        "No unclassified production files"
+      ],
+      "result": "PASS",
+      "finding": "Repository truth stabilized. All machine-readable artifacts synchronized."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 0,
-    "E2_count": 22,
+    "E1_count": 2,
+    "E2_count": 25,
     "E3_count": 0,
     "E4_count": 0,
     "E5_count": 0,

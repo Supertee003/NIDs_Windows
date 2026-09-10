@@ -211,20 +211,196 @@ NTSTATUS AegisWfpBlockFlow(PIRP Irp) {
         (ipToBlock >> 24) & 0xFF, (ipToBlock >> 16) & 0xFF,
         (ipToBlock >> 8) & 0xFF, ipToBlock & 0xFF));
 
-    // TODO: Call FwpmFilterAdd0() to add a blocking filter at
-    // FWPM_LAYER_INBOUND_TRANSPORT_V4 with condition:
-    //   FWP_CONDITION_FLAG_IP_REMOTE_ADDRESS == ipToBlock
-    //   action.type = FWP_ACTION_BLOCK
-    //
-    // For now, log the request. Full implementation requires:
-    //   1. FwpmEngineOpen0() to get engine handle
-    //   2. FwpmFilterAdd0() with FWPM_FILTER_FLAG_PERSISTENT
-    //   3. Store filter ID for later removal (unblock)
-    //   4. FwpmEngineClose0() when done
+    // Open WFP engine
+    HANDLE engineHandle = NULL;
+    FWPM_SESSION0 session;
+    memset(&session, 0, sizeof(session));
+    session.displayData.name = L"AEGIS WFP Session";
+    session.flags = FWPM_SESSION_FLAG_DYNAMIC;
 
+    NTSTATUS status = FwpmEngineOpen0(
+        NULL,
+        RPC_C_AUTHN_WINNT,
+        NULL,
+        &session,
+        &engineHandle
+    );
+
+    if (!NT_SUCCESS(status)) {
+        KdPrint(("AEGIS WFP: FwpmEngineOpen0 failed: 0x%08X\n", status));
+        return status;
+    }
+
+    // Create filter condition for remote IP address
+    FWPM_FILTER_CONDITION0 condition[1];
+    condition[0].fieldKey = FWPM_CONDITION_IP_REMOTE_ADDRESS;
+    condition[0].matchType = FWP_MATCH_EQUAL;
+    condition[0].conditionValue.type = FWP_UINT32;
+    condition[0].conditionValue.uint32 = ipToBlock;
+
+    // Create blocking filter
+    FWPM_FILTER0 filter;
+    memset(&filter, 0, sizeof(filter));
+    filter.displayData.name = L"AEGIS Block IP Filter";
+    filter.displayData.description = L"AEGIS NIDS IP blocking filter";
+    filter.weight.type = FWP_EMPTY;
+    filter.numFilterConditions = 1;
+    filter.filterCondition = condition;
+    filter.action.type = FWP_ACTION_BLOCK;
+    filter.action.blockType = FWP_BLOCK;
+    filter.flags = FWPM_FILTER_FLAG_PERSISTENT;
+
+    UINT64 filterId = 0;
+    status = FwpmFilterAdd0(
+        engineHandle,
+        &filter,
+        NULL,
+        &filterId
+    );
+
+    if (!NT_SUCCESS(status)) {
+        KdPrint(("AEGIS WFP: FwpmFilterAdd0 failed: 0x%08X\n", status));
+        FwpmEngineClose0(engineHandle);
+        return status;
+    }
+
+    KdPrint(("AEGIS WFP: BlockFlow added filter ID %llu for IP %d.%d.%d.%d\n",
+        filterId,
+        (ipToBlock >> 24) & 0xFF, (ipToBlock >> 16) & 0xFF,
+        (ipToBlock >> 8) & 0xFF, ipToBlock & 0xFF));
+
+    // Store filter ID for later removal (unblock)
+    // TODO: Store in a global list for unblock operations
+
+    FwpmEngineClose0(engineHandle);
     return STATUS_SUCCESS;
 }
-NTSTATUS AegisWfpGetStats(PIRP Irp) { return STATUS_NOT_IMPLEMENTED; }
+NTSTATUS AegisWfpGetStats(PIRP Irp) {
+    PIO_STACK_LOCATION irpStack = IoGetCurrentIrpStackLocation(Irp);
+    ULONG outputLen = irpStack->Parameters.DeviceIoControl.OutputBufferLength;
+
+    if (outputLen < sizeof(WFP_STATS)) {
+        return STATUS_BUFFER_TOO_SMALL;
+    }
+
+    PUINT32 stats = (PUINT32)Irp->AssociatedIrp.SystemBuffer;
+
+    // Open WFP engine to query statistics
+    HANDLE engineHandle = NULL;
+    FWPM_SESSION0 session;
+    memset(&session, 0, sizeof(session));
+    session.displayData.name = L"AEGIS WFP Stats Session";
+    session.flags = FWPM_SESSION_FLAG_DYNAMIC;
+
+    NTSTATUS status = FwpmEngineOpen0(
+        NULL,
+        RPC_C_AUTHN_WINNT,
+        NULL,
+        &session,
+        &engineHandle
+    );
+
+    if (!NT_SUCCESS(status)) {
+        KdPrint(("AEGIS WFP: FwpmEngineOpen0 failed: 0x%08X\n", status));
+        return status;
+    }
+
+    // Query filter statistics
+    FWPM_FILTER_ENUM_TEMPLATE0 enumTemplate;
+    memset(&enumTemplate, 0, sizeof(enumTemplate));
+
+    HANDLE enumHandle = NULL;
+    status = FwpmFilterCreateEnumHandle0(
+        engineHandle,
+        &enumTemplate,
+        &enumHandle
+    );
+
+    if (NT_SUCCESS(status)) {
+        FWPM_FILTER0 **filters = NULL;
+        UINT32 numFilters = 0;
+
+        status = FwpmFilterEnum0(
+            engineHandle,
+            enumHandle,
+            1, // Get one filter at a time
+            &filters,
+            &numFilters
+        );
+
+        if (NT_SUCCESS(status) && numFilters > 0) {
+            // Count AEGIS filters
+            UINT32 aegisFilterCount = 0;
+            for (UINT32 i = 0; i < numFilters; i++) {
+                if (filters[i] && filters[i]->displayData.name &&
+                    wcsstr(filters[i]->displayData.name, L"AEGIS") != NULL) {
+                    aegisFilterCount++;
+                }
+                FwpmFreeMemory0((void**)&filters[i]);
+            }
+            FwpmFreeMemory0((void**)&filters);
+            stats[0] = aegisFilterCount; // Number of AEGIS filters
+        } else {
+            stats[0] = 0;
+        }
+
+        FwpmFilterFreeEnumHandle0(engineHandle, enumHandle);
+    } else {
+        stats[0] = 0;
+    }
+
+    FwpmEngineClose0(engineHandle);
+    return STATUS_SUCCESS;
+}
+
+NTSTATUS AegisWfpUnblockFlow(PIRP Irp) {
+    PIO_STACK_LOCATION irpStack = IoGetCurrentIrpStackLocation(Irp);
+    ULONG inputLen = irpStack->Parameters.DeviceIoControl.InputBufferLength;
+
+    if (inputLen < sizeof(UINT64)) {
+        KdPrint(("AEGIS WFP: UnblockFlow - input too small (%lu)\n", inputLen));
+        return STATUS_BUFFER_TOO_SMALL;
+    }
+
+    PUINT64 unblockFilterId = (PUINT64)Irp->AssociatedIrp.SystemBuffer;
+    UINT64 filterId = *unblockFilterId;
+
+    KdPrint(("AEGIS WFP: UnblockFlow - removing filter ID %llu\n", filterId));
+
+    // Open WFP engine
+    HANDLE engineHandle = NULL;
+    FWPM_SESSION0 session;
+    memset(&session, 0, sizeof(session));
+    session.displayData.name = L"AEGIS WFP Unblock Session";
+    session.flags = FWPM_SESSION_FLAG_DYNAMIC;
+
+    NTSTATUS status = FwpmEngineOpen0(
+        NULL,
+        RPC_C_AUTHN_WINNT,
+        NULL,
+        &session,
+        &engineHandle
+    );
+
+    if (!NT_SUCCESS(status)) {
+        KdPrint(("AEGIS WFP: FwpmEngineOpen0 failed: 0x%08X\n", status));
+        return status;
+    }
+
+    // Remove filter by ID
+    status = FwpmFilterDeleteById0(engineHandle, filterId);
+
+    if (!NT_SUCCESS(status)) {
+        KdPrint(("AEGIS WFP: FwpmFilterDeleteById0 failed: 0x%08X\n", status));
+        FwpmEngineClose0(engineHandle);
+        return status;
+    }
+
+    KdPrint(("AEGIS WFP: UnblockFlow removed filter ID %llu\n", filterId));
+
+    FwpmEngineClose0(engineHandle);
+    return STATUS_SUCCESS;
+}
 
 // ====== WFP Callout Registration (see aegis_wfp_callout.c) ======
 // Forward declarations — implemented in aegis_wfp_callout.c

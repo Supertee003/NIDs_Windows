@@ -1,9 +1,9 @@
 # AI_CONTEXT.md — AEGIS NIDS Windows
 ## Machine-Generated Current-HEAD Context Layer
 
-**HEAD:** `dca2b75`
+**HEAD:** `e991909a`
 **BRANCH:** `main`
-**GENERATED:** 2026-09-09
+**GENERATED:** 2026-09-10
 **GENERATOR:** OpenCode MiMo 2.5 Free
 
 ---
@@ -60,10 +60,7 @@ Previous phases (6-9) were implemented but verification levels vary:
 
 ## 6. ACTIVE BLOCKERS
 
-1. **GAP-002 (P1):** WFP enforcement not host-verified — needs E5 Windows host test
-2. **GAP-001 (P0):** Ed25519 production verification not complete — SHA-256 verified, Ed25519 requires ring crate
-3. **Build manifest conflicts:** build_manifest.json referenced wrong source roots (core/ vs src/) — NOW FIXED
-4. **Documentation drift:** Multiple truth sources had stale HEAD SHAs — NOW FIXED
+1. **V5 (P1):** WFP enforcement not host-verified — needs E5 Windows host test with WFP driver installed
 
 ## 7. CURRENT BUILD COMMANDS
 

@@ -154,7 +154,7 @@ main()
 | Component | Implementation Status | Verification Status | Host Status |
 |---|---|---|---|
 | Zig Core | IMPLEMENTED | E2 (unit tests) | NOT_VERIFIED |
-| Rust PEP | IMPLEMENTED | E2 (SHA-256 verified, Ed25519 pending) | NOT_VERIFIED |
+| Rust PEP | IMPLEMENTED | E2 (Ed25519 + SHA-256 verified) | NOT_VERIFIED |
 | Go Nose | IMPLEMENTED | E1 (AST) | NOT_VERIFIED |
 | C++ Native | IMPLEMENTED | E1 (selftest passes) | NOT_VERIFIED |
 | C++ Bridge | IMPLEMENTED | E1 (selftest passes) | NOT_VERIFIED |

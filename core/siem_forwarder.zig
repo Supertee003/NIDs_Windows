@@ -253,30 +253,119 @@ pub const SiemForwarder = struct {
         return true;
     }
 
-    /// Send events via HTTP/HTTPS (stub - requires networking).
+    /// Send events via HTTP/HTTPS (POST to collector endpoint).
     fn sendViaHttp(self: *SiemForwarder, events: []const ForwardedEvent) bool {
-        _ = self;
-        _ = events;
-        // HTTP client would go here (requires std.http or external lib)
-        // For now, log that HTTP is not implemented on Host
-        std.log.warn("[SIEM] HTTP/HTTPS transport not implemented (use FILE for testing)", .{});
-        return false;
+        const uri = std.Uri.parse(self.config.endpoint) catch {
+            std.log.err("[SIEM] Invalid HTTP endpoint: {s}", .{self.config.endpoint});
+            return false;
+        };
+
+        const host = uri.host orelse {
+            std.log.err("[SIEM] HTTP endpoint missing host", .{});
+            return false;
+        };
+
+        var client = std.http.Client{ .allocator = self.allocator };
+        defer client.deinit();
+
+        for (events) |event| {
+            const body = self.formatEvent(event) catch continue;
+            defer self.allocator.free(body);
+
+            var headers = std.http.Headers{};
+            headers.put("Content-Type", "application/json") catch continue;
+            headers.put("Host", host) catch continue;
+
+            var req = client.request(.POST, uri, headers, .{}) catch |err| {
+                std.log.err("[SIEM] HTTP request failed: {}", .{err});
+                continue;
+            };
+            defer req.deinit();
+
+            req.writeAll(body) catch |err| {
+                std.log.err("[SIEM] HTTP write failed: {}", .{err});
+                continue;
+            };
+
+            req.finish() catch |err| {
+                std.log.err("[SIEM] HTTP finish failed: {}", .{err});
+                continue;
+            };
+
+            const status = req.wait() catch |err| {
+                std.log.err("[SIEM] HTTP wait failed: {}", .{err});
+                continue;
+            };
+
+            if (status != .ok) {
+                std.log.warn("[SIEM] HTTP status: {}", .{status});
+            }
+        }
+        return true;
     }
 
-    /// Send events via TCP (stub - requires networking).
+    /// Send events via TCP (raw socket, for syslog).
     fn sendViaTcp(self: *SiemForwarder, events: []const ForwardedEvent) bool {
-        _ = self;
-        _ = events;
-        std.log.warn("[SIEM] TCP transport not implemented (use FILE for testing)", .{});
-        return false;
+        const uri = std.Uri.parse(self.config.endpoint) catch {
+            std.log.err("[SIEM] Invalid TCP endpoint: {s}", .{self.config.endpoint});
+            return false;
+        };
+
+        const host = uri.host orelse {
+            std.log.err("[SIEM] TCP endpoint missing host", .{});
+            return false;
+        };
+
+        const port: u16 = uri.port orelse 514; // Default syslog port
+
+        var stream = std.net.tcpConnectToHost(self.allocator, host, port) catch |err| {
+            std.log.err("[SIEM] TCP connect failed: {}", .{err});
+            return false;
+        };
+        defer stream.close();
+
+        for (events) |event| {
+            const body = self.formatEvent(event) catch continue;
+            defer self.allocator.free(body);
+
+            stream.writeAll(body) catch |err| {
+                std.log.err("[SIEM] TCP write failed: {}", .{err});
+                continue;
+            };
+        }
+        return true;
     }
 
-    /// Send events via UDP (stub - requires networking).
+    /// Send events via UDP (for syslog).
     fn sendViaUdp(self: *SiemForwarder, events: []const ForwardedEvent) bool {
-        _ = self;
-        _ = events;
-        std.log.warn("[SIEM] UDP transport not implemented (use FILE for testing)", .{});
-        return false;
+        const uri = std.Uri.parse(self.config.endpoint) catch {
+            std.log.err("[SIEM] Invalid UDP endpoint: {s}", .{self.config.endpoint});
+            return false;
+        };
+
+        const host = uri.host orelse {
+            std.log.err("[SIEM] UDP endpoint missing host", .{});
+            return false;
+        };
+
+        const port: u16 = uri.port orelse 514; // Default syslog port
+
+        var sock = std.net_udp.connect(self.allocator, host, port) catch |err| {
+            std.log.err("[SIEM] UDP connect failed: {}", .{err});
+            return false;
+        };
+        defer sock.close();
+
+        for (events) |event| {
+            const body = self.formatEvent(event) catch continue;
+            defer self.allocator.free(body);
+
+            sock.writeAll(body) catch |err| {
+                std.log.err("[SIEM] UDP write failed: {}", .{err});
+                continue;
+            };
+        }
+        return true;
     }
 
     /// Format an event according to the configured output format.
