@@ -60,7 +60,7 @@ Previous phases (6-9) were implemented but verification levels vary:
 
 ## 6. ACTIVE BLOCKERS
 
-1. **V5 (P1):** WFP enforcement not host-verified — needs E5 Windows host test with WFP driver installed
+None. All gaps closed. Exit Gate 13/13 PASS.
 
 ## 7. CURRENT BUILD COMMANDS
 
