@@ -92,7 +92,7 @@ cargo build --release                       → aegis_pep.dll        (Tier-3: Ru
 cmake -B build && cmake --build build       → 3 C DLLs             (native adapters)
 cd nose && go build -o aegis-nose.exe .     → aegis-nose.exe       (Go: packet acquisition)
 python brain/windows_brain.py               → (interpreted)        (Tier-2: analytics)
-cd ts_policy && npm run build               → ts_policy/dist/      (policy authoring, advisory)
+cd ts_policy && npm run typecheck && npm run test:all   → (advisory only, no output)   (policy authoring, advisory)
 ```
 
 **ONE production runtime. No duplicates.**

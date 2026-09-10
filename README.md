@@ -205,8 +205,8 @@ cmake --build build --config Release
 # Go Nose
 cd nose && go build -o aegis-nose.exe .
 
-# TypeScript policy
-cd ts_policy && npm run build
+# TypeScript policy (advisory only - no build output)
+cd ts_policy && npm run typecheck && npm run test:all
 ```
 
 ## 16. Test

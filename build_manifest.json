@@ -127,7 +127,7 @@
       "ci_job": "ts-policy-build",
       "commit": "97dbfef",
       "source": "ts_policy/src/index.ts",
-      "build_command": "cd ts_policy && npm run build"
+      "build_command": "cd ts_policy && npm run typecheck && npm run test:all"
     },
     {
       "id": "brain",

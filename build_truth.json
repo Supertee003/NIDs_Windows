@@ -45,11 +45,10 @@
       "source_root": "nose/main.go"
     },
     "typescript": {
-      "command": "cd ts_policy && npm run build",
-      "produces": [
-        "ts_policy/dist/"
-      ],
-      "source_root": "ts_policy/src/index.ts"
+      "command": "cd ts_policy && npm run typecheck && npm run test:all",
+      "produces": [],
+      "source_root": "ts_policy/src/index.ts",
+      "note": "Advisory only - no build output. Typecheck + test only."
     }
   },
   "ci_assertions": [

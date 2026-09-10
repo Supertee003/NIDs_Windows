@@ -57,7 +57,9 @@
     "ts_policy_compiler": {
       "file": "ts_policy/src/index.ts",
       "language": "typescript",
-      "role": "Policy authoring, simulation, compilation to Policy IR"
+      "role": "Policy authoring, simulation, compilation to Policy IR",
+      "build": "cd ts_policy && npm run typecheck && npm run test:all",
+      "note": "Advisory only - no build output. Typecheck + test only."
     }
   },
   "canonical_artifacts": {
@@ -112,7 +114,7 @@
     "Back Rules.json": "DUPLICATE of config/Rules.json",
     "Rules.json (root)": "DUPLICATE of config/Rules.json - different content, root is stale",
     "core/*.zig": "LEGACY proof/integration/CLI modules - NOT compiled by build.zig; src/*.zig is canonical",
-    "nids_main.zig (root)": "LEGACY - superseded by src/main.zig",
+    "core/nids_main.zig": "LEGACY - superseded by src/main.zig",
     "shield/": "LEGACY Rust crate - superseded by root Cargo.toml + rust-src/",
     "native/": "DOES NOT EXIST - use src/windows/ for C native helpers",
     "go/": "PARTIAL - go/aggregator/ exists but go/ root is not a module; nose/ is the Go source",

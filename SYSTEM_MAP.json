@@ -122,8 +122,9 @@
       "tier": 2,
       "role": "Policy authoring, simulation, compilation",
       "entrypoint": "ts_policy/src/index.ts",
-      "build_command": "cd ts_policy && npm run build",
-      "test_command": "cd ts_policy && npm run test"
+      "build_command": "cd ts_policy && npm run typecheck && npm run test:all",
+      "test_command": "cd ts_policy && npm run test:all",
+      "note": "Advisory only - no build output. Typecheck + test only."
     },
     {
       "id": "aggregator",
@@ -153,7 +154,7 @@
   "legacy_markers": [
     {"file": "lib.rs (root)", "reason": "Superseded by rust-src/lib.rs"},
     {"file": "core/*.zig", "reason": "Legacy proof modules, NOT compiled by build.zig"},
-    {"file": "nids_main.zig (root)", "reason": "Superseded by src/main.zig"}
+    {"file": "core/nids_main.zig", "reason": "Superseded by src/main.zig - LEGACY entry point"}
   ],
   "invariants": [
     "ONE production runtime (Zig core + Rust PEP + Go Nose + C++ native helpers)",
