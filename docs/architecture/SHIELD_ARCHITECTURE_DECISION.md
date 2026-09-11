@@ -1,30 +1,72 @@
-# SHIELD_ARCHITECTURE_DECISION — REBUILD-001
+# SHIELD_ARCHITECTURE_DECISION — REBUILD-001 (UPDATED)
 
-**Decision: DO NOT CREATE `/shield` as a separate directory. Close the capability gap inside `rust-src/` (P0-2) instead.**
+**Decision: KEEP shield/ as the Tier-3 Rust safety shield. Integrate with rust-src/ for authority consolidation.**
 
-**HEAD:** `a480efb` · **Mode:** read-only audit · **Date:** 2026-09-10
+**HEAD:** `2c7cb30` · **Mode:** corrected audit · **Date:** 2026-09-11
 
 ---
 
 ## Answers (required format)
 
-**SHIELD DECISION:** DO NOT CREATE
+**SHIELD DECISION:** KEEP (corrected from DO NOT CREATE)
 
-**REASON:** `/shield`'s only production-verified responsibility was a single DLL export — `validate_payload_safety([*]const u8, usize) -> bool` — loaded dynamically by `src/core/bridge_init.zig` as the "Tier-3 Memory Safety Shield". That responsibility is security-relevant and currently BROKEN (P0-2): the loader fail-opens (`return true`) when the DLL is missing, and the DLL cannot exist because `shield/` was deleted. However, restoring a whole second Rust crate would create a second Rust authority beside `rust-src/` (the ONE PEP), violating the no-duplicate-authority invariant. The correct repair is to move ~20 lines of payload-validation code into `rust-src/lib.rs` — the canonical security crate — and repoint the loader. One security crate, one security truth.
+**REASON:** shield/ is an active Tier-3 Rust safety shield with significant unique functionality NOT in rust-src/lib.rs (1,739 lines across 3 source files):
+
+**Unique capabilities:**
+1. **Payload safety validation (4 checks):**
+   - check_suspicious_size: rejects empty or >65535-byte buffers
+   - check_nop_sled: rejects runs of 0x90 (x86 NOP sled exploit pattern)
+   - check_buffer_overflow_pattern: rejects all-zero, heap-spray (0x0c), int3-padding (0xcc), long ASCII overflow
+   - check_malformed_headers: rejects payloads containing "meterpreter", "wscript", "powershell -enc", "cmd.exe /c"
+
+2. **Threat scoring engine (AegisEngine):**
+   - Severity-to-score mapping (Critical=100, High=75, Medium=50, Low=25)
+   - Threshold-based threat detection (default 50.0)
+   - Configurable via aegis_set_threshold()
+
+3. **Windows enforcement adapter (828 lines):**
+   - Driver IOCTL contract constants (0x800-0x807) in parity with kernel/wfp/aegis_wfp.c
+   - Decision matrix (decide()) with score thresholds and confidence levels
+   - EnforceState: in-process mirror of kernel driver's blocklist state
+   - Command enum: block/unblock/whitelist/set-thresholds/set-fail-open
+   - netsh_fallback: generates real Windows Firewall commands as fallback
+   - AuditLog: bounded (256 entries) audit trail with drop counting
+
+4. **PEP evaluation shim (pep.rs):**
+   - PepRequestC/PepResultC structs for C-ABI FFI
+   - aegis_pep_evaluate(): privileged action authorization gate
+   - Policy version validation, token validation, target IP validation
+
+**Architecture difference:**
+- shield/ = payload safety pre-validation + threat scoring + Windows enforcement adapter
+- rust-src/ = PEP enforcement decisions + Ed25519 crypto + federation TLS
+
+Both are required for complete security coverage.
 
 **RUST-SRC RESPONSIBILITY:** Final privileged authority: Ed25519 policy signature verification, PEP enforcement decisions (`aegis_pep_enforce`), rate-limit quota, SHA-256 hashing, federation TLS (stubs). Owns `aegis_pep.dll`.
 
-**SHIELD RESPONSIBILITY (recovering):** Payload safety pre-validation (memory-safety screening of untrusted payloads before Zig-side processing). This is a *defensive screening* function, NOT enforcement. It belongs in the security crate because it is security logic, but it is not a second PEP — it advises; only the PEP decides enforcement.
+**SHIELD RESPONSIBILITY:** Payload safety pre-validation, threat scoring, Windows enforcement adapter, PEP evaluation shim. Owns `sec_monitor.dll`.
 
-**BUILD:** No `/shield` to build. `rust-src` already builds via `cargo build --release` → `aegis_pep.dll` (CI runs `cargo build/test --release` and it is green).
+**BUILD:** 
+- `shield/` builds (`cd shield && cargo build --release` → `shield/target/release/sec_monitor.dll`)
+- `rust-src/` builds (`cargo build --release` → `target/release/aegis_pep.dll`)
+- CI job `shield-build` builds shield successfully
 
-**TEST:** New requirement: `validate_payload_safety` gets a unit test inside `rust-src` (cargo test) plus the existing Zig-side contract test when the orphan graph is compiled. A standalone `/shield` would have needed its own CI job for zero unique logic — rejected.
+**TEST:** 
+- `shield/` has unit tests in lib.rs, pep.rs, windows_enforce.rs (run in CI)
+- `rust-src/` has unit tests (run in CI)
 
-**RUNTIME:** After repair: `aegis_pep.dll` exports both `aegis_pep_*` (PEP) and `validate_payload_safety` (shield). `bridge_init.initRustShield()` switches from `DynLib`-searching `sec_monitor.dll` at `target\release` + `shield\target\release` to loading the SAME `aegis_pep.dll` it already knows how to find, symbol `validate_payload_safety`. One DLL, one search path, no phantom `shield/target`.
+**RUNTIME:** 
+- `bridge_init.zig` loads `sec_monitor.dll` at startup
+- If DLL is missing, Tier-3 screening fails open (P0-2 issue)
+- Both shield and rust-src DLLs are loaded at runtime
 
-**RELEASE:** `aegis_pep.dll` ships as today. No new artifact. `bridge_init.SHIELD_VERSION` should be removed or aliased to the PEP version (it currently hardcodes "0.1.0" claiming to mirror `shield/Cargo.toml`, which no longer exists — stale truth).
+**RELEASE:** 
+- `build_truth.json` declares shield as a build component
+- `runtime_manifest.json` declares `rust_shield_tier3` as canonical entrypoint
+- Both `sec_monitor.dll` and `aegis_pep.dll` ship as release artifacts
 
-**SECURITY BOUNDARY:** Unchanged and strengthened: Zig may call `validate_payload_safety` (screening) and `aegis_pep_enforce` (decision) — both exported by the one Rust authority. All privileged enforcement still flows PEP → authorization → WFP. The fail-open must become fail-closed-configurable: default behavior and the risk must be made explicit (P0-2 note).
+**SECURITY BOUNDARY:** Zig may call `validate_payload_safety` (screening) and `aegis_pep_enforce` (decision) — exported by different Rust authorities. All privileged enforcement flows PEP → authorization → WFP. The fail-open must become fail-closed-configurable (P0-2 issue).
 
 ## The P0-2 fail-open, precisely
 
@@ -36,14 +78,43 @@ pub fn validatePayloadSafety(data: [*]const u8, len: usize) bool {
 }
 ```
 
-With `shield/` deleted, `sec_monitor.dll` never loads, so Tier-3 screening is permanently bypassed AND silently (logged once as an error line at startup, then business as usual). Two acceptable repairs, in order of preference:
+With shield/ present but potentially missing at runtime, Tier-3 screening can fail silently. Two acceptable repairs, in order of preference:
 
-1. **Move screening into rust-src** (recommended): add `validate_payload_safety` to `rust-src/lib.rs`, retarget `bridge_init` to load it from `aegis_pep.dll`. Removes the dependency on a deleted crate entirely.
-2. If Tier-3 screening is judged obsolete: delete the loader code path in a later cleanup phase and document the acceptance decision. NEVER leave it silently fail-open (current state).
+1. **Ensure shield is always present:** Make `sec_monitor.dll` a required artifact in the build pipeline. Update `bridge_init.zig` to fail-closed (return false) when shield is missing, with configurable override.
+2. **Consolidate authority:** Move shield's unique functions into rust-src/lib.rs, eliminating the second Rust authority. This is a larger refactor but simplifies the security boundary.
 
-## Why not CREATE /shield (explicit)
+## Why KEEP shield (corrected from DO NOT CREATE)
 
-- It would duplicate the Rust security plane (`rust-src/` owns crypto, trust, PEP, authorization).
-- Its historical crate had a version constant mirrored in `bridge_init.zig` and a `shield/target/release` search path — infrastructure for a directory that adds a second authority, not a capability.
-- The single capability it held is a ~20-line function, naturally hosted in the existing security crate.
-- SYSTEM_MAP's own note ("shield — minimal/placeholder") confirms it never earned an independent existence.
+- shield/ has 1,739 lines of unique security functionality not in rust-src/
+- It provides payload safety validation (4 checks) that rust-src/ does not have
+- It provides Windows enforcement adapter (828 lines) that rust-src/ does not have
+- It is referenced in runtime_manifest.json, build_manifest.json, and components.json
+- It has unit tests that run in CI
+- It is loaded at runtime by bridge_init.zig
+- It produces a unique DLL (sec_monitor.dll) separate from aegis_pep.dll
+
+## Comparison with rust-src/
+
+| Capability | shield/ | rust-src/lib.rs |
+|---|---|---|
+| Payload safety validation (4 checks) | YES | NO |
+| Threat scoring engine | YES | NO |
+| Windows enforcement adapter | YES | NO |
+| PEP evaluation (C-ABI) | YES | YES (different signature) |
+| Ed25519 policy signing | NO | YES |
+| SHA-256 hashing | NO | YES |
+| Federation TLS | NO | YES |
+| WFP driver mirror state | YES | NO |
+
+## Integration plan
+
+1. **Short-term:** Keep shield/ as separate crate, fix P0-2 fail-open by making shield required
+2. **Long-term:** Consider moving shield's unique functions into rust-src/ to consolidate Rust security authority
+3. **Boundary:** Document clear ownership: shield = pre-validation + enforcement adapter, rust-src = PEP + crypto
+
+## Required actions
+
+1. **Fix P0-2:** Make sec_monitor.dll required in build pipeline, update bridge_init.zig to fail-closed
+2. **Documentation:** Update SYSTEM_MAP.json, AUTHORITY_MAP.json to reflect shield as active component
+3. **Integration:** Consider adding shield to golden security path documentation
+4. **Authority consolidation:** Plan long-term consolidation of Rust security authority (shield + rust-src)

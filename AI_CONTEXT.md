@@ -1,7 +1,7 @@
 # AI_CONTEXT.md — AEGIS NIDS Windows
 ## Machine-Generated Current-HEAD Context Layer
 
-**HEAD:** `61c80ca3fa68bf4d1c589e953428c453d90774cf`
+**HEAD:** `2c7cb3047e2219ec60e86776079e50b352680c35`
 **BRANCH:** `main`
 **GENERATED:** 2026-09-10
 **GENERATOR:** OpenCode MiMo 2.5 Free
@@ -168,27 +168,50 @@ Previous phases:
 
 ## 11. ACTIVE BLOCKERS
 
-None. All gaps closed. Exit Gate 13/13 PASS.
+P0 Risks identified in audit (2026-09-11):
+- P0-1: Zig→WFP enforcement bypass (rust_pep.zig calls wfp_ioctl directly)
+- P0-2: Fail-open Tier-3 (sec_monitor.dll missing → Tier-3 screening bypassed)
+- P0-3: CI red by construction (go-build-test broken)
+- P0-4: Machine maps stale (HEAD mismatch across 9 truth documents) — FIXED in this commit
+- P0-5: CLI canonical path conflict — FIXED in this commit
+- P0-6: go/aggregator tracked (contradicts previous DO NOT CREATE decision) — RESOLVED: kept as active sidecar
+- P0-7: shield/ tracked (contradicts previous DO NOT CREATE decision) — RESOLVED: kept as active Tier-3
 
 ## 12. CURRENT BUILD COMMANDS
 
 ```powershell
-zig build                                   # Zig core
+zig build                                   # Zig core (aegis_nids.exe)
 zig build test                              # Zig tests
-cargo build --release                       # Rust PEP
-cmake -B build && cmake --build build       # C++ native
-cd nose && go build -o aegis-nose.exe .     # Go Nose
-cd ts_policy && npm run test                # TypeScript tests
+cargo build --release                       # Rust PEP (aegis_pep.dll)
+cd shield && cargo build --release          # Rust Shield (sec_monitor.dll)
+cmake -B build && cmake --build build       # C++ native helpers
+cd bridge && cmake -B build && cmake --build build  # C++ bridge
+cd nose && go build -o aegis-nose.exe .     # Go Nose (packet acquisition)
+cd go/aggregator && go build -o aegis-aggregator.exe .  # Go Aggregator (REST API sidecar)
+cd ts_policy && npm run typecheck && npm run test:all   # TypeScript policy compiler
 ```
 
-## 13. CURRENT RUNTIME ENTRYPOINT
+## 13. CURRENT RUNTIME ENTRYPOINTS
 
-`src/main.zig` — `main()` function
+**Multi-process architecture:**
 
-Startup sequence:
-```
-main → init subsystems → start pipeline → start watchdog → start control pipe → start capture → run loop
-```
+1. **Zig Core** (`src/main.zig` → `aegis_nids.exe`) — Runtime spine
+   - Startup: main → init subsystems → start pipeline → start watchdog → start control pipe → start capture → run loop
+
+2. **Go Nose** (`nose/main.go` → `aegis-nose.exe`) — Packet acquisition
+   - Launches as separate process, connects to Zig via named pipe
+
+3. **Go Aggregator** (`go/aggregator/main.go` → `aegis-aggregator.exe`) — Alert sidecar (optional)
+   - REST API on port 9200, watches NDJSON logs via fsnotify
+
+4. **Rust Shield** (`shield/src/lib.rs` → `sec_monitor.dll`) — Loaded in-process by Zig core
+   - Tier-3 payload safety validation + threat scoring
+
+5. **Rust PEP** (`rust-src/lib.rs` → `aegis_pep.dll`) — Loaded in-process by Zig core
+   - Privileged action authorization
+
+6. **C++ Bridge** (`bridge/aegis_ipc.cpp` → `aegis_ipc.dll`) — Loaded in-process by Zig core
+   - Windows native adapters (ETW, FIM, WFP)
 
 ## 14. WHERE MACHINE-READABLE TRUTH IS STORED
 

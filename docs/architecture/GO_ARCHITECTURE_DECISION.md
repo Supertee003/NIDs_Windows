@@ -1,40 +1,85 @@
-# GO_ARCHITECTURE_DECISION — REBUILD-001
+# GO_ARCHITECTURE_DECISION — REBUILD-001 (UPDATED)
 
-**Decision: DO NOT CREATE `/go`. REPAIR CI instead.**
+**Decision: KEEP go/aggregator/ — it is an active sidecar with unique functionality.**
 
-**HEAD:** `a480efb` · **Mode:** read-only audit · **Date:** 2026-09-10
+**HEAD:** `2c7cb30` · **Mode:** corrected audit · **Date:** 2026-09-11
 
 ---
 
 ## Answers (required format)
 
-**GO DECISION:** DO NOT CREATE
+**GO DECISION:** KEEP (corrected from DO NOT CREATE)
 
-**REASON:** The responsibility `/go` used to hold — Go-side alert aggregation — is already owned by the canonical Zig runtime (`src/federation/aggregator.zig`, `src/federation/cluster_coord.zig`, `src/federation/node_registry.zig`, all built by `zig build` and tested by `src/tests/federation/*`). Recreating a Go aggregator today would introduce a second aggregation authority with no runtime reachability, violating the ONE-machine invariant. Separately, CI currently builds a directory that no longer exists (`go/aggregator`) and never builds the Go component that DOES exist (`nose/`) — that is a CI bug, not a reason to recreate `/go`.
+**REASON:** go/aggregator/ is an active sidecar service with unique functionality NOT in src/federation/aggregator.zig:
+- REST API server (8 endpoints on port 9200)
+- NDJSON file tailing via fsnotify (watches logs/aegis_core.ndjson)
+- Session timeline reconstruction across tiers
+- Severity escalation on dedup
+- LRU eviction with configurable max capacity (10,000 alerts)
+- Health check with RUNTIME_CONTRACT.md schema
+
+**Architecture difference:**
+- Go: Standalone sidecar process, file-based protocol (watches NDJSON log)
+- Zig: Embedded library, in-memory IpcEvent processing
+
+**Status:** Marked `required: false` (optional sidecar), but builds/tested in CI.
 
 **NOSE RESPONSIBILITY:** Packet acquisition + canonical event production (CONTRACT-01, 109-byte CanonicalEvent) over Npcap, delivered to the Zig runtime via named pipe (`nose/pipe_writer.go` → `src/capture/nose_pipe_reader.zig` / `nose_contract.zig`). Owns I/O-heavy, high-concurrency acquisition. Does NOT own policy, enforcement, detection, or a second event model.
 
-**GO RESPONSIBILITY (final):** `nose/` only. There is no unmet Go responsibility. If future scale demands a separate collector process (external feed polling, multi-NIC fan-in), it should be added as a package INSIDE the `nose/` module with its own PURPOSE/OWNER/API/CONTRACT/TEST/CI/RELEASE entry — not as a resurrected top-level `/go`.
+**AGGREGATOR RESPONSIBILITY:** Alert collection, deduplication, and cross-tier correlation via REST API. Operates on file-based protocol (watches NDJSON logs). Provides HTTP endpoints for dashboard/UI integration.
 
-**BUILD:** `nose/` builds (`go build -o aegis-nose.exe .`, Go 1.22, module `aegis-nose`, deps: gopacket + bubbletea). `go/aggregator/` has no go.mod to build — CI job `go-build-test` is red by construction.
+**GO RESPONSIBILITY (final):**
+1. `nose/` — Packet acquisition (canonical Go sensor)
+2. `go/aggregator/` — Alert sidecar (REST API + NDJSON correlation)
 
-**TEST:** `nose/` has `canonical_test.go` (never run in CI). CI `go-build-test` runs `go test ./...` against the nonexistent `go/aggregator`.
+Both are active and have unique responsibilities.
 
-**RUNTIME:** `nose/aegis-nose.exe` is runtime-reachable as the acquisition producer wired to the Zig Event Fabric. `go/aggregator` had no runtime reachability at deletion time (SYSTEM_MAP listed it, but nothing built or launched it — it was reference residue from the legacy federation design).
+**BUILD:** 
+- `nose/` builds (`go build -o aegis-nose.exe .`, Go 1.22, module `aegis-nose`, deps: gopacket + bubbletea)
+- `go/aggregator/` builds (`go build -o aegis-aggregator.exe .`, Go 1.21, module `github.com/aegis-nids/aggregator`, deps: fsnotify + uuid)
+- CI job `go-build-test` builds both successfully
 
-**RELEASE:** `build_truth.json` declares `nose` as a build component and explicitly notes "Source of truth: … nose/go.mod" (line 89). It does NOT declare go/aggregator. Release truth already agrees: nose in, aggregator out.
+**TEST:** 
+- `nose/` has `canonical_test.go` (never run in CI)
+- `go/aggregator/` has `alert_test.go` and `correlator_test.go` (run in CI)
+
+**RUNTIME:** 
+- `nose/aegis-nose.exe` is runtime-reachable as the acquisition producer
+- `go/aggregator/aegis-aggregator.exe` is an optional sidecar (required: false)
+
+**RELEASE:** 
+- `build_truth.json` declares `nose` as a build component
+- `runtime_manifest.json` declares `go_aggregator` as canonical entrypoint
+- Both are part of the release artifact set
 
 **SECURITY BOUNDARY:** Go → C ABI / named pipe → Zig only. Go never touches WFP, PEP, or policy (enforced by nose's pipe-writer design). No Go→WFP path exists or may exist.
 
-## Required actions (next phases, not this audit)
+## Required actions
 
-1. **CI fix (P0-3):** change job `go-build-test` from `cd go/aggregator` to `cd nose` (`go build ./...`, `go test ./...`). This single edit turns a permanently-red job green and covers the real Go code with tests for the first time.
-2. Update `SYSTEM_MAP.json` / `AUTHORITY_MAP.json` / `FLOW_MAP.json` to remove the `go_aggregator` component entry and the `files: ["go/aggregator/*.go"]` reference (they reference a directory that no longer exists — stale truth).
-3. Optional: `canonical.EventSource.go_aggregator = 8` remains in the wire schema for compatibility — keep the enum value (ABI freeze), mark as reserved/legacy in comments. Do NOT renumber.
-4. `go/aggregator` logic that might have value (alert fan-in rules) lives on conceptually in `src/federation/aggregator.zig`; if the old Go implementation had algorithms worth porting, recover them from git history as REFERENCE ONLY.
+1. **Naming consistency:** Standardize on `aegis-aggregator.exe` (not `aggregator.exe`). Update runtime_manifest.json line 136.
+2. **CI optimization:** go-build-test job should build both nose/ and go/aggregator/ (currently does).
+3. **Documentation:** Update SYSTEM_MAP.json, AUTHORITY_MAP.json to reflect go/aggregator as active component.
+4. **Integration:** Consider integrating go/aggregator into golden data path (optional).
 
-## Why not CREATE /go (explicit)
+## Why KEEP go/aggregator (corrected from DO NOT CREATE)
 
-- Every answer to "why can't the work live elsewhere?" resolves to an existing owner: acquisition → `nose/`, aggregation → Zig federation, event model → CanonicalEvent.
-- No build/test/release membership would exist on day one; it would be a directory of promises.
-- The owner's goal is "smallest correct AEGIS machine" — `/go` adds a language plane with zero unique responsibility.
+- go/aggregator/ has a valid go.mod and builds successfully in CI
+- It provides unique REST API functionality not in src/federation/aggregator.zig
+- It operates on file-based protocol (NDJSON tailing) vs in-memory protocol (Zig)
+- It is referenced in runtime_manifest.json, build_manifest.json, and components.json
+- It has unit tests that run in CI
+- It is marked as optional (required: false) but is actively used
+
+## Comparison with Zig aggregator
+
+| Dimension | Go go/aggregator/ | Zig src/federation/aggregator.zig |
+|-----------|-------------------|--------------------------------------|
+| Architecture | Standalone sidecar process | Embedded library (in-process) |
+| Input | File-based: watches logs/aegis_core.ndjson via fsnotify | In-memory: receives IpcEvent structs via ingest() API |
+| Event type | Custom Alert struct (JSON-based) | IpcEvent (binary, 109-byte canonical wire format) |
+| Dedup key | SHA-256 of (rule + src_ip + event) triple | event_id (uint64) identity check |
+| Correlation | Session timeline reconstruction across tiers | Cross-node federation: counts distinct origin_node_id |
+| API | Full REST API (8 endpoints on port 9200) | Zero API -- library functions only |
+| Protocol | REST/JSON over HTTP | Direct function calls within Zig process |
+| Size | ~930 lines of Go + 273 lines of tests | ~124 lines of Zig |
+| Dependencies | fsnotify, uuid (external) | Only stdlib |

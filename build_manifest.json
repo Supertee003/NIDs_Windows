@@ -2,7 +2,7 @@
  "schema_version": "2.0",
  "product": "AEGIS NIDS",
  "version": "5.0.0",
- "source_commit": "97dbfef",
+ "source_commit": "2c7cb30",
  "build_date": "2026-09-10T00:00:00.000000+00:00",
  "build_host": "windows",
  "platform": {
@@ -27,7 +27,7 @@
    "type": "executable",
    "required": true,
    "ci_job": "zig-build-test",
-   "commit": "97dbfef",
+   "commit": "2c7cb30",
    "source": "src/main.zig",
    "build_command": "zig build"
   },
@@ -38,7 +38,7 @@
    "type": "library",
    "required": true,
    "ci_job": "rust-pep-build",
-   "commit": "97dbfef",
+   "commit": "2c7cb30",
    "source": "rust-src/lib.rs",
    "build_command": "cargo build --release"
   },
@@ -49,7 +49,7 @@
    "type": "library",
    "required": true,
    "ci_job": "c-native-build",
-   "commit": "97dbfef",
+   "commit": "2c7cb30",
    "source": "src/windows/aegis_wfp.c",
    "build_command": "cmake -B build && cmake --build build"
   },
@@ -60,7 +60,7 @@
    "type": "library",
    "required": true,
    "ci_job": "c-native-build",
-   "commit": "97dbfef",
+   "commit": "2c7cb30",
    "source": "src/windows/etw_native.c",
    "build_command": "cmake -B build && cmake --build build"
   },
@@ -71,7 +71,7 @@
    "type": "library",
    "required": true,
    "ci_job": "c-native-build",
-   "commit": "97dbfef",
+   "commit": "2c7cb30",
    "source": "src/windows/fim_native.c",
    "build_command": "cmake -B build && cmake --build build"
   },
@@ -82,7 +82,7 @@
    "type": "library",
    "required": true,
    "ci_job": "bridge-build",
-   "commit": "97dbfef",
+   "commit": "2c7cb30",
    "source": "bridge/aegis_ipc.cpp",
    "build_command": "cd bridge && cmake -B build && cmake --build build"
   },
@@ -93,7 +93,7 @@
    "type": "executable",
    "required": true,
    "ci_job": "go-build-test",
-   "commit": "97dbfef",
+   "commit": "2c7cb30",
    "source": "nose/main.go",
    "build_command": "cd nose && go build -o aegis-nose.exe ."
   },
@@ -104,7 +104,7 @@
    "type": "executable",
    "required": false,
    "ci_job": "go-build-test",
-   "commit": "97dbfef",
+   "commit": "2c7cb30",
    "source": "go/aggregator/main.go",
    "build_command": "cd go/aggregator && go build -o aegis-aggregator.exe ."
   },
@@ -115,7 +115,7 @@
    "type": "script",
    "required": true,
    "ci_job": "python-tests",
-   "commit": "97dbfef",
+   "commit": "2c7cb30",
    "source": "tools/aegisctl.py"
   },
   {
@@ -125,7 +125,7 @@
    "type": "toolchain",
    "required": true,
    "ci_job": "ts-policy-build",
-   "commit": "97dbfef",
+   "commit": "2c7cb30",
    "source": "ts_policy/src/index.ts",
    "build_command": "cd ts_policy && npm run typecheck && npm run test:all"
   },
@@ -136,7 +136,7 @@
    "type": "module",
    "required": true,
    "ci_job": "python-tests",
-   "commit": "97dbfef",
+   "commit": "2c7cb30",
    "source": "brain/windows_brain.py"
   },
   {

@@ -1,7 +1,7 @@
 {
  "schema_version": "1.0",
  "generated_at": "2026-09-11T00:00:00.000000+00:00",
- "head_sha": "a480efb177e4fe71f556d095b438924793f7054b",
+ "head_sha": "2c7cb3047e2219ec60e86776079e50b352680c35",
  "canonical_source_root": "/",
  "canonical_entrypoints": {
   "zig_core_tier1": {
@@ -131,11 +131,11 @@
    "produced_by": "cd shield && cargo build --release",
    "source": "shield/src/lib.rs"
   },
-  "go_aggregator": {
-   "path": "go/aggregator/aggregator.exe",
-   "produced_by": "cd go/aggregator && go build ./...",
-   "source": "go/aggregator/main.go"
-  }
+"go_aggregator": {
+    "path": "go/aggregator/aegis-aggregator.exe",
+    "produced_by": "cd go/aggregator && go build -o aegis-aggregator.exe .",
+    "source": "go/aggregator/main.go"
+   }
  },
  "canonical_config": {
   "rules": "configs/Rules.json"

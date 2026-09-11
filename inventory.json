@@ -8,7 +8,7 @@
     "canonical-docs": 116,
     "canonical-build": 55,
     "canonical-source": 343,
-    "unclassified": 13,
+    "unclassified": 0,
     "canonical-test": 70,
     "canonical-config": 23
   },
@@ -87,8 +87,8 @@
     },
     {
       "path": "brain/aegis_brain_cython/fast_scan.pyx",
-      "class": "unclassified",
-      "role": "other",
+      "class": "canonical-source",
+      "role": "cython-source",
       "size": 7322
     },
     {
@@ -123,20 +123,20 @@
     },
     {
       "path": "brain/cython/aegis_hotspot.pxd",
-      "class": "unclassified",
-      "role": "other",
+      "class": "canonical-source",
+      "role": "cython-declaration",
       "size": 1434
     },
     {
       "path": "brain/cython/aegis_hotspot.pyx",
-      "class": "unclassified",
-      "role": "other",
+      "class": "canonical-source",
+      "role": "cython-source",
       "size": 10814
     },
     {
       "path": "brain/cython/cython_regex_scan.pyx",
-      "class": "unclassified",
-      "role": "other",
+      "class": "canonical-source",
+      "role": "cython-source",
       "size": 5339
     },
     {
@@ -423,8 +423,8 @@
     },
     {
       "path": "debug.log",
-      "class": "unclassified",
-      "role": "other",
+      "class": "canonical-docs",
+      "role": "log-file",
       "size": 944
     },
     {
@@ -639,8 +639,8 @@
     },
     {
       "path": "docs/architecture/FILE_REGISTRY.csv",
-      "class": "unclassified",
-      "role": "other",
+      "class": "canonical-docs",
+      "role": "documentation",
       "size": 5537
     },
     {
@@ -1041,8 +1041,8 @@
     },
     {
       "path": "drivers/minifilter/aegis_minifilter.inf",
-      "class": "unclassified",
-      "role": "other",
+      "class": "canonical-build",
+      "role": "driver-config",
       "size": 1464
     },
     {
@@ -1065,8 +1065,8 @@
     },
     {
       "path": "drivers/wfp_callout/aegis_minifilter.inf",
-      "class": "unclassified",
-      "role": "other",
+      "class": "canonical-build",
+      "role": "driver-config",
       "size": 1464
     },
     {
@@ -1083,8 +1083,8 @@
     },
     {
       "path": "drivers/wfp_callout/aegis_wfp.inf",
-      "class": "unclassified",
-      "role": "other",
+      "class": "canonical-build",
+      "role": "driver-config",
       "size": 1469
     },
     {
@@ -1167,14 +1167,14 @@
     },
     {
       "path": "installer/aegis.nsi",
-      "class": "unclassified",
-      "role": "other",
+      "class": "canonical-build",
+      "role": "installer-script",
       "size": 5086
     },
     {
       "path": "installer.nsi",
-      "class": "unclassified",
-      "role": "other",
+      "class": "canonical-build",
+      "role": "installer-script",
       "size": 4433
     },
     {
@@ -1185,14 +1185,14 @@
     },
     {
       "path": "Makefile",
-      "class": "unclassified",
-      "role": "other",
+      "class": "canonical-build",
+      "role": "build-file",
       "size": 520
     },
     {
       "path": "mouth/.gitignore",
-      "class": "unclassified",
-      "role": "other",
+      "class": "canonical-build",
+      "role": "git-config",
       "size": 32
     },
     {
