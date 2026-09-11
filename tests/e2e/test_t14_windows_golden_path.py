@@ -113,11 +113,11 @@ def test_windows_capture_is_wfp_reader_not_separate_source() -> None:
     """AC1: windows_capture.zig reads WFP kernel traffic through the Rust
     PEP (rust_pep.read_events) and is thread 3 of the real capture loop,
     not a competing canonicalizer. Canonicalization lives in npcap_capture."""
-    wcap = _read("core/windows_capture.zig")
+    wcap = _read("src/capture/windows_capture.zig")
     assert "WFP" in wcap and "rust_pep" in wcap, (
         "windows_capture must read WFP events via the Rust PEP (T14 AC1)"
     )
-    npcap = _read("core/npcap_capture.zig")
+    npcap = _read("src/capture/npcap_capture.zig")
     assert "canonical" in npcap.lower(), (
         "npcap_capture must canonicalize real Windows packets (T14 AC1)"
     )
@@ -189,7 +189,7 @@ def test_python_and_cython_brain_in_path() -> None:
 
 def test_rag_in_path() -> None:
     """AC3: RAG context enrichment is a REAL golden-path stage."""
-    rag = _read("core/rag_engine.zig")
+    rag = _read("src/detection/rag_engine.zig")
     assert "pub const RagEngine" in rag
     e = _manifest()["modules"]["core/rag_engine.zig"]
     assert e["status"] == "REAL" and e.get("golden_path")

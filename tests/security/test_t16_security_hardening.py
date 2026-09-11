@@ -103,11 +103,11 @@ def test_hardening_categories_coverage() -> None:
             "PEP shim must have explicit FFI conversion surface",
         ),
         "race / deadlock": (
-            "getBySequence" in _read("core/forensics_engine.zig"),
+            "getBySequence" in _read("src/forensic/forensics_engine.zig"),
             "forensics (replay source) must expose read-only access",
         ),
         "input validation": (
-            "validate" in _read("core/canonical_event.zig"),
+            "validate" in _read("src/contract/canonical_event.zig"),
             "canonical_event must validate inputs before fabric",
         ),
         "command injection / path traversal": (

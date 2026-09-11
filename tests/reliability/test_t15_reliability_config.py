@@ -85,7 +85,7 @@ def test_fault_matrix_lists_fault_per_component() -> None:
     (detect), and each compat cell declares the recovery behavior + max
     recovery ms it must be contained within (contain/fallback/audit/
     recover)."""
-    src = _read("core/fault_matrix.zig")
+    src = _read("src/reliability/fault_matrix.zig")
     for kind in ["process_crash", "disk_full", "pipe_broken", "driver_unloaded",
                  "stage_timeout", "oom", "corrupted_input", "clock_skew",
                  "network_loss", "policy_reject"]:
@@ -107,7 +107,7 @@ def test_fault_injection_recovers_measurably() -> None:
     """AC2: every AC-named injection kind is a real fault type, and the
     engine measures actual behavior + duration (recovery is measurable, not
     a log line)."""
-    src = _read("core/fault_injection.zig")
+    src = _read("src/reliability/fault_injection.zig")
     for inj in AC_INJECTIONS:
         assert inj in src, f"injection kind {inj} must exist (AC2)"
     assert "duration_ns" in src, "FaultResult must carry measured duration (AC2)"
@@ -191,7 +191,7 @@ def test_reliability_module_covers_subareas() -> None:
     """AC1/AC4: reliability.zig contains the watchdog recovery, config
     schema, latency histogram, canary, IPs shadow/production, XDR, and
     health status building blocks that the fault matrix drills against."""
-    src = _read("core/reliability.zig")
+    src = _read("src/reliability/reliability.zig")
     for kw in ["ReliabilityWatchdog", "SecurityCheck", "LatencyHistogram",
                "ConfigSchema", "CanaryMode", "IpsPipeline", "XdrEngine",
                "FederationSecurity", "HealthStatus"]:
