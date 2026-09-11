@@ -17,7 +17,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 AEGISCTL = REPO_ROOT / "tools" / "aegisctl.py"
-CANARY_TESTS_FILE = REPO_ROOT / "config" / "canary_tests.json"
+CANARY_TESTS_FILE = REPO_ROOT / "configs" / "canary_tests.json"
 DISABLED_RULES_FILE = REPO_ROOT / "config" / "disabled_rules.json"
 RULES_FILE = REPO_ROOT / "config" / "Rules.json"
 
@@ -159,7 +159,7 @@ class TestCanaryCommands(unittest.TestCase):
 
     def setUp(self):
         if not CANARY_TESTS_FILE.exists():
-            self.skipTest("configs/canary_tests.json not found")
+            self.skipTest("configs/canary_tests.json not found at expected path")
 
     def test_canary_run_all_tests(self):
         # Run all 10 canary tests. They will try to send via UDP.
