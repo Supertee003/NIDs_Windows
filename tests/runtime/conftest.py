@@ -76,7 +76,7 @@ COMPONENTS: tuple[dict[str, Any], ...] = (
     },
     {
         "name":      "core",
-        "binary":    "zig-out/bin/aegis-nids.exe",
+        "binary":    "zig-out/bin/aegis_nids.exe",
         "language":   "Zig",
         "health":    {"transport": "pipe", "endpoint": r"\\.\pipe\aegis-core-health"},
         "required":  True,

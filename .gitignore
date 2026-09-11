@@ -51,6 +51,11 @@ venv/
 .mypy_cache/
 .ruff_cache/
 
+# --- Cython generated C ---
+brain/cython/*.c
+brain/cython/*.so
+brain/cython/*.pyd
+
 # --- Go ---
 *.test
 *.out
