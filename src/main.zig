@@ -18,6 +18,18 @@ const control = @import("platform/win32_pipe.zig");
 const rules = @import("pipeline/rule_loader.zig");
 
 pub fn main() !void {
+    const args = try std.process.argsAlloc(std.heap.page_allocator);
+    defer std.process.argsFree(std.heap.page_allocator, args);
+
+    // --version: print version and exit immediately (no daemon startup)
+    for (args) |arg| {
+        if (std.mem.eql(u8, arg, "--version") or std.mem.eql(u8, arg, "-v")) {
+            const stdout = std.io.getStdOut().writer();
+            try stdout.print("aegis-nids 5.0.0 shield=0.1.0\n", .{});
+            return;
+        }
+    }
+
     // Dispatch to SCM when launched as a service, else console/foreground daemon.
     try service.mainEntry();
 }
