@@ -331,7 +331,7 @@
     "canonical_event",
     "event_fabric",
     "flow",
-    "detection",
+    "detection (evidence)",
     "verdict",
     "correlation",
     "threat_intel",

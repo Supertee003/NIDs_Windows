@@ -139,7 +139,7 @@ def test_process_telemetry_uses_same_canonical_event_model() -> None:
     assert "HostEvent" in ht, (
         "core/host_telemetry.zig must emit HostEvent (single model chain)"
     )
-    ca = (REPO_ROOT / "src" / "core" / "cpp_adapter.zig").read_text(encoding="utf-8")
+    ca = (REPO_ROOT / "src" / "windows" / "cpp_adapter.zig").read_text(encoding="utf-8")
     # cpp_adapter.zig doesn't emit CanonicalEvent directly; instead it
     # imports canonical_event.zig and uses it for the ABI. The actual
     # emission happens in the C++ bridge (aegis_adapter.cpp).
