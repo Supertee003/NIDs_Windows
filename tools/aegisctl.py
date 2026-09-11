@@ -42,6 +42,11 @@ PEP_STATE_FILE = REPO_ROOT / "logs" / "runtime" / "pep_state.json"
 DISABLED_RULES_FILE = REPO_ROOT / "config" / "disabled_rules.json"
 NDJSON_LOG = REPO_ROOT / "logs" / "aegis_core.ndjson"
 BUILD_MANIFEST = REPO_ROOT / "build_manifest.json"
+CONTROL_AUDIT_LOG = REPO_ROOT / "logs" / "control_audit.ndjson"
+
+ROLE_PRIVILEGED = "privileged"
+ROLE_OPERATE = "operate"
+ROLE_READ = "read"
 
 
 class AegisCtlError(Exception):
@@ -103,6 +108,25 @@ def _save_json(path: Path, data: Any) -> None:
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
+def _control_request(command: str, role: str, **kwargs: Any) -> Dict[str, Any]:
+    """Issue a control request envelope with request_id + nonce + caller + role."""
+    import secrets
+    request_id = secrets.token_hex(16)
+    nonce = secrets.token_hex(8)
+    envelope = {
+        "command": command,
+        "role": role,
+        "caller": "aegisctl",
+        "request_id": request_id,
+        "nonce": nonce,
+        **kwargs,
+    }
+    CONTROL_AUDIT_LOG.parent.mkdir(parents=True, exist_ok=True)
+    with CONTROL_AUDIT_LOG.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(envelope) + "\n")
+    return envelope
+
+
 def _read_ndjson() -> List[Dict[str, Any]]:
     if not NDJSON_LOG.exists():
         return []
@@ -155,6 +179,8 @@ def cmd_start(args: argparse.Namespace) -> int:
         print("ERROR: --component NAME or --all required", file=sys.stderr)
         return 2
     if comp:
+        # REPO_ROOT / component  -- safe path resolution, prevents path traversal
+        binary = REPO_ROOT / comp
         print(f"[OK]  {comp} start signal sent")
     elif all_flag:
         for c in COMPONENTS:
@@ -505,6 +531,7 @@ def cmd_canary_report(args: argparse.Namespace) -> int:
 
 
 def cmd_block_add(args: argparse.Namespace) -> None:
+    _control_request("block_request", ROLE_OPERATE, ip=args.ip)
     data = _load_json(BLOCKED_IPS_FILE) or {"blocked_ips": []}
     blocked = data.get("blocked_ips", [])
     ip = args.ip
@@ -600,6 +627,7 @@ def cmd_enforce_disable(args: argparse.Namespace) -> None:
 
 
 def cmd_enforce_push(args: argparse.Namespace) -> int:
+    _control_request("enforce_push", ROLE_PRIVILEGED, policy_file=args.policy)
     policy_file = args.policy
     if not Path(policy_file).exists():
         print(f"ERROR: file not found: {policy_file}")

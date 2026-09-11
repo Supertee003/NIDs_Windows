@@ -73,7 +73,7 @@ def test_cpp_adapter_binds_to_zig_canonical_event() -> None:
     """AC1 (last sentence): 'Zig does lifecycle + event conversion +
     canonicalization.' Verify that core/cpp_adapter.zig calls into
     core/canonical_event.zig to emit Canonical Events."""
-    cpp = (REPO_ROOT / "src" / "core" / "cpp_adapter.zig").read_text(encoding="utf-8")
+    cpp = (REPO_ROOT / "src" / "windows" / "cpp_adapter.zig").read_text(encoding="utf-8")
     # Either it imports canonical_event directly, or it calls a
     # function from the adapter framework that the canonical_event
     # module subscribes to.
