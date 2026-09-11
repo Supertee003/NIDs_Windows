@@ -11,7 +11,7 @@ set "SCRIPT_DIR=%~dp0"
 set "PROJECT_ROOT="
 
 :: Method 1: รันจาก scripts/ subdirectory — ขึ้น 1 ระดับ
-if exist "%SCRIPT_DIR%..\core" (
+if exist "%SCRIPT_DIR%..\src" (
     set "PROJECT_ROOT=%SCRIPT_DIR%.."
 ) else if exist "%SCRIPT_DIR%..\brain" (
     set "PROJECT_ROOT=%SCRIPT_DIR%.."
@@ -23,7 +23,7 @@ if exist "%SCRIPT_DIR%..\core" (
 
 :: Method 2: รันจาก project root เอง
 if not defined PROJECT_ROOT (
-    if exist "%SCRIPT_DIR%core" (
+    if exist "%SCRIPT_DIR%src" (
         set "PROJECT_ROOT=%SCRIPT_DIR%"
     ) else if exist "%SCRIPT_DIR%brain" (
         set "PROJECT_ROOT=%SCRIPT_DIR%"
@@ -122,7 +122,7 @@ if %errorlevel% neq 0 (
     set /a FAIL+=1
     goto step5
 )
-echo   [OK] Zig Core: zig-out/bin/aegis-nids.exe (DLLs loaded at runtime)
+echo   [OK] Zig Core: zig-out/bin/aegis_nids.exe (DLLs loaded at runtime)
 set /a PASS+=1
 
 :step5

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+"""DEPRECATED: Use 'python tools/aegisctl.py health' instead.
+This script is kept for backward compatibility only.
+"""
 """
 aegis_api.py - AEGIS NIDS Go Aggregator API Client (Phase 19, GAP-2)
 

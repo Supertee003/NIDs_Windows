@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
+"""DEPRECATED: Use 'python tools/aegisctl.py status' instead.
+This script is kept for backward compatibility only.
+"""
 """
 aegis_status.py - AEGIS NIDS Status CLI (Phase 13, UX-03)
 
 Checks status of all 5 AEGIS subsystems:
   - BRIDGE: aegis_ipc.dll loaded (C++ IPC bridge)
-  - CORE:   nids_analyze.exe / Zig core running
+  - CORE:   aegis_nids.exe / Zig core running
   - BRAIN:  windows_brain.py listening on UDP 9999
   - NOSE:   windows_capture (WFP sensor)
-  - MOUTH:  sec_monitor.dll (Rust shield)
+  - MOUTH:  windows_sec_monitor.exe (Rust shield)
 
 Output:
   --json    Machine-readable JSON (for scripts)
@@ -37,10 +40,10 @@ PID_DIR = AEGIS_ROOT / "logs" / "pids"
 # Subsystem process names (for tasklist check)
 PROCESS_NAMES = {
     "BRIDGE": ["aegis_ipc.exe", "aegis_bridge.exe"],
-    "CORE":   ["nids_analyze.exe", "aegis.exe", "aegis_core.exe"],
+    "CORE":   ["aegis_nids.exe"],
     "BRAIN":  ["python.exe"],  # windows_brain.py runs under python
-    "NOSE":   ["nids_analyze.exe"],  # same process as CORE
-    "MOUTH":  ["sec_monitor.exe"],
+    "NOSE":   ["aegis-nose.exe"],
+    "MOUTH":  ["windows_sec_monitor.exe"],
 }
 
 # UDP ping port for brain

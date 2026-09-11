@@ -1,8 +1,15 @@
 import json
+import os
+from pathlib import Path
 import networkx as nx
 from pyvis.network import Network
 
-def generate_threat_graph(log_file="logs/anomalous.json"):
+SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR.parent
+
+def generate_threat_graph(log_file=None):
+    if log_file is None:
+        log_file = str(PROJECT_ROOT / "logs" / "anomalous.json")
     # 1. สร้าง Graph ว่างๆ ขึ้นมา
     G = nx.Graph()
     
@@ -38,7 +45,7 @@ def generate_threat_graph(log_file="logs/anomalous.json"):
     net.from_nx(G)
     
     # บันทึกเป็นไฟล์ HTML
-    output_file = "threat_graph.html"
+    output_file = str(SCRIPT_DIR / "threat_graph.html")
     net.save_graph(output_file)
     print(f"✅ สร้างกราฟสำเร็จ! เปิดไฟล์ {output_file} ใน Web Browser ดูได้เลยครับ")
 

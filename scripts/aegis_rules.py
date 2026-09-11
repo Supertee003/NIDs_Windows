@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+"""DEPRECATED: Use 'python tools/aegisctl.py rules' instead.
+This script is kept for backward compatibility only.
+"""
 """
 aegis_rules.py - AEGIS NIDS Rule Management CLI (Phase 16, UX-09)
 
@@ -22,7 +25,7 @@ import time
 from pathlib import Path
 
 AEGIS_ROOT = Path(__file__).parent.parent
-RULES_FILE = AEGIS_ROOT / "config" / "Rules.json"
+RULES_FILE = AEGIS_ROOT / "configs" / "Rules.json"
 LOG_FILE = AEGIS_ROOT / "logs" / "aegis_core.ndjson"
 
 

@@ -20,11 +20,11 @@ setlocal enabledelayedexpansion
 set "SCRIPT_DIR=%~dp0"
 set "PROJECT_ROOT="
 
-if exist "%SCRIPT_DIR%..\core" set "PROJECT_ROOT=%SCRIPT_DIR%.."
+if exist "%SCRIPT_DIR%..\src" set "PROJECT_ROOT=%SCRIPT_DIR%.."
 if not defined PROJECT_ROOT if exist "%SCRIPT_DIR%..\brain" set "PROJECT_ROOT=%SCRIPT_DIR%.."
 if not defined PROJECT_ROOT if exist "%SCRIPT_DIR%..\build.zig" set "PROJECT_ROOT=%SCRIPT_DIR%.."
 if not defined PROJECT_ROOT if exist "%SCRIPT_DIR%..\mouth" set "PROJECT_ROOT=%SCRIPT_DIR%.."
-if not defined PROJECT_ROOT if exist "%SCRIPT_DIR%core" set "PROJECT_ROOT=%SCRIPT_DIR%"
+if not defined PROJECT_ROOT if exist "%SCRIPT_DIR%src" set "PROJECT_ROOT=%SCRIPT_DIR%"
 if not defined PROJECT_ROOT if exist "%SCRIPT_DIR%brain" set "PROJECT_ROOT=%SCRIPT_DIR%"
 if not defined PROJECT_ROOT if exist "%SCRIPT_DIR%build.zig" set "PROJECT_ROOT=%SCRIPT_DIR%"
 if not defined PROJECT_ROOT if exist "%SCRIPT_DIR%mouth" set "PROJECT_ROOT=%SCRIPT_DIR%"
@@ -63,7 +63,7 @@ if "%DRY_RUN%"=="1" echo.
 if "%DRY_RUN%"=="1" goto :skip_stop
 
 set "FOUND_PROC=0"
-tasklist /NH 2>nul | find /I "aegis-nids.exe" >nul && set "FOUND_PROC=1"
+tasklist /NH 2>nul | find /I "aegis_nids.exe" >nul && set "FOUND_PROC=1"
 tasklist /NH 2>nul | find /I "aegis_bridge.exe" >nul && set "FOUND_PROC=1"
 tasklist /NH 2>nul | find /I "windows_sec_monitor.exe" >nul && set "FOUND_PROC=1"
 tasklist /NH 2>nul | find /I "nose_dashboard.exe" >nul && set "FOUND_PROC=1"
@@ -72,13 +72,13 @@ if not "!FOUND_PROC!"=="1" goto :skip_stop
 
 echo [0/5] Stopping running AEGIS processes...
 echo   Graceful stop...
-taskkill /IM aegis-nids.exe >nul 2>&1
+taskkill /IM aegis_nids.exe >nul 2>&1
 taskkill /IM aegis_bridge.exe >nul 2>&1
 taskkill /IM windows_sec_monitor.exe >nul 2>&1
 taskkill /IM nose_dashboard.exe >nul 2>&1
 timeout /t 3 /nobreak >nul
 echo   Force stop if still running...
-taskkill /F /IM aegis-nids.exe >nul 2>&1
+taskkill /F /IM aegis_nids.exe >nul 2>&1
 taskkill /F /IM aegis_bridge.exe >nul 2>&1
 taskkill /F /IM windows_sec_monitor.exe >nul 2>&1
 taskkill /F /IM nose_dashboard.exe >nul 2>&1
@@ -218,7 +218,7 @@ rmdir /s /q "dist" 2>nul
 if not exist "dist" goto :dist_ok1
 
 echo   [LOCKED] dist\ - force killing processes...
-taskkill /F /IM aegis-nids.exe >nul 2>&1
+taskkill /F /IM aegis_nids.exe >nul 2>&1
 taskkill /F /IM aegis_bridge.exe >nul 2>&1
 taskkill /F /IM windows_sec_monitor.exe >nul 2>&1
 taskkill /F /IM nose_dashboard.exe >nul 2>&1

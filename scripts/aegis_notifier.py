@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+"""DEPRECATED: Use 'python tools/aegisctl.py events' instead.
+This script is kept for backward compatibility only.
+"""
 """
 aegis_notifier.py - AEGIS NIDS Alert Notifier (Phase 13, UX-07)
 
@@ -50,7 +53,7 @@ from urllib.request import Request, urlopen
 
 AEGIS_ROOT = Path(__file__).parent.parent
 LOG_FILE = AEGIS_ROOT / "logs" / "aegis_core.ndjson"
-CONFIG_FILE = AEGIS_ROOT / "config" / "notifier.json"
+CONFIG_FILE = AEGIS_ROOT / "configs" / "notifier.json"
 
 # ============================================================
 # Notification Handlers

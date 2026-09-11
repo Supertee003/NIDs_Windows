@@ -238,9 +238,9 @@ print(f"\n{'─' * 64}")
 print("  [5] Pre-compile Check")
 print(f"{'─' * 64}")
 
-exe_path = os.path.join(PROJECT_ROOT, "aegis-nose.exe")
+exe_path = os.path.join(PROJECT_ROOT, "nose", "aegis-nose.exe")
 result("aegis-nose.exe pre-built", os.path.exists(exe_path),
-       "found" if os.path.exists(exe_path) else "not built yet — run: go build -o aegis-nose.exe windows_perf.go")
+       "found" if os.path.exists(exe_path) else "not built yet — run: cd nose && go build -o aegis-nose.exe .")
 
 if go_avail and os.path.exists(go_src):
     result("Go can compile (dry-run check)", True, "toolchain available")

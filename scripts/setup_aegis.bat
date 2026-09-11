@@ -31,12 +31,12 @@ echo [1/3] Creating folder structure...
 if not exist "dist" mkdir "dist"
 if not exist "logs" mkdir "logs"
 if not exist "logs\pids" mkdir "logs\pids"
-if not exist "config" mkdir "config"
+if not exist "configs" mkdir "configs"
 
 echo   [OK] dist\          - compiled binaries
 echo   [OK] logs\          - runtime logs
 echo   [OK] logs\pids\     - process ID files
-echo   [OK] config\        - rules and configuration
+echo   [OK] configs\        - rules and configuration
 
 REM -- Create empty anomalous.json if not exists --
 if not exist "logs\anomalous.json" (

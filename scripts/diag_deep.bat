@@ -114,11 +114,11 @@ echo [7] Rules.json
 echo ============================================================
 echo.
 
-if exist "%ROOT%\config\Rules.json" (
-    echo   [OK] config\Rules.json found
+if exist "%ROOT%\configs\Rules.json" (
+    echo   [OK] configs\Rules.json found
     python -c "import json; r=json.load(open('configs/Rules.json')); print('  Rules count:', len(r) if isinstance(r, list) else 'dict with', len(r), 'keys')" 2>&1
 ) else (
-    echo   [MISSING] config\Rules.json
+    echo   [MISSING] configs\Rules.json
 )
 
 echo.
@@ -142,7 +142,7 @@ echo.
 
 echo   AEGIS processes:
 tasklist /FI "IMAGENAME eq aegis_bridge.exe" /FO TABLE 2>NUL | find "aegis"
-tasklist /FI "IMAGENAME eq aegis-nids.exe" /FO TABLE 2>NUL | find "aegis"
+tasklist /FI "IMAGENAME eq aegis_nids.exe" /FO TABLE 2>NUL | find "aegis"
 tasklist /FI "IMAGENAME eq python.exe" /FO TABLE 2>NUL | find "python"
 tasklist /FI "IMAGENAME eq aegis-nose.exe" /FO TABLE 2>NUL | find "nose"
 tasklist /FI "IMAGENAME eq windows_sec_monitor.exe" /FO TABLE 2>NUL | find "windows"

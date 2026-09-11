@@ -1,8 +1,12 @@
 import json, os, time
 from datetime import datetime
+from pathlib import Path
 
-LOG_FILE = "logs/anomalous.json"
-RULES_FILE = "Rules.json"
+SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR.parent
+
+LOG_FILE = str(PROJECT_ROOT / "logs" / "anomalous.json")
+RULES_FILE = str(PROJECT_ROOT / "Rules.json")
 
 # --- [ COLOR PALETTE ] ---
 class C:

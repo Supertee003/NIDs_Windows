@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+"""DEPRECATED: Use 'python tools/aegisctl.py diagnose' instead.
+This script is kept for backward compatibility only.
+"""
 """
 aegis_defcon.py - AEGIS NIDS DEFCON Level Query (Phase 16, UX-11)
 

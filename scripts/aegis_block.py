@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+"""DEPRECATED: Use 'python tools/aegisctl.py block' instead.
+This script is kept for backward compatibility only.
+"""
 """
 aegis_block.py - AEGIS NIDS Manual IP Block CLI (Phase 13, UX-04)
 

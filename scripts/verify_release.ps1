@@ -65,11 +65,11 @@ Write-Host "  [OK] Extracted" -ForegroundColor Green
 # Step 3: Verify required files
 Write-Host "[3/6] Checking required files..." -ForegroundColor Yellow
 $required = @(
-    "bin\aegis-nids.exe",
-    "config\Rules.json",
+    "bin\aegis_nids.exe",
+    "configs\Rules.json",
     "build.zig",
-    "core\release_info.zig",
-    "core\nids_main.zig",
+    "src\release_info.zig",
+    "src\nids_main.zig",
     "release-manifest.json"
 )
 $missing = @()
@@ -102,7 +102,7 @@ if (Test-Path $manifest_path) {
 
 # Step 5: Verify binary exists + is executable
 Write-Host "[5/6] Checking binary..." -ForegroundColor Yellow
-$binary = "$ExtractDir\bin\aegis-nids.exe"
+$binary = "$ExtractDir\bin\aegis_nids.exe"
 if (Test-Path $binary) {
     $size = (Get-Item $binary).Length
     Write-Host "  [OK] Binary exists ($size bytes)" -ForegroundColor Green
@@ -130,5 +130,5 @@ Write-Host "============================================================" -Foreg
 Write-Host ""
 Write-Host "To run the binary:"
 Write-Host "  cd $ExtractDir\bin"
-Write-Host "  .\aegis-nids.exe"
+Write-Host "  .\aegis_nids.exe"
 Write-Host ""

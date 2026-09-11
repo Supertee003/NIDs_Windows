@@ -24,7 +24,7 @@ Write-Host "============================================================" -Foreg
 # Step 1: Determine version
 if ($Version -eq "") {
     # Extract from release_info.zig
-    $release_info = Get-Content "core\release_info.zig" -Raw
+    $release_info = Get-Content "src\release_info.zig" -Raw
     $major = [regex]::Match($release_info, 'VERSION_MAJOR:\s*u32\s*=\s*(\d+)').Groups[1].Value
     $minor = [regex]::Match($release_info, 'VERSION_MINOR:\s*u32\s*=\s*(\d+)').Groups[1].Value
     $patch = [regex]::Match($release_info, 'VERSION_PATCH:\s*u32\s*=\s*(\d+)').Groups[1].Value
@@ -39,7 +39,7 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "[FAIL] Release build failed" -ForegroundColor Red
     exit 1
 }
-$binary = "zig-out\bin\aegis-nids.exe"
+$binary = "zig-out\bin\aegis_nids.exe"
 if (-not (Test-Path $binary)) {
     Write-Host "[FAIL] Binary not found: $binary" -ForegroundColor Red
     exit 1
@@ -53,8 +53,8 @@ if (Test-Path $release_dir) {
 }
 New-Item -ItemType Directory -Path $release_dir -Force | Out-Null
 New-Item -ItemType Directory -Path "$release_dir\bin" -Force | Out-Null
-New-Item -ItemType Directory -Path "$release_dir\config" -Force | Out-Null
-New-Item -ItemType Directory -Path "$release_dir\core" -Force | Out-Null
+New-Item -ItemType Directory -Path "$release_dir\configs" -Force | Out-Null
+New-Item -ItemType Directory -Path "$release_dir\src" -Force | Out-Null
 New-Item -ItemType Directory -Path "$release_dir\scripts" -Force | Out-Null
 New-Item -ItemType Directory -Path "$release_dir\docs" -Force | Out-Null
 Write-Host "[3/6] Created release directory: $release_dir" -ForegroundColor Yellow
@@ -64,12 +64,12 @@ Write-Host "[4/6] Collecting files..." -ForegroundColor Yellow
 
 # Binary
 Copy-Item $binary "$release_dir\bin\" -Force
-Write-Host "  [OK] bin\aegis-nids.exe" -ForegroundColor Green
+Write-Host "  [OK] bin\aegis_nids.exe" -ForegroundColor Green
 
 # Config
-if (Test-Path "config\Rules.json") {
-    Copy-Item "config\Rules.json" "$release_dir\config\" -Force
-    Write-Host "  [OK] config\Rules.json" -ForegroundColor Green
+if (Test-Path "configs\Rules.json") {
+    Copy-Item "configs\Rules.json" "$release_dir\configs\" -Force
+    Write-Host "  [OK] configs\Rules.json" -ForegroundColor Green
 }
 
 # Core source (for reproducibility)
@@ -90,12 +90,12 @@ $core_files = @(
     "runtime_golden_path_test.zig", "perf_benchmark.zig", "ips_canary_test.zig"
 )
 foreach ($f in $core_files) {
-    $src = "core\$f"
+    $src = "src\$f"
     if (Test-Path $src) {
-        Copy-Item $src "$release_dir\core\" -Force
+        Copy-Item $src "$release_dir\src\" -Force
     }
 }
-Write-Host "  [OK] core\*.zig ($($core_files.Count) files)" -ForegroundColor Green
+Write-Host "  [OK] src\*.zig ($($core_files.Count) files)" -ForegroundColor Green
 
 # build.zig
 Copy-Item "build.zig" "$release_dir\" -Force
@@ -133,7 +133,7 @@ Write-Host "[5/6] Generating release manifest..." -ForegroundColor Yellow
 $manifest = @{
     version = $Version
     build_date = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-    binary = "bin/aegis-nids.exe"
+    binary = "bin/aegis_nids.exe"
     zig_version = (zig version 2>&1)
     files = (Get-ChildItem -Recurse $release_dir | Where-Object { -not $_.PSIsContainer } | ForEach-Object { $_.FullName.Substring($release_dir.Length + 1) })
 }
@@ -160,7 +160,7 @@ Write-Host "============================================================" -Foreg
 Write-Host " RELEASE COMPLETE" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host " Version: $Version"
-Write-Host " Binary:  $release_dir\bin\aegis-nids.exe"
+Write-Host " Binary:  $release_dir\bin\aegis_nids.exe"
 Write-Host " ZIP:     $zip_path"
 Write-Host " SHA256:  $hash"
 Write-Host "============================================================" -ForegroundColor Cyan

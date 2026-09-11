@@ -1,4 +1,6 @@
 @echo off
+REM DEPRECATED: Use 'python tools\aegisctl.py start --all' instead.
+REM This script is kept for backward compatibility only.
 setlocal enabledelayedexpansion
 
 :: ================================================================
@@ -16,12 +18,12 @@ setlocal enabledelayedexpansion
 
 :: -- Auto-detect Project Root --
 :: Can run from anywhere - script finds project root automatically
-:: Uses multiple markers for robustness (core/, brain/, build.zig, mouth/)
+:: Uses multiple markers for robustness (src/, brain/, build.zig, mouth/)
 set "SCRIPT_DIR=%~dp0"
 set "PROJECT_ROOT="
 
 :: Method 1: Running from scripts/ subdirectory - go up 1 level
-if exist "%SCRIPT_DIR%..\core" (
+if exist "%SCRIPT_DIR%..\src" (
     set "PROJECT_ROOT=%SCRIPT_DIR%.."
 ) else if exist "%SCRIPT_DIR%..\brain" (
     set "PROJECT_ROOT=%SCRIPT_DIR%.."
@@ -33,7 +35,7 @@ if exist "%SCRIPT_DIR%..\core" (
 
 :: Method 2: Running from project root itself - stay here
 if not defined PROJECT_ROOT (
-    if exist "%SCRIPT_DIR%core" (
+    if exist "%SCRIPT_DIR%src" (
         set "PROJECT_ROOT=%SCRIPT_DIR%"
     ) else if exist "%SCRIPT_DIR%brain" (
         set "PROJECT_ROOT=%SCRIPT_DIR%"
@@ -46,13 +48,13 @@ if not defined PROJECT_ROOT (
 
 :: Method 3: Fallback - try 2 levels up (running from scripts/sub/)
 if not defined PROJECT_ROOT (
-    if exist "%SCRIPT_DIR%..\..\core" set "PROJECT_ROOT=%SCRIPT_DIR%..\.."
+    if exist "%SCRIPT_DIR%..\..\src" set "PROJECT_ROOT=%SCRIPT_DIR%..\.."
 )
 
 if not defined PROJECT_ROOT (
     echo.
     echo  [ERROR] Cannot find AEGIS NIDS project root!
-    echo         Looked for markers: core/, brain/, mouth/, build.zig
+    echo         Looked for markers: src/, brain/, mouth/, build.zig
     echo         Script dir: %SCRIPT_DIR%
     echo         Run from D:\NIDs_Windows\ or D:\NIDs_Windows\scripts\
     echo.
@@ -87,7 +89,7 @@ if "%ACTION%"=="stop" (
         call "%~dp0stop_aegis.bat" --force
     ) else (
         echo [!] stop_aegis.bat not found -- killing manually...
-        taskkill /F /IM aegis-nids.exe >nul 2>&1
+        taskkill /F /IM aegis_nids.exe >nul 2>&1
         taskkill /F /IM aegis_bridge.exe >nul 2>&1
         taskkill /F /IM windows_sec_monitor.exe >nul 2>&1
         taskkill /F /IM nose_dashboard.exe >nul 2>&1
@@ -120,7 +122,7 @@ echo  [Phase 0] Cleaning up old AEGIS processes...
 echo ----------------------------------------------------------------
 
 set "FOUND_OLD=0"
-tasklist /NH 2>nul | find /I "aegis-nids.exe" >nul && set "FOUND_OLD=1"
+tasklist /NH 2>nul | find /I "aegis_nids.exe" >nul && set "FOUND_OLD=1"
 tasklist /NH 2>nul | find /I "aegis_bridge.exe" >nul && set "FOUND_OLD=1"
 tasklist /NH 2>nul | find /I "windows_sec_monitor.exe" >nul && set "FOUND_OLD=1"
 tasklist /NH 2>nul | find /I "nose_dashboard.exe" >nul && set "FOUND_OLD=1"
@@ -130,7 +132,7 @@ if !FOUND_OLD!==1 (
     if exist "%~dp0stop_aegis.bat" (
         call "%~dp0stop_aegis.bat" --force
     ) else (
-        taskkill /F /IM aegis-nids.exe >nul 2>&1
+        taskkill /F /IM aegis_nids.exe >nul 2>&1
         taskkill /F /IM aegis_bridge.exe >nul 2>&1
         taskkill /F /IM windows_sec_monitor.exe >nul 2>&1
         taskkill /F /IM nose_dashboard.exe >nul 2>&1
@@ -225,14 +227,14 @@ if exist "dist\windows_sec_monitor.exe" (
 )
 
 :: -- Check: Zig Core EXE --
-if exist "zig-out\bin\aegis-nids.exe" (
-    echo  [OK] aegis-nids.exe found
+if exist "zig-out\bin\aegis_nids.exe" (
+    echo  [OK] aegis_nids.exe found
     set /a CHECK_PASS+=1
-) else if exist "dist\aegis-nids.exe" (
-    echo  [OK] aegis-nids.exe found [dist]
+) else if exist "dist\aegis_nids.exe" (
+    echo  [OK] aegis_nids.exe found [dist]
     set /a CHECK_PASS+=1
 ) else (
-    echo  [WARN] aegis-nids.exe not found -- will build
+    echo  [WARN] aegis_nids.exe not found -- will build
     set /a CHECK_WARN+=1
 )
 
@@ -396,7 +398,7 @@ echo  [OK] Rust Mouth compiled: dist\windows_sec_monitor.exe
 :mouth_done
 
 :: -- Build Zig Core --
-if exist "zig-out\bin\aegis-nids.exe" (
+if exist "zig-out\bin\aegis_nids.exe" (
     echo  [skip] Zig Core already built
     goto :zig_done
 )
@@ -413,7 +415,7 @@ if %errorlevel% neq 0 (
     echo  [WARN] zig build failed -- will try at start time
     goto :zig_done
 )
-echo  [OK] Zig Core built: aegis-nids.exe
+echo  [OK] Zig Core built: aegis_nids.exe
 :zig_done
 
 :: -- Build Go Nose (pre-compile for production) --
@@ -526,9 +528,9 @@ timeout /t 1 /nobreak >nul
 
 :: -- 4.2 Core (Zig) - needs Bridge + DLL --
 echo  [4.2] Starting Zig Core...
-if exist "zig-out\bin\aegis-nids.exe" (
-    start "AEGIS CORE [Zig]" cmd /k "chcp 65001 >nul & zig-out\bin\aegis-nids.exe"
-    echo       zig-out\bin\aegis-nids.exe
+if exist "zig-out\bin\aegis_nids.exe" (
+    start "AEGIS CORE [Zig]" cmd /k "chcp 65001 >nul & zig-out\bin\aegis_nids.exe"
+    echo       zig-out\bin\aegis_nids.exe
 ) else (
     where zig >nul 2>&1
     if %errorlevel% equ 0 (
@@ -541,7 +543,7 @@ if exist "zig-out\bin\aegis-nids.exe" (
 echo       Waiting for Core threads to spawn...
 set "WAIT_TRIES=0"
 :wait_core
-tasklist /NH 2>nul | find /I "aegis-nids.exe" >nul
+tasklist /NH 2>nul | find /I "aegis_nids.exe" >nul
 if %errorlevel% neq 0 (
     set /a WAIT_TRIES+=1
     if !WAIT_TRIES! lss 10 (
@@ -629,7 +631,7 @@ timeout /t 1 /nobreak >nul
 :: -- Write PID files for started subsystems (best practice: PID lifecycle) --
 ::  Uses wmic/tasklist to find PIDs by image name, writes to logs\pids\
 for /f "tokens=2" %%p in ('tasklist /FI "IMAGENAME eq aegis_bridge.exe" /NH 2^>nul ^| find "aegis_bridge"') do echo %%p> "logs\pids\bridge.pid"
-for /f "tokens=2" %%p in ('tasklist /FI "IMAGENAME eq aegis-nids.exe" /NH 2^>nul ^| find "aegis-nids"') do echo %%p> "logs\pids\core.pid"
+for /f "tokens=2" %%p in ('tasklist /FI "IMAGENAME eq aegis_nids.exe" /NH 2^>nul ^| find "aegis_nids"') do echo %%p> "logs\pids\core.pid"
 for /f "tokens=2 delims=," %%p in ('wmic process where "CommandLine like '%%windows_brain%%' and Status='Running'" get ProcessId /format:csv 2^>nul ^| find /V "Node"') do echo %%p> "logs\pids\brain.pid"
 for /f "tokens=2" %%p in ('tasklist /FI "IMAGENAME eq nose_dashboard.exe" /NH 2^>nul ^| find "nose_dashboard"') do echo %%p> "logs\pids\nose.pid"
 for /f "tokens=2" %%p in ('tasklist /FI "IMAGENAME eq windows_sec_monitor.exe" /NH 2^>nul ^| find "windows_sec_monitor"') do echo %%p> "logs\pids\mouth.pid"
@@ -655,7 +657,7 @@ if %errorlevel% equ 0 (
 )
 
 :: -- Check Core --
-tasklist /NH 2>nul | find /I "aegis-nids.exe" >nul
+tasklist /NH 2>nul | find /I "aegis_nids.exe" >nul
 if %errorlevel% equ 0 (
     echo  [OK] Core    -- running
     set /a HEALTH_OK+=1
@@ -782,11 +784,11 @@ if %errorlevel% equ 0 (
 
 :: Core
 set /a TOTAL+=1
-tasklist /NH 2>nul | find /I "aegis-nids.exe" >nul
+tasklist /NH 2>nul | find /I "aegis_nids.exe" >nul
 if %errorlevel% equ 0 (
-    echo  [RUNNING] CORE    [Zig]   -- aegis-nids.exe
+    echo  [RUNNING] CORE    [Zig]   -- aegis_nids.exe
     set /a RUNNING+=1
-    for /f "tokens=2" %%p in ('tasklist /FI "IMAGENAME eq aegis-nids.exe" /NH 2^>nul') do echo           PID: %%p
+    for /f "tokens=2" %%p in ('tasklist /FI "IMAGENAME eq aegis_nids.exe" /NH 2^>nul') do echo           PID: %%p
 ) else (
     echo  [STOPPED] CORE    [Zig]
 )

@@ -28,8 +28,8 @@ import subprocess
 import urllib.request
 import urllib.error
 
-# Add bridge directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "bridge"))
+# Add shared directory to path for aegis_bridge_ctypes
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
 
 class UI:
     GREEN = '\033[92;1m'

@@ -19,9 +19,9 @@ echo [2] SCRIPT_DIR: %SCRIPT_DIR%
 
 :: Try to find PROJECT_ROOT (same logic as run_aegis.bat)
 set "PROJECT_ROOT="
-if exist "%SCRIPT_DIR%..\core" (
+if exist "%SCRIPT_DIR%..\src" (
     set "PROJECT_ROOT=%SCRIPT_DIR%.."
-    echo     Method 1: Found ..\core
+    echo     Method 1: Found ..\src
 ) else if exist "%SCRIPT_DIR%..\brain" (
     set "PROJECT_ROOT=%SCRIPT_DIR%.."
     echo     Method 1: Found ..\brain
@@ -34,9 +34,9 @@ if exist "%SCRIPT_DIR%..\core" (
 )
 
 if not defined PROJECT_ROOT (
-    if exist "%SCRIPT_DIR%core" (
+    if exist "%SCRIPT_DIR%src" (
         set "PROJECT_ROOT=%SCRIPT_DIR%"
-        echo     Method 2: Found .\core
+        echo     Method 2: Found .\src
     ) else if exist "%SCRIPT_DIR%brain" (
         set "PROJECT_ROOT=%SCRIPT_DIR%"
         echo     Method 2: Found .\brain
@@ -45,7 +45,7 @@ if not defined PROJECT_ROOT (
 
 if not defined PROJECT_ROOT (
     echo     [ERROR] PROJECT_ROOT not found!
-    echo     Looking for: core, brain, build.zig, mouth
+    echo     Looking for: src, brain, build.zig, mouth
 )
 
 :: Resolve .. to absolute path (cd /d does NOT resolve .. in CMD)
@@ -63,7 +63,7 @@ echo.
 :: 4. Check all critical paths
 echo [4] Critical file checks:
 echo     --- Directories ---
-for %%d in (brain brain_python mouth nose core shield dist build build\Release zig-out\bin scripts) do (
+for %%d in (brain brain_python mouth nose src shield dist build build\Release zig-out\bin scripts) do (
     if exist "%%d" (
         echo     [OK]   %%d\ exists
     ) else (
@@ -83,7 +83,7 @@ for %%f in (build\Release\aegis_ipc.dll dist\aegis_ipc.dll aegis_ipc.dll) do (
 
 echo.
 echo     --- EXE files ---
-for %%f in (build\Release\aegis_bridge.exe dist\aegis_bridge.exe zig-out\bin\aegis-nids.exe dist\aegis-nids.exe dist\aegis-nose.exe dist\windows_sec_monitor.exe) do (
+for %%f in (build\Release\aegis_bridge.exe dist\aegis_bridge.exe zig-out\bin\aegis_nids.exe dist\aegis_nids.exe dist\aegis-nose.exe dist\windows_sec_monitor.exe) do (
     if exist "%%f" (
         echo     [OK]   %%f
     ) else (
@@ -93,7 +93,7 @@ for %%f in (build\Release\aegis_bridge.exe dist\aegis_bridge.exe zig-out\bin\aeg
 
 echo.
 echo     --- Source files ---
-for %%f in (brain\windows_brain.py brain_python\windows_brain.py mouth\windows_sec_monitor.rs mouth\src\main.rs nose\windows_perf.go nose\go.mod core\build.zig) do (
+for %%f in (brain\windows_brain.py brain_python\windows_brain.py mouth\windows_sec_monitor.rs mouth\src\main.rs nose\windows_perf.go nose\go.mod build.zig) do (
     if exist "%%f" (
         echo     [OK]   %%f
     ) else (

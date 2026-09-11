@@ -48,7 +48,7 @@ COMPONENTS_RELPATH = "shared/runtime/components.json"
 ENV_DOCS_RELPATH = "docs/ENV_VARS.md"
 
 # Code locations scanned for env var usage.
-ENV_SEARCH_GLOBS = ["core/*.zig", "scripts/*.py", "*.bat", "*.ps1"]
+ENV_SEARCH_GLOBS = ["src/*.zig", "scripts/*.py", "*.bat", "*.ps1"]
 
 FENCE_RE = re.compile(r"```")
 AEGISCTL_USE_RE = re.compile(
@@ -250,7 +250,7 @@ def build_fixture(root, bad):
     (root / "docs" / "platform").mkdir(parents=True)
     (root / "docs" / "ai-context").mkdir(parents=True)
     (root / "scripts").mkdir(parents=True)
-    (root / "core").mkdir(parents=True)
+    (root / "src").mkdir(parents=True)
     (root / "shared" / "runtime").mkdir(parents=True)
     (root / AEGISCTL_RELPATH).write_text(GOOD_AEGISCTL, encoding="utf-8")
     for relpath in REQUIRED_DOCS:
@@ -259,7 +259,7 @@ def build_fixture(root, bad):
         else:
             content = "# %s\n" % relpath
         (root / relpath).write_text(content, encoding="utf-8")
-    (root / "core" / "dummy.zig").write_text(
+    (root / "src" / "dummy.zig").write_text(
         "const std = @import(\"std\");\npub const X = AEGIS_TEST_VAR;\n",
         encoding="utf-8",
     )

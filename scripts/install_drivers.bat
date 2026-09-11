@@ -7,7 +7,7 @@ set "PROJECT_ROOT="
 
 :: Method 1: Running from scripts/ -- go up 1 level
 if not defined PROJECT_ROOT (
-    if exist "%SCRIPT_DIR%..\core" set "PROJECT_ROOT=%SCRIPT_DIR%.."
+    if exist "%SCRIPT_DIR%..\src" set "PROJECT_ROOT=%SCRIPT_DIR%.."
 )
 if not defined PROJECT_ROOT (
     if exist "%SCRIPT_DIR%..\brain" set "PROJECT_ROOT=%SCRIPT_DIR%.."
@@ -21,7 +21,7 @@ if not defined PROJECT_ROOT (
 
 :: Method 2: Running from project root itself
 if not defined PROJECT_ROOT (
-    if exist "%SCRIPT_DIR%core" set "PROJECT_ROOT=%SCRIPT_DIR%"
+    if exist "%SCRIPT_DIR%src" set "PROJECT_ROOT=%SCRIPT_DIR%"
 )
 if not defined PROJECT_ROOT (
     if exist "%SCRIPT_DIR%brain" set "PROJECT_ROOT=%SCRIPT_DIR%"
@@ -35,7 +35,7 @@ if not defined PROJECT_ROOT (
 
 :: Method 3: Running from scripts/sub/ -- go up 2 levels
 if not defined PROJECT_ROOT (
-    if exist "%SCRIPT_DIR%..\..\core" set "PROJECT_ROOT=%SCRIPT_DIR%..\.."
+    if exist "%SCRIPT_DIR%..\..\src" set "PROJECT_ROOT=%SCRIPT_DIR%..\.."
 )
 if not defined PROJECT_ROOT (
     if exist "%SCRIPT_DIR%..\..\brain" set "PROJECT_ROOT=%SCRIPT_DIR%..\.."

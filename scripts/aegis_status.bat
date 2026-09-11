@@ -1,4 +1,6 @@
 @echo off
+REM DEPRECATED: Use 'python tools\aegisctl.py status' instead.
+REM This script is kept for backward compatibility only.
 setlocal enabledelayedexpansion
 echo.
 echo ================================================================
@@ -9,7 +11,7 @@ set "R=0"
 set "N=0"
 tasklist /NH 2>nul | find /I "aegis-nose.exe" >nul
 if %ERRORLEVEL% equ 0 set "N=1"
-if "!N!"=="1" ( echo  [RUNNING] NOSE  Go   aegis-nose.exe & set "R=1" ) else ( echo  [STOPPED] NOSE  Go )
+if "!N!"=="1" ( echo  [RUNNING] NOSE  Go   nose\aegis-nose.exe & set "R=1" ) else ( echo  [STOPPED] NOSE  Go )
 set "M=0"
 tasklist /NH 2>nul | find /I "windows_sec_monitor.exe" >nul
 if %ERRORLEVEL% equ 0 set "M=1"

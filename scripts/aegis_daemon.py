@@ -1,4 +1,7 @@
-﻿"""
+﻿"""DEPRECATED: Use 'python tools/aegisctl.py start' or 'python tools/aegisctl.py stop' instead.
+This script is kept for backward compatibility only.
+"""
+"""
 AEGIS NIDS -- CLI Daemon Manager v2.0
 ======================================
 Daemon manager with watchdog auto-restart
@@ -78,9 +81,9 @@ SUBSYSTEMS = [
         "name": "core",
         "description": "Core (Zig) -- Tier-1 Aho-Corasick pattern matching",
         # Best practice: use zig-out/bin/ binary
-        "start_cmd": str(BASE_DIR / "zig-out" / "bin" / "aegis-nids.exe"),
+        "start_cmd": str(BASE_DIR / "zig-out" / "bin" / "aegis_nids.exe"),
         "is_shell": False,
-        "stop_pattern": "aegis-nids.exe",
+        "stop_pattern": "aegis_nids.exe",
         "pid_file": "core.pid",
         "required": True,
     },
@@ -97,8 +100,8 @@ SUBSYSTEMS = [
     {
         "name": "nose",
         "description": "Nose (Go) -- 3 Goroutines perf monitor + DEFCON",
-        # Best practice: use pre-compiled dist/aegis-nose.exe + CLI args
-        "start_cmd": str(BASE_DIR / "dist" / "aegis-nose.exe"),
+        # Best practice: use pre-compiled nose/aegis-nose.exe + CLI args
+        "start_cmd": str(BASE_DIR / "nose" / "aegis-nose.exe"),
         "start_args": [
             "--log", str(BASE_DIR / "logs" / "anomalous.json"),
             "--refresh", "1000",
@@ -480,7 +483,7 @@ def cmd_stop(args):
 
     if force:
         log("[FORCE] Killing any remaining AEGIS processes...")
-        for exe in ["aegis-nids.exe", "aegis_bridge.exe", "windows_sec_monitor.exe", "aegis-nose.exe"]:
+        for exe in ["aegis_nids.exe", "aegis_bridge.exe", "windows_sec_monitor.exe", "aegis-nose.exe"]:
             if os.name == 'nt':
                 subprocess.run(["taskkill", "/F", "/IM", exe], capture_output=True)
         # Kill brain
@@ -744,7 +747,7 @@ def cmd_watchdog_bg(args):
 
 def cmd_rules(args):
     """Hot-reload rules (touch Rules.json mtime to trigger brain reload)."""
-    rules_file = BASE_DIR / "config" / "Rules.json"
+    rules_file = BASE_DIR / "configs" / "Rules.json"
     if not rules_file.exists():
         log(f"Rules file not found: {rules_file}", "ERROR")
         return False

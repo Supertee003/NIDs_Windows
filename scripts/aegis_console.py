@@ -1,3 +1,6 @@
+"""DEPRECATED: Use 'python tools/aegisctl.py events' instead.
+This script is kept for backward compatibility only.
+"""
 """
 AEGIS NIDS -- Command Control Center v8.0
 ==========================================
@@ -56,7 +59,7 @@ if PROJECT_ROOT is None:
 os.chdir(PROJECT_ROOT)
 
 # -- Constants (absolute paths based on PROJECT_ROOT) --
-RULES_FILE = os.path.join(PROJECT_ROOT, "config", "Rules.json")
+RULES_FILE = os.path.join(PROJECT_ROOT, "configs", "Rules.json")
 GRAPH_HTML_FILE = os.path.join(PROJECT_ROOT, "threat_graph.html")
 LOG_FILE = os.path.join(PROJECT_ROOT, "logs", "anomalous.json")
 
@@ -100,7 +103,7 @@ DEFCON_SCALE = {1: "■" * 5, 2: "■" * 4 + "□", 3: "■" * 3 + "□" * 2,
 # -- Subsystem definitions (5 core subsystems) --
 SUBSYSTEMS = [
     {"name": "BRIDGE", "lang": "C++",   "exe": "aegis_bridge.exe",        "py": None},
-    {"name": "CORE",   "lang": "Zig",   "exe": "aegis-nids.exe",          "py": None},
+    {"name": "CORE",   "lang": "Zig",   "exe": "aegis_nids.exe",          "py": None},
     {"name": "BRAIN",  "lang": "Python","exe": "python.exe",              "py": "windows_brain.py"},
     {"name": "NOSE",   "lang": "Go",    "exe": "aegis-nose.exe",        "py": None},
     {"name": "MOUTH",  "lang": "Rust",  "exe": "windows_sec_monitor.exe", "py": None},
@@ -286,7 +289,7 @@ def _launch_all_subsystems():
     cmds = [
         ("BRIDGE", [os.path.join(PROJECT_ROOT, "build", "Release", "aegis_bridge.exe")],
          0, 'console'),
-        ("CORE",   [os.path.join(PROJECT_ROOT, "zig-out", "bin", "aegis-nids.exe")],
+        ("CORE",   [os.path.join(PROJECT_ROOT, "zig-out", "bin", "aegis_nids.exe")],
          3, 'console'),
         ("BRAIN",  [sys.executable, os.path.join(PROJECT_ROOT, "brain", "windows_brain.py")],
          6, 'console'),
@@ -343,7 +346,7 @@ def _kill_all_subsystems():
             return True
 
     # Fallback: manual kill
-    targets = ["aegis-nids.exe", "aegis_bridge.exe", "windows_sec_monitor.exe", "aegis-nose.exe"]
+    targets = ["aegis_nids.exe", "aegis_bridge.exe", "windows_sec_monitor.exe", "aegis-nose.exe"]
     for exe in targets:
         if os.name == 'nt':
             subprocess.run(["taskkill", "/F", "/IM", exe], capture_output=True)
@@ -385,7 +388,7 @@ def _launch_single_subsystem(name):
         cmd = [os.path.join(PROJECT_ROOT, "build", "Release", "aegis_bridge.exe")]
         mode = 'console'
     elif name == "CORE":
-        cmd = [os.path.join(PROJECT_ROOT, "zig-out", "bin", "aegis-nids.exe")]
+        cmd = [os.path.join(PROJECT_ROOT, "zig-out", "bin", "aegis_nids.exe")]
         mode = 'console'
     elif name == "BRAIN":
         cmd = [sys.executable, os.path.join(PROJECT_ROOT, "brain", "windows_brain.py")]
