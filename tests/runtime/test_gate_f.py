@@ -20,7 +20,7 @@ import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-AEGISCTL = REPO_ROOT / "scripts" / "aegisctl.py"
+AEGISCTL = REPO_ROOT / "tools" / "aegisctl.py"
 BLOCK_LIST_FILE = REPO_ROOT / "logs" / "blocked_ips.json"
 QUARANTINE_FILE = REPO_ROOT / "logs" / "quarantine.json"
 PEP_STATE_FILE = REPO_ROOT / "logs" / "runtime" / "pep_state.json"

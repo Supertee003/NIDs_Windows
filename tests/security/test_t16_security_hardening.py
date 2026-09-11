@@ -54,7 +54,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 CONTROL_IPC = "core/control_ipc.zig"
-AEGISCTL = "scripts/aegisctl.py"
+AEGISCTL = "tools/aegisctl.py"
 PEP_RS = "shield/src/pep.rs"
 PEP_LIB = "shield/src/lib.rs"
 NOSE_PR = "core/nose_pipe_reader.zig"
@@ -127,7 +127,7 @@ def test_hardening_categories_coverage() -> None:
             "federation TLS must fingerprint + validate certs",
         ),
         "privilege boundaries": (
-            "advisory" in _read("core/brain_engine.zig") or "never" in pep.lower(),
+            "advisory" in _read("src/core/brain_engine.zig") or "never" in pep.lower(),
             "non-authoritative stages must be advisory-only",
         ),
         "audit integrity": (

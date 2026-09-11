@@ -47,11 +47,11 @@ ALLOWED_ENFORCEMENT_FILES = {
 FORBIDDEN_DIRECTORIES = [
     "tests/typescript/",      # TypeScript
     "ts_policy/",            # TypeScript
-    "scripts/aegisctl.py",   # Python CLI
+    "tools/aegisctl.py",   # Python CLI
     "tools/",                # Python control plane
     "src/policy/",           # legacy Zig that redirects to shield
     "brain/",                # Python advisory brain
-    "core/brain_engine.zig", # Zig advisory brain
+    "src/core/brain_engine.zig", # Zig advisory brain
     "core/rag_engine.zig",   # Zig RAG
     "core/correlation_engine.zig",  # Zig correlation
     "core/threat_intel.zig",  # Zig TI

@@ -22,10 +22,10 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # The single authoritative Windows WFP enforcement module.
-WFP_ENFORCEMENT_MODULE = "core/wfp_production.zig"
+WFP_ENFORCEMENT_MODULE = "src/policy/wfp_production.zig"
 
 # The Rust PEP path.
-RUST_PEP_MODULE = "core/rust_pep.zig"
+RUST_PEP_MODULE = "src/core/rust_pep.zig"
 
 # Forbidden patterns indicating a SECOND enforcement path.
 # Anything that calls FwpmEngineOpen, FwpmFilterAdd, FwpmProviderAdd,
@@ -49,7 +49,7 @@ FORBIDDEN_ENFORCEMENT_PATTERNS = [
 # Rust PEP is the SINGLE path to enforcement; every other module must
 # go through rust_pep.zig.
 WFP_TRANSPORT_IMPORT = r'@import\(\s*["\']wfp_ioctl\.zig["\']\s*\)'
-IMPORT_ALLOWED_ONLY_IN = {"core/rust_pep.zig"}
+IMPORT_ALLOWED_ONLY_IN = {"src/core/rust_pep.zig"}
 
 
 def test_single_authoritative_wfp_enforcement_module_exists() -> None:
@@ -78,7 +78,7 @@ def test_no_duplicate_wfp_enforcement_path() -> None:
     # The C++ bridge adapter may use WFP APIs for IPC over loopback;
     # that's not a WFP enforcement path. Allow `bridge/`.
     # The WFP mirror is a contract test mirror, not an enforcement path.
-    ALLOWED_DIRS = ("core/wfp_production.zig", "core/wfp_")
+    ALLOWED_DIRS = ("src/policy/wfp_production.zig", "src/policy/wfp_")
     for path in (REPO_ROOT / "core").rglob("*.zig"):
         rel = path.relative_to(REPO_ROOT).as_posix()
         if any(rel.startswith(a) for a in ALLOWED_DIRS):

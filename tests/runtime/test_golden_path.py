@@ -34,7 +34,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-AEGISCTL = REPO_ROOT / "scripts" / "aegisctl.py"
+AEGISCTL = REPO_ROOT / "tools" / "aegisctl.py"
 EVENT_GEN = REPO_ROOT / "scripts" / "aegis_event_gen.py"
 
 # Pipeline stages in order (per docs/runtime/LOCAL_RUNBOOK.md §7-8)

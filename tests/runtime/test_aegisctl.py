@@ -20,7 +20,7 @@ import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-AEGISCTL = REPO_ROOT / "scripts" / "aegisctl.py"
+AEGISCTL = REPO_ROOT / "tools" / "aegisctl.py"
 
 
 def _run_aegisctl(*args: str, timeout: int = 10) -> tuple[int, str, str]:

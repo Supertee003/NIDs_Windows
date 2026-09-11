@@ -110,7 +110,7 @@ except ImportError as e:
         return 5
 
 LOG_FILE = "logs/anomalous.json"
-RULES_FILE = os.path.join(os.path.dirname(__file__), "..", "config", "Rules.json")
+RULES_FILE = os.path.join(os.path.dirname(__file__), "..", "configs", "Rules.json")
 MAX_PAYLOAD_SIZE = 4096
 
 class UI:
@@ -380,7 +380,7 @@ def main():
     print(f"{C}║{R} {B}AEGIS BRAIN — Tier-2 Deep Inspection (Python){D} v2.0       {C}║{R}")
     print(f"{C}║{R} {D}Regex Engine + IPS Enforcer + Bridge IPC{D}               {C}║{R}")
     print(f"{C}╠════════════════════════════════════════════════════════════╣{R}")
-    print(f"{C}║{R} {G}UDP 127.0.0.1:9999{D} │ {Y}Rules: config/Rules.json{D}         {C}║{R}")
+    print(f"{C}║{R} {G}UDP 127.0.0.1:9999{D} │ {Y}Rules: configs/Rules.json{D}         {C}║{R}")
     print(f"{C}╚════════════════════════════════════════════════════════════╝{R}")
     print()
 

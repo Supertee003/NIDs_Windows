@@ -16,7 +16,7 @@ import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-AEGISCTL = REPO_ROOT / "scripts" / "aegisctl.py"
+AEGISCTL = REPO_ROOT / "tools" / "aegisctl.py"
 CANARY_TESTS_FILE = REPO_ROOT / "config" / "canary_tests.json"
 DISABLED_RULES_FILE = REPO_ROOT / "config" / "disabled_rules.json"
 RULES_FILE = REPO_ROOT / "config" / "Rules.json"

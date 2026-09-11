@@ -32,7 +32,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 MANIFEST_PATH = REPO_ROOT / "runtime_manifest.json"
 
 CANARY_MODULE = "core/ips_canary_order.zig"
-REAL_IPS_MODULE = "core/real_ips_path.zig"
+REAL_IPS_MODULE = "src/core/real_ips_path.zig"
 XDR_MODULE = "core/xdr_incident_fabric.zig"
 
 CANARY_ORDER = [

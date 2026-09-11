@@ -22,7 +22,7 @@ import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-AEGISCTL = REPO_ROOT / "scripts" / "aegisctl.py"
+AEGISCTL = REPO_ROOT / "tools" / "aegisctl.py"
 RULES_FILE = REPO_ROOT / "config" / "Rules.json"
 FORENSIC_LOG = REPO_ROOT / "logs" / "aegis_core.ndjson"
 

@@ -36,9 +36,9 @@ def _read(rel: str) -> str:
 # =====================================================================
 
 PERF_UNITS = {
-    "core/perf_benchmark.zig": ("Zig", "event throughput suites + p50/p95/p99"),
+    "src/core/perf_benchmark.zig": ("Zig", "event throughput suites + p50/p95/p99"),
     "core/federation_bench.zig": ("Zig", "cross-node heartbeat/incident/intel/failover"),
-    "core/performance_harness.zig": ("Zig", "events/sec + queue depth + drop rate harness"),
+    "src/core/performance_harness.zig": ("Zig", "events/sec + queue depth + drop rate harness"),
     "core/flow_engine.zig": ("Zig", "fabric/dispatcher tuning hooks"),
     "tests/cython/test_cython_benchmark.py": ("Cython", "brain fast-scan + numeric batch"),
     "scripts/aegis_metrics.py": ("Python", "CPU / memory / queue depth / latency snapshot"),
@@ -53,7 +53,7 @@ def test_ac1_per_language_benchmark_suites_exist() -> None:
 
 
 def test_ac1_p50_p95_p99_latency_implemented() -> None:
-    src = _read("core/perf_benchmark.zig")
+    src = _read("src/core/perf_benchmark.zig")
     assert "LatencyPercentiles" in src
     assert "p50_ns" in src and "p95_ns" in src and "p99_ns" in src
     assert "collectLatency" in src, "config must opt into per-op latency capture"
@@ -82,7 +82,7 @@ def test_ac1_perf_zig_gates_green() -> None:
     # The actual zig gates are run in CI; locally we assert the modules are
     # declared REAL in the manifest (their test counts are gated there).
     manifest = json.loads(_read("runtime_manifest.json"))
-    for rel in ["core/perf_benchmark.zig", "core/federation_bench.zig"]:
+    for rel in ["src/core/perf_benchmark.zig", "core/federation_bench.zig"]:
         entry = manifest["modules"].get(rel)
         assert entry and entry.get("status") == "REAL", f"{rel} must be REAL (AC1)"
 
@@ -253,9 +253,9 @@ def test_ac5_snapshot_and_rollback_recover_known_good() -> None:
 def test_manifest_declares_t17_modules_real() -> None:
     manifest = json.loads(_read("runtime_manifest.json"))
     modules = [
-        "core/perf_benchmark.zig",
+        "src/core/perf_benchmark.zig",
         "core/federation_bench.zig",
-        "core/performance_harness.zig",
+        "src/core/performance_harness.zig",
         "src/tests/integration/performance_integration.zig",
         "src/tests/proofs/performance_tuning_proof.zig",
         "core/release_engineering.zig",

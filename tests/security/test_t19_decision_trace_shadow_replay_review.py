@@ -44,7 +44,7 @@ MANIFEST_PATH = REPO_ROOT / "runtime_manifest.json"
 TRACE_MODULE = "core/decision_trace.zig"
 SHADOW_MODULE = "core/shadow_decision.zig"
 REPLAY_MODULE = "core/replayable_security.zig"
-REVIEW_MODULE = "core/authority_review.zig"
+REVIEW_MODULE = "src/core/authority_review.zig"
 
 TRACE_CHAIN = [
     "action",
