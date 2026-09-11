@@ -73,7 +73,7 @@ def test_cpp_adapter_binds_to_zig_canonical_event() -> None:
     """AC1 (last sentence): 'Zig does lifecycle + event conversion +
     canonicalization.' Verify that core/cpp_adapter.zig calls into
     core/canonical_event.zig to emit Canonical Events."""
-    cpp = (REPO_ROOT / "core" / "cpp_adapter.zig").read_text(encoding="utf-8")
+    cpp = (REPO_ROOT / "src" / "core" / "cpp_adapter.zig").read_text(encoding="utf-8")
     # Either it imports canonical_event directly, or it calls a
     # function from the adapter framework that the canonical_event
     # module subscribes to.
@@ -99,9 +99,9 @@ def test_adapters_have_no_policy_or_enforcement_authority() -> None:
     ]
     violations: list[str] = []
     for path_str in [
-        "core/windows_adapters.zig",
+        "src/windows/windows_adapters.zig",
         "src/tests/cli/windows_adapters_cli.zig",
-        "core/host_telemetry.zig",
+        "src/windows/host_telemetry.zig",
         "src/tests/cli/host_telemetry_cli.zig",
         "bridge/aegis_adapter.hpp",
         "bridge/aegis_adapter.cpp",
@@ -124,7 +124,7 @@ def test_etw_process_source_defines_etw_lifecycle() -> None:
     callback, shutdown.' The Zig EtwProcessSource must declare the
     ETW lifecycle (start -> enable -> open -> process -> callback ->
     shutdown)."""
-    text = (REPO_ROOT / "core" / "windows_adapters.zig").read_text(encoding="utf-8")
+    text = (REPO_ROOT / "src" / "windows" / "windows_adapters.zig").read_text(encoding="utf-8")
     # The lifecycle is implemented as a state machine; the test
     # asserts the AdapterSourceState enum covers the key states
     # (uninitialized -> initialized -> active; error_state on
@@ -146,7 +146,7 @@ def test_etw_process_source_defines_etw_lifecycle() -> None:
 
 def test_fim_source_handles_create_modify_rename_delete() -> None:
     """AC2: 'create/modify/rename/delete/overflow/re-arm/shutdown'."""
-    text = (REPO_ROOT / "core" / "windows_adapters.zig").read_text(encoding="utf-8")
+    text = (REPO_ROOT / "src" / "windows" / "windows_adapters.zig").read_text(encoding="utf-8")
     text_lower = text.lower()
     # The FIM source uses FILE_ACTION_* constants in the comment.
     actions_block = "file_action_added/modified/removed"
@@ -166,14 +166,14 @@ def test_fim_source_handles_create_modify_rename_delete() -> None:
 def test_registry_source_produces_trie_evidence() -> None:
     """AC3: 'Real Registry notifications reach the registry_trie and
     produce evidence.'"""
-    text = (REPO_ROOT / "core" / "windows_adapters.zig").read_text(encoding="utf-8")
+    text = (REPO_ROOT / "src" / "windows" / "windows_adapters.zig").read_text(encoding="utf-8")
     # The RegNotifySource must reference registry operations.
     assert "RegNotifySource" in text, "RegNotifySource missing"
     assert "registry" in text.lower(), "registry handling missing"
     # And core/registry_trie.zig must exist (it consumes the events
     # and produces evidence) -- and must reference registry_set_value
     # as the event kind.
-    trie = REPO_ROOT / "core" / "registry_trie.zig"
+    trie = REPO_ROOT / "src" / "windows" / "registry_trie.zig"
     assert trie.exists(), "core/registry_trie.zig must exist (consumer of registry notifications)"
     trie_text = trie.read_text(encoding="utf-8")
     assert "registry_set_value" in trie_text, (
@@ -181,7 +181,7 @@ def test_registry_source_produces_trie_evidence() -> None:
     )
     # And host_telemetry.zig must reference registry_set_value as a
     # SuspicionReason (the evidence kind)
-    ht = (REPO_ROOT / "core" / "host_telemetry.zig").read_text(encoding="utf-8")
+    ht = (REPO_ROOT / "src" / "windows" / "host_telemetry.zig").read_text(encoding="utf-8")
     assert "registry_set_value" in ht, (
         "host_telemetry.zig must define registry_set_value as an evidence kind"
     )
@@ -191,19 +191,19 @@ def test_process_injection_detector_produces_injection_evidence() -> None:
     """AC4: 'Process/injection telemetry produces injection evidence into
     correlation.'"""
     # The injection detector is in core/injection_detector.zig.
-    inj = REPO_ROOT / "core" / "injection_detector.zig"
+    inj = REPO_ROOT / "src" / "windows" / "injection_detector.zig"
     assert inj.exists(), "core/injection_detector.zig must exist (AC4)"
     text = inj.read_text(encoding="utf-8").lower()
     assert "injection" in text, "InjectionDetector missing in core/injection_detector.zig"
     # The injection detector must emit events that feed into the
     # correlation engine. The correlation engine consumes any
     # Evidence; the test is that injection events become evidence.
-    corr = (REPO_ROOT / "core" / "correlation_engine.zig").read_text(encoding="utf-8").lower()
+    corr = (REPO_ROOT / "src" / "detection" / "correlation_engine.zig").read_text(encoding="utf-8").lower()
     assert "evidence" in corr, (
         "correlation_engine.zig must consume evidence (AC4: injection events -> evidence)"
     )
     # And the canonical event source kind for process is wired.
-    canon = (REPO_ROOT / "core" / "canonical_event.zig").read_text(encoding="utf-8").lower()
+    canon = (REPO_ROOT / "src" / "contract" / "canonical_event.zig").read_text(encoding="utf-8").lower()
     assert "process" in canon, "canonical_event.zig must define process source kind (AC4)"
 
 

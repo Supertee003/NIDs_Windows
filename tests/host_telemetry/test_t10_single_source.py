@@ -131,7 +131,7 @@ def test_process_telemetry_uses_same_canonical_event_model() -> None:
     assert "host_telemetry" in wa, (
         "core/windows_adapters.zig must import host_telemetry.zig (single model chain)"
     )
-    ht = (REPO_ROOT / "core" / "host_telemetry.zig").read_text(encoding="utf-8")
+    ht = (REPO_ROOT / "src" / "windows" / "host_telemetry.zig").read_text(encoding="utf-8")
     # host_telemetry.zig doesn't import canonical_event.zig directly;
     # instead it emits HostEvent which is converted to CanonicalEvent
     # in cpp_adapter.zig. We verify the chain: adapter -> host_telemetry
@@ -139,7 +139,7 @@ def test_process_telemetry_uses_same_canonical_event_model() -> None:
     assert "HostEvent" in ht, (
         "core/host_telemetry.zig must emit HostEvent (single model chain)"
     )
-    ca = (REPO_ROOT / "core" / "cpp_adapter.zig").read_text(encoding="utf-8")
+    ca = (REPO_ROOT / "src" / "core" / "cpp_adapter.zig").read_text(encoding="utf-8")
     # cpp_adapter.zig doesn't emit CanonicalEvent directly; instead it
     # imports canonical_event.zig and uses it for the ABI. The actual
     # emission happens in the C++ bridge (aegis_adapter.cpp).

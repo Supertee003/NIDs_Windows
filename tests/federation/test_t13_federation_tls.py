@@ -40,7 +40,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 CLUSTER_COORD = "src/federation/cluster_coord.zig"
 FEDERATION_CODEC = "src/federation/federation_codec.zig"
-FEDERATION_TCP = "core/federation_tcp.zig"
+FEDERATION_TCP = "src/federation/federation_tcp.zig"
 FEDERATION_TLS = "src/federation/federation_tls.zig"
 FEDERATION_TLS_CONFIG = "configs/test/federation_tls_config.json"
 

@@ -295,7 +295,7 @@
     "core/wfp_ioctl.zig": {"status": "REAL", "golden_path": false, "real_path": "src/policy/wfp_ioctl.zig"},
     "core/wfp_ioctl_integration.zig": {"status": "MISSING", "golden_path": false},
     "core/wfp_production.zig": {"status": "REAL", "golden_path": true, "real_path": "src/policy/wfp_production.zig"},
-    "core/windows_adapters.zig": {"status": "REAL", "golden_path": true, "role": "Windows adapters (100+ tests)", "real_path": "src/windows/windows_adapters.zig"},
+    "core/windows_adapters.zig": {"status": "REAL", "golden_path": true, "role": "100/100 tests", "real_path": "src/windows/windows_adapters.zig"},
     "core/windows_capture.zig": {"status": "REAL", "golden_path": true, "real_path": "src/capture/windows_capture.zig"},
     "core/xdr_incident_fabric.zig": {"status": "REAL", "golden_path": true, "real_path": "src/xdr/xdr_incident_fabric.zig"},
     "core/cpp_adapter.zig": {"status": "REAL", "golden_path": false, "real_path": "src/windows/cpp_adapter.zig"},

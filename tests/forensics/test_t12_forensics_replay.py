@@ -39,7 +39,7 @@ FORENSIC_REPLAY_PROOF = "src/tests/proofs/forensic_replay_proof.zig"
 REPLAY_ENGINE = "src/forensic/replay_engine.zig"
 FORENSICS_INTEGRATION = "src/tests/integration/forensics_integration.zig"
 DISPATCHER = "src/policy/dispatcher.zig"
-DISPATCHER_PHASE_B = "core/dispatcher_phase_b.zig"
+DISPATCHER_PHASE_B = "src/policy/dispatcher_phase_b.zig"
 POLICY_SIGNING = "src/policy/policy_signing.zig"
 
 # The full chain as declared by the manifest golden path. Each stage must
