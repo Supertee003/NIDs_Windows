@@ -1,6 +1,6 @@
- {
-  "head_sha": "2c7cb3047e2219ec60e86776079e50b352680c35",
-  "created_at": "2026-09-10",
+{
+  "head_sha": "fdb4c2beb4451754fca3ea28059dbdbb01c37764",
+  "created_at": "2026-09-11",
   "generator_version": "3.0",
   "evidence_levels": {
     "E0": "No evidence",
@@ -585,6 +585,217 @@
       ],
       "result": "PASS",
       "finding": "WFP enforcement verified on Windows host. Bridge test 36/36 pass. GAP-002 CLOSED."
+    },
+    {
+      "id": "EVT-028",
+      "head_sha": "fdb4c2beb4451754fca3ea28059dbdbb01c37764",
+      "timestamp": "2026-09-11",
+      "title": "TRUTH-001: current-HEAD synchronization across all machine maps",
+      "level": "E1",
+      "component": "repo-truth",
+      "description": "All current-head machine maps and AGENTS.md now carry HEAD fdb4c2beb4451754fca3ea28059dbdbb01c37764. Prior HEAD values 2c7cb30 (machine maps) and 61c80ca (AGENTS.md) are marked HISTORICAL. build_manifest source_commit re-stamped to fdb4c2b.",
+      "flow_id": "TRUTH-001",
+      "files_changed": [
+        "AGENTS.md",
+        "AI_CONTEXT.md",
+        "SYSTEM_MAP.json",
+        "FLOW_MAP.json",
+        "AUTHORITY_MAP.json",
+        "CONTRACT_MAP.json",
+        "EVIDENCE_INDEX.json",
+        "build_truth.json",
+        "runtime_manifest.json",
+        "README.md"
+      ],
+      "tests": [
+        "git rev-parse HEAD equals every head_sha field",
+        "python tools/release_engineering.py --verify"
+      ],
+      "result": "PASS",
+      "finding": "One current HEAD; zero contradictory machine-map HEAD values."
+    },
+    {
+      "id": "EVT-029",
+      "head_sha": "fdb4c2beb4451754fca3ea28059dbdbb01c37764",
+      "timestamp": "2026-09-11",
+      "title": "TRUTH-002: runtime component classification (CANONICAL/SUPPORT/OPTIONAL/ALIAS/LEGACY)",
+      "level": "E1",
+      "component": "repo-truth",
+      "description": "Every entrypoint in runtime_manifest.json carries an explicit classification. shield/ is SUPPORT (Tier-3 payload screening loaded in-process, NOT an enforcement authority); go/aggregator/ is SUPPORT (optional alert sidecar on REST 9200, produces no Canonical Event); mouth/ and aegis_dashboard/ are OPTIONAL; core/*.zig manifest keys are ALIASes resolving through real_path into src/**; core/ does not exist as a directory. AUTHORITY_MAP go_nose.files no longer lists go/aggregator; rust_pep.files no longer lists shield/src/*.rs.",
+      "flow_id": "TRUTH-002",
+      "files_changed": [
+        "runtime_manifest.json",
+        "AUTHORITY_MAP.json",
+        "SYSTEM_MAP.json",
+        "AI_CONTEXT.md",
+        "build_truth.json"
+      ],
+      "tests": [
+        "classification present on every entrypoint",
+        "no entrypoint is both CANONICAL and SUPPORT"
+      ],
+      "result": "PASS",
+      "finding": "One canonical owner per production responsibility; SUPPORT surfaces are explicitly subordinate."
+    },
+    {
+      "id": "EVT-030",
+      "head_sha": "fdb4c2beb4451754fca3ea28059dbdbb01c37764",
+      "timestamp": "2026-09-11",
+      "title": "TRUTH-003: canonical CLI resolved to tools/aegisctl.py",
+      "level": "E1",
+      "component": "control-plane",
+      "description": "scripts/aegisctl.py does not exist on disk, so the CONTRACT_MAP/FLOW_MAP conflict was resolved in favour of tools/aegisctl.py. FLOW_MAP CONTROL-001 step 1, AUTHORITY_MAP PYTHON_CLI.files, brain/windows_brain.py AEGISCTL_PATH, tools/release_engineering.py component provenance and the tests/runtime/test_golden_path.py skip messages were repointed.",
+      "flow_id": "TRUTH-003",
+      "files_changed": [
+        "FLOW_MAP.json",
+        "AUTHORITY_MAP.json",
+        "brain/windows_brain.py",
+        "tools/release_engineering.py",
+        "tests/runtime/test_golden_path.py"
+      ],
+      "tests": [
+        "no live reference to scripts/aegisctl.py remains"
+      ],
+      "result": "PASS",
+      "finding": "One canonical CLI path."
+    },
+    {
+      "id": "EVT-031",
+      "head_sha": "fdb4c2beb4451754fca3ea28059dbdbb01c37764",
+      "timestamp": "2026-09-11",
+      "title": "TRUTH-004: inventory generator made reproducible from git truth",
+      "level": "E1",
+      "component": "repo-truth",
+      "description": "generate_truth_artifacts.py previously walked the raw filesystem, so gitignored build output (brain/cython/*.c, *.pyd, debug.log) entered the inventory and Cython sources were unclassified. It now enumerates git truth (tracked plus untracked, not ignored) and classifies .pyx/.pxd/.pxi as first-class source, plus .inf/.nsi/.csv/Makefile/.gitignore. Result: 620 files, 0 unclassified, reproducible.",
+      "flow_id": "TRUTH-004",
+      "files_changed": [
+        "tools/generate_truth_artifacts.py",
+        "inventory.json",
+        "reference_map.json"
+      ],
+      "tests": [
+        "python tools/generate_truth_artifacts.py",
+        "unclassified count equals 0"
+      ],
+      "result": "PASS",
+      "finding": "The previous 0-unclassified claim was not reproducible from the committed generator; it is now."
+    },
+    {
+      "id": "EVT-032",
+      "head_sha": "fdb4c2beb4451754fca3ea28059dbdbb01c37764",
+      "timestamp": "2026-09-11",
+      "title": "CI-001..CI-004: CI convergence and unconditional required gate",
+      "level": "E1",
+      "component": "ci",
+      "description": "go-build-test was split into go-nose-build-test (CANONICAL acquisition) and go-aggregator-build-test (SUPPORT sidecar). shield-build stays required and is labelled SUPPORT. ci-matrix now runs with if: always() and evaluates upstream results via tools/ci_coverage.py --needs-json, where failure/skipped/cancelled is FAIL for required projects. package-release now also requires success(). python-tests no longer rewrites git line-ending config or regenerates build_manifest.json; it runs the build-manifest drift gate instead.",
+      "flow_id": "CI-001",
+      "files_changed": [
+        ".github/workflows/ci.yml",
+        "ci_coverage.json",
+        "tools/ci_coverage.py",
+        "tools/release_engineering.py"
+      ],
+      "tests": [
+        "python tools/ci_coverage.py",
+        "python tools/ci_coverage.py --needs-json with a skipped required job exits 1",
+        "tests/release/test_t17_perf_ci_installer.py::test_ac2b_required_matrix_gate_is_unconditional",
+        "tests/release/test_t17_perf_ci_installer.py::test_ac2c_python_ci_does_not_mutate_checkout"
+      ],
+      "result": "PASS",
+      "finding": "CI is deterministic: no checkout mutation, no conflated legacy job, required coverage cannot be skipped away."
+    },
+    {
+      "id": "EVT-033",
+      "head_sha": "fdb4c2beb4451754fca3ea28059dbdbb01c37764",
+      "timestamp": "2026-09-11",
+      "title": "TEST-001: stale core/ test topology repaired and stale failure dumps removed",
+      "level": "E2",
+      "component": "test-truth",
+      "description": "T10 (single host-network source) and T11 (single WFP enforcement path) negative controls scanned (REPO_ROOT/'core'), a directory that no longer exists, so they passed vacuously. They now scan src/. The stale tracked pytest dumps at repo root (test_failures_full.txt, test_failed_lines.txt, test_failures_output.txt) were removed; they described 165 failures that no longer exist.",
+      "flow_id": "TEST-001",
+      "files_changed": [
+        "tests/host_telemetry/test_t10_single_source.py",
+        "tests/wfp/test_t11_wfp_enforcement.py",
+        "test_failures_full.txt",
+        "test_failed_lines.txt",
+        "test_failures_output.txt"
+      ],
+      "tests": [
+        "python -m pytest tests/host_telemetry tests/wfp -q",
+        "git ls-files test_failures_full.txt is empty"
+      ],
+      "result": "PASS",
+      "finding": "Negative controls now actually execute against the canonical source tree."
+    },
+    {
+      "id": "EVT-034",
+      "head_sha": "fdb4c2beb4451754fca3ea28059dbdbb01c37764",
+      "timestamp": "2026-09-11",
+      "title": "CTRL-002: core HEALTH conforms to RUNTIME_CONTRACT section 4.1 with real subsystem state",
+      "level": "E5",
+      "component": "control-plane",
+      "description": "health.check emitted a non-conformant payload (no pid, no counters, no last_event_ms) and reported npcap/etw/fim/wfp from build-time capability flags, so it claimed 'available' for a WFP device that had failed to open. It now emits the full 4.1 payload with real pid, uptime_ms, last_event_ms, counters and deps, and checks[] derived from live in-process bridge flags. Verified by rebuilding zig-out/bin/aegis_nids.exe and probing the aegis_control named pipe on the Windows host. status now reports the closed-set state RUNNING (previously lowercase running) and derives degraded/wfp_available from real subsystem state. The CONTRACT-04 client harness now unwraps the {ok,data} response envelope documented in shared/protocol/control_protocol.md.",
+      "flow_id": "CTRL-002",
+      "files_changed": [
+        "src/platform/win32_pipe.zig",
+        "src/core/bridge_init.zig",
+        "src/pipeline/runtime_state.zig",
+        "src/pipeline/event_processor.zig",
+        "tests/runtime/conftest.py",
+        "shared/protocol/control_protocol.md"
+      ],
+      "tests": [
+        "zig build",
+        "health probe: state=RUNNING, degraded=true, wfp ok=false driver-unavailable, cpp_bridge ok=false dll-missing, shield ok=true loaded, brain ok=true udp-9999",
+        "tests/runtime/test_harness_integration.py::TestCoreLifecycle::test_core_reaches_running_within_startup_timeout"
+      ],
+      "result": "PASS",
+      "finding": "The control plane stopped asserting capability as live health; core now reaches RUNNING against the real harness."
+    },
+    {
+      "id": "EVT-035",
+      "head_sha": "fdb4c2beb4451754fca3ea28059dbdbb01c37764",
+      "timestamp": "2026-09-11",
+      "title": "TRUTH-002b: shield/ duplicate enforcement authority quarantined",
+      "level": "E1",
+      "component": "security",
+      "description": "shield/src/pep.rs (a second Policy Enforcement Point) and shield/src/windows_enforce.rs (a second WFP IOCTL + netsh enforcement path) are now marked QUARANTINED in code and in AUTHORITY_MAP.json (quarantined_duplicates[SHIELD_PEP]) and runtime_manifest.json (rust_shield_tier3.quarantined_modules). The crate is limited to the Tier-3 payload screening symbol the Zig core actually calls (validate_payload_safety). Discovery: shield/src/lib.rs also EXPORTS aegis_pep_evaluate / aegis_pep_status_count / aegis_pep_version, and src/forensic/policy_contract.zig:110 declares extern \"sec_monitor\" fn aegis_pep_evaluate - declared but never called anywhere in src/. tests/pep/test_t8_rust_pep.py still asserts shield/src/pep.rs as the PEP schema source. Removal therefore requires the PEP-001 migration slice rather than an isolated deletion.",
+      "flow_id": "TRUTH-002",
+      "files_changed": [
+        "shield/src/pep.rs",
+        "shield/src/windows_enforce.rs",
+        "AUTHORITY_MAP.json",
+        "runtime_manifest.json",
+        "AI_CONTEXT.md"
+      ],
+      "tests": [
+        "grep: no Zig or Rust caller of aegis_pep_evaluate exists outside the dormant declaration in src/forensic/policy_contract.zig",
+        "runtime: the only shield symbol the running core uses is validate_payload_safety (core log: 'Rust Shield loaded: shield\\target\\release\\sec_monitor.dll')"
+      ],
+      "result": "PARTIAL",
+      "finding": "The duplicate authority is now explicit and cannot be extended silently, but it is still compiled and exported. GAP-007 stays OPEN until PEP-001 removes it."
+    },
+    {
+      "id": "EVT-036",
+      "head_sha": "fdb4c2beb4451754fca3ea28059dbdbb01c37764",
+      "timestamp": "2026-09-11",
+      "title": "BUILD-001: artifact digests made checkout-line-ending independent",
+      "level": "E2",
+      "component": "release",
+      "description": "file_sha256 previously hashed raw working-tree bytes, so every digest depended on the checkout's line endings. That is why CI carried a 'Regenerate manifest to match CI working tree' step: the drift gate was being satisfied by rewriting the manifest rather than by detecting drift. Hashing now normalizes CRLF to LF for non-binary files (binary files, detected by NUL, are hashed verbatim), and `size` records the normalized length so size and digest always agree. .gitattributes (* text eol=lf) is now the single source of line-ending truth. All 279 recorded digests were recomputed once via --refresh-digests.",
+      "flow_id": "BUILD-001",
+      "files_changed": [
+        "tools/release_engineering.py",
+        "build_manifest.json"
+      ],
+      "tests": [
+        "python tools/release_engineering.py --refresh-digests (idempotent; second run reports 0 updates)",
+        "python tools/release_engineering.py --verify",
+        "269 of 270 untouched artifacts now hash identically to their LF git blob (the remaining entry, shield/Cargo.lock, is not tracked at HEAD and is recorded under GAP-008)",
+        "tests/release/test_t17_perf_ci_installer.py::test_ac3_verify_mode_detects_drift"
+      ],
+      "result": "PASS",
+      "finding": "The provenance gate is now honest across platforms: CI can verify a clean checkout instead of rewriting it."
     }
   ],
   "known_gaps": [
@@ -770,15 +981,86 @@
       ],
       "result": "PASS",
       "finding": "Architecture stabilized. Hub-and-spoke with plane separation. 5 contracts defined. All truth artifacts synchronized."
+    },
+    {
+      "id": "GAP-008",
+      "severity": "P1",
+      "title": "Artifact-set generators are not reproducible",
+      "description": "tools/release_engineering.py::collect_artifacts() still enumerates the non-existent core/ and config/ directories, omits src/ and configs/ (144 and 20 of the committed artifacts), and picks up gitignored build output, so running --manifest destroys provenance instead of restoring it. The committed 279-entry artifact set cannot be derived from any documented rule. A bounded --refresh-digests mode was added so reviewed changes can be re-stamped without touching the artifact set.",
+      "status": "OPEN",
+      "required_evidence": [
+        "artifact-set selection rule documented",
+        "--manifest reproduces the committed set",
+        "--verify green in a clean checkout"
+      ],
+      "resolution": null,
+      "evidence": "EVT-031 fixed the inventory generator; the artifact generator remains stale."
+    },
+    {
+      "id": "GAP-009",
+      "severity": "P1",
+      "title": "npcap/etw/fim runtime state is not instrumented",
+      "description": "health checks for npcap, etw and fim report capability-only because the runtime does not publish their live state. On the Windows host, ETW start fails, FIM fails for System32 and SysWOW64, and Npcap fails to open an adapter, while the runtime keeps running.",
+      "status": "OPEN",
+      "required_evidence": [
+        "live per-subsystem flags exposed through the control plane",
+        "health reflects them",
+        "host verification of each adapter"
+      ],
+      "resolution": null,
+      "evidence": "EVT-034 records checks[] detail capability-only."
+    },
+    {
+      "id": "GAP-010",
+      "severity": "P2",
+      "title": "No detection of unsupervised or orphaned components",
+      "description": "A leftover 'python brain/windows_brain.py' process held UDP 127.0.0.1:9999 and made TestIdempotentStop fail by answering a health probe with state=RUNNING. Nothing in the runtime or CLI detects a component running outside the supervisor.",
+      "status": "OPEN",
+      "required_evidence": [
+        "supervisor or CLI detects foreign listeners on owned ports",
+        "orphan component reported as a health finding"
+      ],
+      "resolution": null,
+      "evidence": "EVT-034 test run observed the stray component."
+    },
+    {
+      "id": "GAP-007",
+      "severity": "P0",
+      "title": "shield/ contains a duplicate enforcement authority (QUARANTINED, removal open)",
+      "description": "shield/src/pep.rs implements a second Policy Enforcement Point and shield/src/windows_enforce.rs a second WFP enforcement path, while AUTHORITY_MAP declares rust-src/lib.rs the ONLY final enforcement authority. shield/src/lib.rs additionally exports aegis_pep_evaluate, aegis_pep_status_count and aegis_pep_version. All are now marked QUARANTINED in code and in AUTHORITY_MAP.json quarantined_duplicates[SHIELD_PEP]. Three bindings block isolated deletion: src/forensic/policy_contract.zig's dormant extern \"sec_monitor\" fn aegis_pep_evaluate (declared, never called), the shield C-ABI shim, and tests/pep/test_t8_rust_pep.py which asserts shield/src/pep.rs as the PEP schema source.",
+      "status": "QUARANTINED_OPEN",
+      "required_evidence": [
+        "shield exports no PEP symbol (nm/objdump on sec_monitor.dll)",
+        "PEP-001 removes the dormant Zig extern",
+        "tests/pep/test_t8_rust_pep.py expectations re-pointed at rust-src/lib.rs",
+        "a negative control fails if a PEP surface reappears in shield/",
+        "shield build and tests stay green"
+      ],
+      "resolution": null,
+      "evidence": "EVT-029 (classification), EVT-035 (quarantine). The running core loads sec_monitor.dll for validate_payload_safety only; src/forensic/policy_contract.zig declares but never calls aegis_pep_evaluate."
+    },
+    {
+      "id": "GAP-011",
+      "severity": "P0",
+      "title": "Zig reaches the WFP IOCTL directly, bypassing the Rust PEP",
+      "description": "runtime_manifest authority_invariants declare rust_pep.zig the single PEP authority with no bypass, yet src/policy/wfp_production.zig and src/core/rust_pep.zig reach the WFP device directly, and the Zig test log prints 'PEP validated quarantine; enforcement routed through shield/', which points enforcement at the quarantined shield modules (GAP-007). More than one code path can therefore request enforcement.",
+      "status": "OPEN",
+      "required_evidence": [
+        "a single call path to the WFP IOCTL, routed through the PEP",
+        "the 'enforcement routed through shield' log line removed or re-pointed at rust-src",
+        "a negative control that fails when a second path appears"
+      ],
+      "resolution": null,
+      "evidence": "AI_CONTEXT P0-1; the T11 negative control now scans src/ (EVT-033)."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 3,
-    "E2_count": 25,
+    "E1_count": 6,
+    "E2_count": 24,
     "E3_count": 0,
     "E4_count": 0,
-    "E5_count": 1,
+    "E5_count": 2,
     "E6_count": 0,
     "E7_count": 0
   }

@@ -1,6 +1,6 @@
 {
-  "head_sha": "2c7cb3047e2219ec60e86776079e50b352680c35",
-  "created_at": "2026-09-10",
+  "head_sha": "fdb4c2beb4451754fca3ea28059dbdbb01c37764",
+  "created_at": "2026-09-11",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
   "planes": [
@@ -17,8 +17,9 @@
           "role": "Packet acquisition authority",
           "scope": ["packet capture", "flow collection", "IPC reader", "canonical event production"],
           "does_not_own": ["policy decisions", "enforcement", "detection logic"],
-          "files": ["nose/*.go", "go/aggregator/*.go"],
-          "boundary": "C ABI → Zig"
+          "files": ["nose/*.go"],
+          "boundary": "C ABI → Zig",
+          "note": "`go/aggregator/` is NOT part of the acquisition authority. It is an optional operator alert sidecar (SUPPORT) that reads NDJSON logs and serves REST :9200. It produces no Canonical Event."
         },
         {
           "id": "CPP_NATIVE",
@@ -102,10 +103,25 @@
             "WFP enforcement", "authorization decisions", "trust store management"
           ],
           "does_not_own": ["detection logic", "event fabric", "flow management", "forensic recording"],
-          "files": ["rust-src/lib.rs", "shield/src/*.rs"],
+          "files": ["rust-src/lib.rs"],
           "boundary": "PEP ABI → Zig",
           "is_final_enforcement": true,
-          "note": "There is exactly ONE security truth: the Rust PEP. No other component may claim final enforcement authority."
+          "note": "There is exactly ONE security truth: the Rust PEP (rust-src/). No other component may claim final enforcement authority. `shield/src/pep.rs` and `shield/src/windows_enforce.rs` contain a duplicate PEP + WFP enforcement implementation and are NOT an authority (OPEN P0-7)."
+        },
+        {
+          "id": "SHIELD_TIER3",
+          "language": "Rust",
+          "role": "SUPPORT: Tier-3 payload screening",
+          "scope": ["payload safety screening symbol (validate_payload_safety)"],
+          "does_not_own": [
+            "enforcement decisions", "authorization", "WFP actions",
+            "crypto trust", "policy evaluation"
+          ],
+          "files": ["shield/src/lib.rs"],
+          "excluded_files": ["shield/src/pep.rs", "shield/src/windows_enforce.rs"],
+          "boundary": "in-process DynLib call from src/core/bridge_init.zig",
+          "is_final_enforcement": false,
+          "note": "Loaded in-process to screen payloads. It must remain a screening helper only; a second enforcement authority is STOP-THE-LINE."
         }
       ]
     },
@@ -131,8 +147,9 @@
           "role": "CLI tooling",
           "scope": ["aegisctl", "diagnostics", "management"],
           "does_not_own": ["enforcement", "runtime orchestration"],
-          "files": ["scripts/*.py"],
-          "boundary": "Control Protocol → Zig"
+          "files": ["tools/aegisctl.py"],
+          "boundary": "Control Protocol → Zig",
+          "note": "`tools/aegisctl.py` is the single canonical operator client. `scripts/aegisctl.py` does not exist."
         }
       ]
     }
@@ -196,14 +213,43 @@
       "note": "TypeScript is the policy authoring authority - DSL, compiler, simulation."
     }
   ],
+  "quarantined_duplicates": [
+    {
+      "id": "SHIELD_PEP",
+      "authority": "rust-src/lib.rs (aegis_pep.dll)",
+      "files": [
+        "shield/src/pep.rs",
+        "shield/src/windows_enforce.rs",
+        "shield/src/lib.rs (aegis_pep_evaluate / aegis_pep_status_count / aegis_pep_version)"
+      ],
+      "status": "QUARANTINED",
+      "severity": "P0",
+      "reason": "Second Policy Enforcement Point plus a second WFP enforcement path inside a crate that the runtime loads for payload screening only.",
+      "still_bound": [
+        "src/forensic/policy_contract.zig declares (never calls) extern \"sec_monitor\" fn aegis_pep_evaluate",
+        "tests/pep/test_t8_rust_pep.py asserts shield/src/pep.rs as the PEP schema source"
+      ],
+      "exit_criteria": [
+        "shield exports no PEP symbol",
+        "the dormant Zig extern is removed",
+        "T8 PEP expectations point at rust-src/lib.rs",
+        "a negative control fails if a PEP surface reappears in shield"
+      ],
+      "tracking": "GAP-007; migration slice PEP-001"
+    }
+  ],
   "invariants": [
     "Exactly one production enforcement authority (Rust PEP)",
+    "shield/ exports a payload-screening symbol only; its PEP and WFP enforcement modules are QUARANTINED and may not be called",
     "Every privileged action passes through Rust PEP",
     "No UI may become an authoritative state owner",
     "No second runtime may exist",
     "No second Canonical Event may exist",
     "No second Policy Authority may exist",
     "No second Enforcement Authority may exist",
+    "`shield/` is a payload-screening SUPPORT crate only; its enforcement modules are excluded from the authority surface",
+    "`go/aggregator/` is an optional operator sidecar and produces no Canonical Event",
+    "One canonical operator client: tools/aegisctl.py",
     "Zig is the runtime hub - all languages connect through C ABI or FFI",
     "Cython is a performance bridge, NOT the system integration bus"
   ],

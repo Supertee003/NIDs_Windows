@@ -1,6 +1,6 @@
 {
-  "head_sha": "2c7cb3047e2219ec60e86776079e50b352680c35",
-  "created_at": "2026-09-10",
+  "head_sha": "fdb4c2beb4451754fca3ea28059dbdbb01c37764",
+  "created_at": "2026-09-11",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
   "runtime_name": "AEGIS NIDS Windows",
@@ -192,17 +192,22 @@
       "role": "Multi-node event aggregation",
       "entrypoint": "go/aggregator/main.go",
       "build_command": "cd go/aggregator && go build -o aegis-aggregator.exe .",
-      "boundary": "C ABI → Zig"
+      "boundary": "C ABI → Zig",
+      "classification": "SUPPORT",
+      "note": "Optional operator alert sidecar (REST :9200). Not on the golden path; produces no Canonical Event."
     },
     {
       "id": "shield",
       "language": "Rust",
       "tier": 3,
       "plane": "PLANE-D",
-      "role": "Enforcement library (minimal/placeholder)",
+      "role": "Tier-3 payload screening crate (sec_monitor.dll) loaded in-process by the Zig core",
       "entrypoint": "shield/src/lib.rs",
       "build_command": "cd shield && cargo build --release",
-      "boundary": "PEP ABI → Zig"
+      "boundary": "in-process DynLib",
+      "classification": "SUPPORT",
+      "is_final_enforcement": false,
+      "note": "Screening helper only. `shield/src/pep.rs` and `shield/src/windows_enforce.rs` duplicate PEP/WFP enforcement and must not be reachable from the runtime (OPEN P0-7)."
     },
     {
       "id": "dashboard",
@@ -217,14 +222,24 @@
   ],
   "legacy_markers": [
     {"file": "lib.rs (root)", "reason": "Superseded by rust-src/lib.rs"},
-    {"file": "core/*.zig", "reason": "Legacy proof modules, NOT compiled by build.zig"},
-    {"file": "core/nids_main.zig", "reason": "Superseded by src/main.zig - LEGACY entry point"}
+    {"file": "core/ (directory)", "reason": "DOES NOT EXIST — the historical core/ tree was migrated to src/. References to `core/*.zig` are manifest module ALIASES that resolve through `real_path` to src/**; they are not filesystem paths."},
+    {"file": "core/nids_main.zig", "reason": "Superseded by src/main.zig + src/daemon.zig - LEGACY entry point"}
   ],
+  "component_classification": {
+    "CANONICAL": [
+      "src/main.zig", "rust-src/lib.rs", "nose/main.go",
+      "src/windows/*.c", "bridge/", "brain/", "ts_policy/"
+    ],
+    "SUPPORT": ["shield/ (Tier-3 payload screening DLL)", "go/aggregator/ (optional alert sidecar)"],
+    "OPTIONAL": ["mouth/", "aegis_dashboard/"],
+    "ALIAS": ["core/*.zig → src/** (manifest module IDs, not paths)"],
+    "LEGACY": ["core/nids_main.zig", "lib.rs (root)"]
+  },
   "invariants": [
     "ONE production runtime (Zig core + Rust PEP + Go Nose + C++ native helpers)",
     "NO build artifacts tracked in git",
     "NO runtime state tracked in git",
-    "src/ = canonical source; core/ = legacy/experimental proof modules",
+    "src/ = canonical source; core/ = DOES NOT EXIST (module-ID aliases resolve to src/**)",
     "Zig is the runtime hub - all languages connect through C ABI or FFI",
     "Cython is a performance bridge, NOT the system integration bus"
   ]

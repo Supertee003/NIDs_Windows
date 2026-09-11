@@ -1,20 +1,20 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-09-11T01:33:15.939612+00:00",
+  "generated_at": "2026-09-11T14:07:05.565629+00:00",
   "generator": "generate_truth_artifacts.py",
   "total_files": 620,
   "by_role": {
-    "documentation": 108,
-    "build-config": 44,
-    "lockfile": 7,
+    "documentation": 110,
+    "build-config": 50,
+    "lockfile": 6,
     "rust-build": 4,
-    "source": 92,
-    "other": 13,
+    "source": 96,
     "test-artifact": 70,
-    "config-data": 23,
+    "config-data": 24,
     "architecture-decision": 6,
     "step-document": 2,
     "go-source": 4,
+    "makefile": 1,
     "production-source": 247
   },
   "source_of_truth": [
@@ -329,8 +329,8 @@
       "role": "source"
     },
     "brain/aegis_brain_cython/fast_scan.pyx": {
-      "class": "unclassified",
-      "role": "other"
+      "class": "canonical-source",
+      "role": "source"
     },
     "brain/aegis_brain_cython/README.md": {
       "class": "canonical-docs",
@@ -353,16 +353,16 @@
       "role": "source"
     },
     "brain/cython/aegis_hotspot.pxd": {
-      "class": "unclassified",
-      "role": "other"
+      "class": "canonical-source",
+      "role": "source"
     },
     "brain/cython/aegis_hotspot.pyx": {
-      "class": "unclassified",
-      "role": "other"
+      "class": "canonical-source",
+      "role": "source"
     },
     "brain/cython/cython_regex_scan.pyx": {
-      "class": "unclassified",
-      "role": "other"
+      "class": "canonical-source",
+      "role": "source"
     },
     "brain/cython/setup.py": {
       "class": "canonical-source",
@@ -451,6 +451,10 @@
     "CMakeLists.txt": {
       "class": "canonical-docs",
       "role": "documentation"
+    },
+    "config/Rules.json": {
+      "class": "canonical-config",
+      "role": "config-data"
     },
     "configs/aegis.conf": {
       "class": "canonical-build",
@@ -551,10 +555,6 @@
     "CONTRACT_MAP.json": {
       "class": "canonical-build",
       "role": "build-config"
-    },
-    "debug.log": {
-      "class": "unclassified",
-      "role": "other"
     },
     "docs/adr/0001-architecture-lock.md": {
       "class": "canonical-docs",
@@ -697,8 +697,8 @@
       "role": "documentation"
     },
     "docs/architecture/FILE_REGISTRY.csv": {
-      "class": "unclassified",
-      "role": "other"
+      "class": "canonical-docs",
+      "role": "documentation"
     },
     "docs/architecture/GO_ARCHITECTURE_DECISION.md": {
       "class": "canonical-docs",
@@ -717,6 +717,10 @@
       "role": "documentation"
     },
     "docs/architecture/legacy-map.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/architecture/MULTI_PROCESS_ARCHITECTURE.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -965,8 +969,8 @@
       "role": "source"
     },
     "drivers/minifilter/aegis_minifilter.inf": {
-      "class": "unclassified",
-      "role": "other"
+      "class": "canonical-build",
+      "role": "build-config"
     },
     "drivers/minifilter/aegis_minifilter_comm.c": {
       "class": "canonical-source",
@@ -981,8 +985,8 @@
       "role": "source"
     },
     "drivers/wfp_callout/aegis_minifilter.inf": {
-      "class": "unclassified",
-      "role": "other"
+      "class": "canonical-build",
+      "role": "build-config"
     },
     "drivers/wfp_callout/aegis_wfp.c": {
       "class": "canonical-source",
@@ -993,8 +997,8 @@
       "role": "source"
     },
     "drivers/wfp_callout/aegis_wfp.inf": {
-      "class": "unclassified",
-      "role": "other"
+      "class": "canonical-build",
+      "role": "build-config"
     },
     "drivers/wfp_callout/aegis_wfp_callout.c": {
       "class": "canonical-source",
@@ -1049,24 +1053,24 @@
       "role": "documentation"
     },
     "installer/aegis.nsi": {
-      "class": "unclassified",
-      "role": "other"
+      "class": "canonical-build",
+      "role": "build-config"
     },
     "installer.nsi": {
-      "class": "unclassified",
-      "role": "other"
+      "class": "canonical-build",
+      "role": "build-config"
     },
     "inventory.json": {
       "class": "canonical-build",
       "role": "build-config"
     },
     "Makefile": {
-      "class": "unclassified",
-      "role": "other"
+      "class": "canonical-build",
+      "role": "makefile"
     },
     "mouth/.gitignore": {
-      "class": "unclassified",
-      "role": "other"
+      "class": "canonical-build",
+      "role": "build-config"
     },
     "mouth/build_mouth.bat": {
       "class": "canonical-build",
@@ -1379,10 +1383,6 @@
     "shared/wire/wire_codec.py": {
       "class": "canonical-source",
       "role": "source"
-    },
-    "shield/Cargo.lock": {
-      "class": "canonical-build",
-      "role": "lockfile"
     },
     "shield/Cargo.toml": {
       "class": "canonical-build",

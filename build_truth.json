@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-09-10T00:00:00.000000+00:00",
-  "head_sha": "2c7cb3047e2219ec60e86776079e50b352680c35",
+  "generated_at": "2026-09-11T00:00:00.000000+00:00",
+  "head_sha": "fdb4c2beb4451754fca3ea28059dbdbb01c37764",
   "build_commands": {
     "zig": {
       "command": "zig build",
@@ -49,6 +49,24 @@
       "produces": [],
       "source_root": "ts_policy/src/index.ts",
       "note": "Advisory only - no build output. Typecheck + test only."
+    },
+    "rust_shield_support": {
+      "command": "cd shield && cargo build --release",
+      "produces": [
+        "shield/target/release/sec_monitor.dll"
+      ],
+      "source_root": "shield/src/lib.rs",
+      "classification": "SUPPORT",
+      "note": "Tier-3 payload screening DLL loaded in-process by the Zig core. Not an enforcement authority."
+    },
+    "go_aggregator_support": {
+      "command": "cd go/aggregator && go build -o aegis-aggregator.exe .",
+      "produces": [
+        "go/aggregator/aegis-aggregator.exe"
+      ],
+      "source_root": "go/aggregator/main.go",
+      "classification": "SUPPORT",
+      "note": "Optional operator alert sidecar. Not on the golden path."
     }
   },
   "ci_assertions": [
@@ -83,11 +101,11 @@
       "expected_empty": false
     }
   ],
-  "build_truth_status": "RT-01_CORRECTED",
+  "build_truth_status": "TRUTH-001_SYNCED",
   "notes": [
-    "RT-01: Corrected to match actual build.zig/Cargo.toml/CMakeLists.txt/bridge/CMakeLists.txt/nose/go.mod",
-    "Source of truth: build.zig (src/main.zig), Cargo.toml (rust-src/lib.rs), CMakeLists.txt (src/windows/*.c), bridge/CMakeLists.txt (bridge/*.cpp), nose/go.mod",
-    "All HEAD SHAs updated to 5f23e4f",
-    "Added bridge component (C++ IPC/adapter/DEFCON)"
+    "Source of truth: build.zig (src/main.zig), Cargo.toml (rust-src/lib.rs), shield/Cargo.toml (shield/src/lib.rs), CMakeLists.txt (src/windows/*.c), bridge/CMakeLists.txt (bridge/*.cpp), nose/go.mod, go/aggregator/go.mod, ts_policy/package.json",
+    "HEAD SHA synchronized to fdb4c2beb4451754fca3ea28059dbdbb01c37764 (TRUTH-001)",
+    "Earlier revisions of this file referenced 5f23e4f and 2c7cb30; those are HISTORICAL",
+    "SUPPORT builds (shield, aggregator) are built by CI but are NOT on the golden path"
   ]
 }

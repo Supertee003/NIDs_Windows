@@ -1,3 +1,22 @@
+//! ============================================================================
+//! QUARANTINED (TRUTH-002 / GAP-007) - DO NOT EXTEND, DO NOT CALL
+//! ============================================================================
+//!
+//! This module is a DUPLICATE Windows enforcement path (WFP IOCTL + netsh
+//! fallback) living inside a crate that is only a Tier-3 payload screening
+//! SUPPORT library. The single final enforcement authority is
+//! `rust-src/lib.rs`, and the only permitted route to the WFP device is
+//! through it (see AUTHORITY_MAP.json and runtime_manifest.json).
+//!
+//! Retained only until the PEP-001 migration slice removes it together with
+//! `shield/src/pep.rs`, `shield/src/lib.rs::aegis_pep_evaluate`, the dormant
+//! `extern "sec_monitor" fn aegis_pep_evaluate` in
+//! `src/forensic/policy_contract.zig`, and the shield-based expectations in
+//! `tests/pep/test_t8_rust_pep.py`.
+//!
+//! No block, rate-limit or quarantine action may be issued from this module.
+//! ============================================================================
+//!
 //! windows_enforce.rs - AEGIS Windows Enforcement Adapter (P4 / Phase K)
 //!
 //! Userspace half of the Windows enforcement path inside the Rust PEP

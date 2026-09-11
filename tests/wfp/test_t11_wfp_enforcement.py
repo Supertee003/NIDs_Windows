@@ -70,7 +70,7 @@ def test_rust_pep_path_exists() -> None:
 
 def test_no_duplicate_wfp_enforcement_path() -> None:
     """AC1 (negative): No second/incompatible WFP enforcement path
-    exists. Scan core/ for modules that import Windows WFP APIs
+    exists. Scan src/ for modules that import Windows WFP APIs
     at the L2/L3 layer (other than wfp_production.zig and the
     well-known exceptions: the C++ bridge, the Zig WFP mirror, the
     cluster federation over loopback)."""
@@ -79,7 +79,9 @@ def test_no_duplicate_wfp_enforcement_path() -> None:
     # that's not a WFP enforcement path. Allow `bridge/`.
     # The WFP mirror is a contract test mirror, not an enforcement path.
     ALLOWED_DIRS = ("src/policy/wfp_production.zig", "src/policy/wfp_")
-    for path in (REPO_ROOT / "core").rglob("*.zig"):
+    # TEST-001: the old `core/` tree was migrated to src/. Scanning a
+    # non-existent directory made this negative control pass vacuously.
+    for path in (REPO_ROOT / "src").rglob("*.zig"):
         rel = path.relative_to(REPO_ROOT).as_posix()
         if any(rel.startswith(a) for a in ALLOWED_DIRS):
             continue

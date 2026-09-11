@@ -29,6 +29,10 @@ pub var g_pep_available: bool = false; // PEP availability for health check
 pub var g_incidents_total: u64 = 0; // real incident count from ThreatTracker
 pub var g_incidents_open: u64 = 0; // currently open incidents
 pub var g_queue_drops: u64 = 0; // events dropped due to queue full
+/// CTRL-002: monotonic epoch-ms of the last processed event. 0 means no event
+/// has been processed yet. Exposed through the control plane so
+/// `last_event_ms` in RUNTIME_CONTRACT.md §4.1 is real data, never a placeholder.
+pub var g_last_event_ms: i64 = 0;
 
 // PATCH-14: Rules reload mechanism.
 // The pipeline thread reads the active AC automaton pointer; the control

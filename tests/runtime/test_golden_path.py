@@ -203,7 +203,7 @@ class TestGoldenPathScriptsExist(unittest.TestCase):
 
     def test_aegisctl_exists(self):
         if not _have_aegisctl():
-            self.skipTest("scripts/aegisctl.py not found")
+            self.skipTest("tools/aegisctl.py not found")
         self.assertTrue(AEGISCTL.is_file())
 
     def test_event_gen_exists(self):

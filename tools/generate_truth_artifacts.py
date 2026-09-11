@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate inventory.json and reference_map.json — AEGIS truth artifacts."""
 from __future__ import annotations
-import json, os, sys
+import json, os, subprocess, sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -13,13 +13,21 @@ SOURCE_EXTS = {
     ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".vue", ".svelte", ".rb", ".php", ".pl",
     ".lua", ".r", ".jl", ".ex", ".erl", ".clj", ".hs", ".ml", ".fs", ".cs", ".scala", ".dart",
     ".nim", ".v", ".sv", ".m", ".mm", ".swift", ".kt", ".java", ".ps1", ".sh", ".bash",
+    # TRUTH-004: Cython sources. `brain/**/*.pyx|.pxd|.pxi` is a first-class
+    # language plane (measured hot loops), not an unclassified curiosity.
+    ".pyx", ".pxd", ".pxi",
 }
 BUILD_EXTS = {
     ".toml", ".yaml", ".yml", ".ini", ".cfg", ".conf", ".properties",
     ".cmake", ".bat", ".cmd",
+    # TRUTH-004: installer + Windows driver metadata are build inputs.
+    ".nsi", ".inf", ".rc", ".def",
 }
-DOC_EXTS = {".md", ".markdown", ".rst", ".adoc", ".txt"}
-CONFIG_EXTS = {".json", ".xml"}
+DOC_EXTS = {".md", ".markdown", ".rst", ".adoc", ".txt", ".csv"}
+CONFIG_EXTS = {".json", ".xml", ".jsonc"}
+# Generated C sources emitted by Cython next to a .pyx are build outputs, not
+# authored sources; they are selected out by the generated-source rule below.
+GENERATED_SOURCE_DIRS = {"brain/cython"}
 SKIP_DIRS = {
     ".git", ".zig-cache", "zig-out", "target", "__pycache__", "build", "dist",
     "node_modules", ".pytest_cache", ".venv", "venv", ".mypy_cache", ".ruff_cache",
@@ -43,6 +51,8 @@ def classify(path: str) -> str:
 
     if name in LOCKFILE_NAMES:
         return "canonical-build"
+    if name in {"Makefile", "makefile", "GNUmakefile"}:
+        return "canonical-build"
     if ext in SOURCE_EXTS:
         if "test" in name.lower() or name.startswith("test_") or name.endswith("_test.py"):
             return "canonical-test"
@@ -57,7 +67,7 @@ def classify(path: str) -> str:
         return "canonical-build"
     if ext in {".woff", ".woff2", ".ttf", ".otf", ".eot"}:
         return "vendor"
-    if name == "CMakeLists.txt":
+    if name in {"CMakeLists.txt", ".gitignore", ".gitattributes", ".gitmodules"}:
         return "canonical-build"
     if name in {"go.mod"}:
         return "canonical-build"
@@ -70,6 +80,23 @@ def classify(path: str) -> str:
     if name.endswith(".ps1"):
         return "canonical-build"
     return "unclassified"
+
+
+def tracked_files() -> List[Path]:
+    """Repository truth = files git would track (tracked + untracked, not
+    ignored). Walking the raw filesystem instead dragged build outputs such as
+    `brain/cython/*.c`, `*.pyd` and `debug.log` into the inventory and made the
+    committed artifact non-reproducible."""
+    try:
+        out = subprocess.run(
+            ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+            cwd=REPO_ROOT, capture_output=True, text=True, check=False,
+        )
+    except OSError:
+        out = None
+    if out is None or out.returncode != 0:
+        return [p for p in sorted(REPO_ROOT.rglob("*")) if p.is_file()]
+    return [REPO_ROOT / n for n in out.stdout.split("\x00") if n]
 
 
 def assign_role(path: str, cls: str) -> str:
@@ -133,15 +160,26 @@ def should_skip(path: Path) -> bool:
         return True
     if path.name in SKIP_ROOT_FILES and len(parts) == 1:
         return True
-    if path.suffix in {".exe", ".dll", ".pdb", ".obj", ".o", ".so", ".ilk", ".exp", ".lib", ".sys"}:
+    if path.suffix in {".exe", ".dll", ".pyd", ".pdb", ".obj", ".o", ".so",
+                       ".ilk", ".exp", ".lib", ".sys", ".log"}:
         return True
+    # Cython emits generated C next to its .pyx sources.
+    rel = path.relative_to(REPO_ROOT).as_posix()
+    if path.suffix.lower() == ".c":
+        parent = rel.rsplit("/", 1)[0] if "/" in rel else ""
+        if parent in GENERATED_SOURCE_DIRS and not Path(rel).name.endswith("_manual.c"):
+            return True
     return False
 
 
 def scan_files() -> List[Dict]:
     entries = []
-    for f in sorted(REPO_ROOT.rglob("*")):
+    for f in sorted(tracked_files()):
         if not f.is_file():
+            continue
+        try:
+            f.relative_to(REPO_ROOT)
+        except ValueError:
             continue
         if should_skip(f):
             continue

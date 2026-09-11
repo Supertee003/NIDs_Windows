@@ -1,3 +1,23 @@
+//! ============================================================================
+//! QUARANTINED (TRUTH-002 / GAP-007) - DO NOT EXTEND, DO NOT CALL
+//! ============================================================================
+//!
+//! This module is a DUPLICATE Policy Enforcement Point. The single final
+//! enforcement authority is `rust-src/lib.rs` (aegis_pep.dll), per
+//! AUTHORITY_MAP.json, AGENTS.md and runtime_manifest.json.
+//!
+//! It is retained only until the PEP-001 migration slice completes, because
+//! the following still bind to it and must be migrated together:
+//!   - `shield/src/lib.rs` re-exports it as the `aegis_pep_evaluate` C ABI
+//!   - `src/forensic/policy_contract.zig:110` declares (but never calls)
+//!     `extern "sec_monitor" fn aegis_pep_evaluate`
+//!   - `tests/pep/test_t8_rust_pep.py` asserts this file as the PEP schema
+//!     source (PepTrace fields, 5 statuses, forbids unsafe_code)
+//!
+//! No decision produced here may reach Windows enforcement. Any new caller is
+//! a STOP-THE-LINE event.
+//! ============================================================================
+//!
 //! AEGIS Shield - Tier-3 Policy Enforcement Point (PEP) (T8, Step 26)
 //!
 //! Per ADR-0001: Rust PEP is the SINGLE final enforcement security

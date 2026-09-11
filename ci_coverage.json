@@ -1,5 +1,6 @@
 {
-    "gate_semantics": "required missing = FAIL; optional = PASS, documented",
+    "gate_semantics": "required missing = FAIL; required non-success (failure/skipped/cancelled) = FAIL; optional = reported, non-fatal",
+    "gate_job": "ci-matrix",
     "workflows": [
         ".github/workflows/ci.yml"
     ],
@@ -8,67 +9,86 @@
             "id": "zig-core",
             "language": "zig",
             "job": "zig-build-test",
-            "required": true
+            "required": true,
+            "classification": "CANONICAL"
         },
         {
             "id": "rust-pep",
             "language": "rust",
             "job": "rust-pep-build",
-            "required": true
-        },
-        {
-            "id": "c-native",
-            "language": "c/c++",
-            "job": "c-native-build",
-            "required": true
-        },
-        {
-            "id": "python-tests",
-            "language": "python",
-            "job": "python-tests",
-            "required": true
-        },
-        {
-            "id": "go-nose",
-            "language": "go",
-            "job": "go-build-test",
-            "required": true
-        },
-        {
-            "id": "ts-policy",
-            "language": "typescript",
-            "job": "ts-policy-build",
-            "required": true
-        },
-        {
-            "id": "cython-scan",
-            "language": "cython",
-            "job": "cython-build-test",
-            "required": false
-        },
-        {
-            "id": "security-scan",
-            "language": "yaml",
-            "job": "security-scan",
-            "required": true
-        },
-        {
-            "id": "ci-matrix",
-            "language": "python",
-            "job": "ci-matrix",
-            "required": true
-        },
-        {
-            "id": "cpp-bridge",
-            "language": "c/c++",
-            "job": "c-native-build",
-            "required": true
+            "required": true,
+            "classification": "CANONICAL"
         },
         {
             "id": "rust-shield",
             "language": "rust",
             "job": "shield-build",
-            "required": true
+            "required": true,
+            "classification": "SUPPORT"
+        },
+        {
+            "id": "c-native",
+            "language": "c/c++",
+            "job": "c-native-build",
+            "required": true,
+            "classification": "CANONICAL"
+        },
+        {
+            "id": "cpp-bridge",
+            "language": "c/c++",
+            "job": "c-native-build",
+            "required": true,
+            "classification": "CANONICAL"
+        },
+        {
+            "id": "python-tests",
+            "language": "python",
+            "job": "python-tests",
+            "required": true,
+            "classification": "CANONICAL"
+        },
+        {
+            "id": "go-nose",
+            "language": "go",
+            "job": "go-nose-build-test",
+            "required": true,
+            "classification": "CANONICAL"
+        },
+        {
+            "id": "go-aggregator",
+            "language": "go",
+            "job": "go-aggregator-build-test",
+            "required": true,
+            "classification": "SUPPORT"
+        },
+        {
+            "id": "ts-policy",
+            "language": "typescript",
+            "job": "ts-policy-build",
+            "required": true,
+            "classification": "CANONICAL"
+        },
+        {
+            "id": "cython-scan",
+            "language": "cython",
+            "job": "cython-build-test",
+            "required": false,
+            "classification": "CANONICAL",
+            "note": "Cython extensions are built inside python-tests; no dedicated job yet (documented gap)."
+        },
+        {
+            "id": "security-scan",
+            "language": "yaml",
+            "job": "security-scan",
+            "required": true,
+            "classification": "CANONICAL"
+        },
+        {
+            "id": "ci-matrix",
+            "language": "python",
+            "job": "ci-matrix",
+            "required": true,
+            "classification": "CANONICAL"
         }
     ]
 }

@@ -38,6 +38,9 @@ extern "kernel32" fn ConnectNamedPipe(
 
 extern "kernel32" fn DisconnectNamedPipe(hNamedPipe: std.os.windows.HANDLE) std.os.windows.BOOL;
 
+// CTRL-002: process identity for the RUNTIME_CONTRACT.md §4.1 health payload.
+extern "kernel32" fn GetCurrentProcessId() std.os.windows.DWORD;
+
 extern "kernel32" fn CreateFileW(
     lpFileName: [*:0]const u16,
     dwDesiredAccess: std.os.windows.DWORD,
@@ -143,18 +146,22 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
     diag.info("CONTROL_AUDIT cmd={s} payload_len={d}", .{ cmd, payload.len });
 
     if (std.mem.eql(u8, cmd, "status")) {
-        // Status response bound to real runtime metrics
+        // Status response bound to real runtime metrics.
+        // CTRL-001: `state` uses the closed set from RUNTIME_CONTRACT.md §2.
+        // `degraded` and `wfp_available` report real subsystem state, not
+        // build-time capability flags.
         const body = std.fmt.allocPrint(a,
-            \\{{"version":"5.0.0","state":"running","uptime_sec":{},"packets_captured":{},"flows_active":{},"incidents_open":{},"watchdog_alerts":{},"degraded":false,"etw_enabled":{},"fim_enabled":{},"wfp_available":{},"nids_version":"5.0.0","rules_loaded":{},"pipeline_processed":{},"pipeline_detections":{},\"audit_id\":{}}}
+            \\{{"version":"5.0.0","state":"RUNNING","uptime_sec":{},"packets_captured":{},"flows_active":{},"incidents_open":{},"watchdog_alerts":{},"degraded":{},"etw_enabled":{},"fim_enabled":{},"wfp_available":{},"nids_version":"5.0.0","rules_loaded":{},"pipeline_processed":{},"pipeline_detections":{},\"audit_id\":{}}}
         , .{
             uptime_sec,
             @as(u32, @intCast(diag.metrics.packets_captured.get())),
             @as(u32, @intCast(diag.metrics.flows_active.get())),
             state.g_incidents_open,
             @as(u32, @intCast(diag.metrics.errors.get())),
+            !bridge_init.allActive(),
             caps.has_etw_realtime,
             caps.has_fim,
-            caps.has_wfp_block,
+            bridge_init.status().wfp_ioctl,
             state.g_rules_loaded,
             state.g_pipeline_events_processed,
             state.g_pipeline_detections,
@@ -220,15 +227,37 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
     }
 
     if (std.mem.eql(u8, cmd, "health.check")) {
+        // CTRL-002: RUNTIME_CONTRACT.md §4.1 payload. Contract fields (`state`,
+        // `pid`, `uptime_ms`, `last_event_ms`, `counters`, `deps`) carry real
+        // runtime data. `checks[].ok` reflects the live in-process subsystem
+        // flags for every bridge-managed subsystem; npcap/etw/fim are marked
+        // `capability-only` because their live state is not yet instrumented
+        // (tracked as P0-8).
         const elapsed_ms: u64 = @intCast(@divTrunc(std.time.nanoTimestamp() - start_ns, std.time.ns_per_ms));
+        const bs = bridge_init.status();
+        const pid: u32 = GetCurrentProcessId();
+        const now_ms: i64 = std.time.milliTimestamp();
+        const last_event_ms: i64 = if (state.g_last_event_ms == 0) 0 else now_ms - state.g_last_event_ms;
         const body = std.fmt.allocPrint(a,
-            \\{{"component":"core","state":"RUNNING","status":"OK","uptime_ms":{},"deps":[{{"name":"bridge","state":"RUNNING"}}],"checks":[{{"name":"core","ok":true,"detail":"initialized"}},{{"name":"npcap","ok":{},"detail":"{s}"}},{{"name":"etw","ok":{},"detail":"{s}"}},{{"name":"fim","ok":{},"detail":"{s}"}},{{"name":"wfp","ok":{},"detail":"{s}"}}]}}
+            \\{{"component":"core","state":"RUNNING","pid":{},"uptime_ms":{},"last_event_ms":{},"degraded":{},"deps":[{{"name":"bridge","state":"{s}","required":false}},{{"name":"pep","state":"{s}","required":true}}],"counters":{{"in_events":{},"out_events":{},"errors":{},"dropped":{}}},"checks":[{{"name":"core","ok":true,"detail":"initialized"}},{{"name":"wfp","ok":{},"detail":"{s}"}},{{"name":"shield","ok":{},"detail":"{s}"}},{{"name":"cpp_bridge","ok":{},"detail":"{s}"}},{{"name":"brain","ok":{},"detail":"{s}"}},{{"name":"npcap","ok":{},"detail":"capability-only"}},{{"name":"etw","ok":{},"detail":"capability-only"}},{{"name":"fim","ok":{},"detail":"capability-only"}}]}}
         , .{
+            pid,
             elapsed_ms,
-            caps.has_npcap,        if (caps.has_npcap) "available" else "not-available",
-            caps.has_etw_realtime, if (caps.has_etw_realtime) "available" else "not-available",
-            caps.has_fim,          if (caps.has_fim) "available" else "not-available",
-            caps.has_wfp_block,    if (caps.has_wfp_block) "available" else "not-available",
+            last_event_ms,
+            !bridge_init.allActive(),
+            if (bs.cpp_bridge) "RUNNING" else "STOPPED",
+            if (state.g_pep_available) "RUNNING" else "STOPPED",
+            state.g_pipeline_events_processed,
+            diag.metrics.events_emitted.get(),
+            diag.metrics.errors.get(),
+            state.g_queue_drops,
+            bs.wfp_ioctl,    if (bs.wfp_ioctl) "ioctl-connected" else "driver-unavailable",
+            bs.rust_shield,  if (bs.rust_shield) "loaded" else "missing-fail-closed",
+            bs.cpp_bridge,   if (bs.cpp_bridge) "dll-loaded" else "dll-missing",
+            bs.udp_brain,    if (bs.udp_brain) "udp-9999" else "unavailable",
+            caps.has_npcap,
+            caps.has_etw_realtime,
+            caps.has_fim,
         }) catch return false;
         sendResponse(a, pipe, true, body);
         return false;

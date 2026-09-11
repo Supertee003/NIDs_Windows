@@ -45,12 +45,26 @@ def git_source_commit() -> str:
     return "unknown"
 
 
+def normalized_bytes(path: Path) -> bytes:
+    """File bytes as they must be hashed: LF line endings, regardless of the
+    checkout. Without this the digests depend on the working-tree line endings,
+    which forced CI to rewrite build_manifest.json (`--manifest`) just to keep
+    `--verify` green instead of failing the drift gate honestly. `.gitattributes`
+    (`* text eol=lf`) is the single source of line-ending truth; hashing is now
+    consistent with it. Binary files (containing NUL) are hashed verbatim."""
+    data = path.read_bytes()
+    if b"\x00" in data:
+        return data
+    return data.replace(b"\r\n", b"\n")
+
+
 def file_sha256(path: Path) -> str:
-    h = hashlib.sha256()
-    with path.open("rb") as f:
-        for chunk in iter(lambda: f.read(65536), b""):
-            h.update(chunk)
-    return h.hexdigest()
+    return hashlib.sha256(normalized_bytes(path)).hexdigest()
+
+
+def file_size(path: Path) -> int:
+    """Normalized (LF) size, so `size` and `sha256` always agree."""
+    return len(normalized_bytes(path))
 
 
 def collect_artifacts() -> List[Dict[str, Any]]:
@@ -81,7 +95,7 @@ def collect_artifacts() -> List[Dict[str, Any]]:
                 continue
             artifacts.append({
                 "path": rel,
-                "size": p.stat().st_size,
+                "size": file_size(p),
                 "sha256": file_sha256(p),
                 "language": _detect_language(rel),
             })
@@ -90,7 +104,7 @@ def collect_artifacts() -> List[Dict[str, Any]]:
         if p.exists():
             artifacts.append({
                 "path": str(p.relative_to(ROOT)).replace("\\", "/"),
-                "size": p.stat().st_size,
+                "size": file_size(p),
                 "sha256": file_sha256(p),
                 "language": _detect_language(f),
             })
@@ -143,23 +157,38 @@ def generate_manifest(version: str) -> Dict[str, Any]:
             "go": "1.22+",
             "typescript": "5.x (node 20)",
         },
+        # TRUTH-002: provenance paths must resolve to real files. `core/` and
+        # `native/` do not exist; the canonical Zig root is src/main.zig, the
+        # Rust PEP is rust-src/lib.rs, the C native helpers are src/windows/*.c,
+        # and the canonical Go sensor is nose/ (aegis-nose.exe).
         "components": [
             {"id": "core", "name": "aegis_nids.exe", "language": "zig", "type": "executable",
-             "required": True, "ci_job": "zig-build-test", "commit": commit, "source": "core/"},
+             "required": True, "ci_job": "zig-build-test", "commit": commit, "source": "src/main.zig",
+             "classification": "CANONICAL"},
             {"id": "pep", "name": "aegis_pep.dll", "language": "rust", "type": "library",
-             "required": True, "ci_job": "rust-pep-build", "commit": commit, "source": "shield/"},
+             "required": True, "ci_job": "rust-pep-build", "commit": commit, "source": "rust-src/lib.rs",
+             "classification": "CANONICAL"},
             {"id": "wfp_user", "name": "aegis_wfp_user.dll", "language": "c", "type": "library",
-             "required": True, "ci_job": "c-native-build", "commit": commit, "source": "native/"},
+             "required": True, "ci_job": "c-native-build", "commit": commit, "source": "src/windows/aegis_wfp.c",
+             "classification": "CANONICAL"},
             {"id": "etw_helper", "name": "aegis_etw_helper.dll", "language": "c", "type": "library",
-             "required": True, "ci_job": "c-native-build", "commit": commit, "source": "native/"},
+             "required": True, "ci_job": "c-native-build", "commit": commit, "source": "src/windows/etw_native.c",
+             "classification": "CANONICAL"},
             {"id": "fim_helper", "name": "aegis_fim_helper.dll", "language": "c", "type": "library",
-             "required": True, "ci_job": "c-native-build", "commit": commit, "source": "native/"},
-            {"id": "nose", "name": "nose_dashboard.exe", "language": "go", "type": "executable",
-             "required": False, "ci_job": "go-build-test", "commit": commit, "source": "go/"},
+             "required": True, "ci_job": "c-native-build", "commit": commit, "source": "src/windows/fim_native.c",
+             "classification": "CANONICAL"},
+            {"id": "nose", "name": "aegis-nose.exe", "language": "go", "type": "executable",
+             "required": True, "ci_job": "go-nose-build-test", "commit": commit, "source": "nose/main.go",
+             "classification": "CANONICAL"},
             {"id": "aggregator", "name": "aegis-aggregator.exe", "language": "go", "type": "executable",
-             "required": False, "ci_job": "go-build-test", "commit": commit, "source": "go/aggregator/"},
-            {"id": "aegisctl", "name": "scripts/aegisctl.py", "language": "python", "type": "script",
-             "required": True, "ci_job": "python-tests", "commit": commit, "source": "scripts/aegisctl.py"},
+             "required": False, "ci_job": "go-aggregator-build-test", "commit": commit, "source": "go/aggregator/main.go",
+             "classification": "SUPPORT"},
+            {"id": "shield", "name": "sec_monitor.dll", "language": "rust", "type": "library",
+             "required": False, "ci_job": "shield-build", "commit": commit, "source": "shield/src/lib.rs",
+             "classification": "SUPPORT"},
+            {"id": "aegisctl", "name": "tools/aegisctl.py", "language": "python", "type": "script",
+             "required": True, "ci_job": "python-tests", "commit": commit, "source": "tools/aegisctl.py",
+             "classification": "CANONICAL"},
             {"id": "installer", "name": "tools/installer.py", "language": "python", "type": "script",
              "required": True, "ci_job": "package-release", "commit": commit, "source": "tools/installer.py"},
             {"id": "ts-policy", "name": "ts_policy", "language": "typescript", "type": "toolchain",
@@ -266,7 +295,7 @@ def verify_manifest() -> int:
             missing += 1
             continue
         checked += 1
-        if p.stat().st_size != art["size"] or file_sha256(p) != art["sha256"]:
+        if file_size(p) != art["size"] or file_sha256(p) != art["sha256"]:
             mismatches.append(art["path"])
     print(f"Artifacts checked: {checked} (present), missing (not built locally): {missing}")
     if mismatches:
@@ -279,17 +308,68 @@ def verify_manifest() -> int:
     return 0
 
 
+def refresh_digests(commit: str) -> int:
+    """Re-record digests for artifacts ALREADY listed in build_manifest.json.
+
+    `--manifest` re-derives the whole artifact set from `collect_artifacts()`,
+    whose directory rules drifted away from the committed manifest: it still
+    lists the non-existent `core/` and `config/` trees, omits `src/` and
+    `configs/`, and picks up gitignored Cython build output. Regenerating today
+    therefore DESTROYS provenance instead of restoring it.
+
+    This mode is the bounded alternative for a reviewed local change: it keeps
+    the recorded artifact set exactly as-is, refreshes only digests/sizes, drops
+    entries whose file is gone, and re-stamps source_commit. The artifact-set
+    reconciliation is tracked separately as a build-truth task.
+    """
+    if not MANIFEST_PATH.exists():
+        print("build_manifest.json not found - run --manifest first", file=sys.stderr)
+        return 2
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    kept: List[Dict[str, Any]] = []
+    updated: List[str] = []
+    dropped: List[str] = []
+    for art in manifest.get("artifacts", []):
+        p = ROOT / art["path"]
+        if not p.exists():
+            dropped.append(art["path"])
+            continue
+        digest = file_sha256(p)
+        size = file_size(p)
+        if digest != art["sha256"] or size != art["size"]:
+            updated.append(art["path"])
+            art["sha256"] = digest
+            art["size"] = size
+        kept.append(art)
+    manifest["artifacts"] = kept
+    manifest["source_commit"] = commit
+    MANIFEST_PATH.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+                             encoding="utf-8")
+    print(f"Refreshed {MANIFEST_PATH}")
+    print(f"   artifacts kept: {len(kept)}; digests updated: {len(updated)}; dropped: {len(dropped)}")
+    for path in updated:
+        print(f"   updated: {path}")
+    for path in dropped:
+        print(f"   dropped: {path}")
+    return verify_manifest()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="AEGIS release engineering")
     parser.add_argument("--manifest", action="store_true", help="Generate build_manifest.json")
     parser.add_argument("--sbom", action="store_true", help="Generate SBOM (SPDX 2.3)")
     parser.add_argument("--package", action="store_true", help="Package release artifacts")
     parser.add_argument("--verify", action="store_true", help="Verify artifact digests vs manifest")
+    parser.add_argument("--refresh-digests", action="store_true",
+                        help="Re-record digests for already-manifested artifacts (no artifact-set change)")
     parser.add_argument("--version", default=VERSION)
     args = parser.parse_args()
 
     if args.verify:
         return verify_manifest()
+
+    if args.refresh_digests:
+        return refresh_digests(git_source_commit())
 
     if args.manifest or args.sbom or args.package:
         manifest = generate_manifest(args.version)

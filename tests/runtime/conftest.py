@@ -23,6 +23,8 @@ from __future__ import annotations
 import json
 import os
 import socket
+import subprocess
+import threading
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -128,6 +130,67 @@ REQUIRED_COMPONENTS = tuple(c["name"] for c in COMPONENTS if c["required"])
 
 
 # --------------------------------------------------------------------------- #
+# Process spawning                                                            #
+# --------------------------------------------------------------------------- #
+
+# Captured output per spawned pid, plus the drain threads (kept referenced so
+# they are not collected while the component is alive).
+_SPAWNED_OUTPUT: dict[int, dict[str, list[str]]] = {}
+_DRAIN_THREADS: list[threading.Thread] = []
+_MAX_CAPTURED_LINES = 2000
+
+
+def component_output(proc: "subprocess.Popen") -> dict[str, list[str]]:
+    """Captured stdout/stderr lines for a process started by start_component().
+    Use this in an assertion message when a component fails to come up."""
+    return _SPAWNED_OUTPUT.get(proc.pid, {"stdout": [], "stderr": []})
+
+
+def _drain(stream: Any, sink: list[str]) -> None:
+    try:
+        for raw in iter(stream.readline, b""):
+            if len(sink) < _MAX_CAPTURED_LINES:
+                sink.append(raw.decode("utf-8", errors="replace").rstrip())
+    except Exception:
+        pass
+    finally:
+        try:
+            stream.close()
+        except Exception:
+            pass
+
+
+def start_component(cmd: list[str], cwd: Optional[Path] = None) -> "subprocess.Popen":
+    """Start a component process with its stdout/stderr actively drained.
+
+    A component started with `stdout=PIPE` and never read blocks as soon as the
+    OS pipe buffer fills. The runtime emits a large burst of startup logging
+    (duplicated through both std.log and std.debug.print), so the buffer could
+    fill before the process opened its health endpoint: the lifecycle tests then
+    reported a 5 s startup timeout even though the component was healthy. The
+    failure was an artifact of the harness, not of the component.
+
+    Output is retained per pid (see component_output) so a genuine startup
+    failure can be diagnosed instead of guessed at.
+    """
+    proc = subprocess.Popen(
+        cmd,
+        cwd=str(cwd) if cwd is not None else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    buffers: dict[str, list[str]] = {"stdout": [], "stderr": []}
+    _SPAWNED_OUTPUT[proc.pid] = buffers
+    for stream, key in ((proc.stdout, "stdout"), (proc.stderr, "stderr")):
+        if stream is None:
+            continue
+        thread = threading.Thread(target=_drain, args=(stream, buffers[key]), daemon=True)
+        thread.start()
+        _DRAIN_THREADS.append(thread)
+    return proc
+
+
+# --------------------------------------------------------------------------- #
 # Assertion helpers                                                           #
 # --------------------------------------------------------------------------- #
 
@@ -193,6 +256,30 @@ class RuntimeProbe:
         raise KeyError(f"unknown component {name!r}")
 
     def health(self) -> dict[str, Any]:
+        return self._unwrap(self._request())
+
+    @staticmethod
+    def _unwrap(body: dict[str, Any]) -> dict[str, Any]:
+        """Apply the CONTRACT-04 response envelope.
+
+        The control pipe answers with `{"ok": bool, "data": <payload>}`
+        (shared/protocol/control_protocol.md §Message Format), while the health
+        payload itself is the flat RUNTIME_CONTRACT.md §4.1 object. Callers of
+        `health()` therefore must get the payload, not the transport envelope;
+        returning the raw envelope made every `resp["state"]` lookup read as
+        `STOPPED` and silently broke the lifecycle harness.
+        """
+        if isinstance(body, dict) and "ok" in body:
+            if not body.get("ok"):
+                raise ConnectionError(
+                    f"control request rejected for component {body.get('component', '?')!r}"
+                )
+            payload = body.get("data")
+            if isinstance(payload, dict):
+                return payload
+        return body
+
+    def _request(self) -> dict[str, Any]:
         if self.transport == "pipe":
             return self._probe_pipe()
         if self.transport == "tcp":
@@ -295,7 +382,7 @@ class RuntimeProbe:
         # component (e.g. shield is reported by core). Look up the delegate
         # and re-probe.
         delegate_name = self.endpoint  # type: ignore[assignment]
-        return RuntimeProbe.for_component(delegate_name).health()
+        return RuntimeProbe.for_component(delegate_name)._request()
 
 
 # --------------------------------------------------------------------------- #
@@ -350,6 +437,8 @@ __all__ = [
     "COMPONENTS",
     "REQUIRED_COMPONENTS",
     "RuntimeProbe",
+    "start_component",
+    "component_output",
     "assert_state_in",
     "wait_for_state",
     "runtime_artifacts_dir",

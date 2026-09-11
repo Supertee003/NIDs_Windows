@@ -1,11 +1,15 @@
 # AI_CONTEXT.md — AEGIS NIDS Windows
 ## Machine-Generated Current-HEAD Context Layer
 
-**HEAD:** `2c7cb3047e2219ec60e86776079e50b352680c35`
+**HEAD:** `fdb4c2beb4451754fca3ea28059dbdbb01c37764`
 **BRANCH:** `main`
-**GENERATED:** 2026-09-10
-**GENERATOR:** OpenCode MiMo 2.5 Free
+**GENERATED:** 2026-09-11
+**GENERATOR:** Freebuff agent (TRUTH-001 current-HEAD repair)
 **ARCHITECTURE:** Hub-and-Spoke with Plane Separation
+
+> HISTORICAL NOTE: earlier revisions of this file referenced HEAD `2c7cb30…`
+> (2026-09-10). Those revisions are HISTORICAL evidence only; `2c7cb30` is no
+> longer current truth.
 
 ---
 
@@ -168,14 +172,44 @@ Previous phases:
 
 ## 11. ACTIVE BLOCKERS
 
-P0 Risks identified in audit (2026-09-11):
-- P0-1: Zig→WFP enforcement bypass (rust_pep.zig calls wfp_ioctl directly)
-- P0-2: Fail-open Tier-3 (sec_monitor.dll missing → Tier-3 screening bypassed)
-- P0-3: CI red by construction (go-build-test broken)
-- P0-4: Machine maps stale (HEAD mismatch across 9 truth documents) — FIXED in this commit
-- P0-5: CLI canonical path conflict — FIXED in this commit
-- P0-6: go/aggregator tracked (contradicts previous DO NOT CREATE decision) — RESOLVED: kept as active sidecar
-- P0-7: shield/ tracked (contradicts previous DO NOT CREATE decision) — RESOLVED: kept as active Tier-3
+P0 risks as of HEAD `fdb4c2b` (2026-09-11):
+
+- P0-1: Zig bypasses the Rust PEP for WFP enforcement
+  (`src/core/rust_pep.zig` / `src/policy/wfp_production.zig` reach the WFP
+  IOCTL directly). `rust-src/lib.rs` is declared the ONLY final enforcement
+  authority. OPEN.
+- P0-2: Tier-3 fail-closed state is not surfaced truthfully. When
+  `sec_monitor.dll` is absent the runtime logs "fail-closed" yet continues;
+  `health.check` never reports the Tier-3 state. OPEN.
+- P0-3: CI is red by construction. `python-tests` runs the full pytest suite
+  (currently 3 failures) and `go-build-test` mixes the canonical Go sensor
+  with the optional aggregator sidecar. OPEN (see CI-001..CI-004).
+- P0-4: Machine maps stale (HEAD mismatch) — **FIXED** (all maps and
+  `AGENTS.md` now carry `fdb4c2b`).
+- P0-5: CLI canonical path conflict (`scripts/aegisctl.py` vs
+  `tools/aegisctl.py`) — **FIXED**: `scripts/aegisctl.py` does not exist;
+  `tools/aegisctl.py` is the single canonical client.
+- P0-6: `go/aggregator/` ownership — **RESOLVED**: classified SUPPORT
+  (optional operator sidecar, REST :9200). It is NOT part of the acquisition
+  authority and NOT part of the runtime path.
+- P0-7: `shield/` ownership — **CLASSIFIED + QUARANTINED, REMOVAL OPEN**: the
+  crate is SUPPORT (Tier-3 payload screening DLL loaded in-process by
+  `src/core/bridge_init.zig`). `shield/src/pep.rs`,
+  `shield/src/windows_enforce.rs` and the `aegis_pep_evaluate` /
+  `aegis_pep_status_count` / `aegis_pep_version` exports in `shield/src/lib.rs`
+  are a duplicate PEP + WFP enforcement surface and are now marked QUARANTINED
+  in code and in `AUTHORITY_MAP.json` (`quarantined_duplicates[SHIELD_PEP]`).
+  They cannot be deleted in isolation because three things still bind to them:
+  the dormant `extern "sec_monitor" fn aegis_pep_evaluate` in
+  `src/forensic/policy_contract.zig` (declared, never called), the
+  `tests/pep/test_t8_rust_pep.py` expectations, and the shield C-ABI shim.
+  Removal is slice **PEP-001** (tracked as GAP-007).
+- P0-8: `health.check` payload does not conform to `RUNTIME_CONTRACT.md` §4.1
+  (missing `pid`, `last_event_ms`, `counters`) and reports capability flags
+  (`etw`/`fim`/`wfp` = "available") instead of live subsystem state. OPEN.
+- P0-9: Stale pytest dumps (`test_failures_full.txt`, `test_failed_lines.txt`,
+  `test_failures_output.txt`) were tracked at repo root and described failures
+  that no longer exist. **FIXED** (removed; test state is now reported by CI).
 
 ## 12. CURRENT BUILD COMMANDS
 
@@ -191,6 +225,28 @@ cd go/aggregator && go build -o aegis-aggregator.exe .  # Go Aggregator (REST AP
 cd ts_policy && npm run typecheck && npm run test:all   # TypeScript policy compiler
 ```
 
+## 12b. COMPONENT CLASSIFICATION (TRUTH-002)
+
+| Path | Class | Owner of | Not an owner of |
+|---|---|---|---|
+| `src/main.zig` | CANONICAL | Runtime spine (event fabric, flow, detection, correlation, dispatch, forensics, control pipe) | privileged enforcement, crypto |
+| `rust-src/lib.rs` | CANONICAL | Final enforcement authority: PEP, Ed25519, TLS, authorization | detection logic |
+| `nose/main.go` | CANONICAL | Packet acquisition, flow collection, IPC reader, canonical event production | policy, enforcement |
+| `src/windows/*.c`, `bridge/` | CANONICAL | Windows native adapters (ETW, FIM, Registry, WFP user-mode) | policy decision, enforcement |
+| `brain/` | CANONICAL | Tier-2 analytics, RAG, rules scanning | privileged OS calls, enforcement |
+| `ts_policy/` | CANONICAL | Policy authoring + compilation to Policy IR (advisory, no artifact) | enforcement, runtime |
+| `shield/` | SUPPORT | Tier-3 payload screening symbol (`validate_payload_safety`) exported to Zig | **any enforcement decision or WFP action** |
+| `go/aggregator/` | SUPPORT | Optional operator alert sidecar (NDJSON → REST :9200) | acquisition, policy, enforcement |
+| `mouth/` | OPTIONAL | Standalone DEFCON monitor GUI | runtime, enforcement |
+| `aegis_dashboard/` | OPTIONAL | Operator web UI backend | runtime, enforcement |
+| `core/` (directory) | DOES NOT EXIST | — | — |
+| `core/*.zig` (manifest keys) | ALIAS | Manifest module IDs that resolve through `real_path` to `src/**` | — |
+| `core/nids_main.zig` | LEGACY | Superseded by `src/main.zig` + `src/daemon.zig` | — |
+
+Rule: a component is **CANONICAL** only if it is built by the CI matrix AND
+executed by the production runtime. SUPPORT builds in CI but is not on the
+golden path. OPTIONAL is operator-only.
+
 ## 13. CURRENT RUNTIME ENTRYPOINTS
 
 **Multi-process architecture:**
@@ -201,11 +257,14 @@ cd ts_policy && npm run typecheck && npm run test:all   # TypeScript policy comp
 2. **Go Nose** (`nose/main.go` → `aegis-nose.exe`) — Packet acquisition
    - Launches as separate process, connects to Zig via named pipe
 
-3. **Go Aggregator** (`go/aggregator/main.go` → `aegis-aggregator.exe`) — Alert sidecar (optional)
-   - REST API on port 9200, watches NDJSON logs via fsnotify
+3. **Go Aggregator** (`go/aggregator/main.go` → `aegis-aggregator.exe`) — SUPPORT: alert sidecar (optional)
+   - REST API on port 9200, watches NDJSON logs via fsnotify. NOT on the golden path.
 
-4. **Rust Shield** (`shield/src/lib.rs` → `sec_monitor.dll`) — Loaded in-process by Zig core
-   - Tier-3 payload safety validation + threat scoring
+4. **Rust Shield** (`shield/src/lib.rs` → `sec_monitor.dll`) — SUPPORT: loaded in-process by Zig core
+   - Tier-3 payload safety validation (`validate_payload_safety`).
+   - NOT an enforcement authority. `shield/src/pep.rs` and
+     `shield/src/windows_enforce.rs` are a duplicate PEP/WFP implementation and
+     are tracked as OPEN STOP-THE-LINE (P0-7).
 
 5. **Rust PEP** (`rust-src/lib.rs` → `aegis_pep.dll`) — Loaded in-process by Zig core
    - Privileged action authorization

@@ -14,6 +14,13 @@ Usage:
     python tools/ci_coverage.py                 # matrix + pass/fail exit
     python tools/ci_coverage.py --json          # machine-readable result
     python tools/ci_coverage.py --manifest      # also require runtime_manifest REAL
+    python tools/ci_coverage.py --needs-json J  # gate on upstream job results
+
+`--needs-json` receives the GitHub Actions `toJSON(needs)` payload. Any
+required project whose job did not finish with `result == "success"` --
+including `failure`, `skipped`, `cancelled` and `absent` -- is reported as
+FAIL. This is what makes the final matrix gate unconditional: `skipped` is
+never neutral for required coverage.
 """
 from __future__ import annotations
 
@@ -94,12 +101,79 @@ def check_matrix() -> dict:
     }
 
 
+def gate_job() -> str | None:
+    """The job that runs this gate. It must never be evaluated against its own
+    `needs` map, or the gate would always report itself as absent."""
+    return load_coverage().get("gate_job")
+
+
+def required_jobs() -> dict[str, bool]:
+    """Map every CI job named by the coverage matrix to whether the matrix
+    requires it. A job is required when at least one project marks it so.
+    The gate job itself is excluded."""
+    skip = gate_job()
+    jobs: dict[str, bool] = {}
+    for project in load_coverage().get("projects", []):
+        job = project["job"]
+        if job == skip:
+            continue
+        jobs[job] = jobs.get(job, False) or bool(project.get("required", False))
+    return jobs
+
+
+def check_results(needs: dict) -> dict:
+    """Evaluate upstream job results. Non-success is FAIL for required jobs
+    and a reported (non-fatal) observation for optional ones."""
+    rows: list[dict] = []
+    failed_required: list[str] = []
+    for job, required in sorted(required_jobs().items()):
+        entry = needs.get(job) or {}
+        outcome = entry.get("result") or "absent"
+        ok = outcome == "success"
+        if not ok and required:
+            status = "FAIL"
+            failed_required.append(f"{job}={outcome}")
+        elif not ok:
+            status = "PASS (optional, reported)"
+        else:
+            status = "PASS"
+        rows.append({"job": job, "required": required, "result": outcome,
+                     "status": status})
+    return {"jobs": rows, "failed_required": failed_required,
+            "exit": 1 if failed_required else 0}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="AEGIS cross-language CI matrix check")
     ap.add_argument("--json", action="store_true", help="emit machine-readable result")
     ap.add_argument("--manifest", action="store_true",
                     help="also require ci tooling REAL in runtime_manifest.json")
+    ap.add_argument("--needs-json", metavar="JSON",
+                    help="evaluate upstream job results (GitHub Actions toJSON(needs))")
     args = ap.parse_args()
+
+    if args.needs_json is not None:
+        try:
+            needs = json.loads(args.needs_json or "{}")
+        except json.JSONDecodeError as exc:
+            print(f"FAIL: --needs-json is not valid JSON: {exc}")
+            return 1
+        res = check_results(needs)
+        if args.json:
+            print(json.dumps(res, indent=2))
+        else:
+            print("Required CI job results (failure/skipped/cancelled = FAIL)")
+            print("-" * 72)
+            for row in res["jobs"]:
+                req = "required" if row["required"] else "optional"
+                print(f"  {row['job']:<28} {req:<9} {row['result']:<10} {row['status']}")
+            print("-" * 72)
+            if res["failed_required"]:
+                print("FAIL: required job(s) did not succeed: "
+                      + ", ".join(res["failed_required"]))
+            else:
+                print("OK: every required job finished successfully")
+        return res["exit"]
 
     result = check_matrix()
 

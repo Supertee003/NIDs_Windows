@@ -27,17 +27,24 @@ AEGIS operates across five planes:
 
 ## 3. Architecture
 
-| Layer | Components | Status |
-|---|---|---|
-| Capture | Npcap adapter, packet decoder, flow table, L7 parsers, stream reassembly | IMPLEMENTED |
-| Detection | Aho-Corasick signatures, EWMA anomaly, protocol anomaly, multi-event correlation, atomic threat tracker | IMPLEMENTED |
-| Policy | Policy IR (DSL compiler), Trust Store + Key Lifecycle, Rust PEP, action dispatcher | IMPLEMENTED |
-| Forensic | 64 MiB ring buffer with embedded hash chain, decision trace, evidence records, replay engine, replay verifier | IMPLEMENTED |
-| Host (Win) | ETW real-time, FIM, registry monitor, injection detector (T1055), WFP, host telemetry | IMPLEMENTED |
-| Reliability | Watchdog, security self-hardening, latency histogram, fault injection | IMPLEMENTED |
-| Federation | Cluster coordinator, node registry, aggregator | IMPLEMENTED |
-| XDR | Cross-layer correlation engine | IMPLEMENTED |
-| Operations | aegisctl CLI, NSIS installer, backup/recovery, CI/CD, release engineering | IMPLEMENTED |
+> **Maturity vocabulary.** A component matures through distinct, non-interchangeable
+> stages: `DESIGNED` → `IMPLEMENTED` → `INTEGRATED` → `UNIT VERIFIED` →
+> `SYSTEM VERIFIED` → `WINDOWS VERIFIED` → `PRODUCTION VERIFIED` → `RELEASE VERIFIED`.
+> "IMPLEMENTED" below means *code exists and is wired*, **not** production-proven.
+> Actual per-component proof lives in §13 (`Verification Status`) and
+> `EVIDENCE_INDEX.json`.
+
+| Layer | Components | Implementation | Evidence |
+|---|---|---|---|
+| Capture | Npcap adapter, packet decoder, flow table, L7 parsers, stream reassembly | IMPLEMENTED | E2 |
+| Detection | Aho-Corasick signatures, EWMA anomaly, protocol anomaly, multi-event correlation, atomic threat tracker | IMPLEMENTED | E2 |
+| Policy | Policy IR (DSL compiler), Trust Store + Key Lifecycle, Rust PEP, action dispatcher | IMPLEMENTED | E2 |
+| Forensic | 64 MiB ring buffer with embedded hash chain, decision trace, evidence records, replay engine, replay verifier | IMPLEMENTED | E2 |
+| Host (Win) | ETW real-time, FIM, registry monitor, injection detector (T1055), WFP, host telemetry | IMPLEMENTED | E1-E2 (not Windows-verified) |
+| Reliability | Watchdog, security self-hardening, latency histogram, fault injection | IMPLEMENTED | E2 |
+| Federation | Cluster coordinator, node registry, aggregator | IMPLEMENTED | E2 (single-node; mTLS not host-verified) |
+| XDR | Cross-layer correlation engine | IMPLEMENTED | E2 |
+| Operations | aegisctl CLI, NSIS installer, backup/recovery, CI/CD, release engineering | PARTIAL — command set exists, several commands still report without proving a state transition | E1-E2 |
 
 ## 4. Data Plane
 
@@ -117,10 +124,11 @@ Pipeline Event
 
 | Interface | Status |
 |---|---|
-| CLI (`aegisctl.py`) | IMPLEMENTED |
-| Named Pipe Control | IMPLEMENTED |
-| Web Dashboard | IMPLEMENTED |
-| NSIS Installer | IMPLEMENTED |
+| CLI (`tools/aegisctl.py`) — the single canonical client | IMPLEMENTED (E2) |
+| Named Pipe Control (`\\.\pipe\aegis_control`) | IMPLEMENTED (E2) |
+| DEFCON monitor (`mouth/`, optional) | IMPLEMENTED (E1) |
+| Web Dashboard (`aegis_dashboard/`, optional) | DESIGNED / OPTIONAL — not on the release path |
+| NSIS Installer | IMPLEMENTED (E1) |
 
 ## 11. Runtime Lifecycle
 
@@ -147,9 +155,12 @@ main()
 
 ## 13. Current Status
 
-**HEAD:** `97dbfef`
+**HEAD:** `fdb4c2beb4451754fca3ea28059dbdbb01c37764`
 **Branch:** `main`
-**Phase:** Truth Stabilization (RT-01 through RT-08)
+**Phase:** Truth repair + CI convergence (TRUTH-001..005, CI-001..004)
+
+> Earlier revisions of this README pinned HEAD `97dbfef`. That is HISTORICAL.
+> Any document whose HEAD differs from `git rev-parse HEAD` is stale per `AGENTS.md`.
 
 | Component | Implementation Status | Verification Status | Host Status |
 |---|---|---|---|
@@ -221,8 +232,8 @@ cargo test --release
 # TypeScript tests
 cd ts_policy && npm run test
 
-# Python tests
-python -m pytest scripts/tests/
+# Python tests (control-plane + contract tests)
+python -m pytest tests/ -v --ignore=tests/test_e2e.py
 ```
 
 ## 17. Run
@@ -257,19 +268,19 @@ D:\NIDs_Windows/
 │   ├── windows/           # Windows adapters (Zig + C native)
 │   ├── xdr/               # Cross-layer detection
 │   └── tests/             # Unit tests (50+ modules)
-├── rust-src/               # Rust PEP (Tier-3)
-├── nose/                   # Go packet acquisition
+├── rust-src/               # Rust PEP (Tier-3) — the ONLY enforcement authority
+├── nose/                   # Go packet acquisition (CANONICAL)
 ├── bridge/                 # C++ IPC bridge
 ├── src/windows/            # C native adapters (ETW, FIM, WFP)
 ├── brain/                  # Python brain (Tier-2)
 ├── ts_policy/              # TypeScript policy compiler
-├── go/aggregator/          # Go alert aggregator
-├── shield/                 # Rust enforcement library
-├── aegis_dashboard/        # Rust dashboard
+├── go/aggregator/          # Go alert sidecar (SUPPORT, optional, REST :9200)
+├── shield/                 # Rust payload-screening DLL (SUPPORT — NOT an enforcement authority)
+├── mouth/                  # Rust DEFCON monitor GUI (OPTIONAL)
+├── aegis_dashboard/        # Rust dashboard (OPTIONAL)
 ├── drivers/                # Windows kernel drivers
-├── scripts/                # Python CLI tools
-├── tools/                  # Deployment & operations
-├── configs/                # Runtime configuration
+├── tools/                  # Canonical operator tooling (aegisctl.py, release engineering)
+├── scripts/                # Operational helper scripts (NOT the CLI)├── configs/                # Runtime configuration
 ├── docs/                   # Architecture, ADRs, runbooks
 ├── AI_CONTEXT.md           # Machine-readable AI context
 ├── SYSTEM_MAP.json         # Component inventory
@@ -279,7 +290,7 @@ D:\NIDs_Windows/
 ├── EVIDENCE_INDEX.json     # Evidence artifacts
 ├── build_truth.json        # Build commands → artifacts
 ├── runtime_manifest.json   # Canonical entrypoints
-├── inventory.json          # File inventory (595 files)
+├── inventory.json          # File inventory (620 files, 0 unclassified)
 └── reference_map.json      # File → role mapping
 ```
 

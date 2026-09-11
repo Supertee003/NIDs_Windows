@@ -68,7 +68,7 @@ def test_single_authoritative_host_network_source_exists() -> None:
 
 def test_no_duplicate_host_network_source() -> None:
     """AC1 (negative): No second/incompatible host-network source
-    exists. Scan core/ for modules that import Windows network APIs
+    exists. Scan src/ for modules that import Windows network APIs
     at the L2/L3 layer (other than npcap_capture.zig and the
     well-known exceptions: the C++ bridge, the Zig WFP mirror, the
     cluster federation over loopback)."""
@@ -76,8 +76,10 @@ def test_no_duplicate_host_network_source() -> None:
     # The C++ bridge adapter may use socket APIs for IPC over loopback;
     # that's not a host-network capture path. Allow `bridge/`.
     # The WFP mirror is a contract test mirror, not a capture path.
-    ALLOWED_DIRS = ("src/capture/npcap_capture.zig", "core/npcap_test_live.zig", "core/wfp_")
-    for path in (REPO_ROOT / "core").rglob("*.zig"):
+    ALLOWED_DIRS = ("src/capture/npcap_capture.zig", "src/capture/npcap_test_live.zig", "src/policy/wfp_")
+    # TEST-001: the old `core/` tree was migrated to src/. Scanning a
+    # non-existent directory made this negative control pass vacuously.
+    for path in (REPO_ROOT / "src").rglob("*.zig"):
         rel = path.relative_to(REPO_ROOT).as_posix()
         if any(rel.startswith(a) for a in ALLOWED_DIRS):
             continue
@@ -155,7 +157,7 @@ def test_process_telemetry_uses_same_canonical_event_model() -> None:
 
 def test_no_alternate_host_network_module() -> None:
     """AC3: No second/incompatible host-network event model. Scan
-    core/ for modules that declare host-network data structures
+    src/ for modules that declare host-network data structures
     independent of the canonical event model."""
     # A duplicate model would have its own packet/flow types.
     duplicate_signatures = [
@@ -165,7 +167,7 @@ def test_no_alternate_host_network_module() -> None:
         re.compile(r"struct\s+AdapterFrame\b"),
     ]
     violations: list[str] = []
-    for path in (REPO_ROOT / "core").rglob("*.zig"):
+    for path in (REPO_ROOT / "src").rglob("*.zig"):
         text = path.read_text(encoding="utf-8", errors="ignore")
         for pat in duplicate_signatures:
             if pat.search(text):

@@ -43,7 +43,7 @@ Named pipe: `\\.\pipe\aegis_control`
 |---------|------|-------------|
 | `status` | READ | System status (uptime, packets, flows, incidents) |
 | `version` | READ | Version string |
-| `health` | READ | Health check results |
+| `HEALTH` (alias `health.check`) | READ | Health check results; `data` is the RUNTIME_CONTRACT.md §4.1 payload |
 | `rules.list` | READ | List loaded rules |
 | `rules.reload` | OPERATE | Reload Rules.json |
 | `incidents.list` | READ | List open incidents |

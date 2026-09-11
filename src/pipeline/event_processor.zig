@@ -43,6 +43,8 @@ fn processEvent(
 ) !void {
     const ev = &qe.ev;
     state.g_pipeline_events_processed += 1;
+    // CTRL-002: real liveness timestamp for the health contract (§4.1).
+    state.g_last_event_ms = std.time.milliTimestamp();
 
     // Create security decision trace (128 bytes on stack)
     state.g_trace_id += 1;

@@ -32,6 +32,8 @@ from tests.runtime.conftest import (
     REQUIRED_COMPONENTS,
     RuntimeProbe,
     assert_state_in,
+    component_output,
+    start_component,
     wait_for_state,
 )
 
@@ -92,15 +94,20 @@ class TestBridgeLifecycle(unittest.TestCase):
 
     def test_bridge_reaches_running_within_startup_timeout(self):
         cmd = _start_command(self.component)
-        self.proc = subprocess.Popen(
-            cmd, cwd=str(REPO_ROOT),
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        )
+        self.proc = start_component(cmd, cwd=REPO_ROOT)
         probe = RuntimeProbe.for_component(self.component["name"])
-        resp = wait_for_state(
-            probe, "RUNNING",
-            timeout_ms=DEFAULT_TIMEOUTS_MS["startup"],
-        )
+        try:
+            resp = wait_for_state(
+                probe, "RUNNING",
+                timeout_ms=DEFAULT_TIMEOUTS_MS["startup"],
+            )
+        except TimeoutError as exc:
+            raise AssertionError(
+                f"{exc}\n--- {self.component['name']} output ---\n"
+                + "\n".join(component_output(self.proc)["stdout"][-30:])
+                + "\n--- stderr ---\n"
+                + "\n".join(component_output(self.proc)["stderr"][-30:])
+            ) from exc
         assert_state_in(resp["state"])
         self.assertEqual(resp["component"], "bridge")
 
@@ -115,11 +122,7 @@ class TestCoreLifecycle(unittest.TestCase):
         bridge = next(c for c in COMPONENTS if c["name"] == "bridge")
         if not _have_binary(bridge):
             self.skipTest("bridge binary required to start core")
-        self.bridge_proc = subprocess.Popen(
-            [_start_command(bridge)[0]],
-            cwd=str(REPO_ROOT),
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        )
+        self.bridge_proc = start_component([_start_command(bridge)[0]], cwd=REPO_ROOT)
         # Wait for bridge to be ready.
         bprobe = RuntimeProbe.for_component("bridge")
         try:
@@ -148,15 +151,18 @@ class TestCoreLifecycle(unittest.TestCase):
 
     def test_core_reaches_running_within_startup_timeout(self):
         cmd = _start_command(self.component)
-        self.proc = subprocess.Popen(
-            cmd, cwd=str(REPO_ROOT),
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        )
+        self.proc = start_component(cmd, cwd=REPO_ROOT)
         probe = RuntimeProbe.for_component(self.component["name"])
-        resp = wait_for_state(
-            probe, "RUNNING",
-            timeout_ms=DEFAULT_TIMEOUTS_MS["startup"],
-        )
+        try:
+            resp = wait_for_state(
+                probe, "RUNNING",
+                timeout_ms=DEFAULT_TIMEOUTS_MS["startup"],
+            )
+        except TimeoutError as exc:
+            raise AssertionError(
+                f"{exc}\n--- core output ---\n"
+                + "\n".join(component_output(self.proc)["stdout"][-30:])
+            ) from exc
         self.assertEqual(resp["component"], "core")
         # Verify deps includes bridge.
         dep_names = [d["name"] for d in resp.get("deps", [])]
@@ -192,15 +198,18 @@ class TestBrainLifecycle(unittest.TestCase):
 
     def test_brain_reaches_running_within_startup_timeout(self):
         cmd = _start_command(self.component)
-        self.proc = subprocess.Popen(
-            cmd, cwd=str(REPO_ROOT),
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        )
+        self.proc = start_component(cmd, cwd=REPO_ROOT)
         probe = RuntimeProbe.for_component(self.component["name"])
-        resp = wait_for_state(
-            probe, "RUNNING",
-            timeout_ms=DEFAULT_TIMEOUTS_MS["startup"],
-        )
+        try:
+            resp = wait_for_state(
+                probe, "RUNNING",
+                timeout_ms=DEFAULT_TIMEOUTS_MS["startup"],
+            )
+        except TimeoutError as exc:
+            raise AssertionError(
+                f"{exc}\n--- brain output ---\n"
+                + "\n".join(component_output(self.proc)["stdout"][-30:])
+            ) from exc
         self.assertEqual(resp["component"], "brain")
 
 

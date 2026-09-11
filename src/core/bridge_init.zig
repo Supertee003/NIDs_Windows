@@ -42,6 +42,20 @@ pub const BridgeState = struct {
 
 var g_state = BridgeState{};
 
+/// CTRL-002: read-only snapshot of the bridge/dependency flags so the control
+/// plane can report real subsystem state instead of build-time capability
+/// flags. Used by src/platform/win32_pipe.zig health.check.
+pub fn status() BridgeState {
+    return g_state;
+}
+
+/// CTRL-002: true when every in-process bridge subsystem is actually up. When
+/// false the runtime still serves the spine but reports `degraded: true`.
+pub fn allActive() bool {
+    return g_state.wfp_ioctl and g_state.cpp_bridge and
+        g_state.rust_shield and g_state.udp_brain;
+}
+
 // ============================================================
 // C++ IPC Bridge DLL (runtime loaded, same as nids_analyze.zig)
 // ============================================================

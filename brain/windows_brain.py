@@ -152,7 +152,7 @@ def load_rules():
 AEGISCTL_BIN = os.environ.get("AEGISCTL_BIN", "python")
 AEGISCTL_PATH = os.environ.get(
     "AEGISCTL_PATH",
-    os.path.join(os.path.dirname(__file__), "..", "scripts", "aegisctl.py"),
+    os.path.join(os.path.dirname(__file__), "..", "tools", "aegisctl.py"),
 )
 
 

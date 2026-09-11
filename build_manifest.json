@@ -2,8 +2,8 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "2c7cb30",
-  "build_date": "2026-09-10T00:00:00.000000+00:00",
+  "source_commit": "fdb4c2b",
+  "build_date": "2026-09-11T00:00:00.000000+00:00",
   "build_host": "windows",
   "platform": {
     "os": "windows",
@@ -199,8 +199,8 @@
   "artifacts": [
     {
       "path": ".github/workflows/ci.yml",
-      "size": 6774,
-      "sha256": "e98b0470938b9f1420d0e896f8dfccd68b93fdab112ed83697ab87505375ba88",
+      "size": 8548,
+      "sha256": "541722524e08b209e4de896716db987250058ef439ac6defb83f4d56b4976f13",
       "language": "yaml"
     },
     {
@@ -235,14 +235,14 @@
     },
     {
       "path": "configs/Rules.json",
-      "size": 149,
-      "sha256": "8b1629d90d0fa92fa6cbeaf83799cb2a1a90a143582f00a0ff8f647ecb67ccd5",
+      "size": 140,
+      "sha256": "4858c7659db612fb52d4a82e5a07c9565a322d7a4be10c6b978d132bb05ea21f",
       "language": "json"
     },
     {
       "path": "brain/__init__.py",
-      "size": 33,
-      "sha256": "3b335febf70fd1aa368e982e6f4d5e5fdff06f174460166dba2010828f0a250e",
+      "size": 32,
+      "sha256": "dc22c672a8f153a56567126234f2fb243a977c2bdc08dd8b46abed735dcd99d2",
       "language": "python/cython"
     },
     {
@@ -319,20 +319,20 @@
     },
     {
       "path": "brain/windows_brain.py",
-      "size": 28961,
-      "sha256": "31415ed67cbb8df28a7f4d16af01ccea24e10ccc6a5425516231bc52c88f56ec",
+      "size": 28959,
+      "sha256": "ee6221f72a3366e5845056e170a63c255c2d497c4bd53fb749d3de82ce387722",
       "language": "python/cython"
     },
     {
       "path": "bridge/CMakeLists.txt",
-      "size": 5098,
-      "sha256": "f39e199d57b94661097dc00b443683a725bfaa27102460c69c803823679a8f28",
+      "size": 4955,
+      "sha256": "5f721afca1ea254aeba38560dff1671f8e6f9d8529532e44633c2e3cb307ba6f",
       "language": "data"
     },
     {
       "path": "bridge/__init__.py",
-      "size": 33,
-      "sha256": "3b335febf70fd1aa368e982e6f4d5e5fdff06f174460166dba2010828f0a250e",
+      "size": 32,
+      "sha256": "dc22c672a8f153a56567126234f2fb243a977c2bdc08dd8b46abed735dcd99d2",
       "language": "python/cython"
     },
     {
@@ -397,8 +397,8 @@
     },
     {
       "path": "bridge/bridge_status.py",
-      "size": 1493,
-      "sha256": "9a21a74ac70c1ed644d36876d379dac51f715c68d3e4007da785320cb591cbbd",
+      "size": 1492,
+      "sha256": "3980ae21a686ebd71de1d1a2d11d0931f9dfb6588ab889871da3a2fa75088ff8",
       "language": "python/cython"
     },
     {
@@ -409,14 +409,14 @@
     },
     {
       "path": "ci_coverage.json",
-      "size": 1828,
-      "sha256": "fbc63ecf76b8c4dd192a4996398670ac90a3889e52a8f93fb33cacd8253510a3",
+      "size": 2707,
+      "sha256": "4cb19ebd4ef9ca46204e29776f4a3739d57c726a1b6074bfe17ffcf024927d6a",
       "language": "json"
     },
     {
       "path": "configs/Rules.json",
-      "size": 149,
-      "sha256": "8b1629d90d0fa92fa6cbeaf83799cb2a1a90a143582f00a0ff8f647ecb67ccd5",
+      "size": 140,
+      "sha256": "4858c7659db612fb52d4a82e5a07c9565a322d7a4be10c6b978d132bb05ea21f",
       "language": "json"
     },
     {
@@ -469,8 +469,8 @@
     },
     {
       "path": "src/core/bridge_init.zig",
-      "size": 25516,
-      "sha256": "0f20241cc3549e6905b90639b22c02f90fca1236278c084b4bd7d6641b992155",
+      "size": 26074,
+      "sha256": "c28481ae83c4b4f613c8be2c10313f5492f61ff41f03519a0e4cc8e655890224",
       "language": "zig"
     },
     {
@@ -1465,8 +1465,8 @@
     },
     {
       "path": "runtime_manifest.json",
-      "size": 26774,
-      "sha256": "c5ed0085cd35a1399dcd5234a526cdd1b2ac1ac09f370701221ed85c812aa487",
+      "size": 28298,
+      "sha256": "236667e2ce703c16854df8e30f78f337a4533e9dbb6b09bd673a49385619412c",
       "language": "json"
     },
     {
@@ -1543,8 +1543,8 @@
     },
     {
       "path": "scripts/aegis_status.bat",
-      "size": 875,
-      "sha256": "cfae26fbb06d477e705848c5f51131c914a6d611099b49209fb32331555de24d",
+      "size": 872,
+      "sha256": "7831e0ad13db9568e63933b01fc87277007c94b314bcc74bc427018589379d4a",
       "language": "script"
     },
     {
@@ -1573,8 +1573,8 @@
     },
     {
       "path": "scripts/build_drivers.bat",
-      "size": 9877,
-      "sha256": "444548e09cc0b5667f091ada2b3537317a1132d9cc290dfb9b8b06a9c4b19521",
+      "size": 9589,
+      "sha256": "041b7c228ede966b89402cc09f6d75f19fa4ea6e8d032ce6032488737c72225d",
       "language": "script"
     },
     {
@@ -1585,8 +1585,8 @@
     },
     {
       "path": "scripts/diag_aegis_dirs.bat",
-      "size": 3496,
-      "sha256": "161f0742fceabed5c07395120363e398b3e7cf7f298638adb0e48eed3684fef1",
+      "size": 3378,
+      "sha256": "f0dfc7c2e51d0af961bcce9bd8b9e097775d0d7f16f996cc48eaf2f2061a8c00",
       "language": "script"
     },
     {
@@ -1603,8 +1603,8 @@
     },
     {
       "path": "scripts/install_drivers.bat",
-      "size": 8593,
-      "sha256": "d9c01592bbbf261ae2fd6fb2854045225835680578e9f1d76f2abfd11a0baf35",
+      "size": 8330,
+      "sha256": "3e873f2baefa705f6b79654e651e18e3247b049a80ac989d8a38279b785d8f4d",
       "language": "script"
     },
     {
@@ -1621,20 +1621,20 @@
     },
     {
       "path": "scripts/run_aegis.bat",
-      "size": 28008,
-      "sha256": "8d242e472b099fc4967a1f84381a0586e8c04b9f33fe88152bf25e1b9f2b6b6e",
+      "size": 28002,
+      "sha256": "07734fa49fd00e1fec73403623acbfcb1f770f7dcb9a9c3a476dac5bd54e9c32",
       "language": "script"
     },
     {
       "path": "scripts/setup_aegis.bat",
-      "size": 3382,
-      "sha256": "2afde368ea0258979fadd2e09f0d34f60950a89635a754bc31f7853b7294fa56",
+      "size": 3252,
+      "sha256": "08924fd4720fbeb255b77ac629436a2feec222b2396e22e03b0fef1a3103e4b8",
       "language": "script"
     },
     {
       "path": "scripts/stop_aegis.bat",
-      "size": 1145,
-      "sha256": "f56e90e9f580c07a6d081468278a935e0d2f629cd7fc0eab7213a44bbf417814",
+      "size": 1142,
+      "sha256": "d54057686390207acaf3228cc16fb5ffd3995516293654f197974e1d1cefc9b7",
       "language": "script"
     },
     {
@@ -1699,14 +1699,14 @@
     },
     {
       "path": "shield/src/pep.rs",
-      "size": 12021,
-      "sha256": "5ae3cdbeaa2b340f6c557d6b4344a73a38b84aff5b04edf1edddcb37e7cd5ebf",
+      "size": 13144,
+      "sha256": "89cb9cd5609b6df2ccf953148abdc583d3f6e4c96276e123238a6a61862b3b2b",
       "language": "rust"
     },
     {
       "path": "shield/src/windows_enforce.rs",
-      "size": 27227,
-      "sha256": "ab0321095ceaaadbbb2aa67e08d5a9f68e7394e5632019ab8520c1b4aae65619",
+      "size": 28306,
+      "sha256": "d5adeac574f9ba66ef79a9ffcdef9f7335ca9e768186c43daaa0c313769e3727",
       "language": "rust"
     },
     {
@@ -1723,8 +1723,8 @@
     },
     {
       "path": "tools/ci_coverage.py",
-      "size": 4829,
-      "sha256": "27257bf8d79d888aeaef8740a4762ebbcb3efe414edd981196f7c6911fe76507",
+      "size": 7952,
+      "sha256": "2289ffe4617d4215814cece29cbee69949e372389eb9aaf3f4cf788ed8a09a32",
       "language": "python/cython"
     },
     {
@@ -1783,8 +1783,8 @@
     },
     {
       "path": "tools/release_engineering.py",
-      "size": 14377,
-      "sha256": "f053dc9a40748d4b92e6df5aea721f95dd7dcadd01d00be7c7b96b0f1a595bf1",
+      "size": 18301,
+      "sha256": "1d7357a95e31b45d67890c7202e1f8815d465c15dbbfcb34aefce151983e559b",
       "language": "python/cython"
     },
     {

@@ -122,14 +122,57 @@ def test_ac2_ci_matrix_runner_exists_and_passes() -> None:
 
 
 def test_ac2_ci_workflows_declare_matrix_jobs() -> None:
+    """CI-001: the declared jobs must match the converged component classes.
+
+    `go-nose-build-test` (CANONICAL acquisition) and
+    `go-aggregator-build-test` (SUPPORT sidecar) replaced the single
+    `go-build-test` job that conflated them; `shield-build` stays required
+    because the runtime loads the shield DLL fail-closed.
+    """
     ci = _read(".github/workflows/ci.yml")
-    for job in ["zig-build-test", "rust-pep-build", "c-native-build",
-                "python-tests", "go-build-test", "ts-policy-build",
+    for job in ["zig-build-test", "rust-pep-build", "shield-build",
+                "c-native-build", "python-tests", "go-nose-build-test",
+                "go-aggregator-build-test", "ts-policy-build",
                 "security-scan", "package-release", "ci-matrix"]:
         assert job in ci, f"ci.yml must declare job {job} (AC2)"
     regression = _read(".github/workflows/host-regression.yml")
     assert "phase-t-runtime-contract" in regression
     assert "phase-k-zig-logic" in regression
+    # AC2b - legacy conflation must not come back.
+    assert "go-build-test" not in ci, (
+        "ci.yml must not reintroduce the conflated go-build-test job (AC2)"
+    )
+
+
+def test_ac2b_required_matrix_gate_is_unconditional() -> None:
+    """CI-002: the required matrix gate must run even when an upstream job
+    fails or is skipped, and it must evaluate upstream results."""
+    ci = _read(".github/workflows/ci.yml")
+    matrix = ci.split("ci-matrix:", 1)[1].split("\n  package-release:", 1)[0]
+    assert "always()" in matrix, (
+        "ci-matrix must use if: always() so skipped/failed upstream jobs cannot "
+        "silently absorb the required gate (AC2b)"
+    )
+    assert "--needs-json" in matrix, (
+        "ci-matrix must evaluate upstream job results, not just job names"
+    )
+
+
+def test_ac2c_python_ci_does_not_mutate_checkout() -> None:
+    """CI-003: line-ending truth lives in .gitattributes. CI verifies the
+    checkout and must not rewrite tracked files to make tests pass."""
+    ci = _read(".github/workflows/ci.yml")
+    job = ci.split("python-tests:", 1)[1].split("\n  security-scan:", 1)[0]
+    assert "core.autocrlf" not in job, (
+        "python-tests must not mutate git line-ending config (AC2c)"
+    )
+    assert "release_engineering.py --manifest" not in job, (
+        "python-tests must not regenerate build_manifest.json; provenance drift "
+        "must fail the verify gate instead of being rewritten (AC2c)"
+    )
+    assert "release_engineering.py --verify" in job, (
+        "python-tests must run the build-manifest drift gate"
+    )
 
 
 # =====================================================================

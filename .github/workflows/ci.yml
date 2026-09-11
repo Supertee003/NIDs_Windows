@@ -71,8 +71,11 @@ jobs:
             target/release/aegis_pep.dll
             target/release/aegis_pep.dll.lib
 
+  # SUPPORT: the Zig core loads sec_monitor.dll in-process for Tier-3 payload
+  # screening (fail-closed if missing), so a broken shield build IS a runtime
+  # failure. It is required, but it is NOT an enforcement authority.
   shield-build:
-    name: Rust Shield Build (Tier-3 payload screening)
+    name: Rust Shield Build (SUPPORT: Tier-3 payload screening)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -117,11 +120,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Configure git line endings
-        shell: pwsh
-        run: |
-          git config core.autocrlf false
-          git config core.eol lf
+      # Line-ending truth lives in .gitattributes (`* text eol=lf`). CI must
+      # verify the checkout, never mutate it — a job that rewrites tracked
+      # files can hide drift instead of reporting it.
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -134,8 +135,10 @@ jobs:
         run: |
           cd brain/cython
           python setup.py build_ext --inplace
-      - name: Regenerate manifest to match CI working tree
-        run: python tools/release_engineering.py --manifest
+      # Build provenance must be committed, not regenerated in CI. If the
+      # recorded digests drift, the build-manifest verify gate below FAILS.
+      - name: Verify build manifest provenance (drift gate)
+        run: python tools/release_engineering.py --verify
       - name: Run tests
         run: python -m pytest tests/ -v --ignore=tests/test_e2e.py
 
@@ -152,25 +155,41 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: 0
 
-  go-build-test:
-    name: Go Build & Test (nose + aggregator)
+  # CANONICAL Go owner: nose/ produces Canonical Events and is on the golden path.
+  go-nose-build-test:
+    name: Go Nose Build & Test (CANONICAL acquisition)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: "1.22"
-      - name: Build Go modules
+      - name: Build nose
         run: |
-          cd go/aggregator
+          cd nose
           go build ./...
-          cd ../../nose
-          go build ./...
-      - name: Test Go modules
+      - name: Test nose
         run: |
-          cd go/aggregator
+          cd nose
           go test ./...
-          cd ../../nose
+
+  # SUPPORT: optional operator alert sidecar (REST :9200). It reads NDJSON
+  # logs and produces no Canonical Event, so it is NOT part of the runtime path.
+  go-aggregator-build-test:
+    name: Go Aggregator Build & Test (SUPPORT sidecar)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Build aggregator
+        run: |
+          cd go/aggregator
+          go build ./...
+      - name: Test aggregator
+        run: |
+          cd go/aggregator
           go test ./...
 
   ts-policy-build:
@@ -188,11 +207,17 @@ jobs:
       - name: Run TS policy tests
         run: cd ts_policy && npm run test:all
 
+  # REQUIRED FINAL GATE. `if: always()` guarantees this job is never skipped
+  # when an upstream job fails; the results check below treats
+  # failure / skipped / cancelled as FAIL for every required project, so a
+  # skipped required job can never be mistaken for a neutral outcome.
   ci-matrix:
-    name: Cross-language CI Matrix (required missing = FAIL)
+    name: Cross-language CI Matrix (required missing/failed = FAIL)
     runs-on: ubuntu-latest
-    needs: [zig-build-test, rust-pep-build, c-native-build, python-tests,
-            go-build-test, ts-policy-build, security-scan]
+    needs: [zig-build-test, rust-pep-build, shield-build, c-native-build,
+            python-tests, go-nose-build-test, go-aggregator-build-test,
+            ts-policy-build, security-scan]
+    if: ${{ always() }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -200,12 +225,20 @@ jobs:
           python-version: "3.11"
       - name: Check CI matrix coverage semantics
         run: python tools/ci_coverage.py
+      - name: Evaluate required job results
+        shell: bash
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: python tools/ci_coverage.py --needs-json "$NEEDS_JSON"
 
   package-release:
     name: Package Release
-    needs: [zig-build-test, rust-pep-build, c-native-build, python-tests]
+    needs: [zig-build-test, rust-pep-build, shield-build, c-native-build,
+            python-tests, go-nose-build-test]
     runs-on: windows-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    # `success()` is required: without it a job whose `needs` failed would
+    # still run because the `if` expression would override the default gate.
+    if: ${{ startsWith(github.ref, 'refs/tags/v') && success() }}
     steps:
       - uses: actions/checkout@v4
       - name: Build installer

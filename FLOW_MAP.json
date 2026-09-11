@@ -1,6 +1,6 @@
 {
-  "head_sha": "2c7cb3047e2219ec60e86776079e50b352680c35",
-  "created_at": "2026-09-10",
+  "head_sha": "fdb4c2beb4451754fca3ea28059dbdbb01c37764",
+  "created_at": "2026-09-11",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
   "flows": [
@@ -154,7 +154,7 @@
           "owner": "CLI/TUI/Web",
           "input": "User command",
           "output": "CommandRequest",
-          "file": "scripts/aegisctl.py"
+          "file": "tools/aegisctl.py"
         },
         {
           "step": 2,
