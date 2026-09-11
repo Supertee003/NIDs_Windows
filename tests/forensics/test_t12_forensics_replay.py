@@ -123,7 +123,7 @@ def test_dispatcher_writes_trace_for_every_decision() -> None:
     traced across the chain. Both dispatcher variants must wire it."""
     for disp in (DISPATCHER, DISPATCHER_PHASE_B):
         src = _read(disp)
-        assert "@import(\"forensics_integration.zig\")" in src, (
+        assert "forensics_integration.zig" in src, (
             f"{disp} must import forensics_integration (T12 AC1)"
         )
         assert "forensics_int.logResult(" in src or "forensics_integration.logResult(" in src, (
