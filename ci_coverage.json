@@ -61,13 +61,13 @@
         {
             "id": "cpp-bridge",
             "language": "c/c++",
-            "job": "cpp-bridge-build",
+            "job": "c-native-build",
             "required": true
         },
         {
             "id": "rust-shield",
             "language": "rust",
-            "job": "rust-shield-build",
+            "job": "shield-build",
             "required": true
         }
     ]

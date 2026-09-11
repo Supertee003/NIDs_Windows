@@ -43,7 +43,7 @@ passed = 0
 failed = 0
 skipped = 0
 
-def test_result(name, success, detail=""):
+def _test_result(name, success, detail=""):
     global passed, failed, skipped
     if success:
         passed += 1
@@ -80,17 +80,17 @@ def test_bridge_selftest():
             text=True,
             timeout=30,
         )
-        test_result("Bridge self-test exit code", result.returncode == 0,
+        _test_result("Bridge self-test exit code", result.returncode == 0,
                     f"exit code: {result.returncode}")
         if "ALL TESTS PASSED" in result.stdout:
-            test_result("Bridge all tests passed", True)
+            _test_result("Bridge all tests passed", True)
         else:
-            test_result("Bridge all tests passed", False,
+            _test_result("Bridge all tests passed", False,
                         f"stdout: {result.stdout[:200]}")
     except FileNotFoundError:
         skip_test("Bridge self-test", "aegis_bridge.exe not found")
     except subprocess.TimeoutExpired:
-        test_result("Bridge self-test", False, "timeout (30s)")
+        _test_result("Bridge self-test", False, "timeout (30s)")
 
 
 # =====================================================================
@@ -108,7 +108,7 @@ def test_python_bridge():
 
     # Test 2a: Bridge init
     rc = bridge.bridge_init()
-    test_result("bridge_init()", rc == 0, f"rc={rc}")
+    _test_result("bridge_init()", rc == 0, f"rc={rc}")
 
     if rc != 0:
         skip_test("Remaining Bridge tests", "bridge_init failed")
@@ -126,31 +126,31 @@ def test_python_bridge():
         rule_id=56,
         severity=2,         # High
     )
-    test_result("push_event()", rc == 0, f"rc={rc}")
+    _test_result("push_event()", rc == 0, f"rc={rc}")
 
     # Test 2c: Get event count
     count = bridge.get_event_count()
-    test_result("get_event_count() > 0", count > 0, f"count={count}")
+    _test_result("get_event_count() > 0", count > 0, f"count={count}")
 
     # Test 2d: Pop event
     event = bridge.pop_event()
-    test_result("pop_event() returns event", event is not None)
+    _test_result("pop_event() returns event", event is not None)
     if event:
-        test_result("Event rule_id matches", event.rule_id == 56,
+        _test_result("Event rule_id matches", event.rule_id == 56,
                     f"rule_id={event.rule_id}")
-        test_result("Event tier_result is Tier-1", event.tier_result == 1,
+        _test_result("Event tier_result is Tier-1", event.tier_result == 1,
                     f"tier_result={event.tier_result}")
-        test_result("Event severity is High", event.severity == 2,
+        _test_result("Event severity is High", event.severity == 2,
                     f"severity={event.severity}")
 
     # Test 2e: DEFCON level
     defcon = bridge.get_defcon_level()
-    test_result("get_defcon_level() returns 1-5", 1 <= defcon <= 5,
+    _test_result("get_defcon_level() returns 1-5", 1 <= defcon <= 5,
                 f"defcon={defcon}")
 
     # Test 2f: DEFCON label
     label = bridge.get_defcon_label()
-    test_result("get_defcon_label() returns string", label in
+    _test_result("get_defcon_label() returns string", label in
                 ("MAXIMUM", "SEVERE", "HIGH", "ELEVATED", "SAFE"),
                 f"label={label}")
 
@@ -164,18 +164,18 @@ def test_python_bridge():
         protocol=6,
         severity=3,
     )
-    test_result("push_tier2_match()", rc == 0, f"rc={rc}")
+    _test_result("push_tier2_match()", rc == 0, f"rc={rc}")
 
     # Test 2h: IPS block/unblock
     rc = bridge.block_ip("10.0.0.1")
-    test_result("block_ip()", rc >= 0, f"rc={rc}")
+    _test_result("block_ip()", rc >= 0, f"rc={rc}")
 
     rc = bridge.unblock_ip("10.0.0.1")
-    test_result("unblock_ip()", rc >= 0, f"rc={rc}")
+    _test_result("unblock_ip()", rc >= 0, f"rc={rc}")
 
     # Test 2i: Bridge shutdown
     rc = bridge.bridge_shutdown()
-    test_result("bridge_shutdown()", rc == 0, f"rc={rc}")
+    _test_result("bridge_shutdown()", rc == 0, f"rc={rc}")
 
 
 # =====================================================================
@@ -209,7 +209,7 @@ def test_tier1_to_brain():
         rule_id=56,
         severity=2,             # High
     )
-    test_result("Tier-1 event pushed to Bridge", rc == 0, f"rc={rc}")
+    _test_result("Tier-1 event pushed to Bridge", rc == 0, f"rc={rc}")
 
     # Test 3c: Simulate UDP message to Brain
     alert_msg = json.dumps({
@@ -226,19 +226,19 @@ def test_tier1_to_brain():
         sock.settimeout(2.0)
         sock.sendto(alert_msg.encode("utf-8"), ("127.0.0.1", 9999))
         sock.close()
-        test_result("UDP alert sent to Brain", True)
+        _test_result("UDP alert sent to Brain", True)
     except Exception as e:
-        test_result("UDP alert sent to Brain", False, str(e))
+        _test_result("UDP alert sent to Brain", False, str(e))
 
     # Test 3d: Verify Bridge event count increased
     count = bridge.get_event_count()
-    test_result("Bridge has events after Tier-1 push", count >= 1,
+    _test_result("Bridge has events after Tier-1 push", count >= 1,
                 f"count={count}")
 
     # Test 3e: Verify DEFCON updated
     defcon = bridge.get_defcon_level()
     label = bridge.get_defcon_label()
-    test_result("DEFCON level after Tier-1 event", defcon <= 4,
+    _test_result("DEFCON level after Tier-1 event", defcon <= 4,
                 f"DEFCON={defcon} ({label})")
 
     bridge.bridge_shutdown()
@@ -264,7 +264,7 @@ def test_defcon_calculation():
 
     # Test 4a: DEFCON 5 (SAFE) — 0 alerts
     defcon = bridge.get_defcon_level()
-    test_result("DEFCON 5 (SAFE) — initial state", defcon == 5,
+    _test_result("DEFCON 5 (SAFE) — initial state", defcon == 5,
                 f"defcon={defcon}")
 
     # Test 4b: Push 1 alert → DEFCON 4 (ELEVATED)
@@ -275,7 +275,7 @@ def test_defcon_calculation():
     )
     bridge.update_defcon(critical=0, blocked=0, kernel=0, total=1)
     defcon = bridge.get_defcon_level()
-    test_result("DEFCON 4 (ELEVATED) — 1 alert", defcon == 4,
+    _test_result("DEFCON 4 (ELEVATED) — 1 alert", defcon == 4,
                 f"defcon={defcon}")
 
     # Test 4c: Push 5+ alerts → DEFCON 3 (HIGH)
@@ -287,7 +287,7 @@ def test_defcon_calculation():
         )
     bridge.update_defcon(critical=0, blocked=0, kernel=0, total=6)
     defcon = bridge.get_defcon_level()
-    test_result("DEFCON 3 (HIGH) — 5+ alerts", defcon == 3,
+    _test_result("DEFCON 3 (HIGH) — 5+ alerts", defcon == 3,
                 f"defcon={defcon}")
 
     # Test 4d: Push critical → DEFCON 3 (HIGH)
@@ -298,13 +298,13 @@ def test_defcon_calculation():
     )
     bridge.update_defcon(critical=1, blocked=0, kernel=0, total=7)
     defcon = bridge.get_defcon_level()
-    test_result("DEFCON 3 (HIGH) — 1+ critical", defcon <= 3,
+    _test_result("DEFCON 3 (HIGH) — 1+ critical", defcon <= 3,
                 f"defcon={defcon}")
 
     # Test 4e: DEFCON labels
     for level in range(1, 6):
         label = bridge.DEFCON_LABELS.get(level, "UNKNOWN")
-        test_result(f"DEFCON {level} label", label in
+        _test_result(f"DEFCON {level} label", label in
                     ("MAXIMUM", "SEVERE", "HIGH", "ELEVATED", "SAFE"),
                     f"label={label}")
 
@@ -331,17 +331,17 @@ def test_ips_decision():
 
     # Test 5a: Low severity → alert
     decision = bridge.ips_decide("R0056", 0, "192.168.1.1", "alert")
-    test_result("IPS: Low severity → alert", decision == "alert",
+    _test_result("IPS: Low severity → alert", decision == "alert",
                 f"decision={decision}")
 
     # Test 5b: Critical severity → block
     decision = bridge.ips_decide("R0056", 3, "192.168.1.1", "alert")
-    test_result("IPS: Critical severity → block", decision == "block",
+    _test_result("IPS: Critical severity → block", decision == "block",
                 f"decision={decision}")
 
     # Test 5c: High severity with block action → block
     decision = bridge.ips_decide("R0056", 2, "192.168.1.1", "block")
-    test_result("IPS: High severity + block action → block", decision == "block",
+    _test_result("IPS: High severity + block action → block", decision == "block",
                 f"decision={decision}")
 
     bridge.bridge_shutdown()
@@ -361,7 +361,7 @@ def test_dashboard_api():
         req = urllib.request.Request(f"{base_url}/api/health")
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read())
-            test_result("Dashboard /api/health", resp.status == 200,
+            _test_result("Dashboard /api/health", resp.status == 200,
                         f"status={resp.status}")
     except Exception as e:
         skip_test("Dashboard /api/health", f"Dashboard not running: {e}")
@@ -371,10 +371,10 @@ def test_dashboard_api():
         req = urllib.request.Request(f"{base_url}/api/stats")
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read())
-            test_result("Dashboard /api/stats", resp.status == 200,
+            _test_result("Dashboard /api/stats", resp.status == 200,
                         f"status={resp.status}")
             if "defcon" in data:
-                test_result("Stats includes DEFCON", True,
+                _test_result("Stats includes DEFCON", True,
                             f"defcon={data['defcon']}")
     except Exception as e:
         skip_test("Dashboard /api/stats", f"Dashboard not running: {e}")
@@ -384,7 +384,7 @@ def test_dashboard_api():
         req = urllib.request.Request(f"{base_url}/api/alerts")
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read())
-            test_result("Dashboard /api/alerts", resp.status == 200,
+            _test_result("Dashboard /api/alerts", resp.status == 200,
                         f"status={resp.status}")
     except Exception as e:
         skip_test("Dashboard /api/alerts", f"Dashboard not running: {e}")
@@ -449,23 +449,23 @@ def test_full_pipeline():
             rule_id=tp["rule_id"],
             severity=tp["expected_severity"],
         )
-        test_result(f"Pipeline: {tp['name']} → Bridge", rc == 0,
+        _test_result(f"Pipeline: {tp['name']} → Bridge", rc == 0,
                     f"rc={rc}")
 
         # Pop event back from Bridge
         event = bridge.pop_event()
         if event:
-            test_result(f"Pipeline: {tp['name']} ← Bridge",
+            _test_result(f"Pipeline: {tp['name']} ← Bridge",
                         event.rule_id == tp["rule_id"],
                         f"rule_id={event.rule_id} (expected {tp['rule_id']})")
         else:
-            test_result(f"Pipeline: {tp['name']} ← Bridge", False,
+            _test_result(f"Pipeline: {tp['name']} ← Bridge", False,
                         "no event returned")
 
     # Final DEFCON check
     defcon = bridge.get_defcon_level()
     label = bridge.get_defcon_label()
-    test_result("Pipeline: Final DEFCON after all attacks", defcon <= 3,
+    _test_result("Pipeline: Final DEFCON after all attacks", defcon <= 3,
                 f"DEFCON={defcon} ({label})")
 
     bridge.bridge_shutdown()
