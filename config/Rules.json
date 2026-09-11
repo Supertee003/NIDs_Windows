@@ -1,0 +1,52 @@
+{
+  "nids_rules": [
+    {
+      "rule_id": "R0056",
+      "name": "SQL Injection Detection",
+      "severity": "Critical",
+      "action": "Alert",
+      "category": "Injection",
+      "detect": "sql injection pattern"
+    },
+    {
+      "rule_id": "TEST1",
+      "name": "Test Rule",
+      "severity": "High",
+      "action": "Alert",
+      "category": "Test",
+      "detect": "test pattern"
+    },
+    {
+      "rule_id": "R0057",
+      "name": "XSS Detection",
+      "severity": "High",
+      "action": "Block",
+      "category": "Injection",
+      "detect": "cross-site scripting"
+    },
+    {
+      "rule_id": "R0058",
+      "name": "Port Scan Detection",
+      "severity": "Medium",
+      "action": "Alert",
+      "category": "Recon",
+      "detect": "port scan"
+    },
+    {
+      "rule_id": "R0059",
+      "name": "Brute Force Detection",
+      "severity": "High",
+      "action": "Block",
+      "category": "Authentication",
+      "detect": "brute force"
+    },
+    {
+      "rule_id": "R0060",
+      "name": "C2 Beacon Detection",
+      "severity": "Critical",
+      "action": "Block",
+      "category": "C2",
+      "detect": "c2 beacon"
+    }
+  ]
+}

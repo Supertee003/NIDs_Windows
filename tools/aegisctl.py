@@ -123,7 +123,7 @@ def _load_rules() -> List[Dict[str, Any]]:
         return []
     if isinstance(data, list):
         return data
-    return data.get("rules", data.get("detection_rules", []))
+    return data.get("nids_rules", data.get("rules", data.get("detection_rules", [])))
 
 
 def _load_disabled_rules() -> List[str]:
@@ -204,7 +204,7 @@ def cmd_rules_list(args: argparse.Namespace) -> int:
     print(f"{'Rule ID':<12} {'Sev':<10} {'Action':<12} {'Pattern':<40}")
     print("-" * 76)
     for r in rules:
-        rid = r.get("id", r.get("rule_id", "?"))
+        rid = r.get("rule_id", r.get("id", "?"))
         sev = r.get("severity", "?")
         action = r.get("action", "?")
         pattern = str(r.get("pattern", r.get("detect", "?")))[:40]
@@ -217,16 +217,17 @@ def cmd_rules_show(args: argparse.Namespace) -> int:
     rules = _load_rules()
     rule_id = args.id
     for r in rules:
-        if str(r.get("id", r.get("rule_id", ""))) == str(rule_id):
+        rid = str(r.get("rule_id", r.get("id", "")))
+        if rid == str(rule_id):
             print(json.dumps(r, indent=2))
             return 0
-    print(f"Rule {rule_id} not found", file=sys.stderr)
+    print(f"Rule {rule_id} not found")
     return 1
 
 
 def cmd_rules_validate(args: argparse.Namespace) -> int:
     rules = _load_rules()
-    print(f"VALID - {len(rules)} rules checked")
+    print(f"VALID - rules checked: {len(rules)}")
     print(f"{len(rules)} rules")
     return 0
 
@@ -333,13 +334,13 @@ def cmd_policy_show(args: argparse.Namespace) -> int:
     rules = _load_rules()
     rule_id = args.id
     for r in rules:
-        rid = str(r.get("id", r.get("rule_id", "")))
+        rid = str(r.get("rule_id", r.get("id", "")))
         if rid == str(rule_id):
             disabled = _load_disabled_rules()
             r["state"] = "DISABLED" if rid in disabled else "ENABLED"
             print(json.dumps(r, indent=2))
             return 0
-    print(f"Rule {rule_id} not found", file=sys.stderr)
+    print(f"Rule {rule_id} not found")
     return 1
 
 
@@ -348,11 +349,12 @@ def cmd_policy_disable(args: argparse.Namespace) -> int:
     rule_id = args.id
     found = False
     for r in rules:
-        if str(r.get("id", r.get("rule_id", ""))) == str(rule_id):
+        rid = str(r.get("rule_id", r.get("id", "")))
+        if rid == str(rule_id):
             found = True
             break
     if not found:
-        print(f"Rule {rule_id} not found", file=sys.stderr)
+        print(f"Rule {rule_id} not found")
         return 1
     disabled = _load_disabled_rules()
     if rule_id in disabled:
@@ -369,11 +371,12 @@ def cmd_policy_enable(args: argparse.Namespace) -> int:
     rule_id = args.id
     found = False
     for r in rules:
-        if str(r.get("id", r.get("rule_id", ""))) == str(rule_id):
+        rid = str(r.get("rule_id", r.get("id", "")))
+        if rid == str(rule_id):
             found = True
             break
     if not found:
-        print(f"Rule {rule_id} not found", file=sys.stderr)
+        print(f"Rule {rule_id} not found")
         return 1
     disabled = _load_disabled_rules()
     if rule_id not in disabled:
@@ -394,7 +397,7 @@ def cmd_policy_reload(args: argparse.Namespace) -> int:
             return 0
     except AegisCtlError:
         pass
-    print("ERROR: daemon not running", file=sys.stderr)
+    print("ERROR: not running")
     return 1
 
 
