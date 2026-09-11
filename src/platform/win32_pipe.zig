@@ -126,7 +126,7 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
         sendResponse(a, pipe, false, null);
         return false;
     }
-    const cmd_val = root.object.get("command") orelse {
+    const cmd_val = root.object.get("command") orelse root.object.get("op") orelse {
         sendResponse(a, pipe, false, null);
         return false;
     };
@@ -134,7 +134,9 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
         sendResponse(a, pipe, false, null);
         return false;
     }
-    const cmd = cmd_val.string;
+    const cmd_raw = cmd_val.string;
+    // Map op-style commands to internal command names
+    const cmd = if (std.mem.eql(u8, cmd_raw, "HEALTH")) "health.check" else cmd_raw;
     const uptime_sec: i64 = @intCast(@divTrunc(std.time.nanoTimestamp() - start_ns, std.time.ns_per_s));
 
     // Control command audit — log every operator command
@@ -218,9 +220,11 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
     }
 
     if (std.mem.eql(u8, cmd, "health.check")) {
+        const elapsed_ms: u64 = @intCast(@divTrunc(std.time.nanoTimestamp() - start_ns, std.time.ns_per_ms));
         const body = std.fmt.allocPrint(a,
-            \\{{"checks":[{{"name":"core","ok":true,"detail":"initialized"}},{{"name":"npcap","ok":{},"detail":"{s}"}},{{"name":"etw","ok":{},"detail":"{s}"}},{{"name":"fim","ok":{},"detail":"{s}"}},{{"name":"wfp","ok":{},"detail":"{s}"}}]}}
+            \\{{"component":"core","state":"RUNNING","status":"OK","uptime_ms":{},"deps":[{{"name":"bridge","state":"RUNNING"}}],"checks":[{{"name":"core","ok":true,"detail":"initialized"}},{{"name":"npcap","ok":{},"detail":"{s}"}},{{"name":"etw","ok":{},"detail":"{s}"}},{{"name":"fim","ok":{},"detail":"{s}"}},{{"name":"wfp","ok":{},"detail":"{s}"}}]}}
         , .{
+            elapsed_ms,
             caps.has_npcap,        if (caps.has_npcap) "available" else "not-available",
             caps.has_etw_realtime, if (caps.has_etw_realtime) "available" else "not-available",
             caps.has_fim,          if (caps.has_fim) "available" else "not-available",
