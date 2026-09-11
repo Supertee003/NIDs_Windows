@@ -18,7 +18,7 @@
         },
         {
             "id": "c-native",
-            "language": "c",
+            "language": "c/c++",
             "job": "c-native-build",
             "required": true
         },
@@ -41,6 +41,12 @@
             "required": true
         },
         {
+            "id": "cython-scan",
+            "language": "cython",
+            "job": "cython-build-test",
+            "required": false
+        },
+        {
             "id": "security-scan",
             "language": "yaml",
             "job": "security-scan",
@@ -50,6 +56,18 @@
             "id": "ci-matrix",
             "language": "python",
             "job": "ci-matrix",
+            "required": true
+        },
+        {
+            "id": "cpp-bridge",
+            "language": "c/c++",
+            "job": "cpp-bridge-build",
+            "required": true
+        },
+        {
+            "id": "rust-shield",
+            "language": "rust",
+            "job": "rust-shield-build",
             "required": true
         }
     ]

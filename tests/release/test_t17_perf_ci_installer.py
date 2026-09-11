@@ -37,9 +37,9 @@ def _read(rel: str) -> str:
 
 PERF_UNITS = {
     "src/core/perf_benchmark.zig": ("Zig", "event throughput suites + p50/p95/p99"),
-    "core/federation_bench.zig": ("Zig", "cross-node heartbeat/incident/intel/failover"),
+    "src/federation/federation_bench.zig": ("Zig", "cross-node heartbeat/incident/intel/failover"),
     "src/core/performance_harness.zig": ("Zig", "events/sec + queue depth + drop rate harness"),
-    "core/flow_engine.zig": ("Zig", "fabric/dispatcher tuning hooks"),
+    "src/capture/flow_engine.zig": ("Zig", "fabric/dispatcher tuning hooks"),
     "tests/cython/test_cython_benchmark.py": ("Cython", "brain fast-scan + numeric batch"),
     "scripts/aegis_metrics.py": ("Python", "CPU / memory / queue depth / latency snapshot"),
 }

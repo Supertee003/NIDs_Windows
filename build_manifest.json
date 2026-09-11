@@ -147,6 +147,7 @@
    "required": false,
    "ci_job": null,
    "source": "mouth/windows_sec_monitor.rs",
+   "commit": "2c7cb30",
    "note": "Optional DEFCON Security Monitor GUI (std-only crate aegis-mouth). Separate operator component; not part of the Rust PEP authority, not linked into the runtime, no CI gate (optional documented gap)."
   }
  ],
