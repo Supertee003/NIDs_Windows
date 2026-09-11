@@ -168,7 +168,8 @@
     "canary order: src/windows/ips_canary.zig (IPS canary progression: simulation -> shadow -> canary -> enforce)",
     "final authority: Rust PEP (aegis_pep.dll) is the final enforcement authority; Zig dispatches through PEP",
     "never Everyone for privileged: privileged actions require explicit caller capability; no catch-all Everyone role",
-    "control plane: src/policy/control_ipc.zig (named pipe control protocol for CLI/TS policy authoring)"
+    "control plane: src/policy/control_ipc.zig (named pipe control protocol for CLI/TS policy authoring)",
+    "policy engine: src/policy/policy_engine.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)"
   ],
   "modules": {
     "src/core/diagnostics.zig": {"status": "REAL", "golden_path": true, "role": "structured logging"},
