@@ -39,7 +39,7 @@ class TestPolicyCommands(unittest.TestCase):
 
     def setUp(self):
         if not RULES_FILE.exists():
-            self.skipTest("config/Rules.json not found")
+            self.skipTest("configs/Rules.json not found")
         # Clean up any disabled_rules.json from previous test runs
         if DISABLED_RULES_FILE.exists():
             DISABLED_RULES_FILE.unlink()
@@ -159,7 +159,7 @@ class TestCanaryCommands(unittest.TestCase):
 
     def setUp(self):
         if not CANARY_TESTS_FILE.exists():
-            self.skipTest("config/canary_tests.json not found")
+            self.skipTest("configs/canary_tests.json not found")
 
     def test_canary_run_all_tests(self):
         # Run all 10 canary tests. They will try to send via UDP.

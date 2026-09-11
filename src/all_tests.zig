@@ -8,6 +8,8 @@ comptime {
     _ = @import("tests/contract/runtime_manifest.zig");
     _ = @import("tests/core/memory_pool.zig");
     _ = @import("tests/core/diagnostics.zig");
+    // REBUILD-002: pull every orphaned src/core module into the test graph
+    _ = @import("tests/core/core_modules.zig");
     _ = @import("tests/capture/npcap_adapter.zig");
     _ = @import("tests/capture/packet_decoder.zig");
     _ = @import("tests/capture/flow_table.zig");

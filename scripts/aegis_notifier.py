@@ -17,7 +17,7 @@ Usage:
   python aegis_notifier.py --test webhook
   python aegis_notifier.py --test syslog
 
-Configuration via environment variables or config/notifier.json:
+Configuration via environment variables or configs/notifier.json:
   AEGIS_NOTIFIER_EMAIL_HOST=smtp.gmail.com
   AEGIS_NOTIFIER_EMAIL_PORT=587
   AEGIS_NOTIFIER_EMAIL_USER=alerts@company.com

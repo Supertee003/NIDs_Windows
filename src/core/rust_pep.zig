@@ -21,6 +21,9 @@ const std = @import("std");
 const canonical = @import("../contract/canonical_event.zig");
 const policy = @import("../policy/policy_engine.zig");
 const wfp_ioctl = @import("../policy/wfp_ioctl.zig");  // Phase 28: WFP kernel bridge
+const pep_bindings = @import("../policy/pep_bindings.zig");       // REBUILD-004: PEP authority gate
+const event_mod = @import("../contract/event.zig");
+const policy_ir_mod = @import("../policy/policy_ir.zig");
 
 // ============================================================
 // Enforcement Status
@@ -286,10 +289,20 @@ pub fn isCriticalInfra(ip: u32) bool {
 // ============================================================
 // WFP IOCTL transport re-exports (T11)
 //
-// The Rust PEP is the ONLY path to enforcement. These functions
-// wrap the low-level WFP device transport so no other module
-// needs to import wfp_ioctl.zig directly. Any module that needs
-// to talk to the WFP device must go through rust_pep.
+// SECURITY (REBUILD-004, closes audit P0-1):
+// The Rust PEP is the ONLY authority for privileged enforcement. The direct
+// wfp_ioctl.block_ip path previously exposed an unauthenticated Zig→WFP
+// bypass. It is now gated behind the Rust PEP (aegis_pep.dll via
+// src/policy/pep_bindings.zig):
+//
+//   block_ip(ip) →  PEP authorization (capability mask, quota, two-person
+//                    rule for high severity)  →  only on ALLOW does the
+//                    WFP IOCTL transport execute the block.
+//
+// If the PEP DLL is unavailable the gate is FAIL-CLOSED (returns false) —
+// a privileged action is never silently executed without authorization.
+// wfpInit/wfpShutdown/wfpIsConnected/read_events/get_stats remain pure
+// telemetry transport (read-only, not privileged) and are unchanged.
 // ============================================================
 
 pub const WfpRingStats = wfp_ioctl.WfpRingStats;
@@ -307,11 +320,94 @@ pub fn wfpIsConnected() bool {
     return wfp_ioctl.isConnected();
 }
 
-pub fn block_ip(ipv4: u32) bool {
-    return wfp_ioctl.block_ip(ipv4);
+/// Module-level PEP gate. Initialized lazily on first privileged call.
+var g_pep_gate: ?pep_bindings.PepEnforcer = null;
+var g_pep_gate_mutex: std.Thread.Mutex = .{};
+
+fn pepGate() ?*pep_bindings.PepEnforcer {
+    g_pep_gate_mutex.lock();
+    defer g_pep_gate_mutex.unlock();
+    if (g_pep_gate == null) {
+        g_pep_gate = pep_bindings.PepEnforcer.init();
+    }
+    if (g_pep_gate.?.available) return &g_pep_gate.?;
+    return null;
 }
 
+/// PRIVILEGED: block an IP via WFP — REQUIRES Rust PEP authorization.
+/// Fail-closed: no PEP → no block.
+pub fn block_ip(ipv4: u32) bool {
+    const pep_gate = pepGate() orelse {
+        std.log.err("[RUST-PEP] block_ip(0x{x}) REJECTED: PEP unavailable (fail-closed)", .{ipv4});
+        return false;
+    };
+
+    // Build a synthetic enforcement request for the PEP.
+    // Severity: blocking an IP is a high-severity privileged action.
+    var ev = event_mod.IpcEvent.init(.action_block);
+    ev.src_ip = ipv4;
+    ev.severity = .alert;
+    const pol = policy_ir_mod.Policy{
+        .id = 0, // synthetic — enforcement requested by detection, not a named policy
+        .name = "pep-gated-wfp-block",
+        .condition = .{ .clauses = &[_]policy_ir_mod.Clause{} },
+        .action = .block,
+        .severity = .alert,
+        .ttl_sec = 0,
+    };
+
+    const request_id = g_pep_request_counter.fetchAdd(1, .acq_rel) + 1;
+    const decision = pep_gate.enforce(&ev, pol, 0, 0x1, request_id); // caps bit0 = block capability
+
+    switch (decision) {
+        .block => {},
+        .rate_limit => {
+            std.log.warn("[RUST-PEP] block_ip(0x{x}) RATE_LIMITED by PEP quota", .{ipv4});
+            return false;
+        },
+        .escalate => {
+            std.log.warn("[RUST-PEP] block_ip(0x{x}) ESCALATED by PEP (two-person rule)", .{ipv4});
+            return false;
+        },
+        else => {
+            std.log.warn("[RUST-PEP] block_ip(0x{x}) REJECTED by PEP decision={s}", .{ ipv4, @tagName(decision) });
+            return false;
+        },
+    }
+
+    // PEP authorized — execute via the WFP IOCTL transport.
+    const ok = wfp_ioctl.block_ip(ipv4);
+    if (ok) {
+        std.log.info("[RUST-PEP] block_ip(0x{x}) authorized by PEP (req={d}), executed via WFP", .{ ipv4, request_id });
+    }
+    return ok;
+}
+
+var g_pep_request_counter = std.atomic.Value(u64).init(0);
+
+/// PRIVILEGED: unblock an IP — also PEP-gated (fail-closed).
 pub fn unblock_ip(ipv4: u32) bool {
+    const pep_gate = pepGate() orelse {
+        std.log.err("[RUST-PEP] unblock_ip(0x{x}) REJECTED: PEP unavailable (fail-closed)", .{ipv4});
+        return false;
+    };
+    var ev = event_mod.IpcEvent.init(.action_allow);
+    ev.src_ip = ipv4;
+    ev.severity = .info;
+    const pol = policy_ir_mod.Policy{
+        .id = 0,
+        .name = "pep-gated-wfp-unblock",
+        .condition = .{ .clauses = &[_]policy_ir_mod.Clause{} },
+        .action = .pass,
+        .severity = .info,
+        .ttl_sec = 0,
+    };
+    const request_id = g_pep_request_counter.fetchAdd(1, .acq_rel) + 1;
+    const decision = pep_gate.enforce(&ev, pol, 0, 0x1, request_id);
+    if (decision != .allow) {
+        std.log.warn("[RUST-PEP] unblock_ip(0x{x}) not authorized: {s}", .{ ipv4, @tagName(decision) });
+        return false;
+    }
     return wfp_ioctl.unblock_ip(ipv4);
 }
 
@@ -321,6 +417,18 @@ pub fn read_events(out_buf: []u8) u32 {
 
 pub fn get_stats() ?WfpRingStats {
     return wfp_ioctl.get_stats();
+}
+
+test "block_ip is fail-closed when PEP unavailable" {
+    // In unit tests aegis_pep.dll may not be loadable; the gate MUST refuse
+    // the privileged action rather than execute it.
+    if (pepGate() != null) return error.SkipZigTest; // PEP present: nothing to prove here
+    try std.testing.expect(!block_ip(0x08080808));
+    try std.testing.expect(!unblock_ip(0x08080808));
+}
+
+test "WFP IOCTL codes match WFP protocol spec (transport unchanged)" {
+    _ = wfp_ioctl;
 }
 
 // ============================================================

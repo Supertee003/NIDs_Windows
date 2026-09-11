@@ -71,6 +71,28 @@ jobs:
             target/release/aegis_pep.dll
             target/release/aegis_pep.dll.lib
 
+  shield-build:
+    name: Rust Shield Build (Tier-3 payload screening)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: shield
+      - name: Build Shield
+        run: cd shield && cargo build --release
+      - name: Test Shield
+        run: cd shield && cargo test --release
+      - name: Upload Shield artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sec_monitor_dll
+          path: |
+            shield/target/release/sec_monitor.dll
+
   c-native-build:
     name: C Native Build
     runs-on: windows-latest
@@ -152,9 +174,13 @@ jobs:
         run: |
           cd go/aggregator
           go build ./...
+          cd ../../nose
+          go build ./...
       - name: Test Go modules
         run: |
           cd go/aggregator
+          go test ./...
+          cd ../../nose
           go test ./...
 
   ts-policy-build:

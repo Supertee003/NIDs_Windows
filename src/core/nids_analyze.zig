@@ -466,7 +466,7 @@ pub fn reload_rules_atomic(allocator: std.mem.Allocator) !void {
     }
     defer g_rules_loading.store(false, .release);
 
-    const file = std.fs.cwd().openFile("Rules.json", .{}) catch |open_err| {
+    const file = std.fs.cwd().openFile("configs/Rules.json", .{}) catch |open_err| {
         std.log.warn("[ANALYZE] Cannot open Rules.json: {}", .{open_err});
         std.debug.print("\x1b[33m[ANALYZE] Cannot open Rules.json: {}\x1b[0m\n", .{open_err});
         return open_err;

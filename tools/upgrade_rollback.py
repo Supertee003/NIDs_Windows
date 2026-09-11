@@ -13,14 +13,14 @@ measures the reliability telemetry the ticket requires:
   restore_success - whether every snapshot path was restored.
 
 Lifecycle covered:
-  fresh-install  -> config/trust/audit initialized (no snapshot needed)
-  snapshot       -> capture config/policy/trust/audit/forensic history
+  fresh-install  -> configs/trust/audit initialized (no snapshot needed)
+  snapshot       -> capture configs/policy/trust/audit/forensic history
   upgrade        -> operator swaps binaries (out of band, via installer)
   failed-upgrade -> rollback --snapshot <id> restores the known-good state
   reinstall      -> installer preserves data\\ per tools/installer.py
   uninstall      -> installer keeps data\\ (see NSIS uninstall section)
 
-Data preserved: config/Rules.json (+ .sig), config/trust_store.json,
+Data preserved: configs/Rules.json (+ .sig), config/trust_store.json,
 certs/, logs/audit/, logs/forensics/, logs/runtime/control_audit.ndjson -
 the same set tools/installer.py ships into "$INSTDIR\\data".
 
@@ -43,9 +43,9 @@ ROOT = Path(__file__).resolve().parent.parent
 
 # Paths that must survive upgrade/rollback/reinstall (data plane).
 PRESERVED_RELS = [
-    "config/Rules.json",
-    "config/Rules.json.sig",
-    "config/trust_store.json",
+    "configs/Rules.json",
+    "configs/Rules.json.sig",
+    "configs/trust_store.json",
     "certs/",
     "logs/audit/",
     "logs/forensics/",

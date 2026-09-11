@@ -38,7 +38,7 @@ ALLOWED_ENFORCEMENT_FILES = {
     "core/wfp_production.zig",
     "core/wfp_ioctl_integration.zig",  # Zig mirror of the Rust PEP caller
     "core/rust_pep.zig",  # test-sim Zig mirror of the Rust PEP
-    "core/rust_pep_integration.zig",
+    "src/tests/integration/rust_pep_integration.zig",
 }
 
 # Files that must NOT contain raw enforcement calls. These are the
@@ -184,9 +184,9 @@ def test_pep_is_the_only_authorized_caller_in_zig_core() -> None:
     """
     # Documented enforcement producers in core/ that DO go through the
     # Rust PEP (via rust_pep_integration):
-    known_pep_caller = REPO_ROOT / "core" / "rust_pep_integration.zig"
+    known_pep_caller = REPO_ROOT / "src" / "tests" / "integration" / "rust_pep_integration.zig"
     assert known_pep_caller.exists(), (
-        "core/rust_pep_integration.zig must exist (Zig caller of the Rust PEP)"
+        "src/tests/integration/rust_pep_integration.zig must exist (Zig caller of the Rust PEP)"
     )
     # Read it and confirm it talks to the Rust PEP (or its Zig mirror).
     text = known_pep_caller.read_text(encoding="utf-8")

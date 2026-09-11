@@ -12,7 +12,7 @@
     "flow_eviction_timeout_sec": 60
   },
   "detection": {
-    "signature_rules_path": "Rules.json",
+    "signature_rules_path": "configs/Rules.json",
     "anomaly_alpha": 0.05,
     "anomaly_z_threshold": 3.0,
     "correlation_window_sec": 300

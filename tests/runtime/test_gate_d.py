@@ -44,7 +44,7 @@ class TestRulesCommands(unittest.TestCase):
 
     def setUp(self):
         if not RULES_FILE.exists():
-            self.skipTest("config/Rules.json not found")
+            self.skipTest("configs/Rules.json not found")
 
     def test_rules_list_shows_all_rules(self):
         rc, stdout, _ = _run_aegisctl("rules", "list")

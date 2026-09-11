@@ -67,7 +67,7 @@ const WAIT_TIMEOUT = win32_io.WAIT_TIMEOUT;
 const IO_POLL_TIMEOUT_MS = win32_io.IO_POLL_TIMEOUT_MS;
 // Phase 28: Blueprint Nose Contract for event submission
 const nose = @import("../capture/nose_contract.zig");
-const nose_int = @import("../capture/nose_integration.zig");
+const nose_int = @import("../tests/integration/nose_integration.zig");
 
 /// Thread 2 entry point: Named Pipe IPC Sensor.
 ///

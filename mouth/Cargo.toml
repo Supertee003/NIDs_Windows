@@ -1,0 +1,19 @@
+[package]
+name = "aegis-mouth"
+version = "3.0.0"
+edition = "2021"
+description = "AEGIS MOUTH - DEFCON Security Monitor GUI (optional standalone component; separate from the Rust PEP)"
+license = "MIT"
+publish = false
+
+# Optional standalone operator tool: std-only on purpose.
+# It must never gain a dependency on aegis_pep / rust-src (the single PEP
+# authority stays in rust-src/) and must never be linked into the runtime.
+[dependencies]
+
+[[bin]]
+name = "windows_sec_monitor"
+path = "windows_sec_monitor.rs"
+
+[profile.release]
+opt-level = 3

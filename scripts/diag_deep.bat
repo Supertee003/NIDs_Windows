@@ -116,7 +116,7 @@ echo.
 
 if exist "%ROOT%\config\Rules.json" (
     echo   [OK] config\Rules.json found
-    python -c "import json; r=json.load(open('config/Rules.json')); print('  Rules count:', len(r) if isinstance(r, list) else 'dict with', len(r), 'keys')" 2>&1
+    python -c "import json; r=json.load(open('configs/Rules.json')); print('  Rules count:', len(r) if isinstance(r, list) else 'dict with', len(r), 'keys')" 2>&1
 ) else (
     echo   [MISSING] config\Rules.json
 )

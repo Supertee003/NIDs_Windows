@@ -26,6 +26,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 const ht = @import("host_telemetry.zig");
 const mock = @import("host_telemetry_mock.zig");
+const diag = @import("../core/diagnostics.zig");
 
 // ============================================================
 // Constants & limits
@@ -872,4 +873,89 @@ test "EtwEventQueue handles full capacity without crash" {
     // Should have dropped 96 events
     try std.testing.expectEqual(@as(usize, 4), q.pendingCount());
     try std.testing.expectEqual(@as(u64, 96), q.total_dropped);
+}
+
+// ============================================================
+// EtwSource — high-level wrapper over the native helper (REBUILD-003 restore)
+//
+// Restores the II01 runtime API consumed by src/main.zig (etwThread/etwCallback):
+// EtwSource.init/start/stop/setCallback + EtwCallback + well-known provider
+// GUID constants. Delegates to aegis_etw_helper (etw_native.c) like the
+// original Phase II01 implementation; coexists with EtwRealtimeSource above.
+// ============================================================
+
+pub const PROVIDER_KERNEL_PROCESS_RT = [16]u8{ 0x22, 0xFB, 0x2D, 0xF6, 0xA0, 0x1B, 0x10, 0x40, 0xB3, 0x20, 0x29, 0x33, 0x33, 0x8D, 0xDE, 0x6C };
+pub const PROVIDER_KERNEL_FILE_RT = [16]u8{ 0xED, 0xD0, 0x89, 0x2E, 0x80, 0xB5, 0x10, 0x40, 0x99, 0xF6, 0x49, 0x9A, 0x86, 0xA9, 0x3A, 0x05 };
+pub const PROVIDER_KERNEL_REGISTRY_RT = [16]u8{ 0xAE, 0x53, 0x7C, 0x9E, 0xB2, 0xF5, 0x10, 0x40, 0x9D, 0x2D, 0x53, 0xA0, 0xC7, 0xA1, 0xA0, 0x9C };
+
+/// Compatibility aliases used by src/main.zig.
+pub const PROVIDER_KERNEL_PROCESS = PROVIDER_KERNEL_PROCESS_RT;
+pub const PROVIDER_KERNEL_FILE = PROVIDER_KERNEL_FILE_RT;
+pub const PROVIDER_KERNEL_REGISTRY = PROVIDER_KERNEL_REGISTRY_RT;
+
+pub const EtwCallback = *const fn (ctx: *anyopaque, rec: *const EtwEventRecord, ext_data: []const u8) void;
+
+extern "aegis_etw_helper" fn aegis_etw_start(session_name: [*]const u8, providers: [*]const [16]u8, provider_count: usize) c_int;
+extern "aegis_etw_helper" fn aegis_etw_stop(session_name: [*]const u8) c_int;
+extern "aegis_etw_helper" fn aegis_etw_set_callback(cb: *const fn (ctx: *anyopaque, rec: *const EtwEventRecord, ext_data: [*]const u8, ext_len: usize) callconv(.C) void, ctx: *anyopaque) c_int;
+
+pub const EtwSource = struct {
+    session_name: [64]u8 = [_]u8{0} ** 64,
+    running: std.atomic.Value(bool) = std.atomic.Value(bool).init(false),
+    events_received: u64 = 0,
+    events_dropped: u64 = 0,
+    callback: ?EtwCallback = null,
+    callback_ctx: ?*anyopaque = null,
+
+    pub fn init() EtwSource {
+        var s = EtwSource{};
+        @memcpy(s.session_name[0..11], "AEGIS_NIDS\x00");
+        return s;
+    }
+
+    pub fn start(self: *EtwSource, providers: []const [16]u8) !void {
+        if (@import("builtin").os.tag != .windows) return error.UnsupportedPlatform;
+        if (providers.len == 0) return error.NoProviders;
+        const name_z = std.mem.sliceTo(&self.session_name, 0);
+        const rc = aegis_etw_start(name_z.ptr, providers.ptr, providers.len);
+        if (rc != 0) {
+            diag.err("aegis_etw_start failed: rc={d}", .{rc});
+            return error.EtwStartFailed;
+        }
+        self.running.store(true, .release);
+        diag.info("ETW session {s} started with {d} providers", .{ name_z, providers.len });
+    }
+
+    pub fn stop(self: *EtwSource) void {
+        if (!self.running.load(.acquire)) return;
+        const name_z = std.mem.sliceTo(&self.session_name, 0);
+        _ = aegis_etw_stop(name_z.ptr);
+        self.running.store(false, .release);
+        diag.info("ETW session {s} stopped", .{name_z});
+    }
+
+    pub fn setCallback(self: *EtwSource, ctx: *anyopaque, cb: EtwCallback) !void {
+        self.callback_ctx = ctx;
+        self.callback = cb;
+        const wrapper = struct {
+            fn wrap(c: *anyopaque, rec: *const EtwEventRecord, ext_data: [*]const u8, ext_len: usize) callconv(.C) void {
+                const outer: *EtwSource = @ptrCast(@alignCast(c));
+                if (outer.callback) |cb_fn| cb_fn(outer.callback_ctx.?, rec, ext_data[0..ext_len]);
+                outer.events_received += 1;
+            }
+        };
+        const rc = aegis_etw_set_callback(wrapper.wrap, @ptrCast(self));
+        if (rc != 0) return error.EtwSetCallbackFailed;
+    }
+};
+
+test "EtwSource init produces a session name" {
+    const s = EtwSource.init();
+    const name = std.mem.sliceTo(&s.session_name, 0);
+    try std.testing.expectEqualStrings("AEGIS_NIDS", name);
+}
+
+test "EtwSource start with no providers fails" {
+    var s = EtwSource.init();
+    try std.testing.expectError(error.NoProviders, s.start(&[_][16]u8{}));
 }

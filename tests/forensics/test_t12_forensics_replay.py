@@ -14,7 +14,7 @@ Architecture:
     buffer). logResult() captures event + evidence + verdict + policy +
     PEP + action + result, returns a monotonically increasing sequence.
   - core/forensic_log.zig          : append-only NDJSON persistence.
-  - core/forensic_replay_proof.zig : append-only ForensicLog with a
+  - src/tests/proofs/forensic_replay_proof.zig : append-only ForensicLog with a
     rolling hash chain (no edit, no delete) + immutability verify.
   - core/replay_engine.zig         : replay authority. compare(original,
     replayed) reproduces the decision difference and reports diff +
@@ -35,9 +35,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 FORENSICS_ENGINE = "core/forensics_engine.zig"
 FORENSIC_LOG = "core/forensic_log.zig"
-FORENSIC_REPLAY_PROOF = "core/forensic_replay_proof.zig"
+FORENSIC_REPLAY_PROOF = "src/tests/proofs/forensic_replay_proof.zig"
 REPLAY_ENGINE = "core/replay_engine.zig"
-FORENSICS_INTEGRATION = "core/forensics_integration.zig"
+FORENSICS_INTEGRATION = "src/tests/integration/forensics_integration.zig"
 DISPATCHER = "core/dispatcher.zig"
 DISPATCHER_PHASE_B = "core/dispatcher_phase_b.zig"
 POLICY_SIGNING = "core/policy_signing.zig"

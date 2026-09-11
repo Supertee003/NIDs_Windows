@@ -17,10 +17,10 @@ Implementation today lives in six Zig modules, all implemented + host-tested:
     behavior + duration_ns (measurable recovery).
   - core/reliability.zig (13 tests): watchdog recover, config schema,
     latency histogram, canary, IPs shadow/production, XDR, health.
-  - core/fault_injection_integration.zig (23 tests): full lifecycle.
-  - core/config_reload_proof.zig (30 tests): Rules.json hot reload,
+  - src/tests/integration/fault_injection_integration.zig (23 tests): full lifecycle.
+  - src/tests/proofs/config_reload_proof.zig (30 tests): Rules.json hot reload,
     validate -> atomic swap (RCU) -> version tracking -> audit.
-  - core/health_monitoring_proof.zig (32 tests): liveness heartbeat,
+  - src/tests/proofs/health_monitoring_proof.zig (32 tests): liveness heartbeat,
     readiness (NOSE/FLOW/DETECTION/POLICY/PEP), metrics snapshot,
     DEFCON rollup.
 
@@ -39,10 +39,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 CORE_MODULES = [
     "core/fault_matrix.zig",
     "core/fault_injection.zig",
-    "core/fault_injection_integration.zig",
+    "src/tests/integration/fault_injection_integration.zig",
     "core/reliability.zig",
-    "core/config_reload_proof.zig",
-    "core/health_monitoring_proof.zig",
+    "src/tests/proofs/config_reload_proof.zig",
+    "src/tests/proofs/health_monitoring_proof.zig",
 ]
 
 # Injection kinds named in the AC; each must be a real fault type.
@@ -120,7 +120,7 @@ def test_fault_injection_recovers_measurably() -> None:
 def test_fault_injection_integration_full_lifecycle() -> None:
     """AC2: integration test exercises the full inject -> observe ->
     recover lifecycle."""
-    src = _read("core/fault_injection_integration.zig")
+    src = _read("src/tests/integration/fault_injection_integration.zig")
     assert 'test "fault injection integration: full lifecycle"' in src, (
         "integration must run a full lifecycle test (AC2)"
     )
@@ -131,7 +131,7 @@ def test_fault_injection_integration_full_lifecycle() -> None:
 def test_config_schema_version_validation_fallback_reload() -> None:
     """AC3: config has schema (Rules.json), version, validation, and the
     reload path validates before the atomic swap + audit."""
-    src = _read("core/config_reload_proof.zig")
+    src = _read("src/tests/proofs/config_reload_proof.zig")
     for kw in ["Rules.json", "ConfigStore", "validateRuleset", "swapActive",
                "WatchdogState", "checkMtime", "processEventWithVersion"]:
         assert kw in src, f"config reload must implement {kw} (AC3)"
@@ -148,12 +148,12 @@ def test_config_validator_is_real() -> None:
     and is the safe-fallback gate before load."""
     v = _read("tools/config_validator.py")
     assert "validate" in v.lower(), "config_validator must validate (AC3)"
-    assert _manifest()["modules"]["config/Rules.json"]["status"] == "REAL"
+    assert _manifest()["modules"]["configs/Rules.json"]["status"] == "REAL"
 
 
 def test_observability_metrics_are_exposed() -> None:
     """AC4: the metrics snapshot exposes the listed metrics."""
-    src = _read("core/health_monitoring_proof.zig")
+    src = _read("src/tests/proofs/health_monitoring_proof.zig")
     for metric in ["total_events", "total_blocks", "total_alerts", "total_allowed",
                    "queue_depth", "max_queue_depth", "latency_samples_us",
                    "cpu_time_ms", "memory_bytes"]:
@@ -167,7 +167,7 @@ def test_observability_metrics_are_exposed() -> None:
 def test_health_liveness_readiness_defcon() -> None:
     """AC4: liveness heartbeat, readiness (5 subsystems), and DEFCON rollup
     are all implemented and tested."""
-    src = _read("core/health_monitoring_proof.zig")
+    src = _read("src/tests/proofs/health_monitoring_proof.zig")
     for kw in ["LivenessState", "recordHeartbeat", "isStale",
                "ReadinessReport", "system_ready", "SubsystemId",
                "MetricsSnapshot", "computeDefcon", "DefconLevel"]:

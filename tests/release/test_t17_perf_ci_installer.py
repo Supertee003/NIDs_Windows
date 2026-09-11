@@ -60,7 +60,7 @@ def test_ac1_p50_p95_p99_latency_implemented() -> None:
     assert "queryPerformanceCounter" in src or "std.time.Timer" in src, (
         "benchmark timer must be high-resolution on Windows (QPC)"
     )
-    cli = _read("core/perf_benchmark_cli.zig")
+    cli = _read("src/tests/cli/perf_benchmark_cli.zig")
     assert '"latency"' in cli, "CLI must expose a latency mode for AC1 recording"
 
 
@@ -256,11 +256,11 @@ def test_manifest_declares_t17_modules_real() -> None:
         "core/perf_benchmark.zig",
         "core/federation_bench.zig",
         "core/performance_harness.zig",
-        "core/performance_integration.zig",
-        "core/performance_tuning_proof.zig",
+        "src/tests/integration/performance_integration.zig",
+        "src/tests/proofs/performance_tuning_proof.zig",
         "core/release_engineering.zig",
         "core/release_provenance.zig",
-        "core/release_engineering_integration.zig",
+        "src/tests/integration/release_engineering_integration.zig",
         "tools/release_engineering.py",
         "tools/installer.py",
         "tools/ci_coverage.py",

@@ -16,17 +16,17 @@
 const std = @import("std");
 const canonical = @import("../contract/canonical_event.zig");
 const fabric = @import("../contract/event_fabric.zig");
-const flow_int = @import("../capture/flow_integration.zig");
+const flow_int = @import("../tests/integration/flow_integration.zig");
 const flow_types = @import("../capture/flow_types.zig");
-const detection_int = @import("../detection/detection_integration.zig");
+const detection_int = @import("../tests/integration/detection_integration.zig");
 const verdict_agg = @import("../detection/verdict_aggregator.zig");
-const correlation_int = @import("../detection/correlation_integration.zig");
-const threat_intel_int = @import("../detection/threat_intel_integration.zig");
-const rag_int = @import("../detection/rag_integration.zig");  // Phase B: RAG import (P0.1 fix)
-const brain_int = @import("../core/brain_integration.zig");
-const policy_int = @import("policy_integration.zig");
-const rust_pep_int = @import("../core/rust_pep_integration.zig");
-const forensics_int = @import("../forensic/forensics_integration.zig");
+const correlation_int = @import("../tests/integration/correlation_integration.zig");
+const threat_intel_int = @import("../tests/integration/threat_intel_integration.zig");
+const rag_int = @import("../tests/integration/rag_integration.zig");  // Phase B: RAG import (P0.1 fix)
+const brain_int = @import("../tests/integration/brain_integration.zig");
+const policy_int = @import("../tests/integration/policy_integration.zig");
+const rust_pep_int = @import("../tests/integration/rust_pep_integration.zig");
+const forensics_int = @import("../tests/integration/forensics_integration.zig");
 
 // ============================================================
 // Phase B: EventFate enum (accounting for every event)

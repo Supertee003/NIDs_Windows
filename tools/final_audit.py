@@ -210,7 +210,7 @@ class AuditEngine:
         if path.suffix in (".ts", ".js"):
             return "typescript CI job + ts tests"
         if path.suffix == ".json":
-            if "config/" in key:
+            if "configs/" in key:
                 return "config_validator.py tests"
             return "manifest JSON validated by tooling/CI"
         if path.suffix in (".md", ".txt"):

@@ -126,7 +126,7 @@ def collect() -> dict:
     if rules.exists():
         data = json.loads(rules.read_text(encoding="utf-8"))
         n_rules = len(data) if isinstance(data, list) else len(data.get("rules", []))
-        ev["policy_artifact"] = {"path": "config/Rules.json",
+        ev["policy_artifact"] = {"path": "configs/Rules.json",
                                  "sha256": sha256(rules), "rules": n_rules}
     else:
         ev["policy_artifact"] = {"missing": True}
@@ -214,7 +214,7 @@ def render(ev: dict) -> str:
         "decision_trace": "mandated 8-link decision trace (action -> "
                           "pep_request -> policy -> verdict -> evidence -> "
                           "correlation -> event -> source)",
-        "policy_artifact": "config/Rules.json (digest-verified) + "
+        "policy_artifact": "configs/Rules.json (digest-verified) + "
                            "core/policy_signing.zig (ed25519)",
         "signature_proof": "core/policy_signing.zig (ed25519 signing + "
                            "TrustStore) gate",

@@ -1,0 +1,104 @@
+{
+  "_meta": {
+    "generated_by": "REBUILD-001 read-only audit",
+    "head_sha": "a480efb177e4fe71f556d095b438924793f7054b",
+    "date": "2026-09-10",
+    "note": "Function-level call graph for the src/core bridge modules. Static analysis of direct calls/imports only."
+  },
+  "nids_main": {
+    "file": "src/core/nids_main.zig",
+    "compiled_by": "NONE (no build root)",
+    "calls": [
+      { "target": "bridge_init.initAll", "purpose": "WFP IOCTL + aegis_ipc.dll + sec_monitor.dll + UDP brain" },
+      { "target": "nids_analyze.analyze_packets", "thread": "T1 analyzer" },
+      { "target": "nids_capture.capture_packets", "thread": "T2 pipe sensor" },
+      { "target": "capture/windows_capture.capture_packets", "thread": "T3 WFP sensor" },
+      { "target": "capture/minifilter_reader.minifilterReaderLoop", "thread": "T4 minifilter" },
+      { "target": "capture/pipe_monitor.pipeMonitorLoop", "thread": "T5 pipe monitor" },
+      { "target": "healthServerLoop (local)", "thread": "T6 \\\\.\\pipe\\aegis-core-health (RUNTIME_CONTRACT 4)" },
+      { "target": "nose.initFabric/shutdownFabric", "purpose": "Event Fabric lifecycle" },
+      { "target": "forensic_log.init/shutdown", "purpose": "persistent NDJSON forensic log" }
+    ],
+    "calls_out_to": ["src/capture/*", "src/forensic/*", "src/core/*"],
+    "called_by": []
+  },
+  "nids_analyze": {
+    "file": "src/core/nids_analyze.zig",
+    "compiled_by": "NONE",
+    "exports": ["main-loop helpers", "PacketContext", "SecureRuleSet", "reload_rules_atomic", "inspect_packet", "g_shutdown_requested", "error counters"],
+    "calls": [
+      { "target": "forensic/forensic_log.zig", "purpose": "RULES_TAMPER_DETECTED etc." },
+      { "target": "capture/nose_contract.zig", "purpose": "Event Fabric submit" },
+      { "target": "core/bridge_init.zig", "purpose": "shutdown flag, bridge re-exports" }
+    ],
+    "called_by": ["core/nids_main.zig", "core/nids_capture.zig", "capture/windows_capture.zig", "reliability/reliability.zig (AegisIpcEvent size test == 76)"]
+  },
+  "nids_capture": {
+    "file": "src/core/nids_capture.zig",
+    "compiled_by": "NONE",
+    "calls": [
+      { "target": "nids_analyze.inspect_packet", "purpose": "3-tier analysis of pipe payloads" },
+      { "target": "nose_integration.submit", "purpose": "backpressure-aware fabric submit" },
+      { "target": "windows/win32_io.zig", "purpose": "overlapped I/O helpers" }
+    ],
+    "security": ["SDDL admin-only pipe ACL (D:(A;;GA;;;BA))", "fail-closed on SDDL conversion failure"],
+    "called_by": ["core/nids_main.zig"]
+  },
+  "bridge_init": {
+    "file": "src/core/bridge_init.zig",
+    "compiled_by": "NONE (imported by compiled-from-test-graph modules only)",
+    "exports": ["AEGIS_VERSION", "SHIELD_VERSION=0.1.0", "AegisIpcEvent (B-05 ABI)", "initAll/shutdownAll", "requestShutdown/g_shutdown", "pushEvent/getDefcon/getBridgeEventCount", "validatePayloadSafety (FAIL-OPEN)", "sendToBrain (UDP + spool)", "blockIp", "readWfpEvents", "getWfpStats"],
+    "calls": [
+      { "target": "core/rust_pep.wfpInit|wfpShutdown|block_ip|read_events|get_stats", "purpose": "WFP IOCTL bridge — P0-1 surface" },
+      { "target": "aegis_ipc.dll: aegis_bridge_init|shutdown|push_event|get_defcon|get_event_count", "purpose": "C++ IPC bridge" },
+      { "target": "sec_monitor.dll: validate_payload_safety", "purpose": "Rust shield Tier-3 — P0-2 fail-open when missing" },
+      { "target": "UDP 127.0.0.1:9999 + spool drain thread", "purpose": "Python brain logging" }
+    ],
+    "called_by": ["capture/minifilter_reader.zig", "capture/pipe_monitor.zig", "capture/windows_capture.zig", "core/nids_main.zig", "core/nids_capture.zig", "core/nids_analyze.zig"]
+  },
+  "rust_pep_core": {
+    "file": "src/core/rust_pep.zig",
+    "compiled_by": "NONE",
+    "imports": ["contract/canonical_event.zig", "policy/policy_engine.zig", "policy/wfp_ioctl.zig"],
+    "exports": ["RustPep.init", "wfpInit", "wfpShutdown", "wfpIsConnected", "block_ip", "read_events", "get_stats", "WfpRingStats", "EnforcementStatus", "RejectionReason", "EnforcementResult"],
+    "security_finding": "Direct Zig→WFP IOCTL path with no Rust PEP verification step — violates AEGIS enforcement authority invariant (prompt §18). Reachable from 6+ canonical modules once the orphan subgraph is compiled.",
+    "called_by": ["core/bridge_init.zig", "capture/windows_capture.zig", "forensic/forensics_engine.zig", "forensic/forensics_integration.zig", "forensic/replay_engine.zig", "forensic/replay_integration.zig", "policy/dispatcher.zig", "policy/dispatcher_phase_b.zig", "policy/policy_contract.zig", "policy/policy_engine.zig", "policy/policy_integration.zig", "reliability/lifecycle.zig", "windows/ips_canary.zig", "windows/ips_canary_integration.zig"]
+  },
+  "rust_pep_canonical": {
+    "file": "src/policy/pep_bindings.zig",
+    "compiled_by": ["src/main.zig graph"],
+    "imports": ["extern aegis_pep: aegis_pep_init/shutdown/enforce/quota_remaining"],
+    "called_by": ["src/main.zig processEvent (enforce + dispatch)"],
+    "status": "CANONICAL PEP path — Rust PEP authoritative"
+  },
+  "rust_src_surface": {
+    "file": "rust-src/lib.rs",
+    "exports_c": ["aegis_pep_init", "aegis_pep_shutdown", "aegis_pep_enforce", "aegis_pep_quota_remaining"],
+    "exports_rust": ["verify_policy_signature", "sha256_hash", "TlsConfig stubs (send_heartbeat unimplemented)"],
+    "missing_vs_legacy": ["validate_payload_safety (was shield/)"]
+  },
+  "priority_queue": {
+    "file": "src/core/priority_queue.zig",
+    "compiled_by": "NONE",
+    "composes": ["contract/event_queue.zig x3 (high/normal/low)"],
+    "called_by": ["capture/nose_contract.zig (CANONICAL Event Fabric)"],
+    "tests": "10 test blocks present, NEVER RUN (file has no build root)"
+  },
+  "brain_engine": {
+    "file": "src/core/brain_engine.zig",
+    "compiled_by": "NONE",
+    "imports": ["contract/canonical_event", "capture/flow_engine", "detection/{detection_engine,verdict_aggregator,correlation_engine,threat_intel,rag_engine}"],
+    "exports": ["BrainAdviceKind", "BrainAdvice", "BrainAdvisor.advise"],
+    "invariant": "ADVISOR-ONLY: recommends verdicts, cannot enforce (bounded RAG signal ±20)",
+    "called_by": ["core/brain_integration.zig", "forensic/forensics_engine.zig", "forensic/forensics_integration.zig", "policy/dispatcher.zig", "policy/dispatcher_phase_b.zig", "policy/policy_engine.zig", "policy/policy_integration.zig"]
+  },
+  "real_ips_path": {
+    "file": "src/core/real_ips_path.zig",
+    "compiled_by": "NONE",
+    "imports": ["std only (self-contained)"],
+    "exports": ["CHAIN_ORDER (telemetry→detection→verdict→policy→signature_verification→rust_pep→wfp)", "RealIPSPath.run/expire/revoke/rollback", "fail-closed on driver-unavailable + sig-unverified"],
+    "tests": "13 test blocks, NEVER RUN",
+    "called_by": [],
+    "role": "executable specification of the enforcement contract"
+  }
+}

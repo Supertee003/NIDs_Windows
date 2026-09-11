@@ -42,7 +42,7 @@ CLUSTER_COORD = "core/cluster_coord.zig"
 FEDERATION_CODEC = "core/federation_codec.zig"
 FEDERATION_TCP = "core/federation_tcp.zig"
 FEDERATION_TLS = "core/federation_tls.zig"
-FEDERATION_TLS_CONFIG = "core/federation_tls_config.json"
+FEDERATION_TLS_CONFIG = "configs/test/federation_tls_config.json"
 
 # Federation modules must never reach into enforcement (AC2).
 ENFORCEMENT_MODULES = ("policy_engine.zig", "rust_pep.zig", "wfp_ioctl.zig", "wfp_production.zig")

@@ -1,132 +1,160 @@
 {
-  "schema_version": "1.0",
-  "generated_at": "2026-09-10T00:00:00.000000+00:00",
-  "head_sha": "61c80ca3fa68bf4d1c589e953428c453d90774cf",
-  "canonical_source_root": "/",
-  "canonical_entrypoints": {
-    "zig_core_tier1": {
-      "file": "src/main.zig",
-      "language": "zig",
-      "role": "Tier-1: Runtime spine, capture, detection, correlation, policy orchestration, control pipe",
-      "build": "zig build",
-      "artifact": "zig-out/bin/aegis_nids.exe"
-    },
-    "rust_pep_tier3": {
-      "file": "rust-src/lib.rs",
-      "language": "rust",
-      "crate_name": "aegis_pep",
-      "role": "Tier-3: Policy Enforcement Point + Federation TLS",
-      "build": "cargo build --release",
-      "artifact": "target/release/aegis_pep.dll"
-    },
-    "go_nose": {
-      "file": "nose/main.go",
-      "language": "go",
-      "module": "aegis-nose",
-      "role": "Packet acquisition, flow collection, IPC reader, canonical event production",
-      "build": "cd nose && go build -o aegis-nose.exe .",
-      "artifact": "nose/aegis-nose.exe"
-    },
-    "cpp_native_helpers": {
-      "file": "src/windows/aegis_wfp.c",
-      "language": "c",
-      "role": "Native Windows adapters: WFP user-mode, ETW helpers, FIM",
-      "build": "cmake -B build && cmake --build build",
-      "artifacts": [
-        "build/Release/aegis_wfp_user.dll",
-        "build/Release/aegis_etw_helper.dll",
-        "build/Release/aegis_fim_helper.dll"
-      ]
-    },
-    "cpp_bridge": {
-      "file": "bridge/aegis_ipc.cpp",
-      "language": "c++",
-      "role": "C++ IPC bridge: event queue, DEFCON, IPS block/unblock, adapter management",
-      "build": "cd bridge && cmake -B build && cmake --build build",
-      "artifacts": [
-        "dist/aegis_ipc.dll",
-        "dist/aegis_adapter.dll",
-        "dist/aegis_bridge.exe"
-      ]
-    },
-    "brain_tier2": {
-      "file": "brain/windows_brain.py",
-      "language": "python",
-      "role": "Tier-2: Threat analysis, regex scanning, analytics"
-    },
-    "ts_policy_compiler": {
-      "file": "ts_policy/src/index.ts",
-      "language": "typescript",
-      "role": "Policy authoring, simulation, compilation to Policy IR",
-      "build": "cd ts_policy && npm run typecheck && npm run test:all",
-      "note": "Advisory only - no build output. Typecheck + test only."
-    }
+ "schema_version": "1.0",
+ "generated_at": "2026-09-11T00:00:00.000000+00:00",
+ "head_sha": "a480efb177e4fe71f556d095b438924793f7054b",
+ "canonical_source_root": "/",
+ "canonical_entrypoints": {
+  "zig_core_tier1": {
+   "file": "src/main.zig",
+   "language": "zig",
+   "role": "Tier-1: Runtime spine, capture, detection, correlation, policy orchestration, control pipe",
+   "build": "zig build",
+   "artifact": "zig-out/bin/aegis_nids.exe"
   },
-  "canonical_artifacts": {
-    "zig_core": {
-      "path": "zig-out/bin/aegis_nids.exe",
-      "produced_by": "zig build",
-      "source": "src/main.zig"
-    },
-    "rust_pep": {
-      "path": "target/release/aegis_pep.dll",
-      "produced_by": "cargo build --release",
-      "source": "rust-src/lib.rs"
-    },
-    "cpp_wfp_user": {
-      "path": "build/Release/aegis_wfp_user.dll",
-      "produced_by": "cmake --build build --config Release",
-      "source": "src/windows/aegis_wfp.c"
-    },
-    "cpp_etw_helper": {
-      "path": "build/Release/aegis_etw_helper.dll",
-      "produced_by": "cmake --build build --config Release",
-      "source": "src/windows/etw_native.c"
-    },
-    "cpp_fim_helper": {
-      "path": "build/Release/aegis_fim_helper.dll",
-      "produced_by": "cmake --build build --config Release",
-      "source": "src/windows/fim_native.c"
-    },
-    "go_nose": {
-      "path": "nose/aegis-nose.exe",
-      "produced_by": "cd nose && go build -o aegis-nose.exe .",
-      "source": "nose/main.go"
-    },
-    "cpp_bridge": {
-      "path": "dist/aegis_ipc.dll",
-      "produced_by": "cd bridge && cmake -B build && cmake --build build",
-      "source": "bridge/aegis_ipc.cpp"
-    },
-    "cpp_adapter": {
-      "path": "dist/aegis_adapter.dll",
-      "produced_by": "cd bridge && cmake -B build && cmake --build build",
-      "source": "bridge/aegis_adapter.cpp"
-    }
+  "rust_pep_tier3": {
+   "file": "rust-src/lib.rs",
+   "language": "rust",
+   "crate_name": "aegis_pep",
+   "role": "Tier-3: Policy Enforcement Point + Federation TLS",
+   "build": "cargo build --release",
+   "artifact": "target/release/aegis_pep.dll"
   },
-  "canonical_config": {
-    "rules": "config/Rules.json"
+  "go_nose": {
+   "file": "nose/main.go",
+   "language": "go",
+   "module": "aegis-nose",
+   "role": "Packet acquisition, flow collection, IPC reader, canonical event production",
+   "build": "cd nose && go build -o aegis-nose.exe .",
+   "artifact": "nose/aegis-nose.exe"
   },
-  "canonical_cli": "tools/aegisctl.py",
-  "canonical_test_root": "tests/",
-  "legacy_markers": {
-    "lib.rs (root)": "OBSOLETE - superseded by rust-src/lib.rs",
-    "Back Rules.json": "DUPLICATE of config/Rules.json",
-    "Rules.json (root)": "DUPLICATE of config/Rules.json - different content, root is stale",
-    "core/*.zig": "LEGACY proof/integration/CLI modules - NOT compiled by build.zig; src/*.zig is canonical",
-    "core/nids_main.zig": "LEGACY - superseded by src/main.zig",
-    "shield/": "LEGACY Rust crate - superseded by root Cargo.toml + rust-src/",
-    "native/": "DOES NOT EXIST - use src/windows/ for C native helpers",
-    "go/": "PARTIAL - go/aggregator/ exists but go/ root is not a module; nose/ is the Go source",
-    "aegisctl.py (root)": "LEGACY - superseded by tools/aegisctl.py (Gate C CLI)",
-    "scripts/aegisctl.py": "LEGACY - superseded by tools/aegisctl.py (Gate C CLI)"
+  "cpp_native_helpers": {
+   "file": "src/windows/aegis_wfp.c",
+   "language": "c",
+   "role": "Native Windows adapters: WFP user-mode, ETW helpers, FIM",
+   "build": "cmake -B build && cmake --build build",
+   "artifacts": [
+    "build/Release/aegis_wfp_user.dll",
+    "build/Release/aegis_etw_helper.dll",
+    "build/Release/aegis_fim_helper.dll"
+   ]
   },
-  "invariants": [
-    "ONE production runtime (Zig core + Rust PEP + Go Nose + C native helpers + C++ bridge)",
-    "NO build artifacts tracked",
-    "NO runtime state tracked",
-    "src/ = canonical Zig source, core/ = legacy/experimental proof modules",
-    "rust-src/ = canonical Rust PEP source, shield/ = legacy Rust crate",
-    "bridge/ = canonical C++ bridge, native/ = DOES NOT EXIST"
-  ]
+  "cpp_bridge": {
+   "file": "bridge/aegis_ipc.cpp",
+   "language": "c++",
+   "role": "C++ IPC bridge: event queue, DEFCON, IPS block/unblock, adapter management",
+   "build": "cd bridge && cmake -B build && cmake --build build",
+   "artifacts": [
+    "dist/aegis_ipc.dll",
+    "dist/aegis_adapter.dll",
+    "dist/aegis_bridge.exe"
+   ]
+  },
+  "brain_tier2": {
+   "file": "brain/windows_brain.py",
+   "language": "python",
+   "role": "Tier-2: Threat analysis, regex scanning, analytics"
+  },
+  "ts_policy_compiler": {
+   "file": "ts_policy/src/index.ts",
+   "language": "typescript",
+   "role": "Policy authoring, simulation, compilation to Policy IR",
+   "build": "cd ts_policy && npm run typecheck && npm run test:all",
+   "note": "Advisory only - no build output. Typecheck + test only."
+  },
+  "mouth_defcon_gui": {
+   "file": "mouth/windows_sec_monitor.rs",
+   "language": "rust",
+   "crate_name": "aegis-mouth",
+   "role": "OPTIONAL standalone DEFCON Security Monitor GUI (log tailing, alert/mitigation feeds, health pipe). Separate operator component - NOT part of the Rust PEP authority and never linked into the runtime.",
+   "optional": true,
+   "build": "cd mouth && cargo build --release",
+   "artifact": "mouth/target/release/windows_sec_monitor.exe"
+  },
+  "rust_shield_tier3": {
+   "file": "shield/src/lib.rs",
+   "language": "rust",
+   "crate_name": "aegis-shield",
+   "role": "Tier-3 payload screening / memory-safety shield (sec_monitor.dll), loaded at runtime startup via bridge_init; separate authority from the Rust PEP (rust-src/).",
+   "build": "cd shield && cargo build --release",
+   "artifact": "shield/target/release/sec_monitor.dll"
+  }
+ },
+ "canonical_artifacts": {
+  "zig_core": {
+   "path": "zig-out/bin/aegis_nids.exe",
+   "produced_by": "zig build",
+   "source": "src/main.zig"
+  },
+  "rust_pep": {
+   "path": "target/release/aegis_pep.dll",
+   "produced_by": "cargo build --release",
+   "source": "rust-src/lib.rs"
+  },
+  "cpp_wfp_user": {
+   "path": "build/Release/aegis_wfp_user.dll",
+   "produced_by": "cmake --build build --config Release",
+   "source": "src/windows/aegis_wfp.c"
+  },
+  "cpp_etw_helper": {
+   "path": "build/Release/aegis_etw_helper.dll",
+   "produced_by": "cmake --build build --config Release",
+   "source": "src/windows/etw_native.c"
+  },
+  "cpp_fim_helper": {
+   "path": "build/Release/aegis_fim_helper.dll",
+   "produced_by": "cmake --build build --config Release",
+   "source": "src/windows/fim_native.c"
+  },
+  "go_nose": {
+   "path": "nose/aegis-nose.exe",
+   "produced_by": "cd nose && go build -o aegis-nose.exe .",
+   "source": "nose/main.go"
+  },
+  "cpp_bridge": {
+   "path": "dist/aegis_ipc.dll",
+   "produced_by": "cd bridge && cmake -B build && cmake --build build",
+   "source": "bridge/aegis_ipc.cpp"
+  },
+  "cpp_adapter": {
+   "path": "dist/aegis_adapter.dll",
+   "produced_by": "cd bridge && cmake -B build && cmake --build build",
+   "source": "bridge/aegis_adapter.cpp"
+  },
+  "mouth_gui": {
+   "path": "mouth/target/release/windows_sec_monitor.exe",
+   "produced_by": "cd mouth && cargo build --release",
+   "source": "mouth/windows_sec_monitor.rs",
+   "optional": true
+  },
+  "rust_shield": {
+   "path": "shield/target/release/sec_monitor.dll",
+   "produced_by": "cd shield && cargo build --release",
+   "source": "shield/src/lib.rs"
+  },
+  "go_aggregator": {
+   "path": "go/aggregator/aggregator.exe",
+   "produced_by": "cd go/aggregator && go build ./...",
+   "source": "go/aggregator/main.go"
+  }
+ },
+ "canonical_config": {
+  "rules": "configs/Rules.json"
+ },
+ "canonical_cli": "tools/aegisctl.py",
+ "canonical_test_root": "tests/",
+ "legacy_markers": {
+  "core/*.zig": "RECONNECTED - all src/core modules compile in the test graph (src/tests/core/) and the runtime wiring lives in src/main.zig/daemon.zig via bridge_init; src/ remains the canonical runtime root",
+  "core/nids_main.zig": "LEGACY - superseded by src/main.zig + src/daemon.zig (same bridge wiring carried over)",
+  "shield/": "RESTORED Tier-3 Rust crate (aegis-shield) - builds shield/target/release/sec_monitor.dll, loaded at runtime by bridge_init; separate authority from rust-src/ (Rust PEP)",
+  "go/": "RESTORED - go/aggregator/ is a working Go module (builds and tests green in CI); nose/ remains the Go sensor source",
+  "mouth/build_mouth.bat": "LEGACY build path - superseded by mouth/Cargo.toml (rustc-direct build; also references missing aegis_mouth_tui.rs)"
+ },
+ "invariants": [
+  "ONE production runtime (Zig core + Rust PEP + Rust Shield + Go Nose + C native helpers + C++ bridge)",
+  "NO build artifacts tracked",
+  "NO runtime state tracked",
+  "src/ = canonical Zig source; src/core/ = reconnected legacy modules (compiled in test graph, wired into runtime)",
+  "rust-src/ = canonical Rust PEP source (single PEP authority); shield/ = canonical Tier-3 shield crate (sec_monitor.dll)",
+  "bridge/ = canonical C++ bridge, native/ = DOES NOT EXIST"
+ ]
 }

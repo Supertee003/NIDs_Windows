@@ -2,7 +2,7 @@
 
 Assembles the T20 final release candidate tree under
 release/T20-final/<commit>/, following scripts/release_package.ps1
-layout (bin/ config/ core/ docs/ + SHA-256 checksums), extended with:
+layout (bin/ configs/ core/ docs/ + SHA-256 checksums), extended with:
 
   - SBOM.json            : build_manifest artifact inventory (from
                            1203-line manifest)
@@ -46,7 +46,7 @@ BINARIES = [
 ]
 DRIVERS = ["drivers/wfp_callout/aegis_wfp.sys",
            "drivers/wfp_callout/aegis_minifilter.sys"]
-CORE_KEYS = ["config/Rules.json", "installer/aegis.nsi", "build.zig"]
+CORE_KEYS = ["configs/Rules.json", "installer/aegis.nsi", "build.zig"]
 
 
 def git(*args: str) -> str:
@@ -121,7 +121,7 @@ def assemble(commit: str) -> Path:
         sums.append("%s  %s" % (sha256(f), rel))
     (out / "SHA256SUMS").write_text("\n".join(sums) + "\n", encoding="ascii")
 
-    sig = {"policy": "config/Rules.json (ed25519 via core/policy_signing.zig)",
+    sig = {"policy": "configs/Rules.json (ed25519 via core/policy_signing.zig)",
            "immutable": "build_manifest digests match committed records",
            "commit": commit,
            "shipped_files": len(sums)}

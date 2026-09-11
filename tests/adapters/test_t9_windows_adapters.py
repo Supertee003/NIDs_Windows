@@ -100,9 +100,9 @@ def test_adapters_have_no_policy_or_enforcement_authority() -> None:
     violations: list[str] = []
     for path_str in [
         "core/windows_adapters.zig",
-        "core/windows_adapters_cli.zig",
+        "src/tests/cli/windows_adapters_cli.zig",
         "core/host_telemetry.zig",
-        "core/host_telemetry_cli.zig",
+        "src/tests/cli/host_telemetry_cli.zig",
         "bridge/aegis_adapter.hpp",
         "bridge/aegis_adapter.cpp",
     ]:

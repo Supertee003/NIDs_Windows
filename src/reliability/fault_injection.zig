@@ -11,6 +11,7 @@
 //! Exit Gate: Every failure has defined behavior.
 
 const std = @import("std");
+const event = @import("../contract/event.zig");
 
 // ============================================================
 // Constants
@@ -526,4 +527,115 @@ test "every fault type has defined behavior" {
         // Every behavior should be one of the 4 defined values
         _ = behavior.toString(); // should not crash
     }
+}
+
+// ============================================================
+// Runtime fault-injection hooks (REBUILD-003 compatibility restore)
+//
+// Restores the II11 runtime hooks API (FaultKind/FaultConfig/FaultInjector)
+// used by src/main.zig's pipeline loop: fromEnv/maybeDrop/maybeCorrupt.
+// This is the chaos-testing side (probability-driven hot-path perturbation);
+// FaultEngine above is the failure-accounting side. Both coexist by design.
+// ============================================================
+
+pub const FaultKind = enum(u8) {
+    drop_packet = 1,
+    slow_decode = 2,
+    corrupt_event = 3,
+    queue_full = 4,
+    duplicate_event = 5,
+    bad_clock_skew = 6,
+};
+
+pub const FaultConfig = struct {
+    enabled: bool = false,
+    seed: u64 = 0xCAFEBABE,
+    drop_packet_rate: f64 = 0.05,
+    slow_decode_rate: f64 = 0.01,
+    corrupt_event_rate: f64 = 0.01,
+    queue_full_rate: f64 = 0.005,
+};
+
+pub const FaultInjector = struct {
+    cfg: FaultConfig,
+    prng: std.Random.DefaultPrng,
+    injected: [256]u64 = [_]u64{0} ** 256,
+
+    pub fn init(cfg: FaultConfig) FaultInjector {
+        return .{
+            .cfg = cfg,
+            .prng = std.Random.DefaultPrng.init(cfg.seed),
+        };
+    }
+
+    pub fn fromEnv() FaultInjector {
+        var cfg = FaultConfig{};
+        if (std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_FAULT_INJECTION")) |val| {
+            defer std.heap.page_allocator.free(val);
+            if (std.mem.eql(u8, val, "1") or std.mem.eql(u8, val, "true")) cfg.enabled = true;
+        } else |_| {}
+        return FaultInjector.init(cfg);
+    }
+
+    pub fn maybeDrop(self: *FaultInjector) bool {
+        if (!self.cfg.enabled) return false;
+        if (self.prng.random().float(f64) < self.cfg.drop_packet_rate) {
+            self.injected[@intFromEnum(FaultKind.drop_packet)] += 1;
+            return true;
+        }
+        return false;
+    }
+
+    pub fn maybeCorrupt(self: *FaultInjector, ev: *event.IpcEvent) bool {
+        if (!self.cfg.enabled) return false;
+        if (self.prng.random().float(f64) < self.cfg.corrupt_event_rate) {
+            // Flip a random bit in the event
+            const byte_idx = self.prng.random().uintLessThan(usize, @sizeOf(event.IpcEvent));
+            const bit_idx: u3 = @intCast(self.prng.random().uintLessThan(u4, 8));
+            const ptr: *u8 = @ptrCast(@alignCast(@as([*]u8, @ptrCast(ev)) + byte_idx));
+            ptr.* ^= @as(u8, 1) << bit_idx;
+            self.injected[@intFromEnum(FaultKind.corrupt_event)] += 1;
+            return true;
+        }
+        return false;
+    }
+
+    pub fn maybeSlow(self: *FaultInjector) bool {
+        if (!self.cfg.enabled) return false;
+        if (self.prng.random().float(f64) < self.cfg.slow_decode_rate) {
+            self.injected[@intFromEnum(FaultKind.slow_decode)] += 1;
+            std.time.sleep(50 * std.time.ns_per_ms);
+            return true;
+        }
+        return false;
+    }
+
+    pub fn maybeQueueFull(self: *FaultInjector) bool {
+        if (!self.cfg.enabled) return false;
+        if (self.prng.random().float(f64) < self.cfg.queue_full_rate) {
+            self.injected[@intFromEnum(FaultKind.queue_full)] += 1;
+            return true;
+        }
+        return false;
+    }
+};
+
+test "FaultInjector disabled by default does not perturb" {
+    var fi = FaultInjector.fromEnv();
+    try std.testing.expect(!fi.cfg.enabled);
+    try std.testing.expect(!fi.maybeDrop());
+    var ev = event.IpcEvent.init(.dns_query);
+    try std.testing.expect(!fi.maybeCorrupt(&ev));
+    try std.testing.expect(!fi.maybeQueueFull());
+}
+
+test "FaultInjector enabled injects drop" {
+    var fi = FaultInjector.init(.{ .enabled = true, .seed = 42 });
+    var drops: u32 = 0;
+    for (0..1000) |_| {
+        if (fi.maybeDrop()) drops += 1;
+    }
+    // 5% rate over 1000 trials: statistically far from both 0 and 1000
+    try std.testing.expect(drops > 10 and drops < 200);
+    try std.testing.expect(fi.injected[@intFromEnum(FaultKind.drop_packet)] == drops);
 }

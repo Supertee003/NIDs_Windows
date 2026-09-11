@@ -1,0 +1,126 @@
+{
+  "_meta": {
+    "generated_by": "REBUILD-001 read-only audit",
+    "head_sha": "a480efb177e4fe71f556d095b438924793f7054b",
+    "date": "2026-09-10",
+    "mode": "READ-ONLY",
+    "note": "Edges measured by grep over @import statements. 'root' means reachable from build.zig roots (aegis_nids=src/main.zig, test=src/all_tests.zig, fuzz=src/fuzz_entry.zig)."
+  },
+  "build_roots": [
+    "src/main.zig",
+    "src/all_tests.zig",
+    "src/fuzz_entry.zig"
+  ],
+  "src_to_core_edges": [
+    { "from": "src/capture/minifilter_reader.zig", "to": "src/core/bridge_init.zig" },
+    { "from": "src/capture/pipe_monitor.zig", "to": "src/core/bridge_init.zig" },
+    { "from": "src/capture/windows_capture.zig", "to": "src/core/bridge_init.zig" },
+    { "from": "src/capture/windows_capture.zig", "to": "src/core/nids_analyze.zig" },
+    { "from": "src/capture/windows_capture.zig", "to": "src/core/rust_pep.zig" },
+    { "from": "src/capture/nose_contract.zig", "to": "src/core/priority_queue.zig", "critical": true },
+    { "from": "src/forensic/forensics_engine.zig", "to": "src/core/rust_pep.zig" },
+    { "from": "src/forensic/forensics_engine.zig", "to": "src/core/brain_engine.zig" },
+    { "from": "src/forensic/forensics_integration.zig", "to": "src/core/brain_engine.zig" },
+    { "from": "src/forensic/forensics_integration.zig", "to": "src/core/rust_pep.zig" },
+    { "from": "src/forensic/replay_engine.zig", "to": "src/core/rust_pep.zig" },
+    { "from": "src/forensic/replay_integration.zig", "to": "src/core/rust_pep.zig" },
+    { "from": "src/policy/dispatcher.zig", "to": "src/core/brain_integration.zig" },
+    { "from": "src/policy/dispatcher.zig", "to": "src/core/brain_engine.zig" },
+    { "from": "src/policy/dispatcher.zig", "to": "src/core/rust_pep_integration.zig" },
+    { "from": "src/policy/dispatcher.zig", "to": "src/core/rust_pep.zig" },
+    { "from": "src/policy/dispatcher_phase_b.zig", "to": "src/core/brain_integration.zig" },
+    { "from": "src/policy/dispatcher_phase_b.zig", "to": "src/core/brain_engine.zig" },
+    { "from": "src/policy/dispatcher_phase_b.zig", "to": "src/core/rust_pep_integration.zig" },
+    { "from": "src/policy/policy_contract.zig", "to": "src/core/rust_pep.zig" },
+    { "from": "src/policy/policy_engine.zig", "to": "src/core/brain_engine.zig" },
+    { "from": "src/policy/policy_integration.zig", "to": "src/core/brain_engine.zig" },
+    { "from": "src/reliability/lifecycle.zig", "to": "src/core/brain_integration.zig" },
+    { "from": "src/reliability/lifecycle.zig", "to": "src/core/rust_pep_integration.zig" },
+    { "from": "src/reliability/lifecycle.zig", "to": "src/policy/dispatcher.zig" },
+    { "from": "src/reliability/reliability.zig", "to": "src/core/nids_analyze.zig" },
+    { "from": "src/windows/ips_canary.zig", "to": "src/core/rust_pep.zig" },
+    { "from": "src/windows/ips_canary_integration.zig", "to": "src/core/rust_pep.zig" }
+  ],
+  "core_to_src_edges": [
+    { "from": "src/core/priority_queue.zig", "to": "src/contract/canonical_event.zig" },
+    { "from": "src/core/priority_queue.zig", "to": "src/contract/event_queue.zig" },
+    { "from": "src/core/brain_engine.zig", "to": "src/contract/canonical_event.zig" },
+    { "from": "src/core/brain_engine.zig", "to": "src/capture/flow_engine.zig" },
+    { "from": "src/core/brain_engine.zig", "to": "src/detection/detection_engine.zig" },
+    { "from": "src/core/brain_engine.zig", "to": "src/detection/verdict_aggregator.zig" },
+    { "from": "src/core/brain_engine.zig", "to": "src/detection/correlation_engine.zig" },
+    { "from": "src/core/brain_engine.zig", "to": "src/detection/threat_intel.zig" },
+    { "from": "src/core/brain_engine.zig", "to": "src/detection/rag_engine.zig" },
+    { "from": "src/core/rust_pep.zig", "to": "src/contract/canonical_event.zig" },
+    { "from": "src/core/rust_pep.zig", "to": "src/policy/policy_engine.zig" },
+    { "from": "src/core/rust_pep.zig", "to": "src/policy/wfp_ioctl.zig", "security": "P0-1 bypass" },
+    { "from": "src/core/bridge_init.zig", "to": "src/core/rust_pep.zig" },
+    { "from": "src/core/nids_main.zig", "to": "src/core/bridge_init.zig" },
+    { "from": "src/core/nids_main.zig", "to": "src/core/nids_analyze.zig" },
+    { "from": "src/core/nids_main.zig", "to": "src/core/nids_capture.zig" },
+    { "from": "src/core/nids_main.zig", "to": "src/capture/windows_capture.zig" },
+    { "from": "src/core/nids_main.zig", "to": "src/capture/minifilter_reader.zig" },
+    { "from": "src/core/nids_main.zig", "to": "src/capture/pipe_monitor.zig" },
+    { "from": "src/core/nids_main.zig", "to": "src/forensic/forensic_log.zig" },
+    { "from": "src/core/nids_main.zig", "to": "src/capture/nose_contract.zig" },
+    { "from": "src/core/nids_capture.zig", "to": "src/core/bridge_init.zig" },
+    { "from": "src/core/nids_capture.zig", "to": "src/core/nids_analyze.zig" },
+    { "from": "src/core/nids_capture.zig", "to": "src/windows/win32_io.zig" },
+    { "from": "src/core/nids_capture.zig", "to": "src/capture/nose_contract.zig" },
+    { "from": "src/core/nids_capture.zig", "to": "src/capture/nose_integration.zig" },
+    { "from": "src/core/nids_analyze.zig", "to": "src/core/bridge_init.zig" },
+    { "from": "src/core/nids_analyze.zig", "to": "src/forensic/forensic_log.zig" },
+    { "from": "src/core/nids_analyze.zig", "to": "src/capture/nose_contract.zig" },
+    { "from": "src/core/nids_analyze.zig", "to": "src/windows/win32_io.zig" }
+  ],
+  "external_dll_surface": {
+    "aegis_pep.dll": {
+      "loader": "src/policy/pep_bindings.zig (extern \"aegis_pep\")",
+      "provider": "rust-src/lib.rs",
+      "symbols": ["aegis_pep_init", "aegis_pep_shutdown", "aegis_pep_enforce", "aegis_pep_quota_remaining"],
+      "status": "canonical PEP path"
+    },
+    "sec_monitor.dll": {
+      "loader": "src/core/bridge_init.zig (DynLib: validate_payload_safety)",
+      "provider": "shield/ (DELETED at HEAD)",
+      "status": "BROKEN — P0-2 fail-open when absent"
+    },
+    "aegis_ipc.dll": {
+      "loader": "src/core/bridge_init.zig (DynLib: aegis_bridge_*)",
+      "provider": "bridge/ CMake target",
+      "status": "present, loaded by orphaned graph"
+    },
+    "AegisWfpDevice": {
+      "loader": "src/policy/wfp_ioctl.zig",
+      "provider": "drivers/wfp_callout/",
+      "status": "kernel driver, present"
+    }
+  },
+  "orphan_subgraph": {
+    "description": "Production-capable modules imported by NO build root; compiled nowhere; tests never run.",
+    "members": [
+      "src/reliability/lifecycle.zig",
+      "src/policy/dispatcher.zig",
+      "src/policy/dispatcher_phase_b.zig",
+      "src/forensic/forensics_engine.zig",
+      "src/forensic/forensics_integration.zig",
+      "src/forensic/replay_engine.zig",
+      "src/forensic/replay_integration.zig",
+      "src/windows/ips_canary.zig",
+      "src/windows/ips_canary_integration.zig",
+      "src/capture/windows_capture.zig",
+      "src/capture/minifilter_reader.zig",
+      "src/capture/pipe_monitor.zig",
+      "src/core/bridge_init.zig",
+      "src/core/priority_queue.zig",
+      "src/core/brain_engine.zig",
+      "src/core/brain_integration.zig",
+      "src/core/rust_pep.zig",
+      "src/core/rust_pep_integration.zig",
+      "src/core/nids_main.zig",
+      "src/core/nids_capture.zig",
+      "src/core/nids_analyze.zig"
+    ],
+    "root_cause": "Migration moved the spine to src/main.zig but never re-attached the lifecycle/dispatcher/forensics subgraph; src/core was left half-wired in both directions."
+  }
+}

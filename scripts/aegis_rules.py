@@ -2,7 +2,7 @@
 """
 aegis_rules.py - AEGIS NIDS Rule Management CLI (Phase 16, UX-09)
 
-Lists, inspects, and manages detection rules from config/Rules.json.
+Lists, inspects, and manages detection rules from configs/Rules.json.
 Supports viewing rule details, match counts, and toggling rules.
 
 Usage:
