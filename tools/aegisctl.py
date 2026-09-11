@@ -162,11 +162,60 @@ def _save_disabled_rules(ids: List[str]) -> None:
 
 
 def cmd_status(args: argparse.Namespace) -> int:
+    filter_comp = getattr(args, "component", None)
+    components = {
+        "bridge": {"exe": "aegis_bridge.exe", "pipe": r"\\.\pipe\aegis-bridge-health"},
+        "core": {"exe": "aegis_nids.exe", "pipe": r"\\.\pipe\aegis_control"},
+        "brain": {"exe": "windows_brain.py", "python": True, "udp": ("127.0.0.1", 9999)},
+        "aggregator": {"exe": "aegis-aggregator.exe", "tcp": ("127.0.0.1", 9200)},
+        "nose": {"exe": "nose_dashboard.exe", "log": "logs/nose.log"},
+        "mouth": {"exe": "windows_sec_monitor.exe", "pipe": r"\\.\pipe\aegis-mouth-health"},
+    }
+    if filter_comp:
+        if filter_comp not in components:
+            print(f"ERROR: unknown component '{filter_comp}'", file=sys.stderr)
+            return 1
+        comps = {filter_comp: components[filter_comp]}
+    else:
+        comps = components
+
     print("Component         State")
     print("-" * 40)
-    for comp in ["bridge", "core", "brain", "aggregator", "dashboard"]:
-        print(f"  {comp:<16} STOPPED")
+    for name, info in comps.items():
+        running = _check_process_running(info.get("exe", ""), info)
+        state = "RUNNING" if running else "STOPPED"
+        if filter_comp:
+            print(state)
+        else:
+            print(f"  {name:<16} {state}")
     return 0
+
+
+def _check_process_running(exe_name: str, info: dict = None) -> bool:
+    """Check if a process with the given name is running."""
+    # For Python scripts, try UDP health probe
+    if info and info.get("python") and info.get("udp"):
+        try:
+            import socket
+            host, port = info["udp"]
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.settimeout(1)
+                s.sendto(b'{"op":"HEALTH"}', (host, port))
+                data, _ = s.recvfrom(8192)
+                return b'"state"' in data
+        except Exception:
+            return False
+    if not exe_name:
+        return False
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["tasklist", "/FI", f"IMAGENAME eq {exe_name}", "/NH"],
+            capture_output=True, text=True, timeout=5,
+        )
+        return exe_name.lower() in result.stdout.lower()
+    except Exception:
+        return False
 
 
 def cmd_start(args: argparse.Namespace) -> int:
@@ -861,7 +910,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="AEGIS NIDS control plane CLI")
     sub = parser.add_subparsers(dest="cmd")
 
-    sub.add_parser("status", help="Show daemon status")
+    p_status = sub.add_parser("status", help="Show daemon status")
+    p_status.add_argument("--component", "-c", help="Filter by component name")
 
     p_start = sub.add_parser("start", help="Start AEGIS service")
     p_start.add_argument("--component", "-c")
