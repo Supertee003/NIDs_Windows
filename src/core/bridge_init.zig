@@ -350,15 +350,16 @@ fn initRustShield() void {
             std.log.info("[INIT] Rust Memory Safety Shield active", .{});
             std.debug.print("\x1b[32m[INIT] Rust Memory Safety Shield active\x1b[0m\n", .{});
         } else {
-            // P-01 CRITICAL FIX: Symbol missing in DLL is a fail-open risk
+            // P0-2 FIX: Symbol missing in DLL is a fail-closed risk
             // Log as error so operators see the Tier-3 bypass immediately
-            std.log.err("[INIT] CRITICAL: sec_monitor.dll loaded but 'validate_payload_safety' symbol missing - Tier-3 BYPASSED", .{});
-            std.debug.print("\x1b[31m[INIT] CRITICAL: sec_monitor.dll symbol missing - Tier-3 fail-open!\x1b[0m\n", .{});
+            std.log.err("[INIT] CRITICAL: sec_monitor.dll loaded but 'validate_payload_safety' symbol missing - Tier-3 ACTIVE (fail-closed)", .{});
+            std.debug.print("\x1b[31m[INIT] CRITICAL: sec_monitor.dll symbol missing - Tier-3 fail-closed! All payloads will be rejected.\x1b[0m\n", .{});
         }
     } else {
-        // P-01: Shield missing entirely - log as error, not warning
-        std.log.err("[INIT] CRITICAL: sec_monitor.dll not found - Tier-3 Memory Safety Shield BYPASSED (fail-open)", .{});
-        std.debug.print("\x1b[31m[INIT] CRITICAL: Tier-3 shield missing - fail-open mode!\x1b[0m\n", .{});
+        // P0-2 FIX: Shield missing entirely - log as error, fail-closed by default
+        std.log.err("[INIT] CRITICAL: sec_monitor.dll not found - Tier-3 Memory Safety Shield ACTIVE (fail-closed)", .{});
+        std.debug.print("\x1b[31m[INIT] CRITICAL: Tier-3 shield missing - fail-closed mode! All payloads will be rejected.\x1b[0m\n", .{});
+        std.debug.print("\x1b[33m[INIT] TIP: Set AEGIS_FAIL_OPEN=1 to enable fail-open for development/testing\x1b[0m\n", .{});
     }
 }
 
@@ -550,12 +551,24 @@ pub fn getBridgeEventCount() u32 {
 }
 
 /// Validate payload safety via Rust shield (returns true if safe).
-/// Fail-open: returns true if shield is not loaded.
+/// Fail-closed by default: returns false if shield is not loaded.
+/// Set AEGIS_FAIL_OPEN=1 environment variable to enable fail-open for development/testing.
 pub fn validatePayloadSafety(data: [*]const u8, len: usize) bool {
     if (fn_validate_payload_safety) |f| {
         return f(data, len);
     }
-    return true; // fail-open when Rust DLL not available
+    // P0-2 FIX: Fail-closed by default (security invariant)
+    // Only fail-open if explicitly configured for development/testing
+    const fail_open = std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_FAIL_OPEN") catch null;
+    if (fail_open) |val| {
+        defer std.heap.page_allocator.free(val);
+        if (std.mem.eql(u8, val, "1")) {
+            std.log.warn("[SHIELD] Tier-3 shield missing - fail-open mode (AEGIS_FAIL_OPEN=1)", .{});
+            return true;
+        }
+    }
+    std.log.err("[SHIELD] CRITICAL: Tier-3 shield missing - fail-closed (all payloads rejected)", .{});
+    return false; // fail-closed when Rust DLL not available (P0-2 fix)
 }
 
 /// Send JSON message to Python brain via UDP.

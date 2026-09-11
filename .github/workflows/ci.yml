@@ -117,21 +117,11 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Force LF line endings (brute force)
+      - name: Configure git line endings
         shell: pwsh
         run: |
           git config core.autocrlf false
-          # Convert all tracked text files to LF
-          $files = git ls-files
-          foreach ($f in $files) {
-            if (Test-Path $f -PathType Leaf) {
-              $content = Get-Content $f -Raw -Encoding UTF8
-              if ($content -match "`r`n") {
-                $content = $content -replace "`r`n", "`n"
-                Set-Content $f -Value $content -Encoding UTF8 -NoNewline
-              }
-            }
-          }
+          git config core.eol lf
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -163,7 +153,7 @@ jobs:
           exit-code: 0
 
   go-build-test:
-    name: Go Build & Test (capture/aggregator)
+    name: Go Build & Test (nose + aggregator)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
