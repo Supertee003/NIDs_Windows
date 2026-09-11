@@ -33,14 +33,14 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
-FORENSICS_ENGINE = "core/forensics_engine.zig"
-FORENSIC_LOG = "core/forensic_log.zig"
+FORENSICS_ENGINE = "src/forensic/forensics_engine.zig"
+FORENSIC_LOG = "src/forensic/forensic_log.zig"
 FORENSIC_REPLAY_PROOF = "src/tests/proofs/forensic_replay_proof.zig"
-REPLAY_ENGINE = "core/replay_engine.zig"
+REPLAY_ENGINE = "src/forensic/replay_engine.zig"
 FORENSICS_INTEGRATION = "src/tests/integration/forensics_integration.zig"
-DISPATCHER = "core/dispatcher.zig"
+DISPATCHER = "src/policy/dispatcher.zig"
 DISPATCHER_PHASE_B = "core/dispatcher_phase_b.zig"
-POLICY_SIGNING = "core/policy_signing.zig"
+POLICY_SIGNING = "src/policy/policy_signing.zig"
 
 # The full chain as declared by the manifest golden path. Each stage must
 # be represented in the forensic trace (AC1).

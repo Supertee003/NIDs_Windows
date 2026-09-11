@@ -41,9 +41,9 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 MANIFEST_PATH = REPO_ROOT / "runtime_manifest.json"
 
-TRACE_MODULE = "core/decision_trace.zig"
-SHADOW_MODULE = "core/shadow_decision.zig"
-REPLAY_MODULE = "core/replayable_security.zig"
+TRACE_MODULE = "src/forensic/decision_trace.zig"
+SHADOW_MODULE = "src/policy/shadow_decision.zig"
+REPLAY_MODULE = "src/forensic/replayable_security.zig"
 REVIEW_MODULE = "src/core/authority_review.zig"
 
 TRACE_CHAIN = [

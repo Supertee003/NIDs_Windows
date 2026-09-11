@@ -53,13 +53,13 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
-CONTROL_IPC = "core/control_ipc.zig"
+CONTROL_IPC = "src/policy/control_ipc.zig"
 AEGISCTL = "tools/aegisctl.py"
 PEP_RS = "shield/src/pep.rs"
 PEP_LIB = "shield/src/lib.rs"
 NOSE_PR = "core/nose_pipe_reader.zig"
 CONFIG_RELOAD = "src/tests/proofs/config_reload_proof.zig"
-FED_TLS = "core/federation_tls.zig"
+FED_TLS = "src/federation/federation_tls.zig"
 FAULT_MATRIX = "core/fault_matrix.zig"
 
 # AC1: (hardening category, evidence that must exist somewhere real).

@@ -1,0 +1,1626 @@
+﻿F.F.FFFFF.Fsssssssss..........FF.FFF.FF.FFFFFFFFFFFFFFFFFF.FFFFFFFFFFF.F [ 16%]
+F.FFF.F..FFFFFFFF.....FFFF.F.................F..FF..FFFFFF..FF....F..F.F [ 32%]
+..FFFFFFFF.FF.FF..............sssssssFFFF.F.F...FFFFsFssssssssFFFFFsssss [ 48%]
+sFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF.FFF.................sssFF.s.... [ 63%]
+........................................................................ [ 80%]
+..................................FFFFF.F.F.FFFFFFFFFFFFF........ [ 94%]
+.......................                                                  [100%]
+================================== FAILURES ===================================
+____________________ test_windows_adapters_status_is_real _____________________
+tests\adapters\test_t9_windows_adapters.py:51: in test_windows_adapters_status_is_real
+    assert mod.get("golden_path") is True, (
+E   AssertionError: windows_adapters.zig must be on the golden path
+E   assert False is True
+E    +  where False = <built-in method get of dict object at 0x000001642A8A7600>('golden_path')
+E    +    where <built-in method get of dict object at 0x000001642A8A7600> = {'status': 'REAL', 'golden_path': False, 'real_path': 'src/windows/windows_adapters.zig'}.get
+________________ test_cpp_adapter_binds_to_zig_canonical_event ________________
+tests\adapters\test_t9_windows_adapters.py:76: in test_cpp_adapter_binds_to_zig_canonical_event
+    cpp = (REPO_ROOT / "core" / "cpp_adapter.zig").read_text(encoding="utf-8")
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\cpp_adapter.zig'
+________________ test_etw_process_source_defines_etw_lifecycle ________________
+tests\adapters\test_t9_windows_adapters.py:127: in test_etw_process_source_defines_etw_lifecycle
+    text = (REPO_ROOT / "core" / "windows_adapters.zig").read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\windows_adapters.zig'
+_____________ test_fim_source_handles_create_modify_rename_delete _____________
+tests\adapters\test_t9_windows_adapters.py:149: in test_fim_source_handles_create_modify_rename_delete
+    text = (REPO_ROOT / "core" / "windows_adapters.zig").read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\windows_adapters.zig'
+_________________ test_registry_source_produces_trie_evidence _________________
+tests\adapters\test_t9_windows_adapters.py:169: in test_registry_source_produces_trie_evidence
+    text = (REPO_ROOT / "core" / "windows_adapters.zig").read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\windows_adapters.zig'
+_________ test_process_injection_detector_produces_injection_evidence _________
+tests\adapters\test_t9_windows_adapters.py:195: in test_process_injection_detector_produces_injection_evidence
+    assert inj.exists(), "core/injection_detector.zig must exist (AC4)"
+E   AssertionError: core/injection_detector.zig must exist (AC4)
+E   assert False
+E    +  where False = exists()
+E    +    where exists = WindowsPath('D:/NIDs_Windows/core/injection_detector.zig').exists
+_______________ test_windows_adapters_test_count_is_substantial _______________
+tests\adapters\test_t9_windows_adapters.py:220: in test_windows_adapters_test_count_is_substantial
+    assert m is not None, f"role must mention a test count: {role!r}"
+E   AssertionError: role must mention a test count: ''
+E   assert None is not None
+_________________ test_scan_cython_is_faster_than_pure_python _________________
+tests\cython\test_cython_benchmark.py:87: in test_scan_cython_is_faster_than_pure_python
+    assert is_cython_available(), (
+E   AssertionError: brain.cython.cython_regex_scan is not compiled. Run:
+E       cd brain/cython && python setup.py build_ext --inplace
+E   assert False
+E    +  where False = is_cython_available()
+____________________ test_golden_path_is_real_and_ordered _____________________
+tests\e2e\test_t14_windows_golden_path.py:77: in test_golden_path_is_real_and_ordered
+    assert stage in gp_lower, (
+E   AssertionError: golden path must include 'acquisition' (T14 AC3); got: ['src/capture/npcap_adapter.zig', 'src/capture/packet_decoder.zig', 'src/contract/canonical_event.zig', 'src/contract/event_fabric.zig', 'src/capture/flow_table.zig', 'src/detection/signature_engine.zig', 'src/detection/correlator.zig', 'src/detection/threat_tracker.zig', 'src/core/brain_engine.zig', 'src/policy/policy_engine.zig', 'src/policy/pep_bindings.zig', 'src/policy/wfp_production.zig', 'src/forensic/decision_trace.zig', 'src/forensic/forensic_pipeline.zig', 'src/forensic/replay_engine.zig']
+E   assert 'acquisition' in 'src/capture/npcap_adapter.zig | src/capture/packet_decoder.zig | src/contract/canonical_event.zig | src/contract/even...production.zig | src/forensic/decision_trace.zig | src/forensic/forensic_pipeline.zig | src/forensic/replay_engine.zig'
+________________ test_manifest_names_the_real_windows_sources _________________
+tests\e2e\test_t14_windows_golden_path.py:105: in test_manifest_names_the_real_windows_sources
+    assert entry is not None, f"manifest must declare real Windows source {mod} (T14 AC1)"
+E   AssertionError: manifest must declare real Windows source nose/capture.go (T14 AC1)
+E   assert None is not None
+____________________ test_event_id_canonical_and_survives _____________________
+tests\e2e\test_t14_windows_golden_path.py:129: in test_event_id_canonical_and_survives
+    ce = _read(CANONICAL_EVENT)
+         ^^^^^^^^^^^^^^^^^^^^^^
+tests\e2e\test_t14_windows_golden_path.py:68: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\canonical_event.zig'
+____________________ test_incident_id_survives_dispatcher _____________________
+tests\e2e\test_t14_windows_golden_path.py:139: in test_incident_id_survives_dispatcher
+    ce = _read(CORRELATION)
+         ^^^^^^^^^^^^^^^^^^
+tests\e2e\test_t14_windows_golden_path.py:68: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\correlation_engine.zig'
+_____________________ test_policy_id_and_version_survive ______________________
+tests\e2e\test_t14_windows_golden_path.py:151: in test_policy_id_and_version_survive
+    ps = _read(POLICY_SIGNING)
+         ^^^^^^^^^^^^^^^^^^^^^
+tests\e2e\test_t14_windows_golden_path.py:68: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\policy_signing.zig'
+___________________ test_forensic_id_assigned_and_survives ____________________
+tests\e2e\test_t14_windows_golden_path.py:172: in test_forensic_id_assigned_and_survives
+    fe = _read(FORENSICS)
+         ^^^^^^^^^^^^^^^^
+tests\e2e\test_t14_windows_golden_path.py:68: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\forensics_engine.zig'
+____________________ test_python_and_cython_brain_in_path _____________________
+tests\e2e\test_t14_windows_golden_path.py:186: in test_python_and_cython_brain_in_path
+    assert e is not None and e["status"] == "REAL" and e.get("golden_path"), cy
+E   AssertionError: brain/aegis_brain_cython/fast_scan.pyx
+E   assert (None is not None)
+_______________________ test_typescript_policy_in_path ________________________
+tests\e2e\test_t14_windows_golden_path.py:206: in test_typescript_policy_in_path
+    assert e is not None and e["status"] == "REAL", mod
+E   AssertionError: ts_policy/src/compiler.ts
+E   assert (None is not None)
+________________________ test_rust_pep_and_wfp_in_path ________________________
+tests\e2e\test_t14_windows_golden_path.py:213: in test_rust_pep_and_wfp_in_path
+    assert manifest["modules"]["shield/src/pep.rs"]["status"] == "REAL"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'shield/src/pep.rs'
+____________________ test_dispatcher_is_sole_orchestrator _____________________
+tests\e2e\test_t14_windows_golden_path.py:222: in test_dispatcher_is_sole_orchestrator
+    src = _read(DISPATCHER)
+          ^^^^^^^^^^^^^^^^^
+tests\e2e\test_t14_windows_golden_path.py:68: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\dispatcher.zig'
+________________ test_manifest_documents_identifier_integrity _________________
+tests\e2e\test_t14_windows_golden_path.py:239: in test_manifest_documents_identifier_integrity
+    assert needle in joined, (
+E   AssertionError: authority_invariants must declare 'identifier integrity' (T14); got: host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process telemetry; one model -> CanonicalEvent -> Zig Flow)
+E     WFP enforcement: src/policy/wfp_production.zig (single authoritative WFP enforcement module; Rust PEP is the only path to enforcement)
+E     Rust PEP: src/core/rust_pep.zig (single PEP authority; no other path bypasses Rust PEP)
+E     decision trace: src/forensic/decision_trace.zig (mandatory audit trail for all enforcement decisions)
+E     shadow decision: src/forensic/shadow_decision.zig (shadow comparison for candidate vs. enforce decisions)
+E     security replay: src/forensic/replay_engine.zig (replayable security atoms for post-incident analysis)
+E     authority review: src/core/authority_review.zig (12-clause authority checklist for deployment review)
+E     canary order: src/windows/ips_canary.zig (IPS canary progression: simulation -> shadow -> canary -> enforce)
+E     final authority: Rust PEP (aegis_pep.dll) is the final enforcement authority; Zig dispatches through PEP
+E     never Everyone for privileged: privileged actions require explicit caller capability; no catch-all Everyone role
+E     control plane: src/policy/control_ipc.zig (named pipe control protocol for CLI/TS policy authoring)
+E     policy engine: src/policy/policy_engine.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)
+E   assert 'identifier integrity' in 'host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process te...e.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)'
+____________ test_cluster_message_has_identity_schema_and_sequence ____________
+tests\federation\test_t13_federation_tls.py:59: in test_cluster_message_has_identity_schema_and_sequence
+    src = _read(CLUSTER_COORD)
+          ^^^^^^^^^^^^^^^^^^^^
+tests\federation\test_t13_federation_tls.py:52: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\cluster_coord.zig'
+_____________ test_message_types_cover_heartbeat_incident_and_ti ______________
+tests\federation\test_t13_federation_tls.py:71: in test_message_types_cover_heartbeat_incident_and_ti
+    src = _read(CLUSTER_COORD)
+          ^^^^^^^^^^^^^^^^^^^^
+tests\federation\test_t13_federation_tls.py:52: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\cluster_coord.zig'
+_________________ test_shared_payloads_cover_incidents_and_ti _________________
+tests\federation\test_t13_federation_tls.py:79: in test_shared_payloads_cover_incidents_and_ti
+    src = _read(CLUSTER_COORD)
+          ^^^^^^^^^^^^^^^^^^^^
+tests\federation\test_t13_federation_tls.py:52: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\cluster_coord.zig'
+______________ test_frame_schema_has_magic_version_type_and_crc _______________
+tests\federation\test_t13_federation_tls.py:87: in test_frame_schema_has_magic_version_type_and_crc
+    src = _read(FEDERATION_CODEC)
+          ^^^^^^^^^^^^^^^^^^^^^^^
+tests\federation\test_t13_federation_tls.py:52: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_codec.zig'
+_______________________ test_codec_roundtrips_sequence ________________________
+tests\federation\test_t13_federation_tls.py:99: in test_codec_roundtrips_sequence
+    src = _read(FEDERATION_CODEC)
+          ^^^^^^^^^^^^^^^^^^^^^^^
+tests\federation\test_t13_federation_tls.py:52: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_codec.zig'
+______________ test_federation_modules_do_not_reach_enforcement _______________
+tests\federation\test_t13_federation_tls.py:119: in test_federation_modules_do_not_reach_enforcement
+    src = _read(rel)
+          ^^^^^^^^^^
+tests\federation\test_t13_federation_tls.py:52: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\cluster_coord.zig'
+__________________ test_federation_has_no_enforcement_calls ___________________
+tests\federation\test_t13_federation_tls.py:133: in test_federation_has_no_enforcement_calls
+    src = _read(rel)
+          ^^^^^^^^^^
+tests\federation\test_t13_federation_tls.py:52: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\cluster_coord.zig'
+__________________ test_tls_validator_rejects_expired_certs ___________________
+tests\federation\test_t13_federation_tls.py:143: in test_tls_validator_rejects_expired_certs
+    src = _read(FEDERATION_TLS)
+          ^^^^^^^^^^^^^^^^^^^^^
+tests\federation\test_t13_federation_tls.py:52: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+____________________ test_tls_validator_rejects_unknown_ca ____________________
+tests\federation\test_t13_federation_tls.py:151: in test_tls_validator_rejects_unknown_ca
+    src = _read(FEDERATION_TLS)
+          ^^^^^^^^^^^^^^^^^^^^^
+tests\federation\test_t13_federation_tls.py:52: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+__________________ test_tls_validator_rejects_revoked_certs ___________________
+tests\federation\test_t13_federation_tls.py:160: in test_tls_validator_rejects_revoked_certs
+    src = _read(FEDERATION_TLS)
+          ^^^^^^^^^^^^^^^^^^^^^
+tests\federation\test_t13_federation_tls.py:52: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+__________ test_tls_validator_covers_cn_self_signed_and_not_enabled ___________
+tests\federation\test_t13_federation_tls.py:170: in test_tls_validator_covers_cn_self_signed_and_not_enabled
+    src = _read(FEDERATION_TLS)
+          ^^^^^^^^^^^^^^^^^^^^^
+tests\federation\test_t13_federation_tls.py:52: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+_______________________ test_mtls_requires_client_cert ________________________
+tests\federation\test_t13_federation_tls.py:182: in test_mtls_requires_client_cert
+    src = _read(FEDERATION_TLS)
+          ^^^^^^^^^^^^^^^^^^^^^
+tests\federation\test_t13_federation_tls.py:52: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+______________________ test_tls_handshake_timeout_exists ______________________
+tests\federation\test_t13_federation_tls.py:189: in test_tls_handshake_timeout_exists
+    src = _read(FEDERATION_TLS)
+          ^^^^^^^^^^^^^^^^^^^^^
+tests\federation\test_t13_federation_tls.py:52: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+___________________ test_no_plaintext_production_transport ____________________
+tests\federation\test_t13_federation_tls.py:201: in test_no_plaintext_production_transport
+    tls = _read(FEDERATION_TLS)
+          ^^^^^^^^^^^^^^^^^^^^^
+tests\federation\test_t13_federation_tls.py:52: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+___________________ test_manifest_documents_federation_tls ____________________
+tests\federation\test_t13_federation_tls.py:238: in test_manifest_documents_federation_tls
+    assert entry.get("golden_path") is True, f"{mod} must be on golden path (T13)"
+E   AssertionError: core/cluster_coord.zig must be on golden path (T13)
+E   assert False is True
+E    +  where False = <built-in method get of dict object at 0x000001642A86F100>('golden_path')
+E    +    where <built-in method get of dict object at 0x000001642A86F100> = {'status': 'REAL', 'golden_path': False, 'real_path': 'src/federation/cluster_coord.zig'}.get
+____________ test_authority_invariants_declare_federation_and_tls _____________
+tests\federation\test_t13_federation_tls.py:252: in test_authority_invariants_declare_federation_and_tls
+    assert needle in joined, (
+E   AssertionError: authority_invariants must declare 'federation authority' (T13); got: ['host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process telemetry; one model -> CanonicalEvent -> Zig Flow)', 'WFP enforcement: src/policy/wfp_production.zig (single authoritative WFP enforcement module; Rust PEP is the only path to enforcement)', 'Rust PEP: src/core/rust_pep.zig (single PEP authority; no other path bypasses Rust PEP)', 'decision trace: src/forensic/decision_trace.zig (mandatory audit trail for all enforcement decisions)', 'shadow decision: src/forensic/shadow_decision.zig (shadow comparison for candidate vs. enforce decisions)', 'security replay: src/forensic/replay_engine.zig (replayable security atoms for post-incident analysis)', 'authority review: src/core/authority_review.zig (12-clause authority checklist for deployment review)', 'canary order: src/windows/ips_canary.zig (IPS canary progression: simulation -> shadow -> canary -> enforce)', 'final authority: Rust PEP (aegis_pep.dll) is the final enforcement authority; Zig dispatches through PEP', 'never Everyone for privileged: privileged actions require explicit caller capability; no catch-all Everyone role', 'control plane: src/policy/control_ipc.zig (named pipe control protocol for CLI/TS policy authoring)', 'policy engine: src/policy/policy_engine.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)']
+E   assert 'federation authority' in 'host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process te...e.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)'
+_______________________ test_full_chain_on_golden_path ________________________
+tests\forensics\test_t12_forensics_replay.py:74: in test_full_chain_on_golden_path
+    assert stage in golden, (
+E   AssertionError: golden path must declare stage 'canonical_event' (T12 AC1); got: ['src/capture/npcap_adapter.zig', 'src/capture/packet_decoder.zig', 'src/contract/canonical_event.zig', 'src/contract/event_fabric.zig', 'src/capture/flow_table.zig', 'src/detection/signature_engine.zig', 'src/detection/correlator.zig', 'src/detection/threat_tracker.zig', 'src/core/brain_engine.zig', 'src/policy/policy_engine.zig', 'src/policy/pep_bindings.zig', 'src/policy/wfp_production.zig', 'src/forensic/decision_trace.zig', 'src/forensic/forensic_pipeline.zig', 'src/forensic/replay_engine.zig']
+E   assert 'canonical_event' in ['src/capture/npcap_adapter.zig', 'src/capture/packet_decoder.zig', 'src/contract/canonical_event.zig', 'src/contract/event_fabric.zig', 'src/capture/flow_table.zig', 'src/detection/signature_engine.zig', ...]
+________________ test_forensics_engine_is_authoritative_trace _________________
+tests\forensics\test_t12_forensics_replay.py:86: in test_forensics_engine_is_authoritative_trace
+    src = _read(FORENSICS_ENGINE)
+          ^^^^^^^^^^^^^^^^^^^^^^^
+tests\forensics\test_t12_forensics_replay.py:65: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\forensics_engine.zig'
+____________________ test_trace_captures_full_chain_fields ____________________
+tests\forensics\test_t12_forensics_replay.py:98: in test_trace_captures_full_chain_fields
+    src = _read(FORENSICS_ENGINE)
+          ^^^^^^^^^^^^^^^^^^^^^^^
+tests\forensics\test_t12_forensics_replay.py:65: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\forensics_engine.zig'
+_______________ test_dispatcher_writes_trace_for_every_decision _______________
+tests\forensics\test_t12_forensics_replay.py:125: in test_dispatcher_writes_trace_for_every_decision
+    src = _read(disp)
+          ^^^^^^^^^^^
+tests\forensics\test_t12_forensics_replay.py:65: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\dispatcher.zig'
+_________________ test_forensic_log_is_append_only_immutable __________________
+tests\forensics\test_t12_forensics_replay.py:139: in test_forensic_log_is_append_only_immutable
+    log_src = _read(FORENSIC_LOG)
+              ^^^^^^^^^^^^^^^^^^^
+tests\forensics\test_t12_forensics_replay.py:65: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\forensic_log.zig'
+______________ test_replay_engine_reports_difference_and_reason _______________
+tests\forensics\test_t12_forensics_replay.py:161: in test_replay_engine_reports_difference_and_reason
+    src = _read(REPLAY_ENGINE)
+          ^^^^^^^^^^^^^^^^^^^^
+tests\forensics\test_t12_forensics_replay.py:65: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replay_engine.zig'
+______________ test_replay_holds_original_and_replayed_decisions ______________
+tests\forensics\test_t12_forensics_replay.py:183: in test_replay_holds_original_and_replayed_decisions
+    src = _read(REPLAY_ENGINE)
+          ^^^^^^^^^^^^^^^^^^^^
+tests\forensics\test_t12_forensics_replay.py:65: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replay_engine.zig'
+____________________ test_replay_consumes_forensics_trace _____________________
+tests\forensics\test_t12_forensics_replay.py:193: in test_replay_consumes_forensics_trace
+    src = _read(REPLAY_ENGINE)
+          ^^^^^^^^^^^^^^^^^^^^
+tests\forensics\test_t12_forensics_replay.py:65: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replay_engine.zig'
+_________________ test_forensic_trace_and_replay_share_schema _________________
+tests\forensics\test_t12_forensics_replay.py:207: in test_forensic_trace_and_replay_share_schema
+    fe = _read(FORENSICS_ENGINE)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+tests\forensics\test_t12_forensics_replay.py:65: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\forensics_engine.zig'
+___________ test_authority_invariants_declare_forensics_and_replay ____________
+tests\forensics\test_t12_forensics_replay.py:260: in test_authority_invariants_declare_forensics_and_replay
+    assert needle in joined, (
+E   AssertionError: authority_invariants must declare 'forensics authority' (T12); got: ['host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process telemetry; one model -> CanonicalEvent -> Zig Flow)', 'WFP enforcement: src/policy/wfp_production.zig (single authoritative WFP enforcement module; Rust PEP is the only path to enforcement)', 'Rust PEP: src/core/rust_pep.zig (single PEP authority; no other path bypasses Rust PEP)', 'decision trace: src/forensic/decision_trace.zig (mandatory audit trail for all enforcement decisions)', 'shadow decision: src/forensic/shadow_decision.zig (shadow comparison for candidate vs. enforce decisions)', 'security replay: src/forensic/replay_engine.zig (replayable security atoms for post-incident analysis)', 'authority review: src/core/authority_review.zig (12-clause authority checklist for deployment review)', 'canary order: src/windows/ips_canary.zig (IPS canary progression: simulation -> shadow -> canary -> enforce)', 'final authority: Rust PEP (aegis_pep.dll) is the final enforcement authority; Zig dispatches through PEP', 'never Everyone for privileged: privileged actions require explicit caller capability; no catch-all Everyone role', 'control plane: src/policy/control_ipc.zig (named pipe control protocol for CLI/TS policy authoring)', 'policy engine: src/policy/policy_engine.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)']
+E   assert 'forensics authority' in 'host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process te...e.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)'
+____________ test_single_authoritative_host_network_source_exists _____________
+tests\host_telemetry\test_t10_single_source.py:64: in test_single_authoritative_host_network_source_exists
+    assert p.is_file(), (
+E   AssertionError: authoritative host-network source missing: core/npcap_capture.zig
+E   assert False
+E    +  where False = is_file()
+E    +    where is_file = WindowsPath('D:/NIDs_Windows/core/npcap_capture.zig').is_file
+___________ test_canonical_event_defines_host_network_source_kinds ____________
+tests\host_telemetry\test_t10_single_source.py:107: in test_canonical_event_defines_host_network_source_kinds
+    text = (REPO_ROOT / "core" / "canonical_event.zig").read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\canonical_event.zig'
+_______________ test_zig_flow_engine_consumes_canonical_events ________________
+tests\host_telemetry\test_t10_single_source.py:118: in test_zig_flow_engine_consumes_canonical_events
+    text = (REPO_ROOT / "core" / "flow_engine.zig").read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\flow_engine.zig'
+___________ test_process_telemetry_uses_same_canonical_event_model ____________
+tests\host_telemetry\test_t10_single_source.py:130: in test_process_telemetry_uses_same_canonical_event_model
+    wa = (REPO_ROOT / "core" / "windows_adapters.zig").read_text(encoding="utf-8")
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\windows_adapters.zig'
+_______________ test_host_network_and_process_share_dispatcher ________________
+tests\host_telemetry\test_t10_single_source.py:184: in test_host_network_and_process_share_dispatcher
+    text = (REPO_ROOT / "core" / "dispatcher.zig").read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\dispatcher.zig'
+___________________ test_manifest_declares_t18_modules_real ___________________
+tests\ips\test_t18_ips_canary_xdr.py:97: in test_manifest_declares_t18_modules_real
+    assert manifest["modules"][mod]["status"] == "REAL", (
+E   AssertionError: src/core/real_ips_path.zig must be REAL (T18); got {'status': 'PROOF', 'golden_path': False, 'role': 'enforcement chain model'}
+E   assert 'PROOF' == 'REAL'
+E     
+E     - REAL
+E     + PROOF
+____________________ test_authority_invariants_declare_t18 ____________________
+tests\ips\test_t18_ips_canary_xdr.py:107: in test_authority_invariants_declare_t18
+    assert "real IPS path" in joined
+E   AssertionError: assert 'real IPS path' in 'host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process te...e.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)'
+_________________ test_ac1_canary_order_is_mandated_sequence __________________
+tests\ips\test_t18_ips_canary_xdr.py:119: in test_ac1_canary_order_is_mandated_sequence
+    src = _read(CANARY_MODULE)
+          ^^^^^^^^^^^^^^^^^^^^
+tests\ips\test_t18_ips_canary_xdr.py:85: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\ips_canary_order.zig'
+______________ test_ac1_canary_stage_vocabulary_has_rolled_back _______________
+tests\ips\test_t18_ips_canary_xdr.py:137: in test_ac1_canary_stage_vocabulary_has_rolled_back
+    src = _read(CANARY_MODULE)
+          ^^^^^^^^^^^^^^^^^^^^
+tests\ips\test_t18_ips_canary_xdr.py:85: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\ips_canary_order.zig'
+______________ test_ac1_canary_spec_carries_scope_target_expiry _______________
+tests\ips\test_t18_ips_canary_xdr.py:144: in test_ac1_canary_spec_carries_scope_target_expiry
+    src = _read(CANARY_MODULE)
+          ^^^^^^^^^^^^^^^^^^^^
+tests\ips\test_t18_ips_canary_xdr.py:85: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\ips_canary_order.zig'
+_________________ test_ac1_canary_rollback_and_audit_present __________________
+tests\ips\test_t18_ips_canary_xdr.py:153: in test_ac1_canary_rollback_and_audit_present
+    src = _read(CANARY_MODULE)
+          ^^^^^^^^^^^^^^^^^^^^
+tests\ips\test_t18_ips_canary_xdr.py:85: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\ips_canary_order.zig'
+____________________ test_ac1_canary_scope_is_canary_only _____________________
+tests\ips\test_t18_ips_canary_xdr.py:163: in test_ac1_canary_scope_is_canary_only
+    src = _read(CANARY_MODULE)
+          ^^^^^^^^^^^^^^^^^^^^
+tests\ips\test_t18_ips_canary_xdr.py:85: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\ips_canary_order.zig'
+_______________________ test_ac1_gates_are_fail_closed ________________________
+tests\ips\test_t18_ips_canary_xdr.py:173: in test_ac1_gates_are_fail_closed
+    src = _read(CANARY_MODULE)
+          ^^^^^^^^^^^^^^^^^^^^
+tests\ips\test_t18_ips_canary_xdr.py:85: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\ips_canary_order.zig'
+_________________ test_ac3_all_nine_source_categories_present _________________
+tests\ips\test_t18_ips_canary_xdr.py:236: in test_ac3_all_nine_source_categories_present
+    src = _read(XDR_MODULE)
+          ^^^^^^^^^^^^^^^^^
+tests\ips\test_t18_ips_canary_xdr.py:85: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\xdr_incident_fabric.zig'
+______________________ test_ac3_pipeline_stages_present _______________________
+tests\ips\test_t18_ips_canary_xdr.py:243: in test_ac3_pipeline_stages_present
+    src = _read(XDR_MODULE)
+          ^^^^^^^^^^^^^^^^^
+tests\ips\test_t18_ips_canary_xdr.py:85: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\xdr_incident_fabric.zig'
+_______________ test_ac3_single_incident_holds_multiple_sources _______________
+tests\ips\test_t18_ips_canary_xdr.py:251: in test_ac3_single_incident_holds_multiple_sources
+    src = _read(XDR_MODULE)
+          ^^^^^^^^^^^^^^^^^
+tests\ips\test_t18_ips_canary_xdr.py:85: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\xdr_incident_fabric.zig'
+________ test_ac3_enforcement_decision_maps_source_evidence_to_action _________
+tests\ips\test_t18_ips_canary_xdr.py:259: in test_ac3_enforcement_decision_maps_source_evidence_to_action
+    src = _read(XDR_MODULE)
+          ^^^^^^^^^^^^^^^^^
+tests\ips\test_t18_ips_canary_xdr.py:85: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\xdr_incident_fabric.zig'
+_______________ test_manifest_lists_shield_as_real_enforcement ________________
+tests\pep\test_t8_rust_pep.py:109: in test_manifest_lists_shield_as_real_enforcement
+    assert shield is not None, "shield/src/lib.rs not in runtime_manifest.json"
+E   AssertionError: shield/src/lib.rs not in runtime_manifest.json
+E   assert None is not None
+________________ test_ac1_per_language_benchmark_suites_exist _________________
+tests\release\test_t17_perf_ci_installer.py:50: in test_ac1_per_language_benchmark_suites_exist
+    assert not missing, f"AC1 benchmark suites missing: {missing}"
+E   AssertionError: AC1 benchmark suites missing: ['core/federation_bench.zig', 'core/flow_engine.zig']
+E   assert not ['core/federation_bench.zig', 'core/flow_engine.zig']
+________________________ test_ac1_perf_zig_gates_green ________________________
+tests\release\test_t17_perf_ci_installer.py:87: in test_ac1_perf_zig_gates_green
+    assert entry and entry.get("status") == "REAL", f"{rel} must be REAL (AC1)"
+E   AssertionError: src/core/perf_benchmark.zig must be REAL (AC1)
+E   assert ({'status': 'TOOL', 'golden_path': False, 'role': 'performance benchmarks'} and 'TOOL' == 'REAL'
+E     
+E     - REAL
+E     + TOOL)
+____________________ test_ac2_ci_matrix_required_semantics ____________________
+tests\release\test_t17_perf_ci_installer.py:98: in test_ac2_ci_matrix_required_semantics
+    assert len(jobs) >= 10, "CI matrix must cover the cross-language set"
+E   AssertionError: CI matrix must cover the cross-language set
+E   assert 8 >= 10
+E    +  where 8 = len([{'id': 'zig-core', 'language': 'zig', 'job': 'zig-build-test', 'required': True}, {'id': 'rust-pep', 'language': 'rus...st', 'required': True}, {'id': 'ts-policy', 'language': 'typescript', 'job': 'ts-policy-build', 'required': True}, ...])
+_____________________ test_ac3_manifest_has_source_commit _____________________
+tests\release\test_t17_perf_ci_installer.py:145: in test_ac3_manifest_has_source_commit
+    assert component.get("commit"), f"component {component['id']} must map to a commit"
+E   AssertionError: component mouth must map to a commit
+E   assert None
+E    +  where None = <built-in method get of dict object at 0x000001642AC88400>('commit')
+E    +    where <built-in method get of dict object at 0x000001642AC88400> = {'id': 'mouth', 'name': 'mouth/windows_sec_monitor.rs', 'language': 'rust', 'type': 'optional-standalone-gui', ...}.get
+_________________________ test_ac3_artifacts_digested _________________________
+tests\release\test_t17_perf_ci_installer.py:156: in test_ac3_artifacts_digested
+    assert (REPO_ROOT / art["path"]).exists(), f"artifact missing: {art['path']}"
+E   AssertionError: artifact missing: Rules.json
+E   assert False
+E    +  where False = exists()
+E    +    where exists = (WindowsPath('D:/NIDs_Windows') / 'Rules.json').exists
+_____________________ test_ac3_verify_mode_detects_drift ______________________
+tests\release\test_t17_perf_ci_installer.py:164: in test_ac3_verify_mode_detects_drift
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+E   AssertionError: Artifacts checked: 117 (present), missing (not built locally): 165
+E     FAIL - artifacts drifted from recorded commit digests:
+E       - .github/workflows/ci.yml
+E       - Cargo.toml
+E       - brain/windows_brain.py
+E       - bridge/aegis_packet_parser.cpp
+E       - build.zig
+E       - runtime_manifest.json
+E       - scripts/aegis_notifier.py
+E       - scripts/aegis_rules.py
+E       - scripts/diag_deep.bat
+E       - shield/src/lib.rs
+E       - tools/final_audit.py
+E       - tools/golden_path_evidence.py
+E       - tools/release_candidate.py
+E       - tools/upgrade_rollback.py
+E     
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python314\\python.exe', 'tools/release_engi...dit.py\n  - tools/golden_path_evidence.py\n  - tools/release_candidate.py\n  - tools/upgrade_rollback.py\n', stderr='').returncode
+____________________ test_ac4_installer_consumes_manifest _____________________
+tests\release\test_t17_perf_ci_installer.py:175: in test_ac4_installer_consumes_manifest
+    assert "build_manifest.json" in src, "installer must read build_manifest.json (AC4)"
+E   AssertionError: installer must read build_manifest.json (AC4)
+E   assert 'build_manifest.json' in '#!/usr/bin/env python3\n"""G27: Installer ù NSIS script generator for AEGIS NIDS\nGenerates installer.nsi for NSIS (N...ted installer.nsi")\n    print("Build with: makensis installer.nsi")\n    print("Output: aegis-installer-1.0.0.exe")\n'
+___________ test_ac4_installer_packages_runtime_and_preserves_data ____________
+tests\release\test_t17_perf_ci_installer.py:188: in test_ac4_installer_packages_runtime_and_preserves_data
+    assert artifact in src, f"installer must package {artifact}"
+E   AssertionError: installer must package aegis_nids.exe
+E   assert 'aegis_nids.exe' in '#!/usr/bin/env python3\n"""G27: Installer ù NSIS script generator for AEGIS NIDS\nGenerates installer.nsi for NSIS (N...ted installer.nsi")\n    print("Build with: makensis installer.nsi")\n    print("Output: aegis-installer-1.0.0.exe")\n'
+______________________ test_ac4_installer_generates_nsi _______________________
+tests\release\test_t17_perf_ci_installer.py:205: in test_ac4_installer_generates_nsi
+    nsi = (REPO_ROOT / "logs" / "runtime" / "aegis_t17.nsi").read_text(encoding="utf-8")
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\logs\\runtime\\aegis_t17.nsi'
+___________________ test_manifest_declares_t17_modules_real ___________________
+tests\release\test_t17_perf_ci_installer.py:273: in test_manifest_declares_t17_modules_real
+    assert manifest["modules"][mod]["status"] == "REAL", f"{mod} must be REAL"
+E   AssertionError: src/core/perf_benchmark.zig must be REAL
+E   assert 'TOOL' == 'REAL'
+E     
+E     - REAL
+E     + TOOL
+_______________ test_all_t15_modules_declared_real_in_manifest ________________
+tests\reliability\test_t15_reliability_config.py:77: in test_all_t15_modules_declared_real_in_manifest
+    assert entry is not None, f"manifest must declare {mod} (T15)"
+E   AssertionError: manifest must declare src/tests/integration/fault_injection_integration.zig (T15)
+E   assert None is not None
+________________________ test_config_validator_is_real ________________________
+tests\reliability\test_t15_reliability_config.py:151: in test_config_validator_is_real
+    assert _manifest()["modules"]["configs/Rules.json"]["status"] == "REAL"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'configs/Rules.json'
+___________________ test_health_probe_contract_tests_exist ____________________
+tests\reliability\test_t15_reliability_config.py:187: in test_health_probe_contract_tests_exist
+    assert _manifest()["modules"]["tests/runtime/test_health.py"]["status"] == "REAL"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'tests/runtime/test_health.py'
+____________________ test_defcon_and_metrics_scripts_real _____________________
+tests\reliability\test_t15_reliability_config.py:210: in test_defcon_and_metrics_scripts_real
+    assert _manifest()["modules"]["scripts/aegis_defcon.py"]["status"] == "REAL"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'scripts/aegis_defcon.py'
+__________ TestAegisctlVersionCommand.test_version_component_filter ___________
+tests\runtime\test_aegisctl.py:72: in test_version_component_filter
+    self.assertIn("brain", stdout)
+E   AssertionError: 'brain' not found in ''
+________ TestAegisctlVersionCommand.test_version_lists_all_components _________
+tests\runtime\test_aegisctl.py:61: in test_version_lists_all_components
+    self.assertIn("Component", stdout)
+E   AssertionError: 'Component' not found in 'AEGIS NIDS v5.0+ (aegisctl)\n  CLI build: 2026-09-07\n  Protocol version: 5\n'
+_________ TestAegisctlStatusCommand.test_status_lists_all_components __________
+tests\runtime\test_aegisctl.py:88: in test_status_lists_all_components
+    self.assertEqual(rc, 0, f"status should exit 0, got {rc}; stderr={stderr}")
+E   AssertionError: 2 != 0 : status should exit 0, got 2; stderr=[!]  AEGIS daemon not reachable: named pipe error: (2, 'CreateFile', 'The system cannot find the file specified.')
+__________ TestAegisctlStatusCommand.test_status_shows_state_column ___________
+tests\runtime\test_aegisctl.py:97: in test_status_shows_state_column
+    self.assertIn("STOPPED", stdout)  # most likely all stopped in test env
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: 'STOPPED' not found in ''
+__________ TestAegisctlHealthCommand.test_health_runs_without_crash ___________
+tests\runtime\test_aegisctl.py:107: in test_health_runs_without_crash
+    self.assertIn("Component", stdout)
+E   AssertionError: 'Component' not found in "[!]  Daemon not reachable: named pipe error: (2, 'CreateFile', 'The system cannot find the file specified.')\n"
+_______ TestAegisctlDiagnoseCommand.test_diagnose_contains_all_sections _______
+tests\runtime\test_aegisctl.py:118: in test_diagnose_contains_all_sections
+    self.assertEqual(rc, 0, f"diagnose should exit 0, got {rc}; stderr={stderr}")
+E   AssertionError: 2 != 0 : diagnose should exit 0, got 2; stderr=usage: aegisctl.py [-h]
+E                      {status,start,stop,restart,rules,incidents,federation,metrics,health,version,logs,backup,restore} ...
+E   aegisctl.py: error: argument cmd: invalid choice: 'diagnose' (choose from status, start, stop, restart, rules, incidents, federation, metrics, health, version, logs, backup, restore)
+__________ TestAegisctlDiagnoseCommand.test_diagnose_shows_repo_root __________
+tests\runtime\test_aegisctl.py:130: in test_diagnose_shows_repo_root
+    self.assertIn("Repo root:", stdout)
+E   AssertionError: 'Repo root:' not found in ''
+______ TestAegisctlStartStopErrors.test_restart_without_component_errors ______
+tests\runtime\test_aegisctl.py:156: in test_restart_without_component_errors
+    self.assertNotEqual(rc, 0, "restart without --component should fail")
+E   AssertionError: 0 == 0 : restart without --component should fail
+_________ TestAegisctlStartStopErrors.test_start_without_args_errors __________
+tests\runtime\test_aegisctl.py:140: in test_start_without_args_errors
+    self.assertNotEqual(rc, 0, "start without --component or --all should fail")
+E   AssertionError: 0 == 0 : start without --component or --all should fail
+__________ TestAegisctlStartStopErrors.test_stop_without_args_errors __________
+tests\runtime\test_aegisctl.py:152: in test_stop_without_args_errors
+    self.assertNotEqual(rc, 0, "stop without --component or --all should fail")
+E   AssertionError: 0 == 0 : stop without --component or --all should fail
+________________ TestAegisctlExitCodes.test_diagnose_returns_0 ________________
+tests\runtime\test_aegisctl.py:177: in test_diagnose_returns_0
+    self.assertEqual(rc, 0, f"diagnose should exit 0, got {rc}")
+E   AssertionError: 2 != 0 : diagnose should exit 0, got 2
+_____________ TestAegisctlExitCodes.test_status_always_returns_0 ______________
+tests\runtime\test_aegisctl.py:173: in test_status_always_returns_0
+    self.assertEqual(rc, 0, f"status should always exit 0, got {rc}")
+E   AssertionError: 2 != 0 : status should always exit 0, got 2
+___________ TestEventsCommands.test_events_count_runs_without_crash ___________
+tests\runtime\test_gate_d.py:109: in test_events_count_runs_without_crash
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+______________ TestEventsCommands.test_events_count_with_no_log _______________
+tests\runtime\test_gate_d.py:139: in test_events_count_with_no_log
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+___________ TestEventsCommands.test_events_stats_runs_without_crash ___________
+tests\runtime\test_gate_d.py:127: in test_events_stats_runs_without_crash
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+___________ TestEventsCommands.test_events_tail_runs_without_crash ____________
+tests\runtime\test_gate_d.py:118: in test_events_tail_runs_without_crash
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+____________ TestForensicCommands.test_forensic_export_with_no_log ____________
+tests\runtime\test_gate_d.py:175: in test_forensic_export_with_no_log
+    self.assertEqual(rc, 1)
+E   AssertionError: 2 != 1
+____________ TestForensicCommands.test_forensic_search_with_no_log ____________
+tests\runtime\test_gate_d.py:166: in test_forensic_search_with_no_log
+    self.assertEqual(rc, 1)
+E   AssertionError: 2 != 1
+___________________ TestGateDHelpCommands.test_events_help ____________________
+tests\runtime\test_gate_d.py:255: in test_events_help
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+__________________ TestGateDHelpCommands.test_forensic_help ___________________
+tests\runtime\test_gate_d.py:262: in test_forensic_help
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+____________________ TestGateDHelpCommands.test_rules_help ____________________
+tests\runtime\test_gate_d.py:251: in test_rules_help
+    self.assertIn("validate", stdout)
+E   AssertionError: 'validate' not found in 'usage: aegisctl.py rules [-h] {list,reload} ...\n\npositional arguments:\n  {list,reload}\n    list         List loaded rules\n    reload       Reload rules from disk\n\noptions:\n  -h, --help     show this help message and exit\n'
+____________ TestGateDExitCodes.test_events_count_always_returns_0 ____________
+tests\runtime\test_gate_d.py:289: in test_events_count_always_returns_0
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+__________ TestGateDExitCodes.test_rules_show_nonexistent_returns_1 ___________
+tests\runtime\test_gate_d.py:285: in test_rules_show_nonexistent_returns_1
+    self.assertEqual(rc, 1)
+E   AssertionError: 2 != 1
+____________ TestSimulateCommands.test_simulate_attack_sends_event ____________
+tests\runtime\test_gate_e.py:130: in test_simulate_attack_sends_event
+    self.assertIn(rc, (0, 1))
+E   AssertionError: 2 not found in (0, 1)
+___________ TestSimulateCommands.test_simulate_attack_unknown_type ____________
+tests\runtime\test_gate_e.py:121: in test_simulate_attack_unknown_type
+    self.assertIn("unknown attack type", stdout.lower())
+E   AssertionError: 'unknown attack type' not found in ''
+________________ TestSimulateCommands.test_simulate_flood_runs ________________
+tests\runtime\test_gate_e.py:147: in test_simulate_flood_runs
+    self.assertIn(rc, (0, 1))
+E   AssertionError: 2 not found in (0, 1)
+____________ TestSimulateCommands.test_simulate_packet_sends_event ____________
+tests\runtime\test_gate_e.py:139: in test_simulate_packet_sends_event
+    self.assertIn(rc, (0, 1))
+E   AssertionError: 2 not found in (0, 1)
+___________ TestSimulateCommands.test_simulate_replay_missing_file ____________
+tests\runtime\test_gate_e.py:153: in test_simulate_replay_missing_file
+    self.assertEqual(rc, 1)
+E   AssertionError: 2 != 1
+________ TestCanaryTestsFile.test_canary_test_events_have_attack_type _________
+tests\runtime\test_gate_e.py:247: in test_canary_test_events_have_attack_type
+    data = json.loads(CANARY_TESTS_FILE.read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\config\\canary_tests.json'
+______________ TestCanaryTestsFile.test_canary_test_names_unique ______________
+tests\runtime\test_gate_e.py:241: in test_canary_test_names_unique
+    data = json.loads(CANARY_TESTS_FILE.read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\config\\canary_tests.json'
+_________________ TestCanaryTestsFile.test_canary_tests_count _________________
+tests\runtime\test_gate_e.py:228: in test_canary_tests_count
+    data = json.loads(CANARY_TESTS_FILE.read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\config\\canary_tests.json'
+______________ TestCanaryTestsFile.test_canary_tests_file_exists ______________
+tests\runtime\test_gate_e.py:218: in test_canary_tests_file_exists
+    self.assertTrue(CANARY_TESTS_FILE.exists(),
+E   AssertionError: False is not true : canary_tests.json not found at D:\NIDs_Windows\config\canary_tests.json
+__________ TestCanaryTestsFile.test_canary_tests_file_is_valid_json ___________
+tests\runtime\test_gate_e.py:222: in test_canary_tests_file_is_valid_json
+    data = json.loads(CANARY_TESTS_FILE.read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\config\\canary_tests.json'
+_________ TestCanaryTestsFile.test_canary_tests_have_required_fields __________
+tests\runtime\test_gate_e.py:233: in test_canary_tests_have_required_fields
+    data = json.loads(CANARY_TESTS_FILE.read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\config\\canary_tests.json'
+___________________ TestGateEHelpCommands.test_canary_help ____________________
+tests\runtime\test_gate_e.py:271: in test_canary_help
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+___________________ TestGateEHelpCommands.test_policy_help ____________________
+tests\runtime\test_gate_e.py:259: in test_policy_help
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+__________________ TestGateEHelpCommands.test_simulate_help ___________________
+tests\runtime\test_gate_e.py:265: in test_simulate_help
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+______________ TestBlockCommands.test_block_add_already_blocked _______________
+tests\runtime\test_gate_f.py:80: in test_block_add_already_blocked
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+_______________ TestBlockCommands.test_block_add_creates_entry ________________
+tests\runtime\test_gate_f.py:64: in test_block_add_creates_entry
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+_______________ TestBlockCommands.test_block_add_with_duration ________________
+tests\runtime\test_gate_f.py:74: in test_block_add_with_duration
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+_____________________ TestBlockCommands.test_block_clear ______________________
+tests\runtime\test_gate_f.py:114: in test_block_clear
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+__________________ TestBlockCommands.test_block_clear_empty ___________________
+tests\runtime\test_gate_f.py:121: in test_block_clear_empty
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+___________________ TestBlockCommands.test_block_list_empty ___________________
+tests\runtime\test_gate_f.py:98: in test_block_list_empty
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+_______________ TestBlockCommands.test_block_list_with_entries ________________
+tests\runtime\test_gate_f.py:105: in test_block_list_with_entries
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+_____________________ TestBlockCommands.test_block_remove _____________________
+tests\runtime\test_gate_f.py:86: in test_block_remove
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+_______________ TestBlockCommands.test_block_remove_not_blocked _______________
+tests\runtime\test_gate_f.py:93: in test_block_remove_not_blocked
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+__________ TestEnforceCommands.test_enforce_disable_already_disabled __________
+tests\runtime\test_gate_f.py:167: in test_enforce_disable_already_disabled
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+____________ TestEnforceCommands.test_enforce_disable_then_enable _____________
+tests\runtime\test_gate_f.py:144: in test_enforce_disable_then_enable
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+___________ TestEnforceCommands.test_enforce_enable_already_enabled ___________
+tests\runtime\test_gate_f.py:161: in test_enforce_enable_already_enabled
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+_____________ TestEnforceCommands.test_enforce_push_invalid_json ______________
+tests\runtime\test_gate_f.py:209: in test_enforce_push_invalid_json
+    self.assertEqual(rc, 1)
+E   AssertionError: 2 != 1
+_____________ TestEnforceCommands.test_enforce_push_missing_file ______________
+tests\runtime\test_gate_f.py:198: in test_enforce_push_missing_file
+    self.assertEqual(rc, 1)
+E   AssertionError: 2 != 1
+_____________ TestEnforceCommands.test_enforce_push_valid_policy ______________
+tests\runtime\test_gate_f.py:183: in test_enforce_push_valid_policy
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+_______________ TestEnforceCommands.test_enforce_status_default _______________
+tests\runtime\test_gate_f.py:136: in test_enforce_status_default
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+_________________ TestQuarantineCommands.test_quarantine_add __________________
+tests\runtime\test_gate_f.py:227: in test_quarantine_add
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+_______ TestQuarantineCommands.test_quarantine_add_already_quarantined ________
+tests\runtime\test_gate_f.py:245: in test_quarantine_add_already_quarantined
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+______________ TestQuarantineCommands.test_quarantine_list_empty ______________
+tests\runtime\test_gate_f.py:267: in test_quarantine_list_empty
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+__________ TestQuarantineCommands.test_quarantine_list_with_entries ___________
+tests\runtime\test_gate_f.py:274: in test_quarantine_list_with_entries
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+________________ TestQuarantineCommands.test_quarantine_remove ________________
+tests\runtime\test_gate_f.py:251: in test_quarantine_remove
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+________ TestQuarantineCommands.test_quarantine_remove_not_quarantined ________
+tests\runtime\test_gate_f.py:262: in test_quarantine_remove_not_quarantined
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+____________________ TestGateFHelpCommands.test_block_help ____________________
+tests\runtime\test_gate_f.py:285: in test_block_help
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+___________________ TestGateFHelpCommands.test_enforce_help ___________________
+tests\runtime\test_gate_f.py:291: in test_enforce_help
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+_________________ TestGateFHelpCommands.test_quarantine_help __________________
+tests\runtime\test_gate_f.py:297: in test_quarantine_help
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+_________________ TestGateFExitCodes.test_block_add_returns_0 _________________
+tests\runtime\test_gate_f.py:313: in test_block_add_returns_0
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+________________ TestGateFExitCodes.test_block_list_returns_0 _________________
+tests\runtime\test_gate_f.py:317: in test_block_list_returns_0
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+______________ TestGateFExitCodes.test_enforce_status_returns_0 _______________
+tests\runtime\test_gate_f.py:321: in test_enforce_status_returns_0
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+______________ TestGateFExitCodes.test_quarantine_list_returns_0 ______________
+tests\runtime\test_gate_f.py:325: in test_quarantine_list_returns_0
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+__ TestGoldenPathOrchestration.test_aegisctl_diagnose_reports_all_components __
+tests\runtime\test_golden_path.py:353: in test_aegisctl_diagnose_reports_all_components
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+_ TestGoldenPathOrchestration.test_aegisctl_status_includes_primary_components _
+tests\runtime\test_golden_path.py:364: in test_aegisctl_status_includes_primary_components
+    self.assertEqual(rc, 0)
+E   AssertionError: 2 != 0
+_____________________ test_hardening_categories_coverage ______________________
+tests\security\test_t16_security_hardening.py:88: in test_hardening_categories_coverage
+    ipc = _read(CONTROL_IPC)
+          ^^^^^^^^^^^^^^^^^^
+tests\security\test_t16_security_hardening.py:81: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\control_ipc.zig'
+_______________ test_control_ipc_has_roles_acl_and_no_everyone ________________
+tests\security\test_t16_security_hardening.py:152: in test_control_ipc_has_roles_acl_and_no_everyone
+    src = _read(CONTROL_IPC)
+          ^^^^^^^^^^^^^^^^^^
+tests\security\test_t16_security_hardening.py:81: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\control_ipc.zig'
+____________ test_control_ipc_has_request_id_timeout_replay_audit _____________
+tests\security\test_t16_security_hardening.py:168: in test_control_ipc_has_request_id_timeout_replay_audit
+    src = _read(CONTROL_IPC)
+          ^^^^^^^^^^^^^^^^^^
+tests\security\test_t16_security_hardening.py:81: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\control_ipc.zig'
+____________________ test_privileged_authorization_layered ____________________
+tests\security\test_t16_security_hardening.py:184: in test_privileged_authorization_layered
+    src = _read(CONTROL_IPC)
+          ^^^^^^^^^^^^^^^^^^
+tests\security\test_t16_security_hardening.py:81: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\control_ipc.zig'
+________ test_aegisctl_issues_request_envelope_for_privileged_actions _________
+tests\security\test_t16_security_hardening.py:196: in test_aegisctl_issues_request_envelope_for_privileged_actions
+    assert "def _control_request(" in src, "aegisctl must have a request helper (AC3)"
+E   AssertionError: aegisctl must have a request helper (AC3)
+E   assert 'def _control_request(' in '#!/usr/bin/env python3\n"""II17 - AEGIS Control Plane CLI (aegisctl)\n\nProvides operator commands to manage the AEGI...arser.print_help()\n        return 1\n    return handler(args)\n\n\nif __name__ == "__main__":\n    sys.exit(main())\n'
+______________ test_manifest_declares_control_ipc_and_invariants ______________
+tests\security\test_t16_security_hardening.py:232: in test_manifest_declares_control_ipc_and_invariants
+    assert "never \"Everyone\" for privileged" in joined, (
+E   AssertionError: authority_invariants must ban the Everyone catch-all (AC2)
+E   assert 'never "Everyone" for privileged' in 'host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process te...e.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)'
+___________________ test_manifest_declares_t19_modules_real ___________________
+tests\security\test_t19_decision_trace_shadow_replay_review.py:135: in test_manifest_declares_t19_modules_real
+    assert manifest["modules"][mod]["status"] == "REAL", (
+E   AssertionError: src/core/authority_review.zig must be REAL (T19); got {'status': 'PROOF', 'golden_path': False, 'role': 'authority checklist'}
+E   assert 'PROOF' == 'REAL'
+E     
+E     - REAL
+E     + PROOF
+_____________ test_ac1_trace_chain_is_the_mandated_eight_in_order _____________
+tests\security\test_t19_decision_trace_shadow_replay_review.py:155: in test_ac1_trace_chain_is_the_mandated_eight_in_order
+    block = _block(_read(TRACE_MODULE), "TRACE_CHAIN")
+                   ^^^^^^^^^^^^^^^^^^^
+tests\security\test_t19_decision_trace_shadow_replay_review.py:115: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\decision_trace.zig'
+_________________ test_ac1_strict_order_append_rejects_skips __________________
+tests\security\test_t19_decision_trace_shadow_replay_review.py:166: in test_ac1_strict_order_append_rejects_skips
+    src = _read(TRACE_MODULE)
+          ^^^^^^^^^^^^^^^^^^^
+tests\security\test_t19_decision_trace_shadow_replay_review.py:115: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\decision_trace.zig'
+____________________ test_ac1_privileged_actions_are_named ____________________
+tests\security\test_t19_decision_trace_shadow_replay_review.py:175: in test_ac1_privileged_actions_are_named
+    src = _read(TRACE_MODULE)
+          ^^^^^^^^^^^^^^^^^^^
+tests\security\test_t19_decision_trace_shadow_replay_review.py:115: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\decision_trace.zig'
+__________________ test_ac1_audit_coverage_is_all_or_flagged __________________
+tests\security\test_t19_decision_trace_shadow_replay_review.py:183: in test_ac1_audit_coverage_is_all_or_flagged
+    src = _read(TRACE_MODULE)
+          ^^^^^^^^^^^^^^^^^^^
+tests\security\test_t19_decision_trace_shadow_replay_review.py:115: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\decision_trace.zig'
+__________________ test_ac2_six_dimensions_in_mandated_order __________________
+tests\security\test_t19_decision_trace_shadow_replay_review.py:198: in test_ac2_six_dimensions_in_mandated_order
+    start = _read(SHADOW_MODULE).find(marker)
+            ^^^^^^^^^^^^^^^^^^^^
+tests\security\test_t19_decision_trace_shadow_replay_review.py:115: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\shadow_decision.zig'
+_____________ test_ac2_compare_forces_candidate_never_to_enforce ______________
+tests\security\test_t19_decision_trace_shadow_replay_review.py:212: in test_ac2_compare_forces_candidate_never_to_enforce
+    src = _read(SHADOW_MODULE)
+          ^^^^^^^^^^^^^^^^^^^^
+tests\security\test_t19_decision_trace_shadow_replay_review.py:115: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\shadow_decision.zig'
+____________ test_ac2_outcome_vocabulary_agree_and_differ_present _____________
+tests\security\test_t19_decision_trace_shadow_replay_review.py:221: in test_ac2_outcome_vocabulary_agree_and_differ_present
+    src = _read(SHADOW_MODULE)
+          ^^^^^^^^^^^^^^^^^^^^
+tests\security\test_t19_decision_trace_shadow_replay_review.py:115: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\shadow_decision.zig'
+__________________ test_ac2_comparison_fields_cover_all_six ___________________
+tests\security\test_t19_decision_trace_shadow_replay_review.py:229: in test_ac2_comparison_fields_cover_all_six
+    src = _read(SHADOW_MODULE)
+          ^^^^^^^^^^^^^^^^^^^^
+tests\security\test_t19_decision_trace_shadow_replay_review.py:115: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\shadow_decision.zig'
+___________________ test_ac3_three_replayable_atoms_present ___________________
+tests\security\test_t19_decision_trace_shadow_replay_review.py:242: in test_ac3_three_replayable_atoms_present
+    src = _read(REPLAY_MODULE)
+          ^^^^^^^^^^^^^^^^^^^^
+tests\security\test_t19_decision_trace_shadow_replay_review.py:115: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replayable_security.zig'
+___________________ test_ac3_difference_vocabulary_present ____________________
+tests\security\test_t19_decision_trace_shadow_replay_review.py:249: in test_ac3_difference_vocabulary_present
+    src = _read(REPLAY_MODULE)
+          ^^^^^^^^^^^^^^^^^^^^
+tests\security\test_t19_decision_trace_shadow_replay_review.py:115: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replayable_security.zig'
+___________ test_ac3_replay_result_carries_original_replayed_reason ___________
+tests\security\test_t19_decision_trace_shadow_replay_review.py:256: in test_ac3_replay_result_carries_original_replayed_reason
+    src = _read(REPLAY_MODULE)
+          ^^^^^^^^^^^^^^^^^^^^
+tests\security\test_t19_decision_trace_shadow_replay_review.py:115: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replayable_security.zig'
+__________________ test_ac3_reason_attributes_to_atom_deltas __________________
+tests\security\test_t19_decision_trace_shadow_replay_review.py:266: in test_ac3_reason_attributes_to_atom_deltas
+    src = _read(REPLAY_MODULE)
+          ^^^^^^^^^^^^^^^^^^^^
+tests\security\test_t19_decision_trace_shadow_replay_review.py:115: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replayable_security.zig'
+__________________ test_ac3_summarize_is_regression_readout ___________________
+tests\security\test_t19_decision_trace_shadow_replay_review.py:274: in test_ac3_summarize_is_regression_readout
+    src = _read(REPLAY_MODULE)
+          ^^^^^^^^^^^^^^^^^^^^
+tests\security\test_t19_decision_trace_shadow_replay_review.py:115: in _read
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:787: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replayable_security.zig'
+============================== warnings summary ===============================
+tests/test_golden_path.py::test_dns_malware_callback
+  C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_golden_path.py::test_dns_malware_callback returned <class 'tuple'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_golden_path.py::test_tls_sni_block
+  C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_golden_path.py::test_tls_sni_block returned <class 'tuple'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_golden_path.py::test_anomaly_port_scan
+  C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_golden_path.py::test_anomaly_port_scan returned <class 'tuple'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_golden_path.py::test_injection_detection
+  C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_golden_path.py::test_injection_detection returned <class 'tuple'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_golden_path.py::test_registry_run_key
+  C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_golden_path.py::test_registry_run_key returned <class 'tuple'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_golden_path.py::test_federation_quorum
+  C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_golden_path.py::test_federation_quorum returned <class 'tuple'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_golden_path.py::test_forensic_ring_wrap
+  C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_golden_path.py::test_forensic_ring_wrap returned <class 'tuple'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_golden_path.py::test_config_validation
+  C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_golden_path.py::test_config_validation returned <class 'tuple'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_golden_path.py::test_zig_compiles
+  C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_golden_path.py::test_zig_compiles returned <class 'tuple'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_golden_path.py::test_rust_pep_builds
+  C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_golden_path.py::test_rust_pep_builds returned <class 'tuple'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/adapters/test_t9_windows_adapters.py::test_windows_adapters_status_is_real
+FAILED tests/adapters/test_t9_windows_adapters.py::test_cpp_adapter_binds_to_zig_canonical_event
+FAILED tests/adapters/test_t9_windows_adapters.py::test_etw_process_source_defines_etw_lifecycle
+FAILED tests/adapters/test_t9_windows_adapters.py::test_fim_source_handles_create_modify_rename_delete
+FAILED tests/adapters/test_t9_windows_adapters.py::test_registry_source_produces_trie_evidence
+FAILED tests/adapters/test_t9_windows_adapters.py::test_process_injection_detector_produces_injection_evidence
+FAILED tests/adapters/test_t9_windows_adapters.py::test_windows_adapters_test_count_is_substantial
+FAILED tests/cython/test_cython_benchmark.py::test_scan_cython_is_faster_than_pure_python
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_golden_path_is_real_and_ordered
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_manifest_names_the_real_windows_sources
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_event_id_canonical_and_survives
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_incident_id_survives_dispatcher
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_policy_id_and_version_survive
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_forensic_id_assigned_and_survives
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_python_and_cython_brain_in_path
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_typescript_policy_in_path
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_rust_pep_and_wfp_in_path
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_dispatcher_is_sole_orchestrator
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_manifest_documents_identifier_integrity
+FAILED tests/federation/test_t13_federation_tls.py::test_cluster_message_has_identity_schema_and_sequence
+FAILED tests/federation/test_t13_federation_tls.py::test_message_types_cover_heartbeat_incident_and_ti
+FAILED tests/federation/test_t13_federation_tls.py::test_shared_payloads_cover_incidents_and_ti
+FAILED tests/federation/test_t13_federation_tls.py::test_frame_schema_has_magic_version_type_and_crc
+FAILED tests/federation/test_t13_federation_tls.py::test_codec_roundtrips_sequence
+FAILED tests/federation/test_t13_federation_tls.py::test_federation_modules_do_not_reach_enforcement
+FAILED tests/federation/test_t13_federation_tls.py::test_federation_has_no_enforcement_calls
+FAILED tests/federation/test_t13_federation_tls.py::test_tls_validator_rejects_expired_certs
+FAILED tests/federation/test_t13_federation_tls.py::test_tls_validator_rejects_unknown_ca
+FAILED tests/federation/test_t13_federation_tls.py::test_tls_validator_rejects_revoked_certs
+FAILED tests/federation/test_t13_federation_tls.py::test_tls_validator_covers_cn_self_signed_and_not_enabled
+FAILED tests/federation/test_t13_federation_tls.py::test_mtls_requires_client_cert
+FAILED tests/federation/test_t13_federation_tls.py::test_tls_handshake_timeout_exists
+FAILED tests/federation/test_t13_federation_tls.py::test_no_plaintext_production_transport
+FAILED tests/federation/test_t13_federation_tls.py::test_manifest_documents_federation_tls
+FAILED tests/federation/test_t13_federation_tls.py::test_authority_invariants_declare_federation_and_tls
+FAILED tests/forensics/test_t12_forensics_replay.py::test_full_chain_on_golden_path
+FAILED tests/forensics/test_t12_forensics_replay.py::test_forensics_engine_is_authoritative_trace
+FAILED tests/forensics/test_t12_forensics_replay.py::test_trace_captures_full_chain_fields
+FAILED tests/forensics/test_t12_forensics_replay.py::test_dispatcher_writes_trace_for_every_decision
+FAILED tests/forensics/test_t12_forensics_replay.py::test_forensic_log_is_append_only_immutable
+FAILED tests/forensics/test_t12_forensics_replay.py::test_replay_engine_reports_difference_and_reason
+FAILED tests/forensics/test_t12_forensics_replay.py::test_replay_holds_original_and_replayed_decisions
+FAILED tests/forensics/test_t12_forensics_replay.py::test_replay_consumes_forensics_trace
+FAILED tests/forensics/test_t12_forensics_replay.py::test_forensic_trace_and_replay_share_schema
+FAILED tests/forensics/test_t12_forensics_replay.py::test_authority_invariants_declare_forensics_and_replay
+FAILED tests/host_telemetry/test_t10_single_source.py::test_single_authoritative_host_network_source_exists
+FAILED tests/host_telemetry/test_t10_single_source.py::test_canonical_event_defines_host_network_source_kinds
+FAILED tests/host_telemetry/test_t10_single_source.py::test_zig_flow_engine_consumes_canonical_events
+FAILED tests/host_telemetry/test_t10_single_source.py::test_process_telemetry_uses_same_canonical_event_model
+FAILED tests/host_telemetry/test_t10_single_source.py::test_host_network_and_process_share_dispatcher
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_manifest_declares_t18_modules_real
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_authority_invariants_declare_t18
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_ac1_canary_order_is_mandated_sequence
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_ac1_canary_stage_vocabulary_has_rolled_back
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_ac1_canary_spec_carries_scope_target_expiry
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_ac1_canary_rollback_and_audit_present
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_ac1_canary_scope_is_canary_only
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_ac1_gates_are_fail_closed
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_ac3_all_nine_source_categories_present
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_ac3_pipeline_stages_present
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_ac3_single_incident_holds_multiple_sources
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_ac3_enforcement_decision_maps_source_evidence_to_action
+FAILED tests/pep/test_t8_rust_pep.py::test_manifest_lists_shield_as_real_enforcement
+FAILED tests/release/test_t17_perf_ci_installer.py::test_ac1_per_language_benchmark_suites_exist
+FAILED tests/release/test_t17_perf_ci_installer.py::test_ac1_perf_zig_gates_green
+FAILED tests/release/test_t17_perf_ci_installer.py::test_ac2_ci_matrix_required_semantics
+FAILED tests/release/test_t17_perf_ci_installer.py::test_ac3_manifest_has_source_commit
+FAILED tests/release/test_t17_perf_ci_installer.py::test_ac3_artifacts_digested
+FAILED tests/release/test_t17_perf_ci_installer.py::test_ac3_verify_mode_detects_drift
+FAILED tests/release/test_t17_perf_ci_installer.py::test_ac4_installer_consumes_manifest
+FAILED tests/release/test_t17_perf_ci_installer.py::test_ac4_installer_packages_runtime_and_preserves_data
+FAILED tests/release/test_t17_perf_ci_installer.py::test_ac4_installer_generates_nsi
+FAILED tests/release/test_t17_perf_ci_installer.py::test_manifest_declares_t17_modules_real
+FAILED tests/reliability/test_t15_reliability_config.py::test_all_t15_modules_declared_real_in_manifest
+FAILED tests/reliability/test_t15_reliability_config.py::test_config_validator_is_real
+FAILED tests/reliability/test_t15_reliability_config.py::test_health_probe_contract_tests_exist
+FAILED tests/reliability/test_t15_reliability_config.py::test_defcon_and_metrics_scripts_real
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlVersionCommand::test_version_component_filter
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlVersionCommand::test_version_lists_all_components
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlStatusCommand::test_status_lists_all_components
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlStatusCommand::test_status_shows_state_column
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlHealthCommand::test_health_runs_without_crash
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlDiagnoseCommand::test_diagnose_contains_all_sections
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlDiagnoseCommand::test_diagnose_shows_repo_root
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlStartStopErrors::test_restart_without_component_errors
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlStartStopErrors::test_start_without_args_errors
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlStartStopErrors::test_stop_without_args_errors
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlExitCodes::test_diagnose_returns_0
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlExitCodes::test_status_always_returns_0
+FAILED tests/runtime/test_gate_d.py::TestEventsCommands::test_events_count_runs_without_crash
+FAILED tests/runtime/test_gate_d.py::TestEventsCommands::test_events_count_with_no_log
+FAILED tests/runtime/test_gate_d.py::TestEventsCommands::test_events_stats_runs_without_crash
+FAILED tests/runtime/test_gate_d.py::TestEventsCommands::test_events_tail_runs_without_crash
+FAILED tests/runtime/test_gate_d.py::TestForensicCommands::test_forensic_export_with_no_log
+FAILED tests/runtime/test_gate_d.py::TestForensicCommands::test_forensic_search_with_no_log
+FAILED tests/runtime/test_gate_d.py::TestGateDHelpCommands::test_events_help
+FAILED tests/runtime/test_gate_d.py::TestGateDHelpCommands::test_forensic_help
+FAILED tests/runtime/test_gate_d.py::TestGateDHelpCommands::test_rules_help
+FAILED tests/runtime/test_gate_d.py::TestGateDExitCodes::test_events_count_always_returns_0
+FAILED tests/runtime/test_gate_d.py::TestGateDExitCodes::test_rules_show_nonexistent_returns_1
+FAILED tests/runtime/test_gate_e.py::TestSimulateCommands::test_simulate_attack_sends_event
+FAILED tests/runtime/test_gate_e.py::TestSimulateCommands::test_simulate_attack_unknown_type
+FAILED tests/runtime/test_gate_e.py::TestSimulateCommands::test_simulate_flood_runs
+FAILED tests/runtime/test_gate_e.py::TestSimulateCommands::test_simulate_packet_sends_event
+FAILED tests/runtime/test_gate_e.py::TestSimulateCommands::test_simulate_replay_missing_file
+FAILED tests/runtime/test_gate_e.py::TestCanaryTestsFile::test_canary_test_events_have_attack_type
+FAILED tests/runtime/test_gate_e.py::TestCanaryTestsFile::test_canary_test_names_unique
+FAILED tests/runtime/test_gate_e.py::TestCanaryTestsFile::test_canary_tests_count
+FAILED tests/runtime/test_gate_e.py::TestCanaryTestsFile::test_canary_tests_file_exists
+FAILED tests/runtime/test_gate_e.py::TestCanaryTestsFile::test_canary_tests_file_is_valid_json
+FAILED tests/runtime/test_gate_e.py::TestCanaryTestsFile::test_canary_tests_have_required_fields
+FAILED tests/runtime/test_gate_e.py::TestGateEHelpCommands::test_canary_help
+FAILED tests/runtime/test_gate_e.py::TestGateEHelpCommands::test_policy_help
+FAILED tests/runtime/test_gate_e.py::TestGateEHelpCommands::test_simulate_help
+FAILED tests/runtime/test_gate_f.py::TestBlockCommands::test_block_add_already_blocked
+FAILED tests/runtime/test_gate_f.py::TestBlockCommands::test_block_add_creates_entry
+FAILED tests/runtime/test_gate_f.py::TestBlockCommands::test_block_add_with_duration
+FAILED tests/runtime/test_gate_f.py::TestBlockCommands::test_block_clear - As...
+FAILED tests/runtime/test_gate_f.py::TestBlockCommands::test_block_clear_empty
+FAILED tests/runtime/test_gate_f.py::TestBlockCommands::test_block_list_empty
+FAILED tests/runtime/test_gate_f.py::TestBlockCommands::test_block_list_with_entries
+FAILED tests/runtime/test_gate_f.py::TestBlockCommands::test_block_remove - A...
+FAILED tests/runtime/test_gate_f.py::TestBlockCommands::test_block_remove_not_blocked
+FAILED tests/runtime/test_gate_f.py::TestEnforceCommands::test_enforce_disable_already_disabled
+FAILED tests/runtime/test_gate_f.py::TestEnforceCommands::test_enforce_disable_then_enable
+FAILED tests/runtime/test_gate_f.py::TestEnforceCommands::test_enforce_enable_already_enabled
+FAILED tests/runtime/test_gate_f.py::TestEnforceCommands::test_enforce_push_invalid_json
+FAILED tests/runtime/test_gate_f.py::TestEnforceCommands::test_enforce_push_missing_file
+FAILED tests/runtime/test_gate_f.py::TestEnforceCommands::test_enforce_push_valid_policy
+FAILED tests/runtime/test_gate_f.py::TestEnforceCommands::test_enforce_status_default
+FAILED tests/runtime/test_gate_f.py::TestQuarantineCommands::test_quarantine_add
+FAILED tests/runtime/test_gate_f.py::TestQuarantineCommands::test_quarantine_add_already_quarantined
+FAILED tests/runtime/test_gate_f.py::TestQuarantineCommands::test_quarantine_list_empty
+FAILED tests/runtime/test_gate_f.py::TestQuarantineCommands::test_quarantine_list_with_entries
+FAILED tests/runtime/test_gate_f.py::TestQuarantineCommands::test_quarantine_remove
+FAILED tests/runtime/test_gate_f.py::TestQuarantineCommands::test_quarantine_remove_not_quarantined
+FAILED tests/runtime/test_gate_f.py::TestGateFHelpCommands::test_block_help
+FAILED tests/runtime/test_gate_f.py::TestGateFHelpCommands::test_enforce_help
+FAILED tests/runtime/test_gate_f.py::TestGateFHelpCommands::test_quarantine_help
+FAILED tests/runtime/test_gate_f.py::TestGateFExitCodes::test_block_add_returns_0
+FAILED tests/runtime/test_gate_f.py::TestGateFExitCodes::test_block_list_returns_0
+FAILED tests/runtime/test_gate_f.py::TestGateFExitCodes::test_enforce_status_returns_0
+FAILED tests/runtime/test_gate_f.py::TestGateFExitCodes::test_quarantine_list_returns_0
+FAILED tests/runtime/test_golden_path.py::TestGoldenPathOrchestration::test_aegisctl_diagnose_reports_all_components
+FAILED tests/runtime/test_golden_path.py::TestGoldenPathOrchestration::test_aegisctl_status_includes_primary_components
+FAILED tests/security/test_t16_security_hardening.py::test_hardening_categories_coverage
+FAILED tests/security/test_t16_security_hardening.py::test_control_ipc_has_roles_acl_and_no_everyone
+FAILED tests/security/test_t16_security_hardening.py::test_control_ipc_has_request_id_timeout_replay_audit
+FAILED tests/security/test_t16_security_hardening.py::test_privileged_authorization_layered
+FAILED tests/security/test_t16_security_hardening.py::test_aegisctl_issues_request_envelope_for_privileged_actions
+FAILED tests/security/test_t16_security_hardening.py::test_manifest_declares_control_ipc_and_invariants
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_manifest_declares_t19_modules_real
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac1_trace_chain_is_the_mandated_eight_in_order
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac1_strict_order_append_rejects_skips
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac1_privileged_actions_are_named
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac1_audit_coverage_is_all_or_flagged
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac2_six_dimensions_in_mandated_order
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac2_compare_forces_candidate_never_to_enforce
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac2_outcome_vocabulary_agree_and_differ_present
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac2_comparison_fields_cover_all_six
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac3_three_replayable_atoms_present
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac3_difference_vocabulary_present
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac3_replay_result_carries_original_replayed_reason
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac3_reason_attributes_to_atom_deltas
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac3_summarize_is_regression_readout
+165 failed, 244 passed, 40 skipped, 10 warnings, 6 subtests passed in 20.00s

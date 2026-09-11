@@ -28,7 +28,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # The single authoritative Windows host-network source.
-HOST_NETWORK_SOURCE = "core/npcap_capture.zig"
+HOST_NETWORK_SOURCE = "src/capture/npcap_capture.zig"
 
 # A "host-network event model" is any code that:
 #   - Captures raw packets from a Windows network adapter
@@ -76,7 +76,7 @@ def test_no_duplicate_host_network_source() -> None:
     # The C++ bridge adapter may use socket APIs for IPC over loopback;
     # that's not a host-network capture path. Allow `bridge/`.
     # The WFP mirror is a contract test mirror, not a capture path.
-    ALLOWED_DIRS = ("core/npcap_capture.zig", "core/npcap_test_live.zig", "core/wfp_")
+    ALLOWED_DIRS = ("src/capture/npcap_capture.zig", "core/npcap_test_live.zig", "core/wfp_")
     for path in (REPO_ROOT / "core").rglob("*.zig"):
         rel = path.relative_to(REPO_ROOT).as_posix()
         if any(rel.startswith(a) for a in ALLOWED_DIRS):
@@ -104,7 +104,7 @@ def test_canonical_event_defines_host_network_source_kinds() -> None:
     """AC2 (cross-language): core/canonical_event.zig must define the
     source kinds the host-network source uses, and the Zig Flow
     engine must consume them."""
-    text = (REPO_ROOT / "core" / "canonical_event.zig").read_text(encoding="utf-8")
+    text = (REPO_ROOT / "src" / "contract" / "canonical_event.zig").read_text(encoding="utf-8")
     for source, desc in CANONICAL_HOST_NETWORK_SOURCES.items():
         assert source in text, (
             f"canonical_event.zig must define EventSource{source} ({desc})"
@@ -115,7 +115,7 @@ def test_zig_flow_engine_consumes_canonical_events() -> None:
     """AC2: Host network events flow into the Zig Flow engine as one
     model. core/flow_engine.zig must consume CanonicalEvent (not
     some parallel event type)."""
-    text = (REPO_ROOT / "core" / "flow_engine.zig").read_text(encoding="utf-8")
+    text = (REPO_ROOT / "src" / "capture" / "flow_engine.zig").read_text(encoding="utf-8")
     assert "canonical_event" in text, (
         "core/flow_engine.zig must import canonical_event.zig (single event model)"
     )
@@ -127,7 +127,7 @@ def test_process_telemetry_uses_same_canonical_event_model() -> None:
     # The adapter framework's events flow through core/host_telemetry.zig
     # which produces canonical events. We verify the chain: adapter
     # -> host_telemetry -> cpp_adapter -> canonical_event.
-    wa = (REPO_ROOT / "core" / "windows_adapters.zig").read_text(encoding="utf-8")
+    wa = (REPO_ROOT / "src" / "windows" / "windows_adapters.zig").read_text(encoding="utf-8")
     assert "host_telemetry" in wa, (
         "core/windows_adapters.zig must import host_telemetry.zig (single model chain)"
     )
@@ -147,7 +147,7 @@ def test_process_telemetry_uses_same_canonical_event_model() -> None:
         "core/cpp_adapter.zig must import canonical_event.zig (single model chain)"
     )
     # And the source kind .process_sensor is in canonical_event.zig
-    canon = (REPO_ROOT / "core" / "canonical_event.zig").read_text(encoding="utf-8")
+    canon = (REPO_ROOT / "src" / "contract" / "canonical_event.zig").read_text(encoding="utf-8")
     assert ".process_sensor" in canon, (
         "canonical_event.zig must define .process_sensor for the adapter"
     )
@@ -181,7 +181,7 @@ def test_host_network_and_process_share_dispatcher() -> None:
     """AC2 (lock-in): The dispatcher must consume both network and
     process events through the same pipeline (processEvent /
     StageContext). No parallel dispatcher for process events."""
-    text = (REPO_ROOT / "core" / "dispatcher.zig").read_text(encoding="utf-8")
+    text = (REPO_ROOT / "src" / "policy" / "dispatcher.zig").read_text(encoding="utf-8")
     # The dispatcher's processEvent must handle both network and
     # process source kinds via the same StageContext. The canonical
     # test is that the processEvent function does not branch on the

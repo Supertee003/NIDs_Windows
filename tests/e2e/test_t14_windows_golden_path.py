@@ -29,14 +29,14 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
-CANONICAL_EVENT = "core/canonical_event.zig"
-CORRELATION = "core/correlation_engine.zig"
-POLICY_SIGNING = "core/policy_signing.zig"
+CANONICAL_EVENT = "src/contract/canonical_event.zig"
+CORRELATION = "src/detection/correlation_engine.zig"
+POLICY_SIGNING = "src/policy/policy_signing.zig"
 PEP_RS = "shield/src/pep.rs"
 WFP = "core/wfp_production.zig"
-FORENSICS = "core/forensics_engine.zig"
-REPLAY = "core/replay_engine.zig"
-DISPATCHER = "core/dispatcher.zig"
+FORENSICS = "src/forensic/forensics_engine.zig"
+REPLAY = "src/forensic/replay_engine.zig"
+DISPATCHER = "src/policy/dispatcher.zig"
 
 # Golden path stages in runtime_manifest.json (human labels), used to prove
 # AC3 (each subsystem appears in the path) in the same order as the source.
@@ -98,8 +98,8 @@ def test_manifest_names_the_real_windows_sources() -> None:
         "nose/pipe_writer.go",
         "core/nose_pipe_reader.zig",
         "core/event_fabric.zig",
-        "core/npcap_capture.zig",
-        "core/windows_adapters.zig",
+        "src/capture/npcap_capture.zig",
+        "src/windows/windows_adapters.zig",
     ]:
         entry = _manifest()["modules"].get(mod)
         assert entry is not None, f"manifest must declare real Windows source {mod} (T14 AC1)"

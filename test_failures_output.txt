@@ -1,0 +1,686 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.14.2, pytest-9.1.1, pluggy-1.6.0
+rootdir: D:\NIDs_Windows
+collected 444 items
+
+tests\adapters\test_t9_windows_adapters.py F.F.FFFFF.                    [  2%]
+tests\cython\test_cython_benchmark.py Fs                                 [  2%]
+tests\cython\test_cython_correctness.py ssssssss....                     [  5%]
+tests\cython\test_cython_no_policy_path.py ....                          [  6%]
+tests\cython\test_cython_profile.py ..                                   [  6%]
+tests\e2e\test_t14_windows_golden_path.py FF.FFF.FF.FFFF                 [  9%]
+tests\federation\test_t13_federation_tls.py FFFFFFFFFFFFFF.FF            [ 13%]
+tests\forensics\test_t12_forensics_replay.py FFFFFFFFF.F                 [ 16%]
+tests\host_telemetry\test_t10_single_source.py F.FFF.F..                 [ 18%]
+tests\ips\test_t18_ips_canary_xdr.py FFFFFFFF.....FFFF                   [ 22%]
+tests\pep\test_t8_rust_pep.py .F.......                                  [ 24%]
+tests\policy_signing\test_t7_signed_policy.py ..........                 [ 26%]
+tests\release\test_t17_perf_ci_installer.py F..FF..FFFFFF..F             [ 29%]
+tests\reliability\test_t15_reliability_config.py F....F..F.F             [ 32%]
+tests\runtime\test_aegisctl.py ..FFFFFFFF.FF.FF.                         [ 36%]
+tests\runtime\test_component_matrix.py .............                     [ 39%]
+tests\runtime\test_gate_d.py sssssssFFFF.F.F...FFFFsFs                   [ 44%]
+tests\runtime\test_gate_e.py sssssssFFFFFssssssFFFFFFFFF                 [ 50%]
+tests\runtime\test_gate_f.py FFFFFFFFFFFFFFFFFFFFFFFFFF.FFF              [ 57%]
+tests\runtime\test_golden_path.py .................sssFF                 [ 62%]
+tests\runtime\test_harness_integration.py .s..                           [ 63%]
+tests\runtime\test_harness_scaffold.py ..                                [ 63%]
+tests\runtime\test_health.py .................                           [ 67%]
+tests\runtime\test_restart.py .............                              [ 70%]
+tests\runtime\test_states.py .....................                       [ 75%]
+tests\runtime\test_timeouts.py .......................                   [ 80%]
+tests\runtime\test_version.py ..............                             [ 83%]
+tests\runtime\test_wire.py ..................                            [ 87%]
+tests\security\test_t16_security_hardening.py FFFFF.F.                   [ 89%]
+tests\security\test_t19_decision_trace_shadow_replay_review.py F.FFFFFFF [ 91%]
+FFFFFF.....                                                              [ 94%]
+tests\test_golden_path.py ..........                                     [ 96%]
+tests\typescript\test_06_typescript_policy.py .........                  [ 98%]
+tests\wfp\test_t11_wfp_enforcement.py .......                            [100%]
+
+================================== FAILURES ===================================
+E   AssertionError: windows_adapters.zig must be on the golden path
+    assert False is True
+     +  where False = <built-in method get of dict object at 0x00000269BE803400>('golden_path')
+     +    where <built-in method get of dict object at 0x00000269BE803400> = {'status': 'REAL', 'golden_path': False, 'real_path': 'src/windows/windows_adapters.zig'}.get
+D:\NIDs_Windows\tests\adapters\test_t9_windows_adapters.py:51: AssertionError: windows_adapters.zig must be on the golden path
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\cpp_adapter.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\cpp_adapter.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\windows_adapters.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\windows_adapters.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\windows_adapters.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\windows_adapters.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\windows_adapters.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\windows_adapters.zig'
+E   AssertionError: core/injection_detector.zig must exist (AC4)
+    assert False
+     +  where False = exists()
+     +    where exists = WindowsPath('D:/NIDs_Windows/core/injection_detector.zig').exists
+D:\NIDs_Windows\tests\adapters\test_t9_windows_adapters.py:195: AssertionError: core/injection_detector.zig must exist (AC4)
+E   AssertionError: role must mention a test count: ''
+    assert None is not None
+D:\NIDs_Windows\tests\adapters\test_t9_windows_adapters.py:220: AssertionError: role must mention a test count: ''
+E   AssertionError: brain.cython.cython_regex_scan is not compiled. Run:
+        cd brain/cython && python setup.py build_ext --inplace
+    assert False
+     +  where False = is_cython_available()
+D:\NIDs_Windows\tests\cython\test_cython_benchmark.py:87: AssertionError: brain.cython.cython_regex_scan is not compiled. Run:
+E   AssertionError: golden path must include 'acquisition' (T14 AC3); got: ['src/capture/npcap_adapter.zig', 'src/capture/packet_decoder.zig', 'src/contract/canonical_event.zig', 'src/contract/event_fabric.zig', 'src/capture/flow_table.zig', 'src/detection/signature_engine.zig', 'src/detection/correlator.zig', 'src/detection/threat_tracker.zig', 'src/core/brain_engine.zig', 'src/policy/policy_engine.zig', 'src/policy/pep_bindings.zig', 'src/policy/wfp_production.zig', 'src/forensic/decision_trace.zig', 'src/forensic/forensic_pipeline.zig', 'src/forensic/replay_engine.zig']
+    assert 'acquisition' in 'src/capture/npcap_adapter.zig | src/capture/packet_decoder.zig | src/contract/canonical_event.zig | src/contract/even...production.zig | src/forensic/decision_trace.zig | src/forensic/forensic_pipeline.zig | src/forensic/replay_engine.zig'
+D:\NIDs_Windows\tests\e2e\test_t14_windows_golden_path.py:77: AssertionError: golden path must include 'acquisition' (T14 AC3); got: ['src/capture/npcap_adapter.zig', 'src/capture/packet_decoder.zig', 'src/contract/canonical_event.zig', 'src/contract/event_fabric.zig', 'src/capture/flow_table.zig', 'src/detection/signature_engine.zig', 'src/detection/correlator.zig', 'src/detection/threat_tracker.zig', 'src/core/brain_engine.zig', 'src/policy/policy_engine.zig', 'src/policy/pep_bindings.zig', 'src/policy/wfp_production.zig', 'src/forensic/decision_trace.zig', 'src/forensic/forensic_pipeline.zig', 'src/forensic/replay_engine.zig']
+E   AssertionError: manifest must declare real Windows source nose/capture.go (T14 AC1)
+    assert None is not None
+D:\NIDs_Windows\tests\e2e\test_t14_windows_golden_path.py:105: AssertionError: manifest must declare real Windows source nose/capture.go (T14 AC1)
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\canonical_event.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\canonical_event.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\correlation_engine.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\correlation_engine.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\policy_signing.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\policy_signing.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\forensics_engine.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\forensics_engine.zig'
+E   AssertionError: brain/aegis_brain_cython/fast_scan.pyx
+    assert (None is not None)
+D:\NIDs_Windows\tests\e2e\test_t14_windows_golden_path.py:186: AssertionError: brain/aegis_brain_cython/fast_scan.pyx
+E   AssertionError: ts_policy/src/compiler.ts
+    assert (None is not None)
+D:\NIDs_Windows\tests\e2e\test_t14_windows_golden_path.py:206: AssertionError: ts_policy/src/compiler.ts
+E   KeyError: 'shield/src/pep.rs'
+D:\NIDs_Windows\tests\e2e\test_t14_windows_golden_path.py:213: KeyError: 'shield/src/pep.rs'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\dispatcher.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\dispatcher.zig'
+E   AssertionError: authority_invariants must declare 'identifier integrity' (T14); got: host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process telemetry; one model -> CanonicalEvent -> Zig Flow)
+      WFP enforcement: src/policy/wfp_production.zig (single authoritative WFP enforcement module; Rust PEP is the only path to enforcement)
+      Rust PEP: src/core/rust_pep.zig (single PEP authority; no other path bypasses Rust PEP)
+      decision trace: src/forensic/decision_trace.zig (mandatory audit trail for all enforcement decisions)
+      shadow decision: src/forensic/shadow_decision.zig (shadow comparison for candidate vs. enforce decisions)
+      security replay: src/forensic/replay_engine.zig (replayable security atoms for post-incident analysis)
+      authority review: src/core/authority_review.zig (12-clause authority checklist for deployment review)
+      canary order: src/windows/ips_canary.zig (IPS canary progression: simulation -> shadow -> canary -> enforce)
+      final authority: Rust PEP (aegis_pep.dll) is the final enforcement authority; Zig dispatches through PEP
+      never Everyone for privileged: privileged actions require explicit caller capability; no catch-all Everyone role
+      control plane: src/policy/control_ipc.zig (named pipe control protocol for CLI/TS policy authoring)
+      policy engine: src/policy/policy_engine.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)
+    assert 'identifier integrity' in 'host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process te...e.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)'
+D:\NIDs_Windows\tests\e2e\test_t14_windows_golden_path.py:239: AssertionError: authority_invariants must declare 'identifier integrity' (T14); got: host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process telemetry; one model -> CanonicalEvent -> Zig Flow)
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\cluster_coord.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\cluster_coord.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\cluster_coord.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\cluster_coord.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\cluster_coord.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\cluster_coord.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_codec.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_codec.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_codec.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_codec.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\cluster_coord.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\cluster_coord.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\cluster_coord.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\cluster_coord.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\federation_tls.zig'
+E   AssertionError: core/cluster_coord.zig must be on golden path (T13)
+    assert False is True
+     +  where False = <built-in method get of dict object at 0x00000269BEA850C0>('golden_path')
+     +    where <built-in method get of dict object at 0x00000269BEA850C0> = {'status': 'REAL', 'golden_path': False, 'real_path': 'src/federation/cluster_coord.zig'}.get
+D:\NIDs_Windows\tests\federation\test_t13_federation_tls.py:238: AssertionError: core/cluster_coord.zig must be on golden path (T13)
+E   AssertionError: authority_invariants must declare 'federation authority' (T13); got: ['host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process telemetry; one model -> CanonicalEvent -> Zig Flow)', 'WFP enforcement: src/policy/wfp_production.zig (single authoritative WFP enforcement module; Rust PEP is the only path to enforcement)', 'Rust PEP: src/core/rust_pep.zig (single PEP authority; no other path bypasses Rust PEP)', 'decision trace: src/forensic/decision_trace.zig (mandatory audit trail for all enforcement decisions)', 'shadow decision: src/forensic/shadow_decision.zig (shadow comparison for candidate vs. enforce decisions)', 'security replay: src/forensic/replay_engine.zig (replayable security atoms for post-incident analysis)', 'authority review: src/core/authority_review.zig (12-clause authority checklist for deployment review)', 'canary order: src/windows/ips_canary.zig (IPS canary progression: simulation -> shadow -> canary -> enforce)', 'final authority: Rust PEP (aegis_pep.dll) is the final enforcement authority; Zig dispatches through PEP', 'never Everyone for privileged: privileged actions require explicit caller capability; no catch-all Everyone role', 'control plane: src/policy/control_ipc.zig (named pipe control protocol for CLI/TS policy authoring)', 'policy engine: src/policy/policy_engine.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)']
+    assert 'federation authority' in 'host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process te...e.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)'
+D:\NIDs_Windows\tests\federation\test_t13_federation_tls.py:252: AssertionError: authority_invariants must declare 'federation authority' (T13); got: ['host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process telemetry; one model -> CanonicalEvent -> Zig Flow)', 'WFP enforcement: src/policy/wfp_production.zig (single authoritative WFP enforcement module; Rust PEP is the only path to enforcement)', 'Rust PEP: src/core/rust_pep.zig (single PEP authority; no other path bypasses Rust PEP)', 'decision trace: src/forensic/decision_trace.zig (mandatory audit trail for all enforcement decisions)', 'shadow decision: src/forensic/shadow_decision.zig (shadow comparison for candidate vs. enforce decisions)', 'security replay: src/forensic/replay_engine.zig (replayable security atoms for post-incident analysis)', 'authority review: src/core/authority_review.zig (12-clause authority checklist for deployment review)', 'canary order: src/windows/ips_canary.zig (IPS canary progression: simulation -> shadow -> canary -> enforce)', 'final authority: Rust PEP (aegis_pep.dll) is the final enforcement authority; Zig dispatches through PEP', 'never Everyone for privileged: privileged actions require explicit caller capability; no catch-all Everyone role', 'control plane: src/policy/control_ipc.zig (named pipe control protocol for CLI/TS policy authoring)', 'policy engine: src/policy/policy_engine.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)']
+E   AssertionError: golden path must declare stage 'canonical_event' (T12 AC1); got: ['src/capture/npcap_adapter.zig', 'src/capture/packet_decoder.zig', 'src/contract/canonical_event.zig', 'src/contract/event_fabric.zig', 'src/capture/flow_table.zig', 'src/detection/signature_engine.zig', 'src/detection/correlator.zig', 'src/detection/threat_tracker.zig', 'src/core/brain_engine.zig', 'src/policy/policy_engine.zig', 'src/policy/pep_bindings.zig', 'src/policy/wfp_production.zig', 'src/forensic/decision_trace.zig', 'src/forensic/forensic_pipeline.zig', 'src/forensic/replay_engine.zig']
+    assert 'canonical_event' in ['src/capture/npcap_adapter.zig', 'src/capture/packet_decoder.zig', 'src/contract/canonical_event.zig', 'src/contract/event_fabric.zig', 'src/capture/flow_table.zig', 'src/detection/signature_engine.zig', ...]
+D:\NIDs_Windows\tests\forensics\test_t12_forensics_replay.py:74: AssertionError: golden path must declare stage 'canonical_event' (T12 AC1); got: ['src/capture/npcap_adapter.zig', 'src/capture/packet_decoder.zig', 'src/contract/canonical_event.zig', 'src/contract/event_fabric.zig', 'src/capture/flow_table.zig', 'src/detection/signature_engine.zig', 'src/detection/correlator.zig', 'src/detection/threat_tracker.zig', 'src/core/brain_engine.zig', 'src/policy/policy_engine.zig', 'src/policy/pep_bindings.zig', 'src/policy/wfp_production.zig', 'src/forensic/decision_trace.zig', 'src/forensic/forensic_pipeline.zig', 'src/forensic/replay_engine.zig']
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\forensics_engine.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\forensics_engine.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\forensics_engine.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\forensics_engine.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\dispatcher.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\dispatcher.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\forensic_log.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\forensic_log.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replay_engine.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replay_engine.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replay_engine.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replay_engine.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replay_engine.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replay_engine.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\forensics_engine.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\forensics_engine.zig'
+E   AssertionError: authority_invariants must declare 'forensics authority' (T12); got: ['host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process telemetry; one model -> CanonicalEvent -> Zig Flow)', 'WFP enforcement: src/policy/wfp_production.zig (single authoritative WFP enforcement module; Rust PEP is the only path to enforcement)', 'Rust PEP: src/core/rust_pep.zig (single PEP authority; no other path bypasses Rust PEP)', 'decision trace: src/forensic/decision_trace.zig (mandatory audit trail for all enforcement decisions)', 'shadow decision: src/forensic/shadow_decision.zig (shadow comparison for candidate vs. enforce decisions)', 'security replay: src/forensic/replay_engine.zig (replayable security atoms for post-incident analysis)', 'authority review: src/core/authority_review.zig (12-clause authority checklist for deployment review)', 'canary order: src/windows/ips_canary.zig (IPS canary progression: simulation -> shadow -> canary -> enforce)', 'final authority: Rust PEP (aegis_pep.dll) is the final enforcement authority; Zig dispatches through PEP', 'never Everyone for privileged: privileged actions require explicit caller capability; no catch-all Everyone role', 'control plane: src/policy/control_ipc.zig (named pipe control protocol for CLI/TS policy authoring)', 'policy engine: src/policy/policy_engine.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)']
+    assert 'forensics authority' in 'host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process te...e.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)'
+D:\NIDs_Windows\tests\forensics\test_t12_forensics_replay.py:260: AssertionError: authority_invariants must declare 'forensics authority' (T12); got: ['host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process telemetry; one model -> CanonicalEvent -> Zig Flow)', 'WFP enforcement: src/policy/wfp_production.zig (single authoritative WFP enforcement module; Rust PEP is the only path to enforcement)', 'Rust PEP: src/core/rust_pep.zig (single PEP authority; no other path bypasses Rust PEP)', 'decision trace: src/forensic/decision_trace.zig (mandatory audit trail for all enforcement decisions)', 'shadow decision: src/forensic/shadow_decision.zig (shadow comparison for candidate vs. enforce decisions)', 'security replay: src/forensic/replay_engine.zig (replayable security atoms for post-incident analysis)', 'authority review: src/core/authority_review.zig (12-clause authority checklist for deployment review)', 'canary order: src/windows/ips_canary.zig (IPS canary progression: simulation -> shadow -> canary -> enforce)', 'final authority: Rust PEP (aegis_pep.dll) is the final enforcement authority; Zig dispatches through PEP', 'never Everyone for privileged: privileged actions require explicit caller capability; no catch-all Everyone role', 'control plane: src/policy/control_ipc.zig (named pipe control protocol for CLI/TS policy authoring)', 'policy engine: src/policy/policy_engine.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)']
+E   AssertionError: authoritative host-network source missing: core/npcap_capture.zig
+    assert False
+     +  where False = is_file()
+     +    where is_file = WindowsPath('D:/NIDs_Windows/core/npcap_capture.zig').is_file
+D:\NIDs_Windows\tests\host_telemetry\test_t10_single_source.py:64: AssertionError: authoritative host-network source missing: core/npcap_capture.zig
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\canonical_event.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\canonical_event.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\flow_engine.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\flow_engine.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\windows_adapters.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\windows_adapters.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\dispatcher.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\dispatcher.zig'
+E   AssertionError: src/core/real_ips_path.zig must be REAL (T18); got {'status': 'PROOF', 'golden_path': False, 'role': 'enforcement chain model'}
+    assert 'PROOF' == 'REAL'
+      
+      - REAL
+      + PROOF
+D:\NIDs_Windows\tests\ips\test_t18_ips_canary_xdr.py:97: AssertionError: src/core/real_ips_path.zig must be REAL (T18); got {'status': 'PROOF', 'golden_path': False, 'role': 'enforcement chain model'}
+E   AssertionError: assert 'real IPS path' in 'host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process te...e.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)'
+D:\NIDs_Windows\tests\ips\test_t18_ips_canary_xdr.py:107: AssertionError: assert 'real IPS path' in 'host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process te...e.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\ips_canary_order.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\ips_canary_order.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\ips_canary_order.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\ips_canary_order.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\ips_canary_order.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\ips_canary_order.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\ips_canary_order.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\ips_canary_order.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\ips_canary_order.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\ips_canary_order.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\ips_canary_order.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\ips_canary_order.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\xdr_incident_fabric.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\xdr_incident_fabric.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\xdr_incident_fabric.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\xdr_incident_fabric.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\xdr_incident_fabric.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\xdr_incident_fabric.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\xdr_incident_fabric.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\xdr_incident_fabric.zig'
+E   AssertionError: shield/src/lib.rs not in runtime_manifest.json
+    assert None is not None
+D:\NIDs_Windows\tests\pep\test_t8_rust_pep.py:109: AssertionError: shield/src/lib.rs not in runtime_manifest.json
+E   AssertionError: AC1 benchmark suites missing: ['core/federation_bench.zig', 'core/flow_engine.zig']
+    assert not ['core/federation_bench.zig', 'core/flow_engine.zig']
+D:\NIDs_Windows\tests\release\test_t17_perf_ci_installer.py:50: AssertionError: AC1 benchmark suites missing: ['core/federation_bench.zig', 'core/flow_engine.zig']
+E   AssertionError: src/core/perf_benchmark.zig must be REAL (AC1)
+    assert ({'status': 'TOOL', 'golden_path': False, 'role': 'performance benchmarks'} and 'TOOL' == 'REAL'
+      
+      - REAL
+      + TOOL)
+D:\NIDs_Windows\tests\release\test_t17_perf_ci_installer.py:87: AssertionError: src/core/perf_benchmark.zig must be REAL (AC1)
+E   AssertionError: CI matrix must cover the cross-language set
+    assert 8 >= 10
+     +  where 8 = len([{'id': 'zig-core', 'language': 'zig', 'job': 'zig-build-test', 'required': True}, {'id': 'rust-pep', 'language': 'rus...st', 'required': True}, {'id': 'ts-policy', 'language': 'typescript', 'job': 'ts-policy-build', 'required': True}, ...])
+D:\NIDs_Windows\tests\release\test_t17_perf_ci_installer.py:98: AssertionError: CI matrix must cover the cross-language set
+E   AssertionError: component mouth must map to a commit
+    assert None
+     +  where None = <built-in method get of dict object at 0x00000269BEABEF80>('commit')
+     +    where <built-in method get of dict object at 0x00000269BEABEF80> = {'id': 'mouth', 'name': 'mouth/windows_sec_monitor.rs', 'language': 'rust', 'type': 'optional-standalone-gui', ...}.get
+D:\NIDs_Windows\tests\release\test_t17_perf_ci_installer.py:145: AssertionError: component mouth must map to a commit
+E   AssertionError: artifact missing: Rules.json
+    assert False
+     +  where False = exists()
+     +    where exists = (WindowsPath('D:/NIDs_Windows') / 'Rules.json').exists
+D:\NIDs_Windows\tests\release\test_t17_perf_ci_installer.py:156: AssertionError: artifact missing: Rules.json
+E   AssertionError: Artifacts checked: 117 (present), missing (not built locally): 165
+      FAIL - artifacts drifted from recorded commit digests:
+        - .github/workflows/ci.yml
+        - Cargo.toml
+        - brain/windows_brain.py
+        - bridge/aegis_packet_parser.cpp
+        - build.zig
+        - runtime_manifest.json
+        - scripts/aegis_notifier.py
+        - scripts/aegis_rules.py
+        - scripts/diag_deep.bat
+        - shield/src/lib.rs
+        - tools/final_audit.py
+        - tools/golden_path_evidence.py
+        - tools/release_candidate.py
+        - tools/upgrade_rollback.py
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python314\\python.exe', 'tools/release_engi...dit.py\n  - tools/golden_path_evidence.py\n  - tools/release_candidate.py\n  - tools/upgrade_rollback.py\n', stderr='').returncode
+D:\NIDs_Windows\tests\release\test_t17_perf_ci_installer.py:164: AssertionError: Artifacts checked: 117 (present), missing (not built locally): 165
+E   AssertionError: installer must read build_manifest.json (AC4)
+    assert 'build_manifest.json' in '#!/usr/bin/env python3\n"""G27: Installer ù NSIS script generator for AEGIS NIDS\nGenerates installer.nsi for NSIS (N...ted installer.nsi")\n    print("Build with: makensis installer.nsi")\n    print("Output: aegis-installer-1.0.0.exe")\n'
+D:\NIDs_Windows\tests\release\test_t17_perf_ci_installer.py:175: AssertionError: installer must read build_manifest.json (AC4)
+E   AssertionError: installer must package aegis_nids.exe
+    assert 'aegis_nids.exe' in '#!/usr/bin/env python3\n"""G27: Installer ù NSIS script generator for AEGIS NIDS\nGenerates installer.nsi for NSIS (N...ted installer.nsi")\n    print("Build with: makensis installer.nsi")\n    print("Output: aegis-installer-1.0.0.exe")\n'
+D:\NIDs_Windows\tests\release\test_t17_perf_ci_installer.py:188: AssertionError: installer must package aegis_nids.exe
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\logs\\runtime\\aegis_t17.nsi'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\logs\\runtime\\aegis_t17.nsi'
+E   AssertionError: src/core/perf_benchmark.zig must be REAL
+    assert 'TOOL' == 'REAL'
+      
+      - REAL
+      + TOOL
+D:\NIDs_Windows\tests\release\test_t17_perf_ci_installer.py:273: AssertionError: src/core/perf_benchmark.zig must be REAL
+E   AssertionError: manifest must declare src/tests/integration/fault_injection_integration.zig (T15)
+    assert None is not None
+D:\NIDs_Windows\tests\reliability\test_t15_reliability_config.py:77: AssertionError: manifest must declare src/tests/integration/fault_injection_integration.zig (T15)
+E   KeyError: 'configs/Rules.json'
+D:\NIDs_Windows\tests\reliability\test_t15_reliability_config.py:151: KeyError: 'configs/Rules.json'
+E   KeyError: 'tests/runtime/test_health.py'
+D:\NIDs_Windows\tests\reliability\test_t15_reliability_config.py:187: KeyError: 'tests/runtime/test_health.py'
+E   KeyError: 'scripts/aegis_defcon.py'
+D:\NIDs_Windows\tests\reliability\test_t15_reliability_config.py:210: KeyError: 'scripts/aegis_defcon.py'
+E   AssertionError: 'brain' not found in ''
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:750: AssertionError: 'brain' not found in ''
+E   AssertionError: 'Component' not found in 'AEGIS NIDS v5.0+ (aegisctl)\n  CLI build: 2026-09-07\n  Protocol version: 5\n'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:750: AssertionError: 'Component' not found in 'AEGIS NIDS v5.0+ (aegisctl)\n  CLI build: 2026-09-07\n  Protocol version: 5\n'
+E   AssertionError: 2 != 0 : status should exit 0, got 2; stderr=[!]  AEGIS daemon not reachable: named pipe error: (2, 'CreateFile', 'The system cannot find the file specified.')
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0 : status should exit 0, got 2; stderr=[!]  AEGIS daemon not reachable: named pipe error: (2, 'CreateFile', 'The system cannot find the file specified.')
+E   AssertionError: 'STOPPED' not found in ''
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:750: AssertionError: 'STOPPED' not found in ''
+E   AssertionError: 'Component' not found in "[!]  Daemon not reachable: named pipe error: (2, 'CreateFile', 'The system cannot find the file specified.')\n"
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:750: AssertionError: 'Component' not found in "[!]  Daemon not reachable: named pipe error: (2, 'CreateFile', 'The system cannot find the file specified.')\n"
+E   AssertionError: 2 != 0 : diagnose should exit 0, got 2; stderr=usage: aegisctl.py [-h]
+                       {status,start,stop,restart,rules,incidents,federation,metrics,health,version,logs,backup,restore} ...
+    aegisctl.py: error: argument cmd: invalid choice: 'diagnose' (choose from status, start, stop, restart, rules, incidents, federation, metrics, health, version, logs, backup, restore)
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0 : diagnose should exit 0, got 2; stderr=usage: aegisctl.py [-h]
+E   AssertionError: 'Repo root:' not found in ''
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:750: AssertionError: 'Repo root:' not found in ''
+E   AssertionError: 0 == 0 : restart without --component should fail
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:934: AssertionError: 0 == 0 : restart without --component should fail
+E   AssertionError: 0 == 0 : start without --component or --all should fail
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:934: AssertionError: 0 == 0 : start without --component or --all should fail
+E   AssertionError: 0 == 0 : stop without --component or --all should fail
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:934: AssertionError: 0 == 0 : stop without --component or --all should fail
+E   AssertionError: 2 != 0 : diagnose should exit 0, got 2
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0 : diagnose should exit 0, got 2
+E   AssertionError: 2 != 0 : status should always exit 0, got 2
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0 : status should always exit 0, got 2
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 1
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 1
+E   AssertionError: 2 != 1
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 1
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 'validate' not found in 'usage: aegisctl.py rules [-h] {list,reload} ...\n\npositional arguments:\n  {list,reload}\n    list         List loaded rules\n    reload       Reload rules from disk\n\noptions:\n  -h, --help     show this help message and exit\n'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:750: AssertionError: 'validate' not found in 'usage: aegisctl.py rules [-h] {list,reload} ...\n\npositional arguments:\n  {list,reload}\n    list         List loaded rules\n    reload       Reload rules from disk\n\noptions:\n  -h, --help     show this help message and exit\n'
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 1
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 1
+E   AssertionError: 2 not found in (0, 1)
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:750: AssertionError: 2 not found in (0, 1)
+E   AssertionError: 'unknown attack type' not found in ''
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:750: AssertionError: 'unknown attack type' not found in ''
+E   AssertionError: 2 not found in (0, 1)
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:750: AssertionError: 2 not found in (0, 1)
+E   AssertionError: 2 not found in (0, 1)
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:750: AssertionError: 2 not found in (0, 1)
+E   AssertionError: 2 != 1
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 1
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\config\\canary_tests.json'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\config\\canary_tests.json'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\config\\canary_tests.json'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\config\\canary_tests.json'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\config\\canary_tests.json'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\config\\canary_tests.json'
+E   AssertionError: False is not true : canary_tests.json not found at D:\NIDs_Windows\config\canary_tests.json
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:762: AssertionError: False is not true : canary_tests.json not found at D:\NIDs_Windows\config\canary_tests.json
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\config\\canary_tests.json'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\config\\canary_tests.json'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\config\\canary_tests.json'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\config\\canary_tests.json'
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 1
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 1
+E   AssertionError: 2 != 1
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 1
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   AssertionError: 2 != 0
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\unittest\case.py:918: AssertionError: 2 != 0
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\control_ipc.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\control_ipc.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\control_ipc.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\control_ipc.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\control_ipc.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\control_ipc.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\control_ipc.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\control_ipc.zig'
+E   AssertionError: aegisctl must have a request helper (AC3)
+    assert 'def _control_request(' in '#!/usr/bin/env python3\n"""II17 - AEGIS Control Plane CLI (aegisctl)\n\nProvides operator commands to manage the AEGI...arser.print_help()\n        return 1\n    return handler(args)\n\n\nif __name__ == "__main__":\n    sys.exit(main())\n'
+D:\NIDs_Windows\tests\security\test_t16_security_hardening.py:196: AssertionError: aegisctl must have a request helper (AC3)
+E   AssertionError: authority_invariants must ban the Everyone catch-all (AC2)
+    assert 'never "Everyone" for privileged' in 'host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process te...e.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)'
+D:\NIDs_Windows\tests\security\test_t16_security_hardening.py:232: AssertionError: authority_invariants must ban the Everyone catch-all (AC2)
+E   AssertionError: src/core/authority_review.zig must be REAL (T19); got {'status': 'PROOF', 'golden_path': False, 'role': 'authority checklist'}
+    assert 'PROOF' == 'REAL'
+      
+      - REAL
+      + PROOF
+D:\NIDs_Windows\tests\security\test_t19_decision_trace_shadow_replay_review.py:135: AssertionError: src/core/authority_review.zig must be REAL (T19); got {'status': 'PROOF', 'golden_path': False, 'role': 'authority checklist'}
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\decision_trace.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\decision_trace.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\decision_trace.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\decision_trace.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\decision_trace.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\decision_trace.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\decision_trace.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\decision_trace.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\shadow_decision.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\shadow_decision.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\shadow_decision.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\shadow_decision.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\shadow_decision.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\shadow_decision.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\shadow_decision.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\shadow_decision.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replayable_security.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replayable_security.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replayable_security.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replayable_security.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replayable_security.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replayable_security.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replayable_security.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replayable_security.zig'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replayable_security.zig'
+C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:771: FileNotFoundError: [Errno 2] No such file or directory: 'D:\\NIDs_Windows\\core\\replayable_security.zig'
+============================== warnings summary ===============================
+tests/test_golden_path.py::test_dns_malware_callback
+  C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_golden_path.py::test_dns_malware_callback returned <class 'tuple'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_golden_path.py::test_tls_sni_block
+  C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_golden_path.py::test_tls_sni_block returned <class 'tuple'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_golden_path.py::test_anomaly_port_scan
+  C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_golden_path.py::test_anomaly_port_scan returned <class 'tuple'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_golden_path.py::test_injection_detection
+  C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_golden_path.py::test_injection_detection returned <class 'tuple'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_golden_path.py::test_registry_run_key
+  C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_golden_path.py::test_registry_run_key returned <class 'tuple'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_golden_path.py::test_federation_quorum
+  C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_golden_path.py::test_federation_quorum returned <class 'tuple'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_golden_path.py::test_forensic_ring_wrap
+  C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_golden_path.py::test_forensic_ring_wrap returned <class 'tuple'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_golden_path.py::test_config_validation
+  C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_golden_path.py::test_config_validation returned <class 'tuple'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_golden_path.py::test_zig_compiles
+  C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_golden_path.py::test_zig_compiles returned <class 'tuple'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_golden_path.py::test_rust_pep_builds
+  C:\Users\User\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_golden_path.py::test_rust_pep_builds returned <class 'tuple'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/adapters/test_t9_windows_adapters.py::test_windows_adapters_status_is_real
+FAILED tests/adapters/test_t9_windows_adapters.py::test_cpp_adapter_binds_to_zig_canonical_event
+FAILED tests/adapters/test_t9_windows_adapters.py::test_etw_process_source_defines_etw_lifecycle
+FAILED tests/adapters/test_t9_windows_adapters.py::test_fim_source_handles_create_modify_rename_delete
+FAILED tests/adapters/test_t9_windows_adapters.py::test_registry_source_produces_trie_evidence
+FAILED tests/adapters/test_t9_windows_adapters.py::test_process_injection_detector_produces_injection_evidence
+FAILED tests/adapters/test_t9_windows_adapters.py::test_windows_adapters_test_count_is_substantial
+FAILED tests/cython/test_cython_benchmark.py::test_scan_cython_is_faster_than_pure_python
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_golden_path_is_real_and_ordered
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_manifest_names_the_real_windows_sources
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_event_id_canonical_and_survives
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_incident_id_survives_dispatcher
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_policy_id_and_version_survive
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_forensic_id_assigned_and_survives
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_python_and_cython_brain_in_path
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_typescript_policy_in_path
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_rust_pep_and_wfp_in_path
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_dispatcher_is_sole_orchestrator
+FAILED tests/e2e/test_t14_windows_golden_path.py::test_manifest_documents_identifier_integrity
+FAILED tests/federation/test_t13_federation_tls.py::test_cluster_message_has_identity_schema_and_sequence
+FAILED tests/federation/test_t13_federation_tls.py::test_message_types_cover_heartbeat_incident_and_ti
+FAILED tests/federation/test_t13_federation_tls.py::test_shared_payloads_cover_incidents_and_ti
+FAILED tests/federation/test_t13_federation_tls.py::test_frame_schema_has_magic_version_type_and_crc
+FAILED tests/federation/test_t13_federation_tls.py::test_codec_roundtrips_sequence
+FAILED tests/federation/test_t13_federation_tls.py::test_federation_modules_do_not_reach_enforcement
+FAILED tests/federation/test_t13_federation_tls.py::test_federation_has_no_enforcement_calls
+FAILED tests/federation/test_t13_federation_tls.py::test_tls_validator_rejects_expired_certs
+FAILED tests/federation/test_t13_federation_tls.py::test_tls_validator_rejects_unknown_ca
+FAILED tests/federation/test_t13_federation_tls.py::test_tls_validator_rejects_revoked_certs
+FAILED tests/federation/test_t13_federation_tls.py::test_tls_validator_covers_cn_self_signed_and_not_enabled
+FAILED tests/federation/test_t13_federation_tls.py::test_mtls_requires_client_cert
+FAILED tests/federation/test_t13_federation_tls.py::test_tls_handshake_timeout_exists
+FAILED tests/federation/test_t13_federation_tls.py::test_no_plaintext_production_transport
+FAILED tests/federation/test_t13_federation_tls.py::test_manifest_documents_federation_tls
+FAILED tests/federation/test_t13_federation_tls.py::test_authority_invariants_declare_federation_and_tls
+FAILED tests/forensics/test_t12_forensics_replay.py::test_full_chain_on_golden_path
+FAILED tests/forensics/test_t12_forensics_replay.py::test_forensics_engine_is_authoritative_trace
+FAILED tests/forensics/test_t12_forensics_replay.py::test_trace_captures_full_chain_fields
+FAILED tests/forensics/test_t12_forensics_replay.py::test_dispatcher_writes_trace_for_every_decision
+FAILED tests/forensics/test_t12_forensics_replay.py::test_forensic_log_is_append_only_immutable
+FAILED tests/forensics/test_t12_forensics_replay.py::test_replay_engine_reports_difference_and_reason
+FAILED tests/forensics/test_t12_forensics_replay.py::test_replay_holds_original_and_replayed_decisions
+FAILED tests/forensics/test_t12_forensics_replay.py::test_replay_consumes_forensics_trace
+FAILED tests/forensics/test_t12_forensics_replay.py::test_forensic_trace_and_replay_share_schema
+FAILED tests/forensics/test_t12_forensics_replay.py::test_authority_invariants_declare_forensics_and_replay
+FAILED tests/host_telemetry/test_t10_single_source.py::test_single_authoritative_host_network_source_exists
+FAILED tests/host_telemetry/test_t10_single_source.py::test_canonical_event_defines_host_network_source_kinds
+FAILED tests/host_telemetry/test_t10_single_source.py::test_zig_flow_engine_consumes_canonical_events
+FAILED tests/host_telemetry/test_t10_single_source.py::test_process_telemetry_uses_same_canonical_event_model
+FAILED tests/host_telemetry/test_t10_single_source.py::test_host_network_and_process_share_dispatcher
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_manifest_declares_t18_modules_real
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_authority_invariants_declare_t18
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_ac1_canary_order_is_mandated_sequence
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_ac1_canary_stage_vocabulary_has_rolled_back
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_ac1_canary_spec_carries_scope_target_expiry
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_ac1_canary_rollback_and_audit_present
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_ac1_canary_scope_is_canary_only
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_ac1_gates_are_fail_closed
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_ac3_all_nine_source_categories_present
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_ac3_pipeline_stages_present
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_ac3_single_incident_holds_multiple_sources
+FAILED tests/ips/test_t18_ips_canary_xdr.py::test_ac3_enforcement_decision_maps_source_evidence_to_action
+FAILED tests/pep/test_t8_rust_pep.py::test_manifest_lists_shield_as_real_enforcement
+FAILED tests/release/test_t17_perf_ci_installer.py::test_ac1_per_language_benchmark_suites_exist
+FAILED tests/release/test_t17_perf_ci_installer.py::test_ac1_perf_zig_gates_green
+FAILED tests/release/test_t17_perf_ci_installer.py::test_ac2_ci_matrix_required_semantics
+FAILED tests/release/test_t17_perf_ci_installer.py::test_ac3_manifest_has_source_commit
+FAILED tests/release/test_t17_perf_ci_installer.py::test_ac3_artifacts_digested
+FAILED tests/release/test_t17_perf_ci_installer.py::test_ac3_verify_mode_detects_drift
+FAILED tests/release/test_t17_perf_ci_installer.py::test_ac4_installer_consumes_manifest
+FAILED tests/release/test_t17_perf_ci_installer.py::test_ac4_installer_packages_runtime_and_preserves_data
+FAILED tests/release/test_t17_perf_ci_installer.py::test_ac4_installer_generates_nsi
+FAILED tests/release/test_t17_perf_ci_installer.py::test_manifest_declares_t17_modules_real
+FAILED tests/reliability/test_t15_reliability_config.py::test_all_t15_modules_declared_real_in_manifest
+FAILED tests/reliability/test_t15_reliability_config.py::test_config_validator_is_real
+FAILED tests/reliability/test_t15_reliability_config.py::test_health_probe_contract_tests_exist
+FAILED tests/reliability/test_t15_reliability_config.py::test_defcon_and_metrics_scripts_real
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlVersionCommand::test_version_component_filter
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlVersionCommand::test_version_lists_all_components
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlStatusCommand::test_status_lists_all_components
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlStatusCommand::test_status_shows_state_column
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlHealthCommand::test_health_runs_without_crash
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlDiagnoseCommand::test_diagnose_contains_all_sections
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlDiagnoseCommand::test_diagnose_shows_repo_root
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlStartStopErrors::test_restart_without_component_errors
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlStartStopErrors::test_start_without_args_errors
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlStartStopErrors::test_stop_without_args_errors
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlExitCodes::test_diagnose_returns_0
+FAILED tests/runtime/test_aegisctl.py::TestAegisctlExitCodes::test_status_always_returns_0
+FAILED tests/runtime/test_gate_d.py::TestEventsCommands::test_events_count_runs_without_crash
+FAILED tests/runtime/test_gate_d.py::TestEventsCommands::test_events_count_with_no_log
+FAILED tests/runtime/test_gate_d.py::TestEventsCommands::test_events_stats_runs_without_crash
+FAILED tests/runtime/test_gate_d.py::TestEventsCommands::test_events_tail_runs_without_crash
+FAILED tests/runtime/test_gate_d.py::TestForensicCommands::test_forensic_export_with_no_log
+FAILED tests/runtime/test_gate_d.py::TestForensicCommands::test_forensic_search_with_no_log
+FAILED tests/runtime/test_gate_d.py::TestGateDHelpCommands::test_events_help
+FAILED tests/runtime/test_gate_d.py::TestGateDHelpCommands::test_forensic_help
+FAILED tests/runtime/test_gate_d.py::TestGateDHelpCommands::test_rules_help
+FAILED tests/runtime/test_gate_d.py::TestGateDExitCodes::test_events_count_always_returns_0
+FAILED tests/runtime/test_gate_d.py::TestGateDExitCodes::test_rules_show_nonexistent_returns_1
+FAILED tests/runtime/test_gate_e.py::TestSimulateCommands::test_simulate_attack_sends_event
+FAILED tests/runtime/test_gate_e.py::TestSimulateCommands::test_simulate_attack_unknown_type
+FAILED tests/runtime/test_gate_e.py::TestSimulateCommands::test_simulate_flood_runs
+FAILED tests/runtime/test_gate_e.py::TestSimulateCommands::test_simulate_packet_sends_event
+FAILED tests/runtime/test_gate_e.py::TestSimulateCommands::test_simulate_replay_missing_file
+FAILED tests/runtime/test_gate_e.py::TestCanaryTestsFile::test_canary_test_events_have_attack_type
+FAILED tests/runtime/test_gate_e.py::TestCanaryTestsFile::test_canary_test_names_unique
+FAILED tests/runtime/test_gate_e.py::TestCanaryTestsFile::test_canary_tests_count
+FAILED tests/runtime/test_gate_e.py::TestCanaryTestsFile::test_canary_tests_file_exists
+FAILED tests/runtime/test_gate_e.py::TestCanaryTestsFile::test_canary_tests_file_is_valid_json
+FAILED tests/runtime/test_gate_e.py::TestCanaryTestsFile::test_canary_tests_have_required_fields
+FAILED tests/runtime/test_gate_e.py::TestGateEHelpCommands::test_canary_help
+FAILED tests/runtime/test_gate_e.py::TestGateEHelpCommands::test_policy_help
+FAILED tests/runtime/test_gate_e.py::TestGateEHelpCommands::test_simulate_help
+FAILED tests/runtime/test_gate_f.py::TestBlockCommands::test_block_add_already_blocked
+FAILED tests/runtime/test_gate_f.py::TestBlockCommands::test_block_add_creates_entry
+FAILED tests/runtime/test_gate_f.py::TestBlockCommands::test_block_add_with_duration
+FAILED tests/runtime/test_gate_f.py::TestBlockCommands::test_block_clear - As...
+FAILED tests/runtime/test_gate_f.py::TestBlockCommands::test_block_clear_empty
+FAILED tests/runtime/test_gate_f.py::TestBlockCommands::test_block_list_empty
+FAILED tests/runtime/test_gate_f.py::TestBlockCommands::test_block_list_with_entries
+FAILED tests/runtime/test_gate_f.py::TestBlockCommands::test_block_remove - A...
+FAILED tests/runtime/test_gate_f.py::TestBlockCommands::test_block_remove_not_blocked
+FAILED tests/runtime/test_gate_f.py::TestEnforceCommands::test_enforce_disable_already_disabled
+FAILED tests/runtime/test_gate_f.py::TestEnforceCommands::test_enforce_disable_then_enable
+FAILED tests/runtime/test_gate_f.py::TestEnforceCommands::test_enforce_enable_already_enabled
+FAILED tests/runtime/test_gate_f.py::TestEnforceCommands::test_enforce_push_invalid_json
+FAILED tests/runtime/test_gate_f.py::TestEnforceCommands::test_enforce_push_missing_file
+FAILED tests/runtime/test_gate_f.py::TestEnforceCommands::test_enforce_push_valid_policy
+FAILED tests/runtime/test_gate_f.py::TestEnforceCommands::test_enforce_status_default
+FAILED tests/runtime/test_gate_f.py::TestQuarantineCommands::test_quarantine_add
+FAILED tests/runtime/test_gate_f.py::TestQuarantineCommands::test_quarantine_add_already_quarantined
+FAILED tests/runtime/test_gate_f.py::TestQuarantineCommands::test_quarantine_list_empty
+FAILED tests/runtime/test_gate_f.py::TestQuarantineCommands::test_quarantine_list_with_entries
+FAILED tests/runtime/test_gate_f.py::TestQuarantineCommands::test_quarantine_remove
+FAILED tests/runtime/test_gate_f.py::TestQuarantineCommands::test_quarantine_remove_not_quarantined
+FAILED tests/runtime/test_gate_f.py::TestGateFHelpCommands::test_block_help
+FAILED tests/runtime/test_gate_f.py::TestGateFHelpCommands::test_enforce_help
+FAILED tests/runtime/test_gate_f.py::TestGateFHelpCommands::test_quarantine_help
+FAILED tests/runtime/test_gate_f.py::TestGateFExitCodes::test_block_add_returns_0
+FAILED tests/runtime/test_gate_f.py::TestGateFExitCodes::test_block_list_returns_0
+FAILED tests/runtime/test_gate_f.py::TestGateFExitCodes::test_enforce_status_returns_0
+FAILED tests/runtime/test_gate_f.py::TestGateFExitCodes::test_quarantine_list_returns_0
+FAILED tests/runtime/test_golden_path.py::TestGoldenPathOrchestration::test_aegisctl_diagnose_reports_all_components
+FAILED tests/runtime/test_golden_path.py::TestGoldenPathOrchestration::test_aegisctl_status_includes_primary_components
+FAILED tests/security/test_t16_security_hardening.py::test_hardening_categories_coverage
+FAILED tests/security/test_t16_security_hardening.py::test_control_ipc_has_roles_acl_and_no_everyone
+FAILED tests/security/test_t16_security_hardening.py::test_control_ipc_has_request_id_timeout_replay_audit
+FAILED tests/security/test_t16_security_hardening.py::test_privileged_authorization_layered
+FAILED tests/security/test_t16_security_hardening.py::test_aegisctl_issues_request_envelope_for_privileged_actions
+FAILED tests/security/test_t16_security_hardening.py::test_manifest_declares_control_ipc_and_invariants
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_manifest_declares_t19_modules_real
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac1_trace_chain_is_the_mandated_eight_in_order
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac1_strict_order_append_rejects_skips
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac1_privileged_actions_are_named
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac1_audit_coverage_is_all_or_flagged
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac2_six_dimensions_in_mandated_order
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac2_compare_forces_candidate_never_to_enforce
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac2_outcome_vocabulary_agree_and_differ_present
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac2_comparison_fields_cover_all_six
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac3_three_replayable_atoms_present
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac3_difference_vocabulary_present
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac3_replay_result_carries_original_replayed_reason
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac3_reason_attributes_to_atom_deltas
+FAILED tests/security/test_t19_decision_trace_shadow_replay_review.py::test_ac3_summarize_is_regression_readout
+========== 165 failed, 244 passed, 35 skipped, 10 warnings in 17.72s ==========
