@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "ec12182",
+  "source_commit": "832b5c4",
   "build_date": "2026-09-11T00:00:00.000000+00:00",
   "build_host": "windows",
   "platform": {
@@ -1543,8 +1543,8 @@
     },
     {
       "path": "scripts/aegis_status.bat",
-      "size": 872,
-      "sha256": "7831e0ad13db9568e63933b01fc87277007c94b314bcc74bc427018589379d4a",
+      "size": 1046,
+      "sha256": "52e70a8d5c3ae842d7e2083122d340d5334e62fb7d7d5bfe51a0b4c54884d57f",
       "language": "script"
     },
     {
@@ -1561,8 +1561,8 @@
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 42370,
-      "sha256": "27500b7c7f3ba3bb22c1fc20490dee05a2672166647f74131d47e1202020889e",
+      "size": 2391,
+      "sha256": "9e9073eb85c70b3364c15154c301dae6a0a4f7d11c6870dd4bf57aff1eca009c",
       "language": "python/cython"
     },
     {
@@ -1621,8 +1621,8 @@
     },
     {
       "path": "scripts/run_aegis.bat",
-      "size": 28002,
-      "sha256": "07734fa49fd00e1fec73403623acbfcb1f770f7dcb9a9c3a476dac5bd54e9c32",
+      "size": 28454,
+      "sha256": "a636c5bd767f014c4e645a253a6694a6ced7b04ffb8ce8e1d454c3650b5e9bbd",
       "language": "script"
     },
     {
@@ -1633,8 +1633,8 @@
     },
     {
       "path": "scripts/stop_aegis.bat",
-      "size": 1142,
-      "sha256": "d54057686390207acaf3228cc16fb5ffd3995516293654f197974e1d1cefc9b7",
+      "size": 1302,
+      "sha256": "81733d3ddf6bf717a629ea0a72b683d5c95ce0f5c254b6b415d05763e0e43938",
       "language": "script"
     },
     {
@@ -1711,8 +1711,8 @@
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 42370,
-      "sha256": "27500b7c7f3ba3bb22c1fc20490dee05a2672166647f74131d47e1202020889e",
+      "size": 2391,
+      "sha256": "9e9073eb85c70b3364c15154c301dae6a0a4f7d11c6870dd4bf57aff1eca009c",
       "language": "python/cython"
     },
     {

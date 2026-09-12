@@ -6,12 +6,40 @@ import os
 import sys
 import subprocess
 import time
+import json
 from pathlib import Path
+from datetime import datetime
 
 from ..config import (
-    REPO_ROOT, RULES_FILE, LOGS_DIR, PID_DIR, SUBSYSTEMS, COMPONENTS
+    REPO_ROOT, RULES_FILE, LOGS_DIR, PID_DIR, SUBSYSTEMS, COMPONENTS,
+    NDJSON_LOG, ANOMALOUS_LOG
 )
 from ..utils import load_json, save_json, read_pid, is_process_running
+
+# Optional imports
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
+
+try:
+    # Try to import bridge ctypes from shared directory
+    # Suppress stdout warning during import
+    import io
+    import contextlib
+    shared_paths = [
+        REPO_ROOT / "shared",
+        REPO_ROOT / "scripts" / "shared",
+    ]
+    for sp in shared_paths:
+        if sp.exists():
+            sys.path.insert(0, str(sp))
+    with contextlib.redirect_stdout(io.StringIO()):
+        import aegis_bridge_ctypes as bridge
+    BRIDGE_AVAILABLE = True
+except ImportError:
+    BRIDGE_AVAILABLE = False
 
 
 class Colors:
@@ -32,17 +60,63 @@ class Colors:
     BCYN = '\033[96;1m'
 
 
+DEFCON_COLORS = {1: Colors.BRED, 2: Colors.RED, 3: Colors.YEL, 4: Colors.BYEL, 5: Colors.BGRN}
+DEFCON_LABELS = {
+    1: "COCKED PISTOL", 2: "DOUBLE TAKE", 3: "ROUND HOUSE",
+    4: "FAST PACE", 5: "FADE OUT"
+}
+
+
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 
 def show_header():
-    print(f"\n  {Colors.BCYN}AEGIS NIDS{Colors.RST} Control Center")
-    print(f"  {'=' * 60}")
+    defcon_level, defcon_label = get_defcon()
+    if defcon_level:
+        dc = DEFCON_COLORS.get(defcon_level, Colors.RST)
+        defcon_str = f"{dc}DEFCON {defcon_level} -- {defcon_label}{Colors.RST}"
+    else:
+        defcon_str = f"{Colors.DIM}DEFCON N/A{Colors.RST}"
+    print(f"\n  {Colors.BCYN}AEGIS NIDS{Colors.RST} Control Center  [{defcon_str}]")
 
 
 def input_pause():
     input(f"\n  {Colors.DIM}Press Enter to continue...{Colors.RST}")
+
+
+def get_defcon() -> tuple:
+    """Get DEFCON level -- try Bridge IPC first, then fallback to log file."""
+    if BRIDGE_AVAILABLE:
+        try:
+            rc = bridge.bridge_init()
+            if rc == 0:
+                level = bridge.get_defcon_level()
+                label = bridge.get_defcon_label()
+                bridge.bridge_shutdown()
+                if level is not None:
+                    return level, label
+        except Exception:
+            pass
+    
+    # Fallback to log file
+    try:
+        if ANOMALOUS_LOG.exists():
+            with open(ANOMALOUS_LOG, 'r', encoding='utf-8', errors='ignore') as f:
+                f.seek(max(0, f.seek(0, 2) - 8192))
+                lines = f.readlines()
+                for line in reversed(lines):
+                    line = line.strip()
+                    if line:
+                        try:
+                            data = json.loads(line)
+                            if 'defcon_level' in data:
+                                return data['defcon_level'], DEFCON_LABELS.get(data['defcon_level'], "UNKNOWN")
+                        except json.JSONDecodeError:
+                            continue
+    except Exception:
+        pass
+    return None, None
 
 
 def get_subsystem_status(name: str) -> dict:
@@ -50,6 +124,14 @@ def get_subsystem_status(name: str) -> dict:
     if pid is not None and is_process_running(pid):
         return {"status": "RUNNING", "pid": pid}
     return {"status": "STOPPED", "pid": None}
+
+
+def get_all_status() -> list:
+    results = []
+    for name in COMPONENTS:
+        status = get_subsystem_status(name)
+        results.append((name, status["status"] == "RUNNING", status["pid"]))
+    return results
 
 
 def show_status():
@@ -85,6 +167,120 @@ def show_health():
             print(f"  {Colors.BGRN}[OK]{Colors.RST} {name.upper()}")
         else:
             print(f"  {Colors.RED}[FAIL]{Colors.RST} {name.upper()}")
+
+
+def show_bridge_status():
+    """Show Bridge IPC status."""
+    print(f'\n  {Colors.BLD}BRIDGE -- IPC STATUS{Colors.RST}')
+    print(f"  {'=' * 55}")
+    
+    if not BRIDGE_AVAILABLE:
+        print(f"  {Colors.BRED}[!]{Colors.RST} aegis_bridge_ctypes not available")
+        return
+    
+    rc = bridge.bridge_init()
+    if rc != 0:
+        print(f"  {Colors.BRED}[!]{Colors.RST} Bridge init failed (rc={rc})")
+        return
+    
+    try:
+        defcon = bridge.get_defcon_level()
+        label = bridge.get_defcon_label()
+        desc = bridge.get_defcon_description()
+        color = DEFCON_COLORS.get(defcon, Colors.RST)
+        print(f'  DEFCON    : {color}{defcon} -- {label}{Colors.RST}')
+        print(f'  Description: {desc}')
+        
+        # Get other stats
+        rules = bridge.get_active_rules()
+        print(f'  Active Rules: {rules}')
+    except Exception as e:
+        print(f"  {Colors.RED}[!]{Colors.RST} Error reading Bridge status: {e}")
+    finally:
+        bridge.bridge_shutdown()
+
+
+def measure_ipc_throughput():
+    """Measure IPC throughput."""
+    if not BRIDGE_AVAILABLE:
+        print(f"\n  {Colors.RED}[-]{Colors.RST} Bridge not available")
+        return
+    
+    rc = bridge.bridge_init()
+    if rc != 0:
+        print(f"\n  {Colors.RED}[-]{Colors.RST} Bridge init failed")
+        return
+    
+    print(f"\n  {Colors.CYN}[IPC]{Colors.RST} Measuring throughput (3s)...")
+    try:
+        count = 0
+        start = time.perf_counter()
+        end_time = start + 3.0
+        while time.perf_counter() < end_time:
+            rc = bridge.push_event(
+                event_type=0, source_ip=0, dest_ip=0,
+                source_port=0, dest_port=0, protocol=6,
+                tier_result=1, rule_id=0, severity=0,
+                payload_len=0, signature=b"test"
+            )
+            count += 1
+        elapsed = time.perf_counter() - start
+        throughput = count / elapsed
+        print(f"  {Colors.BGRN}[OK]{Colors.RST} {count} events in {elapsed:.1f}s = {throughput:.0f} events/sec")
+    except Exception as e:
+        print(f"  {Colors.RED}[-]{Colors.RST} Error: {e}")
+    finally:
+        bridge.bridge_shutdown()
+
+
+def run_realtime_dashboard():
+    """Real-time dashboard with CPU/memory/DEFCON."""
+    print(f"\n  {Colors.CYN}[DASHBOARD]{Colors.RST} Press Ctrl+C to exit\n")
+    if PSUTIL_AVAILABLE:
+        psutil.cpu_percent(interval=None)
+    try:
+        while True:
+            now = datetime.now().strftime("%H:%M:%S")
+            defcon_level, defcon_label = get_defcon()
+            if defcon_level:
+                dc = DEFCON_COLORS.get(defcon_level, Colors.RST)
+                defcon_str = f"{dc}DEFCON {defcon_level} {defcon_label}{Colors.RST}"
+            else:
+                defcon_str = f"{Colors.DIM}DEFCON N/A{Colors.RST}"
+            
+            statuses = get_all_status()
+            running = sum(1 for _, r, _ in statuses if r)
+            
+            cpu = psutil.cpu_percent(interval=0) if PSUTIL_AVAILABLE else 0
+            mem = psutil.virtual_memory() if PSUTIL_AVAILABLE else None
+            mem_pct = mem.percent if mem else 0
+            
+            # Build status line
+            status_parts = []
+            for name, is_running, pid in statuses:
+                if is_running:
+                    status_parts.append(f"{Colors.GRN}{name.upper()[:4]}{Colors.RST}")
+                else:
+                    status_parts.append(f"{Colors.RED}{name.upper()[:4]}{Colors.RST}")
+            status_line = " ".join(status_parts)
+            
+            # Build bars
+            cpu_bar = "█" * int(cpu / 5) + "░" * (20 - int(cpu / 5))
+            mem_bar = "█" * int(mem_pct / 5) + "░" * (20 - int(mem_pct / 5))
+            
+            # Clear and draw
+            os.system('cls' if os.name == 'nt' else 'clear')
+            print(f"\n  {Colors.BCYN}AEGIS NIDS Real-Time Dashboard{Colors.RST}  [{Colors.DIM}{now}{Colors.RST}]")
+            print(f"  {'=' * 60}")
+            print(f"  {defcon_str}")
+            print(f"  Subsystems: {status_line}  ({running}/5)")
+            print(f"  CPU: [{cpu_bar}] {cpu:.1f}%")
+            print(f"  MEM: [{mem_bar}] {mem_pct:.1f}%")
+            print(f"\n  Press Ctrl+C to exit")
+            
+            time.sleep(2)
+    except KeyboardInterrupt:
+        print(f"\n\n  {Colors.DIM}Dashboard stopped.{Colors.RST}")
 
 
 def menu_rules():
@@ -133,8 +329,6 @@ def menu_health():
     while True:
         clear_screen()
         show_header()
-        print(f"\n  {Colors.BLD}SYSTEM HEALTH{Colors.RST}")
-        print(f"  {'=' * 50}")
         
         running = 0
         for name, config in COMPONENTS.items():
@@ -148,15 +342,17 @@ def menu_health():
         print(f"\n  Health: {running}/{len(COMPONENTS)} subsystems")
         
         print(f"\n  {Colors.BLD}Options:{Colors.RST}")
-        print(f"  {Colors.BGRN}R{Colors.RST} Refresh  {Colors.BGRN}S{Colors.RST} Status  {Colors.YEL}B{Colors.RST} Back")
-        choice = input(f"\n  {Colors.BLD}Select (R/S/B): {Colors.RST}").strip().upper()
+        print(f"  {Colors.BGRN}R{Colors.RST} Refresh  {Colors.BGRN}B{Colors.RST} Bridge  {Colors.BGRN}D{Colors.RST} Dashboard  {Colors.YEL}X{Colors.RST} Back")
+        choice = input(f"\n  {Colors.BLD}Select (R/B/D/X): {Colors.RST}").strip().upper()
         
         if choice == 'R':
             continue  # Refresh by looping
-        elif choice == 'S':
-            show_status()
-            input_pause()
         elif choice == 'B':
+            show_bridge_status()
+            input_pause()
+        elif choice == 'D':
+            run_realtime_dashboard()
+        elif choice == 'X':
             break
 
 
@@ -171,22 +367,23 @@ def main_menu():
         print(f"\n  {Colors.BLD}MAIN MENU{Colors.RST}  ({running}/{total} subsystems)")
         print(f"  {'=' * 50}")
         print(f"  {Colors.BGRN}1{Colors.RST}  Status          System status")
-        print(f"  {Colors.BGRN}2{Colors.RST}  Health          Health check")
+        print(f"  {Colors.BGRN}2{Colors.RST}  Health          Health check + Dashboard")
         print(f"  {Colors.BGRN}3{Colors.RST}  Rules           Rule management")
         print(f"  {Colors.BGRN}4{Colors.RST}  Start           Start subsystems")
         print(f"  {Colors.BGRN}5{Colors.RST}  Stop            Stop subsystems")
         print(f"  {Colors.BGRN}6{Colors.RST}  Logs            View logs")
         print(f"  {Colors.BGRN}7{Colors.RST}  Dashboard       Live dashboard")
+        print(f"  {Colors.BGRN}8{Colors.RST}  Bridge          Bridge IPC status")
+        print(f"  {Colors.BGRN}9{Colors.RST}  IPC Test        Measure IPC throughput")
         print(f"  {Colors.YEL}0{Colors.RST}  Exit")
         
-        choice = input(f"\n  {Colors.BLD}Select (0-7): {Colors.RST}").strip()
+        choice = input(f"\n  {Colors.BLD}Select (0-9): {Colors.RST}").strip()
         
         if choice == '1':
             show_status()
             input_pause()
         elif choice == '2':
-            show_health()
-            input_pause()
+            menu_health()
         elif choice == '3':
             menu_rules()
         elif choice == '4':
@@ -202,8 +399,12 @@ def main_menu():
             subprocess.run([sys.executable, "tools/aegisctl.py", "logs", "tail", "-n", "20"])
             input_pause()
         elif choice == '7':
-            print(f"\n  {Colors.CYN}[DASHBOARD]{Colors.RST} Launching dashboard...")
-            subprocess.run([sys.executable, "tools/aegisctl.py", "dashboard"])
+            run_realtime_dashboard()
+        elif choice == '8':
+            show_bridge_status()
+            input_pause()
+        elif choice == '9':
+            measure_ipc_throughput()
             input_pause()
         elif choice == '0':
             break

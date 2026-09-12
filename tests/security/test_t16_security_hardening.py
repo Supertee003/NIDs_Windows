@@ -55,6 +55,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 CONTROL_IPC = "src/policy/control_ipc.zig"
 AEGISCTL = "tools/aegisctl.py"
+AEGISCTL_LIFECYCLE = "tools/aegisctl/commands/lifecycle.py"
 PEP_RS = "shield/src/pep.rs"
 PEP_LIB = "shield/src/lib.rs"
 NOSE_PR = "src/capture/nose_pipe_reader.zig"
@@ -111,7 +112,7 @@ def test_hardening_categories_coverage() -> None:
             "canonical_event must validate inputs before fabric",
         ),
         "command injection / path traversal": (
-            "REPO_ROOT / component" in _read(AEGISCTL),
+            "REPO_ROOT / component" in _read(AEGISCTL_LIFECYCLE) or "REPO_ROOT / exe" in _read(AEGISCTL_LIFECYCLE),
             "aegisctl must invoke components by tracked binary path only",
         ),
         "config injection": (
@@ -192,21 +193,31 @@ def test_aegisctl_issues_request_envelope_for_privileged_actions() -> None:
     issues a control request envelope (request_id + nonce + caller + role)
     and writes it to the append-only audit."""
     src = _read(AEGISCTL)
-    # Envelope helper + roles.
-    assert "def _control_request(" in src, "aegisctl must have a request helper (AC3)"
-    assert "ROLE_PRIVILEGED" in src and "ROLE_OPERATE" in src and "ROLE_READ" in src
-    assert "request_id" in src and "nonce" in src, (
+    # Check main entry point for modular imports
+    assert "aegisctl.commands" in src or "from .." in src, (
+        "aegisctl must have modular command structure"
+    )
+    # Check config module for roles
+    config_src = _read("tools/aegisctl/config.py")
+    assert "ROLE_PRIVILEGED" in config_src and "ROLE_OPERATE" in config_src and "ROLE_READ" in config_src
+    # Check utils module for request helper
+    utils_src = _read("tools/aegisctl/utils.py")
+    assert "def control_request(" in utils_src or "def _control_request(" in utils_src, (
+        "aegisctl utils must have a request helper (AC3)"
+    )
+    assert "request_id" in utils_src and "nonce" in utils_src, (
         "envelope must include request_id + nonce (AC3)"
     )
-    assert "caller" in src, "envelope must include caller identity (AC3)"
-    # Privileged commands route through the envelope + PEP, never direct.
-    assert '_control_request("block_request", ROLE_OPERATE' in src, (
+    assert "caller" in utils_src, "envelope must include caller identity (AC3)"
+    # Check network module for privileged commands
+    network_src = _read("tools/aegisctl/commands/network.py")
+    assert 'control_request("block_request", ROLE_OPERATE' in network_src, (
         "block add must emit an OPERATE request envelope (AC3)"
     )
-    assert '_control_request("enforce_push", ROLE_PRIVILEGED' in src, (
+    assert 'control_request("enforce_push", ROLE_PRIVILEGED' in network_src, (
         "enforce push must emit a PRIVILEGED request envelope (AC3)"
     )
-    assert "control_audit.ndjson" in src, "requests must be appended to the audit log (AC3)"
+    assert "CONTROL_AUDIT_LOG" in utils_src or "control_audit.ndjson" in utils_src or "control_audit.ndjson" in config_src, "requests must be appended to the audit log (AC3)"
 
 
 def test_aegisctl_no_direct_enforcement() -> None:

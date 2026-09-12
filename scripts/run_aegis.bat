@@ -643,66 +643,72 @@ echo ----------------------------------------------------------------
 echo  [Phase 5] Health Check
 echo ----------------------------------------------------------------
 
-set "HEALTH_OK=0"
-set "HEALTH_FAIL=0"
-
-:: -- Check Bridge --
-tasklist /NH 2>nul | find /I "aegis_bridge.exe" >nul
-if %errorlevel% equ 0 (
-    echo  [OK] Bridge  -- running
-    set /a HEALTH_OK+=1
+:: -- Use aegisctl for health check --
+if exist "tools\aegisctl.py" (
+    python tools\aegisctl.py health
 ) else (
-    echo  [FAIL] Bridge -- NOT running
-    set /a HEALTH_FAIL+=1
-)
+    echo  [WARN] aegisctl not found, using fallback health check
+    set "HEALTH_OK=0"
+    set "HEALTH_FAIL=0"
 
-:: -- Check Core --
-tasklist /NH 2>nul | find /I "aegis_nids.exe" >nul
-if %errorlevel% equ 0 (
-    echo  [OK] Core    -- running
-    set /a HEALTH_OK+=1
-) else (
-    echo  [FAIL] Core   -- NOT running
-    set /a HEALTH_FAIL+=1
-)
+    :: -- Check Bridge --
+    tasklist /NH 2>nul | find /I "aegis_bridge.exe" >nul
+    if %errorlevel% equ 0 (
+        echo  [OK] Bridge  -- running
+        set /a HEALTH_OK+=1
+    ) else (
+        echo  [FAIL] Bridge -- NOT running
+        set /a HEALTH_FAIL+=1
+    )
 
-:: -- Check Brain --
-set "BRAIN_OK=0"
-wmic process where "Name='python.exe'" get CommandLine 2>nul | find /I "windows_brain" >nul && set "BRAIN_OK=1"
-if !BRAIN_OK!==1 (
-    echo  [OK] Brain   -- running
-    set /a HEALTH_OK+=1
-) else (
-    echo  [FAIL] Brain  -- NOT running
-    set /a HEALTH_FAIL+=1
-)
+    :: -- Check Core --
+    tasklist /NH 2>nul | find /I "aegis_nids.exe" >nul
+    if %errorlevel% equ 0 (
+        echo  [OK] Core    -- running
+        set /a HEALTH_OK+=1
+    ) else (
+        echo  [FAIL] Core   -- NOT running
+        set /a HEALTH_FAIL+=1
+    )
 
-:: -- Check Nose --
-set "NOSE_OK=0"
-tasklist /NH 2>nul | find /I "nose_dashboard.exe" >nul && set "NOSE_OK=1"
-if !NOSE_OK!==0 (
-    wmic process where "Name='go.exe'" get CommandLine 2>nul | find /I "nose" >nul && set "NOSE_OK=1"
-)
-if !NOSE_OK!==1 (
-    echo  [OK] Nose    -- running
-    set /a HEALTH_OK+=1
-) else (
-    echo  [FAIL] Nose   -- NOT running
-    set /a HEALTH_FAIL+=1
-)
+    :: -- Check Brain --
+    set "BRAIN_OK=0"
+    wmic process where "Name='python.exe'" get CommandLine 2>nul | find /I "windows_brain" >nul && set "BRAIN_OK=1"
+    if !BRAIN_OK!==1 (
+        echo  [OK] Brain   -- running
+        set /a HEALTH_OK+=1
+    ) else (
+        echo  [FAIL] Brain  -- NOT running
+        set /a HEALTH_FAIL+=1
+    )
 
-:: -- Check Mouth --
-tasklist /NH 2>nul | find /I "windows_sec_monitor.exe" >nul
-if %errorlevel% equ 0 (
-    echo  [OK] Mouth   -- running
-    set /a HEALTH_OK+=1
-) else (
-    echo  [FAIL] Mouth  -- NOT running
-    set /a HEALTH_FAIL+=1
-)
+    :: -- Check Nose --
+    set "NOSE_OK=0"
+    tasklist /NH 2>nul | find /I "nose_dashboard.exe" >nul && set "NOSE_OK=1"
+    if !NOSE_OK!==0 (
+        wmic process where "Name='go.exe'" get CommandLine 2>nul | find /I "nose" >nul && set "NOSE_OK=1"
+    )
+    if !NOSE_OK!==1 (
+        echo  [OK] Nose    -- running
+        set /a HEALTH_OK+=1
+    ) else (
+        echo  [FAIL] Nose   -- NOT running
+        set /a HEALTH_FAIL+=1
+    )
 
-echo.
-echo  Health: !HEALTH_OK!/5 subsystems running
+    :: -- Check Mouth --
+    tasklist /NH 2>nul | find /I "windows_sec_monitor.exe" >nul
+    if %errorlevel% equ 0 (
+        echo  [OK] Mouth   -- running
+        set /a HEALTH_OK+=1
+    ) else (
+        echo  [FAIL] Mouth  -- NOT running
+        set /a HEALTH_FAIL+=1
+    )
+
+    echo.
+    echo  Health: !HEALTH_OK!/5 subsystems running
+)
 
 :: ================================================================
 ::  Summary
@@ -732,14 +738,14 @@ echo Health check at: %START_TIME% >> "%LOG_FILE%"
 :: -- Launch Command Control Center (optional) --
 if %NO_DASHBOARD%==1 goto :no_dashboard
 
-if exist "scripts\aegis_console.py" (
+if exist "tools\aegisctl.py" (
+    echo  Launching AEGIS Dashboard via aegisctl...
+    echo.
+    start "AEGIS DASHBOARD" cmd /k "chcp 65001 >nul & python tools\aegisctl.py dashboard"
+) else if exist "scripts\aegis_console.py" (
     echo  Launching AEGIS Command Control Center...
     echo.
     start "AEGIS COMMAND CENTER" cmd /k "chcp 65001 >nul & python scripts\aegis_console.py"
-) else if exist "scripts\aegis_dashboard.py" (
-    echo  Launching real-time CLI dashboard...
-    echo.
-    start "AEGIS DASHBOARD" cmd /k "chcp 65001 >nul & python scripts\aegis_dashboard.py"
 ) else if exist "scripts\Dashboard.py" (
     echo  Launching web dashboard...
     echo.
@@ -750,7 +756,8 @@ if exist "scripts\aegis_console.py" (
 echo  Tips:
 echo    - Run 'scripts\stop_aegis.bat' to shutdown gracefully
 echo    - Run 'scripts\aegis_status.bat' to check status anytime
-echo    - Run 'python scripts\aegis_console.py' for Command Control Center
+echo    - Run 'python tools\aegisctl.py' for full CLI control
+echo    - Run 'python tools\aegisctl.py dashboard' for live dashboard
 echo    - Run 'python tests\aegis_ipc_stress_test.py' to test IPC
 echo    - Run 'python tests\aegis_verify_all.py' for full verification
 echo.
