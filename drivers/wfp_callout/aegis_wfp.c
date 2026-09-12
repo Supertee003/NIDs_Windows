@@ -12,7 +12,12 @@
 
 #include "aegis_wfp.h"
 #include <ntddk.h>
-#include <wfp.h>
+
+// ====== GUID Definition ======
+// {A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D}
+DEFINE_GUID(AEGIS_CALLOUT_KEY,
+    0xa1b2c3d4, 0xe5f6, 0x4a7b,
+    0x8c, 0x9d, 0x0e, 0x1f, 0x2a, 0x3b, 0x4c, 0x5d);
 
 // ====== Global State ======
 PDEVICE_OBJECT g_DeviceObject = NULL;
@@ -32,8 +37,18 @@ UINT32 g_CalloutId = 0;
 UINT64 g_FilterId = 0;
 UINT32 g_BlockedIp = 0;
 
+// ====== Forward declarations ======
+NTSTATUS AegisWfpCreate(PDEVICE_OBJECT DeviceObject, PIRP Irp);
+NTSTATUS AegisWfpClose(PDEVICE_OBJECT DeviceObject, PIRP Irp);
+VOID     AegisWfpUnload(PDRIVER_OBJECT DriverObject);
+NTSTATUS AegisWfpReadEvents(PIRP Irp);
+NTSTATUS AegisWfpBlockFlow(PIRP Irp);
+NTSTATUS AegisWfpGetStats(PIRP Irp);
+NTSTATUS AegisWfpUnblockFlow(PIRP Irp);
+NTSTATUS AegisWfpDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp);
+
 // ====== DriverEntry ======
-extern NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
+NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
     NTSTATUS status;
     UNREFERENCED_PARAMETER(RegistryPath);
@@ -92,6 +107,7 @@ extern NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING Registr
 // ====== Unload ======
 VOID AegisWfpUnload(PDRIVER_OBJECT DriverObject)
 {
+    UNREFERENCED_PARAMETER(DriverObject);
     DbgPrint("[AEGIS WFP] Unloading driver...\n");
 
     // Unregister WFP callout and filter
@@ -167,7 +183,7 @@ NTSTATUS AegisWfpReadEvents(PIRP Irp)
     // Read events from ring buffer into user-mode buffer
     // This is called by windows_capture.zig (Zig user-mode reader)
     PVOID userBuffer = Irp->AssociatedIrp.SystemBuffer;
-    ULONG userBufferSize = Irp->CurrentIrpStackLocation->Parameters.DeviceIoControl.OutputBufferLength;
+    ULONG userBufferSize = IoGetCurrentIrpStackLocation(Irp)->Parameters.DeviceIoControl.OutputBufferLength;
 
     KIRQL oldIrql;
     KeAcquireSpinLock(&g_RingLock, &oldIrql);
@@ -251,7 +267,6 @@ NTSTATUS AegisWfpBlockFlow(PIRP Irp) {
     filter.numFilterConditions = 1;
     filter.filterCondition = condition;
     filter.action.type = FWP_ACTION_BLOCK;
-    filter.action.blockType = FWP_BLOCK;
     filter.flags = FWPM_FILTER_FLAG_PERSISTENT;
 
     UINT64 filterId = 0;
@@ -284,7 +299,7 @@ NTSTATUS AegisWfpGetStats(PIRP Irp) {
     PIO_STACK_LOCATION irpStack = IoGetCurrentIrpStackLocation(Irp);
     ULONG outputLen = irpStack->Parameters.DeviceIoControl.OutputBufferLength;
 
-    if (outputLen < sizeof(WFP_STATS)) {
+    if (outputLen < sizeof(AEGIS_RING_STATS)) {
         return STATUS_BUFFER_TOO_SMALL;
     }
 
@@ -349,7 +364,7 @@ NTSTATUS AegisWfpGetStats(PIRP Irp) {
             stats[0] = 0;
         }
 
-        FwpmFilterFreeEnumHandle0(engineHandle, enumHandle);
+        FwpmFilterDestroyEnumHandle0(engineHandle, enumHandle);
     } else {
         stats[0] = 0;
     }

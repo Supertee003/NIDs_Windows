@@ -9,14 +9,12 @@
  */
 
 #include "aegis_wfp.h"
-#include <ntddk.h>
-#include <fwpmk.h>
 
 /* Extern global defined in aegis_wfp.c */
 extern HANDLE g_WfpEngineHandle;
 
 /* ====== IRP_MJ_CREATE / IRP_MJ_CLOSE ====== */
-NTSTATUS AegisWfpCreateClose(
+static NTSTATUS AegisWfpCreateClose(
     PDEVICE_OBJECT DeviceObject,
     PIRP           Irp)
 {
@@ -170,7 +168,7 @@ static NTSTATUS AegisWfpGetStats(PIRP Irp, ULONG_PTR *pInfo)
 }
 
 /* ====== IOCTL Dispatch (IRP_MJ_DEVICE_CONTROL) ====== */
-NTSTATUS AegisWfpDeviceControl(
+static NTSTATUS AegisWfpDeviceControl(
     PDEVICE_OBJECT DeviceObject,
     PIRP           Irp)
 {

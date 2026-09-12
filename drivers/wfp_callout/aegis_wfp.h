@@ -9,9 +9,15 @@
 #ifndef AEGIS_WFP_H
 #define AEGIS_WFP_H
 
+#pragma warning(push)
+#pragma warning(disable: 4201)
+
 #include <ntddk.h>
+#include <ndis.h>
 #include <fwpsk.h>
 #include <fwpmk.h>
+
+#pragma warning(pop)
 
 /* ====== IOCTL Codes ====== */
 #define IOCTL_AEGIS_READ_EVENTS  CTL_CODE(FILE_DEVICE_NETWORK, 0x800, METHOD_BUFFERED, FILE_READ_DATA)
@@ -78,18 +84,12 @@ extern HANDLE         g_WfpEngineHandle;
 extern UINT32         g_CalloutId;
 extern UINT64         g_FilterId;     /* FIX 5: UINT32 -> UINT64 */
 extern UINT32         g_BlockedIp;
-extern PDEVICE_OBJECT g_AegisDeviceObject;
+extern PDEVICE_OBJECT g_DeviceObject;
 
 /* ====== Cross-file declarations ====== */
 
 /* aegis_wfp_callout.c */
 NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject);
 VOID     AegisWfpUnregisterCallout(void);
-
-/* aegis_wfp_comm.c */
-NTSTATUS AegisWfpCreateClose(PDEVICE_OBJECT DeviceObject, PIRP Irp);
-NTSTATUS AegisWfpDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp);
-NTSTATUS AegisWfpBlockFlow(PIRP Irp);
-NTSTATUS AegisWfpUnblockFlow(PIRP Irp);
 
 #endif /* AEGIS_WFP_H */

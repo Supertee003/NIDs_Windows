@@ -11,6 +11,12 @@ Provider    = %ProviderString%
 DriverVer   = 07/14/2026,1.0.0
 CatalogFile = aegis_wfp.cat
 
+[Manufacturer]
+%MfgName% = Standard,NTamd64
+
+[Standard.NTamd64]
+%DevDesc% = AegisWfp_Install, Root\AEGIS_WFP
+
 [DestinationDirs]
 DefaultDestDir = 12 ; Winnt\System32\drivers
 AegisWfp.DriverFiles = 12
@@ -25,6 +31,14 @@ aegis_wfp.sys = 1
 CopyFiles = AegisWfp.DriverFiles
 
 [DefaultInstall.Services]
+AddService = AegisWfp,, AegisWfp_Service
+
+[AegisWfp_Install]
+Include = machine.inf
+Needs   = SoftwareDeviceRegistration
+CopyFiles = AegisWfp.DriverFiles
+
+[AegisWfp_Install.Services]
 AddService = AegisWfp,, AegisWfp_Service
 
 [AegisWfp.DriverFiles]
@@ -43,6 +57,8 @@ HKR, "Parameters", "RingBufferSize", 0x00010001, 2097152  ; 2MB
 
 [Strings]
 ProviderString     = "AEGIS NIDS Project"
+MfgName            = "AEGIS"
 ManufacturerName   = "AEGIS"
 DiskName           = "AEGIS WFP Callout Driver Installation Disk"
 ServiceDesc        = "AEGIS NIDS WFP Callout Driver"
+DevDesc            = "AEGIS NIDS WFP Callout Driver"

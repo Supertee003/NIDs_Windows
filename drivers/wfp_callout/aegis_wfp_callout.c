@@ -5,13 +5,12 @@
  *         indexed by FWPS_FIELD_INBOUND_TRANSPORT_V4_* constants.
  * C2 FIX: Calls FwpmFilterAdd0 so callout is actually invoked.
  *
- * Uses the legacy 7-param classify signature.
  * FAIL-OPEN design: classify never blocks packets.
  */
 
 #include "aegis_wfp.h"
 
-/* ====== WFP Classify Callback (Legacy 7-param) ======
+/* ====== WFP Classify Callback ======
  * Called by WFP for every inbound IPv4 transport packet.
  * Extracts 5-tuple, writes 40-byte header to ring buffer,
  * always permits the packet (fail-open).
@@ -20,7 +19,6 @@ void AegisWfpClassifyFn(
     IN const FWPS_INCOMING_VALUES0          *inFixedValues,
     IN const FWPS_INCOMING_METADATA_VALUES0 *inMetaValues,
     IN OUT void                             *layerData,
-    IN const void                           *classifyContext,
     IN const FWPS_FILTER0                   *filter,
     IN UINT64                               flowContext,
     IN OUT FWPS_CLASSIFY_OUT0               *classifyOut)
@@ -32,7 +30,7 @@ void AegisWfpClassifyFn(
 
     UNREFERENCED_PARAMETER(inMetaValues);
     UNREFERENCED_PARAMETER(layerData);
-    UNREFERENCED_PARAMETER(classifyContext);
+    UNREFERENCED_PARAMETER(filter);
     UNREFERENCED_PARAMETER(flowContext);
 
     if (!classifyOut)
@@ -185,12 +183,7 @@ NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject)
     RtlZeroMemory(&sCallout, sizeof(sCallout));
     sCallout.calloutKey   = AEGIS_CALLOUT_KEY;
 
-    /* FIX 6: C4113 pragma - WDK 10.0.28000 typedef may differ.
-     * On x64 calling convention is uniform so runtime is safe. */
-#pragma warning(push)
-#pragma warning(disable: 4113)
     sCallout.classifyFn   = AegisWfpClassifyFn;
-#pragma warning(pop)
 
     sCallout.notifyFn     = AegisWfpNotifyFn;
     sCallout.flowDeleteFn = AegisWfpFlowDeleteFn;
