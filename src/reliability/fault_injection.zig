@@ -60,7 +60,7 @@ pub const FaultType = enum(u8) {
             .rag_unavailable => .fail_soft, // RAG is fail-soft by design
             .policy_malformed => .fail_closed, // If policy is broken, BLOCK unknown traffic
             .ipc_failure => .fail_soft, // Continue with degraded IPC
-            .pep_unavailable => .fail_open, // If PEP is down, allow traffic (availability > security)
+            .pep_unavailable => .fail_closed, // P0.2: No PEP = no enforcement (detection-only mode)
             .disk_full => .fail_soft, // Stop forensic logging, keep processing
             .forensic_failure => .fail_soft, // Continue without forensic recording
         };
@@ -341,7 +341,7 @@ test "FaultType.expectedBehavior returns correct behavior" {
     try std.testing.expect(FaultType.brain_unavailable.expectedBehavior() == .fail_soft);
     try std.testing.expect(FaultType.rag_unavailable.expectedBehavior() == .fail_soft);
     try std.testing.expect(FaultType.policy_malformed.expectedBehavior() == .fail_closed);
-    try std.testing.expect(FaultType.pep_unavailable.expectedBehavior() == .fail_open);
+    try std.testing.expect(FaultType.pep_unavailable.expectedBehavior() == .fail_closed);
     try std.testing.expect(FaultType.disk_full.expectedBehavior() == .fail_soft);
     try std.testing.expect(FaultType.forensic_failure.expectedBehavior() == .fail_soft);
 }

@@ -45,9 +45,22 @@ const service = @import("platform/win32_service.zig");
 const control = @import("platform/win32_pipe.zig");
 
 const SERVICE_RUNNING: u32 = 0x00000004;
+const runtime_sm = @import("control.zig").state_machine;
+extern "kernel32" fn GetCurrentProcessId() std.os.windows.DWORD;
 
 pub fn runDaemon() !void {
     diag.info("AEGIS NIDS v5.0+ starting up", .{});
+
+    // P1: Initialize runtime state machine
+    runtime_sm.g_runtime.transition(.starting);
+    runtime_sm.g_runtime.registerSubsystem(.zig, "zig", "5.0.0", "core,detection,correlation");
+    runtime_sm.g_runtime.registerSubsystem(.go, "go", "2.1.0", "capture,nose");
+    runtime_sm.g_runtime.registerSubsystem(.cpp, "cpp", "1.0.0", "etw,fim,registry,wfp");
+    runtime_sm.g_runtime.registerSubsystem(.rust_pep, "rust_pep", "1.0.0", "enforcement,crypto");
+    runtime_sm.g_runtime.registerSubsystem(.tier3, "tier3", "1.0.0", "authorization,pep");
+    runtime_sm.g_runtime.registerSubsystem(.control, "control", "1.0.0", "pipe,audit");
+    runtime_sm.g_runtime.registerSubsystem(.forensic, "forensic", "1.0.0", "ring,hash,replay");
+    runtime_sm.g_runtime.subsystemStarted(.zig, @as(u32, @intCast(GetCurrentProcessId())));
 
     // 1. Diagnostics
     diag.Logger.setSink(diag.StderrSink.init());
@@ -243,6 +256,16 @@ pub fn runDaemon() !void {
     // 7. Initialize PEP (PolicySet already loaded with policies from JSON)
     var pep_enf = pep.PepEnforcer.init();
     defer pep_enf.deinit();
+    // P0.2: Tier-3 state machine initialization
+    const tier3 = @import("policy/tier3_state.zig");
+    tier3.g_tier3.beginInit();
+    if (pep_enf.available) {
+        tier3.g_tier3.markReady();
+        diag.info("Tier-3 state: READY (PEP available)", .{});
+    } else {
+        tier3.g_tier3.markAbsent("aegis_pep.dll not loaded");
+        diag.critical("Tier-3 state: ABSENT — PEP unavailable, DETECTION-ONLY MODE: no enforcement", .{});
+    }
     // PATCH-15: PEP availability check — detection-only mode if unavailable
     state.g_pep_available = pep_enf.available;
     if (!pep_enf.available) {
@@ -272,6 +295,14 @@ pub fn runDaemon() !void {
     defer inj_detector.deinit();
 
     diag.info("AEGIS NIDS initialization complete — entering main loop", .{}); // 9. Main loop: pipeline processing + control pipe
+    // P1: Mark all subsystems as started and transition to running
+    runtime_sm.g_runtime.subsystemStarted(.go, @as(u32, @intCast(GetCurrentProcessId())));
+    runtime_sm.g_runtime.subsystemStarted(.cpp, @as(u32, @intCast(GetCurrentProcessId())));
+    runtime_sm.g_runtime.subsystemStarted(.rust_pep, @as(u32, @intCast(GetCurrentProcessId())));
+    runtime_sm.g_runtime.subsystemStarted(.tier3, @as(u32, @intCast(GetCurrentProcessId())));
+    runtime_sm.g_runtime.subsystemStarted(.control, @as(u32, @intCast(GetCurrentProcessId())));
+    runtime_sm.g_runtime.subsystemStarted(.forensic, @as(u32, @intCast(GetCurrentProcessId())));
+    runtime_sm.g_runtime.transition(.running);
     const start_ns = std.time.nanoTimestamp();
     if (builtin.os.tag == .windows) {
         service.setServiceStatus(SERVICE_RUNNING, 0);

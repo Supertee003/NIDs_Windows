@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """T17 (Steps 46-52) CI matrix checker.
 
-Cross-language CI coverage with required/optional semantics:
+Cross-language CI coverage with canonical/support semantics:
 
-    A project marked "required" that has NO matching CI job -> FAIL
-    (exit code 1). A project marked "optional" with no job -> reported and
-    PASS (documented gap).
+    CANONICAL required missing = FAIL (exit code 1).
+    CANONICAL required non-success = FAIL (exit code 1).
+    SUPPORT = reported, non-fatal (never gates canonical health).
+    Optional = documented gap, non-fatal.
 
-Every project declares a `job` name. The checker scans the configured
-workflow YAML files and verifies each job name appears as a `job:` key.
+Every project declares a `job` name and a `classification` (CANONICAL or
+SUPPORT). The checker scans the configured workflow YAML files and verifies
+each job name appears as a `job:` key.
 
 Usage:
     python tools/ci_coverage.py                 # matrix + pass/fail exit
@@ -17,10 +19,9 @@ Usage:
     python tools/ci_coverage.py --needs-json J  # gate on upstream job results
 
 `--needs-json` receives the GitHub Actions `toJSON(needs)` payload. Any
-required project whose job did not finish with `result == "success"` --
-including `failure`, `skipped`, `cancelled` and `absent` -- is reported as
-FAIL. This is what makes the final matrix gate unconditional: `skipped` is
-never neutral for required coverage.
+canonical required project whose job did not finish with `result == "success"`
+-- including `failure`, `skipped`, `cancelled` and `absent` -- is reported as
+FAIL. Support jobs are reported but never gate canonical health.
 """
 from __future__ import annotations
 
@@ -72,6 +73,7 @@ def check_matrix() -> dict:
         pid = project["id"]
         job = project["job"]
         required = project.get("required", False)
+        classification = project.get("classification", "CANONICAL")
         key = f"{pid}->{job}"
         present = job in job_ids
         if present:
@@ -87,6 +89,7 @@ def check_matrix() -> dict:
             "language": project["language"],
             "job": job,
             "required": required,
+            "classification": classification,
             "present": present,
             "status": status,
         })
@@ -162,7 +165,7 @@ def main() -> int:
         if args.json:
             print(json.dumps(res, indent=2))
         else:
-            print("Required CI job results (failure/skipped/cancelled = FAIL)")
+            print("Required canonical CI job results (failure/skipped/cancelled = FAIL)")
             print("-" * 72)
             for row in res["jobs"]:
                 req = "required" if row["required"] else "optional"
@@ -180,12 +183,13 @@ def main() -> int:
     if args.json:
         print(json.dumps(result, indent=2))
     else:
-        print("Cross-language CI matrix (required missing = FAIL; optional = PASS, documented)")
+        print("Cross-language CI matrix (canonical required missing = FAIL; support = reported, non-fatal)")
         print(f"Workflows scanned: {', '.join(result['workflows_scanned'])}")
         print("-" * 72)
         for p in result["projects"]:
             req = "required" if p["required"] else "optional"
-            print(f"  {p['project']:<16} {p['language']:<10} {p['job']:<24} "
+            cls = p["classification"]
+            print(f"  {p['project']:<16} {p['language']:<10} {cls:<10} {p['job']:<24} "
                   f"{req:<9} {p['status']}")
         print("-" * 72)
         if result["failed_required"]:

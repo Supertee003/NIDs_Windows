@@ -16,10 +16,7 @@ const std = @import("std");
 
 pub const AEGIS_VERSION = "1.0.0-dev";
 pub const AEGIS_BUILD = "zig-0.13";
-// G27 Gate-A: shield DLL version embedded in core's --version output.
-// Mirror of the Rust crate version in shield/Cargo.toml. Update both
-// together on shield releases.
-pub const SHIELD_VERSION = "0.1.0";
+pub const SHIELD_VERSION = "REMOVED";  // PEP-001: shield removed, enforcement via Rust PEP only
 const rust_pep = @import("rust_pep.zig");
 const win = std.os.windows;
 
@@ -36,7 +33,6 @@ const DEFCON_DEFAULT: u8 = 5;
 pub const BridgeState = struct {
     wfp_ioctl: bool = false,
     cpp_bridge: bool = false,
-    rust_shield: bool = false,
     udp_brain: bool = false,
 };
 
@@ -52,8 +48,7 @@ pub fn status() BridgeState {
 /// CTRL-002: true when every in-process bridge subsystem is actually up. When
 /// false the runtime still serves the spine but reports `degraded: true`.
 pub fn allActive() bool {
-    return g_state.wfp_ioctl and g_state.cpp_bridge and
-        g_state.rust_shield and g_state.udp_brain;
+    return g_state.wfp_ioctl and g_state.cpp_bridge and g_state.udp_brain;
 }
 
 // ============================================================
@@ -115,16 +110,7 @@ var g_bridge_initialized: bool = false;
 var g_fn_lock: std.Thread.RwLock = .{};
 
 // ============================================================
-// Rust Safety Shield DLL
-// ============================================================
-
-const FnValidatePayloadSafety = *const fn ([*]const u8, usize) callconv(.C) bool;
-
-var g_rust_dll: ?std.DynLib = null;
-var fn_validate_payload_safety: ?FnValidatePayloadSafety = null;
-
-// ============================================================
-// UDP Brain Logger
+// 3. UDP Brain Logger
 // ============================================================
 
 const net = std.net;
@@ -321,71 +307,7 @@ fn shutdownCppBridge() void {
 }
 
 // ============================================================
-// 3. Rust Safety Shield DLL
-// ============================================================
-
-fn initRustShield() void {
-    const dll_names = [_][]const u8{
-        "sec_monitor.dll",
-        "libsec_monitor.so",
-    };
-    // B-01 CRITICAL FIX: Removed "." (CWD) from search paths to prevent DLL planting
-    const search_paths = [_][]const u8{
-        "target\\release",
-        "target\\debug",
-        "shield\\target\\release",
-    };
-
-    for (dll_names) |dll_name| {
-        for (search_paths) |dir| {
-            var path_buf: [512]u8 = undefined;
-            const path = std.fmt.bufPrint(&path_buf, "{s}\\{s}", .{ dir, dll_name }) catch continue;
-            if (std.DynLib.open(path)) |lib| {
-                g_rust_dll = lib;
-                std.log.info("[INIT] Rust Shield loaded: {s}", .{path});
-                std.debug.print("[INIT] Rust Shield loaded: {s}\n", .{path});
-                break;
-            } else |_| {}
-        }
-        if (g_rust_dll == null) {
-            if (std.DynLib.open(dll_name)) |lib| {
-                g_rust_dll = lib;
-                std.log.info("[INIT] Rust Shield from system: {s}", .{dll_name});
-                std.debug.print("[INIT] Rust Shield from system: {s}\n", .{dll_name});
-            } else |_| {}
-        }
-        if (g_rust_dll != null) break;
-    }
-
-    if (g_rust_dll) |*lib| {
-        fn_validate_payload_safety = lib.lookup(FnValidatePayloadSafety, "validate_payload_safety");
-        if (fn_validate_payload_safety != null) {
-            g_state.rust_shield = true;
-            std.log.info("[INIT] Rust Memory Safety Shield active", .{});
-            std.debug.print("\x1b[32m[INIT] Rust Memory Safety Shield active\x1b[0m\n", .{});
-        } else {
-            // P0-2 FIX: Symbol missing in DLL is a fail-closed risk
-            // Log as error so operators see the Tier-3 bypass immediately
-            std.log.err("[INIT] CRITICAL: sec_monitor.dll loaded but 'validate_payload_safety' symbol missing - Tier-3 ACTIVE (fail-closed)", .{});
-            std.debug.print("\x1b[31m[INIT] CRITICAL: sec_monitor.dll symbol missing - Tier-3 fail-closed! All payloads will be rejected.\x1b[0m\n", .{});
-        }
-    } else {
-        // P0-2 FIX: Shield missing entirely - log as error, fail-closed by default
-        std.log.err("[INIT] CRITICAL: sec_monitor.dll not found - Tier-3 Memory Safety Shield ACTIVE (fail-closed)", .{});
-        std.debug.print("\x1b[31m[INIT] CRITICAL: Tier-3 shield missing - fail-closed mode! All payloads will be rejected.\x1b[0m\n", .{});
-        std.debug.print("\x1b[33m[INIT] TIP: Set AEGIS_FAIL_OPEN=1 to enable fail-open for development/testing\x1b[0m\n", .{});
-    }
-}
-
-fn shutdownRustShield() void {
-    g_state.rust_shield = false;
-    if (g_rust_dll) |*lib| lib.close();
-    g_rust_dll = null;
-    fn_validate_payload_safety = null;
-}
-
-// ============================================================
-// 4. UDP Brain Logger
+// 4. UDP Brain Logger (init/shutdown in UDP section above)
 // ============================================================
 
 fn initUdpBrain() void {
@@ -442,29 +364,23 @@ pub fn requestShutdown() void {
 }
 
 /// Initialize ALL bridges. Call once at startup before spawning threads.
-/// Initializes WFP IOCTL, C++ IPC DLL, Rust Shield DLL, and UDP Brain logger.
+/// Initializes WFP IOCTL, C++ IPC DLL, and UDP Brain logger.
 /// Bridges that fail to initialize are logged but do not abort startup
 /// (the NIDS runs in degraded mode without that specific bridge).
 pub fn initAll() void {
     std.log.info("[INIT] AEGIS BRIDGE INITIALIZATION", .{});
     std.debug.print("\n--- AEGIS BRIDGE INITIALIZATION ---\n", .{});
 
-    // 1. WFP kernel driver IOCTL (M2)
+    // 1. WFP kernel driver IOCTL (M2) — read-only telemetry
     initWfpIoctl();
 
     // 2. C++ IPC Bridge DLL
     initCppBridge();
 
-    // 3. Rust Memory Safety Shield
-    initRustShield();
-
-    // 4. UDP Brain Logger
+    // 3. UDP Brain Logger
     initUdpBrain();
 
     // GAP-3: Start spool drain thread (retries failed UDP sends)
-    // G28 fix: use blk: pattern so the catch block can return void while
-    // the spawn still produces a Thread on the success path. Without this
-    // the types are incompatible (Thread vs void) on Zig 0.13.0.
     if (g_udp_available) {
         const drain_thread: ?std.Thread = blk: {
             const t = std.Thread.spawn(.{}, spoolDrainThread, .{}) catch |err| {
@@ -481,24 +397,19 @@ pub fn initAll() void {
     // Summary
     const active = @as(u32, @intFromBool(g_state.wfp_ioctl)) +
         @as(u32, @intFromBool(g_state.cpp_bridge)) +
-        @as(u32, @intFromBool(g_state.rust_shield)) +
         @as(u32, @intFromBool(g_state.udp_brain));
-    std.log.info("[INIT] Bridge status: {d}/4 active (wfp={} cpp={} rust={} udp={})", .{
+    std.log.info("[INIT] Bridge status: {d}/3 active (wfp={} cpp={} udp={})", .{
         active,
         g_state.wfp_ioctl,
         g_state.cpp_bridge,
-        g_state.rust_shield,
         g_state.udp_brain,
     });
-    std.debug.print("[INIT] Bridge status: {d}/4 active\n", .{active});
-    // BP-L15: Bridge status summary visible in release builds via std.log
+    std.debug.print("[INIT] Bridge status: {d}/3 active\n", .{active});
     std.log.info("[INIT]   WFP IOCTL:    {s}", .{if (g_state.wfp_ioctl) "OK" else "--"});
     std.log.info("[INIT]   C++ Bridge:  {s}", .{if (g_state.cpp_bridge) "OK" else "--"});
-    std.log.info("[INIT]   Rust Shield: {s}", .{if (g_state.rust_shield) "OK" else "--"});
     std.log.info("[INIT]   UDP Brain:   {s}", .{if (g_state.udp_brain) "OK" else "--"});
     std.debug.print("[INIT]   WFP IOCTL:    {s}\n", .{if (g_state.wfp_ioctl) "OK" else "--"});
     std.debug.print("[INIT]   C++ Bridge:  {s}\n", .{if (g_state.cpp_bridge) "OK" else "--"});
-    std.debug.print("[INIT]   Rust Shield: {s}\n", .{if (g_state.rust_shield) "OK" else "--"});
     std.debug.print("[INIT]   UDP Brain:   {s}\n", .{if (g_state.udp_brain) "OK" else "--"});
 }
 
@@ -508,7 +419,6 @@ pub fn shutdownAll() void {
     std.debug.print("\n--- AEGIS BRIDGE SHUTDOWN ---\n", .{});
     shutdownUdpBrain();
     shutdownCppBridge();
-    shutdownRustShield();
     shutdownWfpIoctl();
 }
 
@@ -564,26 +474,9 @@ pub fn getBridgeEventCount() u32 {
     return 0;
 }
 
-/// Validate payload safety via Rust shield (returns true if safe).
-/// Fail-closed by default: returns false if shield is not loaded.
-/// Set AEGIS_FAIL_OPEN=1 environment variable to enable fail-open for development/testing.
-pub fn validatePayloadSafety(data: [*]const u8, len: usize) bool {
-    if (fn_validate_payload_safety) |f| {
-        return f(data, len);
-    }
-    // P0-2 FIX: Fail-closed by default (security invariant)
-    // Only fail-open if explicitly configured for development/testing
-    const fail_open = std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_FAIL_OPEN") catch null;
-    if (fail_open) |val| {
-        defer std.heap.page_allocator.free(val);
-        if (std.mem.eql(u8, val, "1")) {
-            std.log.warn("[SHIELD] Tier-3 shield missing - fail-open mode (AEGIS_FAIL_OPEN=1)", .{});
-            return true;
-        }
-    }
-    std.log.err("[SHIELD] CRITICAL: Tier-3 shield missing - fail-closed (all payloads rejected)", .{});
-    return false; // fail-closed when Rust DLL not available (P0-2 fix)
-}
+/// P0.2: REMOVED — validatePayloadSafety stub deleted.
+/// Payload safety is now determined by Tier-3 state (tier3_state.zig).
+/// See nids_analyze.zig for the Tier-3 gating check.
 
 /// Send JSON message to Python brain via UDP.
 /// B-10: Uses a 1000-event spool queue ΓÇö if send fails, event is queued

@@ -12,6 +12,7 @@ from ..config import BRAIN_UDP_PORT
 
 
 def cmd_simulate_attack(args: argparse.Namespace) -> int:
+    from .. import EXIT_OK, EXIT_FAILED
     attack_type = args.type
     known_types = ["SQL_INJECTION", "XSS", "PORT_SCAN", "BRUTE_FORCE", "DOS", "C2_BEACON"]
     if attack_type not in known_types:
@@ -23,11 +24,12 @@ def cmd_simulate_attack(args: argparse.Namespace) -> int:
         event = {"type": attack_type, "src_ip": "127.0.0.1", "ts": time.time()}
         sock.sendto(json.dumps(event).encode(), ("127.0.0.1", BRAIN_UDP_PORT))
         sock.close()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"ERROR: failed to send event: {e}", file=sys.stderr)
+        return EXIT_FAILED
     print(f"Event: {attack_type}")
     print(f"Simulated {attack_type} attack event sent")
-    return 0
+    return EXIT_OK
 
 
 def cmd_simulate_packet(args: argparse.Namespace) -> int:

@@ -137,6 +137,8 @@ def cmd_start(args: argparse.Namespace) -> int:
 
 
 def cmd_stop(args: argparse.Namespace) -> int:
+    from .. import EXIT_OK, EXIT_RUNTIME_UNAVAILABLE
+
     comp = getattr(args, "component", None)
     all_flag = getattr(args, "all", False)
     if comp and all_flag:
@@ -147,14 +149,18 @@ def cmd_stop(args: argparse.Namespace) -> int:
         return 2
 
     force = getattr(args, "force", False)
+    daemon_reachable = False
 
     try:
-        client = AegisClient()
+        client = AegisClient(transport=getattr(args, "transport", "pipe"))
         resp = client.send("daemon.shutdown")
         if resp.get("ok"):
+            daemon_reachable = True
             print("[OK]  Core daemon shutdown requested")
     except AegisCtlError:
-        pass
+        if not force:
+            print("[!]  Daemon not reachable (use --force to kill processes)", file=sys.stderr)
+            return EXIT_RUNTIME_UNAVAILABLE
 
     if force:
         for sub in reversed(SUBSYSTEMS):
@@ -165,7 +171,7 @@ def cmd_stop(args: argparse.Namespace) -> int:
     time.sleep(2)
     clear_all_pids()
     print("[OK]  All subsystems stopped")
-    return 0
+    return EXIT_OK
 
 
 def cmd_restart(args: argparse.Namespace) -> int:

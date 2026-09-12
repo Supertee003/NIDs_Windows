@@ -10,6 +10,7 @@ const diag = @import("../core/diagnostics.zig");
 const bridge_init = @import("../core/bridge_init.zig");
 const state = @import("../pipeline/runtime_state.zig");
 const rules = @import("../pipeline/rule_loader.zig");
+const control = @import("../control.zig");
 
 pub const control_pipe_name = "\\\\.\\pipe\\aegis_control";
 
@@ -124,169 +125,24 @@ fn sendResponse(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, ok: bool, dat
 }
 
 fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, payload: []const u8, caps: *const manifest.Capability, start_ns: i128) bool {
-    const parsed = std.json.parseFromSlice(std.json.Value, a, payload, .{}) catch {
-        sendResponse(a, pipe, false, null);
-        return false;
+    // P0.4: Use the new control protocol dispatch
+    var auth = control.authorization.Authorizer{};
+    var ctx = control.handler_registry.HandlerContext{
+        .start_ns = start_ns,
+        .request_id = @as(u64, @intCast(state.g_pipeline_audit_id)),
+        .caller_role = auth.getLocalRole(),
+        .caller_pid = @as(u32, @intCast(GetCurrentProcessId())),
+        .caps = caps,
     };
-    const root = parsed.value;
-    if (root != .object) {
-        sendResponse(a, pipe, false, null);
-        return false;
-    }
-    const cmd_val = root.object.get("command") orelse root.object.get("op") orelse {
-        sendResponse(a, pipe, false, null);
-        return false;
-    };
-    if (cmd_val != .string) {
-        sendResponse(a, pipe, false, null);
-        return false;
-    }
-    const cmd_raw = cmd_val.string;
-    // Map op-style commands to internal command names
-    const cmd = if (std.mem.eql(u8, cmd_raw, "HEALTH")) "health.check" else cmd_raw;
-    const uptime_sec: i64 = @intCast(@divTrunc(std.time.nanoTimestamp() - start_ns, std.time.ns_per_s));
-
-    // Control command audit — log every operator command
-    diag.info("CONTROL_AUDIT cmd={s} payload_len={d}", .{ cmd, payload.len });
-
-    if (std.mem.eql(u8, cmd, "status")) {
-        // Status response bound to real runtime metrics.
-        // CTRL-001: `state` uses the closed set from RUNTIME_CONTRACT.md §2.
-        // `degraded` and `wfp_available` report real subsystem state, not
-        // build-time capability flags.
-        const body = std.fmt.allocPrint(a,
-            \\{{"version":"5.0.0","state":"RUNNING","uptime_sec":{},"packets_captured":{},"flows_active":{},"incidents_open":{},"watchdog_alerts":{},"degraded":{},"etw_enabled":{},"fim_enabled":{},"wfp_available":{},"nids_version":"5.0.0","rules_loaded":{},"pipeline_processed":{},"pipeline_detections":{},\"audit_id\":{}}}
-        , .{
-            uptime_sec,
-            @as(u32, @intCast(diag.metrics.packets_captured.get())),
-            @as(u32, @intCast(diag.metrics.flows_active.get())),
-            state.g_incidents_open,
-            @as(u32, @intCast(diag.metrics.errors.get())),
-            !bridge_init.allActive(),
-            caps.has_etw_realtime,
-            caps.has_fim,
-            bridge_init.status().wfp_ioctl,
-            state.g_rules_loaded,
-            state.g_pipeline_events_processed,
-            state.g_pipeline_detections,
-            state.g_pipeline_audit_id,
-        }) catch return false;
-        sendResponse(a, pipe, true, body);
-        return false;
-    }
-
-    if (std.mem.eql(u8, cmd, "metrics.snapshot")) {
-        // Metrics bound to real diagnostics state
-        const body = std.fmt.allocPrint(a,
-            \\{{"uptime_sec":{},"rules_loaded":{},"packets_captured":{},"flows_active":{},"incidents_open":{},"etw_enabled":{},"fim_enabled":{},"signatures_matched":{},"anomalies_detected":{},"blocks_issued":{},"federation_messages":{},"errors":{}}}
-        , .{
-            uptime_sec,
-            state.g_rules_loaded,
-            @as(u32, @intCast(diag.metrics.packets_captured.get())),
-            @as(u32, @intCast(diag.metrics.flows_active.get())),
-            state.g_incidents_open,
-            caps.has_etw_realtime,
-            caps.has_fim,
-            state.g_pipeline_detections,
-            @as(u32, @intCast(diag.metrics.anomalies_detected.get())),
-            @as(u32, @intCast(diag.metrics.blocks_issued.get())),
-            @as(u32, @intCast(diag.metrics.federation_messages.get())),
-            @as(u32, @intCast(diag.metrics.errors.get())),
-        }) catch return false;
-        sendResponse(a, pipe, true, body);
-        return false;
-    }
-
-    if (std.mem.eql(u8, cmd, "rules.list")) {
-        const body = std.fmt.allocPrint(a, "{{\"rules_loaded\":{},\"engine\":\"aho_corasick\"}}", .{state.g_rules_loaded}) catch return false;
-        sendResponse(a, pipe, true, body);
-        return false;
-    }
-
-    if (std.mem.eql(u8, cmd, "rules.reload")) {
-        // Actually reload Rules.json into a fresh AC automaton
-        const new_count = rules.reloadRules();
-        const body = std.fmt.allocPrint(a, "{{\"rules_loaded\":{},\"status\":\"reloaded\"}}", .{new_count}) catch return false;
-        sendResponse(a, pipe, true, body);
-        return false;
-    }
-
-    if (std.mem.eql(u8, cmd, "incidents.list")) {
-        // Real incident data from ThreatTracker via pipeline globals
-        const body = std.fmt.allocPrint(a, "{{\"incidents_total\":{},\"incidents_open\":{},\"detections\":{},\"policies_matched\":{},\"correlations\":{}}}", .{
-            state.g_incidents_total,
-            state.g_incidents_open,
-            state.g_pipeline_detections,
-            state.g_pipeline_policies_matched,
-            state.g_pipeline_correlations,
-        }) catch return false;
-        sendResponse(a, pipe, true, body);
-        return false;
-    }
-
-    if (std.mem.eql(u8, cmd, "federation.status")) {
-        // Federation status: standalone mode (multi-node not yet implemented)
-        sendResponse(a, pipe, true, "{\"enabled\":false,\"self_id\":1,\"role\":\"standalone\",\"leader_id\":1,\"node_count\":1,\"heartbeat_ms\":1000}");
-        return false;
-    }
-
-    if (std.mem.eql(u8, cmd, "version")) {
-        // CTRL-001: version command returns component versions from runtime
-        sendResponse(a, pipe, true, "{\"core\":\"5.0.0\",\"nose\":\"2.1.0\",\"shield\":\"0.1.0\",\"pep\":\"1.0.0\"}");
-        return false;
-    }
-
-    if (std.mem.eql(u8, cmd, "health.check")) {
-        // CTRL-002: RUNTIME_CONTRACT.md §4.1 payload. Contract fields (`state`,
-        // `pid`, `uptime_ms`, `last_event_ms`, `counters`, `deps`) carry real
-        // runtime data. `checks[].ok` reflects the live in-process subsystem
-        // flags for every bridge-managed subsystem; npcap/etw/fim are marked
-        // `capability-only` because their live state is not yet instrumented
-        // (tracked as P0-8).
-        const elapsed_ms: u64 = @intCast(@divTrunc(std.time.nanoTimestamp() - start_ns, std.time.ns_per_ms));
-        const bs = bridge_init.status();
-        const pid: u32 = GetCurrentProcessId();
-        const now_ms: i64 = std.time.milliTimestamp();
-        const last_event_ms: i64 = if (state.g_last_event_ms == 0) 0 else now_ms - state.g_last_event_ms;
-        const health_state = runtimeHealthState(state.g_pep_available, bs.cpp_bridge, bs.wfp_ioctl);
-        const body = std.fmt.allocPrint(a,
-            \\{{"component":"core","state":"{s}","pid":{},"uptime_ms":{},"last_event_ms":{},"degraded":{},"deps":[{{"name":"bridge","state":"{s}","required":true}},{{"name":"pep","state":"{s}","required":true}}],"counters":{{"in_events":{},"out_events":{},"errors":{},"dropped":{}}},"checks":[{{"name":"core","ok":true,"detail":"initialized"}},{{"name":"wfp","ok":{},"detail":"{s}"}},{{"name":"shield","ok":{},"detail":"{s}"}},{{"name":"cpp_bridge","ok":{},"detail":"{s}"}},{{"name":"brain","ok":{},"detail":"{s}"}},{{"name":"npcap","ok":{},"detail":"capability-only"}},{{"name":"etw","ok":{},"detail":"capability-only"}},{{"name":"fim","ok":{},"detail":"capability-only"}}]}}
-        , .{
-            health_state,
-            pid,
-            elapsed_ms,
-            last_event_ms,
-            !bridge_init.allActive(),
-            if (bs.cpp_bridge) "RUNNING" else "STOPPED",
-            if (state.g_pep_available) "RUNNING" else "STOPPED",
-            state.g_pipeline_events_processed,
-            diag.metrics.events_emitted.get(),
-            diag.metrics.errors.get(),
-            state.g_queue_drops,
-            bs.wfp_ioctl,    if (bs.wfp_ioctl) "ioctl-connected" else "driver-unavailable",
-            bs.rust_shield,  if (bs.rust_shield) "loaded" else "missing-fail-closed",
-            bs.cpp_bridge,   if (bs.cpp_bridge) "dll-loaded" else "dll-missing",
-            bs.udp_brain,    if (bs.udp_brain) "udp-9999" else "unavailable",
-            caps.has_npcap,
-            caps.has_etw_realtime,
-            caps.has_fim,
-        }) catch return false;
-        sendResponse(a, pipe, true, body);
-        return false;
-    }
-
-    if (std.mem.eql(u8, cmd, "daemon.shutdown")) {
-        state.g_stop_requested.store(true, .release);
-        bridge_init.requestShutdown(); // drain bridge/sensor threads
-        sendResponse(a, pipe, true, null);
-        return true;
-    }
-
-    sendResponse(a, pipe, false, null);
-    return false;
+    state.g_pipeline_audit_id +|= 1;
+    const result = control.handler_registry.dispatch(a, pipe, payload, &ctx, &auth, &control.audit.g_audit);
+    return result.shutdown;
 }
 
 pub fn serveWindowsPipe(caps: *const manifest.Capability, start_ns: i128) !void {
+    // P0.4: Initialize the command handler registry
+    control.handler_registry.initHandlers();
+    diag.info("control plane: {d} command handlers registered", .{control.handler_registry.g_handler_count});
     const w = std.os.windows;
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();

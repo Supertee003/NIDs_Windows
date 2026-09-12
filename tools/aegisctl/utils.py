@@ -158,10 +158,19 @@ def cleanup_stale_pids(subsystems: List[Dict]) -> List[tuple]:
     return cleaned
 
 
-def control_request(command: str, role: str, **kwargs: Any) -> Dict[str, Any]:
+def control_request(command: str, role: str, transport: str = "pipe", **kwargs: Any) -> Dict[str, Any]:
+    """Send a control request to the daemon via the specified transport.
+
+    P1: Transport is explicit — no automatic fallback.
+    The caller must choose pipe or tcp. Default is pipe.
+    """
     import secrets
+    from .client import AegisClient, AegisCtlError
+
     request_id = secrets.token_hex(16)
     nonce = secrets.token_hex(8)
+
+    # Audit log the attempt
     envelope = {
         "command": command,
         "role": role,
@@ -173,7 +182,14 @@ def control_request(command: str, role: str, **kwargs: Any) -> Dict[str, Any]:
     CONTROL_AUDIT_LOG.parent.mkdir(parents=True, exist_ok=True)
     with CONTROL_AUDIT_LOG.open("a", encoding="utf-8") as f:
         f.write(json.dumps(envelope) + "\n")
-    return envelope
+
+    # Actually send to daemon
+    try:
+        client = AegisClient(transport=transport)
+        resp = client.send(command, kwargs)
+        return resp
+    except AegisCtlError as e:
+        return {"ok": False, "error": str(e)}
 
 
 def run_command(cmd: List[str], **kwargs: Any) -> subprocess.CompletedProcess:

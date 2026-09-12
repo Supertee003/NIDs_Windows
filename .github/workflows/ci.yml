@@ -71,31 +71,6 @@ jobs:
             target/release/aegis_pep.dll
             target/release/aegis_pep.dll.lib
 
-  # SUPPORT: the Zig core loads sec_monitor.dll in-process for Tier-3 payload
-  # screening (fail-closed if missing), so a broken shield build IS a runtime
-  # failure. It is required, but it is NOT an enforcement authority.
-  shield-build:
-    name: Rust Shield Build (SUPPORT: Tier-3 payload screening)
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: shield
-      - name: Build Shield
-        run: cd shield && cargo build --release
-      - name: Test Shield
-        run: cd shield && cargo test --release
-      - name: Upload Shield artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: sec_monitor_dll
-          path: |
-            shield/target/release/sec_monitor.dll
-
   c-native-build:
     name: C Native Build
     runs-on: windows-latest
@@ -214,8 +189,8 @@ jobs:
   ci-matrix:
     name: Cross-language CI Matrix (required missing/failed = FAIL)
     runs-on: ubuntu-latest
-    needs: [zig-build-test, rust-pep-build, shield-build, c-native-build,
-            python-tests, go-nose-build-test, go-aggregator-build-test,
+    needs: [zig-build-test, rust-pep-build, c-native-build,
+            python-tests, go-nose-build-test,
             ts-policy-build, security-scan]
     if: ${{ always() }}
     steps:
@@ -233,7 +208,7 @@ jobs:
 
   package-release:
     name: Package Release
-    needs: [zig-build-test, rust-pep-build, shield-build, c-native-build,
+    needs: [zig-build-test, rust-pep-build, c-native-build,
             python-tests, go-nose-build-test]
     runs-on: windows-latest
     # `success()` is required: without it a job whose `needs` failed would

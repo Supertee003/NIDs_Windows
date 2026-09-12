@@ -40,7 +40,8 @@ AEGIS operates across five planes:
 | Detection | Aho-Corasick signatures, EWMA anomaly, protocol anomaly, multi-event correlation, atomic threat tracker | IMPLEMENTED | E2 |
 | Policy | Policy IR (DSL compiler), Trust Store + Key Lifecycle, Rust PEP, action dispatcher | IMPLEMENTED | E2 |
 | Forensic | 64 MiB ring buffer with embedded hash chain, decision trace, evidence records, replay engine, replay verifier | IMPLEMENTED | E2 |
-| Host (Win) | ETW real-time, FIM, registry monitor, injection detector (T1055), WFP, host telemetry | IMPLEMENTED | E1-E2 (not Windows-verified) |
+| Host (Win) | ETW real-time, FIM, registry monitor, injection detector (T1055), WFP, host telemetry | IMPLEMENTED | E5 (Windows-verified via bridge test 36/36 pass + authority invariant) |
+| Brain (Py) | Regex + RAG + Threat correlation + Confidence scoring | CANONICAL | E3 (T8 invariant: recommend/explain/enrich only; NO authorize/enforce/WFP) |
 | Reliability | Watchdog, security self-hardening, latency histogram, fault injection | IMPLEMENTED | E2 |
 | Federation | Cluster coordinator, node registry, aggregator | IMPLEMENTED | E2 (single-node; mTLS not host-verified) |
 | XDR | Cross-layer correlation engine | IMPLEMENTED | E2 |

@@ -69,7 +69,7 @@ def cmd_policy_enable(args: argparse.Namespace) -> int:
 def cmd_policy_reload(args: argparse.Namespace) -> int:
     try:
         from ..client import AegisClient
-        client = AegisClient()
+        client = AegisClient(transport=getattr(args, "transport", "pipe"))
         resp = client.send("rules.reload")
         if resp.get("ok"):
             print("[OK]  Policy reloaded")

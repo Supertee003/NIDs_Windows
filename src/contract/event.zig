@@ -9,7 +9,7 @@ const builtin = @import("builtin");
 
 pub const EVENT_MAGIC: u32 = 0xAE615011;
 pub const EVENT_VERSION: u16 = 5;
-pub const EVENT_SIZE: usize = 80;
+pub const EVENT_SIZE: usize = 96;
 
 pub const EventKind = enum(u8) {
     packet_captured = 1,
@@ -105,6 +105,8 @@ pub const IpcEvent = extern struct {
     event_id: u64,
     trace_id: u64,
     flow_id: u64,
+    incident_id: u64,
+    detection_id: u64,
     src_ip: u32,
     dst_ip: u32,
     src_port: u16,
@@ -118,7 +120,7 @@ pub const IpcEvent = extern struct {
 
     comptime {
         if (@sizeOf(IpcEvent) != EVENT_SIZE) {
-            @compileError("IpcEvent must be exactly 76 bytes");
+            @compileError("IpcEvent must be exactly 80 bytes");
         }
     }
 
@@ -135,6 +137,8 @@ pub const IpcEvent = extern struct {
             .event_id = 0,
             .trace_id = 0,
             .flow_id = 0,
+            .incident_id = 0,
+            .detection_id = 0,
             .src_ip = 0,
             .dst_ip = 0,
             .src_port = 0,

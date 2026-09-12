@@ -902,16 +902,20 @@ fn inspect_packet_oversized(data: []const u8, ctx: PacketContext) !bool {
 /// Side effects: pushes match/forward events to C++ bridge via IPC, sends
 /// alerts to Python brain via UDP, increments global match/forward counters.
 pub fn inspect_packet(data: []const u8, ctx: PacketContext) !bool {
-    // Rust Memory Safety Shield (via bridge_init)
-    // BP196: Log payload safety validation failures for forensics
-    if (!bridge_init.validatePayloadSafety(data.ptr, data.len)) {
-        // BP217: Skip inspection but don't terminate connection (return true = continue session)
-        std.log.warn("[ANALYZE] Payload safety check failed, skipping inspection ({}B from {s}:{d})", .{
-            data.len,
-            if (ctx.is_pipe) "PIPE" else "TCP",
-            ctx.source_port,
-        });
-        return true;
+    // P0.2: Tier-3 state check (replaces removed validatePayloadSafety stub).
+    // When Tier-3 is not READY, the system is in detection-only mode.
+    // Payloads are still inspected for detection/alerting, but enforcement
+    // actions (block/quarantine/rate_limit) are not executed by the PEP.
+    //
+    // BP196: Log Tier-3 state for forensics.
+    const tier3 = @import("../policy/tier3_state.zig");
+    if (!tier3.g_tier3.canEnforce()) {
+        // Detection-only mode: continue inspection, but PEP will return .allow
+        // for any enforcement actions. This is intentional — we detect and alert
+        // but do not execute enforcement without Tier-3 authorization.
+        //
+        // Do NOT skip inspection entirely — we still need detection data for
+        // the forensic record and alerting pipeline.
     }
 
     // BP21: Payload size sanity check

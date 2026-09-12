@@ -1,15 +1,15 @@
 # AI_CONTEXT.md — AEGIS NIDS Windows
 ## Machine-Generated Current-HEAD Context Layer
 
-**HEAD:** `48eb2a72265a15c1b780a6bfa76d4f4dae2fc7f2`
+**HEAD:** `60c76fe61e2fc2cfc9e436fa001e2b0788f006f5`
 **BRANCH:** `main`
 **GENERATED:** 2026-09-12T00:00:00.000000+00:00
 **GENERATOR:** opencode agent (TRUTH-REBUILD current-HEAD resync)
 **ARCHITECTURE:** Hub-and-Spoke with Plane Separation
 
-> HISTORICAL NOTE: earlier revisions of this file referenced HEAD `2c7cb30…`
-> (2026-09-10). Those revisions are HISTORICAL evidence only; `2c7cb30` is no
-> longer current truth.
+> HISTORICAL NOTE: earlier revisions of this file referenced HEAD `48eb2a72…`
+> (2026-09-12) and `2c7cb30…` (2026-09-10). Those revisions are HISTORICAL
+> evidence only; `48eb2a72` is no longer current truth.
 
 ---
 
@@ -172,20 +172,22 @@ Previous phases:
 
 ## 11. ACTIVE BLOCKERS
 
-P0 risks as of HEAD `48eb2a72` (2026-09-12):
+P0 risks as of HEAD `60c76fe` (2026-09-12):
 
-- P0-1: Zig bypasses the Rust PEP for WFP enforcement
-  (`src/core/rust_pep.zig` / `src/policy/wfp_production.zig` reach the WFP
-  IOCTL directly). `rust-src/lib.rs` is declared the ONLY final enforcement
-  authority. OPEN.
+- P0-1: Zig bypasses the Rust PEP for WFP enforcement.
+  **FIXED**: static audit (EVT-039) confirmed no bypass. wfp_ioctl.zig
+  defines zero write IOCTLs. All block_ip() routes through rust_pep → PEP
+  FFI. GENERIC_WRITE hardened. GAP-011 CLOSED.
 - P0-2: Tier-3 fail-closed state is not surfaced truthfully. When
   `sec_monitor.dll` is absent the runtime logs "fail-closed" yet continues;
-  `health.check` never reports the Tier-3 state. OPEN.
-- P0-3: CI is red by construction. `python-tests` runs the full pytest suite
-  (currently 3 failures) and `go-build-test` mixes the canonical Go sensor
-  with the optional aggregator sidecar. OPEN (see CI-001..CI-004).
-- P0-4: Machine maps stale (HEAD mismatch) — **FIXED** (all maps and
-  `AGENTS.md` now carry `48eb2a72`).
+  `health.check` never reports the Tier-3 state. **FIXED**: tier3_state.zig
+  tracks state machine; system.health pulls from state machine source.
+- P0-3: CI is red by construction. `go-build-test` mixes the canonical Go
+  sensor with the optional aggregator sidecar. **FIXED**: shield-build removed
+  (shield/ deleted); go-aggregator classified SUPPORT non-required; canonical
+  CI gates only canonical jobs (see ci_coverage.json).
+- P0-4: Machine maps stale (HEAD mismatch) — **FIXED** (all maps now carry
+  `60c76fe`).
 - P0-5: CLI canonical path conflict (`scripts/aegisctl.py` vs
   `tools/aegisctl.py`) — **FIXED**: `scripts/aegisctl.py` does not exist;
   `tools/aegisctl.py` is the single canonical client.

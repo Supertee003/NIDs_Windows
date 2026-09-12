@@ -33,8 +33,8 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
                 try:
                     data = json.loads(RULES_FILE.read_text(encoding="utf-8"))
                     rules = data.get("nids_rules", data) if isinstance(data, dict) else data
-                except Exception:
-                    pass
+                except Exception as e:
+                    rules = []
 
             alerts = 0
             blocks = 0
@@ -43,8 +43,9 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
                     lines = ANOMALOUS_LOG.read_text(encoding="utf-8").splitlines()
                     alerts = len(lines)
                     blocks = sum(1 for l in lines if '"policy": "Block"' in l or '"policy": "Drop"' in l)
-                except Exception:
-                    pass
+                except Exception as e:
+                    alerts = 0
+                    blocks = 0
 
             print(f"{'=' * 60}")
             print(f"  AEGIS NIDS Dashboard")

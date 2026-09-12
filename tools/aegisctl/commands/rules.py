@@ -56,18 +56,22 @@ def cmd_rules_validate(args: argparse.Namespace) -> int:
 
 
 def cmd_rules_reload(args: argparse.Namespace) -> int:
+    from .. import EXIT_OK, EXIT_FAILED, EXIT_RUNTIME_UNAVAILABLE
     try:
         from ..client import AegisClient
-        client = AegisClient()
+        client = AegisClient(transport=getattr(args, "transport", "pipe"))
         resp = client.send("rules.reload")
         if resp.get("ok"):
-            print("[OK]  Rules reloaded")
-            return 0
-    except Exception:
-        pass
+            print("[OK]  Rules reloaded via daemon")
+            return EXIT_OK
+        else:
+            print("[!]  Daemon rejected reload command", file=sys.stderr)
+            return EXIT_FAILED
+    except Exception as e:
+        print(f"[!]  Daemon not reachable: {e} (falling back to disk)", file=sys.stderr)
     rules = load_rules()
-    print(f"[OK]  Reloaded {len(rules)} rules")
-    return 0
+    print(f"[OK]  Reloaded {len(rules)} rules from disk")
+    return EXIT_OK
 
 
 def cmd_rules_toggle(args: argparse.Namespace) -> int:

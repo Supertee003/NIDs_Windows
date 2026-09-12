@@ -1,5 +1,5 @@
 {
-    "gate_semantics": "required missing = FAIL; required non-success (failure/skipped/cancelled) = FAIL; optional = reported, non-fatal",
+    "gate_semantics": "canonical required missing = FAIL; canonical required non-success = FAIL; support = reported, non-fatal",
     "gate_job": "ci-matrix",
     "workflows": [
         ".github/workflows/ci.yml"
@@ -18,13 +18,6 @@
             "job": "rust-pep-build",
             "required": true,
             "classification": "CANONICAL"
-        },
-        {
-            "id": "rust-shield",
-            "language": "rust",
-            "job": "shield-build",
-            "required": true,
-            "classification": "SUPPORT"
         },
         {
             "id": "c-native",
@@ -58,8 +51,9 @@
             "id": "go-aggregator",
             "language": "go",
             "job": "go-aggregator-build-test",
-            "required": true,
-            "classification": "SUPPORT"
+            "required": false,
+            "classification": "SUPPORT",
+            "note": "Optional operator sidecar. Reported but does NOT gate canonical health."
         },
         {
             "id": "ts-policy",

@@ -7,30 +7,28 @@ import platform
 import sys
 from typing import Dict
 
+from .. import (
+    EXIT_OK, EXIT_FAILED, EXIT_RUNTIME_UNAVAILABLE,
+    structured_error, structured_ok,
+)
 from ..client import AegisClient, AegisCtlError
 from ..config import REPO_ROOT, LOGS_DIR
 
 
 def cmd_status(args: argparse.Namespace) -> int:
     try:
-        client = AegisClient()
+        client = AegisClient(transport=getattr(args, "transport", "pipe"))
         resp = client.send("status")
     except AegisCtlError as e:
-        print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
-        print("Version:     (daemon not reachable)")
-        print("State:       (daemon not reachable)")
-        print("Uptime:      -")
-        print("Packets:     -")
-        print("Flows:       -")
-        print("Incidents:   -")
-        print("Rules:       -")
-        print("Processed:   -")
-        print("Detections:  -")
-        print("Degraded:    -")
-        return 0
+        err = structured_error(EXIT_RUNTIME_UNAVAILABLE, "RUNTIME_UNAVAILABLE", str(e), "UNKNOWN")
+        if getattr(args, "json", False):
+            print(json.dumps(err, indent=2))
+        else:
+            print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
+        return EXIT_RUNTIME_UNAVAILABLE
     data = resp.get("data", {})
     if getattr(args, "json", False):
-        print(json.dumps(data, indent=2))
+        print(json.dumps(structured_ok(data, data.get("state", "OK")), indent=2))
     else:
         print(f"  Version:     {data.get('version', '?')}")
         print(f"  State:       {data.get('state', '?')}")
@@ -43,19 +41,23 @@ def cmd_status(args: argparse.Namespace) -> int:
         print(f"  Detections:  {data.get('pipeline_detections', 0)}")
         degraded = data.get("degraded", False)
         print(f"  Degraded:    {'YES' if degraded else 'no'}")
-    return 0
+    return EXIT_OK
 
 
 def cmd_health(args: argparse.Namespace) -> int:
     try:
-        client = AegisClient()
+        client = AegisClient(transport=getattr(args, "transport", "pipe"))
         resp = client.send("health.check")
     except AegisCtlError as e:
-        print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
-        return 2
+        err = structured_error(EXIT_RUNTIME_UNAVAILABLE, "RUNTIME_UNAVAILABLE", str(e), "UNKNOWN")
+        if getattr(args, "json", False):
+            print(json.dumps(err, indent=2))
+        else:
+            print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
+        return EXIT_RUNTIME_UNAVAILABLE
     data = resp.get("data", {})
     if getattr(args, "json", False):
-        print(json.dumps(data, indent=2))
+        print(json.dumps(structured_ok(data, data.get("state", "OK")), indent=2))
     else:
         print(f"  Component:   {data.get('component', '?')}")
         print(f"  State:       {data.get('state', '?')}")
@@ -68,34 +70,34 @@ def cmd_health(args: argparse.Namespace) -> int:
             for c in checks:
                 status = "OK" if c.get("ok") else "FAIL"
                 print(f"    {c.get('name', '?'):<12} {status:<6} {c.get('detail', '')}")
-    return 0
+    return EXIT_OK
 
 
 def cmd_version(args: argparse.Namespace) -> int:
     try:
-        client = AegisClient()
+        client = AegisClient(transport=getattr(args, "transport", "pipe"))
         resp = client.send("version")
-    except AegisCtlError:
-        print("Component         Version")
-        print("-" * 40)
-        component = getattr(args, "component", None)
-        if component:
-            print(f"{component:<18}(daemon not reachable)")
+    except AegisCtlError as e:
+        err = structured_error(EXIT_RUNTIME_UNAVAILABLE, "RUNTIME_UNAVAILABLE", str(e), "UNKNOWN")
+        if getattr(args, "json", False):
+            print(json.dumps(err, indent=2))
         else:
-            for comp in ["core", "nose", "shield", "pep", "brain", "bridge"]:
-                print(f"{comp:<18}(daemon not reachable)")
-        return 0
+            print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
+        return EXIT_RUNTIME_UNAVAILABLE
     data = resp.get("data", {})
     component = getattr(args, "component", None)
-    print("Component         Version")
-    print("-" * 40)
-    if component:
-        v = data.get(component, "unknown")
-        print(f"{component:<18}v{v}")
+    if getattr(args, "json", False):
+        print(json.dumps(structured_ok(data), indent=2))
     else:
-        for comp, ver in data.items():
-            print(f"{comp:<18}v{ver}")
-    return 0
+        print("Component         Version")
+        print("-" * 40)
+        if component:
+            v = data.get(component, "unknown")
+            print(f"{component:<18}v{v}")
+        else:
+            for comp, ver in data.items():
+                print(f"{comp:<18}v{ver}")
+    return EXIT_OK
 
 
 def cmd_diagnose(args: argparse.Namespace) -> int:
@@ -109,8 +111,9 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
     print(f"  Platform: {platform.platform()}")
     print(f"  Repo root: {REPO_ROOT}")
     print()
+    daemon_ok = True
     try:
-        client = AegisClient()
+        client = AegisClient(transport=getattr(args, "transport", "pipe"))
         status_resp = client.send("status")
         status_data = status_resp.get("data", {})
         print("RUNTIME STATUS")
@@ -123,6 +126,7 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
         print(f"  Packets:     {status_data.get('packets_captured', 0)}")
         print(f"  Incidents:   {status_data.get('incidents_open', 0)}")
     except AegisCtlError:
+        daemon_ok = False
         print("RUNTIME STATUS")
         print("-" * 60)
         print("  (daemon not reachable)")
@@ -152,7 +156,7 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
             print(f"  {name:<30} {'(missing)':>10}")
     print()
     print("Diagnostic report complete")
-    return 0
+    return EXIT_OK if daemon_ok else EXIT_RUNTIME_UNAVAILABLE
 
 
 def register_commands() -> None:

@@ -77,11 +77,15 @@ pub const PepEnforcer = struct {
 
     pub fn enforce(self: *PepEnforcer, ev: *const event.IpcEvent, p: policy.Policy, caller_pid: u32, caller_caps: u32, request_id: u64) PepDecision {
         if (!self.available) {
-            // PATCH-15: Detection-only mode when PEP unavailable.
+            // P0.2: DETECTION-ONLY mode when PEP unavailable.
             // System observes and detects but does NOT enforce.
-            // Policy action is honored for logging/alerting only.
-            // This is FAIL-SAFE: no enforcement without PEP validation.
-            return mapAction(p.action);
+            // ALL actions map to .allow — no privileged action executed.
+            // This is FAIL-CLOSED for enforcement: no PEP = no privileged action.
+            //
+            // Rationale: A block/quarantine policy without PEP validation could
+            // be exploited (e.g., attacker triggers false positive → blocks
+            // legitimate traffic). Without PEP authorization, we must NOT execute.
+            return .allow;
         }
         var req = PepRequest{
             .decision_kind = @intFromEnum(ev.kind),
@@ -128,7 +132,7 @@ fn mapAction(a: policy.Action) PepDecision {
 // ============================================================================
 // Tests
 // ============================================================================
-test "PepEnforcer fail-open when unavailable" {
+test "PepEnforcer detection-only when unavailable" {
     var pep = PepEnforcer{ .available = false };
     var ev = event.IpcEvent.init(.dns_query);
     const p = policy.Policy{
@@ -139,8 +143,9 @@ test "PepEnforcer fail-open when unavailable" {
         .severity = .alert,
         .ttl_sec = 0,
     };
+    // P0.2: When PEP unavailable, ALL actions map to .allow (detection-only mode)
     const d = pep.enforce(&ev, p, 0, 0, 0);
-    try std.testing.expectEqual(PepDecision.block, d);
+    try std.testing.expectEqual(PepDecision.allow, d);
 }
 
 test "mapAction correctness" {

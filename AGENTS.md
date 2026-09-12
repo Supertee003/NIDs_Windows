@@ -266,6 +266,9 @@ Test-Path FLOW_MAP.json   # True
 Test-Path AUTHORITY_MAP.json   # True
 Test-Path CONTRACT_MAP.json   # True
 Test-Path EVIDENCE_INDEX.json   # True
+
+# Truth artifacts carry current HEAD (no stale SHA)
+python tools/truth.py verify   # TRUTH_VALID, exit 0
 ```
 
 ---

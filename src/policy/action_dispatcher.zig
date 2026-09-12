@@ -1,11 +1,14 @@
-// I19 - Action Dispatcher (WFP/ETW/Log routing)
-// AEGIS NIDS v5.0+ â€” Takes a PEP decision and executes the corresponding action.
+// I19 - Action Dispatcher (Log/Federation routing)
+// AEGIS NIDS v5.0+ — Takes a PEP decision and executes the corresponding action.
+//
+// SECURITY (PEP-001): ActionDispatcher NEVER touches WFP directly.
+// All privileged enforcement goes through rust_pep.zig -> pep_bindings -> Rust PEP.
 //
 // Routing:
-//   - block / quarantine â†’ WFP callout (filter add)
-//   - rate_limit         â†’ WFP with weighted filter
-//   - escalate           â†’ federation aggregator
-//   - log / allow        â†’ forensic pipeline + diagnostics log
+//   - block / quarantine -> forensic pipeline + federation (WFP via Rust PEP only)
+//   - rate_limit         -> forensic pipeline + federation
+//   - escalate           -> federation aggregator
+//   - log / allow        -> forensic pipeline + diagnostics log
 
 const std = @import("std");
 const event = @import("../contract/event.zig");
@@ -14,53 +17,8 @@ const pep = @import("pep_bindings.zig");
 const policy = @import("policy_ir.zig");
 
 // ============================================================================
-// Action target backends (stubs â€” real impl in windows/ subdirectory)
+// FederationBackend — escalation to peer nodes
 // ============================================================================
-pub const WfpBackend = struct {
-    var add_filter_fn: ?*const fn (src_ip: u32, dst_ip: u32, src_port: u16, dst_port: u16, proto: u8, weight: u8) c_int = null;
-    var remove_filter_fn: ?*const fn (filter_id: u64) c_int = null;
-    var active_filters: u32 = 0;
-
-    pub fn install(add: *const fn (src_ip: u32, dst_ip: u32, src_port: u16, dst_port: u16, proto: u8, weight: u8) c_int, remove_fn: *const fn (filter_id: u64) c_int) void {
-        add_filter_fn = add;
-        remove_filter_fn = remove_fn;
-    }
-
-    pub fn block(src_ip: u32, dst_ip: u32, src_port: u16, dst_port: u16, proto: u8) ?u64 {
-        if (add_filter_fn) |f| {
-            const rc = f(src_ip, dst_ip, src_port, dst_port, proto, 0);
-            if (rc >= 0) {
-                active_filters += 1;
-                diag.metrics.blocks_issued.inc();
-                return @intCast(rc);
-            }
-        }
-        return null;
-    }
-
-    pub fn rateLimit(src_ip: u32, dst_ip: u32, src_port: u16, dst_port: u16, proto: u8, weight: u8) ?u64 {
-        if (add_filter_fn) |f| {
-            const rc = f(src_ip, dst_ip, src_port, dst_port, proto, weight);
-            if (rc >= 0) {
-                active_filters += 1;
-                return @intCast(rc);
-            }
-        }
-        return null;
-    }
-
-    pub fn remove(filter_id: u64) bool {
-        if (remove_filter_fn) |f| {
-            const rc = f(filter_id);
-            if (rc == 0) {
-                if (active_filters > 0) active_filters -= 1;
-                return true;
-            }
-        }
-        return false;
-    }
-};
-
 pub const FederationBackend = struct {
     var send_fn: ?*const fn (event_ptr: *const event.IpcEvent) c_int = null;
 
@@ -76,6 +34,9 @@ pub const FederationBackend = struct {
     }
 };
 
+// ============================================================================
+// ForensicBackend — forensic event persistence
+// ============================================================================
 pub const ForensicBackend = struct {
     var write_fn_cached: ?*const fn (event_ptr: *const event.IpcEvent) c_int = null;
 
@@ -92,22 +53,14 @@ pub const ForensicBackend = struct {
 };
 
 // ============================================================================
-// ActionDispatcher â€” top-level
+// ActionDispatcher — top-level (PEP-001: no WFP, no WfpBackend)
 // ============================================================================
 pub const ActionDispatcher = struct {
-    // PATCH-12: Removed internal PepEnforcer. Pipeline calls PEP once,
-    // passes validated decision here. No second PEP evaluation.
+    pub fn init() void {}
 
-    pub fn init() void {
-        // No-op: PEP is managed by pipeline in main.zig
-    }
-
-    pub fn deinit() void {
-        // No-op: PEP is managed by pipeline in main.zig
-    }
+    pub fn deinit() void {}
 
     pub fn dispatch(ev: *const event.IpcEvent, p: policy.Policy, decision: pep.PepDecision) void {
-        // PATCH-12: Use validated PEP decision directly -- no re-evaluation
         switch (decision) {
             .allow, .drop => {
                 diag.debug("action=allow/drop event={s} rule={d} policy_id={d}", .{ @tagName(ev.kind), ev.rule_id, p.id });
@@ -115,17 +68,17 @@ pub const ActionDispatcher = struct {
             },
             .block => {
                 diag.alert("action=block src={x} dst={x} proto={d} policy_id={d}", .{ ev.src_ip, ev.dst_ip, ev.protocol, p.id });
-                diag.info("PEP validated block; enforcement routed through shield/ (real WFP pending)", .{});
+                diag.info("PEP validated block; WFP enforcement executed by Rust PEP", .{});
                 _ = ForensicBackend.write(ev);
             },
             .rate_limit => {
                 diag.warn("action=rate_limit src={x} policy_id={d}", .{ ev.src_ip, p.id });
-                diag.info("PEP validated rate_limit; enforcement routed through shield/ (real WFP pending)", .{});
+                diag.info("PEP validated rate_limit; WFP enforcement executed by Rust PEP", .{});
                 _ = ForensicBackend.write(ev);
             },
             .quarantine => {
                 diag.critical("action=quarantine src={x} policy_id={d}", .{ ev.src_ip, p.id });
-                diag.info("PEP validated quarantine; enforcement routed through shield/", .{});
+                diag.info("PEP validated quarantine; federation notified", .{});
                 _ = FederationBackend.escalate(ev);
                 _ = ForensicBackend.write(ev);
             },
@@ -137,6 +90,7 @@ pub const ActionDispatcher = struct {
         }
     }
 };
+
 test "ActionDispatcher dispatch log path" {
     var ev = event.IpcEvent.init(.dns_query);
     const p = policy.Policy{
@@ -148,10 +102,9 @@ test "ActionDispatcher dispatch log path" {
         .ttl_sec = 0,
     };
     ActionDispatcher.dispatch(&ev, p, .allow);
-    // No assertion â€” should not panic
 }
 
-test "ActionDispatcher dispatch block path (no WFP installed)" {
+test "ActionDispatcher dispatch block path" {
     var ev = event.IpcEvent.init(.dns_query);
     const p = policy.Policy{
         .id = 2,
@@ -162,8 +115,6 @@ test "ActionDispatcher dispatch block path (no WFP installed)" {
         .ttl_sec = 0,
     };
     ActionDispatcher.dispatch(&ev, p, .block);
-    // Without WFP installed, block is silently dropped
-    try std.testing.expectEqual(@as(u32, 0), WfpBackend.active_filters);
 }
 
 test "ActionDispatcher dispatch alert path" {
@@ -177,7 +128,6 @@ test "ActionDispatcher dispatch alert path" {
         .ttl_sec = 0,
     };
     ActionDispatcher.dispatch(&ev, p, .allow);
-    // Alert with allow decision should not panic
 }
 
 test "ActionDispatcher dispatch quarantine path" {
@@ -191,7 +141,6 @@ test "ActionDispatcher dispatch quarantine path" {
         .ttl_sec = 0,
     };
     ActionDispatcher.dispatch(&ev, p, .quarantine);
-    // Quarantine without WFP is silently dropped
 }
 
 test "ActionDispatcher dispatch escalate path" {
@@ -205,7 +154,6 @@ test "ActionDispatcher dispatch escalate path" {
         .ttl_sec = 0,
     };
     ActionDispatcher.dispatch(&ev, p, .escalate);
-    // Escalate should not panic
 }
 
 test "ActionDispatcher multiple dispatches do not interfere" {
@@ -229,5 +177,4 @@ test "ActionDispatcher multiple dispatches do not interfere" {
     };
     ActionDispatcher.dispatch(&ev1, p1, .allow);
     ActionDispatcher.dispatch(&ev2, p2, .allow);
-    // Both should complete without panic
 }

@@ -10,7 +10,7 @@ from ..client import AegisClient, AegisCtlError
 
 def cmd_incidents(args: argparse.Namespace) -> int:
     try:
-        client = AegisClient()
+        client = AegisClient(transport=getattr(args, "transport", "pipe"))
         resp = client.send("incidents.list", {"severity_min": args.severity})
     except AegisCtlError as e:
         print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
@@ -26,7 +26,7 @@ def cmd_incidents(args: argparse.Namespace) -> int:
 
 def cmd_federation(args: argparse.Namespace) -> int:
     try:
-        client = AegisClient()
+        client = AegisClient(transport=getattr(args, "transport", "pipe"))
         resp = client.send("federation.status")
     except AegisCtlError as e:
         print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
@@ -38,7 +38,7 @@ def cmd_federation(args: argparse.Namespace) -> int:
 
 def cmd_metrics(args: argparse.Namespace) -> int:
     try:
-        client = AegisClient()
+        client = AegisClient(transport=getattr(args, "transport", "pipe"))
         resp = client.send("metrics.snapshot")
     except AegisCtlError as e:
         print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)

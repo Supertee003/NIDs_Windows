@@ -12,10 +12,9 @@
 //!                                event_id, blocked_ip, message }
 //!   RustPep: execute(event, decision) -> EnforcementResult
 //!
-//! NOTE: This is the Zig-side simulation of the actual Rust PEP. The real
-//! enforcement is done by shield/rust/src/lib.rs. This module exists so
-//! the dispatcher pipeline can complete on the Zig side without crossing
-//! the FFI boundary in tests.
+//! SECURITY (PEP-001): This module is the ONLY Zig entry point for privileged
+//! enforcement. It delegates to Rust PEP via pep_bindings for authorization
+//! and execution. Direct WFP access from Zig is prohibited.
 
 const std = @import("std");
 const canonical = @import("../contract/canonical_event.zig");
