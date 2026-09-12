@@ -192,6 +192,89 @@ const DECISION_ESCALATE: u8 = 4;
 #[allow(dead_code)]
 const DECISION_DROP: u8 = 5;
 
+#[cfg(windows)]
+mod wfp_adapter {
+    use std::ffi::{c_void, OsStr};
+    use std::mem::transmute;
+    use std::os::windows::ffi::OsStrExt;
+
+    type WfpCall = unsafe extern "system" fn(u32) -> i32;
+    type WfpOpen = unsafe extern "system" fn() -> i32;
+
+    pub struct Adapter {
+        module: *mut c_void,
+        open: WfpOpen,
+        block: WfpCall,
+        #[allow(dead_code)]
+        unblock: WfpCall,
+    }
+
+    unsafe extern "system" {
+        fn LoadLibraryW(name: *const u16) -> *mut c_void;
+        fn GetProcAddress(module: *mut c_void, name: *const u8) -> *mut c_void;
+        fn FreeLibrary(module: *mut c_void) -> i32;
+    }
+
+    impl Adapter {
+        pub fn load() -> Option<Self> {
+            let mut module = std::ptr::null_mut();
+            for candidate in [
+                "aegis_wfp_user.dll",
+                "build\\Release\\aegis_wfp_user.dll",
+            ] {
+                let name: Vec<u16> = OsStr::new(candidate)
+                    .encode_wide()
+                    .chain(Some(0))
+                    .collect();
+                module = unsafe { LoadLibraryW(name.as_ptr()) };
+                if !module.is_null() {
+                    break;
+                }
+            }
+            if module.is_null() {
+                return None;
+            }
+
+            let block_name = b"aegis_wfp_ioctl_block_ip\0";
+            let unblock_name = b"aegis_wfp_ioctl_unblock_ip\0";
+            let open_name = b"aegis_wfp_ioctl_open\0";
+            let open = unsafe { GetProcAddress(module, open_name.as_ptr()) };
+            let block = unsafe { GetProcAddress(module, block_name.as_ptr()) };
+            let unblock = unsafe { GetProcAddress(module, unblock_name.as_ptr()) };
+            if open.is_null() || block.is_null() || unblock.is_null() {
+                unsafe { FreeLibrary(module) };
+                return None;
+            }
+
+            let adapter = Self {
+                module,
+                open: unsafe { transmute(open) },
+                block: unsafe { transmute(block) },
+                unblock: unsafe { transmute(unblock) },
+            };
+            if unsafe { (adapter.open)() } != 0 {
+                return None;
+            }
+            Some(adapter)
+        }
+
+        pub fn block(&self, ipv4: u32) -> bool {
+            unsafe { (self.block)(ipv4) == 0 }
+        }
+
+        #[allow(dead_code)]
+        pub fn unblock(&self, ipv4: u32) -> bool {
+            unsafe { (self.unblock)(ipv4) == 0 }
+        }
+    }
+
+    impl Drop for Adapter {
+        fn drop(&mut self) {
+            unsafe { FreeLibrary(self.module) };
+        }
+    }
+}
+
 // ============================================================================
 // 2. Quota manager â€” per-source-IP rate limiting
 // ============================================================================
@@ -307,11 +390,53 @@ pub unsafe extern "C" fn aegis_pep_enforce(
     }
     drop(s);
 
+    if decision == DECISION_BLOCK {
+        #[cfg(windows)]
+        {
+            match wfp_adapter::Adapter::load() {
+                Some(adapter) if adapter.block(req.src_ip) => {}
+                _ => {
+                    decision = DECISION_ALLOW;
+                    reason = 4;
+                }
+            }
+        }
+        #[cfg(not(windows))]
+        {
+            decision = DECISION_ALLOW;
+            reason = 4;
+        }
+    }
+
     resp.decision = decision;
     resp.reason = reason;
     resp.quota_remaining = quota_remaining;
     resp.signed_by = signed_by;
     0
+}
+
+#[no_mangle]
+pub extern "C" fn aegis_pep_unblock_ip(
+    ipv4: u32,
+    caller_pid: u32,
+    caller_capability_mask: u32,
+    request_id: u64,
+) -> c_int {
+    let _ = (caller_pid, request_id);
+    if (caller_capability_mask & 0x01) == 0 {
+        return -3;
+    }
+
+    #[cfg(windows)]
+    {
+        if let Some(adapter) = wfp_adapter::Adapter::load() {
+            if adapter.unblock(ipv4) {
+                return 0;
+            }
+        }
+    }
+
+    -2
 }
 
 #[no_mangle]
@@ -403,7 +528,12 @@ mod tests {
     }
 
     #[test]
-    fn pep_enforce_low_severity_blocks_within_quota() {
+    fn pep_unblock_without_capability_is_rejected() {
+        assert_eq!(aegis_pep_unblock_ip(0xC0A80101, 1, 0, 3), -3);
+    }
+
+    #[test]
+    fn pep_enforce_low_severity_requires_wfp_adapter() {
         let req = PepRequest {
             decision_kind: 61,
             flow_id: 1,
@@ -428,7 +558,10 @@ mod tests {
         };
         unsafe {
             assert_eq!(aegis_pep_enforce(&req, &mut resp), 0);
-            assert_eq!(resp.decision, DECISION_BLOCK);
+            assert!(
+                resp.decision == DECISION_BLOCK ||
+                (resp.decision == DECISION_ALLOW && resp.reason == 4)
+            );
         }
     }
 

@@ -29,7 +29,8 @@ SIZE_T g_RingReadOffset = 0;
 // WFP engine handle
 HANDLE g_WfpEngineHandle = NULL;
 UINT32 g_CalloutId = 0;
-UINT32 g_FilterId = 0;
+UINT64 g_FilterId = 0;
+UINT32 g_BlockedIp = 0;
 
 // ====== DriverEntry ======
 extern NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
@@ -143,6 +144,9 @@ NTSTATUS AegisWfpDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
         break;
     case IOCTL_AEGIS_BLOCK_FLOW:
         status = AegisWfpBlockFlow(Irp);
+        break;
+    case IOCTL_AEGIS_UNBLOCK_FLOW:
+        status = AegisWfpUnblockFlow(Irp);
         break;
     case IOCTL_AEGIS_GET_STATS:
         status = AegisWfpGetStats(Irp);
@@ -269,8 +273,9 @@ NTSTATUS AegisWfpBlockFlow(PIRP Irp) {
         (ipToBlock >> 24) & 0xFF, (ipToBlock >> 16) & 0xFF,
         (ipToBlock >> 8) & 0xFF, ipToBlock & 0xFF));
 
-    // Store filter ID for later removal (unblock)
-    // TODO: Store in a global list for unblock operations
+    // The current driver contract supports one active control filter.
+    g_FilterId = filterId;
+    g_BlockedIp = ipToBlock;
 
     FwpmEngineClose0(engineHandle);
     return STATUS_SUCCESS;
@@ -357,13 +362,19 @@ NTSTATUS AegisWfpUnblockFlow(PIRP Irp) {
     PIO_STACK_LOCATION irpStack = IoGetCurrentIrpStackLocation(Irp);
     ULONG inputLen = irpStack->Parameters.DeviceIoControl.InputBufferLength;
 
-    if (inputLen < sizeof(UINT64)) {
+    if (inputLen < sizeof(UINT32)) {
         KdPrint(("AEGIS WFP: UnblockFlow - input too small (%lu)\n", inputLen));
         return STATUS_BUFFER_TOO_SMALL;
     }
 
-    PUINT64 unblockFilterId = (PUINT64)Irp->AssociatedIrp.SystemBuffer;
-    UINT64 filterId = *unblockFilterId;
+    PUINT32 unblockIp = (PUINT32)Irp->AssociatedIrp.SystemBuffer;
+    UINT32 ipToUnblock = *unblockIp;
+    UINT64 filterId = g_FilterId;
+
+    if (filterId == 0 || ipToUnblock != g_BlockedIp) {
+        KdPrint(("AEGIS WFP: UnblockFlow - IP is not the active AEGIS filter\n"));
+        return STATUS_NOT_FOUND;
+    }
 
     KdPrint(("AEGIS WFP: UnblockFlow - removing filter ID %llu\n", filterId));
 
@@ -397,6 +408,9 @@ NTSTATUS AegisWfpUnblockFlow(PIRP Irp) {
     }
 
     KdPrint(("AEGIS WFP: UnblockFlow removed filter ID %llu\n", filterId));
+
+    g_FilterId = 0;
+    g_BlockedIp = 0;
 
     FwpmEngineClose0(engineHandle);
     return STATUS_SUCCESS;

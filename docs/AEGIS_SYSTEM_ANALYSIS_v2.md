@@ -211,7 +211,7 @@ RECOVERY:   Queue full → drop event (backpressure)
 ## D.2 FLOW-ID: CONTROL-STATUS
 
 ```
-START:      aegisctl sends JSON command
+START:      aegisctl -> named pipe (JSON command)
 INPUT:      {"command":"status"}
 PROCESSING: parse JSON → lookup metrics → format response
 STATE:      Read-only (metrics are atomic counters)
@@ -225,7 +225,7 @@ RECOVERY:   Parse error → send {"ok":false}
 ## D.3 FLOW-ID: RULES-RELOAD
 
 ```
-START:      aegisctl sends {"command":"rules.reload"}
+START:      aegisctl -> named pipe {"command":"rules.reload"}
 INPUT:      JSON command
 PROCESSING: read Rules.json → parse → count rules
 STATE:      Read-only (does NOT reinitialize AC)

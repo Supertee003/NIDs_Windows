@@ -48,7 +48,7 @@ COMPONENTS_RELPATH = "shared/runtime/components.json"
 ENV_DOCS_RELPATH = "docs/ENV_VARS.md"
 
 # Code locations scanned for env var usage.
-ENV_SEARCH_GLOBS = ["src/*.zig", "scripts/*.py", "*.bat", "*.ps1"]
+ENV_SEARCH_GLOBS = ["src/**/*.zig", "scripts/**/*.py", "go/**/*.go", "*.bat", "*.ps1"]
 
 FENCE_RE = re.compile(r"```")
 AEGISCTL_USE_RE = re.compile(
@@ -101,11 +101,11 @@ class Report(object):
 
 
 def parse_aegisctl_commands(aegisctl_text):
-    """Extract top-level argparse subcommand names from aegisctl.py.
+    """Extract argparse command names from the CLI entrypoint/modules.
 
-    Matches 'sub.add_parser("name"' where 'sub' is the main subparser
-    action. A negative lookbehind excludes nested actions such as
-    'rules_sub.add_parser(...)'.
+    Command modules register both top-level and nested parsers. Only the
+    shared ``sub`` parser represents top-level commands; nested parsers are
+    validated by their parent command's own documentation.
     """
     return set(
         re.findall(r'(?<![\w])sub\.add_parser\(\s*"([a-z_0-9]+)"', aegisctl_text)
@@ -140,11 +140,17 @@ def check_aegisctl_commands(root, report):
     if not aegisctl_path.is_file():
         report.fail("aegisctl-missing", AEGISCTL_RELPATH)
         return
-    commands = parse_aegisctl_commands(
-        aegisctl_path.read_text(encoding="utf-8", errors="replace")
+    cli_sources = [aegisctl_path]
+    command_dir = aegisctl_path.parent / "aegisctl" / "commands"
+    if command_dir.is_dir():
+        cli_sources.extend(sorted(command_dir.glob("*.py")))
+    cli_text = "\n".join(
+        path.read_text(encoding="utf-8", errors="replace")
+        for path in cli_sources
     )
+    commands = parse_aegisctl_commands(cli_text)
     if not commands:
-        report.fail("aegisctl-unparseable", "no sub.add_parser() entries found")
+        report.fail("aegisctl-unparseable", "no argparse add_parser() entries found")
         return
     report.ok("aegisctl-parsed", "%d top-level commands" % len(commands))
 
@@ -252,6 +258,7 @@ def build_fixture(root, bad):
     (root / "scripts").mkdir(parents=True)
     (root / "src").mkdir(parents=True)
     (root / "shared" / "runtime").mkdir(parents=True)
+    (root / "tools").mkdir(parents=True)
     (root / AEGISCTL_RELPATH).write_text(GOOD_AEGISCTL, encoding="utf-8")
     for relpath in REQUIRED_DOCS:
         if "ENV_VARS" in relpath:

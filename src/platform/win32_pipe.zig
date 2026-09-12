@@ -13,6 +13,10 @@ const rules = @import("../pipeline/rule_loader.zig");
 
 pub const control_pipe_name = "\\\\.\\pipe\\aegis_control";
 
+pub fn runtimeHealthState(pep_ready: bool, bridge_ready: bool, wfp_ready: bool) []const u8 {
+    return if (pep_ready and bridge_ready and wfp_ready) "RUNNING" else "DEGRADED";
+}
+
 const PIPE_ACCESS_DUPLEX: std.os.windows.DWORD = 0x00000003;
 const PIPE_TYPE_BYTE_V: std.os.windows.DWORD = 0x00000000;
 const PIPE_READMODE_BYTE_V: std.os.windows.DWORD = 0x00000000;
@@ -244,9 +248,11 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
         const pid: u32 = GetCurrentProcessId();
         const now_ms: i64 = std.time.milliTimestamp();
         const last_event_ms: i64 = if (state.g_last_event_ms == 0) 0 else now_ms - state.g_last_event_ms;
+        const health_state = runtimeHealthState(state.g_pep_available, bs.cpp_bridge, bs.wfp_ioctl);
         const body = std.fmt.allocPrint(a,
-            \\{{"component":"core","state":"RUNNING","pid":{},"uptime_ms":{},"last_event_ms":{},"degraded":{},"deps":[{{"name":"bridge","state":"{s}","required":false}},{{"name":"pep","state":"{s}","required":true}}],"counters":{{"in_events":{},"out_events":{},"errors":{},"dropped":{}}},"checks":[{{"name":"core","ok":true,"detail":"initialized"}},{{"name":"wfp","ok":{},"detail":"{s}"}},{{"name":"shield","ok":{},"detail":"{s}"}},{{"name":"cpp_bridge","ok":{},"detail":"{s}"}},{{"name":"brain","ok":{},"detail":"{s}"}},{{"name":"npcap","ok":{},"detail":"capability-only"}},{{"name":"etw","ok":{},"detail":"capability-only"}},{{"name":"fim","ok":{},"detail":"capability-only"}}]}}
+            \\{{"component":"core","state":"{s}","pid":{},"uptime_ms":{},"last_event_ms":{},"degraded":{},"deps":[{{"name":"bridge","state":"{s}","required":true}},{{"name":"pep","state":"{s}","required":true}}],"counters":{{"in_events":{},"out_events":{},"errors":{},"dropped":{}}},"checks":[{{"name":"core","ok":true,"detail":"initialized"}},{{"name":"wfp","ok":{},"detail":"{s}"}},{{"name":"shield","ok":{},"detail":"{s}"}},{{"name":"cpp_bridge","ok":{},"detail":"{s}"}},{{"name":"brain","ok":{},"detail":"{s}"}},{{"name":"npcap","ok":{},"detail":"capability-only"}},{{"name":"etw","ok":{},"detail":"capability-only"}},{{"name":"fim","ok":{},"detail":"capability-only"}}]}}
         , .{
+            health_state,
             pid,
             elapsed_ms,
             last_event_ms,
@@ -381,4 +387,11 @@ pub fn wakeControlPipe() void {
     if (h != std.os.windows.INVALID_HANDLE_VALUE) {
         _ = std.os.windows.CloseHandle(h);
     }
+}
+
+test "runtimeHealthState requires enforcement dependencies" {
+    try std.testing.expectEqualStrings("RUNNING", runtimeHealthState(true, true, true));
+    try std.testing.expectEqualStrings("DEGRADED", runtimeHealthState(false, true, true));
+    try std.testing.expectEqualStrings("DEGRADED", runtimeHealthState(true, false, true));
+    try std.testing.expectEqualStrings("DEGRADED", runtimeHealthState(true, true, false));
 }

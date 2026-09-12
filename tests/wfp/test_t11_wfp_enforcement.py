@@ -17,15 +17,15 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import pytest
-
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+DRIVER_HEADER = REPO_ROOT / "drivers" / "wfp_callout" / "aegis_wfp.h"
+DRIVER_SOURCE = REPO_ROOT / "drivers" / "wfp_callout" / "aegis_wfp.c"
 
 # The single authoritative Windows WFP enforcement module.
 WFP_ENFORCEMENT_MODULE = "src/policy/wfp_production.zig"
 
 # The Rust PEP path.
-RUST_PEP_MODULE = "src/core/rust_pep.zig"
+RUST_PEP_MODULE = "rust-src/lib.rs"
 
 # Forbidden patterns indicating a SECOND enforcement path.
 # Anything that calls FwpmEngineOpen, FwpmFilterAdd, FwpmProviderAdd,
@@ -45,11 +45,9 @@ FORBIDDEN_ENFORCEMENT_PATTERNS = [
     re.compile(r"\bFwpmSessionEnumLayer\b"),
 ]
 
-# The only module allowed to import the low-level WFP device transport.
-# Rust PEP is the SINGLE path to enforcement; every other module must
-# go through rust_pep.zig.
-WFP_TRANSPORT_IMPORT = r'@import\(\s*["\']wfp_ioctl\.zig["\']\s*\)'
-IMPORT_ALLOWED_ONLY_IN = {"src/core/rust_pep.zig"}
+# No Zig module may import the low-level WFP device transport. WFP access is
+# an implementation detail of the Rust PEP, not a runtime-spine interface.
+WFP_PRIVILEGED_CALL = re.compile(r'\bwfp_ioctl\.(?:block_ip|unblock_ip)\s*\(')
 
 
 def test_single_authoritative_wfp_enforcement_module_exists() -> None:
@@ -99,55 +97,38 @@ def test_no_duplicate_wfp_enforcement_path() -> None:
                 # Only count matches in non-test code
                 violations.append(f"{rel}: matches {pat.pattern!r}")
     assert not violations, (
-        f"Second WFP enforcement path detected (T11 AC1):\n"
+        "Second WFP enforcement path detected (T11 AC1):\n"
         + "\n".join(f"  {v}" for v in violations)
     )
 
 
 def test_rust_pep_is_only_path_to_enforcement() -> None:
     """AC2: The Rust PEP path is the only path to enforcement."""
-    # The Rust PEP path must be the only path to enforcement. We verify
-    # this by checking that the Rust PEP path is the only module that
-    # imports the WFP transport directly.
-    text = (REPO_ROOT / RUST_PEP_MODULE).read_text(encoding="utf-8")
-    assert "wfp_ioctl" in text, (
-        "Rust PEP path must import WFP transport (AC2)"
-    )
-    # And no other module should directly import the WFP transport.
+    # The Rust PEP is the only authority. Zig must not expose the transport.
+    assert (REPO_ROOT / RUST_PEP_MODULE).is_file()
     violations: list[str] = []
-    for path in (REPO_ROOT / "core").rglob("*.zig"):
+    for path in (REPO_ROOT / "src").rglob("*.zig"):
         rel = path.relative_to(REPO_ROOT).as_posix()
-        if rel in IMPORT_ALLOWED_ONLY_IN:
-            continue
         text = path.read_text(encoding="utf-8", errors="ignore")
-        if re.search(WFP_TRANSPORT_IMPORT, text):
-            violations.append(f"{rel}: directly imports WFP transport")
+        if WFP_PRIVILEGED_CALL.search(text):
+            violations.append(f"{rel}: directly calls privileged WFP transport")
     assert not violations, (
-        f"Second path to enforcement detected (T11 AC2):\n"
+        "Second path to enforcement detected (T11 AC2):\n"
         + "\n".join(f"  {v}" for v in violations)
     )
 
 
 def test_no_other_path_bypasses_rust_pep_path() -> None:
     """AC3: No other path bypasses the Rust PEP path."""
-    # No other path should bypass the Rust PEP path. We verify this by
-    # checking that the Rust PEP path is the only module that directly
-    # imports the WFP transport.
-    text = (REPO_ROOT / RUST_PEP_MODULE).read_text(encoding="utf-8")
-    assert "wfp_ioctl" in text, (
-        "Rust PEP path must import WFP transport (AC3)"
-    )
-    # And no other module should directly import the WFP transport.
+    # No Zig module may bypass the Rust PEP by importing the transport.
     violations: list[str] = []
-    for path in (REPO_ROOT / "core").rglob("*.zig"):
+    for path in (REPO_ROOT / "src").rglob("*.zig"):
         rel = path.relative_to(REPO_ROOT).as_posix()
-        if rel in IMPORT_ALLOWED_ONLY_IN:
-            continue
         text = path.read_text(encoding="utf-8", errors="ignore")
-        if re.search(WFP_TRANSPORT_IMPORT, text):
-            violations.append(f"{rel}: directly imports WFP transport")
+        if WFP_PRIVILEGED_CALL.search(text):
+            violations.append(f"{rel}: directly calls privileged WFP transport")
     assert not violations, (
-        f"Path bypassing Rust PEP detected (T11 AC3):\n"
+        "Path bypassing Rust PEP detected (T11 AC3):\n"
         + "\n".join(f"  {v}" for v in violations)
     )
 
@@ -186,3 +167,13 @@ def test_authority_invariants_declare_wfp_enforcement_module() -> None:
     assert matching, (
         f"authority_invariants must declare a single WFP enforcement module (T11 AC1); got: {invariants}"
     )
+
+
+def test_driver_unblock_contract_matches_user_adapter() -> None:
+    """The user adapter sends an IPv4, and the driver must dispatch it."""
+    header = DRIVER_HEADER.read_text(encoding="utf-8", errors="ignore")
+    source = DRIVER_SOURCE.read_text(encoding="utf-8", errors="ignore")
+    assert "#define IOCTL_AEGIS_UNBLOCK_FLOW" in header
+    assert "case IOCTL_AEGIS_UNBLOCK_FLOW:" in source
+    assert "if (inputLen < sizeof(UINT32))" in source
+    assert "PUINT32 unblockIp" in source

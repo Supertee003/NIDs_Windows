@@ -1,10 +1,10 @@
 # AI_CONTEXT.md — AEGIS NIDS Windows
 ## Machine-Generated Current-HEAD Context Layer
 
-**HEAD:** `ec12182ad785c1af9b5321b735297c46e62a2b34`
+**HEAD:** `48eb2a72265a15c1b780a6bfa76d4f4dae2fc7f2`
 **BRANCH:** `main`
-**GENERATED:** 2026-09-11T16:20:55.000000+00:00
-**GENERATOR:** Freebuff agent (TRUTH-001 current-HEAD repair)
+**GENERATED:** 2026-09-12T00:00:00.000000+00:00
+**GENERATOR:** opencode agent (TRUTH-REBUILD current-HEAD resync)
 **ARCHITECTURE:** Hub-and-Spoke with Plane Separation
 
 > HISTORICAL NOTE: earlier revisions of this file referenced HEAD `2c7cb30…`
@@ -172,7 +172,7 @@ Previous phases:
 
 ## 11. ACTIVE BLOCKERS
 
-P0 risks as of HEAD `fdb4c2b` (2026-09-11):
+P0 risks as of HEAD `48eb2a72` (2026-09-12):
 
 - P0-1: Zig bypasses the Rust PEP for WFP enforcement
   (`src/core/rust_pep.zig` / `src/policy/wfp_production.zig` reach the WFP
@@ -185,7 +185,7 @@ P0 risks as of HEAD `fdb4c2b` (2026-09-11):
   (currently 3 failures) and `go-build-test` mixes the canonical Go sensor
   with the optional aggregator sidecar. OPEN (see CI-001..CI-004).
 - P0-4: Machine maps stale (HEAD mismatch) — **FIXED** (all maps and
-  `AGENTS.md` now carry `fdb4c2b`).
+  `AGENTS.md` now carry `48eb2a72`).
 - P0-5: CLI canonical path conflict (`scripts/aegisctl.py` vs
   `tools/aegisctl.py`) — **FIXED**: `scripts/aegisctl.py` does not exist;
   `tools/aegisctl.py` is the single canonical client.

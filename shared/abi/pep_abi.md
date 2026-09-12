@@ -75,6 +75,16 @@ int aegis_pep_enforce(
 
 // Query remaining rate-limit quota for an IP
 uint32_t aegis_pep_quota_remaining(uint32_t src_ip);
+
+// Unblock an IPv4 address through the same authorized WFP adapter.
+// Returns 0 on success, -2 when the adapter/driver is unavailable,
+// and -3 when the caller lacks the block capability.
+int aegis_pep_unblock_ip(
+    uint32_t ipv4,
+    uint32_t caller_pid,
+    uint32_t caller_capability_mask,
+    uint64_t request_id
+);
 ```
 
 ## Authorization Flow

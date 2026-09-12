@@ -1,6 +1,6 @@
 {
-  "head_sha": "ec12182ad785c1af9b5321b735297c46e62a2b34",
-  "created_at": "2026-09-11",
+  "head_sha": "48eb2a72265a15c1b780a6bfa76d4f4dae2fc7f2",
+  "created_at": "2026-09-12",
   "generator_version": "3.0",
   "evidence_levels": {
     "E0": "No evidence",
@@ -1052,11 +1052,35 @@
       ],
       "resolution": null,
       "evidence": "AI_CONTEXT P0-1; the T11 negative control now scans src/ (EVT-033)."
+    },
+    {
+      "id": "EVT-037",
+      "head_sha": "48eb2a72265a15c1b780a6bfa76d4f4dae2fc7f2",
+      "timestamp": "2026-09-12",
+      "title": "TRUTH-REBUILD: all machine maps resynced to HEAD 48eb2a72",
+      "level": "E1",
+      "component": "repo-truth",
+      "description": "All 6 machine-readable truth documents (AI_CONTEXT.md, SYSTEM_MAP.json, FLOW_MAP.json, AUTHORITY_MAP.json, CONTRACT_MAP.json, EVIDENCE_INDEX.json) plus AGENTS.md were rebuilt to carry HEAD 48eb2a72265a15c1b780a6bfa76d4f4dae2fc7f2. Prior HEAD ec12182ad785c1af9b5321b735297c46e62a2b34 is now HISTORICAL.",
+      "flow_id": "TRUTH-REBUILD",
+      "files_changed": [
+        "AI_CONTEXT.md",
+        "SYSTEM_MAP.json",
+        "FLOW_MAP.json",
+        "AUTHORITY_MAP.json",
+        "CONTRACT_MAP.json",
+        "EVIDENCE_INDEX.json",
+        "AGENTS.md"
+      ],
+      "tests": [
+        "git rev-parse HEAD equals every head_sha field in truth docs"
+      ],
+      "result": "PASS",
+      "finding": "All machine maps now carry current HEAD 48eb2a72. No stale references remain."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 6,
+    "E1_count": 7,
     "E2_count": 24,
     "E3_count": 0,
     "E4_count": 0,

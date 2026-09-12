@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-09-11T16:20:55.000000+00:00",
-  "head_sha": "ec12182ad785c1af9b5321b735297c46e62a2b34",
+  "generated_at": "2026-09-12T00:00:00.000000+00:00",
+  "head_sha": "48eb2a72265a15c1b780a6bfa76d4f4dae2fc7f2",
   "build_commands": {
     "zig": {
       "command": "zig build",
@@ -104,8 +104,8 @@
   "build_truth_status": "TRUTH-001_SYNCED",
   "notes": [
     "Source of truth: build.zig (src/main.zig), Cargo.toml (rust-src/lib.rs), shield/Cargo.toml (shield/src/lib.rs), CMakeLists.txt (src/windows/*.c), bridge/CMakeLists.txt (bridge/*.cpp), nose/go.mod, go/aggregator/go.mod, ts_policy/package.json",
-    "HEAD SHA synchronized to fdb4c2beb4451754fca3ea28059dbdbb01c37764 (TRUTH-001)",
-    "Earlier revisions of this file referenced 5f23e4f and 2c7cb30; those are HISTORICAL",
+    "HEAD SHA synchronized to 48eb2a72265a15c1b780a6bfa76d4f4dae2fc7f2 (TRUTH-REBUILD)",
+    "Earlier revisions of this file referenced ec12182, fdb4c2b, 5f23e4f and 2c7cb30; those are HISTORICAL",
     "SUPPORT builds (shield, aggregator) are built by CI but are NOT on the golden path"
   ]
 }

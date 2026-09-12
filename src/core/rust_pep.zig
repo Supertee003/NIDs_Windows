@@ -203,14 +203,8 @@ pub const RustPep = struct {
             };
         }
 
-        // Phase 28: Push block to WFP kernel driver (real enforcement)
-        if (wfp_ioctl.isConnected()) {
-            if (wfp_ioctl.block_ip(target_ip)) {
-                std.log.info("[RUST-PEP] WFP kernel block added for IP 0x{x}", .{target_ip});
-            } else {
-                std.log.warn("[RUST-PEP] WFP kernel block FAILED for IP 0x{x} (in-memory only)", .{target_ip});
-            }
-        }
+        // The Zig model records the authorized decision only. The Rust PEP
+        // owns the privileged WFP side effect in the production adapter.
         self.blocked_ips.put(target_ip, {}) catch {
             self.total_failed += 1;
             return .{
@@ -245,11 +239,6 @@ pub const RustPep = struct {
     }
 
     pub fn unblock(self: *RustPep, ip: u32) bool {
-        // Phase 28: Also remove from WFP kernel blocklist
-        if (wfp_ioctl.isConnected()) {
-            _ = wfp_ioctl.unblock_ip(ip);
-            std.log.info("[RUST-PEP] WFP kernel block removed for IP 0x{x}", .{ip});
-        }
         return self.blocked_ips.remove(ip);
     }
 
@@ -291,7 +280,7 @@ pub fn isCriticalInfra(ip: u32) bool {
 //
 // SECURITY (REBUILD-004, closes audit P0-1):
 // The Rust PEP is the ONLY authority for privileged enforcement. The direct
-// wfp_ioctl.block_ip path previously exposed an unauthenticated Zig→WFP
+// The previous direct WFP path exposed an unauthenticated Zig-to-WFP
 // bypass. It is now gated behind the Rust PEP (aegis_pep.dll via
 // src/policy/pep_bindings.zig):
 //
@@ -375,12 +364,8 @@ pub fn block_ip(ipv4: u32) bool {
         },
     }
 
-    // PEP authorized — execute via the WFP IOCTL transport.
-    const ok = wfp_ioctl.block_ip(ipv4);
-    if (ok) {
-        std.log.info("[RUST-PEP] block_ip(0x{x}) authorized by PEP (req={d}), executed via WFP", .{ ipv4, request_id });
-    }
-    return ok;
+    // Rust PEP owns the WFP side effect and returned block only after success.
+    return true;
 }
 
 var g_pep_request_counter = std.atomic.Value(u64).init(0);
@@ -408,7 +393,7 @@ pub fn unblock_ip(ipv4: u32) bool {
         std.log.warn("[RUST-PEP] unblock_ip(0x{x}) not authorized: {s}", .{ ipv4, @tagName(decision) });
         return false;
     }
-    return wfp_ioctl.unblock_ip(ipv4);
+    return pep_gate.unblockIp(ipv4, 0, 0x1, request_id);
 }
 
 pub fn read_events(out_buf: []u8) u32 {

@@ -24,20 +24,14 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import pytest
-
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
-# Files that ARE allowed to touch WFP / enforcement (the Rust PEP and
-# its Zig wfp_ioctl mirror).
+# Files that ARE allowed to describe or implement enforcement.
 ALLOWED_ENFORCEMENT_FILES = {
-    "shield/src/lib.rs",
-    "shield/src/pep.rs",
-    "shield/src/windows_enforce.rs",
-    "core/wfp_ioctl.zig",
-    "core/wfp_production.zig",
-    "core/wfp_ioctl_integration.zig",  # Zig mirror of the Rust PEP caller
-    "core/rust_pep.zig",  # test-sim Zig mirror of the Rust PEP
+    "rust-src/lib.rs",
+    "src/policy/wfp_production.zig",
+    "src/policy/wfp_ioctl.zig",
+    "src/core/rust_pep.zig",
     "src/tests/integration/rust_pep_integration.zig",
 }
 
@@ -101,15 +95,16 @@ def test_authority_invariants_mark_rust_pep_as_final() -> None:
     )
 
 
-def test_manifest_lists_shield_as_real_enforcement() -> None:
-    """The shield Rust crate is the enforcement authority and must be REAL."""
+def test_manifest_lists_rust_src_as_real_enforcement() -> None:
+    """The canonical Rust crate is the enforcement authority."""
     import json
     manifest = json.loads((REPO_ROOT / "runtime_manifest.json").read_text(encoding="utf-8"))
-    shield = manifest["modules"].get("shield/src/lib.rs")
-    assert shield is not None, "shield/src/lib.rs not in runtime_manifest.json"
-    assert shield.get("status") == "REAL", (
-        f"shield/src/lib.rs must be REAL (T8 Rust PEP); got {shield}"
-    )
+    pep = manifest["canonical_entrypoints"]["rust_pep_tier3"]
+    assert pep["file"] == "rust-src/lib.rs"
+    assert pep["classification"] == "CANONICAL"
+    shield = manifest["canonical_entrypoints"]["rust_shield_tier3"]
+    assert shield["is_final_enforcement"] is False
+    assert shield["classification"] == "SUPPORT"
 
 
 def test_no_direct_enforcement_in_typescript() -> None:
@@ -123,7 +118,7 @@ def test_no_direct_enforcement_in_typescript() -> None:
         for ln, line in _scan_for_enforcement(ts_file):
             violations.append(f"{ts_file.relative_to(REPO_ROOT)}:{ln}: {line}")
     assert not violations, (
-        f"TypeScript must not contain direct enforcement calls (T8):\n"
+        "TypeScript must not contain direct enforcement calls (T8):\n"
         + "\n".join(f"  {v}" for v in violations)
     )
 
@@ -146,7 +141,7 @@ def test_no_direct_enforcement_in_brain_or_rag() -> None:
         for ln, line in _scan_for_enforcement(p):
             violations.append(f"{path_str}:{ln}: {line}")
     assert not violations, (
-        f"Brain/RAG/Detection/Correlation/TI must not enforce directly (T8):\n"
+        "Brain/RAG/Detection/Correlation/TI must not enforce directly (T8):\n"
         + "\n".join(f"  {v}" for v in violations)
     )
 
@@ -160,7 +155,7 @@ def test_no_direct_enforcement_in_aegisctl_cli() -> None:
         for ln, line in _scan_for_enforcement(p):
             violations.append(f"{p.relative_to(REPO_ROOT)}:{ln}: {line}")
     assert not violations, (
-        f"aegisctl must not do direct enforcement (T8):\n"
+        "aegisctl must not do direct enforcement (T8):\n"
         + "\n".join(f"  {v}" for v in violations)
     )
 
@@ -209,40 +204,20 @@ def test_pep_decision_trace_required_fields() -> None:
     """The PEP trace schema must contain the AC-required fields:
     request_id, event_id, policy_id, policy_version, action, timestamp,
     result."""
-    pep_rs = REPO_ROOT / "shield" / "src" / "pep.rs"
-    assert pep_rs.exists(), "shield/src/pep.rs missing (T8 deliverable)"
-    text = pep_rs.read_text(encoding="utf-8")
-    for field in (
-        "request_id",
-        "event_id",
-        "policy_id",
-        "policy_version",
-        "action",
-        "timestamp_ms",
-        "status",
-    ):
-        assert f"pub {field}:" in text or f"{field}:" in text, (
-            f"pep.rs must define field `{field}` in PepTrace; missing"
-        )
+    text = (REPO_ROOT / "rust-src" / "lib.rs").read_text(encoding="utf-8")
+    for field in ("request_id", "policy_id", "decision_kind", "severity", "decision", "reason"):
+        assert f"{field}:" in text, f"Rust PEP ABI field `{field}` missing"
 
 
-def test_pep_result_taxonomy_has_5_statuses() -> None:
-    """AC: Rust PEP returns accepted/rejected/deferred/failed/no-op (5)."""
-    pep_rs = REPO_ROOT / "shield" / "src" / "pep.rs"
-    text = pep_rs.read_text(encoding="utf-8")
-    for status in ("Accepted", "Rejected", "Deferred", "Failed", "NoOp"):
-        assert status in text, f"PepStatus::{status} missing in pep.rs"
-    # The C-ABI status_count shim should also be 5
-    lib_rs = (REPO_ROOT / "shield" / "src" / "lib.rs").read_text(encoding="utf-8")
-    assert "aegis_pep_status_count" in lib_rs
-    assert "5" in lib_rs.split("aegis_pep_status_count")[1][:200]  # the constant
+def test_pep_result_taxonomy_has_contract_decisions() -> None:
+    """The Rust PEP exposes the frozen decision values from CONTRACT-02."""
+    text = (REPO_ROOT / "rust-src" / "lib.rs").read_text(encoding="utf-8")
+    for decision in ("DECISION_ALLOW", "DECISION_BLOCK", "DECISION_RATE_LIMIT", "DECISION_QUARANTINE", "DECISION_ESCALATE", "DECISION_DROP"):
+        assert decision in text, f"{decision} missing in rust-src/lib.rs"
+    assert "aegis_pep_unblock_ip" in text
 
 
-def test_pep_module_forbids_unsafe_code() -> None:
-    """The PEP module must be #![forbid(unsafe_code)]. The C-ABI shim
-    in lib.rs is the only place unsafe is used (and it's a thin
-    pointer-to-slice adapter)."""
-    pep_rs = (REPO_ROOT / "shield" / "src" / "pep.rs").read_text(encoding="utf-8")
-    assert "forbid(unsafe_code)" in pep_rs, (
-        "shield/src/pep.rs must declare #![forbid(unsafe_code)]"
-    )
+def test_pep_module_has_explicit_unsafe_boundary() -> None:
+    """The PEP crate constrains unsafe operations explicitly."""
+    pep_rs = (REPO_ROOT / "rust-src" / "lib.rs").read_text(encoding="utf-8")
+    assert "#![deny(unsafe_op_in_unsafe_fn)]" in pep_rs

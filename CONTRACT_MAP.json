@@ -1,5 +1,5 @@
 {
-  "head_sha": "ec12182ad785c1af9b5321b735297c46e62a2b34",
+  "head_sha": "48eb2a72265a15c1b780a6bfa76d4f4dae2fc7f2",
   "created_at": "2026-09-11",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -61,6 +61,7 @@
         "aegis_pep_init() -> c_int",
         "aegis_pep_shutdown() -> void",
         "aegis_pep_enforce(req: *PepRequest, resp: *PepResponse) -> c_int",
+        "aegis_pep_unblock_ip(ipv4: u32, caller_pid: u32, caller_capability_mask: u32, request_id: u64) -> c_int",
         "aegis_pep_quota_remaining(src_ip: u32) -> u32"
       ],
       "invariants": [

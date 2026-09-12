@@ -17,6 +17,7 @@
 #define IOCTL_AEGIS_READ_EVENTS  CTL_CODE(FILE_DEVICE_NETWORK, 0x800, METHOD_BUFFERED, FILE_READ_DATA)
 #define IOCTL_AEGIS_BLOCK_FLOW   CTL_CODE(FILE_DEVICE_NETWORK, 0x801, METHOD_BUFFERED, FILE_WRITE_DATA)
 #define IOCTL_AEGIS_GET_STATS    CTL_CODE(FILE_DEVICE_NETWORK, 0x802, METHOD_BUFFERED, FILE_READ_DATA)
+#define IOCTL_AEGIS_UNBLOCK_FLOW CTL_CODE(FILE_DEVICE_NETWORK, 0x803, METHOD_BUFFERED, FILE_WRITE_DATA)
 
 /* ====== Device Names ====== */
 #define AEGIS_WFP_DEVICE_NAME  L"\\Device\\AegisWfpDevice"
@@ -76,6 +77,7 @@ extern SIZE_T         g_RingReadOffset;
 extern HANDLE         g_WfpEngineHandle;
 extern UINT32         g_CalloutId;
 extern UINT64         g_FilterId;     /* FIX 5: UINT32 -> UINT64 */
+extern UINT32         g_BlockedIp;
 extern PDEVICE_OBJECT g_AegisDeviceObject;
 
 /* ====== Cross-file declarations ====== */
@@ -87,5 +89,7 @@ VOID     AegisWfpUnregisterCallout(void);
 /* aegis_wfp_comm.c */
 NTSTATUS AegisWfpCreateClose(PDEVICE_OBJECT DeviceObject, PIRP Irp);
 NTSTATUS AegisWfpDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp);
+NTSTATUS AegisWfpBlockFlow(PIRP Irp);
+NTSTATUS AegisWfpUnblockFlow(PIRP Irp);
 
 #endif /* AEGIS_WFP_H */

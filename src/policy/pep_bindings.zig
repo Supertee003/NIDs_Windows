@@ -51,6 +51,7 @@ pub const PepResponse = extern struct {
 
 // Rust FFI functions
 extern "aegis_pep" fn aegis_pep_enforce(req: *const PepRequest, resp: *PepResponse) c_int;
+extern "aegis_pep" fn aegis_pep_unblock_ip(ipv4: u32, caller_pid: u32, caller_capability_mask: u32, request_id: u64) c_int;
 extern "aegis_pep" fn aegis_pep_init() c_int;
 extern "aegis_pep" fn aegis_pep_shutdown() void;
 extern "aegis_pep" fn aegis_pep_quota_remaining(src_ip: u32) u32;
@@ -96,8 +97,8 @@ pub const PepEnforcer = struct {
         var resp: PepResponse = undefined;
         const rc = aegis_pep_enforce(&req, &resp);
         if (rc != 0) {
-            // PEP internal error â†’ fail-safe to block
-            return .block;
+            // PEP failure must never become an enforcement decision.
+            return .allow;
         }
         return @enumFromInt(resp.decision);
     }
@@ -105,6 +106,11 @@ pub const PepEnforcer = struct {
     pub fn quotaRemaining(self: *PepEnforcer, src_ip: u32) u32 {
         if (!self.available) return 0;
         return aegis_pep_quota_remaining(src_ip);
+    }
+
+    pub fn unblockIp(self: *PepEnforcer, ipv4: u32, caller_pid: u32, caller_caps: u32, request_id: u64) bool {
+        if (!self.available) return false;
+        return aegis_pep_unblock_ip(ipv4, caller_pid, caller_caps, request_id) == 0;
     }
 };
 

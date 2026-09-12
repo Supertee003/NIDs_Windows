@@ -19,12 +19,10 @@ from __future__ import annotations
 
 import json
 import os
-import struct
 import subprocess
 import sys
-import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import List
 
 ROOT = Path(__file__).parent.parent
 
@@ -44,7 +42,7 @@ def run_test(name: str, fn) -> tuple[str, str]:
         if detail:
             print(f"      {detail}")
         return status, detail
-    except Exception as e:
+    except (OSError, ValueError, TypeError) as e:
         print(f"{TestResult.FAILED}")
         print(f"      Exception: {e}")
         return TestResult.FAILED, str(e)
@@ -53,7 +51,7 @@ def run_test(name: str, fn) -> tuple[str, str]:
 # ============================================================================
 # Scenario 1: DNS malware callback
 # ============================================================================
-def test_dns_malware_callback() -> tuple[bool, str]:
+def scenario_dns_malware_callback() -> tuple[bool, str]:
     """Build a synthetic DNS query packet and verify the pipeline emits a block event."""
     # This test exercises the Zig pipeline via subprocess (would require a
     # test build of aegis_nids.exe). On Linux dev env, we just verify the
@@ -73,10 +71,9 @@ def test_dns_malware_callback() -> tuple[bool, str]:
 # ============================================================================
 # Scenario 2: TLS SNI block
 # ============================================================================
-def test_tls_sni_block() -> tuple[bool, str]:
+def scenario_tls_sni_block() -> tuple[bool, str]:
     """Verify that a TLS ClientHello with known-bad SNI triggers a block."""
     # Build synthetic TLS ClientHello bytes (re-use the parser test data)
-    sni = b"evil.example.com"
     # The Zig unit test in src/capture/proto/parsers.zig already verifies
     # SNI extraction. Here we just verify the rule engine exists.
     policy_path = ROOT / "configs" / "schema.json"
@@ -88,7 +85,7 @@ def test_tls_sni_block() -> tuple[bool, str]:
 # ============================================================================
 # Scenario 3: Port scan anomaly
 # ============================================================================
-def test_anomaly_port_scan() -> tuple[bool, str]:
+def scenario_anomaly_port_scan() -> tuple[bool, str]:
     """Verify that the anomaly detector triggers after enough port-scan events."""
     # The Zig unit test 'Metric detects spike after warmup' covers this directly.
     return True, "Covered by anomaly_detector.zig unit tests"
@@ -97,7 +94,7 @@ def test_anomaly_port_scan() -> tuple[bool, str]:
 # ============================================================================
 # Scenario 4: Injection detection
 # ============================================================================
-def test_injection_detection() -> tuple[bool, str]:
+def scenario_injection_detection() -> tuple[bool, str]:
     """Verify that VirtualAllocEx cross-process triggers a detection."""
     return True, "Covered by injection_detector.zig 'cross-process triggers' test"
 
@@ -105,7 +102,7 @@ def test_injection_detection() -> tuple[bool, str]:
 # ============================================================================
 # Scenario 5: Registry run key
 # ============================================================================
-def test_registry_run_key() -> tuple[bool, str]:
+def scenario_registry_run_key() -> tuple[bool, str]:
     """Verify that HKCU\\...\\Run changes are caught by the registry trie."""
     return True, "Covered by registry_monitor.zig tests"
 
@@ -113,7 +110,7 @@ def test_registry_run_key() -> tuple[bool, str]:
 # ============================================================================
 # Scenario 6: Federation quorum
 # ============================================================================
-def test_federation_quorum() -> tuple[bool, str]:
+def scenario_federation_quorum() -> tuple[bool, str]:
     """Verify 3-node cluster leader election."""
     return True, "Covered by cluster_coord.zig 'candidate becomes leader' test"
 
@@ -121,7 +118,7 @@ def test_federation_quorum() -> tuple[bool, str]:
 # ============================================================================
 # Scenario 7: Forensic ring wrap
 # ============================================================================
-def test_forensic_ring_wrap() -> tuple[bool, str]:
+def scenario_forensic_ring_wrap() -> tuple[bool, str]:
     """Verify forensic ring overwrites oldest entries on full."""
     return True, "Covered by forensic_pipeline.zig 'wraps around' test"
 
@@ -129,7 +126,7 @@ def test_forensic_ring_wrap() -> tuple[bool, str]:
 # ============================================================================
 # Scenario 8: Config validation
 # ============================================================================
-def test_config_validation() -> tuple[bool, str]:
+def scenario_config_validation() -> tuple[bool, str]:
     """Run the config validator against the schema."""
     validator = ROOT / "tools" / "config_validator.py"
     schema = ROOT / "configs" / "schema.json"
@@ -149,7 +146,7 @@ def test_config_validation() -> tuple[bool, str]:
     try:
         result = subprocess.run(
             [sys.executable, str(validator), "--config", str(sample_path), "--schema", str(schema)],
-            capture_output=True, text=True, timeout=10
+            capture_output=True, text=True, timeout=10, check=False
         )
         if result.returncode == 0:
             return True, "config validator accepts valid sample"
@@ -162,7 +159,7 @@ def test_config_validation() -> tuple[bool, str]:
 # ============================================================================
 # Scenario 9: Zig source compiles
 # ============================================================================
-def test_zig_compiles() -> tuple[bool, str]:
+def scenario_zig_compiles() -> tuple[bool, str]:
     """Verify that the Zig source files at least lex/parse correctly."""
     zig = os.environ.get("ZIG") or "zig"
     if not shutil_which(zig):
@@ -172,7 +169,7 @@ def test_zig_compiles() -> tuple[bool, str]:
     for p in (ROOT / "src").rglob("*.zig"):
         result = subprocess.run(
             [zig, "ast-check", str(p)],
-            capture_output=True, text=True, timeout=10
+            capture_output=True, text=True, timeout=10, check=False
         )
         if result.returncode != 0:
             errors.append(f"{p}: {result.stderr.strip()[:200]}")
@@ -189,7 +186,7 @@ def shutil_which(name: str) -> str | None:
 # ============================================================================
 # Scenario 10: Rust PEP builds
 # ============================================================================
-def test_rust_pep_builds() -> tuple[bool, str]:
+def scenario_rust_pep_builds() -> tuple[bool, str]:
     """Verify that the Rust PEP crate compiles (cargo check)."""
     cargo = shutil_which("cargo")
     if not cargo:
@@ -197,7 +194,7 @@ def test_rust_pep_builds() -> tuple[bool, str]:
     result = subprocess.run(
         [cargo, "check", "--manifest-path", str(ROOT / "Cargo.toml")],
         capture_output=True, text=True, timeout=180,
-        cwd=str(ROOT)
+        cwd=str(ROOT), check=False
     )
     if result.returncode != 0:
         return False, result.stderr[:500]
@@ -214,16 +211,16 @@ def main() -> int:
     print()
 
     tests = [
-        ("DNS malware callback", test_dns_malware_callback),
-        ("TLS SNI block", test_tls_sni_block),
-        ("Anomaly port scan", test_anomaly_port_scan),
-        ("Injection detection", test_injection_detection),
-        ("Registry run key", test_registry_run_key),
-        ("Federation quorum", test_federation_quorum),
-        ("Forensic ring wrap", test_forensic_ring_wrap),
-        ("Config validation", test_config_validation),
-        ("Zig ast-check", test_zig_compiles),
-        ("Rust PEP build", test_rust_pep_builds),
+        ("DNS malware callback", scenario_dns_malware_callback),
+        ("TLS SNI block", scenario_tls_sni_block),
+        ("Anomaly port scan", scenario_anomaly_port_scan),
+        ("Injection detection", scenario_injection_detection),
+        ("Registry run key", scenario_registry_run_key),
+        ("Federation quorum", scenario_federation_quorum),
+        ("Forensic ring wrap", scenario_forensic_ring_wrap),
+        ("Config validation", scenario_config_validation),
+        ("Zig ast-check", scenario_zig_compiles),
+        ("Rust PEP build", scenario_rust_pep_builds),
     ]
 
     results: List[tuple[str, str]] = []

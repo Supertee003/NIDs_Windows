@@ -155,9 +155,9 @@ main()
 
 ## 13. Current Status
 
-**HEAD:** `fdb4c2beb4451754fca3ea28059dbdbb01c37764`
+**HEAD:** `48eb2a72265a15c1b780a6bfa76d4f4dae2fc7f2`
 **Branch:** `main`
-**Phase:** Truth repair + CI convergence (TRUTH-001..005, CI-001..004)
+**Phase:** Modular aegisctl rewrite + truth rebuild
 
 > Earlier revisions of this README pinned HEAD `97dbfef`. That is HISTORICAL.
 > Any document whose HEAD differs from `git rev-parse HEAD` is stale per `AGENTS.md`.
