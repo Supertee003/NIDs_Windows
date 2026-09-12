@@ -1778,7 +1778,7 @@
       "missing": [],
       "pass": true
     },
-    "scripts/aegisctl.py": {
+    "tools/aegisctl.py": {
       "file": "aegisctl.py",
       "classification": "control",
       "status": "REAL",

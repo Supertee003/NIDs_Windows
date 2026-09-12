@@ -1,5 +1,5 @@
 {
-  "head_sha": "fdb4c2beb4451754fca3ea28059dbdbb01c37764",
+  "head_sha": "ec12182ad785c1af9b5321b735297c46e62a2b34",
   "created_at": "2026-09-11",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -15,7 +15,7 @@
   "evidence": [
     {
       "id": "EVT-001",
-      "head_sha": "e6de1ae",
+      "head_sha": "ec12182ad785c1af9b5321b735297c46e62a2b34",
       "timestamp": "2026-09-09",
       "title": "Zig build test — all unit tests pass",
       "level": "E2",

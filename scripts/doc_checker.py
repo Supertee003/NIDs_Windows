@@ -5,7 +5,7 @@ Phase W exit condition:
   Documentation claims are machine-verified against the code:
     1. Required docs exist.
     2. aegisctl commands referenced in markdown CODE FENCES exist in
-       scripts/aegisctl.py (top-level argparse subcommands).
+       tools/aegisctl.py (top-level argparse subcommands).
        Commands used in prose are NOT checked (avoids false positives).
     3. AEGIS_* env vars documented in docs/ENV_VARS.md appear somewhere
        in code (core/*.zig, scripts/*.py, *.bat) - WARN only.
@@ -43,7 +43,7 @@ REQUIRED_DOCS = [
     "docs/ai-context/governance.md",
 ]
 
-AEGISCTL_RELPATH = "scripts/aegisctl.py"
+AEGISCTL_RELPATH = "tools/aegisctl.py"
 COMPONENTS_RELPATH = "shared/runtime/components.json"
 ENV_DOCS_RELPATH = "docs/ENV_VARS.md"
 
@@ -240,9 +240,9 @@ GOOD_AEGISCTL = (
     '    sub.add_parser("status", help="status")\n'
     '    sub.add_parser("health", help="health")\n'
 )
+BAD_DOC = "# Doc\n\n```powershell\npython tools/aegisctl.py bogus_cmd\n```\n"
 
-BAD_DOC = "# Doc\n\n```powershell\npython scripts/aegisctl.py bogus_cmd\n```\n"
-GOOD_DOC = "# Doc\n\n```powershell\npython scripts/aegisctl.py status\n```\n"
+GOOD_DOC = "# Doc\n\n```powershell\npython tools/aegisctl.py status\n```\n"
 
 
 def build_fixture(root, bad):

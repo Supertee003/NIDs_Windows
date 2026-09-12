@@ -313,7 +313,7 @@ def main() -> int:
         (REPO / "core" / "npcap_capture.zig").exists())
     part_ii["Authorization-Verified"] = bool(
         "control plane authority" in eng.inv_joined and
-        (REPO / "scripts" / "aegisctl.py").exists())
+        (REPO / "tools" / "aegisctl.py").exists())
     part_ii["Rollback-Verified"] = bool(
         (REPO / "tools" / "upgrade_rollback.py").exists() and
         (REPO / "docs" / "runbooks" / "RB-005-config-rollback.md").exists())

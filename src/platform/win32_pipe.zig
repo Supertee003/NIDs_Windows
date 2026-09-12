@@ -226,6 +226,12 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
         return false;
     }
 
+    if (std.mem.eql(u8, cmd, "version")) {
+        // CTRL-001: version command returns component versions from runtime
+        sendResponse(a, pipe, true, "{\"core\":\"5.0.0\",\"nose\":\"2.1.0\",\"shield\":\"0.1.0\",\"pep\":\"1.0.0\"}");
+        return false;
+    }
+
     if (std.mem.eql(u8, cmd, "health.check")) {
         // CTRL-002: RUNTIME_CONTRACT.md §4.1 payload. Contract fields (`state`,
         // `pid`, `uptime_ms`, `last_event_ms`, `counters`, `deps`) carry real

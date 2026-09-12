@@ -97,6 +97,6 @@ READ < OPERATE < PRIVILEGED
 ## References
 
 - `src/policy/control_ipc.zig` - Zig implementation
-- `scripts/aegisctl.py` - Python CLI
+- `tools/aegisctl.py` - Python CLI
 - `ts_policy/src/` - TypeScript policy authoring
 - `CONTRACT_MAP.json` - Contract registry

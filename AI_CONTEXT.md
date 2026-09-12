@@ -1,9 +1,9 @@
 # AI_CONTEXT.md — AEGIS NIDS Windows
 ## Machine-Generated Current-HEAD Context Layer
 
-**HEAD:** `fdb4c2beb4451754fca3ea28059dbdbb01c37764`
+**HEAD:** `ec12182ad785c1af9b5321b735297c46e62a2b34`
 **BRANCH:** `main`
-**GENERATED:** 2026-09-11
+**GENERATED:** 2026-09-11T16:20:55.000000+00:00
 **GENERATOR:** Freebuff agent (TRUTH-001 current-HEAD repair)
 **ARCHITECTURE:** Hub-and-Spoke with Plane Separation
 

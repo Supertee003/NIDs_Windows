@@ -32,7 +32,7 @@ changes are permitted without a new ADR.
 | Policy | core/policy_engine.zig | Zig | Final decision authority |
 | Rust PEP | shield/src/lib.rs | Rust | Final enforcement authority |
 | Forensics | core/forensics_engine.zig | Zig | Immutable trace |
-| aegisctl | scripts/aegisctl.py | Python | Requests only, never bypasses PEP |
+| aegisctl | tools/aegisctl.py | Python | Requests only, never bypasses PEP |
 
 ### Pipeline Order (Canonical)
 

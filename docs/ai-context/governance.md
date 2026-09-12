@@ -74,7 +74,7 @@ CONTEXT CONTRACT - AEGIS task <TASK_ID>
 4. Fail-soft:  Overflow, timeouts, and missing dependencies degrade the
                stage, never panic the process. Enforcement paths are
                the exception: they fail CLOSED.
-5. Gates:      zig build test, python scripts/aegisctl.py golden,
+5. Gates:      zig build test, python tools/aegisctl.py golden,
                python scripts/doc_checker.py --self-test must pass
                before any commit claim.
 6. Deploy:     Deliverables ship as generated PowerShell bundles
@@ -91,7 +91,7 @@ A change is "proven" only when every applicable gate passes:
 | Gate | Command | Proves |
 |---|---|---|
 | G1 Unit tests | `zig build test` | Module behavior, fail-soft paths |
-| G2 Golden path | `python scripts/aegisctl.py golden` | End-to-end pipeline health |
+| G2 Golden path | `python tools/aegisctl.py golden` | End-to-end pipeline health |
 | G3 Docs vs code | `python scripts/doc_checker.py` | Documented commands/vars exist |
 | G4 Provenance | `aegisctl` release verify (Phase V) | Artifacts untampered |
 | G5 Fault drills | `core/fault_matrix.zig` drill runner | Recovery matches matrix |

@@ -162,32 +162,28 @@ def _save_disabled_rules(ids: List[str]) -> None:
 
 
 def cmd_status(args: argparse.Namespace) -> int:
-    filter_comp = getattr(args, "component", None)
-    components = {
-        "bridge": {"exe": "aegis_bridge.exe", "pipe": r"\\.\pipe\aegis-bridge-health"},
-        "core": {"exe": "aegis_nids.exe", "pipe": r"\\.\pipe\aegis_control"},
-        "brain": {"exe": "windows_brain.py", "python": True, "udp": ("127.0.0.1", 9999)},
-        "aggregator": {"exe": "aegis-aggregator.exe", "tcp": ("127.0.0.1", 9200)},
-        "nose": {"exe": "nose_dashboard.exe", "log": "logs/nose.log"},
-        "mouth": {"exe": "windows_sec_monitor.exe", "pipe": r"\\.\pipe\aegis-mouth-health"},
-    }
-    if filter_comp:
-        if filter_comp not in components:
-            print(f"ERROR: unknown component '{filter_comp}'", file=sys.stderr)
-            return 1
-        comps = {filter_comp: components[filter_comp]}
+    """CTRL-001: Query runtime status via named pipe (not local process list)."""
+    try:
+        client = AegisClient()
+        resp = client._send("status")
+    except AegisCtlError as e:
+        print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
+        return 2
+    data = resp.get("data", {})
+    if getattr(args, "json", False):
+        print(json.dumps(data, indent=2))
     else:
-        comps = components
-
-    print("Component         State")
-    print("-" * 40)
-    for name, info in comps.items():
-        running = _check_process_running(info.get("exe", ""), info)
-        state = "RUNNING" if running else "STOPPED"
-        if filter_comp:
-            print(state)
-        else:
-            print(f"  {name:<16} {state}")
+        print(f"  Version:     {data.get('version', '?')}")
+        print(f"  State:       {data.get('state', '?')}")
+        print(f"  Uptime:      {data.get('uptime_sec', 0)}s")
+        print(f"  Packets:     {data.get('packets_captured', 0)}")
+        print(f"  Flows:       {data.get('flows_active', 0)}")
+        print(f"  Incidents:   {data.get('incidents_open', 0)}")
+        print(f"  Rules:       {data.get('rules_loaded', 0)}")
+        print(f"  Processed:   {data.get('pipeline_processed', 0)}")
+        print(f"  Detections:  {data.get('pipeline_detections', 0)}")
+        degraded = data.get("degraded", False)
+        print(f"  Degraded:    {'YES' if degraded else 'no'}")
     return 0
 
 
@@ -238,6 +234,7 @@ def cmd_start(args: argparse.Namespace) -> int:
 
 
 def cmd_stop(args: argparse.Namespace) -> int:
+    """CTRL-001: Send daemon.shutdown via named pipe (not local stub)."""
     comp = getattr(args, "component", None)
     all_flag = getattr(args, "all", False)
     if comp and all_flag:
@@ -246,11 +243,20 @@ def cmd_stop(args: argparse.Namespace) -> int:
     if not comp and not all_flag:
         print("ERROR: --component NAME or --all required", file=sys.stderr)
         return 2
-    if comp:
-        print(f"[OK]  {comp} stop signal sent")
-    elif all_flag:
-        for c in COMPONENTS:
-            print(f"[OK]  {c} stop signal sent")
+    if comp and comp != "core":
+        print(f"[!] Only 'core' can be stopped via pipe; '{comp}' is process-managed", file=sys.stderr)
+        return 1
+    try:
+        client = AegisClient()
+        resp = client._send("daemon.shutdown")
+    except AegisCtlError as e:
+        print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
+        return 2
+    if resp.get("ok"):
+        print("[OK]  Core daemon shutdown requested")
+    else:
+        print("[!] Shutdown request failed", file=sys.stderr)
+        return 1
     return 0
 
 
@@ -758,7 +764,8 @@ def cmd_quarantine_list(args: argparse.Namespace) -> None:
     print(f"\nTotal: {len(quarantined)}")
 
 
-def cmd_diagnose(args: argparse.Namespace) -> None:
+def cmd_diagnose(args: argparse.Namespace) -> int:
+    """CTRL-001: Full diagnostic report using pipe queries for runtime state."""
     print("AEGIS NIDS Diagnostic Report")
     print("=" * 60)
     print()
@@ -769,15 +776,39 @@ def cmd_diagnose(args: argparse.Namespace) -> None:
     print(f"  Platform: {platform.platform()}")
     print(f"  Repo root: {REPO_ROOT}")
     print()
-    print("STATUS")
-    print("-" * 60)
-    for comp in ["bridge", "core", "brain", "aggregator", "dashboard"]:
-        print(f"  {comp:<16} STOPPED")
+    # Query runtime status via pipe
+    try:
+        client = AegisClient()
+        status_resp = client._send("status")
+        status_data = status_resp.get("data", {})
+        print("RUNTIME STATUS")
+        print("-" * 60)
+        print(f"  State:       {status_data.get('state', '?')}")
+        print(f"  Version:     {status_data.get('version', '?')}")
+        print(f"  Uptime:      {status_data.get('uptime_sec', 0)}s")
+        print(f"  Degraded:    {'YES' if status_data.get('degraded') else 'no'}")
+        print(f"  Rules:       {status_data.get('rules_loaded', 0)}")
+        print(f"  Packets:     {status_data.get('packets_captured', 0)}")
+        print(f"  Incidents:   {status_data.get('incidents_open', 0)}")
+    except AegisCtlError:
+        print("RUNTIME STATUS")
+        print("-" * 60)
+        print("  (daemon not reachable)")
     print()
-    print("HEALTH")
-    print("-" * 60)
-    for comp in ["Core", "Brain", "Nose", "Bridge", "Shield"]:
-        print(f"  {comp:<8} SKIP (not running)")
+    # Query health via pipe
+    try:
+        health_resp = client._send("health.check")
+        health_data = health_resp.get("data", {})
+        checks = health_data.get("checks", [])
+        print("SUBSYSTEM HEALTH")
+        print("-" * 60)
+        for c in checks:
+            status = "OK" if c.get("ok") else "FAIL"
+            print(f"  {c.get('name', '?'):<12} {status:<6} {c.get('detail', '')}")
+    except AegisCtlError:
+        print("SUBSYSTEM HEALTH")
+        print("-" * 60)
+        print("  (daemon not reachable)")
     print()
     print("LOG FILES")
     print("-" * 60)
@@ -789,52 +820,55 @@ def cmd_diagnose(args: argparse.Namespace) -> None:
         else:
             print(f"  {name:<30} {'(missing)':>10}")
     print()
-    print("PID FILES")
-    print("-" * 60)
-    for name in ["aegis_core.pid", "bridge.pid"]:
-        path = REPO_ROOT / "logs" / name
-        if path.exists():
-            print(f"  {name:<30} {path.read_text().strip()}")
-        else:
-            print(f"  {name:<30} {'(no PID)':>10}")
-    print()
-    print("RUNTIME CONTRACT")
-    print("-" * 60)
-    manifest = _load_json(BUILD_MANIFEST)
-    if manifest:
-        print(f"  Build manifest: present ({len(manifest.get('components', {}))} components)")
-    else:
-        print("  Build manifest: (missing)")
-    print()
     print("Diagnostic report complete")
+    return 0
 
 
 def cmd_version(args: argparse.Namespace) -> int:
+    """CTRL-001: Query runtime versions via named pipe (not hardcoded)."""
+    try:
+        client = AegisClient()
+        resp = client._send("version")
+    except AegisCtlError as e:
+        print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
+        return 2
+    data = resp.get("data", {})
     component = getattr(args, "component", None)
     print("Component         Version")
     print("-" * 40)
-    versions = {
-        "core": "5.0.0",
-        "brain": "3.2.1",
-        "nose": "2.1.0",
-        "bridge": "4.0.3",
-        "mouth": "1.5.0",
-        "aggregator": "1.2.0",
-    }
     if component:
-        v = versions.get(component, "unknown")
+        v = data.get(component, "unknown")
         print(f"{component:<18}v{v}")
     else:
-        for comp, ver in versions.items():
+        for comp, ver in data.items():
             print(f"{comp:<18}v{ver}")
     return 0
 
 
-def cmd_health(args: argparse.Namespace) -> None:
-    print("Component         Status")
-    print("-" * 40)
-    for comp in COMPONENTS:
-        print(f"  {comp:<16} SKIP")
+def cmd_health(args: argparse.Namespace) -> int:
+    """CTRL-001: Query runtime health via named pipe (not local stub)."""
+    try:
+        client = AegisClient()
+        resp = client._send("health.check")
+    except AegisCtlError as e:
+        print(f"[!] AEGIS daemon not reachable: {e}", file=sys.stderr)
+        return 2
+    data = resp.get("data", {})
+    if getattr(args, "json", False):
+        print(json.dumps(data, indent=2))
+    else:
+        print(f"  Component:   {data.get('component', '?')}")
+        print(f"  State:       {data.get('state', '?')}")
+        print(f"  PID:         {data.get('pid', '?')}")
+        print(f"  Uptime:      {data.get('uptime_ms', 0)}ms")
+        print(f"  Degraded:    {'YES' if data.get('degraded') else 'no'}")
+        checks = data.get("checks", [])
+        if checks:
+            print("  Checks:")
+            for c in checks:
+                status = "OK" if c.get("ok") else "FAIL"
+                print(f"    {c.get('name', '?'):<12} {status:<6} {c.get('detail', '')}")
+    return 0
 
 
 def cmd_incidents(args: argparse.Namespace) -> int:
@@ -912,6 +946,7 @@ def main() -> int:
 
     p_status = sub.add_parser("status", help="Show daemon status")
     p_status.add_argument("--component", "-c", help="Filter by component name")
+    p_status.add_argument("--json", action="store_true", help="Output as JSON")
 
     p_start = sub.add_parser("start", help="Start AEGIS service")
     p_start.add_argument("--component", "-c")
@@ -1015,8 +1050,10 @@ def main() -> int:
 
     p_ver = sub.add_parser("version", help="Show version")
     p_ver.add_argument("--component")
+    p_ver.add_argument("--json", action="store_true", help="Output as JSON")
 
-    sub.add_parser("health", help="Health check")
+    p_health = sub.add_parser("health", help="Health check")
+    p_health.add_argument("--json", action="store_true", help="Output as JSON")
 
     p_inc = sub.add_parser("incidents", help="Incident management")
     p_inc.add_argument("--severity", default="warning")

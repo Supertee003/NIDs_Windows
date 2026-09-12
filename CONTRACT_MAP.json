@@ -1,5 +1,5 @@
 {
-  "head_sha": "fdb4c2beb4451754fca3ea28059dbdbb01c37764",
+  "head_sha": "ec12182ad785c1af9b5321b735297c46e62a2b34",
   "created_at": "2026-09-11",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -15,7 +15,13 @@
       "schema": "109-byte extern struct (little-endian, fixed-width)",
       "version": "1.0",
       "magic": "0x41454731",
-      "languages": ["Zig", "C", "Rust", "Go", "Python"],
+      "languages": [
+        "Zig",
+        "C",
+        "Rust",
+        "Go",
+        "Python"
+      ],
       "cross_language": true,
       "frozen": true,
       "fields": {
@@ -39,7 +45,10 @@
       "consumer": "Rust PEP (aegis_pep.dll)",
       "schema": "C ABI function signatures + extern structs",
       "version": "1.0",
-      "languages": ["Zig", "Rust"],
+      "languages": [
+        "Zig",
+        "Rust"
+      ],
       "cross_language": true,
       "frozen": true,
       "types": {
@@ -69,7 +78,9 @@
       "consumer": "All subsystems",
       "schema": "Module lifecycle + worker stages + golden path",
       "version": "1.0",
-      "languages": ["Zig"],
+      "languages": [
+        "Zig"
+      ],
       "cross_language": false,
       "frozen": true,
       "modules": {
@@ -82,12 +93,28 @@
         "proof": "4 modules (verification)"
       },
       "worker_stages": [
-        "sensors", "event_fabric", "dispatcher", "analysis_workers",
-        "correlation", "policy", "pep", "forensics"
+        "sensors",
+        "event_fabric",
+        "dispatcher",
+        "analysis_workers",
+        "correlation",
+        "policy",
+        "pep",
+        "forensics"
       ],
       "golden_path": [
-        "source", "fabric", "dispatcher", "flow", "detection", "verdict",
-        "correlation", "threat_intel", "brain", "policy", "pep", "forensics"
+        "source",
+        "fabric",
+        "dispatcher",
+        "flow",
+        "detection",
+        "verdict",
+        "correlation",
+        "threat_intel",
+        "brain",
+        "policy",
+        "pep",
+        "forensics"
       ]
     },
     {
@@ -101,14 +128,32 @@
       "schema": "JSON messages over named pipe",
       "version": "1.0",
       "magic": "0x4354524C",
-      "languages": ["TypeScript", "Python", "Zig"],
+      "languages": [
+        "TypeScript",
+        "Python",
+        "Zig"
+      ],
       "cross_language": true,
       "frozen": true,
       "transport": "Named pipe: \\\\.\\pipe\\aegis_control",
       "commands": {
-        "READ": ["status", "version", "health", "rules.list", "incidents.list", "federation.status"],
-        "OPERATE": ["rules.reload", "block.request", "unblock.request", "quarantine.request"],
-        "PRIVILEGED": ["daemon.shutdown"]
+        "READ": [
+          "status",
+          "version",
+          "health",
+          "rules.list",
+          "incidents.list",
+          "federation.status"
+        ],
+        "OPERATE": [
+          "rules.reload",
+          "block.request",
+          "unblock.request",
+          "quarantine.request"
+        ],
+        "PRIVILEGED": [
+          "daemon.shutdown"
+        ]
       },
       "authorization": {
         "roles": "READ < OPERATE < PRIVILEGED",
@@ -128,7 +173,11 @@
       "schema": "Policy AST structs (Action, FieldKind, Op, Predicate, Clause, Condition, Policy)",
       "version": "5.0",
       "magic": "0x50495231",
-      "languages": ["TypeScript", "Zig", "Rust"],
+      "languages": [
+        "TypeScript",
+        "Zig",
+        "Rust"
+      ],
       "cross_language": true,
       "frozen": true,
       "types": {

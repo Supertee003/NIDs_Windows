@@ -46,7 +46,7 @@ Section "AEGIS Runtime + Service (Required)" SecCore
   ; Manifest-declared payload + build artifact payload
 
   SetOutPath "$INSTDIR\bin"
-  File "/oname=aegisctl.py" "scripts\aegisctl.py"
+  File "/oname=aegisctl.py" "tools\aegisctl.py"
   SetOutPath "$INSTDIR\bin"
   File "/oname=installer.py" "tools\installer.py"
   SetOutPath "$INSTDIR\bin"
