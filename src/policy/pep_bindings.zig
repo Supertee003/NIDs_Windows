@@ -32,6 +32,7 @@ pub const PepContext = extern struct {
 
 pub const PepRequest = extern struct {
     decision_kind: u8, // matches EventKind
+    requested_action: u8, // matches policy.Action ordinals
     flow_id: u64,
     src_ip: u32,
     dst_ip: u32,
@@ -89,6 +90,7 @@ pub const PepEnforcer = struct {
         }
         var req = PepRequest{
             .decision_kind = @intFromEnum(ev.kind),
+            .requested_action = @intFromEnum(p.action),
             .flow_id = ev.flow_id,
             .src_ip = ev.src_ip,
             .dst_ip = ev.dst_ip,
@@ -192,6 +194,7 @@ test "FFI-001: PepRequest size matches Rust" {
 test "FFI-001: PepRequest field offsets match Rust" {
     // Verify critical field offsets against Rust #[repr(C)]
     try std.testing.expectEqual(@as(usize, 0), @offsetOf(PepRequest, "decision_kind"));
+    try std.testing.expectEqual(@as(usize, 1), @offsetOf(PepRequest, "requested_action"));
     try std.testing.expectEqual(@as(usize, 8), @offsetOf(PepRequest, "flow_id"));
     try std.testing.expectEqual(@as(usize, 16), @offsetOf(PepRequest, "src_ip"));
     try std.testing.expectEqual(@as(usize, 20), @offsetOf(PepRequest, "dst_ip"));
@@ -246,6 +249,7 @@ test "FFI-001: PepRequest binary serialization roundtrip" {
     // Create a known request, serialize to bytes, verify layout
     var req = PepRequest{
         .decision_kind = 61,
+        .requested_action = @intFromEnum(policy.Action.block),
         .flow_id = 0x0102030405060708,
         .src_ip = 0xC0A80101,
         .dst_ip = 0x08080808,

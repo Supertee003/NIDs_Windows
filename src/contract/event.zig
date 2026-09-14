@@ -1,5 +1,5 @@
 // I02 - Canonical Event Schema
-// AEGIS NIDS v5.0+ â€” Fixed-layout IPC event (76 bytes, cache-line friendly)
+// AEGIS NIDS v5.0+ — Fixed-layout IPC event (96 bytes, binary stable)
 //
 // This struct is the *contract* between capture, detection, policy, forensic,
 // and federation. It MUST remain binary-stable across releases.
@@ -120,7 +120,7 @@ pub const IpcEvent = extern struct {
 
     comptime {
         if (@sizeOf(IpcEvent) != EVENT_SIZE) {
-            @compileError("IpcEvent must be exactly 80 bytes");
+            @compileError("IpcEvent must be exactly 96 bytes");
         }
     }
 
@@ -183,8 +183,8 @@ pub fn fnv1a32(data: []const u8) u32 {
     return h;
 }
 
-test "IpcEvent is 80 bytes" {
-    try std.testing.expectEqual(@as(usize, 80), @sizeOf(IpcEvent));
+test "IpcEvent is 96 bytes" {
+    try std.testing.expectEqual(@as(usize, 96), @sizeOf(IpcEvent));
 }
 
 test "IpcEvent init and validate" {

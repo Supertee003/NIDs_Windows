@@ -19,7 +19,7 @@
 
 const std = @import("std");
 const canonical = @import("../contract/canonical_event.zig");
-const nose_contract = @import("nose_contract.zig");
+const pipeline_queue = @import("../pipeline/event_queue.zig");
 
 // ============================================================
 // Win32 Pipe Constants
@@ -95,6 +95,20 @@ fn createPipeServer() !usize {
     return handle;
 }
 
+/// Read exactly buf.len bytes. ReadFile may return a short read even for a
+/// byte-mode named pipe, so callers must never treat one read as one frame.
+fn readExact(server: usize, buf: []u8) bool {
+    var total: usize = 0;
+    while (total < buf.len) {
+        var n: u32 = 0;
+        const remaining: u32 = @intCast(buf.len - total);
+        if (ReadFile(server, buf.ptr + total, remaining, &n, null) == 0) return false;
+        if (n == 0) return false;
+        total += @intCast(n);
+    }
+    return true;
+}
+
 // ============================================================
 // Reader Stats
 // ============================================================
@@ -162,15 +176,12 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
     while (!stopSignal.load(.acquire)) {
         // Read length header (u32 LE)
         var lenBuf: [4]u8 = undefined;
-        var bytesRead: u32 = 0;
-        if (ReadFile(server, &lenBuf, 4, &bytesRead, null) == 0) {
+        if (!readExact(server, &lenBuf)) {
             const err = GetLastError();
             if (err == ERROR_BROKEN_PIPE or err == ERROR_NO_DATA) break;
             g_reader_stats.pipe_errors += 1;
             break;
         }
-        if (bytesRead < 4) break;
-
         const frameLen = @as(u32, lenBuf[0]) |
             (@as(u32, lenBuf[1]) << 8) |
             (@as(u32, lenBuf[2]) << 16) |
@@ -181,10 +192,9 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
             var discard: [256]u8 = undefined;
             var remaining = frameLen;
             while (remaining > 0) {
-                const toRead: u32 = @intCast(@min(remaining, 256));
-                if (ReadFile(server, &discard, toRead, &bytesRead, null) == 0) break;
-                if (bytesRead == 0) break;
-                remaining -= bytesRead;
+                const toRead: usize = @intCast(@min(remaining, 256));
+                if (!readExact(server, discard[0..toRead])) break;
+                remaining -= @intCast(toRead);
             }
             g_reader_stats.frames_dropped += 1;
             continue;
@@ -192,14 +202,9 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
 
         // Read payload
         var payload: [FRAME_SIZE]u8 = undefined;
-        bytesRead = 0;
-        if (ReadFile(server, &payload, FRAME_SIZE, &bytesRead, null) == 0) {
+        if (!readExact(server, &payload)) {
             g_reader_stats.pipe_errors += 1;
             break;
-        }
-        if (bytesRead < FRAME_SIZE) {
-            g_reader_stats.frames_dropped += 1;
-            continue;
         }
 
         g_reader_stats.frames_read += 1;
@@ -210,13 +215,12 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
             continue;
         };
 
-        // Submit to fabric (policy-free acquisition path)
-        const result = nose_contract.submitEvent(event);
-        switch (result) {
-            .accepted => g_reader_stats.frames_submitted += 1,
-            else => {
-                g_reader_stats.frames_rejected += 1;
-            },
+        // Submit directly to the queue consumed by event_processor. There is
+        // no second acquisition queue between canonical validation and detect.
+        if (pipeline_queue.pushCanonicalEvent(&event)) {
+            g_reader_stats.frames_submitted += 1;
+        } else {
+            g_reader_stats.frames_dropped += 1;
         }
     }
 }

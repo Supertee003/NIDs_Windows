@@ -231,6 +231,7 @@ fn initCppBridge() void {
     // B-01 CRITICAL FIX: Removed "." (CWD) from search paths to prevent DLL planting
     // An attacker with write access to CWD could drop a malicious aegis_ipc.dll
     const search_paths = [_][]const u8{
+        "dist",
         "bridge",
         "build",
         "build\\Release",

@@ -26,6 +26,11 @@ pub var g_pipeline_audit_id: u64 = 0; // monotonic audit trail counter
 pub var g_pep_request_id: u64 = 0; // unique PEP request ID counter
 pub var g_trace_id: u64 = 0; // monotonic trace counter
 pub var g_pep_available: bool = false; // PEP availability for health check
+/// Identity used for events originating from the verified daemon process.
+/// Set during daemon startup; never use a fabricated all-capability mask.
+pub var g_runtime_pid: u32 = 0;
+/// Capability bitmask granted to the verified runtime service.
+pub var g_runtime_capability_mask: u32 = 0;
 pub var g_incidents_total: u64 = 0; // real incident count from ThreatTracker
 pub var g_incidents_open: u64 = 0; // currently open incidents
 pub var g_queue_drops: u64 = 0; // events dropped due to queue full

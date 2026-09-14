@@ -7,7 +7,7 @@
 //! Cross-language invariant: every language's Serialize/Deserialize must
 //! produce byte-identical output for the same logical event.
 
-package nose
+package main
 
 import (
 	"encoding/binary"
@@ -16,32 +16,70 @@ import (
 
 // ── EventSource enum ──────────────────────────────────────────
 const (
-	SourceUnknown Source = iota
-	SourceWfpSensor
-	SourceHostTelemetry
-	SourceMinifilter
-	SourceMlDetector
-	SourceClusterFederation
-	SourceProcessSensor
-	SourceFileSensor
-	SourceReplaySensor
-	SourceExternal = 255
+	SourceUnknown       = 0
+	SourceWfpSensor     = 1
+	SourceMinifilter    = 3
+	SourceGoAggregator  = 8
+	SourceNpcapSensor   = 9
+	SourceHostTelemetry = 10
+	SourceMlDetector    = 11
+	SourceClusterFed    = 12
+	SourceProcessSensor = 13
+	SourceFileSensor    = 14
+	SourceRegistrySensor = 15
+	SourceReplaySensor  = 16
+	SourceExternal      = 255
+
+	// Descriptive alias retained for callers using the long name.
+	SourceClusterFederation = SourceClusterFed
 )
 
 // String returns the human-readable name for each source value.
 func (s Source) String() string {
-	names := [256]string{
-		"unknown", "wfp_sensor", "host_telemetry", "minifilter",
-		"ml_detector", "cluster_federation", "process_sensor",
-		"file_sensor", "replay_sensor",
-	} // 0-8; 255 = external; 9-15 TBD in contract
-	if s >= 0 && s <= 8 {
-		return names[s]
+	switch s {
+	case SourceUnknown: return "unknown"
+	case SourceWfpSensor: return "wfp_sensor"
+	case SourceMinifilter: return "minifilter"
+	case SourceGoAggregator: return "go_aggregator"
+	case SourceNpcapSensor: return "npcap_sensor"
+	case SourceHostTelemetry: return "host_telemetry"
+	case SourceMlDetector: return "ml_detector"
+	case SourceClusterFed: return "cluster_federation"
+	case SourceProcessSensor: return "process_sensor"
+	case SourceFileSensor: return "file_sensor"
+	case SourceRegistrySensor: return "registry_sensor"
+	case SourceReplaySensor: return "replay_sensor"
+	case SourceExternal: return "external"
+	default: return "unknown"
 	}
-	if s == 255 {
-		return "external"
+}
+
+// classifyGo mirrors canonical_event.zig SourceKind.classify().
+func classifyGo(src byte) byte {
+	switch src {
+	case SourceWfpSensor, SourceNpcapSensor:
+		return 0
+	case SourceHostTelemetry, SourceMinifilter:
+		return 1
+	case SourceProcessSensor:
+		return 2
+	case SourceFileSensor:
+		return 3
+	case SourceRegistrySensor:
+		return 4
+	case SourceMlDetector:
+		return 5
+	case SourceClusterFed:
+		return 6
+	case SourceReplaySensor:
+		return 7
+	case SourceGoAggregator:
+		return 8
+	case SourceExternal:
+		return 255
+	default:
+		return 255
 	}
-	return "unknown"
 }
 
 // ── EventType enum ────────────────────────────────────────────
@@ -51,6 +89,13 @@ const (
 	EventAlert
 	EventCustom
 	EventSessionStart
+)
+
+// Compatibility names used by the capture path. Values remain the frozen
+// canonical ordinals; aliases avoid a second competing event vocabulary.
+const (
+	TypeForward = 1
+	TypeMatch   = 1
 )
 
 // String returns the human-readable name for each event type.
@@ -67,6 +112,11 @@ const (
 	PolicyAllow PolicyAction = iota
 	PolicyBlock
 	PolicyFailed
+)
+
+const (
+	ActionLogOnly = 0
+	ActionAlert  = 1
 )
 
 // String returns the human-readable name for each policy action.
@@ -110,7 +160,7 @@ const (
 	ResOffIntegrity = 9  // reserved[9..10]  = Integrity
 	ResOffHidsFlag  = 10 // reserved[10..11] = HidsFlag
 	ResOffNodeID    = 11 // reserved[11..15] = NodeID
-	ResOffConfidence = 12 // reserved[12..13] = Confidence (1 byte)
+	ResOffConfidence = 15 // frozen golden vector confidence offset
 )
 
 // EventWireSize is the canonical wire format size.
@@ -212,24 +262,9 @@ func (e *CanonicalEvent) Deserialize(b [EventWireSize]byte) {
 // ── SourceKind classification (cross-language T2 mapping) ───────
 // These must match Zig's SourceKind.classify() ordinals for interop.
 
-// ── Source enumeration ────────────────────────────────────────
+// ── Source type ────────────────────────────────────────────────
+// The source constants are declared once above with the frozen wire ordinals.
 type Source int
-
-const (
-	// G0 / canonical sources (shared across all languages)
-	SourceUnknown Source = iota
-	SourceWfpSensor         // 1 — WFP sensor / npcap capture
-	SourceHostTelemetry     // 2 — host event telemetry
-	SourceMinifilter        // 3 — minifilter driver
-	SourceMlDetector        // 4 — ML detector event
-	SourceClusterFederation // 5 — federation cluster event
-	SourceProcessSensor     // 6 — process sensor
-	SourceFileSensor        // 7 — file sensor
-	SourceReplaySensor      // 8 — replay sensor
-
-	// G2 / T2 additive sources (defined in Zig, must be matched in other languages)
-	SourceExternal = 255 // explicit external marker
-)
 
 // ── EventType enumeration ─────────────────────────────────────
 type EventType int

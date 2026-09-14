@@ -15,8 +15,10 @@ from __future__ import annotations
 import json
 import unittest
 from typing import Any
+from unittest.mock import patch
 
 from tests.runtime.conftest import COMPONENTS, RuntimeProbe, VALID_STATES
+from tools.aegisctl.api import control_api
 
 VALID_TRANSPORTS = {"pipe", "tcp", "udp", "stdout", "delegate"}
 
@@ -204,6 +206,38 @@ class TestHealthSampleJsonFromContract(unittest.TestCase):
             """
         )
         validate_health_response(sample)
+
+
+class TestControlApiHealthPayload(unittest.TestCase):
+    """The control backend must expose live, contract-complete health data."""
+
+    def test_payload_reports_subsystem_states_and_monotonic_uptime(self):
+        statuses = [
+            ("zig", True, 101),
+            ("go_nose", False, None),
+            ("rust_pep", True, 202),
+        ]
+        with patch.object(control_api, "get_all_status", return_value=statuses), \
+             patch.object(control_api, "compute_health_state", return_value=("DEGRADED", True)):
+            payload = control_api.get_health_payload()
+
+        self.assertEqual(payload["state"], "DEGRADED")
+        self.assertTrue(payload["degraded"])
+        self.assertGreaterEqual(payload["uptime_ms"], 0)
+        self.assertIn("subsystems", payload)
+        self.assertEqual(payload["subsystems"]["zig"]["state"], "RUNNING")
+        self.assertEqual(payload["subsystems"]["go_nose"]["state"], "STOPPED")
+        self.assertEqual(payload["subsystems"]["zig"]["pid"], 101)
+
+    def test_payload_exposes_tier3_and_counters(self):
+        with patch.object(control_api, "get_all_status", return_value=[]), \
+             patch.object(control_api, "compute_health_state", return_value=("FAILED", True)):
+            payload = control_api.get_health_payload()
+
+        self.assertIn("tier3", payload)
+        self.assertFalse(payload["tier3"]["ready"])
+        self.assertEqual(set(payload["counters"]),
+                         {"in_events", "out_events", "errors", "dropped"})
 
 
 if __name__ == "__main__":

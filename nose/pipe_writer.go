@@ -48,6 +48,21 @@ func (c *pipeConn) write(b []byte) (int, error) {
 	return c.file.Write(b)
 }
 
+// writeAll preserves frame boundaries even when the OS performs a short write.
+func (c *pipeConn) writeAll(b []byte) error {
+	for len(b) > 0 {
+		n, err := c.write(b)
+		if err != nil {
+			return err
+		}
+		if n <= 0 || n > len(b) {
+			return os.ErrInvalid
+		}
+		b = b[n:]
+	}
+	return nil
+}
+
 func (c *pipeConn) close() {
 	if c != nil && c.file != nil {
 		c.file.Close()
@@ -114,7 +129,7 @@ func (w *FrameWriter) Send(ev *CanonicalEvent) []byte {
 	frame[3] = byte(ple >> 24)
 	copy(frame[4:], wire[:])
 
-	_, werr := w.conn.write(frame[:])
+	werr := w.conn.writeAll(frame[:])
 	if werr != nil {
 		w.dropped++
 		w.conn.close()

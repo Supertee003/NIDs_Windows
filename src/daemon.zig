@@ -41,6 +41,7 @@ const rule_loader = @import("pipeline/rule_loader.zig");
 const processor = @import("pipeline/event_processor.zig");
 const packet = @import("pipeline/packet_callback.zig");
 const telemetry = @import("pipeline/telemetry_threads.zig");
+const nose_reader = @import("capture/nose_pipe_reader.zig");
 const service = @import("platform/win32_service.zig");
 const control = @import("platform/win32_pipe.zig");
 
@@ -73,6 +74,11 @@ pub fn runDaemon() !void {
         diag.err("Security self-check failed; refusing to start in production mode", .{});
         return error.SecurityCheckFailed;
     }
+    // The daemon is the authenticated runtime caller for pipeline-originated
+    // enforcement requests. Keep a real PID and grant only the explicit
+    // block capability; never fabricate 0xFFFFFFFF caller capabilities.
+    state.g_runtime_pid = @as(u32, @intCast(GetCurrentProcessId()));
+    state.g_runtime_capability_mask = 0x01;
 
     // 3. Probe capabilities
     const caps = manifest.probeCapabilities();
@@ -333,6 +339,12 @@ pub fn runDaemon() !void {
             diag.warn("failed to spawn capture thread: {} — capture disabled", .{err});
         };
 
+        // Canonical Go Nose -> named pipe -> detector pipeline queue path.
+        const nose_pipe_thread: ?std.Thread = std.Thread.spawn(.{}, nose_reader.runPipeReaderLoop, .{&state.g_stop_requested}) catch |err| blk: {
+            diag.warn("failed to spawn Go Nose pipe reader: {} — external capture disabled", .{err});
+            break :blk null;
+        };
+
         // PATCH-20: Start Windows Data Plane adapter threads (Phase 3)
         // ETW thread: receives Windows kernel events (process, file, registry, image)
         _ = std.Thread.spawn(.{}, telemetry.etwThread, .{&etw_source}) catch |err| {
@@ -351,6 +363,8 @@ pub fn runDaemon() !void {
         control.serveWindowsPipe(&caps, start_ns) catch |err| {
             diag.err("control server error: {}", .{err});
         };
+        state.g_stop_requested.store(true, .release);
+        if (nose_pipe_thread) |thread| thread.join();
     } else {
         // Non-Windows: run pipeline + control loop on main thread
         diag.info("running pipeline loop (non-Windows test mode)", .{});

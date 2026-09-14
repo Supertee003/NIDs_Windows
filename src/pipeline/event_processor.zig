@@ -137,7 +137,13 @@ fn processEvent(
     if (matched_policy) |pol| {
         // Unique PEP request ID (not event_id)
         state.g_pep_request_id += 1;
-        pep_decision = pep_enf.enforce(&ev_copy, pol, 0, 0xFFFFFFFF, state.g_pep_request_id); // caller_pid=0, all caps
+        pep_decision = pep_enf.enforce(
+            &ev_copy,
+            pol,
+            state.g_runtime_pid,
+            state.g_runtime_capability_mask,
+            state.g_pep_request_id,
+        );
         state.g_pipeline_detections += 1; // policy matched = detection event
 
         // Record PEP decision in trace

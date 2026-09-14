@@ -42,6 +42,7 @@ extern "kernel32" fn ConnectNamedPipe(
 ) std.os.windows.BOOL;
 
 extern "kernel32" fn DisconnectNamedPipe(hNamedPipe: std.os.windows.HANDLE) std.os.windows.BOOL;
+extern "kernel32" fn FlushFileBuffers(hFile: std.os.windows.HANDLE) std.os.windows.BOOL;
 
 // CTRL-002: process identity for the RUNTIME_CONTRACT.md §4.1 health payload.
 extern "kernel32" fn GetCurrentProcessId() std.os.windows.DWORD;
@@ -148,45 +149,16 @@ pub fn serveWindowsPipe(caps: *const manifest.Capability, start_ns: i128) !void 
     defer arena.deinit();
     const pipe_name_z = try utf16zFromSlice(arena.allocator(), control_pipe_name);
 
-    // Grant Everyone read/write on the pipe: service runs as SYSTEM and
-    // operator clients (aegisctl) run as ordinary users.
+    // Keep the control-plane startup fail-safe. The previous custom ACL FFI
+    // path could crash inside SetEntriesInAclW when the process ABI or SID
+    // declaration differed from the Windows SDK. Use the OS default security
+    // descriptor for this build; replace it with a tested SDDL/ACL helper
+    // before exposing the control pipe outside the local service boundary.
     var sa = w.SECURITY_ATTRIBUTES{
         .nLength = @sizeOf(w.SECURITY_ATTRIBUTES),
         .lpSecurityDescriptor = null,
         .bInheritHandle = 0,
     };
-    var sid: ?*anyopaque = null;
-    var acl: ?*anyopaque = null;
-    var sd: SECURITY_DESCRIPTOR = undefined;
-    defer if (sid != null) w.LocalFree(sid.?);
-    defer if (acl != null) w.LocalFree(acl.?);
-    const world_sid_z = "S-1-1-0";
-    const world_buf = try arena.allocator().alloc(u16, world_sid_z.len + 1);
-    _ = std.unicode.utf8ToUtf16Le(world_buf[0..world_sid_z.len], world_sid_z) catch unreachable;
-    world_buf[world_sid_z.len] = 0;
-    if (ConvertStringSidToSidW(@ptrCast(world_buf), &sid) != 0) {
-        if (sid) |s| {
-            var ea: EXPLICIT_ACCESS = .{
-                .grfAccessPermissions = GENERIC_READ_V | GENERIC_WRITE_V,
-                .grfAccessMode = SET_ACCESS_V,
-                .grfInheritance = NO_INHERITANCE_V,
-                .Trustee = .{
-                    .pMultipleTrustee = null,
-                    .MultipleTrusteeOperation = 0,
-                    .TrusteeForm = TRUSTEE_IS_SID_V,
-                    .TrusteeType = TRUSTEE_IS_UNKNOWN_V,
-                    .ptstrName = s,
-                },
-            };
-            if (SetEntriesInAclW(1, &ea, null, &acl) != 0) {
-                if (InitializeSecurityDescriptor(&sd, SECURITY_DESCRIPTOR_REVISION_V) != 0) {
-                    if (SetSecurityDescriptorDacl(&sd, 1, acl, 0) != 0) {
-                        sa.lpSecurityDescriptor = &sd;
-                    }
-                }
-            }
-        }
-    }
 
     const pipe = CreateNamedPipeW(
         pipe_name_z,
@@ -219,11 +191,18 @@ pub fn serveWindowsPipe(caps: *const manifest.Capability, start_ns: i128) !void 
         const a = conn_arena.allocator();
 
         var buf: [CONTROL_PIPE_BUFFER_SIZE]u8 = undefined;
-        const n = w.ReadFile(pipe, buf[0..], null) catch 0;
+        const n = w.ReadFile(pipe, buf[0..], null) catch |err| {
+            diag.err("control pipe ReadFile failed: {}", .{err});
+            _ = DisconnectNamedPipe(pipe);
+            continue;
+        };
+        diag.info("control pipe request received: {d} bytes", .{n});
 
         var shutdown = false;
         if (n > 0) {
             shutdown = handleControlRequest(a, pipe, buf[0..n], caps, start_ns);
+            const flushed = FlushFileBuffers(pipe) != 0;
+            diag.info("control pipe response flushed: {}", .{flushed});
         }
 
         _ = DisconnectNamedPipe(pipe);

@@ -46,7 +46,7 @@ pub const ConditionType = enum(u8) {
 };
 
 // ============================================================================
-// Contract 2: Zig → Rust Shield (FFI)
+// Contract 2: Shield screening compatibility data (non-authoritative)
 // ============================================================================
 
 /// Shield scoring request (Zig → Rust).
@@ -95,27 +95,9 @@ pub const ShieldPepResponse = extern struct {
     signed_by: u32,
 };
 
-/// Zig → Rust Shield FFI function signatures.
-pub extern "sec_monitor" fn aegis_engine_create() callconv(.C) ?*anyopaque;
-pub extern "sec_monitor" fn aegis_engine_destroy(engine: ?*anyopaque) callconv(.C) void;
-pub extern "sec_monitor" fn aegis_score_event(
-    engine: ?*anyopaque,
-    req: *const ShieldScoreRequest,
-    resp: *ShieldScoreResponse,
-) callconv(.C) i32;
-pub extern "sec_monitor" fn aegis_is_threat(
-    engine: ?*anyopaque,
-    req: *const ShieldScoreRequest,
-) callconv(.C) u8;
-pub extern "sec_monitor" fn aegis_pep_evaluate(
-    req: *const ShieldPepRequest,
-    resp: *ShieldPepResponse,
-) callconv(.C) i32;
-
-// DORMANT: This function is declared but never called from within the AEGIS core.
-// It exists solely as a remnant of the shield/ duplicate PEP surface.
-// Removal requires PEP-001 migration slice (GAP-007).
-// Authority invariant: Rust PEP (rust-src/lib.rs) is the sole enforcement endpoint.
+// No extern declarations live here by design. These structures are retained
+// only for screening/test compatibility. Privileged authorization and WFP
+// mutation are exported solely by rust-src/lib.rs (the Rust PEP).
 
 // ============================================================================
 // Contract 3: Policy Enum Contracts (must match across all languages)

@@ -5,7 +5,7 @@
 //!
 //! Evidence level: E3 (component integration across language runtimes)
 
-package nose
+package main
 
 import (
 	"encoding/binary"
@@ -17,14 +17,14 @@ import (
 )
 
 // sharedGoldenVectors loads the canonical golden vector definitions from JSON.
-func sharedGoldenVectors() (map[string]*json.Object, error) {
+func sharedGoldenVectors() (map[string]map[string]interface{}, error) {
 	// Walk to the test vectors directory
 	dir, err := os.ReadDir(filepath.Join("tests", "contracts", "event_vectors", "event_vectors"))
 	if err != nil {
 		return nil, err
 	}
 
-	vectors := make(map[string]*json.Object)
+	vectors := make(map[string]map[string]interface{})
 	for _, d := range dir {
 		if strings.HasSuffix(d.Name(), ".bin") {
 			// Read the corresponding metadata from golden_vectors.json
@@ -35,9 +35,13 @@ func sharedGoldenVectors() (map[string]*json.Object, error) {
 			var meta map[string]interface{}
 			json.Unmarshal(data, &meta)
 			if v, ok := meta["vectors"].(map[string]interface{})[d.Name()]; ok {
-				fields, _ := v["fields"].(map[string]interface{})
-				vectors[d.Name()] = &json.Object{} // placeholder - full parse needs json.Tokenizer
-			}
+				obj, ok := v.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				fields, _ := obj["fields"].(map[string]interface{})
+					vectors[d.Name()] = fields
+				}
 		}
 	}
 	return vectors, nil
@@ -107,8 +111,6 @@ func validateVectorFields(event *CanonicalEvent, expectedFields map[string]inter
 
 	// Helper to format uint64 for comparison
 	formatUint64 := func(v uint64) string { return fmt.Sprintf("%d", v) }
-	formatUint32 := func(v uint32) string { return fmt.Sprintf("%d", v) }
-	formatUint16 := func(v uint16) string { return fmt.Sprintf("%d", v) }
 	formatByte := func(v byte) string { return fmt.Sprintf("%d", v) }
 
 	// Map expected field names to event fields
@@ -142,7 +144,7 @@ func validateVectorFields(event *CanonicalEvent, expectedFields map[string]inter
 		case "is_pipe":
 			actual = fmt.Sprintf("%v", event.IsPipe != 0)
 		case "event_type":
-			actual = event.EventType.String()
+			actual = fmt.Sprintf("%d", event.EventType)
 		case "severity":
 			actual = fmt.Sprintf("%d", event.Severity)
 		case "rule_id":
@@ -154,9 +156,9 @@ func validateVectorFields(event *CanonicalEvent, expectedFields map[string]inter
 		case "payload_hash":
 			actual = fmt.Sprintf("0x%016x", event.PayloadHash)
 		case "policy_action":
-			actual = event.PolicyAction.String()
+			actual = fmt.Sprintf("%d", event.PolicyAction)
 		case "enforcement_status":
-			actual = event.EnforcementStatus.String()
+			actual = fmt.Sprintf("%d", event.EnforcementStatus)
 		case "defcon_impact":
 			actual = fmt.Sprintf("%d", event.DefconImpact)
 		case "context_flags":
@@ -177,7 +179,7 @@ func validateVectorFields(event *CanonicalEvent, expectedFields map[string]inter
 			actual = fmt.Sprintf("%d", event.Confidence)
 		}
 
-		exp, _ := expected[name].(string)
+		exp := fmt.Sprint(expected)
 		if actual != exp {
 			fmt.Printf("  MISMATCH %s: got %s, expected %s\n", label, actual, exp)
 			ok = false
@@ -198,7 +200,7 @@ func validateVectorFields(event *CanonicalEvent, expectedFields map[string]inter
 
 // TestGoldenVector cross-language: loads the shared .bin fixture and validates
 // every field against the canonical definition in golden_vectors.json.
-func TestGoldenVector() {
+func ValidateGoldenVector() {
 	// Load vector #001: Benign forward event
 	expectedFields, err := goldenVectorFields("event_v1_001.bin")
 	if err != nil {
@@ -229,7 +231,7 @@ func TestGoldenVector() {
 }
 
 // TestGoldenVector002 validates vector #002: APT block event.
-func TestGoldenVector002() {
+func ValidateGoldenVector002() {
 	expectedFields, err := goldenVectorFields("event_v1_002.bin")
 	if err != nil {
 		fmt.Printf("FAIL: Could not load golden vector metadata: %v\n", err)
@@ -256,7 +258,7 @@ func TestGoldenVector002() {
 }
 
 // TestGoldenVector003 validates vector #003: Host event (process start).
-func TestGoldenVector003() {
+func ValidateGoldenVector003() {
 	expectedFields, err := goldenVectorFields("event_v1_003.bin")
 	if err != nil {
 		fmt.Printf("FAIL: Could not load golden vector metadata: %v\n", err)
@@ -290,12 +292,12 @@ func TestGoldenVector003() {
 //   - Python: shared/wire/wire_codec.py round-trip test
 //   - C++: (pending - canonical_event_v1.h binary read)
 //   - Rust: (TBD - canonical_event.rs implementation)
-func TestSemanticEquivalence() {
+func ValidateSemanticEquivalence() {
 	// Verify vector #001 round-trips correctly in Go
-	TestGoldenVector()
+	ValidateGoldenVector()
 	// Verify vector #002
-	TestGoldenVector002()
+	ValidateGoldenVector002()
 	// Verify vector #003
-	TestGoldenVector003()
+	ValidateGoldenVector003()
 	fmt.Println("PASS: TestSemanticEquivalence - Go read+validate all 3 vectors")
 }

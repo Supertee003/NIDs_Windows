@@ -5,6 +5,7 @@
 
 const std = @import("std");
 const event = @import("../contract/event.zig");
+const canonical = @import("../contract/canonical_event.zig");
 const state = @import("runtime_state.zig");
 
 pub const PIPELINE_QUEUE_SIZE: usize = 4096;
@@ -40,6 +41,51 @@ pub fn pushEvent(ev: event.IpcEvent, payload: []const u8) bool {
     g_event_queue[head % PIPELINE_QUEUE_SIZE] = qe;
     g_queue_head.store(head + 1, .release);
     return true;
+}
+
+/// Adapt the frozen 109-byte CanonicalEvent into the queue consumed by the
+/// detector pipeline. This is the only acquisition-to-detector boundary.
+/// The event_id is copied unchanged; adapters must never mint a new identity.
+pub fn pushCanonicalEvent(ce: *const canonical.CanonicalEvent) bool {
+    if (!canonical.validate(ce)) return false;
+
+    const kind: event.EventKind = switch (ce.event_type) {
+        .block, .ip_blocked => .action_block,
+        .match_ => .signature_match,
+        .forward => .packet_captured,
+        .rejected => .system_error,
+        .session_start, .startup => .system_start,
+        .session_end, .shutdown => .system_shutdown,
+        .ruleset_reload => .policy_decision,
+        .custom => .packet_captured,
+    };
+    const severity: event.EventSeverity = switch (ce.severity) {
+        0 => .info,
+        1 => .warning,
+        2 => .critical,
+        else => .alert,
+    };
+
+    var ev = event.IpcEvent.init(kind);
+    ev.severity = severity;
+    ev.event_id = ce.event_id;
+    ev.timestamp_ns = ce.monotonic_ns;
+    ev.src_ip = ce.source_ip;
+    ev.dst_ip = ce.dest_ip;
+    ev.src_port = ce.source_port;
+    ev.dst_port = ce.dest_port;
+    ev.protocol = ce.protocol;
+    ev.rule_id = ce.rule_id;
+    ev.payload_len = ce.payload_length;
+    ev.payload_hash = @truncate(ce.payload_hash);
+    ev.flags = ce.context_flags;
+    return pushEvent(ev, &[_]u8{});
+}
+
+test "pushCanonicalEvent rejects invalid canonical event" {
+    var ce = canonical.create(.npcap_sensor);
+    ce.magic = 0;
+    try std.testing.expect(pushCanonicalEvent(&ce) == false);
 }
 
 /// Pop the next queued event from the pipeline queue.

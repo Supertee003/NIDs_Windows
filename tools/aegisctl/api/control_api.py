@@ -40,6 +40,99 @@ SUBSYSTEMS: Dict[str, Dict[str, Any]] = {
     "typescript_policy": {"language": "TypeScript", "start_cmd": "cd ts_policy && npm run start", "pid_file": "pid/ts_policy.pid"},
 }
 
+# Health uptime is process uptime, not wall-clock epoch time.  Keeping the
+# origin monotonic makes the control contract meaningful across clock changes.
+_PROCESS_START_MONOTONIC_MS = time.monotonic_ns() // 1_000_000
+CONTROL_PIPE = r"\\.\pipe\aegis_control"
+
+
+def _query_daemon(command: str, payload: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+    """Query the running Zig daemon; return None when it is unavailable."""
+    if os.name != "nt":
+        return None
+    request = {"command": command, "payload": payload or {}}
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        create_file = kernel32.CreateFileW
+        create_file.argtypes = [
+            wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+            wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE,
+        ]
+        create_file.restype = wintypes.HANDLE
+        write_file = kernel32.WriteFile
+        write_file.argtypes = [wintypes.HANDLE, wintypes.LPCVOID, wintypes.DWORD,
+                               ctypes.POINTER(wintypes.DWORD), wintypes.LPVOID]
+        write_file.restype = wintypes.BOOL
+        read_file = kernel32.ReadFile
+        read_file.argtypes = [wintypes.HANDLE, wintypes.LPVOID, wintypes.DWORD,
+                              ctypes.POINTER(wintypes.DWORD), wintypes.LPVOID]
+        read_file.restype = wintypes.BOOL
+        close_handle = kernel32.CloseHandle
+        close_handle.argtypes = [wintypes.HANDLE]
+        close_handle.restype = wintypes.BOOL
+
+        invalid_handle = ctypes.c_void_p(-1).value
+        handle = create_file(CONTROL_PIPE, 0xC0000000, 0, None, 3, 0, None)
+        if handle == invalid_handle:
+            return None
+        try:
+            request_bytes = json.dumps(request, separators=(",", ":")).encode("utf-8")
+            sent = wintypes.DWORD(0)
+            request_buf = ctypes.create_string_buffer(request_bytes)
+            if not write_file(handle, request_buf, len(request_bytes), ctypes.byref(sent), None):
+                return None
+
+            chunks = []
+            while True:
+                response_buf = ctypes.create_string_buffer(65536)
+                received = wintypes.DWORD(0)
+                ok = read_file(handle, response_buf, 65535, ctypes.byref(received), None)
+                if received.value:
+                    chunks.append(response_buf.raw[:received.value])
+                if ok or ctypes.get_last_error() == 109:  # ERROR_BROKEN_PIPE
+                    break
+                if ctypes.get_last_error() != 234:  # ERROR_MORE_DATA
+                    return None
+            raw = b"".join(chunks)
+        finally:
+            close_handle(handle)
+        response = json.loads(raw.decode("utf-8"))
+        if not isinstance(response, dict) or not response.get("ok"):
+            return None
+        data = response.get("data")
+        if isinstance(data, dict):
+            return data
+        return response
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        if os.environ.get("AEGIS_DEBUG_CONTROL") == "1":
+            print(f"[aegisctl] control pipe {command} failed: {exc}", file=sys.stderr)
+        return None
+
+
+def _daemon_subsystems(payload: Dict[str, Any]) -> List[Tuple[str, bool, Optional[int]]]:
+    result = []
+    for item in payload.get("subsystems", []):
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name", "unknown"))
+        state = str(item.get("state", "STOPPED"))
+        result.append((name, state in {"RUNNING", "READY"}, item.get("pid") or None))
+    return result
+
+
+def _query_daemon_retry(command: str, attempts: int = 3) -> Optional[Dict[str, Any]]:
+    """Retry read-only queries because the daemon accepts one pipe client at a time."""
+    for attempt in range(attempts):
+        result = _query_daemon(command)
+        if result is not None:
+            return result
+        if attempt + 1 < attempts:
+            time.sleep(0.05)
+    return None
+
 
 def read_pid(name: str) -> Optional[int]:
     """Read PID from pid/ directory, return None if not found or not running."""
@@ -95,6 +188,12 @@ def get_subsystem_status(name: str) -> Dict[str, Any]:
 
 def get_all_status() -> List[Tuple[str, bool, Optional[int]]]:
     """Get status of all subsystems."""
+    daemon_status = _query_daemon_retry("system.status")
+    if daemon_status is not None and daemon_status.get("subsystems") is not None:
+        return _daemon_subsystems(daemon_status)
+    daemon_health = _query_daemon_retry("system.health")
+    if daemon_health is not None and daemon_health.get("subsystems") is not None:
+        return _daemon_subsystems(daemon_health)
     results = []
     for name in SUBSYSTEMS:
         status = get_subsystem_status(name)
@@ -287,14 +386,54 @@ def get_health_payload() -> Dict[str, Any]:
     """
     import os
 
-    # Compute actual health state from subsystem statuses
+    daemon_health = _query_daemon_retry("system.health")
+    if daemon_health is not None:
+        subsystem_payload = {
+            item.get("name", "unknown"): {
+                "state": item.get("state", "STOPPED"),
+                "pid": item.get("pid") or None,
+                "version": item.get("version", "unknown"),
+                "last_event_ms": item.get("last_event_ms", 0),
+                "error": item.get("error"),
+            }
+            for item in daemon_health.get("subsystems", [])
+            if isinstance(item, dict)
+        }
+        pep_ready = any("pep" in name and data["state"] in {"RUNNING", "READY"} for name, data in subsystem_payload.items())
+        return {
+            "component": daemon_health.get("component", "core"),
+            "state": daemon_health.get("state", "DEGRADED"),
+            "runtime_state": daemon_health.get("runtime_state", daemon_health.get("state", "DEGRADED")),
+            "pid": daemon_health.get("pid"),
+            "version": daemon_health.get("version", "6.0.0"),
+            "uptime_ms": daemon_health.get("uptime_ms", 0),
+            "last_event_ms": max((v["last_event_ms"] for v in subsystem_payload.values()), default=0),
+            "counters": {"in_events": 0, "out_events": 0, "errors": 0, "dropped": 0},
+            "subsystems": subsystem_payload,
+            "tier3": {"ready": pep_ready, "state": "READY" if pep_ready else "STOPPED"},
+            "deps": [{"name": name, "state": data["state"]} for name, data in subsystem_payload.items()],
+            "degraded": bool(daemon_health.get("degraded", daemon_health.get("state") != "RUNNING")),
+            "capabilities": daemon_health.get("capabilities", {}),
+        }
+
+    # Compute actual health state from subsystem statuses.
     overall_state, degraded = compute_health_state()
+    subsystem_statuses = get_all_status()
+    subsystem_payload = {
+        name: {
+            "state": "RUNNING" if is_running else "STOPPED",
+            "pid": pid,
+        }
+        for name, is_running, pid in subsystem_statuses
+    }
+    tier3_ready = (TOOLS_DIR.parent.parent / "sec_monitor.dll").exists()
 
     return {
         "component": "control_api",
         "state": overall_state,
         "pid": os.getpid(),
-        "uptime_ms": int(time.time() * 1000),
+        "version": "6.0.0",
+        "uptime_ms": max(0, time.monotonic_ns() // 1_000_000 - _PROCESS_START_MONOTONIC_MS),
         "last_event_ms": 0,
         "counters": {
             "in_events": 0,
@@ -302,13 +441,11 @@ def get_health_payload() -> Dict[str, Any]:
             "errors": 0,
             "dropped": 0,
         },
+        "subsystems": subsystem_payload,
+        "tier3": {"ready": tier3_ready, "state": "RUNNING" if tier3_ready else "STOPPED"},
         "deps": [
-            {"name": "zig_core", "state": "RUNNING"},
-            {"name": "go_nose", "state": "RUNNING"},
-            {"name": "rust_pep", "state": "RUNNING"},
-            {"name": "c_bridge", "state": "RUNNING"},
-            {"name": "python_brain", "state": "RUNNING"},
-            {"name": "typescript_policy", "state": "RUNNING"},
+            {"name": name, "state": data["state"]}
+            for name, data in subsystem_payload.items()
         ],
         "degraded": degraded,
     }

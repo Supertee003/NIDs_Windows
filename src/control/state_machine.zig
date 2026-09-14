@@ -274,7 +274,7 @@ pub const RuntimeState = struct {
     }
 
     /// Get health check JSON.
-    pub fn healthJson(self: *RuntimeState, a: std.mem.Allocator, pid: u32) ![]u8 {
+    pub fn healthJson(self: *RuntimeState, a: std.mem.Allocator, pid: u32, bridge_ready: bool, wfp_ready: bool, cpp_ready: bool, udp_ready: bool) ![]u8 {
         self.mutex.lock();
         const ss = self.system_state;
         const uptime = self.uptime_ms;
@@ -289,15 +289,10 @@ pub const RuntimeState = struct {
 
         var arr = std.ArrayList(u8).init(a);
         var writer = arr.writer();
+        const operational_state = if (all_healthy and bridge_ready) "RUNNING" else "DEGRADED";
         try writer.print(
-            \\{{"component":"core","state":"{s}","pid":{},"uptime_ms":{},"degraded":{},"subsystems":[]
-        , .{ ss.toString(), pid, uptime, !all_healthy });
-
-        // Reset and write subsystems
-        arr.clearRetainingCapacity();
-        try writer.print(
-            \\{{"component":"core","state":"{s}","pid":{},"uptime_ms":{},"degraded":{},"subsystems":[]
-        , .{ ss.toString(), pid, uptime, !all_healthy });
+            \\{{"component":"core","state":"{s}","runtime_state":"{s}","pid":{},"uptime_ms":{},"degraded":{},"capabilities":{{"wfp":{},"cpp_bridge":{},"udp_brain":{} }},"subsystems":[
+        , .{ operational_state, ss.toString(), pid, uptime, !all_healthy or !bridge_ready, wfp_ready, cpp_ready, udp_ready });
 
         for (subs, 0..) |sub, i| {
             if (i > 0) try writer.writeByte(',');

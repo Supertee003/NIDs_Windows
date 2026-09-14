@@ -81,9 +81,13 @@ def cmd_status(args) -> int:
     """
     if CONTROL_API_AVAILABLE:
         statuses = get_all_status()
+        health = get_health_payload()
         running = sum(1 for _, r, _ in statuses if r)
         total = len(statuses)
-        print(f"\n  {running}/{total} subsystems running")
+        print(f"\n  State: {health['state']}")
+        print(f"  Version: {health.get('version', 'unknown')}")
+        print(f"  Uptime: {health.get('uptime_ms', 0)} ms")
+        print(f"  {running}/{total} subsystems running")
         for name, is_running, pid in statuses:
             if is_running:
                 print(f"  [RUNNING] {name.upper():<10} (PID: {pid})")
@@ -93,6 +97,26 @@ def cmd_status(args) -> int:
         print("\nControl API not available - showing basic status")
         # Basic fallback
         print("\n  Subsystem status (basic)")
+    return 0
+
+
+def cmd_diagnose(args) -> int:
+    """Print a structured diagnostic snapshot without mutating runtime state."""
+    if not CONTROL_API_AVAILABLE:
+        print("\nControl API not available")
+        return 4
+
+    payload = get_health_payload()
+    print("\n  VERSION")
+    print(f"  {payload.get('version', 'unknown')}")
+    print("  RUNTIME STATUS")
+    print(f"  State: {payload['state']}")
+    print(f"  Degraded: {payload.get('degraded', True)}")
+    print("  SUBSYSTEM HEALTH")
+    for name, status in payload.get("subsystems", {}).items():
+        print(f"  [{status['state']}] {name.upper():<18}")
+    print("  TIER3")
+    print(f"  [{payload.get('tier3', {}).get('state', 'UNKNOWN')}] Rust PEP")
     return 0
 
 
@@ -220,6 +244,7 @@ def main() -> int:
 
     # Set up subcommand parsers with help text
     sub.add_parser("status", help="Show subsystem status").set_defaults(func=cmd_status)
+    sub.add_parser("diagnose", help="Show runtime diagnostic snapshot").set_defaults(func=cmd_diagnose)
     sub.add_parser("health", help="Health check").set_defaults(func=cmd_health)
     sub.add_parser("rules", help="Rules management").set_defaults(func=cmd_rules)
     sub.add_parser("alerts", help="View alerts").set_defaults(func=cmd_alerts)

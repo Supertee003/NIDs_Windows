@@ -35,6 +35,7 @@ type captureState struct {
 }
 
 var stateAtomic captureState
+var eventSequence uint64
 
 // captureDefaultTimeout is the pcap read timeout for live capture.
 const captureDefaultTimeout = time.Second
@@ -125,7 +126,7 @@ func droppedVia(w *FrameWriter) uint64 {
 func eventFromPacket(packet gopacket.Packet) *CanonicalEvent {
 	now := time.Now()
 	ev := &CanonicalEvent{
-		EventID:        uint64(now.UnixNano()), // unique enough per capture tick
+		EventID:        atomic.AddUint64(&eventSequence, 1),
 		TimestampMS:    uint64(now.UnixMilli()),
 		MonotonicNS:    uint64(now.UnixNano()),
 		Source:         SourceNpcapSensor,

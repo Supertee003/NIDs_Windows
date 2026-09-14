@@ -224,9 +224,10 @@ const handlers = struct {
     fn health(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
         // P1: Pull from state machine — single source of truth
         const sm = @import("state_machine.zig");
+        const bridge = bridge_init.status();
         sm.g_runtime.uptime_ms = @intCast(@divTrunc(std.time.nanoTimestamp() - ctx.start_ns, std.time.ns_per_ms));
         const pid: u32 = GetCurrentProcessId();
-        return sm.g_runtime.healthJson(a, pid) catch null;
+        return sm.g_runtime.healthJson(a, pid, bridge_init.allActive(), bridge.wfp_ioctl, bridge.cpp_bridge, bridge.udp_brain) catch null;
     }
 
     fn version(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {

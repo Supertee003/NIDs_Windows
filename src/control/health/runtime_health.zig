@@ -51,8 +51,10 @@ pub const State = enum(u8) {
     running = 3,
     /// System is degraded -- some functionality impaired but still serving.
     degraded = 4,
-    /// System has failed -- critical components down, fail-closed mode.
+    /// System is failed -- critical components down, fail-closed mode.
     failed = 5,
+    /// System is recovering after a transient subsystem failure.
+    recovering = 6,
 };
 
 pub const SubsystemStatus = enum(u8) {
@@ -70,9 +72,9 @@ pub const SubsystemId = enum(u8) {
     capture = 0,
     etw = 1,
     fim = 2,
-    wfp = 2,  // Same as FIM for wire compatibility; use distinct index
-    pep = 3,
-    control = 4,
+    wfp = 3,
+    pep = 4,
+    control = 5,
 };
 
 /// Per-subsystem health status with liveness tracking.
@@ -105,8 +107,8 @@ pub fn initHealth(version: [4]u8, pid: u32) RuntimeHealth {
         .degraded = true,  // Start degraded until subsystems prove ready
         .tier3 = false,    // Tier-3 absent at startup
         .subsystems = [_]SubsystemStatus{
-            .ready, .starting, .starting, .starting, .starting,
-        },  // capture=ready(assumed), etw/fim/wfp/pep=starting
+            .starting, .starting, .starting, .starting, .starting, .starting,
+        },  // No subsystem is ready until its liveness is observed.
         .counters = .{0, 0, 0, 0, 0},
     };
 }
@@ -264,13 +266,14 @@ pub fn appendEscapedString(buf: []u8, idx: i32, s: []const u8) i32 {
 }
 
 pub fn appendStateString(buf: []u8, idx: i32, state: State) i32 {
-    return appendEscapedString(&buf, idx, switch (state) {
+    return appendEscapedString(buf, idx, switch (state) {
         .stopped => "stopped",
         .starting => "starting",
         .ready => "ready",
         .running => "running",
         .degraded => "degraded",
         .failed => "failed",
+        .recovering => "recovering",
     });
 }
 

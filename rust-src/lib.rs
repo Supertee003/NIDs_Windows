@@ -164,6 +164,7 @@ pub struct PepContext {
 #[repr(C)]
 pub struct PepRequest {
     pub decision_kind: u8,
+    pub requested_action: u8,
     pub flow_id: u64,
     pub src_ip: u32,
     pub dst_ip: u32,
@@ -191,6 +192,15 @@ const DECISION_QUARANTINE: u8 = 3;
 const DECISION_ESCALATE: u8 = 4;
 #[allow(dead_code)]
 const DECISION_DROP: u8 = 5;
+
+// Policy-action ordinals from src/policy/policy_ir.zig.
+const ACTION_PASS: u8 = 0;
+const ACTION_LOG: u8 = 1;
+const ACTION_ALERT: u8 = 2;
+const ACTION_RATE_LIMIT: u8 = 3;
+const ACTION_BLOCK: u8 = 4;
+const ACTION_QUARANTINE: u8 = 5;
+const ACTION_ESCALATE: u8 = 6;
 
 #[cfg(windows)]
 mod wfp_adapter {
@@ -340,18 +350,35 @@ pub unsafe extern "C" fn aegis_pep_enforce(
     // Default: allow
     let mut decision = DECISION_ALLOW;
     let mut reason = 0u32;
-    let mut quota_remaining = QUOTA_DEFAULT;
+    let quota_remaining = QUOTA_DEFAULT;
     let signed_by = 0u32;
 
     let state = pep_state();
-    let mut s = state.lock();
+    let s = state.lock();
 
-    // Check capability mask (caller must have at least bit 0 = block capability)
-    if (req.ctx.caller_capability_mask & 0x01) == 0 {
+    // Advisory actions do not require a privileged capability. Every action
+    // that can mutate or constrain traffic must be explicitly authorized.
+    let requires_privilege = matches!(
+        req.requested_action,
+        ACTION_RATE_LIMIT | ACTION_BLOCK | ACTION_QUARANTINE | ACTION_ESCALATE
+    );
+    if requires_privilege && (req.ctx.caller_capability_mask & 0x01) == 0 {
         reason = 1; // insufficient capability (decision stays DECISION_ALLOW)
-    } else if req.severity >= 7 {
-        // High-severity block â€” check two-person rule if enabled
-        if s.two_person_rule {
+    } else if matches!(req.requested_action, ACTION_PASS | ACTION_LOG | ACTION_ALERT) {
+        // Non-enforcing policy actions remain non-privileged.
+        decision = DECISION_ALLOW;
+    } else if req.requested_action == ACTION_ESCALATE {
+        decision = DECISION_ESCALATE;
+        reason = 2; // explicit policy escalation
+    } else if req.requested_action == ACTION_RATE_LIMIT {
+        decision = DECISION_RATE_LIMIT;
+        reason = 3; // explicit policy rate limit
+    } else if req.requested_action == ACTION_QUARANTINE {
+        decision = DECISION_QUARANTINE;
+        reason = 5; // quarantine requested; adapter execution is downstream
+    } else if req.requested_action == ACTION_BLOCK {
+        // High-severity block — check two-person rule if enabled
+        if req.severity >= 7 && s.two_person_rule {
             // Need approval
             match s.pending_approvals.get(&req.ctx.request_id) {
                 Some(_) => {
@@ -366,27 +393,8 @@ pub unsafe extern "C" fn aegis_pep_enforce(
             decision = DECISION_BLOCK;
         }
     } else {
-        // Apply quota
-        let now_ms = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_millis() as u64)
-            .unwrap_or(0);
-        let entry = s.quotas.entry(req.src_ip).or_insert(QuotaEntry {
-            count: 0,
-            window_start_ms: now_ms,
-        });
-        if now_ms - entry.window_start_ms > QUOTA_WINDOW_MS {
-            entry.window_start_ms = now_ms;
-            entry.count = 0;
-        }
-        if entry.count >= QUOTA_DEFAULT {
-            decision = DECISION_RATE_LIMIT;
-            reason = 3; // quota exhausted
-        } else {
-            entry.count += 1;
-            quota_remaining = QUOTA_DEFAULT - entry.count;
-            decision = DECISION_BLOCK;
-        }
+        // Unknown action values fail closed as an authorization denial.
+        reason = 6;
     }
     drop(s);
 
@@ -536,6 +544,7 @@ mod tests {
     fn pep_enforce_low_severity_requires_wfp_adapter() {
         let req = PepRequest {
             decision_kind: 61,
+            requested_action: ACTION_BLOCK,
             flow_id: 1,
             src_ip: 0xC0A80101,
             dst_ip: 0x08080808,
@@ -569,6 +578,7 @@ mod tests {
     fn pep_enforce_no_capability_returns_allow_with_reason() {
         let req = PepRequest {
             decision_kind: 61,
+            requested_action: ACTION_BLOCK,
             flow_id: 2,
             src_ip: 0xC0A80102,
             dst_ip: 0x08080808,
@@ -593,6 +603,38 @@ mod tests {
             assert_eq!(aegis_pep_enforce(&req, &mut resp), 0);
             assert_eq!(resp.decision, DECISION_ALLOW);
             assert_eq!(resp.reason, 1);
+        }
+    }
+
+    #[test]
+    fn pep_advisory_action_does_not_require_capability() {
+        let req = PepRequest {
+            decision_kind: 61,
+            requested_action: ACTION_ALERT,
+            flow_id: 3,
+            src_ip: 0xC0A80103,
+            dst_ip: 0x08080808,
+            src_port: 12345,
+            dst_port: 80,
+            policy_id: 1,
+            severity: 8,
+            ctx: PepContext {
+                caller_pid: 1,
+                caller_capability_mask: 0,
+                request_id: 3,
+                reserved: 0,
+            },
+        };
+        let mut resp = PepResponse {
+            decision: 99,
+            reason: 0,
+            quota_remaining: 0,
+            signed_by: 0,
+        };
+        unsafe {
+            assert_eq!(aegis_pep_enforce(&req, &mut resp), 0);
+            assert_eq!(resp.decision, DECISION_ALLOW);
+            assert_eq!(resp.reason, 0);
         }
     }
 
