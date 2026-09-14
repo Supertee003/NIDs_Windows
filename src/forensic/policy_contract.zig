@@ -112,6 +112,11 @@ pub extern "sec_monitor" fn aegis_pep_evaluate(
     resp: *ShieldPepResponse,
 ) callconv(.C) i32;
 
+// DORMANT: This function is declared but never called from within the AEGIS core.
+// It exists solely as a remnant of the shield/ duplicate PEP surface.
+// Removal requires PEP-001 migration slice (GAP-007).
+// Authority invariant: Rust PEP (rust-src/lib.rs) is the sole enforcement endpoint.
+
 // ============================================================================
 // Contract 3: Policy Enum Contracts (must match across all languages)
 // ============================================================================

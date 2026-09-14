@@ -252,6 +252,8 @@ const handlers = struct {
 
     fn rulesReload(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
         const new_count = rules_loader.reloadRules();
+        // P2: Update global rules counter (pipeline thread reads this atomically)
+        state_mod.g_rules_loaded = new_count;
         return std.fmt.allocPrint(a, "{{\"rules_loaded\":{},\"status\":\"reloaded\"}}", .{new_count}) catch null;
     }
 
@@ -376,22 +378,98 @@ const handlers = struct {
     }
 
     fn runtimeStart(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return "{\"started\":true,\"message\":\"Runtime already running\"}";
+        // P2: Transition runtime state machine: STOPPED -> STARTING -> READY -> RUNNING
+        // Pull from state machine — single source of truth
+        const sm = @import("state_machine.zig");
+        // Check if already running
+        if (sm.g_runtime.system_state == .running) {
+            return "{\"started\":true,\"message\":\"Runtime already running\"}";
+        }
+
+        // Acquire mutex and sequence the state transitions
+        sm.g_runtime.mutex.lock();
+        defer sm.g_runtime.mutex.unlock();
+
+// Transition: STOPPED -> STARTING
+        if (sm.g_runtime.system_state == .stopped) {
+            sm.g_runtime.system_state = .starting;
+        }
+
+        // Transition: STARTING -> READY (simulate quick init)
+        sm.g_runtime.system_state = .ready;
+
+        // Transition: READY -> RUNNING
+        sm.g_runtime.system_state = .running;
+
+        // Record start time
+        sm.g_runtime.started_at_ms = std.time.milliTimestamp();
+        sm.g_runtime.uptime_ms = 0;
+
+        return "{\"started\":true,\"message\":\"Runtime started\"}";
     }
 
     fn runtimeStop(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        state_mod.g_stop_requested.store(true, .release);
+        // P2: Transition runtime state machine: RUNNING -> STOPPED
+        // Pull from state machine — single source of truth
+        const sm = @import("state_machine.zig");
+
+        sm.g_runtime.mutex.lock();
+        defer sm.g_runtime.mutex.unlock();
+
+        sm.g_runtime.system_state = .stopped;
+        sm.g_runtime.started_at_ms = 0;
+        sm.g_runtime.uptime_ms = 0;
+
+        // Request shutdown of bridge/watcher
         bridge_init.requestShutdown();
+
         return "{\"stopped\":true}";
     }
 
     fn runtimeRestart(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return "{\"restarted\":true,\"message\":\"Restart requested\"}";
+        // P2: Sequence: stop then start
+        // First stop
+        const sm1 = @import("state_machine.zig");
+        sm1.g_runtime.mutex.lock();
+        sm1.g_runtime.system_state = .stopped;
+        sm1.g_runtime.started_at_ms = 0;
+        sm1.g_runtime.uptime_ms = 0;
+        sm1.g_runtime.mutex.unlock();
+
+        // Then start
+        const sm2 = @import("state_machine.zig");
+        sm2.g_runtime.mutex.lock();
+        defer sm2.g_runtime.mutex.unlock();
+
+        if (sm2.g_runtime.system_state == .stopped) {
+            sm2.g_runtime.system_state = .starting;
+            sm2.g_runtime.system_state = .ready;
+            sm2.g_runtime.system_state = .running;
+// Then start
+        sm2.g_runtime.started_at_ms = std.time.milliTimestamp();
+        }
+
+        return "{\"restarted\":true,\"message\":\"Runtime restarted\"}";
     }
 
     fn daemonShutdown(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        state_mod.g_stop_requested.store(true, .release);
+        // P2: Transition runtime state machine to STOPPED
+        // Pull from state machine — single source of truth
+        const sm = @import("state_machine.zig");
+
+        sm.g_runtime.mutex.lock();
+        defer sm.g_runtime.mutex.unlock();
+
+        sm.g_runtime.system_state = .stopped;
+        sm.g_runtime.started_at_ms = 0;
+        sm.g_runtime.uptime_ms = 0;
+
+        // CTRL-002: Signal worker threads to stop
+        const rt = @import("../pipeline/runtime_state.zig");
+        rt.g_stop_requested.store(true, .release);
+
         bridge_init.requestShutdown();
+
         return "{\"shutdown\":true}";
     }
 };

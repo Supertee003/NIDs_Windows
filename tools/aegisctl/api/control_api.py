@@ -287,9 +287,12 @@ def get_health_payload() -> Dict[str, Any]:
     """
     import os
 
+    # Compute actual health state from subsystem statuses
+    overall_state, degraded = compute_health_state()
+
     return {
         "component": "control_api",
-        "state": "RUNNING",
+        "state": overall_state,
         "pid": os.getpid(),
         "uptime_ms": int(time.time() * 1000),
         "last_event_ms": 0,
@@ -307,7 +310,64 @@ def get_health_payload() -> Dict[str, Any]:
             {"name": "python_brain", "state": "RUNNING"},
             {"name": "typescript_policy", "state": "RUNNING"},
         ],
+        "degraded": degraded,
     }
+
+
+def compute_health_state() -> Tuple[str, bool]:
+    """Compute the actual health state from subsystem statuses.
+
+    Returns (overall_state: str, degraded: bool) based on the
+    current state of all subsystems and the Tier-3 (sec_monitor) authority.
+
+    HEALTH-001 invariant: if Tier-3 (sec_monitor) is absent, the system
+    must be DEGRADED or FAILED, never healthy/OK.
+    """
+    import os
+    from pathlib import Path
+
+    # Check Tier-3 (sec_monitor) status
+    # sec_monitor is the Tier-3 enforcement authority
+    tier3_loaded = False
+    sec_monitor_path = Path(TOOLS_DIR.parent.parent / "sec_monitor.dll")
+    if sec_monitor_path.exists():
+        tier3_loaded = True
+
+    # Get subsystem statuses
+    all_status = get_all_status()
+    subsystem_names = ["capture", "etw", "fim", "wfp", "pep", "control"]
+    ready_count = 0
+    has_failed = False
+    has_degraded = False
+
+    for i, (name, is_running, pid) in enumerate(all_status):
+        if name in subsystem_names:
+            if is_running:
+                ready_count += 1
+            else:
+                if not tier3_loaded:
+                    # Without Tier-3, any non-running subsystem means degraded/failed
+                    has_failed = True
+                # Check subsystem-specific status
+                if i < len(subsystem_names):
+                    pass  # status captured below
+
+    # HEALTH-001: if Tier-3 absent, system cannot be healthy
+    effective_degraded = has_failed or not tier3_loaded or ready_count < len(subsystem_names)
+
+    # Determine overall state
+    if ready_count == len(subsystem_names) and tier3_loaded and not has_failed:
+        overall_state = "RUNNING"
+    elif ready_count > 0 and tier3_loaded and not has_failed:
+        overall_state = "READY"
+    elif has_failed:
+        overall_state = "FAILED"
+    elif has_degraded or not tier3_loaded:
+        overall_state = "DEGRADED"
+    else:
+        overall_state = "STOPPED"
+
+    return overall_state, effective_degraded
 
 
 def verify_authority_invariant() -> bool:

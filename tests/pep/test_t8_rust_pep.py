@@ -10,7 +10,7 @@ This file proves the invariant by:
      checking Rust PEP is the final security authority.
   2. Scanning the repo for direct WFP / firewall / netsh / iptables
      invocations in non-Rust paths and asserting the only producer
-     is the Rust PEP (shield/src/lib.rs / shield/src/pep.rs / windows_enforce.rs)
+     is the Rust PEP (rust-src/lib.rs)
      and the Zig wfp_ioctl / wfp_production mirror.
   3. Scanning the Zig dispatcher for any privileged enforcement that
      does NOT go through rust_pep_integration.
@@ -173,7 +173,7 @@ def test_pep_is_the_only_authorized_caller_in_zig_core() -> None:
 
     For the runtime invariant, the simplest check is: the canonical
     pipeline (dispatcher -> processPEP -> rust_pep_integration ->
-    aegis_pep_evaluate in shield) is the ONLY path that produces
+    aegis_pep_evaluate in rust-src/lib.rs) is the ONLY path that produces
     enforcement. Any other core/*.zig that talks to WFP/firewall
     without going through rust_pep_integration is a violation.
     """

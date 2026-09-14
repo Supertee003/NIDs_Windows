@@ -1,5 +1,5 @@
 {
-  "head_sha": "60c76fe61e2fc2cfc9e436fa001e2b0788f006f5",
+  "head_sha": "688ab566d477105df5f868cee1571fbec77eedfd",
   "created_at": "2026-09-11",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -12,7 +12,7 @@
         "Go",
         "C/C++"
       ],
-      "boundary": "C ABI → Zig Runtime Spine",
+      "boundary": "C ABI \u00e2\u2020\u2019 Zig Runtime Spine",
       "components": [
         {
           "id": "GO_NOSE",
@@ -32,7 +32,7 @@
           "files": [
             "nose/*.go"
           ],
-          "boundary": "C ABI → Zig",
+          "boundary": "C ABI \u00e2\u2020\u2019 Zig",
           "note": "`go/aggregator/` is NOT part of the acquisition authority. It is an optional operator alert sidecar (SUPPORT) that reads NDJSON logs and serves REST :9200. It produces no Canonical Event."
         },
         {
@@ -55,7 +55,7 @@
             "bridge/*.cpp",
             "bridge/*.hpp"
           ],
-          "boundary": "C ABI → Zig"
+          "boundary": "C ABI \u00e2\u2020\u2019 Zig"
         }
       ]
     },
@@ -112,7 +112,7 @@
         "Python",
         "Cython"
       ],
-      "boundary": "Analytics Contract → Zig Runtime Spine",
+      "boundary": "Analytics Contract \u00e2\u2020\u2019 Zig Runtime Spine",
       "components": [
         {
           "id": "PYTHON_BRAIN",
@@ -134,7 +134,7 @@
             "brain/windows_brain.py",
             "brain/**/*.py"
           ],
-          "boundary": "Analytics Contract → Zig"
+          "boundary": "Analytics Contract \u00e2\u2020\u2019 Zig"
         },
         {
           "id": "CYTHON_BRIDGE",
@@ -154,7 +154,7 @@
           "files": [
             "brain/**/*.pyx"
           ],
-          "boundary": "Python ↔ C/C++",
+          "boundary": "Python \u00e2\u2020\u201d C/C++",
           "note": "Cython is a performance bridge, NOT the system integration bus"
         }
       ]
@@ -166,7 +166,7 @@
       "languages": [
         "Rust"
       ],
-      "boundary": "PEP ABI → Zig Runtime Spine",
+      "boundary": "PEP ABI \u00e2\u2020\u2019 Zig Runtime Spine",
       "components": [
         {
           "id": "RUST_PEP",
@@ -189,7 +189,7 @@
           "files": [
             "rust-src/lib.rs"
           ],
-          "boundary": "PEP ABI → Zig",
+          "boundary": "PEP ABI \u00e2\u2020\u2019 Zig",
           "is_final_enforcement": true,
           "note": "There is exactly ONE security truth: the Rust PEP (rust-src/). No other component may claim final enforcement authority. `shield/src/pep.rs` and `shield/src/windows_enforce.rs` contain a duplicate PEP + WFP enforcement implementation and are NOT an authority (OPEN P0-7)."
         },
@@ -228,7 +228,7 @@
         "TypeScript",
         "Python"
       ],
-      "boundary": "Control Protocol → Zig Runtime Spine",
+      "boundary": "Control Protocol \u00e2\u2020\u2019 Zig Runtime Spine",
       "components": [
         {
           "id": "TYPESCRIPT_POLICY",
@@ -249,7 +249,7 @@
             "ts_policy/src/*.ts",
             "ts_policy/tests/*.ts"
           ],
-          "boundary": "Control Protocol → Zig"
+          "boundary": "Control Protocol \u00e2\u2020\u2019 Zig"
         },
         {
           "id": "PYTHON_CLI",
@@ -267,7 +267,7 @@
           "files": [
             "tools/aegisctl.py"
           ],
-          "boundary": "Control Protocol → Zig",
+          "boundary": "Control Protocol \u00e2\u2020\u2019 Zig",
           "note": "`tools/aegisctl.py` is the single canonical operator client. `scripts/aegisctl.py` does not exist."
         }
       ]
@@ -293,7 +293,7 @@
       },
       {
         "language": "Cython",
-        "boundary": "Python ↔ C/C++",
+        "boundary": "Python \u00e2\u2020\u201d C/C++",
         "direction": "internal"
       },
       {
@@ -402,8 +402,9 @@
       "severity": "P0",
       "reason": "Second Policy Enforcement Point plus a second WFP enforcement path inside a crate that the runtime loads for payload screening only.",
       "still_bound": [
-        "src/forensic/policy_contract.zig declares (never calls) extern \"sec_monitor\" fn aegis_pep_evaluate",
-        "tests/pep/test_t8_rust_pep.py asserts shield/src/pep.rs as the PEP schema source"
+        "# DORMANT: extern \"sec_monitor\" fn aegis_pep_evaluate removed from policy_contract.zig (PEP-001)",
+        "# Tests updated to point at rust-src/lib.rs instead of shield/src/pep.rs",
+        "# Shield PEP/WFP exports are quarantined; no active binding exists"
       ],
       "exit_criteria": [
         "shield exports no PEP symbol",
@@ -411,7 +412,8 @@
         "T8 PEP expectations point at rust-src/lib.rs",
         "a negative control fails if a PEP surface reappears in shield"
       ],
-      "tracking": "GAP-007; migration slice PEP-001"
+      "tracking": "GAP-007; migration slice PEP-001",
+      "exit_criteria_status": "met 3/4: shield exports no PEP symbol, dormant Zig extern removed, T8 expectations point at rust-src/lib.rs"
     }
   ],
   "invariants": [

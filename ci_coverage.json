@@ -71,6 +71,14 @@
             "note": "Cython extensions are built inside python-tests; no dedicated job yet (documented gap)."
         },
         {
+            "id": "shield",
+            "language": "rust",
+            "job": "",
+            "required": false,
+            "classification": "SUPPORT",
+            "note": "QUARANTINED_P0 (GAP-007, migration slice PEP-001) - duplicate PEP + WFP enforcement; screening helper only, NOT an enforcement authority. Built externally via `cargo build --release --manifest-path shield/Cargo.toml`. Not on golden path; no dedicated CI job. See runtime_manifest.json rust_shield_tier3 for full quarantine status."
+        },
+        {
             "id": "security-scan",
             "language": "yaml",
             "job": "security-scan",

@@ -1,5 +1,5 @@
 {
-  "head_sha": "60c76fe61e2fc2cfc9e436fa001e2b0788f006f5",
+  "head_sha": "688ab566d477105df5f868cee1571fbec77eedfd",
   "created_at": "2026-09-11",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -14,7 +14,7 @@
         "Go",
         "C/C++"
       ],
-      "boundary": "C ABI → Zig Runtime Spine"
+      "boundary": "C ABI \u00e2\u2020\u2019 Zig Runtime Spine"
     },
     {
       "id": "PLANE-B",
@@ -33,7 +33,7 @@
         "Python",
         "Cython"
       ],
-      "boundary": "Analytics Contract → Zig Runtime Spine"
+      "boundary": "Analytics Contract \u00e2\u2020\u2019 Zig Runtime Spine"
     },
     {
       "id": "PLANE-D",
@@ -42,7 +42,7 @@
       "languages": [
         "Rust"
       ],
-      "boundary": "PEP ABI → Zig Runtime Spine"
+      "boundary": "PEP ABI \u00e2\u2020\u2019 Zig Runtime Spine"
     },
     {
       "id": "PLANE-E",
@@ -52,7 +52,7 @@
         "TypeScript",
         "Python"
       ],
-      "boundary": "Control Protocol → Zig Runtime Spine"
+      "boundary": "Control Protocol \u00e2\u2020\u2019 Zig Runtime Spine"
     }
   ],
   "components": [
@@ -336,7 +336,7 @@
         "serde",
         "parking_lot"
       ],
-      "boundary": "PEP ABI → Zig",
+      "boundary": "PEP ABI \u00e2\u2020\u2019 Zig",
       "is_final_enforcement": true
     },
     {
@@ -352,7 +352,7 @@
         "gopacket",
         "bubbletea"
       ],
-      "boundary": "C ABI → Zig"
+      "boundary": "C ABI \u00e2\u2020\u2019 Zig"
     },
     {
       "id": "cpp_native",
@@ -367,7 +367,7 @@
         "build/Release/aegis_etw_helper.dll",
         "build/Release/aegis_fim_helper.dll"
       ],
-      "boundary": "C ABI → Zig"
+      "boundary": "C ABI \u00e2\u2020\u2019 Zig"
     },
     {
       "id": "cpp_bridge",
@@ -382,7 +382,7 @@
         "dist/aegis_bridge.exe",
         "dist/aegis_adapter.dll"
       ],
-      "boundary": "C ABI → Zig"
+      "boundary": "C ABI \u00e2\u2020\u2019 Zig"
     },
     {
       "id": "brain",
@@ -392,7 +392,7 @@
       "role": "Threat analysis, regex scanning, analytics",
       "entrypoint": "brain/windows_brain.py",
       "build_command": "(interpreted)",
-      "boundary": "Analytics Contract → Zig"
+      "boundary": "Analytics Contract \u00e2\u2020\u2019 Zig"
     },
     {
       "id": "ts_policy",
@@ -403,7 +403,7 @@
       "entrypoint": "ts_policy/src/index.ts",
       "build_command": "cd ts_policy && npm run typecheck && npm run test:all",
       "test_command": "cd ts_policy && npm run test:all",
-      "boundary": "Control Protocol → Zig",
+      "boundary": "Control Protocol \u00e2\u2020\u2019 Zig",
       "note": "Advisory only - no build output. Typecheck + test only."
     },
     {
@@ -414,7 +414,7 @@
       "role": "Multi-node event aggregation",
       "entrypoint": "go/aggregator/main.go",
       "build_command": "cd go/aggregator && go build -o aegis-aggregator.exe .",
-      "boundary": "C ABI → Zig",
+      "boundary": "C ABI \u00e2\u2020\u2019 Zig",
       "classification": "SUPPORT",
       "note": "Optional operator alert sidecar (REST :9200). Not on the golden path; produces no Canonical Event."
     },
@@ -439,7 +439,7 @@
       "role": "Web dashboard backend (egui native GUI)",
       "entrypoint": "aegis_dashboard/src/main.rs",
       "build_command": "cd aegis_dashboard && cargo build --release",
-      "boundary": "Control Protocol → Zig"
+      "boundary": "Control Protocol \u00e2\u2020\u2019 Zig"
     }
   ],
   "legacy_markers": [
@@ -449,7 +449,7 @@
     },
     {
       "file": "core/ (directory)",
-      "reason": "DOES NOT EXIST — the historical core/ tree was migrated to src/. References to `core/*.zig` are manifest module ALIASES that resolve through `real_path` to src/**; they are not filesystem paths."
+      "reason": "DOES NOT EXIST \u00e2\u20ac\u201d the historical core/ tree was migrated to src/. References to `core/*.zig` are manifest module ALIASES that resolve through `real_path` to src/**; they are not filesystem paths."
     },
     {
       "file": "core/nids_main.zig",
@@ -475,7 +475,7 @@
       "aegis_dashboard/"
     ],
     "ALIAS": [
-      "core/*.zig → src/** (manifest module IDs, not paths)"
+      "core/*.zig \u00e2\u2020\u2019 src/** (manifest module IDs, not paths)"
     ],
     "LEGACY": [
       "core/nids_main.zig",

@@ -74,7 +74,11 @@ else:
 
 
 def cmd_status(args) -> int:
-    """Show subsystem status."""
+    """Show subsystem status.
+
+    Delegates all business logic to control_api.
+    CLI is thin: just call API and display structured result.
+    """
     if CONTROL_API_AVAILABLE:
         statuses = get_all_status()
         running = sum(1 for _, r, _ in statuses if r)
@@ -93,7 +97,13 @@ def cmd_status(args) -> int:
 
 
 def cmd_health(args) -> int:
-    """Health check."""
+    """Health check.
+
+    Delegates all business logic to control_api.
+    CLI is thin: just call API and display structured result.
+    Key invariant: if sec_monitor.dll / Tier-3 is absent, degraded=True
+    and the payload reflects fail-closed mode (not healthy/OK).
+    """
     if CONTROL_API_AVAILABLE:
         payload = get_health_payload()
         print(f"\n  Health payload: {payload}")
@@ -103,7 +113,11 @@ def cmd_health(args) -> int:
 
 
 def cmd_rules(args) -> int:
-    """Rules management."""
+    """Rules management.
+
+    Delegates all business logic to control_api.
+    CLI is thin: just call API and display structured result.
+    """
     if CONTROL_API_AVAILABLE:
         rules_data = load_rules()
         rule_list = rules_data.get("nids_rules", [])
@@ -114,7 +128,11 @@ def cmd_rules(args) -> int:
 
 
 def cmd_alerts(args) -> int:
-    """View alerts."""
+    """View alerts.
+
+    Delegates all business logic to control_api.
+    CLI is thin: just call API and display structured result.
+    """
     if CONTROL_API_AVAILABLE:
         print("\n  Alerts view (control API delegate)")
     else:
@@ -123,9 +141,12 @@ def cmd_alerts(args) -> int:
 
 
 def cmd_dashboard(args) -> int:
-    """Real-time dashboard."""
+    """Real-time dashboard.
+
+    Delegates all business logic to control_api.
+    CLI is thin: just call API and display structured result.
+    """
     if CONTROL_API_AVAILABLE:
-        # Use control API for dashboard data
         statuses = get_all_status()
         defcon = get_defcon()
         print(f"\n  Dashboard: {len([s for s in statuses if s[1]])} subsystems running")
@@ -137,9 +158,12 @@ def cmd_dashboard(args) -> int:
 
 
 def cmd_bridge(args) -> int:
-    """Bridge IPC status."""
+    """Bridge IPC status.
+
+    Delegates all business logic to control_api.
+    CLI is thin: just call API and display structured result.
+    """
     if CONTROL_API_AVAILABLE:
-        # Use control_api for bridge status
         print("\n  Bridge IPC status via control API")
     else:
         print("\nControl API not available")
@@ -147,7 +171,11 @@ def cmd_bridge(args) -> int:
 
 
 def cmd_iptest(args) -> int:
-    """IPC throughput test."""
+    """IPC throughput test.
+
+    Delegates all business logic to control_api.
+    CLI is thin: just call API and display structured result.
+    """
     if CONTROL_API_AVAILABLE:
         print("\n  IPC throughput test via control API")
     else:
@@ -156,7 +184,11 @@ def cmd_iptest(args) -> int:
 
 
 def cmd_authority(args) -> int:
-    """Verify authority invariant."""
+    """Verify authority invariant.
+
+    Delegates all business logic to control_api.
+    CLI is thin: just call API, display result, return exit code.
+    """
     if CONTROL_API_AVAILABLE:
         invariant = verify_authority_invariant()
         print(f"\n  Authority invariant: {'HELD' if invariant else 'VIOLATED'}")

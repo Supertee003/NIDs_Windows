@@ -1,0 +1,11 @@
+[package]
+name = "aegis-shield"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "aegis_shield"
+
+[[bin]]
+name = "aegis-shield"
+path = "src/main.rs"

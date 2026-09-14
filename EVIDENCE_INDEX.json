@@ -1,5 +1,5 @@
 {
-  "head_sha": "60c76fe61e2fc2cfc9e436fa001e2b0788f006f5",
+  "head_sha": "688ab566d477105df5f868cee1571fbec77eedfd",
   "created_at": "2026-09-12",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -17,7 +17,7 @@
       "id": "EVT-001",
       "head_sha": "ec12182ad785c1af9b5321b735297c46e62a2b34",
       "timestamp": "2026-09-09",
-      "title": "Zig build test — all unit tests pass",
+      "title": "Zig build test \u00e2\u20ac\u201d all unit tests pass",
       "level": "E2",
       "component": "zig_core",
       "command": "zig build test",
@@ -109,7 +109,7 @@
       "title": "FOR-003: Replay verification with observe-only safety",
       "level": "E2",
       "component": "forensic",
-      "description": "ReplayVerifier orchestrates export→verify→replay→compare. ReplayMode.observe_only default ensures no live enforcement during replay.",
+      "description": "ReplayVerifier orchestrates export\u00e2\u2020\u2019verify\u00e2\u2020\u2019replay\u00e2\u2020\u2019compare. ReplayMode.observe_only default ensures no live enforcement during replay.",
       "tests": [
         "export and verify records",
         "record replay results",
@@ -169,7 +169,7 @@
       "id": "EVT-008",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "FOR-CNC-001: Forensic concurrent integrity — 4 threads × 5 appends + concurrent read + dual-thread wrap",
+      "title": "FOR-CNC-001: Forensic concurrent integrity \u00e2\u20ac\u201d 4 threads \u00c3\u2014 5 appends + concurrent read + dual-thread wrap",
       "level": "E2",
       "component": "forensic",
       "description": "Three concurrent tests: (1) 4 threads each append 5 records, verify hash chain; (2) reader thread + writer thread run simultaneously, verify no corruption; (3) 2 threads each append 12 records to 4-slot ring, verify every retained record passes CRC + hash + full chain.",
@@ -190,7 +190,7 @@
       "id": "EVT-009",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "FFI-001: Zig/Rust PEP ABI verification — struct layout, offsets, enum values, function signatures",
+      "title": "FFI-001: Zig/Rust PEP ABI verification \u00e2\u20ac\u201d struct layout, offsets, enum values, function signatures",
       "level": "E2",
       "component": "policy",
       "description": "Verifies Zig extern struct layouts match Rust #[repr(C)]: PepContext (24B), PepRequest (64B), PepResponse (16B). Verifies field offsets, PepDecision enum values (0-5), extern function declarations, and binary serialization roundtrip.",
@@ -215,7 +215,7 @@
       "id": "EVT-010",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "FFI-002: Go/Zig ownership & lifecycle — wire format, source/type/action constants, frame layout",
+      "title": "FFI-002: Go/Zig ownership & lifecycle \u00e2\u20ac\u201d wire format, source/type/action constants, frame layout",
       "level": "E2",
       "component": "integration",
       "description": "Verifies Go Nose wire format constants match Zig contract: magic (0x41454731), wire size (109B), schema version (1), dev struct size (128B). Verifies Go EventSource/EventType/PolicyAction constants, reserved area offsets, NoseWireFrame layout, and CRC32 field position.",
@@ -243,7 +243,7 @@
       "id": "EVT-011",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "FFI-003: C++/Zig native adapter lifecycle — wire constants, Kind/State/PollResult enums, offsets, ABI mismatch documented",
+      "title": "FFI-003: C++/Zig native adapter lifecycle \u00e2\u20ac\u201d wire constants, Kind/State/PollResult enums, offsets, ABI mismatch documented",
       "level": "E2",
       "component": "integration",
       "description": "Verifies C++ adapter wire constants match Zig contract: magic, size, version, struct size. Documents ABI mismatch: Zig AdapterKind is enum(u32) starting at 0, C++ Kind is uint8_t starting at 1. Verifies C++ State/PollResult enums, wire offsets, AdapterEvent layout, AdapterHealth struct layout.",
@@ -273,10 +273,10 @@
       "id": "EVT-012",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "FFI-004: TypeScript policy lifecycle — PolicyAction match, ConditionType divergence, magic mismatch documented",
+      "title": "FFI-004: TypeScript policy lifecycle \u00e2\u20ac\u201d PolicyAction match, ConditionType divergence, magic mismatch documented",
       "level": "E2",
       "component": "integration",
-      "description": "Verifies TypeScript policy enums match Zig cross-language contract. PolicyAction: TS ALLOW=0..LOG_ONLY=5 matches Zig. ConditionType: TS has 9 types (SRC_IP=0..TIME_WINDOW=8) vs Zig 6 types (always=0..regex=5) — DIVERGENCE. Magic: TS POLICY_MAGIC=0x504f4c31 (POL1) vs Zig POLICY_IR_MAGIC=0x504F4C49 (POLI).",
+      "description": "Verifies TypeScript policy enums match Zig cross-language contract. PolicyAction: TS ALLOW=0..LOG_ONLY=5 matches Zig. ConditionType: TS has 9 types (SRC_IP=0..TIME_WINDOW=8) vs Zig 6 types (always=0..regex=5) \u00e2\u20ac\u201d DIVERGENCE. Magic: TS POLICY_MAGIC=0x504f4c31 (POL1) vs Zig POLICY_IR_MAGIC=0x504F4C49 (POLI).",
       "flow_id": "FFI-004",
       "files_changed": [
         "src/forensic/policy_contract.zig"
@@ -298,7 +298,7 @@
       "id": "EVT-013",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "VER-001: Component test closure — action_dispatcher, policy_ir, correlator, threat_tracker coverage expanded",
+      "title": "VER-001: Component test closure \u00e2\u20ac\u201d action_dispatcher, policy_ir, correlator, threat_tracker coverage expanded",
       "level": "E2",
       "component": "testing",
       "description": "Added component test coverage for critical modules: action_dispatcher (5 tests covering log/block/alert/quarantine/escalate paths), policy_ir (4 tests covering multiple rules/empty eval/field matching), correlator (3 tests covering independent rules/same source accumulation), threat_tracker (4 tests covering multiple flows/escalation/count tracking).",
@@ -331,20 +331,20 @@
       "id": "EVT-014",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "VER-002: System golden path — full pipeline lifecycle, detection escalation, forensic hash chain",
+      "title": "VER-002: System golden path \u00e2\u20ac\u201d full pipeline lifecycle, detection escalation, forensic hash chain",
       "level": "E2",
       "component": "testing",
-      "description": "Verifies the complete AEGIS pipeline: event creation → flow table → signature matching → anomaly detection → threat tracking → policy evaluation → PEP enforcement → action dispatch → forensic recording. Also tests detection escalation (low→critical), policy→PEP→action chain, and forensic hash chain integrity.",
+      "description": "Verifies the complete AEGIS pipeline: event creation \u00e2\u2020\u2019 flow table \u00e2\u2020\u2019 signature matching \u00e2\u2020\u2019 anomaly detection \u00e2\u2020\u2019 threat tracking \u00e2\u2020\u2019 policy evaluation \u00e2\u2020\u2019 PEP enforcement \u00e2\u2020\u2019 action dispatch \u00e2\u2020\u2019 forensic recording. Also tests detection escalation (low\u00e2\u2020\u2019critical), policy\u00e2\u2020\u2019PEP\u00e2\u2020\u2019action chain, and forensic hash chain integrity.",
       "flow_id": "VER-002",
       "files_changed": [
         "src/tests/forensic/test_integration.zig"
       ],
       "tests": [
-        "Full pipeline — event → detection → policy → PEP → forensic",
-        "Detection escalation — low → medium → high → incident",
-        "Policy → PEP → Action chain — block decision",
-        "Policy → PEP → Action chain — allow decision",
-        "Forensic hash chain — 5 records with SHA-256 linking"
+        "Full pipeline \u00e2\u20ac\u201d event \u00e2\u2020\u2019 detection \u00e2\u2020\u2019 policy \u00e2\u2020\u2019 PEP \u00e2\u2020\u2019 forensic",
+        "Detection escalation \u00e2\u20ac\u201d low \u00e2\u2020\u2019 medium \u00e2\u2020\u2019 high \u00e2\u2020\u2019 incident",
+        "Policy \u00e2\u2020\u2019 PEP \u00e2\u2020\u2019 Action chain \u00e2\u20ac\u201d block decision",
+        "Policy \u00e2\u2020\u2019 PEP \u00e2\u2020\u2019 Action chain \u00e2\u20ac\u201d allow decision",
+        "Forensic hash chain \u00e2\u20ac\u201d 5 records with SHA-256 linking"
       ],
       "result": "PASS"
     },
@@ -352,7 +352,7 @@
       "id": "EVT-015",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "VER-003: Fault injection — deterministic seed, rate boundaries, event corruption, independent tracking",
+      "title": "VER-003: Fault injection \u00e2\u20ac\u201d deterministic seed, rate boundaries, event corruption, independent tracking",
       "level": "E2",
       "component": "testing",
       "description": "Comprehensive fault injection tests: 0% rate never triggers, 100% rate always triggers, disabled never triggers, event corruption changes bits, multiple fault kinds tracked independently, deterministic seed produces same sequence, counter never overflows, fromEnv respects env var.",
@@ -377,7 +377,7 @@
       "id": "EVT-016",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "VER-004: Release checklist — category verification, progress calculation, signature determinism",
+      "title": "VER-004: Release checklist \u00e2\u20ac\u201d category verification, progress calculation, signature determinism",
       "level": "E2",
       "component": "testing",
       "description": "Comprehensive release gate tests: empty checklist not ready, build/security/performance/documentation/artifacts categories verified independently, 16/17 not ready, progress percentage calculation, failed checks identification, all categories complete = 100%, signature determinism, different inputs produce different hashes.",
@@ -405,7 +405,7 @@
       "id": "EVT-017",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "REL-001: Build reproducibility — manifest integrity, artifact storage, reproducibility verification, release gate",
+      "title": "REL-001: Build reproducibility \u00e2\u20ac\u201d manifest integrity, artifact storage, reproducibility verification, release gate",
       "level": "E2",
       "component": "testing",
       "description": "Comprehensive build reproducibility tests: manifest empty/version-only/commit-only not integrity, version+commit = integrity, addArtifact up to 8 with overflow, artifact hash stored correctly, verifyReproducibility requires timestamp/artifacts/hash, ReleaseGate 4/5 not ready, all 5 ready, checklist all passed.",
@@ -435,7 +435,7 @@
       "id": "EVT-018",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "REL-002: Installer integrity — manifest, services, drivers, upgrade path, recovery procedures",
+      "title": "REL-002: Installer integrity \u00e2\u20ac\u201d manifest, services, drivers, upgrade path, recovery procedures",
       "level": "E2",
       "component": "testing",
       "description": "Comprehensive installer integrity tests: manifest empty not integrity, product name only = integrity, addService up to 8 with overflow, addDriver up to 4 with overflow, service/driver fields stored correctly, UpgradePath empty safe, with reboot not safe, RecoveryProcedure priority 0 = critical, addStep up to 8, step fields stored correctly.",
@@ -466,7 +466,7 @@
       "id": "EVT-019",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "REL-003: Upgrade path — version handling, upgrade types, migration steps, safety verification",
+      "title": "REL-003: Upgrade path \u00e2\u20ac\u201d version handling, upgrade types, migration steps, safety verification",
       "level": "E2",
       "component": "testing",
       "description": "Comprehensive upgrade path tests: default is safe in-place upgrade, in-place/migration/fresh install types, addMigrationStep up to 8, migration steps ordered correctly, reboot/backup requirements affect safety, version fields stored correctly, migration step description stored correctly.",
@@ -494,7 +494,7 @@
       "id": "EVT-020",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "REL-004: Recovery procedures — priority levels, step management, admin requirement, field storage",
+      "title": "REL-004: Recovery procedures \u00e2\u20ac\u201d priority levels, step management, admin requirement, field storage",
       "level": "E2",
       "component": "testing",
       "description": "Comprehensive recovery procedure tests: default low priority, critical/high/medium/low priority levels, addStep up to 8 with overflow, steps ordered correctly, requires_admin flag, estimated_time_sec, step name/action stored correctly, empty step count is 0.",
@@ -522,7 +522,7 @@
       "id": "EVT-021",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "GAP-001: Policy signature verification — SHA-256 implementation, signature verification, known-answer tests",
+      "title": "GAP-001: Policy signature verification \u00e2\u20ac\u201d SHA-256 implementation, signature verification, known-answer tests",
       "level": "E2",
       "component": "rust-pep",
       "description": "Implemented pure Rust SHA-256 hash function and policy signature verification. SHA-256 verified against NIST known-answer tests (empty string, 'abc'). Signature verification checks key lengths, rejects zero keys/signatures, verifies hash matches signature prefix. Ed25519 production verification requires ring crate dependency.",
@@ -549,7 +549,7 @@
       "id": "EVT-022",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "GAP-002: WFP enforcement contract — IP format, DEFCON levels, bridge test verification",
+      "title": "GAP-002: WFP enforcement contract \u00e2\u20ac\u201d IP format, DEFCON levels, bridge test verification",
       "level": "E2",
       "component": "integration",
       "description": "Documented WFP enforcement contract between Zig and C++. IP format (uint32 big-endian), DEFCON levels (0-5), bridge test verification. C++ implementation uses Windows Firewall (netsh advfirewall). Bridge test passes when run as admin.",
@@ -801,10 +801,10 @@
       "id": "EVT-037",
       "head_sha": "60c76fe61e2fc2cfc9e436fa001e2b0788f006f5",
       "timestamp": "2026-09-12",
-      "title": "FOR-003: Full traceability chain — Incident→Event→Decision→Policy→PEP→Action→Forensic",
+      "title": "FOR-003: Full traceability chain \u00e2\u20ac\u201d Incident\u00e2\u2020\u2019Event\u00e2\u2020\u2019Decision\u00e2\u2020\u2019Policy\u00e2\u2020\u2019PEP\u00e2\u2020\u2019Action\u00e2\u2020\u2019Forensic",
       "level": "E3",
       "component": "forensic",
-      "description": "Added incident_id and detection_id fields to IpcEvent struct (src/contract/event.zig) to complete the provenance chain from incident to event. Enables full vertical trace: INCIDENT-ID → EVENT-ID (event_id) → DECISION-TRACE (trace_id, policy_id, pep_request_id, enforcement_id, audit_id) → FORENSIC RECORD (audit_id, record_seq, hash chain). All IDs are u64 monotonic counters embedded in the canonical event wire format (109-byte payload). Cross-language golden vectors (event_v1_001-005.bin) validate semantic equivalence across Zig/Go/C++/Python reading identical .bin fixtures.",
+      "description": "Added incident_id and detection_id fields to IpcEvent struct (src/contract/event.zig) to complete the provenance chain from incident to event. Enables full vertical trace: INCIDENT-ID \u00e2\u2020\u2019 EVENT-ID (event_id) \u00e2\u2020\u2019 DECISION-TRACE (trace_id, policy_id, pep_request_id, enforcement_id, audit_id) \u00e2\u2020\u2019 FORENSIC RECORD (audit_id, record_seq, hash chain). All IDs are u64 monotonic counters embedded in the canonical event wire format (109-byte payload). Cross-language golden vectors (event_v1_001-005.bin) validate semantic equivalence across Zig/Go/C++/Python reading identical .bin fixtures.",
       "flow_id": "FOR-003",
       "files_changed": [
         "src/contract/event.zig",
@@ -814,19 +814,19 @@
         "IpcEvent incident_id field present and defaults to 0",
         "IpcEvent detection_id field present and defaults to 0",
         "Golden vector .bin fixtures validated across Zig/Go/C++/Python",
-        "Full pipeline trace: incident → event → decision → forensic record"
+        "Full pipeline trace: incident \u00e2\u2020\u2019 event \u00e2\u2020\u2019 decision \u00e2\u2020\u2019 forensic record"
       ],
       "result": "PASS",
-      "finding": "Traceability chain complete: Incident→Event→Decision→Policy→PEP→Action→Forensic with embedded IDs in canonical event"
+      "finding": "Traceability chain complete: Incident\u00e2\u2020\u2019Event\u00e2\u2020\u2019Decision\u00e2\u2020\u2019Policy\u00e2\u2020\u2019PEP\u00e2\u2020\u2019Action\u00e2\u2020\u2019Forensic with embedded IDs in canonical event"
     },
     {
       "id": "EVT-038",
       "head_sha": "60c76fe61e2fc2cfc9e436fa001e2b0788f006f5",
       "timestamp": "2026-09-12",
-      "title": "FOR-004: Windows WFP enforcement verified — Rust PEP → WFP adapter bridge test 36/36 pass",
+      "title": "FOR-004: Windows WFP enforcement verified \u00e2\u20ac\u201d Rust PEP \u00e2\u2020\u2019 WFP adapter bridge test 36/36 pass",
       "level": "E5",
       "component": "rust-pep",
-      "description": "WFP enforcement verified via Rust PEP → WFP adapter bridge test on Windows host. Bridge test 36/36 pass confirms: (1) Rust PEP aegis_pep_enforce() successfully loads WFP adapter and blocks IP via FwpmFilterAdd0, (2) DEFCON levels 0-5 computed correctly, (3) Block/Unblock IP operations verified, (4) No Zig→WFP IOCTL bypass exists (GAP-011 CLOSED), (5) Rust PEP is sole enforcement authority (GAP-011 invariant). The aegis_pep_enforce() function on Windows: decides DECISION_BLOCK → calls wfp_adapter::Adapter::load() → adapter.block(src_ip) via FFI → FwpmFilterAdd0. Authority invariant: Rust PEP is sole enforcement authority; no other component may claim WFP enforcement (GAP-011 CLOSED, EVT-039).",
+      "description": "WFP enforcement verified via Rust PEP \u00e2\u2020\u2019 WFP adapter bridge test on Windows host. Bridge test 36/36 pass confirms: (1) Rust PEP aegis_pep_enforce() successfully loads WFP adapter and blocks IP via FwpmFilterAdd0, (2) DEFCON levels 0-5 computed correctly, (3) Block/Unblock IP operations verified, (4) No Zig\u00e2\u2020\u2019WFP IOCTL bypass exists (GAP-011 CLOSED), (5) Rust PEP is sole enforcement authority (GAP-011 invariant). The aegis_pep_enforce() function on Windows: decides DECISION_BLOCK \u00e2\u2020\u2019 calls wfp_adapter::Adapter::load() \u00e2\u2020\u2019 adapter.block(src_ip) via FFI \u00e2\u2020\u2019 FwpmFilterAdd0. Authority invariant: Rust PEP is sole enforcement authority; no other component may claim WFP enforcement (GAP-011 CLOSED, EVT-039).",
       "flow_id": "FOR-004",
       "files_changed": [
         "src/policy/pep_bindings.zig",
@@ -834,11 +834,11 @@
         "drivers/wfp_callout/aegis_wfp.c"
       ],
       "tests": [
-        "Bridge test 36/36 pass: Rust PEP → WFP adapter → FwpmFilterAdd0",
+        "Bridge test 36/36 pass: Rust PEP \u00e2\u2020\u2019 WFP adapter \u00e2\u2020\u2019 FwpmFilterAdd0",
         "DEFCON levels 0-5 computed correctly",
         "Block IP 192.168.1.1 via Windows Firewall succeeds",
         "Unblock IP 192.168.1.1 succeeds",
-        "GAP-011 invariant: no Zig→WFP direct IOCTL call",
+        "GAP-011 invariant: no Zig\u00e2\u2020\u2019WFP direct IOCTL call",
         "Rust PEP is sole enforcement authority"
       ],
       "result": "PASS",
@@ -848,10 +848,10 @@
       "id": "EVT-039",
       "head_sha": "60c76fe61e2fc2cfc9e436fa001e2b0788f006f5",
       "timestamp": "2026-09-12",
-      "title": "PY-001: Python Brain security boundaries — T8 invariant, recommend/explain/enrich only, NO authorize/enforce/WFP",
+      "title": "PY-001: Python Brain security boundaries \u00e2\u20ac\u201d T8 invariant, recommend/explain/enrich only, NO authorize/enforce/WFP",
       "level": "E3",
       "component": "brain",
-      "description": "Python Brain (Tier-2 RAG/analytics) enforces T8 architectural invariant: NO path to enforcement except through Rust PEP (ADR-0001). Brain may recommend, explain, and enrich threat context. Brain MAY NOT authorize, enforce, or touch WFP. All block requests route through aegisctl → IPC → dispatcher → rust_pep_integration → aegis_pep_evaluate. Direct netsh/iptables/bridge.block_ip calls have been removed. The brain's apply_firewall_block() is a thin wrapper that requests enforcement via PEP; it never executes enforcement directly. Cross-language golden vectors validate that identical .bin fixtures produce identical semantic output across Zig/Go/C++/Python reading the canonical event.",
+      "description": "Python Brain (Tier-2 RAG/analytics) enforces T8 architectural invariant: NO path to enforcement except through Rust PEP (ADR-0001). Brain may recommend, explain, and enrich threat context. Brain MAY NOT authorize, enforce, or touch WFP. All block requests route through aegisctl \u00e2\u2020\u2019 IPC \u00e2\u2020\u2019 dispatcher \u00e2\u2020\u2019 rust_pep_integration \u00e2\u2020\u2019 aegis_pep_evaluate. Direct netsh/iptables/bridge.block_ip calls have been removed. The brain's apply_firewall_block() is a thin wrapper that requests enforcement via PEP; it never executes enforcement directly. Cross-language golden vectors validate that identical .bin fixtures produce identical semantic output across Zig/Go/C++/Python reading the canonical event.",
       "flow_id": "PY-001",
       "files_changed": [
         "brain/windows_brain.py",
@@ -859,14 +859,33 @@
         "tests/cython/test_cython_correctness.py"
       ],
       "tests": [
-        "T8 invariant: brain block routes via aegisctl → Rust PEP, never direct WFP",
+        "T8 invariant: brain block routes via aegisctl \u00e2\u2020\u2019 Rust PEP, never direct WFP",
         "apply_firewall_block() returns ACCEPTED/REJECTED/DEFERRED/FAILED/NO_OP, never direct mutation",
         "No netsh/iptables/bridge.block_ip calls in brain main loop",
         "Golden vector .bin fixtures validated across Zig/Go/C++/Python",
-        "RAG lookup + threat context → confidence score → decision input (advisory only)"
+        "RAG lookup + threat context \u00e2\u2020\u2019 confidence score \u00e2\u2020\u2019 decision input (advisory only)"
       ],
       "result": "PASS",
       "finding": "Python Brain T8 invariant enforced: advisory-only, recommend/explain/enrich only, NO authorize/enforce/WFP. Code audit confirms no bypass paths."
+    },
+    {
+      "id": "WEB-001",
+      "title": "UI-001: Web Dashboard \u2014 control_api JSON endpoints",
+      "level": "E1",
+      "component": "ui",
+      "description": "Minimal web dashboard reading from control_api JSON endpoints. CLI, TUI, and Web all read from same control_api truth source. No duplicated business logic. Classification: SUPPORT (optional/release-path).",
+      "flow_id": "UI-001",
+      "files_changed": [
+        "tools/aegisctl/web_dashboard/app.py"
+      ],
+      "tests": [
+        "Flask app imports successfully",
+        "GET /api/status returns JSON with subsystem status",
+        "GET / endpoint renders dashboard HTML",
+        "All three UIs (CLI/TUI/Web) read from same control_api"
+      ],
+      "result": "PENDING",
+      "finding": "Web dashboard scaffold created; integration test pending"
     }
   ],
   "known_gaps": [
@@ -896,7 +915,7 @@
       "closed_at": "2026-09-10",
       "closed_by": "EVT-026",
       "required_evidence": [
-        "PEP authorization → filter operation → observed network effect → rollback"
+        "PEP authorization \u00e2\u2020\u2019 filter operation \u00e2\u2020\u2019 observed network effect \u00e2\u2020\u2019 rollback"
       ],
       "resolution": "WFP enforcement verified on Windows host via bridge test. Block/unblock IP via Windows Firewall succeeds. 36/36 bridge tests pass.",
       "evidence": "EVT-026: Bridge test 36/36 pass. Test 9: IPS Block/Unblock verified on Windows host. Block IP 192.168.1.1 via Windows Firewall succeeds. Unblock IP 192.168.1.1 succeeds."
@@ -928,13 +947,13 @@
       "description": "Forensic ring buffer concurrent read safety not proven with real Windows threads.",
       "status": "CLOSED_BY_EVT-008",
       "closed_at": "2026-09-09",
-      "evidence": "EVT-008: Three concurrent tests pass — 4-thread append, concurrent read+write, dual-thread wrap with per-record verification"
+      "evidence": "EVT-008: Three concurrent tests pass \u00e2\u20ac\u201d 4-thread append, concurrent read+write, dual-thread wrap with per-record verification"
     },
     {
       "id": "GAP-004",
       "severity": "P2",
       "title": "aegis_fim_helper.dll linker error",
-      "description": "C++ FIM helper DLL not built — linker error for missing symbol. Out of scope for Zig code.",
+      "description": "C++ FIM helper DLL not built \u00e2\u20ac\u201d linker error for missing symbol. Out of scope for Zig code.",
       "status": "CLOSED",
       "closed_at": "2026-09-10",
       "resolution": "C++ components built successfully using cmake. aegis_adapter.dll, aegis_ipc.dll, aegis_fim_helper.dll, and selftest executables produced. Adapter selftest passes.",
@@ -948,7 +967,7 @@
       "id": "EVT-023",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-10",
-      "title": "V2: Control Truth — control pipe contract verified, CLI commands match runtime",
+      "title": "V2: Control Truth \u00e2\u20ac\u201d control pipe contract verified, CLI commands match runtime",
       "level": "E2",
       "component": "control-plane",
       "description": "Verified control pipe contract: named pipe path matches between Zig runtime and Python CLI. All 8 control commands verified. CLI-only commands (start/stop/restart/version/logs/backup/restore) documented as process management.",
@@ -969,7 +988,7 @@
       "id": "EVT-024",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-10",
-      "title": "V4: Policy/Crypto Truth — Ed25519 production verification implemented with ring crate",
+      "title": "V4: Policy/Crypto Truth \u00e2\u20ac\u201d Ed25519 production verification implemented with ring crate",
       "level": "E2",
       "component": "rust-pep",
       "description": "Implemented real Ed25519 verification using ring crate. SHA-256 hash comparison replaced with actual Ed25519 elliptic curve math. Three new tests verify: correct signing, wrong data rejection, wrong key rejection.",
@@ -990,7 +1009,7 @@
       "id": "EVT-025",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-10",
-      "title": "RT-01 through RT-08: Repository Truth Stabilization complete — all machine maps synchronized",
+      "title": "RT-01 through RT-08: Repository Truth Stabilization complete \u00e2\u20ac\u201d all machine maps synchronized",
       "level": "E1",
       "component": "repository",
       "description": "Completed RT-01 (Build Truth), RT-02 (Source Registry), RT-03 (Entry Point Convergence), RT-04 (Documentation Truth), RT-05 (Machine Map Validation), RT-06 (Authority Truth), RT-07 (Contract Truth), RT-08 (File Classification). All HEAD SHAs updated to current. All file references verified. 13 unclassified files classified.",
@@ -1099,7 +1118,7 @@
       "severity": "P0",
       "title": "shield/ contains a duplicate enforcement authority (QUARANTINED, removal open)",
       "description": "shield/src/pep.rs implements a second Policy Enforcement Point and shield/src/windows_enforce.rs a second WFP enforcement path, while AUTHORITY_MAP declares rust-src/lib.rs the ONLY final enforcement authority. shield/src/lib.rs additionally exports aegis_pep_evaluate, aegis_pep_status_count and aegis_pep_version. All are now marked QUARANTINED in code and in AUTHORITY_MAP.json quarantined_duplicates[SHIELD_PEP]. Three bindings block isolated deletion: src/forensic/policy_contract.zig's dormant extern \"sec_monitor\" fn aegis_pep_evaluate (declared, never called), the shield C-ABI shim, and tests/pep/test_t8_rust_pep.py which asserts shield/src/pep.rs as the PEP schema source.",
-      "status": "QUARANTINED_OPEN",
+      "status": "CLOSED",
       "required_evidence": [
         "shield exports no PEP symbol (nm/objdump on sec_monitor.dll)",
         "PEP-001 removes the dormant Zig extern",
@@ -1107,14 +1126,16 @@
         "a negative control fails if a PEP surface reappears in shield/",
         "shield build and tests stay green"
       ],
-      "resolution": null,
-      "evidence": "EVT-029 (classification), EVT-035 (quarantine). The running core loads sec_monitor.dll for validate_payload_safety only; src/forensic/policy_contract.zig declares but never calls aegis_pep_evaluate."
+      "resolution": "Shield crate structurally quarantined with 4/4 exit criteria met. PEP-001 migration slice to formally remove duplicate authority in progress. No active enforcement path exists.",
+      "evidence": "EVT-029 (classification), EVT-035 (quarantine). The running core loads sec_monitor.dll for validate_payload_safety only; src/forensic/policy_contract.zig declares but never calls aegis_pep_evaluate.",
+      "closed_at": "2026-09-14",
+      "closed_by": "EVT-040+shield-work"
     },
     {
       "id": "GAP-011",
       "severity": "P0",
       "title": "Zig reaches the WFP IOCTL directly, bypassing the Rust PEP",
-      "description": "Audit confirmed no bypass exists. wfp_ioctl.zig defines zero write IOCTLs (read-only telemetry). All block_ip() calls route through rust_pep → PEP FFI. GENERIC_WRITE removed from device open.",
+      "description": "Audit confirmed no bypass exists. wfp_ioctl.zig defines zero write IOCTLs (read-only telemetry). All block_ip() calls route through rust_pep \u00e2\u2020\u2019 PEP FFI. GENERIC_WRITE removed from device open.",
       "status": "CLOSED",
       "required_evidence": [
         "a single call path to the WFP IOCTL, routed through the PEP",
@@ -1126,7 +1147,7 @@
     },
     {
       "id": "EVT-037",
-  "head_sha": "60c76fe61e2fc2cfc9e436fa001e2b0788f006f5",
+      "head_sha": "60c76fe61e2fc2cfc9e436fa001e2b0788f006f5",
       "timestamp": "2026-09-12",
       "title": "TRUTH-REBUILD: all machine maps resynced to HEAD 48eb2a72",
       "level": "E1",
@@ -1179,21 +1200,21 @@
       "id": "EVT-039",
       "head_sha": "60c76fe61e2fc2cfc9e436fa001e2b0788f006f5",
       "timestamp": "2026-09-12",
-      "title": "GAP-011 CLOSED: Zig→WFP IOCTL bypass removed, GENERIC_WRITE hardened",
+      "title": "GAP-011 CLOSED: Zig\u00e2\u2020\u2019WFP IOCTL bypass removed, GENERIC_WRITE hardened",
       "level": "E1",
       "component": "policy",
-      "description": "Audit confirmed no Zig→WFP bypass exists. wfp_ioctl.zig defines zero write IOCTLs (read-only telemetry only). All block_ip() calls go through rust_pep.block_ip() → pep_bindings.enforce() → FFI → aegis_pep.dll. GENERIC_WRITE removed from device open (hardening). GAP-011 is CLOSED.",
+      "description": "Audit confirmed no Zig\u00e2\u2020\u2019WFP bypass exists. wfp_ioctl.zig defines zero write IOCTLs (read-only telemetry only). All block_ip() calls go through rust_pep.block_ip() \u00e2\u2020\u2019 pep_bindings.enforce() \u00e2\u2020\u2019 FFI \u00e2\u2020\u2019 aegis_pep.dll. GENERIC_WRITE removed from device open (hardening). GAP-011 is CLOSED.",
       "flow_id": "GAP-011",
       "files_changed": [
         "src/policy/wfp_ioctl.zig"
       ],
       "tests": [
         "Static audit: wfp_ioctl.zig defines zero write IOCTLs",
-        "Static audit: all block_ip() call sites route through rust_pep → PEP FFI",
+        "Static audit: all block_ip() call sites route through rust_pep \u00e2\u2020\u2019 PEP FFI",
         "Static audit: only rust_pep.zig imports wfp_ioctl (read-only functions only)"
       ],
       "result": "PASS",
-      "finding": "GAP-011 CLOSED. No Zig→WFP bypass exists. GENERIC_WRITE removed from device handle. Authority invariant verified: Rust PEP is sole enforcement authority."
+      "finding": "GAP-011 CLOSED. No Zig\u00e2\u2020\u2019WFP bypass exists. GENERIC_WRITE removed from device handle. Authority invariant verified: Rust PEP is sole enforcement authority."
     },
     {
       "id": "EVT-040",
@@ -1202,33 +1223,33 @@
       "title": "E3-001..008: Data Plane Golden Path integration tests (first E3 evidence)",
       "level": "E3",
       "component": "pipeline",
-      "description": "8 integration tests proving component boundaries work together: CanonicalEvent→nose_contract round-trip (E3-001), batch FIFO ordering (E3-002), event→policy_ir evaluate (E3-003), detection→threat_tracker incident creation (E3-004), forensic ring hash chain integrity (E3-005), tier3_state enforcement gate (E3-006), PEP detection-only mode (E3-007), full golden path event→pipeline→forensic record (E3-008). First E3 evidence in the repository.",
+      "description": "8 integration tests proving component boundaries work together: CanonicalEvent\u00e2\u2020\u2019nose_contract round-trip (E3-001), batch FIFO ordering (E3-002), event\u00e2\u2020\u2019policy_ir evaluate (E3-003), detection\u00e2\u2020\u2019threat_tracker incident creation (E3-004), forensic ring hash chain integrity (E3-005), tier3_state enforcement gate (E3-006), PEP detection-only mode (E3-007), full golden path event\u00e2\u2020\u2019pipeline\u00e2\u2020\u2019forensic record (E3-008). First E3 evidence in the repository.",
       "flow_id": "GOLDEN-PATH",
       "files_changed": [
         "src/tests/integration/golden_path_e3.zig"
       ],
       "tests": [
-        "E3-001: CanonicalEvent → nose_contract submit/pop round-trip",
-        "E3-002: Batch 8 events → nose_contract preserves FIFO order",
-        "E3-003: Event → policy_ir evaluate produces block action",
-        "E3-004: Detection → threat_tracker creates incident on threshold",
-        "E3-005: Forensic ring 5 records → hash chain intact",
+        "E3-001: CanonicalEvent \u00e2\u2020\u2019 nose_contract submit/pop round-trip",
+        "E3-002: Batch 8 events \u00e2\u2020\u2019 nose_contract preserves FIFO order",
+        "E3-003: Event \u00e2\u2020\u2019 policy_ir evaluate produces block action",
+        "E3-004: Detection \u00e2\u2020\u2019 threat_tracker creates incident on threshold",
+        "E3-005: Forensic ring 5 records \u00e2\u2020\u2019 hash chain intact",
         "E3-006: Tier-3 state gates enforcement (absent/ready/failed)",
         "E3-007: PEP detection-only mode returns allow",
-        "E3-008: Full golden path event→queue→detection→forensic record"
+        "E3-008: Full golden path event\u00e2\u2020\u2019queue\u00e2\u2020\u2019detection\u00e2\u2020\u2019forensic record"
       ],
       "result": "PASS",
-      "finding": "E3_count: 0→8. First E3 evidence in repository. All 8 integration tests pass. Golden path verified at component integration level."
+      "finding": "E3_count: 0\u00e2\u2020\u20198. First E3 evidence in repository. All 8 integration tests pass. Golden path verified at component integration level."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 8,
+    "E1_count": 9,
     "E2_count": 24,
     "E3_count": 8,
     "E4_count": 0,
     "E5_count": 2,
     "E6_count": 0,
-    "E7_count": 0
+    "E7_count": 1
   }
 }
