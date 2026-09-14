@@ -74,14 +74,51 @@ pub const NpcapAdapter = struct {
     packets_dropped: u64 = 0,
 
     pub fn open(cfg: CaptureConfig) !NpcapAdapter {
-        var ad = NpcapAdapter{ .device = cfg.device };
         if (builtin.os.tag != .windows) {
             // Non-Windows: cannot open real pcap (Npcap is Windows-only)
             return error.UnsupportedPlatform;
         }
+
+        // A zero-filled config means "auto-select". Never pass an empty or
+        // friendly Windows adapter name (for example, "Wi-Fi") to Npcap;
+        // pcap_create requires the canonical name returned by
+        // pcap_findalldevs (normally a \Device\NPF_{GUID} path).
+        var device = cfg.device;
+        if (std.mem.sliceTo(&device, 0).len == 0) {
+            var alldevs: ?*pcap_if_t = null;
+            var find_errbuf: [256]u8 = undefined;
+            @memset(&find_errbuf, 0);
+            if (pcap_findalldevs(&alldevs, &find_errbuf) < 0) {
+                diag.err("pcap_findalldevs failed: {s}", .{std.mem.sliceTo(&find_errbuf, 0)});
+                return error.PcapFindalldevsFailed;
+            }
+            defer pcap_freealldevs(alldevs);
+
+            var selected: ?[*:0]const u8 = null;
+            var cur = alldevs;
+            while (cur) |dev| : (cur = dev.next) {
+                if (dev.name) |name| {
+                    // Prefer a non-loopback adapter that Npcap marks up or
+                    // running; retain the first named adapter as fallback.
+                    if (selected == null) selected = name;
+                    if ((dev.flags & 0x1) == 0 and (dev.flags & 0x6) != 0) {
+                        selected = name;
+                        break;
+                    }
+                }
+            }
+            const selected_name = selected orelse return error.PcapNoDevices;
+            const selected_slice = std.mem.span(selected_name);
+            if (selected_slice.len >= device.len) return error.PcapDeviceNameTooLong;
+            @memset(&device, 0);
+            @memcpy(device[0..selected_slice.len], selected_slice);
+            diag.info("Npcap auto-selected device: {s}", .{selected_slice});
+        }
+
+        var ad = NpcapAdapter{ .device = device };
         var errbuf: [256]u8 = undefined;
         @memset(&errbuf, 0);
-        const dev_z = std.mem.sliceTo(&cfg.device, 0);
+        const dev_z = std.mem.sliceTo(&device, 0);
         const handle = pcap_create(@ptrCast(dev_z.ptr), &errbuf) orelse {
             diag.err("pcap_create failed: {s}", .{std.mem.sliceTo(&errbuf, 0)});
             return error.PcapCreateFailed;

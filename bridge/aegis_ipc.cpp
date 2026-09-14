@@ -248,7 +248,7 @@ void NamedPipeChannel::Disconnect() {
 // ====== extern "C" API Implementation ======
 extern "C" {
 
-int32_t aegis_bridge_init() {
+AEGIS_BRIDGE_API int32_t aegis_bridge_init() {
     using namespace Aegis::Bridge;
 
     if (g_initialized) {
@@ -272,7 +272,7 @@ int32_t aegis_bridge_init() {
     return 0;
 }
 
-int32_t aegis_bridge_shutdown() {
+AEGIS_BRIDGE_API int32_t aegis_bridge_shutdown() {
     using namespace Aegis::Bridge;
 
     if (!g_initialized) return 0;
@@ -284,7 +284,7 @@ int32_t aegis_bridge_shutdown() {
     return 0;
 }
 
-int32_t aegis_bridge_push_event(const Aegis::Bridge::IpcEvent* event) {
+AEGIS_BRIDGE_API int32_t aegis_bridge_push_event(const Aegis::Bridge::IpcEvent* event) {
     using namespace Aegis::Bridge;
 
     if (!g_initialized || !event) return -1;
@@ -322,7 +322,7 @@ int32_t aegis_bridge_pop_event(Aegis::Bridge::IpcEvent* event) {
     return 0;
 }
 
-uint8_t aegis_bridge_get_defcon() {
+AEGIS_BRIDGE_API uint8_t aegis_bridge_get_defcon() {
     using namespace Aegis::Bridge;
     if (!g_initialized) return kDefcon5Safe;
     return g_defcon.Calculate();
@@ -402,7 +402,7 @@ int32_t aegis_bridge_receive_command(Aegis::Bridge::IpcCommand* cmd) {
     return -2;
 }
 
-uint32_t aegis_bridge_get_event_count() {
+AEGIS_BRIDGE_API uint32_t aegis_bridge_get_event_count() {
     using namespace Aegis::Bridge;
     return g_eventQueue.Count();
 }

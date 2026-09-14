@@ -151,6 +151,18 @@ Verification ล่าสุดผ่านต่อเนื่อง 3 คร�
 
 ปรับ health contract ให้ส่ง `state` เป็น operational state, `runtime_state` เป็น lifecycle state และ `capabilities` จริง (`wfp`, `cpp_bridge`, `udp_brain`) จาก `bridge_init.status()`. เมื่อ WFP หรือ C++ bridge ไม่พร้อม daemon ยัง `runtime_state=RUNNING` ได้ แต่ `state=DEGRADED` และ `degraded=true`
 
+ผล Windows ล่าสุดยืนยัน WFP device เปิดได้จริง และ `dist/aegis_ipc.dll` โหลดได้ แต่ PE export table ของ DLL ปัจจุบันไม่มี exports ขณะที่ source `bridge/aegis_ipc.cpp` ประกาศ C ABI ครบ จึงต้อง rebuild/copy DLL จาก source เดียวกันก่อนประกาศ C++ bridge พร้อมใช้งาน
+
+เพิ่ม `AEGIS_BRIDGE_API` (`__declspec(dllexport)` บน Windows และ default visibility บน non-Windows) ให้ 5 functions ที่ Zig lookup (`init`, `shutdown`, `push_event`, `get_defcon`, `get_event_count`); ต้อง rebuild DLL แล้วตรวจ PE exports ซ้ำ
+
+Windows bridge build รอบแรกพบ C2375 เพราะ export macro อยู่เฉพาะ definition ไม่ตรง declaration ใน `aegis_ipc.hpp`; ย้าย macro ไปใช้ร่วมกันทั้ง declaration/definition และแก้ `GetTickCount64` ที่ขาด Windows include ใน `aegis_packet_parser.cpp` พร้อม fallback `steady_clock` บน non-Windows
+
+แก้ `src/capture/npcap_adapter.zig` ให้ config device ว่างทำ dynamic enumeration ผ่าน `pcap_findalldevs()` แล้วเลือก canonical Npcap device name ที่มี flag up/running ก่อนเรียก `pcap_create()`. วิธีนี้ป้องกันการส่งชื่อ friendly adapter หรือ path ว่างจนเกิด Windows error 123; Go Nose มี enumeration ของตัวเองอยู่แล้วและไม่ได้เป็นต้นเหตุของ log เดิม
+
+Windows E2E ล่าสุดเชื่อม Go Nose เข้า `\\.\pipe\aegis_nose` ได้แล้ว (`client connected`) แต่ client disconnect ก่อนปรากฏ frame counter จึงเพิ่ม diagnostics ฝั่ง Zig สำหรับ header/payload/length/deserializer/submission และฝั่ง Go สำหรับ pipe connection, first dropped frame และ first sent frame; ต้อง rebuild ทั้ง daemon และ Nose แล้วเก็บ log คู่กันก่อนสรุป protocol failure
+
+รอบถัดมาพบ Go Nose/daemon ไม่แสดง packet หลัง ping แม้ process และ pipe อยู่ จึงปรับ Go `firstUpDevice()` ให้ prefer physical adapter ที่มี address โดยกรอง Hyper-V/VMware/loopback พร้อม log adapter ที่เลือก, packet แรก และ counter ทุก 100 packets; ต้องใช้ explicit Npcap device หรือ build ใหม่เพื่อยืนยันว่า capture source เห็น traffic จริง
+
 ## 2. สิ่งที่ตรงกันระหว่าง Master Report กับการตรวจ source
 
 | Master Report ระบุ | หลักฐานใน source ปัจจุบัน | สถานะ |

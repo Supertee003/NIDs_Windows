@@ -178,6 +178,7 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
         var lenBuf: [4]u8 = undefined;
         if (!readExact(server, &lenBuf)) {
             const err = GetLastError();
+            std.log.warn("[NOSE PIPE] frame header read failed: GetLastError={d}", .{err});
             if (err == ERROR_BROKEN_PIPE or err == ERROR_NO_DATA) break;
             g_reader_stats.pipe_errors += 1;
             break;
@@ -188,6 +189,7 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
             (@as(u32, lenBuf[3]) << 24);
 
         if (frameLen != FRAME_SIZE) {
+            std.log.warn("[NOSE PIPE] rejected frame length: {d}, expected {d}", .{ frameLen, FRAME_SIZE });
             // Skip malformed frame: read and discard
             var discard: [256]u8 = undefined;
             var remaining = frameLen;
@@ -203,14 +205,17 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
         // Read payload
         var payload: [FRAME_SIZE]u8 = undefined;
         if (!readExact(server, &payload)) {
+            std.log.warn("[NOSE PIPE] frame payload read failed: GetLastError={d}", .{GetLastError()});
             g_reader_stats.pipe_errors += 1;
             break;
         }
 
         g_reader_stats.frames_read += 1;
+        std.log.info("[NOSE PIPE] frame received: {d} bytes", .{FRAME_SIZE});
 
         // Deserialize and validate
         const event = canonical.deserializeFromBytes(&payload) orelse {
+            std.log.warn("[NOSE PIPE] canonical frame rejected by deserializer", .{});
             g_reader_stats.frames_rejected += 1;
             continue;
         };
@@ -219,6 +224,7 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
         // no second acquisition queue between canonical validation and detect.
         if (pipeline_queue.pushCanonicalEvent(&event)) {
             g_reader_stats.frames_submitted += 1;
+            std.log.info("[NOSE PIPE] canonical event submitted: event_id={d}", .{event.event_id});
         } else {
             g_reader_stats.frames_dropped += 1;
         }

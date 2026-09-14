@@ -16,6 +16,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -47,12 +48,28 @@ func firstUpDevice() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("nose capture: FindAllDevs: %w", err)
 	}
-	// Prefer the first adapter with a real IP address (means it's up and usable).
-	for _, d := range devs {
-		if len(d.Addresses) > 0 {
-			return d.Name, nil
+		// Prefer physical adapters over virtual host-only adapters. The first
+		// pcap device is often Hyper-V/VMware and may have an IP but no traffic
+		// for the operator's active route.
+		for _, d := range devs {
+			if len(d.Addresses) == 0 {
+				continue
+			}
+			label := strings.ToLower(d.Name + " " + d.Description)
+			if !strings.Contains(label, "hyper-v") &&
+				!strings.Contains(label, "vmware") &&
+				!strings.Contains(label, "loopback") &&
+				!strings.Contains(label, "npcap loopback") {
+				fmt.Fprintf(os.Stderr, "[NOSE CAPTURE] auto-selected physical adapter: %s (%s)\n", d.Name, d.Description)
+				return d.Name, nil
+			}
 		}
-	}
+		for _, d := range devs {
+			if len(d.Addresses) > 0 {
+				fmt.Fprintf(os.Stderr, "[NOSE CAPTURE] auto-selected fallback adapter: %s (%s)\n", d.Name, d.Description)
+				return d.Name, nil
+			}
+		}
 	if len(devs) > 0 {
 		return devs[0].Name, nil
 	}
@@ -98,12 +115,18 @@ func runCapture(iface string, pipe string, stop <-chan struct{}) error {
 		default:
 		}
 		atomic.AddUint64(&stateAtomic.packets, 1)
+		if count == 0 {
+			fmt.Fprintf(os.Stderr, "[NOSE CAPTURE] first packet captured: len=%d\n", packet.Metadata().CaptureLength)
+		}
 		ev := eventFromPacket(packet)
 		atomic.AddUint64(&stateAtomic.canonical, 1)
 		atomic.AddUint64(&stateAtomic.bytesTotal, uint64(packet.Metadata().CaptureLength))
 		_ = w.Send(ev)
 		atomic.StoreUint64(&stateAtomic.droppedPipe, droppedVia(w))
 		count++
+		if count%100 == 0 {
+			fmt.Fprintf(os.Stderr, "[NOSE CAPTURE] packets=%d canonical=%d dropped=%d\n", count, atomic.LoadUint64(&stateAtomic.canonical), atomic.LoadUint64(&stateAtomic.droppedPipe))
+		}
 		if stop != nil {
 			select {
 			case <-stop:

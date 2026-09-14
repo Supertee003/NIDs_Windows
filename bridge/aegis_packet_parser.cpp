@@ -10,6 +10,11 @@
 #include "aegis_packet_parser.hpp"
 #include "aegis_ipc.hpp"
 #include <cstdio>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <chrono>
+#endif
 
 extern "C" {
 
@@ -39,7 +44,12 @@ int32_t aegis_parse_packet(const uint8_t* data, uint32_t dataLen,
     outEvent->payload_length = static_cast<uint32_t>(result.payloadLength);
     outEvent->rule_id        = 0;  // Not yet matched
     outEvent->severity       = kSeverityLow;  // Default, will be updated by tiers
+#ifdef _WIN32
     outEvent->timestamp      = GetTickCount64();  // Windows millisecond timestamp
+#else
+    outEvent->timestamp      = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count());
+#endif
 
     // Extract port numbers based on protocol
     if (result.protocol == kProtoTCP && result.tcpHeader) {

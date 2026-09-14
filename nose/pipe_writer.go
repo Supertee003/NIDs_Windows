@@ -15,6 +15,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -78,6 +79,11 @@ func NewFrameWriter(pipePath string) *FrameWriter {
 	}
 	fw := &FrameWriter{pipePath: pipePath}
 	fw.ensureConnected()
+	if fw.conn != nil {
+		fmt.Fprintf(os.Stderr, "[NOSE PIPE] connected to %s\n", pipePath)
+	} else {
+		fmt.Fprintf(os.Stderr, "[NOSE PIPE] waiting for %s\n", pipePath)
+	}
 	return fw
 }
 
@@ -117,6 +123,9 @@ func (w *FrameWriter) Send(ev *CanonicalEvent) []byte {
 
 	if w.conn == nil || w.conn.file == nil {
 		w.dropped++
+		if w.dropped == 1 {
+			fmt.Fprintf(os.Stderr, "[NOSE PIPE] first frame dropped: consumer unavailable (%s)\n", w.pipePath)
+		}
 		w.ensureConnected()
 		return wire[:]
 	}
@@ -137,6 +146,9 @@ func (w *FrameWriter) Send(ev *CanonicalEvent) []byte {
 		return wire[:]
 	}
 	w.sent++
+	if w.sent == 1 {
+		fmt.Fprintf(os.Stderr, "[NOSE PIPE] first canonical frame sent: %d bytes\n", len(frame))
+	}
 	return wire[:]
 }
 

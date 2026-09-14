@@ -339,18 +339,23 @@ public:
 
 // ====== extern "C" ABI Interface ======
 // These functions are callable from Zig, Rust, Go, and Python (via ctypes/cffi).
+#ifdef _WIN32
+#define AEGIS_BRIDGE_API __declspec(dllexport)
+#else
+#define AEGIS_BRIDGE_API __attribute__((visibility("default")))
+#endif
 extern "C" {
 
 // ====== Initialization ======
-int32_t  aegis_bridge_init();            // Initialize IPC bridge
-int32_t  aegis_bridge_shutdown();        // Shutdown IPC bridge
+AEGIS_BRIDGE_API int32_t  aegis_bridge_init();            // Initialize IPC bridge
+AEGIS_BRIDGE_API int32_t  aegis_bridge_shutdown();        // Shutdown IPC bridge
 
 // ====== Event Passing ======
-int32_t  aegis_bridge_push_event(const Aegis::Bridge::IpcEvent* event);  // Push event to queue
+AEGIS_BRIDGE_API int32_t  aegis_bridge_push_event(const Aegis::Bridge::IpcEvent* event);  // Push event to queue
 int32_t  aegis_bridge_pop_event(Aegis::Bridge::IpcEvent* event);        // Pop event from queue
 
 // ====== DEFCON ======
-uint8_t  aegis_bridge_get_defcon();                                    // Get current DEFCON level
+AEGIS_BRIDGE_API uint8_t  aegis_bridge_get_defcon();                    // Get current DEFCON level
 void     aegis_bridge_update_defcon(uint32_t critical, uint32_t blocked,
                                      uint32_t kernel, uint32_t total);  // Update DEFCON counters
 
@@ -363,7 +368,7 @@ int32_t  aegis_bridge_send_command(const Aegis::Bridge::IpcCommand* cmd);
 int32_t  aegis_bridge_receive_command(Aegis::Bridge::IpcCommand* cmd);
 
 // ====== Statistics ======
-uint32_t aegis_bridge_get_event_count();
+AEGIS_BRIDGE_API uint32_t aegis_bridge_get_event_count();
 uint32_t aegis_bridge_get_dropped_count();
 const char* aegis_bridge_get_defcon_label();
 const char* aegis_bridge_get_defcon_description();
