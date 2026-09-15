@@ -94,20 +94,36 @@ func TestSchemaVersionAndOffsets(t *testing.T) {
 	}
 }
 
+func TestDeserializeRoundTripPreservesEventID(t *testing.T) {
+	original := goldenEvent()
+	wire, err := original.Serialize()
+	if err != nil {
+		t.Fatalf("serialize: %v", err)
+	}
+	var decoded CanonicalEvent
+	decoded.Deserialize(wire)
+	if decoded.EventID != original.EventID {
+		t.Fatalf("event_id round-trip mismatch: got %#x want %#x", decoded.EventID, original.EventID)
+	}
+	if decoded.TimestampMS != original.TimestampMS || decoded.Source != original.Source {
+		t.Fatalf("decoded canonical identity mismatch")
+	}
+}
+
 func TestSourceClassificationMatchesZig(t *testing.T) {
 	// Mirrors SourceKind.classify in Zig — every T2-required kind.
 	cases := map[byte]string{
-		SourceNpcapSensor:      "network",
-		SourceWfpSensor:        "network",
-		SourceHostTelemetry:    "host",
-		SourceProcessSensor:    "process",
-		SourceFileSensor:       "file",
-		SourceRegistrySensor:   "registry",
-		SourceMlDetector:       "ml",
-		SourceClusterFed:       "federation",
-		SourceReplaySensor:     "replay",
-		SourceGoAggregator:     "core",
-		SourceExternal:         "external",
+		SourceNpcapSensor:    "network",
+		SourceWfpSensor:      "network",
+		SourceHostTelemetry:  "host",
+		SourceProcessSensor:  "process",
+		SourceFileSensor:     "file",
+		SourceRegistrySensor: "registry",
+		SourceMlDetector:     "ml",
+		SourceClusterFed:     "federation",
+		SourceReplaySensor:   "replay",
+		SourceGoAggregator:   "core",
+		SourceExternal:       "external",
 	}
 	const (
 		kindNetwork byte = iota
@@ -145,6 +161,18 @@ func TestSourceClassificationMatchesZig(t *testing.T) {
 func TestMalformedInput(t *testing.T) {
 	if _, err := (&CanonicalEvent{Confidence: 200}).Serialize(); err == nil {
 		t.Fatal("confidence > 100 should be rejected")
+	}
+}
+
+func TestCanonicalOrdinalsMatchZig(t *testing.T) {
+	if TypeForward != 2 {
+		t.Fatalf("forward event ordinal: got %d want 2", TypeForward)
+	}
+	if TypeMatch != 1 {
+		t.Fatalf("match event ordinal: got %d want 1", TypeMatch)
+	}
+	if ActionLogOnly != 5 {
+		t.Fatalf("log-only policy ordinal: got %d want 5", ActionLogOnly)
 	}
 }
 
@@ -191,5 +219,54 @@ func TestEventFromPacketSynthetic(t *testing.T) {
 	}
 	if len(wire) != EventWireSize {
 		t.Fatalf("wire size %d", len(wire))
+	}
+}
+
+func TestSignatureClassifierSetsCanonicalMetadata(t *testing.T) {
+	activeNoseSignatureRules = []noseSignatureRule{
+		{RuleID: "TEST1", MatchPattern: "GET", Severity: "High"},
+	}
+	defer func() { activeNoseSignatureRules = nil }()
+
+	ip := &layers.IPv4{Version: 4, IHL: 5, SrcIP: []byte{192, 168, 1, 10}, DstIP: []byte{192, 168, 1, 20}, Protocol: layers.IPProtocolTCP}
+	tcp := &layers.TCP{SrcPort: 50000, DstPort: 80}
+	tcp.SetNetworkLayerForChecksum(ip)
+	buf := gopacket.NewSerializeBuffer()
+	if err := gopacket.SerializeLayers(buf, gopacket.SerializeOptions{ComputeChecksums: true, FixLengths: true}, ip, tcp, gopacket.Payload([]byte("GET / HTTP/1.1\r\n"))); err != nil {
+		t.Fatalf("serialize classifier packet: %v", err)
+	}
+	pkt := gopacket.NewPacket(buf.Bytes(), layers.LayerTypeIPv4, gopacket.NoCopy)
+	ev := eventFromPacket(pkt)
+	classifyNosePacket(ev, pkt)
+
+	if ev.EventType != TypeMatch {
+		t.Fatalf("event type: got %d want %d", ev.EventType, TypeMatch)
+	}
+	if ev.RuleID != hashNoseRuleID("TEST1") {
+		t.Fatalf("rule id mismatch: got %#x want %#x", ev.RuleID, hashNoseRuleID("TEST1"))
+	}
+	if ev.Severity != 2 {
+		t.Fatalf("severity: got %d want 2 for High", ev.Severity)
+	}
+	wire, err := ev.Serialize()
+	if err != nil {
+		t.Fatalf("serialize classified event: %v", err)
+	}
+	if len(wire) != EventWireSize {
+		t.Fatalf("wire size changed: got %d want %d", len(wire), EventWireSize)
+	}
+}
+
+func TestSignatureClassifierIgnoresNonMatchingPayload(t *testing.T) {
+	activeNoseSignatureRules = []noseSignatureRule{
+		{RuleID: "TEST1", MatchPattern: "GET", Severity: "High"},
+	}
+	defer func() { activeNoseSignatureRules = nil }()
+
+	pkt := gopacket.NewPacket([]byte{}, layers.LayerTypeIPv4, gopacket.NoCopy)
+	ev := eventFromPacket(pkt)
+	classifyNosePacket(ev, pkt)
+	if ev.EventType != TypeForward || ev.RuleID != 0 || ev.Severity != 0 {
+		t.Fatalf("non-match mutated canonical metadata: type=%d rule=%d severity=%d", ev.EventType, ev.RuleID, ev.Severity)
 	}
 }

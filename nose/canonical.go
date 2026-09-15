@@ -16,19 +16,19 @@ import (
 
 // ── EventSource enum ──────────────────────────────────────────
 const (
-	SourceUnknown       = 0
-	SourceWfpSensor     = 1
-	SourceMinifilter    = 3
-	SourceGoAggregator  = 8
-	SourceNpcapSensor   = 9
-	SourceHostTelemetry = 10
-	SourceMlDetector    = 11
-	SourceClusterFed    = 12
-	SourceProcessSensor = 13
-	SourceFileSensor    = 14
+	SourceUnknown        = 0
+	SourceWfpSensor      = 1
+	SourceMinifilter     = 3
+	SourceGoAggregator   = 8
+	SourceNpcapSensor    = 9
+	SourceHostTelemetry  = 10
+	SourceMlDetector     = 11
+	SourceClusterFed     = 12
+	SourceProcessSensor  = 13
+	SourceFileSensor     = 14
 	SourceRegistrySensor = 15
-	SourceReplaySensor  = 16
-	SourceExternal      = 255
+	SourceReplaySensor   = 16
+	SourceExternal       = 255
 
 	// Descriptive alias retained for callers using the long name.
 	SourceClusterFederation = SourceClusterFed
@@ -37,20 +37,34 @@ const (
 // String returns the human-readable name for each source value.
 func (s Source) String() string {
 	switch s {
-	case SourceUnknown: return "unknown"
-	case SourceWfpSensor: return "wfp_sensor"
-	case SourceMinifilter: return "minifilter"
-	case SourceGoAggregator: return "go_aggregator"
-	case SourceNpcapSensor: return "npcap_sensor"
-	case SourceHostTelemetry: return "host_telemetry"
-	case SourceMlDetector: return "ml_detector"
-	case SourceClusterFed: return "cluster_federation"
-	case SourceProcessSensor: return "process_sensor"
-	case SourceFileSensor: return "file_sensor"
-	case SourceRegistrySensor: return "registry_sensor"
-	case SourceReplaySensor: return "replay_sensor"
-	case SourceExternal: return "external"
-	default: return "unknown"
+	case SourceUnknown:
+		return "unknown"
+	case SourceWfpSensor:
+		return "wfp_sensor"
+	case SourceMinifilter:
+		return "minifilter"
+	case SourceGoAggregator:
+		return "go_aggregator"
+	case SourceNpcapSensor:
+		return "npcap_sensor"
+	case SourceHostTelemetry:
+		return "host_telemetry"
+	case SourceMlDetector:
+		return "ml_detector"
+	case SourceClusterFed:
+		return "cluster_federation"
+	case SourceProcessSensor:
+		return "process_sensor"
+	case SourceFileSensor:
+		return "file_sensor"
+	case SourceRegistrySensor:
+		return "registry_sensor"
+	case SourceReplaySensor:
+		return "replay_sensor"
+	case SourceExternal:
+		return "external"
+	default:
+		return "unknown"
 	}
 }
 
@@ -94,7 +108,7 @@ const (
 // Compatibility names used by the capture path. Values remain the frozen
 // canonical ordinals; aliases avoid a second competing event vocabulary.
 const (
-	TypeForward = 1
+	TypeForward = 2
 	TypeMatch   = 1
 )
 
@@ -115,8 +129,8 @@ const (
 )
 
 const (
-	ActionLogOnly = 0
-	ActionAlert  = 1
+	ActionLogOnly = 5
+	ActionAlert   = 1
 )
 
 // String returns the human-readable name for each policy action.
@@ -130,36 +144,36 @@ func (p PolicyAction) String() string {
 
 // ── CanonicalEvent struct ─────────────────────────────────────
 type CanonicalEvent struct {
-	EventID, TimestampMS, MonotonicNS   uint64
-	Source                               byte
-	SourceIP                             uint32
-	SourcePort                           uint16
-	DestIP                               uint32
-	DestPort                             uint16
-	SessionID                            uint64
-	Protocol, Direction, LayerID, IsPipe byte
-	EventType                            uint32
-	Severity                             byte
-	RuleID                               uint32
-	RulesetVersion                       uint64
-	PayloadLength                        uint32
-	PayloadHash                          uint64
-	PolicyAction, EnforcementStatus, DefconImpact  byte
-	ContextFlags                         uint32
-	PID, PPID                            uint32
-	ProcType, Integrity, HidsFlag        byte
-	NodeID                               uint32
-	Confidence                           byte
+	EventID, TimestampMS, MonotonicNS             uint64
+	Source                                        byte
+	SourceIP                                      uint32
+	SourcePort                                    uint16
+	DestIP                                        uint32
+	DestPort                                      uint16
+	SessionID                                     uint64
+	Protocol, Direction, LayerID, IsPipe          byte
+	EventType                                     uint32
+	Severity                                      byte
+	RuleID                                        uint32
+	RulesetVersion                                uint64
+	PayloadLength                                 uint32
+	PayloadHash                                   uint64
+	PolicyAction, EnforcementStatus, DefconImpact byte
+	ContextFlags                                  uint32
+	PID, PPID                                     uint32
+	ProcType, Integrity, HidsFlag                 byte
+	NodeID                                        uint32
+	Confidence                                    byte
 }
 
 // Reserved offsets within the 109-byte wire format
 const (
-	ResOffPid       = 0  // reserved[0..4]   = PID
-	ResOffPpid      = 4  // reserved[4..8]   = PPID
-	ResOffProcType  = 8  // reserved[8..9]   = ProcType
-	ResOffIntegrity = 9  // reserved[9..10]  = Integrity
-	ResOffHidsFlag  = 10 // reserved[10..11] = HidsFlag
-	ResOffNodeID    = 11 // reserved[11..15] = NodeID
+	ResOffPid        = 0  // reserved[0..4]   = PID
+	ResOffPpid       = 4  // reserved[4..8]   = PPID
+	ResOffProcType   = 8  // reserved[8..9]   = ProcType
+	ResOffIntegrity  = 9  // reserved[9..10]  = Integrity
+	ResOffHidsFlag   = 10 // reserved[10..11] = HidsFlag
+	ResOffNodeID     = 11 // reserved[11..15] = NodeID
 	ResOffConfidence = 15 // frozen golden vector confidence offset
 )
 
@@ -226,36 +240,38 @@ func (e *CanonicalEvent) Serialize() ([EventWireSize]byte, error) {
 // the Go Serialize() output.
 func (e *CanonicalEvent) Deserialize(b [EventWireSize]byte) {
 	*e = CanonicalEvent{
-		EventID:   binary.LittleEndian.Uint64(b[0:8]),
-		TimestampMS: binary.LittleEndian.Uint64(b[16:24]),
-		MonotonicNS: binary.LittleEndian.Uint64(b[24:32]),
-		Source:     b[32],
-		SourceIP:  binary.LittleEndian.Uint32(b[33:37]),
-		SourcePort: binary.LittleEndian.Uint16(b[37:39]),
-		DestIP:    binary.LittleEndian.Uint32(b[39:43]),
-		DestPort:  binary.LittleEndian.Uint16(b[43:45]),
-		SessionID: binary.LittleEndian.Uint64(b[45:53]),
-		Protocol:  b[53],
-		Direction: b[54],
-		LayerID:   b[55],
-		IsPipe:    b[56],
-		EventType: binary.LittleEndian.Uint32(b[57:61]),
-		Severity:  b[61],
-		RuleID:    binary.LittleEndian.Uint32(b[62:66]),
-		RulesetVersion: binary.LittleEndian.Uint64(b[66:74]),
-		PayloadLength: binary.LittleEndian.Uint32(b[74:78]),
-		PayloadHash: binary.LittleEndian.Uint64(b[78:86]),
-		PolicyAction:  b[86],
-		EnforcementStatus:  b[87],
-		DefconImpact:  b[88],
-		ContextFlags:  binary.LittleEndian.Uint32(b[89:93]),
-		PID:         binary.LittleEndian.Uint32(b[93 : 93+ResOffPid+4]),
-		PPID:        binary.LittleEndian.Uint32(b[93+ResOffPpid:93+ResOffPpid+4]),
-		ProcType:    b[93+ResOffProcType],
-		Integrity:   b[93+ResOffIntegrity],
-		HidsFlag:    b[93+ResOffHidsFlag],
-		NodeID:      binary.LittleEndian.Uint32(b[93+ResOffNodeID:93+ResOffNodeID+4]),
-		Confidence:  b[93+ResOffConfidence],
+		// Header occupies bytes 0..7: magic (u32), schema (u16),
+		// and struct-size marker (u16). EventID starts at byte 8.
+		EventID:           binary.LittleEndian.Uint64(b[8:16]),
+		TimestampMS:       binary.LittleEndian.Uint64(b[16:24]),
+		MonotonicNS:       binary.LittleEndian.Uint64(b[24:32]),
+		Source:            b[32],
+		SourceIP:          binary.LittleEndian.Uint32(b[33:37]),
+		SourcePort:        binary.LittleEndian.Uint16(b[37:39]),
+		DestIP:            binary.LittleEndian.Uint32(b[39:43]),
+		DestPort:          binary.LittleEndian.Uint16(b[43:45]),
+		SessionID:         binary.LittleEndian.Uint64(b[45:53]),
+		Protocol:          b[53],
+		Direction:         b[54],
+		LayerID:           b[55],
+		IsPipe:            b[56],
+		EventType:         binary.LittleEndian.Uint32(b[57:61]),
+		Severity:          b[61],
+		RuleID:            binary.LittleEndian.Uint32(b[62:66]),
+		RulesetVersion:    binary.LittleEndian.Uint64(b[66:74]),
+		PayloadLength:     binary.LittleEndian.Uint32(b[74:78]),
+		PayloadHash:       binary.LittleEndian.Uint64(b[78:86]),
+		PolicyAction:      b[86],
+		EnforcementStatus: b[87],
+		DefconImpact:      b[88],
+		ContextFlags:      binary.LittleEndian.Uint32(b[89:93]),
+		PID:               binary.LittleEndian.Uint32(b[93 : 93+ResOffPid+4]),
+		PPID:              binary.LittleEndian.Uint32(b[93+ResOffPpid : 93+ResOffPpid+4]),
+		ProcType:          b[93+ResOffProcType],
+		Integrity:         b[93+ResOffIntegrity],
+		HidsFlag:          b[93+ResOffHidsFlag],
+		NodeID:            binary.LittleEndian.Uint32(b[93+ResOffNodeID : 93+ResOffNodeID+4]),
+		Confidence:        b[93+ResOffConfidence],
 	}
 }
 

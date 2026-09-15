@@ -10,6 +10,7 @@
 //! last_event, error, capabilities.
 
 const std = @import("std");
+const runtime_state = @import("../pipeline/runtime_state.zig");
 
 // ============================================================
 // System State Machine
@@ -291,8 +292,8 @@ pub const RuntimeState = struct {
         var writer = arr.writer();
         const operational_state = if (all_healthy and bridge_ready) "RUNNING" else "DEGRADED";
         try writer.print(
-            \\{{"component":"core","state":"{s}","runtime_state":"{s}","pid":{},"uptime_ms":{},"degraded":{},"capabilities":{{"wfp":{},"cpp_bridge":{},"udp_brain":{} }},"subsystems":[
-        , .{ operational_state, ss.toString(), pid, uptime, !all_healthy or !bridge_ready, wfp_ready, cpp_ready, udp_ready });
+            \\{{"component":"core","state":"{s}","runtime_state":"{s}","pid":{},"uptime_ms":{},"last_event_ms":{},"degraded":{},"capabilities":{{"wfp":{},"cpp_bridge":{},"udp_brain":{} }},"data_plane":{{"nose_connected":{},"nose_frames_read":{},"nose_frames_rejected":{},"nose_frames_submitted":{},"nose_frames_dropped":{},"nose_pipe_errors":{},"nose_last_event_id":{},"nose_duplicate_event_ids":{},"nose_non_monotonic_event_ids":{}}},"subsystems":[
+        , .{ operational_state, ss.toString(), pid, uptime, runtime_state.g_last_event_ms, !all_healthy or !bridge_ready, wfp_ready, cpp_ready, udp_ready, runtime_state.g_nose_connected, runtime_state.g_nose_frames_read, runtime_state.g_nose_frames_rejected, runtime_state.g_nose_frames_submitted, runtime_state.g_nose_frames_dropped, runtime_state.g_nose_pipe_errors, runtime_state.g_nose_last_event_id, runtime_state.g_nose_duplicate_event_ids, runtime_state.g_nose_non_monotonic_event_ids });
 
         for (subs, 0..) |sub, i| {
             if (i > 0) try writer.writeByte(',');

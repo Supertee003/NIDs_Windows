@@ -16,14 +16,14 @@ package main
 // =====================================================================
 
 import (
-        "fmt"
-        "os"
-        "time"
-        "flag"
-        "encoding/json"
-        "os/signal"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"os"
+	"os/signal"
+	"time"
 
-        tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // AEGIS_NOSE_VERSION is the SEMVER reported by `aegis-nose --version`.
@@ -31,125 +31,161 @@ import (
 const AEGIS_NOSE_VERSION = "5.0.0"
 
 func main() {
-        // G27 Gate-A: --version flag. Print SEMVER + exit 0 before any
-        // flag.Parse() so it works even if other flags are malformed.
-        for _, arg := range os.Args[1:] {
-                if arg == "--version" || arg == "-v" || arg == "-V" {
-                        fmt.Printf("aegis-nose %s\n", AEGIS_NOSE_VERSION)
-                        os.Exit(0)
-                }
-        }
+	// G27 Gate-A: --version flag. Print SEMVER + exit 0 before any
+	// flag.Parse() so it works even if other flags are malformed.
+	for _, arg := range os.Args[1:] {
+		if arg == "--version" || arg == "-v" || arg == "-V" {
+			fmt.Printf("aegis-nose %s\n", AEGIS_NOSE_VERSION)
+			os.Exit(0)
+		}
+	}
 
-// Parse command line flags
-		headless := flag.Bool("headless", false, "Run in headless mode (no TUI, output JSON to stdout)")
-		capture := flag.Bool("capture", false, "Run packet capture (Go Nose) -> CanonicalEvent -> Zig pipe")
-		capturePipe := flag.String("pipe", nosePipeName, "Named pipe consumer (Zig core) for -capture")
-		captureIface := flag.String("iface", "", "Capture interface name (empty = auto-select) for -capture")
-		selfTest := flag.Bool("capture-self-test", false, "Run capture encoder self-test then exit")
-		flag.Parse()
+	// Parse command line flags
+	headless := flag.Bool("headless", false, "Run in headless mode (no TUI, output JSON to stdout)")
+	capture := flag.Bool("capture", false, "Run packet capture (Go Nose) -> CanonicalEvent -> Zig pipe")
+	captureProbe := flag.Bool("capture-probe", false, "Probe raw Npcap packets without BPF, CanonicalEvent, or pipe")
+	listDevices := flag.Bool("list-devices", false, "List Npcap devices, descriptions, and addresses")
+	captureProbeAll := flag.Bool("capture-probe-all", false, "Probe every Npcap device for raw packets")
+	capturePipe := flag.String("pipe", nosePipeName, "Named pipe consumer (Zig core) for -capture")
+	captureIface := flag.String("iface", "", "Capture interface name (empty = auto-select) for -capture")
+	selfTest := flag.Bool("capture-self-test", false, "Run capture encoder self-test then exit")
+	flag.Parse()
 
-		if *selfTest {
-			if err := captureSelfTest(); err != nil {
-				fmt.Fprintf(os.Stderr, "[AEGIS NOSE] self-test failed: %v\n", err)
+	if *selfTest {
+		if err := captureSelfTest(); err != nil {
+			fmt.Fprintf(os.Stderr, "[AEGIS NOSE] self-test failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if *captureProbe {
+		if err := captureProbeRun(*captureIface, 15*time.Second); err != nil {
+			fmt.Fprintf(os.Stderr, "[AEGIS NOSE] capture probe error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if *listDevices {
+		if err := printCaptureDevices(); err != nil {
+			fmt.Fprintf(os.Stderr, "[AEGIS NOSE] device enumeration error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if *captureProbeAll {
+		if err := captureProbeAllRun(5 * time.Second); err != nil {
+			fmt.Fprintf(os.Stderr, "[AEGIS NOSE] probe-all error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	// Create buffered channels for collector data
+	resourceCh := make(chan ResourceData, 4)
+	trafficCh := make(chan TrafficData, 4)
+	threatCh := make(chan ThreatData, 4)
+
+	// Record start time
+	startTime := time.Now()
+
+	// CAPTURE MODE: acquisition-only packet capture feeding the Zig core.
+	if *capture {
+		stop := make(chan struct{})
+		go func() {
+			if err := runCapture(*captureIface, *capturePipe, stop); err != nil {
+				fmt.Fprintf(os.Stderr, "[AEGIS NOSE] capture error: %v\n", err)
 				os.Exit(1)
 			}
-			return
+		}()
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt)
+		<-sig
+		close(stop)
+		return
+	}
+
+	// Launch 3 collector goroutines
+	go resourceCollector(resourceCh, startTime)
+	go trafficCollector(trafficCh)
+	go threatCollector(threatCh)
+
+	if *headless {
+		// HEADLESS MODE: Continuously print JSON metrics to stdout.
+		// G35: each JSON beacon now includes a HEALTH envelope so the
+		// supervisor and tests/runtime can probe nose lifecycle by
+		// reading the last JSON line from stdout (per RUNTIME_CONTRACT
+		// §4.1 — "stdout JSON line" transport).
+		fmt.Fprintf(os.Stderr, "[AEGIS NOSE] Running in Headless Mode (JSON to stdout)...\n")
+
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			var resData ResourceData
+			var trafData TrafficData
+			var thrData ThreatData
+
+			// Non-blocking read from channels
+			select {
+			case resData = <-resourceCh:
+			default:
+			}
+			select {
+			case trafData = <-trafficCh:
+			default:
+			}
+			select {
+			case thrData = <-threatCh:
+			default:
+			}
+
+			// Construct unified JSON state with HEALTH envelope.
+			// Schema fields required by RUNTIME_CONTRACT.md §4.1:
+			//   component, state, pid, uptime_ms, last_event_ms,
+			//   counters (in_events, out_events, errors, dropped), deps
+			state := map[string]interface{}{
+				"op":            "HEALTH",
+				"state":         "RUNNING",
+				"status":        "OK",
+				"component":     "nose",
+				"version":       AEGIS_NOSE_VERSION,
+				"pid":           os.Getpid(),
+				"uptime_ms":     time.Since(startTime).Milliseconds(),
+				"last_event_ms": 0,
+				"counters": map[string]interface{}{
+					"in_events":  0,
+					"out_events": 0,
+					"errors":     0,
+					"dropped":    0,
+				},
+				"deps": []map[string]string{
+					{"name": "core", "state": "RUNNING"},
+				},
+				// Nose-specific metrics (kept for downstream consumers).
+				"timestamp": time.Now().Format(time.RFC3339),
+				"resource":  resData,
+				"traffic":   trafData,
+				"threat":    thrData,
+			}
+
+			jsonBytes, err := json.Marshal(state)
+			if err == nil {
+				fmt.Println(string(jsonBytes))
+			}
 		}
+	} else {
+		// TUI MODE: Run bubbletea program
+		p := tea.NewProgram(
+			initialModel(resourceCh, trafficCh, threatCh, startTime),
+			tea.WithMouseCellMotion(),
+		)
 
-        // Create buffered channels for collector data
-        resourceCh := make(chan ResourceData, 4)
-        trafficCh := make(chan TrafficData, 4)
-        threatCh := make(chan ThreatData, 4)
-
-        // Record start time
-        startTime := time.Now()
-
-        // CAPTURE MODE: acquisition-only packet capture feeding the Zig core.
-        if *capture {
-                stop := make(chan struct{})
-                go func() {
-                        if err := runCapture(*captureIface, *capturePipe, stop); err != nil {
-                                fmt.Fprintf(os.Stderr, "[AEGIS NOSE] capture error: %v\n", err)
-                                os.Exit(1)
-                        }
-                }()
-                sig := make(chan os.Signal, 1)
-                signal.Notify(sig, os.Interrupt)
-                <-sig
-                close(stop)
-                return
-        }
-
-        // Launch 3 collector goroutines
-        go resourceCollector(resourceCh, startTime)
-        go trafficCollector(trafficCh)
-        go threatCollector(threatCh)
-
-        if *headless {
-                // HEADLESS MODE: Continuously print JSON metrics to stdout.
-                // G35: each JSON beacon now includes a HEALTH envelope so the
-                // supervisor and tests/runtime can probe nose lifecycle by
-                // reading the last JSON line from stdout (per RUNTIME_CONTRACT
-                // §4.1 — "stdout JSON line" transport).
-                fmt.Fprintf(os.Stderr, "[AEGIS NOSE] Running in Headless Mode (JSON to stdout)...\n")
-
-                ticker := time.NewTicker(2 * time.Second)
-                defer ticker.Stop()
-
-                for range ticker.C {
-                        var resData ResourceData
-                        var trafData TrafficData
-                        var thrData ThreatData
-
-                        // Non-blocking read from channels
-                        select { case resData = <-resourceCh: default: }
-                        select { case trafData = <-trafficCh: default: }
-                        select { case thrData = <-threatCh: default: }
-
-                        // Construct unified JSON state with HEALTH envelope.
-                        // Schema fields required by RUNTIME_CONTRACT.md §4.1:
-                        //   component, state, pid, uptime_ms, last_event_ms,
-                        //   counters (in_events, out_events, errors, dropped), deps
-                        state := map[string]interface{}{
-                                "op":        "HEALTH",
-                                "state":     "RUNNING",
-                                "status":    "OK",
-                                "component": "nose",
-                                "version":   AEGIS_NOSE_VERSION,
-                                "pid":       os.Getpid(),
-                                "uptime_ms": time.Since(startTime).Milliseconds(),
-                                "last_event_ms": 0,
-                                "counters": map[string]interface{}{
-                                        "in_events":  0,
-                                        "out_events": 0,
-                                        "errors":     0,
-                                        "dropped":    0,
-                                },
-                                "deps": []map[string]string{
-                                        {"name": "core", "state": "RUNNING"},
-                                },
-                                // Nose-specific metrics (kept for downstream consumers).
-                                "timestamp": time.Now().Format(time.RFC3339),
-                                "resource":  resData,
-                                "traffic":   trafData,
-                                "threat":    thrData,
-                        }
-
-                        jsonBytes, err := json.Marshal(state)
-                        if err == nil {
-                                fmt.Println(string(jsonBytes))
-                        }
-                }
-        } else {
-                // TUI MODE: Run bubbletea program
-                p := tea.NewProgram(
-                        initialModel(resourceCh, trafficCh, threatCh, startTime),
-                        tea.WithMouseCellMotion(),
-                )
-
-                if _, err := p.Run(); err != nil {
-                        fmt.Fprintf(os.Stderr, "[AEGIS NOSE] Error: %v\n", err)
-                        os.Exit(1)
-                }
-        }
+		if _, err := p.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "[AEGIS NOSE] Error: %v\n", err)
+			os.Exit(1)
+		}
+	}
 }

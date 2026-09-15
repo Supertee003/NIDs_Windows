@@ -46,6 +46,7 @@ try:
         get_defcon,
         get_active_rules,
         get_health_payload,
+        query_control,
         verify_authority_invariant,
     )
     CONTROL_API_AVAILABLE = True
@@ -64,6 +65,7 @@ except ImportError as e:
             get_defcon,
             get_active_rules,
             get_health_payload,
+            query_control,
             verify_authority_invariant,
         )
         CONTROL_API_AVAILABLE = True
@@ -134,6 +136,29 @@ def cmd_health(args) -> int:
     else:
         print("\nControl API not available")
     return 0
+
+
+def _print_control_query(command: str) -> int:
+    """Print a read-only control-plane response as formatted JSON."""
+    if not CONTROL_API_AVAILABLE:
+        print("\nControl API not available")
+        return 4
+    result = query_control(command)
+    if result is None:
+        print(f"\nControl query failed: {command}")
+        return 3
+    import json
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
+def cmd_metrics(args) -> int:
+    return _print_control_query("metrics.snapshot")
+
+
+def cmd_forensics(args) -> int:
+    command = "forensics.verify" if args.forensics_command == "verify" else "forensics.list"
+    return _print_control_query(command)
 
 
 def cmd_rules(args) -> int:
@@ -246,6 +271,12 @@ def main() -> int:
     sub.add_parser("status", help="Show subsystem status").set_defaults(func=cmd_status)
     sub.add_parser("diagnose", help="Show runtime diagnostic snapshot").set_defaults(func=cmd_diagnose)
     sub.add_parser("health", help="Health check").set_defaults(func=cmd_health)
+    sub.add_parser("metrics", help="Show runtime metrics snapshot").set_defaults(func=cmd_metrics)
+    forensic = sub.add_parser("forensics", help="Inspect forensic records and hash chain")
+    forensic_sub = forensic.add_subparsers(dest="forensics_command")
+    forensic_sub.add_parser("list", help="List forensic records")
+    forensic_sub.add_parser("verify", help="Verify forensic hash chain")
+    forensic.set_defaults(forensics_command="list", func=cmd_forensics)
     sub.add_parser("rules", help="Rules management").set_defaults(func=cmd_rules)
     sub.add_parser("alerts", help="View alerts").set_defaults(func=cmd_alerts)
     sub.add_parser("dashboard", help="Real-time dashboard").set_defaults(func=cmd_dashboard)

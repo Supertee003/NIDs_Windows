@@ -10,6 +10,7 @@ const sig = @import("../detection/signature_engine.zig");
 const watchdog = @import("../reliability/watchdog.zig");
 const fault = @import("../reliability/fault_injection.zig");
 const hist = @import("../reliability/latency_histogram.zig");
+const forensic = @import("../forensic/forensic_pipeline.zig");
 
 /// Set by SCM stop / `daemon.shutdown`. Polled by every worker thread.
 pub var g_stop_requested = std.atomic.Value(bool).init(false);
@@ -22,6 +23,8 @@ pub var g_pipeline_correlations: u64 = 0;
 pub var g_rules_loaded: u32 = 0;
 pub var g_policies_loaded: u32 = 0;
 pub var g_pipeline_policies_matched: u64 = 0;
+pub var g_forensic_records_written: u64 = 0;
+pub var g_forensic_ring: ?*forensic.ForensicRing = null;
 pub var g_pipeline_audit_id: u64 = 0; // monotonic audit trail counter
 pub var g_pep_request_id: u64 = 0; // unique PEP request ID counter
 pub var g_trace_id: u64 = 0; // monotonic trace counter
@@ -34,6 +37,17 @@ pub var g_runtime_capability_mask: u32 = 0;
 pub var g_incidents_total: u64 = 0; // real incident count from ThreatTracker
 pub var g_incidents_open: u64 = 0; // currently open incidents
 pub var g_queue_drops: u64 = 0; // events dropped due to queue full
+// Canonical Go Nose -> Zig reader counters. These are deliberately separate
+// from process liveness: RUNNING does not imply that the data plane is active.
+pub var g_nose_connected: bool = false;
+pub var g_nose_frames_read: u64 = 0;
+pub var g_nose_frames_rejected: u64 = 0;
+pub var g_nose_frames_submitted: u64 = 0;
+pub var g_nose_frames_dropped: u64 = 0;
+pub var g_nose_pipe_errors: u64 = 0;
+pub var g_nose_last_event_id: u64 = 0;
+pub var g_nose_duplicate_event_ids: u64 = 0;
+pub var g_nose_non_monotonic_event_ids: u64 = 0;
 /// CTRL-002: monotonic epoch-ms of the last processed event. 0 means no event
 /// has been processed yet. Exposed through the control plane so
 /// `last_event_ms` in RUNTIME_CONTRACT.md §4.1 is real data, never a placeholder.

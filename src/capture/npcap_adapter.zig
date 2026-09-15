@@ -36,8 +36,10 @@ extern "c" fn pcap_geterr(p: *pcap_t) [*:0]const u8;
 extern "c" fn pcap_datalink(p: *pcap_t) c_int;
 
 pub const pcap_pkthdr = extern struct {
-    ts_sec: i64,
-    ts_usec: i64,
+    // Npcap's Windows timeval uses C `long`, which is 32-bit on Win64.
+    // Using i64 here shifts caplen/len by 8 bytes and corrupts every header.
+    ts_sec: i32,
+    ts_usec: i32,
     caplen: u32,
     len: u32,
 };
@@ -61,6 +63,17 @@ pub const CaptureConfig = struct {
 // PacketCallback â€” invoked per packet
 // ============================================================================
 pub const PacketCallback = *const fn (ctx: *anyopaque, hdr: *const pcap_pkthdr, data: []const u8) void;
+
+fn isVirtualOrUnsupportedDescription(description: ?[*:0]const u8) bool {
+    const desc = if (description) |d| std.mem.span(d) else return true;
+    return std.mem.indexOf(u8, desc, "WAN Miniport") != null or
+        std.mem.indexOf(u8, desc, "Loopback") != null or
+        std.mem.indexOf(u8, desc, "Hyper-V") != null or
+        std.mem.indexOf(u8, desc, "VMware") != null or
+        std.mem.indexOf(u8, desc, "Wi-Fi Direct") != null or
+        std.mem.indexOf(u8, desc, "TeamViewer") != null or
+        std.mem.indexOf(u8, desc, "Bluetooth") != null;
+}
 
 // ============================================================================
 // NpcapAdapter â€” live capture handle
@@ -95,19 +108,23 @@ pub const NpcapAdapter = struct {
             defer pcap_freealldevs(alldevs);
 
             var selected: ?[*:0]const u8 = null;
+            var fallback: ?[*:0]const u8 = null;
             var cur = alldevs;
             while (cur) |dev| : (cur = dev.next) {
                 if (dev.name) |name| {
-                    // Prefer a non-loopback adapter that Npcap marks up or
-                    // running; retain the first named adapter as fallback.
-                    if (selected == null) selected = name;
+                    // Npcap's first "up" device is frequently WAN Miniport
+                    // (Network Monitor), which opens successfully but carries
+                    // no ordinary host traffic. Prefer a real Wi-Fi/Ethernet
+                    // adapter and retain a non-virtual fallback only.
+                    if (isVirtualOrUnsupportedDescription(dev.description)) continue;
+                    if (fallback == null) fallback = name;
                     if ((dev.flags & 0x1) == 0 and (dev.flags & 0x6) != 0) {
                         selected = name;
                         break;
                     }
                 }
             }
-            const selected_name = selected orelse return error.PcapNoDevices;
+            const selected_name = selected orelse fallback orelse return error.PcapNoDevices;
             const selected_slice = std.mem.span(selected_name);
             if (selected_slice.len >= device.len) return error.PcapDeviceNameTooLong;
             @memset(&device, 0);
@@ -135,7 +152,7 @@ pub const NpcapAdapter = struct {
         }
         ad.handle = handle;
         ad.datalink = pcap_datalink(handle);
-        @memcpy(&ad.device, &cfg.device);
+        @memcpy(&ad.device, &device);
         diag.info("NpcapAdapter opened on {s} (datalink={d})", .{ dev_z, ad.datalink });
         return ad;
     }
@@ -240,4 +257,12 @@ test "CaptureConfig defaults are sane" {
     const cfg = CaptureConfig{};
     try std.testing.expect(cfg.snaplen >= 1500);
     try std.testing.expect(cfg.buffer_size >= 1024 * 1024);
+}
+
+test "Windows pcap_pkthdr matches Npcap ABI" {
+    // timeval (long sec + long usec) + caplen + len = 16 bytes on Win64,
+    // because Windows long remains 32-bit even for a 64-bit process.
+    try std.testing.expectEqual(@as(usize, 16), @sizeOf(pcap_pkthdr));
+    try std.testing.expectEqual(@as(usize, 8), @offsetOf(pcap_pkthdr, "caplen"));
+    try std.testing.expectEqual(@as(usize, 12), @offsetOf(pcap_pkthdr, "len"));
 }

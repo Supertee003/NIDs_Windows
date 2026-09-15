@@ -2,9 +2,17 @@
   "nids_rules": [
     {
       "rule_id": "TEST1",
-      "name": "Test Rule",
+      "name": "HTTP GET test signature",
       "severity": "High",
-      "action": "Alert"
+      "action": "Alert",
+      "match_pattern": "GET"
+    },
+    {
+      "rule_id": "TEST2",
+      "name": "Example host test signature",
+      "severity": "Medium",
+      "action": "Alert",
+      "match_pattern": "example.com"
     }
   ]
 }

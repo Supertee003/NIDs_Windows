@@ -8,7 +8,9 @@
 //
 // Uses gopacket + Npcap (already installed at C:\Program Files\Npcap).
 // Launch:  nose -capture [-iface eth0] [-pipe \\.\pipe\aegis_nose]
-//          nose -capture-self-test   (unit-ish smoke, no pipe required)
+//
+//	nose -capture-self-test   (unit-ish smoke, no pipe required)
+//
 // =====================================================================
 package main
 
@@ -48,37 +50,59 @@ func firstUpDevice() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("nose capture: FindAllDevs: %w", err)
 	}
-		// Prefer physical adapters over virtual host-only adapters. The first
-		// pcap device is often Hyper-V/VMware and may have an IP but no traffic
-		// for the operator's active route.
-		for _, d := range devs {
-			if len(d.Addresses) == 0 {
-				continue
-			}
-			label := strings.ToLower(d.Name + " " + d.Description)
-			if !strings.Contains(label, "hyper-v") &&
-				!strings.Contains(label, "vmware") &&
-				!strings.Contains(label, "loopback") &&
-				!strings.Contains(label, "npcap loopback") {
-				fmt.Fprintf(os.Stderr, "[NOSE CAPTURE] auto-selected physical adapter: %s (%s)\n", d.Name, d.Description)
-				return d.Name, nil
-			}
+	// Prefer physical adapters over virtual host-only adapters. The first
+	// pcap device is often Hyper-V/VMware and may have an IP but no traffic
+	// for the operator's active route.
+	for _, d := range devs {
+		if len(d.Addresses) == 0 {
+			continue
 		}
-		for _, d := range devs {
-			if len(d.Addresses) > 0 {
-				fmt.Fprintf(os.Stderr, "[NOSE CAPTURE] auto-selected fallback adapter: %s (%s)\n", d.Name, d.Description)
-				return d.Name, nil
-			}
+		label := strings.ToLower(d.Name + " " + d.Description)
+		if !strings.Contains(label, "wan miniport") &&
+			!strings.Contains(label, "hyper-v") &&
+			!strings.Contains(label, "vmware") &&
+			!strings.Contains(label, "bluetooth") &&
+			!strings.Contains(label, "wi-fi direct") &&
+			!strings.Contains(label, "teamviewer") &&
+			!strings.Contains(label, "loopback") &&
+			!strings.Contains(label, "npcap loopback") {
+			fmt.Fprintf(os.Stderr, "[NOSE CAPTURE] auto-selected physical adapter: %s (%s)\n", d.Name, d.Description)
+			return d.Name, nil
 		}
+	}
+	for _, d := range devs {
+		if len(d.Addresses) > 0 {
+			fmt.Fprintf(os.Stderr, "[NOSE CAPTURE] auto-selected fallback adapter: %s (%s)\n", d.Name, d.Description)
+			return d.Name, nil
+		}
+	}
 	if len(devs) > 0 {
 		return devs[0].Name, nil
 	}
 	return "", fmt.Errorf("nose capture: no capture devices found")
 }
 
+func printCaptureDevices() error {
+	devs, err := pcap.FindAllDevs()
+	if err != nil {
+		return fmt.Errorf("FindAllDevs: %w", err)
+	}
+	fmt.Fprintf(os.Stderr, "[NOSE DEVICES] found=%d\n", len(devs))
+	for i, d := range devs {
+		fmt.Fprintf(os.Stderr, "[NOSE DEVICES] #%d name=%s description=%q addresses=%d\n", i, d.Name, d.Description, len(d.Addresses))
+		for _, a := range d.Addresses {
+			fmt.Fprintf(os.Stderr, "[NOSE DEVICES] #%d address=%s netmask=%s\n", i, a.IP, a.Netmask)
+		}
+	}
+	return nil
+}
+
 // runCapture opens a live pcap handle, encodes packets as canonical
 // events, and streams them to the Zig core pipe until signalled.
 func runCapture(iface string, pipe string, stop <-chan struct{}) error {
+	if err := loadNoseSignatureRules(); err != nil {
+		fmt.Fprintf(os.Stderr, "[NOSE RULES] disabled: %v\n", err)
+	}
 	if iface == "" {
 		name, err := firstUpDevice()
 		if err != nil {
@@ -104,23 +128,35 @@ func runCapture(iface string, pipe string, stop <-chan struct{}) error {
 	fmt.Fprintf(os.Stderr, "[NOSE CAPTURE] listening on %s -> %s\n", iface, pipe)
 
 	w := NewFrameWriter(pipe)
-	src := gopacket.NewPacketSource(handle, handle.LinkType())
-	src.NoCopy = true
 
 	count := 0
-	for packet := range src.Packets() {
+	for {
 		select {
 		case <-stop:
+			fmt.Fprintln(os.Stderr, "[NOSE CAPTURE] stop requested")
 			return nil
 		default:
 		}
+
+		data, captureInfo, readErr := handle.ReadPacketData()
+		if readErr != nil {
+			// Read timeout is expected because captureDefaultTimeout is finite;
+			// it lets us observe stop without spinning or blocking forever.
+			if strings.Contains(strings.ToLower(readErr.Error()), "timeout") {
+				continue
+			}
+			fmt.Fprintf(os.Stderr, "[NOSE CAPTURE] ReadPacketData failed: %v\n", readErr)
+			return fmt.Errorf("nose capture: ReadPacketData: %w", readErr)
+		}
+		packet := gopacket.NewPacket(data, handle.LinkType(), gopacket.NoCopy)
 		atomic.AddUint64(&stateAtomic.packets, 1)
 		if count == 0 {
-			fmt.Fprintf(os.Stderr, "[NOSE CAPTURE] first packet captured: len=%d\n", packet.Metadata().CaptureLength)
+			fmt.Fprintf(os.Stderr, "[NOSE CAPTURE] first packet captured: len=%d\n", captureInfo.CaptureLength)
 		}
 		ev := eventFromPacket(packet)
+		classifyNosePacket(ev, packet)
 		atomic.AddUint64(&stateAtomic.canonical, 1)
-		atomic.AddUint64(&stateAtomic.bytesTotal, uint64(packet.Metadata().CaptureLength))
+		atomic.AddUint64(&stateAtomic.bytesTotal, uint64(captureInfo.CaptureLength))
 		_ = w.Send(ev)
 		atomic.StoreUint64(&stateAtomic.droppedPipe, droppedVia(w))
 		count++
@@ -135,7 +171,6 @@ func runCapture(iface string, pipe string, stop <-chan struct{}) error {
 			}
 		}
 	}
-	return nil
 }
 
 func droppedVia(w *FrameWriter) uint64 {
@@ -149,16 +184,16 @@ func droppedVia(w *FrameWriter) uint64 {
 func eventFromPacket(packet gopacket.Packet) *CanonicalEvent {
 	now := time.Now()
 	ev := &CanonicalEvent{
-		EventID:        atomic.AddUint64(&eventSequence, 1),
-		TimestampMS:    uint64(now.UnixMilli()),
-		MonotonicNS:    uint64(now.UnixNano()),
-		Source:         SourceNpcapSensor,
-		LayerID:        0, // 0=TCP path (see schema)
-		EventType:      TypeForward,
-		Severity:       0,
-		PolicyAction:   ActionLogOnly,
-		DefconImpact:   5, // neutral
-		IsPipe:         0,
+		EventID:           atomic.AddUint64(&eventSequence, 1),
+		TimestampMS:       uint64(now.UnixMilli()),
+		MonotonicNS:       uint64(now.UnixNano()),
+		Source:            SourceNpcapSensor,
+		LayerID:           0, // 0=TCP path (see schema)
+		EventType:         TypeForward,
+		Severity:          0,
+		PolicyAction:      ActionLogOnly,
+		DefconImpact:      5, // neutral
+		IsPipe:            0,
 		EnforcementStatus: 0,
 	}
 
@@ -213,28 +248,81 @@ func quickHash(b []byte) uint64 {
 	return h
 }
 
+// captureProbeRun intentionally stops before BPF filtering, packet decoding,
+// CanonicalEvent serialization, and named-pipe delivery. It answers one
+// question only: can this exact Npcap interface deliver raw frames?
+func captureProbeRun(iface string, duration time.Duration) error {
+	if iface == "" {
+		name, err := firstUpDevice()
+		if err != nil {
+			return err
+		}
+		iface = name
+	}
+	handle, err := pcap.OpenLive(iface, 65535, false, 500*time.Millisecond)
+	if err != nil {
+		return fmt.Errorf("open %s: %w", iface, err)
+	}
+	defer handle.Close()
+	fmt.Fprintf(os.Stderr, "[NOSE PROBE] raw capture on %s for %s (no BPF, no pipe)\n", iface, duration)
+	deadline := time.Now().Add(duration)
+	packets := 0
+	timeouts := 0
+	for time.Now().Before(deadline) {
+		data, _, readErr := handle.ReadPacketData()
+		if readErr != nil {
+			if strings.Contains(strings.ToLower(readErr.Error()), "timeout") {
+				timeouts++
+				continue
+			}
+			return fmt.Errorf("ReadPacketData after %d packets: %w", packets, readErr)
+		}
+		packets++
+		if packets <= 3 {
+			fmt.Fprintf(os.Stderr, "[NOSE PROBE] raw packet %d: %d bytes\n", packets, len(data))
+		}
+	}
+	fmt.Fprintf(os.Stderr, "[NOSE PROBE] result: packets=%d timeouts=%d\n", packets, timeouts)
+	return nil
+}
+
+func captureProbeAllRun(duration time.Duration) error {
+	devs, err := pcap.FindAllDevs()
+	if err != nil {
+		return fmt.Errorf("FindAllDevs: %w", err)
+	}
+	for i, d := range devs {
+		fmt.Fprintf(os.Stderr, "[NOSE PROBE-ALL] #%d begin name=%s description=%q\n", i, d.Name, d.Description)
+		err := captureProbeRun(d.Name, duration)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[NOSE PROBE-ALL] #%d error=%v\n", i, err)
+		}
+	}
+	return nil
+}
+
 // captureSelfTest validates the encoder end-to-end without needing a
 // live consumer: one synthetic packet → wire bytes → sanity checks.
 func captureSelfTest() error {
 	fake := &CanonicalEvent{
-		EventID:        1,
-		TimestampMS:    1700000000000,
-		MonotonicNS:    1700000000000000000,
-		Source:         SourceNpcapSensor,
-		SourceIP:       0xC0A80164, // 192.168.1.100
-		SourcePort:     49152,
-		DestIP:         0xAC1F0A0A,
-		DestPort:       443,
-		Protocol:       6,
-		EventType:      TypeForward,
-		Severity:       0,
-		PolicyAction:   ActionLogOnly,
-		DefconImpact:   5,
-		PayloadLength:  40,
-		PID:            1234,
-		PPID:           5678,
-		NodeID:         7,
-		Confidence:     0,
+		EventID:       1,
+		TimestampMS:   1700000000000,
+		MonotonicNS:   1700000000000000000,
+		Source:        SourceNpcapSensor,
+		SourceIP:      0xC0A80164, // 192.168.1.100
+		SourcePort:    49152,
+		DestIP:        0xAC1F0A0A,
+		DestPort:      443,
+		Protocol:      6,
+		EventType:     TypeForward,
+		Severity:      0,
+		PolicyAction:  ActionLogOnly,
+		DefconImpact:  5,
+		PayloadLength: 40,
+		PID:           1234,
+		PPID:          5678,
+		NodeID:        7,
+		Confidence:    0,
 	}
 	wire, err := fake.Serialize()
 	if err != nil {

@@ -7,7 +7,9 @@
 // the capture path is still testable/functional on dev boxes.
 //
 // Frame protocol (shared with core/nose_pipe_reader.zig):
-//   u32 LE length (109) followed by the raw wire bytes.
+//
+//	u32 LE length (109) followed by the raw wire bytes.
+//
 // Reconnection is automatic: if core is not up yet, the writer retries
 // with backoff and drops frames until the reader connects (NIDS must
 // never block capture on a missing consumer).
@@ -147,7 +149,7 @@ func (w *FrameWriter) Send(ev *CanonicalEvent) []byte {
 	}
 	w.sent++
 	if w.sent == 1 {
-		fmt.Fprintf(os.Stderr, "[NOSE PIPE] first canonical frame sent: %d bytes\n", len(frame))
+		fmt.Fprintf(os.Stderr, "[NOSE PIPE] first canonical frame sent: %d bytes event_id=%d\n", len(frame), ev.EventID)
 	}
 	return wire[:]
 }

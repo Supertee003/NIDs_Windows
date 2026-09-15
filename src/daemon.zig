@@ -39,7 +39,6 @@ const inj_det = @import("windows/injection_detector.zig");
 const state = @import("pipeline/runtime_state.zig");
 const rule_loader = @import("pipeline/rule_loader.zig");
 const processor = @import("pipeline/event_processor.zig");
-const packet = @import("pipeline/packet_callback.zig");
 const telemetry = @import("pipeline/telemetry_threads.zig");
 const nose_reader = @import("capture/nose_pipe_reader.zig");
 const service = @import("platform/win32_service.zig");
@@ -92,6 +91,8 @@ pub fn runDaemon() !void {
     defer arena.deinit(std.heap.page_allocator);
     var forensic_ring = try forensic.ForensicRing.initMemory(std.heap.page_allocator, 64 * 1024 * 1024);
     defer forensic_ring.deinit(std.heap.page_allocator);
+    state.g_forensic_ring = &forensic_ring;
+    defer state.g_forensic_ring = null;
     state.g_wd = watchdog.ReliabilityWatchdog.init(std.heap.page_allocator); // PATCH-29: global watchdog
     defer state.g_wd.deinit();
     state.g_perf = .{}; // PATCH-31: global performance tracker
@@ -334,10 +335,13 @@ pub fn runDaemon() !void {
         };
         defer pipeline_thread.join();
 
-        // Start capture thread (Npcap)
-        _ = std.Thread.spawn(.{}, packet.captureThread, .{}) catch |err| {
-            diag.warn("failed to spawn capture thread: {} — capture disabled", .{err});
-        };
+        // Canonical network ingress is Go Nose -> aegis_nose -> Zig reader.
+        // Do not start the legacy direct Zig Npcap path in production: running
+        // both paths creates duplicate events and independent event-id streams,
+        // making exactly-once forensic identity impossible. The direct adapter
+        // remains available to focused diagnostics/tests, but is not a runtime
+        // acquisition authority.
+        diag.info("direct Zig Npcap capture disabled; Go Nose is canonical network ingress", .{});
 
         // Canonical Go Nose -> named pipe -> detector pipeline queue path.
         const nose_pipe_thread: ?std.Thread = std.Thread.spawn(.{}, nose_reader.runPipeReaderLoop, .{&state.g_stop_requested}) catch |err| blk: {

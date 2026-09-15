@@ -123,10 +123,10 @@ def _daemon_subsystems(payload: Dict[str, Any]) -> List[Tuple[str, bool, Optiona
     return result
 
 
-def _query_daemon_retry(command: str, attempts: int = 3) -> Optional[Dict[str, Any]]:
+def _query_daemon_retry(command: str, payload: Optional[Dict[str, Any]] = None, attempts: int = 3) -> Optional[Dict[str, Any]]:
     """Retry read-only queries because the daemon accepts one pipe client at a time."""
     for attempt in range(attempts):
-        result = _query_daemon(command)
+        result = _query_daemon(command, payload)
         if result is not None:
             return result
         if attempt + 1 < attempts:
@@ -378,6 +378,11 @@ def get_active_rules() -> List[Dict[str, Any]]:
     return rules_data.get("nids_rules", [])
 
 
+def query_control(command: str, payload: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+    """Run a read-only control-plane query through the protected pipe."""
+    return _query_daemon_retry(command, payload=payload)
+
+
 def get_health_payload() -> Dict[str, Any]:
     """Get the health check payload conforming to RUNTIME_CONTRACT.md §4.1.
 
@@ -400,6 +405,18 @@ def get_health_payload() -> Dict[str, Any]:
             if isinstance(item, dict)
         }
         pep_ready = any("pep" in name and data["state"] in {"RUNNING", "READY"} for name, data in subsystem_payload.items())
+        data_plane = daemon_health.get("data_plane", {})
+        if not isinstance(data_plane, dict):
+            data_plane = {}
+        nose_frames_read = int(data_plane.get("nose_frames_read", 0) or 0)
+        nose_frames_submitted = int(data_plane.get("nose_frames_submitted", 0) or 0)
+        nose_frames_dropped = int(data_plane.get("nose_frames_dropped", 0) or 0)
+        nose_pipe_errors = int(data_plane.get("nose_pipe_errors", 0) or 0)
+        exactly_once = {
+            "last_event_id": int(data_plane.get("nose_last_event_id", 0) or 0),
+            "duplicate_event_ids": int(data_plane.get("nose_duplicate_event_ids", 0) or 0),
+            "non_monotonic_event_ids": int(data_plane.get("nose_non_monotonic_event_ids", 0) or 0),
+        }
         return {
             "component": daemon_health.get("component", "core"),
             "state": daemon_health.get("state", "DEGRADED"),
@@ -407,13 +424,20 @@ def get_health_payload() -> Dict[str, Any]:
             "pid": daemon_health.get("pid"),
             "version": daemon_health.get("version", "6.0.0"),
             "uptime_ms": daemon_health.get("uptime_ms", 0),
-            "last_event_ms": max((v["last_event_ms"] for v in subsystem_payload.values()), default=0),
-            "counters": {"in_events": 0, "out_events": 0, "errors": 0, "dropped": 0},
+            "last_event_ms": int(daemon_health.get("last_event_ms", 0) or max((v["last_event_ms"] for v in subsystem_payload.values()), default=0)),
+            "counters": {
+                "in_events": nose_frames_read,
+                "out_events": nose_frames_submitted,
+                "errors": nose_pipe_errors,
+                "dropped": nose_frames_dropped,
+            },
             "subsystems": subsystem_payload,
             "tier3": {"ready": pep_ready, "state": "READY" if pep_ready else "STOPPED"},
             "deps": [{"name": name, "state": data["state"]} for name, data in subsystem_payload.items()],
             "degraded": bool(daemon_health.get("degraded", daemon_health.get("state") != "RUNNING")),
             "capabilities": daemon_health.get("capabilities", {}),
+            "data_plane": data_plane,
+            "exactly_once": exactly_once,
         }
 
     # Compute actual health state from subsystem statuses.

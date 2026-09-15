@@ -27,7 +27,16 @@ pub fn packetCallback(ctx: *anyopaque, hdr: *const npcap.pcap_pkthdr, data: []co
 
     var ev = event.IpcEvent.init(.packet_captured);
     ev.source = .capture_npcap;
-    ev.timestamp_ns = @intCast(@as(i128, hdr.ts_sec) * std.time.ns_per_s + @as(i128, hdr.ts_usec) * 1000);
+    // pcap_pkthdr uses 32-bit signed timeval fields on Windows. Keep the
+    // conversion checked so a malformed native header cannot panic the
+    // capture thread and silently kill the data plane.
+    const ts_sec: i128 = @as(i128, hdr.ts_sec);
+    const ts_usec: i128 = @as(i128, hdr.ts_usec);
+    const timestamp_ns: i128 = ts_sec * std.time.ns_per_s + ts_usec * 1000;
+    ev.timestamp_ns = if (timestamp_ns >= 0 and timestamp_ns <= std.math.maxInt(u64))
+        @intCast(timestamp_ns)
+    else
+        @as(u64, @intCast(@max(@as(i128, 0), std.time.nanoTimestamp())));
 
     if (is_ipv4 and data.len >= 34) {
         // Parse IPv4 header (starts at offset 14)

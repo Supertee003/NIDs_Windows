@@ -69,6 +69,14 @@ fn processEvent(
     // 2. Aho-Corasick signature matching (if rules are loaded)
     // Use mutex-protected global AC pointer for hot-reload support
     var matched_rule_id: u32 = 0;
+    // The frozen 109-byte Canonical Event carries detection metadata but not
+    // raw payload bytes. Preserve that contract: an upstream classifier may
+    // provide rule_id/event_type, and the Zig pipeline must carry it into
+    // policy evaluation without attempting a second payload interpretation.
+    if (ev.kind == .signature_match and ev.rule_id != 0) {
+        matched_rule_id = ev.rule_id;
+        state.g_pipeline_detections += 1;
+    }
     if (qe.payload_len > 0) {
         state.g_ac_mutex.lock();
         const active_ac = state.g_active_ac;
@@ -178,7 +186,8 @@ fn processEvent(
     });
 
     // 7. Forensic recording (captures full pipeline result)
-    _ = forensic_ring.append(ev, qe.payload[0..qe.payload_len], audit_id, if (matched_policy) |pol| pol.id else @as(u32, 0), @intFromEnum(pep_decision), @intFromEnum(ev.severity)) catch 0;
+    const forensic_seq = forensic_ring.append(ev, qe.payload[0..qe.payload_len], audit_id, if (matched_policy) |pol| pol.id else @as(u32, 0), @intFromEnum(pep_decision), @intFromEnum(ev.severity)) catch 0;
+    if (forensic_seq != 0) state.g_forensic_records_written += 1;
 }
 
 /// Main pipeline loop: pops events from queue and processes them.

@@ -320,15 +320,23 @@ const handlers = struct {
     }
 
     fn forensicsList(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return std.fmt.allocPrint(a, "{{\"records\":{},\"forensic_enabled\":true}}", .{state_mod.g_pipeline_detections}) catch null;
+        return std.fmt.allocPrint(a, "{{\"records\":{},\"events_processed\":{},\"forensic_enabled\":true}}", .{ state_mod.g_forensic_records_written, state_mod.g_pipeline_events_processed }) catch null;
     }
 
     fn forensicsShow(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
         return "{\"record\":null,\"status\":\"not_implemented\"}";
     }
 
-    fn forensicsVerify(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return "{\"verified\":true,\"integrity\":\"ok\"}";
+    fn forensicsVerify(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
+        if (state_mod.g_forensic_ring) |ring| {
+            const verified = ring.verifyHashChain();
+            return std.fmt.allocPrint(a, "{{\"verified\":{},\"integrity\":\"{s}\",\"records\":{}}}", .{
+                verified,
+                if (verified) "ok" else "failed",
+                state_mod.g_forensic_records_written,
+            }) catch null;
+        }
+        return "{\"verified\":false,\"integrity\":\"unavailable\",\"records\":0}";
     }
 
     fn forensicsExport(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
@@ -359,12 +367,15 @@ const handlers = struct {
         return "{\"verified\":true,\"enforcement_integrity\":\"ok\"}";
     }
 
-    fn metricsSnapshot(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
+    fn metricsSnapshot(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        const uptime_sec: u64 = @intCast(@max(@as(i128, 0), @divTrunc(std.time.nanoTimestamp() - ctx.start_ns, std.time.ns_per_s)));
         return std.fmt.allocPrint(a,
-            \\{{"uptime_sec":0,"rules_loaded":{},"packets_captured":{},"flows_active":{},"incidents_open":{},"detections":{},"anomalies":{},"blocks":{},"errors":{}}}
-        , .{
+            \\{{"uptime_sec":{},"rules_loaded":{},"packets_captured":{},"events_processed":{},"forensic_records":{},"flows_active":{},"incidents_open":{},"detections":{},"anomalies":{},"blocks":{},"errors":{}}}
+        , .{ uptime_sec,
             state_mod.g_rules_loaded,
-            @as(u32, @intCast(diag.metrics.packets_captured.get())),
+            @as(u32, @intCast(state_mod.g_nose_frames_submitted)),
+            @as(u32, @intCast(state_mod.g_pipeline_events_processed)),
+            @as(u32, @intCast(state_mod.g_forensic_records_written)),
             @as(u32, @intCast(diag.metrics.flows_active.get())),
             state_mod.g_incidents_open,
             state_mod.g_pipeline_detections,
