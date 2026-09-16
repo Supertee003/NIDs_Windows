@@ -108,10 +108,20 @@ pub fn mainEntry() !void {
         }
         const err = w.kernel32.GetLastError();
         if (err != @as(w.Win32Error, @enumFromInt(ERROR_FAILED_SERVICE_CONTROLLER_CONNECT))) {
-            diag.err("StartServiceCtrlDispatcherW failed: {}", .{@intFromEnum(err)});
-            return;
+            // A console launch must not disappear silently when the SCM
+            // dispatcher is unavailable or transiently rejects the probe.
+            // Fall through to the foreground daemon path so the control pipe
+            // can publish a truthful health state and the operator gets a
+            // diagnosable process instead of an empty lifecycle timeout.
+            diag.warn("StartServiceCtrlDispatcherW probe failed: {}; falling back to console mode", .{@intFromEnum(err)});
         }
     }
     // Not launched by the service controller -> console/foreground mode.
-    try daemon.runDaemon();
+    daemon.runDaemon() catch |err| {
+        // Keep the process exit truthful and leave a diagnostic breadcrumb for
+        // the lifecycle harness instead of silently disappearing before the
+        // control pipe is created.
+        diag.err("console daemon exited during startup: {}", .{err});
+        return err;
+    };
 }

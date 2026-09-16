@@ -344,50 +344,21 @@ void aegis_bridge_update_defcon(uint32_t critical, uint32_t blocked,
         level, DefconAggregator::LevelLabel(level), critical, blocked, kernel, total);
 }
 
-// B-07 FIX: Implemented block_ip via Windows Firewall (netsh advfirewall)
-// (was: fprintf only — no actual blocking, returned false success)
+// SAFETY CONTAINMENT (PHASE-0): direct bridge firewall mutation is disabled.
+// Privileged enforcement MUST be requested through the authenticated Rust PEP
+// and its WFP broker. Keeping the legacy ABI but returning -2 prevents callers
+// from mistaking an unavailable enforcement path for a successful block.
 int32_t aegis_bridge_block_ip(uint32_t ip) {
-    uint8_t* bytes = reinterpret_cast<uint8_t*>(&ip);
-    // Network byte order: bytes[0] is MSB (first octet)
-    char ip_str[16];
-    snprintf(ip_str, sizeof(ip_str), "%d.%d.%d.%d",
-        bytes[0], bytes[1], bytes[2], bytes[3]);
-
-    char cmd[256];
-    snprintf(cmd, sizeof(cmd),
-        "netsh advfirewall firewall add rule name=\"AEGIS_BLOCK_%s\" "
-        "dir=in action=block remoteip=%s", ip_str, ip_str);
-
-    int result = system(cmd);
-    if (result == 0) {
-        fprintf(stdout, "[AEGIS Bridge] IPS: Blocked IP %s via Windows Firewall\n", ip_str);
-        return 0;
-    } else {
-        fprintf(stderr, "[AEGIS Bridge] IPS: Failed to block IP %s (error=%d)\n", ip_str, result);
-        return -1;
-    }
+    (void)ip;
+    fprintf(stderr, "[AEGIS Bridge] IPS block rejected: direct mutation disabled; use Rust PEP\n");
+    return -2; // ENFORCEMENT_UNAVAILABLE / not an authorization result
 }
 
-// B-07 FIX: Implemented unblock_ip via Windows Firewall
+// SAFETY CONTAINMENT (PHASE-0): direct bridge firewall mutation is disabled.
 int32_t aegis_bridge_unblock_ip(uint32_t ip) {
-    uint8_t* bytes = reinterpret_cast<uint8_t*>(&ip);
-    char ip_str[16];
-    snprintf(ip_str, sizeof(ip_str), "%d.%d.%d.%d",
-        bytes[0], bytes[1], bytes[2], bytes[3]);
-
-    char cmd[256];
-    snprintf(cmd, sizeof(cmd),
-        "netsh advfirewall firewall delete rule name=\"AEGIS_BLOCK_%s\"",
-        ip_str);
-
-    int result = system(cmd);
-    if (result == 0) {
-        fprintf(stdout, "[AEGIS Bridge] IPS: Unblocked IP %s\n", ip_str);
-        return 0;
-    } else {
-        fprintf(stderr, "[AEGIS Bridge] IPS: Failed to unblock IP %s (error=%d)\n", ip_str, result);
-        return -1;
-    }
+    (void)ip;
+    fprintf(stderr, "[AEGIS Bridge] IPS unblock rejected: direct mutation disabled; use Rust PEP\n");
+    return -2; // ENFORCEMENT_UNAVAILABLE / not an authorization result
 }
 
 int32_t aegis_bridge_send_command(const Aegis::Bridge::IpcCommand* cmd) {

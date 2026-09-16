@@ -101,19 +101,30 @@ pub const SubsystemInfo = struct {
     }
 
     pub fn toJson(self: *const SubsystemInfo, a: std.mem.Allocator) ![]u8 {
-        return std.fmt.allocPrint(a,
-            \\{{"name":"{s}","state":"{s}","pid":{},"version":"{s}","started_at_ms":{},"last_heartbeat_ms":{},"last_event_ms":{},"error":{s},"capabilities":"{s}"}}
-        , .{
-            self.name,
-            self.state.toString(),
-            self.pid,
-            self.version,
-            self.started_at_ms,
-            self.last_heartbeat_ms,
-            self.last_event_ms,
-            if (self.error_msg) |e| e else "null",
-            self.capabilities,
-        });
+        var out = std.ArrayList(u8).init(a);
+        var writer = out.writer();
+        try writer.print(
+            "{{\"name\":\"{s}\",\"state\":\"{s}\",\"pid\":{},\"version\":\"{s}\",\"started_at_ms\":{},\"last_heartbeat_ms\":{},\"last_event_ms\":{},\"error\":",
+            .{
+                self.name,
+                self.state.toString(),
+                self.pid,
+                self.version,
+                self.started_at_ms,
+                self.last_heartbeat_ms,
+                self.last_event_ms,
+            },
+        );
+        if (self.error_msg) |e| {
+            // Internal failure reasons are controlled tokens, but still emit
+            // them as a JSON string. The previous unquoted value produced an
+            // invalid health document exactly when a subsystem failed.
+            try writer.print("\"{s}\"", .{e});
+        } else {
+            try writer.writeAll("null");
+        }
+        try writer.print(",\"capabilities\":\"{s}\"}}", .{self.capabilities});
+        return out.toOwnedSlice();
     }
 };
 
@@ -275,7 +286,7 @@ pub const RuntimeState = struct {
     }
 
     /// Get health check JSON.
-    pub fn healthJson(self: *RuntimeState, a: std.mem.Allocator, pid: u32, bridge_ready: bool, wfp_ready: bool, cpp_ready: bool, udp_ready: bool) ![]u8 {
+    pub fn healthJson(self: *RuntimeState, a: std.mem.Allocator, pid: u32, bridge_ready: bool, wfp_ready: bool, cpp_ready: bool, udp_ready: bool, workers: WorkerReadiness) ![]u8 {
         self.mutex.lock();
         const ss = self.system_state;
         const uptime = self.uptime_ms;
@@ -290,18 +301,56 @@ pub const RuntimeState = struct {
 
         var arr = std.ArrayList(u8).init(a);
         var writer = arr.writer();
-        const operational_state = if (all_healthy and bridge_ready) "RUNNING" else "DEGRADED";
+        // Hybrid runtime semantics: core liveness is the control/pipeline
+        // spine, while ETW/FIM/registry/WFP adapters are reported separately
+        // through degraded + worker failure fields. An optional data-plane
+        // adapter must not make a healthy control spine appear STOPPED.
+        const core_pipeline_failed = (workers.failure_mask & 0x01) != 0;
+        const operational_state = if (workers.pipeline and !core_pipeline_failed) "RUNNING" else "DEGRADED";
         try writer.print(
-            \\{{"component":"core","state":"{s}","runtime_state":"{s}","pid":{},"uptime_ms":{},"last_event_ms":{},"degraded":{},"capabilities":{{"wfp":{},"cpp_bridge":{},"udp_brain":{} }},"data_plane":{{"nose_connected":{},"nose_frames_read":{},"nose_frames_rejected":{},"nose_frames_submitted":{},"nose_frames_dropped":{},"nose_pipe_errors":{},"nose_last_event_id":{},"nose_duplicate_event_ids":{},"nose_non_monotonic_event_ids":{}}},"subsystems":[
+            \\{{"component":"core","state":"{s}","runtime_state":"{s}","pid":{} ,"uptime_ms":{},"last_event_ms":{},"degraded":{},"capabilities":{{"wfp":{},"cpp_bridge":{},"udp_brain":{} }},"data_plane":{{"nose_connected":{},"nose_frames_read":{},"nose_frames_rejected":{},"nose_frames_submitted":{},"nose_frames_dropped":{},"nose_pipe_errors":{},"nose_last_event_id":{},"nose_duplicate_event_ids":{},"nose_non_monotonic_event_ids":{}}},"deps":[
         , .{ operational_state, ss.toString(), pid, uptime, runtime_state.g_last_event_ms, !all_healthy or !bridge_ready, wfp_ready, cpp_ready, udp_ready, runtime_state.g_nose_connected, runtime_state.g_nose_frames_read, runtime_state.g_nose_frames_rejected, runtime_state.g_nose_frames_submitted, runtime_state.g_nose_frames_dropped, runtime_state.g_nose_pipe_errors, runtime_state.g_nose_last_event_id, runtime_state.g_nose_duplicate_event_ids, runtime_state.g_nose_non_monotonic_event_ids });
+
+        try writer.print("{{\"name\":\"bridge\",\"state\":\"{s}\"}},{{\"name\":\"pipeline\",\"state\":\"{s}\"}}],\"subsystems\":[", .{
+            if (bridge_ready) "RUNNING" else "DEGRADED",
+            if (workers.pipeline) "RUNNING" else "DEGRADED",
+        });
 
         for (subs, 0..) |sub, i| {
             if (i > 0) try writer.writeByte(',');
             try writer.writeAll(try sub.toJson(a));
         }
-        try writer.writeAll("]}");
+        try writer.print("],\"workers\":{{\"pipeline_ready\":{},\"sensor_ready\":{},\"nose_ready\":{},\"etw_ready\":{},\"fim_ready\":{},\"registry_ready\":{},\"failed\":{},\"failure_reason\":\"{s}\",\"failure_mask\":{}", .{
+            workers.pipeline,
+            workers.sensor,
+            workers.nose,
+            workers.etw,
+            workers.fim,
+            workers.registry,
+            workers.failed,
+            workers.failure_reason,
+            workers.failure_mask,
+        });
+        // Close the workers object and the health payload root explicitly.
+        // Keeping delimiters out of the format string avoids escaped-brace
+        // counting errors that can truncate the JSON response.
+        try writer.writeAll("}}");
         return arr.toOwnedSlice();
     }
+};
+
+/// Readiness reported by daemon-owned workers. Thread creation alone is not
+/// represented as readiness.
+pub const WorkerReadiness = struct {
+    pipeline: bool,
+    sensor: bool,
+    nose: bool,
+    etw: bool,
+    fim: bool,
+    registry: bool,
+    failed: bool,
+    failure_reason: []const u8,
+    failure_mask: u8,
 };
 
 /// Global runtime state instance.

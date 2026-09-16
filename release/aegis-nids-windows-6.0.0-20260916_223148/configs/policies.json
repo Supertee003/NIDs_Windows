@@ -1,0 +1,108 @@
+{
+    "_comment": "AEGIS NIDS Policy Rules — loaded at startup into PolicySet",
+    "_derived_from": "Rules.json (detection rules → policy enforcement actions)",
+    "policies": [
+        {
+            "id": 1,
+            "name": "block_critical_threats",
+            "description": "Block events with critical severity from any source",
+            "condition": {
+                "clauses": [
+                    {
+                        "predicates": [
+                            { "field": "severity", "op": "gte", "value_int": 6 }
+                        ]
+                    }
+                ]
+            },
+            "action": "block",
+            "severity": "alert",
+            "ttl_sec": 3600
+        },
+        {
+            "id": 2,
+            "name": "alert_high_severity",
+            "description": "Alert on high-severity events",
+            "condition": {
+                "clauses": [
+                    {
+                        "predicates": [
+                            { "field": "severity", "op": "eq", "value_int": 5 }
+                        ]
+                    }
+                ]
+            },
+            "action": "alert",
+            "severity": "warning",
+            "ttl_sec": 1800
+        },
+        {
+            "id": 3,
+            "name": "block_signature_match",
+            "description": "Block events that matched a signature rule (rule_id > 0)",
+            "condition": {
+                "clauses": [
+                    {
+                        "predicates": [
+                            { "field": "rule_id", "op": "gt", "value_int": 0 }
+                        ]
+                    }
+                ]
+            },
+            "action": "block",
+            "severity": "alert",
+            "ttl_sec": 300
+        },
+        {
+            "id": 4,
+            "name": "rate_limit_anomaly",
+            "description": "Rate-limit events flagged as anomalies",
+            "condition": {
+                "clauses": [
+                    {
+                        "predicates": [
+                            { "field": "kind", "op": "eq", "value_int": 41 }
+                        ]
+                    }
+                ]
+            },
+            "action": "rate_limit",
+            "severity": "warning",
+            "ttl_sec": 600
+        },
+        {
+            "id": 5,
+            "name": "log_etw_events",
+            "description": "Log all ETW process events for forensic trail",
+            "condition": {
+                "clauses": [
+                    {
+                        "predicates": [
+                            { "field": "kind", "op": "in", "value_int": 70 }
+                        ]
+                    }
+                ]
+            },
+            "action": "log",
+            "severity": "info",
+            "ttl_sec": 0
+        },
+        {
+            "id": 6,
+            "name": "alert_injection_detected",
+            "description": "Alert on process injection detection",
+            "condition": {
+                "clauses": [
+                    {
+                        "predicates": [
+                            { "field": "kind", "op": "eq", "value_int": 77 }
+                        ]
+                    }
+                ]
+            },
+            "action": "alert",
+            "severity": "critical",
+            "ttl_sec": 3600
+        }
+    ]
+}

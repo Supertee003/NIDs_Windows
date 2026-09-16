@@ -201,13 +201,25 @@ func eventFromPacket(packet gopacket.Packet) *CanonicalEvent {
 	if l3 := packet.NetworkLayer(); l3 != nil {
 		switch net := l3.(type) {
 		case *layers.IPv4:
-			ev.SourceIP = binary.BigEndian.Uint32(net.SrcIP.To4())
-			ev.DestIP = binary.BigEndian.Uint32(net.DstIP.To4())
+			srcIP := net.SrcIP.To4()
+			dstIP := net.DstIP.To4()
+			if len(srcIP) == 4 {
+				ev.SourceIP = binary.BigEndian.Uint32(srcIP)
+			}
+			if len(dstIP) == 4 {
+				ev.DestIP = binary.BigEndian.Uint32(dstIP)
+			}
 			ev.Protocol = uint8(net.Protocol)
 		case *layers.IPv6:
 			// IPv6 identity: embed first 4 bytes of each address.
-			ev.SourceIP = binary.BigEndian.Uint32(net.SrcIP.To16())
-			ev.DestIP = binary.BigEndian.Uint32(net.DstIP.To16())
+			srcIP := net.SrcIP.To16()
+			dstIP := net.DstIP.To16()
+			if len(srcIP) >= 4 {
+				ev.SourceIP = binary.BigEndian.Uint32(srcIP[:4])
+			}
+			if len(dstIP) >= 4 {
+				ev.DestIP = binary.BigEndian.Uint32(dstIP[:4])
+			}
 			ev.Protocol = uint8(net.NextHeader)
 		}
 	}

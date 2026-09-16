@@ -41,7 +41,11 @@ fn processEvent(
     _: u32, // using g_rules_loaded global instead
     _: hist.Stage, // performance tracking (reserved for future use)
 ) !void {
-    const ev = &qe.ev;
+    // Queue entries are immutable from the consumer's perspective. Work on a
+    // local mutable copy so detector results become part of the same event
+    // object used by policy, PEP, audit, and forensic stages.
+    var ev_copy = qe.ev;
+    const ev = &ev_copy;
     state.g_pipeline_events_processed += 1;
     // CTRL-002: real liveness timestamp for the health contract (§4.1).
     state.g_last_event_ms = std.time.milliTimestamp();
@@ -86,6 +90,12 @@ fn processEvent(
             const matches = the_ac.match(payload_slice, std.heap.page_allocator) catch &[_]sig.AhoCorasick.Match{};
             if (matches.len > 0) {
                 matched_rule_id = matches[0].rule_id;
+                // Persist the detector result onto the canonical event before
+                // policy, audit, and forensic stages. Previously the local
+                // variable was updated but ev.rule_id stayed zero, so the
+                // audit line and forensic record lost detection identity.
+                ev.rule_id = matched_rule_id;
+                ev.kind = .signature_match;
                 state.g_pipeline_detections += 1;
             }
             if (matches.len > 0) {
@@ -129,12 +139,12 @@ fn processEvent(
     // 5. Policy evaluation — use escalated severity for policy matching
     var policy_action: policy.Action = .pass;
     var matched_policy: ?policy.Policy = null;
-    var ev_copy = ev.*; // mutable copy for severity override
     ev_copy.severity = ev_severity;
     const eval_ctx = policy.EvalContext{ .ev = &ev_copy };
     if (ps.evaluate(eval_ctx)) |pol| {
         matched_policy = pol;
         policy_action = pol.action;
+        state.g_pipeline_policies_matched += 1;
         // Record policy match in trace (Policy has no version field; use 1)
         decision_trace.setPolicy(pol.id, 1);
     }
@@ -186,7 +196,7 @@ fn processEvent(
     });
 
     // 7. Forensic recording (captures full pipeline result)
-    const forensic_seq = forensic_ring.append(ev, qe.payload[0..qe.payload_len], audit_id, if (matched_policy) |pol| pol.id else @as(u32, 0), @intFromEnum(pep_decision), @intFromEnum(ev.severity)) catch 0;
+    const forensic_seq = forensic_ring.append(ev, qe.payload[0..qe.payload_len], audit_id, if (matched_policy) |pol| pol.id else @as(u32, 0), @intFromEnum(pep_decision), @intFromEnum(ev_copy.severity)) catch 0;
     if (forensic_seq != 0) state.g_forensic_records_written += 1;
 }
 
@@ -204,6 +214,8 @@ pub fn pipelineLoop(
     wd_idx: usize, // watchdog thread index
 ) void {
     diag.info("pipeline loop started (queue size: {})", .{queue.PIPELINE_QUEUE_SIZE});
+    state.g_pipeline_ready.store(true, .release);
+    defer state.g_pipeline_ready.store(false, .release);
 
     while (!state.g_stop_requested.load(.acquire)) {
         // Watchdog heartbeat

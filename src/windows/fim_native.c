@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <stdint.h>
 
 #define AEGIS_FIM_BUFFER_SIZE (64 * 1024)
@@ -15,6 +16,10 @@ typedef struct {
     BOOL recursive;
     DWORD filter;
     HANDLE thread;
+    HANDLE event;
+    CRITICAL_SECTION lock;
+    DWORD bytes_ready;
+    BOOL data_ready;
     volatile LONG running;
 } aegis_fim_session_t;
 
@@ -22,16 +27,29 @@ static DWORD WINAPI fim_thread(LPVOID arg) {
     aegis_fim_session_t* s = (aegis_fim_session_t*)arg;
     while (InterlockedCompareExchange(&s->running, 1, 1)) {
         DWORD bytes_returned = 0;
+        while (s->data_ready && InterlockedCompareExchange(&s->running, 1, 1)) {
+            Sleep(10);
+        }
         memset(&s->overlapped, 0, sizeof(OVERLAPPED));
-        s->overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+        s->overlapped.hEvent = s->event;
         BOOL ok = ReadDirectoryChangesW(
             s->dir_handle, s->buffer, AEGIS_FIM_BUFFER_SIZE,
             s->recursive, s->filter, &bytes_returned, &s->overlapped, NULL);
-        if (!ok) break;
+        if (!ok) {
+            fprintf(stderr, "[FIM] ReadDirectoryChangesW failed: %lu\n", GetLastError());
+            break;
+        }
         WaitForSingleObject(s->overlapped.hEvent, INFINITE);
-        CloseHandle(s->overlapped.hEvent);
+        if (!GetOverlappedResult(s->dir_handle, &s->overlapped, &bytes_returned, FALSE)) {
+            if (InterlockedCompareExchange(&s->running, 1, 1))
+                fprintf(stderr, "[FIM] GetOverlappedResult failed: %lu\n", GetLastError());
+            continue;
+        }
         if (bytes_returned == 0) continue;
-        /* Note: actual events are stored in s->buffer; caller polls. */
+        EnterCriticalSection(&s->lock);
+        s->bytes_ready = bytes_returned;
+        s->data_ready = TRUE;
+        LeaveCriticalSection(&s->lock);
     }
     return 0;
 }
@@ -43,17 +61,33 @@ void* aegis_fim_start(const char* path, uint32_t recursive, uint32_t filter) {
         FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
         NULL, OPEN_EXISTING,
         FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);
-    if (h == INVALID_HANDLE_VALUE) return NULL;
+    if (h == INVALID_HANDLE_VALUE) {
+        fprintf(stderr, "[FIM] CreateFileW failed for %ls: error=%lu\\n", wpath, GetLastError());
+        return NULL;
+    }
 
     aegis_fim_session_t* s = (aegis_fim_session_t*)calloc(1, sizeof(aegis_fim_session_t));
     if (!s) { CloseHandle(h); return NULL; }
     s->dir_handle = h;
     s->recursive = recursive ? TRUE : FALSE;
     s->filter = filter;
+    s->event = CreateEvent(NULL, TRUE, FALSE, NULL);
+    if (!s->event) {
+        fprintf(stderr, "[FIM] CreateEvent failed for %ls: error=%lu\\n", wpath, GetLastError());
+        CloseHandle(h);
+        free(s);
+        return NULL;
+    }
+    InitializeCriticalSection(&s->lock);
+    s->bytes_ready = 0;
+    s->data_ready = FALSE;
     InterlockedExchange(&s->running, 1);
     s->thread = CreateThread(NULL, 0, fim_thread, s, 0, NULL);
     if (!s->thread) {
+        fprintf(stderr, "[FIM] CreateThread failed for %ls: error=%lu\\n", wpath, GetLastError());
         CloseHandle(h);
+        CloseHandle(s->event);
+        DeleteCriticalSection(&s->lock);
         free(s);
         return NULL;
     }
@@ -68,6 +102,8 @@ int aegis_fim_stop(void* handle) {
     WaitForSingleObject(s->thread, 5000);
     CloseHandle(s->thread);
     CloseHandle(s->dir_handle);
+    CloseHandle(s->event);
+    DeleteCriticalSection(&s->lock);
     free(s);
     return 0;
 }
@@ -75,14 +111,15 @@ int aegis_fim_stop(void* handle) {
 int aegis_fim_poll(void* handle, uint8_t* out_buf, size_t out_len) {
     aegis_fim_session_t* s = (aegis_fim_session_t*)handle;
     if (!s) return -1;
-    /* For simplicity, copy any bytes in the buffer; real impl walks
-       FILE_NOTIFY_INFORMATION linked list and converts to a flat format. */
-    DWORD bytes = 0;
-    if (GetOverlappedResult(s->dir_handle, &s->overlapped, &bytes, FALSE)) {
-        if (bytes > 0 && bytes <= out_len) {
-            memcpy(out_buf, s->buffer, bytes);
-            return (int)bytes;
-        }
+    EnterCriticalSection(&s->lock);
+    if (!s->data_ready) {
+        LeaveCriticalSection(&s->lock);
+        return 0;
     }
-    return 0;
+    DWORD bytes = s->bytes_ready;
+    if (bytes > 0 && bytes <= out_len) memcpy(out_buf, s->buffer, bytes);
+    s->data_ready = FALSE;
+    s->bytes_ready = 0;
+    LeaveCriticalSection(&s->lock);
+    return (bytes > 0 && bytes <= out_len) ? (int)bytes : 0;
 }

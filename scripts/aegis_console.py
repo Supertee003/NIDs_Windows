@@ -24,7 +24,9 @@ import json
 import subprocess
 import time
 import shutil
+import argparse
 from datetime import datetime
+from pathlib import Path
 
 # -- Optional imports --
 try:
@@ -58,10 +60,23 @@ if PROJECT_ROOT is None:
     PROJECT_ROOT = SCRIPT_DIR  # fallback
 os.chdir(PROJECT_ROOT)
 
+# Control Center is the authoritative runtime source. The legacy process scan
+# below remains only as a diagnostic fallback when the daemon is unavailable.
+try:
+    sys.path.insert(0, os.path.join(PROJECT_ROOT, "tools"))
+    from aegisctl.api.control_api import get_health_payload, query_control
+    CONTROL_CENTER_AVAILABLE = True
+except Exception:
+    CONTROL_CENTER_AVAILABLE = False
+
 # -- Constants (absolute paths based on PROJECT_ROOT) --
 RULES_FILE = os.path.join(PROJECT_ROOT, "configs", "Rules.json")
-GRAPH_HTML_FILE = os.path.join(PROJECT_ROOT, "threat_graph.html")
-LOG_FILE = os.path.join(PROJECT_ROOT, "logs", "anomalous.json")
+GRAPH_HTML_FILE = os.path.join(PROJECT_ROOT, "reports", "threat_graph.html")
+LOG_FILE = os.path.join(PROJECT_ROOT, "logs", "aegis_core.ndjson")
+TUI_REFRESH_INTERVAL = 2.0
+TUI_DASHBOARD_ONCE = False
+_SNAPSHOT_CACHE = None
+_SNAPSHOT_CACHE_AT = 0.0
 
 # -- C++ IPC Bridge integration --
 _shared_paths = [
@@ -214,6 +229,25 @@ def get_defcon():
     return None, None
 
 
+def get_authoritative_snapshot():
+    """Return health and runtime counters from Control Center, if available."""
+    global _SNAPSHOT_CACHE, _SNAPSHOT_CACHE_AT
+    now = time.monotonic()
+    if _SNAPSHOT_CACHE is not None and now - _SNAPSHOT_CACHE_AT < max(0.2, TUI_REFRESH_INTERVAL):
+        return _SNAPSHOT_CACHE
+    if not CONTROL_CENTER_AVAILABLE:
+        return None
+    try:
+        health = get_health_payload()
+        metrics = query_control("metrics.snapshot") or {}
+        forensic = query_control("forensics.verify") or {}
+        _SNAPSHOT_CACHE = {"health": health, "metrics": metrics, "forensic": forensic}
+        _SNAPSHOT_CACHE_AT = now
+        return _SNAPSHOT_CACHE
+    except Exception:
+        return None
+
+
 # =====================================================================
 # HEADER
 # =====================================================================
@@ -246,9 +280,23 @@ def show_header():
     else:
         defcon_str = f"{C.DIM}DEFCON N/A{C.RST}"
 
-    statuses = get_all_status()
-    running = sum(1 for _, _, r, _ in statuses if r)
-    total = len(statuses)
+    snapshot = get_authoritative_snapshot()
+    health = snapshot.get("health", {}) if snapshot else {}
+    if snapshot:
+        runtime_state = health.get("state", "UNKNOWN")
+        degraded = bool(health.get("degraded", True))
+        status_color = C.BGRN if runtime_state == "RUNNING" and not degraded else C.BYEL
+        status_text = f"{status_color}{runtime_state}{C.RST}"
+        workers = health.get("workers", {})
+        ready = sum(1 for key in ("pipeline_ready", "sensor_ready", "nose_ready", "etw_ready", "fim_ready", "registry_ready") if workers.get(key) is True)
+        worker_total = 6
+        running, total = ready, worker_total
+        statuses = []
+    else:
+        status_text = f"{C.DIM}CONTROL UNAVAILABLE{C.RST}"
+        statuses = get_all_status()
+        running = sum(1 for _, _, r, _ in statuses if r)
+        total = len(statuses)
 
     mouth_running = any(name == "MOUTH" and r for name, _, r, _ in statuses)
     mouth_str = f"{C.BGRN}ON{C.RST}" if mouth_running else f"{C.BRED}OFF{C.RST}"
@@ -256,14 +304,19 @@ def show_header():
     wd_running = _is_watchdog_running()
     wd_str = f"{C.BGRN}ON{C.RST}" if wd_running else f"{C.DIM}OFF{C.RST}"
 
-    dots = ""
-    for name, lang, is_running, pid in statuses:
-        dots += f"{C.BGRN}●{C.RST}" if is_running else f"{C.BRED}○{C.RST}"
+    dots = "" if snapshot else "".join(f"{C.BGRN}●{C.RST}" if is_running else f"{C.BRED}○{C.RST}" for name, lang, is_running, pid in statuses)
 
     print(f"{'═' * 64}")
-    print(f'  {C.BLD}{C.CYN}AEGIS NIDS — COMMAND CENTER (v8.0){C.RST}')
+    print(f'  {C.BLD}{C.CYN}AEGIS NIDS — OPERATOR CONSOLE{C.RST}')
+    print(f"  Runtime: {status_text} | Source: {'Control Center' if snapshot else 'fallback process scan'}")
     print(f"  {defcon_str}")
-    print(f"  Mouth: {mouth_str} | WD: {wd_str} | Active: {C.BLD}{running}/{total}{C.RST}  {dots}")
+    print(f"  Workers ready: {C.BLD}{running}/{total}{C.RST}  {dots}")
+    if snapshot:
+        data_plane = health.get("data_plane", {})
+        print(f"  Data plane: read={data_plane.get('nose_frames_read', 0)} submitted={data_plane.get('nose_frames_submitted', 0)} dropped={data_plane.get('nose_frames_dropped', 0)} duplicate={data_plane.get('nose_duplicate_event_ids', 0)}")
+        print(f"  Forensics: {snapshot['forensic'].get('integrity', 'unknown')} | records={snapshot['forensic'].get('records', 0)}")
+    else:
+        print(f"  Legacy: Mouth {mouth_str} | Watchdog {wd_str} | Active: {running}/{total} {dots}")
     print(f"  Time: {C.DIM}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{C.RST}")
     print(f"{'═' * 64}")
 
@@ -896,7 +949,7 @@ def menu_threat_graph():
         return
     print(f"\n  {C.CYN}[GRAPH]{C.RST} Generating Threat Analysis Graph...")
     try:
-        aegis_graph.generate_threat_graph()
+        aegis_graph.generate_threat_graph(output_file=Path(GRAPH_HTML_FILE))
         html_path = os.path.abspath(GRAPH_HTML_FILE)
         if os.path.exists(html_path):
             print(f"  {C.BGRN}[+]{C.RST} Graph generated!")
@@ -1008,9 +1061,15 @@ def _show_health():
         return
 
 
-def _run_realtime_dashboard():
-    """Real-time dashboard -- accessed only from Health menu 'D' key."""
-    print(f"\n  {C.CYN}[DASHBOARD]{C.RST} Press Ctrl+C to exit\n")
+def _run_realtime_dashboard(interval=None, once=None):
+    """Realtime dashboard with explicit polling control.
+
+    `interval` controls the refresh period. `once` renders one snapshot and
+    returns, which is useful for screenshots, diagnostics, and low-noise use.
+    """
+    interval = max(0.2, float(interval if interval is not None else TUI_REFRESH_INTERVAL))
+    once = TUI_DASHBOARD_ONCE if once is None else once
+    print(f"\n  {C.CYN}[DASHBOARD]{C.RST} interval={interval:.1f}s | {'single snapshot' if once else 'Ctrl+C to exit'}\n")
     if PSUTIL_AVAILABLE:
         psutil.cpu_percent(interval=None)
     try:
@@ -1058,8 +1117,11 @@ def _run_realtime_dashboard():
                 except Exception:
                     pass
 
-            print(f"\n  {C.DIM}Ctrl+C to exit{C.RST}")
-            time.sleep(2)
+            print(f"\n  {C.DIM}{'Press Enter to exit' if once else 'Ctrl+C to exit'}{C.RST}")
+            if once:
+                input()
+                return
+            time.sleep(interval)
     except KeyboardInterrupt:
         print(f"\n  {C.YEL}Dashboard stopped.{C.RST}")
         time.sleep(0.5)
@@ -1458,8 +1520,27 @@ def main_menu():
 # ENTRY POINT
 # =====================================================================
 
+def parse_console_args():
+    parser = argparse.ArgumentParser(description="AEGIS interactive operator console")
+    parser.add_argument("--mode", choices=["menu", "dashboard", "health"], default="menu",
+                        help="Start in menu, realtime dashboard, or one health view")
+    parser.add_argument("--interval", type=float, default=2.0,
+                        help="Dashboard refresh interval in seconds (default: 2)")
+    parser.add_argument("--once", action="store_true",
+                        help="Render one dashboard snapshot, then wait for Enter")
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
     try:
-        main_menu()
+        console_args = parse_console_args()
+        TUI_REFRESH_INTERVAL = max(0.2, console_args.interval)
+        TUI_DASHBOARD_ONCE = console_args.once
+        if console_args.mode == "dashboard":
+            _run_realtime_dashboard(interval=TUI_REFRESH_INTERVAL, once=TUI_DASHBOARD_ONCE)
+        elif console_args.mode == "health":
+            _show_health()
+        else:
+            main_menu()
     except KeyboardInterrupt:
         print(f"\n{C.YEL}[!]{C.RST} Command Center stopped.")

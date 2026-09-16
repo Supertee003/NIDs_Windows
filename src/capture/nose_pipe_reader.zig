@@ -143,9 +143,12 @@ pub fn getReaderStats() PipeReaderStats {
 pub fn runPipeReaderLoop(stopSignal: *std.atomic.Value(bool)) void {
     const server = createPipeServer() catch |e| {
         std.log.err("[NOSE PIPE] create pipe server failed: {} (GetLastError={d})", .{ e, GetLastError() });
+        runtime_state.markWorkerFailure(.nose);
         return;
     };
     defer _ = CloseHandle(server);
+    runtime_state.g_nose_ready.store(true, .release);
+    defer runtime_state.g_nose_ready.store(false, .release);
 
     std.log.info("[NOSE PIPE] pipe server created, waiting for client...", .{});
 

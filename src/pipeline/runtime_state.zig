@@ -15,6 +15,57 @@ const forensic = @import("../forensic/forensic_pipeline.zig");
 /// Set by SCM stop / `daemon.shutdown`. Polled by every worker thread.
 pub var g_stop_requested = std.atomic.Value(bool).init(false);
 
+// PHASE-1 readiness handshake. Thread creation is not readiness: each worker
+// sets its ready flag only after its required initialization succeeds and
+// clears it before returning. A failed flag preserves the reason at runtime
+// level even when the worker exits quickly.
+pub var g_pipeline_ready = std.atomic.Value(bool).init(false);
+pub var g_sensor_ready = std.atomic.Value(bool).init(false);
+pub var g_nose_ready = std.atomic.Value(bool).init(false);
+pub var g_etw_ready = std.atomic.Value(bool).init(false);
+pub var g_fim_ready = std.atomic.Value(bool).init(false);
+pub var g_registry_ready = std.atomic.Value(bool).init(false);
+pub var g_worker_failed = std.atomic.Value(bool).init(false);
+
+pub const WorkerFailureKind = enum(u8) {
+    none = 0,
+    pipeline = 1,
+    sensor = 2,
+    nose = 3,
+    etw = 4,
+    fim = 5,
+    registry = 6,
+};
+
+pub var g_worker_failure_kind = std.atomic.Value(u8).init(@intFromEnum(WorkerFailureKind.none));
+pub var g_worker_failure_mask = std.atomic.Value(u8).init(0);
+
+pub fn markWorkerFailure(kind: WorkerFailureKind) void {
+    g_worker_failure_kind.store(@intFromEnum(kind), .release);
+    if (kind != .none) {
+        const shift: u3 = @intCast(@intFromEnum(kind) - 1);
+        const bit: u8 = @as(u8, 1) << shift;
+        _ = g_worker_failure_mask.fetchOr(bit, .acq_rel);
+    }
+    g_worker_failed.store(true, .release);
+}
+
+pub fn workerFailureReason() []const u8 {
+    return switch (@as(WorkerFailureKind, @enumFromInt(g_worker_failure_kind.load(.acquire)))) {
+        .none => "none",
+        .pipeline => "pipeline_init_failed",
+        .sensor => "sensor_init_failed",
+        .nose => "nose_init_failed",
+        .etw => "etw_init_failed",
+        .fim => "fim_init_failed",
+        .registry => "registry_init_failed",
+    };
+}
+
+pub fn workerFailureMask() u8 {
+    return g_worker_failure_mask.load(.acquire);
+}
+
 // --- Pipeline counters (owned by event_processor.zig / event_queue.zig) ---
 pub var g_pipeline_events_processed: u64 = 0;
 pub var g_pipeline_detections: u64 = 0;

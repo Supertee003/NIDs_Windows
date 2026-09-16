@@ -47,7 +47,7 @@ GOLDEN_PATH_STAGES = [
 ]
 
 # Endpoints used by the golden path (per COMPONENT_MATRIX.md §3)
-PIPE_BRIDGE_SENSOR = r"\\.\pipe\aegis_nids"           # event_gen → core (sensor pipe)
+PIPE_BRIDGE_SENSOR = r"\\.\pipe\aegis_sensor_pipe"    # event_gen → core (sensor pipe)
 PIPE_BRIDGE_HEALTH = r"\\.\pipe\aegis-bridge-health"
 PIPE_CORE_HEALTH   = r"\\.\pipe\aegis-core-health"
 UDP_BRAIN_ALERT    = ("127.0.0.1", 9999)

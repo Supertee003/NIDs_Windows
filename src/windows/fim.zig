@@ -62,7 +62,8 @@ extern "aegis_fim_helper" fn aegis_fim_stop(handle: *anyopaque) c_int;
 extern "aegis_fim_helper" fn aegis_fim_poll(handle: *anyopaque, out_buf: [*]u8, out_len: usize) c_int;
 
 pub const FimWatcher = struct {
-    handle: ?*anyopaque = null,
+    handles: [8]?*anyopaque = [_]?*anyopaque{null} ** 8,
+    handle_count: usize = 0,
     rules: std.ArrayList(FimRule),
     allocator: std.mem.Allocator,
     poll_buf: [16384]u8 = undefined,
@@ -92,6 +93,8 @@ pub const FimWatcher = struct {
 
     pub fn startAll(self: *FimWatcher) !void {
         if (@import("builtin").os.tag != .windows) return error.UnsupportedPlatform;
+        self.handle_count = 0;
+        var started: usize = 0;
         for (self.rules.items) |r| {
             const path_z = try self.allocator.dupeZ(u8, r.path);
             defer self.allocator.free(path_z);
@@ -100,26 +103,39 @@ pub const FimWatcher = struct {
                 diag.err("aegis_fim_start failed for {s}", .{r.path});
                 continue;
             }
-            // For simplicity, store only the last handle; real impl stores all
-            self.handle = handle;
+            if (self.handle_count >= self.handles.len) {
+                _ = aegis_fim_stop(handle.?);
+                break;
+            }
+            self.handles[self.handle_count] = handle;
+            self.handle_count += 1;
+            started += 1;
             diag.info("FIM watching {s} (recursive={})", .{ r.path, r.recursive });
         }
+        // A worker is ready only when at least one requested watcher is live.
+        // Previously every native-start failure was swallowed and the worker
+        // still published running=true, producing a false healthy capability.
+        if (started == 0) return error.NoWatchersStarted;
         self.running.store(true, .release);
     }
 
     pub fn stopAll(self: *FimWatcher) void {
         self.running.store(false, .release);
-        if (self.handle) |h| {
-            _ = aegis_fim_stop(h);
-            self.handle = null;
+        for (self.handles[0..self.handle_count]) |maybe_handle| {
+            if (maybe_handle) |h| _ = aegis_fim_stop(h);
         }
+        self.handles = [_]?*anyopaque{null} ** 8;
+        self.handle_count = 0;
     }
 
     pub fn poll(self: *FimWatcher) []u8 {
-        if (self.handle == null) return &[_]u8{};
-        const n = aegis_fim_poll(self.handle.?, &self.poll_buf, self.poll_buf.len);
-        if (n <= 0) return &[_]u8{};
-        return self.poll_buf[0..@intCast(n)];
+        for (self.handles[0..self.handle_count]) |maybe_handle| {
+            if (maybe_handle) |h| {
+                const n = aegis_fim_poll(h, &self.poll_buf, self.poll_buf.len);
+                if (n > 0) return self.poll_buf[0..@intCast(n)];
+            }
+        }
+        return &[_]u8{};
     }
 };
 

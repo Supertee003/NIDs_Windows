@@ -12,6 +12,7 @@
 #include <evntcons.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <stdint.h>
 
 #define AEGIS_ETW_BUFFER_SIZE (256 * 1024)
@@ -72,7 +73,8 @@ static void NTAPI event_record_callback(_In_ PEVENT_RECORD rec) {
             if (rec->ExtendedData[i].ExtType == EVENT_HEADER_EXT_TYPE_RELATED_ACTIVITYID) continue;
             USHORT dlen = rec->ExtendedData[i].DataSize;
             if (ext_len + dlen > AEGIS_ETW_BUFFER_SIZE) break;
-            memcpy(g_session.ext_buffer + ext_len, rec->ExtendedData[i].DataPtr, dlen);
+            memcpy(g_session.ext_buffer + ext_len,
+                   (const void*)(ULONG_PTR)rec->ExtendedData[i].DataPtr, dlen);
             ext_len += dlen;
         }
     }
@@ -88,7 +90,7 @@ static void NTAPI event_record_callback(_In_ PEVENT_RECORD rec) {
 
 static DWORD WINAPI consumer_thread(LPVOID arg) {
     (void)arg;
-    HANDLE trace = OpenTraceW(&((EVENT_TRACE_LOGFILEW){
+    PROCESSTRACE_HANDLE trace = OpenTraceW(&((EVENT_TRACE_LOGFILEW){
         .LoggerName = g_session.session_name,
         .ProcessTraceMode = PROCESS_TRACE_MODE_REAL_TIME | PROCESS_TRACE_MODE_EVENT_RECORD,
         .EventRecordCallback = event_record_callback,
@@ -100,13 +102,19 @@ static DWORD WINAPI consumer_thread(LPVOID arg) {
 }
 
 int aegis_etw_start(const char* session_name, const uint8_t (*providers)[16], size_t provider_count) {
-    if (g_session.session_handle != 0) return -1;
+    if (g_session.session_handle != 0) {
+        fprintf(stderr, "[ETW] start rejected: session already active\\n");
+        return -1;
+    }
     InitializeCriticalSection(&g_lock);
     MultiByteToWideChar(CP_UTF8, 0, session_name, -1, g_session.session_name, 64);
 
     size_t prop_size = sizeof(EVENT_TRACE_PROPERTIES) + 256 * sizeof(WCHAR);
     g_session.properties = (EVENT_TRACE_PROPERTIES*)calloc(1, prop_size);
-    if (!g_session.properties) return -2;
+    if (!g_session.properties) {
+        fprintf(stderr, "[ETW] properties allocation failed\\n");
+        return -2;
+    }
     g_session.properties->Wnode.BufferSize = (ULONG)prop_size;
     g_session.properties->Wnode.Flags = WNODE_FLAG_TRACED_GUID;
     g_session.properties->Wnode.ClientContext = 1; // QPC
@@ -117,12 +125,23 @@ int aegis_etw_start(const char* session_name, const uint8_t (*providers)[16], si
     g_session.properties->MaximumBuffers = 32;
 
     ULONG status = StartTraceW(&g_session.session_handle, g_session.session_name, g_session.properties);
+    if (status == ERROR_ALREADY_EXISTS) {
+        // A stale session must not be treated as ours: stop it and create a
+        // clean session so provider state and callback ownership are known.
+        ULONG stop_status = ControlTraceW(g_session.session_handle, g_session.session_name,
+                                          g_session.properties, EVENT_TRACE_CONTROL_STOP);
+        fprintf(stderr, "[ETW] stale session stop status=%lu\\n", stop_status);
+        g_session.session_handle = 0;
+        status = StartTraceW(&g_session.session_handle, g_session.session_name, g_session.properties);
+    }
     if (status != ERROR_SUCCESS) {
+        fprintf(stderr, "[ETW] StartTraceW failed: status=%lu\\n", status);
         free(g_session.properties);
         g_session.properties = NULL;
         return (int)status;
     }
 
+    size_t enabled_providers = 0;
     for (size_t i = 0; i < provider_count; i++) {
         GUID guid;
         memcpy(&guid, providers[i], 16);
@@ -133,13 +152,26 @@ int aegis_etw_start(const char* session_name, const uint8_t (*providers)[16], si
         status = EnableTraceEx2(g_session.session_handle, &guid, EVENT_CONTROL_CODE_ENABLE_PROVIDER,
                                 TRACE_LEVEL_VERBOSE, 0, 0, 0, &params);
         if (status != ERROR_SUCCESS) {
-            /* continue even if one provider fails */
+            fprintf(stderr, "[ETW] EnableTraceEx2 failed for provider %zu: %lu\n", i, status);
+        } else {
+            enabled_providers++;
         }
+    }
+
+    if (enabled_providers == 0) {
+        fprintf(stderr, "[ETW] no providers enabled; refusing ready state\n");
+        ControlTraceW(g_session.session_handle, g_session.session_name,
+                      g_session.properties, EVENT_TRACE_CONTROL_STOP);
+        g_session.session_handle = 0;
+        free(g_session.properties);
+        g_session.properties = NULL;
+        return -4;
     }
 
     InterlockedExchange(&g_session.running, 1);
     g_session.consumer_thread = CreateThread(NULL, 0, consumer_thread, NULL, 0, NULL);
     if (!g_session.consumer_thread) {
+        fprintf(stderr, "[ETW] CreateThread failed: error=%lu\\n", GetLastError());
         StopTrace(g_session.session_handle, g_session.session_name, g_session.properties);
         free(g_session.properties);
         return -3;

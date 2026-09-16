@@ -112,11 +112,13 @@ pub fn reloadRules() u32 {
         state.g_rules_loaded = new_count;
         state.g_ac_mutex.unlock();
 
-        // Free old AC if it existed
-        if (old_ac_ptr) |old| {
-            old.deinit();
-            std.heap.page_allocator.destroy(old);
-        }
+        // Do not destroy the old automaton here. The pipeline may have taken
+        // a reference immediately before the swap and can still be reading it
+        // after the mutex is released. Immediate reclamation made
+        // rules.reload intermittently close the control pipe with an empty
+        // response. Retain retired automata for the daemon lifetime; reloads
+        // are infrequent and this fail-safe policy prevents use-after-free.
+        _ = old_ac_ptr;
         diag.info("reload: loaded {} rules (swap complete)", .{new_count});
     } else {
         heap_ac.deinit();

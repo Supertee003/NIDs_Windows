@@ -109,7 +109,7 @@ print(f"{'─' * 64}")
 # ── windows_sec_monitor.rs (sole DEFCON TUI) ──
 rs_simple = rs_files["windows_sec_monitor.rs"]
 if os.path.exists(rs_simple):
-    with open(rs_simple, 'r') as f:
+    with open(rs_simple, 'r', encoding='utf-8') as f:
         src = f.read()
 
     result("calculate_defcon function (sole owner)", "calculate_defcon" in src,
@@ -131,7 +131,7 @@ if os.path.exists(rs_simple):
 # ── aegis_mouth_tui.rs (enhanced TUI with ETW stubs) ──
 rs_tui = rs_files["aegis_mouth_tui.rs"]
 if os.path.exists(rs_tui):
-    with open(rs_tui, 'r') as f:
+    with open(rs_tui, 'r', encoding='utf-8') as f:
         src = f.read()
 
     result("ETW monitor stub", "etw_security_monitor_poll" in src,
@@ -151,7 +151,7 @@ if os.path.exists(rs_tui):
 # ── src/lib.rs (Tier-3 Shield) ──
 rs_lib = rs_files["src/lib.rs"]
 if os.path.exists(rs_lib):
-    with open(rs_lib, 'r') as f:
+    with open(rs_lib, 'r', encoding='utf-8') as f:
         src = f.read()
 
     result("validate_payload_safety FFI", "validate_payload_safety" in src,
@@ -380,7 +380,7 @@ else:
 
 # Verify Cargo.toml produces cdylib
 if os.path.exists(rs_files["Cargo.toml"]):
-    with open(rs_files["Cargo.toml"], 'r') as f:
+    with open(rs_files["Cargo.toml"], 'r', encoding='utf-8') as f:
         cargo = f.read()
     result("Cargo.toml has [lib] section", "[lib]" in cargo, "cdylib configuration")
     result("crate-type = cdylib", "cdylib" in cargo, "produces sec_monitor.dll")
@@ -398,14 +398,14 @@ all_consistent = True
 
 # Check windows_sec_monitor.rs
 if os.path.exists(rs_simple):
-    with open(rs_simple, 'r') as f:
+    with open(rs_simple, 'r', encoding='utf-8') as f:
         src = f.read()
     if "kernel >= 3" not in src:
         all_consistent = False
 
 # Check aegis_mouth_tui.rs
 if os.path.exists(rs_tui):
-    with open(rs_tui, 'r') as f:
+    with open(rs_tui, 'r', encoding='utf-8') as f:
         src = f.read()
     if "kernel >= 3" not in src:
         all_consistent = False
@@ -424,7 +424,7 @@ print(f"{'─' * 64}")
 go_src_path = os.path.join(PROJECT_ROOT, "nose", "windows_perf.go")
 nose_has_defcon = False
 if os.path.exists(go_src_path):
-    with open(go_src_path, 'r') as f:
+    with open(go_src_path, 'r', encoding='utf-8') as f:
         nose_src = f.read()
     nose_has_defcon = "calculateDEFCON" in nose_src or "defconCalculator" in nose_src
 
@@ -433,7 +433,7 @@ result("Nose does NOT calculate DEFCON", not nose_has_defcon,
 
 nose_has_tui = False
 if os.path.exists(go_src_path):
-    with open(go_src_path, 'r') as f:
+    with open(go_src_path, 'r', encoding='utf-8') as f:
         nose_src = f.read()
     nose_has_tui = "clearScreen" in nose_src
 

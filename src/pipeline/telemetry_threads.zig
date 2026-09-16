@@ -30,6 +30,7 @@ pub fn etwThread(source: *etw.EtwSource) void {
     };
     source.start(&providers) catch |err| {
         diag.warn("ETW start failed: {} — ETW disabled", .{err});
+        state.markWorkerFailure(.etw);
         return;
     };
     defer source.stop();
@@ -37,8 +38,11 @@ pub fn etwThread(source: *etw.EtwSource) void {
     // Set callback to push ETW events into pipeline
     source.setCallback(undefined, etwCallback) catch |err| {
         diag.warn("ETW setCallback failed: {}", .{err});
+        state.markWorkerFailure(.etw);
         return;
     };
+    state.g_etw_ready.store(true, .release);
+    defer state.g_etw_ready.store(false, .release);
 
     // ETW runs on its own thread via ProcessTrace; just keep alive
     while (!state.g_stop_requested.load(.acquire) and source.running.load(.acquire)) {
@@ -90,9 +94,12 @@ pub fn fimThread(watcher: *fim_mod.FimWatcher) void {
     watcher.addRule("C:\\Windows\\SysWOW64", true) catch {};
     watcher.startAll() catch |err| {
         diag.warn("FIM startAll failed: {} — FIM disabled", .{err});
+        state.markWorkerFailure(.fim);
         return;
     };
     defer watcher.stopAll();
+    state.g_fim_ready.store(true, .release);
+    defer state.g_fim_ready.store(false, .release);
 
     while (!state.g_stop_requested.load(.acquire)) {
         const data = watcher.poll();
@@ -116,11 +123,28 @@ pub fn registryThread(monitor: *reg_mon.RegistryMonitor) void {
         return;
     }
 
-    // Add default registry monitoring rules
-    monitor.addRule("HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", 1) catch {};
-    monitor.addRule("HKLM\\SYSTEM\\CurrentControlSet\\Services", 2) catch {};
+    // Add default registry monitoring rules and open the native notify keys.
+    monitor.addRule("HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", 1) catch |err| {
+        diag.warn("Registry Run rule failed: {}", .{err});
+        state.markWorkerFailure(.registry);
+        return;
+    };
+    monitor.addRule("HKLM\\SYSTEM\\CurrentControlSet\\Services", 2) catch |err| {
+        diag.warn("Registry Services rule failed: {}", .{err});
+        state.markWorkerFailure(.registry);
+        return;
+    };
+    monitor.startAll() catch |err| {
+        diag.warn("Registry native watcher start failed: {}", .{err});
+        state.markWorkerFailure(.registry);
+        return;
+    };
+    defer monitor.stopAll();
+    state.g_registry_ready.store(true, .release);
+    defer state.g_registry_ready.store(false, .release);
 
     while (!state.g_stop_requested.load(.acquire)) {
+        monitor.pollNative();
         const events = monitor.drain();
         for (events) |reg_ev| {
             var ev = event.IpcEvent.init(.dns_query); // reuse kind for registry

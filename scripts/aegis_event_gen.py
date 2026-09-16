@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""
+r"""
 aegis_event_gen — Synthetic Event Generator for Gate B integration tests.
 
 Sends synthetic events to the AEGIS pipeline so we can verify the golden
 path: bridge → core → brain → aggregator → dashboard.
 
 Two transport modes:
-  --pipe   : Send events via the named pipe `\\.\pipe\aegis_nids` (the
+  --pipe   : Send events via the named pipe `\\.\pipe\aegis_sensor_pipe` (the
              sensor pipe that nids_capture.zig listens on).
   --udp    : Send events via UDP to 127.0.0.1:9999 (the brain's alert
              port — used to test brain IPS directly).
@@ -54,8 +54,17 @@ DEFAULT_EVENT = {
     "source": "aegis_event_gen",
 }
 
+FIXTURES = {
+    "none": {},
+    # Benign marker payloads that intentionally match the corresponding
+    # configured signatures; these are for pipeline validation, not attacks.
+    "xss": {"attack_type": "<script> AEGIS_FIXTURE", "rule_id": "R9059", "severity": "High"},
+    "path-traversal": {"attack_type": "/etc/passwd AEGIS_FIXTURE", "rule_id": "R0088", "severity": "Critical"},
+    "command-injection": {"attack_type": ";whoami AEGIS_FIXTURE", "rule_id": "R9064", "severity": "Critical"},
+}
+
 # Pipe name (must match nids_capture.zig PIPE_NAME constant)
-NIDS_PIPE_NAME = r"\\.\pipe\aegis_nids"
+NIDS_PIPE_NAME = r"\\.\pipe\aegis_sensor_pipe"
 
 # Default ports (must match docs/runtime/COMPONENT_MATRIX.md §3)
 BRAIN_UDP_PORT = 9999
@@ -63,7 +72,7 @@ CORE_TCP_PORT = 12345
 
 
 def send_via_pipe(event: dict) -> bool:
-    """Send a single event via the named pipe \\.\pipe\\aegis_nids.
+    r"""Send a single event via the named pipe \\.\pipe\\aegis_sensor_pipe.
 
     Returns True on success, False on failure.
     On non-Windows platforms, returns False (named pipes are Windows-only).
@@ -135,7 +144,7 @@ def main() -> int:
 
     transport = parser.add_mutually_exclusive_group(required=True)
     transport.add_argument("--pipe", action="store_true",
-                           help="Send via named pipe \\\\.\\pipe\\aegis_nids (Windows only)")
+                           help="Send via named pipe \\\\.\\pipe\\aegis_sensor_pipe (Windows only)")
     transport.add_argument("--udp",  action="store_true",
                            help="Send via UDP to 127.0.0.1:9999 (brain alert port)")
     transport.add_argument("--tcp",  action="store_true",
@@ -157,6 +166,8 @@ def main() -> int:
                         help=f"Source IP (default: {DEFAULT_EVENT['src_ip']})")
     parser.add_argument("--rule-id", default=DEFAULT_EVENT["rule_id"],
                         help=f"Rule ID (default: {DEFAULT_EVENT['rule_id']})")
+    parser.add_argument("--fixture", choices=sorted(FIXTURES), default="none",
+                        help="Use a benign payload marker matching a configured rule")
     parser.add_argument("--port", type=int, default=None,
                         help="Override destination port (applies to UDP/TCP only)")
 
@@ -169,6 +180,8 @@ def main() -> int:
     event["policy"] = args.policy
     event["src_ip"] = args.src_ip
     event["rule_id"] = args.rule_id
+    if args.fixture != "none":
+        event.update(FIXTURES[args.fixture])
     event["timestamp"] = int(time.time())
 
     # Pick the transport function

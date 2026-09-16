@@ -14,6 +14,7 @@ use eframe::egui;
 use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
+use std::process::Command;
 use std::time::Instant;
 
 // =====================================================================
@@ -57,6 +58,16 @@ struct RuleEntry {
     layer: String,
 }
 
+#[derive(Debug, Deserialize, Default, Clone)]
+struct RuntimeSnapshot {
+    #[serde(default)]
+    health: serde_json::Value,
+    #[serde(default)]
+    metrics: serde_json::Value,
+    #[serde(default)]
+    forensic: serde_json::Value,
+}
+
 // =====================================================================
 // APP STATE
 // =====================================================================
@@ -74,6 +85,8 @@ struct AegisDashboard {
     auto_refresh: bool,
     refresh_interval: f32, // seconds
     last_refresh_ago: f32,
+    runtime_snapshot: RuntimeSnapshot,
+    control_available: bool,
 }
 
 impl AegisDashboard {
@@ -89,14 +102,35 @@ impl AegisDashboard {
             last_refresh: Instant::now(),
             // GAP-4: Read aegis_core.ndjson (was anomalous.json - old Brain format)
             log_path: base.join("logs").join("aegis_core.ndjson"),
-            rules_path: base.join("Rules.json"),
+            // The daemon and aegisctl share this canonical rules location.
+            rules_path: base.join("configs").join("Rules.json"),
             auto_refresh: true,
             refresh_interval: 1.0,
             last_refresh_ago: 0.0,
+            runtime_snapshot: RuntimeSnapshot::default(),
+            control_available: false,
         }
     }
 
+    fn refresh_control_snapshot(&mut self) {
+        let output = Command::new("python")
+            .args(["tools/aegisctl.py", "snapshot"])
+            .current_dir(std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+            .output();
+        if let Ok(output) = output {
+            if output.status.success() {
+                if let Ok(snapshot) = serde_json::from_slice::<RuntimeSnapshot>(&output.stdout) {
+                    self.runtime_snapshot = snapshot;
+                    self.control_available = true;
+                    return;
+                }
+            }
+        }
+        self.control_available = false;
+    }
+
     fn refresh_data(&mut self) {
+        self.refresh_control_snapshot();
         // Read alerts
         self.alerts.clear();
         self.total_alerts = 0;
@@ -174,7 +208,34 @@ impl eframe::App for AegisDashboard {
         // ====== TOP PANEL: DEFCON ======
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.heading("🛡️ AEGIS NIDS");
+                ui.heading("AEGIS NIDS");
+                ui.label("Operator Dashboard");
+                ui.separator();
+
+                let health_state = self
+                    .runtime_snapshot
+                    .health
+                    .get("state")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("UNKNOWN");
+                let degraded = self
+                    .runtime_snapshot
+                    .health
+                    .get("degraded")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(true);
+                let health_color =
+                    if self.control_available && health_state == "RUNNING" && !degraded {
+                        egui::Color32::GREEN
+                    } else {
+                        egui::Color32::YELLOW
+                    };
+                ui.colored_label(health_color, format!("RUNTIME: {}", health_state));
+                ui.label(if self.control_available {
+                    "Source: Control Center"
+                } else {
+                    "Control Center unavailable"
+                });
                 ui.separator();
 
                 // DEFCON indicator
@@ -186,15 +247,21 @@ impl eframe::App for AegisDashboard {
                     _ => (egui::Color32::from_rgb(0, 255, 0), "SAFE"),
                 };
 
-                ui.colored_label(defcon_color,
-                    format!("DEFCON {}: {}", self.defcon_level, defcon_label));
+                ui.colored_label(
+                    defcon_color,
+                    format!("DEFCON {}: {}", self.defcon_level, defcon_label),
+                );
 
                 ui.separator();
 
                 // DEFCON bar
                 for i in 1..=5u8 {
                     let active = i >= self.defcon_level;
-                    let color = if active { defcon_color } else { egui::Color32::from_rgb(60, 60, 60) };
+                    let color = if active {
+                        defcon_color
+                    } else {
+                        egui::Color32::from_rgb(60, 60, 60)
+                    };
                     ui.colored_label(color, "██");
                 }
                 ui.label("1 2 3 4 5");
@@ -202,9 +269,18 @@ impl eframe::App for AegisDashboard {
                 ui.separator();
 
                 // Counters
-                ui.colored_label(egui::Color32::YELLOW, format!("Alerts: {}", self.total_alerts));
-                ui.colored_label(egui::Color32::RED, format!("Critical: {}", self.total_critical));
-                ui.colored_label(egui::Color32::from_rgb(255, 165, 0), format!("Blocked: {}", self.total_blocked));
+                ui.colored_label(
+                    egui::Color32::YELLOW,
+                    format!("Events: {}", self.total_alerts),
+                );
+                ui.colored_label(
+                    egui::Color32::RED,
+                    format!("Critical: {}", self.total_critical),
+                );
+                ui.colored_label(
+                    egui::Color32::from_rgb(255, 165, 0),
+                    format!("Blocked: {}", self.total_blocked),
+                );
             });
         });
 
@@ -212,42 +288,89 @@ impl eframe::App for AegisDashboard {
         egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.checkbox(&mut self.auto_refresh, "Auto-refresh");
-                ui.add(egui::Slider::new(&mut self.refresh_interval, 0.5..=5.0).text("Interval (s)"));
+                ui.add(
+                    egui::Slider::new(&mut self.refresh_interval, 0.5..=5.0).text("Interval (s)"),
+                );
 
                 if ui.button("Refresh Now").clicked() {
                     self.refresh_data();
                 }
 
                 ui.separator();
-                ui.label(format!("Rules: {} loaded", self.rules.len()));
-                ui.label(format!("Log: {}", self.log_path.display()));
-                ui.label(format!("Refreshed {:.1}s ago", self.last_refresh_ago));
+                ui.label(format!("Rules loaded: {}", self.rules.len()));
+                ui.label(format!("Evidence: {}", self.log_path.display()));
+                ui.label(format!("Updated {:.1}s ago", self.last_refresh_ago));
             });
         });
 
         // ====== SIDE PANEL: Rule Summary ======
-        egui::SidePanel::left("rules_panel").min_width(180.0).show(ctx, |ui| {
-            ui.heading("Detection Rules");
-            ui.separator();
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                for rule in &self.rules {
-                    let is_block = rule.action.to_uppercase() == "BLOCK"
-                        || rule.action.to_uppercase() == "DROP";
-                    let color = if is_block {
-                        egui::Color32::from_rgb(255, 100, 100)
-                    } else {
-                        egui::Color32::from_rgb(200, 200, 100)
-                    };
-                    ui.colored_label(color, format!("{} [{}]", rule.rule_id, rule.action));
-                    ui.label(format!("  {}", rule.name));
-                    ui.add_space(4.0);
-                }
+        egui::SidePanel::left("rules_panel")
+            .min_width(180.0)
+            .show(ctx, |ui| {
+                ui.heading("Detection Rules");
+                ui.separator();
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    for rule in &self.rules {
+                        let is_block = rule.action.to_uppercase() == "BLOCK"
+                            || rule.action.to_uppercase() == "DROP";
+                        let color = if is_block {
+                            egui::Color32::from_rgb(255, 100, 100)
+                        } else {
+                            egui::Color32::from_rgb(200, 200, 100)
+                        };
+                        ui.colored_label(color, format!("{} [{}]", rule.rule_id, rule.action));
+                        ui.label(format!("  {}", rule.name));
+                        ui.add_space(4.0);
+                    }
+                });
             });
-        });
 
         // ====== CENTRAL PANEL: Alert Table ======
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Latest Alerts");
+            ui.heading("Operations Overview");
+            ui.small("This view is derived from the canonical event evidence log. Use the Control Center CLI for authoritative health and enforcement state.");
+            ui.add_space(8.0);
+            ui.horizontal(|ui| {
+                ui.group(|ui| {
+                    ui.strong("Evidence events");
+                    ui.heading(format!("{}", self.total_alerts));
+                    ui.small("records parsed");
+                });
+                ui.group(|ui| {
+                    ui.strong("Critical");
+                    ui.heading(format!("{}", self.total_critical));
+                    ui.small("severity critical");
+                });
+                ui.group(|ui| {
+                    ui.strong("Blocked");
+                    ui.heading(format!("{}", self.total_blocked));
+                    ui.small("policy outcomes");
+                });
+            ui.group(|ui| {
+                    ui.strong("Rules");
+                    ui.heading(format!("{}", self.rules.len()));
+                    ui.small("from configs/Rules.json");
+                });
+                ui.group(|ui| {
+                    ui.strong("Forensics");
+                    let integrity = self.runtime_snapshot.forensic.get("integrity").and_then(|v| v.as_str()).unwrap_or("unknown");
+                    ui.heading(integrity);
+                    ui.small("hash chain");
+                });
+            });
+            let workers = self.runtime_snapshot.health.get("workers").cloned().unwrap_or_default();
+            let ready = ["pipeline_ready", "sensor_ready", "nose_ready", "etw_ready", "fim_ready", "registry_ready"]
+                .iter().filter(|key| workers.get(**key).and_then(|v| v.as_bool()).unwrap_or(false)).count();
+            ui.label(format!("Worker readiness: {}/6 | failure mask: {}", ready, workers.get("failure_mask").and_then(|v| v.as_u64()).unwrap_or(0)));
+            let data_plane = self.runtime_snapshot.health.get("data_plane").cloned().unwrap_or_default();
+            ui.label(format!("Data plane: read={} submitted={} dropped={} duplicate={} non_monotonic={}",
+                data_plane.get("nose_frames_read").and_then(|v| v.as_u64()).unwrap_or(0),
+                data_plane.get("nose_frames_submitted").and_then(|v| v.as_u64()).unwrap_or(0),
+                data_plane.get("nose_frames_dropped").and_then(|v| v.as_u64()).unwrap_or(0),
+                data_plane.get("nose_duplicate_event_ids").and_then(|v| v.as_u64()).unwrap_or(0),
+                data_plane.get("nose_non_monotonic_event_ids").and_then(|v| v.as_u64()).unwrap_or(0)));
+            ui.add_space(10.0);
+            ui.heading("Latest Evidence");
             ui.separator();
 
             egui::ScrollArea::vertical().show(ui, |ui| {
@@ -365,5 +488,9 @@ fn main() -> eframe::Result<()> {
         ..Default::default()
     };
 
-    eframe::run_native("AEGIS Dashboard", options, Box::new(|_cc| Ok(Box::new(app))))
+    eframe::run_native(
+        "AEGIS Dashboard",
+        options,
+        Box::new(|_cc| Ok(Box::new(app))),
+    )
 }

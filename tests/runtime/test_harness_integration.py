@@ -18,6 +18,7 @@ docs/runtime/LOCAL_RUNBOOK.md, observes its lifecycle, and stops it.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -157,11 +158,27 @@ class TestCoreLifecycle(unittest.TestCase):
             resp = wait_for_state(
                 probe, "RUNNING",
                 timeout_ms=DEFAULT_TIMEOUTS_MS["startup"],
+                expected_pid=self.proc.pid,
             )
         except TimeoutError as exc:
+            exit_code = self.proc.poll()
+            captured = component_output(self.proc)
+            related = [
+                line for line in captured["stderr"]
+                if re.search(r"(?i)(etw|pep|wfp|bridge|worker|capabilit|failure)", line)
+            ]
             raise AssertionError(
-                f"{exc}\n--- core output ---\n"
-                + "\n".join(component_output(self.proc)["stdout"][-30:])
+                f"{exc}\n--- core process diagnostics ---\n"
+                f"exit_code={exit_code!r}\n"
+                f"running={exit_code is None}\n"
+                "health probe uses canonical command=system.health\n"
+                "--- related startup/dependency diagnostics ---\n"
+                + "\n".join(related[-80:])
+                + "\n"
+                f"--- stdout (last 30 lines) ---\n"
+                + "\n".join(captured["stdout"][-30:])
+                + "\n--- stderr (last 30 lines) ---\n"
+                + "\n".join(captured["stderr"][-30:])
             ) from exc
         self.assertEqual(resp["component"], "core")
         # Verify deps includes bridge.

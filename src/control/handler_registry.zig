@@ -26,11 +26,86 @@ pub const HandlerContext = struct {
     caller_role: protocol.Role,
     caller_pid: u32 = 0,
     caps: ?*const @import("../contract/runtime_manifest.zig").Capability = null,
+    /// Handler-owned failure fields. Mutation handlers use these when a
+    /// requested postcondition cannot be proven by the current runtime owner.
+    failure_code: ?[]const u8 = null,
+    failure_state: ?[]const u8 = null,
+    failure_message: ?[]const u8 = null,
 };
 
 pub const DispatchResult = struct {
     shutdown: bool,
 };
+
+fn successEnvelope(a: std.mem.Allocator, data: []const u8, request_id: u64) ![]u8 {
+    var data_parsed = std.json.parseFromSlice(std.json.Value, a, data, .{}) catch |err| {
+        std.log.err("control health payload JSON validation failed: bytes={d} error={} payload={s}", .{ data.len, err, data });
+        return err;
+    };
+    data_parsed.deinit();
+    var out = std.ArrayList(u8).init(a);
+    var writer = out.writer();
+    try writer.writeAll("{\"ok\":true,\"code\":\"OK\",\"state\":\"OK\",\"data\":");
+    try writer.writeAll(data);
+    try writer.print(",\"audit_id\":{}", .{request_id});
+    try writer.writeByte('}');
+    const result = try out.toOwnedSlice();
+    var parsed = std.json.parseFromSlice(std.json.Value, a, result, .{}) catch |err| {
+        std.log.err("control success envelope JSON validation failed: bytes={d} error={} response={s}", .{
+            result.len,
+            err,
+            result,
+        });
+        a.free(result);
+        return err;
+    };
+    parsed.deinit();
+    return result;
+}
+
+fn errorEnvelope(a: std.mem.Allocator, code: []const u8, state_str: []const u8, message: []const u8, request_id: u64) ![]u8 {
+    var out = std.ArrayList(u8).init(a);
+    var writer = out.writer();
+    try writer.writeAll("{\"ok\":false,\"code\":\"");
+    try writer.writeAll(code);
+    try writer.writeAll("\",\"state\":\"");
+    try writer.writeAll(state_str);
+    try writer.writeAll("\",\"data\":{\"message\":\"");
+    try writer.writeAll(message);
+    try writer.print("\"}},\"audit_id\":{}", .{request_id});
+    try writer.writeByte('}');
+    return out.toOwnedSlice();
+}
+
+/// Write a complete response to the byte-mode named pipe.  A single Win32
+/// WriteFile call is not a framing guarantee and may write fewer bytes than
+/// requested.  The old code ignored both the byte count and the error, which
+/// allowed a valid 2 KB health payload to be observed by the client as an
+/// unrelated short error response.
+fn writePipeResponse(pipe: std.os.windows.HANDLE, response: []const u8) bool {
+    var offset: usize = 0;
+    while (offset < response.len) {
+        const written = std.os.windows.WriteFile(pipe, response[offset..], null) catch |err| {
+            std.log.err("control response WriteFile failed: offset={d} total={d} error={}", .{
+                offset,
+                response.len,
+                err,
+            });
+            return false;
+        };
+        if (written == 0) {
+            std.log.err("control response WriteFile made no progress: offset={d} total={d}", .{
+                offset,
+                response.len,
+            });
+            return false;
+        }
+        offset += written;
+    }
+    const prefix_len = @min(response.len, 96);
+    std.log.info("control response written: bytes={d} prefix={s}", .{ offset, response[0..prefix_len] });
+    return true;
+}
 
 // ============================================================
 // Handler Registry
@@ -70,6 +145,8 @@ pub fn dispatch(
 ) DispatchResult {
     const start = std.time.nanoTimestamp();
 
+    std.log.info("control dispatch: received_bytes={d}", .{raw_json.len});
+
     // Parse envelope
     const parsed = std.json.parseFromSlice(std.json.Value, a, raw_json, .{}) catch {
         return sendError(a, pipe, "INVALID_JSON", "PARSE_ERROR", "Invalid JSON envelope", ctx.request_id);
@@ -88,8 +165,14 @@ pub fn dispatch(
     }
 
     const cmd = protocol.Command.fromString(cmd_val.string) orelse {
+        std.log.err("control dispatch: unknown command={s}", .{cmd_val.string});
         return sendError(a, pipe, "UNKNOWN_COMMAND", "INVALID_INPUT", "Unknown command", ctx.request_id);
     };
+
+    std.log.info("control dispatch: command={s} request_id={}", .{
+        protocol.contract(cmd).name,
+        ctx.request_id,
+    });
 
     const payload = root.object.get("payload") orelse std.json.Value{ .null = {} };
 
@@ -114,10 +197,14 @@ pub fn dispatch(
 
     // Find handler
     const handler_fn = findHandler(cmd) orelse {
+        std.log.err("control dispatch: handler missing command={s}", .{protocol.contract(cmd).name});
         return sendError(a, pipe, "NOT_IMPLEMENTED", "UNAVAILABLE", "Command handler not implemented", ctx.request_id);
     };
 
     // Call handler
+    ctx.failure_code = null;
+    ctx.failure_state = null;
+    ctx.failure_message = null;
     const result = handler_fn(a, payload, ctx);
     const elapsed: u64 = @intCast(@divTrunc(std.time.nanoTimestamp() - start, std.time.ns_per_ms));
 
@@ -138,27 +225,35 @@ pub fn dispatch(
     // Send response
     const is_shutdown = cmd == .daemon_shutdown;
     if (result) |data| {
-        const envelope = std.fmt.allocPrint(a,
-            \\{{"ok":true,"code":"OK","state":"OK","data":{s},"audit_id":{}}}
-        , .{ data, ctx.request_id }) catch {
+        std.log.info("control dispatch: handler success command={s} payload_bytes={d}", .{
+            protocol.contract(cmd).name,
+            data.len,
+        });
+        const envelope = successEnvelope(a, data, ctx.request_id) catch {
             return sendError(a, pipe, "INTERNAL_ERROR", "ERROR", "Failed to serialize response", ctx.request_id);
         };
-        _ = std.os.windows.WriteFile(pipe, envelope, null) catch {};
+        _ = writePipeResponse(pipe, envelope);
+    } else if (ctx.failure_code) |code| {
+        std.log.err("control dispatch: handler failure command={s} code={s} state={s}", .{
+            protocol.contract(cmd).name,
+            code,
+            ctx.failure_state orelse "ERROR",
+        });
+        _ = sendError(a, pipe, code, ctx.failure_state orelse "ERROR", ctx.failure_message orelse "Handler failed", ctx.request_id);
     } else {
-        _ = std.os.windows.WriteFile(pipe, "{\"ok\":false,\"code\":\"HANDLER_ERROR\",\"state\":\"ERROR\"}", null) catch {};
+        std.log.err("control dispatch: handler returned null without failure command={s}", .{protocol.contract(cmd).name});
+        _ = writePipeResponse(pipe, "{\"ok\":false,\"code\":\"HANDLER_ERROR\",\"state\":\"ERROR\"}");
     }
 
     return .{ .shutdown = is_shutdown };
 }
 
 fn sendError(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, code: []const u8, state_str: []const u8, message: []const u8, request_id: u64) DispatchResult {
-    const body = std.fmt.allocPrint(a,
-        \\{{"ok":false,"code":"{s}","state":"{s}","data":{{"message":"{s}"}},"audit_id":{}}}
-    , .{ code, state_str, message, request_id }) catch {
+    const body = errorEnvelope(a, code, state_str, message, request_id) catch {
         _ = std.os.windows.WriteFile(pipe, "{\"ok\":false,\"code\":\"INTERNAL_ERROR\",\"state\":\"ERROR\"}", null) catch {};
         return .{ .shutdown = false };
     };
-    _ = std.os.windows.WriteFile(pipe, body, null) catch {};
+    _ = writePipeResponse(pipe, body);
     return .{ .shutdown = false };
 }
 
@@ -206,6 +301,7 @@ pub fn initHandlers() void {
 // ============================================================
 
 const handlers = struct {
+    const HEALTH_BUILD_MARKER = "health-v2-20260916";
     const bridge_init = @import("../core/bridge_init.zig");
     const state_mod = @import("../pipeline/runtime_state.zig");
     const diag = @import("../core/diagnostics.zig");
@@ -227,7 +323,30 @@ const handlers = struct {
         const bridge = bridge_init.status();
         sm.g_runtime.uptime_ms = @intCast(@divTrunc(std.time.nanoTimestamp() - ctx.start_ns, std.time.ns_per_ms));
         const pid: u32 = GetCurrentProcessId();
-        return sm.g_runtime.healthJson(a, pid, bridge_init.allActive(), bridge.wfp_ioctl, bridge.cpp_bridge, bridge.udp_brain) catch null;
+        const workers = sm.WorkerReadiness{
+            .pipeline = state_mod.g_pipeline_ready.load(.acquire),
+            .sensor = state_mod.g_sensor_ready.load(.acquire),
+            .nose = state_mod.g_nose_ready.load(.acquire),
+            .etw = state_mod.g_etw_ready.load(.acquire),
+            .fim = state_mod.g_fim_ready.load(.acquire),
+            .registry = state_mod.g_registry_ready.load(.acquire),
+            .failed = state_mod.g_worker_failed.load(.acquire),
+            .failure_reason = state_mod.workerFailureReason(),
+            .failure_mask = state_mod.workerFailureMask(),
+        };
+        return sm.g_runtime.healthJson(a, pid, bridge_init.allActive(), bridge.wfp_ioctl, bridge.cpp_bridge, bridge.udp_brain, workers) catch |err| {
+            diag.err("health handler serialization failed: {}", .{err});
+            ctx.failure_code = "HEALTH_SERIALIZATION_FAILED";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "core health payload could not be serialized";
+            // Health must remain observable even when the rich payload cannot
+            // be built.  Keep this fallback allocation small and truthful:
+            // it never claims RUNNING and exposes the build marker so a stale
+            // executable cannot be mistaken for the current source.
+            return std.fmt.allocPrint(a,
+                "{{\"component\":\"core\",\"state\":\"DEGRADED\",\"runtime_state\":\"{s}\",\"pid\":{},\"build_marker\":\"{s}\",\"health_error\":\"serialization_failed\"}}",
+                .{ sm.g_runtime.system_state.toString(), pid, HEALTH_BUILD_MARKER }) catch null;
+        };
     }
 
     fn version(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
@@ -389,79 +508,32 @@ const handlers = struct {
         return "{\"entries\":[]}";
     }
 
-    fn runtimeStart(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        // P2: Transition runtime state machine: STOPPED -> STARTING -> READY -> RUNNING
-        // Pull from state machine — single source of truth
-        const sm = @import("state_machine.zig");
-        // Check if already running
-        if (sm.g_runtime.system_state == .running) {
-            return "{\"started\":true,\"message\":\"Runtime already running\"}";
-        }
-
-        // Acquire mutex and sequence the state transitions
-        sm.g_runtime.mutex.lock();
-        defer sm.g_runtime.mutex.unlock();
-
-// Transition: STOPPED -> STARTING
-        if (sm.g_runtime.system_state == .stopped) {
-            sm.g_runtime.system_state = .starting;
-        }
-
-        // Transition: STARTING -> READY (simulate quick init)
-        sm.g_runtime.system_state = .ready;
-
-        // Transition: READY -> RUNNING
-        sm.g_runtime.system_state = .running;
-
-        // Record start time
-        sm.g_runtime.started_at_ms = std.time.milliTimestamp();
-        sm.g_runtime.uptime_ms = 0;
-
-        return "{\"started\":true,\"message\":\"Runtime started\"}";
+    fn runtimeStart(_: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        // SAFETY/PHASE-1: this daemon is started by the SCM/foreground entry
+        // point. The control pipe does not own worker handles or a supervisor,
+        // so it must not simulate STARTING -> READY -> RUNNING.
+        ctx.failure_code = "NOT_IMPLEMENTED";
+        ctx.failure_state = "UNAVAILABLE";
+        ctx.failure_message = "runtime.start requires the daemon supervisor and verified worker startup";
+        return null;
     }
 
-    fn runtimeStop(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        // P2: Transition runtime state machine: RUNNING -> STOPPED
-        // Pull from state machine — single source of truth
-        const sm = @import("state_machine.zig");
-
-        sm.g_runtime.mutex.lock();
-        defer sm.g_runtime.mutex.unlock();
-
-        sm.g_runtime.system_state = .stopped;
-        sm.g_runtime.started_at_ms = 0;
-        sm.g_runtime.uptime_ms = 0;
-
-        // Request shutdown of bridge/watcher
-        bridge_init.requestShutdown();
-
-        return "{\"stopped\":true}";
+    fn runtimeStop(_: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        // The control endpoint cannot claim STOPPED until the daemon owner has
+        // signalled, joined, and verified every worker.
+        ctx.failure_code = "NOT_IMPLEMENTED";
+        ctx.failure_state = "UNAVAILABLE";
+        ctx.failure_message = "runtime.stop requires the daemon supervisor and verified worker join";
+        return null;
     }
 
-    fn runtimeRestart(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        // P2: Sequence: stop then start
-        // First stop
-        const sm1 = @import("state_machine.zig");
-        sm1.g_runtime.mutex.lock();
-        sm1.g_runtime.system_state = .stopped;
-        sm1.g_runtime.started_at_ms = 0;
-        sm1.g_runtime.uptime_ms = 0;
-        sm1.g_runtime.mutex.unlock();
-
-        // Then start
-        const sm2 = @import("state_machine.zig");
-        sm2.g_runtime.mutex.lock();
-        defer sm2.g_runtime.mutex.unlock();
-
-        if (sm2.g_runtime.system_state == .stopped) {
-            sm2.g_runtime.system_state = .starting;
-            sm2.g_runtime.system_state = .ready;
-            sm2.g_runtime.system_state = .running;
-// Then start
-        sm2.g_runtime.started_at_ms = std.time.milliTimestamp();
-        }
-
-        return "{\"restarted\":true,\"message\":\"Runtime restarted\"}";
+    fn runtimeRestart(_: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        // Restart requires a real stop/join/start/readiness transaction. Do
+        // not report success while the current daemon has no such owner.
+        ctx.failure_code = "NOT_IMPLEMENTED";
+        ctx.failure_state = "UNAVAILABLE";
+        ctx.failure_message = "runtime.restart requires the daemon supervisor and verified worker lifecycle";
+        return null;
     }
 
     fn daemonShutdown(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {

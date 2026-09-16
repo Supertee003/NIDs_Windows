@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "host": {
+    "name": "aegis-host",
+    "data_directory": "data",
+    "log_directory": "logs",
+    "timezone": "UTC"
+  },
+  "capture": {
+    "enabled": true,
+    "provider": "npcap",
+    "interface_selector": {
+      "mode": "auto",
+      "name": null,
+      "description_contains": null,
+      "mac": null,
+      "index": null
+    },
+    "providers": {
+      "npcap": {"enabled": true, "promiscuous": true, "snaplen": 65535, "buffer_mb": 64},
+      "wfp": {"enabled": true, "layer": "ALE_FLOW_ESTABLISHED_V4"},
+      "etw": {"enabled": true, "session_name": "AEGIS-ETW", "kernel_process": true, "network": true},
+      "replay": {"enabled": true, "path": "data/replay/events.ndjson"}
+    },
+    "fallback_order": ["npcap", "wfp", "etw", "replay"]
+  },
+  "network": {
+    "allow_wifi": true,
+    "allow_lan": true,
+    "ipv4_cidrs": ["0.0.0.0/0"],
+    "exclude_loopback": true,
+    "exclude_virtual_adapters": false
+  },
+  "runtime": {
+    "required_components": ["core", "bridge", "rust_pep", "rust_shield"],
+    "optional_components": ["nose", "mouth", "aggregator"],
+    "fail_closed": true
+  }
+}

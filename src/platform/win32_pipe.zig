@@ -19,10 +19,17 @@ pub fn runtimeHealthState(pep_ready: bool, bridge_ready: bool, wfp_ready: bool) 
 }
 
 const PIPE_ACCESS_DUPLEX: std.os.windows.DWORD = 0x00000003;
-const PIPE_TYPE_BYTE_V: std.os.windows.DWORD = 0x00000000;
-const PIPE_READMODE_BYTE_V: std.os.windows.DWORD = 0x00000000;
+// CONTRACT-04 is one JSON request and one JSON response per connection.
+// Message mode preserves that boundary on Windows; byte mode allowed a
+// partial/ambiguous read to be interpreted as a different response.
+const PIPE_TYPE_MESSAGE_V: std.os.windows.DWORD = 0x00000004;
+const PIPE_READMODE_MESSAGE_V: std.os.windows.DWORD = 0x00000002;
 const PIPE_WAIT_V: std.os.windows.DWORD = 0x00000000;
-const PIPE_UNLIMITED_INSTANCES: std.os.windows.DWORD = 255;
+// AEGIS has one runtime owner.  Unlimited pipe instances allow a stale core
+// process and a newly spawned core to answer the same endpoint, making the
+// lifecycle harness observe the wrong binary and violating the single-owner
+// runtime contract.  Keep exactly one server instance instead.
+const CONTROL_PIPE_MAX_INSTANCES: std.os.windows.DWORD = 1;
 const CONTROL_PIPE_BUFFER_SIZE: std.os.windows.DWORD = 65536;
 
 extern "kernel32" fn CreateNamedPipeW(
@@ -163,16 +170,20 @@ pub fn serveWindowsPipe(caps: *const manifest.Capability, start_ns: i128) !void 
     const pipe = CreateNamedPipeW(
         pipe_name_z,
         PIPE_ACCESS_DUPLEX,
-        PIPE_TYPE_BYTE_V | PIPE_READMODE_BYTE_V | PIPE_WAIT_V,
-        PIPE_UNLIMITED_INSTANCES,
+        PIPE_TYPE_MESSAGE_V | PIPE_READMODE_MESSAGE_V | PIPE_WAIT_V,
+        CONTROL_PIPE_MAX_INSTANCES,
         CONTROL_PIPE_BUFFER_SIZE,
         CONTROL_PIPE_BUFFER_SIZE,
         0,
         if (sa.lpSecurityDescriptor != null) &sa else null,
     );
     if (pipe == w.INVALID_HANDLE_VALUE) {
-        diag.err("control pipe CreateNamedPipeW failed", .{});
-        return;
+        const win_error = w.kernel32.GetLastError();
+        diag.err("control pipe CreateNamedPipeW failed: endpoint={s} win32_error={d}", .{
+            control_pipe_name,
+            @intFromEnum(win_error),
+        });
+        return error.ControlPipeCreateFailed;
     }
     defer _ = w.CloseHandle(pipe);
     diag.info("control pipe ready at {s}", .{control_pipe_name});
@@ -180,7 +191,9 @@ pub fn serveWindowsPipe(caps: *const manifest.Capability, start_ns: i128) !void 
     while (!state.g_stop_requested.load(.acquire)) {
         const ok = ConnectNamedPipe(pipe, null);
         if (ok == 0) {
-            if (w.kernel32.GetLastError() != .PIPE_CONNECTED) {
+            const connect_error = w.kernel32.GetLastError();
+            if (connect_error != .PIPE_CONNECTED) {
+                diag.warn("control pipe ConnectNamedPipe failed: win32_error={d}", .{@intFromEnum(connect_error)});
                 std.time.sleep(100 * std.time.ns_per_ms);
                 continue;
             }

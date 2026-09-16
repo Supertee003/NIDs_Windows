@@ -241,7 +241,11 @@ _bridge_unblock_ip = _get_func("aegis_bridge_unblock_ip",
 
 
 def block_ip(ip_string):
-    """Block an IP address via WFP callout (IPS enforcement)."""
+    """Request an IP block through the bridge ABI.
+
+    Direct bridge mutation is disabled during safety containment. A negative
+    return value is an unavailable/rejected result, never an authorized block.
+    """
     if _bridge_block_ip is None:
         return -1
     ip_int = _ip_to_int(ip_string)
@@ -249,7 +253,10 @@ def block_ip(ip_string):
 
 
 def unblock_ip(ip_string):
-    """Unblock a previously blocked IP address."""
+    """Request an IP unblock through the bridge ABI.
+
+    Direct bridge mutation is disabled during safety containment.
+    """
     if _bridge_unblock_ip is None:
         return -1
     ip_int = _ip_to_int(ip_string)
@@ -329,17 +336,20 @@ def ips_decide(rule_id, severity, src_ip, action="alert"):
 
     # DEFCON 1-2: Block all threats automatically
     if defcon <= DEFCON_2_SEVERE and severity >= 2:
-        block_ip(src_ip)
-        return "block"
+        if block_ip(src_ip) == 0:
+            return "block"
+        return "enforcement_unavailable"
 
     # DEFCON 3-4: Block critical, alert others
     if severity >= 3:
-        block_ip(src_ip)
-        return "block"
+        if block_ip(src_ip) == 0:
+            return "block"
+        return "enforcement_unavailable"
 
     # DEFCON 5: Follow rule's default action
     if action == "block" and severity >= 2:
-        block_ip(src_ip)
-        return "block"
+        if block_ip(src_ip) == 0:
+            return "block"
+        return "enforcement_unavailable"
 
     return action if action in ("alert", "block") else "alert"

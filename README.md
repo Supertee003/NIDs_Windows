@@ -53,6 +53,30 @@ AEGIS คือระบบ Windows-native Network Intrusion Detection and Respo
 
 ห้ามตีความ `ALLOW` ว่า enforcement สำเร็จ หาก PEP, WFP adapter, driver หรือ privileged dependency ไม่พร้อม
 
+### 2.4 ความคืบหน้าล่าสุด
+
+เริ่ม Phase 0 แล้วใน patch transaction `P0-SAFETY-001` โดยปิด direct firewall mutation จาก C++ bridge, เปลี่ยน Python IPS helper ให้รายงาน `enforcement_unavailable` เมื่อ bridge ไม่พร้อม และเปลี่ยน PEP/WFP failure จาก `ALLOW` เป็น non-enforcing escalation
+
+สถานะนี้เป็น **source-patched แต่ยังไม่ fully verified** เนื่องจากต้องรัน Rust, Zig, C++ และ Windows-host tests ใน build environment ที่มี toolchain ครบก่อนจึงจะปิด Phase 0 ได้ รายละเอียดอยู่ใน `AEGIS_PHASE0_Safety_Containment_Evidence.md`
+
+เริ่ม Phase 1 แล้ว โดย control lifecycle handlers ถูกปรับไม่ให้จำลอง `STARTING → READY → RUNNING` หรือรายงาน `STOPPED`/`RESTARTED` โดยไม่มี supervisor และ worker postcondition จริง คำสั่งเหล่านี้จะรายงาน `NOT_IMPLEMENTED`/`UNAVAILABLE` จนกว่าจะมี runtime supervisor เป็น owner เพียงหนึ่งเดียว รายละเอียดอยู่ใน `AEGIS_PHASE1_Runtime_Ownership_Evidence.md`
+
+เพิ่ม `RuntimeSupervisor` ใน `src/daemon.zig` แล้ว โดย supervisor ถือ worker handles ของ pipeline, legacy sensor, Go Nose reader, ETW, FIM และ Registry รวมถึงเป็นเจ้าของ stop signal และ reverse-order join การตัดสิน readiness ของ daemon Windows เปลี่ยนเป็น `READY` เฉพาะเมื่อ pipeline ถูกสร้าง, PEP พร้อม และ bridge dependencies active; ไม่เช่นนั้นจะเป็น `DEGRADED` รายละเอียดอยู่ใน `AEGIS_PHASE1_Runtime_Supervisor_Evidence.md`
+
+เพิ่ม readiness handshake แบบ atomic แล้ว โดย worker ต้องประกาศ ready หลัง initialization ผ่านจริง และประกาศ failure เมื่อ init ล้มเหลว การสร้าง thread เพียงอย่างเดียวไม่ถือว่า ready อีกต่อไป daemon มี bounded startup barrier สูงสุด 2 วินาที และจะเข้าสู่ `DEGRADED` หาก pipeline ไม่ ready หรือมี worker failure รายละเอียดอยู่ใน `AEGIS_PHASE1_Readiness_Handshake_Evidence.md`
+
+เชื่อม readiness handshake เข้ากับ centralized health handler แล้ว โดย `health` อ่านสถานะ pipeline, sensor, Go Nose, ETW, FIM, Registry และ aggregate worker failure จาก atomic state แทนการดูเพียง thread handle หรือ bridge capability การ serialize worker fields ลง JSON เป็นงาน contract regeneration ถัดไปเพื่อป้องกัน schema drift รายละเอียดอยู่ใน `AEGIS_PHASE1_Health_Integration_Evidence.md`
+
+เพิ่ม `workers` object ลง health JSON แล้วโดยรักษา fields เดิมไว้ และปรับ `control_api.py` กับ `aegisctl.py` ให้ส่งต่อและแสดง `pipeline_ready`, `sensor_ready`, `nose_ready`, `etw_ready`, `fim_ready`, `registry_ready` และ `failed` รายละเอียดอยู่ใน `AEGIS_PHASE1_Health_Schema_Contract_Evidence.md`
+
+เพิ่ม structured worker failure reason แล้ว โดย health จะรายงาน `failure_reason` เช่น `pipeline_init_failed`, `etw_init_failed` หรือ `registry_init_failed` แทนการมีเพียง boolean `failed` และ CLI สามารถแสดงสาเหตุเดียวกันได้จาก payload เดียว รายละเอียดอยู่ใน `AEGIS_PHASE1_Structured_Worker_Failure_Evidence.md`
+
+แก้ข้อจำกัดหลาย worker failure แล้วด้วย `failure_mask` แบบ atomic ซึ่งเก็บ failure ได้พร้อมกันหลายตัว โดย bit 0–5 แทน pipeline, sensor, Go Nose, ETW, FIM และ Registry ส่วน `failure_reason` เดิมยังคงไว้เพื่อ backward compatibility รายละเอียดอยู่ใน `AEGIS_PHASE1_Multi_Worker_Failure_Evidence.md`
+
+เพิ่ม decoder ใน `control_api.py` แล้ว โดยแปลง `failure_mask` เป็น `failure_reasons` แบบ deterministic และให้ CLI แสดงรายการสาเหตุทั้งหมด เช่น `etw_init_failed, fim_init_failed` โดยยังคง raw mask และ primary reason ไว้สำหรับ consumer เดิม รายละเอียดอยู่ใน `AEGIS_PHASE1_Failure_Reasons_Decoder_Evidence.md`
+
+ก่อนเริ่ม Windows testing ให้ใช้ `AEGIS_Windows_Preflight_Gate.md` เป็น gate กลาง ปัจจุบัน Python syntax และ source consistency ผ่านระดับ static review แล้ว แต่ Zig/Rust/C++/Windows runtime ยังไม่ถูก compile หรือ execute ใน environment นี้ จึงยังไม่สามารถรับรองว่า test suite จะผ่านทั้งหมดได้
+
 ---
 
 ## 3. Architecture ที่ประกาศกับเส้นทางที่ตรวจพบว่ารันจริง
@@ -118,7 +142,33 @@ Windows service entry
 
 **กฎปัจจุบัน:** ห้ามอ้างว่า Event Fabric หรือ dispatcher เป็น production golden path จนกว่าจะมี call-graph และ end-to-end evidence ยืนยันว่าถูกเรียกจาก production entrypoint
 
-### 3.3 ปัญหาเชิงสถาปัตยกรรมที่ต้องปิดก่อน feature expansion
+### 3.3 Shield Rust ในระบบ
+
+AEGIS มี **Shield Rust** เป็นส่วนประกอบที่ใช้งานในแนวทาง Tier-3 สำหรับ screening ภายใน process ไม่ใช่ส่วนที่ถูกตัดออกจากระบบทั้งหมด
+
+เส้นทางที่ประกาศไว้คือ:
+
+```text
+Zig runtime
+  -> src/core/bridge_init.zig
+  -> dynamic loading ของ sec_monitor.dll
+  -> Shield Rust screening helper
+  -> screening result กลับสู่ runtime
+```
+
+บทบาทของ Shield คือการช่วยตรวจสอบความปลอดภัยของ payload และส่งสถานะเชิงข้อมูลกลับให้ runtime ส่วน Shield **ห้าม** ทำสิ่งต่อไปนี้:
+
+- authorize privileged action
+- ตัดสิน policy แทน Zig/Policy authority
+- เรียก WFP หรือ mutate Windows security state
+- ตรวจ trust/signature แทน Rust PEP
+- สร้าง PEP หรือ enforcement ABI ชุดที่สอง
+
+แหล่ง implementation ที่ authority map ระบุคือ `rust-src/shield/src/lib.rs` และ artifact ที่ component registry ระบุคือ `shield/target/release/sec_monitor.dll` การที่ source path กับ artifact path อยู่คนละรูปแบบต้องถูกตรวจและทำให้สอดคล้องใน build/release pipeline ก่อนถือว่า Shield พร้อมใช้งานจริง
+
+`src/core/bridge_init.zig` ยังมีสถานะและ dynamic-loader logic ของ bridge หลายประเภท ดังนั้น health ของ Shield ต้องรายงานแยกจาก `pep` และต้องไม่ถูกนับว่าเป็นหลักฐานว่า Rust PEP พร้อมแล้ว
+
+### 3.4 ปัญหาเชิงสถาปัตยกรรมที่ต้องปิดก่อน feature expansion
 
 | Boundary | สถานะที่ต้องถือเป็นจริงในปัจจุบัน |
 |---|---|
@@ -127,6 +177,7 @@ Windows service entry
 | Event | มีหลาย schema และหลาย size/offset definition |
 | Policy | มี Policy IR และ action mapping หลายชุด |
 | Enforcement | มี path ที่ bypass Rust PEP |
+| Shield | มี screening component แต่ source/artifact path และ ABI ต้องยืนยัน; ห้ามนับเป็น PEP |
 | Lifecycle | บาง handler เปลี่ยน state โดยไม่ควบคุม worker จริง |
 | Health | ยังไม่รวม dependency, worker heartbeat, queue pressure และ enforcement state ครบ |
 | Control | มี top-level CLI และ modular command surface ที่ไม่สอดคล้องกัน |
@@ -146,6 +197,7 @@ Windows service entry
 | Native host telemetry | C/C++ adapters | ห้ามตัดสิน policyหรือ bypass PEP |
 | Intelligence | Python Brain | recommend, explain, enrich ได้ แต่ห้าม authorize/enforce/WFP |
 | Policy authoring | TypeScript | สร้างและตรวจ policy ได้ แต่ห้าม enforce |
+| Payload screening | Shield Rust (`rust-src/shield/src/lib.rs`) | screening ได้ แต่ห้าม authorize, enforce, WFP หรือ claim เป็น PEP |
 | Policy authorization | Rust PEP | เป็น authority เดียวสำหรับ privileged action |
 | Windows mutation | PEP-backed adapter/driver broker | ห้ามเปิด direct mutation path ให้ bridge หรือ client ทั่วไป |
 | Evidence | Runtime/forensic authority | ต้องเก็บ finalized decision ไม่ใช่เพียง intent |
@@ -417,6 +469,7 @@ CLI/client
 NIDs_Windows/
 ├── src/                    # Zig runtime, contracts, pipeline, policy, forensics, reliability
 ├── rust-src/               # Rust PEP and security boundary
+│   └── shield/             # Rust Shield Tier-3 payload-screening support library
 ├── nose/                   # Go packet acquisition
 ├── bridge/                 # C++ bridge and adapter targets
 ├── src/windows/            # Native Windows adapters
@@ -512,6 +565,12 @@ zig build test
 cargo test --release
 cargo build --release
 
+# Shield Rust screening support (not the PEP)
+cd rust-src/shield
+cargo test
+cargo build --release
+cd ../..
+
 # C/C++ adapters
 cmake -B build -S .
 cmake --build build --config Release
@@ -533,6 +592,8 @@ python -m pytest tests/ -v --ignore=tests/test_e2e.py
 ```
 
 การที่ unit test ผ่านยังไม่หมายถึง system integration หรือ Windows enforcement ผ่าน ต้องใช้ evidence level ที่เหมาะสมกับ claim
+
+การ build หรือ test `rust-src/shield` ผ่านเพียงยืนยัน screening component เท่านั้น ไม่ใช่หลักฐานว่า `rust-src/lib.rs` ซึ่งเป็น Rust PEP พร้อมสำหรับ privileged enforcement
 
 ---
 

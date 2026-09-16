@@ -27,7 +27,7 @@ pub const PepContext = extern struct {
     caller_pid: u32,
     caller_capability_mask: u32,
     request_id: u64,
-    reserved: u32 = 0,
+    policy_version: u32 = 0,
 };
 
 pub const PepRequest = extern struct {
@@ -78,15 +78,10 @@ pub const PepEnforcer = struct {
 
     pub fn enforce(self: *PepEnforcer, ev: *const event.IpcEvent, p: policy.Policy, caller_pid: u32, caller_caps: u32, request_id: u64) PepDecision {
         if (!self.available) {
-            // P0.2: DETECTION-ONLY mode when PEP unavailable.
-            // System observes and detects but does NOT enforce.
-            // ALL actions map to .allow — no privileged action executed.
-            // This is FAIL-CLOSED for enforcement: no PEP = no privileged action.
-            //
-            // Rationale: A block/quarantine policy without PEP validation could
-            // be exploited (e.g., attacker triggers false positive → blocks
-            // legitimate traffic). Without PEP authorization, we must NOT execute.
-            return .allow;
+            // SAFETY CONTAINMENT: unavailable PEP is not an ALLOW decision.
+            // Escalate to the non-enforcing/degraded path so callers cannot
+            // confuse detection-only mode with an authorized action.
+            return .escalate;
         }
         var req = PepRequest{
             .decision_kind = @intFromEnum(ev.kind),
@@ -103,8 +98,8 @@ pub const PepEnforcer = struct {
         var resp: PepResponse = undefined;
         const rc = aegis_pep_enforce(&req, &resp);
         if (rc != 0) {
-            // PEP failure must never become an enforcement decision.
-            return .allow;
+            // PEP failure must never become an ALLOW decision.
+            return .escalate;
         }
         return @enumFromInt(resp.decision);
     }
@@ -134,7 +129,7 @@ fn mapAction(a: policy.Action) PepDecision {
 // ============================================================================
 // Tests
 // ============================================================================
-test "PepEnforcer detection-only when unavailable" {
+test "PepEnforcer unavailable is not an allow decision" {
     var pep = PepEnforcer{ .available = false };
     var ev = event.IpcEvent.init(.dns_query);
     const p = policy.Policy{
@@ -145,9 +140,9 @@ test "PepEnforcer detection-only when unavailable" {
         .severity = .alert,
         .ttl_sec = 0,
     };
-    // P0.2: When PEP unavailable, ALL actions map to .allow (detection-only mode)
+    // Unavailable PEP must remain visible to the caller as non-enforcing state.
     const d = pep.enforce(&ev, p, 0, 0, 0);
-    try std.testing.expectEqual(PepDecision.allow, d);
+    try std.testing.expectEqual(PepDecision.escalate, d);
 }
 
 test "mapAction correctness" {
@@ -175,11 +170,11 @@ test "FFI-001: PepContext size matches Rust" {
 }
 
 test "FFI-001: PepContext field offsets match Rust" {
-    // Rust #[repr(C)]: caller_pid at 0, caller_capability_mask at 4, request_id at 8, reserved at 16
+    // Rust #[repr(C)]: caller_pid at 0, caller_capability_mask at 4, request_id at 8, policy_version at 16
     try std.testing.expectEqual(@as(usize, 0), @offsetOf(PepContext, "caller_pid"));
     try std.testing.expectEqual(@as(usize, 4), @offsetOf(PepContext, "caller_capability_mask"));
     try std.testing.expectEqual(@as(usize, 8), @offsetOf(PepContext, "request_id"));
-    try std.testing.expectEqual(@as(usize, 16), @offsetOf(PepContext, "reserved"));
+    try std.testing.expectEqual(@as(usize, 16), @offsetOf(PepContext, "policy_version"));
 }
 
 test "FFI-001: PepRequest size matches Rust" {
@@ -261,7 +256,7 @@ test "FFI-001: PepRequest binary serialization roundtrip" {
             .caller_pid = 1234,
             .caller_capability_mask = 0xFF,
             .request_id = 9999,
-            .reserved = 0,
+            .policy_version = 0,
         },
     };
     const bytes = std.mem.asBytes(&req);

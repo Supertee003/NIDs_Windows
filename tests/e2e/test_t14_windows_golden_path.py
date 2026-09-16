@@ -17,7 +17,7 @@ Chain (matching runtime_manifest.json golden_path):
   correlation (incident_id) -> threat_intel -> rag - >
   brain (Python windows_brain.py + Cython accelerators) ->
   policy (TS policy compiler/seal + ed25519 signing, policy_id/version) ->
-  rust pep (shield/src/pep.rs, request_id) -> wfp (windows_enforce) ->
+  rust pep (rust-src/lib.rs, request_id) -> wfp (Rust PEP adapter) ->
   forensics (forensic_id) -> replay.
 
 No mock/simulated stage appears on the golden path.
@@ -32,8 +32,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 CANONICAL_EVENT = "src/contract/canonical_event.zig"
 CORRELATION = "src/detection/correlation_engine.zig"
 POLICY_SIGNING = "src/policy/policy_signing.zig"
-PEP_RS = "shield/src/pep.rs"
-WFP = "src/policy/wfp_production.zig"
+PEP_RS = "rust-src/lib.rs"
+WFP = "rust-src/lib.rs"
 FORENSICS = "src/forensic/forensics_engine.zig"
 REPLAY = "src/forensic/replay_engine.zig"
 DISPATCHER = "src/policy/dispatcher.zig"
@@ -147,7 +147,7 @@ def test_incident_id_survives_dispatcher() -> None:
 
 def test_policy_id_and_version_survive() -> None:
     """AC2: policy_id/version are minted in the signing pipeline
-    (SignedPolicy) and reach the PEP trace (shield/src/pep.rs)."""
+    (SignedPolicy) and reach the canonical Rust PEP trace (rust-src/lib.rs)."""
     ps = _read(POLICY_SIGNING)
     assert "SignedPolicy" in ps, "policy signing must produce SignedPolicy (AC2)"
     assert "policy_version: u32" in ps, "SignedPolicy must carry policy_version (AC2)"
@@ -207,11 +207,12 @@ def test_typescript_policy_in_path() -> None:
 
 
 def test_rust_pep_and_wfp_in_path() -> None:
-    """AC3/AC1: the Rust PEP (shield/src/pep.rs) and WFP enforcement
+    """AC3/AC1: the canonical Rust PEP and WFP enforcement
     terminal stage are REAL and golden-path."""
     manifest = _manifest()
-    assert manifest["modules"]["shield/src/pep.rs"]["status"] == "REAL"
-    assert manifest["modules"]["core/wfp_production.zig"]["status"] == "REAL"
+    pep_entry = manifest["canonical_entrypoints"]["rust_pep_tier3"]
+    assert pep_entry["file"] == "rust-src/lib.rs"
+    assert pep_entry["classification"] == "CANONICAL"
     wfp = _read(WFP)
     assert "wfp" in wfp.lower() and ("block" in wfp.lower() or "enforce" in wfp.lower())
 

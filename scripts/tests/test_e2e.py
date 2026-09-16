@@ -43,7 +43,7 @@ passed = 0
 failed = 0
 skipped = 0
 
-def test_result(name, success, detail=""):
+def _test_result(name, success, detail=""):
     global passed, failed, skipped
     if success:
         passed += 1
@@ -51,6 +51,10 @@ def test_result(name, success, detail=""):
     else:
         failed += 1
         print(f"  {UI.RED}FAIL{UI.RESET} {name} — {detail}")
+
+# This module is also imported by pytest; the helper is not a test case.
+_test_result.__test__ = False
+test_result = _test_result
 
 def skip_test(name, reason=""):
     global skipped
@@ -80,12 +84,12 @@ def test_bridge_selftest():
             text=True,
             timeout=30,
         )
-        test_result("Bridge self-test exit code", result.returncode == 0,
+        _test_result("Bridge self-test exit code", result.returncode == 0,
                     f"exit code: {result.returncode}")
         if "ALL TESTS PASSED" in result.stdout:
-            test_result("Bridge all tests passed", True)
+            _test_result("Bridge all tests passed", True)
         else:
-            test_result("Bridge all tests passed", False,
+            _test_result("Bridge all tests passed", False,
                         f"stdout: {result.stdout[:200]}")
     except FileNotFoundError:
         skip_test("Bridge self-test", "aegis_bridge.exe not found")

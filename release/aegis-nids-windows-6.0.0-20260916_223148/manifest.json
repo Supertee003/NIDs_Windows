@@ -1,0 +1,54 @@
+﻿{
+    "product":  "AEGIS NIDS",
+    "version":  "6.0.0",
+    "platform":  "windows-x86_64",
+    "created_utc":  "2026-09-16T15:31:48.9889751Z",
+    "canonical_rules":  "configs/Rules.json",
+    "artifacts":  [
+                      {
+                          "path":  "runtime/aegis_nids.exe",
+                          "sha256":  "643E76556F392B3ADEE31E7CCC679179894DBAFCB72F3B46E555D27F87E19953",
+                          "length":  3514880
+                      },
+                      {
+                          "path":  "runtime/aegis_pep.dll",
+                          "sha256":  "EA7E24B85E5F1E035C8518E9F2B8E688D0E20BF2B4959BDCB4E6136B75256418",
+                          "length":  1664512
+                      },
+                      {
+                          "path":  "runtime/aegis_fim_helper.dll",
+                          "sha256":  "1E0F0317492B9021D85A8639895F6B97CF79217A69BBE5D4F7FDC276E8BA20DB",
+                          "length":  13824
+                      },
+                      {
+                          "path":  "runtime/aegis_etw_helper.dll",
+                          "sha256":  "C4F7E0E02ECFB301783BF2D89EBDABAAE2DC992A8F81D8CD73E8AA6E1F89FEAF",
+                          "length":  15360
+                      },
+                      {
+                          "path":  "runtime/aegis_wfp_user.dll",
+                          "sha256":  "7556173416386A7E9678B1062B77417E136FA868A48D425C7CDCC19D18C4C106",
+                          "length":  14848
+                      },
+                      {
+                          "path":  "runtime/aegis_ipc.dll",
+                          "sha256":  "95E4F5B19FC2589405CA27B7180EC320D7C50CFD10DBBB097E7EA623F2C965D6",
+                          "length":  14336
+                      },
+                      {
+                          "path":  "configs/Rules.json",
+                          "sha256":  "B847829C4E9A38C9864F3F5050B44F2BB5AA4C3949B92B091F01C3748FCD1239",
+                          "length":  7950
+                      },
+                      {
+                          "path":  "configs/policies.json",
+                          "sha256":  "9E972ACBC63187BAD254EB28A1E67F8C6B99DD83BC5CEC5DC6F34C8A33EDD49D",
+                          "length":  3367
+                      },
+                      {
+                          "path":  "drivers/aegis_wfp.sys",
+                          "sha256":  "D58E2EEFEF10A409E3A9EC5E9BB756231F61FA9877F21118461F734A8D96055C",
+                          "length":  11640
+                      }
+                  ]
+}

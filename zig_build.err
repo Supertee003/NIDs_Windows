@@ -1,0 +1,13 @@
+install
++- install aegis_nids
+   +- zig build-exe aegis_nids Debug x86_64-windows 1 errors
+src\pipeline\runtime_state.zig:46:55: error: expected type 'u3', found 'u8'
+src\pipeline\runtime_state.zig:46:55: note: unsigned 3-bit int cannot represent all possible unsigned 8-bit values
+error: the following command failed with 1 compilation errors:
+D:\zig-windows-x86_64-0.13.0\zig-windows-x86_64-0.13.0\zig.exe build-exe -lws2_32 -ladvapi32 -lkernel32 -luser32 -lole32 -lsecur32 -lntdll -ltdh -lwpcap -lPacket -laegis_pep -laegis_fim_helper -laegis_etw_helper -ODebug -target x86_64-windows -mcpu baseline -I C:\Users\User\AppData\Local\NpcapSDK\Include -L C:\Users\User\AppData\Local\NpcapSDK\Lib\x64 -L D:\NIDs_Windows\target\release -L D:\NIDs_Windows\target\helpers -Mroot=D:\NIDs_Windows\src\main.zig -lc --cache-dir D:\NIDs_Windows\.zig-cache --global-cache-dir C:\Users\User\AppData\Local\zig --name aegis_nids --listen=- 
+Build Summary: 6/9 steps succeeded; 1 failed (disable with --summary none)
+install transitive failure
++- install aegis_nids transitive failure
+   +- zig build-exe aegis_nids Debug x86_64-windows 1 errors
+error: the following build command failed with exit code 1:
+D:\NIDs_Windows\.zig-cache\o\a45b7d5ac5b9977fdede141346331a0d\build.exe D:\zig-windows-x86_64-0.13.0\zig-windows-x86_64-0.13.0\zig.exe D:\NIDs_Windows D:\NIDs_Windows\.zig-cache C:\Users\User\AppData\Local\zig --seed 0xc19a579c -Z1bb5ba53c013af14

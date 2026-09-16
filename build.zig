@@ -6,7 +6,10 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{
         .default_target = .{ .os_tag = .windows, .cpu_arch = .x86_64 },
     });
-    const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseSafe });
+    // Declare this option explicitly for Zig 0.13.0. Some 0.13 builds do
+    // not expose the standard helper's `-Doptimize` registration reliably
+    // when the build graph is loaded from a cached Windows build runner.
+    const optimize = b.option(std.builtin.OptimizeMode, "optimize", "Build optimization mode") orelse .Debug;
 
     // ----- Core NIDS Executable -----
     const exe = b.addExecutable(.{
@@ -71,8 +74,16 @@ pub fn build(b: *std.Build) void {
     // src/main.zig pulls fim.zig + etw_realtime.zig, which declare
     // extern "aegis_fim_helper" / "aegis_etw_helper" symbols. The import
     // libraries come from CMake (target/helpers) or the zig-cc stubs.
-    if (std.fs.cwd().access("target/helpers/aegis_fim_helper.lib", .{})) |_| {
-        exe.addLibraryPath(.{ .cwd_relative = "target/helpers" });
+    const target_helper_exists = std.fs.cwd().access("target/helpers/aegis_fim_helper.lib", .{}) catch null;
+    const cmake_helper_exists = std.fs.cwd().access("build/Release/aegis_fim_helper.lib", .{}) catch null;
+    const helper_dir: ?[]const u8 = if (target_helper_exists != null)
+        "target/helpers"
+    else if (cmake_helper_exists != null)
+        "build/Release"
+    else
+        null;
+    if (helper_dir) |dir| {
+        exe.addLibraryPath(.{ .cwd_relative = dir });
         exe.linkSystemLibrary("aegis_fim_helper");
         exe.linkSystemLibrary("aegis_etw_helper");
     } else |_| {
@@ -113,8 +124,8 @@ pub fn build(b: *std.Build) void {
 
     // Native helper DLLs (aegis_etw_helper / aegis_fim_helper).
     // Real builds come from CMake; for unit tests we link the zig cc stubs.
-    if (std.fs.cwd().access("target/helpers/aegis_etw_helper.lib", .{})) |_| {
-        tests.addLibraryPath(.{ .cwd_relative = "target/helpers" });
+    if (helper_dir) |dir| {
+        tests.addLibraryPath(.{ .cwd_relative = dir });
         tests.linkSystemLibrary("aegis_etw_helper");
         tests.linkSystemLibrary("aegis_fim_helper");
     } else |_| {

@@ -1,53 +1,67 @@
+"""Generate an operator threat graph from the canonical AEGIS event log."""
+import argparse
 import json
-import os
 from pathlib import Path
+
 import networkx as nx
 from pyvis.network import Network
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parent
+ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_LOG = ROOT / "logs" / "aegis_core.ndjson"
+DEFAULT_OUTPUT = ROOT / "reports" / "threat_graph.html"
 
-def generate_threat_graph(log_file=None):
-    if log_file is None:
-        log_file = str(PROJECT_ROOT / "logs" / "anomalous.json")
-    # 1. สร้าง Graph ว่างๆ ขึ้นมา
-    G = nx.Graph()
-    
-    # โหนดศูนย์กลางคือเซิร์ฟเวอร์ของเรา (NIDS)
-    G.add_node("AEGIS_NIDS (Our Server)", color="green", size=30, title="เป้าหมายที่ถูกป้องกัน")
 
-    # 2. อ่านข้อมูลจากไฟล์ Log
+def generate_threat_graph(log_file: Path = DEFAULT_LOG, output_file: Path = DEFAULT_OUTPUT) -> Path:
+    graph = nx.DiGraph()
+    graph.add_node("AEGIS_NIDS", label="AEGIS NIDS", color="#22c55e", size=32, title="Protected host")
+
+    if not log_file.exists():
+        raise FileNotFoundError(f"Canonical event log not found: {log_file}")
+
+    parsed = 0
+    with log_file.open("r", encoding="utf-8", errors="ignore") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            parsed += 1
+            src_ip = event.get("src_ip") or event.get("source_ip") or "unknown-source"
+            rule = event.get("rule") or event.get("rule_id") or "unknown-rule"
+            attack = event.get("attack_type") or event.get("event") or "event"
+            policy = str(event.get("policy") or event.get("action") or "Alert")
+            source_node = f"src:{src_ip}"
+            rule_node = f"rule:{rule}"
+            graph.add_node(source_node, label=src_ip, color="#ef4444", size=22, title=f"Source: {src_ip}")
+            graph.add_node(rule_node, label=rule, color="#f59e0b", size=18, title=f"Rule: {rule} | {attack}")
+            graph.add_edge(source_node, rule_node, label=policy, color="#ef4444")
+            graph.add_edge(rule_node, "AEGIS_NIDS", label=policy, color="#f59e0b")
+
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    network = Network(height="820px", width="100%", bgcolor="#0b1220", font_color="#e5e7eb", directed=True)
+    network.from_nx(graph)
+    network.set_options("""
+    {"interaction":{"hover":true,"navigationButtons":true},"physics":{"stabilization":{"iterations":180}}}
+    """)
+    network.save_graph(str(output_file))
+    print(f"Threat graph generated: {output_file}")
+    print(f"Events parsed: {parsed}; nodes: {graph.number_of_nodes()}; edges: {graph.number_of_edges()}")
+    return output_file
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Generate AEGIS threat graph")
+    parser.add_argument("--log", type=Path, default=DEFAULT_LOG)
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
     try:
-        with open(log_file, 'r') as f:
-            for line in f:
-                if not line.strip():
-                    continue
-                data = json.loads(line)
-                
-                # ดึงข้อมูลการโจมตี
-                attack_type = data.get("attack_type", "Unknown")
-                
-                # สมมติฐาน: ในอนาคตเราจะดึง IP จริงมาได้ (ตอนนี้ใช้ค่า Source ผสมไปก่อนเพื่อจำลอง)
-                attacker_node = f"Attacker_{attack_type}" 
-                
-                # เพิ่มโหนดผู้โจมตี (สีแดง)
-                G.add_node(attacker_node, color="red", size=20, title=f"Threat: {attack_type}")
-                
-                # ลากเส้นเชื่อม (Edge) จากผู้โจมตีมาที่เซิร์ฟเวอร์ของเรา
-                G.add_edge(attacker_node, "AEGIS_NIDS (Our Server)", label=attack_type)
-                
-    except FileNotFoundError:
-        print("ยังไม่มีไฟล์ Log ครับ")
-        return
+        generate_threat_graph(args.log, args.output)
+    except FileNotFoundError as exc:
+        parser.error(str(exc))
+    return 0
 
-    # 3. สร้าง Interactive Graph ด้วย PyVis
-    net = Network(height="750px", width="100%", bgcolor="#222222", font_color="white")
-    net.from_nx(G)
-    
-    # บันทึกเป็นไฟล์ HTML
-    output_file = str(SCRIPT_DIR / "threat_graph.html")
-    net.save_graph(output_file)
-    print(f"✅ สร้างกราฟสำเร็จ! เปิดไฟล์ {output_file} ใน Web Browser ดูได้เลยครับ")
 
 if __name__ == "__main__":
-    generate_threat_graph()
+    raise SystemExit(main())

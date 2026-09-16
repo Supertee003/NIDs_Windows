@@ -158,7 +158,7 @@ pub struct PepContext {
     pub caller_pid: u32,
     pub caller_capability_mask: u32,
     pub request_id: u64,
-    pub reserved: u32,
+    pub policy_version: u32,
 }
 
 #[repr(C)]
@@ -347,7 +347,9 @@ pub unsafe extern "C" fn aegis_pep_enforce(
     let req = unsafe { &*req };
     let resp = unsafe { &mut *resp };
 
-    // Default: allow
+    // Default is non-enforcing until authorization and adapter execution both
+    // succeed. An unavailable/failed enforcement path must never look like an
+    // authorized ALLOW to the caller.
     let mut decision = DECISION_ALLOW;
     let mut reason = 0u32;
     let quota_remaining = QUOTA_DEFAULT;
@@ -363,7 +365,8 @@ pub unsafe extern "C" fn aegis_pep_enforce(
         ACTION_RATE_LIMIT | ACTION_BLOCK | ACTION_QUARANTINE | ACTION_ESCALATE
     );
     if requires_privilege && (req.ctx.caller_capability_mask & 0x01) == 0 {
-        reason = 1; // insufficient capability (decision stays DECISION_ALLOW)
+        decision = DECISION_ESCALATE;
+        reason = 1; // authorization denied: insufficient capability
     } else if matches!(req.requested_action, ACTION_PASS | ACTION_LOG | ACTION_ALERT) {
         // Non-enforcing policy actions remain non-privileged.
         decision = DECISION_ALLOW;
@@ -404,14 +407,14 @@ pub unsafe extern "C" fn aegis_pep_enforce(
             match wfp_adapter::Adapter::load() {
                 Some(adapter) if adapter.block(req.src_ip) => {}
                 _ => {
-                    decision = DECISION_ALLOW;
+                    decision = DECISION_ESCALATE;
                     reason = 4;
                 }
             }
         }
         #[cfg(not(windows))]
         {
-            decision = DECISION_ALLOW;
+            decision = DECISION_ESCALATE;
             reason = 4;
         }
     }
@@ -575,7 +578,7 @@ mod tests {
     }
 
     #[test]
-    fn pep_enforce_no_capability_returns_allow_with_reason() {
+    fn pep_enforce_no_capability_returns_escalate_with_reason() {
         let req = PepRequest {
             decision_kind: 61,
             requested_action: ACTION_BLOCK,
@@ -601,7 +604,7 @@ mod tests {
         };
         unsafe {
             assert_eq!(aegis_pep_enforce(&req, &mut resp), 0);
-            assert_eq!(resp.decision, DECISION_ALLOW);
+            assert_eq!(resp.decision, DECISION_ESCALATE);
             assert_eq!(resp.reason, 1);
         }
     }

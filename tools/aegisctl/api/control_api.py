@@ -25,8 +25,8 @@ TOOLS_DIR = Path(__file__).resolve().parent
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
-# Repository root (two levels up from tools/aegisctl/api/)
-REPO_ROOT = TOOLS_DIR.parent.parent
+# Repository root (three levels up from tools/aegisctl/api/)
+REPO_ROOT = TOOLS_DIR.parent.parent.parent
 
 # Subsystem configuration
 SUBSYSTEMS: Dict[str, Dict[str, Any]] = {
@@ -44,6 +44,24 @@ SUBSYSTEMS: Dict[str, Dict[str, Any]] = {
 # origin monotonic makes the control contract meaningful across clock changes.
 _PROCESS_START_MONOTONIC_MS = time.monotonic_ns() // 1_000_000
 CONTROL_PIPE = r"\\.\pipe\aegis_control"
+
+WORKER_FAILURE_BITS = {
+    0: "pipeline_init_failed",
+    1: "sensor_init_failed",
+    2: "nose_init_failed",
+    3: "etw_init_failed",
+    4: "fim_init_failed",
+    5: "registry_init_failed",
+}
+
+
+def decode_worker_failure_mask(mask: Any) -> List[str]:
+    """Decode the daemon's deterministic worker failure bitmask."""
+    try:
+        value = int(mask or 0)
+    except (TypeError, ValueError):
+        return []
+    return [reason for bit, reason in WORKER_FAILURE_BITS.items() if value & (1 << bit)]
 
 
 def _query_daemon(command: str, payload: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
@@ -202,11 +220,12 @@ def get_all_status() -> List[Tuple[str, bool, Optional[int]]]:
 
 
 def load_rules() -> Dict[str, Any]:
-    """Load rules from configs/Rules.json."""
-    rules_file = TOOLS_DIR.parent.parent / "configs" / "Rules.json"
-    if rules_file.exists():
-        with open(rules_file, "r", encoding="utf-8") as f:
-            return json.load(f)
+    """Load rules from the daemon's canonical configs/Rules.json location."""
+    repo = REPO_ROOT
+    for rules_file in (repo / "configs" / "Rules.json", repo / "config" / "Rules.json"):
+        if rules_file.exists():
+            with open(rules_file, "r", encoding="utf-8") as f:
+                return json.load(f)
     return {"nids_rules": []}
 
 
@@ -417,6 +436,11 @@ def get_health_payload() -> Dict[str, Any]:
             "duplicate_event_ids": int(data_plane.get("nose_duplicate_event_ids", 0) or 0),
             "non_monotonic_event_ids": int(data_plane.get("nose_non_monotonic_event_ids", 0) or 0),
         }
+        workers = daemon_health.get("workers", {})
+        if not isinstance(workers, dict):
+            workers = {}
+        workers = dict(workers)
+        workers["failure_reasons"] = decode_worker_failure_mask(workers.get("failure_mask", 0))
         return {
             "component": daemon_health.get("component", "core"),
             "state": daemon_health.get("state", "DEGRADED"),
@@ -436,6 +460,7 @@ def get_health_payload() -> Dict[str, Any]:
             "deps": [{"name": name, "state": data["state"]} for name, data in subsystem_payload.items()],
             "degraded": bool(daemon_health.get("degraded", daemon_health.get("state") != "RUNNING")),
             "capabilities": daemon_health.get("capabilities", {}),
+            "workers": workers,
             "data_plane": data_plane,
             "exactly_once": exactly_once,
         }
@@ -472,6 +497,7 @@ def get_health_payload() -> Dict[str, Any]:
             for name, data in subsystem_payload.items()
         ],
         "degraded": degraded,
+        "workers": {"failure_reasons": []},
     }
 
 

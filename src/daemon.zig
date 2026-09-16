@@ -48,8 +48,57 @@ const SERVICE_RUNNING: u32 = 0x00000004;
 const runtime_sm = @import("control.zig").state_machine;
 extern "kernel32" fn GetCurrentProcessId() std.os.windows.DWORD;
 
+/// PHASE-1: the daemon owns every worker handle it creates. Control handlers
+/// may request a transition, but only this supervisor can signal, join, and
+/// complete the transition after all workers have terminated.
+const RuntimeSupervisor = struct {
+    pipeline: ?std.Thread = null,
+    sensor: ?std.Thread = null,
+    nose_reader: ?std.Thread = null,
+    etw: ?std.Thread = null,
+    fim: ?std.Thread = null,
+    registry: ?std.Thread = null,
+
+    pub fn requestStop(_: *RuntimeSupervisor) void {
+        state.g_stop_requested.store(true, .release);
+        bridge_init.requestShutdown();
+    }
+
+    pub fn shutdown(self: *RuntimeSupervisor) void {
+        self.requestStop();
+        // Join in reverse startup order. Every handle is joined exactly once.
+        if (self.registry) |thread| thread.join();
+        self.registry = null;
+        if (self.fim) |thread| thread.join();
+        self.fim = null;
+        if (self.etw) |thread| thread.join();
+        self.etw = null;
+        if (self.nose_reader) |thread| thread.join();
+        self.nose_reader = null;
+        if (self.sensor) |thread| thread.join();
+        self.sensor = null;
+        if (self.pipeline) |thread| thread.join();
+        self.pipeline = null;
+    }
+};
+
 pub fn runDaemon() !void {
+    // Install the sink before any startup work so failures before the control
+    // pipe exists are still visible to the console/service harness.
+    diag.Logger.setSink(diag.StderrSink.init());
+    diag.Logger.setLevel(.info);
     diag.info("AEGIS NIDS v5.0+ starting up", .{});
+
+    // Startup diagnostics are intentionally limited to resolved paths and
+    // component state; never print secrets or policy contents.  These values
+    // are essential when a Windows service and a console launch have
+    // different working directories.
+    if (std.fs.cwd().realpathAlloc(std.heap.page_allocator, ".")) |cwd| {
+        defer std.heap.page_allocator.free(cwd);
+        diag.info("startup context: cwd={s}", .{cwd});
+    } else |err| {
+        diag.warn("startup context: unable to resolve cwd: {}", .{err});
+    }
 
     // P1: Initialize runtime state machine
     runtime_sm.g_runtime.transition(.starting);
@@ -62,15 +111,11 @@ pub fn runDaemon() !void {
     runtime_sm.g_runtime.registerSubsystem(.forensic, "forensic", "1.0.0", "ring,hash,replay");
     runtime_sm.g_runtime.subsystemStarted(.zig, @as(u32, @intCast(GetCurrentProcessId())));
 
-    // 1. Diagnostics
-    diag.Logger.setSink(diag.StderrSink.init());
-    diag.Logger.setLevel(.info);
-
-    // 2. Run security self-check
+    // 1. Run security self-check
     const sc = sec_check.SecurityCheck.run();
     sc.report();
     if (!sc.passed) {
-        diag.err("Security self-check failed; refusing to start in production mode", .{});
+        diag.err("security self-check failed; refusing to start in production mode", .{});
         return error.SecurityCheckFailed;
     }
     // The daemon is the authenticated runtime caller for pipeline-originated
@@ -112,7 +157,7 @@ pub fn runDaemon() !void {
     blk: {
         const rules_path = "configs/Rules.json";
         const rules_file = std.fs.cwd().openFile(rules_path, .{}) catch |err| {
-            diag.warn("cannot open {s}: {} — detection engine has 0 rules", .{ rules_path, err });
+            diag.warn("config resolution: cannot open {s}: {} — detection engine has 0 rules", .{ rules_path, err });
             break :blk;
         };
         defer rules_file.close();
@@ -138,7 +183,7 @@ pub fn runDaemon() !void {
     blk: {
         const pol_path = "configs/policies.json";
         const pol_file = std.fs.cwd().openFile(pol_path, .{}) catch |err| {
-            diag.warn("cannot open {s}: {} — policy set empty", .{ pol_path, err });
+            diag.warn("config resolution: cannot open {s}: {} — policy set empty", .{ pol_path, err });
             break :blk;
         };
         defer pol_file.close();
@@ -302,38 +347,47 @@ pub fn runDaemon() !void {
     defer inj_detector.deinit();
 
     diag.info("AEGIS NIDS initialization complete — entering main loop", .{}); // 9. Main loop: pipeline processing + control pipe
-    // P1: Mark all subsystems as started and transition to running
-    runtime_sm.g_runtime.subsystemStarted(.go, @as(u32, @intCast(GetCurrentProcessId())));
-    runtime_sm.g_runtime.subsystemStarted(.cpp, @as(u32, @intCast(GetCurrentProcessId())));
-    runtime_sm.g_runtime.subsystemStarted(.rust_pep, @as(u32, @intCast(GetCurrentProcessId())));
-    runtime_sm.g_runtime.subsystemStarted(.tier3, @as(u32, @intCast(GetCurrentProcessId())));
-    runtime_sm.g_runtime.subsystemStarted(.control, @as(u32, @intCast(GetCurrentProcessId())));
-    runtime_sm.g_runtime.subsystemStarted(.forensic, @as(u32, @intCast(GetCurrentProcessId())));
-    runtime_sm.g_runtime.transition(.running);
+    // PHASE-1: do not mark every subsystem RUNNING before its worker and
+    // dependency have actually started. The supervisor below owns readiness.
     const start_ns = std.time.nanoTimestamp();
     if (builtin.os.tag == .windows) {
-        service.setServiceStatus(SERVICE_RUNNING, 0);
-
         // REBUILD-003: Initialize all bridges (WFP IOCTL, C++ IPC DLL, Rust Shield
         // DLL, UDP Brain). Bridges that fail to load degrade gracefully — same
         // contract as the legacy nids_main.zig startup path.
         bridge_init.initAll();
         defer bridge_init.shutdownAll();
 
+        var supervisor = RuntimeSupervisor{};
+        defer supervisor.shutdown();
+
+        // Reset handshake state before creating workers. A readiness flag is
+        // meaningful only for the current daemon generation.
+        state.g_pipeline_ready.store(false, .release);
+        state.g_sensor_ready.store(false, .release);
+        state.g_nose_ready.store(false, .release);
+        state.g_etw_ready.store(false, .release);
+        state.g_fim_ready.store(false, .release);
+        state.g_registry_ready.store(false, .release);
+        state.g_worker_failed.store(false, .release);
+        state.g_worker_failure_kind.store(@intFromEnum(state.WorkerFailureKind.none), .release);
+        state.g_worker_failure_mask.store(0, .release);
+
         // REBUILD-003: Named-pipe sensor thread (\\.\pipe\aegis_sensor_pipe).
         // Exits when bridge_init.requestShutdown() is signalled.
-        _ = std.Thread.spawn(.{}, legacy_capture.capture_packets, .{ std.heap.page_allocator, "" }) catch |err| {
+        supervisor.sensor = std.Thread.spawn(.{}, legacy_capture.capture_packets, .{ std.heap.page_allocator, "" }) catch |err| blk: {
             diag.warn("failed to spawn pipe sensor thread: {} — sensor disabled", .{err});
+            state.markWorkerFailure(.sensor);
+            break :blk null;
         };
 
         // Start pipeline loop in a separate thread
-        const pipeline_thread = std.Thread.spawn(.{}, processor.pipelineLoop, .{
+        supervisor.pipeline = std.Thread.spawn(.{}, processor.pipelineLoop, .{
             &ac, &ad, &ft, &tt, &ps, &pep_enf, &forensic_ring, rules_loaded, 0,
         }) catch |err| {
             diag.err("failed to spawn pipeline thread: {} — RECOVERY: system runs in degraded mode", .{err});
+            state.markWorkerFailure(.pipeline);
             return err;
         };
-        defer pipeline_thread.join();
 
         // Canonical network ingress is Go Nose -> aegis_nose -> Zig reader.
         // Do not start the legacy direct Zig Npcap path in production: running
@@ -344,31 +398,88 @@ pub fn runDaemon() !void {
         diag.info("direct Zig Npcap capture disabled; Go Nose is canonical network ingress", .{});
 
         // Canonical Go Nose -> named pipe -> detector pipeline queue path.
-        const nose_pipe_thread: ?std.Thread = std.Thread.spawn(.{}, nose_reader.runPipeReaderLoop, .{&state.g_stop_requested}) catch |err| blk: {
+        supervisor.nose_reader = std.Thread.spawn(.{}, nose_reader.runPipeReaderLoop, .{&state.g_stop_requested}) catch |err| blk: {
             diag.warn("failed to spawn Go Nose pipe reader: {} — external capture disabled", .{err});
+            state.markWorkerFailure(.nose);
             break :blk null;
         };
 
         // PATCH-20: Start Windows Data Plane adapter threads (Phase 3)
         // ETW thread: receives Windows kernel events (process, file, registry, image)
-        _ = std.Thread.spawn(.{}, telemetry.etwThread, .{&etw_source}) catch |err| {
+        supervisor.etw = std.Thread.spawn(.{}, telemetry.etwThread, .{&etw_source}) catch |err| blk: {
             diag.warn("failed to spawn ETW thread: {} — ETW disabled", .{err});
+            state.markWorkerFailure(.etw);
+            break :blk null;
         };
         // FIM thread: polls file integrity changes
-        _ = std.Thread.spawn(.{}, telemetry.fimThread, .{&fim_watcher}) catch |err| {
+        supervisor.fim = std.Thread.spawn(.{}, telemetry.fimThread, .{&fim_watcher}) catch |err| blk: {
             diag.warn("failed to spawn FIM thread: {} — FIM disabled", .{err});
+            state.markWorkerFailure(.fim);
+            break :blk null;
         };
         // Registry thread: polls registry changes
-        _ = std.Thread.spawn(.{}, telemetry.registryThread, .{&reg_monitor}) catch |err| {
+        supervisor.registry = std.Thread.spawn(.{}, telemetry.registryThread, .{&reg_monitor}) catch |err| blk: {
             diag.warn("failed to spawn registry thread: {} — registry monitoring disabled", .{err});
+            state.markWorkerFailure(.registry);
+            break :blk null;
         };
+
+        // Bounded readiness barrier: thread creation alone is not readiness.
+        // Do not block service startup indefinitely if a worker exits during
+        // initialization.
+        var readiness_wait_ms: u32 = 0;
+        while (!state.g_pipeline_ready.load(.acquire) and
+            !state.g_worker_failed.load(.acquire) and
+            readiness_wait_ms < 2000)
+        {
+            std.time.sleep(10 * std.time.ns_per_ms);
+            readiness_wait_ms += 10;
+        }
+
+        // Publish subsystem state from the same readiness facts used by the
+        // supervisor. Do not leave registered subsystems at their default
+        // STOPPED state after their workers have actually initialized.
+        const runtime_pid = @as(u32, @intCast(GetCurrentProcessId()));
+        if (state.g_nose_ready.load(.acquire)) {
+            runtime_sm.g_runtime.subsystemStarted(.go, runtime_pid);
+        } else {
+            runtime_sm.g_runtime.subsystemDegraded(.go, "go_nose_not_ready");
+        }
+        if (state.g_etw_ready.load(.acquire) and state.g_fim_ready.load(.acquire) and state.g_registry_ready.load(.acquire)) {
+            runtime_sm.g_runtime.subsystemStarted(.cpp, runtime_pid);
+        } else {
+            runtime_sm.g_runtime.subsystemDegraded(.cpp, "windows_telemetry_not_ready");
+        }
+        if (pep_enf.available) {
+            runtime_sm.g_runtime.subsystemStarted(.rust_pep, runtime_pid);
+        } else {
+            runtime_sm.g_runtime.subsystemDegraded(.rust_pep, "pep_unavailable");
+        }
+        if (pep_enf.available and bridge_init.allActive()) {
+            runtime_sm.g_runtime.subsystemStarted(.tier3, runtime_pid);
+        } else {
+            runtime_sm.g_runtime.subsystemDegraded(.tier3, "tier3_dependencies_not_ready");
+        }
+        runtime_sm.g_runtime.subsystemStarted(.control, runtime_pid);
+        runtime_sm.g_runtime.subsystemStarted(.forensic, runtime_pid);
+
+        // Hybrid readiness: the control/pipeline spine owns core liveness.
+        // ETW/FIM/registry/WFP adapters remain visible as degraded capability
+        // fields and must not make the daemon's primary control state appear
+        // stopped when the spine is serving safely.
+        const pipeline_failed = (state.workerFailureMask() & 0x01) != 0;
+        if (state.g_pipeline_ready.load(.acquire) and !pipeline_failed) {
+            runtime_sm.g_runtime.transition(.running);
+        } else {
+            runtime_sm.g_runtime.transition(.degraded);
+        }
+        service.setServiceStatus(SERVICE_RUNNING, 0);
 
         // Serve control pipe on main thread
         control.serveWindowsPipe(&caps, start_ns) catch |err| {
             diag.err("control server error: {}", .{err});
         };
-        state.g_stop_requested.store(true, .release);
-        if (nose_pipe_thread) |thread| thread.join();
+        supervisor.requestStop();
     } else {
         // Non-Windows: run pipeline + control loop on main thread
         diag.info("running pipeline loop (non-Windows test mode)", .{});

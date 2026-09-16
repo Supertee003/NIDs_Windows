@@ -12,8 +12,7 @@
 //! It does NOT expose any PEP enforcement symbols.
 //! Negative control: fails if PEP surface reappears in shield.
 
-use aegis_shield::pep::{evaluate, status, check_permission, PolicyRequest};
-use aegis_shield::lib::Status;
+use aegis_shield::{PolicyRequest, Status};
 
 fn main() {
     println!("Aegis Shield - Screening Helper");
@@ -24,11 +23,11 @@ fn main() {
     println!();
     
     // Demonstrate screening-only behavior
-    let req = PolicyRequest::new("rule_001".to_string(), "block_ip".to_string(), "nids-engine");
-    let decision = evaluate(&req);
-    let st = status();
-    
-    println!("Screening evaluation: {:?}", decision);
+    let req = PolicyRequest::new("rule_001".to_string(), "block_ip".to_string(), "nids-engine".to_string());
+    let decision = "OBSERVE_ONLY";
+    let st = Status::default();
+
+    println!("Screening evaluation: {} for rule {}", decision, req.rule_id);
     println!("Shield status: {{ quota: {}, two_person: {}, defcon: {} }}", 
         st.quota_remaining, st.two_person_active, st.defcon_level);
     println!();

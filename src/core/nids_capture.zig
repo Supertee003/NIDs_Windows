@@ -1,14 +1,64 @@
-﻿//! nids_capture.zig - AEGIS NIDS Named Pipe IPC Sensor (Thread 2)
+//! nids_capture.zig - AEGIS NIDS Named Pipe IPC Sensor (Thread 2)
 //!
 //! Creates a named pipe server (\\.\pipe\aegis_sensor_pipe) that
 //! accepts connections from Python sensor scripts. Payloads received
-//! via the pipe are forwarded to nids_analyze.inspect_packet()
-//! for 3-tier threat analysis.
+//! via the pipe are submitted to the daemon-owned canonical event queue.
+//! Detection, policy, and forensic processing are performed by the pipeline
+//! worker; this adapter must not call the legacy nids_analyze entrypoint.
 
 const std = @import("std");
 const bridge_init = @import("bridge_init.zig");
 const win = std.os.windows;
-const nids_analyze = @import("nids_analyze.zig");
+const runtime_state = @import("../pipeline/runtime_state.zig");
+const event = @import("../contract/event.zig");
+const event_queue = @import("../pipeline/event_queue.zig");
+
+// One identity is minted at the acquisition boundary. Wall-clock time alone
+// is not unique when multiple clients send within the same millisecond.
+var g_pipe_event_id: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+
+fn parseIpv4(text: []const u8) ?u32 {
+    var parts = std.mem.splitScalar(u8, text, '.');
+    var value: u32 = 0;
+    var count: u8 = 0;
+    while (parts.next()) |part| {
+        if (count >= 4 or part.len == 0) return null;
+        const octet = std.fmt.parseInt(u8, part, 10) catch return null;
+        value = (value << 8) | octet;
+        count += 1;
+    }
+    return if (count == 4) value else null;
+}
+
+fn applyJsonMetadata(ev: *event.IpcEvent, payload: []const u8) void {
+    var parsed = std.json.parseFromSlice(std.json.Value, std.heap.page_allocator, payload, .{}) catch return;
+    defer parsed.deinit();
+    if (parsed.value != .object) return;
+    const obj = parsed.value.object;
+
+    if (obj.get("src_ip")) |v| if (v == .string) {
+        if (parseIpv4(v.string)) |ip| ev.src_ip = ip;
+    };
+    if (obj.get("dst_ip")) |v| if (v == .string) {
+        if (parseIpv4(v.string)) |ip| ev.dst_ip = ip;
+    };
+    if (obj.get("src_port")) |v| {
+        if (v == .integer and v.integer >= 0) {
+            ev.src_port = @intCast(@min(v.integer, 65535));
+        }
+    }
+    if (obj.get("dst_port")) |v| {
+        if (v == .integer and v.integer >= 0) {
+            ev.dst_port = @intCast(@min(v.integer, 65535));
+        }
+    }
+    if (obj.get("protocol")) |v| if (v == .string) {
+        ev.protocol = if (std.ascii.eqlIgnoreCase(v.string, "TCP")) 6 else if (std.ascii.eqlIgnoreCase(v.string, "UDP")) 17 else if (std.ascii.eqlIgnoreCase(v.string, "ICMP")) 1 else 0;
+    };
+    if (obj.get("severity")) |v| if (v == .string) {
+        ev.severity = if (std.ascii.eqlIgnoreCase(v.string, "Critical")) .critical else if (std.ascii.eqlIgnoreCase(v.string, "High")) .alert else if (std.ascii.eqlIgnoreCase(v.string, "Medium")) .warning else .info;
+    };
+}
 
 // Win32 FFI
 extern "kernel32" fn CreateNamedPipeA(
@@ -65,15 +115,11 @@ const ERROR_IO_PENDING = win32_io.ERROR_IO_PENDING;
 const WAIT_OBJECT_0 = win32_io.WAIT_OBJECT_0;
 const WAIT_TIMEOUT = win32_io.WAIT_TIMEOUT;
 const IO_POLL_TIMEOUT_MS = win32_io.IO_POLL_TIMEOUT_MS;
-// Phase 28: Blueprint Nose Contract for event submission
-const nose = @import("../capture/nose_contract.zig");
-const nose_int = @import("../tests/integration/nose_integration.zig");
-
 /// Thread 2 entry point: Named Pipe IPC Sensor.
 ///
 /// Creates a named pipe server (\\.\pipe\aegis_sensor_pipe) that accepts
 /// connections from Python sensor scripts. Payloads received via the pipe
-/// are forwarded to nids_analyze.inspect_packet() for 3-tier threat analysis.
+/// are submitted to the canonical event queue for daemon-owned processing.
 ///
 /// Parameters `allocator` and `address` are currently unused (reserved for
 /// future filtering/logging features).
@@ -109,6 +155,7 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
         // NULL security descriptor uses default DACL which may allow non-admin connections
         std.log.err("[PIPE SENSOR] CRITICAL: SDDL conversion failed - REFUSING to create pipe (fail-closed)", .{});
         std.debug.print("\x1b[31m[PIPE SENSOR] CRITICAL: SDDL failed - refusing to create pipe (fail-closed)\x1b[0m\n", .{});
+        runtime_state.markWorkerFailure(.sensor);
         return;
     }
     defer if (pipe_sd) |sd| {
@@ -129,14 +176,18 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
     if (handle == win.INVALID_HANDLE_VALUE) {
         std.log.err("[PIPE SENSOR] Failed to create Named Pipe", .{});
         std.debug.print("[-] IPC Error: Failed to create Named Pipe.\n", .{});
+        runtime_state.markWorkerFailure(.sensor);
         return;
     }
     defer win.CloseHandle(handle);
+    runtime_state.g_sensor_ready.store(true, .release);
+    defer runtime_state.g_sensor_ready.store(false, .release);
 
     // BP-O2: Create event for overlapped ConnectNamedPipe
     // Phase 9: Uses win32_io.createIoEvent() helper
     const io_event = win32_io.createIoEvent() orelse {
         std.log.err("[PIPE SENSOR] CreateEventA failed - cannot use overlapped I/O", .{});
+        runtime_state.markWorkerFailure(.sensor);
         return;
     };
     defer _ = win.CloseHandle(io_event);
@@ -185,61 +236,73 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
             continue;
         }
 
-        // Connected Î“Ã‡Ã¶ read data from client
+        // Connected — read data using the same overlapped I/O contract as
+        // CreateNamedPipe. Passing a null OVERLAPPED to ReadFile on a handle
+        // created with FILE_FLAG_OVERLAPPED is not a valid synchronous read
+        // path and can leave the payload unconsumed even though the client
+        // successfully connected.
         {
             var bytes_read: u32 = 0;
+            var read_overlapped: OVERLAPPED = std.mem.zeroes(OVERLAPPED);
+            read_overlapped.event = io_event;
+            _ = win32_io.ResetEvent(io_event);
             const read_success = ReadFile(
                 handle,
                 &buffer,
                 buffer.len,
                 &bytes_read,
-                null,
+                &read_overlapped,
             ) != 0;
 
-            if (read_success and bytes_read > 0) {
+            var read_completed = read_success;
+            if (!read_success and @intFromEnum(win.kernel32.GetLastError()) == ERROR_IO_PENDING) {
+                const read_wait = win32_io.waitOverlapped(handle, &read_overlapped, io_event, IO_POLL_TIMEOUT_MS);
+                switch (read_wait) {
+                    .completed, .completed_after_wait => {
+                        read_completed = win32_io.GetOverlappedResult(
+                            handle,
+                            &read_overlapped,
+                            &bytes_read,
+                            0,
+                        ) != 0;
+                    },
+                    .timeout => {
+                        std.log.debug("[PIPE SENSOR] Read timed out; closing client", .{});
+                    },
+                    .wait_error, .result_error => {
+                        std.log.warn("[PIPE SENSOR] Overlapped read failed: {s}", .{@tagName(read_wait)});
+                    },
+                }
+            }
+
+            if (read_completed and bytes_read > 0) {
                 const payload = buffer[0..bytes_read];
                 std.log.info("[PIPE SENSOR] Captured Pipe Payload ({d} bytes)", .{bytes_read});
                 std.debug.print("[PIPE SENSOR] Captured Pipe Payload ({d} bytes)\n", .{bytes_read});
 
-                const ctx = nids_analyze.PacketContext{
-                    .is_pipe = true,
-                    .layer_id = 3,
-                };
-
-                // Phase 28 + STEP 4: Submit event to Event Fabric via pressure-aware submit
-                {
-                    var sensor_event = nose.createEvent(.pipe_sensor);
-                    sensor_event.event_type = .forward;
-                    sensor_event.payload_length = @intCast(payload.len);
-                    sensor_event.layer_id = 3;
-                    sensor_event.is_pipe = 1;
-                    sensor_event.timestamp_ms = @intCast(std.time.milliTimestamp());
-                    // STEP 4: use nose_integration.submit() for backpressure-aware sampling
-                    const submit_result = nose_int.submit(sensor_event);
-                    switch (submit_result) {
-                        .accepted => {},
-                        .dropped_at_source => {
-                            std.log.debug("[PIPE SENSOR] Event dropped at source (pressure sampling)", .{});
-                        },
-                        .dropped_by_fabric, .rejected => {
-                            std.log.warn("[PIPE SENSOR] Event Fabric submit failed: {s}", .{@tagName(submit_result)});
-                        },
-                        .not_initialized => {
-                            std.log.warn("[PIPE SENSOR] Event Fabric not initialized", .{});
-                        },
-                    }
+                // The sensor path must feed the same canonical queue as every
+                // other acquisition adapter. Previously this worker only
+                // called the legacy string scanner, so transport succeeded
+                // while pipeline metrics and forensic records remained zero.
+                var queued_event = event.IpcEvent.init(.packet_captured);
+                queued_event.source = .system;
+                queued_event.timestamp_ns = @intCast(std.time.nanoTimestamp());
+                queued_event.event_id = g_pipe_event_id.fetchAdd(1, .monotonic) + 1;
+                queued_event.flags |= 0x0000_0004; // pipe-originated
+                queued_event.setPayload(payload);
+                applyJsonMetadata(&queued_event, payload);
+                if (!event_queue.pushEvent(queued_event, payload)) {
+                    std.log.warn("[PIPE SENSOR] Canonical event queue full; event dropped", .{});
+                } else {
+                    std.log.info("[PIPE SENSOR] Canonical event queued: event_id={d}", .{queued_event.event_id});
                 }
 
-                const is_safe = nids_analyze.inspect_packet(payload, ctx) catch |analyze_err| blk: {
-                    std.log.warn("[PIPE SENSOR] Analyze error: {any} - fail-open", .{analyze_err});
-                    std.debug.print("[PIPE SENSOR] Analyze error: {any} - event allowed (fail-open)\n", .{analyze_err});
-                    _ = nids_analyze.g_analyze_errors.fetchAdd(1, .monotonic);
-                    break :blk true;
-                };
-                if (!is_safe) {
-                    std.log.warn("[BLOCK] Threat blocked at Named Pipe sensor", .{});
-                    std.debug.print("\x1b[31;1m[PIPE SENSOR] Threat blocked at Named Pipe!\x1b[0m\n", .{});
-                }
+                // The refactored daemon owns detection, policy, and forensic
+                // processing. Do not call the legacy nids_analyze/Nose fabric
+                // here: those globals are initialized only by the orphaned
+                // nids_main entrypoint and produced false "not initialized"
+                // diagnostics in the production daemon. The canonical queue
+                // above is now the sole sensor-to-detector boundary.
             }
 
             _ = DisconnectNamedPipe(handle);

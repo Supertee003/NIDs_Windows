@@ -208,6 +208,7 @@ def wait_for_state(
     target: str,
     timeout_ms: int = DEFAULT_TIMEOUTS_MS["startup"],
     interval_ms: int = 100,
+    expected_pid: int | None = None,
 ) -> dict[str, Any]:
     """Block until the component reports `target` state or the timeout
     expires. Returns the last health response. Raises TimeoutError on
@@ -216,18 +217,35 @@ def wait_for_state(
     assert_state_in(target)
     deadline = time.time() + (timeout_ms / 1000.0)
     last: dict[str, Any] = {}
+    last_success: dict[str, Any] = {}
+    last_error: str | None = None
     while time.time() < deadline:
         try:
             last = probe.health()
+            last_success = dict(last)
+            last_error = None
             assert_state_in(last.get("state", "STOPPED"))
+            if expected_pid is not None:
+                observed_pid = last.get("pid")
+                if observed_pid != expected_pid:
+                    raise ConnectionError(
+                        f"stale component response: expected_pid={expected_pid}, "
+                        f"observed_pid={observed_pid}, response={last!r}"
+                    )
             if last.get("state") == target:
                 return last
-        except (ConnectionError, OSError, json.JSONDecodeError):
-            pass
+        except (ConnectionError, OSError, json.JSONDecodeError) as exc:
+            # Preserve the protocol/transport reason.  Replacing it with an
+            # empty last response made a real handler error look like a pipe
+            # timeout and forced repeated manual probing.
+            last_error = f"{type(exc).__name__}: {exc}"
         time.sleep(interval_ms / 1000.0)
+    detail = f"; last_error: {last_error}" if last_error else ""
+    success_detail = f"; last_success: {last_success}" if last_success else ""
     raise TimeoutError(
         f"component {probe.component!r} did not reach state {target!r} "
-        f"within {timeout_ms}ms; last response: {last}"
+        f"within {timeout_ms}ms; last response: {last};"
+        f"{success_detail}{detail}"
     )
 
 
@@ -272,11 +290,16 @@ class RuntimeProbe:
         if isinstance(body, dict) and "ok" in body:
             if not body.get("ok"):
                 raise ConnectionError(
-                    f"control request rejected for component {body.get('component', '?')!r}"
+                    "control request rejected: "
+                    f"raw={body!r} "
+                    f"code={body.get('code', '?')!r} "
+                    f"state={body.get('state', '?')!r} "
+                    f"data={body.get('data', {})!r}"
                 )
+            if "data" not in body or not isinstance(body.get("data"), dict):
+                raise ConnectionError(f"incomplete control response: raw={body!r}")
             payload = body.get("data")
-            if isinstance(payload, dict):
-                return payload
+            return payload
         return body
 
     def _request(self) -> dict[str, Any]:
@@ -332,9 +355,57 @@ class RuntimeProbe:
                 ) from e
             raise
         try:
-            win32file.WriteFile(handle, b'{"op":"HEALTH"}\n')
-            _, data = win32file.ReadFile(handle, 65536)
-            return json.loads(data.decode("utf-8").strip())
+            # Use the canonical v2 control command.  The legacy HEALTH op is
+            # not a protocol command and is rejected by Command.fromString().
+            win32file.WriteFile(handle, b'{"command":"system.health","payload":{}}\n')
+            # The pipe is byte-mode. ReadFile is allowed to return a partial
+            # JSON document, especially for the ~2 KB health payload. Keep
+            # reading until one complete JSON object is available instead of
+            # interpreting a short prefix as the response.
+            received = bytearray()
+            while len(received) < 256 * 1024:
+                try:
+                    _, chunk = win32file.ReadFile(handle, 65536)
+                except Exception as e:
+                    winerror = getattr(e, "winerror", None) or (
+                        e.args[0] if e.args and isinstance(e.args[0], int) else None
+                    )
+                    # ERROR_NO_DATA (233) means the server disconnected before
+                    # this read completed.  pywintypes.error is not reliably
+                    # an OSError on Python 3.14, so normalize it explicitly so
+                    # wait_for_state can retry the one-request-per-connection
+                    # daemon protocol.
+                    if winerror in (109, 233):
+                        if received:
+                            raise json.JSONDecodeError(
+                                "server disconnected with incomplete response; "
+                                f"bytes={len(received)} tail={bytes(received[-128:])!r}",
+                                received.decode("utf-8", errors="replace"),
+                                len(received),
+                            ) from e
+                        raise ConnectionError(
+                            f"control pipe disconnected before response (winerror={winerror})"
+                        ) from e
+                    raise
+                if not chunk:
+                    break
+                received.extend(chunk)
+                try:
+                    parsed = json.loads(received.decode("utf-8").strip())
+                    if isinstance(parsed, dict) and parsed.get("ok") is False:
+                        raise ConnectionError(
+                            "control pipe returned explicit failure: "
+                            f"bytes={len(received)} raw={bytes(received)!r}"
+                        )
+                    return parsed
+                except json.JSONDecodeError:
+                    continue
+            raise json.JSONDecodeError(
+                f"incomplete control response; bytes={len(received)} "
+                f"tail={bytes(received[-128:])!r}",
+                received.decode("utf-8", errors="replace"),
+                len(received),
+            )
         finally:
             win32file.CloseHandle(handle)
 
