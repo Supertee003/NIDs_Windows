@@ -310,7 +310,7 @@ AEGIS_BRIDGE_API int32_t aegis_bridge_push_event(const Aegis::Bridge::IpcEvent* 
     return 0;
 }
 
-int32_t aegis_bridge_pop_event(Aegis::Bridge::IpcEvent* event) {
+AEGIS_BRIDGE_API int32_t aegis_bridge_pop_event(Aegis::Bridge::IpcEvent* event) {
     using namespace Aegis::Bridge;
 
     if (!g_initialized || !event) return -1;
@@ -328,7 +328,7 @@ AEGIS_BRIDGE_API uint8_t aegis_bridge_get_defcon() {
     return g_defcon.Calculate();
 }
 
-void aegis_bridge_update_defcon(uint32_t critical, uint32_t blocked,
+AEGIS_BRIDGE_API void aegis_bridge_update_defcon(uint32_t critical, uint32_t blocked,
                                 uint32_t kernel, uint32_t total) {
     using namespace Aegis::Bridge;
 
@@ -348,27 +348,27 @@ void aegis_bridge_update_defcon(uint32_t critical, uint32_t blocked,
 // Privileged enforcement MUST be requested through the authenticated Rust PEP
 // and its WFP broker. Keeping the legacy ABI but returning -2 prevents callers
 // from mistaking an unavailable enforcement path for a successful block.
-int32_t aegis_bridge_block_ip(uint32_t ip) {
+AEGIS_BRIDGE_API int32_t aegis_bridge_block_ip(uint32_t ip) {
     (void)ip;
     fprintf(stderr, "[AEGIS Bridge] IPS block rejected: direct mutation disabled; use Rust PEP\n");
     return -2; // ENFORCEMENT_UNAVAILABLE / not an authorization result
 }
 
 // SAFETY CONTAINMENT (PHASE-0): direct bridge firewall mutation is disabled.
-int32_t aegis_bridge_unblock_ip(uint32_t ip) {
+AEGIS_BRIDGE_API int32_t aegis_bridge_unblock_ip(uint32_t ip) {
     (void)ip;
     fprintf(stderr, "[AEGIS Bridge] IPS unblock rejected: direct mutation disabled; use Rust PEP\n");
     return -2; // ENFORCEMENT_UNAVAILABLE / not an authorization result
 }
 
-int32_t aegis_bridge_send_command(const Aegis::Bridge::IpcCommand* cmd) {
+AEGIS_BRIDGE_API int32_t aegis_bridge_send_command(const Aegis::Bridge::IpcCommand* cmd) {
     if (!cmd) return -1;
     fprintf(stdout, "[AEGIS Bridge] Command sent: type=%u target=%u\n",
         cmd->command_id, cmd->target_subsystem);
     return 0;
 }
 
-int32_t aegis_bridge_receive_command(Aegis::Bridge::IpcCommand* cmd) {
+AEGIS_BRIDGE_API int32_t aegis_bridge_receive_command(Aegis::Bridge::IpcCommand* cmd) {
     if (!cmd) return -1;
     return -2;
 }
@@ -378,17 +378,17 @@ AEGIS_BRIDGE_API uint32_t aegis_bridge_get_event_count() {
     return g_eventQueue.Count();
 }
 
-uint32_t aegis_bridge_get_dropped_count() {
+AEGIS_BRIDGE_API uint32_t aegis_bridge_get_dropped_count() {
     using namespace Aegis::Bridge;
     return g_eventQueue.Dropped();
 }
 
-const char* aegis_bridge_get_defcon_label() {
+AEGIS_BRIDGE_API const char* aegis_bridge_get_defcon_label() {
     using namespace Aegis::Bridge;
     return DefconAggregator::LevelLabel(g_defcon.CurrentLevel());
 }
 
-const char* aegis_bridge_get_defcon_description() {
+AEGIS_BRIDGE_API const char* aegis_bridge_get_defcon_description() {
     using namespace Aegis::Bridge;
     return DefconAggregator::LevelDescription(g_defcon.CurrentLevel());
 }

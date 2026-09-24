@@ -56,7 +56,7 @@ def scenario_dns_malware_callback() -> tuple[bool, str]:
     # This test exercises the Zig pipeline via subprocess (would require a
     # test build of aegis_nids.exe). On Linux dev env, we just verify the
     # data structures exist.
-    rule_path = ROOT / "Rules.json"
+    rule_path = ROOT / "configs" / "Rules.json"
     if not rule_path.exists():
         return False, f"missing {rule_path}"
     rules = json.loads(rule_path.read_text(encoding="utf-8"))

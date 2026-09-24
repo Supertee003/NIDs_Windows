@@ -213,7 +213,7 @@ pub const ClusterCoord = struct {
             .election = LeaderElection.init(config.election_interval_ms),
         };
         var self = &_instance.?;
-        var self_node = ClusterNode{ .node_id = config.node_id, .role = config.role, .health = .healthy, .is_self = true, .joined_ns = @intCast(std.time.nanoTimestamp()), .last_seen_ns = @intCast(std.time.nanoTimestamp()) };
+        const self_node = ClusterNode{ .node_id = config.node_id, .role = config.role, .health = .healthy, .is_self = true, .joined_ns = @intCast(std.time.nanoTimestamp()), .last_seen_ns = @intCast(std.time.nanoTimestamp()) };
         _ = self.registry.upsert(self_node);
         self.initialized = true;
         return self;

@@ -12,12 +12,12 @@
  * side uses a JSON-canonical byte stream for cross-language safety).
  *
  * The shape asserted here MUST stay in sync with:
- *   - `core/policy_plane.zig::PolicyIR`
- *   - `core/policy_plane.zig::PolicyRuleDef`
- *   - `core/policy_plane.zig::PolicyCondition`
- *   - `core/policy_plane.zig::ConditionType`
- *   - `core/policy_plane.zig::ConditionOperator`
- *   - `core/policy_plane.zig::PolicyActionDef`
+ *   - `src/policy/policy_plane.zig::PolicyIR`
+ *   - `src/policy/policy_plane.zig::PolicyRuleDef`
+ *   - `src/policy/policy_plane.zig::PolicyCondition`
+ *   - `src/policy/policy_plane.zig::ConditionType`
+ *   - `src/policy/policy_plane.zig::ConditionOperator`
+ *   - `src/policy/policy_plane.zig::PolicyActionDef`
  */
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
@@ -68,7 +68,7 @@ test("IR JSON shape: header fields are exactly magic, version, rule_count, hash,
   );
 });
 
-test("IR magic is 0x504F4C31 (POL1) — matches core/policy_plane.zig::POLICY_MAGIC", () => {
+test("IR magic is 0x504F4C31 (POL1) — matches src/policy/policy_plane.zig::POLICY_MAGIC", () => {
   const ir = compile(
     [{ id: 1, name: "r", priority: 100, action: PolicyAction.BLOCK, enabled: true, description: "", conditions: [] }],
     { compiled_at_ms: 1 },
@@ -77,7 +77,7 @@ test("IR magic is 0x504F4C31 (POL1) — matches core/policy_plane.zig::POLICY_MA
   assert.equal(ir.magic, 0x504f4c31);
 });
 
-test("IR version is 1 — matches core/policy_plane.zig::POLICY_IR_VERSION", () => {
+test("IR version is 1 — matches src/policy/policy_plane.zig::POLICY_IR_VERSION", () => {
   const ir = compile(
     [{ id: 1, name: "r", priority: 100, action: PolicyAction.BLOCK, enabled: true, description: "", conditions: [] }],
     { compiled_at_ms: 1 },
@@ -87,7 +87,7 @@ test("IR version is 1 — matches core/policy_plane.zig::POLICY_IR_VERSION", () 
 });
 
 test("ConditionType enum values match the Zig byte values", () => {
-  // These MUST stay in sync with core/policy_plane.zig::ConditionType
+  // These MUST stay in sync with src/policy/policy_plane.zig::ConditionType
   assert.equal(ConditionType.SRC_IP, 0);
   assert.equal(ConditionType.DST_IP, 1);
   assert.equal(ConditionType.SRC_PORT, 2);
@@ -126,7 +126,7 @@ test("compiler_version is the ts_policy-1.0.0 sentinel", () => {
   assert.equal(ir.compiler_version, "ts_policy-1.0.0");
 });
 
-test("MAX_POLICY_RULES is 256 — matches core/policy_plane.zig::MAX_POLICY_RULES", () => {
+test("MAX_POLICY_RULES is 256 — matches src/policy/policy_plane.zig::MAX_POLICY_RULES", () => {
   assert.equal(MAX_POLICY_RULES, 256);
 });
 

@@ -1,3 +1,10 @@
+//! QUARANTINED (VOL09-INT-001): this file is pseudo-code scaffold, not valid
+//! Zig (e.g. `expected :=`, `.#"field"` selectors). It was never compiled or
+//! executed, yet claimed "Evidence level: E3". Renamed to .scaffold so the
+//! golden-path ast-check gate stops failing on it. Rewrite as real Zig
+//! (or delete) in a dedicated slice; do NOT restore the .zig name until
+//! `zig ast-check` passes on it.
+//!
 //! golden_path_ffi.zig - Cross-language golden vector validation
 //!
 //! Proves that all languages can read the same .bin golden vector and produce

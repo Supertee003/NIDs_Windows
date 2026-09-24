@@ -71,8 +71,36 @@ func Deserialize(b []byte) (*CanonicalEvent, error) {
 	if len(b) != EventWireSize {
 		return nil, fmt.Errorf("wire format: expected %d bytes, got %d", EventWireSize, len(b))
 	}
+	// The first eight bytes are the frozen wire header:
+	// magic (u32), schema version (u16), and struct-size marker (u16).
+	// EventID starts at offset 8; treating b[0:8] as EventID silently
+	// converts a valid frame into a different semantic event.
+	if binary.LittleEndian.Uint32(b[0:4]) != EventMagic {
+		return nil, fmt.Errorf("wire format: invalid magic 0x%08x", binary.LittleEndian.Uint32(b[0:4]))
+	}
+	if binary.LittleEndian.Uint16(b[4:6]) != EventSchemaVersion {
+		return nil, fmt.Errorf("wire format: unsupported schema %d", binary.LittleEndian.Uint16(b[4:6]))
+	}
+	if binary.LittleEndian.Uint16(b[6:8]) != DefaultDevStructSize {
+		return nil, fmt.Errorf("wire format: unexpected struct size %d", binary.LittleEndian.Uint16(b[6:8]))
+	}
+	// VOL04-NOSE-001: same enum/confidence gates as CanonicalEvent.Deserialize
+	// (canonical.go) and Zig deserializeFromBytes — the FFI path must not
+	// accept frames the runtime spine would reject.
+	if !validSource(b[32]) {
+		return nil, fmt.Errorf("wire format: unknown source %d", b[32])
+	}
+	if !validEventType(binary.LittleEndian.Uint32(b[57:61])) {
+		return nil, fmt.Errorf("wire format: unknown event_type %d", binary.LittleEndian.Uint32(b[57:61]))
+	}
+	if !validPolicyAction(b[86]) {
+		return nil, fmt.Errorf("wire format: unknown policy_action %d", b[86])
+	}
+	if b[93+ResOffConfidence] > 100 {
+		return nil, fmt.Errorf("wire format: confidence must be 0-100")
+	}
 	var e CanonicalEvent
-	e.EventID = binary.LittleEndian.Uint64(b[0:8])
+	e.EventID = binary.LittleEndian.Uint64(b[8:16])
 	e.TimestampMS = binary.LittleEndian.Uint64(b[16:24])
 	e.MonotonicNS = binary.LittleEndian.Uint64(b[24:32])
 	e.Source = b[32]

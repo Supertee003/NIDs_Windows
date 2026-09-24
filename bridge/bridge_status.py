@@ -22,7 +22,7 @@ def write():
     s = {"defcon_level":d,"defcon_label":labels.get(d,"UNKNOWN"),"event_count":e,"dropped_count":dr,"critical_count":0,"blocked_ips":0,"kernel_threats":0,"total_alerts":e,"uptime_ms":int(time.time()*1000)}
     tmp = STATUS.with_suffix('.tmp')
     tmp.write_text(json.dumps(s, indent=2))
-    tmp.rename(STATUS)
+    tmp.replace(STATUS)  # atomic overwrite (rename fails on Windows if target exists)
 def main():
     if not AVAILABLE: print("[bridge_status] DLL not found"); sys.exit(0)
     if dll.aegis_bridge_init() != 0: sys.exit(1)

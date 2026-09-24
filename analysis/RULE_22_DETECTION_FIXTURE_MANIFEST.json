@@ -1,0 +1,721 @@
+{
+  "schema": "aegis.detection-fixture-manifest.v1",
+  "active": false,
+  "execution_mode": "synthetic_observe_only",
+  "rule_count": 22,
+  "global_prevention_gate": "closed",
+  "safety_contract": [
+    "No real network transmission",
+    "No executable payload",
+    "No file mutation",
+    "No process creation",
+    "No named-pipe creation",
+    "No enforcement.block request"
+  ],
+  "fixtures": [
+    {
+      "fixture_id": "FX-01-R0056",
+      "rule_id": "R0056",
+      "name": "SQL Injection (Auth Bypass)",
+      "layer": "L7",
+      "source": "synthetic_payload_event",
+      "severity": "Critical",
+      "configured_action": "Drop",
+      "expected_detection": {
+        "matched_rule_id": "R0056",
+        "fast_pattern": "SQLI_BYPASS",
+        "match_pattern": "' OR 1=1",
+        "regex_pattern": "'\\s*OR\\s*1=1|'\\s*OR\\s*'1'='1|INFO:SQLI_BYPASS"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "SQLI_BYPASS",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-02-R9064",
+      "rule_id": "R9064",
+      "name": "OS Command Injection (Semicolon)",
+      "layer": "L7",
+      "source": "synthetic_payload_event",
+      "severity": "Critical",
+      "configured_action": "Drop",
+      "expected_detection": {
+        "matched_rule_id": "R9064",
+        "fast_pattern": "OSI_SEMI",
+        "match_pattern": ";whoami",
+        "regex_pattern": "INFO:OSI_SEMI|;\\s*id|;\\s*whoami|;\\s*cat"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "OSI_SEMI",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-03-R9059",
+      "rule_id": "R9059",
+      "name": "Cross-Site Scripting (Basic)",
+      "layer": "L7",
+      "source": "synthetic_payload_event",
+      "severity": "High",
+      "configured_action": "Alert",
+      "expected_detection": {
+        "matched_rule_id": "R9059",
+        "fast_pattern": "XSS_BASIC",
+        "match_pattern": "<script>",
+        "regex_pattern": "<script>|alert[(]|INFO:XSS_BASIC|onerror="
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "XSS_BASIC",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-04-R0088",
+      "rule_id": "R0088",
+      "name": "Path Traversal (Sensitive)",
+      "layer": "L7",
+      "source": "synthetic_payload_event",
+      "severity": "Critical",
+      "configured_action": "Block",
+      "expected_detection": {
+        "matched_rule_id": "R0088",
+        "fast_pattern": "PATH_TRAV",
+        "match_pattern": "/etc/passwd",
+        "regex_pattern": "\\.\\./\\.\\./|/etc/passwd|/windows/win.ini|\\\\..\\\\..\\\\"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "PATH_TRAV",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-05-R9002",
+      "rule_id": "R9002",
+      "name": "ICMP Flood (DoS)",
+      "layer": "L4",
+      "source": "synthetic_wfp_network_event",
+      "severity": "High",
+      "configured_action": "Drop",
+      "expected_detection": {
+        "matched_rule_id": "R9002",
+        "fast_pattern": "ICMP_FLOOD",
+        "match_pattern": "PROTO:ICMP",
+        "regex_pattern": "INFO:ICMP_FLOOD|PROTO:ICMP|PING_FLOOD"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "ICMP_FLOOD",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-06-R9006",
+      "rule_id": "R9006",
+      "name": "TCP SYN Stealth Scan",
+      "layer": "L4",
+      "source": "synthetic_wfp_network_event",
+      "severity": "Medium",
+      "configured_action": "Alert",
+      "expected_detection": {
+        "matched_rule_id": "R9006",
+        "fast_pattern": "SYN_STEALTH",
+        "match_pattern": "FLAGS:S",
+        "regex_pattern": "INFO:SYN_STEALTH|FLAGS:S|0x02"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "SYN_STEALTH",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-07-R9007",
+      "rule_id": "R9007",
+      "name": "TCP XMAS Scan",
+      "layer": "L4",
+      "source": "synthetic_wfp_network_event",
+      "severity": "Medium",
+      "configured_action": "Alert",
+      "expected_detection": {
+        "matched_rule_id": "R9007",
+        "fast_pattern": "FPU",
+        "match_pattern": "FLAGS:FPU",
+        "regex_pattern": "FLAGS:FPU|0x29|XMAS_SCAN_STD"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "FPU",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-08-R1001",
+      "rule_id": "R1001",
+      "name": "System32 Write Attempt",
+      "layer": "KERNEL_FILE",
+      "source": "synthetic_fim_event",
+      "severity": "Critical",
+      "configured_action": "Block",
+      "expected_detection": {
+        "matched_rule_id": "R1001",
+        "fast_pattern": "SYS32_WRITE",
+        "match_pattern": "C:\\Windows\\System32",
+        "regex_pattern": "C:[\\\\/]Windows[\\\\/]System32|\\\\windows\\\\system32"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "SYS32_WRITE",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-09-R1002",
+      "rule_id": "R1002",
+      "name": "Ransomware Rename Pattern",
+      "layer": "KERNEL_FILE",
+      "source": "synthetic_fim_event",
+      "severity": "Critical",
+      "configured_action": "Drop",
+      "expected_detection": {
+        "matched_rule_id": "R1002",
+        "fast_pattern": "RANSOM_RENAME",
+        "match_pattern": ".locked",
+        "regex_pattern": "\\.locked|\\.encrypted|\\.cryptolocker|\\.ransom"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "RANSOM_RENAME",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-10-R1003",
+      "rule_id": "R1003",
+      "name": "Startup Folder Modification",
+      "layer": "KERNEL_FILE",
+      "source": "synthetic_fim_event",
+      "severity": "High",
+      "configured_action": "Block",
+      "expected_detection": {
+        "matched_rule_id": "R1003",
+        "fast_pattern": "STARTUP_MOD",
+        "match_pattern": "Startup",
+        "regex_pattern": "Startup|\\\\Startup\\\\|\\\\Start Menu\\\\Programs\\\\Startup"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "STARTUP_MOD",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-11-R1004",
+      "rule_id": "R1004",
+      "name": "DLL Drop in System32",
+      "layer": "KERNEL_FILE",
+      "source": "synthetic_fim_event",
+      "severity": "Critical",
+      "configured_action": "Drop",
+      "expected_detection": {
+        "matched_rule_id": "R1004",
+        "fast_pattern": "DLL_DROP",
+        "match_pattern": ".dll",
+        "regex_pattern": "\\.dll|DLL_DROP|malicious_dll"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "DLL_DROP",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-12-R1005",
+      "rule_id": "R1005",
+      "name": "hosts File Modification",
+      "layer": "KERNEL_FILE",
+      "source": "synthetic_fim_event",
+      "severity": "High",
+      "configured_action": "Block",
+      "expected_detection": {
+        "matched_rule_id": "R1005",
+        "fast_pattern": "HOSTS_MOD",
+        "match_pattern": "hosts",
+        "regex_pattern": "(?:^|[\\\\/])hosts$|C:[\\\\/]Windows[\\\\/]System32[\\\\/]drivers[\\\\/]etc[\\\\/]hosts$"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "HOSTS_MOD",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-13-R2001",
+      "rule_id": "R2001",
+      "name": "Mimikatz Execution",
+      "layer": "KERNEL_PROCESS",
+      "source": "synthetic_etw_process_event",
+      "severity": "Critical",
+      "configured_action": "Drop",
+      "expected_detection": {
+        "matched_rule_id": "R2001",
+        "fast_pattern": "MIMIKATZ",
+        "match_pattern": "mimikatz",
+        "regex_pattern": "mimikatz|MIMIKATZ|sekurlsa::logonpasswords"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "MIMIKATZ",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-14-R2002",
+      "rule_id": "R2002",
+      "name": "svchost Process Hollowing",
+      "layer": "KERNEL_PROCESS",
+      "source": "synthetic_etw_process_event",
+      "severity": "Critical",
+      "configured_action": "Drop",
+      "expected_detection": {
+        "matched_rule_id": "R2002",
+        "fast_pattern": "SVCHOST_HOLLOW",
+        "match_pattern": "svchost.exe",
+        "regex_pattern": "svchost\\.exe|PROCESS_HOLLOW|SVCHOST_HOLLOW"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "SVCHOST_HOLLOW",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-15-R2003",
+      "rule_id": "R2003",
+      "name": "PowerShell Cradle Download",
+      "layer": "KERNEL_PROCESS",
+      "source": "synthetic_etw_process_event",
+      "severity": "Critical",
+      "configured_action": "Block",
+      "expected_detection": {
+        "matched_rule_id": "R2003",
+        "fast_pattern": "PS_CRADLE",
+        "match_pattern": "IEX",
+        "regex_pattern": "IEX|DownloadString|DownloadFile|PS_CRADLE|Net\\.WebClient"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "PS_CRADLE",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-16-R2004",
+      "rule_id": "R2004",
+      "name": "certutil Download Abuse",
+      "layer": "KERNEL_PROCESS",
+      "source": "synthetic_etw_process_event",
+      "severity": "High",
+      "configured_action": "Block",
+      "expected_detection": {
+        "matched_rule_id": "R2004",
+        "fast_pattern": "CERTUTIL",
+        "match_pattern": "certutil",
+        "regex_pattern": "certutil(?:\\.exe)?\\b.*(?:-urlcache|-f)\\b"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "CERTUTIL certutil -urlcache",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-17-R2005",
+      "rule_id": "R2005",
+      "name": "procdump Credential Harvest",
+      "layer": "KERNEL_PROCESS",
+      "source": "synthetic_etw_process_event",
+      "severity": "Critical",
+      "configured_action": "Drop",
+      "expected_detection": {
+        "matched_rule_id": "R2005",
+        "fast_pattern": "PROCDUMP",
+        "match_pattern": "procdump",
+        "regex_pattern": "procdump|PROCDUMP|lsass\\.exe"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "PROCDUMP",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-18-R3001",
+      "rule_id": "R3001",
+      "name": "Cobalt Strike Named Pipe",
+      "layer": "L2_PIPE",
+      "source": "synthetic_pipe_event",
+      "severity": "Critical",
+      "configured_action": "Drop",
+      "expected_detection": {
+        "matched_rule_id": "R3001",
+        "fast_pattern": "CS_PIPE",
+        "match_pattern": "MSSE-",
+        "regex_pattern": "MSSE-|postex_|status_|CobaltStrike|CS_PIPE"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "CS_PIPE",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-19-R3002",
+      "rule_id": "R3002",
+      "name": "PsExec Remote Execution",
+      "layer": "L2_PIPE",
+      "source": "synthetic_pipe_event",
+      "severity": "High",
+      "configured_action": "Block",
+      "expected_detection": {
+        "matched_rule_id": "R3002",
+        "fast_pattern": "PSEXEC_PIPE",
+        "match_pattern": "psexec",
+        "regex_pattern": "psexec|PSEXEC|\\\\pipe\\\\psexec|\\\\pipe\\\\PAExec"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "PSEXEC_PIPE",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-20-R3003",
+      "rule_id": "R3003",
+      "name": "Anonymous Pipe Suspicious",
+      "layer": "L2_PIPE",
+      "source": "synthetic_pipe_event",
+      "severity": "Medium",
+      "configured_action": "Alert",
+      "expected_detection": {
+        "matched_rule_id": "R3003",
+        "fast_pattern": "ANON_PIPE",
+        "match_pattern": "anonymous",
+        "regex_pattern": "anonymous|\\\\pipe\\\\anonymous|ANON_PIPE"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "ANON_PIPE",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-21-R3004",
+      "rule_id": "R3004",
+      "name": "Meterpreter Named Pipe",
+      "layer": "L2_PIPE",
+      "source": "synthetic_pipe_event",
+      "severity": "Critical",
+      "configured_action": "Drop",
+      "expected_detection": {
+        "matched_rule_id": "R3004",
+        "fast_pattern": "METER_PIPE",
+        "match_pattern": "meterpreter",
+        "regex_pattern": "meterpreter|METER_PIPE|\\\\pipe\\\\meterpreter"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "METER_PIPE",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    },
+    {
+      "fixture_id": "FX-22-R3005",
+      "rule_id": "R3005",
+      "name": "atexec Scheduled Task Pipe",
+      "layer": "L2_PIPE",
+      "source": "synthetic_pipe_event",
+      "severity": "High",
+      "configured_action": "Block",
+      "expected_detection": {
+        "matched_rule_id": "R3005",
+        "fast_pattern": "ATEXEC_PIPE",
+        "match_pattern": "atsvc",
+        "regex_pattern": "atsvc|\\\\pipe\\\\atsvc|ATEXEC|ScheduleTask"
+      },
+      "synthetic_input": {
+        "kind": "fixture_marker_only",
+        "marker": "ATEXEC_PIPE",
+        "payload_execution": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "expected_observe_only": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "forensic_record": true,
+        "canonical_event": true
+      },
+      "status": "READY_FOR_SENSOR_ADAPTER"
+    }
+  ]
+}

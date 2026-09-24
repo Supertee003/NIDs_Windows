@@ -101,7 +101,9 @@ func TestDeserializeRoundTripPreservesEventID(t *testing.T) {
 		t.Fatalf("serialize: %v", err)
 	}
 	var decoded CanonicalEvent
-	decoded.Deserialize(wire)
+	if !decoded.Deserialize(wire) {
+		t.Fatal("deserialize rejected a valid golden wire frame")
+	}
 	if decoded.EventID != original.EventID {
 		t.Fatalf("event_id round-trip mismatch: got %#x want %#x", decoded.EventID, original.EventID)
 	}
@@ -173,6 +175,120 @@ func TestCanonicalOrdinalsMatchZig(t *testing.T) {
 	}
 	if ActionLogOnly != 5 {
 		t.Fatalf("log-only policy ordinal: got %d want 5", ActionLogOnly)
+	}
+	// VOL01-FOUNDATION-002: pin the full frozen vocabularies against Zig.
+	sources := map[string]byte{
+		"zig_core": 0, "wfp_sensor": 1, "pipe_sensor": 2, "minifilter": 3,
+		"pipe_monitor": 4, "python_brain": 5, "cpp_bridge": 6,
+		"rust_shield": 7, "go_aggregator": 8, "npcap_sensor": 9,
+		"host_telemetry": 10, "ml_detector": 11, "cluster_federation": 12,
+		"process_sensor": 13, "file_sensor": 14, "registry_sensor": 15,
+		"replay_sensor": 16, "external": 255,
+	}
+	got := map[string]byte{
+		"zig_core": SourceZigCore, "wfp_sensor": SourceWfpSensor,
+		"pipe_sensor": SourcePipeSensor, "minifilter": SourceMinifilter,
+		"pipe_monitor": SourcePipeMonitor, "python_brain": SourcePythonBrain,
+		"cpp_bridge": SourceCppBridge, "rust_shield": SourceRustShield,
+		"go_aggregator": SourceGoAggregator, "npcap_sensor": SourceNpcapSensor,
+		"host_telemetry": SourceHostTelemetry, "ml_detector": SourceMlDetector,
+		"cluster_federation": SourceClusterFed, "process_sensor": SourceProcessSensor,
+		"file_sensor": SourceFileSensor, "registry_sensor": SourceRegistrySensor,
+		"replay_sensor": SourceReplaySensor, "external": SourceExternal,
+	}
+	for name, want := range sources {
+		if got[name] != want {
+			t.Fatalf("source %s: got %d want %d", name, got[name], want)
+		}
+	}
+	events := map[EventType]uint32{
+		EventBlock: 0, EventMatch: 1, EventForward: 2, EventIpBlocked: 3,
+		EventRejected: 4, EventSessionStart: 5, EventSessionEnd: 6,
+		EventRulesetReload: 7, EventShutdown: 8, EventStartup: 9,
+		EventCustom: 0xFFFFFFFF,
+	}
+	for ev, want := range events {
+		if uint32(ev) != want {
+			t.Fatalf("event_type: got %d want %d", uint32(ev), want)
+		}
+	}
+	policies := map[PolicyAction]byte{
+		PolicyAllow: 0, PolicyAlert: 1, PolicyBlock: 2,
+		PolicyQuarantine: 3, PolicyRateLimit: 4, PolicyLogOnly: 5,
+	}
+	for pol, want := range policies {
+		if byte(pol) != want {
+			t.Fatalf("policy_action: got %d want %d", byte(pol), want)
+		}
+	}
+}
+
+func TestDeserializeRejectsContractViolations(t *testing.T) {
+	ev := goldenEvent()
+	wire, err := ev.Serialize()
+	if err != nil {
+		t.Fatalf("serialize: %v", err)
+	}
+	var decoded CanonicalEvent
+
+	bad := wire
+	bad[0] ^= 0xFF // corrupt magic
+	if decoded.Deserialize(bad) {
+		t.Fatal("deserialize accepted bad magic")
+	}
+	bad = wire
+	bad[32] = 17 // no EventSource between replay(16) and external(255)
+	if decoded.Deserialize(bad) {
+		t.Fatal("deserialize accepted unknown source")
+	}
+	bad = wire
+	binary.LittleEndian.PutUint32(bad[57:61], 10) // no EventType 10
+	if decoded.Deserialize(bad) {
+		t.Fatal("deserialize accepted unknown event_type")
+	}
+	bad = wire
+	bad[86] = 6 // no PolicyAction above log_only(5)
+	if decoded.Deserialize(bad) {
+		t.Fatal("deserialize accepted unknown policy_action")
+	}
+	bad = wire
+	bad[93+ResOffConfidence] = 101
+	if decoded.Deserialize(bad) {
+		t.Fatal("deserialize accepted confidence > 100")
+	}
+	bad = wire
+	binary.LittleEndian.PutUint16(bad[6:8], 109) // struct_size must be 128 (Zig @sizeOf parity)
+	if decoded.Deserialize(bad) {
+		t.Fatal("deserialize accepted wrong struct_size")
+	}
+	if _, err := (&CanonicalEvent{Source: 17}).Serialize(); err == nil {
+		t.Fatal("serialize accepted unknown source")
+	}
+}
+
+func TestFFIDeserializeRejectsContractViolations(t *testing.T) {
+	ev := goldenEvent()
+	wire, err := ev.Serialize()
+	if err != nil {
+		t.Fatalf("serialize: %v", err)
+	}
+	cases := map[string]func(*[109]byte){
+		"bad magic":      func(b *[109]byte) { b[0] ^= 0xFF },
+		"unknown source": func(b *[109]byte) { b[32] = 17 },
+		"unknown type":   func(b *[109]byte) { binary.LittleEndian.PutUint32(b[57:61], 10) },
+		"unknown action": func(b *[109]byte) { b[86] = 6 },
+		"confidence":     func(b *[109]byte) { b[93+ResOffConfidence] = 101 },
+		"struct size":    func(b *[109]byte) { binary.LittleEndian.PutUint16(b[6:8], 109) },
+	}
+	for name, corrupt := range cases {
+		bad := wire
+		corrupt(&bad)
+		if _, err := Deserialize(bad[:]); err == nil {
+			t.Fatalf("FFI deserialize accepted %s", name)
+		}
+	}
+	if _, err := Deserialize(wire[:]); err != nil {
+		t.Fatalf("FFI deserialize rejected valid golden frame: %v", err)
 	}
 }
 

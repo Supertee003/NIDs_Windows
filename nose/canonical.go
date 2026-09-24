@@ -15,10 +15,17 @@ import (
 )
 
 // ── EventSource enum ──────────────────────────────────────────
+// Ordinals MUST match src/contract/canonical_event.zig EventSource
+// (VOL01-FOUNDATION-002: added the 6 missing sources; fixed names).
 const (
-	SourceUnknown        = 0
+	SourceZigCore        = 0
 	SourceWfpSensor      = 1
+	SourcePipeSensor     = 2
 	SourceMinifilter     = 3
+	SourcePipeMonitor    = 4
+	SourcePythonBrain    = 5
+	SourceCppBridge      = 6
+	SourceRustShield     = 7
 	SourceGoAggregator   = 8
 	SourceNpcapSensor    = 9
 	SourceHostTelemetry  = 10
@@ -30,6 +37,9 @@ const (
 	SourceReplaySensor   = 16
 	SourceExternal       = 255
 
+	// Deprecated alias: 0 is zig_core (matches Zig). Kept for compat.
+	SourceUnknown = SourceZigCore
+
 	// Descriptive alias retained for callers using the long name.
 	SourceClusterFederation = SourceClusterFed
 )
@@ -37,12 +47,22 @@ const (
 // String returns the human-readable name for each source value.
 func (s Source) String() string {
 	switch s {
-	case SourceUnknown:
-		return "unknown"
+	case SourceZigCore:
+		return "zig_core"
 	case SourceWfpSensor:
 		return "wfp_sensor"
+	case SourcePipeSensor:
+		return "pipe_sensor"
 	case SourceMinifilter:
 		return "minifilter"
+	case SourcePipeMonitor:
+		return "pipe_monitor"
+	case SourcePythonBrain:
+		return "python_brain"
+	case SourceCppBridge:
+		return "cpp_bridge"
+	case SourceRustShield:
+		return "rust_shield"
 	case SourceGoAggregator:
 		return "go_aggregator"
 	case SourceNpcapSensor:
@@ -73,7 +93,7 @@ func classifyGo(src byte) byte {
 	switch src {
 	case SourceWfpSensor, SourceNpcapSensor:
 		return 0
-	case SourceHostTelemetry, SourceMinifilter:
+	case SourceHostTelemetry, SourceMinifilter, SourcePipeMonitor, SourcePipeSensor:
 		return 1
 	case SourceProcessSensor:
 		return 2
@@ -87,7 +107,7 @@ func classifyGo(src byte) byte {
 		return 6
 	case SourceReplaySensor:
 		return 7
-	case SourceGoAggregator:
+	case SourceZigCore, SourceCppBridge, SourceGoAggregator, SourcePythonBrain, SourceRustShield:
 		return 8
 	case SourceExternal:
 		return 255
@@ -97,16 +117,24 @@ func classifyGo(src byte) byte {
 }
 
 // ── EventType enum ────────────────────────────────────────────
+// Ordinals MUST match Zig EventType (VOL01-FOUNDATION-002: was iota-based
+// and wrong for every value except block; now explicit).
 const (
-	EventBlock EventType = iota
-	EventForward
-	EventAlert
-	EventCustom
-	EventSessionStart
+	EventBlock        EventType = 0
+	EventMatch        EventType = 1
+	EventForward      EventType = 2
+	EventIpBlocked    EventType = 3
+	EventRejected     EventType = 4
+	EventSessionStart EventType = 5
+	EventSessionEnd   EventType = 6
+	EventRulesetReload EventType = 7
+	EventShutdown     EventType = 8
+	EventStartup      EventType = 9
+	EventCustom       EventType = 0xFFFFFFFF
 )
 
-// Compatibility names used by the capture path. Values remain the frozen
-// canonical ordinals; aliases avoid a second competing event vocabulary.
+// Compatibility names used by the capture path. Untyped so they assign to
+// the uint32/byte wire fields; values are the frozen canonical ordinals.
 const (
 	TypeForward = 2
 	TypeMatch   = 1
@@ -114,18 +142,44 @@ const (
 
 // String returns the human-readable name for each event type.
 func (t EventType) String() string {
-	names := [5]string{"block", "forward", "alert", "custom", "session_start"}
-	if t >= 0 && t < 5 {
-		return names[t]
+	switch t {
+	case EventBlock:
+		return "block"
+	case EventMatch:
+		return "match"
+	case EventForward:
+		return "forward"
+	case EventIpBlocked:
+		return "ip_blocked"
+	case EventRejected:
+		return "rejected"
+	case EventSessionStart:
+		return "session_start"
+	case EventSessionEnd:
+		return "session_end"
+	case EventRulesetReload:
+		return "ruleset_reload"
+	case EventShutdown:
+		return "shutdown"
+	case EventStartup:
+		return "startup"
+	case EventCustom:
+		return "custom"
+	default:
+		return "unknown"
 	}
-	return "unknown"
 }
 
 // ── PolicyAction enum ─────────────────────────────────────────
+// Ordinals MUST match Zig PolicyAction (VOL01-FOUNDATION-002: was
+// iota-based block=1/failed=2; now explicit allow=0..log_only=5).
 const (
-	PolicyAllow PolicyAction = iota
-	PolicyBlock
-	PolicyFailed
+	PolicyAllow      PolicyAction = 0
+	PolicyAlert      PolicyAction = 1
+	PolicyBlock      PolicyAction = 2
+	PolicyQuarantine PolicyAction = 3
+	PolicyRateLimit  PolicyAction = 4
+	PolicyLogOnly    PolicyAction = 5
 )
 
 const (
@@ -135,11 +189,22 @@ const (
 
 // String returns the human-readable name for each policy action.
 func (p PolicyAction) String() string {
-	names := [3]string{"allow", "block", "failed"}
-	if p >= 0 && p < 3 {
-		return names[p]
+	switch p {
+	case PolicyAllow:
+		return "allow"
+	case PolicyAlert:
+		return "alert"
+	case PolicyBlock:
+		return "block"
+	case PolicyQuarantine:
+		return "quarantine"
+	case PolicyRateLimit:
+		return "rate_limit"
+	case PolicyLogOnly:
+		return "log_only"
+	default:
+		return "unknown"
 	}
-	return "unknown"
 }
 
 // ── CanonicalEvent struct ─────────────────────────────────────
@@ -187,11 +252,30 @@ var EventMagic = uint32(0x41454731)
 var EventSchemaVersion = uint16(1)
 var DefaultDevStructSize = uint16(128) // used by Go; Zig uses @sizeOf
 
+// validSource mirrors Zig deserializeFromBytes: 0-16 or 255.
+func validSource(s byte) bool {
+	return s <= SourceReplaySensor || s == SourceExternal
+}
+
+func validEventType(t uint32) bool {
+	return t <= 9 || t == uint32(EventCustom)
+}
+
+func validPolicyAction(a byte) bool {
+	return a <= byte(PolicyLogOnly)
+}
+
 // ── Serialize encodes the event to the frozen 109-byte wire format.
 func (e *CanonicalEvent) Serialize() ([EventWireSize]byte, error) {
 	var b [EventWireSize]byte
-	if e.Source > SourceExternal && e.Source != SourceExternal {
+	if !validSource(e.Source) {
 		return b, errors.New("canonical: invalid source")
+	}
+	if !validEventType(e.EventType) {
+		return b, errors.New("canonical: invalid event_type")
+	}
+	if !validPolicyAction(e.PolicyAction) {
+		return b, errors.New("canonical: invalid policy_action")
 	}
 	if e.Confidence > 100 {
 		return b, errors.New("canonical: confidence must be 0-100")
@@ -236,9 +320,30 @@ func (e *CanonicalEvent) Serialize() ([EventWireSize]byte, error) {
 }
 
 // Deserialize decodes a 109-byte wire format event into a CanonicalEvent.
-// The wire format matches the canonical_event.zig contract and
-// the Go Serialize() output.
-func (e *CanonicalEvent) Deserialize(b [EventWireSize]byte) {
+// It mirrors Zig deserializeFromBytes: validates magic, version, enum
+// ordinals and confidence, and reports false on any contract violation.
+func (e *CanonicalEvent) Deserialize(b [EventWireSize]byte) bool {
+	if binary.LittleEndian.Uint32(b[0:4]) != EventMagic {
+		return false
+	}
+	if binary.LittleEndian.Uint16(b[4:6]) != EventSchemaVersion {
+		return false
+	}
+	if binary.LittleEndian.Uint16(b[6:8]) != DefaultDevStructSize {
+		return false
+	}
+	if !validSource(b[32]) {
+		return false
+	}
+	if !validEventType(binary.LittleEndian.Uint32(b[57:61])) {
+		return false
+	}
+	if !validPolicyAction(b[86]) {
+		return false
+	}
+	if b[93+ResOffConfidence] > 100 {
+		return false
+	}
 	*e = CanonicalEvent{
 		// Header occupies bytes 0..7: magic (u32), schema (u16),
 		// and struct-size marker (u16). EventID starts at byte 8.
@@ -273,6 +378,7 @@ func (e *CanonicalEvent) Deserialize(b [EventWireSize]byte) {
 		NodeID:            binary.LittleEndian.Uint32(b[93+ResOffNodeID : 93+ResOffNodeID+4]),
 		Confidence:        b[93+ResOffConfidence],
 	}
+	return true
 }
 
 // ── SourceKind classification (cross-language T2 mapping) ───────

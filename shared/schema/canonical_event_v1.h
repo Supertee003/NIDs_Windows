@@ -22,6 +22,8 @@
 #define AEGIS_EVENT_VERSION 1u
 #define AEGIS_EVENT_SIZE    sizeof(AegisCanonicalEvent)
 
+// Ordinals MUST match src/contract/canonical_event.zig EventSource
+// (VOL01-FOUNDATION-002: added NPCAP=9 and REGISTRY=15; fixed shift).
 typedef enum {
     AEGIS_SOURCE_ZIG_CORE      = 0,
     AEGIS_SOURCE_WFP_SENSOR    = 1,
@@ -32,12 +34,14 @@ typedef enum {
     AEGIS_SOURCE_CPP_BRIDGE    = 6,
     AEGIS_SOURCE_RUST_SHIELD   = 7,
     AEGIS_SOURCE_GO_AGGREGATOR = 8,
-    AEGIS_SOURCE_HOST_TELEMETRY = 9,
-    AEGIS_SOURCE_ML_DETECTOR   = 10,
-    AEGIS_SOURCE_CLUSTER_FED   = 11,
-    AEGIS_SOURCE_PROCESS_SENS  = 12,
-    AEGIS_SOURCE_FILE_SENSOR   = 13,
-    AEGIS_SOURCE_REPLAY_SENS   = 14,
+    AEGIS_SOURCE_NPCAP_SENSOR  = 9,
+    AEGIS_SOURCE_HOST_TELEMETRY = 10,
+    AEGIS_SOURCE_ML_DETECTOR   = 11,
+    AEGIS_SOURCE_CLUSTER_FED   = 12,
+    AEGIS_SOURCE_PROCESS_SENS  = 13,
+    AEGIS_SOURCE_FILE_SENSOR   = 14,
+    AEGIS_SOURCE_REGISTRY_SENS = 15,
+    AEGIS_SOURCE_REPLAY_SENS   = 16,
     AEGIS_SOURCE_EXTERNAL      = 255,
 } AegisEventSource;
 
@@ -113,5 +117,9 @@ typedef struct {
 } AegisCanonicalEvent;
 #pragma pack(pop)
 
-// Verify size is consistent
-_Static_assert(sizeof(AegisCanonicalEvent) > 0, "CanonicalEvent must not be zero-sized");
+// Packed layout MUST be exactly 109 bytes on every compiler.
+#ifdef __cplusplus
+static_assert(sizeof(AegisCanonicalEvent) == 109, "CanonicalEvent packed size must be 109");
+#else
+_Static_assert(sizeof(AegisCanonicalEvent) == 109, "CanonicalEvent packed size must be 109");
+#endif

@@ -45,7 +45,7 @@ import {
 // =====================================================================
 
 /**
- * Mirrors `core/policy_plane.zig::CompileError`. Numeric values are
+ * Mirrors `src/policy/policy_plane.zig::CompileError`. Numeric values are
  * stable across languages (this is part of the contract).
  */
 export enum CompileError {

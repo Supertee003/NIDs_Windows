@@ -26,6 +26,7 @@ _lib_name = "aegis_ipc.dll" if _is_windows else "libaegis_ipc.so"
 _base_dir = os.path.dirname(os.path.abspath(__file__))
 _dll_paths = [
     os.path.join(_base_dir, _lib_name),                          # bridge/
+    os.path.join(_base_dir, "..", "dist", _lib_name),            # dist/ (Vol02 canonical output)
     os.path.join(_base_dir, "..", "bridge", _lib_name),          # ./bridge/
     os.path.join(_base_dir, "..", "build", "Release", _lib_name),  # build/Release/ (MSVC)
     os.path.join(_base_dir, "..", "build", "Debug", _lib_name),    # build/Debug/ (MSVC)
@@ -330,7 +331,10 @@ def ips_decide(rule_id, severity, src_ip, action="alert"):
         action: Default action from rule ('alert' or 'block')
 
     Returns:
-        Decision string: 'allow', 'alert', or 'block'
+        Decision string: 'allow', 'alert', 'block', or 'enforcement_unavailable'.
+
+    Direct bridge mutation is disabled during safety containment: a negative
+    return from block_ip() is an unavailable/rejected result, never a block.
     """
     defcon = get_defcon_level()
 

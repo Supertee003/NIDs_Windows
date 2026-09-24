@@ -8,8 +8,11 @@
 
 const std = @import("std");
 
+pub const CONTROL_PROTOCOL_VERSION: u16 = 2;
+pub const CONTROL_NONCE_BYTES: usize = 16;
+
 // ============================================================
-// Command Enum — all 30 control commands
+// Command Enum — all 31 control commands
 // ============================================================
 
 pub const Command = enum(u16) {
@@ -56,10 +59,15 @@ pub const Command = enum(u16) {
     enforcement_status = 800,
     enforcement_simulate = 801,
     enforcement_verify = 802,
+    enforcement_block = 803,
+    enforcement_unblock = 804,
 
     // --- metrics/logs domain ---
     metrics_snapshot = 900,
     logs_tail = 901,
+
+    // --- federation domain (read-only cluster status) ---
+    federation_status = 1000,
 
     // --- special ---
     daemon_shutdown = 9999,
@@ -94,8 +102,11 @@ pub const Command = enum(u16) {
             .{ .name = "enforcement.status", .cmd = .enforcement_status },
             .{ .name = "enforcement.simulate", .cmd = .enforcement_simulate },
             .{ .name = "enforcement.verify", .cmd = .enforcement_verify },
+            .{ .name = "enforcement.block", .cmd = .enforcement_block },
+            .{ .name = "enforcement.unblock", .cmd = .enforcement_unblock },
             .{ .name = "metrics.snapshot", .cmd = .metrics_snapshot },
             .{ .name = "logs.tail", .cmd = .logs_tail },
+            .{ .name = "federation.status", .cmd = .federation_status },
             .{ .name = "daemon.shutdown", .cmd = .daemon_shutdown },
             // Legacy aliases
             .{ .name = "status", .cmd = .system_status },
@@ -120,6 +131,7 @@ pub const Command = enum(u16) {
         if (v >= 700 and v < 800) return "forensics";
         if (v >= 800 and v < 900) return "enforcement";
         if (v >= 900 and v < 1000) return "metrics";
+        if (v >= 1000 and v < 1100) return "federation";
         return "special";
     }
 };
@@ -221,10 +233,15 @@ pub fn contract(cmd: Command) CommandContract {
         .enforcement_status => .{ .command = cmd, .name = "enforcement.status", .required_role = .read, .description = "Enforcement status", .is_mutation = false, .has_postcondition = false },
         .enforcement_simulate => .{ .command = cmd, .name = "enforcement.simulate", .required_role = .operate, .description = "Simulate enforcement", .is_mutation = false, .has_postcondition = false },
         .enforcement_verify => .{ .command = cmd, .name = "enforcement.verify", .required_role = .operate, .description = "Verify enforcement", .is_mutation = false, .has_postcondition = false },
+        .enforcement_block => .{ .command = cmd, .name = "enforcement.block", .required_role = .privileged, .description = "Block an exact IP/port/protocol flow through Rust PEP", .is_mutation = true, .has_postcondition = true },
+        .enforcement_unblock => .{ .command = cmd, .name = "enforcement.unblock", .required_role = .privileged, .description = "Remove an exact filter by EnforcementReceipt filter_id", .is_mutation = true, .has_postcondition = true },
 
         // --- metrics/logs domain ---
         .metrics_snapshot => .{ .command = cmd, .name = "metrics.snapshot", .required_role = .read, .description = "Metrics snapshot", .is_mutation = false, .has_postcondition = false },
         .logs_tail => .{ .command = cmd, .name = "logs.tail", .required_role = .read, .description = "Recent log entries", .is_mutation = false, .has_postcondition = false },
+
+        // --- federation domain (read-only; daemon runs standalone, see daemon.zig) ---
+        .federation_status => .{ .command = cmd, .name = "federation.status", .required_role = .read, .description = "Federation cluster status", .is_mutation = false, .has_postcondition = false },
 
         // --- special ---
         .daemon_shutdown => .{ .command = cmd, .name = "daemon.shutdown", .required_role = .privileged, .description = "Shutdown daemon", .is_mutation = true, .has_postcondition = true },
@@ -240,6 +257,9 @@ pub const Envelope = struct {
     payload: std.json.Value,
     request_id: u64,
     caller_role: Role,
+    protocol_version: u16 = CONTROL_PROTOCOL_VERSION,
+    issued_at_ms: i64 = 0,
+    nonce: ?[]const u8 = null,
 };
 
 // ============================================================
@@ -279,6 +299,8 @@ test "Command.fromString parses all commands" {
     try std.testing.expectEqual(Command.enforcement_status, Command.fromString("enforcement.status").?);
     try std.testing.expectEqual(Command.metrics_snapshot, Command.fromString("metrics.snapshot").?);
     try std.testing.expectEqual(Command.logs_tail, Command.fromString("logs.tail").?);
+    try std.testing.expectEqual(Command.federation_status, Command.fromString("federation.status").?);
+    try std.testing.expectEqualStrings("federation", Command.federation_status.domain());
     try std.testing.expectEqual(Command.daemon_shutdown, Command.fromString("daemon.shutdown").?);
     // Legacy aliases
     try std.testing.expectEqual(Command.system_status, Command.fromString("status").?);
@@ -312,4 +334,11 @@ test "contracts: read-only commands have correct role" {
     const c_stop = contract(.runtime_stop);
     try std.testing.expectEqual(Role.privileged, c_stop.required_role);
     try std.testing.expect(c_stop.is_mutation);
+}
+
+test "contracts: federation.status is read-only" {
+    const c_fed = contract(.federation_status);
+    try std.testing.expectEqual(Role.read, c_fed.required_role);
+    try std.testing.expect(!c_fed.is_mutation);
+    try std.testing.expect(!c_fed.has_postcondition);
 }

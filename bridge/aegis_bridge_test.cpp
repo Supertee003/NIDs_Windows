@@ -163,10 +163,13 @@ int main() {
     malformedPacket[9] = 0x06;  // TCP
     TEST_ASSERT(aegis_check_malformed(malformedPacket, 40) == 1, "Malformed IPv4 version detected");
 
-    // ====== Test 9: IPS Block/Unblock ======
-    fprintf(stdout, "\n--- Test 9: IPS Block/Unblock ---\n");
-    TEST_ASSERT(aegis_bridge_block_ip(0xC0A80101) == 0, "Block IP 192.168.1.1");
-    TEST_ASSERT(aegis_bridge_unblock_ip(0xC0A80101) == 0, "Unblock IP 192.168.1.1");
+    // ====== Test 9: IPS Block/Unblock (SAFETY CONTAINMENT) ======
+    // Direct bridge firewall mutation is disabled by design: privileged
+    // enforcement MUST go through the Rust PEP. The ABI is kept but must
+    // return -2 (ENFORCEMENT_UNAVAILABLE), never a successful block.
+    fprintf(stdout, "\n--- Test 9: IPS Block/Unblock (fail-closed) ---\n");
+    TEST_ASSERT(aegis_bridge_block_ip(0xC0A80101) == -2, "Block IP rejected (containment)");
+    TEST_ASSERT(aegis_bridge_unblock_ip(0xC0A80101) == -2, "Unblock IP rejected (containment)");
 
     // ====== Test 10: Dropped Events ======
     fprintf(stdout, "\n--- Test 10: Dropped Events (overflow) ---\n");

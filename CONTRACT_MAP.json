@@ -1,5 +1,5 @@
 {
-  "head_sha": "688ab566d477105df5f868cee1571fbec77eedfd",
+  "head_sha": "46b93dcf9cca17b323ddff7a4c71e33e81c37fb5",
   "created_at": "2026-09-11",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -53,15 +53,19 @@
       "frozen": true,
       "types": {
         "PepDecision": "enum(u8): allow=0, block=1, rate_limit=2, quarantine=3, escalate=4, drop=5",
-        "PepContext": "extern struct (24 bytes): caller_pid, caller_capability_mask, request_id, reserved",
-        "PepRequest": "extern struct (64 bytes): decision_kind, flow_id, src/dst ip/port, policy_id, severity, ctx",
-        "PepResponse": "extern struct (16 bytes): decision, reason, quota_remaining, signed_by"
+        "PepContext": "extern struct (24 bytes): caller_pid, caller_capability_mask, request_id, policy_version",
+        "PepRequest": "extern struct (64 bytes): decision_kind, requested_action, flow_id, src/dst ip/port, protocol, policy_id, severity, ctx@40",
+        "PepResponse": "extern struct (24 bytes): decision, reason, quota_remaining, signed_by, filter_id",
+        "PepFilterState": "packed struct (20 bytes): filter_id, remote_ipv4, remote_port, protocol, present, provider_status"
       },
       "functions": [
         "aegis_pep_init() -> c_int",
         "aegis_pep_shutdown() -> void",
         "aegis_pep_enforce(req: *PepRequest, resp: *PepResponse) -> c_int",
-        "aegis_pep_unblock_ip(ipv4: u32, caller_pid: u32, caller_capability_mask: u32, request_id: u64) -> c_int",
+        "aegis_pep_unblock_ip(ipv4: u32, caller_pid: u32, caller_capability_mask: u32, request_id: u64) -> c_int [FROZEN STUB]",
+        "aegis_pep_unblock_filter(filter_id: u64, caller_pid: u32, caller_capability_mask: u32, request_id: u64) -> c_int [ACTIVE]",
+        "aegis_pep_query_filter(filter_id: u64, out: *PepFilterState) -> c_int",
+        "aegis_pep_provider_ready() -> c_int",
         "aegis_pep_quota_remaining(src_ip: u32) -> u32"
       ],
       "invariants": [

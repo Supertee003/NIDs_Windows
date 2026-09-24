@@ -1,4 +1,12 @@
-/// RuntimeHealth - Centralized runtime health object (G13 Section 50-53)
+//! QUARANTINED (VOL09-INT-001): pseudo-code scaffold, not valid Zig
+//! (`case` prongs, `not` operator, `else if` without parens, multi-char
+//! literals). Never compiled, never imported. Renamed to .scaffold so the
+//! golden-path ast-check gate stops failing. The live health path is
+//! state_machine.zig + handler_registry.zig. Rewrite or delete in a
+//! dedicated slice; do NOT restore the .zig name until `zig ast-check`
+//! passes.
+//!
+//! RuntimeHealth - Centralized runtime health object (G13 Section 50-53)
 ///
 /// This object is the single source of truth for the AEGIS NIDS runtime health state.
 /// All frontend interfaces (CLI, TUI, WEB) MUST delegate to this object for health state.
@@ -126,9 +134,9 @@ pub fn updateHealth(
 
     for (subsystem_statuses) |ss| {
         switch (ss) {
-            case .ready => ready_count += 1;
-            case .degraded => has_degraded = true;
-            case .down, .starting => has_failed = true;
+            .ready => ready_count += 1,
+            .degraded => has_degraded = true,
+            .down, .starting => has_failed = true,
             // default: keep current state
         }
     }
@@ -137,17 +145,17 @@ pub fn updateHealth(
     var tier3_ok: bool = tier3_loaded;  // True only if Tier-3 is explicitly loaded
 
     // If Tier-3 is absent, system cannot be "healthy"
-    var effective_degraded: bool = overall_degraded or not tier3_ok;
+    var effective_degraded: bool = overall_degraded or !tier3_ok;
 
     // Determine overall state
     var overall_state: State = State.stopped;
-    if (ready_count == 6 and not has_failed and tier3_ok) {
+    if (ready_count == 6 and !has_failed and tier3_ok) {
         overall_state = State.running;
-    } else if (ready_count > 0 and not has_failed and tier3_ok) {
+    } else if (ready_count > 0 and !has_failed and tier3_ok) {
         overall_state = State.ready;
     } else if (has_failed) {
         overall_state = State.failed;
-    } else if (has_degraded or not tier3_ok) {
+    } else if (has_degraded or !tier3_ok) {
         overall_state = State.degraded;
     } else {
         overall_state = State.stopped;
@@ -214,10 +222,10 @@ pub fn healthPayload(
 }
 
 pub fn healthPayloadBool(b: bool) []const u8 {
-    if b {
-        return "true"_" "[1..];
+    if (b) {
+        return "true";
     }
-    return "false"_" "[1..];
+    return "false";
 }
 
 pub fn appendString(buf: []u8, idx: i32, s: []const u8) i32 {

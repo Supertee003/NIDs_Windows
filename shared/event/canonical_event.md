@@ -46,7 +46,7 @@ Every sensor, detector, correlator, and policy engine MUST use this model.
 
 ### Enums
 
-**EventSource (u8):**
+**EventSource (u8) — MUST match Zig EventSource ordinals:**
 - 0: Zig Core
 - 1: WFP Sensor
 - 2: Pipe Sensor
@@ -56,6 +56,14 @@ Every sensor, detector, correlator, and policy engine MUST use this model.
 - 6: C++ Bridge
 - 7: Rust Shield
 - 8: Go Aggregator
+- 9: Npcap Sensor
+- 10: Host Telemetry
+- 11: ML Detector
+- 12: Cluster Federation
+- 13: Process Sensor
+- 14: File Sensor
+- 15: Registry Sensor
+- 16: Replay Sensor
 - 255: External
 
 **EventType (u32):**
@@ -96,18 +104,21 @@ File: `rust-src/canonical_event.rs` (TBD)
 - `#[repr(C, packed)]`
 
 ### Go
-File: `nose/canonical_event.go` (TBD)
-- Struct with same field order
+File: `nose/canonical.go` (+ `nose/canonical_test.go`, `nose/golden_path_ffi.go`)
+- 109-byte wire codec with golden-byte parity vs Zig
 
 ### Python
-File: `brain/canonical_event.py` (TBD)
-- Dataclass with same field names
+File: `brain/canonical_event.py`
+- Pure-Python 109-byte wire codec (decode/encode, analytics only, no enforcement)
 
 ## Invariants
 
 - Magic MUST be 0x41454731 ("AEG1")
 - Version MUST be 1
-- Struct size MUST be 109 bytes
+- Wire size MUST be 109 bytes (explicit field-by-field codec; see WIRE_PAYLOAD_SIZE)
+- struct_size field carries the in-memory extern-struct size of the producer
+  (e.g. Zig @sizeOf = 128 due to alignment); receivers MUST validate the
+  wire frame as exactly 109 bytes and MUST NOT memcpy the in-memory layout
 - All fields are fixed-width (no pointers, no padding dependency)
 - No i128 (not portable across languages)
 - Explicit field-by-field encoding (no memcpy of struct)

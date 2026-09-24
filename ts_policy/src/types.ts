@@ -3,13 +3,13 @@
  *
  * T6 TypeScript Policy Plane — typed value system and policy schema.
  *
- * This module mirrors the Zig policy schema in `core/policy_plane.zig`
+ * This module mirrors the Zig policy schema in `src/policy/policy_plane.zig`
  * (frozen per G9, per `docs/architecture/CONTRACTS.md`). The TypeScript
  * side is the AUTHORING layer; Zig remains the DECISION authority
  * (per ADR-0001, `core/policy_engine.zig`).
  *
  * The field names, enum values, and structural shape MUST stay in sync
- * with `core/policy_plane.zig`. Tests in `tests/cross_language_contract.test.ts`
+ * with `src/policy/policy_plane.zig`. Tests in `tests/cross_language_contract.test.ts`
  * lock in the shape so any drift is detected at CI time.
  *
  * Architecture:
@@ -28,16 +28,16 @@
  */
 
 // =====================================================================
-// Constants — MUST match core/policy_plane.zig
+// Constants — MUST match src/policy/policy_plane.zig
 // =====================================================================
 
-/** "POL1" in ASCII, little-endian. Mirrors `core/policy_plane.zig::POLICY_MAGIC`. */
+/** "POL1" in ASCII, little-endian. Mirrors `src/policy/policy_plane.zig::POLICY_MAGIC`. */
 export const POLICY_MAGIC = 0x504f4c31 as const;
 
-/** Mirrors `core/policy_plane.zig::POLICY_IR_VERSION`. */
+/** Mirrors `src/policy/policy_plane.zig::POLICY_IR_VERSION`. */
 export const POLICY_IR_VERSION = 1 as const;
 
-/** Max rules per IR. Mirrors `core/policy_plane.zig::MAX_POLICY_RULES = 256`. */
+/** Max rules per IR. Mirrors `src/policy/policy_plane.zig::MAX_POLICY_RULES = 256`. */
 export const MAX_POLICY_RULES = 256 as const;
 
 /** Max conditions per rule. Mirrors the `[4]?PolicyCondition` in Zig. */
@@ -47,11 +47,11 @@ export const MAX_CONDITIONS_PER_RULE = 4 as const;
 export const COMPILER_VERSION = "ts_policy-1.0.0" as const;
 
 // =====================================================================
-// Enums — MUST match core/policy_plane.zig byte values
+// Enums — MUST match src/policy/policy_plane.zig byte values
 // =====================================================================
 
 /**
- * Field the condition matches. Mirrors `core/policy_plane.zig::ConditionType`.
+ * Field the condition matches. Mirrors `src/policy/policy_plane.zig::ConditionType`.
  * Numeric values are part of the cross-language contract.
  */
 export enum ConditionType {
@@ -67,7 +67,7 @@ export enum ConditionType {
 }
 
 /**
- * Comparison operator. Mirrors `core/policy_plane.zig::ConditionOperator`.
+ * Comparison operator. Mirrors `src/policy/policy_plane.zig::ConditionOperator`.
  */
 export enum ConditionOperator {
   EQUALS = 0,
@@ -79,7 +79,7 @@ export enum ConditionOperator {
 }
 
 /**
- * Action the rule emits. Mirrors `core/policy_plane.zig::PolicyActionDef`.
+ * Action the rule emits. Mirrors `src/policy/policy_plane.zig::PolicyActionDef`.
  *
  * T6 invariant: TypeScript defines these names but does NOT execute them.
  * Enforcement is `core/policy_engine.zig` and `shield/src/lib.rs`.
@@ -215,7 +215,7 @@ export function identity(i: string): { kind: "identity"; value: string } {
  * A condition tests one field against a value. `value2` is the upper
  * bound for `IN_RANGE`; ignored otherwise.
  *
- * Mirrors `core/policy_plane.zig::PolicyCondition`:
+ * Mirrors `src/policy/policy_plane.zig::PolicyCondition`:
  *   { field: ConditionType, operator: ConditionOperator,
  *     value: u64, value2: u64 }
  *
@@ -237,7 +237,7 @@ export interface PolicyCondition {
 // =====================================================================
 
 /**
- * Mirrors `core/policy_plane.zig::PolicyRuleDef`:
+ * Mirrors `src/policy/policy_plane.zig::PolicyRuleDef`:
  *   { id: u32, name: []const u8, priority: u8, conditions: [4]?PolicyCondition,
  *     condition_count: u8, action: PolicyActionDef, enabled: bool,
  *     description: []const u8 }
@@ -287,7 +287,7 @@ export interface PolicyExpiry {
  * The compiled IR. This is the SHAPE that cross-language tools (Zig,
  * Rust, Python) must agree on. See `tests/cross_language_contract.test.ts`.
  *
- * Mirrors `core/policy_plane.zig::PolicyIR`:
+ * Mirrors `src/policy/policy_plane.zig::PolicyIR`:
  *   { magic: u32, version: u16, rule_count: u16, rules: [256]PolicyRuleDef,
  *     hash: u64, signature: u64, compiled_at_ms: i64,
  *     compiler_version: []const u8 }

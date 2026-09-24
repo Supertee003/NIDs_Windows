@@ -20,6 +20,7 @@ Usage:
 
 import sys
 import os
+import io
 import json
 import time
 import socket
@@ -28,8 +29,19 @@ import subprocess
 import urllib.request
 import urllib.error
 
-# Add bridge directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "bridge"))
+# Windows consoles default to cp1252: reconfigure so box-drawing/arrow
+# output (UI colors, TEST headers) never raises UnicodeEncodeError.
+for _stream_name in ("stdout", "stderr"):
+    _stream = getattr(sys, _stream_name, None)
+    _reconfigure = getattr(_stream, "reconfigure", None) if _stream else None
+    if _reconfigure is not None:
+        try:
+            _reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+# Add repo-root bridge directory to path (this file lives in tests/)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "bridge"))
 
 class UI:
     GREEN = '\033[92;1m'
@@ -166,12 +178,13 @@ def test_python_bridge():
     )
     _test_result("push_tier2_match()", rc == 0, f"rc={rc}")
 
-    # Test 2h: IPS block/unblock
+    # Test 2h: IPS block/unblock (SAFETY CONTAINMENT — must return -2,
+    # never a successful block; enforcement goes through the Rust PEP)
     rc = bridge.block_ip("10.0.0.1")
-    _test_result("block_ip()", rc >= 0, f"rc={rc}")
+    _test_result("block_ip() rejected (containment)", rc == -2, f"rc={rc}")
 
     rc = bridge.unblock_ip("10.0.0.1")
-    _test_result("unblock_ip()", rc >= 0, f"rc={rc}")
+    _test_result("unblock_ip() rejected (containment)", rc == -2, f"rc={rc}")
 
     # Test 2i: Bridge shutdown
     rc = bridge.bridge_shutdown()
@@ -334,14 +347,15 @@ def test_ips_decision():
     _test_result("IPS: Low severity → alert", decision == "alert",
                 f"decision={decision}")
 
-    # Test 5b: Critical severity → block
+    # Test 5b: Critical severity → containment (direct bridge block disabled;
+    # enforcement goes through the Rust PEP, so the bridge reports unavailable)
     decision = bridge.ips_decide("R0056", 3, "192.168.1.1", "alert")
-    _test_result("IPS: Critical severity → block", decision == "block",
+    _test_result("IPS: Critical severity → enforcement_unavailable", decision == "enforcement_unavailable",
                 f"decision={decision}")
 
-    # Test 5c: High severity with block action → block
+    # Test 5c: High severity with block action → containment (same reason)
     decision = bridge.ips_decide("R0056", 2, "192.168.1.1", "block")
-    _test_result("IPS: High severity + block action → block", decision == "block",
+    _test_result("IPS: High severity + block action → enforcement_unavailable", decision == "enforcement_unavailable",
                 f"decision={decision}")
 
     bridge.bridge_shutdown()

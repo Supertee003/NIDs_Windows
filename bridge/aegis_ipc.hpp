@@ -352,26 +352,26 @@ AEGIS_BRIDGE_API int32_t  aegis_bridge_shutdown();        // Shutdown IPC bridge
 
 // ====== Event Passing ======
 AEGIS_BRIDGE_API int32_t  aegis_bridge_push_event(const Aegis::Bridge::IpcEvent* event);  // Push event to queue
-int32_t  aegis_bridge_pop_event(Aegis::Bridge::IpcEvent* event);        // Pop event from queue
+AEGIS_BRIDGE_API int32_t  aegis_bridge_pop_event(Aegis::Bridge::IpcEvent* event);        // Pop event from queue
 
 // ====== DEFCON ======
 AEGIS_BRIDGE_API uint8_t  aegis_bridge_get_defcon();                    // Get current DEFCON level
-void     aegis_bridge_update_defcon(uint32_t critical, uint32_t blocked,
+AEGIS_BRIDGE_API void     aegis_bridge_update_defcon(uint32_t critical, uint32_t blocked,
                                      uint32_t kernel, uint32_t total);  // Update DEFCON counters
 
-// ====== IPS ======
-int32_t  aegis_bridge_block_ip(uint32_t ip);   // Block IP (request to WFP driver)
-int32_t  aegis_bridge_unblock_ip(uint32_t ip); // Unblock IP
+// ====== IPS (fail-closed stubs: return -2, enforcement via Rust PEP) ======
+AEGIS_BRIDGE_API int32_t  aegis_bridge_block_ip(uint32_t ip);
+AEGIS_BRIDGE_API int32_t  aegis_bridge_unblock_ip(uint32_t ip);
 
 // ====== Command/Control ======
-int32_t  aegis_bridge_send_command(const Aegis::Bridge::IpcCommand* cmd);
-int32_t  aegis_bridge_receive_command(Aegis::Bridge::IpcCommand* cmd);
+AEGIS_BRIDGE_API int32_t  aegis_bridge_send_command(const Aegis::Bridge::IpcCommand* cmd);
+AEGIS_BRIDGE_API int32_t  aegis_bridge_receive_command(Aegis::Bridge::IpcCommand* cmd);
 
 // ====== Statistics ======
 AEGIS_BRIDGE_API uint32_t aegis_bridge_get_event_count();
-uint32_t aegis_bridge_get_dropped_count();
-const char* aegis_bridge_get_defcon_label();
-const char* aegis_bridge_get_defcon_description();
+AEGIS_BRIDGE_API uint32_t aegis_bridge_get_dropped_count();
+AEGIS_BRIDGE_API const char* aegis_bridge_get_defcon_label();
+AEGIS_BRIDGE_API const char* aegis_bridge_get_defcon_description();
 
 } // extern "C"
 
