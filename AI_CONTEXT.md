@@ -4,11 +4,11 @@
 
 
 
-**HEAD:** `46b93dcf9cca17b323ddff7a4c71e33e81c37fb5`
+**HEAD:** `daf90885d7def23b899712090cff71835873567f`
 
 **BRANCH:** `main`
 
-**GENERATED:** 2026-09-12T00:00:00.000000+00:00
+**GENERATED:** 2026-09-24T00:00:00.000000+00:00
 
 **GENERATOR:** opencode agent (TRUTH-REBUILD current-HEAD resync)
 
@@ -345,7 +345,12 @@ Previous phases:
 
 
 
-P0 risks as of HEAD `60c76fe` (2026-09-12):
+> HISTORICAL NOTE (TRUTH-REBUILD daf9088): the P0 list below is a 2026-09-12
+> snapshot taken as of HEAD `60c76fe`. Entries marked FIXED/CLOSED describe
+> that snapshot, not a fresh current-HEAD audit. Do not treat this list as
+> current blockers without re-verification.
+
+P0 risks as of HEAD `60c76fe` (2026-09-12) — HISTORICAL snapshot:
 
 
 
@@ -373,9 +378,8 @@ P0 risks as of HEAD `60c76fe` (2026-09-12):
 
   CI gates only canonical jobs (see ci_coverage.json).
 
-- P0-4: Machine maps stale (HEAD mismatch) — **FIXED** (all maps now carry
-
-  `60c76fe`).
+- P0-4: Machine maps stale (HEAD mismatch) — **FIXED at snapshot time** (maps
+  then carried `60c76fe`; current-HEAD stamps are re-synced by TRUTH-REBUILD).
 
 - P0-5: CLI canonical path conflict (`scripts/aegisctl.py` vs
 
