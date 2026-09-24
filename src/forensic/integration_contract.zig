@@ -177,14 +177,20 @@ pub const PepDecision = enum(u8) {
     quarantine = 3,
 };
 
-/// Zig → Rust PEP FFI function signatures.
-pub extern "aegis_pep" fn aegis_pep_init() callconv(.C) i32;
-pub extern "aegis_pep" fn aegis_pep_shutdown() callconv(.C) void;
-pub extern "aegis_pep" fn aegis_pep_enforce(
-    req: *const PepRequest,
-    resp: *PepResponse,
-) callconv(.C) i32;
-pub extern "aegis_pep" fn aegis_pep_quota_remaining() callconv(.C) u32;
+// Zig PEP FFI signatures (QUARANTINED, see below).
+//
+// QUARANTINED (NEG-001): duplicate PEP surface. The live bindings are the
+// sole authority in src/policy/pep_bindings.zig (24-byte PepResponse with
+// filter_id). These declarations were stale (16-byte response, wrong quota
+// signature) and had zero callers. Kept commented as a negative control:
+// NEG-001 fails if an active `extern "aegis_pep"` reappears in this file.
+// pub extern "aegis_pep" fn aegis_pep_init() callconv(.C) i32;
+// pub extern "aegis_pep" fn aegis_pep_shutdown() callconv(.C) void;
+// pub extern "aegis_pep" fn aegis_pep_enforce(
+//     req: *const PepRequest,
+//     resp: *PepResponse,
+// ) callconv(.C) i32;
+// pub extern "aegis_pep" fn aegis_pep_quota_remaining() callconv(.C) u32;
 
 // ============================================================================
 // Tests

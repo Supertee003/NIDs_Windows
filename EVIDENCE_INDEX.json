@@ -1,5 +1,5 @@
 {
-  "head_sha": "daf90885d7def23b899712090cff71835873567f",
+  "head_sha": "c005ccf5443b3646d1b8613493e1beffb1e1ce8c",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -886,6 +886,305 @@
       ],
       "result": "PENDING",
       "finding": "Web dashboard scaffold created; integration test pending"
+    },
+    {
+      "id": "VOL01-FOUNDATION-001",
+      "title": "Vol01 foundation docs + brain codec",
+      "level": "E2",
+      "component": "contracts",
+      "description": "PEP ABI docs 16B->24B + receipt fns; canonical wire-vs-struct clarify; brain/canonical_event.py 109B codec.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "shared/abi/pep_abi.md",
+        "shared/event/canonical_event.md",
+        "CONTRACT_MAP.json",
+        "brain/canonical_event.py",
+        "brain/test_canonical_event.py"
+      ],
+      "tests": [
+        "python codec round-trip 109B",
+        "test_pep_abi_layout.py 7 passed",
+        "truth.py TRUTH_VALID"
+      ],
+      "finding": "implemented + verified",
+      "result": "PASS"
+    },
+    {
+      "id": "VOL01-FOUNDATION-002",
+      "title": "CanonicalEvent cross-language ABI parity",
+      "level": "E2",
+      "component": "contracts",
+      "description": "C source enum to Zig ordinals + 109B static_assert; Go explicit enums + serialize/deserialize validation; Python enum parity + validation; Zig memcpy helpers quarantined.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "shared/schema/canonical_event_v1.h",
+        "nose/canonical.go",
+        "nose/canonical_test.go",
+        "brain/canonical_event.py",
+        "src/contract/canonical_event.zig"
+      ],
+      "tests": [
+        "zig test 30/30 incl golden vector",
+        "go test incl golden vector",
+        "pytest golden test",
+        "gcc C+C++ assert"
+      ],
+      "finding": "implemented + verified",
+      "result": "PASS"
+    },
+    {
+      "id": "VOL02-BUILD-001",
+      "title": "9-step build pipeline + full rebuild",
+      "level": "E5",
+      "component": "build",
+      "description": "build_all.bat rewritten to frozen order (PEP before Zig, isolated bridge dir, cache recovery); all 9 steps executed on Windows host; 8/8 artifacts.",
+      "flow_id": "BUILD",
+      "files_changed": [
+        "scripts/build_all.bat",
+        "build_truth.json"
+      ],
+      "tests": [
+        "cmake 3 DLLs",
+        "cargo PEP+shield",
+        "zig build",
+        "go nose+aggregator",
+        "tsc 67 tests",
+        "artifact checklist 8/8"
+      ],
+      "finding": "implemented + verified",
+      "result": "PASS"
+    },
+    {
+      "id": "VOL03-CONTROL-001",
+      "title": "federation.status control command",
+      "level": "E3",
+      "component": "control",
+      "description": "Added federation_status=1000 to protocol (read-only) + standalone handler; command previously UNKNOWN_COMMAND.",
+      "flow_id": "CONTROL-001",
+      "files_changed": [
+        "src/control/protocol.zig"
+      ],
+      "tests": [
+        "zig test protocol 4/4",
+        "zig build EXIT 0, handler in binary"
+      ],
+      "finding": "implemented + verified",
+      "result": "PASS"
+    },
+    {
+      "id": "VOL04-NOSE-001",
+      "title": "Go decoder validation parity",
+      "level": "E2",
+      "component": "nose",
+      "description": "canonical Deserialize +struct_size gate; FFI Deserialize +enum/confidence gates mirroring Zig.",
+      "flow_id": "FFI-003",
+      "files_changed": [
+        "nose/canonical.go",
+        "nose/golden_path_ffi.go",
+        "nose/canonical_test.go"
+      ],
+      "tests": [
+        "go vet clean",
+        "go test incl TestFFIDeserializeRejects",
+        "go build"
+      ],
+      "finding": "implemented + verified",
+      "result": "PASS"
+    },
+    {
+      "id": "VOL05-PEP-001",
+      "title": "Fail-closed truth in bridge tests",
+      "level": "E2",
+      "component": "pep",
+      "description": "Bridge selftest/e2e/ctypes asserted successful direct block; aligned to -2 containment + enforcement_unavailable.",
+      "flow_id": "PLANE-D",
+      "files_changed": [
+        "bridge/aegis_bridge_test.cpp",
+        "bridge/aegis_bridge_ctypes.py",
+        "shared/aegis_bridge_ctypes.py",
+        "tests/test_e2e.py"
+      ],
+      "tests": [
+        "aegis_bridge_test 36/36",
+        "cargo test 20",
+        "tests/pep 11",
+        "bypass audit PASS all languages"
+      ],
+      "finding": "implemented + verified",
+      "result": "PASS"
+    },
+    {
+      "id": "VOL06-BRIDGE-001",
+      "title": "Bridge dllexport + status script",
+      "level": "E2",
+      "component": "bridge",
+      "description": "Exported get_dropped_count (+full ctypes surface); bridge_status.py rename->replace fix; selftest + status JSON proof.",
+      "flow_id": "FFI-002",
+      "files_changed": [
+        "bridge/aegis_ipc.hpp",
+        "bridge/aegis_ipc.cpp",
+        "bridge/bridge_status.py"
+      ],
+      "tests": [
+        "bridge_test 36/36",
+        "adapter selftest OK",
+        "bridge_status.json valid"
+      ],
+      "finding": "implemented + verified",
+      "result": "PASS"
+    },
+    {
+      "id": "VOL07-BRAIN-001",
+      "title": "check_brain.py + brain suite",
+      "level": "E2",
+      "component": "brain",
+      "description": "Fixed evidence-list traversal crash; full brain suite green.",
+      "flow_id": "BRAIN-001",
+      "files_changed": [
+        "scripts/check_brain.py"
+      ],
+      "tests": [
+        "pytest brain/ 75 passed"
+      ],
+      "finding": "implemented + verified",
+      "result": "PASS"
+    },
+    {
+      "id": "VOL08-POLICY-001",
+      "title": "TS stale core/ path refs",
+      "level": "E2",
+      "component": "policy",
+      "description": "27 core/policy_plane.zig refs in live TS code -> src/policy/policy_plane.zig; TS-Zig parity verified exact.",
+      "flow_id": "POLICY",
+      "files_changed": [
+        "ts_policy/src/types.ts",
+        "ts_policy/src/compiler.ts",
+        "ts_policy/tests/cross_language_contract.test.ts"
+      ],
+      "tests": [
+        "tsc clean",
+        "test:all 67/67",
+        "zig test policy_plane 20/20"
+      ],
+      "finding": "implemented + verified",
+      "result": "PASS"
+    },
+    {
+      "id": "VOL09-INT-001",
+      "title": "Golden-path gate 10/10",
+      "level": "E3",
+      "component": "integration",
+      "description": "Rules.json path fix; federation var->const; quarantined 2 pseudo-Zig scaffolds blocking ast-check gate.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "tests/test_golden_path.py",
+        "src/federation/federation.zig",
+        "src/control/health/runtime_health.zig.scaffold",
+        "src/tests/integration/golden_path_ffi.zig.scaffold"
+      ],
+      "tests": [
+        "test_golden_path 10/10"
+      ],
+      "finding": "implemented + verified",
+      "result": "PASS"
+    },
+    {
+      "id": "VOL09-INT-002",
+      "title": "Pipe reunion + e2e runnable + exports",
+      "level": "E3",
+      "component": "integration",
+      "description": "Control pipe reunited to aegis_control (ECOSYSTEM-wide); e2e UTF-8/sys.path fixes; full ctypes export surface; dist/ DLL search path; e2e IPS expectations to containment truth.",
+      "flow_id": "CONTROL-001",
+      "files_changed": [
+        "tests/test_e2e.py",
+        "bridge/aegis_ipc.hpp",
+        "bridge/aegis_ipc.cpp",
+        "bridge/aegis_bridge_ctypes.py",
+        "shared/aegis_bridge_ctypes.py"
+      ],
+      "tests": [
+        "e2e 38 passed/0 failed",
+        "bridge_test 36/36",
+        "golden 10/10",
+        "contracts 7/7"
+      ],
+      "finding": "implemented + verified",
+      "result": "PASS"
+    },
+    {
+      "id": "VOL10-CLI-001",
+      "title": "aegisctl federation + live daemon proof",
+      "level": "E5",
+      "component": "cli",
+      "description": "Added CLI federation command; live daemon query returned standalone JSON; status READY 6/7 with full health payload.",
+      "flow_id": "CONTROL-001",
+      "files_changed": [
+        "tools/aegisctl.py"
+      ],
+      "tests": [
+        "live aegisctl federation/status/health vs running daemon",
+        "py_compile",
+        "TRUTH_VALID"
+      ],
+      "finding": "implemented + verified",
+      "result": "PASS"
+    },
+    {
+      "id": "VOL11-ATK-001",
+      "title": "R2004 fixture trigger, 22/22 observe-only",
+      "level": "E3",
+      "component": "testing",
+      "description": "Generator MARKER_TRIGGER for rules whose regex needs abuse tokens; regenerated manifest; all gates green, gate closed.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "scripts/generate_detection_fixture_manifest.py",
+        "analysis/RULE_22_DETECTION_FIXTURE_MANIFEST.json"
+      ],
+      "tests": [
+        "rule matching 22/22 exit 0",
+        "fixture manifest valid",
+        "adapters 22/22 host_effect 0"
+      ],
+      "finding": "implemented + verified",
+      "result": "PASS"
+    },
+    {
+      "id": "NEG-001",
+      "title": "Forbidden language-boundary edges (negative controls)",
+      "level": "E2",
+      "component": "security",
+      "description": "7 negative controls: shield single export, Go no PEP/WFP, Python no firewall effect, C/C++ no policy decisions, bridge fail-closed, Zig PEP FFI confined to pep_bindings, TS no native deps. Quarantined duplicate PEP decls in integration_contract.zig (zero callers).",
+      "flow_id": "FFI-001",
+      "files_changed": [
+        "tests/security/test_forbidden_edges.py",
+        "src/forensic/integration_contract.zig"
+      ],
+      "tests": [
+        "pytest tests/security/test_forbidden_edges.py 7/7",
+        "planted-violation fails as designed",
+        "zig test integration_contract.zig 36/36"
+      ],
+      "finding": "implemented + verified",
+      "result": "PASS"
+    },
+    {
+      "id": "CLI-002",
+      "title": "CLI mutations cannot claim host effect",
+      "level": "E2",
+      "component": "cli",
+      "description": "Deleted dead block/quarantine/enforce mutation bodies that wrote local JSON and printed BLOCKED without PEP/receipt. Mutations refused offline (exit 4); reads intact. Repaired T16 AC3 test to live architecture.",
+      "flow_id": "CONTROL-001",
+      "files_changed": [
+        "tools/aegisctl.py",
+        "tests/security/test_cli_mutation_gate.py",
+        "tests/security/test_t16_security_hardening.py"
+      ],
+      "tests": [
+        "pytest tests/security/test_cli_mutation_gate.py 5/5",
+        "pytest tests/security/ 41/41"
+      ],
+      "finding": "implemented + verified",
+      "result": "PASS"
     }
   ],
   "known_gaps": [
@@ -1245,10 +1544,10 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 9,
-    "E2_count": 24,
-    "E3_count": 8,
+    "E2_count": 33,
+    "E3_count": 12,
     "E4_count": 0,
-    "E5_count": 2,
+    "E5_count": 4,
     "E6_count": 0,
     "E7_count": 1
   }

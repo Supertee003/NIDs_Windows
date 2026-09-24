@@ -690,67 +690,35 @@ def _ip_entries(path: Path, key: str) -> list[dict]:
 
 
 def cmd_block(args) -> int:
-    if getattr(args, "block_command", "list") not in {"list"}:
+    # NEG-002: list-only. Mutations go through the control plane
+    # (enforcement.block -> Rust PEP -> receipt -> postcondition). The local
+    # file is a candidate view, never a host effect: this command must never
+    # print BLOCKED and never write blocked_ips.json.
+    if getattr(args, "block_command", "list") != "list":
         return _unavailable("block", "pep_wfp_postcondition_not_connected")
-    path = TOOLS_DIR.parent / "logs" / "blocked_ips.json"; key = "blocked_ips"
-    entries = _ip_entries(path, key); op = args.block_command
-    if op == "list":
-        if not entries: print("No IPs in the block list")
-        else:
-            for e in entries: print(f"{e['ip']}  {e.get('reason','')}")
-            print(f"Total: {len(entries)}")
-        return 0
-    if op == "clear":
-        if not entries: print("Block list already empty")
-        else: print(f"Cleared {len(entries)} blocked IPs")
-        _save_state(path, {key: []}); return 0
-    ip = args.ip
-    if op == "add":
-        if any(e.get("ip") == ip for e in entries): print(f"{ip} already BLOCKED"); return 0
-        entries.append({"ip": ip, "reason": getattr(args, "reason", ""), "duration": getattr(args, "duration", None), "created_at": int(time.time())})
-        _save_state(path, {key: entries}); print(f"{ip} BLOCKED" + (f" for {args.duration}s" if args.duration else "")); return 0
-    before = len(entries); entries = [e for e in entries if e.get("ip") != ip]; _save_state(path, {key: entries})
-    print(f"{ip} UNBLOCKED" if len(entries) < before else f"{ip} NOT in the block list"); return 0
+    path = TOOLS_DIR.parent / "logs" / "blocked_ips.json"
+    for e in _ip_entries(path, "blocked_ips"):
+        print(f"{e['ip']}  {e.get('reason','')}")
+    return 0
 
 
 def cmd_enforce(args) -> int:
+    # NEG-002: status-only. enable/disable/push mutate enforcement posture
+    # and require a daemon-owned, receipt-verified transaction.
     if getattr(args, "enforce_command", "status") != "status":
         return _unavailable("enforce", "pep_runtime_postcondition_not_connected")
-    path = _state_file("pep_state.json"); state = _load_state(path, {"enabled": True, "mode": "FAIL_CLOSED"}); op = args.enforce_command
-    if op == "status": print(f"PEP\nEnabled: {state.get('enabled', True)}\nMode: {state.get('mode','FAIL_CLOSED')}"); return 0
-    if op in {"enable", "disable"}:
-        value = op == "enable"
-        if bool(state.get("enabled", True)) == value: print(f"Enforcement already {'ENABLED' if value else 'DISABLED'}")
-        else: state["enabled"] = value; print(f"Enforcement {'ENABLED' if value else 'DISABLED'}")
-        _save_state(path, state); return 0
-    policy = Path(args.policy)
-    if not policy.exists(): print(f"Policy file not found: {policy}"); return 1
-    try: data = json.loads(policy.read_text(encoding="utf-8"))
-    except json.JSONDecodeError: print("Invalid JSON policy"); return 1
-    rules_path = TOOLS_DIR.parent / "config" / "Rules.json"; rules_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-    print(f"Policy pushed. Rules: {len(data.get('nids_rules', []))}"); return 0
+    path = _state_file("pep_state.json"); state = _load_state(path, {"enabled": True, "mode": "FAIL_CLOSED"})
+    print(f"PEP\nEnabled: {state.get('enabled', True)}\nMode: {state.get('mode','FAIL_CLOSED')}"); return 0
 
 
 def cmd_quarantine(args) -> int:
-    if getattr(args, "quarantine_command", "list") not in {"list"}:
+    # NEG-002: list-only, same authority rule as cmd_block.
+    if getattr(args, "quarantine_command", "list") != "list":
         return _unavailable("quarantine", "pep_wfp_postcondition_not_connected")
-    qpath = TOOLS_DIR.parent / "logs" / "quarantine.json"; bpath = TOOLS_DIR.parent / "logs" / "blocked_ips.json"
-    qs = _ip_entries(qpath, "quarantined_ips"); bs = _ip_entries(bpath, "blocked_ips"); op = args.quarantine_command
-    if op == "list":
-        if not qs: print("No IPs in quarantine")
-        else:
-            for e in qs: print(f"{e['ip']}  {e.get('reason','')}")
-            print(f"Total: {len(qs)}")
-        return 0
-    ip = args.ip
-    if op == "add":
-        if any(e.get("ip") == ip for e in qs): print(f"{ip} already QUARANTINED"); return 0
-        entry = {"ip": ip, "reason": f"QUARANTINE: {getattr(args,'reason','')}"}; qs.append(entry)
-        if not any(e.get("ip") == ip for e in bs): bs.append(entry)
-        _save_state(qpath, {"quarantined_ips": qs}); _save_state(bpath, {"blocked_ips": bs}); print(f"{ip} QUARANTINED"); return 0
-    before = len(qs); qs = [e for e in qs if e.get("ip") != ip]; bs = [e for e in bs if e.get("ip") != ip]
-    _save_state(qpath, {"quarantined_ips": qs}); _save_state(bpath, {"blocked_ips": bs})
-    print(f"{ip} removed from quarantine" if len(qs) < before else f"{ip} NOT in the quarantine"); return 0
+    qpath = TOOLS_DIR.parent / "logs" / "quarantine.json"
+    for e in _ip_entries(qpath, "quarantined_ips"):
+        print(f"{e['ip']}  {e.get('reason','')}")
+    return 0
 
 
 def cmd_alerts(args) -> int:
@@ -934,7 +902,7 @@ def main() -> int:
     crun = canary_sub.add_parser("run"); crun.add_argument("--test")
     canary_sub.add_parser("status"); canary_sub.add_parser("report")
     canary.set_defaults(func=cmd_canary)
-    block = sub.add_parser("block", help="Block IP through PEP request")
+    block = sub.add_parser("block", help="List block candidates (mutations need the control plane)")
     block_sub = block.add_subparsers(dest="block_command")
     badd = block_sub.add_parser("add"); badd.add_argument("--ip", required=True); badd.add_argument("--reason", default=""); badd.add_argument("--duration", type=int)
     brem = block_sub.add_parser("remove"); brem.add_argument("--ip", required=True)
@@ -944,7 +912,7 @@ def main() -> int:
     enforce_sub.add_parser("status"); enforce_sub.add_parser("enable"); enforce_sub.add_parser("disable")
     epush = enforce_sub.add_parser("push"); epush.add_argument("--policy", required=True)
     enforce.set_defaults(func=cmd_enforce)
-    quarantine = sub.add_parser("quarantine", help="Quarantine IP through PEP request")
+    quarantine = sub.add_parser("quarantine", help="List quarantine candidates (mutations need the control plane)")
     quarantine_sub = quarantine.add_subparsers(dest="quarantine_command")
     qadd = quarantine_sub.add_parser("add"); qadd.add_argument("--ip", required=True); qadd.add_argument("--reason", default="")
     qrem = quarantine_sub.add_parser("remove"); qrem.add_argument("--ip", required=True)

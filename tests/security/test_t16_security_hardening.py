@@ -243,11 +243,16 @@ def test_privileged_authorization_layered() -> None:
 def test_aegisctl_issues_request_envelope_for_privileged_actions() -> None:
     """AC3: every privileged mutation in aegisctl (block add, enforce push)
     issues a control request envelope (request_id + nonce + caller + role)
-    and writes it to the append-only audit."""
+    and writes it to the append-only audit.
+
+    Live architecture (NEG-002): the old tools/aegisctl/commands/network.py
+    module was quarantined; mutations are gated in tools/aegisctl.py and
+    refused offline. Envelope construction lives in utils.control_request.
+    """
     src = _read(AEGISCTL)
-    # Check main entry point for modular imports
-    assert "aegisctl.commands" in src or "from .." in src, (
-        "aegisctl must have modular command structure"
+    # Live CLI is a thin client over the control plane (no modular package).
+    assert "control_request" in src or "query_control" in src or "AegisClient" in src, (
+        "aegisctl must route through the control plane client"
     )
     # Check config module for roles
     config_src = _read("tools/aegisctl/config.py")
@@ -261,13 +266,14 @@ def test_aegisctl_issues_request_envelope_for_privileged_actions() -> None:
         "envelope must include request_id + nonce (AC3)"
     )
     assert "caller" in utils_src, "envelope must include caller identity (AC3)"
-    # Check network module for privileged commands
-    network_src = _read("tools/aegisctl/commands/network.py")
-    assert 'control_request("block_request", ROLE_OPERATE' in network_src, (
-        "block add must emit an OPERATE request envelope (AC3)"
+    # Live mutation gates: block/quarantine/enforce mutations are refused
+    # without a daemon-owned postcondition (NEG-002 behavioral proof in
+    # tests/security/test_cli_mutation_gate.py).
+    assert "pep_wfp_postcondition_not_connected" in src, (
+        "block/quarantine mutations must gate on the PEP postcondition (AC3)"
     )
-    assert 'control_request("enforce_push", ROLE_PRIVILEGED' in network_src, (
-        "enforce push must emit a PRIVILEGED request envelope (AC3)"
+    assert "pep_runtime_postcondition_not_connected" in src, (
+        "enforce mutations must gate on the PEP postcondition (AC3)"
     )
     assert "CONTROL_AUDIT_LOG" in utils_src or "control_audit.ndjson" in utils_src or "control_audit.ndjson" in config_src, "requests must be appended to the audit log (AC3)"
 
