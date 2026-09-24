@@ -1,6 +1,6 @@
 @echo off
-REM DEPRECATED: Use 'python tools\aegisctl.py start --all' instead.
-REM This script is kept for backward compatibility only.
+REM RC BOOTSTRAP LAUNCHER: starts Bridge, Core, Brain, Nose, and Mouth.
+REM Keep prevention_gate closed during qualification.
 setlocal enabledelayedexpansion
 
 :: ================================================================
@@ -456,6 +456,11 @@ echo ----------------------------------------------------------------
 :: Create logs directory
 if not exist "logs" mkdir logs
 if not exist "logs\pids" mkdir logs\pids
+:: Runtime data directories are part of the rollback boundary. Create the
+:: directories, but do not create placeholder trust/signature artifacts.
+if not exist "logs\runtime" mkdir logs\runtime
+if not exist "logs\audit" mkdir logs\audit
+if not exist "logs\forensics" mkdir logs\forensics
 if not exist "logs\anomalous.json" type nul > "logs\anomalous.json"
 
 :: -- Clean stale PID files from previous run --
@@ -562,35 +567,39 @@ if exist "brain\windows_brain.py" (
 ) else (
     echo  [FAIL] brain\windows_brain.py not found!
 )
-echo       Waiting for Brain to load rules...
-set "WAIT_TRIES=0"
-:wait_brain
-wmic process where "Name='python.exe'" get CommandLine 2>nul | find /I "windows_brain" >nul
-if %errorlevel% neq 0 (
-    set /a WAIT_TRIES+=1
-    if !WAIT_TRIES! lss 10 (
-        timeout /t 1 /nobreak >nul
-        goto wait_brain
-    ) else (
-        echo  [WARN] Brain did not start in time.
-    )
-)
+echo       Waiting briefly for Brain bootstrap (readiness is checked in Phase 5)...
+:: Do not use WMIC here.  On current Windows images WMIC may be absent or return
+:: a non-zero status that can abort this legacy batch control flow.  Brain runs
+:: independently; the health contract below is the authoritative readiness check.
+timeout /t 2 /nobreak >nul
+echo       Brain bootstrap wait complete; continuing to Nose and Mouth...
 
-:: -- 4.4 Nose (Go) - BEST PRACTICE: Use pre-compiled binary --
-::  Production: dist\nose_dashboard.exe (no 'go run' in production!)
-::  Fallback: build on-the-fly only if no binary exists
-echo  [4.4] Starting Go Nose (TUI dashboard)...
+:: -- 4.4 Nose (Go) - production capture mode --
+::  The TUI-only mode reports nose_ready but does not read Npcap packets.
+::  Use --capture so host-only L7 traffic can reach the canonical pipe.
+::  Optional AEGIS_CAPTURE_IFACE selects a specific Npcap device; empty means auto.
+echo  [4.4] Starting Go Nose (Npcap capture)...
 if exist "dist\nose_dashboard.exe" (
-    start "AEGIS NOSE (Go)" /MIN cmd /k "dist\nose_dashboard.exe"
-    echo       dist\nose_dashboard.exe  -  TUI dashboard in minimized window
+    if defined AEGIS_CAPTURE_IFACE (
+        start "AEGIS NOSE (Go Capture)" /MIN cmd /k "dist\nose_dashboard.exe --capture --iface \"%AEGIS_CAPTURE_IFACE%\""
+        echo       dist\nose_dashboard.exe --capture --iface "%AEGIS_CAPTURE_IFACE%"
+    ) else (
+        start "AEGIS NOSE (Go Capture)" /MIN cmd /k "dist\nose_dashboard.exe --capture"
+        echo       dist\nose_dashboard.exe --capture  -  auto-select Npcap device
+    )
 ) else if exist "nose\main.go" (
     echo  [WARN] No pre-built Nose binary. Building on-the-fly...
     where go >nul 2>&1
     if !errorlevel! equ 0 (
         cd nose && go build -o ..\dist\nose_dashboard.exe . 2>nul && cd ..
         if exist "dist\nose_dashboard.exe" (
-            start "AEGIS NOSE (Go)" /MIN cmd /k "dist\nose_dashboard.exe"
-            echo       dist\nose_dashboard.exe  -  TUI dashboard built on-the-fly
+            if defined AEGIS_CAPTURE_IFACE (
+                start "AEGIS NOSE (Go Capture)" /MIN cmd /k "dist\nose_dashboard.exe --capture --iface \"%AEGIS_CAPTURE_IFACE%\""
+                echo       dist\nose_dashboard.exe --capture --iface "%AEGIS_CAPTURE_IFACE%"
+            ) else (
+                start "AEGIS NOSE (Go Capture)" /MIN cmd /k "dist\nose_dashboard.exe --capture"
+                echo       dist\nose_dashboard.exe --capture  -  auto-select Npcap device
+            )
         ) else (
             cd .. 2>nul
             echo  [FAIL] Go Nose build failed!

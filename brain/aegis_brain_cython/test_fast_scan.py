@@ -57,6 +57,16 @@ class TestScanPayload(unittest.TestCase):
         self.assertEqual(idx, 0)
         self.assertEqual(matched, b"malware")
 
+    def test_embedded_nul_does_not_truncate_payload(self):
+        # The Python fallback treats bytes as length-delimited.  The compiled
+        # accelerator must return the same result instead of using C-string
+        # semantics that stop at the first NUL byte.
+        payload = b"prefix\x00signature\x00suffix"
+        patterns = [b"signature"]
+        idx, matched = scan_payload(payload, patterns)
+        self.assertEqual(idx, 0)
+        self.assertEqual(matched, b"signature")
+
 
 class TestGetSeverity(unittest.TestCase):
     def test_critical(self):

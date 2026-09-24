@@ -6,6 +6,7 @@ const std = @import("std");
 comptime {
     _ = @import("tests/contract/event.zig");
     _ = @import("tests/contract/runtime_manifest.zig");
+    _ = @import("contract/abi_manifest.zig");
     _ = @import("tests/core/memory_pool.zig");
     _ = @import("tests/core/diagnostics.zig");
     // REBUILD-002: pull every orphaned src/core module into the test graph
@@ -15,15 +16,20 @@ comptime {
     _ = @import("tests/capture/flow_table.zig");
     _ = @import("tests/capture/proto/parsers.zig");
     _ = @import("tests/capture/stream_reassembly.zig");
+    _ = @import("pipeline/data_plane_contract.zig");
     _ = @import("tests/detection/signature_engine.zig");
     _ = @import("tests/detection/anomaly_detector.zig");
     _ = @import("tests/detection/proto_anomaly.zig");
     _ = @import("tests/detection/correlator.zig");
     _ = @import("tests/detection/threat_tracker.zig");
+    _ = @import("detection/detection_result.zig");
     _ = @import("tests/policy/policy_ir.zig");
+    _ = @import("policy/policy_contract.zig");
     _ = @import("tests/policy/trust_store.zig");
     _ = @import("tests/policy/pep_bindings.zig");
     _ = @import("tests/policy/action_dispatcher.zig");
+    _ = @import("policy/enforcement_receipt.zig");
+    _ = @import("policy/rule_action.zig");
     _ = @import("tests/forensic/forensic_pipeline.zig");
     _ = @import("tests/forensic/decision_trace.zig");
     _ = @import("tests/forensic/evidence_record.zig");
@@ -42,11 +48,16 @@ comptime {
     _ = @import("tests/forensic/installer.zig");
     _ = @import("tests/forensic/release_gate.zig");
     _ = @import("tests/forensic/replay_engine.zig");
+    _ = @import("forensic/replay_contract.zig");
     _ = @import("tests/windows/etw_realtime.zig");
     _ = @import("tests/windows/fim.zig");
     _ = @import("tests/windows/registry_monitor.zig");
     _ = @import("tests/windows/injection_detector.zig");
     _ = @import("tests/windows/host_telemetry.zig");
+    _ = @import("windows/adapter_contract.zig");
+    _ = @import("operator/recovery_contract.zig");
+    _ = @import("lab/scenario_contract.zig");
+    _ = @import("release/artifact_contract.zig");
     _ = @import("tests/reliability/watchdog.zig");
     _ = @import("tests/reliability/security_check.zig");
     _ = @import("tests/reliability/latency_histogram.zig");

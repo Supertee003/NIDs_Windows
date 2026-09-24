@@ -88,22 +88,44 @@ class AegisClient:
     def _send_pipe(self, command: str, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         try:
             import win32file
+            import win32pipe
         except ImportError:
             raise TransportError("win32file not available — cannot use named pipe transport")
 
+        handle = None
         try:
-            handle = win32file.CreateFile(
-                DEFAULT_NAMED_PIPE,
-                win32file.GENERIC_READ | win32file.GENERIC_WRITE,
-                0, None, win32file.OPEN_EXISTING, 0, None,
-            )
+            # The daemon intentionally exposes one pipe instance to preserve
+            # the single-owner runtime invariant.  A short ERROR_PIPE_BUSY
+            # window is expected while the previous request is disconnected;
+            # wait for that same instance instead of creating more instances.
+            last_error = None
+            for _ in range(20):
+                try:
+                    handle = win32file.CreateFile(
+                        DEFAULT_NAMED_PIPE,
+                        win32file.GENERIC_READ | win32file.GENERIC_WRITE,
+                        0, None, win32file.OPEN_EXISTING, 0, None,
+                    )
+                    break
+                except Exception as exc:
+                    last_error = exc
+                    if getattr(exc, "winerror", None) != 231:
+                        raise
+                    win32pipe.WaitNamedPipe(DEFAULT_NAMED_PIPE, 1000)
+            if handle is None:
+                raise last_error or RuntimeError("named pipe remained busy")
             req = json.dumps({"command": command, "payload": payload or {}}).encode("utf-8")
             win32file.WriteFile(handle, req)
             _, resp = win32file.ReadFile(handle, 65536)
-            win32file.CloseHandle(handle)
             return json.loads(resp.decode("utf-8"))
         except Exception as e:
             raise TransportError(f"named pipe error: {e}")
+        finally:
+            if handle is not None:
+                try:
+                    win32file.CloseHandle(handle)
+                except Exception:
+                    pass
 
     def _send_tcp(self, command: str, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         try:

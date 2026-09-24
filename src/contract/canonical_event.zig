@@ -394,6 +394,18 @@ pub fn serializeToBytes(event: *const CanonicalEvent, buf: []u8) !usize {
 pub fn deserializeFromBytes(bytes: []const u8) ?CanonicalEvent {
     if (bytes.len < WIRE_PAYLOAD_SIZE) return null;
 
+    // Validate integer enum representations before @enumFromInt.  A wire
+    // frame is untrusted input; converting an unknown ordinal directly can
+    // trap in safety builds or create an invalid semantic event.
+    const source_raw = bytes[32];
+    const event_type_raw = std.mem.readInt(u32, bytes[57..][0..4], .little);
+    const policy_action_raw = bytes[86];
+    const confidence_raw = bytes[93 + RES_OFF_CONFIDENCE];
+    const source_valid = (source_raw <= 16) or source_raw == 255;
+    const event_type_valid = event_type_raw <= 9 or event_type_raw == 0xFFFFFFFF;
+    const policy_action_valid = policy_action_raw <= 5;
+    if (!source_valid or !event_type_valid or !policy_action_valid or confidence_raw > 100) return null;
+
     var event: CanonicalEvent = undefined;
     var off: usize = 0;
 
@@ -444,7 +456,13 @@ pub fn deserializeFromBytes(bytes: []const u8) ?CanonicalEvent {
     return event;
 }
 
-// Legacy compatibility (delegates to new explicit encoding)
+// Legacy compatibility — DEPRECATED (VOL01-FOUNDATION-002).
+// These memcpy the in-memory extern struct (128 bytes with alignment
+// padding) and are NOT the wire format. Wire transport MUST use
+// serializeToBytes/deserializeFromBytes (109 bytes, explicit encoding).
+// Kept only for in-process test round-trips; no production caller may use
+// them (verified: zero callers outside this file's tests).
+// TODO(VOL02): remove once the last in-file test migrates to the wire codec.
 pub fn serialize(event: *const CanonicalEvent) []const u8 {
     const ptr: [*]const u8 = @ptrCast(event);
     return ptr[0..@sizeOf(CanonicalEvent)];
@@ -518,6 +536,31 @@ test "serialize/deserialize round-trip" {
 test "deserialize rejects short buffer" {
     const short = [_]u8{ 0x41, 0x45, 0x47, 0x31 };
     try std.testing.expect(deserialize(&short) == null);
+}
+
+test "deserializeFromBytes rejects unknown enum ordinals" {
+    var event = create(.npcap_sensor);
+    var bytes: [WIRE_PAYLOAD_SIZE]u8 = undefined;
+    _ = try serializeToBytes(&event, &bytes);
+
+    bytes[32] = 17; // no EventSource value between registry and external
+    try std.testing.expect(deserializeFromBytes(&bytes) == null);
+
+    _ = try serializeToBytes(&event, &bytes);
+    std.mem.writeInt(u32, bytes[57..][0..4], 10, .little); // no EventType 10
+    try std.testing.expect(deserializeFromBytes(&bytes) == null);
+
+    _ = try serializeToBytes(&event, &bytes);
+    bytes[86] = 6; // no PolicyAction value above log_only
+    try std.testing.expect(deserializeFromBytes(&bytes) == null);
+}
+
+test "deserializeFromBytes rejects confidence above 100" {
+    var event = create(.npcap_sensor);
+    var bytes: [WIRE_PAYLOAD_SIZE]u8 = undefined;
+    _ = try serializeToBytes(&event, &bytes);
+    bytes[93 + RES_OFF_CONFIDENCE] = 101;
+    try std.testing.expect(deserializeFromBytes(&bytes) == null);
 }
 
 test "deserialize rejects wrong magic" {

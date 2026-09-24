@@ -1,0 +1,6 @@
+{
+  "policy": "configs/Rules.json (ed25519 via core/policy_signing.zig)",
+  "immutable": "build_manifest digests match committed records",
+  "commit": "46b93dc",
+  "shipped_files": 191
+}

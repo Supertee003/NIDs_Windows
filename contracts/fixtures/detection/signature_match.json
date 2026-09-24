@@ -1,0 +1,10 @@
+{
+  "event_id": 1001,
+  "detector": "signature",
+  "detector_version": 1,
+  "matched": true,
+  "rule_id": 305419896,
+  "incident_id": 77,
+  "severity": 6,
+  "reason": "signature_match"
+}

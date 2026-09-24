@@ -12,7 +12,7 @@
 # Service contract (matches core/wfp_production.zig + p4 contract doc):
 #   Name:     AegisWfp          Type: kernel   Start: demand
 #   Binary:   System32\drivers\aegis_wfp.sys
-#   Device:   \\.\AegisWfp      (symlink created by DriverEntry)
+#   Device:   \\.\AegisWfpDevice (symlink created by DriverEntry; matches wfp_ioctl.zig)
 
 param(
     [Parameter(Position = 0, Mandatory = $true)]
@@ -130,8 +130,8 @@ function Show-Status {
     $running = ($out -match 'RUNNING').Count -gt 0
     $out | ForEach-Object { Write-Host "  $_" }
     if ($running) {
-        Info "Status: RUNNING - device \\\\.\\AegisWfp should be openable."
-        Info "Verify from userspace: open \\\\.\\AegisWfp and issue IOCTL_AEGIS_GET_STATS (0x801)."
+        Info "Status: RUNNING - device \\\\.\\AegisWfpDevice should be openable."
+        Info "Verify from userspace: open \\\\.\\AegisWfpDevice and issue IOCTL_AEGIS_GET_STATS (0x00126008)."
     } else {
         Info "Status: INSTALLED (not running)."
     }

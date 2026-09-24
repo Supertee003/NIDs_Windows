@@ -1,0 +1,17 @@
+{
+  "component": "core",
+  "state": "DEGRADED",
+  "runtime_state": "DEGRADED",
+  "runtime_available": true,
+  "degraded": true,
+  "availability_error": "WFP_DRIVER_MISSING",
+  "workers": {
+    "pipeline_ready": true,
+    "failed": false
+  },
+  "data_plane": {
+    "nose_connected": false,
+    "nose_frames_read": 0,
+    "nose_frames_submitted": 0
+  }
+}

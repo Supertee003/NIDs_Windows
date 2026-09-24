@@ -1,0 +1,18 @@
+{
+  "contract_version": 1,
+  "boundaries": [
+    {
+      "name": "canonical_event_v1",
+      "version": 1,
+      "wire_bytes": 109,
+      "encoding": "little-endian-explicit-fields"
+    },
+    {
+      "name": "ipc_event_v5_internal",
+      "version": 5,
+      "wire_bytes": 96,
+      "encoding": "zig-extern-struct"
+    }
+  ],
+  "rule": "The two representations are not interchangeable; conversion must be explicit."
+}

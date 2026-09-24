@@ -49,11 +49,21 @@ func main() {
 	capturePipe := flag.String("pipe", nosePipeName, "Named pipe consumer (Zig core) for -capture")
 	captureIface := flag.String("iface", "", "Capture interface name (empty = auto-select) for -capture")
 	selfTest := flag.Bool("capture-self-test", false, "Run capture encoder self-test then exit")
+	injectObserve := flag.Bool("inject-observe", false, "Send canonical alert-only fixture through the Zig Nose pipe")
+	injectCount := flag.Int("inject-count", 1, "Number of observe-only canonical fixtures to send")
 	flag.Parse()
 
 	if *selfTest {
 		if err := captureSelfTest(); err != nil {
 			fmt.Fprintf(os.Stderr, "[AEGIS NOSE] self-test failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if *injectObserve {
+		if err := runObserveInjection(*capturePipe, *injectCount); err != nil {
+			fmt.Fprintf(os.Stderr, "[AEGIS NOSE] observe injection failed: %v\n", err)
 			os.Exit(1)
 		}
 		return

@@ -653,12 +653,17 @@ test "EtwRealtimeSource convertRecord - process_create" {
     const img = "C:\\Windows\\System32\\cmd.exe";
     @memcpy(record.image_path[0..img.len], img);
     record.image_path_len = @intCast(img.len);
+    const cmdline = "cmd.exe /d /c echo AEGIS_ETW_PROOF";
+    @memcpy(record.command_line[0..cmdline.len], cmdline);
+    record.command_line_len = @intCast(cmdline.len);
 
     const ev = s.convertRecord(record);
     try std.testing.expect(ev != null);
     try std.testing.expectEqual(ht.HostEventType.process_create, ev.?.event_type);
     try std.testing.expectEqual(@as(u32, 1234), ev.?.pid);
     try std.testing.expectEqual(@as(u32, 100), ev.?.ppid);
+    try std.testing.expectEqualStrings(img, ev.?.imagePath());
+    try std.testing.expectEqualStrings(cmdline, ev.?.commandLine());
 }
 
 test "EtwRealtimeSource convertRecord - process_exit" {
@@ -895,9 +900,78 @@ pub const PROVIDER_KERNEL_REGISTRY = PROVIDER_KERNEL_REGISTRY_RT;
 
 pub const EtwCallback = *const fn (ctx: *anyopaque, rec: *const EtwEventRecord, ext_data: []const u8) void;
 
+fn copyDecoded(dst: []u8, src: []const u8) u16 {
+    const n = @min(dst.len, src.len);
+    if (n > 0) @memcpy(dst[0..n], src[0..n]);
+    return @intCast(n);
+}
+
+fn readLe16(bytes: []const u8) u16 {
+    return @as(u16, bytes[0]) | (@as(u16, bytes[1]) << 8);
+}
+
+fn readLe32(bytes: []const u8) u32 {
+    return @as(u32, bytes[0]) |
+        (@as(u32, bytes[1]) << 8) |
+        (@as(u32, bytes[2]) << 16) |
+        (@as(u32, bytes[3]) << 24);
+}
+
+fn decodeTdhPayload(rec: *EtwEventRecord, payload: []const u8) void {
+    if (payload.len < 4 or readLe32(payload[0..4]) != 0x54474541) return;
+    var off: usize = 4;
+    while (off + 4 <= payload.len) {
+        const kind = readLe16(payload[off .. off + 2]);
+        const len = readLe16(payload[off + 2 .. off + 4]);
+        off += 4;
+        if (off + len > payload.len) return;
+        const value = payload[off .. off + len];
+        switch (kind) {
+            1 => rec.image_path_len = copyDecoded(rec.image_path[0..], value),
+            2 => rec.command_line_len = copyDecoded(rec.command_line[0..], value),
+            3 => rec.file_path_len = copyDecoded(rec.file_path[0..], value),
+            4 => rec.registry_key_len = copyDecoded(rec.registry_key[0..], value),
+            5 => {
+                if (len >= 4) {
+                    rec.parent_process_id = readLe32(value[0..4]);
+                }
+            },
+            else => {},
+        }
+        off += len;
+    }
+}
+
+// Exact ABI mirror of aegis_etw_event_t in etw_native.c. Do not pass the
+// internal EtwEventRecord directly across FFI: its fields are intentionally
+// richer and have a different layout.
+const NativeEtwEvent = extern struct {
+    event_id: u32,
+    provider_guid: [16]u8,
+    version: u8,
+    channel: u8,
+    level: u8,
+    opcode: u8,
+    task: u16,
+    keyword: u64,
+    timestamp_ns: i64,
+    process_id: u32,
+    thread_id: u32,
+    image_base: u64,
+    image_size: u32,
+    ext_data_len: u16,
+    ext_data_offset: u32,
+};
+
+comptime {
+    if (@sizeOf(NativeEtwEvent) != 80) {
+        @compileError("NativeEtwEvent ABI drift: expected 80 bytes");
+    }
+}
+
 extern "aegis_etw_helper" fn aegis_etw_start(session_name: [*]const u8, providers: [*]const [16]u8, provider_count: usize) c_int;
 extern "aegis_etw_helper" fn aegis_etw_stop(session_name: [*]const u8) c_int;
-extern "aegis_etw_helper" fn aegis_etw_set_callback(cb: *const fn (ctx: *anyopaque, rec: *const EtwEventRecord, ext_data: [*]const u8, ext_len: usize) callconv(.C) void, ctx: *anyopaque) c_int;
+extern "aegis_etw_helper" fn aegis_etw_set_callback(cb: *const fn (ctx: *anyopaque, rec: *const NativeEtwEvent, ext_data: [*]const u8, ext_len: usize) callconv(.C) void, ctx: *anyopaque) c_int;
 
 pub const EtwSource = struct {
     session_name: [64]u8 = [_]u8{0} ** 64,
@@ -938,9 +1012,17 @@ pub const EtwSource = struct {
         self.callback_ctx = ctx;
         self.callback = cb;
         const wrapper = struct {
-            fn wrap(c: *anyopaque, rec: *const EtwEventRecord, ext_data: [*]const u8, ext_len: usize) callconv(.C) void {
+            fn wrap(c: *anyopaque, native: *const NativeEtwEvent, ext_data: [*]const u8, ext_len: usize) callconv(.C) void {
                 const outer: *EtwSource = @ptrCast(@alignCast(c));
-                if (outer.callback) |cb_fn| cb_fn(outer.callback_ctx.?, rec, ext_data[0..ext_len]);
+                var rec = EtwEventRecord{
+                    .timestamp_ns = native.timestamp_ns,
+                    .provider_guid = native.provider_guid,
+                    .event_id = @intCast(@min(native.event_id, @as(u32, std.math.maxInt(u16)))),
+                    .process_id = native.process_id,
+                    .thread_id = native.thread_id,
+                };
+                decodeTdhPayload(&rec, ext_data[0..ext_len]);
+                if (outer.callback) |cb_fn| cb_fn(outer.callback_ctx.?, &rec, ext_data[0..ext_len]);
                 outer.events_received += 1;
             }
         };
@@ -958,4 +1040,23 @@ test "EtwSource init produces a session name" {
 test "EtwSource start with no providers fails" {
     var s = EtwSource.init();
     try std.testing.expectError(error.NoProviders, s.start(&[_][16]u8{}));
+}
+
+test "TDH TLV payload decodes bounded host properties" {
+    var payload: [64]u8 = [_]u8{0} ** 64;
+    payload[0] = 0x41;
+    payload[1] = 0x45;
+    payload[2] = 0x47;
+    payload[3] = 0x54;
+    payload[4] = 1;
+    payload[6] = 7;
+    @memcpy(payload[8..15], "cmd.exe");
+    payload[15] = 5;
+    payload[17] = 4;
+    payload[19] = 0xD2;
+    payload[20] = 0x04;
+    var rec = EtwEventRecord{};
+    decodeTdhPayload(&rec, payload[0..24]);
+    try std.testing.expectEqualStrings("cmd.exe", rec.imagePath());
+    try std.testing.expectEqual(@as(u32, 1234), rec.parent_process_id);
 }

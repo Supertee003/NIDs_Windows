@@ -687,18 +687,19 @@ test "extractJsonString returns empty for missing key" {
     try std.testing.expect(result.len == 0);
 }
 
-test "ComplianceReporter generates report with empty log" {
+test "ComplianceReporter generates report from the configured log" {
     var reporter = ComplianceReporter.init(std.testing.allocator);
     defer reporter.deinit();
 
-    // This will fail because logs/anomalous.json doesn't exist in test context
+    // The reporter reads the production-relative forensic log. A repository
+    // test run may contain a fixture or prior forensic output, so this test
+    // validates report construction without assuming the shared log is empty.
     const result = reporter.generateReport(.pci_dss);
-    // Should either succeed (returning empty stats report) or fail with file not found
     if (result) |report| {
         try std.testing.expect(report.framework == .pci_dss);
-        try std.testing.expect(report.stats.total_events == 0);
+        try std.testing.expectEqual(@as(u32, 10), report.controls_checked);
     } else |_| {
-        // Expected in test environment (no logs)
+        return error.TestUnexpectedResult;
     }
 }
 

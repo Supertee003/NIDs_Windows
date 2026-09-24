@@ -1,0 +1,102 @@
+{
+  "generated_at": "2026-09-24T12:09:38.666723+00:00",
+  "head": "46b93dcf9cca17b323ddff7a4c71e33e81c37fb5",
+  "steps": [
+    {
+      "label": "inventory/reference",
+      "command": [
+        "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+        "tools/generate_truth_artifacts.py"
+      ],
+      "returncode": 0,
+      "stdout": "============================================================\n AEGIS Truth Artifact Generator\n inventory.json + reference_map.json\n============================================================\n\n Scanned 1199 files\n Classification:\n   canonical-source        604\n   canonical-docs          298\n   canonical-build         147\n   canonical-test          105\n   canonical-config         31\n   unclassified             12\n   legacy                    2\n\n Wrote: D:\\NIDs_Windows\\inventory.json (188,968 bytes)\n Wrote: D:\\NIDs_Windows\\reference_map.json (157,543 bytes)\n\n Done.\n",
+      "stderr": ""
+    },
+    {
+      "label": "runtime manifest",
+      "command": [
+        "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+        "tools/create_manifest.py"
+      ],
+      "returncode": 0,
+      "stdout": "runtime_manifest.json created\nProduction modules: 3\nInit order count: 33\nGolden path stages: 18\nSubsystems: pipeline, platform\nLegacy modules: 159\nNotes (key gaps):\n  production_entrypoint: build.zig -> src/main.zig -> zig build -> zig-out/bin/aegis_nids.exe\n  legacy_folder: core/ (100+ legacy modules from earlier phases; NOT in production build; tracked per user request)\n  production_subsystem: src/core/ (diagnostics.zig, memory_pool.zig - active in build; 2 files)\n  test_only_entrypoint: src/fuzz_entry.zig -> src/tests/fuzz_main.zig (fuzz harness; 1 file)\n  control_client: tools/aegisctl.py (named-pipe client, connects to daemon; not a runtime)\n  installer: tools/installer.py (consumes build_manifest.json, generates aegis_setup.exe; not a runtime)\n  enforcement_mode: detection-only until a provider-owned, receipt-producing WFP adapter is connected; no host block is claimed\n  step_27_action_dispatcher_gap: closed as a safety containment: ActionDispatcher cannot claim host effect without Rust PEP provider receipt\n  step_43_control_state_gap: STILL PENDING: src/main.zig control responses (packets_captured: 0, flows_active: 0) must bind to real runtime metrics (STEP 43).\n  step_50_installer_gap: STILL PENDING: AEGIS_v5_fresh_deploy.ps1 embeds stale CI/config; removed from git index; preserved locally for STEP 50 fix.\n  cleanup_status: Step 2 complete (366 artifacts removed from git index); Step 3 ADR complete; Step 4 Build Truth verified (all 6 builds green, 5 artifacts present); .g\n  run_time_manifest_step: 5\n  build_truth_verified: PASS\n  ci_status: All 8 CI jobs pass (zig, rust, c, go, python, ts, security, ci-matrix)\n  python_tests_status: 436 passed, 23 skipped (after Cython build + cargo cache + timeout fix)\n  manifest_drift_fixed: PASS\n  core_restored_per_request: PASS\n",
+      "stderr": ""
+    },
+    {
+      "label": "truth verifier",
+      "command": [
+        "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+        "tools/truth.py",
+        "verify"
+      ],
+      "returncode": 0,
+      "stdout": "HEAD: 46b93dcf9cca17b323ddff7a4c71e33e81c37fb5\n------------------------------------------------------------------------\n  SYSTEM_MAP.json              head_sha       PASS\n  FLOW_MAP.json                head_sha       PASS\n  AUTHORITY_MAP.json           head_sha       PASS\n  CONTRACT_MAP.json            head_sha       PASS\n  EVIDENCE_INDEX.json          head_sha       PASS\n  build_truth.json             head_sha       PASS\n  runtime_manifest.json        head_sha       PASS\n  build_manifest.json          source_commit  PASS\n  AI_CONTEXT.md                markdown_head  PASS\n  inventory.json               none           PASS (no SHA expected)\n  reference_map.json           none           PASS (no SHA expected)\n------------------------------------------------------------------------\nTRUTH_VALID — all artifacts carry current HEAD\n",
+      "stderr": ""
+    }
+  ],
+  "json_validation": [
+    {
+      "file": "SYSTEM_MAP.json",
+      "exists": true,
+      "valid_json": true
+    },
+    {
+      "file": "FLOW_MAP.json",
+      "exists": true,
+      "valid_json": true
+    },
+    {
+      "file": "AUTHORITY_MAP.json",
+      "exists": true,
+      "valid_json": true
+    },
+    {
+      "file": "CONTRACT_MAP.json",
+      "exists": true,
+      "valid_json": true
+    },
+    {
+      "file": "EVIDENCE_INDEX.json",
+      "exists": true,
+      "valid_json": true
+    },
+    {
+      "file": "build_truth.json",
+      "exists": true,
+      "valid_json": true
+    },
+    {
+      "file": "runtime_manifest.json",
+      "exists": true,
+      "valid_json": true
+    },
+    {
+      "file": "build_manifest.json",
+      "exists": true,
+      "valid_json": true
+    },
+    {
+      "file": "inventory.json",
+      "exists": true,
+      "valid_json": true
+    },
+    {
+      "file": "reference_map.json",
+      "exists": true,
+      "valid_json": true
+    }
+  ],
+  "unresolved": [],
+  "machine_map_rebuild": {
+    "status": "NOT_RUN",
+    "reason": "No canonical current-head generator was found for the four machine maps and evidence index; do not rewrite SHA fields manually.",
+    "files": [
+      "SYSTEM_MAP.json",
+      "FLOW_MAP.json",
+      "AUTHORITY_MAP.json",
+      "CONTRACT_MAP.json",
+      "EVIDENCE_INDEX.json"
+    ]
+  },
+  "valid": true
+}

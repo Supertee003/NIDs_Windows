@@ -1,0 +1,9 @@
+{
+  "policy_id": 42,
+  "revision": 7,
+  "digest": "sha256:example",
+  "signer": "aegis-policy-root",
+  "issued_at_ms": 1000,
+  "expires_at_ms": 0,
+  "status": "active"
+}

@@ -64,6 +64,9 @@ install(TARGETS aegis_wfp_user aegis_etw_helper aegis_fim_helper
 # Optionally build kernel-mode driver (requires WDK)
 option(BUILD_KERNEL_DRIVER "Build the WFP kernel-mode callout driver" OFF)
 if(BUILD_KERNEL_DRIVER)
-    # User must have WDK installed and EWDK environment
-    add_subdirectory(kernel/wfp_callout)
+    # The repository contains WDK source under drivers/wfp_callout but no
+    # current CMake/WDK project that selects one authoritative dispatch
+    # implementation. Refuse the option rather than silently building a
+    # different or stale driver graph.
+    message(FATAL_ERROR "BUILD_KERNEL_DRIVER is not wired: use the reviewed WDK project for drivers/wfp_callout after source/build authority is established")
 endif()

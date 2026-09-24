@@ -1,0 +1,8 @@
+{
+  "request_id": 5001,
+  "operation": "restart",
+  "outcome": "completed",
+  "resulting_state": "RUNNING",
+  "postcondition_proven": true,
+  "message": "daemon-owned stop/join/start completed"
+}

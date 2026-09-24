@@ -9,6 +9,27 @@
 const std = @import("std");
 const bridge_init = @import("../core/bridge_init.zig");
 
+/// Capture-local observation contract. The application boundary converts this
+/// into the frozen IpcEvent type; keeping it local permits direct Zig tests.
+pub const PipeObservation = struct {
+    kind: u8 = 40, // signature_match
+    severity: u8 = 4, // warning
+    source: u8 = 5, // capture_pipe_monitor
+    payload_len: u32 = 0,
+    payload_hash: u32 = 0,
+    timestamp_ns: u64 = 0,
+};
+
+pub const EventPublisher = *const fn (PipeObservation, []const u8) bool;
+var g_event_publisher: ?EventPublisher = null;
+
+/// Install the event-fabric sink from the application module. Keeping this
+/// seam callback-based allows direct Zig tests of this capture module without
+/// importing a sibling module outside the direct test module path.
+pub fn setEventPublisher(publisher: ?EventPublisher) void {
+    g_event_publisher = publisher;
+}
+
 // ====== Suspicious Named Pipe Patterns ======
 const SUSPICIOUS_PIPE_PATTERNS = [_][]const u8{
     "MSSE-", // Cobalt Strike (R3001)
@@ -84,6 +105,40 @@ fn isSuspiciousPipe(name: []const u16) ?[]const u8 {
     return null;
 }
 
+fn encodePipeName(name_wide: []const u16, out: []u8) []const u8 {
+    var len: usize = 0;
+    for (name_wide) |ch| {
+        if (ch >= PM_ASCII_MAX or len >= out.len) break;
+        out[len] = @intCast(ch);
+        len += 1;
+    }
+    return out[0..len];
+}
+
+/// Publish a bounded observation for the normal detector/forensic pipeline.
+/// This is observation-only: policy evaluation decides any later action.
+fn publishPipeObservation(name_wide: []const u16) bool {
+    var payload_buf: [PM_ALERT_BUF]u8 = undefined;
+    const payload = encodePipeName(name_wide, &payload_buf);
+    if (payload.len == 0) return false;
+    const observation = PipeObservation{
+        .payload_len = @intCast(payload.len),
+        .payload_hash = fnv1a32(payload),
+        .timestamp_ns = @intCast(std.time.nanoTimestamp()),
+    };
+    if (g_event_publisher) |publish| return publish(observation, payload);
+    return false;
+}
+
+fn fnv1a32(data: []const u8) u32 {
+    var hash: u32 = 0x811c9dc5;
+    for (data) |byte| {
+        hash ^= byte;
+        hash *%= 0x01000193;
+    }
+    return hash;
+}
+
 /// Scan all named pipes using Win32 FindFirstFileW
 fn scanPipes() void {
     var find_data: WIN32_FIND_DATAW = undefined;
@@ -104,6 +159,7 @@ fn scanPipes() void {
             suspicious_count += 1;
             g_suspicious_found += 1;
             printAlert(name, pattern);
+            _ = publishPipeObservation(name);
         }
     }
 
@@ -115,6 +171,7 @@ fn scanPipes() void {
                 suspicious_count += 1;
                 g_suspicious_found += 1;
                 printAlert(name, pattern);
+                _ = publishPipeObservation(name);
             }
         }
     }
@@ -221,4 +278,34 @@ test "isSuspiciousPipe handles non-ASCII characters gracefully" {
     const pipe_name = [_]u16{ 0x4E2D, 0x6587, 0x7BA1, 0x9053 }; // Chinese chars
     const result = isSuspiciousPipe(&pipe_name);
     try std.testing.expect(result == null);
+}
+
+test "encodePipeName creates bounded ASCII payload" {
+    const pipe_name = [_]u16{ 'M', 'S', 'S', 'E', '-', '1', 0x4E2D };
+    var buf: [16]u8 = undefined;
+    try std.testing.expectEqualStrings("MSSE-1", encodePipeName(&pipe_name, &buf));
+}
+
+var test_published_event: ?PipeObservation = null;
+var test_published_payload: [PM_ALERT_BUF]u8 = undefined;
+var test_published_len: usize = 0;
+
+fn testPublisher(ev: PipeObservation, payload: []const u8) bool {
+    test_published_event = ev;
+    test_published_len = @min(payload.len, test_published_payload.len);
+    @memcpy(test_published_payload[0..test_published_len], payload[0..test_published_len]);
+    return true;
+}
+
+test "publishPipeObservation sends event through configured publisher" {
+    setEventPublisher(testPublisher);
+    defer setEventPublisher(null);
+    const pipe_name = [_]u16{ 'M', 'S', 'S', 'E', '-', 'P', 'R', 'O', 'O', 'F' };
+    try std.testing.expect(publishPipeObservation(&pipe_name));
+    const published = test_published_event orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(@as(u8, 40), published.kind);
+    try std.testing.expectEqual(@as(u8, 5), published.source);
+    try std.testing.expectEqualStrings("MSSE-PROOF", test_published_payload[0..test_published_len]);
+    try std.testing.expectEqual(@as(u32, @intCast(test_published_len)), published.payload_len);
+    try std.testing.expectEqual(fnv1a32("MSSE-PROOF"), published.payload_hash);
 }

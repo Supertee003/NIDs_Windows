@@ -1,0 +1,14 @@
+{
+  "contract_version": 1,
+  "sources": ["go_nose", "etw", "fim", "registry", "replay"],
+  "counters": {
+    "frames_read": 100,
+    "frames_rejected": 2,
+    "frames_submitted": 98,
+    "events_processed": 95,
+    "events_dropped": 3,
+    "duplicate_ids": 0,
+    "non_monotonic_ids": 0
+  },
+  "conservation_gap": 0
+}

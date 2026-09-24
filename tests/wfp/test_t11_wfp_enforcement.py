@@ -170,10 +170,16 @@ def test_authority_invariants_declare_wfp_enforcement_module() -> None:
 
 
 def test_driver_unblock_contract_matches_user_adapter() -> None:
-    """The user adapter sends an IPv4, and the driver must dispatch it."""
+    """The user adapter uses exact filter identity for cleanup."""
     header = DRIVER_HEADER.read_text(encoding="utf-8", errors="ignore")
     source = DRIVER_SOURCE.read_text(encoding="utf-8", errors="ignore")
     assert "#define IOCTL_AEGIS_UNBLOCK_FLOW" in header
     assert "case IOCTL_AEGIS_UNBLOCK_FLOW:" in source
-    assert "if (inputLen < sizeof(UINT32))" in source
-    assert "PUINT32 unblockIp" in source
+    assert "AEGIS_WFP_FLOW_REQUEST" in header
+    assert "AEGIS_WFP_FLOW_RESPONSE" in header
+    assert "UINT64 filter_id" in header
+    assert "aegis_wfp_ioctl_unblock_filter" in (
+        (REPO_ROOT / "src" / "windows" / "wfp_ioctl.c").read_text(
+            encoding="utf-8", errors="ignore"
+        )
+    )

@@ -1,0 +1,9 @@
+{
+  "protocol_version": 2,
+  "command": "system.health",
+  "request_id": 1,
+  "caller_role": "read",
+  "issued_at_ms": 0,
+  "nonce": "00000000000000000000000000000000",
+  "payload": {}
+}

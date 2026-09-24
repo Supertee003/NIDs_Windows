@@ -1,7 +1,7 @@
-/* II05 - WFP Block Action (User-mode Callout Driver Helper)
+/* II05 - WFP lifecycle helper (mutation quarantined)
  * AEGIS NIDS v5.0+
  *
- * Adds/removes WFP filters at the FWPM_LAYER_ALE_AUTH_CONNECT_V4 layer.
+ * Opens/closes the WFP engine only; filter mutation is quarantined.
  * For kernel-mode callout (aegis_wfp.sys), see kernel/wfp_callout/.
  *
  * NOTE: This file is compiled by CMakeLists.txt as aegis_wfp_user.dll.
@@ -27,7 +27,6 @@ static const GUID AEGIS_WFP_FILTER_KEY_BASE =
     { 0xf3a7c4d2, 0x3456, 0x789a, { 0xbc, 0xde, 0xf0, 0x12, 0x34, 0x56, 0x78, 0x9a } };
 
 static HANDLE g_engine_handle = NULL;
-static UINT64 g_next_filter_id = 1;
 
 int aegis_wfp_open(void) {
     if (g_engine_handle) return 0;
@@ -58,102 +57,15 @@ int aegis_wfp_close(void) {
     return 0;
 }
 
-/* Add a block filter on a 5-tuple. Returns positive filter_id on success. */
-int64_t aegis_wfp_add_block(uint32_t src_ip, uint32_t dst_ip,
-                              uint16_t src_port, uint16_t dst_port,
-                              uint8_t protocol, uint8_t weight) {
-    if (!g_engine_handle) {
-        if (aegis_wfp_open() != 0) return -1;
-    }
-
-    FWPM_FILTER0 filter = {0};
-    filter.filterKey = AEGIS_WFP_FILTER_KEY_BASE;
-    // Make unique by combining with a counter
-    filter.filterKey.Data1 ^= (ULONG)g_next_filter_id;
-    filter.layerKey = FWPM_LAYER_ALE_AUTH_CONNECT_V4;
-    filter.subLayerKey = AEGIS_WFP_SUBLAYER_KEY;
-    filter.weight.type = FWP_UINT8;
-    filter.weight.uint8 = weight;
-    filter.action.type = FWP_ACTION_BLOCK;
-    wchar_t desc[128];
-    swprintf_s(desc, 128, L"AEGIS NIDS block filter #%llu", (unsigned long long)g_next_filter_id);
-    filter.displayData.name = desc;
-    filter.displayData.description = desc;
-
-    // Build filter conditions: src_ip, dst_ip, src_port, dst_port, protocol
-    FWPM_FILTER_CONDITION0 conds[5];
-    int n = 0;
-
-    if (src_ip != 0) {
-        conds[n].fieldKey = FWPM_CONDITION_IP_LOCAL_ADDRESS;
-        conds[n].matchType = FWP_MATCH_EQUAL;
-        conds[n].conditionValue.type = FWP_UINT32;
-        conds[n].conditionValue.uint32 = src_ip;
-        n++;
-    }
-    if (dst_ip != 0) {
-        conds[n].fieldKey = FWPM_CONDITION_IP_REMOTE_ADDRESS;
-        conds[n].matchType = FWP_MATCH_EQUAL;
-        conds[n].conditionValue.type = FWP_UINT32;
-        conds[n].conditionValue.uint32 = dst_ip;
-        n++;
-    }
-    if (src_port != 0) {
-        conds[n].fieldKey = FWPM_CONDITION_IP_LOCAL_PORT;
-        conds[n].matchType = FWP_MATCH_EQUAL;
-        conds[n].conditionValue.type = FWP_UINT16;
-        conds[n].conditionValue.uint16 = src_port;
-        n++;
-    }
-    if (dst_port != 0) {
-        conds[n].fieldKey = FWPM_CONDITION_IP_REMOTE_PORT;
-        conds[n].matchType = FWP_MATCH_EQUAL;
-        conds[n].conditionValue.type = FWP_UINT16;
-        conds[n].conditionValue.uint16 = dst_port;
-        n++;
-    }
-    if (protocol != 0) {
-        conds[n].fieldKey = FWPM_CONDITION_IP_PROTOCOL;
-        conds[n].matchType = FWP_MATCH_EQUAL;
-        conds[n].conditionValue.type = FWP_UINT8;
-        conds[n].conditionValue.uint8 = protocol;
-        n++;
-    }
-    filter.filterCondition = conds;
-    filter.numFilterConditions = n;
-
-    UINT64 filter_id = 0;
-    DWORD rc = FwpmFilterAdd0(g_engine_handle, &filter, NULL, &filter_id);
-    if (rc != ERROR_SUCCESS) {
-        return -(int)rc;
-    }
-    g_next_filter_id++;
-    return (int64_t)filter_id;
-}
-
-int aegis_wfp_remove_filter(uint64_t filter_id) {
-    if (!g_engine_handle) return -1;
-    // We need the filterKey to remove; for simplicity, we enumerate and remove.
-    // (In production, you'd keep a map of filter_id â†’ filterKey.)
-    HANDLE enum_handle = NULL;
-    DWORD rc = FwpmFilterCreateEnumHandle0(g_engine_handle, NULL, &enum_handle);
-    if (rc != ERROR_SUCCESS) return (int)rc;
-
-    FWPM_FILTER0** filters = NULL;
-    UINT32 count = 0;
-    rc = FwpmFilterEnum0(g_engine_handle, enum_handle, 256, &filters, &count);
-    if (rc == ERROR_SUCCESS) {
-        for (UINT32 i = 0; i < count; i++) {
-            if (filters[i]->filterId == filter_id) {
-                FwpmFilterDeleteById0(g_engine_handle, filter_id);
-                break;
-            }
-        }
-        FwpmFreeMemory0((void**)&filters);
-    }
-    FwpmFilterDestroyEnumHandle0(g_engine_handle, enum_handle);
-    return 0;
-}
+/*
+ * Direct filter mutation was intentionally removed from this helper.
+ *
+ * The production authority must own authorization, provider identity,
+ * filter ownership, cleanup, and a validated EnforcementReceipt. An
+ * exported add/remove Boolean surface cannot satisfy that contract and
+ * would create a second WFP authority. Keep this DLL lifecycle-only until
+ * the receipt-producing Rust PEP adapter is wired to the selected provider.
+ */
 
 /* FFI surface exposed to Zig (aegis_wfp_user.dll) */
 int aegis_wfp_install(void) {

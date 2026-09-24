@@ -70,10 +70,10 @@ REM =====================================================================
 setlocal enabledelayedexpansion
 
 echo.
-echo *"*******************************************************--
-echo *'       AEGIS NIDS " Kernel Driver Build System        *'
-echo *'       WFP Callout + Minifilter (WDK)                 *'
-echo ********************************************************
+echo =======================================================
+echo        AEGIS NIDS - Kernel Driver Build System
+echo        WFP Callout + Minifilter (WDK)
+echo =======================================================
 echo.
 
 REM ====== Configuration ======
@@ -86,19 +86,33 @@ if "%1"=="debug" set CONFIG=Debug
 
 REM ====== Detect WDK ======
 set WDK_PATH=
+set WDK_VERSION=
+set WDK_INCLUDE=
+set WDK_LIB=
+set WDK_UM_LIB=
+set MSVC_LIB=
 
 REM Check WDK 11 first (Windows 11 24H2+)
-for /f "delims=" %%p in ('dir /b /ad "C:\Program Files (x86)\Windows Kits\11\bin\wdk" 2^>nul') do (
-    set WDK_PATH=C:\Program Files (x86)\Windows Kits\11
-    set WDK_BIN=C:\Program Files (x86)\Windows Kits\11\bin\%%p
+for /f "delims=" %%p in ('dir /b /ad "C:\Progra~2\Windows Kits\11\bin\wdk" 2^>nul') do (
+    set WDK_PATH=C:\Progra~2\Windows Kits\11
+    set WDK_BIN=C:\Progra~2\Windows Kits\11\bin\%%p
 )
 
 REM Check WDK 10
 if not defined WDK_PATH (
-    for /f "delims=" %%p in ('dir /b /ad "C:\Program Files (x86)\Windows Kits\10\bin\10*" 2^>nul') do (
-        set WDK_PATH=C:\Program Files (x86)\Windows Kits\10
-        set WDK_BIN=C:\Program Files (x86)\Windows Kits\10\bin\%%p
+    for /f "delims=" %%p in ('dir /b /ad /o-n "C:\Progra~2\Windows Kits\10\bin\10*" 2^>nul') do if not defined WDK_VERSION set WDK_VERSION=%%p
+    if defined WDK_VERSION (
+        set WDK_PATH=C:\Progra~2\Windows Kits\10
+        set WDK_BIN=C:\Progra~2\Windows Kits\10\bin\!WDK_VERSION!
+        set WDK_INCLUDE=C:\Progra~2\Windows Kits\10\Include\!WDK_VERSION!
+        set WDK_LIB=C:\Progra~2\Windows Kits\10\Lib\!WDK_VERSION!
+        set WDK_UM_LIB=C:\Progra~2\Windows Kits\10\Lib\!WDK_VERSION!\um\x64
     )
+)
+
+if defined WDK_PATH if not exist "!WDK_INCLUDE!\km" (
+    echo [ERROR] WDK Include\km not found under !WDK_INCLUDE!
+    exit /b 1
 )
 
 if not defined WDK_PATH (
@@ -111,7 +125,9 @@ if not defined WDK_PATH (
 )
 
 echo [OK] WDK found: %WDK_PATH%
+echo [OK] WDK version: %WDK_VERSION%
 echo [OK] WDK bin:   %WDK_BIN%
+echo [OK] WDK include: %WDK_INCLUDE%
 echo [OK] Config:    %CONFIG%
 echo.
 
@@ -141,11 +157,15 @@ if "%BUILD_WFP%"=="1" (
     REM cl /Zi /W4 /kernel /Gs /MDd -c aegis_wfp.c aegis_wfp_callout.c aegis_wfp_comm.c
     REM link /kernel /out:aegis_wfp.sys aegis_wfp.obj aegis_wfp_callout.obj aegis_wfp_comm.obj
 
-    REM For WDK 10/11, we can use the build.exe (legacy) or MSBuild
-    REM Simplest approach: use the WDK's compiler directly
+    REM For WDK 10/11, use the Visual Studio x64 compiler with WDK headers/libs.
 
-    set CL_PATH=%WDK_BIN%\x64\cl.exe
-    set LINK_PATH=%WDK_BIN%\x64\link.exe
+    set CL_PATH=
+    set LINK_PATH=
+    for /f "delims=" %%p in ('where cl.exe 2^>nul') do if not defined CL_PATH set CL_PATH=%%p
+    for /f "delims=" %%p in ('where link.exe 2^>nul') do if not defined LINK_PATH set LINK_PATH=%%p
+    if not defined CL_PATH for /d %%v in ("C:\Progra~1\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\*") do if exist "%%~v\bin\Hostx64\x64\cl.exe" if not defined CL_PATH set CL_PATH=%%~v\bin\Hostx64\x64\cl.exe
+    if not defined LINK_PATH for /d %%v in ("C:\Progra~1\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\*") do if exist "%%~v\bin\Hostx64\x64\link.exe" if not defined LINK_PATH set LINK_PATH=%%~v\bin\Hostx64\x64\link.exe
+    for /d %%v in ("C:\Progra~1\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\*") do if exist "%%~v\lib\x64\libcmt.lib" if not defined MSVC_LIB set MSVC_LIB=%%~v\lib\x64
 
     if not exist "!CL_PATH!" (
         echo [WARN] WDK x64 compiler not found at !CL_PATH!
@@ -162,10 +182,10 @@ if "%BUILD_WFP%"=="1" (
         echo        Compiling with WDK compiler...
 
         REM Compile C sources
-        "!CL_PATH!" /Zi /W4 /kernel /Gs /D_AMD64_ /DWINNT=1 /DNDIS60=1 ^
-            /I"%WDK_PATH%\Include\km" ^
-            /I"%WDK_PATH%\Include\shared" ^
-            /I"%WDK_PATH%\Include\km\crt" ^
+        "!CL_PATH!" /Zi /W4 /kernel /Gs /GS- /D_AMD64_ /DWINNT=1 /DNDIS60=1 ^
+            /I"!WDK_INCLUDE!\km" ^
+            /I"!WDK_INCLUDE!\shared" ^
+            /I"!WDK_INCLUDE!\km\crt" ^
             /Fo"%BUILD_DIR%\wfp\\" ^
             /c aegis_wfp.c aegis_wfp_callout.c aegis_wfp_comm.c
 
@@ -176,9 +196,11 @@ if "%BUILD_WFP%"=="1" (
         )
 
         REM Link into .sys
-        "!LINK_PATH!" /kernel /out:"%BUILD_DIR%\wfp\aegis_wfp.sys" ^
-            /LIBPATH:"%WDK_PATH%\Lib\km\x64" ^
-            /ENTRY:GsDriverEntry ^
+        "!LINK_PATH!" /kernel /NODEFAULTLIB /out:"%BUILD_DIR%\wfp\aegis_wfp.sys" ^
+            /LIBPATH:"!WDK_LIB!\km\x64" ^
+            /LIBPATH:"!WDK_UM_LIB!" ^
+            /LIBPATH:"!MSVC_LIB!" ^
+            /ENTRY:DriverEntry ^
             /SUBSYSTEM:NATIVE ^
             /MERGE:.rdata=.text ^
             /INTEGRITYCHECK ^

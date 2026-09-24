@@ -1,0 +1,7 @@
+﻿AEGIS host-only WFP observe-only coordinator
+expected_kali_ip=192.168.126.10
+listen_port=49152
+wait_seconds=30
+prevention_gate=closed
+enforcement=disabled
+probe_command=run from Kali after this file appears

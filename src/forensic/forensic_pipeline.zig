@@ -29,6 +29,7 @@
 const std = @import("std");
 const event = @import("../contract/event.zig");
 const manifest = @import("../contract/runtime_manifest.zig");
+const receipt = @import("../policy/enforcement_receipt.zig");
 
 pub const RING_BYTES: usize = manifest.Limits.FORENSIC_RING_BYTES;
 pub const RECORD_BYTES: usize = 4096;
@@ -49,6 +50,8 @@ pub const RecordHeader = extern struct {
     record_seq: u64, // PATCH-33: monotonically increasing sequence
     prev_hash: [HASH_BYTES]u8, // PATCH-33: hash of previous record
     current_hash: [HASH_BYTES]u8, // PATCH-33: hash of this record
+    // reserved[6] stores EventSource for exact sensor attribution; the
+    // remaining bytes stay reserved for future forensic metadata.
     reserved: [7]u8,
 };
 
@@ -119,6 +122,32 @@ pub const ForensicRing = struct {
         return self.written;
     }
 
+    /// Append an enforcement receipt only after proving that its identity is
+    /// attached to the same event. Receipt status remains data in the
+    /// forensic record; this method never upgrades a decision to host effect.
+    pub fn appendReceipt(
+        self: *ForensicRing,
+        ev: *const event.IpcEvent,
+        payload: []const u8,
+        enforcement: receipt.EnforcementReceipt,
+        severity: u8,
+    ) !u64 {
+        if (!enforcement.validate()) return error.InvalidReceipt;
+        if (!enforcement.isForensicallyLinkable()) return error.UnlinkedReceipt;
+        if (enforcement.event_id != ev.event_id) return error.EventIdentityMismatch;
+        if (enforcement.policy_id != 0 and enforcement.policy_id != ev.rule_id) {
+            return error.PolicyIdentityMismatch;
+        }
+        return self.append(
+            ev,
+            payload,
+            enforcement.audit_id,
+            enforcement.policy_id,
+            enforcement.decision,
+            severity,
+        );
+    }
+
     fn appendWrapped(
         self: *ForensicRing,
         ev: *const event.IpcEvent,
@@ -178,7 +207,7 @@ pub const ForensicRing = struct {
             .record_seq = self.next_seq,
             .prev_hash = self.last_hash,
             .current_hash = [_]u8{0} ** HASH_BYTES, // filled after hash computation
-            .reserved = [_]u8{0} ** 7,
+            .reserved = [_]u8{ 0, 0, 0, 0, 0, 0, @intFromEnum(ev.source) },
         };
         @memcpy(slot[0..@sizeOf(RecordHeader)], std.mem.asBytes(&hdr));
         const plen = hdr.payload_len;
@@ -451,6 +480,59 @@ test "ForensicRing record_seq increments" {
     defer std.testing.allocator.free(rec2);
     const hdr2 = std.mem.bytesAsValue(RecordHeader, rec2[0..@sizeOf(RecordHeader)]);
     try std.testing.expectEqual(@as(u64, 2), hdr2.record_seq);
+}
+
+test "ForensicRing appendReceipt requires matching forensic identity" {
+    var ring = try ForensicRing.initMemory(std.testing.allocator, 4 * RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+
+    var ev = event.IpcEvent.init(.signature_match);
+    ev.now();
+    ev.event_id = 77;
+    ev.rule_id = 12;
+    const valid = receipt.EnforcementReceipt{
+        .request_id = 100,
+        .event_id = 77,
+        .policy_id = 12,
+        .decision = 1,
+        .status = .simulated,
+        .provider = "none",
+        .trace_id = 77,
+        .audit_id = 100,
+    };
+    try std.testing.expectEqual(@as(u64, 1), try ring.appendReceipt(&ev, "alert", valid, 3));
+
+    const wrong_event = receipt.EnforcementReceipt{
+        .request_id = 101,
+        .event_id = 999,
+        .policy_id = 12,
+        .decision = 1,
+        .status = .simulated,
+        .provider = "none",
+        .trace_id = 999,
+        .audit_id = 101,
+    };
+    try std.testing.expectError(error.EventIdentityMismatch, ring.appendReceipt(&ev, "bad", wrong_event, 3));
+}
+
+test "ForensicRing rejects receipt host effect without enforced status" {
+    var ring = try ForensicRing.initMemory(std.testing.allocator, 2 * RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+    var ev = event.IpcEvent.init(.signature_match);
+    ev.now();
+    ev.event_id = 78;
+    const invalid = receipt.EnforcementReceipt{
+        .request_id = 102,
+        .event_id = 78,
+        .policy_id = 0,
+        .decision = 1,
+        .status = .pending,
+        .provider = "wfp",
+        .host_effect_confirmed = true,
+        .trace_id = 78,
+        .audit_id = 102,
+    };
+    try std.testing.expectError(error.InvalidReceipt, ring.appendReceipt(&ev, "bad", invalid, 3));
 }
 
 // ============================================================================

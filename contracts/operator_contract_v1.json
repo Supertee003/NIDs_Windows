@@ -1,0 +1,41 @@
+{
+  "schema": "aegis.operator.contract.v1",
+  "policy_action_ordinals": {
+    "ALLOW": 0,
+    "ALERT": 1,
+    "BLOCK": 2,
+    "QUARANTINE": 3,
+    "RATE_LIMIT": 4,
+    "LOG_ONLY": 5
+  },
+  "pep_decision_ordinals": {
+    "ALLOW": 0,
+    "BLOCK": 1,
+    "RATE_LIMIT": 2,
+    "QUARANTINE": 3,
+    "ESCALATE": 4,
+    "DROP": 5
+  },
+  "rule": "PolicyAction and PepDecision are different namespaces; their BLOCK values must not be compared directly.",
+  "enforcement_receipt": {
+    "version": 1,
+    "confirmed_block_requirements": [
+      "status == enforced",
+      "host_effect_confirmed == true",
+      "request_id != 0",
+      "event_id != 0",
+      "trace_id != 0",
+      "audit_id != 0",
+      "filter_id != 0",
+      "provider != empty"
+    ]
+  },
+  "operator_states": [
+    "OBSERVE_ONLY",
+    "ENFORCEMENT_READY",
+    "ENFORCEMENT_UNAVAILABLE",
+    "BLOCKED_CONFIRMED",
+    "ENFORCEMENT_FAILED",
+    "ROLLED_BACK"
+  ]
+}

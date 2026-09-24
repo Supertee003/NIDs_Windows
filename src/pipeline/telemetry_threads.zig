@@ -57,28 +57,36 @@ fn etwCallback(ctx: *anyopaque, rec: *const etw.EtwEventRecord, ext_data: []cons
     var ev = event.IpcEvent.init(.etw_process_create);
     ev.source = .capture_etw;
     ev.timestamp_ns = @intCast(rec.timestamp_ns);
-    ev.event_id = diag.metrics.events_emitted.get();
+    // Provider event_id is local to the ETW provider. Reserve a monotonic
+    // AEGIS event identity separately for downstream trace/forensic joins.
+    ev.event_id = diag.metrics.events_emitted.next();
 
-    // Determine event kind from ETW opcode
-    // (new EtwEventRecord carries event_id instead of ETW opcode; map by id)
+    // Event IDs are provider-local. Always gate the mapping by provider GUID;
+    // otherwise an ID=1 from a file/registry provider could be misreported as
+    // PROCESS_CREATE and poison host correlation.
+    const is_process = std.mem.eql(u8, &rec.provider_guid, &etw.KERNEL_PROCESS_GUID.guid);
+    const is_file = std.mem.eql(u8, &rec.provider_guid, &etw.KERNEL_FILE_GUID.guid);
+    const is_registry = std.mem.eql(u8, &rec.provider_guid, &etw.KERNEL_REGISTRY_GUID.guid);
     const opcode: u16 = rec.event_id;
-    if (opcode == 1) { // Process Start
+    if (is_process and opcode == 1) {
         ev.kind = .etw_process_create;
-    } else if (opcode == 2) { // Process Stop
+    } else if (is_process and opcode == 2) {
         ev.kind = .etw_process_exit;
-    } else if (opcode == 0x0A or opcode == 0x0B) { // File Create/Delete
+    } else if (is_file and (opcode == 0x0A or opcode == 0x0B)) {
         ev.kind = .fim_change;
-    } else if (opcode == 0x0E or opcode == 0x0F) { // Registry Create/Delete
+    } else if (is_registry and (opcode == 0x0E or opcode == 0x0F)) {
         ev.kind = .reg_change;
+    } else {
+        // Unknown provider/event combinations are not safe to classify.
+        return;
     }
 
-    // Push event + extended data as payload
-    if (ext_data.len > 0) {
-        _ = queue.pushEvent(ev, ext_data);
-    } else {
-        _ = queue.pushEvent(ev, &[_]u8{});
-    }
-    diag.metrics.events_emitted.inc();
+    // Queue storage is bounded; hash and measure the exact bytes that will be
+    // copied so forensic metadata cannot claim more payload than was retained.
+    const payload_len = @min(ext_data.len, queue.MAX_PAYLOAD_BYTES);
+    const payload = ext_data[0..payload_len];
+    ev.setPayload(payload);
+    _ = queue.pushEvent(ev, payload);
 }
 
 /// FIM thread: polls file integrity changes and pushes to pipeline.
@@ -89,9 +97,20 @@ pub fn fimThread(watcher: *fim_mod.FimWatcher) void {
         return;
     }
 
-    // Add default FIM rules (monitor Windows system directories)
-    watcher.addRule("C:\\Windows\\System32", true) catch {};
-    watcher.addRule("C:\\Windows\\SysWOW64", true) catch {};
+    // Production defaults remain the Windows system directories. For a
+    // controlled observe-only proof, an operator may opt in to one temporary
+    // directory through AEGIS_FIM_PROOF_ROOT. This avoids mutating System32
+    // while exercising the real ReadDirectoryChangesW -> queue path.
+    if (std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_FIM_PROOF_ROOT")) |proof_root| {
+        defer std.heap.page_allocator.free(proof_root);
+        diag.info("FIM observe-only proof root enabled: {s}", .{proof_root});
+        watcher.addRule(proof_root, true) catch |err| {
+            diag.warn("FIM proof root rule failed: {}", .{err});
+        };
+    } else |_| {
+        watcher.addRule("C:\\Windows\\System32", true) catch {};
+        watcher.addRule("C:\\Windows\\SysWOW64", true) catch {};
+    }
     watcher.startAll() catch |err| {
         diag.warn("FIM startAll failed: {} — FIM disabled", .{err});
         state.markWorkerFailure(.fim);
@@ -104,11 +123,33 @@ pub fn fimThread(watcher: *fim_mod.FimWatcher) void {
     while (!state.g_stop_requested.load(.acquire)) {
         const data = watcher.poll();
         if (data.len > 0) {
-            var ev = event.IpcEvent.init(.fim_change);
-            ev.source = .capture_fim;
-            ev.timestamp_ns = @intCast(std.time.nanoTimestamp());
-            _ = queue.pushEvent(ev, data);
-            diag.metrics.events_emitted.inc();
+            var offset: usize = 0;
+            while (offset < data.len) {
+                var fim_event: fim_mod.FimEvent = .{ .kind = .modified };
+                const used = fim_mod.parseNotifyRecord(data[offset..], &fim_event) catch |err| {
+                    diag.warn("FIM notification normalization failed: {} offset={d} bytes={d}", .{ err, offset, data.len });
+                    break;
+                };
+                var relative_buf: [512]u8 = undefined;
+                const relative_len = fim_event.path_len;
+                @memcpy(relative_buf[0..relative_len], fim_event.path[0..relative_len]);
+                const relative_path = relative_buf[0..relative_len];
+                fim_mod.qualifyPath(watcher.activeRoot(), relative_path, &fim_event) catch |err| {
+                    diag.warn("FIM path qualification failed: {}", .{err});
+                    if (used == 0) break;
+                    offset += used;
+                    continue;
+                };
+                const path = fim_event.path[0..fim_event.path_len];
+                var ev = event.IpcEvent.init(.fim_change);
+                ev.source = .capture_fim;
+                ev.timestamp_ns = @intCast(fim_event.timestamp_ns);
+                ev.setPayload(path);
+                _ = queue.pushEvent(ev, path);
+                diag.metrics.events_emitted.inc();
+                if (used == 0) break;
+                offset += used;
+            }
         }
         std.time.sleep(500 * std.time.ns_per_ms); // poll every 500ms
     }

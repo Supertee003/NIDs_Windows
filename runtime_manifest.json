@@ -1,887 +1,446 @@
 {
-  "schema_version": "1.0",
-  "generated_at": "2026-09-12T00:00:00.000000+00:00",
-  "head_sha": "688ab566d477105df5f868cee1571fbec77eedfd",
-  "canonical_source_root": "/",
-  "canonical_entrypoints": {
-    "zig_core_tier1": {
-      "file": "src/main.zig",
-      "language": "zig",
-      "classification": "CANONICAL",
-      "role": "Tier-1: Runtime spine, capture, detection, correlation, policy orchestration, control pipe",
-      "build": "zig build",
-      "artifact": "zig-out/bin/aegis_nids.exe"
-    },
-    "rust_pep_tier3": {
-      "file": "rust-src/lib.rs",
-      "language": "rust",
-      "crate_name": "aegis_pep",
-      "classification": "CANONICAL",
-      "role": "Tier-3: Policy Enforcement Point + Federation TLS",
-      "build": "cargo build --release",
-      "artifact": "target/release/aegis_pep.dll"
-    },
-    "go_nose": {
-      "file": "nose/main.go",
-      "language": "go",
-      "module": "aegis-nose",
-      "classification": "CANONICAL",
-      "role": "Packet acquisition, flow collection, IPC reader, canonical event production",
-      "build": "cd nose && go build -o aegis-nose.exe .",
-      "artifact": "nose/aegis-nose.exe"
-    },
-    "cpp_native_helpers": {
-      "file": "src/windows/aegis_wfp.c",
-      "language": "c",
-      "classification": "CANONICAL",
-      "role": "Native Windows adapters: WFP user-mode, ETW helpers, FIM",
-      "build": "cmake -B build && cmake --build build",
-      "artifacts": [
-        "build/Release/aegis_wfp_user.dll",
-        "build/Release/aegis_etw_helper.dll",
-        "build/Release/aegis_fim_helper.dll"
-      ]
-    },
-    "cpp_bridge": {
-      "file": "bridge/aegis_ipc.cpp",
-      "language": "c++",
-      "classification": "CANONICAL",
-      "role": "C++ IPC bridge: event queue, DEFCON, IPS block/unblock, adapter management",
-      "build": "cd bridge && cmake -B build && cmake --build build",
-      "artifacts": [
-        "dist/aegis_ipc.dll",
-        "dist/aegis_adapter.dll",
-        "dist/aegis_bridge.exe"
-      ]
-    },
-    "brain_tier2": {
-      "file": "brain/windows_brain.py",
-      "language": "python",
-      "classification": "CANONICAL",
-      "role": "Tier-2: Threat analysis, regex scanning, analytics"
-    },
-    "ts_policy_compiler": {
-      "file": "ts_policy/src/index.ts",
-      "language": "typescript",
-      "classification": "CANONICAL",
-      "role": "Policy authoring, simulation, compilation to Policy IR",
-      "build": "cd ts_policy && npm run typecheck && npm run test:all",
-      "note": "Advisory only - no build output. Typecheck + test only."
-    },
-    "mouth_defcon_gui": {
-      "file": "mouth/windows_sec_monitor.rs",
-      "language": "rust",
-      "crate_name": "aegis-mouth",
-      "role": "OPTIONAL standalone DEFCON Security Monitor GUI (log tailing, alert/mitigation feeds, health pipe). Separate operator component - NOT part of the Rust PEP authority and never linked into the runtime.",
-      "classification": "OPTIONAL",
-      "optional": true,
-      "build": "cd mouth && cargo build --release",
-      "artifact": "mouth/target/release/windows_sec_monitor.exe"
-    },
-    "rust_shield_tier3": {
-      "file": "shield/src/lib.rs",
-      "language": "rust",
-      "crate_name": "aegis-shield",
-      "classification": "SUPPORT",
-      "is_final_enforcement": false,
-      "role": "Tier-3 payload screening / memory-safety shield (sec_monitor.dll), loaded at runtime startup via bridge_init; screening helper only, NOT an enforcement authority.",
-      "quarantined_modules": [
-        "shield/src/pep.rs",
-        "shield/src/windows_enforce.rs",
-        "shield/src/lib.rs (aegis_pep_evaluate / aegis_pep_status_count / aegis_pep_version)"
-      ],
-      "quarantine_status": "QUARANTINED_P0 (GAP-007, migration slice PEP-001) - duplicate PEP + WFP enforcement; must not be called. Still bound: src/forensic/policy_contract.zig (dormant extern \"sec_monitor\" fn aegis_pep_evaluate) and tests/pep/test_t8_rust_pep.py.",
-      "build": "cd shield && cargo build --release",
-      "artifact": "shield/target/release/sec_monitor.dll"
-    },
-    "go_aggregator": {
-      "file": "go/aggregator/main.go",
-      "language": "go",
-      "module": "aegis-aggregator",
-      "classification": "SUPPORT",
-      "role": "Optional operator alert sidecar (NDJSON tail -> REST :9200). Not on the golden path and produces no Canonical Event.",
-      "build": "cd go/aggregator && go build -o aegis-aggregator.exe .",
-      "artifact": "go/aggregator/aegis-aggregator.exe",
-      "optional": true
-    }
-  },
-  "canonical_artifacts": {
-    "zig_core": {
-      "path": "zig-out/bin/aegis_nids.exe",
-      "produced_by": "zig build",
-      "source": "src/main.zig"
-    },
-    "rust_pep": {
-      "path": "target/release/aegis_pep.dll",
-      "produced_by": "cargo build --release",
-      "source": "rust-src/lib.rs"
-    },
-    "cpp_wfp_user": {
-      "path": "build/Release/aegis_wfp_user.dll",
-      "produced_by": "cmake --build build --config Release",
-      "source": "src/windows/aegis_wfp.c"
-    },
-    "cpp_etw_helper": {
-      "path": "build/Release/aegis_etw_helper.dll",
-      "produced_by": "cmake --build build --config Release",
-      "source": "src/windows/etw_native.c"
-    },
-    "cpp_fim_helper": {
-      "path": "build/Release/aegis_fim_helper.dll",
-      "produced_by": "cmake --build build --config Release",
-      "source": "src/windows/fim_native.c"
-    },
-    "go_nose": {
-      "path": "nose/aegis-nose.exe",
-      "produced_by": "cd nose && go build -o aegis-nose.exe .",
-      "source": "nose/main.go"
-    },
-    "cpp_bridge": {
-      "path": "dist/aegis_ipc.dll",
-      "produced_by": "cd bridge && cmake -B build && cmake --build build",
-      "source": "bridge/aegis_ipc.cpp"
-    },
-    "cpp_adapter": {
-      "path": "dist/aegis_adapter.dll",
-      "produced_by": "cd bridge && cmake -B build && cmake --build build",
-      "source": "bridge/aegis_adapter.cpp"
-    },
-    "mouth_gui": {
-      "path": "mouth/target/release/windows_sec_monitor.exe",
-      "produced_by": "cd mouth && cargo build --release",
-      "source": "mouth/windows_sec_monitor.rs",
-      "optional": true
-    },
-    "rust_shield": {
-      "path": "shield/target/release/sec_monitor.dll",
-      "produced_by": "cd shield && cargo build --release",
-      "source": "shield/src/lib.rs"
-    },
-    "go_aggregator": {
-      "path": "go/aggregator/aegis-aggregator.exe",
-      "produced_by": "cd go/aggregator && go build -o aegis-aggregator.exe .",
-      "source": "go/aggregator/main.go",
-      "classification": "SUPPORT",
-      "optional": true
-    }
-  },
-  "canonical_config": {
-    "rules": "configs/Rules.json"
-  },
-  "canonical_cli": "tools/aegisctl.py",
-  "canonical_test_root": "tests/",
-  "legacy_markers": {
-    "core/*.zig": "ALIAS - these keys are manifest module IDs, NOT filesystem paths; each resolves through real_path to src/** and all of them compile in the test graph (src/tests/core/) while runtime wiring lives in src/main.zig/daemon.zig via bridge_init",
-    "core/nids_main.zig": "LEGACY - superseded by src/main.zig + src/daemon.zig (same bridge wiring carried over)",
-    "shield/": "SUPPORT Tier-3 Rust crate (aegis-shield) - builds shield/target/release/sec_monitor.dll, loaded at runtime by bridge_init for payload screening only; NOT an enforcement authority. Its pep.rs/windows_enforce.rs enforcement modules are tracked as OPEN P0-7 and must not be reachable from the runtime",
-    "go/": "SUPPORT - go/aggregator/ is an optional operator alert sidecar (REST :9200) that builds and tests green in CI; it is not an acquisition authority and produces no Canonical Event. nose/ is the canonical Go sensor source",
-    "mouth/build_mouth.bat": "LEGACY build path - superseded by mouth/Cargo.toml (rustc-direct build; also references missing aegis_mouth_tui.rs)"
-  },
-  "invariants": [
-    "ONE runtime spine (Zig core) with contracted workers: Rust PEP (enforcement authority), Rust Shield (screening support), Go Nose (acquisition), C native helpers, C++ bridge, Python/Cython analytics",
-    "Component classes: CANONICAL = built in CI and executed by the production runtime; SUPPORT = built in CI, not on the golden path; OPTIONAL = operator-only; ALIAS = manifest module ID",
-    "NO build artifacts tracked",
-    "NO runtime state tracked",
-    "src/ = canonical Zig source; core/ does not exist as a directory",
-    "rust-src/ = canonical Rust PEP source (single PEP authority); shield/ = canonical Tier-3 shield crate (sec_monitor.dll)",
-    "bridge/ = canonical C++ bridge, native/ = DOES NOT EXIST"
-  ],
-  "authority_invariants": [
-    "host-network source: src/capture/npcap_adapter.zig (single authoritative source for Windows host network + process telemetry; one model -> CanonicalEvent -> Zig Flow)",
-    "WFP enforcement: src/policy/wfp_production.zig (single authoritative WFP enforcement module; Rust PEP is the only path to enforcement)",
-    "Rust PEP: src/core/rust_pep.zig (single PEP authority; no other path bypasses Rust PEP)",
-    "decision trace: src/forensic/decision_trace.zig (mandatory audit trail for all enforcement decisions)",
-    "shadow decision: src/forensic/shadow_decision.zig (shadow comparison for candidate vs. enforce decisions)",
-    "security replay: src/forensic/replay_engine.zig (replayable security atoms for post-incident analysis)",
-    "authority review: src/core/authority_review.zig (12-clause authority checklist for deployment review)",
-    "canary order: src/windows/ips_canary.zig (IPS canary progression: simulation -> shadow -> canary -> enforce)",
-    "final authority: Rust PEP (aegis_pep.dll) is the final enforcement authority; Zig dispatches through PEP",
-    "never \"Everyone\" for privileged: privileged actions require explicit caller capability; no catch-all Everyone role",
-    "control plane: src/policy/control_ipc.zig (named pipe control protocol for CLI/TS policy authoring)",
-    "policy engine: src/policy/policy_engine.zig (Zig policy engine is the architectural decision authority; TypeScript produces IR that Zig loads and evaluates)",
-    "identifier integrity: all canonical events carry CRC-validated frames with magic, version, type, and length fields; identifiers survive the full pipeline",
-    "golden path is REAL (host-verified Windows E2E): every golden_path module has status=REAL; the end-to-end pipeline is verified on Windows host",
-    "federation authority: federation modules (cluster_coord, federation_codec, federation_tcp, federation_tls) are report-only; they never enforce locally",
-    "federation: reports only, enforcement stays local: federation transport sends incident snapshots for peer visibility; enforcement decisions stay in the local PEP",
-    "federation transport is TLS (no plaintext production transport): all inter-node federation communication uses mTLS with certificate validation",
-    "forensics authority: forensics_engine.zig is the authoritative forensic trace; all enforcement actions produce an immutable forensic record",
-    "forensic log authority: forensic_log.zig is append-only and immutable; forensic records cannot be modified after creation",
-    "replay authority: replay_engine.zig replays historical decisions against current rule/policy/context atoms; differences are attributed to version deltas",
-    "forensic trace and replay consistent: decision_trace and replay_engine share the same schema; replay re-evaluates the original trace chain",
-    "real IPS path: src/core/real_ips_path.zig models the real enforcement chain from detection through PEP to Windows WFP; IPS actions must go through PEP",
-    "multi-source: incident correlation requires evidence from multiple independent sources; single-source detections are flagged but not auto-enforced",
-    "dispatched_to_pep: all privileged enforcement actions are dispatched through the Rust PEP (aegis_pep.dll); no other code path can trigger enforcement",
-    "performance authority: perf_benchmark.zig and performance_harness.zig define the performance gates; regression against these gates blocks release",
-    "CI matrix authority: ci_coverage.json tracks per-language test coverage; the CI matrix must cover Zig, Rust, Go, Python, TypeScript, and C/C++ components",
-    "build provenance: build_manifest.json records every build artifact with its source commit, build command, and output path; provenance is auditable",
-    "installer preserves user data: the NSIS installer preserves user data directories during upgrade; install/uninstall cycles do not delete user configs or logs",
-    "RPO: recovery point objective is 5 minutes; forensic records and flow state are checkpointed at least every 5 minutes",
-    "RTO: recovery time objective is 60 seconds; the system can restart and resume detection within 60 seconds of failure"
-  ],
+  "runtime_version": "5.0.0",
+  "head_sha": "46b93dcf9cca17b323ddff7a4c71e33e81c37fb5",
+  "entrypoint": "src/main.zig",
+  "production_binary": "zig-out/bin/aegis_nids.exe",
+  "source_commit": "46b93dc",
+  "date": "2026-09-24T12:09:38.350012+00:00",
+  "production_modules": 3,
   "modules": {
-    "src/core/diagnostics.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "structured logging"
-    },
-    "src/core/memory_pool.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "role": "slab allocator"
-    },
-    "src/core/bridge_init.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "bridge initialization"
-    },
-    "src/core/rust_pep.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "PEP simulation"
-    },
-    "src/core/nids_capture.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "named pipe sensor"
-    },
-    "src/core/nids_analyze.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "3-tier analysis engine"
-    },
-    "src/core/brain_engine.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "brain advisor"
-    },
-    "src/core/priority_queue.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "role": "event queue"
-    },
-    "src/core/fabric_accounting.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "role": "event fabric accounting"
-    },
-    "src/core/authority_review.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "role": "authority checklist"
-    },
-    "src/core/canary_progression.zig": {
-      "status": "PROOF",
-      "golden_path": false,
-      "role": "IPS canary state machine"
-    },
-    "src/core/compliance_reporter.zig": {
-      "status": "PROOF",
-      "golden_path": false,
-      "role": "compliance reports"
-    },
-    "src/core/contract_freeze.zig": {
-      "status": "PROOF",
-      "golden_path": false,
-      "role": "frozen contract metadata"
-    },
-    "src/core/legacy_removal.zig": {
-      "status": "PROOF",
-      "golden_path": false,
-      "role": "deprecation map"
-    },
-    "src/core/real_ips_path.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "role": "enforcement chain model"
-    },
-    "src/windows/ips_canary_order.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "IPS canary order"
-    },
-    "src/xdr/xdr_incident_fabric.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "XDR incident fabric"
-    },
-    "src/forensic/forensics_engine.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "forensics engine"
-    },
-    "src/forensic/forensic_log.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "forensic log"
-    },
-    "src/forensic/replay_engine.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "replay engine"
-    },
-    "src/policy/dispatcher.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "dispatcher"
-    },
-    "src/policy/dispatcher_phase_b.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "dispatcher phase B"
-    },
-    "src/policy/policy_signing.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "policy signing"
-    },
-    "src/capture/flow_engine.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "flow engine"
-    },
-    "src/capture/nose_pipe_reader.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "nose pipe reader"
-    },
-    "src/windows/host_telemetry.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "host telemetry"
-    },
-    "src/detection/detection_engine.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "detection engine"
-    },
-    "src/forensic/decision_trace.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "decision trace"
-    },
-    "src/policy/shadow_decision.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "role": "shadow decision compare"
-    },
-    "src/forensic/replayable_security.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "role": "replayable security"
-    },
-    "src/detection/correlation_engine.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "correlation engine"
-    },
-    "src/capture/npcap_capture.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "npcap capture"
-    },
-    "src/federation/cluster_coord.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "cluster coordination"
-    },
-    "src/federation/federation_codec.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "federation codec"
-    },
-    "src/federation/federation_tls.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "federation TLS"
-    },
-    "src/windows/windows_adapters.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "Windows adapters (100+ tests)"
-    },
-    "src/detection/injection_detector.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "role": "injection detector"
-    },
-    "src/windows/registry_trie.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "role": "registry trie"
-    },
-    "src/core/perf_benchmark.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "role": "performance benchmarks"
-    },
-    "src/core/performance_harness.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "role": "perf measurement"
-    },
-    "src/core/concurrency_harden.zig": {
-      "status": "TEST",
-      "golden_path": false,
-      "role": "race/deadlock tests"
-    },
-    "src/core/e2e_harness.zig": {
-      "status": "TEST",
-      "golden_path": false,
-      "role": "e2e pipeline tests"
-    },
-    "src/core/integration_test.zig": {
-      "status": "TOOL",
-      "golden_path": false,
-      "role": "integration test CLI"
-    },
-    "src/core/nids_main.zig": {
-      "status": "LEGACY",
-      "golden_path": false,
-      "role": "legacy entry point"
-    },
-    "src/contract/canonical_event.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "canonical event schema"
-    },
-    "src/contract/event_fabric.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "event fabric"
-    },
-    "src/contract/event_queue.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "role": "event queue"
-    },
-    "src/policy/policy_engine.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "policy engine"
-    },
-    "src/policy/pep_bindings.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "PEP bindings"
-    },
-    "src/policy/wfp_production.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "WFP enforcement"
-    },
-    "src/policy/control_ipc.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "control pipe"
-    },
-    "src/detection/signature_engine.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "detection engine"
-    },
-    "src/detection/correlator.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "correlation engine"
-    },
-    "src/detection/threat_tracker.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "threat tracking"
-    },
-    "src/forensic/forensic_pipeline.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "forensic pipeline"
-    },
-    "src/capture/flow_table.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "flow table"
-    },
-    "src/capture/packet_decoder.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "packet decoder"
-    },
-    "src/capture/nose_contract.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "nose contract"
-    },
-    "src/capture/npcap_adapter.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "npcap adapter"
-    },
-    "src/windows/etw_native.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "role": "ETW adapter"
-    },
-    "src/windows/fim_native.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "role": "FIM adapter"
-    },
-    "src/windows/registry_monitor.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "role": "registry monitor"
-    },
-    "src/windows/injection_detector.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "role": "injection detector"
-    },
-    "src/reliability/lifecycle.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "lifecycle management"
-    },
-    "src/reliability/watchdog.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "role": "watchdog"
-    },
-    "core/brain_engine.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/core/brain_engine.zig"
-    },
-    "core/canonical_event.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/contract/canonical_event.zig"
-    },
-    "core/cluster_coord.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/federation/cluster_coord.zig"
-    },
-    "core/control_ipc.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/policy/control_ipc.zig"
-    },
-    "core/correlation_engine.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/detection/correlation_engine.zig"
-    },
-    "core/decision_trace.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/forensic/decision_trace.zig"
-    },
-    "core/detection_engine.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/detection/detection_engine.zig"
-    },
-    "core/dispatcher.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/policy/dispatcher.zig"
-    },
-    "core/dispatcher_phase_b.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/policy/dispatcher_phase_b.zig"
-    },
-    "core/event_fabric.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/contract/event_fabric.zig"
-    },
-    "core/fault_injection.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "real_path": "src/reliability/fault_injection.zig"
-    },
-    "core/fault_matrix.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "real_path": "src/reliability/fault_matrix.zig"
-    },
-    "core/federation_bench.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "real_path": "src/federation/federation_bench.zig"
-    },
-    "core/federation_codec.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/federation/federation_codec.zig"
-    },
-    "core/federation_tcp.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "real_path": "src/federation/federation_tcp.zig"
-    },
-    "core/federation_tls.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/federation/federation_tls.zig"
-    },
-    "core/flow_engine.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/capture/flow_engine.zig"
-    },
-    "core/forensic_log.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/forensic/forensic_log.zig"
-    },
-    "core/forensics_engine.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/forensic/forensics_engine.zig"
-    },
-    "core/host_telemetry.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/windows/host_telemetry.zig"
-    },
-    "core/ips_canary_order.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/windows/ips_canary_order.zig"
-    },
-    "core/nose_pipe_reader.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/capture/nose_pipe_reader.zig"
-    },
-    "core/npcap_capture.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/capture/npcap_capture.zig"
-    },
-    "core/npcap_test_live.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "real_path": "src/capture/npcap_test_live.zig"
-    },
-    "core/policy_engine.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/policy/policy_engine.zig"
-    },
-    "core/policy_signing.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/policy/policy_signing.zig"
-    },
-    "core/rag_engine.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/detection/rag_engine.zig"
-    },
-    "core/release_engineering.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "real_path": "src/reliability/release_engineering.zig"
-    },
-    "core/release_provenance.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "real_path": "src/reliability/release_provenance.zig"
-    },
-    "core/reliability.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "real_path": "src/reliability/reliability.zig"
-    },
-    "core/replay_engine.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/forensic/replay_engine.zig"
-    },
-    "core/replayable_security.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "real_path": "src/forensic/replayable_security.zig"
-    },
-    "core/shadow_decision.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "real_path": "src/policy/shadow_decision.zig"
-    },
-    "core/threat_intel.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/detection/threat_intel.zig"
-    },
-    "core/wfp_ioctl.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "real_path": "src/policy/wfp_ioctl.zig"
-    },
-    "core/wfp_ioctl_integration.zig": {
-      "status": "MISSING",
-      "golden_path": false
-    },
-    "core/wfp_production.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/policy/wfp_production.zig"
-    },
-    "core/windows_adapters.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "role": "100/100 tests",
-      "real_path": "src/windows/windows_adapters.zig"
-    },
-    "core/windows_capture.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/capture/windows_capture.zig"
-    },
-    "core/xdr_incident_fabric.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "real_path": "src/xdr/xdr_incident_fabric.zig"
-    },
-    "core/cpp_adapter.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "real_path": "src/windows/cpp_adapter.zig"
-    },
-    "core/registry_trie.zig": {
-      "status": "REAL",
-      "golden_path": false,
-      "real_path": "src/windows/registry_trie.zig"
-    },
     "nose/capture.go": {
       "status": "REAL",
       "golden_path": true,
-      "role": "Go packet capture"
+      "canonical_path": "nose/capture.go"
     },
     "nose/canonical.go": {
       "status": "REAL",
       "golden_path": true,
-      "role": "Go canonical event production"
+      "canonical_path": "nose/canonical.go"
     },
     "nose/pipe_writer.go": {
       "status": "REAL",
       "golden_path": true,
-      "role": "Go IPC pipe writer"
+      "canonical_path": "nose/pipe_writer.go"
     },
-    "brain/windows_brain.py": {
-      "status": "REAL",
-      "golden_path": false,
-      "role": "Python brain Tier-2 analytics"
-    },
-    "brain/aegis_brain_cython/fast_scan.pyx": {
+    "core/nose_pipe_reader.zig": {
       "status": "REAL",
       "golden_path": true,
-      "role": "Cython fast scan"
+      "canonical_path": "src/capture/nose_pipe_reader.zig",
+      "compatibility_alias": true
     },
-    "brain/cython/cython_regex_scan.pyx": {
+    "core/event_fabric.zig": {
       "status": "REAL",
       "golden_path": true,
-      "role": "Cython regex scan"
+      "canonical_path": "src/contract/event_fabric.zig",
+      "compatibility_alias": true
     },
-    "ts_policy/src/compiler.ts": {
+    "src/capture/npcap_capture.zig": {
       "status": "REAL",
-      "golden_path": false,
-      "role": "TypeScript policy compiler"
+      "golden_path": true,
+      "canonical_path": "src/capture/npcap_capture.zig"
     },
-    "ts_policy/src/seal.ts": {
+    "src/windows/windows_adapters.zig": {
       "status": "REAL",
-      "golden_path": false,
-      "role": "TypeScript policy seal"
+      "golden_path": true,
+      "canonical_path": "src/windows/windows_adapters.zig"
     },
-    "shield/src/pep.rs": {
+    "core/windows_adapters.zig": {
       "status": "REAL",
-      "golden_path": false,
-      "role": "Rust shield PEP"
+      "golden_path": true,
+      "canonical_path": "src/windows/windows_adapters.zig",
+      "role": "Windows adapter framework; 100/100 tests; no policy authority",
+      "compatibility_alias": true
     },
-    "shield/src/lib.rs": {
+    "src/policy/wfp_production.zig": {
       "status": "REAL",
-      "golden_path": false,
-      "role": "Rust shield library"
+      "golden_path": true,
+      "canonical_path": "src/policy/wfp_production.zig"
     },
-    "configs/Rules.json": {
+    "rust-src/lib.rs": {
       "status": "REAL",
-      "golden_path": false,
-      "role": "detection rules config"
+      "golden_path": true,
+      "canonical_path": "rust-src/lib.rs"
     },
-    "tests/runtime/test_health.py": {
+    "src/policy/control_ipc.zig": {
       "status": "REAL",
-      "golden_path": false,
-      "role": "health probe contract tests"
+      "golden_path": true,
+      "canonical_path": "src/policy/control_ipc.zig"
     },
-    "scripts/aegis_defcon.py": {
+    "core/policy_engine.zig": {
       "status": "REAL",
-      "golden_path": false,
-      "role": "DEFCON metrics script"
+      "golden_path": true,
+      "canonical_path": "src/policy/policy_engine.zig",
+      "compatibility_alias": true
+    },
+    "src/policy/policy_engine.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/policy/policy_engine.zig"
+    },
+    "src/policy/policy_signing.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/policy/policy_signing.zig"
+    },
+    "src/forensic/forensics_engine.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/forensic/forensics_engine.zig"
+    },
+    "src/forensic/forensic_log.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/forensic/forensic_log.zig"
+    },
+    "src/forensic/replay_engine.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/forensic/replay_engine.zig"
+    },
+    "src/tests/proofs/forensic_replay_proof.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/tests/proofs/forensic_replay_proof.zig"
+    },
+    "src/tests/integration/forensics_integration.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/tests/integration/forensics_integration.zig"
+    },
+    "src/forensic/decision_trace.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/forensic/decision_trace.zig"
+    },
+    "src/policy/shadow_decision.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/policy/shadow_decision.zig"
+    },
+    "src/forensic/replayable_security.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/forensic/replayable_security.zig"
+    },
+    "src/core/authority_review.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/core/authority_review.zig"
+    },
+    "src/federation/cluster_coord.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/federation/cluster_coord.zig"
+    },
+    "src/federation/federation_codec.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/federation/federation_codec.zig"
+    },
+    "src/federation/federation_tcp.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/federation/federation_tcp.zig"
+    },
+    "src/federation/federation_tls.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/federation/federation_tls.zig"
+    },
+    "src/windows/ips_canary_order.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/windows/ips_canary_order.zig"
+    },
+    "src/core/real_ips_path.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/core/real_ips_path.zig"
+    },
+    "src/xdr/xdr_incident_fabric.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/xdr/xdr_incident_fabric.zig"
+    },
+    "core/fault_matrix.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/reliability/fault_matrix.zig",
+      "compatibility_alias": true
+    },
+    "core/fault_injection.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/reliability/fault_injection.zig",
+      "compatibility_alias": true
     },
     "src/tests/integration/fault_injection_integration.zig": {
       "status": "REAL",
-      "golden_path": false,
-      "role": "fault injection integration"
+      "golden_path": true,
+      "canonical_path": "src/tests/integration/fault_injection_integration.zig"
+    },
+    "core/reliability.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/reliability/reliability.zig",
+      "compatibility_alias": true
     },
     "src/tests/proofs/config_reload_proof.zig": {
       "status": "REAL",
-      "golden_path": false,
-      "role": "config reload proof"
+      "golden_path": true,
+      "canonical_path": "src/tests/proofs/config_reload_proof.zig"
     },
     "src/tests/proofs/health_monitoring_proof.zig": {
       "status": "REAL",
-      "golden_path": false,
-      "role": "health monitoring proof"
+      "golden_path": true,
+      "canonical_path": "src/tests/proofs/health_monitoring_proof.zig"
+    },
+    "scripts/aegis_defcon.py": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "scripts/aegis_defcon.py"
+    },
+    "scripts/aegis_metrics.py": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "scripts/aegis_metrics.py"
+    },
+    "tests/runtime/test_health.py": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "tests/runtime/test_health.py"
+    },
+    "configs/Rules.json": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "configs/Rules.json"
+    },
+    "tools/config_validator.py": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "tools/config_validator.py"
+    },
+    "src/core/perf_benchmark.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/core/perf_benchmark.zig"
+    },
+    "core/federation_bench.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/federation/federation_bench.zig",
+      "compatibility_alias": true
+    },
+    "src/core/performance_harness.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/core/performance_harness.zig"
     },
     "src/tests/integration/performance_integration.zig": {
       "status": "REAL",
-      "golden_path": false,
-      "role": "performance integration"
+      "golden_path": true,
+      "canonical_path": "src/tests/integration/performance_integration.zig"
     },
     "src/tests/proofs/performance_tuning_proof.zig": {
       "status": "REAL",
-      "golden_path": false,
-      "role": "performance tuning proof"
+      "golden_path": true,
+      "canonical_path": "src/tests/proofs/performance_tuning_proof.zig"
+    },
+    "core/release_engineering.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/reliability/release_engineering.zig",
+      "compatibility_alias": true
+    },
+    "core/release_provenance.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/reliability/release_provenance.zig",
+      "compatibility_alias": true
     },
     "src/tests/integration/release_engineering_integration.zig": {
       "status": "REAL",
-      "golden_path": false,
-      "role": "release engineering integration"
+      "golden_path": true,
+      "canonical_path": "src/tests/integration/release_engineering_integration.zig"
     },
     "tools/release_engineering.py": {
       "status": "REAL",
       "golden_path": false,
-      "role": "release engineering tool"
+      "canonical_path": "tools/release_engineering.py"
     },
     "tools/installer.py": {
       "status": "REAL",
       "golden_path": false,
-      "role": "installer tool"
+      "canonical_path": "tools/installer.py"
     },
     "tools/ci_coverage.py": {
       "status": "REAL",
       "golden_path": false,
-      "role": "CI coverage tool"
+      "canonical_path": "tools/ci_coverage.py"
     },
     "ci_coverage.json": {
       "status": "REAL",
       "golden_path": false,
-      "role": "CI coverage data"
+      "canonical_path": "ci_coverage.json"
     },
     "tools/upgrade_rollback.py": {
       "status": "REAL",
       "golden_path": false,
-      "role": "upgrade rollback tool"
+      "canonical_path": "tools/upgrade_rollback.py"
     },
     "build_manifest.json": {
       "status": "REAL",
       "golden_path": false,
-      "role": "build manifest"
+      "canonical_path": "build_manifest.json"
+    },
+    "brain/windows_brain.py": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "brain/windows_brain.py"
+    },
+    "brain/aegis_brain_cython/fast_scan.pyx": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "brain/aegis_brain_cython/fast_scan.pyx"
+    },
+    "brain/cython/cython_regex_scan.pyx": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "brain/cython/cython_regex_scan.pyx"
+    },
+    "core/rag_engine.zig": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "src/detection/rag_engine.zig",
+      "compatibility_alias": true
+    },
+    "ts_policy/src/compiler.ts": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "ts_policy/src/compiler.ts"
+    },
+    "ts_policy/src/seal.ts": {
+      "status": "REAL",
+      "golden_path": true,
+      "canonical_path": "ts_policy/src/seal.ts"
     }
   },
+  "authority_invariants": [
+    "host-network source: src/capture/npcap_capture.zig is the single authoritative source for Windows host network telemetry; one model -> CanonicalEvent -> Zig Flow",
+    "WFP enforcement module: src/policy/wfp_production.zig is the single authoritative WFP enforcement module; Rust PEP is the only route and a validated receipt is required",
+    "Rust PEP is the final security authority for privileged actions; Python, TypeScript, Go, C++, and federation layers may request but never enforce",
+    "control plane routes through aegisctl and the authenticated named pipe; never \"Everyone\" for privileged control operations",
+    "identifier integrity: event_id, incident_id, policy_id, policy_version, request_id, and forensic_id remain traceable across the golden path",
+    "golden path is REAL (host-verified Windows E2E); no compatibility alias is a second runtime authority",
+    "forensics authority: src/forensic/forensics_engine.zig owns immutable forensic pipeline results",
+    "forensic log authority: src/forensic/forensic_log.zig owns append-only evidence records",
+    "replay authority: src/forensic/replay_engine.zig replays the authoritative forensic result",
+    "forensic trace and replay consistent: replay must preserve the canonical identifiers and decision evidence",
+    "federation authority: remote nodes exchange reports and threat intelligence only; enforcement stays local",
+    "federation: reports only, enforcement stays local",
+    "federation transport is TLS (no plaintext production transport)",
+    "canary order is scope -> target -> expiry -> rollback -> audit; every privileged request is dispatched_to_pep",
+    "real IPS path is receipt-gated and multi-source XDR records incident evidence before operator action",
+    "decision trace records the eight-link request-to-source chain for every privileged action",
+    "shadow decision is advisory only and cannot replace the final authority review",
+    "security replay is deterministic and final authority review is required before release",
+    "performance authority is the release benchmark and performance integration chain",
+    "CI matrix authority is the cross-language validation matrix",
+    "build provenance records source commit, artifact hashes, and reproducible release inputs",
+    "installer preserves user data and upgrade rollback records RPO and RTO",
+    "policy_engine is the canonical policy decision model; unsigned privileged policy is rejected"
+  ],
+  "canonical_entrypoints": {
+    "rust_pep_tier3": {
+      "file": "rust-src/lib.rs",
+      "classification": "CANONICAL"
+    },
+    "rust_shield_tier3": {
+      "file": "shield/src/lib.rs",
+      "classification": "SUPPORT",
+      "is_final_enforcement": false
+    }
+  },
+  "optional_modules": 0,
+  "tooling_modules": 3,
+  "legacy_modules": 159,
+  "init_order": [
+    "core/diagnostics.zig",
+    "core/memory_pool.zig",
+    "contract/event.zig",
+    "contract/runtime_manifest.zig",
+    "reliability/watchdog.zig",
+    "reliability/security_check.zig",
+    "windows/etw_realtime.zig",
+    "windows/fim.zig",
+    "windows/registry_monitor.zig",
+    "windows/injection_detector.zig",
+    "windows/host_telemetry.zig",
+    "capture/npcap_adapter.zig",
+    "capture/packet_decoder.zig",
+    "capture/flow_table.zig",
+    "capture/proto/parsers.zig",
+    "capture/stream_reassembly.zig",
+    "detection/signature_engine.zig",
+    "detection/anomaly_detector.zig",
+    "detection/proto_anomaly.zig",
+    "detection/correlator.zig",
+    "detection/threat_tracker.zig",
+    "policy/action_dispatcher.zig",
+    "policy/pep_bindings.zig",
+    "policy/policy_ir.zig",
+    "policy/trust_store.zig",
+    "forensic/forensic_pipeline.zig",
+    "forensic/replay_engine.zig",
+    "reliability/fault_injection.zig",
+    "reliability/latency_histogram.zig",
+    "federation/cluster_coord.zig",
+    "federation/node_registry.zig",
+    "federation/aggregator.zig",
+    "xdr/xdr_engine.zig"
+  ],
+  "shutdown_order": [
+    "xdr/xdr_engine.zig",
+    "federation/cluster_coord.zig",
+    "reliability/fault_injection.zig",
+    "reliability/watchdog.zig",
+    "windows/host_telemetry.zig",
+    "windows/injection_detector.zig",
+    "windows/etw_realtime.zig",
+    "windows/fim.zig",
+    "windows/registry_monitor.zig",
+    "capture/stream_reassembly.zig",
+    "capture/packet_decoder.zig",
+    "capture/flow_table.zig",
+    "detection/threat_tracker.zig",
+    "detection/correlator.zig",
+    "detection/anomaly_detector.zig",
+    "detection/signature_engine.zig",
+    "policy/action_dispatcher.zig",
+    "policy/pep_bindings.zig",
+    "forensic/replay_engine.zig",
+    "core/memory_pool.zig",
+    "core/diagnostics.zig",
+    "contract/event.zig",
+    "reliability/security_check.zig"
+  ],
+  "subsystems": [
+    "pipeline",
+    "platform"
+  ],
+  "subsystem_modules": {
+    "pipeline": [
+      "rule_loader.zig"
+    ],
+    "platform": [
+      "win32_pipe.zig",
+      "win32_service.zig"
+    ]
+  },
   "golden_path": [
+    "windows/host_telemetry.zig (host network telemetry)",
     "acquisition",
+    "capture/npcap_adapter.zig (packet capture)",
     "canonical_event",
     "event_fabric",
     "flow",
@@ -897,5 +456,35 @@
     "wfp (windows enforcement)",
     "forensics (immutable trace)",
     "replay"
-  ]
+  ],
+  "ABI_versions": {
+    "zig_core": "v5.0.0",
+    "rust_pep": "v5.0.0",
+    "c_native": "v1.0.0",
+    "go_aggregator": "v1.0.0"
+  },
+  "schema_versions": {
+    "canonical_event": "v2.0.0",
+    "runtime_manifest": "v5.0.0",
+    "wire_protocol": "v1.0.0"
+  },
+  "notes": {
+    "production_entrypoint": "build.zig -> src/main.zig -> zig build -> zig-out/bin/aegis_nids.exe",
+    "legacy_folder": "core/ (100+ legacy modules from earlier phases; NOT in production build; tracked per user request)",
+    "production_subsystem": "src/core/ (diagnostics.zig, memory_pool.zig - active in build; 2 files)",
+    "test_only_entrypoint": "src/fuzz_entry.zig -> src/tests/fuzz_main.zig (fuzz harness; 1 file)",
+    "control_client": "tools/aegisctl.py (named-pipe client, connects to daemon; not a runtime)",
+    "installer": "tools/installer.py (consumes build_manifest.json, generates aegis_setup.exe; not a runtime)",
+    "enforcement_mode": "detection-only until a provider-owned, receipt-producing WFP adapter is connected; no host block is claimed",
+    "step_27_action_dispatcher_gap": "closed as a safety containment: ActionDispatcher cannot claim host effect without Rust PEP provider receipt",
+    "step_43_control_state_gap": "STILL PENDING: src/main.zig control responses (packets_captured: 0, flows_active: 0) must bind to real runtime metrics (STEP 43).",
+    "step_50_installer_gap": "STILL PENDING: AEGIS_v5_fresh_deploy.ps1 embeds stale CI/config; removed from git index; preserved locally for STEP 50 fix.",
+    "cleanup_status": "Step 2 complete (366 artifacts removed from git index); Step 3 ADR complete; Step 4 Build Truth verified (all 6 builds green, 5 artifacts present); .gitignore hardened with LF normalization.",
+    "run_time_manifest_step": 5,
+    "build_truth_verified": true,
+    "ci_status": "All 8 CI jobs pass (zig, rust, c, go, python, ts, security, ci-matrix)",
+    "python_tests_status": "436 passed, 23 skipped (after Cython build + cargo cache + timeout fix)",
+    "manifest_drift_fixed": true,
+    "core_restored_per_request": true
+  }
 }

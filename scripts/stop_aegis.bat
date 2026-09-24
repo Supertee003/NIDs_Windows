@@ -23,5 +23,9 @@ if exist "tools\aegisctl.py" (
     if %ERRORLEVEL% equ 0 ( taskkill /IM aegis_nids.exe >nul 2>&1 & echo   [OK] Stopped CORE & set "S=1" )
     if exist "logs\pids" del /Q "logs\pids\*.pid" >nul 2>&1
 )
+:: Brain is a Python process and may outlive the supervisor stop request.
+:: Terminate only the process whose command line owns windows_brain.py;
+:: never kill unrelated Python processes.
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process | Where-Object { `$_.Name -eq 'python.exe' -and `$_.CommandLine -match 'windows_brain\.py' } | ForEach-Object { Stop-Process -Id `$_.ProcessId -Force -ErrorAction SilentlyContinue }" >nul 2>&1
 echo.
 pause

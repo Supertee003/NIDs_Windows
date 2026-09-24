@@ -1,0 +1,4 @@
+{
+  "available": false,
+  "reason": "forensic export requires a running daemon; observation is not claimed"
+}

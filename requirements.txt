@@ -5,6 +5,7 @@
 pyyaml>=6.0.1
 jsonschema>=4.21
 psutil>=5.9
+Flask>=3.0,<4
 
 # Crypto & TLS
 cryptography>=42.0

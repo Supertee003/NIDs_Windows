@@ -27,7 +27,7 @@
                 "clauses": [
                     {
                         "predicates": [
-                            { "field": "severity", "op": "eq", "value_int": 5 }
+                            { "field": "severity", "op": "eq", "value_int": 4 }
                         ]
                     }
                 ]

@@ -1,0 +1,25 @@
+{
+  "release_version": "5.0.0",
+  "source_commit": "46b93dc",
+  "signed": false,
+  "install_tested": false,
+  "rollback_tested": false,
+  "artifacts": [
+    {
+      "name": "aegis_nids.exe",
+      "kind": "core_binary",
+      "version": "5.0.0",
+      "source_commit": "46b93dc",
+      "sha256": "sha256:pending",
+      "required": true
+    },
+    {
+      "name": "aegis_pep.dll",
+      "kind": "pep_dll",
+      "version": "5.0.0",
+      "source_commit": "46b93dc",
+      "sha256": "sha256:pending",
+      "required": true
+    }
+  ]
+}

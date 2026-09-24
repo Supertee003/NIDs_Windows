@@ -13,8 +13,8 @@ Direct netsh/iptables/bridge.block_ip calls are NEVER permitted.
 from __future__ import annotations
 
 import json
+import ipaddress
 import os
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -282,62 +282,95 @@ def request_enforcement_via_pep(
     target_port: int,
     rule_id: str,
     reason: str,
+    protocol: int = 6,
+    event_id: Optional[int] = None,
+    trace_id: Optional[int] = None,
 ) -> Tuple[str, str]:
     """Submit a privileged action request to the Rust PEP via aegisctl.
 
     Returns (status, message) where status is one of
-    ACCEPTED / REJECTED / DEFERRED / FAILED / NO_OP.
+    ENFORCED / REJECTED / DEFERRED / FAILED / NO_OP. ENFORCED requires a
+    validated EnforcementReceipt; process exit status and human-readable
+    CLI output are never sufficient.
 
     STRICT INVARIANT: This is the ONLY path for the brain/UI to request
     enforcement. Direct netsh/iptables/bridge.block_ip calls are NEVER
     permitted. The Rust PEP is the sole enforcement authority (ADR-0001).
     """
-    aegisctl_path = str(TOOLS_DIR.parent / "aegisctl.py")
-
-    if not os.path.exists(aegisctl_path):
-        return ("FAILED", f"aegisctl not found at {aegisctl_path}")
-
+    if action.lower() != "block":
+        return ("REJECTED", "only block requests are supported by the receipt route")
     try:
-        proc = subprocess.run(
-            [
-                sys.executable, aegisctl_path,
-                "block", target_ip,
-                "--rule-id", rule_id,
-                "--reason", reason,
-            ],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
+        dst_ip = int(ipaddress.IPv4Address(target_ip))
+        policy_id = int(str(rule_id), 10)
+    except (ValueError, TypeError):
+        return ("REJECTED", "target_ip must be IPv4 and rule_id must be a numeric policy id")
+    if not (1 <= int(target_port) <= 65535) or not (1 <= int(protocol) <= 255):
+        return ("REJECTED", "destination port and protocol are out of range")
+    if not event_id or not trace_id or int(event_id) <= 0 or int(trace_id) <= 0:
+        return ("REJECTED", "event_id and trace_id are required for a linkable EnforcementReceipt")
+    payload = {
+        "dst_ip": dst_ip,
+        "dst_port": int(target_port),
+        "protocol": int(protocol),
+        "policy_id": policy_id,
+        "severity": 9,
+        "reason": reason,
+        "event_id": int(event_id),
+        "trace_id": int(trace_id),
+    }
+    receipt = _query_daemon_retry("enforcement.block", payload=payload)
+    if not isinstance(receipt, dict) or receipt.get("status") != "ENFORCED":
+        return ("FAILED", "Rust PEP did not return a validated EnforcementReceipt")
+    filter_id = int(receipt.get("filter_id", 0) or 0)
+    if filter_id == 0:
+        return ("FAILED", "enforcement response did not contain filter_id")
+    return ("ENFORCED", json.dumps(receipt, separators=(",", ":")))
 
-        # aegisctl exits 0 on accepted, non-zero on rejected/failed.
-        if proc.returncode == 0:
-            return ("ACCEPTED", proc.stdout.strip())
-        return ("REJECTED", proc.stderr.strip() or proc.stdout.strip())
-    except subprocess.TimeoutExpired:
-        return ("DEFERRED", "aegisctl timed out (PEP deferred the request)")
-    except Exception as e:
-        return ("FAILED", f"aegisctl error: {e}")
+
+def cleanup_enforcement_filter(filter_id: int) -> Tuple[str, str]:
+    """Remove exactly the filter identified by a validated receipt."""
+    if int(filter_id) <= 0:
+        return ("REJECTED", "filter_id must be positive")
+    result = _query_daemon_retry(
+        "enforcement.unblock", payload={"filter_id": int(filter_id)}
+    )
+    if isinstance(result, dict) and result.get("status") == "ROLLED_BACK" and result.get("present") is False:
+        return ("ROLLED_BACK", json.dumps(result, separators=(",", ":")))
+    return ("ROLLBACK_PENDING", "exact filter absence could not be proven after removal")
 
 
-def apply_firewall_block(ip_address: str, rule_name: str = "AEGIS") -> bool:
+def apply_firewall_block(
+    ip_address: str,
+    rule_name: str = "AEGIS",
+    *,
+    target_port: Optional[int] = None,
+    rule_id: Optional[int] = None,
+    protocol: int = 6,
+) -> bool:
     """Request a block via aegisctl -> Rust PEP.
 
     The caller BRAIN/UI does NOT execute the firewall mutation; the Rust PEP
     is the sole authority. This is a thin wrapper that requests enforcement
     via the Control API; it never executes enforcement directly.
 
-    Returns True if the request was ACCEPTED, False otherwise.
+    Returns True only when a validated host-effect receipt is available.
     """
+    # IP-only requests are not part of the active receipt-aware contract.
+    # Keep this compatibility wrapper safe: callers must provide the exact
+    # flow port and numeric policy identity before a request can be formed.
+    if target_port is None or rule_id is None:
+        return False
+
     status, message = request_enforcement_via_pep(
         action="block",
         target_ip=ip_address,
-        target_port=0,
-        rule_id=rule_name,
+        target_port=target_port,
+        rule_id=str(rule_id),
+        protocol=protocol,
         reason=f"Aegis enforcement request (rule {rule_name})",
     )
 
-    if status == "ACCEPTED":
+    if status == "ENFORCED":
         return True
     return False
 
@@ -423,7 +456,74 @@ def get_health_payload() -> Dict[str, Any]:
             for item in daemon_health.get("subsystems", [])
             if isinstance(item, dict)
         }
-        pep_ready = any("pep" in name and data["state"] in {"RUNNING", "READY"} for name, data in subsystem_payload.items())
+        # Normalize state/PID through the common subsystem status view.  In
+        # production get_all_status() delegates to the daemon first, while
+        # tests and diagnostic callers may provide an explicit snapshot.  Use
+        # that normalized view for the identity fields shown to operators;
+        # retain daemon-owned version/error/last-event metadata below.
+        status_snapshot = get_all_status()
+        status_by_name = {
+            name: (is_running, pid)
+            for name, is_running, pid in status_snapshot
+        }
+        for name, (is_running, pid) in status_by_name.items():
+            if name not in subsystem_payload:
+                subsystem_payload[name] = {
+                    "state": "RUNNING" if is_running else "STOPPED",
+                    "pid": pid,
+                    "version": "unknown",
+                    "last_event_ms": 0,
+                    "error": None,
+                }
+            else:
+                subsystem_payload[name]["state"] = "RUNNING" if is_running else "STOPPED"
+                subsystem_payload[name]["pid"] = pid
+        pep_ready = any(
+            name in {"rust_pep", "pep"} and data["state"] in {"RUNNING", "READY"}
+            for name, data in subsystem_payload.items()
+        )
+        tier3_status = subsystem_payload.get("tier3", {})
+        tier3_ready = isinstance(tier3_status, dict) and tier3_status.get("state") in {"RUNNING", "READY"}
+        tier3_diagnostics = _tier3_artifact_diagnostics()
+        tier3_diagnostics["dependency_ready"] = tier3_ready and not bool(tier3_status.get("error"))
+        capabilities = daemon_health.get("capabilities", {})
+        if not isinstance(capabilities, dict):
+            capabilities = {}
+        tier3_diagnostics["provider_ready"] = tier3_diagnostics["dependency_ready"] and bool(
+            capabilities.get("wfp", False)
+        )
+        tier3_diagnostics["host_effect_capable"] = tier3_diagnostics["provider_ready"] and tier3_ready
+        computed_state, computed_degraded = compute_health_state()
+        # The daemon is authoritative for the current canonical subsystem
+        # names and worker postconditions. The legacy compute_health_state()
+        # compatibility list still contains names such as capture/etw/fim;
+        # using its count alone can produce the contradictory READY+degraded
+        # result even when every daemon worker is ready.
+        worker_payload = daemon_health.get("workers", {})
+        if not isinstance(worker_payload, dict):
+            worker_payload = {}
+        required_workers = (
+            "pipeline_ready",
+            "sensor_ready",
+            "nose_ready",
+            "etw_ready",
+            "fim_ready",
+            "registry_ready",
+        )
+        workers_ready = all(bool(worker_payload.get(name, False)) for name in required_workers)
+        canonical_subsystems_ready = bool(subsystem_payload) and all(
+            data.get("state") in {"RUNNING", "READY"} and not data.get("error")
+            for data in subsystem_payload.values()
+        )
+        daemon_runtime_ready = (
+            daemon_health.get("runtime_state") == "RUNNING"
+            and workers_ready
+            and canonical_subsystems_ready
+            and tier3_diagnostics["artifact_present"]
+            and tier3_diagnostics["provider_ready"]
+        )
+        if daemon_runtime_ready and computed_state != "FAILED":
+            computed_state, computed_degraded = "RUNNING", False
         data_plane = daemon_health.get("data_plane", {})
         if not isinstance(data_plane, dict):
             data_plane = {}
@@ -441,9 +541,31 @@ def get_health_payload() -> Dict[str, Any]:
             workers = {}
         workers = dict(workers)
         workers["failure_reasons"] = decode_worker_failure_mask(workers.get("failure_mask", 0))
+        # The daemon response is the source of runtime counters, but the
+        # control API must expose the same health decision used by the health
+        # contract.  Do not let a stale/optimistic daemon state promote a
+        # failed or degraded runtime to RUNNING.  A failed overall state also
+        # cannot advertise Tier-3 readiness.
+        effective_state = computed_state
+        effective_degraded = computed_degraded
+        effective_tier3_ready = tier3_ready and effective_state != "FAILED"
+        shield_status = subsystem_payload.get("rust_pep", subsystem_payload.get("pep", {}))
+        if not isinstance(shield_status, dict):
+            shield_status = {}
+        shield_running = shield_status.get("state") in {"RUNNING", "READY"}
+        shield_wfp_ready = shield_running and bool(capabilities.get("wfp", False))
+        rust_shield = {
+            "state": "READY" if shield_running else "STOPPED",
+            "pep_ready": shield_running,
+            "policy_authority": shield_running,
+            "provider_ready": shield_wfp_ready,
+            "host_effect_capable": shield_wfp_ready,
+            "wfp": "READY" if shield_wfp_ready else "UNAVAILABLE",
+            "error": None if shield_running else "rust_shield_not_ready",
+        }
         return {
             "component": daemon_health.get("component", "core"),
-            "state": daemon_health.get("state", "DEGRADED"),
+            "state": effective_state,
             "runtime_state": daemon_health.get("runtime_state", daemon_health.get("state", "DEGRADED")),
             "pid": daemon_health.get("pid"),
             "version": daemon_health.get("version", "6.0.0"),
@@ -456,17 +578,36 @@ def get_health_payload() -> Dict[str, Any]:
                 "dropped": nose_frames_dropped,
             },
             "subsystems": subsystem_payload,
-            "tier3": {"ready": pep_ready, "state": "READY" if pep_ready else "STOPPED"},
+            "tier3": {
+                **tier3_diagnostics,
+                "ready": effective_tier3_ready,
+                "state": "READY" if effective_tier3_ready else "STOPPED",
+            },
+            "rust_shield": rust_shield,
             "deps": [{"name": name, "state": data["state"]} for name, data in subsystem_payload.items()],
-            "degraded": bool(daemon_health.get("degraded", daemon_health.get("state") != "RUNNING")),
+            "degraded": effective_degraded,
             "capabilities": daemon_health.get("capabilities", {}),
             "workers": workers,
             "data_plane": data_plane,
             "exactly_once": exactly_once,
         }
 
-    # Compute actual health state from subsystem statuses.
-    overall_state, degraded = compute_health_state()
+    # A failed daemon query is not runtime health. PID/process inspection is
+    # retained for explicit diagnostics via get_all_status(), but must not be
+    # promoted to the authoritative health response. Otherwise a stale PID
+    # file or an unrelated process can produce a false RUNNING/READY result.
+    return _diagnostic_health_payload(
+        "control daemon unavailable; subsystem data is diagnostic only"
+    )
+
+
+def _diagnostic_health_payload(reason: str) -> Dict[str, Any]:
+    """Return an explicit degraded payload when the daemon is unreachable.
+
+    Only the Zig daemon can attest to runtime state, counters, worker
+    readiness, or PEP readiness. PID inspection remains visible as diagnostic
+    context but cannot establish operational health.
+    """
     subsystem_statuses = get_all_status()
     subsystem_payload = {
         name: {
@@ -475,11 +616,9 @@ def get_health_payload() -> Dict[str, Any]:
         }
         for name, is_running, pid in subsystem_statuses
     }
-    tier3_ready = (TOOLS_DIR.parent.parent / "sec_monitor.dll").exists()
-
     return {
         "component": "control_api",
-        "state": overall_state,
+        "state": "DEGRADED",
         "pid": os.getpid(),
         "version": "6.0.0",
         "uptime_ms": max(0, time.monotonic_ns() // 1_000_000 - _PROCESS_START_MONOTONIC_MS),
@@ -491,13 +630,61 @@ def get_health_payload() -> Dict[str, Any]:
             "dropped": 0,
         },
         "subsystems": subsystem_payload,
-        "tier3": {"ready": tier3_ready, "state": "RUNNING" if tier3_ready else "STOPPED"},
+        "tier3": {"ready": False, "state": "UNAVAILABLE"},
+        "rust_shield": {
+            "state": "UNAVAILABLE",
+            "pep_ready": False,
+            "policy_authority": False,
+            "provider_ready": False,
+            "host_effect_capable": False,
+            "wfp": "UNAVAILABLE",
+            "error": "control_daemon_unavailable",
+        },
         "deps": [
             {"name": name, "state": data["state"]}
             for name, data in subsystem_payload.items()
         ],
-        "degraded": degraded,
+        "degraded": True,
+        "source": "diagnostic",
+        "runtime_available": False,
+        "availability_error": reason,
         "workers": {"failure_reasons": []},
+    }
+
+
+def _tier3_artifact_diagnostics() -> Dict[str, Any]:
+    """Describe Tier-3 artifact presence without attesting readiness.
+
+    A file on disk is only an artifact signal. Dependency loading, provider
+    readiness, and host-effect capability require runtime attestation and are
+    therefore reported separately.
+    """
+    from pathlib import Path
+
+    # TOOLS_DIR is tools/aegisctl/api; runtime artifacts live at the
+    # repository root, not under tools/. The previous path made health report
+    # artifact_present=false even when zig-out/bin held aegis_pep.dll.
+    repo_root = REPO_ROOT
+    # sec_monitor.dll is the legacy Tier-3 name. The current authority is
+    # Rust PEP (aegis_pep.dll); retain both names for migration diagnostics,
+    # but do not treat disk presence as runtime readiness.
+    candidates = (
+        repo_root / "aegis_pep.dll",
+        repo_root / "zig-out" / "bin" / "aegis_pep.dll",
+        repo_root / "dist" / "aegis_pep.dll",
+        repo_root / "release" / "runtime" / "aegis_pep.dll",
+        repo_root / "sec_monitor.dll",
+        repo_root / "zig-out" / "bin" / "sec_monitor.dll",
+        repo_root / "dist" / "sec_monitor.dll",
+        repo_root / "release" / "runtime" / "sec_monitor.dll",
+    )
+    found = next((path for path in candidates if path.is_file()), None)
+    return {
+        "artifact_present": found is not None,
+        "artifact_path": str(found) if found is not None else None,
+        "dependency_ready": False,
+        "provider_ready": False,
+        "host_effect_capable": False,
     }
 
 
@@ -511,14 +698,13 @@ def compute_health_state() -> Tuple[str, bool]:
     must be DEGRADED or FAILED, never healthy/OK.
     """
     import os
-    from pathlib import Path
-
-    # Check Tier-3 (sec_monitor) status
-    # sec_monitor is the Tier-3 enforcement authority
-    tier3_loaded = False
-    sec_monitor_path = Path(TOOLS_DIR.parent.parent / "sec_monitor.dll")
-    if sec_monitor_path.exists():
-        tier3_loaded = True
+    # Check Tier-3 (sec_monitor) availability using the repository's runtime
+    # artifact roots.  Build output is not by itself proof of readiness; the
+    # daemon's tier3 subsystem state and dependency error remain authoritative
+    # for the final health decision.  This check only prevents a valid runtime
+    # artifact in zig-out/bin or a release bundle from being treated as absent
+    # because it is not copied to the repository root.
+    tier3_loaded = _tier3_artifact_diagnostics()["artifact_present"]
 
     # Get subsystem statuses
     all_status = get_all_status()
@@ -532,6 +718,7 @@ def compute_health_state() -> Tuple[str, bool]:
             if is_running:
                 ready_count += 1
             else:
+                has_degraded = True
                 if not tier3_loaded:
                     # Without Tier-3, any non-running subsystem means degraded/failed
                     has_failed = True
@@ -539,13 +726,21 @@ def compute_health_state() -> Tuple[str, bool]:
                 if i < len(subsystem_names):
                     pass  # status captured below
 
+    # A sparse diagnostic snapshot can contain only Rust PEP (or another
+    # runtime authority) and omit optional platform names.  If a live status
+    # exists but no recognized readiness counter was observed, report
+    # DEGRADED rather than STOPPED; STOPPED is reserved for an explicitly
+    # quiescent runtime.
+    if all_status and ready_count == 0 and not has_failed:
+        has_degraded = True
+
     # HEALTH-001: if Tier-3 absent, system cannot be healthy
     effective_degraded = has_failed or not tier3_loaded or ready_count < len(subsystem_names)
 
     # Determine overall state
     if ready_count == len(subsystem_names) and tier3_loaded and not has_failed:
         overall_state = "RUNNING"
-    elif ready_count > 0 and tier3_loaded and not has_failed:
+    elif ready_count > 0 and tier3_loaded and not has_failed and not has_degraded:
         overall_state = "READY"
     elif has_failed:
         overall_state = "FAILED"

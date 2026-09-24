@@ -214,10 +214,33 @@ def test_pep_result_taxonomy_has_contract_decisions() -> None:
     text = (REPO_ROOT / "rust-src" / "lib.rs").read_text(encoding="utf-8")
     for decision in ("DECISION_ALLOW", "DECISION_BLOCK", "DECISION_RATE_LIMIT", "DECISION_QUARANTINE", "DECISION_ESCALATE", "DECISION_DROP"):
         assert decision in text, f"{decision} missing in rust-src/lib.rs"
+    # The legacy export may remain for ABI compatibility, but it must be a
+    # hard-fail stub. Active cleanup uses only the exact receipt filter_id.
     assert "aegis_pep_unblock_ip" in text
+    assert "never mutate WFP through it" in text
+    assert "aegis_pep_unblock_filter" in text
 
 
 def test_pep_module_has_explicit_unsafe_boundary() -> None:
     """The PEP crate constrains unsafe operations explicitly."""
     pep_rs = (REPO_ROOT / "rust-src" / "lib.rs").read_text(encoding="utf-8")
     assert "#![deny(unsafe_op_in_unsafe_fn)]" in pep_rs
+
+
+def test_flow_request_uses_policy_action_block_not_response_decision() -> None:
+    """Request and response ordinals are distinct ABI domains."""
+    bindings = (REPO_ROOT / "src" / "policy" / "pep_bindings.zig").read_text(encoding="utf-8")
+    rust = (REPO_ROOT / "rust-src" / "lib.rs").read_text(encoding="utf-8")
+    assert ".requested_action = @intFromEnum(policy.Action.block)" in bindings
+    assert "const ACTION_BLOCK: u8 = 4;" in rust
+    assert "const DECISION_BLOCK: u8 = 1;" in rust
+
+
+def test_wfp_flow_response_contract_is_complete() -> None:
+    """User and kernel paths must return the packed response and byte count."""
+    user = (REPO_ROOT / "src" / "windows" / "wfp_ioctl.c").read_text(encoding="utf-8")
+    kernel = (REPO_ROOT / "drivers" / "wfp_callout" / "aegis_wfp.c").read_text(encoding="utf-8")
+    assert "sizeof(AEGIS_WFP_FLOW_RESPONSE) == 12" in user
+    assert "response->provider_status == 0" in user
+    assert "filter.layerKey = FWPM_LAYER_ALE_AUTH_CONNECT_V4;" in kernel
+    assert "Irp->IoStatus.Information = sizeof(*response);" in kernel

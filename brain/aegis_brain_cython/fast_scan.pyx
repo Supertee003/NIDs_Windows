@@ -9,7 +9,7 @@
 #   4. fast_strlen() - C-level strlen for payload size checks
 # ============================================================
 
-from libc.string cimport strlen, strstr, memcmp, memcpy
+from libc.string cimport strlen, memcmp, memcpy
 from libc.stdlib cimport malloc, free
 cimport cython
 
@@ -50,24 +50,18 @@ cpdef tuple fast_payload_scan(bytes payload, list patterns):
     Returns:
         (match_index, pattern_str) if match found, else (-1, None)
 
-    This is ~3-5x faster than Python's `for p in patterns: if p in payload`
-    because it uses C strstr() directly on the byte buffer.
+    The implementation intentionally uses Python bytes containment semantics
+    rather than C `strstr()`.  `strstr()` requires NUL-terminated strings and
+    truncates binary payloads at embedded NUL bytes, which would make the
+    accelerated path disagree with the Python fallback.
     """
     cdef:
-        const char* buf = payload
-        Py_ssize_t buf_len = len(payload)
         Py_ssize_t i
-        const char* pattern_buf
-        const char* result
         bytes pattern_bytes
 
     for i in range(len(patterns)):
         pattern_bytes = patterns[i]
-        pattern_buf = pattern_bytes
-
-        # Use strstr for C-level substring search
-        result = strstr(buf, pattern_buf)
-        if result != NULL:
+        if pattern_bytes in payload:
             return (i, pattern_bytes)
 
     return (-1, None)
@@ -114,56 +108,39 @@ cpdef str fast_extract_field(bytes json_bytes, str field_name):
         -> "SQLI"
     """
     cdef:
-        const char* buf = json_bytes
-        Py_ssize_t buf_len = len(json_bytes)
         bytes field_bytes = field_name.encode('utf-8')
-        const char* field_buf = field_bytes
-        const char* search_start = buf
-        const char* field_pos
-        const char* colon_pos
-        const char* value_start
-        const char* value_end
-        Py_ssize_t field_len = len(field_bytes)
-        Py_ssize_t value_len
+        bytes marker = b'"' + field_bytes + b'"'
+        Py_ssize_t field_pos
+        Py_ssize_t colon_pos
+        Py_ssize_t value_start
+        Py_ssize_t value_end
 
-    # Search for "field_name"
-    field_pos = strstr(search_start, field_bytes)
-    if field_pos == NULL:
+    # Use length-delimited bytes operations. This avoids C-string truncation,
+    # unsafe pointers to temporary Python objects, and false matches inside a
+    # different JSON field name.
+    field_pos = json_bytes.find(marker)
+    if field_pos < 0:
         return None
 
-    # Find the colon after field name
-    colon_pos = field_pos + field_len
-    while colon_pos < buf + buf_len:
-        if colon_pos[0] == ord(':'):
-            break
-        colon_pos += 1
-
-    if colon_pos >= buf + buf_len:
+    colon_pos = json_bytes.find(b':', field_pos + len(marker))
+    if colon_pos < 0:
         return None
 
-    # Find the opening quote of value
     value_start = colon_pos + 1
-    while value_start < buf + buf_len and value_start[0] != ord('"'):
+    while value_start < len(json_bytes) and json_bytes[value_start] in b' \t\r\n':
         value_start += 1
-
-    if value_start >= buf + buf_len:
+    if value_start >= len(json_bytes) or json_bytes[value_start] != ord('"'):
         return None
+    value_start += 1
 
-    value_start += 1  # Skip opening quote
-
-    # Find closing quote
     value_end = value_start
-    while value_end < buf + buf_len and value_end[0] != ord('"'):
-        if value_end[0] == ord('\\'):  # Skip escaped chars
-            value_end += 2
-        else:
-            value_end += 1
-
-    if value_end >= buf + buf_len:
+    while value_end < len(json_bytes):
+        if json_bytes[value_end] == ord('"') and (value_end == value_start or json_bytes[value_end - 1] != ord('\\')):
+            break
+        value_end += 1
+    if value_end >= len(json_bytes):
         return None
-
-    value_len = value_end - value_start
-    return json_bytes[value_start - buf : value_start - buf + value_len].decode('utf-8', errors='replace')
+    return json_bytes[value_start:value_end].decode('utf-8', errors='replace')
 
 
 # ============================================================

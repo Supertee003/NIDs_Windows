@@ -167,9 +167,16 @@ fn processEvent(
         // Record PEP decision in trace
         decision_trace.setPepDecision(state.g_pep_request_id, @intFromEnum(pep_decision));
 
-        // 6a. Action dispatch (execute enforcement action)
-        // dispatcher receives PEP decision — does NOT re-evaluate PEP
-        dispatcher.ActionDispatcher.dispatch(&ev_copy, pol, pep_decision);
+        // 6a. Action dispatch (execute enforcement action). The receipt is
+        // produced by the same PEP call above; dispatcher only verifies its
+        // provider postcondition and never calls enforcement again.
+        dispatcher.ActionDispatcher.dispatchWithReceipt(
+            &ev_copy,
+            pol,
+            pep_decision,
+            pep_enf,
+            pep_enf.lastReceipt(),
+        );
     }
 
     // Audit trace — every security decision gets a unique audit_id

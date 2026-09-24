@@ -55,7 +55,21 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 CONTROL_IPC = "src/policy/control_ipc.zig"
 AEGISCTL = "tools/aegisctl.py"
-AEGISCTL_LIFECYCLE = "tools/aegisctl/commands/lifecycle.py"
+# LIFECYCLE-001: the process-killing lifecycle module is quarantined outside the
+# command package. Exactly one lifecycle authority may exist (the canonical CLI).
+AEGISCTL_LIFECYCLE_QUARANTINED = "tools/legacy/aegisctl_lifecycle_quarantined.py"
+COMMAND_PACKAGE_LIFECYCLE = "tools/aegisctl/commands/lifecycle.py"
+# Tokens that mean "this process spawns, signals, or kills another process".
+SPAWN_TOKENS = (
+    "subprocess.Popen",
+    "subprocess.run",
+    "taskkill",
+    "psutil",
+    "os.kill",
+    "TerminateProcess",
+    ".terminate()",
+    ".kill()",
+)
 PEP_RS = "shield/src/pep.rs"
 PEP_LIB = "shield/src/lib.rs"
 NOSE_PR = "src/capture/nose_pipe_reader.zig"
@@ -80,6 +94,43 @@ HARDENING_EVIDENCE = [
 
 def _read(rel: str) -> str:
     return (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+
+
+def _lifecycle_cli_is_pipe_only() -> bool:
+    """AC1 (command injection / path traversal).
+
+    Phase 2 (LIFECYCLE-001) removed process management from the operator CLI.
+    The canonical CLI changes runtime state only by sending a command to the
+    Zig daemon over the control pipe, so there is no argument or path that can
+    be interpolated into a process invocation.
+    """
+    cli = _read(AEGISCTL)
+    if any(token in cli for token in SPAWN_TOKENS):
+        return False
+    return "runtime.start" in cli and "daemon.shutdown" in cli
+
+
+def test_legacy_process_kill_lifecycle_is_absent_from_command_package() -> None:
+    """LIFECYCLE-001: exactly one lifecycle authority may exist.
+
+    The superseded module spawned components with Popen and killed them with
+    taskkill. It was unreachable dead code that contradicted CONTRACT-03, so it
+    is quarantined for audit rather than left where an agent could mistake it
+    for the lifecycle authority.
+    """
+    assert not (REPO_ROOT / COMMAND_PACKAGE_LIFECYCLE).exists(), (
+        "a process-spawning lifecycle module must not exist in the aegisctl "
+        "command package; the Zig supervisor owns worker lifecycle and the "
+        "canonical CLI may only request state changes over the control pipe"
+    )
+    quarantined = REPO_ROOT / AEGISCTL_LIFECYCLE_QUARANTINED
+    assert quarantined.is_file(), (
+        "the superseded lifecycle module must be retained for audit history, "
+        "not deleted silently"
+    )
+    assert "QUARANTINED" in _read(AEGISCTL_LIFECYCLE_QUARANTINED), (
+        "the quarantined module must say so, so it cannot be mistaken for live code"
+    )
 
 
 def test_hardening_categories_coverage() -> None:
@@ -112,8 +163,9 @@ def test_hardening_categories_coverage() -> None:
             "canonical_event must validate inputs before fabric",
         ),
         "command injection / path traversal": (
-            "REPO_ROOT / component" in _read(AEGISCTL_LIFECYCLE) or "REPO_ROOT / exe" in _read(AEGISCTL_LIFECYCLE),
-            "aegisctl must invoke components by tracked binary path only",
+            _lifecycle_cli_is_pipe_only(),
+            "the canonical aegisctl lifecycle must request state changes over the "
+            "control pipe and must never spawn, signal, or kill a process",
         ),
         "config injection": (
             "validateRuleset" in config and "swapActive" in config,

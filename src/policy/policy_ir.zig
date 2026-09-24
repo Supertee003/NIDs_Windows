@@ -73,7 +73,20 @@ pub const Policy = struct {
     action: Action,
     severity: event.EventSeverity,
     ttl_sec: u32,
+    /// The active legacy JSON loader does not verify a signed canonical
+    /// policy envelope, so privileged actions remain untrusted by default.
+    trusted: bool = false,
 };
+
+/// Actions that can constrain traffic or require privileged authorization.
+/// Detection and unsigned policy data may describe them, but they must not
+/// cross the PEP boundary as authorized requests.
+pub fn requiresTrustedAuthorization(action: Action) bool {
+    return switch (action) {
+        .rate_limit, .block, .quarantine, .escalate => true,
+        .pass, .log, .alert => false,
+    };
+}
 
 pub const PolicySet = struct {
     policies: std.ArrayList(Policy),
@@ -268,6 +281,14 @@ test "PolicySet empty evaluation returns null" {
     var ev = event.IpcEvent.init(.dns_query);
     const ctx = EvalContext{ .ev = &ev };
     try std.testing.expect(ps.evaluate(ctx) == null);
+}
+
+test "privileged policy actions require verified trust" {
+    try std.testing.expect(requiresTrustedAuthorization(.block));
+    try std.testing.expect(requiresTrustedAuthorization(.quarantine));
+    try std.testing.expect(requiresTrustedAuthorization(.rate_limit));
+    try std.testing.expect(!requiresTrustedAuthorization(.alert));
+    try std.testing.expect(!requiresTrustedAuthorization(.log));
 }
 
 test "PolicySet field kind match works" {

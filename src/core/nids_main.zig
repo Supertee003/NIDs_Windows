@@ -19,9 +19,23 @@ const windows_capture = @import("../capture/windows_capture.zig");
 const nids_capture = @import("nids_capture.zig");
 const minifilter_reader = @import("../capture/minifilter_reader.zig");
 const pipe_monitor = @import("../capture/pipe_monitor.zig");
+const event_queue = @import("../pipeline/event_queue.zig");
+const event = @import("../contract/event.zig");
 const forensic_log = @import("../forensic/forensic_log.zig");
 // Phase 28: Blueprint Nose Contract + Event Fabric
 const nose = @import("../capture/nose_contract.zig");
+
+fn publishPipeObservation(observation: pipe_monitor.PipeObservation, payload: []const u8) bool {
+    var ev = event.IpcEvent.init(.signature_match);
+    ev.source = .capture_pipe_monitor;
+    ev.event_id = event.nextEventId();
+    ev.trace_id = ev.event_id;
+    ev.severity = .warning;
+    ev.timestamp_ns = observation.timestamp_ns;
+    ev.payload_len = observation.payload_len;
+    ev.payload_hash = observation.payload_hash;
+    return event_queue.pushEvent(ev, payload);
+}
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -129,6 +143,7 @@ pub fn main() !void {
     if (t_mini != null) std.log.info("[MAIN] T4 Minifilter spawned", .{});
 
     // T5: Named Pipe Scanner (optional)
+    pipe_monitor.setEventPublisher(publishPipeObservation);
     const t_pmon: ?std.Thread = blk: {
         const t = std.Thread.spawn(.{}, pipe_monitor.pipeMonitorLoop, .{}) catch |err| {
             std.log.warn("[MAIN] T5 Pipe Monitor failed: {}", .{err});

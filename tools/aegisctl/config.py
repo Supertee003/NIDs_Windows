@@ -17,13 +17,13 @@ SUBSYSTEMS = [
     {
         "name": "bridge",
         "description": "Bridge (C++) -- IPC hub + Packet Parser + DEFCON",
-        "exe": "aegis_bridge.exe",
+        "exe": "dist/aegis_bridge.exe",
         "required": True,
     },
     {
         "name": "core",
         "description": "Core (Zig) -- Tier-1 Aho-Corasick pattern matching",
-        "exe": "aegis_nids.exe",
+        "exe": "zig-out/bin/aegis_nids.exe",
         "required": True,
     },
     {
@@ -36,13 +36,13 @@ SUBSYSTEMS = [
     {
         "name": "nose",
         "description": "Nose (Go) -- 3 Goroutines perf monitor + DEFCON",
-        "exe": "aegis-nose.exe",
+        "exe": "dist/nose_dashboard.exe",
         "required": True,
     },
     {
         "name": "mouth",
         "description": "Mouth (Rust) -- behavioral validation + DEFCON display",
-        "exe": "windows_sec_monitor.exe",
+        "exe": "dist/windows_sec_monitor.exe",
         "required": True,
     },
 ]

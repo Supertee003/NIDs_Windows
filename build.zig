@@ -66,6 +66,11 @@ pub fn build(b: *std.Build) void {
         ) catch {};
         exe.addLibraryPath(.{ .cwd_relative = "target/release" });
         exe.linkSystemLibrary("aegis_pep");
+        // Keep the runtime DLL paired with the import library used above.
+        // Without this install step, zig-out/bin may retain an older DLL and
+        // Windows fails before main() with STATUS_ENTRYPOINT_NOT_FOUND when a
+        // newly-added FFI export is imported by the executable.
+        b.installBinFile("target/release/aegis_pep.dll", "aegis_pep.dll");
     } else |_| {
         std.debug.print("WARNING: target/release/aegis_pep.dll.lib not found; run `cargo build --release` first\n", .{});
     }
@@ -74,11 +79,17 @@ pub fn build(b: *std.Build) void {
     // src/main.zig pulls fim.zig + etw_realtime.zig, which declare
     // extern "aegis_fim_helper" / "aegis_etw_helper" symbols. The import
     // libraries come from CMake (target/helpers) or the zig-cc stubs.
-    const target_helper_exists = std.fs.cwd().access("target/helpers/aegis_fim_helper.lib", .{}) catch null;
-    const cmake_helper_exists = std.fs.cwd().access("build/Release/aegis_fim_helper.lib", .{}) catch null;
-    const helper_dir: ?[]const u8 = if (target_helper_exists != null)
+    const target_helper_exists = blk: {
+        std.fs.cwd().access("target/helpers/aegis_fim_helper.lib", .{}) catch break :blk false;
+        break :blk true;
+    };
+    const cmake_helper_exists = blk: {
+        std.fs.cwd().access("build/Release/aegis_fim_helper.lib", .{}) catch break :blk false;
+        break :blk true;
+    };
+    const helper_dir: ?[]const u8 = if (target_helper_exists)
         "target/helpers"
-    else if (cmake_helper_exists != null)
+    else if (cmake_helper_exists)
         "build/Release"
     else
         null;
@@ -86,7 +97,7 @@ pub fn build(b: *std.Build) void {
         exe.addLibraryPath(.{ .cwd_relative = dir });
         exe.linkSystemLibrary("aegis_fim_helper");
         exe.linkSystemLibrary("aegis_etw_helper");
-    } else |_| {
+    } else {
         std.debug.print("WARNING: target/helpers/aegis_*_helper.lib not found; run cmake or build zig-cc stubs\n", .{});
     }
 
@@ -128,7 +139,7 @@ pub fn build(b: *std.Build) void {
         tests.addLibraryPath(.{ .cwd_relative = dir });
         tests.linkSystemLibrary("aegis_etw_helper");
         tests.linkSystemLibrary("aegis_fim_helper");
-    } else |_| {
+    } else {
         std.debug.print("WARNING: target/helpers/aegis_*_helper.lib not found; build test stubs via zig cc\n", .{});
     }
 

@@ -26,7 +26,6 @@ Bridge Integration (Phase 1):
 """
 
 import json, os, socket, re, sys, time
-import subprocess
 from datetime import datetime
 
 # Reconfigure stdout/stderr to UTF-8 on Windows so we can print Unicode
@@ -60,6 +59,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "shared"))
 # T5b: also expose the repo root so `from brain.cython import ...` works
 # when the brain is launched directly via `python brain/windows_brain.py`.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+try:
+    from brain.detection_scan import scan_to_detection_result
+except ImportError:
+    scan_to_detection_result = None
 try:
     import aegis_bridge_ctypes as bridge
     BRIDGE_AVAILABLE = True
@@ -166,61 +169,39 @@ def request_enforcement_via_pep(
     """Submit a privileged action to the Rust PEP via aegisctl.
 
     Returns (status, message) where status is one of
-    ACCEPTED / REJECTED / DEFERRED / FAILED / NO_OP (mirrors the
-    shield::pep::PepStatus set). The aegisctl binary dispatches via
-    the dispatcher -> rust_pep_integration -> aegis_pep_evaluate path;
-    this function is a thin wrapper and holds no authority.
+    ENFORCED / REJECTED / DEFERRED / FAILED / NO_OP. ENFORCED is
+    reserved for a validated EnforcementReceipt; a process exit code or
+    text response is never sufficient.
 
     In environments where aegisctl is not available (e.g. unit tests
     without a supervisor), the function falls back to returning
     FAILED with a diagnostic, NOT to any direct enforcement. This
     keeps the brain from re-introducing a bypass.
     """
-    import subprocess as _sp
-    if not os.path.exists(AEGISCTL_PATH):
-        return ("FAILED", f"aegisctl not found at {AEGISCTL_PATH}")
-    try:
-        proc = _sp.run(
-            [
-                AEGISCTL_BIN, AEGISCTL_PATH,
-                "block", target_ip,
-                "--rule-id", rule_id,
-                "--reason", reason,
-            ],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        # aegisctl exits 0 on accepted, non-zero on rejected/failed.
-        if proc.returncode == 0:
-            return ("ACCEPTED", proc.stdout.strip())
-        return ("REJECTED", proc.stderr.strip() or proc.stdout.strip())
-    except _sp.TimeoutExpired:
-        return ("DEFERRED", "aegisctl timed out (PEP deferred the request)")
-    except Exception as e:
-        return ("FAILED", f"aegisctl error: {e}")
+    # The current control contract has no receipt-producing block command.
+    # Refuse the request instead of invoking the legacy local block-list CLI,
+    # which cannot prove provider identity, filter ownership, or host effect.
+    _ = (action, target_ip, target_port, rule_id, reason, AEGISCTL_BIN, AEGISCTL_PATH)
+    return ("FAILED", "enforcement receipt unavailable; prevention gate is closed")
 
 
-def apply_firewall_block(ip_address, rule_name="AEGIS"):
+def apply_firewall_block(ip_address, rule_name="AEGIS", *, target_port=None, rule_id=None, protocol=6):
     """Request a block via aegisctl -> Rust PEP. The brain itself
     does NOT execute the firewall mutation; the Rust PEP is the
     sole authority (T8)."""
     print(f"{UI.YELLOW}[IPS] Requesting block for {ip_address} via Rust PEP (rule {rule_name})...{UI.RESET}")
+    if target_port is None or rule_id is None:
+        print(f"{UI.YELLOW}[!] Block for {ip_address} DEFERRED: exact port and numeric policy id are required{UI.RESET}")
+        return False
     status, message = request_enforcement_via_pep(
         action="block",
         target_ip=ip_address,
-        target_port=0,
-        rule_id=rule_name,
+        target_port=target_port,
+        rule_id=str(rule_id),
         reason=f"Aegis Tier-2 deep inspection match (rule {rule_name})",
     )
-    if status == "ACCEPTED":
-        print(f"{UI.DANGER}[IPS] Block for {ip_address} ACCEPTED by Rust PEP{UI.RESET}")
-        # Bridge update is for the dashboard; not enforcement.
-        if BRIDGE_AVAILABLE:
-            try:
-                bridge.update_defcon(critical=0, blocked=1, kernel=0, total=1)
-            except Exception:
-                pass
+    if status == "ENFORCED":
+        print(f"{UI.DANGER}[IPS] Block for {ip_address} ENFORCED with validated receipt{UI.RESET}")
         return True
     print(f"{UI.YELLOW}[!] Block for {ip_address} {status}: {message}{UI.RESET}")
     return False
@@ -286,6 +267,31 @@ def run_regex_scan(payload, tier2_engine, rules_data):
             return (name, policy, rule_id, severity)
 
     return None
+
+
+def run_detection_result(event_id, payload, tier2_engine, rules_data):
+    """Run the canonical scanner and return the policy-neutral result schema.
+
+    This is the production seam for Python fallback and Cython fast-path. It
+    deliberately returns detection metadata only; policy and host effects are
+    handled by the Core/Rust PEP path.
+    """
+    if scan_to_detection_result is None:
+        from brain.detection_result import DetectionResult, SCAN_UNAVAILABLE
+        result = DetectionResult(
+            event_id=event_id,
+            reason="detection_adapter_unavailable",
+            scan_status=SCAN_UNAVAILABLE,
+        )
+        result.validate()
+        return result
+    return scan_to_detection_result(
+        event_id,
+        payload,
+        rules_data,
+        tier2_engine,
+        run_regex_scan,
+    )
 
 
 # T5b: Cython fast-path state. The Cython extension is imported lazily so

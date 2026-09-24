@@ -17,16 +17,49 @@ const std = @import("std");
 const canonical = @import("../contract/canonical_event.zig");
 const detection = @import("../detection/detection_interface.zig");
 
+/// Versioned policy metadata shared by validation, reload, audit and rollback.
+/// The existing PolicyEngine remains source-compatible while callers migrate
+/// to carrying this metadata with every active policy set.
+pub const PolicyMetadata = struct {
+    policy_id: u32,
+    revision: u64,
+    digest: []const u8,
+    signer: []const u8,
+    issued_at_ms: i64,
+    expires_at_ms: i64,
+    status: PolicyMetadataStatus = .draft,
+
+    pub fn hasIdentity(self: PolicyMetadata) bool {
+        return self.policy_id != 0 and self.revision != 0 and self.digest.len > 0;
+    }
+
+    pub fn isWithinLifetime(self: PolicyMetadata, now_ms: i64) bool {
+        return now_ms >= self.issued_at_ms and (self.expires_at_ms == 0 or now_ms < self.expires_at_ms);
+    }
+};
+
+pub const PolicyMetadataStatus = enum(u8) { draft, verified, active, expired, revoked };
+
 // ============================================================
 // Policy Decision (AEGIS-008)
 // ============================================================
 
+/// Ordinals are the frozen cross-language policy-action ABI.
+///
+/// `quarantine` and `rate_limit` were previously declared in the opposite
+/// order here (rate_limit=3, quarantine=4) while
+/// `src/contract/canonical_event.zig` and `src/forensic/policy_contract.zig`
+/// both froze quarantine=3, rate_limit=4. Because `toCanonicalAction` and
+/// `fromCanonicalAction` reinterpret the ordinal with `@enumFromInt`, the
+/// mismatch silently turned a rate limit into a quarantine and vice versa on
+/// the enforcement path. The order below is the canonical one; the test
+/// "PolicyDecision ordinals match the canonical policy-action ABI" pins it.
 pub const PolicyDecision = enum(u8) {
     allow = 0,         // No action needed
     alert = 1,         // Log alert, allow traffic
     block = 2,         // Block traffic + alert
-    rate_limit = 3,    // Apply rate limiting
-    quarantine = 4,    // Isolate source
+    quarantine = 3,    // Isolate source
+    rate_limit = 4,    // Apply rate limiting
     log_only = 5,      // Silent log, no alert
 
     pub fn toString(self: PolicyDecision) []const u8 {
@@ -40,12 +73,14 @@ pub const PolicyDecision = enum(u8) {
         };
     }
 
+    /// Ordinal reinterpretation is safe only because both enums now share the
+    /// canonical ordering; the conformance test asserts that for every variant.
     pub fn fromCanonicalAction(action: canonical.PolicyAction) PolicyDecision {
-        return @enumFromInt(@intFromEnum(action));
+        return std.meta.intToEnum(PolicyDecision, @intFromEnum(action)) catch .allow;
     }
 
     pub fn toCanonicalAction(self: PolicyDecision) canonical.PolicyAction {
-        return @enumFromInt(@intFromEnum(self));
+        return std.meta.intToEnum(canonical.PolicyAction, @intFromEnum(self)) catch .log_only;
     }
 };
 
@@ -273,6 +308,36 @@ test "PolicyDecision round-trip with CanonicalAction" {
     try std.testing.expect(action == .block);
     const decision = PolicyDecision.fromCanonicalAction(action);
     try std.testing.expect(decision == .block);
+}
+
+// The policy-action vocabulary is declared in three modules. They must agree
+// ordinal-for-ordinal, because conversion between them is an ordinal
+// reinterpretation, not a translation.
+test "PolicyDecision ordinals match the canonical policy-action ABI" {
+    const canonical_contract = @import("../forensic/policy_contract.zig");
+    const variants = [_]struct { decision: PolicyDecision, canonical: canonical.PolicyAction, forensic: canonical_contract.PolicyAction }{
+        .{ .decision = .allow, .canonical = .allow, .forensic = .allow },
+        .{ .decision = .alert, .canonical = .alert, .forensic = .alert },
+        .{ .decision = .block, .canonical = .block, .forensic = .block },
+        .{ .decision = .quarantine, .canonical = .quarantine, .forensic = .quarantine },
+        .{ .decision = .rate_limit, .canonical = .rate_limit, .forensic = .rate_limit },
+        .{ .decision = .log_only, .canonical = .log_only, .forensic = .log_only },
+    };
+    for (variants) |v| {
+        const d = @intFromEnum(v.decision);
+        try std.testing.expectEqual(d, @intFromEnum(v.canonical));
+        try std.testing.expectEqual(d, @intFromEnum(v.forensic));
+        // Round-trip must preserve identity, never swap rate_limit/quarantine.
+        try std.testing.expectEqual(v.decision, PolicyDecision.fromCanonicalAction(v.canonical));
+        try std.testing.expectEqual(v.canonical, v.decision.toCanonicalAction());
+    }
+}
+
+test "quarantine and rate_limit are not interchangeable" {
+    try std.testing.expectEqual(@as(u8, 3), @intFromEnum(PolicyDecision.quarantine));
+    try std.testing.expectEqual(@as(u8, 4), @intFromEnum(PolicyDecision.rate_limit));
+    try std.testing.expect(PolicyDecision.quarantine.toCanonicalAction() == .quarantine);
+    try std.testing.expect(PolicyDecision.rate_limit.toCanonicalAction() == .rate_limit);
 }
 
 test "PolicyRule.applies" {

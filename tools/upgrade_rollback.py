@@ -42,15 +42,24 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 # Paths that must survive upgrade/rollback/reinstall (data plane).
-PRESERVED_RELS = [
+REQUIRED_PRESERVED_RELS = [
     "configs/Rules.json",
+]
+
+# These paths are preserved when present, but are optional for an installation
+# that has not enabled trust-signature, certificate, audit, or forensic file
+# persistence yet.  Missing optional paths must not make a known-good snapshot
+# look incomplete, and we must never create placeholder security artifacts.
+OPTIONAL_PRESERVED_RELS = [
     "configs/Rules.json.sig",
     "configs/trust_store.json",
     "certs/",
     "logs/audit/",
     "logs/forensics/",
+    "logs/control_audit.ndjson",
     "logs/runtime/control_audit.ndjson",
 ]
+PRESERVED_RELS = REQUIRED_PRESERVED_RELS + OPTIONAL_PRESERVED_RELS
 
 SNAPSHOTS_DIR = ROOT / "logs" / "snapshots"
 REPORT_JSON = ROOT / "logs" / "runtime" / "upgrade_rollback.json"
@@ -70,8 +79,8 @@ def snapshot() -> dict:
     now = datetime.now(timezone.utc)
     snap = SNAPSHOTS_DIR / f"{now.strftime('%Y%m%d%H%M%S')}-snap"
     snap.mkdir(parents=True, exist_ok=True)
-    restored = copied = missing = 0
-    for rel in PRESERVED_RELS:
+    restored = copied = missing = optional_missing = 0
+    for rel in REQUIRED_PRESERVED_RELS:
         src = _preserved_path(rel)
         if rel.endswith("/"):
             base = src
@@ -89,6 +98,23 @@ def snapshot() -> dict:
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dest)
         copied += 1
+    for rel in OPTIONAL_PRESERVED_RELS:
+        src = _preserved_path(rel)
+        if rel.endswith("/"):
+            if not src.exists():
+                optional_missing += 1
+                continue
+            dest = snap / rel.rstrip("/")
+            shutil.copytree(src, dest, dirs_exist_ok=True)
+            copied += 1
+            continue
+        if not src.exists():
+            optional_missing += 1
+            continue
+        dest = snap / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dest)
+        copied += 1
     result = {
         "operation": "snapshot",
         "snapshot_id": _snapshot_id_from_dir(snap),
@@ -96,6 +122,9 @@ def snapshot() -> dict:
         "created_at": now.isoformat(),
         "entries_copied": copied,
         "entries_missing": missing,
+        "optional_entries_missing": optional_missing,
+        "required_entries": len(REQUIRED_PRESERVED_RELS),
+        "optional_entries": len(OPTIONAL_PRESERVED_RELS),
         "restored": restored,
     }
     REPORT_JSON.parent.mkdir(parents=True, exist_ok=True)
@@ -109,7 +138,8 @@ def report() -> dict:
         "operation": "report",
         "snapshot_count": len(snaps),
         "snapshots": [str(s.relative_to(ROOT)) for s in snaps],
-        "preserved_paths": PRESERVED_RELS,
+        "required_preserved_paths": REQUIRED_PRESERVED_RELS,
+        "optional_preserved_paths": OPTIONAL_PRESERVED_RELS,
     }
 
 

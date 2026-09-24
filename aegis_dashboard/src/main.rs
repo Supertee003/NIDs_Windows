@@ -44,6 +44,34 @@ struct AlertEntry {
     ruleset_version: i64,
     #[serde(default)]
     payload_len: i64,
+    #[serde(default)]
+    enforcement_status: String,
+    #[serde(default)]
+    host_effect_confirmed: bool,
+    #[serde(default)]
+    filter_id: u64,
+    #[serde(default)]
+    request_id: u64,
+    #[serde(default)]
+    event_id: u64,
+    #[serde(default)]
+    trace_id: u64,
+    #[serde(default)]
+    audit_id: u64,
+}
+
+impl AlertEntry {
+    /// A policy/event label is not a host effect. Only a complete receipt can
+    /// make this dashboard count a confirmed block.
+    fn confirmed_block(&self) -> bool {
+        self.enforcement_status.eq_ignore_ascii_case("enforced")
+            && self.host_effect_confirmed
+            && self.filter_id != 0
+            && self.request_id != 0
+            && self.event_id != 0
+            && self.trace_id != 0
+            && self.audit_id != 0
+    }
 }
 
 #[derive(Debug, Deserialize, Default, Clone)]
@@ -145,7 +173,7 @@ impl AegisDashboard {
                 if let Ok(entry) = serde_json::from_str::<AlertEntry>(line) {
                     self.total_alerts += 1;
                     let event_type = entry.event.to_uppercase();
-                    if event_type == "BLOCK" || event_type == "IP_BLOCKED" {
+                    if entry.confirmed_block() {
                         self.total_blocked += 1;
                     }
                     if entry.level == "critical" {
@@ -342,9 +370,9 @@ impl eframe::App for AegisDashboard {
                     ui.small("severity critical");
                 });
                 ui.group(|ui| {
-                    ui.strong("Blocked");
+                    ui.strong("Confirmed blocks");
                     ui.heading(format!("{}", self.total_blocked));
-                    ui.small("policy outcomes");
+                    ui.small("valid receipts only");
                 });
             ui.group(|ui| {
                     ui.strong("Rules");

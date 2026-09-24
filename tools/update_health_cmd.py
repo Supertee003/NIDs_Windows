@@ -6,14 +6,14 @@ import sys
 with open("tools/aegisctl.py", "r") as f:
     content = f.read()
 
-old_func = """def cmd_health(args) -> int:
+old_func = '''def cmd_health(args) -> int:
     """Health check."""
     if CONTROL_API_AVAILABLE:
         payload = get_health_payload()
         print(f"\n  Health payload: {payload}")
     else:
         print("\nControl API not available")
-    return 0"""
+    return 0'''
 
 new_func = r'''def cmd_health(args) -> int:
     """Health check.

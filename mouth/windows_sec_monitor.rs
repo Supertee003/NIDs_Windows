@@ -402,12 +402,24 @@ impl AlertFeed {
             .or_else(|| extract_json_field(line, "attack_type"))
             .unwrap_or_else(|| "unknown".to_string());
 
-        // Determine action from policy field
+        // A policy decision is not a host effect.  Only an explicit
+        // EnforcementReceipt with ENFORCED + host_effect_confirmed=true may
+        // be rendered as BLOCKED; pending/authorized/simulated records stay
+        // visible as their receipt state.
         let policy = extract_json_field(line, "policy")
             .or_else(|| extract_json_field(line, "action"))
             .unwrap_or_else(|| "Log".to_string());
+        let host_effect_confirmed = extract_json_field(line, "host_effect_confirmed")
+            .map(|value| value == "true")
+            .unwrap_or(false);
+        let receipt_enforced = extract_json_field(line, "receipt_status")
+            .or_else(|| extract_json_field(line, "status"))
+            .map(|value| value == "ENFORCED")
+            .unwrap_or(false);
         let action = match policy.as_str() {
-            "Drop" | "Block" | "BLOCK" => "BLOCKED".to_string(),
+            "Drop" | "Block" | "BLOCK" if receipt_enforced && host_effect_confirmed => "BLOCKED".to_string(),
+            "Drop" | "Block" | "BLOCK" => extract_json_field(line, "status")
+                .unwrap_or_else(|| "ENFORCEMENT_PENDING".to_string()),
             "Alert" | "AlertOnly" => "ALERTED".to_string(),
             "Terminate" | "Kill" => "TERMINATED".to_string(),
             _ => format!("{}", policy),
@@ -435,6 +447,17 @@ fn extract_json_field(line: &str, field: &str) -> Option<String> {
             if end > 0 {
                 return Some(val_slice[..end].to_string());
             }
+        }
+    }
+    // Try JSON boolean fields such as host_effect_confirmed.
+    let search_bool = format!("\"{}\":", field);
+    if let Some(start) = line.find(&search_bool) {
+        let val_slice = line[start + search_bool.len()..].trim_start();
+        if val_slice.starts_with("true") {
+            return Some("true".to_string());
+        }
+        if val_slice.starts_with("false") {
+            return Some("false".to_string());
         }
     }
     None
@@ -472,12 +495,21 @@ impl MitigationFeed {
     }
 
     fn add_from_log(&mut self, line: &str) {
-        // Only add if the line represents a blocking/termination action
+        // Only add a blocking mitigation when the receipt proves the host
+        // effect. A decision/action field alone is not sufficient evidence.
         let policy = extract_json_field(line, "policy")
             .or_else(|| extract_json_field(line, "action"))
             .unwrap_or_default();
 
-        let is_block = policy == "Drop" || policy == "Block" || policy == "BLOCK";
+        let receipt_enforced = extract_json_field(line, "receipt_status")
+            .or_else(|| extract_json_field(line, "status"))
+            .map(|value| value == "ENFORCED")
+            .unwrap_or(false);
+        let host_effect_confirmed = extract_json_field(line, "host_effect_confirmed")
+            .map(|value| value == "true")
+            .unwrap_or(false);
+        let is_block = receipt_enforced && host_effect_confirmed &&
+            (policy == "Drop" || policy == "Block" || policy == "BLOCK");
         let is_terminate = policy == "Terminate" || policy == "Kill";
 
         if is_block || is_terminate {
@@ -875,6 +907,43 @@ fn render_dashboard(
 
     // Clear any leftover content from previous render
     print!("{CLEAR_BELOW}");
+}
+
+#[cfg(test)]
+mod receipt_tests {
+    use super::{extract_json_field, AlertFeed, MitigationFeed};
+
+    #[test]
+    fn parses_boolean_host_effect_confirmation() {
+        let line = r#"{"status":"SIMULATED","host_effect_confirmed":false}"#;
+        assert_eq!(extract_json_field(line, "host_effect_confirmed"), Some("false".to_string()));
+    }
+
+    #[test]
+    fn block_decision_without_receipt_proof_is_not_mitigation() {
+        let line = r#"{"policy":"BLOCK","status":"AUTHORIZED","host_effect_confirmed":false}"#;
+        let mut feed = MitigationFeed::new();
+        feed.add_from_log(line);
+        assert!(feed.entries.is_empty());
+    }
+
+    #[test]
+    fn enforced_receipt_with_host_proof_is_mitigation() {
+        let line = r#"{"policy":"BLOCK","status":"ENFORCED","host_effect_confirmed":true,"source_ip":"10.0.0.1"}"#;
+        let mut feed = MitigationFeed::new();
+        feed.add_from_log(line);
+        assert_eq!(feed.entries.len(), 1);
+        assert_eq!(feed.entries[0].action, "BLOCKED IP");
+    }
+
+    #[test]
+    fn alert_feed_shows_pending_state_without_claiming_blocked() {
+        let line = r#"{"policy":"BLOCK","status":"PENDING","host_effect_confirmed":false}"#;
+        let mut feed = AlertFeed::new();
+        feed.push_from_log(line);
+        assert_eq!(feed.entries.len(), 1);
+        assert_eq!(feed.entries[0].action, "PENDING");
+    }
 }
 
 // =====================================================================

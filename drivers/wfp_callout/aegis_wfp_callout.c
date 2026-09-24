@@ -163,6 +163,24 @@ NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject)
         return status;
     }
 
+    /* Recover the persistent receipt-owned proof filter if the driver was
+     * restarted. A missing key is normal; any other provider error is fatal.
+     * Recovery intentionally does not delete or recreate the filter. */
+    FWPM_FILTER0 *recoveredProof = NULL;
+    status = FwpmFilterGetByKey0(g_WfpEngineHandle,
+        &AEGIS_PROOF_FILTER_KEY, &recoveredProof);
+    if (NT_SUCCESS(status)) {
+        g_ProofFilterId = recoveredProof->filterId;
+        DbgPrint("[AEGIS WFP] Recovered proof filter (id=%llu)\n",
+            g_ProofFilterId);
+        FwpmFreeMemory0((void **)&recoveredProof);
+    } else if (status != (NTSTATUS)0x80320003L) {
+        DbgPrint("[AEGIS WFP] Proof filter recovery query failed: 0x%08X\n", status);
+        FwpmEngineClose0(g_WfpEngineHandle);
+        g_WfpEngineHandle = NULL;
+        return status;
+    }
+
     /* 2. Register callout in BLM store */
     RtlZeroMemory(&callout, sizeof(callout));
     callout.calloutKey       = AEGIS_CALLOUT_KEY;
@@ -204,7 +222,10 @@ NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject)
      *    FIX 4: removed filter.weight = 0 (was C2440, FWP_VALUE0 struct).
      *    No conditions = matches ALL traffic at this layer. */
     RtlZeroMemory(&filter, sizeof(filter));
-    action.type       = FWP_ACTION_PERMIT;
+    /* A filter reaches the registered classifyFn only with a callout action.
+     * PERMIT plus a calloutKey creates a permit filter but does not bind the
+     * runtime callback, which previously left the ring empty. */
+    action.type       = FWP_ACTION_CALLOUT_TERMINATING;
     action.calloutKey = AEGIS_CALLOUT_KEY;
 
     filter.layerKey              = FWPM_LAYER_INBOUND_TRANSPORT_V4;
@@ -216,7 +237,7 @@ NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject)
     filter.filterCondition        = NULL;
 
     status = FwpmFilterAdd0(g_WfpEngineHandle, &filter,
-        NULL, &g_FilterId);
+        NULL, &g_CaptureFilterId);
     if (!NT_SUCCESS(status)) {
         DbgPrint("[AEGIS WFP] FwpmFilterAdd0 failed: 0x%08X\n", status);
         FwpsCalloutUnregisterById0(g_CalloutId);
@@ -229,7 +250,7 @@ NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject)
 
     DbgPrint("[AEGIS WFP] Callout + filter registered - "
         "CalloutID: %u, FilterID: %llu\n",
-        g_CalloutId, g_FilterId);
+        g_CalloutId, g_CaptureFilterId);
     return STATUS_SUCCESS;
 }
 
@@ -247,10 +268,10 @@ VOID AegisWfpUnregisterCallout(void)
     /* 2. Close engine session (dynamic session auto-deletes filter
      *    and callout from BLM store, but we clean up explicitly) */
     if (g_WfpEngineHandle) {
-        if (g_FilterId) {
-            FwpmFilterDeleteById0(g_WfpEngineHandle, g_FilterId);
-            DbgPrint("[AEGIS WFP] Filter deleted (id=%llu)\n", g_FilterId);
-            g_FilterId = 0;
+        if (g_CaptureFilterId) {
+            FwpmFilterDeleteById0(g_WfpEngineHandle, g_CaptureFilterId);
+            DbgPrint("[AEGIS WFP] Capture filter deleted (id=%llu)\n", g_CaptureFilterId);
+            g_CaptureFilterId = 0;
         }
         if (g_CalloutId) {
             FwpmCalloutDeleteById0(g_WfpEngineHandle,

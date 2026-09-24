@@ -170,6 +170,7 @@ pub struct PepRequest {
     pub dst_ip: u32,
     pub src_port: u16,
     pub dst_port: u16,
+    pub protocol: u8,
     pub policy_id: u32,
     pub severity: u8,
     pub ctx: PepContext,
@@ -181,6 +182,17 @@ pub struct PepResponse {
     pub reason: u32,
     pub quota_remaining: u32,
     pub signed_by: u32,
+    pub filter_id: u64,
+}
+
+#[repr(C, packed)]
+pub struct PepFilterState {
+    pub filter_id: u64,
+    pub remote_ipv4: u32,
+    pub remote_port: u16,
+    pub protocol: u8,
+    pub present: u8,
+    pub provider_status: u32,
 }
 
 // Decision enum (must match Zig side)
@@ -202,21 +214,58 @@ const ACTION_BLOCK: u8 = 4;
 const ACTION_QUARANTINE: u8 = 5;
 const ACTION_ESCALATE: u8 = 6;
 
+#[cfg(test)]
+mod action_contract_tests {
+    use super::{ACTION_BLOCK, DECISION_BLOCK};
+
+    #[test]
+    fn request_and_response_block_ordinals_are_distinct_and_frozen() {
+        assert_eq!(ACTION_BLOCK, 4);
+        assert_eq!(DECISION_BLOCK, 1);
+    }
+}
+
 #[cfg(windows)]
 mod wfp_adapter {
     use std::ffi::{c_void, OsStr};
     use std::mem::transmute;
     use std::os::windows::ffi::OsStrExt;
 
-    type WfpCall = unsafe extern "system" fn(u32) -> i32;
+    #[repr(C, packed)]
+    pub struct FlowRequest {
+        pub remote_ipv4: u32,
+        pub remote_port: u16,
+        pub protocol: u8,
+        pub reserved: u8,
+    }
+
+    #[repr(C, packed)]
+    pub struct FlowResponse {
+        pub filter_id: u64,
+        pub provider_status: u32,
+    }
+
+    #[repr(C, packed)]
+    pub struct FilterState {
+        pub filter_id: u64,
+        pub remote_ipv4: u32,
+        pub remote_port: u16,
+        pub protocol: u8,
+        pub present: u8,
+        pub provider_status: u32,
+    }
+
+    type WfpBlockFlow = unsafe extern "system" fn(*const FlowRequest, *mut FlowResponse) -> i32;
+    type WfpUnblockFilter = unsafe extern "system" fn(u64) -> i32;
+    type WfpQueryFilter = unsafe extern "system" fn(u64, *mut FilterState) -> i32;
     type WfpOpen = unsafe extern "system" fn() -> i32;
 
     pub struct Adapter {
         module: *mut c_void,
         open: WfpOpen,
-        block: WfpCall,
-        #[allow(dead_code)]
-        unblock: WfpCall,
+        block_flow: WfpBlockFlow,
+        unblock_filter: WfpUnblockFilter,
+        query_filter: WfpQueryFilter,
     }
 
     unsafe extern "system" {
@@ -245,13 +294,15 @@ mod wfp_adapter {
                 return None;
             }
 
-            let block_name = b"aegis_wfp_ioctl_block_ip\0";
-            let unblock_name = b"aegis_wfp_ioctl_unblock_ip\0";
+            let block_flow_name = b"aegis_wfp_ioctl_block_flow\0";
+            let unblock_filter_name = b"aegis_wfp_ioctl_unblock_filter\0";
+            let query_filter_name = b"aegis_wfp_ioctl_query_filter\0";
             let open_name = b"aegis_wfp_ioctl_open\0";
             let open = unsafe { GetProcAddress(module, open_name.as_ptr()) };
-            let block = unsafe { GetProcAddress(module, block_name.as_ptr()) };
-            let unblock = unsafe { GetProcAddress(module, unblock_name.as_ptr()) };
-            if open.is_null() || block.is_null() || unblock.is_null() {
+            let block_flow = unsafe { GetProcAddress(module, block_flow_name.as_ptr()) };
+            let unblock_filter = unsafe { GetProcAddress(module, unblock_filter_name.as_ptr()) };
+            let query_filter = unsafe { GetProcAddress(module, query_filter_name.as_ptr()) };
+            if open.is_null() || block_flow.is_null() || unblock_filter.is_null() || query_filter.is_null() {
                 unsafe { FreeLibrary(module) };
                 return None;
             }
@@ -259,23 +310,45 @@ mod wfp_adapter {
             let adapter = Self {
                 module,
                 open: unsafe { transmute(open) },
-                block: unsafe { transmute(block) },
-                unblock: unsafe { transmute(unblock) },
+                block_flow: unsafe { transmute(block_flow) },
+                unblock_filter: unsafe { transmute(unblock_filter) },
+                query_filter: unsafe { transmute(query_filter) },
             };
             if unsafe { (adapter.open)() } != 0 {
+                unsafe { FreeLibrary(module) };
                 return None;
             }
             Some(adapter)
         }
 
-        pub fn block(&self, ipv4: u32) -> bool {
-            unsafe { (self.block)(ipv4) == 0 }
+        pub fn block_flow(&self, request: &FlowRequest) -> Option<u64> {
+            let mut response = FlowResponse { filter_id: 0, provider_status: 0 };
+            let rc = unsafe { (self.block_flow)(request, &mut response) };
+            if rc == 0 && response.filter_id != 0 {
+                Some(response.filter_id)
+            } else {
+                None
+            }
         }
 
-        #[allow(dead_code)]
-        pub fn unblock(&self, ipv4: u32) -> bool {
-            unsafe { (self.unblock)(ipv4) == 0 }
+        pub fn unblock_filter(&self, filter_id: u64) -> bool {
+            unsafe { (self.unblock_filter)(filter_id) == 0 }
         }
+
+        pub fn query_filter(&self, filter_id: u64) -> Option<FilterState> {
+            if filter_id == 0 { return None; }
+            let mut state = FilterState {
+                filter_id: 0, remote_ipv4: 0, remote_port: 0,
+                protocol: 0, present: 0, provider_status: 0,
+            };
+            let rc = unsafe { (self.query_filter)(filter_id, &mut state) };
+            if rc == 0 && state.filter_id == filter_id {
+                Some(state)
+            } else {
+                None
+            }
+        }
+
     }
 
     impl Drop for Adapter {
@@ -326,6 +399,23 @@ pub extern "C" fn aegis_pep_init() -> c_int {
     0
 }
 
+/// Attest the provider bridge without mutating host policy.
+///
+/// A provider is ready only when the user-mode bridge DLL is present, exports
+/// the required IOCTL surface, and can open the kernel device. This does not
+/// assert that a block has occurred; host-effect capability remains a separate
+/// controlled-proof result.
+#[no_mangle]
+pub extern "C" fn aegis_pep_provider_ready() -> c_int {
+    #[cfg(windows)]
+    {
+        if wfp_adapter::Adapter::load().is_some() {
+            return 1;
+        }
+    }
+    0
+}
+
 #[no_mangle]
 pub extern "C" fn aegis_pep_shutdown() {
     // Flush any pending state (best-effort)
@@ -354,6 +444,7 @@ pub unsafe extern "C" fn aegis_pep_enforce(
     let mut reason = 0u32;
     let quota_remaining = QUOTA_DEFAULT;
     let signed_by = 0u32;
+    let mut filter_id = 0u64;
 
     let state = pep_state();
     let s = state.lock();
@@ -397,6 +488,11 @@ pub unsafe extern "C" fn aegis_pep_enforce(
         }
     } else {
         // Unknown action values fail closed as an authorization denial.
+        // The default `decision` is DECISION_ALLOW, so this branch must
+        // overwrite it — setting only `reason` would return ALLOW for an
+        // unclassifiable request, which is a fail-open on the sole
+        // enforcement authority.
+        decision = DECISION_ESCALATE;
         reason = 6;
     }
     drop(s);
@@ -405,7 +501,21 @@ pub unsafe extern "C" fn aegis_pep_enforce(
         #[cfg(windows)]
         {
             match wfp_adapter::Adapter::load() {
-                Some(adapter) if adapter.block(req.src_ip) => {}
+                Some(adapter) => {
+                    let flow = wfp_adapter::FlowRequest {
+                        remote_ipv4: req.dst_ip,
+                        remote_port: req.dst_port,
+                        protocol: req.protocol,
+                        reserved: 0,
+                    };
+                    match adapter.block_flow(&flow) {
+                        Some(id) => filter_id = id,
+                        None => {
+                            decision = DECISION_ESCALATE;
+                            reason = 4;
+                        }
+                    }
+                }
                 _ => {
                     decision = DECISION_ESCALATE;
                     reason = 4;
@@ -423,6 +533,7 @@ pub unsafe extern "C" fn aegis_pep_enforce(
     resp.reason = reason;
     resp.quota_remaining = quota_remaining;
     resp.signed_by = signed_by;
+    resp.filter_id = filter_id;
     0
 }
 
@@ -433,20 +544,67 @@ pub extern "C" fn aegis_pep_unblock_ip(
     caller_capability_mask: u32,
     request_id: u64,
 ) -> c_int {
-    let _ = (caller_pid, request_id);
+    let _ = (ipv4, caller_pid, request_id);
     if (caller_capability_mask & 0x01) == 0 {
+        return -3;
+    }
+    // IP-only cleanup is not receipt-aware and cannot prove exact ownership.
+    // Preserve the symbol for ABI compatibility, but never mutate WFP through it.
+    -4
+}
+
+/// Remove exactly the filter identified by a previously issued enforcement
+/// receipt. The receipt's filter_id is the only accepted cleanup identity.
+#[no_mangle]
+pub extern "C" fn aegis_pep_unblock_filter(
+    filter_id: u64,
+    caller_pid: u32,
+    caller_capability_mask: u32,
+    request_id: u64,
+) -> c_int {
+    let _ = (caller_pid, request_id);
+    if filter_id == 0 || (caller_capability_mask & 0x01) == 0 {
         return -3;
     }
 
     #[cfg(windows)]
     {
         if let Some(adapter) = wfp_adapter::Adapter::load() {
-            if adapter.unblock(ipv4) {
+            if adapter.unblock_filter(filter_id) {
                 return 0;
             }
         }
     }
 
+    -2
+}
+
+/// Read-only exact-filter postcondition query. A zero/unknown filter_id is
+/// never treated as present, and IP-only lookup is intentionally unsupported.
+#[no_mangle]
+pub extern "C" fn aegis_pep_query_filter(
+    filter_id: u64,
+    out: *mut PepFilterState,
+) -> c_int {
+    if filter_id == 0 || out.is_null() {
+        return -3;
+    }
+    #[cfg(windows)]
+    {
+        if let Some(adapter) = wfp_adapter::Adapter::load() {
+            if let Some(state) = adapter.query_filter(filter_id) {
+                unsafe {
+                    (*out).filter_id = state.filter_id;
+                    (*out).remote_ipv4 = state.remote_ipv4;
+                    (*out).remote_port = state.remote_port;
+                    (*out).protocol = state.protocol;
+                    (*out).present = state.present;
+                    (*out).provider_status = state.provider_status;
+                }
+                return 0;
+            }
+        }
+    }
     -2
 }
 
@@ -544,6 +702,12 @@ mod tests {
     }
 
     #[test]
+    fn pep_ip_only_cleanup_is_rejected_even_with_capability() {
+        assert_eq!(aegis_pep_unblock_ip(0xC0A80101, 1, 1, 3), -4);
+    }
+
+    #[test]
+    #[ignore = "requires an explicitly isolated WFP provider proof; must not mutate a developer host"]
     fn pep_enforce_low_severity_requires_wfp_adapter() {
         let req = PepRequest {
             decision_kind: 61,
@@ -553,27 +717,27 @@ mod tests {
             dst_ip: 0x08080808,
             src_port: 12345,
             dst_port: 80,
+            protocol: 6,
             policy_id: 1,
             severity: 4,
             ctx: PepContext {
                 caller_pid: 1,
                 caller_capability_mask: 1,
                 request_id: 1,
-                reserved: 0,
+                policy_version: 0,
             },
         };
-        let mut resp = PepResponse {
-            decision: 0,
-            reason: 0,
-            quota_remaining: 0,
-            signed_by: 0,
-        };
+            let mut resp = PepResponse {
+                decision: 0,
+                reason: 0,
+                quota_remaining: 0,
+                signed_by: 0,
+                filter_id: 0,
+            };
         unsafe {
             assert_eq!(aegis_pep_enforce(&req, &mut resp), 0);
-            assert!(
-                resp.decision == DECISION_BLOCK ||
-                (resp.decision == DECISION_ALLOW && resp.reason == 4)
-            );
+            assert_eq!(resp.decision, DECISION_ESCALATE);
+            assert_eq!(resp.reason, 4); // host-effect adapter unavailable
         }
     }
 
@@ -587,13 +751,14 @@ mod tests {
             dst_ip: 0x08080808,
             src_port: 12345,
             dst_port: 80,
+            protocol: 6,
             policy_id: 1,
             severity: 4,
             ctx: PepContext {
                 caller_pid: 1,
                 caller_capability_mask: 0, // no capability
                 request_id: 2,
-                reserved: 0,
+                policy_version: 0,
             },
         };
         let mut resp = PepResponse {
@@ -601,6 +766,7 @@ mod tests {
             reason: 0,
             quota_remaining: 0,
             signed_by: 0,
+            filter_id: 0,
         };
         unsafe {
             assert_eq!(aegis_pep_enforce(&req, &mut resp), 0);
@@ -619,13 +785,14 @@ mod tests {
             dst_ip: 0x08080808,
             src_port: 12345,
             dst_port: 80,
+            protocol: 6,
             policy_id: 1,
             severity: 8,
             ctx: PepContext {
                 caller_pid: 1,
                 caller_capability_mask: 0,
                 request_id: 3,
-                reserved: 0,
+                policy_version: 0,
             },
         };
         let mut resp = PepResponse {
@@ -633,11 +800,50 @@ mod tests {
             reason: 0,
             quota_remaining: 0,
             signed_by: 0,
+            filter_id: 0,
         };
         unsafe {
             assert_eq!(aegis_pep_enforce(&req, &mut resp), 0);
             assert_eq!(resp.decision, DECISION_ALLOW);
             assert_eq!(resp.reason, 0);
+        }
+    }
+
+    #[test]
+    fn pep_unknown_action_fails_closed_as_authorization_denial() {
+        // A requested_action byte that is not a policy.Action ordinal must not
+        // be answered with the default DECISION_ALLOW. The sole enforcement
+        // authority has to fail closed for anything it cannot classify.
+        let req = PepRequest {
+            decision_kind: 61,
+            requested_action: 0xFF,
+            flow_id: 4,
+            src_ip: 0xC0A80104,
+            dst_ip: 0x08080808,
+            src_port: 12345,
+            dst_port: 80,
+            protocol: 6,
+            policy_id: 1,
+            severity: 4,
+            ctx: PepContext {
+                caller_pid: 1,
+                caller_capability_mask: 1,
+                request_id: 4,
+                policy_version: 0,
+            },
+        };
+        let mut resp = PepResponse {
+            decision: 99,
+            reason: 0,
+            quota_remaining: 0,
+            signed_by: 0,
+            filter_id: 0,
+        };
+        unsafe {
+            assert_eq!(aegis_pep_enforce(&req, &mut resp), 0);
+            assert_ne!(resp.decision, DECISION_ALLOW);
+            assert_eq!(resp.decision, DECISION_ESCALATE);
+            assert_eq!(resp.reason, 6);
         }
     }
 
