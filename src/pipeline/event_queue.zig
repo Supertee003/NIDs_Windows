@@ -23,15 +23,23 @@ var g_event_queue: [PIPELINE_QUEUE_SIZE]QueuedEvent = undefined;
 var g_queue_head: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 var g_queue_tail: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 var g_queue_mutex: std.Thread.Mutex = .{};
+// A producer must reserve a head position and publish the completed slot as
+// one transaction.  A load/store pair is not a reservation primitive: two
+// producers can observe the same head and overwrite one another's slot.
+// Keep the seam deliberately simple until a proven bounded MPMC algorithm is
+// introduced; pop remains serialized by the same mutex.
+var g_queue_producer_mutex: std.Thread.Mutex = .{};
 
 /// Push an event + optional payload into the pipeline queue.
 /// Returns true if accepted, false if queue is full (event dropped).
 pub fn pushEvent(ev: event.IpcEvent, payload: []const u8) bool {
+    g_queue_producer_mutex.lock();
+    defer g_queue_producer_mutex.unlock();
     const head = g_queue_head.load(.monotonic);
     const tail = g_queue_tail.load(.acquire);
     if (head -% tail >= PIPELINE_QUEUE_SIZE) {
         // Queue full — drop event
-        state.g_queue_drops += 1; // track queue drops
+        _ = state.g_queue_drops.fetchAdd(1, .monotonic);
         return false;
     }
     var qe = QueuedEvent{ .ev = ev };
@@ -46,7 +54,20 @@ pub fn pushEvent(ev: event.IpcEvent, payload: []const u8) bool {
 /// Adapt the frozen 109-byte CanonicalEvent into the queue consumed by the
 /// detector pipeline. This is the only acquisition-to-detector boundary.
 /// The event_id is copied unchanged; adapters must never mint a new identity.
+///
+/// The frozen 109-byte wire contract contains only payload length and hash,
+/// not the payload bytes. Callers that possess the original bytes must use
+/// pushCanonicalEventWithPayload so payload-based detection can run without
+/// changing the wire ABI.
 pub fn pushCanonicalEvent(ce: *const canonical.CanonicalEvent) bool {
+    return pushCanonicalEventWithPayload(ce, &[_]u8{});
+}
+
+/// Adapt a canonical event while preserving payload bytes held by the
+/// acquisition adapter. The payload is bounded by MAX_PAYLOAD_BYTES in
+/// pushEvent; the canonical metadata remains authoritative for identity and
+/// payload_length/payload_hash.
+pub fn pushCanonicalEventWithPayload(ce: *const canonical.CanonicalEvent, payload: []const u8) bool {
     if (!canonical.validate(ce)) return false;
 
     const kind: event.EventKind = switch (ce.event_type) {
@@ -79,13 +100,56 @@ pub fn pushCanonicalEvent(ce: *const canonical.CanonicalEvent) bool {
     ev.payload_len = ce.payload_length;
     ev.payload_hash = @truncate(ce.payload_hash);
     ev.flags = ce.context_flags;
-    return pushEvent(ev, &[_]u8{});
+    return pushEvent(ev, payload);
 }
 
 test "pushCanonicalEvent rejects invalid canonical event" {
     var ce = canonical.create(.npcap_sensor);
     ce.magic = 0;
     try std.testing.expect(pushCanonicalEvent(&ce) == false);
+}
+
+test "pushCanonicalEventWithPayload preserves bounded payload" {
+    var ce = canonical.create(.npcap_sensor);
+    const payload = "signature-fixture";
+    ce.payload_length = payload.len;
+    try std.testing.expect(pushCanonicalEventWithPayload(&ce, payload));
+    const queued = popEvent().?;
+    try std.testing.expectEqual(payload.len, queued.payload_len);
+    try std.testing.expectEqualSlices(u8, payload, queued.payload[0..payload.len]);
+}
+
+const ProducerStressContext = struct {
+    producer_id: u32,
+    accepted: *std.atomic.Value(u32),
+};
+
+fn producerStressWorker(ctx: *ProducerStressContext) void {
+    var i: u32 = 0;
+    while (i < 400) : (i += 1) {
+        var ev = event.IpcEvent.init(.packet_captured);
+        ev.event_id = (@as(u64, ctx.producer_id) << 32) | i;
+        if (pushEvent(ev, &[_]u8{})) {
+            _ = ctx.accepted.fetchAdd(1, .monotonic);
+        }
+    }
+}
+
+test "multi producer reservation conserves accepted events" {
+    var accepted = std.atomic.Value(u32).init(0);
+    var contexts: [8]ProducerStressContext = undefined;
+    var threads: [8]std.Thread = undefined;
+
+    var i: usize = 0;
+    while (i < contexts.len) : (i += 1) {
+        contexts[i] = .{ .producer_id = @intCast(i), .accepted = &accepted };
+        threads[i] = try std.Thread.spawn(.{}, producerStressWorker, .{&contexts[i]});
+    }
+    for (threads) |thread| thread.join();
+
+    var popped: u32 = 0;
+    while (popEvent()) |_| popped += 1;
+    try std.testing.expectEqual(accepted.load(.acquire), popped);
 }
 
 /// Pop the next queued event from the pipeline queue.

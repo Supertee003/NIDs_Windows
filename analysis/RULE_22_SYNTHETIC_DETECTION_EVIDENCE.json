@@ -1,0 +1,870 @@
+{
+  "schema": "aegis.synthetic-detection-evidence.v1",
+  "mode": "synthetic_observe_only",
+  "active": false,
+  "prevention_gate": "closed",
+  "fixture_count": 22,
+  "matched_count": 22,
+  "host_effect_count": 0,
+  "note": "Synthetic adapter output is not evidence that the real kernel/FIM/ETW/pipe/WFP sensor detected the rule.",
+  "evidence": [
+    {
+      "evidence_id": "SYN-01-R0056",
+      "fixture_id": "FX-01-R0056",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_payload_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 1,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 1,
+        "provenance": "synthetic_payload_event",
+        "matched_rule_key": "R0056",
+        "severity": "Critical",
+        "severity_ordinal": 3,
+        "payload_hash_prefix": "6e1b741efe7e1d5f",
+        "policy_action_intent": "BLOCK",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R0056",
+        "matched_rule_key_observed": "R0056",
+        "severity_expected": "Critical",
+        "severity_observed": "Critical",
+        "provenance_expected": "synthetic_payload_event",
+        "provenance_observed": "synthetic_payload_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-02-R9064",
+      "fixture_id": "FX-02-R9064",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_payload_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 2,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 1,
+        "provenance": "synthetic_payload_event",
+        "matched_rule_key": "R9064",
+        "severity": "Critical",
+        "severity_ordinal": 3,
+        "payload_hash_prefix": "7a8f3f850d695a26",
+        "policy_action_intent": "BLOCK",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R9064",
+        "matched_rule_key_observed": "R9064",
+        "severity_expected": "Critical",
+        "severity_observed": "Critical",
+        "provenance_expected": "synthetic_payload_event",
+        "provenance_observed": "synthetic_payload_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-03-R9059",
+      "fixture_id": "FX-03-R9059",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_payload_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 3,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 1,
+        "provenance": "synthetic_payload_event",
+        "matched_rule_key": "R9059",
+        "severity": "High",
+        "severity_ordinal": 2,
+        "payload_hash_prefix": "a9937700fccdfd11",
+        "policy_action_intent": "ALERT",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R9059",
+        "matched_rule_key_observed": "R9059",
+        "severity_expected": "High",
+        "severity_observed": "High",
+        "provenance_expected": "synthetic_payload_event",
+        "provenance_observed": "synthetic_payload_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-04-R0088",
+      "fixture_id": "FX-04-R0088",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_payload_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 4,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 1,
+        "provenance": "synthetic_payload_event",
+        "matched_rule_key": "R0088",
+        "severity": "Critical",
+        "severity_ordinal": 3,
+        "payload_hash_prefix": "6b0805604aee4f33",
+        "policy_action_intent": "BLOCK",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R0088",
+        "matched_rule_key_observed": "R0088",
+        "severity_expected": "Critical",
+        "severity_observed": "Critical",
+        "provenance_expected": "synthetic_payload_event",
+        "provenance_observed": "synthetic_payload_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-05-R9002",
+      "fixture_id": "FX-05-R9002",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_wfp_network_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 5,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 1,
+        "provenance": "synthetic_wfp_network_event",
+        "matched_rule_key": "R9002",
+        "severity": "High",
+        "severity_ordinal": 2,
+        "payload_hash_prefix": "a47f7483b2226689",
+        "policy_action_intent": "BLOCK",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R9002",
+        "matched_rule_key_observed": "R9002",
+        "severity_expected": "High",
+        "severity_observed": "High",
+        "provenance_expected": "synthetic_wfp_network_event",
+        "provenance_observed": "synthetic_wfp_network_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-06-R9006",
+      "fixture_id": "FX-06-R9006",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_wfp_network_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 6,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 1,
+        "provenance": "synthetic_wfp_network_event",
+        "matched_rule_key": "R9006",
+        "severity": "Medium",
+        "severity_ordinal": 1,
+        "payload_hash_prefix": "33b35ff7a21205ab",
+        "policy_action_intent": "ALERT",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R9006",
+        "matched_rule_key_observed": "R9006",
+        "severity_expected": "Medium",
+        "severity_observed": "Medium",
+        "provenance_expected": "synthetic_wfp_network_event",
+        "provenance_observed": "synthetic_wfp_network_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-07-R9007",
+      "fixture_id": "FX-07-R9007",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_wfp_network_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 7,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 1,
+        "provenance": "synthetic_wfp_network_event",
+        "matched_rule_key": "R9007",
+        "severity": "Medium",
+        "severity_ordinal": 1,
+        "payload_hash_prefix": "7d204500cf94dc8e",
+        "policy_action_intent": "ALERT",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R9007",
+        "matched_rule_key_observed": "R9007",
+        "severity_expected": "Medium",
+        "severity_observed": "Medium",
+        "provenance_expected": "synthetic_wfp_network_event",
+        "provenance_observed": "synthetic_wfp_network_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-08-R1001",
+      "fixture_id": "FX-08-R1001",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_fim_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 8,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 2,
+        "provenance": "synthetic_fim_event",
+        "matched_rule_key": "R1001",
+        "severity": "Critical",
+        "severity_ordinal": 3,
+        "payload_hash_prefix": "80f3802a568efa32",
+        "policy_action_intent": "BLOCK",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R1001",
+        "matched_rule_key_observed": "R1001",
+        "severity_expected": "Critical",
+        "severity_observed": "Critical",
+        "provenance_expected": "synthetic_fim_event",
+        "provenance_observed": "synthetic_fim_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-09-R1002",
+      "fixture_id": "FX-09-R1002",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_fim_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 9,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 2,
+        "provenance": "synthetic_fim_event",
+        "matched_rule_key": "R1002",
+        "severity": "Critical",
+        "severity_ordinal": 3,
+        "payload_hash_prefix": "5e7406a9ded84ccf",
+        "policy_action_intent": "BLOCK",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R1002",
+        "matched_rule_key_observed": "R1002",
+        "severity_expected": "Critical",
+        "severity_observed": "Critical",
+        "provenance_expected": "synthetic_fim_event",
+        "provenance_observed": "synthetic_fim_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-10-R1003",
+      "fixture_id": "FX-10-R1003",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_fim_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 10,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 2,
+        "provenance": "synthetic_fim_event",
+        "matched_rule_key": "R1003",
+        "severity": "High",
+        "severity_ordinal": 2,
+        "payload_hash_prefix": "feac3860a05c2914",
+        "policy_action_intent": "BLOCK",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R1003",
+        "matched_rule_key_observed": "R1003",
+        "severity_expected": "High",
+        "severity_observed": "High",
+        "provenance_expected": "synthetic_fim_event",
+        "provenance_observed": "synthetic_fim_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-11-R1004",
+      "fixture_id": "FX-11-R1004",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_fim_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 11,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 2,
+        "provenance": "synthetic_fim_event",
+        "matched_rule_key": "R1004",
+        "severity": "Critical",
+        "severity_ordinal": 3,
+        "payload_hash_prefix": "fa083b915213a093",
+        "policy_action_intent": "BLOCK",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R1004",
+        "matched_rule_key_observed": "R1004",
+        "severity_expected": "Critical",
+        "severity_observed": "Critical",
+        "provenance_expected": "synthetic_fim_event",
+        "provenance_observed": "synthetic_fim_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-12-R1005",
+      "fixture_id": "FX-12-R1005",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_fim_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 12,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 2,
+        "provenance": "synthetic_fim_event",
+        "matched_rule_key": "R1005",
+        "severity": "High",
+        "severity_ordinal": 2,
+        "payload_hash_prefix": "8fdda65b67eab2bd",
+        "policy_action_intent": "BLOCK",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R1005",
+        "matched_rule_key_observed": "R1005",
+        "severity_expected": "High",
+        "severity_observed": "High",
+        "provenance_expected": "synthetic_fim_event",
+        "provenance_observed": "synthetic_fim_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-13-R2001",
+      "fixture_id": "FX-13-R2001",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_etw_process_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 13,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 2,
+        "provenance": "synthetic_etw_process_event",
+        "matched_rule_key": "R2001",
+        "severity": "Critical",
+        "severity_ordinal": 3,
+        "payload_hash_prefix": "ac9c5a97aeac6a71",
+        "policy_action_intent": "BLOCK",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R2001",
+        "matched_rule_key_observed": "R2001",
+        "severity_expected": "Critical",
+        "severity_observed": "Critical",
+        "provenance_expected": "synthetic_etw_process_event",
+        "provenance_observed": "synthetic_etw_process_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-14-R2002",
+      "fixture_id": "FX-14-R2002",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_etw_process_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 14,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 2,
+        "provenance": "synthetic_etw_process_event",
+        "matched_rule_key": "R2002",
+        "severity": "Critical",
+        "severity_ordinal": 3,
+        "payload_hash_prefix": "32c9a2b99b1db118",
+        "policy_action_intent": "BLOCK",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R2002",
+        "matched_rule_key_observed": "R2002",
+        "severity_expected": "Critical",
+        "severity_observed": "Critical",
+        "provenance_expected": "synthetic_etw_process_event",
+        "provenance_observed": "synthetic_etw_process_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-15-R2003",
+      "fixture_id": "FX-15-R2003",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_etw_process_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 15,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 2,
+        "provenance": "synthetic_etw_process_event",
+        "matched_rule_key": "R2003",
+        "severity": "Critical",
+        "severity_ordinal": 3,
+        "payload_hash_prefix": "f3ced26e2032b727",
+        "policy_action_intent": "BLOCK",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R2003",
+        "matched_rule_key_observed": "R2003",
+        "severity_expected": "Critical",
+        "severity_observed": "Critical",
+        "provenance_expected": "synthetic_etw_process_event",
+        "provenance_observed": "synthetic_etw_process_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-16-R2004",
+      "fixture_id": "FX-16-R2004",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_etw_process_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 16,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 2,
+        "provenance": "synthetic_etw_process_event",
+        "matched_rule_key": "R2004",
+        "severity": "High",
+        "severity_ordinal": 2,
+        "payload_hash_prefix": "250999762b50d019",
+        "policy_action_intent": "BLOCK",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R2004",
+        "matched_rule_key_observed": "R2004",
+        "severity_expected": "High",
+        "severity_observed": "High",
+        "provenance_expected": "synthetic_etw_process_event",
+        "provenance_observed": "synthetic_etw_process_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-17-R2005",
+      "fixture_id": "FX-17-R2005",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_etw_process_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 17,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 2,
+        "provenance": "synthetic_etw_process_event",
+        "matched_rule_key": "R2005",
+        "severity": "Critical",
+        "severity_ordinal": 3,
+        "payload_hash_prefix": "9b51e39cc3306afd",
+        "policy_action_intent": "BLOCK",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R2005",
+        "matched_rule_key_observed": "R2005",
+        "severity_expected": "Critical",
+        "severity_observed": "Critical",
+        "provenance_expected": "synthetic_etw_process_event",
+        "provenance_observed": "synthetic_etw_process_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-18-R3001",
+      "fixture_id": "FX-18-R3001",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_pipe_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 18,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 3,
+        "provenance": "synthetic_pipe_event",
+        "matched_rule_key": "R3001",
+        "severity": "Critical",
+        "severity_ordinal": 3,
+        "payload_hash_prefix": "cda5cd649f7dbd55",
+        "policy_action_intent": "BLOCK",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R3001",
+        "matched_rule_key_observed": "R3001",
+        "severity_expected": "Critical",
+        "severity_observed": "Critical",
+        "provenance_expected": "synthetic_pipe_event",
+        "provenance_observed": "synthetic_pipe_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-19-R3002",
+      "fixture_id": "FX-19-R3002",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_pipe_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 19,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 3,
+        "provenance": "synthetic_pipe_event",
+        "matched_rule_key": "R3002",
+        "severity": "High",
+        "severity_ordinal": 2,
+        "payload_hash_prefix": "2b163bf2c6c4e089",
+        "policy_action_intent": "BLOCK",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R3002",
+        "matched_rule_key_observed": "R3002",
+        "severity_expected": "High",
+        "severity_observed": "High",
+        "provenance_expected": "synthetic_pipe_event",
+        "provenance_observed": "synthetic_pipe_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-20-R3003",
+      "fixture_id": "FX-20-R3003",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_pipe_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 20,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 3,
+        "provenance": "synthetic_pipe_event",
+        "matched_rule_key": "R3003",
+        "severity": "Medium",
+        "severity_ordinal": 1,
+        "payload_hash_prefix": "5b15f9e0403fbfe4",
+        "policy_action_intent": "ALERT",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R3003",
+        "matched_rule_key_observed": "R3003",
+        "severity_expected": "Medium",
+        "severity_observed": "Medium",
+        "provenance_expected": "synthetic_pipe_event",
+        "provenance_observed": "synthetic_pipe_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-21-R3004",
+      "fixture_id": "FX-21-R3004",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_pipe_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 21,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 3,
+        "provenance": "synthetic_pipe_event",
+        "matched_rule_key": "R3004",
+        "severity": "Critical",
+        "severity_ordinal": 3,
+        "payload_hash_prefix": "10707faca5606ae7",
+        "policy_action_intent": "BLOCK",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R3004",
+        "matched_rule_key_observed": "R3004",
+        "severity_expected": "Critical",
+        "severity_observed": "Critical",
+        "provenance_expected": "synthetic_pipe_event",
+        "provenance_observed": "synthetic_pipe_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    },
+    {
+      "evidence_id": "SYN-22-R3005",
+      "fixture_id": "FX-22-R3005",
+      "mode": "synthetic_observe_only",
+      "source": "synthetic_pipe_event",
+      "canonical_event": {
+        "magic": "AEG1",
+        "version": 1,
+        "event_id": 22,
+        "timestamp_ms": 1790268147545,
+        "layer_id": 3,
+        "provenance": "synthetic_pipe_event",
+        "matched_rule_key": "R3005",
+        "severity": "High",
+        "severity_ordinal": 2,
+        "payload_hash_prefix": "4601b69d0ff5f0a8",
+        "policy_action_intent": "BLOCK",
+        "enforcement_status": "pending_observe_only"
+      },
+      "detection_assertions": {
+        "matched_rule_key_expected": "R3005",
+        "matched_rule_key_observed": "R3005",
+        "severity_expected": "High",
+        "severity_observed": "High",
+        "provenance_expected": "synthetic_pipe_event",
+        "provenance_observed": "synthetic_pipe_event",
+        "matched": true
+      },
+      "safety_assertions": {
+        "host_effect": "none",
+        "wfp_block": false,
+        "enforcement_receipt": false,
+        "network_transmission": false,
+        "file_mutation": false,
+        "process_creation": false,
+        "pipe_creation": false
+      },
+      "qualification_status": "SYNTHETIC_ONLY_NOT_SENSOR_PROOF"
+    }
+  ]
+}

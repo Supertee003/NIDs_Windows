@@ -1,0 +1,9 @@
+{
+  "scenario_id": "sql-001",
+  "kind": "sql_marker",
+  "status": "cleaned",
+  "matched_rule_id": 305419896,
+  "event_id": 1001,
+  "enforcement_receipt_id": 9001,
+  "cleanup_confirmed": true
+}

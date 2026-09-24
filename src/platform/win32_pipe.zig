@@ -1,8 +1,8 @@
 //! Win32 named-pipe control plane for the AEGIS daemon.
 //!
 //! Extracted from main.zig. Contains the named-pipe FFI declarations,
-//! the Everyone-read/write ACL construction, the JSON control request
-//! handler (aegisctl protocol), and the blocking pipe server loop.
+//! the explicit SDDL/client-token authorization boundary, the JSON control
+//! request handler (aegisctl protocol), and the blocking pipe server loop.
 
 const std = @import("std");
 const manifest = @import("../contract/runtime_manifest.zig");
@@ -12,6 +12,8 @@ const state = @import("../pipeline/runtime_state.zig");
 const rules = @import("../pipeline/rule_loader.zig");
 const control = @import("../control.zig");
 
+// CONTRACT-04 transport (see CONTRACT_MAP.json): the single canonical name
+// shared by tools/aegisctl, probe_control_pipe.py, scripts and docs.
 pub const control_pipe_name = "\\\\.\\pipe\\aegis_control";
 
 pub fn runtimeHealthState(pep_ready: bool, bridge_ready: bool, wfp_ready: bool) []const u8 {
@@ -54,6 +56,45 @@ extern "kernel32" fn FlushFileBuffers(hFile: std.os.windows.HANDLE) std.os.windo
 // CTRL-002: process identity for the RUNTIME_CONTRACT.md §4.1 health payload.
 extern "kernel32" fn GetCurrentProcessId() std.os.windows.DWORD;
 
+extern "kernel32" fn GetCurrentThread() std.os.windows.HANDLE;
+extern "kernel32" fn GetNamedPipeClientProcessId(
+    pipe: std.os.windows.HANDLE,
+    client_process_id: *std.os.windows.DWORD,
+) std.os.windows.BOOL;
+extern "kernel32" fn LocalFree(h_mem: ?*anyopaque) ?*anyopaque;
+const SDDL_REVISION_1_V: std.os.windows.DWORD = 1;
+// Local SYSTEM and built-in Administrators only; no Everyone ACE. The client
+// token is still impersonated and checked before dispatch.
+const CONTROL_PIPE_SDDL = "D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GA;;;AU)";
+
+// The role is derived from the impersonated client token below; the JSON
+// caller never supplies a role.
+extern "advapi32" fn OpenThreadToken(
+    thread: std.os.windows.HANDLE,
+    desired_access: std.os.windows.DWORD,
+    open_as_self: std.os.windows.BOOL,
+    token: *std.os.windows.HANDLE,
+) std.os.windows.BOOL;
+extern "advapi32" fn ImpersonateNamedPipeClient(pipe: std.os.windows.HANDLE) std.os.windows.BOOL;
+extern "advapi32" fn RevertToSelf() std.os.windows.BOOL;
+extern "advapi32" fn GetTokenInformation(
+    token: std.os.windows.HANDLE,
+    information_class: std.os.windows.DWORD,
+    information: *anyopaque,
+    information_length: std.os.windows.DWORD,
+    return_length: *std.os.windows.DWORD,
+) std.os.windows.BOOL;
+extern "advapi32" fn ConvertStringSecurityDescriptorToSecurityDescriptorW(
+    string_security_descriptor: [*:0]const u16,
+    string_sd_revision: std.os.windows.DWORD,
+    security_descriptor: *?*anyopaque,
+    security_descriptor_size: ?*std.os.windows.DWORD,
+) std.os.windows.BOOL;
+
+const TOKEN_QUERY_V: std.os.windows.DWORD = 0x0008;
+const TOKEN_ELEVATION_CLASS_V: std.os.windows.DWORD = 20;
+const TokenElevation = extern struct { token_is_elevated: std.os.windows.DWORD };
+
 extern "kernel32" fn CreateFileW(
     lpFileName: [*:0]const u16,
     dwDesiredAccess: std.os.windows.DWORD,
@@ -68,53 +109,6 @@ const GENERIC_READ_V: std.os.windows.DWORD = 0x80000000;
 const GENERIC_WRITE_V: std.os.windows.DWORD = 0x40000000;
 const OPEN_EXISTING_V: std.os.windows.DWORD = 3;
 const FILE_ATTRIBUTE_NORMAL_V: std.os.windows.DWORD = 0x80;
-
-// --- Windows ACL construction (advapi32) ---
-const SET_ACCESS_V: std.os.windows.DWORD = 0x00000001;
-const NO_INHERITANCE_V: std.os.windows.DWORD = 0x00000000;
-const TRUSTEE_IS_SID_V: std.os.windows.DWORD = 0x00000003;
-const TRUSTEE_IS_UNKNOWN_V: std.os.windows.DWORD = 0x00000000;
-const SECURITY_DESCRIPTOR_REVISION_V: std.os.windows.DWORD = 1;
-
-const TRUSTEE = extern struct {
-    pMultipleTrustee: ?*TRUSTEE,
-    MultipleTrusteeOperation: std.os.windows.DWORD,
-    TrusteeForm: std.os.windows.DWORD,
-    TrusteeType: std.os.windows.DWORD,
-    ptstrName: ?*anyopaque,
-};
-
-const EXPLICIT_ACCESS = extern struct {
-    grfAccessPermissions: std.os.windows.DWORD,
-    grfAccessMode: std.os.windows.DWORD,
-    grfInheritance: std.os.windows.DWORD,
-    Trustee: TRUSTEE,
-};
-
-const SECURITY_DESCRIPTOR = extern struct {
-    Revision: u8,
-    Sbz1: u8,
-    Control: u16,
-    Owner: ?*anyopaque,
-    Group: ?*anyopaque,
-    Sacl: ?*anyopaque,
-    Dacl: ?*anyopaque,
-};
-
-extern "advapi32" fn ConvertStringSidToSidW(lpStringSid: [*:0]const u16, sid: *?*anyopaque) std.os.windows.BOOL;
-extern "advapi32" fn SetEntriesInAclW(
-    cCountOfExplicitEntries: std.os.windows.DWORD,
-    pListOfExplicitEntries: ?*const EXPLICIT_ACCESS,
-    oldAcl: ?*anyopaque,
-    newAcl: *?*anyopaque,
-) std.os.windows.BOOL;
-extern "advapi32" fn InitializeSecurityDescriptor(sd: *SECURITY_DESCRIPTOR, dwRevision: std.os.windows.DWORD) std.os.windows.BOOL;
-extern "advapi32" fn SetSecurityDescriptorDacl(
-    sd: *SECURITY_DESCRIPTOR,
-    bDaclPresent: std.os.windows.BOOL,
-    dacl: ?*anyopaque,
-    bDaclDefaulted: std.os.windows.BOOL,
-) std.os.windows.BOOL;
 
 fn utf16zFromSlice(a: std.mem.Allocator, s: []const u8) ![*:0]const u16 {
     const buf = try a.alloc(u16, s.len + 1);
@@ -135,16 +129,48 @@ fn sendResponse(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, ok: bool, dat
 fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, payload: []const u8, caps: *const manifest.Capability, start_ns: i128) bool {
     // P0.4: Use the new control protocol dispatch
     var auth = control.authorization.Authorizer{};
+    const local_role = getClientRole(pipe) orelse {
+        diag.err("control authorization: client token could not be authenticated; denying request", .{});
+        sendResponse(a, pipe, false, "{\"code\":\"AUTH_UNAVAILABLE\",\"state\":\"UNAUTHORIZED\"}");
+        return false;
+    };
+    var client_pid: std.os.windows.DWORD = 0;
+    if (GetNamedPipeClientProcessId(pipe, &client_pid) == 0) {
+        diag.warn("control authorization: client PID unavailable; continuing with authenticated token role", .{});
+    }
     var ctx = control.handler_registry.HandlerContext{
         .start_ns = start_ns,
         .request_id = @as(u64, @intCast(state.g_pipeline_audit_id)),
-        .caller_role = auth.getLocalRole(),
-        .caller_pid = @as(u32, @intCast(GetCurrentProcessId())),
+        .caller_role = local_role,
+        .caller_pid = @as(u32, @intCast(client_pid)),
         .caps = caps,
     };
     state.g_pipeline_audit_id +|= 1;
     const result = control.handler_registry.dispatch(a, pipe, payload, &ctx, &auth, &control.audit.g_audit);
     return result.shutdown;
+}
+
+fn getClientRole(pipe: std.os.windows.HANDLE) ?control.protocol.Role {
+    if (ImpersonateNamedPipeClient(pipe) == 0) return null;
+    defer _ = RevertToSelf();
+
+    var token: std.os.windows.HANDLE = undefined;
+    if (OpenThreadToken(GetCurrentThread(), TOKEN_QUERY_V, 1, &token) == 0) return null;
+    defer _ = std.os.windows.CloseHandle(token);
+
+    var elevation: TokenElevation = undefined;
+    var returned: std.os.windows.DWORD = 0;
+    if (GetTokenInformation(
+        token,
+        TOKEN_ELEVATION_CLASS_V,
+        @ptrCast(&elevation),
+        @sizeOf(TokenElevation),
+        &returned,
+    ) == 0) return null;
+    if (elevation.token_is_elevated != 0) {
+        return .privileged;
+    }
+    return .operate;
 }
 
 pub fn serveWindowsPipe(caps: *const manifest.Capability, start_ns: i128) !void {
@@ -156,14 +182,23 @@ pub fn serveWindowsPipe(caps: *const manifest.Capability, start_ns: i128) !void 
     defer arena.deinit();
     const pipe_name_z = try utf16zFromSlice(arena.allocator(), control_pipe_name);
 
-    // Keep the control-plane startup fail-safe. The previous custom ACL FFI
-    // path could crash inside SetEntriesInAclW when the process ABI or SID
-    // declaration differed from the Windows SDK. Use the OS default security
-    // descriptor for this build; replace it with a tested SDDL/ACL helper
-    // before exposing the control pipe outside the local service boundary.
+    // Use a restrictive explicit descriptor. The OS default is not a reviewed
+    // authorization contract for a privileged control endpoint.
+    const sddl_z = try utf16zFromSlice(arena.allocator(), CONTROL_PIPE_SDDL);
+    var security_descriptor: ?*anyopaque = null;
+    if (ConvertStringSecurityDescriptorToSecurityDescriptorW(
+        sddl_z,
+        SDDL_REVISION_1_V,
+        &security_descriptor,
+        null,
+    ) == 0) {
+        diag.err("control pipe security descriptor construction failed; refusing to create endpoint", .{});
+        return error.ControlPipeSecurityFailed;
+    }
+    defer _ = LocalFree(security_descriptor);
     var sa = w.SECURITY_ATTRIBUTES{
         .nLength = @sizeOf(w.SECURITY_ATTRIBUTES),
-        .lpSecurityDescriptor = null,
+        .lpSecurityDescriptor = security_descriptor,
         .bInheritHandle = 0,
     };
 

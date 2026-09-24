@@ -1,0 +1,7 @@
+{
+  "replay_id": 77,
+  "source_digest": "sha256:forensic-fixture",
+  "mode": "observe_only",
+  "allow_host_mutation": false,
+  "expected_enforcement_attempts": 0
+}

@@ -49,6 +49,12 @@ def classify(path: str) -> str:
     ext = Path(path).suffix.lower()
     parts = Path(path).parts
 
+    # LIFECYCLE-001: `tools/legacy/` holds superseded implementations retained
+    # for audit (for example the process-killing aegisctl lifecycle). They are
+    # withdrawn from the authority graph, so classifying them as canonical
+    # source would let inventory.json contradict the architecture.
+    if len(parts) >= 2 and parts[0] == "tools" and parts[1] == "legacy":
+        return "legacy"
     if name in LOCKFILE_NAMES:
         return "canonical-build"
     if name in {"Makefile", "makefile", "GNUmakefile"}:
@@ -103,6 +109,9 @@ def assign_role(path: str, cls: str) -> str:
     parts = Path(path).parts
     name = Path(path).name
 
+    if cls == "legacy":
+        # Distinguish "kept for audit, never import" from "scheduled for removal".
+        return "quarantined" if "quarantined" in name.lower() else "legacy-source"
     if cls == "canonical-source":
         if "src/" in str(parts) or path.startswith("src/"):
             return "production-source"

@@ -1,0 +1,10 @@
+{
+  "schema": "aegis.rules-22-run-summary.v1",
+  "mode": "synthetic_observe_only",
+  "prevention_gate": "closed",
+  "host_effect_capable": false,
+  "rules_source": "configs/Rules.json",
+  "expected_rule_count": 22,
+  "failures": 0,
+  "log": "D:\\NIDs_Windows\\analysis\\rules-22-run-20260923_000110_940\\run.log"
+}

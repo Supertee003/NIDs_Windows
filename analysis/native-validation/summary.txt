@@ -1,0 +1,4 @@
+﻿zig-fmt-touched-check=0
+zig-build-test=0
+cargo-test=0
+go-test=0

@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "code": "OK",
+  "state": "OK",
+  "data": {
+    "component": "core",
+    "runtime_state": "RUNNING"
+  },
+  "audit_id": 1
+}

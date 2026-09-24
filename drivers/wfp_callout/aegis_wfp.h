@@ -1,7 +1,7 @@
 /**
  * aegis_wfp.h - AEGIS WFP Callout Driver Shared Header
  *
- * 40-byte AEGIS_EVENT_HEADER (packed, Zig FFI compatible),
+ * 44-byte AEGIS_EVENT_HEADER (packed, Zig FFI compatible),
  * IOCTL codes, device names, GUID decl, extern globals,
  * cross-file function declarations.
  */
@@ -24,6 +24,37 @@
 #define IOCTL_AEGIS_BLOCK_FLOW   CTL_CODE(FILE_DEVICE_NETWORK, 0x801, METHOD_BUFFERED, FILE_WRITE_DATA)
 #define IOCTL_AEGIS_GET_STATS    CTL_CODE(FILE_DEVICE_NETWORK, 0x802, METHOD_BUFFERED, FILE_READ_DATA)
 #define IOCTL_AEGIS_UNBLOCK_FLOW CTL_CODE(FILE_DEVICE_NETWORK, 0x803, METHOD_BUFFERED, FILE_WRITE_DATA)
+#define IOCTL_AEGIS_QUERY_FILTER CTL_CODE(FILE_DEVICE_NETWORK, 0x804, METHOD_BUFFERED, FILE_READ_DATA)
+
+/* Port-specific enforcement contract. All multi-byte fields use the same
+ * host representation across the Rust/C boundary; IPv4 is network order,
+ * protocol is IANA (6=TCP, 17=UDP), and port is host-order UINT16. */
+#pragma pack(push, 1)
+typedef struct _AEGIS_WFP_FLOW_REQUEST {
+    UINT32 remote_ipv4;
+    UINT16 remote_port;
+    UINT8  protocol;
+    UINT8  reserved;
+} AEGIS_WFP_FLOW_REQUEST;
+
+typedef struct _AEGIS_WFP_FLOW_RESPONSE {
+    UINT64 filter_id;
+    UINT32 provider_status;
+} AEGIS_WFP_FLOW_RESPONSE;
+
+typedef struct _AEGIS_WFP_FILTER_QUERY {
+    UINT64 filter_id;
+} AEGIS_WFP_FILTER_QUERY;
+
+typedef struct _AEGIS_WFP_FILTER_STATE {
+    UINT64 filter_id;
+    UINT32 remote_ipv4;
+    UINT16 remote_port;
+    UINT8  protocol;
+    UINT8  present;
+    UINT32 provider_status;
+} AEGIS_WFP_FILTER_STATE;
+#pragma pack(pop)
 
 /* ====== Device Names ====== */
 #define AEGIS_WFP_DEVICE_NAME  L"\\Device\\AegisWfpDevice"
@@ -39,7 +70,7 @@
      (g_RingWriteOffset - g_RingReadOffset) : \
      (g_RingBufferSize - g_RingReadOffset + g_RingWriteOffset))
 
-/* ====== AEGIS Event Header (40 bytes, packed for Zig FFI) ====== */
+/* ====== Event Header (44 bytes, packed for Zig FFI) ====== */
 #pragma pack(push, 1)
 typedef struct _AEGIS_EVENT_HEADER {
     UINT32  event_type;     /* 0=NETWORK, 1=FILE, 2=PROCESS, 3=PIPE */
@@ -73,6 +104,7 @@ typedef struct _AEGIS_RING_STATS {
 
 /* ====== GUID (defined via DEFINE_GUID in aegis_wfp.c) ====== */
 extern const GUID AEGIS_CALLOUT_KEY;
+extern const GUID AEGIS_PROOF_FILTER_KEY;
 
 /* ====== Globals (defined in aegis_wfp.c) ====== */
 extern PVOID          g_RingBuffer;
@@ -82,8 +114,11 @@ extern SIZE_T         g_RingWriteOffset;
 extern SIZE_T         g_RingReadOffset;
 extern HANDLE         g_WfpEngineHandle;
 extern UINT32         g_CalloutId;
-extern UINT64         g_FilterId;     /* FIX 5: UINT32 -> UINT64 */
+extern UINT64         g_CaptureFilterId;
+extern UINT64         g_ProofFilterId;
 extern UINT32         g_BlockedIp;
+extern UINT16         g_BlockedPort;
+extern UINT8          g_BlockedProtocol;
 extern PDEVICE_OBJECT g_DeviceObject;
 
 /* ====== Cross-file declarations ====== */

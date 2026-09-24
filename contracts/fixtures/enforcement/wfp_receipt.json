@@ -1,0 +1,11 @@
+{
+  "request_id": 9001,
+  "event_id": 1001,
+  "policy_id": 42,
+  "decision": "block",
+  "status": "enforced",
+  "provider": "wfp",
+  "filter_id": 12345,
+  "host_effect_confirmed": true,
+  "reason": "filter_installed_and_verified"
+}

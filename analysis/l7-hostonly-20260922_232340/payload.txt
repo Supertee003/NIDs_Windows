@@ -1,0 +1,6 @@
+﻿GET /aegis-observe-only HTTP/1.1
+Host: aegis-hostonly
+User-Agent: AEGIS-benign-qualification
+Connection: close
+
+

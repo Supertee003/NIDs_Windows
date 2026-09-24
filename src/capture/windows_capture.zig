@@ -9,6 +9,7 @@ const nids_analyze = @import("../core/nids_analyze.zig");
 const rust_pep = @import("../core/rust_pep.zig");
 // Phase 28: Blueprint Nose Contract for event submission
 const nose = @import("nose_contract.zig");
+const l7 = @import("l7_classifier.zig");
 
 const WFP_EVENT_BUFFER_SIZE: usize = 65536;
 // BP-L13: Stats poll interval (iterations between stats prints)
@@ -141,6 +142,10 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
                     sensor_event.payload_length = @intCast(payload.len);
                     sensor_event.protocol = ctx.protocol;
                     sensor_event.layer_id = ctx.layer_id;
+                    // L7 metadata is advisory only and uses the frozen v1
+                    // context_flags extension area. Unknown remains zero.
+                    const l7_class = l7.classify(payload, ctx.dest_port, ctx.protocol);
+                    sensor_event.context_flags |= l7_class.context_flag;
                     sensor_event.timestamp_ms = @intCast(std.time.milliTimestamp());
                     const submit_result = nose.submitEvent(sensor_event);
                     if (submit_result != .accepted) {

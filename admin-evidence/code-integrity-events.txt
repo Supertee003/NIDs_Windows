@@ -1,0 +1,623 @@
+﻿
+
+TimeCreated      : 9/20/2026 11:51:08 AM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/20/2026 11:51:08 AM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process 
+                   (\Device\HarddiskVolume3\Windows\UUS\amd64\WaaSMedicAgent.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/20/2026 11:51:08 AM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/20/2026 11:51:08 AM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process 
+                   (\Device\HarddiskVolume3\Windows\UUS\amd64\WaaSMedicAgent.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/20/2026 11:51:08 AM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/20/2026 11:51:08 AM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process 
+                   (\Device\HarddiskVolume3\Windows\UUS\amd64\WaaSMedicAgent.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/20/2026 11:51:08 AM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/20/2026 11:51:08 AM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process 
+                   (\Device\HarddiskVolume3\Windows\UUS\amd64\WaaSMedicAgent.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/20/2026 11:46:06 AM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/20/2026 11:46:06 AM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.6.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/20/2026 11:46:06 AM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/20/2026 11:46:06 AM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.6.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/20/2026 11:46:05 AM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/20/2026 11:46:05 AM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.6.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/20/2026 11:46:05 AM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/20/2026 11:46:05 AM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.6.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/18/2026 1:46:02 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/18/2026 1:46:02 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/18/2026 1:46:02 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/18/2026 1:46:02 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/18/2026 1:46:02 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/18/2026 1:46:02 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/18/2026 1:46:02 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/18/2026 1:46:02 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/18/2026 1:41:13 PM
+Id               : 3116
+LevelDisplayName : Information
+Message          : Signature information for Code Integrity policy ID {d2bda982-ccf6-4344-ac5b-0b44427b6816}.
+
+TimeCreated      : 9/18/2026 1:41:13 PM
+Id               : 3099
+LevelDisplayName : Information
+Message          : Refreshed and activated Code Integrity policy {d2bda982-ccf6-4344-ac5b-0b44427b6816} 
+                   Microsoft Windows Driver Policy. id 10.0.29520.0. Status 0x0
+
+TimeCreated      : 9/18/2026 1:41:13 PM
+Id               : 3116
+LevelDisplayName : Information
+Message          : Signature information for Code Integrity policy ID {a072029f-588b-4b5e-b7f9-05aad67df687}.
+
+TimeCreated      : 9/18/2026 1:41:13 PM
+Id               : 3099
+LevelDisplayName : Information
+Message          : Refreshed and activated Code Integrity policy {a072029f-588b-4b5e-b7f9-05aad67df687} 
+                   Microsoft Windows Virtualization Based Security Policy. id 10.0.29657.0. Status 0x0
+
+TimeCreated      : 9/18/2026 1:41:13 PM
+Id               : 3116
+LevelDisplayName : Information
+Message          : Signature information for Code Integrity policy ID {784c4414-79f4-4c32-a6a5-f0fb42a51d0d}.
+
+TimeCreated      : 9/18/2026 1:41:13 PM
+Id               : 3099
+LevelDisplayName : Information
+Message          : Refreshed and activated Code Integrity policy {784c4414-79f4-4c32-a6a5-f0fb42a51d0d} 
+                   Microsoft Windows Cross Certificates for Code Integrity Exceptions Audit Policy. id 
+                   10.29611.0.0. Status 0x0
+
+TimeCreated      : 9/18/2026 1:41:13 PM
+Id               : 3116
+LevelDisplayName : Information
+Message          : Signature information for Code Integrity policy ID {60fd87f8-4593-44a0-91b0-2e0da022f248}.
+
+TimeCreated      : 9/18/2026 1:41:13 PM
+Id               : 3099
+LevelDisplayName : Information
+Message          : Refreshed and activated Code Integrity policy {60fd87f8-4593-44a0-91b0-2e0da022f248} 
+                   Microsoft Windows Endpoint Security Policy. id 10.0.29526.0. Status 0x0
+
+TimeCreated      : 9/18/2026 1:41:13 PM
+Id               : 3085
+LevelDisplayName : Information
+Message          : Code Integrity will disable WHQL driver enforcement for this boot session.  Settings 0x0.
+
+TimeCreated      : 9/18/2026 1:30:15 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/18/2026 1:30:15 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/18/2026 1:30:15 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/18/2026 1:30:15 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/18/2026 1:30:15 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/18/2026 1:30:15 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/18/2026 1:30:15 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/18/2026 1:30:15 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/17/2026 7:29:54 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/17/2026 7:29:54 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/17/2026 7:29:54 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/17/2026 7:29:54 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/17/2026 7:29:53 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/17/2026 7:29:53 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/17/2026 7:29:53 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/17/2026 7:29:53 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/17/2026 12:02:46 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/17/2026 12:02:46 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/17/2026 12:02:46 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/17/2026 12:02:46 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/17/2026 12:02:46 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/17/2026 12:02:46 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/17/2026 12:02:46 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/17/2026 12:02:46 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/17/2026 1:34:59 AM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/17/2026 1:34:59 AM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program Files\Microsoft VS 
+                   Code\Code.exe) attempted to load \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that 
+                   did not meet the Microsoft signing level requirements.
+
+TimeCreated      : 9/17/2026 1:34:59 AM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/17/2026 1:34:59 AM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program Files\Microsoft VS 
+                   Code\Code.exe) attempted to load \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that 
+                   did not meet the Microsoft signing level requirements.
+
+TimeCreated      : 9/17/2026 1:34:58 AM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/17/2026 1:34:58 AM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program Files\Microsoft VS 
+                   Code\Code.exe) attempted to load \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that 
+                   did not meet the Microsoft signing level requirements.
+
+TimeCreated      : 9/17/2026 1:34:58 AM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/17/2026 1:34:58 AM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program Files\Microsoft VS 
+                   Code\Code.exe) attempted to load \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that 
+                   did not meet the Microsoft signing level requirements.
+
+TimeCreated      : 9/16/2026 1:28:37 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/16/2026 1:28:37 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/16/2026 1:28:37 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/16/2026 1:28:37 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/16/2026 1:28:37 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/16/2026 1:28:37 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/16/2026 1:28:37 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/16/2026 1:28:37 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/16/2026 1:18:38 PM
+Id               : 3116
+LevelDisplayName : Information
+Message          : Signature information for Code Integrity policy ID {d2bda982-ccf6-4344-ac5b-0b44427b6816}.
+
+TimeCreated      : 9/16/2026 1:18:38 PM
+Id               : 3099
+LevelDisplayName : Information
+Message          : Refreshed and activated Code Integrity policy {d2bda982-ccf6-4344-ac5b-0b44427b6816} 
+                   Microsoft Windows Driver Policy. id 10.0.29520.0. Status 0x0
+
+TimeCreated      : 9/16/2026 1:18:38 PM
+Id               : 3116
+LevelDisplayName : Information
+Message          : Signature information for Code Integrity policy ID {a072029f-588b-4b5e-b7f9-05aad67df687}.
+
+TimeCreated      : 9/16/2026 1:18:38 PM
+Id               : 3099
+LevelDisplayName : Information
+Message          : Refreshed and activated Code Integrity policy {a072029f-588b-4b5e-b7f9-05aad67df687} 
+                   Microsoft Windows Virtualization Based Security Policy. id 10.0.29657.0. Status 0x0
+
+TimeCreated      : 9/16/2026 1:18:38 PM
+Id               : 3116
+LevelDisplayName : Information
+Message          : Signature information for Code Integrity policy ID {784c4414-79f4-4c32-a6a5-f0fb42a51d0d}.
+
+TimeCreated      : 9/16/2026 1:18:38 PM
+Id               : 3099
+LevelDisplayName : Information
+Message          : Refreshed and activated Code Integrity policy {784c4414-79f4-4c32-a6a5-f0fb42a51d0d} 
+                   Microsoft Windows Cross Certificates for Code Integrity Exceptions Audit Policy. id 
+                   10.29611.0.0. Status 0x0
+
+TimeCreated      : 9/16/2026 1:18:38 PM
+Id               : 3116
+LevelDisplayName : Information
+Message          : Signature information for Code Integrity policy ID {60fd87f8-4593-44a0-91b0-2e0da022f248}.
+
+TimeCreated      : 9/16/2026 1:18:38 PM
+Id               : 3099
+LevelDisplayName : Information
+Message          : Refreshed and activated Code Integrity policy {60fd87f8-4593-44a0-91b0-2e0da022f248} 
+                   Microsoft Windows Endpoint Security Policy. id 10.0.29526.0. Status 0x0
+
+TimeCreated      : 9/16/2026 1:18:38 PM
+Id               : 3085
+LevelDisplayName : Information
+Message          : Code Integrity will disable WHQL driver enforcement for this boot session.  Settings 0x0.
+
+TimeCreated      : 9/16/2026 1:17:28 PM
+Id               : 3116
+LevelDisplayName : Information
+Message          : Signature information for Code Integrity policy ID {d2bda982-ccf6-4344-ac5b-0b44427b6816}.
+
+TimeCreated      : 9/16/2026 1:17:28 PM
+Id               : 3099
+LevelDisplayName : Information
+Message          : Refreshed and activated Code Integrity policy {d2bda982-ccf6-4344-ac5b-0b44427b6816} 
+                   Microsoft Windows Driver Policy. id 10.0.29520.0. Status 0x0
+
+TimeCreated      : 9/16/2026 1:17:28 PM
+Id               : 3116
+LevelDisplayName : Information
+Message          : Signature information for Code Integrity policy ID {a072029f-588b-4b5e-b7f9-05aad67df687}.
+
+TimeCreated      : 9/16/2026 1:17:28 PM
+Id               : 3099
+LevelDisplayName : Information
+Message          : Refreshed and activated Code Integrity policy {a072029f-588b-4b5e-b7f9-05aad67df687} 
+                   Microsoft Windows Virtualization Based Security Policy. id 10.0.29657.0. Status 0x0
+
+TimeCreated      : 9/16/2026 1:17:28 PM
+Id               : 3116
+LevelDisplayName : Information
+Message          : Signature information for Code Integrity policy ID {784c4414-79f4-4c32-a6a5-f0fb42a51d0d}.
+
+TimeCreated      : 9/16/2026 1:17:28 PM
+Id               : 3099
+LevelDisplayName : Information
+Message          : Refreshed and activated Code Integrity policy {784c4414-79f4-4c32-a6a5-f0fb42a51d0d} 
+                   Microsoft Windows Cross Certificates for Code Integrity Exceptions Audit Policy. id 
+                   10.29611.0.0. Status 0x0
+
+TimeCreated      : 9/16/2026 1:17:28 PM
+Id               : 3116
+LevelDisplayName : Information
+Message          : Signature information for Code Integrity policy ID {60fd87f8-4593-44a0-91b0-2e0da022f248}.
+
+TimeCreated      : 9/16/2026 1:17:28 PM
+Id               : 3099
+LevelDisplayName : Information
+Message          : Refreshed and activated Code Integrity policy {60fd87f8-4593-44a0-91b0-2e0da022f248} 
+                   Microsoft Windows Endpoint Security Policy. id 10.0.29526.0. Status 0x0
+
+TimeCreated      : 9/16/2026 1:17:28 PM
+Id               : 3085
+LevelDisplayName : Information
+Message          : Code Integrity will disable WHQL driver enforcement for this boot session.  Settings 0x0.
+
+TimeCreated      : 9/15/2026 10:38:44 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/15/2026 10:38:44 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/15/2026 10:38:44 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/15/2026 10:38:44 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/15/2026 10:38:43 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/15/2026 10:38:43 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/15/2026 10:38:43 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+TimeCreated      : 9/15/2026 10:38:43 PM
+Id               : 3033
+LevelDisplayName : Error
+Message          : Code Integrity determined that a process (\Device\HarddiskVolume3\Program 
+                   Files\WindowsApps\ManusAI.Manus_1.7.5.0_x64__vajzd2mq3s8wj\Manus.exe) attempted to load 
+                   \Device\HarddiskVolume3\Windows\System32\nvspcap64.dll that did not meet the Microsoft 
+                   signing level requirements.
+
+TimeCreated      : 9/15/2026 6:23:38 PM
+Id               : 3089
+LevelDisplayName : Information
+Message          : Signature information for another event. Match using the Correlation Id.
+
+
+

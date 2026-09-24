@@ -7,6 +7,7 @@
 
 const std = @import("std");
 const event = @import("event.zig");
+const wfp_ioctl = @import("../policy/wfp_ioctl.zig");
 
 // ----------------------------------------------------------------------------
 // Capability flags (bitmask)
@@ -36,7 +37,7 @@ pub const Limits = struct {
     pub const FLOW_EVICTION_TIMEOUT_SEC: u32 = 60;
     pub const EVENT_QUEUE_DEPTH: u32 = 65536;
     pub const PAYLOAD_BUFFER_BYTES: u32 = 1 << 24; // 16 MiB
-    pub const FORENSIC_RING_BYTES: u32 = 1 << 26;  // 64 MiB
+    pub const FORENSIC_RING_BYTES: u32 = 1 << 26; // 64 MiB
     pub const SIGNATURE_RULE_MAX: u32 = 100_000;
     pub const ANOMALY_BASELINE_SAMPLES: u32 = 1000;
     pub const CORRELATOR_WINDOW_SEC: u32 = 300;
@@ -139,9 +140,13 @@ fn probeRegistry() bool {
 
 fn probeWfp() bool {
     if (@import("builtin").os.tag != .windows) return false;
-    var lib = std.DynLib.open("fwpuclnt.dll") catch return false;
-    lib.close();
-    return true;
+    // fwpuclnt.dll being present is not provider readiness. Attest the
+    // AEGIS device and its GET_STATS IOCTL, then leave the live handle to the
+    // bridge initializer. This keeps health truthful and fail-closed.
+    if (!wfp_ioctl.init()) return false;
+    const ready = wfp_ioctl.get_stats() != null;
+    wfp_ioctl.shutdown();
+    return ready;
 }
 
 // ----------------------------------------------------------------------------

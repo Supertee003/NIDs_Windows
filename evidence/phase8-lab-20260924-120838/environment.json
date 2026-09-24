@@ -1,0 +1,22 @@
+{
+  "run_id": "phase8-lab-20260924-120838",
+  "generated_at": "2026-09-24T12:08:38.868646+00:00",
+  "isolation": "host_only_network",
+  "topology": {
+    "name": "wsl2_hostonly_lab",
+    "isolation": "host_only_network",
+    "benign_service": "lab_http_stub",
+    "external_egress": false,
+    "real_targets": false
+  },
+  "bounds": {
+    "global_max_events_per_scenario": 8,
+    "global_max_rate_per_sec": 2,
+    "global_max_scenarios": 7
+  },
+  "prevention_gate": "closed",
+  "execution_mode": "synthetic_observe_only",
+  "python": "3.14.2",
+  "platform": "win32",
+  "external_egress": false
+}

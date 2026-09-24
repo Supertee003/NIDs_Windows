@@ -97,12 +97,11 @@ func (w *FrameWriter) ensureConnected() {
 	w.conn = dialPipe(w.pipePath)
 }
 
-// dialPipe opens the named pipe client (or loopback socket fallback).
+// dialPipe opens the named pipe client (or loopback TCP fallback).
 func dialPipe(path string) *pipeConn {
 	// Windows: CreateFile("\\\\.\\pipe\\name", GENERIC_WRITE, ...)
-	// Go's os.OpenFile maps to CreateFileW with FILE_SHARE_READ|WRITE and
-	// GENERIC_READ|GENERIC_WRITE, which works for named pipes when the
-	// server is listening (PIPE_WAIT blocks until a server appears).
+	// Go's os.OpenFile maps to CreateFileW with FILE_SHARE_READ|WRITE,
+	// which works for named pipes when the server is listening.
 	f, err := os.OpenFile(path, os.O_WRONLY, 0)
 	if err != nil {
 		return nil
@@ -110,14 +109,14 @@ func dialPipe(path string) *pipeConn {
 	return &pipeConn{file: f}
 }
 
-// Send encodes a CanonicalEvent to wire bytes and writes them as a
-// length-prefixed frame. Never blocks the caller on a down consumer:
-// if the pipe is not connected, the frame is counted as dropped and we
-// retry the connection on the next Send (pcap loop keeps moving).
-func (w *FrameWriter) Send(ev *CanonicalEvent) []byte {
+// Send encodes a CanonicalEvent and writes one length-prefixed frame.
+// It returns true only when the complete frame was delivered. Live capture
+// remains non-blocking and may ignore false; deterministic observe injection
+// uses the result to perform bounded retries without changing live semantics.
+func (w *FrameWriter) Send(ev *CanonicalEvent) bool {
 	wire, serr := ev.Serialize()
 	if serr != nil {
-		return nil
+		return false
 	}
 
 	w.mu.Lock()
@@ -129,7 +128,7 @@ func (w *FrameWriter) Send(ev *CanonicalEvent) []byte {
 			fmt.Fprintf(os.Stderr, "[NOSE PIPE] first frame dropped: consumer unavailable (%s)\n", w.pipePath)
 		}
 		w.ensureConnected()
-		return wire[:]
+		return false
 	}
 
 	var frame [4 + EventWireSize]byte
@@ -145,13 +144,13 @@ func (w *FrameWriter) Send(ev *CanonicalEvent) []byte {
 		w.dropped++
 		w.conn.close()
 		w.conn = nil
-		return wire[:]
+		return false
 	}
 	w.sent++
 	if w.sent == 1 {
 		fmt.Fprintf(os.Stderr, "[NOSE PIPE] first canonical frame sent: %d bytes event_id=%d\n", len(frame), ev.EventID)
 	}
-	return wire[:]
+	return true
 }
 
 // Stats returns how many frames were delivered vs dropped.

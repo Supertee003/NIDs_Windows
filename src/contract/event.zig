@@ -11,6 +11,15 @@ pub const EVENT_MAGIC: u32 = 0xAE615011;
 pub const EVENT_VERSION: u16 = 5;
 pub const EVENT_SIZE: usize = 96;
 
+// Sensor adapters use one process-wide monotonic sequence when an upstream
+// source does not provide an event identity. Zero remains reserved for
+// uninitialized/test fixtures.
+var g_next_event_id: std.atomic.Value(u64) = std.atomic.Value(u64).init(1);
+
+pub fn nextEventId() u64 {
+    return g_next_event_id.fetchAdd(1, .monotonic);
+}
+
 pub const EventKind = enum(u8) {
     packet_captured = 1,
     flow_created = 2,
@@ -84,6 +93,7 @@ pub const EventSource = enum(u8) {
     capture_etw = 2,
     capture_fim = 3,
     capture_registry = 4,
+    capture_pipe_monitor = 5,
     detection_sig = 10,
     detection_anom = 11,
     detection_corr = 12,

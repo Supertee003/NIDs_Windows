@@ -41,6 +41,8 @@ const rule_loader = @import("pipeline/rule_loader.zig");
 const processor = @import("pipeline/event_processor.zig");
 const telemetry = @import("pipeline/telemetry_threads.zig");
 const nose_reader = @import("capture/nose_pipe_reader.zig");
+const pipe_monitor = @import("capture/pipe_monitor.zig");
+const event_queue = @import("pipeline/event_queue.zig");
 const service = @import("platform/win32_service.zig");
 const control = @import("platform/win32_pipe.zig");
 
@@ -58,6 +60,7 @@ const RuntimeSupervisor = struct {
     etw: ?std.Thread = null,
     fim: ?std.Thread = null,
     registry: ?std.Thread = null,
+    pipe_monitor: ?std.Thread = null,
 
     pub fn requestStop(_: *RuntimeSupervisor) void {
         state.g_stop_requested.store(true, .release);
@@ -69,6 +72,8 @@ const RuntimeSupervisor = struct {
         // Join in reverse startup order. Every handle is joined exactly once.
         if (self.registry) |thread| thread.join();
         self.registry = null;
+        if (self.pipe_monitor) |thread| thread.join();
+        self.pipe_monitor = null;
         if (self.fim) |thread| thread.join();
         self.fim = null;
         if (self.etw) |thread| thread.join();
@@ -79,8 +84,23 @@ const RuntimeSupervisor = struct {
         self.sensor = null;
         if (self.pipeline) |thread| thread.join();
         self.pipeline = null;
+        // STOPPED is a postcondition of the owner completing every join. The
+        // control handler publishes STOPPING while this work is pending.
+        runtime_sm.g_runtime.transition(.stopped);
     }
 };
+
+fn publishPipeObservation(observation: pipe_monitor.PipeObservation, payload: []const u8) bool {
+    var ev = event.IpcEvent.init(.signature_match);
+    ev.source = .capture_pipe_monitor;
+    ev.event_id = event.nextEventId();
+    ev.trace_id = ev.event_id;
+    ev.severity = .warning;
+    ev.timestamp_ns = observation.timestamp_ns;
+    ev.payload_len = observation.payload_len;
+    ev.payload_hash = observation.payload_hash;
+    return event_queue.pushEvent(ev, payload);
+}
 
 pub fn runDaemon() !void {
     // Install the sink before any startup work so failures before the control
@@ -180,37 +200,37 @@ pub fn runDaemon() !void {
     var ps = policy.PolicySet.init(std.heap.page_allocator);
     defer ps.deinit();
     var policies_loaded: u32 = 0;
-    blk: {
+    policy_load_blk: {
         const pol_path = "configs/policies.json";
         const pol_file = std.fs.cwd().openFile(pol_path, .{}) catch |err| {
             diag.warn("config resolution: cannot open {s}: {} — policy set empty", .{ pol_path, err });
-            break :blk;
+            break :policy_load_blk;
         };
         defer pol_file.close();
         const pol_bytes = pol_file.readToEndAlloc(std.heap.page_allocator, 1 * 1024 * 1024) catch |err| {
             diag.warn("cannot read {s}: {}", .{ pol_path, err });
-            break :blk;
+            break :policy_load_blk;
         };
         defer std.heap.page_allocator.free(pol_bytes);
 
         var pol_parsed = std.json.parseFromSlice(std.json.Value, std.heap.page_allocator, pol_bytes, .{}) catch |err| {
             diag.warn("cannot parse {s}: {}", .{ pol_path, err });
-            break :blk;
+            break :policy_load_blk;
         };
         defer pol_parsed.deinit();
 
         const root = pol_parsed.value;
         if (root != .object) {
             diag.warn("{s}: expected object at root", .{pol_path});
-            break :blk;
+            break :policy_load_blk;
         }
         const policies_arr = root.object.get("policies") orelse {
             diag.warn("{s}: missing policies key", .{pol_path});
-            break :blk;
+            break :policy_load_blk;
         };
         if (policies_arr != .array) {
             diag.warn("{s}: policies is not an array", .{pol_path});
-            break :blk;
+            break :policy_load_blk;
         }
 
         for (policies_arr.array.items) |pol_val| {
@@ -227,7 +247,18 @@ pub fn runDaemon() !void {
 
             const action_val = pol_obj.get("action") orelse continue;
             if (action_val != .string) continue;
-            const pol_action: policy.Action = if (std.mem.eql(u8, action_val.string, "block")) .block else if (std.mem.eql(u8, action_val.string, "alert")) .alert else if (std.mem.eql(u8, action_val.string, "rate_limit")) .rate_limit else if (std.mem.eql(u8, action_val.string, "quarantine")) .quarantine else if (std.mem.eql(u8, action_val.string, "log")) .log else if (std.mem.eql(u8, action_val.string, "escalate")) .escalate else .pass;
+            const pol_action: policy.Action = blk: {
+                if (std.mem.eql(u8, action_val.string, "block")) break :blk .block;
+                if (std.mem.eql(u8, action_val.string, "alert")) break :blk .alert;
+                if (std.mem.eql(u8, action_val.string, "rate_limit")) break :blk .rate_limit;
+                if (std.mem.eql(u8, action_val.string, "quarantine")) break :blk .quarantine;
+                if (std.mem.eql(u8, action_val.string, "log")) break :blk .log;
+                if (std.mem.eql(u8, action_val.string, "escalate")) break :blk .escalate;
+                // Unknown actions are malformed policy, never implicit allow.
+                diag.err("{s}: policy {} has unknown action '{s}'; rejecting policy", .{ pol_path, pol_id, action_val.string });
+                std.heap.page_allocator.free(pol_name);
+                continue;
+            };
 
             const severity_val = pol_obj.get("severity") orelse continue;
             if (severity_val != .string) continue;
@@ -404,6 +435,15 @@ pub fn runDaemon() !void {
             break :blk null;
         };
 
+        // Native named-pipe enumeration is part of the active daemon path.
+        // It remains observe-only and publishes into the same pipeline queue.
+        pipe_monitor.setEventPublisher(publishPipeObservation);
+        supervisor.pipe_monitor = std.Thread.spawn(.{}, pipe_monitor.pipeMonitorLoop, .{}) catch |err| blk: {
+            diag.warn("failed to spawn named-pipe monitor: {} — pipe telemetry disabled", .{err});
+            break :blk null;
+        };
+        if (supervisor.pipe_monitor != null) diag.info("named-pipe monitor started", .{});
+
         // PATCH-20: Start Windows Data Plane adapter threads (Phase 3)
         // ETW thread: receives Windows kernel events (process, file, registry, image)
         supervisor.etw = std.Thread.spawn(.{}, telemetry.etwThread, .{&etw_source}) catch |err| blk: {
@@ -425,12 +465,19 @@ pub fn runDaemon() !void {
         };
 
         // Bounded readiness barrier: thread creation alone is not readiness.
-        // Do not block service startup indefinitely if a worker exits during
-        // initialization.
+        // The C++/Windows telemetry subsystem is represented by ETW, FIM, and
+        // Registry readiness. Waiting only for pipeline_ready published the
+        // subsystem as degraded before those adapters finished initializing,
+        // and there was no later promotion to RUNNING. Wait for the complete
+        // sensor set, but retain a hard timeout so a broken adapter cannot
+        // block daemon startup indefinitely.
         var readiness_wait_ms: u32 = 0;
-        while (!state.g_pipeline_ready.load(.acquire) and
+        while ((!state.g_pipeline_ready.load(.acquire) or
+            !state.g_etw_ready.load(.acquire) or
+            !state.g_fim_ready.load(.acquire) or
+            !state.g_registry_ready.load(.acquire)) and
             !state.g_worker_failed.load(.acquire) and
-            readiness_wait_ms < 2000)
+            readiness_wait_ms < 5000)
         {
             std.time.sleep(10 * std.time.ns_per_ms);
             readiness_wait_ms += 10;
@@ -455,7 +502,13 @@ pub fn runDaemon() !void {
         } else {
             runtime_sm.g_runtime.subsystemDegraded(.rust_pep, "pep_unavailable");
         }
-        if (pep_enf.available and bridge_init.allActive()) {
+        // Tier-3 authority is the PEP/payload-screening layer. WFP is the
+        // separate host-effect provider and must not make Tier-3 appear
+        // STOPPED when policy authority is ready but host enforcement is
+        // unavailable. The health contract reports provider_ready and
+        // host_effect_capable independently and keeps the overall gate
+        // fail-closed until WFP is actually attested.
+        if (pep_enf.available) {
             runtime_sm.g_runtime.subsystemStarted(.tier3, runtime_pid);
         } else {
             runtime_sm.g_runtime.subsystemDegraded(.tier3, "tier3_dependencies_not_ready");

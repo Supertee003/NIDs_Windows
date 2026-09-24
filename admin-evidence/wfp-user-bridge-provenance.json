@@ -1,0 +1,14 @@
+﻿{
+    "artifact":  "aegis_wfp_user.dll",
+    "source":  "D:\\NIDs_Windows\\build\\wfp-user\\Release\\aegis_wfp_user.dll",
+    "configuration":  "Release",
+    "sha256":  "D9BF2B38D5596B8023153B1AF605048AC94891D440E6D28407E9830E2A629DC1",
+    "built_at":  "2026-09-20T16:52:21.2271778Z",
+    "exports_required":  [
+                             "aegis_wfp_ioctl_open",
+                             "aegis_wfp_ioctl_block_ip",
+                             "aegis_wfp_ioctl_unblock_ip",
+                             "aegis_wfp_ioctl_block_flow",
+                             "aegis_wfp_ioctl_unblock_filter"
+                         ]
+}

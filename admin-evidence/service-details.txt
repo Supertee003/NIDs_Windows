@@ -1,0 +1,21 @@
+﻿
+
+Name                : AegisWfp
+RequiredServices    : {}
+CanPauseAndContinue : False
+CanShutdown         : False
+CanStop             : False
+DisplayName         : AegisWfp
+DependentServices   : {}
+MachineName         : .
+ServiceName         : AegisWfp
+ServicesDependedOn  : {}
+ServiceHandle       : SafeServiceHandle
+Status              : Stopped
+ServiceType         : KernelDriver
+StartType           : Manual
+Site                : 
+Container           : 
+
+
+

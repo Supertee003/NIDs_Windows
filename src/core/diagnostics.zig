@@ -166,6 +166,11 @@ pub const Counter = struct {
         _ = self.value.fetchAdd(n, .monotonic);
     }
 
+    /// Atomically reserve and return the next one-based sequence value.
+    pub fn next(self: *Counter) u64 {
+        return self.value.fetchAdd(1, .monotonic) + 1;
+    }
+
     pub fn get(self: *const Counter) u64 {
         return self.value.load(.monotonic);
     }
@@ -229,6 +234,8 @@ test "Counter increments" {
     c.inc();
     c.add(10);
     try std.testing.expectEqual(@as(u64, 12), c.get());
+    try std.testing.expectEqual(@as(u64, 13), c.next());
+    try std.testing.expectEqual(@as(u64, 14), c.next());
     c.reset();
     try std.testing.expectEqual(@as(u64, 0), c.get());
 }

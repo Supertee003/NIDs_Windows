@@ -1,4 +1,4 @@
-﻿//! rust_pep_integration.zig - AEGIS Rust PEP Integration (Phase 13)
+//! rust_pep_integration.zig - AEGIS Rust PEP Integration (Phase 13)
 //!
 //! Thin facade over rust_pep.zig that owns a singleton RustPep.
 
@@ -18,9 +18,9 @@ pub fn init() void {
     g_pep = rust_pep.RustPep.init(g_allocator);
     // Phase 28: Initialize WFP kernel bridge (via rust_pep, the single PEP path)
     if (rust_pep.wfpInit()) {
-        std.log.info("[RUST-PEP] WFP kernel bridge connected (real BLOCK enforcement active)", .{});
+        std.log.info("[RUST-PEP] WFP transport connected; host-effect receipt gate remains closed", .{});
     } else {
-        std.log.warn("[RUST-PEP] WFP kernel bridge NOT connected (fallback to in-memory only)", .{});
+        std.log.warn("[RUST-PEP] WFP kernel bridge NOT connected; prevention remains unavailable", .{});
     }
     g_initialized = true;
     g_total_executions = 0;
@@ -28,11 +28,13 @@ pub fn init() void {
     std.log.info("[RUST-PEP] PEP integration initialized (security authority)", .{});
 }
 
-pub fn isInitialized() bool { return g_initialized; }
+pub fn isInitialized() bool {
+    return g_initialized;
+}
 
 pub fn shutdown() void {
     if (!g_initialized) return;
-// Phase 28: Shutdown WFP kernel bridge
+    // Phase 28: Shutdown WFP kernel bridge
     rust_pep.wfpShutdown();
     if (g_pep) |*pep| pep.deinit();
     g_pep = null;
@@ -109,12 +111,13 @@ test "rust_pep_integration: full lifecycle" {
     };
 
     const result = execute(event, decision);
-    try std.testing.expect(result.status == .executed);
-    try std.testing.expect(isBlocked(0xCBCBCBCB));
+    try std.testing.expect(result.status == .failed);
+    try std.testing.expect(result.reason == .host_effect_unavailable);
+    try std.testing.expect(!isBlocked(0xCBCBCBCB));
 
     const stats = getStats();
     try std.testing.expect(stats.total_executions == 1);
-    try std.testing.expect(stats.total_blocks == 1);
+    try std.testing.expect(stats.total_blocks == 0);
 }
 
 test "rust_pep_integration: returns no_op when not initialized" {

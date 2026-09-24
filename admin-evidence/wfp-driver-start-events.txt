@@ -1,0 +1,353 @@
+﻿
+
+TimeCreated      : 9/20/2026 5:27:38 PM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\Users\User\AppData\Local\Packages\Microsoft.WindowsNotepad_
+                   8wekyb3d8bbwe\SystemAppData\Helium\UserClasses.dat was cleared updating 5 keys and creating 
+                   1 modified pages.
+
+TimeCreated      : 9/20/2026 5:27:38 PM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\Users\User\AppData\Local\Packages\Microsoft.WindowsNotepad_
+                   8wekyb3d8bbwe\SystemAppData\Helium\User.dat was cleared updating 8 keys and creating 1 
+                   modified pages.
+
+TimeCreated      : 9/20/2026 5:17:26 PM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\ProgramData\Packages\MSTeams_8wekyb3d8bbwe\S-1-5-21-2240144
+                   573-294256931-834073773-1001\SystemAppData\Helium\Cache\83668b8485b35c_COM15.dat was cleared 
+                   updating 1 keys and creating 1 modified pages.
+
+TimeCreated      : 9/20/2026 4:36:13 PM
+Id               : 15
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : Hive \??\C:\WINDOWS\AppCompat\Programs\Amcache.hve was reorganized with a starting size of 
+                   10215424 bytes and an ending size of 10199040 bytes.
+
+TimeCreated      : 9/20/2026 12:02:40 PM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\ProgramData\Packages\AcerIncorporated.AcerRegistration_48fr
+                   kmn4z8aw4\S-1-5-21-2240144573-294256931-834073773-1001\SystemAppData\Helium\Cache\d3d8a1f6589
+                   c6b6e_COM15.dat was cleared updating 1 keys and creating 1 modified pages.
+
+TimeCreated      : 9/20/2026 12:02:40 PM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\Users\User\AppData\Local\Packages\AcerIncorporated.AcerRegi
+                   stration_48frkmn4z8aw4\SystemAppData\Helium\UserClasses.dat was cleared updating 1 keys and 
+                   creating 1 modified pages.
+
+TimeCreated      : 9/20/2026 12:02:40 PM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\Users\User\AppData\Local\Packages\AcerIncorporated.AcerRegi
+                   stration_48frkmn4z8aw4\SystemAppData\Helium\User.dat was cleared updating 6 keys and 
+                   creating 1 modified pages.
+
+TimeCreated      : 9/20/2026 11:50:15 AM
+Id               : 7040
+ProviderName     : Service Control Manager
+LevelDisplayName : Information
+Message          : The start type of the Background Intelligent Transfer Service service was changed from auto 
+                   start to demand start.
+
+TimeCreated      : 9/20/2026 11:48:08 AM
+Id               : 7040
+ProviderName     : Service Control Manager
+LevelDisplayName : Information
+Message          : The start type of the Background Intelligent Transfer Service service was changed from 
+                   demand start to auto start.
+
+TimeCreated      : 9/20/2026 11:48:08 AM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\ProgramData\Packages\AcerIncorporated.PredatorSenseV30_48fr
+                   kmn4z8aw4\S-1-5-21-2240144573-294256931-834073773-1001\SystemAppData\Helium\Cache\67f4f46ed00
+                   dc833_COM15.dat was cleared updating 1 keys and creating 1 modified pages.
+
+TimeCreated      : 9/20/2026 11:48:08 AM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\Users\User\AppData\Local\Packages\AcerIncorporated.Predator
+                   SenseV30_48frkmn4z8aw4\SystemAppData\Helium\UserClasses.dat was cleared updating 2 keys and 
+                   creating 1 modified pages.
+
+TimeCreated      : 9/20/2026 11:48:08 AM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\Users\User\AppData\Local\Packages\AcerIncorporated.Predator
+                   SenseV30_48frkmn4z8aw4\SystemAppData\Helium\User.dat was cleared updating 5 keys and 
+                   creating 1 modified pages.
+
+TimeCreated      : 9/20/2026 11:47:17 AM
+Id               : 7040
+ProviderName     : Service Control Manager
+LevelDisplayName : Information
+Message          : The start type of the Background Intelligent Transfer Service service was changed from auto 
+                   start to demand start.
+
+TimeCreated      : 9/20/2026 11:46:10 AM
+Id               : 7040
+ProviderName     : Service Control Manager
+LevelDisplayName : Information
+Message          : The start type of the IsolationSession service was changed from auto start to demand start.
+
+TimeCreated      : 9/20/2026 11:45:40 AM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive 
+                   \??\C:\Users\User\AppData\Local\Packages\ManusAI.Manus_vajzd2mq3s8wj\Settings\settings.dat 
+                   was cleared updating 3 keys and creating 1 modified pages.
+
+TimeCreated      : 9/20/2026 11:45:40 AM
+Id               : 7040
+ProviderName     : Service Control Manager
+LevelDisplayName : Information
+Message          : The start type of the IsolationSession service was changed from demand start to auto start.
+
+TimeCreated      : 9/20/2026 11:45:25 AM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\ProgramData\Packages\AppUp.IntelGraphicsExperience_8j3eq9em
+                   e6ctt\S-1-5-21-2240144573-294256931-834073773-1001\SystemAppData\Helium\Cache\26c08aeecfc4fd8
+                   2_COM15.dat was cleared updating 1 keys and creating 1 modified pages.
+
+TimeCreated      : 9/20/2026 11:45:25 AM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\Users\User\AppData\Local\Packages\AppUp.IntelGraphicsExperi
+                   ence_8j3eq9eme6ctt\SystemAppData\Helium\UserClasses.dat was cleared updating 1 keys and 
+                   creating 1 modified pages.
+
+TimeCreated      : 9/20/2026 11:45:25 AM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\Users\User\AppData\Local\Packages\AppUp.IntelGraphicsExperi
+                   ence_8j3eq9eme6ctt\SystemAppData\Helium\User.dat was cleared updating 7 keys and creating 1 
+                   modified pages.
+
+TimeCreated      : 9/20/2026 11:45:12 AM
+Id               : 7040
+ProviderName     : Service Control Manager
+LevelDisplayName : Information
+Message          : The start type of the Background Intelligent Transfer Service service was changed from 
+                   demand start to auto start.
+
+TimeCreated      : 9/20/2026 11:45:12 AM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\Users\User\AppData\Local\Packages\SpotifyAB.SpotifyMusic_zp
+                   dnekdrzrea0\SystemAppData\Helium\UserClasses.dat was cleared updating 15 keys and creating 2 
+                   modified pages.
+
+TimeCreated      : 9/20/2026 11:45:12 AM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\Users\User\AppData\Local\Packages\SpotifyAB.SpotifyMusic_zp
+                   dnekdrzrea0\SystemAppData\Helium\User.dat was cleared updating 38 keys and creating 6 
+                   modified pages.
+
+TimeCreated      : 9/20/2026 11:45:11 AM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\Users\User\AppData\Local\Packages\Microsoft.StartExperience
+                   sApp_8wekyb3d8bbwe\SystemAppData\Helium\UserClasses.dat was cleared updating 12 keys and 
+                   creating 1 modified pages.
+
+TimeCreated      : 9/20/2026 11:45:11 AM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\Users\User\AppData\Local\Packages\Microsoft.StartExperience
+                   sApp_8wekyb3d8bbwe\SystemAppData\Helium\User.dat was cleared updating 14 keys and creating 1 
+                   modified pages.
+
+TimeCreated      : 9/20/2026 11:45:09 AM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\ProgramData\Packages\Microsoft.WidgetsPlatformRuntime_8weky
+                   b3d8bbwe\S-1-5-21-2240144573-294256931-834073773-1001\SystemAppData\Helium\Cache\2885a5535f12
+                   28d9_COM15.dat was cleared updating 1 keys and creating 1 modified pages.
+
+TimeCreated      : 9/20/2026 11:45:09 AM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\Users\User\AppData\Local\Packages\Microsoft.WidgetsPlatform
+                   Runtime_8wekyb3d8bbwe\SystemAppData\Helium\UserClasses.dat was cleared updating 33 keys and 
+                   creating 12 modified pages.
+
+TimeCreated      : 9/20/2026 11:45:09 AM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\Users\User\AppData\Local\Packages\Microsoft.WidgetsPlatform
+                   Runtime_8wekyb3d8bbwe\SystemAppData\Helium\User.dat was cleared updating 1 keys and creating 
+                   1 modified pages.
+
+TimeCreated      : 9/20/2026 11:45:09 AM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\Users\User\AppData\Local\Packages\MicrosoftWindows.CrossDev
+                   ice_cw5n1h2txyewy\Settings\settings.dat was cleared updating 36 keys and creating 5 modified 
+                   pages.
+
+TimeCreated      : 9/20/2026 11:45:08 AM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\Users\User\AppData\Local\Packages\MicrosoftWindows.CrossDev
+                   ice_cw5n1h2txyewy\SystemAppData\Helium\UserClasses.dat was cleared updating 1 keys and 
+                   creating 1 modified pages.
+
+TimeCreated      : 9/20/2026 11:45:08 AM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\Users\User\AppData\Local\Packages\MicrosoftWindows.CrossDev
+                   ice_cw5n1h2txyewy\SystemAppData\Helium\User.dat was cleared updating 1 keys and creating 1 
+                   modified pages.
+
+TimeCreated      : 9/20/2026 11:45:07 AM
+Id               : 15
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : Hive \??\C:\Users\User\AppData\Local\Microsoft\Windows\UsrClass.dat was reorganized with a 
+                   starting size of 7184384 bytes and an ending size of 7135232 bytes.
+
+TimeCreated      : 9/20/2026 11:45:07 AM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \??\C:\Users\User\ntuser.dat was cleared updating 11233 keys and 
+                   creating 1382 modified pages.
+
+TimeCreated      : 9/20/2026 11:45:06 AM
+Id               : 566
+ProviderName     : Microsoft-Windows-Kernel-Power
+LevelDisplayName : Information
+Message          : The system session has transitioned from 6 to 8.
+                   
+                   Reason Unknown 
+                   
+                   BootId: 91
+
+TimeCreated      : 9/20/2026 11:45:06 AM
+Id               : 16
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The access history in hive \Device\HarddiskVolume1\EFI\Microsoft\Boot\BCD was cleared 
+                   updating 132 keys and creating 8 modified pages.
+
+TimeCreated      : 9/20/2026 11:45:05 AM
+Id               : 566
+ProviderName     : Microsoft-Windows-Kernel-Power
+LevelDisplayName : Information
+Message          : The system session has transitioned from 5 to 6.
+                   
+                   Reason SxTransition 
+                   
+                   BootId: 91
+
+TimeCreated      : 9/20/2026 11:45:05 AM
+Id               : 32
+ProviderName     : Microsoft-Windows-Kernel-Boot
+LevelDisplayName : Information
+Message          : The bootmgr spent 0 ms waiting for user input.
+
+TimeCreated      : 9/20/2026 11:45:05 AM
+Id               : 18
+ProviderName     : Microsoft-Windows-Kernel-Boot
+LevelDisplayName : Information
+Message          : There are 0x1 boot options on this system.
+
+TimeCreated      : 9/20/2026 11:45:05 AM
+Id               : 27
+ProviderName     : Microsoft-Windows-Kernel-Boot
+LevelDisplayName : Information
+Message          : The boot type was 0x1.
+
+TimeCreated      : 9/20/2026 11:45:05 AM
+Id               : 25
+ProviderName     : Microsoft-Windows-Kernel-Boot
+LevelDisplayName : Information
+Message          : The boot menu policy was 0x1.
+
+TimeCreated      : 9/20/2026 11:45:05 AM
+Id               : 30
+ProviderName     : Microsoft-Windows-Kernel-Boot
+LevelDisplayName : Information
+Message          : The firmware reported boot metrics.
+
+TimeCreated      : 9/20/2026 11:45:04 AM
+Id               : 1
+ProviderName     : Microsoft-Windows-Kernel-General
+LevelDisplayName : Information
+Message          : The system time has changed to ‎2569‎-‎09‎-‎20T04:45:04.500000000Z from 
+                   ‎2569‎-‎09‎-‎19T17:13:02.258747300Z.
+                   Time Delta: 41522241 ms
+                   
+                   Change Reason: System time synchronized with the hardware clock.
+                   Process: '' (PID 4).
+                   
+                   RTC time: ‎2569‎-‎09‎-‎20T11:45:04.500000000Z
+                   Current time zone bias: -420
+                   RTC time is in UTC: false
+                   System time was based on RTC time: false
+
+TimeCreated      : 9/20/2026 12:13:02 AM
+Id               : 107
+ProviderName     : Microsoft-Windows-Kernel-Power
+LevelDisplayName : Information
+Message          : The system has resumed from sleep.
+
+TimeCreated      : 9/20/2026 12:12:55 AM
+Id               : 42
+ProviderName     : Microsoft-Windows-Kernel-Power
+LevelDisplayName : Information
+Message          : The system is entering sleep.
+                   
+                   Sleep Reason: Application API
+
+TimeCreated      : 9/20/2026 12:12:54 AM
+Id               : 566
+ProviderName     : Microsoft-Windows-Kernel-Power
+LevelDisplayName : Information
+Message          : The system session has transitioned from 4 to 5.
+                   
+                   Reason InputAccelerometer 
+                   
+                   BootId: 91
+
+TimeCreated      : 9/20/2026 12:12:54 AM
+Id               : 187
+ProviderName     : Microsoft-Windows-Kernel-Power
+LevelDisplayName : Information
+Message          : User-mode process attempted to change the system state by calling SetSuspendState or 
+                   SetSystemPowerState APIs.
+
+
+

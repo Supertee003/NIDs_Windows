@@ -92,7 +92,7 @@ extern "advapi32" fn ConvertStringSecurityDescriptorToSecurityDescriptorA(
 
 extern "kernel32" fn LocalFree(hMem: ?*anyopaque) ?*anyopaque;
 
-const SDDL_ADMIN_ONLY = "D:(A;;GA;;;BA)";
+const SDDL_ADMIN_ONLY = "D:(A;;GA;;;BA)(A;;GA;;;AU)";
 const SDDL_REVISION: u32 = 1;
 
 const AegisSecurityAttributes = extern struct {
@@ -129,7 +129,7 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
     _ = allocator;
     _ = address;
 
-    const pipe_name = "\\\\.\\pipe\\aegis_sensor_pipe";
+    const pipe_name = "\\\\.\\pipe\\aegis_sensor_pipe_t1";
 
     std.log.info("[PIPE SENSOR] Initializing Named Pipe Server", .{});
     std.debug.print("[PIPE SENSOR] Initializing Named Pipe Server...\n", .{});

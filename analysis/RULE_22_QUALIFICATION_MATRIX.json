@@ -1,0 +1,655 @@
+{
+  "schema": "aegis.rule-qualification.v1",
+  "source_rules": "configs/Rules.json",
+  "source_policies": "configs/policies.json",
+  "rule_count": 22,
+  "generic_policy_count": 6,
+  "global_gate": "closed",
+  "note": "configured action is not proof of enforcement; every rule remains unpromoted until evidence gates pass",
+  "rules": [
+    {
+      "rule_id": "R0056",
+      "name": "SQL Injection (Auth Bypass)",
+      "category": "Injection",
+      "layer": "L7",
+      "severity": "Critical",
+      "configured_action": "Drop",
+      "initial_qualification": "BLOCK_CANDIDATE_PENDING_PROOF",
+      "sensor": "user_or_application_payload",
+      "sensor_assessment": "current WFP callout exports 5-tuple only; payload match needs an application/proxy sensor",
+      "qualification_blocker": "L7_SENSOR_MAPPING",
+      "target_ports": [
+        80,
+        443,
+        8080,
+        3306,
+        8443
+      ],
+      "target_protocols": [
+        "TCP"
+      ],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R9064",
+      "name": "OS Command Injection (Semicolon)",
+      "category": "Injection",
+      "layer": "L7",
+      "severity": "Critical",
+      "configured_action": "Drop",
+      "initial_qualification": "BLOCK_CANDIDATE_PENDING_PROOF",
+      "sensor": "user_or_application_payload",
+      "sensor_assessment": "current WFP callout exports 5-tuple only; payload match needs an application/proxy sensor",
+      "qualification_blocker": "L7_SENSOR_MAPPING",
+      "target_ports": [
+        80,
+        443,
+        8080,
+        8443
+      ],
+      "target_protocols": [
+        "TCP"
+      ],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R9059",
+      "name": "Cross-Site Scripting (Basic)",
+      "category": "Web Attack",
+      "layer": "L7",
+      "severity": "High",
+      "configured_action": "Alert",
+      "initial_qualification": "DETECT_ONLY",
+      "sensor": "user_or_application_payload",
+      "sensor_assessment": "current WFP callout exports 5-tuple only; payload match needs an application/proxy sensor",
+      "qualification_blocker": "L7_SENSOR_MAPPING",
+      "target_ports": [
+        80,
+        443,
+        8080,
+        8443
+      ],
+      "target_protocols": [
+        "TCP"
+      ],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R0088",
+      "name": "Path Traversal (Sensitive)",
+      "category": "Infiltration",
+      "layer": "L7",
+      "severity": "Critical",
+      "configured_action": "Block",
+      "initial_qualification": "BLOCK_CANDIDATE_PENDING_PROOF",
+      "sensor": "user_or_application_payload",
+      "sensor_assessment": "current WFP callout exports 5-tuple only; payload match needs an application/proxy sensor",
+      "qualification_blocker": "L7_SENSOR_MAPPING",
+      "target_ports": [],
+      "target_protocols": [],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R9002",
+      "name": "ICMP Flood (DoS)",
+      "category": "Denial of Service",
+      "layer": "L4",
+      "severity": "High",
+      "configured_action": "Drop",
+      "initial_qualification": "BLOCK_CANDIDATE_PENDING_PROOF",
+      "sensor": "wfp_network_telemetry",
+      "sensor_assessment": "kernel network 5-tuple telemetry is implemented; end-to-end proof pending",
+      "qualification_blocker": "KERNEL_WFP_E2E",
+      "target_ports": [],
+      "target_protocols": [
+        "ICMP"
+      ],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R9006",
+      "name": "TCP SYN Stealth Scan",
+      "category": "Reconnaissance",
+      "layer": "L4",
+      "severity": "Medium",
+      "configured_action": "Alert",
+      "initial_qualification": "DETECT_ONLY",
+      "sensor": "wfp_network_telemetry",
+      "sensor_assessment": "kernel network 5-tuple telemetry is implemented; end-to-end proof pending",
+      "qualification_blocker": "KERNEL_WFP_E2E",
+      "target_ports": [],
+      "target_protocols": [
+        "TCP"
+      ],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R9007",
+      "name": "TCP XMAS Scan",
+      "category": "Reconnaissance",
+      "layer": "L4",
+      "severity": "Medium",
+      "configured_action": "Alert",
+      "initial_qualification": "DETECT_ONLY",
+      "sensor": "wfp_network_telemetry",
+      "sensor_assessment": "kernel network 5-tuple telemetry is implemented; end-to-end proof pending",
+      "qualification_blocker": "KERNEL_WFP_E2E",
+      "target_ports": [],
+      "target_protocols": [
+        "TCP"
+      ],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R1001",
+      "name": "System32 Write Attempt",
+      "category": "Kernel File Monitor",
+      "layer": "KERNEL_FILE",
+      "severity": "Critical",
+      "configured_action": "Block",
+      "initial_qualification": "BLOCK_CANDIDATE_PENDING_PROOF",
+      "sensor": "fim_or_file_telemetry",
+      "sensor_assessment": "FIM worker exists; per-rule trigger and block postcondition require proof",
+      "qualification_blocker": "FILE_RULE_PROOF",
+      "target_ports": [],
+      "target_protocols": [],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R1002",
+      "name": "Ransomware Rename Pattern",
+      "category": "Kernel File Monitor",
+      "layer": "KERNEL_FILE",
+      "severity": "Critical",
+      "configured_action": "Drop",
+      "initial_qualification": "BLOCK_CANDIDATE_PENDING_PROOF",
+      "sensor": "fim_or_file_telemetry",
+      "sensor_assessment": "FIM worker exists; per-rule trigger and block postcondition require proof",
+      "qualification_blocker": "FILE_RULE_PROOF",
+      "target_ports": [],
+      "target_protocols": [],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R1003",
+      "name": "Startup Folder Modification",
+      "category": "Kernel File Monitor",
+      "layer": "KERNEL_FILE",
+      "severity": "High",
+      "configured_action": "Block",
+      "initial_qualification": "BLOCK_CANDIDATE_PENDING_PROOF",
+      "sensor": "fim_or_file_telemetry",
+      "sensor_assessment": "FIM worker exists; per-rule trigger and block postcondition require proof",
+      "qualification_blocker": "FILE_RULE_PROOF",
+      "target_ports": [],
+      "target_protocols": [],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R1004",
+      "name": "DLL Drop in System32",
+      "category": "Kernel File Monitor",
+      "layer": "KERNEL_FILE",
+      "severity": "Critical",
+      "configured_action": "Drop",
+      "initial_qualification": "BLOCK_CANDIDATE_PENDING_PROOF",
+      "sensor": "fim_or_file_telemetry",
+      "sensor_assessment": "FIM worker exists; per-rule trigger and block postcondition require proof",
+      "qualification_blocker": "FILE_RULE_PROOF",
+      "target_ports": [],
+      "target_protocols": [],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R1005",
+      "name": "hosts File Modification",
+      "category": "Kernel File Monitor",
+      "layer": "KERNEL_FILE",
+      "severity": "High",
+      "configured_action": "Block",
+      "initial_qualification": "BLOCK_CANDIDATE_PENDING_PROOF",
+      "sensor": "fim_or_file_telemetry",
+      "sensor_assessment": "FIM worker exists; per-rule trigger and block postcondition require proof",
+      "qualification_blocker": "FILE_RULE_PROOF",
+      "target_ports": [],
+      "target_protocols": [],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R2001",
+      "name": "Mimikatz Execution",
+      "category": "Kernel Process Monitor",
+      "layer": "KERNEL_PROCESS",
+      "severity": "Critical",
+      "configured_action": "Drop",
+      "initial_qualification": "BLOCK_CANDIDATE_PENDING_PROOF",
+      "sensor": "etw_process_telemetry",
+      "sensor_assessment": "ETW worker readiness exists; hids_process_monitor implementation is not complete",
+      "qualification_blocker": "PROCESS_SENSOR_PROOF",
+      "target_ports": [],
+      "target_protocols": [],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R2002",
+      "name": "svchost Process Hollowing",
+      "category": "Kernel Process Monitor",
+      "layer": "KERNEL_PROCESS",
+      "severity": "Critical",
+      "configured_action": "Drop",
+      "initial_qualification": "BLOCK_CANDIDATE_PENDING_PROOF",
+      "sensor": "etw_process_telemetry",
+      "sensor_assessment": "ETW worker readiness exists; hids_process_monitor implementation is not complete",
+      "qualification_blocker": "PROCESS_SENSOR_PROOF",
+      "target_ports": [],
+      "target_protocols": [],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R2003",
+      "name": "PowerShell Cradle Download",
+      "category": "Kernel Process Monitor",
+      "layer": "KERNEL_PROCESS",
+      "severity": "Critical",
+      "configured_action": "Block",
+      "initial_qualification": "BLOCK_CANDIDATE_PENDING_PROOF",
+      "sensor": "etw_process_telemetry",
+      "sensor_assessment": "ETW worker readiness exists; hids_process_monitor implementation is not complete",
+      "qualification_blocker": "PROCESS_SENSOR_PROOF",
+      "target_ports": [],
+      "target_protocols": [],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R2004",
+      "name": "certutil Download Abuse",
+      "category": "Kernel Process Monitor",
+      "layer": "KERNEL_PROCESS",
+      "severity": "High",
+      "configured_action": "Block",
+      "initial_qualification": "BLOCK_CANDIDATE_PENDING_PROOF",
+      "sensor": "etw_process_telemetry",
+      "sensor_assessment": "ETW worker readiness exists; hids_process_monitor implementation is not complete",
+      "qualification_blocker": "PROCESS_SENSOR_PROOF",
+      "target_ports": [],
+      "target_protocols": [],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R2005",
+      "name": "procdump Credential Harvest",
+      "category": "Kernel Process Monitor",
+      "layer": "KERNEL_PROCESS",
+      "severity": "Critical",
+      "configured_action": "Drop",
+      "initial_qualification": "BLOCK_CANDIDATE_PENDING_PROOF",
+      "sensor": "etw_process_telemetry",
+      "sensor_assessment": "ETW worker readiness exists; hids_process_monitor implementation is not complete",
+      "qualification_blocker": "PROCESS_SENSOR_PROOF",
+      "target_ports": [],
+      "target_protocols": [],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R3001",
+      "name": "Cobalt Strike Named Pipe",
+      "category": "Pipe Monitor",
+      "layer": "L2_PIPE",
+      "severity": "Critical",
+      "configured_action": "Drop",
+      "initial_qualification": "BLOCK_CANDIDATE_PENDING_PROOF",
+      "sensor": "pipe_telemetry",
+      "sensor_assessment": "pipe sensor path exists; per-rule event production and block semantics require proof",
+      "qualification_blocker": "PIPE_RULE_PROOF",
+      "target_ports": [],
+      "target_protocols": [],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R3002",
+      "name": "PsExec Remote Execution",
+      "category": "Pipe Monitor",
+      "layer": "L2_PIPE",
+      "severity": "High",
+      "configured_action": "Block",
+      "initial_qualification": "BLOCK_CANDIDATE_PENDING_PROOF",
+      "sensor": "pipe_telemetry",
+      "sensor_assessment": "pipe sensor path exists; per-rule event production and block semantics require proof",
+      "qualification_blocker": "PIPE_RULE_PROOF",
+      "target_ports": [],
+      "target_protocols": [],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R3003",
+      "name": "Anonymous Pipe Suspicious",
+      "category": "Pipe Monitor",
+      "layer": "L2_PIPE",
+      "severity": "Medium",
+      "configured_action": "Alert",
+      "initial_qualification": "DETECT_ONLY",
+      "sensor": "pipe_telemetry",
+      "sensor_assessment": "pipe sensor path exists; per-rule event production and block semantics require proof",
+      "qualification_blocker": "PIPE_RULE_PROOF",
+      "target_ports": [],
+      "target_protocols": [],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R3004",
+      "name": "Meterpreter Named Pipe",
+      "category": "Pipe Monitor",
+      "layer": "L2_PIPE",
+      "severity": "Critical",
+      "configured_action": "Drop",
+      "initial_qualification": "BLOCK_CANDIDATE_PENDING_PROOF",
+      "sensor": "pipe_telemetry",
+      "sensor_assessment": "pipe sensor path exists; per-rule event production and block semantics require proof",
+      "qualification_blocker": "PIPE_RULE_PROOF",
+      "target_ports": [],
+      "target_protocols": [],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    },
+    {
+      "rule_id": "R3005",
+      "name": "atexec Scheduled Task Pipe",
+      "category": "Pipe Monitor",
+      "layer": "L2_PIPE",
+      "severity": "High",
+      "configured_action": "Block",
+      "initial_qualification": "BLOCK_CANDIDATE_PENDING_PROOF",
+      "sensor": "pipe_telemetry",
+      "sensor_assessment": "pipe sensor path exists; per-rule event production and block semantics require proof",
+      "qualification_blocker": "PIPE_RULE_PROOF",
+      "target_ports": [],
+      "target_protocols": [],
+      "evidence_required": [
+        "matched_rule_id",
+        "canonical_event",
+        "forensic_record",
+        "false_positive_check",
+        "host_effect_none_or_confirmed"
+      ],
+      "ips_evidence_required": [
+        "policy_authorized",
+        "enforcement_receipt_v1",
+        "host_postcondition",
+        "exact_filter_cleanup",
+        "no_stale_filter"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+﻿started=2026-09-20T17:33:20.3902479+07:00
+repo=D:\NIDs_Windows
+step=zig_build_test start=2026-09-20T17:33:20.4061136+07:00
+step=zig_build_test exit=0 end=2026-09-20T17:33:21.4373374+07:00
+step=go_test start=2026-09-20T17:33:21.4427393+07:00
+step=go_test exit=0 end=2026-09-20T17:33:22.4715388+07:00
+zig_exit=0
+go_exit=0
+finished=2026-09-20T17:33:22.4864959+07:00

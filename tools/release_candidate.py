@@ -38,15 +38,33 @@ REQUIRED_REPORTS = [
 ]
 
 BINARIES = [
-    "zig-out/bin/aegis-nids.exe",
-    "zig-out/bin/aegis-pep.dll",
+    "zig-out/bin/aegis_nids.exe",
     "zig-out/bin/aegis_pep.dll", "zig-out/bin/aegis_wfp_user.dll",
     "zig-out/bin/aegis_etw_helper.dll", "zig-out/bin/aegis_fim_helper.dll",
     "zig-out/bin/aegis_fuzz.exe",
 ]
 DRIVERS = ["drivers/wfp_callout/aegis_wfp.sys",
            "drivers/wfp_callout/aegis_minifilter.sys"]
-CORE_KEYS = ["configs/Rules.json", "installer/aegis.nsi", "build.zig"]
+CORE_KEYS = ["config/Rules.json", "configs/Rules.json", "installer/aegis.nsi", "build.zig"]
+RUNTIME_FILES = [
+    "dist/aegis_bridge.exe",
+    "dist/nose_dashboard.exe",
+    "dist/windows_sec_monitor.exe",
+    "dist/aegis_ipc.dll",
+    "zig-out/bin/aegis_nids.exe",
+    "zig-out/bin/sec_monitor.dll",
+    "zig-out/bin/aegis_pep.dll",
+    "zig-out/bin/aegis_wfp_user.dll",
+    "zig-out/bin/aegis_etw_helper.dll",
+    "zig-out/bin/aegis_fim_helper.dll",
+    "configs/policies.json",
+    "configs/canary_tests.json",
+    "requirements.txt",
+    "tools/aegisctl.py",
+    "tools/upgrade_rollback.py",
+    "tools/aegisctl/config.py",
+]
+RUNTIME_DIRS = ["brain", "tools/aegisctl"]
 
 
 def git(*args: str) -> str:
@@ -96,6 +114,17 @@ def assemble(commit: str) -> Path:
     for s in (REPO / "scripts").glob("*"):
         if s.is_file():
             shutil.copy2(s, out / "scripts" / s.name)
+    for rel in RUNTIME_FILES:
+        src = REPO / rel
+        if src.exists():
+            dst = out / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+    for rel in RUNTIME_DIRS:
+        src = REPO / rel
+        if src.is_dir():
+            shutil.copytree(src, out / rel, dirs_exist_ok=True,
+                            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     for rel in BINARIES:
         p = REPO / rel
         if p.exists():
@@ -193,6 +222,18 @@ def verify(tree: Path) -> tuple[bool, list[str]]:
         errors.append("missing bin/")
     if not (tree / "drivers" / "aegis_wfp.sys").exists():
         errors.append("missing drivers/aegis_wfp.sys")
+    for rel in RUNTIME_FILES:
+        if not (tree / rel).exists():
+            errors.append("missing runtime file %s" % rel)
+    if not (tree / "brain" / "windows_brain.py").exists():
+        errors.append("missing runtime file brain/windows_brain.py")
+    if not (tree / "tools" / "aegisctl.py").exists():
+        errors.append("missing runtime file tools/aegisctl.py")
+    if not (tree / "tools" / "aegisctl").is_dir():
+        errors.append("missing runtime package tools/aegisctl/")
+    for rel in ("config/Rules.json", "configs/Rules.json", "configs/canary_tests.json"):
+        if not (tree / rel).exists():
+            errors.append("missing config file %s" % rel)
     return (not errors), errors
 
 

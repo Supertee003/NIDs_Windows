@@ -1,0 +1,4 @@
+﻿AEGIS WFP collector ready
+listen_port=49152
+expected_source_ip=192.168.126.10
+prevention_gate=closed

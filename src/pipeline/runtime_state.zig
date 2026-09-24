@@ -15,6 +15,10 @@ const forensic = @import("../forensic/forensic_pipeline.zig");
 /// Set by SCM stop / `daemon.shutdown`. Polled by every worker thread.
 pub var g_stop_requested = std.atomic.Value(bool).init(false);
 
+/// Host mutation remains disabled until the isolated WFP proof opens this
+/// gate. Provider readiness alone must never change it.
+pub var g_prevention_gate_open: bool = false;
+
 // PHASE-1 readiness handshake. Thread creation is not readiness: each worker
 // sets its ready flag only after its required initialization succeeds and
 // clears it before returning. A failed flag preserves the reason at runtime
@@ -87,7 +91,7 @@ pub var g_runtime_pid: u32 = 0;
 pub var g_runtime_capability_mask: u32 = 0;
 pub var g_incidents_total: u64 = 0; // real incident count from ThreatTracker
 pub var g_incidents_open: u64 = 0; // currently open incidents
-pub var g_queue_drops: u64 = 0; // events dropped due to queue full
+pub var g_queue_drops = std.atomic.Value(u64).init(0); // events dropped due to queue full
 // Canonical Go Nose -> Zig reader counters. These are deliberately separate
 // from process liveness: RUNNING does not imply that the data plane is active.
 pub var g_nose_connected: bool = false;

@@ -1,0 +1,21 @@
+﻿{
+    "proof":  "native_named_pipe_runtime_observe_only",
+    "passed":  false,
+    "pipe_name":  "MSSE-AEGIS-PROOF-0854abbabae34b7eaa2de910e96ebd89",
+    "sensor":  "Thread 5 FindFirstFileW(\\\\.\\pipe\\*)",
+    "deltas":  {
+                   "events_processed":  1778,
+                   "forensic_records":  1778,
+                   "blocks":  0,
+                   "errors":  0
+               },
+    "forensic_verified":  true,
+    "exact_attribution":  false,
+    "exact_record":  null,
+    "host_effect":  "none",
+    "prevention_gate":  "closed",
+    "wfp_block_called":  false,
+    "pep_called":  false,
+    "cleanup":  "NamedPipeServerStream disposed; no persistent pipe created",
+    "note":  "Requires a unique MSSE-* pipe observation during the monitor scan window. Exact attribution requires source=5, the unique payload prefix, a nonzero event_id, and a nonzero matched rule_id. No enforcement effect is claimed."
+}

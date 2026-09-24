@@ -120,58 +120,89 @@ def cmd_status(args) -> int:
 
 
 def cmd_start(args) -> int:
-    """Start packaged runtime artifacts in dependency order."""
-    import os
-    import subprocess
+    """Request runtime start from the Zig daemon.
 
-    root = TOOLS_DIR.parent
-    definitions = {
-        "bridge": [root / "dist" / "aegis_bridge.exe"],
-        "core": [root / "zig-out" / "bin" / "aegis_nids.exe"],
-        "brain": [Path(sys.executable), root / "brain" / "windows_brain.py"],
-        "aggregator": [root / "go" / "aggregator" / "aegis-aggregator.exe"],
-    }
-    requested = list(definitions) if getattr(args, "all", False) else [args.component]
-    if not requested or any(name not in definitions for name in requested):
-        print("Unknown or missing component; choose --all or --component <name>", file=sys.stderr)
+    Normal lifecycle is owned by the daemon supervisor.  This CLI command is
+    intentionally a thin client and must not create processes, write PID
+    files, or infer readiness from executable presence.  Emergency recovery is
+    a separate, explicitly named operation and is not part of ``start``.
+    """
+    from aegisctl import EXIT_OK, EXIT_RUNTIME_UNAVAILABLE
+    from aegisctl.client import AegisCtlError, AegisClient
+
+    payload = {"all": bool(getattr(args, "all", False))}
+    component = getattr(args, "component", None)
+    if component:
+        payload["component"] = component
+
+    try:
+        client = AegisClient(transport=getattr(args, "transport", "pipe"))
+        response = client.send("runtime.start", payload)
+    except AegisCtlError as exc:
+        print(f"CORE_NOT_RUNNING: runtime control unavailable: {exc}", file=sys.stderr)
+        return EXIT_RUNTIME_UNAVAILABLE
+
+    if not response.get("ok", False):
+        code = response.get("code", "RUNTIME_START_FAILED")
+        data = response.get("data") or {}
+        message = data.get("message", "runtime start was not completed") if isinstance(data, dict) else str(data)
+        print(f"{code}: {message}", file=sys.stderr)
+        return EXIT_RUNTIME_UNAVAILABLE if code == "NOT_IMPLEMENTED" else 1
+
+    data = response.get("data") or {}
+    print(f"[OK] runtime start requested: {data}")
+    return EXIT_OK
+
+
+def cmd_stop(args) -> int:
+    """Request an orderly daemon shutdown through the control plane.
+
+    The daemon owns the worker handles and performs the signal/join sequence
+    after this response is flushed.  The CLI therefore reports ``STOPPING``
+    rather than claiming that all threads have already joined.  There is no
+    process-kill fallback in the normal command.
+    """
+    from aegisctl import EXIT_OK, EXIT_RUNTIME_UNAVAILABLE
+    from aegisctl.client import AegisCtlError, AegisClient
+
+    component = getattr(args, "component", None)
+    all_flag = bool(getattr(args, "all", False))
+    if component and all_flag:
+        print("ERROR: --component and --all are mutually exclusive", file=sys.stderr)
+        return 2
+    if not component and not all_flag:
+        print("ERROR: --component NAME or --all required", file=sys.stderr)
+        return 2
+    if component and component not in {"core", "zig"}:
+        print("ERROR: daemon control owns the complete runtime; use --all or --component core", file=sys.stderr)
         return 2
 
-    pid_dir = root / "pid"
-    pid_dir.mkdir(exist_ok=True)
-    failures = 0
-    for name in requested:
-        command = [str(part) for part in definitions[name]]
-        executable = Path(command[0])
-        if not executable.exists():
-            print(f"[MISSING] {name}: {executable}", file=sys.stderr)
-            failures += 1
-            continue
-        pid_file = pid_dir / f"{name}.pid"
-        if pid_file.exists():
-            try:
-                pid = int(pid_file.read_text().strip())
-                if os.name == "nt":
-                    import ctypes
-                    if ctypes.windll.kernel32.OpenProcess(1, 0, pid):
-                        print(f"[RUNNING] {name} (PID: {pid})")
-                        continue
-                else:
-                    os.kill(pid, 0)
-                    print(f"[RUNNING] {name} (PID: {pid})")
-                    continue
-            except (ValueError, OSError):
-                pid_file.unlink(missing_ok=True)
-        try:
-            kwargs = {"cwd": str(root), "stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
-            if os.name == "nt":
-                kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
-            proc = subprocess.Popen(command, **kwargs)
-            pid_file.write_text(str(proc.pid), encoding="ascii")
-            print(f"[STARTED] {name} (PID: {proc.pid})")
-        except OSError as exc:
-            print(f"[FAILED] {name}: {exc}", file=sys.stderr)
-            failures += 1
-    return 1 if failures else 0
+    try:
+        client = AegisClient(transport=getattr(args, "transport", "pipe"))
+        response = client.send("daemon.shutdown", {"all": all_flag, "component": component})
+    except AegisCtlError as exc:
+        print(f"CONTROL_PIPE_UNAVAILABLE: orderly stop was not requested: {exc}", file=sys.stderr)
+        return EXIT_RUNTIME_UNAVAILABLE
+
+    if not response.get("ok", False):
+        code = response.get("code", "RUNTIME_STOP_FAILED")
+        data = response.get("data") or {}
+        message = data.get("message", "runtime stop was not accepted") if isinstance(data, dict) else str(data)
+        print(f"{code}: {message}", file=sys.stderr)
+        return 1
+
+    print("[OK] runtime stop requested; daemon is stopping and will join workers")
+    return EXIT_OK
+
+
+def cmd_restart(args) -> int:
+    """Reject restart until one owner can prove stop/join/start readiness."""
+    print(
+        "RUNTIME_RESTART_UNAVAILABLE: restart requires an external service manager "
+        "or a daemon-owned stop/join/start transaction",
+        file=sys.stderr,
+    )
+    return 4
 
 
 def cmd_diagnose(args) -> int:
@@ -248,12 +279,12 @@ def cmd_health(args) -> int:
     return 0
 
 
-def _print_control_query(command: str, as_json: bool = True) -> int:
+def _print_control_query(command: str, as_json: bool = True, payload: dict | None = None) -> int:
     """Print a read-only control-plane response as formatted JSON."""
     if not CONTROL_API_AVAILABLE:
         print("\nControl API not available")
         return 4
-    result = query_control(command)
+    result = query_control(command, payload=payload)
     if result is None:
         print(f"\nControl query failed: {command}")
         return 3
@@ -285,6 +316,11 @@ def cmd_metrics(args) -> int:
     return _print_control_query("metrics.snapshot", as_json=getattr(args, "json", True))
 
 
+def cmd_federation(args) -> int:
+    """Show federation cluster status (read-only, runtime federation.status)."""
+    return _print_control_query("federation.status", as_json=getattr(args, "json", True))
+
+
 def cmd_snapshot(args) -> int:
     """Emit one JSON snapshot for dashboards and automation."""
     import json as _json
@@ -309,7 +345,12 @@ def cmd_forensics(args) -> int:
     if args.forensics_command == "verify":
         return _print_control_query("forensics.verify", as_json=getattr(args, "json", True))
     command = "forensics.verify" if args.forensics_command == "verify" else "forensics.list"
-    return _print_control_query(command, as_json=getattr(args, "json", True))
+    payload = {}
+    if getattr(args, "source", None) is not None:
+        payload["source"] = args.source
+    if getattr(args, "payload_prefix", None):
+        payload["payload_prefix"] = args.payload_prefix
+    return _print_control_query(command, as_json=getattr(args, "json", True), payload=payload or None)
 
 
 def cmd_readiness(args) -> int:
@@ -805,13 +846,29 @@ def main() -> int:
     start_group = start.add_mutually_exclusive_group(required=True)
     start_group.add_argument("--component")
     start_group.add_argument("--all", action="store_true")
+    start.add_argument(
+        "--skip-build",
+        action="store_true",
+        help="Start existing packaged binaries without invoking a build",
+    )
     start.set_defaults(func=cmd_start)
+    stop = sub.add_parser("stop", help="Request orderly daemon shutdown")
+    stop_group = stop.add_mutually_exclusive_group(required=True)
+    stop_group.add_argument("--component")
+    stop_group.add_argument("--all", action="store_true")
+    stop.set_defaults(func=cmd_stop)
+    restart = sub.add_parser("restart", help="Restart runtime through an owning service manager")
+    restart.add_argument("--component")
+    restart.set_defaults(func=cmd_restart)
     version = sub.add_parser("version", help="Show component versions")
     version.add_argument("--component", choices=["core", "nose", "pep", "brain", "shield", "bridge", "aggregator"])
     version.set_defaults(func=cmd_version)
     metrics = sub.add_parser("metrics", help="Show runtime metrics snapshot")
     metrics.add_argument("--compact", action="store_true", help="Emit compact JSON")
     metrics.set_defaults(func=cmd_metrics)
+    federation = sub.add_parser("federation", help="Show federation cluster status")
+    federation.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    federation.set_defaults(func=cmd_federation)
     sub.add_parser("snapshot", help="Emit one JSON runtime snapshot for dashboards").set_defaults(func=cmd_snapshot)
     readiness = sub.add_parser("readiness", help="Evaluate the production readiness gate")
     readiness.add_argument("--pretty", action="store_true", help="Pretty-print JSON")
@@ -820,6 +877,8 @@ def main() -> int:
     forensic_sub = forensic.add_subparsers(dest="forensics_command")
     flist = forensic_sub.add_parser("list", help="List forensic records")
     flist.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    flist.add_argument("--source", type=int, help="Filter by EventSource ordinal")
+    flist.add_argument("--payload-prefix", help="Filter by exact ASCII payload prefix")
     fverify = forensic_sub.add_parser("verify", help="Verify forensic hash chain")
     fverify.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
     forensic.set_defaults(forensics_command="list", func=cmd_forensics)

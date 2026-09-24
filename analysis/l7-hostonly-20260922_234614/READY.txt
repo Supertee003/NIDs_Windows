@@ -1,0 +1,6 @@
+﻿AEGIS L7 host-only benign payload coordinator
+expected_kali_ip=192.168.126.10
+listen_port=49153
+probe=normal_http_get
+prevention_gate=closed
+enforcement=disabled

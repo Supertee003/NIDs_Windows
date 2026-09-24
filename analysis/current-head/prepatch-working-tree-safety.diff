@@ -1,0 +1,285 @@
+[1mdiff --git a/src/control/handler_registry.zig b/src/control/handler_registry.zig[m
+[1mindex cbb2037..70592f1 100644[m
+[1m--- a/src/control/handler_registry.zig[m
+[1m+++ b/src/control/handler_registry.zig[m
+[36m@@ -343,9 +343,7 @@[m [mconst handlers = struct {[m
+             // be built.  Keep this fallback allocation small and truthful:[m
+             // it never claims RUNNING and exposes the build marker so a stale[m
+             // executable cannot be mistaken for the current source.[m
+[31m-            return std.fmt.allocPrint(a,[m
+[31m-                "{{\"component\":\"core\",\"state\":\"DEGRADED\",\"runtime_state\":\"{s}\",\"pid\":{},\"build_marker\":\"{s}\",\"health_error\":\"serialization_failed\"}}",[m
+[31m-                .{ sm.g_runtime.system_state.toString(), pid, HEALTH_BUILD_MARKER }) catch null;[m
+[32m+[m[32m            return std.fmt.allocPrint(a, "{{\"component\":\"core\",\"state\":\"DEGRADED\",\"runtime_state\":\"{s}\",\"pid\":{},\"build_marker\":\"{s}\",\"health_error\":\"serialization_failed\"}}", .{ sm.g_runtime.system_state.toString(), pid, HEALTH_BUILD_MARKER }) catch null;[m
+         };[m
+     }[m
+ [m
+[36m@@ -386,6 +384,7 @@[m [mconst handlers = struct {[m
+     }[m
+ [m
+     fn eventsStats(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {[m
+[32m+[m[32m        const queue_drops = state_mod.g_queue_drops.load(.acquire);[m
+         return std.fmt.allocPrint(a,[m
+             \\{{"processed":{},"detections":{},"anomalies":{},"correlations":{},"policies_matched":{},"errors":{},"dropped":{}}}[m
+         , .{[m
+[36m@@ -395,14 +394,15 @@[m [mconst handlers = struct {[m
+             state_mod.g_pipeline_correlations,[m
+             state_mod.g_pipeline_policies_matched,[m
+             diag.metrics.errors.get(),[m
+[31m-            state_mod.g_queue_drops,[m
+[32m+[m[32m            queue_drops,[m
+         }) catch null;[m
+     }[m
+ [m
+     fn eventsTail(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {[m
+[32m+[m[32m        const queue_drops = state_mod.g_queue_drops.load(.acquire);[m
+         return std.fmt.allocPrint(a, "{{\"last_event_ms\":{},\"queue_drops\":{}}}", .{[m
+             state_mod.g_last_event_ms,[m
+[31m-            state_mod.g_queue_drops,[m
+[32m+[m[32m            queue_drops,[m
+         }) catch null;[m
+     }[m
+ [m
+[36m@@ -490,7 +490,8 @@[m [mconst handlers = struct {[m
+         const uptime_sec: u64 = @intCast(@max(@as(i128, 0), @divTrunc(std.time.nanoTimestamp() - ctx.start_ns, std.time.ns_per_s)));[m
+         return std.fmt.allocPrint(a,[m
+             \\{{"uptime_sec":{},"rules_loaded":{},"packets_captured":{},"events_processed":{},"forensic_records":{},"flows_active":{},"incidents_open":{},"detections":{},"anomalies":{},"blocks":{},"errors":{}}}[m
+[31m-        , .{ uptime_sec,[m
+[32m+[m[32m        , .{[m
+[32m+[m[32m            uptime_sec,[m
+             state_mod.g_rules_loaded,[m
+             @as(u32, @intCast(state_mod.g_nose_frames_submitted)),[m
+             @as(u32, @intCast(state_mod.g_pipeline_events_processed)),[m
+[36m@@ -508,13 +509,24 @@[m [mconst handlers = struct {[m
+         return "{\"entries\":[]}";[m
+     }[m
+ [m
+[31m-    fn runtimeStart(_: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {[m
+[31m-        // SAFETY/PHASE-1: this daemon is started by the SCM/foreground entry[m
+[31m-        // point. The control pipe does not own worker handles or a supervisor,[m
+[31m-        // so it must not simulate STARTING -> READY -> RUNNING.[m
+[31m-        ctx.failure_code = "NOT_IMPLEMENTED";[m
+[31m-        ctx.failure_state = "UNAVAILABLE";[m
+[31m-        ctx.failure_message = "runtime.start requires the daemon supervisor and verified worker startup";[m
+[32m+[m[32m    fn runtimeStart(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {[m
+[32m+[m[32m        // The process that owns this control pipe is already the runtime[m
+[32m+[m[32m        // owner.  A control request must never create a second worker set.[m
+[32m+[m[32m        // Treat start as an idempotent assertion only when the state machine[m
+[32m+[m[32m        // proves that this owner is serving; a stopped/degraded owner cannot[m
+[32m+[m[32m        // claim that it started successfully.[m
+[32m+[m[32m        const sm = @import("state_machine.zig");[m
+[32m+[m[32m        sm.g_runtime.mutex.lock();[m
+[32m+[m[32m        const current = sm.g_runtime.system_state;[m
+[32m+[m[32m        sm.g_runtime.mutex.unlock();[m
+[32m+[m
+[32m+[m[32m        if (current == .running or current == .ready) {[m
+[32m+[m[32m            return std.fmt.allocPrint(a, "{{\"requested\":\"start\",\"accepted\":true,\"idempotent\":true,\"state\":\"{s}\",\"owner\":\"daemon\"}}", .{current.toString()}) catch null;[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        ctx.failure_code = "RUNTIME_NOT_READY";[m
+[32m+[m[32m        ctx.failure_state = current.toString();[m
+[32m+[m[32m        ctx.failure_message = "runtime.start cannot create workers through the control pipe; daemon owner is not ready";[m
+         return null;[m
+     }[m
+ [m
+[1mdiff --git a/src/daemon.zig b/src/daemon.zig[m
+[1mindex 71bb4ab..8ea9279 100644[m
+[1m--- a/src/daemon.zig[m
+[1m+++ b/src/daemon.zig[m
+[36m@@ -455,7 +455,13 @@[m [mpub fn runDaemon() !void {[m
+         } else {[m
+             runtime_sm.g_runtime.subsystemDegraded(.rust_pep, "pep_unavailable");[m
+         }[m
+[31m-        if (pep_enf.available and bridge_init.allActive()) {[m
+[32m+[m[32m        // Tier-3 authority is the PEP/payload-screening layer. WFP is the[m
+[32m+[m[32m        // separate host-effect provider and must not make Tier-3 appear[m
+[32m+[m[32m        // STOPPED when policy authority is ready but host enforcement is[m
+[32m+[m[32m        // unavailable. The health contract reports provider_ready and[m
+[32m+[m[32m        // host_effect_capable independently and keeps the overall gate[m
+[32m+[m[32m        // fail-closed until WFP is actually attested.[m
+[32m+[m[32m        if (pep_enf.available) {[m
+             runtime_sm.g_runtime.subsystemStarted(.tier3, runtime_pid);[m
+         } else {[m
+             runtime_sm.g_runtime.subsystemDegraded(.tier3, "tier3_dependencies_not_ready");[m
+[1mdiff --git a/src/forensic/forensic_pipeline.zig b/src/forensic/forensic_pipeline.zig[m
+[1mindex c83a7e6..a99da41 100644[m
+[1m--- a/src/forensic/forensic_pipeline.zig[m
+[1m+++ b/src/forensic/forensic_pipeline.zig[m
+[36m@@ -29,6 +29,7 @@[m
+ const std = @import("std");[m
+ const event = @import("../contract/event.zig");[m
+ const manifest = @import("../contract/runtime_manifest.zig");[m
+[32m+[m[32mconst receipt = @import("../policy/enforcement_receipt.zig");[m
+ [m
+ pub const RING_BYTES: usize = manifest.Limits.FORENSIC_RING_BYTES;[m
+ pub const RECORD_BYTES: usize = 4096;[m
+[36m@@ -119,6 +120,32 @@[m [mpub const ForensicRing = struct {[m
+         return self.written;[m
+     }[m
+ [m
+[32m+[m[32m    /// Append an enforcement receipt only after proving that its identity is[m
+[32m+[m[32m    /// attached to the same event. Receipt status remains data in the[m
+[32m+[m[32m    /// forensic record; this method never upgrades a decision to host effect.[m
+[32m+[m[32m    pub fn appendReceipt([m
+[32m+[m[32m        self: *ForensicRing,[m
+[32m+[m[32m        ev: *const event.IpcEvent,[m
+[32m+[m[32m        payload: []const u8,[m
+[32m+[m[32m        enforcement: receipt.EnforcementReceipt,[m
+[32m+[m[32m        severity: u8,[m
+[32m+[m[32m    ) !u64 {[m
+[32m+[m[32m        if (!enforcement.validate()) return error.InvalidReceipt;[m
+[32m+[m[32m        if (!enforcement.isForensicallyLinkable()) return error.UnlinkedReceipt;[m
+[32m+[m[32m        if (enforcement.event_id != ev.event_id) return error.EventIdentityMismatch;[m
+[32m+[m[32m        if (enforcement.policy_id != 0 and enforcement.policy_id != ev.rule_id) {[m
+[32m+[m[32m            return error.PolicyIdentityMismatch;[m
+[32m+[m[32m        }[m
+[32m+[m[32m        return self.append([m
+[32m+[m[32m            ev,[m
+[32m+[m[32m            payload,[m
+[32m+[m[32m            enforcement.audit_id,[m
+[32m+[m[32m            enforcement.policy_id,[m
+[32m+[m[32m            enforcement.decision,[m
+[32m+[m[32m            severity,[m
+[32m+[m[32m        );[m
+[32m+[m[32m    }[m
+[32m+[m
+     fn appendWrapped([m
+         self: *ForensicRing,[m
+         ev: *const event.IpcEvent,[m
+[36m@@ -453,6 +480,59 @@[m [mtest "ForensicRing record_seq increments" {[m
+     try std.testing.expectEqual(@as(u64, 2), hdr2.record_seq);[m
+ }[m
+ [m
+[32m+[m[32mtest "ForensicRing appendReceipt requires matching forensic identity" {[m
+[32m+[m[32m    var ring = try ForensicRing.initMemory(std.testing.allocator, 4 * RECORD_BYTES);[m
+[32m+[m[32m    defer ring.deinit(std.testing.allocator);[m
+[32m+[m
+[32m+[m[32m    var ev = event.IpcEvent.init(.signature_match);[m
+[32m+[m[32m    ev.now();[m
+[32m+[m[32m    ev.event_id = 77;[m
+[32m+[m[32m    ev.rule_id = 12;[m
+[32m+[m[32m    const valid = receipt.EnforcementReceipt{[m
+[32m+[m[32m        .request_id = 100,[m
+[32m+[m[32m        .event_id = 77,[m
+[32m+[m[32m        .policy_id = 12,[m
+[32m+[m[32m        .decision = 1,[m
+[32m+[m[32m        .status = .simulated,[m
+[32m+[m[32m        .provider = "none",[m
+[32m+[m[32m        .trace_id = 77,[m
+[32m+[m[32m        .audit_id = 100,[m
+[32m+[m[32m    };[m
+[32m+[m[32m    try std.testing.expectEqual(@as(u64, 1), try ring.appendReceipt(&ev, "alert", valid, 3));[m
+[32m+[m
+[32m+[m[32m    const wrong_event = receipt.EnforcementReceipt{[m
+[32m+[m[32m        .request_id = 101,[m
+[32m+[m[32m        .event_id = 999,[m
+[32m+[m[32m        .policy_id = 12,[m
+[32m+[m[32m        .decision = 1,[m
+[32m+[m[32m        .status = .simulated,[m
+[32m+[m[32m        .provider = "none",[m
+[32m+[m[32m        .trace_id = 999,[m
+[32m+[m[32m        .audit_id = 101,[m
+[32m+[m[32m    };[m
+[32m+[m[32m    try std.testing.expectError(error.EventIdentityMismatch, ring.appendReceipt(&ev, "bad", wrong_event, 3));[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mtest "ForensicRing rejects receipt host effect without enforced status" {[m
+[32m+[m[32m    var ring = try ForensicRing.initMemory(std.testing.allocator, 2 * RECORD_BYTES);[m
+[32m+[m[32m    defer ring.deinit(std.testing.allocator);[m
+[32m+[m[32m    var ev = event.IpcEvent.init(.signature_match);[m
+[32m+[m[32m    ev.now();[m
+[32m+[m[32m    ev.event_id = 78;[m
+[32m+[m[32m    const invalid = receipt.EnforcementReceipt{[m
+[32m+[m[32m        .request_id = 102,[m
+[32m+[m[32m        .event_id = 78,[m
+[32m+[m[32m        .policy_id = 0,[m
+[32m+[m[32m        .decision = 1,[m
+[32m+[m[32m        .status = .pending,[m
+[32m+[m[32m        .provider = "wfp",[m
+[32m+[m[32m        .host_effect_confirmed = true,[m
+[32m+[m[32m        .trace_id = 78,[m
+[32m+[m[32m        .audit_id = 102,[m
+[32m+[m[32m    };[m
+[32m+[m[32m    try std.testing.expectError(error.InvalidReceipt, ring.appendReceipt(&ev, "bad", invalid, 3));[m
+[32m+[m[32m}[m
+[32m+[m
+ // ============================================================================[m
+ // FOR-CNC-001: Concurrent Integrity Tests[m
+ // ============================================================================[m
+[1mdiff --git a/src/platform/win32_pipe.zig b/src/platform/win32_pipe.zig[m
+[1mindex 8d9d96e..e7297e0 100644[m
+[1m--- a/src/platform/win32_pipe.zig[m
+[1m+++ b/src/platform/win32_pipe.zig[m
+[36m@@ -53,6 +53,26 @@[m [mextern "kernel32" fn FlushFileBuffers(hFile: std.os.windows.HANDLE) std.os.windo[m
+ [m
+ // CTRL-002: process identity for the RUNTIME_CONTRACT.md §4.1 health payload.[m
+ extern "kernel32" fn GetCurrentProcessId() std.os.windows.DWORD;[m
+[32m+[m[32mextern "kernel32" fn GetCurrentProcess() std.os.windows.HANDLE;[m
+[32m+[m
+[32m+[m[32m// TokenElevation is used only to derive the local pipe role. The client never[m
+[32m+[m[32m// supplies a role, so a JSON caller cannot self-escalate to privileged.[m
+[32m+[m[32mextern "advapi32" fn OpenProcessToken([m
+[32m+[m[32m    process: std.os.windows.HANDLE,[m
+[32m+[m[32m    desired_access: std.os.windows.DWORD,[m
+[32m+[m[32m    token: *std.os.windows.HANDLE,[m
+[32m+[m[32m) std.os.windows.BOOL;[m
+[32m+[m[32mextern "advapi32" fn GetTokenInformation([m
+[32m+[m[32m    token: std.os.windows.HANDLE,[m
+[32m+[m[32m    information_class: std.os.windows.DWORD,[m
+[32m+[m[32m    information: *anyopaque,[m
+[32m+[m[32m    information_length: std.os.windows.DWORD,[m
+[32m+[m[32m    return_length: *std.os.windows.DWORD,[m
+[32m+[m[32m) std.os.windows.BOOL;[m
+[32m+[m
+[32m+[m[32mconst TOKEN_QUERY_V: std.os.windows.DWORD = 0x0008;[m
+[32m+[m[32mconst TOKEN_ELEVATION_CLASS_V: std.os.windows.DWORD = 20;[m
+[32m+[m[32mconst TokenElevation = extern struct { token_is_elevated: std.os.windows.DWORD };[m
+ [m
+ extern "kernel32" fn CreateFileW([m
+     lpFileName: [*:0]const u16,[m
+[36m@@ -135,10 +155,11 @@[m [mfn sendResponse(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, ok: bool, dat[m
+ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, payload: []const u8, caps: *const manifest.Capability, start_ns: i128) bool {[m
+     // P0.4: Use the new control protocol dispatch[m
+     var auth = control.authorization.Authorizer{};[m
+[32m+[m[32m    const local_role = getLocalRole();[m
+     var ctx = control.handler_registry.HandlerContext{[m
+         .start_ns = start_ns,[m
+         .request_id = @as(u64, @intCast(state.g_pipeline_audit_id)),[m
+[31m-        .caller_role = auth.getLocalRole(),[m
+[32m+[m[32m        .caller_role = local_role,[m
+         .caller_pid = @as(u32, @intCast(GetCurrentProcessId())),[m
+         .caps = caps,[m
+     };[m
+[36m@@ -147,6 +168,33 @@[m [mfn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo[m
+     return result.shutdown;[m
+ }[m
+ [m
+[32m+[m[32mfn getLocalRole() control.protocol.Role {[m
+[32m+[m[32m    var token: std.os.windows.HANDLE = undefined;[m
+[32m+[m[32m    if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY_V, &token) == 0) {[m
+[32m+[m[32m        diag.warn("control authorization: unable to query process token; using operate role", .{});[m
+[32m+[m[32m        return .operate;[m
+[32m+[m[32m    }[m
+[32m+[m[32m    defer _ = std.os.windows.CloseHandle(token);[m
+[32m+[m
+[32m+[m[32m    var elevation: TokenElevation = undefined;[m
+[32m+[m[32m    var returned: std.os.windows.DWORD = 0;[m
+[32m+[m[32m    if (GetTokenInformation([m
+[32m+[m[32m        token,[m
+[32m+[m[32m        TOKEN_ELEVATION_CLASS_V,[m
+[32m+[m[32m        @ptrCast(&elevation),[m
+[32m+[m[32m        @sizeOf(TokenElevation),[m
+[32m+[m[32m        &returned,[m
+[32m+[m[32m    ) == 0) {[m
+[32m+[m[32m        diag.warn("control authorization: unable to query token elevation; using operate role", .{});[m
+[32m+[m[32m        return .operate;[m
+[32m+[m[32m    }[m
+[32m+[m[32m    if (elevation.token_is_elevated != 0) {[m
+[32m+[m[32m        diag.info("control authorization: elevated local token -> privileged role", .{});[m
+[32m+[m[32m        return .privileged;[m
+[32m+[m[32m    }[m
+[32m+[m[32m    return .operate;[m
+[32m+[m[32m}[m
+[32m+[m
+ pub fn serveWindowsPipe(caps: *const manifest.Capability, start_ns: i128) !void {[m
+     // P0.4: Initialize the command handler registry[m
+     control.handler_registry.initHandlers();[m

@@ -141,7 +141,7 @@
       "layer": "KERNEL_FILE",
       "fast_pattern": "HOSTS_MOD",
       "match_pattern": "hosts",
-      "regex_pattern": "\\\\hosts|C:[\\\\/]Windows[\\\\/]System32[\\\\/]drivers[\\\\/]etc[\\\\/]hosts",
+      "regex_pattern": "(?:^|[\\\\/])hosts$|C:[\\\\/]Windows[\\\\/]System32[\\\\/]drivers[\\\\/]etc[\\\\/]hosts$",
       "severity": "High",
       "action": "Block"
     },
@@ -185,7 +185,7 @@
       "layer": "KERNEL_PROCESS",
       "fast_pattern": "CERTUTIL",
       "match_pattern": "certutil",
-      "regex_pattern": "certutil|CERTUTIL|-urlcache|-f",
+      "regex_pattern": "certutil(?:\\.exe)?\\b.*(?:-urlcache|-f)\\b",
       "severity": "High",
       "action": "Block"
     },

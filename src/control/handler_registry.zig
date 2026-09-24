@@ -11,6 +11,9 @@ const std = @import("std");
 const protocol = @import("protocol.zig");
 const authorization = @import("authorization.zig");
 const audit = @import("audit.zig");
+const pep_bindings = @import("../policy/pep_bindings.zig");
+const enforcement_receipt = @import("../policy/enforcement_receipt.zig");
+const forensic_pipeline = @import("../forensic/forensic_pipeline.zig");
 
 // ============================================================
 // Handler Function Signature
@@ -288,8 +291,11 @@ pub fn initHandlers() void {
     registerHandler(.enforcement_status, handlers.enforcementStatus);
     registerHandler(.enforcement_simulate, handlers.enforcementSimulate);
     registerHandler(.enforcement_verify, handlers.enforcementVerify);
+    registerHandler(.enforcement_block, handlers.enforcementBlock);
+    registerHandler(.enforcement_unblock, handlers.enforcementUnblock);
     registerHandler(.metrics_snapshot, handlers.metricsSnapshot);
     registerHandler(.logs_tail, handlers.logsTail);
+    registerHandler(.federation_status, handlers.federationStatus);
     registerHandler(.runtime_start, handlers.runtimeStart);
     registerHandler(.runtime_stop, handlers.runtimeStop);
     registerHandler(.runtime_restart, handlers.runtimeRestart);
@@ -343,9 +349,7 @@ const handlers = struct {
             // be built.  Keep this fallback allocation small and truthful:
             // it never claims RUNNING and exposes the build marker so a stale
             // executable cannot be mistaken for the current source.
-            return std.fmt.allocPrint(a,
-                "{{\"component\":\"core\",\"state\":\"DEGRADED\",\"runtime_state\":\"{s}\",\"pid\":{},\"build_marker\":\"{s}\",\"health_error\":\"serialization_failed\"}}",
-                .{ sm.g_runtime.system_state.toString(), pid, HEALTH_BUILD_MARKER }) catch null;
+            return std.fmt.allocPrint(a, "{{\"component\":\"core\",\"state\":\"DEGRADED\",\"runtime_state\":\"{s}\",\"pid\":{},\"build_marker\":\"{s}\",\"health_error\":\"serialization_failed\"}}", .{ sm.g_runtime.system_state.toString(), pid, HEALTH_BUILD_MARKER }) catch null;
         };
     }
 
@@ -386,6 +390,7 @@ const handlers = struct {
     }
 
     fn eventsStats(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
+        const queue_drops = state_mod.g_queue_drops.load(.acquire);
         return std.fmt.allocPrint(a,
             \\{{"processed":{},"detections":{},"anomalies":{},"correlations":{},"policies_matched":{},"errors":{},"dropped":{}}}
         , .{
@@ -395,14 +400,15 @@ const handlers = struct {
             state_mod.g_pipeline_correlations,
             state_mod.g_pipeline_policies_matched,
             diag.metrics.errors.get(),
-            state_mod.g_queue_drops,
+            queue_drops,
         }) catch null;
     }
 
     fn eventsTail(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
+        const queue_drops = state_mod.g_queue_drops.load(.acquire);
         return std.fmt.allocPrint(a, "{{\"last_event_ms\":{},\"queue_drops\":{}}}", .{
             state_mod.g_last_event_ms,
-            state_mod.g_queue_drops,
+            queue_drops,
         }) catch null;
     }
 
@@ -426,24 +432,68 @@ const handlers = struct {
         return std.fmt.allocPrint(a, "{{\"policies_loaded\":{}}}", .{state_mod.g_policies_loaded}) catch null;
     }
 
-    fn policyValidate(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return std.fmt.allocPrint(a, "{{\"valid\":true,\"policies_checked\":{}}}", .{state_mod.g_policies_loaded}) catch null;
+    fn policyValidate(_: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        ctx.failure_code = "NOT_IMPLEMENTED";
+        ctx.failure_state = "UNAVAILABLE";
+        ctx.failure_message = "active policy loader has no canonical signed-envelope validator";
+        return null;
     }
 
-    fn policyVerify(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return "{\"verified\":true,\"signatures_valid\":true}";
+    fn policyVerify(_: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        ctx.failure_code = "NOT_IMPLEMENTED";
+        ctx.failure_state = "UNAVAILABLE";
+        ctx.failure_message = "signed policy verification is not wired to the active loader";
+        return null;
     }
 
     fn policySimulate(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
         return "{\"simulated\":true,\"result\":\"no_match\"}";
     }
 
-    fn forensicsList(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return std.fmt.allocPrint(a, "{{\"records\":{},\"events_processed\":{},\"forensic_enabled\":true}}", .{ state_mod.g_forensic_records_written, state_mod.g_pipeline_events_processed }) catch null;
+    fn forensicsList(a: std.mem.Allocator, payload: std.json.Value, _: *HandlerContext) ?[]const u8 {
+        const requested_source = payloadU64(payload, "source");
+        const requested_prefix: []const u8 = if (payload == .object) blk: {
+            if (payload.object.get("payload_prefix")) |value| {
+                break :blk switch (value) {
+                    .string => |s| s,
+                    else => "",
+                };
+            }
+            break :blk "";
+        } else "";
+        if (requested_source == null and requested_prefix.len == 0) {
+            return std.fmt.allocPrint(a, "{{\"records\":{},\"events_processed\":{},\"forensic_enabled\":true}}", .{ state_mod.g_forensic_records_written, state_mod.g_pipeline_events_processed }) catch null;
+        }
+
+        if (state_mod.g_forensic_ring) |ring| {
+            const slots = ring.capacity() / forensic_pipeline.RECORD_BYTES;
+            const oldest: u64 = if (ring.recordCount() > slots) ring.recordCount() - slots else 0;
+            var index = oldest;
+            while (index < ring.recordCount()) : (index += 1) {
+                const record = ring.readRecord(index, a) orelse continue;
+                defer a.free(record);
+                if (!forensic_pipeline.ForensicRing.verifyRecord(record)) continue;
+                const header = std.mem.bytesAsValue(forensic_pipeline.RecordHeader, record[0..forensic_pipeline.HEADER_BYTES]);
+                if (requested_source) |source| {
+                    if (source > std.math.maxInt(u8) or header.reserved[6] != @as(u8, @intCast(source))) continue;
+                }
+                const payload_start = forensic_pipeline.HEADER_BYTES;
+                const payload_end = payload_start + @as(usize, header.payload_len);
+                if (requested_prefix.len > 0 and (payload_end > record.len or requested_prefix.len > @as(usize, header.payload_len) or
+                    !std.mem.eql(u8, record[payload_start .. payload_start + requested_prefix.len], requested_prefix))) continue;
+                return std.fmt.allocPrint(a, "{{\"records\":1,\"match\":{{\"event_id\":{},\"rule_id\":{},\"source\":{},\"payload_len\":{},\"record_seq\":{}}}}}", .{
+                    header.ev_id, header.rule_id, header.reserved[6], header.payload_len, header.record_seq,
+                }) catch null;
+            }
+        }
+        return "{\"records\":0,\"match\":null}";
     }
 
-    fn forensicsShow(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return "{\"record\":null,\"status\":\"not_implemented\"}";
+    fn forensicsShow(_: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        ctx.failure_code = "NOT_IMPLEMENTED";
+        ctx.failure_state = "UNAVAILABLE";
+        ctx.failure_message = "forensic record lookup is not implemented";
+        return null;
     }
 
     fn forensicsVerify(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
@@ -458,23 +508,36 @@ const handlers = struct {
         return "{\"verified\":false,\"integrity\":\"unavailable\",\"records\":0}";
     }
 
-    fn forensicsExport(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return "{\"exported\":true,\"format\":\"ndjson\",\"path\":\"logs/forensics_export.ndjson\"}";
+    fn forensicsExport(_: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        ctx.failure_code = "NOT_IMPLEMENTED";
+        ctx.failure_state = "UNAVAILABLE";
+        ctx.failure_message = "forensic export has no verified writer/postcondition";
+        return null;
     }
 
-    fn forensicsReplay(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return "{\"replayed\":true,\"events\":0}";
+    fn forensicsReplay(_: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        ctx.failure_code = "NOT_IMPLEMENTED";
+        ctx.failure_state = "UNAVAILABLE";
+        ctx.failure_message = "deterministic observe-only replay is not implemented";
+        return null;
     }
 
     fn enforcementStatus(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
         const t3 = tier3_mod.g_tier3.state;
+        var provider_probe = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available };
+        const provider_ready = provider_probe.providerReady();
+        const gate_open = state_mod.g_prevention_gate_open;
         return std.fmt.allocPrint(a,
-            \\{{"tier3":"{s}","tier3_enforcing":{},"pep_available":{},"enforcement_mode":"{s}"}}
+            \\{{"tier3":"{s}","tier3_ready":{},"tier3_enforcing":{},"pep_available":{},"provider_ready":{},"host_effect_capable":{},"prevention_gate":"{s}","receipt_required":true,"enforcement_mode":"{s}"}}
         , .{
             t3.toString(),
             t3.isEnforcementAllowed(),
+            gate_open,
             state_mod.g_pep_available,
-            if (t3.isEnforcementAllowed()) "active" else "detection-only",
+            provider_ready,
+            provider_ready and gate_open,
+            if (gate_open) "open" else "closed",
+            if (provider_ready and gate_open) "provider-attested-enforcement-enabled" else if (provider_ready) "provider-attested-awaiting-controlled-proof" else "detection-only",
         }) catch null;
     }
 
@@ -482,15 +545,228 @@ const handlers = struct {
         return "{\"simulated\":true,\"result\":\"allow\"}";
     }
 
-    fn enforcementVerify(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return "{\"verified\":true,\"enforcement_integrity\":\"ok\"}";
+    fn enforcementVerify(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        const filter_id = payloadU64(payload, "filter_id") orelse {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "filter_id from an EnforcementReceipt is required";
+            return null;
+        };
+        const expected_ip = payloadU64(payload, "dst_ip") orelse {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "dst_ip is required for exact postcondition verification";
+            return null;
+        };
+        const expected_port = payloadU64(payload, "dst_port") orelse {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "dst_port is required for exact postcondition verification";
+            return null;
+        };
+        const expected_protocol = payloadU64(payload, "protocol") orelse {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "protocol is required for exact postcondition verification";
+            return null;
+        };
+        if (filter_id == 0 or expected_ip > std.math.maxInt(u32) or
+            expected_port > std.math.maxInt(u16) or expected_protocol > std.math.maxInt(u8)) {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "postcondition fields exceed ABI bounds";
+            return null;
+        }
+        var pep = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available };
+        const state = pep.queryFilter(filter_id) orelse {
+            ctx.failure_code = "POSTCONDITION_FAILED";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "receipt filter is not present or provider query failed";
+            return null;
+        };
+        if (state.remoteIpv4() != @as(u32, @intCast(expected_ip)) or
+            state.remotePort() != @as(u16, @intCast(expected_port)) or
+            state.protocol() != @as(u8, @intCast(expected_protocol))) {
+            ctx.failure_code = "POSTCONDITION_FAILED";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "receipt filter does not match the requested exact flow";
+            return null;
+        }
+        return std.fmt.allocPrint(a,
+            "{{\"verified\":true,\"filter_id\":{},\"present\":true,\"dst_ip\":{},\"dst_port\":{},\"protocol\":{},\"postcondition\":\"MATCH\"}}",
+            .{ filter_id, expected_ip, expected_port, expected_protocol }) catch null;
+    }
+
+    fn payloadU64(payload: std.json.Value, key: []const u8) ?u64 {
+        if (payload != .object) return null;
+        const value = payload.object.get(key) orelse return null;
+        if (value != .integer or value.integer < 0) return null;
+        return @intCast(value.integer);
+    }
+
+    fn enforcementBlock(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        if (ctx.caller_role != .privileged) {
+            ctx.failure_code = "AUTH_DENIED";
+            ctx.failure_state = "UNAUTHORIZED";
+            ctx.failure_message = "enforcement.block requires privileged control-plane authorization";
+            return null;
+        }
+        const dst_ip = payloadU64(payload, "dst_ip") orelse {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "dst_ip must be an IPv4 integer";
+            return null;
+        };
+        const dst_port = payloadU64(payload, "dst_port") orelse {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "dst_port is required and must be non-zero";
+            return null;
+        };
+        const protocol_number = payloadU64(payload, "protocol") orelse {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "protocol is required";
+            return null;
+        };
+        const policy_id = payloadU64(payload, "policy_id") orelse {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "policy_id is required for an authorized action";
+            return null;
+        };
+        const event_id = payloadU64(payload, "event_id") orelse {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "event_id is required to link an enforcement receipt to a source event";
+            return null;
+        };
+        const trace_id = payloadU64(payload, "trace_id") orelse {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "trace_id is required to link an enforcement receipt to a decision trace";
+            return null;
+        };
+        const severity = payloadU64(payload, "severity") orelse 9;
+        if (dst_ip > std.math.maxInt(u32) or dst_port > std.math.maxInt(u16) or protocol_number > std.math.maxInt(u8) or policy_id > std.math.maxInt(u32) or event_id == 0 or trace_id == 0 or severity > std.math.maxInt(u8)) {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "flow fields exceed ABI bounds";
+            return null;
+        }
+        // P0/P1 safety invariant: provider readiness is not host-effect proof.
+        // Keep mutation closed until the isolated WFP proof can attest the
+        // postcondition and emit a complete EnforcementReceipt v1.
+        if (!state_mod.g_prevention_gate_open) {
+            ctx.failure_code = "PREVENTION_GATE_CLOSED";
+            ctx.failure_state = "UNAVAILABLE";
+            ctx.failure_message = "blocking is disabled until controlled host-effect proof and receipt validation complete";
+            return null;
+        }
+        var pep = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available };
+        const receipt = pep.enforceFlow(@intCast(dst_ip), @intCast(dst_port), @intCast(protocol_number), @intCast(policy_id), @intCast(severity), ctx.caller_pid, 1, ctx.request_id) orelse {
+            ctx.failure_code = "ENFORCEMENT_FAILED";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "Rust PEP did not return a validated host-effect receipt";
+            return null;
+        };
+        const queried = switch (pep.queryFilterResult(receipt.filter_id)) {
+            .present => |state| state,
+            .absent => {
+                _ = pep.unblockFilter(receipt.filter_id, ctx.caller_pid, 1, ctx.request_id);
+                ctx.failure_code = "POSTCONDITION_FAILED";
+                ctx.failure_state = "DEGRADED";
+                ctx.failure_message = "provider-backed exact filter read-back reported absent after block; cleanup was attempted";
+                return null;
+            },
+            .query_error => {
+                _ = pep.unblockFilter(receipt.filter_id, ctx.caller_pid, 1, ctx.request_id);
+                ctx.failure_code = "POSTCONDITION_FAILED";
+                ctx.failure_state = "DEGRADED";
+                ctx.failure_message = "provider-backed exact filter read-back failed after block; cleanup was attempted";
+                return null;
+            },
+        };
+        if (queried.providerStatus() != 0 or queried.remoteIpv4() != @as(u32, @intCast(dst_ip)) or
+            queried.remotePort() != @as(u16, @intCast(dst_port)) or queried.protocol() != @as(u8, @intCast(protocol_number))) {
+            _ = pep.unblockFilter(receipt.filter_id, ctx.caller_pid, 1, ctx.request_id);
+            ctx.failure_code = "POSTCONDITION_FAILED";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "provider filter did not match the requested exact flow; cleanup was attempted";
+            return null;
+        }
+        const confirmed = enforcement_receipt.EnforcementReceipt{
+            .request_id = ctx.request_id,
+            .event_id = event_id,
+            .policy_id = @intCast(policy_id),
+            .decision = 1,
+            .status = .enforced,
+            .provider = "wfp",
+            .filter_id = receipt.filter_id,
+            .host_effect_confirmed = true,
+            .reason = "provider_exact_tuple_match",
+            .trace_id = trace_id,
+            .audit_id = ctx.request_id,
+        };
+        if (!confirmed.isSuccess()) {
+            _ = pep.unblockFilter(receipt.filter_id, ctx.caller_pid, 1, ctx.request_id);
+            ctx.failure_code = "RECEIPT_INVALID";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "complete EnforcementReceipt v1 validation failed; cleanup was attempted";
+            return null;
+        }
+        return std.fmt.allocPrint(a, "{{\"status\":\"ENFORCED\",\"receipt_version\":{},\"request_id\":{},\"event_id\":{},\"policy_id\":{},\"decision\":\"block\",\"provider\":\"wfp\",\"filter_id\":{},\"host_effect_confirmed\":true,\"trace_id\":{},\"audit_id\":{},\"dst_ip\":{},\"dst_port\":{},\"protocol\":{}}}", .{ enforcement_receipt.EnforcementReceipt.VERSION, confirmed.request_id, confirmed.event_id, confirmed.policy_id, confirmed.filter_id, confirmed.trace_id, confirmed.audit_id, dst_ip, dst_port, protocol_number }) catch null;
+    }
+
+    fn enforcementUnblock(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        if (ctx.caller_role != .privileged) {
+            ctx.failure_code = "AUTH_DENIED";
+            ctx.failure_state = "UNAUTHORIZED";
+            ctx.failure_message = "enforcement.unblock requires privileged control-plane authorization";
+            return null;
+        }
+        const filter_id = payloadU64(payload, "filter_id") orelse {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "filter_id from an EnforcementReceipt is required";
+            return null;
+        };
+        if (filter_id == 0) {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "filter_id from an EnforcementReceipt must be non-zero";
+            return null;
+        }
+        var pep = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available };
+        if (!pep.unblockFilter(filter_id, ctx.caller_pid, 1, ctx.request_id)) {
+            ctx.failure_code = "CLEANUP_FAILED";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "Rust PEP could not remove the exact receipt filter";
+            return null;
+        }
+        switch (pep.queryFilterResult(filter_id)) {
+            .absent => return std.fmt.allocPrint(a, "{{\"status\":\"ROLLED_BACK\",\"filter_id\":{},\"present\":false,\"postcondition\":\"ABSENT\"}}", .{filter_id}) catch null,
+            .present => {
+                ctx.failure_code = "CLEANUP_POSTCONDITION_FAILED";
+                ctx.failure_state = "ROLLBACK_PENDING";
+                ctx.failure_message = "filter removal returned but the exact filter is still present";
+                return null;
+            },
+            .query_error => {
+                ctx.failure_code = "CLEANUP_POSTCONDITION_FAILED";
+                ctx.failure_state = "ROLLBACK_PENDING";
+                ctx.failure_message = "filter removal returned but exact filter absence could not be proven";
+                return null;
+            },
+        }
     }
 
     fn metricsSnapshot(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
         const uptime_sec: u64 = @intCast(@max(@as(i128, 0), @divTrunc(std.time.nanoTimestamp() - ctx.start_ns, std.time.ns_per_s)));
         return std.fmt.allocPrint(a,
             \\{{"uptime_sec":{},"rules_loaded":{},"packets_captured":{},"events_processed":{},"forensic_records":{},"flows_active":{},"incidents_open":{},"detections":{},"anomalies":{},"blocks":{},"errors":{}}}
-        , .{ uptime_sec,
+        , .{
+            uptime_sec,
             state_mod.g_rules_loaded,
             @as(u32, @intCast(state_mod.g_nose_frames_submitted)),
             @as(u32, @intCast(state_mod.g_pipeline_events_processed)),
@@ -508,13 +784,31 @@ const handlers = struct {
         return "{\"entries\":[]}";
     }
 
-    fn runtimeStart(_: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
-        // SAFETY/PHASE-1: this daemon is started by the SCM/foreground entry
-        // point. The control pipe does not own worker handles or a supervisor,
-        // so it must not simulate STARTING -> READY -> RUNNING.
-        ctx.failure_code = "NOT_IMPLEMENTED";
-        ctx.failure_state = "UNAVAILABLE";
-        ctx.failure_message = "runtime.start requires the daemon supervisor and verified worker startup";
+    fn federationStatus(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
+        // Truthful standalone report: the daemon does not start cluster
+        // coordination (see daemon.zig "Federation/XDR (disabled in
+        // standalone mode)"). Never claim members that were not attested.
+        return "{\"mode\":\"standalone\",\"cluster_enabled\":false,\"nodes\":0,\"role\":\"standalone\"}";
+    }
+
+    fn runtimeStart(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        // The process that owns this control pipe is already the runtime
+        // owner.  A control request must never create a second worker set.
+        // Treat start as an idempotent assertion only when the state machine
+        // proves that this owner is serving; a stopped/degraded owner cannot
+        // claim that it started successfully.
+        const sm = @import("state_machine.zig");
+        sm.g_runtime.mutex.lock();
+        const current = sm.g_runtime.system_state;
+        sm.g_runtime.mutex.unlock();
+
+        if (current == .running or current == .ready) {
+            return std.fmt.allocPrint(a, "{{\"requested\":\"start\",\"accepted\":true,\"idempotent\":true,\"state\":\"{s}\",\"owner\":\"daemon\"}}", .{current.toString()}) catch null;
+        }
+
+        ctx.failure_code = "RUNTIME_NOT_READY";
+        ctx.failure_state = current.toString();
+        ctx.failure_message = "runtime.start cannot create workers through the control pipe; daemon owner is not ready";
         return null;
     }
 
@@ -537,16 +831,12 @@ const handlers = struct {
     }
 
     fn daemonShutdown(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        // P2: Transition runtime state machine to STOPPED
-        // Pull from state machine — single source of truth
+        // The daemon supervisor owns the STOPPED postcondition. This handler
+        // only requests cancellation; workers and pipe handles may still be
+        // live while the control response is being returned.
         const sm = @import("state_machine.zig");
 
-        sm.g_runtime.mutex.lock();
-        defer sm.g_runtime.mutex.unlock();
-
-        sm.g_runtime.system_state = .stopped;
-        sm.g_runtime.started_at_ms = 0;
-        sm.g_runtime.uptime_ms = 0;
+        sm.g_runtime.transition(.stopping);
 
         // CTRL-002: Signal worker threads to stop
         const rt = @import("../pipeline/runtime_state.zig");
@@ -554,6 +844,6 @@ const handlers = struct {
 
         bridge_init.requestShutdown();
 
-        return "{\"shutdown\":true}";
+        return "{\"shutdown_requested\":true,\"state\":\"STOPPING\"}";
     }
 };

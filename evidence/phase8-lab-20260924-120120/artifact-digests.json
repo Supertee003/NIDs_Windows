@@ -1,0 +1,8 @@
+{
+  "algorithm": "sha256",
+  "artifacts": {
+    "analysis/PHASE8_LAB_SCENARIO_MANIFEST.json": "b3c396a7d87b2f86db7196cad124e39d0199925ae5716c1474fc5c0c7b175731",
+    "configs/Rules.json": "8bdbd39b0bce5412bae6061fc8287e0584138a1db06669b934af0fe11fd0427f",
+    "analysis/PHASE8_LAB_SCENARIO_RESULTS.json": "d7076bd441eadd24d5cd40fc23712cb7797d3c5eed9f43abc007e9b9cd8f0c50"
+  }
+}

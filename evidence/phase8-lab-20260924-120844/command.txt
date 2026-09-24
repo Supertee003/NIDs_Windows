@@ -1,0 +1,1 @@
+python scripts/run_phase8_lab_scenarios.py

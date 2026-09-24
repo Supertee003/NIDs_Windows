@@ -1,0 +1,10 @@
+{
+  "run_id": "phase8-lab-20260924-120838",
+  "passed": true,
+  "scenario_count": 7,
+  "passed_count": 7,
+  "failed_count": 0,
+  "failed": [],
+  "prevention_gate": "closed",
+  "qualification": "SYNTHETIC_LAB_MARKER_NOT_HOST_PROOF"
+}

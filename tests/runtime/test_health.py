@@ -211,6 +211,37 @@ class TestHealthSampleJsonFromContract(unittest.TestCase):
 class TestControlApiHealthPayload(unittest.TestCase):
     """The control backend must expose live, contract-complete health data."""
 
+    def test_tier3_pep_ready_does_not_attest_wfp_host_effect(self):
+        daemon_health = {
+            "component": "core",
+            "state": "DEGRADED",
+            "runtime_state": "RUNNING",
+            "pid": 4321,
+            "uptime_ms": 100,
+            "last_event_ms": 0,
+            "capabilities": {"wfp": False},
+            "subsystems": [
+                {"name": "rust_pep", "state": "RUNNING", "pid": 4321},
+                {"name": "tier3", "state": "RUNNING", "pid": 4321},
+            ],
+            "workers": {"failure_mask": 0},
+            "data_plane": {},
+        }
+        with patch.object(control_api, "_query_daemon_retry", return_value=daemon_health), \
+             patch.object(control_api, "get_all_status", return_value=[]), \
+             patch.object(control_api, "compute_health_state", return_value=("DEGRADED", True)):
+            payload = control_api.get_health_payload()
+
+        self.assertTrue(payload["tier3"]["ready"])
+        self.assertTrue(payload["tier3"]["dependency_ready"])
+        self.assertFalse(payload["tier3"]["provider_ready"])
+        self.assertFalse(payload["tier3"]["host_effect_capable"])
+        self.assertTrue(payload["rust_shield"]["pep_ready"])
+        self.assertFalse(payload["rust_shield"]["provider_ready"])
+        self.assertFalse(payload["rust_shield"]["host_effect_capable"])
+        self.assertEqual(payload["state"], "DEGRADED")
+        self.assertTrue(payload["degraded"])
+
     def test_payload_reports_subsystem_states_and_monotonic_uptime(self):
         statuses = [
             ("zig", True, 101),
@@ -238,6 +269,20 @@ class TestControlApiHealthPayload(unittest.TestCase):
         self.assertFalse(payload["tier3"]["ready"])
         self.assertEqual(set(payload["counters"]),
                          {"in_events", "out_events", "errors", "dropped"})
+
+    def test_unavailable_daemon_is_not_promoted_to_runtime_truth(self):
+        with patch.object(control_api, "_query_daemon_retry", return_value=None), \
+             patch.object(control_api, "get_all_status", return_value=[
+                 ("zig", True, 101),
+             ]):
+            payload = control_api.get_health_payload()
+
+        self.assertEqual(payload["state"], "DEGRADED")
+        self.assertTrue(payload["degraded"])
+        self.assertEqual(payload["source"], "diagnostic")
+        self.assertFalse(payload["runtime_available"])
+        self.assertEqual(payload["tier3"]["state"], "UNAVAILABLE")
+        self.assertIn("daemon unavailable", payload["availability_error"])
 
 
 if __name__ == "__main__":

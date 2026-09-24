@@ -38,6 +38,7 @@ pub const PepRequest = extern struct {
     dst_ip: u32,
     src_port: u16,
     dst_port: u16,
+    protocol: u8,
     policy_id: u32,
     severity: u8,
     ctx: PepContext,
@@ -48,12 +49,60 @@ pub const PepResponse = extern struct {
     reason: u32,
     quota_remaining: u32,
     signed_by: u32, // KeyId prefix
+    filter_id: u64,
+};
+
+pub const PepEnforcementReceipt = struct {
+    decision: PepDecision,
+    reason: u32,
+    quota_remaining: u32,
+    signed_by: u32,
+    filter_id: u64,
+};
+
+// The C user bridge and WDK header wrap this state in #pragma pack(push, 1).
+// A byte-backed extern struct avoids Zig's packed-struct field alignment rules
+// and makes the 20-byte ABI explicit at every compiler boundary.
+pub const PepFilterState = extern struct {
+    bytes: [20]u8,
+
+    pub fn filterId(self: *const PepFilterState) u64 {
+        return std.mem.readInt(u64, self.bytes[0..8], .little);
+    }
+
+    pub fn remoteIpv4(self: *const PepFilterState) u32 {
+        return std.mem.readInt(u32, self.bytes[8..12], .little);
+    }
+
+    pub fn remotePort(self: *const PepFilterState) u16 {
+        return std.mem.readInt(u16, self.bytes[12..14], .little);
+    }
+
+    pub fn protocol(self: *const PepFilterState) u8 {
+        return self.bytes[14];
+    }
+
+    pub fn present(self: *const PepFilterState) u8 {
+        return self.bytes[15];
+    }
+
+    pub fn providerStatus(self: *const PepFilterState) u32 {
+        return std.mem.readInt(u32, self.bytes[16..20], .little);
+    }
+};
+
+pub const FilterQueryResult = union(enum) {
+    query_error,
+    absent: PepFilterState,
+    present: PepFilterState,
 };
 
 // Rust FFI functions
 extern "aegis_pep" fn aegis_pep_enforce(req: *const PepRequest, resp: *PepResponse) c_int;
-extern "aegis_pep" fn aegis_pep_unblock_ip(ipv4: u32, caller_pid: u32, caller_capability_mask: u32, request_id: u64) c_int;
+extern "aegis_pep" fn aegis_pep_unblock_filter(filter_id: u64, caller_pid: u32, caller_capability_mask: u32, request_id: u64) c_int;
+extern "aegis_pep" fn aegis_pep_query_filter(filter_id: u64, out: *PepFilterState) c_int;
 extern "aegis_pep" fn aegis_pep_init() c_int;
+extern "aegis_pep" fn aegis_pep_provider_ready() c_int;
 extern "aegis_pep" fn aegis_pep_shutdown() void;
 extern "aegis_pep" fn aegis_pep_quota_remaining(src_ip: u32) u32;
 
@@ -62,6 +111,7 @@ extern "aegis_pep" fn aegis_pep_quota_remaining(src_ip: u32) u32;
 // ============================================================================
 pub const PepEnforcer = struct {
     available: bool = false,
+    last_receipt: ?PepEnforcementReceipt = null,
 
     pub fn init() PepEnforcer {
         // Try to load DLL
@@ -76,7 +126,22 @@ pub const PepEnforcer = struct {
         if (self.available) aegis_pep_shutdown();
     }
 
+    /// Returns true only when the provider DLL exports and device-open
+    /// attestation succeed. This does not claim a host-side block effect.
+    pub fn providerReady(_: *PepEnforcer) bool {
+        if (@import("builtin").os.tag != .windows) return false;
+        return aegis_pep_provider_ready() == 1;
+    }
+
     pub fn enforce(self: *PepEnforcer, ev: *const event.IpcEvent, p: policy.Policy, caller_pid: u32, caller_caps: u32, request_id: u64) PepDecision {
+        self.last_receipt = null;
+        // The active JSON loader does not verify a signed canonical policy
+        // envelope. Keep every privileged action non-enforcing until a
+        // verified loader marks the policy trusted. Alert/log paths remain
+        // available for detection-only operation.
+        if (policy.requiresTrustedAuthorization(p.action) and !p.trusted) {
+            return .escalate;
+        }
         if (!self.available) {
             // SAFETY CONTAINMENT: unavailable PEP is not an ALLOW decision.
             // Escalate to the non-enforcing/degraded path so callers cannot
@@ -91,6 +156,7 @@ pub const PepEnforcer = struct {
             .dst_ip = ev.dst_ip,
             .src_port = ev.src_port,
             .dst_port = ev.dst_port,
+            .protocol = ev.protocol,
             .policy_id = p.id,
             .severity = @intFromEnum(ev.severity),
             .ctx = .{ .caller_pid = caller_pid, .caller_capability_mask = caller_caps, .request_id = request_id },
@@ -101,7 +167,23 @@ pub const PepEnforcer = struct {
             // PEP failure must never become an ALLOW decision.
             return .escalate;
         }
+        // The DLL is an untrusted ABI boundary. Never convert an unknown
+        // ordinal into a Zig enum; malformed provider responses fail closed.
+        if (resp.decision > @intFromEnum(PepDecision.drop)) return .escalate;
+        if (resp.decision == @intFromEnum(PepDecision.block) and resp.filter_id != 0) {
+            self.last_receipt = .{
+                .decision = .block,
+                .reason = resp.reason,
+                .quota_remaining = resp.quota_remaining,
+                .signed_by = resp.signed_by,
+                .filter_id = resp.filter_id,
+            };
+        }
         return @enumFromInt(resp.decision);
+    }
+
+    pub fn lastReceipt(self: *const PepEnforcer) ?PepEnforcementReceipt {
+        return self.last_receipt;
     }
 
     pub fn quotaRemaining(self: *PepEnforcer, src_ip: u32) u32 {
@@ -109,9 +191,85 @@ pub const PepEnforcer = struct {
         return aegis_pep_quota_remaining(src_ip);
     }
 
-    pub fn unblockIp(self: *PepEnforcer, ipv4: u32, caller_pid: u32, caller_caps: u32, request_id: u64) bool {
-        if (!self.available) return false;
-        return aegis_pep_unblock_ip(ipv4, caller_pid, caller_caps, request_id) == 0;
+    pub fn enforceFlow(
+        self: *PepEnforcer,
+        dst_ip: u32,
+        dst_port: u16,
+        protocol: u8,
+        policy_id: u32,
+        severity: u8,
+        caller_pid: u32,
+        caller_caps: u32,
+        request_id: u64,
+    ) ?PepEnforcementReceipt {
+        if (!self.available or dst_ip == 0 or dst_port == 0 or protocol == 0 or policy_id == 0) return null;
+        var req = PepRequest{
+            .decision_kind = 0,
+            // requested_action uses the policy.Action ABI, not PepDecision.
+            // Rust maps policy.Action.block to ACTION_BLOCK = 4.
+            .requested_action = @intFromEnum(policy.Action.block),
+            .flow_id = request_id,
+            .src_ip = 0,
+            .dst_ip = dst_ip,
+            .src_port = 0,
+            .dst_port = dst_port,
+            .protocol = protocol,
+            .policy_id = policy_id,
+            .severity = severity,
+            .ctx = .{ .caller_pid = caller_pid, .caller_capability_mask = caller_caps, .request_id = request_id },
+        };
+        var resp: PepResponse = undefined;
+        if (aegis_pep_enforce(&req, &resp) != 0) return null;
+        if (resp.decision != @intFromEnum(PepDecision.block) or resp.filter_id == 0) return null;
+        return .{
+            .decision = .block,
+            .reason = resp.reason,
+            .quota_remaining = resp.quota_remaining,
+            .signed_by = resp.signed_by,
+            .filter_id = resp.filter_id,
+        };
+    }
+
+    pub fn unblockFilter(self: *PepEnforcer, filter_id: u64, caller_pid: u32, caller_caps: u32, request_id: u64) bool {
+        if (!self.available or filter_id == 0) return false;
+        return aegis_pep_unblock_filter(filter_id, caller_pid, caller_caps, request_id) == 0;
+    }
+
+    pub fn queryFilter(self: *PepEnforcer, filter_id: u64) ?PepFilterState {
+        return switch (self.queryFilterResult(filter_id)) {
+            .present => |state| state,
+            .absent => null,
+            .query_error => null,
+        };
+    }
+
+    /// Preserve the provider distinction between an exact filter that is
+    /// absent and a query transport/provider failure.
+    pub fn queryFilterResult(self: *PepEnforcer, filter_id: u64) FilterQueryResult {
+        if (!self.available or filter_id == 0) return .query_error;
+        var state: PepFilterState = .{ .bytes = undefined };
+        if (aegis_pep_query_filter(filter_id, &state) != 0) return .query_error;
+        if (state.filterId() != filter_id) return .query_error;
+        return if (state.present() != 0) .{ .present = state } else .{ .absent = state };
+    }
+
+    /// Confirm that a receipt proves the exact host effect requested by ev.
+    /// A receipt ID alone is insufficient: provider read-back must report the
+    /// same destination tuple and an explicitly present owned filter.
+    pub fn verifyEnforcementReceipt(
+        self: *PepEnforcer,
+        ev: *const event.IpcEvent,
+        receipt: PepEnforcementReceipt,
+    ) bool {
+        if (receipt.decision != .block or receipt.filter_id == 0) return false;
+        return switch (self.queryFilterResult(receipt.filter_id)) {
+            .present => |state| state.filterId() == receipt.filter_id and
+                state.remoteIpv4() == ev.dst_ip and
+                state.remotePort() == ev.dst_port and
+                state.protocol() == ev.protocol and
+                state.present() != 0,
+            .absent, .query_error => false,
+        };
     }
 };
 
@@ -143,6 +301,24 @@ test "PepEnforcer unavailable is not an allow decision" {
     // Unavailable PEP must remain visible to the caller as non-enforcing state.
     const d = pep.enforce(&ev, p, 0, 0, 0);
     try std.testing.expectEqual(PepDecision.escalate, d);
+}
+
+test "filter query ABI has stable packed layout" {
+    try std.testing.expectEqual(@as(usize, 20), @sizeOf(PepFilterState));
+    try std.testing.expectEqual(@as(usize, 0), @offsetOf(PepFilterState, "bytes"));
+}
+
+test "receipt verification rejects incomplete receipt" {
+    var pep = PepEnforcer{ .available = false };
+    var ev = event.IpcEvent.init(.flow_created);
+    const receipt = PepEnforcementReceipt{
+        .decision = .block,
+        .reason = 0,
+        .quota_remaining = 0,
+        .signed_by = 0,
+        .filter_id = 0,
+    };
+    try std.testing.expect(!pep.verifyEnforcementReceipt(&ev, receipt));
 }
 
 test "mapAction correctness" {
@@ -195,14 +371,16 @@ test "FFI-001: PepRequest field offsets match Rust" {
     try std.testing.expectEqual(@as(usize, 20), @offsetOf(PepRequest, "dst_ip"));
     try std.testing.expectEqual(@as(usize, 24), @offsetOf(PepRequest, "src_port"));
     try std.testing.expectEqual(@as(usize, 26), @offsetOf(PepRequest, "dst_port"));
-    try std.testing.expectEqual(@as(usize, 28), @offsetOf(PepRequest, "policy_id"));
-    try std.testing.expectEqual(@as(usize, 32), @offsetOf(PepRequest, "severity"));
+    try std.testing.expectEqual(@as(usize, 28), @offsetOf(PepRequest, "protocol"));
+    try std.testing.expectEqual(@as(usize, 32), @offsetOf(PepRequest, "policy_id"));
+    try std.testing.expectEqual(@as(usize, 36), @offsetOf(PepRequest, "severity"));
     try std.testing.expectEqual(@as(usize, 40), @offsetOf(PepRequest, "ctx"));
 }
 
 test "FFI-001: PepResponse size matches Rust" {
-    // Rust #[repr(C)] PepResponse: u8 + padding(3) + u32 + u32 + u32 = 16 bytes
-    try std.testing.expectEqual(@as(usize, 16), @sizeOf(PepResponse));
+    // Rust #[repr(C)] PepResponse:
+    // u8 + padding(3) + u32 + u32 + u32 + padding(4) + u64 = 24 bytes.
+    try std.testing.expectEqual(@as(usize, 24), @sizeOf(PepResponse));
 }
 
 test "FFI-001: PepResponse field offsets match Rust" {
@@ -210,6 +388,7 @@ test "FFI-001: PepResponse field offsets match Rust" {
     try std.testing.expectEqual(@as(usize, 4), @offsetOf(PepResponse, "reason"));
     try std.testing.expectEqual(@as(usize, 8), @offsetOf(PepResponse, "quota_remaining"));
     try std.testing.expectEqual(@as(usize, 12), @offsetOf(PepResponse, "signed_by"));
+    try std.testing.expectEqual(@as(usize, 16), @offsetOf(PepResponse, "filter_id"));
 }
 
 test "FFI-001: PepDecision enum values match Rust constants" {
@@ -250,6 +429,7 @@ test "FFI-001: PepRequest binary serialization roundtrip" {
         .dst_ip = 0x08080808,
         .src_port = 12345,
         .dst_port = 80,
+        .protocol = 6,
         .policy_id = 42,
         .severity = 7,
         .ctx = .{
@@ -265,4 +445,11 @@ test "FFI-001: PepRequest binary serialization roundtrip" {
     // Verify flow_id at offset 8 (little-endian u64)
     const flow_id_bytes = bytes[8..16];
     try std.testing.expectEqual(@as(u8, 0x08), flow_id_bytes[0]); // LE first byte
+}
+
+test "FFI-001: flow enforcement uses policy block ordinal" {
+    // PepDecision.block is a response decision (1); requests use policy.Action.
+    // Rust's ACTION_BLOCK is 4 and must remain distinct from DECISION_BLOCK.
+    try std.testing.expectEqual(@as(u8, 4), @intFromEnum(policy.Action.block));
+    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(PepDecision.block));
 }

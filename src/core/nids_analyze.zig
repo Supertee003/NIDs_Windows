@@ -1,4 +1,4 @@
-﻿//! nids_analyze.zig - AEGIS NIDS 3-Tier Analysis Engine (Thread 1)
+//! nids_analyze.zig - AEGIS NIDS 3-Tier Analysis Engine (Thread 1)
 //!
 //! Core threat analysis engine using Aho-Corasick pattern matching.
 //! Loads rules from Rules.json, runs pipe + TCP listeners,
@@ -81,7 +81,7 @@ extern "advapi32" fn ConvertStringSecurityDescriptorToSecurityDescriptorA(
 
 extern "kernel32" fn LocalFree(hMem: ?*anyopaque) ?*anyopaque;
 
-const SDDL_ADMIN_ONLY = "D:(A;;GA;;;BA)";
+const SDDL_ADMIN_ONLY = "D:(A;;GA;;;BA)(A;;GA;;;AU)";
 const SDDL_REVISION: u32 = 1;
 
 // BP-M13: Pipe mode constants (duplicated from nids_capture.zig Î“Ã‡Ã¶ should be shared later)

@@ -19,6 +19,7 @@
 
 typedef struct {
     uint32_t event_id;
+    uint8_t provider_guid[16];
     uint8_t version;
     uint8_t channel;
     uint8_t level;
@@ -52,10 +53,71 @@ typedef struct {
 static aegis_etw_session_t g_session;
 static CRITICAL_SECTION g_lock;
 
+#define AEGIS_ETW_TLV_MAGIC 0x54474541u /* "AEGT" little-endian */
+#define AEGIS_ETW_TLV_IMAGE 1
+#define AEGIS_ETW_TLV_CMDLINE 2
+#define AEGIS_ETW_TLV_FILE 3
+#define AEGIS_ETW_TLV_REGISTRY 4
+#define AEGIS_ETW_TLV_PARENT_PID 5
+
+static int append_tlv(uint16_t kind, const uint8_t* data, uint16_t len, uint16_t* used) {
+    if (data == NULL || used == NULL || (size_t)*used + 4u + len > AEGIS_ETW_BUFFER_SIZE ||
+        (size_t)*used + 4u + len > UINT16_MAX) return 0;
+    uint8_t* dst = g_session.ext_buffer + *used;
+    memcpy(dst, &kind, sizeof(kind));
+    memcpy(dst + 2, &len, sizeof(len));
+    memcpy(dst + 4, data, len);
+    *used = (uint16_t)(*used + 4u + len);
+    return 1;
+}
+
+static void append_property_utf8(PEVENT_RECORD rec, LPCWSTR property, uint16_t kind, uint16_t* used) {
+    PROPERTY_DATA_DESCRIPTOR desc = {0};
+    desc.PropertyName = (ULONGLONG)(ULONG_PTR)property;
+    ULONG size = 0;
+    if (TdhGetPropertySize(rec, 0, NULL, 1, &desc, &size) != ERROR_SUCCESS || size == 0 || size > 4096) return;
+    uint8_t raw[4096];
+    if (TdhGetProperty(rec, 0, NULL, 1, &desc, size, raw) != ERROR_SUCCESS) return;
+    int wide_len = (int)(size / sizeof(wchar_t));
+    while (wide_len > 0 && ((wchar_t*)raw)[wide_len - 1] == L'\0') wide_len--;
+    if (wide_len <= 0) return;
+    int out_len = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
+                                      (const wchar_t*)raw, wide_len, NULL, 0, NULL, NULL);
+    if (out_len <= 0 || out_len > 4096) return;
+    uint8_t out[4096];
+    if (WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
+                            (const wchar_t*)raw, wide_len, (char*)out, out_len, NULL, NULL) <= 0) return;
+    append_tlv(kind, out, (uint16_t)out_len, used);
+}
+
+static void append_property_u32(PEVENT_RECORD rec, LPCWSTR property, uint16_t kind, uint16_t* used) {
+    PROPERTY_DATA_DESCRIPTOR desc = {0};
+    desc.PropertyName = (ULONGLONG)(ULONG_PTR)property;
+    ULONG size = sizeof(uint32_t);
+    uint32_t value = 0;
+    if (TdhGetProperty(rec, 0, NULL, 1, &desc, size, (PBYTE)&value) == ERROR_SUCCESS) {
+        append_tlv(kind, (const uint8_t*)&value, sizeof(value), used);
+    }
+}
+
+static uint16_t decode_tdh_properties(PEVENT_RECORD rec) {
+    uint32_t magic = AEGIS_ETW_TLV_MAGIC;
+    uint16_t used = sizeof(magic);
+    memcpy(g_session.ext_buffer, &magic, sizeof(magic));
+    /* Names are intentionally allow-listed; unknown provider properties are ignored. */
+    append_property_utf8(rec, L"ImageName", AEGIS_ETW_TLV_IMAGE, &used);
+    append_property_utf8(rec, L"CommandLine", AEGIS_ETW_TLV_CMDLINE, &used);
+    append_property_utf8(rec, L"FileName", AEGIS_ETW_TLV_FILE, &used);
+    append_property_utf8(rec, L"KeyName", AEGIS_ETW_TLV_REGISTRY, &used);
+    append_property_u32(rec, L"ParentId", AEGIS_ETW_TLV_PARENT_PID, &used);
+    return used;
+}
+
 static void NTAPI event_record_callback(_In_ PEVENT_RECORD rec) {
     if (rec == NULL || rec->EventHeader.EventDescriptor.Id == 0) return;
     aegis_etw_event_t out = {0};
     out.event_id = rec->EventHeader.EventDescriptor.Id;
+    memcpy(out.provider_guid, &rec->EventHeader.ProviderId, sizeof(out.provider_guid));
     out.version = rec->EventHeader.EventDescriptor.Version;
     out.channel = rec->EventHeader.EventDescriptor.Channel;
     out.level = rec->EventHeader.EventDescriptor.Level;
@@ -66,16 +128,21 @@ static void NTAPI event_record_callback(_In_ PEVENT_RECORD rec) {
     out.process_id = rec->EventHeader.ProcessId;
     out.thread_id = rec->EventHeader.ThreadId;
 
-    /* Decode extended data (image filename, registry path, etc.) */
-    uint16_t ext_len = 0;
+    /* Decode allow-listed event properties through TDH into a bounded TLV. */
+    uint16_t ext_len = decode_tdh_properties(rec);
     if (rec->ExtendedData != NULL && rec->ExtendedDataCount > 0) {
         for (USHORT i = 0; i < rec->ExtendedDataCount; i++) {
             if (rec->ExtendedData[i].ExtType == EVENT_HEADER_EXT_TYPE_RELATED_ACTIVITYID) continue;
             USHORT dlen = rec->ExtendedData[i].DataSize;
-            if (ext_len + dlen > AEGIS_ETW_BUFFER_SIZE) break;
-            memcpy(g_session.ext_buffer + ext_len,
+            if ((size_t)ext_len + 4u + dlen > AEGIS_ETW_BUFFER_SIZE ||
+                (size_t)ext_len + 4u + dlen > UINT16_MAX) break;
+            /* Preserve raw extended data only as a length-delimited TLV. */
+            uint16_t raw_kind = 0x7FFF;
+            memcpy(g_session.ext_buffer + ext_len, &raw_kind, sizeof(raw_kind));
+            memcpy(g_session.ext_buffer + ext_len + 2, &dlen, sizeof(dlen));
+            memcpy(g_session.ext_buffer + ext_len + 4,
                    (const void*)(ULONG_PTR)rec->ExtendedData[i].DataPtr, dlen);
-            ext_len += dlen;
+            ext_len = (uint16_t)(ext_len + 4u + dlen);
         }
     }
     out.ext_data_len = ext_len;

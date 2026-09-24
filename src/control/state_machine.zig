@@ -24,6 +24,7 @@ pub const SystemState = enum(u8) {
     degraded = 4,
     recovering = 5,
     stopping = 6,
+    failed = 7,
 
     pub fn toString(self: SystemState) []const u8 {
         return switch (self) {
@@ -34,6 +35,7 @@ pub const SystemState = enum(u8) {
             .degraded => "DEGRADED",
             .recovering => "RECOVERING",
             .stopping => "STOPPING",
+            .failed => "FAILED",
         };
     }
 
@@ -43,6 +45,22 @@ pub const SystemState = enum(u8) {
 
     pub fn canServe(self: SystemState) bool {
         return self == .running or self == .ready or self == .degraded;
+    }
+
+    /// Structural lifecycle contract. The legacy `transition` method remains
+    /// available for existing call sites; new owners should use
+    /// `transitionChecked` so illegal state jumps cannot be silently published.
+    pub fn canTransition(self: SystemState, next: SystemState) bool {
+        return switch (self) {
+            .stopped => next == .starting,
+            .starting => next == .ready or next == .running or next == .degraded or next == .stopped,
+            .ready => next == .running or next == .degraded or next == .stopping,
+            .running => next == .degraded or next == .recovering or next == .stopping,
+            .degraded => next == .recovering or next == .stopping or next == .failed,
+            .recovering => next == .running or next == .degraded or next == .failed or next == .stopping,
+            .stopping => next == .stopped,
+            .failed => next == .starting or next == .stopped,
+        };
     }
 };
 
@@ -370,6 +388,16 @@ test "SystemState: state properties" {
     try std.testing.expect(SystemState.degraded.canServe());
     try std.testing.expect(!SystemState.stopped.canServe());
     try std.testing.expect(!SystemState.starting.canServe());
+}
+
+test "SystemState: lifecycle transition graph" {
+    try std.testing.expect(SystemState.stopped.canTransition(.starting));
+    try std.testing.expect(SystemState.starting.canTransition(.ready));
+    try std.testing.expect(SystemState.ready.canTransition(.running));
+    try std.testing.expect(SystemState.running.canTransition(.stopping));
+    try std.testing.expect(SystemState.stopping.canTransition(.stopped));
+    try std.testing.expect(!SystemState.stopped.canTransition(.running));
+    try std.testing.expect(!SystemState.running.canTransition(.starting));
 }
 
 test "SubsystemState: health check" {

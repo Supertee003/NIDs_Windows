@@ -1,6 +1,6 @@
-﻿//! rust_pep.zig - AEGIS Rust PEP (Policy Enforcement Point) (Phase 13)
+//! rust_pep.zig - AEGIS Rust PEP (Policy Enforcement Point) (Phase 13)
 //!
-//! Validates and executes EnforcementDecisions from the Policy Engine.
+//! Validates and classifies EnforcementDecisions from the Policy Engine.
 //! The PEP is the SECURITY AUTHORITY - it can REJECT or DEFER decisions
 //! that violate safety rules (e.g., blocking localhost, blocking critical
 //! infrastructure IPs).
@@ -13,16 +13,14 @@
 //!   RustPep: execute(event, decision) -> EnforcementResult
 //!
 //! SECURITY (PEP-001): This module is the ONLY Zig entry point for privileged
-//! enforcement. It delegates to Rust PEP via pep_bindings for authorization
-//! and execution. Direct WFP access from Zig is prohibited.
+//! enforcement requests. Legacy Boolean mutation calls are quarantined until
+//! the receipt-producing Rust PEP provider is wired. Direct WFP access from
+//! Zig is prohibited.
 
 const std = @import("std");
 const canonical = @import("../contract/canonical_event.zig");
 const policy = @import("../policy/policy_engine.zig");
-const wfp_ioctl = @import("../policy/wfp_ioctl.zig");  // Phase 28: WFP kernel bridge
-const pep_bindings = @import("../policy/pep_bindings.zig");       // REBUILD-004: PEP authority gate
-const event_mod = @import("../contract/event.zig");
-const policy_ir_mod = @import("../policy/policy_ir.zig");
+const wfp_ioctl = @import("../policy/wfp_ioctl.zig"); // Phase 28: WFP kernel bridge
 
 // ============================================================
 // Enforcement Status
@@ -58,6 +56,7 @@ pub const RejectionReason = enum(u8) {
     invalid_decision = 4,
     duplicate_block = 5,
     rate_limit_window = 6,
+    host_effect_unavailable = 7,
 
     pub fn toString(self: RejectionReason) []const u8 {
         return switch (self) {
@@ -68,6 +67,7 @@ pub const RejectionReason = enum(u8) {
             .invalid_decision => "INVALID_DECISION",
             .duplicate_block => "DUPLICATE_BLOCK",
             .rate_limit_window => "RATE_LIMIT_WINDOW",
+            .host_effect_unavailable => "HOST_EFFECT_UNAVAILABLE",
         };
     }
 };
@@ -99,7 +99,8 @@ pub const EnforcementResult = struct {
 // ============================================================
 
 pub const RustPep = struct {
-    // In-memory blocklist (real PEP pushes to WFP/minifilter)
+    // Deprecated compatibility map. It is never populated by execute();
+    // a local map is not a host-effect proof and cannot authorize filtering.
     blocked_ips: std.AutoHashMap(u32, void),
     total_executed: u64 = 0,
     total_rejected: u64 = 0,
@@ -186,46 +187,18 @@ pub const RustPep = struct {
             };
         }
 
-        // Execute the block - add to in-memory blocklist
-        // (real PEP would call WFP/minifilter to add the filter)
-        const target_ip = event.source_ip;
-        if (self.blocked_ips.contains(target_ip)) {
-            // Already blocked - don't double-add
-            return .{
-                .status = .executed,
-                .reason = .duplicate_block,
-                .requested_action = decision.action,
-                .actual_action = decision.action,
-                .event_id = decision.event_id,
-                .blocked_ip = target_ip,
-                .message = "ip already blocked",
-            };
-        }
-
-        // The Zig model records the authorized decision only. The Rust PEP
-        // owns the privileged WFP side effect in the production adapter.
-        self.blocked_ips.put(target_ip, {}) catch {
-            self.total_failed += 1;
-            return .{
-                .status = .failed,
-                .reason = .none,
-                .requested_action = decision.action,
-                .actual_action = .allow,
-                .event_id = decision.event_id,
-                .blocked_ip = 0,
-                .message = "blocklist insertion failed",
-            };
-        };
-
-        self.total_executed += 1;
+        // This module is a decision/safety model, not a host-effect provider.
+        // An in-memory map cannot prove WFP state, filter ownership, cleanup,
+        // or a traffic postcondition. Never report a block as executed here.
+        self.total_failed += 1;
         return .{
-            .status = .executed,
-            .reason = .none,
+            .status = .failed,
+            .reason = .host_effect_unavailable,
             .requested_action = decision.action,
-            .actual_action = decision.action,
+            .actual_action = .alert,
             .event_id = decision.event_id,
-            .blocked_ip = target_ip,
-            .message = "block executed",
+            .blocked_ip = 0,
+            .message = "host effect unavailable; no validated enforcement receipt",
         };
     }
 
@@ -275,7 +248,7 @@ pub fn isCriticalInfra(ip: u32) bool {
 }
 
 // ============================================================
-// WFP IOCTL transport re-exports (T11)
+// WFP IOCTL telemetry transport re-exports (T11)
 //
 // SECURITY (REBUILD-004, closes audit P0-1):
 // The Rust PEP is the ONLY authority for privileged enforcement. The direct
@@ -283,9 +256,8 @@ pub fn isCriticalInfra(ip: u32) bool {
 // bypass. It is now gated behind the Rust PEP (aegis_pep.dll via
 // src/policy/pep_bindings.zig):
 //
-//   block_ip(ip) →  PEP authorization (capability mask, quota, two-person
-//                    rule for high severity)  →  only on ALLOW does the
-//                    WFP IOCTL transport execute the block.
+//   block_ip(ip) is intentionally unavailable because its Boolean return
+//   cannot carry provider/filter/postcondition receipt evidence.
 //
 // If the PEP DLL is unavailable the gate is FAIL-CLOSED (returns false) —
 // a privileged action is never silently executed without authorization.
@@ -309,90 +281,21 @@ pub fn wfpIsConnected() bool {
 }
 
 /// Module-level PEP gate. Initialized lazily on first privileged call.
-var g_pep_gate: ?pep_bindings.PepEnforcer = null;
-var g_pep_gate_mutex: std.Thread.Mutex = .{};
-
-fn pepGate() ?*pep_bindings.PepEnforcer {
-    g_pep_gate_mutex.lock();
-    defer g_pep_gate_mutex.unlock();
-    if (g_pep_gate == null) {
-        g_pep_gate = pep_bindings.PepEnforcer.init();
-    }
-    if (g_pep_gate.?.available) return &g_pep_gate.?;
-    return null;
-}
-
 /// PRIVILEGED: block an IP via WFP — REQUIRES Rust PEP authorization.
 /// Fail-closed: no PEP → no block.
 pub fn block_ip(ipv4: u32) bool {
-    const pep_gate = pepGate() orelse {
-        std.log.err("[RUST-PEP] block_ip(0x{x}) REJECTED: PEP unavailable (fail-closed)", .{ipv4});
-        return false;
-    };
-
-    // Build a synthetic enforcement request for the PEP.
-    // Severity: blocking an IP is a high-severity privileged action.
-    var ev = event_mod.IpcEvent.init(.action_block);
-    ev.src_ip = ipv4;
-    ev.severity = .alert;
-    const pol = policy_ir_mod.Policy{
-        .id = 0, // synthetic — enforcement requested by detection, not a named policy
-        .name = "pep-gated-wfp-block",
-        .condition = .{ .clauses = &[_]policy_ir_mod.Clause{} },
-        .action = .block,
-        .severity = .alert,
-        .ttl_sec = 0,
-    };
-
-    const request_id = g_pep_request_counter.fetchAdd(1, .acq_rel) + 1;
-    const decision = pep_gate.enforce(&ev, pol, 0, 0x1, request_id); // caps bit0 = block capability
-
-    switch (decision) {
-        .block => {},
-        .rate_limit => {
-            std.log.warn("[RUST-PEP] block_ip(0x{x}) RATE_LIMITED by PEP quota", .{ipv4});
-            return false;
-        },
-        .escalate => {
-            std.log.warn("[RUST-PEP] block_ip(0x{x}) ESCALATED by PEP (two-person rule)", .{ipv4});
-            return false;
-        },
-        else => {
-            std.log.warn("[RUST-PEP] block_ip(0x{x}) REJECTED by PEP decision={s}", .{ ipv4, @tagName(decision) });
-            return false;
-        },
-    }
-
-    // Rust PEP owns the WFP side effect and returned block only after success.
-    return true;
+    // This legacy Boolean API cannot carry a validated EnforcementReceipt.
+    // Keep it permanently fail-closed until callers migrate to the receipt ABI.
+    std.log.warn("[RUST-PEP] block_ip(0x{x}) unavailable: receipt API required", .{ipv4});
+    return false;
 }
-
-var g_pep_request_counter = std.atomic.Value(u64).init(0);
 
 /// PRIVILEGED: unblock an IP — also PEP-gated (fail-closed).
 pub fn unblock_ip(ipv4: u32) bool {
-    const pep_gate = pepGate() orelse {
-        std.log.err("[RUST-PEP] unblock_ip(0x{x}) REJECTED: PEP unavailable (fail-closed)", .{ipv4});
-        return false;
-    };
-    var ev = event_mod.IpcEvent.init(.action_allow);
-    ev.src_ip = ipv4;
-    ev.severity = .info;
-    const pol = policy_ir_mod.Policy{
-        .id = 0,
-        .name = "pep-gated-wfp-unblock",
-        .condition = .{ .clauses = &[_]policy_ir_mod.Clause{} },
-        .action = .pass,
-        .severity = .info,
-        .ttl_sec = 0,
-    };
-    const request_id = g_pep_request_counter.fetchAdd(1, .acq_rel) + 1;
-    const decision = pep_gate.enforce(&ev, pol, 0, 0x1, request_id);
-    if (decision != .allow) {
-        std.log.warn("[RUST-PEP] unblock_ip(0x{x}) not authorized: {s}", .{ ipv4, @tagName(decision) });
-        return false;
-    }
-    return pep_gate.unblockIp(ipv4, 0, 0x1, request_id);
+    // Unblock is also a privileged host mutation and must carry ownership,
+    // cleanup, and postcondition evidence. The legacy Boolean API cannot.
+    std.log.warn("[RUST-PEP] unblock_ip(0x{x}) unavailable: receipt API required", .{ipv4});
+    return false;
 }
 
 pub fn read_events(out_buf: []u8) u32 {
@@ -403,10 +306,8 @@ pub fn get_stats() ?WfpRingStats {
     return wfp_ioctl.get_stats();
 }
 
-test "block_ip is fail-closed when PEP unavailable" {
-    // In unit tests aegis_pep.dll may not be loadable; the gate MUST refuse
-    // the privileged action rather than execute it.
-    if (pepGate() != null) return error.SkipZigTest; // PEP present: nothing to prove here
+test "legacy Boolean mutation APIs are permanently fail-closed" {
+    // A Boolean cannot carry a provider/filter/postcondition receipt.
     try std.testing.expect(!block_ip(0x08080808));
     try std.testing.expect(!unblock_ip(0x08080808));
 }
@@ -428,6 +329,7 @@ test "EnforcementStatus.toString returns uppercase" {
 test "RejectionReason.toString returns uppercase" {
     try std.testing.expect(std.mem.eql(u8, RejectionReason.none.toString(), "NONE"));
     try std.testing.expect(std.mem.eql(u8, RejectionReason.localhost_protected.toString(), "LOCALHOST_BLOCK_FORBIDDEN"));
+    try std.testing.expect(std.mem.eql(u8, RejectionReason.host_effect_unavailable.toString(), "HOST_EFFECT_UNAVAILABLE"));
 }
 
 test "isLocalhost detects 127.0.0.1" {
@@ -539,9 +441,11 @@ test "RustPep.execute blocks private networks at high confidence" {
         .threat_score = 80,
     };
     const result = pep.execute(event, decision);
-    try std.testing.expect(result.status == .executed);
-    try std.testing.expect(result.blocked_ip == 0x0A0000A1);
-    try std.testing.expect(pep.isBlocked(0x0A0000A1));
+    try std.testing.expect(result.status == .failed);
+    try std.testing.expect(result.reason == .host_effect_unavailable);
+    try std.testing.expect(result.actual_action == .alert);
+    try std.testing.expect(result.blocked_ip == 0);
+    try std.testing.expect(!pep.isBlocked(0x0A0000A1));
 }
 
 test "RustPep.execute rejects blocking critical infra" {
@@ -565,7 +469,7 @@ test "RustPep.execute rejects blocking critical infra" {
     try std.testing.expect(result.reason == .critical_infra_protected);
 }
 
-test "RustPep.execute adds IP to blocklist" {
+test "RustPep.execute never adds IP without host-effect provider" {
     var pep = RustPep.init(std.testing.allocator);
     defer pep.deinit();
     var event = canonical.create(.zig_core);
@@ -582,12 +486,13 @@ test "RustPep.execute adds IP to blocklist" {
         .threat_score = 80,
     };
     const result = pep.execute(event, decision);
-    try std.testing.expect(result.status == .executed);
-    try std.testing.expect(pep.isBlocked(0xCBCBCBCB));
-    try std.testing.expect(pep.blockedCount() == 1);
+    try std.testing.expect(result.status == .failed);
+    try std.testing.expect(result.reason == .host_effect_unavailable);
+    try std.testing.expect(!pep.isBlocked(0xCBCBCBCB));
+    try std.testing.expect(pep.blockedCount() == 0);
 }
 
-test "RustPep.execute detects duplicate blocks" {
+test "RustPep.execute never treats repeated requests as confirmed blocks" {
     var pep = RustPep.init(std.testing.allocator);
     defer pep.deinit();
     var event = canonical.create(.zig_core);
@@ -605,12 +510,12 @@ test "RustPep.execute detects duplicate blocks" {
     };
     _ = pep.execute(event, decision);
     const result = pep.execute(event, decision);
-    try std.testing.expect(result.status == .executed);
-    try std.testing.expect(result.reason == .duplicate_block);
-    try std.testing.expect(pep.blockedCount() == 1); // still only one entry
+    try std.testing.expect(result.status == .failed);
+    try std.testing.expect(result.reason == .host_effect_unavailable);
+    try std.testing.expect(pep.blockedCount() == 0);
 }
 
-test "RustPep.unblock removes from blocklist" {
+test "RustPep.unblock is a no-op without provider ownership" {
     var pep = RustPep.init(std.testing.allocator);
     defer pep.deinit();
     var event = canonical.create(.zig_core);
@@ -627,8 +532,8 @@ test "RustPep.unblock removes from blocklist" {
         .threat_score = 80,
     };
     _ = pep.execute(event, decision);
-    try std.testing.expect(pep.isBlocked(0xCBCBCBCB));
-    try std.testing.expect(pep.unblock(0xCBCBCBCB));
+    try std.testing.expect(!pep.isBlocked(0xCBCBCBCB));
+    try std.testing.expect(!pep.unblock(0xCBCBCBCB));
     try std.testing.expect(!pep.isBlocked(0xCBCBCBCB));
 }
 
@@ -649,7 +554,7 @@ test "RustPep.resetStats clears blocklist and counters" {
         .threat_score = 80,
     };
     _ = pep.execute(event, decision);
-    try std.testing.expect(pep.blockedCount() == 1);
+    try std.testing.expect(pep.blockedCount() == 0);
     pep.resetStats();
     try std.testing.expect(pep.blockedCount() == 0);
     try std.testing.expect(pep.total_executed == 0);

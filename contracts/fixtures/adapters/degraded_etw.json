@@ -1,0 +1,9 @@
+{
+  "kind": "etw",
+  "state": "degraded",
+  "provider_version": "unknown",
+  "capability_mask": 0,
+  "error_code": "ETW_PROVIDER_UNAVAILABLE",
+  "started_at_ms": 0,
+  "last_heartbeat_ms": 0
+}

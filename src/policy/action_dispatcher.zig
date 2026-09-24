@@ -67,18 +67,21 @@ pub const ActionDispatcher = struct {
                 _ = ForensicBackend.write(ev);
             },
             .block => {
-                diag.alert("action=block src={x} dst={x} proto={d} policy_id={d}", .{ ev.src_ip, ev.dst_ip, ev.protocol, p.id });
-                diag.info("PEP validated block; WFP enforcement executed by Rust PEP", .{});
+                // A PepDecision is authorization intent only. Host effect is
+                // confirmed exclusively by a validated EnforcementReceipt;
+                // this dispatcher has no receipt input yet.
+                diag.warn("action=block_requested host_effect=unconfirmed src={x} dst={x} proto={d} policy_id={d}", .{ ev.src_ip, ev.dst_ip, ev.protocol, p.id });
+                diag.warn("enforcement receipt unavailable; BLOCKED_CONFIRMED is not emitted", .{});
                 _ = ForensicBackend.write(ev);
             },
             .rate_limit => {
                 diag.warn("action=rate_limit src={x} policy_id={d}", .{ ev.src_ip, p.id });
-                diag.info("PEP validated rate_limit; WFP enforcement executed by Rust PEP", .{});
+                diag.warn("rate_limit_requested host_effect=unconfirmed policy_id={d}", .{p.id});
                 _ = ForensicBackend.write(ev);
             },
             .quarantine => {
-                diag.critical("action=quarantine src={x} policy_id={d}", .{ ev.src_ip, p.id });
-                diag.info("PEP validated quarantine; federation notified", .{});
+                diag.critical("action=quarantine_requested host_effect=unconfirmed src={x} policy_id={d}", .{ ev.src_ip, p.id });
+                diag.warn("quarantine receipt unavailable; federation notification is best-effort only", .{});
                 _ = FederationBackend.escalate(ev);
                 _ = ForensicBackend.write(ev);
             },
@@ -88,6 +91,31 @@ pub const ActionDispatcher = struct {
                 _ = ForensicBackend.write(ev);
             },
         }
+    }
+
+    /// Receipt-aware dispatch path. The legacy dispatch API intentionally
+    /// remains unconfirmed because it has no receipt argument. This path is
+    /// the only one allowed to emit BLOCKED_CONFIRMED.
+    pub fn dispatchWithReceipt(
+        ev: *const event.IpcEvent,
+        p: policy.Policy,
+        decision: pep.PepDecision,
+        enforcer: *pep.PepEnforcer,
+        receipt: ?pep.PepEnforcementReceipt,
+    ) void {
+        if (decision == .block) {
+            if (receipt) |r| {
+                if (enforcer.verifyEnforcementReceipt(ev, r)) {
+                    var confirmed = ev.*;
+                    confirmed.kind = .action_block;
+                    confirmed.fate = .blocked;
+                    diag.info("action=BLOCKED_CONFIRMED rule={d} policy_id={d} filter_id={d}", .{ ev.rule_id, p.id, r.filter_id });
+                    _ = ForensicBackend.write(&confirmed);
+                    return;
+                }
+            }
+        }
+        dispatch(ev, p, decision);
     }
 };
 

@@ -1,0 +1,12 @@
+﻿[SC] QueryServiceConfig SUCCESS
+
+SERVICE_NAME: AegisWfp
+        TYPE               : 1  KERNEL_DRIVER 
+        START_TYPE         : 3   DEMAND_START
+        ERROR_CONTROL      : 1   NORMAL
+        BINARY_PATH_NAME   : \??\D:\NIDs_Windows\drivers\wfp_callout\aegis_wfp.sys
+        LOAD_ORDER_GROUP   : 
+        TAG                : 0
+        DISPLAY_NAME       : AegisWfp
+        DEPENDENCIES       : 
+        SERVICE_START_NAME : 
