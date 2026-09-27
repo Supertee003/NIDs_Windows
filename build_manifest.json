@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "7d44942",
+  "source_commit": "d59bda6",
   "build_date": "2026-09-25T15:15:56.343815+00:00",
   "build_host": "windows",
   "platform": {
