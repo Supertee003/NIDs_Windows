@@ -1,0 +1,32 @@
+{
+  "schema": "aegis.rule22-single.v1",
+  "rule_id": "R1004",
+  "name": "DLL Drop in System32",
+  "layer": "KERNEL_FILE",
+  "severity": "Critical",
+  "action": "Drop",
+  "patterns": {
+    "fast_pattern": "DLL_DROP",
+    "match_pattern": ".dll",
+    "regex_pattern": "\\.dll|DLL_DROP|malicious_dll"
+  },
+  "fixture": {
+    "fixture_id": "FX-11-R1004",
+    "source": "synthetic_fim_event",
+    "marker": "DLL_DROP",
+    "synthetic_signal": "DLL_DROP .dll C:\\Windows\\System32\\drivers\\etc\\hosts",
+    "regex_match": true
+  },
+  "expected_observe_only": {
+    "host_effect": "none",
+    "wfp_block": false,
+    "enforcement_receipt": false,
+    "forensic_record": true,
+    "canonical_event": true
+  },
+  "prevention_gate": "closed",
+  "vm_steps": [
+    "run_fim_runtime_observe_only_proof.ps1 on the VM",
+    "verify: FIM event + hash mismatch, canonical event, forensic record"
+  ]
+}

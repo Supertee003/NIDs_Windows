@@ -319,12 +319,33 @@ def request_enforcement_via_pep(
         "trace_id": int(trace_id),
     }
     receipt = _query_daemon_retry("enforcement.block", payload=payload)
-    if not isinstance(receipt, dict) or receipt.get("status") != "ENFORCED":
+    if not is_valid_enforcement_receipt(receipt):
         return ("FAILED", "Rust PEP did not return a validated EnforcementReceipt")
-    filter_id = int(receipt.get("filter_id", 0) or 0)
-    if filter_id == 0:
-        return ("FAILED", "enforcement response did not contain filter_id")
     return ("ENFORCED", json.dumps(receipt, separators=(",", ":")))
+
+
+def is_valid_enforcement_receipt(receipt: Any) -> bool:
+    """Accept only a complete provider/read-back EnforcementReceipt."""
+    if not isinstance(receipt, dict):
+        return False
+    if str(receipt.get("status", "")).upper() != "ENFORCED":
+        return False
+    if not bool(receipt.get("host_effect_confirmed", False)):
+        return False
+    if not str(receipt.get("provider", "")).strip():
+        return False
+    try:
+        if int(receipt.get("receipt_version", 0) or 0) != 1:
+            return False
+    except (TypeError, ValueError):
+        return False
+    for field in ("request_id", "event_id", "policy_id", "filter_id", "trace_id", "audit_id"):
+        try:
+            if int(receipt.get(field, 0) or 0) <= 0:
+                return False
+        except (TypeError, ValueError):
+            return False
+    return True
 
 
 def cleanup_enforcement_filter(filter_id: int) -> Tuple[str, str]:
@@ -548,6 +569,18 @@ def get_health_payload() -> Dict[str, Any]:
         # cannot advertise Tier-3 readiness.
         effective_state = computed_state
         effective_degraded = computed_degraded
+        # The daemon runtime state is authoritative.  The compatibility
+        # calculator above still understands historical subsystem names and
+        # may otherwise promote a canonical DEGRADED runtime to READY when
+        # it sees a sparse/renamed subsystem snapshot.
+        daemon_runtime_state = str(
+            daemon_health.get("runtime_state", daemon_health.get("state", "DEGRADED"))
+        ).upper()
+        if daemon_runtime_state in {"DEGRADED", "FAILED", "STOPPED", "STOPPING", "STARTING"}:
+            effective_state = daemon_runtime_state
+        effective_degraded = effective_degraded or bool(daemon_health.get("degraded", False))
+        if daemon_runtime_state != "RUNNING":
+            effective_degraded = True
         effective_tier3_ready = tier3_ready and effective_state != "FAILED"
         shield_status = subsystem_payload.get("rust_pep", subsystem_payload.get("pep", {}))
         if not isinstance(shield_status, dict):
@@ -563,8 +596,18 @@ def get_health_payload() -> Dict[str, Any]:
             "wfp": "READY" if shield_wfp_ready else "UNAVAILABLE",
             "error": None if shield_running else "rust_shield_not_ready",
         }
+        # `rust_pep` is the canonical enforcement authority.  Keep the old
+        # rust_shield projection only as a compatibility alias for clients
+        # that have not migrated yet; it is not a second subsystem/process.
+        rust_pep = dict(rust_shield)
+        rust_pep["canonical"] = True
+        rust_pep["authority"] = "sole_enforcement_authority"
+        rust_shield["canonical"] = False
+        rust_shield["alias_of"] = "rust_pep"
         return {
             "component": daemon_health.get("component", "core"),
+            "canonical_enforcement_authority": "rust_pep",
+            "compatibility_aliases": {"rust_shield": "rust_pep"},
             "state": effective_state,
             "runtime_state": daemon_health.get("runtime_state", daemon_health.get("state", "DEGRADED")),
             "pid": daemon_health.get("pid"),
@@ -583,6 +626,7 @@ def get_health_payload() -> Dict[str, Any]:
                 "ready": effective_tier3_ready,
                 "state": "READY" if effective_tier3_ready else "STOPPED",
             },
+            "rust_pep": rust_pep,
             "rust_shield": rust_shield,
             "deps": [{"name": name, "state": data["state"]} for name, data in subsystem_payload.items()],
             "degraded": effective_degraded,
@@ -618,6 +662,8 @@ def _diagnostic_health_payload(reason: str) -> Dict[str, Any]:
     }
     return {
         "component": "control_api",
+        "canonical_enforcement_authority": "rust_pep",
+        "compatibility_aliases": {"rust_shield": "rust_pep"},
         "state": "DEGRADED",
         "pid": os.getpid(),
         "version": "6.0.0",
@@ -631,8 +677,21 @@ def _diagnostic_health_payload(reason: str) -> Dict[str, Any]:
         },
         "subsystems": subsystem_payload,
         "tier3": {"ready": False, "state": "UNAVAILABLE"},
+        "rust_pep": {
+            "state": "UNAVAILABLE",
+            "canonical": True,
+            "authority": "sole_enforcement_authority",
+            "pep_ready": False,
+            "policy_authority": False,
+            "provider_ready": False,
+            "host_effect_capable": False,
+            "wfp": "UNAVAILABLE",
+            "error": "control_daemon_unavailable",
+        },
         "rust_shield": {
             "state": "UNAVAILABLE",
+            "canonical": False,
+            "alias_of": "rust_pep",
             "pep_ready": False,
             "policy_authority": False,
             "provider_ready": False,

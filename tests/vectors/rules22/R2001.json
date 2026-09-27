@@ -1,0 +1,32 @@
+{
+  "schema": "aegis.rule22-single.v1",
+  "rule_id": "R2001",
+  "name": "Mimikatz Execution",
+  "layer": "KERNEL_PROCESS",
+  "severity": "Critical",
+  "action": "Drop",
+  "patterns": {
+    "fast_pattern": "MIMIKATZ",
+    "match_pattern": "mimikatz",
+    "regex_pattern": "mimikatz|MIMIKATZ|sekurlsa::logonpasswords"
+  },
+  "fixture": {
+    "fixture_id": "FX-13-R2001",
+    "source": "synthetic_etw_process_event",
+    "marker": "MIMIKATZ",
+    "synthetic_signal": "MIMIKATZ mimikatz C:\\Windows\\System32\\drivers\\etc\\hosts",
+    "regex_match": true
+  },
+  "expected_observe_only": {
+    "host_effect": "none",
+    "wfp_block": false,
+    "enforcement_receipt": false,
+    "forensic_record": true,
+    "canonical_event": true
+  },
+  "prevention_gate": "closed",
+  "vm_steps": [
+    "run_etw_runtime_observe_only_proof.ps1 on the VM",
+    "verify: ETW process event + pattern match, no process creation by test"
+  ]
+}

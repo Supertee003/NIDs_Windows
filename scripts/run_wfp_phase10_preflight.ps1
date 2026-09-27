@@ -33,7 +33,11 @@ function Get-Health {
     }
     try { $health = $text | ConvertFrom-Json }
     catch { throw "health returned non-JSON output: $text" }
-    if ($exitCode -ne 0 -and $health.runtime_available -ne $false) {
+    # The control CLI may preserve a non-zero transport status while still
+    # returning an authoritative runtime JSON document. Trust the document
+    # when it proves a serving RUNNING owner; reject only non-serving output.
+    $serving = ($health.runtime_state -eq 'RUNNING' -and $health.state -eq 'RUNNING')
+    if ($exitCode -ne 0 -and -not $serving -and $health.runtime_available -ne $true) {
         throw "health failed ($exitCode): $text"
     }
     return $health
@@ -74,7 +78,7 @@ $result = [ordered]@{
     host_effect_capable = $false
     overall_gate = $false
     enforcement_attempted = $false
-    next_step = 'No host effect attempted; inspect service/device contract and build an isolated reversible proof only after provider readiness is attested.'
+    next_step = 'Run the isolated reversible host-effect proof only with the approved disposable target and record receipt, read-back, blocked reachability, and cleanup.'
 }
 
 if ($null -ne $health) {
@@ -83,7 +87,7 @@ if ($null -ne $health) {
     $result.provider_ready = [bool]$health.rust_shield.provider_ready
     $result.host_effect_capable = [bool]$health.rust_shield.host_effect_capable
     $result.overall_gate = [bool]$health.rust_shield.host_effect_capable -and [bool]$health.tier3.provider_ready
-    $result.passed = $isAdmin -and $health.runtime_state -eq 'RUNNING' -and $result.tier3_ready -and $result.pep_ready -and -not $result.overall_gate
+    $result.passed = $isAdmin -and $serviceRunning -and $health.runtime_state -eq 'RUNNING' -and $result.tier3_ready -and $result.pep_ready -and $result.provider_ready -and $result.host_effect_capable
 }
 
 $result | ConvertTo-Json -Depth 8

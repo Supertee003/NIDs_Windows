@@ -1,0 +1,32 @@
+{
+  "schema": "aegis.rule22-single.v1",
+  "rule_id": "R2002",
+  "name": "svchost Process Hollowing",
+  "layer": "KERNEL_PROCESS",
+  "severity": "Critical",
+  "action": "Drop",
+  "patterns": {
+    "fast_pattern": "SVCHOST_HOLLOW",
+    "match_pattern": "svchost.exe",
+    "regex_pattern": "svchost\\.exe|PROCESS_HOLLOW|SVCHOST_HOLLOW"
+  },
+  "fixture": {
+    "fixture_id": "FX-14-R2002",
+    "source": "synthetic_etw_process_event",
+    "marker": "SVCHOST_HOLLOW",
+    "synthetic_signal": "SVCHOST_HOLLOW svchost.exe C:\\Windows\\System32\\drivers\\etc\\hosts",
+    "regex_match": true
+  },
+  "expected_observe_only": {
+    "host_effect": "none",
+    "wfp_block": false,
+    "enforcement_receipt": false,
+    "forensic_record": true,
+    "canonical_event": true
+  },
+  "prevention_gate": "closed",
+  "vm_steps": [
+    "run_etw_runtime_observe_only_proof.ps1 on the VM",
+    "verify: ETW process event + pattern match, no process creation by test"
+  ]
+}

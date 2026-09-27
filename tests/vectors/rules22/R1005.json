@@ -1,0 +1,32 @@
+{
+  "schema": "aegis.rule22-single.v1",
+  "rule_id": "R1005",
+  "name": "hosts File Modification",
+  "layer": "KERNEL_FILE",
+  "severity": "High",
+  "action": "Block",
+  "patterns": {
+    "fast_pattern": "HOSTS_MOD",
+    "match_pattern": "hosts",
+    "regex_pattern": "(?:^|[\\\\/])hosts$|C:[\\\\/]Windows[\\\\/]System32[\\\\/]drivers[\\\\/]etc[\\\\/]hosts$"
+  },
+  "fixture": {
+    "fixture_id": "FX-12-R1005",
+    "source": "synthetic_fim_event",
+    "marker": "HOSTS_MOD",
+    "synthetic_signal": "HOSTS_MOD hosts C:\\Windows\\System32\\drivers\\etc\\hosts",
+    "regex_match": true
+  },
+  "expected_observe_only": {
+    "host_effect": "none",
+    "wfp_block": false,
+    "enforcement_receipt": false,
+    "forensic_record": true,
+    "canonical_event": true
+  },
+  "prevention_gate": "closed",
+  "vm_steps": [
+    "run_fim_runtime_observe_only_proof.ps1 on the VM",
+    "verify: FIM event + hash mismatch, canonical event, forensic record"
+  ]
+}

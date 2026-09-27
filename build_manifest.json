@@ -2,8 +2,8 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "daf9088",
-  "build_date": "2026-09-24T12:09:38.945754+00:00",
+  "source_commit": "7623d1c",
+  "build_date": "2026-09-25T15:15:56.343815+00:00",
   "build_host": "windows",
   "platform": {
     "os": "windows",
@@ -27,7 +27,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "46b93dc",
+      "commit": "7623d1c",
       "source": "src/main.zig",
       "classification": "CANONICAL"
     },
@@ -38,7 +38,7 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "46b93dc",
+      "commit": "7623d1c",
       "source": "rust-src/lib.rs",
       "classification": "CANONICAL"
     },
@@ -49,7 +49,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "46b93dc",
+      "commit": "7623d1c",
       "source": "src/windows/aegis_wfp.c",
       "classification": "CANONICAL"
     },
@@ -60,7 +60,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "46b93dc",
+      "commit": "7623d1c",
       "source": "src/windows/etw_native.c",
       "classification": "CANONICAL"
     },
@@ -71,7 +71,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "46b93dc",
+      "commit": "7623d1c",
       "source": "src/windows/fim_native.c",
       "classification": "CANONICAL"
     },
@@ -82,7 +82,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "go-nose-build-test",
-      "commit": "46b93dc",
+      "commit": "7623d1c",
       "source": "nose/main.go",
       "classification": "CANONICAL"
     },
@@ -93,7 +93,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-aggregator-build-test",
-      "commit": "46b93dc",
+      "commit": "7623d1c",
       "source": "go/aggregator/main.go",
       "classification": "SUPPORT"
     },
@@ -104,7 +104,7 @@
       "type": "library",
       "required": false,
       "ci_job": "shield-build",
-      "commit": "46b93dc",
+      "commit": "7623d1c",
       "source": "shield/src/lib.rs",
       "classification": "SUPPORT"
     },
@@ -115,7 +115,7 @@
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "46b93dc",
+      "commit": "7623d1c",
       "source": "tools/aegisctl.py",
       "classification": "CANONICAL"
     },
@@ -126,7 +126,7 @@
       "type": "script",
       "required": true,
       "ci_job": "package-release",
-      "commit": "46b93dc",
+      "commit": "7623d1c",
       "source": "tools/installer.py"
     },
     {
@@ -136,7 +136,7 @@
       "type": "toolchain",
       "required": true,
       "ci_job": "ts-policy-build",
-      "commit": "46b93dc",
+      "commit": "7623d1c",
       "source": "ts_policy/"
     },
     {
@@ -146,7 +146,7 @@
       "type": "library",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "46b93dc",
+      "commit": "7623d1c",
       "source": "brain/"
     }
   ],
@@ -210,8 +210,8 @@
     },
     {
       "path": ".gitignore",
-      "size": 1419,
-      "sha256": "392c18f372e4bbf86fb1d77c7b5275f81400cbb170438c7a33904ca50a1ad87a",
+      "size": 1797,
+      "sha256": "cd969f0353dc32f0f843c9fa53b503d809b08d992f776948910aec81c3cc65c1",
       "language": "data"
     },
     {
@@ -314,6 +314,12 @@
       "path": "brain/aegis_brain_cython/test_fast_scan.py",
       "size": 4768,
       "sha256": "fb51427c7ca769c638f0d89bc530e02c3506cbf0d8fab57d748d2f87fadb4b72",
+      "language": "python/cython"
+    },
+    {
+      "path": "brain/canonical_event.py",
+      "size": 4875,
+      "sha256": "066d0f9787c3ac70f7a36615f7110994bb424d16fe10f66b5b048637e8317d96",
       "language": "python/cython"
     },
     {
@@ -485,6 +491,12 @@
       "language": "python/cython"
     },
     {
+      "path": "brain/test_canonical_event.py",
+      "size": 2309,
+      "sha256": "05b189aad4c2624da37b83ba511aa6cbdf68ba6c5d20f43d4facae98915df520",
+      "language": "python/cython"
+    },
+    {
       "path": "brain/test_core_routing.py",
       "size": 1356,
       "sha256": "2b28d31335dbe9ba3b8a1ff7e17029b828c371da105bae3da6ca50e18f03abce",
@@ -558,8 +570,8 @@
     },
     {
       "path": "brain/windows_brain.py",
-      "size": 29375,
-      "sha256": "53290f1a3c9405d75dc5569bbb630136dbffd463018f9c1a043301a0e648be9a",
+      "size": 31178,
+      "sha256": "5c6ea50584e3b2a164792cad24d19a0368e60143478c4575e2fdae567b875f9a",
       "language": "python/cython"
     },
     {
@@ -594,32 +606,32 @@
     },
     {
       "path": "bridge/aegis_bridge_ctypes.py",
-      "size": 12546,
-      "sha256": "26801bf70b964f1043976ab8806d4d1757ce414e0c6cf7d1d1b6f50e72c5b405",
+      "size": 12989,
+      "sha256": "f14578549c603b6ce34939612d692f4c90e2899c478bca45aea3eb676e3f3adc",
       "language": "python/cython"
     },
     {
       "path": "bridge/aegis_bridge_main.cpp",
-      "size": 15958,
-      "sha256": "fb5fbde2560cd0667686dfdf0db6f422fe822959ef936bf34b780002b19cb246",
+      "size": 15880,
+      "sha256": "74714e6b4f63feda5e800d5115227bc818d1bfd075d655e798aaa073ab94abf7",
       "language": "c/c++"
     },
     {
       "path": "bridge/aegis_bridge_test.cpp",
-      "size": 8106,
-      "sha256": "953a58f7d62d9aa5632ac0ceef4d686abcaf224eddd67f638669095768825e6a",
+      "size": 8382,
+      "sha256": "55c11c2c490ad3881ba0320098eb337145a143fcecfdc5b66a6363c0eed9d692",
       "language": "c/c++"
     },
     {
       "path": "bridge/aegis_ipc.cpp",
-      "size": 12329,
-      "sha256": "2d70fad37f3b5b38006628a2343dc894ce95aabfad470115c7bd36e2a6005f1d",
+      "size": 12482,
+      "sha256": "dc058dd483077785c1548b20eaa17bf278db5a209a49acd54aba4a56942ed8bc",
       "language": "c/c++"
     },
     {
       "path": "bridge/aegis_ipc.hpp",
-      "size": 14964,
-      "sha256": "03701105530b11fb035a18133439b0fdb3bb5cb2341bdf0f56110719fe89db9e",
+      "size": 15122,
+      "sha256": "4c74b6ffb73a9017cba8b4c4ec8728c856dff7ff073f13437ce063dc4c57881c",
       "language": "c/c++"
     },
     {
@@ -636,8 +648,8 @@
     },
     {
       "path": "bridge/bridge_status.py",
-      "size": 1492,
-      "sha256": "3980ae21a686ebd71de1d1a2d11d0931f9dfb6588ab889871da3a2fa75088ff8",
+      "size": 1556,
+      "sha256": "e71aba4a827a09e531114b74c381e636fb1e3ce4c8c9e3534920739664f2a528",
       "language": "python/cython"
     },
     {
@@ -654,8 +666,8 @@
     },
     {
       "path": "bridge/build/CMakeCache.txt",
-      "size": 13341,
-      "sha256": "77b1e9277be24def74a4ecdac48086897963f14a67d24651198114524d20b48b",
+      "size": 13338,
+      "sha256": "8a744e083df1dd7aafeed69ca581c18d2b342fd3bf513cfcba22b64890c1f391",
       "language": "data"
     },
     {
@@ -667,7 +679,7 @@
     {
       "path": "bridge/build/CMakeFiles/4.4.2/CMakeDetermineCompilerABI_CXX.bin",
       "size": 53248,
-      "sha256": "2ba5a3a68dc2ca8998a9868311257ca14b0d6045159c5498a8849ad3e348daae",
+      "sha256": "6c25cdfe72ea172f00a8d4059bb850e44ef3db5406f9b1d558f91d36de2a1c28",
       "language": "data"
     },
     {
@@ -691,7 +703,7 @@
     {
       "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/CompilerIdCXX.exe",
       "size": 15360,
-      "sha256": "f63945b6ea905a35fa1143fb5d500d4ee9eaa524709b3fdfddee75d48ab3a611",
+      "sha256": "550f56ae8b308b7021e51ffd998afb491fea24ab6503075ac61cbf02abf930d7",
       "language": "data"
     },
     {
@@ -703,7 +715,7 @@
     {
       "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CMakeCXXCompilerId.obj",
       "size": 2361,
-      "sha256": "2e54ba8867c8d0ea21fb8c0264f256ed207e4dbae6d6a01d234e8f5b569de024",
+      "sha256": "3a55fa7aef8521205ecbdbecf4b3669a475071a12f539c590d1f6675f1f15b78",
       "language": "data"
     },
     {
@@ -804,8 +816,8 @@
     },
     {
       "path": "bridge/build/CMakeFiles/CMakeConfigureLog.yaml",
-      "size": 81126,
-      "sha256": "62d2c57d6291ca2ae4903f69cbfe3220bf7c38a31c90409c20463dcceb72a4b3",
+      "size": 79792,
+      "sha256": "d2ccf3972d0086285b537f45dbcdd3d38f50f6e08763901d9343eb17a45cb304",
       "language": "yaml"
     },
     {
@@ -965,6 +977,90 @@
       "language": "data"
     },
     {
+      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.dll.recipe",
+      "size": 391,
+      "sha256": "73ae55b0339dfefb0a6be043781122ad022f1f13e6ae4da95aa512bdca174994",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.obj",
+      "size": 39994,
+      "sha256": "41515fc698453c237a865bc827cf51dd8bfb2be0b2fab6cb7b849796c430c6f1",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/CL.command.1.tlog",
+      "size": 888,
+      "sha256": "6039dd1752f0d539b02d69402bd2c924fd9a61968ae25993505184d48e4e36d6",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/CL.read.1.tlog",
+      "size": 20058,
+      "sha256": "ca3c74901ed96ebfcbe7a9251f82d031be131491f6caecf441401efebad53807",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/CL.write.1.tlog",
+      "size": 236,
+      "sha256": "6924064637e1a8841add47244619527b09dced15f1b20ce5726478f9cb53d82d",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/Cl.items.tlog",
+      "size": 114,
+      "sha256": "2d87bb3404b49998fa2f9f70c4c9fa1b6d2f81e709c144af7d0ccf2fb75a8c99",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/CustomBuild.command.1.tlog",
+      "size": 383,
+      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/CustomBuild.read.1.tlog",
+      "size": 7510,
+      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/CustomBuild.write.1.tlog",
+      "size": 94,
+      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/aegis_adapter.lastbuildstate",
+      "size": 158,
+      "sha256": "25dbab9c2a137997d68c48eebd98adf89bfe4805807d534c81ec2139161af14a",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/link.command.1.tlog",
+      "size": 1078,
+      "sha256": "e5a6a64fb598279a81c469058fc423ee947b7cb8519d76b340c43954354c7da6",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/link.read.1.tlog",
+      "size": 3038,
+      "sha256": "412ccf18d3a4c01f4e24c0fb692461256d0c955eafd24d1bbd25be999db82825",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/link.secondary.1.tlog",
+      "size": 74,
+      "sha256": "b798a1f0159fb4bf185b18adf226146b73efb9bae8a79d3b63512e937458d760",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/link.write.1.tlog",
+      "size": 232,
+      "sha256": "d354b61041e9819de6a232d765e4c30bf34ba4702228a510d7b1ac2611b70b1b",
+      "language": "data"
+    },
+    {
       "path": "bridge/build/aegis_adapter.vcxproj",
       "size": 54172,
       "sha256": "1f737bbe2944f9f7889ac0175862b65de38c4a1986bbddedcc956a42cf095bd0",
@@ -1076,6 +1172,96 @@
       "path": "bridge/build/aegis_adapter_selftest.dir/Debug/vc143.pdb",
       "size": 118784,
       "sha256": "707f0c99cc66db21538ab53096b6d1142f88300018df7c2d9d7516d7c69da6f0",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/CL.command.1.tlog",
+      "size": 1758,
+      "sha256": "00db7037f72f083d79ebf7995f49a5f725949dd4be5293a973a96731812d5ae7",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/CL.read.1.tlog",
+      "size": 24132,
+      "sha256": "1665dd4645ffb7bd49e605388e66e4b37dbb63fbaf055dd2b0b6297e76fc0825",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/CL.write.1.tlog",
+      "size": 558,
+      "sha256": "0fd0388da17a217144321fa311531e3258cdbe2bd1af02cbeb6de9f813eabc51",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/Cl.items.tlog",
+      "size": 274,
+      "sha256": "d6f7ed4879ad2c05de52d6d5c4458976d57ec62777ec77ae50a9a66cd392514d",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/CustomBuild.command.1.tlog",
+      "size": 383,
+      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/CustomBuild.read.1.tlog",
+      "size": 7510,
+      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/CustomBuild.write.1.tlog",
+      "size": 94,
+      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/aegis_adapter_selftest.lastbuildstate",
+      "size": 158,
+      "sha256": "25dbab9c2a137997d68c48eebd98adf89bfe4805807d534c81ec2139161af14a",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/link.command.1.tlog",
+      "size": 1486,
+      "sha256": "b5672720e0fabf5d229ce4fbc3235b997696c1c01ad29cdcfe47adf2c82a644f",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/link.read.1.tlog",
+      "size": 3460,
+      "sha256": "ca5a0a2565dfd355e7909e92ad9ebe98c8a866103410f5c67844c8d7a559ca19",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/link.secondary.1.tlog",
+      "size": 179,
+      "sha256": "bb6bf3fa83b8ffbf76f05c07dfa5e02f9c929f781ab60dce54297798bdb2c169",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/link.write.1.tlog",
+      "size": 460,
+      "sha256": "a425bcbbfc7f8a5f6fd969d4be5e7a03a6b952398c478afe506fbd4795b67e1f",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_adapter.obj",
+      "size": 40002,
+      "sha256": "e8882ea4cab7477033c1f9ce55d7dd78e4796fca845b4f269ea92fc839a7e06b",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_adapter_selftest.exe.recipe",
+      "size": 400,
+      "sha256": "fc2017f6d7d71b3bc1e4a8bc984cd5c0eb9c6a408bc9aa50d0e19b687ece2d89",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_adapter_selftest_main.obj",
+      "size": 7588,
+      "sha256": "e2c4d8196e6c3be5a84be28a6d70e46350425519ec0bf7f76b1109b490cd1e7a",
       "language": "data"
     },
     {
@@ -1199,6 +1385,102 @@
       "language": "data"
     },
     {
+      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.exe.recipe",
+      "size": 390,
+      "sha256": "e4d85b339b2f8bfc0a8197f66ecfa7ee047a051a67140e96b0615a8d479b444e",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/CL.command.1.tlog",
+      "size": 2456,
+      "sha256": "e53597018012d5d97d5db4819594148cb82fe87ee954cc1e9541c377189fe141",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/CL.read.1.tlog",
+      "size": 68968,
+      "sha256": "1a2816e1812d62be2c22ccf3c762a32af890e258622846e66f690275747305a7",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/CL.write.1.tlog",
+      "size": 714,
+      "sha256": "ae3f3acab7981fda17758d9411e3cca3f98e78cee9c13d9da06607c22d77f4cf",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/Cl.items.tlog",
+      "size": 351,
+      "sha256": "74e2432c568155e3d53285010022b0df148357a30f345f368937fa0beaae6b11",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/CustomBuild.command.1.tlog",
+      "size": 383,
+      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/CustomBuild.read.1.tlog",
+      "size": 7510,
+      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/CustomBuild.write.1.tlog",
+      "size": 94,
+      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/aegis_bridge.lastbuildstate",
+      "size": 158,
+      "sha256": "25dbab9c2a137997d68c48eebd98adf89bfe4805807d534c81ec2139161af14a",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/link.command.1.tlog",
+      "size": 1546,
+      "sha256": "21ed02824ba1ac2a41ddfe4126c0a698410b880f631042875a5a84dc9f10fbda",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/link.read.1.tlog",
+      "size": 4078,
+      "sha256": "6c6e4d3471ec9e421ba1731dbfe6becc4c1d0697d340c4c5489dbe10850f3afc",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/link.secondary.1.tlog",
+      "size": 299,
+      "sha256": "5f972ec39a504cfb35e061cfcb0d2bb9b1b424cf8836572c0dbba6e929529ffc",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/link.write.1.tlog",
+      "size": 528,
+      "sha256": "0f59f4fae5edb1b44ad721d0c93726c32ff8e7d1ad65532b9ffc69a1e4d1657f",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge_main.obj",
+      "size": 35923,
+      "sha256": "de5e9f2be901d3f12603067ec3d43483405d3d98310b871b07385e325d381fcf",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge.dir/Release/aegis_ipc.obj",
+      "size": 29540,
+      "sha256": "a798c8438a3fac5ef13816ff7e518e11a8c09820e4e5befd2eb546156c3751cc",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge.dir/Release/aegis_packet_parser.obj",
+      "size": 9899,
+      "sha256": "21626f95f72e7d988087dfc3224a43f12dd63770c4251ee131d9110950a4976f",
+      "language": "data"
+    },
+    {
       "path": "bridge/build/aegis_bridge.vcxproj",
       "size": 54091,
       "sha256": "7bc3de849d32982702fc868e5973d5ce73b7c462f27f6b0cd581ab1a7f143fcc",
@@ -1316,6 +1598,102 @@
       "path": "bridge/build/aegis_bridge_test.dir/Debug/vc143.pdb",
       "size": 126976,
       "sha256": "e697ba856c2438cf255af186fbadba584d0476d5ac8ee95907d1852fefd2c0ef",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/CL.command.1.tlog",
+      "size": 2516,
+      "sha256": "62640fede6c3d6e30cf377038522454f5e7681a2891fef82032d2cf8b1021f65",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/CL.read.1.tlog",
+      "size": 42340,
+      "sha256": "eb0c3732e9053b7e44ccbb0a4bb09b79c29a9759f6d26f85e094e72136c6be98",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/CL.write.1.tlog",
+      "size": 744,
+      "sha256": "2a6b416c7eeef794ff9b9abd506ccbbab5b1b69eec6201e11fd41bc1e40353d9",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/Cl.items.tlog",
+      "size": 366,
+      "sha256": "5cffc95f93f264eabfe6006863fbc65a30987847b6ac138e553b146d7d1836b3",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/CustomBuild.command.1.tlog",
+      "size": 383,
+      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/CustomBuild.read.1.tlog",
+      "size": 7510,
+      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/CustomBuild.write.1.tlog",
+      "size": 94,
+      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/aegis_bridge_test.lastbuildstate",
+      "size": 158,
+      "sha256": "25dbab9c2a137997d68c48eebd98adf89bfe4805807d534c81ec2139161af14a",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/link.command.1.tlog",
+      "size": 1636,
+      "sha256": "45aa93990096f7647bc5d65d3c1ae6a507cac81e19146ca9f811ab2f8f380d3d",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/link.read.1.tlog",
+      "size": 3930,
+      "sha256": "5237a06127283fc01eb741d1ef05f78af4a7c06ee516fce2a93ac4dcabffd42e",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/link.secondary.1.tlog",
+      "size": 324,
+      "sha256": "fba12385169c534b5db7d096fa5971a0961c9ad373497db439256c97e6e19c97",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/link.write.1.tlog",
+      "size": 568,
+      "sha256": "d9dfc64bcff73cce703a7cbac058802ac60754b3bb506a3362f2ac8b183e4e8f",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_bridge_test.exe.recipe",
+      "size": 395,
+      "sha256": "6813f2517a5b5f3d26097087f4b25e348a0694dfac0f3877237bc183c4a18c92",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_bridge_test.obj",
+      "size": 23331,
+      "sha256": "677f67b215ffaa23fb90034b95d877bc8a1ee28a3628112f5ea12836c311d9bd",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_ipc.obj",
+      "size": 29548,
+      "sha256": "6f2b7b7d2ed75913df8032799bd27882e00933f2f557b9cf010a6fee98db3342",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_packet_parser.obj",
+      "size": 9903,
+      "sha256": "fa32378ca6e1c0fccd6671a6e66b9380dcc91b12f572aef611eb5ca3f38d8c00",
       "language": "data"
     },
     {
@@ -1440,8 +1818,8 @@
     },
     {
       "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.obj",
-      "size": 31012,
-      "sha256": "e117ffadba9045510351e029acd28c21ef2732ca77319edbffe636d864df90bc",
+      "size": 29540,
+      "sha256": "213266f6c250ca95edb39641adba6e77635322a6f00d340f4b4f5f5913848ad1",
       "language": "data"
     },
     {
@@ -1519,7 +1897,7 @@
     {
       "path": "bridge/build/aegis_ipc.dir/Release/aegis_packet_parser.obj",
       "size": 9895,
-      "sha256": "77f4d3f68f1ee7953192be01438bef7b1c127f63d8132ccd9b0c6e90938a25fc",
+      "sha256": "a1d16eb934233255d8c9efa1b4fe6a2b0473f311ac293a3896fdeceec2d0eaeb",
       "language": "data"
     },
     {
@@ -1542,8 +1920,8 @@
     },
     {
       "path": "bridge/build/cmake_install.cmake",
-      "size": 6592,
-      "sha256": "5f32e154cf4877c3512bacdcfd3314ffd66a6ef90c9cf9079ee4c2b52503aa96",
+      "size": 6586,
+      "sha256": "3f3e6bc29e3f224c9101e725a04dfdf00311817993c78cc6792582f4fa186849",
       "language": "data"
     },
     {
@@ -1604,6 +1982,36 @@
       "path": "bridge/build/x64/Debug/ZERO_CHECK/ZERO_CHECK.tlog/ZERO_CHECK.lastbuildstate",
       "size": 156,
       "sha256": "31894e3d7828aa49a6a06fc77804476113ccd08d3c8be58b99a0790ee005bf21",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/x64/Release/ALL_BUILD/ALL_BUILD.recipe",
+      "size": 946,
+      "sha256": "58cfeda3d1985d0fba3fee2e1b87feccc15307a2743276074750cd8811f7bd17",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/x64/Release/ALL_BUILD/ALL_BUILD.tlog/ALL_BUILD.lastbuildstate",
+      "size": 158,
+      "sha256": "25dbab9c2a137997d68c48eebd98adf89bfe4805807d534c81ec2139161af14a",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/x64/Release/ALL_BUILD/ALL_BUILD.tlog/CustomBuild.command.1.tlog",
+      "size": 383,
+      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/x64/Release/ALL_BUILD/ALL_BUILD.tlog/CustomBuild.read.1.tlog",
+      "size": 7510,
+      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
+      "language": "data"
+    },
+    {
+      "path": "bridge/build/x64/Release/ALL_BUILD/ALL_BUILD.tlog/CustomBuild.write.1.tlog",
+      "size": 94,
+      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
       "language": "data"
     },
     {
@@ -1741,13 +2149,13 @@
     {
       "path": "runtime_manifest.json",
       "size": 17724,
-      "sha256": "da1ba639c60cd2c08f651b00ad4856e32e437e2efe8f744ffde57d6c5ce8742b",
+      "sha256": "d43561a091fe51674126feff9e3880ff6726048ddf28a3519fab282ef86a0194",
       "language": "json"
     },
     {
       "path": "scripts/Dashboard.py",
-      "size": 4752,
-      "sha256": "8205b570a962e1dff4e94dbfbf8419e456c193678c26157d10d4dff10e984a2a",
+      "size": 8703,
+      "sha256": "fae832d241557e2f681b06c1aee3f9537e002025b2accebff5a6e408b5ba4e46",
       "language": "python/cython"
     },
     {
@@ -1872,8 +2280,8 @@
     },
     {
       "path": "scripts/build_all.bat",
-      "size": 5685,
-      "sha256": "56449e1f572941d8e81fb28d4c57b4c746eb22745222ce94dcf176b10d5203df",
+      "size": 8252,
+      "sha256": "626809d175b9e5d3305be2cafc56399acafdc04d5df2539c0d3c137483ce19c5",
       "language": "script"
     },
     {
@@ -1896,8 +2304,8 @@
     },
     {
       "path": "scripts/check_brain.py",
-      "size": 354,
-      "sha256": "30099a11f4b912507b31f2ea42fb6838f0d52ad88976cb61f4c3b127c827eeba",
+      "size": 418,
+      "sha256": "7c39488a47302e742ab671f5b4f4074e1a781b6860597a267eae01ee2a5de822",
       "language": "python/cython"
     },
     {
@@ -1961,21 +2369,15 @@
       "language": "python/cython"
     },
     {
-      "path": "scripts/fix_console.py",
-      "size": 3795,
-      "sha256": "8742bb6470dd7ccc7e00d953c06bfc340d70bd01f8a6d10485a69135df8a8bec",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/fix_console2.py",
-      "size": 3398,
-      "sha256": "2b950915562ff9258cf019a7f4f5ab928c8809f898a028f2c04838fd3cf65457",
+      "path": "scripts/gen_kali_22.py",
+      "size": 11380,
+      "sha256": "8f91d962b9c9583ab25d762a732ebb882f392551522506ffd99506ac0393e6c6",
       "language": "python/cython"
     },
     {
       "path": "scripts/generate_detection_fixture_manifest.py",
-      "size": 4578,
-      "sha256": "412c2c6ec3921f618889012e985867da438ed0f29f537b4ac3e19cb388ad9708",
+      "size": 5150,
+      "sha256": "19f129468437df6b4254458615d3e539811cc7b11cbe921e0dc953b8859386d1",
       "language": "python/cython"
     },
     {
@@ -2007,6 +2409,144 @@
       "size": 8330,
       "sha256": "3e873f2baefa705f6b79654e651e18e3247b049a80ac989d8a38279b785d8f4d",
       "language": "script"
+    },
+    {
+      "path": "scripts/kali_attack_nids.py",
+      "size": 5715,
+      "sha256": "dd0601d4460e0029d228e335d565eac9c16a19f50059378f672381f68c2ed627",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R0056_sqli_auth_bypass.py",
+      "size": 2189,
+      "sha256": "ba8961beb92ce28d4db961329ceafe023e57bb69157134827ef307daef15108d",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R0088_path_traversal.py",
+      "size": 2202,
+      "sha256": "1f5a84cb01be0a0637f1f11956765222c02dd1e411dcb3f0f8085ec52097bf89",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R1001_system32_write.py",
+      "size": 2668,
+      "sha256": "35cd56af81f739d786f4285f0d2b7a129b8d67c8bda5367e5aa8690a347b4d56",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R1002_ransomware_rename.py",
+      "size": 2674,
+      "sha256": "2ce0aec0bd2c63e49bd066c4a6fd41036e55a158403ae207b02165c54cde3202",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R1003_startup_folder.py",
+      "size": 2668,
+      "sha256": "17d102dc76d6820a07e01c55360e171ad5a94ecb48ac14fcd1c64a842bc74d22",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R1004_dll_drop_system32.py",
+      "size": 2665,
+      "sha256": "7816dc39ffdaf8898395f13a571e44832858581d260f4b69b78ff0e33689cfbf",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R1005_hosts_file.py",
+      "size": 2660,
+      "sha256": "bae1326d5f7509454c5b8020262164dca0425f6e08ddaeaf5b178fbdbeea6f55",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R2001_mimikatz.py",
+      "size": 2028,
+      "sha256": "d000c4238af89bb74bb12b7a1b4ab61611cde2e59be27d5ee3dcedf771cab98a",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R2002_svchost_hollowing.py",
+      "size": 2051,
+      "sha256": "db17874a544401ad0ebcf0d9cb4d7844833e4d58f7dd898ff68d01f4bfab49fe",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R2003_ps_cradle.py",
+      "size": 2150,
+      "sha256": "470b9bd8f951e90b17e3ad1ced88ec5aba90dccc564bd6e00d8870794dc676d6",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R2004_certutil_abuse.py",
+      "size": 2046,
+      "sha256": "fa7b4f95f9c52bbd9ef02552ccaded540fc7ca5a08de9e87b37168503e898dbe",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R2005_procdump_harvest.py",
+      "size": 2044,
+      "sha256": "276c0567af7a26ac00002df99dfb70ee750726c25ec4538486d016cab6089cbb",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R3001_cobalt_pipe.py",
+      "size": 2416,
+      "sha256": "b0b95b4a747d78cf2a2a57c2e89bc1a1289c7a519f705d540c7c750e1f198a46",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R3002_psexec.py",
+      "size": 2132,
+      "sha256": "fbd7a538d0aa5647aac2a4abb584a91926b24e1fb2aa9901c7b0df708af95cd0",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R3003_anon_pipe.py",
+      "size": 2412,
+      "sha256": "7386d582d34226114b77c9493cbe6707e2577ea0ca1f6e870ec8757a7f2fb517",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R3004_meterpreter_pipe.py",
+      "size": 2426,
+      "sha256": "539042de954eafd600a056ef580e4f871502475c6e8de667d9ff2103a9905b24",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R3005_atexec_pipe.py",
+      "size": 2064,
+      "sha256": "f01f5678645182bf40bd3f3c773d9b2445c5b2939ef108d69984bf145aea4394",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R9002_icmp_flood.py",
+      "size": 1817,
+      "sha256": "4f3441ab650683164f2e25e8b7467d6d2d46af4deae95460ed908dce2395f157",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R9006_syn_stealth_scan.py",
+      "size": 1784,
+      "sha256": "86a377defbe993dca1a70699147207426aeef5f7a70923166a08211c2b771730",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R9007_xmas_scan.py",
+      "size": 1778,
+      "sha256": "38bbe32d719e7f32b0237844196acd9a8e0120ea9bad70ef18f958f6210e4424",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R9059_xss_basic.py",
+      "size": 2154,
+      "sha256": "cbdf228284ecdab00fa61dbfd6f07a2f41b8efdda6a059a04c9da61196028bf9",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R9064_cmdi_semicolon.py",
+      "size": 2173,
+      "sha256": "1372b7706d02a1695d3e7e6eaf23e5cdd00497f04172faf775bf1ee1926c4906",
+      "language": "python/cython"
     },
     {
       "path": "scripts/kali_hostonly_probe.sh",
@@ -2075,9 +2615,15 @@
       "language": "script"
     },
     {
+      "path": "scripts/run_22rules_kit.py",
+      "size": 4655,
+      "sha256": "d6ca82e81aec4f3ae5d87a8b349d8b2cb2e6763c22ce076ae51c4be11a871441",
+      "language": "python/cython"
+    },
+    {
       "path": "scripts/run_aegis.bat",
-      "size": 29507,
-      "sha256": "d521b3e33647f16393aafacea85f087675b6bfe2fc1f2d5d114624a7a71c0191",
+      "size": 29514,
+      "sha256": "4a60cad586a991497f116bd6d79db68e7b33c590b377945e7c9cc6684bf7c94f",
       "language": "script"
     },
     {
@@ -2136,8 +2682,8 @@
     },
     {
       "path": "scripts/run_lifecycle_recovery_proof.ps1",
-      "size": 8891,
-      "sha256": "1940fca3655121049c7f2c7554f4f132aae7e12ddf63f90dd430d67aa8c73944",
+      "size": 9000,
+      "sha256": "50bc6c841cd3eac09e0eb8c9157b114be0d7c8fb1d234b76f285ea24004f7ab3",
       "language": "script"
     },
     {
@@ -2220,8 +2766,8 @@
     },
     {
       "path": "scripts/run_wfp_phase10_preflight.ps1",
-      "size": 3508,
-      "sha256": "6243b125308b97dd5b58352125b00acfb741981bbb5fd54cc33a7232a461802e",
+      "size": 3904,
+      "sha256": "f4d12cfa62c92885766dc0ff9ba691404d9c2ba37e7c5360565fa3fbc8b979df",
       "language": "script"
     },
     {
@@ -2229,6 +2775,12 @@
       "size": 3252,
       "sha256": "08924fd4720fbeb255b77ac629436a2feec222b2396e22e03b0fef1a3103e4b8",
       "language": "script"
+    },
+    {
+      "path": "scripts/split_22rules_files.py",
+      "size": 3474,
+      "sha256": "dcd7d7e7c23c83f505b5bff52639283c4b81eb069a6b4cb9a6d178fb121816fa",
+      "language": "python/cython"
     },
     {
       "path": "scripts/stop_aegis.bat",
@@ -2258,12 +2810,6 @@
       "path": "scripts/tests/test_e2e.py",
       "size": 17717,
       "sha256": "72779c26074e344e17959e3b46e86532fa9612c48567fc7830772eaa7c6a6dda",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/update_console.py",
-      "size": 9748,
-      "sha256": "0444fc19adaea7ce832a3d89cec3524b999fa8ce9c001627d7907fb9d219abac",
       "language": "python/cython"
     },
     {
@@ -2340,8 +2886,8 @@
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 42867,
-      "sha256": "54cbd9c5fbd4ad733764625b8d399594952a7ab195012484ceb68f0d6bf98706",
+      "size": 44040,
+      "sha256": "ec14c9f68c1ed6543a792c7417de9e2caa8ed983284113fefac93f5d33d41573",
       "language": "python/cython"
     },
     {
@@ -2358,110 +2904,14 @@
     },
     {
       "path": "tools/aegisctl/api/control_api.py",
-      "size": 33315,
-      "sha256": "fb324645d1083f31d67550fb53e2d5825a13a0c2f66c627a0dfd83928faadb4a",
+      "size": 35909,
+      "sha256": "08a36bf967e0e8a0bf31116d597e31914c36ed2d08cb0a172874faab28a09b09",
       "language": "python/cython"
     },
     {
       "path": "tools/aegisctl/client.py",
       "size": 6920,
       "sha256": "e19b6b21069cb70b4e3461ee0056505a433e0aed06e62b2b99ab1d440b65af30",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/__init__.py",
-      "size": 1002,
-      "sha256": "c5bf692af6c5083d9101c8f87d87ebea60bbba28b0ea17b3a83f4ec5ae263309",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/alerts.py",
-      "size": 2796,
-      "sha256": "fa5452b7a4314dd3bc1db82f1cf662167517d10742324cb24585f8b2a43e0295",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/api.py",
-      "size": 1255,
-      "sha256": "c45ae3b99bb9acf671a9011af033da9917a29ba6e6b147e1f79c519211ca826f",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/backup.py",
-      "size": 585,
-      "sha256": "95d5956d93f226f14a5e025867bff66527d8945d41e9a1f18f0e21530345d4da",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/canary.py",
-      "size": 2746,
-      "sha256": "236f12c0589ce2434e871142b977ecda31ac18bd405bffbe1a8032d503c3e759",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/console.py",
-      "size": 12167,
-      "sha256": "a256c7cfdadd5abfb53aaf4d6e19a33f4373fb723013c3e88f739e6b3d728999",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/dashboard.py",
-      "size": 2157,
-      "sha256": "901d451d2b0c670f16e90c8ae32dfd84698e8ed484f55c178204ba679c663c39",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/events.py",
-      "size": 1473,
-      "sha256": "35d5645993d8e4f0b37ab413dedd968a67c1f9de7a5166cc1bcb886539abc6ae",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/forensic.py",
-      "size": 1715,
-      "sha256": "33cdad418ffa77b7a142210af30e3ce6c46b2cbe3d2aaf2f2e7835927e5b2d6d",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/intelligence.py",
-      "size": 2112,
-      "sha256": "3423e5d6562d99171c6103a014fbbd74e7cb6024537ae354c28f5f24b390d8ac",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/logs.py",
-      "size": 828,
-      "sha256": "741488949634bedd28806b072d31f595b0a3061563eead299c35ec9b2eaa1b0f",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/network.py",
-      "size": 7929,
-      "sha256": "827d562bcbc5ac9d85412fc74e46816d3cf0a51d1b1c7800fec558f0314222f3",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/policy.py",
-      "size": 2959,
-      "sha256": "f101b8acfd76ab092310cb47be0b93779143c58947b95ff01231e211c9dd5a2b",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/rules.py",
-      "size": 5065,
-      "sha256": "ae17fa5e1b55631e05a1624211bf343ef747818ccb1d0e7f6a0affa71ddffb70",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/simulate.py",
-      "size": 2397,
-      "sha256": "795384d7d5db3cdeffaa83cd841bf0bb55b6f643a68dc1c0096fef08951e9bda",
-      "language": "python/cython"
-    },
-    {
-      "path": "tools/aegisctl/commands/status.py",
-      "size": 6753,
-      "sha256": "0b420b1fe37b9d310af571de0a726f1d7f0691a7c957cc56552c9cbd0223513f",
       "language": "python/cython"
     },
     {
@@ -2484,8 +2934,8 @@
     },
     {
       "path": "tools/aegisctl/web_dashboard/app.py",
-      "size": 5845,
-      "sha256": "e6d6347a0cbbf13be6e6dca064017ef2e835f0804fccb3df5406ccf90e7226bc",
+      "size": 29425,
+      "sha256": "e0e69a81ee9c3be50a28547cdaa5ec7272dfd716ca14b2f7f38e95cdaade9e01",
       "language": "python/cython"
     },
     {
@@ -2555,6 +3005,102 @@
       "language": "python/cython"
     },
     {
+      "path": "tools/legacy/aegisctl_commands_quarantined/__init__.py",
+      "size": 1002,
+      "sha256": "c5bf692af6c5083d9101c8f87d87ebea60bbba28b0ea17b3a83f4ec5ae263309",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/alerts.py",
+      "size": 2796,
+      "sha256": "fa5452b7a4314dd3bc1db82f1cf662167517d10742324cb24585f8b2a43e0295",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/api.py",
+      "size": 1255,
+      "sha256": "c45ae3b99bb9acf671a9011af033da9917a29ba6e6b147e1f79c519211ca826f",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/backup.py",
+      "size": 585,
+      "sha256": "95d5956d93f226f14a5e025867bff66527d8945d41e9a1f18f0e21530345d4da",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/canary.py",
+      "size": 2746,
+      "sha256": "236f12c0589ce2434e871142b977ecda31ac18bd405bffbe1a8032d503c3e759",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/console.py",
+      "size": 12167,
+      "sha256": "a256c7cfdadd5abfb53aaf4d6e19a33f4373fb723013c3e88f739e6b3d728999",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/dashboard.py",
+      "size": 2157,
+      "sha256": "901d451d2b0c670f16e90c8ae32dfd84698e8ed484f55c178204ba679c663c39",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/events.py",
+      "size": 1473,
+      "sha256": "35d5645993d8e4f0b37ab413dedd968a67c1f9de7a5166cc1bcb886539abc6ae",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/forensic.py",
+      "size": 1715,
+      "sha256": "33cdad418ffa77b7a142210af30e3ce6c46b2cbe3d2aaf2f2e7835927e5b2d6d",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/intelligence.py",
+      "size": 2112,
+      "sha256": "3423e5d6562d99171c6103a014fbbd74e7cb6024537ae354c28f5f24b390d8ac",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/logs.py",
+      "size": 828,
+      "sha256": "741488949634bedd28806b072d31f595b0a3061563eead299c35ec9b2eaa1b0f",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/network.py",
+      "size": 7929,
+      "sha256": "827d562bcbc5ac9d85412fc74e46816d3cf0a51d1b1c7800fec558f0314222f3",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/policy.py",
+      "size": 2959,
+      "sha256": "f101b8acfd76ab092310cb47be0b93779143c58947b95ff01231e211c9dd5a2b",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/rules.py",
+      "size": 5065,
+      "sha256": "ae17fa5e1b55631e05a1624211bf343ef747818ccb1d0e7f6a0affa71ddffb70",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/simulate.py",
+      "size": 2397,
+      "sha256": "795384d7d5db3cdeffaa83cd841bf0bb55b6f643a68dc1c0096fef08951e9bda",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/aegisctl_commands_quarantined/status.py",
+      "size": 6753,
+      "sha256": "0b420b1fe37b9d310af571de0a726f1d7f0691a7c957cc56552c9cbd0223513f",
+      "language": "python/cython"
+    },
+    {
       "path": "tools/legacy/aegisctl_lifecycle_quarantined.py",
       "size": 8978,
       "sha256": "38f727298ac1156fcee4bd566133be4305b9d68525412478a0d0aca5271779f3",
@@ -2564,6 +3110,60 @@
       "path": "tools/legacy/backup_recovery.py",
       "size": 5563,
       "sha256": "462869b19b2436a3898c97e23adf95cc3a2192f56f44cc9c1071f818cb8bc7dd",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/fix_console.py",
+      "size": 3795,
+      "sha256": "8742bb6470dd7ccc7e00d953c06bfc340d70bd01f8a6d10485a69135df8a8bec",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/fix_console2.py",
+      "size": 3398,
+      "sha256": "2b950915562ff9258cf019a7f4f5ab928c8809f898a028f2c04838fd3cf65457",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/rust_shield_orphan_quarantined/Cargo.lock",
+      "size": 156,
+      "sha256": "437fe0e1f6624569c72ca969bc5f648604f6b96bfb43845d7034e7604e57e234",
+      "language": "data"
+    },
+    {
+      "path": "tools/legacy/rust_shield_orphan_quarantined/Cargo.toml",
+      "size": 147,
+      "sha256": "95529172e50a3bc9d76033aeec28d78cfc5e505e539cf307ac012ded7e5cda2e",
+      "language": "data"
+    },
+    {
+      "path": "tools/legacy/rust_shield_orphan_quarantined/src/lib.rs",
+      "size": 1993,
+      "sha256": "25457cff45fad53ebb51139589e30fb807e6b3ae468968337177a951b745fb6e",
+      "language": "rust"
+    },
+    {
+      "path": "tools/legacy/rust_shield_orphan_quarantined/src/main.rs",
+      "size": 1553,
+      "sha256": "59ec14f276fbe003b10a93af081a43d86f73779a70c1a47ce561c95cd0031078",
+      "language": "rust"
+    },
+    {
+      "path": "tools/legacy/rust_shield_orphan_quarantined/src/pep.rs",
+      "size": 1795,
+      "sha256": "bd20c84c35dd9c8b5fb8dc22c29501fea660166246f1b300bd663aaf3c87fad5",
+      "language": "rust"
+    },
+    {
+      "path": "tools/legacy/update_auth.py",
+      "size": 852,
+      "sha256": "e3e098d215a93a5e0ce684996388c9d06441022ce05ebfacd42db422fb95aa4e",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/legacy/update_console.py",
+      "size": 9748,
+      "sha256": "0444fc19adaea7ce832a3d89cec3524b999fa8ce9c001627d7907fb9d219abac",
       "language": "python/cython"
     },
     {
@@ -2628,8 +3228,8 @@
     },
     {
       "path": "ts_policy/src/compiler.ts",
-      "size": 15769,
-      "sha256": "57877830e9f37e182727ce68f65c6dfecb27b857a10fdd18a9bec48b3e81af04",
+      "size": 15775,
+      "sha256": "68855d95597607fb104a2ac71544355d8be87c04a5e403de7427673fce453696",
       "language": "typescript"
     },
     {
@@ -2646,8 +3246,8 @@
     },
     {
       "path": "ts_policy/src/types.ts",
-      "size": 12993,
-      "sha256": "9f4c7625b0b91e73958fed84457e4f6cca340dc26e210d46b213bcf71bb8958f",
+      "size": 13071,
+      "sha256": "96250ccdb4888ab3021c649252340b99befd97df0a3040c0431dcdb20c845668",
       "language": "typescript"
     },
     {
@@ -2658,8 +3258,8 @@
     },
     {
       "path": "ts_policy/tests/cross_language_contract.test.ts",
-      "size": 7741,
-      "sha256": "164d11b401bb977e3b60a35126d0d3d8c12464a2802a917d9bad9e5119ebfe7e",
+      "size": 7801,
+      "sha256": "33ae57c4fe174404c25db5daf3328eb73a1dda313bf52ea2264fdb0e88759e2f",
       "language": "typescript"
     },
     {

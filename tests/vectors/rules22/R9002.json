@@ -1,0 +1,32 @@
+{
+  "schema": "aegis.rule22-single.v1",
+  "rule_id": "R9002",
+  "name": "ICMP Flood (DoS)",
+  "layer": "L4",
+  "severity": "High",
+  "action": "Drop",
+  "patterns": {
+    "fast_pattern": "ICMP_FLOOD",
+    "match_pattern": "PROTO:ICMP",
+    "regex_pattern": "INFO:ICMP_FLOOD|PROTO:ICMP|PING_FLOOD"
+  },
+  "fixture": {
+    "fixture_id": "FX-05-R9002",
+    "source": "synthetic_wfp_network_event",
+    "marker": "ICMP_FLOOD",
+    "synthetic_signal": "ICMP_FLOOD PROTO:ICMP C:\\Windows\\System32\\drivers\\etc\\hosts",
+    "regex_match": true
+  },
+  "expected_observe_only": {
+    "host_effect": "none",
+    "wfp_block": false,
+    "enforcement_receipt": false,
+    "forensic_record": true,
+    "canonical_event": true
+  },
+  "prevention_gate": "closed",
+  "vm_steps": [
+    "host-only: kali_hostonly_probe.sh (nmap/hping3)",
+    "verify: flow anomaly + rule match via metrics snapshot"
+  ]
+}

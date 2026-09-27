@@ -1,0 +1,32 @@
+{
+  "schema": "aegis.rule22-single.v1",
+  "rule_id": "R1001",
+  "name": "System32 Write Attempt",
+  "layer": "KERNEL_FILE",
+  "severity": "Critical",
+  "action": "Block",
+  "patterns": {
+    "fast_pattern": "SYS32_WRITE",
+    "match_pattern": "C:\\Windows\\System32",
+    "regex_pattern": "C:[\\\\/]Windows[\\\\/]System32|\\\\windows\\\\system32"
+  },
+  "fixture": {
+    "fixture_id": "FX-08-R1001",
+    "source": "synthetic_fim_event",
+    "marker": "SYS32_WRITE",
+    "synthetic_signal": "SYS32_WRITE C:\\Windows\\System32 C:\\Windows\\System32\\drivers\\etc\\hosts",
+    "regex_match": true
+  },
+  "expected_observe_only": {
+    "host_effect": "none",
+    "wfp_block": false,
+    "enforcement_receipt": false,
+    "forensic_record": true,
+    "canonical_event": true
+  },
+  "prevention_gate": "closed",
+  "vm_steps": [
+    "run_fim_runtime_observe_only_proof.ps1 on the VM",
+    "verify: FIM event + hash mismatch, canonical event, forensic record"
+  ]
+}

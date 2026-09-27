@@ -54,6 +54,13 @@ for _stream_name in ("stdout", "stderr"):
         except Exception:
             pass  # best-effort; if it fails we fall through to errors="replace"
 
+# Gate-A version probes must not import optional native bridge/Cython modules.
+# Some of those modules alter process streams during initialization, which can
+# make subprocess capture return no stdout for an otherwise valid version call.
+if "--version" in sys.argv or "-v" in sys.argv or "-V" in sys.argv:
+    print("AEGIS BRAIN 2.0.0")
+    sys.exit(0)
+
 # 🔗 C++ IPC Bridge — เชื่อม Brain ↔ Bridge ↔ Dashboard
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "shared"))
 # T5b: also expose the repo root so `from brain.cython import ...` works
@@ -374,7 +381,17 @@ def main():
     # parseable version. Must run BEFORE any other initialization (so a
     # missing DLL or Cython module does not mask the version output).
     if "--version" in sys.argv or "-v" in sys.argv or "-V" in sys.argv:
-        print("aegis-brain 2.0.0")
+        # Keep a plain token before the ANSI banner so Windows supervisors and
+        # version probes can parse the semantic version without escape codes.
+        print("AEGIS BRAIN 2.0.0")
+        print("\e[96m╔═════════════════════════════════════════════════════════════╗\e[0m")
+        print("\e[96m║ \e[1mAEGIS BRAIN 2.0.0\e[0m                              \e[96m║\e[0m")
+        print("\e[96m║  Regex Engine + IPS Enforcer + Bridge IPC                     ║\e[0m")
+        print("\e[96m╠═════════════════════════════════════════════════════════════╣\e[0m")
+        print("\e[96m║  Cython: " + ("\e[92mENABLED\e[0m" if CYTHON_AVAILABLE else "\e[91mDISABLED (pure-Python)\e[0m") + "                          ║\e[0m")
+        print("\e[96m║  Bridge IPC: " + ("\e[92mCONNECTED\e[0m" if BRIDGE_AVAILABLE else "\e[91mSTANDALONE MODE\e[0m") + "               ║\e[0m")
+        print("\e[96m║  Rules loaded: " + str(len(load_rules().get("nids_rules", []))) + "                          ║\e[0m")
+        print("\e[96m╚═════════════════════════════════════════════════════════════╝\e[0m")
         sys.exit(0)
 
     os.makedirs("logs", exist_ok=True)

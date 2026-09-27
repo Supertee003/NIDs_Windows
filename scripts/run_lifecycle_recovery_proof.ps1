@@ -146,9 +146,10 @@ Write-Host '[6/7] Verifying forensic chain and gate after restart'
 $afterForensic = Invoke-AegisJson @('forensics', 'verify', '--json')
 $afterReadiness = Invoke-AegisJson @('readiness') $true
 if ($afterForensic.verified -ne $true) { throw 'FAIL_CLOSED: forensic chain invalid after restart' }
-if ($afterReadiness.overall_gate -eq $true -and $afterHealth.rust_shield.host_effect_capable -ne $true) {
-    throw 'FAIL_CLOSED: enforcement gate inconsistent with host-effect capability'
-}
+$gateConsistent = ($afterReadiness.overall_gate -ne $true) -or
+    ($afterHealth.rust_shield.host_effect_capable -eq $true -and
+     $afterHealth.rust_shield.provider_ready -eq $true)
+if (-not $gateConsistent) { throw 'FAIL_CLOSED: enforcement gate inconsistent with host-effect capability' }
 
 $afterRecords = [int64]$afterForensic.records
 # The current forensic ring is process-local volatile state. A clean owner
@@ -156,8 +157,8 @@ $afterRecords = [int64]$afterForensic.records
 # verification of the new generation are the acceptance properties here.
 $forensicGenerationValid = ($afterForensic.verified -eq $true -and $afterForensic.integrity -eq 'ok')
 $result = [ordered]@{
-    proof = 'lifecycle_recovery_observe_only'
-    passed = ($afterHealth.rust_shield.state -eq 'READY' -and $afterHealth.rust_shield.pep_ready -eq $true -and $forensicGenerationValid -and $afterReadiness.overall_gate -eq $false)
+    proof = 'lifecycle_recovery'
+    passed = ($afterHealth.rust_shield.state -eq 'READY' -and $afterHealth.rust_shield.pep_ready -eq $true -and $forensicGenerationValid -and $gateConsistent)
     before_records = $beforeRecords
     after_records = $afterRecords
     stopped_state = $stopped.state
@@ -165,6 +166,7 @@ $result = [ordered]@{
     rust_shield_state = $afterHealth.rust_shield.state
     overall_gate = [bool]$afterReadiness.overall_gate
     host_effect_capable = [bool]$afterHealth.rust_shield.host_effect_capable
+    gate_consistent = [bool]$gateConsistent
     forensic_generation_valid = $forensicGenerationValid
     forensic_record_count_reset_allowed = ($afterRecords -lt $beforeRecords)
     forensic = $afterForensic

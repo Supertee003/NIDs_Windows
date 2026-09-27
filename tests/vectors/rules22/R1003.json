@@ -1,0 +1,32 @@
+{
+  "schema": "aegis.rule22-single.v1",
+  "rule_id": "R1003",
+  "name": "Startup Folder Modification",
+  "layer": "KERNEL_FILE",
+  "severity": "High",
+  "action": "Block",
+  "patterns": {
+    "fast_pattern": "STARTUP_MOD",
+    "match_pattern": "Startup",
+    "regex_pattern": "Startup|\\\\Startup\\\\|\\\\Start Menu\\\\Programs\\\\Startup"
+  },
+  "fixture": {
+    "fixture_id": "FX-10-R1003",
+    "source": "synthetic_fim_event",
+    "marker": "STARTUP_MOD",
+    "synthetic_signal": "STARTUP_MOD Startup C:\\Windows\\System32\\drivers\\etc\\hosts",
+    "regex_match": true
+  },
+  "expected_observe_only": {
+    "host_effect": "none",
+    "wfp_block": false,
+    "enforcement_receipt": false,
+    "forensic_record": true,
+    "canonical_event": true
+  },
+  "prevention_gate": "closed",
+  "vm_steps": [
+    "run_fim_runtime_observe_only_proof.ps1 on the VM",
+    "verify: FIM event + hash mismatch, canonical event, forensic record"
+  ]
+}

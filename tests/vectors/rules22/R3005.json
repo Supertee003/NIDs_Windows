@@ -1,0 +1,32 @@
+{
+  "schema": "aegis.rule22-single.v1",
+  "rule_id": "R3005",
+  "name": "atexec Scheduled Task Pipe",
+  "layer": "L2_PIPE",
+  "severity": "High",
+  "action": "Block",
+  "patterns": {
+    "fast_pattern": "ATEXEC_PIPE",
+    "match_pattern": "atsvc",
+    "regex_pattern": "atsvc|\\\\pipe\\\\atsvc|ATEXEC|ScheduleTask"
+  },
+  "fixture": {
+    "fixture_id": "FX-22-R3005",
+    "source": "synthetic_pipe_event",
+    "marker": "ATEXEC_PIPE",
+    "synthetic_signal": "ATEXEC_PIPE atsvc C:\\Windows\\System32\\drivers\\etc\\hosts",
+    "regex_match": true
+  },
+  "expected_observe_only": {
+    "host_effect": "none",
+    "wfp_block": false,
+    "enforcement_receipt": false,
+    "forensic_record": true,
+    "canonical_event": true
+  },
+  "prevention_gate": "closed",
+  "vm_steps": [
+    "run_pipe_runtime_observe_only_proof.ps1 on the VM",
+    "verify: pipe event + name match, canonical event, forensic record"
+  ]
+}
