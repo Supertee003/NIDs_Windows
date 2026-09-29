@@ -19,6 +19,7 @@
 #define FWP_E_FILTER_NOT_FOUND ((NTSTATUS)0x80320003L)
 #endif
 #include <ntddk.h>
+#include <wdmsec.h>
 
 // ====== GUID Definition ======
 // {A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D}
@@ -30,6 +31,11 @@ DEFINE_GUID(AEGIS_CALLOUT_KEY,
 DEFINE_GUID(AEGIS_PROOF_FILTER_KEY,
     0xb2c3d4e5, 0xf607, 0x4b8c,
     0x9d, 0x0e, 0x1f, 0x2a, 0x3b, 0x4c, 0x5d, 0x6e);
+
+// Stable device-class identity used by IoCreateDeviceSecure.
+DEFINE_GUID(AEGIS_DEVICE_CLASS_KEY,
+    0xc3d4e5f6, 0x0718, 0x4c9d,
+    0xae, 0x1f, 0x2a, 0x3b, 0x4c, 0x5d, 0x6e, 0x7f);
 
 // ====== Global State ======
 PDEVICE_OBJECT g_DeviceObject = NULL;
@@ -71,10 +77,24 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 
     DbgPrint("[AEGIS WFP] DriverEntry — Initializing WFP Callout Driver\n");
 
-    // 1. Create device object for IOCTL communication
+    // 1. Create a secured device object for IOCTL communication.
+    // System and built-in Administrators may open the device; ordinary users
+    // and unauthenticated callers are denied at the kernel object boundary.
+    // This ACL is a baseline boundary, not a replacement for PEP policy and
+    // receipt validation inside the IOCTL handlers.
     RtlInitUnicodeString(&g_DeviceName, AEGIS_WFP_DEVICE_NAME);
-    status = IoCreateDevice(DriverObject, 0, &g_DeviceName,
-        FILE_DEVICE_NETWORK, FILE_DEVICE_SECURE_OPEN, FALSE, &g_DeviceObject);
+    UNICODE_STRING device_sddl;
+    RtlInitUnicodeString(&device_sddl, L"D:P(A;;GA;;;SY)(A;;GA;;;BA)");
+    status = IoCreateDeviceSecure(
+        DriverObject,
+        0,
+        &g_DeviceName,
+        FILE_DEVICE_NETWORK,
+        FILE_DEVICE_SECURE_OPEN,
+        FALSE,
+        &device_sddl,
+        &AEGIS_DEVICE_CLASS_KEY,
+        &g_DeviceObject);
     if (!NT_SUCCESS(status)) {
         DbgPrint("[AEGIS WFP] IoCreateDevice failed: 0x%08X\n", status);
         return status;

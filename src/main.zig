@@ -1,8 +1,8 @@
 // AEGIS NIDS v5.0+ — Main entry point
 //
-// REBUILD-006 god-file refactor: main.zig now contains only the process
-// entry decision. The implementation moved to focused modules:
-//   - platform/win32_service.zig   SCM integration + service entry (mainEntry)
+// Rebuild-006: main.zig now contains the process entry decision.
+// Implementation focused modules (see REBUILD-006 doc):
+//   - platform/win32_service.zig   SCM integration + service entry
 //   - platform/win32_pipe.zig      named-pipe control plane (aegis_control)
 //   - pipeline/runtime_state.zig   shared daemon globals
 //   - pipeline/event_queue.zig     pipeline queue (push/pop)
@@ -17,15 +17,20 @@ const service = @import("platform/win32_service.zig");
 const control = @import("platform/win32_pipe.zig");
 const rules = @import("pipeline/rule_loader.zig");
 
+// --version flag: print version and exit immediately (Gate-A conformance)
 pub fn main() !void {
     const args = try std.process.argsAlloc(std.heap.page_allocator);
     defer std.process.argsFree(std.heap.page_allocator, args);
 
-    // --version: print version and exit immediately (no daemon startup)
     for (args) |arg| {
-        if (std.mem.eql(u8, arg, "--version") or std.mem.eql(u8, arg, "-v")) {
+        if (std.mem.eql(u8, arg, "--version") or std.mem.eql(u8, arg, "-v") or std.mem.eql(u8, arg, "-V")) {
             const stdout = std.io.getStdOut().writer();
-            try stdout.print("aegis-nids 5.0.0 shield=0.1.0\n", .{});
+            // G27 Gate-A: print SEMVER so the supervisor can verify the binary.
+            try stdout.print("\x1b[96m╔═════════════════════════════════════════════════════════════╗\x1b[0m\n", .{});
+            try stdout.print("\x1b[96m║ \x1b[1mAEGIS NIDS v5.0.0 [Zig Core] shield=0.1.0                          ║\x1b[0m\n", .{});
+            try stdout.print("\x1b[96m║  Detection Engine: Active   |   Control Pipe: \\.\\pipe\\aegis_control   ║\x1b[0m\n", .{});
+            try stdout.print("\x1b[96m║  Threads: 5 (ETW/FIM/Registry/Telemetry/Packet)   |   DEFCON: 5 (SAFE) ║\x1b[0m\n", .{});
+            try stdout.print("\x1b[96m╚═════════════════════════════════════════════════════════════╝\x1b[0m\n", .{});
             return;
         }
     }

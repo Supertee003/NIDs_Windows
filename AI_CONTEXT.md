@@ -4,7 +4,7 @@
 
 
 
-**HEAD:** `daf90885d7def23b899712090cff71835873567f`
+**HEAD:** `7623d1cf08f9e7dc0768d1043f458cb7fa100c35`
 
 **BRANCH:** `main`
 
@@ -339,13 +339,19 @@ Previous phases:
 
 - Truth Stabilization: COMPLETED
 
+- Vol01–11 vertical slices (bdd9dc7, 2026-09-24): IMPLEMENTED, verification
+  E2–E5 — contract parity (C/Go/Python/Zig), 9-step pipeline, federation.status,
+  decoder parity, fail-closed test truth, bridge exports, brain suite, TS path
+  refs, golden 10/10, e2e 38/0, live CLI proof, rule fixtures 22/22.
+  Evidence: EVIDENCE_INDEX.json VOL01–VOL11 entries (49 total).
+
 
 
 ## 11. ACTIVE BLOCKERS
 
 
 
-> HISTORICAL NOTE (TRUTH-REBUILD daf9088): the P0 list below is a 2026-09-12
+> HISTORICAL NOTE (TRUTH-REBUILD c005ccf): the P0 list below is a 2026-09-12
 > snapshot taken as of HEAD `60c76fe`. Entries marked FIXED/CLOSED describe
 > that snapshot, not a fresh current-HEAD audit. Do not treat this list as
 > current blockers without re-verification.

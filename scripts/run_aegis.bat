@@ -748,9 +748,9 @@ echo Health check at: %START_TIME% >> "%LOG_FILE%"
 if %NO_DASHBOARD%==1 goto :no_dashboard
 
 if exist "tools\aegisctl.py" (
-    echo  Launching AEGIS Dashboard via aegisctl...
+    echo  Launching AEGIS Web Dashboard (Flask)...
     echo.
-    start "AEGIS DASHBOARD" cmd /k "chcp 65001 >nul & python tools\aegisctl.py dashboard"
+    start "AEGIS DASHBOARD" cmd /k "chcp 65001 >nul & python -m tools.aegisctl.web_dashboard.app"
 ) else if exist "scripts\aegis_console.py" (
     echo  Launching AEGIS Command Control Center...
     echo.

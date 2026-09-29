@@ -322,22 +322,80 @@ def cmd_federation(args) -> int:
 
 
 def cmd_snapshot(args) -> int:
-    """Emit one JSON snapshot for dashboards and automation."""
-    import json as _json
+    """Emit one authoritative daemon snapshot for dashboards and automation."""
     if not CONTROL_API_AVAILABLE:
-        print(_json.dumps({"available": False, "reason": "control_api_unavailable"}, sort_keys=True))
+        print(json.dumps({
+            "available": False,
+            "reason": "control_api_unavailable",
+        }, sort_keys=True))
         return 4
+
     try:
         health = get_health_payload()
         metrics = query_control("metrics.snapshot")
         forensic = query_control("forensics.verify")
+        enforcement = query_control("enforcement.status")
     except Exception as exc:
-        print(_json.dumps({"available": False, "reason": "control_query_exception", "error": str(exc)}, sort_keys=True))
+        print(json.dumps({
+            "available": False,
+            "reason": "control_query_exception",
+            "error": str(exc),
+        }, sort_keys=True))
         return 3
-    if metrics is None or forensic is None:
-        print(_json.dumps({"available": False, "reason": "control_query_failed", "health": health}, sort_keys=True))
+
+    if any(value is None for value in (
+        health, metrics, forensic, enforcement
+    )):
+        print(json.dumps({
+            "available": False,
+            "reason": "control_query_failed",
+            "health": health,
+            "metrics": metrics,
+            "forensic": forensic,
+            "enforcement": enforcement,
+        }, sort_keys=True))
         return 3
-    print(_json.dumps({"available": True, "health": health, "metrics": metrics, "forensic": forensic}, sort_keys=True))
+
+    enforcement = dict(enforcement)
+    enforcement.setdefault("host_effect_confirmed", False)
+
+    try:
+        authority_held = bool(verify_authority_invariant())
+    except Exception:
+        authority_held = False
+
+    gate = str(
+        enforcement.get("prevention_gate", "closed")
+    ).lower()
+
+    document = {
+        "available": True,
+        "health": health,
+        "metrics": metrics,
+        "forensic": forensic,
+        "enforcement": enforcement,
+        "authority": {
+            "canonical": health.get(
+                "canonical_enforcement_authority",
+                "rust_pep",
+            ),
+            "invariant": "HELD" if authority_held else "VIOLATED",
+        },
+        "presentation": {
+            "mode": (
+                "CONTROLLED_ENFORCEMENT"
+                if gate == "open"
+                else "OBSERVE_ONLY"
+            ),
+            "host_effect": (
+                "CONFIRMED"
+                if enforcement.get("host_effect_confirmed") is True
+                else "NOT_PROVEN"
+            ),
+        },
+    }
+
+    print(json.dumps(document, sort_keys=True))
     return 0
 
 
@@ -581,30 +639,73 @@ def cmd_events(args) -> int:
 
 
 def cmd_forensic(args) -> int:
-    log = _event_log()
-    if not log.exists():
-        print("No log file")
+    """Query forensic evidence through the authenticated control daemon."""
+    if not CONTROL_API_AVAILABLE:
+        print(json.dumps({"available": False, "reason": "control_api_unavailable"}, sort_keys=True), file=sys.stderr)
         return 1
-    records = _read_events()
     op = getattr(args, "forensic_command", "list")
-    if op == "show":
-        for item in records:
-            if str(item.get("id", item.get("event_id", ""))) == str(args.id):
-                print(json.dumps(item, indent=2))
-                return 0
-        print(f"Forensic record {args.id} not found")
-        return 1
-    if op == "search":
-        found = [r for r in records if str(r.get(args.field, "")) == str(args.value)]
-        for item in found:
-            print(json.dumps(item))
-        return 0 if found else 1
-    if op == "export":
-        Path(args.output).write_text(json.dumps(records, indent=2) + "\n", encoding="utf-8")
-        print(f"Exported {len(records)} records")
-        return 0
-    return 0
+    if op == "verify":
+        response = query_control("forensics.verify")
+    elif op == "show":
+        response = query_control("forensics.show", payload={"id": int(args.id)})
+    elif op == "search":
+        field = str(args.field)
+        value = str(args.value)
+        if field == "source":
+            payload = {"source": int(value)}
+        elif field == "payload_prefix":
+            payload = {"payload_prefix": value}
+        else:
+            print(json.dumps({"available": False, "command": "forensics.search", "reason": "control_protocol_supports_source_or_payload_prefix_filters_only", "field": field}, sort_keys=True), file=sys.stderr)
+            return 2
+        response = query_control("forensics.list", payload=payload)
+    elif op == "export":
+        verification = query_control("forensics.verify")
+        if not verification or verification.get("verified") is not True:
+            print(json.dumps({
+                "available": False,
+                "command": "forensics.verify",
+                "reason": "forensic_integrity_verification_failed",
+            }, sort_keys=True), file=sys.stderr)
+            return 1
 
+        response = query_control("forensics.list")
+        if response is None:
+            print(json.dumps({
+                "available": False,
+                "command": "forensics.list",
+                "reason": "control_daemon_query_failed",
+            }, sort_keys=True), file=sys.stderr)
+            return 1
+
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+
+        export_document = {
+            "export_kind": "forensic_ring_summary",
+            "integrity": verification,
+            "data": response,
+        }
+
+        output.write_text(
+            json.dumps(export_document, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        print(json.dumps({
+            "exported": True,
+            "output": str(output),
+            "verified": True,
+            "export_kind": "forensic_ring_summary",
+        }, sort_keys=True))
+        return 0
+    else:
+        response = query_control("forensics.list")
+    if response is None:
+        print(json.dumps({"available": False, "command": f"forensics.{op}", "reason": "control_daemon_query_failed_or_not_implemented"}, sort_keys=True), file=sys.stderr)
+        return 1
+    print(json.dumps(response, indent=2, sort_keys=True))
+    return 0
 
 def _state_file(name: str) -> Path:
     path = TOOLS_DIR.parent / "logs" / "runtime" / name
@@ -697,18 +798,44 @@ def cmd_block(args) -> int:
     if getattr(args, "block_command", "list") != "list":
         return _unavailable("block", "pep_wfp_postcondition_not_connected")
     path = TOOLS_DIR.parent / "logs" / "blocked_ips.json"
-    for e in _ip_entries(path, "blocked_ips"):
+    entries = _ip_entries(path, "blocked_ips")
+    if not entries:
+        print("No IPs in the block list")
+        return 0
+    for e in entries:
         print(f"{e['ip']}  {e.get('reason','')}")
     return 0
 
 
 def cmd_enforce(args) -> int:
-    # NEG-002: status-only. enable/disable/push mutate enforcement posture
-    # and require a daemon-owned, receipt-verified transaction.
+    """Show authoritative daemon enforcement status."""
     if getattr(args, "enforce_command", "status") != "status":
-        return _unavailable("enforce", "pep_runtime_postcondition_not_connected")
-    path = _state_file("pep_state.json"); state = _load_state(path, {"enabled": True, "mode": "FAIL_CLOSED"})
-    print(f"PEP\nEnabled: {state.get('enabled', True)}\nMode: {state.get('mode','FAIL_CLOSED')}"); return 0
+        return _unavailable(
+            "enforce",
+            "pep_runtime_postcondition_not_connected",
+        )
+
+    if not CONTROL_API_AVAILABLE:
+        print(json.dumps({
+            "available": False,
+            "command": "enforcement.status",
+            "reason": "control_api_unavailable",
+        }, sort_keys=True))
+        return 4
+
+    response = query_control("enforcement.status")
+    if response is None:
+        print(json.dumps({
+            "available": False,
+            "command": "enforcement.status",
+            "reason": "control_daemon_query_failed",
+        }, sort_keys=True))
+        return 3
+
+    response = dict(response)
+    response.setdefault("host_effect_confirmed", False)
+    print(json.dumps(response, sort_keys=True))
+    return 0
 
 
 def cmd_quarantine(args) -> int:
@@ -716,7 +843,11 @@ def cmd_quarantine(args) -> int:
     if getattr(args, "quarantine_command", "list") != "list":
         return _unavailable("quarantine", "pep_wfp_postcondition_not_connected")
     qpath = TOOLS_DIR.parent / "logs" / "quarantine.json"
-    for e in _ip_entries(qpath, "quarantined_ips"):
+    entries = _ip_entries(qpath, "quarantined_ips")
+    if not entries:
+        print("No IPs in quarantine")
+        return 0
+    for e in entries:
         print(f"{e['ip']}  {e.get('reason','')}")
     return 0
 
@@ -735,13 +866,82 @@ def cmd_dashboard(args) -> int:
 
     Delegates all business logic to control_api.
     CLI is thin: just call API and display structured result.
+    Shows subsystem status, DEFCON level, health payload, and readiness gate.
     """
     if CONTROL_API_AVAILABLE:
         statuses = get_all_status()
         defcon = get_defcon()
-        print(f"\n  Dashboard: {len([s for s in statuses if s[1]])} subsystems running")
+        health = get_health_payload()
+        workers = health.get("workers", {})
+
+        # Color constants for dashboard formatting
+        C_CYAN = "\x1b[96m"
+        C_BOLD = "\x1b[1m"
+        C_RESET = "\x1b[0m"
+        C_GREEN = "\x1b[92m"
+        C_RED = "\x1b[91m"
+        C_YELLOW = "\x1b[93m"
+        C_DIM = "\x1b[2m"
+        C_ORANGE = "\x1b[38;5;208m"
+        C_MAGENTA = "\x1b[95m"
+
+        # Use ASCII box drawing for Windows compatibility
+        border = "=" * 50
+        header = "+" + border + "+"
+        footer = "+" + border + "+"
+
+        print(f"\n{C_CYAN}{C_BOLD}   AEGIS DASHBOARD v6.1 - DEFCON ENFORCER{C_RESET}")
+        print(f"{C_DIM}   Guardian + Voice - Alert + Mitigate + Enforce{C_RESET}")
+        print(f"  {header}")
+
+        # DEFCON Display - FOCAL POINT
         if defcon:
-            print(f"  DEFCON: {defcon[0]} ({defcon[1]})")
+            defcon_level = defcon[0]
+            defcon_label = defcon[1]
+            # Color mapping for DEFCON
+            defcon_colors = {
+                1: C_MAGENTA,  # MAXIMUM
+                2: C_RED,    # SEVERE
+                3: C_ORANGE, # HIGH
+                4: C_YELLOW, # ELEVATED
+                5: C_GREEN,  # SAFE
+            }
+            dc_color = defcon_colors.get(defcon_level, C_DIM)
+            print(f"  DEFCON: {dc_color}{C_BOLD}DEFCON {defcon_level}: {defcon_label}{C_RESET}")
+        else:
+            print(f"  DEFCON: {C_YELLOW}SAFE{C_RESET}")
+
+        print(f"  State: {health.get('state', 'UNKNOWN')}")
+        print(f"  Degraded: {health.get('degraded', True)}")
+        running = sum(1 for _, r, _ in statuses if r)
+        total = len(statuses)
+        print(f"  {running}/{total} subsystems running")
+        print(f"  Worker readiness:")
+
+        for name, ready in workers.items():
+            if name == "failure_reason":
+                print(f"    [REASON] {ready}")
+            elif name == "failure_mask":
+                print(f"    [MASK] {ready}")
+            elif name == "failure_reasons":
+                reasons = ready if ready else []
+                print(f"    [REASONS] {', '.join(reasons) if reasons else 'none'}")
+            elif name == "failed":
+                print(f"    [FAILED] {ready}")
+            elif ready:
+                print(f"    [READY] {name}")
+            else:
+                print(f"    [NOT READY] {name}")
+
+        # readiness gate
+        required = ["pipeline_ready", "sensor_ready", "nose_ready", "etw_ready", "fim_ready", "registry_ready"]
+        missing = [n for n in required if workers.get(n) is not True]
+        worker_gate = not missing and not workers.get("failed", False)
+        overall_gate = health.get("state") == "RUNNING" and not health.get("degraded", True) and worker_gate
+        gate_text = "CLOSED - Ready for operations" if overall_gate else "OPEN - Issues must be resolved"
+        gate_color = C_GREEN if overall_gate else C_RED
+        print(f"  READY GATE: {gate_color}{C_BOLD}{gate_text}{C_RESET}")
+        print(f"  {footer}")
     else:
         print("\nControl API not available")
     return 0
@@ -880,8 +1080,9 @@ def main() -> int:
     events.set_defaults(events_command="count", func=cmd_events)
     forensic = sub.add_parser("forensic", help="Inspect forensic records")
     forensic_sub = forensic.add_subparsers(dest="forensic_command")
-    fshow = forensic_sub.add_parser("show"); fshow.add_argument("--id", required=True)
+    fshow = forensic_sub.add_parser("show"); fshow.add_argument("--id", required=True, type=int)
     fsearch = forensic_sub.add_parser("search"); fsearch.add_argument("--field", required=True); fsearch.add_argument("--value", required=True)
+    forensic_sub.add_parser("verify", help="Verify forensic hash chain")
     fexport = forensic_sub.add_parser("export"); fexport.add_argument("--output", required=True)
     forensic.set_defaults(forensic_command="list", func=cmd_forensic)
     policy = sub.add_parser("policy", help="Policy lifecycle")

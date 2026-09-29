@@ -489,11 +489,80 @@ const handlers = struct {
         return "{\"records\":0,\"match\":null}";
     }
 
-    fn forensicsShow(_: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
-        ctx.failure_code = "NOT_IMPLEMENTED";
-        ctx.failure_state = "UNAVAILABLE";
-        ctx.failure_message = "forensic record lookup is not implemented";
-        return null;
+    fn forensicsShow(
+        a: std.mem.Allocator,
+        payload: std.json.Value,
+        ctx: *HandlerContext,
+    ) ?[]const u8 {
+        const requested_seq =
+            payloadU64(payload, "record_seq") orelse
+            payloadU64(payload, "id") orelse {
+                ctx.failure_code = "INVALID_INPUT";
+                ctx.failure_state = "REJECTED";
+                ctx.failure_message = "record_seq is required";
+                return null;
+            };
+
+        const ring = state_mod.g_forensic_ring orelse {
+            ctx.failure_code = "UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "forensic ring is unavailable";
+            return null;
+        };
+
+        const slots = ring.capacity() / forensic_pipeline.RECORD_BYTES;
+        const count = ring.recordCount();
+        const oldest: u64 = if (count > slots) count - slots else 0;
+
+        if (requested_seq < oldest or requested_seq >= count) {
+            ctx.failure_code = "RECORD_NOT_FOUND";
+            ctx.failure_state = "NOT_FOUND";
+            ctx.failure_message = "record_seq is outside the active forensic ring";
+            return null;
+        }
+
+        const record = ring.readRecord(requested_seq, a) orelse {
+            ctx.failure_code = "RECORD_NOT_FOUND";
+            ctx.failure_state = "NOT_FOUND";
+            ctx.failure_message = "forensic record could not be read";
+            return null;
+        };
+        defer a.free(record);
+
+        if (record.len < forensic_pipeline.HEADER_BYTES or
+            !forensic_pipeline.ForensicRing.verifyRecord(record)) {
+            ctx.failure_code = "RECORD_INTEGRITY_FAILED";
+            ctx.failure_state = "INTEGRITY_ERROR";
+            ctx.failure_message = "forensic record verification failed";
+            return null;
+        }
+
+        const header = std.mem.bytesAsValue(
+            forensic_pipeline.RecordHeader,
+            record[0..forensic_pipeline.HEADER_BYTES],
+        );
+
+        const payload_start = forensic_pipeline.HEADER_BYTES;
+        const payload_end = payload_start + @as(usize, header.payload_len);
+
+        if (payload_end > record.len) {
+            ctx.failure_code = "RECORD_INTEGRITY_FAILED";
+            ctx.failure_state = "INTEGRITY_ERROR";
+            ctx.failure_message = "forensic payload length exceeds record boundary";
+            return null;
+        }
+
+        return std.fmt.allocPrint(
+            a,
+            "{{\"record_seq\":{},\"event_id\":{},\"rule_id\":{},\"source\":{},\"payload_len\":{},\"verified\":true}}",
+            .{
+                header.record_seq,
+                header.ev_id,
+                header.rule_id,
+                header.reserved[6],
+                header.payload_len,
+            },
+        ) catch null;
     }
 
     fn forensicsVerify(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
@@ -571,7 +640,8 @@ const handlers = struct {
             return null;
         };
         if (filter_id == 0 or expected_ip > std.math.maxInt(u32) or
-            expected_port > std.math.maxInt(u16) or expected_protocol > std.math.maxInt(u8)) {
+            expected_port > std.math.maxInt(u16) or expected_protocol > std.math.maxInt(u8))
+        {
             ctx.failure_code = "INVALID_INPUT";
             ctx.failure_state = "REJECTED";
             ctx.failure_message = "postcondition fields exceed ABI bounds";
@@ -586,15 +656,14 @@ const handlers = struct {
         };
         if (state.remoteIpv4() != @as(u32, @intCast(expected_ip)) or
             state.remotePort() != @as(u16, @intCast(expected_port)) or
-            state.protocol() != @as(u8, @intCast(expected_protocol))) {
+            state.protocol() != @as(u8, @intCast(expected_protocol)))
+        {
             ctx.failure_code = "POSTCONDITION_FAILED";
             ctx.failure_state = "DEGRADED";
             ctx.failure_message = "receipt filter does not match the requested exact flow";
             return null;
         }
-        return std.fmt.allocPrint(a,
-            "{{\"verified\":true,\"filter_id\":{},\"present\":true,\"dst_ip\":{},\"dst_port\":{},\"protocol\":{},\"postcondition\":\"MATCH\"}}",
-            .{ filter_id, expected_ip, expected_port, expected_protocol }) catch null;
+        return std.fmt.allocPrint(a, "{{\"verified\":true,\"filter_id\":{},\"present\":true,\"dst_ip\":{},\"dst_port\":{},\"protocol\":{},\"postcondition\":\"MATCH\"}}", .{ filter_id, expected_ip, expected_port, expected_protocol }) catch null;
     }
 
     fn payloadU64(payload: std.json.Value, key: []const u8) ?u64 {
@@ -688,7 +757,8 @@ const handlers = struct {
             },
         };
         if (queried.providerStatus() != 0 or queried.remoteIpv4() != @as(u32, @intCast(dst_ip)) or
-            queried.remotePort() != @as(u16, @intCast(dst_port)) or queried.protocol() != @as(u8, @intCast(protocol_number))) {
+            queried.remotePort() != @as(u16, @intCast(dst_port)) or queried.protocol() != @as(u8, @intCast(protocol_number)))
+        {
             _ = pep.unblockFilter(receipt.filter_id, ctx.caller_pid, 1, ctx.request_id);
             ctx.failure_code = "POSTCONDITION_FAILED";
             ctx.failure_state = "DEGRADED";

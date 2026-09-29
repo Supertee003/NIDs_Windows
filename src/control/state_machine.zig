@@ -319,12 +319,13 @@ pub const RuntimeState = struct {
 
         var arr = std.ArrayList(u8).init(a);
         var writer = arr.writer();
-        // Hybrid runtime semantics: core liveness is the control/pipeline
-        // spine, while ETW/FIM/registry/WFP adapters are reported separately
-        // through degraded + worker failure fields. An optional data-plane
-        // adapter must not make a healthy control spine appear STOPPED.
+        // Health state must agree with the degraded flag. A live control or
+        // pipeline spine is useful for diagnostics, but it is not a fully
+        // operational NIDS when a required bridge/WFP dependency is absent.
+        // Keep the process serving, while reporting DEGRADED consistently in
+        // both `state` and `degraded`.
         const core_pipeline_failed = (workers.failure_mask & 0x01) != 0;
-        const operational_state = if (workers.pipeline and !core_pipeline_failed) "RUNNING" else "DEGRADED";
+        const operational_state = if (workers.pipeline and !core_pipeline_failed and bridge_ready) "RUNNING" else "DEGRADED";
         try writer.print(
             \\{{"component":"core","state":"{s}","runtime_state":"{s}","pid":{} ,"uptime_ms":{},"last_event_ms":{},"degraded":{},"capabilities":{{"wfp":{},"cpp_bridge":{},"udp_brain":{} }},"data_plane":{{"nose_connected":{},"nose_frames_read":{},"nose_frames_rejected":{},"nose_frames_submitted":{},"nose_frames_dropped":{},"nose_pipe_errors":{},"nose_last_event_id":{},"nose_duplicate_event_ids":{},"nose_non_monotonic_event_ids":{}}},"deps":[
         , .{ operational_state, ss.toString(), pid, uptime, runtime_state.g_last_event_ms, !all_healthy or !bridge_ready, wfp_ready, cpp_ready, udp_ready, runtime_state.g_nose_connected, runtime_state.g_nose_frames_read, runtime_state.g_nose_frames_rejected, runtime_state.g_nose_frames_submitted, runtime_state.g_nose_frames_dropped, runtime_state.g_nose_pipe_errors, runtime_state.g_nose_last_event_id, runtime_state.g_nose_duplicate_event_ids, runtime_state.g_nose_non_monotonic_event_ids });

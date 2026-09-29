@@ -4,6 +4,51 @@ AEGIS is a production-oriented Windows-native network intrusion detection and re
 
 > **Release status:** The repository is maintained with production-grade contracts, authority boundaries, runbooks, and acceptance gates. The current release is approved for development, qualification, and observe-only operation. Production IPS blocking remains **not accepted** until the isolated Windows host-effect proof, receipt validation, cleanup, signing, rollback, and recovery gates are complete.
 
+### Unified Command Control Center
+
+AEGIS provides one unified operator control surface backed by the
+authenticated Zig control daemon. The operator surfaces do not create a
+second runtime authority.
+
+Use the following commands from the repository root:
+
+```powershell
+python tools\aegisctl.py snapshot
+python scripts\aegis_console_pro.py --role operator
+python scripts\Dashboard.py
+python scripts\aegis_console.py --mode dashboard
+
+```text
+The current verified operator state is:
+
+| Area | Status |
+|---|---|
+| Runtime | `RUNNING` |
+| Runtime readiness | `READY` |
+| Canonical authority | `rust_pep` |
+| Authority invariant | `HELD` |
+| Prevention gate | `CLOSED` |
+| Enforcement mode | `DETECTION-ONLY` |
+| Provider ready | `false` |
+| Host effect capable | `false` |
+| Host effect | `NOT_PROVEN` |
+| Forensic integrity | `OK` |
+| Forensic verification | `true` |
+
+All operator surfaces consume the daemon-owned snapshot. Process scans are
+diagnostic-only and are not promoted to runtime truth when the control daemon
+is available. Local logs may provide forensic detail but do not override the
+authoritative control response.
+
+A policy action such as `BLOCK` represents an intended policy decision. It
+must not be displayed as a confirmed host block unless a valid,
+receipt-backed postcondition contains `status=ENFORCED` and
+`host_effect_confirmed=true`.
+
+The current release is an observe-only, fail-closed NIDS release candidate.
+Production IPS blocking remains **not accepted**.
+```
+
 This README is the official entry point for developers, reviewers, lab operators, and release operators. It describes the production reference architecture, the current verified path, the required deployment controls, and the acceptance evidence needed before an IPS release can be promoted. It distinguishes source implementation from active runtime capability and from production acceptance.
 
 ## What AEGIS does

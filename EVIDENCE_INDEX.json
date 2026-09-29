@@ -1,5 +1,5 @@
 {
-  "head_sha": "c005ccf5443b3646d1b8613493e1beffb1e1ce8c",
+  "head_sha": "7623d1cf08f9e7dc0768d1043f458cb7fa100c35",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -1182,6 +1182,24 @@
       "tests": [
         "pytest tests/security/test_cli_mutation_gate.py 5/5",
         "pytest tests/security/ 41/41"
+      ],
+      "finding": "implemented + verified",
+      "result": "PASS"
+    },
+    {
+      "id": "KIT-001",
+      "title": "22-rule VM test kit runner",
+      "level": "E2",
+      "component": "testing",
+      "description": "scripts/run_22rules_kit.py runs generate/validate/matching/adapters/3 canaries/readiness in order and collects a timestamped handoff bundle (manifest, Rules.json, fixtures, step outputs, README with VM + Kali + controlled-proof instructions). 8/8 steps OK, gitignored output.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "scripts/run_22rules_kit.py",
+        ".gitignore"
+      ],
+      "tests": [
+        "kit run 8/8 OK",
+        "run_manifest.json exit 0"
       ],
       "finding": "implemented + verified",
       "result": "PASS"

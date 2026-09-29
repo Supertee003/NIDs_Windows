@@ -96,3 +96,14 @@ backups/
 
 # --- Vendored cache (keep source under lib/) ---
 node_modules/
+# --- VM test kit output (generated handoff bundles) ---
+vm_test_kit_*/
+
+# --- Phase 8 Lab Evidence (runtime artifacts, not part of core repo) ---
+evidence/phase8-lab-*/
+# --- Kali attack simulation scripts ---
+scripts/kali_attacks/
+scripts/gen_kali_22.py
+scripts/kali_attack_nids.py
+# --- Admin evidence (runtime state) ---
+admin-evidence/phase3-lifecycle-recovery-latest.txt

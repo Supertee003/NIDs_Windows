@@ -1,24 +1,24 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-09-24T12:09:38.192636+00:00",
+  "generated_at": "2026-09-24T17:20:03.265637+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1199,
+  "total_files": 1210,
   "by_role": {
-    "documentation": 290,
-    "build-config": 135,
-    "other": 12,
-    "source": 332,
+    "documentation": 292,
+    "build-config": 141,
+    "other": 15,
+    "source": 310,
     "lockfile": 6,
-    "rust-build": 5,
-    "test-artifact": 105,
+    "rust-build": 4,
+    "test-artifact": 106,
     "config-data": 31,
     "architecture-decision": 6,
     "step-document": 2,
     "go-source": 4,
     "makefile": 1,
-    "production-source": 268,
-    "quarantined": 1,
-    "legacy-source": 1
+    "production-source": 266,
+    "legacy-source": 25,
+    "quarantined": 1
   },
   "source_of_truth": [
     "AGENTS.md",
@@ -33,7 +33,6 @@
     "mouth/Cargo.toml",
     "reference_map.json",
     "runtime_manifest.json",
-    "rust-src/shield/Cargo.toml",
     "shield/Cargo.toml",
     "src/capture/flow_engine.zig",
     "src/capture/flow_table.zig",
@@ -61,7 +60,6 @@
     "src/control/audit.zig",
     "src/control/authorization.zig",
     "src/control/handler_registry.zig",
-    "src/control/health/runtime_health.zig",
     "src/control/protocol.zig",
     "src/control/state_machine.zig",
     "src/core/authority_review.zig",
@@ -229,7 +227,6 @@
     "src/tests/integration/flow_integration.zig",
     "src/tests/integration/forensics_integration.zig",
     "src/tests/integration/golden_path_e3.zig",
-    "src/tests/integration/golden_path_ffi.zig",
     "src/tests/integration/hids_integration.zig",
     "src/tests/integration/ips_canary_integration.zig",
     "src/tests/integration/ips_simulation_integration.zig",
@@ -1009,6 +1006,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "brain/canonical_event.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
     "brain/core_routing.py": {
       "class": "canonical-source",
       "role": "source"
@@ -1070,6 +1071,10 @@
       "role": "source"
     },
     "brain/test_acceptance_gates.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "brain/test_canonical_event.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
@@ -2089,6 +2094,42 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "evidence/phase8-lab-20260924-121122/artifact-digests.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "evidence/phase8-lab-20260924-121122/command.txt": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "evidence/phase8-lab-20260924-121122/decision-trace.ndjson": {
+      "class": "unclassified",
+      "role": "other"
+    },
+    "evidence/phase8-lab-20260924-121122/environment.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "evidence/phase8-lab-20260924-121122/forensic-export.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "evidence/phase8-lab-20260924-121122/health-after.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "evidence/phase8-lab-20260924-121122/health-before.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "evidence/phase8-lab-20260924-121122/result.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "evidence/phase8-lab-20260924-121122/test-output.txt": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "EVIDENCE_INDEX.json": {
       "class": "canonical-build",
       "role": "build-config"
@@ -3001,22 +3042,6 @@
       "class": "canonical-source",
       "role": "source"
     },
-    "rust-src/shield/Cargo.toml": {
-      "class": "canonical-build",
-      "role": "rust-build"
-    },
-    "rust-src/shield/src/lib.rs": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "rust-src/shield/src/main.rs": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "rust-src/shield/src/pep.rs": {
-      "class": "canonical-source",
-      "role": "source"
-    },
     "sbom.spdx.json": {
       "class": "canonical-build",
       "role": "build-config"
@@ -3162,14 +3187,6 @@
       "role": "source"
     },
     "scripts/fim_rule_canary_scan.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "scripts/fix_console.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "scripts/fix_console2.py": {
       "class": "canonical-source",
       "role": "source"
     },
@@ -3364,10 +3381,6 @@
     "scripts/tests/test_e2e.py": {
       "class": "canonical-test",
       "role": "test-artifact"
-    },
-    "scripts/update_console.py": {
-      "class": "canonical-source",
-      "role": "source"
     },
     "scripts/validate_detection_fixture_manifest.py": {
       "class": "canonical-source",
@@ -3597,9 +3610,9 @@
       "class": "canonical-source",
       "role": "production-source"
     },
-    "src/control/health/runtime_health.zig": {
-      "class": "canonical-source",
-      "role": "production-source"
+    "src/control/health/runtime_health.zig.scaffold": {
+      "class": "unclassified",
+      "role": "other"
     },
     "src/control/protocol.zig": {
       "class": "canonical-source",
@@ -4305,9 +4318,9 @@
       "class": "canonical-source",
       "role": "production-source"
     },
-    "src/tests/integration/golden_path_ffi.zig": {
-      "class": "canonical-source",
-      "role": "production-source"
+    "src/tests/integration/golden_path_ffi.zig.scaffold": {
+      "class": "unclassified",
+      "role": "other"
     },
     "src/tests/integration/hids_integration.zig": {
       "class": "canonical-source",
@@ -4873,70 +4886,6 @@
       "class": "canonical-source",
       "role": "source"
     },
-    "tools/aegisctl/commands/__init__.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "tools/aegisctl/commands/alerts.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "tools/aegisctl/commands/api.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "tools/aegisctl/commands/backup.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "tools/aegisctl/commands/canary.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "tools/aegisctl/commands/console.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "tools/aegisctl/commands/dashboard.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "tools/aegisctl/commands/events.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "tools/aegisctl/commands/forensic.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "tools/aegisctl/commands/intelligence.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "tools/aegisctl/commands/logs.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "tools/aegisctl/commands/network.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "tools/aegisctl/commands/policy.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "tools/aegisctl/commands/rules.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "tools/aegisctl/commands/simulate.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "tools/aegisctl/commands/status.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
     "tools/aegisctl/config.py": {
       "class": "canonical-source",
       "role": "source"
@@ -5001,11 +4950,107 @@
       "class": "canonical-source",
       "role": "source"
     },
+    "tools/legacy/aegisctl_commands_quarantined/__init__.py": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/aegisctl_commands_quarantined/alerts.py": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/aegisctl_commands_quarantined/api.py": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/aegisctl_commands_quarantined/backup.py": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/aegisctl_commands_quarantined/canary.py": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/aegisctl_commands_quarantined/console.py": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/aegisctl_commands_quarantined/dashboard.py": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/aegisctl_commands_quarantined/events.py": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/aegisctl_commands_quarantined/forensic.py": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/aegisctl_commands_quarantined/intelligence.py": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/aegisctl_commands_quarantined/logs.py": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/aegisctl_commands_quarantined/network.py": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/aegisctl_commands_quarantined/policy.py": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/aegisctl_commands_quarantined/rules.py": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/aegisctl_commands_quarantined/simulate.py": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/aegisctl_commands_quarantined/status.py": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
     "tools/legacy/aegisctl_lifecycle_quarantined.py": {
       "class": "legacy",
       "role": "quarantined"
     },
     "tools/legacy/backup_recovery.py": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/fix_console.py": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/fix_console2.py": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/rust_shield_orphan_quarantined/Cargo.toml": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/rust_shield_orphan_quarantined/src/lib.rs": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/rust_shield_orphan_quarantined/src/main.rs": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/rust_shield_orphan_quarantined/src/pep.rs": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/update_auth.py": {
+      "class": "legacy",
+      "role": "legacy-source"
+    },
+    "tools/legacy/update_console.py": {
       "class": "legacy",
       "role": "legacy-source"
     },
@@ -5092,10 +5137,6 @@
     "ts_policy/tsconfig.json": {
       "class": "canonical-build",
       "role": "build-config"
-    },
-    "update_auth.py": {
-      "class": "canonical-source",
-      "role": "source"
     },
     "zig_build.err": {
       "class": "unclassified",

@@ -293,13 +293,14 @@ def show_header():
         running, total = ready, worker_total
         statuses = []
     else:
+        # Process scan is diagnostic-only and must not become runtime truth.
         status_text = f"{C.DIM}CONTROL UNAVAILABLE{C.RST}"
-        statuses = get_all_status()
-        running = sum(1 for _, _, r, _ in statuses if r)
-        total = len(statuses)
+        statuses = []
+        running = 0
+        total = 0
 
-    mouth_running = any(name == "MOUTH" and r for name, _, r, _ in statuses)
-    mouth_str = f"{C.BGRN}ON{C.RST}" if mouth_running else f"{C.BRED}OFF{C.RST}"
+    mouth_running = False
+    mouth_str = f"{C.DIM}UNKNOWN{C.RST}"
 
     wd_running = _is_watchdog_running()
     wd_str = f"{C.BGRN}ON{C.RST}" if wd_running else f"{C.DIM}OFF{C.RST}"
@@ -308,7 +309,8 @@ def show_header():
 
     print(f"{'═' * 64}")
     print(f'  {C.BLD}{C.CYN}AEGIS NIDS — OPERATOR CONSOLE{C.RST}')
-    print(f"  Runtime: {status_text} | Source: {'Control Center' if snapshot else 'fallback process scan'}")
+    source = "Control Center" if snapshot else "CONTROL CENTER UNAVAILABLE"
+    print(f"  Runtime: {status_text} | Source: {source}")
     print(f"  {defcon_str}")
     print(f"  Workers ready: {C.BLD}{running}/{total}{C.RST}  {dots}")
     if snapshot:
@@ -316,7 +318,10 @@ def show_header():
         print(f"  Data plane: read={data_plane.get('nose_frames_read', 0)} submitted={data_plane.get('nose_frames_submitted', 0)} dropped={data_plane.get('nose_frames_dropped', 0)} duplicate={data_plane.get('nose_duplicate_event_ids', 0)}")
         print(f"  Forensics: {snapshot['forensic'].get('integrity', 'unknown')} | records={snapshot['forensic'].get('records', 0)}")
     else:
-        print(f"  Legacy: Mouth {mouth_str} | Watchdog {wd_str} | Active: {running}/{total} {dots}")
+        print(
+            f"  Runtime truth unavailable from daemon | "
+            f"Process scan is diagnostic-only | Watchdog: {wd_str}"
+        )
     print(f"  Time: {C.DIM}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{C.RST}")
     print(f"{'═' * 64}")
 
@@ -1062,66 +1067,193 @@ def _show_health():
 
 
 def _run_realtime_dashboard(interval=None, once=None):
-    """Realtime dashboard with explicit polling control.
-
-    `interval` controls the refresh period. `once` renders one snapshot and
-    returns, which is useful for screenshots, diagnostics, and low-noise use.
-    """
-    interval = max(0.2, float(interval if interval is not None else TUI_REFRESH_INTERVAL))
+    """Render the legacy view from the daemon-owned snapshot only."""
+    interval = max(
+        0.2,
+        float(interval if interval is not None else TUI_REFRESH_INTERVAL),
+    )
     once = TUI_DASHBOARD_ONCE if once is None else once
-    print(f"\n  {C.CYN}[DASHBOARD]{C.RST} interval={interval:.1f}s | {'single snapshot' if once else 'Ctrl+C to exit'}\n")
+
+    print(
+        f"\n  {C.CYN}[DASHBOARD]{C.RST} "
+        f"interval={interval:.1f}s | "
+        f"{'single snapshot' if once else 'Ctrl+C to exit'}\n"
+    )
+
     if PSUTIL_AVAILABLE:
         psutil.cpu_percent(interval=None)
+
     try:
         while True:
-            now = datetime.now().strftime("%H:%M:%S")
-            defcon_level, defcon_label = get_defcon()
-            if defcon_level:
-                dc = DEFCON_COLORS.get(defcon_level, C.RST)
-                defcon_str = f"{dc}DEFCON {defcon_level} {defcon_label}{C.RST}"
-            else:
-                defcon_str = f"{C.DIM}DEFCON N/A{C.RST}"
-
-            statuses = get_all_status()
-            running = sum(1 for _, _, r, _ in statuses if r)
-
-            cpu = psutil.cpu_percent(interval=0) if PSUTIL_AVAILABLE else 0
-            mem = psutil.virtual_memory() if PSUTIL_AVAILABLE else None
-            mem_pct = mem.percent if mem else 0
+            snapshot = get_authoritative_snapshot()
 
             clear_screen()
             print(f"  {'═' * 58}")
-            print(f'  {C.BLD}AEGIS NIDS -- REAL-TIME DASHBOARD{C.RST}   {C.DIM}{now}{C.RST}')
+            print(
+                f"  {C.BLD}AEGIS NIDS -- REAL-TIME DASHBOARD{C.RST}   "
+                f"{C.DIM}{datetime.now().strftime('%H:%M:%S')}{C.RST}"
+            )
             print(f"  {'═' * 58}")
-            print(f"  {defcon_str}")
-            print(f"  Subsystems: {C.BLD}{running}/{len(SUBSYSTEMS)}{C.RST} running\n")
 
-            for name, lang, is_running, pid in statuses:
-                icon = f"{C.BGRN}●{C.RST}" if is_running else f"{C.BRED}○{C.RST}"
-                st = f"{C.BGRN}RUN{C.RST}" if is_running else f"{C.BRED}STOP{C.RST}"
-                print(f"  {icon} {name:<8} [{lang:<6}] {st}  PID:{pid or '-':<6}")
+            if not snapshot:
+                print(f"  {C.BRED}CONTROL CENTER UNAVAILABLE{C.RST}")
+                print("  Runtime truth is unavailable from the daemon.")
+                print("  Process scan fallback is intentionally disabled.")
+                print(f"\n  {C.DIM}Ctrl+C to exit{C.RST}")
+
+                if once:
+                    input()
+                    return
+
+                time.sleep(interval)
+                continue
+
+            health = snapshot.get("health") or {}
+            metrics = snapshot.get("metrics") or {}
+            forensic = snapshot.get("forensic") or {}
+
+            enforcement = query_control("enforcement.status") or {}
+
+            state = str(
+                health.get(
+                    "state",
+                    health.get("runtime_state", "UNKNOWN"),
+                )
+            ).upper()
+            degraded = bool(health.get("degraded", True))
+
+            if state == "RUNNING" and not degraded:
+                defcon_level, defcon_label = 5, "SAFE"
+            elif state == "RUNNING":
+                defcon_level, defcon_label = 3, "HIGH"
+            else:
+                defcon_level, defcon_label = 2, "SEVERE"
+
+            dc = DEFCON_COLORS.get(defcon_level, C.RST)
+            print(
+                f"  {dc}DEFCON {defcon_level} "
+                f"{defcon_label}{C.RST}"
+            )
+            print(
+                f"  Runtime: {C.BGRN if state == 'RUNNING' else C.BRED}"
+                f"{state}{C.RST}"
+                f"  Source: Control Center"
+            )
+            print(
+                f"  Runtime readiness: "
+                f"{'READY' if not degraded else 'DEGRADED'}"
+            )
+            print(
+                f"  Daemon PID: {health.get('pid', '-')}"
+            )
+
+            subsystems = health.get("subsystems") or {}
+            workers = health.get("workers") or {}
+            worker_names = (
+                "pipeline_ready",
+                "sensor_ready",
+                "nose_ready",
+                "etw_ready",
+                "fim_ready",
+                "registry_ready",
+            )
+            ready = sum(
+                workers.get(name) is True
+                for name in worker_names
+            )
+
+            print(
+                f"  Workers ready: {C.BLD}{ready}/{len(worker_names)}"
+                f"{C.RST}"
+            )
+            print()
+
+            print(f"  {C.BLD}SUBSYSTEMS{C.RST}")
+            for name, item in subsystems.items():
+                if not isinstance(item, dict):
+                    continue
+                item_state = str(
+                    item.get("state", "UNKNOWN")
+                ).upper()
+                color = (
+                    C.BGRN
+                    if item_state in {"RUNNING", "READY"}
+                    else C.BYEL
+                )
+                print(
+                    f"  {color}●{C.RST} "
+                    f"{name.upper():<10} "
+                    f"{color}{item_state:<8}{C.RST} "
+                    f"PID:{item.get('pid') or '-'}"
+                )
 
             print()
-            cpu_bar = draw_bar(cpu, 100, 20)
-            cpu_color = C.BRED if cpu > 80 else C.BYEL if cpu > 50 else C.BGRN
-            print(f"  CPU  [{cpu_color}{cpu_bar}{C.RST}] {cpu:.1f}%")
-            if mem:
-                mem_bar = draw_bar(mem_pct, 100, 20)
-                mem_color = C.BRED if mem_pct > 80 else C.BYEL if mem_pct > 50 else C.BGRN
-                print(f"  MEM  [{mem_color}{mem_bar}{C.RST}] {mem_pct:.1f}%")
+            print(f"  {C.BLD}ENFORCEMENT{C.RST}")
+            print(
+                f"  Prevention gate: "
+                f"{str(enforcement.get('prevention_gate', 'closed')).upper()}"
+            )
+            print(
+                f"  Mode: "
+                f"{str(enforcement.get('enforcement_mode', 'unknown')).upper()}"
+            )
+            print(
+                f"  Provider ready: "
+                f"{enforcement.get('provider_ready', False)}"
+            )
+            print(
+                f"  Host effect: "
+                f"{'CONFIRMED' if enforcement.get('host_effect_confirmed') is True else 'NOT_PROVEN'}"
+            )
+
+            print()
+            data_plane = health.get("data_plane") or {}
+            print(f"  {C.BLD}DATA PLANE{C.RST}")
+            print(
+                f"  Frames read={data_plane.get('nose_frames_read', 0)} "
+                f"submitted={data_plane.get('nose_frames_submitted', 0)} "
+                f"dropped={data_plane.get('nose_frames_dropped', 0)}"
+            )
+            print(
+                f"  Nose worker ready="
+                f"{workers.get('nose_ready', False)} "
+                f"connected={data_plane.get('nose_connected', False)}"
+            )
+
+            print()
+            print(f"  {C.BLD}FORENSICS / METRICS{C.RST}")
+            print(
+                f"  Integrity={forensic.get('integrity', 'unknown')} "
+                f"verified={forensic.get('verified', False)} "
+                f"records={forensic.get('records', 0)}"
+            )
+            print(
+                f"  Detections={metrics.get('detections', 0)} "
+                f"events={metrics.get('events_processed', 0)} "
+                f"incidents={metrics.get('incidents_open', 0)}"
+            )
 
             if PSUTIL_AVAILABLE:
-                try:
-                    net = psutil.net_io_counters()
-                    print(f"\n  {C.DIM}NET  ^{net.bytes_sent/1024**2:.1f}MB  v{net.bytes_recv/1024**2:.1f}MB{C.RST}")
-                except Exception:
-                    pass
+                cpu = psutil.cpu_percent(interval=0)
+                mem = psutil.virtual_memory()
+                print()
+                print(
+                    f"  CPU {cpu:.1f}% | "
+                    f"MEM {mem.percent:.1f}%"
+                )
 
-            print(f"\n  {C.DIM}{'Press Enter to exit' if once else 'Ctrl+C to exit'}{C.RST}")
+            print(
+                f"\n  {C.DIM}"
+                f"{'Press Enter to exit' if once else 'Ctrl+C to exit'}"
+                f"{C.RST}"
+            )
+
             if once:
                 input()
                 return
+
             time.sleep(interval)
+
     except KeyboardInterrupt:
         print(f"\n  {C.YEL}Dashboard stopped.{C.RST}")
         time.sleep(0.5)

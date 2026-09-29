@@ -1,6 +1,7 @@
 # AEGIS WFP Driver - Production Build (P4 / Phase S toolchain)
-# Builds drivers/wfp_callout/{aegis_wfp.c, aegis_wfp_callout.c,
-# aegis_wfp_comm.c} into a signed-ready x64 .sys using the Windows
+# Builds the authoritative kernel dispatch from
+# drivers/wfp_callout/{aegis_wfp.c, aegis_wfp_callout.c} into a signed-ready
+# x64 .sys using the Windows
 # Driver Kit (WDK) toolchain, without requiring a .vcxproj.
 #
 # Usage:
@@ -170,14 +171,13 @@ if ($failCount -eq 0) {
 }
 
 # ----------------------------------------------------------------
-# 3. Validate driver source presence (3 source files)
+# 3. Validate driver source presence (authoritative sources only)
 # ----------------------------------------------------------------
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
 $srcDir = Join-Path $repoRoot "drivers\wfp_callout"
 $srcFiles = @(
     "aegis_wfp.c",
-    "aegis_wfp_callout.c",
-    "aegis_wfp_comm.c"
+    "aegis_wfp_callout.c"
 )
 foreach ($f in $srcFiles) {
     $p = Join-Path $srcDir $f
@@ -195,7 +195,7 @@ if ($failCount -gt 0) {
 }
 
 # ----------------------------------------------------------------
-# 4. Compile (cl) all 3 sources + link (link /DRIVER)
+# 4. Compile authoritative sources + link (link /DRIVER)
 # ----------------------------------------------------------------
 $outDir = Join-Path $repoRoot "build\x64\wfp"
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
@@ -241,7 +241,7 @@ Info "Linking aegis_wfp.sys..."
 #   uuid.lib     - BFE layer/callout GUID definitions (kernel variant, soft-add)
 $umLib = Join-Path $kitsRoot "Lib\$wdkVer\um\x64"
 $linkLibs = @("ntoskrnl.lib", "hal.lib", "bufferoverflowfastfailk.lib",
-    "fwpkclnt.lib")
+    "wdmsec.lib", "fwpkclnt.lib")
 if ($fwpmkLibPath) { $linkLibs += $fwpmkLibPath }
 foreach ($l in @("ndis.lib", "uuid.lib")) {
     if (Test-Path (Join-Path $kmLib $l)) { $linkLibs += $l }

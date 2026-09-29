@@ -153,9 +153,11 @@ if "%BUILD_WFP%"=="1" (
     REM The WFP callout is a NDIS/classic WFP driver compiled with WDK
     REM We need to create a vcxproj or use direct compiler invocation
 
-    REM Direct WDK compiler invocation for kernel-mode WFP driver:
-    REM cl /Zi /W4 /kernel /Gs /MDd -c aegis_wfp.c aegis_wfp_callout.c aegis_wfp_comm.c
-    REM link /kernel /out:aegis_wfp.sys aegis_wfp.obj aegis_wfp_callout.obj aegis_wfp_comm.obj
+    REM Direct WDK compiler invocation for kernel-mode WFP driver.
+    REM The authoritative dispatch is in aegis_wfp.c; aegis_wfp_comm.c is a
+    REM legacy duplicate and MUST NOT be compiled into the production driver.
+    REM cl /Zi /W4 /kernel /Gs /MDd -c aegis_wfp.c aegis_wfp_callout.c
+    REM link /kernel /out:aegis_wfp.sys aegis_wfp.obj aegis_wfp_callout.obj
 
     REM For WDK 10/11, use the Visual Studio x64 compiler with WDK headers/libs.
 
@@ -187,7 +189,7 @@ if "%BUILD_WFP%"=="1" (
             /I"!WDK_INCLUDE!\shared" ^
             /I"!WDK_INCLUDE!\km\crt" ^
             /Fo"%BUILD_DIR%\wfp\\" ^
-            /c aegis_wfp.c aegis_wfp_callout.c aegis_wfp_comm.c
+            /c aegis_wfp.c aegis_wfp_callout.c
 
         if !errorlevel! neq 0 (
             echo [ERROR] WFP driver compilation failed
@@ -206,8 +208,7 @@ if "%BUILD_WFP%"=="1" (
             /INTEGRITYCHECK ^
             "%BUILD_DIR%\wfp\aegis_wfp.obj" ^
             "%BUILD_DIR%\wfp\aegis_wfp_callout.obj" ^
-            "%BUILD_DIR%\wfp\aegis_wfp_comm.obj" ^
-            ntoskrnl.lib hal.lib ndis.lib fwpkclnt.lib uuid.lib
+            ntoskrnl.lib hal.lib ndis.lib wdmsec.lib fwpkclnt.lib uuid.lib
 
         if !errorlevel! equ 0 (
             echo [OK] aegis_wfp.sys built successfully

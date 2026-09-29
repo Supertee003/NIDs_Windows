@@ -193,7 +193,12 @@ pub fn runDaemon() !void {
         diag.info("loaded {} rules from {s}", .{ rules_loaded, rules_path });
     }
     if (rules_loaded == 0) {
-        diag.warn("detection engine has 0 rules — signature matching disabled", .{});
+        // A zero-rule runtime is not a valid NIDS configuration. Continuing
+        // would make health appear usable while silently disabling the primary
+        // detection path. Fail closed so a bad working directory, missing
+        // config, or malformed Rules.json is immediately observable.
+        diag.err("detection engine has 0 rules — refusing to start", .{});
+        return error.RulesUnavailable;
     }
 
     // 6b. Load policy rules from configs/policies.json
@@ -516,12 +521,16 @@ pub fn runDaemon() !void {
         runtime_sm.g_runtime.subsystemStarted(.control, runtime_pid);
         runtime_sm.g_runtime.subsystemStarted(.forensic, runtime_pid);
 
-        // Hybrid readiness: the control/pipeline spine owns core liveness.
-        // ETW/FIM/registry/WFP adapters remain visible as degraded capability
-        // fields and must not make the daemon's primary control state appear
-        // stopped when the spine is serving safely.
+        // A runtime with a live pipeline but missing enforcement/bridge
+        // dependencies must not be advertised as fully RUNNING. The control
+        // pipe may remain available for diagnostics, but the state machine is
+        // degraded until every required bridge is active.
         const pipeline_failed = (state.workerFailureMask() & 0x01) != 0;
-        if (state.g_pipeline_ready.load(.acquire) and !pipeline_failed) {
+        const bridges_ready = bridge_init.allActive();
+        if (!bridges_ready) {
+            diag.warn("runtime degraded: required bridge dependency is unavailable", .{});
+        }
+        if (state.g_pipeline_ready.load(.acquire) and !pipeline_failed and bridges_ready) {
             runtime_sm.g_runtime.transition(.running);
         } else {
             runtime_sm.g_runtime.transition(.degraded);

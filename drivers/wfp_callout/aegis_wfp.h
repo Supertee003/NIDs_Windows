@@ -19,6 +19,14 @@
 
 #pragma warning(pop)
 
+/* Some WDK header layouts omit this user-mode WFP HRESULT alias. Keep one
+ * shared bit-pattern for the kernel recovery path and compare status values
+ * as ULONGs so signed/unsigned NTSTATUS representation cannot change the
+ * missing-filter decision. */
+#ifndef FWP_E_FILTER_NOT_FOUND
+#define FWP_E_FILTER_NOT_FOUND ((NTSTATUS)0x80320003L)
+#endif
+
 /* ====== IOCTL Codes ====== */
 #define IOCTL_AEGIS_READ_EVENTS  CTL_CODE(FILE_DEVICE_NETWORK, 0x800, METHOD_BUFFERED, FILE_READ_DATA)
 #define IOCTL_AEGIS_BLOCK_FLOW   CTL_CODE(FILE_DEVICE_NETWORK, 0x801, METHOD_BUFFERED, FILE_WRITE_DATA)

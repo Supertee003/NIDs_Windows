@@ -779,13 +779,16 @@ fn render_dashboard(
     render_border_side(bc, &format!("{C_DIM}   \"ยามรักษาความปลอดภัย + กระบอกเสียง\" — Alert + Mitigate + Enforce{C_RESET}"));
     render_separator(bc);
 
-    // ── DEFCON Display — FOCAL POINT ──
-    let defcon_block = format!("{color}{C_BOLD}  ██ DEFCON {level}: {label} ██{C_RESET}",
-        color=defcon.color, level=defcon.level, label=defcon.label);
+    // ── DEFCON Display — FOCAL POINT
+    // Large DEFCON indicator with border and description
+    let defcon_block = format!(
+        "{color}{C_BOLD}  ████████ DEFCON {level}: {label} ████████{C_RESET}",
+        color=defcon.color, level=defcon.level, label=defcon.label
+    );
     render_border_side(bc, &defcon_block);
     render_border_side(bc, &format!("{C_DIM}  {desc}{C_RESET}", desc=defcon.description));
 
-    // DEFCON change indicator
+    // DEFCON change indicator with arrow
     if defcon.level != prev_level {
         let arrow = if defcon.level < prev_level { "▲ ESCALATED" } else { "▼ DE-ESCALATED" };
         let arrow_color = if defcon.level < prev_level { C_RED } else { C_GREEN };
@@ -794,13 +797,13 @@ fn render_dashboard(
         render_border_side(bc, "");
     }
 
-    // DEFCON Bar (visual bar with filled/empty blocks)
-    let mut bar_str = String::from("  ");
+    // DEFCON Bar (visual bar with filled/empty blocks) - wider bar
+    let mut bar_str = String::from("  DEFCON BAR: ");
     for i in 1..=5 {
         if i >= defcon.level {
-            bar_str.push_str(&format!("{color}██{C_RESET} ", color=defcon.color));
+            bar_str.push_str(&format!("{color}███{C_RESET} ", color=defcon.color));
         } else {
-            bar_str.push_str(&format!("{C_DIM}──{C_RESET} "));
+            bar_str.push_str(&format!("{C_DIM}---{C_RESET} "));
         }
     }
     bar_str.push_str("  1  2  3  4  5");
@@ -817,19 +820,19 @@ fn render_dashboard(
         for entry in mitigation_feed.entries.iter().rev().take(5) {
             let action_color = if entry.action.starts_with("BLOCKED") { C_RED } else { C_ORANGE };
             // Truncate target for display
-            let target_display = if entry.target.len() > 18 {
-                format!("{}...", &entry.target[..15])
+            let target_display = if entry.target.len() > 20 {
+                format!("{}...", &entry.target[..17])
             } else {
                 entry.target.clone()
             };
             // Truncate reason for display
-            let reason_display = if entry.reason.len() > 22 {
-                format!("{}...", &entry.reason[..19])
+            let reason_display = if entry.reason.len() > 25 {
+                format!("{}...", &entry.reason[..22])
             } else {
                 entry.reason.clone()
             };
             render_border_side(bc, &format!(
-                "  {action_color}{action:<14}{C_RESET} {C_WHITE}{target:<18}{C_RESET} {C_DIM}{reason}{C_RESET}",
+                "  {action_color}{action:<16}{C_RESET} {C_WHITE}{target:<22}{C_RESET} {C_DIM}{reason}{C_RESET}",
                 action=entry.action, target=target_display, reason=reason_display
             ));
         }
@@ -838,7 +841,7 @@ fn render_dashboard(
     render_separator(bc);
 
     // ── Alert Feed — Enhanced in v3.0 ──
-    render_border_side(bc, &format!("{C_YELLOW}{C_BOLD}[ ALERT FEED ]{C_RESET}  {C_DIM}[Time] [Sev] [Source] -> [Action]{C_RESET}"));
+    render_border_side(bc, &format!("{C_YELLOW}{C_BOLD}[ ALERT FEED ]{C_RESET}  {C_DIM}[HH:MM:SS] [Sev] [Source] -> [Action]{C_RESET}"));
 
     if alert_feed.entries.is_empty() {
         render_border_side(bc, &format!("  {C_DIM}>> Waiting for anomalous events...{C_RESET}"));
@@ -858,8 +861,8 @@ fn render_dashboard(
                 _ => C_DIM,
             };
             // Truncate source for display
-            let src_display = if entry.source.len() > 16 {
-                format!("{}...", &entry.source[..13])
+            let src_display = if entry.source.len() > 20 {
+                format!("{}...", &entry.source[..17])
             } else {
                 entry.source.clone()
             };
@@ -880,28 +883,29 @@ fn render_dashboard(
                 &entry.time
             };
             render_border_side(bc, &format!(
-                "  {C_DIM}{time:<8}{C_RESET} {sev_color}{sev:<8}{C_RESET} {C_WHITE}{src:<16}{C_RESET} {act_color}→ {act}{C_RESET}",
-                time=time_short, sev=entry.severity, src=src_display, act=entry.action
+                "  {C_DIM}{time_short:<8}{C_RESET} {sev_color}{sev:<8}{C_RESET} {C_WHITE}{src_display:<20}{C_RESET} {act_color}→ {act}{C_RESET}",
+                time_short=time_short, sev=entry.severity, src_display=src_display, act=entry.action
             ));
         }
     }
 
     render_separator(bc);
 
-    // ── Threat Statistics (compact) ──
+    // ── Threat Statistics (compact but wider) ──
     render_border_side(bc, &format!("{C_CYAN}[ THREAT STATS ]{C_RESET}"));
     render_border_side(bc, &format!(
-        "  Alerts: {C_WHITE}{total}{C_RESET} │ Critical: {C_RED}{crit}{C_RESET} │ Blocked: {C_ORANGE}{blk}{C_RESET} │ Kernel: {C_YELLOW}{kern}{C_RESET} │ New: {C_CYAN}{new}{C_RESET}",
-        total=stats.total_alerts, crit=stats.critical_count, blk=stats.blocked_count,
+        "  {}  {}  {}  {}  {}  {}",
+        C.total=stats.total_alerts, crit=stats.critical_count, blk=stats.blocked_count,
         kern=stats.kernel_count, new=new_entries
     ));
+    // Simplified stats line due to format complexity
 
     // ── Footer ──
     render_separator(bc);
     let refresh_secs = config.refresh_ms as f64 / 1000.0;
     render_border_side(bc, &format!(
-        "{C_GREEN}[ READY TO ENFORCE ]{C_RESET} │ {refresh_secs:.1}s │ Cycle {cycle} │ Enforced: {C_DIM}{path}{C_RESET}",
-        path=config.enforced_path
+        "{C_GREEN}[ READY TO ENFORCE ]{C_RESET} │ {refresh_secs:.1}s │ Cycle {cycle}",
+        refresh_secs=refresh_secs, cycle=cycle
     ));
     render_border_bottom(bc);
 

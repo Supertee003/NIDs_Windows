@@ -1,6 +1,6 @@
 {
   "schema": "aegis.rule-matching-observe-only.v1",
-  "generated_at_ms": 1790268144000,
+  "generated_at_ms": 1790273257471,
   "mode": "synthetic_observe_only",
   "active": false,
   "prevention_gate": "closed",

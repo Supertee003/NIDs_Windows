@@ -17,6 +17,24 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::Instant;
 
+// Case-insensitive critical level detection
+fn is_critical_level(level: &str) -> bool {
+    level.eq_ignore_ascii_case("critical")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_critical_level;
+
+    #[test]
+    fn critical_level_is_case_insensitive() {
+        assert!(is_critical_level("critical"));
+        assert!(is_critical_level("Critical"));
+        assert!(is_critical_level("CRITICAL"));
+        assert!(!is_critical_level("high"));
+    }
+}
+
 // =====================================================================
 // DATA TYPES
 // =====================================================================
@@ -172,11 +190,10 @@ impl AegisDashboard {
                 }
                 if let Ok(entry) = serde_json::from_str::<AlertEntry>(line) {
                     self.total_alerts += 1;
-                    let event_type = entry.event.to_uppercase();
                     if entry.confirmed_block() {
                         self.total_blocked += 1;
                     }
-                    if entry.level == "critical" {
+                    if is_critical_level(&entry.level) {
                         self.total_critical += 1;
                     }
                     self.alerts.push(entry);
@@ -347,7 +364,12 @@ impl eframe::App for AegisDashboard {
                             egui::Color32::from_rgb(200, 200, 100)
                         };
                         ui.colored_label(color, format!("{} [{}]", rule.rule_id, rule.action));
-                        ui.label(format!("  {}", rule.name));
+                        let layer = if rule.layer.is_empty() {
+                            "unknown"
+                        } else {
+                            &rule.layer
+                        };
+                        ui.label(format!("  {} | layer={}", rule.name, layer));
                         ui.add_space(4.0);
                     }
                 });
@@ -397,6 +419,19 @@ impl eframe::App for AegisDashboard {
                 data_plane.get("nose_frames_dropped").and_then(|v| v.as_u64()).unwrap_or(0),
                 data_plane.get("nose_duplicate_event_ids").and_then(|v| v.as_u64()).unwrap_or(0),
                 data_plane.get("nose_non_monotonic_event_ids").and_then(|v| v.as_u64()).unwrap_or(0)));
+            let shield = self.runtime_snapshot.health.get("rust_shield").cloned().unwrap_or_default();
+            let pep_state = shield.get("state").and_then(|v| v.as_str()).unwrap_or("UNKNOWN");
+            let provider_ready = shield.get("provider_ready").and_then(|v| v.as_bool()).unwrap_or(false);
+            let host_effect_capable = shield.get("host_effect_capable").and_then(|v| v.as_bool()).unwrap_or(false);
+            ui.label(format!("Authority: PEP={} | WFP provider={} | host-effect capability={}", pep_state,
+                if provider_ready { "READY" } else { "UNAVAILABLE" },
+                if host_effect_capable { "YES" } else { "NO" }));
+            let metrics = &self.runtime_snapshot.metrics;
+            let metric_events = metrics.get("events_total").or_else(|| metrics.get("events"))
+                .and_then(|v| v.as_u64()).unwrap_or(0);
+            let metric_dropped = metrics.get("events_dropped").or_else(|| metrics.get("dropped"))
+                .and_then(|v| v.as_u64()).unwrap_or(0);
+            ui.label(format!("Runtime metrics: events={} dropped={}", metric_events, metric_dropped));
             ui.add_space(10.0);
             ui.heading("Latest Evidence");
             ui.separator();
@@ -428,6 +463,8 @@ impl eframe::App for AegisDashboard {
                                         let datetime = chrono::DateTime::from_timestamp(secs, 0)
                                             .unwrap_or_default();
                                         datetime.format("%H:%M:%S").to_string()
+                                    } else if entry.mono_ns > 0 {
+                                        format!("mono:{}", entry.mono_ns)
                                     } else {
                                         "-".to_string()
                                     };
@@ -440,7 +477,7 @@ impl eframe::App for AegisDashboard {
                                     } else {
                                         entry.src_ip.clone()
                                     };
-                                    ui.label(src);
+                                    ui.label(src).on_hover_text(format!("src_port={} session_id={}", entry.src_port, entry.session_id));
                                 });
                                 // Event
                                 row.col(|ui| {
@@ -449,16 +486,16 @@ impl eframe::App for AegisDashboard {
                                     } else {
                                         entry.event.clone()
                                     };
-                                    ui.label(ev);
+                                    ui.label(ev).on_hover_text(format!("payload_len={} mono_ns={}", entry.payload_len, entry.mono_ns));
                                 });
                                 // Level (was severity)
                                 row.col(|ui| {
                                     let level = entry.level.clone();
-                                    let color = if level == "Critical" || level == "critical" {
+                                    let color = if is_critical_level(&entry.level) {
                                         egui::Color32::RED
-                                    } else if level == "High" || level == "high" {
+                                    } else if level.eq_ignore_ascii_case("High") || level.eq_ignore_ascii_case("high") {
                                         egui::Color32::from_rgb(255, 165, 0)
-                                    } else if level == "Medium" || level == "medium" {
+                                    } else if level.eq_ignore_ascii_case("Medium") || level.eq_ignore_ascii_case("medium") {
                                         egui::Color32::YELLOW
                                     } else {
                                         egui::Color32::from_rgb(180, 180, 180)
@@ -472,7 +509,7 @@ impl eframe::App for AegisDashboard {
                                     } else {
                                         entry.rule.clone()
                                     };
-                                    ui.label(rule);
+                                    ui.label(rule).on_hover_text(format!("ruleset_version={}", entry.ruleset_version));
                                 });
                             });
                         }

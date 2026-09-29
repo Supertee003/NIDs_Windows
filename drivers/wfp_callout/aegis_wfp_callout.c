@@ -10,6 +10,65 @@
 
 #include "aegis_wfp.h"
 
+/* WinDbg/DbgView are not required for startup diagnosis. Persist the failing
+ * registration stage and status in the System event log. DumpData[0] is the
+ * stage ID below; DumpData[1] is the raw NTSTATUS/WFP status. */
+enum {
+    AEGIS_STAGE_ENGINE_OPEN = 1,
+    AEGIS_STAGE_PROOF_LOOKUP = 2,
+    AEGIS_STAGE_CALLOUT_ADD = 3,
+    AEGIS_STAGE_CALLOUT_REGISTER = 4,
+    AEGIS_STAGE_FILTER_ADD = 5
+};
+
+static VOID AegisWfpLogStartupFailure(ULONG stage, NTSTATUS status)
+{
+    PIO_ERROR_LOG_PACKET packet;
+    PCWSTR stageName = L"unknown";
+    SIZE_T stageBytes;
+    ULONG packetSize;
+
+    switch (stage) {
+    case AEGIS_STAGE_ENGINE_OPEN:     stageName = L"FwpmEngineOpen0"; break;
+    case AEGIS_STAGE_PROOF_LOOKUP:   stageName = L"FwpmFilterGetByKey0"; break;
+    case AEGIS_STAGE_CALLOUT_ADD:    stageName = L"FwpmCalloutAdd0"; break;
+    case AEGIS_STAGE_CALLOUT_REGISTER: stageName = L"FwpsCalloutRegister0"; break;
+    case AEGIS_STAGE_FILTER_ADD:     stageName = L"FwpmFilterAdd0"; break;
+    default: break;
+    }
+    stageBytes = (wcslen(stageName) + 1) * sizeof(WCHAR);
+    packetSize = sizeof(IO_ERROR_LOG_PACKET) + (sizeof(ULONG) * 2) +
+        (ULONG)stageBytes;
+
+    if (g_DeviceObject == NULL) {
+        return;
+    }
+    packet = (PIO_ERROR_LOG_PACKET)IoAllocateErrorLogEntry(
+        g_DeviceObject, (UCHAR)packetSize);
+    if (packet == NULL) {
+        return;
+    }
+    RtlZeroMemory(packet, packetSize);
+    packet->ErrorCode = status;
+    packet->DumpDataSize = sizeof(ULONG) * 2;
+    packet->DumpData[0] = stage;
+    packet->DumpData[1] = (ULONG)status;
+    packet->NumberOfStrings = 1;
+    packet->StringOffset = (USHORT)(sizeof(IO_ERROR_LOG_PACKET) +
+        (sizeof(ULONG) * 2));
+    RtlCopyMemory((PUCHAR)packet + packet->StringOffset,
+        stageName, stageBytes);
+    IoWriteErrorLogEntry(packet);
+}
+
+/* SCM exposes this stage code even without WinDbg/DbgView. The original WFP
+ * status is still written to the System error-log packet. */
+static NTSTATUS AegisWfpStartupFailure(ULONG stage, NTSTATUS status)
+{
+    AegisWfpLogStartupFailure(stage, status);
+    return (NTSTATUS)(0xE0010000UL | (stage & 0xFF));
+}
+
 /* ====== WFP Classify Callback ======
  * Called by WFP for every inbound IPv4 transport packet.
  * Extracts 5-tuple, writes 40-byte header to ring buffer,
@@ -159,9 +218,10 @@ NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject)
     status = FwpmEngineOpen0(NULL, RPC_C_AUTHN_WINNT,
         NULL, &session, &g_WfpEngineHandle);
     if (!NT_SUCCESS(status)) {
-        DbgPrint("[AEGIS WFP] FwpmEngineOpen0 failed: 0x%08X\n", status);
-        return status;
+        DbgPrint("[AEGIS WFP] stage=FwpmEngineOpen0 status=0x%08X\n", status);
+        return AegisWfpStartupFailure(AEGIS_STAGE_ENGINE_OPEN, status);
     }
+    DbgPrint("[AEGIS WFP] stage=FwpmEngineOpen0 status=0x%08X\n", status);
 
     /* Recover the persistent receipt-owned proof filter if the driver was
      * restarted. A missing key is normal; any other provider error is fatal.
@@ -174,11 +234,12 @@ NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject)
         DbgPrint("[AEGIS WFP] Recovered proof filter (id=%llu)\n",
             g_ProofFilterId);
         FwpmFreeMemory0((void **)&recoveredProof);
-    } else if (status != (NTSTATUS)0x80320003L) {
-        DbgPrint("[AEGIS WFP] Proof filter recovery query failed: 0x%08X\n", status);
-        FwpmEngineClose0(g_WfpEngineHandle);
-        g_WfpEngineHandle = NULL;
-        return status;
+    } else {
+        /* Proof filter recovery is advisory only. A missing or unavailable
+         * receipt must never prevent the authoritative callout/filter from
+         * registering; later stages still fail closed if WFP itself is bad. */
+        DbgPrint("[AEGIS WFP] stage=FwpmFilterGetByKey0 status=0x%08X (recovery unavailable; continue)\n",
+            status);
     }
 
     /* 2. Register callout in BLM store */
@@ -191,11 +252,13 @@ NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject)
     status = FwpmCalloutAdd0(g_WfpEngineHandle, &callout,
         NULL, &g_CalloutId);
     if (!NT_SUCCESS(status)) {
-        DbgPrint("[AEGIS WFP] FwpmCalloutAdd0 failed: 0x%08X\n", status);
+        DbgPrint("[AEGIS WFP] stage=FwpmCalloutAdd0 status=0x%08X\n", status);
         FwpmEngineClose0(g_WfpEngineHandle);
         g_WfpEngineHandle = NULL;
-        return status;
+        return AegisWfpStartupFailure(AEGIS_STAGE_CALLOUT_ADD, status);
     }
+    DbgPrint("[AEGIS WFP] stage=FwpmCalloutAdd0 status=0x%08X id=%u\n",
+        status, g_CalloutId);
 
     /* 3. Register runtime callout (binds classifyFn/notifyFn/flowDeleteFn) */
     RtlZeroMemory(&sCallout, sizeof(sCallout));
@@ -208,14 +271,16 @@ NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject)
 
     status = FwpsCalloutRegister0(DriverObject, &sCallout, &g_CalloutId);
     if (!NT_SUCCESS(status)) {
-        DbgPrint("[AEGIS WFP] FwpsCalloutRegister0 failed: 0x%08X\n",
+        DbgPrint("[AEGIS WFP] stage=FwpsCalloutRegister0 status=0x%08X\n",
             status);
         FwpmCalloutDeleteById0(g_WfpEngineHandle,
             (UINT64)g_CalloutId);  /* FIX 5: cast UINT32 -> UINT64 */
         FwpmEngineClose0(g_WfpEngineHandle);
         g_WfpEngineHandle = NULL;
-        return status;
+        return AegisWfpStartupFailure(AEGIS_STAGE_CALLOUT_REGISTER, status);
     }
+    DbgPrint("[AEGIS WFP] stage=FwpsCalloutRegister0 status=0x%08X id=%u\n",
+        status, g_CalloutId);
 
     /* 4. C2 FIX: Add filter so the callout actually gets invoked.
      *    Weight left as FWP_EMPTY (RtlZeroMemory'd) = engine default.
@@ -239,14 +304,16 @@ NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject)
     status = FwpmFilterAdd0(g_WfpEngineHandle, &filter,
         NULL, &g_CaptureFilterId);
     if (!NT_SUCCESS(status)) {
-        DbgPrint("[AEGIS WFP] FwpmFilterAdd0 failed: 0x%08X\n", status);
+        DbgPrint("[AEGIS WFP] stage=FwpmFilterAdd0 status=0x%08X\n", status);
         FwpsCalloutUnregisterById0(g_CalloutId);
         FwpmCalloutDeleteById0(g_WfpEngineHandle,
             (UINT64)g_CalloutId);  /* FIX 5: cast */
         FwpmEngineClose0(g_WfpEngineHandle);
         g_WfpEngineHandle = NULL;
-        return status;
+        return AegisWfpStartupFailure(AEGIS_STAGE_FILTER_ADD, status);
     }
+    DbgPrint("[AEGIS WFP] stage=FwpmFilterAdd0 status=0x%08X id=%llu\n",
+        status, g_CaptureFilterId);
 
     DbgPrint("[AEGIS WFP] Callout + filter registered - "
         "CalloutID: %u, FilterID: %llu\n",
