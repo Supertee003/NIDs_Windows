@@ -461,32 +461,84 @@ const handlers = struct {
             }
             break :blk "";
         } else "";
-        if (requested_source == null and requested_prefix.len == 0) {
-            return std.fmt.allocPrint(a, "{{\"records\":{},\"events_processed\":{},\"forensic_enabled\":true}}", .{ state_mod.g_forensic_records_written, state_mod.g_pipeline_events_processed }) catch null;
+
+        const requested_limit: u64 = @min(
+            payloadU64(payload, "limit") orelse 100,
+            1000,
+        );
+        const requested_after = payloadU64(payload, "after");
+
+        const ring = state_mod.g_forensic_ring orelse
+            return "{\"available\":false,\"records\":[],\"records_returned\":0,\"integrity\":\"unavailable\",\"verified\":false}";
+
+        const count = ring.recordCount();
+        const slots = ring.capacity() / forensic_pipeline.RECORD_BYTES;
+        const oldest: u64 = if (count > slots) count - slots else 0;
+        const chain_verified = ring.verifyHashChain();
+
+        var out = std.ArrayList(u8).init(a);
+        errdefer out.deinit();
+        var writer = out.writer();
+
+        writer.writeAll("{\"available\":true,\"records\":[") catch return null;
+        var returned: u64 = 0;
+        var index = oldest;
+        var first = true;
+
+        while (index < count and returned < requested_limit) : (index += 1) {
+            const record = ring.readRecord(index, a) orelse continue;
+            defer a.free(record);
+
+            if (record.len < forensic_pipeline.HEADER_BYTES) continue;
+            if (!forensic_pipeline.ForensicRing.verifyRecord(record)) continue;
+
+            const header = std.mem.bytesAsValue(
+                forensic_pipeline.RecordHeader,
+                record[0..forensic_pipeline.HEADER_BYTES],
+            );
+
+            if (requested_after) |after| {
+                if (header.record_seq <= after) continue;
+            }
+
+            if (requested_source) |source| {
+                if (source > std.math.maxInt(u8) or
+                    header.reserved[6] != @as(u8, @intCast(source))) continue;
+            }
+
+            const payload_start = forensic_pipeline.HEADER_BYTES;
+            const payload_end = payload_start + @as(usize, header.payload_len);
+            if (payload_end > record.len) continue;
+
+            if (requested_prefix.len > 0 and
+                (requested_prefix.len > @as(usize, header.payload_len) or
+                !std.mem.eql(u8, record[payload_start .. payload_start + requested_prefix.len], requested_prefix))) continue;
+
+            if (!first) writer.writeByte(',') catch return null;
+            first = false;
+            writer.print(
+                "{{\"record_seq\":{},\"event_id\":{},\"rule_id\":{},\"source\":{},\"payload_len\":{},\"verified\":true}}",
+                .{
+                    header.record_seq,
+                    header.ev_id,
+                    header.rule_id,
+                    header.reserved[6],
+                    header.payload_len,
+                },
+            ) catch return null;
+            returned += 1;
         }
 
-        if (state_mod.g_forensic_ring) |ring| {
-            const slots = ring.capacity() / forensic_pipeline.RECORD_BYTES;
-            const oldest: u64 = if (ring.recordCount() > slots) ring.recordCount() - slots else 0;
-            var index = oldest;
-            while (index < ring.recordCount()) : (index += 1) {
-                const record = ring.readRecord(index, a) orelse continue;
-                defer a.free(record);
-                if (!forensic_pipeline.ForensicRing.verifyRecord(record)) continue;
-                const header = std.mem.bytesAsValue(forensic_pipeline.RecordHeader, record[0..forensic_pipeline.HEADER_BYTES]);
-                if (requested_source) |source| {
-                    if (source > std.math.maxInt(u8) or header.reserved[6] != @as(u8, @intCast(source))) continue;
-                }
-                const payload_start = forensic_pipeline.HEADER_BYTES;
-                const payload_end = payload_start + @as(usize, header.payload_len);
-                if (requested_prefix.len > 0 and (payload_end > record.len or requested_prefix.len > @as(usize, header.payload_len) or
-                    !std.mem.eql(u8, record[payload_start .. payload_start + requested_prefix.len], requested_prefix))) continue;
-                return std.fmt.allocPrint(a, "{{\"records\":1,\"match\":{{\"event_id\":{},\"rule_id\":{},\"source\":{},\"payload_len\":{},\"record_seq\":{}}}}}", .{
-                    header.ev_id, header.rule_id, header.reserved[6], header.payload_len, header.record_seq,
-                }) catch null;
-            }
-        }
-        return "{\"records\":0,\"match\":null}";
+        writer.print(
+            "],\"records_returned\":{},\"integrity\":\"{s}\",\"verified\":{}}}",
+            .{
+                returned,
+                if (chain_verified) "ok" else "failed",
+                chain_verified,
+            },
+        ) catch return null;
+
+        return out.toOwnedSlice() catch null;
     }
 
     fn forensicsShow(

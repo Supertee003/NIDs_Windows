@@ -57,7 +57,7 @@ NIDs_Windows/
 │   ├── install_drivers.bat      # Install kernel drivers
 │   ├── aegis_console.py         # Command Control Center v7.0 (10 menus)
 │   ├── aegis_daemon.py          # Background daemon
-│   ├── aegis_graph.py           # Threat graph visualization
+│   ├── aegis_graph.py           # Forensic evidence graph (control-daemon verified)
 │   ├── Dashboard.py             # Web dashboard
 │   └── tests/                   # Test Suites
 │       ├── aegis_nose_test.py       # Nose-only tests (headless, no DEFCON)
@@ -66,8 +66,7 @@ NIDs_Windows/
 │
 ├── config/                  # ⚙️ Configuration
 │   ├── Rules.json               # Detection rules
-│   ├── Back_Rules.json          # Backup rules
-│   └── threat_graph.html        # Threat map visualization
+│   └── deployment_profile.example.json  # Portable deployment profile example
 │
 ├── drivers/                 # 🔧 Windows Kernel Drivers
 │   ├── minifilter/              # Minifilter (C) — file system monitoring

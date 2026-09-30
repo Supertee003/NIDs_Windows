@@ -71,12 +71,15 @@ scripts\aegis.bat help
 .\scripts\aegis.ps1 graph
 ```
 
-TUI เดิมถูกเก็บไว้เป็น compatibility view และควรใช้ `health`, `metrics` และ `events` จาก Control Center เป็นค่าหลักในการตัดสิน readiness เสมอ Dashboard Rust ใช้ `logs\aegis_core.ndjson` และ `configs\Rules.json` ส่วน graph ใช้ event log เดียวกันและสร้างรายงานที่ `reports\threat_graph.html` โดยเชื่อม source IP → rule → AEGIS NIDS
+TUI เดิมถูกเก็บไว้เป็น compatibility view และควรใช้ `health`, `metrics` และ `events` จาก Control Center เป็นค่าหลักในการตัดสิน readiness เสมอ Dashboard Rust ใช้ `logs\aegis_core.ndjson` และ `configs\Rules.json` ส่วน graph อ่าน verified forensic record จาก control daemon (`forensics list --json`) และสร้างรายงานที่ `reports\forensic_evidence_graph.html` โดยเชื่อม source → event → rule → record → AEGIS NIDS
 
-การสร้าง graph จากไฟล์อื่นทำได้ดังนี้:
+Graph จะถูกสร้างเฉพาะเมื่อ control daemon รายงาน `integrity=ok` และ `verified=true` เท่านั้น ถ้า evidence ยังไม่ผ่านการยืนยัน ระบบจะไม่สร้าง graph และแจ้ง error แทน
+
+ตัวอย่างการกำหนดขอบเขตและไฟล์ปลายทาง:
 
 ```powershell
-.\scripts\aegis.ps1 graph --log .\logs\aegis_core.ndjson --output .\reports\threat_graph.html
+.\scripts\aegis.ps1 graph --limit 500 --output .\reports\forensic_evidence_graph.html
+.\scripts\aegis.ps1 graph --watch --interval 3
 ```
 
 ## Golden-path test

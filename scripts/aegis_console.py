@@ -71,7 +71,7 @@ except Exception:
 
 # -- Constants (absolute paths based on PROJECT_ROOT) --
 RULES_FILE = os.path.join(PROJECT_ROOT, "configs", "Rules.json")
-GRAPH_HTML_FILE = os.path.join(PROJECT_ROOT, "reports", "threat_graph.html")
+GRAPH_HTML_FILE = os.path.join(PROJECT_ROOT, "reports", "forensic_evidence_graph.html")
 LOG_FILE = os.path.join(PROJECT_ROOT, "logs", "aegis_core.ndjson")
 TUI_REFRESH_INTERVAL = 2.0
 TUI_DASHBOARD_ONCE = False
@@ -133,6 +133,16 @@ MOUTH_CLI_ARGS = ["--log", os.path.join(PROJECT_ROOT, "logs", "anomalous.json"),
 # =====================================================================
 # UTILITY
 # =====================================================================
+
+COMPONENT_LABELS = {
+    "control": "CONTROL DAEMON",
+    "cpp": "C++ BRIDGE",
+    "forensic": "FORENSIC PLANE",
+    "go": "GO NOSE",
+    "rust_pep": "RUST MOUTH / PEP",
+    "tier3": "PYTHON BRAIN / TIER3",
+    "zig": "ZIG CORE",
+}
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -942,28 +952,31 @@ def _view_last_logs():
 
 
 # =====================================================================
-# 4. THREAT GRAPH
+# 4. FORENSIC EVIDENCE GRAPH (verified control-daemon records only)
 # =====================================================================
 
 def menu_threat_graph():
     clear_screen()
     show_header()
     if not AEGIS_GRAPH_AVAILABLE:
-        print(f'\n  {C.BRED}[-]{C.RST} Threat graph unavailable -- pip install networkx pyvis')
+        print(f'\n  {C.BRED}[-]{C.RST} Evidence graph unavailable -- pip install networkx pyvis')
         input_pause()
         return
-    print(f"\n  {C.CYN}[GRAPH]{C.RST} Generating Threat Analysis Graph...")
+    print(f"\n  {C.CYN}[GRAPH]{C.RST} Building evidence graph from verified control-daemon forensic records...")
     try:
-        aegis_graph.generate_threat_graph(output_file=Path(GRAPH_HTML_FILE))
+        records, nodes, edges = aegis_graph.generate_forensic_graph(
+            output_file=Path(GRAPH_HTML_FILE), limit=500
+        )
         html_path = os.path.abspath(GRAPH_HTML_FILE)
-        if os.path.exists(html_path):
-            print(f"  {C.BGRN}[+]{C.RST} Graph generated!")
+        if not os.path.exists(html_path):
+            print(f"  {C.BRED}[-]{C.RST} File not found: {html_path}")
+        else:
+            print(f"  {C.BGRN}[+]{C.RST} Graph generated (verified records={records}, nodes={nodes}, edges={edges})")
             import webbrowser
             webbrowser.open(f"file:///{html_path}")
-        else:
-            print(f"  {C.BRED}[-]{C.RST} File not found: {html_path}")
     except Exception as e:
         print(f"  {C.BRED}[ERROR]{C.RST} {e}")
+        print(f"  {C.DIM}Graph is only generated when the control daemon reports verified forensic evidence.{C.RST}")
     input_pause()
 
 
@@ -1182,7 +1195,7 @@ def _run_realtime_dashboard(interval=None, once=None):
                 )
                 print(
                     f"  {color}●{C.RST} "
-                    f"{name.upper():<10} "
+                    f"{COMPONENT_LABELS.get(name, name.upper()):<24} "
                     f"{color}{item_state:<8}{C.RST} "
                     f"PID:{item.get('pid') or '-'}"
                 )
@@ -1552,7 +1565,7 @@ def main_menu():
   {C.BLD}{C.GRN}ANALYSIS{C.RST}
   {'─' * 50}
   {C.BGRN}9{C.RST}  [HEALTH]    สุขภาพระบบ + Bridge IPC
-  {C.BGRN}A{C.RST}  [GRAPH]     Threat Map
+  {C.BGRN}A{C.RST}  [GRAPH]     Evidence Graph
   {C.BGRN}B{C.RST}  [TEST]      E2E / Test Suite
   {C.BGRN}C{C.RST}  [DAEMON]    Daemon Commands (เฉพาะ)
 

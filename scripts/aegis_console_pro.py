@@ -28,6 +28,16 @@ BLUE = "\033[94m"
 DIM = "\033[2m"
 
 
+COMPONENT_LABELS = {
+    "control": "CONTROL DAEMON",
+    "cpp": "C++ BRIDGE",
+    "forensic": "FORENSIC PLANE",
+    "go": "GO NOSE",
+    "rust_pep": "RUST MOUTH / PEP",
+    "tier3": "PYTHON BRAIN / TIER3",
+    "zig": "ZIG CORE",
+}
+
 def color(text: str, code: str) -> str:
     return f"{code}{text}{RESET}"
 
@@ -153,8 +163,9 @@ def print_components(data: dict) -> None:
     for name, item in (health.get("subsystems") or {}).items():
         if not isinstance(item, dict):
             continue
+        label = COMPONENT_LABELS.get(name, name.upper())
         state = str(item.get("state", "UNKNOWN"))
-        print(f"{name:<16} {state:<23} {str(item.get('pid') or '-'):<10} {str(item.get('version') or '-'):<10} {item.get('error') or '-'}")
+        print(f"{label:<24} {state:<14} {str(item.get('pid') or '-'):<10} {str(item.get('version') or '-'):<10} {item.get('error') or '-'}")
 
 
 def print_mouth_nose(data: dict) -> None:

@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "cf74c54",
+  "source_commit": "419e9f5",
   "build_date": "2026-09-25T15:15:56.343815+00:00",
   "build_host": "windows",
   "platform": {
@@ -2149,13 +2149,13 @@
     {
       "path": "runtime_manifest.json",
       "size": 17724,
-      "sha256": "d43561a091fe51674126feff9e3880ff6726048ddf28a3519fab282ef86a0194",
+      "sha256": "c85981d913fd89e69f7a30ff2ed58904a9ce1a45be3166500f181a52e759c831",
       "language": "json"
     },
     {
       "path": "scripts/Dashboard.py",
-      "size": 10943,
-      "sha256": "65ddd06955cc95d0756856cd11473a5ad4aaf5bbcbf772bd4f7be616d0f82f0b",
+      "size": 11242,
+      "sha256": "1f57fa2761d0147d6bf87bd1cf685daef2dbbeb5fb3129cb83c2502451035bff",
       "language": "python/cython"
     },
     {
@@ -2196,14 +2196,14 @@
     },
     {
       "path": "scripts/aegis_console.py",
-      "size": 65430,
-      "sha256": "3412f77a9875ce2795068a3cf5b5cf22fec8b72a07df71a49e73ee28afbb869c",
+      "size": 66034,
+      "sha256": "9190ad8348d024abb9fae43760669b5df29471431c336634892be81c0a7f119e",
       "language": "python/cython"
     },
     {
       "path": "scripts/aegis_console_pro.py",
-      "size": 11298,
-      "sha256": "1ba53b1b724a670d2299b1797d82303a0688151cf6180d47e83918f612480d01",
+      "size": 11589,
+      "sha256": "aeb495c52dd3eaac2a31daa2fdc6ab3697fe248aace6ec4e5191fef7583ce16b",
       "language": "python/cython"
     },
     {
@@ -2226,8 +2226,8 @@
     },
     {
       "path": "scripts/aegis_graph.py",
-      "size": 2820,
-      "sha256": "1f89f153973cc681570cad6ad064374987c3b469f27899a24f26bd6baf24433a",
+      "size": 5412,
+      "sha256": "f05b6bba36136d152ba2ded226d74a81ff2ed7d6fcfedfb6b752dbd2afbe9f42",
       "language": "python/cython"
     },
     {
@@ -2886,8 +2886,8 @@
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 47722,
-      "sha256": "02e00eb0263f0b6eec83702bb6cb79aa9f99d3e2a71e36199e44574be930104d",
+      "size": 48280,
+      "sha256": "7ef9ab675402021d3fc1fdf8a23bf1d5917865cc8b96d1829bf7bf64755ab11a",
       "language": "python/cython"
     },
     {

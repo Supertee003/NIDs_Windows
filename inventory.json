@@ -1,17 +1,17 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-09-24T17:20:03.263588+00:00",
+  "generated_at": "2026-09-30T15:19:45.710472+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1210,
+  "total_files": 1521,
   "by_class": {
-    "canonical-docs": 300,
-    "canonical-build": 152,
-    "unclassified": 15,
-    "canonical-source": 580,
-    "canonical-test": 106,
+    "canonical-docs": 538,
+    "canonical-build": 204,
+    "unclassified": 19,
+    "canonical-source": 586,
+    "canonical-test": 110,
     "canonical-config": 31,
-    "legacy": 26
+    "legacy": 33
   },
   "files": [
     {
@@ -105,10 +105,130 @@
       "size": 5761
     },
     {
+      "path": "admin-evidence/audit-version-test.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 30964
+    },
+    {
+      "path": "admin-evidence/audit-zig-build.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 0
+    },
+    {
       "path": "admin-evidence/code-integrity-events.txt",
       "class": "canonical-docs",
       "role": "documentation",
       "size": 30055
+    },
+    {
+      "path": "admin-evidence/control-center-final-20260929/authority.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 34
+    },
+    {
+      "path": "admin-evidence/control-center-final-20260929/enforce-status.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 273
+    },
+    {
+      "path": "admin-evidence/control-center-final-20260929/forensic-verify.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 71
+    },
+    {
+      "path": "admin-evidence/control-center-final-20260929/health.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2659
+    },
+    {
+      "path": "admin-evidence/control-center-final-20260929/release-verify.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 142
+    },
+    {
+      "path": "admin-evidence/control-center-final-20260929/snapshot.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 3408
+    },
+    {
+      "path": "admin-evidence/current-forensics.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 132
+    },
+    {
+      "path": "admin-evidence/current-health-final.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2324
+    },
+    {
+      "path": "admin-evidence/current-health.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 4644
+    },
+    {
+      "path": "admin-evidence/current-metrics.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 490
+    },
+    {
+      "path": "admin-evidence/current-readiness-final.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 305
+    },
+    {
+      "path": "admin-evidence/current-readiness.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 606
+    },
+    {
+      "path": "admin-evidence/deep-authority.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 64
+    },
+    {
+      "path": "admin-evidence/deep-forensics.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 136
+    },
+    {
+      "path": "admin-evidence/deep-health-after-nose-exit.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2646
+    },
+    {
+      "path": "admin-evidence/deep-health.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 5292
+    },
+    {
+      "path": "admin-evidence/deep-metrics.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 508
+    },
+    {
+      "path": "admin-evidence/deep-readiness.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 330
     },
     {
       "path": "admin-evidence/forensics-verify-direct.txt",
@@ -225,6 +345,12 @@
       "size": 4540
     },
     {
+      "path": "admin-evidence/health-canonical-pep.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2645
+    },
+    {
       "path": "admin-evidence/health-wfp-provider-attested.json",
       "class": "canonical-build",
       "role": "build-config",
@@ -247,6 +373,180 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 0
+    },
+    {
+      "path": "admin-evidence/nose-devices-latest.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 8474
+    },
+    {
+      "path": "admin-evidence/observe-only-acceptance-20260929/authority.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 34
+    },
+    {
+      "path": "admin-evidence/observe-only-acceptance-20260929/block-list.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 29
+    },
+    {
+      "path": "admin-evidence/observe-only-acceptance-20260929/enforce-status.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 42
+    },
+    {
+      "path": "admin-evidence/observe-only-acceptance-20260929/forensic-verify.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 71
+    },
+    {
+      "path": "admin-evidence/observe-only-acceptance-20260929/health.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2658
+    },
+    {
+      "path": "admin-evidence/observe-only-acceptance-20260929/quarantine-list.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 25
+    },
+    {
+      "path": "admin-evidence/observe-only-acceptance-20260929/single-owner.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 179
+    },
+    {
+      "path": "admin-evidence/observe-only-acceptance-20260929/wfp-observe-only-files.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 266
+    },
+    {
+      "path": "admin-evidence/observe-only-acceptance-20260929/wfp-service.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 344
+    },
+    {
+      "path": "admin-evidence/observe-only-release-final-20260929/authority.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 34
+    },
+    {
+      "path": "admin-evidence/observe-only-release-final-20260929/enforce-status.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 42
+    },
+    {
+      "path": "admin-evidence/observe-only-release-final-20260929/forensic-verify.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 71
+    },
+    {
+      "path": "admin-evidence/observe-only-release-final-20260929/health.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2658
+    },
+    {
+      "path": "admin-evidence/observe-only-release-final-20260929/release-verify.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 142
+    },
+    {
+      "path": "admin-evidence/observe-only-release-final-20260929/safety-tests.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 115
+    },
+    {
+      "path": "admin-evidence/phase10-wfp-preflight-final-v2.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1410
+    },
+    {
+      "path": "admin-evidence/phase10-wfp-preflight-final.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 6640
+    },
+    {
+      "path": "admin-evidence/phase3-lifecycle-recovery-admin-v2.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1908
+    },
+    {
+      "path": "admin-evidence/phase3-lifecycle-recovery-admin.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 398
+    },
+    {
+      "path": "admin-evidence/project2-baseline-20260930/forensic_evidence_graph.html",
+      "class": "unclassified",
+      "role": "other",
+      "size": 40223
+    },
+    {
+      "path": "admin-evidence/project2-baseline-20260930/forensics-before-live.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 15772
+    },
+    {
+      "path": "admin-evidence/project2-baseline-20260930/health-before-live.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 2662
+    },
+    {
+      "path": "admin-evidence/project2-baseline-20260930/snapshot-before-live.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 3406
+    },
+    {
+      "path": "admin-evidence/project2-baseline-detections.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1947
+    },
+    {
+      "path": "admin-evidence/project2-baseline-forensic-verify.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 73
+    },
+    {
+      "path": "admin-evidence/project2-baseline-snapshot.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 3439
+    },
+    {
+      "path": "admin-evidence/project2-live/baseline-forensic.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 71
+    },
+    {
+      "path": "admin-evidence/project2-live/baseline-snapshot.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 3416
     },
     {
       "path": "admin-evidence/service-cim.txt",
@@ -297,10 +597,1210 @@
       "size": 650
     },
     {
-      "path": "AEGIS_COMPREHENSIVE_DEVELOPMENT_ANALYSIS_HANDOFF_2026-09-20.md",
+      "path": "aegis-audit-20260927-231728/00-summary.txt",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 33219
+      "size": 1868
+    },
+    {
+      "path": "aegis-audit-20260927-231728/01-git.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 20808
+    },
+    {
+      "path": "aegis-audit-20260927-231728/02-map-freshness.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1472
+    },
+    {
+      "path": "aegis-audit-20260927-231728/03-file-inventory.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 58684
+    },
+    {
+      "path": "aegis-audit-20260927-231728/04-scan-aegis_control_aegis_nose_HEALTH_health_check.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-231728/04-scan-aegis_pep_enforce_evaluate_unblock_query_provider.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-231728/04-scan-BLOCKED_CONFIRMED_ENFORCED_host_effect_confirmed_filter_id.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-231728/04-scan-sec_monitor_windows_enforce_shield_src_pep.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-231728/04-scan-TODO_FIXME_HACK_mock_stub_placeholder_simulation.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-231728/04-scan-WFP_Fwpm_IOCTL_DeviceIoControl_CreateService_OpenSCManager.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-231728/05-contract-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-231728/06-lifecycle-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-231728/07-static-security.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1942
+    },
+    {
+      "path": "aegis-audit-20260927-231728/08-acceptance-claims.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-231728/08-evidence-index.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 155366
+    },
+    {
+      "path": "aegis-audit-20260927-231807/00-summary.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1868
+    },
+    {
+      "path": "aegis-audit-20260927-231807/01-git.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 20874
+    },
+    {
+      "path": "aegis-audit-20260927-231807/02-map-freshness.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1472
+    },
+    {
+      "path": "aegis-audit-20260927-231807/03-file-inventory.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 58684
+    },
+    {
+      "path": "aegis-audit-20260927-231807/04-scan-aegis_control_aegis_nose_HEALTH_health_check.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-231807/04-scan-aegis_pep_enforce_evaluate_unblock_query_provider.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-231807/04-scan-BLOCKED_CONFIRMED_ENFORCED_host_effect_confirmed_filter_id.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-231807/04-scan-sec_monitor_windows_enforce_shield_src_pep.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-231807/04-scan-TODO_FIXME_HACK_mock_stub_placeholder_simulation.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-231807/04-scan-WFP_Fwpm_IOCTL_DeviceIoControl_CreateService_OpenSCManager.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-231807/05-contract-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-231807/06-lifecycle-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-231807/07-static-security.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1942
+    },
+    {
+      "path": "aegis-audit-20260927-231807/08-acceptance-claims.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-231807/08-evidence-index.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 155366
+    },
+    {
+      "path": "aegis-audit-20260927-231840/00-summary.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1868
+    },
+    {
+      "path": "aegis-audit-20260927-231840/01-git.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 20940
+    },
+    {
+      "path": "aegis-audit-20260927-231840/02-map-freshness.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1472
+    },
+    {
+      "path": "aegis-audit-20260927-231840/03-file-inventory.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 58684
+    },
+    {
+      "path": "aegis-audit-20260927-231840/04-scan-aegis_control_aegis_nose_HEALTH_health_check.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-231840/04-scan-aegis_pep_enforce_evaluate_unblock_query_provider.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-231840/04-scan-BLOCKED_CONFIRMED_ENFORCED_host_effect_confirmed_filter_id.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-231840/04-scan-sec_monitor_windows_enforce_shield_src_pep.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-231840/04-scan-TODO_FIXME_HACK_mock_stub_placeholder_simulation.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-231840/04-scan-WFP_Fwpm_IOCTL_DeviceIoControl_CreateService_OpenSCManager.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-231840/05-contract-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-231840/06-lifecycle-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-231840/07-static-security.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1942
+    },
+    {
+      "path": "aegis-audit-20260927-231840/08-acceptance-claims.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-231840/08-evidence-index.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 155366
+    },
+    {
+      "path": "aegis-audit-20260927-232029/00-summary.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1868
+    },
+    {
+      "path": "aegis-audit-20260927-232029/01-git.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 21006
+    },
+    {
+      "path": "aegis-audit-20260927-232029/02-map-freshness.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1472
+    },
+    {
+      "path": "aegis-audit-20260927-232029/03-file-inventory.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 58684
+    },
+    {
+      "path": "aegis-audit-20260927-232029/04-scan-aegis_control_aegis_nose_HEALTH_health_check.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232029/04-scan-aegis_pep_enforce_evaluate_unblock_query_provider.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232029/04-scan-BLOCKED_CONFIRMED_ENFORCED_host_effect_confirmed_filter_id.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232029/04-scan-sec_monitor_windows_enforce_shield_src_pep.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232029/04-scan-TODO_FIXME_HACK_mock_stub_placeholder_simulation.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232029/04-scan-WFP_Fwpm_IOCTL_DeviceIoControl_CreateService_OpenSCManager.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232029/05-contract-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-232029/06-lifecycle-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-232029/07-static-security.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1942
+    },
+    {
+      "path": "aegis-audit-20260927-232029/08-acceptance-claims.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-232029/08-evidence-index.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 155366
+    },
+    {
+      "path": "aegis-audit-20260927-232052/00-summary.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1868
+    },
+    {
+      "path": "aegis-audit-20260927-232052/01-git.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 21072
+    },
+    {
+      "path": "aegis-audit-20260927-232052/02-map-freshness.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1472
+    },
+    {
+      "path": "aegis-audit-20260927-232052/03-file-inventory.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 58684
+    },
+    {
+      "path": "aegis-audit-20260927-232052/04-scan-aegis_control_aegis_nose_HEALTH_health_check.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232052/04-scan-aegis_pep_enforce_evaluate_unblock_query_provider.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232052/04-scan-BLOCKED_CONFIRMED_ENFORCED_host_effect_confirmed_filter_id.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232052/04-scan-sec_monitor_windows_enforce_shield_src_pep.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232052/04-scan-TODO_FIXME_HACK_mock_stub_placeholder_simulation.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232052/04-scan-WFP_Fwpm_IOCTL_DeviceIoControl_CreateService_OpenSCManager.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232052/05-contract-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-232052/06-lifecycle-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-232052/07-static-security.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1942
+    },
+    {
+      "path": "aegis-audit-20260927-232052/08-acceptance-claims.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-232052/08-evidence-index.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 155366
+    },
+    {
+      "path": "aegis-audit-20260927-232103/00-summary.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1868
+    },
+    {
+      "path": "aegis-audit-20260927-232103/01-git.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 21138
+    },
+    {
+      "path": "aegis-audit-20260927-232103/02-map-freshness.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1472
+    },
+    {
+      "path": "aegis-audit-20260927-232103/03-file-inventory.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 58684
+    },
+    {
+      "path": "aegis-audit-20260927-232103/04-scan-aegis_control_aegis_nose_HEALTH_health_check.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232103/04-scan-aegis_pep_enforce_evaluate_unblock_query_provider.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232103/04-scan-BLOCKED_CONFIRMED_ENFORCED_host_effect_confirmed_filter_id.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232103/04-scan-sec_monitor_windows_enforce_shield_src_pep.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232103/04-scan-TODO_FIXME_HACK_mock_stub_placeholder_simulation.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232103/04-scan-WFP_Fwpm_IOCTL_DeviceIoControl_CreateService_OpenSCManager.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232103/05-contract-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-232103/06-lifecycle-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-232103/07-static-security.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1942
+    },
+    {
+      "path": "aegis-audit-20260927-232103/08-acceptance-claims.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-232103/08-evidence-index.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 155366
+    },
+    {
+      "path": "aegis-audit-20260927-232611/00-summary.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1868
+    },
+    {
+      "path": "aegis-audit-20260927-232611/01-git.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 21204
+    },
+    {
+      "path": "aegis-audit-20260927-232611/02-map-freshness.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1472
+    },
+    {
+      "path": "aegis-audit-20260927-232611/03-file-inventory.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 58684
+    },
+    {
+      "path": "aegis-audit-20260927-232611/04-scan-aegis_control_aegis_nose_HEALTH_health_check.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232611/04-scan-aegis_pep_enforce_evaluate_unblock_query_provider.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232611/04-scan-BLOCKED_CONFIRMED_ENFORCED_host_effect_confirmed_filter_id.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232611/04-scan-sec_monitor_windows_enforce_shield_src_pep.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232611/04-scan-TODO_FIXME_HACK_mock_stub_placeholder_simulation.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232611/04-scan-WFP_Fwpm_IOCTL_DeviceIoControl_CreateService_OpenSCManager.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232611/05-contract-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-232611/06-lifecycle-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-232611/07-static-security.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1942
+    },
+    {
+      "path": "aegis-audit-20260927-232611/08-acceptance-claims.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-232611/08-evidence-index.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 155366
+    },
+    {
+      "path": "aegis-audit-20260927-232933/00-summary.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1868
+    },
+    {
+      "path": "aegis-audit-20260927-232933/01-git.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 21270
+    },
+    {
+      "path": "aegis-audit-20260927-232933/02-map-freshness.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1472
+    },
+    {
+      "path": "aegis-audit-20260927-232933/03-file-inventory.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 58684
+    },
+    {
+      "path": "aegis-audit-20260927-232933/04-scan-aegis_control_aegis_nose_HEALTH_health_check.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232933/04-scan-aegis_pep_enforce_evaluate_unblock_query_provider.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232933/04-scan-BLOCKED_CONFIRMED_ENFORCED_host_effect_confirmed_filter_id.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232933/04-scan-sec_monitor_windows_enforce_shield_src_pep.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232933/04-scan-TODO_FIXME_HACK_mock_stub_placeholder_simulation.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232933/04-scan-WFP_Fwpm_IOCTL_DeviceIoControl_CreateService_OpenSCManager.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1072
+    },
+    {
+      "path": "aegis-audit-20260927-232933/05-contract-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-232933/06-lifecycle-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-232933/07-static-security.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1942
+    },
+    {
+      "path": "aegis-audit-20260927-232933/08-acceptance-claims.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1012
+    },
+    {
+      "path": "aegis-audit-20260927-232933/08-evidence-index.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 155366
+    },
+    {
+      "path": "aegis-audit-20260927-233456/00-summary.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1868
+    },
+    {
+      "path": "aegis-audit-20260927-233456/01-git.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 21336
+    },
+    {
+      "path": "aegis-audit-20260927-233456/02-map-freshness.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1472
+    },
+    {
+      "path": "aegis-audit-20260927-233456/03-file-inventory.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 58684
+    },
+    {
+      "path": "aegis-audit-20260927-233456/04-scan-aegis_control_aegis_nose_HEALTH_health_check.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 163772
+    },
+    {
+      "path": "aegis-audit-20260927-233456/04-scan-aegis_pep_enforce_evaluate_unblock_query_provider.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 210562
+    },
+    {
+      "path": "aegis-audit-20260927-233456/04-scan-BLOCKED_CONFIRMED_ENFORCED_host_effect_confirmed_filter_id.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 451790
+    },
+    {
+      "path": "aegis-audit-20260927-233456/04-scan-sec_monitor_windows_enforce_shield_src_pep.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 487650
+    },
+    {
+      "path": "aegis-audit-20260927-233456/04-scan-TODO_FIXME_HACK_mock_stub_placeholder_simulation.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 308332
+    },
+    {
+      "path": "aegis-audit-20260927-233456/04-scan-WFP_Fwpm_IOCTL_DeviceIoControl_CreateService_OpenSCManager.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1279174
+    },
+    {
+      "path": "aegis-audit-20260927-233456/05-contract-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 528240
+    },
+    {
+      "path": "aegis-audit-20260927-233456/06-lifecycle-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1181356
+    },
+    {
+      "path": "aegis-audit-20260927-233456/07-static-security.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 93166
+    },
+    {
+      "path": "aegis-audit-20260927-233456/08-acceptance-claims.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1715280
+    },
+    {
+      "path": "aegis-audit-20260927-233456/08-evidence-index.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 155366
+    },
+    {
+      "path": "aegis-audit-20260927-234325/00-summary.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1868
+    },
+    {
+      "path": "aegis-audit-20260927-234325/01-git.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 21636
+    },
+    {
+      "path": "aegis-audit-20260927-234325/02-map-freshness.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1472
+    },
+    {
+      "path": "aegis-audit-20260927-234325/03-file-inventory.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 58684
+    },
+    {
+      "path": "aegis-audit-20260927-234325/04-scan-aegis_control_aegis_nose_HEALTH_health_check.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1518190
+    },
+    {
+      "path": "aegis-audit-20260927-234325/04-scan-aegis_pep_enforce_evaluate_unblock_query_provider.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1144720
+    },
+    {
+      "path": "aegis-audit-20260927-234325/04-scan-BLOCKED_CONFIRMED_ENFORCED_host_effect_confirmed_filter_id.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2444990
+    },
+    {
+      "path": "aegis-audit-20260927-234325/04-scan-sec_monitor_windows_enforce_shield_src_pep.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5519916
+    },
+    {
+      "path": "aegis-audit-20260927-234325/04-scan-TODO_FIXME_HACK_mock_stub_placeholder_simulation.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1055238
+    },
+    {
+      "path": "aegis-audit-20260927-234325/04-scan-WFP_Fwpm_IOCTL_DeviceIoControl_CreateService_OpenSCManager.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 6246390
+    },
+    {
+      "path": "aegis-audit-20260927-234325/05-contract-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 528240
+    },
+    {
+      "path": "aegis-audit-20260927-234325/06-lifecycle-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1181356
+    },
+    {
+      "path": "aegis-audit-20260927-234325/07-static-security.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 93166
+    },
+    {
+      "path": "aegis-audit-20260927-234325/08-acceptance-claims.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1715280
+    },
+    {
+      "path": "aegis-audit-20260927-234325/08-evidence-index.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 155366
+    },
+    {
+      "path": "aegis-audit-20260927-235338/00-summary.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1868
+    },
+    {
+      "path": "aegis-audit-20260927-235338/01-git.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 21192
+    },
+    {
+      "path": "aegis-audit-20260927-235338/02-map-freshness.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1472
+    },
+    {
+      "path": "aegis-audit-20260927-235338/03-file-inventory.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 58684
+    },
+    {
+      "path": "aegis-audit-20260927-235338/04-scan-aegis_control_aegis_nose_HEALTH_health_check.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 13734294
+    },
+    {
+      "path": "aegis-audit-20260927-235338/04-scan-aegis_pep_enforce_evaluate_unblock_query_provider.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 10730058
+    },
+    {
+      "path": "aegis-audit-20260927-235338/04-scan-BLOCKED_CONFIRMED_ENFORCED_host_effect_confirmed_filter_id.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 64080410
+    },
+    {
+      "path": "aegis-audit-20260927-235338/04-scan-sec_monitor_windows_enforce_shield_src_pep.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 37025940
+    },
+    {
+      "path": "aegis-audit-20260927-235338/04-scan-TODO_FIXME_HACK_mock_stub_placeholder_simulation.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5015852
+    },
+    {
+      "path": "aegis-audit-20260927-235338/04-scan-WFP_Fwpm_IOCTL_DeviceIoControl_CreateService_OpenSCManager.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 37797824
+    },
+    {
+      "path": "aegis-audit-20260927-235338/05-contract-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 528240
+    },
+    {
+      "path": "aegis-audit-20260927-235338/06-lifecycle-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1181356
+    },
+    {
+      "path": "aegis-audit-20260927-235338/07-static-security.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 93166
+    },
+    {
+      "path": "aegis-audit-20260927-235338/08-acceptance-claims.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1715280
+    },
+    {
+      "path": "aegis-audit-20260927-235338/08-evidence-index.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 155366
+    },
+    {
+      "path": "aegis-audit-20260927-235713/00-summary.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1868
+    },
+    {
+      "path": "aegis-audit-20260927-235713/01-git.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 17816
+    },
+    {
+      "path": "aegis-audit-20260927-235713/02-map-freshness.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1472
+    },
+    {
+      "path": "aegis-audit-20260927-235713/03-file-inventory.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 58684
+    },
+    {
+      "path": "aegis-audit-20260927-235713/04-scan-aegis_control_aegis_nose_HEALTH_health_check.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 84229636
+    },
+    {
+      "path": "aegis-audit-20260927-235713/04-scan-aegis_pep_enforce_evaluate_unblock_query_provider.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 183245010
+    },
+    {
+      "path": "aegis-audit-20260927-235713/04-scan-BLOCKED_CONFIRMED_ENFORCED_host_effect_confirmed_filter_id.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1408007206
+    },
+    {
+      "path": "aegis-audit-20260927-235713/04-scan-sec_monitor_windows_enforce_shield_src_pep.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 363292722
+    },
+    {
+      "path": "aegis-audit-20260927-235713/04-scan-TODO_FIXME_HACK_mock_stub_placeholder_simulation.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 34628164
+    },
+    {
+      "path": "aegis-audit-20260927-235713/04-scan-WFP_Fwpm_IOCTL_DeviceIoControl_CreateService_OpenSCManager.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 621278590
+    },
+    {
+      "path": "aegis-audit-20260927-235713/05-contract-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 528240
+    },
+    {
+      "path": "aegis-audit-20260927-235713/06-lifecycle-references.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1181356
+    },
+    {
+      "path": "aegis-audit-20260927-235713/07-static-security.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 93166
+    },
+    {
+      "path": "aegis-audit-20260927-235713/08-acceptance-claims.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1715280
+    },
+    {
+      "path": "aegis-audit-20260927-235713/08-evidence-index.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 155366
+    },
+    {
+      "path": "aegis-audit-20260928-001216/01-git.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 17882
+    },
+    {
+      "path": "aegis-audit-20260928-001216/02-map-freshness.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1472
+    },
+    {
+      "path": "aegis-audit-20260928-001216/03-file-inventory.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 58684
+    },
+    {
+      "path": "aegis-audit-20260928-001216/04-scan-aegis_pep_enforce_evaluate_unblock_query_provider.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3814096256
+    },
+    {
+      "path": "aegis-audit-20260928-001904/01-git.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 17952
+    },
+    {
+      "path": "aegis-audit-20260928-001904/02-map-freshness.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1472
+    },
+    {
+      "path": "aegis-audit-20260928-001904/03-file-inventory.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 58684
+    },
+    {
+      "path": "aegis-audit-20260928-001904/04-scan-aegis_pep_enforce_evaluate_unblock_query_provider.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 796027664
+    },
+    {
+      "path": "aegis-audit-20260928-001904/04-scan-BLOCKED_CONFIRMED_ENFORCED_host_effect_confirmed_filter_id.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2707509098
+    },
+    {
+      "path": "aegis-audit-20260928-001904/04-scan-WFP_Fwpm_IOCTL_DeviceIoControl_CreateService_OpenSCManager.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2593340534
+    },
+    {
+      "path": "aegis-audit-20260928-003615/01-git.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 18018
+    },
+    {
+      "path": "aegis-audit-20260928-003615/02-map-freshness.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1472
+    },
+    {
+      "path": "aegis-audit-20260928-003615/03-file-inventory.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 58684
+    },
+    {
+      "path": "aegis-audit-20260928-003615/04-scan-aegis_pep_enforce_evaluate_unblock_query_provider.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1681173534
+    },
+    {
+      "path": "aegis-audit-20260928-151422/01-git.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 18084
+    },
+    {
+      "path": "aegis-audit-20260928-151422/02-map-freshness.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1472
+    },
+    {
+      "path": "aegis-audit-20260928-151422/03-file-inventory.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 58684
+    },
+    {
+      "path": "aegis-audit-20260928-151422/04-scan-aegis_pep_enforce_evaluate_unblock_query_provider.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 145809484
+    },
+    {
+      "path": "AEGIS_4_PHASE_COMPLETION_STATUS_2026-09-26.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1450
+    },
+    {
+      "path": "AEGIS_BACKEND_FRONTEND_STABILIZATION_PLAN_2026-09-25.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5893
+    },
+    {
+      "path": "AEGIS_CURRENT_SYSTEM_AUDIT_2026-09-27.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 819
     },
     {
       "path": "aegis_dashboard/Cargo.lock",
@@ -318,103 +1818,43 @@
       "path": "aegis_dashboard/src/main.rs",
       "class": "canonical-source",
       "role": "source",
-      "size": 20514
+      "size": 23075
+    },
+    {
+      "path": "AEGIS_DEEP_SYSTEM_HEALTH_AUDIT_2026-09-27.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 10851
     },
     {
       "path": "AEGIS_DEVELOPMENT_HANDOFF_2026-09-18.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 37571
+      "size": 9308
     },
     {
-      "path": "AEGIS_Development_Roadmap_To_Final.md",
+      "path": "AEGIS_FULL_PRODUCTION_SENSOR_HANDOFF_2026-09-27.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 20814
+      "size": 24494
     },
     {
-      "path": "AEGIS_END_TO_END_DEVELOPMENT_PLAN.md",
+      "path": "AEGIS_KERNEL_NIDS_DEEP_HANDOFF_2026-09-27.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 26784
+      "size": 22933
     },
     {
-      "path": "AEGIS_EXECUTION_PHASE_PLAN_2026-09-18.md",
+      "path": "AEGIS_KERNEL_NIDS_PRODUCTION_REANALYSIS_HANDOFF_2026-09-27.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 14911
+      "size": 22771
     },
     {
-      "path": "AEGIS_KERNEL_DETECTION_SEMI_IPS_ARCHITECTURE_REPORT_2026-09-21.md",
+      "path": "AEGIS_RECOVERY_HANDOFF_RETURN_TO_NORMAL_2026-09-27.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 32116
-    },
-    {
-      "path": "AEGIS_MANUS_NEW_SESSION_STARTER_2026-09-18.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 33403
-    },
-    {
-      "path": "AEGIS_MANUS_PRODUCTION_HANDOFF_2026-09-21.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 32202
-    },
-    {
-      "path": "AEGIS_NOSE_MOUTH_DEEP_ANALYSIS_2026-09-18.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 13960
-    },
-    {
-      "path": "AEGIS_OBSERVE_ONLY_PROOF_EVIDENCE_2026-09-18.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 2044
-    },
-    {
-      "path": "AEGIS_PHASE_0_10_EXECUTION_CHECKLIST_2026-09-18.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 2220
-    },
-    {
-      "path": "AEGIS_PHASE_0_2_EXECUTION_LOG_2026-09-18.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 3891
-    },
-    {
-      "path": "AEGIS_PHASE_10_11_ACCEPTANCE_CHECKPOINT_2026-09-18.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 3638
-    },
-    {
-      "path": "AEGIS_PHASE_8_10_RUNTIME_RUNBOOK_2026-09-18.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 1516
-    },
-    {
-      "path": "AEGIS_SYSTEM_ANALYSIS_BASELINE_2026-09-17.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 26586
-    },
-    {
-      "path": "AEGIS_SYSTEM_WIDE_ANALYSIS_CURRENT_HEAD_2026-09-17.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 73457
-    },
-    {
-      "path": "AEGIS_SYSTEM_WIDE_RUNTIME_FLOW_2026-09-18.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 18576
+      "size": 12340
     },
     {
       "path": "AGENTS.md",
@@ -427,12 +1867,6 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 16438
-    },
-    {
-      "path": "AI_HANDOFF_LOW_CREDIT_2026-09-21.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 18148
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -679,6 +2113,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 108
+    },
+    {
+      "path": "analysis/hostonly-wfp-20260929_162222/READY.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 97
     },
     {
       "path": "analysis/KERNEL_FILE_SYNTHETIC_CANARY_20260924.md",
@@ -936,7 +2376,7 @@
       "path": "analysis/RULE_22_OBSERVE_ONLY_MATCHING.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 11277
+      "size": 10889
     },
     {
       "path": "analysis/RULE_22_OBSERVE_ONLY_MATCHING.md",
@@ -984,13 +2424,13 @@
       "path": "analysis/RULE_22_SYNTHETIC_DETECTION_EVIDENCE.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 30183
+      "size": 29313
     },
     {
       "path": "analysis/RULE_22_SYNTHETIC_DETECTION_EVIDENCE.jsonl",
       "class": "unclassified",
       "role": "other",
-      "size": 22581
+      "size": 22559
     },
     {
       "path": "analysis/rules-22-run-20260922_181823_2208/summary.json",
@@ -1254,7 +2694,7 @@
       "path": "brain/windows_brain.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 29375
+      "size": 31836
     },
     {
       "path": "bridge/__init__.py",
@@ -1290,7 +2730,7 @@
       "path": "bridge/aegis_bridge_main.cpp",
       "class": "canonical-source",
       "role": "source",
-      "size": 15958
+      "size": 15880
     },
     {
       "path": "bridge/aegis_bridge_test.cpp",
@@ -1344,7 +2784,7 @@
       "path": "build_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 92616
+      "size": 118990
     },
     {
       "path": "build_truth.json",
@@ -1686,13 +3126,13 @@
       "path": "docs/AEGIS_Operator_CLI.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4757
+      "size": 5213
     },
     {
       "path": "docs/AEGIS_Operator_Usage_Manual.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 20359
+      "size": 21002
     },
     {
       "path": "docs/AEGIS_Operator_UX_Specification.md",
@@ -2157,6 +3597,192 @@
       "size": 2942
     },
     {
+      "path": "docs/historical/AEGIS_BACKEND_FRONTEND_STABILIZATION_PLAN_2026-09-25.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5893
+    },
+    {
+      "path": "docs/historical/AEGIS_COMPREHENSIVE_DEVELOPMENT_ANALYSIS_HANDOFF_2026-09-20.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 33219
+    },
+    {
+      "path": "docs/historical/AEGIS_DEVELOPMENT_HANDOFF_2026-09-18.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 37571
+    },
+    {
+      "path": "docs/historical/AEGIS_Development_Roadmap_To_Final.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 20814
+    },
+    {
+      "path": "docs/historical/AEGIS_END_TO_END_DEVELOPMENT_PLAN.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 26784
+    },
+    {
+      "path": "docs/historical/AEGIS_EXECUTION_PHASE_PLAN_2026-09-18.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 14911
+    },
+    {
+      "path": "docs/historical/AEGIS_KERNEL_DETECTION_SEMI_IPS_ARCHITECTURE_REPORT_2026-09-21.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 32116
+    },
+    {
+      "path": "docs/historical/AEGIS_MANUS_NEW_SESSION_STARTER_2026-09-18.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 33403
+    },
+    {
+      "path": "docs/historical/AEGIS_MANUS_PRODUCTION_HANDOFF_2026-09-21.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 32202
+    },
+    {
+      "path": "docs/historical/AEGIS_NOSE_MOUTH_DEEP_ANALYSIS_2026-09-18.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 13960
+    },
+    {
+      "path": "docs/historical/AEGIS_OBSERVE_ONLY_PROOF_EVIDENCE_2026-09-18.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2044
+    },
+    {
+      "path": "docs/historical/AEGIS_PHASE_0_10_EXECUTION_CHECKLIST_2026-09-18.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2220
+    },
+    {
+      "path": "docs/historical/AEGIS_PHASE_0_2_EXECUTION_LOG_2026-09-18.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3891
+    },
+    {
+      "path": "docs/historical/AEGIS_PHASE_10_11_ACCEPTANCE_CHECKPOINT_2026-09-18.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3638
+    },
+    {
+      "path": "docs/historical/AEGIS_PHASE_8_10_RUNTIME_RUNBOOK_2026-09-18.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1516
+    },
+    {
+      "path": "docs/historical/AEGIS_SYSTEM_ANALYSIS_BASELINE_2026-09-17.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 26586
+    },
+    {
+      "path": "docs/historical/AEGIS_SYSTEM_WIDE_ANALYSIS_CURRENT_HEAD_2026-09-17.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 73457
+    },
+    {
+      "path": "docs/historical/AEGIS_SYSTEM_WIDE_RUNTIME_FLOW_2026-09-18.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 18576
+    },
+    {
+      "path": "docs/historical/AI_HANDOFF_LOW_CREDIT_2026-09-21.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 18148
+    },
+    {
+      "path": "docs/historical/EVENT_QUEUE_001_PATCH_EVIDENCE_2026-09-17.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4622
+    },
+    {
+      "path": "docs/historical/HOST_PRODUCTION_ACCEPTANCE_PLAN_2026-09-19.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3872
+    },
+    {
+      "path": "docs/historical/LIFECYCLE_001_PATCH_EVIDENCE_2026-09-17.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4922
+    },
+    {
+      "path": "docs/historical/PHASE_0_TRUTH_REBUILD_REPORT.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 5560
+    },
+    {
+      "path": "docs/historical/PHASE_0_TRUTH_REBUILD_REPORT.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4361
+    },
+    {
+      "path": "docs/historical/PHASE_10_12_STRUCTURE_REPORT_2026-09-17.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4035
+    },
+    {
+      "path": "docs/historical/PHASE_10_VMWARE_ISOLATED_LAB_PLAN_2026-09-19.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5389
+    },
+    {
+      "path": "docs/historical/PHASE_1_3_STRUCTURE_REPORT_2026-09-17.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3640
+    },
+    {
+      "path": "docs/historical/PHASE_4_6_STRUCTURE_REPORT_2026-09-17.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3234
+    },
+    {
+      "path": "docs/historical/PHASE_7_9_STRUCTURE_REPORT_2026-09-17.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3824
+    },
+    {
+      "path": "docs/historical/PHASE_9_TIER3_READINESS_REPORT_2026-09-19.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 6411
+    },
+    {
+      "path": "docs/historical/PRODUCTION_COMPLETION_RUNBOOK_2026-09-20.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 11381
+    },
+    {
       "path": "docs/MASTER_TARGET_ALIGNMENT_2026-09-14.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -2352,7 +3978,7 @@
       "path": "docs/STRUCTURE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10795
+      "size": 10781
     },
     {
       "path": "docs/USER_OPERATIONS_GUIDE.md",
@@ -2412,13 +4038,13 @@
       "path": "drivers/wfp_callout/aegis_wfp.c",
       "class": "canonical-source",
       "role": "source",
-      "size": 19598
+      "size": 20312
     },
     {
       "path": "drivers/wfp_callout/aegis_wfp.h",
       "class": "canonical-source",
       "role": "source",
-      "size": 4503
+      "size": 4854
     },
     {
       "path": "drivers/wfp_callout/aegis_wfp.inf",
@@ -2430,7 +4056,7 @@
       "path": "drivers/wfp_callout/aegis_wfp_callout.c",
       "class": "canonical-source",
       "role": "source",
-      "size": 10398
+      "size": 13291
     },
     {
       "path": "drivers/wfp_callout/aegis_wfp_comm.c",
@@ -2439,10 +4065,10 @@
       "size": 6421
     },
     {
-      "path": "EVENT_QUEUE_001_PATCH_EVIDENCE_2026-09-17.md",
+      "path": "enforcement-call-sites.txt",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4622
+      "size": 10406
     },
     {
       "path": "evidence/milestone-1-2-20260922-163230/README.txt",
@@ -2760,13 +4386,13 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 73772
+      "size": 77682
     },
     {
-      "path": "FINAL_SUMMARY.py",
+      "path": "fix_bridge_banner.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 5234
+      "size": 2143
     },
     {
       "path": "fix_encoding.py",
@@ -2841,10 +4467,10 @@
       "size": 2313
     },
     {
-      "path": "HOST_PRODUCTION_ACCEPTANCE_PLAN_2026-09-19.md",
+      "path": "handoff_summary.txt",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 3872
+      "size": 5540
     },
     {
       "path": "installer/aegis.nsi",
@@ -2862,13 +4488,43 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 191145
+      "size": 250517
     },
     {
-      "path": "LIFECYCLE_001_PATCH_EVIDENCE_2026-09-17.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 4922
+      "path": "Invoke-AegisDeepAudit.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 6468
+    },
+    {
+      "path": "lib/bindings/utils.js",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 6311
+    },
+    {
+      "path": "lib/tom-select/tom-select.complete.min.js",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 44776
+    },
+    {
+      "path": "lib/tom-select/tom-select.css",
+      "class": "unclassified",
+      "role": "other",
+      "size": 9328
+    },
+    {
+      "path": "lib/vis-9.1.2/vis-network.css",
+      "class": "unclassified",
+      "role": "other",
+      "size": 220163
+    },
+    {
+      "path": "lib/vis-9.1.2/vis-network.min.js",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 468813
     },
     {
       "path": "Makefile",
@@ -2910,7 +4566,7 @@
       "path": "mouth/windows_sec_monitor.rs",
       "class": "canonical-source",
       "role": "source",
-      "size": 40022
+      "size": 40076
     },
     {
       "path": "nose/canonical.go",
@@ -2982,7 +4638,7 @@
       "path": "nose/model.go",
       "class": "canonical-source",
       "role": "source",
-      "size": 19668
+      "size": 16680
     },
     {
       "path": "nose/pipe_writer.go",
@@ -3012,73 +4668,19 @@
       "path": "nose/styles.go",
       "class": "canonical-source",
       "role": "source",
-      "size": 7148
-    },
-    {
-      "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
-      "class": "canonical-build",
-      "role": "build-config",
-      "size": 5662
-    },
-    {
-      "path": "PHASE_0_TRUTH_REBUILD_REPORT.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 4361
-    },
-    {
-      "path": "PHASE_10_12_STRUCTURE_REPORT_2026-09-17.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 4035
-    },
-    {
-      "path": "PHASE_10_VMWARE_ISOLATED_LAB_PLAN_2026-09-19.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 5389
-    },
-    {
-      "path": "PHASE_1_3_STRUCTURE_REPORT_2026-09-17.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 3640
-    },
-    {
-      "path": "PHASE_4_6_STRUCTURE_REPORT_2026-09-17.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 3234
-    },
-    {
-      "path": "PHASE_7_9_STRUCTURE_REPORT_2026-09-17.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 3824
-    },
-    {
-      "path": "PHASE_9_TIER3_READINESS_REPORT_2026-09-19.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 6411
-    },
-    {
-      "path": "PRODUCTION_COMPLETION_RUNBOOK_2026-09-20.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 11381
+      "size": 6355
     },
     {
       "path": "README.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 28732
+      "size": 30223
     },
     {
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 159204
+      "size": 206466
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -4101,6 +5703,12 @@
       "size": 8482
     },
     {
+      "path": "reports/forensic_evidence_graph.html",
+      "class": "unclassified",
+      "role": "other",
+      "size": 73985
+    },
+    {
       "path": "requirements.txt",
       "class": "canonical-docs",
       "role": "documentation",
@@ -4116,7 +5724,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 17724
+      "size": 18213
     },
     {
       "path": "rust-src/lib.rs",
@@ -4170,13 +5778,13 @@
       "path": "scripts/aegis_console.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 62005
+      "size": 66034
     },
     {
       "path": "scripts/aegis_console_pro.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 9859
+      "size": 11589
     },
     {
       "path": "scripts/aegis_daemon.py",
@@ -4200,7 +5808,7 @@
       "path": "scripts/aegis_graph.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 2820
+      "size": 5412
     },
     {
       "path": "scripts/aegis_metrics.py",
@@ -4266,7 +5874,7 @@
       "path": "scripts/build_drivers.bat",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 11132
+      "size": 11186
     },
     {
       "path": "scripts/build_wfp_user_bridge.ps1",
@@ -4314,7 +5922,7 @@
       "path": "scripts/Dashboard.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 4752
+      "size": 11242
     },
     {
       "path": "scripts/diag_aegis_dirs.bat",
@@ -4449,10 +6057,16 @@
       "size": 1952
     },
     {
+      "path": "scripts/run_22rules_kit.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4655
+    },
+    {
       "path": "scripts/run_aegis.bat",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 29608
+      "size": 29514
     },
     {
       "path": "scripts/run_control_receipt_probe.py",
@@ -4512,7 +6126,7 @@
       "path": "scripts/run_lifecycle_recovery_proof.ps1",
       "class": "canonical-source",
       "role": "source",
-      "size": 8891
+      "size": 9000
     },
     {
       "path": "scripts/run_milestone_1_2.ps1",
@@ -4596,13 +6210,19 @@
       "path": "scripts/run_wfp_phase10_preflight.ps1",
       "class": "canonical-source",
       "role": "source",
-      "size": 3508
+      "size": 3904
     },
     {
       "path": "scripts/setup_aegis.bat",
       "class": "canonical-build",
       "role": "build-config",
       "size": 3382
+    },
+    {
+      "path": "scripts/split_22rules_files.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3474
     },
     {
       "path": "scripts/stop_aegis.bat",
@@ -4662,7 +6282,7 @@
       "path": "scripts/wdk_build_production.ps1",
       "class": "canonical-source",
       "role": "source",
-      "size": 13015
+      "size": 13043
     },
     {
       "path": "scripts/wfp_service.ps1",
@@ -4974,7 +6594,7 @@
       "path": "src/control/handler_registry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 41550
+      "size": 45157
     },
     {
       "path": "src/control/health/runtime_health.zig.scaffold",
@@ -4992,7 +6612,7 @@
       "path": "src/control/state_machine.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 16598
+      "size": 16660
     },
     {
       "path": "src/control.zig",
@@ -5130,7 +6750,7 @@
       "path": "src/daemon.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 28024
+      "size": 28560
     },
     {
       "path": "src/detection/anomaly_detector.zig",
@@ -5316,7 +6936,7 @@
       "path": "src/forensic/integration_contract.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 27812
+      "size": 28217
     },
     {
       "path": "src/forensic/policy_contract.zig",
@@ -5406,7 +7026,7 @@
       "path": "src/main.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 4308
+      "size": 5222
     },
     {
       "path": "src/operator/recovery_contract.zig",
@@ -6483,6 +8103,24 @@
       "size": 27374
     },
     {
+      "path": "static-authority-scan.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 52198
+    },
+    {
+      "path": "static-contract-scan.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 492832
+    },
+    {
+      "path": "static-lifecycle-scan.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1181356
+    },
+    {
       "path": "SYSTEM_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
@@ -6493,6 +8131,24 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 578
+    },
+    {
+      "path": "test_output.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 101890
+    },
+    {
+      "path": "test_results.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 101890
+    },
+    {
+      "path": "test_summary.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 46734
     },
     {
       "path": "tests/__init__.py",
@@ -6627,6 +8283,12 @@
       "size": 12223
     },
     {
+      "path": "tests/forensics/test_forensic_evidence_graph.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 5719
+    },
+    {
       "path": "tests/forensics/test_t12_forensics_replay.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -6690,7 +8352,7 @@
       "path": "tests/runtime/conftest.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 21008
+      "size": 21005
     },
     {
       "path": "tests/runtime/README.md",
@@ -6792,7 +8454,7 @@
       "path": "tests/runtime/test_version.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 7876
+      "size": 8569
     },
     {
       "path": "tests/runtime/test_wire.py",
@@ -6801,10 +8463,28 @@
       "size": 7808
     },
     {
+      "path": "tests/security/test_cli_mutation_gate.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 2528
+    },
+    {
+      "path": "tests/security/test_forbidden_edges.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 6792
+    },
+    {
+      "path": "tests/security/test_receipt_contract.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 1642
+    },
+    {
       "path": "tests/security/test_t16_security_hardening.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 13766
+      "size": 14122
     },
     {
       "path": "tests/security/test_t19_decision_trace_shadow_replay_review.py",
@@ -6855,6 +8535,138 @@
       "size": 5146
     },
     {
+      "path": "tests/vectors/rules22/R0056.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 987
+    },
+    {
+      "path": "tests/vectors/rules22/R0088.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 998
+    },
+    {
+      "path": "tests/vectors/rules22/R1001.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 958
+    },
+    {
+      "path": "tests/vectors/rules22/R1002.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 931
+    },
+    {
+      "path": "tests/vectors/rules22/R1003.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 937
+    },
+    {
+      "path": "tests/vectors/rules22/R1004.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 886
+    },
+    {
+      "path": "tests/vectors/rules22/R1005.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 950
+    },
+    {
+      "path": "tests/vectors/rules22/R2001.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 919
+    },
+    {
+      "path": "tests/vectors/rules22/R2002.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 951
+    },
+    {
+      "path": "tests/vectors/rules22/R2003.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 936
+    },
+    {
+      "path": "tests/vectors/rules22/R2004.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 960
+    },
+    {
+      "path": "tests/vectors/rules22/R2005.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 915
+    },
+    {
+      "path": "tests/vectors/rules22/R3001.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 898
+    },
+    {
+      "path": "tests/vectors/rules22/R3002.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 917
+    },
+    {
+      "path": "tests/vectors/rules22/R3003.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 911
+    },
+    {
+      "path": "tests/vectors/rules22/R3004.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 921
+    },
+    {
+      "path": "tests/vectors/rules22/R3005.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 910
+    },
+    {
+      "path": "tests/vectors/rules22/R9002.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 889
+    },
+    {
+      "path": "tests/vectors/rules22/R9006.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 885
+    },
+    {
+      "path": "tests/vectors/rules22/R9007.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 857
+    },
+    {
+      "path": "tests/vectors/rules22/R9059.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 971
+    },
+    {
+      "path": "tests/vectors/rules22/R9064.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 974
+    },
+    {
       "path": "tests/wfp/test_t11_wfp_enforcement.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -6865,6 +8677,12 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 8915
+    },
+    {
+      "path": "tmp_prompt.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 9852
     },
     {
       "path": "tools/aegisctl/__init__.py",
@@ -6882,7 +8700,7 @@
       "path": "tools/aegisctl/api/control_api.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 33315
+      "size": 35909
     },
     {
       "path": "tools/aegisctl/client.py",
@@ -6912,13 +8730,13 @@
       "path": "tools/aegisctl/web_dashboard/app.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 5845
+      "size": 29425
     },
     {
       "path": "tools/aegisctl.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 43301
+      "size": 48280
     },
     {
       "path": "tools/backup_recovery.py",
@@ -7095,6 +8913,18 @@
       "size": 5563
     },
     {
+      "path": "tools/legacy/Dashboard.py.before-unified-snapshot",
+      "class": "legacy",
+      "role": "legacy-source",
+      "size": 8603
+    },
+    {
+      "path": "tools/legacy/fix_component_labels_v2.py",
+      "class": "legacy",
+      "role": "legacy-source",
+      "size": 1401
+    },
+    {
       "path": "tools/legacy/fix_console.py",
       "class": "legacy",
       "role": "legacy-source",
@@ -7105,6 +8935,36 @@
       "class": "legacy",
       "role": "legacy-source",
       "size": 3398
+    },
+    {
+      "path": "tools/legacy/fix_forensics_parser.py",
+      "class": "legacy",
+      "role": "legacy-source",
+      "size": 1675
+    },
+    {
+      "path": "tools/legacy/patch_forensics_cli.py",
+      "class": "legacy",
+      "role": "legacy-source",
+      "size": 2514
+    },
+    {
+      "path": "tools/legacy/patch_forensics_list.zig.py",
+      "class": "legacy",
+      "role": "legacy-source",
+      "size": 4120
+    },
+    {
+      "path": "tools/legacy/patch_graph_daemon.py",
+      "class": "legacy",
+      "role": "legacy-source",
+      "size": 5234
+    },
+    {
+      "path": "tools/legacy/patch_graph_watch.py",
+      "class": "legacy",
+      "role": "legacy-source",
+      "size": 5603
     },
     {
       "path": "tools/legacy/rust_shield_orphan_quarantined/Cargo.toml",
@@ -7267,6 +9127,12 @@
       "class": "canonical-build",
       "role": "build-config",
       "size": 624
+    },
+    {
+      "path": "vol10_preview.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3142
     },
     {
       "path": "zig_build.err",

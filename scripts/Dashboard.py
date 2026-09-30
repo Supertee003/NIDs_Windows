@@ -81,6 +81,16 @@ DEFCON_LABELS = {
 
 # --- [ MAIN DISPLAY FUNCTIONS ] ---
 
+COMPONENT_LABELS = {
+    "control": "CONTROL DAEMON",
+    "cpp": "C++ BRIDGE",
+    "forensic": "FORENSIC PLANE",
+    "go": "GO NOSE",
+    "rust_pep": "RUST MOUTH / PEP",
+    "tier3": "PYTHON BRAIN / TIER3",
+    "zig": "ZIG CORE",
+}
+
 def clear_screen():
     """Clear console screen (Windows / Unix compatible)."""
     import os
@@ -225,8 +235,9 @@ def main():
             for name, item in subsystems.items():
                 if not isinstance(item, dict):
                     continue
+                label = COMPONENT_LABELS.get(name, name.upper())
                 print(
-                    f"  {name:<12} "
+                    f"  {label:<24} "
                     f"{item.get('state', 'UNKNOWN'):<10} "
                     f"version={item.get('version', '-')}"
                 )

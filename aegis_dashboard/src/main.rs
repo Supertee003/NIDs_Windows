@@ -106,13 +106,15 @@ struct RuleEntry {
 
 #[derive(Debug, Deserialize, Default, Clone)]
 struct RuntimeSnapshot {
-    #[serde(default)]
     health: serde_json::Value,
+
     #[serde(default)]
+    enforcement: serde_json::Value,
+
     metrics: serde_json::Value,
-    #[serde(default)]
     forensic: serde_json::Value,
 }
+
 
 // =====================================================================
 // APP STATE
@@ -419,13 +421,49 @@ impl eframe::App for AegisDashboard {
                 data_plane.get("nose_frames_dropped").and_then(|v| v.as_u64()).unwrap_or(0),
                 data_plane.get("nose_duplicate_event_ids").and_then(|v| v.as_u64()).unwrap_or(0),
                 data_plane.get("nose_non_monotonic_event_ids").and_then(|v| v.as_u64()).unwrap_or(0)));
-            let shield = self.runtime_snapshot.health.get("rust_shield").cloned().unwrap_or_default();
-            let pep_state = shield.get("state").and_then(|v| v.as_str()).unwrap_or("UNKNOWN");
-            let provider_ready = shield.get("provider_ready").and_then(|v| v.as_bool()).unwrap_or(false);
-            let host_effect_capable = shield.get("host_effect_capable").and_then(|v| v.as_bool()).unwrap_or(false);
-            ui.label(format!("Authority: PEP={} | WFP provider={} | host-effect capability={}", pep_state,
-                if provider_ready { "READY" } else { "UNAVAILABLE" },
-                if host_effect_capable { "YES" } else { "NO" }));
+            let pep = self.runtime_snapshot.health
+    .get("rust_pep")
+    .cloned()
+    .unwrap_or_default();
+
+let alias = self.runtime_snapshot.health
+    .get("rust_shield")
+    .cloned()
+    .unwrap_or_default();
+
+let pep_state = pep
+    .get("state")
+    .and_then(|v| v.as_str())
+    .unwrap_or("UNKNOWN");
+
+let alias_of = alias
+    .get("alias_of")
+    .and_then(|v| v.as_str())
+    .unwrap_or("rust_pep");
+
+let provider_ready = self.runtime_snapshot
+    .enforcement
+    .get("provider_ready")
+    .and_then(|v| v.as_bool())
+    .unwrap_or(false);
+
+let host_effect_capable = self.runtime_snapshot
+    .enforcement
+    .get("host_effect_capable")
+    .and_then(|v| v.as_bool())
+    .unwrap_or(false);
+
+ui.label(format!(
+    "Canonical authority: rust_pep | state={} | WFP provider={} | host-effect capability={}",
+    pep_state,
+    if provider_ready { "READY" } else { "UNAVAILABLE" },
+    if host_effect_capable { "YES" } else { "NO" }
+));
+
+ui.label(format!(
+    "Compatibility alias: rust_shield -> {} | alias-only",
+    alias_of
+));
             let metrics = &self.runtime_snapshot.metrics;
             let metric_events = metrics.get("events_total").or_else(|| metrics.get("events"))
                 .and_then(|v| v.as_u64()).unwrap_or(0);

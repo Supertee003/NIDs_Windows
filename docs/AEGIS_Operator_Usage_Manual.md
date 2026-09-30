@@ -317,9 +317,9 @@ Dashboard แบ่งข้อมูลเป็นสองประเภท:
 
 ใช้ Dashboard สำหรับ overview และ investigation แต่ใช้ `aegis health` เป็นคำสั่งตัดสิน readiness อย่างเป็นทางการ
 
-## 10. Threat Graph
+## 10. Forensic Evidence Graph
 
-สร้าง graph จาก canonical event log:
+สร้าง graph จาก verified forensic record ของ control daemon:
 
 ```powershell
 .\scripts\aegis.ps1 graph
@@ -328,24 +328,32 @@ Dashboard แบ่งข้อมูลเป็นสองประเภท:
 ผลลัพธ์เริ่มต้น:
 
 ```text
-reports\threat_graph.html
+reports\forensic_evidence_graph.html
 ```
 
-กำหนดไฟล์เอง:
+กำหนดขอบเขตและไฟล์เอง:
 
 ```powershell
 .\scripts\aegis.ps1 graph `
-  --log .\logs\aegis_core.ndjson `
-  --output .\reports\threat_graph.html
+  --limit 500 `
+  --output .\reports\forensic_evidence_graph.html
+```
+
+โหมด watch (refresh ต่อเนื่อง):
+
+```powershell
+.\scripts\aegis.ps1 graph --watch --interval 3
 ```
 
 Graph แสดงความสัมพันธ์:
 
 ```text
-Source IP → Rule → AEGIS NIDS
+Source → Event → Rule → Record → AEGIS NIDS
 ```
 
-Graph เป็นเครื่องมือวิเคราะห์ความสัมพันธ์ ไม่ใช่ runtime health monitor และไม่ควรใช้แทน forensic verification
+Graph จะถูกสร้างเฉพาะเมื่อ control daemon ตอบ `integrity=ok` และ `verified=true` (`forensics list --json`) เท่านั้น ถ้า evidence ไม่ผ่านการยืนยัน จะไม่มีการสร้าง graph และจะแจ้ง error แทน
+
+Graph เป็นเครื่องมือวิเคราะห์ความสัมพันธ์จาก evidence ที่ผ่านการยืนยันแล้ว ไม่ใช่ runtime health monitor และใช้แทน forensic verification ไม่ได้
 
 ## 11. Golden-path Smoke Test
 

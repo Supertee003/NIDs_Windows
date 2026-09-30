@@ -1,6 +1,6 @@
 # Phase 8 — Controlled Attack Lab Results
 
-- Run: `phase8-lab-20260929-080839`
+- Run: `phase8-lab-20260930-152023`
 - Scenarios: **7** (passed 7, failed 0)
 - Execution mode: `synthetic_observe_only`
 - Prevention gate: **closed**
