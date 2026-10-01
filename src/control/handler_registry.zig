@@ -313,6 +313,29 @@ const handlers = struct {
     const diag = @import("../core/diagnostics.zig");
     const tier3_mod = @import("../policy/tier3_state.zig");
     const rules_loader = @import("../pipeline/rule_loader.zig");
+    const canonical_event = @import("../contract/canonical_event.zig");
+
+    const RecordOrigin = struct {
+        ordinal: u8,
+        name: []const u8,
+        space: []const u8,
+    };
+
+    /// Single canonical attribution for a forensic record. `reserved[5]` is the
+    /// source-space version byte, so records written before the canonical
+    /// writer are canonicalized on read: `--source N` then names the same
+    /// sensor for the whole ring instead of crossing two ordinal spaces.
+    fn forensicRecordOrigin(source_raw: u8, space_version: u8) RecordOrigin {
+        const canonical = forensic_pipeline.canonicalSourceFromRecord(source_raw, space_version);
+        return .{
+            .ordinal = @intFromEnum(canonical),
+            .name = canonical_event.sourceName(canonical),
+            .space = if (space_version == forensic_pipeline.SOURCE_SPACE_CANONICAL)
+                "canonical"
+            else
+                "legacy_mapped",
+        };
+    }
 
     extern "kernel32" fn GetCurrentProcessId() std.os.windows.DWORD;
 
@@ -450,6 +473,22 @@ const handlers = struct {
         return "{\"simulated\":true,\"result\":\"no_match\"}";
     }
 
+    /// One control response must fit inside a single pipe read on every
+    /// canonical client (64 KiB per ReadFile). A limit=1000 forensic page
+    /// serialized to >100 KB and failed with ERROR_MORE_DATA, which callers
+    /// observed as a hard control failure. Pages are byte-budgeted instead and
+    /// carry an explicit continuation cursor; a page never silently drops
+    /// records it claims to have covered.
+    const FORENSIC_PAGE_DEFAULT_BYTES: u64 = 32 * 1024;
+    const FORENSIC_PAGE_MIN_BYTES: u64 = 2 * 1024;
+    const FORENSIC_PAGE_MAX_BYTES: u64 = 256 * 1024;
+    /// Upper bound for one serialized record entry plus its separator comma.
+    /// Fixed-width integers and bounded source names keep every entry below
+    /// this, so the writer can stop before the response crosses the budget.
+    const FORENSIC_ENTRY_MAX_BYTES: usize = 224;
+    /// Reserve for the closing fields (counts, integrity, continuation).
+    const FORENSIC_FOOTER_BYTES: usize = 256;
+
     fn forensicsList(a: std.mem.Allocator, payload: std.json.Value, _: *HandlerContext) ?[]const u8 {
         const requested_source = payloadU64(payload, "source");
         const requested_prefix: []const u8 = if (payload == .object) blk: {
@@ -463,13 +502,20 @@ const handlers = struct {
         } else "";
 
         const requested_limit: u64 = @min(
-            payloadU64(payload, "limit") orelse 100,
+            @max(payloadU64(payload, "limit") orelse 100, 1),
             1000,
         );
         const requested_after = payloadU64(payload, "after");
+        const requested_budget: usize = @intCast(@min(
+            @max(
+                payloadU64(payload, "max_bytes") orelse FORENSIC_PAGE_DEFAULT_BYTES,
+                FORENSIC_PAGE_MIN_BYTES,
+            ),
+            FORENSIC_PAGE_MAX_BYTES,
+        ));
 
         const ring = state_mod.g_forensic_ring orelse
-            return "{\"available\":false,\"records\":[],\"records_returned\":0,\"integrity\":\"unavailable\",\"verified\":false}";
+            return "{\"available\":false,\"records\":[],\"records_returned\":0,\"records_matched\":0,\"truncated\":false,\"next_after\":null,\"integrity\":\"unavailable\",\"verified\":false}";
 
         const count = ring.recordCount();
         const slots = ring.capacity() / forensic_pipeline.RECORD_BYTES;
@@ -482,10 +528,13 @@ const handlers = struct {
 
         writer.writeAll("{\"available\":true,\"records\":[") catch return null;
         var returned: u64 = 0;
+        var matched: u64 = 0;
         var index = oldest;
         var first = true;
+        var truncated = false;
+        var last_returned: ?u64 = null;
 
-        while (index < count and returned < requested_limit) : (index += 1) {
+        while (index < count) : (index += 1) {
             const record = ring.readRecord(index, a) orelse continue;
             defer a.free(record);
 
@@ -501,9 +550,11 @@ const handlers = struct {
                 if (header.record_seq <= after) continue;
             }
 
+            const origin = forensicRecordOrigin(header.reserved[6], header.reserved[5]);
+
             if (requested_source) |source| {
                 if (source > std.math.maxInt(u8) or
-                    header.reserved[6] != @as(u8, @intCast(source))) continue;
+                    origin.ordinal != @as(u8, @intCast(source))) continue;
             }
 
             const payload_start = forensic_pipeline.HEADER_BYTES;
@@ -514,25 +565,61 @@ const handlers = struct {
                 (requested_prefix.len > @as(usize, header.payload_len) or
                 !std.mem.eql(u8, record[payload_start .. payload_start + requested_prefix.len], requested_prefix))) continue;
 
+            matched += 1;
+
+            // Budget gate: the first matching record is always written so a
+            // page can never stall, then the writer stops before the response
+            // crosses the budget. The record it did not write is covered by
+            // the continuation cursor, so it is returned by the next page.
+            if (returned > 0 and
+                out.items.len + FORENSIC_ENTRY_MAX_BYTES + FORENSIC_FOOTER_BYTES > requested_budget)
+            {
+                truncated = true;
+                break;
+            }
+
             if (!first) writer.writeByte(',') catch return null;
             first = false;
             writer.print(
-                "{{\"record_seq\":{},\"event_id\":{},\"rule_id\":{},\"source\":{},\"payload_len\":{},\"verified\":true}}",
+                "{{\"record_seq\":{},\"event_id\":{},\"rule_id\":{},\"source\":{},\"source_name\":\"{s}\",\"source_space\":\"{s}\",\"payload_len\":{},\"verified\":true}}",
                 .{
                     header.record_seq,
                     header.ev_id,
                     header.rule_id,
-                    header.reserved[6],
+                    origin.ordinal,
+                    origin.name,
+                    origin.space,
                     header.payload_len,
                 },
             ) catch return null;
             returned += 1;
+            last_returned = header.record_seq;
+
+            if (returned >= requested_limit) {
+                truncated = index + 1 < count;
+                break;
+            }
         }
 
+        // A continuation cursor is emitted only when the page stopped before
+        // the end of the ring; null means this page covered every remaining
+        // record, so callers can prove completeness instead of assuming it.
+        const cursor: ?u64 = if (truncated) last_returned else null;
         writer.print(
-            "],\"records_returned\":{},\"integrity\":\"{s}\",\"verified\":{}}}",
+            "],\"records_returned\":{},\"records_matched\":{},\"truncated\":{},\"next_after\":",
+            .{ returned, matched, truncated },
+        ) catch return null;
+        if (cursor) |seq| {
+            writer.print("{},", .{seq}) catch return null;
+        } else {
+            writer.writeAll("null,") catch return null;
+        }
+        writer.print(
+            "\"ring_records\":{},\"oldest_record_seq\":{},\"max_bytes\":{},\"integrity\":\"{s}\",\"verified\":{}}}",
             .{
-                returned,
+                count,
+                oldest,
+                requested_budget,
                 if (chain_verified) "ok" else "failed",
                 chain_verified,
             },
@@ -604,14 +691,17 @@ const handlers = struct {
             return null;
         }
 
+        const origin = forensicRecordOrigin(header.reserved[6], header.reserved[5]);
         return std.fmt.allocPrint(
             a,
-            "{{\"record_seq\":{},\"event_id\":{},\"rule_id\":{},\"source\":{},\"payload_len\":{},\"verified\":true}}",
+            "{{\"record_seq\":{},\"event_id\":{},\"rule_id\":{},\"source\":{},\"source_name\":\"{s}\",\"source_space\":\"{s}\",\"payload_len\":{},\"verified\":true}}",
             .{
                 header.record_seq,
                 header.ev_id,
                 header.rule_id,
-                header.reserved[6],
+                origin.ordinal,
+                origin.name,
+                origin.space,
                 header.payload_len,
             },
         ) catch null;

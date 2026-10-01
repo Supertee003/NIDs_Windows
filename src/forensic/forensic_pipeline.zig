@@ -28,6 +28,7 @@
 
 const std = @import("std");
 const event = @import("../contract/event.zig");
+const canonical_event = @import("../contract/canonical_event.zig");
 const manifest = @import("../contract/runtime_manifest.zig");
 const receipt = @import("../policy/enforcement_receipt.zig");
 
@@ -50,13 +51,79 @@ pub const RecordHeader = extern struct {
     record_seq: u64, // PATCH-33: monotonically increasing sequence
     prev_hash: [HASH_BYTES]u8, // PATCH-33: hash of previous record
     current_hash: [HASH_BYTES]u8, // PATCH-33: hash of this record
-    // reserved[6] stores EventSource for exact sensor attribution; the
-    // remaining bytes stay reserved for future forensic metadata.
+    // reserved[6] stores the CANONICAL EventSource ordinal for exact sensor
+    // attribution (see canonicalSourceOf); the remaining bytes stay reserved
+    // for future forensic metadata.
     reserved: [7]u8,
 };
 
 pub const HEADER_BYTES: usize = @sizeOf(RecordHeader);
 pub const PAYLOAD_BYTES: usize = RECORD_BYTES - HEADER_BYTES - 4; // 4 for CRC
+
+/// Canonical source attribution for a forensic record.
+///
+/// The ring is appended from the legacy pipeline event space
+/// (`event.EventSource`), while every operator surface and every cross-language
+/// consumer speaks the canonical `canonical_event.EventSource` space. Writing
+/// the legacy ordinal into `reserved[6]` made `forensics.list --source N` name
+/// a different sensor than `--source N` everywhere else in the project, so the
+/// translation happens once, at the writer, and is pinned by a unit test.
+/// Source-space version written into `reserved[5]`:
+///   0 = legacy record (written before canonical attribution)
+///   1 = canonical (`reserved[6]` holds a canonical_event.EventSource ordinal)
+/// Readers must honour this byte; a legacy 99 (system) is not a canonical 99.
+pub const SOURCE_SPACE_CANONICAL: u8 = 1;
+
+/// Canonical source for a raw record, honouring the source-space version byte.
+/// Unknown ordinals in either space resolve to `.external` instead of being
+/// attributed to a sensor that did not produce them.
+pub fn canonicalSourceFromRecord(raw: u8, space_version: u8) canonical_event.EventSource {
+    if (space_version == SOURCE_SPACE_CANONICAL) {
+        return std.meta.intToEnum(canonical_event.EventSource, raw) catch .external;
+    }
+    const legacy = std.meta.intToEnum(event.EventSource, raw) catch return .external;
+    return canonicalSourceOf(legacy);
+}
+
+test "canonicalSourceFromRecord canonicalizes legacy records and rejects unknown ordinals" {
+    // Legacy records must still be readable, with the same attribution the
+    // canonical writer would produce now.
+    try std.testing.expectEqual(canonical_event.EventSource.npcap_sensor, canonicalSourceFromRecord(1, 0));
+    try std.testing.expectEqual(canonical_event.EventSource.zig_core, canonicalSourceFromRecord(99, 0));
+    try std.testing.expectEqual(canonical_event.EventSource.external, canonicalSourceFromRecord(200, 0));
+    // Canonical records are read literally.
+    try std.testing.expectEqual(canonical_event.EventSource.npcap_sensor, canonicalSourceFromRecord(9, SOURCE_SPACE_CANONICAL));
+    try std.testing.expectEqual(canonical_event.EventSource.external, canonicalSourceFromRecord(99, SOURCE_SPACE_CANONICAL));
+}
+
+pub fn canonicalSourceOf(src: event.EventSource) canonical_event.EventSource {
+    return switch (src) {
+        .capture_npcap => .npcap_sensor,
+        .capture_etw => .host_telemetry,
+        .capture_fim => .file_sensor,
+        .capture_registry => .registry_sensor,
+        .capture_pipe_monitor => .pipe_monitor,
+        .detection_sig => .zig_core,
+        .detection_anom => .ml_detector,
+        .detection_corr => .zig_core,
+        .policy => .zig_core,
+        .federation => .cluster_federation,
+        .system => .zig_core,
+        _ => .external,
+    };
+}
+
+test "canonicalSourceOf maps every legacy pipeline source into the canonical space" {
+    try std.testing.expectEqual(canonical_event.EventSource.npcap_sensor, canonicalSourceOf(.capture_npcap));
+    try std.testing.expectEqual(canonical_event.EventSource.host_telemetry, canonicalSourceOf(.capture_etw));
+    try std.testing.expectEqual(canonical_event.EventSource.file_sensor, canonicalSourceOf(.capture_fim));
+    try std.testing.expectEqual(canonical_event.EventSource.registry_sensor, canonicalSourceOf(.capture_registry));
+    try std.testing.expectEqual(canonical_event.EventSource.pipe_monitor, canonicalSourceOf(.capture_pipe_monitor));
+    try std.testing.expectEqual(canonical_event.EventSource.cluster_federation, canonicalSourceOf(.federation));
+    try std.testing.expectEqual(canonical_event.EventSource.zig_core, canonicalSourceOf(.system));
+    // Unknown legacy ordinals must never masquerade as a known sensor.
+    try std.testing.expectEqual(canonical_event.EventSource.external, canonicalSourceOf(@enumFromInt(200)));
+}
 
 pub const ForensicRing = struct {
     storage: []u8,
@@ -207,7 +274,11 @@ pub const ForensicRing = struct {
             .record_seq = self.next_seq,
             .prev_hash = self.last_hash,
             .current_hash = [_]u8{0} ** HASH_BYTES, // filled after hash computation
-            .reserved = [_]u8{ 0, 0, 0, 0, 0, 0, @intFromEnum(ev.source) },
+            .reserved = [_]u8{
+                0, 0, 0, 0, 0,
+                SOURCE_SPACE_CANONICAL,
+                @intFromEnum(canonicalSourceOf(ev.source)),
+            },
         };
         @memcpy(slot[0..@sizeOf(RecordHeader)], std.mem.asBytes(&hdr));
         const plen = hdr.payload_len;

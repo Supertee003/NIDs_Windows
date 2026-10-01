@@ -211,6 +211,39 @@ pub const EventSource = enum(u8) {
     external = 255,
 };
 
+/// Stable lowercase name for every canonical source ordinal. Operator surfaces
+/// render this instead of a bare ordinal so every tier names the same sensor
+/// (the names are frozen with the ordinals in `SOURCE` in
+/// brain/canonical_event.py and pinned by tests/forensics/test_forensic_source_space.py).
+pub fn sourceName(source: EventSource) []const u8 {
+    return switch (source) {
+        .zig_core => "zig_core",
+        .wfp_sensor => "wfp_sensor",
+        .pipe_sensor => "pipe_sensor",
+        .minifilter => "minifilter",
+        .pipe_monitor => "pipe_monitor",
+        .python_brain => "python_brain",
+        .cpp_bridge => "cpp_bridge",
+        .rust_shield => "rust_shield",
+        .go_aggregator => "go_aggregator",
+        .npcap_sensor => "npcap_sensor",
+        .host_telemetry => "host_telemetry",
+        .ml_detector => "ml_detector",
+        .cluster_federation => "cluster_federation",
+        .process_sensor => "process_sensor",
+        .file_sensor => "file_sensor",
+        .registry_sensor => "registry_sensor",
+        .replay_sensor => "replay_sensor",
+        .external => "external",
+    };
+}
+
+test "sourceName names every canonical source" {
+    try std.testing.expectEqualStrings("zig_core", sourceName(.zig_core));
+    try std.testing.expectEqualStrings("npcap_sensor", sourceName(.npcap_sensor));
+    try std.testing.expectEqualStrings("external", sourceName(.external));
+}
+
 /// T2: canonical source-kind classification. Maps every EventSource to one
 /// of the required T2 source kinds (network/host/process/file/registry/
 /// ML/federation/replay). Cross-language consumers (Go/C++/Rust/Python)

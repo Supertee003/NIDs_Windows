@@ -51,6 +51,35 @@ pub fn pushEvent(ev: event.IpcEvent, payload: []const u8) bool {
     return true;
 }
 
+/// Closest legacy pipeline source for a canonical source.
+///
+/// The adapter used to leave `ev.source` at its `.system` default, so every
+/// network event that arrived through the canonical boundary was attributed to
+/// the core: forensic records, correlation categories and XDR source bits all
+/// lost the sensor that actually observed the traffic.
+///
+/// `event.EventSource` predates the canonical sources and cannot represent all
+/// of them, so each entry names the closest legacy family. The unit test below
+/// pins that every live sensor family round-trips back to itself through the
+/// forensic canonicalization; a future ABI revision should carry the canonical
+/// ordinal itself instead of this best-effort translation.
+pub fn legacySourceFor(source: canonical.EventSource) event.EventSource {
+    return switch (source) {
+        .zig_core => .system,
+        .wfp_sensor, .rust_shield => .policy,
+        .pipe_sensor, .pipe_monitor => .capture_pipe_monitor,
+        .minifilter, .file_sensor => .capture_fim,
+        .python_brain, .ml_detector => .detection_anom,
+        .go_aggregator, .cluster_federation => .federation,
+        .npcap_sensor => .capture_npcap,
+        .host_telemetry, .process_sensor => .capture_etw,
+        .registry_sensor => .capture_registry,
+        // No legacy sensor exists for these; attribute to the core rather than
+        // to a sensor that did not produce the event.
+        .cpp_bridge, .replay_sensor, .external => .system,
+    };
+}
+
 /// Adapt the frozen 109-byte CanonicalEvent into the queue consumed by the
 /// detector pipeline. This is the only acquisition-to-detector boundary.
 /// The event_id is copied unchanged; adapters must never mint a new identity.
@@ -88,6 +117,7 @@ pub fn pushCanonicalEventWithPayload(ce: *const canonical.CanonicalEvent, payloa
     };
 
     var ev = event.IpcEvent.init(kind);
+    ev.source = legacySourceFor(ce.source);
     ev.severity = severity;
     ev.event_id = ce.event_id;
     ev.timestamp_ns = ce.monotonic_ns;
@@ -101,6 +131,34 @@ pub fn pushCanonicalEventWithPayload(ce: *const canonical.CanonicalEvent, payloa
     ev.payload_hash = @truncate(ce.payload_hash);
     ev.flags = ce.context_flags;
     return pushEvent(ev, payload);
+}
+
+test "pushCanonicalEventWithPayload attributes the observing sensor" {
+    const forensic = @import("../forensic/forensic_pipeline.zig");
+    var ce = canonical.create(.npcap_sensor);
+    ce.event_type = .forward;
+    try std.testing.expect(pushCanonicalEvent(&ce));
+    const queued = popEvent().?;
+    try std.testing.expectEqual(@as(event.EventSource, .capture_npcap), queued.ev.source);
+
+    // Every live sensor family must survive the legacy space and the forensic
+    // canonicalization without changing identity.
+    const live = [_]canonical.EventSource{
+        .npcap_sensor,
+        .host_telemetry,
+        .file_sensor,
+        .registry_sensor,
+        .pipe_monitor,
+        .zig_core,
+        .cluster_federation,
+        .ml_detector,
+    };
+    for (live) |source| {
+        try std.testing.expectEqual(
+            source,
+            forensic.canonicalSourceOf(legacySourceFor(source)),
+        );
+    }
 }
 
 test "pushCanonicalEvent rejects invalid canonical event" {

@@ -18,9 +18,11 @@ DEFAULT_OUTPUT = ROOT / "reports" / "forensic_evidence_graph.html"
 
 def query_forensic_records(limit: int = 500) -> dict:
     bounded = max(1, min(int(limit), 1000))
+    # The daemon returns byte-budgeted pages; `--all` follows the continuation
+    # cursor so the graph sees a complete result set instead of the first page.
     command = [
         sys.executable, str(ROOT / "tools" / "aegisctl.py"),
-        "forensics", "list", "--limit", str(bounded), "--json",
+        "forensics", "list", "--limit", str(bounded), "--all", "--json",
     ]
     completed = subprocess.run(
         command, cwd=ROOT, capture_output=True, text=True,
@@ -37,6 +39,11 @@ def query_forensic_records(limit: int = 500) -> dict:
         raise RuntimeError("Forensic control query unavailable; graph not generated")
     if document.get("integrity") != "ok" or document.get("verified") is not True:
         raise RuntimeError("Forensic evidence is not verified; graph not generated")
+    if document.get("truncated") is True:
+        raise RuntimeError(
+            "Forensic page budget was exhausted before the result set was "
+            "complete; refusing to render a partial graph"
+        )
     records = document.get("records")
     if not isinstance(records, list):
         raise RuntimeError("Forensic control response has no records array")
@@ -59,12 +66,19 @@ def generate_forensic_graph(output_file: Path, limit: int) -> tuple[int, int, in
         event_id = item.get("event_id", "unknown")
         rule_id = item.get("rule_id", "unknown")
         source = item.get("source", "unknown")
+        # The daemon owns the canonical source space and names it; render that
+        # name instead of a bare ordinal so the graph, the CLI and the wire
+        # contract all name the same sensor.
+        source_name = item.get("source_name") or f"source_{source}"
         payload_len = item.get("payload_len", 0)
         source_node = f"source:{source}"
         event_node = f"event:{seq}:{event_id}"
         rule_node = f"rule:{rule_id}"
         record_node = f"record:{seq}"
-        graph.add_node(source_node, label=f"Source {source}", color="#60a5fa", shape="ellipse")
+        graph.add_node(
+            source_node, label=f"Source {source_name}", color="#60a5fa", shape="ellipse",
+            title=f"source={source} ({item.get('source_space', 'canonical')})",
+        )
         graph.add_node(event_node, label=f"Event {event_id}", color="#fbbf24", shape="dot")
         graph.add_node(rule_node, label=f"Rule {rule_id}", color="#fb7185", shape="square")
         graph.add_node(

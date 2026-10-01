@@ -19,6 +19,14 @@ from typing import Any, Dict, Optional
 
 from .config import DEFAULT_HOST, DEFAULT_PORT, DEFAULT_NAMED_PIPE
 
+# One request yields exactly one JSON document. The daemon writes that document
+# in chunks, so it must be accumulated across message-bounded reads until it
+# parses; a fixed-size single read loses the remainder to ERROR_MORE_DATA and
+# can misreport a valid large response as a transport failure.
+_MAX_RESPONSE_READS = 256
+_MAX_RESPONSE_BYTES = 8 * 1024 * 1024
+ERROR_MORE_DATA = 234
+
 
 class AegisCtlError(Exception):
     pass
@@ -116,8 +124,37 @@ class AegisClient:
                 raise last_error or RuntimeError("named pipe remained busy")
             req = json.dumps({"command": command, "payload": payload or {}}).encode("utf-8")
             win32file.WriteFile(handle, req)
-            _, resp = win32file.ReadFile(handle, 65536)
-            return json.loads(resp.decode("utf-8"))
+            # Size every read to the bytes left in the current message and
+            # accumulate until the document parses. PeekNamedPipe's third field
+            # is exactly lpBytesLeftThisMessage, so no read is ever short.
+            chunks: list[bytes] = []
+            total = 0
+            raw = b""
+            for _ in range(_MAX_RESPONSE_READS):
+                _, _, message_bytes = win32pipe.PeekNamedPipe(handle, 0)
+                read_size = max(int(message_bytes or 0), 1)
+                try:
+                    _, chunk = win32file.ReadFile(handle, read_size)
+                except Exception as exc:
+                    if getattr(exc, "winerror", None) == ERROR_MORE_DATA:
+                        continue
+                    raise
+                chunk = bytes(chunk)
+                if not chunk:
+                    continue
+                chunks.append(chunk)
+                total += len(chunk)
+                if total > _MAX_RESPONSE_BYTES:
+                    raise TransportError("control response exceeded the client read budget")
+                raw = b"".join(chunks)
+                try:
+                    json.loads(raw.decode("utf-8"))
+                    break
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    pass
+            else:
+                raise TransportError("control response never terminated as one JSON document")
+            return json.loads(raw.decode("utf-8"))
         except Exception as e:
             raise TransportError(f"named pipe error: {e}")
         finally:

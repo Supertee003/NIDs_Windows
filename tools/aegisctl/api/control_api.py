@@ -64,6 +64,34 @@ def decode_worker_failure_mask(mask: Any) -> List[str]:
     return [reason for bit, reason in WORKER_FAILURE_BITS.items() if value & (1 << bit)]
 
 
+# One control request produces exactly one JSON document. The daemon owns one
+# message-mode pipe instance and writes that document in chunks, while a single
+# ReadFile can deliver at most the read buffer. A response larger than the
+# buffer therefore arrives as several reads (ERROR_MORE_DATA = 234); treating
+# the first read as the whole response made a large paged forensic response
+# look like a hard transport failure. Accumulate until the document parses.
+_PIPE_READ_CHUNK = 65536
+_MAX_PIPE_READS = 256
+_MAX_PIPE_RESPONSE_BYTES = 8 * 1024 * 1024
+ERROR_MORE_DATA = 234
+ERROR_BROKEN_PIPE = 109
+
+
+def _response_document_complete(raw: bytes) -> bool:
+    """True when raw already contains one complete JSON document.
+
+    A partial read is never a control failure: the caller must keep reading
+    until the accumulated bytes parse as a single document.
+    """
+    if not raw:
+        return False
+    try:
+        json.loads(raw.decode("utf-8"))
+        return True
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return False
+
+
 def _query_daemon(command: str, payload: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
     """Query the running Zig daemon; return None when it is unavailable."""
     if os.name != "nt":
@@ -103,16 +131,29 @@ def _query_daemon(command: str, payload: Optional[Dict[str, Any]] = None) -> Opt
             if not write_file(handle, request_buf, len(request_bytes), ctypes.byref(sent), None):
                 return None
 
-            chunks = []
-            while True:
-                response_buf = ctypes.create_string_buffer(65536)
+            chunks: List[bytes] = []
+            total = 0
+            for _ in range(_MAX_PIPE_READS):
+                response_buf = ctypes.create_string_buffer(_PIPE_READ_CHUNK)
                 received = wintypes.DWORD(0)
-                ok = read_file(handle, response_buf, 65535, ctypes.byref(received), None)
+                ok = read_file(handle, response_buf, _PIPE_READ_CHUNK - 1, ctypes.byref(received), None)
                 if received.value:
                     chunks.append(response_buf.raw[:received.value])
-                if ok or ctypes.get_last_error() == 109:  # ERROR_BROKEN_PIPE
+                    total += received.value
+                    if total > _MAX_PIPE_RESPONSE_BYTES:
+                        return None
+                    if _response_document_complete(b"".join(chunks)):
+                        break
+                if ok:
+                    # A successful read proves one more message arrived, not
+                    # that the document is complete. GetLastError is only
+                    # meaningful after a failed call and may hold a stale
+                    # ERROR_BROKEN_PIPE here.
+                    continue
+                error = ctypes.get_last_error()
+                if error == ERROR_BROKEN_PIPE:  # server closed after the document
                     break
-                if ctypes.get_last_error() != 234:  # ERROR_MORE_DATA
+                if error != ERROR_MORE_DATA:
                     return None
             raw = b"".join(chunks)
         finally:
@@ -454,6 +495,84 @@ def get_active_rules() -> List[Dict[str, Any]]:
 def query_control(command: str, payload: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
     """Run a read-only control-plane query through the protected pipe."""
     return _query_daemon_retry(command, payload=payload)
+
+
+# The daemon page budget is authoritative; these only bound the client loop.
+FORENSIC_PAGE_LIMIT_CAP = 1000
+FORENSIC_PAGE_CAP = 64
+
+
+def query_forensic_records(
+    limit: int = 100,
+    *,
+    source: Optional[int] = None,
+    payload_prefix: Optional[str] = None,
+    after: Optional[int] = None,
+) -> Optional[Dict[str, Any]]:
+    """Collect forensic records across byte-budgeted control pages.
+
+    Every daemon page is bounded so one response fits in a single control
+    message, and the response reports `truncated` plus a `next_after` cursor.
+    Following that cursor keeps a large result set complete instead of
+    returning a silently short list or failing the transport.
+
+    The merged document carries `pages` and the final `truncated` state, so a
+    caller can always distinguish "complete result set" from "budget or page
+    cap exhausted, more records may remain".
+    """
+    requested = max(1, min(int(limit), FORENSIC_PAGE_LIMIT_CAP))
+    collected: List[Dict[str, Any]] = []
+    merged: Optional[Dict[str, Any]] = None
+    cursor: Optional[int] = max(0, int(after)) if after is not None else None
+    pages = 0
+
+    while pages < FORENSIC_PAGE_CAP:
+        page_payload: Dict[str, Any] = {
+            "limit": max(1, min(requested - len(collected), FORENSIC_PAGE_LIMIT_CAP)),
+        }
+        if source is not None:
+            page_payload["source"] = int(source)
+        if payload_prefix:
+            page_payload["payload_prefix"] = payload_prefix
+        if cursor is not None:
+            page_payload["after"] = cursor
+
+        document = query_control("forensics.list", payload=page_payload)
+        if document is None:
+            return None
+        pages += 1
+        if merged is None:
+            merged = dict(document)
+
+        records = document.get("records")
+        if isinstance(records, list):
+            collected.extend(item for item in records if isinstance(item, dict))
+
+        if not document.get("truncated"):
+            merged["records"] = collected
+            merged["records_returned"] = len(collected)
+            merged["pages"] = pages
+            merged["truncated"] = False
+            merged["next_after"] = None
+            return merged
+
+        next_after = document.get("next_after")
+        if next_after is None:
+            # Truncated without a cursor cannot be continued; report it as an
+            # incomplete result set rather than pretending it is complete.
+            break
+        cursor = int(next_after)
+        if not records or len(collected) >= requested:
+            break
+
+    if merged is None:
+        return None
+    merged["records"] = collected
+    merged["records_returned"] = len(collected)
+    merged["pages"] = pages
+    merged["truncated"] = True
+    merged["next_after"] = cursor
+    return merged
 
 
 def get_health_payload() -> Dict[str, Any]:

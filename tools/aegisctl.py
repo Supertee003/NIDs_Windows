@@ -51,6 +51,7 @@ try:
         get_active_rules,
         get_health_payload,
         query_control,
+        query_forensic_records,
         verify_authority_invariant,
     )
     CONTROL_API_AVAILABLE = True
@@ -70,6 +71,7 @@ except ImportError as e:
             get_active_rules,
             get_health_payload,
             query_control,
+            query_forensic_records,
             verify_authority_invariant,
         )
         CONTROL_API_AVAILABLE = True
@@ -402,9 +404,34 @@ def cmd_snapshot(args) -> int:
 def cmd_forensics(args) -> int:
     if args.forensics_command == "verify":
         return _print_control_query("forensics.verify", as_json=getattr(args, "json", True))
-    command = "forensics.verify" if args.forensics_command == "verify" else "forensics.list"
-    payload = {}
     limit = max(1, min(int(getattr(args, "limit", 100)), 1000))
+    if getattr(args, "all", False):
+        if not CONTROL_API_AVAILABLE:
+            print("\nControl API not available")
+            return 4
+        # `--all` follows the daemon's byte-budgeted page cursor so a large
+        # result set is complete instead of silently short.
+        document = query_forensic_records(
+            limit,
+            source=getattr(args, "source", None),
+            payload_prefix=getattr(args, "payload_prefix", None),
+            after=getattr(args, "after", None),
+        )
+        if document is None:
+            print("\nControl query failed: forensics.list", file=sys.stderr)
+            return 3
+        if document.get("truncated") is True:
+            # Report incompleteness on stderr; stdout stays the merged document.
+            print(json.dumps({
+                "command": "forensics.list",
+                "warning": "page_budget_exhausted",
+                "pages": document.get("pages"),
+                "next_after": document.get("next_after"),
+                "records_returned": document.get("records_returned"),
+            }, sort_keys=True), file=sys.stderr)
+        print(json.dumps(document, indent=2, sort_keys=True))
+        return 0
+    payload = {}
     payload["limit"] = limit
     if getattr(args, "after", None) is not None:
         payload["after"] = max(0, int(args.after))
@@ -412,7 +439,8 @@ def cmd_forensics(args) -> int:
         payload["source"] = int(args.source)
     if getattr(args, "payload_prefix", None):
         payload["payload_prefix"] = args.payload_prefix
-    return _print_control_query(command, as_json=getattr(args, "json", True), payload=payload)
+    result = _print_control_query("forensics.list", as_json=getattr(args, "json", True), payload=payload)
+    return result
 
 
 def cmd_readiness(args) -> int:
@@ -1052,6 +1080,8 @@ def main() -> int:
                        help="Maximum records to return; capped at 1000")
     flist.add_argument("--after", type=int, default=None,
                        help="Return records with record_seq greater than this value")
+    flist.add_argument("--all", action="store_true",
+                       help="Follow the paging cursor until the result set is complete")
     flist.add_argument("--json", action="store_true",
                        help="Emit machine-readable JSON")
     flist.add_argument("--source", type=int,
