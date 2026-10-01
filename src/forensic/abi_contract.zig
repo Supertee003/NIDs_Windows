@@ -42,7 +42,7 @@ pub const CanonicalEventContract = extern struct {
     payload_length: u32,
     payload_hash: u64, // SHA-256 prefix
     policy_action: u8, // AegisPolicyAction
-    enforcement_status: u8, // 0=pending, 1=enforced, 2=failed
+    enforcement_status: u8, // 0=pending, 1=enforced, 2=failed, 3=rolled_back
     defcon_impact: u8, // 1-5
     context_flags: u32, // Bitfield
     reserved: [16]u8,

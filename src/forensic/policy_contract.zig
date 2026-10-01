@@ -121,13 +121,45 @@ pub const Severity = enum(u8) {
     critical = 3,
 };
 
-/// Enforcement status values (must match across all languages).
+/// Enforcement status values for the frozen wire/forensic byte (must match
+/// across all languages). This is the 4-value space documented on
+/// `canonical_event.zig` enforcement_status. The receipt vocabulary
+/// (`policy/enforcement_receipt.zig`) is richer and must cross into this space
+/// through `EnforcementStatus.wireStatus`, never by ordinal reinterpretation.
 pub const EnforcementStatus = enum(u8) {
     pending = 0,
     enforced = 1,
     failed = 2,
     rolled_back = 3,
 };
+
+test "receipt status vocabulary maps onto the frozen wire space" {
+    const receipt = @import("../policy/enforcement_receipt.zig");
+    // The two spaces share their first three ordinals...
+    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(receipt.EnforcementStatus.pending));
+    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(receipt.EnforcementStatus.enforced));
+    try std.testing.expectEqual(@as(u8, 2), @intFromEnum(receipt.EnforcementStatus.failed));
+    // ...and diverge after them: receipt 3 is `unavailable`, wire 3 is
+    // `rolled_back`. A raw ordinal read across the boundary would report a
+    // failed provider as a completed rollback.
+    try std.testing.expectEqual(@as(u8, 3), @intFromEnum(receipt.EnforcementStatus.unavailable));
+    try std.testing.expectEqual(@as(u8, 3), @intFromEnum(EnforcementStatus.rolled_back));
+    try std.testing.expectEqual(@as(u8, 4), @intFromEnum(receipt.EnforcementStatus.rolled_back));
+
+    // The mapping is total and only `enforced` may claim a host effect.
+    try std.testing.expectEqual(@as(u8, 1), receipt.EnforcementStatus.enforced.wireStatus());
+    try std.testing.expectEqual(@as(u8, 3), receipt.EnforcementStatus.rolled_back.wireStatus());
+    try std.testing.expectEqual(@as(u8, 0), receipt.EnforcementStatus.pending.wireStatus());
+    for ([_]receipt.EnforcementStatus{
+        .pending,
+        .failed,
+        .unavailable,
+        .rolled_back,
+        .simulated,
+    }) |status| {
+        try std.testing.expect(status.wireStatus() != 1);
+    }
+}
 
 // ============================================================================
 // Tests

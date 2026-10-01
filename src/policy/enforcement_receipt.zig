@@ -1,6 +1,11 @@
 //! Phase 7 enforcement contract: decision, host effect and receipt are distinct.
 const std = @import("std");
 
+/// Receipt-local enforcement vocabulary. It is RICHER than the frozen wire
+/// byte (`canonical_event.zig` enforcement_status: 0=pending, 1=enforced,
+/// 2=failed, 3=rolled_back) and the two must never be reinterpreted by ordinal:
+/// a raw receipt ordinal 3 means `unavailable` here but `rolled_back` on the
+/// wire, and 4 is undefined there. Use `wireStatus` to cross the boundary.
 pub const EnforcementStatus = enum(u8) {
     pending = 0,
     enforced = 1,
@@ -8,6 +13,24 @@ pub const EnforcementStatus = enum(u8) {
     unavailable = 3,
     rolled_back = 4,
     simulated = 5,
+
+    /// Total mapping onto the frozen wire/forensic status byte.
+    ///
+    /// Only `enforced` may become 1: `unavailable` means no host effect was
+    /// applied, and `simulated` is observe-only, so neither may be readable as
+    /// a success. `unavailable` degrades to 2 (failed) rather than to a
+    /// pending state so an operator never sees "still pending" for a provider
+    /// that already answered.
+    pub fn wireStatus(self: EnforcementStatus) u8 {
+        return switch (self) {
+            .pending => 0,
+            .enforced => 1,
+            .failed => 2,
+            .unavailable => 2,
+            .rolled_back => 3,
+            .simulated => 0,
+        };
+    }
 };
 
 pub const EnforcementReceipt = struct {
@@ -25,6 +48,11 @@ pub const EnforcementReceipt = struct {
     trace_id: u64 = 0,
     audit_id: u64 = 0,
     receipt_version: u16 = VERSION,
+
+    /// Frozen wire/forensic status byte for this receipt's status.
+    pub fn wireStatus(self: EnforcementReceipt) u8 {
+        return self.status.wireStatus();
+    }
 
     pub fn isSuccess(self: EnforcementReceipt) bool {
         return self.validate() and self.status == .enforced and self.host_effect_confirmed and
