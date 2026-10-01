@@ -7,8 +7,9 @@ Verifies that the aegisctl inspection commands work correctly:
   - forensic show/search/export
 
 These are read-only tests that verify the CLI plumbing. They do NOT
-require running components -- they work against the Rules.json file
-and (if present) the NDJSON forensic log.
+require running components -- they work against the canonical
+configs/Rules.json rule file and the control daemon (forensic queries are
+served from the daemon's hash-chained ring, not from a local NDJSON log).
 """
 
 from __future__ import annotations
@@ -23,7 +24,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 AEGISCTL = REPO_ROOT / "tools" / "aegisctl.py"
-RULES_FILE = REPO_ROOT / "config" / "Rules.json"
+# Single rule authority (see tests/security/test_single_rule_authority.py).
+RULES_FILE = REPO_ROOT / "configs" / "Rules.json"
 FORENSIC_LOG = REPO_ROOT / "logs" / "aegis_core.ndjson"
 
 
@@ -156,24 +158,38 @@ class TestForensicCommands(unittest.TestCase):
         rc, _, _ = _run_aegisctl("forensic", "export")
         self.assertNotEqual(rc, 0)
 
-    def test_forensic_search_with_no_log(self):
-        """If no log file exists, search should report it gracefully."""
-        if FORENSIC_LOG.exists():
-            self.skipTest("forensic log already exists -- can't test empty case")
-        rc, stdout, _ = _run_aegisctl(
+    def test_forensic_search_rejects_unsupported_fields(self):
+        """Search is served by the control daemon, which filters on the
+        canonical source/payload-prefix fields only. An unsupported field must
+        fail with a machine-readable reason instead of silently searching a
+        different (local log) data source."""
+        rc, _stdout, stderr = _run_aegisctl(
             "forensic", "search", "--field", "rule_id", "--value", "TEST"
         )
-        self.assertEqual(rc, 1)
-        self.assertIn("No log file", stdout)
+        self.assertEqual(rc, 2)
+        payload = json.loads(stderr)
+        self.assertFalse(payload["available"])
+        self.assertIn("source_or_payload_prefix", payload["reason"])
 
-    def test_forensic_export_with_no_log(self):
-        if FORENSIC_LOG.exists():
-            self.skipTest("forensic log already exists -- can't test empty case")
-        rc, stdout, _ = _run_aegisctl(
-            "forensic", "export", "--output", "/tmp/test_export.json"
+    def test_forensic_export_requires_a_verified_hash_chain(self):
+        """Export is daemon-sourced evidence, never a local log file: it must
+        either write a verified ring summary or fail closed with no artifact."""
+        output = Path(tempfile.mkdtemp()) / "export.json"
+        rc, stdout, stderr = _run_aegisctl(
+            "forensic", "export", "--output", str(output)
         )
-        self.assertEqual(rc, 1)
-        self.assertIn("No log file", stdout)
+        if rc == 0:
+            document = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(document["export_kind"], "forensic_ring_summary")
+            self.assertTrue(document["integrity"]["verified"])
+            self.assertTrue(json.loads(stdout)["verified"])
+        else:
+            payload = json.loads(stderr)
+            self.assertFalse(payload["available"])
+            self.assertEqual(payload["command"], "forensics.verify")
+            self.assertFalse(
+                output.exists(), "a failed integrity verification must not write evidence"
+            )
 
 
 class TestForensicExportWithTestData(unittest.TestCase):
