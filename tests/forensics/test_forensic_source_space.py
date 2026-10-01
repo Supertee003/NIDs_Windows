@@ -132,7 +132,7 @@ def test_legacy_ordinals_are_mapped_not_reinterpreted():
 
 # ── AC5: operator surfaces render the daemon's name ────────────────────────
 
-def test_graph_renders_the_daemon_source_name():
+def test_graph_renders_the_daemon_source_name(monkeypatch):
     pytest.importorskip("networkx", reason="graph stack (networkx) not installed")
     sys.path.insert(0, str(REPO_ROOT))
     spec = importlib.util.spec_from_file_location("aegis_graph_source_space", GRAPH)
@@ -154,7 +154,9 @@ def test_graph_renders_the_daemon_source_name():
     def fake_run(command, **_kwargs):
         return subprocess.CompletedProcess(command, 0, json.dumps(document), "")
 
-    module.subprocess.run = fake_run
+    # monkeypatch (not module.subprocess.run = ...) so the patched global
+    # subprocess.run is restored for every later test in this interpreter.
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
     try:
         import tempfile
         with tempfile.TemporaryDirectory() as tmp:
