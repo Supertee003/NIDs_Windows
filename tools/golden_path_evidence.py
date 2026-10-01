@@ -122,10 +122,18 @@ def collect() -> dict:
         REPO / "logs" / "runtime" / "aegis_core.ndjson")
     ev["logs"] = logs
 
-    rules = REPO / "config" / "Rules.json"
+    # Evidence must describe the file it actually read: the legacy
+    # config/Rules.json mirror was hashed here while the evidence claimed
+    # configs/Rules.json, and the count looked for a "rules" key that the
+    # canonical file does not use (it declares "nids_rules"), so the golden
+    # path reported 0 rules.
+    rules = REPO / "configs" / "Rules.json"
     if rules.exists():
         data = json.loads(rules.read_text(encoding="utf-8"))
-        n_rules = len(data) if isinstance(data, list) else len(data.get("rules", []))
+        if isinstance(data, list):
+            n_rules = len(data)
+        else:
+            n_rules = len(data.get("nids_rules", data.get("rules", [])))
         ev["policy_artifact"] = {"path": "configs/Rules.json",
                                  "sha256": sha256(rules), "rules": n_rules}
     else:

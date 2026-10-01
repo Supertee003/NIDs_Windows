@@ -261,12 +261,16 @@ def get_all_status() -> List[Tuple[str, bool, Optional[int]]]:
 
 
 def load_rules() -> Dict[str, Any]:
-    """Load rules from the daemon's canonical configs/Rules.json location."""
-    repo = REPO_ROOT
-    for rules_file in (repo / "configs" / "Rules.json", repo / "config" / "Rules.json"):
-        if rules_file.exists():
-            with open(rules_file, "r", encoding="utf-8") as f:
-                return json.load(f)
+    """Load rules from the single rule authority: configs/Rules.json.
+
+    The previous fallback to config/Rules.json silently served a divergent
+    rule set (its regex_patterns differed in two entries), so a caller could
+    validate one rule set and act on another.
+    """
+    rules_file = REPO_ROOT / "configs" / "Rules.json"
+    if rules_file.exists():
+        with open(rules_file, "r", encoding="utf-8") as f:
+            return json.load(f)
     return {"nids_rules": []}
 
 

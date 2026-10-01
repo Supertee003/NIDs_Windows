@@ -59,7 +59,12 @@ PEP_STATE_FILE = LOGS_DIR / "runtime" / "pep_state.json"
 CANARY_RESULTS_DIR = LOGS_DIR / "runtime"
 
 CONFIG_DIR = REPO_ROOT / "config"
-RULES_FILE = CONFIG_DIR / "Rules.json"
+# Single rule authority: configs/Rules.json is the only rule set the Zig
+# detector, the Go nose classifier, the Brain and the control plane read.
+# config/Rules.json is a legacy mirror kept byte-identical for packaging
+# checks; nothing may load rules from it (see
+# tests/security/test_single_rule_authority.py).
+RULES_FILE = REPO_ROOT / "configs" / "Rules.json"
 DISABLED_RULES_FILE = CONFIG_DIR / "disabled_rules.json"
 CANARY_TESTS_FILE = REPO_ROOT / "configs" / "canary_tests.json"
 

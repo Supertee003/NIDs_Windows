@@ -19,6 +19,41 @@ pub fn hashRuleId(rule_id: []const u8) u32 {
     return h;
 }
 
+test "hashRuleId matches the cross-language golden table" {
+    // Shared golden values, also asserted by nose/signature_classifier_test.go (Go
+    // network classifier) and tests/security/test_detection_contract_pin.py.
+    // The Go classifier and this detector must map one rule_id to the same
+    // numeric rule id, or a detection attributed by one tier would name a
+    // different rule in the other.
+    const golden = [_]struct { id: []const u8, hash: u32 }{
+        .{ .id = "R0056", .hash = 2107512682 },
+        .{ .id = "R0088", .hash = 4254503461 },
+        .{ .id = "R1001", .hash = 3813986375 },
+        .{ .id = "R1002", .hash = 3830763994 },
+        .{ .id = "R1003", .hash = 3847541613 },
+        .{ .id = "R1004", .hash = 3730098280 },
+        .{ .id = "R1005", .hash = 3746875899 },
+        .{ .id = "R2001", .hash = 2452150132 },
+        .{ .id = "R2002", .hash = 2502482989 },
+        .{ .id = "R2003", .hash = 2485705370 },
+        .{ .id = "R2004", .hash = 2401817275 },
+        .{ .id = "R2005", .hash = 2385039656 },
+        .{ .id = "R3001", .hash = 1836645033 },
+        .{ .id = "R3002", .hash = 1786312176 },
+        .{ .id = "R3003", .hash = 1803089795 },
+        .{ .id = "R3004", .hash = 1886977890 },
+        .{ .id = "R3005", .hash = 1903755509 },
+        .{ .id = "R9002", .hash = 1812566754 },
+        .{ .id = "R9006", .hash = 1745456278 },
+        .{ .id = "R9007", .hash = 1762233897 },
+        .{ .id = "R9059", .hash = 4009890390 },
+        .{ .id = "R9064", .hash = 4194591294 },
+    };
+    for (golden) |entry| {
+        try std.testing.expectEqual(entry.hash, hashRuleId(entry.id));
+    }
+}
+
 /// Reload Rules.json into a fresh Aho-Corasick automaton.
 /// Called from the control pipe thread on `rules.reload`.
 /// Thread-safe: rebuilds a new AC and swaps the global pointer atomically.
