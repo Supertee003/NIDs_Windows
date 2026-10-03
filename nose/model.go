@@ -312,7 +312,7 @@ func (m model) renderHealthDynamic(w int) string {
 func (m model) renderTrafficDynamic(w int) string {
 	var b strings.Builder
 
-	b.WriteString(sectionTrafficStyle.Render("Network Traffic"))
+	b.WriteString(sectionTrafficStyle.Render("Network Traffic (simulated)"))
 	b.WriteString("\n")
 
 	b.WriteString(fmt.Sprintf("  %-16s %s\n",
@@ -350,7 +350,7 @@ func (m model) renderTrafficDynamic(w int) string {
 func (m model) renderTopTalkersDynamic(w int) string {
 	var b strings.Builder
 
-	b.WriteString(sectionTrafficStyle.Render("Top Talkers"))
+	b.WriteString(sectionTrafficStyle.Render("Top Talkers (simulated)"))
 	b.WriteString("\n")
 
 	talkers := sortTopTalkers(m.traffic.TopTalkers)

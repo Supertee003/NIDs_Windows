@@ -248,7 +248,7 @@ mod health_pipe {
 
 struct Config {
     log_path: String,
-    enforced_path: String,
+    annotation_path: String,
     refresh_ms: u64,
 }
 
@@ -288,8 +288,8 @@ fn parse_args() -> Config {
         i += 1;
     }
 
-    let enforced_path = log_path.replace("anomalous.json", "enforced.json");
-    Config { log_path, enforced_path, refresh_ms }
+    let annotation_path = log_path.replace("anomalous.json", "defcon_annotations.json");
+    Config { log_path, annotation_path, refresh_ms }
 }
 
 // =====================================================================
@@ -665,8 +665,8 @@ impl CumulativeStats {
 // Enforcement Log (write when DEFCON changes)
 // =====================================================================
 
-fn write_enforcement_log(enforced_path: &str, level: u8, label: &str, prev_level: u8, stats: &CumulativeStats) {
-    if let Some(parent) = std::path::Path::new(enforced_path).parent() {
+fn write_defcon_annotation_log(annotation_path: &str, level: u8, label: &str, prev_level: u8, stats: &CumulativeStats) {
+    if let Some(parent) = std::path::Path::new(annotation_path).parent() {
         let _ = fs::create_dir_all(parent);
     }
 
@@ -699,7 +699,7 @@ fn write_enforcement_log(enforced_path: &str, level: u8, label: &str, prev_level
     if let Ok(mut file) = OpenOptions::new()
         .create(true)
         .append(true)
-        .open(enforced_path)
+        .open(annotation_path)
     {
         let _ = writeln!(file, "{}", entry);
     }
@@ -735,7 +735,7 @@ fn process_creation_monitor_poll() -> u32 { 0 }
 //   │  10:03:15 HIGH     10.0.0.55     → ALERTED          │
 //   │  ─────────────────────────────────────────────────── │
 //   │  Stats: 12 alerts | 3 critical | 2 blocked          │
-//   │  Enforced: logs/enforced.json                        │
+//   │  Annotations: logs/defcon_annotations.json (advisory only)  │
 //   └───────────────────────────────────────────────────────┘
 // =====================================================================
 
@@ -894,8 +894,8 @@ fn render_dashboard(
     // ── Threat Statistics (compact but wider) ──
     render_border_side(bc, &format!("{C_CYAN}[ THREAT STATS ]{C_RESET}"));
     render_border_side(bc, &format!(
-        "  {}  {}  {}  {}  {}  {}",
-        C.total=stats.total_alerts, crit=stats.critical_count, blk=stats.blocked_count,
+        "  {}  {}  {}  {}  {}",
+        total=stats.total_alerts, crit=stats.critical_count, blk=stats.blocked_count,
         kern=stats.kernel_count, new=new_entries
     ));
     // Simplified stats line due to format complexity
@@ -904,7 +904,7 @@ fn render_dashboard(
     render_separator(bc);
     let refresh_secs = config.refresh_ms as f64 / 1000.0;
     render_border_side(bc, &format!(
-        "{C_GREEN}[ READY TO ENFORCE ]{C_RESET} │ {refresh_secs:.1}s │ Cycle {cycle}",
+        "{C_GREEN}[ OBSERVE ONLY ]{C_RESET} │ {refresh_secs:.1}s │ Cycle {cycle}",
         refresh_secs=refresh_secs, cycle=cycle
     ));
     render_border_bottom(bc);
@@ -1003,10 +1003,10 @@ fn main() {
         // Render dashboard (v3.0: with alert + mitigation feeds)
         render_dashboard(&cum_stats, &defcon, prev_defcon_level, &config, cycle, new_entries, &alert_feed, &mitigation_feed);
 
-        // Write enforcement log when DEFCON changes
+        // Write DEFCON annotation when the level changes (advisory only)
         if defcon.level != prev_defcon_level {
-            write_enforcement_log(
-                &config.enforced_path,
+            write_defcon_annotation_log(
+                &config.annotation_path,
                 defcon.level,
                 defcon.label,
                 prev_defcon_level,

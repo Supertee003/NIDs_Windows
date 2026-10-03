@@ -28,7 +28,7 @@ SUBSYSTEMS = [
     },
     {
         "name": "brain",
-        "description": "Brain (Python) -- Tier-2 regex + IPS policy enforcement",
+        "description": "Brain (Python) -- Tier-2 regex analytics, advisory only, never enforces",
         "exe": None,
         "script": "brain/windows_brain.py",
         "required": True,
@@ -41,9 +41,9 @@ SUBSYSTEMS = [
     },
     {
         "name": "mouth",
-        "description": "Mouth (Rust) -- behavioral validation + DEFCON display",
+        "description": "Mouth (Rust) -- OPTIONAL standalone DEFCON display, advisory only, never linked into runtime",
         "exe": "dist/windows_sec_monitor.exe",
-        "required": True,
+        "required": False,
     },
 ]
 
