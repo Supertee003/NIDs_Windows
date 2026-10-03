@@ -5,6 +5,7 @@
 
 const std = @import("std");
 const diag = @import("../core/diagnostics.zig");
+const runtime_paths = @import("../core/runtime_paths.zig");
 const sig = @import("../detection/signature_engine.zig");
 const state = @import("runtime_state.zig");
 
@@ -61,18 +62,31 @@ pub fn reloadRules() u32 {
     // Heap-allocate the new AC so the pointer survives after this function returns
     const heap_ac = std.heap.page_allocator.create(sig.AhoCorasick) catch |err| {
         diag.err("reload: failed to allocate AhoCorasick: {}", .{err});
-        return state.g_rules_loaded;
+        return 0;
     };
     heap_ac.* = sig.AhoCorasick.init(std.heap.page_allocator, 100_000) catch |err| {
         diag.err("reload: failed to init AhoCorasick: {}", .{err});
         std.heap.page_allocator.destroy(heap_ac);
-        return state.g_rules_loaded;
+        return 0;
     };
 
     var new_count: u32 = 0;
     blk: {
-        const rules_path = "configs/Rules.json";
-        const rules_file = std.fs.cwd().openFile(rules_path, .{}) catch |err| {
+        const runtime_root = runtime_paths.resolveRoot(std.heap.page_allocator) catch |err| {
+            diag.warn("reload: cannot resolve runtime root: {}", .{err});
+            heap_ac.deinit();
+            std.heap.page_allocator.destroy(heap_ac);
+            break :blk;
+        };
+        defer std.heap.page_allocator.free(runtime_root);
+        const rules_path = runtime_paths.configPath(std.heap.page_allocator, runtime_root, "Rules.json") catch |err| {
+            diag.warn("reload: cannot build Rules.json path: {}", .{err});
+            heap_ac.deinit();
+            std.heap.page_allocator.destroy(heap_ac);
+            break :blk;
+        };
+        defer std.heap.page_allocator.free(rules_path);
+        const rules_file = std.fs.openFileAbsolute(rules_path, .{}) catch |err| {
             diag.warn("reload: cannot open {s}: {}", .{ rules_path, err });
             heap_ac.deinit();
             std.heap.page_allocator.destroy(heap_ac);
@@ -166,6 +180,13 @@ pub fn reloadRules() u32 {
 
 /// Parse the nids_rules array from Rules.json bytes into an existing AC.
 /// Shared by initial startup load and reload; returns the loaded count.
+///
+/// NOTE (Project 2 observe-only contract): only rule_id + match_pattern are
+/// loaded. A rule's `action` (Drop/Block/Alert) is an advisory display label;
+/// no detection tier branches on it. Enforcement orders come exclusively from
+/// configs/policies.json through the Rust PEP receipt path. See AC5 in
+/// tests/security/test_detection_contract_pin.py, which fails loudly if any
+/// tier starts reading rule actions.
 pub fn loadRulesInto(ac: *sig.AhoCorasick, bytes: []const u8, rules_path: []const u8) u32 {
     var count: u32 = 0;
     blk: {

@@ -66,7 +66,10 @@ def test_every_detection_tier_reads_the_canonical_rule_file():
     assert 'json:"match_pattern"' in go
 
     zig = ZIG_LOADER.read_text(encoding="utf-8")
-    assert 'const rules_path = "configs/Rules.json";' in zig
+    assert 'runtime_paths.configPath' in zig, (
+        "the Zig loader must resolve configs/Rules.json through the shared "
+        "bundle resolver, not the process working directory"
+    )
     assert 'get("match_pattern")' in zig
     assert "nids_rules" in zig
 
@@ -80,6 +83,27 @@ def test_go_classifier_matches_the_match_pattern_by_substring():
         "the Go classifier must be pinned to case-sensitive substring matching"
     )
     assert "regex_pattern" not in go, "regex_pattern is owned by the Python Brain path"
+
+
+def test_zig_startup_uses_the_shared_bundle_resolver():
+    """AC1b: a service (cwd=C:\\WINDOWS\\system32) must still find its rules.
+
+    Both the startup loader in daemon.zig and the hot-reload loader must go
+    through src/core/runtime_paths.zig; a bare relative path here silently
+    disables the detection engine under the Windows service.
+    """
+    daemon = (REPO_ROOT / "src" / "daemon.zig").read_text(encoding="utf-8")
+    assert "runtime_paths.resolveRoot" in daemon
+    assert 'runtime_paths.configPath' in daemon
+    assert 'openFile("configs/Rules.json"' not in daemon, (
+        "daemon.zig must not open a cwd-relative rule path"
+    )
+
+    resolver = (REPO_ROOT / "src" / "core" / "runtime_paths.zig").read_text(encoding="utf-8")
+    assert "selfExeDirPathAlloc" in resolver, (
+        "bundle resolution must derive from the executable location"
+    )
+    assert "hasRequiredConfig" in resolver
 
 
 def test_zig_automaton_is_built_from_match_pattern_not_regex():
@@ -116,6 +140,40 @@ def test_every_canonical_rule_declares_both_pattern_fields():
         assert rule.get("rule_id"), rule
         assert rule.get("match_pattern"), f"{rule['rule_id']} needs a match_pattern"
         assert rule.get("regex_pattern"), f"{rule['rule_id']} needs a regex_pattern"
+
+
+# ── AC5: rule action is an advisory label, never an enforcement order ──────
+#
+# In Project 2 observe-only mode the detection tiers (Zig AC, Go substring)
+# never branch on a rule's `action`. Enforcement comes only from
+# configs/policies.json through the Rust PEP receipt path while the
+# prevention gate is the authority. If a new action value appears, or any
+# tier starts reading it, this pin fails loudly so the coupling is a
+# conscious contract change — not a silent promotion to host effect.
+
+ADVISORY_RULE_ACTIONS = {"Drop", "Block", "Alert"}
+
+
+def test_rule_actions_stay_within_the_advisory_vocabulary():
+    seen = set()
+    for rule in _canonical_rules():
+        action = rule.get("action")
+        assert action, f"{rule.get('rule_id')} needs an action label"
+        seen.add(action)
+    unknown = seen - ADVISORY_RULE_ACTIONS
+    assert not unknown, f"new rule action(s) {sorted(unknown)} need a contract review first"
+
+
+def test_no_detection_tier_branches_on_rule_action():
+    zig = ZIG_LOADER.read_text(encoding="utf-8")
+    assert 'get("action")' not in zig, (
+        "the Zig automaton loader must not read rule actions; "
+        "enforcement is owned by policies.json through the Rust PEP"
+    )
+    go = GO_CLASSIFIER.read_text(encoding="utf-8")
+    assert "Action" not in go, (
+        "the Go classifier struct must not carry an action field"
+    )
 
 
 @pytest.mark.skipif(shutil.which("go") is None, reason="Go toolchain not installed")
