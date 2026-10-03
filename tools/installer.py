@@ -39,81 +39,78 @@ def file_directive(name: str, dest: str = "") -> str:
 NSIS_TEMPLATE = r"""#!define APPNAME "AEGIS NIDS"
 #!define APPVERSION "5.0.0"
 #!define PUBLISHER "AEGIS Security"
-#!define AEGIS_COMMIT "2c7cb30"
+#!define AEGIS_COMMIT "@AEGIS_COMMIT@"
 
 Name "${APPNAME} ${APPVERSION}"
 OutFile "aegis-installer-${APPVERSION}.exe"
-InstallDir "$PROGRAMFILES64\AEGIS"
+InstallDir "$PROGRAMFILES64\AEGIS NIDS"
 RequestExecutionLevel admin
-PrivateBuild "${APPNAME} ${APPVERSION}"
+PrivateBuild "${APPNAME} ${APPVERSION} @AEGIS_COMMIT@"
+VIProductVersion "5.0.0.0"
+VIAddVersionKey "ProductName" "AEGIS NIDS"
+VIAddVersionKey "FileVersion" "5.0.0.0"
 
 Page directory
 Page instfiles
 UninstPage unConfirm
 UninstPage instfiles
 
+; Canonical install layout (matches src/core/runtime_paths.zig):
+;   <install>\runtime\  binaries (service entrypoint + DLLs + nose)
+;   <install>\configs\  Rules.json + policies.json
 Section "Install"
+  SetOutPath "$INSTDIR\configs"
+  File /oname=Rules.json "configs\Rules.json"
+  File /oname=policies.json "configs\policies.json"
+
+  SetOutPath "$INSTDIR\runtime"
+  File "zig-out\bin\aegis_nids.exe"
+  File "target\release\aegis_pep.dll"
+  File "nose\aegis-nose.exe"
+  File "zig-out\bin\aegis_ipc.dll"
+  File "zig-out\bin\aegis_wfp_user.dll"
+  File "zig-out\bin\aegis_etw_helper.dll"
+  File "zig-out\bin\aegis_fim_helper.dll"
+
   SetOutPath "$INSTDIR"
-
-  ; Runtime binaries
-  File "aegis_nids.exe"
-  File "aegis_pep.dll"
-  File "aegis_wfp_user.dll"
-
-  ; Build manifest
   File "build_manifest.json"
 
-  ; Config
-  SetOutPath "$INSTDIR\config"
-  File "config\Rules.json"
-
-  ; Trust store
-  SetOutPath "$INSTDIR\config\trust_store"
-  File /nonfatal "configs\trust_store\*.*"
-
-  ; Audit
-  SetOutPath "$INSTDIR\audit"
-
-  ; Data directory (preserved)
-  SetOutPath "$INSTDIR\data"
-  File /nonfatal "data\default.json"
-
-  ; Bin directory with run script
-  SetOutPath "$INSTDIR\bin"
-
-  ; Directories PRESERVED across upgrades
-  CreateDirectory "$INSTDIR\data"
-  CreateDirectory "$INSTDIR\config\trust_store"
-  CreateDirectory "$INSTDIR\logs"
+  ; Service registration (auto-start, restart on failure)
+  nsExec::ExecToLog 'sc create AegisNids binPath= "$INSTDIR\runtime\aegis_nids.exe" start= auto'
+  nsExec::ExecToLog 'sc failure AegisNids reset= 86400 actions= restart/5000/restart/15000/restart/60000'
 
   WriteUninstaller "$INSTDIR\uninstall.exe"
 SectionEnd
 
 Section "Uninstall"
-  ; Stop services
-  nsExec::ExecToLog "taskkill /im aegis_nids.exe /f"
+  nsExec::ExecToLog "sc stop AegisNids"
+  nsExec::ExecToLog "sc delete AegisNids"
+  RMDir /r "$INSTDIR\runtime"
+  Delete "$INSTDIR\build_manifest.json"
 
-  ; Remove only executable payload
-  RMDir /r "$INSTDIR\bin"
-  Delete "$INSTDIR\*.exe"
-  Delete "$INSTDIR\*.dll"
-
-  ; PRESERVED: data, config, logs, trust_store, audit
+  ; PRESERVED: configs (operator rules/policy survive reinstall)
   Delete "$INSTDIR\uninstall.exe"
-  RMDir "$INSTDIR"
 SectionEnd
 """
 
 
 def generate_nsi(nsi_path: Path) -> None:
-    """Generate installer.nsi from build_manifest.json."""
+    """Generate installer NSI from build_manifest.json."""
     manifest = load_manifest()
     components = manifest_components(manifest)
+
+    try:
+        head = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=str(ROOT), capture_output=True, text=True,
+        ).stdout.strip() or "unknown"
+    except Exception:
+        head = "unknown"
 
     lines = []
     for comp in components:
         lines.append(f"; component: {comp.get('id', 'unknown')} ({comp.get('language', '?')})")
-    lines.append(NSIS_TEMPLATE)
+    lines.append(NSIS_TEMPLATE.replace("@AEGIS_COMMIT@", head))
 
     nsi_path.parent.mkdir(parents=True, exist_ok=True)
     nsi_path.write_text("\n".join(lines), encoding="utf-8")
@@ -156,15 +153,16 @@ def main() -> int:
         return 0
 
     if args.generate:
-        generate_nsi(args.nsi or (ROOT / "installer.nsi"))
-        print(f"Generated {args.nsi or 'installer.nsi'}")
-        print("Build with: makensis installer.nsi")
+        out = args.nsi or (ROOT / "installer.generated.nsi")
+        generate_nsi(out)
+        print(f"Generated {out.name}")
+        print(f"Build with: makensis {out.name}")
         print("Output: aegis-installer-5.0.0.exe")
         return 0
 
-    generate_nsi(ROOT / "installer.nsi")
-    print("Generated installer.nsi")
-    print("Build with: makensis installer.nsi")
+    generate_nsi(ROOT / "installer.generated.nsi")
+    print("Generated installer.generated.nsi")
+    print("Build with: makensis installer.generated.nsi")
     print("Output: aegis-installer-5.0.0.exe")
     return 0
 

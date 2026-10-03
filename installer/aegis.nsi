@@ -1,10 +1,28 @@
+; AEGIS NIDS installer (NSIS) — canonical install layout.
+;
+; This is the ONLY supported install layout. It matches the running
+; deployment consumed by src/core/runtime_paths.zig:
+;   <install>\runtime\aegis_nids.exe     (service binary, SCM binPath)
+;   <install>\runtime\*.dll             (pep/ipc/wfp/etw/fim helpers)
+;   <install>\runtime\aegis-nose.exe    (canonical packet ingress)
+;   <install>\configs\Rules.json        (22 nids_rules)
+;   <install>\configs\policies.json     (6 policies)
+;   <install>\drivers\aegis_wfp.sys     (kernel telemetry provider)
+;   <install>\build_manifest.json       (provenance)
+;
+; Anything else ($INSTDIR\bin, data\config, config\ singular) is a legacy
+; layout that the daemon cannot resolve and must not be produced.
+; Build: makensis /DOUTPUT=aegis_setup.exe installer\aegis.nsi
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
-!include "FileFunc.nsh"
+
+!ifndef OUTPUT
+  !define OUTPUT "aegis_setup.exe"
+!endif
 
 Name "AEGIS NIDS 5.0.0"
 OutFile "${OUTPUT}"
-InstallDir "$PROGRAMFILES64\AEGIS"
+InstallDir "$PROGRAMFILES64\AEGIS NIDS"
 Unicode True
 RequestExecutionLevel admin
 ShowInstDetails show
@@ -15,22 +33,12 @@ VIAddVersionKey "CompanyName" "AEGIS"
 VIAddVersionKey "LegalCopyright" "Copyright (c) 2026 AEGIS"
 VIAddVersionKey "FileVersion" "5.0.0.0"
 VIAddVersionKey "FileDescription" "AEGIS Network Intrusion Detection System"
-VIAddVersionKey "PrivateBuild" "0c74e3f"
-
-; Config / policy / trust / audit / forensic data lives under data\ and is
-; PRESERVED across uninstall, upgrade and reinstall (T17 AC5).
-!define AEGIS_DATA "$INSTDIR\data"
-!define AEGIS_BIN "$INSTDIR\bin"
-!define AEGIS_COMMIT "0c74e3f"
 
 !insertmacro MUI_PAGE_WELCOME
-!insertmacro MUI_PAGE_LICENSE "LICENSE.txt"
-!insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
 
-!insertmacro MUI_UNPAGE_WELCOME
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_UNPAGE_FINISH
@@ -39,43 +47,35 @@ VIAddVersionKey "PrivateBuild" "0c74e3f"
 
 Section "AEGIS Runtime + Service (Required)" SecCore
   SectionIn RO
-  SetOutPath "$INSTDIR\data\config"
-  File "/oname=Rules.json" "config\Rules.json"
-  SetOutPath "$INSTDIR"
-  File "/oname=aegis_runtime_stamp.txt" "aegis_runtime_stamp.txt"
-  ; Manifest-declared payload + build artifact payload
+  ; Configs first so a failed binary copy never leaves a config-less install.
+  SetOutPath "$INSTDIR\configs"
+  File "/oname=Rules.json" "configs\Rules.json"
+  File "/oname=policies.json" "configs\policies.json"
 
-  SetOutPath "$INSTDIR\bin"
-  File "/oname=aegisctl.py" "tools\aegisctl.py"
-  SetOutPath "$INSTDIR\bin"
-  File "/oname=installer.py" "tools\installer.py"
-  SetOutPath "$INSTDIR\bin"
+  SetOutPath "$INSTDIR\runtime"
   File "/oname=aegis_nids.exe" "zig-out\bin\aegis_nids.exe"
-  SetOutPath "$INSTDIR\bin"
   File "/oname=aegis_pep.dll" "target\release\aegis_pep.dll"
-  SetOutPath "$INSTDIR\bin"
-  File "/oname=aegis_wfp_user.dll" "build\Release\aegis_wfp_user.dll"
-  SetOutPath "$INSTDIR\bin"
-  File "/oname=aegis_etw_helper.dll" "build\Release\aegis_etw_helper.dll"
-  SetOutPath "$INSTDIR\bin"
-  File "/oname=aegis_fim_helper.dll" "build\Release\aegis_fim_helper.dll"
-  SetOutPath "$INSTDIR\bin"
-  File "/oname=aegis-aggregator.exe" "go\aggregator\aegis-aggregator.exe"
+  File "/oname=aegis-nose.exe" "nose\aegis-nose.exe"
+  File "/oname=aegis_ipc.dll" "zig-out\bin\aegis_ipc.dll"
+  File "/oname=aegis_wfp_user.dll" "zig-out\bin\aegis_wfp_user.dll"
+  File "/oname=aegis_etw_helper.dll" "zig-out\bin\aegis_etw_helper.dll"
+  File "/oname=aegis_fim_helper.dll" "zig-out\bin\aegis_fim_helper.dll"
+
+  SetOutPath "$INSTDIR\drivers"
+  File "/nonfatal" "/oname=aegis_wfp.sys" "drivers\wfp_callout\aegis_wfp.sys"
+
   SetOutPath "$INSTDIR"
   File "/oname=build_manifest.json" "build_manifest.json"
 
-  ; Service registration (auto-start, restart on failure)
-  nsExec::ExecToLog 'sc create AegisNids binPath= "$INSTDIR\bin\aegis_nids.exe" start= auto'
-  nsExec::ExecToLog 'sc description AegisNIDS "AEGIS Network Intrusion Detection System"'
-  nsExec::ExecToLog 'sc failure AegisNids reset= 86400 actions= restart/5000/restart/5000/restart/10000'
-
-  ; Federation firewall rule (disabled until enabled by operator)
-  nsExec::ExecToLog 'netsh advfirewall firewall add rule name="AEGIS Federation" dir=in action=allow program="$INSTDIR\bin\aegis_nids.exe" enable=no'
+  ; Service registration: auto-start with restart-on-failure recovery.
+  nsExec::ExecToLog 'sc create AegisNids binPath= "$INSTDIR\runtime\aegis_nids.exe" start= auto'
+  nsExec::ExecToLog 'sc description AegisNids "AEGIS Network Intrusion Detection System"'
+  nsExec::ExecToLog 'sc failure AegisNids reset= 86400 actions= restart/5000/restart/15000/restart/60000'
 
   ; Start menu shortcuts
-  CreateDirectory "$SMPROGRAMS\AEGIS"
-  CreateShortcut "$SMPROGRAMS\AEGIS\AEGIS Control.lnk" "$INSTDIR\bin\aegisctl.py"
-  CreateShortcut "$SMPROGRAMS\AEGIS\Uninstall AEGIS.lnk" "$INSTDIR\uninstall.exe"
+  CreateDirectory "$SMPROGRAMS\AEGIS NIDS"
+  CreateShortcut "$SMPROGRAMS\AEGIS NIDS\AEGIS Snapshot.lnk" "$INSTDIR\runtime\aegis_nids.exe"
+  CreateShortcut "$SMPROGRAMS\AEGIS NIDS\Uninstall AEGIS.lnk" "$INSTDIR\uninstall.exe"
 
   ; Registry uninstall entry
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids" "DisplayName" "AEGIS NIDS v5.0+"
@@ -83,38 +83,24 @@ Section "AEGIS Runtime + Service (Required)" SecCore
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids" "InstallLocation" "$INSTDIR"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids" "Publisher" "AEGIS"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids" "DisplayVersion" "5.0.0.0"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids" "InstallCommit" "${AEGIS_COMMIT}"
 
   WriteUninstaller "$INSTDIR\uninstall.exe"
-SectionEnd
-
-Section "ETW Real-time Telemetry" SecEtw
-  SetOutPath "$INSTDIR\bin"
-SectionEnd
-
-Section "Federation Cluster (Optional)" SecFederation
-  SetOutPath "$INSTDIR\data\certs"
-  File "/nonfatal" "/oname=cluster.example.json" "config\cluster.example.json"
-  nsExec::ExecToLog 'powershell -Command "if (!(Test-Path $INSTDIR\data\certs)) {{ New-Item -Path $INSTDIR\data\certs -ItemType Directory }}"'
 SectionEnd
 
 Section "Start AEGIS Service Now" SecStart
   nsExec::ExecToLog 'sc start AegisNids'
 SectionEnd
 
-; Uninstaller - preserves config/policy/trust/audit/forensic history.
+; Uninstaller - preserves configs (operator rules/policy survive reinstall).
 Section "Uninstall"
   nsExec::ExecToLog 'sc stop AegisNids'
   nsExec::ExecToLog 'sc delete AegisNids'
-  nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="AEGIS Federation"'
-  Delete "$SMPROGRAMS\AEGIS\AEGIS Control.lnk"
-  Delete "$SMPROGRAMS\AEGIS\Uninstall AEGIS.lnk"
-  RMDir "$SMPROGRAMS\AEGIS"
-  ; Remove executable payload only - data\ (config, policy, trust,
-  ; audit, forensic history) is preserved for upgrade/reinstall/rollback.
-  RMDir /r "$INSTDIR\bin"
+  Delete "$SMPROGRAMS\AEGIS NIDS\AEGIS Snapshot.lnk"
+  Delete "$SMPROGRAMS\AEGIS NIDS\Uninstall AEGIS.lnk"
+  RMDir "$SMPROGRAMS\AEGIS NIDS"
+  RMDir /r "$INSTDIR\runtime"
+  RMDir /r "$INSTDIR\drivers"
   Delete "$INSTDIR\build_manifest.json"
-  Delete "$INSTDIR\aegis_runtime_stamp.txt"
   Delete "$INSTDIR\uninstall.exe"
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AegisNids"
 SectionEnd

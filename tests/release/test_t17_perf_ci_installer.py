@@ -229,12 +229,14 @@ def test_ac4_installer_packages_runtime_and_preserves_data() -> None:
     for artifact in ["aegis_nids.exe", "aegis_pep.dll", "aegis_wfp_user.dll",
                      "build_manifest.json"]:
         assert artifact in src, f"installer must package {artifact}"
-    assert "config" in src and "trust_store" in src and "audit" in src
-    assert "data" in src
-    # Data preservation on uninstall: the uninstaller removes only the
-    # executable payload (bin\\ + markers), never the data plane.
+    # Canonical install layout (matches src/core/runtime_paths.zig): binaries
+    # under runtime\, rules under configs\. Legacy bin\/data\/config\ paths
+    # must not be produced.
+    assert "runtime\\" in src and "configs\\" in src
+    assert "$INSTDIR\\bin" not in src
+    # Config preservation on uninstall: the uninstaller removes only the
+    # executable payload (runtime\ + markers), never operator configs.
     assert "RMDir /r" in src and "Uninstall" in src
-    assert "$INSTDIR\\bin" in src
     assert "preserved" in src.lower() or "PRESERVED" in src
 
 
@@ -248,7 +250,7 @@ def test_ac4_installer_generates_nsi() -> None:
     nsi = (REPO_ROOT / "logs" / "runtime" / "aegis_t17.nsi").read_text(encoding="utf-8")
     assert "build_manifest.json" in nsi
     assert "PrivateBuild" in nsi and "AEGIS_COMMIT" in nsi
-    assert "data\\" in nsi
+    assert "configs\\" in nsi
 
 
 # =====================================================================
