@@ -1,4 +1,4 @@
-//! control/handler_registry.zig — Command Dispatch Table
+//! control/handler_registry.zig â€” Command Dispatch Table
 //!
 //! Maps every Command to a handler function. The pipe handler calls
 //! dispatch() which resolves the command, checks authorization,
@@ -293,6 +293,8 @@ pub fn initHandlers() void {
     registerHandler(.enforcement_verify, handlers.enforcementVerify);
     registerHandler(.enforcement_block, handlers.enforcementBlock);
     registerHandler(.enforcement_unblock, handlers.enforcementUnblock);
+    registerHandler(.enforcement_two_person, handlers.enforcementTwoPerson);
+    registerHandler(.enforcement_approve, handlers.enforcementApprove);
     registerHandler(.metrics_snapshot, handlers.metricsSnapshot);
     registerHandler(.logs_tail, handlers.logsTail);
     registerHandler(.federation_status, handlers.federationStatus);
@@ -303,7 +305,7 @@ pub fn initHandlers() void {
 }
 
 // ============================================================
-// Handler implementations — all return ?[]const u8 (raw JSON)
+// Handler implementations â€” all return ?[]const u8 (raw JSON)
 // ============================================================
 
 const handlers = struct {
@@ -340,14 +342,14 @@ const handlers = struct {
     extern "kernel32" fn GetCurrentProcessId() std.os.windows.DWORD;
 
     fn status(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
-        // P1: Pull from state machine — single source of truth
+        // P1: Pull from state machine â€” single source of truth
         const sm = @import("state_machine.zig");
         sm.g_runtime.uptime_ms = @intCast(@divTrunc(std.time.nanoTimestamp() - ctx.start_ns, std.time.ns_per_ms));
         return sm.g_runtime.statusJson(a) catch null;
     }
 
     fn health(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
-        // P1: Pull from state machine — single source of truth
+        // P1: Pull from state machine â€” single source of truth
         const sm = @import("state_machine.zig");
         const bridge = bridge_init.status();
         sm.g_runtime.uptime_ms = @intCast(@divTrunc(std.time.nanoTimestamp() - ctx.start_ns, std.time.ns_per_ms));
@@ -876,6 +878,16 @@ const handlers = struct {
         return @intCast(value.integer);
     }
 
+    fn payloadBool(payload: std.json.Value, key: []const u8) ?bool {
+        if (payload != .object) return null;
+        const value = payload.object.get(key) orelse return null;
+        return switch (value) {
+            .bool => |b| b,
+            .integer => |i| if (i == 0) false else if (i == 1) true else null,
+            else => null,
+        };
+    }
+
     fn enforcementBlock(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
         if (ctx.caller_role != .privileged) {
             ctx.failure_code = "AUTH_DENIED";
@@ -1034,6 +1046,65 @@ const handlers = struct {
         }
     }
 
+    /// T3-TWOP-023: privileged control-plane edge for the two-person rule.
+    /// Flips Rust PEP authorization policy for high-severity BLOCKs; the FFI
+    /// requires capability bit 0x01 (passed as 1, like every other PEP call
+    /// from this file). Disabling drops pending approvals inside the DLL.
+    fn enforcementTwoPerson(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        if (ctx.caller_role != .privileged) {
+            ctx.failure_code = "AUTH_DENIED";
+            ctx.failure_state = "UNAUTHORIZED";
+            ctx.failure_message = "enforcement.two_person requires privileged control-plane authorization";
+            return null;
+        }
+        const enabled = payloadBool(payload, "enabled") orelse {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "enabled must be a boolean (or 0/1)";
+            return null;
+        };
+        var pep = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available.load(.acquire) };
+        if (!pep.setTwoPersonRule(enabled, 1)) {
+            ctx.failure_code = "PEP_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "Rust PEP did not accept the two-person rule change";
+            return null;
+        }
+        return std.fmt.allocPrint(a, "{{\"two_person_rule\":{},\"postcondition\":\"SET\"}}", .{enabled}) catch null;
+    }
+
+    /// T3-TWOP-023: records a one-shot second-human approval for a single
+    /// enforcement request_id. Approval identity is the calling operator's
+    /// pid; the DLL consumes the approval on the next matching BLOCK.
+    fn enforcementApprove(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        if (ctx.caller_role != .privileged) {
+            ctx.failure_code = "AUTH_DENIED";
+            ctx.failure_state = "UNAUTHORIZED";
+            ctx.failure_message = "enforcement.approve requires privileged control-plane authorization";
+            return null;
+        }
+        const request_id = payloadU64(payload, "request_id") orelse {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "request_id must be a non-zero integer";
+            return null;
+        };
+        if (request_id == 0) {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "request_id must be a non-zero integer";
+            return null;
+        }
+        var pep = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available.load(.acquire) };
+        if (!pep.approveRequest(request_id, ctx.caller_pid, 1)) {
+            ctx.failure_code = "PEP_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "Rust PEP did not record the approval";
+            return null;
+        }
+        return std.fmt.allocPrint(a, "{{\"approved\":true,\"request_id\":{},\"approver_pid\":{},\"postcondition\":\"RECORDED\"}}", .{ request_id, ctx.caller_pid }) catch null;
+    }
+
     fn metricsSnapshot(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
         const uptime_sec: u64 = @intCast(@max(@as(i128, 0), @divTrunc(std.time.nanoTimestamp() - ctx.start_ns, std.time.ns_per_s)));
         return std.fmt.allocPrint(a,
@@ -1120,3 +1191,41 @@ const handlers = struct {
         return "{\"shutdown_requested\":true,\"state\":\"STOPPING\"}";
     }
 };
+
+// ============================================================
+// Tests (T3-TWOP-023)
+// ============================================================
+
+test "enforcementTwoPerson denies non-privileged callers before touching PEP" {
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 7, .caller_role = .read, .caller_pid = 1234 };
+    const out = handlers.enforcementTwoPerson(std.testing.allocator, .{ .null = {} }, &ctx);
+    try std.testing.expect(out == null);
+    try std.testing.expectEqualStrings("AUTH_DENIED", ctx.failure_code.?);
+    try std.testing.expectEqualStrings("UNAUTHORIZED", ctx.failure_state.?);
+}
+
+test "enforcementApprove denies non-privileged callers before touching PEP" {
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 7, .caller_role = .operate, .caller_pid = 1234 };
+    const out = handlers.enforcementApprove(std.testing.allocator, .{ .null = {} }, &ctx);
+    try std.testing.expect(out == null);
+    try std.testing.expectEqualStrings("AUTH_DENIED", ctx.failure_code.?);
+    try std.testing.expectEqualStrings("UNAUTHORIZED", ctx.failure_state.?);
+}
+
+test "payloadBool accepts booleans and 0/1 integers only" {
+    const bare = std.json.Value{ .bool = true };
+    try std.testing.expect(handlers.payloadBool(bare, "enabled") == null); // not an object
+    var obj = std.json.Value{ .object = std.json.ObjectMap.init(std.testing.allocator) };
+    defer obj.object.deinit();
+    try obj.object.put("b", .{ .bool = true });
+    try obj.object.put("i1", .{ .integer = 1 });
+    try obj.object.put("i0", .{ .integer = 0 });
+    try obj.object.put("i2", .{ .integer = 2 });
+    try obj.object.put("s", .{ .string = "on" });
+    try std.testing.expectEqual(true, handlers.payloadBool(obj, "b").?);
+    try std.testing.expectEqual(true, handlers.payloadBool(obj, "i1").?);
+    try std.testing.expectEqual(false, handlers.payloadBool(obj, "i0").?);
+    try std.testing.expect(handlers.payloadBool(obj, "i2") == null);
+    try std.testing.expect(handlers.payloadBool(obj, "s") == null);
+    try std.testing.expect(handlers.payloadBool(obj, "missing") == null);
+}

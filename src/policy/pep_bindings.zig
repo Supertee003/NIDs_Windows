@@ -196,7 +196,7 @@ pub const PepEnforcer = struct {
     /// Enable/disable the two-person rule for high-severity BLOCKs.
     /// Privileged operator action (capability bit required by the DLL);
     /// returns false when the PEP is unavailable or rejects the call.
-    /// Control-plane exposure is a Project 3 item; no handler calls this yet.
+    /// Exposed on the control plane as enforcement.two_person (T3-TWOP-023).
     pub fn setTwoPersonRule(self: *PepEnforcer, enabled: bool, caller_caps: u32) bool {
         if (!self.available) return false;
         if (@import("builtin").os.tag != .windows) return false;
@@ -204,8 +204,9 @@ pub const PepEnforcer = struct {
     }
 
     /// Record a second-human approval for one enforcement request ID.
-    /// Approvals are one-shot inside the DLL. Same availability and
-    /// Project-3 notes as setTwoPersonRule.
+    /// Approvals are one-shot inside the DLL. Exposed on the control plane
+    /// as enforcement.approve (T3-TWOP-023); same availability notes as
+    /// setTwoPersonRule.
     pub fn approveRequest(self: *PepEnforcer, request_id: u64, approver_pid: u32, caller_caps: u32) bool {
         if (!self.available or request_id == 0) return false;
         if (@import("builtin").os.tag != .windows) return false;

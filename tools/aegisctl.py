@@ -925,9 +925,63 @@ def cmd_block(args) -> int:
     return 0
 
 
+def _control_mutation(command: str, payload: dict) -> int:
+    """Route a privileged mutation to the daemon control plane.
+
+    Exit-code contract (AEGIS_Operator_UX_Specification, Unified CLI):
+    0 = daemon answered, 3 = daemon unreachable (honest offline JSON),
+    4 = local control API itself unavailable. Never claims a host effect;
+    the printed payload is the daemon's response verbatim.
+    """
+    if not CONTROL_API_AVAILABLE:
+        print(json.dumps({
+            "available": False,
+            "command": command,
+            "reason": "control_api_unavailable",
+        }, sort_keys=True))
+        return 4
+    response = query_control(command, payload=payload)
+    if response is None:
+        print(json.dumps({
+            "available": False,
+            "command": command,
+            "reason": "control_daemon_query_failed",
+        }, sort_keys=True))
+        return 3
+    print(json.dumps(dict(response), sort_keys=True))
+    return 0
+
+
 def cmd_enforce(args) -> int:
     """Show authoritative daemon enforcement status."""
-    if getattr(args, "enforce_command", "status") != "status":
+    sub = getattr(args, "enforce_command", "status")
+    if sub == "two-person":
+        # Project 3 (T3-TWOP-023): route the two-person rule flip to the
+        # daemon. Privilege is enforced daemon-side (role gate + FFI caps);
+        # the CLI never touches the PEP directly.
+        mode = getattr(args, "mode", None)
+        if mode not in ("on", "off"):
+            print(json.dumps({
+                "available": False,
+                "command": "enforcement.two_person",
+                "reason": "mode_must_be_on_or_off",
+            }, sort_keys=True))
+            return 2
+        return _control_mutation("enforcement.two_person", {"enabled": mode == "on"})
+    if sub == "approve":
+        try:
+            request_id = int(getattr(args, "request_id", 0))
+        except (TypeError, ValueError):
+            request_id = 0
+        if request_id <= 0:
+            print(json.dumps({
+                "available": False,
+                "command": "enforcement.approve",
+                "reason": "request_id_must_be_positive_integer",
+            }, sort_keys=True))
+            return 2
+        return _control_mutation("enforcement.approve", {"request_id": request_id})
+    if sub != "status":
         return _unavailable(
             "enforce",
             "pep_runtime_postcondition_not_connected",
@@ -1240,6 +1294,10 @@ def main() -> int:
     enforce = sub.add_parser("enforce", help="PEP enforcement state")
     enforce_sub = enforce.add_subparsers(dest="enforce_command")
     enforce_sub.add_parser("status")
+    etp = enforce_sub.add_parser("two-person", help="Project 3: enable/disable the two-person rule via the control plane")
+    etp.add_argument("mode", choices=["on", "off"])
+    eap = enforce_sub.add_parser("approve", help="Project 3: record a second-human approval via the control plane")
+    eap.add_argument("request_id", type=int)
     enforce_sub.add_parser("enable", help="Unavailable in Project 2; reserved for Project 3 IPS")
     enforce_sub.add_parser("disable", help="Unavailable in Project 2; reserved for Project 3 IPS")
     epush = enforce_sub.add_parser("push", help="Unavailable in Project 2; reserved for Project 3 IPS")

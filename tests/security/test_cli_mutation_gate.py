@@ -54,6 +54,31 @@ def test_enforce_mutation_is_refused():
     assert proc.returncode != 0, "enforce enable must not flip posture offline"
 
 
+def test_enforce_two_person_and_approve_are_honest():
+    """Project 3 (T3-TWOP-023): the two-person CLI edge routes to the daemon
+    (0 live) and answers honest-offline (3 + available:false, never an
+    approval claim) when the Control Center is unreachable."""
+    for argv in (("enforce", "two-person", "on"),
+                 ("enforce", "two-person", "off"),
+                 ("enforce", "approve", "991")):
+        proc = run(*argv)
+        assert proc.returncode in (0, 3), f"{argv}: {proc.stdout}"
+        payload = json.loads(proc.stdout)
+        if proc.returncode == 3:
+            assert payload.get("available") is False
+            assert payload.get("reason"), "offline answer must name the reason"
+            assert "approved" not in payload, "offline answer must not claim approval"
+
+
+def test_enforce_approve_rejects_non_positive_request_id_locally():
+    for argv in (("enforce", "approve", "0"), ("enforce", "approve", "-5")):
+        proc = run(*argv)
+        assert proc.returncode == 2, f"{argv} must fail local validation"
+        payload = json.loads(proc.stdout)
+        assert payload.get("available") is False
+        assert "approved" not in payload
+
+
 def test_read_paths_still_work():
     assert run("block", "list").returncode == 0
     assert run("quarantine", "list").returncode == 0

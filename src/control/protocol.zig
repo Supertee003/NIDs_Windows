@@ -12,7 +12,7 @@ pub const CONTROL_PROTOCOL_VERSION: u16 = 2;
 pub const CONTROL_NONCE_BYTES: usize = 16;
 
 // ============================================================
-// Command Enum — all 31 control commands
+// Command Enum — all 33 control commands
 // ============================================================
 
 pub const Command = enum(u16) {
@@ -61,6 +61,8 @@ pub const Command = enum(u16) {
     enforcement_verify = 802,
     enforcement_block = 803,
     enforcement_unblock = 804,
+    enforcement_two_person = 805,
+    enforcement_approve = 806,
 
     // --- metrics/logs domain ---
     metrics_snapshot = 900,
@@ -104,6 +106,8 @@ pub const Command = enum(u16) {
             .{ .name = "enforcement.verify", .cmd = .enforcement_verify },
             .{ .name = "enforcement.block", .cmd = .enforcement_block },
             .{ .name = "enforcement.unblock", .cmd = .enforcement_unblock },
+            .{ .name = "enforcement.two_person", .cmd = .enforcement_two_person },
+            .{ .name = "enforcement.approve", .cmd = .enforcement_approve },
             .{ .name = "metrics.snapshot", .cmd = .metrics_snapshot },
             .{ .name = "logs.tail", .cmd = .logs_tail },
             .{ .name = "federation.status", .cmd = .federation_status },
@@ -235,6 +239,8 @@ pub fn contract(cmd: Command) CommandContract {
         .enforcement_verify => .{ .command = cmd, .name = "enforcement.verify", .required_role = .operate, .description = "Verify enforcement", .is_mutation = false, .has_postcondition = false },
         .enforcement_block => .{ .command = cmd, .name = "enforcement.block", .required_role = .privileged, .description = "Block an exact IP/port/protocol flow through Rust PEP", .is_mutation = true, .has_postcondition = true },
         .enforcement_unblock => .{ .command = cmd, .name = "enforcement.unblock", .required_role = .privileged, .description = "Remove an exact filter by EnforcementReceipt filter_id", .is_mutation = true, .has_postcondition = true },
+        .enforcement_two_person => .{ .command = cmd, .name = "enforcement.two_person", .required_role = .privileged, .description = "Enable/disable the two-person rule for high-severity BLOCKs (Rust PEP)", .is_mutation = true, .has_postcondition = true },
+        .enforcement_approve => .{ .command = cmd, .name = "enforcement.approve", .required_role = .privileged, .description = "Record a one-shot second-human approval for an enforcement request_id", .is_mutation = true, .has_postcondition = true },
 
         // --- metrics/logs domain ---
         .metrics_snapshot => .{ .command = cmd, .name = "metrics.snapshot", .required_role = .read, .description = "Metrics snapshot", .is_mutation = false, .has_postcondition = false },
@@ -297,6 +303,8 @@ test "Command.fromString parses all commands" {
     try std.testing.expectEqual(Command.policy_simulate, Command.fromString("policy.simulate").?);
     try std.testing.expectEqual(Command.forensics_export, Command.fromString("forensics.export").?);
     try std.testing.expectEqual(Command.enforcement_status, Command.fromString("enforcement.status").?);
+    try std.testing.expectEqual(Command.enforcement_two_person, Command.fromString("enforcement.two_person").?);
+    try std.testing.expectEqual(Command.enforcement_approve, Command.fromString("enforcement.approve").?);
     try std.testing.expectEqual(Command.metrics_snapshot, Command.fromString("metrics.snapshot").?);
     try std.testing.expectEqual(Command.logs_tail, Command.fromString("logs.tail").?);
     try std.testing.expectEqual(Command.federation_status, Command.fromString("federation.status").?);
@@ -341,4 +349,20 @@ test "contracts: federation.status is read-only" {
     try std.testing.expectEqual(Role.read, c_fed.required_role);
     try std.testing.expect(!c_fed.is_mutation);
     try std.testing.expect(!c_fed.has_postcondition);
+}
+
+test "contracts: two-person commands are privileged mutations" {
+    // T3-TWOP-023: the control-plane edge of the two-person rule must stay
+    // privileged-gated end to end (protocol contract -> handler role check
+    // -> FFI capability bit). A downgrade here would let a reader flip
+    // enforcement authorization policy.
+    const c_tp = contract(.enforcement_two_person);
+    try std.testing.expectEqual(Role.privileged, c_tp.required_role);
+    try std.testing.expect(c_tp.is_mutation);
+    try std.testing.expect(c_tp.has_postcondition);
+
+    const c_ap = contract(.enforcement_approve);
+    try std.testing.expectEqual(Role.privileged, c_ap.required_role);
+    try std.testing.expect(c_ap.is_mutation);
+    try std.testing.expect(c_ap.has_postcondition);
 }

@@ -69,6 +69,9 @@ comptime {
     _ = @import("tests/federation/node_registry.zig");
     _ = @import("tests/federation/aggregator.zig");
     _ = @import("tests/xdr/xdr_engine.zig");
+    // Control plane contract + handlers (T3-TWOP-023 pins execute here).
+    _ = @import("control/protocol.zig");
+    _ = @import("control/handler_registry.zig");
 }
 
 test "all modules imported successfully" {
