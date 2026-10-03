@@ -736,7 +736,7 @@ def get_health_payload() -> Dict[str, Any]:
             "rules_loaded": int(daemon_health.get("rules_loaded", 0) or 0),
             "policies_loaded": int(daemon_health.get("policies_loaded", 0) or 0),
             "pid": daemon_health.get("pid"),
-            "version": daemon_health.get("version", "6.0.0"),
+            "version": daemon_health.get("version", "5.0.0"),
             "uptime_ms": daemon_health.get("uptime_ms", 0),
             "last_event_ms": int(daemon_health.get("last_event_ms", 0) or max((v["last_event_ms"] for v in subsystem_payload.values()), default=0)),
             "counters": {
@@ -791,7 +791,7 @@ def _diagnostic_health_payload(reason: str) -> Dict[str, Any]:
         "compatibility_aliases": {"rust_shield": "rust_pep"},
         "state": "DEGRADED",
         "pid": os.getpid(),
-        "version": "6.0.0",
+        "version": "5.0.0",
         "uptime_ms": max(0, time.monotonic_ns() // 1_000_000 - _PROCESS_START_MONOTONIC_MS),
         "last_event_ms": 0,
         "counters": {

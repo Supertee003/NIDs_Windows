@@ -1,8 +1,10 @@
 """AEGIS NIDS Control Plane CLI (aegisctl)
 
-Modular CLI for managing the AEGIS NIDS service.
+Modular CLI for managing the AEGIS NIDS service. Version tracks the
+product release (5.0.0); component versions are reported per-subsystem
+by the daemon and never inferred here.
 """
-__version__ = "6.0.0"
+__version__ = "5.0.0"
 
 # P0.3: Exit codes — every command must return one of these.
 # 0 = command succeeded

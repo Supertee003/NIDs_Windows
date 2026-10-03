@@ -247,7 +247,7 @@ manifest = {
         'go_aggregator': 'v1.0.0',
     },
     'schema_versions': {
-        'canonical_event': 'v2.0.0',
+        'canonical_event': 'v1.0.0',
         'runtime_manifest': 'v5.0.0',
         'wire_protocol': 'v1.0.0',
     },
