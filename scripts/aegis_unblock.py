@@ -96,25 +96,13 @@ def main():
     )
     args = parser.parse_args()
 
-    if args.all:
-        return unblock_all()
-
-    if not args.ip:
-        parser.print_help()
-        return 1
-
-    if not validate_ip(args.ip):
-        print(f"[ERROR] Invalid IP address: {args.ip}", file=sys.stderr)
-        return 1
-
-    print(f"[UNBLOCK] Sending unblock request for {args.ip}")
-
-    if send_unblock_request(args.ip):
-        print(f"[OK]      Unblock request sent to brain")
-        return 0
-    else:
-        print(f"[FAIL]    Unblock request failed", file=sys.stderr)
-        return 1
+    print("[UNAVAILABLE] Direct unblock requests bypass the Rust PEP receipt",
+          file=sys.stderr)
+    print("             path and are refused in Project 2 observe-only mode.",
+          file=sys.stderr)
+    print("             Use: python tools/aegisctl.py enforce status",
+          file=sys.stderr)
+    return 4
 
 
 if __name__ == "__main__":

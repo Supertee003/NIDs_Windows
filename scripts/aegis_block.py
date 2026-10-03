@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """DEPRECATED: Use 'python tools/aegisctl.py block' instead.
 This script is kept for backward compatibility only.
+QUARANTINED in Project 2 observe-only mode: the UDP block_ip flow below
+bypasses the Rust PEP EnforcementReceipt postcondition. Mutations are
+refused; --list remains as a local candidate view only.
 """
 """
 aegis_block.py - AEGIS NIDS Manual IP Block CLI (Phase 13, UX-04)
@@ -121,26 +124,13 @@ def main():
     if args.list:
         return list_blocked_ips()
 
-    if not args.ip:
-        parser.print_help()
-        return 1
-
-    if not validate_ip(args.ip):
-        print(f"[ERROR] Invalid IP address: {args.ip}", file=sys.stderr)
-        print("        Expected format: XXX.XXX.XXX.XXX (each octet 0-255)", file=sys.stderr)
-        return 1
-
-    print(f"[BLOCK] Sending block request for {args.ip}")
-    print(f"        Reason: {args.reason}")
-
-    if send_block_request(args.ip, args.reason):
-        print(f"[OK]    Block request sent to brain (UDP {BRAIN_UDP_HOST}:{BRAIN_UDP_PORT})")
-        print(f"        The brain will forward to core, which calls wfp_ioctl.block_ip()")
-        print(f"        Kernel WFP filter will be installed within ~1 second")
-        return 0
-    else:
-        print(f"[FAIL]  Block request failed - is AEGIS core running?", file=sys.stderr)
-        return 1
+    print("[UNAVAILABLE] Direct block requests bypass the Rust PEP receipt",
+          file=sys.stderr)
+    print("             path and are refused in Project 2 observe-only mode.",
+          file=sys.stderr)
+    print("             Use: python tools/aegisctl.py enforce status",
+          file=sys.stderr)
+    return 4
 
 
 if __name__ == "__main__":

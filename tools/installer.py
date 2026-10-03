@@ -8,6 +8,8 @@ manifest-derived directive for every component.
 import argparse
 import json
 import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -121,13 +123,41 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="AEGIS NIDS NSIS Installer Generator")
     parser.add_argument("--generate", action="store_true",
                         help="Generate NSIS installer script")
-    parser.add_argument("--nsi", type=Path, default=ROOT / "installer.nsi",
-                        help="Output path for generated .nsi file")
+    parser.add_argument("--nsi", type=Path, default=None,
+                        help="Output path for generated .nsi file (default: installer.nsi, or installer.generated.nsi with --package)")
+    parser.add_argument("--package", action="store_true",
+                        help="Generate NSI and build the installer with makensis (fail-closed if missing)")
+    parser.add_argument("--output", type=Path, default=ROOT / "aegis_setup.exe",
+                        help="Output path for the built installer exe")
     args = parser.parse_args()
 
+    if args.package:
+        nsi_path = args.nsi or (ROOT / "installer.generated.nsi")
+        generate_nsi(nsi_path)
+        makensis = shutil.which("makensis")
+        if makensis is None:
+            print("ERROR: makensis not found; install NSIS to build the installer",
+                  file=sys.stderr)
+            return 2
+        proc = subprocess.run([makensis, str(nsi_path)], cwd=str(ROOT))
+        if proc.returncode != 0:
+            print(f"ERROR: makensis failed with exit {proc.returncode}",
+                  file=sys.stderr)
+            return proc.returncode
+        built = sorted(ROOT.glob("aegis-installer-*.exe"))
+        if not built:
+            print("ERROR: makensis succeeded but no aegis-installer-*.exe was produced",
+                  file=sys.stderr)
+            return 2
+        newest = max(built, key=lambda p: p.stat().st_mtime)
+        if newest.resolve() != args.output.resolve():
+            shutil.copy2(newest, args.output)
+        print(f"Packaged {args.output}")
+        return 0
+
     if args.generate:
-        generate_nsi(args.nsi)
-        print(f"Generated {args.nsi}")
+        generate_nsi(args.nsi or (ROOT / "installer.nsi"))
+        print(f"Generated {args.nsi or 'installer.nsi'}")
         print("Build with: makensis installer.nsi")
         print("Output: aegis-installer-5.0.0.exe")
         return 0
