@@ -140,12 +140,11 @@ fn handleControlRequest(a: std.mem.Allocator, pipe: std.os.windows.HANDLE, paylo
     }
     var ctx = control.handler_registry.HandlerContext{
         .start_ns = start_ns,
-        .request_id = @as(u64, @intCast(state.g_pipeline_audit_id)),
+        .request_id = state.g_pipeline_audit_id.fetchAdd(1, .monotonic),
         .caller_role = local_role,
         .caller_pid = @as(u32, @intCast(client_pid)),
         .caps = caps,
     };
-    state.g_pipeline_audit_id +|= 1;
     const result = control.handler_registry.dispatch(a, pipe, payload, &ctx, &auth, &control.audit.g_audit);
     return result.shutdown;
 }

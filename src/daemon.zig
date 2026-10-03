@@ -201,7 +201,7 @@ pub fn runDaemon() !void {
         defer std.heap.page_allocator.free(rules_bytes);
 
         rules_loaded = rule_loader.loadRulesInto(&ac, rules_bytes, rules_path);
-        state.g_rules_loaded = rules_loaded;
+        state.g_rules_loaded.store(rules_loaded, .monotonic);
         state.g_active_ac = &ac; // PATCH-14: expose AC for reload mechanism
         diag.info("loaded {} rules from {s}", .{ rules_loaded, rules_path });
     }
@@ -346,7 +346,7 @@ pub fn runDaemon() !void {
             policies_loaded += 1;
         }
 
-        state.g_policies_loaded = policies_loaded;
+        state.g_policies_loaded.store(policies_loaded, .monotonic);
         diag.info("loaded {} policies from {s}", .{ policies_loaded, pol_path });
     }
 
@@ -390,7 +390,7 @@ pub fn runDaemon() !void {
         diag.critical("Tier-3 state: ABSENT — PEP unavailable, DETECTION-ONLY MODE: no enforcement", .{});
     }
     // PATCH-15: PEP availability check — detection-only mode if unavailable
-    state.g_pep_available = pep_enf.available;
+    state.g_pep_available.store(pep_enf.available, .monotonic);
     if (!pep_enf.available) {
         diag.critical("PEP unavailable (aegis_pep.dll not loaded) — DETECTION-ONLY MODE: no enforcement", .{});
     } else {

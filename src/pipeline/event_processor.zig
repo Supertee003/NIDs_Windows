@@ -48,13 +48,13 @@ fn processEvent(
     // object used by policy, PEP, audit, and forensic stages.
     var ev_copy = qe.ev;
     const ev = &ev_copy;
-    state.g_pipeline_events_processed += 1;
+    state.g_pipeline_events_processed.fetchAdd(1, .monotonic);
     // CTRL-002: real liveness timestamp for the health contract (§4.1).
-    state.g_last_event_ms = std.time.milliTimestamp();
+    state.g_last_event_ms.store(std.time.milliTimestamp(), .monotonic);
 
     // Create security decision trace (128 bytes on stack)
-    state.g_trace_id += 1;
-    var decision_trace = trace_mod.SecurityDecisionTrace.init(state.g_trace_id, ev);
+    const trace_id = state.g_trace_id.fetchAdd(1, .monotonic) + 1;
+    var decision_trace = trace_mod.SecurityDecisionTrace.init(trace_id, ev);
 
     // 1. Flow table: lookup or create flow for this event's 5-tuple
     const src_ip_bytes: [16]u8 = blk: {
@@ -81,7 +81,7 @@ fn processEvent(
     // policy evaluation without attempting a second payload interpretation.
     if (ev.kind == .signature_match and ev.rule_id != 0) {
         matched_rule_id = ev.rule_id;
-        state.g_pipeline_detections += 1;
+        state.g_pipeline_detections.fetchAdd(1, .monotonic);
     }
     if (qe.payload_len > 0) {
         state.g_ac_mutex.lock();
@@ -98,7 +98,7 @@ fn processEvent(
                 // audit line and forensic record lost detection identity.
                 ev.rule_id = matched_rule_id;
                 ev.kind = .signature_match;
-                state.g_pipeline_detections += 1;
+                state.g_pipeline_detections.fetchAdd(1, .monotonic);
             }
             if (matches.len > 0) {
                 std.heap.page_allocator.free(matches);
@@ -118,7 +118,8 @@ fn processEvent(
             ev.rule_id = corr_rule_id;
             ev.kind = .correlation_match;
             ev.severity = .alert;
-            state.g_pipeline_detections += 1;
+            state.g_pipeline_detections.fetchAdd(1, .monotonic);
+            state.g_pipeline_correlations.fetchAdd(1, .monotonic);
         }
     }
 
@@ -136,7 +137,7 @@ fn processEvent(
     const anom_bytes: f64 = @floatFromInt(qe.payload_len);
     if (ad.observe(anom_key_bytes, anom_bytes) catch null) |z_score| {
         _ = z_score;
-        state.g_pipeline_anomalies += 1;
+        state.g_pipeline_anomalies.fetchAdd(1, .monotonic);
         diag.metrics.anomalies_detected.inc();
     }
 
@@ -150,9 +151,9 @@ fn processEvent(
             active_incident = inc.*;
             // Escalate event severity to incident severity
             ev_severity = inc.severity;
-            state.g_pipeline_detections += 1; // incident = significant detection
-            state.g_incidents_total += 1; // track total incidents
-            state.g_incidents_open += 1; // track open incidents
+            state.g_pipeline_detections.fetchAdd(1, .monotonic); // incident = significant detection
+            state.g_incidents_total.fetchAdd(1, .monotonic); // track total incidents
+            state.g_incidents_open.fetchAdd(1, .monotonic); // track open incidents
         }
     }
 
@@ -171,7 +172,7 @@ fn processEvent(
     if (ps.evaluate(eval_ctx)) |pol| {
         matched_policy = pol;
         policy_action = pol.action;
-        state.g_pipeline_policies_matched += 1;
+        state.g_pipeline_policies_matched.fetchAdd(1, .monotonic);
         // Record policy match in trace (Policy has no version field; use 1)
         decision_trace.setPolicy(pol.id, 1);
     }
@@ -181,18 +182,18 @@ fn processEvent(
     var pep_decision: pep.PepDecision = .allow;
     if (matched_policy) |pol| {
         // Unique PEP request ID (not event_id)
-        state.g_pep_request_id += 1;
+        const pep_req_id = state.g_pep_request_id.fetchAdd(1, .monotonic) + 1;
         pep_decision = pep_enf.enforce(
             &ev_copy,
             pol,
             state.g_runtime_pid,
             state.g_runtime_capability_mask,
-            state.g_pep_request_id,
+            pep_req_id,
         );
-        state.g_pipeline_detections += 1; // policy matched = detection event
+        state.g_pipeline_detections.fetchAdd(1, .monotonic); // policy matched = detection event
 
         // Record PEP decision in trace
-        decision_trace.setPepDecision(state.g_pep_request_id, @intFromEnum(pep_decision));
+        decision_trace.setPepDecision(pep_req_id, @intFromEnum(pep_decision));
 
         // 6a. Action dispatch (execute enforcement action). The receipt is
         // produced by the same PEP call above; dispatcher only verifies its
@@ -207,8 +208,7 @@ fn processEvent(
     }
 
     // Audit trace — every security decision gets a unique audit_id
-    const audit_id = state.g_pipeline_audit_id;
-    state.g_pipeline_audit_id += 1;
+    const audit_id = state.g_pipeline_audit_id.fetchAdd(1, .monotonic);
     decision_trace.setAuditId(audit_id);
 
     // Structured audit log from trace
@@ -231,7 +231,7 @@ fn processEvent(
 
     // 7. Forensic recording (captures full pipeline result)
     const forensic_seq = forensic_ring.append(ev, qe.payload[0..qe.payload_len], audit_id, if (matched_policy) |pol| pol.id else @as(u32, 0), @intFromEnum(pep_decision), @intFromEnum(ev_copy.severity)) catch 0;
-    if (forensic_seq != 0) state.g_forensic_records_written += 1;
+    if (forensic_seq != 0) state.g_forensic_records_written.fetchAdd(1, .monotonic);
 }
 
 /// Main pipeline loop: pops events from queue and processes them.
@@ -288,8 +288,8 @@ pub fn pipelineLoop(
     }
 
     diag.info("pipeline loop stopped: processed={}, detections={}, policies_matched={}", .{
-        state.g_pipeline_events_processed,
-        state.g_pipeline_detections,
-        state.g_pipeline_policies_matched,
+        state.g_pipeline_events_processed.load(.acquire),
+        state.g_pipeline_detections.load(.acquire),
+        state.g_pipeline_policies_matched.load(.acquire),
     });
 }

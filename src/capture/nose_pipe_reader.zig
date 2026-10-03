@@ -238,13 +238,13 @@ pub fn runPipeReaderLoop(stopSignal: *std.atomic.Value(bool)) void {
         var wait_mode: u32 = PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | 0x00000000;
         _ = SetNamedPipeHandleState(server, &wait_mode, null, null);
         std.log.info("[NOSE PIPE] client connected", .{});
-        runtime_state.g_nose_connected = true;
+        runtime_state.g_nose_connected.store(true, .monotonic);
 
         // Read frames until disconnect
         readClientLoop(server, stopSignal);
 
         _ = DisconnectNamedPipe(server);
-        runtime_state.g_nose_connected = false;
+        runtime_state.g_nose_connected.store(false, .monotonic);
         std.log.info("[NOSE PIPE] client disconnected, waiting for next...", .{});
     }
 
@@ -267,7 +267,7 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
             std.log.warn("[NOSE PIPE] frame header read failed: GetLastError={d}", .{err});
             if (err == ERROR_BROKEN_PIPE or err == ERROR_NO_DATA) break;
             g_reader_stats.pipe_errors += 1;
-            runtime_state.g_nose_pipe_errors += 1;
+            runtime_state.g_nose_pipe_errors.fetchAdd(1, .monotonic);
             break;
         }
         const frameLen = @as(u32, lenBuf[0]) |
@@ -286,7 +286,7 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
                 remaining -= @intCast(toRead);
             }
             g_reader_stats.frames_dropped += 1;
-            runtime_state.g_nose_frames_dropped += 1;
+            runtime_state.g_nose_frames_dropped.fetchAdd(1, .monotonic);
             continue;
         }
 
@@ -299,37 +299,37 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
         }
 
         g_reader_stats.frames_read += 1;
-        runtime_state.g_nose_frames_read += 1;
+        runtime_state.g_nose_frames_read.fetchAdd(1, .monotonic);
         std.log.info("[NOSE PIPE] frame received: {d} bytes", .{FRAME_SIZE});
 
         // Deserialize and validate
         const event = canonical.deserializeFromBytes(&payload) orelse {
             std.log.warn("[NOSE PIPE] canonical frame rejected by deserializer", .{});
             g_reader_stats.frames_rejected += 1;
-            runtime_state.g_nose_frames_rejected += 1;
+            runtime_state.g_nose_frames_rejected.fetchAdd(1, .monotonic);
             continue;
         };
 
         if (event.event_id == previous_connection_event_id) {
-            runtime_state.g_nose_duplicate_event_ids += 1;
+            runtime_state.g_nose_duplicate_event_ids.fetchAdd(1, .monotonic);
             std.log.warn("[NOSE PIPE] duplicate event_id={d}", .{event.event_id});
         } else if (previous_connection_event_id != 0 and event.event_id < previous_connection_event_id) {
-            runtime_state.g_nose_non_monotonic_event_ids += 1;
+            runtime_state.g_nose_non_monotonic_event_ids.fetchAdd(1, .monotonic);
             std.log.warn("[NOSE PIPE] non-monotonic event_id={d}, previous={d}", .{ event.event_id, previous_connection_event_id });
         }
         previous_connection_event_id = event.event_id;
         g_last_event_id = event.event_id;
-        runtime_state.g_nose_last_event_id = event.event_id;
+        runtime_state.g_nose_last_event_id.store(event.event_id, .monotonic);
 
         // Submit directly to the queue consumed by event_processor. There is
         // no second acquisition queue between canonical validation and detect.
         if (pipeline_queue.pushCanonicalEvent(&event)) {
             g_reader_stats.frames_submitted += 1;
-            runtime_state.g_nose_frames_submitted += 1;
+            runtime_state.g_nose_frames_submitted.fetchAdd(1, .monotonic);
             std.log.info("[NOSE PIPE] canonical event submitted: event_id={d}", .{event.event_id});
         } else {
             g_reader_stats.frames_dropped += 1;
-            runtime_state.g_nose_frames_dropped += 1;
+            runtime_state.g_nose_frames_dropped.fetchAdd(1, .monotonic);
         }
     }
 }

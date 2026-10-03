@@ -70,43 +70,47 @@ pub fn workerFailureMask() u8 {
     return g_worker_failure_mask.load(.acquire);
 }
 
-// --- Pipeline counters (owned by event_processor.zig / event_queue.zig) ---
-pub var g_pipeline_events_processed: u64 = 0;
-pub var g_pipeline_detections: u64 = 0;
-pub var g_pipeline_anomalies: u64 = 0;
-pub var g_pipeline_correlations: u64 = 0;
-pub var g_rules_loaded: u32 = 0;
-pub var g_policies_loaded: u32 = 0;
-pub var g_pipeline_policies_matched: u64 = 0;
-pub var g_forensic_records_written: u64 = 0;
+// --- Pipeline counters (written by the pipeline/nose threads, read by the
+// control-pipe thread for health/metrics). All atomics: plain u64/bool here
+// used to be cross-thread data races (control handlers read while workers
+// write). Ordering: writers use .monotonic (counters need no ordering
+// beyond atomicity), readers use .acquire.
+pub var g_pipeline_events_processed = std.atomic.Value(u64).init(0);
+pub var g_pipeline_detections = std.atomic.Value(u64).init(0);
+pub var g_pipeline_anomalies = std.atomic.Value(u64).init(0);
+pub var g_pipeline_correlations = std.atomic.Value(u64).init(0);
+pub var g_rules_loaded = std.atomic.Value(u32).init(0);
+pub var g_policies_loaded = std.atomic.Value(u32).init(0);
+pub var g_pipeline_policies_matched = std.atomic.Value(u64).init(0);
+pub var g_forensic_records_written = std.atomic.Value(u64).init(0);
 pub var g_forensic_ring: ?*forensic.ForensicRing = null;
-pub var g_pipeline_audit_id: u64 = 0; // monotonic audit trail counter
-pub var g_pep_request_id: u64 = 0; // unique PEP request ID counter
-pub var g_trace_id: u64 = 0; // monotonic trace counter
-pub var g_pep_available: bool = false; // PEP availability for health check
+pub var g_pipeline_audit_id = std.atomic.Value(u64).init(0); // monotonic audit trail counter
+pub var g_pep_request_id = std.atomic.Value(u64).init(0); // unique PEP request ID counter
+pub var g_trace_id = std.atomic.Value(u64).init(0); // monotonic trace counter
+pub var g_pep_available = std.atomic.Value(bool).init(false); // PEP availability for health check
 /// Identity used for events originating from the verified daemon process.
 /// Set during daemon startup; never use a fabricated all-capability mask.
 pub var g_runtime_pid: u32 = 0;
 /// Capability bitmask granted to the verified runtime service.
 pub var g_runtime_capability_mask: u32 = 0;
-pub var g_incidents_total: u64 = 0; // real incident count from ThreatTracker
-pub var g_incidents_open: u64 = 0; // currently open incidents
+pub var g_incidents_total = std.atomic.Value(u64).init(0); // real incident count from ThreatTracker
+pub var g_incidents_open = std.atomic.Value(u64).init(0); // currently open incidents
 pub var g_queue_drops = std.atomic.Value(u64).init(0); // events dropped due to queue full
 // Canonical Go Nose -> Zig reader counters. These are deliberately separate
 // from process liveness: RUNNING does not imply that the data plane is active.
-pub var g_nose_connected: bool = false;
-pub var g_nose_frames_read: u64 = 0;
-pub var g_nose_frames_rejected: u64 = 0;
-pub var g_nose_frames_submitted: u64 = 0;
-pub var g_nose_frames_dropped: u64 = 0;
-pub var g_nose_pipe_errors: u64 = 0;
-pub var g_nose_last_event_id: u64 = 0;
-pub var g_nose_duplicate_event_ids: u64 = 0;
-pub var g_nose_non_monotonic_event_ids: u64 = 0;
+pub var g_nose_connected = std.atomic.Value(bool).init(false);
+pub var g_nose_frames_read = std.atomic.Value(u64).init(0);
+pub var g_nose_frames_rejected = std.atomic.Value(u64).init(0);
+pub var g_nose_frames_submitted = std.atomic.Value(u64).init(0);
+pub var g_nose_frames_dropped = std.atomic.Value(u64).init(0);
+pub var g_nose_pipe_errors = std.atomic.Value(u64).init(0);
+pub var g_nose_last_event_id = std.atomic.Value(u64).init(0);
+pub var g_nose_duplicate_event_ids = std.atomic.Value(u64).init(0);
+pub var g_nose_non_monotonic_event_ids = std.atomic.Value(u64).init(0);
 /// CTRL-002: monotonic epoch-ms of the last processed event. 0 means no event
 /// has been processed yet. Exposed through the control plane so
 /// `last_event_ms` in RUNTIME_CONTRACT.md §4.1 is real data, never a placeholder.
-pub var g_last_event_ms: i64 = 0;
+pub var g_last_event_ms = std.atomic.Value(i64).init(0);
 
 // PATCH-14: Rules reload mechanism.
 // The pipeline thread reads the active AC automaton pointer; the control

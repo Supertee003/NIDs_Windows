@@ -158,7 +158,7 @@ pub fn reloadRules() u32 {
         state.g_ac_mutex.lock();
         const old_ac_ptr = state.g_active_ac;
         state.g_active_ac = heap_ac;
-        state.g_rules_loaded = new_count;
+        state.g_rules_loaded.store(new_count, .monotonic);
         state.g_ac_mutex.unlock();
 
         // Do not destroy the old automaton here. The pipeline may have taken

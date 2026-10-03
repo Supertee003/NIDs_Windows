@@ -385,7 +385,7 @@ const handlers = struct {
     }
 
     fn rulesList(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return std.fmt.allocPrint(a, "{{\"rules_loaded\":{},\"engine\":\"aho_corasick\"}}", .{state_mod.g_rules_loaded}) catch null;
+        return std.fmt.allocPrint(a, "{{\"rules_loaded\":{},\"engine\":\"aho_corasick\"}}", .{state_mod.g_rules_loaded.load(.acquire)}) catch null;
     }
 
     fn rulesShow(a: std.mem.Allocator, payload: std.json.Value, _: *HandlerContext) ?[]const u8 {
@@ -394,11 +394,11 @@ const handlers = struct {
     }
 
     fn rulesValidate(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return std.fmt.allocPrint(a, "{{\"valid\":true,\"rules_checked\":{}}}", .{state_mod.g_rules_loaded}) catch null;
+        return std.fmt.allocPrint(a, "{{\"valid\":true,\"rules_checked\":{}}}", .{state_mod.g_rules_loaded.load(.acquire)}) catch null;
     }
 
     fn rulesReload(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
-        const previous_count = state_mod.g_rules_loaded;
+        const previous_count = state_mod.g_rules_loaded.load(.acquire);
         const new_count = rules_loader.reloadRules();
         if (new_count == 0) {
             ctx.failure_code = "RULES_RELOAD_EMPTY";
@@ -407,14 +407,14 @@ const handlers = struct {
             return null;
         }
         // Update global rules counter (pipeline thread reads this atomically).
-        state_mod.g_rules_loaded = new_count;
+        state_mod.g_rules_loaded.store(new_count, .monotonic);
         return std.fmt.allocPrint(a, "{{\"rules_loaded\":{},\"previous_rules_loaded\":{},\"status\":\"reloaded\",\"postcondition\":\"ACTIVE\"}}", .{ new_count, previous_count }) catch null;
     }
 
     fn eventsCount(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
         return std.fmt.allocPrint(a, "{{\"total\":{},\"detections\":{},\"anomalies\":{}}}", .{
-            state_mod.g_pipeline_events_processed,
-            state_mod.g_pipeline_detections,
+            state_mod.g_pipeline_events_processed.load(.acquire),
+            state_mod.g_pipeline_detections.load(.acquire),
             diag.metrics.anomalies_detected.get(),
         }) catch null;
     }
@@ -424,11 +424,11 @@ const handlers = struct {
         return std.fmt.allocPrint(a,
             \\{{"processed":{},"detections":{},"anomalies":{},"correlations":{},"policies_matched":{},"errors":{},"dropped":{}}}
         , .{
-            state_mod.g_pipeline_events_processed,
-            state_mod.g_pipeline_detections,
+            state_mod.g_pipeline_events_processed.load(.acquire),
+            state_mod.g_pipeline_detections.load(.acquire),
             diag.metrics.anomalies_detected.get(),
-            state_mod.g_pipeline_correlations,
-            state_mod.g_pipeline_policies_matched,
+            state_mod.g_pipeline_correlations.load(.acquire),
+            state_mod.g_pipeline_policies_matched.load(.acquire),
             diag.metrics.errors.get(),
             queue_drops,
         }) catch null;
@@ -437,7 +437,7 @@ const handlers = struct {
     fn eventsTail(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
         const queue_drops = state_mod.g_queue_drops.load(.acquire);
         return std.fmt.allocPrint(a, "{{\"last_event_ms\":{},\"queue_drops\":{}}}", .{
-            state_mod.g_last_event_ms,
+            state_mod.g_last_event_ms.load(.acquire),
             queue_drops,
         }) catch null;
     }
@@ -446,11 +446,11 @@ const handlers = struct {
         return std.fmt.allocPrint(a,
             \\{{"incidents_total":{},"incidents_open":{},"detections":{},"policies_matched":{},"correlations":{}}}
         , .{
-            state_mod.g_incidents_total,
-            state_mod.g_incidents_open,
-            state_mod.g_pipeline_detections,
-            state_mod.g_pipeline_policies_matched,
-            state_mod.g_pipeline_correlations,
+            state_mod.g_incidents_total.load(.acquire),
+            state_mod.g_incidents_open.load(.acquire),
+            state_mod.g_pipeline_detections.load(.acquire),
+            state_mod.g_pipeline_policies_matched.load(.acquire),
+            state_mod.g_pipeline_correlations.load(.acquire),
         }) catch null;
     }
 
@@ -459,7 +459,7 @@ const handlers = struct {
     }
 
     fn policyList(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return std.fmt.allocPrint(a, "{{\"policies_loaded\":{}}}", .{state_mod.g_policies_loaded}) catch null;
+        return std.fmt.allocPrint(a, "{{\"policies_loaded\":{}}}", .{state_mod.g_policies_loaded.load(.acquire)}) catch null;
     }
 
     fn policyValidate(_: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
@@ -720,7 +720,7 @@ const handlers = struct {
             return std.fmt.allocPrint(a, "{{\"verified\":{},\"integrity\":\"{s}\",\"records\":{}}}", .{
                 verified,
                 if (verified) "ok" else "failed",
-                state_mod.g_forensic_records_written,
+                state_mod.g_forensic_records_written.load(.acquire),
             }) catch null;
         }
         return "{\"verified\":false,\"integrity\":\"unavailable\",\"records\":0}";
@@ -742,7 +742,7 @@ const handlers = struct {
 
     fn enforcementStatus(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
         const t3 = tier3_mod.g_tier3.state;
-        var provider_probe = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available };
+        var provider_probe = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available.load(.acquire) };
         const provider_ready = provider_probe.providerReady();
         const gate_open = state_mod.g_prevention_gate_open;
         return std.fmt.allocPrint(a,
@@ -751,7 +751,7 @@ const handlers = struct {
             t3.toString(),
             t3.isEnforcementAllowed(),
             gate_open,
-            state_mod.g_pep_available,
+            state_mod.g_pep_available.load(.acquire),
             provider_ready,
             provider_ready and gate_open,
             if (gate_open) "open" else "closed",
@@ -799,7 +799,7 @@ const handlers = struct {
             ctx.failure_message = "postcondition fields exceed ABI bounds";
             return null;
         }
-        var pep = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available };
+        var pep = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available.load(.acquire) };
         const state = pep.queryFilter(filter_id) orelse {
             ctx.failure_code = "POSTCONDITION_FAILED";
             ctx.failure_state = "DEGRADED";
@@ -884,7 +884,7 @@ const handlers = struct {
             ctx.failure_message = "blocking is disabled until controlled host-effect proof and receipt validation complete";
             return null;
         }
-        var pep = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available };
+        var pep = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available.load(.acquire) };
         const receipt = pep.enforceFlow(@intCast(dst_ip), @intCast(dst_port), @intCast(protocol_number), @intCast(policy_id), @intCast(severity), ctx.caller_pid, 1, ctx.request_id) orelse {
             ctx.failure_code = "ENFORCEMENT_FAILED";
             ctx.failure_state = "DEGRADED";
@@ -959,7 +959,7 @@ const handlers = struct {
             ctx.failure_message = "filter_id from an EnforcementReceipt must be non-zero";
             return null;
         }
-        var pep = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available };
+        var pep = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available.load(.acquire) };
         if (!pep.unblockFilter(filter_id, ctx.caller_pid, 1, ctx.request_id)) {
             ctx.failure_code = "CLEANUP_FAILED";
             ctx.failure_state = "DEGRADED";
@@ -989,13 +989,13 @@ const handlers = struct {
             \\{{"uptime_sec":{},"rules_loaded":{},"packets_captured":{},"events_processed":{},"forensic_records":{},"flows_active":{},"incidents_open":{},"detections":{},"anomalies":{},"blocks":{},"errors":{}}}
         , .{
             uptime_sec,
-            state_mod.g_rules_loaded,
-            @as(u32, @intCast(state_mod.g_nose_frames_submitted)),
-            @as(u32, @intCast(state_mod.g_pipeline_events_processed)),
-            @as(u32, @intCast(state_mod.g_forensic_records_written)),
+            state_mod.g_rules_loaded.load(.acquire),
+            @as(u32, @intCast(state_mod.g_nose_frames_submitted.load(.acquire))),
+            @as(u32, @intCast(state_mod.g_pipeline_events_processed.load(.acquire))),
+            @as(u32, @intCast(state_mod.g_forensic_records_written.load(.acquire))),
             @as(u32, @intCast(diag.metrics.flows_active.get())),
-            state_mod.g_incidents_open,
-            state_mod.g_pipeline_detections,
+            state_mod.g_incidents_open.load(.acquire),
+            state_mod.g_pipeline_detections.load(.acquire),
             diag.metrics.anomalies_detected.get(),
             diag.metrics.blocks_issued.get(),
             diag.metrics.errors.get(),
