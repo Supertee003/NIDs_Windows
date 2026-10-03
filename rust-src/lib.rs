@@ -490,10 +490,12 @@ pub unsafe extern "C" fn aegis_pep_enforce(
         decision = DECISION_QUARANTINE;
         reason = 5; // quarantine requested; adapter execution is downstream
     } else if req.requested_action == ACTION_BLOCK {
-        // High-severity block — check two-person rule if enabled
+        // High-severity block — check two-person rule if enabled.
+        // Approvals are one-shot: a consumed approval cannot authorize a
+        // second request, even for the same request_id replay.
         if req.severity >= 7 && s.two_person_rule {
             // Need approval
-            match s.pending_approvals.get(&req.ctx.request_id) {
+            match s.pending_approvals.remove(&req.ctx.request_id) {
                 Some(_) => {
                     decision = DECISION_BLOCK;
                 }
@@ -568,6 +570,39 @@ pub unsafe extern "C" fn aegis_pep_enforce(
     resp.quota_remaining = quota_remaining;
     resp.signed_by = signed_by;
     resp.filter_id = filter_id;
+    0
+}
+
+/// Enable or disable the two-person rule for high-severity BLOCK requests.
+/// Privileged-only (capability bit 0x01); disabling also drops every pending
+/// approval so a stale approval can never authorize a later request.
+#[no_mangle]
+pub extern "C" fn aegis_pep_set_two_person_rule(enabled: u32, caller_capability_mask: u32) -> c_int {
+    if (caller_capability_mask & 0x01) == 0 {
+        return -3;
+    }
+    let state = pep_state();
+    let mut s = state.lock();
+    s.two_person_rule = enabled != 0;
+    if !s.two_person_rule {
+        s.pending_approvals.clear();
+    }
+    0
+}
+
+/// Record a second-human approval for one enforcement request. Approvals are
+/// one-shot: a successful BLOCK consumes its approval. Privileged-only.
+#[no_mangle]
+pub extern "C" fn aegis_pep_approve(request_id: u64, approver_pid: u32, caller_capability_mask: u32) -> c_int {
+    if request_id == 0 {
+        return -3;
+    }
+    if (caller_capability_mask & 0x01) == 0 {
+        return -3;
+    }
+    let state = pep_state();
+    let mut s = state.lock();
+    s.pending_approvals.insert(request_id, approver_pid);
     0
 }
 
@@ -762,6 +797,74 @@ mod tests {
         assert!(quota_consume(&mut state, 0x0A000002, 2_000_000).1);
         // Window rollover restores the exhausted source.
         assert!(quota_consume(&mut state, 0x0A000001, 2_000_000 + QUOTA_WINDOW_MS).1);
+    }
+
+    #[test]
+    fn two_person_rule_setter_requires_capability() {
+        assert_eq!(aegis_pep_set_two_person_rule(1, 0), -3);
+        assert_eq!(aegis_pep_set_two_person_rule(1, 1), 0);
+        assert_eq!(aegis_pep_set_two_person_rule(0, 1), 0);
+    }
+
+    #[test]
+    fn approve_validates_input_and_capability() {
+        assert_eq!(aegis_pep_approve(0, 7, 1), -3);
+        assert_eq!(aegis_pep_approve(991, 7, 0), -3);
+        assert_eq!(aegis_pep_approve(991, 7, 1), 0);
+        // Cleanup: approvals for a synthetic id must not linger.
+        {
+            let state = pep_state();
+            let mut s = state.lock();
+            s.pending_approvals.remove(&991);
+        }
+    }
+
+    #[test]
+    fn high_severity_block_without_approval_escalates_for_approval() {
+        assert_eq!(aegis_pep_set_two_person_rule(1, 1), 0);
+        let req = PepRequest {
+            decision_kind: 61,
+            requested_action: ACTION_BLOCK,
+            flow_id: 3,
+            src_ip: 0xC0A80105,
+            dst_ip: 0x08080808,
+            src_port: 12345,
+            dst_port: 443,
+            protocol: 6,
+            policy_id: 9,
+            severity: 9,
+            ctx: PepContext {
+                caller_pid: 1,
+                caller_capability_mask: 1,
+                request_id: 777001,
+                policy_version: 0,
+            },
+        };
+        let mut resp = PepResponse {
+            decision: 0,
+            reason: 0,
+            quota_remaining: 0,
+            signed_by: 0,
+            filter_id: 0,
+        };
+        unsafe {
+            // No approval recorded: must ESCALATE for approval (reason 2),
+            // short-circuiting before any adapter/WFP contact.
+            assert_eq!(aegis_pep_enforce(&req, &mut resp), 0);
+            assert_eq!(resp.decision, DECISION_ESCALATE);
+            assert_eq!(resp.reason, 2);
+        }
+        assert_eq!(aegis_pep_set_two_person_rule(0, 1), 0);
+    }
+
+    #[test]
+    fn disabling_two_person_rule_drops_pending_approvals() {
+        assert_eq!(aegis_pep_set_two_person_rule(1, 1), 0);
+        assert_eq!(aegis_pep_approve(992, 7, 1), 0);
+        assert_eq!(aegis_pep_set_two_person_rule(0, 1), 0);
+        let state = pep_state();
+        let s = state.lock();
+        assert!(!s.pending_approvals.contains_key(&992));
     }
 
     #[test]

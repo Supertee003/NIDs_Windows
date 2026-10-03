@@ -105,6 +105,8 @@ extern "aegis_pep" fn aegis_pep_init() c_int;
 extern "aegis_pep" fn aegis_pep_provider_ready() c_int;
 extern "aegis_pep" fn aegis_pep_shutdown() void;
 extern "aegis_pep" fn aegis_pep_quota_remaining(src_ip: u32) u32;
+extern "aegis_pep" fn aegis_pep_set_two_person_rule(enabled: u32, caller_capability_mask: u32) c_int;
+extern "aegis_pep" fn aegis_pep_approve(request_id: u64, approver_pid: u32, caller_capability_mask: u32) c_int;
 
 // ============================================================================
 // PepEnforcer â€” Zig wrapper
@@ -189,6 +191,25 @@ pub const PepEnforcer = struct {
     pub fn quotaRemaining(self: *PepEnforcer, src_ip: u32) u32 {
         if (!self.available) return 0;
         return aegis_pep_quota_remaining(src_ip);
+    }
+
+    /// Enable/disable the two-person rule for high-severity BLOCKs.
+    /// Privileged operator action (capability bit required by the DLL);
+    /// returns false when the PEP is unavailable or rejects the call.
+    /// Control-plane exposure is a Project 3 item; no handler calls this yet.
+    pub fn setTwoPersonRule(self: *PepEnforcer, enabled: bool, caller_caps: u32) bool {
+        if (!self.available) return false;
+        if (@import("builtin").os.tag != .windows) return false;
+        return aegis_pep_set_two_person_rule(if (enabled) @as(u32, 1) else @as(u32, 0), caller_caps) == 0;
+    }
+
+    /// Record a second-human approval for one enforcement request ID.
+    /// Approvals are one-shot inside the DLL. Same availability and
+    /// Project-3 notes as setTwoPersonRule.
+    pub fn approveRequest(self: *PepEnforcer, request_id: u64, approver_pid: u32, caller_caps: u32) bool {
+        if (!self.available or request_id == 0) return false;
+        if (@import("builtin").os.tag != .windows) return false;
+        return aegis_pep_approve(request_id, approver_pid, caller_caps) == 0;
     }
 
     pub fn enforceFlow(
