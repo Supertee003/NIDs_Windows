@@ -58,6 +58,21 @@ fn applyJsonMetadata(ev: *event.IpcEvent, payload: []const u8) void {
     if (obj.get("severity")) |v| if (v == .string) {
         ev.severity = if (std.ascii.eqlIgnoreCase(v.string, "Critical")) .critical else if (std.ascii.eqlIgnoreCase(v.string, "High")) .alert else if (std.ascii.eqlIgnoreCase(v.string, "Medium")) .warning else .info;
     };
+    // Tier-2 brain return contract (T2-BRAIN-023): a sender that identifies
+    // itself as "brain_tier2" is recorded with brain provenance and its
+    // numeric rule_id is carried. Anything else keeps the default system
+    // packet identity above. Unknown/missing fields never fail the ingest.
+    if (obj.get("source")) |v| if (v == .string) {
+        if (std.ascii.eqlIgnoreCase(v.string, "brain_tier2")) {
+            ev.source = .detection_brain;
+            ev.kind = .anomaly_detected;
+        }
+    };
+    if (obj.get("rule_id")) |v| {
+        if (v == .integer and v.integer > 0) {
+            ev.rule_id = @intCast(@min(v.integer, std.math.maxInt(u32)));
+        }
+    }
 }
 
 // Win32 FFI
@@ -308,4 +323,29 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
             _ = DisconnectNamedPipe(handle);
         }
     }
+}
+
+test "applyJsonMetadata carries brain_tier2 provenance and rule identity" {
+    var ev = event.IpcEvent.init(.packet_captured);
+    ev.source = .system;
+    const payload =
+        \\{"src_ip":"192.168.126.10","dst_ip":"192.168.126.20","src_port":4444,"dst_port":80,"protocol":"TCP","severity":"High","source":"brain_tier2","rule_id":2107512682}
+    ;
+    applyJsonMetadata(&ev, payload);
+    try std.testing.expectEqual(event.EventSource.detection_brain, ev.source);
+    try std.testing.expectEqual(event.EventKind.anomaly_detected, ev.kind);
+    try std.testing.expectEqual(@as(u32, 2107512682), ev.rule_id);
+    try std.testing.expectEqual(@as(u32, 0xC0A87E0A), ev.src_ip);
+    try std.testing.expectEqual(event.EventSeverity.alert, ev.severity);
+}
+
+test "applyJsonMetadata keeps default identity without brain fields" {
+    var ev = event.IpcEvent.init(.packet_captured);
+    ev.source = .system;
+    applyJsonMetadata(&ev,
+        \\{"src_ip":"10.0.0.1"}
+    );
+    try std.testing.expectEqual(event.EventSource.system, ev.source);
+    try std.testing.expectEqual(event.EventKind.packet_captured, ev.kind);
+    try std.testing.expectEqual(@as(u32, 0), ev.rule_id);
 }

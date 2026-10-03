@@ -97,6 +97,10 @@ pub const EventSource = enum(u8) {
     detection_sig = 10,
     detection_anom = 11,
     detection_corr = 12,
+    /// Python Tier-2 brain findings arriving over the sensor pipe.
+    /// Advisory detection input: counted and correlated like any other
+    /// sensor event, never a host-effect claim by itself.
+    detection_brain = 13,
     policy = 20,
     federation = 30,
     system = 99,

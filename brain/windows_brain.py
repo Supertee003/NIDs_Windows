@@ -57,7 +57,9 @@ for _stream_name in ("stdout", "stderr"):
 # Gate-A version probes must not import optional native bridge/Cython modules.
 # Some of those modules alter process streams during initialization, which can
 # make subprocess capture return no stdout for an otherwise valid version call.
-if "--version" in sys.argv or "-v" in sys.argv or "-V" in sys.argv:
+# Only honour --version / -V as the sole intent; -v is also used by pytest and
+# other test runners so it must not trigger a version exit at import time.
+if "--version" in sys.argv or "-V" in sys.argv:
     print("AEGIS BRAIN 2.0.0")
     sys.exit(0)
 
@@ -340,6 +342,79 @@ def write_anomaly_log(log_entry, attack_type, policy, rule_id, status="DETECTED"
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(log_entry) + "\n")
 
+# ====== Tier-2 sensor-pipe return contract (T2-BRAIN-023) ======
+# The daemon owns a JSON sensor pipe (\\.\pipe\aegis_sensor_pipe_t1) that
+# feeds the canonical event queue. The brain may report Tier-2 findings
+# there with explicit brain_tier2 provenance; the daemon records them as
+# advisory anomaly_detected events (never host effects).
+# Opt-in only: set AEGIS_SENSOR_PIPE=1. Default off = no behavior change.
+SENSOR_PIPE_NAME = r"\\.\pipe\aegis_sensor_pipe_t1"
+SENSOR_PIPE_ENABLED = os.environ.get("AEGIS_SENSOR_PIPE", "0") == "1"
+
+
+def fnv1a32(value: str) -> int:
+    """FNV-1a 32-bit, identical to Zig hashRuleId and the contract pin table."""
+    digest = 0x811C9DC5
+    for byte in value.encode("utf-8"):
+        digest ^= byte
+        digest = (digest * 0x01000193) & 0xFFFFFFFF
+    return digest
+
+
+def build_sensor_payload(match_name, rule_id, severity, src_ip, dst_ip="0.0.0.0",
+                         src_port=0, dst_port=0, protocol="TCP"):
+    """Build the sensor-pipe document for one Tier-2 finding.
+
+    String rule IDs ("R0056", "CYTHON-001") are hashed with FNV-1a so the
+    numeric rule_id matches the Zig detector's rule-id space; integers pass
+    through unchanged.
+    """
+    numeric_rule = rule_id
+    if isinstance(rule_id, str):
+        numeric_rule = fnv1a32(rule_id) if not rule_id.isdigit() else int(rule_id)
+    return {
+        "source": "brain_tier2",
+        "attack_type": match_name,
+        "rule_id": numeric_rule,
+        "severity": severity,
+        "src_ip": src_ip,
+        "dst_ip": dst_ip,
+        "src_port": src_port,
+        "dst_port": dst_port,
+        "protocol": protocol,
+    }
+
+
+def send_to_sensor_pipe(payload: dict) -> str:
+    """Deliver one finding to the daemon sensor pipe.
+
+    Returns SENT, FAILED, or DISABLED (opt-in flag off). FAILED is an
+    operator-visible transport failure, never a detection claim.
+    """
+    if not SENSOR_PIPE_ENABLED:
+        return "DISABLED"
+    try:
+        import ctypes
+        from ctypes import wintypes
+        data = json.dumps(payload).encode("utf-8")
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        handle = k32.CreateFileW(
+            SENSOR_PIPE_NAME, 0x40000000 | 0x80000000, 0, None, 3, 0, None,
+        )
+        if handle == wintypes.HANDLE(-1).value:
+            return "FAILED"
+        try:
+            written = wintypes.DWORD(0)
+            ok = k32.WriteFile(handle, data, len(data), ctypes.byref(written), None)
+            if not ok or written.value != len(data):
+                return "FAILED"
+        finally:
+            k32.CloseHandle(handle)
+        return "SENT"
+    except Exception:
+        return "FAILED"
+
+
 # ====== Bridge Event Polling ======
 
 def poll_bridge_events():
@@ -380,7 +455,9 @@ def main():
     # (and tests/runtime/test_version.py) can verify the brain reports a
     # parseable version. Must run BEFORE any other initialization (so a
     # missing DLL or Cython module does not mask the version output).
-    if "--version" in sys.argv or "-v" in sys.argv or "-V" in sys.argv:
+    # -v is also used by pytest and other runners, so only --version/-V
+    # trigger a version exit at runtime (matching the import-time check).
+    if "--version" in sys.argv or "-V" in sys.argv:
         # Keep a plain token before the ANSI banner so Windows supervisors and
         # version probes can parse the semantic version without escape codes.
         print("AEGIS BRAIN 2.0.0")
@@ -619,6 +696,12 @@ def main():
                         status = "BLOCK_FAILED"
 
                 write_anomaly_log(log_entry, match_name, match_policy, match_rule_id, status)
+                pipe_result = send_to_sensor_pipe(build_sensor_payload(
+                    match_name, match_rule_id, match_severity,
+                    src_ip if src_ip != "Unknown" else "0.0.0.0",
+                ))
+                if pipe_result == "FAILED":
+                    print(f"{UI.YELLOW}[SENSOR-PIPE] Tier-2 finding NOT delivered (transport failed){UI.RESET}")
                 continue  # Skip regex scan if Cython already found a critical threat
 
             # --- 🐌 Pure Python Regex Scan (Fallback) ---
@@ -654,6 +737,12 @@ def main():
                         status = "BLOCK_FAILED"
 
                 write_anomaly_log(log_entry, match_name, match_policy, match_rule_id, status)
+                pipe_result = send_to_sensor_pipe(build_sensor_payload(
+                    match_name, match_rule_id, match_severity,
+                    src_ip if src_ip != "Unknown" else "0.0.0.0",
+                ))
+                if pipe_result == "FAILED":
+                    print(f"{UI.YELLOW}[SENSOR-PIPE] Tier-2 finding NOT delivered (transport failed){UI.RESET}")
             else:
                 print(f"[INFO] {ts} | Packet from {source} inspected — no Tier-2 match found.")
 

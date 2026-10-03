@@ -106,6 +106,7 @@ pub fn canonicalSourceOf(src: event.EventSource) canonical_event.EventSource {
         .detection_sig => .zig_core,
         .detection_anom => .ml_detector,
         .detection_corr => .zig_core,
+        .detection_brain => .python_brain,
         .policy => .zig_core,
         .federation => .cluster_federation,
         .system => .zig_core,
