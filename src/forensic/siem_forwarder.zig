@@ -27,6 +27,11 @@ pub const MAX_BATCH_SIZE = 100;
 pub const DEFAULT_FLUSH_INTERVAL_MS = 5000; // 5 seconds
 pub const DEFAULT_RETRY_COUNT = 3;
 pub const DEFAULT_RETRY_DELAY_MS = 1000;
+// Spool replay bounds (T1-SIEM-021): one flush replays at most this many
+// spooled lines and reads at most this many bytes, so a huge spool file
+// can never stall the live path. The remainder waits for later flushes.
+pub const MAX_SPOOL_REPLAY_LINES = MAX_BATCH_SIZE;
+pub const MAX_SPOOL_REPLAY_BYTES = 1024 * 1024;
 
 // ============================================================
 // Output Formats
@@ -194,6 +199,11 @@ pub const SiemForwarder = struct {
 
     /// Flush the batch buffer to the configured destination.
     pub fn flush(self: *SiemForwarder) !void {
+        // T1-SIEM-021: drain yesterday's evidence first (bounded), so a
+        // spilled batch is retried automatically instead of waiting for an
+        // operator. Replay is best-effort single-pass: anything still
+        // undeliverable stays spooled for a later flush.
+        _ = self.replaySpool();
         if (self.batch_buffer.items.len == 0) return;
 
         const start_ms = std.time.milliTimestamp();
@@ -232,6 +242,169 @@ pub const SiemForwarder = struct {
             });
         }
         self.batch_buffer.clearRetainingCapacity();
+    }
+
+    /// Result of one bounded spool-replay pass.
+    pub const SpoolReplayResult = struct {
+        replayed: u64 = 0,
+        remaining: u64 = 0,
+    };
+
+    /// Replay spooled lines (bounded single pass, oldest first).
+    /// Fully delivered lines are acked by removing them from the spool;
+    /// the first undeliverable line stops the pass and the tail (including
+    /// that line) is rewritten back.Delivery is at-least-once: a crash
+    /// between send and ack may duplicate a line at the collector, which
+    /// carries event_ids/timestamps for dedupe.
+    pub fn replaySpool(self: *SiemForwarder) SpoolReplayResult {
+        var result = SpoolReplayResult{};
+        if (!self.initialized or !self.config.enabled) return result;
+        const spool_path = std.fmt.allocPrint(self.allocator, "{s}.spool", .{self.config.destination}) catch return result;
+        defer self.allocator.free(spool_path);
+        const raw = std.fs.cwd().readFileAlloc(self.allocator, spool_path, MAX_SPOOL_REPLAY_BYTES) catch return result;
+        defer self.allocator.free(raw);
+
+        var sent_count: usize = 0;
+        var line_count: usize = 0;
+        var lines = std.mem.splitScalar(u8, raw, '\n');
+        var stopped = false;
+        while (lines.next()) |line| {
+            if (line.len == 0) continue;
+            line_count += 1;
+            if (line_count > MAX_SPOOL_REPLAY_LINES or stopped) {
+                result.remaining += 1;
+                continue;
+            }
+            if (self.sendRawLine(line)) {
+                sent_count += 1;
+                self.stats.total_events_forwarded += 1;
+            } else {
+                stopped = true;
+                result.remaining += 1;
+            }
+        }
+        result.replayed = sent_count;
+        if (result.remaining == 0) {
+            std.fs.cwd().deleteFile(spool_path) catch {};
+        } else {
+            rewriteSpoolTail(spool_path, raw, sent_count);
+        }
+        if (sent_count > 0) {
+            self.stats.total_batches_sent += 1;
+            self.last_flush_ms = std.time.milliTimestamp();
+            std.log.info("[SIEM] Spool replay: {d} replayed, {d} remaining", .{ sent_count, result.remaining });
+        }
+        return result;
+    }
+
+    /// Rewrite the spool file keeping only lines after the first
+    /// `acked_lines` non-empty lines. Best effort: a rewrite failure keeps
+    /// the old file (at-least-once may duplicate, never loses).
+    fn rewriteSpoolTail(spool_path: []const u8, raw: []const u8, acked_lines: usize) void {
+        const file = std.fs.cwd().createFile(spool_path, .{ .truncate = true }) catch {
+            std.log.err("[SIEM] Failed to rewrite spool tail: {s}", .{spool_path});
+            return;
+        };
+        defer file.close();
+        var seen: usize = 0;
+        var lines = std.mem.splitScalar(u8, raw, '\n');
+        while (lines.next()) |line| {
+            if (line.len == 0) continue;
+            seen += 1;
+            if (seen <= acked_lines) continue;
+            file.writer().writeAll(line) catch return;
+            file.writer().writeByte('\n') catch return;
+        }
+    }
+
+    /// Send one already-formatted spool line over the configured transport.
+    /// Returns true only when the collector accepted the bytes.
+    fn sendRawLine(self: *SiemForwarder, line: []const u8) bool {
+        return switch (self.config.transport) {
+            .file => self.sendRawToFile(line),
+            .http, .https => self.sendRawViaHttp(line),
+            .tcp => self.sendRawViaTcp(line),
+            .udp => self.sendRawViaUdp(line),
+        };
+    }
+
+    fn sendRawToFile(self: *SiemForwarder, line: []const u8) bool {
+        const file = std.fs.cwd().createFile(self.config.destination, .{ .truncate = false }) catch return false;
+        defer file.close();
+        file.seekFromEnd(0) catch {};
+        file.writer().writeAll(line) catch return false;
+        file.writer().writeByte('\n') catch return false;
+        return true;
+    }
+
+    fn sendRawViaHttp(self: *SiemForwarder, line: []const u8) bool {
+        const uri = std.Uri.parse(self.config.endpoint) catch return false;
+        if (uriHost(uri) == null) return false;
+        var client = std.http.Client{ .allocator = self.allocator };
+        defer client.deinit();
+        const extra_headers = [_]std.http.Header{
+            .{ .name = "Content-Type", .value = "application/json" },
+        };
+        var req_buf: [16 * 1024]u8 = undefined;
+        var req = client.open(.POST, uri, .{ .server_header_buffer = &req_buf, .extra_headers = &extra_headers }) catch |err| {
+            std.log.warn("[SIEM] Spool replay HTTP open failed: {}", .{err});
+            return false;
+        };
+        defer req.deinit();
+        req.writeAll(line) catch |err| {
+            std.log.warn("[SIEM] Spool replay HTTP write failed: {}", .{err});
+            return false;
+        };
+        req.finish() catch |err| {
+            std.log.warn("[SIEM] Spool replay HTTP finish failed: {}", .{err});
+            return false;
+        };
+        req.wait() catch |err| {
+            std.log.warn("[SIEM] Spool replay HTTP wait failed: {}", .{err});
+            return false;
+        };
+        if (req.response.status != .ok) {
+            std.log.warn("[SIEM] Spool replay HTTP status: {}", .{req.response.status});
+            return false;
+        }
+        return true;
+    }
+
+    fn sendRawViaTcp(self: *SiemForwarder, line: []const u8) bool {
+        const uri = std.Uri.parse(self.config.endpoint) catch return false;
+        const host = uriHost(uri) orelse return false;
+        const port: u16 = uri.port orelse 514;
+        var stream = std.net.tcpConnectToHost(self.allocator, host, port) catch |err| {
+            std.log.warn("[SIEM] Spool replay TCP connect failed: {}", .{err});
+            return false;
+        };
+        defer stream.close();
+        stream.writeAll(line) catch |err| {
+            std.log.warn("[SIEM] Spool replay TCP write failed: {}", .{err});
+            return false;
+        };
+        return true;
+    }
+
+    fn sendRawViaUdp(self: *SiemForwarder, line: []const u8) bool {
+        const uri = std.Uri.parse(self.config.endpoint) catch return false;
+        const host = uriHost(uri) orelse return false;
+        const port: u16 = uri.port orelse 514;
+        const addr_list = std.net.getAddressList(self.allocator, host, port) catch |err| {
+            std.log.warn("[SIEM] Spool replay UDP resolve failed: {}", .{err});
+            return false;
+        };
+        defer addr_list.deinit();
+        if (addr_list.addrs.len == 0) return false;
+        const addr = addr_list.addrs[0];
+        const sock = std.posix.socket(addr.any.family, std.posix.SOCK.DGRAM, 0) catch return false;
+        defer std.posix.close(sock);
+        std.posix.connect(sock, &addr.any, addr.getOsSockLen()) catch return false;
+        _ = std.posix.send(sock, line, 0) catch |err| {
+            std.log.warn("[SIEM] Spool replay UDP write failed: {}", .{err});
+            return false;
+        };
+        return true;
     }
 
     /// Append a batch to the durable spool file next to the destination.
@@ -960,4 +1133,113 @@ test "siem_forwarder singleton lifecycle" {
     init(std.testing.allocator, .{ .enabled = true });
     defer shutdown();
     try std.testing.expect(isInitialized());
+}
+
+fn replayProbeEvent() ForwardedEvent {
+    return .{
+        .timestamp = 1000,
+        .attack_type = "SQLI",
+        .src_ip = "10.0.0.1",
+        .dst_ip = "10.0.0.2",
+        .src_port = 12345,
+        .dst_port = 80,
+        .protocol = "TCP",
+        .severity = "Critical",
+        .policy = "BLOCK",
+        .rule_id = "R001",
+        .status = "DETECTED",
+        .payload = "",
+    };
+}
+
+fn writeTestSpool(allocator: std.mem.Allocator, spool_path: []const u8, lines: []const []const u8) !void {
+    const file = try std.fs.cwd().createFile(spool_path, .{ .truncate = true });
+    defer file.close();
+    for (lines) |line| {
+        try file.writer().writeAll(line);
+        try file.writer().writeByte('\n');
+    }
+    _ = allocator;
+}
+
+test "replaySpool delivers spooled lines and acks by deleting the spool" {
+    const dest = "siem_replay_ok.json";
+    const spool = "siem_replay_ok.json.spool";
+    defer std.fs.cwd().deleteFile(dest) catch {};
+    defer std.fs.cwd().deleteFile(spool) catch {};
+    try writeTestSpool(std.testing.allocator, spool, &.{ "{\"a\":1}", "{\"b\":2}" });
+
+    var forwarder = SiemForwarder.init(std.testing.allocator, .{
+        .enabled = true,
+        .destination = dest,
+        .transport = .file,
+    });
+    defer forwarder.deinit();
+
+    const result = forwarder.replaySpool();
+    try std.testing.expectEqual(@as(u64, 2), result.replayed);
+    try std.testing.expectEqual(@as(u64, 0), result.remaining);
+    try std.testing.expectEqual(@as(u64, 2), forwarder.stats.total_events_forwarded);
+    // Acked: spool file is gone, destination holds both lines.
+    try std.testing.expectEqual(false, blk: {
+        std.fs.cwd().access(spool, .{}) catch break :blk false;
+        break :blk true;
+    });
+    const body = try std.fs.cwd().readFileAlloc(std.testing.allocator, dest, 65536);
+    defer std.testing.allocator.free(body);
+    try std.testing.expect(std.mem.indexOf(u8, body, "{\"a\":1}") != null);
+    try std.testing.expect(std.mem.indexOf(u8, body, "{\"b\":2}") != null);
+}
+
+test "replaySpool stops at first failure and keeps the tail spooled" {
+    const dest = "siem_replay_fail.json";
+    const spool = "siem_replay_fail.json.spool";
+    defer std.fs.cwd().deleteFile(dest) catch {};
+    defer std.fs.cwd().deleteFile(spool) catch {};
+    try writeTestSpool(std.testing.allocator, spool, &.{ "{\"a\":1}", "{\"b\":2}" });
+
+    var forwarder = SiemForwarder.init(std.testing.allocator, .{
+        .enabled = true,
+        .destination = dest,
+        .transport = .tcp,
+        .retry_count = 1,
+        .retry_delay_ms = 0,
+    });
+    forwarder.config.endpoint = "tcp://127.0.0.1:1";
+    defer forwarder.deinit();
+
+    const result = forwarder.replaySpool();
+    try std.testing.expectEqual(@as(u64, 0), result.replayed);
+    try std.testing.expectEqual(@as(u64, 2), result.remaining);
+    try std.testing.expectEqual(@as(u64, 0), forwarder.stats.total_events_forwarded);
+    const tail = try std.fs.cwd().readFileAlloc(std.testing.allocator, spool, 65536);
+    defer std.testing.allocator.free(tail);
+    try std.testing.expect(std.mem.indexOf(u8, tail, "{\"a\":1}") != null);
+    try std.testing.expect(std.mem.indexOf(u8, tail, "{\"b\":2}") != null);
+}
+
+test "flush auto-replays a pre-existing spool before the live batch" {
+    const dest = "siem_replay_flush.json";
+    const spool = "siem_replay_flush.json.spool";
+    defer std.fs.cwd().deleteFile(dest) catch {};
+    defer std.fs.cwd().deleteFile(spool) catch {};
+    try writeTestSpool(std.testing.allocator, spool, &.{"{\"old\":true}"});
+
+    var forwarder = SiemForwarder.init(std.testing.allocator, .{
+        .enabled = true,
+        .destination = dest,
+        .transport = .file,
+    });
+    defer forwarder.deinit();
+
+    try forwarder.forwardEvent(replayProbeEvent());
+    try forwarder.flush();
+
+    // 1 replayed + 1 live, nothing newly spooled.
+    try std.testing.expectEqual(@as(u64, 2), forwarder.stats.total_events_forwarded);
+    try std.testing.expectEqual(@as(u64, 0), forwarder.stats.total_events_spooled);
+    const body = try std.fs.cwd().readFileAlloc(std.testing.allocator, dest, 65536);
+    defer std.testing.allocator.free(body);
+    try std.testing.expect(std.mem.indexOf(u8, body, "{\"old\":true}") != null);
+    try std.testing.expect(std.mem.indexOf(u8, body, "SQLI") != null);
 }
