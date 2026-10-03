@@ -426,6 +426,25 @@ pub extern "C" fn aegis_pep_shutdown() {
     }
 }
 
+/// Consume one BLOCK authorization from the per-source sliding window.
+/// Returns (quota_remaining, allowed). Pure state logic, no I/O, so unit
+/// tests can pin the window behavior without touching the WFP adapter.
+fn quota_consume(state: &mut PepState, src_ip: u32, now_ms: u64) -> (u32, bool) {
+    let entry = state.quotas.entry(src_ip).or_insert(QuotaEntry {
+        count: 0,
+        window_start_ms: now_ms,
+    });
+    if now_ms.saturating_sub(entry.window_start_ms) >= QUOTA_WINDOW_MS {
+        entry.window_start_ms = now_ms;
+        entry.count = 0;
+    }
+    if entry.count >= QUOTA_DEFAULT {
+        return (0, false);
+    }
+    entry.count += 1;
+    (QUOTA_DEFAULT - entry.count, true)
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn aegis_pep_enforce(
     req: *const PepRequest,
@@ -442,12 +461,12 @@ pub unsafe extern "C" fn aegis_pep_enforce(
     // authorized ALLOW to the caller.
     let mut decision = DECISION_ALLOW;
     let mut reason = 0u32;
-    let quota_remaining = QUOTA_DEFAULT;
+    let mut quota_remaining = QUOTA_DEFAULT;
     let signed_by = 0u32;
     let mut filter_id = 0u64;
 
     let state = pep_state();
-    let s = state.lock();
+    let mut s = state.lock();
 
     // Advisory actions do not require a privileged capability. Every action
     // that can mutate or constrain traffic must be explicitly authorized.
@@ -494,6 +513,21 @@ pub unsafe extern "C" fn aegis_pep_enforce(
         // enforcement authority.
         decision = DECISION_ESCALATE;
         reason = 6;
+    }
+    if decision == DECISION_BLOCK {
+        // T3-QUOTA: per-source sliding window over BLOCK authorizations.
+        // An exhausted quota fails closed to ESCALATE (reason 7), never to
+        // ALLOW, and the window resets after QUOTA_WINDOW_MS.
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        let (remaining, allowed) = quota_consume(&mut s, req.src_ip, now_ms);
+        quota_remaining = remaining;
+        if !allowed {
+            decision = DECISION_ESCALATE;
+            reason = 7; // quota exceeded
+        }
     }
     drop(s);
 
@@ -617,7 +651,7 @@ pub extern "C" fn aegis_pep_quota_remaining(src_ip: u32) -> u32 {
         .map(|d| d.as_millis() as u64)
         .unwrap_or(0);
     if let Some(entry) = s.quotas.get(&src_ip) {
-        if now_ms - entry.window_start_ms <= QUOTA_WINDOW_MS {
+        if now_ms.saturating_sub(entry.window_start_ms) < QUOTA_WINDOW_MS {
             return QUOTA_DEFAULT.saturating_sub(entry.count);
         }
     }
@@ -694,6 +728,40 @@ mod tests {
         unsafe {
             assert_eq!(aegis_pep_enforce(std::ptr::null(), std::ptr::null_mut()), -1);
         }
+    }
+
+    #[test]
+    fn quota_consume_exhausts_at_default_and_fails_closed() {
+        let mut state = PepState {
+            quotas: HashMap::new(),
+            two_person_rule: false,
+            pending_approvals: HashMap::new(),
+        };
+        for _ in 0..QUOTA_DEFAULT {
+            let (remaining, allowed) = quota_consume(&mut state, 0xC0A80199, 1_000_000);
+            assert!(allowed);
+            assert!(remaining < QUOTA_DEFAULT);
+        }
+        let (remaining, allowed) = quota_consume(&mut state, 0xC0A80199, 1_000_000);
+        assert!(!allowed);
+        assert_eq!(remaining, 0);
+    }
+
+    #[test]
+    fn quota_consume_resets_after_window_and_isolates_sources() {
+        let mut state = PepState {
+            quotas: HashMap::new(),
+            two_person_rule: false,
+            pending_approvals: HashMap::new(),
+        };
+        for _ in 0..QUOTA_DEFAULT {
+            assert!(quota_consume(&mut state, 0x0A000001, 2_000_000).1);
+        }
+        assert!(!quota_consume(&mut state, 0x0A000001, 2_000_000).1);
+        // Other source unaffected.
+        assert!(quota_consume(&mut state, 0x0A000002, 2_000_000).1);
+        // Window rollover restores the exhausted source.
+        assert!(quota_consume(&mut state, 0x0A000001, 2_000_000 + QUOTA_WINDOW_MS).1);
     }
 
     #[test]
