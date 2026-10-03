@@ -244,6 +244,27 @@ Do not claim a higher level from a lower-level test.
 
 ---
 
+## TEST HYGIENE
+
+Coupling investigation (2026-10-04) proved three coupling classes. All
+slices must respect them:
+
+1. No import-time host effects. Product modules (brain, CLI, tools) must
+   be importable with no socket bind, no serve loop, no banner on stdout,
+   and no `sys.exit` under a test runner's argv. Pinned by
+   `tests/brain/test_import_hygiene.py` (subprocess import probe).
+2. No test writes to tracked tree state. Tests write to `tmp_path` (or
+   cwd-scoped scratch). `analysis/*` result stamps, `logs/*.json`
+   bookkeeping, and `tests/contracts/**/*.bin` are producer-owned (lab
+   reruns, CLI, vector generator) — a test that rewrites them dirties
+   every tree and invalidates `truth.py`/release gates.
+3. One schema, N codecs. `CanonicalEvent` exists in Zig/Go/C++/Python ×2
+   plus the golden tuple-map; any wire change updates all six plus a
+   shared `event_v*` vector in the SAME patch (staged pattern:
+   `shared/protocol/wire_v2.md`).
+
+---
+
 ## PRE-COMMIT CHECKS
 
 ```powershell

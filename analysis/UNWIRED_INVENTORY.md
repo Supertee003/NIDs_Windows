@@ -74,8 +74,31 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   re-promote dispatcher — NOT silent removal.
 - [ ] flow `is_ipv6` plumbing (normalize hardcodes false)
 
-## KNOWN-OPEN robustness (filed, unscheduled)
-- flow pointer lock-escape (single-threaded today), forensic `append catch 0`,
+## COUPLING MAP (deep investigation 2026-10-04 — read before refactoring)
+
+- Zig hubs (272 files): `contract/canonical_event.zig` 52 importers,
+  `contract/event.zig` 27, `core/diagnostics.zig` 23. The spine is real;
+  touch these only with cross-module evidence.
+- Legacy fan-in: `core/rust_pep.zig` (shim, NOT the authority) is
+  imported 15× across policy/forensic/windows/xdr/dispatcher; `daemon.zig`
+  imports `core/{bridge_init,diagnostics,memory_pool,nids_capture,
+  runtime_paths}` directly. Legacy-core never died — quarantine is by
+  convention + NEG pins, not by graph.
+- Test→tree writes (15 files): lab reruns restamp
+  `analysis/PHASE8_*`, evidence-graph/pagination/policy-signing tests
+  rewrite fixtures. Tests are NOT hermetic; a green run can dirty the
+  tree and invalidate truth/release gates — verify `git status` after
+  every matrix run and revert producer-owned stamps.
+- Import-time effects (pinned): `brain/windows_brain.py` import runs
+  sys.path edits + warning prints (banner/UDP/loop correctly gated
+  behind `__main__`). Pin: `tests/brain/test_import_hygiene.py`.
+- Full-suite native crash (open): combined `tests/+brain/` run segfaults
+  nondeterministically (GC during fixture setup) while every directory
+  group passes serially. Prime suspects: shared-process native state
+  (3 Cython `.pyd` + ctypes + runtime-test threads). Bisect running;
+  do NOT expand shared-process native surface until rooted.
+
+## KNOWN-OPEN robustness (filed, unscheduled)- flow pointer lock-escape (single-threaded today), forensic `append catch 0`,
   correlator/AC per-packet allocator, FIM non-ASCII/long-path caps,
   registry re-arm failure silent, ETW GUID mismatch/compound-literal UB,
   TLS parser bounds, nose frameLen stall, pipe_monitor prefix-only,
