@@ -131,3 +131,21 @@ test "AnomalyDetector tracks per-entity" {
     try std.testing.expect(z2 == null);
     try std.testing.expectEqual(@as(usize, 2), ad.metricCount());
 }
+
+test "pipeline byte-signal: metric_kind=2 baselines are per-IP and spike-sensitive" {
+    // Pins the contract src/pipeline/event_processor.zig relies on: kind=2
+    // observes payload bytes per src_ip, so a sudden large payload from one
+    // host fires while steady hosts stay quiet.
+    var ad = AnomalyDetector.init(std.testing.allocator);
+    defer ad.deinit();
+    const steady = EntityKey{ .src_ip = [_]u8{ 192, 168, 126, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, .metric_kind = 2 };
+    const spiker = EntityKey{ .src_ip = [_]u8{ 192, 168, 126, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, .metric_kind = 2 };
+    var i: u32 = 0;
+    while (i < 100) : (i += 1) {
+        const wobble = 10.0 * @sin(@as(f64, @floatFromInt(i)));
+        _ = try ad.observe(steady, 300.0 + wobble);
+        _ = try ad.observe(spiker, 300.0 + wobble);
+    }
+    try std.testing.expect(try ad.observe(steady, 305.0) == null);
+    try std.testing.expect(try ad.observe(spiker, 9000.0) != null);
+}

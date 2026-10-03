@@ -104,14 +104,23 @@ fn processEvent(
         }
     }
 
-    // 3. Anomaly detection
-    const anom_key = anom.EntityKey{ .src_ip = blk: {
+    // 3. Anomaly detection over a real per-event signal (Tier-1 depth).
+    // metric_kind=2 observes payload bytes through the EWMA baseline. A
+    // z-score hit is counted only: anomalies never create incidents or
+    // enforcement in observe-only mode, they enrich the metrics/forensic
+    // picture that operators and the Kali probes validate against.
+    const anom_key_bytes = anom.EntityKey{ .src_ip = blk: {
         var ip: [16]u8 = [_]u8{0} ** 16;
         const src_b: [4]u8 = @bitCast(ev.src_ip);
         @memcpy(ip[0..4], &src_b);
         break :blk ip;
-    }, .metric_kind = 1 }; // 1 = packet rate
-    _ = ad.observe(anom_key, 1.0) catch null;
+    }, .metric_kind = 2 }; // 2 = payload bytes
+    const anom_bytes: f64 = @floatFromInt(qe.payload_len);
+    if (ad.observe(anom_key_bytes, anom_bytes) catch null) |z_score| {
+        _ = z_score;
+        state.g_pipeline_anomalies += 1;
+        diag.metrics.anomalies_detected.inc();
+    }
 
     // 4. Threat tracking (if detection matched)
     // Capture incident result — escalate severity when threshold crossed
