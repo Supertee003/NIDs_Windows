@@ -1,5 +1,9 @@
 ﻿//! lifecycle.zig - AEGIS Runtime Lifecycle (Rewrite G8 Brain)
 //!
+//! QUARANTINED LIFECYCLE — test-harness only, NOT production. No daemon,
+//! service, or pipeline module imports this file; startProduction() is
+//! exercised by integration tests only. Production lifecycle is owned by
+//! src/daemon.zig (RuntimeSupervisor) — see AGENTS.md planes.
 //! Manages init/shutdown of all subsystems in correct order.
 //! main() calls runtime.start(), runtime.run(), runtime.shutdown() - nothing else.
 //!

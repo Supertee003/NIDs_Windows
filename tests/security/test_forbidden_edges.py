@@ -163,3 +163,35 @@ def test_typescript_has_no_native_enforcement_dep():
     deps = {**pkg.get("dependencies", {}), **pkg.get("devDependencies", {})}
     banned = [n for n in deps if re.search(r"ffi|napi|wfp|firewall|edge-js", n, re.I)]
     assert banned == [], f"forbidden TS native deps: {banned}"
+
+
+def test_quarantined_orchestrators_have_no_production_importers():
+    """dispatcher.zig, dispatcher_phase_b.zig and reliability/lifecycle.zig
+    are test-harness orchestrators. The daemon (main/service/daemon,
+    pipeline, platform, control) must never import them; production flow
+    is pipeline/event_processor.zig + policy/action_dispatcher.zig."""
+    prod_roots = ["src/main.zig", "src/daemon.zig"]
+    prod_dirs = ["src/pipeline", "src/platform", "src/control", "src/capture",
+                 "src/detection", "src/forensic", "src/policy", "src/windows"]
+    banned = []
+    checked = 0
+    for root in prod_roots:
+        p = REPO / root
+        if not p.exists():
+            continue
+        checked += 1
+        for i, line in code_lines(p, "//"):
+            if re.search(r"policy/dispatcher(?:_phase_b)?\.zig|reliability/lifecycle\.zig", line):
+                banned.append(f"{root}:{i}:{line.strip()[:100]}")
+    for d in prod_dirs:
+        for p in (REPO / d).rglob("*.zig"):
+            if p.suffixes == [".zig", ".scaffold"] or p.name.endswith(".scaffold"):
+                continue
+            if p.name in {"dispatcher.zig", "dispatcher_phase_b.zig", "lifecycle.zig"}:
+                continue
+            checked += 1
+            for i, line in code_lines(p, "//"):
+                if re.search(r"policy/dispatcher(?:_phase_b)?\.zig|reliability/lifecycle\.zig", line):
+                    banned.append(f"{p.relative_to(REPO)}:{i}:{line.strip()[:100]}")
+    assert checked > 50, f"zig prod scan surface too small: {checked}"
+    assert banned == [], f"production imports quarantined orchestrator: {banned}"
