@@ -154,8 +154,9 @@ if "%BUILD_WFP%"=="1" (
     REM We need to create a vcxproj or use direct compiler invocation
 
     REM Direct WDK compiler invocation for kernel-mode WFP driver.
-    REM The authoritative dispatch is in aegis_wfp.c; aegis_wfp_comm.c is a
-    REM legacy duplicate and MUST NOT be compiled into the production driver.
+    REM The authoritative dispatch is in aegis_wfp.c; the legacy duplicate now
+    REM lives at drivers\wfp_callout\quarantined\aegis_wfp_comm.c and MUST NOT
+    REM be compiled into the production driver.
     REM cl /Zi /W4 /kernel /Gs /MDd -c aegis_wfp.c aegis_wfp_callout.c
     REM link /kernel /out:aegis_wfp.sys aegis_wfp.obj aegis_wfp_callout.obj
 

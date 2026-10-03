@@ -1,6 +1,20 @@
 /**
- * aegis_wfp_comm.c - AEGIS NIDS WFP IRP Dispatch & IPS Block
+ * QUARANTINED — DO NOT COMPILE. DO NOT LINK. DO NOT RESTORE WITHOUT A
+ * SIGNED-OFF DESIGN REVIEW.
  *
+ * This file is a STALE DUPLICATE of the WFP dispatch in aegis_wfp.c:
+ * its BlockFlow installs an IP-only single-condition filter on
+ * INBOUND_TRANSPORT_V4, while the authoritative path installs an exact
+ * 3-tuple (ip, port, protocol) filter on ALE_AUTH_CONNECT_V4 with an
+ * EnforcementReceipt postcondition. It handles only READ/BLOCK/STATS
+ * (no UNBLOCK/QUERY), so linking it would orphan filters and break
+ * cleanup/rollback. The canonical driver build (scripts/wdk_build_*.ps1,
+ * scripts/build_drivers.bat) compiles aegis_wfp.c + aegis_wfp_callout.c
+ * ONLY. This copy is retained for forensic history, nothing else.
+ *
+ * ---
+ * aegis_wfp_comm.c - AEGIS NIDS WFP IRP Dispatch & IPS Block (HISTORICAL)
+ */
  * C3: CreateClose/ReadEvents/DeviceControl/BlockFlow/GetStats
  *     all live here (aegis_wfp.c delegates to this file).
  * M1: AegisWfpBlockFlow adds real WFP block filter.
