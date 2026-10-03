@@ -165,6 +165,19 @@ def test_typescript_has_no_native_enforcement_dep():
     assert banned == [], f"forbidden TS native deps: {banned}"
 
 
+def test_control_plane_has_no_unauthenticated_tcp_transport():
+    """The daemon never listens on TCP, so no client path may send control
+    commands over unauthenticated TCP (T1-NET-019). The web console binds
+    loopback only."""
+    client = (REPO / "tools" / "aegisctl" / "client.py").read_text(encoding="utf-8")
+    assert "create_connection" not in client, "TCP client branch must stay removed"
+    assert "_send_tcp" not in client, "TCP send path must stay removed"
+    dash = (REPO / "tools" / "aegisctl" / "web_dashboard" / "app.py").read_text(encoding="utf-8")
+    assert 'host="0.0.0.0"' not in dash and "host='0.0.0.0'" not in dash, (
+        "web console must bind loopback only"
+    )
+
+
 def test_quarantined_orchestrators_have_no_production_importers():
     """dispatcher.zig, dispatcher_phase_b.zig and reliability/lifecycle.zig
     are test-harness orchestrators. The daemon (main/service/daemon,

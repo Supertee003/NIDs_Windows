@@ -11,8 +11,7 @@ All block/allow/quarantine requests route through aegis_pep_enforce() FFI.
 Direct operating-system firewall calls or bridge mutation calls are NEVER permitted.
 
 Usage:
-    python tools/aegisctl.py status                    # pipe transport (default)
-    python tools/aegisctl.py --transport=tcp status    # explicit TCP
+    python tools/aegisctl.py status                    # pipe transport (Windows ACL protected)
     python tools/aegisctl.py rules list
     python tools/aegisctl.py alerts view
     python tools/aegisctl.py dashboard
@@ -28,6 +27,7 @@ import sys
 import time
 from pathlib import Path
 from typing import Dict, Callable
+from aegisctl.contracts import project_operator_state
 
 # Ensure tools/ is on the path
 TOOLS_DIR = Path(__file__).resolve().parent
@@ -100,6 +100,25 @@ def cmd_status(args) -> int:
             }
             accepted = aliases.get(component, {component})
             statuses = [item for item in statuses if item[0] in accepted]
+            if not statuses:
+                # A named component that the daemon does not know about is
+                # NOT running. Reporting the global daemon state here (with a
+                # 0/0 subsystem list) would claim a component exists when it
+                # does not.
+                if getattr(args, "json", False):
+                    print(json.dumps({
+                        "component": component,
+                        "subsystem_list": [],
+                        "available": False,
+                        "state": "NOT_REGISTERED",
+                        "reason": "component_not_registered_in_runtime",
+                    }, sort_keys=True))
+                else:
+                    print(f"\n  Component: {component}")
+                    print("  Subsystem list: (none registered)")
+                    print("  State: NOT_REGISTERED")
+                    print("  Reason: component_not_registered_in_runtime")
+                return 1
         running = sum(1 for _, r, _ in statuses if r)
         total = len(statuses)
         if getattr(args, "json", False):
@@ -370,6 +389,7 @@ def cmd_snapshot(args) -> int:
         enforcement.get("prevention_gate", "closed")
     ).lower()
 
+    operator = project_operator_state(health, enforcement)
     document = {
         "available": True,
         "health": health,
@@ -383,17 +403,21 @@ def cmd_snapshot(args) -> int:
             ),
             "invariant": "HELD" if authority_held else "VIOLATED",
         },
+        "operator": operator,
         "presentation": {
             "mode": (
-                "CONTROLLED_ENFORCEMENT"
+                "CONTRACT_VIOLATION"
+                if operator["contract_errors"]
+                else "CONTROLLED_ENFORCEMENT"
                 if gate == "open"
                 else "OBSERVE_ONLY"
             ),
             "host_effect": (
                 "CONFIRMED"
-                if enforcement.get("host_effect_confirmed") is True
+                if enforcement.get("host_effect_confirmed") is True and not operator["contract_errors"]
                 else "NOT_PROVEN"
             ),
+            "contract_errors": operator["contract_errors"],
         },
     }
 
@@ -451,16 +475,28 @@ def cmd_readiness(args) -> int:
     payload = get_health_payload()
     workers = payload.get("workers", {})
     required = ["pipeline_ready", "sensor_ready", "nose_ready", "etw_ready", "fim_ready", "registry_ready"]
-    missing = [name for name in required if workers.get(name) is not True]
+    missing_workers = [name for name in required if workers.get(name) is not True]
+    missing = list(missing_workers)
+    rules_loaded = int(payload.get("rules_loaded", 0) or 0)
+    policies_loaded = int(payload.get("policies_loaded", 0) or 0)
+    if rules_loaded <= 0:
+        missing.append("rules_loaded")
     degraded_components = []
     for name, status in (payload.get("subsystems") or {}).items():
         if not isinstance(status, dict):
             continue
         if str(status.get("state", "")).upper() in {"DEGRADED", "FAILED", "STOPPED"}:
             degraded_components.append({"name": name, "state": status.get("state"), "error": status.get("error")})
-    worker_gate = not missing and not workers.get("failed", False)
-    overall_gate = payload.get("state") == "RUNNING" and not payload.get("degraded", True) and worker_gate
+    worker_gate = not missing_workers and not workers.get("failed", False)
+    overall_gate = (
+        payload.get("state") == "RUNNING"
+        and not payload.get("degraded", True)
+        and worker_gate
+        and rules_loaded > 0
+    )
     reasons = list(workers.get("failure_reasons", []))
+    if rules_loaded <= 0:
+        reasons.append("rules_not_loaded")
     reasons.extend(
         f"{item['name']}_{str(item.get('error') or item.get('state', 'not_ready')).lower()}"
         for item in degraded_components
@@ -472,6 +508,8 @@ def cmd_readiness(args) -> int:
         "worker_gate": worker_gate,
         "overall_gate": overall_gate,
         "missing": missing,
+        "rules_loaded": rules_loaded,
+        "policies_loaded": policies_loaded,
         "degraded_components": degraded_components,
         "failure_reasons": sorted(set(reasons)),
     }
@@ -503,6 +541,13 @@ def cmd_rules(args) -> int:
                 print(f"{r.get('rule_id',''):14} {r.get('name','')[:28]:28} {r.get('severity',''):10} {r.get('category','')}")
             suffix = f" (filtered by {severity or category})" if severity or category else ""
             print(f"Total: {len(rules)}{suffix}")
+        daemon_count = _daemon_rules_count()
+        if daemon_count is None:
+            print("Active daemon rules: UNKNOWN (control daemon unavailable)")
+        elif daemon_count != len(original):
+            print(f"WARNING: local catalog={len(original)} but active daemon rules={daemon_count}")
+        else:
+            print(f"Active daemon rules: {daemon_count} (matches local catalog)")
         return 0
     if op == "show":
         rule_id = str(args.id)
@@ -518,14 +563,34 @@ def cmd_rules(args) -> int:
             for error in errors:
                 print(f"ERROR: {error}")
         print(f"{'VALID' if valid else 'INVALID'}: {len(rules)} rules checked")
+        daemon_count = _daemon_rules_count()
+        if daemon_count is None:
+            print("Active daemon rules: UNKNOWN (control daemon unavailable)")
+        elif daemon_count != len(rules):
+            print(f"WARNING: validated local catalog={len(rules)} but active daemon rules={daemon_count}")
+        else:
+            print(f"Active daemon rules: {daemon_count} (matches validated catalog)")
         return 0 if valid else 1
     if op == "reload":
         response = query_control("rules.reload") if CONTROL_API_AVAILABLE else None
         if response is None:
             print("Rules reload failed: daemon control pipe unavailable", file=sys.stderr)
             return 1
-        loaded = response.get("rules_loaded", response.get("loaded", len(rules))) if isinstance(response, dict) else len(rules)
-        print(f"Rules reloaded through Control Center: {loaded} rules")
+        if not isinstance(response, dict):
+            print("Rules reload failed: invalid daemon response", file=sys.stderr)
+            return 1
+        loaded = int(response.get("rules_loaded", response.get("loaded", 0)) or 0)
+        postcondition = response.get("postcondition")
+        result = {
+            "command": "rules.reload",
+            "previous_rules_loaded": response.get("previous_rules_loaded"),
+            "rules_loaded": loaded,
+            "status": response.get("status"),
+            "postcondition": postcondition,
+        }
+        print(json.dumps(result, indent=2, sort_keys=True))
+        if loaded <= 0 or response.get("status") != "reloaded" or postcondition != "ACTIVE":
+            return 5
         return 0
     if op in {"add", "update", "delete"}:
         return _mutate_rules(args, op)
@@ -762,6 +827,22 @@ def _rules() -> list[dict]:
     return load_rules().get("nids_rules", []) if CONTROL_API_AVAILABLE else []
 
 
+def _daemon_rules_count() -> int | None:
+    """Return the active daemon count; local files are only a catalog view."""
+    if not CONTROL_API_AVAILABLE:
+        return None
+    try:
+        response = query_control("rules.list")
+    except Exception:
+        return None
+    if not isinstance(response, dict) or "rules_loaded" not in response:
+        return None
+    try:
+        return int(response["rules_loaded"])
+    except (TypeError, ValueError):
+        return None
+
+
 def cmd_policy(args) -> int:
     if getattr(args, "policy_command", "list") not in {"list", "show"}:
         return _unavailable("policy", "policy_runtime_postcondition_not_connected")
@@ -806,7 +887,12 @@ def _query_control_safe(command: str) -> bool:
 
 def _unavailable(command: str, reason: str = "not_implemented") -> int:
     """Never report success for a command without a verified postcondition."""
-    print(json.dumps({"available": False, "command": command, "reason": reason}, sort_keys=True), file=sys.stderr)
+    print(json.dumps({
+        "available": False,
+        "command": command,
+        "reason": reason,
+        "status": "UNAVAILABLE_NOT_IMPLEMENTED",
+    }, sort_keys=True), file=sys.stderr)
     return 4
 
 
@@ -1023,12 +1109,13 @@ def main() -> int:
         description="AEGIS NIDS control plane CLI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    # P1: Global transport flag — explicit, no fallback
+    # P1/T1-NET-019: pipe only. The unauthenticated TCP branch was removed;
+    # the daemon never listens on TCP, so --transport=tcp is rejected.
     parser.add_argument(
         "--transport", "-t",
-        choices=["pipe", "tcp"],
+        choices=["pipe"],
         default="pipe",
-        help="Transport to daemon: pipe (default, Windows ACL protected) or tcp (diagnostic, explicit opt-in)",
+        help="Transport to daemon: pipe (Windows ACL protected named pipe)",
     )
     sub = parser.add_subparsers(dest="cmd")
 
@@ -1152,8 +1239,11 @@ def main() -> int:
     block_sub.add_parser("list"); block_sub.add_parser("clear"); block.set_defaults(func=cmd_block)
     enforce = sub.add_parser("enforce", help="PEP enforcement state")
     enforce_sub = enforce.add_subparsers(dest="enforce_command")
-    enforce_sub.add_parser("status"); enforce_sub.add_parser("enable"); enforce_sub.add_parser("disable")
-    epush = enforce_sub.add_parser("push"); epush.add_argument("--policy", required=True)
+    enforce_sub.add_parser("status")
+    enforce_sub.add_parser("enable", help="Unavailable in Project 2; reserved for Project 3 IPS")
+    enforce_sub.add_parser("disable", help="Unavailable in Project 2; reserved for Project 3 IPS")
+    epush = enforce_sub.add_parser("push", help="Unavailable in Project 2; reserved for Project 3 IPS")
+    epush.add_argument("--policy", required=True)
     enforce.set_defaults(func=cmd_enforce)
     quarantine = sub.add_parser("quarantine", help="List quarantine candidates (mutations need the control plane)")
     quarantine_sub = quarantine.add_subparsers(dest="quarantine_command")

@@ -182,6 +182,12 @@ def snapshot() -> dict[str, Any]:
         "feed": {"available": feed["available"], "path": feed["path"], "total_scanned": feed["total_scanned"]},
         "incidents": incidents,
         "threat": _threat_posture(incidents),
+        "rules_runtime": {
+            "active": int(health.get("rules_loaded", 0) or 0),
+            "policies_active": int(health.get("policies_loaded", 0) or 0),
+            "catalog": len(rules.get("nids_rules", [])) if isinstance(rules, dict) else 0,
+            "source": "control_daemon_health",
+        },
         "rules": rules.get("nids_rules", []) if isinstance(rules, dict) else [],
     }
 
@@ -555,4 +561,6 @@ def health_check():
 
 if __name__ == "__main__":
     import os
-    app.run(host="0.0.0.0", port=int(os.environ.get("DASHBOARD_PORT", "5000")), debug=False)
+    # T1-NET-019: loopback only. This console exposes detection logic
+    # (Rules.json) and log contents; it must never listen on LAN interfaces.
+    app.run(host="127.0.0.1", port=int(os.environ.get("DASHBOARD_PORT", "5000")), debug=False)
