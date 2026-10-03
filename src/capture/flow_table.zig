@@ -98,6 +98,9 @@ pub const FlowEntry = struct {
     key: FlowKey = .{},
     stats: FlowStats = .{},
     occupied: bool = false,
+    /// Tombstone: set by expiry so linear-probe chains behind a freed slot
+    /// stay findable. Reused by the next insert. Never counted as live.
+    deleted: bool = false,
     in_use: bool = false, // ref-count hint
 };
 
@@ -107,30 +110,77 @@ pub const FlowTable = struct {
     next_flow_id: u64 = 1,
     mutex: std.Thread.Mutex = .{},
 
+    /// Never panics: on a full table it reaps expired flows inline and, as
+    /// a last resort, reuses the least-recently-seen entry. Dropping a flow
+    /// record is always preferable to crashing the daemon (fail-operational).
     pub fn lookupOrCreate(self: *FlowTable, key: FlowKey, now_ns: i128) *FlowEntry {
         self.mutex.lock();
         defer self.mutex.unlock();
+        if (self.probeLocked(key, now_ns)) |e| return e;
+        _ = self.evictExpiredLocked(now_ns);
+        if (self.probeLocked(key, now_ns)) |e| return e;
+        return self.evictOldestLocked(now_ns, key);
+    }
+
+    /// Single probing pass. Caller must hold the mutex. Returns null only
+    /// when no live match exists and no free/tombstone slot is available.
+    fn probeLocked(self: *FlowTable, key: FlowKey, now_ns: i128) ?*FlowEntry {
         const h = key.hash();
+        var first_deleted: ?*FlowEntry = null;
         var i: usize = 0;
         while (i < FLOW_TABLE_SIZE) : (i += 1) {
             const idx = (h +% @as(u32, @intCast(i))) % FLOW_TABLE_SIZE;
             const e = &self.buckets[idx];
             if (!e.occupied) {
-                e.occupied = true;
-                e.key = key;
-                e.stats = .{ .first_seen_ns = now_ns, .last_seen_ns = now_ns, .flow_id = self.next_flow_id };
-                self.next_flow_id += 1;
-                self.count += 1;
-                diag.metrics.flows_active.set(@intCast(self.count));
-                return e;
+                if (e.deleted) {
+                    if (first_deleted == null) first_deleted = e;
+                    continue; // tombstone: keep probing for the live key
+                }
+                const slot = first_deleted orelse e;
+                self.occupy(slot, key, now_ns);
+                return slot;
             }
             if (e.key.eql(key)) {
                 e.stats.last_seen_ns = now_ns;
                 return e;
             }
         }
-        // Table full â€” caller should run eviction and retry
-        @panic("FLOW_TABLE_FULL");
+        // Full loop without an empty slot: reuse the first tombstone so a
+        // live key is never duplicated past a freed slot.
+        if (first_deleted) |slot| {
+            self.occupy(slot, key, now_ns);
+            return slot;
+        }
+        return null;
+    }
+
+    fn occupy(self: *FlowTable, e: *FlowEntry, key: FlowKey, now_ns: i128) void {
+        // Reusing a live slot (stalest-entry fallback) replaces it: only a
+        // previously free or tombstoned slot grows the live count.
+        if (!e.occupied) self.count += 1;
+        e.occupied = true;
+        e.deleted = false;
+        e.key = key;
+        e.stats = .{ .first_seen_ns = now_ns, .last_seen_ns = now_ns, .flow_id = self.next_flow_id };
+        self.next_flow_id += 1;
+        diag.metrics.flows_active.set(@intCast(self.count));
+    }
+
+    /// Reuse the least-recently-seen entry. Caller must hold the mutex and
+    /// must have already reaped expired entries; this is the last resort
+    /// before flow state would be lost, and it is still preferable to panic.
+    fn evictOldestLocked(self: *FlowTable, now_ns: i128, key: FlowKey) *FlowEntry {
+        var oldest: *FlowEntry = &self.buckets[0];
+        for (&self.buckets) |*e| {
+            if (!e.occupied) {
+                self.occupy(e, key, now_ns);
+                return e;
+            }
+            if (e.stats.last_seen_ns < oldest.stats.last_seen_ns) oldest = e;
+        }
+        self.occupy(oldest, key, now_ns);
+        diag.warn("flow table full: reused stalest entry", .{});
+        return oldest;
     }
 
     pub fn lookup(self: *FlowTable, key: FlowKey) ?*FlowEntry {
@@ -141,7 +191,12 @@ pub const FlowTable = struct {
         while (i < FLOW_TABLE_SIZE) : (i += 1) {
             const idx = (h +% @as(u32, @intCast(i))) % FLOW_TABLE_SIZE;
             const e = &self.buckets[idx];
-            if (!e.occupied) return null;
+            if (!e.occupied) {
+                // Tombstones are transparent; a never-occupied slot ends the
+                // chain because no key could have probed past it.
+                if (e.deleted) continue;
+                return null;
+            }
             if (e.key.eql(key)) return e;
         }
         return null;
@@ -150,11 +205,16 @@ pub const FlowTable = struct {
     pub fn evictExpired(self: *FlowTable, now_ns: i128) u32 {
         self.mutex.lock();
         defer self.mutex.unlock();
+        return self.evictExpiredLocked(now_ns);
+    }
+
+    fn evictExpiredLocked(self: *FlowTable, now_ns: i128) u32 {
         var evicted: u32 = 0;
         for (&self.buckets) |*e| {
             if (!e.occupied) continue;
             if (now_ns - e.stats.last_seen_ns > FLOW_EVICTION_NS) {
                 e.occupied = false;
+                e.deleted = true; // keep the probe chain intact
                 e.stats.state = .expired;
                 evicted += 1;
             }
@@ -167,7 +227,15 @@ pub const FlowTable = struct {
     }
 
     pub fn updateDirectional(self: *FlowTable, key: FlowKey, src_ip: [16]u8, src_port: u16, pkt_bytes: u32, now_ns: i128) void {
-        const e = self.lookupOrCreate(key, now_ns);
+        // Single locked transaction: the entry cannot be evicted or reused
+        // between lookup and the stats update (the old two-call sequence
+        // released the mutex in between and could write into a dead entry).
+        self.mutex.lock();
+        defer self.mutex.unlock();
+        const e = self.probeLocked(key, now_ns) orelse blk: {
+            _ = self.evictExpiredLocked(now_ns);
+            break :blk self.probeLocked(key, now_ns) orelse self.evictOldestLocked(now_ns, key);
+        };
         if (std.mem.eql(u8, &key.ip_a, &src_ip) and key.port_a == src_port) {
             e.stats.packets_a_to_b += 1;
             e.stats.bytes_a_to_b += pkt_bytes;
@@ -179,6 +247,8 @@ pub const FlowTable = struct {
     }
 
     pub fn count_(self: *FlowTable) u32 {
+        self.mutex.lock();
+        defer self.mutex.unlock();
         return self.count;
     }
 };
@@ -220,4 +290,39 @@ test "FlowTable directional stats" {
     const e = ft.lookup(k).?;
     try std.testing.expectEqual(@as(u64, 1), e.stats.packets_a_to_b);
     try std.testing.expectEqual(@as(u64, 100), e.stats.bytes_a_to_b);
+}
+
+test "FlowTable expired slot stays findable past tombstone" {
+    var ft = FlowTable{};
+    const a = FlowKey.normalize([_]u8{ 10, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, [_]u8{ 10, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, 1000, 9000, 6, false);
+    const b = FlowKey.normalize([_]u8{ 10, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, [_]u8{ 10, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, 2000, 9000, 6, false);
+    _ = ft.lookupOrCreate(a, 1000);
+    _ = ft.lookupOrCreate(b, 1000);
+    // Force only `a` to expire by backdating its last_seen, refresh `b`,
+    // then reap.
+    const now = 1000 + 61 * std.time.ns_per_s;
+    if (ft.lookup(a)) |e| e.stats.last_seen_ns = 0;
+    _ = ft.lookupOrCreate(b, now);
+    try std.testing.expectEqual(@as(u32, 1), ft.evictExpired(now));
+    try std.testing.expect(ft.lookup(a) == null);
+    // `b` must still resolve even if it probed past `a`'s old slot.
+    try std.testing.expect(ft.lookup(b) != null);
+    try std.testing.expectEqual(@as(u32, 1), ft.count_());
+}
+
+test "FlowTable overfill never panics and stays bounded" {
+    var ft = FlowTable{};
+    var i: u32 = 0;
+    while (i < FLOW_TABLE_SIZE + 64) : (i += 1) {
+        const k = FlowKey.normalize(
+            [_]u8{ 10, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+            [_]u8{ 10, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+            @as(u16, @intCast(1000 + (i % 60000))),
+            9000,
+            6,
+            false,
+        );
+        _ = ft.lookupOrCreate(k, 1000);
+    }
+    try std.testing.expect(ft.count_() <= FLOW_TABLE_SIZE);
 }
