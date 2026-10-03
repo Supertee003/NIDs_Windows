@@ -188,8 +188,9 @@ pub fn registryThread(monitor: *reg_mon.RegistryMonitor) void {
         monitor.pollNative();
         const events = monitor.drain();
         for (events) |reg_ev| {
-            var ev = event.IpcEvent.init(.dns_query); // reuse kind for registry
+            var ev = event.IpcEvent.init(.reg_change);
             ev.source = .capture_registry;
+            ev.rule_id = reg_ev.rule_id;
             ev.timestamp_ns = @intCast(reg_ev.timestamp_ns);
             _ = queue.pushEvent(ev, &[_]u8{});
             diag.metrics.events_emitted.inc();

@@ -57,6 +57,9 @@ pub const RegistryTrie = struct {
         while (it.next()) |entry| {
             self.freeNode(entry.value_ptr.*);
             self.allocator.destroy(entry.value_ptr.*);
+            // Keys are lowercase-owned copies made by insert (registry paths
+            // are case-insensitive); borrowed slices must never be freed.
+            self.allocator.free(entry.key_ptr.*);
         }
         node.children.deinit();
     }
@@ -66,11 +69,20 @@ pub const RegistryTrie = struct {
         var it = std.mem.splitScalar(u8, path, '\\');
         while (it.next()) |segment| {
             if (segment.len == 0) continue;
-            const gop = try cur.children.getOrPut(segment);
+            // Own a lowercase copy: Windows registry paths are
+            // case-insensitive, so `...\Run` and `...\RUN` are one rule.
+            // Bounded: overlong segments cannot match and are skipped.
+            if (segment.len > 256) continue;
+            const lower = try self.allocator.dupe(u8, segment);
+            errdefer self.allocator.free(lower);
+            for (lower) |*c| c.* = std.ascii.toLower(c.*);
+            const gop = try cur.children.getOrPut(lower);
             if (!gop.found_existing) {
                 const node = try self.allocator.create(TrieNode);
                 node.* = TrieNode.init(self.allocator);
                 gop.value_ptr.* = node;
+            } else {
+                self.allocator.free(lower);
             }
             cur = gop.value_ptr.*;
         }
@@ -81,10 +93,13 @@ pub const RegistryTrie = struct {
     pub fn match(self: *const RegistryTrie, path: []const u8) ?u32 {
         var cur = &self.root;
         var it = std.mem.splitScalar(u8, path, '\\');
+        var lower_buf: [256]u8 = undefined;
         var last_match: ?u32 = null;
         while (it.next()) |segment| {
             if (segment.len == 0) continue;
-            const child = cur.children.get(segment) orelse break;
+            if (segment.len > lower_buf.len) break;
+            for (segment, 0..) |c, i| lower_buf[i] = std.ascii.toLower(c);
+            const child = cur.children.get(lower_buf[0..segment.len]) orelse break;
             cur = child;
             if (cur.is_terminal) last_match = cur.rule_id;
         }
@@ -230,8 +245,10 @@ pub const RegistryMonitor = struct {
     }
 
     pub fn drain(self: *RegistryMonitor) []RegEvent {
+        // Single consumer (registryThread) drains before the next poll, so
+        // the backing buffer is reused instead of leaked per drain call.
         const items = self.events.items;
-        self.events = std.ArrayList(RegEvent).init(self.allocator);
+        self.events.clearRetainingCapacity();
         return items;
     }
 };
@@ -257,6 +274,28 @@ test "RegistryMonitor observe" {
     try std.testing.expectEqual(@as(usize, 1), rm.pending());
     try std.testing.expectEqual(@as(u32, 42), rm.events.items[0].rule_id);
     try std.testing.expectEqual(@as(u16, 50), rm.events.items[0].path_len);
+}
+
+test "RegistryTrie match is case-insensitive (Windows semantics)" {
+    var t = RegistryTrie.init(std.testing.allocator);
+    defer t.deinit();
+    try t.insert("HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", 1);
+    try std.testing.expectEqual(@as(u32, 1), t.match("hklm\\software\\microsoft\\windows\\currentversion\\run").?);
+    try std.testing.expectEqual(@as(u32, 1), t.match("HKLM\\Software\\Microsoft\\WINDOWS\\CurrentVersion\\RUN\\evil").?);
+    try std.testing.expect(t.match("HKLM\\SOFTWARE\\Other") == null);
+}
+
+test "RegistryMonitor drain reuses backing without leaking" {
+    var rm = RegistryMonitor.init(std.testing.allocator);
+    defer rm.deinit();
+    try rm.addRule("HKLM\\System", 7);
+    try rm.observe(.value_changed, "HKLM\\SYSTEM\\x");
+    const first = rm.drain();
+    try std.testing.expectEqual(@as(usize, 1), first.len);
+    try std.testing.expectEqual(@as(u32, 7), first[0].rule_id);
+    try std.testing.expectEqual(@as(usize, 0), rm.pending());
+    try rm.observe(.value_changed, "HKLM\\system\\y");
+    try std.testing.expectEqual(@as(usize, 1), rm.pending());
 }
 
 test "RegistryTrie empty path returns null" {
