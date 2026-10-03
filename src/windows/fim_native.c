@@ -121,5 +121,9 @@ int aegis_fim_poll(void* handle, uint8_t* out_buf, size_t out_len) {
     s->data_ready = FALSE;
     s->bytes_ready = 0;
     LeaveCriticalSection(&s->lock);
-    return (bytes > 0 && bytes <= out_len) ? (int)bytes : 0;
+    /* Tripwire, not silent loss: with matched 64 KiB buffers this is
+     * unreachable, but any future size drift must surface as -2
+     * (truncated) instead of 0 (no data). */
+    if (bytes > out_len) return -2;
+    return (bytes > 0) ? (int)bytes : 0;
 }

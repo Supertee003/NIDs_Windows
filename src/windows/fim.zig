@@ -133,7 +133,10 @@ pub const FimWatcher = struct {
     handle_count: usize = 0,
     rules: std.ArrayList(FimRule),
     allocator: std.mem.Allocator,
-    poll_buf: [16384]u8 = undefined,
+    // Must always be >= the native session buffer (AEGIS_FIM_BUFFER_SIZE =
+    // 64 KiB in fim_native.c). A smaller buffer silently drops whole bursts:
+    // the native poll clears data_ready even when nothing fits.
+    poll_buf: [65536]u8 = undefined,
     running: std.atomic.Value(bool) = std.atomic.Value(bool).init(false),
     active_rule_index: usize = 0,
 
@@ -203,6 +206,10 @@ pub const FimWatcher = struct {
         for (self.handles[0..self.handle_count], 0..) |maybe_handle, index| {
             if (maybe_handle) |h| {
                 const n = aegis_fim_poll(h, &self.poll_buf, self.poll_buf.len);
+                if (n == -2) {
+                    diag.err("FIM poll truncated a batch larger than {d} bytes — size drift, investigate", .{self.poll_buf.len});
+                    continue;
+                }
                 if (n > 0) {
                     self.active_rule_index = index;
                     return self.poll_buf[0..@intCast(n)];
