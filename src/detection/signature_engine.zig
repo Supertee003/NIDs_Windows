@@ -73,6 +73,9 @@ pub const AhoCorasick = struct {
     pub fn addPattern(self: *AhoCorasick, rule_id: u32, pattern: []const u8) !void {
         std.debug.assert(!self.built);
         if (pattern.len == 0) return error.EmptyPattern;
+        // State.depth is u8: longer patterns would silently wrap the match
+        // offset arithmetic below. NIDS signatures are short literals.
+        if (pattern.len > std.math.maxInt(u8)) return error.PatternTooLong;
         var cur: u32 = 0;
         for (pattern) |b| {
             if (self.states[cur].goto[b] == 0) {
@@ -84,6 +87,8 @@ pub const AhoCorasick = struct {
             }
             cur = self.states[cur].goto[b];
         }
+        // output_count is u8 for the same reason: alias overflow would wrap.
+        if (self.states[cur].output_count == std.math.maxInt(u8)) return error.TooManyAliases;
         // Append rule_id to output list
         const idx: u32 = @intCast(self.output_lists.items.len);
         try self.output_lists.append(rule_id);
@@ -125,12 +130,9 @@ pub const AhoCorasick = struct {
                     f = self.states[f].failure;
                 }
                 self.states[v].failure = if (self.states[f].goto[ch] == 0 or self.states[f].goto[ch] == v) 0 else self.states[f].goto[ch];
-                // Merge outputs from failure state
-                const ff = self.states[v].failure;
-                if (self.states[ff].output_count > 0) {
-                    // Append failure's outputs (note: production would use a linked list;
-                    // for simplicity here we don't duplicate â€” caller of match must walk)
-                }
+                // Suffix outputs are resolved at match time: match/matchFirst
+                // walk the failure chain from the current state, so no output
+                // merging (and its aliasing hazards) happens at build time.
             }
         }
         self.built = true;
@@ -152,16 +154,23 @@ pub const AhoCorasick = struct {
             }
             const next = self.states[cur].goto[b];
             if (next != 0) cur = next;
-            if (self.states[cur].output_count > 0) {
-                var k: u8 = 0;
-                while (k < self.states[cur].output_count) : (k += 1) {
-                    const rid = self.output_lists.items[self.states[cur].output + k];
-                    try results.append(.{
-                        .rule_id = rid,
-                        .offset = i + 1 - self.states[cur].depth,
-                        .length = self.states[cur].depth,
-                    });
+            // Walk the failure chain so proper-suffix patterns fire too
+            // ("he" inside "she"). Longest match at this position first.
+            var out_state: u32 = cur;
+            while (true) {
+                if (self.states[out_state].output_count > 0) {
+                    var k: u8 = 0;
+                    while (k < self.states[out_state].output_count) : (k += 1) {
+                        const rid = self.output_lists.items[self.states[out_state].output + k];
+                        try results.append(.{
+                            .rule_id = rid,
+                            .offset = i + 1 - self.states[out_state].depth,
+                            .length = self.states[out_state].depth,
+                        });
+                    }
                 }
+                if (out_state == 0) break;
+                out_state = self.states[out_state].failure;
             }
         }
         return results.toOwnedSlice();
@@ -176,12 +185,17 @@ pub const AhoCorasick = struct {
             }
             const next = self.states[cur].goto[b];
             if (next != 0) cur = next;
-            if (self.states[cur].output_count > 0) {
-                return .{
-                    .rule_id = self.output_lists.items[self.states[cur].output],
-                    .offset = i + 1 - self.states[cur].depth,
-                    .length = self.states[cur].depth,
-                };
+            var out_state: u32 = cur;
+            while (true) {
+                if (self.states[out_state].output_count > 0) {
+                    return .{
+                        .rule_id = self.output_lists.items[self.states[out_state].output],
+                        .offset = i + 1 - self.states[out_state].depth,
+                        .length = self.states[out_state].depth,
+                    };
+                }
+                if (out_state == 0) break;
+                out_state = self.states[out_state].failure;
             }
         }
         return null;
@@ -213,8 +227,33 @@ test "AhoCorasick multiple patterns" {
     try ac.build();
     const matches = try ac.match("ushers", std.testing.allocator);
     defer std.testing.allocator.free(matches);
-    // Should match "she" (offset 1) and "hers" (offset 2)
-    try std.testing.expect(matches.len >= 2);
+    // "she" (offset 1), its proper suffix "he" (offset 2), "hers" (offset 2)
+    try std.testing.expectEqual(@as(usize, 3), matches.len);
+}
+
+test "AhoCorasick suffix patterns fire through failure links" {
+    var ac = try AhoCorasick.init(std.testing.allocator, 1000);
+    defer ac.deinit();
+    try ac.addPattern(11, "he");
+    try ac.addPattern(12, "she");
+    try ac.build();
+    const matches = try ac.match("she", std.testing.allocator);
+    defer std.testing.allocator.free(matches);
+    try std.testing.expectEqual(@as(usize, 2), matches.len);
+    // Longest first: "she" at 0, then suffix "he" at 1.
+    try std.testing.expectEqual(@as(u32, 12), matches[0].rule_id);
+    try std.testing.expectEqual(@as(usize, 0), matches[0].offset);
+    try std.testing.expectEqual(@as(u32, 11), matches[1].rule_id);
+    try std.testing.expectEqual(@as(usize, 1), matches[1].offset);
+    const first = ac.matchFirst("she").?;
+    try std.testing.expectEqual(@as(u32, 12), first.rule_id);
+}
+
+test "AhoCorasick rejects overlong patterns and alias overflow" {
+    var ac = try AhoCorasick.init(std.testing.allocator, 1000);
+    defer ac.deinit();
+    var long: [300]u8 = [_]u8{'x'} ** 300;
+    try std.testing.expectError(error.PatternTooLong, ac.addPattern(1, &long));
 }
 
 test "AhoCorasick no match" {
