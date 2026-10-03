@@ -315,37 +315,52 @@ pub const SiemForwarder = struct {
         const extra_headers = [_]std.http.Header{
             .{ .name = "Content-Type", .value = "application/json" },
         };
+        // At-least-once honesty: ANY undelivered event fails the batch so
+        // the retry loop (then the spool file) engages. Returning true here
+        // with silent skips would count lost events as forwarded.
+        var failed = false;
         for (events) |event| {
-            const body = self.formatEvent(event) catch continue;
+            const body = self.formatEvent(event) catch {
+                failed = true;
+                continue;
+            };
             defer self.allocator.free(body);
 
             var req_buf: [16 * 1024]u8 = undefined;
             var req = client.open(.POST, uri, .{ .server_header_buffer = &req_buf, .extra_headers = &extra_headers }) catch |err| {
-                std.log.err("[SIEM] HTTP open failed: {}", .{err});
+                // Network failure, not a code bug: warn (never err — the
+                // test runner fails any test that logs at err level, and a
+                // dead collector is an operator condition, not an assertion).
+                std.log.warn("[SIEM] HTTP open failed: {}", .{err});
+                failed = true;
                 continue;
             };
             defer req.deinit();
 
             req.writeAll(body) catch |err| {
-                std.log.err("[SIEM] HTTP write failed: {}", .{err});
+                std.log.warn("[SIEM] HTTP write failed: {}", .{err});
+                failed = true;
                 continue;
             };
 
             req.finish() catch |err| {
-                std.log.err("[SIEM] HTTP finish failed: {}", .{err});
+                std.log.warn("[SIEM] HTTP finish failed: {}", .{err});
+                failed = true;
                 continue;
             };
 
             req.wait() catch |err| {
-                std.log.err("[SIEM] HTTP wait failed: {}", .{err});
+                std.log.warn("[SIEM] HTTP wait failed: {}", .{err});
+                failed = true;
                 continue;
             };
 
             if (req.response.status != .ok) {
                 std.log.warn("[SIEM] HTTP status: {}", .{req.response.status});
+                failed = true;
             }
         }
-        return true;
+        return !failed;
     }
 
     /// Send events via TCP (raw socket, for syslog).
@@ -368,16 +383,21 @@ pub const SiemForwarder = struct {
         };
         defer stream.close();
 
+        var failed = false;
         for (events) |event| {
-            const body = self.formatEvent(event) catch continue;
+            const body = self.formatEvent(event) catch {
+                failed = true;
+                continue;
+            };
             defer self.allocator.free(body);
 
             stream.writeAll(body) catch |err| {
-                std.log.err("[SIEM] TCP write failed: {}", .{err});
+                std.log.warn("[SIEM] TCP write failed: {}", .{err});
+                failed = true;
                 continue;
             };
         }
-        return true;
+        return !failed;
     }
 
     /// Send events via UDP (for syslog).
@@ -414,16 +434,21 @@ pub const SiemForwarder = struct {
             return false;
         };
 
+        var failed = false;
         for (events) |event| {
-            const body = self.formatEvent(event) catch continue;
+            const body = self.formatEvent(event) catch {
+                failed = true;
+                continue;
+            };
             defer self.allocator.free(body);
 
             _ = std.posix.send(sock, body, 0) catch |err| {
-                std.log.err("[SIEM] UDP write failed: {}", .{err});
+                std.log.warn("[SIEM] UDP write failed: {}", .{err});
+                failed = true;
                 continue;
             };
         }
-        return true;
+        return !failed;
     }
 
     /// Format an event according to the configured output format.
@@ -718,6 +743,52 @@ test "SiemForwarder spills (never drops) when all retries are exhausted" {
     // Point the endpoint at a refused port. Field name follows Transport
     // config (endpoint); a refused connect must fail the batch.
     forwarder.config.endpoint = "tcp://127.0.0.1:1";
+    defer forwarder.deinit();
+
+    const event = ForwardedEvent{
+        .timestamp = 1000,
+        .attack_type = "SQLI",
+        .src_ip = "10.0.0.1",
+        .dst_ip = "10.0.0.2",
+        .src_port = 12345,
+        .dst_port = 80,
+        .protocol = "TCP",
+        .severity = "Critical",
+        .policy = "BLOCK",
+        .rule_id = "R001",
+        .status = "DETECTED",
+        .payload = "",
+    };
+
+    try forwarder.forwardEvent(event);
+    try forwarder.flush();
+
+    try std.testing.expect(forwarder.stats.total_events_forwarded == 0);
+    try std.testing.expect(forwarder.stats.total_events_failed == 0);
+    try std.testing.expect(forwarder.stats.total_events_spooled == 1);
+    try std.testing.expect(forwarder.batch_buffer.items.len == 0);
+    const spooled = try std.fs.cwd().readFileAlloc(std.testing.allocator, spool, 65536);
+    defer std.testing.allocator.free(spooled);
+    try std.testing.expect(spooled.len > 0);
+}
+
+test "SiemForwarder HTTP total failure spills instead of counting forwarded" {
+    // Before the at-least-once fix, sendViaHttp returned true with every
+    // per-event failure swallowed by `continue`, so a dead collector was
+    // counted as delivered. Refused loopback port + retry_count=1 must
+    // spill with zero forwarded.
+    const dest = "siem_http_spill_probe.json";
+    const spool = "siem_http_spill_probe.json.spool";
+    defer std.fs.cwd().deleteFile(dest) catch {};
+    defer std.fs.cwd().deleteFile(spool) catch {};
+    var forwarder = SiemForwarder.init(std.testing.allocator, .{
+        .enabled = true,
+        .destination = dest,
+        .transport = .http,
+        .retry_count = 1,
+        .retry_delay_ms = 0,
+    });
+    forwarder.config.endpoint = "http://127.0.0.1:1/ingest";
     defer forwarder.deinit();
 
     const event = ForwardedEvent{
