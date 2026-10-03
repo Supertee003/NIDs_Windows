@@ -40,6 +40,7 @@ const state = @import("pipeline/runtime_state.zig");
 const rule_loader = @import("pipeline/rule_loader.zig");
 const runtime_paths = @import("core/runtime_paths.zig");
 const processor = @import("pipeline/event_processor.zig");
+const corr_mod = @import("detection/correlator.zig");
 const telemetry = @import("pipeline/telemetry_threads.zig");
 const nose_reader = @import("capture/nose_pipe_reader.zig");
 const pipe_monitor = @import("capture/pipe_monitor.zig");
@@ -357,6 +358,24 @@ pub fn runDaemon() !void {
     var tt = tracker.ThreatTracker.init(std.heap.page_allocator);
     defer tt.deinit();
 
+    // Tier-1 correlation stage (FLOW_MAP DATA-001 step 6). Static rule set:
+    // IDs live in the 9000 block, outside the FNV-1a signature space, so a
+    // correlation hit can never be mistaken for a signature rule match.
+    // Observe-only: hits count as detections and escalate severity; the PEP
+    // gate still owns every host effect.
+    const corr_repeat_specs = [_]corr_mod.EventSpec{
+        .{ .kind = .signature_match, .count = 5 },
+    };
+    const corr_brute_specs = [_]corr_mod.EventSpec{
+        .{ .kind = .http_request, .count = 3 },
+    };
+    var corr_rules = [_]corr_mod.CorrelationRule{
+        .{ .id = 9001, .events = &corr_repeat_specs, .window_sec = 60, .severity = .alert },
+        .{ .id = 9002, .events = &corr_brute_specs, .window_sec = 30, .severity = .alert },
+    };
+    var corr = corr_mod.Correlator.init(std.heap.page_allocator, &corr_rules);
+    defer corr.deinit();
+
     // 7. Initialize PEP (PolicySet already loaded with policies from JSON)
     var pep_enf = pep.PepEnforcer.init();
     defer pep_enf.deinit();
@@ -434,7 +453,7 @@ pub fn runDaemon() !void {
 
         // Start pipeline loop in a separate thread
         supervisor.pipeline = std.Thread.spawn(.{}, processor.pipelineLoop, .{
-            &ac, &ad, &ft, &tt, &ps, &pep_enf, &forensic_ring, rules_loaded, 0,
+            &ac, &ad, &ft, &corr, &tt, &ps, &pep_enf, &forensic_ring, rules_loaded, 0,
         }) catch |err| {
             diag.err("failed to spawn pipeline thread: {} — RECOVERY: system runs in degraded mode", .{err});
             state.markWorkerFailure(.pipeline);
@@ -561,7 +580,7 @@ pub fn runDaemon() !void {
     } else {
         // Non-Windows: run pipeline + control loop on main thread
         diag.info("running pipeline loop (non-Windows test mode)", .{});
-        processor.pipelineLoop(&ac, &ad, &ft, &tt, &ps, &pep_enf, &forensic_ring, rules_loaded, 0);
+        processor.pipelineLoop(&ac, &ad, &ft, &corr, &tt, &ps, &pep_enf, &forensic_ring, rules_loaded, 0);
     }
 
     diag.info("AEGIS NIDS shutting down", .{});

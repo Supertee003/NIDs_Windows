@@ -12,6 +12,7 @@ const diag = @import("../core/diagnostics.zig");
 const flow = @import("../capture/flow_table.zig");
 const sig = @import("../detection/signature_engine.zig");
 const anom = @import("../detection/anomaly_detector.zig");
+const corr_mod = @import("../detection/correlator.zig");
 const tracker = @import("../detection/threat_tracker.zig");
 const policy = @import("../policy/policy_ir.zig");
 const pep = @import("../policy/pep_bindings.zig");
@@ -34,6 +35,7 @@ fn processEvent(
     _: *sig.AhoCorasick, // using g_active_ac global instead
     ad: *anom.AnomalyDetector,
     ft: *flow.FlowTable,
+    corr: *corr_mod.Correlator,
     tt: *tracker.ThreatTracker,
     ps: *policy.PolicySet,
     pep_enf: *pep.PepEnforcer,
@@ -101,6 +103,22 @@ fn processEvent(
             if (matches.len > 0) {
                 std.heap.page_allocator.free(matches);
             }
+        }
+    }
+
+    // 2b. Correlation (multi-event rules). A correlation hit on an event
+    // with no signature match is carried as detection identity so threat
+    // tracking, policy, and forensics see one coherent result. Correlation
+    // rule IDs live in the 9000 block, outside the FNV-1a signature space
+    // used by rule_loader hashes. Observe-only: hits count and escalate
+    // severity, they never invent host effects.
+    if (corr.observe(ev) catch null) |corr_rule_id| {
+        if (matched_rule_id == 0) {
+            matched_rule_id = corr_rule_id;
+            ev.rule_id = corr_rule_id;
+            ev.kind = .correlation_match;
+            ev.severity = .alert;
+            state.g_pipeline_detections += 1;
         }
     }
 
@@ -222,6 +240,7 @@ pub fn pipelineLoop(
     ac: *sig.AhoCorasick,
     ad: *anom.AnomalyDetector,
     ft: *flow.FlowTable,
+    corr: *corr_mod.Correlator,
     tt: *tracker.ThreatTracker,
     ps: *policy.PolicySet,
     pep_enf: *pep.PepEnforcer,
@@ -233,6 +252,7 @@ pub fn pipelineLoop(
     state.g_pipeline_ready.store(true, .release);
     defer state.g_pipeline_ready.store(false, .release);
 
+    var since_prune: u32 = 0;
     while (!state.g_stop_requested.load(.acquire)) {
         // Watchdog heartbeat
         state.g_wd.beat(wd_idx);
@@ -250,10 +270,17 @@ pub fn pipelineLoop(
             _ = state.g_fi.maybeCorrupt(&qe.ev);
             // Performance tracking
             const start = std.time.nanoTimestamp();
-            processEvent(&qe, ac, ad, ft, tt, ps, pep_enf, forensic_ring, rules_loaded, hist.Stage.capture_to_decode) catch |err| {
+            processEvent(&qe, ac, ad, ft, corr, tt, ps, pep_enf, forensic_ring, rules_loaded, hist.Stage.capture_to_decode) catch |err| {
                 diag.warn("pipeline processing error: {}", .{err});
             };
             state.g_perf.observe(hist.Stage.capture_to_decode, @intCast(std.time.nanoTimestamp() - start));
+            // Bound correlator memory: reap idle windows every 4096 events so
+            // spoofed sources cannot grow the window map without bound.
+            since_prune += 1;
+            if (since_prune >= 4096) {
+                since_prune = 0;
+                _ = corr.prune(std.time.nanoTimestamp());
+            }
         } else {
             // No events — yield briefly
             std.time.sleep(1 * std.time.ns_per_ms);
