@@ -32,6 +32,21 @@ int main() {
         }
     }
 
+    // Bounds pin: a 200-byte buffer must never receive more than one
+    // 109B frame however large maxOut is (regression: per-copy overflow).
+    {
+        uint8_t small[200];
+        memset(small, 0xAA, sizeof(small));
+        uint8_t out[8];
+        uint32_t per = 0;
+        int32_t n = aegis_adapter_poll(handles[1], out, 8, small, sizeof(small), &per);
+        if (n < 0 || (uint32_t)n * 109u > sizeof(small)) {
+            fprintf(stderr, "FAIL: small-cap poll overflow n=%d\n", (int)n);
+            return 5;
+        }
+        fprintf(stdout, "small-cap poll -> %d events (bounded)\n", (int)n);
+    }
+
     // Health check.
     for (int i = 0; i < 4; ++i) {
         uint8_t st; uint32_t le; uint64_t prod;

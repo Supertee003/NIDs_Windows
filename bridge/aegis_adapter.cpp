@@ -434,8 +434,12 @@ int32_t aegis_adapter_poll(void* handle, uint8_t* out, uint32_t maxOut,
     while (n < maxOut) {
         PollResult r = a->poll(a->ctx, &f);
         if (r == PollResult::Event) {
-            if (canonicalCap < (uint32_t)f.size) break;
-            std::memcpy(canonicalBuf + (n * f.size), f.data, f.size);
+            // Bound every copy against the remaining capacity, not just the
+            // first frame: canonicalCap < f.size once is insufficient when
+            // maxOut > 1 (e.g. cap=200, two 109B frames overflow by 18B).
+            const uint64_t off = (uint64_t)n * (uint64_t)f.size;
+            if (off + (uint64_t)f.size > (uint64_t)canonicalCap) break;
+            std::memcpy(canonicalBuf + off, f.data, f.size);
             out[n] = 1;
             n++;
         } else if (r == PollResult::Exhausted) {
