@@ -93,6 +93,9 @@ pub const SiemConfig = struct {
     format: OutputFormat = .ndjson,
     transport: Transport = .file,
     destination: []const u8 = "logs/siem_forward.json",
+    /// Collector endpoint for http/https/tcp/udp transports
+    /// (e.g. "https://collector:8088", "tcp://syslog:514").
+    endpoint: []const u8 = "",
     batch_size: u32 = MAX_BATCH_SIZE,
     flush_interval_ms: u32 = DEFAULT_FLUSH_INTERVAL_MS,
     retry_count: u32 = DEFAULT_RETRY_COUNT,
@@ -130,6 +133,9 @@ pub const ForwardStats = struct {
     total_events_read: u64 = 0,
     total_events_forwarded: u64 = 0,
     total_events_failed: u64 = 0,
+    /// Events neither delivered nor lost: spilled to <destination>.spool
+    /// for later replay after all retries were exhausted.
+    total_events_spooled: u64 = 0,
     total_batches_sent: u64 = 0,
     total_retries: u64 = 0,
     last_forward_ms: i64 = 0,
@@ -210,14 +216,43 @@ pub const SiemForwarder = struct {
             }
         }
 
-        // All retries failed
-        self.stats.total_events_failed += @intCast(self.batch_buffer.items.len);
-        std.log.warn("[SIEM] Failed to forward {d} events after {d} retries", .{
-            self.batch_buffer.items.len, self.config.retry_count,
-        });
-
-        // Clear buffer to avoid memory growth (events are lost)
+        // All retries failed: spill to <destination>.spool instead of
+        // dropping. A spooled batch is pending evidence, not lost data; an
+        // operator (or a future auto-retry pass) replays the spool file.
+        // Only a failed spill itself counts as lost.
+        if (self.spillBatch(self.batch_buffer.items)) {
+            self.stats.total_events_spooled += @intCast(self.batch_buffer.items.len);
+            std.log.warn("[SIEM] Forward failed after {d} retries; {d} events spooled for replay", .{
+                self.config.retry_count, self.batch_buffer.items.len,
+            });
+        } else {
+            self.stats.total_events_failed += @intCast(self.batch_buffer.items.len);
+            std.log.err("[SIEM] Forward failed after {d} retries AND spool write failed; {d} events lost", .{
+                self.config.retry_count, self.batch_buffer.items.len,
+            });
+        }
         self.batch_buffer.clearRetainingCapacity();
+    }
+
+    /// Append a batch to the durable spool file next to the destination.
+    /// Returns true when every event was persisted.
+    fn spillBatch(self: *SiemForwarder, events: []const ForwardedEvent) bool {
+        const spool_path = std.fmt.allocPrint(self.allocator, "{s}.spool", .{self.config.destination}) catch return false;
+        defer self.allocator.free(spool_path);
+        const file = std.fs.cwd().createFile(spool_path, .{ .truncate = false }) catch {
+            std.log.err("[SIEM] Failed to open spool file: {s}", .{spool_path});
+            return false;
+        };
+        defer file.close();
+        file.seekFromEnd(0) catch {};
+        const writer = file.writer();
+        for (events) |event| {
+            const formatted = self.formatEvent(event) catch return false;
+            defer self.allocator.free(formatted);
+            writer.writeAll(formatted) catch return false;
+            writer.writeByte('\n') catch return false;
+        }
+        return true;
     }
 
     /// Send a batch of events to the configured destination.
@@ -253,6 +288,15 @@ pub const SiemForwarder = struct {
         return true;
     }
 
+    /// Unwrap a URI host component (raw or percent-encoded) to bytes.
+    fn uriHost(uri: std.Uri) ?[]const u8 {
+        const comp = uri.host orelse return null;
+        return switch (comp) {
+            .raw => |raw| raw,
+            .percent_encoded => |enc| enc,
+        };
+    }
+
     /// Send events via HTTP/HTTPS (POST to collector endpoint).
     fn sendViaHttp(self: *SiemForwarder, events: []const ForwardedEvent) bool {
         const uri = std.Uri.parse(self.config.endpoint) catch {
@@ -260,24 +304,24 @@ pub const SiemForwarder = struct {
             return false;
         };
 
-        const host = uri.host orelse {
+        if (uriHost(uri) == null) {
             std.log.err("[SIEM] HTTP endpoint missing host", .{});
             return false;
-        };
+        }
 
         var client = std.http.Client{ .allocator = self.allocator };
         defer client.deinit();
 
+        const extra_headers = [_]std.http.Header{
+            .{ .name = "Content-Type", .value = "application/json" },
+        };
         for (events) |event| {
             const body = self.formatEvent(event) catch continue;
             defer self.allocator.free(body);
 
-            var headers = std.http.Headers{};
-            headers.put("Content-Type", "application/json") catch continue;
-            headers.put("Host", host) catch continue;
-
-            var req = client.request(.POST, uri, headers, .{}) catch |err| {
-                std.log.err("[SIEM] HTTP request failed: {}", .{err});
+            var req_buf: [16 * 1024]u8 = undefined;
+            var req = client.open(.POST, uri, .{ .server_header_buffer = &req_buf, .extra_headers = &extra_headers }) catch |err| {
+                std.log.err("[SIEM] HTTP open failed: {}", .{err});
                 continue;
             };
             defer req.deinit();
@@ -292,13 +336,13 @@ pub const SiemForwarder = struct {
                 continue;
             };
 
-            const status = req.wait() catch |err| {
+            req.wait() catch |err| {
                 std.log.err("[SIEM] HTTP wait failed: {}", .{err});
                 continue;
             };
 
-            if (status != .ok) {
-                std.log.warn("[SIEM] HTTP status: {}", .{status});
+            if (req.response.status != .ok) {
+                std.log.warn("[SIEM] HTTP status: {}", .{req.response.status});
             }
         }
         return true;
@@ -311,7 +355,7 @@ pub const SiemForwarder = struct {
             return false;
         };
 
-        const host = uri.host orelse {
+        const host = uriHost(uri) orelse {
             std.log.err("[SIEM] TCP endpoint missing host", .{});
             return false;
         };
@@ -319,7 +363,7 @@ pub const SiemForwarder = struct {
         const port: u16 = uri.port orelse 514; // Default syslog port
 
         var stream = std.net.tcpConnectToHost(self.allocator, host, port) catch |err| {
-            std.log.err("[SIEM] TCP connect failed: {}", .{err});
+            std.log.warn("[SIEM] TCP connect failed: {}", .{err});
             return false;
         };
         defer stream.close();
@@ -343,24 +387,38 @@ pub const SiemForwarder = struct {
             return false;
         };
 
-        const host = uri.host orelse {
+        const host = uriHost(uri) orelse {
             std.log.err("[SIEM] UDP endpoint missing host", .{});
             return false;
         };
 
         const port: u16 = uri.port orelse 514; // Default syslog port
 
-        var sock = std.net_udp.connect(self.allocator, host, port) catch |err| {
-            std.log.err("[SIEM] UDP connect failed: {}", .{err});
+        const addr_list = std.net.getAddressList(self.allocator, host, port) catch |err| {
+            std.log.warn("[SIEM] UDP resolve failed: {}", .{err});
             return false;
         };
-        defer sock.close();
+        defer addr_list.deinit();
+        if (addr_list.addrs.len == 0) {
+            std.log.err("[SIEM] UDP resolve returned no addresses", .{});
+            return false;
+        }
+        const addr = addr_list.addrs[0];
+        const sock = std.posix.socket(addr.any.family, std.posix.SOCK.DGRAM, 0) catch |err| {
+            std.log.err("[SIEM] UDP socket failed: {}", .{err});
+            return false;
+        };
+        defer std.posix.close(sock);
+        std.posix.connect(sock, &addr.any, addr.getOsSockLen()) catch |err| {
+            std.log.warn("[SIEM] UDP connect failed: {}", .{err});
+            return false;
+        };
 
         for (events) |event| {
             const body = self.formatEvent(event) catch continue;
             defer self.allocator.free(body);
 
-            sock.writeAll(body) catch |err| {
+            _ = std.posix.send(sock, body, 0) catch |err| {
                 std.log.err("[SIEM] UDP write failed: {}", .{err});
                 continue;
             };
@@ -641,6 +699,52 @@ test "SiemForwarder.flush writes to file" {
 
     try std.testing.expect(forwarder.stats.total_events_forwarded == 1);
     try std.testing.expect(forwarder.stats.total_batches_sent == 1);
+}
+
+test "SiemForwarder spills (never drops) when all retries are exhausted" {
+    // TCP to a refused loopback port fails fast; with retry_count=1 the
+    // batch must land in <destination>.spool with counters to prove it.
+    const dest = "siem_spill_probe.json";
+    const spool = "siem_spill_probe.json.spool";
+    defer std.fs.cwd().deleteFile(dest) catch {};
+    defer std.fs.cwd().deleteFile(spool) catch {};
+    var forwarder = SiemForwarder.init(std.testing.allocator, .{
+        .enabled = true,
+        .destination = dest,
+        .transport = .tcp,
+        .retry_count = 1,
+        .retry_delay_ms = 0,
+    });
+    // Point the endpoint at a refused port. Field name follows Transport
+    // config (endpoint); a refused connect must fail the batch.
+    forwarder.config.endpoint = "tcp://127.0.0.1:1";
+    defer forwarder.deinit();
+
+    const event = ForwardedEvent{
+        .timestamp = 1000,
+        .attack_type = "SQLI",
+        .src_ip = "10.0.0.1",
+        .dst_ip = "10.0.0.2",
+        .src_port = 12345,
+        .dst_port = 80,
+        .protocol = "TCP",
+        .severity = "Critical",
+        .policy = "BLOCK",
+        .rule_id = "R001",
+        .status = "DETECTED",
+        .payload = "",
+    };
+
+    try forwarder.forwardEvent(event);
+    try forwarder.flush();
+
+    try std.testing.expect(forwarder.stats.total_events_forwarded == 0);
+    try std.testing.expect(forwarder.stats.total_events_failed == 0);
+    try std.testing.expect(forwarder.stats.total_events_spooled == 1);
+    try std.testing.expect(forwarder.batch_buffer.items.len == 0);
+    const spooled = try std.fs.cwd().readFileAlloc(std.testing.allocator, spool, 65536);
+    defer std.testing.allocator.free(spooled);
+    try std.testing.expect(spooled.len > 0);
 }
 
 test "SiemForwarder auto-flushes when batch full" {

@@ -11,6 +11,8 @@ comptime {
     _ = @import("tests/core/diagnostics.zig");
     // REBUILD-002: pull every orphaned src/core module into the test graph
     _ = @import("tests/core/core_modules.zig");
+    // Service-cwd bundle resolution: the installed layout must win over cwd.
+    _ = @import("core/runtime_paths.zig");
     _ = @import("tests/capture/npcap_adapter.zig");
     _ = @import("tests/capture/packet_decoder.zig");
     _ = @import("tests/capture/flow_table.zig");
@@ -48,6 +50,7 @@ comptime {
     _ = @import("tests/forensic/installer.zig");
     _ = @import("tests/forensic/release_gate.zig");
     _ = @import("tests/forensic/replay_engine.zig");
+    _ = @import("tests/forensic/siem_forwarder.zig");
     _ = @import("forensic/replay_contract.zig");
     _ = @import("tests/windows/etw_realtime.zig");
     _ = @import("tests/windows/fim.zig");
