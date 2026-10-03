@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "419e9f5",
+  "source_commit": "44439a2",
   "build_date": "2026-09-25T15:15:56.343815+00:00",
   "build_host": "windows",
   "platform": {
@@ -570,8 +570,8 @@
     },
     {
       "path": "brain/windows_brain.py",
-      "size": 31178,
-      "sha256": "5c6ea50584e3b2a164792cad24d19a0368e60143478c4575e2fdae567b875f9a",
+      "size": 31438,
+      "sha256": "414a6061a62c840204644be5b270e139fbe0286f2554cf3988ca578540de4199",
       "language": "python/cython"
     },
     {
@@ -2058,8 +2058,8 @@
     },
     {
       "path": "config/Rules.json",
-      "size": 8174,
-      "sha256": "ab7bd297281ea19a56ff6da421668d8c561d1784ee19892301235ff87e51a3a7",
+      "size": 7974,
+      "sha256": "8bdbd39b0bce5412bae6061fc8287e0584138a1db06669b934af0fe11fd0427f",
       "language": "json"
     },
     {
@@ -2149,7 +2149,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 17724,
-      "sha256": "c85981d913fd89e69f7a30ff2ed58904a9ce1a45be3166500f181a52e759c831",
+      "sha256": "9fe0bf3bfee53c3c24edc0fb1f17f17d178517bd93e0ce8b3c7db7c78af97f0b",
       "language": "json"
     },
     {
@@ -2202,8 +2202,8 @@
     },
     {
       "path": "scripts/aegis_console_pro.py",
-      "size": 11589,
-      "sha256": "aeb495c52dd3eaac2a31daa2fdc6ab3697fe248aace6ec4e5191fef7583ce16b",
+      "size": 11944,
+      "sha256": "b7298a574e14337c22bf4234b7bc95bf1369957b084490067521899f654384c1",
       "language": "python/cython"
     },
     {
@@ -2226,8 +2226,8 @@
     },
     {
       "path": "scripts/aegis_graph.py",
-      "size": 5412,
-      "sha256": "f05b6bba36136d152ba2ded226d74a81ff2ed7d6fcfedfb6b752dbd2afbe9f42",
+      "size": 6171,
+      "sha256": "4550be1d33036fb0c0ccc518e95f751d5a9832cab919eceb1a103a7347dd6715",
       "language": "python/cython"
     },
     {
@@ -2412,8 +2412,8 @@
     },
     {
       "path": "scripts/kali_attack_nids.py",
-      "size": 5715,
-      "sha256": "dd0601d4460e0029d228e335d565eac9c16a19f50059378f672381f68c2ed627",
+      "size": 5818,
+      "sha256": "d1182460f80e663110cc50ec39f55d9dcb8ef19f3464d990f2b166bb4bc2e4fd",
       "language": "python/cython"
     },
     {
@@ -2886,8 +2886,8 @@
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 48280,
-      "sha256": "7ef9ab675402021d3fc1fdf8a23bf1d5917865cc8b96d1829bf7bf64755ab11a",
+      "size": 53464,
+      "sha256": "14284c17e8cdd753c6f7119e627dfee7fcda68cd258da4f5922510c82a41283d",
       "language": "python/cython"
     },
     {
@@ -2904,26 +2904,26 @@
     },
     {
       "path": "tools/aegisctl/api/control_api.py",
-      "size": 35909,
-      "sha256": "08a36bf967e0e8a0bf31116d597e31914c36ed2d08cb0a172874faab28a09b09",
+      "size": 40719,
+      "sha256": "ed229b61947ae692f8c310fc508a048761facbda11c4a25581d3d9c450cbcc4a",
       "language": "python/cython"
     },
     {
       "path": "tools/aegisctl/client.py",
-      "size": 6920,
-      "sha256": "e19b6b21069cb70b4e3461ee0056505a433e0aed06e62b2b99ab1d440b65af30",
+      "size": 8658,
+      "sha256": "98f10eaa506ffe11361d27e4d13e413446ada5df625092ad4d300513ff68ab83",
       "language": "python/cython"
     },
     {
       "path": "tools/aegisctl/config.py",
-      "size": 2203,
-      "sha256": "89147fc5e8d3f88d8df63500a9d90085faf38ed2be8577c4e133eeef596efb52",
+      "size": 2529,
+      "sha256": "9eaafecdb1df481ba60592428c46ad8f06a6f55167cee9a31d11c598952cf5bc",
       "language": "python/cython"
     },
     {
       "path": "tools/aegisctl/contracts.py",
-      "size": 4585,
-      "sha256": "e2bef55adf46ecbbdc669e29318bb772f59024eff600bbdcb911f4fa3d76583a",
+      "size": 5214,
+      "sha256": "7e5dd792bbf6fd18dfa7245d4222017a88e8c81362dbec3847850a9db2fd7125",
       "language": "python/cython"
     },
     {
@@ -2934,8 +2934,8 @@
     },
     {
       "path": "tools/aegisctl/web_dashboard/app.py",
-      "size": 29425,
-      "sha256": "e0e69a81ee9c3be50a28547cdaa5ec7272dfd716ca14b2f7f38e95cdaade9e01",
+      "size": 29739,
+      "sha256": "cc6add96de555dccca2945efd993a36c79b3eb0b44dd4071c60c50442444745f",
       "language": "python/cython"
     },
     {
@@ -2988,8 +2988,8 @@
     },
     {
       "path": "tools/golden_path_evidence.py",
-      "size": 11959,
-      "sha256": "59b97461c66e251d3f56a980367309d24e2c0580ea95368ea61226dc43992bf4",
+      "size": 12348,
+      "sha256": "ffc3f90139a0bcb3452fa0b04f83667fb162fd3540fdf2b22c618b855483d8b1",
       "language": "python/cython"
     },
     {

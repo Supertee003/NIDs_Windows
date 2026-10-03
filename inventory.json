@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-09-30T15:19:45.710472+00:00",
+  "generated_at": "2026-10-03T18:08:31.327982+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1521,
+  "total_files": 1570,
   "by_class": {
-    "canonical-docs": 538,
-    "canonical-build": 204,
-    "unclassified": 19,
-    "canonical-source": 586,
-    "canonical-test": 110,
+    "canonical-docs": 546,
+    "canonical-build": 229,
+    "unclassified": 23,
+    "canonical-source": 592,
+    "canonical-test": 116,
     "canonical-config": 31,
     "legacy": 33
   },
@@ -105,6 +105,12 @@
       "size": 5761
     },
     {
+      "path": "admin-evidence/aegis-nids-service-before.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 448
+    },
+    {
       "path": "admin-evidence/audit-version-test.txt",
       "class": "canonical-docs",
       "role": "documentation",
@@ -115,6 +121,54 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 0
+    },
+    {
+      "path": "admin-evidence/build_certificates_local.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 5967
+    },
+    {
+      "path": "admin-evidence/certificates/ca.crt.cert.der",
+      "class": "unclassified",
+      "role": "other",
+      "size": 482
+    },
+    {
+      "path": "admin-evidence/certificates/ca.crt.der",
+      "class": "unclassified",
+      "role": "other",
+      "size": 480
+    },
+    {
+      "path": "admin-evidence/certificates/ca.crt.ext.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 970
+    },
+    {
+      "path": "admin-evidence/certificates/server.crt.cert.der",
+      "class": "unclassified",
+      "role": "other",
+      "size": 534
+    },
+    {
+      "path": "admin-evidence/certificates/server.crt.der",
+      "class": "unclassified",
+      "role": "other",
+      "size": 534
+    },
+    {
+      "path": "admin-evidence/certificates/server.crt.ext.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1158
+    },
+    {
+      "path": "admin-evidence/certificates/server.crt.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1158
     },
     {
       "path": "admin-evidence/code-integrity-events.txt",
@@ -229,6 +283,114 @@
       "class": "canonical-build",
       "role": "build-config",
       "size": 330
+    },
+    {
+      "path": "admin-evidence/deploy-20261003-220509/before.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1418
+    },
+    {
+      "path": "admin-evidence/deploy-20261003-221101/after.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1417
+    },
+    {
+      "path": "admin-evidence/deploy-20261003-221101/backup/config-policies.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 3367
+    },
+    {
+      "path": "admin-evidence/deploy-20261003-221101/backup/config-Rules.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 7950
+    },
+    {
+      "path": "admin-evidence/deploy-20261003-221101/before.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1345
+    },
+    {
+      "path": "admin-evidence/deploy-20261003-221101/health-attempt-00.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 6758
+    },
+    {
+      "path": "admin-evidence/deploy-20261003-221101/health-attempt-00.raw.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2649
+    },
+    {
+      "path": "admin-evidence/deploy-20261003-221101/result.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1932
+    },
+    {
+      "path": "admin-evidence/deploy-20261003-223919/backup/config-policies.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 3367
+    },
+    {
+      "path": "admin-evidence/deploy-20261003-223919/backup/config-Rules.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 7974
+    },
+    {
+      "path": "admin-evidence/deploy-20261003-223919/before.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1418
+    },
+    {
+      "path": "admin-evidence/deploy-20261003-224045/after.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1417
+    },
+    {
+      "path": "admin-evidence/deploy-20261003-224045/backup/config-policies.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 3367
+    },
+    {
+      "path": "admin-evidence/deploy-20261003-224045/backup/config-Rules.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 7974
+    },
+    {
+      "path": "admin-evidence/deploy-20261003-224045/before.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1418
+    },
+    {
+      "path": "admin-evidence/deploy-20261003-224045/health-attempt-00.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 6812
+    },
+    {
+      "path": "admin-evidence/deploy-20261003-224045/health-attempt-00.raw.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2691
+    },
+    {
+      "path": "admin-evidence/deploy-20261003-224045/result.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1616
     },
     {
       "path": "admin-evidence/forensics-verify-direct.txt",
@@ -363,6 +525,24 @@
       "size": 741
     },
     {
+      "path": "admin-evidence/kernel-runtime-audit-admin.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 23501
+    },
+    {
+      "path": "admin-evidence/kernel-runtime-audit-admin2.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 32502
+    },
+    {
+      "path": "admin-evidence/kernel-runtime-audit-normal.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 15413
+    },
+    {
       "path": "admin-evidence/lifecycle-recovery-proof.txt",
       "class": "canonical-docs",
       "role": "documentation",
@@ -495,6 +675,12 @@
       "size": 398
     },
     {
+      "path": "admin-evidence/project2-audit-20261002/PROJECT2-AUDIT-REPORT.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 657
+    },
+    {
       "path": "admin-evidence/project2-baseline-20260930/forensic_evidence_graph.html",
       "class": "unclassified",
       "role": "other",
@@ -583,6 +769,18 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 16467
+    },
+    {
+      "path": "admin-evidence/wfp-stale-evidence-20261003-235840/firewall_rules.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 21895
+    },
+    {
+      "path": "admin-evidence/wfp-stale-evidence-20261003-235840/result.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 29730
     },
     {
       "path": "admin-evidence/wfp-system-events.txt",
@@ -1818,7 +2016,7 @@
       "path": "aegis_dashboard/src/main.rs",
       "class": "canonical-source",
       "role": "source",
-      "size": 23075
+      "size": 24101
     },
     {
       "path": "AEGIS_DEEP_SYSTEM_HEALTH_AUDIT_2026-09-27.md",
@@ -1866,7 +2064,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 16438
+      "size": 16477
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -2133,6 +2331,12 @@
       "size": 1263
     },
     {
+      "path": "analysis/KERNEL_RUNTIME_SERVICE_AUDIT_2026-10-02.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 19954
+    },
+    {
       "path": "analysis/L2_NATIVE_PIPE_EXACT_PROOF_20260924.json",
       "class": "canonical-build",
       "role": "build-config",
@@ -2277,6 +2481,12 @@
       "size": 2253
     },
     {
+      "path": "analysis/MAKING_REAL_COMPLETION_PLAN.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 18728
+    },
+    {
       "path": "analysis/milestone-3-critical.diff",
       "class": "unclassified",
       "role": "other",
@@ -2353,6 +2563,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 8057
+    },
+    {
+      "path": "analysis/PROJECT2_COMPLETENESS_AND_REPO_CLEANUP.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 16212
     },
     {
       "path": "analysis/REAL_SENSOR_QUALIFICATION_REASSESSMENT_20260922.md",
@@ -2449,6 +2665,12 @@
       "class": "canonical-source",
       "role": "source",
       "size": 1385
+    },
+    {
+      "path": "analysis/SYSTEM_UNDERSTANDING_MAP.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 19535
     },
     {
       "path": "AUTHORITY_MAP.json",
@@ -2694,7 +2916,7 @@
       "path": "brain/windows_brain.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 31836
+      "size": 32117
     },
     {
       "path": "bridge/__init__.py",
@@ -2826,7 +3048,7 @@
       "path": "config/Rules.json",
       "class": "canonical-config",
       "role": "config-data",
-      "size": 8174
+      "size": 7974
     },
     {
       "path": "configs/aegis.conf",
@@ -3018,7 +3240,7 @@
       "path": "contracts/fixtures/detection/signature_match.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 187
+      "size": 236
     },
     {
       "path": "contracts/fixtures/enforcement/wfp_receipt.json",
@@ -4488,7 +4710,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 250517
+      "size": 248055
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -4584,7 +4806,7 @@
       "path": "nose/capture.go",
       "class": "canonical-source",
       "role": "source",
-      "size": 11571
+      "size": 12111
     },
     {
       "path": "nose/cleanup_nose_mouth.bat",
@@ -4632,7 +4854,7 @@
       "path": "nose/main.go",
       "class": "canonical-source",
       "role": "source",
-      "size": 6291
+      "size": 6686
     },
     {
       "path": "nose/model.go",
@@ -4656,7 +4878,7 @@
       "path": "nose/run_nose.bat",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1057
+      "size": 1136
     },
     {
       "path": "nose/signature_classifier.go",
@@ -4665,22 +4887,34 @@
       "size": 1893
     },
     {
+      "path": "nose/signature_classifier_test.go",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 4259
+    },
+    {
       "path": "nose/styles.go",
       "class": "canonical-source",
       "role": "source",
       "size": 6355
     },
     {
+      "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 6007
+    },
+    {
       "path": "README.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 30223
+      "size": 592
     },
     {
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 206466
+      "size": 204420
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -5784,7 +6018,7 @@
       "path": "scripts/aegis_console_pro.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 11589
+      "size": 11944
     },
     {
       "path": "scripts/aegis_daemon.py",
@@ -5808,7 +6042,7 @@
       "path": "scripts/aegis_graph.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 5412
+      "size": 6171
     },
     {
       "path": "scripts/aegis_metrics.py",
@@ -5925,6 +6159,12 @@
       "size": 11242
     },
     {
+      "path": "scripts/deploy_local_runtime.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 6772
+    },
+    {
       "path": "scripts/diag_aegis_dirs.bat",
       "class": "canonical-build",
       "role": "build-config",
@@ -6037,6 +6277,12 @@
       "class": "canonical-source",
       "role": "source",
       "size": 3536
+    },
+    {
+      "path": "scripts/project2_runtime_gate.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4346
     },
     {
       "path": "scripts/read_vectors.py",
@@ -6297,6 +6543,12 @@
       "size": 6802
     },
     {
+      "path": "scripts/wfp_stale_evidence.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 7106
+    },
+    {
       "path": "scripts/windows_host_verification.py",
       "class": "canonical-source",
       "role": "source",
@@ -6438,7 +6690,7 @@
       "path": "src/all_tests.zig",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 3438
+      "size": 3559
     },
     {
       "path": "src/capture/flow_engine.zig",
@@ -6540,7 +6792,7 @@
       "path": "src/contract/canonical_event.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 34604
+      "size": 36020
     },
     {
       "path": "src/contract/event.zig",
@@ -6594,7 +6846,7 @@
       "path": "src/control/handler_registry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 45157
+      "size": 49954
     },
     {
       "path": "src/control/health/runtime_health.zig.scaffold",
@@ -6612,7 +6864,7 @@
       "path": "src/control/state_machine.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 16660
+      "size": 16762
     },
     {
       "path": "src/control.zig",
@@ -6741,6 +6993,12 @@
       "size": 13096
     },
     {
+      "path": "src/core/runtime_paths.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 4600
+    },
+    {
       "path": "src/core/rust_pep.zig",
       "class": "canonical-source",
       "role": "production-source",
@@ -6750,7 +7008,7 @@
       "path": "src/daemon.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 28560
+      "size": 29427
     },
     {
       "path": "src/detection/anomaly_detector.zig",
@@ -6894,7 +7152,7 @@
       "path": "src/forensic/abi_contract.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 17922
+      "size": 17937
     },
     {
       "path": "src/forensic/decision_trace.zig",
@@ -6918,7 +7176,7 @@
       "path": "src/forensic/forensic_pipeline.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 27243
+      "size": 31321
     },
     {
       "path": "src/forensic/forensics_engine.zig",
@@ -6942,7 +7200,7 @@
       "path": "src/forensic/policy_contract.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 13597
+      "size": 15439
     },
     {
       "path": "src/forensic/provenance.zig",
@@ -7056,7 +7314,7 @@
       "path": "src/pipeline/event_queue.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 6522
+      "size": 8990
     },
     {
       "path": "src/pipeline/packet_callback.zig",
@@ -7068,7 +7326,7 @@
       "path": "src/pipeline/rule_loader.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 7366
+      "size": 9694
     },
     {
       "path": "src/pipeline/runtime_state.zig",
@@ -7122,7 +7380,7 @@
       "path": "src/policy/enforcement_receipt.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 4312
+      "size": 5553
     },
     {
       "path": "src/policy/pep_bindings.zig",
@@ -8229,6 +8487,12 @@
       "size": 8779
     },
     {
+      "path": "tests/contracts/test_contract_fixtures.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 10867
+    },
+    {
       "path": "tests/contracts/test_pep_abi_layout.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -8287,6 +8551,18 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 5719
+    },
+    {
+      "path": "tests/forensics/test_forensic_pagination.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 12105
+    },
+    {
+      "path": "tests/forensics/test_forensic_source_space.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 7568
     },
     {
       "path": "tests/forensics/test_t12_forensics_replay.py",
@@ -8352,7 +8628,7 @@
       "path": "tests/runtime/conftest.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 21005
+      "size": 21527
     },
     {
       "path": "tests/runtime/README.md",
@@ -8376,7 +8652,7 @@
       "path": "tests/runtime/test_gate_d.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 10774
+      "size": 11802
     },
     {
       "path": "tests/runtime/test_gate_e.py",
@@ -8388,7 +8664,7 @@
       "path": "tests/runtime/test_gate_f.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 3668
+      "size": 4798
     },
     {
       "path": "tests/runtime/test_golden_path.py",
@@ -8400,7 +8676,7 @@
       "path": "tests/runtime/test_harness_integration.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 10387
+      "size": 14424
     },
     {
       "path": "tests/runtime/test_harness_scaffold.py",
@@ -8412,7 +8688,7 @@
       "path": "tests/runtime/test_health.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 11675
+      "size": 11759
     },
     {
       "path": "tests/runtime/test_lifecycle_authority.py",
@@ -8424,7 +8700,7 @@
       "path": "tests/runtime/test_operator_contracts.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 3471
+      "size": 4229
     },
     {
       "path": "tests/runtime/test_restart.py",
@@ -8466,7 +8742,13 @@
       "path": "tests/security/test_cli_mutation_gate.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 2528
+      "size": 2966
+    },
+    {
+      "path": "tests/security/test_detection_contract_pin.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 6617
     },
     {
       "path": "tests/security/test_forbidden_edges.py",
@@ -8479,6 +8761,12 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 1642
+    },
+    {
+      "path": "tests/security/test_single_rule_authority.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 6653
     },
     {
       "path": "tests/security/test_t16_security_hardening.py",
@@ -8700,25 +8988,25 @@
       "path": "tools/aegisctl/api/control_api.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 35909
+      "size": 40719
     },
     {
       "path": "tools/aegisctl/client.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 6920
+      "size": 8658
     },
     {
       "path": "tools/aegisctl/config.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 2203
+      "size": 2529
     },
     {
       "path": "tools/aegisctl/contracts.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 4585
+      "size": 5214
     },
     {
       "path": "tools/aegisctl/utils.py",
@@ -8730,13 +9018,19 @@
       "path": "tools/aegisctl/web_dashboard/app.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 29425
+      "size": 29739
     },
     {
       "path": "tools/aegisctl.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 48280
+      "size": 53464
+    },
+    {
+      "path": "tools/audit_kernel_runtime.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 16287
     },
     {
       "path": "tools/backup_recovery.py",
@@ -8790,7 +9084,7 @@
       "path": "tools/golden_path_evidence.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 11959
+      "size": 12348
     },
     {
       "path": "tools/inspect_pe_exports.py",

@@ -38,6 +38,7 @@ const inj_det = @import("windows/injection_detector.zig");
 // Refactored modules (this extraction)
 const state = @import("pipeline/runtime_state.zig");
 const rule_loader = @import("pipeline/rule_loader.zig");
+const runtime_paths = @import("core/runtime_paths.zig");
 const processor = @import("pipeline/event_processor.zig");
 const telemetry = @import("pipeline/telemetry_threads.zig");
 const nose_reader = @import("capture/nose_pipe_reader.zig");
@@ -172,11 +173,22 @@ pub fn runDaemon() !void {
     };
     defer ac.deinit();
 
+    const runtime_root = runtime_paths.resolveRoot(std.heap.page_allocator) catch |err| {
+        diag.err("cannot resolve AEGIS runtime root: {}", .{err});
+        return err;
+    };
+    defer std.heap.page_allocator.free(runtime_root);
+    diag.info("runtime bundle root: {s}", .{runtime_root});
+
     // 6a. Load Rules.json into Aho-Corasick
     var rules_loaded: u32 = 0;
     blk: {
-        const rules_path = "configs/Rules.json";
-        const rules_file = std.fs.cwd().openFile(rules_path, .{}) catch |err| {
+        const rules_path = runtime_paths.configPath(std.heap.page_allocator, runtime_root, "Rules.json") catch |err| {
+            diag.warn("config resolution: cannot build Rules.json path: {}", .{err});
+            break :blk;
+        };
+        defer std.heap.page_allocator.free(rules_path);
+        const rules_file = std.fs.openFileAbsolute(rules_path, .{}) catch |err| {
             diag.warn("config resolution: cannot open {s}: {} — detection engine has 0 rules", .{ rules_path, err });
             break :blk;
         };
@@ -206,8 +218,12 @@ pub fn runDaemon() !void {
     defer ps.deinit();
     var policies_loaded: u32 = 0;
     policy_load_blk: {
-        const pol_path = "configs/policies.json";
-        const pol_file = std.fs.cwd().openFile(pol_path, .{}) catch |err| {
+        const pol_path = runtime_paths.configPath(std.heap.page_allocator, runtime_root, "policies.json") catch |err| {
+            diag.warn("config resolution: cannot build policies.json path: {}", .{err});
+            break :policy_load_blk;
+        };
+        defer std.heap.page_allocator.free(pol_path);
+        const pol_file = std.fs.openFileAbsolute(pol_path, .{}) catch |err| {
             diag.warn("config resolution: cannot open {s}: {} — policy set empty", .{ pol_path, err });
             break :policy_load_blk;
         };
@@ -359,7 +375,7 @@ pub fn runDaemon() !void {
     if (!pep_enf.available) {
         diag.critical("PEP unavailable (aegis_pep.dll not loaded) — DETECTION-ONLY MODE: no enforcement", .{});
     } else {
-        diag.info("PEP available — enforcement mode active", .{});
+        diag.info("PEP available — prevention gate closed, DETECTION-ONLY MODE: provider ready, no host effect without receipt", .{});
     }
     dispatcher.ActionDispatcher.init();
     defer dispatcher.ActionDispatcher.deinit();

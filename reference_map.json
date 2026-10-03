@@ -1,22 +1,22 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-09-30T15:19:45.717955+00:00",
+  "generated_at": "2026-10-03T18:08:31.330613+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1521,
+  "total_files": 1570,
   "by_role": {
-    "documentation": 530,
-    "build-config": 193,
-    "other": 19,
-    "source": 316,
+    "documentation": 538,
+    "build-config": 218,
+    "other": 23,
+    "source": 321,
     "lockfile": 6,
     "rust-build": 4,
-    "test-artifact": 110,
+    "test-artifact": 116,
     "config-data": 31,
     "architecture-decision": 6,
     "step-document": 2,
     "go-source": 4,
     "makefile": 1,
-    "production-source": 266,
+    "production-source": 267,
     "legacy-source": 32,
     "quarantined": 1
   },
@@ -81,6 +81,7 @@
     "src/core/performance_harness.zig",
     "src/core/priority_queue.zig",
     "src/core/real_ips_path.zig",
+    "src/core/runtime_paths.zig",
     "src/core/rust_pep.zig",
     "src/daemon.zig",
     "src/detection/anomaly_detector.zig",
@@ -362,6 +363,10 @@
       "class": "canonical-build",
       "role": "build-config"
     },
+    "admin-evidence/aegis-nids-service-before.txt": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "admin-evidence/audit-version-test.txt": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -369,6 +374,38 @@
     "admin-evidence/audit-zig-build.txt": {
       "class": "canonical-docs",
       "role": "documentation"
+    },
+    "admin-evidence/build_certificates_local.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "admin-evidence/certificates/ca.crt.cert.der": {
+      "class": "unclassified",
+      "role": "other"
+    },
+    "admin-evidence/certificates/ca.crt.der": {
+      "class": "unclassified",
+      "role": "other"
+    },
+    "admin-evidence/certificates/ca.crt.ext.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/certificates/server.crt.cert.der": {
+      "class": "unclassified",
+      "role": "other"
+    },
+    "admin-evidence/certificates/server.crt.der": {
+      "class": "unclassified",
+      "role": "other"
+    },
+    "admin-evidence/certificates/server.crt.ext.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/certificates/server.crt.json": {
+      "class": "canonical-build",
+      "role": "build-config"
     },
     "admin-evidence/code-integrity-events.txt": {
       "class": "canonical-docs",
@@ -443,6 +480,78 @@
       "role": "build-config"
     },
     "admin-evidence/deep-readiness.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/deploy-20261003-220509/before.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/deploy-20261003-221101/after.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/deploy-20261003-221101/backup/config-policies.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/deploy-20261003-221101/backup/config-Rules.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/deploy-20261003-221101/before.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/deploy-20261003-221101/health-attempt-00.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/deploy-20261003-221101/health-attempt-00.raw.txt": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "admin-evidence/deploy-20261003-221101/result.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/deploy-20261003-223919/backup/config-policies.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/deploy-20261003-223919/backup/config-Rules.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/deploy-20261003-223919/before.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/deploy-20261003-224045/after.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/deploy-20261003-224045/backup/config-policies.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/deploy-20261003-224045/backup/config-Rules.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/deploy-20261003-224045/before.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/deploy-20261003-224045/health-attempt-00.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/deploy-20261003-224045/health-attempt-00.raw.txt": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "admin-evidence/deploy-20261003-224045/result.json": {
       "class": "canonical-build",
       "role": "build-config"
     },
@@ -534,6 +643,18 @@
       "class": "canonical-source",
       "role": "source"
     },
+    "admin-evidence/kernel-runtime-audit-admin.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/kernel-runtime-audit-admin2.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/kernel-runtime-audit-normal.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
     "admin-evidence/lifecycle-recovery-proof.txt": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -622,6 +743,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "admin-evidence/project2-audit-20261002/PROJECT2-AUDIT-REPORT.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "admin-evidence/project2-baseline-20260930/forensic_evidence_graph.html": {
       "class": "unclassified",
       "role": "other"
@@ -681,6 +806,14 @@
     "admin-evidence/wfp-driver-start-events.txt": {
       "class": "canonical-docs",
       "role": "documentation"
+    },
+    "admin-evidence/wfp-stale-evidence-20261003-235840/firewall_rules.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "admin-evidence/wfp-stale-evidence-20261003-235840/result.json": {
+      "class": "canonical-build",
+      "role": "build-config"
     },
     "admin-evidence/wfp-system-events.txt": {
       "class": "canonical-docs",
@@ -1714,6 +1847,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/KERNEL_RUNTIME_SERVICE_AUDIT_2026-10-02.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/L2_NATIVE_PIPE_EXACT_PROOF_20260924.json": {
       "class": "canonical-build",
       "role": "build-config"
@@ -1810,6 +1947,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/MAKING_REAL_COMPLETION_PLAN.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/milestone-3-critical.diff": {
       "class": "unclassified",
       "role": "other"
@@ -1859,6 +2000,10 @@
       "role": "documentation"
     },
     "analysis/PRODUCTION_SAFETY_HANDOFF_2026-09-20.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/PROJECT2_COMPLETENESS_AND_REPO_CLEANUP.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -1925,6 +2070,10 @@
     "analysis/run_native_validation.ps1": {
       "class": "canonical-source",
       "role": "source"
+    },
+    "analysis/SYSTEM_UNDERSTANDING_MAP.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
     },
     "AUTHORITY_MAP.json": {
       "class": "canonical-build",
@@ -3402,9 +3551,17 @@
       "class": "canonical-source",
       "role": "source"
     },
+    "nose/signature_classifier_test.go": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "nose/styles.go": {
       "class": "canonical-source",
       "role": "source"
+    },
+    "PHASE_0_TRUTH_REBUILD_REPORT.json": {
+      "class": "canonical-build",
+      "role": "build-config"
     },
     "README.md": {
       "class": "canonical-docs",
@@ -4242,6 +4399,10 @@
       "class": "canonical-source",
       "role": "source"
     },
+    "scripts/deploy_local_runtime.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
     "scripts/diag_aegis_dirs.bat": {
       "class": "canonical-build",
       "role": "build-config"
@@ -4315,6 +4476,10 @@
       "role": "source"
     },
     "scripts/process_rule_canary_scan.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/project2_runtime_gate.ps1": {
       "class": "canonical-source",
       "role": "source"
     },
@@ -4487,6 +4652,10 @@
       "role": "source"
     },
     "scripts/wfp_sign.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/wfp_stale_evidence.ps1": {
       "class": "canonical-source",
       "role": "source"
     },
@@ -4783,6 +4952,10 @@
       "role": "production-source"
     },
     "src/core/real_ips_path.zig": {
+      "class": "canonical-source",
+      "role": "production-source"
+    },
+    "src/core/runtime_paths.zig": {
       "class": "canonical-source",
       "role": "production-source"
     },
@@ -5778,6 +5951,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/contracts/test_contract_fixtures.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/contracts/test_pep_abi_layout.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -5815,6 +5992,14 @@
       "role": "test-artifact"
     },
     "tests/forensics/test_forensic_evidence_graph.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/forensics/test_forensic_pagination.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/forensics/test_forensic_source_space.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
@@ -5938,11 +6123,19 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/security/test_detection_contract_pin.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/security/test_forbidden_edges.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
     "tests/security/test_receipt_contract.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_single_rule_authority.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
@@ -6115,6 +6308,10 @@
       "role": "source"
     },
     "tools/aegisctl.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "tools/audit_kernel_runtime.py": {
       "class": "canonical-source",
       "role": "source"
     },
