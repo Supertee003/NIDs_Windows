@@ -15,11 +15,17 @@ Total = 109 bytes.
 from __future__ import annotations
 
 import struct
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 EVENT_MAGIC = 0x41454731
 EVENT_VERSION = 1
 WIRE_SIZE = 109
+# Wire v2 (T2-V6-022a): v1 109 bytes ++ 24-byte IPv6 tail (src[4..16],
+# dst[4..16] network order). Bit2 keeps its meaning in both versions.
+EVENT_VERSION_V2 = 2
+V6_TAIL_SIZE = 24
+WIRE_V2_SIZE = WIRE_SIZE + V6_TAIL_SIZE  # 133
+CONTEXT_V6_TRUNCATED = 1 << 2
 EVENT_CUSTOM = 0xFFFFFFFF
 
 # Frozen ordinals — MUST match src/contract/canonical_event.zig.
@@ -80,16 +86,38 @@ class CanonicalEvent:
     context_flags: int
     reserved: bytes
     struct_size: int = WIRE_SIZE  # producer in-memory layout tag, preserved
+    # Full IPv6 identity (wire v2 only): complete addresses in network
+    # order; zeros when decoded from v1 (truncated identity + bit2).
+    src_ipv6: bytes = b"\x00" * 16
+    dst_ipv6: bytes = b"\x00" * 16
 
 
 def decode(buf: bytes) -> CanonicalEvent:
-    """Decode exactly 109 wire bytes; validate magic, version and enums."""
-    if len(buf) != WIRE_SIZE:
-        raise ValueError(f"wire frame must be {WIRE_SIZE} bytes, got {len(buf)}")
+    """Decode 109 (v1) or 133 (v2) wire bytes; validate magic/version/enums."""
+    if len(buf) not in (WIRE_SIZE, WIRE_V2_SIZE):
+        raise ValueError(f"wire frame must be {WIRE_SIZE} or {WIRE_V2_SIZE} bytes, got {len(buf)}")
+    version = struct.unpack_from("<H", buf, 4)[0]
+    if version == EVENT_VERSION:
+        if len(buf) != WIRE_SIZE:
+            raise ValueError("v1 frame must be exactly 109 bytes")
+        return _decode_v1(buf)
+    if version != EVENT_VERSION_V2 or len(buf) != WIRE_V2_SIZE:
+        raise ValueError(f"unsupported version {version} (v2 with 109 bytes is malformed)")
+    ev = _decode_v1(buf)
+    tail = buf[WIRE_SIZE:WIRE_V2_SIZE]
+    return replace(
+        ev,
+        src_ipv6=ev.source_ip.to_bytes(4, "big") + tail[0:12],
+        dst_ipv6=ev.dest_ip.to_bytes(4, "big") + tail[12:24],
+    )
+
+
+def _decode_v1(buf: bytes) -> CanonicalEvent:
+    """Frozen v1 decode path (109-byte prefix of either version)."""
     f = _STRUCT.unpack(buf)
     if f[0] != EVENT_MAGIC:
         raise ValueError(f"bad magic 0x{f[0]:08X}")
-    if f[1] != EVENT_VERSION:
+    if f[1] not in (EVENT_VERSION, EVENT_VERSION_V2):
         raise ValueError(f"unsupported version {f[1]}")
     if f[6] not in _VALID_SOURCES:
         raise ValueError(f"unknown source {f[6]}")
@@ -159,3 +187,17 @@ def encode(ev: CanonicalEvent) -> bytes:
         ev.context_flags,
         ev.reserved,
     )
+
+
+def encode_v2(ev: CanonicalEvent) -> bytes:
+    """Encode to 133 wire bytes (v1 prefix + v6 tail). Requires bit2 and
+    first-4-byte consistency (BigEndian.Uint32(addr[:4]), Go rule)."""
+    if (ev.context_flags & CONTEXT_V6_TRUNCATED) == 0:
+        raise ValueError("v2 requires ContextFlags bit2 (ipv6)")
+    if int.from_bytes(ev.src_ipv6[:4], "big") != ev.source_ip:
+        raise ValueError("src first-4 mismatch")
+    if int.from_bytes(ev.dst_ipv6[:4], "big") != ev.dest_ip:
+        raise ValueError("dst first-4 mismatch")
+    v1 = bytearray(encode(ev))
+    v1[4:6] = EVENT_VERSION_V2.to_bytes(2, "little")
+    return bytes(v1) + ev.src_ipv6[4:16] + ev.dst_ipv6[4:16]

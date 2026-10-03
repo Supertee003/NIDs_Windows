@@ -200,6 +200,53 @@ v5_fields = {
 vectors.append(("event_v1_005.bin", v5_fields, "Edge case: all max values (0xFF everywhere)"))
 
 # ============================================================
+# Wire v2 vectors (T2-V6-022a): v1 109 bytes ++ 24-byte IPv6 tail.
+# struct_size stamps the live in-memory size (128), per wire_v2.md.
+# ============================================================
+
+EVENT_VERSION_V2 = 2
+IN_MEMORY_STRUCT_SIZE = 128
+FORMAT_V2 = FORMAT + "12s12s"
+assert struct.calcsize(FORMAT_V2) == 133
+
+SRC6 = bytes([0x20, 0x01, 0x0D, 0xB8] + [0] * 11 + [0x01])  # 2001:0db8::1
+DST6 = bytes([0x20, 0x01, 0x0D, 0xB8] + [0] * 11 + [0x02])  # 2001:0db8::2
+
+# --- Vector 006: IPv6 forward, full identity (2001:db8::1 -> ::2) ---
+v6_fields = {
+    "magic": EVENT_MAGIC,
+    "version": EVENT_VERSION_V2,
+    "struct_size": IN_MEMORY_STRUCT_SIZE,
+    "event_id": 6006,
+    "timestamp_ms": 1700000006000,
+    "monotonic_ns": 6000000000,
+    "source": 9,  # npcap_sensor
+    "source_ip": 0x20010DB8,  # first 4 bytes of 2001:0db8::1
+    "source_port": 49152,
+    "dest_ip": 0x20010DB8,  # first 4 bytes of 2001:0db8::2
+    "dest_port": 443,
+    "session_id": 6060,
+    "protocol": 6,  # TCP
+    "direction": 0,  # inbound
+    "layer_id": 0,
+    "is_pipe": 0,
+    "event_type": 2,  # forward
+    "severity": 1,  # Medium
+    "rule_id": 0,
+    "ruleset_version": 3,
+    "payload_length": 1500,
+    "payload_hash": 0,
+    "policy_action": 0,  # allow
+    "enforcement_status": 0,
+    "defcon_impact": 5,  # normal
+    "context_flags": 0x04,  # ipv6 (bit2): 32-bit fields are NOT IPv4
+    "reserved": b"\x00" * 16,
+    "src_tail": SRC6[4:16],
+    "dst_tail": DST6[4:16],
+}
+vectors_v2 = [("event_v2_006.bin", v6_fields, "IPv6 forward, full identity (2001:db8::1 -> 2001:db8::2:443)")]
+
+# ============================================================
 # Write vectors + README
 # ============================================================
 
@@ -260,6 +307,45 @@ for filename, fields, description in vectors:
 
     print(f"  {filename}: {len(data)} bytes, SHA256={sha256[:16]}...")
 
+for filename, fields, description in vectors_v2:
+    field_values = (
+        fields["magic"], fields["version"], fields["struct_size"],
+        fields["event_id"], fields["timestamp_ms"], fields["monotonic_ns"],
+        fields["source"], fields["source_ip"], fields["source_port"],
+        fields["dest_ip"], fields["dest_port"], fields["session_id"],
+        fields["protocol"], fields["direction"], fields["layer_id"], fields["is_pipe"],
+        fields["event_type"], fields["severity"], fields["rule_id"], fields["ruleset_version"],
+        fields["payload_length"], fields["payload_hash"],
+        fields["policy_action"], fields["enforcement_status"], fields["defcon_impact"],
+        fields["context_flags"], fields["reserved"],
+        fields["src_tail"], fields["dst_tail"],
+    )
+    data = struct.pack(FORMAT_V2, *field_values)
+    assert len(data) == 133
+
+    filepath = os.path.join(OUTPUT_DIR, filename)
+    with open(filepath, "wb") as f:
+        f.write(data)
+
+    sha256 = hashlib.sha256(data).hexdigest()
+
+    readme_lines.append(f"### {filename}")
+    readme_lines.append(f"- Description: {description}")
+    readme_lines.append(f"- Size: {len(data)} bytes (v2: 109 + 24 tail)")
+    readme_lines.append(f"- SHA256: `{sha256}`")
+    readme_lines.append(f"- Magic at offset 0: 0x{data[0]:02X}{data[1]:02X}{data[2]:02X}{data[3]:02X}")
+    readme_lines.append("")
+
+    metadata["vectors"].append({
+        "file": filename,
+        "description": description,
+        "sha256": sha256,
+        "size": len(data),
+        "fields": {k: v if not isinstance(v, bytes) else v.hex() for k, v in fields.items()},
+    })
+
+    print(f"  {filename}: {len(data)} bytes, SHA256={sha256[:16]}...")
+
 # Write README
 readme_path = os.path.join(OUTPUT_DIR, "README.md")
 with open(readme_path, "w") as f:
@@ -272,6 +358,7 @@ with open(meta_path, "w") as f:
     json.dump(metadata, f, indent=2)
 
 print(f"\nTest vectors written to: {OUTPUT_DIR}")
-print(f"  5 binary vectors (109 bytes each)")
+print(f"  5 binary vectors (109 bytes each, v1 frozen)")
+print(f"  1 binary vector (133 bytes, v2 full IPv6)")
 print(f"  README.md (human-readable)")
 print(f"  vectors_metadata.json (machine-readable)")

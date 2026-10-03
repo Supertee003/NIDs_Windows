@@ -377,6 +377,76 @@ pub fn create(source: EventSource) CanonicalEvent {
 /// Wire payload size (matches shared/protocol/wire_v1.md offset table)
 pub const WIRE_PAYLOAD_SIZE: usize = 109;
 
+// ============================================================
+// Wire v2 — full IPv6 identity (T2-V6-022a, see shared/protocol/wire_v2.md)
+// v1 (109B) is frozen: this section is purely additive. The in-memory
+// CanonicalEvent layout stays 128 bytes; full addresses travel on the
+// wire only and decode into DecodedFrame sidecars.
+// ============================================================
+
+/// Canonical event wire schema version 2 (full IPv6 tail present).
+pub const EVENT_VERSION_V2: u16 = 2;
+/// v6 tail: source bytes [4..16] ++ dest bytes [4..16] (raw network order).
+pub const V6_TAIL_SIZE: usize = 24;
+/// v2 payload = v1 109 bytes ++ 24-byte tail.
+pub const WIRE_V2_PAYLOAD_SIZE: usize = WIRE_PAYLOAD_SIZE + V6_TAIL_SIZE;
+
+/// Version-agnostic decode product. Full addresses are present if and only
+/// if the frame was v2; v1 frames decode with null sidecars (truncated
+/// identity + CONTEXT_V6_TRUNCATED, exactly as before).
+pub const DecodedFrame = struct {
+    event: CanonicalEvent,
+    src_ipv6: ?[16]u8,
+    dst_ipv6: ?[16]u8,
+};
+
+/// Serialize a v2 frame: frozen v1 bytes with version=2 plus the v6 tail.
+/// Requires CONTEXT_V6_TRUNCATED (v2 is only for v6 identity) and
+/// first-4-byte consistency between the event fields and the full
+/// addresses (Go derives the u32 as BigEndian.Uint32(addr[:4])).
+pub fn serializeV2(event: *const CanonicalEvent, src6: [16]u8, dst6: [16]u8, buf: []u8) !usize {
+    if ((event.context_flags & CONTEXT_V6_TRUNCATED) == 0) return error.V6FlagRequired;
+    if (std.mem.readInt(u32, src6[0..4], .big) != event.source_ip) return error.IpMismatch;
+    if (std.mem.readInt(u32, dst6[0..4], .big) != event.dest_ip) return error.IpMismatch;
+    if (buf.len < WIRE_V2_PAYLOAD_SIZE) return error.BufferTooSmall;
+    const n = try serializeToBytes(event, buf);
+    std.debug.assert(n == WIRE_PAYLOAD_SIZE);
+    // Patch the version field (event itself stays v1-layout, version 1).
+    std.mem.writeInt(u16, buf[4..][0..2], EVENT_VERSION_V2, .little);
+    @memcpy(buf[WIRE_PAYLOAD_SIZE..][0..12], src6[4..16]);
+    @memcpy(buf[WIRE_PAYLOAD_SIZE + 12 ..][0..12], dst6[4..16]);
+    return WIRE_V2_PAYLOAD_SIZE;
+}
+
+/// Dispatch on the version field: v1 → frozen path (sidecars null),
+/// v2 → full-address reconstruction, anything else → null.
+/// v2 frames must carry the full tail; version==2 with 109 bytes is
+/// malformed (fail closed, never silently truncate).
+pub fn deserializeDispatch(bytes: []const u8) ?DecodedFrame {
+    if (bytes.len < WIRE_PAYLOAD_SIZE) return null;
+    const ver = std.mem.readInt(u16, bytes[4..][0..2], .little);
+    if (ver == EVENT_VERSION) {
+        const event = deserializeFromBytes(bytes) orelse return null;
+        return .{ .event = event, .src_ipv6 = null, .dst_ipv6 = null };
+    }
+    if (ver != EVENT_VERSION_V2) return null;
+    if (bytes.len < WIRE_V2_PAYLOAD_SIZE) return null;
+    const event = decodeFields(bytes) orelse return null;
+    if (event.magic != EVENT_MAGIC) return null;
+    if (event.struct_size != EVENT_SCHEMA_SIZE) return null;
+    var src6: [16]u8 = undefined;
+    var dst6: [16]u8 = undefined;
+    // First-4 in network order: the u32 fields hold BigEndian.Uint32(addr[:4])
+    // (Go derivation), while the wire stores them little-endian. Write back
+    // big-endian so the sidecar is canonical network byte order, matching
+    // the tail bytes that follow on the wire verbatim.
+    std.mem.writeInt(u32, src6[0..4], event.source_ip, .big);
+    @memcpy(src6[4..16], bytes[WIRE_PAYLOAD_SIZE..][0..12]);
+    std.mem.writeInt(u32, dst6[0..4], event.dest_ip, .big);
+    @memcpy(dst6[4..16], bytes[WIRE_PAYLOAD_SIZE + 12 ..][0..12]);
+    return .{ .event = event, .src_ipv6 = src6, .dst_ipv6 = dst6 };
+}
+
 /// Serialize CanonicalEvent to bytes via explicit field-by-field encoding.
 /// STEP 2: No memcpy, no pointer cast, no compiler-padding dependency.
 /// All fields little-endian, fixed-width.
@@ -433,9 +503,17 @@ pub fn serializeToBytes(event: *const CanonicalEvent, buf: []u8) !usize {
 
 /// Deserialize bytes into CanonicalEvent via explicit field-by-field decoding.
 /// STEP 2: No pointer cast, no alignment dependency.
+/// Frozen v1 path: 109-byte frames with version 1 (plus in-memory size).
 pub fn deserializeFromBytes(bytes: []const u8) ?CanonicalEvent {
     if (bytes.len < WIRE_PAYLOAD_SIZE) return null;
+    const event = decodeFields(bytes) orelse return null;
+    if (!validate(&event)) return null;
+    return event;
+}
 
+/// Shared field decoder (v1 prefix of both wire versions): enum gates +
+/// field reads, no version/size validation (callers validate per version).
+fn decodeFields(bytes: []const u8) ?CanonicalEvent {
     // Validate integer enum representations before @enumFromInt.  A wire
     // frame is untrusted input; converting an unknown ordinal directly can
     // trap in safety builds or create an invalid semantic event.
@@ -494,7 +572,6 @@ pub fn deserializeFromBytes(bytes: []const u8) ?CanonicalEvent {
     // --- Reserved ---
     @memcpy(&event.reserved, bytes[off..][0..16]); off += 16;
 
-    if (!validate(&event)) return null;
     return event;
 }
 
@@ -898,4 +975,147 @@ test "T2: golden vector deserializes to canonical identity fields" {
     try std.testing.expect(restored.payload_length == 1500);
     try std.testing.expect(restored.rule_id == 0x01020304);
     try std.testing.expect(restored.event_type == .match_);
+}
+
+// ============================================================
+// Wire v2 tests (T2-V6-022a)
+// ============================================================
+
+fn v6ProbeEvent() CanonicalEvent {
+    var ev = create(.zig_core);
+    // 2001:0db8::1 / 2001:0db8::2 — first-4-bytes identity + truncated flag.
+    ev.source_ip = 0x20010DB8;
+    ev.dest_ip = 0x20010DB8;
+    ev.context_flags = CONTEXT_V6_TRUNCATED;
+    return ev;
+}
+
+fn v6ProbeAddrs() struct { src: [16]u8, dst: [16]u8 } {
+    return .{
+        .src = .{ 0x20, 0x01, 0x0D, 0xB8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
+        .dst = .{ 0x20, 0x01, 0x0D, 0xB8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2 },
+    };
+}
+
+test "v2 round-trip preserves full IPv6 identity and bit2" {
+    var ev = v6ProbeEvent();
+    const addrs = v6ProbeAddrs();
+    var buf: [WIRE_V2_PAYLOAD_SIZE]u8 = undefined;
+    const n = try serializeV2(&ev, addrs.src, addrs.dst, &buf);
+    try std.testing.expectEqual(WIRE_V2_PAYLOAD_SIZE, n);
+    // Version field bumped; v1 prefix intact.
+    try std.testing.expectEqual(EVENT_VERSION_V2, std.mem.readInt(u16, buf[4..][0..2], .little));
+    try std.testing.expectEqual(ev.source_ip, std.mem.readInt(u32, buf[33..][0..4], .little));
+
+    const frame = deserializeDispatch(&buf).?;
+    try std.testing.expectEqual(EVENT_VERSION_V2, frame.event.version);
+    try std.testing.expect((frame.event.context_flags & CONTEXT_V6_TRUNCATED) != 0);
+    try std.testing.expectEqualSlices(u8, &addrs.src, &frame.src_ipv6.?);
+    try std.testing.expectEqualSlices(u8, &addrs.dst, &frame.dst_ipv6.?);
+}
+
+test "dispatch on v1 frames yields null sidecars (frozen behavior)" {
+    var ev = v6ProbeEvent();
+    var buf: [WIRE_PAYLOAD_SIZE]u8 = undefined;
+    _ = try serializeToBytes(&ev, &buf);
+    const frame = deserializeDispatch(&buf).?;
+    try std.testing.expectEqual(EVENT_VERSION, frame.event.version);
+    try std.testing.expect(frame.src_ipv6 == null);
+    try std.testing.expect(frame.dst_ipv6 == null);
+}
+
+test "dispatch rejects unknown versions and truncated v2" {
+    var ev = v6ProbeEvent();
+    const addrs = v6ProbeAddrs();
+    var buf: [WIRE_V2_PAYLOAD_SIZE]u8 = undefined;
+    _ = try serializeV2(&ev, addrs.src, addrs.dst, &buf);
+    // Unknown version.
+    buf[4] = 9;
+    buf[5] = 0;
+    try std.testing.expect(deserializeDispatch(&buf) == null);
+    // Version 2 with only 109 bytes is malformed, never truncated silently.
+    var short: [WIRE_PAYLOAD_SIZE]u8 = undefined;
+    @memcpy(&short, buf[0..WIRE_PAYLOAD_SIZE]);
+    try std.testing.expect(deserializeDispatch(&short) == null);
+    // Short buffer.
+    try std.testing.expect(deserializeDispatch(buf[0..10]) == null);
+}
+
+test "serializeV2 enforces flag and first-4 consistency" {
+    var ev = create(.zig_core);
+    const addrs = v6ProbeAddrs();
+    var buf: [WIRE_V2_PAYLOAD_SIZE]u8 = undefined;
+    // No truncated flag → refused (v2 is v6-only).
+    try std.testing.expectError(error.V6FlagRequired, serializeV2(&ev, addrs.src, addrs.dst, &buf));
+    ev.context_flags = CONTEXT_V6_TRUNCATED;
+    // Flag set but fields hold other values → refused.
+    try std.testing.expectError(error.IpMismatch, serializeV2(&ev, addrs.src, addrs.dst, &buf));
+    // Buffer too small.
+    ev.source_ip = 0x20010DB8;
+    ev.dest_ip = 0x20010DB8;
+    var tiny: [WIRE_PAYLOAD_SIZE]u8 = undefined;
+    try std.testing.expectError(error.BufferTooSmall, serializeV2(&ev, addrs.src, addrs.dst, &tiny));
+}
+
+test "v2 shared vector 006 encodes byte-identical across languages" {
+    // Field values frozen by tests/contracts/event_vectors/
+    // generate_test_vectors.py (event_v2_006.bin, 133 bytes). Go
+    // SerializeV2 and Python encode_event_v2 pin the same bytes.
+    var ev = CanonicalEvent{
+        .magic = EVENT_MAGIC,
+        .version = EVENT_VERSION,
+        .struct_size = EVENT_SCHEMA_SIZE,
+        .event_id = 6006,
+        .timestamp_ms = 1700000006000,
+        .monotonic_ns = 6000000000,
+        .source = .npcap_sensor,
+        .source_ip = 0x20010DB8,
+        .source_port = 49152,
+        .dest_ip = 0x20010DB8,
+        .dest_port = 443,
+        .session_id = 6060,
+        .protocol = 6,
+        .direction = 0,
+        .layer_id = 0,
+        .is_pipe = 0,
+        .event_type = .forward,
+        .severity = 1,
+        .rule_id = 0,
+        .ruleset_version = 3,
+        .payload_length = 1500,
+        .payload_hash = 0,
+        .policy_action = .allow,
+        .enforcement_status = 0,
+        .defcon_impact = 5,
+        .context_flags = CONTEXT_V6_TRUNCATED,
+        .reserved = [_]u8{0} ** 16,
+    };
+    const addrs = v6ProbeAddrs();
+    var buf: [WIRE_V2_PAYLOAD_SIZE]u8 = undefined;
+    const n = try serializeV2(&ev, addrs.src, addrs.dst, &buf);
+    try std.testing.expectEqual(WIRE_V2_PAYLOAD_SIZE, n);
+    const golden: [WIRE_V2_PAYLOAD_SIZE]u8 = .{
+        0x31, 0x47, 0x45, 0x41, 0x02, 0x00, 0x80, 0x00,
+        0x76, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x70, 0x7F, 0xE5, 0xCF, 0x8B, 0x01, 0x00, 0x00,
+        0x00, 0xBC, 0xA0, 0x65, 0x01, 0x00, 0x00, 0x00,
+        0x09, 0xB8, 0x0D, 0x01, 0x20, 0x00, 0xC0, 0xB8,
+        0x0D, 0x01, 0x20, 0xBB, 0x01, 0xAC, 0x17, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00,
+        0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,
+        0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0xDC, 0x05, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x05, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x02,
+    };
+    try std.testing.expectEqualSlices(u8, &golden, &buf);
+    // And it decodes back to full identity.
+    const frame = deserializeDispatch(&buf).?;
+    try std.testing.expectEqualSlices(u8, &addrs.src, &frame.src_ipv6.?);
+    try std.testing.expectEqualSlices(u8, &addrs.dst, &frame.dst_ipv6.?);
 }

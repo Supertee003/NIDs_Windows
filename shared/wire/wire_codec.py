@@ -32,8 +32,17 @@ WIRE_MAX_PAYLOAD: int = 65536
 
 EVENT_MAGIC: int = 0x41454731     # "AEG1"
 EVENT_VERSION: int = 1
-WIRE_PAYLOAD_SIZE: int = 109       # canonical event payload
+WIRE_PAYLOAD_SIZE: int = 109       # canonical event payload (v1, frozen)
 WIRE_FRAME_SIZE: int = WIRE_HEADER_SIZE + WIRE_PAYLOAD_SIZE  # 125
+
+# Wire v2 (T2-V6-022a, see shared/protocol/wire_v2.md): v1 109 bytes plus a
+# 24-byte tail (source bytes [4..16] then dest bytes [4..16], network
+# order). v1 is frozen; v2 is additive. Bit2 keeps its meaning in both.
+EVENT_VERSION_V2: int = 2
+V6_TAIL_SIZE: int = 24
+WIRE_V2_PAYLOAD_SIZE: int = WIRE_PAYLOAD_SIZE + V6_TAIL_SIZE  # 133
+WIRE_V2_FRAME_SIZE: int = WIRE_HEADER_SIZE + WIRE_V2_PAYLOAD_SIZE  # 149
+CONTEXT_V6_TRUNCATED: int = 1 << 2
 
 
 class PayloadType(IntEnum):
@@ -53,6 +62,14 @@ class EventSource(IntEnum):
     cpp_bridge = 6
     rust_shield = 7
     go_aggregator = 8
+    npcap_sensor = 9
+    host_telemetry = 10
+    ml_detector = 11
+    cluster_federation = 12
+    process_sensor = 13
+    file_sensor = 14
+    registry_sensor = 15
+    replay_sensor = 16
     external = 255
 
 
@@ -119,6 +136,12 @@ class CanonicalEvent:
     context_flags: int = 0
 
     reserved: bytes = field(default_factory=lambda: b"\x00" * 16)
+
+    # Full IPv6 identity (wire v2 only). The u32 source_ip/dest_ip always
+    # carry first-4-bytes (bit2 set); these hold the complete addresses in
+    # network order when a v2 frame was decoded, zeros otherwise.
+    src_ipv6: bytes = field(default_factory=lambda: b"\x00" * 16)
+    dst_ipv6: bytes = field(default_factory=lambda: b"\x00" * 16)
 
 
 # ============================================================
@@ -207,7 +230,31 @@ class WireCodec:
 
     @staticmethod
     def decode_event(data: bytes) -> Optional[CanonicalEvent]:
-        """Decode CanonicalEvent from 109 bytes. Returns None if invalid."""
+        """Decode CanonicalEvent from 109 (v1) or 133 (v2) bytes.
+
+        Version-dispatched: v1 → frozen path (v6 sidecars stay zero);
+        v2 → full-address reconstruction. Anything else → None.
+        """
+        if len(data) < WIRE_PAYLOAD_SIZE:
+            return None
+        version = struct.unpack_from("<H", data, 4)[0]
+        if version == EVENT_VERSION:
+            return WireCodec._decode_v1(data)
+        if version != EVENT_VERSION_V2:
+            return None
+        if len(data) < WIRE_V2_PAYLOAD_SIZE:
+            return None  # v2 with 109 bytes is malformed, never truncated
+        e = WireCodec._decode_v1(data, EVENT_VERSION_V2)
+        if e is None:
+            return None
+        tail = data[WIRE_PAYLOAD_SIZE:WIRE_V2_PAYLOAD_SIZE]
+        e.src_ipv6 = e.source_ip.to_bytes(4, "big") + tail[0:12]
+        e.dst_ipv6 = e.dest_ip.to_bytes(4, "big") + tail[12:24]
+        return e
+
+    @staticmethod
+    def _decode_v1(data: bytes, expect_version: int = EVENT_VERSION) -> Optional[CanonicalEvent]:
+        """Frozen v1 decode path (109-byte prefix of either version)."""
         if len(data) < WIRE_PAYLOAD_SIZE:
             return None
         try:
@@ -233,9 +280,29 @@ class WireCodec:
         # Validate magic + version.
         if e.magic != EVENT_MAGIC:
             return None
-        if e.version != EVENT_VERSION:
+        if e.version != expect_version:
             return None
         return e
+
+    @staticmethod
+    def encode_event_v2(e: CanonicalEvent) -> bytes:
+        """Encode CanonicalEvent into 133 bytes (v1 prefix + v6 tail).
+
+        Requires bit2 (v2 is v6-identity only) and first-4-byte
+        consistency (BigEndian.Uint32(addr[:4]) == u32 field, Go rule).
+        """
+        if (e.context_flags & CONTEXT_V6_TRUNCATED) == 0:
+            raise ValueError("v2 requires ContextFlags bit2 (ipv6)")
+        if int.from_bytes(e.src_ipv6[:4], "big") != e.source_ip:
+            raise ValueError("src first-4 mismatch")
+        if int.from_bytes(e.dst_ipv6[:4], "big") != e.dest_ip:
+            raise ValueError("dst first-4 mismatch")
+        v1 = bytearray(WireCodec.encode_event(e))
+        v1[4:6] = EVENT_VERSION_V2.to_bytes(2, "little")
+        # struct_size is the sender in-memory layout tag (128), never the
+        # wire length -- patch normatively like the version field.
+        v1[6:8] = (128).to_bytes(2, "little")
+        return bytes(v1) + e.src_ipv6[4:16] + e.dst_ipv6[4:16]
 
     # ============================================================
     # Full wire frame encode/decode
@@ -257,6 +324,21 @@ class WireCodec:
         return WireCodec.encode_header(header) + payload
 
     @staticmethod
+    def encode_frame_v2(e: CanonicalEvent) -> bytes:
+        """Encode a complete v2 wire frame (149 bytes = 16 header + 133 payload)."""
+        payload = WireCodec.encode_event_v2(e)
+        assert len(payload) == WIRE_V2_PAYLOAD_SIZE
+        crc = zlib.crc32(payload) & 0xFFFFFFFF
+        header = WireHeader(
+            magic=WIRE_MAGIC,
+            version=WIRE_VERSION,
+            payload_type=int(PayloadType.canonical_event),
+            payload_length=WIRE_V2_PAYLOAD_SIZE,
+            crc32=crc,
+        )
+        return WireCodec.encode_header(header) + payload
+
+    @staticmethod
     def decode_frame(buf: bytes) -> Optional[CanonicalEvent]:
         """Decode a complete wire frame. Returns None on any validation failure."""
         if len(buf) < WIRE_HEADER_SIZE:
@@ -270,7 +352,7 @@ class WireCodec:
             return None
         if header.payload_type != int(PayloadType.canonical_event):
             return None
-        if header.payload_length != WIRE_PAYLOAD_SIZE:
+        if header.payload_length not in (WIRE_PAYLOAD_SIZE, WIRE_V2_PAYLOAD_SIZE):
             return None
         if len(buf) < WIRE_HEADER_SIZE + header.payload_length:
             return None
@@ -405,6 +487,53 @@ if __name__ == "__main__":
     # Test 8: reject short buffer
     assert WireCodec.decode_frame(b"\x00" * 10) is None
     print("  [OK] Rejects short buffer")
+
+    # Test 9: v2 round-trip preserves full IPv6 identity and bit2
+    v6 = CanonicalEvent(
+        event_id=6006,
+        source=EventSource.go_aggregator,
+        source_ip=0x20010DB8,
+        source_port=49152,
+        dest_ip=0x20010DB8,
+        dest_port=443,
+        event_type=EventType.forward,
+        severity=1,
+        context_flags=CONTEXT_V6_TRUNCATED,
+        src_ipv6=bytes([0x20, 0x01, 0x0D, 0xB8] + [0] * 11 + [0x01]),
+        dst_ipv6=bytes([0x20, 0x01, 0x0D, 0xB8] + [0] * 11 + [0x02]),
+    )
+    v2payload = WireCodec.encode_event_v2(v6)
+    assert len(v2payload) == WIRE_V2_PAYLOAD_SIZE, f"v2 payload must be 133 bytes, got {len(v2payload)}"
+    back6 = WireCodec.decode_event(v2payload)
+    assert back6 is not None
+    assert back6.src_ipv6 == v6.src_ipv6 and back6.dst_ipv6 == v6.dst_ipv6
+    assert back6.context_flags & CONTEXT_V6_TRUNCATED != 0
+    print("  [OK] v2 round-trip preserves full IPv6 identity and bit2")
+
+    # Test 10: v2 guards (flag, consistency, truncated frame)
+    nov6 = CanonicalEvent(source_ip=0x20010DB8)
+    try:
+        WireCodec.encode_event_v2(nov6)
+        raise AssertionError("v2 without bit2 must fail")
+    except ValueError:
+        pass
+    badv6 = CanonicalEvent(source_ip=0x0A000001, dest_ip=0x20010DB8,
+                            context_flags=CONTEXT_V6_TRUNCATED,
+                            src_ipv6=v6.src_ipv6, dst_ipv6=v6.dst_ipv6)
+    try:
+        WireCodec.encode_event_v2(badv6)
+        raise AssertionError("v2 with mismatched first-4 must fail")
+    except ValueError:
+        pass
+    assert WireCodec.decode_event(v2payload[:WIRE_PAYLOAD_SIZE]) is None
+    print("  [OK] v2 guards hold (flag, first-4, truncated frame)")
+
+    # Test 11: v2 framed round-trip (149 bytes)
+    frame2 = WireCodec.encode_frame_v2(v6)
+    assert len(frame2) == WIRE_V2_FRAME_SIZE
+    assert WireCodec.decode_frame(frame2) is not None
+    assert WireCodec.decode_frame(frame2).src_ipv6 == v6.src_ipv6
+    print("  [OK] v2 wire frame round-trip (149 bytes)")
 
     print()
     print("[PASS] All wire codec tests passed.")

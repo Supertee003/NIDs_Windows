@@ -4,7 +4,10 @@
 // process and feeds CanonicalEvents into the Zig fabric (nose_contract).
 //
 // Frame protocol (matches nose/pipe_writer.go):
-//   u32 LE length (always 109) + 109 raw canonical event bytes.
+//   u32 LE length (109 v1, 133 v2) + raw canonical event bytes.
+// v2 frames (T2-V6-022a) carry the full IPv6 tail; the queue identity
+// stays first-4-bytes + bit2 (IpcEvent has no v6 room) while the version
+// dispatch below proves the extended contract end to end.
 //
 // After each frame the reader validates schema via canonical.validate()
 // and submits through nose_contract.submitEvent(), routing the event
@@ -275,8 +278,8 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
             (@as(u32, lenBuf[2]) << 16) |
             (@as(u32, lenBuf[3]) << 24);
 
-        if (frameLen != FRAME_SIZE) {
-            std.log.warn("[NOSE PIPE] rejected frame length: {d}, expected {d}", .{ frameLen, FRAME_SIZE });
+        if (frameLen != FRAME_SIZE and frameLen != canonical.WIRE_V2_PAYLOAD_SIZE) {
+            std.log.warn("[NOSE PIPE] rejected frame length: {d}, expected {d} or {d}", .{ frameLen, FRAME_SIZE, canonical.WIRE_V2_PAYLOAD_SIZE });
             // Skip malformed frame: read and discard
             var discard: [256]u8 = undefined;
             var remaining = frameLen;
@@ -290,9 +293,10 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
             continue;
         }
 
-        // Read payload
-        var payload: [FRAME_SIZE]u8 = undefined;
-        if (!readExact(server, &payload, stopSignal)) {
+        // Read payload (v1 109 or v2 133 bytes, length-delimited)
+        var payload: [canonical.WIRE_V2_PAYLOAD_SIZE]u8 = undefined;
+        const payload_slice = payload[0..frameLen];
+        if (!readExact(server, payload_slice, stopSignal)) {
             std.log.warn("[NOSE PIPE] frame payload read failed: GetLastError={d}", .{GetLastError()});
             g_reader_stats.pipe_errors += 1;
             break;
@@ -300,15 +304,17 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
 
         g_reader_stats.frames_read += 1;
         _ = runtime_state.g_nose_frames_read.fetchAdd(1, .monotonic);
-        std.log.info("[NOSE PIPE] frame received: {d} bytes", .{FRAME_SIZE});
+        std.log.info("[NOSE PIPE] frame received: {d} bytes", .{frameLen});
 
-        // Deserialize and validate
-        const event = canonical.deserializeFromBytes(&payload) orelse {
+        // Deserialize with version dispatch (v1 frozen path, v2 full-IPv6
+        // tail). Queue identity is the v1-layout event in both cases.
+        const frame = canonical.deserializeDispatch(payload_slice) orelse {
             std.log.warn("[NOSE PIPE] canonical frame rejected by deserializer", .{});
             g_reader_stats.frames_rejected += 1;
             _ = runtime_state.g_nose_frames_rejected.fetchAdd(1, .monotonic);
             continue;
         };
+        const event = frame.event;
 
         if (event.event_id == previous_connection_event_id) {
             _ = runtime_state.g_nose_duplicate_event_ids.fetchAdd(1, .monotonic);
@@ -346,4 +352,11 @@ test "PipeReaderStats default zeros" {
 
 test "FRAME_SIZE matches canonical wire payload" {
     try std.testing.expectEqual(canonical.WIRE_PAYLOAD_SIZE, FRAME_SIZE);
+}
+
+test "reader accepts v1 and v2 frame lengths" {
+    // Contract pin: the length-delimited pipe carries 109 (v1, frozen) or
+    // 133 (v2, full IPv6 tail) — anything else is rejected upstream.
+    try std.testing.expectEqual(@as(usize, 109), canonical.WIRE_PAYLOAD_SIZE);
+    try std.testing.expectEqual(@as(usize, 133), canonical.WIRE_V2_PAYLOAD_SIZE);
 }

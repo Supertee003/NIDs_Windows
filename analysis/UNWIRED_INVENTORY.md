@@ -56,7 +56,10 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
 - [ ] `forensics.replay` handler ← replay_verifier
 - [ ] FED-XDR verdict: permanent test-only or Project 4+ cluster
 - [ ] policy_signing onto enforcement path + trust_store CNG + two-person API
-- [ ] IPv6 full (contract v2) — v1 marks bit2, see T2-V6-016
+- [ ] IPv6 full (contract v2) — wire v2 decode-ready T2-V6-022a (Go/Zig/
+  C++/Python dispatch + 006 vector + bit2 preserved); REMAINING: nose
+  emitting v2 on the live pipe, detection/flow/forensic plumbing of
+  full addresses (u32 identity + bit2 guard unchanged)
 - [ ] duplicate `dispatcher` removal — BLOCKED 2026-10-04 (verified, 25 E2
   pins green): `tests/e2e/test_t14_windows_golden_path.py`
   (`test_incident_id_survives_dispatcher`,

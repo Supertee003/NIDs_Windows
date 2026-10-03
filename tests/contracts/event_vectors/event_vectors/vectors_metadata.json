@@ -176,6 +176,43 @@
         "context_flags": 4294967295,
         "reserved": "ffffffffffffffffffffffffffffffff"
       }
+    },
+    {
+      "file": "event_v2_006.bin",
+      "description": "IPv6 forward, full identity (2001:db8::1 -> 2001:db8::2:443)",
+      "sha256": "33ba2e8c283b38d00769d828336f2ea841b9676fae24b9c7f99a3539f37d3517",
+      "size": 133,
+      "fields": {
+        "magic": 1095059249,
+        "version": 2,
+        "struct_size": 128,
+        "event_id": 6006,
+        "timestamp_ms": 1700000006000,
+        "monotonic_ns": 6000000000,
+        "source": 9,
+        "source_ip": 536939960,
+        "source_port": 49152,
+        "dest_ip": 536939960,
+        "dest_port": 443,
+        "session_id": 6060,
+        "protocol": 6,
+        "direction": 0,
+        "layer_id": 0,
+        "is_pipe": 0,
+        "event_type": 2,
+        "severity": 1,
+        "rule_id": 0,
+        "ruleset_version": 3,
+        "payload_length": 1500,
+        "payload_hash": 0,
+        "policy_action": 0,
+        "enforcement_status": 0,
+        "defcon_impact": 5,
+        "context_flags": 4,
+        "reserved": "00000000000000000000000000000000",
+        "src_tail": "000000000000000000000001",
+        "dst_tail": "000000000000000000000002"
+      }
     }
   ]
 }

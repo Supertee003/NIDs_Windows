@@ -229,6 +229,11 @@ type CanonicalEvent struct {
 	ProcType, Integrity, HidsFlag                 byte
 	NodeID                                        uint32
 	Confidence                                    byte
+	// Full IPv6 identity (wire v2 only, T2-V6-022a). The u32 SourceIP/
+	// DestIP fields always carry first-4-bytes (bit2 set); these hold
+	// the complete 128-bit addresses in network order when a v2 frame
+	// was decoded, zero otherwise. Never on the v1 wire.
+	Src6, Dst6 [16]byte
 }
 
 // ── ContextFlags bits (frozen v1 vocabulary, all languages) ──
@@ -254,11 +259,20 @@ const (
 // EventWireSize is the canonical wire format size.
 const EventWireSize = 109
 
+// Wire v2 (T2-V6-022a, see shared/protocol/wire_v2.md): v1 109 bytes plus
+// a 24-byte tail holding source bytes [4..16] then dest bytes [4..16] in
+// network order. v1 is frozen; v2 is additive.
+const EventV2WireSize = 133
+const V6TailSize = 24
+
 // EventMagic is the canonical magic number.
 var EventMagic = uint32(0x41454731)
 
 // EventSchemaVersion is the wire protocol version.
 var EventSchemaVersion = uint16(1)
+
+// EventSchemaVersionV2 marks frames carrying the 24-byte IPv6 tail.
+var EventSchemaVersionV2 = uint16(2)
 var DefaultDevStructSize = uint16(128) // used by Go; Zig uses @sizeOf
 
 // validSource mirrors Zig deserializeFromBytes: 0-16 or 255.
@@ -388,6 +402,75 @@ func (e *CanonicalEvent) Deserialize(b [EventWireSize]byte) bool {
 		Confidence:        b[93+ResOffConfidence],
 	}
 	return true
+}
+
+// SerializeV2 encodes the event as a 133-byte v2 frame: frozen v1 bytes
+// with schema version 2 plus the IPv6 tail. Requires ContextV6Truncated
+// (v2 is v6-identity only) and first-4-byte consistency between the u32
+// fields (BigEndian.Uint32(addr[:4])) and the full addresses.
+func (e *CanonicalEvent) SerializeV2() ([EventV2WireSize]byte, error) {
+	var out [EventV2WireSize]byte
+	if e.ContextFlags&ContextV6Truncated == 0 {
+		return out, errors.New("canonical: v2 requires ContextV6Truncated")
+	}
+	if binary.BigEndian.Uint32(e.Src6[:4]) != e.SourceIP {
+		return out, errors.New("canonical: src first-4 mismatch")
+	}
+	if binary.BigEndian.Uint32(e.Dst6[:4]) != e.DestIP {
+		return out, errors.New("canonical: dst first-4 mismatch")
+	}
+	v1, err := e.Serialize()
+	if err != nil {
+		return out, err
+	}
+	copy(out[:], v1[:])
+	binary.LittleEndian.PutUint16(out[4:6], EventSchemaVersionV2)
+	copy(out[EventWireSize:EventWireSize+12], e.Src6[4:16])
+	copy(out[EventWireSize+12:], e.Dst6[4:16])
+	return out, nil
+}
+
+// DeserializeDispatch decodes a length-delimited canonical payload of
+// either version: 109-byte v1 (Src6/Dst6 left zero, truncated semantics
+// unchanged) or 133-byte v2 (full addresses reconstructed). Anything
+// else is rejected; version 2 with 109 bytes is malformed, never
+// silently truncated.
+func DeserializeDispatch(b []byte) (*CanonicalEvent, error) {
+	if len(b) < EventWireSize {
+		return nil, errors.New("canonical: short buffer")
+	}
+	ver := binary.LittleEndian.Uint16(b[4:6])
+	if ver == EventSchemaVersion {
+		var fixed [EventWireSize]byte
+		copy(fixed[:], b[:EventWireSize])
+		ev := &CanonicalEvent{}
+		if !ev.Deserialize(fixed) {
+			return nil, errors.New("canonical: v1 rejected")
+		}
+		return ev, nil
+	}
+	if ver != EventSchemaVersionV2 {
+		return nil, errors.New("canonical: unknown version")
+	}
+	if len(b) < EventV2WireSize {
+		return nil, errors.New("canonical: truncated v2 frame")
+	}
+	var fixed [EventWireSize]byte
+	copy(fixed[:], b[:EventWireSize])
+	ev := &CanonicalEvent{}
+	// Decode the v1 prefix with the frozen validator, then lift the
+	// version gate: Deserialize demands schema 1, so patch a copy.
+	binary.LittleEndian.PutUint16(fixed[4:6], EventSchemaVersion)
+	if !ev.Deserialize(fixed) {
+		return nil, errors.New("canonical: v2 prefix rejected")
+	}
+	// First-4 on the wire is LE(u32-BE-value); restore network order so
+	// Src6/Dst6 hold canonical byte addresses (mirrors Zig sidecar).
+	binary.BigEndian.PutUint32(ev.Src6[:4], ev.SourceIP)
+	binary.BigEndian.PutUint32(ev.Dst6[:4], ev.DestIP)
+	copy(ev.Src6[4:16], b[EventWireSize:EventWireSize+12])
+	copy(ev.Dst6[4:16], b[EventWireSize+12:EventWireSize+24])
+	return ev, nil
 }
 
 // ── SourceKind classification (cross-language T2 mapping) ───────

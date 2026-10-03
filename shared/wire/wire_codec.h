@@ -33,8 +33,17 @@ static constexpr size_t   WIRE_MAX_PAYLOAD    = 65536;
 
 static constexpr uint32_t EVENT_MAGIC         = 0x41454731u; // "AEG1"
 static constexpr uint16_t EVENT_VERSION       = 1;
-static constexpr size_t   WIRE_PAYLOAD_SIZE   = 109; // canonical event payload
+static constexpr size_t   WIRE_PAYLOAD_SIZE   = 109; // canonical event payload (v1, frozen)
 static constexpr size_t   WIRE_FRAME_SIZE     = WIRE_HEADER_SIZE + WIRE_PAYLOAD_SIZE; // 125
+
+// Wire v2 (T2-V6-022a, see shared/protocol/wire_v2.md): v1 109 bytes plus
+// a 24-byte tail (source bytes [4..16] then dest bytes [4..16], network
+// order). Bit2 keeps its meaning in both versions.
+static constexpr uint16_t EVENT_VERSION_V2    = 2;
+static constexpr size_t   V6_TAIL_SIZE        = 24;
+static constexpr size_t   WIRE_V2_PAYLOAD_SIZE = WIRE_PAYLOAD_SIZE + V6_TAIL_SIZE; // 133
+static constexpr size_t   WIRE_V2_FRAME_SIZE  = WIRE_HEADER_SIZE + WIRE_V2_PAYLOAD_SIZE; // 149
+static constexpr uint32_t CONTEXT_V6_TRUNCATED = (1u << 2);
 
 enum class PayloadType : uint16_t {
     canonical_event = 0,
@@ -53,6 +62,14 @@ enum class EventSource : uint8_t {
     cpp_bridge      = 6,
     rust_shield     = 7,
     go_aggregator   = 8,
+    npcap_sensor    = 9,
+    host_telemetry  = 10,
+    ml_detector     = 11,
+    cluster_federation = 12,
+    process_sensor  = 13,
+    file_sensor     = 14,
+    registry_sensor = 15,
+    replay_sensor   = 16,
     external        = 255,
 };
 
@@ -118,6 +135,12 @@ struct CanonicalEvent {
     uint32_t context_flags;
 
     uint8_t reserved[16];
+
+    // Full IPv6 identity (wire v2 only). The u32 source_ip/dest_ip always
+    // carry first-4-bytes (bit2 set); these hold complete addresses in
+    // network order when a v2 frame was decoded, zeros otherwise.
+    uint8_t src_ipv6[16];
+    uint8_t dst_ipv6[16];
 };
 
 static_assert(sizeof(CanonicalEvent) >= 93, "CanonicalEvent must hold all fields");
@@ -325,6 +348,74 @@ inline bool aegis_wire_decode_event(const uint8_t* bytes, size_t bytes_len, Cano
     return true;
 }
 
+// --- v2 helpers (full IPv6 identity) ---
+
+// Big-endian u32 of the first 4 network-order bytes (Go derivation rule:
+// SourceIP == BigEndian.Uint32(addr[:4])).
+inline uint32_t v6_first4_be(const uint8_t addr[16]) {
+    return (static_cast<uint32_t>(addr[0]) << 24) |
+           (static_cast<uint32_t>(addr[1]) << 16) |
+           (static_cast<uint32_t>(addr[2]) << 8) |
+           static_cast<uint32_t>(addr[3]);
+}
+
+inline void v6_first4_write_be(uint32_t v, uint8_t out[16]) {
+    out[0] = (uint8_t)((v >> 24) & 0xFF);
+    out[1] = (uint8_t)((v >> 16) & 0xFF);
+    out[2] = (uint8_t)((v >> 8) & 0xFF);
+    out[3] = (uint8_t)(v & 0xFF);
+}
+
+// Encode CanonicalEvent into buf[0..133] (v1 prefix + v6 tail).
+// Returns 133 on success, 0 on failure. Requires bit2 + first-4 consistency.
+inline size_t aegis_wire_encode_event_v2(uint8_t* buf, size_t buf_len, const CanonicalEvent& e) {
+    if (buf_len < WIRE_V2_PAYLOAD_SIZE) return 0;
+    if ((e.context_flags & CONTEXT_V6_TRUNCATED) == 0) return 0;
+    if (v6_first4_be(e.src_ipv6) != e.source_ip) return 0;
+    if (v6_first4_be(e.dst_ipv6) != e.dest_ip) return 0;
+    size_t n = aegis_wire_encode_event(buf, buf_len, e);
+    if (n != WIRE_PAYLOAD_SIZE) return 0;
+    // Patch the version field (logical event stays v1-layout, version 1).
+    write_u16_le(buf + 4, EVENT_VERSION_V2);
+    ::memcpy(buf + WIRE_PAYLOAD_SIZE, e.src_ipv6 + 4, 12);
+    ::memcpy(buf + WIRE_PAYLOAD_SIZE + 12, e.dst_ipv6 + 4, 12);
+    return WIRE_V2_PAYLOAD_SIZE;
+}
+
+// Decode a v2 frame (133 bytes) with full-address reconstruction.
+// Returns true on success, false on any validation failure.
+inline bool aegis_wire_decode_event_v2(const uint8_t* bytes, size_t bytes_len, CanonicalEvent& out) {
+    if (bytes_len < WIRE_V2_PAYLOAD_SIZE) return false;
+    // Decode the v1 prefix with the frozen validator, then lift the
+    // version gate: decode_event demands schema 1.
+    uint8_t prefix[WIRE_PAYLOAD_SIZE];
+    ::memcpy(prefix, bytes, WIRE_PAYLOAD_SIZE);
+    write_u16_le(prefix + 4, EVENT_VERSION);
+    if (!aegis_wire_decode_event(prefix, WIRE_PAYLOAD_SIZE, out)) return false;
+    // Restore the as-read version, then reconstruct network-order addresses.
+    out.version = EVENT_VERSION_V2;
+    v6_first4_write_be(out.source_ip, out.src_ipv6);
+    ::memcpy(out.src_ipv6 + 4, bytes + WIRE_PAYLOAD_SIZE, 12);
+    v6_first4_write_be(out.dest_ip, out.dst_ipv6);
+    ::memcpy(out.dst_ipv6 + 4, bytes + WIRE_PAYLOAD_SIZE + 12, 12);
+    return true;
+}
+
+// Version-dispatched decode: 109-byte v1 (sidecars zeroed) or 133-byte v2.
+inline bool aegis_wire_decode_event_dispatch(const uint8_t* bytes, size_t bytes_len, CanonicalEvent& out) {
+    if (bytes_len < WIRE_PAYLOAD_SIZE) return false;
+    uint16_t ver = (uint16_t)bytes[4] | ((uint16_t)bytes[5] << 8);
+    if (ver == EVENT_VERSION) {
+        bool ok = aegis_wire_decode_event(bytes, bytes_len, out);
+        if (!ok) return false;
+        ::memset(out.src_ipv6, 0, 16);
+        ::memset(out.dst_ipv6, 0, 16);
+        return true;
+    }
+    if (ver != EVENT_VERSION_V2) return false;
+    return aegis_wire_decode_event_v2(bytes, bytes_len, out);
+}
+
 // ============================================================
 // Full wire frame encode (header + canonical event payload)
 // ============================================================
@@ -362,15 +453,17 @@ inline bool aegis_wire_decode_frame(const uint8_t* buf, size_t buf_len, Canonica
     if (h.magic != WIRE_MAGIC) return false;
     if (h.version != WIRE_VERSION) return false;
     if (h.payload_type != static_cast<uint16_t>(PayloadType::canonical_event)) return false;
-    if (h.payload_length != WIRE_PAYLOAD_SIZE) return false;
+    if (h.payload_length != WIRE_PAYLOAD_SIZE && h.payload_length != WIRE_V2_PAYLOAD_SIZE) return false;
     if (buf_len < WIRE_HEADER_SIZE + h.payload_length) return false;
 
     // Verify CRC32.
     uint32_t computed_crc = aegis_crc32(buf + WIRE_HEADER_SIZE, h.payload_length);
     if (computed_crc != h.crc32) return false;
 
-    // Decode canonical event.
-    return aegis_wire_decode_event(buf + WIRE_HEADER_SIZE, h.payload_length, out);
+    // Decode canonical event (version-dispatched).
+    if (h.payload_length == WIRE_PAYLOAD_SIZE)
+        return aegis_wire_decode_event(buf + WIRE_HEADER_SIZE, h.payload_length, out);
+    return aegis_wire_decode_event_v2(buf + WIRE_HEADER_SIZE, h.payload_length, out);
 }
 
 } // namespace aegis

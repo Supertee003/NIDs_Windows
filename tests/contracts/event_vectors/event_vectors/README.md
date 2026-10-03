@@ -38,3 +38,9 @@ No struct memcpy, no pointer cast.
 - SHA256: `5cd1d8fdcbf10ef9d4706164572ee422e02a4ad15c0d3e42b1e387a7295fe177`
 - Magic at offset 0: 0x31474541
 
+### event_v2_006.bin
+- Description: IPv6 forward, full identity (2001:db8::1 -> 2001:db8::2:443)
+- Size: 133 bytes (v2: 109 + 24 tail)
+- SHA256: `33ba2e8c283b38d00769d828336f2ea841b9676fae24b9c7f99a3539f37d3517`
+- Magic at offset 0: 0x31474541
+
