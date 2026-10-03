@@ -385,21 +385,26 @@ def build_sensor_payload(match_name, rule_id, severity, src_ip, dst_ip="0.0.0.0"
     }
 
 
-def send_to_sensor_pipe(payload: dict) -> str:
-    """Deliver one finding to the daemon sensor pipe.
+# T2-BRAIN-023b: Cython is the primary Python->C edge (standing rule).
+# sensor_pipe wraps kernel32 pipe I/O in C; the ctypes sender below stays
+# as the transport fallback so the brain keeps working with no .pyd built.
+try:
+    from brain.cython.sensor_pipe import send_bytes as _cython_send_bytes
+except Exception:  # noqa: BLE001 (missing/stale .pyd must never break the brain)
+    _cython_send_bytes = None
 
-    Returns SENT, FAILED, or DISABLED (opt-in flag off). FAILED is an
-    operator-visible transport failure, never a detection claim.
+
+def _send_via_ctypes(pipe_name: str, data: bytes) -> str:
+    """ctypes transport fallback for the sensor pipe (no .pyd case).
+
+    Byte-for-byte the same contract as the Cython sender: SENT/FAILED.
     """
-    if not SENSOR_PIPE_ENABLED:
-        return "DISABLED"
     try:
         import ctypes
         from ctypes import wintypes
-        data = json.dumps(payload).encode("utf-8")
         k32 = ctypes.WinDLL("kernel32", use_last_error=True)
         handle = k32.CreateFileW(
-            SENSOR_PIPE_NAME, 0x40000000 | 0x80000000, 0, None, 3, 0, None,
+            pipe_name, 0x40000000 | 0x80000000, 0, None, 3, 0, None,
         )
         if handle == wintypes.HANDLE(-1).value:
             return "FAILED"
@@ -413,6 +418,24 @@ def send_to_sensor_pipe(payload: dict) -> str:
         return "SENT"
     except Exception:
         return "FAILED"
+
+
+def send_to_sensor_pipe(payload: dict) -> str:
+    """Deliver one finding to the daemon sensor pipe.
+
+    Returns SENT, FAILED, or DISABLED (opt-in flag off). FAILED is an
+    operator-visible transport failure, never a detection claim.
+    Primary path is the Cython sender; ctypes is the fallback.
+    """
+    if not SENSOR_PIPE_ENABLED:
+        return "DISABLED"
+    data = json.dumps(payload).encode("utf-8")
+    if _cython_send_bytes is not None:
+        try:
+            return _cython_send_bytes(SENSOR_PIPE_NAME, data)
+        except Exception:
+            pass  # fall through to the ctypes transport fallback
+    return _send_via_ctypes(SENSOR_PIPE_NAME, data)
 
 
 # ====== Bridge Event Polling ======

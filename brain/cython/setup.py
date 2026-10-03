@@ -30,6 +30,14 @@ extensions = [
         extra_compile_args=["-O3", "-Wall"],
         define_macros=[("NDEBUG", None)],
     ),
+    Extension(
+        # T2-BRAIN-023b: Tier-2 sensor-pipe sender (kernel32 named-pipe
+        # client). kernel32 is default-linked on Windows: no extra libs.
+        "sensor_pipe",
+        sources=["sensor_pipe.pyx"],
+        extra_compile_args=["-O3", "-Wall"],
+        define_macros=[("NDEBUG", None)],
+    ),
 ]
 
 setup(

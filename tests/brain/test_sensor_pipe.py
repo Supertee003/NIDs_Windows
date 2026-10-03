@@ -8,21 +8,29 @@ brain_tier2 provenance. Pinned here:
       applyJsonMetadata parser accepts.
   B3. Transport is opt-in only (AEGIS_SENSOR_PIPE=1); default off means
       DISABLED and no behavior change, no pipe handle is ever opened.
+  B4. (T2-BRAIN-023b) The C edge is Cython, not ctypes: the compiled
+      sender reports FAILED honestly on a missing pipe, and the ctypes
+      fallback keeps the identical contract when no .pyd is built.
 """
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from brain.windows_brain import (  # noqa: E402
     SENSOR_PIPE_ENABLED,
+    _send_via_ctypes,
     build_sensor_payload,
     fnv1a32,
     send_to_sensor_pipe,
 )
+
+MISSING_PIPE = "\\\\.\\pipe\\aegis_probe_nonexistent_9z"
 
 
 def test_fnv1a32_matches_zig_rule_id_space():
@@ -42,3 +50,15 @@ def test_sensor_payload_shape_and_rule_hashing():
 def test_sensor_pipe_disabled_by_default_reports_disabled():
     assert SENSOR_PIPE_ENABLED is False
     assert send_to_sensor_pipe({"source": "brain_tier2"}) == "DISABLED"
+
+
+def test_ctypes_fallback_reports_failed_on_missing_pipe():
+    assert _send_via_ctypes(MISSING_PIPE, b'{"a":1}') == "FAILED"
+
+
+def test_cython_sender_reports_failed_on_missing_pipe():
+    sensor_pipe = pytest.importorskip(
+        "brain.cython.sensor_pipe",
+        reason="sensor_pipe.pyd not built (fallback path active)",
+    )
+    assert sensor_pipe.send_bytes(MISSING_PIPE, b'{"a":1}') == "FAILED"
