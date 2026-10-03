@@ -57,7 +57,18 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
 - [ ] FED-XDR verdict: permanent test-only or Project 4+ cluster
 - [ ] policy_signing onto enforcement path + trust_store CNG + two-person API
 - [ ] IPv6 full (contract v2) — v1 marks bit2, see T2-V6-016
-- [ ] duplicate `dispatcher` removal (needs test-harness migration first)
+- [ ] duplicate `dispatcher` removal — BLOCKED 2026-10-04 (verified, 25 E2
+  pins green): `tests/e2e/test_t14_windows_golden_path.py`
+  (`test_incident_id_survives_dispatcher`,
+  `test_dispatcher_is_sole_orchestrator`) reads `src/policy/dispatcher.zig`
+  and pins it as SOLE orchestrator; `tests/forensics/
+  test_t12_forensics_replay.py::test_dispatcher_writes_trace_for_every_decision`
+  reads BOTH `dispatcher.zig` + `dispatcher_phase_b.zig`. Zero @import
+  edges (only `reliability/lifecycle.zig` imports `dispatcher.zig`, itself
+  unimported), but deletion breaks T14/T12. Needs architecture decision
+  first: migrate T14/T12 pins to `pipeline/event_processor` +
+  `policy/action_dispatcher` (aligns with T1-DISP-018 quarantine) or
+  re-promote dispatcher — NOT silent removal.
 - [ ] flow `is_ipv6` plumbing (normalize hardcodes false)
 
 ## KNOWN-OPEN robustness (filed, unscheduled)
