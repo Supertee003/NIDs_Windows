@@ -733,6 +733,8 @@ def get_health_payload() -> Dict[str, Any]:
             "compatibility_aliases": {"rust_shield": "rust_pep"},
             "state": effective_state,
             "runtime_state": daemon_health.get("runtime_state", daemon_health.get("state", "DEGRADED")),
+            "rules_loaded": int(daemon_health.get("rules_loaded", 0) or 0),
+            "policies_loaded": int(daemon_health.get("policies_loaded", 0) or 0),
             "pid": daemon_health.get("pid"),
             "version": daemon_health.get("version", "6.0.0"),
             "uptime_ms": daemon_health.get("uptime_ms", 0),
@@ -937,43 +939,71 @@ def compute_health_state() -> Tuple[str, bool]:
 def verify_authority_invariant() -> bool:
     """Verify that the Rust PEP is the sole enforcement authority.
 
-    Checks:
-    1. No Zig module calls privileged WFP transport directly (wfp_ioctl.block_ip/unblock_ip)
-    2. shield/ PEP/WFP exports are quarantined (marked, not active)
-    3. All enforcement requests go through aegisctl → Rust PEP FFI
+    Static source checks (both must hold):
+    1. No Zig module calls privileged WFP/bridge mutation directly
+       (wfp_ioctl.block_ip/unblock_ip, Fwpm*, aegis_bridge_block_ip).
+    2. shield/ contains no WFP/mutation surface, and no Zig module links
+       shield symbols (sec_monitor/aegis_shield_* FFI).
 
-    Returns True if the invariant holds.
+    Comment lines are stripped before matching so documentation cannot
+    hide (or fake) a call site. Returns True if the invariant holds.
     """
     import re
 
-    # Check 1: No privileged WFP calls in src/
+    def code_text(path: Path) -> str:
+        try:
+            lines = []
+            for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+                lines.append(line.split("//", 1)[0])
+            return "\n".join(lines)
+        except Exception:
+            return ""
+
+    # Check 1: No privileged WFP calls in src/ (code, not comments).
     wfp_privileged_patterns = [
         r"\bwfp_ioctl\.(?:block_ip|unblock_ip)\s*\(",
-        r"\bFwpmEngineOpen\b",
-        r"\bFwpmFilterAdd\b",
+        r"\bFwpmEngineOpen\w*\s*\(",
+        r"\bFwpmFilterAdd\w*\s*\(",
+        r"\baegis_bridge_block_ip\s*\(",
     ]
+    # Fail-closed stubs whose entire body refuses mutation.
+    check1_allowlist = {"wfp_production.zig"}
 
-    src_dir = TOOLS_DIR.parent.parent / "src"
+    src_dir = REPO_ROOT / "src"
     if src_dir.exists():
         for path in src_dir.rglob("*.zig"):
-            try:
-                text = path.read_text(encoding="utf-8", errors="ignore")
-                for pat in wfp_privileged_patterns:
-                    if re.search(pat, text):
-                        # Allow wfp_production.zig as the authoritative module
-                        if "wfp_production" not in str(path):
-                            return False
-            except Exception:
-                pass
+            if path.name in check1_allowlist:
+                continue
+            text = code_text(path)
+            for pat in wfp_privileged_patterns:
+                if re.search(pat, text):
+                    return False
 
-    # Check 2: shield/ exports are quarantined, not active
-    shield_dir = TOOLS_DIR.parent.parent / "shield"
+    # Check 2a: shield/ itself must not grow a WFP/mutation surface.
+    shield_mutation_patterns = [
+        r"Wfp|FWPM|Fwpm",
+        r"DeviceIoControl|CreateFileW?|WriteFile",
+        r"block_flow|unblock_filter|BLOCK_FLOW",
+    ]
+    shield_dir = REPO_ROOT / "shield" / "src"
     if shield_dir.exists():
-        try:
-            # Check that no caller outside shield references shield PEP symbols
-            # (This is a code-audit check, not a runtime check)
-            pass
-        except Exception:
-            pass
+        for path in shield_dir.rglob("*.rs"):
+            text = code_text(path)
+            for pat in shield_mutation_patterns:
+                if re.search(pat, text):
+                    return False
+
+    # Check 2b: no Zig module links shield symbols.
+    shield_link_patterns = [
+        r'extern\s+"sec_monitor"',
+        r"\baegis_shield_\w+\s*\(",
+        r"sec_monitor\.dll",
+    ]
+    if src_dir.exists():
+        for path in src_dir.rglob("*.zig"):
+            text = code_text(path)
+            for pat in shield_link_patterns:
+                if re.search(pat, text):
+                    return False
 
     return True

@@ -138,8 +138,9 @@ pub extern "aegis_ipc" fn aegis_bridge_shutdown() callconv(.C) void;
 pub extern "aegis_ipc" fn aegis_bridge_push_event(event: *const IpcEvent) callconv(.C) i32;
 pub extern "aegis_ipc" fn aegis_bridge_pop_event(event: *IpcEvent) callconv(.C) i32;
 pub extern "aegis_ipc" fn aegis_bridge_get_defcon() callconv(.C) u32;
-pub extern "aegis_ipc" fn aegis_bridge_block_ip(ip: u32) callconv(.C) i32;
-pub extern "aegis_ipc" fn aegis_bridge_unblock_ip(ip: u32) callconv(.C) i32;
+// NOTE (quarantine): aegis_bridge block_ip/unblock_ip externs are intentionally
+// absent. Privileged mutation is owned solely by the Rust PEP receipt path;
+// no Zig module may link a direct bridge-mutation symbol.
 
 // ============================================================================
 // Contract 4: Zig Core → Rust PEP (FFI)
