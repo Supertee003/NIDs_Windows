@@ -29,6 +29,14 @@ int main() {
             if (buf[0] != 0x31 || buf[3] != 0x41) {
                 fprintf(stderr, "FAIL: %s magic\n", names[i]); return 4;
             }
+            // Keepalive honesty: etw/fim/registry first frames are forward(2)
+            // telemetry, never match(1). (process may report real new-PID
+            // observations and is exempt.)
+            if (i < 3) {
+                uint32_t etype = (uint32_t)buf[57] | ((uint32_t)buf[58] << 8) |
+                                 ((uint32_t)buf[59] << 16) | ((uint32_t)buf[60] << 24);
+                if (etype != 2) { fprintf(stderr, "FAIL: %s keepalive type=%u\n", names[i], etype); return 6; }
+            }
         }
     }
 
