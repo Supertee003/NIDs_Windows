@@ -106,4 +106,9 @@ scripts/kali_attacks/
 scripts/gen_kali_22.py
 scripts/kali_attack_nids.py
 # --- Admin evidence (runtime state) ---
-admin-evidence/phase3-lifecycle-recovery-latest.txt
+# Per-run gate receipts, probes, and audits land here (see README Project 2
+# Runtime Gate). Never tracked; EVIDENCE_INDEX.json is the committed index.
+admin-evidence/
+# --- Generated reports / scratch (runtime artifacts, not part of core repo) ---
+reports/
+tmp_hbc/
