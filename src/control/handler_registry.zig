@@ -397,11 +397,18 @@ const handlers = struct {
         return std.fmt.allocPrint(a, "{{\"valid\":true,\"rules_checked\":{}}}", .{state_mod.g_rules_loaded}) catch null;
     }
 
-    fn rulesReload(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
+    fn rulesReload(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        const previous_count = state_mod.g_rules_loaded;
         const new_count = rules_loader.reloadRules();
-        // P2: Update global rules counter (pipeline thread reads this atomically)
+        if (new_count == 0) {
+            ctx.failure_code = "RULES_RELOAD_EMPTY";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "reload produced zero active rules; previous ruleset was retained";
+            return null;
+        }
+        // Update global rules counter (pipeline thread reads this atomically).
         state_mod.g_rules_loaded = new_count;
-        return std.fmt.allocPrint(a, "{{\"rules_loaded\":{},\"status\":\"reloaded\"}}", .{new_count}) catch null;
+        return std.fmt.allocPrint(a, "{{\"rules_loaded\":{},\"previous_rules_loaded\":{},\"status\":\"reloaded\",\"postcondition\":\"ACTIVE\"}}", .{ new_count, previous_count }) catch null;
     }
 
     fn eventsCount(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
@@ -748,7 +755,10 @@ const handlers = struct {
             provider_ready,
             provider_ready and gate_open,
             if (gate_open) "open" else "closed",
-            if (provider_ready and gate_open) "provider-attested-enforcement-enabled" else if (provider_ready) "provider-attested-awaiting-controlled-proof" else "detection-only",
+            // Project 2 observe-only contract: a closed prevention gate must
+            // always project detection-only, even when the PEP provider is
+            // ready. Provider readiness alone is never active enforcement.
+            if (gate_open and provider_ready) "provider-attested-enforcement-enabled" else "detection-only",
         }) catch null;
     }
 
