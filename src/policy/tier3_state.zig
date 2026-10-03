@@ -82,16 +82,11 @@ pub const Tier3Subsystem = struct {
     init_attempted: bool = false,
 
     /// Check if enforcement actions are allowed.
-    /// P0.2: Honors AEGIS_FAIL_OPEN=1 env var (operator override).
+    /// Fail-closed: only READY allows enforcement. There is no environment
+    /// override by design — an operator-accessible env var must never be able
+    /// to re-enable enforcement while Tier-3 is ABSENT/LOADING/FAILED/DEGRADED.
     pub fn canEnforce(self: *const Tier3Subsystem) bool {
-        if (self.state.isEnforcementAllowed()) return true;
-        // P0.2: AEGIS_FAIL_OPEN=1 override — operator can force fail-open
-        if (isFailOpenOverride()) {
-            // Audit log: override detected, security degraded
-            std.log.warn("[TIER3] AEGIS_FAIL_OPEN=1 override active — enforcement enabled despite Tier-3 state={s}", .{self.state.toString()});
-            return true;
-        }
-        return false;
+        return self.state.isEnforcementAllowed();
     }
 
     /// Check if privileged enforcement (WFP block/unblock) is allowed.
@@ -156,18 +151,6 @@ pub const Tier3Subsystem = struct {
 /// Global Tier-3 subsystem state. Initialized at daemon startup.
 pub var g_tier3 = Tier3Subsystem{};
 
-/// P0.2: Check if AEGIS_FAIL_OPEN=1 env var is set.
-/// When set, the system overrides Tier-3 state to allow enforcement.
-/// WARNING: This is a security override — all state transitions are audit-logged.
-fn isFailOpenOverride() bool {
-    if (std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_FAIL_OPEN")) |val| {
-        defer std.heap.page_allocator.free(val);
-        return std.mem.eql(u8, val, "1");
-    } else |_| {
-        return false;
-    }
-}
-
 /// Audit log for Tier-3 state transitions.
 pub fn auditTransition(old: Tier3State, new: Tier3State, reason: []const u8) void {
     if (old == new) return;
@@ -220,6 +203,17 @@ test "Tier3Subsystem: state transitions" {
     try std.testing.expectEqual(Tier3State.degraded, sub.state);
     try std.testing.expect(!sub.canEnforce());
     try std.testing.expect(!sub.isHealthy());
+}
+
+test "Tier3Subsystem: canEnforce equals isEnforcementAllowed in every state (no override)" {
+    // Fail-closed pin: no environment variable or operator flag may make
+    // canEnforce disagree with the state machine, in any state.
+    const states = [_]Tier3State{ .absent, .loading, .ready, .failed, .degraded };
+    for (states) |st| {
+        var sub = Tier3Subsystem{ .state = st };
+        try std.testing.expectEqual(st.isEnforcementAllowed(), sub.canEnforce());
+        try std.testing.expectEqual(st.isEnforcementAllowed(), sub.canEnforcePrivileged());
+    }
 }
 
 test "Tier3Subsystem: health status strings" {
