@@ -733,11 +733,62 @@ const handlers = struct {
         return null;
     }
 
-    fn forensicsReplay(_: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
-        ctx.failure_code = "NOT_IMPLEMENTED";
-        ctx.failure_state = "UNAVAILABLE";
-        ctx.failure_message = "deterministic observe-only replay is not implemented";
-        return null;
+    fn forensicsReplay(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        // Integrity-only observe replay (T1-REPLAY-021). Exports the retained
+        // forensic ring, re-verifies CRC + hash chain, and reports the source
+        // range with both hashes. Pipeline re-execution is deliberately NOT
+        // performed here: replaying events through live detection/policy/PEP
+        // would be a second enforcement path, so events_replayed stays 0 and
+        // pass stays false until a deterministic re-execution harness exists.
+        // Callers must treat pass=false + reason below as "not re-executed",
+        // not as integrity failure (see integrity_verified/integrity_errors).
+        const replay_mod = @import("../forensic/replay_verifier.zig");
+        const ring = state_mod.g_forensic_ring orelse {
+            ctx.failure_code = "FORENSIC_UNAVAILABLE";
+            ctx.failure_state = "UNAVAILABLE";
+            ctx.failure_message = "forensic ring is not initialized";
+            return null;
+        };
+        var verifier = replay_mod.ReplayVerifier.init(a, ring, ctx.request_id);
+        defer verifier.deinit();
+        _ = verifier.runVerification() catch {
+            ctx.failure_code = "REPLAY_EXPORT_FAILED";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "forensic export for replay failed";
+            return null;
+        };
+        verifier.finalize();
+        const d = verifier.decision;
+        var orig_hex: [64]u8 = undefined;
+        var replay_hex: [64]u8 = undefined;
+        _ = std.fmt.bufPrint(&orig_hex, "{s}", .{std.fmt.bytesToHex(d.original_hash, .lower)}) catch {
+            ctx.failure_code = "INTERNAL_ERROR";
+            ctx.failure_state = "ERROR";
+            ctx.failure_message = "failed to encode replay hashes";
+            return null;
+        };
+        _ = std.fmt.bufPrint(&replay_hex, "{s}", .{std.fmt.bytesToHex(d.replay_hash, .lower)}) catch {
+            ctx.failure_code = "INTERNAL_ERROR";
+            ctx.failure_state = "ERROR";
+            ctx.failure_message = "failed to encode replay hashes";
+            return null;
+        };
+        return std.fmt.allocPrint(a,
+            \\{{"replay_id":{},"mode":"observe_only","source_start":{},"source_end":{},"source_count":{},"integrity_verified":{},"integrity_errors":{},"events_replayed":{},"events_matched":{},"events_mismatched":{},"original_hash":"{s}","replay_hash":"{s}","pass":{},"reason":"pipeline re-execution not performed; integrity-only replay"}}
+        , .{
+            d.replay_id,
+            d.source_start,
+            d.source_end,
+            d.source_count,
+            d.integrity_verified,
+            d.integrity_errors,
+            d.events_replayed,
+            d.events_matched,
+            d.events_mismatched,
+            orig_hex,
+            replay_hex,
+            d.pass,
+        }) catch null;
     }
 
     fn enforcementStatus(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
