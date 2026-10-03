@@ -2,8 +2,8 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "e18306b",
-  "build_date": "2026-10-03T20:19:53.421634+00:00",
+  "source_commit": "c5ca290",
+  "build_date": "2026-10-03T20:42:12.110980+00:00",
   "build_host": "windows",
   "platform": {
     "os": "windows",
@@ -27,7 +27,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "e18306b",
+      "commit": "c5ca290",
       "source": "src/main.zig",
       "classification": "CANONICAL"
     },
@@ -38,7 +38,7 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "e18306b",
+      "commit": "c5ca290",
       "source": "rust-src/lib.rs",
       "classification": "CANONICAL"
     },
@@ -49,7 +49,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "e18306b",
+      "commit": "c5ca290",
       "source": "src/windows/aegis_wfp.c",
       "classification": "CANONICAL"
     },
@@ -60,7 +60,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "e18306b",
+      "commit": "c5ca290",
       "source": "src/windows/etw_native.c",
       "classification": "CANONICAL"
     },
@@ -71,7 +71,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "e18306b",
+      "commit": "c5ca290",
       "source": "src/windows/fim_native.c",
       "classification": "CANONICAL"
     },
@@ -82,7 +82,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "go-nose-build-test",
-      "commit": "e18306b",
+      "commit": "c5ca290",
       "source": "nose/main.go",
       "classification": "CANONICAL"
     },
@@ -93,7 +93,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-aggregator-build-test",
-      "commit": "e18306b",
+      "commit": "c5ca290",
       "source": "go/aggregator/main.go",
       "classification": "SUPPORT"
     },
@@ -104,7 +104,7 @@
       "type": "library",
       "required": false,
       "ci_job": "shield-build",
-      "commit": "e18306b",
+      "commit": "c5ca290",
       "source": "shield/src/lib.rs",
       "classification": "SUPPORT"
     },
@@ -115,7 +115,7 @@
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "e18306b",
+      "commit": "c5ca290",
       "source": "tools/aegisctl.py",
       "classification": "CANONICAL"
     },
@@ -126,7 +126,7 @@
       "type": "script",
       "required": true,
       "ci_job": "package-release",
-      "commit": "e18306b",
+      "commit": "c5ca290",
       "source": "tools/installer.py"
     },
     {
@@ -136,7 +136,7 @@
       "type": "toolchain",
       "required": true,
       "ci_job": "ts-policy-build",
-      "commit": "e18306b",
+      "commit": "c5ca290",
       "source": "ts_policy/"
     },
     {
@@ -146,7 +146,7 @@
       "type": "library",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "e18306b",
+      "commit": "c5ca290",
       "source": "brain/"
     }
   ],
@@ -1500,8 +1500,8 @@
     },
     {
       "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/CL.read.1.tlog",
-      "size": 29126,
-      "sha256": "db139d7f1bd22160ab4f8f19e56ffc9738a278d646155b5892ea16807dc73a25",
+      "size": 42340,
+      "sha256": "eb0c3732e9053b7e44ccbb0a4bb09b79c29a9759f6d26f85e094e72136c6be98",
       "language": "data"
     },
     {
@@ -1524,8 +1524,8 @@
     },
     {
       "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/CustomBuild.read.1.tlog",
-      "size": 7510,
-      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
+      "size": 1945,
+      "sha256": "5013549efd2fc338c95be568607b3625269b361244c9d77f1851e7bfa730cad5",
       "language": "data"
     },
     {
@@ -1548,14 +1548,14 @@
     },
     {
       "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/link.read.1.tlog",
-      "size": 3816,
-      "sha256": "e694347aa83043a28baf59f33d35cac78ea22eb86b70df6157993f56c69991fc",
+      "size": 4048,
+      "sha256": "65a57635974859ad51fe3bf7965360c94978d39c36f4d1df8cae0efdfe6d5865",
       "language": "data"
     },
     {
       "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/link.secondary.1.tlog",
-      "size": 311,
-      "sha256": "5db0028e5246ec04a3ef60d2aac9376e0c3d57c3db519738b142c6369574044c",
+      "size": 397,
+      "sha256": "0072c174744a82f604224c80cc76bbc7e7217661a12ec39e2ca4b396e38c690f",
       "language": "data"
     },
     {
@@ -1572,32 +1572,32 @@
     },
     {
       "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_bridge_test.ilk",
-      "size": 771417,
-      "sha256": "8ec72378194b5dad9dd16050be372ad0727630225ac8096ac0e17d4f6d773cc0",
+      "size": 773297,
+      "sha256": "a3dc7e670486d647d6bd8c3eb0d68a2e8d93671bb96a2ae83f431bd057c776e4",
       "language": "data"
     },
     {
       "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_bridge_test.obj",
-      "size": 37110,
-      "sha256": "f3ded7580f5159a1157fccfb3c3dab0323eb359e399c5fb46e73af4eefe4c238",
+      "size": 37176,
+      "sha256": "c90fff3632dd7df49098c96a0846974a84f67a9e617e9aeb04711f91e5f087a0",
       "language": "data"
     },
     {
       "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_ipc.obj",
-      "size": 72987,
-      "sha256": "edbdee5978df895c7b61028bba77fb3571de2a72879e5ac46cff4da05d664d6a",
+      "size": 70644,
+      "sha256": "ebad66cf186e08dc23bf025dfe03a2d7abe87f4469c8246ee9ecc3c134059370",
       "language": "data"
     },
     {
       "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_packet_parser.obj",
-      "size": 28973,
-      "sha256": "006ecb9f20351989bb4511e55253f1fd6e60a173ba22b55d7c33512bf5c83086",
+      "size": 40462,
+      "sha256": "053a0860b3968823a156dfe045656934872df0069c929b433f1a3b89d101432a",
       "language": "data"
     },
     {
       "path": "bridge/build/aegis_bridge_test.dir/Debug/vc143.pdb",
       "size": 126976,
-      "sha256": "e697ba856c2438cf255af186fbadba584d0476d5ac8ee95907d1852fefd2c0ef",
+      "sha256": "8f20318b9d6ed9923ace645682cc1f7332159cc9344c0770850661f084c038e6",
       "language": "data"
     },
     {
@@ -2149,7 +2149,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 17724,
-      "sha256": "9bc2450c16ae4cdff467f6a4c8634f31376b64d1bcae4c1aa263b04dd51fc2c0",
+      "sha256": "54fb1c26e2fbcff0ca92c2ceff54962b9bf5b2764c8f684f10971f706fdd3e1c",
       "language": "json"
     },
     {
@@ -2922,8 +2922,8 @@
     },
     {
       "path": "tools/aegisctl/__init__.py",
-      "size": 1027,
-      "sha256": "1c90cdc1f388281d2e90a4df65aeb378139c84334e8aef9752f3f04268cc1cf4",
+      "size": 1156,
+      "sha256": "d44f39d9899e181beabb0054b28bdf8f0a2c1df50b7d088c663b3e4d20b29109",
       "language": "python/cython"
     },
     {
@@ -2935,7 +2935,7 @@
     {
       "path": "tools/aegisctl/api/control_api.py",
       "size": 41727,
-      "sha256": "9df0c04f6e8a1cf81dec5e9d85bc4f241534a30b425260ef6eeaa28528b11763",
+      "sha256": "2bf99fc582d5b0e3fc5f9bef71c3ba6c305dede3b75a6a8254e9a5c7df6fecf9",
       "language": "python/cython"
     },
     {
@@ -2995,7 +2995,7 @@
     {
       "path": "tools/create_manifest.py",
       "size": 14233,
-      "sha256": "c8e3db6a7692aa5b047f450db43cd6ed5aaeb5180719bc8aca230d19248fff7c",
+      "sha256": "7117b393c1d9467e0ef945ddcbe3a9f1f2054732999ea340178b3f7896497990",
       "language": "python/cython"
     },
     {

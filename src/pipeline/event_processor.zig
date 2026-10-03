@@ -48,7 +48,7 @@ fn processEvent(
     // object used by policy, PEP, audit, and forensic stages.
     var ev_copy = qe.ev;
     const ev = &ev_copy;
-    state.g_pipeline_events_processed.fetchAdd(1, .monotonic);
+    _ = state.g_pipeline_events_processed.fetchAdd(1, .monotonic);
     // CTRL-002: real liveness timestamp for the health contract (§4.1).
     state.g_last_event_ms.store(std.time.milliTimestamp(), .monotonic);
 
@@ -81,7 +81,7 @@ fn processEvent(
     // policy evaluation without attempting a second payload interpretation.
     if (ev.kind == .signature_match and ev.rule_id != 0) {
         matched_rule_id = ev.rule_id;
-        state.g_pipeline_detections.fetchAdd(1, .monotonic);
+        _ = state.g_pipeline_detections.fetchAdd(1, .monotonic);
     }
     if (qe.payload_len > 0) {
         state.g_ac_mutex.lock();
@@ -98,7 +98,7 @@ fn processEvent(
                 // audit line and forensic record lost detection identity.
                 ev.rule_id = matched_rule_id;
                 ev.kind = .signature_match;
-                state.g_pipeline_detections.fetchAdd(1, .monotonic);
+                _ = state.g_pipeline_detections.fetchAdd(1, .monotonic);
             }
             if (matches.len > 0) {
                 std.heap.page_allocator.free(matches);
@@ -118,8 +118,8 @@ fn processEvent(
             ev.rule_id = corr_rule_id;
             ev.kind = .correlation_match;
             ev.severity = .alert;
-            state.g_pipeline_detections.fetchAdd(1, .monotonic);
-            state.g_pipeline_correlations.fetchAdd(1, .monotonic);
+            _ = state.g_pipeline_detections.fetchAdd(1, .monotonic);
+            _ = state.g_pipeline_correlations.fetchAdd(1, .monotonic);
         }
     }
 
@@ -137,7 +137,7 @@ fn processEvent(
     const anom_bytes: f64 = @floatFromInt(qe.payload_len);
     if (ad.observe(anom_key_bytes, anom_bytes) catch null) |z_score| {
         _ = z_score;
-        state.g_pipeline_anomalies.fetchAdd(1, .monotonic);
+        _ = state.g_pipeline_anomalies.fetchAdd(1, .monotonic);
         diag.metrics.anomalies_detected.inc();
     }
 
@@ -151,9 +151,9 @@ fn processEvent(
             active_incident = inc.*;
             // Escalate event severity to incident severity
             ev_severity = inc.severity;
-            state.g_pipeline_detections.fetchAdd(1, .monotonic); // incident = significant detection
-            state.g_incidents_total.fetchAdd(1, .monotonic); // track total incidents
-            state.g_incidents_open.fetchAdd(1, .monotonic); // track open incidents
+            _ = state.g_pipeline_detections.fetchAdd(1, .monotonic); // incident = significant detection
+            _ = state.g_incidents_total.fetchAdd(1, .monotonic); // track total incidents
+            _ = state.g_incidents_open.fetchAdd(1, .monotonic); // track open incidents
         }
     }
 
@@ -172,7 +172,7 @@ fn processEvent(
     if (ps.evaluate(eval_ctx)) |pol| {
         matched_policy = pol;
         policy_action = pol.action;
-        state.g_pipeline_policies_matched.fetchAdd(1, .monotonic);
+        _ = state.g_pipeline_policies_matched.fetchAdd(1, .monotonic);
         // Record policy match in trace (Policy has no version field; use 1)
         decision_trace.setPolicy(pol.id, 1);
     }
@@ -190,7 +190,7 @@ fn processEvent(
             state.g_runtime_capability_mask,
             pep_req_id,
         );
-        state.g_pipeline_detections.fetchAdd(1, .monotonic); // policy matched = detection event
+        _ = state.g_pipeline_detections.fetchAdd(1, .monotonic); // policy matched = detection event
 
         // Record PEP decision in trace
         decision_trace.setPepDecision(pep_req_id, @intFromEnum(pep_decision));
@@ -231,7 +231,9 @@ fn processEvent(
 
     // 7. Forensic recording (captures full pipeline result)
     const forensic_seq = forensic_ring.append(ev, qe.payload[0..qe.payload_len], audit_id, if (matched_policy) |pol| pol.id else @as(u32, 0), @intFromEnum(pep_decision), @intFromEnum(ev_copy.severity)) catch 0;
-    if (forensic_seq != 0) state.g_forensic_records_written.fetchAdd(1, .monotonic);
+    if (forensic_seq != 0) {
+        _ = state.g_forensic_records_written.fetchAdd(1, .monotonic);
+    }
 }
 
 /// Main pipeline loop: pops events from queue and processes them.
