@@ -4,6 +4,17 @@ AEGIS is a production-oriented Windows-native network intrusion detection and re
 
 > **Release status:** The repository is maintained with production-grade contracts, authority boundaries, runbooks, and acceptance gates. The current release is approved for development, qualification, and observe-only operation. Production IPS blocking remains **not accepted** until the isolated Windows host-effect proof, receipt validation, cleanup, signing, rollback, and recovery gates are complete.
 
+### Project 2 Runtime Gate
+
+Before starting any Kali qualification probe, run the single fail-closed preflight:
+
+```powershell
+powershell -ExecutionPolicy Bypass `
+  -File .\scripts\project2_runtime_gate.ps1
+```
+
+The gate writes health, readiness, snapshot, enforcement-status, and a result receipt under `admin-evidence`. It passes only when the daemon is `RUNNING`, `degraded=false`, all 22 rules are active, forensic verification is true, the Go Nose worker is connected, and enforcement remains `detection-only` with `prevention_gate=closed`. If it fails, do not start the Kali probes.
+
 ### Unified Command Control Center
 
 AEGIS provides one unified operator control surface backed by the

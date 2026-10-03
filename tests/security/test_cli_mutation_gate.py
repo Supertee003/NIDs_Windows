@@ -57,7 +57,15 @@ def test_enforce_mutation_is_refused():
 def test_read_paths_still_work():
     assert run("block", "list").returncode == 0
     assert run("quarantine", "list").returncode == 0
-    assert run("enforce", "status").returncode == 0
+    status = run("enforce", "status")
+    # Exit-code contract (AEGIS_Operator_UX_Specification, Unified CLI):
+    # 0 = Control Center answered, 3 = Control Center unavailable. Offline is
+    # an honest answer, never a host-effect claim.
+    assert status.returncode in (0, 3), status.stdout
+    payload = json.loads(status.stdout)
+    if status.returncode == 3:
+        assert payload.get("available") is False
+        assert payload.get("reason"), "offline status must name the reason"
     assert run("federation").returncode in (0, 3)  # 0 live daemon, 3 offline
 
 

@@ -348,11 +348,18 @@ class RuntimeProbe:
             )
             if winerror in (2, 231, 5):
                 # 2 = ERROR_FILE_NOT_FOUND (pipe server not running)
-                # 231 = ERROR_PIPE_BUSY
-                # 5 = ERROR_ACCESS_DENIED
-                raise FileNotFoundError(
+                # 231 = ERROR_PIPE_BUSY (another server instance owns the name)
+                # 5 = ERROR_ACCESS_DENIED (a foreign principal owns the pipe
+                #     and its security descriptor excludes this caller)
+                exc = FileNotFoundError(
                     f"named pipe {pipe!r} not available (winerror={winerror})"
-                ) from e
+                )
+                # Carry the raw code so callers can distinguish "no server" (2)
+                # from "another, unreadable owner holds the single-instance
+                # pipe" (5/231). Both leave the endpoint unusable, but only the
+                # former means a local component may start and serve it.
+                exc.winerror = winerror
+                raise exc from e
             raise
         try:
             # Use the canonical v2 control command.  The legacy HEALTH op is

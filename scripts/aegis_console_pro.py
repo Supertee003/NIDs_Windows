@@ -126,6 +126,7 @@ def print_overview(data: dict) -> None:
     print(f"Exactly once  : duplicate={data_plane.get('nose_duplicate_event_ids', 0)} non_monotonic={data_plane.get('nose_non_monotonic_event_ids', 0)}")
     forensic = data.get("forensic", {})
     print(f"Forensics     : {forensic.get('integrity', 'unknown')} | records={forensic.get('records', 0)}")
+    print(f"Rules         : active={health.get('rules_loaded', 0)} | policies={health.get('policies_loaded', 0)}")
 
 
 
@@ -134,6 +135,7 @@ def print_enforcement(data: dict) -> None:
     enforcement = data.get("enforcement") or {}
     authority = data.get("authority") or {}
     presentation = data.get("presentation") or {}
+    operator = data.get("operator") or {}
 
     print("\nENFORCEMENT AUTHORITY")
     print("-" * 78)
@@ -154,6 +156,9 @@ def print_enforcement(data: dict) -> None:
     )
     print(f"Host effect         : {presentation.get('host_effect', 'NOT_PROVEN')}")
     print(f"Presentation mode   : {presentation.get('mode', 'OBSERVE_ONLY')}")
+    errors = operator.get("contract_errors") or presentation.get("contract_errors") or []
+    if errors:
+        print(color(f"POSTURE CONTRACT   : VIOLATION ({', '.join(map(str, errors))})", RED))
 
 def print_components(data: dict) -> None:
     health = health_payload(data)

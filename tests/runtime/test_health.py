@@ -261,7 +261,8 @@ class TestControlApiHealthPayload(unittest.TestCase):
         self.assertEqual(payload["subsystems"]["zig"]["pid"], 101)
 
     def test_payload_exposes_tier3_and_counters(self):
-        with patch.object(control_api, "get_all_status", return_value=[]), \
+        with patch.object(control_api, "_query_daemon_retry", return_value=None), \
+             patch.object(control_api, "get_all_status", return_value=[]), \
              patch.object(control_api, "compute_health_state", return_value=("FAILED", True)):
             payload = control_api.get_health_payload()
 

@@ -105,6 +105,27 @@ def _foreign_owner_pid(probe: RuntimeProbe, expected_pid: int | None = None) -> 
     return int(pid)
 
 
+def _unreadable_foreign_owner(probe: RuntimeProbe) -> str | None:
+    """Describe a foreign runtime that owns the endpoint but cannot be read.
+
+    The control pipe is single-instance. When another principal owns it (for
+    example the LocalSystem AegisNids service), CreateFileW fails with
+    ERROR_ACCESS_DENIED (5), and a concurrent second server sees
+    ERROR_PIPE_BUSY (231). Only ERROR_FILE_NOT_FOUND (2) means nothing serves
+    the endpoint, so only that case may start a local component here.
+    """
+    try:
+        probe.health()
+    except Exception as exc:
+        winerror = getattr(exc, "winerror", None)
+        if winerror in (5, 231):
+            return (
+                f"endpoint {probe.endpoint!r} is owned by another runtime "
+                f"(winerror={winerror})"
+            )
+    return None
+
+
 # --------------------------------------------------------------------------- #
 # Integration tests (one per primary engine)                                  #
 # --------------------------------------------------------------------------- #
@@ -193,6 +214,12 @@ class TestCoreLifecycle(unittest.TestCase):
             self.skipTest(
                 f"another core instance (pid={owner}) already owns the control "
                 "pipe; the runtime contract is single-owner"
+            )
+        foreign = _unreadable_foreign_owner(probe)
+        if foreign is not None:
+            self.skipTest(
+                f"{foreign}; the runtime contract is single-owner, so this "
+                "test cannot start a second core against the same pipe"
             )
 
         cmd = _start_command(self.component)

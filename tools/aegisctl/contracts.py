@@ -68,7 +68,17 @@ def project_operator_state(health: Mapping[str, Any], enforcement: Mapping[str, 
     """Project backend truth into labels shared by CLI and dashboards."""
     gate = str(enforcement.get("prevention_gate", "closed")).lower()
     capable = bool(enforcement.get("host_effect_capable", False))
-    if gate != "open":
+    tier3_enforcing = bool(enforcement.get("tier3_enforcing", False))
+    mode = str(enforcement.get("enforcement_mode", "detection-only")).lower()
+    contract_errors: list[str] = []
+    if gate != "open" and tier3_enforcing:
+        contract_errors.append("tier3_enforcing_with_closed_gate")
+    if gate != "open" and mode not in {"detection-only", "observe-only"}:
+        contract_errors.append("active_mode_with_closed_gate")
+
+    if contract_errors:
+        enforcement_label = "CONTRACT_VIOLATION"
+    elif gate != "open":
         enforcement_label = "OBSERVE_ONLY"
     elif capable:
         enforcement_label = "ENFORCEMENT_READY"
@@ -80,6 +90,9 @@ def project_operator_state(health: Mapping[str, Any], enforcement: Mapping[str, 
         "prevention_gate": gate,
         "enforcement_label": enforcement_label,
         "host_effect_capable": capable,
+        "tier3_enforcing": tier3_enforcing,
+        "enforcement_mode": mode,
+        "contract_errors": contract_errors,
         "confirmed_block_requires_receipt": True,
     }
 

@@ -1,7 +1,7 @@
 {
   "schema": "aegis.phase8-lab-scenario-results.v1",
-  "run_id": "phase8-lab-20260930-152023",
-  "generated_at": "2026-09-30T15:20:23.178858+00:00",
+  "run_id": "phase8-lab-20261002-141205",
+  "generated_at": "2026-10-02T14:12:05.664147+00:00",
   "manifest_schema": "aegis.phase8-lab-scenario-manifest.v1",
   "execution_mode": "synthetic_observe_only",
   "global_prevention_gate": "closed",

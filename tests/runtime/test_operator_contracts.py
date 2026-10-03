@@ -62,11 +62,24 @@ class TestOperatorProjection(unittest.TestCase):
         self.assertEqual(result["enforcement_label"], "OBSERVE_ONLY")
         self.assertTrue(result["confirmed_block_requires_receipt"])
 
+    def test_closed_gate_rejects_active_enforcement_contract(self):
+        result = project_operator_state(
+            {"state": "RUNNING", "degraded": False},
+            {
+                "prevention_gate": "closed",
+                "enforcement_mode": "active",
+                "tier3_enforcing": True,
+            },
+        )
+        self.assertEqual(result["enforcement_label"], "CONTRACT_VIOLATION")
+        self.assertIn("tier3_enforcing_with_closed_gate", result["contract_errors"])
+        self.assertIn("active_mode_with_closed_gate", result["contract_errors"])
+
 
 class TestWebDashboardSurface(unittest.TestCase):
     def test_snapshot_uses_control_truth(self):
         from tools.aegisctl.web_dashboard import app as dashboard
-        health = {"state": "DEGRADED", "degraded": True, "counters": {}}
+        health = {"state": "DEGRADED", "degraded": True, "counters": {}, "rules_loaded": 22, "policies_loaded": 6}
         with patch.object(dashboard, "get_health_payload", return_value=health), \
              patch.object(dashboard, "query_control", side_effect=lambda command, payload=None: {
                  "enforcement.status": {"prevention_gate": "closed", "host_effect_capable": False},
@@ -80,6 +93,8 @@ class TestWebDashboardSurface(unittest.TestCase):
             body = response.get_json()
             self.assertEqual(body["operator"]["enforcement_label"], "OBSERVE_ONLY")
             self.assertEqual(body["metrics"]["events_processed"], 3)
+            self.assertEqual(body["rules_runtime"]["active"], 22)
+            self.assertEqual(body["rules_runtime"]["policies_active"], 6)
             self.assertEqual(client.get("/health").status_code, 503)
 
 

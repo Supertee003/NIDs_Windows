@@ -398,10 +398,14 @@ impl eframe::App for AegisDashboard {
                     ui.heading(format!("{}", self.total_blocked));
                     ui.small("valid receipts only");
                 });
-            ui.group(|ui| {
+                ui.group(|ui| {
                     ui.strong("Rules");
-                    ui.heading(format!("{}", self.rules.len()));
-                    ui.small("from configs/Rules.json");
+                    let active_rules = self.runtime_snapshot.health
+                        .get("rules_loaded")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0);
+                    ui.heading(format!("{}", active_rules));
+                    ui.small(format!("active daemon rules | local catalog {}", self.rules.len()));
                 });
                 ui.group(|ui| {
                     ui.strong("Forensics");
@@ -453,11 +457,40 @@ let host_effect_capable = self.runtime_snapshot
     .and_then(|v| v.as_bool())
     .unwrap_or(false);
 
+let prevention_gate = self.runtime_snapshot
+    .enforcement
+    .get("prevention_gate")
+    .and_then(|v| v.as_str())
+    .unwrap_or("closed");
+
+let enforcement_mode = self.runtime_snapshot
+    .enforcement
+    .get("enforcement_mode")
+    .and_then(|v| v.as_str())
+    .unwrap_or("detection-only");
+
+let tier3_enforcing = self.runtime_snapshot
+    .enforcement
+    .get("tier3_enforcing")
+    .and_then(|v| v.as_bool())
+    .unwrap_or(false);
+
+let posture_ok = prevention_gate != "closed"
+    || (!tier3_enforcing && enforcement_mode.eq_ignore_ascii_case("detection-only"));
+
 ui.label(format!(
     "Canonical authority: rust_pep | state={} | WFP provider={} | host-effect capability={}",
     pep_state,
     if provider_ready { "READY" } else { "UNAVAILABLE" },
     if host_effect_capable { "YES" } else { "NO" }
+));
+
+ui.label(format!(
+    "Posture: gate={} | mode={} | tier3_enforcing={} | contract={}",
+    prevention_gate,
+    enforcement_mode,
+    tier3_enforcing,
+    if posture_ok { "OK" } else { "VIOLATION" }
 ));
 
 ui.label(format!(

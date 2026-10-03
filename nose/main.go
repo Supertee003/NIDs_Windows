@@ -47,11 +47,18 @@ func main() {
 	listDevices := flag.Bool("list-devices", false, "List Npcap devices, descriptions, and addresses")
 	captureProbeAll := flag.Bool("capture-probe-all", false, "Probe every Npcap device for raw packets")
 	capturePipe := flag.String("pipe", nosePipeName, "Named pipe consumer (Zig core) for -capture")
-	captureIface := flag.String("iface", "", "Capture interface name (empty = auto-select) for -capture")
+	captureIface := flag.String("iface", "", "Exact Npcap interface name (empty = auto-select) for -capture")
+	requireIface := flag.Bool("require-iface", false, "Refuse auto-selection; required for isolated VMware lab capture")
 	selfTest := flag.Bool("capture-self-test", false, "Run capture encoder self-test then exit")
 	injectObserve := flag.Bool("inject-observe", false, "Send canonical alert-only fixture through the Zig Nose pipe")
 	injectCount := flag.Int("inject-count", 1, "Number of observe-only canonical fixtures to send")
 	flag.Parse()
+
+	if (*capture || *captureProbe) && *requireIface && *captureIface == "" {
+		fmt.Fprintln(os.Stderr, "[AEGIS NOSE] REFUSE: --require-iface needs --iface <exact Npcap name>")
+		fmt.Fprintln(os.Stderr, "[AEGIS NOSE] First run: aegis-nose.exe --list-devices")
+		os.Exit(2)
+	}
 
 	if *selfTest {
 		if err := captureSelfTest(); err != nil {

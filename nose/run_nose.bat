@@ -4,6 +4,7 @@ setlocal enabledelayedexpansion
 REM ============================================================
 REM  AEGIS NOSE v5.0 - Run Script v1.0 (CMD-safe)
 REM  go mod tidy + go run . (one step)
+REM  Lab example: run_nose.bat --capture --require-iface --iface "<Npcap name>"
 REM ============================================================
 
 echo.
@@ -35,11 +36,11 @@ if not exist "%NOSE%\go.sum" (
     echo.
 )
 
-echo   Running NOSE v5.0 ...
+echo   Running NOSE v5.0 %*
 echo   Press Ctrl+C to stop
 echo.
 
-go run .
+go run . %*
 
 popd
 
