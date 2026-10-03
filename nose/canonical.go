@@ -231,7 +231,16 @@ type CanonicalEvent struct {
 	Confidence                                    byte
 }
 
-// Reserved offsets within the 109-byte wire format
+// ── ContextFlags bits (frozen v1 vocabulary, all languages) ──
+// bit0=threat_intel_match bit1=correlation_match bit2=ipv6_truncated.
+// bit2 means SourceIP/DestIP carry only the first 4 bytes of each IPv6
+// address: identity is degraded by construction (v1 wire has no v6 fields)
+// and must never be treated as an IPv4 identity.
+const (
+	ContextThreatIntelMatch uint32 = 1 << 0
+	ContextCorrelationMatch uint32 = 1 << 1
+	ContextV6Truncated      uint32 = 1 << 2
+)
 const (
 	ResOffPid        = 0  // reserved[0..4]   = PID
 	ResOffPpid       = 4  // reserved[4..8]   = PPID

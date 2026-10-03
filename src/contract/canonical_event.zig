@@ -68,7 +68,11 @@ pub const CanonicalEvent = extern struct {
 
     // --- Context/Intelligence (filled by Brain/Correlator) ---
     defcon_impact: u8,      // 1-5 (5=normal, 1=critical)
-    context_flags: u32,     // Bitfield: bit0=threat_intel_match, bit1=correlation_match, etc.
+    context_flags: u32,     // Bitfield: bit0=threat_intel_match,
+                            // bit1=correlation_match, bit2=ipv6_truncated
+                            // (v1 wire has no IPv6 fields; bit2 means the
+                            // 32-bit IP identity is first-4-bytes only and
+                            // must never be treated as IPv4 identity).
 
     // --- Reserved: v1 extension area (G2 frozen layout, see RESERVED_* below) ---
     reserved: [16]u8,       // Offset table in shared/protocol/wire_v1.md
@@ -79,6 +83,11 @@ pub const CanonicalEvent = extern struct {
 // De-facto layout of hids_engine.zig formalized as contract.
 // Wire size and struct size are UNCHANGED (ABI-safe, still v1).
 // ============================================================
+
+/// ContextFlags bit2 (CONTEXT_V6_TRUNCATED): set when the 32-bit IP
+/// identity is first-4-bytes of IPv6 (v1 wire limitation). Consumers must
+/// not treat such identity as IPv4.
+pub const CONTEXT_V6_TRUNCATED: u32 = 1 << 2;
 
 /// reserved[0..4]  = process_id (u32 LE) ΓÇö host telemetry PID
 /// reserved[4..8]  = parent_process_id (u32 LE)

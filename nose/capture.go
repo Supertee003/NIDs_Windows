@@ -97,6 +97,19 @@ func printCaptureDevices() error {
 	return nil
 }
 
+func validateCaptureInterface(iface string) error {
+	devs, err := pcap.FindAllDevs()
+	if err != nil {
+		return fmt.Errorf("FindAllDevs: %w", err)
+	}
+	for _, d := range devs {
+		if d.Name == iface {
+			return nil
+		}
+	}
+	return fmt.Errorf("interface %q not found; run --list-devices and pass the exact Npcap name", iface)
+}
+
 // runCapture opens a live pcap handle, encodes packets as canonical
 // events, and streams them to the Zig core pipe until signalled.
 func runCapture(iface string, pipe string, stop <-chan struct{}) error {
@@ -109,6 +122,8 @@ func runCapture(iface string, pipe string, stop <-chan struct{}) error {
 			return fmt.Errorf("nose capture: %w", err)
 		}
 		iface = name
+	} else if err := validateCaptureInterface(iface); err != nil {
+		return fmt.Errorf("nose capture: %w", err)
 	}
 
 	handle, err := pcap.OpenLive(iface, 65535, false, captureDefaultTimeout)
@@ -211,7 +226,10 @@ func eventFromPacket(packet gopacket.Packet) *CanonicalEvent {
 			}
 			ev.Protocol = uint8(net.Protocol)
 		case *layers.IPv6:
-			// IPv6 identity: embed first 4 bytes of each address.
+			// IPv6 identity: embed first 4 bytes of each address AND mark
+			// ContextV6Truncated. The v1 wire has no IPv6 fields, so the
+			// 32-bit identity is degraded by construction and must never be
+			// confused with an IPv4 address downstream.
 			srcIP := net.SrcIP.To16()
 			dstIP := net.DstIP.To16()
 			if len(srcIP) >= 4 {
@@ -220,6 +238,7 @@ func eventFromPacket(packet gopacket.Packet) *CanonicalEvent {
 			if len(dstIP) >= 4 {
 				ev.DestIP = binary.BigEndian.Uint32(dstIP[:4])
 			}
+			ev.ContextFlags |= ContextV6Truncated
 			ev.Protocol = uint8(net.NextHeader)
 		}
 	}
@@ -270,6 +289,8 @@ func captureProbeRun(iface string, duration time.Duration) error {
 			return err
 		}
 		iface = name
+	} else if err := validateCaptureInterface(iface); err != nil {
+		return fmt.Errorf("nose probe: %w", err)
 	}
 	handle, err := pcap.OpenLive(iface, 65535, false, 500*time.Millisecond)
 	if err != nil {
