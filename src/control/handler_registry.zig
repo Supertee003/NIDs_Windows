@@ -391,13 +391,189 @@ const handlers = struct {
         return std.fmt.allocPrint(a, "{{\"rules_loaded\":{},\"engine\":\"aho_corasick\"}}", .{state_mod.g_rules_loaded.load(.acquire)}) catch null;
     }
 
-    fn rulesShow(a: std.mem.Allocator, payload: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        const id_val = payload.object.get("id") orelse return "{\"error\":\"missing id\"}";
-        return std.fmt.allocPrint(a, "{{\"rule_id\":{}}}", .{id_val}) catch null;
+    fn rulesShow(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        // Honest lookup: find the rule by its string rule_id in Rules.json
+        // (the same file the detection engine loads). Never invents fields.
+        if (payload != .object) {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "payload must be an object with an id field";
+            return null;
+        }
+        const id_val = payload.object.get("id") orelse {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "id is required (string rule_id, e.g. R0056)";
+            return null;
+        };
+        if (id_val != .string) {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "id must be a string rule_id";
+            return null;
+        }
+        const runtime_paths = @import("../core/runtime_paths.zig");
+        const root = runtime_paths.resolveRoot(a) catch {
+            ctx.failure_code = "CONFIG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "cannot resolve runtime root";
+            return null;
+        };
+        defer a.free(root);
+        const rules_path = runtime_paths.configPath(a, root, "Rules.json") catch {
+            ctx.failure_code = "CONFIG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "cannot build Rules.json path";
+            return null;
+        };
+        defer a.free(rules_path);
+        const file = std.fs.openFileAbsolute(rules_path, .{}) catch {
+            ctx.failure_code = "CONFIG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "cannot open Rules.json";
+            return null;
+        };
+        defer file.close();
+        const bytes = file.readToEndAlloc(a, 4 * 1024 * 1024) catch {
+            ctx.failure_code = "CONFIG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "cannot read Rules.json";
+            return null;
+        };
+        defer a.free(bytes);
+        var parsed = std.json.parseFromSlice(std.json.Value, a, bytes, .{}) catch {
+            ctx.failure_code = "CONFIG_INVALID";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "Rules.json is not valid JSON";
+            return null;
+        };
+        defer parsed.deinit();
+        if (parsed.value != .object) {
+            ctx.failure_code = "CONFIG_INVALID";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "Rules.json root must be an object";
+            return null;
+        }
+        const rules_val = parsed.value.object.get("nids_rules") orelse {
+            ctx.failure_code = "CONFIG_INVALID";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "Rules.json has no nids_rules array";
+            return null;
+        };
+        if (rules_val != .array) {
+            ctx.failure_code = "CONFIG_INVALID";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "nids_rules is not an array";
+            return null;
+        }
+        for (rules_val.array.items) |r| {
+            if (r != .object) continue;
+            const rid = r.object.get("rule_id") orelse continue;
+            if (rid != .string) continue;
+            if (!std.mem.eql(u8, rid.string, id_val.string)) continue;
+            const get = struct {
+                fn s(obj: std.json.ObjectMap, key: []const u8) []const u8 {
+                    const v = obj.get(key) orelse return "";
+                    if (v != .string) return "";
+                    return v.string;
+                }
+            }.s;
+            return std.fmt.allocPrint(a, "{{\"rule_id\":\"{s}\",\"name\":\"{s}\",\"category\":\"{s}\",\"severity\":\"{s}\",\"action\":\"{s}\",\"found\":true}}", .{
+                rid.string, get(r.object, "name"), get(r.object, "category"), get(r.object, "severity"), get(r.object, "action"),
+            }) catch null;
+        }
+        return std.fmt.allocPrint(a, "{{\"rule_id\":\"{s}\",\"found\":false}}", .{id_val.string}) catch null;
     }
 
-    fn rulesValidate(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return std.fmt.allocPrint(a, "{{\"valid\":true,\"rules_checked\":{}}}", .{state_mod.g_rules_loaded.load(.acquire)}) catch null;
+    fn rulesValidate(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        // Dry-run validation: parse Rules.json and check every rule carries
+        // the fields the loader requires. Reads only; never touches the
+        // live automaton (rules.reload owns mutation).
+        const runtime_paths = @import("../core/runtime_paths.zig");
+        const root = runtime_paths.resolveRoot(a) catch {
+            ctx.failure_code = "CONFIG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "cannot resolve runtime root";
+            return null;
+        };
+        defer a.free(root);
+        const rules_path = runtime_paths.configPath(a, root, "Rules.json") catch {
+            ctx.failure_code = "CONFIG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "cannot build Rules.json path";
+            return null;
+        };
+        defer a.free(rules_path);
+        const file = std.fs.openFileAbsolute(rules_path, .{}) catch {
+            ctx.failure_code = "CONFIG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "cannot open Rules.json";
+            return null;
+        };
+        defer file.close();
+        const bytes = file.readToEndAlloc(a, 4 * 1024 * 1024) catch {
+            ctx.failure_code = "CONFIG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "cannot read Rules.json";
+            return null;
+        };
+        defer a.free(bytes);
+        var parsed = std.json.parseFromSlice(std.json.Value, a, bytes, .{}) catch {
+            ctx.failure_code = "CONFIG_INVALID";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "Rules.json is not valid JSON";
+            return null;
+        };
+        defer parsed.deinit();
+        if (parsed.value != .object) {
+            ctx.failure_code = "CONFIG_INVALID";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "Rules.json root must be an object";
+            return null;
+        }
+        const rules_val = parsed.value.object.get("nids_rules") orelse {
+            ctx.failure_code = "CONFIG_INVALID";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "Rules.json has no nids_rules array";
+            return null;
+        };
+        if (rules_val != .array) {
+            ctx.failure_code = "CONFIG_INVALID";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "nids_rules is not an array";
+            return null;
+        }
+        var checked: u32 = 0;
+        for (rules_val.array.items) |r| {
+            if (r != .object) {
+                ctx.failure_code = "CONFIG_INVALID";
+                ctx.failure_state = "REJECTED";
+                ctx.failure_message = "rule entry is not an object";
+                return null;
+            }
+            for ([_][]const u8{ "rule_id", "name", "severity", "action" }) |key| {
+                const v = r.object.get(key) orelse {
+                    ctx.failure_code = "CONFIG_INVALID";
+                    ctx.failure_state = "REJECTED";
+                    ctx.failure_message = "rule is missing a required field";
+                    return null;
+                };
+                if (v != .string or v.string.len == 0) {
+                    ctx.failure_code = "CONFIG_INVALID";
+                    ctx.failure_state = "REJECTED";
+                    ctx.failure_message = "rule has an empty required field";
+                    return null;
+                }
+            }
+            checked += 1;
+        }
+        if (checked == 0) {
+            ctx.failure_code = "CONFIG_INVALID";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "Rules.json contains zero rules";
+            return null;
+        }
+        return std.fmt.allocPrint(a, "{{\"valid\":true,\"rules_checked\":{}}}", .{checked}) catch null;
     }
 
     fn rulesReload(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
@@ -479,8 +655,51 @@ const handlers = struct {
         return null;
     }
 
-    fn policySimulate(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return "{\"simulated\":true,\"result\":\"no_match\"}";
+    fn policySimulate(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        // What-if evaluation against the TS-authored IR mirror: pure
+        // compute, no state change, no PEP contact. Absent IR is an honest
+        // failure, never a canned "no_match". Input validated before state
+        // so malformed calls fail identically with or without loaded rules.
+        const plane = @import("../policy/policy_plane.zig");
+        if (payload != .object) {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "payload must be an object with a values array";
+            return null;
+        }
+        const values_val = payload.object.get("values") orelse {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "values array is required";
+            return null;
+        };
+        if (values_val != .array or values_val.array.items.len == 0 or values_val.array.items.len > 32) {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "values must be a non-empty array of at most 32 integers";
+            return null;
+        }
+        var values: [32]u64 = undefined;
+        for (values_val.array.items, 0..) |v, i| {
+            if (v != .integer or v.integer < 0) {
+                ctx.failure_code = "INVALID_INPUT";
+                ctx.failure_state = "REJECTED";
+                ctx.failure_message = "values must contain only non-negative integers";
+                return null;
+            }
+            values[i] = @intCast(v.integer);
+        }
+        const pir = state_mod.g_policy_ir orelse {
+            ctx.failure_code = "POLICY_IR_ABSENT";
+            ctx.failure_state = "UNAVAILABLE";
+            ctx.failure_message = "no TS policy IR loaded; place policy_ir.json in configs/";
+            return null;
+        };
+        const result = plane.PolicySimulator.simulate(pir.ir, values[0..values_val.array.items.len]);
+        if (result.rule_matched) |rule_id| {
+            return std.fmt.allocPrint(a, "{{\"simulated\":true,\"matched\":true,\"rule_id\":{},\"action\":\"{s}\",\"evaluated\":{}}}", .{ rule_id, @tagName(result.action), result.evaluated_count }) catch null;
+        }
+        return std.fmt.allocPrint(a, "{{\"simulated\":true,\"matched\":false,\"evaluated\":{}}}", .{result.evaluated_count}) catch null;
     }
 
     /// One control response must fit inside a single pipe read on every
@@ -1145,8 +1364,92 @@ const handlers = struct {
         }) catch null;
     }
 
-    fn logsTail(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return "{\"entries\":[]}";
+    fn logsTail(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        // Tail the forensic NDJSON log (read-only). Bounded: at most 100
+        // entries and 32 KiB total so the response always fits one pipe
+        // read. Lines are JSON-escaped, never spliced raw.
+        var limit: usize = 20;
+        if (payload == .object) {
+            if (payload.object.get("limit")) |lv| {
+                if (lv != .integer or lv.integer <= 0 or lv.integer > 100) {
+                    ctx.failure_code = "INVALID_INPUT";
+                    ctx.failure_state = "REJECTED";
+                    ctx.failure_message = "limit must be an integer in 1..100";
+                    return null;
+                }
+                limit = @intCast(lv.integer);
+            }
+        }
+        const file = std.fs.cwd().openFile("logs\\aegis_core.ndjson", .{}) catch {
+            ctx.failure_code = "LOG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "forensic log is not readable here";
+            return null;
+        };
+        defer file.close();
+        const stat = file.stat() catch {
+            ctx.failure_code = "LOG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "forensic log stat failed";
+            return null;
+        };
+        const max_bytes: u64 = 64 * 1024;
+        const tail_len: usize = @intCast(@min(stat.size, max_bytes));
+        if (tail_len == 0) return "{\"entries\":[]}";
+        const start: u64 = stat.size - tail_len;
+        file.seekTo(start) catch {
+            ctx.failure_code = "LOG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "forensic log seek failed";
+            return null;
+        };
+        const buf = a.alloc(u8, tail_len) catch return null;
+        defer a.free(buf);
+        var total: usize = 0;
+        while (total < tail_len) {
+            const n = file.read(buf[total..]) catch {
+                ctx.failure_code = "LOG_UNAVAILABLE";
+                ctx.failure_state = "DEGRADED";
+                ctx.failure_message = "forensic log read failed";
+                return null;
+            };
+            if (n == 0) break;
+            total += n;
+        }
+        // Collect the last `limit` non-empty lines (skip a leading partial
+        // line when the window starts mid-record).
+        var lines: [100][]const u8 = undefined;
+        var count: usize = 0;
+        var it = std.mem.splitScalar(u8, buf[0..total], '\n');
+        var first = true;
+        while (it.next()) |line| {
+            if (first and start != 0) {
+                first = false;
+                continue;
+            }
+            first = false;
+            if (line.len == 0) continue;
+            if (count < lines.len) {
+                lines[count] = line;
+                count += 1;
+            } else {
+                std.mem.copyForwards([]const u8, lines[0 .. lines.len - 1], lines[1..]);
+                lines[lines.len - 1] = line;
+            }
+        }
+        const keep_from = if (count > limit) count - limit else 0;
+        var out = std.ArrayList(u8).init(a);
+        defer out.deinit();
+        const writer = out.writer();
+        writer.writeAll("{\"entries\":[") catch return null;
+        var emitted: usize = 0;
+        for (lines[keep_from..count]) |line| {
+            if (emitted > 0) writer.writeByte(',') catch return null;
+            std.json.stringify(line, .{}, writer) catch return null;
+            emitted += 1;
+        }
+        writer.writeAll("]}") catch return null;
+        return out.toOwnedSlice() catch null;
     }
 
     fn federationStatus(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
@@ -1264,4 +1567,81 @@ test "metricsSnapshot exposes SIEM durability counters" {
     // T3-TSIR-025: TS-IR mirror reports absent-but-honest with no file.
     try std.testing.expect(std.mem.indexOf(u8, out, "\"policy_ir\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"loaded\":false") != null);
+}
+
+test "rulesShow rejects malformed payloads before touching disk" {
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 10, .caller_role = .read, .caller_pid = 0 };
+    try std.testing.expect(handlers.rulesShow(std.testing.allocator, .{ .null = {} }, &ctx) == null);
+    try std.testing.expectEqualStrings("INVALID_INPUT", ctx.failure_code.?);
+    var obj = std.json.Value{ .object = std.json.ObjectMap.init(std.testing.allocator) };
+    defer obj.object.deinit();
+    try obj.object.put("id", .{ .integer = 7 });
+    var ctx2 = HandlerContext{ .start_ns = 0, .request_id = 11, .caller_role = .read, .caller_pid = 0 };
+    try std.testing.expect(handlers.rulesShow(std.testing.allocator, obj, &ctx2) == null);
+    try std.testing.expectEqualStrings("INVALID_INPUT", ctx2.failure_code.?);
+}
+
+test "rulesShow finds a real rule in Rules.json" {
+    var obj = std.json.Value{ .object = std.json.ObjectMap.init(std.testing.allocator) };
+    defer obj.object.deinit();
+    try obj.object.put("id", .{ .string = "R0056" });
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 12, .caller_role = .read, .caller_pid = 0 };
+    const out = handlers.rulesShow(std.testing.allocator, obj, &ctx) orelse {
+        try std.testing.expectEqualStrings("CONFIG_UNAVAILABLE", ctx.failure_code orelse "?");
+        return;
+    };
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"found\":true") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "SQL Injection") != null);
+}
+
+test "rulesValidate dry-runs Rules.json without touching the engine" {
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 13, .caller_role = .read, .caller_pid = 0 };
+    const out = handlers.rulesValidate(std.testing.allocator, .{ .null = {} }, &ctx) orelse {
+        try std.testing.expectEqualStrings("CONFIG_UNAVAILABLE", ctx.failure_code orelse "?");
+        return;
+    };
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"valid\":true") != null);
+}
+
+test "logsTail rejects bad limits before touching disk" {
+    var obj = std.json.Value{ .object = std.json.ObjectMap.init(std.testing.allocator) };
+    defer obj.object.deinit();
+    try obj.object.put("limit", .{ .integer = 0 });
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 14, .caller_role = .read, .caller_pid = 0 };
+    try std.testing.expect(handlers.logsTail(std.testing.allocator, obj, &ctx) == null);
+    try std.testing.expectEqualStrings("INVALID_INPUT", ctx.failure_code.?);
+}
+
+test "logsTail returns entries when the forensic log exists" {
+    std.fs.cwd().access("logs\\aegis_core.ndjson", .{}) catch return;
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 15, .caller_role = .read, .caller_pid = 0 };
+    const out = handlers.logsTail(std.testing.allocator, .{ .null = {} }, &ctx).?;
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"entries\"") != null);
+}
+
+test "policySimulate needs values and a loaded IR" {
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 16, .caller_role = .operate, .caller_pid = 0 };
+    try std.testing.expect(handlers.policySimulate(std.testing.allocator, .{ .null = {} }, &ctx) == null);
+    try std.testing.expectEqualStrings("INVALID_INPUT", ctx.failure_code.?);
+    var obj = std.json.Value{ .object = std.json.ObjectMap.init(std.testing.allocator) };
+    defer obj.object.deinit();
+    try obj.object.put("values", .{ .integer = 1 });
+    var ctx2 = HandlerContext{ .start_ns = 0, .request_id = 17, .caller_role = .operate, .caller_pid = 0 };
+    try std.testing.expect(handlers.policySimulate(std.testing.allocator, obj, &ctx2) == null);
+    try std.testing.expectEqualStrings("INVALID_INPUT", ctx2.failure_code.?);
+    // No IR in unit tests: honest absence, never a canned match.
+    var obj2 = std.json.Value{ .object = std.json.ObjectMap.init(std.testing.allocator) };
+    defer obj2.object.deinit();
+    var arr = std.json.Array.init(std.testing.allocator);
+    defer arr.deinit();
+    try arr.append(.{ .integer = 1 });
+    try obj2.object.put("values", .{ .array = arr });
+    var ctx3 = HandlerContext{ .start_ns = 0, .request_id = 18, .caller_role = .operate, .caller_pid = 0 };
+    // No IR in unit tests (daemon never runs here): honest absence with a
+    // named code, never a canned match.
+    try std.testing.expect(handlers.policySimulate(std.testing.allocator, obj2, &ctx3) == null);
+    try std.testing.expectEqualStrings("POLICY_IR_ABSENT", ctx3.failure_code.?);
 }
