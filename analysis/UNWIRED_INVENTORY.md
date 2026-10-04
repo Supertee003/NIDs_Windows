@@ -53,8 +53,15 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
 - [x] TS-IR exporter → `policy_ir.json` (T3-TSIR-025: exporter fixture +
   Zig verify-only loader + daemon mirror + metrics; hash recompute +
   seal contract = T7 follow-up)
-- [ ] Brain→daemon return contract (or declare one-way permanent)
-- [ ] SIEM pipeline wiring (library ready; transport decision open)
+- [x] Brain→daemon return contract (B2-BRAIN-024 daemon UDP offer +
+  T2-BRAIN-023 sensor-pipe return; both opt-in, loop closed)
+- [x] SIEM pipeline wiring (T1-SIEM-020/020b/021/022/021b: spill, honest
+  transports, auto-replay, daemon env wiring, metrics)
+- [x] Gate-E canary runner (CLI `canary run/status/report` verifies
+  definitions vs Rules.json + live engine count; read-only). OPEN: 2
+  severity drifts need rule-owner verdict (rfi_basic expects High, file
+  has Critical; data_exfil expects Low, file has High) — runner reports,
+  never auto-fixes.
 - [ ] `forensics.replay` handler ← replay_verifier
 - [ ] FED-XDR verdict: permanent test-only or Project 4+ cluster
 - [ ] policy_signing onto enforcement path + trust_store CNG + two-person API

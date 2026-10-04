@@ -900,8 +900,137 @@ def cmd_simulate(args) -> int:
     return _unavailable("simulate", "use scripts/aegis_event_gen.py for controlled fixtures")
 
 
+def _load_canary_defs() -> tuple[list[dict], str]:
+    """Load Gate-E canary definitions. Returns (tests, error_reason)."""
+    path = TOOLS_DIR.parent / "configs" / "canary_tests.json"
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return [], "canary_definitions_missing"
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError):
+        return [], "canary_definitions_unreadable"
+    tests = doc.get("tests") if isinstance(doc, dict) else None
+    if not isinstance(tests, list):
+        return [], "canary_definitions_malformed"
+    return tests, ""
+
+
+def _load_rules_file() -> tuple[dict, str]:
+    """Load configs/Rules.json keyed by rule_id. Returns (by_id, error_reason)."""
+    path = TOOLS_DIR.parent / "configs" / "Rules.json"
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}, "rules_file_missing"
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError):
+        return {}, "rules_file_unreadable"
+    rules = doc.get("nids_rules") if isinstance(doc, dict) else None
+    if not isinstance(rules, list):
+        return {}, "rules_file_malformed"
+    by_id = {}
+    for r in rules:
+        if isinstance(r, dict) and isinstance(r.get("rule_id"), str):
+            by_id.setdefault(r["rule_id"], r)
+    return by_id, ""
+
+
+def _live_engine_rule_count() -> int | None:
+    """Best-effort live engine rule count; None when the daemon is unreachable."""
+    if not CONTROL_API_AVAILABLE:
+        return None
+    try:
+        response = query_control("rules.list")
+    except Exception:
+        return None
+    if not isinstance(response, dict):
+        return None
+    for key in ("rules_loaded", "rule_count", "count"):
+        value = response.get(key)
+        if isinstance(value, int):
+            return value
+    return None
+
+
 def cmd_canary(args) -> int:
-    return _unavailable("canary", "end_to_end_canary_runner_not_connected")
+    """Gate-E canary: verify detection READINESS from definitions.
+
+    Honest scope: the wire carries no payload bytes for injected events,
+    so no CLI path can prove live firing (that needs a capture-path
+    fixture, not a control command). What this proves instead: every
+    canary's expected rule exists in configs/Rules.json with matching
+    severity, plus an optional live-engine count cross-check when the
+    daemon answers. Read-only; never touches enforcement or the engine.
+    """
+    sub = getattr(args, "canary_command", "status")
+    if sub == "status":
+        tests, err = _load_canary_defs()
+        by_id, rules_err = _load_rules_file()
+        print(json.dumps({
+            "available": True,
+            "definitions": len(tests),
+            "definitions_error": err or None,
+            "rules_in_file": len(by_id),
+            "rules_error": rules_err or None,
+            "engine_rules": _live_engine_rule_count(),
+        }, sort_keys=True))
+        return 0
+    if sub == "report":
+        receipt_path = TOOLS_DIR.parent / "logs" / "canary_last.json"
+        try:
+            print(json.dumps(json.loads(receipt_path.read_text(encoding="utf-8")), sort_keys=True))
+            return 0
+        except (FileNotFoundError, json.JSONDecodeError, UnicodeDecodeError, OSError):
+            print(json.dumps({"available": False, "reason": "no_canary_runs_yet"}, sort_keys=True))
+            return 3
+    if sub != "run":
+        return _unavailable("canary", "unknown_canary_command")
+    only = getattr(args, "test", None)
+    tests, err = _load_canary_defs()
+    if err:
+        print(json.dumps({"available": False, "reason": err}, sort_keys=True))
+        return 2
+    by_id, rules_err = _load_rules_file()
+    if rules_err:
+        print(json.dumps({"available": False, "reason": rules_err}, sort_keys=True))
+        return 2
+    engine_count = _live_engine_rule_count()
+    details = []
+    for t in tests:
+        if not isinstance(t, dict):
+            continue
+        name = t.get("name", "?")
+        if only is not None and name != only:
+            continue
+        want_rule = t.get("expected_rule_id")
+        want_sev = t.get("expected_severity")
+        got = by_id.get(want_rule) if isinstance(want_rule, str) else None
+        if got is None:
+            details.append({"name": name, "passed": False, "reason": "rule_not_in_file"})
+            continue
+        if want_sev is not None and got.get("severity") != want_sev:
+            details.append({"name": name, "passed": False, "reason": "severity_mismatch",
+                            "expected": want_sev, "actual": got.get("severity")})
+            continue
+        details.append({"name": name, "passed": True, "rule_id": want_rule,
+                        "severity": got.get("severity")})
+    if only is not None and not details:
+        print(json.dumps({"available": False, "reason": "unknown_canary_test",
+                          "test": only}, sort_keys=True))
+        return 2
+    passed = sum(1 for d in details if d["passed"])
+    failed = len(details) - passed
+    result = {"available": True, "passed": passed, "failed": failed,
+              "engine_rules": engine_count, "details": details}
+    if engine_count is not None and engine_count != len(by_id):
+        result["engine_drift"] = {"file": len(by_id), "engine": engine_count}
+    try:
+        (TOOLS_DIR.parent / "logs").mkdir(parents=True, exist_ok=True)
+        (TOOLS_DIR.parent / "logs" / "canary_last.json").write_text(
+            json.dumps(result, sort_keys=True), encoding="utf-8")
+    except OSError:
+        pass  # receipt is best-effort; the stdout verdict is authoritative
+    print(json.dumps(result, sort_keys=True))
+    return 0 if failed == 0 else 1
 
 
 def _ip_entries(path: Path, key: str) -> list[dict]:
