@@ -62,7 +62,11 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   severity drifts need rule-owner verdict (rfi_basic expects High, file
   has Critical; data_exfil expects Low, file has High) — runner reports,
   never auto-fixes.
-- [ ] `forensics.replay` handler ← replay_verifier
+- [x] `forensics.replay` handler ← replay_verifier (wired: integrity-only
+  observe replay T1-REPLAY-021 — export ring + re-verify CRC/hash chain;
+  pipeline re-execution deliberately NOT performed, events_replayed stays 0,
+  pass stays false. A deterministic re-execution harness would be a second
+  enforcement path, so this is the safe terminal state, not a gap.)
 - [ ] FED-XDR verdict: permanent test-only or Project 4+ cluster
 - [ ] policy_signing onto enforcement path + trust_store CNG + two-person API
 - [x] IPv6 full (contract v2) — wire v2 decode-ready T2-V6-022a (Go/Zig/
@@ -82,6 +86,10 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   first: migrate T14/T12 pins to `pipeline/event_processor` +
   `policy/action_dispatcher` (aligns with T1-DISP-018 quarantine) or
   re-promote dispatcher — NOT silent removal.
+- [ ] Go aggregator `:9200` binds all interfaces (`go/aggregator/main.go:124`
+  `Addr: :port`). Metrics exporter fixed loopback-only (NET-LOOPBACK-030);
+  aggregator needs its own design slice (confirm no LAN consumer before
+  pinning `127.0.0.1`) — NOT ad-hoc.
 - [ ] flow `is_ipv6` plumbing (normalize hardcodes false)
 
 ## COUPLING MAP (deep investigation 2026-10-04 — read before refactoring)
