@@ -8,7 +8,8 @@ import (
 )
 
 // runObserveInjection sends synthetic CanonicalEvent frames through the same
-// FrameWriter and 109-byte serializer used by live Npcap capture. The fixture
+// version-dispatched FrameWriter used by live Npcap capture (v1 fixtures
+// stay 109 bytes). The fixture
 // is intentionally alert-only: no rule ID, no signature-match event type, and
 // no block policy request. It is for proving ingress/queue/policy/forensic
 // linkage without creating a WFP host effect.

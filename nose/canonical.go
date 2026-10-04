@@ -430,6 +430,13 @@ func (e *CanonicalEvent) SerializeV2() ([EventV2WireSize]byte, error) {
 	return out, nil
 }
 
+// IsV6 reports whether the event carries IPv6 identity (first-4-bytes in
+// the u32 fields with ContextV6Truncated set). v6 events serialize as
+// 133-byte v2 frames; everything else stays frozen v1.
+func (e *CanonicalEvent) IsV6() bool {
+	return e.ContextFlags&ContextV6Truncated != 0
+}
+
 // DeserializeDispatch decodes a length-delimited canonical payload of
 // either version: 109-byte v1 (Src6/Dst6 left zero, truncated semantics
 // unchanged) or 133-byte v2 (full addresses reconstructed). Anything

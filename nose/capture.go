@@ -17,6 +17,7 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
+	"net"
 	"os"
 	"strings"
 	"sync/atomic"
@@ -238,6 +239,15 @@ func eventFromPacket(packet gopacket.Packet) *CanonicalEvent {
 			if len(dstIP) >= 4 {
 				ev.DestIP = binary.BigEndian.Uint32(dstIP[:4])
 			}
+			// T2-V6-022b: retain the full addresses for v2 frames. The
+			// queue/forensic identity stays first-4-bytes + bit2 (frozen
+			// u32 path); the tail travels for forensics/display plumbing.
+			if len(srcIP) == 16 {
+				copy(ev.Src6[:], srcIP)
+			}
+			if len(dstIP) == 16 {
+				copy(ev.Dst6[:], dstIP)
+			}
 			ev.ContextFlags |= ContextV6Truncated
 			ev.Protocol = uint8(net.NextHeader)
 		}
@@ -379,5 +389,38 @@ func captureSelfTest() error {
 	}
 	fmt.Printf("capture self-test OK: %d bytes wire, magic 0x%08X, src %d.%d.%d.%d\n",
 		len(wire), EventMagic, wire[33], wire[34], wire[35], wire[36])
+	// T2-V6-022b: v6 synthetic exercises the emit path end to end
+	// (eventFromPacket fills Src6/Dst6; Send dispatches to SerializeV2).
+	v6src := net.ParseIP("2001:db8::1")
+	v6dst := net.ParseIP("2001:db8::2")
+	if v6src.To16() == nil || v6dst.To16() == nil {
+		return fmt.Errorf("capture self-test: test host cannot parse IPv6 literals")
+	}
+	v6ev := &CanonicalEvent{
+		Source:       SourceNpcapSensor,
+		SourceIP:     binary.BigEndian.Uint32(v6src.To16()[:4]),
+		DestIP:       binary.BigEndian.Uint32(v6dst.To16()[:4]),
+		ContextFlags: ContextV6Truncated,
+	}
+	copy(v6ev.Src6[:], v6src.To16())
+	copy(v6ev.Dst6[:], v6dst.To16())
+	if !v6ev.IsV6() {
+		return fmt.Errorf("capture self-test: IsV6 must hold with bit2 set")
+	}
+	v6wire, err := v6ev.SerializeV2()
+	if err != nil {
+		return fmt.Errorf("capture self-test: v2 serialize: %w", err)
+	}
+	if len(v6wire) != EventV2WireSize {
+		return fmt.Errorf("capture self-test: v2 wire size %d != %d", len(v6wire), EventV2WireSize)
+	}
+	back, err := DeserializeDispatch(v6wire[:])
+	if err != nil {
+		return fmt.Errorf("capture self-test: v2 dispatch: %w", err)
+	}
+	if back.Src6 != v6ev.Src6 || back.Dst6 != v6ev.Dst6 {
+		return fmt.Errorf("capture self-test: v2 full addresses differ after dispatch")
+	}
+	fmt.Printf("capture self-test OK: v2 %d bytes wire, full identity round-trips\n", len(v6wire))
 	return nil
 }

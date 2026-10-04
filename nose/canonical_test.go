@@ -10,6 +10,7 @@ package main
 
 import (
 	"encoding/binary"
+	"net"
 	"os"
 	"testing"
 
@@ -523,5 +524,36 @@ func TestV2Vector006MatchesCommittedBin(t *testing.T) {
 	}
 	if back.ContextFlags&ContextV6Truncated == 0 {
 		t.Fatalf("bit2 must survive the committed v2 vector")
+	}
+}
+
+func TestEventFromPacketFillsV6Sidecars(t *testing.T) {
+	// T2-V6-022b emit path: a synthetic IPv6 packet must produce first-4
+	// identity + bit2 AND full Src6/Dst6, so Send can emit v2 frames.
+	ip6 := &layers.IPv6{
+		Version:    6,
+		NextHeader: 6,
+		SrcIP:      net.ParseIP("2001:db8::1"),
+		DstIP:      net.ParseIP("2001:db8::2"),
+	}
+	tcp := &layers.TCP{SrcPort: 1234, DstPort: 80}
+	buf := gopacket.NewSerializeBuffer()
+	if err := gopacket.SerializeLayers(buf, gopacket.SerializeOptions{},
+		ip6, tcp, gopacket.Payload([]byte("hello"))); err != nil {
+		t.Fatalf("serialize v6 packet: %v", err)
+	}
+	pkt := gopacket.NewPacket(buf.Bytes(), layers.LayerTypeIPv6, gopacket.NoCopy)
+	ev := eventFromPacket(pkt)
+	if !ev.IsV6() {
+		t.Fatalf("v6 packet must set bit2")
+	}
+	var wantSrc, wantDst [16]byte
+	copy(wantSrc[:], net.ParseIP("2001:db8::1").To16())
+	copy(wantDst[:], net.ParseIP("2001:db8::2").To16())
+	if ev.Src6 != wantSrc || ev.Dst6 != wantDst {
+		t.Fatalf("v6 sidecars differ:\n  got  % x / % x", ev.Src6, ev.Dst6)
+	}
+	if ev.SourceIP != 0x20010DB8 || ev.DestIP != 0x20010DB8 {
+		t.Fatalf("v6 first-4 identity wrong: %08x %08x", ev.SourceIP, ev.DestIP)
 	}
 }

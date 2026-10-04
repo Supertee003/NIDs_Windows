@@ -56,6 +56,8 @@ v2 payload: 133 bytes = v1 109 bytes ++ v6 tail 24 bytes
 
 ## Out of scope (scheduled follow-ups, NOT this slice)
 
-- Nose emitting v2 on the live pipe (decode-ready first, emit second).
+- ~~Nose emitting v2 on the live pipe (decode-ready first, emit second).~~
+  DONE T2-V6-022b: `eventFromPacket` fills Src6/Dst6, `Send` dispatches
+  to `SerializeV2` for bit2 events; Zig reader already accepts 133.
 - Detection/flow/forensic plumbing of full addresses (u32 identity +
   bit2 guard unchanged; see UNWIRED_INVENTORY flow `is_ipv6` item).
