@@ -69,6 +69,8 @@ comptime {
     _ = @import("tests/federation/node_registry.zig");
     _ = @import("tests/federation/aggregator.zig");
     _ = @import("tests/xdr/xdr_engine.zig");
+    // Pipeline hook tests (T1-SIEM-022 SIEM forwarding pin executes here).
+    _ = @import("pipeline/event_processor.zig");
     // Control plane contract + handlers (T3-TWOP-023 pins execute here).
     _ = @import("control/protocol.zig");
     _ = @import("control/handler_registry.zig");

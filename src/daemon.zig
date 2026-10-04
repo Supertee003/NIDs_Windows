@@ -23,6 +23,7 @@ const tracker = @import("detection/threat_tracker.zig");
 const policy = @import("policy/policy_ir.zig");
 const pep = @import("policy/pep_bindings.zig");
 const forensic = @import("forensic/forensic_pipeline.zig");
+const siem_mod = @import("forensic/siem_forwarder.zig");
 const dispatcher = @import("policy/action_dispatcher.zig");
 const watchdog = @import("reliability/watchdog.zig");
 const sec_check = @import("reliability/security_check.zig");
@@ -86,14 +87,53 @@ const RuntimeSupervisor = struct {
         self.sensor = null;
         if (self.pipeline) |thread| thread.join();
         self.pipeline = null;
+        // SIEM drain runs on the pipeline thread (same-thread discipline),
+        // so flushing here — after the pipeline joined — races nothing and
+        // persists the tail the interval flush may not have reached yet.
+        siem_mod.flush();
+        siem_mod.shutdown();
         // STOPPED is a postcondition of the owner completing every join. The
         // control handler publishes STOPPING while this work is pending.
         runtime_sm.g_runtime.transition(.stopped);
     }
 };
 
-fn publishPipeObservation(observation: pipe_monitor.PipeObservation, payload: []const u8) bool {
-    var ev = event.IpcEvent.init(.signature_match);
+/// Read AEGIS_SIEM_* environment into a forwarder config. Returns null
+/// (forwarder stays uninitialized) unless AEGIS_SIEM=1/on/true.
+fn initSiemFromEnv() void {
+    const enabled_raw = std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_SIEM") catch return;
+    defer std.heap.page_allocator.free(enabled_raw);
+    const enabled = std.ascii.eqlIgnoreCase(enabled_raw, "1") or
+        std.ascii.eqlIgnoreCase(enabled_raw, "true") or
+        std.ascii.eqlIgnoreCase(enabled_raw, "on");
+    if (!enabled) return;
+
+    var config = siem_mod.SiemConfig{ .enabled = true };
+    if (std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_SIEM_TRANSPORT") catch null) |t| {
+        defer std.heap.page_allocator.free(t);
+        if (siem_mod.Transport.fromString(t)) |tr| config.transport = tr;
+    }
+    if (std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_SIEM_FORMAT") catch null) |f| {
+        defer std.heap.page_allocator.free(f);
+        if (siem_mod.OutputFormat.fromString(f)) |fmt| config.format = fmt;
+    }
+    if (std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_SIEM_ENDPOINT") catch null) |e| {
+        defer std.heap.page_allocator.free(e);
+        // Daemon-lifetime intentional retain: the singleton outlives this
+        // scope, so the endpoint string is duplicated, never borrowed.
+        if (e.len > 0) config.endpoint = std.heap.page_allocator.dupe(u8, e) catch config.endpoint;
+    }
+    if (std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_SIEM_DEST") catch null) |d| {
+        defer std.heap.page_allocator.free(d);
+        if (d.len > 0) config.destination = std.heap.page_allocator.dupe(u8, d) catch config.destination;
+    }
+    siem_mod.init(std.heap.page_allocator, config);
+    diag.info("[SIEM] forwarder enabled transport={s} format={s} dest={s}", .{
+        config.transport.toString(), config.format.toString(), config.destination,
+    });
+}
+
+fn publishPipeObservation(observation: pipe_monitor.PipeObservation, payload: []const u8) bool {    var ev = event.IpcEvent.init(.signature_match);
     ev.source = .capture_pipe_monitor;
     ev.event_id = event.nextEventId();
     ev.trace_id = ev.event_id;
@@ -163,6 +203,12 @@ pub fn runDaemon() !void {
     state.g_wd = watchdog.ReliabilityWatchdog.init(std.heap.page_allocator); // PATCH-29: global watchdog
     defer state.g_wd.deinit();
     state.g_perf = .{}; // PATCH-31: global performance tracker
+
+    // 4a. SIEM forwarder (opt-in, default off). Enabled only with
+    // AEGIS_SIEM=1; transport/format/endpoint/destination come from env
+    // with fail-safe file defaults. The pipeline thread owns all
+    // forward/flush calls; shutdown drains after the pipeline joins.
+    initSiemFromEnv();
 
     // 5. Start fault injector (disabled by default)
     state.g_fi = fault.FaultInjector.fromEnv(); // PATCH-30: global fault injector

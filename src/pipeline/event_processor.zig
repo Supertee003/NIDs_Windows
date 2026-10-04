@@ -23,6 +23,7 @@ const watchdog = @import("../reliability/watchdog.zig");
 const hist = @import("../reliability/latency_histogram.zig");
 const state = @import("runtime_state.zig");
 const queue = @import("event_queue.zig");
+const siem_mod = @import("../forensic/siem_forwarder.zig");
 
 /// Process a single event through the detection pipeline:
 ///   1. Flow table lookup/update
@@ -234,6 +235,75 @@ fn processEvent(
     if (forensic_seq != 0) {
         _ = state.g_forensic_records_written.fetchAdd(1, .monotonic);
     }
+
+    // 8. SIEM forwarding (detections only; observe path, never host effects).
+    // Zero-cost when uninitialized: one bool check. The forwarder duplicates
+    // all strings, so stack buffers below never escape this call.
+    if (siem_mod.isEnabled()) {
+        siemForward(ev, matched_rule_id, ev_severity, policy_action);
+        if (siem_mod.shouldFlush()) siem_mod.flush();
+    }
+}
+
+/// Format one detection for the SIEM forwarder. Detections only
+/// (matched_rule_id == 0 means no signal worth forwarding).
+fn siemForward(ev: *const event.IpcEvent, rule_id: u32, severity: event.EventSeverity, action: policy.Action) void {
+    if (rule_id == 0) return;
+    var src_buf: [16]u8 = undefined;
+    var dst_buf: [16]u8 = undefined;
+    var rule_buf: [11]u8 = undefined;
+    var proto_buf: [4]u8 = undefined;
+    const src = std.fmt.bufPrint(&src_buf, "{}.{}.{}.{}", .{
+        (ev.src_ip >> 24) & 0xFF, (ev.src_ip >> 16) & 0xFF, (ev.src_ip >> 8) & 0xFF, ev.src_ip & 0xFF,
+    }) catch return;
+    const dst = std.fmt.bufPrint(&dst_buf, "{}.{}.{}.{}", .{
+        (ev.dst_ip >> 24) & 0xFF, (ev.dst_ip >> 16) & 0xFF, (ev.dst_ip >> 8) & 0xFF, ev.dst_ip & 0xFF,
+    }) catch return;
+    const rule = std.fmt.bufPrint(&rule_buf, "{}", .{rule_id}) catch return;
+    const proto: []const u8 = if (ev.protocol == 6) "TCP" else if (ev.protocol == 17) "UDP" else if (ev.protocol == 1) "ICMP" else std.fmt.bufPrint(&proto_buf, "{}", .{ev.protocol}) catch return;
+    siem_mod.forwardEvent(.{
+        .timestamp = @as(i64, @intCast(ev.timestamp_ns / 1_000_000)),
+        .attack_type = @tagName(ev.kind),
+        .src_ip = src,
+        .dst_ip = dst,
+        .src_port = ev.src_port,
+        .dst_port = ev.dst_port,
+        .protocol = proto,
+        .severity = @tagName(severity),
+        .policy = @tagName(action),
+        .rule_id = rule,
+        .status = "DETECTED",
+        .payload = "",
+    });
+}
+
+// ============================================================
+// Tests (T1-SIEM-022)
+// ============================================================
+
+test "siemForward buffers detections and ignores non-detections" {
+    const dest = "siem_pipeline_probe.json";
+    defer std.fs.cwd().deleteFile(dest) catch {};
+    if (siem_mod.isInitialized()) siem_mod.shutdown();
+    siem_mod.init(std.testing.allocator, .{ .enabled = true, .destination = dest });
+    defer siem_mod.shutdown();
+
+    var ev = event.IpcEvent.init(.packet_captured);
+    ev.src_ip = 0xC0A80164;
+    ev.dst_ip = 0x0A000001;
+    ev.src_port = 1234;
+    ev.dst_port = 80;
+    ev.protocol = 6;
+    siemForward(&ev, 0, .info, .pass);
+    try std.testing.expectEqual(@as(u64, 0), siem_mod.getStats().total_events_read);
+    siemForward(&ev, 4242, .alert, .alert);
+    try std.testing.expectEqual(@as(u64, 1), siem_mod.getStats().total_events_read);
+    siem_mod.flush();
+    try std.testing.expectEqual(@as(u64, 1), siem_mod.getStats().total_events_forwarded);
+    const body = try std.fs.cwd().readFileAlloc(std.testing.allocator, dest, 65536);
+    defer std.testing.allocator.free(body);
+    try std.testing.expect(std.mem.indexOf(u8, body, "4242") != null);
+    try std.testing.expect(std.mem.indexOf(u8, body, "192.168.1.100") != null);
 }
 
 /// Main pipeline loop: pops events from queue and processes them.

@@ -184,17 +184,59 @@ pub const SiemForwarder = struct {
     }
 
     /// Add an event to the batch buffer. Automatically flushes when batch is full.
+    /// Ownership: string fields are duplicated into the forwarder allocator,
+    /// so callers may pass stack/short-lived slices (e.g. the pipeline hot
+    /// path formats into stack buffers). Freed on buffer clear.
     pub fn forwardEvent(self: *SiemForwarder, event: ForwardedEvent) !void {
         if (!self.initialized or !self.config.enabled) return;
 
         self.stats.total_events_read += 1;
 
-        try self.batch_buffer.append(event);
+        try self.batch_buffer.append(try self.dupEvent(event));
 
         // Auto-flush when batch is full
         if (self.batch_buffer.items.len >= self.config.batch_size) {
             try self.flush();
         }
+    }
+
+    fn dupEvent(self: *SiemForwarder, event: ForwardedEvent) !ForwardedEvent {
+        var owned = event;
+        owned.attack_type = try self.allocator.dupe(u8, event.attack_type);
+        errdefer self.allocator.free(owned.attack_type);
+        owned.src_ip = try self.allocator.dupe(u8, event.src_ip);
+        errdefer self.allocator.free(owned.src_ip);
+        owned.dst_ip = try self.allocator.dupe(u8, event.dst_ip);
+        errdefer self.allocator.free(owned.dst_ip);
+        owned.protocol = try self.allocator.dupe(u8, event.protocol);
+        errdefer self.allocator.free(owned.protocol);
+        owned.severity = try self.allocator.dupe(u8, event.severity);
+        errdefer self.allocator.free(owned.severity);
+        owned.policy = try self.allocator.dupe(u8, event.policy);
+        errdefer self.allocator.free(owned.policy);
+        owned.rule_id = try self.allocator.dupe(u8, event.rule_id);
+        errdefer self.allocator.free(owned.rule_id);
+        owned.status = try self.allocator.dupe(u8, event.status);
+        errdefer self.allocator.free(owned.status);
+        owned.payload = try self.allocator.dupe(u8, event.payload);
+        return owned;
+    }
+
+    fn freeEventStrings(self: *SiemForwarder, event: *const ForwardedEvent) void {
+        self.allocator.free(event.attack_type);
+        self.allocator.free(event.src_ip);
+        self.allocator.free(event.dst_ip);
+        self.allocator.free(event.protocol);
+        self.allocator.free(event.severity);
+        self.allocator.free(event.policy);
+        self.allocator.free(event.rule_id);
+        self.allocator.free(event.status);
+        self.allocator.free(event.payload);
+    }
+
+    fn clearBuffer(self: *SiemForwarder) void {
+        for (self.batch_buffer.items) |*ev| self.freeEventStrings(ev);
+        self.batch_buffer.clearRetainingCapacity();
     }
 
     /// Flush the batch buffer to the configured destination.
@@ -215,7 +257,7 @@ pub const SiemForwarder = struct {
                 self.stats.total_events_forwarded += @intCast(self.batch_buffer.items.len);
                 self.stats.total_batches_sent += 1;
                 self.stats.last_forward_ms = std.time.milliTimestamp() - start_ms;
-                self.batch_buffer.clearRetainingCapacity();
+                self.clearBuffer();
                 self.last_flush_ms = std.time.milliTimestamp();
                 return;
             } else {
@@ -241,7 +283,7 @@ pub const SiemForwarder = struct {
                 self.config.retry_count, self.batch_buffer.items.len,
             });
         }
-        self.batch_buffer.clearRetainingCapacity();
+        self.clearBuffer();
     }
 
     /// Result of one bounded spool-replay pass.
@@ -758,6 +800,15 @@ pub fn flush() void {
             std.log.warn("[SIEM] Flush failed: {}", .{err});
         };
     }
+}
+
+/// Cheap time-based flush gate for hot paths (e.g. the pipeline thread):
+/// true only when initialized, enabled, and the flush interval has passed
+/// with a non-empty buffer. Avoids a file/network syscall per event.
+pub fn shouldFlush() bool {
+    if (!g_initialized or !g_config.enabled) return false;
+    if (g_forwarder) |*f| return f.shouldFlush();
+    return false;
 }
 
 pub fn getStats() ForwardStats {
