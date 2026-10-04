@@ -208,3 +208,49 @@ def test_quarantined_orchestrators_have_no_production_importers():
                     banned.append(f"{p.relative_to(REPO)}:{i}:{line.strip()[:100]}")
     assert checked > 50, f"zig prod scan surface too small: {checked}"
     assert banned == [], f"production imports quarantined orchestrator: {banned}"
+
+
+def test_legacy_tcp_listener_stays_dead():
+    """T1-NET-019 leftover: src/core/nids_analyze.zig contains a 0.0.0.0 TCP
+    listener (tcp_listener, spawned by analyze_packets, itself spawned only
+    by the orphaned nids_main.main). The production daemon (main.zig ->
+    win32_service -> daemon.zig) never runs that chain, and build.zig never
+    builds nids_main as an executable — the control plane stays named-pipe
+    only. Fail if the listener gains a new spawner, the chain gains a new
+    caller, or the legacy entry becomes reachable from production."""
+    zig_files = [p for p in (REPO / "src").rglob("*.zig")
+                 if p.suffixes != [".zig", ".scaffold"] and not p.name.endswith(".scaffold")]
+    require(zig_files, "zig sources")
+    # 1. tcp_listener is spawned exactly once (analyze_packets, legacy flow).
+    spawns = [h for h in hits(r"tcp_listener", zig_files, strip="//")
+              if "fn tcp_listener(" not in h]
+    assert len(spawns) == 1 and "nids_analyze.zig" in spawns[0], (
+        f"tcp_listener spawner changed: {spawns}"
+    )
+    # 2. analyze_packets is entered only by nids_main.main (orphan entry).
+    entries = [h for h in hits(r"analyze_packets", zig_files, strip="//")
+               if "fn analyze_packets(" not in h
+               and "analyze_packets not called in test mode" not in h
+               and "registered separately in analyze_packets(" not in h]
+    entry_files = {h.split(":")[0] for h in entries}
+    assert entry_files == {"src\\core\\nids_main.zig"}, (
+        f"analyze_packets gained a caller outside nids_main: {entries}"
+    )
+    # 3. nids_main.main itself is never invoked anywhere in src/.
+    mains = [h for h in hits(r"nids_main\.main|nids_main import", zig_files, strip="//")]
+    assert mains == [], f"orphan nids_main.main became reachable: {mains}"
+    # 4. 0.0.0.0 binds live only in nids_analyze.zig (listener + its own
+    # allowlist test); wfp_ioctl.zig only asserts a formatted "0.0.0.0".
+    bind_files = {h.split(":")[0] for h in hits(r'"0\.0\.0\.0"', zig_files, strip="//")}
+    assert bind_files <= {"src\\core\\nids_analyze.zig", "src\\policy\\wfp_ioctl.zig"}, (
+        f"new 0.0.0.0 surface outside the orphan listener: {sorted(bind_files)}"
+    )
+    # 5. Production daemon never imports the legacy chain; build.zig never
+    # builds nids_main as an executable.
+    for root in ("src/main.zig", "src/daemon.zig"):
+        lines = code_lines(REPO / root, "//")
+        bad = [f"{root}:{i}:{line.strip()[:100]}" for i, line in lines
+               if re.search(r"nids_main|windows_capture|core/nids_analyze\.zig", line)]
+        assert bad == [], f"production daemon imports legacy TCP chain: {bad}"
+    build = (REPO / "build.zig").read_text(encoding="utf-8")
+    assert "nids_main" not in build, "build.zig must never build the orphan nids_main entry"
