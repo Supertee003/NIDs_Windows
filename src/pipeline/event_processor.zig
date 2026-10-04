@@ -24,6 +24,7 @@ const hist = @import("../reliability/latency_histogram.zig");
 const state = @import("runtime_state.zig");
 const queue = @import("event_queue.zig");
 const siem_mod = @import("../forensic/siem_forwarder.zig");
+const brain_mod = @import("../core/bridge_init.zig");
 
 /// Process a single event through the detection pipeline:
 ///   1. Flow table lookup/update
@@ -243,6 +244,50 @@ fn processEvent(
         siemForward(ev, matched_rule_id, ev_severity, policy_action);
         if (siem_mod.shouldFlush()) siem_mod.flush();
     }
+
+    // 9. Tier-2 brain inspection (detections only, AEGIS_BRAIN=1).
+    // Fire-and-forget UDP offer for deep inspection; findings return via
+    // the opt-in sensor pipe. Advisory only: never blocks, enforces, or
+    // gates detection. Zero-cost when the loop is closed (one bool check).
+    if (state.g_brain_enabled.load(.acquire)) {
+        brainInspect(ev, matched_rule_id, ev_severity, policy_action);
+    }
+}
+
+/// Offer one detection to the Tier-2 brain over UDP (Case-1 document:
+/// the brain verifies instead of re-scanning). Detections only.
+fn brainInspect(ev: *const event.IpcEvent, rule_id: u32, severity: event.EventSeverity, action: policy.Action) void {
+    if (rule_id == 0) return;
+    var src_buf: [16]u8 = undefined;
+    const src = std.fmt.bufPrint(&src_buf, "{}.{}.{}.{}", .{
+        (ev.src_ip >> 24) & 0xFF, (ev.src_ip >> 16) & 0xFF, (ev.src_ip >> 8) & 0xFF, ev.src_ip & 0xFF,
+    }) catch return;
+    const msg = struct {
+        source: []const u8,
+        src_ip: []const u8,
+        attack_type: []const u8,
+        policy: []const u8,
+        severity: []const u8,
+        rule_id: u32,
+    }{
+        .source = "zig_pipeline",
+        .src_ip = src,
+        .attack_type = @tagName(ev.kind),
+        .policy = @tagName(action),
+        .severity = brainSeverity(severity),
+        .rule_id = rule_id,
+    };
+    brain_mod.sendToBrain(std.heap.page_allocator, @TypeOf(msg), msg);
+}
+
+/// Map pipeline severity onto the brain's Low/Medium/High/Critical vocabulary.
+fn brainSeverity(severity: event.EventSeverity) []const u8 {
+    return switch (severity) {
+        .critical, .emergency => "Critical",
+        .alert, .@"error" => "High",
+        .warning, .notice => "Medium",
+        else => "Low",
+    };
 }
 
 /// Format one detection for the SIEM forwarder. Detections only
@@ -304,6 +349,32 @@ test "siemForward buffers detections and ignores non-detections" {
     defer std.testing.allocator.free(body);
     try std.testing.expect(std.mem.indexOf(u8, body, "4242") != null);
     try std.testing.expect(std.mem.indexOf(u8, body, "192.168.1.100") != null);
+}
+
+test "brainSeverity speaks the brain Low/Medium/High/Critical vocabulary" {
+    try std.testing.expectEqualStrings("Critical", brainSeverity(.critical));
+    try std.testing.expectEqualStrings("Critical", brainSeverity(.emergency));
+    try std.testing.expectEqualStrings("High", brainSeverity(.alert));
+    try std.testing.expectEqualStrings("High", brainSeverity(.@"error"));
+    try std.testing.expectEqualStrings("Medium", brainSeverity(.warning));
+    try std.testing.expectEqualStrings("Medium", brainSeverity(.notice));
+    try std.testing.expectEqualStrings("Low", brainSeverity(.info));
+    try std.testing.expectEqualStrings("Low", brainSeverity(.trace));
+    try std.testing.expectEqualStrings("Low", brainSeverity(.debug));
+}
+
+test "brainInspect is a safe no-op without detections or loop" {
+    var ev = event.IpcEvent.init(.packet_captured);
+    ev.src_ip = 0xC0A80164;
+    // Closed loop: formats nothing, sends nothing.
+    state.g_brain_enabled.store(false, .release);
+    brainInspect(&ev, 4242, .alert, .alert);
+    // Open loop without a brain socket: UDP send fails into the bounded
+    // spool (or nowhere); must never raise or block the caller.
+    state.g_brain_enabled.store(true, .release);
+    brainInspect(&ev, 4242, .alert, .alert);
+    brainInspect(&ev, 0, .info, .pass);
+    state.g_brain_enabled.store(false, .release);
 }
 
 /// Main pipeline loop: pops events from queue and processes them.

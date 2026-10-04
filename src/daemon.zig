@@ -210,6 +210,18 @@ pub fn runDaemon() !void {
     // forward/flush calls; shutdown drains after the pipeline joins.
     initSiemFromEnv();
 
+    // 4b. Tier-2 brain inspection loop (opt-in, default off). AEGIS_BRAIN=1
+    // lets the pipeline offer detections to the brain over UDP for deep
+    // inspection; findings return via the opt-in sensor pipe (T2-BRAIN-023).
+    // Advisory only: the brain path never blocks, enforces, or gates detection.
+    if (std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_BRAIN") catch null) |b| {
+        defer std.heap.page_allocator.free(b);
+        if (std.ascii.eqlIgnoreCase(b, "1") or std.ascii.eqlIgnoreCase(b, "true") or std.ascii.eqlIgnoreCase(b, "on")) {
+            state.g_brain_enabled.store(true, .release);
+            diag.info("[BRAIN] Tier-2 inspection enabled (daemon -> UDP 127.0.0.1:9999)", .{});
+        }
+    }
+
     // 5. Start fault injector (disabled by default)
     state.g_fi = fault.FaultInjector.fromEnv(); // PATCH-30: global fault injector
 

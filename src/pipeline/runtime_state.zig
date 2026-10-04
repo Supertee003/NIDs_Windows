@@ -19,6 +19,11 @@ pub var g_stop_requested = std.atomic.Value(bool).init(false);
 /// gate. Provider readiness alone must never change it.
 pub var g_prevention_gate_open: bool = false;
 
+/// Tier-2 brain inspection (daemon -> brain UDP, detections only). Opt-in
+/// via AEGIS_BRAIN=1 (default off): without a running brain the datagrams
+/// go nowhere, so the pipeline skips formatting entirely when closed.
+pub var g_brain_enabled = std.atomic.Value(bool).init(false);
+
 // PHASE-1 readiness handshake. Thread creation is not readiness: each worker
 // sets its ready flag only after its required initialization succeeds and
 // clears it before returning. A failed flag preserves the reason at runtime
