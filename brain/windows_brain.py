@@ -18,8 +18,9 @@ directly mutates WFP. See `apply_firewall_block` below.
   - KERNEL_PROCESS layer: Process create/exit events (source: KERNEL_PROCESS)
   - PIPE_MONITOR layer: Named Pipe events (source: L2_PIPE)
 
-Bridge Integration (Phase 1):
-  - Import aegis_bridge_ctypes for C++ IPC Bridge
+Bridge Integration (Phase 1, T3-BRIDGE-026b):
+  - Import brain.cython.bridge_ipc first (Cython C edge), fall back to the
+    aegis_bridge_ctypes shim (which delegates to Cython when built)
   - Push Tier-2 match results to Bridge (for Dashboard)
   - Use Bridge DEFCON level for IPS policy decisions
   - Pop events from Bridge queue for cross-subsystem communication
@@ -72,12 +73,22 @@ try:
     from brain.detection_scan import scan_to_detection_result
 except ImportError:
     scan_to_detection_result = None
+# T3-BRIDGE-026b: Cython first (standing rule: Python->C via Cython),
+# ctypes shim second (it delegates to Cython itself when the .pyd exists),
+# standalone last. Exactly one edge is ever active; BRIDGE_VIA names it.
 try:
-    import aegis_bridge_ctypes as bridge
+    from brain.cython import bridge_ipc as bridge
     BRIDGE_AVAILABLE = True
+    BRIDGE_VIA = "cython"
 except ImportError:
-    print("[AEGIS BRAIN] Warning: aegis_bridge_ctypes not found — running without Bridge")
-    BRIDGE_AVAILABLE = False
+    try:
+        import aegis_bridge_ctypes as bridge
+        BRIDGE_AVAILABLE = True
+        BRIDGE_VIA = getattr(bridge, "BRIDGE_VIA", "ctypes")
+    except ImportError:
+        print("[AEGIS BRAIN] Warning: no bridge binding found — running without Bridge")
+        BRIDGE_AVAILABLE = False
+        BRIDGE_VIA = "none"
 
 # G27 Gate-A: Runtime counters for the HEALTH probe response.
 # These counters are populated by the main event loop and read by the
