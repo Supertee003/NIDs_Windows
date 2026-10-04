@@ -139,7 +139,10 @@ fn processEvent(
     const anom_bytes: f64 = @floatFromInt(qe.payload_len);
     if (ad.observe(anom_key_bytes, anom_bytes) catch null) |z_score| {
         _ = z_score;
-        _ = state.g_pipeline_anomalies.fetchAdd(1, .monotonic);
+        // ANOM-COUNT-035: the detector already counted this emission in
+        // ad.anomalies_emitted. The only other counter touched here is the
+        // live metrics feed (diag.metrics.anomalies_detected -> snapshot);
+        // the write-only g_pipeline_anomalies global is gone.
         diag.metrics.anomalies_detected.inc();
     }
 

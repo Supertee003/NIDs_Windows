@@ -88,7 +88,9 @@ pub fn workerFailureMask() u8 {
 // beyond atomicity), readers use .acquire.
 pub var g_pipeline_events_processed = std.atomic.Value(u64).init(0);
 pub var g_pipeline_detections = std.atomic.Value(u64).init(0);
-pub var g_pipeline_anomalies = std.atomic.Value(u64).init(0);
+// ANOM-COUNT-035: g_pipeline_anomalies removed (write-only, zero readers).
+// Anomaly counts live in AnomalyDetector.anomalies_emitted (detector-owned)
+// and diag.metrics.anomalies_detected (metrics-snapshot feed).
 pub var g_pipeline_correlations = std.atomic.Value(u64).init(0);
 pub var g_rules_loaded = std.atomic.Value(u32).init(0);
 pub var g_policies_loaded = std.atomic.Value(u32).init(0);

@@ -72,7 +72,11 @@ pub const AnomalyDetector = struct {
     pub fn observe(self: *AnomalyDetector, key: EntityKey, value: f64) !?f64 {
         const gop = try self.metrics.getOrPut(key);
         if (!gop.found_existing) gop.value_ptr.* = .{};
-        return gop.value_ptr.observe(value);
+        const z = gop.value_ptr.observe(value);
+        // ANOM-COUNT-035: the detector owns its emission count. A z-score
+        // hit is one emitted anomaly, counted here — never in the pipeline.
+        if (z != null) self.anomalies_emitted += 1;
+        return z;
     }
 
     pub fn metricCount(self: *const AnomalyDetector) usize {
@@ -148,4 +152,22 @@ test "pipeline byte-signal: metric_kind=2 baselines are per-IP and spike-sensiti
     }
     try std.testing.expect(try ad.observe(steady, 305.0) == null);
     try std.testing.expect(try ad.observe(spiker, 9000.0) != null);
+}
+
+test "AnomalyDetector owns its emission count" {
+    // ANOM-COUNT-035: anomalies_emitted counts exactly the z-score hits the
+    // detector reports — warmup and steady observations never increment it.
+    var ad = AnomalyDetector.init(std.testing.allocator);
+    defer ad.deinit();
+    const k = EntityKey{ .src_ip = [_]u8{ 10, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, .metric_kind = 2 };
+    var i: u32 = 0;
+    while (i < 100) : (i += 1) {
+        _ = try ad.observe(k, 300.0);
+    }
+    try std.testing.expectEqual(@as(u64, 0), ad.anomalies_emitted);
+    // One spike: exactly one emission. (Further spikes are asserted only
+    // for non-decrement — EWMA adapts, so exact counts after the first
+    // spike are distribution-dependent, not contract.)
+    _ = try ad.observe(k, 9000.0);
+    try std.testing.expectEqual(@as(u64, 1), ad.anomalies_emitted);
 }
