@@ -5,9 +5,9 @@
 //
 // Frame protocol (matches nose/pipe_writer.go):
 //   u32 LE length (109 v1, 133 v2) + raw canonical event bytes.
-// v2 frames (T2-V6-022a) carry the full IPv6 tail; the queue identity
-// stays first-4-bytes + bit2 (IpcEvent has no v6 room) while the version
-// dispatch below proves the extended contract end to end.
+// v2 frames (T2-V6-022a) carry the full IPv6 tail; DecodedFrame sidecars
+// survive the queue to the flow/anomaly stages (V6-FLOW-036/V6-DETECT-037)
+// while detection/policy/forensic identity stays u32 + bit2.
 //
 // After each frame the reader validates schema via canonical.validate()
 // and submits through nose_contract.submitEvent(), routing the event
@@ -49,6 +49,26 @@ const ERROR_PIPE_CONNECTED = 535;
 const ERROR_PIPE_LISTENING = 536;
 
 const FRAME_SIZE: usize = 109; // canonical.WIRE_PAYLOAD_SIZE
+
+/// Bound for drain-and-continue on a malformed length (NOSE-DISC-042). A
+/// corrupt length header is a u32 with no credibility: draining more than
+/// this to "resync" lets one bad header stall the reader for gigabytes and
+/// the stream position after garbage is unknowable anyway. Larger lengths
+/// break the connection instead — nose reconnects and framing restarts
+/// clean. Legitimate frames are 109/133 bytes, orders below this bound.
+pub const MAX_DISCARD_BYTES: u32 = 64 * 1024;
+
+/// Pure frame-length classifier so the resync policy is unit-pinned
+/// without a pipe handle. drain = skip-and-continue, resync = drop the
+/// connection and let nose reconnect.
+pub const LengthVerdict = enum { accept_v1, accept_v2, drain, resync };
+
+pub fn classifyFrameLen(frameLen: u32) LengthVerdict {
+    if (frameLen == FRAME_SIZE) return .accept_v1;
+    if (frameLen == canonical.WIRE_V2_PAYLOAD_SIZE) return .accept_v2;
+    if (frameLen <= MAX_DISCARD_BYTES) return .drain;
+    return .resync;
+}
 
 // ============================================================
 // Win32 Extern (kernel32) Î“Ã‡Ã¶ Pipe functions not in Zig std
@@ -278,9 +298,18 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
             (@as(u32, lenBuf[2]) << 16) |
             (@as(u32, lenBuf[3]) << 24);
 
-        if (frameLen != FRAME_SIZE and frameLen != canonical.WIRE_V2_PAYLOAD_SIZE) {
+        const verdict = classifyFrameLen(frameLen);
+        if (verdict == .resync) {
+            std.log.err("[NOSE PIPE] absurd frame length {d}: dropping connection to resync (nose will reconnect)", .{frameLen});
+            g_reader_stats.frames_dropped += 1;
+            g_reader_stats.pipe_errors += 1;
+            _ = runtime_state.g_nose_frames_dropped.fetchAdd(1, .monotonic);
+            _ = runtime_state.g_nose_pipe_errors.fetchAdd(1, .monotonic);
+            break;
+        }
+        if (verdict == .drain) {
             std.log.warn("[NOSE PIPE] rejected frame length: {d}, expected {d} or {d}", .{ frameLen, FRAME_SIZE, canonical.WIRE_V2_PAYLOAD_SIZE });
-            // Skip malformed frame: read and discard
+            // Skip malformed frame: read and discard (bounded by classifier)
             var discard: [256]u8 = undefined;
             var remaining = frameLen;
             while (remaining > 0) {
@@ -361,4 +390,18 @@ test "reader accepts v1 and v2 frame lengths" {
     // 133 (v2, full IPv6 tail) — anything else is rejected upstream.
     try std.testing.expectEqual(@as(usize, 109), canonical.WIRE_PAYLOAD_SIZE);
     try std.testing.expectEqual(@as(usize, 133), canonical.WIRE_V2_PAYLOAD_SIZE);
+}
+
+test "classifyFrameLen bounds the drain and resyncs on absurd lengths" {
+    // NOSE-DISC-042: legitimate frames (109/133) pass; small garbage is
+    // drained; a corrupt u32 must never stall the reader draining
+    // gigabytes — the connection drops and nose reconnects instead.
+    try std.testing.expectEqual(LengthVerdict.accept_v1, classifyFrameLen(109));
+    try std.testing.expectEqual(LengthVerdict.accept_v2, classifyFrameLen(133));
+    try std.testing.expectEqual(LengthVerdict.drain, classifyFrameLen(0));
+    try std.testing.expectEqual(LengthVerdict.drain, classifyFrameLen(108));
+    try std.testing.expectEqual(LengthVerdict.drain, classifyFrameLen(134));
+    try std.testing.expectEqual(LengthVerdict.drain, classifyFrameLen(MAX_DISCARD_BYTES));
+    try std.testing.expectEqual(LengthVerdict.resync, classifyFrameLen(MAX_DISCARD_BYTES + 1));
+    try std.testing.expectEqual(LengthVerdict.resync, classifyFrameLen(std.math.maxInt(u32)));
 }
