@@ -210,6 +210,42 @@ def test_quarantined_orchestrators_have_no_production_importers():
     assert banned == [], f"production imports quarantined orchestrator: {banned}"
 
 
+def test_demo_adapters_have_no_production_importers():
+    """REG-STUB-045: windows_adapters.zig (EtwProcessSource /
+    FimReadDirectorySource / RegNotifySource) emits nothing on any platform
+    — production telemetry is etw_realtime + fim.zig/fim_native.c +
+    registry_monitor.zig wired in daemon.zig. Only tests/cli may import it;
+    a production importer would wire a silent stub expecting live events
+    (the re-arm confusion class)."""
+    prod_roots = ["src/main.zig", "src/daemon.zig"]
+    prod_dirs = ["src/pipeline", "src/platform", "src/control", "src/capture",
+                 "src/detection", "src/forensic", "src/policy", "src/windows",
+                 "src/contract", "src/core"]
+    banned = []
+    checked = 0
+    for root in prod_roots:
+        p = REPO / root
+        if not p.exists():
+            continue
+        checked += 1
+        for i, line in code_lines(p, "//"):
+            if "windows_adapters.zig" in line or "windows/windows_adapters" in line:
+                banned.append(f"{root}:{i}:{line.strip()[:100]}")
+    for d in prod_dirs:
+        for p in (REPO / d).rglob("*.zig"):
+            if p.suffixes == [".zig", ".scaffold"] or p.name.endswith(".scaffold"):
+                continue
+            if p.name in {"windows_adapters.zig", "windows_adapters_cli.zig",
+                          "registry_trie_cli.zig"}:
+                continue
+            checked += 1
+            for i, line in code_lines(p, "//"):
+                if "windows_adapters.zig" in line or "windows/windows_adapters" in line:
+                    banned.append(f"{p.relative_to(REPO)}:{i}:{line.strip()[:100]}")
+    assert checked > 50, f"zig prod scan surface too small: {checked}"
+    assert banned == [], f"production imports demo adapters: {banned}"
+
+
 def test_legacy_tcp_listener_stays_dead():
     """T1-NET-019 leftover: src/core/nids_analyze.zig contains a 0.0.0.0 TCP
     listener (tcp_listener, spawned by analyze_packets, itself spawned only

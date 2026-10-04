@@ -1,17 +1,16 @@
 //! windows_adapters.zig - AEGIS NIDS Phase 37 Ext 4: Windows Telemetry Adapter Framework
 //!
-//! Real Windows telemetry adapters implementing HostTelemetrySource interface.
-//! Provides production-grade telemetry capture using Win32 APIs:
-//!
-//!   1. EtwProcessSource: process create/exit via CreateToolhelp32Snapshot
-//!      (simpler than full ETW but covers process lifecycle; extensible to ETW later)
-//!   2. FimReadDirectorySource: file change notifications via ReadDirectoryChangesW
-//!   3. RegNotifySource: registry change notifications via RegNotifyChangeKeyValue
+//! TEST/DEMO SURFACE — NOT the production telemetry path (REG-STUB-045).
+//! EtwProcessSource, FimReadDirectorySource, and RegNotifySource here emit
+//! nothing on any platform ("real implementation would:" stubs). Production
+//! coverage is wired in daemon.zig from etw_realtime.zig (process+registry
+//! via ETW), fim.zig + fim_native.c (files), and registry_monitor.zig
+//! (RegNotify with re-arm). Nothing under src/ outside tests/cli may
+//! import this module; the forbidden-edges pin enforces that.
 //!
 //! Design:
 //!   - Uses builtin.os.tag == .windows guards for Win32 API code
 //!   - On Linux: stub implementations that compile cleanly (return SourceExhausted)
-//!   - On Windows: real implementations using std.os.windows + kernel32/advapi32
 //!   - All adapters implement mock.HostTelemetrySource vtable (Phase 37 Ext 1)
 //!   - Kill switch OFF by default; WindowsAdapterConfig{.enabled=true} opts in
 //!
@@ -402,6 +401,9 @@ pub const RegNotifySource = struct {
             // 3. Read the changed value (RegEnumValue)
             // 4. Construct HostEvent with registry_set_value type
             // 5. Reissue RegNotifyChangeKeyValue for next change
+            // REG-STUB-045: this stub emits nothing, so re-arm is N/A here.
+            // The production monitor (registry_monitor.zig pollNative)
+            // re-arms after every fire — that is the live path.
             return null;
         } else {
             // Linux stub
