@@ -1035,8 +1035,68 @@ const handlers = struct {
         }) catch null;
     }
 
-    fn enforcementSimulate(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return "{\"simulated\":true,\"result\":\"allow\"}";
+    fn enforcementSimulate(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        // Posture projection, not a decision: reports what the current
+        // gate/provider posture would do with a requested action, without
+        // invoking the PEP, touching quotas, or contacting WFP. enforced is
+        // always false here; only enforcement.status + a real receipt can
+        // prove a host effect. Input validated before state so malformed
+        // calls fail identically with any gate position.
+        if (payload != .object) {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "payload must be an object with action and severity";
+            return null;
+        }
+        const action_val = payload.object.get("action") orelse {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "action is required (allow/block/rate_limit/quarantine)";
+            return null;
+        };
+        if (action_val != .string) {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "action must be a string";
+            return null;
+        }
+        const action = action_val.string;
+        const known = std.mem.eql(u8, action, "allow") or std.mem.eql(u8, action, "block") or
+            std.mem.eql(u8, action, "rate_limit") or std.mem.eql(u8, action, "quarantine");
+        if (!known) {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "action must be allow/block/rate_limit/quarantine";
+            return null;
+        }
+        const sev_val = payload.object.get("severity") orelse {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "severity is required (integer 0..10)";
+            return null;
+        };
+        if (sev_val != .integer or sev_val.integer < 0 or sev_val.integer > 10) {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "severity must be an integer in 0..10";
+            return null;
+        }
+        const gate_open = state_mod.g_prevention_gate_open;
+        var probe = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available.load(.acquire) };
+        const provider_ready = probe.providerReady();
+        if (!gate_open) {
+            return std.fmt.allocPrint(a,
+                "{{\"simulated\":true,\"enforced\":false,\"host_effect_confirmed\":false,\"action\":\"{s}\",\"severity\":{},\"prevention_gate\":\"closed\",\"provider_ready\":{},\"outcome\":\"allow\",\"reason\":\"prevention_gate_closed;detection-only;pep_not_invoked\"}}",
+                .{ action, sev_val.integer, provider_ready }) catch null;
+        }
+        if (!provider_ready) {
+            return std.fmt.allocPrint(a,
+                "{{\"simulated\":true,\"enforced\":false,\"host_effect_confirmed\":false,\"action\":\"{s}\",\"severity\":{},\"prevention_gate\":\"open\",\"provider_ready\":false,\"outcome\":\"escalate\",\"reason\":\"provider_unavailable;pep_not_invoked\"}}",
+                .{ action, sev_val.integer }) catch null;
+        }
+        return std.fmt.allocPrint(a,
+            "{{\"simulated\":true,\"enforced\":false,\"host_effect_confirmed\":false,\"action\":\"{s}\",\"severity\":{},\"prevention_gate\":\"open\",\"provider_ready\":true,\"outcome\":\"would_request\",\"reason\":\"simulation_only;pep_not_invoked;approval_state_pep_held\"}}",
+            .{ action, sev_val.integer }) catch null;
     }
 
     fn enforcementVerify(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
@@ -1644,4 +1704,40 @@ test "policySimulate needs values and a loaded IR" {
     // named code, never a canned match.
     try std.testing.expect(handlers.policySimulate(std.testing.allocator, obj2, &ctx3) == null);
     try std.testing.expectEqualStrings("POLICY_IR_ABSENT", ctx3.failure_code.?);
+}
+
+test "enforcementSimulate rejects malformed payloads before reading posture" {
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 20, .caller_role = .operate, .caller_pid = 0 };
+    try std.testing.expect(handlers.enforcementSimulate(std.testing.allocator, .{ .null = {} }, &ctx) == null);
+    try std.testing.expectEqualStrings("INVALID_INPUT", ctx.failure_code.?);
+    var obj = std.json.Value{ .object = std.json.ObjectMap.init(std.testing.allocator) };
+    defer obj.object.deinit();
+    try obj.object.put("action", .{ .string = "nuke" });
+    try obj.object.put("severity", .{ .integer = 9 });
+    var ctx2 = HandlerContext{ .start_ns = 0, .request_id = 21, .caller_role = .operate, .caller_pid = 0 };
+    try std.testing.expect(handlers.enforcementSimulate(std.testing.allocator, obj, &ctx2) == null);
+    try std.testing.expectEqualStrings("INVALID_INPUT", ctx2.failure_code.?);
+    var obj3 = std.json.Value{ .object = std.json.ObjectMap.init(std.testing.allocator) };
+    defer obj3.object.deinit();
+    try obj3.object.put("action", .{ .string = "block" });
+    try obj3.object.put("severity", .{ .integer = 99 });
+    var ctx3 = HandlerContext{ .start_ns = 0, .request_id = 22, .caller_role = .operate, .caller_pid = 0 };
+    try std.testing.expect(handlers.enforcementSimulate(std.testing.allocator, obj3, &ctx3) == null);
+    try std.testing.expectEqualStrings("INVALID_INPUT", ctx3.failure_code.?);
+}
+
+test "enforcementSimulate never claims a host effect" {
+    // Unit tests run with the prevention gate closed and no PEP: the only
+    // honest projection is detection-only allow, enforced=false always.
+    var obj = std.json.Value{ .object = std.json.ObjectMap.init(std.testing.allocator) };
+    defer obj.object.deinit();
+    try obj.object.put("action", .{ .string = "block" });
+    try obj.object.put("severity", .{ .integer = 9 });
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 23, .caller_role = .operate, .caller_pid = 0 };
+    const out = handlers.enforcementSimulate(std.testing.allocator, obj, &ctx).?;
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"simulated\":true") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"enforced\":false") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"host_effect_confirmed\":false") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "pep_not_invoked") != null);
 }

@@ -1110,6 +1110,48 @@ def cmd_enforce(args) -> int:
             }, sort_keys=True))
             return 2
         return _control_mutation("enforcement.approve", {"request_id": request_id})
+    if sub == "simulate":
+        # Read-only posture projection (B3-SIM-029): asks the daemon what the
+        # current gate/provider posture would do with an action, without
+        # invoking the PEP. Never a mutation; offline answers honestly.
+        action = getattr(args, "action", None)
+        severity = getattr(args, "severity", None)
+        if action not in ("allow", "block", "rate_limit", "quarantine"):
+            print(json.dumps({
+                "available": False,
+                "command": "enforcement.simulate",
+                "reason": "action_must_be_allow_block_rate_limit_quarantine",
+            }, sort_keys=True))
+            return 2
+        try:
+            severity = int(severity)
+        except (TypeError, ValueError):
+            severity = -1
+        if severity < 0 or severity > 10:
+            print(json.dumps({
+                "available": False,
+                "command": "enforcement.simulate",
+                "reason": "severity_must_be_integer_0_to_10",
+            }, sort_keys=True))
+            return 2
+        if not CONTROL_API_AVAILABLE:
+            print(json.dumps({
+                "available": False,
+                "command": "enforcement.simulate",
+                "reason": "control_api_unavailable",
+            }, sort_keys=True))
+            return 4
+        response = query_control("enforcement.simulate",
+                                 payload={"action": action, "severity": severity})
+        if response is None:
+            print(json.dumps({
+                "available": False,
+                "command": "enforcement.simulate",
+                "reason": "control_daemon_query_failed",
+            }, sort_keys=True))
+            return 3
+        print(json.dumps(dict(response), sort_keys=True))
+        return 0
     if sub != "status":
         return _unavailable(
             "enforce",
@@ -1427,6 +1469,9 @@ def main() -> int:
     etp.add_argument("mode", choices=["on", "off"])
     eap = enforce_sub.add_parser("approve", help="Project 3: record a second-human approval via the control plane")
     eap.add_argument("request_id", type=int)
+    esim = enforce_sub.add_parser("simulate", help="Project posture without enforcing (read-only, never touches PEP/WFP)")
+    esim.add_argument("--action", required=True, choices=["allow", "block", "rate_limit", "quarantine"])
+    esim.add_argument("--severity", required=True, type=int)
     enforce_sub.add_parser("enable", help="Unavailable in Project 2; reserved for Project 3 IPS")
     enforce_sub.add_parser("disable", help="Unavailable in Project 2; reserved for Project 3 IPS")
     epush = enforce_sub.add_parser("push", help="Unavailable in Project 2; reserved for Project 3 IPS")
