@@ -262,6 +262,22 @@ test "FlowKey normalization" {
     try std.testing.expect(k1.eql(k2));
 }
 
+test "FlowKey v6 full identity never collides with truncated v4 view" {
+    // V6-FLOW-036: two v6 hosts sharing first-4 bytes must not share a flow
+    // with each other, nor with a v4 flow whose zero-padded u32 looks the
+    // same. is_ipv6 participates in hash and equality.
+    const a6 = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
+    const b6 = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2 };
+    const c6 = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9 };
+    const trunc = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    const k_full = FlowKey.normalize(a6, b6, 4000, 80, 6, true);
+    const k_same_prefix = FlowKey.normalize(a6, c6, 4000, 80, 6, true);
+    const k_trunc = FlowKey.normalize(trunc, trunc, 4000, 80, 6, false);
+    try std.testing.expect(!k_full.eql(k_same_prefix));
+    try std.testing.expect(!k_full.eql(k_trunc));
+    try std.testing.expect(k_full.hash() != k_trunc.hash());
+}
+
 test "FlowTable create and lookup" {
     var ft = FlowTable{};
     const k = FlowKey.normalize([_]u8{ 10, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, [_]u8{ 10, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, 1000, 2000, 6, false);

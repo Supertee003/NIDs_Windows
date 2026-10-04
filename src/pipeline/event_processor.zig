@@ -58,20 +58,26 @@ fn processEvent(
     const trace_id = state.g_trace_id.fetchAdd(1, .monotonic) + 1;
     var decision_trace = trace_mod.SecurityDecisionTrace.init(trace_id, ev);
 
-    // 1. Flow table: lookup or create flow for this event's 5-tuple
-    const src_ip_bytes: [16]u8 = blk: {
+    // 1. Flow table: lookup or create flow for this event's 5-tuple.
+    // V6-FLOW-036: v2 frames carry full addresses in the queue sidecars and
+    // key the flow on all 16 bytes with is_ipv6=true. v1 frames (and every
+    // other producer) have null sidecars: zero-padded u32 identity with
+    // is_ipv6=false, exactly as before. Detection/policy/forensic identity
+    // (u32 + bit2 guard) is untouched by this change.
+    const is_ipv6 = qe.src_ipv6 != null and qe.dst_ipv6 != null;
+    const src_ip_bytes: [16]u8 = qe.src_ipv6 orelse blk: {
         var ip: [16]u8 = [_]u8{0} ** 16;
         const src_bytes: [4]u8 = @bitCast(ev.src_ip);
         @memcpy(ip[0..4], &src_bytes);
         break :blk ip;
     };
-    const dst_ip_bytes: [16]u8 = blk: {
+    const dst_ip_bytes: [16]u8 = qe.dst_ipv6 orelse blk: {
         var ip: [16]u8 = [_]u8{0} ** 16;
         const dst_bytes: [4]u8 = @bitCast(ev.dst_ip);
         @memcpy(ip[0..4], &dst_bytes);
         break :blk ip;
     };
-    const fkey = flow.FlowKey.normalize(src_ip_bytes, dst_ip_bytes, ev.src_port, ev.dst_port, ev.protocol, false);
+    const fkey = flow.FlowKey.normalize(src_ip_bytes, dst_ip_bytes, ev.src_port, ev.dst_port, ev.protocol, is_ipv6);
     _ = ft.lookupOrCreate(fkey, ev.timestamp_ns);
 
     // 2. Aho-Corasick signature matching (if rules are loaded)

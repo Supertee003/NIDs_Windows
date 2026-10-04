@@ -329,7 +329,9 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
 
         // Submit directly to the queue consumed by event_processor. There is
         // no second acquisition queue between canonical validation and detect.
-        if (pipeline_queue.pushCanonicalEvent(&event)) {
+        // The full DecodedFrame goes in so v2 sidecars survive to the flow
+        // stage (V6-FLOW-036); v1 frames carry null sidecars by construction.
+        if (pipeline_queue.pushDecodedFrame(&frame, &[_]u8{})) {
             g_reader_stats.frames_submitted += 1;
             _ = runtime_state.g_nose_frames_submitted.fetchAdd(1, .monotonic);
             std.log.info("[NOSE PIPE] canonical event submitted: event_id={d}", .{event.event_id});

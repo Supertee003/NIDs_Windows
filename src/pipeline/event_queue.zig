@@ -13,10 +13,15 @@ pub const MAX_PAYLOAD_BYTES: usize = 1500; // MTU-sized payload buffer
 
 /// Queued event: wraps IpcEvent + actual packet payload bytes.
 /// The payload is needed for Aho-Corasick signature matching.
+/// src/dst_ipv6 carry the v2 full-address sidecars when the frame arrived
+/// as a 133-byte v2 frame (nose IPv6 path); null for v1 frames and all
+/// other producers. In-memory only — never on any wire.
 pub const QueuedEvent = struct {
     ev: event.IpcEvent,
     payload: [MAX_PAYLOAD_BYTES]u8 = [_]u8{0} ** MAX_PAYLOAD_BYTES,
     payload_len: u16 = 0,
+    src_ipv6: ?[16]u8 = null,
+    dst_ipv6: ?[16]u8 = null,
 };
 
 var g_event_queue: [PIPELINE_QUEUE_SIZE]QueuedEvent = undefined;
@@ -33,6 +38,15 @@ var g_queue_producer_mutex: std.Thread.Mutex = .{};
 /// Push an event + optional payload into the pipeline queue.
 /// Returns true if accepted, false if queue is full (event dropped).
 pub fn pushEvent(ev: event.IpcEvent, payload: []const u8) bool {
+    return pushEventWithAddrs(ev, payload, null, null);
+}
+
+/// pushEvent with v2 full-address sidecars. The sidecars are written into
+/// the slot under the same producer-mutex hold as the publish, so no
+/// interleaving producer can steal or split the slot. Callers without
+/// sidecars (v1 frames, ETW/FIM/registry/brain sensors, tests) use
+/// pushEvent and queue exactly as before.
+pub fn pushEventWithAddrs(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst_ipv6: ?[16]u8) bool {
     g_queue_producer_mutex.lock();
     defer g_queue_producer_mutex.unlock();
     const head = g_queue_head.load(.monotonic);
@@ -46,6 +60,8 @@ pub fn pushEvent(ev: event.IpcEvent, payload: []const u8) bool {
     const copy_len = @min(payload.len, MAX_PAYLOAD_BYTES);
     @memcpy(qe.payload[0..copy_len], payload[0..copy_len]);
     qe.payload_len = @intCast(copy_len);
+    qe.src_ipv6 = src_ipv6;
+    qe.dst_ipv6 = dst_ipv6;
     g_event_queue[head % PIPELINE_QUEUE_SIZE] = qe;
     g_queue_head.store(head + 1, .release);
     return true;
@@ -95,9 +111,22 @@ pub fn pushCanonicalEvent(ce: *const canonical.CanonicalEvent) bool {
 /// Adapt a canonical event while preserving payload bytes held by the
 /// acquisition adapter. The payload is bounded by MAX_PAYLOAD_BYTES in
 /// pushEvent; the canonical metadata remains authoritative for identity and
-/// payload_length/payload_hash.
+/// payload_length/payload_hash. Queues with null v6 sidecars (v1-equivalent
+/// identity); v2 callers must use pushDecodedFrame.
 pub fn pushCanonicalEventWithPayload(ce: *const canonical.CanonicalEvent, payload: []const u8) bool {
-    if (!canonical.validate(ce)) return false;
+    const frame = canonical.DecodedFrame{ .event = ce.*, .src_ipv6 = null, .dst_ipv6 = null };
+    return pushDecodedFrame(&frame, payload);
+}
+
+/// Adapt a version-dispatched frame while preserving payload bytes held by
+/// the acquisition adapter. v2 sidecars ride along in-memory to the flow
+/// stage; v1 frames queue with null sidecars and keep the exact previous
+/// behavior (u32 identity, is_ipv6=false). Sidecars are attached in the
+/// same producer-mutex hold as the slot publish, so no interleaving
+/// producer can steal or split the slot.
+pub fn pushDecodedFrame(frame: *const canonical.DecodedFrame, payload: []const u8) bool {
+    if (!canonical.validate(&frame.event)) return false;
+    const ce = &frame.event;
 
     const kind: event.EventKind = switch (ce.event_type) {
         .block, .ip_blocked => .action_block,
@@ -130,7 +159,7 @@ pub fn pushCanonicalEventWithPayload(ce: *const canonical.CanonicalEvent, payloa
     ev.payload_len = ce.payload_length;
     ev.payload_hash = @truncate(ce.payload_hash);
     ev.flags = ce.context_flags;
-    return pushEvent(ev, payload);
+    return pushEventWithAddrs(ev, payload, frame.src_ipv6, frame.dst_ipv6);
 }
 
 test "pushCanonicalEventWithPayload attributes the observing sensor" {
@@ -165,6 +194,30 @@ test "pushCanonicalEvent rejects invalid canonical event" {
     var ce = canonical.create(.npcap_sensor);
     ce.magic = 0;
     try std.testing.expect(pushCanonicalEvent(&ce) == false);
+}
+
+test "pushDecodedFrame carries v2 sidecars; v1 path queues nulls" {
+    // V6-FLOW-036: the queue preserves full v6 identity in-memory without
+    // touching the wire ABI or the u32 detection identity.
+    var ce = canonical.create(.npcap_sensor);
+    ce.event_type = .forward;
+    const src6 = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
+    const dst6 = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2 };
+    const frame = canonical.DecodedFrame{ .event = ce, .src_ipv6 = src6, .dst_ipv6 = dst6 };
+    try std.testing.expect(pushDecodedFrame(&frame, &[_]u8{}));
+    const queued = popEvent().?;
+    try std.testing.expect(queued.src_ipv6 != null);
+    try std.testing.expect(queued.dst_ipv6 != null);
+    try std.testing.expectEqualSlices(u8, &src6, &queued.src_ipv6.?);
+    try std.testing.expectEqualSlices(u8, &dst6, &queued.dst_ipv6.?);
+    // u32 detection identity is unchanged by the sidecars.
+    try std.testing.expectEqual(ce.source_ip, queued.ev.src_ip);
+    try std.testing.expectEqual(ce.dest_ip, queued.ev.dst_ip);
+
+    try std.testing.expect(pushCanonicalEvent(&ce));
+    const queued_v1 = popEvent().?;
+    try std.testing.expect(queued_v1.src_ipv6 == null);
+    try std.testing.expect(queued_v1.dst_ipv6 == null);
 }
 
 test "pushCanonicalEventWithPayload preserves bounded payload" {
