@@ -86,10 +86,9 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   first: migrate T14/T12 pins to `pipeline/event_processor` +
   `policy/action_dispatcher` (aligns with T1-DISP-018 quarantine) or
   re-promote dispatcher — NOT silent removal.
-- [ ] Go aggregator `:9200` binds all interfaces (`go/aggregator/main.go:124`
-  `Addr: :port`). Metrics exporter fixed loopback-only (NET-LOOPBACK-030);
-  aggregator needs its own design slice (confirm no LAN consumer before
-  pinning `127.0.0.1`) — NOT ad-hoc.
+- [x] Go aggregator loopback bind (GO-LOOPBACK-031: `apiAddr` pins
+  `127.0.0.1:port`, bare `:port` never constructed; matches the documented
+  `127.0.0.1:9200` contract and every in-tree client).
 - [ ] flow `is_ipv6` plumbing (normalize hardcodes false)
 
 ## COUPLING MAP (deep investigation 2026-10-04 — read before refactoring)

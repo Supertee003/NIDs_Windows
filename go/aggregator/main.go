@@ -5,7 +5,7 @@
 //   1. Watches logs/aegis_core.ndjson for new alerts
 //   2. Deduplicates by rule+IP+event hash
 //   3. Correlates events across tiers using session_id
-//   4. Exposes REST API on :9200 for dashboard/CLI queries
+//   4. Exposes REST API on 127.0.0.1:9200 (loopback only) for dashboard/CLI queries
 //
 // Endpoints:
 //   GET  /api/alerts          - List all alerts
@@ -121,7 +121,7 @@ func main() {
         mux.HandleFunc("/", server.handleRoot)
 
         server.httpServer = &http.Server{
-                Addr:    fmt.Sprintf(":%d", apiPort),
+                Addr:    apiAddr(apiPort),
                 Handler: mux,
         }
 
@@ -293,6 +293,16 @@ func (s *Server) handlePurge(w http.ResponseWriter, r *http.Request) {
 
         purged := s.aggregator.PurgeOlder(time.Duration(req.MaxAgeHours) * time.Hour)
         writeJSON(w, map[string]int{"purged": purged})
+}
+
+// apiAddr builds the aggregator listen address. Loopback only (T1-NET-019):
+// the documented contract is 127.0.0.1:9200 (COMPONENT_MATRIX.md,
+// Operator Manual) and every in-tree client (scripts/aegis_api.py,
+// tools/aegisctl/client.py AegisAPI, README curl examples) uses loopback.
+// Binding all interfaces would expose alert data + the purge endpoint to
+// the LAN with no authentication, so bare ":port" is never constructed.
+func apiAddr(apiPort int) string {
+        return fmt.Sprintf("127.0.0.1:%d", apiPort)
 }
 
 // generateUUID creates a new UUID string

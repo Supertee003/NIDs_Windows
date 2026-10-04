@@ -21,7 +21,7 @@ go build -o aegis-aggregator.exe .
 ## Run
 
 ```bash
-# Default (watches logs/aegis_core.ndjson, API on :9200)
+# Default (watches logs/aegis_core.ndjson, API on 127.0.0.1:9200, loopback only)
 ./aegis-aggregator.exe
 
 # Custom config
