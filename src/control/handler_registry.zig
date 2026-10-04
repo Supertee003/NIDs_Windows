@@ -1112,8 +1112,15 @@ const handlers = struct {
         // the forwarder was never initialized (enabled=false tells why).
         const siem = siem_mod.getStats();
         const siem_enabled = siem_mod.isEnabled();
+        // T3-TSIR-025: TS-authored IR mirror (verify-only). Absent by
+        // default; loaded=false tells why instead of claiming rules.
+        // Pointer captures: the stored IR is large (256-rule array), never
+        // copied for a metrics read.
+        const pir_loaded = state_mod.g_policy_ir != null;
+        const pir_rules: u16 = if (state_mod.g_policy_ir) |*p| p.ir.rule_count else 0;
+        const pir_hash: []const u8 = if (state_mod.g_policy_ir) |*p| &p.hash_hex else "";
         return std.fmt.allocPrint(a,
-            \\{{"uptime_sec":{},"rules_loaded":{},"packets_captured":{},"events_processed":{},"forensic_records":{},"flows_active":{},"incidents_open":{},"detections":{},"anomalies":{},"blocks":{},"errors":{},"siem":{{"enabled":{},"forwarded":{},"failed":{},"spooled":{},"batches":{},"retries":{}}}}}
+            \\{{"uptime_sec":{},"rules_loaded":{},"packets_captured":{},"events_processed":{},"forensic_records":{},"flows_active":{},"incidents_open":{},"detections":{},"anomalies":{},"blocks":{},"errors":{},"siem":{{"enabled":{},"forwarded":{},"failed":{},"spooled":{},"batches":{},"retries":{}}},"policy_ir":{{"loaded":{},"rules":{},"hash":"{s}"}}}}
         , .{
             uptime_sec,
             state_mod.g_rules_loaded.load(.acquire),
@@ -1132,6 +1139,9 @@ const handlers = struct {
             siem.total_events_spooled,
             siem.total_batches_sent,
             siem.total_retries,
+            pir_loaded,
+            pir_rules,
+            pir_hash,
         }) catch null;
     }
 
@@ -1251,4 +1261,7 @@ test "metricsSnapshot exposes SIEM durability counters" {
     try std.testing.expect(std.mem.indexOf(u8, out, "\"siem\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"spooled\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"forwarded\"") != null);
+    // T3-TSIR-025: TS-IR mirror reports absent-but-honest with no file.
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"policy_ir\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"loaded\":false") != null);
 }

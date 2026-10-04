@@ -30,6 +30,8 @@ comptime {
     _ = @import("tests/policy/trust_store.zig");
     _ = @import("tests/policy/pep_bindings.zig");
     _ = @import("tests/policy/action_dispatcher.zig");
+    _ = @import("tests/policy/ts_ir_loader.zig");
+    _ = @import("policy/policy_plane.zig");
     _ = @import("policy/enforcement_receipt.zig");
     _ = @import("policy/rule_action.zig");
     _ = @import("tests/forensic/forensic_pipeline.zig");

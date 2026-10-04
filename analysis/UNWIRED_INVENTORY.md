@@ -50,7 +50,9 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
 - `AEGIS_FAIL_OPEN` (removed), `mouth/enforced.json` (renamed)
 
 ## CONNECT-PLANNED (needs a design slice, NOT ad-hoc wiring)
-- [ ] TS-IR exporter → `policy_ir.json` (magic/enum/bytes reconcile + vectors)
+- [x] TS-IR exporter → `policy_ir.json` (T3-TSIR-025: exporter fixture +
+  Zig verify-only loader + daemon mirror + metrics; hash recompute +
+  seal contract = T7 follow-up)
 - [ ] Brain→daemon return contract (or declare one-way permanent)
 - [ ] SIEM pipeline wiring (library ready; transport decision open)
 - [ ] `forensics.replay` handler ← replay_verifier

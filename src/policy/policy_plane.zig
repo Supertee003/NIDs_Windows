@@ -734,3 +734,329 @@ test "SimulationResult.isMatched" {
     };
     try std.testing.expect(!not_matched.isMatched());
 }
+
+// ============================================================
+// TS-IR Loader (T3-TSIR-025): read policy_ir.json emitted by the
+// TypeScript exporter (ts_policy/src/exporter.ts) into PolicyIR.
+// Verify-only: structure, magic, version, counts, enums, and value
+// coercion (mirroring ts valueToU64). The lossy numeric hash/signature
+// fields are NEVER trusted and never loaded; hash_hex is the identity.
+// Enforcement authority is untouched (Rust PEP decides, TS advises).
+// ============================================================
+
+pub const LoadError = error{
+    BadMagic,
+    BadVersion,
+    CountMismatch,
+    EmptyRuleset,
+    TooManyRules,
+    BadShape,
+    BadEnum,
+    BadValue,
+    BadHex,
+    DuplicateId,
+    TooManyConditions,
+    OutOfMemory,
+};
+
+/// Owned parse product: string slices borrow from the parse arena
+/// (`parsed`), which outlives every use; a single deinit frees all of it.
+/// (Zig's dynamic JSON parser copies strings into its arena, so slices
+/// MUST NOT outlive `parsed` — an earlier single-buffer design danging
+/// off the input bytes segfaulted here and is recorded as the reason.)
+pub const LoadedIr = struct {
+    ir: PolicyIR,
+    parsed: std.json.Parsed(std.json.Value),
+    hash_hex: [64]u8,
+
+    pub fn deinit(self: *LoadedIr) void {
+        self.parsed.deinit();
+        self.* = undefined;
+    }
+};
+
+fn fnv1a64(bytes: []const u8) u64 {
+    var h: u64 = 0xcbf29ce484222325;
+    for (bytes) |b| {
+        h ^= b;
+        h *%= 0x100000001b3;
+    }
+    return h;
+}
+
+fn loadU32(obj: std.json.ObjectMap, key: []const u8) LoadError!u32 {
+    const v = obj.get(key) orelse return LoadError.BadShape;
+    if (v != .integer or v.integer < 0 or v.integer > std.math.maxInt(u32)) return LoadError.BadValue;
+    return @intCast(v.integer);
+}
+
+fn loadU16(obj: std.json.ObjectMap, key: []const u8) LoadError!u16 {
+    const v = obj.get(key) orelse return LoadError.BadShape;
+    if (v != .integer or v.integer < 0 or v.integer > std.math.maxInt(u16)) return LoadError.BadValue;
+    return @intCast(v.integer);
+}
+
+fn loadU8(obj: std.json.ObjectMap, key: []const u8) LoadError!u8 {
+    const v = obj.get(key) orelse return LoadError.BadShape;
+    if (v != .integer or v.integer < 0 or v.integer > std.math.maxInt(u8)) return LoadError.BadValue;
+    return @intCast(v.integer);
+}
+
+fn loadI64(obj: std.json.ObjectMap, key: []const u8) LoadError!i64 {
+    const v = obj.get(key) orelse return LoadError.BadShape;
+    if (v != .integer) return LoadError.BadValue;
+    return v.integer;
+}
+
+fn loadStr(obj: std.json.ObjectMap, key: []const u8) LoadError![]const u8 {
+    const v = obj.get(key) orelse return LoadError.BadShape;
+    if (v != .string) return LoadError.BadValue;
+    return v.string;
+}
+
+fn loadBool(obj: std.json.ObjectMap, key: []const u8) LoadError!bool {
+    const v = obj.get(key) orelse return LoadError.BadShape;
+    if (v != .bool) return LoadError.BadValue;
+    return v.bool;
+}
+
+/// Mirror of TS valueToU64 (ts_policy/src/compiler.ts): integer passthrough,
+/// dotted-quad IPv4 to big-endian u32, every other kind hashed (FNV-1a 64
+/// over UTF-8). Values the TS compiler itself would reject (non-string
+/// string-kinds) are rejected here too.
+fn coerceValue(kind: []const u8, value: std.json.Value) LoadError!u64 {
+    if (std.mem.eql(u8, kind, "integer")) {
+        if (value != .integer or value.integer < 0) return LoadError.BadValue;
+        return @intCast(value.integer);
+    }
+    if (std.mem.eql(u8, kind, "ipv4")) {
+        if (value != .string) return LoadError.BadValue;
+        return parseIpv4(value.string) orelse return LoadError.BadValue;
+    }
+    if (std.mem.eql(u8, kind, "ipv6") or std.mem.eql(u8, kind, "cidr") or
+        std.mem.eql(u8, kind, "string") or std.mem.eql(u8, kind, "domain") or
+        std.mem.eql(u8, kind, "process") or std.mem.eql(u8, kind, "file") or
+        std.mem.eql(u8, kind, "identity") or std.mem.eql(u8, kind, "enum") or
+        std.mem.eql(u8, kind, "time"))
+    {
+        if (value != .string) return LoadError.BadValue;
+        return fnv1a64(value.string);
+    }
+    return LoadError.BadValue;
+}
+
+/// Mirror of TS ipv4() validation: four 1-3 digit parts, each 0..255.
+fn parseIpv4(text: []const u8) ?u64 {
+    var out: u64 = 0;
+    var parts: u8 = 0;
+    var start: usize = 0;
+    var i: usize = 0;
+    while (i <= text.len) : (i += 1) {
+        const done = i == text.len;
+        if (!done and text[i] != '.') {
+            if (text[i] < '0' or text[i] > '9') return null;
+            continue;
+        }
+        const part = text[start..i];
+        if (part.len == 0 or part.len > 3) return null;
+        const n = std.fmt.parseInt(u64, part, 10) catch return null;
+        if (n > 255) return null;
+        out = (out << 8) | n;
+        parts += 1;
+        start = i + 1;
+    }
+    if (parts != 4) return null;
+    return out;
+}
+
+fn loadCondition(obj: std.json.ObjectMap) LoadError!PolicyCondition {
+    const field_raw = try loadU8(obj, "field");
+    if (field_raw > 8) return LoadError.BadEnum;
+    const op_raw = try loadU8(obj, "operator");
+    if (op_raw > 5) return LoadError.BadEnum;
+    const value_obj = obj.get("value") orelse return LoadError.BadShape;
+    if (value_obj != .object) return LoadError.BadShape;
+    const kind = try loadStr(value_obj.object, "kind");
+    const vv = value_obj.object.get("value") orelse return LoadError.BadShape;
+    const value = try coerceValue(kind, vv);
+    var value2: u64 = 0;
+    if (obj.get("value2")) |v2| {
+        if (v2 != .object) return LoadError.BadShape;
+        const kind2 = try loadStr(v2.object, "kind");
+        const vv2 = v2.object.get("value") orelse return LoadError.BadShape;
+        value2 = try coerceValue(kind2, vv2);
+    }
+    return PolicyCondition{
+        .field = @enumFromInt(field_raw),
+        .operator = @enumFromInt(op_raw),
+        .value = value,
+        .value2 = value2,
+    };
+}
+
+fn loadRule(obj: std.json.ObjectMap) LoadError!PolicyRuleDef {
+    const id = try loadU32(obj, "id");
+    const name = try loadStr(obj, "name");
+    if (name.len == 0) return LoadError.BadValue;
+    const priority = try loadU8(obj, "priority");
+    const action_raw = try loadU8(obj, "action");
+    if (action_raw > 5) return LoadError.BadEnum;
+    const enabled = try loadBool(obj, "enabled");
+    const description = try loadStr(obj, "description");
+    const conds = obj.get("conditions") orelse return LoadError.BadShape;
+    if (conds != .array) return LoadError.BadShape;
+    if (conds.array.items.len > 4) return LoadError.TooManyConditions;
+    var conditions: [4]?PolicyCondition = .{ null, null, null, null };
+    var count: u8 = 0;
+    for (conds.array.items) |c| {
+        if (c != .object) return LoadError.BadShape;
+        conditions[count] = try loadCondition(c.object);
+        count += 1;
+    }
+    return PolicyRuleDef{
+        .id = id,
+        .name = name,
+        .priority = priority,
+        .conditions = conditions,
+        .condition_count = count,
+        .action = @enumFromInt(action_raw),
+        .enabled = enabled,
+        .description = description,
+    };
+}
+
+/// Parse + validate one policy_ir.json document (exporter.ts shape).
+/// String slices borrow from the parse arena (kept in LoadedIr).
+pub fn loadIrFromJson(allocator: std.mem.Allocator, document: []const u8) LoadError!LoadedIr {
+    const backing = allocator.dupe(u8, document) catch return LoadError.OutOfMemory;
+    defer allocator.free(backing);
+    var parsed = std.json.parseFromSlice(std.json.Value, allocator, backing, .{}) catch return LoadError.BadShape;
+    errdefer parsed.deinit();
+    if (parsed.value != .object) return LoadError.BadShape;
+    const root = parsed.value.object;
+
+    const magic = try loadU32(root, "magic");
+    if (magic != POLICY_MAGIC) return LoadError.BadMagic;
+    const version = try loadU16(root, "version");
+    if (version != POLICY_IR_VERSION) return LoadError.BadVersion;
+    const rule_count = try loadU16(root, "rule_count");
+    const rules = root.get("rules") orelse return LoadError.BadShape;
+    if (rules != .array) return LoadError.BadShape;
+    if (rules.array.items.len != rule_count) return LoadError.CountMismatch;
+    if (rule_count == 0) return LoadError.EmptyRuleset;
+    if (rule_count > MAX_POLICY_RULES) return LoadError.TooManyRules;
+    const hash_hex_raw = try loadStr(root, "hash_hex");
+    if (hash_hex_raw.len != 64) return LoadError.BadHex;
+    var hash_hex: [64]u8 = undefined;
+    for (hash_hex_raw, 0..) |c, i| {
+        const ok = (c >= '0' and c <= '9') or (c >= 'a' and c <= 'f') or (c >= 'A' and c <= 'F');
+        if (!ok) return LoadError.BadHex;
+        hash_hex[i] = c;
+    }
+    const compiled_at_ms = try loadI64(root, "compiled_at_ms");
+    const compiler_version = try loadStr(root, "compiler_version");
+
+    var loaded = LoadedIr{
+        .ir = PolicyIR{
+            .magic = magic,
+            .version = version,
+            .rule_count = rule_count,
+            .rules = [_]PolicyRuleDef{std.mem.zeroes(PolicyRuleDef)} ** MAX_POLICY_RULES,
+            .hash = 0, // legacy lossy u64: never trusted, never loaded.
+            .signature = 0, // 0 until signed (signing tier owns this field).
+            .compiled_at_ms = compiled_at_ms,
+            .compiler_version = compiler_version,
+        },
+        .parsed = parsed,
+        .hash_hex = hash_hex,
+    };
+    for (rules.array.items, 0..) |r, i| {
+        if (r != .object) return LoadError.BadShape;
+        loaded.ir.rules[i] = try loadRule(r.object);
+    }
+    // Duplicate rule ids are rejected by the TS compiler; re-verify here
+    // so a hand-edited document cannot smuggle shadowing rules past us.
+    for (loaded.ir.rules[0..rule_count], 0..) |a, i| {
+        for (loaded.ir.rules[0..i]) |b| {
+            if (a.id == b.id) return LoadError.DuplicateId;
+        }
+    }
+    if (!loaded.ir.isValid()) return LoadError.BadMagic;
+    return loaded;
+}
+
+test "loadIrFromJson accepts a minimal one-rule document" {
+    const doc =
+        \\{"magic":1347374129,"version":1,"rule_count":1,"rules":[{"id":7,"name":"r","priority":10,"action":1,"enabled":true,"description":"d","conditions":[{"field":3,"operator":0,"value":{"kind":"integer","value":80}}]}],"hash":0,"hash_hex":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","signature":0,"compiled_at_ms":5,"compiler_version":"t"}
+    ;
+    var loaded = try loadIrFromJson(std.testing.allocator, doc);
+    defer loaded.deinit();
+    try std.testing.expect(loaded.ir.isValid());
+    try std.testing.expectEqual(@as(u16, 1), loaded.ir.rule_count);
+    const r = loaded.ir.rules[0];
+    try std.testing.expectEqual(@as(u32, 7), r.id);
+    try std.testing.expectEqualStrings("r", r.name);
+    try std.testing.expectEqual(@as(u8, 10), r.priority);
+    try std.testing.expectEqual(PolicyActionDef.alert, r.action);
+    try std.testing.expect(r.enabled);
+    try std.testing.expectEqual(@as(u8, 1), r.condition_count);
+    try std.testing.expectEqual(ConditionType.dst_port, r.conditions[0].?.field);
+    try std.testing.expectEqual(@as(u64, 80), r.conditions[0].?.value);
+    try std.testing.expectEqual(@as(i64, 5), loaded.ir.compiled_at_ms);
+}
+
+test "loadIrFromJson lowers ipv4 to big-endian u32" {
+    const doc =
+        \\{"magic":1347374129,"version":1,"rule_count":1,"rules":[{"id":1,"name":"r","priority":1,"action":2,"enabled":true,"description":"","conditions":[{"field":0,"operator":0,"value":{"kind":"ipv4","value":"10.0.0.5"}}]}],"hash":0,"hash_hex":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","signature":0,"compiled_at_ms":1,"compiler_version":"t"}
+    ;
+    var loaded = try loadIrFromJson(std.testing.allocator, doc);
+    defer loaded.deinit();
+    try std.testing.expectEqual(@as(u64, 0x0A000005), loaded.ir.rules[0].conditions[0].?.value);
+}
+
+test "loadIrFromJson hashes string kinds deterministically (FNV-1a-64)" {
+    const doc =
+        \\{"magic":1347374129,"version":1,"rule_count":1,"rules":[{"id":1,"name":"r","priority":1,"action":1,"enabled":true,"description":"","conditions":[{"field":5,"operator":0,"value":{"kind":"string","value":"R0056"}}]}],"hash":0,"hash_hex":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","signature":0,"compiled_at_ms":1,"compiler_version":"t"}
+    ;
+    var a = try loadIrFromJson(std.testing.allocator, doc);
+    defer a.deinit();
+    var b = try loadIrFromJson(std.testing.allocator, doc);
+    defer b.deinit();
+    const va = a.ir.rules[0].conditions[0].?.value;
+    try std.testing.expect(va != 0);
+    try std.testing.expectEqual(va, b.ir.rules[0].conditions[0].?.value);
+}
+
+test "loadIrFromJson rejects malformed documents" {
+    const cases = [_]struct { doc: []const u8, err: LoadError }{
+        // bad magic
+        .{ .doc = "{\"magic\":1,\"version\":1,\"rule_count\":1,\"rules\":[],\"hash_hex\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"compiled_at_ms\":1,\"compiler_version\":\"t\"}", .err = LoadError.BadMagic },
+        // bad version
+        .{ .doc = "{\"magic\":1347374129,\"version\":9,\"rule_count\":1,\"rules\":[],\"hash_hex\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"compiled_at_ms\":1,\"compiler_version\":\"t\"}", .err = LoadError.BadVersion },
+        // count mismatch
+        .{ .doc = "{\"magic\":1347374129,\"version\":1,\"rule_count\":2,\"rules\":[],\"hash_hex\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"compiled_at_ms\":1,\"compiler_version\":\"t\"}", .err = LoadError.CountMismatch },
+        // empty ruleset
+        .{ .doc = "{\"magic\":1347374129,\"version\":1,\"rule_count\":0,\"rules\":[],\"hash_hex\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"compiled_at_ms\":1,\"compiler_version\":\"t\"}", .err = LoadError.EmptyRuleset },
+        // bad hex
+        .{ .doc = "{\"magic\":1347374129,\"version\":1,\"rule_count\":1,\"rules\":[{\"id\":1,\"name\":\"r\",\"priority\":1,\"action\":1,\"enabled\":true,\"description\":\"\",\"conditions\":[]}],\"hash_hex\":\"zz\",\"compiled_at_ms\":1,\"compiler_version\":\"t\"}", .err = LoadError.BadHex },
+        // duplicate ids
+        .{ .doc = "{\"magic\":1347374129,\"version\":1,\"rule_count\":2,\"rules\":[{\"id\":1,\"name\":\"a\",\"priority\":1,\"action\":1,\"enabled\":true,\"description\":\"\",\"conditions\":[]},{\"id\":1,\"name\":\"b\",\"priority\":1,\"action\":1,\"enabled\":true,\"description\":\"\",\"conditions\":[]}],\"hash_hex\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"compiled_at_ms\":1,\"compiler_version\":\"t\"}", .err = LoadError.DuplicateId },
+        // bad ipv4
+        .{ .doc = "{\"magic\":1347374129,\"version\":1,\"rule_count\":1,\"rules\":[{\"id\":1,\"name\":\"r\",\"priority\":1,\"action\":1,\"enabled\":true,\"description\":\"\",\"conditions\":[{\"field\":0,\"operator\":0,\"value\":{\"kind\":\"ipv4\",\"value\":\"999.1.1.1\"}}]}],\"hash_hex\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"compiled_at_ms\":1,\"compiler_version\":\"t\"}", .err = LoadError.BadValue },
+        // unknown kind
+        .{ .doc = "{\"magic\":1347374129,\"version\":1,\"rule_count\":1,\"rules\":[{\"id\":1,\"name\":\"r\",\"priority\":1,\"action\":1,\"enabled\":true,\"description\":\"\",\"conditions\":[{\"field\":0,\"operator\":0,\"value\":{\"kind\":\"nope\",\"value\":\"x\"}}]}],\"hash_hex\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"compiled_at_ms\":1,\"compiler_version\":\"t\"}", .err = LoadError.BadValue },
+        // action out of range
+        .{ .doc = "{\"magic\":1347374129,\"version\":1,\"rule_count\":1,\"rules\":[{\"id\":1,\"name\":\"r\",\"priority\":1,\"action\":9,\"enabled\":true,\"description\":\"\",\"conditions\":[]}],\"hash_hex\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"compiled_at_ms\":1,\"compiler_version\":\"t\"}", .err = LoadError.BadEnum },
+        // too many conditions
+        .{ .doc = "{\"magic\":1347374129,\"version\":1,\"rule_count\":1,\"rules\":[{\"id\":1,\"name\":\"r\",\"priority\":1,\"action\":1,\"enabled\":true,\"description\":\"\",\"conditions\":[{\"field\":0,\"operator\":0,\"value\":{\"kind\":\"integer\",\"value\":1}},{\"field\":0,\"operator\":0,\"value\":{\"kind\":\"integer\",\"value\":2}},{\"field\":0,\"operator\":0,\"value\":{\"kind\":\"integer\",\"value\":3}},{\"field\":0,\"operator\":0,\"value\":{\"kind\":\"integer\",\"value\":4}},{\"field\":0,\"operator\":0,\"value\":{\"kind\":\"integer\",\"value\":5}}]}],\"hash_hex\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"compiled_at_ms\":1,\"compiler_version\":\"t\"}", .err = LoadError.TooManyConditions },
+    };
+    for (cases) |c| {
+        const loaded = loadIrFromJson(std.testing.allocator, c.doc) catch |err| {
+            try std.testing.expectEqual(c.err, err);
+            continue;
+        };
+        var owned = loaded;
+        owned.deinit();
+        return error.TestUnexpectedSuccess;
+    }
+}

@@ -24,6 +24,12 @@ pub var g_prevention_gate_open: bool = false;
 /// go nowhere, so the pipeline skips formatting entirely when closed.
 pub var g_brain_enabled = std.atomic.Value(bool).init(false);
 
+/// TS-authored policy IR (verify-only mirror of configs/policy_ir.json).
+/// Loaded at startup when the file exists; the runtime PolicySet
+/// (policies.json) stays the sole evaluation authority. Null when absent
+/// or invalid — metrics report loaded=false instead of claiming rules.
+pub var g_policy_ir: ?@import("../policy/policy_plane.zig").LoadedIr = null;
+
 // PHASE-1 readiness handshake. Thread creation is not readiness: each worker
 // sets its ready flag only after its required initialization succeeds and
 // clears it before returning. A failed flag preserves the reason at runtime

@@ -21,6 +21,7 @@ const sig = @import("detection/signature_engine.zig");
 const anom = @import("detection/anomaly_detector.zig");
 const tracker = @import("detection/threat_tracker.zig");
 const policy = @import("policy/policy_ir.zig");
+const policy_plane = @import("policy/policy_plane.zig");
 const pep = @import("policy/pep_bindings.zig");
 const forensic = @import("forensic/forensic_pipeline.zig");
 const siem_mod = @import("forensic/siem_forwarder.zig");
@@ -406,6 +407,38 @@ pub fn runDaemon() !void {
 
         state.g_policies_loaded.store(policies_loaded, .monotonic);
         diag.info("loaded {} policies from {s}", .{ policies_loaded, pol_path });
+    }
+
+    // 6c. Load TS-authored policy IR (verify-only mirror, T3-TSIR-025).
+    // Absence is normal (advisory plane may not be compiled yet); an
+    // invalid document warns and continues. This NEVER replaces the
+    // runtime PolicySet above and NEVER touches enforcement authority.
+    policy_ir_blk: {
+        const ir_path = runtime_paths.configPath(std.heap.page_allocator, runtime_root, "policy_ir.json") catch |err| {
+            diag.warn("config resolution: cannot build policy_ir.json path: {}", .{err});
+            break :policy_ir_blk;
+        };
+        defer std.heap.page_allocator.free(ir_path);
+        const ir_file = std.fs.openFileAbsolute(ir_path, .{}) catch {
+            diag.info("no TS policy IR at {s}; continuing with runtime PolicySet only", .{ir_path});
+            break :policy_ir_blk;
+        };
+        defer ir_file.close();
+        const ir_bytes = ir_file.readToEndAlloc(std.heap.page_allocator, 1 * 1024 * 1024) catch |err| {
+            diag.warn("cannot read {s}: {}", .{ ir_path, err });
+            break :policy_ir_blk;
+        };
+        defer std.heap.page_allocator.free(ir_bytes);
+        var loaded = policy_plane.loadIrFromJson(std.heap.page_allocator, ir_bytes) catch |err| {
+            diag.warn("TS policy IR at {s} failed verification: {}; continuing with runtime PolicySet only", .{ ir_path, err });
+            break :policy_ir_blk;
+        };
+        state.g_policy_ir = loaded;
+        diag.info("TS policy IR verified: {} rules hash={s} compiler={s}", .{
+            loaded.ir.rule_count,
+            loaded.hash_hex[0..16],
+            loaded.ir.compiler_version,
+        });
     }
 
     var ad = anom.AnomalyDetector.init(std.heap.page_allocator);

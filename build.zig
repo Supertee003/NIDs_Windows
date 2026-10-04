@@ -119,6 +119,10 @@ pub fn build(b: *std.Build) void {
     opts.addOption([]const u8, "host_correlator_config_json", hc_json);
     opts.addOption([]const u8, "integration_test_config_json", it_json);
     opts.addOption([]const u8, "perf_benchmark_config_json", pb_json);
+    // T3-TSIR-025: the TS-authored golden IR shared with the Zig loader.
+    // Same pattern (file stays in ts_policy/, bytes surface via options).
+    const pir_json = std.fs.cwd().readFileAlloc(b.allocator, "ts_policy/tests/fixtures/policy_ir_002.json", 1 * 1024 * 1024) catch "";
+    opts.addOption([]const u8, "policy_ir_fixture_json", pir_json);
 
     const tests = b.addTest(.{
         .root_source_file = b.path("src/all_tests.zig"),
