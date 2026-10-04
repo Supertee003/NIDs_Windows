@@ -92,11 +92,22 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
 - Import-time effects (pinned): `brain/windows_brain.py` import runs
   sys.path edits + warning prints (banner/UDP/loop correctly gated
   behind `__main__`). Pin: `tests/brain/test_import_hygiene.py`.
-- Full-suite native crash (open): combined `tests/+brain/` run segfaults
-  nondeterministically (GC during fixture setup) while every directory
-  group passes serially. Prime suspects: shared-process native state
-  (3 Cython `.pyd` + ctypes + runtime-test threads). Bisect running;
-  do NOT expand shared-process native surface until rooted.
+- Full-suite teardown AV (open, flaky): combined `tests/` run segfaults
+  nondeterministically (exit -1073741819/-1073740940/-1073740791) while
+  every directory group passes serially and all 546 tests repeatedly
+  PASS (summaries print; crash is at/after teardown). cdb native stack:
+  AV in `Py_Dealloc → PyObject_SelfIter` during `Py_RunMain` teardown
+  (`PyErr_Display` frame = an exception being printed at shutdown), pure
+  python314.dll frames, no product DLL. Reproduces on 3.11 too (no cp314
+  `.pyd` loadable there) and WITHOUT all `.pyd` files, so it is NOT a
+  Cython-module defect; `sensor_pipe`/`hotspot` exonerated by removal
+  runs. Bisect: halves (140/400), A+B1 (233), A+B2 (447), B1+B2 (400)
+  all green; only the full set crashes. Mitigation landed:
+  `tests/runtime/conftest.py::pytest_sessionfinish` reaps stragglers and
+  joins drain threads (deterministic teardown), but the AV persists, so
+  the trigger is elsewhere (pywin32/ctypes handles? npm children?).
+  Do NOT expand shared-process native surface until rooted; CI should
+  treat a post-summary AV as harness-flake, never as product signal.
 
 ## KNOWN-OPEN robustness (filed, unscheduled)- flow pointer lock-escape (single-threaded today), forensic `append catch 0`,
   correlator/AC per-packet allocator, FIM non-ASCII/long-path caps,

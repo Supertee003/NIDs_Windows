@@ -136,6 +136,7 @@ REQUIRED_COMPONENTS = tuple(c["name"] for c in COMPONENTS if c["required"])
 # Captured output per spawned pid, plus the drain threads (kept referenced so
 # they are not collected while the component is alive).
 _SPAWNED_OUTPUT: dict[int, dict[str, list[str]]] = {}
+_SPAWNED_PROCS: list["subprocess.Popen"] = []
 _DRAIN_THREADS: list[threading.Thread] = []
 _MAX_CAPTURED_LINES = 2000
 
@@ -181,6 +182,7 @@ def start_component(cmd: list[str], cwd: Optional[Path] = None) -> "subprocess.P
     )
     buffers: dict[str, list[str]] = {"stdout": [], "stderr": []}
     _SPAWNED_OUTPUT[proc.pid] = buffers
+    _SPAWNED_PROCS.append(proc)
     for stream, key in ((proc.stdout, "stdout"), (proc.stderr, "stderr")):
         if stream is None:
             continue
@@ -525,3 +527,40 @@ __all__ = [
     "quarantine_dir",
     "write_audit_record",
 ]
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Deterministic teardown: reap components, join drain threads.
+
+    Per-test tearDowns terminate their own procs, but a skip/failure
+    between start and teardown (or a component ignoring terminate) would
+    otherwise leak processes and leave pipe-drain threads blocked in
+    readline() into interpreter shutdown. This backstop terminates
+    stragglers, kills the stubborn, and JOINS every drain thread, and
+    REPORTS leftovers instead of hiding them. (A full-suite teardown AV
+    is under separate investigation; this hook narrows it by making the
+    harness's own threads deterministic.)
+    """
+    stragglers = [p for p in _SPAWNED_PROCS if p.poll() is None]
+    for proc in stragglers:
+        try:
+            proc.terminate()
+        except Exception:
+            pass
+    deadline = time.time() + 10
+    for proc in stragglers:
+        try:
+            proc.wait(timeout=max(0, deadline - time.time()))
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+    still_alive = 0
+    for thread in _DRAIN_THREADS:
+        thread.join(timeout=10)
+        if thread.is_alive():
+            still_alive += 1
+    if stragglers or still_alive:
+        print(f"[conftest] sessionfinish: reaped {len(stragglers)} procs, "
+              f"{still_alive} drain threads still alive")
