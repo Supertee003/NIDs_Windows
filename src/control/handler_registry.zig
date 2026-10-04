@@ -380,7 +380,7 @@ const handlers = struct {
     }
 
     fn version(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return "{\"core\":\"5.0.0\",\"nose\":\"2.1.0\",\"pep\":\"1.0.0\",\"brain\":\"1.0.0\"}";
+        return "{\"core\":\"5.0.0\",\"nose\":\"5.0.0\",\"pep\":\"1.0.0\",\"brain\":\"1.0.0\"}";
     }
 
     fn diagnose(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {

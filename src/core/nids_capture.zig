@@ -1,6 +1,6 @@
 //! nids_capture.zig - AEGIS NIDS Named Pipe IPC Sensor (Thread 2)
 //!
-//! Creates a named pipe server (\\.\pipe\aegis_sensor_pipe) that
+//! Creates a named pipe server (\\.\pipe\aegis_sensor_pipe_t1) that
 //! accepts connections from Python sensor scripts. Payloads received
 //! via the pipe are submitted to the daemon-owned canonical event queue.
 //! Detection, policy, and forensic processing are performed by the pipeline
@@ -132,7 +132,7 @@ const WAIT_TIMEOUT = win32_io.WAIT_TIMEOUT;
 const IO_POLL_TIMEOUT_MS = win32_io.IO_POLL_TIMEOUT_MS;
 /// Thread 2 entry point: Named Pipe IPC Sensor.
 ///
-/// Creates a named pipe server (\\.\pipe\aegis_sensor_pipe) that accepts
+/// Creates a named pipe server (\\.\pipe\aegis_sensor_pipe_t1) that accepts
 /// connections from Python sensor scripts. Payloads received via the pipe
 /// are submitted to the canonical event queue for daemon-owned processing.
 ///

@@ -165,7 +165,7 @@ pub fn runDaemon() !void {
     // P1: Initialize runtime state machine
     runtime_sm.g_runtime.transition(.starting);
     runtime_sm.g_runtime.registerSubsystem(.zig, "zig", "5.0.0", "core,detection,correlation");
-    runtime_sm.g_runtime.registerSubsystem(.go, "go", "2.1.0", "capture,nose");
+    runtime_sm.g_runtime.registerSubsystem(.go, "go", "5.0.0", "capture,nose");
     runtime_sm.g_runtime.registerSubsystem(.cpp, "cpp", "1.0.0", "etw,fim,registry,wfp");
     runtime_sm.g_runtime.registerSubsystem(.rust_pep, "rust_pep", "1.0.0", "enforcement,crypto");
     runtime_sm.g_runtime.registerSubsystem(.tier3, "tier3", "1.0.0", "authorization,pep");
@@ -489,7 +489,7 @@ pub fn runDaemon() !void {
         state.g_worker_failure_kind.store(@intFromEnum(state.WorkerFailureKind.none), .release);
         state.g_worker_failure_mask.store(0, .release);
 
-        // REBUILD-003: Named-pipe sensor thread (\\.\pipe\aegis_sensor_pipe).
+        // REBUILD-003: Named-pipe sensor thread (\\.\pipe\aegis_sensor_pipe_t1).
         // Exits when bridge_init.requestShutdown() is signalled.
         supervisor.sensor = std.Thread.spawn(.{}, legacy_capture.capture_packets, .{ std.heap.page_allocator, "" }) catch |err| blk: {
             diag.warn("failed to spawn pipe sensor thread: {} — sensor disabled", .{err});

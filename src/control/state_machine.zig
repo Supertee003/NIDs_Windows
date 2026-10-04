@@ -413,7 +413,7 @@ test "SubsystemState: health check" {
 test "RuntimeState: register and start subsystem" {
     var rs = RuntimeState{};
     rs.registerSubsystem(.zig, "zig", "5.0.0", "core");
-    rs.registerSubsystem(.go, "go", "2.1.0", "capture");
+    rs.registerSubsystem(.go, "go", "5.0.0", "capture");
 
     try std.testing.expectEqual(@as(usize, 2), rs.subsystem_count);
     try std.testing.expectEqual(SubsystemState.stopped, rs.subsystems[0].state);
@@ -426,7 +426,7 @@ test "RuntimeState: register and start subsystem" {
 test "RuntimeState: subsystem failure degrades system" {
     var rs = RuntimeState{};
     rs.registerSubsystem(.zig, "zig", "5.0.0", "");
-    rs.registerSubsystem(.go, "go", "2.1.0", "");
+    rs.registerSubsystem(.go, "go", "5.0.0", "");
     rs.subsystemStarted(.zig, 100);
     rs.subsystemStarted(.go, 200);
     rs.system_state = .running;

@@ -105,6 +105,39 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   two consecutive full runs green after the fix (555 passed, exit 0).
   Remaining flake (separate, needs live daemon): pagination volume tests.
 
+## FULL-SYSTEM SCAN (2026-10-04 — dead code, coverage gaps, drift)
+
+- Dead orphans (zero importers, even tests): `policy/{dispatcher_phase_b,
+  shadow_decision, control_ipc, wfp_production}`, `federation/federation.zig`
+  (dup of cluster_coord), `windows/{hids_process_monitor, cpp_adapter,
+  ips_canary_order}`, `xdr/{dr_incident_graph, dr_incident_fabric,
+  dr_correlator}`, `forensic/replayable_security`, `reliability/lifecycle`.
+  NOTE: `serializeV2` "dead in Zig" is a false positive — its caller is Go.
+  Removal is BLOCKED wherever E2 pins read the file (dispatcher precedent);
+  orphans without pins are quarantine candidates, not silent deletions.
+- Test-graph gaps (in-file tests NEVER execute under `zig build test`):
+  `capture/npcap_capture`, `detection/rag_intelligence`, `policy/
+  {dispatcher, control_ipc, policy_plane, policy_signing, shadow_decision,
+  wfp_production}`, `forensic/replayable_security`, `contract/{event_fabric,
+  runtime_spine}`, `windows/{cpp_adapter, hids_engine, hids_process_monitor,
+  ips_canary, ips_canary_order, ips_simulation}`, `xdr/{correlator, harden,
+  incident_fabric, incident_graph}`, `federation/federation`,
+  `reliability/{fault_matrix, lifecycle, release_engineering,
+  release_provenance, reliability}`, `platform/{win32_pipe, win32_service}`,
+  `pipeline/{packet_callback, telemetry_threads}`; Go: nose TUI/collectors/
+  pipe_writer/ipc_reader/inject/main; Python: `golden_path_ffi.py`,
+  aegisctl `client/config/utils`. 30/36 control commands lack contract or
+  handler pins (see T3-TWOP-023 pattern for how to add them).
+- Drift FIXED this pass: Nose `2.1.0` → `5.0.0` (daemon/state_machine/
+  version-handler vs `nose/main.go` + version.md); sensor-pipe `_t1`
+  suffix in 3 stale comments.
+- Drift OPEN (needs owner decision, not silent edit): `EVENT_VERSION`
+  5 vs 1 (legacy `contract/event.zig` vs canonical); POL1 vs POLI
+  (pinned MISMATCH test, intentional); `struct_size` 128 vs 109 defaults
+  (strict vs lax decoders); brain/ts/mouth/cython version strings
+  (2.0.0/1.0.0/3.0.0/1.1.0 vs product 5.0.0); CONTROL_PROTOCOL v2 code vs
+  v1.0 doc; `zig-0.13` vs `zig-0.13.0`; CANARY_MAGIC ×3 files.
+
 ## KNOWN-OPEN robustness (filed, unscheduled)- flow pointer lock-escape (single-threaded today), forensic `append catch 0`,
   correlator/AC per-packet allocator, FIM non-ASCII/long-path caps,
   registry re-arm failure silent, ETW GUID mismatch/compound-literal UB,
