@@ -1119,3 +1119,19 @@ test "v2 shared vector 006 encodes byte-identical across languages" {
     try std.testing.expectEqualSlices(u8, &addrs.src, &frame.src_ipv6.?);
     try std.testing.expectEqualSlices(u8, &addrs.dst, &frame.dst_ipv6.?);
 }
+
+test "over-length v1 frame decodes as v1 (version authoritative)" {
+    // Hardening parity with Go/Python/C++: version 1 with trailing bytes
+    // decodes on the frozen v1 path (first 109 bytes, tail ignored).
+    var ev = v6ProbeEvent();
+    var buf: [WIRE_PAYLOAD_SIZE]u8 = undefined;
+    _ = try serializeToBytes(&ev, &buf);
+    var long: [WIRE_V2_PAYLOAD_SIZE]u8 = undefined;
+    @memcpy(long[0..WIRE_PAYLOAD_SIZE], &buf);
+    for (long[WIRE_PAYLOAD_SIZE..], 0..) |*b, i| b.* = @intCast(i);
+    const frame = deserializeDispatch(&long).?;
+    try std.testing.expectEqual(EVENT_VERSION, frame.event.version);
+    try std.testing.expect(frame.src_ipv6 == null);
+    try std.testing.expect(frame.dst_ipv6 == null);
+    try std.testing.expectEqual(ev.source_ip, frame.event.source_ip);
+}

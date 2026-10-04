@@ -39,8 +39,9 @@ v2 payload: 133 bytes = v1 109 bytes ++ v6 tail 24 bytes
 
 ## Decoder rules
 
-- Length 109 + version 1 → v1 path (frozen behavior, addrs absent).
-- Length 133 + version 2 → v2 path (validate magic/version/struct_size,
+- Version 1 with 109+ bytes → v1 path (first 109 bytes, tail ignored,
+  frozen behavior). The version field is authoritative, not the length.
+- Version 2 with 133+ bytes → v2 path (validate magic/version/struct_size,
   same enum gates as v1, reconstruct full addresses).
 - Anything else → reject. No silent truncation, no version fallback.
 

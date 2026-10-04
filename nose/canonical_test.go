@@ -557,3 +557,26 @@ func TestEventFromPacketFillsV6Sidecars(t *testing.T) {
 		t.Fatalf("v6 first-4 identity wrong: %08x %08x", ev.SourceIP, ev.DestIP)
 	}
 }
+
+func TestOverLengthV1FrameDecodesAsV1(t *testing.T) {
+	// Hardening parity: a 133-byte frame stamped version 1 decodes on the
+	// frozen v1 path (first 109 bytes, tail ignored, zero sidecars) — the
+	// version field is authoritative, not the length. Zig/Python/C++ agree.
+	gold := goldenBytes()
+	var long [EventV2WireSize]byte
+	copy(long[:], gold[:])
+	for i := EventWireSize; i < EventV2WireSize; i++ {
+		long[i] = byte(i)
+	}
+	back, err := DeserializeDispatch(long[:])
+	if err != nil {
+		t.Fatalf("over-length v1 dispatch: %v", err)
+	}
+	var zero [16]byte
+	if back.Src6 != zero || back.Dst6 != zero {
+		t.Fatalf("v1 version must decode with zero sidecars at any length")
+	}
+	if back.SourceIP != 0xC0A80164 {
+		t.Fatalf("v1 identity must survive trailing bytes")
+	}
+}
