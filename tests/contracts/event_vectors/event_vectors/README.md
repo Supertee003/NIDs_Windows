@@ -11,31 +11,31 @@ No struct memcpy, no pointer cast.
 ### event_v1_001.bin
 - Description: Benign forward event (192.168.1.100 -> 10.0.0.1:80)
 - Size: 109 bytes
-- SHA256: `7e22844acb491e13bcd10b2fe59092f82562a27ea784962c08cd1cad569d88bf`
+- SHA256: `05e3666ae7af714635ea2e781fc78ccd657655301e724ae977eb9452ecc323dd`
 - Magic at offset 0: 0x31474541
 
 ### event_v1_002.bin
 - Description: APT block event (192.168.16.16 -> 10.0.0.1:445 SMB)
 - Size: 109 bytes
-- SHA256: `0e82a6225b1d42ef6bda7fe0a8ab24df2ddcc358c76ce8c963b36dac67d6d5d1`
+- SHA256: `837a3450aee44dbf13fea4c9d9cb07d56b042e0df5dc002daab9a17dd0bc9123`
 - Magic at offset 0: 0x31474541
 
 ### event_v1_003.bin
 - Description: Host event (process start, minifilter)
 - Size: 109 bytes
-- SHA256: `06018ab713e82dd6542d5ff43a41bb29f1d78d974db5aafc58a45ed82b127a07`
+- SHA256: `89910e32ec2c07d694cca7163052e49bdfaafdbdfc63a5d0305388c3bf03756a`
 - Magic at offset 0: 0x31474541
 
 ### event_v1_004.bin
 - Description: Edge case: all zeros except magic/version (custom event type)
 - Size: 109 bytes
-- SHA256: `06f1edfe57bf722ad208d9fa26b695a7a2fe0facfffa7c8e8093d1a26fe969c7`
+- SHA256: `cd9e8bf5056eae8889a49f725b5485b78fc4171bf29eaccb273ad68f4078a6b7`
 - Magic at offset 0: 0x31474541
 
 ### event_v1_005.bin
 - Description: Edge case: all max values (0xFF everywhere)
 - Size: 109 bytes
-- SHA256: `5cd1d8fdcbf10ef9d4706164572ee422e02a4ad15c0d3e42b1e387a7295fe177`
+- SHA256: `4c9bc9b96883737e81fd056f5f3b504c18289f909ba5bca4ce1278ac5a8ccd89`
 - Magic at offset 0: 0x31474541
 
 ### event_v2_006.bin

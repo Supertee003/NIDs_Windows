@@ -133,10 +133,11 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   suffix in 3 stale comments.
 - Drift OPEN (needs owner decision, not silent edit): `EVENT_VERSION`
   5 vs 1 (legacy `contract/event.zig` vs canonical); POL1 vs POLI
-  (pinned MISMATCH test, intentional); `struct_size` 128 vs 109 defaults
-  (strict vs lax decoders); brain/ts/mouth/cython version strings
+  (pinned MISMATCH test, intentional); brain/ts/mouth/cython version strings
   (2.0.0/1.0.0/3.0.0/1.1.0 vs product 5.0.0); CONTROL_PROTOCOL v2 code vs
   v1.0 doc; `zig-0.13` vs `zig-0.13.0`; CANARY_MAGIC ×3 files.
+  (`struct_size` 128-vs-109 closed T2-V6-022c: generator stamps 128,
+  vectors regenerated, strict gates hold.)
 
 ## KNOWN-OPEN robustness (filed, unscheduled)- flow pointer lock-escape (single-threaded today), forensic `append catch 0`,
   correlator/AC per-packet allocator, FIM non-ASCII/long-path caps,
@@ -158,8 +159,8 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   `AEGISCTL_PATH` unused, brain UDP spoofable/127.0.0.1 attribution,
   `run_aegis.bat` 5-subsystem model + wmic, `D:\NIDs_Windows` hardcodes,
   Kali script default target, VMware auto-select fallback, ETW Linux stub
-  reporting running, `last_event_ms` dual-clock, `struct_size` 128-vs-109
-  confusion, legacy `serialize` memcpy path, wire CRC-no-HMAC,
+  reporting running, `last_event_ms` dual-clock,
+  legacy `serialize` memcpy path, wire CRC-no-HMAC,
   `getFrameSize` unchecked, event_queue 1500 truncation vs len claim,
   severity collapse, legacySource downgrade, `beat()` on drop,
   stream-reassembly stall/no-evict, DNS compression blind, HTTP unbounded

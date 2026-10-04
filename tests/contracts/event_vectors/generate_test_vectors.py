@@ -23,6 +23,10 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 EVENT_MAGIC = 0x41454731
 EVENT_VERSION = 1
 WIRE_PAYLOAD_SIZE = 109
+# struct_size stamps the sender in-memory layout (128, like every live
+# producer), never the wire length — strict decoders in all languages
+# require 128 (see wire_v2.md).
+IN_MEMORY_STRUCT_SIZE = 128
 
 # Format string: little-endian, field-by-field (matches wire_v1.md)
 # I=u32, H=u16, Q=u64, B=u8, 16s=bytes[16]
@@ -43,7 +47,7 @@ vectors = []
 v1_fields = {
     "magic": EVENT_MAGIC,
     "version": EVENT_VERSION,
-    "struct_size": WIRE_PAYLOAD_SIZE,
+    "struct_size": IN_MEMORY_STRUCT_SIZE,
     "event_id": 1001,
     "timestamp_ms": 1700000000000,
     "monotonic_ns": 999999999,
@@ -75,7 +79,7 @@ vectors.append(("event_v1_001.bin", v1_fields, "Benign forward event (192.168.1.
 v2_fields = {
     "magic": EVENT_MAGIC,
     "version": EVENT_VERSION,
-    "struct_size": WIRE_PAYLOAD_SIZE,
+    "struct_size": IN_MEMORY_STRUCT_SIZE,
     "event_id": 2002,
     "timestamp_ms": 1700000001000,
     "monotonic_ns": 1000000000,
@@ -107,7 +111,7 @@ vectors.append(("event_v1_002.bin", v2_fields, "APT block event (192.168.16.16 -
 v3_fields = {
     "magic": EVENT_MAGIC,
     "version": EVENT_VERSION,
-    "struct_size": WIRE_PAYLOAD_SIZE,
+    "struct_size": IN_MEMORY_STRUCT_SIZE,
     "event_id": 3003,
     "timestamp_ms": 1700000002000,
     "monotonic_ns": 2000000000,
@@ -139,7 +143,7 @@ vectors.append(("event_v1_003.bin", v3_fields, "Host event (process start, minif
 v4_fields = {
     "magic": EVENT_MAGIC,
     "version": EVENT_VERSION,
-    "struct_size": WIRE_PAYLOAD_SIZE,
+    "struct_size": IN_MEMORY_STRUCT_SIZE,
     "event_id": 0,
     "timestamp_ms": 0,
     "monotonic_ns": 0,
@@ -171,7 +175,7 @@ vectors.append(("event_v1_004.bin", v4_fields, "Edge case: all zeros except magi
 v5_fields = {
     "magic": EVENT_MAGIC,
     "version": EVENT_VERSION,
-    "struct_size": WIRE_PAYLOAD_SIZE,
+    "struct_size": IN_MEMORY_STRUCT_SIZE,
     "event_id": 0xFFFFFFFFFFFFFFFF,
     "timestamp_ms": 0xFFFFFFFFFFFFFFFF,
     "monotonic_ns": 0xFFFFFFFFFFFFFFFF,
@@ -205,7 +209,6 @@ vectors.append(("event_v1_005.bin", v5_fields, "Edge case: all max values (0xFF 
 # ============================================================
 
 EVENT_VERSION_V2 = 2
-IN_MEMORY_STRUCT_SIZE = 128
 FORMAT_V2 = FORMAT + "12s12s"
 assert struct.calcsize(FORMAT_V2) == 133
 

@@ -8,7 +8,7 @@
       "fields": {
         "magic": "0x41454731",
         "version": 1,
-        "struct_size": 109,
+        "struct_size": 128,
         "event_id": 1001,
         "timestamp_ms": 1700000000000,
         "monotonic_ns": 999999999,
@@ -54,7 +54,7 @@
       "fields": {
         "magic": "0x41454731",
         "version": 1,
-        "struct_size": 109,
+        "struct_size": 128,
         "event_id": 2002,
         "timestamp_ms": 1700000001000,
         "monotonic_ns": 1000000000,
@@ -102,7 +102,7 @@
       "fields": {
         "magic": "0x41454731",
         "version": 1,
-        "struct_size": 109,
+        "struct_size": 128,
         "event_id": 3003,
         "timestamp_ms": 1700000002000,
         "monotonic_ns": 2000000000,

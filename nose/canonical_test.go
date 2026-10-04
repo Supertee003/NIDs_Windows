@@ -527,8 +527,7 @@ func TestV2Vector006MatchesCommittedBin(t *testing.T) {
 	}
 }
 
-func TestEventFromPacketFillsV6Sidecars(t *testing.T) {
-	// T2-V6-022b emit path: a synthetic IPv6 packet must produce first-4
+func TestEventFromPacketFillsV6Sidecars(t *testing.T) {	// T2-V6-022b emit path: a synthetic IPv6 packet must produce first-4
 	// identity + bit2 AND full Src6/Dst6, so Send can emit v2 frames.
 	ip6 := &layers.IPv6{
 		Version:    6,
@@ -555,6 +554,14 @@ func TestEventFromPacketFillsV6Sidecars(t *testing.T) {
 	}
 	if ev.SourceIP != 0x20010DB8 || ev.DestIP != 0x20010DB8 {
 		t.Fatalf("v6 first-4 identity wrong: %08x %08x", ev.SourceIP, ev.DestIP)
+	}
+}
+
+func TestCommittedVectorsValidate(t *testing.T) {
+	// Wires the golden_path_ffi validators (previously print-only, never
+	// executed by any test or main path) into `go test`.
+	if !ValidateSemanticEquivalence() {
+		t.Fatalf("committed vectors failed Go cross-language validation")
 	}
 }
 

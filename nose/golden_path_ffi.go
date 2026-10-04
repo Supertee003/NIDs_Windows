@@ -8,6 +8,7 @@
 package main
 
 import (
+	"strconv"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -16,10 +17,17 @@ import (
 	"strings"
 )
 
+// vectorsDir locates the committed fixtures. go test runs with cwd=nose/,
+// so fixtures live one level up (NOT under nose/tests/, which does not
+// exist â€” the old "tests/contracts/..." prefix could never resolve).
+func vectorsDir() string {
+	return filepath.Join("..", "tests", "contracts", "event_vectors", "event_vectors")
+}
+
 // sharedGoldenVectors loads the canonical golden vector definitions from JSON.
 func sharedGoldenVectors() (map[string]map[string]interface{}, error) {
 	// Walk to the test vectors directory
-	dir, err := os.ReadDir(filepath.Join("tests", "contracts", "event_vectors", "event_vectors"))
+	dir, err := os.ReadDir(vectorsDir())
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +36,7 @@ func sharedGoldenVectors() (map[string]map[string]interface{}, error) {
 	for _, d := range dir {
 		if strings.HasSuffix(d.Name(), ".bin") {
 			// Read the corresponding metadata from golden_vectors.json
-			data, err := os.ReadFile(filepath.Join("tests", "contracts", "event_vectors", "golden_vectors.json"))
+			data, err := os.ReadFile(filepath.Join(vectorsDir(), "golden_vectors.json"))
 			if err != nil {
 				return nil, err
 			}
@@ -50,16 +58,22 @@ func sharedGoldenVectors() (map[string]map[string]interface{}, error) {
 // goldenVectorFields extracts the expected field values for a given vector name
 // from the golden_vectors.json metadata.
 func goldenVectorFields(name string) (map[string]interface{}, error) {
-	data, err := os.ReadFile(filepath.Join("tests", "contracts", "event_vectors", "golden_vectors.json"))
+	data, err := os.ReadFile(filepath.Join(vectorsDir(), "golden_vectors.json"))
 	if err != nil {
 		return nil, err
 	}
+	// UseNumber: payload_hash exceeds float64 exact range; the literal
+	// must survive decoding bit-exact for the comparison below.
+	dec := json.NewDecoder(strings.NewReader(string(data)))
+	dec.UseNumber()
 	var meta struct {
 		Vectors map[string]struct {
 			Fields map[string]interface{} `json:"fields"`
 		} `json:"vectors"`
 	}
-	json.Unmarshal(data, &meta)
+	if err := dec.Decode(&meta); err != nil {
+		return nil, err
+	}
 	if v, ok := meta.Vectors[name]; ok {
 		return v.Fields, nil
 	}
@@ -81,11 +95,13 @@ func Deserialize(b []byte) (*CanonicalEvent, error) {
 	if binary.LittleEndian.Uint16(b[4:6]) != EventSchemaVersion {
 		return nil, fmt.Errorf("wire format: unsupported schema %d", binary.LittleEndian.Uint16(b[4:6]))
 	}
+	// Strict like production: struct_size is the sender in-memory layout
+	// tag (128). The frozen v1 vectors stamp 128 like every live producer.
 	if binary.LittleEndian.Uint16(b[6:8]) != DefaultDevStructSize {
 		return nil, fmt.Errorf("wire format: unexpected struct size %d", binary.LittleEndian.Uint16(b[6:8]))
 	}
 	// VOL04-NOSE-001: same enum/confidence gates as CanonicalEvent.Deserialize
-	// (canonical.go) and Zig deserializeFromBytes — the FFI path must not
+	// (canonical.go) and Zig deserializeFromBytes â€” the FFI path must not
 	// accept frames the runtime spine would reject.
 	if !validSource(b[32]) {
 		return nil, fmt.Errorf("wire format: unknown source %d", b[32])
@@ -137,79 +153,132 @@ func Deserialize(b []byte) (*CanonicalEvent, error) {
 func validateVectorFields(event *CanonicalEvent, expectedFields map[string]interface{}) bool {
 	ok := true
 
-	// Helper to format uint64 for comparison
-	formatUint64 := func(v uint64) string { return fmt.Sprintf("%d", v) }
-	formatByte := func(v byte) string { return fmt.Sprintf("%d", v) }
-
-	// Map expected field names to event fields
+	// Map expected field names to event fields. Comparison is canonical
+	// uint64 on both sides: JSON carries hex strings ("0x.."), dotted IPs
+	// and (via UseNumber) exact decimals beyond float64 range, while the
+	// event holds raw integers. Anything unparseable fails loudly.
+	toU64 := func(name string, v interface{}) (uint64, error) {
+		switch t := v.(type) {
+		case json.Number:
+			return strconv.ParseUint(string(t), 10, 64)
+		case float64:
+			return uint64(t), nil
+		case string:
+			if strings.Contains(t, ".") && strings.Count(t, ".") == 3 {
+				parts := strings.Split(t, ".")
+				if len(parts) != 4 {
+					return 0, fmt.Errorf("bad ip %q", t)
+				}
+				var ip uint64
+				for _, p := range parts {
+					n, err := strconv.ParseUint(p, 10, 8)
+					if err != nil {
+						return 0, err
+					}
+					ip = (ip << 8) | n
+				}
+				return ip, nil
+			}
+			return strconv.ParseUint(t, 0, 64)
+		case bool:
+			if t {
+				return 1, nil
+			}
+			return 0, nil
+		}
+		return 0, fmt.Errorf("uncomparable %s (%T)", name, v)
+	}
 	checkField := func(name, label string, expected interface{}) {
-		var actual interface{}
+		// Human annotations (descriptions, names, _hex duplicates) carry
+		// no wire value; magic/version/struct_size are gate-checked at
+		// decode time, not field-compared.
+		if strings.HasSuffix(name, "_hex") || strings.HasSuffix(name, "_name") {
+			return
+		}
+		switch name {
+		case "description", "source_name", "magic", "version", "struct_size":
+			return
+		}
+		var actual uint64
+		var haveActual bool = true
 		switch name {
 		case "event_id":
-			actual = formatUint64(event.EventID)
+			actual = event.EventID
 		case "timestamp_ms":
-			actual = formatUint64(event.TimestampMS)
+			actual = event.TimestampMS
 		case "monotonic_ns":
-			actual = formatUint64(event.MonotonicNS)
+			actual = event.MonotonicNS
 		case "source":
-			actual = formatByte(event.Source)
+			actual = uint64(event.Source)
 		case "source_ip":
-			actual = fmt.Sprintf("0x%08x", event.SourceIP)
+			actual = uint64(event.SourceIP)
 		case "source_port":
-			actual = fmt.Sprintf("%d", event.SourcePort)
+			actual = uint64(event.SourcePort)
 		case "dest_ip":
-			actual = fmt.Sprintf("0x%08x", event.DestIP)
+			actual = uint64(event.DestIP)
 		case "dest_port":
-			actual = fmt.Sprintf("%d", event.DestPort)
+			actual = uint64(event.DestPort)
 		case "session_id":
-			actual = formatUint64(event.SessionID)
+			actual = event.SessionID
 		case "protocol":
-			actual = fmt.Sprintf("%d", event.Protocol)
+			actual = uint64(event.Protocol)
 		case "direction":
-			actual = fmt.Sprintf("%d", event.Direction)
+			actual = uint64(event.Direction)
 		case "layer_id":
-			actual = fmt.Sprintf("%d", event.LayerID)
+			actual = uint64(event.LayerID)
 		case "is_pipe":
-			actual = fmt.Sprintf("%v", event.IsPipe != 0)
+			actual = uint64(event.IsPipe)
 		case "event_type":
-			actual = fmt.Sprintf("%d", event.EventType)
+			actual = uint64(event.EventType)
 		case "severity":
-			actual = fmt.Sprintf("%d", event.Severity)
+			actual = uint64(event.Severity)
 		case "rule_id":
-			actual = fmt.Sprintf("0x%08x", event.RuleID)
+			actual = uint64(event.RuleID)
 		case "ruleset_version":
-			actual = formatUint64(event.RulesetVersion)
+			actual = event.RulesetVersion
 		case "payload_length":
-			actual = fmt.Sprintf("%d", event.PayloadLength)
+			actual = uint64(event.PayloadLength)
 		case "payload_hash":
-			actual = fmt.Sprintf("0x%016x", event.PayloadHash)
+			actual = event.PayloadHash
 		case "policy_action":
-			actual = fmt.Sprintf("%d", event.PolicyAction)
+			actual = uint64(event.PolicyAction)
 		case "enforcement_status":
-			actual = fmt.Sprintf("%d", event.EnforcementStatus)
+			actual = uint64(event.EnforcementStatus)
 		case "defcon_impact":
-			actual = fmt.Sprintf("%d", event.DefconImpact)
+			actual = uint64(event.DefconImpact)
 		case "context_flags":
-			actual = fmt.Sprintf("%d", event.ContextFlags)
+			actual = uint64(event.ContextFlags)
 		case "pid":
-			actual = fmt.Sprintf("%d", event.PID)
+			actual = uint64(event.PID)
 		case "ppid":
-			actual = fmt.Sprintf("%d", event.PPID)
+			actual = uint64(event.PPID)
 		case "proc_type":
-			actual = fmt.Sprintf("%d", event.ProcType)
+			actual = uint64(event.ProcType)
 		case "integrity":
-			actual = fmt.Sprintf("%d", event.Integrity)
+			actual = uint64(event.Integrity)
 		case "hids_flag":
-			actual = fmt.Sprintf("%d", event.HidsFlag)
+			actual = uint64(event.HidsFlag)
 		case "node_id":
-			actual = fmt.Sprintf("0x%08x", event.NodeID)
+			actual = uint64(event.NodeID)
 		case "confidence":
-			actual = fmt.Sprintf("%d", event.Confidence)
+			actual = uint64(event.Confidence)
+		default:
+			haveActual = false
+		}
+		if !haveActual {
+			fmt.Printf("  UNKNOWN field %s: no event mapping\n", label)
+			ok = false
+			return
 		}
 
-		exp := fmt.Sprint(expected)
-		if actual != exp {
-			fmt.Printf("  MISMATCH %s: got %s, expected %s\n", label, actual, exp)
+		want, err := toU64(name, expected)
+		if err != nil {
+			fmt.Printf("  MISMATCH %s: uncomparable expected %v (%v)\n", label, expected, err)
+			ok = false
+			return
+		}
+		if actual != want {
+			fmt.Printf("  MISMATCH %s: got %d (0x%x), expected %d\n", label, actual, actual, want)
 			ok = false
 		}
 	}
@@ -228,88 +297,91 @@ func validateVectorFields(event *CanonicalEvent, expectedFields map[string]inter
 
 // TestGoldenVector cross-language: loads the shared .bin fixture and validates
 // every field against the canonical definition in golden_vectors.json.
-func ValidateGoldenVector() {
+func ValidateGoldenVector() bool {
 	// Load vector #001: Benign forward event
 	expectedFields, err := goldenVectorFields("event_v1_001.bin")
 	if err != nil {
 		fmt.Printf("FAIL: Could not load golden vector metadata: %v\n", err)
-		return
+		return false
 	}
 
 	// Read the binary fixture
-	data, err := os.ReadFile(filepath.Join("tests", "contracts", "event_vectors", "event_vectors", "event_v1_001.bin"))
+	data, err := os.ReadFile(filepath.Join(vectorsDir(), "event_v1_001.bin"))
 	if err != nil {
 		fmt.Printf("FAIL: Could not read golden vector binary: %v\n", err)
-		return
+		return false
 	}
 
 	// Deserialize
 	event, err := Deserialize(data)
 	if err != nil {
 		fmt.Printf("FAIL: Could not deserialize golden vector: %v\n", err)
-		return
+		return false
 	}
 
 	// Validate against expected fields
 	if !validateVectorFields(event, expectedFields) {
 		fmt.Printf("FAIL: event_v1_001.bin field validation failed\n")
-		return
+		return false
 	}
 	fmt.Println("PASS: event_v1_001.bin - all fields validated (Go cross-language)")
+	return true
 }
 
 // TestGoldenVector002 validates vector #002: APT block event.
-func ValidateGoldenVector002() {
+func ValidateGoldenVector002() bool {
 	expectedFields, err := goldenVectorFields("event_v1_002.bin")
 	if err != nil {
 		fmt.Printf("FAIL: Could not load golden vector metadata: %v\n", err)
-		return
+		return false
 	}
 
-	data, err := os.ReadFile(filepath.Join("tests", "contracts", "event_vectors", "event_vectors", "event_v1_002.bin"))
+	data, err := os.ReadFile(filepath.Join(vectorsDir(), "event_v1_002.bin"))
 	if err != nil {
 		fmt.Printf("FAIL: Could not read golden vector binary: %v\n", err)
-		return
+		return false
 	}
 
 	event, err := Deserialize(data)
 	if err != nil {
 		fmt.Printf("FAIL: Could not deserialize golden vector: %v\n", err)
-		return
+		return false
 	}
 
 	if !validateVectorFields(event, expectedFields) {
 		fmt.Printf("FAIL: event_v1_002.bin field validation failed\n")
-		return
+		return false
 	}
 	fmt.Println("PASS: event_v1_002.bin - all fields validated (Go cross-language)")
+	return true
 }
 
 // TestGoldenVector003 validates vector #003: Host event (process start).
-func ValidateGoldenVector003() {
+func ValidateGoldenVector003() bool {
 	expectedFields, err := goldenVectorFields("event_v1_003.bin")
 	if err != nil {
 		fmt.Printf("FAIL: Could not load golden vector metadata: %v\n", err)
-		return
+		return false
 	}
 
-	data, err := os.ReadFile(filepath.Join("tests", "contracts", "event_vectors", "event_vectors", "event_v1_003.bin"))
+	data, err := os.ReadFile(filepath.Join(vectorsDir(), "event_v1_003.bin"))
 	if err != nil {
 		fmt.Printf("FAIL: Could not read golden vector binary: %v\n", err)
-		return
+		return false
 	}
 
 	event, err := Deserialize(data)
 	if err != nil {
 		fmt.Printf("FAIL: Could not deserialize golden vector: %v\n", err)
-		return
+		return false
 	}
 
 	if !validateVectorFields(event, expectedFields) {
 		fmt.Printf("FAIL: event_v1_003.bin field validation failed\n")
-		return
+		return false
 	}
 	fmt.Println("PASS: event_v1_003.bin - all fields validated (Go cross-language)")
+	return true
 }
 
 // TestSemanticEquivalence is a cross-language conceptual test: it verifies that
@@ -320,12 +392,17 @@ func ValidateGoldenVector003() {
 //   - Python: shared/wire/wire_codec.py round-trip test
 //   - C++: (pending - canonical_event_v1.h binary read)
 //   - Rust: (TBD - canonical_event.rs implementation)
-func ValidateSemanticEquivalence() {
+func ValidateSemanticEquivalence() bool {
 	// Verify vector #001 round-trips correctly in Go
-	ValidateGoldenVector()
+	ok := ValidateGoldenVector()
 	// Verify vector #002
-	ValidateGoldenVector002()
+	ok = ValidateGoldenVector002() && ok
 	// Verify vector #003
-	ValidateGoldenVector003()
+	ok = ValidateGoldenVector003() && ok
+	if !ok {
+		fmt.Println("FAIL: TestSemanticEquivalence - a vector failed validation")
+		return false
+	}
 	fmt.Println("PASS: TestSemanticEquivalence - Go read+validate all 3 vectors")
+	return true
 }
