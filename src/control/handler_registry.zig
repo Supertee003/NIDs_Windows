@@ -14,6 +14,7 @@ const audit = @import("audit.zig");
 const pep_bindings = @import("../policy/pep_bindings.zig");
 const enforcement_receipt = @import("../policy/enforcement_receipt.zig");
 const forensic_pipeline = @import("../forensic/forensic_pipeline.zig");
+const siem_mod = @import("../forensic/siem_forwarder.zig");
 
 // ============================================================
 // Handler Function Signature
@@ -1107,8 +1108,12 @@ const handlers = struct {
 
     fn metricsSnapshot(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
         const uptime_sec: u64 = @intCast(@max(@as(i128, 0), @divTrunc(std.time.nanoTimestamp() - ctx.start_ns, std.time.ns_per_s)));
+        // T1-SIEM-021b: SIEM durability is operator-visible here. Zeros when
+        // the forwarder was never initialized (enabled=false tells why).
+        const siem = siem_mod.getStats();
+        const siem_enabled = siem_mod.isEnabled();
         return std.fmt.allocPrint(a,
-            \\{{"uptime_sec":{},"rules_loaded":{},"packets_captured":{},"events_processed":{},"forensic_records":{},"flows_active":{},"incidents_open":{},"detections":{},"anomalies":{},"blocks":{},"errors":{}}}
+            \\{{"uptime_sec":{},"rules_loaded":{},"packets_captured":{},"events_processed":{},"forensic_records":{},"flows_active":{},"incidents_open":{},"detections":{},"anomalies":{},"blocks":{},"errors":{},"siem":{{"enabled":{},"forwarded":{},"failed":{},"spooled":{},"batches":{},"retries":{}}}}}
         , .{
             uptime_sec,
             state_mod.g_rules_loaded.load(.acquire),
@@ -1121,6 +1126,12 @@ const handlers = struct {
             diag.metrics.anomalies_detected.get(),
             diag.metrics.blocks_issued.get(),
             diag.metrics.errors.get(),
+            siem_enabled,
+            siem.total_events_forwarded,
+            siem.total_events_failed,
+            siem.total_events_spooled,
+            siem.total_batches_sent,
+            siem.total_retries,
         }) catch null;
     }
 
@@ -1228,4 +1239,16 @@ test "payloadBool accepts booleans and 0/1 integers only" {
     try std.testing.expect(handlers.payloadBool(obj, "i2") == null);
     try std.testing.expect(handlers.payloadBool(obj, "s") == null);
     try std.testing.expect(handlers.payloadBool(obj, "missing") == null);
+}
+
+test "metricsSnapshot exposes SIEM durability counters" {
+    // T1-SIEM-021b: operators must see forwarded/failed/spooled without a
+    // live forwarder (zeros + enabled=false is the honest uninitialized
+    // answer, never a claim).
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 9, .caller_role = .read, .caller_pid = 0 };
+    const out = handlers.metricsSnapshot(std.testing.allocator, .{ .null = {} }, &ctx).?;
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"siem\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"spooled\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"forwarded\"") != null);
 }
