@@ -459,6 +459,27 @@ test "verifyCanonicalEvent rejects zero timestamp" {
     try std.testing.expect(!violation.isOk());
 }
 
+test "wire and internal event namespaces stay disjoint" {
+    // VER-NS-039: contract/event.zig (internal 96B queue event) and
+    // contract/canonical_event.zig (wire AEG1 v1/v2) are SEPARATE namespaces
+    // with deliberately different magics. 5-vs-1 versions are independent
+    // revisions, not drift — this pin fails loudly if anyone ever unifies
+    // the magics (frames would misroute) or compares versions across modules.
+    const ipc = @import("../contract/event.zig");
+    try std.testing.expect(ipc.EVENT_MAGIC != canonical.EVENT_MAGIC);
+    try std.testing.expect(ipc.EVENT_SIZE != canonical.WIRE_PAYLOAD_SIZE);
+    // Each namespace validates its own pair and rejects the other's magic.
+    var good = canonical.create(.wfp_sensor);
+    try std.testing.expect(verifyCanonicalEvent(good).isOk());
+    good.magic = ipc.EVENT_MAGIC;
+    try std.testing.expect(!verifyCanonicalEvent(good).isOk());
+    const qe = ipc.IpcEvent.init(.packet_captured);
+    try std.testing.expect(qe.validate());
+    var bad = qe;
+    bad.magic = canonical.EVENT_MAGIC;
+    try std.testing.expect(!bad.validate());
+}
+
 test "WIRE_RULES has 10 rules" {
     try std.testing.expect(WIRE_RULES.len == 10);
 }

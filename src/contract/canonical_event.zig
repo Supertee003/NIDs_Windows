@@ -5,6 +5,14 @@
 //!
 //! Versioning: bump EVENT_VERSION when schema changes. All receivers must
 //! validate version before reading fields.
+//!
+//! VER-NS-039 namespace note: EVENT_MAGIC/VERSION here belong to the WIRE
+//! canonical event only (magic "AEG1", v1, v2 adds the IPv6 tail). They are
+//! a different namespace from the INTERNAL queue event in
+//! contract/event.zig (magic 0xAE615011, currently v5). The magics differ
+//! on purpose so the two framings can never be confused, and the versions
+//! evolve independently — 5-vs-1 is not drift. Never compare a version or
+//! magic across the two modules.
 
 const std = @import("std");
 

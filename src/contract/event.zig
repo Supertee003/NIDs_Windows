@@ -3,6 +3,14 @@
 //
 // This struct is the *contract* between capture, detection, policy, forensic,
 // and federation. It MUST remain binary-stable across releases.
+//
+// VER-NS-039 namespace note: EVENT_MAGIC/VERSION here belong to the
+// INTERNAL queue event only (magic 0xAE615011, currently v5). They are a
+// different namespace from the WIRE canonical event in
+// contract/canonical_event.zig (magic "AEG1", v1, v2 with IPv6 tail).
+// The magics differ on purpose so the two framings can never be confused,
+// and the versions evolve independently — 5-vs-1 is not drift. Never
+// compare a version or magic across the two modules.
 
 const std = @import("std");
 const builtin = @import("builtin");
