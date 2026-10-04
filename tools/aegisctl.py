@@ -1046,13 +1046,18 @@ def cmd_block(args) -> int:
     # (enforcement.block -> Rust PEP -> receipt -> postcondition). The local
     # file is a candidate view, never a host effect: this command must never
     # print BLOCKED and never write blocked_ips.json.
+    # BLOCK-LABEL-038: no active writer maintains this file (the legacy
+    # direct-write path is gone), so entries are labeled local candidates —
+    # an entry here is not proof of a live WFP filter, and an empty file
+    # does not prove no filters exist. Live state: enforce status.
     if getattr(args, "block_command", "list") != "list":
         return _unavailable("block", "pep_wfp_postcondition_not_connected")
     path = TOOLS_DIR.parent / "logs" / "blocked_ips.json"
     entries = _ip_entries(path, "blocked_ips")
     if not entries:
-        print("No IPs in the block list")
+        print("No IPs in the block list (local candidates only; live state: enforce status)")
         return 0
+    print("local block candidates (not live filter state; verify: enforce status):")
     for e in entries:
         print(f"{e['ip']}  {e.get('reason','')}")
     return 0
@@ -1187,13 +1192,16 @@ def cmd_enforce(args) -> int:
 
 def cmd_quarantine(args) -> int:
     # NEG-002: list-only, same authority rule as cmd_block.
+    # BLOCK-LABEL-038: same candidate labeling — no active writer maintains
+    # this file, so entries are local candidates, never live-state proof.
     if getattr(args, "quarantine_command", "list") != "list":
         return _unavailable("quarantine", "pep_wfp_postcondition_not_connected")
     qpath = TOOLS_DIR.parent / "logs" / "quarantine.json"
     entries = _ip_entries(qpath, "quarantined_ips")
     if not entries:
-        print("No IPs in quarantine")
+        print("No IPs in quarantine (local candidates only; live state: enforce status)")
         return 0
+    print("local quarantine candidates (not live state; verify: enforce status):")
     for e in entries:
         print(f"{e['ip']}  {e.get('reason','')}")
     return 0
