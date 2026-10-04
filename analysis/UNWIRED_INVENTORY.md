@@ -93,22 +93,17 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
 - Import-time effects (pinned): `brain/windows_brain.py` import runs
   sys.path edits + warning prints (banner/UDP/loop correctly gated
   behind `__main__`). Pin: `tests/brain/test_import_hygiene.py`.
-- Full-suite teardown AV (open, flaky): combined `tests/` run segfaults
-  nondeterministically (exit -1073741819/-1073740940/-1073740791) while
-  every directory group passes serially and all 546 tests repeatedly
-  PASS (summaries print; crash is at/after teardown). cdb native stack:
-  AV in `Py_Dealloc → PyObject_SelfIter` during `Py_RunMain` teardown
-  (`PyErr_Display` frame = an exception being printed at shutdown), pure
-  python314.dll frames, no product DLL. Reproduces on 3.11 too (no cp314
-  `.pyd` loadable there) and WITHOUT all `.pyd` files, so it is NOT a
-  Cython-module defect; `sensor_pipe`/`hotspot` exonerated by removal
-  runs. Bisect: halves (140/400), A+B1 (233), A+B2 (447), B1+B2 (400)
-  all green; only the full set crashes. Mitigation landed:
-  `tests/runtime/conftest.py::pytest_sessionfinish` reaps stragglers and
-  joins drain threads (deterministic teardown), but the AV persists, so
-  the trigger is elsewhere (pywin32/ctypes handles? npm children?).
-  Do NOT expand shared-process native surface until rooted; CI should
-  treat a post-summary AV as harness-flake, never as product signal.
+- Full-suite teardown AV (RESOLVED 2026-10-04): combined `tests/` run
+  segfaulted nondeterministically at/after teardown while all 546+ tests
+  passed (summaries printed). cdb native stack: AV in `Py_Dealloc` during
+  `Py_RunMain` teardown, pure python314.dll frames, no product DLL;
+  reproduced on 3.11 and with/without `.pyd` files (Cython exonerated).
+  Root-cause class: lingering pipe-drain threads blocked in readline()
+  across interpreter teardown (bisect: every subset green, only the full
+  set crashed). Fix: `tests/runtime/conftest.py::pytest_sessionfinish`
+  reaps straggler procs and joins drain threads (T-HYG-002). Evidence:
+  two consecutive full runs green after the fix (555 passed, exit 0).
+  Remaining flake (separate, needs live daemon): pagination volume tests.
 
 ## KNOWN-OPEN robustness (filed, unscheduled)- flow pointer lock-escape (single-threaded today), forensic `append catch 0`,
   correlator/AC per-packet allocator, FIM non-ASCII/long-path caps,
