@@ -41,22 +41,22 @@
     "http": {
       "description": "HTTP POST to collector endpoint",
       "destination_format": "http://host:port/path",
-      "note": "Not yet implemented (Phase 33.1)"
+      "note": "Implemented (T1-SIEM-020/021): batch POST + spool replay; failures spill to <destination>.spool"
     },
     "https": {
       "description": "HTTPS POST to collector endpoint",
       "destination_format": "https://host:port/path",
-      "note": "Not yet implemented (Phase 33.1)"
+      "note": "Implemented (T1-SIEM-020/021): batch POST + spool replay; failures spill to <destination>.spool"
     },
     "tcp": {
       "description": "TCP socket (for syslog collectors)",
       "destination_format": "host:port",
-      "note": "Not yet implemented (Phase 33.1)"
+      "note": "Implemented (T1-SIEM-020/021): batch send + spool replay; failures spill to <destination>.spool"
     },
     "udp": {
       "description": "UDP socket (for syslog collectors)",
       "destination_format": "host:port",
-      "note": "Not yet implemented (Phase 33.1)"
+      "note": "Implemented (T1-SIEM-020/021): batch send + spool replay; failures spill to <destination>.spool"
     }
   },
   "integration_points": {
