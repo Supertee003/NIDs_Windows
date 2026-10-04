@@ -53,6 +53,19 @@ pub const EntityKey = struct {
     metric_kind: u8, // 1=pps, 2=bytes, 3=flows, 4=new_conns
 };
 
+/// Baseline identity for one source address (V6-DETECT-037). A v2 sidecar
+/// keys the baseline on all 16 bytes so two v6 hosts sharing first-4 bytes
+/// never share a baseline; otherwise the zero-padded u32 identity, exactly
+/// the key the pipeline used before sidecars existed. Pure function so the
+/// contract is unit-pinned here, not only at the pipeline call site.
+pub fn entityKeyBytes(sidecar: ?[16]u8, truncated_ip: u32) [16]u8 {
+    if (sidecar) |full| return full;
+    var ip: [16]u8 = [_]u8{0} ** 16;
+    const b: [4]u8 = @bitCast(truncated_ip);
+    @memcpy(ip[0..4], &b);
+    return ip;
+}
+
 pub const AnomalyDetector = struct {
     metrics: std.AutoHashMap(EntityKey, Metric),
     allocator: std.mem.Allocator,
@@ -170,4 +183,18 @@ test "AnomalyDetector owns its emission count" {
     // spike are distribution-dependent, not contract.)
     _ = try ad.observe(k, 9000.0);
     try std.testing.expectEqual(@as(u64, 1), ad.anomalies_emitted);
+}
+
+test "entityKeyBytes prefers sidecar, falls back to padded u32" {
+    // V6-DETECT-037: the fallback must be byte-identical to the historical
+    // inline key so v1 behavior does not shift under existing baselines.
+    const full = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+    try std.testing.expectEqualSlices(u8, &full, &entityKeyBytes(full, 0x12345678));
+    const legacy = blk: {
+        var ip: [16]u8 = [_]u8{0} ** 16;
+        const b: [4]u8 = @bitCast(@as(u32, 0xC0A8010A));
+        @memcpy(ip[0..4], &b);
+        break :blk ip;
+    };
+    try std.testing.expectEqualSlices(u8, &legacy, &entityKeyBytes(null, 0xC0A8010A));
 }

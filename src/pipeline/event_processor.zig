@@ -136,12 +136,9 @@ fn processEvent(
     // z-score hit is counted only: anomalies never create incidents or
     // enforcement in observe-only mode, they enrich the metrics/forensic
     // picture that operators and the Kali probes validate against.
-    const anom_key_bytes = anom.EntityKey{ .src_ip = blk: {
-        var ip: [16]u8 = [_]u8{0} ** 16;
-        const src_b: [4]u8 = @bitCast(ev.src_ip);
-        @memcpy(ip[0..4], &src_b);
-        break :blk ip;
-    }, .metric_kind = 2 }; // 2 = payload bytes
+    // V6-DETECT-037: baseline identity follows the queue sidecars (full
+    // 16B for v2, zero-padded u32 otherwise) — same rule as the flow key.
+    const anom_key_bytes = anom.EntityKey{ .src_ip = anom.entityKeyBytes(qe.src_ipv6, ev.src_ip), .metric_kind = 2 }; // 2 = payload bytes
     const anom_bytes: f64 = @floatFromInt(qe.payload_len);
     if (ad.observe(anom_key_bytes, anom_bytes) catch null) |z_score| {
         _ = z_score;
