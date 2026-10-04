@@ -380,7 +380,10 @@ const handlers = struct {
     }
 
     fn version(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return "{\"core\":\"5.0.0\",\"nose\":\"5.0.0\",\"pep\":\"1.0.0\",\"brain\":\"1.0.0\"}";
+        // VER-TRUTH-032: every value mirrors its component's own source of
+        // truth — core/nose 5.0.0 (product line), pep 5.0.0 (Cargo package
+        // aegis_pep), brain 2.0.0 (windows_brain --version/banner).
+        return "{\"core\":\"5.0.0\",\"nose\":\"5.0.0\",\"pep\":\"5.0.0\",\"brain\":\"2.0.0\"}";
     }
 
     fn diagnose(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
@@ -1740,4 +1743,15 @@ test "enforcementSimulate never claims a host effect" {
     try std.testing.expect(std.mem.indexOf(u8, out, "\"enforced\":false") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"host_effect_confirmed\":false") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "pep_not_invoked") != null);
+}
+
+test "version handler mirrors each component's own source of truth" {
+    // VER-TRUTH-032: core/nose 5.0.0 (product line), pep 5.0.0 (Cargo
+    // package aegis_pep), brain 2.0.0 (windows_brain --version). A stale
+    // hardcoded version here misleads operators into debugging the wrong
+    // binary, so the exact values are pinned.
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 24, .caller_role = .read, .caller_pid = 0 };
+    // version() returns a string literal (no allocation), so no free.
+    const out = handlers.version(std.testing.allocator, .{ .null = {} }, &ctx).?;
+    try std.testing.expectEqualStrings("{\"core\":\"5.0.0\",\"nose\":\"5.0.0\",\"pep\":\"5.0.0\",\"brain\":\"2.0.0\"}", out);
 }

@@ -316,14 +316,18 @@ def _print_control_query(command: str, as_json: bool = True, payload: dict | Non
 
 def cmd_version(args) -> int:
     """Show component versions from the control-plane contract."""
+    # VER-TRUTH-032: every value mirrors its component's own source of truth:
+    # core/nose 5.0.0 (product line; nose/main.go AEGIS_NOSE_VERSION), pep
+    # 5.0.0 (Cargo package aegis_pep), brain 2.0.0 (windows_brain --version),
+    # shield 0.1.0 (shield/Cargo.toml), aggregator 0.1.0 (its --version).
     versions = {
         "core": "5.0.0",
-        "nose": "2.1.0",
-        "pep": "1.0.0",
-        "brain": "1.0.0",
+        "nose": "5.0.0",
+        "pep": "5.0.0",
+        "brain": "2.0.0",
         "shield": "0.1.0",
         "bridge": "1.0.0",
-        "aggregator": "1.0.0",
+        "aggregator": "0.1.0",
     }
     component = getattr(args, "component", None)
     print("Component        Version")

@@ -89,6 +89,12 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
 - [x] Go aggregator loopback bind (GO-LOOPBACK-031: `apiAddr` pins
   `127.0.0.1:port`, bare `:port` never constructed; matches the documented
   `127.0.0.1:9200` contract and every in-tree client).
+- [ ] Mouth internal version drift: `mouth/Cargo.toml` says 3.0.0 but the
+  binary `--version` prints `aegis-mouth 1.0.0`
+  (`mouth/windows_sec_monitor.rs:262`). The G27 supervisor pin only parses
+  semver, so either value passes — but operators cannot tell which mouth
+  they run. Needs owner verdict (bump binary string to 3.0.0 or document
+  why they differ) — NOT silent edit, the `--version` output is supervised.
 - [ ] flow `is_ipv6` plumbing (normalize hardcodes false)
 
 ## COUPLING MAP (deep investigation 2026-10-04 — read before refactoring)
