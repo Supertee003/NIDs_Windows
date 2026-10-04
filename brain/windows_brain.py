@@ -151,16 +151,56 @@ class UI:
 
 # ====== Rule Loading ======
 
+def load_rules_from(path):
+    """Load a rules file, skipping _comment pseudo-rules.
+
+    Raises (OSError, ValueError, UnicodeDecodeError) on torn/missing/invalid
+    files so callers can decide: startup may fail closed, but hot-reload
+    must keep the old engine (see maybe_reload_rules).
+    """
+    with open(path, "r", encoding="utf-8") as f:
+        raw = json.load(f)
+    if not isinstance(raw, dict) or not isinstance(raw.get("nids_rules"), list):
+        raise ValueError("rules file must be an object with a nids_rules array")
+    # Filter out _comment pseudo-rules
+    rules = [r for r in raw.get("nids_rules", [])
+             if isinstance(r, dict) and "rule_id" in r]
+    return {"nids_rules": rules}
+
+
 def load_rules():
     """Load Rules.json, skip _comment entries."""
     if os.path.exists(RULES_FILE):
-        with open(RULES_FILE, "r", encoding="utf-8") as f:
-            raw = json.load(f)
-        # Filter out _comment pseudo-rules
-        rules = [r for r in raw.get("nids_rules", [])
-                 if isinstance(r, dict) and "rule_id" in r]
-        return {"nids_rules": rules}
+        return load_rules_from(RULES_FILE)
     return {"nids_rules": []}
+
+
+def maybe_reload_rules(path, last_mtime, rules_data, tier2_engine):
+    """Hot-reload guard for the Tier-2 loop (B2-HOTRL-034).
+
+    Returns (rules_data, tier2_engine, last_mtime, reloaded, reason) and
+    never raises: a torn write (partial JSON from a concurrent Rules.json
+    save), a missing file, or an invalid shape keeps the old engine so one
+    bad reload cannot kill detection. Startup still fails closed via
+    load_rules_from; this is the loop-safe wrapper.
+    """
+    try:
+        current_mod_time = os.path.getmtime(path)
+    except OSError:
+        return rules_data, tier2_engine, last_mtime, False, "stat_failed"
+    if current_mod_time <= last_mtime:
+        return rules_data, tier2_engine, last_mtime, False, "unchanged"
+    try:
+        fresh_data = load_rules_from(path)
+        fresh_engine = compile_tier2_rules(fresh_data)
+        try:
+            init_cython_engine(fresh_data)
+        except Exception:
+            pass  # Cython is a pure speedup; the Python engine is authoritative
+    except (OSError, ValueError, UnicodeDecodeError) as exc:
+        print(f"{UI.YELLOW}[!] Rules reload skipped ({exc}); keeping previous engine.{UI.RESET}")
+        return rules_data, tier2_engine, last_mtime, False, "load_failed"
+    return fresh_data, fresh_engine, current_mod_time, True, "reloaded"
 
 # ====== Firewall IPS ======
 #
@@ -564,16 +604,12 @@ def main():
     bridge_poll_counter = 0
 
     while True:
-        # --- Hot-reload check ---
-        if os.path.exists(RULES_FILE):
-            current_mod_time = os.path.getmtime(RULES_FILE)
-            if current_mod_time > last_rule_mod_time:
-                print(f"{UI.YELLOW}[!] Policy changed. Reloading Tier-2 Brain...{UI.RESET}")
-                rules_data = load_rules()
-                tier2_engine = compile_tier2_rules(rules_data)
-                init_cython_engine(rules_data)
-                last_rule_mod_time = current_mod_time
-                print(f"{UI.GREEN}[*] Re-compiled {len(tier2_engine)} regex rules.{UI.RESET}")
+        # --- Hot-reload check (guarded: a torn write keeps the old engine) ---
+        rules_data, tier2_engine, last_rule_mod_time, reloaded, _ = maybe_reload_rules(
+            RULES_FILE, last_rule_mod_time, rules_data, tier2_engine)
+        if reloaded:
+            print(f"{UI.YELLOW}[!] Policy changed. Reloading Tier-2 Brain...{UI.RESET}")
+            print(f"{UI.GREEN}[*] Re-compiled {len(tier2_engine)} regex rules.{UI.RESET}")
 
         # 🔗 Poll Bridge events every 10 iterations
         bridge_poll_counter += 1
