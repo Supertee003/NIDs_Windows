@@ -38,6 +38,15 @@ extensions = [
         extra_compile_args=["-O3", "-Wall"],
         define_macros=[("NDEBUG", None)],
     ),
+    Extension(
+        # T3-BRIDGE-026: C++ IPC bridge binding (aegis_ipc.dll, runtime
+        # LoadLibrary: no link-time dependency, same DLL search order and
+        # fallback semantics as bridge/aegis_bridge_ctypes.py).
+        "bridge_ipc",
+        sources=["bridge_ipc.pyx"],
+        extra_compile_args=["-O3", "-Wall"],
+        define_macros=[("NDEBUG", None)],
+    ),
 ]
 
 setup(
