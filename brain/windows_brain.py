@@ -139,6 +139,32 @@ LOG_FILE = "logs/anomalous.json"
 RULES_FILE = os.path.join(os.path.dirname(__file__), "..", "configs", "Rules.json")
 MAX_PAYLOAD_SIZE = 4096
 
+# B2-LOGTH-041: anomaly-log write throttle. anomalous.json is append-only
+# with no rotation, so a detection storm would fill the disk while the
+# mouth TUI tails it. Cap appends per wall-clock window; excess findings
+# are still delivered to the sensor pipe + bridge (bounded elsewhere) and
+# counted in DROPPED_COUNT so the HEALTH probe shows the throttle instead
+# of hiding it. Truncation/rotation is deliberately NOT used: the mouth
+# tail reader tracks absolute offsets and would go blind after a shrink.
+LOG_BURST_MAX = 100
+LOG_WINDOW_SEC = 60.0
+_log_window_start = 0.0
+_log_window_count = 0
+
+
+def anomaly_log_allowed():
+    """Sliding-window gate for anomalous.json appends. Never raises."""
+    global _log_window_start, _log_window_count, DROPPED_COUNT
+    now = time.monotonic()
+    if now - _log_window_start >= LOG_WINDOW_SEC:
+        _log_window_start = now
+        _log_window_count = 0
+    if _log_window_count >= LOG_BURST_MAX:
+        DROPPED_COUNT += 1
+        return False
+    _log_window_count += 1
+    return True
+
 class UI:
     DANGER  = '\033[91;1m'
     RED     = '\033[91m'
@@ -385,16 +411,24 @@ def init_cython_engine(rules_data):
 
 # ====== Log Writing ======
 
-def write_anomaly_log(log_entry, attack_type, policy, rule_id, status="DETECTED"):
-    """Write an anomaly log entry to anomalous.json."""
+def write_anomaly_log(log_entry, attack_type, policy, rule_id, status="DETECTED", path=None):
+    """Write an anomaly log entry to anomalous.json.
+
+    Returns "WRITTEN" or "THROTTLED" (burst cap). Throttled findings are
+    still delivered through the sensor pipe + bridge by the caller; only
+    the unbounded file append is shed, and the shed is counted.
+    """
+    if not anomaly_log_allowed():
+        return "THROTTLED"
     log_entry["attack_type"] = attack_type
     log_entry["policy"] = policy
     log_entry["rule_id"] = rule_id
     log_entry["status"] = status
     log_entry["brain_timestamp"] = datetime.now().isoformat()
 
-    with open(LOG_FILE, "a", encoding="utf-8") as f:
+    with open(path or LOG_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(log_entry) + "\n")
+    return "WRITTEN"
 
 # ====== Tier-2 sensor-pipe return contract (T2-BRAIN-023) ======
 # The daemon owns a JSON sensor pipe (\\.\pipe\aegis_sensor_pipe_t1) that
