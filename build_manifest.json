@@ -2,8 +2,8 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "c5ca290",
-  "build_date": "2026-10-03T20:42:12.110980+00:00",
+  "source_commit": "ca419a2",
+  "build_date": "2026-10-03T20:43:09.417869+00:00",
   "build_host": "windows",
   "platform": {
     "os": "windows",
@@ -27,7 +27,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "c5ca290",
+      "commit": "f8598f5",
       "source": "src/main.zig",
       "classification": "CANONICAL"
     },
@@ -38,7 +38,7 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "c5ca290",
+      "commit": "f8598f5",
       "source": "rust-src/lib.rs",
       "classification": "CANONICAL"
     },
@@ -49,7 +49,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "c5ca290",
+      "commit": "f8598f5",
       "source": "src/windows/aegis_wfp.c",
       "classification": "CANONICAL"
     },
@@ -60,7 +60,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "c5ca290",
+      "commit": "f8598f5",
       "source": "src/windows/etw_native.c",
       "classification": "CANONICAL"
     },
@@ -71,7 +71,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "c5ca290",
+      "commit": "f8598f5",
       "source": "src/windows/fim_native.c",
       "classification": "CANONICAL"
     },
@@ -82,7 +82,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "go-nose-build-test",
-      "commit": "c5ca290",
+      "commit": "f8598f5",
       "source": "nose/main.go",
       "classification": "CANONICAL"
     },
@@ -93,7 +93,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-aggregator-build-test",
-      "commit": "c5ca290",
+      "commit": "f8598f5",
       "source": "go/aggregator/main.go",
       "classification": "SUPPORT"
     },
@@ -104,7 +104,7 @@
       "type": "library",
       "required": false,
       "ci_job": "shield-build",
-      "commit": "c5ca290",
+      "commit": "f8598f5",
       "source": "shield/src/lib.rs",
       "classification": "SUPPORT"
     },
@@ -115,7 +115,7 @@
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "c5ca290",
+      "commit": "f8598f5",
       "source": "tools/aegisctl.py",
       "classification": "CANONICAL"
     },
@@ -126,7 +126,7 @@
       "type": "script",
       "required": true,
       "ci_job": "package-release",
-      "commit": "c5ca290",
+      "commit": "f8598f5",
       "source": "tools/installer.py"
     },
     {
@@ -136,7 +136,7 @@
       "type": "toolchain",
       "required": true,
       "ci_job": "ts-policy-build",
-      "commit": "c5ca290",
+      "commit": "f8598f5",
       "source": "ts_policy/"
     },
     {
@@ -146,7 +146,7 @@
       "type": "library",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "c5ca290",
+      "commit": "f8598f5",
       "source": "brain/"
     }
   ],
@@ -210,8 +210,8 @@
     },
     {
       "path": ".gitignore",
-      "size": 1797,
-      "sha256": "cd969f0353dc32f0f843c9fa53b503d809b08d992f776948910aec81c3cc65c1",
+      "size": 2012,
+      "sha256": "2dc7341da41eaed2215957de6e236f08c5036d1e669f9be6e4d909722874d5c6",
       "language": "data"
     },
     {
@@ -318,8 +318,8 @@
     },
     {
       "path": "brain/canonical_event.py",
-      "size": 4875,
-      "sha256": "066d0f9787c3ac70f7a36615f7110994bb424d16fe10f66b5b048637e8317d96",
+      "size": 6806,
+      "sha256": "5a9ce1aca99aec7ad014ea0f89c688e0aadb584d871415c83f319fc24de8459e",
       "language": "python/cython"
     },
     {
@@ -432,8 +432,8 @@
     },
     {
       "path": "brain/cython/setup.py",
-      "size": 1781,
-      "sha256": "b551a6458f2b8cc9e2cc827aef7f3f7de824c137800ec693d4d893f018735bb1",
+      "size": 2472,
+      "sha256": "11d53e9dd0a13639aebc0be73e4f6d4e8dd1e4d1741a16775f056803f8303185",
       "language": "python/cython"
     },
     {
@@ -570,8 +570,8 @@
     },
     {
       "path": "brain/windows_brain.py",
-      "size": 31438,
-      "sha256": "414a6061a62c840204644be5b270e139fbe0286f2554cf3988ca578540de4199",
+      "size": 36572,
+      "sha256": "db2929529ca870cc86f623e55819d29881fcabc28571dac13e9515b7895414cb",
       "language": "python/cython"
     },
     {
@@ -606,8 +606,8 @@
     },
     {
       "path": "bridge/aegis_bridge_ctypes.py",
-      "size": 12989,
-      "sha256": "f14578549c603b6ce34939612d692f4c90e2899c478bca45aea3eb676e3f3adc",
+      "size": 15471,
+      "sha256": "f454d8e1b51462af8fb3e70d9590c5c2991c11b9a16084412c636c3529505e9b",
       "language": "python/cython"
     },
     {
@@ -630,8 +630,8 @@
     },
     {
       "path": "bridge/aegis_ipc.hpp",
-      "size": 15122,
-      "sha256": "4c74b6ffb73a9017cba8b4c4ec8728c856dff7ff073f13437ce063dc4c57881c",
+      "size": 15292,
+      "sha256": "12b2ede3091d7da1e9e9f00a4ee4e15e934f36aedba30d629142efe1dfe1dbe9",
       "language": "c/c++"
     },
     {
@@ -2046,8 +2046,8 @@
     },
     {
       "path": "build.zig",
-      "size": 9077,
-      "sha256": "4a541bd731cb0f69474880e378579c7409e9daf8c6894ae11bcda51483617465",
+      "size": 9429,
+      "sha256": "6b566e7cfdfa009639dd0290f91f0ca4b51633e4730870c8b3cdaea9b6b52221",
       "language": "zig"
     },
     {
@@ -2149,7 +2149,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 17724,
-      "sha256": "54fb1c26e2fbcff0ca92c2ceff54962b9bf5b2764c8f684f10971f706fdd3e1c",
+      "sha256": "5c6a856b0101ac1b3de315390d50a256cbd0692c23427e50c4b20e3bdc615370",
       "language": "json"
     },
     {
@@ -2196,8 +2196,8 @@
     },
     {
       "path": "scripts/aegis_console.py",
-      "size": 66034,
-      "sha256": "9190ad8348d024abb9fae43760669b5df29471431c336634892be81c0a7f119e",
+      "size": 66257,
+      "sha256": "6db7efaef4816ce6cad118dd3611ab1dc5eb49134d53cfd3f3be741059d2eeae",
       "language": "python/cython"
     },
     {
@@ -2916,8 +2916,8 @@
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 53464,
-      "sha256": "14284c17e8cdd753c6f7119e627dfee7fcda68cd258da4f5922510c82a41283d",
+      "size": 61445,
+      "sha256": "e872e7feb62e6c08469b4c04264a3fd638edac4ae63ed165b103d729e0151ccd",
       "language": "python/cython"
     },
     {
@@ -2940,8 +2940,8 @@
     },
     {
       "path": "tools/aegisctl/client.py",
-      "size": 8658,
-      "sha256": "98f10eaa506ffe11361d27e4d13e413446ada5df625092ad4d300513ff68ab83",
+      "size": 7639,
+      "sha256": "0f0ecda8454ca64853d31213a932e11b6fb91eae5f6b0ec4e11261b039148456",
       "language": "python/cython"
     },
     {
@@ -2964,8 +2964,8 @@
     },
     {
       "path": "tools/aegisctl/web_dashboard/app.py",
-      "size": 29739,
-      "sha256": "cc6add96de555dccca2945efd993a36c79b3eb0b44dd4071c60c50442444745f",
+      "size": 29888,
+      "sha256": "c22fa40d31ad66b072ce6e8d0759a5c5d2f6bf3a92809ec1aeaabe5fc9ea7d58",
       "language": "python/cython"
     },
     {
@@ -3300,8 +3300,8 @@
     },
     {
       "path": "ts_policy/package.json",
-      "size": 1046,
-      "sha256": "3d56bcd9bad47dc464fe7383fc5989e3669281dd8ad5e0576e9e5192f56ca587",
+      "size": 1069,
+      "sha256": "fb15c988c200c7eab6e0d3e46b0b74232efee16c1cda7936623d61cff9572cb7",
       "language": "json"
     },
     {
@@ -3312,8 +3312,8 @@
     },
     {
       "path": "ts_policy/src/index.ts",
-      "size": 772,
-      "sha256": "3c8568ba38fafbc4f00d9d0489bc08462da1845cefa4377a034c53d27c7320a2",
+      "size": 956,
+      "sha256": "8a493a1998fd23cfb4b9f3057723509dbbe038b953e22795ccfd1d8f74c75629",
       "language": "typescript"
     },
     {
@@ -3342,8 +3342,8 @@
     },
     {
       "path": "ts_policy/tests/no_enforcement.test.ts",
-      "size": 7877,
-      "sha256": "f37aeb0db1cc49b5e8fba24816555b8c9fa51c008c2e26d4954915bd11335cda",
+      "size": 8150,
+      "sha256": "6572fe13795b2299bd093c8d1163718c1d4b8ba149cfdc071d7ef72f1b6fdcd9",
       "language": "typescript"
     },
     {
