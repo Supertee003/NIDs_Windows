@@ -100,3 +100,81 @@ READ < OPERATE < PRIVILEGED
 - `tools/aegisctl.py` - Python CLI
 - `ts_policy/src/` - TypeScript policy authoring
 - `CONTRACT_MAP.json` - Contract registry
+
+---
+
+# Version 2 (ACTIVE — the daemon speaks this; v1 above is frozen history)
+
+**Supersedes:** the v1 command table and references below remain frozen and
+are kept for history. The active implementation is
+`src/control/protocol.zig` (`CONTROL_PROTOCOL_VERSION = 2`) with handlers
+in `src/control/handler_registry.zig`. The v1 reference
+`src/policy/control_ipc.zig` (binary fixed-header design) has zero
+production importers: its role/ACL/freshness concepts were inherited by the
+v2 JSON protocol, but it is NOT the wire path. Transport, message format,
+roles, and invariants from v1 are unchanged; what changed is the command
+table (33 dotted commands + aliases) with per-command roles and
+mutation/postcondition flags.
+
+## v2 command table (authority: `Command.fromString` + `contract()`)
+
+| Command | Role | Mutation | Description |
+|---------|------|----------|-------------|
+| `system.status` | READ | no | Show daemon status |
+| `system.health` | READ | no | Health check |
+| `system.version` | READ | no | Show version |
+| `system.diagnose` | READ | no | Run diagnostics |
+| `runtime.start` | PRIVILEGED | yes | Start runtime |
+| `runtime.stop` | PRIVILEGED | yes | Stop runtime |
+| `runtime.restart` | PRIVILEGED | yes | Restart runtime |
+| `rules.list` | READ | no | List rules |
+| `rules.show` | READ | no | Show rule details |
+| `rules.validate` | READ | no | Validate rules |
+| `rules.reload` | OPERATE | yes | Reload rules into engine |
+| `events.count` | READ | no | Event count |
+| `events.stats` | READ | no | Event statistics |
+| `events.tail` | READ | no | Recent events |
+| `incidents.list` | READ | no | List incidents |
+| `incidents.show` | READ | no | Show incident details |
+| `policy.list` | READ | no | List policies |
+| `policy.validate` | READ | no | Validate policies |
+| `policy.verify` | OPERATE | no | Verify policy signatures |
+| `policy.simulate` | OPERATE | no | Simulate policy execution |
+| `forensics.list` | READ | no | List forensic records |
+| `forensics.show` | READ | no | Show forensic record |
+| `forensics.verify` | OPERATE | no | Verify forensic integrity |
+| `forensics.export` | PRIVILEGED | yes | Export forensic data |
+| `forensics.replay` | PRIVILEGED | yes | Replay forensic sequence |
+| `enforcement.status` | READ | no | Enforcement status |
+| `enforcement.simulate` | OPERATE | no | Simulate enforcement |
+| `enforcement.verify` | OPERATE | no | Verify enforcement |
+| `enforcement.block` | PRIVILEGED | yes | Block an exact flow through Rust PEP |
+| `enforcement.unblock` | PRIVILEGED | yes | Remove a filter by receipt filter_id |
+| `enforcement.two_person` | PRIVILEGED | yes | Two-person rule on/off (Rust PEP) |
+| `enforcement.approve` | PRIVILEGED | yes | One-shot second-human approval |
+| `metrics.snapshot` | READ | no | Metrics snapshot |
+| `logs.tail` | READ | no | Recent log entries |
+| `federation.status` | READ | no | Federation cluster status |
+| `daemon.shutdown` | PRIVILEGED | yes | Shutdown daemon |
+
+Legacy aliases (accepted, same command): `status`, `health`, `health.check`,
+`version`.
+
+## Retired names (v1-era, UNKNOWN_COMMAND on v2 daemons)
+
+These names appear in v1-era docs and the dead `tools/aegisctl/commands/`
+package. Nothing in the active tree sends them and the v2 map has no
+entries for them — a daemon answers UNKNOWN_COMMAND. Do not use in
+runbooks or automation:
+
+- `block.request` → use `enforcement.block` (privileged, receipt postcondition)
+- `unblock.request` → use `enforcement.unblock` (privileged, by filter_id)
+- `quarantine.request` → no active equivalent (list-only CLI surface)
+- `block_request`, `enforce_push` (underscore variants from the dead package)
+
+## v2 references (active)
+
+- `src/control/protocol.zig` - command table, roles, envelope (`CONTROL_PROTOCOL_VERSION = 2`)
+- `src/control/handler_registry.zig` - handlers
+- `tools/aegisctl.py` - Python CLI (pipe-only client)
+- `src/policy/control_ipc.zig` - UNLINKED reference (T16 concepts only, not the wire path)
