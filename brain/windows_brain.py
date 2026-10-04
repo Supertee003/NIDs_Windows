@@ -65,7 +65,10 @@ if "--version" in sys.argv or "-V" in sys.argv:
     sys.exit(0)
 
 # 🔗 C++ IPC Bridge — เชื่อม Brain ↔ Bridge ↔ Dashboard
+# NOTE: the canonical binding lives in bridge/aegis_bridge_ctypes.py (single
+# authority; the old shared/ duplicate was removed T3-BRIDGE-026c).
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "shared"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "bridge"))
 # T5b: also expose the repo root so `from brain.cython import ...` works
 # when the brain is launched directly via `python brain/windows_brain.py`.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))

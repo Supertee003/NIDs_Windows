@@ -79,7 +79,11 @@ _SNAPSHOT_CACHE = None
 _SNAPSHOT_CACHE_AT = 0.0
 
 # -- C++ IPC Bridge integration --
+# NOTE: canonical binding is bridge/aegis_bridge_ctypes.py (single authority;
+# the old shared/ duplicate was removed T3-BRIDGE-026c).
 _shared_paths = [
+    os.path.join(SCRIPT_DIR, "..", "bridge"),
+    os.path.join(PROJECT_ROOT, "bridge"),
     os.path.join(SCRIPT_DIR, "..", "shared"),
     os.path.join(PROJECT_ROOT, "shared"),
     os.path.join(SCRIPT_DIR, "shared"),
