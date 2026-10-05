@@ -36,7 +36,8 @@ PEP_RS = "rust-src/lib.rs"
 WFP = "rust-src/lib.rs"
 FORENSICS = "src/forensic/forensics_engine.zig"
 REPLAY = "src/forensic/replay_engine.zig"
-DISPATCHER = "src/policy/dispatcher.zig"
+EVENT_PROCESSOR = "src/pipeline/event_processor.zig"
+ACTION_DISPATCHER = "src/policy/action_dispatcher.zig"
 
 # Golden path stages in runtime_manifest.json (human labels), used to prove
 # AC3 (each subsystem appears in the path) in the same order as the source.
@@ -133,16 +134,16 @@ def test_event_id_canonical_and_survives() -> None:
     assert ".event_id = event.event_id" in fe, "forensics must capture the canonical event_id (AC2)"
 
 
-def test_incident_id_survives_dispatcher() -> None:
+def test_incident_id_survives_event_processor() -> None:
     """AC2: incident_id lives on the correlation Incident and is carried in
-    the dispatcher StageContext through the decision chain."""
+    the event processor StageContext through the decision chain."""
     ce = _read(CORRELATION)
     assert "incident_id: u64" in ce, "correlation Incident must carry incident_id (AC2)"
-    disp = _read(DISPATCHER)
-    assert "incident: ?correlation_engine.Incident" in disp, (
-        "dispatcher must carry the correlation Incident (AC2)"
+    ep = _read(EVENT_PROCESSOR)
+    assert "incident_id" in ep, (
+        "event_processor must carry the correlation incident_id (AC2)"
     )
-    assert "processCorrelation" in disp and "ctx.incident" in disp
+    assert "active_incident" in ep and "incident_id" in ep
 
 
 def test_policy_id_and_version_survive() -> None:
@@ -217,16 +218,31 @@ def test_rust_pep_and_wfp_in_path() -> None:
     assert "wfp" in wfp.lower() and ("block" in wfp.lower() or "enforce" in wfp.lower())
 
 
-def test_dispatcher_is_sole_orchestrator() -> None:
-    """AC1: dispatcher.zig is the sole orchestrator and defines every stage
+def test_event_processor_is_sole_orchestrator() -> None:
+    """AC1: event_processor.zig is the sole orchestrator and defines every stage
     helper end to end (capture-facing -> forensics)."""
-    src = _read(DISPATCHER)
-    for stage in [
-        "processEvent", "processFlow", "processDetection", "processVerdict",
-        "processCorrelation", "processThreatIntel", "processRAG",
-        "processBrain", "processPolicy", "processPEP", "processForensics",
+    src = _read(EVENT_PROCESSOR)
+    assert "fn processEvent" in src, (
+        "event_processor.zig must define processEvent (T14 AC1)"
+    )
+    assert "pub fn pipelineLoop" in src, (
+        "event_processor.zig must define pipelineLoop (T14 AC1)"
+    )
+    # Flow lookup, detection, correlation, anomaly, threat tracking, brain,
+    # policy, PEP, dispatch, forensics are all inline in processEvent.
+    for keyword in [
+        "flow.FlowKey.normalize",   # 1. flow lookup
+        "the_ac.match",              # 2. signature matching
+        "corr.observe",              # 3. correlation
+        "ad.observe",                # 4. anomaly detection
+        "tt.observeFlowThreat",      # 5. threat tracking
+        "ps.evaluate",               # 6. policy evaluation
+        "pep_enf.enforce",           # 7. PEP (sole enforcement call)
+        "dispatchWithReceipt",       # 8. action dispatch with receipt
+        "g_brain_enabled",           # 9. Tier-2 brain offer
+        "forensic_ring.append",      # 10. forensic recording
     ]:
-        assert f"fn {stage}" in src, f"dispatcher must define {stage} (T14 AC1)"
+        assert keyword in src, f"event_processor must run stage {keyword} inline (T14 AC1)"
 
 
 def test_manifest_documents_identifier_integrity() -> None:

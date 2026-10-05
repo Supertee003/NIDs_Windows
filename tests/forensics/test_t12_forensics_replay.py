@@ -38,8 +38,8 @@ FORENSIC_LOG = "src/forensic/forensic_log.zig"
 FORENSIC_REPLAY_PROOF = "src/tests/proofs/forensic_replay_proof.zig"
 REPLAY_ENGINE = "src/forensic/replay_engine.zig"
 FORENSICS_INTEGRATION = "src/tests/integration/forensics_integration.zig"
-DISPATCHER = "src/policy/dispatcher.zig"
-DISPATCHER_PHASE_B = "src/policy/dispatcher_phase_b.zig"
+EVENT_PROCESSOR = "src/pipeline/event_processor.zig"
+ACTION_DISPATCHER = "src/policy/action_dispatcher.zig"
 POLICY_SIGNING = "src/policy/policy_signing.zig"
 
 # The full chain as declared by the manifest golden path. Each stage must
@@ -117,18 +117,20 @@ def test_trace_captures_full_chain_fields() -> None:
     )
 
 
-def test_dispatcher_writes_trace_for_every_decision() -> None:
-    """AC1: the dispatcher (SOLE orchestrator) must call
-    forensics_integration.logResult() so every significant decision is
-    traced across the chain. Both dispatcher variants must wire it."""
-    for disp in (DISPATCHER, DISPATCHER_PHASE_B):
-        src = _read(disp)
-        assert "forensics_integration.zig" in src, (
-            f"{disp} must import forensics_integration (T12 AC1)"
-        )
-        assert "forensics_int.logResult(" in src or "forensics_integration.logResult(" in src, (
-            f"{disp} must call logResult after PEP (T12 AC1)"
-        )
+def test_event_processor_and_action_dispatcher_write_trace() -> None:
+    """AC1: the event processor (sole orchestrator) and action dispatcher must ensure
+    every significant decision is traced via the forensic ring. The event processor
+    calls forensic_ring.append directly; action_dispatcher uses ForensicBackend."""
+    # Event processor directly appends to forensic ring
+    ep_src = _read(EVENT_PROCESSOR)
+    assert "forensic_ring.append" in ep_src, (
+        f"{EVENT_PROCESSOR} must call forensic_ring.append for forensics (T12 AC1)"
+    )
+    # Action dispatcher uses ForensicBackend.write function pointer
+    ad_src = _read(ACTION_DISPATCHER)
+    assert "ForensicBackend.write" in ad_src, (
+        f"{ACTION_DISPATCHER} must use ForensicBackend.write for forensics (T12 AC1)"
+    )
 
 
 def test_forensic_log_is_append_only_immutable() -> None:
