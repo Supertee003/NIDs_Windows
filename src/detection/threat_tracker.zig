@@ -12,6 +12,7 @@
 const std = @import("std");
 const event = @import("../contract/event.zig");
 const manifest = @import("../contract/runtime_manifest.zig");
+const diag = @import("../core/diagnostics.zig");
 
 pub const MAX_INCIDENTS: usize = 4096;
 pub const INCIDENT_TTL_NS: i128 = 3600 * std.time.ns_per_s; // 1 hour
@@ -109,6 +110,13 @@ pub const ThreatTracker = struct {
     next_incident_id: u64 = 1,
     allocator: std.mem.Allocator,
     mutex: std.Thread.Mutex = .{},
+    /// Incidents refused because the table was full (INCIDENT-CAP-063).
+    /// Counted under the incident mutex; surfaced once via diag.warn so a
+    /// long-running daemon that stops creating incidents is diagnosable
+    /// instead of silently blind. No eviction here — expiry/compaction
+    /// policy is a follow-up design slice, not an ad-hoc drop.
+    dropped_at_cap: u64 = 0,
+    cap_warned: bool = false,
 
     pub fn init(allocator: std.mem.Allocator) ThreatTracker {
         return .{
@@ -137,7 +145,17 @@ pub const ThreatTracker = struct {
         if (score >= 100 and gop.value_ptr.incident_id.load(.monotonic) == 0) {
             self.mutex.lock();
             defer self.mutex.unlock();
-            if (self.incident_count >= MAX_INCIDENTS) return null;
+            if (self.incident_count >= MAX_INCIDENTS) {
+                // INCIDENT-CAP-063: full table refuses silently no more.
+                // Count every refusal; warn once so a sustained storm does
+                // not flood the log with its own symptom.
+                self.dropped_at_cap += 1;
+                if (!self.cap_warned) {
+                    self.cap_warned = true;
+                    diag.warn("threat tracker incident table full ({d}); new incidents refused until restart", .{MAX_INCIDENTS});
+                }
+                return null;
+            }
             const id = self.next_incident_id;
             self.next_incident_id += 1;
             const idx = self.incident_count;
@@ -280,4 +298,22 @@ test "ThreatTracker incident count increments" {
     ev2.event_id = 2;
     _ = try tt.observeFlowThreat(&ev2, 100);
     try std.testing.expectEqual(@as(u32, 2), tt.incident_count);
+}
+
+test "ThreatTracker full table refuses loudly, not silently" {
+    // INCIDENT-CAP-063: at MAX_INCIDENTS the next incident used to vanish
+    // into a bare null. Refusals are now counted (and warned once) so a
+    // long-running daemon that stops creating incidents is diagnosable.
+    var tt = ThreatTracker.init(std.testing.allocator);
+    defer tt.deinit();
+    var flow: u64 = 1;
+    while (flow <= MAX_INCIDENTS + 1) : (flow += 1) {
+        var ev = event.IpcEvent.init(.signature_match);
+        ev.flow_id = flow;
+        ev.timestamp_ns = 1000;
+        ev.event_id = flow;
+        _ = try tt.observeFlowThreat(&ev, 100);
+    }
+    try std.testing.expectEqual(@as(u32, MAX_INCIDENTS), tt.incident_count);
+    try std.testing.expectEqual(@as(u64, 1), tt.dropped_at_cap);
 }
