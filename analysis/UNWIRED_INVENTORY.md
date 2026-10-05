@@ -73,7 +73,10 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   pipeline re-execution deliberately NOT performed, events_replayed stays 0,
   pass stays false. A deterministic re-execution harness would be a second
   enforcement path, so this is the safe terminal state, not a gap.)
-- [ ] FED-XDR verdict: permanent test-only or Project 4+ cluster
+- [x] FED-XDR verdict: PROCEED if feasible (owner 2026-10-06) — feasible
+  phased per docs/adr/0007-federation-cluster-wiring.md (mature codec/
+  coord/TCP vs mock-TLS x2 + no discovery transport); P1 consolidate
+  can start, P4 wiring needs the one-stack pick. Pin stays until P4.
 - [ ] policy_signing onto enforcement path + trust_store CNG + two-person API
 - [x] IPv6 full (contract v2) — wire v2 decode-ready T2-V6-022a (Go/Zig/
   C++/Python dispatch + 006 vector + bit2 preserved) + nose live emit
