@@ -16,6 +16,7 @@ This directory contains operational runbooks for the AEGIS NIDS system.
 | [RB-008](RB-008-siem-ingestion-debug.md) | Troubleshooting | SIEM ingestion debugging | siem_integration_proof |
 | [RB-009](RB-009-hot-reload-config.md) | Deployment | Hot reload config (no restart) | config_reload_proof |
 | [RB-010](RB-010-telemetry-export-setup.md) | Deployment | Telemetry export setup | telemetry_export_proof |
+| [RB-011](RB-011-policy-ir-mirror-workflow.md) | Deployment | Author, seal, export, verify TS policy IR mirror | policy_ir_proof |
 
 ## Runbook Types
 
