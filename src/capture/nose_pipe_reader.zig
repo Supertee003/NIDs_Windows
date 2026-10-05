@@ -333,10 +333,16 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
 
         g_reader_stats.frames_read += 1;
         _ = runtime_state.g_nose_frames_read.fetchAdd(1, .monotonic);
-        std.log.info("[NOSE PIPE] frame received: {d} bytes", .{frameLen});
+        // LOG-FLOOD-062: per-frame routine logs are debug, not info. At
+        // capture rates info-level per-frame lines flood the log sink on
+        // this hot thread; volume stays visible via frames_read/submitted
+        // counters (stats + metrics). Reject/duplicate/error lines below
+        // stay warn: they signal data-plane anomalies, not routine flow.
+        std.log.debug("[NOSE PIPE] frame received: {d} bytes", .{frameLen});
 
         // Deserialize with version dispatch (v1 frozen path, v2 full-IPv6
-        // tail). Queue identity is the v1-layout event in both cases.
+        // tail). v2 sidecars ride the DecodedFrame into the queue
+        // (V6-FLOW-036); v1 frames carry null sidecars by construction.
         const frame = canonical.deserializeDispatch(payload_slice) orelse {
             std.log.warn("[NOSE PIPE] canonical frame rejected by deserializer", .{});
             g_reader_stats.frames_rejected += 1;
@@ -363,7 +369,7 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
         if (pipeline_queue.pushDecodedFrame(&frame, &[_]u8{})) {
             g_reader_stats.frames_submitted += 1;
             _ = runtime_state.g_nose_frames_submitted.fetchAdd(1, .monotonic);
-            std.log.info("[NOSE PIPE] canonical event submitted: event_id={d}", .{event.event_id});
+            std.log.debug("[NOSE PIPE] canonical event submitted: event_id={d}", .{event.event_id});
         } else {
             g_reader_stats.frames_dropped += 1;
             _ = runtime_state.g_nose_frames_dropped.fetchAdd(1, .monotonic);
