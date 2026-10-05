@@ -49,6 +49,7 @@ const pipe_monitor = @import("capture/pipe_monitor.zig");
 const event_queue = @import("pipeline/event_queue.zig");
 const service = @import("platform/win32_service.zig");
 const control = @import("platform/win32_pipe.zig");
+const federation_uplink = @import("federation/cluster_uplink.zig");
 
 const SERVICE_RUNNING: u32 = 0x00000004;
 const runtime_sm = @import("control.zig").state_machine;
@@ -514,7 +515,15 @@ pub fn runDaemon() !void {
     _ = state.g_wd.registerThread(watchdog.ThreadKind.host_telemetry, "etw");
     _ = state.g_wd.registerThread(watchdog.ThreadKind.host_telemetry, "fim");
     _ = state.g_wd.registerThread(watchdog.ThreadKind.host_telemetry, "registry");
-    // 8. Federation/XDR (disabled in standalone mode)
+    // 8. Federation/XDR (opt-in, default off). AEGIS_CLUSTER=1 enables
+    // the cluster uplink: static peers from configs/cluster.json, TLS
+    // material from env PEM paths (fail-closed), outbound-only publish
+    // of detection reports. No listener, no policy authority — reports
+    // only, enforcement stays local (ADR-0007 P4).
+    federation_uplink.initFromEnv(std.heap.page_allocator) catch |err| {
+        diag.warn("[CLUSTER] uplink init failed: {s}", .{@errorName(err)});
+    };
+    defer federation_uplink.shutdown();
 
     // PATCH-20: Initialize Windows Data Plane adapters (Phase 3)
     // These adapters feed real Windows telemetry into the pipeline.

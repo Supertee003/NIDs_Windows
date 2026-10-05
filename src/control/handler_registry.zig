@@ -1520,10 +1520,13 @@ const handlers = struct {
         return out.toOwnedSlice() catch null;
     }
 
-    fn federationStatus(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        // Truthful standalone report: the daemon does not start cluster
-        // coordination (see daemon.zig "Federation/XDR (disabled in
-        // standalone mode)"). Never claim members that were not attested.
+    fn federationStatus(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
+        // Live status from the uplink (FED-P4). When the uplink is not
+        // installed (standalone), report the truthful standalone state.
+        const uplink = @import("../federation/cluster_uplink.zig");
+        if (uplink.g_uplink) |u| {
+            return u.statusJson(a) catch null;
+        }
         return "{\"mode\":\"standalone\",\"cluster_enabled\":false,\"nodes\":0,\"role\":\"standalone\"}";
     }
 

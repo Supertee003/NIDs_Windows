@@ -95,7 +95,12 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   FED-P3B landed: optional display `name` labels in cluster.json v1
   (numeric id stays the authority — wire + Go canonical already u32,
   no other tier processes node IDs; overlong names fail closed).
-  Pin stays until P4 daemon wiring.
+  FED-P4 landed: daemon wiring — AEGIS_CLUSTER=1 enables the uplink
+  (static peers from cluster.json, TLS material from env PEM paths
+  fail-closed, outbound-only publish of detection reports, no listener,
+  no policy authority). federation.status reports live state. Pin
+  flipped: cluster_uplink is the only federation module the daemon may
+  import.
 - [ ] policy_signing onto enforcement path + trust_store CNG + two-person API
 - [x] IPv6 full (contract v2) — wire v2 decode-ready T2-V6-022a (Go/Zig/
   C++/Python dispatch + 006 vector + bit2 preserved) + nose live emit

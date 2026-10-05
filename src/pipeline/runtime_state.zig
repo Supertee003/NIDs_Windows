@@ -23,6 +23,7 @@ pub var g_prevention_gate_open: bool = false;
 /// via AEGIS_BRAIN=1 (default off): without a running brain the datagrams
 /// go nowhere, so the pipeline skips formatting entirely when closed.
 pub var g_brain_enabled = std.atomic.Value(bool).init(false);
+pub var g_cluster_enabled = std.atomic.Value(bool).init(false);
 
 /// TS-authored policy IR (verify-only mirror of configs/policy_ir.json).
 /// Loaded at startup when the file exists; the runtime PolicySet

@@ -321,6 +321,40 @@ def test_federation_family_has_no_production_importers():
     assert banned == [], f"production imports federation family: {banned}"
 
 
+def test_cluster_uplink_has_no_production_importers():
+    """FED-P4: cluster_uplink is the ONLY federation module the daemon
+    may import, and only for the opt-in uplink. No other production
+    module may import any federation file."""
+    prod_roots = ["src/main.zig", "src/daemon.zig"]
+    prod_dirs = ["src/pipeline", "src/platform", "src/control", "src/capture",
+                 "src/detection", "src/forensic", "src/policy", "src/windows",
+                 "src/contract", "src/core", "src/reliability"]
+    banned = []
+    checked = 0
+    for root in prod_roots:
+        p = REPO / root
+        if not p.exists():
+            continue
+        checked += 1
+        for i, line in code_lines(p, "//"):
+            if "federation/" in line and "cluster_uplink" not in line:
+                banned.append(f"{root}:{i}:{line.strip()[:100]}")
+    for d in prod_dirs:
+        for p in (REPO / d).rglob("*.zig"):
+            if p.suffixes == [".zig", ".scaffold"] or p.name.endswith(".scaffold"):
+                continue
+            if p.name in {"perf_benchmark.zig", "integration_test.zig"}:
+                continue
+            if p.parent.name == "federation":
+                continue
+            checked += 1
+            for i, line in code_lines(p, "//"):
+                if "federation/" in line:
+                    banned.append(f"{p.relative_to(REPO)}:{i}:{line.strip()[:100]}")
+    assert checked > 50, f"zig prod scan surface too small: {checked}"
+    assert banned == [], f"production imports federation family: {banned}"
+
+
 def test_operator_authority_scan_passes_in_ci():
     """AUTH-SCAN-074: the operator's own authority verification
     (control_api.verify_authority_invariant: no Zig WFP-mutation calls,
