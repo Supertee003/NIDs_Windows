@@ -79,6 +79,8 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   G17 federation.zig labeled specimen (REL-SPEC-050 pattern),
   NodeRegistry collision resolved (discovery table is now
   DiscoveryRegistry; coordination keeps cluster_coord.NodeRegistry).
+  FED-P1B landed: frozen fed_v1_*.bin golden vectors (generator +
+  Python reference codec + Zig decode pins, both directions agree).
   Pin stays until P4; one-stack pick still open.
 - [ ] policy_signing onto enforcement path + trust_store CNG + two-person API
 - [x] IPv6 full (contract v2) — wire v2 decode-ready T2-V6-022a (Go/Zig/
