@@ -90,7 +90,12 @@ pub const Correlator = struct {
                     slot.timestamp_ns = ev.timestamp_ns;
                     slot.count = 1;
                 } else {
-                    slot.count += 1;
+                    // CORR-SAT-069: saturating bump. A plain += wraps u8 at
+                    // 255 (panic in safety builds, silent reset in release)
+                    // when one slot floods while a sibling slot starves and
+                    // no match ever resets the window. Saturation keeps the
+                    // slot eligible; matching/reset semantics are unchanged.
+                    slot.count +|= 1;
                 }
                 // Check if all slots have hit their required counts within window
                 if (self.allSlotsMatched(rule, ws, ev.timestamp_ns)) {
@@ -238,8 +243,7 @@ test "Correlator multiple rules independent" {
     try std.testing.expectEqual(@as(u32, 401), r1.?);
 }
 
-test "Correlator same event type multiple sources" {
-    // The correlator tracks by (rule_id, src_ip), so multiple sources
+test "Correlator same event type multiple sources" {    // The correlator tracks by (rule_id, src_ip), so multiple sources
     // create separate windows. This test verifies that behavior.
     var spec_buf = [_]EventSpec{ .{ .kind = .dns_query, .count = 3 } };
     var rule_buf = [_]CorrelationRule{
@@ -262,4 +266,35 @@ test "Correlator same event type multiple sources" {
     const r = try cor.observe(&e3);
     try std.testing.expect(r != null);
     try std.testing.expectEqual(@as(u32, 500), r.?);
+}
+
+test "Correlator slot count saturates instead of wrapping" {
+    // CORR-SAT-069: a slot flooded past 255 while its sibling starves must
+    // saturate (stay eligible), never wrap to 0 (silent reset) or panic
+    // (safety builds). Two-spec rule, only the first kind arrives.
+    var spec_buf = [_]EventSpec{
+        .{ .kind = .dns_query, .count = 2 },
+        .{ .kind = .tls_hello, .count = 1 },
+    };
+    var rule_buf = [_]CorrelationRule{
+        .{ .id = 600, .events = &spec_buf, .window_sec = 3600, .severity = .warning },
+    };
+    var cor = Correlator.init(std.testing.allocator, &rule_buf);
+    defer cor.deinit();
+    var i: u32 = 0;
+    while (i < 300) : (i += 1) {
+        var e = event.IpcEvent.init(.dns_query);
+        e.timestamp_ns = 1_000_000_000 + i;
+        e.src_ip = 0x0A000009;
+        // No match possible (tls_hello never arrives) — must not panic.
+        try std.testing.expect(try cor.observe(&e) == null);
+    }
+    // Late arrival of the missing kind still completes the rule: the
+    // saturated slot stayed eligible instead of resetting.
+    var late = event.IpcEvent.init(.tls_hello);
+    late.timestamp_ns = 2_000_000_000;
+    late.src_ip = 0x0A000009;
+    const hit = try cor.observe(&late);
+    try std.testing.expect(hit != null);
+    try std.testing.expectEqual(@as(u32, 600), hit.?);
 }
