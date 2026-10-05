@@ -163,34 +163,60 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   vectors regenerated, strict gates hold; CANARY_MAGIC ×3 closed
   CANARY-MAGIC-055: single value pinned, copies intentional.)
 
-## KNOWN-OPEN robustness (filed, unscheduled)- flow pointer lock-escape (single-threaded today), forensic `append catch 0`,
-  correlator/AC per-packet allocator, FIM non-ASCII/long-path caps,
-  registry re-arm failure silent, ETW GUID mismatch/compound-literal UB,
-  TLS parser bounds, nose frameLen stall, pipe_monitor prefix-only,
-  nose TUI synthetic counters, C++ DNS port compare, IPC short framing,
-  brain 4096 truncation/log growth/Rules hot-reload crash, TS u64 precision,
-  SBOM salt, go.sum/Go split, CI truth/Trivy gates, web SSE backpressure,
-  receipt validator reconciliation, disabled_rules end-to-end, canary IDs,
-  siem_config dead transports, metrics u64→u32 truncation, watchdog toothless,
-  fault-maybeCorrupt post-validation, quarantine federation best-effort,
-  rust query unauthenticated, single g_ProofFilterId, WFP unload leak,
-  query vs present tri-state callers, PepContext policy_version=0,
-  signed_by never validated, flow identity dst-only, per-call DLL load,
-  provider GUID split, ring stats partial, single-slot globals,
-  `config/Rules.json` mirror drift, `blocked_ips.json` candidate confusion,
-  `policy reload` unreachable via CLI parsers, Pro Console no live watch,
-  graph readability at 100+ records, nose_dashboard.exe duality,
-  `AEGISCTL_PATH` unused, brain UDP spoofable/127.0.0.1 attribution,
-  `run_aegis.bat` 5-subsystem model + wmic, `D:\NIDs_Windows` hardcodes,
-  Kali script default target, VMware auto-select fallback, ETW Linux stub
-  reporting running, `last_event_ms` dual-clock,
-  legacy `serialize` memcpy path, wire CRC-no-HMAC,
-  `getFrameSize` unchecked, event_queue 1500 truncation vs len claim,
-  severity collapse, legacySource downgrade, `beat()` on drop,
-  stream-reassembly stall/no-evict, DNS compression blind, HTTP unbounded
-  headers, RDP/Kerberos single-magic FP, pipe_reader log flood/poll modes,
-  `g_ac_mutex` copy-then-use, rule FNV collisions, golden-table drift,
-  `RuleAction` enum vs Rules.json vocab, `threat_score`/`weight` fixed,
-  incident cap fail-open, INCIDENT_TTL unenforced, IPv4-only evidence ring,
-  `anomalies_emitted` never incremented, RAG wildcard overmatch,
-  `successRate` pending-blind, spool replay automation, spill disk-full path
+## KNOWN-OPEN robustness (filed, unscheduled — closed items struck with slice IDs)
+
+Resolved since filing: FIM non-ASCII/long-path caps (FIM-LONGPATH-044),
+registry re-arm failure silent (REG-STUB-045 + prod re-arms in
+pollNative), ETW session-name UB (ETW-STR-046; TLV bounds pre-existing),
+nose frameLen stall (NOSE-DISC-042), pipe_monitor prefix-only
+(PIPE-SUB-043), brain 4096 truncation/log growth/Rules hot-reload crash
+(B2-SCANVIS-048/B2-LOGTH-041/B2-HOTRL-034), siem_config dead transports
+(SIEM-CFG-033), watchdog toothless (WD-BEAT-049), `blocked_ips.json`
+candidate confusion (BLOCK-LABEL-038), `anomalies_emitted` never
+incremented (ANOM-COUNT-035), RAG wildcard overmatch (RAG-BOUND-052),
+flow identity dst-only (FLOW-ID-051), metrics u64→u32 truncation
+(METR-U64-061), incident cap fail-open (INCIDENT-CAP-063, TTL sweep still
+open), `config/Rules.json` mirror drift (single-authority pin holds),
+nose log flood (LOG-FLOOD-062; pipeline AUDIT line intentionally kept —
+needs observability-UX verdict), `g_ac_mutex` copy-then-use (retain policy
+in rule_loader, documented), canary severity drifts (CANARY-QUAR-056
+quarantined; real RFI/exfil rules pending owner), mouth version drift
+(MOUTH-VER-057), CANARY_MAGIC ×3 (CANARY-MAGIC-055 pinned).
+
+Investigated, no action (with reason): `security_check` hard-coded pass
+claim is wrong (gating/advisory split is real); `getFrameSize` +
+`successRate` dead-but-tested utils (harmless); `AEGISCTL_PATH` is read
+by brain (stale backlog line); nose_dashboard.exe duality not found in
+tree (desktop + web dashboards are intentional); `aegis_graph.py` already
+bounds at 1000 with truncated flag; `policy reload` CLI parsers already
+gate to _unavailable; `RuleAction` vocab gap closed by AC5 pin;
+`beat()` on drop is intentional (controlled action, not stall);
+`spill disk-full` accounted (failed++ on spill failure, at-least-once
+documented); `successRate` pending-blind accepted (unused helper).
+
+Still OPEN: flow pointer lock-escape (single-threaded today), forensic
+`append catch 0`, correlator/AC per-packet allocator (needs profiling,
+not guesses), TLS parser bounds (federation stub), receipt validator
+reconciliation, disabled_rules end-to-end, spool replay automation
+(exists — needs live proof), SBOM salt, go.sum/Go split, CI truth/Trivy
+gates, web SSE backpressure, fault-maybeCorrupt post-validation
+(by design), quarantine federation best-effort (documented standalone),
+rust query unauthenticated (pipe ACL + role gates cover; FFI change is
+ABI break — accepted risk), single g_ProofFilterId, provider GUID split,
+ring stats partial, single-slot globals, query vs present tri-state
+callers (exists), PepContext policy_version=0 + signed_by (T7),
+TS u64 precision (T7), Pro Console no live watch (UX design),
+graph readability at 100+ records (UX design), brain UDP spoofable
+(needs shared-secret design), run_aegis.bat 5-subsystem model + wmic,
+`D:\NIDs_Windows` hardcodes, Kali script default target, VMware
+auto-select fallback, ETW Linux stub reporting running,
+`last_event_ms` dual-clock, legacy `serialize` memcpy path,
+severity collapse, legacySource downgrade (pinned best-effort),
+stream-reassembly stall/no-evict, DNS compression blind, HTTP unbounded
+headers, RDP/Kerberos single-magic FP, nose TUI synthetic counters, C++
+DNS port compare, IPC short framing, per-call DLL load, WFP unload leak
+(drivers quarantined — do not touch), rule FNV collisions,
+golden-table drift, `threat_score`/`weight` fixed, INCIDENT_TTL
+unenforced (eviction-policy verdict needed), IPv4-only evidence ring
+(needs ABI design), wire CRC-no-HMAC (needs key design), event_queue
+1500 truncation vs len claim (by wire design: length+hash only).
