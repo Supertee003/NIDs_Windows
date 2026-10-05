@@ -218,7 +218,13 @@ pub const RegistryMonitor = struct {
                     const n = @min(path.len, path_z.len - 1);
                     @memcpy(path_z[0..n], path[0..n]);
                     path_z[n] = 0;
-                    _ = RegNotifyChangeKeyValue(key, 1, REG_NOTIFY_CHANGE_NAME | REG_NOTIFY_CHANGE_LAST_SET, ev, 1);
+                    // REG-REARM-060: a failed re-arm silently blinds this key
+                    // (one-shot notification spent, no next fire). Surface it
+                    // loudly instead of losing coverage without a trace.
+                    const rc = RegNotifyChangeKeyValue(key, 1, REG_NOTIFY_CHANGE_NAME | REG_NOTIFY_CHANGE_LAST_SET, ev, 1);
+                    if (rc != ERROR_SUCCESS) {
+                        diag.warn("registry re-arm failed for {s}: rc={d} — key unwatched until restart", .{ path, rc });
+                    }
                 }
             }
         }
