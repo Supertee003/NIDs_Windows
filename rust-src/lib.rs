@@ -959,6 +959,178 @@ pub mod federation_tls {
 }
 
 // ============================================================================
+// FED-P2B1: outbound client-session FFI (transport only, never enforcement).
+//
+// The P2 verdict (Rust-rustls via FFI) needs a narrow C ABI for the Zig
+// Transport vtable to delegate through. This exposes outbound client
+// sessions ONLY: connect / send / recv / close over an opaque u64
+// handle. There is deliberately no listen/accept FFI (no production
+// listener design yet — that is P4), no config mutation, and no path to
+// enforcement: bytes in, bytes out, fail-closed codes on every misuse.
+// The Zig mock stack stays until the P2B2 cutover; nothing calls this
+// FFI yet.
+// ============================================================================
+
+struct FedSessionTable {
+    next_id: u64,
+    sessions: HashMap<u64, federation_tls::TlsSession>,
+}
+
+static FED_SESSIONS: OnceLock<Mutex<FedSessionTable>> = OnceLock::new();
+
+fn fed_sessions() -> &'static Mutex<FedSessionTable> {
+    FED_SESSIONS.get_or_init(|| {
+        Mutex::new(FedSessionTable {
+            next_id: 1,
+            sessions: HashMap::new(),
+        })
+    })
+}
+
+fn fed_bytes(ptr: *const u8, len: usize) -> Option<Vec<u8>> {
+    if ptr.is_null() {
+        return if len == 0 { Some(Vec::new()) } else { None };
+    }
+    if len == 0 {
+        return Some(Vec::new());
+    }
+    Some(unsafe { std::slice::from_raw_parts(ptr, len).to_vec() })
+}
+
+fn fed_str(ptr: *const std::ffi::c_char) -> Option<String> {
+    if ptr.is_null() {
+        return None;
+    }
+    unsafe { std::ffi::CStr::from_ptr(ptr).to_str().ok().map(|s| s.to_string()) }
+}
+
+/// Open an encrypted client session. Returns 0 and writes the session
+/// handle on success; -1 null/bad string, -2 TCP/TLS failure.
+#[no_mangle]
+pub extern "C" fn aegis_fed_connect(
+    host: *const std::ffi::c_char,
+    port: u16,
+    roots_pem: *const u8,
+    roots_len: usize,
+    chain_pem: *const u8,
+    chain_len: usize,
+    key_pem: *const u8,
+    key_len: usize,
+    server_name: *const std::ffi::c_char,
+    out_handle: *mut u64,
+) -> c_int {
+    if out_handle.is_null() {
+        return -1;
+    }
+    let (Some(host), Some(server_name)) = (fed_str(host), fed_str(server_name)) else {
+        return -1;
+    };
+    let (Some(roots), Some(chain), Some(key)) = (
+        fed_bytes(roots_pem, roots_len),
+        fed_bytes(chain_pem, chain_len),
+        fed_bytes(key_pem, key_len),
+    ) else {
+        return -1;
+    };
+    let chain_vecs = if chain.is_empty() {
+        Vec::new()
+    } else {
+        vec![chain]
+    };
+    let cfg = federation_tls::TlsConfig {
+        cert_chain: chain_vecs,
+        private_key: key,
+        trusted_roots: vec![roots],
+        require_client_auth: true,
+        server_name,
+    };
+    let transport = match federation_tls::TlsTransport::new(cfg) {
+        Ok(t) => t,
+        Err(_) => return -2,
+    };
+    let session = match transport.connect((host.as_str(), port)) {
+        Ok(s) => s,
+        Err(_) => return -2,
+    };
+    let mut table = fed_sessions().lock();
+    let id = table.next_id;
+    table.next_id += 1;
+    table.sessions.insert(id, session);
+    unsafe {
+        *out_handle = id;
+    }
+    0
+}
+
+/// Send bytes on a session. 0 ok; -1 null; -2 IO/TLS failure; -3 unknown handle.
+#[no_mangle]
+pub extern "C" fn aegis_fed_send(
+    handle: u64,
+    data: *const u8,
+    len: usize,
+) -> c_int {
+    if data.is_null() && len != 0 {
+        return -1;
+    }
+    let bytes: &[u8] = if len == 0 {
+        &[]
+    } else {
+        unsafe { std::slice::from_raw_parts(data, len) }
+    };
+    let mut table = fed_sessions().lock();
+    match table.sessions.get_mut(&handle) {
+        Some(sess) => match sess.send(bytes) {
+            Ok(()) => 0,
+            Err(_) => -2,
+        },
+        None => -3,
+    }
+}
+
+/// Receive up to `cap` bytes; writes the count to `out_n`. 0 ok (n may be
+/// 0 on clean EOF); -1 null; -2 IO/TLS failure; -3 unknown handle.
+#[no_mangle]
+pub extern "C" fn aegis_fed_recv(
+    handle: u64,
+    buf: *mut u8,
+    cap: usize,
+    out_n: *mut usize,
+) -> c_int {
+    if buf.is_null() || out_n.is_null() {
+        return -1;
+    }
+    let out: &mut [u8] = if cap == 0 {
+        &mut []
+    } else {
+        unsafe { std::slice::from_raw_parts_mut(buf, cap) }
+    };
+    let mut table = fed_sessions().lock();
+    match table.sessions.get_mut(&handle) {
+        Some(sess) => match sess.recv(out) {
+            Ok(n) => {
+                unsafe {
+                    *out_n = n;
+                }
+                0
+            }
+            Err(_) => -2,
+        },
+        None => -3,
+    }
+}
+
+/// Close a session. 0 ok; -3 unknown handle (double close fails closed).
+#[no_mangle]
+pub extern "C" fn aegis_fed_close(handle: u64) -> c_int {
+    let mut table = fed_sessions().lock();
+    if table.sessions.remove(&handle).is_some() {
+        0
+    } else {
+        -3
+    }
+}
+
+// ============================================================================
 // 5. Tests
 // ============================================================================
 
@@ -1234,6 +1406,92 @@ mod tests {
             sess.recv(&mut buf).is_err()
         });
         let _ = handle.join();
+    }
+
+    // FED-P2B1: the C ABI proves itself through the same loopback path —
+    // connect / send / recv / close over opaque handles, fail-closed codes.
+    fn fed_ffi_cstr(s: &str) -> std::ffi::CString {
+        std::ffi::CString::new(s).unwrap()
+    }
+
+    #[test]
+    fn fed_ffi_roundtrip_through_c_abi() {
+        let pki = fed_test_pki();
+        let server = federation_tls::TlsTransport::new(fed_server_cfg(&pki)).unwrap();
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let echo = std::thread::spawn(move || {
+            let mut sess = server.accept(&listener).expect("accept");
+            let mut buf = [0u8; 5];
+            let mut got = 0;
+            while got < 5 {
+                match sess.recv(&mut buf[got..]) {
+                    Ok(0) => break,
+                    Ok(n) => got += n,
+                    Err(_) => return false,
+                }
+            }
+            got == 5 && &buf == b"ping!" && sess.send(b"pong!").is_ok()
+        });
+
+        let host = fed_ffi_cstr("127.0.0.1");
+        let name = fed_ffi_cstr("localhost");
+        let mut h: u64 = 0;
+        let rc = unsafe {
+            aegis_fed_connect(
+                host.as_ptr(),
+                port,
+                pki.ca_pem.as_ptr(), pki.ca_pem.len(),
+                pki.cli_chain_pem.as_ptr(), pki.cli_chain_pem.len(),
+                pki.cli_key_pem.as_ptr(), pki.cli_key_pem.len(),
+                name.as_ptr(),
+                &mut h,
+            )
+        };
+        assert_eq!(rc, 0);
+        assert_ne!(h, 0);
+
+        let ping = b"ping!";
+        assert_eq!(unsafe { aegis_fed_send(h, ping.as_ptr(), ping.len()) }, 0);
+        let mut buf = [0u8; 5];
+        let mut n: usize = 0;
+        assert_eq!(unsafe { aegis_fed_recv(h, buf.as_mut_ptr(), buf.len(), &mut n) }, 0);
+        assert_eq!(n, 5);
+        assert_eq!(&buf, b"pong!");
+        assert_eq!(unsafe { aegis_fed_close(h) }, 0);
+        // Double close fails closed, never double-frees.
+        assert_eq!(unsafe { aegis_fed_close(h) }, -3);
+        assert!(echo.join().unwrap());
+    }
+
+    #[test]
+    fn fed_ffi_rejects_misuse_with_fail_closed_codes() {
+        // Nulls.
+        assert_eq!(unsafe { aegis_fed_connect(std::ptr::null(), 1, std::ptr::null(), 0, std::ptr::null(), 0, std::ptr::null(), 0, std::ptr::null(), std::ptr::null_mut()) }, -1);
+        let mut h: u64 = 0;
+        let host = fed_ffi_cstr("127.0.0.1");
+        let name = fed_ffi_cstr("localhost");
+        let roots = b"junk".to_vec();
+        // Unparseable roots with valid pointers still fail (config, not null).
+        assert_eq!(
+            unsafe {
+                aegis_fed_connect(
+                    host.as_ptr(), 1,
+                    roots.as_ptr(), roots.len(),
+                    std::ptr::null(), 0, std::ptr::null(), 0,
+                    name.as_ptr(), &mut h,
+                )
+            },
+            -2
+        );
+        // Unknown handle on every op.
+        let dead: u64 = 0xDEAD_BEEF_F00D;
+        assert_eq!(unsafe { aegis_fed_send(dead, b"x".as_ptr(), 1) }, -3);
+        let mut buf = [0u8; 1];
+        let mut n: usize = 0;
+        assert_eq!(unsafe { aegis_fed_recv(dead, buf.as_mut_ptr(), 1, &mut n) }, -3);
+        assert_eq!(unsafe { aegis_fed_recv(dead, std::ptr::null_mut(), 1, &mut n) }, -1);
+        assert_eq!(unsafe { aegis_fed_close(dead) }, -3);
     }
 
     #[test]

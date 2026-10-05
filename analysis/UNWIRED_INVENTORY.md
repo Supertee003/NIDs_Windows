@@ -84,8 +84,10 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   FED-P2A landed: Rust federation_tls is real crypto (PEM roots/chain
   fail closed, mTLS honored, 8 loopback proofs incl. untrusted/wrong-CN/
   missing-client rejection; rcgen dev-dep for test PKI only) — still
-  unwired (no FFI, no caller). Pin stays until P4; P2B is the FFI +
-  Zig-delegate cutover that also kills the Zig mock stack.
+  unwired (no FFI, no caller). FED-P2B1 landed: narrow outbound-only C
+  ABI (connect/send/recv/close, opaque handles, fail-closed codes) with
+  in-crate FFI round-trip + misuse proofs; still no Zig caller (mock
+  stack dies in P2B2). Pin stays until P4.
 - [ ] policy_signing onto enforcement path + trust_store CNG + two-person API
 - [x] IPv6 full (contract v2) — wire v2 decode-ready T2-V6-022a (Go/Zig/
   C++/Python dispatch + 006 vector + bit2 preserved) + nose live emit
