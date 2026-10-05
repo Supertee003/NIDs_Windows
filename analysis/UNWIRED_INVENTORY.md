@@ -232,5 +232,7 @@ DNS port compare, IPC short framing, WFP unload leak
 (drivers quarantined — do not touch), rule FNV collisions,
 golden-table drift, `threat_score`/`weight` fixed, INCIDENT_TTL
 unenforced (eviction-policy verdict needed), IPv4-only evidence ring
-(needs ABI design), wire CRC-no-HMAC (needs key design), event_queue
+(see docs/adr/0006-forensic-ipv6-record-abi.md — v6 sidecars stop at
+the queue, forensics records the /32 prefix; layout + chain-migration
+verdicts pending), wire CRC-no-HMAC (needs key design), event_queue
 1500 truncation vs len claim (by wire design: length+hash only).
