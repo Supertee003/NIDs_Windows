@@ -125,6 +125,28 @@ var g_udp_sock: ?posix.socket_t = null;
 var g_udp_addr: net.Address = undefined;
 var g_udp_available: bool = false;
 
+// B2-AUTH-076: shared-secret auth for the UDP brain loop. Any local
+// process can send to 127.0.0.1:9999, and an unauthenticated "TIER-1
+// VERIFIED" offer reaches the brain's block-request path — so offers
+// carry HMAC-SHA256 when AEGIS_BRAIN_SECRET is set on both ends.
+// The secret is loaded once at startup (never logged); rotation is a
+// restart of daemon + brain with the new value. Absent secret keeps
+// the legacy bare-JSON wire (backwards compatible, documented
+// local-spoofable in UNWIRED_INVENTORY until this slice landed).
+var g_brain_secret: ?[]const u8 = null;
+
+fn loadBrainSecret() void {
+    const s = std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_BRAIN_SECRET") catch return;
+    if (s.len == 0) {
+        std.heap.page_allocator.free(s);
+        std.log.warn("[BRAIN-AUTH] no AEGIS_BRAIN_SECRET — loopback offers are unauthenticated", .{});
+        return;
+    }
+    if (s.len < 16) std.log.warn("[BRAIN-AUTH] secret shorter than 16 bytes; use a longer value", .{});
+    g_brain_secret = s;
+    std.log.info("[BRAIN-AUTH] shared-secret ON (offers carry HMAC-SHA256)", .{});
+}
+
 // B-10: UDP brain spool queue (prevents event loss on transient send failures)
 const BRAIN_SPOOL_MAX: usize = 1000;
 var g_brain_spool: [BRAIN_SPOOL_MAX]?[]const u8 = [_]?[]const u8{null} ** BRAIN_SPOOL_MAX;
@@ -312,6 +334,7 @@ fn shutdownCppBridge() void {
 // ============================================================
 
 fn initUdpBrain() void {
+    loadBrainSecret();
     if (net.Address.parseIp4(UDP_BRAIN_IP, UDP_BRAIN_PORT)) |addr| {
         g_udp_addr = addr;
         if (posix.socket(addr.any.family, posix.SOCK.DGRAM, 0)) |sock| {
@@ -482,21 +505,42 @@ pub fn getBridgeEventCount() u32 {
 /// Send JSON message to Python brain via UDP.
 /// B-10: Uses a 1000-event spool queue ΓÇö if send fails, event is queued
 /// and retried by a background drain. Drops oldest if queue is full.
+/// Build the UDP brain wire bytes for a JSON body: bare body when no
+/// secret is configured, otherwise "<64 lowercase hex HMAC-SHA256>.<body>".
+/// The MAC covers the exact bytes sent, so the receiver verifies without
+/// re-serializing JSON (no cross-language canonicalization). A legacy body
+/// always starts with '{', so the "<hex>." prefix is an unambiguous
+/// discriminator for the receiver.
+pub fn formatBrainWire(allocator: std.mem.Allocator, body: []const u8, secret: ?[]const u8) ![]u8 {
+    const s = secret orelse return allocator.dupe(u8, body);
+    var mac: [32]u8 = undefined;
+    std.crypto.auth.hmac.sha2.HmacSha256.create(&mac, body, s);
+    const hex = std.fmt.bytesToHex(mac, .lower);
+    var out = try allocator.alloc(u8, hex.len + 1 + body.len);
+    @memcpy(out[0..hex.len], &hex);
+    out[hex.len] = '.';
+    @memcpy(out[hex.len + 1 ..], body);
+    return out;
+}
+
 pub fn sendToBrain(allocator: std.mem.Allocator, comptime T: type, msg: T) void {
     if (!g_udp_available) return;
     var string = std.ArrayList(u8).init(allocator);
     defer string.deinit();
     std.json.stringify(msg, .{}, string.writer()) catch return;
 
+    const wire = formatBrainWire(allocator, string.items, g_brain_secret) catch return;
+    defer allocator.free(wire);
+
     // B-10: Try direct send first (G28: unwrap optional g_udp_sock)
     if (g_udp_sock) |sock| {
-        _ = posix.sendto(sock, string.items, 0, &g_udp_addr.any, g_udp_addr.getOsSockLen()) catch {
+        _ = posix.sendto(sock, wire, 0, &g_udp_addr.any, g_udp_addr.getOsSockLen()) catch {
             // Send failed ΓÇö add to spool queue for retry
             g_brain_spool_lock.lock();
             defer g_brain_spool_lock.unlock();
             if (g_brain_spool_count < BRAIN_SPOOL_MAX) {
                 // Copy message into spool (uses global brain allocator for drain thread)
-                const msg_copy = g_brain_allocator.dupe(u8, string.items) catch return;
+                const msg_copy = g_brain_allocator.dupe(u8, wire) catch return;
                 g_brain_spool[g_brain_spool_head] = msg_copy;
                 g_brain_spool_head = (g_brain_spool_head + 1) % BRAIN_SPOOL_MAX;
                 g_brain_spool_count += 1;
@@ -539,4 +583,33 @@ pub fn printStatus() void {
             std.debug.print("[BRIDGE] WFP ring: {d}/{} bytes\n", .{ stats.currentUsedBytes, stats.capacity });
         }
     }
+}
+
+test "brain wire HMAC matches the verified RFC 4231 test case 1" {
+    // In-repo verified: Python hmac + manual ipad/opad recomputation agree.
+    var mac: [32]u8 = undefined;
+    const key = [_]u8{0x0b} ** 20;
+    std.crypto.auth.hmac.sha2.HmacSha256.create(&mac, "Hi There", &key);
+    try std.testing.expectEqualStrings(
+        "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7",
+        &std.fmt.bytesToHex(mac, .lower),
+    );
+}
+
+test "brain wire envelope carries the cross-language golden MAC" {
+    // Shared golden, also asserted by tests/brain/test_brain_udp_auth.py:
+    // secret "aegis-brain-auth-golden-v1" over the exact body bytes.
+    const body = "{\"source\":\"zig_pipeline\",\"src_ip\":\"10.0.0.11\"}";
+    const wire = try formatBrainWire(std.testing.allocator, body, "aegis-brain-auth-golden-v1");
+    defer std.testing.allocator.free(wire);
+    try std.testing.expectEqualStrings(
+        "d9f85d9f559cc451d738ce842d99b37872e9e23fb309651cc869671b864fb02b." ++ body,
+        wire,
+    );
+}
+
+test "brain wire without secret is the bare body" {
+    const wire = try formatBrainWire(std.testing.allocator, "{\"op\":\"HEALTH\"}", null);
+    defer std.testing.allocator.free(wire);
+    try std.testing.expectEqualStrings("{\"op\":\"HEALTH\"}", wire);
 }

@@ -26,6 +26,8 @@ Bridge Integration (Phase 1, T3-BRIDGE-026b):
   - Pop events from Bridge queue for cross-subsystem communication
 """
 
+import hashlib
+import hmac
 import json, os, socket, re, sys, time
 from datetime import datetime
 
@@ -103,6 +105,66 @@ ERROR_COUNT     = 0
 DROPPED_COUNT   = 0
 LAST_EVENT_TS   = 0.0
 BRAIN_START_MS  = int(time.time() * 1000)
+
+# B2-AUTH-076: shared-secret auth for the UDP brain loop. Any local
+# process can send to 127.0.0.1:9999, so an unauthenticated "TIER-1
+# VERIFIED" offer would reach the block-request path. When
+# AEGIS_BRAIN_SECRET is set here and on the daemon, offers must arrive
+# as b"<64 hex HMAC-SHA256>.<json body>" (MAC over the exact body
+# bytes); the daemon attaches it in bridge_init.formatBrainWire.
+# Fail-closed matrix (HEALTH probe stays open by design — liveness
+# only, no enforcement action, asserted by test_error_counter.py):
+#   mac+secret+valid   -> accept | mac+secret+bad      -> drop+count
+#   mac, no secret     -> strip+accept (migration)     | no mac+secret -> drop+count (non-HEALTH)
+#   no mac, no secret  -> accept (legacy wire)
+# Rotation = restart daemon + brain with the new value. The secret is
+# never logged. Pure helpers below (unit-tested, no sockets).
+BRAIN_MAC_LEN = 64
+_HEXDIGITS = frozenset(b"0123456789abcdefABCDEF")
+
+
+def _brain_secret() -> bytes | None:
+    raw = os.environ.get("AEGIS_BRAIN_SECRET", "")
+    return raw.encode("utf-8") if raw else None
+
+
+def split_brain_envelope(raw: bytes) -> tuple[bytes | None, bytes]:
+    """Split b"<hex>.<body>" into (mac, body); legacy wire -> (None, raw).
+
+    Never raises: short, empty, or malformed input is legacy by default
+    (the fail-closed drop decision belongs to the caller, which knows
+    whether a secret is configured).
+    """
+    try:
+        if len(raw) > BRAIN_MAC_LEN and raw[BRAIN_MAC_LEN:BRAIN_MAC_LEN + 1] == b".":
+            prefix = raw[:BRAIN_MAC_LEN]
+            if all(c in _HEXDIGITS for c in prefix):
+                return prefix, raw[BRAIN_MAC_LEN + 1:]
+    except Exception:
+        pass
+    return None, raw
+
+
+def verify_brain_mac(body: bytes, mac_hex: bytes, secret: bytes) -> bool:
+    """Constant-time check of the envelope MAC. Never raises."""
+    try:
+        expected = hmac.new(secret, body, hashlib.sha256).hexdigest().encode("ascii")
+        return hmac.compare_digest(expected, mac_hex.lower())
+    except Exception:
+        return False
+
+
+_AUTH_WARNED: set[str] = set()
+
+
+def _auth_warn_once(key: str, text: str) -> None:
+    if key not in _AUTH_WARNED:
+        _AUTH_WARNED.add(key)
+        print(f"{UI.YELLOW}[BRAIN-AUTH] {text}{UI.RESET}")
+
+
+# Module-level env read (no I/O, no socket): mirrors SENSOR_PIPE_ENABLED.
+BRAIN_AUTH_SECRET = _brain_secret()
 
 # ⚡ Import Cython Hotspots (Phase 19 GAP-1: Wire Phase 17 module)
 # Old: tried pyximport with broken brain/cython/aegis_hotspot.pyx (never compiled)
@@ -666,6 +728,11 @@ def main():
     sock.bind((UDP_IP, UDP_PORT))
 
     print(f"{UI.GREEN}[*] Listening for Tier-1 Suspects on UDP {UDP_IP}:{UDP_PORT}...{UI.RESET}")
+    # B2-AUTH-076: visible posture, secret value never printed.
+    if BRAIN_AUTH_SECRET is not None:
+        print(f"{UI.GREEN}[BRAIN-AUTH] shared-secret verification ON{UI.RESET}")
+    else:
+        print(f"{UI.YELLOW}[BRAIN-AUTH] no AEGIS_BRAIN_SECRET — loopback offers unauthenticated{UI.RESET}")
 
     # Hot-reload: watch Rules.json mtime for changes
     last_rule_mod_time = os.path.getmtime(RULES_FILE) if os.path.exists(RULES_FILE) else 0
@@ -690,6 +757,18 @@ def main():
         try:
             sock.settimeout(1.0)  # 1-second timeout for Bridge polling
             msg_bytes, addr = sock.recvfrom(65535)
+            # B2-AUTH-076: split the optional "<hex>.<body>" envelope first.
+            # HEALTH stays open by design (liveness only); detection
+            # payloads without a MAC are dropped below when configured.
+            envelope_mac, wire_body = split_brain_envelope(msg_bytes)
+            if envelope_mac is not None:
+                if BRAIN_AUTH_SECRET is not None and not verify_brain_mac(
+                    wire_body, envelope_mac, BRAIN_AUTH_SECRET
+                ):
+                    DROPPED_COUNT += 1
+                    _auth_warn_once("bad-mac", "dropping brain offer with bad MAC")
+                    continue
+                msg_bytes = wire_body
             raw_payload = msg_bytes.decode("utf-8", errors="ignore").strip()
 
             # G27 Gate-A: HEALTH probe. The supervisor sends a single-packet
@@ -722,6 +801,15 @@ def main():
                     continue
             except (json.JSONDecodeError, ValueError):
                 pass  # Not a HEALTH request; fall through to normal handling
+
+            # B2-AUTH-076: fail-closed gate. With a secret configured, a
+            # detection payload without a MAC is a spoof attempt: drop and
+            # count it (never reaches the block-request path). HEALTH is
+            # already handled above and stays open by design.
+            if envelope_mac is None and BRAIN_AUTH_SECRET is not None:
+                DROPPED_COUNT += 1
+                _auth_warn_once("no-mac", "dropping unauthenticated brain offer (secret configured)")
+                continue
 
             # Parse incoming JSON from Zig Core
             log_entry = json.loads(raw_payload)

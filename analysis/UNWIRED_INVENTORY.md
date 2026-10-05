@@ -210,8 +210,9 @@ ABI break — accepted risk), single g_ProofFilterId, provider GUID split,
 ring stats partial, single-slot globals, query vs present tri-state
 callers (exists), PepContext policy_version=0 + signed_by (T7),
 TS u64 precision (T7), Pro Console no live watch (UX design),
-graph readability at 100+ records (UX design), brain UDP spoofable
-(needs shared-secret design), run_aegis.bat 5-subsystem model + wmic,
+graph readability at 100+ records (UX design), brain UDP auth LANDED
+(B2-AUTH-076: HMAC-SHA256 shared secret via AEGIS_BRAIN_SECRET, HEALTH
+stays open by design), run_aegis.bat 5-subsystem model + wmic,
 `D:\NIDs_Windows` hardcodes, Kali script default target, VMware
 auto-select fallback, ETW Linux stub reporting running,
 `last_event_ms` dual-clock, legacy `serialize` memcpy path,
