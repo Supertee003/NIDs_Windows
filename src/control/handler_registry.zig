@@ -1401,15 +1401,20 @@ const handlers = struct {
         const pir_loaded = state_mod.g_policy_ir != null;
         const pir_rules: u16 = if (state_mod.g_policy_ir) |*p| p.ir.rule_count else 0;
         const pir_hash: []const u8 = if (state_mod.g_policy_ir) |*p| &p.hash_hex else "";
+        // METR-U64-061: lifetime counters print full u64. Narrowing casts
+        // (@as(u32, @intCast(...))) panicked debug builds past 4B events
+        // and wrapped release builds silently (~71 min at 1M eps). JSON
+        // consumers (Python int, Rust as_u64) take full width; JS Number
+        // stays precise to 2^53, unreachable in practice.
         return std.fmt.allocPrint(a,
             \\{{"uptime_sec":{},"rules_loaded":{},"packets_captured":{},"events_processed":{},"forensic_records":{},"flows_active":{},"incidents_open":{},"detections":{},"anomalies":{},"blocks":{},"errors":{},"siem":{{"enabled":{},"forwarded":{},"failed":{},"spooled":{},"batches":{},"retries":{}}},"policy_ir":{{"loaded":{},"rules":{},"hash":"{s}"}}}}
         , .{
             uptime_sec,
             state_mod.g_rules_loaded.load(.acquire),
-            @as(u32, @intCast(state_mod.g_nose_frames_submitted.load(.acquire))),
-            @as(u32, @intCast(state_mod.g_pipeline_events_processed.load(.acquire))),
-            @as(u32, @intCast(state_mod.g_forensic_records_written.load(.acquire))),
-            @as(u32, @intCast(diag.metrics.flows_active.get())),
+            state_mod.g_nose_frames_submitted.load(.acquire),
+            state_mod.g_pipeline_events_processed.load(.acquire),
+            state_mod.g_forensic_records_written.load(.acquire),
+            diag.metrics.flows_active.get(),
             state_mod.g_incidents_open.load(.acquire),
             state_mod.g_pipeline_detections.load(.acquire),
             diag.metrics.anomalies_detected.get(),
@@ -1630,6 +1635,20 @@ test "metricsSnapshot exposes SIEM durability counters" {
     // T3-TSIR-025: TS-IR mirror reports absent-but-honest with no file.
     try std.testing.expect(std.mem.indexOf(u8, out, "\"policy_ir\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"loaded\":false") != null);
+}
+
+test "metricsSnapshot prints lifetime counters at full u64 width" {
+    // METR-U64-061: narrowing casts panicked debug builds past 4B events
+    // (and wrapped release builds silently). A >u32max counter must
+    // round-trip through the formatter with every digit intact.
+    const state = @import("../pipeline/runtime_state.zig");
+    const prev = state.g_nose_frames_submitted.load(.acquire);
+    defer state.g_nose_frames_submitted.store(prev, .monotonic);
+    state.g_nose_frames_submitted.store(0x1_0000_0042, .monotonic);
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 19, .caller_role = .read, .caller_pid = 0 };
+    const out = handlers.metricsSnapshot(std.testing.allocator, .{ .null = {} }, &ctx).?;
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"packets_captured\":4294967362") != null);
 }
 
 test "rulesShow rejects malformed payloads before touching disk" {
