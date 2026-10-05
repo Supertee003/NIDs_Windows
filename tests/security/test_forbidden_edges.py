@@ -321,6 +321,19 @@ def test_federation_family_has_no_production_importers():
     assert banned == [], f"production imports federation family: {banned}"
 
 
+def test_operator_authority_scan_passes_in_ci():
+    """AUTH-SCAN-074: the operator's own authority verification
+    (control_api.verify_authority_invariant: no Zig WFP-mutation calls,
+    no shield mutation surface, no shield FFI linkage) must pass on the
+    current tree. The scan existed only behind the manual `authority` CLI
+    command, so tree drift could invalidate it without CI noticing; this
+    executes the same function every run."""
+    import sys
+    sys.path.insert(0, str(REPO))
+    from tools.aegisctl.api import control_api
+    assert control_api.verify_authority_invariant() is True
+
+
 def test_legacy_tcp_listener_stays_dead():
     """T1-NET-019 leftover: src/core/nids_analyze.zig contains a 0.0.0.0 TCP
     listener (tcp_listener, spawned by analyze_packets, itself spawned only
