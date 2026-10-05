@@ -583,24 +583,10 @@ fn decodeFields(bytes: []const u8) ?CanonicalEvent {
     return event;
 }
 
-// Legacy compatibility — DEPRECATED (VOL01-FOUNDATION-002).
-// These memcpy the in-memory extern struct (128 bytes with alignment
-// padding) and are NOT the wire format. Wire transport MUST use
-// serializeToBytes/deserializeFromBytes (109 bytes, explicit encoding).
-// Kept only for in-process test round-trips; no production caller may use
-// them (verified: zero callers outside this file's tests).
-// TODO(VOL02): remove once the last in-file test migrates to the wire codec.
-pub fn serialize(event: *const CanonicalEvent) []const u8 {
-    const ptr: [*]const u8 = @ptrCast(event);
-    return ptr[0..@sizeOf(CanonicalEvent)];
-}
-
-pub fn deserialize(bytes: []const u8) ?*const CanonicalEvent {
-    if (bytes.len < @sizeOf(CanonicalEvent)) return null;
-    const event: *const CanonicalEvent = @ptrCast(@alignCast(bytes.ptr));
-    if (!validate(event)) return null;
-    return event;
-}
+// CODEC-CLEAN-067: the memcpy codec is gone. Wire transport uses only
+// serializeToBytes/deserializeFromBytes (109 bytes, explicit encoding);
+// in-memory layout never crosses a boundary, so no compatibility shim
+// remains to drift from the frozen wire format.
 
 // ============================================================
 // Tests
@@ -644,25 +630,28 @@ test "nextEventId returns increasing values" {
     try std.testing.expect(b > a);
 }
 
-test "serialize/deserialize round-trip" {
+test "serializeToBytes/deserializeFromBytes round-trip" {
+    // CODEC-CLEAN-067: migrated from the memcpy codec (removed). The wire
+    // codec is the only framing; in-memory layout never crosses a boundary.
     var event = create(.pipe_sensor);
     event.event_type = .block;
     event.severity = 3;
     event.rule_id = 0x12345678;
 
-    const bytes = serialize(&event);
-    try std.testing.expect(bytes.len == @sizeOf(CanonicalEvent));
+    var buf: [WIRE_PAYLOAD_SIZE]u8 = undefined;
+    const n = try serializeToBytes(&event, &buf);
+    try std.testing.expect(n == WIRE_PAYLOAD_SIZE);
 
-    const restored = deserialize(bytes);
+    const restored = deserializeFromBytes(buf[0..n]);
     try std.testing.expect(restored != null);
     try std.testing.expect(restored.?.event_type == .block);
     try std.testing.expect(restored.?.severity == 3);
     try std.testing.expect(restored.?.rule_id == 0x12345678);
 }
 
-test "deserialize rejects short buffer" {
+test "deserializeFromBytes rejects short buffer" {
     const short = [_]u8{ 0x41, 0x45, 0x47, 0x31 };
-    try std.testing.expect(deserialize(&short) == null);
+    try std.testing.expect(deserializeFromBytes(&short) == null);
 }
 
 test "deserializeFromBytes rejects unknown enum ordinals" {
@@ -690,11 +679,12 @@ test "deserializeFromBytes rejects confidence above 100" {
     try std.testing.expect(deserializeFromBytes(&bytes) == null);
 }
 
-test "deserialize rejects wrong magic" {
+test "deserializeFromBytes rejects wrong magic" {
     var event = create(.zig_core);
     event.magic = 0x00000000;
-    const bytes = serialize(&event);
-    try std.testing.expect(deserialize(bytes) == null);
+    var buf: [WIRE_PAYLOAD_SIZE]u8 = undefined;
+    _ = try serializeToBytes(&event, &buf);
+    try std.testing.expect(deserializeFromBytes(&buf) == null);
 }
 
 test "EventSource enum values" {
