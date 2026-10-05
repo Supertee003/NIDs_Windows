@@ -78,7 +78,10 @@ fn processEvent(
         break :blk ip;
     };
     const fkey = flow.FlowKey.normalize(src_ip_bytes, dst_ip_bytes, ev.src_port, ev.dst_port, ev.protocol, is_ipv6);
-    _ = ft.lookupOrCreate(fkey, ev.timestamp_ns);
+    // FLOW-ID-051: stamp the table's flow identity onto the event. The
+    // lookup result used to be discarded, so every event kept flow_id=0
+    // and the threat tracker scored the whole world on one shared Flow 0.
+    assignFlowId(ft, ev, fkey);
 
     // 2. Aho-Corasick signature matching (if rules are loaded)
     // Use mutex-protected global AC pointer for hot-reload support
@@ -260,6 +263,15 @@ fn processEvent(
     }
 }
 
+/// Stamp the flow table's identity onto the event (FLOW-ID-051).
+/// The table mints a fresh id per flow incarnation (reused slots get a new
+/// id on occupy), so downstream keyed state (threat tracker, PEP request)
+/// never shares a scoreboard across flows. Single pipeline thread owns ft;
+/// the id is immutable once occupied, so the post-unlock read is safe.
+fn assignFlowId(ft: *flow.FlowTable, ev: *event.IpcEvent, key: flow.FlowKey) void {
+    ev.flow_id = ft.lookupOrCreate(key, ev.timestamp_ns).stats.flow_id;
+}
+
 /// Offer one detection to the Tier-2 brain over UDP (Case-1 document:
 /// the brain verifies instead of re-scanning). Detections only.
 fn brainInspect(ev: *const event.IpcEvent, rule_id: u32, severity: event.EventSeverity, action: policy.Action) void {
@@ -369,8 +381,58 @@ test "brainSeverity speaks the brain Low/Medium/High/Critical vocabulary" {
     try std.testing.expectEqualStrings("Low", brainSeverity(.debug));
 }
 
-test "brainInspect is a safe no-op without detections or loop" {
-    var ev = event.IpcEvent.init(.packet_captured);
+test "assignFlowId stamps stable per-flow identity" {
+    // FLOW-ID-051: the same 5-tuple keeps one nonzero id; a different tuple
+    // gets another. Without the stamp every event kept flow_id=0 and the
+    // threat tracker scored the whole world on shared Flow 0.
+    var ft = flow.FlowTable{};
+    const k1 = flow.FlowKey.normalize(
+        [_]u8{ 10, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        [_]u8{ 10, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, 1000, 80, 6, false);
+    const k2 = flow.FlowKey.normalize(
+        [_]u8{ 10, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        [_]u8{ 10, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, 1000, 80, 6, false);
+    var eva = event.IpcEvent.init(.packet_captured);
+    var evb = event.IpcEvent.init(.packet_captured);
+    var evc = event.IpcEvent.init(.packet_captured);
+    try std.testing.expectEqual(@as(u64, 0), eva.flow_id);
+    assignFlowId(&ft, &eva, k1);
+    assignFlowId(&ft, &evb, k1);
+    assignFlowId(&ft, &evc, k2);
+    try std.testing.expect(eva.flow_id != 0);
+    try std.testing.expectEqual(eva.flow_id, evb.flow_id);
+    try std.testing.expect(evc.flow_id != eva.flow_id);
+}
+
+test "stamped flow ids isolate threat incidents per flow" {
+    // FLOW-ID-051 end to end at unit level: the stamp feeds the tracker,
+    // so a hot flow's incident never implicates a quiet flow — the exact
+    // failure when every event carried flow_id=0 on shared Flow 0.
+    var ft = flow.FlowTable{};
+    var tt = tracker.ThreatTracker.init(std.testing.allocator);
+    defer tt.deinit();
+    const kh = flow.FlowKey.normalize(
+        [_]u8{ 10, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        [_]u8{ 10, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, 5000, 443, 6, false);
+    const kq = flow.FlowKey.normalize(
+        [_]u8{ 10, 9, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        [_]u8{ 10, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, 5001, 443, 6, false);
+    var evh = event.IpcEvent.init(.signature_match);
+    evh.event_id = 101;
+    evh.timestamp_ns = 1000;
+    var evq = event.IpcEvent.init(.signature_match);
+    evq.event_id = 102;
+    evq.timestamp_ns = 1000;
+    assignFlowId(&ft, &evh, kh);
+    assignFlowId(&ft, &evq, kq);
+    const inc = try tt.observeFlowThreat(&evh, 100);
+    try std.testing.expect(inc != null);
+    try std.testing.expectEqual(evh.flow_id, inc.?.flow_id);
+    try std.testing.expect(try tt.observeFlowThreat(&evq, 30) == null);
+    try std.testing.expectEqual(@as(u32, 1), tt.incident_count);
+}
+
+test "brainInspect is a safe no-op without detections or loop" {    var ev = event.IpcEvent.init(.packet_captured);
     ev.src_ip = 0xC0A80164;
     // Closed loop: formats nothing, sends nothing.
     state.g_brain_enabled.store(false, .release);
