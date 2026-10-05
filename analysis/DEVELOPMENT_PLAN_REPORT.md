@@ -4,6 +4,7 @@
 **Scope:** ซ่อม/ต่อ backend ให้ครบเส้นเดียว (single production spine) + ล็อกสัญญาข้ามภาษา + ปิดช่อง observe-only ที่พูดเกินจริง
 **Method:** vertical slice / patch transaction (AGENTS.md) — 1 flow contract ต่อ 1 patch, มี test pin ทุก patch, ห้ามเคลมเกินหลักฐาน (E0–E7)
 **User constraint (ถาวร):** ห้ามลบมั่ว — เปลี่ยนแบบ additive เสริมการทำงานก่อนเสมอ; จะลบได้เฉพาะของที่พิสูจน์แล้วว่า quarantined + zero importers + มี pin กัน + กู้คืนได้จาก git (เช่น DISP-MIGRATE-047)
+**บทเรียน DISP-MIGRATE:** ลบ dispatcher 2 ไฟล์ตามเงื่อนไขครบ แต่ subsystems ที่มัน orchestrate (Universe-B: verdict/threat-intel/rag/brain/policy facades) ยังอยู่และอาจ integrate วันหน้า — จึง restore กลับเป็น quarantined reference (`2a38b94`) pins ยังชี้ production files เหมือนเดิม
 
 ---
 

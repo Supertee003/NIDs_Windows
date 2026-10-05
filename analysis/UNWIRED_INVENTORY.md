@@ -74,12 +74,13 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   T2-V6-022b (`eventFromPacket` sidecars, `Send` dispatches v2).
   REMAINING: detection/flow/forensic plumbing of full addresses
   (u32 identity + bit2 guard unchanged)
-- [x] duplicate `dispatcher` removal — RESOLVED by DISP-MIGRATE-047:
-  deleted `src/policy/dispatcher.zig` + `dispatcher_phase_b.zig` (1476
-  lines); T14 pins retargeted to `pipeline/event_processor.zig` inline
-  stages, T12 forensic-trace pin retargeted to `forensic_ring.append` +
-  `ForensicBackend.write`. Zero production importers existed (only
-  quarantined `reliability/lifecycle.zig`, itself unimported).
+- [x] duplicate `dispatcher` confusion — RESOLVED without deletion:
+  T14/T12/T10 pins migrated to production files (`event_processor`,
+  `action_dispatcher`); both dispatcher files RESTORED as quarantined
+  Universe-B wiring reference (additive-first rule — the subsystems they
+  orchestrate still exist and may integrate one day; prod imports remain
+  pinned by forbidden-edges). Deletion commit `4eac987` remains in history
+  as the audit trail.
 - [x] Go aggregator loopback bind (GO-LOOPBACK-031: `apiAddr` pins
   `127.0.0.1:port`, bare `:port` never constructed; matches the documented
   `127.0.0.1:9200` contract and every in-tree client).
