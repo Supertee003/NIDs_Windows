@@ -349,6 +349,20 @@ pub fn runDaemon() !void {
             if (ttl_val != .integer) continue;
             const pol_ttl: u32 = @intCast(ttl_val.integer);
 
+            // POL-PRIO-070: optional priority (default 0 = file order).
+            // Negative, non-integer, or oversized values fall back to 0,
+            // never abort the load: one bad entry must not void the whole
+            // PolicySet.
+            var pol_priority: u32 = 0;
+            if (pol_obj.get("priority")) |pri_val| {
+                if (pri_val == .integer and pri_val.integer >= 0) {
+                    pol_priority = if (pri_val.integer > std.math.maxInt(u32))
+                        std.math.maxInt(u32)
+                    else
+                        @intCast(pri_val.integer);
+                }
+            }
+
             // Build condition from JSON (simplified: single clause with single predicate)
             var preds = std.heap.page_allocator.alloc(policy.Predicate, 1) catch continue;
             preds[0] = .{ .field = .kind, .op = .eq, .value_int = 0 }; // default
@@ -397,6 +411,7 @@ pub fn runDaemon() !void {
                 .action = pol_action,
                 .severity = pol_severity,
                 .ttl_sec = pol_ttl,
+                .priority = pol_priority,
             }) catch |err| {
                 diag.warn("failed to add policy {}: {}", .{ pol_id, err });
                 std.heap.page_allocator.free(pol_name);
@@ -405,6 +420,9 @@ pub fn runDaemon() !void {
             policies_loaded += 1;
         }
 
+        // POL-PRIO-070: order by priority (stable — files without
+        // priorities keep file order exactly).
+        ps.sortByPriority();
         state.g_policies_loaded.store(policies_loaded, .monotonic);
         diag.info("loaded {} policies from {s}", .{ policies_loaded, pol_path });
     }
