@@ -114,6 +114,47 @@ pub const DiscoveryRegistry = struct {
         }
         return removed;
     }
+
+    /// Load static peers from a canonical `configs/cluster.json` file.
+    /// Schema v1: {"version": 1, "nodes": [{"id": u32, "addr": str,
+    /// "port": u16}]}. u32 ids match the wire (ClusterNode.node_id) per
+    /// the owner verdict — string ids are rejected, not coerced.
+    /// Fail-closed and atomic: unknown versions, empty node lists,
+    /// id 0 (broadcast-reserved), port 0, empty/oversize addrs, or any
+    /// malformed JSON registers NOTHING and returns an error. Returns
+    /// the number of entries accepted. The live file is operator-local
+    /// (gitignored); the tracked example is the schema reference.
+    pub fn loadStaticFile(self: *DiscoveryRegistry, allocator: std.mem.Allocator, path: []const u8) !usize {
+        const bytes = std.fs.cwd().readFileAlloc(allocator, path, 65536) catch return error.FileNotFound;
+        defer allocator.free(bytes);
+        return self.loadStaticBytes(allocator, bytes);
+    }
+
+    pub fn loadStaticBytes(self: *DiscoveryRegistry, allocator: std.mem.Allocator, bytes: []const u8) !usize {
+        const Entry = struct {
+            id: u32,
+            addr: []const u8,
+            port: u16,
+        };
+        const File = struct {
+            version: u8,
+            nodes: []Entry,
+        };
+        const parsed = std.json.parseFromSlice(File, allocator, bytes, .{}) catch return error.BadShape;
+        defer parsed.deinit();
+        if (parsed.value.version != 1) return error.UnknownVersion;
+        if (parsed.value.nodes.len == 0) return error.EmptyCluster;
+        // Validate everything before registering anything (atomic).
+        for (parsed.value.nodes) |e| {
+            if (e.id == 0) return error.ReservedId;
+            if (e.port == 0) return error.BadPort;
+            if (e.addr.len == 0 or e.addr.len > 45) return error.BadAddr;
+        }
+        for (parsed.value.nodes) |e| {
+            try self.registerStatic(e.id, e.addr, e.port);
+        }
+        return parsed.value.nodes.len;
+    }
 };
 
 // ============================================================================
@@ -147,4 +188,84 @@ test "DiscoveryRegistry pruneStale removes only dynamic" {
     const removed = nr.pruneStale(std.time.nanoTimestamp(), 300 * std.time.ns_per_s);
     try std.testing.expectEqual(@as(u32, 1), removed);
     try std.testing.expectEqual(@as(usize, 1), nr.allNodes().len);
+}
+
+test "DiscoveryRegistry loadStaticBytes accepts canonical v1" {
+    var nr = DiscoveryRegistry.init(std.testing.allocator, 1);
+    defer nr.deinit();
+    const n = try nr.loadStaticBytes(std.testing.allocator,
+        \\{"version": 1, "nodes": [
+        \\  {"id": 7, "addr": "192.168.126.7", "port": 9001},
+        \\  {"id": 9, "addr": "192.168.126.9", "port": 9002}
+        \\]}
+    );
+    try std.testing.expectEqual(@as(usize, 2), n);
+    const got = nr.lookup(7).?;
+    try std.testing.expectEqual(@as(u16, 9001), got.port);
+    try std.testing.expectEqual(DiscoveryMethod.static, got.method);
+}
+
+test "DiscoveryRegistry loadStaticBytes rejects non-v1" {
+    var nr = DiscoveryRegistry.init(std.testing.allocator, 1);
+    defer nr.deinit();
+    try std.testing.expectError(error.UnknownVersion, nr.loadStaticBytes(std.testing.allocator,
+        \\{"version": 2, "nodes": [{"id": 7, "addr": "x", "port": 1}]}
+    ));
+    try std.testing.expectEqual(@as(usize, 0), nr.allNodes().len);
+}
+
+test "DiscoveryRegistry loadStaticBytes rejects reserved id port and empty" {
+    var nr = DiscoveryRegistry.init(std.testing.allocator, 1);
+    defer nr.deinit();
+    try std.testing.expectError(error.ReservedId, nr.loadStaticBytes(std.testing.allocator,
+        \\{"version": 1, "nodes": [{"id": 0, "addr": "x", "port": 1}]}
+    ));
+    try std.testing.expectError(error.BadPort, nr.loadStaticBytes(std.testing.allocator,
+        \\{"version": 1, "nodes": [{"id": 7, "addr": "x", "port": 0}]}
+    ));
+    try std.testing.expectError(error.EmptyCluster, nr.loadStaticBytes(std.testing.allocator,
+        \\{"version": 1, "nodes": []}
+    ));
+    try std.testing.expectError(error.BadShape, nr.loadStaticBytes(std.testing.allocator,
+        \\{"version": 1, "nodes": [{"id": 7, "addr": "x"}]}
+    ));
+    try std.testing.expectEqual(@as(usize, 0), nr.allNodes().len);
+}
+
+test "DiscoveryRegistry loadStaticBytes never coerces string ids" {
+    // Owner verdict: u32 ids. A string id is malformed input, not a
+    // value to hash or index into a number.
+    var nr = DiscoveryRegistry.init(std.testing.allocator, 1);
+    defer nr.deinit();
+    try std.testing.expectError(error.BadShape, nr.loadStaticBytes(std.testing.allocator,
+        \\{"version": 1, "nodes": [{"id": "node-01", "addr": "x", "port": 1}]}
+    ));
+    try std.testing.expectEqual(@as(usize, 0), nr.allNodes().len);
+}
+
+test "DiscoveryRegistry tracked example matches the canonical schema" {
+    // The example is the schema reference: if it drifts from what the
+    // loader accepts, this fails (same standing as the Rules mirror pin).
+    var nr = DiscoveryRegistry.init(std.testing.allocator, 1);
+    defer nr.deinit();
+    const n = try nr.loadStaticFile(std.testing.allocator, "configs/cluster.example.json");
+    try std.testing.expectEqual(@as(usize, 2), n);
+    try std.testing.expect(nr.lookup(7) != null);
+    try std.testing.expect(nr.lookup(9) != null);
+}
+
+test "DiscoveryRegistry loadStaticFile round-trips a scratch file" {    const scratch = "zig-test-cluster.json";
+    {
+        const f = try std.fs.cwd().createFile(scratch, .{});
+        defer f.close();
+        try f.writeAll(
+            \\{"version": 1, "nodes": [{"id": 11, "addr": "10.0.0.11", "port": 9001}]}
+        );
+    }
+    defer std.fs.cwd().deleteFile(scratch) catch {};
+    var nr = DiscoveryRegistry.init(std.testing.allocator, 1);
+    defer nr.deinit();
+    const n = try nr.loadStaticFile(std.testing.allocator, scratch);
+    try std.testing.expectEqual(@as(usize, 1), n);
+    try std.testing.expect(nr.lookup(11) != null);
 }

@@ -89,7 +89,10 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   in-crate FFI round-trip + misuse proofs; still no Zig caller. FED-P2B2
   landed: one-stack cutover — Zig mock TLS + CLI deleted, Transport
   delegates via aegis_fed_* FFI, T13/T16/config/manifest pins retargeted,
-  revocation gap open to P4. Pin stays until P4 daemon wiring.
+  revocation gap open to P4. FED-P3A landed: static discovery
+  (canonical cluster.json v1, u32 ids per verdict, fail-closed atomic
+  loader + proofs incl. example-drift pin; live file gitignored).
+  Pin stays until P4 daemon wiring.
 - [ ] policy_signing onto enforcement path + trust_store CNG + two-person API
 - [x] IPv6 full (contract v2) — wire v2 decode-ready T2-V6-022a (Go/Zig/
   C++/Python dispatch + 006 vector + bit2 preserved) + nose live emit

@@ -84,6 +84,7 @@ Thumbs.db
 .env
 .env.local
 configs/secrets/
+configs/cluster.json
 *.key
 *.pem
 *.pfx
