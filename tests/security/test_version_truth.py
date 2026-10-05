@@ -88,6 +88,20 @@ def test_daemon_version_handler_matches_contract():
         assert payload[key] == EXPECTED[key], (key, payload[key])
 
 
+def test_mouth_binary_version_matches_cargo():
+    # Mouth drift (Cargo 3.0.0 vs printed 1.0.0): the file header, the v3.0
+    # redesign notes, and Cargo agree on 3.0.0 — the two print sites were
+    # stale. Pin --version output and health JSON against Cargo so they
+    # cannot drift apart again (verified against a real rustc build).
+    cargo = (REPO / "mouth" / "Cargo.toml").read_text(encoding="utf-8")
+    m = re.search(r'^version\s*=\s*"([^"]+)"', cargo, re.MULTILINE)
+    assert m, "mouth Cargo version not found"
+    want = m.group(1)
+    src = (REPO / "mouth" / "windows_sec_monitor.rs").read_text(encoding="utf-8")
+    assert f'println!("aegis-mouth {want}");' in src
+    assert f'\\"version\\":\\"{want}\\"' in src
+
+
 def test_toolchain_strings_match_release_record():
     # VER-BUILD-054: the in-binary build stamps must equal the toolchain
     # version recorded for releases (CI ZIG_VERSION 0.13.0). A bare

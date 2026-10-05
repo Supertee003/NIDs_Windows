@@ -195,7 +195,7 @@ mod health_pipe {
                 let json = format!(
                     "{{\"op\":\"HEALTH\",\"state\":\"RUNNING\",\"status\":\"OK\",\
                      \"component\":\"mouth\",\"subsystem\":\"mouth\",\
-                     \"version\":\"1.0.0\",\
+                     \"version\":\"3.0.0\",\
                      \"pid\":{},\"uptime_ms\":{},\
                      \"last_event_ms\":{},\"probe_latency_ms\":{},\
                      \"counters\":{{\"in_events\":{},\"out_events\":{},\
@@ -260,7 +260,7 @@ fn parse_args() -> Config {
     // verify the binary is present and reports a parseable version.
     for arg in args.iter().skip(1) {
         if arg == "--version" || arg == "-v" || arg == "-V" {
-            println!("aegis-mouth 1.0.0");
+            println!("aegis-mouth 3.0.0");
             std::process::exit(0);
         }
     }
