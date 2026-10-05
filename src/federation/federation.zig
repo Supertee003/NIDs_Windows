@@ -1,6 +1,14 @@
 // federation.zig - AEGIS NIDS G17: Federation / Cluster
 // Node registry, heartbeat, leader election, cross-node incident sharing
 // Built on Phase 39 design; integrated into repository for G17.
+//
+// FED-SPECIMEN (FED-P1A) -- SUPERSEDED, NOT the wiring target. The live
+// coordination model is cluster_coord.zig (superset: threat-intel
+// broadcast, ClusterMessage ingest/tick, richer registry); this file is
+// the older slim duplicate kept as reference. Nothing under src/
+// outside tests may import this module (forbidden-edges pin); it has
+// no test shim, so its inline tests do NOT execute under
+// `zig build test` (same standing as REL-SPEC-050).
 
 const std = @import("std");
 

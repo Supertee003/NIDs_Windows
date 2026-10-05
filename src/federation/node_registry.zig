@@ -9,7 +9,12 @@
 
 const std = @import("std");
 const diag = @import("../core/diagnostics.zig");
-const cluster = @import("cluster_coord.zig");
+
+// FED-P1A: DiscoveryRegistry (this file) is the *discovery* table
+// (static/broadcast/mDNS rows + stale pruning). The *coordination*
+// registry (peers, heartbeats, leader election) is
+// cluster_coord.zig::NodeRegistry. The shared name was a collision;
+// this rename keeps both importable side by side.
 
 pub const DiscoveryMethod = enum(u8) {
     static = 0,
@@ -27,13 +32,13 @@ pub const NodeInfo = struct {
     method: DiscoveryMethod = .static,
 };
 
-pub const NodeRegistry = struct {
+pub const DiscoveryRegistry = struct {
     nodes: std.ArrayList(NodeInfo),
     allocator: std.mem.Allocator,
     self_id: u32,
     mutex: std.Thread.Mutex = .{},
 
-    pub fn init(allocator: std.mem.Allocator, self_id: u32) NodeRegistry {
+    pub fn init(allocator: std.mem.Allocator, self_id: u32) DiscoveryRegistry {
         return .{
             .nodes = std.ArrayList(NodeInfo).init(allocator),
             .allocator = allocator,
@@ -41,11 +46,11 @@ pub const NodeRegistry = struct {
         };
     }
 
-    pub fn deinit(self: *NodeRegistry) void {
+    pub fn deinit(self: *DiscoveryRegistry) void {
         self.nodes.deinit();
     }
 
-    pub fn registerStatic(self: *NodeRegistry, id: u32, addr: []const u8, port: u16) !void {
+    pub fn registerStatic(self: *DiscoveryRegistry, id: u32, addr: []const u8, port: u16) !void {
         self.mutex.lock();
         defer self.mutex.unlock();
         for (self.nodes.items) |n| {
@@ -58,7 +63,7 @@ pub const NodeRegistry = struct {
         diag.info("Registry: registered node {d} {s}:{d} (static)", .{ id, addr, port });
     }
 
-    pub fn registerDiscovered(self: *NodeRegistry, id: u32, addr: []const u8, port: u16, method: DiscoveryMethod) !void {
+    pub fn registerDiscovered(self: *DiscoveryRegistry, id: u32, addr: []const u8, port: u16, method: DiscoveryMethod) !void {
         self.mutex.lock();
         defer self.mutex.unlock();
         for (self.nodes.items) |*n| {
@@ -80,7 +85,7 @@ pub const NodeRegistry = struct {
         diag.info("Registry: discovered node {d} {s}:{d} ({s})", .{ id, addr, port, @tagName(method) });
     }
 
-    pub fn lookup(self: *NodeRegistry, id: u32) ?NodeInfo {
+    pub fn lookup(self: *DiscoveryRegistry, id: u32) ?NodeInfo {
         self.mutex.lock();
         defer self.mutex.unlock();
         for (self.nodes.items) |n| {
@@ -89,11 +94,11 @@ pub const NodeRegistry = struct {
         return null;
     }
 
-    pub fn allNodes(self: *NodeRegistry) []const NodeInfo {
+    pub fn allNodes(self: *DiscoveryRegistry) []const NodeInfo {
         return self.nodes.items;
     }
 
-    pub fn pruneStale(self: *NodeRegistry, now_ns: i128, max_age_ns: i128) u32 {
+    pub fn pruneStale(self: *DiscoveryRegistry, now_ns: i128, max_age_ns: i128) u32 {
         self.mutex.lock();
         defer self.mutex.unlock();
         var i: usize = 0;
@@ -114,8 +119,8 @@ pub const NodeRegistry = struct {
 // ============================================================================
 // Tests
 // ============================================================================
-test "NodeRegistry registerStatic and lookup" {
-    var nr = NodeRegistry.init(std.testing.allocator, 1);
+test "DiscoveryRegistry registerStatic and lookup" {
+    var nr = DiscoveryRegistry.init(std.testing.allocator, 1);
     defer nr.deinit();
     try nr.registerStatic(2, "192.168.1.2", 8443);
     try nr.registerStatic(3, "192.168.1.3", 8443);
@@ -124,16 +129,16 @@ test "NodeRegistry registerStatic and lookup" {
     try std.testing.expectEqual(@as(u16, 8443), n.port);
 }
 
-test "NodeRegistry registerDiscovered updates existing" {
-    var nr = NodeRegistry.init(std.testing.allocator, 1);
+test "DiscoveryRegistry registerDiscovered updates existing" {
+    var nr = DiscoveryRegistry.init(std.testing.allocator, 1);
     defer nr.deinit();
     try nr.registerStatic(2, "192.168.1.2", 8443);
     try nr.registerDiscovered(2, "192.168.1.2", 8443, .broadcast);
     try std.testing.expectEqual(@as(usize, 1), nr.allNodes().len);
 }
 
-test "NodeRegistry pruneStale removes only dynamic" {
-    var nr = NodeRegistry.init(std.testing.allocator, 1);
+test "DiscoveryRegistry pruneStale removes only dynamic" {
+    var nr = DiscoveryRegistry.init(std.testing.allocator, 1);
     defer nr.deinit();
     try nr.registerStatic(2, "192.168.1.2", 8443);
     try nr.registerDiscovered(3, "192.168.1.3", 8443, .broadcast);

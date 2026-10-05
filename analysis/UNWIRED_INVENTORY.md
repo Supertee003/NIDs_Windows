@@ -75,8 +75,11 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   enforcement path, so this is the safe terminal state, not a gap.)
 - [x] FED-XDR verdict: PROCEED if feasible (owner 2026-10-06) — feasible
   phased per docs/adr/0007-federation-cluster-wiring.md (mature codec/
-  coord/TCP vs mock-TLS x2 + no discovery transport); P1 consolidate
-  can start, P4 wiring needs the one-stack pick. Pin stays until P4.
+  coord/TCP vs mock-TLS x2 + no discovery transport). FED-P1A landed:
+  G17 federation.zig labeled specimen (REL-SPEC-050 pattern),
+  NodeRegistry collision resolved (discovery table is now
+  DiscoveryRegistry; coordination keeps cluster_coord.NodeRegistry).
+  Pin stays until P4; one-stack pick still open.
 - [ ] policy_signing onto enforcement path + trust_store CNG + two-person API
 - [x] IPv6 full (contract v2) — wire v2 decode-ready T2-V6-022a (Go/Zig/
   C++/Python dispatch + 006 vector + bit2 preserved) + nose live emit
