@@ -1,8 +1,11 @@
 """Gate E control-plane contract tests.
 
-Production policy, simulation, canary, and enforcement mutations must not
+Production policy, simulation, and enforcement mutations must not
 write local state or claim host effect. They return a structured UNAVAILABLE
 response until the daemon-owned provider/receipt path is connected.
+Canary run/status/report are the exception: they are implemented
+read-only commands (GATE-E-028, CANARY-QUAR-056) pinned here to stay
+mutation-free and host-effect-free.
 """
 from __future__ import annotations
 
@@ -92,12 +95,35 @@ class TestSimulationAndCanaryCommands(unittest.TestCase):
             with self.subTest(command=command):
                 _assert_unavailable(self, command)
 
-    def test_canary_mutations_are_fail_closed(self) -> None:
+    def test_canary_commands_are_read_only(self) -> None:
         if not CANARY_TESTS_FILE.exists():
             self.skipTest("configs/canary_tests.json not found")
-        for command in (("canary", "run"), ("canary", "status"), ("canary", "report")):
-            with self.subTest(command=command):
-                _assert_unavailable(self, command)
+        before = {
+            p.name: (p.read_bytes() if p.exists() else None)
+            for p in (REPO_ROOT / "logs" / "blocked_ips.json",
+                      REPO_ROOT / "logs" / "quarantine.json")
+        }
+        # status: always available, read-only.
+        rc, stdout, _ = _run_aegisctl("canary", "status")
+        self.assertEqual(rc, 0)
+        status = json.loads(stdout)
+        self.assertTrue(status["available"])
+        # run: 0 = all graded pass (quarantined reported, never graded),
+        # 1 = a graded canary failed. Never a mutation, never a host effect.
+        rc, stdout, _ = _run_aegisctl("canary", "run")
+        self.assertIn(rc, (0, 1))
+        result = json.loads(stdout)
+        self.assertTrue(result["available"])
+        self.assertNotIn("ENFORCED", stdout)
+        # report: 0 = last receipt shown, 3 = no runs yet. Read-only either way.
+        rc, _, _ = _run_aegisctl("canary", "report")
+        self.assertIn(rc, (0, 3))
+        after = {
+            p.name: (p.read_bytes() if p.exists() else None)
+            for p in (REPO_ROOT / "logs" / "blocked_ips.json",
+                      REPO_ROOT / "logs" / "quarantine.json")
+        }
+        self.assertEqual(before, after, "canary must not touch enforcement bookkeeping")
 
 
 class TestCanaryTestsFile(unittest.TestCase):
