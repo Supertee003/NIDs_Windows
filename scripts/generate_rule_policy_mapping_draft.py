@@ -21,8 +21,8 @@ def canonical_action(configured: str) -> str:
 
 def main() -> None:
     rules = json.loads(RULES.read_text(encoding="utf-8"))["nids_rules"]
-    if len(rules) != 22:
-        raise SystemExit(f"expected 22 rules, found {len(rules)}")
+    if not rules:
+        raise SystemExit("expected a non-empty rules list, found none")
 
     mappings = []
     for rule in rules:
@@ -76,7 +76,7 @@ def main() -> None:
     OUT_JSON.write_text(json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     lines = [
-        "# Rules 22 Rule-to-Policy Mapping Draft",
+        "# Rule-to-Policy Mapping Draft",
         "",
         "> **Inactive draft:** this file is qualification metadata only. It is not loaded by the daemon and cannot authorize WFP enforcement.",
         "",

@@ -117,7 +117,14 @@ def test_zig_automaton_is_built_from_match_pattern_not_regex():
 
 def test_rule_id_hashes_are_identical_across_python_go_and_zig():
     golden = {rule["rule_id"]: _fnv1a32(rule["rule_id"]) for rule in _canonical_rules()}
-    assert len(golden) == 22
+    # Explicit census (not len()): adding a rule must update the Go and Zig
+    # tables in the same patch, or the comparison below fails.
+    assert set(golden) == {
+        "R0056", "R0088", "R0089", "R1001", "R1002", "R1003", "R1004",
+        "R1005", "R2001", "R2002", "R2003", "R2004", "R2005", "R3001",
+        "R3002", "R3003", "R3004", "R3005", "R9002", "R9006", "R9007",
+        "R9059", "R9064",
+    }, sorted(set(golden))
 
     go_table = _golden_from(GO_TEST.read_text(encoding="utf-8"))
     zig_table = _golden_from((ZIG_LOADER.parent / "rule_loader.zig").read_text(encoding="utf-8"))

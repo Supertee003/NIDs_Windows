@@ -63,14 +63,11 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   named rules by match_pattern AND regex (rfi_basic vs R0088 traversal,
   data_exfil vs R9059 XSS), so neither could ever fire. Quarantined with
   reasons (reported, never graded).
-  Real RFI/exfil rules need a rule-owner verdict with these sharpened
-  facts: (a) Go tier is substring-only (`strings.Contains`), so RFI IS
-  expressible (param markers like `?file=http`) but DNS-length exfil is
-  NOT — it needs a new length capability; (b) no Kali probes exist for
-  RFI/exfil (kit is per-rule-ID, none cover them); (c) new rules break
-  the 22-rule pins (deploy gates, golden tables, contract pin) and must
-  update them in the same patch; (d) severity/action per rule is a
-  detection-semantics call, not derivable from the payloads.
+  Real RFI rule LANDED as R0089 (RFI-RULE-071: Injection/L7/Critical/
+  Block, `?file=http://` + scheme-required regex, FNV 4237725842;
+  canary unquarantined with a payload that truly matches). DNS-exfil
+  stays quarantined: length heuristics cannot be expressed in the
+  substring-only tiers — needs a length-capability design slice.
 - [x] `forensics.replay` handler ← replay_verifier (wired: integrity-only
   observe replay T1-REPLAY-021 — export ring + re-verify CRC/hash chain;
   pipeline re-execution deliberately NOT performed, events_replayed stays 0,

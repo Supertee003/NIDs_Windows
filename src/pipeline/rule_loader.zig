@@ -29,6 +29,7 @@ test "hashRuleId matches the cross-language golden table" {
     const golden = [_]struct { id: []const u8, hash: u32 }{
         .{ .id = "R0056", .hash = 2107512682 },
         .{ .id = "R0088", .hash = 4254503461 },
+        .{ .id = "R0089", .hash = 4237725842 },
         .{ .id = "R1001", .hash = 3813986375 },
         .{ .id = "R1002", .hash = 3830763994 },
         .{ .id = "R1003", .hash = 3847541613 },

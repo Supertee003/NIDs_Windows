@@ -35,7 +35,7 @@ def main() -> int:
     rules = json.loads((ROOT / "configs" / "Rules.json").read_text(encoding="utf-8"))["nids_rules"]
     manifest = json.loads((ROOT / "analysis" / "RULE_22_DETECTION_FIXTURE_MANIFEST.json").read_text(encoding="utf-8"))
     by_rule = {f["rule_id"]: f for f in manifest["fixtures"]}
-    assert len(rules) == 22 and len(by_rule) == 22, "expected 22 rules + 22 fixtures"
+    assert len(rules) == len(by_rule) and len(rules) > 0, "rules and fixtures must agree 1:1"
     OUT.mkdir(parents=True, exist_ok=True)
     for r in rules:
         rid = r["rule_id"]

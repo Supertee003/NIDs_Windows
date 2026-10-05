@@ -1,8 +1,8 @@
-# AEGIS Rules 22 Qualification Matrix
+# AEGIS Rules Qualification Matrix
 
 > This matrix is a baseline for controlled qualification. A configured `Block` or `Drop` action is an intent, not evidence that host enforcement is production-approved.
 
-- Rules in `configs/Rules.json`: **22**
+- Rules in `configs/Rules.json`: **23**
 - Generic policies in `configs/policies.json`: **6**
 - Global prevention gate: **closed**
 - Initial rule statuses: `DETECT_ONLY` for Alert; `BLOCK_CANDIDATE_PENDING_PROOF` for Block/Drop
@@ -33,6 +33,7 @@
 | `R3003` Anonymous Pipe Suspicious | `L2_PIPE` | Medium | `Alert` | `DETECT_ONLY` | pipe sensor path exists; per-rule event production and block semantics require proof | `PIPE_RULE_PROOF` |
 | `R3004` Meterpreter Named Pipe | `L2_PIPE` | Critical | `Drop` | `BLOCK_CANDIDATE_PENDING_PROOF` | pipe sensor path exists; per-rule event production and block semantics require proof | `PIPE_RULE_PROOF` |
 | `R3005` atexec Scheduled Task Pipe | `L2_PIPE` | High | `Block` | `BLOCK_CANDIDATE_PENDING_PROOF` | pipe sensor path exists; per-rule event production and block semantics require proof | `PIPE_RULE_PROOF` |
+| `R0089` Remote File Inclusion (RFI) | `L7` | Critical | `Block` | `BLOCK_CANDIDATE_PENDING_PROOF` | current WFP callout exports 5-tuple only; payload match needs an application/proxy sensor | `L7_SENSOR_MAPPING` |
 
 ## Required evidence per rule
 
@@ -42,7 +43,7 @@ A rule may move from `BLOCK_CANDIDATE_PENDING_PROOF` to `BLOCK_PROVEN` only afte
 
 ## Immediate blockers
 
-1. `configs/policies.json` contains six generic policies but no direct 22-rule mapping.
+1. `configs/policies.json` contains generic policies but no direct per-rule mapping.
 2. TypeScript, Zig, and Rust action ordinals must be frozen to one shared contract.
 3. L7 rules require a payload-aware sensor; the current WFP callout exports a network 5-tuple, not HTTP payload content.
 4. Process-layer rules require real event production proof; `hids_process_monitor.zig` is not a complete event source.

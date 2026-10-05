@@ -45,7 +45,8 @@ $contractErrors = @($snapshot.presentation.contract_errors | Where-Object { $nul
 
 if ($health.state -ne "RUNNING") { $failures.Add("health.state=$($health.state)") }
 if ($health.degraded -ne $false) { $failures.Add("health.degraded=$($health.degraded)") }
-if ([int]$health.rules_loaded -ne 22) { $failures.Add("health.rules_loaded=$($health.rules_loaded), expected 22") }
+$expectedRules = (Get-Content (Join-Path $repo "configs\Rules.json") -Raw | ConvertFrom-Json).nids_rules.Count
+if ([int]$health.rules_loaded -ne $expectedRules) { $failures.Add("health.rules_loaded=$($health.rules_loaded), expected $expectedRules (configs/Rules.json)") }
 if ($readiness.ready -ne $true) { $failures.Add("readiness.ready=$($readiness.ready)") }
 if ($readiness.overall_gate -ne $true) { $failures.Add("readiness.overall_gate=$($readiness.overall_gate)") }
 if ($missingReadiness.Count -ne 0) { $failures.Add("readiness.missing=$($missingReadiness -join ',')") }

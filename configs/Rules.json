@@ -254,6 +254,17 @@
       "regex_pattern": "atsvc|\\\\pipe\\\\atsvc|ATEXEC|ScheduleTask",
       "severity": "High",
       "action": "Block"
+    },
+    {
+      "rule_id": "R0089",
+      "name": "Remote File Inclusion (RFI)",
+      "category": "Injection",
+      "layer": "L7",
+      "fast_pattern": "RFI_INCLUDE",
+      "match_pattern": "?file=http://",
+      "regex_pattern": "\\?file=https?://|\\?page=https?://|include=https?://",
+      "severity": "Critical",
+      "action": "Block"
     }
   ]
 }

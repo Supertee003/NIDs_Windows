@@ -1,3 +1,3 @@
-# Rules 22 Observe-only Matching
+# Rules 23 Observe-only Matching
 
 Synthetic matching only; no sensor or enforcement proof.

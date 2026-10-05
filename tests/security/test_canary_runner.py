@@ -40,7 +40,9 @@ def test_canary_status_reports_definitions_and_file():
     payload = json.loads(proc.stdout)
     assert payload["available"] is True
     assert payload["definitions"] == 10
-    assert payload["rules_in_file"] == 22
+    expected_rules = len(json.loads(
+        (REPO / "configs" / "Rules.json").read_text(encoding="utf-8"))["nids_rules"])
+    assert payload["rules_in_file"] == expected_rules
     assert payload["definitions_error"] is None
     assert payload["rules_error"] is None
 
@@ -76,25 +78,32 @@ def test_canary_run_writes_no_enforcement_state():
 
 
 def test_canary_quarantines_mismatched_definitions():
-    """rfi_basic / data_exfil payloads never match their named rules (proven
-    by match_pattern + regex), so they are quarantined: reported with
-    reasons, never graded as pass or fail."""
+    """data_exfil's payload never matches its named rule (proven by
+    match_pattern + regex), so it is quarantined: reported with a reason,
+    never graded as pass or fail. (rfi_basic graduated to R0089.)"""
     proc = run("canary", "run")
     assert proc.returncode == 0, proc.stdout
     payload = json.loads(proc.stdout)
     assert payload["failed"] == 0
-    assert payload["quarantined"] == 2
+    assert payload["quarantined"] == 1
     by_name = {q["name"]: q for q in payload["quarantined_tests"]}
-    for name in ("rfi_basic", "data_exfil"):
-        assert name in by_name, payload
-        assert by_name[name]["reason"], "quarantine must carry its reason"
+    assert "data_exfil" in by_name, payload
+    assert by_name["data_exfil"]["reason"], "quarantine must carry its reason"
     graded = {d["name"] for d in payload["details"]}
-    assert "rfi_basic" not in graded and "data_exfil" not in graded
+    assert "data_exfil" not in graded
+    assert "rfi_basic" in graded
 
 
 def test_canary_run_quarantined_test_reports_state():
-    proc = run("canary", "run", "--test", "rfi_basic")
+    proc = run("canary", "run", "--test", "data_exfil")
     assert proc.returncode == 0, proc.stdout
     payload = json.loads(proc.stdout)
     assert payload["quarantined"] is True
     assert payload["reason"], "quarantine must carry its reason"
+
+
+def test_canary_rfi_basic_passes_against_r0089():
+    proc = run("canary", "run", "--test", "rfi_basic")
+    assert proc.returncode == 0, proc.stdout
+    payload = json.loads(proc.stdout)
+    assert payload["passed"] == 1 and payload["failed"] == 0

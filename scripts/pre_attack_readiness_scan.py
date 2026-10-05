@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic, observe-only readiness scan for the 22-rule qualification set."""
+"""Deterministic, observe-only readiness scan for the rule qualification set."""
 from __future__ import annotations
 
 import argparse
@@ -42,15 +42,16 @@ def main() -> int:
     manifest = load(MANIFEST)
     rules = matrix.get("rules", [])
     fixtures = manifest.get("fixtures", [])
+    expected = len(json.loads((ROOT / "configs" / "Rules.json").read_text(encoding="utf-8"))["nids_rules"])
     rule_ids = {r.get("rule_id") for r in rules}
     fixture_rule_ids = {f.get("rule_id") for f in fixtures}
     errors: list[str] = []
     warnings: list[str] = []
 
-    if matrix.get("rule_count") != 22 or len(rules) != 22:
-        errors.append(f"matrix rule count is {matrix.get('rule_count')} metadata/{len(rules)} records")
-    if manifest.get("rule_count") != 22 or len(fixtures) != 22:
-        errors.append(f"manifest rule count is {manifest.get('rule_count')} metadata/{len(fixtures)} records")
+    if matrix.get("rule_count") != expected or len(rules) != expected:
+        errors.append(f"matrix rule count is {matrix.get('rule_count')} metadata/{len(rules)} records, expected {expected}")
+    if manifest.get("rule_count") != expected or len(fixtures) != expected:
+        errors.append(f"manifest rule count is {manifest.get('rule_count')} metadata/{len(fixtures)} records, expected {expected}")
     if rule_ids != fixture_rule_ids:
         errors.append(f"matrix/fixture ID mismatch: matrix_only={sorted(rule_ids - fixture_rule_ids)} fixture_only={sorted(fixture_rule_ids - rule_ids)}")
     if matrix.get("global_gate") != "closed":

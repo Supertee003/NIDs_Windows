@@ -158,7 +158,8 @@ if ($null -ne $health.policies_loaded) { $policiesLoaded = [int]$health.policies
 
 $failures = [System.Collections.Generic.List[string]]::new()
 if ($rulesLoaded -le 0) { $failures.Add("rules_loaded=$rulesLoaded after deploy") }
-if ($rulesLoaded -ne 22) { $failures.Add("rules_loaded=$rulesLoaded, expected 22") }
+$expectedRules = (Get-Content (Join-Path $RepoRoot "configs\Rules.json") -Raw | ConvertFrom-Json).nids_rules.Count
+if ($rulesLoaded -ne $expectedRules) { $failures.Add("rules_loaded=$rulesLoaded, expected $expectedRules (configs/Rules.json)") }
 if ($policiesLoaded -ne 6) { $failures.Add("policies_loaded=$policiesLoaded, expected 6") }
 
 $result = [ordered]@{

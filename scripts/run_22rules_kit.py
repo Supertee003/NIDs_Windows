@@ -66,7 +66,7 @@ nothing here enforces, mutates, transmits, or creates processes.
 
 ## Gates in this kit
 - `run_manifest.json`: every step exit 0, or the kit FAILS.
-- 22/22 rule matching, 0 host effects, gate closed everywhere.
+- all-rules matching, 0 host effects, gate closed everywhere.
 """
 
 
@@ -98,7 +98,7 @@ def main() -> int:
     (KIT / "README.md").write_text(README.format(ts=NOW), encoding="utf-8")
     (KIT / "run_manifest.json").write_text(json.dumps(log, indent=2), encoding="utf-8")
     print(f"kit: {KIT}")
-    print("PASS: 22-rule kit complete" if not failed else "FAIL: kit incomplete, see run_manifest.json")
+    print("PASS: rule kit complete" if not failed else "FAIL: kit incomplete, see run_manifest.json")
     return 0 if not failed else 1
 
 
