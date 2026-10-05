@@ -179,20 +179,16 @@ def test_no_alternate_host_network_module() -> None:
     )
 
 
-def test_host_network_and_process_share_dispatcher() -> None:
-    """AC2 (lock-in): The dispatcher must consume both network and
-    process events through the same pipeline (processEvent /
-    StageContext). No parallel dispatcher for process events."""
-    text = (REPO_ROOT / "src" / "policy" / "dispatcher.zig").read_text(encoding="utf-8")
-    # The dispatcher's processEvent must handle both network and
-    # process source kinds via the same StageContext. The canonical
-    # test is that the processEvent function does not branch on the
-    # source kind for flow construction -- all events go through the
-    # same flow.
-    assert "processEvent" in text, "dispatcher.zig must define processEvent"
-    # And the StageContext contains both flow_update and other fields
-    assert "flow_update" in text, (
-        "dispatcher.zig StageContext must carry flow_update (single model)"
+def test_host_network_and_process_share_event_processor() -> None:
+    """AC2 (lock-in): The event processor must consume both network and
+    process events through the same pipeline (processEvent, one flow
+    construction site). No parallel dispatcher for process events."""
+    text = (REPO_ROOT / "src" / "pipeline" / "event_processor.zig").read_text(encoding="utf-8")
+    # processEvent handles every event kind through one flow key build —
+    # there is no source-kind branch and no second flow construction site.
+    assert "fn processEvent" in text, "event_processor.zig must define processEvent"
+    assert text.count("FlowKey.normalize") == 1, (
+        "event_processor must build the flow key at exactly one site (single model)"
     )
 
 
