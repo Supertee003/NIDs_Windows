@@ -148,11 +148,16 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
 - Drift FIXED this pass: Nose `2.1.0` → `5.0.0` (daemon/state_machine/
   version-handler vs `nose/main.go` + version.md); sensor-pipe `_t1`
   suffix in 3 stale comments.
-- Drift OPEN (needs owner decision, not silent edit): `EVENT_VERSION`
-  5 vs 1 (legacy `contract/event.zig` vs canonical); POL1 vs POLI
-  (pinned MISMATCH test, intentional); brain/ts/mouth/cython version strings
-  (2.0.0/1.0.0/3.0.0/1.1.0 vs product 5.0.0); CONTROL_PROTOCOL v2 code vs
-  v1.0 doc; `zig-0.13` vs `zig-0.13.0`; CANARY_MAGIC ×3 files.
+- Drift (resolved items struck through in place so history stays readable):
+  `EVENT_VERSION` 5-vs-1 → VER-NS-039 (separate namespaces, pinned disjoint);
+  CONTROL_PROTOCOL v2 code vs v1.0 doc → CTL-DOC-040 (active v2 section added,
+  v1 frozen intact); `zig-0.13` vs `zig-0.13.0` → VER-BUILD-054 (both stamps
+  now 0.13.0, pinned to release record); FIM non-ASCII/long-path →
+  FIM-LONGPATH-044; registry re-arm → REG-STUB-045 (prod re-arms, stub
+  labeled); ETW session-name UB → ETW-STR-046.
+  Still OPEN (needs owner decision, not silent edit): POL1 vs POLI
+  (pinned MISMATCH test, intentional); mouth internal version strings
+  (Cargo 3.0.0 vs binary 1.0.0); CANARY_MAGIC ×3 files (uninvestigated).
   (`struct_size` 128-vs-109 closed T2-V6-022c: generator stamps 128,
   vectors regenerated, strict gates hold.)
 
