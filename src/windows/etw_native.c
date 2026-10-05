@@ -173,8 +173,18 @@ int aegis_etw_start(const char* session_name, const uint8_t (*providers)[16], si
         fprintf(stderr, "[ETW] start rejected: session already active\\n");
         return -1;
     }
+    /* ETW-STR-046: checked conversion. An unchecked MultiByteToWideChar
+     * can truncate without NUL-terminating (or best-fit map invalid
+     * UTF-8), handing StartTraceW a garbage session name. The Zig caller
+     * passes a short constant today, but the C boundary must not trust
+     * that: conversion failure fails closed before any handle exists. */
+    if (!session_name || session_name[0] == '\0' ||
+        MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, session_name, -1,
+                            g_session.session_name, 64) <= 0) {
+        fprintf(stderr, "[ETW] invalid session name (empty, invalid UTF-8, or too long)\\n");
+        return -5;
+    }
     InitializeCriticalSection(&g_lock);
-    MultiByteToWideChar(CP_UTF8, 0, session_name, -1, g_session.session_name, 64);
 
     size_t prop_size = sizeof(EVENT_TRACE_PROPERTIES) + 256 * sizeof(WCHAR);
     g_session.properties = (EVENT_TRACE_PROPERTIES*)calloc(1, prop_size);
