@@ -92,6 +92,9 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   revocation gap open to P4. FED-P3A landed: static discovery
   (canonical cluster.json v1, u32 ids per verdict, fail-closed atomic
   loader + proofs incl. example-drift pin; live file gitignored).
+  FED-P3B landed: optional display `name` labels in cluster.json v1
+  (numeric id stays the authority — wire + Go canonical already u32,
+  no other tier processes node IDs; overlong names fail closed).
   Pin stays until P4 daemon wiring.
 - [ ] policy_signing onto enforcement path + trust_store CNG + two-person API
 - [x] IPv6 full (contract v2) — wire v2 decode-ready T2-V6-022a (Go/Zig/
