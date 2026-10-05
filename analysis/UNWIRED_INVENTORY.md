@@ -161,8 +161,9 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   FIM-LONGPATH-044; registry re-arm → REG-STUB-045 (prod re-arms, stub
   labeled); ETW session-name UB → ETW-STR-046.
   Still OPEN (needs owner decision, not silent edit): POL1 vs POLI
-  (pinned MISMATCH test, intentional); mouth internal version strings
-  (Cargo 3.0.0 vs binary 1.0.0).
+  (pinned MISMATCH test, intentional).
+  (DOC-SYNC-077: mouth version strings struck — resolved by
+  MOUTH-VER-057, checkbox at line 93; the entry above was stale.)
   (`struct_size` 128-vs-109 closed T2-V6-022c: generator stamps 128,
   vectors regenerated, strict gates hold; CANARY_MAGIC ×3 closed
   CANARY-MAGIC-055: single value pinned, copies intentional.)
@@ -180,12 +181,19 @@ candidate confusion (BLOCK-LABEL-038), `anomalies_emitted` never
 incremented (ANOM-COUNT-035), RAG wildcard overmatch (RAG-BOUND-052),
 flow identity dst-only (FLOW-ID-051), metrics u64→u32 truncation
 (METR-U64-061), incident cap fail-open (INCIDENT-CAP-063, TTL sweep still
-open), `config/Rules.json` mirror drift (single-authority pin holds),
-nose log flood (LOG-FLOOD-062; pipeline AUDIT line intentionally kept —
-needs observability-UX verdict), `g_ac_mutex` copy-then-use (retain policy
-in rule_loader, documented), canary severity drifts (CANARY-QUAR-056
-quarantined; real RFI/exfil rules pending owner), mouth version drift
-(MOUTH-VER-057), CANARY_MAGIC ×3 (CANARY-MAGIC-055 pinned).
+open), `config/Rules.json` mirror drift (single-authority pin held
+through the R0089 ripple and MIRROR-SYNC-075 refreshed the mirror
+byte-identical), nose log flood (LOG-FLOOD-062; pipeline AUDIT line
+intentionally kept — needs observability-UX verdict), `g_ac_mutex`
+copy-then-use (retain policy in rule_loader, documented), canary
+severity drifts (CANARY-QUAR-056 quarantined; rfi_basic graduated to
+R0089 by RFI-RULE-071, data_exfil stays quarantined pending a
+length-capability design slice), mouth version drift
+(MOUTH-VER-057), CANARY_MAGIC ×3 (CANARY-MAGIC-055 pinned), per-call
+WFP DLL load (PEP-ADAPTER-CACHE-073: cached bridge handle, re-probe
+on failure), legacy whole-struct `serialize` memcpy path
+(CODEC-CLEAN-067: deleted; remaining @memcpy are field copies inside
+the explicit wire codec).
 
 Investigated, no action (with reason): `security_check` hard-coded pass
 claim is wrong (gating/advisory split is real); `getFrameSize` +
@@ -215,11 +223,10 @@ graph readability at 100+ records (UX design), brain UDP auth LANDED
 stays open by design), run_aegis.bat 5-subsystem model + wmic,
 `D:\NIDs_Windows` hardcodes, Kali script default target, VMware
 auto-select fallback, ETW Linux stub reporting running,
-`last_event_ms` dual-clock, legacy `serialize` memcpy path,
-severity collapse, legacySource downgrade (pinned best-effort),
+`last_event_ms` dual-clock, severity collapse, legacySource downgrade (pinned best-effort),
 stream-reassembly stall/no-evict, DNS compression blind, HTTP unbounded
 headers, RDP/Kerberos single-magic FP, nose TUI synthetic counters, C++
-DNS port compare, IPC short framing, per-call DLL load, WFP unload leak
+DNS port compare, IPC short framing, WFP unload leak
 (drivers quarantined — do not touch), rule FNV collisions,
 golden-table drift, `threat_score`/`weight` fixed, INCIDENT_TTL
 unenforced (eviction-policy verdict needed), IPv4-only evidence ring
