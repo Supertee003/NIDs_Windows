@@ -74,18 +74,12 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   T2-V6-022b (`eventFromPacket` sidecars, `Send` dispatches v2).
   REMAINING: detection/flow/forensic plumbing of full addresses
   (u32 identity + bit2 guard unchanged)
-- [ ] duplicate `dispatcher` removal — BLOCKED 2026-10-04 (verified, 25 E2
-  pins green): `tests/e2e/test_t14_windows_golden_path.py`
-  (`test_incident_id_survives_dispatcher`,
-  `test_dispatcher_is_sole_orchestrator`) reads `src/policy/dispatcher.zig`
-  and pins it as SOLE orchestrator; `tests/forensics/
-  test_t12_forensics_replay.py::test_dispatcher_writes_trace_for_every_decision`
-  reads BOTH `dispatcher.zig` + `dispatcher_phase_b.zig`. Zero @import
-  edges (only `reliability/lifecycle.zig` imports `dispatcher.zig`, itself
-  unimported), but deletion breaks T14/T12. Needs architecture decision
-  first: migrate T14/T12 pins to `pipeline/event_processor` +
-  `policy/action_dispatcher` (aligns with T1-DISP-018 quarantine) or
-  re-promote dispatcher — NOT silent removal.
+- [x] duplicate `dispatcher` removal — RESOLVED by DISP-MIGRATE-047:
+  deleted `src/policy/dispatcher.zig` + `dispatcher_phase_b.zig` (1476
+  lines); T14 pins retargeted to `pipeline/event_processor.zig` inline
+  stages, T12 forensic-trace pin retargeted to `forensic_ring.append` +
+  `ForensicBackend.write`. Zero production importers existed (only
+  quarantined `reliability/lifecycle.zig`, itself unimported).
 - [x] Go aggregator loopback bind (GO-LOOPBACK-031: `apiAddr` pins
   `127.0.0.1:port`, bare `:port` never constructed; matches the documented
   `127.0.0.1:9200` contract and every in-tree client).
