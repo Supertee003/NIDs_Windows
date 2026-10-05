@@ -216,8 +216,10 @@ gates, web SSE backpressure, fault-maybeCorrupt post-validation
 rust query unauthenticated (pipe ACL + role gates cover; FFI change is
 ABI break — accepted risk), single g_ProofFilterId, provider GUID split,
 ring stats partial, single-slot globals, query vs present tri-state
-callers (exists), PepContext policy_version=0 + signed_by (T7),
-TS u64 precision (T7), Pro Console no live watch (UX design),
+callers (exists), PepContext policy_version=0 + signed_by / TS u64
+seal precision (T7: see docs/adr/0005-policy-signing-seal-and-custody.md
+— Rust verifies but uncalled, TS emits 8-byte hints, Zig gates but
+cannot verify; format + custody verdicts pending), Pro Console no live watch (UX design),
 graph readability at 100+ records (UX design), brain UDP auth LANDED
 (B2-AUTH-076: HMAC-SHA256 shared secret via AEGIS_BRAIN_SECRET, HEALTH
 stays open by design), run_aegis.bat 5-subsystem model + wmic,
