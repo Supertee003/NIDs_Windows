@@ -281,6 +281,46 @@ def test_specimen_modules_have_no_production_importers():
     assert banned == [], f"production imports specimen module: {banned}"
 
 
+def test_federation_family_has_no_production_importers():
+    """FED-TIDY-058: src/federation/* (codec/coord/TLS/TCP/bench/aggregator/
+    node_registry) is test-only and unwired: the daemon graph never imports
+    it, the control plane reports standalone, and escalate() has no
+    transport. Bench/CLI scaffolding (core/perf_benchmark,
+    core/integration_test, tests/*) is the only allowed importer; a
+    production importer would silently attach an unverified cluster path
+    (STEP 53) to the live runtime. The Project 4+ verdict may rewire this
+    pin behind a design slice."""
+    prod_roots = ["src/main.zig", "src/daemon.zig"]
+    prod_dirs = ["src/pipeline", "src/platform", "src/control", "src/capture",
+                 "src/detection", "src/forensic", "src/policy", "src/windows",
+                 "src/contract", "src/core", "src/reliability"]
+    allowed_files = {"perf_benchmark.zig", "integration_test.zig"}
+    banned = []
+    checked = 0
+    for root in prod_roots:
+        p = REPO / root
+        if not p.exists():
+            continue
+        checked += 1
+        for i, line in code_lines(p, "//"):
+            if "federation/" in line:
+                banned.append(f"{root}:{i}:{line.strip()[:100]}")
+    for d in prod_dirs:
+        for p in (REPO / d).rglob("*.zig"):
+            if p.suffixes == [".zig", ".scaffold"] or p.name.endswith(".scaffold"):
+                continue
+            if p.name in allowed_files:
+                continue
+            if p.parent.name == "federation":
+                continue
+            checked += 1
+            for i, line in code_lines(p, "//"):
+                if "federation/" in line:
+                    banned.append(f"{p.relative_to(REPO)}:{i}:{line.strip()[:100]}")
+    assert checked > 50, f"zig prod scan surface too small: {checked}"
+    assert banned == [], f"production imports federation family: {banned}"
+
+
 def test_legacy_tcp_listener_stays_dead():
     """T1-NET-019 leftover: src/core/nids_analyze.zig contains a 0.0.0.0 TCP
     listener (tcp_listener, spawned by analyze_packets, itself spawned only

@@ -698,6 +698,11 @@ pub extern "C" fn aegis_pep_quota_remaining(src_ip: u32) -> u32 {
 // ============================================================================
 
 pub mod federation_tls {
+    //! FED-TIDY-058 STATUS — TEST-ONLY, unwired. Nothing constructs
+    //! TlsTransport (empty roots, no client auth, empty cert would fail
+    //! real handshakes); the daemon speaks standalone and escalations have
+    //! no transport. Keep compiling as the FFI shell for a future Project
+    //! 4+ cluster slice — never mistake this for live mTLS.
     use std::sync::Arc;
 
     pub struct TlsConfig {
