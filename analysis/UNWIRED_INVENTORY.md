@@ -157,9 +157,10 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   labeled); ETW session-name UB → ETW-STR-046.
   Still OPEN (needs owner decision, not silent edit): POL1 vs POLI
   (pinned MISMATCH test, intentional); mouth internal version strings
-  (Cargo 3.0.0 vs binary 1.0.0); CANARY_MAGIC ×3 files (uninvestigated).
+  (Cargo 3.0.0 vs binary 1.0.0).
   (`struct_size` 128-vs-109 closed T2-V6-022c: generator stamps 128,
-  vectors regenerated, strict gates hold.)
+  vectors regenerated, strict gates hold; CANARY_MAGIC ×3 closed
+  CANARY-MAGIC-055: single value pinned, copies intentional.)
 
 ## KNOWN-OPEN robustness (filed, unscheduled)- flow pointer lock-escape (single-threaded today), forensic `append catch 0`,
   correlator/AC per-packet allocator, FIM non-ASCII/long-path caps,
