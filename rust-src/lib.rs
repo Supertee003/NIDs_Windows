@@ -735,54 +735,225 @@ pub extern "C" fn aegis_pep_quota_remaining(src_ip: u32) -> u32 {
 // ============================================================================
 
 pub mod federation_tls {
-    //! FED-TIDY-058 STATUS — TEST-ONLY, unwired. Nothing constructs
-    //! TlsTransport (empty roots, no client auth, empty cert would fail
-    //! real handshakes); the daemon speaks standalone and escalations have
-    //! no transport. Keep compiling as the FFI shell for a future Project
-    //! 4+ cluster slice — never mistake this for live mTLS.
+    //! FED-P2A STATUS — REAL crypto, loopback-proven, still UNWIRED.
+    //! Client + server configs are built from caller-supplied PEM roots
+    //! and chain/key; empty or unparseable trust material fails closed at
+    //! construction. mTLS is honored when `require_client_auth` is set.
+    //! There is still NO FFI exposure and NO production caller: the Zig
+    //! TLS stack stays the only Transport vtable until the P2B one-stack
+    //! cutover (ADR-0007), and the daemon speaks standalone. Never mistake
+    //! loopback-proven for production-wired.
+    use std::io::{Read, Write};
+    use std::net::{TcpListener, TcpStream, ToSocketAddrs};
     use std::sync::Arc;
 
+    /// PEM-encoded bytes throughout: `cert_chain` (leaf first),
+    /// `private_key` (PKCS#8 / RSA / SEC1 PEM), `trusted_roots`
+    /// (concatenated PEM certificates). Empty roots fail closed.
     pub struct TlsConfig {
         pub cert_chain: Vec<Vec<u8>>,
         pub private_key: Vec<u8>,
         pub trusted_roots: Vec<Vec<u8>>,
         pub require_client_auth: bool,
+        /// DNS name the client verifies (tests use "localhost").
+        pub server_name: String,
     }
 
-    #[allow(dead_code)]
+    impl Default for TlsConfig {
+        fn default() -> Self {
+            Self {
+                cert_chain: Vec::new(),
+                private_key: Vec::new(),
+                trusted_roots: Vec::new(),
+                require_client_auth: true,
+                server_name: "localhost".to_string(),
+            }
+        }
+    }
+
+    fn roots_from_pem(pem: &[u8]) -> Result<rustls::RootCertStore, Box<dyn std::error::Error>> {
+        let mut store = rustls::RootCertStore::empty();
+        let mut reader = std::io::BufReader::new(pem);
+        let certs: Vec<_> = rustls_pemfile::certs(&mut reader).collect::<Result<_, _>>()?;
+        if certs.is_empty() {
+            return Err("federation_tls: no trust anchors (empty roots fail closed)".into());
+        }
+        for cert in certs {
+            store
+                .add(cert)
+                .map_err(|e| format!("federation_tls: bad trust anchor: {e}"))?;
+        }
+        Ok(store)
+    }
+
+    fn chain_from_pem(chain: &[Vec<u8>]) -> Result<Vec<rustls::pki_types::CertificateDer<'static>>, Box<dyn std::error::Error>> {
+        let mut out = Vec::with_capacity(chain.len());
+        for pem in chain {
+            let mut reader = std::io::BufReader::new(pem.as_slice());
+            let mut found = false;
+            for cert in rustls_pemfile::certs(&mut reader) {
+                out.push(cert?);
+                found = true;
+            }
+            if !found {
+                return Err("federation_tls: chain entry holds no certificate".into());
+            }
+        }
+        Ok(out)
+    }
+
+    fn key_from_pem(pem: &[u8]) -> Result<rustls::pki_types::PrivateKeyDer<'static>, Box<dyn std::error::Error>> {
+        let mut reader = std::io::BufReader::new(pem);
+        // Accept PKCS#8, RSA, or SEC1 — whichever the operator provisions.
+        if let Some(key) = rustls_pemfile::pkcs8_private_keys(&mut reader).next() {
+            return Ok(rustls::pki_types::PrivateKeyDer::Pkcs8(key?));
+        }
+        let mut reader = std::io::BufReader::new(pem);
+        if let Some(key) = rustls_pemfile::rsa_private_keys(&mut reader).next() {
+            return Ok(rustls::pki_types::PrivateKeyDer::Pkcs1(key?));
+        }
+        let mut reader = std::io::BufReader::new(pem);
+        if let Some(key) = rustls_pemfile::ec_private_keys(&mut reader).next() {
+            return Ok(rustls::pki_types::PrivateKeyDer::Sec1(key?));
+        }
+        Err("federation_tls: private key missing or not PKCS#8/RSA/SEC1 PEM".into())
+    }
+
     pub struct TlsTransport {
         config: Arc<rustls::ClientConfig>,
-        server_config: Arc<rustls::ServerConfig>,
+        server_config: Option<Arc<rustls::ServerConfig>>,
+        server_name: String,
+    }
+
+    /// An established client session: encrypted stream over loopback-or-later TCP.
+    pub struct TlsSession {
+        stream: rustls::StreamOwned<rustls::ClientConnection, TcpStream>,
+    }
+
+    /// An accepted server session.
+    pub struct TlsServerSession {
+        stream: rustls::StreamOwned<rustls::ServerConnection, TcpStream>,
+    }
+
+    impl TlsSession {
+        pub fn send(&mut self, payload: &[u8]) -> std::io::Result<()> {
+            self.stream.write_all(payload)?;
+            self.stream.flush()
+        }
+        pub fn recv(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            self.stream.read(buf)
+        }
+        pub fn peer_certificates(&self) -> Option<Vec<Vec<u8>>> {
+            self.stream.conn.peer_certificates().map(|certs| {
+                certs.iter().map(|c| c.as_ref().to_vec()).collect()
+            })
+        }
+    }
+
+    impl TlsServerSession {
+        pub fn send(&mut self, payload: &[u8]) -> std::io::Result<()> {
+            self.stream.write_all(payload)?;
+            self.stream.flush()
+        }
+        pub fn recv(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            self.stream.read(buf)
+        }
+        pub fn peer_certificates(&self) -> Option<Vec<Vec<u8>>> {
+            self.stream.conn.peer_certificates().map(|certs| {
+                certs.iter().map(|c| c.as_ref().to_vec()).collect()
+            })
+        }
     }
 
     impl TlsTransport {
         pub fn new(cfg: TlsConfig) -> Result<Self, Box<dyn std::error::Error>> {
-            // Stub build: cert/root parsing is wired up in production builds.
-            // Kept compiling against rustls 0.23 / pki-types 2.x (FFI shell crate).
-            let _root_store = rustls::RootCertStore::empty();
-            let _ = &cfg.trusted_roots;
+            if cfg.server_name.is_empty() {
+                return Err("federation_tls: empty server name fails closed".into());
+            }
+            let mut roots_pem = Vec::new();
+            for root in &cfg.trusted_roots {
+                roots_pem.extend_from_slice(root);
+            }
+            let roots = roots_from_pem(&roots_pem)?;
 
-            // Build client config
-            let client_config = rustls::ClientConfig::builder()
-                .with_root_certificates(rustls::RootCertStore::empty())
-                .with_no_client_auth();
+            let client_config = if cfg.cert_chain.is_empty() {
+                rustls::ClientConfig::builder()
+                    .with_root_certificates(roots.clone())
+                    .with_no_client_auth()
+            } else {
+                let certs = chain_from_pem(&cfg.cert_chain)?;
+                let key = key_from_pem(&cfg.private_key)?;
+                rustls::ClientConfig::builder()
+                    .with_root_certificates(roots.clone())
+                    .with_client_auth_cert(certs, key)
+                    .map_err(|e| format!("federation_tls: client auth cert: {e}"))?
+            };
+            let server_roots = Arc::new(roots);
 
-            // Build server config
-            let server_config = rustls::ServerConfig::builder()
-                .with_no_client_auth()
-                .with_single_cert(vec![], rustls::pki_types::PrivateKeyDer::Pkcs8(rustls::pki_types::PrivatePkcs8KeyDer::from(vec![])))
-                .map_err(|e| format!("server config: {e}"))?;
+            // Server identity is optional: a client-only node carries no
+            // chain and must never accept. Requiring it here would force
+            // every client to hold a server key.
+            let server_config = if cfg.cert_chain.is_empty() {
+                None
+            } else {
+                let certs = chain_from_pem(&cfg.cert_chain)?;
+                let key = key_from_pem(&cfg.private_key)?;
+                let built = if cfg.require_client_auth {
+                    let verifier = rustls::server::WebPkiClientVerifier::builder(server_roots)
+                        .build()
+                        .map_err(|e| format!("federation_tls: client verifier: {e}"))?;
+                    rustls::ServerConfig::builder()
+                        .with_client_cert_verifier(verifier)
+                        .with_single_cert(certs, key)
+                        .map_err(|e| format!("federation_tls: server cert: {e}"))?
+                } else {
+                    rustls::ServerConfig::builder()
+                        .with_no_client_auth()
+                        .with_single_cert(certs, key)
+                        .map_err(|e| format!("federation_tls: server cert: {e}"))?
+                };
+                Some(Arc::new(built))
+            };
 
             Ok(Self {
                 config: Arc::new(client_config),
-                server_config: Arc::new(server_config),
+                server_config,
+                server_name: cfg.server_name,
             })
         }
 
-        pub fn send_heartbeat(&self, _peer: &str, _payload: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
-            // In production: open TCP connection, perform TLS handshake, send payload.
-            // For test build, we just succeed.
-            Ok(())
+        /// Open an encrypted session to `addr` (host:port), verifying the
+        /// construction-time server name. Used by tests on 127.0.0.1;
+        /// production use waits for the P2B FFI + wiring slice.
+        pub fn connect<A: ToSocketAddrs>(
+            &self,
+            addr: A,
+        ) -> Result<TlsSession, Box<dyn std::error::Error>> {
+            let name = rustls::pki_types::ServerName::try_from(self.server_name.clone())
+                .map_err(|e| format!("federation_tls: bad server name: {e}"))?;
+            let conn = rustls::ClientConnection::new(self.config.clone(), name)
+                .map_err(|e| format!("federation_tls: client handshake: {e}"))?;
+            let sock = TcpStream::connect(addr).map_err(|e| format!("federation_tls: tcp: {e}"))?;
+            Ok(TlsSession {
+                stream: rustls::StreamOwned::new(conn, sock),
+            })
+        }
+
+        /// Accept one encrypted session (server side). Fails when this
+        /// transport holds no server identity (client-only node).
+        pub fn accept(
+            &self,
+            listener: &TcpListener,
+        ) -> Result<TlsServerSession, Box<dyn std::error::Error>> {
+            let server_config = self.server_config.as_ref().ok_or(
+                "federation_tls: accept without server identity fails closed",
+            )?;
+            let (sock, _) = listener.accept().map_err(|e| format!("federation_tls: accept: {e}"))?;
+            let conn = rustls::ServerConnection::new(server_config.clone())
+                .map_err(|e| format!("federation_tls: server handshake: {e}"))?;
+            Ok(TlsServerSession {
+                stream: rustls::StreamOwned::new(conn, sock),
+            })
         }
     }
 }
@@ -846,6 +1017,223 @@ mod tests {
         assert_eq!(aegis_pep_set_two_person_rule(1, 0), -3);
         assert_eq!(aegis_pep_set_two_person_rule(1, 1), 0);
         assert_eq!(aegis_pep_set_two_person_rule(0, 1), 0);
+    }
+
+    // FED-P2A: Rust federation TLS is real crypto, loopback-proven, still
+    // unwired (no FFI, no production caller). Test PKI is issued in-test
+    // by rcgen (dev-dependency); production issuance stays operator-owned.
+    struct FedTestPki {
+        ca_pem: Vec<u8>,
+        srv_chain_pem: Vec<u8>,
+        srv_key_pem: Vec<u8>,
+        cli_chain_pem: Vec<u8>,
+        cli_key_pem: Vec<u8>,
+        wrong_chain_pem: Vec<u8>,
+        wrong_key_pem: Vec<u8>,
+        other_ca_pem: Vec<u8>,
+    }
+
+    fn fed_leaf(
+        ca_cert: &rcgen::Certificate,
+        ca_key: &rcgen::KeyPair,
+        san: &str,
+    ) -> (Vec<u8>, Vec<u8>) {
+        let params = rcgen::CertificateParams::new(vec![san.to_string()]).unwrap();
+        let key = rcgen::KeyPair::generate().unwrap();
+        let cert = params.signed_by(&key, ca_cert, ca_key).unwrap();
+        (cert.pem().into_bytes(), key.serialize_pem().into_bytes())
+    }
+
+    fn fed_ca() -> (rcgen::Certificate, rcgen::KeyPair) {
+        let mut params = rcgen::CertificateParams::new(vec![]).unwrap();
+        params.is_ca = rcgen::IsCa::Ca(rcgen::BasicConstraints::Unconstrained);
+        let key = rcgen::KeyPair::generate().unwrap();
+        let cert = params.self_signed(&key).unwrap();
+        (cert, key)
+    }
+
+    fn fed_test_pki() -> FedTestPki {
+        let (ca, ca_key) = fed_ca();
+        let (ca2, _) = fed_ca();
+
+        let (srv_chain_pem, srv_key_pem) = fed_leaf(&ca, &ca_key, "localhost");
+        let (cli_chain_pem, cli_key_pem) = fed_leaf(&ca, &ca_key, "localhost");
+        let (wrong_chain_pem, wrong_key_pem) = fed_leaf(&ca, &ca_key, "other.invalid");
+        FedTestPki {
+            ca_pem: ca.pem().into_bytes(),
+            srv_chain_pem,
+            srv_key_pem,
+            cli_chain_pem,
+            cli_key_pem,
+            wrong_chain_pem,
+            wrong_key_pem,
+            other_ca_pem: ca2.pem().into_bytes(),
+        }
+    }
+
+    fn fed_server_cfg(pki: &FedTestPki) -> federation_tls::TlsConfig {
+        federation_tls::TlsConfig {
+            cert_chain: vec![pki.srv_chain_pem.clone()],
+            private_key: pki.srv_key_pem.clone(),
+            trusted_roots: vec![pki.ca_pem.clone()],
+            require_client_auth: true,
+            server_name: "localhost".to_string(),
+        }
+    }
+
+    fn fed_client_cfg(pki: &FedTestPki) -> federation_tls::TlsConfig {
+        federation_tls::TlsConfig {
+            cert_chain: vec![pki.cli_chain_pem.clone()],
+            private_key: pki.cli_key_pem.clone(),
+            trusted_roots: vec![pki.ca_pem.clone()],
+            require_client_auth: true,
+            server_name: "localhost".to_string(),
+        }
+    }
+
+    /// Accept one session on an ephemeral loopback listener in a helper
+    /// thread; returns the bound address. The thread echoes one 5-byte
+    /// ping back so the handshake + both directions are proven.
+    fn fed_spawn_echo_server(
+        transport: federation_tls::TlsTransport,
+    ) -> (std::net::SocketAddr, std::thread::JoinHandle<bool>) {
+        let listener =
+            std::net::TcpListener::bind("127.0.0.1:0").expect("loopback bind");
+        let addr = listener.local_addr().expect("local addr");
+        let handle = std::thread::spawn(move || {
+            let mut sess = transport.accept(&listener).expect("accept");
+            let mut buf = [0u8; 5];
+            let mut got = 0;
+            while got < 5 {
+                match sess.recv(&mut buf[got..]) {
+                    Ok(0) => break,
+                    Ok(n) => got += n,
+                    Err(_) => return false,
+                }
+            }
+            if got != 5 || &buf != b"ping!" {
+                return false;
+            }
+            sess.send(b"pong!").is_ok()
+        });
+        (addr, handle)
+    }
+
+    #[test]
+    fn fed_tls_new_rejects_empty_roots() {
+        let cfg = federation_tls::TlsConfig {
+            trusted_roots: Vec::new(),
+            ..Default::default()
+        };
+        assert!(federation_tls::TlsTransport::new(cfg).is_err());
+    }
+
+    #[test]
+    fn fed_tls_new_rejects_garbage_roots() {
+        let cfg = federation_tls::TlsConfig {
+            trusted_roots: vec![b"not a pem".to_vec()],
+            ..Default::default()
+        };
+        assert!(federation_tls::TlsTransport::new(cfg).is_err());
+    }
+
+    #[test]
+    fn fed_tls_new_rejects_empty_server_name() {
+        let pki = fed_test_pki();
+        let mut cfg = fed_server_cfg(&pki);
+        cfg.server_name = String::new();
+        assert!(federation_tls::TlsTransport::new(cfg).is_err());
+    }
+
+    #[test]
+    fn fed_tls_accept_without_server_identity_fails_closed() {
+        // A client-only transport (no chain) connects but must never accept.
+        let pki = fed_test_pki();
+        let mut cfg = fed_client_cfg(&pki);
+        cfg.cert_chain = Vec::new();
+        cfg.private_key = Vec::new();
+        let client_only = federation_tls::TlsTransport::new(cfg).unwrap();
+        let listener =
+            std::net::TcpListener::bind("127.0.0.1:0").expect("loopback bind");
+        assert!(client_only.accept(&listener).is_err());
+    }
+
+    #[test]
+    fn fed_tls_loopback_mtls_roundtrip() {
+        let pki = fed_test_pki();
+        let server = federation_tls::TlsTransport::new(fed_server_cfg(&pki)).unwrap();
+        let (addr, handle) = fed_spawn_echo_server(server);
+        let client = federation_tls::TlsTransport::new(fed_client_cfg(&pki)).unwrap();
+        let mut sess = client.connect(addr).unwrap();
+        sess.send(b"ping!").unwrap();
+        let mut buf = [0u8; 5];
+        let mut got = 0;
+        while got < 5 {
+            match sess.recv(&mut buf[got..]) {
+                Ok(0) => break,
+                Ok(n) => got += n,
+                Err(e) => panic!("client recv: {e}"),
+            }
+        }
+        assert_eq!(&buf, b"pong!");
+        // Both directions authenticated: each side saw a peer chain.
+        assert!(sess.peer_certificates().map(|c| !c.is_empty()).unwrap_or(false));
+        assert!(handle.join().unwrap());
+    }
+
+    #[test]
+    fn fed_tls_untrusted_server_rejected() {
+        let pki = fed_test_pki();
+        let server = federation_tls::TlsTransport::new(fed_server_cfg(&pki)).unwrap();
+        let (addr, handle) = fed_spawn_echo_server(server);
+        // Client trusts a different CA: handshake must fail.
+        let mut bad = fed_client_cfg(&pki);
+        bad.trusted_roots = vec![pki.other_ca_pem.clone()];
+        let client = federation_tls::TlsTransport::new(bad).unwrap();
+        let mut sess = client.connect(addr).unwrap();
+        assert!(sess.send(b"ping!").is_err() || {
+            let mut buf = [0u8; 5];
+            sess.recv(&mut buf).is_err()
+        });
+        let _ = handle.join();
+    }
+
+    #[test]
+    fn fed_tls_wrong_hostname_rejected() {
+        let pki = fed_test_pki();
+        let server = federation_tls::TlsTransport::new(fed_server_cfg(&pki)).unwrap();
+        let (addr, handle) = fed_spawn_echo_server(server);
+        // Client presents a cert for another name and expects it back:
+        // verification of "other.invalid" against the localhost chain fails.
+        let mut cfg = fed_client_cfg(&pki);
+        cfg.cert_chain = vec![pki.wrong_chain_pem.clone()];
+        cfg.private_key = pki.wrong_key_pem.clone();
+        cfg.server_name = "other.invalid".to_string();
+        let client = federation_tls::TlsTransport::new(cfg).unwrap();
+        let mut sess = client.connect(addr).unwrap();
+        assert!(sess.send(b"ping!").is_err() || {
+            let mut buf = [0u8; 5];
+            sess.recv(&mut buf).is_err()
+        });
+        let _ = handle.join();
+    }
+
+    #[test]
+    fn fed_tls_missing_client_cert_rejected() {
+        let pki = fed_test_pki();
+        let server = federation_tls::TlsTransport::new(fed_server_cfg(&pki)).unwrap();
+        let (addr, handle) = fed_spawn_echo_server(server);
+        // Server requires client auth; this client offers no chain.
+        let mut cfg = fed_client_cfg(&pki);
+        cfg.cert_chain = Vec::new();
+        cfg.private_key = Vec::new();
+        let client = federation_tls::TlsTransport::new(cfg).unwrap();
+        let mut sess = client.connect(addr).unwrap();
+        assert!(sess.send(b"ping!").is_err() || {
+            let mut buf = [0u8; 5];
+            sess.recv(&mut buf).is_err()
+        });
+        let _ = handle.join();
     }
 
     #[test]

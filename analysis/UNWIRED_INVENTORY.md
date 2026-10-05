@@ -81,7 +81,11 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   DiscoveryRegistry; coordination keeps cluster_coord.NodeRegistry).
   FED-P1B landed: frozen fed_v1_*.bin golden vectors (generator +
   Python reference codec + Zig decode pins, both directions agree).
-  Pin stays until P4; one-stack pick still open.
+  FED-P2A landed: Rust federation_tls is real crypto (PEM roots/chain
+  fail closed, mTLS honored, 8 loopback proofs incl. untrusted/wrong-CN/
+  missing-client rejection; rcgen dev-dep for test PKI only) — still
+  unwired (no FFI, no caller). Pin stays until P4; P2B is the FFI +
+  Zig-delegate cutover that also kills the Zig mock stack.
 - [ ] policy_signing onto enforcement path + trust_store CNG + two-person API
 - [x] IPv6 full (contract v2) — wire v2 decode-ready T2-V6-022a (Go/Zig/
   C++/Python dispatch + 006 vector + bit2 preserved) + nose live emit
