@@ -214,6 +214,9 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
 
     while (true) {
         if (bridge_init.g_shutdown.load(.seq_cst)) break;
+        // WD-BEAT-049: 1s-timeout overlapped waits keep the cadence well
+        // under the 5s watchdog timeout.
+        runtime_state.g_wd.beatLazy(&runtime_state.g_wd_sensor_slot, .capture, "sensor");
         // BP-O2: Overlapped ConnectNamedPipe with 1s timeout for shutdown responsiveness
         // Phase 9: Uses win32_io helper constants and functions
         var overlapped: OVERLAPPED = std.mem.zeroes(OVERLAPPED);

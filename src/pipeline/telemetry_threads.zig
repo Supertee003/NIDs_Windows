@@ -44,8 +44,10 @@ pub fn etwThread(source: *etw.EtwSource) void {
     state.g_etw_ready.store(true, .release);
     defer state.g_etw_ready.store(false, .release);
 
-    // ETW runs on its own thread via ProcessTrace; just keep alive
+    // ETW runs on its own thread via ProcessTrace; just keep alive.
+    // WD-BEAT-049: 100ms cadence, well under the 5s watchdog timeout.
     while (!state.g_stop_requested.load(.acquire) and source.running.load(.acquire)) {
+        state.g_wd.beatLazy(&state.g_wd_etw_slot, .host_telemetry, "etw");
         std.time.sleep(100 * std.time.ns_per_ms);
     }
     diag.info("ETW thread stopped", .{});
@@ -121,6 +123,7 @@ pub fn fimThread(watcher: *fim_mod.FimWatcher) void {
     defer state.g_fim_ready.store(false, .release);
 
     while (!state.g_stop_requested.load(.acquire)) {
+        state.g_wd.beatLazy(&state.g_wd_fim_slot, .host_telemetry, "fim");
         const data = watcher.poll();
         if (data.len > 0) {
             var offset: usize = 0;
@@ -185,6 +188,7 @@ pub fn registryThread(monitor: *reg_mon.RegistryMonitor) void {
     defer state.g_registry_ready.store(false, .release);
 
     while (!state.g_stop_requested.load(.acquire)) {
+        state.g_wd.beatLazy(&state.g_wd_registry_slot, .host_telemetry, "registry");
         monitor.pollNative();
         const events = monitor.drain();
         for (events) |reg_ev| {

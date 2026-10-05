@@ -82,6 +82,16 @@ pub const ReliabilityWatchdog = struct {
         _ = self.threads[idx].beats.fetchAdd(1, .monotonic);
     }
 
+    /// Lazy self-registration + beat for worker threads (WD-BEAT-049).
+    /// Each looping worker owns one slot (a `?usize` global in
+    /// runtime_state); the first beat registers the thread, later beats
+    /// reuse the cached index. No daemon plumbing, no ordering fragility —
+    /// the daemon's own discarded registrations stay untouched.
+    pub fn beatLazy(self: *ReliabilityWatchdog, slot: *?usize, kind: ThreadKind, name: []const u8) void {
+        if (slot.* == null) slot.* = self.registerThread(kind, name);
+        self.beat(slot.*.?);
+    }
+
     pub fn check(self: *ReliabilityWatchdog, now_ns: i128) usize {
         self.mutex.lock();
         defer self.mutex.unlock();
@@ -157,4 +167,32 @@ test "ReliabilityWatchdog no false positive on fresh beat" {
     wd.beat(idx);
     const stalled = wd.check(std.time.nanoTimestamp());
     try std.testing.expectEqual(@as(usize, 0), stalled);
+}
+
+test "beatLazy registers once and beats on every call" {
+    // WD-BEAT-049: worker threads self-register through a cached slot.
+    var wd = ReliabilityWatchdog.init(std.testing.allocator);
+    defer wd.deinit();
+    var slot: ?usize = null;
+    wd.beatLazy(&slot, .fim_watcher, "fim");
+    wd.beatLazy(&slot, .fim_watcher, "fim");
+    wd.beatLazy(&slot, .fim_watcher, "fim");
+    try std.testing.expect(slot != null);
+    try std.testing.expectEqual(@as(usize, 1), wd.thread_count);
+    try std.testing.expectEqual(@as(u64, 3), wd.threads[slot.?].beats.load(.monotonic));
+    try std.testing.expectEqual(@as(usize, 0), wd.check(std.time.nanoTimestamp()));
+}
+
+test "registered-but-never-beating slot is skipped, not alerted" {
+    // WD-BEAT-049 documents the old production toothlessness: daemon
+    // registrations whose index was discarded never beat, and check()
+    // skips last_beat_ns == 0 instead of alerting. Beats (this slice)
+    // are what make a slot observable; the skip rule itself is kept so
+    // not-yet-started workers don't page at startup.
+    var wd = ReliabilityWatchdog.init(std.testing.allocator);
+    defer wd.deinit();
+    _ = wd.registerThread(.capture, "never-beats");
+    const stalled = wd.check(std.time.nanoTimestamp());
+    try std.testing.expectEqual(@as(usize, 0), stalled);
+    try std.testing.expectEqual(@as(usize, 0), wd.pendingAlerts());
 }

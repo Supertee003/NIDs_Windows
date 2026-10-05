@@ -429,6 +429,14 @@ pub fn pipelineLoop(
             if (since_prune >= 4096) {
                 since_prune = 0;
                 _ = corr.prune(std.time.nanoTimestamp());
+                // WD-BEAT-049: drive the watchdog from the one thread that
+                // always cycles. Stalls surface as critical diagnostics (and
+                // stay listed in pendingAlerts for a future control drain);
+                // no health-schema change in this slice.
+                const stalled = state.g_wd.check(std.time.nanoTimestamp());
+                if (stalled > 0) {
+                    diag.critical("WATCHDOG: {d} worker thread(s) stalled past 5s timeout", .{stalled});
+                }
             }
         } else {
             // No events — yield briefly

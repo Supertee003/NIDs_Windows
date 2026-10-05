@@ -135,3 +135,14 @@ pub var g_ac_mutex: std.Thread.Mutex = .{};
 pub var g_wd: watchdog.ReliabilityWatchdog = undefined;
 pub var g_fi: fault.FaultInjector = undefined;
 pub var g_perf: hist.PerfTracker = undefined;
+
+// WD-BEAT-049: one cached watchdog slot per self-beating worker. pop
+// via state.g_wd.beatLazy(&slot, kind, name) from the worker loop only —
+// never from unit tests (g_wd is undefined until the daemon inits it).
+// nose (blocked reads) and pipe_monitor (10s sweeps) are intentionally
+// absent: their cadence exceeds the 5s watchdog timeout, so beating there
+// would false-positive. They need per-thread timeouts (follow-up slice).
+pub var g_wd_sensor_slot: ?usize = null;
+pub var g_wd_etw_slot: ?usize = null;
+pub var g_wd_fim_slot: ?usize = null;
+pub var g_wd_registry_slot: ?usize = null;
