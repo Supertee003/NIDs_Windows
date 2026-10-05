@@ -246,6 +246,41 @@ def test_demo_adapters_have_no_production_importers():
     assert banned == [], f"production imports demo adapters: {banned}"
 
 
+def test_specimen_modules_have_no_production_importers():
+    """REL-SPEC-050: src/reliability/reliability.zig is a G20-G33 design
+    specimen (live homes: watchdog/fault_injection/security_check/
+    latency_histogram, all wired in daemon.zig). Nothing in production may
+    import it; T15 reads it as text. An importer would wire drill/specimen
+    doubles (second ReliabilityWatchdog, stub SecurityCheck) into the live
+    runtime."""
+    prod_roots = ["src/main.zig", "src/daemon.zig"]
+    prod_dirs = ["src/pipeline", "src/platform", "src/control", "src/capture",
+                 "src/detection", "src/forensic", "src/policy", "src/windows",
+                 "src/contract", "src/core", "src/reliability"]
+    banned = []
+    checked = 0
+    for root in prod_roots:
+        p = REPO / root
+        if not p.exists():
+            continue
+        checked += 1
+        for i, line in code_lines(p, "//"):
+            if "reliability/reliability" in line:
+                banned.append(f"{root}:{i}:{line.strip()[:100]}")
+    for d in prod_dirs:
+        for p in (REPO / d).rglob("*.zig"):
+            if p.suffixes == [".zig", ".scaffold"] or p.name.endswith(".scaffold"):
+                continue
+            if p.name == "reliability.zig":
+                continue
+            checked += 1
+            for i, line in code_lines(p, "//"):
+                if "reliability/reliability" in line:
+                    banned.append(f"{p.relative_to(REPO)}:{i}:{line.strip()[:100]}")
+    assert checked > 50, f"zig prod scan surface too small: {checked}"
+    assert banned == [], f"production imports specimen module: {banned}"
+
+
 def test_legacy_tcp_listener_stays_dead():
     """T1-NET-019 leftover: src/core/nids_analyze.zig contains a 0.0.0.0 TCP
     listener (tcp_listener, spawned by analyze_packets, itself spawned only

@@ -8,6 +8,17 @@
 // G32: Federation Production Î“Ã‡Ã¶ node trust + message auth
 // G33: Observability Î“Ã‡Ã¶ health/readiness/liveness/metrics
 
+//
+// REL-SPEC-050 SPECIMEN -- NOT production (additive-first rule). This file
+// is the original G20-G33 design sketch: its concepts moved to live homes
+// (G20 heartbeats to reliability/watchdog.zig, G21 to fault_injection.zig,
+// G22 to security_check.zig, G23 to latency_histogram.zig, all four wired
+// in daemon.zig), while the rest (canary/IPS/XDR/federation sections) is
+// drill/specimen surface kept for the T15 fault-matrix specs. Nothing
+// under src/ outside tests may import this module (forbidden-edges pin);
+// its inline test blocks do NOT execute (unimported files never compile
+// into `zig build test` -- T15 reads this file as text instead).
+
 const std = @import("std");
 
 // =================================================================
