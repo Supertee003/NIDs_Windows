@@ -388,6 +388,50 @@ fn pep_state() -> &'static Mutex<PepState> {
     })
 }
 
+// PEP-ADAPTER-CACHE-073: cached WFP bridge handle. Loading the user-mode
+// DLL + opening the kernel device per BLOCK (LoadLibrary, 4x
+// GetProcAddress, device open per call) storms handles at block rates and
+// risks unload-during-callback hazards from the matching per-call
+// FreeLibrary. The steady-state success path reuses one handle; any
+// failure drops the entry so the next call re-probes (the old code
+// retried every call — same self-healing, minus the storm).
+#[cfg(windows)]
+mod adapter_cache {
+    use super::wfp_adapter::Adapter;
+    use parking_lot::Mutex;
+    use std::sync::OnceLock;
+
+    static CACHED: OnceLock<Mutex<Option<Adapter>>> = OnceLock::new();
+
+    fn slot() -> &'static Mutex<Option<Adapter>> {
+        CACHED.get_or_init(|| Mutex::new(None))
+    }
+
+    // SAFETY: the module handle is exclusively owned here and every use
+    // goes through the cache mutex, so no two threads enter the bridge
+    // DLL concurrently through this path.
+    unsafe impl Send for Adapter {}
+
+    /// Run `f` against the cached bridge, loading on first use and on any
+    /// prior failure. Returns None when no provider is available.
+    pub fn with_adapter<T>(f: impl FnOnce(&Adapter) -> Option<T>) -> Option<T> {
+        let mut guard = slot().lock();
+        if guard.is_none() {
+            *guard = Adapter::load();
+        }
+        match guard.as_mut() {
+            Some(adapter) => {
+                let out = f(adapter);
+                if out.is_none() {
+                    *guard = None;
+                }
+                out
+            }
+            None => None,
+        }
+    }
+}
+
 // ============================================================================
 // 3. FFI surface
 // ============================================================================
@@ -536,23 +580,16 @@ pub unsafe extern "C" fn aegis_pep_enforce(
     if decision == DECISION_BLOCK {
         #[cfg(windows)]
         {
-            match wfp_adapter::Adapter::load() {
-                Some(adapter) => {
-                    let flow = wfp_adapter::FlowRequest {
-                        remote_ipv4: req.dst_ip,
-                        remote_port: req.dst_port,
-                        protocol: req.protocol,
-                        reserved: 0,
-                    };
-                    match adapter.block_flow(&flow) {
-                        Some(id) => filter_id = id,
-                        None => {
-                            decision = DECISION_ESCALATE;
-                            reason = 4;
-                        }
-                    }
-                }
-                _ => {
+            // PEP-ADAPTER-CACHE-073: cached bridge (re-probes on failure).
+            let flow = wfp_adapter::FlowRequest {
+                remote_ipv4: req.dst_ip,
+                remote_port: req.dst_port,
+                protocol: req.protocol,
+                reserved: 0,
+            };
+            match adapter_cache::with_adapter(|adapter| adapter.block_flow(&flow)) {
+                Some(id) => filter_id = id,
+                None => {
                     decision = DECISION_ESCALATE;
                     reason = 4;
                 }
@@ -880,6 +917,48 @@ mod tests {
     #[test]
     fn pep_ip_only_cleanup_is_rejected_even_with_capability() {
         assert_eq!(aegis_pep_unblock_ip(0xC0A80101, 1, 1, 3), -4);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn adapter_cache_miss_reprobes_without_sticking() {
+        // PEP-ADAPTER-CACHE-073: with no provider device here every use
+        // misses. Repeated misses must re-probe (return None) rather than
+        // wedge, and an approved BLOCK must surface as ESCALATE reason 4
+        // through the cache path exactly as the old per-call load did.
+        assert!(adapter_cache::with_adapter(|_| Some(1u64)).is_none());
+        assert!(adapter_cache::with_adapter(|_| Some(1u64)).is_none());
+        assert_eq!(aegis_pep_set_two_person_rule(0, 1), 0);
+        let req = PepRequest {
+            decision_kind: 61,
+            requested_action: ACTION_BLOCK,
+            flow_id: 7,
+            src_ip: 0xC0A80177,
+            dst_ip: 0x08080808,
+            src_port: 12345,
+            dst_port: 443,
+            protocol: 6,
+            policy_id: 7,
+            severity: 4,
+            ctx: PepContext {
+                caller_pid: 1,
+                caller_capability_mask: 1,
+                request_id: 777002,
+                policy_version: 0,
+            },
+        };
+        let mut resp = PepResponse {
+            decision: 0,
+            reason: 0,
+            quota_remaining: 0,
+            signed_by: 0,
+            filter_id: 0,
+        };
+        unsafe {
+            assert_eq!(aegis_pep_enforce(&req, &mut resp), 0);
+            assert_eq!(resp.decision, DECISION_ESCALATE);
+            assert_eq!(resp.reason, 4);
+        }
     }
 
     #[test]
