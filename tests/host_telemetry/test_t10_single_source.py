@@ -186,8 +186,10 @@ def test_host_network_and_process_share_event_processor() -> None:
     text = (REPO_ROOT / "src" / "pipeline" / "event_processor.zig").read_text(encoding="utf-8")
     # processEvent handles every event kind through one flow key build —
     # there is no source-kind branch and no second flow construction site.
+    # (Unit tests in the same file also call FlowKey.normalize, so the pin
+    # matches the production call site, not the bare identifier.)
     assert "fn processEvent" in text, "event_processor.zig must define processEvent"
-    assert text.count("FlowKey.normalize") == 1, (
+    assert text.count("const fkey = flow.FlowKey.normalize") == 1, (
         "event_processor must build the flow key at exactly one site (single model)"
     )
 
