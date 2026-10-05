@@ -3,6 +3,7 @@
 **Generated:** 2026-10-05 · **HEAD:** `5c21014` · **Truth:** TRUTH_VALID (working tree) · **Release:** 529/529 match
 **Scope:** ซ่อม/ต่อ backend ให้ครบเส้นเดียว (single production spine) + ล็อกสัญญาข้ามภาษา + ปิดช่อง observe-only ที่พูดเกินจริง
 **Method:** vertical slice / patch transaction (AGENTS.md) — 1 flow contract ต่อ 1 patch, มี test pin ทุก patch, ห้ามเคลมเกินหลักฐาน (E0–E7)
+**User constraint (ถาวร):** ห้ามลบมั่ว — เปลี่ยนแบบ additive เสริมการทำงานก่อนเสมอ; จะลบได้เฉพาะของที่พิสูจน์แล้วว่า quarantined + zero importers + มี pin กัน + กู้คืนได้จาก git (เช่น DISP-MIGRATE-047)
 
 ---
 
