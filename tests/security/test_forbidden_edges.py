@@ -282,8 +282,8 @@ def test_specimen_modules_have_no_production_importers():
 
 
 def test_federation_family_has_no_production_importers():
-    """FED-TIDY-058: src/federation/* (codec/coord/TLS/TCP/bench/aggregator/
-    node_registry) is test-only and unwired: the daemon graph never imports
+    """FED-TIDY-058: src/federation/* (codec/coord/Rust-TLS-delegate/TCP/
+    bench/aggregator/discovery-registry) is test-only and unwired: the daemon graph never imports
     it, the control plane reports standalone, and escalate() has no
     transport. Bench/CLI scaffolding (core/perf_benchmark,
     core/integration_test, tests/*) is the only allowed importer; a

@@ -67,7 +67,7 @@ AUTHORITY_MODULES = [
     'src/forensic/replayable_security.zig', 'src/core/authority_review.zig',
     # Federation and TLS.
     'src/federation/cluster_coord.zig', 'src/federation/federation_codec.zig',
-    'src/federation/federation_tcp.zig', 'src/federation/federation_tls.zig',
+    'src/federation/federation_tcp.zig', 'src/federation/federation_rust_tls.zig',
     # IPS/XDR.
     'src/windows/ips_canary_order.zig', 'src/core/real_ips_path.zig',
     'src/xdr/xdr_incident_fabric.zig',

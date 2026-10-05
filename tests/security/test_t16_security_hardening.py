@@ -34,8 +34,8 @@ lives today:
     invalid rulesets are rejected (no partial swap).
   secret handling / certificate handling
     auth token is a non-empty sentinel fingerprinted with FNV-1a
-    (shield/src/pep.rs); cert fingerprint stored + validated in
-    federation_tls CertificateValidator.
+    (shield/src/pep.rs); federation trust anchors are pinned + verified
+    in rust-src (WebPkiClientVerifier, empty roots fail closed).
   privilege boundaries
     ADR-0001: Rust PEP is the ONLY enforcement authority; approaching it
     are only requests. See authority_invariants.
@@ -74,7 +74,7 @@ PEP_RS = "shield/src/pep.rs"
 PEP_LIB = "shield/src/lib.rs"
 NOSE_PR = "src/capture/nose_pipe_reader.zig"
 CONFIG_RELOAD = "src/tests/proofs/config_reload_proof.zig"
-FED_TLS = "src/federation/federation_tls.zig"
+FED_TLS_RUST = "rust-src/lib.rs"
 FAULT_MATRIX = "src/reliability/fault_matrix.zig"
 
 # AC1: (hardening category, evidence that must exist somewhere real).
@@ -142,7 +142,7 @@ def test_hardening_categories_coverage() -> None:
     pep_lib = _read(PEP_LIB)
     nose = _read(NOSE_PR)
     config = _read(CONFIG_RELOAD)
-    fed = _read(FED_TLS)
+    fed_rust = _read(FED_TLS_RUST)
     fault = _read(FAULT_MATRIX)
 
     checks = {
@@ -176,8 +176,8 @@ def test_hardening_categories_coverage() -> None:
             "auth token must be a non-empty sentinel fingerprint",
         ),
         "certificate handling": (
-            "ca_fingerprint" in fed and "CertificateValidator" in fed,
-            "federation TLS must fingerprint + validate certs",
+            "WebPkiClientVerifier" in fed_rust and "no trust anchors (empty roots fail closed)" in fed_rust,
+            "federation TLS must verify peer chains against pinned trust anchors (Rust stack, P2B2 cutover)",
         ),
         "privilege boundaries": (
             "advisory" in _read("src/core/brain_engine.zig") or "never" in pep.lower(),

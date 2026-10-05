@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "ca419a2",
+  "source_commit": "b747276",
   "build_date": "2026-10-03T20:43:09.417869+00:00",
   "build_host": "windows",
   "platform": {
@@ -222,8 +222,8 @@
     },
     {
       "path": "Cargo.toml",
-      "size": 1057,
-      "sha256": "2442a9b972e9b3409880795b787aebb694a0d488eae1eb99fd203d00de7aa881",
+      "size": 1236,
+      "sha256": "fb2981df580de69a3c3b682bc2b0cb228b7b11ef1670049d9a4ccb0ac0d6d540",
       "language": "data"
     },
     {
@@ -426,8 +426,8 @@
     },
     {
       "path": "brain/cython/cython_regex_scan.pyx",
-      "size": 5339,
-      "sha256": "4b986347463552138668292c10deef33a477cc839e3cb5d22c43e1295a02d193",
+      "size": 5367,
+      "sha256": "dc9f44516a770e6b1647f2a3cb0ec54554b0cd8e6439b66c852ac38fe85bbcdb",
       "language": "python/cython"
     },
     {
@@ -570,8 +570,8 @@
     },
     {
       "path": "brain/windows_brain.py",
-      "size": 36572,
-      "sha256": "db2929529ca870cc86f623e55819d29881fcabc28571dac13e9515b7895414cb",
+      "size": 45425,
+      "sha256": "8e4bfe18319a6edbe7a36ca3ca146dbf9e08546cf05893e7e3dcca9ab9c7450c",
       "language": "python/cython"
     },
     {
@@ -2058,8 +2058,8 @@
     },
     {
       "path": "config/Rules.json",
-      "size": 7974,
-      "sha256": "8bdbd39b0bce5412bae6061fc8287e0584138a1db06669b934af0fe11fd0427f",
+      "size": 8321,
+      "sha256": "d7f110f618c7a57ebbfaa1a2b4235cfd3f846d0340436441514b877254e5ba0c",
       "language": "json"
     },
     {
@@ -2070,8 +2070,8 @@
     },
     {
       "path": "go/aggregator/README.md",
-      "size": 2313,
-      "sha256": "238de21560629718012d4ddb8628149b17bf17840ec70d507e4517a7b038690e",
+      "size": 2337,
+      "sha256": "47138006684f7ba207f0665633224354d7c3e58c903915c896f1e2ff58fc63a7",
       "language": "data"
     },
     {
@@ -2082,8 +2082,8 @@
     },
     {
       "path": "go/aggregator/aggregator.exe",
-      "size": 8941568,
-      "sha256": "c7b0d2904838a85f78d65fd7a3d98e6d88bde57403830fb7dd63caf03e6fec5c",
+      "size": 8942080,
+      "sha256": "0958276f87a31b1b17bfb2aa39da6dcc025ca2de6d27ce4c69a7b93913f831d8",
       "language": "data"
     },
     {
@@ -2130,8 +2130,8 @@
     },
     {
       "path": "go/aggregator/main.go",
-      "size": 11476,
-      "sha256": "8379edf547c82c4b219174562cd1ae364aa41c8b22a617cfc4855f55a277e761",
+      "size": 12014,
+      "sha256": "f4ffcdd43c8dd80c483a0af046d7f2fb21ff72a60c0c9612007534ef59e4e7bf",
       "language": "go"
     },
     {
@@ -2149,7 +2149,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 17724,
-      "sha256": "5c6a856b0101ac1b3de315390d50a256cbd0692c23427e50c4b20e3bdc615370",
+      "sha256": "99fd1990fe9fe0f6457fdba4106ab340d14b13dbfee1ca4d88dcd6b285cce21e",
       "language": "json"
     },
     {
@@ -2244,8 +2244,8 @@
     },
     {
       "path": "scripts/aegis_metrics.py",
-      "size": 7082,
-      "sha256": "fc01b368af5a56c02624287a2f58eb9ac4867d288cff71e33a6ee79d5bffe354",
+      "size": 7648,
+      "sha256": "f4666079a7409e035697f87b4a0e1a35d49bed7010be4d25469996ccb641a067",
       "language": "python/cython"
     },
     {
@@ -2352,8 +2352,8 @@
     },
     {
       "path": "scripts/deploy_local_runtime.ps1",
-      "size": 7264,
-      "sha256": "027ec83c686100ad0b6a4d77d0c47c77e7a884270354c7d13a594cbf33da875f",
+      "size": 7424,
+      "sha256": "7e62b05e5580498f95a8c11c70580dacf2c4c130b294fc1703a4c69030802ad7",
       "language": "script"
     },
     {
@@ -2388,14 +2388,14 @@
     },
     {
       "path": "scripts/gen_kali_22.py",
-      "size": 11380,
-      "sha256": "8f91d962b9c9583ab25d762a732ebb882f392551522506ffd99506ac0393e6c6",
+      "size": 11546,
+      "sha256": "9ade0999edb3fefb06b69b6e7bf4948f6b8320a03ab2a0122393f3bc9bf6faeb",
       "language": "python/cython"
     },
     {
       "path": "scripts/generate_detection_fixture_manifest.py",
-      "size": 5150,
-      "sha256": "19f129468437df6b4254458615d3e539811cc7b11cbe921e0dc953b8859386d1",
+      "size": 5162,
+      "sha256": "e23ee0ec37aa03f471d4b1ff2f794d22e7bfdc409ab3db269cba2aaf367415a3",
       "language": "python/cython"
     },
     {
@@ -2406,14 +2406,14 @@
     },
     {
       "path": "scripts/generate_rule_policy_mapping_draft.py",
-      "size": 4179,
-      "sha256": "c9413d17ac0e445df2e0316a554e1ac72e06ced992a40fb4a6bda6208ac951d8",
+      "size": 4168,
+      "sha256": "33cec98715a8d6b735d35c846e7d82bb1de96df395fd59ed13ab929024976e2a",
       "language": "python/cython"
     },
     {
       "path": "scripts/generate_rule_qualification_matrix.py",
-      "size": 6491,
-      "sha256": "c0f9a0f78d7c6bc7bde1efe45b0fc08dc9960298a4057d2cd606f58924930a91",
+      "size": 6483,
+      "sha256": "f387bbd813f58d740844accb31c0839930ff120dbafff36db767187f4efb0554",
       "language": "python/cython"
     },
     {
@@ -2604,8 +2604,8 @@
     },
     {
       "path": "scripts/pre_attack_readiness_scan.py",
-      "size": 5688,
-      "sha256": "ebfc3e284a38607109273e708646d3c574484babbdbae859bbc4fe50e903decb",
+      "size": 5859,
+      "sha256": "d1d2e44bfa5c53807d4e24d15fb8e01e904742f6c88a9adf94d6d24c819a7a08",
       "language": "python/cython"
     },
     {
@@ -2616,8 +2616,8 @@
     },
     {
       "path": "scripts/project2_runtime_gate.ps1",
-      "size": 4346,
-      "sha256": "600ed18a57701623b2ef1309efbb6eb3c3a31eaae673c23bd49bad482c67e6e9",
+      "size": 4502,
+      "sha256": "1175570fc208e7e931a129d0e1e1516d80b7b703a8ced7995360b01dc0f310bf",
       "language": "script"
     },
     {
@@ -2640,8 +2640,8 @@
     },
     {
       "path": "scripts/run_22rules_kit.py",
-      "size": 4655,
-      "sha256": "d6ca82e81aec4f3ae5d87a8b349d8b2cb2e6763c22ce076ae51c4be11a871441",
+      "size": 4651,
+      "sha256": "8c6c59266b0e449c70ec37f5ab998dccc593563d59bf0904599120a1c94bc9d3",
       "language": "python/cython"
     },
     {
@@ -2748,8 +2748,8 @@
     },
     {
       "path": "scripts/run_rule_matching_observe_only.py",
-      "size": 2647,
-      "sha256": "ef8197b02f55c896d248dc4ba89844d97b14837aab603a52365de83efb18baff",
+      "size": 2663,
+      "sha256": "bfc056bf5f9937a42b8323046a72ebbc21140d62aa6c7bf869aab9ab8e3285bb",
       "language": "python/cython"
     },
     {
@@ -2766,8 +2766,8 @@
     },
     {
       "path": "scripts/run_synthetic_detection_adapters.py",
-      "size": 4783,
-      "sha256": "0a4005fafe087797c8c233a07c0be0c518bd8fffa2af101af6b8cd6656e50e70",
+      "size": 4821,
+      "sha256": "ee8479657962643d9389dc95505c7b8095d2fb938a24825c19b0ec3bbf978e41",
       "language": "python/cython"
     },
     {
@@ -2802,8 +2802,8 @@
     },
     {
       "path": "scripts/split_22rules_files.py",
-      "size": 3474,
-      "sha256": "dcd7d7e7c23c83f505b5bff52639283c4b81eb069a6b4cb9a6d178fb121816fa",
+      "size": 3482,
+      "sha256": "bfadd627a523224004e75c019daf59c2012f72db91d03d8f39d27369aa74fff3",
       "language": "python/cython"
     },
     {
@@ -2838,8 +2838,8 @@
     },
     {
       "path": "scripts/validate_detection_fixture_manifest.py",
-      "size": 2470,
-      "sha256": "2dbacec0a29c7e8a9cdd3704ea05a872466ebcdb47e06cf2f2d17e3c96fc47e2",
+      "size": 2620,
+      "sha256": "0fd53881249b5be126417b48d7fba0b5cf1650568416c40f63fce1cfa38515c5",
       "language": "python/cython"
     },
     {
@@ -2916,8 +2916,8 @@
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 61445,
-      "sha256": "e872e7feb62e6c08469b4c04264a3fd638edac4ae63ed165b103d729e0151ccd",
+      "size": 65450,
+      "sha256": "31c4fac6db0507e4c0575a460d62194148a20c4b759d3db2a15d9a5daa35ba22",
       "language": "python/cython"
     },
     {

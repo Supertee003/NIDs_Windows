@@ -86,8 +86,10 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   missing-client rejection; rcgen dev-dep for test PKI only) — still
   unwired (no FFI, no caller). FED-P2B1 landed: narrow outbound-only C
   ABI (connect/send/recv/close, opaque handles, fail-closed codes) with
-  in-crate FFI round-trip + misuse proofs; still no Zig caller (mock
-  stack dies in P2B2). Pin stays until P4.
+  in-crate FFI round-trip + misuse proofs; still no Zig caller. FED-P2B2
+  landed: one-stack cutover — Zig mock TLS + CLI deleted, Transport
+  delegates via aegis_fed_* FFI, T13/T16/config/manifest pins retargeted,
+  revocation gap open to P4. Pin stays until P4 daemon wiring.
 - [ ] policy_signing onto enforcement path + trust_store CNG + two-person API
 - [x] IPv6 full (contract v2) — wire v2 decode-ready T2-V6-022a (Go/Zig/
   C++/Python dispatch + 006 vector + bit2 preserved) + nose live emit

@@ -5,7 +5,6 @@ comptime {
     _ = @import("cli/federation_bench_cli.zig");
     _ = @import("cli/federation_cli.zig");
     _ = @import("cli/federation_tcp_cli.zig");
-    _ = @import("cli/federation_tls_cli.zig");
     _ = @import("cli/host_telemetry_cli.zig");
     _ = @import("cli/host_telemetry_detectors_cli.zig");
     _ = @import("cli/host_telemetry_mock_cli.zig");

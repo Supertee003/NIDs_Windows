@@ -1,10 +1,10 @@
 {
   "runtime_version": "5.0.0",
-  "head_sha": "ca419a270f3b79eca8482d3c273d5c072401076b",
+  "head_sha": "b747276b2afe621ceef0db18b0157f4af005d9d2",
   "entrypoint": "src/main.zig",
   "production_binary": "zig-out/bin/aegis_nids.exe",
-  "source_commit": "ca419a2",
-  "date": "2026-10-04T15:37:18.466331+00:00",
+  "source_commit": "b747276",
+  "date": "2026-10-05T18:16:32.023411+00:00",
   "production_modules": 3,
   "modules": {
     "nose/capture.go": {
@@ -142,10 +142,10 @@
       "golden_path": true,
       "canonical_path": "src/federation/federation_tcp.zig"
     },
-    "src/federation/federation_tls.zig": {
+    "src/federation/federation_rust_tls.zig": {
       "status": "REAL",
       "golden_path": true,
-      "canonical_path": "src/federation/federation_tls.zig"
+      "canonical_path": "src/federation/federation_rust_tls.zig"
     },
     "src/windows/ips_canary_order.zig": {
       "status": "REAL",
