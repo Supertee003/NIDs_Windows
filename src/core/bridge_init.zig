@@ -15,7 +15,7 @@
 const std = @import("std");
 
 pub const AEGIS_VERSION = "1.0.0-dev";
-pub const AEGIS_BUILD = "zig-0.13";
+pub const AEGIS_BUILD = "zig-0.13.0";
 pub const SHIELD_VERSION = "REMOVED";  // PEP-001: shield removed, enforcement via Rust PEP only
 const rust_pep = @import("rust_pep.zig");
 const win = std.os.windows;

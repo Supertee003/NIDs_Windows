@@ -159,7 +159,7 @@ pub const RuntimeState = struct {
     started_at_ms: i64 = 0,
     uptime_ms: i64 = 0,
     version: []const u8 = "5.0.0",
-    build: []const u8 = "zig-0.13",
+    build: []const u8 = "zig-0.13.0",
     mutex: std.Thread.Mutex = .{},
 
     /// Register a subsystem at startup.

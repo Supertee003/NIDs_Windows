@@ -86,3 +86,19 @@ def test_daemon_version_handler_matches_contract():
     payload = json.loads(m.group(1).encode().decode("unicode_escape"))
     for key in ("core", "nose", "pep", "brain"):
         assert payload[key] == EXPECTED[key], (key, payload[key])
+
+
+def test_toolchain_strings_match_release_record():
+    # VER-BUILD-054: the in-binary build stamps must equal the toolchain
+    # version recorded for releases (CI ZIG_VERSION 0.13.0). A bare
+    # "zig-0.13" stamp sends operators to the wrong toolchain on rebuilds.
+    rel = (REPO / "tools" / "release_engineering.py").read_text(encoding="utf-8")
+    m = re.search(r'"zig":\s*"([^"]+)"', rel)
+    assert m, "release toolchain record not found"
+    want = f"zig-{m.group(1)}"
+    for path in ("src/core/bridge_init.zig", "src/control/state_machine.zig"):
+        src = (REPO / path).read_text(encoding="utf-8")
+        assert f'"{want}"' in src, f"{path} must stamp {want}"
+    for path in ("src/core/bridge_init.zig", "src/control/state_machine.zig"):
+        src = (REPO / path).read_text(encoding="utf-8")
+        assert not re.search(r'"zig-0\.13"(?!\.\d)', src), f"{path} still has short stamp"
