@@ -142,6 +142,30 @@ def test_every_canonical_rule_declares_both_pattern_fields():
         assert rule.get("regex_pattern"), f"{rule['rule_id']} needs a regex_pattern"
 
 
+# ── AC6: match_pattern strings are unique ────────────────────────────────────
+#
+# The Zig automaton stores per-terminal-state outputs as (start, count)
+# into one shared list, which is only correct when no two patterns end at
+# the same state — i.e. no duplicate match_pattern strings. A duplicate
+# would read a neighboring rule's id (output aliasing). Fixing the
+# automaton for ambiguous same-bytes rules needs a rule-owner verdict
+# (priority? first-wins?), so the contract instead keeps the edge
+# unreachable: every canonical rule carries a distinct non-empty pattern.
+
+
+def test_match_patterns_are_unique_and_nonempty():
+    seen: dict[str, str] = {}
+    for rule in _canonical_rules():
+        pattern = rule.get("match_pattern", "")
+        assert isinstance(pattern, str) and len(pattern) > 0, (
+            f"{rule.get('rule_id')} needs a non-empty match_pattern"
+        )
+        assert pattern not in seen, (
+            f"duplicate match_pattern {pattern!r} in {rule.get('rule_id')} "
+            f"and {seen[pattern]} would alias automaton outputs"
+        )
+        seen[pattern] = rule.get("rule_id", "?")
+
 # ── AC5: rule action is an advisory label, never an enforcement order ──────
 #
 # In Project 2 observe-only mode the detection tiers (Zig AC, Go substring)
