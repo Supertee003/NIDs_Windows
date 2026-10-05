@@ -895,6 +895,12 @@ def main():
         except json.JSONDecodeError as e:
             print(f"{UI.YELLOW}[!] JSON Decode Error from {addr}: {e}{UI.RESET}")
         except Exception as e:
+            # B2-ERRCNT-053: internal failures count on the HEALTH errors
+            # counter (previously permanently zero — the supervisor could
+            # never see brain errors). Malformed input above stays
+            # uncounted: garbage transport is not a brain malfunction.
+            # `global` is declared once at main() top (line ~598).
+            ERROR_COUNT += 1
             print(f"{UI.DANGER}[ERROR]{UI.RESET} {e}")
 
 if __name__ == "__main__":
