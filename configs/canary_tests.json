@@ -127,7 +127,9 @@
         "severity": "High",
         "policy": "Block",
         "rule_id": "R0088"
-      }
+      },
+      "quarantined": true,
+      "quarantine_reason": "payload never matches R0088 (path-traversal rule) by match_pattern or regex; RFI needs a dedicated rule (rule-owner verdict pending)"
     },
     {
       "name": "port_scan",
@@ -181,7 +183,9 @@
         "severity": "Low",
         "policy": "Alert",
         "rule_id": "R9059"
-      }
+      },
+      "quarantined": true,
+      "quarantine_reason": "payload never matches R9059 (XSS rule) by match_pattern or regex; DNS-exfil needs a dedicated rule (rule-owner verdict pending)"
     }
   ]
 }

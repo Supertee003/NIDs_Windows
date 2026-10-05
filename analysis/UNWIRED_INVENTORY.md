@@ -58,10 +58,12 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
 - [x] SIEM pipeline wiring (T1-SIEM-020/020b/021/022/021b: spill, honest
   transports, auto-replay, daemon env wiring, metrics)
 - [x] Gate-E canary runner (CLI `canary run/status/report` verifies
-  definitions vs Rules.json + live engine count; read-only). OPEN: 2
-  severity drifts need rule-owner verdict (rfi_basic expects High, file
-  has Critical; data_exfil expects Low, file has High) — runner reports,
-  never auto-fixes.
+  definitions vs Rules.json + live engine count; read-only). Investigated
+  2026-10: the 2 drifts were NOT severity typos — both payloads miss their
+  named rules by match_pattern AND regex (rfi_basic vs R0088 traversal,
+  data_exfil vs R9059 XSS), so neither could ever fire. Quarantined with
+  reasons (reported, never graded); real RFI/exfil rules still need a
+  rule-owner verdict (new rule IDs, severity/action, 22-rule pins).
 - [x] `forensics.replay` handler ← replay_verifier (wired: integrity-only
   observe replay T1-REPLAY-021 — export ring + re-verify CRC/hash chain;
   pipeline re-execution deliberately NOT performed, events_replayed stays 0,

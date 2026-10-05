@@ -961,9 +961,11 @@ def cmd_canary(args) -> int:
     Honest scope: the wire carries no payload bytes for injected events,
     so no CLI path can prove live firing (that needs a capture-path
     fixture, not a control command). What this proves instead: every
-    canary's expected rule exists in configs/Rules.json with matching
-    severity, plus an optional live-engine count cross-check when the
-    daemon answers. Read-only; never touches enforcement or the engine.
+    ACTIVE canary's expected rule exists in configs/Rules.json with
+    matching severity, plus an optional live-engine count cross-check when
+    the daemon answers. Quarantined definitions (payload/rule mismatch,
+    dedicated rule pending) are reported separately, never graded.
+    Read-only; never touches enforcement or the engine.
     """
     sub = getattr(args, "canary_command", "status")
     if sub == "status":
@@ -999,11 +1001,24 @@ def cmd_canary(args) -> int:
         return 2
     engine_count = _live_engine_rule_count()
     details = []
+    quarantined = []
     for t in tests:
         if not isinstance(t, dict):
             continue
         name = t.get("name", "?")
         if only is not None and name != only:
+            continue
+        # Quarantined definitions (payload never matches the named rule;
+        # dedicated rule pending owner verdict) are reported, never graded.
+        if t.get("quarantined") is True:
+            if only is not None:
+                print(json.dumps({"available": True, "quarantined": True,
+                                  "name": name,
+                                  "reason": t.get("quarantine_reason", "")},
+                                 sort_keys=True))
+                return 0
+            quarantined.append({"name": name,
+                                "reason": t.get("quarantine_reason", "")})
             continue
         want_rule = t.get("expected_rule_id")
         want_sev = t.get("expected_severity")
@@ -1024,7 +1039,10 @@ def cmd_canary(args) -> int:
     passed = sum(1 for d in details if d["passed"])
     failed = len(details) - passed
     result = {"available": True, "passed": passed, "failed": failed,
+              "quarantined": len(quarantined),
               "engine_rules": engine_count, "details": details}
+    if quarantined:
+        result["quarantined_tests"] = quarantined
     if engine_count is not None and engine_count != len(by_id):
         result["engine_drift"] = {"file": len(by_id), "engine": engine_count}
     try:

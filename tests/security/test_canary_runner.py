@@ -75,14 +75,26 @@ def test_canary_run_writes_no_enforcement_state():
     assert snapshot() == before, "canary must not touch enforcement bookkeeping"
 
 
-def test_canary_reports_definition_drift_honestly():
-    """The two known stale expectations must surface as severity_mismatch
-    (expected vs actual named), never as a pass and never as a crash."""
+def test_canary_quarantines_mismatched_definitions():
+    """rfi_basic / data_exfil payloads never match their named rules (proven
+    by match_pattern + regex), so they are quarantined: reported with
+    reasons, never graded as pass or fail."""
     proc = run("canary", "run")
-    assert proc.returncode in (0, 1), proc.stdout
+    assert proc.returncode == 0, proc.stdout
     payload = json.loads(proc.stdout)
-    by_name = {d["name"]: d for d in payload["details"]}
+    assert payload["failed"] == 0
+    assert payload["quarantined"] == 2
+    by_name = {q["name"]: q for q in payload["quarantined_tests"]}
     for name in ("rfi_basic", "data_exfil"):
-        assert by_name[name]["passed"] is False
-        assert by_name[name]["reason"] == "severity_mismatch"
-        assert "expected" in by_name[name] and "actual" in by_name[name]
+        assert name in by_name, payload
+        assert by_name[name]["reason"], "quarantine must carry its reason"
+    graded = {d["name"] for d in payload["details"]}
+    assert "rfi_basic" not in graded and "data_exfil" not in graded
+
+
+def test_canary_run_quarantined_test_reports_state():
+    proc = run("canary", "run", "--test", "rfi_basic")
+    assert proc.returncode == 0, proc.stdout
+    payload = json.loads(proc.stdout)
+    assert payload["quarantined"] is True
+    assert payload["reason"], "quarantine must carry its reason"
