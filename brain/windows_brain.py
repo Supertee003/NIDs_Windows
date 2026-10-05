@@ -138,6 +138,12 @@ except ImportError as e:
 LOG_FILE = "logs/anomalous.json"
 RULES_FILE = os.path.join(os.path.dirname(__file__), "..", "configs", "Rules.json")
 MAX_PAYLOAD_SIZE = 4096
+# B2-SCANVIS-048: chunked-scan geometry. Windows of SCAN_CHUNK bytes with
+# SCAN_OVERLAP overlap replace the old first-4096-bytes prefix scan, so a
+# marker past 4KB in a Case-2 UDP payload (up to 64KB) is still found.
+# Overlap covers any realistic marker split across a window edge.
+SCAN_CHUNK = MAX_PAYLOAD_SIZE
+SCAN_OVERLAP = 1024
 
 # B2-LOGTH-041: anomaly-log write throttle. anomalous.json is append-only
 # with no rotation, so a detection storm would fill the disk while the
@@ -329,14 +335,44 @@ def run_regex_scan(payload, tier2_engine, rules_data):
     Scan a payload against all compiled Tier-2 regex rules.
     Returns (rule_name, policy, rule_id, severity) if match found, else None.
 
+    B2-SCANVIS-048: chunked windows, not prefix-only. The old code scanned
+    only the first 4096 bytes, so a marker past 4KB in a Case-2 UDP payload
+    (up to 64KB) was silently missed — padding evasion. Windows of
+    SCAN_CHUNK bytes with SCAN_OVERLAP overlap are scanned in order; the
+    first match wins, preserving the single-window priority (Cython
+    fast-path, then rules order) inside every window. Structural big-blob
+    threats (NOP sleds, shellcode markers, heap spray) are additionally
+    covered by the Cython pre-filters on the full buffer upstream.
+
     T5b: if the Cython `brain.cython` extension is compiled, dispatch to the
     Cython fast-path (C-level loop over pre-built re.Pattern arrays) and
     return the 4-tuple shape. Otherwise fall back to the pure-Python loop.
     The two paths are proven equivalent by
     `tests/cython/test_cython_correctness.py`.
     """
-    safe_payload = str(payload)[:MAX_PAYLOAD_SIZE]
+    text = str(payload)
+    for window in _scan_windows(text):
+        result = _scan_window(window, tier2_engine, rules_data)
+        if result is not None:
+            return result
+    return None
 
+
+def _scan_windows(text):
+    """Yield SCAN_CHUNK slices with SCAN_OVERLAP overlap (last window short)."""
+    if len(text) <= SCAN_CHUNK:
+        yield text
+        return
+    start = 0
+    while start < len(text):
+        yield text[start:start + SCAN_CHUNK]
+        if start + SCAN_CHUNK >= len(text):
+            break
+        start += SCAN_CHUNK - SCAN_OVERLAP
+
+
+def _scan_window(safe_payload, tier2_engine, rules_data):
+    """Single-window scan: the pre-B2-SCANVIS-048 run_regex_scan body."""
     if CYTHON_REGEX_AVAILABLE and _cython_engine is not None:
         result = _cython_scan(safe_payload, _cython_engine)
         if result is not None:
