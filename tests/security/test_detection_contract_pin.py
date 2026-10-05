@@ -85,6 +85,25 @@ def test_go_classifier_matches_the_match_pattern_by_substring():
     assert "regex_pattern" not in go, "regex_pattern is owned by the Python Brain path"
 
 
+def test_fast_pattern_is_fixture_marker_only():
+    """AC1c: fast_pattern gates nothing in production. It is a synthetic
+    marker (fixture signals prepend it; the observe-only harness checks
+    it alongside regex), not packet content — R0088's "PATH_TRAV" never
+    appears in real traversal traffic, so gating match/regex on it would
+    silence real detections. Go/Zig must not read it."""
+    go = GO_CLASSIFIER.read_text(encoding="utf-8")
+    assert "fast_pattern" not in go and "FastPattern" not in go, (
+        "the Go classifier must match match_pattern directly, never gate on fast_pattern"
+    )
+    zig = ZIG_LOADER.read_text(encoding="utf-8")
+    assert "fast_pattern" not in zig, (
+        "the Zig automaton loader must build from match_pattern directly, never gate on fast_pattern"
+    )
+    # The fast→regex chain lives in the synthetic harness, where it belongs.
+    harness = (REPO_ROOT / "scripts" / "run_rule_matching_observe_only.py").read_text(encoding="utf-8")
+    assert "fast_pattern" in harness and "regex_pattern" in harness
+
+
 def test_zig_startup_uses_the_shared_bundle_resolver():
     """AC1b: a service (cwd=C:\\WINDOWS\\system32) must still find its rules.
 
