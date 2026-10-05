@@ -450,8 +450,34 @@ test "T5a: Brain scores RAG contextual-benign context as negative signal" {
     try std.testing.expect(std.mem.indexOf(u8, advice.explanation, "rag=false-positive") != null);
 }
 
-test "T5a: Brain RAG unavailable does not add signal and uses empty explanation" {
+test "RAG-BOUND-052: rag alone can never manufacture an escalation" {
+    // Overmatch ceiling: even a high-confidence known-threat context on a
+    // zero-signal event must stay below every recommendation threshold.
+    // RAG is advisory — it corroborates or rebuts, never decides.
     var advisor = BrainAdvisor.init();
+    const event = canonical.create(.zig_core);
+    const av = makeAv(.benign, 30, 1);
+    const alerts = .{null, null, null};
+    const ti = threat_intel.ThreatIntelMatch{ .src_match = null, .dst_match = null, .event_id = 1 };
+    const rag_ctx = rag.RagContext{
+        .available = true,
+        .match_count = 1,
+        .context_summary = "wildcard high-confidence known threat",
+        .references = undefined,
+        .reference_count = 0,
+        .confidence = 95,
+        .primary_category = .malware_signature,
+        .event_id = 1,
+    };
+
+    const advice = advisor.advise(event, av, alerts, ti, null, rag_ctx);
+    // det=0 on benign, rag=+15 -> 15 < 20 insufficient, far below 60/80.
+    try std.testing.expect(advice.kind == .insufficient_data);
+    try std.testing.expect(!advice.kind.recommendsChange());
+    try std.testing.expect(advice.threat_score < 20);
+}
+
+test "T5a: Brain RAG unavailable does not add signal and uses empty explanation" {    var advisor = BrainAdvisor.init();
     const event = canonical.create(.zig_core);
     const av = makeAv(.suspicious, 80, 1);
     const alerts = .{null, null, null};

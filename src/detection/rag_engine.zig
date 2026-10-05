@@ -531,6 +531,18 @@ test "RagEngine loadBuiltinEntries adds entries" {
     try std.testing.expect(engine.knowledgeCount() == 7);
 }
 
+test "RAG-BOUND-052: no builtin entry is fully wildcard" {
+    // The Entry-8 lesson, pinned: an entry with ip=0 AND rule_id=0 matches
+    // every query, so one bad row turns hasContext() on for the whole
+    // world. Single-dimension wildcards (scoped) are allowed; the
+    // match-all combination is not.
+    var engine = RagEngine.init();
+    engine.loadBuiltinEntries();
+    for (engine.knowledge.entries[0..engine.knowledge.count]) |entry| {
+        try std.testing.expect(!(entry.ip == 0 and entry.rule_id == 0));
+    }
+}
+
 test "RagEngine query returns context for known IP" {
     var engine = RagEngine.init();
     engine.loadBuiltinEntries();
