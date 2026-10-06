@@ -323,9 +323,12 @@ catch); mouth reads canonical keys + case-insensitive policy; web
 forwards policy_id/decision/provider so receipt_valid can hold; desktop
 + mouth + web recipe proofs; Go aggregator schema-compatible unchanged.
 Live tail proof pending daemon rebuild+restart — human step before
-attack tests),
-spool replay automation
-(exists — needs live proof), SBOM salt (SBOM-SALT-087: builtin
+attack tests), spool replay automation (BE-SPOOL-092: live round-trip
+proven — refused TCP collector spills 2 events, same forwarder replays
+to file on next flush with spool acked by deletion; counters
+read/spooled/forwarded/failed asserted; empty-replay no-op negative
+control; tmp-dir hermetic with red-green proof; metrics.snapshot
+already exposes spool counters, no Python change), SBOM salt (SBOM-SALT-087: builtin
 hash() is per-process salted — replaced with SHA-256 path IDs, proven
 identical across hash seeds on all 554 packages), CI truth/Trivy
 gates, web SSE backpressure (FE-SSE-090: disconnect ends the

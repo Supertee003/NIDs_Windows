@@ -885,6 +885,100 @@ test "SiemForwarder.init creates forwarder" {
     try std.testing.expect(forwarder.batch_buffer.items.len == 0);
 }
 
+test "BE-SPOOL-092: refused collector spills, next flush replays to file" {
+    // Live proof, no mocks: a real refused TCP collector (nothing
+    // listens on 127.0.0.1:9) forces the spill path; switching the SAME
+    // forwarder to file transport proves the auto-replay in flush().
+    // Every file lives under a tmp dir (no tracked-tree writes).
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const root = try tmp.dir.realpathAlloc(std.testing.allocator, ".");
+    defer std.testing.allocator.free(root);
+    const dest = try std.fmt.allocPrint(std.testing.allocator, "{s}/out.json", .{root});
+    defer std.testing.allocator.free(dest);
+    const spool = try std.fmt.allocPrint(std.testing.allocator, "{s}.spool", .{dest});
+    defer std.testing.allocator.free(spool);
+
+    var fwd = SiemForwarder.init(std.testing.allocator, .{
+        .enabled = true,
+        .transport = .tcp,
+        .endpoint = "tcp://127.0.0.1:9",
+        .destination = dest,
+        .retry_count = 1,
+        .retry_delay_ms = 0,
+        .batch_size = 100,
+    });
+    defer fwd.deinit();
+
+    const ev1 = ForwardedEvent{
+        .timestamp = 1700000000000, .attack_type = "sig", .src_ip = "10.0.0.1",
+        .dst_ip = "10.0.0.2", .src_port = 1000, .dst_port = 80, .protocol = "TCP",
+        .severity = "alert", .policy = "alert", .rule_id = "4242",
+        .status = "DETECTED", .payload = "",
+    };
+    const ev2 = ForwardedEvent{
+        .timestamp = 1700000000001, .attack_type = "sig", .src_ip = "10.0.0.3",
+        .dst_ip = "10.0.0.4", .src_port = 1001, .dst_port = 443, .protocol = "TCP",
+        .severity = "critical", .policy = "block", .rule_id = "7777",
+        .status = "DETECTED", .payload = "",
+    };
+    try fwd.forwardEvent(ev1);
+    try fwd.forwardEvent(ev2);
+    try fwd.flush();
+
+    // Phase 1: refused → spilled, nothing forwarded, nothing lost.
+    var stats = fwd.getStats();
+    try std.testing.expectEqual(@as(u64, 2), stats.total_events_read);
+    try std.testing.expectEqual(@as(u64, 2), stats.total_events_spooled);
+    try std.testing.expectEqual(@as(u64, 0), stats.total_events_forwarded);
+    try std.testing.expectEqual(@as(u64, 0), stats.total_events_failed);
+    const spooled = try std.fs.cwd().readFileAlloc(std.testing.allocator, spool, 65536);
+    defer std.testing.allocator.free(spooled);
+    try std.testing.expect(std.mem.count(u8, spooled, "\n") == 2);
+    try std.testing.expect(std.mem.indexOf(u8, spooled, "4242") != null);
+    try std.testing.expect(std.mem.indexOf(u8, spooled, "7777") != null);
+
+    // Phase 2: same forwarder, working transport → auto-replay delivers.
+    fwd.config.transport = .file;
+    try fwd.flush();
+    stats = fwd.getStats();
+    try std.testing.expectEqual(@as(u64, 2), stats.total_events_forwarded);
+    try std.testing.expectEqual(@as(u64, 0), stats.total_events_failed);
+    // Fully drained spool is deleted (ack = removal).
+    try std.testing.expectError(error.FileNotFound, std.fs.cwd().readFileAlloc(std.testing.allocator, spool, 65536));
+    const delivered = try std.fs.cwd().readFileAlloc(std.testing.allocator, dest, 65536);
+    defer std.testing.allocator.free(delivered);
+    try std.testing.expect(std.mem.count(u8, delivered, "\n") == 2);
+    try std.testing.expect(std.mem.indexOf(u8, delivered, "4242") != null);
+    try std.testing.expect(std.mem.indexOf(u8, delivered, "7777") != null);
+}
+
+test "BE-SPOOL-092: replay with no spool is a no-op" {
+    // Negative control: flush against an absent spool file changes no
+    // counters and creates no files.
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const root = try tmp.dir.realpathAlloc(std.testing.allocator, ".");
+    defer std.testing.allocator.free(root);
+    const dest = try std.fmt.allocPrint(std.testing.allocator, "{s}/out.json", .{root});
+    defer std.testing.allocator.free(dest);
+
+    var fwd = SiemForwarder.init(std.testing.allocator, .{
+        .enabled = true,
+        .transport = .file,
+        .destination = dest,
+        .retry_count = 1,
+        .retry_delay_ms = 0,
+    });
+    defer fwd.deinit();
+    const res = fwd.replaySpool();
+    try std.testing.expectEqual(@as(u64, 0), res.replayed);
+    try std.testing.expectEqual(@as(u64, 0), res.remaining);
+    const stats = fwd.getStats();
+    try std.testing.expectEqual(@as(u64, 0), stats.total_events_forwarded);
+    try std.testing.expectError(error.FileNotFound, std.fs.cwd().readFileAlloc(std.testing.allocator, dest, 65536));
+}
+
 test "SiemForwarder.forwardEvent adds to buffer" {
     const dest = "siem_buffer_test.json";
     defer std.fs.cwd().deleteFile(dest) catch {};
