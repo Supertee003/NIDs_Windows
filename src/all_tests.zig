@@ -72,7 +72,37 @@ comptime {
     _ = @import("tests/federation/node_registry.zig");
     _ = @import("tests/federation/aggregator.zig");
     _ = @import("tests/federation/federation_tcp.zig");
+    _ = @import("tests/federation/federation_rust_tls.zig");
     _ = @import("tests/xdr/xdr_engine.zig");
+    // TEST-SCOPE-085: every test-bearing module below runs here. Files
+    // that must NOT execute in the unit binary are listed with reasons
+    // in tests/security/test_zig_test_scope.py — adding tests to a new
+    // file wires them in automatically; moving a file OUT requires
+    // updating that registry (conscious, reviewed).
+    _ = @import("contract/event_fabric.zig");
+    _ = @import("contract/runtime_spine.zig");
+    _ = @import("detection/rag_intelligence.zig");
+    _ = @import("forensic/replayable_security.zig");
+    _ = @import("platform/win32_pipe.zig");
+    _ = @import("policy/control_ipc.zig");
+    _ = @import("policy/wfp_production.zig");
+    _ = @import("reliability/fault_matrix.zig");
+    _ = @import("reliability/release_engineering.zig");
+    _ = @import("reliability/release_provenance.zig");
+    _ = @import("xdr/xdr_correlator.zig");
+    _ = @import("xdr/xdr_harden.zig");
+    _ = @import("xdr/xdr_incident_fabric.zig");
+    _ = @import("xdr/xdr_incident_graph.zig");
+    _ = @import("windows/cpp_adapter.zig");
+    _ = @import("windows/hids_engine.zig");
+    _ = @import("windows/hids_process_monitor.zig");
+    _ = @import("windows/ips_canary.zig");
+    _ = @import("windows/ips_canary_order.zig");
+    _ = @import("windows/ips_simulation.zig");
+    _ = @import("capture/npcap_capture.zig");
+    _ = @import("main.zig");
+    _ = @import("policy/shadow_decision.zig");
+    _ = @import("tests/cli_imports.zig");
     // Pipeline hook tests (T1-SIEM-022 SIEM forwarding pin executes here).
     _ = @import("pipeline/event_processor.zig");
     // Control plane contract + handlers (T3-TWOP-023 pins execute here).

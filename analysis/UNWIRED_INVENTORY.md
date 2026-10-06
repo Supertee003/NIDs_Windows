@@ -123,8 +123,15 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   10); default absent = byte-identical behavior. CEREMONY-083 landed
   the operator tool: aegis-keygen (genkey/sign/verify, offline-only,
   no new deps, 3 proofs) so custody is executable, not just
-  documented. Still open: who generates/holds keys operationally
-  (human decision, not code).
+  documented. FED-LSTN-085 landed the listener half: loopback-only
+  listen/accept/port/close FFI + Zig server delegate (fail-closed
+  paths proven; full-duplex loopback proven in Rust, which caught and
+  fixed a real table-lock deadlock in send/recv); nothing in the
+  daemon listens. TEST-SCOPE-085 wired every runnable unit test into
+  `zig build test` (~290 newly executing, incl. the 4th silent-death
+  catch on federation_rust_tls) with a registry pin for deliberate
+  outs (integration/proofs/specimen/quarantine). Still open: who
+  generates/holds keys operationally (human decision, not code).
 - [x] IPv6 full (contract v2) — wire v2 decode-ready T2-V6-022a (Go/Zig/
   C++/Python dispatch + 006 vector + bit2 preserved) + nose live emit
   T2-V6-022b (`eventFromPacket` sidecars, `Send` dispatches v2).
