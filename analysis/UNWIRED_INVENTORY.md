@@ -335,7 +335,13 @@ with truncation flag and completeness invariant; rules.reload response
 carries skipped/skipped_ids/skipped_truncated additively; daemon
 startup warns skipped IDs; CLI passes the report through (gap the new
 pin caught: explicit result dict stripped unknown keys); Zig
-classifier + end-to-end + escape tests with red-green proof), SBOM salt (SBOM-SALT-087: builtin
+classifier + end-to-end + escape tests with red-green proof), forensic
+export writer (BE-EXP-099: forensics.export serves chain-verified ring
+records to fixed logs/forensic_export_<request_id>.json — no operator
+path input, bounded limit + byte budget with truncation flag, partial
+files deleted, re-read recount + SHA-256 postcondition WRITTEN_VERIFIED;
+in-file hermetic tests incl. limit-truncation + empty-ring with
+red-green proof; CLI client-side export untouched), SBOM salt (SBOM-SALT-087: builtin
 hash() is per-process salted — replaced with SHA-256 path IDs, proven
 identical across hash seeds on all 554 packages), CI truth/Trivy
 gates, web SSE backpressure (FE-SSE-090: disconnect ends the

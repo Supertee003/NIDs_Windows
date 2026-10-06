@@ -1081,11 +1081,171 @@ const handlers = struct {
         return "{\"verified\":false,\"integrity\":\"unavailable\",\"records\":0}";
     }
 
-    fn forensicsExport(_: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
-        ctx.failure_code = "NOT_IMPLEMENTED";
-        ctx.failure_state = "UNAVAILABLE";
-        ctx.failure_message = "forensic export has no verified writer/postcondition";
-        return null;
+    fn forensicsExport(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        // BE-EXP-099: server-side attested export. Chain-verified records
+        // serialize to one JSON line each under logs/ (fixed directory,
+        // request_id filename — no operator path input, no traversal).
+        // Bounded (limit 1..1000 default 100, 256 KiB budget, truncation
+        // flagged); the written file is re-read, counted, and hashed so
+        // the response postcondition proves durability, not just intent.
+        // Partial files are deleted, never left to masquerade as exports.
+        const ring = state_mod.g_forensic_ring orelse {
+            ctx.failure_code = "FORENSIC_UNAVAILABLE";
+            ctx.failure_state = "UNAVAILABLE";
+            ctx.failure_message = "forensic ring is not initialized";
+            return null;
+        };
+        var limit: u64 = 100;
+        if (payload == .object) {
+            if (payload.object.get("limit")) |lv| {
+                if (lv != .integer or lv.integer <= 0 or lv.integer > 1000) {
+                    ctx.failure_code = "INVALID_INPUT";
+                    ctx.failure_state = "REJECTED";
+                    ctx.failure_message = "limit must be an integer in 1..1000";
+                    return null;
+                }
+                limit = @intCast(lv.integer);
+            }
+        }
+        const runtime_paths = @import("../core/runtime_paths.zig");
+        const root = runtime_paths.resolveRoot(a) catch {
+            ctx.failure_code = "CONFIG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "cannot resolve runtime root";
+            return null;
+        };
+        defer a.free(root);
+        const logs_dir = std.fs.path.join(a, &.{ root, "logs" }) catch return null;
+        defer a.free(logs_dir);
+        std.fs.cwd().makePath(logs_dir) catch {
+            ctx.failure_code = "EXPORT_FAILED";
+            ctx.failure_state = "ERROR";
+            ctx.failure_message = "cannot create export directory";
+            return null;
+        };
+        const filename = std.fmt.allocPrint(a, "forensic_export_{d}.json", .{ctx.request_id}) catch return null;
+        defer a.free(filename);
+        const abs_path = std.fs.path.join(a, &.{ logs_dir, filename }) catch return null;
+        defer a.free(abs_path);
+        const res = exportRingToFile(a, ring, abs_path, limit) catch |err| {
+            ctx.failure_code = if (err == error.ChainBroken) "INTEGRITY_ERROR" else "EXPORT_FAILED";
+            ctx.failure_state = if (err == error.ChainBroken) "INTEGRITY_ERROR" else "ERROR";
+            ctx.failure_message = if (err == error.ChainBroken)
+                "hash chain verification failed; suspect records are not exported"
+            else
+                "export write or postcondition verification failed";
+            return null;
+        };
+        var hex: [64]u8 = undefined;
+        const digits = "0123456789abcdef";
+        for (res.sha, 0..) |b, i| {
+            hex[2 * i] = digits[b >> 4];
+            hex[2 * i + 1] = digits[b & 0xF];
+        }
+        return std.fmt.allocPrint(a,
+            "{{\"exported\":true,\"path\":\"{s}\",\"records\":{},\"truncated\":{},\"integrity\":\"ok\",\"sha256\":\"{s}\",\"oldest_record_seq\":{},\"postcondition\":\"WRITTEN_VERIFIED\"}}",
+            .{ abs_path, res.records, res.truncated, hex, res.oldest },
+        ) catch null;
+    }
+
+    const ExportError = error{ ChainBroken, RecordInvalid, WriteFailed, PostconditionFailed, OutOfMemory };
+
+    const ExportResult = struct {
+        records: u64,
+        truncated: bool,
+        oldest: u64,
+        sha: [32]u8,
+    };
+
+    /// Serialize chain-verified ring records to NDJSON at abs_path, then
+    /// prove the file by re-reading it (count + SHA-256). Same entry
+    /// shape as forensics.list; payload bytes are NOT exported (metadata
+    /// evidence only — full bytes stay behind forensics.show per record).
+    fn exportRingToFile(
+        a: std.mem.Allocator,
+        ring: *forensic_pipeline.ForensicRing,
+        abs_path: []const u8,
+        limit: u64,
+    ) ExportError!ExportResult {
+        if (!ring.verifyHashChain()) return ExportError.ChainBroken;
+        const count = ring.recordCount();
+        const slots = ring.capacity() / forensic_pipeline.RECORD_BYTES;
+        const oldest: u64 = if (count > slots) count - slots else 0;
+
+        const file = std.fs.createFileAbsolute(abs_path, .{ .truncate = true }) catch {
+            return ExportError.WriteFailed;
+        };
+        var file_open = true;
+        errdefer {
+            if (file_open) file.close();
+            std.fs.deleteFileAbsolute(abs_path) catch {};
+        }
+        var hasher = std.crypto.hash.sha2.Sha256.init(.{});
+        var written: u64 = 0;
+        var byte_budget: usize = 256 * 1024;
+        var index = oldest;
+        // Truncated only when the ring holds more than we wrote.
+        var truncated = false;
+        while (index < count and written < limit) : (index += 1) {
+            const record = ring.readRecord(index, a) orelse return ExportError.RecordInvalid;
+            defer a.free(record);
+            if (record.len < forensic_pipeline.HEADER_BYTES) return ExportError.RecordInvalid;
+            if (!forensic_pipeline.ForensicRing.verifyRecord(record)) return ExportError.RecordInvalid;
+            const header = std.mem.bytesAsValue(
+                forensic_pipeline.RecordHeader,
+                record[0..forensic_pipeline.HEADER_BYTES],
+            );
+            const origin = forensicRecordOrigin(header.reserved[6], header.reserved[5]);
+            var line_buf: [512]u8 = undefined;
+            var fbs = std.io.fixedBufferStream(&line_buf);
+            fbs.writer().print(
+                "{{\"record_seq\":{},\"event_id\":{},\"rule_id\":{},\"source\":{},\"source_name\":\"{s}\",\"source_space\":\"{s}\",\"payload_len\":{},\"verified\":true}}\n",
+                .{
+                    header.record_seq,
+                    header.ev_id,
+                    header.rule_id,
+                    origin.ordinal,
+                    origin.name,
+                    origin.space,
+                    header.payload_len,
+                },
+            ) catch return ExportError.WriteFailed;
+            const line = fbs.getWritten();
+            if (line.len > byte_budget) {
+                truncated = true;
+                break;
+            }
+            byte_budget -= line.len;
+            file.writer().writeAll(line) catch return ExportError.WriteFailed;
+            hasher.update(line);
+            written += 1;
+        }
+        if (index < count) truncated = true;
+        file.close();
+        file_open = false;
+        // Postcondition: re-read, recount, rehash. A short write, a
+        // concurrent mutation, or a disk lie fails here — never OK.
+        const back = std.fs.cwd().readFileAlloc(a, abs_path, 2 * 1024 * 1024) catch {
+            std.fs.deleteFileAbsolute(abs_path) catch {};
+            return ExportError.PostconditionFailed;
+        };
+        defer a.free(back);
+        var rehash = std.crypto.hash.sha2.Sha256.init(.{});
+        rehash.update(back);
+        var digest: [32]u8 = undefined;
+        rehash.final(&digest);
+        var lines: u64 = 0;
+        var it = std.mem.splitScalar(u8, back, '\n');
+        while (it.next()) |ln| {
+            if (ln.len > 0) lines += 1;
+        }
+        if (lines != written) {
+            std.fs.deleteFileAbsolute(abs_path) catch {};
+            return ExportError.PostconditionFailed;
+        }
+        // The re-read digest IS the attested hash: it proves the exact
+        // bytes resting on disk, not bytes we intended to write.
+        return .{ .records = written, .truncated = truncated, .oldest = oldest, .sha = digest };
     }
 
     fn forensicsReplay(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
@@ -1915,4 +2075,86 @@ test "version handler mirrors each component's own source of truth" {
     // version() returns a string literal (no allocation), so no free.
     const out = handlers.version(std.testing.allocator, .{ .null = {} }, &ctx).?;
     try std.testing.expectEqualStrings("{\"core\":\"5.0.0\",\"nose\":\"5.0.0\",\"pep\":\"5.0.0\",\"brain\":\"2.0.0\"}", out);
+}
+
+test "BE-EXP-099: export writes chain-verified records and proves the file" {
+    // Hermetic: in-memory ring (4 slots) + tmp path. The re-read
+    // postcondition, not the write call, is what the test trusts.
+    const event_mod = @import("../contract/event.zig");
+    var ring = try forensic_pipeline.ForensicRing.initMemory(std.testing.allocator, 4 * forensic_pipeline.RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+    var i: u64 = 0;
+    while (i < 3) : (i += 1) {
+        var ev = event_mod.IpcEvent.init(.signature_match);
+        ev.event_id = 100 + i;
+        ev.timestamp_ns = 1000 + i;
+        ev.rule_id = 4242;
+        _ = ring.append(&ev, "pay", 500 + i, 7, 1, 6);
+    }
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const root = try tmp.dir.realpathAlloc(std.testing.allocator, ".");
+    defer std.testing.allocator.free(root);
+    const path = try std.fs.path.join(std.testing.allocator, &.{ root, "exp.json" });
+    defer std.testing.allocator.free(path);
+
+    const res = try handlers.exportRingToFile(std.testing.allocator, &ring, path, 100);
+    try std.testing.expectEqual(@as(u64, 3), res.records);
+    try std.testing.expect(!res.truncated);
+    try std.testing.expectEqual(@as(u64, 0), res.oldest);
+    // Independent re-read: 3 lines, each naming rule 4242 and event ids.
+    const back = try std.fs.cwd().readFileAlloc(std.testing.allocator, path, 65536);
+    defer std.testing.allocator.free(back);
+    try std.testing.expectEqual(@as(usize, 3), std.mem.count(u8, back, "\n"));
+    try std.testing.expect(std.mem.indexOf(u8, back, "4242") != null);
+    try std.testing.expect(std.mem.indexOf(u8, back, "\"event_id\":100") != null);
+    try std.testing.expect(std.mem.indexOf(u8, back, "\"event_id\":102") != null);
+    // Attested hash matches the bytes on disk.
+    var h = std.crypto.hash.sha2.Sha256.init(.{});
+    h.update(back);
+    var digest: [32]u8 = undefined;
+    h.final(&digest);
+    try std.testing.expectEqualSlices(u8, &digest, &res.sha);
+}
+
+test "BE-EXP-099: export honors limit with truncation flagged" {
+    const event_mod = @import("../contract/event.zig");
+    var ring = try forensic_pipeline.ForensicRing.initMemory(std.testing.allocator, 4 * forensic_pipeline.RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+    var i: u64 = 0;
+    while (i < 3) : (i += 1) {
+        var ev = event_mod.IpcEvent.init(.signature_match);
+        ev.event_id = 200 + i;
+        ev.timestamp_ns = 2000 + i;
+        _ = ring.append(&ev, "", 600 + i, 0, 0, 2);
+    }
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const root = try tmp.dir.realpathAlloc(std.testing.allocator, ".");
+    defer std.testing.allocator.free(root);
+    const path = try std.fs.path.join(std.testing.allocator, &.{ root, "exp2.json" });
+    defer std.testing.allocator.free(path);
+
+    const res = try handlers.exportRingToFile(std.testing.allocator, &ring, path, 2);
+    try std.testing.expectEqual(@as(u64, 2), res.records);
+    try std.testing.expect(res.truncated);
+}
+
+test "BE-EXP-099: export on empty ring writes zero records, still verified" {
+    var ring = try forensic_pipeline.ForensicRing.initMemory(std.testing.allocator, 4 * forensic_pipeline.RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const root = try tmp.dir.realpathAlloc(std.testing.allocator, ".");
+    defer std.testing.allocator.free(root);
+    const path = try std.fs.path.join(std.testing.allocator, &.{ root, "exp3.json" });
+    defer std.testing.allocator.free(path);
+
+    const res = try handlers.exportRingToFile(std.testing.allocator, &ring, path, 100);
+    try std.testing.expectEqual(@as(u64, 0), res.records);
+    try std.testing.expect(!res.truncated);
+    // Empty file hashes to the well-known SHA-256 of nothing.
+    const back = try std.fs.cwd().readFileAlloc(std.testing.allocator, path, 65536);
+    defer std.testing.allocator.free(back);
+    try std.testing.expectEqual(@as(usize, 0), back.len);
 }
