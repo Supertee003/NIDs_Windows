@@ -130,8 +130,15 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   daemon listens. TEST-SCOPE-085 wired every runnable unit test into
   `zig build test` (~290 newly executing, incl. the 4th silent-death
   catch on federation_rust_tls) with a registry pin for deliberate
-  outs (integration/proofs/specimen/quarantine). Still open: who
-  generates/holds keys operationally (human decision, not code).
+  outs (integration/proofs/specimen/quarantine). ROADMAP-086
+  decisions: (1) custody = two humans (Key Officer + Witness, RB-011
+  §11 ceremony record, CNG-backed) with staged flip + rollback
+  criteria — mechanism complete, appointments pending; (2) N=100/60s
+  locked fail-safe pending lab exit criteria (benign baseline →
+  attack validation → matrix; no-guess tuning is repo law);
+  (3) single-host freeze at P4 — no listener wiring, no new ports;
+  (4) every tuning ships dataset + before/after + matrix. Still
+  open: the human appointments, the lab itself, multi-host scope.
 - [x] IPv6 full (contract v2) — wire v2 decode-ready T2-V6-022a (Go/Zig/
   C++/Python dispatch + 006 vector + bit2 preserved) + nose live emit
   T2-V6-022b (`eventFromPacket` sidecars, `Send` dispatches v2).
@@ -246,10 +253,12 @@ copy-then-use (retain policy in rule_loader, documented), canary
 severity drifts (CANARY-QUAR-056 quarantined; rfi_basic graduated to
 R0089 by RFI-RULE-071; data_exfil stays quarantined but the path is now
 open: CORR-DNS-080 wired the dns_query classifier + rule 9003
-(100/60s initial, synthetic-proven). Graduation still needs sensor
-proof + multi-event canary support (single-event canaries cannot fire
-count rules) — owner verdict in
-docs/adr/0004-dns-exfiltration-detection.md), mouth version drift
+(100/60s initial, synthetic-proven). ROADMAP-086 locks N=100 pending
+lab exit criteria (benign baseline → attack validation → evidence
+matrix); graduation still needs sensor proof + multi-event canary
+support (single-event canaries cannot fire count rules) — owner
+verdict in docs/adr/0004-dns-exfiltration-detection.md), mouth
+version drift
 (MOUTH-VER-057), CANARY_MAGIC ×3 (CANARY-MAGIC-055 pinned), per-call
 WFP DLL load (PEP-ADAPTER-CACHE-073: cached bridge handle, re-probe
 on failure), legacy whole-struct `serialize` memcpy path

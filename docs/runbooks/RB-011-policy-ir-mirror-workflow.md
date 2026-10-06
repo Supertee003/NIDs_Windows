@@ -126,6 +126,28 @@ writing this runbook.
     (flag absent): zero behavior change. This is the staged cutover:
     observe + prove first, enforce only with operator keys.
 
+11. **Key ceremony roles + staged gates (ROADMAP-086).** Custody is
+    two humans, not two files:
+    - **Key Officer**: generates the seed offline (`genkey` on the
+      ceremony host), signs artifacts, holds private material. Never
+      deploys.
+    - **Witness**: independently re-derives the pubkey (`genkey
+      --seed`), verifies every sidecar before deployment (`verify`
+      must exit 0), deploys anchors. Never holds private material.
+    - **Ceremony record** (kept with the deployment, outside the
+      repo): date, key_id, pubkey fingerprint (first 16 hex), both
+      names, storage class (CNG-backed on the ceremony host).
+    - **Stage gates**: Stage 0 = observe-only (today: verified flag
+      only). Stage 1 = opt-in trusted on a NON-production host with
+      operator keys (prove end-to-end, watch one release). Stage 2 =
+      production, only after Stage 1 shows zero unexpected
+      escalations/blocks for a full release cycle.
+    - **Rollback criteria** (any one reverts to the previous stage):
+      an enforcement decision traced to a wrongly-trusted policy; a
+      verify-false on a deployed artifact; loss of ceremony-record
+      continuity (unknown key_id appears). Rollback = remove anchor +
+      restart (fail-closed default restores itself).
+
 ## Verification
 
 - `metrics` shows `policy_ir.loaded: true`, matching rule count and hash.
