@@ -1,6 +1,7 @@
 # ADR-0006: Forensic IPv6 Record ABI
 
-**Status:** Proposed (blocked on layout + chain-migration verdicts)
+**Status:** Accepted (2026-10-06 — see Decision Log; raw-bytes-only,
+no layout change, SIEM/LogEvent shipped in FOR-V6A)
 **Date:** 2026-10-06
 
 ## Context
@@ -71,3 +72,17 @@ Investigation (code, not opinion):
 - `src/forensic/evidence_record.zig:165-184` (content-byte hash)
 - `src/forensic/forensic_log.zig` (`LogEvent`)
 - `src/pipeline/event_processor.zig` (`siemForward`, V6-DETECT-037)
+
+## Decision Log (2026-10-06, FOR-V6B)
+
+Accepted: raw-bytes-only. No header break, no payload trailer.
+Grounds (corrected target map from FOR-V6A implementation work):
+the ring `RecordHeader` carries no IP fields by design, the
+`EvidenceRecord` hash chain is IP-free, and the u32 `ForensicsEngine`
+ring is unwired — so there is no v6-hostile structure left to migrate,
+only query convenience. The wired wart (SIEM/NDJSON dotted-prefix) is
+fixed; parsed v6 identity is served from SIEM/LogEvent text plus
+re-parseable packet bytes. An ABI break + dual-read path is rejected
+as disproportionate. Open questions 2–4 (chain cutover, SIEM schema)
+are closed as moot on the same grounds; question 1 resolves to "none
+of the above — no layout change".

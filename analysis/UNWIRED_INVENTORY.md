@@ -300,6 +300,10 @@ is the raw packet payload, which keeps full v6 bytes); the EvidenceRecord
 hash chain is likewise IP-free, and the u32 ForensicsEngine ring is
 unwired. The real wired wart was SIEM/NDJSON printing the /32 prefix
 as a dotted quad — fixed: SIEM forwards full v6 text from sidecars,
-LogEvent takes optional src_ipv6/dst_ipv6 strings. Remaining: parsed v6
-identity in ring-header queries needs a header/payload framing verdict), wire CRC-no-HMAC (needs key design), event_queue
+LogEvent takes optional src_ipv6/dst_ipv6 strings. Framing DECIDED
+(FOR-V6B): raw-bytes-only accepted — no header break, no payload
+trailer; parsed v6 identity is served from SIEM/LogEvent text plus
+re-parseable packet bytes. Rationale: an ABI break + dual-read for a
+query convenience is not worth it while the header is IP-free by
+design), wire CRC-no-HMAC (needs key design), event_queue
 1500 truncation vs len claim (by wire design: length+hash only).
