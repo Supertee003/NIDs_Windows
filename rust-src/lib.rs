@@ -988,15 +988,36 @@ pub mod federation_tls {
             &self,
             listener: &TcpListener,
         ) -> Result<TlsServerSession, Box<dyn std::error::Error>> {
+            // Fail fast: a client-only node must never block on accept.
+            if !self.has_server_identity() {
+                return Err(
+                    "federation_tls: accept without server identity fails closed".into(),
+                );
+            }
+            let (sock, _) = listener.accept().map_err(|e| format!("federation_tls: accept: {e}"))?;
+            self.accept_socket(sock)
+        }
+
+        /// Complete the server side of a handshake on an already-accepted
+        /// socket (used by the FFI listener, which owns the TcpListener).
+        pub fn accept_socket(
+            &self,
+            sock: TcpStream,
+        ) -> Result<TlsServerSession, Box<dyn std::error::Error>> {
             let server_config = self.server_config.as_ref().ok_or(
                 "federation_tls: accept without server identity fails closed",
             )?;
-            let (sock, _) = listener.accept().map_err(|e| format!("federation_tls: accept: {e}"))?;
             let conn = rustls::ServerConnection::new(server_config.clone())
                 .map_err(|e| format!("federation_tls: server handshake: {e}"))?;
             Ok(TlsServerSession {
                 stream: rustls::StreamOwned::new(conn, sock),
             })
+        }
+
+        /// Whether this transport can accept (false for client-only nodes
+        /// built without a chain). Non-blocking by construction.
+        pub fn has_server_identity(&self) -> bool {
+            self.server_config.is_some()
         }
     }
 }
@@ -1016,7 +1037,35 @@ pub mod federation_tls {
 
 struct FedSessionTable {
     next_id: u64,
-    sessions: HashMap<u64, federation_tls::TlsSession>,
+    // Sessions live behind per-session locks: the table lock is held
+    // only for lookup/insert/remove (never across I/O). Holding one
+    // global lock across send/recv deadlocked full-duplex peers — each
+    // side waited on the other's flight while holding the shared lock.
+    sessions: HashMap<u64, std::sync::Arc<parking_lot::Mutex<FedSession>>>,
+}
+
+/// Client or server side of an encrypted session. Both directions use
+/// the same send/recv verbs; the handshake role differs. One table,
+/// one close path, no role confusion at the FFI boundary.
+enum FedSession {
+    Client(federation_tls::TlsSession),
+    Server(federation_tls::TlsServerSession),
+}
+
+impl FedSession {
+    fn send(&mut self, payload: &[u8]) -> std::io::Result<()> {
+        match self {
+            FedSession::Client(s) => s.send(payload),
+            FedSession::Server(s) => s.send(payload),
+        }
+    }
+
+    fn recv(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        match self {
+            FedSession::Client(s) => s.recv(buf),
+            FedSession::Server(s) => s.recv(buf),
+        }
+    }
 }
 
 static FED_SESSIONS: OnceLock<Mutex<FedSessionTable>> = OnceLock::new();
@@ -1098,7 +1147,7 @@ pub extern "C" fn aegis_fed_connect(
     let mut table = fed_sessions().lock();
     let id = table.next_id;
     table.next_id += 1;
-    table.sessions.insert(id, session);
+    table.sessions.insert(id, std::sync::Arc::new(parking_lot::Mutex::new(FedSession::Client(session))));
     unsafe {
         *out_handle = id;
     }
@@ -1120,14 +1169,21 @@ pub extern "C" fn aegis_fed_send(
     } else {
         unsafe { std::slice::from_raw_parts(data, len) }
     };
-    let mut table = fed_sessions().lock();
-    match table.sessions.get_mut(&handle) {
-        Some(sess) => match sess.send(bytes) {
-            Ok(()) => 0,
-            Err(_) => -2,
-        },
-        None => -3,
-    }
+    // Clone the session Arc under the table lock, then release it BEFORE
+    // doing I/O: holding the global lock across the network deadlocks
+    // full-duplex peers (each side waits on the other's flight).
+    let session = {
+        let table = fed_sessions().lock();
+        match table.sessions.get(&handle) {
+            Some(s) => s.clone(),
+            None => return -3,
+        }
+    };
+    let rc = match session.lock().send(bytes) {
+        Ok(()) => 0,
+        Err(_) => -2,
+    };
+    rc
 }
 
 /// Receive up to `cap` bytes; writes the count to `out_n`. 0 ok (n may be
@@ -1147,12 +1203,141 @@ pub extern "C" fn aegis_fed_recv(
     } else {
         unsafe { std::slice::from_raw_parts_mut(buf, cap) }
     };
+    // Same lock discipline as send: clone under the table lock, I/O out.
+    let session = {
+        let table = fed_sessions().lock();
+        match table.sessions.get(&handle) {
+            Some(s) => s.clone(),
+            None => return -3,
+        }
+    };
+    let rc = match session.lock().recv(out) {
+        Ok(n) => {
+            unsafe {
+                *out_n = n;
+            }
+            0
+        }
+        Err(_) => -2,
+    };
+    rc
+}
+
+/// Close a session. 0 ok; -3 unknown handle (double close fails closed).
+#[no_mangle]
+pub extern "C" fn aegis_fed_close(handle: u64) -> c_int {
     let mut table = fed_sessions().lock();
-    match table.sessions.get_mut(&handle) {
-        Some(sess) => match sess.recv(out) {
-            Ok(n) => {
+    if table.sessions.remove(&handle).is_some() {
+        0
+    } else {
+        -3
+    }
+}
+
+// ============================================================================
+// FED-LSTN-085: loopback-only listener FFI (transport only, never
+// enforcement). Completes the duplex capability: Rust already accepted
+// internally (TlsTransport::accept, proven in P2A tests); this exposes
+// listen + accept so a Zig peer can be served without any party
+// touching plaintext. Exposure is contained BY CONSTRUCTION: the bind
+// address is hardcoded to 127.0.0.1 (no wildcard option exists), mTLS
+// honors require_client_auth from the same TlsConfig path, and nothing
+// in the daemon calls this (no listener runs offensively). A future
+// P4-listener slice decides daemon wiring; this slice proves the FFI.
+// ============================================================================
+
+struct FedListenerTable {
+    next_id: u64,
+    listeners: HashMap<u64, FedListener>,
+}
+
+struct FedListener {
+    listener: std::net::TcpListener,
+    transport: std::sync::Arc<federation_tls::TlsTransport>,
+}
+
+static FED_LISTENERS: OnceLock<Mutex<FedListenerTable>> = OnceLock::new();
+
+fn fed_listeners() -> &'static Mutex<FedListenerTable> {
+    FED_LISTENERS.get_or_init(|| {
+        Mutex::new(FedListenerTable {
+            next_id: 1,
+            listeners: HashMap::new(),
+        })
+    })
+}
+
+/// Bind 127.0.0.1:port with mTLS server identity. Returns 0 and writes
+/// the listener handle; -1 null/bad input, -2 TLS material or bind
+/// failure. The port may be 0 (ephemeral); read back the bound address
+/// with aegis_fed_listen_addr.
+#[no_mangle]
+pub extern "C" fn aegis_fed_listen(
+    port: u16,
+    roots_pem: *const u8,
+    roots_len: usize,
+    chain_pem: *const u8,
+    chain_len: usize,
+    key_pem: *const u8,
+    key_len: usize,
+    require_client_auth: c_int,
+    out_listener: *mut u64,
+) -> c_int {
+    if out_listener.is_null() {
+        return -1;
+    }
+    let (Some(roots), Some(chain), Some(key)) = (
+        fed_bytes(roots_pem, roots_len),
+        fed_bytes(chain_pem, chain_len),
+        fed_bytes(key_pem, key_len),
+    ) else {
+        return -1;
+    };
+    if chain.is_empty() {
+        return -2;
+    }
+    let cfg = federation_tls::TlsConfig {
+        cert_chain: vec![chain],
+        private_key: key,
+        trusted_roots: vec![roots],
+        require_client_auth: require_client_auth != 0,
+        server_name: "localhost".to_string(),
+    };
+    let transport = match federation_tls::TlsTransport::new(cfg) {
+        Ok(t) => t,
+        Err(_) => return -2,
+    };
+    // Loopback ONLY: no parameter, no wildcard, no alternative.
+    let listener = match std::net::TcpListener::bind(("127.0.0.1", port)) {
+        Ok(l) => l,
+        Err(_) => return -2,
+    };
+    let mut table = fed_listeners().lock();
+    let id = table.next_id;
+    table.next_id += 1;
+    table.listeners.insert(id, FedListener {
+        listener,
+        transport: std::sync::Arc::new(transport),
+    });
+    unsafe {
+        *out_listener = id;
+    }
+    0
+}
+
+/// Report the bound port of a listener (u16 host order). Returns 0 on
+/// success; -1 null; -3 unknown listener.
+#[no_mangle]
+pub extern "C" fn aegis_fed_listen_port(listener: u64, out_port: *mut u16) -> c_int {
+    if out_port.is_null() {
+        return -1;
+    }
+    let table = fed_listeners().lock();
+    match table.listeners.get(&listener) {
+        Some(entry) => match entry.listener.local_addr() {
+            Ok(addr) => {
                 unsafe {
-                    *out_n = n;
+                    *out_port = addr.port();
                 }
                 0
             }
@@ -1162,11 +1347,48 @@ pub extern "C" fn aegis_fed_recv(
     }
 }
 
-/// Close a session. 0 ok; -3 unknown handle (double close fails closed).
+/// Accept one encrypted session; the session handle works with
+/// aegis_fed_send/recv/close. Blocking. 0 ok; -2 accept/handshake
+/// failure; -3 unknown listener. The global lock is held only to clone
+/// the socket + transport handle — never across the handshake.
 #[no_mangle]
-pub extern "C" fn aegis_fed_close(handle: u64) -> c_int {
-    let mut table = fed_sessions().lock();
-    if table.sessions.remove(&handle).is_some() {
+pub extern "C" fn aegis_fed_accept(listener: u64, out_session: *mut u64) -> c_int {
+    if out_session.is_null() {
+        return -1;
+    }
+    let (sock, transport) = {
+        let table = fed_listeners().lock();
+        let entry = match table.listeners.get(&listener) {
+            Some(e) => e,
+            None => return -3,
+        };
+        let sock = match entry.listener.try_clone().and_then(|l| l.accept().map(|(s, _)| s)) {
+            Ok(s) => s,
+            Err(_) => return -2,
+        };
+        (sock, entry.transport.clone())
+    };
+    let session = match transport.accept_socket(sock) {
+        Ok(s) => s,
+        Err(_) => return -2,
+    };
+    let mut sessions = fed_sessions().lock();
+    // Session ids share one namespace across roles (close is uniform).
+    let id = sessions.next_id;
+    sessions.next_id += 1;
+    sessions.sessions.insert(id, std::sync::Arc::new(parking_lot::Mutex::new(FedSession::Server(session))));
+    unsafe {
+        *out_session = id;
+    }
+    0
+}
+
+/// Close a listener. 0 ok; -3 unknown listener (double close fails
+/// closed). Sessions accepted from it are unaffected.
+#[no_mangle]
+pub extern "C" fn aegis_fed_listen_close(listener: u64) -> c_int {
+    let mut table = fed_listeners().lock();
+    if table.listeners.remove(&listener).is_some() {
         0
     } else {
         -3
@@ -1362,15 +1584,20 @@ mod tests {
 
     #[test]
     fn fed_tls_accept_without_server_identity_fails_closed() {
-        // A client-only transport (no chain) connects but must never accept.
+        // A client-only transport (no chain) connects but must never
+        // accept — and must fail FAST, never block on the listener.
         let pki = fed_test_pki();
         let mut cfg = fed_client_cfg(&pki);
         cfg.cert_chain = Vec::new();
         cfg.private_key = Vec::new();
         let client_only = federation_tls::TlsTransport::new(cfg).unwrap();
+        assert!(!client_only.has_server_identity());
         let listener =
             std::net::TcpListener::bind("127.0.0.1:0").expect("loopback bind");
         assert!(client_only.accept(&listener).is_err());
+        // A full transport reports server identity.
+        let server = federation_tls::TlsTransport::new(fed_server_cfg(&pki)).unwrap();
+        assert!(server.has_server_identity());
     }
 
     #[test]
@@ -1535,6 +1762,136 @@ mod tests {
         assert_eq!(unsafe { aegis_fed_recv(dead, buf.as_mut_ptr(), 1, &mut n) }, -3);
         assert_eq!(unsafe { aegis_fed_recv(dead, std::ptr::null_mut(), 1, &mut n) }, -1);
         assert_eq!(unsafe { aegis_fed_close(dead) }, -3);
+    }
+
+    // FED-LSTN-085: listener FFI proves itself end to end entirely
+    // through the C ABI: listen (loopback-only) -> client connect ->
+    // accept -> mTLS both directions -> close. No internal API on the
+    // happy path.
+    #[test]
+    fn fed_ffi_listen_accept_full_duplex() {
+        let pki = fed_test_pki();
+        eprintln!("DUPLEX: pki ready");
+        let mut lis: u64 = 0;
+        assert_eq!(
+            unsafe {
+                aegis_fed_listen(
+                    0,
+                    pki.ca_pem.as_ptr(), pki.ca_pem.len(),
+                    pki.srv_chain_pem.as_ptr(), pki.srv_chain_pem.len(),
+                    pki.srv_key_pem.as_ptr(), pki.srv_key_pem.len(),
+                    1,
+                    &mut lis,
+                )
+            },
+            0
+        );
+        assert_ne!(lis, 0);
+        let mut port: u16 = 0;
+        assert_eq!(unsafe { aegis_fed_listen_port(lis, &mut port) }, 0);
+        assert_ne!(port, 0);
+
+        // Client connects concurrently: accept blocks by design.
+        let ca = pki.ca_pem.clone();
+        let chain = pki.cli_chain_pem.clone();
+        let key = pki.cli_key_pem.clone();
+        let client_thread = std::thread::spawn(move || {
+            let host = fed_ffi_cstr("127.0.0.1");
+            let name = fed_ffi_cstr("localhost");
+            let mut h: u64 = 0;
+            let rc = unsafe {
+                aegis_fed_connect(
+                    host.as_ptr(), port,
+                    ca.as_ptr(), ca.len(),
+                    chain.as_ptr(), chain.len(),
+                    key.as_ptr(), key.len(),
+                    name.as_ptr(), &mut h,
+                )
+            };
+            assert_eq!(rc, 0);
+            let ping = b"ping!";
+            assert_eq!(unsafe { aegis_fed_send(h, ping.as_ptr(), ping.len()) }, 0);
+            let mut buf = [0u8; 5];
+            let mut n: usize = 0;
+            assert_eq!(unsafe { aegis_fed_recv(h, buf.as_mut_ptr(), buf.len(), &mut n) }, 0);
+            assert_eq!((n, &buf), (5, b"pong!"));
+            assert_eq!(unsafe { aegis_fed_close(h) }, 0);
+        });
+        let mut srv: u64 = 0;
+        assert_eq!(unsafe { aegis_fed_accept(lis, &mut srv) }, 0);
+        assert_ne!(srv, 0);
+        // Server side: read ping, write pong (proves the accepted
+        // session is a fully working duplex session, not a stub).
+        let mut buf = [0u8; 5];
+        let mut n: usize = 0;
+        let mut got = 0;
+        while got < 5 {
+            assert_eq!(
+                unsafe {
+                    aegis_fed_recv(
+                        srv,
+                        buf.as_mut_ptr().add(got),
+                        buf.len() - got,
+                        &mut n,
+                    )
+                },
+                0
+            );
+            if n == 0 {
+                break;
+            }
+            got += n;
+        }
+        assert_eq!(&buf[..got], b"ping!");
+        let pong = b"pong!";
+        assert_eq!(unsafe { aegis_fed_send(srv, pong.as_ptr(), pong.len()) }, 0);
+        assert_eq!(unsafe { aegis_fed_close(srv) }, 0);
+        client_thread.join().unwrap();
+        assert_eq!(unsafe { aegis_fed_listen_close(lis) }, 0);
+        // Double close fails closed.
+        assert_eq!(unsafe { aegis_fed_listen_close(lis) }, -3);
+    }
+
+    #[test]
+    fn fed_ffi_listen_rejects_misuse() {
+        let pki = fed_test_pki();
+        let mut lis: u64 = 0;
+        // Null out-pointer.
+        assert_eq!(
+            unsafe {
+                aegis_fed_listen(
+                    0,
+                    pki.ca_pem.as_ptr(), pki.ca_pem.len(),
+                    pki.srv_chain_pem.as_ptr(), pki.srv_chain_pem.len(),
+                    pki.srv_key_pem.as_ptr(), pki.srv_key_pem.len(),
+                    1,
+                    std::ptr::null_mut(),
+                )
+            },
+            -1
+        );
+        // Empty chain: no server identity.
+        assert_eq!(
+            unsafe {
+                aegis_fed_listen(
+                    0,
+                    pki.ca_pem.as_ptr(), pki.ca_pem.len(),
+                    std::ptr::null(), 0,
+                    std::ptr::null(), 0,
+                    1,
+                    &mut lis,
+                )
+            },
+            -2
+        );
+        // Unknown listener on every op.
+        let dead: u64 = 0xDEAD_BEEF_F00D;
+        let mut sess: u64 = 0;
+        let mut port: u16 = 0;
+        assert_eq!(unsafe { aegis_fed_accept(dead, &mut sess) }, -3);
+        assert_eq!(unsafe { aegis_fed_accept(dead, std::ptr::null_mut()) }, -1);
+        assert_eq!(unsafe { aegis_fed_listen_port(dead, &mut port) }, -3);
+        assert_eq!(unsafe { aegis_fed_listen_close(dead) }, -3);
     }
 
     #[test]

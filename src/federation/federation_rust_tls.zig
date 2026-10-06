@@ -29,6 +29,20 @@ extern fn aegis_fed_connect(
 extern fn aegis_fed_send(handle: u64, data: [*]const u8, len: usize) c_int;
 extern fn aegis_fed_recv(handle: u64, buf: [*]u8, cap: usize, out_n: *usize) c_int;
 extern fn aegis_fed_close(handle: u64) c_int;
+extern fn aegis_fed_listen(
+    port: u16,
+    roots_pem: [*]const u8,
+    roots_len: usize,
+    chain_pem: [*]const u8,
+    chain_len: usize,
+    key_pem: [*]const u8,
+    key_len: usize,
+    require_client_auth: c_int,
+    out_listener: *u64,
+) c_int;
+extern fn aegis_fed_listen_port(listener: u64, out_port: *u16) c_int;
+extern fn aegis_fed_accept(listener: u64, out_session: *u64) c_int;
+extern fn aegis_fed_listen_close(listener: u64) c_int;
 
 pub const RustTlsConfig = struct {
     /// Master kill switch. OFF by default - the delegate never dials
@@ -189,4 +203,102 @@ test "rust delegate plugs into the Transport vtable" {
     const tp = t.asTransport();
     try std.testing.expect(!tp.isConnected());
     try std.testing.expectError(error.SendFailed, tp.send("x"));
+}
+
+// ============================================================
+// Server side (FED-LSTN-085): loopback-only listener + accept.
+// ============================================================
+//
+// The bind address is loopback by Rust construction (no wildcard
+// option exists in the FFI), mTLS honors the same require_client_auth
+// path as the client side, and nothing in the daemon calls this:
+// no listener runs unless a future wiring slice explicitly starts
+// one. Sessions accepted here work with the shared send/recv/close
+// FFI (one handle namespace, uniform close).
+
+pub const RustTlsServer = struct {
+    cfg: RustTlsConfig,
+    listener: u64 = 0,
+    listening: bool = false,
+
+    pub fn init(cfg: RustTlsConfig) RustTlsServer {
+        return .{ .cfg = cfg };
+    }
+
+    pub fn deinit(self: *RustTlsServer) void {
+        if (self.listening) {
+            _ = aegis_fed_listen_close(self.listener);
+            self.listening = false;
+            self.listener = 0;
+        }
+    }
+
+    pub fn listen(self: *RustTlsServer, port: u16, require_client_auth: bool) RustTlsError!void {
+        if (!self.cfg.enabled) return error.NotEnabled;
+        if (self.listening) return;
+        var handle: u64 = 0;
+        const rc = aegis_fed_listen(
+            port,
+            self.cfg.roots_pem.ptr, self.cfg.roots_pem.len,
+            self.cfg.chain_pem.ptr, self.cfg.chain_pem.len,
+            self.cfg.key_pem.ptr, self.cfg.key_pem.len,
+            if (require_client_auth) @as(c_int, 1) else @as(c_int, 0),
+            &handle,
+        );
+        if (rc != 0) return RustTlsTransport.failClosed(rc);
+        self.listener = handle;
+        self.listening = true;
+    }
+
+    pub fn boundPort(self: *RustTlsServer) RustTlsError!u16 {
+        if (!self.listening) return error.NotConnected;
+        var port: u16 = 0;
+        const rc = aegis_fed_listen_port(self.listener, &port);
+        if (rc != 0) return RustTlsTransport.failClosed(rc);
+        return port;
+    }
+
+    /// Accept one session; the returned handle works with
+    /// aegis_fed_send/recv/close (same namespace as client sessions).
+    pub fn acceptSession(self: *RustTlsServer) RustTlsError!u64 {
+        if (!self.listening) return error.NotConnected;
+        var handle: u64 = 0;
+        const rc = aegis_fed_accept(self.listener, &handle);
+        if (rc != 0) return RustTlsTransport.failClosed(rc);
+        return handle;
+    }
+
+    pub fn closeListener(self: *RustTlsServer) void {
+        self.deinit();
+    }
+};
+
+// ============================================================
+// Tests (server fail-closed paths; positive loopback lives in the
+// Rust fed_lstn_* proofs, which own test PKI via rcgen)
+// ============================================================
+
+test "rust server kill switch off refuses to listen" {
+    var s = RustTlsServer.init(.{ .enabled = false });
+    defer s.deinit();
+    try std.testing.expectError(error.NotEnabled, s.listen(0, true));
+    try std.testing.expectError(error.NotConnected, s.boundPort());
+    try std.testing.expectError(error.NotConnected, s.acceptSession());
+}
+
+test "rust server without material fails closed" {
+    var s = RustTlsServer.init(.{ .enabled = true });
+    defer s.deinit();
+    // Empty roots/chain/key: Rust construction fails closed.
+    try std.testing.expectError(error.ConnectFailed, s.listen(0, true));
+    try std.testing.expect(!s.listening);
+}
+
+test "rust server unknown handles fail closed" {
+    // Direct FFI misuse without a server: unknown listener ids.
+    var port: u16 = 0;
+    try std.testing.expect(aegis_fed_listen_port(0xDEAD_BEEF_F00D, &port) == -3);
+    var sess: u64 = 0;
+    try std.testing.expect(aegis_fed_accept(0xDEAD_BEEF_F00D, &sess) == -3);
+    try std.testing.expect(aegis_fed_listen_close(0xDEAD_BEEF_F00D) == -3);
 }
