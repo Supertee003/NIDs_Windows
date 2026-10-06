@@ -425,6 +425,61 @@ pub fn runDaemon() !void {
         // POL-PRIO-070: order by priority (stable — files without
         // priorities keep file order exactly).
         ps.sortByPriority();
+        // TRUST-WIRE-082: opt-in signed-policy trust (ADR-0005
+        // implementation). AEGIS_POLICY_ENFORCE_TRUSTED=1 plus a valid
+        // sidecar (configs/policies.sig.json) over the exact bytes above
+        // plus trust anchors (policy_trust.json file wins, else
+        // AEGIS_POLICY_PUBKEY env) marks every loaded policy trusted.
+        // Default (flag absent/off, or anything unverifiable): zero
+        // behavior change — privileged actions keep escalating exactly
+        // as before. Unsigned deployments are unaffected by construction.
+        trust_blk: {
+            const flag = std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_POLICY_ENFORCE_TRUSTED") catch break :trust_blk;
+            defer std.heap.page_allocator.free(flag);
+            if (!policy_signing.trustOptIn(flag)) break :trust_blk;
+            const sig_path = runtime_paths.configPath(std.heap.page_allocator, runtime_root, "policies.sig.json") catch break :trust_blk;
+            defer std.heap.page_allocator.free(sig_path);
+            const sig_file = std.fs.openFileAbsolute(sig_path, .{}) catch {
+                diag.warn("signed enforcement requested but {s} is absent; policies stay untrusted", .{sig_path});
+                break :trust_blk;
+            };
+            defer sig_file.close();
+            const sig_bytes = sig_file.readToEndAlloc(std.heap.page_allocator, 65536) catch break :trust_blk;
+            defer std.heap.page_allocator.free(sig_bytes);
+            var file_anchors: ?[]policy_signing.TrustAnchor = null;
+            var trust_file_broken = false;
+            if (runtime_paths.configPath(std.heap.page_allocator, runtime_root, "policy_trust.json")) |trust_path| {
+                defer std.heap.page_allocator.free(trust_path);
+                if (std.fs.openFileAbsolute(trust_path, .{})) |trust_file| {
+                    defer trust_file.close();
+                    if (trust_file.readToEndAlloc(std.heap.page_allocator, 65536)) |trust_bytes| {
+                        defer std.heap.page_allocator.free(trust_bytes);
+                        file_anchors = policy_signing.parseTrustAnchors(std.heap.page_allocator, trust_bytes) catch blk: {
+                            trust_file_broken = true;
+                            break :blk null;
+                        };
+                    } else |_| {
+                        trust_file_broken = true;
+                    }
+                } else |_| {}
+            } else |_| {}
+            defer if (file_anchors) |a| std.heap.page_allocator.free(a);
+            const ok = if (file_anchors) |anchors|
+                policy_signing.verifyIrWithAnchors(std.heap.page_allocator, pol_bytes, sig_bytes, anchors)
+            else if (trust_file_broken)
+                false
+            else blk: {
+                const pubkey_hex = std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_POLICY_PUBKEY") catch break :blk false;
+                defer std.heap.page_allocator.free(pubkey_hex);
+                break :blk policy_signing.verifyIrSidecar(std.heap.page_allocator, pol_bytes, sig_bytes, pubkey_hex);
+            };
+            if (ok) {
+                for (ps.policies.items) |*p| p.trusted = true;
+                diag.info("signed enforcement: {} policies marked trusted (envelope VALID)", .{ps.policies.items.len});
+            } else {
+                diag.warn("signed enforcement requested but envelope INVALID; policies stay untrusted", .{});
+            }
+        }
         state.g_policies_loaded.store(policies_loaded, .monotonic);
         diag.info("loaded {} policies from {s}", .{ policies_loaded, pol_path });
     }

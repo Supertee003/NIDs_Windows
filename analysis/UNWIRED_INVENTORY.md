@@ -117,8 +117,11 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   configs/policy_trust.json (gitignored live, example tracks shape),
   strict loader (unique non-zero ids, no zero keys), rotation by
   side-by-side key_ids, file-wins-over-env with loud broken-file
-  failure. Still open: who generates/holds keys operationally, and
-  the loader-to-trusted wiring itself.
+  failure. TRUST-WIRE-082 landed the opt-in enforcement end:
+  AEGIS_POLICY_ENFORCE_TRUSTED=1 + policies.sig.json over exact
+  policies.json bytes + anchors marks PolicySet trusted (RB-011 step
+  10); default absent = byte-identical behavior. Still open: who
+  generates/holds keys operationally.
 - [x] IPv6 full (contract v2) — wire v2 decode-ready T2-V6-022a (Go/Zig/
   C++/Python dispatch + 006 vector + bit2 preserved) + nose live emit
   T2-V6-022b (`eventFromPacket` sidecars, `Send` dispatches v2).

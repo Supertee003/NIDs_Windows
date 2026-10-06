@@ -110,6 +110,18 @@ writing this runbook.
    - Restart the daemon. `metrics.policy_ir.verified` behaves as in
      step 8. Enforcement posture unchanged either way.
 
+10. **(Optional) Runtime PolicySet trust — opt-in enforcement**
+    (TRUST-WIRE-082). The IR mirror above never gates enforcement;
+    the runtime `policies.json` does (via `trusted` + PEP). To mark
+    it trusted: `AEGIS_POLICY_ENFORCE_TRUSTED=1`, a sidecar at
+    `configs/policies.sig.json` over the exact `policies.json` bytes
+    (same v1 envelope as step 8), and trust anchors (policy_trust.json
+    wins, else `AEGIS_POLICY_PUBKEY`). Valid envelope marks every
+    loaded policy trusted; anything else behaves byte-identically to
+    before (privileged actions keep escalating untrusted). Default
+    (flag absent): zero behavior change. This is the staged cutover:
+    observe + prove first, enforce only with operator keys.
+
 ## Verification
 
 - `metrics` shows `policy_ir.loaded: true`, matching rule count and hash.

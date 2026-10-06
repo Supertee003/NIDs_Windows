@@ -940,6 +940,33 @@ pub fn verifyIrWithAnchors(
 }
 
 // ============================================================
+// TRUST-WIRE-082: opt-in gate semantics (pure, testable).
+// ============================================================
+//
+// trustOptIn answers whether the operator explicitly enabled signed
+// enforcement. Default (absent/empty/anything-else) is false —
+// byte-identical behavior to before: every privileged action keeps
+// escalating untrusted. Enabling without a valid sidecar + anchors
+// changes nothing (verification still fails closed downstream).
+pub fn trustOptIn(env_value: ?[]const u8) bool {
+    const v = env_value orelse return false;
+    return std.ascii.eqlIgnoreCase(v, "1") or
+        std.ascii.eqlIgnoreCase(v, "true") or
+        std.ascii.eqlIgnoreCase(v, "on");
+}
+
+test "TRUST-WIRE-082: trustOptIn is explicit-opt-in only" {
+    try std.testing.expect(trustOptIn("1"));
+    try std.testing.expect(trustOptIn("true"));
+    try std.testing.expect(trustOptIn("ON"));
+    try std.testing.expect(!trustOptIn(null));
+    try std.testing.expect(!trustOptIn(""));
+    try std.testing.expect(!trustOptIn("0"));
+    try std.testing.expect(!trustOptIn("yes"));
+    try std.testing.expect(!trustOptIn("false"));
+}
+
+// ============================================================
 // Tests (CUSTODY-081)
 // ============================================================
 
