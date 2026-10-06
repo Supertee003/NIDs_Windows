@@ -1,5 +1,12 @@
 # AEGIS NIDs Windows — Canonical Architecture (G1)
 
+> **HISTORICAL (2026-10-06):** this document is SUPERSEDED and is no
+> longer the Single Source of Truth. Current truth lives in AGENTS.md
+> (source-of-truth hierarchy) + `SYSTEM_MAP.json` + `FLOW_MAP.json` +
+> `AUTHORITY_MAP.json` + `UNWIRED_INVENTORY.md` + `docs/adr/`.
+> Preserved for history — do not use as current truth, do not update
+> its component table (e.g. federation rows predate the P1–P4 program).
+
 **สถานะ:** เอกสารนี้คือ **Single Source of Truth** ทาง architecture (ตั้งแต่ 2026-09-06)
 **ที่มา:** รวมจาก README.md (root) + PHASE32–44 READMEs (archive ไว้ที่ `docs/archive/`)
 **Baseline:** ดู `docs/BASELINE_20260906.md`
