@@ -291,8 +291,11 @@ correlator/AC per-packet allocator (needs profiling,
 not guesses), test-scope grandfather ratchet (SCOPE-102 batch 1:
 11 mis-scoped integration/proof files moved to OUT_OF_UNIT; 17
 production files wired direct with 292/292 newly-executing tests green
-(zero rot); 19 grandfathered entries left — legacy harness + bench +
-helpers, migrate-or-scope per file), test-scope methodology hole (SCOPE-101: binary scan proved
+(zero rot); batch 2 emptied the ratchet 47→0: 14 more wired (201/201
+green) + concurrency_harden 23/23 + bisect_b quarantined (drags exempt
+scopes) + e2e/integration harnesses scoped + new bench scope for the
+two perf harnesses; pin now enforces direct-or-comptime edges for all
+new files), test-scope methodology hole (SCOPE-101: binary scan proved
 transitive reachability != execution — 15 non-exempt files' ~183 tests
 never ran incl. all of event_queue; wired via direct edges, all green;
 one rotted expectation fixed in cluster_uplink (per-event not per-peer

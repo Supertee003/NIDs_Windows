@@ -91,9 +91,20 @@ OUT_OF_UNIT: dict[str, str] = {
     "src/policy/dispatcher.zig": "quarantine",
     "src/policy/dispatcher_phase_b.zig": "quarantine",
     "src/reliability/lifecycle.zig": "quarantine",
+    # SCOPE-102: debug-bisect aggregator — its comptime imports pull
+    # exempt integration/proof/bench scopes into analysis, so wiring it
+    # would silently execute out-of-unit suites. Never production.
+    "src/tests/core/bisect_b.zig": "quarantine",
+    # SCOPE-102 batch 2: operator-run harnesses, never unit-fast.
+    "src/core/e2e_harness.zig": "integration",
+    "src/core/integration_test.zig": "integration",
+    # SCOPE-102 batch 2: real I/O + throughput floors (timing-sensitive,
+    # PERF-FLAKE class) — operator harnesses, not unit gates.
+    "src/core/perf_benchmark.zig": "bench",
+    "src/core/performance_harness.zig": "bench",
 }
 
-VALID_SCOPES = {"integration", "proof", "specimen", "quarantine"}
+VALID_SCOPES = {"integration", "proof", "bench", "specimen", "quarantine"}
 
 
 def _imports_of(path: Path) -> set[str]:
@@ -166,25 +177,6 @@ def _wrapper_edges() -> set[str]:
 # by gaining a direct edge (proven) — never by deleting tests. This
 # set is FROZEN: it may only shrink.
 SCOPE101_BASELINE: set[str] = {
-    "src/core/authority_review.zig",
-    "src/core/brain_engine.zig",
-    "src/core/canary_progression.zig",
-    "src/core/compliance_reporter.zig",
-    "src/core/concurrency_harden.zig",
-    "src/core/contract_freeze.zig",
-    "src/core/e2e_harness.zig",
-    "src/core/fabric_accounting.zig",
-    "src/core/integration_test.zig",
-    "src/core/legacy_removal.zig",
-    "src/core/nids_analyze.zig",
-    "src/core/nids_capture.zig",
-    "src/core/perf_benchmark.zig",
-    "src/core/performance_harness.zig",
-    "src/core/priority_queue.zig",
-    "src/core/real_ips_path.zig",
-    "src/core/rust_pep.zig",
-    "src/tests/core/bisect_b.zig",
-    "src/tests/core/core_configs.zig",
 }
 
 

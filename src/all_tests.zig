@@ -147,6 +147,24 @@ comptime {
     _ = @import("control/state_machine.zig");
     _ = @import("policy/pep_bindings.zig");
     _ = @import("policy/policy_ir.zig");
+    // SCOPE-102 batch 2: grandfathered production files with pure/model
+    // tests (verified executing + green below; rotted ones would be
+    // scoped, not silently skipped).
+    _ = @import("contract/event_queue.zig");
+    _ = @import("core/authority_review.zig");
+    _ = @import("core/brain_engine.zig");
+    _ = @import("core/canary_progression.zig");
+    _ = @import("core/concurrency_harden.zig");
+    _ = @import("core/compliance_reporter.zig");
+    _ = @import("core/contract_freeze.zig");
+    _ = @import("core/fabric_accounting.zig");
+    _ = @import("core/legacy_removal.zig");
+    _ = @import("core/nids_analyze.zig");
+    _ = @import("core/nids_capture.zig");
+    _ = @import("core/priority_queue.zig");
+    _ = @import("core/real_ips_path.zig");
+    _ = @import("core/rust_pep.zig");
+    _ = @import("tests/core/core_configs.zig");
     // SCOPE-102 batch 1: migrate grandfathered production files to direct
     // edges (each proven by binary presence + green suite, or scoped with
     // reason on rot — never silent).
