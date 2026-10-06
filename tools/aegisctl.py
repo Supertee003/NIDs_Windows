@@ -848,7 +848,7 @@ def _daemon_rules_count() -> int | None:
 
 
 def cmd_policy(args) -> int:
-    if getattr(args, "policy_command", "list") not in {"list", "show"}:
+    if getattr(args, "policy_command", "list") not in {"list", "show", "verify", "validate"}:
         return _unavailable("policy", "policy_runtime_postcondition_not_connected")
     rules = _rules()
     # BE-DIS-089: the daemon engine (rule_loader.zig) honors
@@ -875,6 +875,13 @@ def cmd_policy(args) -> int:
     if op == "show":
         if match is None: print(f"Rule {rid} not found"); return 1
         data = dict(match); data["state"] = "DISABLED" if str(rid) in disabled else "ENABLED"; print(json.dumps(data)); return 0
+    if op == "verify":
+        # BE-RCPT-091: report the daemon's canonical envelope verification
+        # (policies.json + IR mirror). Read-only; exit 3 when the daemon
+        # does not answer, never a local guess.
+        return _print_control_query("policy.verify", as_json=getattr(args, "json", True))
+    if op == "validate":
+        return _print_control_query("policy.validate", as_json=getattr(args, "json", True))
     if op in {"enable", "disable"}:
         if match is None: print(f"Rule {rid} not found"); return 1
         if op == "disable":
@@ -1480,6 +1487,7 @@ def main() -> int:
     policy = sub.add_parser("policy", help="Policy lifecycle")
     policy_sub = policy.add_subparsers(dest="policy_command")
     policy_sub.add_parser("list"); pshow = policy_sub.add_parser("show"); pshow.add_argument("--id", required=True)
+    policy_sub.add_parser("verify"); policy_sub.add_parser("validate")
     preload = policy_sub.add_parser("reload"); pen = policy_sub.add_parser("enable"); pen.add_argument("--id", required=True)
     pdis = policy_sub.add_parser("disable"); pdis.add_argument("--id", required=True)
     policy.set_defaults(policy_command="list", func=cmd_policy)

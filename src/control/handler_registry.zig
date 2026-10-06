@@ -644,18 +644,131 @@ const handlers = struct {
         return std.fmt.allocPrint(a, "{{\"policies_loaded\":{}}}", .{state_mod.g_policies_loaded.load(.acquire)}) catch null;
     }
 
-    fn policyValidate(_: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
-        ctx.failure_code = "NOT_IMPLEMENTED";
-        ctx.failure_state = "UNAVAILABLE";
-        ctx.failure_message = "active policy loader has no canonical signed-envelope validator";
-        return null;
+    fn policyValidate(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        // Dry-run structural validation of configs/policies.json: every
+        // entry carries the fields the loader requires (id/integer, name,
+        // known action, severity, ttl_sec/integer). Reads only; never
+        // touches the live PolicySet (policy reload owns mutation).
+        // Mirrors rulesValidate field-for-field in strictness.
+        const runtime_paths = @import("../core/runtime_paths.zig");
+        const root = runtime_paths.resolveRoot(a) catch {
+            ctx.failure_code = "CONFIG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "cannot resolve runtime root";
+            return null;
+        };
+        defer a.free(root);
+        const policies_path = runtime_paths.configPath(a, root, "policies.json") catch {
+            ctx.failure_code = "CONFIG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "cannot build policies.json path";
+            return null;
+        };
+        defer a.free(policies_path);
+        const file = std.fs.openFileAbsolute(policies_path, .{}) catch {
+            ctx.failure_code = "CONFIG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "cannot open policies.json";
+            return null;
+        };
+        defer file.close();
+        const bytes = file.readToEndAlloc(a, 4 * 1024 * 1024) catch {
+            ctx.failure_code = "CONFIG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "cannot read policies.json";
+            return null;
+        };
+        defer a.free(bytes);
+        var parsed = std.json.parseFromSlice(std.json.Value, a, bytes, .{}) catch {
+            ctx.failure_code = "CONFIG_INVALID";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "policies.json is not valid JSON";
+            return null;
+        };
+        defer parsed.deinit();
+        if (parsed.value != .object) {
+            ctx.failure_code = "CONFIG_INVALID";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "policies.json root must be an object";
+            return null;
+        }
+        const arr = parsed.value.object.get("policies") orelse {
+            ctx.failure_code = "CONFIG_INVALID";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "policies.json has no policies array";
+            return null;
+        };
+        if (arr != .array) {
+            ctx.failure_code = "CONFIG_INVALID";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "policies is not an array";
+            return null;
+        }
+        var checked: u32 = 0;
+        var skipped: u32 = 0;
+        for (arr.array.items) |pol| {
+            if (pol != .object) {
+                skipped += 1;
+                continue;
+            }
+            const id_ok = if (pol.object.get("id")) |v| v == .integer else false;
+            const name_ok = if (pol.object.get("name")) |v| v == .string and v.string.len > 0 else false;
+            const action_ok = if (pol.object.get("action")) |v| blk: {
+                if (v != .string) break :blk false;
+                break :blk std.mem.eql(u8, v.string, "block") or
+                    std.mem.eql(u8, v.string, "alert") or
+                    std.mem.eql(u8, v.string, "rate_limit") or
+                    std.mem.eql(u8, v.string, "quarantine") or
+                    std.mem.eql(u8, v.string, "log") or
+                    std.mem.eql(u8, v.string, "escalate");
+            } else false;
+            const severity_ok = if (pol.object.get("severity")) |v| v == .string and v.string.len > 0 else false;
+            const ttl_ok = if (pol.object.get("ttl_sec")) |v| v == .integer else false;
+            if (id_ok and name_ok and action_ok and severity_ok and ttl_ok) {
+                checked += 1;
+            } else {
+                skipped += 1;
+            }
+        }
+        if (checked == 0) {
+            ctx.failure_code = "CONFIG_INVALID";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "policies.json contains zero loadable policies";
+            return null;
+        }
+        return std.fmt.allocPrint(a, "{{\"valid\":true,\"policies_checked\":{},\"policies_skipped\":{}}}", .{ checked, skipped }) catch null;
     }
 
-    fn policyVerify(_: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
-        ctx.failure_code = "NOT_IMPLEMENTED";
-        ctx.failure_state = "UNAVAILABLE";
-        ctx.failure_message = "signed policy verification is not wired to the active loader";
-        return null;
+    fn policyVerify(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        // BE-RCPT-091: report the canonical envelope verification for both
+        // the enforcement policies and the advisory IR mirror, using the
+        // same verifyEnvelope routine daemon startup uses. Read-only:
+        // resolves anchors + verifies bytes, marks nothing trusted,
+        // touches no enforcement authority. Top-level "verified" tracks
+        // the enforcement envelope (policies.json); the mirror reports
+        // separately because its absence is normal without a TS compile.
+        const policy_signing = @import("../policy/policy_signing.zig");
+        const runtime_paths = @import("../core/runtime_paths.zig");
+        const root = runtime_paths.resolveRoot(a) catch {
+            ctx.failure_code = "CONFIG_UNAVAILABLE";
+            ctx.failure_state = "DEGRADED";
+            ctx.failure_message = "cannot resolve runtime root";
+            return null;
+        };
+        defer a.free(root);
+        const pol = policy_signing.verifyEnvelope(a, root, "policies.json", "policies.sig.json");
+        const mir = policy_signing.verifyEnvelope(a, root, "policy_ir.json", "policy_ir.sig.json");
+        return std.fmt.allocPrint(a,
+            "{{\"verified\":{},\"policies\":{{\"present\":{},\"sidecar\":{},\"anchors\":\"{s}\",\"anchors_broken\":{},\"valid\":{},\"reason\":\"{s}\"}},\"policy_ir\":{{\"present\":{},\"sidecar\":{},\"anchors\":\"{s}\",\"anchors_broken\":{},\"valid\":{},\"reason\":\"{s}\"}}}}",
+            .{
+                pol.valid,
+                pol.doc_present, pol.sidecar_present,
+                pol.anchor_source.toString(), pol.anchors_broken,
+                pol.valid, pol.reason.toString(),
+                mir.doc_present, mir.sidecar_present,
+                mir.anchor_source.toString(), mir.anchors_broken,
+                mir.valid, mir.reason.toString(),
+            }) catch null;
     }
 
     fn policySimulate(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {

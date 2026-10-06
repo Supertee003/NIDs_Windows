@@ -940,6 +940,123 @@ pub fn verifyIrWithAnchors(
 }
 
 // ============================================================
+// BE-RCPT-091: one canonical envelope verification (reconciliation).
+// ============================================================
+//
+// Three validators existed (native verifyPolicy, Rust verifyViaRust,
+// TS author signer) but the daemon resolved trust anchors TWICE inline
+// (~50 lines each: file-wins-over-env, broken-file-loud) and the
+// control plane had NO reader at all (policy_verify/policy_validate
+// returned NOT_IMPLEMENTED). verifyEnvelope is the single routine the
+// daemon startup path AND the control handlers call, so a sidecar that
+// verifies at startup verifies over the pipe and vice versa.
+//
+// Read-only: resolves anchors + verifies bytes, mutates nothing (the
+// SignedPolicy rollback counter is untouched — this path never mints
+// trust, it only reports). Unsigned deployments report absent/false,
+// never errors: normal must not look like failure.
+pub const AnchorSource = enum {
+    none,
+    file,
+    env,
+
+    pub fn toString(self: AnchorSource) []const u8 {
+        return switch (self) {
+            .none => "none",
+            .file => "file",
+            .env => "env",
+        };
+    }
+};
+
+pub const EnvelopeReason = enum {
+    ok,
+    doc_absent,
+    sidecar_absent,
+    no_anchors,
+    anchors_broken,
+    invalid,
+
+    pub fn toString(self: EnvelopeReason) []const u8 {
+        return switch (self) {
+            .ok => "VALID",
+            .doc_absent => "DOC_ABSENT",
+            .sidecar_absent => "SIDECAR_ABSENT",
+            .no_anchors => "NO_ANCHORS",
+            .anchors_broken => "ANCHORS_BROKEN",
+            .invalid => "INVALID",
+        };
+    }
+};
+
+pub const EnvelopeReport = struct {
+    doc_present: bool = false,
+    sidecar_present: bool = false,
+    anchor_source: AnchorSource = .none,
+    anchors_broken: bool = false,
+    valid: bool = false,
+    reason: EnvelopeReason = .doc_absent,
+};
+
+fn readConfigFile(allocator: std.mem.Allocator, root: []const u8, name: []const u8) ?[]u8 {
+    // Same layout as core/runtime_paths.configPath (root/configs/<name)),
+    // inlined so this module stays compilable as a standalone test root.
+    const path = std.fs.path.join(allocator, &.{ root, "configs", name }) catch return null;
+    defer allocator.free(path);
+    const file = std.fs.openFileAbsolute(path, .{}) catch return null;
+    defer file.close();
+    return file.readToEndAlloc(allocator, 4 * 1024 * 1024) catch null;
+}
+
+/// Verify one envelope (doc + sidecar) under configs/<root>.
+/// doc_name/sig_name are e.g. "policies.json"/"policies.sig.json".
+pub fn verifyEnvelope(
+    allocator: std.mem.Allocator,
+    runtime_root: []const u8,
+    doc_name: []const u8,
+    sig_name: []const u8,
+) EnvelopeReport {
+    var rep = EnvelopeReport{};
+    const doc = readConfigFile(allocator, runtime_root, doc_name) orelse return rep;
+    defer allocator.free(doc);
+    rep.doc_present = true;
+    const sig = readConfigFile(allocator, runtime_root, sig_name) orelse {
+        rep.reason = .sidecar_absent;
+        return rep;
+    };
+    defer allocator.free(sig);
+    rep.sidecar_present = true;
+
+    // Anchors: reviewed file wins; present-but-broken fails loudly
+    // (valid=false + anchors_broken, never a silent env fallback);
+    // absent file falls back to the env anchor; nothing configured
+    // means an unsigned deployment (false, not an error).
+    if (readConfigFile(allocator, runtime_root, "policy_trust.json")) |trust_bytes| {
+        defer allocator.free(trust_bytes);
+        const anchors = parseTrustAnchors(allocator, trust_bytes) catch {
+            rep.anchor_source = .file;
+            rep.anchors_broken = true;
+            rep.reason = .anchors_broken;
+            return rep;
+        };
+        defer allocator.free(anchors);
+        rep.anchor_source = .file;
+        rep.valid = verifyIrWithAnchors(allocator, doc, sig, anchors);
+        rep.reason = if (rep.valid) .ok else .invalid;
+        return rep;
+    }
+    const pubkey_hex = std.process.getEnvVarOwned(allocator, "AEGIS_POLICY_PUBKEY") catch {
+        rep.reason = .no_anchors;
+        return rep;
+    };
+    defer allocator.free(pubkey_hex);
+    rep.anchor_source = .env;
+    rep.valid = verifyIrSidecar(allocator, doc, sig, pubkey_hex);
+    rep.reason = if (rep.valid) .ok else .invalid;
+    return rep;
+}
+
+// ============================================================
 // TRUST-WIRE-082: opt-in gate semantics (pure, testable).
 // ============================================================
 //
@@ -964,6 +1081,127 @@ test "TRUST-WIRE-082: trustOptIn is explicit-opt-in only" {
     try std.testing.expect(!trustOptIn("0"));
     try std.testing.expect(!trustOptIn("yes"));
     try std.testing.expect(!trustOptIn("false"));
+}
+
+// ============================================================
+// Tests (BE-RCPT-091: canonical envelope reconciliation).
+// Hermetic: every case builds its own configs/ tree under a tmp
+// dir — no repo files read, none written.
+// ============================================================
+
+const EnvelopeFixture = struct {
+    tmp: std.testing.TmpDir,
+    root: []u8,
+
+    fn init(allocator: std.mem.Allocator) !EnvelopeFixture {
+        var tmp = std.testing.tmpDir(.{});
+        errdefer tmp.cleanup();
+        try tmp.dir.makePath("configs");
+        const root = try tmp.dir.realpathAlloc(allocator, ".");
+        return .{ .tmp = tmp, .root = root };
+    }
+
+    fn deinit(self: *EnvelopeFixture, allocator: std.mem.Allocator) void {
+        allocator.free(self.root);
+        self.tmp.cleanup();
+    }
+
+    fn write(self: *EnvelopeFixture, name: []const u8, data: []const u8) !void {
+        var path_buf: [256]u8 = undefined;
+        const sub = try std.fmt.bufPrint(&path_buf, "configs/{s}", .{name});
+        try self.tmp.dir.writeFile(.{ .sub_path = sub, .data = data });
+    }
+};
+
+test "BE-RCPT-091: valid file-anchored envelope verifies" {
+    const kp = testKeyPair();
+    const doc = "policies bytes for reconciliation prove-out";
+    const sig = try kp.sign(doc, null);
+    const sig_doc = try testSidecarDoc(std.testing.allocator, 7, sig.toBytes(), doc);
+    defer std.testing.allocator.free(sig_doc);
+    const anchors = [_]TrustAnchor{.{ .key_id = 7, .pubkey = kp.public_key.toBytes() }};
+    const trust_doc = try testAnchorDoc(std.testing.allocator, &anchors);
+    defer std.testing.allocator.free(trust_doc);
+
+    var fx = try EnvelopeFixture.init(std.testing.allocator);
+    defer fx.deinit(std.testing.allocator);
+    try fx.write("policies.json", doc);
+    try fx.write("policies.sig.json", sig_doc);
+    try fx.write("policy_trust.json", trust_doc);
+
+    const rep = verifyEnvelope(std.testing.allocator, fx.root, "policies.json", "policies.sig.json");
+    try std.testing.expect(rep.doc_present);
+    try std.testing.expect(rep.sidecar_present);
+    try std.testing.expect(rep.anchor_source == .file);
+    try std.testing.expect(!rep.anchors_broken);
+    try std.testing.expect(rep.valid);
+    try std.testing.expect(rep.reason == .ok);
+}
+
+test "BE-RCPT-091: tampered doc fails invalid, absent sidecar fails present" {
+    const kp = testKeyPair();
+    const doc = "policies bytes";
+    const sig = try kp.sign(doc, null);
+    const sig_doc = try testSidecarDoc(std.testing.allocator, 7, sig.toBytes(), doc);
+    defer std.testing.allocator.free(sig_doc);
+    const anchors = [_]TrustAnchor{.{ .key_id = 7, .pubkey = kp.public_key.toBytes() }};
+    const trust_doc = try testAnchorDoc(std.testing.allocator, &anchors);
+    defer std.testing.allocator.free(trust_doc);
+
+    var fx = try EnvelopeFixture.init(std.testing.allocator);
+    defer fx.deinit(std.testing.allocator);
+    try fx.write("policies.json", doc);
+    try fx.write("policies.sig.json", sig_doc);
+    try fx.write("policy_trust.json", trust_doc);
+
+    // Tampered bytes: present everywhere, INVALID verdict.
+    try fx.write("policies.json", "policies bytes TAMPERED");
+    const bad = verifyEnvelope(std.testing.allocator, fx.root, "policies.json", "policies.sig.json");
+    try std.testing.expect(bad.doc_present and bad.sidecar_present);
+    try std.testing.expect(!bad.valid);
+    try std.testing.expect(bad.reason == .invalid);
+
+    // Restore doc, drop sidecar: fail-closed on presence.
+    try fx.write("policies.json", doc);
+    try fx.tmp.dir.deleteFile("configs/policies.sig.json");
+    const nosig = verifyEnvelope(std.testing.allocator, fx.root, "policies.json", "policies.sig.json");
+    try std.testing.expect(nosig.doc_present and !nosig.sidecar_present);
+    try std.testing.expect(!nosig.valid);
+    try std.testing.expect(nosig.reason == .sidecar_absent);
+}
+
+test "BE-RCPT-091: broken trust file fails loud, unknown key fails invalid" {
+    const kp = testKeyPair();
+    const doc = "policies bytes";
+    const sig = try kp.sign(doc, null);
+    const sig_doc = try testSidecarDoc(std.testing.allocator, 7, sig.toBytes(), doc);
+    defer std.testing.allocator.free(sig_doc);
+
+    var fx = try EnvelopeFixture.init(std.testing.allocator);
+    defer fx.deinit(std.testing.allocator);
+    try fx.write("policies.json", doc);
+    try fx.write("policies.sig.json", sig_doc);
+
+    // Present-but-broken anchors: loud, never a silent env fallback.
+    try fx.write("policy_trust.json", "{\"version\": 1, \"keys\": []}");
+    const broken = verifyEnvelope(std.testing.allocator, fx.root, "policies.json", "policies.sig.json");
+    try std.testing.expect(broken.anchor_source == .file);
+    try std.testing.expect(broken.anchors_broken);
+    try std.testing.expect(!broken.valid);
+    try std.testing.expect(broken.reason == .anchors_broken);
+
+    // Well-formed file naming an unknown key: INVALID, not broken.
+    var seed2: [32]u8 = [_]u8{0} ** 32;
+    for (&seed2, 0..) |*b, i| b.* = @truncate(i * 13 + 1);
+    const kp_other = Ed25519.KeyPair.create(seed2) catch unreachable;
+    const other = [_]TrustAnchor{.{ .key_id = 9, .pubkey = kp_other.public_key.toBytes() }};
+    const other_doc = try testAnchorDoc(std.testing.allocator, &other);
+    defer std.testing.allocator.free(other_doc);
+    try fx.write("policy_trust.json", other_doc);
+    const unknown = verifyEnvelope(std.testing.allocator, fx.root, "policies.json", "policies.sig.json");
+    try std.testing.expect(!unknown.anchors_broken);
+    try std.testing.expect(!unknown.valid);
+    try std.testing.expect(unknown.reason == .invalid);
 }
 
 // ============================================================

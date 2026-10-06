@@ -289,7 +289,12 @@ documented); `successRate` pending-blind accepted (unused helper).
 Still OPEN: flow pointer lock-escape (single-threaded today),
 correlator/AC per-packet allocator (needs profiling,
 not guesses), receipt validator
-reconciliation, disabled_rules end-to-end (BE-DIS-089: daemon
+reconciliation (BE-RCPT-091: policy_signing.verifyEnvelope is the one
+canonical routine — daemon startup trust blocks + policy.verify handler
+share it; policy.validate does structural dry-run; CLI verify/validate
+branches route read-only; pinned by tmp-dir Zig tests with red-green
+proof + tests/runtime/test_policy_verify.py. Rust FFI cutover
+explicitly out — native stays canonical for the control plane), disabled_rules end-to-end (BE-DIS-089: daemon
 startup + rules.reload now skip configs/disabled_rules.json IDs;
 CLI constant + list command canonicalized to the same file with a
 daemon-authoritative count; live file gitignored; Zig membership +
