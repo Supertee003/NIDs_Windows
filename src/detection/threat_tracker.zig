@@ -179,6 +179,74 @@ pub const ThreatTracker = struct {
     pub fn openIncidents(self: *ThreatTracker) []const Incident {
         return self.incidents[0..self.incident_count];
     }
+
+    /// Evict idle state past INCIDENT_TTL_NS (A1: eviction-policy verdict).
+    ///
+    /// Verdict (documented, not guessed):
+    ///  - Only `.open` incidents expire. Terminal states (escalated,
+    ///    blocked, resolved, false_positive) are operator-owned and persist.
+    ///    Today nothing transitions states, so every incident is .open —
+    ///    the rule still matters for the day something does.
+    ///  - Expired slots are swap-removed (order is not a contract;
+    ///    event_processor copies incidents by value, FlowThreat keys by
+    ///    id, so no dangling references exist).
+    ///  - Idle FlowThreat entries (last_seen past TTL) are dropped with
+    ///    their incidents: an idle flow's scoreboard disappears entirely,
+    ///    which also bounds the map. A re-offending flow starts fresh and
+    ///    can escalate again.
+    ///  - `now_ns` MUST be event-clock (ev.timestamp_ns), the same clock
+    ///    as first_seen/last_seen — never wall-clock. Out-of-order events
+    ///    (now < last_seen) never expire: fail direction is keep, not drop.
+    /// Returns the number of incidents expired (the caller owns the open
+    /// counter decrement — single pipeline thread, no race).
+    pub fn pruneExpired(self: *ThreatTracker, now_ns: u64) u32 {
+        self.mutex.lock();
+        defer self.mutex.unlock();
+        const ttl: u64 = @intCast(INCIDENT_TTL_NS);
+        var expired: u32 = 0;
+
+        // 1. Drop idle flow state first so re-offense starts fresh.
+        // Collect-then-remove: mutating the map under its own iterator
+        // can skip entries; a skipped idle flow is merely pruned on a
+        // later pass (safe direction), but collect-then-remove is exact.
+        var idle_flows = std.ArrayList(u64).init(self.allocator);
+        defer idle_flows.deinit();
+        var flow_it = self.flow_threats.iterator();
+        while (flow_it.next()) |entry| {
+            const last: u64 = @intCast(entry.value_ptr.last_seen_ns.load(.monotonic));
+            if (now_ns > last and now_ns - last > ttl) {
+                idle_flows.append(entry.key_ptr.*) catch continue;
+            }
+        }
+        for (idle_flows.items) |flow_id| {
+            if (self.flow_threats.getPtr(flow_id)) |ft| {
+                ft.incident_id.store(0, .release);
+            }
+            _ = self.flow_threats.remove(flow_id);
+        }
+
+        // 2. Resolve + swap-remove expired .open incidents.
+        var i: usize = 0;
+        while (i < self.incident_count) {
+            const inc = &self.incidents[i];
+            const is_open = inc.state == .open;
+            const last: u64 = if (inc.last_seen_ns < 0) 0 else @intCast(inc.last_seen_ns);
+            const idle = now_ns > last and now_ns - last > ttl;
+            if (is_open and idle) {
+                inc.state = .resolved;
+                expired += 1;
+                const last_idx = self.incident_count - 1;
+                if (i != last_idx) {
+                    self.incidents[i] = self.incidents[last_idx];
+                }
+                self.incident_count -= 1;
+                // Do not advance: the swapped-in entry is unexamined.
+            } else {
+                i += 1;
+            }
+        }
+        return expired;
+    }
 };
 
 // ============================================================================
@@ -316,4 +384,78 @@ test "ThreatTracker full table refuses loudly, not silently" {
     }
     try std.testing.expectEqual(@as(u32, MAX_INCIDENTS), tt.incident_count);
     try std.testing.expectEqual(@as(u64, 1), tt.dropped_at_cap);
+}
+
+test "A1: idle open incident expires past TTL and frees its slot" {
+    var tt = ThreatTracker.init(std.testing.allocator);
+    defer tt.deinit();
+    var ev = event.IpcEvent.init(.signature_match);
+    ev.flow_id = 1;
+    ev.timestamp_ns = 1000;
+    ev.event_id = 1;
+    const inc = try tt.observeFlowThreat(&ev, 100);
+    try std.testing.expect(inc != null);
+    try std.testing.expectEqual(@as(u32, 1), tt.incident_count);
+    // Before TTL: nothing expires.
+    try std.testing.expectEqual(@as(u32, 0), tt.pruneExpired(1000 + @as(u64, @intCast(INCIDENT_TTL_NS))));
+    try std.testing.expectEqual(@as(u32, 1), tt.incident_count);
+    // Past TTL: resolved, compacted, slot reusable.
+    try std.testing.expectEqual(@as(u32, 1), tt.pruneExpired(1000 + @as(u64, @intCast(INCIDENT_TTL_NS)) + 1));
+    try std.testing.expectEqual(@as(u32, 0), tt.incident_count);
+    try std.testing.expectEqual(@as(usize, 0), tt.openIncidents().len);
+    // Re-offense starts fresh (flow state was dropped with the incident).
+    var ev2 = event.IpcEvent.init(.signature_match);
+    ev2.flow_id = 1;
+    ev2.timestamp_ns = 2000 + @as(u64, @intCast(INCIDENT_TTL_NS)) + 1;
+    ev2.event_id = 2;
+    const inc2 = try tt.observeFlowThreat(&ev2, 100);
+    try std.testing.expect(inc2 != null);
+    try std.testing.expectEqual(@as(u32, 1), tt.incident_count);
+}
+
+test "A1: terminal states persist past TTL, out-of-order never expires" {
+    var tt = ThreatTracker.init(std.testing.allocator);
+    defer tt.deinit();
+    var ev = event.IpcEvent.init(.signature_match);
+    ev.flow_id = 1;
+    ev.timestamp_ns = 1000;
+    ev.event_id = 1;
+    const inc = try tt.observeFlowThreat(&ev, 100);
+    try std.testing.expect(inc != null);
+    // Operator-owned terminal state survives TTL expiry passes.
+    inc.?.state = .blocked;
+    const far_future = 1000 + @as(u64, @intCast(INCIDENT_TTL_NS)) + 1;
+    try std.testing.expectEqual(@as(u32, 0), tt.pruneExpired(far_future));
+    try std.testing.expectEqual(@as(u32, 1), tt.incident_count);
+    // Out-of-order event clock (now < last_seen) expires nothing —
+    // fail direction is keep, never drop.
+    inc.?.state = .open;
+    try std.testing.expectEqual(@as(u32, 0), tt.pruneExpired(500));
+    try std.testing.expectEqual(@as(u32, 1), tt.incident_count);
+}
+
+test "A1: expiry reclaims a full table (cap-063 follow-up)" {
+    var tt = ThreatTracker.init(std.testing.allocator);
+    defer tt.deinit();
+    var flow: u64 = 1;
+    while (flow <= MAX_INCIDENTS) : (flow += 1) {
+        var ev = event.IpcEvent.init(.signature_match);
+        ev.flow_id = flow;
+        ev.timestamp_ns = 1000;
+        ev.event_id = flow;
+        _ = try tt.observeFlowThreat(&ev, 100);
+    }
+    try std.testing.expectEqual(@as(u32, MAX_INCIDENTS), tt.incident_count);
+    // All idle past TTL: the whole table compacts, and the refused
+    // newcomer from cap-063 now fits.
+    const expired = tt.pruneExpired(1000 + @as(u64, @intCast(INCIDENT_TTL_NS)) + 1);
+    try std.testing.expectEqual(@as(u32, MAX_INCIDENTS), expired);
+    try std.testing.expectEqual(@as(u32, 0), tt.incident_count);
+    var ev_new = event.IpcEvent.init(.signature_match);
+    ev_new.flow_id = MAX_INCIDENTS + 1;
+    ev_new.timestamp_ns = 2000 + @as(u64, @intCast(INCIDENT_TTL_NS)) + 1;
+    ev_new.event_id = MAX_INCIDENTS + 1;
+    const inc = try tt.observeFlowThreat(&ev_new, 100);
+    try std.testing.expect(inc != null);
+    try std.testing.expectEqual(@as(u32, 1), tt.incident_count);
 }

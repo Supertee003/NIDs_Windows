@@ -608,6 +608,9 @@ pub fn pipelineLoop(
         const maybe_qe = queue.popEvent();
         if (maybe_qe) |qe_val| {
             var qe = qe_val;
+            // A1: snapshot the event clock BEFORE fault injection can flip
+            // bits in it — prune decisions must never ride corrupted time.
+            const prune_now_ns = qe.ev.timestamp_ns;
             // Fault injection — maybe corrupt event
             _ = state.g_fi.maybeCorrupt(&qe.ev);
             // Performance tracking
@@ -622,6 +625,17 @@ pub fn pipelineLoop(
             if (since_prune >= 4096) {
                 since_prune = 0;
                 _ = corr.prune(std.time.nanoTimestamp());
+                // A1: expire idle incidents + flow state on EVENT clock
+                // (prune_now_ns, snapshotted above — the same clock as
+                // first_seen/last_seen, never wall-clock, never corrupted).
+                // Returns the expired count; this thread owns both the
+                // tracker and g_incidents_open, so the decrement cannot
+                // underflow or race.
+                const expired = tt.pruneExpired(prune_now_ns);
+                if (expired > 0) {
+                    _ = state.g_incidents_open.fetchSub(expired, .monotonic);
+                    diag.info("incident TTL: expired {} idle incidents", .{expired});
+                }
                 // WD-BEAT-049: drive the watchdog from the one thread that
                 // always cycles. Stalls surface as critical diagnostics (and
                 // stay listed in pendingAlerts for a future control drain);

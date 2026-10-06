@@ -363,7 +363,13 @@ headers, RDP/Kerberos single-magic FP, nose TUI synthetic counters, C++
 DNS port compare, IPC short framing, WFP unload leak
 (drivers quarantined — do not touch), rule FNV collisions,
 golden-table drift, `threat_score`/`weight` fixed, INCIDENT_TTL
-unenforced (eviction-policy verdict needed), IPv4-only evidence ring
+unenforced (A1: eviction verdict landed — only `.open` incidents expire
+after 1h event-clock idleness, terminal states persist, slots compact
+for reuse, idle flow state drops with its incident, pipeline loop
+drives prune off the pre-corruption event clock and decrements
+g_incidents_open; pinned by in-file red-green tests + tests/runtime/
+test_incident_ttl.py; re-escalation after expiry starts fresh by
+construction), IPv4-only evidence ring
 (see docs/adr/0006-forensic-ipv6-record-abi.md — corrected map in
 FOR-V6A: the ring RecordHeader carries NO IP fields by design (identity
 is the raw packet payload, which keeps full v6 bytes); the EvidenceRecord
