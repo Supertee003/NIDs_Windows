@@ -294,6 +294,13 @@ startup + rules.reload now skip configs/disabled_rules.json IDs;
 CLI constant + list command canonicalized to the same file with a
 daemon-authoritative count; live file gitignored; Zig membership +
 skip-semantics tests + tests/security/test_disabled_rules_authority.py),
+DEFCON unification (FE-DEF-095a: daemon owns the single ladder —
+src/control/defcon.zig over g_critical_detections +
+g_confirmed_blocks atomics, carried by healthJson defcon_level/label
+per RUNTIME_CONTRACT §4.1; CLI get_defcon + web threat prefer it with
+a labeled file-ladder fallback; pinned by tests/runtime/
+test_defcon_authority.py. Still open as 095b: desktop egui + mouth
+keep local ladders until they gain a control-plane read path),
 spool replay automation
 (exists — needs live proof), SBOM salt (SBOM-SALT-087: builtin
 hash() is per-process salted — replaced with SHA-256 path IDs, proven

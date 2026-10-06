@@ -168,6 +168,13 @@ fn processEvent(
         }
     }
 
+    // FE-DEF-095a: daemon-owned critical input. Counted once per matched
+    // event at final (possibly incident-escalated) severity — never from
+    // file contents. Feeds control/defcon.zig via healthJson.
+    if (matched_rule_id != 0 and (ev_severity == .critical or ev_severity == .emergency)) {
+        _ = state.g_critical_detections.fetchAdd(1, .monotonic);
+    }
+
     // Record detection result in trace
     decision_trace.setDetection(
         matched_rule_id,

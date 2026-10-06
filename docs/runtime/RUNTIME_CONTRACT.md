@@ -136,6 +136,8 @@ a child process. Acceptable transports (any one is sufficient):
   "pid":         12345,
   "uptime_ms":   98217,
   "last_event_ms": 412,
+  "defcon_level": 4,
+  "defcon_label": "ELEVATED",
   "counters": {
     "in_events":     1024,
     "out_events":    1023,
@@ -152,6 +154,13 @@ a child process. Acceptable transports (any one is sufficient):
 Field semantics:
 
 - `state` MUST match one of the values in §2.
+- `defcon_level` (1–5) + `defcon_label` (MAXIMUM/SEVERE/HIGH/ELEVATED/SAFE)
+  are the single DEFCON authority (FE-DEF-095a: `src/control/defcon.zig`
+  over daemon-owned counters — critical detections + confirmed-block
+  receipts, never file contents). UIs MUST project these fields and MUST
+  NOT compute their own ladder from log files. Both fields are additive:
+  readers MUST ignore them if absent (pre-095a daemon) and fall back to
+  their local evidence ladder, labeled as derived.
 - `last_event_ms` is the time since the component processed (or emitted) its
   last event. A stale value (> `5 × health_interval`) is a soft failure.
 - `counters.dropped > 0` is a soft failure if it increased since the last

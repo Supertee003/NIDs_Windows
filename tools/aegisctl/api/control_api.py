@@ -442,11 +442,27 @@ def apply_firewall_block(
 
 
 def get_defcon() -> Optional[Tuple[int, str]]:
-    """Get DEFCON level from Bridge IPC.
+    """Get DEFCON level — the daemon is the authority (FE-DEF-095a).
+
+    Primary: daemon health defcon_level/defcon_label (control/defcon.zig
+    ladder over daemon-owned counters). Fallback below is diagnostic-only:
+    bridge IPC or a stale anomalous.json tail, kept so an offline daemon
+    still shows something clearly labeled — never authoritative.
 
     Returns (level, label) or None if unavailable.
     """
-    # Try bridge first
+    # Authority first: daemon health.
+    try:
+        health = get_health_payload()
+        if isinstance(health, dict):
+            level = health.get("defcon_level")
+            label = health.get("defcon_label")
+            if isinstance(level, int) and 1 <= level <= 5 and isinstance(label, str) and label:
+                return level, label
+    except Exception:
+        pass
+
+    # Diagnostic fallback (unchanged semantics, demoted authority).
     try:
         shared_paths = [
             TOOLS_DIR.parent.parent / "shared",
@@ -735,6 +751,11 @@ def get_health_payload() -> Dict[str, Any]:
             "runtime_state": daemon_health.get("runtime_state", daemon_health.get("state", "DEGRADED")),
             "rules_loaded": int(daemon_health.get("rules_loaded", 0) or 0),
             "policies_loaded": int(daemon_health.get("policies_loaded", 0) or 0),
+            # FE-DEF-095a: daemon-owned DEFCON passthrough (control/defcon.zig
+            # via healthJson). Invalid shapes become None so UIs fall back
+            # to their local evidence ladder instead of rendering garbage.
+            "defcon_level": daemon_health.get("defcon_level") if isinstance(daemon_health.get("defcon_level"), int) else None,
+            "defcon_label": daemon_health.get("defcon_label") if isinstance(daemon_health.get("defcon_label"), str) else None,
             "pid": daemon_health.get("pid"),
             "version": daemon_health.get("version", "5.0.0"),
             "uptime_ms": daemon_health.get("uptime_ms", 0),

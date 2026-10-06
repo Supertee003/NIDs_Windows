@@ -11,6 +11,7 @@
 
 const std = @import("std");
 const runtime_state = @import("../pipeline/runtime_state.zig");
+const defcon = @import("defcon.zig");
 
 // ============================================================
 // System State Machine
@@ -327,9 +328,16 @@ pub const RuntimeState = struct {
         // both `state` and `degraded`.
         const core_pipeline_failed = (workers.failure_mask & 0x01) != 0;
         const operational_state = if (workers.pipeline and !core_pipeline_failed and bridge_ready) "RUNNING" else "DEGRADED";
+        // FE-DEF-095a: daemon-owned DEFCON rides the health payload so every
+        // UI reads one authority instead of computing its own ladder from
+        // files. Additive fields; older readers ignore unknown keys.
+        const defcon_total = runtime_state.g_pipeline_detections.load(.acquire);
+        const defcon_critical = runtime_state.g_critical_detections.load(.acquire);
+        const defcon_confirmed = runtime_state.g_confirmed_blocks.load(.acquire);
+        const defcon_level = defcon.level(defcon_total, defcon_critical, defcon_confirmed);
         try writer.print(
-            \\{{"component":"core","version":"{s}","state":"{s}","runtime_state":"{s}","pid":{} ,"uptime_ms":{},"last_event_ms":{},"degraded":{},"rules_loaded":{},"policies_loaded":{},"capabilities":{{"wfp":{},"cpp_bridge":{},"udp_brain":{} }},"data_plane":{{"nose_connected":{},"nose_frames_read":{},"nose_frames_rejected":{},"nose_frames_submitted":{},"nose_frames_dropped":{},"nose_pipe_errors":{},"nose_last_event_id":{},"nose_duplicate_event_ids":{},"nose_non_monotonic_event_ids":{}}},"deps":[
-        , .{ ver, operational_state, ss.toString(), pid, uptime, runtime_state.g_last_event_ms.load(.acquire), !all_healthy or !bridge_ready, runtime_state.g_rules_loaded.load(.acquire), runtime_state.g_policies_loaded.load(.acquire), wfp_ready, cpp_ready, udp_ready, runtime_state.g_nose_connected.load(.acquire), runtime_state.g_nose_frames_read.load(.acquire), runtime_state.g_nose_frames_rejected.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), runtime_state.g_nose_frames_dropped.load(.acquire), runtime_state.g_nose_pipe_errors.load(.acquire), runtime_state.g_nose_last_event_id.load(.acquire), runtime_state.g_nose_duplicate_event_ids.load(.acquire), runtime_state.g_nose_non_monotonic_event_ids.load(.acquire) });
+            \\{{"component":"core","version":"{s}","state":"{s}","runtime_state":"{s}","pid":{} ,"uptime_ms":{},"last_event_ms":{},"degraded":{},"rules_loaded":{},"policies_loaded":{},"defcon_level":{},"defcon_label":"{s}","capabilities":{{"wfp":{},"cpp_bridge":{},"udp_brain":{} }},"data_plane":{{"nose_connected":{},"nose_frames_read":{},"nose_frames_rejected":{},"nose_frames_submitted":{},"nose_frames_dropped":{},"nose_pipe_errors":{},"nose_last_event_id":{},"nose_duplicate_event_ids":{},"nose_non_monotonic_event_ids":{}}},"deps":[
+        , .{ ver, operational_state, ss.toString(), pid, uptime, runtime_state.g_last_event_ms.load(.acquire), !all_healthy or !bridge_ready, runtime_state.g_rules_loaded.load(.acquire), runtime_state.g_policies_loaded.load(.acquire), defcon_level, defcon.labelFor(defcon_level), wfp_ready, cpp_ready, udp_ready, runtime_state.g_nose_connected.load(.acquire), runtime_state.g_nose_frames_read.load(.acquire), runtime_state.g_nose_frames_rejected.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), runtime_state.g_nose_frames_dropped.load(.acquire), runtime_state.g_nose_pipe_errors.load(.acquire), runtime_state.g_nose_last_event_id.load(.acquire), runtime_state.g_nose_duplicate_event_ids.load(.acquire), runtime_state.g_nose_non_monotonic_event_ids.load(.acquire) });
 
         try writer.print("{{\"name\":\"bridge\",\"state\":\"{s}\"}},{{\"name\":\"pipeline\",\"state\":\"{s}\"}}],\"subsystems\":[", .{
             if (bridge_ready) "RUNNING" else "DEGRADED",

@@ -108,6 +108,7 @@ comptime {
     // Control plane contract + handlers (T3-TWOP-023 pins execute here).
     _ = @import("control/protocol.zig");
     _ = @import("control/handler_registry.zig");
+    _ = @import("control/defcon.zig");
 }
 
 test "all modules imported successfully" {

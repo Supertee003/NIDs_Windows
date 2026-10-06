@@ -90,6 +90,13 @@ pub fn workerFailureMask() u8 {
 // beyond atomicity), readers use .acquire.
 pub var g_pipeline_events_processed = std.atomic.Value(u64).init(0);
 pub var g_pipeline_detections = std.atomic.Value(u64).init(0);
+// FE-DEF-095a: daemon-owned DEFCON inputs. Critical = matched detections
+// whose final (possibly incident-escalated) severity is critical or
+// emergency. Confirmed = BLOCKED_CONFIRMED receipts only (verified
+// EnforcementReceipt + host effect). Both counted at emission, read by
+// control/defcon.zig via healthJson. Never file-derived.
+pub var g_critical_detections = std.atomic.Value(u64).init(0);
+pub var g_confirmed_blocks = std.atomic.Value(u64).init(0);
 // ANOM-COUNT-035: g_pipeline_anomalies removed (write-only, zero readers).
 // Anomaly counts live in AnomalyDetector.anomalies_emitted (detector-owned)
 // and diag.metrics.anomalies_detected (metrics-snapshot feed).

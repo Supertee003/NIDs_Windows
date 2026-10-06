@@ -15,6 +15,7 @@ const event = @import("../contract/event.zig");
 const diag = @import("../core/diagnostics.zig");
 const pep = @import("pep_bindings.zig");
 const policy = @import("policy_ir.zig");
+const runtime_state = @import("../pipeline/runtime_state.zig");
 
 // ============================================================================
 // FederationBackend — escalation to peer nodes
@@ -110,6 +111,10 @@ pub const ActionDispatcher = struct {
                     confirmed.kind = .action_block;
                     confirmed.fate = .blocked;
                     diag.info("action=BLOCKED_CONFIRMED rule={d} policy_id={d} filter_id={d}", .{ ev.rule_id, p.id, r.filter_id });
+                    // FE-DEF-095a: daemon-owned confirmed-block input. Only
+                    // this receipt-verified path increments; the legacy
+                    // dispatch() below stays unconfirmed by design.
+                    _ = runtime_state.g_confirmed_blocks.fetchAdd(1, .monotonic);
                     _ = ForensicBackend.write(&confirmed);
                     return;
                 }

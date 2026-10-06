@@ -123,12 +123,29 @@ def _severity_order(value: Any) -> int:
     return {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}.get(str(value).lower(), 5)
 
 
-def _threat_posture(records: list[dict[str, Any]]) -> dict[str, Any]:
-    """Presentation-only threat posture derived from evidence records.
+def _threat_posture(records: list[dict[str, Any]], health: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Presentation-only threat posture (FE-DEF-095a: daemon is the authority).
 
-    This is NOT an enforcement claim: it counts what the evidence log says,
-    using the same ladder as the desktop dashboard.
+    When daemon health carries defcon_level/defcon_label (control/defcon.zig
+    over daemon-owned counters), those win — even with zero evidence-log
+    records, so a missing log file can never display SAFE over live
+    incidents. Otherwise the legacy evidence-log ladder applies and the
+    basis says so explicitly. This is NOT an enforcement claim either way.
     """
+    if isinstance(health, dict):
+        level = health.get("defcon_level")
+        label = health.get("defcon_label")
+        if isinstance(level, int) and 1 <= level <= 5 and isinstance(label, str) and label:
+            confirmed = sum(1 for r in records if r.get("receipt_valid"))
+            return {
+                "defcon": level,
+                "label": label,
+                "critical": sum(1 for r in records if _severity_order(r.get("severity")) == 0),
+                "high": sum(1 for r in records if _severity_order(r.get("severity")) == 1),
+                "confirmed_blocks": confirmed,
+                "records": len(records),
+                "basis": "daemon authority (control plane), not an enforcement claim",
+            }
     critical = sum(1 for r in records if _severity_order(r.get("severity")) == 0)
     high = sum(1 for r in records if _severity_order(r.get("severity")) == 1)
     confirmed = sum(1 for r in records if r.get("receipt_valid"))
@@ -181,7 +198,7 @@ def snapshot() -> dict[str, Any]:
         "forensic": forensic,
         "feed": {"available": feed["available"], "path": feed["path"], "total_scanned": feed["total_scanned"]},
         "incidents": incidents,
-        "threat": _threat_posture(incidents),
+        "threat": _threat_posture(incidents, health),
         "rules_runtime": {
             "active": int(health.get("rules_loaded", 0) or 0),
             "policies_active": int(health.get("policies_loaded", 0) or 0),
