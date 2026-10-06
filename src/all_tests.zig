@@ -106,6 +106,9 @@ comptime {
     _ = @import("tests/cli_imports.zig");
     // Pipeline hook tests (T1-SIEM-022 SIEM forwarding pin executes here).
     _ = @import("pipeline/event_processor.zig");
+    // LEN-CLAIM-100: direct edge — transitive-only files' tests do NOT
+    // execute in this toolchain's test binary (silent death found live).
+    _ = @import("pipeline/event_queue.zig");
     // Control plane contract + handlers (T3-TWOP-023 pins execute here).
     _ = @import("control/protocol.zig");
     _ = @import("control/handler_registry.zig");

@@ -288,7 +288,10 @@ documented); `successRate` pending-blind accepted (unused helper).
 
 Still OPEN: flow pointer lock-escape (single-threaded today),
 correlator/AC per-packet allocator (needs profiling,
-not guesses), receipt validator
+not guesses), event_queue len claim (LEN-CLAIM-100: two-length contract
+pinned — ev.payload_len keeps the full wire claim, qe.payload_len reports
+bytes present with 1500-byte prefix truncation; wiring the direct test
+edge newly executes 7 tests with red-green proof), receipt validator
 reconciliation (BE-RCPT-091: policy_signing.verifyEnvelope is the one
 canonical routine — daemon startup trust blocks + policy.verify handler
 share it; policy.validate does structural dry-run; CLI verify/validate

@@ -16,6 +16,14 @@ pub const MAX_PAYLOAD_BYTES: usize = 1500; // MTU-sized payload buffer
 /// src/dst_ipv6 carry the v2 full-address sidecars when the frame arrived
 /// as a 133-byte v2 frame (nose IPv6 path); null for v1 frames and all
 /// other producers. In-memory only — never on any wire.
+///
+/// Two-length contract (do not conflate):
+///   ev.payload_len  = WIRE CLAIM (u32, unbounded, sensor-controlled).
+///     Preserved verbatim for forensics/identity; never used to slice.
+///   qe.payload_len  = BYTES PRESENT (u16, <= MAX_PAYLOAD_BYTES).
+///     The only length any matcher/serializer may slice by. Oversize
+///     payloads truncate to the 1500-byte prefix (MTU-sized); matching
+///     past the prefix is a documented blind spot, not a silent promise.
 pub const QueuedEvent = struct {
     ev: event.IpcEvent,
     payload: [MAX_PAYLOAD_BYTES]u8 = [_]u8{0} ** MAX_PAYLOAD_BYTES,
@@ -124,6 +132,9 @@ pub fn pushCanonicalEventWithPayload(ce: *const canonical.CanonicalEvent, payloa
 /// behavior (u32 identity, is_ipv6=false). Sidecars are attached in the
 /// same producer-mutex hold as the slot publish, so no interleaving
 /// producer can steal or split the slot.
+/// Two-length rule: ev.payload_len keeps the FULL wire claim (forensics/
+/// identity); qe.payload_len reports the bytes actually queued (<= 1500).
+/// Matchers must slice by qe.payload_len only.
 /// CORR-DNS-080: classify forwarded DNS traffic by port. DNS is the
 /// only protocol the pipeline names by port today; everything else
 /// keeps the exact previous mapping (generic packet_captured). The
@@ -275,13 +286,38 @@ test "classifyForward names DNS by port, keeps everything else generic" {
     try std.testing.expectEqual(event.EventKind.signature_match, popEvent().?.ev.kind);
 }
 
-test "pushCanonicalEventWithPayload preserves bounded payload" {    var ce = canonical.create(.npcap_sensor);
+test "pushCanonicalEventWithPayload preserves bounded payload" {
+    var ce = canonical.create(.npcap_sensor);
     const payload = "signature-fixture";
     ce.payload_length = payload.len;
     try std.testing.expect(pushCanonicalEventWithPayload(&ce, payload));
     const queued = popEvent().?;
     try std.testing.expectEqual(payload.len, queued.payload_len);
     try std.testing.expectEqualSlices(u8, payload, queued.payload[0..payload.len]);
+}
+
+test "LEN-CLAIM-100: oversize payload truncates to prefix, wire claim kept" {
+    // A 2000-byte payload queues the 1500-byte prefix; the matcher slice
+    // (qe.payload_len) and the wire claim (ev.payload_len) disagree BY
+    // DESIGN — this test pins the disagreement so neither side can
+    // silently change meaning.
+    var big: [2000]u8 = undefined;
+    for (&big, 0..) |*b, i| b.* = @truncate(i);
+    const ev = event.IpcEvent.init(.packet_captured);
+    try std.testing.expect(pushEvent(ev, &big));
+    const queued = popEvent().?;
+    try std.testing.expectEqual(@as(u16, MAX_PAYLOAD_BYTES), queued.payload_len);
+    try std.testing.expectEqualSlices(u8, big[0..MAX_PAYLOAD_BYTES], queued.payload[0..MAX_PAYLOAD_BYTES]);
+
+    // Canonical path: 9000-byte wire claim, 2000 bytes present.
+    var ce = canonical.create(.npcap_sensor);
+    ce.event_type = .forward;
+    ce.payload_length = 9000;
+    var f = canonical.DecodedFrame{ .event = ce, .src_ipv6 = null, .dst_ipv6 = null };
+    try std.testing.expect(pushDecodedFrame(&f, &big));
+    const queued2 = popEvent().?;
+    try std.testing.expectEqual(@as(u32, 9000), queued2.ev.payload_len);
+    try std.testing.expectEqual(@as(u16, MAX_PAYLOAD_BYTES), queued2.payload_len);
 }
 
 const ProducerStressContext = struct {
