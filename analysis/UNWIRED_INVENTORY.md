@@ -288,7 +288,11 @@ documented); `successRate` pending-blind accepted (unused helper).
 
 Still OPEN: flow pointer lock-escape (single-threaded today),
 correlator/AC per-packet allocator (needs profiling,
-not guesses), test-scope grandfather ratchet (SCOPE-102 batch 1:
+not guesses), ring stats partial (RING-STAT-103: forensics.verify now
+reports retained/overwritten/capacity_slots/oldest_record_seq additively
+via overwrittenCount(); in-file red-green proofs incl. handler shape;
+single g_ProofFilterId + provider GUID split + WFP unload leak stay
+untouched — quarantined driver layer, do-not-touch per STOP-THE-LINE), test-scope grandfather ratchet (SCOPE-102 batch 1:
 11 mis-scoped integration/proof files moved to OUT_OF_UNIT; 17
 production files wired direct with 292/292 newly-executing tests green
 (zero rot); batch 2 emptied the ratchet 47→0: 14 more wired (201/201

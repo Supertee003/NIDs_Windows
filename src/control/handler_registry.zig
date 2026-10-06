@@ -1072,10 +1072,21 @@ const handlers = struct {
     fn forensicsVerify(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
         if (state_mod.g_forensic_ring) |ring| {
             const verified = ring.verifyHashChain();
-            return std.fmt.allocPrint(a, "{{\"verified\":{},\"integrity\":\"{s}\",\"records\":{}}}", .{
+            // RING-STAT-103: report retention, not just the ever-written
+            // total — a fixed ring overwrites, and operators must see loss.
+            // Additive keys; old readers ignore them.
+            const count = ring.recordCount();
+            const slots = ring.capacity() / forensic_pipeline.RECORD_BYTES;
+            const retained: u64 = if (count > slots) slots else count;
+            const oldest: u64 = if (count > slots) count - slots else 0;
+            return std.fmt.allocPrint(a, "{{\"verified\":{},\"integrity\":\"{s}\",\"records\":{},\"retained\":{},\"overwritten\":{},\"capacity_slots\":{},\"oldest_record_seq\":{}}}", .{
                 verified,
                 if (verified) "ok" else "failed",
                 state_mod.g_forensic_records_written.load(.acquire),
+                retained,
+                ring.overwrittenCount(),
+                slots,
+                oldest,
             }) catch null;
         }
         return "{\"verified\":false,\"integrity\":\"unavailable\",\"records\":0}";
@@ -2140,8 +2151,7 @@ test "BE-EXP-099: export honors limit with truncation flagged" {
     try std.testing.expect(res.truncated);
 }
 
-test "BE-EXP-099: export on empty ring writes zero records, still verified" {
-    var ring = try forensic_pipeline.ForensicRing.initMemory(std.testing.allocator, 4 * forensic_pipeline.RECORD_BYTES);
+test "BE-EXP-099: export on empty ring writes zero records, still verified" {    var ring = try forensic_pipeline.ForensicRing.initMemory(std.testing.allocator, 4 * forensic_pipeline.RECORD_BYTES);
     defer ring.deinit(std.testing.allocator);
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
@@ -2157,4 +2167,46 @@ test "BE-EXP-099: export on empty ring writes zero records, still verified" {
     const back = try std.fs.cwd().readFileAlloc(std.testing.allocator, path, 65536);
     defer std.testing.allocator.free(back);
     try std.testing.expectEqual(@as(usize, 0), back.len);
+}
+
+test "RING-STAT-103: overwrite accounting exposes retention loss" {
+    // 2-slot ring, 5 appends → 3 overwritten, 2 retained. The old
+    // verify response (ever-written total only) could not show this.
+    const event_mod = @import("../contract/event.zig");
+    var ring = try forensic_pipeline.ForensicRing.initMemory(std.testing.allocator, 2 * forensic_pipeline.RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+    var i: u64 = 0;
+    while (i < 5) : (i += 1) {
+        var ev = event_mod.IpcEvent.init(.signature_match);
+        ev.event_id = 300 + i;
+        ev.timestamp_ns = 3000 + i;
+        _ = ring.append(&ev, "", 700 + i, 0, 0, 2);
+    }
+    try std.testing.expectEqual(@as(u64, 5), ring.recordCount());
+    try std.testing.expectEqual(@as(u64, 3), ring.overwrittenCount());
+}
+
+test "RING-STAT-103: forensics.verify reports retention additively" {
+    const event_mod = @import("../contract/event.zig");
+    const state_mod = @import("../pipeline/runtime_state.zig");
+    var ring = try forensic_pipeline.ForensicRing.initMemory(std.testing.allocator, 2 * forensic_pipeline.RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+    var i: u64 = 0;
+    while (i < 3) : (i += 1) {
+        var ev = event_mod.IpcEvent.init(.signature_match);
+        ev.event_id = 400 + i;
+        ev.timestamp_ns = 4000 + i;
+        _ = ring.append(&ev, "", 800 + i, 0, 0, 2);
+    }
+    const prev = state_mod.g_forensic_ring;
+    state_mod.g_forensic_ring = &ring;
+    defer state_mod.g_forensic_ring = prev;
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 25, .caller_role = .operate, .caller_pid = 0 };
+    const out = handlers.forensicsVerify(std.testing.allocator, .{ .null = {} }, &ctx).?;
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"integrity\":\"ok\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"retained\":2") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"overwritten\":1") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"capacity_slots\":2") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"oldest_record_seq\":1") != null);
 }

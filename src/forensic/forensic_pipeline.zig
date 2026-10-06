@@ -155,6 +155,13 @@ pub const ForensicRing = struct {
         return self.written;
     }
 
+    /// Records overwritten by ring wrap (RING-STAT-103: previously
+    /// tracked but exposed nowhere — operators saw ever-written totals
+    /// with no notion of retention loss).
+    pub fn overwrittenCount(self: *const ForensicRing) u64 {
+        return self.overwritten;
+    }
+
     /// Append one record. Infallible by construction (FOR-HARD-084):
     /// a full ring overwrites the oldest records and every write lands
     /// inside caller-checked bounds, so there is no failure to report.
