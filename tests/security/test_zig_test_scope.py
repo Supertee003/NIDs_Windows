@@ -58,6 +58,11 @@ OUT_OF_UNIT: dict[str, str] = {
     "src/tests/integration/replay_integration.zig": "integration",
     "src/tests/integration/threat_intel_integration.zig": "integration",
     "src/tests/integration/xdr_harden_integration.zig": "integration",
+    "src/tests/integration/brain_integration.zig": "integration",
+    "src/tests/integration/concurrency_harden_integration.zig": "integration",
+    "src/tests/integration/e2e_harness_integration.zig": "integration",
+    "src/tests/integration/performance_integration.zig": "integration",
+    "src/tests/integration/rust_pep_integration.zig": "integration",
     # Proof CLIs (same standing as integration).
     "src/tests/proofs/audit_trail_proof.zig": "proof",
     "src/tests/proofs/correlation_proof.zig": "proof",
@@ -70,6 +75,12 @@ OUT_OF_UNIT: dict[str, str] = {
     "src/tests/proofs/policy_plane_proof.zig": "proof",
     "src/tests/proofs/siem_integration_proof.zig": "proof",
     "src/tests/proofs/telemetry_export_proof.zig": "proof",
+    "src/tests/proofs/brain_proof.zig": "proof",
+    "src/tests/proofs/compliance_proof.zig": "proof",
+    "src/tests/proofs/config_reload_proof.zig": "proof",
+    "src/tests/proofs/documentation_proof.zig": "proof",
+    "src/tests/proofs/final_integration_proof.zig": "proof",
+    "src/tests/proofs/performance_tuning_proof.zig": "proof",
     # Real TCP + throughput floors (timing-sensitive, operator harness).
     # NOTE: federation_bench is REACHED via cli_imports (bench CLI) —
     # no entry needed while that import stands.
@@ -155,10 +166,6 @@ def _wrapper_edges() -> set[str]:
 # by gaining a direct edge (proven) — never by deleting tests. This
 # set is FROZEN: it may only shrink.
 SCOPE101_BASELINE: set[str] = {
-    "src/capture/flow_engine.zig",
-    "src/capture/nose_contract.zig",
-    "src/capture/proto/parsers.zig",
-    "src/contract/event_queue.zig",
     "src/core/authority_review.zig",
     "src/core/brain_engine.zig",
     "src/core/canary_progression.zig",
@@ -176,32 +183,8 @@ SCOPE101_BASELINE: set[str] = {
     "src/core/priority_queue.zig",
     "src/core/real_ips_path.zig",
     "src/core/rust_pep.zig",
-    "src/detection/correlation_engine.zig",
-    "src/detection/detection_engine.zig",
-    "src/detection/detection_interface.zig",
-    "src/detection/rag_engine.zig",
-    "src/detection/threat_intel.zig",
-    "src/detection/verdict_aggregator.zig",
-    "src/federation/federation_codec.zig",
-    "src/forensic/forensics_engine.zig",
-    "src/policy/policy_engine.zig",
-    "src/policy/wfp_ioctl.zig",
     "src/tests/core/bisect_b.zig",
     "src/tests/core/core_configs.zig",
-    "src/tests/integration/brain_integration.zig",
-    "src/tests/integration/concurrency_harden_integration.zig",
-    "src/tests/integration/e2e_harness_integration.zig",
-    "src/tests/integration/performance_integration.zig",
-    "src/tests/integration/rust_pep_integration.zig",
-    "src/tests/proofs/brain_proof.zig",
-    "src/tests/proofs/compliance_proof.zig",
-    "src/tests/proofs/config_reload_proof.zig",
-    "src/tests/proofs/documentation_proof.zig",
-    "src/tests/proofs/final_integration_proof.zig",
-    "src/tests/proofs/performance_tuning_proof.zig",
-    "src/windows/host_telemetry_detectors.zig",
-    "src/windows/host_telemetry_mock.zig",
-    "src/windows/host_telemetry_scenarios.zig",
 }
 
 

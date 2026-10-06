@@ -147,6 +147,26 @@ comptime {
     _ = @import("control/state_machine.zig");
     _ = @import("policy/pep_bindings.zig");
     _ = @import("policy/policy_ir.zig");
+    // SCOPE-102 batch 1: migrate grandfathered production files to direct
+    // edges (each proven by binary presence + green suite, or scoped with
+    // reason on rot — never silent).
+    _ = @import("capture/flow_engine.zig");
+    _ = @import("capture/nose_contract.zig");
+    _ = @import("capture/proto/parsers.zig");
+    _ = @import("contract/event_queue.zig");
+    _ = @import("detection/correlation_engine.zig");
+    _ = @import("detection/detection_engine.zig");
+    _ = @import("detection/detection_interface.zig");
+    _ = @import("detection/rag_engine.zig");
+    _ = @import("detection/threat_intel.zig");
+    _ = @import("detection/verdict_aggregator.zig");
+    _ = @import("federation/federation_codec.zig");
+    _ = @import("forensic/forensics_engine.zig");
+    _ = @import("policy/policy_engine.zig");
+    _ = @import("policy/wfp_ioctl.zig");
+    _ = @import("windows/host_telemetry_detectors.zig");
+    _ = @import("windows/host_telemetry_mock.zig");
+    _ = @import("windows/host_telemetry_scenarios.zig");
     // Control plane contract + handlers (T3-TWOP-023 pins execute here).
     _ = @import("control/protocol.zig");
     _ = @import("control/handler_registry.zig");
