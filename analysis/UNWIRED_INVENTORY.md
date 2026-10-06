@@ -135,7 +135,10 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   §11 ceremony record, CNG-backed) with staged flip + rollback
   criteria — mechanism complete, appointments pending; (2) N=100/60s
   locked fail-safe pending lab exit criteria (benign baseline →
-  attack validation → matrix; no-guess tuning is repo law);
+  attack validation → matrix; no-guess tuning is repo law, now
+  checkable via `.github/PULL_REQUEST_TEMPLATE.md` (dataset +
+  before/after + FP/FN + safety floor + rollback statement required
+  on every tuning PR));
   (3) single-host freeze at P4 — no listener wiring, no new ports;
   (4) every tuning ships dataset + before/after + matrix. Still
   open: the human appointments, the lab itself, multi-host scope.
