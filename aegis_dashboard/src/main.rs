@@ -24,7 +24,7 @@ fn is_critical_level(level: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_critical_level, resolve_defcon};
+    use super::{is_critical_level, resolve_defcon, AlertEntry};
 
     #[test]
     fn critical_level_is_case_insensitive() {
@@ -65,6 +65,21 @@ mod tests {
             let (_, _, source) = resolve_defcon(&health, 4);
             assert_eq!(source, "evidence-log", "raw={raw}");
         }
+    }
+
+    #[test]
+    fn writer_receipt_line_counts_as_confirmed_block() {
+        // BE-EVI-097: a daemon-writer line with the full receipt set
+        // satisfies confirmed_block(); an observed line never does.
+        // serde_json ignores the writer's extra keys (policy_id, …).
+        let enforced = r#"{"ts_ms":1791296893400,"mono_ns":1,"level":"critical","event":"signature_match","rule":"4237725842","src_ip":"192.168.1.100","src_port":1234,"session_id":7,"payload_len":3,"policy":"block","policy_id":4,"event_id":201,"trace_id":202,"audit_id":203,"enforcement_status":"enforced","host_effect_confirmed":true,"filter_id":301,"request_id":302,"decision":"block","provider":"wfp","receipt_version":1}"#;
+        let entry: AlertEntry = serde_json::from_str(enforced).unwrap();
+        assert_eq!(entry.rule, "4237725842");
+        assert_eq!(entry.src_ip, "192.168.1.100");
+        assert!(entry.confirmed_block());
+        let observed = r#"{"ts_ms":1791296893401,"level":"warn","event":"signature_match","rule":"1","src_ip":"10.0.0.1","policy":"alert","enforcement_status":"observed","host_effect_confirmed":false,"filter_id":0,"request_id":0}"#;
+        let entry: AlertEntry = serde_json::from_str(observed).unwrap();
+        assert!(!entry.confirmed_block());
     }
 }
 

@@ -285,12 +285,15 @@ fn is_confirmed_block(line: &str) -> bool {
     let policy = extract_json_field(line, "policy")
         .or_else(|| extract_json_field(line, "action"))
         .unwrap_or_default();
-    if policy != "Drop" && policy != "Block" && policy != "BLOCK" {
+    // BE-EVI-097: writer emits lowercase pipeline tags.
+    let policy_up = policy.to_uppercase();
+    if policy_up != "DROP" && policy_up != "BLOCK" {
         return false;
     }
     let receipt_enforced = extract_json_field(line, "receipt_status")
         .or_else(|| extract_json_field(line, "status"))
-        .map(|value| value == "ENFORCED")
+        .or_else(|| extract_json_field(line, "enforcement_status"))
+        .map(|value| value == "ENFORCED" || value == "enforced")
         .unwrap_or(false);
     let host_effect_confirmed = extract_json_field(line, "host_effect_confirmed")
         .map(|value| value == "true")
@@ -646,9 +649,16 @@ impl AlertFeed {
     }
 
     fn push_from_log(&mut self, line: &str) {
-        // Parse JSON line to extract alert info
-        let time = extract_json_field(line, "timestamp").unwrap_or_else(|| "-".to_string());
-        let severity = extract_json_field(line, "severity").unwrap_or_else(|| "Info".to_string());
+        // Parse JSON line to extract alert info.
+        // BE-EVI-097 canonical keys: the daemon writer emits ts_ms +
+        // level (lowercase); legacy Brain lines carry timestamp +
+        // severity. Prefer canonical, accept legacy.
+        let time = extract_json_field(line, "ts_ms")
+            .or_else(|| extract_json_field(line, "timestamp"))
+            .unwrap_or_else(|| "-".to_string());
+        let severity = extract_json_field(line, "level")
+            .or_else(|| extract_json_field(line, "severity"))
+            .unwrap_or_else(|| "Info".to_string());
         let source = extract_json_field(line, "source_ip")
             .or_else(|| extract_json_field(line, "src_ip"))
             .or_else(|| extract_json_field(line, "attack_type"))
@@ -666,14 +676,19 @@ impl AlertFeed {
             .unwrap_or(false);
         let receipt_enforced = extract_json_field(line, "receipt_status")
             .or_else(|| extract_json_field(line, "status"))
-            .map(|value| value == "ENFORCED")
+            .or_else(|| extract_json_field(line, "enforcement_status"))
+            .map(|value| value == "ENFORCED" || value == "enforced")
             .unwrap_or(false);
-        let action = match policy.as_str() {
-            "Drop" | "Block" | "BLOCK" if receipt_enforced && host_effect_confirmed => "BLOCKED".to_string(),
-            "Drop" | "Block" | "BLOCK" => extract_json_field(line, "status")
+        // BE-EVI-097: the writer emits lowercase pipeline tags
+        // (block/alert/log); compare case-insensitively.
+        let policy_up = policy.to_uppercase();
+        let action = match policy_up.as_str() {
+            "DROP" | "BLOCK" if receipt_enforced && host_effect_confirmed => "BLOCKED".to_string(),
+            "DROP" | "BLOCK" => extract_json_field(line, "status")
+                .or_else(|| extract_json_field(line, "enforcement_status"))
                 .unwrap_or_else(|| "ENFORCEMENT_PENDING".to_string()),
-            "Alert" | "AlertOnly" => "ALERTED".to_string(),
-            "Terminate" | "Kill" => "TERMINATED".to_string(),
+            "ALERT" | "ALERTONLY" => "ALERTED".to_string(),
+            "TERMINATE" | "KILL" => "TERMINATED".to_string(),
             _ => format!("{}", policy),
         };
 
@@ -858,7 +873,9 @@ impl TailReader {
                 stats.last_threat = content.clone();
                 new_lines.push(content.clone());
 
-                if content.contains("\"Critical\"") { stats.critical_count += 1; }
+                // BE-EVI-097: canonical writer emits lowercase levels;
+                // legacy Brain lines use capitalized. Count both.
+                if content.contains("\"critical\"") || content.contains("\"Critical\"") { stats.critical_count += 1; }
                 // F4: a bare policy label is not a host effect. Count a
                 // block only with the same receipt rule the mitigation
                 // feed uses, so the fallback ladder and the feed agree.
@@ -1217,10 +1234,31 @@ mod receipt_tests {
         // F4: one rule shared by tail counters and the feed.
         assert!(is_confirmed_block(r#"{"policy":"BLOCK","status":"ENFORCED","host_effect_confirmed":true}"#));
         assert!(is_confirmed_block(r#"{"action":"Drop","receipt_status":"ENFORCED","host_effect_confirmed":true}"#));
+        // BE-EVI-097: canonical writer lines (lowercase tags).
+        assert!(is_confirmed_block(r#"{"policy":"block","enforcement_status":"enforced","host_effect_confirmed":true,"filter_id":301}"#));
+        assert!(!is_confirmed_block(r#"{"policy":"block","enforcement_status":"observed","host_effect_confirmed":false}"#));
         assert!(!is_confirmed_block(r#"{"policy":"BLOCK","status":"ENFORCED","host_effect_confirmed":false}"#));
         assert!(!is_confirmed_block(r#"{"policy":"BLOCK","status":"PENDING","host_effect_confirmed":false}"#));
         assert!(!is_confirmed_block(r#"{"policy":"Alert","status":"ENFORCED","host_effect_confirmed":true}"#));
         assert!(!is_confirmed_block("not json"));
+    }
+
+    #[test]
+    fn alert_feed_reads_canonical_writer_keys() {
+        // BE-EVI-097: ts_ms/level/policy lowercase writer line parses
+        // into a BLOCKED feed entry with a real timestamp.
+        let line = r#"{"ts_ms":1791296893400,"mono_ns":1,"level":"critical","event":"signature_match","rule":"4237725842","src_ip":"192.168.1.100","src_port":1234,"session_id":7,"payload_len":3,"policy":"block","policy_id":4,"event_id":201,"trace_id":202,"audit_id":203,"enforcement_status":"enforced","host_effect_confirmed":true,"filter_id":301,"request_id":302,"decision":"block","provider":"wfp","receipt_version":1}"#;
+        let mut feed = AlertFeed::new();
+        feed.push_from_log(line);
+        assert_eq!(feed.entries.len(), 1);
+        assert_eq!(feed.entries[0].action, "BLOCKED");
+        assert_eq!(feed.entries[0].source, "192.168.1.100");
+        assert_eq!(feed.entries[0].time, "1791296893400");
+        // Observed (unconfirmed) writer line never claims BLOCKED.
+        let line2 = r#"{"ts_ms":1791296893401,"level":"warn","event":"signature_match","rule":"1","src_ip":"10.0.0.1","policy":"alert","enforcement_status":"observed","host_effect_confirmed":false,"filter_id":0,"request_id":0}"#;
+        let mut feed2 = AlertFeed::new();
+        feed2.push_from_log(line2);
+        assert_eq!(feed2.entries[0].action, "ALERTED");
     }
 
     #[test]

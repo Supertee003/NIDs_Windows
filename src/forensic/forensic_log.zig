@@ -4,10 +4,20 @@
 //! response and SIEM ingestion. Writes append-only to logs/aegis_core.ndjson
 //! with fsync after every Critical/Block event.
 //!
-//! Log schema (one JSON object per line):
-//!   {"ts_ms": 1692900000000, "level": "warn", "event": "BLOCK",
-//!    "rule": "SQL_INJECTION", "src_ip": "192.168.1.100", "src_port": 12345,
-//!    "session_id": 42, "ruleset_version": 3, "payload_sha256": "abc123..."}
+//! NDJSON schema v1 (one JSON object per line; readers MUST ignore unknown
+//! keys so the schema stays additive — BE-EVI-097):
+//!   Base (always): ts_ms, mono_ns, level (info/warn/error/critical), event,
+//!     rule (decimal rule_id string), src_ip (dotted quad or full v6 text),
+//!     src_port, session_id (flow identity), ruleset_version, payload_len,
+//!     policy (pipeline action), policy_id, event_id, trace_id, audit_id.
+//!   Receipt (only when a verified EnforcementReceipt proves the host
+//!     effect): enforcement_status="enforced", host_effect_confirmed=true,
+//!     filter_id, request_id, decision="block", provider="wfp",
+//!     receipt_version=1. Otherwise enforcement_status="observed" and
+//!     host_effect_confirmed=false with zero IDs.
+//!   A line claiming enforced WITHOUT the full receipt set is malformed;
+//!   readers must treat it as unconfirmed (see desktop confirmed_block,
+//!   web PEP_UNVERIFIED, mouth is_confirmed_block).
 
 const std = @import("std");
 const builtin = @import("builtin");
@@ -238,38 +248,33 @@ pub const LogEvent = struct {
     ruleset_version: ?u64 = null,
     payload_preview: ?[]const u8 = null,
     extra: ?[]const u8 = null,
+    // BE-EVI-097: pipeline identity + policy + receipt projection.
+    // A line is a confirmed host effect ONLY when enforcement_status is
+    // "enforced" with host_effect_confirmed AND all receipt IDs nonzero.
+    policy: ?[]const u8 = null,
+    policy_id: ?u32 = null,
+    event_id: ?u64 = null,
+    trace_id: ?u64 = null,
+    audit_id: ?u64 = null,
+    enforcement_status: ?[]const u8 = null,
+    host_effect_confirmed: bool = false,
+    filter_id: u64 = 0,
+    request_id: u64 = 0,
+    decision: ?[]const u8 = null,
+    provider: ?[]const u8 = null,
+    receipt_version: u8 = 0,
 };
 
 // ============================================================
 // Core Write Function
 // ============================================================
 
-/// Write a structured log event as NDJSON to the forensic log file.
-/// Thread-safe via mutex. Flushes to disk after Critical/Block events.
-pub fn log(event: LogEvent) void {
-    if (!g_initialized) return;
-
-    g_log_mutex.lock();
-    defer g_log_mutex.unlock();
-
-    const handle = g_log_handle orelse return;
-
-    // IR-06: Check for log rotation every 60 seconds
-    checkRotation(handle);
-
-    // Re-read handle in case rotation changed it
-    const current_handle = g_log_handle orelse return;
-
-    // Build JSON line on stack (max 2KB per entry)
-    var buf: [2048]u8 = undefined;
-    var fbs = std.io.fixedBufferStream(&buf);
-    const writer = fbs.writer();
-
-    // IR-04: Dual-clock timestamp (epoch_ms for cross-system, monotonic_ns for ordering)
-    const ts = Timestamp.now();
-
+/// Pure NDJSON line formatter (no filesystem). Shared by log() and the
+/// schema unit tests below so the contract readers pin is exactly what
+/// the daemon writes. Timestamps are caller-supplied (write time).
+pub fn formatLogLine(event: LogEvent, epoch_ms: i64, mono_ns: i128, writer: anytype) void {
     // Build JSON manually (avoids ArrayList allocation)
-    writer.print("{{\"ts_ms\":{d},\"mono_ns\":{d},\"level\":\"{s}\"", .{ ts.epoch_ms, ts.monotonic_ns, event.level.toString() }) catch return;
+    writer.print("{{\"ts_ms\":{d},\"mono_ns\":{d},\"level\":\"{s}\"", .{ epoch_ms, mono_ns, event.level.toString() }) catch return;
     writer.print(",\"event\":\"{s}\"", .{event.event}) catch return;
 
     if (event.rule) |rule| {
@@ -319,7 +324,67 @@ pub fn log(event: LogEvent) void {
         writer.print("\"", .{}) catch return;
     }
 
+    // BE-EVI-097: pipeline identity (always) + receipt projection.
+    // Numeric IDs always emit (0 when absent); readers only trust them
+    // with enforcement_status="enforced" + host_effect_confirmed=true.
+    if (event.policy) |pol| {
+        writer.print(",\"policy\":\"{s}\"", .{pol}) catch return;
+    }
+    if (event.policy_id) |pid| {
+        writer.print(",\"policy_id\":{d}", .{pid}) catch return;
+    }
+    if (event.event_id) |eid| {
+        writer.print(",\"event_id\":{d}", .{eid}) catch return;
+    }
+    if (event.trace_id) |tid| {
+        writer.print(",\"trace_id\":{d}", .{tid}) catch return;
+    }
+    if (event.audit_id) |aid| {
+        writer.print(",\"audit_id\":{d}", .{aid}) catch return;
+    }
+    if (event.enforcement_status) |st| {
+        writer.print(",\"enforcement_status\":\"{s}\"", .{st}) catch return;
+    }
+    writer.print(",\"host_effect_confirmed\":{}", .{event.host_effect_confirmed}) catch return;
+    writer.print(",\"filter_id\":{d},\"request_id\":{d}", .{ event.filter_id, event.request_id }) catch return;
+    if (event.decision) |dec| {
+        writer.print(",\"decision\":\"{s}\"", .{dec}) catch return;
+    }
+    if (event.provider) |prov| {
+        writer.print(",\"provider\":\"{s}\"", .{prov}) catch return;
+    }
+    writer.print(",\"receipt_version\":{d}", .{event.receipt_version}) catch return;
+
     writer.print("}}\n", .{}) catch return;
+}
+
+/// Write a structured log event as NDJSON to the forensic log file.
+/// Thread-safe via mutex. Flushes to disk after Critical/Block events.
+/// Drop-on-error: any failure returns silently — the forensic ring (not
+/// this projection) is the detection record, so a full disk must never
+/// fail or slow detection.
+pub fn log(event: LogEvent) void {
+    if (!g_initialized) return;
+
+    g_log_mutex.lock();
+    defer g_log_mutex.unlock();
+
+    const handle = g_log_handle orelse return;
+
+    // IR-06: Check for log rotation every 60 seconds
+    checkRotation(handle);
+
+    // Re-read handle in case rotation changed it
+    const current_handle = g_log_handle orelse return;
+
+    // Build JSON line on stack (max 2KB per entry)
+    var buf: [2048]u8 = undefined;
+    var fbs = std.io.fixedBufferStream(&buf);
+    const writer = fbs.writer();
+
+    // IR-04: Dual-clock timestamp (epoch_ms for cross-system, monotonic_ns for ordering)
+    const ts = Timestamp.now();
+    formatLogLine(event, ts.epoch_ms, ts.monotonic_ns, writer);
 
     const written = fbs.getWritten();
 
@@ -477,4 +542,119 @@ test "writeJsonEscaped escapes special characters" {
     writeJsonEscaped(writer, "hello\"world\\test\n");
     const written = fbs.getWritten();
     try std.testing.expect(std.mem.eql(u8, written, "hello\\\"world\\\\test\\n"));
+}
+
+test "BE-EVI-097: formatLogLine emits the v1 contract readers pin" {
+    // Detection line (unconfirmed): identity fields present, receipt
+    // zeros, observed status. Readers must see every key they gate on.
+    var buf: [2048]u8 = undefined;
+    var fbs = std.io.fixedBufferStream(&buf);
+    formatLogLine(.{
+        .level = .critical,
+        .event = "signature_match",
+        .rule = "4237725842",
+        .src_ip = 0xC0A80164,
+        .src_port = 1234,
+        .session_id = 7,
+        .policy = "alert",
+        .policy_id = 9,
+        .event_id = 101,
+        .trace_id = 102,
+        .audit_id = 103,
+        .enforcement_status = "observed",
+        .payload_preview = "abc",
+    }, 1700000000000, 9000, fbs.writer());
+    const line = fbs.getWritten();
+    for ([_][]const u8{
+        "\"ts_ms\":1700000000000",
+        "\"mono_ns\":9000",
+        "\"level\":\"critical\"",
+        "\"event\":\"signature_match\"",
+        "\"rule\":\"4237725842\"",
+        "\"src_ip\":\"192.168.1.100\"",
+        "\"src_port\":1234",
+        "\"session_id\":7",
+        "\"payload_len\":3",
+        "\"policy\":\"alert\"",
+        "\"policy_id\":9",
+        "\"event_id\":101",
+        "\"trace_id\":102",
+        "\"audit_id\":103",
+        "\"enforcement_status\":\"observed\"",
+        "\"host_effect_confirmed\":false",
+        "\"filter_id\":0",
+        "\"request_id\":0",
+        "\"receipt_version\":0",
+    }) |key| {
+        try std.testing.expect(std.mem.indexOf(u8, line, key) != null);
+    }
+    // No receipt keys leak onto an unconfirmed line.
+    try std.testing.expect(std.mem.indexOf(u8, line, "\"decision\"") == null);
+    try std.testing.expect(std.mem.indexOf(u8, line, "\"provider\"") == null);
+}
+
+test "BE-EVI-097: formatLogLine receipt set satisfies every reader recipe" {
+    // Confirmed line: the full receipt set desktop confirmed_block(),
+    // web receipt_valid, and mouth is_confirmed_block() gate on.
+    var buf: [2048]u8 = undefined;
+    var fbs = std.io.fixedBufferStream(&buf);
+    formatLogLine(.{
+        .level = .critical,
+        .event = "signature_match",
+        .rule = "4237725842",
+        .src_ip = 0x0A000001,
+        .policy = "block",
+        .policy_id = 4,
+        .event_id = 201,
+        .trace_id = 202,
+        .audit_id = 203,
+        .enforcement_status = "enforced",
+        .host_effect_confirmed = true,
+        .filter_id = 301,
+        .request_id = 302,
+        .decision = "block",
+        .provider = "wfp",
+        .receipt_version = 1,
+    }, 1700000000001, 9001, fbs.writer());
+    const line = fbs.getWritten();
+    for ([_][]const u8{
+        "\"enforcement_status\":\"enforced\"",
+        "\"host_effect_confirmed\":true",
+        "\"filter_id\":301",
+        "\"request_id\":302",
+        "\"event_id\":201",
+        "\"trace_id\":202",
+        "\"audit_id\":203",
+        "\"policy_id\":4",
+        "\"decision\":\"block\"",
+        "\"provider\":\"wfp\"",
+        "\"receipt_version\":1",
+    }) |key| {
+        try std.testing.expect(std.mem.indexOf(u8, line, key) != null);
+    }
+}
+
+test "BE-EVI-097: formatLogLine prefers v6 sidecars, escapes rule names" {
+    var buf: [2048]u8 = undefined;
+    var fbs = std.io.fixedBufferStream(&buf);
+    // src_ipv6 carries pre-rendered text (the pipeline renders via the
+    // same full-hextet formatter as the SIEM path); the /32 prefix must
+    // never appear disguised as a dotted quad.
+    const v6text = "2001:0db8:0000:0000:0000:0000:0000:0001";
+    formatLogLine(.{
+        .level = .warn,
+        .event = "dns_query",
+        .rule = "9003\"injected",
+        .src_ip = 0x20010DB8,
+        .src_ipv6 = v6text,
+        .policy = "alert",
+        .enforcement_status = "observed",
+    }, 1700000000002, 9002, fbs.writer());
+    const line = fbs.getWritten();
+    // Full v6 text, never the dotted /32 prefix in disguise.
+    try std.testing.expect(std.mem.indexOf(u8, line, "2001:0db8") != null);
+    try std.testing.expect(std.mem.indexOf(u8, line, "32.1.13.184") == null);
+    // Injection attempt in the rule name is escaped, line stays one line.
+    try std.testing.expect(std.mem.indexOf(u8, line, "9003\\\"injected") != null);
+    try std.testing.expect(std.mem.count(u8, line, "\n") == 1);
 }

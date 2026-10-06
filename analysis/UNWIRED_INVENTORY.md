@@ -308,7 +308,17 @@ log default, F4 receipt-only blocked counting shared with the
 mitigation feed, F5 honest core-state attestation, 9 cargo tests;
 stale sole-owner claims in aegis_mouth_test.py + STRUCTURE.md
 corrected). Mouth-local kernel>=3 term stays in the fallback ladder
-only (documented in the manual script replica),
+only (documented in the manual script replica), evidence feed
+darkness (BE-EVI-097: daemon projects detections to
+logs/aegis_core.ndjson — stage-10 evidenceLog with the v1 schema incl.
+full receipt set, default ON with AEGIS_EVIDENCE_LOG=0 opt-out,
+drop-on-error; dispatchWithReceipt returns the confirmed verdict gating
+the enforced claim; forensic_log wired into all_tests (5th silent-death
+catch); mouth reads canonical keys + case-insensitive policy; web
+forwards policy_id/decision/provider so receipt_valid can hold; desktop
++ mouth + web recipe proofs; Go aggregator schema-compatible unchanged.
+Live tail proof pending daemon rebuild+restart — human step before
+attack tests),
 spool replay automation
 (exists — needs live proof), SBOM salt (SBOM-SALT-087: builtin
 hash() is per-process salted — replaced with SHA-256 path IDs, proven

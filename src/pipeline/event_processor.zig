@@ -17,6 +17,7 @@ const tracker = @import("../detection/threat_tracker.zig");
 const policy = @import("../policy/policy_ir.zig");
 const pep = @import("../policy/pep_bindings.zig");
 const forensic = @import("../forensic/forensic_pipeline.zig");
+const forensic_log = @import("../forensic/forensic_log.zig");
 const trace_mod = @import("../forensic/decision_trace.zig");
 const dispatcher = @import("../policy/action_dispatcher.zig");
 const watchdog = @import("../reliability/watchdog.zig");
@@ -198,9 +199,12 @@ fn processEvent(
     // 6. PEP enforcement (final authorization gate)
     // Only PEP call — ActionDispatcher must NOT call PEP again
     var pep_decision: pep.PepDecision = .allow;
+    var confirmed_block = false;
+    var pep_req_id: u64 = 0;
+    var receipt_filter_id: u64 = 0;
     if (matched_policy) |pol| {
         // Unique PEP request ID (not event_id)
-        const pep_req_id = state.g_pep_request_id.fetchAdd(1, .monotonic) + 1;
+        pep_req_id = state.g_pep_request_id.fetchAdd(1, .monotonic) + 1;
         pep_decision = pep_enf.enforce(
             &ev_copy,
             pol,
@@ -216,13 +220,20 @@ fn processEvent(
         // 6a. Action dispatch (execute enforcement action). The receipt is
         // produced by the same PEP call above; dispatcher only verifies its
         // provider postcondition and never calls enforcement again.
-        dispatcher.ActionDispatcher.dispatchWithReceipt(
+        // BE-EVI-097: the bool gates the evidence-log enforced claim —
+        // only a provider-read-back-verified receipt counts.
+        confirmed_block = dispatcher.ActionDispatcher.dispatchWithReceipt(
             &ev_copy,
             pol,
             pep_decision,
             pep_enf,
             pep_enf.lastReceipt(),
         );
+        if (confirmed_block) {
+            if (pep_enf.lastReceipt()) |r| {
+                receipt_filter_id = r.filter_id;
+            }
+        }
     }
 
     // Audit trace — every security decision gets a unique audit_id
@@ -268,6 +279,71 @@ fn processEvent(
     if (state.g_brain_enabled.load(.acquire)) {
         brainInspect(ev, matched_rule_id, ev_severity, policy_action);
     }
+
+    // 10. Evidence-log projection (detections only, on by default).
+    // BE-EVI-097: appends one NDJSON line per detection to
+    // logs/aegis_core.ndjson — the file the whole frontend fleet tails.
+    // Drop-on-error by construction (forensic_log.log never raises); the
+    // forensic ring above stays the detection record.
+    if (matched_rule_id != 0 and state.g_evidence_log_enabled) {
+        evidenceLog(ev, matched_rule_id, ev_severity, policy_action, matched_policy, confirmed_block, receipt_filter_id, pep_req_id, decision_trace.trace_id, audit_id, qe.payload[0..qe.payload_len], qe.src_ipv6, qe.dst_ipv6);
+    }
+}
+
+/// Project one detection onto the evidence NDJSON log (BE-EVI-097).
+/// Field contract: forensic_log.zig header (schema v1). The enforced
+/// claim rides ONLY on the dispatcher's provider-read-back verdict with
+/// the full receipt set; everything else is observed/unconfirmed.
+fn evidenceLog(
+    ev: *const event.IpcEvent,
+    rule_id: u32,
+    severity: event.EventSeverity,
+    action: policy.Action,
+    matched_policy: ?policy.Policy,
+    confirmed: bool,
+    filter_id: u64,
+    pep_req_id: u64,
+    trace_id: u64,
+    audit_id: u64,
+    payload: []const u8,
+    src6: ?[16]u8,
+    dst6: ?[16]u8,
+) void {
+    const log_level: forensic_log.LogLevel = switch (severity) {
+        .critical, .emergency => .critical,
+        .alert, .@"error" => .@"error",
+        .warning, .notice => .warn,
+        else => .info,
+    };
+    var rule_buf: [11]u8 = undefined;
+    const rule = std.fmt.bufPrint(&rule_buf, "{d}", .{rule_id}) catch return;
+    var src6_buf: [48]u8 = undefined;
+    var dst6_buf: [48]u8 = undefined;
+    const src_ip6: ?[]const u8 = if (src6) |s6| formatIp6(s6, &src6_buf) else null;
+    const dst_ip6: ?[]const u8 = if (dst6) |d6| formatIp6(d6, &dst6_buf) else null;
+    forensic_log.log(.{
+        .level = log_level,
+        .event = @tagName(ev.kind),
+        .rule = rule,
+        .src_ip = ev.src_ip,
+        .src_ipv6 = src_ip6,
+        .dst_ipv6 = dst_ip6,
+        .src_port = ev.src_port,
+        .session_id = ev.flow_id,
+        .payload_preview = payload,
+        .policy = @tagName(action),
+        .policy_id = if (matched_policy) |pol| pol.id else null,
+        .event_id = ev.event_id,
+        .trace_id = trace_id,
+        .audit_id = audit_id,
+        .enforcement_status = if (confirmed) "enforced" else "observed",
+        .host_effect_confirmed = confirmed,
+        .filter_id = filter_id,
+        .request_id = pep_req_id,
+        .decision = if (confirmed) "block" else null,
+        .provider = if (confirmed) "wfp" else null,
+        .receipt_version = if (confirmed) 1 else 0,
+    });
 }
 
 /// Stamp the flow table's identity onto the event (FLOW-ID-051).

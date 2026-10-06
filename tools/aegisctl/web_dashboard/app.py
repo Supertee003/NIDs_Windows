@@ -52,6 +52,14 @@ def _record_to_incident(raw: dict[str, Any]) -> dict[str, Any]:
     receipt: dict[str, Any] | None = None
     if str(raw.get("enforcement_status", "")).lower() == "enforced":
         receipt = {key: raw.get(key) for key in ("filter_id", "request_id", "event_id", "trace_id", "audit_id") if raw.get(key)}
+        # BE-EVI-097: the daemon writer emits the full receipt set
+        # (policy_id/decision/provider); forward it so receipt_valid can
+        # actually hold. Without these the receipt never validates and
+        # every enforced line downgrades to PEP_UNVERIFIED (correct but
+        # blind — the writer now provides them).
+        for key in ("policy_id", "decision", "provider", "receipt_version"):
+            if raw.get(key) is not None:
+                receipt[key] = raw.get(key)
         receipt["status"] = "enforced"
         receipt["host_effect_confirmed"] = bool(raw.get("host_effect_confirmed", False))
     record: dict[str, Any] = {

@@ -18,6 +18,11 @@ pub var g_stop_requested = std.atomic.Value(bool).init(false);
 /// Host mutation remains disabled until the isolated WFP proof opens this
 /// gate. Provider readiness alone must never change it.
 pub var g_prevention_gate_open: bool = false;
+// BE-EVI-097: evidence-log projection (logs/aegis_core.ndjson) on by
+// default so file-tail surfaces see live detections. AEGIS_EVIDENCE_LOG=0
+// opts out. A failed write never fails detection (drop-on-error in
+// forensic_log.log); the forensic ring stays the detection record.
+pub var g_evidence_log_enabled: bool = true;
 
 /// Tier-2 brain inspection (daemon -> brain UDP, detections only). Opt-in
 /// via AEGIS_BRAIN=1 (default off): without a running brain the datagrams

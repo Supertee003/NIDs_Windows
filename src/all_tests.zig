@@ -49,6 +49,7 @@ comptime {
     _ = @import("tests/forensic/test_integration.zig");
     _ = @import("tests/forensic/test_fault.zig");
     _ = @import("tests/forensic/test_release.zig");
+    _ = @import("forensic/forensic_log.zig");
     _ = @import("tests/forensic/release_manifest.zig");
     _ = @import("tests/forensic/installer.zig");
     _ = @import("tests/forensic/release_gate.zig");

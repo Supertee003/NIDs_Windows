@@ -213,6 +213,30 @@ pub fn runDaemon() !void {
     // forward/flush calls; shutdown drains after the pipeline joins.
     initSiemFromEnv();
 
+    // 4a2. Evidence-log projection (default ON, BE-EVI-097). Appends one
+    // NDJSON line per detection to logs/aegis_core.ndjson — the file the
+    // whole frontend fleet (CLI/desktop/web/mouth/aggregator/logs.tail)
+    // tails. AEGIS_EVIDENCE_LOG=0 opts out. Init failure degrades to
+    // no-op (drop-on-error); the forensic ring stays the record.
+    {
+        const forensic_log = @import("forensic/forensic_log.zig");
+        var enabled = true;
+        if (std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_EVIDENCE_LOG") catch null) |v| {
+            defer std.heap.page_allocator.free(v);
+            if (std.ascii.eqlIgnoreCase(v, "0") or std.ascii.eqlIgnoreCase(v, "false") or std.ascii.eqlIgnoreCase(v, "off")) {
+                enabled = false;
+            }
+        }
+        state.g_evidence_log_enabled = enabled;
+        if (enabled) {
+            forensic_log.init();
+            diag.info("[EVIDENCE] NDJSON projection enabled (logs/aegis_core.ndjson)", .{});
+        } else {
+            diag.info("[EVIDENCE] NDJSON projection disabled by env", .{});
+        }
+    }
+    defer @import("forensic/forensic_log.zig").shutdown();
+
     // 4b. Tier-2 brain inspection loop (opt-in, default off). AEGIS_BRAIN=1
     // lets the pipeline offer detections to the brain over UDP for deep
     // inspection; findings return via the opt-in sensor pipe (T2-BRAIN-023).

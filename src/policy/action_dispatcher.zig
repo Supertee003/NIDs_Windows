@@ -96,14 +96,16 @@ pub const ActionDispatcher = struct {
 
     /// Receipt-aware dispatch path. The legacy dispatch API intentionally
     /// remains unconfirmed because it has no receipt argument. This path is
-    /// the only one allowed to emit BLOCKED_CONFIRMED.
+    /// the only one allowed to emit BLOCKED_CONFIRMED. Returns true only
+    /// when a verified receipt proved the host effect (BE-EVI-097: the
+    /// evidence-log projection gates its enforced claim on this).
     pub fn dispatchWithReceipt(
         ev: *const event.IpcEvent,
         p: policy.Policy,
         decision: pep.PepDecision,
         enforcer: *pep.PepEnforcer,
         receipt: ?pep.PepEnforcementReceipt,
-    ) void {
+    ) bool {
         if (decision == .block) {
             if (receipt) |r| {
                 if (enforcer.verifyEnforcementReceipt(ev, r)) {
@@ -116,11 +118,12 @@ pub const ActionDispatcher = struct {
                     // dispatch() below stays unconfirmed by design.
                     _ = runtime_state.g_confirmed_blocks.fetchAdd(1, .monotonic);
                     _ = ForensicBackend.write(&confirmed);
-                    return;
+                    return true;
                 }
             }
         }
         dispatch(ev, p, decision);
+        return false;
     }
 };
 
