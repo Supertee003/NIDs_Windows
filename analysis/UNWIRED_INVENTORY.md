@@ -288,7 +288,12 @@ documented); `successRate` pending-blind accepted (unused helper).
 
 Still OPEN: flow pointer lock-escape (single-threaded today),
 correlator/AC per-packet allocator (needs profiling,
-not guesses), ring stats partial (RING-STAT-103: forensics.verify now
+not guesses), FNV collisions + golden drift (FNV-COLL-105: AC7 pins
+zero collisions across all rule IDs + 9000-block disjointness; stale
+count==2 assertion updated to the stronger single-classifier invariant
+after BE-DRIFT-098; L7 parsers (DNS/HTTP/RDP/Kerberos) stay unwired by
+verdict — frozen 109-byte wire carries no L7 field, so wiring needs a
+schema design slice first, not an isolated patch), ring stats partial (RING-STAT-103: forensics.verify now
 reports retained/overwritten/capacity_slots/oldest_record_seq additively
 via overwrittenCount(); in-file red-green proofs incl. handler shape;
 single g_ProofFilterId + provider GUID split + WFP unload leak stay

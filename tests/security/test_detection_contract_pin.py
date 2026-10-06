@@ -127,7 +127,12 @@ def test_zig_startup_uses_the_shared_bundle_resolver():
 
 def test_zig_automaton_is_built_from_match_pattern_not_regex():
     zig = ZIG_LOADER.read_text(encoding="utf-8")
-    assert zig.count('get("match_pattern")') == 2, "both the startup and reload loaders load it"
+    # BE-DRIFT-098: one shared classifyRule serves both the startup and
+    # reload loaders (stronger than the old two-call-site count — a single
+    # classifier cannot disagree with itself about what a pattern is).
+    assert zig.count('get("match_pattern")') == 1, "match_pattern must be read in exactly one place"
+    assert "classifyRule" in zig
+    assert "reloadRules" in zig and "loadRulesInto" in zig
     assert "regex_pattern" not in zig, "the Zig automaton must not compile regex patterns"
     assert "hashRuleId" in zig
 
@@ -224,6 +229,42 @@ def test_no_detection_tier_branches_on_rule_action():
     assert "Action" not in go, (
         "the Go classifier struct must not carry an action field"
     )
+
+
+# ── AC7: the 32-bit rule-id space has no collisions ─────────────────────────
+#
+# rule_id strings hash (FNV-1a) into the same u32 space the correlator's
+# 9000-block count rules live in. Two collisions would each be a
+# detection-identity bug: a signature hit attributed to the wrong rule,
+# or a hash landing inside the count-rule block (9000-9999, reserved by
+# Correlator.dnsExfilRule and friends for multi-event rules that never
+# come from FNV). With ~23 IDs in 2^32 the odds are nil — this test
+# makes "nil" a checked fact instead of luck, and fails loudly the day
+# a new rule_id lands on an occupied value.
+
+CORRELATOR_BLOCK_LO = 9000
+CORRELATOR_BLOCK_HI = 9999
+
+
+def test_rule_id_hashes_have_no_collisions():
+    seen: dict[int, str] = {}
+    for rule in _canonical_rules():
+        rid = rule["rule_id"]
+        digest = _fnv1a32(rid)
+        assert digest not in seen, (
+            f"FNV-1a collision: {rid!r} and {seen[digest]!r} both hash to "
+            f"{digest} — one rule would shadow the other in both engines"
+        )
+        seen[digest] = rid
+
+
+def test_no_signature_hash_lands_in_the_correlator_block():
+    for rule in _canonical_rules():
+        digest = _fnv1a32(rule["rule_id"])
+        assert not (CORRELATOR_BLOCK_LO <= digest <= CORRELATOR_BLOCK_HI), (
+            f"{rule['rule_id']!r} hashes to {digest}, inside the reserved "
+            f"correlator block {CORRELATOR_BLOCK_LO}-{CORRELATOR_BLOCK_HI}"
+        )
 
 
 @pytest.mark.skipif(shutil.which("go") is None, reason="Go toolchain not installed")
