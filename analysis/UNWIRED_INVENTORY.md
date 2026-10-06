@@ -244,7 +244,9 @@ docs/adr/0004-dns-exfiltration-detection.md), mouth version drift
 WFP DLL load (PEP-ADAPTER-CACHE-073: cached bridge handle, re-probe
 on failure), legacy whole-struct `serialize` memcpy path
 (CODEC-CLEAN-067: deleted; remaining @memcpy are field copies inside
-the explicit wire codec).
+the explicit wire codec), go.sum/Go split (GO-SPLIT-083: both Go
+modules complete — nose + aggregator go.mod/go.sum tracked, `go
+build` + `go test -count=1` green both; .exes gitignored).
 
 Investigated, no action (with reason): `security_check` hard-coded pass
 claim is wrong (gating/advisory split is real); `getFrameSize` +
@@ -261,9 +263,10 @@ Still OPEN: flow pointer lock-escape (single-threaded today), forensic
 `append catch 0`, correlator/AC per-packet allocator (needs profiling,
 not guesses), TLS parser bounds (federation stub), receipt validator
 reconciliation, disabled_rules end-to-end, spool replay automation
-(exists — needs live proof), SBOM salt, go.sum/Go split, CI truth/Trivy
+(exists — needs live proof), SBOM salt, CI truth/Trivy
 gates, web SSE backpressure, fault-maybeCorrupt post-validation
-(by design), quarantine federation best-effort (documented standalone),
+(by design), quarantine federation best-effort (send failures stay
+false; status reports live since FED-P4),
 rust query unauthenticated (pipe ACL + role gates cover; FFI change is
 ABI break — accepted risk), single g_ProofFilterId, provider GUID split,
 ring stats partial, single-slot globals, query vs present tri-state
