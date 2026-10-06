@@ -422,13 +422,21 @@ test "uplink publish without TLS material fails closed" {
         .allocator = std.testing.allocator,
         .cfg = .{ .enabled = true, .node_id = 1 },
         .peers = std.ArrayList(PeerSession).init(std.testing.allocator),
+        // Installed (wired into the escalation path) with a peer but no
+        // TLS material: must hit the fail-closed branch, not the
+        // not-installed early return.
+        .installed = true,
     };
     defer u.deinit();
     try u.peers.append(.{ .node_id = 2, .addr = "127.0.0.1", .port = 9001 });
     var ev = event.IpcEvent.init(.signature_match);
     const accepted = u.publish(&ev);
     try std.testing.expectEqual(@as(usize, 0), accepted);
-    try std.testing.expectEqual(@as(u64, 2), u.total_dropped);
+    // SCOPE-101: total_dropped counts dropped EVENTS per publish call
+    // (early return before the peer loop), not per-peer attempts — one
+    // event in, one drop counted. The old expectation (2) predates the
+    // early-return shape and rotted while this file's tests were dead.
+    try std.testing.expectEqual(@as(u64, 1), u.total_dropped);
 }
 
 test "severityToCluster maps pipeline severity" {

@@ -109,6 +109,44 @@ comptime {
     // LEN-CLAIM-100: direct edge — transitive-only files' tests do NOT
     // execute in this toolchain's test binary (silent death found live).
     _ = @import("pipeline/event_queue.zig");
+    // SCOPE-101: binary scan proved ~175 tests dead across these 15
+    // non-exempt files (transitive reachability != execution — the
+    // TEST-SCOPE-085 pin measured the wrong property). Direct edges wire
+    // them; rotted ones are scoped in test_zig_test_scope.py with reason.
+    _ = @import("capture/l7_classifier.zig");
+    _ = @import("capture/minifilter_reader.zig");
+    _ = @import("capture/nose_pipe_reader.zig");
+    _ = @import("capture/pipe_monitor.zig");
+    _ = @import("control/audit.zig");
+    _ = @import("control/authorization.zig");
+    _ = @import("control/state_machine.zig");
+    _ = @import("detection/injection_detector.zig");
+    _ = @import("detection/ml_detector.zig");
+    _ = @import("federation/cluster_uplink.zig");
+    _ = @import("federation/federation_bench.zig");
+    _ = @import("policy/tier3_state.zig");
+    _ = @import("windows/registry_trie.zig");
+    _ = @import("windows/win32_io.zig");
+    _ = @import("windows/windows_adapters.zig");
+    // SCOPE-101 (hardening): these files' tests execute today only via
+    // incidental paths (test-body imports, comptime wrappers) — a silent
+    // refactor away from those paths would kill them without tripping any
+    // pin. Direct edges make the execution guarantee explicit and
+    // permanent. Zero behavior change: every one of these already runs.
+    _ = @import("pipeline/rule_loader.zig");
+    _ = @import("detection/threat_tracker.zig");
+    _ = @import("detection/correlator.zig");
+    _ = @import("detection/signature_engine.zig");
+    _ = @import("capture/flow_table.zig");
+    _ = @import("forensic/forensic_pipeline.zig");
+    _ = @import("forensic/siem_forwarder.zig");
+    _ = @import("contract/canonical_event.zig");
+    _ = @import("contract/wire_event.zig");
+    _ = @import("control/audit.zig");
+    _ = @import("control/authorization.zig");
+    _ = @import("control/state_machine.zig");
+    _ = @import("policy/pep_bindings.zig");
+    _ = @import("policy/policy_ir.zig");
     // Control plane contract + handlers (T3-TWOP-023 pins execute here).
     _ = @import("control/protocol.zig");
     _ = @import("control/handler_registry.zig");

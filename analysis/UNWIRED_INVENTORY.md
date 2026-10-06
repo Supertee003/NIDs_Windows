@@ -288,7 +288,13 @@ documented); `successRate` pending-blind accepted (unused helper).
 
 Still OPEN: flow pointer lock-escape (single-threaded today),
 correlator/AC per-packet allocator (needs profiling,
-not guesses), event_queue len claim (LEN-CLAIM-100: two-length contract
+not guesses), test-scope methodology hole (SCOPE-101: binary scan proved
+transitive reachability != execution — 15 non-exempt files' ~183 tests
+never ran incl. all of event_queue; wired via direct edges, all green;
+one rotted expectation fixed in cluster_uplink (per-event not per-peer
+drop counting + installed flag); pin rewritten to require direct or
+comptime-wrapper edges with a frozen 47-file grandfather ratchet for the
+rest; new files must wire directly), event_queue len claim (LEN-CLAIM-100: two-length contract
 pinned — ev.payload_len keeps the full wire claim, qe.payload_len reports
 bytes present with 1500-byte prefix truncation; wiring the direct test
 edge newly executes 7 tests with red-green proof), receipt validator
