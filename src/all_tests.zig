@@ -28,6 +28,7 @@ comptime {
     _ = @import("tests/policy/policy_ir.zig");
     _ = @import("policy/policy_contract.zig");
     _ = @import("tests/policy/trust_store.zig");
+    _ = @import("tests/policy/policy_signing.zig");
     _ = @import("tests/policy/pep_bindings.zig");
     _ = @import("tests/policy/action_dispatcher.zig");
     _ = @import("tests/policy/ts_ir_loader.zig");

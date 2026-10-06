@@ -53,6 +53,49 @@ pub fn verify_policy_signature(
     pubkey.verify(policy_data, &signature_bytes).is_ok()
 }
 
+// ============================================================================
+// POL-SIGN-078: policy-verify FFI (transport of trust verdict only).
+//
+// Thin C ABI over verify_policy_signature for the Zig loader to call:
+// 0 = valid signature, -1 = null pointer, -2 = verification failure
+// (bad lengths, zero material, or crypto reject). No state, no policy
+// mutation, no enforcement path — the caller decides what a valid or
+// invalid verdict means. Still unwired (no Zig caller) until key
+// custody lands (ADR-0005 Q3).
+// ============================================================================
+
+/// Verify an Ed25519 signature over policy bytes.
+/// Returns 0 when valid; -1 on null pointers; -2 on any failure.
+#[no_mangle]
+pub extern "C" fn aegis_policy_verify(
+    policy_data: *const u8,
+    policy_len: usize,
+    signature: *const u8,
+    signature_len: usize,
+    public_key: *const u8,
+    public_key_len: usize,
+) -> c_int {
+    if policy_data.is_null() || signature.is_null() || public_key.is_null() {
+        return -1;
+    }
+    // Empty policy bytes verify nothing; fail closed before touching crypto.
+    if policy_len == 0 {
+        return -2;
+    }
+    let (data, sig, key) = unsafe {
+        (
+            std::slice::from_raw_parts(policy_data, policy_len),
+            std::slice::from_raw_parts(signature, signature_len),
+            std::slice::from_raw_parts(public_key, public_key_len),
+        )
+    };
+    if verify_policy_signature(data, sig, key) {
+        0
+    } else {
+        -2
+    }
+}
+
 pub fn sha256_hash(data: &[u8]) -> [u8; 32] {
     // Pure Rust SHA-256 implementation
     let mut state: [u32; 8] = [
@@ -1893,5 +1936,85 @@ mod tests {
             signature_bytes.as_ref(),
             key_pair_2.public_key().as_ref()
         ));
+    }
+
+    // POL-SIGN-078: the C ABI proves itself through real sign/verify and
+    // every fail-closed code. Still unwired (no Zig caller) until key
+    // custody lands (ADR-0005 Q3).
+    #[test]
+    fn policy_verify_ffi_roundtrip() {
+        use ring::signature;
+        use ring::rand::SystemRandom;
+        use ring::signature::KeyPair;
+        let pkcs8 = signature::Ed25519KeyPair::generate_pkcs8(&SystemRandom::new()).unwrap();
+        let key_pair = signature::Ed25519KeyPair::from_pkcs8(pkcs8.as_ref()).unwrap();
+        let policy = b"policy ir bytes for ffi roundtrip";
+        let sig = key_pair.sign(policy);
+        let rc = unsafe {
+            aegis_policy_verify(
+                policy.as_ptr(), policy.len(),
+                sig.as_ref().as_ptr(), sig.as_ref().len(),
+                key_pair.public_key().as_ref().as_ptr(), key_pair.public_key().as_ref().len(),
+            )
+        };
+        assert_eq!(rc, 0);
+    }
+
+    #[test]
+    fn policy_verify_ffi_rejects_misuse() {
+        use ring::signature;
+        use ring::rand::SystemRandom;
+        use ring::signature::KeyPair;
+        let pkcs8 = signature::Ed25519KeyPair::generate_pkcs8(&SystemRandom::new()).unwrap();
+        let key_pair = signature::Ed25519KeyPair::from_pkcs8(pkcs8.as_ref()).unwrap();
+        let policy = b"policy ir bytes";
+        let sig = key_pair.sign(policy);
+        let pk = key_pair.public_key();
+        // Nulls fail closed.
+        assert_eq!(
+            unsafe {
+                aegis_policy_verify(
+                    std::ptr::null(), policy.len(),
+                    sig.as_ref().as_ptr(), sig.as_ref().len(),
+                    pk.as_ref().as_ptr(), pk.as_ref().len(),
+                )
+            },
+            -1
+        );
+        // Empty policy bytes verify nothing.
+        assert_eq!(
+            unsafe {
+                aegis_policy_verify(
+                    policy.as_ptr(), 0,
+                    sig.as_ref().as_ptr(), sig.as_ref().len(),
+                    pk.as_ref().as_ptr(), pk.as_ref().len(),
+                )
+            },
+            -2
+        );
+        // Tampered byte fails crypto.
+        let mut bad = policy.to_vec();
+        bad[0] ^= 0xFF;
+        assert_eq!(
+            unsafe {
+                aegis_policy_verify(
+                    bad.as_ptr(), bad.len(),
+                    sig.as_ref().as_ptr(), sig.as_ref().len(),
+                    pk.as_ref().as_ptr(), pk.as_ref().len(),
+                )
+            },
+            -2
+        );
+        // Truncated signature fails shape checks.
+        assert_eq!(
+            unsafe {
+                aegis_policy_verify(
+                    policy.as_ptr(), policy.len(),
+                    sig.as_ref().as_ptr(), 32,
+                    pk.as_ref().as_ptr(), pk.as_ref().len(),
+                )
+            },
+            -2
+        );
     }
 }
