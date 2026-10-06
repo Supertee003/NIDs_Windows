@@ -503,6 +503,7 @@ pub fn runDaemon() !void {
     var corr_rules = [_]corr_mod.CorrelationRule{
         .{ .id = 9001, .events = &corr_repeat_specs, .window_sec = 60, .severity = .alert },
         .{ .id = 9002, .events = &corr_brute_specs, .window_sec = 30, .severity = .alert },
+        corr_mod.Correlator.dnsExfilRule(),
     };
     var corr = corr_mod.Correlator.init(std.heap.page_allocator, &corr_rules);
     defer corr.deinit();

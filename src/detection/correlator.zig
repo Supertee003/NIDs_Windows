@@ -128,6 +128,27 @@ pub const Correlator = struct {
         return true;
     }
 
+    /// CORR-DNS-080: DNS-tunneling rate rule (production id 9003).
+    /// Sustained query bursts per source suggest exfiltration; a single
+    /// count threshold cannot convict, so severity stays .alert and the
+    /// PEP gate owns every host effect as usual. N=100/60s is an initial
+    /// value: high enough that normal browsing bursts rarely trip it,
+    /// low enough to catch active tunnels — Kali-tunable, and sensor
+    /// proof is still pending (QUALIFIED_SYNTHETIC, like the 22-rule kit
+    /// at 23/0). Single-event canaries can never fire a count rule, so
+    /// data_exfil stays quarantined until multi-event canary support.
+    /// NOTE: the spec array is module-static: returning a slice of a
+    /// function-local array would dangle after return.
+    const dns_exfil_specs = [_]EventSpec{.{ .kind = .dns_query, .count = 100 }};
+    pub fn dnsExfilRule() CorrelationRule {
+        return .{
+            .id = 9003,
+            .events = &dns_exfil_specs,
+            .window_sec = 60,
+            .severity = .alert,
+        };
+    }
+
     pub fn prune(self: *Correlator, now_ns: i128) u32 {
         var to_remove = std.ArrayList(WindowKey).init(self.allocator);
         defer to_remove.deinit();
@@ -188,6 +209,53 @@ test "Correlator simple two-event rule" {
     const r2 = try cor.observe(&e2);
     try std.testing.expect(r2 != null);
     try std.testing.expectEqual(@as(u32, 100), r2.?);
+}
+
+test "CORR-DNS-080: dnsExfilRule pins production params" {
+    const rule = Correlator.dnsExfilRule();
+    try std.testing.expectEqual(@as(u32, 9003), rule.id);
+    try std.testing.expectEqual(@as(i64, 60), rule.window_sec);
+    try std.testing.expectEqual(event.EventSeverity.alert, rule.severity);
+    try std.testing.expectEqual(@as(usize, 1), rule.events.len);
+    try std.testing.expectEqual(event.EventKind.dns_query, rule.events[0].kind);
+    try std.testing.expectEqual(@as(u8, 100), rule.events[0].count);
+}
+
+test "CORR-DNS-080: burst of 100 dns_query fires 9003, 99 stays silent" {
+    const rule = Correlator.dnsExfilRule();
+    var rule_buf = [_]CorrelationRule{rule};
+    var cor = Correlator.init(std.testing.allocator, &rule_buf);
+    defer cor.deinit();
+    var i: u8 = 0;
+    while (i < 99) : (i += 1) {
+        var e = event.IpcEvent.init(.dns_query);
+        e.now();
+        e.src_ip = 0x0A00000E;
+        try std.testing.expect(try cor.observe(&e) == null);
+    }
+    var last = event.IpcEvent.init(.dns_query);
+    last.now();
+    last.src_ip = 0x0A00000E;
+    try std.testing.expectEqual(@as(?u32, 9003), try cor.observe(&last));
+}
+
+test "CORR-DNS-080: windows are per-source" {
+    const rule = Correlator.dnsExfilRule();
+    var rule_buf = [_]CorrelationRule{rule};
+    var cor = Correlator.init(std.testing.allocator, &rule_buf);
+    defer cor.deinit();
+    // 60 queries from each of two sources: neither hits 100 alone.
+    var i: u8 = 0;
+    while (i < 60) : (i += 1) {
+        var a = event.IpcEvent.init(.dns_query);
+        a.now();
+        a.src_ip = 0x0A000001;
+        try std.testing.expect(try cor.observe(&a) == null);
+        var b = event.IpcEvent.init(.dns_query);
+        b.now();
+        b.src_ip = 0x0A000002;
+        try std.testing.expect(try cor.observe(&b) == null);
+    }
 }
 
 test "Correlator window expiry" {

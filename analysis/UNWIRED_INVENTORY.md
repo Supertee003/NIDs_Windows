@@ -225,10 +225,11 @@ byte-identical), nose log flood (LOG-FLOOD-062; pipeline AUDIT line
 intentionally kept — needs observability-UX verdict), `g_ac_mutex`
 copy-then-use (retain policy in rule_loader, documented), canary
 severity drifts (CANARY-QUAR-056 quarantined; rfi_basic graduated to
-R0089 by RFI-RULE-071, data_exfil stays quarantined: rate-rule path
-blocked (correlator matches kind only, yet nothing produces dns_query
-kinds; single-event canaries cannot fire count rules), per-event path
-blocked (length inexpressible in substring tiers) — owner verdict in
+R0089 by RFI-RULE-071; data_exfil stays quarantined but the path is now
+open: CORR-DNS-080 wired the dns_query classifier + rule 9003
+(100/60s initial, synthetic-proven). Graduation still needs sensor
+proof + multi-event canary support (single-event canaries cannot fire
+count rules) — owner verdict in
 docs/adr/0004-dns-exfiltration-detection.md), mouth version drift
 (MOUTH-VER-057), CANARY_MAGIC ×3 (CANARY-MAGIC-055 pinned), per-call
 WFP DLL load (PEP-ADAPTER-CACHE-073: cached bridge handle, re-probe

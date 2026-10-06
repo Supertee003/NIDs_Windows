@@ -124,6 +124,23 @@ pub fn pushCanonicalEventWithPayload(ce: *const canonical.CanonicalEvent, payloa
 /// behavior (u32 identity, is_ipv6=false). Sidecars are attached in the
 /// same producer-mutex hold as the slot publish, so no interleaving
 /// producer can steal or split the slot.
+/// CORR-DNS-080: classify forwarded DNS traffic by port. DNS is the
+/// only protocol the pipeline names by port today; everything else
+/// keeps the exact previous mapping (generic packet_captured). The
+/// dns_query/dns_response kinds already exist cross-language but had
+/// no producer — rule 9002 (http_request) shows dead kinds are the
+/// standing pattern, and this classifier retires that class one kind
+/// at a time. No production correlator rule consumed packet_captured,
+/// so no rule loses inputs; SIEM/brain attack_type strings for DNS
+/// detections change from "packet_captured" to the true kind.
+fn classifyForward(ce: *const canonical.CanonicalEvent) event.EventKind {
+    if (ce.protocol == 17) {
+        if (ce.dest_port == 53) return .dns_query;
+        if (ce.source_port == 53) return .dns_response;
+    }
+    return .packet_captured;
+}
+
 pub fn pushDecodedFrame(frame: *const canonical.DecodedFrame, payload: []const u8) bool {
     if (!canonical.validate(&frame.event)) return false;
     const ce = &frame.event;
@@ -131,7 +148,7 @@ pub fn pushDecodedFrame(frame: *const canonical.DecodedFrame, payload: []const u
     const kind: event.EventKind = switch (ce.event_type) {
         .block, .ip_blocked => .action_block,
         .match_ => .signature_match,
-        .forward => .packet_captured,
+        .forward => classifyForward(ce),
         .rejected => .system_error,
         .session_start, .startup => .system_start,
         .session_end, .shutdown => .system_shutdown,
@@ -220,8 +237,45 @@ test "pushDecodedFrame carries v2 sidecars; v1 path queues nulls" {
     try std.testing.expect(queued_v1.dst_ipv6 == null);
 }
 
-test "pushCanonicalEventWithPayload preserves bounded payload" {
-    var ce = canonical.create(.npcap_sensor);
+test "classifyForward names DNS by port, keeps everything else generic" {
+    // CORR-DNS-080: UDP/53 traffic gets real kinds; TCP/80, UDP/123,
+    // non-forward types, and v4/v6 alike keep prior behavior exactly.
+    var q = canonical.create(.npcap_sensor);
+    q.event_type = .forward;
+    q.protocol = 17;
+    q.dest_port = 53;
+    q.source_port = 45678;
+    var f = canonical.DecodedFrame{ .event = q, .src_ipv6 = null, .dst_ipv6 = null };
+    try std.testing.expect(pushDecodedFrame(&f, &[_]u8{}));
+    try std.testing.expectEqual(event.EventKind.dns_query, popEvent().?.ev.kind);
+
+    q.source_port = 53;
+    q.dest_port = 45678;
+    f = canonical.DecodedFrame{ .event = q, .src_ipv6 = null, .dst_ipv6 = null };
+    try std.testing.expect(pushDecodedFrame(&f, &[_]u8{}));
+    try std.testing.expectEqual(event.EventKind.dns_response, popEvent().?.ev.kind);
+
+    q.protocol = 6;
+    q.dest_port = 80;
+    q.source_port = 45678;
+    f = canonical.DecodedFrame{ .event = q, .src_ipv6 = null, .dst_ipv6 = null };
+    try std.testing.expect(pushDecodedFrame(&f, &[_]u8{}));
+    try std.testing.expectEqual(event.EventKind.packet_captured, popEvent().?.ev.kind);
+
+    q.protocol = 17;
+    q.dest_port = 123;
+    f = canonical.DecodedFrame{ .event = q, .src_ipv6 = null, .dst_ipv6 = null };
+    try std.testing.expect(pushDecodedFrame(&f, &[_]u8{}));
+    try std.testing.expectEqual(event.EventKind.packet_captured, popEvent().?.ev.kind);
+
+    q.event_type = .match_;
+    q.dest_port = 53;
+    f = canonical.DecodedFrame{ .event = q, .src_ipv6 = null, .dst_ipv6 = null };
+    try std.testing.expect(pushDecodedFrame(&f, &[_]u8{}));
+    try std.testing.expectEqual(event.EventKind.signature_match, popEvent().?.ev.kind);
+}
+
+test "pushCanonicalEventWithPayload preserves bounded payload" {    var ce = canonical.create(.npcap_sensor);
     const payload = "signature-fixture";
     ce.payload_length = payload.len;
     try std.testing.expect(pushCanonicalEventWithPayload(&ce, payload));
