@@ -288,7 +288,10 @@ documented); `successRate` pending-blind accepted (unused helper).
 
 Still OPEN: flow pointer lock-escape (single-threaded today),
 correlator/AC per-packet allocator (needs profiling,
-not guesses), FNV collisions + golden drift (FNV-COLL-105: AC7 pins
+not guesses), operator-script portability (PORT-106: bridge ps1 derives
+$Repo from $PSScriptRoot with override kept + parse-proven; run_aegis.bat
+wmic timestamp has %DATE% fallback; Kali/VMware preflight already
+parameterized — investigated, no change), FNV collisions + golden drift (FNV-COLL-105: AC7 pins
 zero collisions across all rule IDs + 9000-block disjointness; stale
 count==2 assertion updated to the stronger single-classifier invariant
 after BE-DRIFT-098; L7 parsers (DNS/HTTP/RDP/Kerberos) stay unwired by

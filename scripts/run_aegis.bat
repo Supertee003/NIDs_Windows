@@ -108,9 +108,14 @@ echo  ^|     5-Language Network Intrusion Detection System         ^|
 echo  +============================================================+
 echo.
 
-:: -- Timestamp --
+:: -- Timestamp (wmic is deprecated/removed on current Windows; fall back) --
+set "DT="
 for /f "tokens=2 delims==" %%d in ('wmic os get localdatetime /value 2^>nul') do set "DT=%%d"
-set "START_TIME=%DT:~0,4%-%DT:~4,2%-%DT:~6,2% %DT:~8,2%:%DT:~10,2%:%DT:~12,2%"
+if defined DT (
+  set "START_TIME=%DT:~0,4%-%DT:~4,2%-%DT:~6,2% %DT:~8,2%:%DT:~10,2%:%DT:~12,2%"
+) else (
+  set "START_TIME=%DATE% %TIME%"
+)
 echo  Start time: %START_TIME%
 echo.
 

@@ -1,11 +1,16 @@
 [CmdletBinding()]
 param(
-    [string]$Repo = 'D:\NIDs_Windows',
+    # PORT-106: default derives from this script's location (scripts/..),
+    # not a hardcoded drive path — explicit -Repo still overrides.
+    [string]$Repo = '',
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release'
 )
 
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($Repo)) {
+    $Repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+}
 Set-Location $Repo
 $evidence = Join-Path $Repo 'admin-evidence'
 New-Item -ItemType Directory -Force $evidence | Out-Null
