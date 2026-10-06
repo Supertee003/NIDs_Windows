@@ -851,8 +851,11 @@ def cmd_policy(args) -> int:
     if getattr(args, "policy_command", "list") not in {"list", "show"}:
         return _unavailable("policy", "policy_runtime_postcondition_not_connected")
     rules = _rules()
-    disabled_path = TOOLS_DIR.parent / "config" / "disabled_rules.json"
-    disabled_path.parent.mkdir(parents=True, exist_ok=True)
+    # BE-DIS-089: the daemon engine (rule_loader.zig) honors
+    # configs/disabled_rules.json on startup + rules.reload. The old
+    # singular config/ path never met the engine — fixed to the
+    # canonical configs/ dir so CLI and engine read the same file.
+    disabled_path = TOOLS_DIR.parent / "configs" / "disabled_rules.json"
     state = _load_state(disabled_path, {"disabled_rules": []})
     disabled = set(state.get("disabled_rules", []))
     op = args.policy_command
@@ -861,6 +864,11 @@ def cmd_policy(args) -> int:
         for r in rules:
             rid = str(r.get("rule_id", "")); print(f"{rid:14} {'DISABLED' if rid in disabled else 'ENABLED':10} {r.get('name','')}")
         print(f"Total: {len(rules)}")
+        daemon_count = _daemon_rules_count()
+        if daemon_count is None:
+            print("Active daemon rules: UNKNOWN (control daemon unavailable; DISABLED above is a local candidate until rules.reload)")
+        else:
+            print(f"Active daemon rules: {daemon_count} (authoritative; DISABLED takes effect on rules.reload)")
         return 0
     rid = getattr(args, "id", None)
     match = next((r for r in rules if str(r.get("rule_id")) == str(rid)), None)

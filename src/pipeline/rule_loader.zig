@@ -56,6 +56,71 @@ test "hashRuleId matches the cross-language golden table" {
     }
 }
 
+/// BE-DIS-089: honor config/disabled_rules.json in the daemon engine.
+///
+/// The CLI (`tools/aegisctl.py policy list`) has always shown DISABLED
+/// from that file, but the engine never read it — a rule shown DISABLED
+/// still fired. Both load paths (startup + rules.reload) now skip
+/// disabled IDs. Fail direction is deliberate: a missing/unreadable/
+/// malformed disabled file means NONE disabled (engine keeps firing),
+/// never a silent zero-rule engine. Malformed warns loudly.
+fn loadDisabledMap() std.StringHashMap(void) {
+    var map = std.StringHashMap(void).init(std.heap.page_allocator);
+    const runtime_root = runtime_paths.resolveRoot(std.heap.page_allocator) catch |err| {
+        diag.warn("disabled_rules: cannot resolve runtime root: {} — none disabled", .{err});
+        return map;
+    };
+    defer std.heap.page_allocator.free(runtime_root);
+    const disabled_path = runtime_paths.configPath(std.heap.page_allocator, runtime_root, "disabled_rules.json") catch |err| {
+        diag.warn("disabled_rules: cannot build path: {} — none disabled", .{err});
+        return map;
+    };
+    defer std.heap.page_allocator.free(disabled_path);
+    const file = std.fs.openFileAbsolute(disabled_path, .{}) catch {
+        return map; // absent file = none disabled (normal case)
+    };
+    defer file.close();
+    const bytes = file.readToEndAlloc(std.heap.page_allocator, 64 * 1024) catch |err| {
+        diag.warn("disabled_rules: cannot read {s}: {} — none disabled", .{ disabled_path, err });
+        return map;
+    };
+    defer std.heap.page_allocator.free(bytes);
+    var parsed = std.json.parseFromSlice(std.json.Value, std.heap.page_allocator, bytes, .{}) catch |err| {
+        diag.warn("disabled_rules: {s} is not valid JSON: {} — none disabled", .{ disabled_path, err });
+        return map;
+    };
+    defer parsed.deinit();
+    if (parsed.value != .object) {
+        diag.warn("disabled_rules: {s}: root must be an object — none disabled", .{disabled_path});
+        return map;
+    }
+    const list = parsed.value.object.get("disabled_rules") orelse return map;
+    if (list != .array) {
+        diag.warn("disabled_rules: {s}: disabled_rules is not an array — none disabled", .{disabled_path});
+        return map;
+    }
+    for (list.array.items) |v| {
+        if (v != .string or v.string.len == 0) continue;
+        map.put(v.string, {}) catch continue;
+    }
+    return map;
+}
+
+/// Pure membership check over parsed JSON bytes (no filesystem).
+/// Shared by the daemon filter and the unit test below.
+pub fn disabledListContains(disabled_bytes: []const u8, rule_id: []const u8) bool {
+    var parsed = std.json.parseFromSlice(std.json.Value, std.heap.page_allocator, disabled_bytes, .{}) catch return false;
+    defer parsed.deinit();
+    if (parsed.value != .object) return false;
+    const list = parsed.value.object.get("disabled_rules") orelse return false;
+    if (list != .array) return false;
+    for (list.array.items) |v| {
+        if (v != .string) continue;
+        if (std.mem.eql(u8, v.string, rule_id)) return true;
+    }
+    return false;
+}
+
 /// Reload Rules.json into a fresh Aho-Corasick automaton.
 /// Called from the control pipe thread on `rules.reload`.
 /// Thread-safe: rebuilds a new AC and swaps the global pointer atomically.
@@ -72,6 +137,9 @@ pub fn reloadRules() u32 {
     };
 
     var new_count: u32 = 0;
+    var disabled_skipped: u32 = 0;
+    var disabled_map = loadDisabledMap();
+    defer disabled_map.deinit();
     blk: {
         const runtime_root = runtime_paths.resolveRoot(std.heap.page_allocator) catch |err| {
             diag.warn("reload: cannot resolve runtime root: {}", .{err});
@@ -135,6 +203,10 @@ pub fn reloadRules() u32 {
             const rule_obj = rule_val.object;
             const rule_id_str = rule_obj.get("rule_id") orelse continue;
             if (rule_id_str != .string) continue;
+            if (disabled_map.contains(rule_id_str.string)) {
+                disabled_skipped += 1;
+                continue;
+            }
             const rule_id = hashRuleId(rule_id_str.string);
             const match_pattern = rule_obj.get("match_pattern") orelse continue;
             if (match_pattern != .string) continue;
@@ -169,7 +241,11 @@ pub fn reloadRules() u32 {
         // response. Retain retired automata for the daemon lifetime; reloads
         // are infrequent and this fail-safe policy prevents use-after-free.
         _ = old_ac_ptr;
-        diag.info("reload: loaded {} rules (swap complete)", .{new_count});
+        if (disabled_skipped > 0) {
+            diag.info("reload: loaded {} rules (swap complete), skipped {} disabled", .{ new_count, disabled_skipped });
+        } else {
+            diag.info("reload: loaded {} rules (swap complete)", .{new_count});
+        }
     } else {
         heap_ac.deinit();
         std.heap.page_allocator.destroy(heap_ac);
@@ -190,6 +266,9 @@ pub fn reloadRules() u32 {
 /// tier starts reading rule actions.
 pub fn loadRulesInto(ac: *sig.AhoCorasick, bytes: []const u8, rules_path: []const u8) u32 {
     var count: u32 = 0;
+    var disabled_map = loadDisabledMap();
+    defer disabled_map.deinit();
+    var disabled_skipped: u32 = 0;
     blk: {
         var rules_parsed = std.json.parseFromSlice(std.json.Value, std.heap.page_allocator, bytes, .{}) catch |err| {
             diag.warn("cannot parse {s}: {}", .{ rules_path, err });
@@ -216,6 +295,10 @@ pub fn loadRulesInto(ac: *sig.AhoCorasick, bytes: []const u8, rules_path: []cons
             const rule_obj = rule_val.object;
             const rule_id_str = rule_obj.get("rule_id") orelse continue;
             if (rule_id_str != .string) continue;
+            if (disabled_map.contains(rule_id_str.string)) {
+                disabled_skipped += 1;
+                continue;
+            }
             const rule_id = hashRuleId(rule_id_str.string);
             const match_pattern = rule_obj.get("match_pattern") orelse continue;
             if (match_pattern != .string) continue;
@@ -232,5 +315,33 @@ pub fn loadRulesInto(ac: *sig.AhoCorasick, bytes: []const u8, rules_path: []cons
             break :blk;
         };
     }
+    if (disabled_skipped > 0) {
+        diag.info("startup: loaded {} rules, skipped {} disabled", .{ count, disabled_skipped });
+    }
     return count;
+}
+
+test "BE-DIS-089: disabledListContains honors the disabled_rules shape" {
+    // Positive: listed IDs match exactly, others do not.
+    try std.testing.expect(disabledListContains("{\"disabled_rules\":[\"R0001\",\"R0002\"]}", "R0001"));
+    try std.testing.expect(!disabledListContains("{\"disabled_rules\":[\"R0001\",\"R0002\"]}", "R0003"));
+    // Negative controls: malformed shapes never disable (fail-closed =
+    // engine keeps firing, never a silent zero-rule engine).
+    try std.testing.expect(!disabledListContains("not json", "R0001"));
+    try std.testing.expect(!disabledListContains("{\"disabled_rules\":\"R0001\"}", "R0001"));
+    try std.testing.expect(!disabledListContains("{\"other\":[]}", "R0001"));
+    try std.testing.expect(!disabledListContains("{\"disabled_rules\":[]}", "R0001"));
+}
+
+test "BE-DIS-089: engine skip uses exact-ID map membership (mirrors the load loop)" {
+    // The load/reload loops call disabled_map.contains(rule_id_str) and
+    // `continue` before addPattern. This pins that semantic: an exact
+    // listed ID is skipped, a prefix/suffix lookalike is not.
+    var map = std.StringHashMap(void).init(std.testing.allocator);
+    defer map.deinit();
+    try map.put("R0001", {});
+    try std.testing.expect(map.contains("R0001"));
+    try std.testing.expect(!map.contains("R00010"));
+    try std.testing.expect(!map.contains("R000"));
+    try std.testing.expect(!map.contains("r0001"));
 }

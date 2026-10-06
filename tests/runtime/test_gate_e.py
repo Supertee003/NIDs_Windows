@@ -18,7 +18,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 AEGISCTL = REPO_ROOT / "tools" / "aegisctl.py"
 CANARY_TESTS_FILE = REPO_ROOT / "configs" / "canary_tests.json"
-DISABLED_RULES_FILE = REPO_ROOT / "config" / "disabled_rules.json"
+DISABLED_RULES_FILE = REPO_ROOT / "configs" / "disabled_rules.json"
 RULES_FILE = REPO_ROOT / "config" / "Rules.json"
 
 

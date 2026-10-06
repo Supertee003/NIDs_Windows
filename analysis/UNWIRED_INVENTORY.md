@@ -289,7 +289,12 @@ documented); `successRate` pending-blind accepted (unused helper).
 Still OPEN: flow pointer lock-escape (single-threaded today),
 correlator/AC per-packet allocator (needs profiling,
 not guesses), receipt validator
-reconciliation, disabled_rules end-to-end, spool replay automation
+reconciliation, disabled_rules end-to-end (BE-DIS-089: daemon
+startup + rules.reload now skip configs/disabled_rules.json IDs;
+CLI constant + list command canonicalized to the same file with a
+daemon-authoritative count; live file gitignored; Zig membership +
+skip-semantics tests + tests/security/test_disabled_rules_authority.py),
+spool replay automation
 (exists — needs live proof), SBOM salt (SBOM-SALT-087: builtin
 hash() is per-process salted — replaced with SHA-256 path IDs, proven
 identical across hash seeds on all 554 packages), CI truth/Trivy

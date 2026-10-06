@@ -65,7 +65,10 @@ CONFIG_DIR = REPO_ROOT / "config"
 # checks; nothing may load rules from it (see
 # tests/security/test_single_rule_authority.py).
 RULES_FILE = REPO_ROOT / "configs" / "Rules.json"
-DISABLED_RULES_FILE = CONFIG_DIR / "disabled_rules.json"
+# BE-DIS-089: colocated with the canonical Rules.json so the CLI and the
+# Zig engine (rule_loader.zig loadDisabledMap) read the same file.
+# The old config/ (singular) path never met the engine.
+DISABLED_RULES_FILE = REPO_ROOT / "configs" / "disabled_rules.json"
 CANARY_TESTS_FILE = REPO_ROOT / "configs" / "canary_tests.json"
 
 BUILD_MANIFEST = REPO_ROOT / "build_manifest.json"

@@ -86,6 +86,7 @@ Thumbs.db
 configs/secrets/
 configs/cluster.json
 configs/policy_trust.json
+configs/disabled_rules.json
 *.key
 *.pem
 *.pfx
