@@ -113,9 +113,12 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   metrics.policy_ir.verified (RB-011 step 8); enforcement untouched.
   TS-SIGN-080 landed the author half: ed25519.ts (operator key in,
   never stored; stdlib only) + 5 tests incl. committed golden triple
-  that Zig verifies too (76/76).
-  Still open: key custody (ADR-0005 Q1-Q4), and the
-  loader-to-trusted wiring itself.
+  that Zig verifies too (76/76). CUSTODY-081 landed the anchor file:
+  configs/policy_trust.json (gitignored live, example tracks shape),
+  strict loader (unique non-zero ids, no zero keys), rotation by
+  side-by-side key_ids, file-wins-over-env with loud broken-file
+  failure. Still open: who generates/holds keys operationally, and
+  the loader-to-trusted wiring itself.
 - [x] IPv6 full (contract v2) — wire v2 decode-ready T2-V6-022a (Go/Zig/
   C++/Python dispatch + 006 vector + bit2 preserved) + nose live emit
   T2-V6-022b (`eventFromPacket` sidecars, `Send` dispatches v2).

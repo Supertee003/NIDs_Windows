@@ -92,6 +92,24 @@ writing this runbook.
      sidecar + anchor + bytes all agree; anything else stays false
      with a warn in the log. Enforcement posture unchanged either way.
 
+9. **(Optional) Trust anchor file — reviewed keys, rotation window**
+   (CUSTODY-081). The env anchor (step 8) is one key with no rotation
+   story. For reviewed, rotatable custody:
+   - Copy `configs/policy_trust.example.json` to
+     `configs/policy_trust.json` (live file, gitignored — never commit
+     real keys) and replace the all-zero placeholder with operator
+     Ed25519 public keys: `{"version": 1, "keys": [{"key_id": 7,
+     "pubkey_hex": "<64 hex>"}, ...]}`. The file holds PUBLIC keys
+     only; private keys never touch the repo or the host.
+   - Rotation = list old + new `key_id` side by side, switch signing
+     to the new key, then remove the old entry. The daemon matches the
+     sidecar's `key_id` and verifies against that anchor.
+   - When present (and parseable), the file wins over
+     `AEGIS_POLICY_PUBKEY`. A present-but-broken file warns and stays
+     unverified — it never silently falls back to env.
+   - Restart the daemon. `metrics.policy_ir.verified` behaves as in
+     step 8. Enforcement posture unchanged either way.
+
 ## Verification
 
 - `metrics` shows `policy_ir.loaded: true`, matching rule count and hash.

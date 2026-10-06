@@ -850,6 +850,212 @@ test "POL-SIGN-079B: verifyIrSidecar false on every non-match" {
 }
 
 // ============================================================
+// CUSTODY-081: trust anchor file (operator-owned keys).
+// ============================================================
+//
+// `configs/policy_trust.json` (live, gitignored; see
+// `policy_trust.example.json` for shape) pins the public keys the
+// daemon verifies sidecars against:
+//
+//   {"version": 1, "keys": [{"key_id": 7, "pubkey_hex": "<64 hex>"}]}
+//
+// Strict parse: unknown version, empty key list, duplicate or zero
+// ids, and short/non-hex keys fail closed with an error, never
+// defaults. Overlapping key_ids are how rotation works: provision
+// the new key alongside the old, switch signing, then remove the old
+// (same window pattern as TrustStore.rotate). The file holds PUBLIC
+// keys only; private keys never touch the repo or the host config.
+// An env anchor (AEGIS_POLICY_PUBKEY) remains as fallback when the
+// file is absent; when present, the file wins (reviewed > environ).
+pub const TrustAnchor = struct {
+    key_id: u32,
+    pubkey: [32]u8,
+};
+
+pub const TrustFileError = error{
+    BadShape,
+    BadVersion,
+    EmptyKeys,
+    BadKeyId,
+    DuplicateKeyId,
+    BadPubkeyHex,
+    ZeroKey,
+    OutOfMemory,
+};
+
+pub fn parseTrustAnchors(allocator: std.mem.Allocator, document: []const u8) TrustFileError![]TrustAnchor {
+    const RawKey = struct {
+        key_id: u32,
+        pubkey_hex: []const u8,
+    };
+    const Raw = struct {
+        version: u8,
+        keys: []RawKey,
+    };
+    const parsed = std.json.parseFromSlice(Raw, allocator, document, .{}) catch return TrustFileError.BadShape;
+    defer parsed.deinit();
+    if (parsed.value.version != 1) return TrustFileError.BadVersion;
+    if (parsed.value.keys.len == 0) return TrustFileError.EmptyKeys;
+    const out = allocator.alloc(TrustAnchor, parsed.value.keys.len) catch return TrustFileError.OutOfMemory;
+    errdefer allocator.free(out);
+    for (parsed.value.keys, 0..) |rk, i| {
+        if (rk.key_id == 0) return TrustFileError.BadKeyId;
+        for (out[0..i]) |done| {
+            if (done.key_id == rk.key_id) return TrustFileError.DuplicateKeyId;
+        }
+        var pubkey: [32]u8 = undefined;
+        parseHexFixed(&pubkey, rk.pubkey_hex) catch return TrustFileError.BadPubkeyHex;
+        // All-zero keys (e.g. an unedited example file) can never
+        // validate — reject loudly instead of silently never-verifying.
+        var all_zero = true;
+        for (pubkey) |b| {
+            if (b != 0) {
+                all_zero = false;
+                break;
+            }
+        }
+        if (all_zero) return TrustFileError.ZeroKey;
+        out[i] = .{ .key_id = rk.key_id, .pubkey = pubkey };
+    }
+    return out;
+}
+
+/// Verify IR bytes against a sidecar using the anchor whose key_id the
+/// sidecar names. False on every non-match (unknown key, bad sig,
+/// malformed sidecar). Never raises: normal unsigned operation stays
+/// quiet, exactly like verifyIrSidecar.
+pub fn verifyIrWithAnchors(
+    allocator: std.mem.Allocator,
+    ir_bytes: []const u8,
+    sidecar_document: []const u8,
+    anchors: []const TrustAnchor,
+) bool {
+    if (ir_bytes.len == 0) return false;
+    const sc = parseSidecar(allocator, sidecar_document) catch return false;
+    for (anchors) |a| {
+        if (a.key_id != sc.key_id) continue;
+        return verifyViaRust(ir_bytes, &sc.sig, &a.pubkey);
+    }
+    return false;
+}
+
+// ============================================================
+// Tests (CUSTODY-081)
+// ============================================================
+
+fn testAnchorDoc(allocator: std.mem.Allocator, entries: []const TrustAnchor) ![]u8 {
+    // Test-only serializer: mirrors the file shape (version + keys).
+    const digits = "0123456789abcdef";
+    var out = std.ArrayList(u8).init(allocator);
+    errdefer out.deinit();
+    try out.appendSlice("{\"version\": 1, \"keys\": [");
+    for (entries, 0..) |e, i| {
+        if (i != 0) try out.appendSlice(", ");
+        var hex: [64]u8 = undefined;
+        for (e.pubkey, 0..) |b, j| {
+            hex[2 * j] = digits[b >> 4];
+            hex[2 * j + 1] = digits[b & 0xF];
+        }
+        try out.appendSlice("{\"key_id\": ");
+        try std.fmt.format(out.writer(), "{d}", .{e.key_id});
+        try out.appendSlice(", \"pubkey_hex\": \"");
+        try out.appendSlice(&hex);
+        try out.appendSlice("\"}");
+    }
+    try out.appendSlice("]}");
+    return out.toOwnedSlice();
+}
+
+test "CUSTODY-081: trust file round-trips and verifies" {
+    const kp = testKeyPair();
+    const ir = "policy ir bytes for custody prove-out";
+    const sig = try kp.sign(ir, null);
+    const anchors = [_]TrustAnchor{.{ .key_id = 7, .pubkey = kp.public_key.toBytes() }};
+    const trust_doc = try testAnchorDoc(std.testing.allocator, &anchors);
+    defer std.testing.allocator.free(trust_doc);
+    const parsed = try parseTrustAnchors(std.testing.allocator, trust_doc);
+    defer std.testing.allocator.free(parsed);
+    try std.testing.expectEqual(@as(usize, 1), parsed.len);
+    try std.testing.expectEqual(@as(u32, 7), parsed[0].key_id);
+    const doc = try testSidecarDoc(std.testing.allocator, 7, sig.toBytes(), ir);
+    defer std.testing.allocator.free(doc);
+    try std.testing.expect(verifyIrWithAnchors(std.testing.allocator, ir, doc, parsed));
+}
+
+test "CUSTODY-081: rotation window accepts both keys, unknown rejected" {
+    const kp_old = testKeyPair();
+    var seed2: [32]u8 = [_]u8{0} ** 32;
+    for (&seed2, 0..) |*b, i| b.* = @truncate(i * 13 + 1);
+    const kp_new = Ed25519.KeyPair.create(seed2) catch unreachable;
+    const ir = "policy ir bytes";
+    const anchors = [_]TrustAnchor{
+        .{ .key_id = 7, .pubkey = kp_old.public_key.toBytes() },
+        .{ .key_id = 8, .pubkey = kp_new.public_key.toBytes() },
+    };
+    const trust_doc = try testAnchorDoc(std.testing.allocator, &anchors);
+    defer std.testing.allocator.free(trust_doc);
+    const parsed = try parseTrustAnchors(std.testing.allocator, trust_doc);
+    defer std.testing.allocator.free(parsed);
+    // Old key still verifies during the window.
+    const sig_old = try kp_old.sign(ir, null);
+    const doc_old = try testSidecarDoc(std.testing.allocator, 7, sig_old.toBytes(), ir);
+    defer std.testing.allocator.free(doc_old);
+    try std.testing.expect(verifyIrWithAnchors(std.testing.allocator, ir, doc_old, parsed));
+    // New key verifies too.
+    const sig_new = try kp_new.sign(ir, null);
+    const doc_new = try testSidecarDoc(std.testing.allocator, 8, sig_new.toBytes(), ir);
+    defer std.testing.allocator.free(doc_new);
+    try std.testing.expect(verifyIrWithAnchors(std.testing.allocator, ir, doc_new, parsed));
+    // Unlisted key id fails closed.
+    const doc_mid = try testSidecarDoc(std.testing.allocator, 9, sig_new.toBytes(), ir);
+    defer std.testing.allocator.free(doc_mid);
+    try std.testing.expect(!verifyIrWithAnchors(std.testing.allocator, ir, doc_mid, parsed));
+}
+
+test "CUSTODY-081: trust file shapes fail closed" {
+    const good_key = "\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"";
+    const cases = [_][]const u8{
+        "{\"version\": 2, \"keys\": []}",
+        "{\"version\": 1, \"keys\": []}",
+        "{\"version\": 1}",
+        "not json",
+    };
+    for (cases) |doc| {
+        if (parseTrustAnchors(std.testing.allocator, doc)) |parsed| {
+            std.testing.allocator.free(parsed);
+            return error.TestExpectedParseFailure;
+        } else |_| {}
+    }
+    // Zero id, duplicate id, short key, non-hex key, zero key.
+    var buf: [512]u8 = undefined;
+    const bad_id = try std.fmt.bufPrint(&buf, "{{\"version\": 1, \"keys\": [{{\"key_id\": 0, \"pubkey_hex\": {s}}}]}}", .{good_key});
+    if (parseTrustAnchors(std.testing.allocator, bad_id)) |parsed| {
+        std.testing.allocator.free(parsed);
+        return error.TestExpectedParseFailure;
+    } else |_| {}
+    const dup = try std.fmt.bufPrint(&buf, "{{\"version\": 1, \"keys\": [{{\"key_id\": 7, \"pubkey_hex\": {s}}}, {{\"key_id\": 7, \"pubkey_hex\": {s}}}]}}", .{ good_key, good_key });
+    if (parseTrustAnchors(std.testing.allocator, dup)) |parsed| {
+        std.testing.allocator.free(parsed);
+        return error.TestExpectedParseFailure;
+    } else |_| {}
+    const short = try std.fmt.bufPrint(&buf, "{{\"version\": 1, \"keys\": [{{\"key_id\": 7, \"pubkey_hex\": \"00\"}}]}}", .{});
+    if (parseTrustAnchors(std.testing.allocator, short)) |parsed| {
+        std.testing.allocator.free(parsed);
+        return error.TestExpectedParseFailure;
+    } else |_| {}
+    // All-zero key: exactly 64 zeros, built programmatically (a literal
+    // this long would be misread as a named format argument).
+    const zero_hex: [64]u8 = [_]u8{'0'} ** 64;
+    const zeros = try std.fmt.bufPrint(&buf, "{{\"version\": 1, \"keys\": [{{\"key_id\": 7, \"pubkey_hex\": \"{s}\"}}]}}", .{zero_hex});
+    if (parseTrustAnchors(std.testing.allocator, zeros)) |parsed| {
+        std.testing.allocator.free(parsed);
+        return error.TestExpectedParseFailure;
+    } else |err| {
+        try std.testing.expectEqual(TrustFileError.ZeroKey, err);
+    }
+}
+
+// ============================================================
 // TS-SIGN-080: committed golden vectors (TS-signed, Zig-verified).
 // ============================================================
 //

@@ -465,6 +465,10 @@ pub fn runDaemon() !void {
         // bytes just loaded and expose the answer in metricsSnapshot.
         // Every other case stays unverified:false. This NEVER marks
         // anything trusted and NEVER touches enforcement authority.
+        // CUSTODY-081: a reviewed trust file (configs/policy_trust.json,
+        // gitignored live file, example tracks the shape) wins over the
+        // env anchor when present; rotation works by listing old+new
+        // key_ids side by side.
         state.g_policy_ir_verified.store(false, .monotonic);
         sig_blk: {
             const sig_path = runtime_paths.configPath(std.heap.page_allocator, runtime_root, "policy_ir.sig.json") catch break :sig_blk;
@@ -473,9 +477,41 @@ pub fn runDaemon() !void {
             defer sig_file.close();
             const sig_bytes = sig_file.readToEndAlloc(std.heap.page_allocator, 65536) catch break :sig_blk;
             defer std.heap.page_allocator.free(sig_bytes);
-            const pubkey_hex = std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_POLICY_PUBKEY") catch break :sig_blk;
-            defer std.heap.page_allocator.free(pubkey_hex);
-            const ok = policy_signing.verifyIrSidecar(std.heap.page_allocator, ir_bytes, sig_bytes, pubkey_hex);
+            // Trust file first (reviewed), env anchor as fallback.
+            // Present-but-broken file fails the check loudly (warn +
+            // unverified) instead of silently falling back to env: a
+            // reviewed file that no longer parses is operator error,
+            // not an absent file.
+            var file_anchors: ?[]policy_signing.TrustAnchor = null;
+            var trust_file_broken = false;
+            if (runtime_paths.configPath(std.heap.page_allocator, runtime_root, "policy_trust.json")) |trust_path| {
+                defer std.heap.page_allocator.free(trust_path);
+                if (std.fs.openFileAbsolute(trust_path, .{})) |trust_file| {
+                    defer trust_file.close();
+                    if (trust_file.readToEndAlloc(std.heap.page_allocator, 65536)) |trust_bytes| {
+                        defer std.heap.page_allocator.free(trust_bytes);
+                        file_anchors = policy_signing.parseTrustAnchors(std.heap.page_allocator, trust_bytes) catch blk: {
+                            trust_file_broken = true;
+                            break :blk null;
+                        };
+                    } else |_| {
+                        trust_file_broken = true;
+                    }
+                } else |_| {}
+            } else |_| {}
+            defer if (file_anchors) |a| std.heap.page_allocator.free(a);
+            const ok = if (file_anchors) |anchors|
+                policy_signing.verifyIrWithAnchors(std.heap.page_allocator, ir_bytes, sig_bytes, anchors)
+            else if (trust_file_broken)
+                false
+            else blk: {
+                const pubkey_hex = std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_POLICY_PUBKEY") catch break :blk false;
+                defer std.heap.page_allocator.free(pubkey_hex);
+                break :blk policy_signing.verifyIrSidecar(std.heap.page_allocator, ir_bytes, sig_bytes, pubkey_hex);
+            };
+            if (trust_file_broken) {
+                diag.warn("policy_trust.json present but unusable; mirror stays unverified", .{});
+            }
             state.g_policy_ir_verified.store(ok, .monotonic);
             diag.info("TS policy IR signature: {s}", .{if (ok) "VALID (observe-only, enforcement unchanged)" else "INVALID or untrusted anchor (mirror stays unverified)"});
         }
