@@ -105,9 +105,11 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   POL-SIGN-078 landed the verify half: policy_signing tests wired into
   `zig build test` (were never compiled), mock trust_store labeled
   (canonical policy store is policy_signing), Rust aegis_policy_verify
-  FFI proven (roundtrip + misuse codes) but unwired. Still open: TS
-  signing lib, sidecar envelope, key custody (ADR-0005 Q1-Q4), and the
-  loader-to-trusted wiring itself.
+  FFI proven (roundtrip + misuse codes) but unwired. POL-SIGN-079A
+  landed the Rust-authority path: verifyViaRust (ring via FFI, agrees
+  with native) + sidecar v1 envelope + strict loader, still unwired
+  (no daemon caller). Still open: TS signing lib, key custody
+  (ADR-0005 Q1-Q4), and the loader-to-trusted wiring itself.
 - [x] IPv6 full (contract v2) — wire v2 decode-ready T2-V6-022a (Go/Zig/
   C++/Python dispatch + 006 vector + bit2 preserved) + nose live emit
   T2-V6-022b (`eventFromPacket` sidecars, `Send` dispatches v2).

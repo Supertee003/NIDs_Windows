@@ -598,3 +598,163 @@ test "T7: sign-policy sign+verify uses real Ed25519 (no FNV-1a)" {
     try std.testing.expect(slice_result == .valid);
     try std.testing.expect(store_result == .valid);
 }
+
+// ============================================================
+// POL-SIGN-079A: Rust-FFI verify path (ADR-0005: Rust owns crypto).
+// ============================================================
+//
+// The Zig-native verify above is proven and stays. This path reuses
+// the tested ring primitive in the Rust PEP through the narrow
+// `aegis_policy_verify` C ABI (0 valid, -1 null, -2 fail) so there is
+// exactly one crypto authority for policy trust. Pure transport of
+// the verdict: no state, no policy mutation, no enforcement. Still
+// unwired (no daemon caller) until key custody lands (ADR-0005 Q3).
+
+extern fn aegis_policy_verify(
+    policy_data: [*]const u8,
+    policy_len: usize,
+    signature: [*]const u8,
+    signature_len: usize,
+    public_key: [*]const u8,
+    public_key_len: usize,
+) c_int;
+
+/// Verify raw policy bytes via the Rust PEP. True iff the signature is
+/// valid. Never raises, never panics: empty input fails closed here.
+pub fn verifyViaRust(policy_bytes: []const u8, sig: []const u8, pubkey: []const u8) bool {
+    if (policy_bytes.len == 0 or sig.len != 64 or pubkey.len != 32) return false;
+    const rc = aegis_policy_verify(
+        policy_bytes.ptr, policy_bytes.len,
+        sig.ptr, sig.len,
+        pubkey.ptr, pubkey.len,
+    );
+    return rc == 0;
+}
+
+// ============================================================
+// Sidecar envelope v1 (ADR-0005 proposal, implemented).
+// ============================================================
+//
+// Sidecar file next to the IR JSON (`policy_ir.json` +
+// `policy_ir.sig.json`). The IR struct is untouched (u64 hint fields
+// stay hints). Strict parse: unknown version, short/non-hex material,
+// or missing keys fail closed with an error, never defaults.
+//
+//   {"version": 1, "key_id": 7,
+//    "ed25519_sig_hex": "<128 lowercase hex>",
+//    "ir_sha256_hex": "<64 lowercase hex>"}
+//
+// The sha field is an integrity hint cross-checked by the caller
+// against its own hash of the IR bytes; the SIGNATURE is the trust
+// root (verified over the exact IR bytes via verifyViaRust).
+
+pub const Sidecar = struct {
+    key_id: u32,
+    sig: [64]u8,
+    ir_sha256: [32]u8,
+};
+
+pub const SidecarError = error{
+    BadShape,
+    BadVersion,
+    BadKeyId,
+    BadSigHex,
+    BadHashHex,
+};
+
+fn parseHexByte(c: u8) !u8 {
+    if (c >= '0' and c <= '9') return c - '0';
+    if (c >= 'a' and c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' and c <= 'F') return c - 'A' + 10;
+    return error.BadHex;
+}
+
+fn parseHexFixed(out: []u8, hex: []const u8) !void {
+    if (hex.len != out.len * 2) return error.BadHex;
+    for (out, 0..) |*b, i| {
+        const hi = parseHexByte(hex[2 * i]) catch return error.BadHex;
+        const lo = parseHexByte(hex[2 * i + 1]) catch return error.BadHex;
+        b.* = hi * 16 + lo;
+    }
+}
+
+pub fn parseSidecar(allocator: std.mem.Allocator, document: []const u8) SidecarError!Sidecar {
+    const Raw = struct {
+        version: u8,
+        key_id: u32,
+        ed25519_sig_hex: []const u8,
+        ir_sha256_hex: []const u8,
+    };
+    const parsed = std.json.parseFromSlice(Raw, allocator, document, .{}) catch return SidecarError.BadShape;
+    defer parsed.deinit();
+    if (parsed.value.version != 1) return SidecarError.BadVersion;
+    if (parsed.value.key_id == 0) return SidecarError.BadKeyId;
+    var sig: [64]u8 = undefined;
+    parseHexFixed(&sig, parsed.value.ed25519_sig_hex) catch return SidecarError.BadSigHex;
+    var hash: [32]u8 = undefined;
+    parseHexFixed(&hash, parsed.value.ir_sha256_hex) catch return SidecarError.BadHashHex;
+    return .{ .key_id = parsed.value.key_id, .sig = sig, .ir_sha256 = hash };
+}
+
+// ============================================================
+// Tests (POL-SIGN-079A)
+// ============================================================
+
+test "POL-SIGN-079A: verifyViaRust agrees with native on valid signature" {
+    // Two crypto authorities must agree today so the cutover to Rust
+    // tomorrow changes no verdict. Deterministic keypair (no committed
+    // secrets, no RNG in tests).
+    const kp = testKeyPair();
+    const msg = "policy ir bytes for cross-authority agreement";
+    const sig = try kp.sign(msg, null);
+    const pubkey = kp.public_key.toBytes();
+    try std.testing.expect(verifyViaRust(msg, &sig.toBytes(), &pubkey));
+    // Native path agrees (same message, same key, same raw bytes).
+    const native_sig = Ed25519.Signature.fromBytes(sig.toBytes());
+    const native_pub = Ed25519.PublicKey.fromBytes(pubkey) catch unreachable;
+    try native_sig.verify(msg, native_pub);
+}
+
+test "POL-SIGN-079A: verifyViaRust rejects tampered bytes and empties" {
+    const kp = testKeyPair();
+    const msg = "policy ir bytes";
+    const sig = try kp.sign(msg, null);
+    const pubkey = kp.public_key.toBytes();
+    try std.testing.expect(verifyViaRust(msg, &sig.toBytes(), &pubkey));
+    var bad = [_]u8{0} ** 16;
+    @memcpy(&bad, msg[0..16]);
+    bad[0] ^= 0xFF;
+    try std.testing.expect(!verifyViaRust(&bad, &sig.toBytes(), &pubkey));
+    try std.testing.expect(!verifyViaRust("", &sig.toBytes(), &pubkey));
+    try std.testing.expect(!verifyViaRust(msg, &sig.toBytes(), &[_]u8{}));
+}
+
+test "POL-SIGN-079A: parseSidecar accepts canonical v1" {
+    const doc =
+        \\{"version": 1, "key_id": 7,
+        \\ "ed25519_sig_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+        \\ "ir_sha256_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"}
+    ;
+    const sc = try parseSidecar(std.testing.allocator, doc);
+    try std.testing.expectEqual(@as(u32, 7), sc.key_id);
+    try std.testing.expectEqual(@as(u8, 0x00), sc.sig[0]);
+    try std.testing.expectEqual(@as(u8, 0x3f), sc.sig[63]);
+    try std.testing.expectEqual(@as(u8, 0x1f), sc.ir_sha256[31]);
+}
+
+test "POL-SIGN-079A: parseSidecar fails closed on every malformed shape" {
+    const cases = [_][]const u8{
+        \\{"version": 2, "key_id": 7, "ed25519_sig_hex": "", "ir_sha256_hex": ""},
+        \\{"version": 1, "key_id": 0, "ed25519_sig_hex": "", "ir_sha256_hex": ""},
+        \\{"version": 1, "key_id": 7, "ed25519_sig_hex": "zz", "ir_sha256_hex": ""},
+        \\{"version": 1, "key_id": 7, "ed25519_sig_hex": "00", "ir_sha256_hex": ""},
+        \\{"version": 1, "key_id": 7},
+        \\not json at all,
+    };
+    for (cases) |doc| {
+        // Every malformed shape must fail (exact error varies by case).
+        if (parseSidecar(std.testing.allocator, doc)) |_| {
+            return error.TestExpectedParseFailure;
+        } else |_| {}
+    }
+}
