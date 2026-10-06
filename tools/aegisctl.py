@@ -592,6 +592,15 @@ def cmd_rules(args) -> int:
             "status": response.get("status"),
             "postcondition": postcondition,
         }
+        # BE-DRIFT-098: pass the named-skip report through when the
+        # daemon serves it (old binaries omit these keys; the gate
+        # below only depends on the long-standing keys).
+        if isinstance(response.get("skipped"), dict):
+            result["skipped"] = response["skipped"]
+        if isinstance(response.get("skipped_ids"), list):
+            result["skipped_ids"] = response["skipped_ids"]
+        if isinstance(response.get("skipped_truncated"), bool):
+            result["skipped_truncated"] = response["skipped_truncated"]
         print(json.dumps(result, indent=2, sort_keys=True))
         if loaded <= 0 or response.get("status") != "reloaded" or postcondition != "ACTIVE":
             return 5

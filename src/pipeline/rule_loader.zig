@@ -121,23 +121,120 @@ pub fn disabledListContains(disabled_bytes: []const u8, rule_id: []const u8) boo
     return false;
 }
 
+// ============================================================
+// BE-DRIFT-098: named skip accounting (no more silent drops).
+// ============================================================
+//
+// Every catalog entry ends in exactly one bucket: loaded, or skipped
+// with a reason AND (when it names one) its rule_id. Both load paths
+// share classifyRule so startup and reload can never disagree about
+// WHY a rule is absent. The report carries a bounded ID list (first
+// 16, truncation flagged) so the control response stays small while
+// proving completeness: loaded + all skipped == catalog entries.
+pub const MAX_SKIPPED_IDS: usize = 16;
+pub const MAX_SKIPPED_ID_LEN: usize = 31;
+
+pub const ReloadReport = struct {
+    loaded: u32 = 0,
+    skipped_no_pattern: u32 = 0,
+    skipped_disabled: u32 = 0,
+    skipped_malformed: u32 = 0,
+    skipped_add_failed: u32 = 0,
+    skipped_ids: [MAX_SKIPPED_IDS][MAX_SKIPPED_ID_LEN + 1]u8 = [_][MAX_SKIPPED_ID_LEN + 1]u8{[_]u8{0} ** (MAX_SKIPPED_ID_LEN + 1)} ** MAX_SKIPPED_IDS,
+    skipped_id_lens: [MAX_SKIPPED_IDS]u8 = [_]u8{0} ** MAX_SKIPPED_IDS,
+    skipped_id_count: u8 = 0,
+    skipped_truncated: bool = false,
+
+    pub fn totalSkipped(self: *const ReloadReport) u32 {
+        return self.skipped_no_pattern + self.skipped_disabled + self.skipped_malformed + self.skipped_add_failed;
+    }
+
+    pub fn recordSkip(self: *ReloadReport, reason: SkipReason, id: ?[]const u8) void {
+        switch (reason) {
+            .no_pattern => self.skipped_no_pattern += 1,
+            .disabled => self.skipped_disabled += 1,
+            .malformed => self.skipped_malformed += 1,
+            .add_failed => self.skipped_add_failed += 1,
+        }
+        const name = id orelse return;
+        if (name.len == 0) return;
+        if (self.skipped_id_count >= MAX_SKIPPED_IDS) {
+            self.skipped_truncated = true;
+            return;
+        }
+        const n: usize = @min(name.len, MAX_SKIPPED_ID_LEN);
+        @memcpy(self.skipped_ids[self.skipped_id_count][0..n], name[0..n]);
+        self.skipped_id_lens[self.skipped_id_count] = @intCast(n);
+        self.skipped_id_count += 1;
+        if (name.len > MAX_SKIPPED_ID_LEN) self.skipped_truncated = true;
+    }
+
+    pub fn skippedId(self: *const ReloadReport, i: usize) []const u8 {
+        return self.skipped_ids[i][0..self.skipped_id_lens[i]];
+    }
+};
+
+pub const SkipReason = enum { no_pattern, disabled, malformed, add_failed };
+
+pub const ClassifiedRule = struct {
+    verdict: enum { load, skip },
+    reason: SkipReason,
+    id: ?[]const u8,
+    pattern: ?[]const u8,
+};
+
+/// One classifier for both load paths. A rule loads ONLY with a
+/// non-empty string rule_id, no disabled hit, and a non-empty string
+/// match_pattern. Everything else names its reason.
+pub fn classifyRule(
+    rule_val: std.json.Value,
+    disabled: *const std.StringHashMap(void),
+) ClassifiedRule {
+    if (rule_val != .object) return .{ .verdict = .skip, .reason = .malformed, .id = null, .pattern = null };
+    const id_val = rule_val.object.get("rule_id") orelse return .{ .verdict = .skip, .reason = .malformed, .id = null, .pattern = null };
+    if (id_val != .string or id_val.string.len == 0) return .{ .verdict = .skip, .reason = .malformed, .id = null, .pattern = null };
+    const id = id_val.string;
+    if (disabled.contains(id)) return .{ .verdict = .skip, .reason = .disabled, .id = id, .pattern = null };
+    const pat_val = rule_val.object.get("match_pattern") orelse return .{ .verdict = .skip, .reason = .no_pattern, .id = id, .pattern = null };
+    if (pat_val != .string or pat_val.string.len == 0) return .{ .verdict = .skip, .reason = .no_pattern, .id = id, .pattern = null };
+    return .{ .verdict = .load, .reason = .malformed, .id = id, .pattern = pat_val.string };
+}
+
+/// JSON-escape one string into a writer (rule IDs are operator-controlled;
+/// a quote in an ID must not break the control response).
+pub fn writeJsonString(writer: anytype, s: []const u8) void {
+    writer.writeByte('"') catch return;
+    for (s) |c| {
+        switch (c) {
+            '"' => writer.writeAll("\\\"") catch return,
+            '\\' => writer.writeAll("\\\\") catch return,
+            '\n' => writer.writeAll("\\n") catch return,
+            '\r' => writer.writeAll("\\r") catch return,
+            '\t' => writer.writeAll("\\t") catch return,
+            0...8, 11, 12, 14...31 => writer.print("\\u{x:0>4}", .{c}) catch return,
+            else => writer.writeByte(c) catch return,
+        }
+    }
+    writer.writeByte('"') catch return;
+}
+
 /// Reload Rules.json into a fresh Aho-Corasick automaton.
 /// Called from the control pipe thread on `rules.reload`.
 /// Thread-safe: rebuilds a new AC and swaps the global pointer atomically.
-pub fn reloadRules() u32 {
+/// Returns the full report (loaded + named skips) for the control response.
+pub fn reloadRules() ReloadReport {
     // Heap-allocate the new AC so the pointer survives after this function returns
     const heap_ac = std.heap.page_allocator.create(sig.AhoCorasick) catch |err| {
         diag.err("reload: failed to allocate AhoCorasick: {}", .{err});
-        return 0;
+        return .{};
     };
     heap_ac.* = sig.AhoCorasick.init(std.heap.page_allocator, 100_000) catch |err| {
         diag.err("reload: failed to init AhoCorasick: {}", .{err});
         std.heap.page_allocator.destroy(heap_ac);
-        return 0;
+        return .{};
     };
 
-    var new_count: u32 = 0;
-    var disabled_skipped: u32 = 0;
+    var report = ReloadReport{};
     var disabled_map = loadDisabledMap();
     defer disabled_map.deinit();
     blk: {
@@ -199,23 +296,18 @@ pub fn reloadRules() u32 {
         }
 
         for (nids_rules.array.items) |rule_val| {
-            if (rule_val != .object) continue;
-            const rule_obj = rule_val.object;
-            const rule_id_str = rule_obj.get("rule_id") orelse continue;
-            if (rule_id_str != .string) continue;
-            if (disabled_map.contains(rule_id_str.string)) {
-                disabled_skipped += 1;
+            const c = classifyRule(rule_val, &disabled_map);
+            if (c.verdict != .load) {
+                report.recordSkip(c.reason, c.id);
                 continue;
             }
-            const rule_id = hashRuleId(rule_id_str.string);
-            const match_pattern = rule_obj.get("match_pattern") orelse continue;
-            if (match_pattern != .string) continue;
-            if (match_pattern.string.len == 0) continue;
-            heap_ac.addPattern(rule_id, match_pattern.string) catch |err| {
-                diag.warn("reload: failed to add pattern for {s}: {}", .{ rule_id_str.string, err });
+            const rule_id = hashRuleId(c.id.?);
+            heap_ac.addPattern(rule_id, c.pattern.?) catch |err| {
+                diag.warn("reload: failed to add pattern for {s}: {}", .{ c.id.?, err });
+                report.recordSkip(.add_failed, c.id);
                 continue;
             };
-            new_count += 1;
+            report.loaded += 1;
         }
 
         heap_ac.build() catch |err| {
@@ -226,12 +318,12 @@ pub fn reloadRules() u32 {
         };
     }
 
-    if (new_count > 0) {
+    if (report.loaded > 0) {
         // Swap: take old AC, install new heap-allocated one
         state.g_ac_mutex.lock();
         const old_ac_ptr = state.g_active_ac;
         state.g_active_ac = heap_ac;
-        state.g_rules_loaded.store(new_count, .monotonic);
+        state.g_rules_loaded.store(report.loaded, .monotonic);
         state.g_ac_mutex.unlock();
 
         // Do not destroy the old automaton here. The pipeline may have taken
@@ -241,10 +333,14 @@ pub fn reloadRules() u32 {
         // response. Retain retired automata for the daemon lifetime; reloads
         // are infrequent and this fail-safe policy prevents use-after-free.
         _ = old_ac_ptr;
-        if (disabled_skipped > 0) {
-            diag.info("reload: loaded {} rules (swap complete), skipped {} disabled", .{ new_count, disabled_skipped });
+        if (report.totalSkipped() > 0) {
+            diag.info("reload: loaded {} rules (swap complete), skipped {} (no_pattern={} disabled={} malformed={} add_failed={})", .{
+                report.loaded, report.totalSkipped(),
+                report.skipped_no_pattern, report.skipped_disabled,
+                report.skipped_malformed, report.skipped_add_failed,
+            });
         } else {
-            diag.info("reload: loaded {} rules (swap complete)", .{new_count});
+            diag.info("reload: loaded {} rules (swap complete)", .{report.loaded});
         }
     } else {
         heap_ac.deinit();
@@ -252,7 +348,7 @@ pub fn reloadRules() u32 {
         diag.warn("reload: 0 rules loaded, keeping old ruleset", .{});
     }
 
-    return new_count;
+    return report;
 }
 
 /// Parse the nids_rules array from Rules.json bytes into an existing AC.
@@ -264,11 +360,10 @@ pub fn reloadRules() u32 {
 /// configs/policies.json through the Rust PEP receipt path. See AC5 in
 /// tests/security/test_detection_contract_pin.py, which fails loudly if any
 /// tier starts reading rule actions.
-pub fn loadRulesInto(ac: *sig.AhoCorasick, bytes: []const u8, rules_path: []const u8) u32 {
-    var count: u32 = 0;
+pub fn loadRulesInto(ac: *sig.AhoCorasick, bytes: []const u8, rules_path: []const u8) ReloadReport {
+    var report = ReloadReport{};
     var disabled_map = loadDisabledMap();
     defer disabled_map.deinit();
-    var disabled_skipped: u32 = 0;
     blk: {
         var rules_parsed = std.json.parseFromSlice(std.json.Value, std.heap.page_allocator, bytes, .{}) catch |err| {
             diag.warn("cannot parse {s}: {}", .{ rules_path, err });
@@ -291,23 +386,18 @@ pub fn loadRulesInto(ac: *sig.AhoCorasick, bytes: []const u8, rules_path: []cons
         }
 
         for (nids_rules.array.items) |rule_val| {
-            if (rule_val != .object) continue;
-            const rule_obj = rule_val.object;
-            const rule_id_str = rule_obj.get("rule_id") orelse continue;
-            if (rule_id_str != .string) continue;
-            if (disabled_map.contains(rule_id_str.string)) {
-                disabled_skipped += 1;
+            const c = classifyRule(rule_val, &disabled_map);
+            if (c.verdict != .load) {
+                report.recordSkip(c.reason, c.id);
                 continue;
             }
-            const rule_id = hashRuleId(rule_id_str.string);
-            const match_pattern = rule_obj.get("match_pattern") orelse continue;
-            if (match_pattern != .string) continue;
-            if (match_pattern.string.len == 0) continue;
-            ac.addPattern(rule_id, match_pattern.string) catch |err| {
-                diag.warn("failed to add pattern for {s}: {}", .{ rule_id_str.string, err });
+            const rule_id = hashRuleId(c.id.?);
+            ac.addPattern(rule_id, c.pattern.?) catch |err| {
+                diag.warn("failed to add pattern for {s}: {}", .{ c.id.?, err });
+                report.recordSkip(.add_failed, c.id);
                 continue;
             };
-            count += 1;
+            report.loaded += 1;
         }
 
         ac.build() catch |err| {
@@ -315,10 +405,14 @@ pub fn loadRulesInto(ac: *sig.AhoCorasick, bytes: []const u8, rules_path: []cons
             break :blk;
         };
     }
-    if (disabled_skipped > 0) {
-        diag.info("startup: loaded {} rules, skipped {} disabled", .{ count, disabled_skipped });
+    if (report.totalSkipped() > 0) {
+        diag.info("startup: loaded {} rules, skipped {} (no_pattern={} disabled={} malformed={} add_failed={})", .{
+            report.loaded, report.totalSkipped(),
+            report.skipped_no_pattern, report.skipped_disabled,
+            report.skipped_malformed, report.skipped_add_failed,
+        });
     }
-    return count;
+    return report;
 }
 
 test "BE-DIS-089: disabledListContains honors the disabled_rules shape" {
@@ -344,4 +438,92 @@ test "BE-DIS-089: engine skip uses exact-ID map membership (mirrors the load loo
     try std.testing.expect(!map.contains("R00010"));
     try std.testing.expect(!map.contains("R000"));
     try std.testing.expect(!map.contains("r0001"));
+}
+
+test "BE-DRIFT-098: classifyRule names every skip reason" {
+    var empty = std.StringHashMap(void).init(std.testing.allocator);
+    defer empty.deinit();
+    var disabled = std.StringHashMap(void).init(std.testing.allocator);
+    defer disabled.deinit();
+    try disabled.put("R0009", {});
+
+    const doc =
+        \\{"nids_rules": [
+        \\ {"rule_id": "R0001", "match_pattern": "abc"},
+        \\ {"rule_id": "R0002"},
+        \\ {"rule_id": "R0003", "match_pattern": ""},
+        \\ {"rule_id": "R0009", "match_pattern": "xyz"},
+        \\ {"rule_id": 42, "match_pattern": "xyz"},
+        \\ {"match_pattern": "xyz"},
+        \\ 42
+        \\]}
+    ;
+    var parsed = try std.json.parseFromSlice(std.json.Value, std.testing.allocator, doc, .{});
+    defer parsed.deinit();
+    const items = parsed.value.object.get("nids_rules").?.array.items;
+
+    const c0 = classifyRule(items[0], &empty);
+    try std.testing.expect(c0.verdict == .load);
+    try std.testing.expectEqualStrings("R0001", c0.id.?);
+    try std.testing.expectEqualStrings("abc", c0.pattern.?);
+
+    const c1 = classifyRule(items[1], &empty);
+    try std.testing.expect(c1.verdict == .skip and c1.reason == .no_pattern);
+    try std.testing.expectEqualStrings("R0002", c1.id.?);
+
+    const c2 = classifyRule(items[2], &empty);
+    try std.testing.expect(c2.verdict == .skip and c2.reason == .no_pattern);
+
+    const c3 = classifyRule(items[3], &disabled);
+    try std.testing.expect(c3.verdict == .skip and c3.reason == .disabled);
+    try std.testing.expectEqualStrings("R0009", c3.id.?);
+
+    // Same rule without the disabled entry is a pattern issue, not disabled.
+    const c3b = classifyRule(items[3], &empty);
+    try std.testing.expect(c3b.verdict == .load);
+
+    // Malformed entries carry no ID.
+    for ([_]usize{ 4, 5, 6 }) |i| {
+        const c = classifyRule(items[i], &empty);
+        try std.testing.expect(c.verdict == .skip and c.reason == .malformed);
+        try std.testing.expect(c.id == null);
+    }
+}
+
+test "BE-DRIFT-098: loadRulesInto reports named skips end to end" {
+    // NOTE: loadDisabledMap reads the live configs/disabled_rules.json
+    // (absent in a clean tree = none disabled). IDs here avoid any
+    // plausible operator-disabled value.
+    const doc =
+        \\{"nids_rules": [
+        \\ {"rule_id": "R0101", "match_pattern": "alpha"},
+        \\ {"rule_id": "R0102"},
+        \\ {"rule_id": "R0103", "match_pattern": ""},
+        \\ {"nope": true},
+        \\ {"rule_id": "R0104", "match_pattern": "beta"}
+        \\]}
+    ;
+    var ac = sig.AhoCorasick.init(std.testing.allocator, 100) catch unreachable;
+    defer ac.deinit();
+    const rep = loadRulesInto(&ac, doc, "test-rules.json");
+    try std.testing.expectEqual(@as(u32, 2), rep.loaded);
+    try std.testing.expectEqual(@as(u32, 2), rep.skipped_no_pattern);
+    try std.testing.expectEqual(@as(u32, 0), rep.skipped_disabled);
+    try std.testing.expectEqual(@as(u32, 1), rep.skipped_malformed);
+    try std.testing.expectEqual(@as(u32, 3), rep.totalSkipped());
+    // Only skips that name an ID are listed (the malformed entry
+    // without rule_id contributes its count, not a name).
+    try std.testing.expectEqual(@as(u8, 2), rep.skipped_id_count);
+    try std.testing.expect(!rep.skipped_truncated);
+    try std.testing.expectEqualStrings("R0102", rep.skippedId(0));
+    try std.testing.expectEqualStrings("R0103", rep.skippedId(1));
+    // Completeness: every catalog entry is accounted for.
+    try std.testing.expectEqual(@as(usize, 5), rep.loaded + rep.totalSkipped());
+}
+
+test "BE-DRIFT-098: writeJsonString escapes operator-controlled IDs" {
+    var buf: [64]u8 = undefined;
+    var fbs = std.io.fixedBufferStream(&buf);
+    writeJsonString(fbs.writer(), "R01\"02\\");
+    try std.testing.expectEqualStrings("\"R01\\\"02\\\\\"", fbs.getWritten());
 }

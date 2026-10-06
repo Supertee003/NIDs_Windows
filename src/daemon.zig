@@ -285,10 +285,20 @@ pub fn runDaemon() !void {
         };
         defer std.heap.page_allocator.free(rules_bytes);
 
-        rules_loaded = rule_loader.loadRulesInto(&ac, rules_bytes, rules_path);
+        const rep = rule_loader.loadRulesInto(&ac, rules_bytes, rules_path);
+        rules_loaded = rep.loaded;
         state.g_rules_loaded.store(rules_loaded, .monotonic);
         state.g_active_ac = &ac; // PATCH-14: expose AC for reload mechanism
         diag.info("loaded {} rules from {s}", .{ rules_loaded, rules_path });
+        // BE-DRIFT-098: name skipped rules at startup (not just counts)
+        // so a patternless/disabled rule is visible before attack tests.
+        var si: usize = 0;
+        while (si < rep.skipped_id_count) : (si += 1) {
+            diag.warn("startup: rule {s} not loaded (see reload report reasons)", .{rep.skippedId(si)});
+        }
+        if (rep.skipped_truncated) {
+            diag.warn("startup: skipped-ID list truncated at {} entries", .{rule_loader.MAX_SKIPPED_IDS});
+        }
     }
     if (rules_loaded == 0) {
         // A zero-rule runtime is not a valid NIDS configuration. Continuing

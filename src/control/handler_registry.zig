@@ -581,16 +581,33 @@ const handlers = struct {
 
     fn rulesReload(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
         const previous_count = state_mod.g_rules_loaded.load(.acquire);
-        const new_count = rules_loader.reloadRules();
-        if (new_count == 0) {
+        const rep = rules_loader.reloadRules();
+        if (rep.loaded == 0) {
             ctx.failure_code = "RULES_RELOAD_EMPTY";
             ctx.failure_state = "DEGRADED";
             ctx.failure_message = "reload produced zero active rules; previous ruleset was retained";
             return null;
         }
         // Update global rules counter (pipeline thread reads this atomically).
-        state_mod.g_rules_loaded.store(new_count, .monotonic);
-        return std.fmt.allocPrint(a, "{{\"rules_loaded\":{},\"previous_rules_loaded\":{},\"status\":\"reloaded\",\"postcondition\":\"ACTIVE\"}}", .{ new_count, previous_count }) catch null;
+        state_mod.g_rules_loaded.store(rep.loaded, .monotonic);
+        // BE-DRIFT-098: name every skipped rule with its reason (IDs are
+        // operator-controlled strings, JSON-escaped). Additive keys only:
+        // older CLIs ignore unknown fields.
+        var out = std.ArrayList(u8).init(a);
+        errdefer out.deinit();
+        var writer = out.writer();
+        writer.print("{{\"rules_loaded\":{},\"previous_rules_loaded\":{},\"status\":\"reloaded\",\"postcondition\":\"ACTIVE\",\"skipped\":{{\"no_pattern\":{},\"disabled\":{},\"malformed\":{},\"add_failed\":{}}},\"skipped_ids\":[", .{
+            rep.loaded, previous_count,
+            rep.skipped_no_pattern, rep.skipped_disabled,
+            rep.skipped_malformed, rep.skipped_add_failed,
+        }) catch return null;
+        var si: usize = 0;
+        while (si < rep.skipped_id_count) : (si += 1) {
+            if (si > 0) writer.writeByte(',') catch return null;
+            rules_loader.writeJsonString(writer, rep.skippedId(si));
+        }
+        writer.print("],\"skipped_truncated\":{}}}", .{rep.skipped_truncated}) catch return null;
+        return out.toOwnedSlice() catch null;
     }
 
     fn eventsCount(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {

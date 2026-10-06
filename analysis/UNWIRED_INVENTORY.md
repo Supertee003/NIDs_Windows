@@ -328,7 +328,14 @@ proven — refused TCP collector spills 2 events, same forwarder replays
 to file on next flush with spool acked by deletion; counters
 read/spooled/forwarded/failed asserted; empty-replay no-op negative
 control; tmp-dir hermetic with red-green proof; metrics.snapshot
-already exposes spool counters, no Python change), SBOM salt (SBOM-SALT-087: builtin
+already exposes spool counters, no Python change),
+ reload names skips (BE-DRIFT-098: shared classifyRule for startup +
+reload with ReloadReport — loaded + per-reason counts + first-16 IDs
+with truncation flag and completeness invariant; rules.reload response
+carries skipped/skipped_ids/skipped_truncated additively; daemon
+startup warns skipped IDs; CLI passes the report through (gap the new
+pin caught: explicit result dict stripped unknown keys); Zig
+classifier + end-to-end + escape tests with red-green proof), SBOM salt (SBOM-SALT-087: builtin
 hash() is per-process salted — replaced with SHA-256 path IDs, proven
 identical across hash seeds on all 554 packages), CI truth/Trivy
 gates, web SSE backpressure (FE-SSE-090: disconnect ends the
