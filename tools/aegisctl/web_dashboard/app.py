@@ -543,13 +543,51 @@ def rules():
 
 @app.get("/stream")
 def stream():
-    def events() -> Iterator[str]:
-        # SSE is read-only and bounded by the client disconnect; every message
-        # is a complete authoritative snapshot, not a locally invented event.
+    return Response(
+        _sse_events(),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+SSE_RETRY_MS = 3000
+SSE_TICK_S = 3
+
+
+def _sse_events(interval_s: float = SSE_TICK_S) -> Iterator[str]:
+    """Yield one authoritative snapshot per tick (FE-SSE-090).
+
+    Two failure modes closed here, both previously silent:
+
+    * Client disconnect: the generator previously had no explicit
+      handling, so a dead socket kept rendering full snapshots on
+      every tick until garbage collection. GeneratorExit now ends
+      the stream immediately (it must never yield after that).
+    * Snapshot failure: one failed control query previously killed
+      the whole stream (the exception propagated and the EventSource
+      reconnected into another failure). A failed tick now emits an
+      error event and the stream continues on the next tick.
+
+    The stream stays read-only and bounded per message: every message
+    is a complete snapshot, never a locally invented event.
+    """
+    yield f": connected\nretry: {SSE_RETRY_MS}\n\n"
+    try:
         while True:
-            yield f"data: {json.dumps(snapshot(), separators=(',', ':'))}\n\n"
-            time.sleep(3)
-    return Response(events(), mimetype="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+            try:
+                payload = json.dumps(snapshot(), separators=(",", ":"))
+            except Exception as exc:  # one bad tick must not kill the stream
+                payload = json.dumps(
+                    {
+                        "schema": "aegis.operator.snapshot.v1",
+                        "error": "snapshot_failed",
+                        "detail": str(exc)[:200],
+                    }
+                )
+            yield f"data: {payload}\n\n"
+            time.sleep(interval_s)
+    except GeneratorExit:
+        return
 
 
 @app.get("/health/check")

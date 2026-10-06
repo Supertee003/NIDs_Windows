@@ -298,7 +298,11 @@ spool replay automation
 (exists — needs live proof), SBOM salt (SBOM-SALT-087: builtin
 hash() is per-process salted — replaced with SHA-256 path IDs, proven
 identical across hash seeds on all 554 packages), CI truth/Trivy
-gates, web SSE backpressure, fault-maybeCorrupt post-validation
+gates, web SSE backpressure (FE-SSE-090: disconnect ends the
+generator explicitly via GeneratorExit + one failed snapshot emits
+an error event instead of killing the stream + retry hint, pinned
+by tests/runtime/test_web_sse.py; per-message snapshot cost
+unchanged by design — shared-cache needs profiling, not guesses), fault-maybeCorrupt post-validation
 (by design), quarantine federation best-effort (send failures stay
 false; status reports live since FED-P4),
 rust query unauthenticated (pipe ACL + role gates cover; FFI change is
