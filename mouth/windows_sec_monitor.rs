@@ -192,6 +192,15 @@ mod health_pipe {
                 let uptime_ms = start_time.elapsed().as_millis() as u64;
                 let latency_start = now;
 
+                // F5: attest the actual daemon state. The old code hardcoded
+                // deps core RUNNING, so a supervisor polling this pipe
+                // believed the core was up while the daemon was down.
+                // UNREACHABLE is a fact about this probe, not a core verdict.
+                let core_state = match super::daemon_pipe::query_daemon_defcon() {
+                    Some(_) => "RUNNING",
+                    None => "UNREACHABLE",
+                };
+
                 let json = format!(
                     "{{\"op\":\"HEALTH\",\"state\":\"RUNNING\",\"status\":\"OK\",\
                      \"component\":\"mouth\",\"subsystem\":\"mouth\",\
@@ -200,7 +209,7 @@ mod health_pipe {
                      \"last_event_ms\":{},\"probe_latency_ms\":{},\
                      \"counters\":{{\"in_events\":{},\"out_events\":{},\
                      \"errors\":{},\"dropped\":{}}},\
-                     \"deps\":[{{\"name\":\"core\",\"state\":\"RUNNING\"}}]}}",
+                     \"deps\":[{{\"name\":\"core\",\"state\":\"{core_state}\"}}]}}",
                     GetCurrentProcessId(),
                     uptime_ms,
                     last_event_ms,
@@ -243,6 +252,234 @@ mod health_pipe {
 }
 
 // =====================================================================
+// DAEMON PIPE CLIENT — FE-DEF-095b: the daemon is the DEFCON authority
+// =====================================================================
+// Mouth projects daemon health (system.health → defcon_level/label from
+// control/defcon.zig) and keeps its file-tail ladder only as a labeled
+// diagnostic fallback. Std-only: raw Win32 FFI, no new dependencies, and
+// no PEP contact (health is a read-only command). Non-Windows builds get
+// a stub that always reports unreachable so `cargo test` stays portable.
+
+/// Validate + extract daemon DEFCON from a raw control response.
+/// Strict: level must be 1-5 AND the label must be the matching
+/// MAXIMUM-vocabulary entry. Anything else is None (fall back, loudly
+/// labeled — never render a mismatched pair).
+fn parse_daemon_defcon(response: &str) -> Option<(u8, String)> {
+    const LADDER: [&str; 6] = ["", "MAXIMUM", "SEVERE", "HIGH", "ELEVATED", "SAFE"];
+    let level = extract_json_number(response, "defcon_level")?;
+    if level < 1 || level > 5 {
+        return None;
+    }
+    let label = extract_json_field(response, "defcon_label")?;
+    if label.is_empty() || label != LADDER[level as usize] {
+        return None;
+    }
+    Some((level as u8, label))
+}
+
+/// A BLOCKED claim counts only with a verified receipt + host effect.
+/// Shared by the tail counters and the mitigation feed so the fallback
+/// DEFCON ladder and the mitigation list can never disagree (F4: the old
+/// tail counter fired on bare "Drop"/"Block" substrings).
+fn is_confirmed_block(line: &str) -> bool {
+    let policy = extract_json_field(line, "policy")
+        .or_else(|| extract_json_field(line, "action"))
+        .unwrap_or_default();
+    if policy != "Drop" && policy != "Block" && policy != "BLOCK" {
+        return false;
+    }
+    let receipt_enforced = extract_json_field(line, "receipt_status")
+        .or_else(|| extract_json_field(line, "status"))
+        .map(|value| value == "ENFORCED")
+        .unwrap_or(false);
+    let host_effect_confirmed = extract_json_field(line, "host_effect_confirmed")
+        .map(|value| value == "true")
+        .unwrap_or(false);
+    receipt_enforced && host_effect_confirmed
+}
+
+/// Resolve which DEFCON to display: daemon authority wins, file ladder
+/// survives explicitly labeled as derived.
+fn resolve_defcon(daemon: Option<(u8, String)>, file_level: u8, file_label: &'static str) -> (u8, String, &'static str) {
+    if let Some((level, label)) = daemon {
+        return (level, label, "daemon");
+    }
+    (file_level, file_label.to_string(), "log-derived")
+}
+
+/// Annotation path = defcon_annotations.json next to the tailed log.
+/// (The old code only worked when the log was named anomalous.json.)
+fn annotation_for(log_path: &str) -> String {
+    if let Some(idx) = log_path.rfind(|c| c == '/' || c == '\\') {
+        format!("{}defcon_annotations.json", &log_path[..=idx])
+    } else {
+        "defcon_annotations.json".to_string()
+    }
+}
+
+#[cfg(windows)]
+mod daemon_pipe {
+    use super::parse_daemon_defcon;
+    use std::time::{Duration, Instant};
+
+    const GENERIC_READ: u32 = 0x80000000;
+    const GENERIC_WRITE: u32 = 0x40000000;
+    const OPEN_EXISTING: u32 = 3;
+    const FILE_FLAG_OVERLAPPED: u32 = 0x40000000;
+    const WAIT_OBJECT_0: u32 = 0;
+    const READ_BUDGET_MS: u64 = 1000;
+    const READ_CHUNK: u32 = 8192;
+    const READ_CAP_BYTES: usize = 262144;
+
+    const PIPE_NAME: &[u8] = b"\\\\.\\pipe\\aegis_control\0";
+    const HEALTH_REQUEST: &[u8] = b"{\"command\":\"system.health\",\"payload\":{}}\0";
+
+    #[repr(C)]
+    #[derive(Default)]
+    struct Overlapped {
+        internal: usize,
+        internal_high: usize,
+        offset: u32,
+        offset_high: u32,
+        h_event: *mut std::ffi::c_void,
+    }
+
+    extern "system" {
+        fn CreateFileA(
+            name: *const u8,
+            access: u32,
+            share: u32,
+            security: *mut std::ffi::c_void,
+            creation: u32,
+            flags: u32,
+            template: *mut std::ffi::c_void,
+        ) -> *mut std::ffi::c_void;
+        fn WriteFile(
+            handle: *mut std::ffi::c_void,
+            buffer: *const u8,
+            bytes_to_write: u32,
+            bytes_written: *mut u32,
+            overlapped: *mut Overlapped,
+        ) -> i32;
+        fn ReadFile(
+            handle: *mut std::ffi::c_void,
+            buffer: *mut u8,
+            bytes_to_read: u32,
+            bytes_read: *mut u32,
+            overlapped: *mut Overlapped,
+        ) -> i32;
+        fn CloseHandle(handle: *mut std::ffi::c_void) -> i32;
+        fn CreateEventW(
+            attrs: *mut std::ffi::c_void,
+            manual_reset: i32,
+            initial_state: i32,
+            name: *const u16,
+        ) -> *mut std::ffi::c_void;
+        fn WaitForSingleObject(handle: *mut std::ffi::c_void, ms: u32) -> u32;
+        fn GetOverlappedResult(
+            handle: *mut std::ffi::c_void,
+            overlapped: *mut Overlapped,
+            bytes: *mut u32,
+            wait: i32,
+        ) -> i32;
+        fn CancelIoEx(
+            handle: *mut std::ffi::c_void,
+            overlapped: *mut Overlapped,
+        ) -> i32;
+    }
+
+    fn invalid(handle: *mut std::ffi::c_void) -> bool {
+        handle.is_null() || handle as usize == usize::MAX
+    }
+
+    /// Query system.health and extract daemon DEFCON. None on any failure
+    /// (absent pipe, short write, read budget exhausted, invalid payload).
+    /// Reads are overlapped with a total budget so a wedged daemon cannot
+    /// hang the TUI loop; each 200 ms wait also re-checks the budget.
+    pub fn query_daemon_defcon() -> Option<(u8, String)> {
+        unsafe {
+            let pipe = CreateFileA(
+                PIPE_NAME.as_ptr(),
+                GENERIC_READ | GENERIC_WRITE,
+                0,
+                std::ptr::null_mut(),
+                OPEN_EXISTING,
+                FILE_FLAG_OVERLAPPED,
+                std::ptr::null_mut(),
+            );
+            if invalid(pipe) {
+                return None;
+            }
+            // The request is NUL-terminated in the constant; the wire
+            // envelope is the JSON bytes without the terminator.
+            let mut written: u32 = 0;
+            let mut write_ov: Overlapped = Default::default();
+            let ok = WriteFile(
+                pipe,
+                HEALTH_REQUEST.as_ptr(),
+                (HEALTH_REQUEST.len() - 1) as u32,
+                &mut written,
+                &mut write_ov,
+            );
+            // Overlapped write to a pipe: completion is effectively
+            // immediate for a 40-byte message; a failed start means no
+            // reader is serving this instance.
+            if ok == 0 {
+                CloseHandle(pipe);
+                return None;
+            }
+            let event = CreateEventW(std::ptr::null_mut(), 1, 0, std::ptr::null());
+            if event.is_null() {
+                CloseHandle(pipe);
+                return None;
+            }
+            let start = Instant::now();
+            let mut body: Vec<u8> = Vec::new();
+            let result = loop {
+                if start.elapsed() > Duration::from_millis(READ_BUDGET_MS) {
+                    break None;
+                }
+                if body.len() >= READ_CAP_BYTES {
+                    break None;
+                }
+                let mut chunk = [0u8; READ_CHUNK as usize];
+                let mut got: u32 = 0;
+                let mut read_ov: Overlapped = Default::default();
+                read_ov.h_event = event;
+                ReadFile(pipe, chunk.as_mut_ptr(), READ_CHUNK, &mut got, &mut read_ov);
+                let wait = WaitForSingleObject(event, 200);
+                if wait != WAIT_OBJECT_0 {
+                    CancelIoEx(pipe, &mut read_ov);
+                    continue;
+                }
+                let mut done: u32 = 0;
+                if GetOverlappedResult(pipe, &mut read_ov, &mut done, 0) == 0 || done == 0 {
+                    // No progress on a signaled read: server closed its end.
+                    break None;
+                }
+                body.extend_from_slice(&chunk[..done as usize]);
+                if let Ok(text) = std::str::from_utf8(&body) {
+                    if let Some(found) = parse_daemon_defcon(text) {
+                        break Some(found);
+                    }
+                }
+            };
+            CloseHandle(pipe);
+            CloseHandle(event);
+            result
+        }
+    }
+}
+
+#[cfg(not(windows))]
+mod daemon_pipe {
+    /// Non-Windows stub: no control pipe exists, always unreachable.
+    pub fn query_daemon_defcon() -> Option<(u8, String)> {
+        None
+    }
+}
+
+// =====================================================================
 // CLI ARGS (best practice: --log + --refresh, matching NOSE)
 // =====================================================================
 
@@ -265,7 +502,9 @@ fn parse_args() -> Config {
         }
     }
 
-    let mut log_path = "logs/anomalous.json".to_string();
+    // F3: default to the canonical evidence log (GAP-4: anomalous.json is
+    // the stale Brain format; the desktop dashboard moved off it long ago).
+    let mut log_path = "logs/aegis_core.ndjson".to_string();
     let mut refresh_ms: u64 = 1000;
 
     let mut i = 1;
@@ -288,7 +527,7 @@ fn parse_args() -> Config {
         i += 1;
     }
 
-    let annotation_path = log_path.replace("anomalous.json", "defcon_annotations.json");
+    let annotation_path = annotation_for(&log_path);
     Config { log_path, annotation_path, refresh_ms }
 }
 
@@ -338,27 +577,40 @@ struct DefconInfo {
     border_color: &'static str,  // v3.0: border color for DEFCON level
 }
 
+/// Full display record for one DEFCON level. Single constructor so the
+/// daemon-authority path (FE-DEF-095b) and the file-tail fallback render
+/// identical colors, labels, and descriptions for the same level.
+fn defcon_for_level(level: u8) -> DefconInfo {
+    match level {
+        1 => DefconInfo { level: 1, label: "MAXIMUM", color: C_MAGENTA,
+            description: "10+ critical / 5+ blocks / kernel threats",
+            border_color: "\x1b[95m" },  // magenta border
+        2 => DefconInfo { level: 2, label: "SEVERE", color: C_RED,
+            description: "5+ critical or 3+ blocked IPs",
+            border_color: "\x1b[91m" },  // red border
+        3 => DefconInfo { level: 3, label: "HIGH", color: C_ORANGE,
+            description: "5+ alerts or 1+ critical",
+            border_color: "\x1b[38;5;208m" },  // orange border
+        4 => DefconInfo { level: 4, label: "ELEVATED", color: C_YELLOW,
+            description: "1-5 alerts detected",
+            border_color: "\x1b[93m" },  // yellow border
+        _ => DefconInfo { level: 5, label: "SAFE", color: C_GREEN,
+            description: "0 alerts - Normal operations",
+            border_color: "\x1b[92m" },  // green border
+    }
+}
+
 fn calculate_defcon(total: usize, critical: usize, blocked: usize, kernel: usize) -> DefconInfo {
     if critical >= 10 || blocked >= 5 || kernel >= 3 {
-        DefconInfo { level: 1, label: "MAXIMUM", color: C_MAGENTA,
-            description: "10+ critical / 5+ blocks / kernel threats",
-            border_color: "\x1b[95m" }  // magenta border
+        defcon_for_level(1)
     } else if critical >= 5 || blocked >= 3 {
-        DefconInfo { level: 2, label: "SEVERE", color: C_RED,
-            description: "5+ critical or 3+ blocked IPs",
-            border_color: "\x1b[91m" }  // red border
+        defcon_for_level(2)
     } else if total >= 5 || critical >= 1 {
-        DefconInfo { level: 3, label: "HIGH", color: C_ORANGE,
-            description: "5+ alerts or 1+ critical",
-            border_color: "\x1b[38;5;208m" }  // orange border
+        defcon_for_level(3)
     } else if total >= 1 {
-        DefconInfo { level: 4, label: "ELEVATED", color: C_YELLOW,
-            description: "1-5 alerts detected",
-            border_color: "\x1b[93m" }  // yellow border
+        defcon_for_level(4)
     } else {
-        DefconInfo { level: 5, label: "SAFE", color: C_GREEN,
-            description: "0 alerts - Normal operations",
-            border_color: "\x1b[92m" }  // green border
+        defcon_for_level(5)
     }
 }
 
@@ -463,6 +715,10 @@ fn extract_json_field(line: &str, field: &str) -> Option<String> {
     None
 }
 
+fn extract_json_number(line: &str, field: &str) -> Option<u64> {
+    extract_json_field(line, field)?.parse::<u64>().ok()
+}
+
 // =====================================================================
 // Active Mitigations — Ring Buffer of recent enforcement actions
 // v3.0: แสดง IP ที่ถูกบล็อก + Process ที่ถูก Terminate
@@ -496,20 +752,13 @@ impl MitigationFeed {
 
     fn add_from_log(&mut self, line: &str) {
         // Only add a blocking mitigation when the receipt proves the host
-        // effect. A decision/action field alone is not sufficient evidence.
+        // effect (F4: shared is_confirmed_block rule — a decision/action
+        // field alone is never sufficient evidence).
         let policy = extract_json_field(line, "policy")
             .or_else(|| extract_json_field(line, "action"))
             .unwrap_or_default();
 
-        let receipt_enforced = extract_json_field(line, "receipt_status")
-            .or_else(|| extract_json_field(line, "status"))
-            .map(|value| value == "ENFORCED")
-            .unwrap_or(false);
-        let host_effect_confirmed = extract_json_field(line, "host_effect_confirmed")
-            .map(|value| value == "true")
-            .unwrap_or(false);
-        let is_block = receipt_enforced && host_effect_confirmed &&
-            (policy == "Drop" || policy == "Block" || policy == "BLOCK");
+        let is_block = is_confirmed_block(line);
         let is_terminate = policy == "Terminate" || policy == "Kill";
 
         if is_block || is_terminate {
@@ -610,7 +859,10 @@ impl TailReader {
                 new_lines.push(content.clone());
 
                 if content.contains("\"Critical\"") { stats.critical_count += 1; }
-                if content.contains("\"Drop\"") || content.contains("\"Block\"") || content.contains("\"BLOCK\"") {
+                // F4: a bare policy label is not a host effect. Count a
+                // block only with the same receipt rule the mitigation
+                // feed uses, so the fallback ladder and the feed agree.
+                if is_confirmed_block(&content) {
                     stats.blocked_count += 1;
                 }
                 if content.contains("\"Tier-3\"") || content.contains("\"KERNEL_FILE\"") || content.contains("\"KERNEL_PROCESS\"") {
@@ -758,6 +1010,7 @@ fn render_separator(bc: &str) {
 fn render_dashboard(
     stats: &CumulativeStats,
     defcon: &DefconInfo,
+    defcon_source: &str,
     prev_level: u8,
     config: &Config,
     cycle: u64,
@@ -787,6 +1040,13 @@ fn render_dashboard(
     );
     render_border_side(bc, &defcon_block);
     render_border_side(bc, &format!("{C_DIM}  {desc}{C_RESET}", desc=defcon.description));
+    // FE-DEF-095b: always show which authority produced this level.
+    let source_note = if defcon_source == "daemon" {
+        "source: daemon authority"
+    } else {
+        "source: log-derived (diagnostic)"
+    };
+    render_border_side(bc, &format!("{C_DIM}  {source_note}{C_RESET}"));
 
     // DEFCON change indicator with arrow
     if defcon.level != prev_level {
@@ -915,7 +1175,10 @@ fn render_dashboard(
 
 #[cfg(test)]
 mod receipt_tests {
-    use super::{extract_json_field, AlertFeed, MitigationFeed};
+    use super::{
+        annotation_for, defcon_for_level, extract_json_field, is_confirmed_block,
+        parse_daemon_defcon, resolve_defcon, AlertFeed, MitigationFeed,
+    };
 
     #[test]
     fn parses_boolean_host_effect_confirmation() {
@@ -947,6 +1210,60 @@ mod receipt_tests {
         feed.push_from_log(line);
         assert_eq!(feed.entries.len(), 1);
         assert_eq!(feed.entries[0].action, "PENDING");
+    }
+
+    #[test]
+    fn confirmed_block_rule_matches_the_mitigation_feed() {
+        // F4: one rule shared by tail counters and the feed.
+        assert!(is_confirmed_block(r#"{"policy":"BLOCK","status":"ENFORCED","host_effect_confirmed":true}"#));
+        assert!(is_confirmed_block(r#"{"action":"Drop","receipt_status":"ENFORCED","host_effect_confirmed":true}"#));
+        assert!(!is_confirmed_block(r#"{"policy":"BLOCK","status":"ENFORCED","host_effect_confirmed":false}"#));
+        assert!(!is_confirmed_block(r#"{"policy":"BLOCK","status":"PENDING","host_effect_confirmed":false}"#));
+        assert!(!is_confirmed_block(r#"{"policy":"Alert","status":"ENFORCED","host_effect_confirmed":true}"#));
+        assert!(!is_confirmed_block("not json"));
+    }
+
+    #[test]
+    fn daemon_defcon_parses_valid_health_and_rejects_garbage() {
+        // FE-DEF-095b: strict pair validation.
+        let ok = r#"{"ok":true,"data":{"defcon_level":3,"defcon_label":"HIGH"}}"#;
+        assert_eq!(parse_daemon_defcon(ok), Some((3, "HIGH".to_string())));
+        assert_eq!(parse_daemon_defcon(r#"{"data":{"defcon_level":1,"defcon_label":"MAXIMUM"}}"#), Some((1, "MAXIMUM".to_string())));
+        // Negative controls: out-of-range, mismatched, missing, garbage.
+        assert_eq!(parse_daemon_defcon(r#"{"data":{"defcon_level":9,"defcon_label":"MAXIMUM"}}"#), None);
+        assert_eq!(parse_daemon_defcon(r#"{"data":{"defcon_level":0,"defcon_label":"SAFE"}}"#), None);
+        assert_eq!(parse_daemon_defcon(r#"{"data":{"defcon_level":2,"defcon_label":"SAFE"}}"#), None);
+        assert_eq!(parse_daemon_defcon(r#"{"data":{"defcon_level":2}}"#), None);
+        assert_eq!(parse_daemon_defcon(r#"{"data":{}}"#), None);
+        assert_eq!(parse_daemon_defcon("not json"), None);
+        assert_eq!(parse_daemon_defcon(""), None);
+    }
+
+    #[test]
+    fn resolve_prefers_daemon_and_labels_the_fallback() {
+        let (level, label, source) = resolve_defcon(Some((3, "HIGH".to_string())), 5, "SAFE");
+        assert_eq!((level, label.as_str(), source), (3, "HIGH", "daemon"));
+        let (level, label, source) = resolve_defcon(None, 5, "SAFE");
+        assert_eq!((level, label.as_str(), source), (5, "SAFE", "log-derived"));
+    }
+
+    #[test]
+    fn annotation_sits_next_to_the_tailed_log() {
+        assert_eq!(annotation_for("logs/aegis_core.ndjson"), "logs/defcon_annotations.json");
+        assert_eq!(annotation_for("logs\\aegis_core.ndjson"), "logs\\defcon_annotations.json");
+        assert_eq!(annotation_for("logs/anomalous.json"), "logs/defcon_annotations.json");
+        assert_eq!(annotation_for("bare.ndjson"), "defcon_annotations.json");
+    }
+
+    #[test]
+    fn daemon_levels_map_to_the_same_display_record() {
+        // One constructor: daemon path and file path render identically.
+        assert_eq!(defcon_for_level(1).label, "MAXIMUM");
+        assert_eq!(defcon_for_level(2).label, "SEVERE");
+        assert_eq!(defcon_for_level(3).label, "HIGH");
+        assert_eq!(defcon_for_level(4).label, "ELEVATED");
+        assert_eq!(defcon_for_level(5).label, "SAFE");
+        assert_eq!(defcon_for_level(99).label, "SAFE");
     }
 }
 
@@ -992,16 +1309,22 @@ fn main() {
             tail = TailReader::new(&config.log_path);
         }
 
-        // Calculate DEFCON from cumulative stats
-        let defcon = calculate_defcon(
+        // FE-DEF-095b: daemon health is the DEFCON authority. The file
+        // ladder survives only as an explicitly labeled fallback so a
+        // missing log can never display SAFE over live incidents.
+        let file_defcon = calculate_defcon(
             cum_stats.total_alerts,
             cum_stats.critical_count,
             cum_stats.blocked_count,
             cum_stats.kernel_count,
         );
+        let daemon = daemon_pipe::query_daemon_defcon();
+        let (resolved_level, _, resolved_source) =
+            resolve_defcon(daemon, file_defcon.level, file_defcon.label);
+        let defcon = defcon_for_level(resolved_level);
 
         // Render dashboard (v3.0: with alert + mitigation feeds)
-        render_dashboard(&cum_stats, &defcon, prev_defcon_level, &config, cycle, new_entries, &alert_feed, &mitigation_feed);
+        render_dashboard(&cum_stats, &defcon, resolved_source, prev_defcon_level, &config, cycle, new_entries, &alert_feed, &mitigation_feed);
 
         // Write DEFCON annotation when the level changes (advisory only)
         if defcon.level != prev_defcon_level {

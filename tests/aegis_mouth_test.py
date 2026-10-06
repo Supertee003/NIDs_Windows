@@ -3,18 +3,22 @@ AEGIS NIDS — Mouth (Rust) Clean Test Suite v2.0
 ==============================================
 ทดสอบ Rust Mouth subsystem แยกจาก Nose — ตรวจเฉพาะหน้าที่ของ Mouth
 
-Mouth v2.0 หน้าที่จริง (SOLE DEFCON OWNER + TUI):
-  1. DEFCON Calculation    — calculate_defcon() (sole owner, ไม่ทับซ้อนกับ Nose)
-  2. Log Parsing           — reads anomalous.json for severity/policy/tier (sole owner)
-  3. DEFCON TUI Display    — Header + Bar + Label (sole TUI window)
+Mouth v3.0 หน้าที่จริง (daemon projects DEFCON + TUI):
+  1. DEFCON Display        — projects daemon authority (control/defcon.zig
+     via system.health pipe query); calculate_defcon() survives only as
+     the labeled log-derived fallback, never the authority (FE-DEF-095b;
+     ไม่ทับซ้อนกับ Nose — Nose ไม่คำนวณ DEFCON, ไม่มี TUI)
+  2. Log Parsing           — tails the canonical logs/aegis_core.ndjson
+     for severity/policy/tier (fallback path only)
+  3. DEFCON TUI Display    — Header + Bar + Label + source tag (sole TUI window)
   4. Tier-3 Shield FFI     — validate_payload_safety (4 checks)
   5. ETW Monitor (stub)    — etw_security_monitor_poll()
   6. Process Monitor (stub)— process_creation_monitor_poll()
 
 ✅  ไม่ทับซ้อนกับ Nose แล้ว:
-  - Nose ไม่คำนวณ DEFCON, ไม่มี TUI → Mouth เป็นเจ้าของเดียว
-  - Mouth อ่าน anomalous.json เพื่อ DEFCON เท่านั้น
-  - Nose อ่าน anomalous.json เพื่อ ThreatMap เท่านั้น (ไม่ parse severity/policy/tier)
+  - Nose ไม่คำนวณ DEFCON, ไม่มี TUI
+  - Mouth แสดง DEFCON จาก daemon authority; log tail เป็น fallback
+    (ไม่ parse นอกเหนือ severity/policy/tier เพื่อ fallback)
 
 Rust Files:
   - windows_sec_monitor.rs  → sole DEFCON TUI binary (compiled with rustc)
@@ -59,8 +63,8 @@ def result(name, ok, detail="", warn=False):
 
 
 print("=" * 64)
-print("  AEGIS NIDS — MOUTH (Rust) CLEAN TEST SUITE v2.0")
-print("  Testing Mouth-specific functions (sole DEFCON owner)")
+print("  AEGIS NIDS — MOUTH (Rust) CLEAN TEST SUITE v3.0")
+print("  Testing Mouth-specific functions (daemon DEFCON authority + TUI)")
 print("=" * 64)
 print()
 
@@ -112,12 +116,14 @@ if os.path.exists(rs_simple):
     with open(rs_simple, 'r') as f:
         src = f.read()
 
-    result("calculate_defcon function (sole owner)", "calculate_defcon" in src,
-           "Mouth is the ONLY DEFCON calculator")
+    result("calculate_defcon function (fallback ladder)", "calculate_defcon" in src,
+           "Mouth projects daemon DEFCON; local ladder is fallback only (FE-DEF-095b)")
     result("DEFCON TUI display (sole window)", "DEFCON" in src and "██" in src,
-           "Mouth is the ONLY TUI display")
-    result("Log file reading", 'logs/anomalous.json' in src,
-           "reads log for DEFCON calculation")
+           "Mouth is the TUI display (authority is the daemon)")
+    result("Canonical log tail", 'aegis_core.ndjson' in src,
+           "tails the canonical evidence log (F3)")
+    result("Daemon authority query", 'aegis_control' in src and 'defcon_level' in src,
+           "queries system.health for daemon DEFCON (FE-DEF-095b)")
     result("Auto-refresh loop", "loop {" in src, "1s refresh")
 
     # Mouth parses severity/policy/tier (Nose does NOT)
@@ -173,15 +179,17 @@ else:
     result("src/lib.rs (Tier-3 Shield)", False, "not at expected path — check shield_rust/src/lib.rs", warn=True)
 
 # =====================================================================
-# TEST 3: DEFCON Calculation Logic (Mouth — Sole Owner)
+# TEST 3: DEFCON Calculation Logic (fallback ladder — daemon is authority)
 # =====================================================================
 print(f"\n{'─' * 64}")
-print("  [3] DEFCON Calculation Logic (Mouth — Sole Owner)")
+print("  [3] DEFCON Calculation Logic (fallback ladder; daemon owns truth)")
 print(f"{'─' * 64}")
 
 def mouth_calculate_defcon(total, critical, blocked, kernel):
-    """Replica of Rust Mouth calculate_defcon (windows_sec_monitor.rs)
-    Mouth is the ONLY component that calculates DEFCON"""
+    """Replica of Rust Mouth calculate_defcon (windows_sec_monitor.rs).
+    Fallback ladder only — daemon control/defcon.zig is the authority
+    (FE-DEF-095b). Thresholds must stay identical to the daemon ladder
+    (minus kernel, which is mouth-local)."""
     if critical >= 10 or blocked >= 5 or kernel >= 3:
         return 1, "MAXIMUM"
     if critical >= 5 or blocked >= 3:
@@ -253,8 +261,8 @@ result("Blocked/Dropped count", blocked == 2, f"count={blocked}")
 result("Kernel threats (Tier-3)", kernel == 2, f"count={kernel}")
 
 level, label = mouth_calculate_defcon(total, critical, blocked, kernel)
-result(f"DEFCON from parsed log = {level} {label}", level == 2,
-       f"3 critical + 2 blocked → SEVERE (Mouth sole calculation)")
+result(f"DEFCON from parsed log = {level} {label}", level == 3,
+       f"3 critical + 2 blocked → HIGH (fallback ladder; daemon is authority)")
 
 # =====================================================================
 # TEST 5: Tier-3 Shield FFI Test
@@ -448,14 +456,14 @@ print("  [10] Mouth (Rust) Architecture Summary")
 print(f"{'─' * 64}")
 
 print(f"""
-  {B}Mouth (Rust) v2.0 — Sole DEFCON Owner + Security Monitor{R}
+  {B}Mouth (Rust) v3.0 — Daemon DEFCON Display + Security Monitor{R}
 
   {GRN}Unique Functions (Mouth-only):{R}
-    ✅ DEFCON Calculation — calculate_defcon()
-       Sole owner: only Mouth calculates DEFCON level
-       Reads severity/policy/tier from anomalous.json
+    ✅ DEFCON Display — projects daemon authority (system.health pipe)
+       calculate_defcon() is the labeled log-derived fallback only
+       Tails the canonical logs/aegis_core.ndjson for severity/policy/tier
     ✅ DEFCON TUI Display — single console window
-       Header + Bar + Statistics + Last Threat
+       Header + Bar + Statistics + Last Threat + source tag
     ✅ Tier-3 Shield FFI — validate_payload_safety()
        4 checks: size, NOP sled, buffer overflow, malformed headers
     ✅ ETW Monitor (stub) — etw_security_monitor_poll()
@@ -463,10 +471,10 @@ print(f"""
     ✅ Process Monitor (stub) — process_creation_monitor_poll()
        Future: suspicious process detection
 
-  {GRN}Sole Ownership:{R}
-    ✅ Mouth is the ONLY DEFCON calculator
-    ✅ Mouth is the ONLY TUI display (no more 2 หน้าต่าง)
-    ✅ Mouth is the ONLY log parser (severity/policy/tier)
+  {GRN}Authority (FE-DEF-095b):{R}
+    ✅ Daemon owns DEFCON (control/defcon.zig); Mouth projects it
+    ✅ Mouth is the TUI display (daemon has no window)
+    ✅ Fallback ladder is labeled log-derived, never authoritative
 
   {GRN}NO Overlap with Nose:{R}
     ✅ Resource Collection → Nose (Go)

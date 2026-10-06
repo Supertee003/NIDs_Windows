@@ -61,7 +61,7 @@ NIDs_Windows/
 │   ├── Dashboard.py             # Web dashboard
 │   └── tests/                   # Test Suites
 │       ├── aegis_nose_test.py       # Nose-only tests (headless, no DEFCON)
-│       ├── aegis_mouth_test.py      # Mouth-only tests (sole DEFCON owner)
+│       ├── aegis_mouth_test.py      # Mouth TUI tests (daemon DEFCON authority + display)
 │       └── test_e2e.py              # End-to-end integration test
 │
 ├── config/                  # ⚙️ Configuration
@@ -151,7 +151,7 @@ NIDs_Windows/
 2. Core (Zig) — NIDS engine, 3s wait
 3. Brain (Python) — Detection rules, 2s wait
 4. Nose (Go) — Headless collector (no window)
-5. Mouth (Rust) — Sole DEFCON TUI (single window)
+5. Mouth (Rust) — Daemon DEFCON display TUI (single window)
 6. Stabilize — 3s wait
 
 ## Shutdown Order
@@ -162,9 +162,9 @@ NIDs_Windows/
 | Decision | Rationale |
 |----------|-----------|
 | Nose is headless | No TUI, no popup window. Outputs JSON to stdout for Bridge/Brain |
-| Mouth is sole DEFCON owner | Only Mouth calculates and displays DEFCON. No overlap with Nose |
+| Daemon owns DEFCON | Daemon calculates (control/defcon.zig); Mouth/Desktop/Web project it. No overlap with Nose |
 | Nose reads only attack_type | Nose builds ThreatMap only. Does NOT parse severity/policy/tier |
-| Mouth parses all fields | Mouth reads severity/policy/tier for DEFCON calculation |
+| Mouth parses all fields (fallback) | Mouth reads severity/policy/tier for the labeled log-derived fallback only |
 | Nose uses `start /B` | Background mode — no console window popup |
 | Mouth uses `start` | Foreground — single TUI console window |
 | kernel >= 3 for DEFCON 1 | Consistent across all Rust files (was inconsistent: mouth_tui had >= 1) |

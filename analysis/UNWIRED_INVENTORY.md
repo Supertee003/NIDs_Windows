@@ -299,8 +299,16 @@ src/control/defcon.zig over g_critical_detections +
 g_confirmed_blocks atomics, carried by healthJson defcon_level/label
 per RUNTIME_CONTRACT §4.1; CLI get_defcon + web threat prefer it with
 a labeled file-ladder fallback; pinned by tests/runtime/
-test_defcon_authority.py. Still open as 095b: desktop egui + mouth
-keep local ladders until they gain a control-plane read path),
+test_defcon_authority.py. FE-DEF-095b closed the Rust surfaces:
+desktop egui prefers snapshot defcon with a source tag (resolve_defcon
++ cargo tests); mouth queries system.health over the control pipe and
+projects daemon DEFCON with a source tag, falling back to the labeled
+file ladder (daemon_pipe client + strict pair validation, F3 canonical
+log default, F4 receipt-only blocked counting shared with the
+mitigation feed, F5 honest core-state attestation, 9 cargo tests;
+stale sole-owner claims in aegis_mouth_test.py + STRUCTURE.md
+corrected). Mouth-local kernel>=3 term stays in the fallback ladder
+only (documented in the manual script replica),
 spool replay automation
 (exists — needs live proof), SBOM salt (SBOM-SALT-087: builtin
 hash() is per-process salted — replaced with SHA-256 path IDs, proven

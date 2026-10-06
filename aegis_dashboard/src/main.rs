@@ -24,7 +24,7 @@ fn is_critical_level(level: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::is_critical_level;
+    use super::{is_critical_level, resolve_defcon};
 
     #[test]
     fn critical_level_is_case_insensitive() {
@@ -33,6 +33,61 @@ mod tests {
         assert!(is_critical_level("CRITICAL"));
         assert!(!is_critical_level("high"));
     }
+
+    #[test]
+    fn daemon_defcon_wins_over_file_tail() {
+        // FE-DEF-095b: daemon health is the authority. A live DEFCON 3
+        // projects HIGH even when the evidence file is empty (SAFE).
+        let health: serde_json::Value =
+            serde_json::from_str(r#"{"defcon_level":3,"defcon_label":"HIGH"}"#).unwrap();
+        let (level, label, source) = resolve_defcon(&health, 5);
+        assert_eq!((level, label, source), (3, "HIGH", "daemon"));
+    }
+
+    #[test]
+    fn missing_daemon_defcon_falls_back_to_labeled_file_ladder() {
+        // Pre-095a daemon (or unreachable control plane): the file ladder
+        // survives explicitly labeled as derived, never as authority.
+        let health: serde_json::Value = serde_json::from_str(r#"{"state":"X"}"#).unwrap();
+        let (level, label, source) = resolve_defcon(&health, 5);
+        assert_eq!((level, label, source), (5, "SAFE", "evidence-log"));
+    }
+
+    #[test]
+    fn garbage_daemon_defcon_never_reaches_the_display() {
+        for raw in [
+            r#"{"defcon_level":9,"defcon_label":"MAXIMUM"}"#,
+            r#"{"defcon_level":1,"defcon_label":""}"#,
+            r#"{"defcon_level":"1","defcon_label":"MAXIMUM"}"#,
+            r#"{"defcon_level":2,"defcon_label":"SAFE"}"#,
+        ] {
+            let health: serde_json::Value = serde_json::from_str(raw).unwrap();
+            let (_, _, source) = resolve_defcon(&health, 4);
+            assert_eq!(source, "evidence-log", "raw={raw}");
+        }
+    }
+}
+
+/// FE-DEF-095b: resolve which DEFCON the dashboard displays.
+///
+/// Daemon health (control/defcon.zig via healthJson) wins whenever it
+/// carries a valid level (1-5) with its matching MAXIMUM-vocabulary
+/// label. Otherwise the file-tail ladder value is shown explicitly
+/// labeled as derived — never silently promoted to authority.
+fn resolve_defcon(health: &serde_json::Value, file_level: u8) -> (u8, &'static str, &'static str) {
+    const LABELS: [&str; 6] = ["", "MAXIMUM", "SEVERE", "HIGH", "ELEVATED", "SAFE"];
+    if let Some(level) = health.get("defcon_level").and_then(|v| v.as_u64()) {
+        if (1..=5).contains(&level) {
+            if let Some(label) = health.get("defcon_label").and_then(|v| v.as_str()) {
+                let idx = level as usize;
+                if !label.is_empty() && label == LABELS[idx] {
+                    return (level as u8, LABELS[idx], "daemon");
+                }
+            }
+        }
+    }
+    let idx = file_level.clamp(1, 5) as usize;
+    (file_level.clamp(1, 5), LABELS[idx], "evidence-log")
 }
 
 // =====================================================================
@@ -127,6 +182,7 @@ struct AegisDashboard {
     total_blocked: usize,
     total_critical: usize,
     defcon_level: u8,
+    defcon_source: &'static str,
     last_refresh: Instant,
     log_path: PathBuf,
     rules_path: PathBuf,
@@ -147,6 +203,7 @@ impl AegisDashboard {
             total_blocked: 0,
             total_critical: 0,
             defcon_level: 5,
+            defcon_source: "evidence-log",
             last_refresh: Instant::now(),
             // GAP-4: Read aegis_core.ndjson (was anomalous.json - old Brain format)
             log_path: base.join("logs").join("aegis_core.ndjson"),
@@ -209,8 +266,11 @@ impl AegisDashboard {
             self.alerts = self.alerts[start..].to_vec();
         }
 
-        // Calculate DEFCON
-        self.defcon_level = if self.total_critical >= 10 || self.total_blocked >= 5 {
+        // Calculate DEFCON from the evidence file (fallback ladder only).
+        // FE-DEF-095b: daemon health wins below; this value survives
+        // explicitly labeled as derived when the daemon predates 095a
+        // or the control plane is unreachable.
+        let file_defcon_level = if self.total_critical >= 10 || self.total_blocked >= 5 {
             1
         } else if self.total_critical >= 5 || self.total_blocked >= 3 {
             2
@@ -221,6 +281,9 @@ impl AegisDashboard {
         } else {
             5
         };
+        let (level, _, source) = resolve_defcon(&self.runtime_snapshot.health, file_defcon_level);
+        self.defcon_level = level;
+        self.defcon_source = source;
 
         // Read rules (count only)
         self.rules.clear();
@@ -298,6 +361,14 @@ impl eframe::App for AegisDashboard {
                     defcon_color,
                     format!("DEFCON {}: {}", self.defcon_level, defcon_label),
                 );
+                ui.small(format!(
+                    "({})",
+                    if self.defcon_source == "daemon" {
+                        "daemon authority"
+                    } else {
+                        "evidence-log derived"
+                    }
+                ));
 
                 ui.separator();
 
