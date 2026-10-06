@@ -14,7 +14,7 @@
     "test:basic": "node --test --import tsx tests/typed_values.test.ts tests/compiler.test.ts tests/seal.test.ts",
     "test:contract": "node --test --import tsx tests/cross_language_contract.test.ts",
     "test:safety": "node --test --import tsx tests/no_enforcement.test.ts tests/no_post_seal_mutation.test.ts",
-    "test:all": "node --test --import tsx tests/typed_values.test.ts tests/compiler.test.ts tests/seal.test.ts tests/cross_language_contract.test.ts tests/no_enforcement.test.ts tests/no_post_seal_mutation.test.ts tests/exporter.test.ts"
+    "test:all": "node --test --import tsx tests/typed_values.test.ts tests/compiler.test.ts tests/seal.test.ts tests/cross_language_contract.test.ts tests/no_enforcement.test.ts tests/no_post_seal_mutation.test.ts tests/exporter.test.ts tests/ed25519.test.ts"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

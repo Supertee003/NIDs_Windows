@@ -848,3 +848,51 @@ test "POL-SIGN-079B: verifyIrSidecar false on every non-match" {
     try std.testing.expect(!verifyIrSidecar(std.testing.allocator, ir, doc, "zz"));
     try std.testing.expect(!verifyIrSidecar(std.testing.allocator, "", doc, &pub_hex));
 }
+
+// ============================================================
+// TS-SIGN-080: committed golden vectors (TS-signed, Zig-verified).
+// ============================================================
+//
+// tests/contracts/policy_signing/ holds IR bytes + sidecar + pubkey
+// produced by ts_policy/src/ed25519.ts equipment (ephemeral keypair,
+// only public outputs committed). This test proves the author plane
+// and the verify stack agree across languages: Zig parses the
+// committed sidecar and verifies the committed bytes through the
+// Rust ring primitive. Regenerate via generate_policy_vectors.mjs;
+// consumers must pass on new files in the same patch.
+const GOLDEN_DIR = "tests/contracts/policy_signing/";
+
+fn readGoldenFile(allocator: std.mem.Allocator, name: []const u8) ![]u8 {
+    // Returns an owned copy the caller frees. Strips one trailing
+    // newline (and CR) the generator appends, which is not signed.
+    var path_buf: [256]u8 = undefined;
+    const path = try std.fmt.bufPrint(&path_buf, "{s}{s}", .{ GOLDEN_DIR, name });
+    const raw = try std.fs.cwd().readFileAlloc(allocator, path, 65536);
+    defer allocator.free(raw);
+    var end = raw.len;
+    while (end > 0 and (raw[end - 1] == '\n' or raw[end - 1] == '\r')) : (end -= 1) {}
+    return allocator.dupe(u8, raw[0..end]);
+}
+
+test "TS-SIGN-080: committed golden triple verifies end to end" {
+    const ir = try readGoldenFile(std.testing.allocator, "policy_ir_golden.json");
+    defer std.testing.allocator.free(ir);
+    const sig_doc = try readGoldenFile(std.testing.allocator, "policy_ir_golden.sig.json");
+    defer std.testing.allocator.free(sig_doc);
+    const pub_hex = try readGoldenFile(std.testing.allocator, "policy_ir_golden.pub.hex");
+    defer std.testing.allocator.free(pub_hex);
+    try std.testing.expect(verifyIrSidecar(std.testing.allocator, ir, sig_doc, pub_hex));
+}
+
+test "TS-SIGN-080: committed golden rejects tampered bytes" {
+    const ir = try readGoldenFile(std.testing.allocator, "policy_ir_golden.json");
+    defer std.testing.allocator.free(ir);
+    const sig_doc = try readGoldenFile(std.testing.allocator, "policy_ir_golden.sig.json");
+    defer std.testing.allocator.free(sig_doc);
+    const pub_hex = try readGoldenFile(std.testing.allocator, "policy_ir_golden.pub.hex");
+    defer std.testing.allocator.free(pub_hex);
+    var tampered = try std.testing.allocator.dupe(u8, ir);
+    defer std.testing.allocator.free(tampered);
+    tampered[tampered.len - 1] ^= 0xFF;
+    try std.testing.expect(!verifyIrSidecar(std.testing.allocator, tampered, sig_doc, pub_hex));
+}

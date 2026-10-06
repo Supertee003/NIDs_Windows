@@ -34,13 +34,15 @@ writing this runbook.
    ```
    Expected: exit 0, no output beyond the command line.
 
-2. **Run the full TS suite** (71 tests: compiler, seal, exporter,
-   cross-language contract, safety):
+2. **Run the full TS suite** (76 tests: compiler, seal, exporter,
+   cross-language contract, safety, Ed25519 sidecar):
    ```
    npm run test:all
    ```
-   Expected: `pass 71, fail 0`. This includes the byte-for-byte
-   exporter/fixture pin (`policy_ir_002.json`) and the seal round-trip.
+   Expected: `pass 76, fail 0`. This includes the byte-for-byte
+   exporter/fixture pin (`policy_ir_002.json`), the seal round-trip,
+   and the Ed25519 sidecar suite (shape, round-trip, misuse,
+   committed golden triple).
 
 3. **Author and compile rules** with the TS API (`compile`, `makeRule`;
    see `ts_policy/src/compiler.ts` and the `policy_ir_002` construction
@@ -97,7 +99,7 @@ writing this runbook.
   sidecar + anchor (step 8); `false` is the normal unsigned state.
 - `python tools/aegisctl.py snapshot` succeeds; enforcement posture
   unchanged (mirror is read-only by construction).
-- TS suite green (`npm run test:all`: 71/71 at time of writing).
+- TS suite green (`npm run test:all`: 76/76 at time of writing).
 
 ## Rollback
 

@@ -11,6 +11,8 @@
  *   - compiler: compile() with deterministic conflict resolution
  *   - exporter: exportIRJson() canonical policy_ir.json (pure, no I/O)
  *   - seal: seal() / verifySeal() with runtime deep-freeze
+ *   - ed25519: signIrBytes() / verifyIrBytes() sidecar v1 (operator key
+ *     in, never stored; custody stays operator-side per ADR-0005)
  *
  * Non-goals (T6 AC4):
  *   - No child_process / network / firewall / WFP / PEP bindings, no fs
@@ -22,3 +24,4 @@ export * from "./types.js";
 export * from "./compiler.js";
 export * from "./exporter.js";
 export * from "./seal.js";
+export * from "./ed25519.js";

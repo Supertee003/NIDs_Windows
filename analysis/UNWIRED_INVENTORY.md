@@ -111,7 +111,10 @@ unlinked), or CONNECT-PLANNED (tracked slice). Anything else is a finding.
   (no daemon caller). POL-SIGN-079B landed the observe-only daemon end:
   sidecar + AEGIS_POLICY_PUBKEY verified at startup into
   metrics.policy_ir.verified (RB-011 step 8); enforcement untouched.
-  Still open: TS signing lib, key custody (ADR-0005 Q1-Q4), and the
+  TS-SIGN-080 landed the author half: ed25519.ts (operator key in,
+  never stored; stdlib only) + 5 tests incl. committed golden triple
+  that Zig verifies too (76/76).
+  Still open: key custody (ADR-0005 Q1-Q4), and the
   loader-to-trusted wiring itself.
 - [x] IPv6 full (contract v2) — wire v2 decode-ready T2-V6-022a (Go/Zig/
   C++/Python dispatch + 006 vector + bit2 preserved) + nose live emit
