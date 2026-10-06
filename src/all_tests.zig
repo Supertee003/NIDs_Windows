@@ -71,6 +71,7 @@ comptime {
     _ = @import("tests/federation/cluster_coord.zig");
     _ = @import("tests/federation/node_registry.zig");
     _ = @import("tests/federation/aggregator.zig");
+    _ = @import("tests/federation/federation_tcp.zig");
     _ = @import("tests/xdr/xdr_engine.zig");
     // Pipeline hook tests (T1-SIEM-022 SIEM forwarding pin executes here).
     _ = @import("pipeline/event_processor.zig");

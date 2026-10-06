@@ -1113,3 +1113,20 @@ test "TcpClient close marks transport disconnected" {
     client.close();
     try std.testing.expect(!client.transport.connected);
 }
+
+test "FramedReader rejects oversized payload length (FOR-HARD-084)" {
+    // A lying length prefix must not drive the reader past its fixed
+    // buffer: lengths over MAX_PAYLOAD_SIZE fail before any payload
+    // byte is touched. The mock-TLS era left this guard unproven.
+    var r = FramedReader.init();
+    var hdr: [fc.HEADER_LEN]u8 = undefined;
+    std.mem.writeInt(u32, hdr[0..4], fc.MAGIC, .little);
+    hdr[4] = fc.VERSION;
+    hdr[5] = 0; // heartbeat
+    std.mem.writeInt(u16, hdr[6..8], fc.MAX_PAYLOAD_SIZE + 1, .little);
+    std.mem.writeInt(u32, hdr[8..12], 0, .little); // crc irrelevant: length checked first
+    try std.testing.expectEqual(@as(usize, fc.HEADER_LEN), r.append(&hdr));
+    const res = r.tryReadFrame();
+    try std.testing.expect(res == .err);
+    try std.testing.expectEqual(fc.DecodeError.PayloadTruncated, res.err);
+}

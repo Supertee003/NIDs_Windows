@@ -155,6 +155,12 @@ pub const ForensicRing = struct {
         return self.written;
     }
 
+    /// Append one record. Infallible by construction (FOR-HARD-084):
+    /// a full ring overwrites the oldest records and every write lands
+    /// inside caller-checked bounds, so there is no failure to report.
+    /// The old `!u64` forced a `catch 0` at every call site that could
+    /// never fire. Callers that need fallibility use appendReceipt
+    /// (receipt validation is the fallible step, not the write).
     pub fn append(
         self: *ForensicRing,
         ev: *const event.IpcEvent,
@@ -163,7 +169,7 @@ pub const ForensicRing = struct {
         policy_id: u32,
         pep_decision: u8,
         severity: u8,
-    ) !u64 {
+    ) u64 {
         self.mutex.lock();
         defer self.mutex.unlock();
         const write_at = self.head % self.storage.len;
@@ -224,7 +230,7 @@ pub const ForensicRing = struct {
         policy_id: u32,
         pep_decision: u8,
         severity: u8,
-    ) !u64 {
+    ) u64 {
         const at = self.head % self.storage.len;
         const first_chunk = self.storage.len - at;
         if (first_chunk > 0) {
@@ -420,7 +426,7 @@ test "ForensicRing append and read" {
     ev.now();
     ev.event_id = 1;
     const payload = "some attack payload";
-    _ = try ring.append(&ev, payload, 0, 0, 0, 0);
+    _ = ring.append(&ev, payload, 0, 0, 0, 0);
     try std.testing.expectEqual(@as(u64, 1), ring.recordCount());
     const rec = ring.readRecord(0, std.testing.allocator) orelse return error.OutOfMemory;
     defer std.testing.allocator.free(rec);
@@ -436,7 +442,7 @@ test "ForensicRing wraps around" {
     var i: u32 = 0;
     while (i < 5) : (i += 1) {
         ev.event_id = i;
-        _ = try ring.append(&ev, "x", 0, 0, 0, 0);
+        _ = ring.append(&ev, "x", 0, 0, 0, 0);
     }
     try std.testing.expectEqual(@as(u64, 5), ring.recordCount());
     try std.testing.expectEqual(@as(u64, 3), ring.overwritten);
@@ -447,7 +453,7 @@ test "ForensicRing verify detects corruption" {
     defer ring.deinit(std.testing.allocator);
     var ev = event.IpcEvent.init(.anomaly_detected);
     ev.now();
-    _ = try ring.append(&ev, "data", 0, 0, 0, 0);
+    _ = ring.append(&ev, "data", 0, 0, 0, 0);
     const rec = ring.readRecord(0, std.testing.allocator) orelse return error.OutOfMemory;
     defer std.testing.allocator.free(rec);
     try std.testing.expect(ForensicRing.verifyRecord(rec));
@@ -464,8 +470,8 @@ test "ForensicRing hash chain valid after append" {
     defer ring.deinit(std.testing.allocator);
     var ev = event.IpcEvent.init(.signature_match);
     ev.now();
-    _ = try ring.append(&ev, "payload1", 0, 0, 0, 0);
-    _ = try ring.append(&ev, "payload2", 0, 0, 0, 0);
+    _ = ring.append(&ev, "payload1", 0, 0, 0, 0);
+    _ = ring.append(&ev, "payload2", 0, 0, 0, 0);
     try std.testing.expect(ring.verifyHashChain());
 }
 
@@ -474,7 +480,7 @@ test "ForensicRing hash chain detects tampered record" {
     defer ring.deinit(std.testing.allocator);
     var ev = event.IpcEvent.init(.signature_match);
     ev.now();
-    _ = try ring.append(&ev, "data", 0, 0, 0, 0);
+    _ = ring.append(&ev, "data", 0, 0, 0, 0);
     // Tamper with the stored record content
     ring.storage[0] ^= 0xFF;
     // Hash chain should detect the tamper
@@ -486,9 +492,9 @@ test "ForensicRing hash chain links records" {
     defer ring.deinit(std.testing.allocator);
     var ev = event.IpcEvent.init(.signature_match);
     ev.now();
-    _ = try ring.append(&ev, "first", 0, 0, 0, 0);
+    _ = ring.append(&ev, "first", 0, 0, 0, 0);
     const hash1 = ring.getLastHash();
-    _ = try ring.append(&ev, "second", 0, 0, 0, 0);
+    _ = ring.append(&ev, "second", 0, 0, 0, 0);
     const hash2 = ring.getLastHash();
     // Hashes should be different (chained)
     try std.testing.expect(!std.mem.eql(u8, &hash1, &hash2));
@@ -505,7 +511,7 @@ test "ForensicRing hash chain survives wrap" {
     var i: u32 = 0;
     while (i < 4) : (i += 1) {
         ev.event_id = i;
-        _ = try ring.append(&ev, "wrap", 0, 0, 0, 0);
+        _ = ring.append(&ev, "wrap", 0, 0, 0, 0);
     }
     try std.testing.expectEqual(@as(u64, 4), ring.recordCount());
     try std.testing.expectEqual(@as(u64, 2), ring.overwritten);
@@ -518,12 +524,12 @@ test "ForensicRing readRecord returns independent copy" {
     defer ring.deinit(std.testing.allocator);
     var ev = event.IpcEvent.init(.signature_match);
     ev.now();
-    _ = try ring.append(&ev, "original", 0, 0, 0, 0);
+    _ = ring.append(&ev, "original", 0, 0, 0, 0);
     const rec1 = ring.readRecord(0, std.testing.allocator) orelse return error.OutOfMemory;
     defer std.testing.allocator.free(rec1);
     // Append more data — should not affect the snapshot
     ev.event_id = 99;
-    _ = try ring.append(&ev, "newdata", 0, 0, 0, 0);
+    _ = ring.append(&ev, "newdata", 0, 0, 0, 0);
     // rec1 should still be valid
     try std.testing.expect(ForensicRing.verifyRecord(rec1));
     try std.testing.expect(ForensicRing.verifyRecordHash(rec1));
@@ -534,9 +540,9 @@ test "ForensicRing record_seq increments" {
     defer ring.deinit(std.testing.allocator);
     var ev = event.IpcEvent.init(.signature_match);
     ev.now();
-    _ = try ring.append(&ev, "a", 0, 0, 0, 0);
-    _ = try ring.append(&ev, "b", 0, 0, 0, 0);
-    _ = try ring.append(&ev, "c", 0, 0, 0, 0);
+    _ = ring.append(&ev, "a", 0, 0, 0, 0);
+    _ = ring.append(&ev, "b", 0, 0, 0, 0);
+    _ = ring.append(&ev, "c", 0, 0, 0, 0);
     // Verify sequence numbers are 0, 1, 2
     const rec0 = ring.readRecord(0, std.testing.allocator) orelse return error.OutOfMemory;
     defer std.testing.allocator.free(rec0);
@@ -623,7 +629,7 @@ fn cncWriterFn(ctx: *CncWriterCtx) void {
         var ev = event.IpcEvent.init(.signature_match);
         ev.now();
         ev.event_id = @as(u64, ctx.thread_id) * 1000 + i;
-        _ = ctx.ring.append(&ev, "concurrent", 0, 0, 0, 0) catch break;
+        _ = ctx.ring.append(&ev, "concurrent", 0, 0, 0, 0);
     }
 }
 
@@ -680,7 +686,7 @@ fn cncLiveWriterFn(ctx: *CncLiveWriterCtx) void {
         var ev = event.IpcEvent.init(.anomaly_detected);
         ev.now();
         ev.event_id = 100 + i;
-        _ = ctx.ring.append(&ev, "live", 0, 0, 0, 0) catch break;
+        _ = ctx.ring.append(&ev, "live", 0, 0, 0, 0);
     }
 }
 
@@ -694,7 +700,7 @@ test "ForensicRing concurrent read while appending" {
     var i: u32 = 0;
     while (i < 4) : (i += 1) {
         ev.event_id = i;
-        _ = try ring.append(&ev, "seed", 0, 0, 0, 0);
+        _ = ring.append(&ev, "seed", 0, 0, 0, 0);
     }
 
     var read_count = std.atomic.Value(u32).init(0);
@@ -728,7 +734,7 @@ fn cncDualFn1(ctx: *CncDualCtx) void {
         var ev = event.IpcEvent.init(.signature_match);
         ev.now();
         ev.event_id = @as(u64, ctx.id) * 100 + i;
-        _ = ctx.ring.append(&ev, "t1", 0, 0, 0, 0) catch break;
+        _ = ctx.ring.append(&ev, "t1", 0, 0, 0, 0);
     }
 }
 
@@ -738,7 +744,7 @@ fn cncDualFn2(ctx: *CncDualCtx) void {
         var ev = event.IpcEvent.init(.anomaly_detected);
         ev.now();
         ev.event_id = @as(u64, ctx.id) * 100 + i;
-        _ = ctx.ring.append(&ev, "t2", 0, 0, 0, 0) catch break;
+        _ = ctx.ring.append(&ev, "t2", 0, 0, 0, 0);
     }
 }
 

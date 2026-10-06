@@ -246,7 +246,12 @@ on failure), legacy whole-struct `serialize` memcpy path
 (CODEC-CLEAN-067: deleted; remaining @memcpy are field copies inside
 the explicit wire codec), go.sum/Go split (GO-SPLIT-083: both Go
 modules complete — nose + aggregator go.mod/go.sum tracked, `go
-build` + `go test -count=1` green both; .exes gitignored).
+build` + `go test -count=1` green both; .exes gitignored),
+forensic `append catch 0` (FOR-HARD-084: `!u64` was infallible —
+ring overwrites, writes are bounds-checked — so the error union is
+gone and every `catch 0`/`try` at call sites with it), framed-reader
+oversize guard (FOR-HARD-084: length-prefix bound proven by test;
+TLS-stub parser it was filed against is deleted).
 
 Investigated, no action (with reason): `security_check` hard-coded pass
 claim is wrong (gating/advisory split is real); `getFrameSize` +
@@ -259,9 +264,9 @@ gate to _unavailable; `RuleAction` vocab gap closed by AC5 pin;
 `spill disk-full` accounted (failed++ on spill failure, at-least-once
 documented); `successRate` pending-blind accepted (unused helper).
 
-Still OPEN: flow pointer lock-escape (single-threaded today), forensic
-`append catch 0`, correlator/AC per-packet allocator (needs profiling,
-not guesses), TLS parser bounds (federation stub), receipt validator
+Still OPEN: flow pointer lock-escape (single-threaded today),
+correlator/AC per-packet allocator (needs profiling,
+not guesses), receipt validator
 reconciliation, disabled_rules end-to-end, spool replay automation
 (exists — needs live proof), SBOM salt, CI truth/Trivy
 gates, web SSE backpressure, fault-maybeCorrupt post-validation
