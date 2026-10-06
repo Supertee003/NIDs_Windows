@@ -75,18 +75,22 @@ writing this runbook.
 
 8. **(Optional) Ed25519 sidecar — observe-only** (POL-SIGN-079B).
    This proves the exact bytes the daemon mirrored, but changes no
-   enforcement decision anywhere (key custody still open, ADR-0005):
-   - Sign `configs/policy_ir.json` with YOUR Ed25519 tooling (the repo
-     generates no keys and stores no private keys — operator-owned,
-     offline). The signed message is the exact file bytes.
-   - Write the sidecar next to it as `configs/policy_ir.sig.json`:
-     `{"version": 1, "key_id": <u32 non-zero>,
-     "ed25519_sig_hex": "<128 lowercase hex>",
-     "ir_sha256_hex": "<64 lowercase hex, informational only>"}`.
-     The signature is the trust root; the sha is a hint the daemon
-     does not compare.
+   enforcement decision anywhere (key custody still open, ADR-0005).
+   Run OFFLINE on a trusted host — the repo generates no keys for
+   you, and private material never enters the repo:
+   - `cargo run --bin aegis-keygen -- genkey` prints a fresh seed
+     (store it offline, once) and its pubkey hex. Re-running with
+     `--seed <64-hex>` re-derives the same pubkey.
+   - `cargo run --bin aegis-keygen -- sign --seed <hex> --key-id 7
+     --in configs/policy_ir.json --out configs/policy_ir.sig.json`
+     writes the v1 sidecar (`version`, `key_id`, 128-hex signature,
+     64-hex sha hint).
+   - Prove it before deploying: `cargo run --bin aegis-keygen --
+     verify --pub <hex> --in configs/policy_ir.json --sidecar
+     configs/policy_ir.sig.json` (exit 0 = VALID, 2 = INVALID).
    - Pin the trust anchor: `AEGIS_POLICY_PUBKEY=<64 hex chars>` (the
-     32-byte Ed25519 public key) in the daemon's environment.
+     32-byte Ed25519 public key) in the daemon's environment, or the
+     reviewed `configs/policy_trust.json` file (RB step 9).
      Absent anchor = unverified, never an error.
    - Restart the daemon. `metrics` shows `"verified": true` only when
      sidecar + anchor + bytes all agree; anything else stays false
