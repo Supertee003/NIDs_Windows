@@ -228,6 +228,11 @@ pub const LogEvent = struct {
     event: []const u8,
     rule: ?[]const u8 = null,
     src_ip: ?u32 = null,
+    // FOR-V6A: full v6 text form when the producer has sidecars. Takes
+    // precedence over the u32 dotted quad (which for v6 events is only
+    // the /32 prefix). Additive: readers ignore unknown fields.
+    src_ipv6: ?[]const u8 = null,
+    dst_ipv6: ?[]const u8 = null,
     src_port: ?u16 = null,
     session_id: ?u64 = null,
     ruleset_version: ?u64 = null,
@@ -275,11 +280,21 @@ pub fn log(event: LogEvent) void {
     }
 
     if (event.src_ip) |ip| {
-        const a = (ip >> 24) & 0xFF;
-        const b = (ip >> 16) & 0xFF;
-        const c = (ip >> 8) & 0xFF;
-        const d = ip & 0xFF;
-        writer.print(",\"src_ip\":\"{d}.{d}.{d}.{d}\"", .{ a, b, c, d }) catch return;
+        if (event.src_ipv6) |ip6| {
+            writer.print(",\"src_ip\":\"{s}\"", .{ip6}) catch return;
+        } else {
+            const a = (ip >> 24) & 0xFF;
+            const b = (ip >> 16) & 0xFF;
+            const c = (ip >> 8) & 0xFF;
+            const d = ip & 0xFF;
+            writer.print(",\"src_ip\":\"{d}.{d}.{d}.{d}\"", .{ a, b, c, d }) catch return;
+        }
+    } else if (event.src_ipv6) |ip6| {
+        writer.print(",\"src_ip\":\"{s}\"", .{ip6}) catch return;
+    }
+
+    if (event.dst_ipv6) |ip6| {
+        writer.print(",\"dst_ip\":\"{s}\"", .{ip6}) catch return;
     }
 
     if (event.src_port) |port| {

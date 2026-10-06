@@ -265,7 +265,12 @@ DNS port compare, IPC short framing, WFP unload leak
 (drivers quarantined — do not touch), rule FNV collisions,
 golden-table drift, `threat_score`/`weight` fixed, INCIDENT_TTL
 unenforced (eviction-policy verdict needed), IPv4-only evidence ring
-(see docs/adr/0006-forensic-ipv6-record-abi.md — v6 sidecars stop at
-the queue, forensics records the /32 prefix; layout + chain-migration
-verdicts pending), wire CRC-no-HMAC (needs key design), event_queue
+(see docs/adr/0006-forensic-ipv6-record-abi.md — corrected map in
+FOR-V6A: the ring RecordHeader carries NO IP fields by design (identity
+is the raw packet payload, which keeps full v6 bytes); the EvidenceRecord
+hash chain is likewise IP-free, and the u32 ForensicsEngine ring is
+unwired. The real wired wart was SIEM/NDJSON printing the /32 prefix
+as a dotted quad — fixed: SIEM forwards full v6 text from sidecars,
+LogEvent takes optional src_ipv6/dst_ipv6 strings. Remaining: parsed v6
+identity in ring-header queries needs a header/payload framing verdict), wire CRC-no-HMAC (needs key design), event_queue
 1500 truncation vs len claim (by wire design: length+hash only).

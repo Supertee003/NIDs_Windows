@@ -250,7 +250,7 @@ fn processEvent(
     // Zero-cost when uninitialized: one bool check. The forwarder duplicates
     // all strings, so stack buffers below never escape this call.
     if (siem_mod.isEnabled()) {
-        siemForward(ev, matched_rule_id, ev_severity, policy_action);
+        siemForward(ev, matched_rule_id, ev_severity, policy_action, qe.src_ipv6, qe.dst_ipv6);
         if (siem_mod.shouldFlush()) siem_mod.flush();
     }
 
@@ -310,16 +310,32 @@ fn brainSeverity(severity: event.EventSeverity) []const u8 {
 
 /// Format one detection for the SIEM forwarder. Detections only
 /// (matched_rule_id == 0 means no signal worth forwarding).
-fn siemForward(ev: *const event.IpcEvent, rule_id: u32, severity: event.EventSeverity, action: policy.Action) void {
+/// FOR-V6A: v6 sidecars (when present) render as full text form. The old
+/// code printed the u32 prefix as a dotted quad, disguising a v6 source
+/// as a v4 address on the only wired forensic string path.
+fn formatIp6(addr: [16]u8, buf: *[48]u8) []const u8 {
+    // Full 8-hextet form ("2001:0db8:0000:..."): deterministic and
+    // unambiguous; no :: compression games across languages.
+    var fbs = std.io.fixedBufferStream(buf);
+    const w = fbs.writer();
+    for (0..8) |g| {
+        if (g != 0) w.writeByte(':') catch return buf[0..fbs.pos];
+        const group: u16 = (@as(u16, addr[2 * g]) << 8) | addr[2 * g + 1];
+        w.print("{x:0>4}", .{group}) catch return buf[0..fbs.pos];
+    }
+    return buf[0..fbs.pos];
+}
+
+fn siemForward(ev: *const event.IpcEvent, rule_id: u32, severity: event.EventSeverity, action: policy.Action, src6: ?[16]u8, dst6: ?[16]u8) void {
     if (rule_id == 0) return;
-    var src_buf: [16]u8 = undefined;
-    var dst_buf: [16]u8 = undefined;
+    var src_buf: [48]u8 = undefined;
+    var dst_buf: [48]u8 = undefined;
     var rule_buf: [11]u8 = undefined;
     var proto_buf: [4]u8 = undefined;
-    const src = std.fmt.bufPrint(&src_buf, "{}.{}.{}.{}", .{
+    const src = if (src6) |s6| formatIp6(s6, &src_buf) else std.fmt.bufPrint(&src_buf, "{}.{}.{}.{}", .{
         (ev.src_ip >> 24) & 0xFF, (ev.src_ip >> 16) & 0xFF, (ev.src_ip >> 8) & 0xFF, ev.src_ip & 0xFF,
     }) catch return;
-    const dst = std.fmt.bufPrint(&dst_buf, "{}.{}.{}.{}", .{
+    const dst = if (dst6) |d6| formatIp6(d6, &dst_buf) else std.fmt.bufPrint(&dst_buf, "{}.{}.{}.{}", .{
         (ev.dst_ip >> 24) & 0xFF, (ev.dst_ip >> 16) & 0xFF, (ev.dst_ip >> 8) & 0xFF, ev.dst_ip & 0xFF,
     }) catch return;
     const rule = std.fmt.bufPrint(&rule_buf, "{}", .{rule_id}) catch return;
@@ -357,9 +373,9 @@ test "siemForward buffers detections and ignores non-detections" {
     ev.src_port = 1234;
     ev.dst_port = 80;
     ev.protocol = 6;
-    siemForward(&ev, 0, .info, .pass);
+    siemForward(&ev, 0, .info, .pass, null, null);
     try std.testing.expectEqual(@as(u64, 0), siem_mod.getStats().total_events_read);
-    siemForward(&ev, 4242, .alert, .alert);
+    siemForward(&ev, 4242, .alert, .alert, null, null);
     try std.testing.expectEqual(@as(u64, 1), siem_mod.getStats().total_events_read);
     siem_mod.flush();
     try std.testing.expectEqual(@as(u64, 1), siem_mod.getStats().total_events_forwarded);
@@ -367,6 +383,38 @@ test "siemForward buffers detections and ignores non-detections" {
     defer std.testing.allocator.free(body);
     try std.testing.expect(std.mem.indexOf(u8, body, "4242") != null);
     try std.testing.expect(std.mem.indexOf(u8, body, "192.168.1.100") != null);
+}
+
+test "siemForward renders v6 sidecars as text, never dotted prefix" {
+    // FOR-V6A: a v6 detection used to forward its /32 prefix disguised
+    // as a v4 address. With sidecars present the full text form ships.
+    const dest = "siem_pipeline_probe_v6.json";
+    defer std.fs.cwd().deleteFile(dest) catch {};
+    if (siem_mod.isInitialized()) siem_mod.shutdown();
+    siem_mod.init(std.testing.allocator, .{ .enabled = true, .destination = dest });
+    defer siem_mod.shutdown();
+
+    var ev = event.IpcEvent.init(.packet_captured);
+    ev.src_ip = 0x20010DB8; // prefix only — must NOT appear dotted
+    ev.dst_ip = 0x20010DB8;
+    ev.src_port = 49152;
+    ev.dst_port = 443;
+    ev.protocol = 6;
+    const src6 = [16]u8{ 0x20, 0x01, 0x0D, 0xB8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01 };
+    const dst6 = [16]u8{ 0x20, 0x01, 0x0D, 0xB8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x02 };
+    siemForward(&ev, 7777, .alert, .alert, src6, dst6);
+    siem_mod.flush();
+    const body = try std.fs.cwd().readFileAlloc(std.testing.allocator, dest, 65536);
+    defer std.testing.allocator.free(body);
+    try std.testing.expect(std.mem.indexOf(u8, body, "2001:0db8:0000:0000:0000:0000:0000:0001") != null);
+    try std.testing.expect(std.mem.indexOf(u8, body, "2001:0db8:0000:0000:0000:0000:0000:0002") != null);
+    try std.testing.expect(std.mem.indexOf(u8, body, "32.1.13.184") == null);
+}
+
+test "formatIp6 renders full hextets deterministically" {
+    var buf: [48]u8 = undefined;
+    const loop = [_]u8{0} ** 15 ++ [_]u8{1};
+    try std.testing.expectEqualStrings("0000:0000:0000:0000:0000:0000:0000:0001", formatIp6(loop, &buf));
 }
 
 test "brainSeverity speaks the brain Low/Medium/High/Critical vocabulary" {
