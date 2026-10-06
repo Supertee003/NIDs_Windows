@@ -127,6 +127,11 @@ jobs:
       # recorded digests drift, the build-manifest verify gate below FAILS.
       - name: Verify build manifest provenance (drift gate)
         run: python tools/release_engineering.py --verify
+      # CI-GATE-107: machine-map truth stamps must carry the current HEAD.
+      # A stale map (different HEAD than the source) is not current truth
+      # and fails here, same as the pre-commit check.
+      - name: Verify machine-map truth stamps (HEAD gate)
+        run: python tools/truth.py verify
       - name: Run tests
         run: python -m pytest tests/ -v --ignore=tests/test_e2e.py
 
@@ -136,7 +141,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run Trivy filesystem scan
-        uses: aquasecurity/trivy-action@master
+        # CI-GATE-107: pinned (never @master — a moving supply-chain ref).
+        # Non-blocking by decision (exit-code 0): failing the pipeline on
+        # upstream CVEs without a triage SLA would brick every PR. Findings
+        # are human-triaged; flipping to exit-code 1 needs that SLA first.
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           scan-type: fs
           scan-ref: .

@@ -288,7 +288,10 @@ documented); `successRate` pending-blind accepted (unused helper).
 
 Still OPEN: flow pointer lock-escape (single-threaded today),
 correlator/AC per-packet allocator (needs profiling,
-not guesses), operator-script portability (PORT-106: bridge ps1 derives
+not guesses), CI truth/Trivy gates (CI-GATE-107: `truth.py verify` now
+runs in the python-tests job after the provenance gate; Trivy pinned to
+release 0.36.0 — never @master; non-blocking by documented decision,
+needs triage SLA to enforce; pinned by tests/release/test_ci_gates.py), operator-script portability (PORT-106: bridge ps1 derives
 $Repo from $PSScriptRoot with override kept + parse-proven; run_aegis.bat
 wmic timestamp has %DATE% fallback; Kali/VMware preflight already
 parameterized — investigated, no change), FNV collisions + golden drift (FNV-COLL-105: AC7 pins
