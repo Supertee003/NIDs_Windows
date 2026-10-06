@@ -250,9 +250,14 @@ def generate_sbom(manifest: Dict[str, Any]) -> Dict[str, Any]:
     """Generate SPDX 2.3 SBOM from manifest."""
     packages: List[Dict[str, Any]] = []
     for art in manifest["artifacts"]:
+        # SBOM-SALT-087: NEVER use builtin hash() here. CPython salts
+        # str hashing per process (PYTHONHASHSEED), so SPDXIDs changed
+        # on every generation. SHA-256 of the path is stable across
+        # processes, hosts, and releases; same SPDXRef-XXXXXXXX shape.
+        stable_id = hashlib.sha256(art["path"].encode("utf-8")).hexdigest()[:8]
         packages.append({
             "name": Path(art["path"]).name,
-            "SPDXID": f"SPDXRef-{hash(art['path']) & 0xFFFFFFFF:08x}",
+            "SPDXID": f"SPDXRef-{stable_id}",
             "versionInfo": manifest["version"],
             "supplier": "Organization: AEGIS",
             "downloadLocation": "NOASSERTION",

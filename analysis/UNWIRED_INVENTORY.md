@@ -287,7 +287,9 @@ Still OPEN: flow pointer lock-escape (single-threaded today),
 correlator/AC per-packet allocator (needs profiling,
 not guesses), receipt validator
 reconciliation, disabled_rules end-to-end, spool replay automation
-(exists — needs live proof), SBOM salt, CI truth/Trivy
+(exists — needs live proof), SBOM salt (SBOM-SALT-087: builtin
+hash() is per-process salted — replaced with SHA-256 path IDs, proven
+identical across hash seeds on all 554 packages), CI truth/Trivy
 gates, web SSE backpressure, fault-maybeCorrupt post-validation
 (by design), quarantine federation best-effort (send failures stay
 false; status reports live since FED-P4),
