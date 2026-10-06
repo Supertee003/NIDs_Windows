@@ -758,3 +758,93 @@ test "POL-SIGN-079A: parseSidecar fails closed on every malformed shape" {
         } else |_| {}
     }
 }
+
+// ============================================================
+// POL-SIGN-079B: observe-only IR verification helper.
+// ============================================================
+//
+// verifyIrSidecar answers one question — "does this sidecar prove
+// these exact IR bytes?" — as a bool. It never raises, never logs,
+// never touches trust: the daemon calls it at startup, records the
+// answer in g_policy_ir_verified for metricsSnapshot, and changes
+// nothing else. Missing/empty pubkey_hex means "no trust anchor
+// configured", which is a false (unverified), not an error: an
+// unsigned deployment is the normal state until key custody lands
+// (ADR-0005 Q3), and normal must never look like a failure.
+pub fn verifyIrSidecar(
+    allocator: std.mem.Allocator,
+    ir_bytes: []const u8,
+    sidecar_document: []const u8,
+    pubkey_hex: []const u8,
+) bool {
+    if (ir_bytes.len == 0 or pubkey_hex.len != 64) return false;
+    const sc = parseSidecar(allocator, sidecar_document) catch return false;
+    var pubkey: [32]u8 = undefined;
+    parseHexFixed(&pubkey, pubkey_hex) catch return false;
+    return verifyViaRust(ir_bytes, &sc.sig, &pubkey);
+}
+
+// ============================================================
+// Tests (POL-SIGN-079B)
+// ============================================================
+
+fn testPubkeyHex(kp: Ed25519.KeyPair, out: *[64]u8) void {
+    const raw = kp.public_key.toBytes();
+    const digits = "0123456789abcdef";
+    for (raw, 0..) |b, i| {
+        out[2 * i] = digits[b >> 4];
+        out[2 * i + 1] = digits[b & 0xF];
+    }
+}
+
+fn testSidecarDoc(allocator: std.mem.Allocator, key_id: u32, sig: [64]u8, ir: []const u8) ![]u8 {
+    var hasher = std.crypto.hash.sha2.Sha256.init(.{});
+    hasher.update(ir);
+    var digest: [32]u8 = undefined;
+    hasher.final(&digest);
+    const digits = "0123456789abcdef";
+    var sig_hex: [128]u8 = undefined;
+    for (sig, 0..) |b, i| {
+        sig_hex[2 * i] = digits[b >> 4];
+        sig_hex[2 * i + 1] = digits[b & 0xF];
+    }
+    var hash_hex: [64]u8 = undefined;
+    for (digest, 0..) |b, i| {
+        hash_hex[2 * i] = digits[b >> 4];
+        hash_hex[2 * i + 1] = digits[b & 0xF];
+    }
+    return std.fmt.allocPrint(allocator,
+        "{{\"version\": 1, \"key_id\": {d}, \"ed25519_sig_hex\": \"{s}\", \"ir_sha256_hex\": \"{s}\"}}",
+        .{ key_id, sig_hex, hash_hex });
+}
+
+test "POL-SIGN-079B: verifyIrSidecar true on matching triple" {
+    const kp = testKeyPair();
+    const ir = "policy ir mirror bytes for observe-only verify";
+    const sig = try kp.sign(ir, null);
+    var pub_hex: [64]u8 = undefined;
+    testPubkeyHex(kp, &pub_hex);
+    const doc = try testSidecarDoc(std.testing.allocator, 7, sig.toBytes(), ir);
+    defer std.testing.allocator.free(doc);
+    var bad_hex: [64]u8 = undefined;
+    testPubkeyHex(kp, &bad_hex);
+    bad_hex[0] = if (bad_hex[0] == '0') '1' else '0';
+    try std.testing.expect(!verifyIrSidecar(std.testing.allocator, ir, doc, &bad_hex));
+    try std.testing.expect(verifyIrSidecar(std.testing.allocator, ir, doc, &pub_hex));
+}
+
+test "POL-SIGN-079B: verifyIrSidecar false on every non-match" {
+    const kp = testKeyPair();
+    const ir = "policy ir mirror bytes";
+    const sig = try kp.sign(ir, null);
+    var pub_hex: [64]u8 = undefined;
+    testPubkeyHex(kp, &pub_hex);
+    const doc = try testSidecarDoc(std.testing.allocator, 7, sig.toBytes(), ir);
+    defer std.testing.allocator.free(doc);
+    // Wrong bytes, wrong sidecar, no anchor, bad anchor: all false.
+    try std.testing.expect(!verifyIrSidecar(std.testing.allocator, "other bytes", doc, &pub_hex));
+    try std.testing.expect(!verifyIrSidecar(std.testing.allocator, ir, "{\"version\": 1}", &pub_hex));
+    try std.testing.expect(!verifyIrSidecar(std.testing.allocator, ir, doc, ""));
+    try std.testing.expect(!verifyIrSidecar(std.testing.allocator, ir, doc, "zz"));
+    try std.testing.expect(!verifyIrSidecar(std.testing.allocator, "", doc, &pub_hex));
+}

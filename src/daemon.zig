@@ -22,6 +22,7 @@ const anom = @import("detection/anomaly_detector.zig");
 const tracker = @import("detection/threat_tracker.zig");
 const policy = @import("policy/policy_ir.zig");
 const policy_plane = @import("policy/policy_plane.zig");
+const policy_signing = @import("policy/policy_signing.zig");
 const pep = @import("policy/pep_bindings.zig");
 const forensic = @import("forensic/forensic_pipeline.zig");
 const siem_mod = @import("forensic/siem_forwarder.zig");
@@ -458,6 +459,26 @@ pub fn runDaemon() !void {
             loaded.hash_hex[0..16],
             loaded.ir.compiler_version,
         });
+        // POL-SIGN-079B: observe-only Ed25519 check. If the operator
+        // placed a sidecar (policy_ir.sig.json) AND pinned a trust
+        // anchor (AEGIS_POLICY_PUBKEY, 64 hex chars), verify the exact
+        // bytes just loaded and expose the answer in metricsSnapshot.
+        // Every other case stays unverified:false. This NEVER marks
+        // anything trusted and NEVER touches enforcement authority.
+        state.g_policy_ir_verified.store(false, .monotonic);
+        sig_blk: {
+            const sig_path = runtime_paths.configPath(std.heap.page_allocator, runtime_root, "policy_ir.sig.json") catch break :sig_blk;
+            defer std.heap.page_allocator.free(sig_path);
+            const sig_file = std.fs.openFileAbsolute(sig_path, .{}) catch break :sig_blk;
+            defer sig_file.close();
+            const sig_bytes = sig_file.readToEndAlloc(std.heap.page_allocator, 65536) catch break :sig_blk;
+            defer std.heap.page_allocator.free(sig_bytes);
+            const pubkey_hex = std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_POLICY_PUBKEY") catch break :sig_blk;
+            defer std.heap.page_allocator.free(pubkey_hex);
+            const ok = policy_signing.verifyIrSidecar(std.heap.page_allocator, ir_bytes, sig_bytes, pubkey_hex);
+            state.g_policy_ir_verified.store(ok, .monotonic);
+            diag.info("TS policy IR signature: {s}", .{if (ok) "VALID (observe-only, enforcement unchanged)" else "INVALID or untrusted anchor (mirror stays unverified)"});
+        }
     }
 
     var ad = anom.AnomalyDetector.init(std.heap.page_allocator);

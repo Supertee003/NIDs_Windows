@@ -67,13 +67,34 @@ writing this runbook.
    python tools/aegisctl.py metrics
    ```
    Expect `"policy_ir": {"loaded": true, "rules": <N>,
-   "hash": "<full hash_hex>"}` with the count and hash from step 5.
-   If `policy_ir` is absent entirely, the daemon binary predates the
-   mirror — rebuild/restart, do not edit configs to compensate.
+   "hash": "<full hash_hex>", "verified": false}` with the count and
+   hash from step 5. (`verified` is the Ed25519 sidecar verdict from
+   step 8 below; false is the normal unsigned state, not a failure.)
+
+8. **(Optional) Ed25519 sidecar — observe-only** (POL-SIGN-079B).
+   This proves the exact bytes the daemon mirrored, but changes no
+   enforcement decision anywhere (key custody still open, ADR-0005):
+   - Sign `configs/policy_ir.json` with YOUR Ed25519 tooling (the repo
+     generates no keys and stores no private keys — operator-owned,
+     offline). The signed message is the exact file bytes.
+   - Write the sidecar next to it as `configs/policy_ir.sig.json`:
+     `{"version": 1, "key_id": <u32 non-zero>,
+     "ed25519_sig_hex": "<128 lowercase hex>",
+     "ir_sha256_hex": "<64 lowercase hex, informational only>"}`.
+     The signature is the trust root; the sha is a hint the daemon
+     does not compare.
+   - Pin the trust anchor: `AEGIS_POLICY_PUBKEY=<64 hex chars>` (the
+     32-byte Ed25519 public key) in the daemon's environment.
+     Absent anchor = unverified, never an error.
+   - Restart the daemon. `metrics` shows `"verified": true` only when
+     sidecar + anchor + bytes all agree; anything else stays false
+     with a warn in the log. Enforcement posture unchanged either way.
 
 ## Verification
 
 - `metrics` shows `policy_ir.loaded: true`, matching rule count and hash.
+- `metrics` shows `policy_ir.verified: true` only with a matching
+  sidecar + anchor (step 8); `false` is the normal unsigned state.
 - `python tools/aegisctl.py snapshot` succeeds; enforcement posture
   unchanged (mirror is read-only by construction).
 - TS suite green (`npm run test:all`: 71/71 at time of writing).

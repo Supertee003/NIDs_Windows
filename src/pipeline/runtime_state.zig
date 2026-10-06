@@ -30,6 +30,7 @@ pub var g_cluster_enabled = std.atomic.Value(bool).init(false);
 /// (policies.json) stays the sole evaluation authority. Null when absent
 /// or invalid — metrics report loaded=false instead of claiming rules.
 pub var g_policy_ir: ?@import("../policy/policy_plane.zig").LoadedIr = null;
+pub var g_policy_ir_verified = std.atomic.Value(bool).init(false);
 
 // PHASE-1 readiness handshake. Thread creation is not readiness: each worker
 // sets its ready flag only after its required initialization succeeds and

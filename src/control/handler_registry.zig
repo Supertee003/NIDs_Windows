@@ -1401,13 +1401,19 @@ const handlers = struct {
         const pir_loaded = state_mod.g_policy_ir != null;
         const pir_rules: u16 = if (state_mod.g_policy_ir) |*p| p.ir.rule_count else 0;
         const pir_hash: []const u8 = if (state_mod.g_policy_ir) |*p| &p.hash_hex else "";
+        // POL-SIGN-079B: observe-only Ed25519 verdict over the exact
+        // mirrored bytes (sidecar + AEGIS_POLICY_PUBKEY at startup).
+        // False covers absent sidecar, absent anchor, and INVALID alike:
+        // unverified is the normal state until key custody lands, and it
+        // changes no enforcement decision anywhere.
+        const pir_verified = state_mod.g_policy_ir_verified.load(.acquire);
         // METR-U64-061: lifetime counters print full u64. Narrowing casts
         // (@as(u32, @intCast(...))) panicked debug builds past 4B events
         // and wrapped release builds silently (~71 min at 1M eps). JSON
         // consumers (Python int, Rust as_u64) take full width; JS Number
         // stays precise to 2^53, unreachable in practice.
         return std.fmt.allocPrint(a,
-            \\{{"uptime_sec":{},"rules_loaded":{},"packets_captured":{},"events_processed":{},"forensic_records":{},"flows_active":{},"incidents_open":{},"detections":{},"anomalies":{},"blocks":{},"errors":{},"siem":{{"enabled":{},"forwarded":{},"failed":{},"spooled":{},"batches":{},"retries":{}}},"policy_ir":{{"loaded":{},"rules":{},"hash":"{s}"}}}}
+            \\{{"uptime_sec":{},"rules_loaded":{},"packets_captured":{},"events_processed":{},"forensic_records":{},"flows_active":{},"incidents_open":{},"detections":{},"anomalies":{},"blocks":{},"errors":{},"siem":{{"enabled":{},"forwarded":{},"failed":{},"spooled":{},"batches":{},"retries":{}}},"policy_ir":{{"loaded":{},"rules":{},"hash":"{s}","verified":{}}}}}
         , .{
             uptime_sec,
             state_mod.g_rules_loaded.load(.acquire),
@@ -1429,6 +1435,7 @@ const handlers = struct {
             pir_loaded,
             pir_rules,
             pir_hash,
+            pir_verified,
         }) catch null;
     }
 
@@ -1638,6 +1645,8 @@ test "metricsSnapshot exposes SIEM durability counters" {
     // T3-TSIR-025: TS-IR mirror reports absent-but-honest with no file.
     try std.testing.expect(std.mem.indexOf(u8, out, "\"policy_ir\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"loaded\":false") != null);
+    // POL-SIGN-079B: observe-only verdict rides along, false by default.
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"verified\":false") != null);
 }
 
 test "metricsSnapshot prints lifetime counters at full u64 width" {
