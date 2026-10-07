@@ -1,5 +1,5 @@
 {
-  "head_sha": "eeb3686b767e31b401e6472232b63ca1ce192be0",
+  "head_sha": "5d5ba957213a348f7eea876b8659589d85be2fa0",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2409,6 +2409,22 @@
       ],
       "result": "PASS",
       "finding": "Dashboard shows what the daemon already reports; rendering parity follows the data contract."
+    },
+    {
+      "id": "EVT-087",
+      "head_sha": "5d5ba957213a348f7eea876b8659589d85be2fa0",
+      "timestamp": "2026-10-07",
+      "title": "Dashboard Rust crate tests green on host (5/5)",
+      "level": "E5",
+      "component": "control-plane",
+      "description": "The OPTIONAL egui dashboard crate (aegis_dashboard, never previously executed on host in this workstream) builds and passes its 5 unit tests here. Build products stay in its ignored target/ dir; tree shows no new junk. No code change was needed.",
+      "flow_id": "CONTROL-001",
+      "files_changed": [],
+      "tests": [
+        "cargo test in aegis_dashboard: 5 passed, 0 failed"
+      ],
+      "result": "PASS",
+      "finding": "Optional component verified present and green; files_changed is empty by design."
     }
   ],
   "evidence_level_summary": {
@@ -2417,7 +2433,7 @@
     "E2_count": 61,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 17,
+    "E5_count": 18,
     "E6_count": 0,
     "E7_count": 0
   }
