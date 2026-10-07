@@ -12,6 +12,7 @@
 const std = @import("std");
 const runtime_state = @import("../pipeline/runtime_state.zig");
 const defcon = @import("defcon.zig");
+const diag = @import("../core/diagnostics.zig");
 
 // ============================================================
 // System State Machine
@@ -293,8 +294,8 @@ pub const RuntimeState = struct {
         var arr = std.ArrayList(u8).init(a);
         var writer = arr.writer();
         try writer.print(
-            \\{{"state":"{s}","version":"{s}","build":"{s}","uptime_ms":{},"subsystems":[
-        , .{ ss.toString(), ver, bld, uptime });
+            \\{{"state":"{s}","version":"{s}","build":"{s}","uptime_ms":{},"packets_captured":{},"flows_active":{},"subsystems":[
+        , .{ ss.toString(), ver, bld, uptime, runtime_state.g_nose_frames_submitted.load(.acquire), diag.metrics.flows_active.get() });
 
         for (subs, 0..) |sub, i| {
             if (i > 0) try writer.writeByte(',');
@@ -335,9 +336,15 @@ pub const RuntimeState = struct {
         const defcon_critical = runtime_state.g_critical_detections.load(.acquire);
         const defcon_confirmed = runtime_state.g_confirmed_blocks.load(.acquire);
         const defcon_level = defcon.level(defcon_total, defcon_critical, defcon_confirmed);
+        // STEP-43 + P0-8 remainder, additive keys (older readers ignore
+        // unknown fields): packets_captured is canonical data-plane ingress
+        // (nose submissions, same source as metrics.snapshot and the Python
+        // counters synthesis — NOT the dormant direct-Npcap counter), and
+        // counters mirrors the control_api mapping so the daemon itself
+        // satisfies RUNTIME_CONTRACT §4.1.
         try writer.print(
-            \\{{"component":"core","version":"{s}","state":"{s}","runtime_state":"{s}","pid":{} ,"uptime_ms":{},"last_event_ms":{},"degraded":{},"rules_loaded":{},"policies_loaded":{},"defcon_level":{},"defcon_label":"{s}","capabilities":{{"wfp":{},"cpp_bridge":{},"udp_brain":{} }},"data_plane":{{"nose_connected":{},"nose_frames_read":{},"nose_frames_rejected":{},"nose_frames_submitted":{},"nose_frames_dropped":{},"nose_pipe_errors":{},"nose_last_event_id":{},"nose_duplicate_event_ids":{},"nose_non_monotonic_event_ids":{}}},"deps":[
-        , .{ ver, operational_state, ss.toString(), pid, uptime, runtime_state.g_last_event_ms.load(.acquire), !all_healthy or !bridge_ready, runtime_state.g_rules_loaded.load(.acquire), runtime_state.g_policies_loaded.load(.acquire), defcon_level, defcon.labelFor(defcon_level), wfp_ready, cpp_ready, udp_ready, runtime_state.g_nose_connected.load(.acquire), runtime_state.g_nose_frames_read.load(.acquire), runtime_state.g_nose_frames_rejected.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), runtime_state.g_nose_frames_dropped.load(.acquire), runtime_state.g_nose_pipe_errors.load(.acquire), runtime_state.g_nose_last_event_id.load(.acquire), runtime_state.g_nose_duplicate_event_ids.load(.acquire), runtime_state.g_nose_non_monotonic_event_ids.load(.acquire) });
+            \\{{"component":"core","version":"{s}","state":"{s}","runtime_state":"{s}","pid":{} ,"uptime_ms":{},"last_event_ms":{},"degraded":{},"rules_loaded":{},"policies_loaded":{},"defcon_level":{},"defcon_label":"{s}","capabilities":{{"wfp":{},"cpp_bridge":{},"udp_brain":{} }},"data_plane":{{"nose_connected":{},"nose_frames_read":{},"nose_frames_rejected":{},"nose_frames_submitted":{},"nose_frames_dropped":{},"nose_pipe_errors":{},"nose_last_event_id":{},"nose_duplicate_event_ids":{},"nose_non_monotonic_event_ids":{}}},"packets_captured":{},"flows_active":{},"counters":{{"in_events":{},"out_events":{},"errors":{},"dropped":{}}},"deps":[
+        , .{ ver, operational_state, ss.toString(), pid, uptime, runtime_state.g_last_event_ms.load(.acquire), !all_healthy or !bridge_ready, runtime_state.g_rules_loaded.load(.acquire), runtime_state.g_policies_loaded.load(.acquire), defcon_level, defcon.labelFor(defcon_level), wfp_ready, cpp_ready, udp_ready, runtime_state.g_nose_connected.load(.acquire), runtime_state.g_nose_frames_read.load(.acquire), runtime_state.g_nose_frames_rejected.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), runtime_state.g_nose_frames_dropped.load(.acquire), runtime_state.g_nose_pipe_errors.load(.acquire), runtime_state.g_nose_last_event_id.load(.acquire), runtime_state.g_nose_duplicate_event_ids.load(.acquire), runtime_state.g_nose_non_monotonic_event_ids.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), diag.metrics.flows_active.get(), runtime_state.g_nose_frames_read.load(.acquire), runtime_state.g_nose_frames_submitted.load(.acquire), runtime_state.g_nose_pipe_errors.load(.acquire), runtime_state.g_nose_frames_dropped.load(.acquire) });
 
         try writer.print("{{\"name\":\"bridge\",\"state\":\"{s}\"}},{{\"name\":\"pipeline\",\"state\":\"{s}\"}}],\"subsystems\":[", .{
             if (bridge_ready) "RUNNING" else "DEGRADED",
@@ -442,4 +449,49 @@ test "RuntimeState: subsystem failure degrades system" {
     rs.subsystemFailed(.go, "crashed");
     rs.recomputeHealth();
     try std.testing.expectEqual(SystemState.degraded, rs.system_state);
+}
+
+test "statusJson exposes packets_captured and flows_active from live counters" {
+    // STEP-43: system.status readers did dict.get(key, 0) on absent keys.
+    const prev_sub = runtime_state.g_nose_frames_submitted.load(.acquire);
+    defer runtime_state.g_nose_frames_submitted.store(prev_sub, .monotonic);
+    const prev_flow: i64 = diag.metrics.flows_active.get();
+    defer diag.metrics.flows_active.set(prev_flow);
+    runtime_state.g_nose_frames_submitted.store(424242, .monotonic);
+    diag.metrics.flows_active.set(7);
+    var rs = RuntimeState{};
+    const out = try rs.statusJson(std.testing.allocator);
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"packets_captured\":424242") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"flows_active\":7") != null);
+}
+
+test "healthJson exposes packets_captured, flows_active and counters from live counters" {
+    // STEP-43 + P0-8 remainder: RUNTIME_CONTRACT §4.1 counters must come
+    // from the daemon, with the same mapping the Python shim synthesizes
+    // (in=read, out=submitted, errors=pipe_errors, dropped=dropped).
+    const prev_read = runtime_state.g_nose_frames_read.load(.acquire);
+    const prev_sub = runtime_state.g_nose_frames_submitted.load(.acquire);
+    const prev_err = runtime_state.g_nose_pipe_errors.load(.acquire);
+    const prev_drop = runtime_state.g_nose_frames_dropped.load(.acquire);
+    defer {
+        runtime_state.g_nose_frames_read.store(prev_read, .monotonic);
+        runtime_state.g_nose_frames_submitted.store(prev_sub, .monotonic);
+        runtime_state.g_nose_pipe_errors.store(prev_err, .monotonic);
+        runtime_state.g_nose_frames_dropped.store(prev_drop, .monotonic);
+    }
+    const prev_flow: i64 = diag.metrics.flows_active.get();
+    defer diag.metrics.flows_active.set(prev_flow);
+    runtime_state.g_nose_frames_read.store(1000, .monotonic);
+    runtime_state.g_nose_frames_submitted.store(900, .monotonic);
+    runtime_state.g_nose_pipe_errors.store(3, .monotonic);
+    runtime_state.g_nose_frames_dropped.store(12, .monotonic);
+    diag.metrics.flows_active.set(5);
+    var rs = RuntimeState{};
+    const workers = WorkerReadiness{ .pipeline = true, .sensor = true, .nose = true, .etw = true, .fim = true, .registry = true, .failed = false, .failure_reason = "", .failure_mask = 0 };
+    const out = try rs.healthJson(std.testing.allocator, 1234, true, true, true, true, workers);
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"packets_captured\":900") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"flows_active\":5") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"counters\":{\"in_events\":1000,\"out_events\":900,\"errors\":3,\"dropped\":12}") != null);
 }

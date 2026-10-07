@@ -75,6 +75,10 @@ class TestRuntimeProbeLookup(unittest.TestCase):
 REQUIRED_FIELDS = ("component", "state", "pid", "uptime_ms", "last_event_ms",
                    "counters", "deps")
 REQUIRED_COUNTERS = ("in_events", "out_events", "errors", "dropped")
+# STEP-43 (CTRL-HEALTH-115): daemon also emits packets_captured (canonical
+# nose submissions) and flows_active (live flow-table gauge). Optional here
+# so older payloads still validate; when present they must be sane.
+OPTIONAL_INT_FIELDS = ("packets_captured", "flows_active")
 
 
 def validate_health_response(resp: dict[str, Any]) -> None:
@@ -105,6 +109,11 @@ def validate_health_response(resp: dict[str, Any]) -> None:
             raise AssertionError(f"dep entry missing name/state: {dep!r}")
         if dep["state"] not in VALID_STATES:
             raise AssertionError(f"dep state {dep['state']!r} invalid")
+    for field in OPTIONAL_INT_FIELDS:
+        if field in resp:
+            if not isinstance(resp[field], int) or resp[field] < 0:
+                raise AssertionError(f"{field} must be non-negative int, "
+                                     f"got {resp[field]!r}")
 
 
 class TestHealthSchemaValidator(unittest.TestCase):
@@ -175,6 +184,19 @@ class TestHealthSchemaValidator(unittest.TestCase):
 
     def test_dep_invalid_state_rejected(self):
         r = self._good(); r["deps"] = [{"name": "bridge", "state": "ZOMBIE"}]
+        with self.assertRaises(AssertionError):
+            validate_health_response(r)
+
+    def test_daemon_metric_keys_accepted_when_present(self):
+        # CTRL-HEALTH-115: live daemon payloads carry packets_captured /
+        # flows_active alongside counters; all three must validate together.
+        r = self._good()
+        r["packets_captured"] = 900
+        r["flows_active"] = 5
+        validate_health_response(r)
+
+    def test_negative_daemon_metric_rejected(self):
+        r = self._good(); r["packets_captured"] = 10; r["flows_active"] = -1
         with self.assertRaises(AssertionError):
             validate_health_response(r)
 

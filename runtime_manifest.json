@@ -1,10 +1,10 @@
 {
   "runtime_version": "5.0.0",
-  "head_sha": "3b3c4d3956560529d441f9ae58edfc343ca14584",
+  "head_sha": "14eb6347784a042670b0ee84ec100ed9fed114e7",
   "entrypoint": "src/main.zig",
   "production_binary": "zig-out/bin/aegis_nids.exe",
-  "source_commit": "3b3c4d3",
-  "date": "2026-10-07T07:36:44.187627+00:00",
+  "source_commit": "14eb634",
+  "date": "2026-10-07T07:53:05.567801+00:00",
   "production_modules": 3,
   "modules": {
     "nose/capture.go": {
@@ -484,7 +484,7 @@
     "installer": "tools/installer.py (consumes build_manifest.json, generates aegis_setup.exe; not a runtime)",
     "enforcement_mode": "detection-only until a provider-owned, receipt-producing WFP adapter is connected; no host block is claimed",
     "step_27_action_dispatcher_gap": "closed as a safety containment: ActionDispatcher cannot claim host effect without Rust PEP provider receipt",
-    "step_43_control_state_gap": "STILL PENDING: src/main.zig control responses (packets_captured: 0, flows_active: 0) must bind to real runtime metrics (STEP 43).",
+    "step_43_control_state_gap": "CLOSED by CTRL-HEALTH-115: system.status/health carry packets_captured (canonical nose submissions) + flows_active (live flow-table gauge), and daemon health carries counters (same mapping as the control_api synthesis); metrics.snapshot unchanged.",
     "step_50_installer_gap": "STILL PENDING: AEGIS_v5_fresh_deploy.ps1 embeds stale CI/config; removed from git index; preserved locally for STEP 50 fix.",
     "cleanup_status": "Step 2 complete (366 artifacts removed from git index); Step 3 ADR complete; Step 4 Build Truth verified (all 6 builds green, 5 artifacts present); .gitignore hardened with LF normalization.",
     "run_time_manifest_step": 5,
