@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """bridge_status.py - Write Bridge status to JSON for Nose/Mouth IPC"""
 import json, os, time, ctypes, sys
 from pathlib import Path

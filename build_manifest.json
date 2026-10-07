@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "523afa5",
+  "source_commit": "75e2c62",
   "build_date": "2026-10-03T20:43:09.417869+00:00",
   "build_host": "windows",
   "platform": {
@@ -234,8 +234,8 @@
     },
     {
       "path": "brain/__init__.py",
-      "size": 32,
-      "sha256": "dc22c672a8f153a56567126234f2fb243a977c2bdc08dd8b46abed735dcd99d2",
+      "size": 29,
+      "sha256": "0e613667807182b42bc4d328921e16f196e2cfd9d608720db7f8fbc2afc3ccb4",
       "language": "python/cython"
     },
     {
@@ -582,8 +582,8 @@
     },
     {
       "path": "brain/windows_brain.py",
-      "size": 45425,
-      "sha256": "8e4bfe18319a6edbe7a36ca3ca146dbf9e08546cf05893e7e3dcca9ab9c7450c",
+      "size": 45479,
+      "sha256": "bd018355d90738a3de04b3413dfcc1a104789fa77fd8a016d6ebfe6138170891",
       "language": "python/cython"
     },
     {
@@ -594,8 +594,8 @@
     },
     {
       "path": "bridge/__init__.py",
-      "size": 32,
-      "sha256": "dc22c672a8f153a56567126234f2fb243a977c2bdc08dd8b46abed735dcd99d2",
+      "size": 29,
+      "sha256": "0e613667807182b42bc4d328921e16f196e2cfd9d608720db7f8fbc2afc3ccb4",
       "language": "python/cython"
     },
     {
@@ -660,8 +660,8 @@
     },
     {
       "path": "bridge/bridge_status.py",
-      "size": 1556,
-      "sha256": "e71aba4a827a09e531114b74c381e636fb1e3ce4c8c9e3534920739664f2a528",
+      "size": 1553,
+      "sha256": "5d4524addbfe2d14804b7a7679abd0053e81dc3d9a083498f1af9a5a87bb4491",
       "language": "python/cython"
     },
     {
@@ -2167,7 +2167,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18563,
-      "sha256": "1c9b610bbd5766dbbb69f75fbd0e6143bf7fd770c4e484e2e5528db49a816a1f",
+      "sha256": "039ae7e6736a55070202a185f931131df7c4f772284b07b5cc9da75b5c3d28c9",
       "language": "json"
     },
     {
@@ -2226,8 +2226,8 @@
     },
     {
       "path": "scripts/aegis_daemon.py",
-      "size": 34233,
-      "sha256": "9b5b2f86a953957733cf53538dd23035696d9d7a330f0a27bed6967e39864e8b",
+      "size": 34230,
+      "sha256": "4aca77148f335f67ace6915c1c7669eba37cc109a5d0d2beaa9973f4973f6c43",
       "language": "python/cython"
     },
     {
@@ -2850,8 +2850,8 @@
     },
     {
       "path": "scripts/tests/aegis_nose_test.py",
-      "size": 12794,
-      "sha256": "90158f8bdc5e5bf879c01b480771e1059e7cee70a51e0f7118e8dc5a576c8ee9",
+      "size": 12791,
+      "sha256": "a39ad1b0eea69bdef517aaf04bf730a011ef83dd8f2c1bfa17ce4d3f112859d9",
       "language": "python/cython"
     },
     {

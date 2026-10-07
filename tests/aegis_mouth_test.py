@@ -1,4 +1,4 @@
-﻿"""
+"""
 AEGIS NIDS — Mouth (Rust) Clean Test Suite v2.0
 ==============================================
 ทดสอบ Rust Mouth subsystem แยกจาก Nose — ตรวจเฉพาะหน้าที่ของ Mouth

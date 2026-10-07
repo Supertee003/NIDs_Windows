@@ -670,14 +670,14 @@ def main():
         # Keep a plain token before the ANSI banner so Windows supervisors and
         # version probes can parse the semantic version without escape codes.
         print("AEGIS BRAIN 2.0.0")
-        print("\e[96m╔═════════════════════════════════════════════════════════════╗\e[0m")
-        print("\e[96m║ \e[1mAEGIS BRAIN 2.0.0\e[0m                              \e[96m║\e[0m")
-        print("\e[96m║  Regex Engine + IPS Enforcer + Bridge IPC                     ║\e[0m")
-        print("\e[96m╠═════════════════════════════════════════════════════════════╣\e[0m")
-        print("\e[96m║  Cython: " + ("\e[92mENABLED\e[0m" if CYTHON_AVAILABLE else "\e[91mDISABLED (pure-Python)\e[0m") + "                          ║\e[0m")
-        print("\e[96m║  Bridge IPC: " + ("\e[92mCONNECTED\e[0m" if BRIDGE_AVAILABLE else "\e[91mSTANDALONE MODE\e[0m") + "               ║\e[0m")
-        print("\e[96m║  Rules loaded: " + str(len(load_rules().get("nids_rules", []))) + "                          ║\e[0m")
-        print("\e[96m╚═════════════════════════════════════════════════════════════╝\e[0m")
+        print("\x1b[96m╔═════════════════════════════════════════════════════════════╗\x1b[0m")
+        print("\x1b[96m║ \x1b[1mAEGIS BRAIN 2.0.0\x1b[0m                              \x1b[96m║\x1b[0m")
+        print("\x1b[96m║  Regex Engine + IPS Enforcer + Bridge IPC                     ║\x1b[0m")
+        print("\x1b[96m╠═════════════════════════════════════════════════════════════╣\x1b[0m")
+        print("\x1b[96m║  Cython: " + ("\x1b[92mENABLED\x1b[0m" if CYTHON_AVAILABLE else "\x1b[91mDISABLED (pure-Python)\x1b[0m") + "                          ║\x1b[0m")
+        print("\x1b[96m║  Bridge IPC: " + ("\x1b[92mCONNECTED\x1b[0m" if BRIDGE_AVAILABLE else "\x1b[91mSTANDALONE MODE\x1b[0m") + "               ║\x1b[0m")
+        print("\x1b[96m║  Rules loaded: " + str(len(load_rules().get("nids_rules", []))) + "                          ║\x1b[0m")
+        print("\x1b[96m╚═════════════════════════════════════════════════════════════╝\x1b[0m")
         sys.exit(0)
 
     os.makedirs("logs", exist_ok=True)

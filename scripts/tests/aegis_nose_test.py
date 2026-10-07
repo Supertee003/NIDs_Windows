@@ -1,4 +1,4 @@
-﻿"""
+"""
 AEGIS NIDS — Nose (Go) Clean Test Suite v2.0
 ==============================================
 ทดสอบ Go Nose subsystem แยกจาก Mouth — ตรวจเฉพาะหน้าที่ของ Nose
