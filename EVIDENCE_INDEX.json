@@ -1,5 +1,5 @@
 {
-  "head_sha": "65d6a80c853c8dbe894a1b2411161f8c097d016f",
+  "head_sha": "cdf2f6856d84958aa2dbc4426701edf58816dbe7",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2067,6 +2067,30 @@
       ],
       "result": "PASS",
       "finding": "Gates now check what they claim; dead ACTION_DISPATCHER constant and stale test_results.txt names left untouched as historical."
+    },
+    {
+      "id": "EVT-070",
+      "head_sha": "cdf2f6856d84958aa2dbc4426701edf58816dbe7",
+      "timestamp": "2026-10-07",
+      "title": "NOSE-SYS-143: live IP Helper traffic source with host proof (additive only)",
+      "level": "E5",
+      "component": "nose",
+      "description": "readTrafficFromSystem now samples GetAdaptersAddresses plus GetIfEntry octets/packets on Up+Dormant non-loopback adapters (32-bit wrap-aware deltas, accurate to ~34 Gbps at 1s sampling) and counts ESTABLISHED TCP endpoints via GetTcpTable2; x/sys moved to a direct dependency (offline-safe, hashes present). Fallback and synthetic talkers untouched, so Simulated stays true and the display keeps its honest label. Live host proof with temporary probes (deleted after): 27.7M/4.17M cumulative packets, 26 ESTAB conns, three-tick rates ~3.5k/390 pkt/s. Debugging detour recorded: strict OperStatus==Up finds zero adapters here (virtual NICs report Dormant), and the first tick is always zero by design (no baseline yet). No capture, no driver, no admin, no enforcement surface.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "nose/traffic_sys_windows.go",
+        "nose/traffic_sys_other.go",
+        "nose/collectors.go",
+        "nose/go.mod",
+        "nose/collectors_test.go"
+      ],
+      "tests": [
+        "go vet clean; 8 targeted Go pins green (delta/wrap/tcp-parse/fallback/wire/titles)",
+        "go test -count=1 nose green",
+        "temporary live probes (3-tick rates + totals) then deleted"
+      ],
+      "result": "PASS",
+      "finding": "Operator numbers are real OS telemetry; talkers stay synthetic until a capture-fed source lands (explicit next step)."
     }
   ],
   "evidence_level_summary": {
@@ -2075,7 +2099,7 @@
     "E2_count": 55,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 11,
+    "E5_count": 12,
     "E6_count": 0,
     "E7_count": 0
   }
