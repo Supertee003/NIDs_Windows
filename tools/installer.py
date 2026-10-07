@@ -15,6 +15,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 MANIFEST_PATH = ROOT / "build_manifest.json"
+BUILD_TRUTH_PATH = ROOT / "build_truth.json"
+
+# Basenames already covered by the static template below. Manifest-derived
+# lines dedupe against this set so nothing is packaged twice.
+STATIC_FILES = {
+    "rules.json", "policies.json", "aegis_nids.exe", "aegis_pep.dll",
+    "aegis-nose.exe", "aegis_ipc.dll", "aegis_wfp_user.dll",
+    "aegis_etw_helper.dll", "aegis_fim_helper.dll", "build_manifest.json",
+}
 
 
 def load_manifest() -> dict:
@@ -34,6 +43,40 @@ def file_directive(name: str, dest: str = "") -> str:
     if dest:
         return f'  File /oname={dest} "{name}"'
     return f'  File "{name}"'
+
+
+def manifest_binaries() -> list[str]:
+    """Manifest-derived installable outputs (DEPLOY-119, additive).
+
+    Reads build_truth.json ``produces`` lists — the authoritative
+    build-command-to-output map. SUPPORT-classified outputs (shield
+    screening DLL, aggregator sidecar) and advisory-only entries (TS)
+    are excluded: the installer packs the production runtime only.
+    Only files present on disk are returned (never reference unbuilt
+    outputs); basenames covered by the static template are deduped.
+    Returns NSIS-style backslash paths, sorted. Empty (not error) when
+    build_truth.json is missing or nothing is built yet.
+    """
+    try:
+        truth = json.loads(BUILD_TRUTH_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    out: list[str] = []
+    seen = {name.lower() for name in STATIC_FILES}
+    for entry in truth.get("build_commands", {}).values():
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("classification") == "SUPPORT":
+            continue
+        for prod in entry.get("produces", []) or []:
+            full = ROOT / Path(str(prod).replace("/", os.sep))
+            if not full.is_file():
+                continue
+            if full.name.lower() in seen:
+                continue
+            seen.add(full.name.lower())
+            out.append(str(prod).replace("/", "\\"))
+    return sorted(out)
 
 
 NSIS_TEMPLATE = r"""#!define APPNAME "AEGIS NIDS"
@@ -111,6 +154,16 @@ def generate_nsi(nsi_path: Path) -> None:
     for comp in components:
         lines.append(f"; component: {comp.get('id', 'unknown')} ({comp.get('language', '?')})")
     lines.append(NSIS_TEMPLATE.replace("@AEGIS_COMMIT@", head))
+    # Manifest-derived runtime outputs (DEPLOY-119, additive; the static
+    # template above is unchanged). Section header + count always emitted
+    # so output shape is deterministic even on a clean checkout.
+    extra = manifest_binaries()
+    lines.append("; Manifest-derived runtime outputs (build_truth.json produces, "
+                 "present on disk at generation)")
+    lines.append(f"; manifest binaries included: {len(extra)}")
+    if extra:
+        lines.append('SetOutPath "$INSTDIR\\runtime"')
+        lines.extend(file_directive(p) for p in extra)
 
     nsi_path.parent.mkdir(parents=True, exist_ok=True)
     nsi_path.write_text("\n".join(lines), encoding="utf-8")

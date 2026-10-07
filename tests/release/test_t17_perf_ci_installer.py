@@ -253,6 +253,63 @@ def test_ac4_installer_generates_nsi() -> None:
     assert "configs\\" in nsi
 
 
+def _load_installer_module():
+    """Import tools/installer.py by path (stdlib-only module, no host effects)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "aegis_installer", REPO_ROOT / "tools" / "installer.py")
+    assert spec is not None and spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_ac4_manifest_binaries_exclude_support_and_static() -> None:
+    """DEPLOY-119: manifest-derived lines pack production outputs only."""
+    mod = _load_installer_module()
+    bins = mod.manifest_binaries()
+    assert isinstance(bins, list)
+    for b in bins:
+        assert (REPO_ROOT / b.replace("\\", "/")).is_file(), \
+            f"manifest binary missing on disk: {b}"
+        assert b.split("\\")[-1].lower() not in {n.lower() for n in mod.STATIC_FILES}, \
+            f"duplicate of static template: {b}"
+    # SUPPORT outputs and advisory entries never ship in the installer.
+    joined = "\n".join(bins).lower()
+    assert "sec_monitor.dll" not in joined
+    assert "aegis-aggregator.exe" not in joined
+    assert "aggregator.exe" not in joined
+
+
+def test_ac4_generated_nsi_has_manifest_section() -> None:
+    """DEPLOY-119: generated NSI carries the manifest-derived section
+    next to the untouched static template."""
+    proc = subprocess.run(
+        [sys.executable, "tools/installer.py", "--generate",
+         "--nsi", str(REPO_ROOT / "logs" / "runtime" / "aegis_t17_manifest.nsi")],
+        cwd=REPO_ROOT, capture_output=True, text=True,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    nsi = (REPO_ROOT / "logs" / "runtime" / "aegis_t17_manifest.nsi").read_text(encoding="utf-8")
+    assert "Manifest-derived runtime outputs" in nsi
+    assert "manifest binaries included:" in nsi
+    assert 'Section "Install"' in nsi  # static template intact
+    assert "file_directive" not in nsi  # helper output, never its source
+
+
+def test_ac4_generated_installer_outputs_ignored() -> None:
+    """DEPLOY-119: generated installer outputs stay out of git status
+    while canonical templates remain tracked."""
+    gi = _read(".gitignore")
+    for pat in ("installer.generated.nsi", "aegis-installer-*.exe", "aegis_setup.exe"):
+        assert pat in gi, f"gitignore must cover generated output: {pat}"
+    tracked = subprocess.run(
+        ["git", "ls-files", "installer.nsi", "installer/aegis.nsi"],
+        cwd=REPO_ROOT, capture_output=True, text=True,
+    ).stdout
+    assert "installer.nsi" in tracked and "installer/aegis.nsi" in tracked
+
+
 # =====================================================================
 # AC5 - Upgrade / Rollback / Recovery with measured RPO/RTO
 # =====================================================================
