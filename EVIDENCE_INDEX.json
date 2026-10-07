@@ -1,5 +1,5 @@
 {
-  "head_sha": "3ecc9d825b4d9ba8be6ee2cb744da8f738ca2a6d",
+  "head_sha": "93917fbec420314923065b195dba3ae3dc043cc4",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2294,6 +2294,23 @@
       ],
       "result": "PASS",
       "finding": "Old mismatch findings are superseded records, not live defects; files_changed is empty by design."
+    },
+    {
+      "id": "EVT-081",
+      "head_sha": "93917fbec420314923065b195dba3ae3dc043cc4",
+      "timestamp": "2026-10-07",
+      "title": "GAP-009 partial verification: live flags confirmed, Npcap host-proven, ETW/FIM need elevation",
+      "level": "E5",
+      "component": "integration",
+      "description": "Bullets 1-2 hold in current code (bridge_init live flags set only on real init success; daemon subsystemStarted/Degraded with reasons; healthJson deps/subsystems/workers from live state). Bullet 3 host proof: Npcap verified live just now (--capture-probe 43,835 packets/15s, timeouts 0, binary built from HEAD then deleted). ETW session start and System32/SysWOW64 FIM watches need elevation this host lacks, so GAP-009 stays OPEN with its remaining scope now precisely bounded.",
+      "flow_id": "DATA-001",
+      "files_changed": [],
+      "tests": [
+        "live --capture-probe: 43835 packets, 0 timeouts, binary removed after",
+        "code-truth re-verification of flag plumbing (no code change)"
+      ],
+      "result": "PASS",
+      "finding": "Two of three bullets are done and proven; the gap is now an elevation-gated remainder, not an unknown."
     }
   ],
   "evidence_level_summary": {
@@ -2302,7 +2319,7 @@
     "E2_count": 60,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 15,
+    "E5_count": 16,
     "E6_count": 0,
     "E7_count": 0
   }
