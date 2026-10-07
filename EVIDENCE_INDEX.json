@@ -1,5 +1,5 @@
 {
-  "head_sha": "9667599ba8f8bb757a2cee90222df9e759f101f8",
+  "head_sha": "b99aed26171b28e86144da06852ec82b6ddb0238",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2028,12 +2028,33 @@
       ],
       "result": "PASS",
       "finding": "Cython bridge verified on-host; files_changed is empty by design."
+    },
+    {
+      "id": "EVT-068",
+      "head_sha": "b99aed26171b28e86144da06852ec82b6ddb0238",
+      "timestamp": "2026-10-07",
+      "title": "NOSE-SIM-139: Simulated flag wired from fallback to display (additive only)",
+      "level": "E2",
+      "component": "nose",
+      "description": "TrafficData gains a simulated JSON key set by each synthetic stage (fallback numbers, always-synthetic TopTalkers/Protocols); TUI headers and the zero-state default follow the flag instead of hardcoded labels, so a future real source flips the display automatically; the pure fallback extractor makes the contract unit-testable. Status JSON carries the flag with no main.go change. Pre-existing space-indent Go style kept (gofmt -w would reflow whole files, out of scope).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "nose/collectors.go",
+        "nose/model.go",
+        "nose/collectors_test.go"
+      ],
+      "tests": [
+        "go vet clean; 3 new Go pins run green by name (flag, wire form, titles)",
+        "go test -count=1 nose green"
+      ],
+      "result": "PASS",
+      "finding": "Synthesis is now labeled at the data layer, not just in display strings."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 12,
-    "E2_count": 53,
+    "E2_count": 54,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 11,
