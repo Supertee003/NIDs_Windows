@@ -1,5 +1,5 @@
 {
-  "head_sha": "cdf2f6856d84958aa2dbc4426701edf58816dbe7",
+  "head_sha": "3e91b376e6ab43bcd5c6256f1626af30e5ad4c7f",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2091,6 +2091,30 @@
       ],
       "result": "PASS",
       "finding": "Operator numbers are real OS telemetry; talkers stay synthetic until a capture-fed source lands (explicit next step)."
+    },
+    {
+      "id": "EVT-071",
+      "head_sha": "3e91b376e6ab43bcd5c6256f1626af30e5ad4c7f",
+      "timestamp": "2026-10-07",
+      "title": "NOSE-TALK-145: live Top Talkers from Npcap capture (additive, opt-in)",
+      "level": "E5",
+      "component": "nose",
+      "description": "Endpoint-symmetric live talkers table (freshness-gated, bounded, mutex-guarded) fed by passive non-promiscuous capture under opt-in --live-talkers; loop prefers the live snapshot and Simulated clears only when numbers and talkers are both real. Caught live on host: fixed-split protocols overwrote live shares (reordered; unit tests cover the helper, not the loop order). Follow-up live run: simulated False, real IPv6/LAN talkers, TCP 422 / UDP 32958 cumulative. A whitespace-only model.go drift found uncommitted was reverted to keep the committed as-tested state. No pipe/enforcement change.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "nose/talkers_live.go",
+        "nose/collectors.go",
+        "nose/main.go",
+        "nose/go.mod",
+        "nose/collectors_test.go"
+      ],
+      "tests": [
+        "9 Go pins green by name (delta/wrap/tcp-parse/observer/branches)",
+        "go test -count=1 nose green; go vet clean",
+        "two temporary live probes (deleted after): totally real rates ~3.5k pkt/s, then simulated False with live talkers"
+      ],
+      "result": "PASS",
+      "finding": "Talkers are observed, not invented, whenever the operator opts in; default behavior is byte-identical."
     }
   ],
   "evidence_level_summary": {
@@ -2099,7 +2123,7 @@
     "E2_count": 55,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 12,
+    "E5_count": 13,
     "E6_count": 0,
     "E7_count": 0
   }
