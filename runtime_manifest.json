@@ -1,10 +1,10 @@
 {
   "runtime_version": "5.0.0",
-  "head_sha": "14eb6347784a042670b0ee84ec100ed9fed114e7",
+  "head_sha": "6cdacea6216a25f7232e050af07b1c9738e1ac54",
   "entrypoint": "src/main.zig",
   "production_binary": "zig-out/bin/aegis_nids.exe",
-  "source_commit": "14eb634",
-  "date": "2026-10-07T07:53:05.567801+00:00",
+  "source_commit": "6cdacea",
+  "date": "2026-10-07T08:00:04.875429+00:00",
   "production_modules": 3,
   "modules": {
     "nose/capture.go": {
@@ -485,7 +485,7 @@
     "enforcement_mode": "detection-only until a provider-owned, receipt-producing WFP adapter is connected; no host block is claimed",
     "step_27_action_dispatcher_gap": "closed as a safety containment: ActionDispatcher cannot claim host effect without Rust PEP provider receipt",
     "step_43_control_state_gap": "CLOSED by CTRL-HEALTH-115: system.status/health carry packets_captured (canonical nose submissions) + flows_active (live flow-table gauge), and daemon health carries counters (same mapping as the control_api synthesis); metrics.snapshot unchanged.",
-    "step_50_installer_gap": "STILL PENDING: AEGIS_v5_fresh_deploy.ps1 embeds stale CI/config; removed from git index; preserved locally for STEP 50 fix.",
+    "step_50_installer_gap": "CLOSED by DEPLOY-117: tools/fresh_deploy.py chains release --verify + runtime.json validation + snapshot + installer --package + report, fail-closed; --plan runs read-only steps with zero writes (pinned by tests/release/test_fresh_deploy.py). Residual: NSI body stays a static template, not yet manifest-driven.",
     "cleanup_status": "Step 2 complete (366 artifacts removed from git index); Step 3 ADR complete; Step 4 Build Truth verified (all 6 builds green, 5 artifacts present); .gitignore hardened with LF normalization.",
     "run_time_manifest_step": 5,
     "build_truth_verified": true,

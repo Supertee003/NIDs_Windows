@@ -264,7 +264,7 @@ manifest = {
         'enforcement_mode': 'detection-only until a provider-owned, receipt-producing WFP adapter is connected; no host block is claimed',
         'step_27_action_dispatcher_gap': 'closed as a safety containment: ActionDispatcher cannot claim host effect without Rust PEP provider receipt',
         'step_43_control_state_gap': 'CLOSED by CTRL-HEALTH-115: system.status/health carry packets_captured (canonical nose submissions) + flows_active (live flow-table gauge), and daemon health carries counters (same mapping as the control_api synthesis); metrics.snapshot unchanged.',
-        'step_50_installer_gap': 'STILL PENDING: AEGIS_v5_fresh_deploy.ps1 embeds stale CI/config; removed from git index; preserved locally for STEP 50 fix.',
+        'step_50_installer_gap': 'CLOSED by DEPLOY-117: tools/fresh_deploy.py chains release --verify + runtime.json validation + snapshot + installer --package + report, fail-closed; --plan runs read-only steps with zero writes (pinned by tests/release/test_fresh_deploy.py). Residual: NSI body stays a static template, not yet manifest-driven.',
         'cleanup_status': 'Step 2 complete (366 artifacts removed from git index); Step 3 ADR complete; Step 4 Build Truth verified (all 6 builds green, 5 artifacts present); .gitignore hardened with LF normalization.',
         'run_time_manifest_step': 5,
         'build_truth_verified': True,
