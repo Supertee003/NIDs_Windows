@@ -1,5 +1,5 @@
 {
-  "head_sha": "1d4aca26fd842008166a9c90fb1833f5d0e24f26",
+  "head_sha": "0d5c29939f81210d8c697910d03f6f23b0dd52d5",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2371,11 +2371,29 @@
       ],
       "result": "PASS",
       "finding": "Visualization and vocabulary now ship with the repo; no production change."
+    },
+    {
+      "id": "EVT-085",
+      "head_sha": "0d5c29939f81210d8c697910d03f6f23b0dd52d5",
+      "timestamp": "2026-10-07",
+      "title": "ARCHIFY-170: acquisition dataflow diagram from repo evidence (additive only)",
+      "level": "E1",
+      "component": "docs",
+      "description": "Packets-to-fabric dataflow with per-node source lines; minifilter shown honestly as a logs/alerts sink (no CanonicalEvent emission verified); talkers own-handle fact kept in node and card after the direct edge proved unroutable across five repair rounds. Finalize all gates pass with zero diagnostics. Previewed.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        ".archify/dataflow-acquisition-20261007-184115/"
+      ],
+      "tests": [
+        "archify finalize receipt: validate, deliver, check, browser-check pass"
+      ],
+      "result": "PASS",
+      "finding": "Second repo-backed visualization ships; minifilter downstream remains the one explicitly marked unknown."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 16,
+    "E1_count": 17,
     "E2_count": 60,
     "E3_count": 7,
     "E4_count": 0,
