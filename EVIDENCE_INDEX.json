@@ -1,5 +1,5 @@
 {
-  "head_sha": "1ff7feed2e38c8394bc9082dfdee49461675008a",
+  "head_sha": "087a865005bf0e0c67b8826410652c57bc906c85",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -1830,12 +1830,39 @@
       ],
       "result": "PASS",
       "finding": "Manifest grows additively; the junk-exclusion policy and the stale bridge/build records remain explicitly open for a dedicated owner decision."
+    },
+    {
+      "id": "EVT-058",
+      "head_sha": "087a865005bf0e0c67b8826410652c57bc906c85",
+      "timestamp": "2026-10-07",
+      "title": "SHIELD-WIRE-123: sec_monitor screening provider wired into daemon init (additive only, nothing deleted)",
+      "level": "E2",
+      "component": "security",
+      "description": "New src/policy/shield_screen.zig loads sec_monitor.dll via runtime DynLib only (no link-time extern, so NEG-001 pins pass untouched) and maps the exact FFI contract (0 clean, >0 suspicious, <0 rejected, unknown when absent). Daemon sets shield_loaded/payload_screening (new Tier3Subsystem field) without touching enforcement gating; enforcementStatus exposes both keys. Owner allowlists added to the two shield-linkage scanners for the single loader module; t16-adjacent truth preserved. DLL-absent behavior is bit-identical (unknown default). Positive-path load is host-dependent (needs cargo-built DLL) and stays E5-manual, not claimed here.",
+      "flow_id": "FFI-001",
+      "files_changed": [
+        "src/policy/shield_screen.zig",
+        "src/policy/tier3_state.zig",
+        "src/daemon.zig",
+        "src/control/handler_registry.zig",
+        "src/all_tests.zig",
+        "tests/security/test_forbidden_edges.py",
+        "tools/aegisctl/api/control_api.py"
+      ],
+      "tests": [
+        "4 new Zig pins (unavailable default, fail-closed load, canonical path, no-CWD) + enforcementStatus flag pin",
+        "2 updated Python pins (linkage allowlist, dynlib-only loader)",
+        "zig build test green (2 constness compile iterations fixed: var lib, local-copy close)",
+        "pytest tests/security 18 passed; release --verify 539/539"
+      ],
+      "result": "PASS",
+      "finding": "Shield is a working runtime part again (load, consult, observe) with zero enforcement authority and zero deletions."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 12,
-    "E2_count": 49,
+    "E2_count": 50,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 5,
