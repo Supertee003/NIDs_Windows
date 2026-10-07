@@ -438,5 +438,52 @@ class TestEndpointOwnershipInHealth(unittest.TestCase):
             self.assertEqual(len(calls), 2)
 
 
+class TestTrafficGaugesInHealth(unittest.TestCase):
+    """CLI-SHOW-158: daemon traffic gauges ride the health payload."""
+
+    def setUp(self):
+        control_api._reset_endpoint_ownership_cache()
+
+    def tearDown(self):
+        control_api._reset_endpoint_ownership_cache()
+
+    def _payload_for(self, daemon_health):
+        with patch.object(control_api, "_query_daemon_retry", return_value=daemon_health), \
+             patch.object(control_api, "get_all_status", return_value=[]), \
+             patch.object(control_api, "compute_health_state", return_value=("RUNNING", False)), \
+             patch.object(control_api, "diagnose_endpoint_ownership",
+                          return_value={"findings": [], "foreign_count": 0}):
+            return control_api.get_health_payload()
+
+    def _daemon_with(self, **overrides):
+        base = {
+            "component": "core",
+            "state": "RUNNING",
+            "runtime_state": "RUNNING",
+            "pid": 4321,
+            "uptime_ms": 100,
+            "last_event_ms": 7,
+            "capabilities": {"wfp": False},
+            "subsystems": [],
+            "workers": {"failure_mask": 0},
+            "data_plane": {},
+        }
+        base.update(overrides)
+        return base
+
+    def test_daemon_gauges_forwarded_verbatim(self):
+        payload = self._payload_for(self._daemon_with(
+            packets_captured=424242, flows_active=7))
+        self.assertEqual(payload["packets_captured"], 424242)
+        self.assertEqual(payload["flows_active"], 7)
+
+    def test_missing_gauges_read_as_zero(self):
+        # Pre-slice daemons carry no such keys; downstream .get(key, 0)
+        # convention is preserved here.
+        payload = self._payload_for(self._daemon_with())
+        self.assertEqual(payload["packets_captured"], 0)
+        self.assertEqual(payload["flows_active"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()

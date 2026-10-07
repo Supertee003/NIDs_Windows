@@ -2,8 +2,10 @@
 """AEGIS NIDS Control Plane API — Business logic shared by CLI, TUI, and WEB.
 
 This module contains ALL enforcement and operational logic. The frontend
-interfaces (CLI at tools/aegisctl.py, TUI at tools/aegisctl/commands/console.py,
-and any WEB layer) must be THIN clients that delegate to this API.
+interfaces (CLI at tools/aegisctl.py and WEB at
+tools/aegisctl/web_dashboard/) must be THIN clients that delegate to
+this API. (There is no Python TUI; the operator TUI is the Go
+nose/bubbletea interface.)
 
 STRICT INVARIANT: No component may bypass the Rust PEP for enforcement.
 All block/allow/quarantine requests route through aegis_pep_enforce() FFI.
@@ -955,6 +957,11 @@ def get_health_payload() -> Dict[str, Any]:
             "runtime_state": daemon_health.get("runtime_state", daemon_health.get("state", "DEGRADED")),
             "rules_loaded": int(daemon_health.get("rules_loaded", 0) or 0),
             "policies_loaded": int(daemon_health.get("policies_loaded", 0) or 0),
+            # CLI-SHOW-158: forward the daemon traffic gauges for operator
+            # displays (absent on pre-slice daemons reads as 0, matching the
+            # legacy .get(key, 0) convention downstream).
+            "packets_captured": int(daemon_health.get("packets_captured", 0) or 0),
+            "flows_active": int(daemon_health.get("flows_active", 0) or 0),
             # FE-DEF-095a: daemon-owned DEFCON passthrough (control/defcon.zig
             # via healthJson). Invalid shapes become None so UIs fall back
             # to their local evidence ladder instead of rendering garbage.

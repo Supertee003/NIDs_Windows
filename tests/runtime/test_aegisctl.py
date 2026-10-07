@@ -108,6 +108,23 @@ class TestAegisctlStatusCommand(unittest.TestCase):
             f"expected running or connection error, got: stdout={stdout!r} stderr={stderr!r}"
         )
 
+    def test_status_shows_traffic_gauges(self):
+        # CLI-SHOW-158: operator-visible packets/flows lines.
+        rc, stdout, stderr = _run_aegisctl("status")
+        self.assertEqual(rc, 0, f"status should exit 0, got {rc}; stderr={stderr}")
+        self.assertIn("Packets captured:", stdout)
+        self.assertIn("Flows active:", stdout)
+
+    def test_status_json_carries_traffic_gauges(self):
+        # CLI-SHOW-158: machine-readable status exposes the gauges even
+        # against pre-slice daemons (absent reads as 0).
+        import json as _json
+        rc, stdout, stderr = _run_aegisctl("status", "--json")
+        self.assertEqual(rc, 0, f"status --json should exit 0, got {rc}; stderr={stderr}")
+        document = _json.loads(stdout)
+        self.assertIn("packets_captured", document["health"])
+        self.assertIn("flows_active", document["health"])
+
 
 class TestAegisctlHealthCommand(unittest.TestCase):
     """`aegisctl health` must probe runtime health via pipe."""

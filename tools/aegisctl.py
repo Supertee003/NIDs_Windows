@@ -129,6 +129,8 @@ def cmd_status(args) -> int:
         print(f"\n  State: {health['state']}")
         print(f"  Version: {health.get('version', 'unknown')}")
         print(f"  Uptime: {health.get('uptime_ms', 0)} ms")
+        print(f"  Packets captured: {health.get('packets_captured', 0)}")
+        print(f"  Flows active: {health.get('flows_active', 0)}")
         print(f"  {running}/{total} subsystems running")
         for name, is_running, pid in statuses:
             if is_running:
@@ -294,6 +296,8 @@ def cmd_health(args) -> int:
             return 1 if getattr(args, "strict", False) and payload.get("degraded", True) else 0
         print(f"  State: {payload.get('state', 'UNKNOWN')}")
         print(f"  Degraded: {payload.get('degraded', True)}")
+        print(f"  Packets captured: {payload.get('packets_captured', 0)}")
+        print(f"  Flows active: {payload.get('flows_active', 0)}")
         print(f"\n  Health payload: {payload}")
         workers = payload.get("workers", {})
         if workers:
