@@ -1,5 +1,5 @@
 {
-  "head_sha": "de82caf99b2d9b7752c19d646b72bcf3138fd56c",
+  "head_sha": "e61de4e6414ad73da28360ff8f02e8e8e9993af3",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -1877,6 +1877,27 @@
       ],
       "result": "PASS",
       "finding": "The exact FFI contract the loader depends on holds on the real binary; loader stays DynLib-only with unknown default elsewhere."
+    },
+    {
+      "id": "EVT-060",
+      "head_sha": "e61de4e6414ad73da28360ff8f02e8e8e9993af3",
+      "timestamp": "2026-10-07",
+      "title": "DEPLOY-127: fail-closed abort proven live; snapshot works, package refuses without NSIS, tree stays clean",
+      "level": "E5",
+      "component": "release",
+      "description": "Live fresh_deploy run on this Windows host (no NSIS): preflight OK, validate OK, snapshot OK into ignored logs/snapshots, package FAIL rc=2 with the makensis message, report SKIPPED by the new abort, exit 2. The run exposed the old run-all behavior (report executed after failure); fixed to abort with SKIPPED marks plus a hermetic abort pin. git status after the live run shows only pre-existing stamps and slice files: snapshots and installer.generated.nsi are invisible, proving the INSTALL-119 gitignore hygiene on a live path.",
+      "flow_id": "T20-AC4",
+      "files_changed": [
+        "tools/fresh_deploy.py",
+        "tests/release/test_fresh_deploy.py"
+      ],
+      "tests": [
+        "live run record above (preflight/validate/snapshot OK, package FAIL rc=2, report SKIPPED)",
+        "pytest tests/release/test_fresh_deploy.py 4 passed (incl. hermetic abort pin)",
+        "git status clean of run outputs"
+      ],
+      "result": "PASS",
+      "finding": "Fail-closed is now an executed behavior, not just a code branch; full live success still needs NSIS (CI package-release covers that leg)."
     }
   ],
   "evidence_level_summary": {
@@ -1885,7 +1906,7 @@
     "E2_count": 50,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 6,
+    "E5_count": 7,
     "E6_count": 0,
     "E7_count": 0
   }
