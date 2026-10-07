@@ -428,13 +428,20 @@ def test_shield_screening_surface_is_minimal():
 
 def test_zig_has_no_shield_linkage():
     """No Zig code links the shield crate: no shield FFI names, DLL names,
-    or legacy helper references outside comments (PEP-NEG-116)."""
+    or legacy helper references outside comments (PEP-NEG-116).
+
+    Sole exception: src/policy/shield_screen.zig, the DynLib-only loader
+    (SHIELD-WIRE-123) — the one module allowed to name the DLL/symbol,
+    mirroring how only pep_bindings.zig may declare the aegis_pep FFI.
+    """
     bad = []
     found = 0
     for p in (REPO / "src").rglob("*.zig"):
         if p.suffixes == [".zig", ".scaffold"]:
             continue
         if p.name.endswith(".scaffold"):
+            continue
+        if p.name == "shield_screen.zig":
             continue
         found += 1
         for i, line in code_lines(p, "//"):
@@ -443,3 +450,11 @@ def test_zig_has_no_shield_linkage():
                 bad.append(f"{p.relative_to(REPO)}:{i}:{line.strip()[:100]}")
     assert found > 100, f"zig scan surface too small: {found}"
     assert bad == [], f"shield linkage in Zig code: {bad}"
+
+
+def test_shield_loader_is_dynlib_only():
+    """SHIELD-WIRE-123: the loader must not introduce a link-time extern
+    (that would trip test_zig_pep_extern_lives_in_one_module)."""
+    text = (REPO / "src" / "policy" / "shield_screen.zig").read_text(encoding="utf-8")
+    assert 'extern "sec_monitor"' not in text
+    assert "DynLib" in text

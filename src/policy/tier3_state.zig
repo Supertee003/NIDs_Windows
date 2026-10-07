@@ -78,6 +78,11 @@ pub const Tier3Subsystem = struct {
     state: Tier3State = .absent,
     pep_loaded: bool = false,
     payload_screening: bool = false,
+    /// SHIELD-WIRE-123: sec_monitor.dll screening provider loaded by the
+    /// daemon via policy/shield_screen.zig (DynLib, advisory only).
+    /// Independent of `state`: screening availability never gates
+    /// enforcement; only `state == .ready` (PEP path) does that.
+    shield_loaded: bool = false,
     error_message: ?[]const u8 = null,
     init_attempted: bool = false,
 

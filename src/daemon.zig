@@ -589,6 +589,15 @@ pub fn runDaemon() !void {
         tier3.g_tier3.markAbsent("aegis_pep.dll not loaded");
         diag.critical("Tier-3 state: ABSENT — PEP unavailable, DETECTION-ONLY MODE: no enforcement", .{});
     }
+    // SHIELD-WIRE-123: payload-screening provider (advisory only, DynLib).
+    // Never affects the enforcement gating above: when the DLL is absent
+    // both flags keep their initialized values (prior behavior identical).
+    const shield_screen = @import("policy/shield_screen.zig");
+    if (shield_screen.tryLoadDefault()) {
+        tier3.g_tier3.shield_loaded = true;
+        tier3.g_tier3.payload_screening = true;
+        diag.info("Tier-3 screening provider loaded (advisory only, no enforcement authority)", .{});
+    }
     // PATCH-15: PEP availability check — detection-only mode if unavailable
     state.g_pep_available.store(pep_enf.available, .monotonic);
     if (!pep_enf.available) {

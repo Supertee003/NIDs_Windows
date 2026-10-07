@@ -1014,14 +1014,20 @@ def verify_authority_invariant() -> bool:
                 if re.search(pat, text):
                     return False
 
-    # Check 2b: no Zig module links shield symbols.
+    # Check 2b: no Zig module links shield symbols. Sole exception is
+    # the DynLib-only loader (SHIELD-WIRE-123), allowlisted by filename
+    # exactly like the pep_bindings exception model: runtime lookup,
+    # never a link-time extern, advisory use only.
     shield_link_patterns = [
         r'extern\s+"sec_monitor"',
         r"\baegis_shield_\w+\s*\(",
         r"sec_monitor\.dll",
     ]
+    check2b_allowlist = {"shield_screen.zig"}
     if src_dir.exists():
         for path in src_dir.rglob("*.zig"):
+            if path.name in check2b_allowlist:
+                continue
             text = code_text(path)
             for pat in shield_link_patterns:
                 if re.search(pat, text):

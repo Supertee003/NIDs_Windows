@@ -125,6 +125,7 @@ comptime {
     _ = @import("federation/cluster_uplink.zig");
     _ = @import("federation/federation_bench.zig");
     _ = @import("policy/tier3_state.zig");
+    _ = @import("policy/shield_screen.zig");
     _ = @import("windows/registry_trie.zig");
     _ = @import("windows/win32_io.zig");
     _ = @import("windows/windows_adapters.zig");

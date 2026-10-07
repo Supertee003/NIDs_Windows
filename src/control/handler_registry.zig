@@ -1323,10 +1323,12 @@ const handlers = struct {
         const provider_ready = provider_probe.providerReady();
         const gate_open = state_mod.g_prevention_gate_open;
         return std.fmt.allocPrint(a,
-            \\{{"tier3":"{s}","tier3_ready":{},"tier3_enforcing":{},"pep_available":{},"provider_ready":{},"host_effect_capable":{},"prevention_gate":"{s}","receipt_required":true,"enforcement_mode":"{s}"}}
+            \\{{"tier3":"{s}","tier3_ready":{},"shield_loaded":{},"payload_screening":{},"tier3_enforcing":{},"pep_available":{},"provider_ready":{},"host_effect_capable":{},"prevention_gate":"{s}","receipt_required":true,"enforcement_mode":"{s}"}}
         , .{
             t3.toString(),
             t3.isEnforcementAllowed(),
+            tier3_mod.g_tier3.shield_loaded,
+            tier3_mod.g_tier3.payload_screening,
             gate_open,
             state_mod.g_pep_available.load(.acquire),
             provider_ready,
@@ -1962,6 +1964,25 @@ test "metricsSnapshot prints lifetime counters at full u64 width" {
     const out = handlers.metricsSnapshot(std.testing.allocator, .{ .null = {} }, &ctx).?;
     defer std.testing.allocator.free(out);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"packets_captured\":4294967362") != null);
+}
+
+test "enforcementStatus exposes shield screening flags" {
+    // SHIELD-WIRE-123: advisory screening state rides the enforcement
+    // posture payload without affecting any gate.
+    const tier3 = @import("../policy/tier3_state.zig");
+    const prev_shield = tier3.g_tier3.shield_loaded;
+    const prev_screen = tier3.g_tier3.payload_screening;
+    defer {
+        tier3.g_tier3.shield_loaded = prev_shield;
+        tier3.g_tier3.payload_screening = prev_screen;
+    }
+    tier3.g_tier3.shield_loaded = true;
+    tier3.g_tier3.payload_screening = true;
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 29, .caller_role = .read, .caller_pid = 0 };
+    const out = handlers.enforcementStatus(std.testing.allocator, .{ .null = {} }, &ctx).?;
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"shield_loaded\":true") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"payload_screening\":true") != null);
 }
 
 test "rulesShow rejects malformed payloads before touching disk" {
