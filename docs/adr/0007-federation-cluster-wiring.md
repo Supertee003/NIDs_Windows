@@ -28,6 +28,19 @@ read-only returning standalone (`handler_registry.zig`), daemon
 installed (escalate = best-effort false). T13/T16 scan the TLS files
 for validator properties — any edit must keep those properties true.
 
+## Implementation delta (current HEAD)
+
+Phased-plan follow-ups now in `src/federation/*` (see module headers):
+
+- `src/federation/cluster_uplink.zig` (454 lines, FED-P4): opt-in daemon-side
+  uplink (`AEGIS_CLUSTER=1`); outbound client sessions only, no listener;
+  publishes IpcEvent reports, makes no policy decisions, holds no
+  enforcement capability (reports only, enforcement stays local).
+- `src/federation/federation_rust_tls.zig` (304 lines, FED-P2B2): one-stack
+  cutover — the Zig mock-TLS passthrough is deleted; bytes go through the
+  `aegis_fed_*` C ABI into rustls 0.23 (pinned anchors, mutual auth).
+  Transport only, never policy; no plaintext path.
+
 ## Feasibility verdict
 
 Feasible **phased**, not directly wirable. Three hard blockers make

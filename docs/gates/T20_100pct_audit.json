@@ -1,18 +1,11 @@
 {
   "step": "T20 AC4 (Steps 63-64)",
-  "commit": "9928400",
+  "commit": "6882b3b",
   "declaration": "NOT DECLARED",
   "part_i": {
     "total_modules": 62,
-    "passing": 56,
-    "failing": [
-      "src/federation/cluster_uplink.zig",
-      "src/federation/federation_rust_tls.zig",
-      "src/policy/shadow_decision.zig",
-      "src/windows/ips_canary_order.zig",
-      "src/xdr/xdr_incident_fabric.zig",
-      "tools/upgrade_rollback.py"
-    ],
+    "passing": 62,
+    "failing": [],
     "prod_failures": []
   },
   "part_ii": {
@@ -618,14 +611,12 @@
         "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
-        "Documented": "MISSING",
+        "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
-      "missing": [
-        "Documented"
-      ],
-      "pass": false
+      "missing": [],
+      "pass": true
     },
     "src/federation/federation_codec.zig": {
       "file": "federation_codec.zig",
@@ -660,14 +651,12 @@
         "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
-        "Documented": "MISSING",
+        "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
-      "missing": [
-        "Documented"
-      ],
-      "pass": false
+      "missing": [],
+      "pass": true
     },
     "src/federation/federation_tcp.zig": {
       "file": "federation_tcp.zig",
@@ -862,14 +851,12 @@
         "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
-        "Documented": "MISSING",
+        "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
-      "missing": [
-        "Documented"
-      ],
-      "pass": false
+      "missing": [],
+      "pass": true
     },
     "src/policy/wfp_production.zig": {
       "file": "wfp_production.zig",
@@ -1064,14 +1051,12 @@
         "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
-        "Documented": "MISSING",
+        "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
-      "missing": [
-        "Documented"
-      ],
-      "pass": false
+      "missing": [],
+      "pass": true
     },
     "src/windows/windows_adapters.zig": {
       "file": "windows_adapters.zig",
@@ -1106,14 +1091,12 @@
         "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
-        "Documented": "MISSING",
+        "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
-      "missing": [
-        "Documented"
-      ],
-      "pass": false
+      "missing": [],
+      "pass": true
     },
     "tests/runtime/test_health.py": {
       "file": "test_health.py",
@@ -1228,14 +1211,12 @@
         "Verified": "python/cython tests + CI job",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
-        "Documented": "MISSING",
+        "Documented": "referenced in docs",
         "Recoverable": "recovery path referenced",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
-      "missing": [
-        "Documented"
-      ],
-      "pass": false
+      "missing": [],
+      "pass": true
     },
     "ts_policy/src/compiler.ts": {
       "file": "compiler.ts",

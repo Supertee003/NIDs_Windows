@@ -80,6 +80,14 @@ If the rollback itself causes issues:
 - Mtime watchdog: 5-second detection interval (Phase 14 P-11 pattern)
 - Every event records ruleset_version at decision time (audit trail)
 
+## Tooling
+
+- `tools/upgrade_rollback.py` (237 lines, T17/Steps 46-52): executable
+  counterpart of this runbook — drives fresh-install -> snapshot ->
+  upgrade -> failed-upgrade/rollback -> reinstall/uninstall and measures
+  RPO (snapshot-to-trigger window), RTO (measured restore wall-clock)
+  and restore_success over the installer data set.
+
 ## References
 - G12: `core/config_reload_proof.zig` - Config reload proof (hot reload, atomic swap)
 - G14: `core/audit_trail_proof.zig` - Audit trail (records config changes)

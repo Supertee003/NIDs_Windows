@@ -62,6 +62,16 @@
 | concurrency_harden | 601 | no | yes | Concurrency hardening |
 | release_engineering | 466 | no | yes | Release engineering |
 
+## Production Modules — current-HEAD delta (2026-10)
+
+Modules added after the 2026-09-02 scan above (paths are `src/**`):
+
+| Module | Lines | Role |
+|---|---|---|
+| `src/windows/ips_canary_order.zig` | 459 | IPS canary order (T18/Step 53): Detection Only -> Shadow -> Canary -> Limited -> Expanded, fail-closed gates + human approval |
+| `src/xdr/xdr_incident_fabric.zig` | 373 | XDR multi-source incident fabric (T18/Step 55): 9 source categories, Entity -> Evidence -> Incident -> Decision -> Action, distinctSources >= 2 |
+| `src/policy/shadow_decision.zig` | 194 | Shadow decision comparison (T19/Step 57): live vs candidate over 6 dimensions, advisory only, never enforces |
+
 ## Integration Modules (glue code)
 
 | Module | Lines | Connects |
