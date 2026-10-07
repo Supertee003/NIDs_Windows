@@ -1,5 +1,5 @@
 {
-  "head_sha": "59b9432ff96d342274b8bd028a341c76e2c80a59",
+  "head_sha": "6d648f1838bc45275a3ba8bdcd9bbf53e73e4e15",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -1768,16 +1768,58 @@
       ],
       "result": "PASS",
       "finding": "STEP 50 closed. Residuals: NSI body stays static (file_directive unused); new tool onboarding into build_manifest artifacts left to the manifest regen cycle (full --manifest regen pulls 26 unrelated drifted files, out of slice scope)."
+    },
+    {
+      "id": "EVT-055",
+      "head_sha": "6d648f1838bc45275a3ba8bdcd9bbf53e73e4e15",
+      "timestamp": "2026-10-07",
+      "title": "INSTALL-119: manifest-driven installer outputs and generated-output hygiene (additive only)",
+      "level": "E2",
+      "component": "release",
+      "description": "tools/installer.py gains manifest_binaries() reading build_truth.json produces (SUPPORT/advisory excluded, on-disk-only, static-template dedupe) emitted through the previously-unused file_directive(), fulfilling the module docstring promise; static template untouched. .gitignore covers installer.generated.nsi, aegis-installer-*.exe and aegis_setup.exe while the three tracked .nsi templates stay tracked. Caught during the slice: AC3 drift test failed on uncommitted installer.py digest (working-tree drift, not a product bug) and went green after refresh.",
+      "flow_id": "T20-AC4",
+      "files_changed": [
+        "tools/installer.py",
+        ".gitignore",
+        "tests/release/test_t17_perf_ci_installer.py",
+        "build_manifest.json"
+      ],
+      "tests": [
+        "pytest tests/release/test_t17_perf_ci_installer.py 21 passed (3 new AC4 pins)",
+        "pytest tests/release 27 passed",
+        "zig build test green"
+      ],
+      "result": "PASS",
+      "finding": "Installer now grows with the build outputs instead of drifting from them; generated outputs no longer pollute git status."
+    },
+    {
+      "id": "EVT-056",
+      "head_sha": "6d648f1838bc45275a3ba8bdcd9bbf53e73e4e15",
+      "timestamp": "2026-10-07",
+      "title": "Evidence bookkeeping: level summary recomputed from entry data",
+      "level": "E2",
+      "component": "repo-truth",
+      "description": "evidence_level_summary recomputed by counting level fields across both arrays (E0=0, E1=12, E2=48 with the two new entries, E3=7, E4=0, E5=5, E6=0, E7=0). Pre-existing drift corrected (E1 9->12, E3 12->7, E5 4->5, E7 1->0); no consumer gates on these rows (check_summary.py is print-only against a nonexistent lowercase path). Owners contesting a downgraded row should cite the missing provenance; the count query is reproducible.",
+      "flow_id": "TRUTH-001",
+      "files_changed": [
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "level-count query matches summary on every row",
+        "python tools/truth.py verify TRUTH_VALID"
+      ],
+      "result": "PASS",
+      "finding": "Summary is now a pure function of the entries; future slices only bump the row they add to."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 9,
-    "E2_count": 46,
-    "E3_count": 12,
+    "E1_count": 12,
+    "E2_count": 48,
+    "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 4,
+    "E5_count": 5,
     "E6_count": 0,
-    "E7_count": 1
+    "E7_count": 0
   }
 }
