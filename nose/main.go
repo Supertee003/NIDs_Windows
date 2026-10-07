@@ -30,6 +30,35 @@ import (
 // Parsed by tests/runtime/test_version.py.
 const AEGIS_NOSE_VERSION = "5.0.0"
 
+// NOSE-JSON-166: headless beacon constructor (extracted for contract
+// tests; behavior identical to the former inline literal).
+func buildHeadlessState(resData ResourceData, trafData TrafficData, thrData ThreatData, startTime time.Time, pid int) map[string]interface{} {
+	return map[string]interface{}{
+		"op":            "HEALTH",
+		"state":         "RUNNING",
+		"status":        "OK",
+		"component":     "nose",
+		"version":       AEGIS_NOSE_VERSION,
+		"pid":           pid,
+		"uptime_ms":     time.Since(startTime).Milliseconds(),
+		"last_event_ms": 0,
+		"counters": map[string]interface{}{
+			"in_events":  0,
+			"out_events": 0,
+			"errors":     0,
+			"dropped":    0,
+		},
+		"deps": []map[string]string{
+			{"name": "core", "state": "RUNNING"},
+		},
+		// Nose-specific metrics (kept for downstream consumers).
+		"timestamp": time.Now().Format(time.RFC3339),
+		"resource":  resData,
+		"traffic":   trafData,
+		"threat":    thrData,
+	}
+}
+
 func main() {
 	// G27 Gate-A: --version flag. Print SEMVER + exit 0 before any
 	// flag.Parse() so it works even if other flags are malformed.
@@ -172,30 +201,7 @@ func main() {
 			// Schema fields required by RUNTIME_CONTRACT.md §4.1:
 			//   component, state, pid, uptime_ms, last_event_ms,
 			//   counters (in_events, out_events, errors, dropped), deps
-			state := map[string]interface{}{
-				"op":            "HEALTH",
-				"state":         "RUNNING",
-				"status":        "OK",
-				"component":     "nose",
-				"version":       AEGIS_NOSE_VERSION,
-				"pid":           os.Getpid(),
-				"uptime_ms":     time.Since(startTime).Milliseconds(),
-				"last_event_ms": 0,
-				"counters": map[string]interface{}{
-					"in_events":  0,
-					"out_events": 0,
-					"errors":     0,
-					"dropped":    0,
-				},
-				"deps": []map[string]string{
-					{"name": "core", "state": "RUNNING"},
-				},
-				// Nose-specific metrics (kept for downstream consumers).
-				"timestamp": time.Now().Format(time.RFC3339),
-				"resource":  resData,
-				"traffic":   trafData,
-				"threat":    thrData,
-			}
+			state := buildHeadlessState(resData, trafData, thrData, startTime, os.Getpid())
 
 			jsonBytes, err := json.Marshal(state)
 			if err == nil {
