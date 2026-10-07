@@ -1,5 +1,5 @@
 {
-  "head_sha": "41f2827cab6561c04b11081c8878398a7da64fed",
+  "head_sha": "f46eb4847010382191bb6414a02c086226c72d6a",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2472,6 +2472,23 @@
       ],
       "result": "PASS",
       "finding": "The acquisition golden leg is now an executed test, not just static pins and manual probes."
+    },
+    {
+      "id": "EVT-090",
+      "head_sha": "f46eb4847010382191bb6414a02c086226c72d6a",
+      "timestamp": "2026-10-07",
+      "title": "AGG-002: aggregator HTTP endpoints smoke (E5)",
+      "level": "E5",
+      "component": "go-aggregator",
+      "description": "Built aegis-aggregator (go build), started process with AEGIS_API_PORT=19299 and WorkingDirectory at repo root; endpoints /api/health, /api/stats, /api/alerts returned valid JSON. Stopped cleanly; no tree pollution. Import hygiene intact.",
+      "flow_id": "CONTROL-001",
+      "files_changed": [],
+      "tests": [
+        "manual smoke via Invoke-WebRequest",
+        "go build clean; process clean start/stop"
+      ],
+      "result": "PASS",
+      "finding": "Optional SUPPORT sidecar verified live; no production files touched."
     }
   ],
   "evidence_level_summary": {
@@ -2480,7 +2497,7 @@
     "E2_count": 62,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 19,
+    "E5_count": 20,
     "E6_count": 0,
     "E7_count": 0
   }
