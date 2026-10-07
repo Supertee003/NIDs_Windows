@@ -1,5 +1,5 @@
 {
-  "head_sha": "3e91b376e6ab43bcd5c6256f1626af30e5ad4c7f",
+  "head_sha": "b573dc2bf040aa075aff0c1799b23a901e93201e",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2115,6 +2115,25 @@
       ],
       "result": "PASS",
       "finding": "Talkers are observed, not invented, whenever the operator opts in; default behavior is byte-identical."
+    },
+    {
+      "id": "EVT-072",
+      "head_sha": "b573dc2bf040aa075aff0c1799b23a901e93201e",
+      "timestamp": "2026-10-07",
+      "title": "FUZZ-LEAK-147: deterministic decoder smoke passes with leak detection armed",
+      "level": "E5",
+      "component": "testing",
+      "description": "The fuzz harness (fixed-seed 1000-iteration Aho-Corasick plus packet-decoder smoke) discarded its GPA deinit verdict; it now prints and exits 1 on any leak. Rebuilt and ran on host: exit 0, no leaks on the attack-surface path. No production change.",
+      "flow_id": "VER-001",
+      "files_changed": [
+        "src/tests/fuzz_main.zig"
+      ],
+      "tests": [
+        "zig build fuzz green; aegis_fuzz.exe exit 0 with leak check active",
+        "zig build test green"
+      ],
+      "result": "PASS",
+      "finding": "Leak-blind fuzzing is now fail-closed; the decoder path is leak-clean under the smoke workload."
     }
   ],
   "evidence_level_summary": {
@@ -2123,7 +2142,7 @@
     "E2_count": 55,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 13,
+    "E5_count": 14,
     "E6_count": 0,
     "E7_count": 0
   }
