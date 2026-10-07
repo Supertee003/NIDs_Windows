@@ -1,5 +1,5 @@
 {
-  "head_sha": "283a8f7e72d570538fa834fb8b71ffbefb01a142",
+  "head_sha": "9a4330eaa8fc45ad42b463ee95930764481cc843",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -1422,12 +1422,14 @@
       "severity": "P2",
       "title": "No detection of unsupervised or orphaned components",
       "description": "A leftover 'python brain/windows_brain.py' process held UDP 127.0.0.1:9999 and made TestIdempotentStop fail by answering a health probe with state=RUNNING. Nothing in the runtime or CLI detects a component running outside the supervisor.",
-      "status": "OPEN",
+      "status": "CLOSED",
       "required_evidence": [
         "supervisor or CLI detects foreign listeners on owned ports",
         "orphan component reported as a health finding"
       ],
-      "resolution": null,
+      "resolution": "ORPHAN-154 (EVT-076): CLI diagnose census with OWNED/FOREIGN/CLEAR/UNKNOWN verdicts; ORPHAN-156 (EVT-077): worst-status rollup surfaced in health payload via bounded-stale cache. Detection only, nothing is stopped or restarted.",
+      "closed_by": "EVT-076+EVT-077",
+      "closed_at": "2026-10-07",
       "evidence": "EVT-034 test run observed the stray component."
     },
     {
@@ -2212,12 +2214,33 @@
       ],
       "result": "PASS",
       "finding": "First required-evidence bullet (CLI detects foreign listeners) done; health-finding surfacing remains follow-up."
+    },
+    {
+      "id": "EVT-077",
+      "head_sha": "9a4330eaa8fc45ad42b463ee95930764481cc843",
+      "timestamp": "2026-10-07",
+      "title": "ORPHAN-156: endpoint ownership surfaced in health via bounded-stale cache (additive only)",
+      "level": "E2",
+      "component": "control-plane",
+      "description": "get_health_payload gains endpoint_ownership with worst-status rollup (FOREIGN over UNKNOWN over CLEAR across UDP findings; pipe entry informational). A 60-second census cache keeps TUI/WEB polling cheap while CLI diagnose keeps scanning fresh; tests reset the cache for determinism. Live: CLEAR with pipe REACHABLE pid 25856. GAP-010 second bullet now satisfied at the health-payload layer.",
+      "flow_id": "CONTROL-001",
+      "files_changed": [
+        "tools/aegisctl/api/control_api.py",
+        "tests/runtime/test_health.py"
+      ],
+      "tests": [
+        "4 new pins (foreign/clear surfacing, worst-status rules, cache-hit counting)",
+        "pytest health+aegisctl 51 passed",
+        "live payload carries CLEAR + REACHABLE pid 25856"
+      ],
+      "result": "PASS",
+      "finding": "Orphan visibility is now continuous, not just on-demand; nothing is ever stopped or restarted by it."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 13,
-    "E2_count": 57,
+    "E2_count": 58,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 15,
