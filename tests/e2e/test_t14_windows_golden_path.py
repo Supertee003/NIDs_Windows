@@ -33,7 +33,9 @@ CANONICAL_EVENT = "src/contract/canonical_event.zig"
 CORRELATION = "src/detection/correlation_engine.zig"
 POLICY_SIGNING = "src/policy/policy_signing.zig"
 PEP_RS = "rust-src/lib.rs"
-WFP = "rust-src/lib.rs"
+# E2E-TRUTH-141: WFP enforcement lives in its own module; it previously
+# aliased PEP_RS and the suite read one file twice.
+WFP = "src/policy/wfp_production.zig"
 FORENSICS = "src/forensic/forensics_engine.zig"
 REPLAY = "src/forensic/replay_engine.zig"
 EVENT_PROCESSOR = "src/pipeline/event_processor.zig"
@@ -194,6 +196,10 @@ def test_rag_in_path() -> None:
     assert "pub const RagEngine" in rag
     e = _manifest()["modules"]["core/rag_engine.zig"]
     assert e["status"] == "REAL" and e.get("golden_path")
+    # E2E-TRUTH-141: core/ is a manifest alias, not a directory: the entry
+    # must resolve through canonical_path to the file read above.
+    assert e.get("compatibility_alias") is True
+    assert e.get("canonical_path") == "src/detection/rag_engine.zig"
 
 
 def test_typescript_policy_in_path() -> None:
@@ -216,6 +222,11 @@ def test_rust_pep_and_wfp_in_path() -> None:
     assert pep_entry["classification"] == "CANONICAL"
     wfp = _read(WFP)
     assert "wfp" in wfp.lower() and ("block" in wfp.lower() or "enforce" in wfp.lower())
+    # E2E-TRUTH-141: the WFP module is independently REAL on the golden
+    # path (previously the suite read rust-src/lib.rs twice).
+    wfp_entry = manifest["modules"].get("src/policy/wfp_production.zig")
+    assert wfp_entry is not None
+    assert wfp_entry["status"] == "REAL" and wfp_entry.get("golden_path")
 
 
 def test_event_processor_is_sole_orchestrator() -> None:
