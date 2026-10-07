@@ -222,10 +222,9 @@ func threatCollector(ch chan<- ThreatData) {
 }
 
 // ── readTrafficFromSystem ──
-// TODO: รองรับ real traffic จาก Windows performance counters หรือ Bridge IPC
-func readTrafficFromSystem() (TrafficData, error) {
-        return TrafficData{}, fmt.Errorf("no real traffic data yet — using simulation")
-}
+// Implemented per platform: traffic_sys_windows.go (IP Helper, live),
+// traffic_sys_other.go (always errors, fallback stays in force).
+// (The old always-failing stub was replaced by NOSE-SYS-143.)
 
 // ── parseThreatMap ──
 // v5.0: เพิ่ม raw stream entries from anomalous.json
