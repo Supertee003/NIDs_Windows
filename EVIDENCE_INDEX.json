@@ -1,5 +1,5 @@
 {
-  "head_sha": "b9e9414075cc77cf5c318478c38dd7d80277b94a",
+  "head_sha": "3ecc9d825b4d9ba8be6ee2cb744da8f738ca2a6d",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2277,12 +2277,29 @@
       ],
       "result": "PASS",
       "finding": "The rule is now reviewable next to the code that implements it."
+    },
+    {
+      "id": "EVT-080",
+      "head_sha": "3ecc9d825b4d9ba8be6ee2cb744da8f738ca2a6d",
+      "timestamp": "2026-10-07",
+      "title": "FFI parity re-verified: both historical mismatches are closed in current code",
+      "level": "E2",
+      "component": "integration",
+      "description": "EVT-011 (Zig u32/etw=0 vs C++ u8/Etw=1) is closed where it matters: src/windows/cpp_adapter.zig carries AdapterKind as enum(u8) with etw=1/fim=2/registry=3/process=4/network=5 exactly matching bridge/aegis_adapter.hpp, pinned by the C ABI test; only the forensic/integration_contract.zig fixture retains the old shape as documented history. EVT-012 (TS 9-type POL1 vs Zig 6-type POLI) is closed: both sides now follow src/policy/policy_plane.zig (9 ConditionTypes 0-8, POLICY_MAGIC POL1), TS-Zig parity exact since VOL08. No code change needed; both parities are test-pinned in the green suite.",
+      "flow_id": "FFI-001",
+      "files_changed": [],
+      "tests": [
+        "existing C ABI and policy parity pins green in zig build test",
+        "cross-checked against bridge header and ts_policy types by reading"
+      ],
+      "result": "PASS",
+      "finding": "Old mismatch findings are superseded records, not live defects; files_changed is empty by design."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 14,
-    "E2_count": 59,
+    "E2_count": 60,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 15,
