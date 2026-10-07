@@ -404,27 +404,65 @@ test "parseDns compression pointer" {
     try std.testing.expectEqualStrings("example.com", q1.name);
     try std.testing.expect(q1.is_response == false);
 
-    // Second query with compression pointer to offset 12
-    var pkt2: [60]u8 = undefined;
+    // Compressed qname: pointer FIRST (offset 12 -> name at offset 20).
+    // qtype/qclass live after the pointer BYTES (offset 14), not after
+    // the target name -- this pins the after_pointer tail logic, and a
+    // nonzero ancount pins propagation into answers.
+    // (The old layout put the pointer in a second question the parser
+    // never visits -- it parsed qname #1 only, so it pinned nothing.)
+    var pkt2: [40]u8 = undefined;
     @memset(&pkt2, 0);
     pkt2[0] = 0x12; pkt2[1] = 0x34; // id
     pkt2[2] = 0x01; pkt2[3] = 0x00; // flags
-    pkt2[4] = 0x00; pkt2[5] = 0x02; // qdcount=2
-    // First qname at offset 12: "example.com"
-    pkt2[12] = 7; @memcpy(pkt2[13..20], "example");
-    pkt2[20] = 3; @memcpy(pkt2[21..24], "com"); pkt2[24] = 0;
-    pkt2[25] = 0x00; pkt2[26] = 0x01; pkt2[27] = 0x00; pkt2[28] = 0x01;
-    // Second qname: pointer to offset 12 (0xC0 0x0C)
-    pkt2[29] = 0xC0; pkt2[30] = 0x0C;
-    pkt2[31] = 0x00; pkt2[32] = 0x01; pkt2[33] = 0x00; pkt2[34] = 0x01;
+    pkt2[4] = 0x00; pkt2[5] = 0x01; // qdcount=1
+    pkt2[8] = 0x00; pkt2[9] = 0x03; // ancount=3 (must surface as answers)
+    pkt2[12] = 0xC0; pkt2[13] = 0x14; // pointer to offset 20
+    pkt2[14] = 0x00; pkt2[15] = 0x01; // qtype=A (after pointer bytes)
+    pkt2[16] = 0x00; pkt2[17] = 0x01; // qclass=IN
+    // target name at offset 20: "example.com"
+    pkt2[20] = 7; @memcpy(pkt2[21..28], "example");
+    pkt2[28] = 3; @memcpy(pkt2[29..32], "com"); pkt2[32] = 0;
     var name_buf2: [64]u8 = undefined;
-    const q2 = parseDns(pkt2[0..35], &name_buf2).?;
+    const q2 = parseDns(pkt2[0..33], &name_buf2).?;
     try std.testing.expectEqualStrings("example.com", q2.name);
-    try std.testing.expectEqual(@as(u16, 0), q2.answers);
+    try std.testing.expectEqual(@as(u16, 1), q2.qtype);
+    try std.testing.expectEqual(@as(u16, 1), q2.qclass);
+    try std.testing.expectEqual(@as(u16, 3), q2.answers);
 }
 
-test "parseHttpRequest header limit" {
-    // Build a request with 101 headers (exceeds MAX_HEADERS=100)
+test "parseDns pointer loop fails closed" {
+    // qname at 12 points to itself: hop bound (MAX_POINTERS) must trip
+    // and parsing must return null, never spin.
+    var pkt: [20]u8 = undefined;
+    @memset(&pkt, 0);
+    pkt[0] = 0x12; pkt[1] = 0x34;
+    pkt[2] = 0x01; pkt[3] = 0x00;
+    pkt[4] = 0x00; pkt[5] = 0x01; // qdcount=1
+    pkt[12] = 0xC0; pkt[13] = 0x0C; // pointer to offset 12 (self)
+    pkt[14] = 0x00; pkt[15] = 0x01;
+    pkt[16] = 0x00; pkt[17] = 0x01;
+    var name_buf: [64]u8 = undefined;
+    try std.testing.expect(parseDns(pkt[0..18], &name_buf) == null);
+}
+
+test "parseDns out-of-bounds pointer fails closed" {
+    // pointer past end of message must return null, never over-read.
+    var pkt: [20]u8 = undefined;
+    @memset(&pkt, 0);
+    pkt[0] = 0x12; pkt[1] = 0x34;
+    pkt[2] = 0x01; pkt[3] = 0x00;
+    pkt[4] = 0x00; pkt[5] = 0x01; // qdcount=1
+    pkt[12] = 0xC0; pkt[13] = 0xFF; // pointer to offset 255 (past end)
+    pkt[14] = 0x00; pkt[15] = 0x01;
+    pkt[16] = 0x00; pkt[17] = 0x01;
+    var name_buf: [64]u8 = undefined;
+    try std.testing.expect(parseDns(pkt[0..18], &name_buf) == null);
+}
+
+test "parseHttpRequest no header cap" {
+    // HTTP-UNBOUND-108 pin: Host:/User-Agent: past 100+ filler headers
+    // MUST still be found. A header COUNT cap would silently miss them
+    // (evasion blind spot); the scan stays input-bounded and zero-copy.
     var buf = std.heap.page_allocator.alloc(u8, 4096) catch unreachable;
     defer std.heap.page_allocator.free(buf);
     const base = "GET / HTTP/1.1\r\n";
@@ -438,10 +476,16 @@ test "parseHttpRequest header limit" {
         @memcpy(buf[pos..pos+written.len], written);
         pos += written.len;
     }
+    const host_hdr = "Host: deep.example.com\r\n";
+    @memcpy(buf[pos..pos+host_hdr.len], host_hdr);
+    pos += host_hdr.len;
+    const ua_hdr = "User-Agent: probe/1.0\r\n";
+    @memcpy(buf[pos..pos+ua_hdr.len], ua_hdr);
+    pos += ua_hdr.len;
     @memcpy(buf[pos..pos+2], "\r\n");
     pos += 2;
     const r = parseHttpRequest(buf[0..pos]).?;
-    // Should only parse first 100 headers (Host and User-Agent not present)
     try std.testing.expectEqual(HttpMethod.GET, r.method);
-    // The 101st header should be ignored
+    try std.testing.expectEqualStrings("deep.example.com", r.host.?);
+    try std.testing.expectEqualStrings("probe/1.0", r.user_agent.?);
 }
