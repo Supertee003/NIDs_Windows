@@ -52,3 +52,32 @@ def test_plan_writes_nothing() -> None:
     p = _run("--plan")
     assert p.returncode == 0, p.stderr[-2000:]
     assert porcelain() == before
+
+
+def _load_fresh_deploy():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "fresh_deploy", REPO / "tools" / "fresh_deploy.py")
+    assert spec is not None and spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_execute_aborts_at_first_failure() -> None:
+    """Fail-closed orchestration: steps after a failure are SKIPPED and
+    the exit code carries the failing step's rc (hermetic: python -c)."""
+    mod = _load_fresh_deploy()
+    fake = [
+        ("s1", [sys.executable, "-c", "pass"], False),
+        ("s2", [sys.executable, "-c", "import sys; sys.exit(3)"], True),
+        ("s3", [sys.executable, "-c", "pass"], False),
+    ]
+    record, code = mod.execute(fake, plan=False)
+    assert record["ok"] is False
+    assert record["failed_step"] == "s2"
+    assert code == 3
+    by = {s["name"]: s for s in record["steps"]}
+    assert by["s1"]["status"] == "OK"
+    assert by["s2"]["status"] == "FAIL"
+    assert by["s3"]["status"] == "SKIPPED"

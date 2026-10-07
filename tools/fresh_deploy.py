@@ -73,6 +73,35 @@ STEPS = [
 ]
 
 
+def execute(step_defs: list[tuple[str, list[str], bool]],
+            plan: bool) -> tuple[dict, int]:
+    """Run step defs in order, aborting at the first failure (fail-closed).
+
+    A step that never runs because an earlier step failed is recorded
+    SKIPPED (not DEFERRED: DEFERRED is only the --plan marker for steps
+    that would mutate). Returns (record, exit_code) where the code is the
+    first failing step's rc, or 0 when every executed step passed.
+    """
+    steps: list[dict] = []
+    failed = None
+    for name, cmd, mutate in step_defs:
+        if failed is not None:
+            steps.append({"name": name, "cmd": cmd, "status": "SKIPPED",
+                          "reason": f"aborted after {failed['name']}",
+                          "rc": None, "ms": 0})
+            continue
+        rec = run_step(name, cmd, mutate, plan)
+        steps.append(rec)
+        if rec["status"] in ("FAIL", "ERROR"):
+            failed = rec
+    record = {"tool": "fresh_deploy",
+              "ok": failed is None,
+              "failed_step": failed["name"] if failed else None,
+              "steps": steps}
+    code = 0 if failed is None else (failed.get("rc") or 1)
+    return record, code
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="AEGIS fresh-deploy closure (STEP 50)")
     ap.add_argument("--plan", action="store_true",
@@ -81,21 +110,16 @@ def main() -> int:
                     help="emit the final step record as JSON on stdout")
     args = ap.parse_args()
 
-    steps = [run_step(name, cmd, mutate, args.plan)
-             for name, cmd, mutate in STEPS]
-    failed = next((s for s in steps if s["status"] in ("FAIL", "ERROR")), None)
-    record = {"tool": "fresh_deploy", "mode": "plan" if args.plan else "live",
-              "steps": steps,
-              "ok": failed is None,
-              "failed_step": failed["name"] if failed else None}
+    record, code = execute(STEPS, args.plan)
+    record["mode"] = "plan" if args.plan else "live"
     if args.json:
         print(json.dumps(record, indent=2))
     else:
-        for s in steps:
+        for s in record["steps"]:
             print(f"[{s['status']}] {s['name']} rc={s['rc']} ms={s['ms']}")
         print("DEPLOY_PLAN_OK" if record["ok"] else
               f"DEPLOY_FAILED_AT={record['failed_step']}")
-    return 0 if record["ok"] else (failed.get("rc") or 1)
+    return code
 
 
 if __name__ == "__main__":
