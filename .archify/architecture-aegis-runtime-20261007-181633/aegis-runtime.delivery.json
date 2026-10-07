@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "96c8fd3f-9c55-479b-80e1-b1f73c49aef8",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "D:\\NIDs_Windows\\.archify\\architecture-aegis-runtime-20261007-181633\\candidate.json",
+  "output": "D:\\NIDs_Windows\\.archify\\architecture-aegis-runtime-20261007-181633\\aegis-runtime.html",
+  "specification": {
+    "sha256": "0de09009fe3ba09c015535b2979d6b823c4fe4543e670e28bea32345d97330c2",
+    "bytes": 4567
+  },
+  "artifact": {
+    "sha256": "31c0d5c2939725b162db9b648d786f4bc2f1165e9460511e9102437378ff7126",
+    "bytes": 769211
+  }
+}
