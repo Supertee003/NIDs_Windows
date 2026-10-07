@@ -1,22 +1,22 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-03T18:08:31.330613+00:00",
+  "generated_at": "2026-10-07T07:00:42.077377+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1570,
+  "total_files": 1608,
   "by_role": {
-    "documentation": 538,
-    "build-config": 218,
-    "other": 23,
-    "source": 321,
+    "documentation": 541,
+    "build-config": 199,
+    "other": 19,
+    "source": 327,
     "lockfile": 6,
     "rust-build": 4,
-    "test-artifact": 116,
-    "config-data": 31,
-    "architecture-decision": 6,
+    "test-artifact": 157,
+    "config-data": 32,
+    "architecture-decision": 10,
     "step-document": 2,
     "go-source": 4,
     "makefile": 1,
-    "production-source": 267,
+    "production-source": 273,
     "legacy-source": 32,
     "quarantined": 1
   },
@@ -59,6 +59,7 @@
     "src/control.zig",
     "src/control/audit.zig",
     "src/control/authorization.zig",
+    "src/control/defcon.zig",
     "src/control/handler_registry.zig",
     "src/control/protocol.zig",
     "src/control/state_machine.zig",
@@ -101,11 +102,12 @@
     "src/detection/verdict_aggregator.zig",
     "src/federation/aggregator.zig",
     "src/federation/cluster_coord.zig",
+    "src/federation/cluster_uplink.zig",
     "src/federation/federation.zig",
     "src/federation/federation_bench.zig",
     "src/federation/federation_codec.zig",
+    "src/federation/federation_rust_tls.zig",
     "src/federation/federation_tcp.zig",
-    "src/federation/federation_tls.zig",
     "src/federation/node_registry.zig",
     "src/forensic/abi_contract.zig",
     "src/forensic/decision_trace.zig",
@@ -177,7 +179,6 @@
     "src/tests/cli/federation_bench_cli.zig",
     "src/tests/cli/federation_cli.zig",
     "src/tests/cli/federation_tcp_cli.zig",
-    "src/tests/cli/federation_tls_cli.zig",
     "src/tests/cli/host_telemetry_cli.zig",
     "src/tests/cli/host_telemetry_detectors_cli.zig",
     "src/tests/cli/host_telemetry_mock_cli.zig",
@@ -203,6 +204,8 @@
     "src/tests/detection/threat_tracker.zig",
     "src/tests/federation/aggregator.zig",
     "src/tests/federation/cluster_coord.zig",
+    "src/tests/federation/federation_rust_tls.zig",
+    "src/tests/federation/federation_tcp.zig",
     "src/tests/federation/node_registry.zig",
     "src/tests/forensic/abi_contract.zig",
     "src/tests/forensic/decision_trace.zig",
@@ -218,6 +221,7 @@
     "src/tests/forensic/replay_engine.zig",
     "src/tests/forensic/replay_integrity.zig",
     "src/tests/forensic/replay_verifier.zig",
+    "src/tests/forensic/siem_forwarder.zig",
     "src/tests/fuzz_main.zig",
     "src/tests/integration/brain_integration.zig",
     "src/tests/integration/concurrency_harden_integration.zig",
@@ -244,7 +248,9 @@
     "src/tests/policy/action_dispatcher.zig",
     "src/tests/policy/pep_bindings.zig",
     "src/tests/policy/policy_ir.zig",
+    "src/tests/policy/policy_signing.zig",
     "src/tests/policy/trust_store.zig",
+    "src/tests/policy/ts_ir_loader.zig",
     "src/tests/proofs/audit_trail_proof.zig",
     "src/tests/proofs/brain_proof.zig",
     "src/tests/proofs/compliance_proof.zig",
@@ -355,6 +361,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    ".github/PULL_REQUEST_TEMPLATE.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     ".github/workflows/ci.yml": {
       "class": "canonical-build",
       "role": "build-config"
@@ -363,10 +373,6 @@
       "class": "canonical-build",
       "role": "build-config"
     },
-    "admin-evidence/aegis-nids-service-before.txt": {
-      "class": "canonical-docs",
-      "role": "documentation"
-    },
     "admin-evidence/audit-version-test.txt": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -374,38 +380,6 @@
     "admin-evidence/audit-zig-build.txt": {
       "class": "canonical-docs",
       "role": "documentation"
-    },
-    "admin-evidence/build_certificates_local.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "admin-evidence/certificates/ca.crt.cert.der": {
-      "class": "unclassified",
-      "role": "other"
-    },
-    "admin-evidence/certificates/ca.crt.der": {
-      "class": "unclassified",
-      "role": "other"
-    },
-    "admin-evidence/certificates/ca.crt.ext.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/certificates/server.crt.cert.der": {
-      "class": "unclassified",
-      "role": "other"
-    },
-    "admin-evidence/certificates/server.crt.der": {
-      "class": "unclassified",
-      "role": "other"
-    },
-    "admin-evidence/certificates/server.crt.ext.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/certificates/server.crt.json": {
-      "class": "canonical-build",
-      "role": "build-config"
     },
     "admin-evidence/code-integrity-events.txt": {
       "class": "canonical-docs",
@@ -480,78 +454,6 @@
       "role": "build-config"
     },
     "admin-evidence/deep-readiness.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/deploy-20261003-220509/before.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/deploy-20261003-221101/after.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/deploy-20261003-221101/backup/config-policies.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/deploy-20261003-221101/backup/config-Rules.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/deploy-20261003-221101/before.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/deploy-20261003-221101/health-attempt-00.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/deploy-20261003-221101/health-attempt-00.raw.txt": {
-      "class": "canonical-docs",
-      "role": "documentation"
-    },
-    "admin-evidence/deploy-20261003-221101/result.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/deploy-20261003-223919/backup/config-policies.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/deploy-20261003-223919/backup/config-Rules.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/deploy-20261003-223919/before.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/deploy-20261003-224045/after.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/deploy-20261003-224045/backup/config-policies.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/deploy-20261003-224045/backup/config-Rules.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/deploy-20261003-224045/before.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/deploy-20261003-224045/health-attempt-00.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/deploy-20261003-224045/health-attempt-00.raw.txt": {
-      "class": "canonical-docs",
-      "role": "documentation"
-    },
-    "admin-evidence/deploy-20261003-224045/result.json": {
       "class": "canonical-build",
       "role": "build-config"
     },
@@ -643,18 +545,6 @@
       "class": "canonical-source",
       "role": "source"
     },
-    "admin-evidence/kernel-runtime-audit-admin.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/kernel-runtime-audit-admin2.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/kernel-runtime-audit-normal.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
     "admin-evidence/lifecycle-recovery-proof.txt": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -743,10 +633,6 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
-    "admin-evidence/project2-audit-20261002/PROJECT2-AUDIT-REPORT.md": {
-      "class": "canonical-docs",
-      "role": "documentation"
-    },
     "admin-evidence/project2-baseline-20260930/forensic_evidence_graph.html": {
       "class": "unclassified",
       "role": "other"
@@ -806,14 +692,6 @@
     "admin-evidence/wfp-driver-start-events.txt": {
       "class": "canonical-docs",
       "role": "documentation"
-    },
-    "admin-evidence/wfp-stale-evidence-20261003-235840/firewall_rules.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "admin-evidence/wfp-stale-evidence-20261003-235840/result.json": {
-      "class": "canonical-build",
-      "role": "build-config"
     },
     "admin-evidence/wfp-system-events.txt": {
       "class": "canonical-docs",
@@ -1803,6 +1681,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/DEVELOPMENT_PLAN_REPORT.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/EIGHT_GROUP_RUN_FINDINGS_20260922.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -2075,6 +1957,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/UNWIRED_INVENTORY.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "AUTHORITY_MAP.json": {
       "class": "canonical-build",
       "role": "build-config"
@@ -2139,7 +2025,15 @@
       "class": "canonical-source",
       "role": "source"
     },
+    "brain/cython/bridge_ipc.pyx": {
+      "class": "canonical-source",
+      "role": "source"
+    },
     "brain/cython/cython_regex_scan.pyx": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "brain/cython/sensor_pipe.pyx": {
       "class": "canonical-source",
       "role": "source"
     },
@@ -2343,6 +2237,10 @@
       "class": "canonical-config",
       "role": "config-data"
     },
+    "configs/policy_trust.example.json": {
+      "class": "canonical-config",
+      "role": "config-data"
+    },
     "configs/Rules.json": {
       "class": "canonical-config",
       "role": "config-data"
@@ -2496,6 +2394,22 @@
       "role": "architecture-decision"
     },
     "docs/adr/0003-event-canonical-authority-and-capture-ownership.md": {
+      "class": "canonical-docs",
+      "role": "architecture-decision"
+    },
+    "docs/adr/0004-dns-exfiltration-detection.md": {
+      "class": "canonical-docs",
+      "role": "architecture-decision"
+    },
+    "docs/adr/0005-policy-signing-seal-and-custody.md": {
+      "class": "canonical-docs",
+      "role": "architecture-decision"
+    },
+    "docs/adr/0006-forensic-ipv6-record-abi.md": {
+      "class": "canonical-docs",
+      "role": "architecture-decision"
+    },
+    "docs/adr/0007-federation-cluster-wiring.md": {
       "class": "canonical-docs",
       "role": "architecture-decision"
     },
@@ -3043,6 +2957,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "docs/runbooks/RB-011-policy-ir-mirror-workflow.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "docs/runbooks/README.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -3147,7 +3065,7 @@
       "class": "canonical-source",
       "role": "source"
     },
-    "drivers/wfp_callout/aegis_wfp_comm.c": {
+    "drivers/wfp_callout/quarantined/aegis_wfp_comm.c": {
       "class": "canonical-source",
       "role": "source"
     },
@@ -3414,6 +3332,10 @@
     "go/aggregator/main.go": {
       "class": "canonical-source",
       "role": "go-source"
+    },
+    "go/aggregator/main_test.go": {
+      "class": "canonical-test",
+      "role": "test-artifact"
     },
     "go/aggregator/README.md": {
       "class": "canonical-docs",
@@ -4251,10 +4173,6 @@
       "class": "canonical-source",
       "role": "source"
     },
-    "reports/forensic_evidence_graph.html": {
-      "class": "unclassified",
-      "role": "other"
-    },
     "requirements.txt": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -4266,6 +4184,10 @@
     "runtime_manifest.json": {
       "class": "canonical-build",
       "role": "build-config"
+    },
+    "rust-src/bin/aegis_keygen.rs": {
+      "class": "canonical-source",
+      "role": "source"
     },
     "rust-src/lib.rs": {
       "class": "canonical-source",
@@ -4675,10 +4597,6 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
-    "shared/aegis_bridge_ctypes.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
     "shared/errors/error_codes.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -4686,6 +4604,10 @@
     "shared/event/canonical_event.md": {
       "class": "canonical-docs",
       "role": "documentation"
+    },
+    "shared/federation/fed_codec.py": {
+      "class": "canonical-source",
+      "role": "source"
     },
     "shared/policy/policy_ir.md": {
       "class": "canonical-docs",
@@ -4712,6 +4634,10 @@
       "role": "source"
     },
     "shared/protocol/wire_v1.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "shared/protocol/wire_v2.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -4852,6 +4778,10 @@
       "role": "production-source"
     },
     "src/control/authorization.zig": {
+      "class": "canonical-source",
+      "role": "production-source"
+    },
+    "src/control/defcon.zig": {
       "class": "canonical-source",
       "role": "production-source"
     },
@@ -5035,6 +4965,10 @@
       "class": "canonical-source",
       "role": "production-source"
     },
+    "src/federation/cluster_uplink.zig": {
+      "class": "canonical-source",
+      "role": "production-source"
+    },
     "src/federation/federation.zig": {
       "class": "canonical-source",
       "role": "production-source"
@@ -5047,11 +4981,11 @@
       "class": "canonical-source",
       "role": "production-source"
     },
-    "src/federation/federation_tcp.zig": {
+    "src/federation/federation_rust_tls.zig": {
       "class": "canonical-source",
       "role": "production-source"
     },
-    "src/federation/federation_tls.zig": {
+    "src/federation/federation_tcp.zig": {
       "class": "canonical-source",
       "role": "production-source"
     },
@@ -5343,10 +5277,6 @@
       "class": "canonical-source",
       "role": "production-source"
     },
-    "src/tests/cli/federation_tls_cli.zig": {
-      "class": "canonical-source",
-      "role": "production-source"
-    },
     "src/tests/cli/host_telemetry_cli.zig": {
       "class": "canonical-source",
       "role": "production-source"
@@ -5455,6 +5385,14 @@
       "class": "canonical-source",
       "role": "production-source"
     },
+    "src/tests/federation/federation_rust_tls.zig": {
+      "class": "canonical-source",
+      "role": "production-source"
+    },
+    "src/tests/federation/federation_tcp.zig": {
+      "class": "canonical-source",
+      "role": "production-source"
+    },
     "src/tests/federation/node_registry.zig": {
       "class": "canonical-source",
       "role": "production-source"
@@ -5512,6 +5450,10 @@
       "role": "production-source"
     },
     "src/tests/forensic/replay_verifier.zig": {
+      "class": "canonical-source",
+      "role": "production-source"
+    },
+    "src/tests/forensic/siem_forwarder.zig": {
       "class": "canonical-source",
       "role": "production-source"
     },
@@ -5639,7 +5581,15 @@
       "class": "canonical-source",
       "role": "production-source"
     },
+    "src/tests/policy/policy_signing.zig": {
+      "class": "canonical-source",
+      "role": "production-source"
+    },
     "src/tests/policy/trust_store.zig": {
+      "class": "canonical-source",
+      "role": "production-source"
+    },
+    "src/tests/policy/ts_ir_loader.zig": {
       "class": "canonical-source",
       "role": "production-source"
     },
@@ -5915,6 +5865,42 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/brain/test_brain_udp_auth.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/brain/test_bridge_edge.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/brain/test_bridge_ipc.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/brain/test_error_counter.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/brain/test_hot_reload.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/brain/test_import_hygiene.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/brain/test_log_throttle.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/brain/test_scan_windows.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/brain/test_sensor_pipe.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/contracts/event_vectors/event_vectors/event_v1_001.bin": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -5935,6 +5921,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/contracts/event_vectors/event_vectors/event_v2_006.bin": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/contracts/event_vectors/event_vectors/golden_vectors.json": {
       "class": "canonical-build",
       "role": "build-config"
@@ -5951,7 +5941,63 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/contracts/federation_vectors/fed_v1_001.bin": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/contracts/federation_vectors/fed_v1_002.bin": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/contracts/federation_vectors/fed_v1_003.bin": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/contracts/federation_vectors/generate_federation_vectors.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "tests/contracts/federation_vectors/README.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "tests/contracts/federation_vectors/vectors_metadata.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "tests/contracts/policy_signing/generate_policy_vectors.mjs": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "tests/contracts/policy_signing/policy_ir_golden.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "tests/contracts/policy_signing/policy_ir_golden.pub.hex": {
+      "class": "unclassified",
+      "role": "other"
+    },
+    "tests/contracts/policy_signing/policy_ir_golden.sig.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "tests/contracts/policy_signing/README.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "tests/contracts/test_canonical_context_flags.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/contracts/test_contract_fixtures.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/contracts/test_federation_wire_v1.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/contracts/test_ipv6_wire_v2.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
@@ -6031,6 +6077,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/release/test_ci_gates.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/release/test_t17_perf_ci_installer.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -6056,6 +6106,14 @@
       "role": "test-artifact"
     },
     "tests/runtime/test_component_matrix.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/runtime/test_defcon_authority.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/runtime/test_evidence_log_contract.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
@@ -6087,6 +6145,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/runtime/test_incident_ttl.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/runtime/test_lifecycle_authority.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -6095,7 +6157,19 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/runtime/test_operator_scripts_portable.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/runtime/test_policy_verify.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/runtime/test_restart.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/runtime/test_rules_reload_report.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
@@ -6115,7 +6189,23 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/runtime/test_web_sse.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/runtime/test_wire.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_canary_magic.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_canary_runner.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_candidate_labels.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
@@ -6123,7 +6213,27 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/security/test_control_contract.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/security/test_detection_contract_pin.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_disabled_rules_authority.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_enforce_simulate.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_etw_session_name.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_fim_longpath.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
@@ -6131,7 +6241,23 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/security/test_loopback_only.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_nose_log_discipline.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/security/test_receipt_contract.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_registry_rearm.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_siem_contract.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
@@ -6144,6 +6270,14 @@
       "role": "test-artifact"
     },
     "tests/security/test_t19_decision_trace_shadow_replay_review.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_version_truth.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_zig_test_scope.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
@@ -6180,6 +6314,10 @@
       "role": "build-config"
     },
     "tests/vectors/rules22/R0088.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "tests/vectors/rules22/R0089.json": {
       "class": "canonical-build",
       "role": "build-config"
     },
@@ -6535,6 +6673,14 @@
       "class": "canonical-source",
       "role": "source"
     },
+    "ts_policy/src/ed25519.ts": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "ts_policy/src/exporter.ts": {
+      "class": "canonical-source",
+      "role": "source"
+    },
     "ts_policy/src/index.ts": {
       "class": "canonical-source",
       "role": "source"
@@ -6554,6 +6700,18 @@
     "ts_policy/tests/cross_language_contract.test.ts": {
       "class": "canonical-test",
       "role": "test-artifact"
+    },
+    "ts_policy/tests/ed25519.test.ts": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "ts_policy/tests/exporter.test.ts": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "ts_policy/tests/fixtures/policy_ir_002.json": {
+      "class": "canonical-build",
+      "role": "build-config"
     },
     "ts_policy/tests/no_enforcement.test.ts": {
       "class": "canonical-test",

@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-10-03T18:08:31.588412+00:00",
-  "head": "44439a24d731180abb028fdc983bd3ca865f861f",
+  "generated_at": "2026-10-07T07:00:42.319245+00:00",
+  "head": "c04fef2dc2aeeb841a3a987863117abbe6ea9d82",
   "steps": [
     {
       "label": "inventory/reference",
@@ -9,7 +9,7 @@
         "tools/generate_truth_artifacts.py"
       ],
       "returncode": 0,
-      "stdout": "============================================================\n AEGIS Truth Artifact Generator\n inventory.json + reference_map.json\n============================================================\n\n Scanned 1570 files\n Classification:\n   canonical-source        592\n   canonical-docs          546\n   canonical-build         229\n   canonical-test          116\n   legacy                   33\n   canonical-config         31\n   unclassified             23\n\n Wrote: D:\\NIDs_Windows\\inventory.json (254,774 bytes)\n Wrote: D:\\NIDs_Windows\\reference_map.json (209,735 bytes)\n\n Done.\n",
+      "stdout": "============================================================\n AEGIS Truth Artifact Generator\n inventory.json + reference_map.json\n============================================================\n\n Scanned 1608 files\n Classification:\n   canonical-source        604\n   canonical-docs          553\n   canonical-build         210\n   canonical-test          157\n   legacy                   33\n   canonical-config         32\n   unclassified             19\n\n Wrote: D:\\NIDs_Windows\\inventory.json (260,411 bytes)\n Wrote: D:\\NIDs_Windows\\reference_map.json (214,271 bytes)\n\n Done.\n",
       "stderr": ""
     },
     {
@@ -30,7 +30,7 @@
         "verify"
       ],
       "returncode": 1,
-      "stdout": "HEAD: 44439a24d731180abb028fdc983bd3ca865f861f\n------------------------------------------------------------------------\n  SYSTEM_MAP.json              head_sha       STALE\n  FLOW_MAP.json                head_sha       STALE\n  AUTHORITY_MAP.json           head_sha       STALE\n  CONTRACT_MAP.json            head_sha       STALE\n  EVIDENCE_INDEX.json          head_sha       STALE\n  build_truth.json             head_sha       STALE\n  runtime_manifest.json        head_sha       PASS\n  build_manifest.json          source_commit  STALE\n  AI_CONTEXT.md                markdown_head  STALE\n  inventory.json               none           PASS (no SHA expected)\n  reference_map.json           none           PASS (no SHA expected)\n------------------------------------------------------------------------\nTRUTH_INVALID — stale artifacts: SYSTEM_MAP.json, FLOW_MAP.json, AUTHORITY_MAP.json, CONTRACT_MAP.json, EVIDENCE_INDEX.json, build_truth.json, build_manifest.json, AI_CONTEXT.md\n",
+      "stdout": "HEAD: c04fef2dc2aeeb841a3a987863117abbe6ea9d82\n------------------------------------------------------------------------\n  SYSTEM_MAP.json              head_sha       STALE\n  FLOW_MAP.json                head_sha       STALE\n  AUTHORITY_MAP.json           head_sha       STALE\n  CONTRACT_MAP.json            head_sha       STALE\n  EVIDENCE_INDEX.json          head_sha       STALE\n  build_truth.json             head_sha       STALE\n  runtime_manifest.json        head_sha       PASS\n  build_manifest.json          source_commit  STALE\n  AI_CONTEXT.md                markdown_head  STALE\n  inventory.json               none           PASS (no SHA expected)\n  reference_map.json           none           PASS (no SHA expected)\n------------------------------------------------------------------------\nTRUTH_INVALID — stale artifacts: SYSTEM_MAP.json, FLOW_MAP.json, AUTHORITY_MAP.json, CONTRACT_MAP.json, EVIDENCE_INDEX.json, build_truth.json, build_manifest.json, AI_CONTEXT.md\n",
       "stderr": ""
     }
   ],
