@@ -129,9 +129,13 @@ test "shield_screen candidate paths never include bare CWD (B-01)" {
 
 test "shield_screen positive path against cargo-built DLL (host-conditional)" {
     // E5 host proof, runs only where the DLL exists (cargo-built tree);
-    // elsewhere it skips instead of failing. Must stay LAST in this file:
-    // a successful load sets process globals that earlier hermetic tests
-    // require to be null.
+    // elsewhere it skips instead of failing. NOTE: under `zig build test`
+    // this always skips (the runner does not use the repo root as cwd, so
+    // the relative candidate path never resolves there) — run
+    // `zig test src/policy/shield_screen.zig` from the repo root for the
+    // live positive proof (see EVT-059).
+    // Must stay LAST in this file: a successful load sets process globals
+    // that earlier hermetic tests require to be null.
     var probe: [512]u8 = undefined;
     const rel = std.fmt.bufPrint(&probe, "{s}", .{CANDIDATE_PATHS[0]}) catch return error.SkipTest;
     std.fs.cwd().access(rel, .{}) catch return error.SkipTest;
