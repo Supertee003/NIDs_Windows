@@ -1,5 +1,5 @@
 {
-  "head_sha": "0d5c29939f81210d8c697910d03f6f23b0dd52d5",
+  "head_sha": "eeb3686b767e31b401e6472232b63ca1ce192be0",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2389,12 +2389,32 @@
       ],
       "result": "PASS",
       "finding": "Second repo-backed visualization ships; minifilter downstream remains the one explicitly marked unknown."
+    },
+    {
+      "id": "EVT-086",
+      "head_sha": "eeb3686b767e31b401e6472232b63ca1ce192be0",
+      "timestamp": "2026-10-07",
+      "title": "DASH-SHOW-172: operator rows for traffic, screening and orphan watch (additive only)",
+      "level": "E2",
+      "component": "control-plane",
+      "description": "renderSystem gains Traffic, Screening and Orphan watch rows reading already-flowing snapshot keys with honest OFF/UNKNOWN fallbacks; JS rendering itself is not executed headless, so pins assert row labels present plus end-to-end key flow through the Flask test client. No production or contract change.",
+      "flow_id": "CONTROL-001",
+      "files_changed": [
+        "tools/aegisctl/web_dashboard/app.py",
+        "tests/runtime/test_operator_contracts.py"
+      ],
+      "tests": [
+        "pytest tests/runtime/test_operator_contracts.py 10 passed (2 new)",
+        "snapshot flow-through via test client with mocked control"
+      ],
+      "result": "PASS",
+      "finding": "Dashboard shows what the daemon already reports; rendering parity follows the data contract."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 17,
-    "E2_count": 60,
+    "E2_count": 61,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 17,
