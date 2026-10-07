@@ -492,6 +492,9 @@ function renderSystem(){
       (eo.duplicate_event_ids>0||eo.non_monotonic_event_ids>0)?'warn':''],
     ['Rust PEP / WFP',`${esc(pep.state||'UNKNOWN')} · provider ${pep.provider_ready?'READY':'UNAVAILABLE'} · host-effect ${pep.host_effect_capable?'CAPABLE':'NOT CAPABLE'}`],
     ['Counters',`in ${num(h.counters?.in_events)} · out ${num(h.counters?.out_events)} · err ${num(h.counters?.errors)} · dropped ${num(h.counters?.dropped)}`],
+    ['Traffic',`packets ${num(h.packets_captured)} · flows ${num(h.flows_active)}`],
+    ['Screening',(()=>{const e=snap.enforcement||{};return `shield ${e.shield_loaded?'LOADED':'OFF'} · payload-screening ${e.payload_screening?'ON':'OFF'}`})()],
+    ['Orphan watch',(()=>{const o=h.endpoint_ownership||{};const s=o.status||'UNKNOWN';return `${esc(s)}${o.foreign_count?` · foreign ${num(o.foreign_count)}`:''}`})()],
   ]);
   const f=snap.forensic||{};
   const ok=f.integrity==='ok';

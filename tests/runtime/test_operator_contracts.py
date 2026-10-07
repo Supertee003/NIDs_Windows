@@ -97,6 +97,40 @@ class TestWebDashboardSurface(unittest.TestCase):
             self.assertEqual(body["rules_runtime"]["policies_active"], 6)
             self.assertEqual(client.get("/health").status_code, 503)
 
+    def test_system_view_renders_traffic_screening_orphan_rows(self):
+        # DASH-SHOW-172: operator-visible rows for the newer daemon keys.
+        from tools.aegisctl.web_dashboard import app as dashboard
+        html = dashboard.INDEX_HTML
+        for label in ("'Traffic'", "'Screening'", "'Orphan watch'"):
+            self.assertIn(label, html)
+
+    def test_snapshot_carries_new_daemon_keys(self):
+        # DASH-SHOW-172: packets, shield flags and orphan findings must
+        # flow from control into the snapshot untouched.
+        from tools.aegisctl.web_dashboard import app as dashboard
+        health = {
+            "state": "RUNNING", "degraded": False, "counters": {},
+            "rules_loaded": 1, "policies_loaded": 1,
+            "packets_captured": 424242, "flows_active": 7,
+            "endpoint_ownership": {"status": "FOREIGN", "foreign_count": 1, "findings": []},
+        }
+        enforcement = {"shield_loaded": True, "payload_screening": True,
+                       "prevention_gate": "closed", "host_effect_capable": False}
+        with patch.object(dashboard, "get_health_payload", return_value=health), \
+             patch.object(dashboard, "query_control", side_effect=lambda command, payload=None: {
+                 "enforcement.status": enforcement,
+                 "metrics.snapshot": {},
+                 "incidents.list": {"incidents": []},
+             }.get(command, {})), \
+             patch.object(dashboard, "load_rules", return_value={"nids_rules": []}):
+            client = dashboard.app.test_client()
+            body = client.get("/api/snapshot").get_json()
+            self.assertEqual(body["health"]["packets_captured"], 424242)
+            self.assertEqual(body["health"]["flows_active"], 7)
+            self.assertEqual(body["health"]["endpoint_ownership"]["status"], "FOREIGN")
+            self.assertTrue(body["enforcement"]["shield_loaded"])
+            self.assertTrue(body["enforcement"]["payload_screening"])
+
 
 if __name__ == "__main__":
     unittest.main()
