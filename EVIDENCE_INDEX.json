@@ -1,5 +1,5 @@
 {
-  "head_sha": "9a4330eaa8fc45ad42b463ee95930764481cc843",
+  "head_sha": "98733494dc46ed7ec66a6e3f43be57f0a2325915",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2235,12 +2235,35 @@
       ],
       "result": "PASS",
       "finding": "Orphan visibility is now continuous, not just on-demand; nothing is ever stopped or restarted by it."
+    },
+    {
+      "id": "EVT-078",
+      "head_sha": "98733494dc46ed7ec66a6e3f43be57f0a2325915",
+      "timestamp": "2026-10-07",
+      "title": "CLI-SHOW-158: operator-visible traffic gauges plus docstring truth (additive only)",
+      "level": "E2",
+      "component": "control-plane",
+      "description": "Health shim forwards packets_captured/flows_active (absent reads as 0 per the legacy convention); status and health print traffic lines and --json carries the keys. Control_api docstring corrected: no Python TUI exists (operator TUI is the Go nose interface). Live stale daemon shows honest 0/0. Dashboard needs no change (counters/events flow; new keys ride --json).",
+      "flow_id": "CONTROL-001",
+      "files_changed": [
+        "tools/aegisctl/api/control_api.py",
+        "tools/aegisctl.py",
+        "tests/runtime/test_health.py",
+        "tests/runtime/test_aegisctl.py"
+      ],
+      "tests": [
+        "2 unit passthrough pins + 2 CLI display pins (--json keys included)",
+        "pytest health+aegisctl 55 passed",
+        "live status/health show 0/0 lines"
+      ],
+      "result": "PASS",
+      "finding": "Operator visibility now matches daemon capability; pretty-print stays minimal by design."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 13,
-    "E2_count": 58,
+    "E2_count": 59,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 15,
