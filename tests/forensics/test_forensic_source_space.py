@@ -109,8 +109,10 @@ def test_handler_reads_one_space_for_the_whole_ring():
     # The filter must compare the canonicalized ordinal, not the stored byte.
     assert "origin.ordinal != @as(u8, @intCast(source))" in source
     assert "header.reserved[6] != @as(u8, @intCast(source))" not in source
-    # Both read paths (list + show) expose the same attribution.
-    assert source.count("forensicRecordOrigin(header.reserved[6], header.reserved[5])") == 2
+    # All read paths (list + show + export) expose the same attribution:
+    # BE-EXP-099 added the export path following the same canonical call,
+    # so the count moved 2 -> 3. A fourth site must be a conscious review.
+    assert source.count("forensicRecordOrigin(header.reserved[6], header.reserved[5])") == 3
 
 
 def test_legacy_ordinals_are_mapped_not_reinterpreted():

@@ -7,6 +7,17 @@
 //! v5.0 Section 12: Priority - HIGH, NORMAL, LOW (keep current, no new priorities without justification)
 //! v5.0 Section 13: Backpressure - NORMAL, ELEVATED, HIGH, SATURATED (separate sampling from queue overflow)
 //! v5.0 Section 14: G2 Exit Gate - stress test with full accounting
+//!
+//! FABRIC-LIVE-133 design verdict (2026-10-07): this module stays a
+//! design oracle, NOT a live pipeline instrument. Rationale: every
+//! disposition it models already flows through atomic per-stage counters
+//! into metrics.snapshot/health (g_pipeline_*, diag.metrics.*, g_nose_*,
+//! g_queue_drops); a second parallel counter set would create two truths
+//! for the same quantities. Its plain-u64 counters are single-threaded
+//! while dispositions span producer/pipeline threads, and `expired` has
+//! no producer in the current queue (no TTL eviction). Revisit only when
+//! a disposition appears that no atomic covers — wire that ONE counter,
+//! never duplicate the set.
 
 const std = @import("std");
 const canonical = @import("../contract/canonical_event.zig");
