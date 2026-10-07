@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "2339d5f",
+  "source_commit": "6738242",
   "build_date": "2026-10-03T20:43:09.417869+00:00",
   "build_host": "windows",
   "platform": {
@@ -365,6 +365,12 @@
       "language": "python/cython"
     },
     {
+      "path": "brain/cython/bridge_ipc.pyx",
+      "size": 13512,
+      "sha256": "26b142286b207b961efec81e4cd87be06933032307ffe1264d3bed2577de7db1",
+      "language": "python/cython"
+    },
+    {
       "path": "brain/cython/build/lib.win-amd64-cpython-314/aegis_hotspot.cp314-win_amd64.pyd",
       "size": 156160,
       "sha256": "4d8ae3dbf4b8163623d529b9f1371a45f27d239b6156d0a408ec93590b07b1b5",
@@ -428,6 +434,12 @@
       "path": "brain/cython/cython_regex_scan.pyx",
       "size": 5367,
       "sha256": "dc9f44516a770e6b1647f2a3cb0ec54554b0cd8e6439b66c852ac38fe85bbcdb",
+      "language": "python/cython"
+    },
+    {
+      "path": "brain/cython/sensor_pipe.pyx",
+      "size": 2419,
+      "sha256": "c6a2eac891739e07b8072f311915f1b57a02bc2fb53f921d2e83651b86a4cdac",
       "language": "python/cython"
     },
     {
@@ -2135,6 +2147,12 @@
       "language": "go"
     },
     {
+      "path": "go/aggregator/main_test.go",
+      "size": 819,
+      "sha256": "081b6b9168ae9403eb5570ecf2e1273330607c5af1d92b4e7a4827a603fbca1e",
+      "language": "go"
+    },
+    {
       "path": "installer/aegis.nsi",
       "size": 4488,
       "sha256": "5ab1d8150742591aa70926b5dd6ce39a5fdcf7d0eaf1c450ce4c97b7b999511e",
@@ -2149,7 +2167,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18563,
-      "sha256": "2878f97d215e74cdf2675285f0bb86bb584b3ed3a8c7d13e2be90c8da300391f",
+      "sha256": "6e2a0816dc4961ad1f24429ae51a9772988c2dc5e7810019c2df584147038dac",
       "language": "json"
     },
     {
@@ -2444,6 +2462,12 @@
       "path": "scripts/kali_attacks/R0088_path_traversal.py",
       "size": 2202,
       "sha256": "1f5a84cb01be0a0637f1f11956765222c02dd1e411dcb3f0f8085ec52097bf89",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/kali_attacks/R0089_rfi_param.py",
+      "size": 2201,
+      "sha256": "8dbe94690c2cd63b9d47228b56591d26dc353b88823718f52d769519b050ade1",
       "language": "python/cython"
     },
     {
@@ -3017,6 +3041,12 @@
       "language": "python/cython"
     },
     {
+      "path": "tools/fresh_deploy.py",
+      "size": 4363,
+      "sha256": "3ef9daa824eeda161900bb00e40162a259da08a584fe837a81e12419bca685f4",
+      "language": "python/cython"
+    },
+    {
       "path": "tools/generate_truth_artifacts.py",
       "size": 10480,
       "sha256": "5b6e8cbf8e4be4f59b0464e5cba5bd485d03eb361f84ff2db0e906ba6356e78d",
@@ -3311,6 +3341,18 @@
       "language": "typescript"
     },
     {
+      "path": "ts_policy/src/ed25519.ts",
+      "size": 4270,
+      "sha256": "88c8ed7a2a9008076b0d850cd6f0ede2d096282a3384b8388932e2ae6679b162",
+      "language": "typescript"
+    },
+    {
+      "path": "ts_policy/src/exporter.ts",
+      "size": 2179,
+      "sha256": "e532e38c26efb9095f08c8d4c3cdfa178e5f8ff74d89bda9cff740e077c1c04c",
+      "language": "typescript"
+    },
+    {
       "path": "ts_policy/src/index.ts",
       "size": 1126,
       "sha256": "dd8e43989d388c54c35911de36dc9f5c84de0f78683dad30de45cc09d335e252",
@@ -3339,6 +3381,24 @@
       "size": 7801,
       "sha256": "33ae57c4fe174404c25db5daf3328eb73a1dda313bf52ea2264fdb0e88759e2f",
       "language": "typescript"
+    },
+    {
+      "path": "ts_policy/tests/ed25519.test.ts",
+      "size": 3708,
+      "sha256": "9b91fccecfc3d05fd29cba090f3e743f940d9062d267f35fe6b0aca49f700b46",
+      "language": "typescript"
+    },
+    {
+      "path": "ts_policy/tests/exporter.test.ts",
+      "size": 3936,
+      "sha256": "71761543d51e8e54b7eef9535a9b8902663c354b22af5a9b3d93af11fff1977a",
+      "language": "typescript"
+    },
+    {
+      "path": "ts_policy/tests/fixtures/policy_ir_002.json",
+      "size": 715,
+      "sha256": "19ea752b9201c3f4155b17359d1d461325e8ae6a02ab2d1a98370896aa21774a",
+      "language": "json"
     },
     {
       "path": "ts_policy/tests/no_enforcement.test.ts",
