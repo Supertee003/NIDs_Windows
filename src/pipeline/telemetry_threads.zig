@@ -63,25 +63,14 @@ fn etwCallback(ctx: *anyopaque, rec: *const etw.EtwEventRecord, ext_data: []cons
     // AEGIS event identity separately for downstream trace/forensic joins.
     ev.event_id = diag.metrics.events_emitted.next();
 
-    // Event IDs are provider-local. Always gate the mapping by provider GUID;
-    // otherwise an ID=1 from a file/registry provider could be misreported as
-    // PROCESS_CREATE and poison host correlation.
-    const is_process = std.mem.eql(u8, &rec.provider_guid, &etw.KERNEL_PROCESS_GUID.guid);
-    const is_file = std.mem.eql(u8, &rec.provider_guid, &etw.KERNEL_FILE_GUID.guid);
-    const is_registry = std.mem.eql(u8, &rec.provider_guid, &etw.KERNEL_REGISTRY_GUID.guid);
-    const opcode: u16 = rec.event_id;
-    if (is_process and opcode == 1) {
-        ev.kind = .etw_process_create;
-    } else if (is_process and opcode == 2) {
-        ev.kind = .etw_process_exit;
-    } else if (is_file and (opcode == 0x0A or opcode == 0x0B)) {
-        ev.kind = .fim_change;
-    } else if (is_registry and (opcode == 0x0E or opcode == 0x0F)) {
-        ev.kind = .reg_change;
-    } else {
+    // Event IDs are provider-local. Always gate the mapping by provider
+    // GUID; otherwise an ID=1 from a file/registry provider could be
+    // misreported as PROCESS_CREATE and poison host correlation.
+    const kind = classifyEtwEvent(&rec.provider_guid, rec.event_id) orelse {
         // Unknown provider/event combinations are not safe to classify.
         return;
-    }
+    };
+    ev.kind = kind;
 
     // Queue storage is bounded; hash and measure the exact bytes that will be
     // copied so forensic metadata cannot claim more payload than was retained.
@@ -89,6 +78,49 @@ fn etwCallback(ctx: *anyopaque, rec: *const etw.EtwEventRecord, ext_data: []cons
     const payload = ext_data[0..payload_len];
     ev.setPayload(payload);
     _ = queue.pushEvent(ev, payload);
+}
+
+/// Classify one ETW record: provider GUID + provider-local event Id -> pipeline kind.
+///
+/// Ground truth is host evidence (EVT-091: `wevtutil gp <provider>` task and
+/// opcode names plus the raw EVENT_DESCRIPTOR dump), pinned by the test at
+/// the bottom of this file:
+///   Kernel-Process: Id 1 = ProcessStart, Id 2 = ProcessStop (tasks 1/2)
+///   Kernel-File:    Id 0x0A = NameCreate, 0x0B = NameDelete (tasks 10/11,
+///                   keyword FILENAME 0x10), Id 0x10 = Write (task 16,
+///                   keyword WRITE 0x200)
+///   Kernel-Registry: Id 1 = CreateKey (keyword 0x1000), Id 5 = SetValueKey
+///                   (keyword 0x100)
+/// Returns null when the pair is unrecognized — the caller drops such
+/// records instead of guessing a kind.
+fn classifyEtwEvent(provider_guid: *const [16]u8, event_id: u16) ?event.EventKind {
+    if (std.mem.eql(u8, provider_guid, &etw.KERNEL_PROCESS_GUID.guid)) {
+        return switch (event_id) {
+            1 => .etw_process_create,
+            2 => .etw_process_exit,
+            else => null,
+        };
+    } else if (std.mem.eql(u8, provider_guid, &etw.KERNEL_FILE_GUID.guid)) {
+        // file_create/file_delete arrive as name-level events; file_modify
+        // as Write. Handle-level Create/Read/Cleanup and rename tasks are
+        // intentionally unmapped: redundant with the name events or too
+        // noisy for the bounded queue.
+        return switch (event_id) {
+            0x0A, 0x0B, 0x10 => .fim_change,
+            else => null,
+        };
+    } else if (std.mem.eql(u8, provider_guid, &etw.KERNEL_REGISTRY_GUID.guid)) {
+        // configs/test/etw_realtime_config.json intent: registry_create_key
+        // (Id 1) and registry_set_value (Id 5). The pre-fix gate 0x0E/0x0F
+        // was refuted by wevtutil gp: opcodes 45/46 = QuerySecurityKey /
+        // SetSecurityKey (ACL operations) — it could never fire on the
+        // value writes persistence detection needs.
+        return switch (event_id) {
+            1, 5 => .reg_change,
+            else => null,
+        };
+    }
+    return null;
 }
 
 /// FIM thread: polls file integrity changes and pushes to pipeline.
@@ -202,4 +234,38 @@ pub fn registryThread(monitor: *reg_mon.RegistryMonitor) void {
         std.time.sleep(500 * std.time.ns_per_ms); // poll every 500ms
     }
     diag.info("Registry thread stopped", .{});
+}
+
+test "ETW classifier gates pinned to host manifest ground truth (EVT-091)" {
+    const proc_guid = &etw.KERNEL_PROCESS_GUID.guid;
+    const file_guid = &etw.KERNEL_FILE_GUID.guid;
+    const reg_guid = &etw.KERNEL_REGISTRY_GUID.guid;
+    const unknown: [16]u8 = [_]u8{0} ** 16;
+
+    // Kernel-Process tasks 1/2 (wevtutil gp): ProcessStart/ProcessStop.
+    try std.testing.expectEqual(event.EventKind.etw_process_create, classifyEtwEvent(proc_guid, 1).?);
+    try std.testing.expectEqual(event.EventKind.etw_process_exit, classifyEtwEvent(proc_guid, 2).?);
+    // ThreadStart (task 3) has no pipeline kind — must not be guessed.
+    try std.testing.expect(classifyEtwEvent(proc_guid, 3) == null);
+
+    // Kernel-File tasks 10/11/16: NameCreate / NameDelete / Write.
+    try std.testing.expectEqual(event.EventKind.fim_change, classifyEtwEvent(file_guid, 0x0A).?);
+    try std.testing.expectEqual(event.EventKind.fim_change, classifyEtwEvent(file_guid, 0x0B).?);
+    try std.testing.expectEqual(event.EventKind.fim_change, classifyEtwEvent(file_guid, 0x10).?);
+    // Handle-level Create (task 12) stays unmapped (see classifyEtwEvent).
+    try std.testing.expect(classifyEtwEvent(file_guid, 0x0C) == null);
+
+    // Kernel-Registry: CreateKey (Id 1), SetValueKey (Id 5).
+    try std.testing.expectEqual(event.EventKind.reg_change, classifyEtwEvent(reg_guid, 1).?);
+    try std.testing.expectEqual(event.EventKind.reg_change, classifyEtwEvent(reg_guid, 5).?);
+    // Refuted pre-fix gate: 0x0E/0x0F = Query/SetSecurityKey (ACL ops,
+    // wevtutil opcodes 45/46) — must not classify as registry change.
+    try std.testing.expect(classifyEtwEvent(reg_guid, 0x0E) == null);
+    try std.testing.expect(classifyEtwEvent(reg_guid, 0x0F) == null);
+
+    // Provider gating: a matching Id from the wrong provider never classifies.
+    try std.testing.expect(classifyEtwEvent(file_guid, 1) == null);
+    try std.testing.expect(classifyEtwEvent(reg_guid, 2) == null);
+    // Unknown provider is dropped, not guessed.
+    try std.testing.expect(classifyEtwEvent(&unknown, 1) == null);
 }

@@ -109,6 +109,9 @@ comptime {
     // LEN-CLAIM-100: direct edge — transitive-only files' tests do NOT
     // execute in this toolchain's test binary (silent death found live).
     _ = @import("pipeline/event_queue.zig");
+    // ETW-GUID-180: classifier ground-truth pins live here; a direct edge
+    // is the only proven execution guarantee (scope pin enforces it).
+    _ = @import("pipeline/telemetry_threads.zig");
     // SCOPE-101: binary scan proved ~175 tests dead across these 15
     // non-exempt files (transitive reachability != execution — the
     // TEST-SCOPE-085 pin measured the wrong property). Direct edges wire

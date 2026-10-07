@@ -69,8 +69,23 @@ pub const EtwConfig = struct {
 // ============================================================
 // EtwProviderGuid - known ETW provider GUIDs
 // ============================================================
-// These are the well-known GUIDs for Windows kernel ETW providers.
-// On Linux, they're unused (stub mode).
+// Ground truth (EVT-091): `logman query providers` on the reference host
+// registers exactly these four names —
+//   Microsoft-Windows-Kernel-Process {22FB2CD6-0E7B-422B-A0C7-2FAD1FD0E716}
+//   Microsoft-Windows-Kernel-File    {EDD08927-9CC4-4E65-B970-C2560FB5C289}
+//   Microsoft-Windows-Kernel-Registry{70EB4F03-C1DE-4F73-A051-33D13D5413BD}
+//   Microsoft-Windows-Kernel-Network {7DD42A49-5329-4832-8DFD-43D979153A88}
+// Pre-fix constants matched NONE of the host's 1,158 registered GUIDs in
+// either byte order, and EnableTraceEx2 accepts a non-existent GUID
+// silently — etw_ready=true came with zero events (STOP-THE-LINE, GAP-012).
+//
+// The byte arrays below are the GUID *memory layout* (Data1/Data2/Data3
+// little-endian): aegis_etw_start memcpy's them raw into EnableTraceEx2,
+// and the consumer compares EventHeader.ProviderId raw — enable bytes and
+// match bytes MUST be the same order. Both constant sets derive from the
+// *_GUID_BYTES definitions below and are pinned by the test
+// "ETW provider GUID bytes are pinned to host ground truth".
+// On Linux, these are unused (stub mode).
 
 pub const EtwProviderGuid = struct {
     name: []const u8,
@@ -78,39 +93,53 @@ pub const EtwProviderGuid = struct {
     enabled_by_default: bool,
 };
 
+pub const KERNEL_PROCESS_GUID_BYTES = [_]u8{ 0xD6, 0x2C, 0xFB, 0x22, 0x7B, 0x0E, 0x2B, 0x42, 0xA0, 0xC7, 0x2F, 0xAD, 0x1F, 0xD0, 0xE7, 0x16 };
+pub const KERNEL_FILE_GUID_BYTES = [_]u8{ 0x27, 0x89, 0xD0, 0xED, 0xC4, 0x9C, 0x65, 0x4E, 0xB9, 0x70, 0xC2, 0x56, 0x0F, 0xB5, 0xC2, 0x89 };
+pub const KERNEL_REGISTRY_GUID_BYTES = [_]u8{ 0x03, 0x4F, 0xEB, 0x70, 0xDE, 0xC1, 0x73, 0x4F, 0xA0, 0x51, 0x33, 0xD1, 0x3D, 0x54, 0x13, 0xBD };
+pub const KERNEL_NETWORK_GUID_BYTES = [_]u8{ 0x49, 0x2A, 0xD4, 0x7D, 0x29, 0x53, 0x32, 0x48, 0x8D, 0xFD, 0x43, 0xD9, 0x79, 0x15, 0x3A, 0x88 };
+
 pub const KERNEL_PROCESS_GUID = EtwProviderGuid{
-    .name = "Windows Kernel Process",
-    .guid = [_]u8{ 0x22, 0xfb, 0x2f, 0xd6, 0x6a, 0x80, 0x44, 0x3e, 0xb9, 0x6f, 0x4f, 0xd9, 0xa1, 0xe7, 0x46, 0xd8 },
+    .name = "Microsoft-Windows-Kernel-Process",
+    .guid = KERNEL_PROCESS_GUID_BYTES,
     .enabled_by_default = true,
 };
 
+// UNVERIFIED (EVT-091): neither "Microsoft-Windows-Kernel-Thread" nor its
+// GUID string is registered on the reference host, and thread events
+// actually arrive under Kernel-Process (wevtutil tasks ThreadStart=3 /
+// ThreadStop=4, keyword THREAD 0x20). Placeholder bytes kept as found —
+// there is no host registration to pin them against. Never enabled on the
+// live path; enabling them would silently no-op (GAP-012).
 pub const KERNEL_THREAD_GUID = EtwProviderGuid{
     .name = "Windows Kernel Thread",
     .guid = [_]u8{ 0x3d, 0x6c, 0xfa, 0x22, 0x7a, 0xe4, 0x4a, 0xfc, 0xbe, 0x97, 0xd4, 0x1a, 0x35, 0x93, 0x2a, 0x23 },
     .enabled_by_default = false,
 };
 
+// UNVERIFIED (EVT-091): same as Thread — not registered on the reference
+// host; ImageLoad/ImageUnload events arrive under Kernel-Process (tasks
+// 5/6, keyword IMAGE 0x40). Never enabled on the live path.
 pub const KERNEL_IMAGE_GUID = EtwProviderGuid{
     .name = "Windows Kernel Image Load",
     .guid = [_]u8{ 0x63, 0xb5, 0x30, 0x8e, 0xc4, 0x22, 0x47, 0x09, 0x99, 0xd8, 0x67, 0xae, 0x4b, 0x3d, 0x43, 0xe5 },
-    .enabled_by_default = true,
+    .enabled_by_default = false,
 };
 
 pub const KERNEL_NETWORK_GUID = EtwProviderGuid{
-    .name = "Windows Kernel Network",
-    .guid = [_]u8{ 0x37, 0xd5, 0x9a, 0xe3, 0x5c, 0x99, 0x42, 0x3a, 0x8f, 0x2a, 0x83, 0x07, 0x6a, 0x5b, 0x12, 0xb8 },
+    .name = "Microsoft-Windows-Kernel-Network",
+    .guid = KERNEL_NETWORK_GUID_BYTES,
     .enabled_by_default = true,
 };
 
 pub const KERNEL_FILE_GUID = EtwProviderGuid{
-    .name = "Windows Kernel File I/O",
-    .guid = [_]u8{ 0x90, 0xcb, 0x2f, 0x8d, 0x7e, 0x4c, 0x4e, 0x9a, 0xbe, 0xe4, 0x12, 0x9d, 0x6c, 0x7e, 0x5b, 0x59 },
+    .name = "Microsoft-Windows-Kernel-File",
+    .guid = KERNEL_FILE_GUID_BYTES,
     .enabled_by_default = true,
 };
 
 pub const KERNEL_REGISTRY_GUID = EtwProviderGuid{
-    .name = "Windows Kernel Registry",
-    .guid = [_]u8{ 0xae, 0x53, 0x7c, 0x11, 0x8e, 0xc5, 0x4d, 0x18, 0xaa, 0xa7, 0xfa, 0x57, 0x6c, 0x53, 0x2d, 0x3b },
+    .name = "Microsoft-Windows-Kernel-Registry",
+    .guid = KERNEL_REGISTRY_GUID_BYTES,
     .enabled_by_default = true,
 };
 
@@ -889,14 +918,45 @@ test "EtwEventQueue handles full capacity without crash" {
 // original Phase II01 implementation; coexists with EtwRealtimeSource above.
 // ============================================================
 
-pub const PROVIDER_KERNEL_PROCESS_RT = [16]u8{ 0x22, 0xFB, 0x2D, 0xF6, 0xA0, 0x1B, 0x10, 0x40, 0xB3, 0x20, 0x29, 0x33, 0x33, 0x8D, 0xDE, 0x6C };
-pub const PROVIDER_KERNEL_FILE_RT = [16]u8{ 0xED, 0xD0, 0x89, 0x2E, 0x80, 0xB5, 0x10, 0x40, 0x99, 0xF6, 0x49, 0x9A, 0x86, 0xA9, 0x3A, 0x05 };
-pub const PROVIDER_KERNEL_REGISTRY_RT = [16]u8{ 0xAE, 0x53, 0x7C, 0x9E, 0xB2, 0xF5, 0x10, 0x40, 0x9D, 0x2D, 0x53, 0xA0, 0xC7, 0xA1, 0xA0, 0x9C };
+/// Enable-side bytes for the live EtwSource path: byte-identical to the
+/// classification constants BY CONSTRUCTION (one definition each — if the
+/// session enabled one GUID and the callback matched another, every event
+/// would be dropped again: silent event loss, GAP-012).
+pub const PROVIDER_KERNEL_PROCESS_RT = KERNEL_PROCESS_GUID_BYTES;
+pub const PROVIDER_KERNEL_FILE_RT = KERNEL_FILE_GUID_BYTES;
+pub const PROVIDER_KERNEL_REGISTRY_RT = KERNEL_REGISTRY_GUID_BYTES;
 
 /// Compatibility aliases used by src/main.zig.
 pub const PROVIDER_KERNEL_PROCESS = PROVIDER_KERNEL_PROCESS_RT;
 pub const PROVIDER_KERNEL_FILE = PROVIDER_KERNEL_FILE_RT;
 pub const PROVIDER_KERNEL_REGISTRY = PROVIDER_KERNEL_REGISTRY_RT;
+
+test "ETW provider GUID bytes are pinned to host ground truth" {
+    // Memory-order layout of the four registered GUIDs (logman query
+    // providers, reference host — EVT-091), hand-derived from the string
+    // form above so a typo on either side of the pin breaks it.
+    const process_memory = [_]u8{ 0xD6, 0x2C, 0xFB, 0x22, 0x7B, 0x0E, 0x2B, 0x42, 0xA0, 0xC7, 0x2F, 0xAD, 0x1F, 0xD0, 0xE7, 0x16 };
+    const file_memory = [_]u8{ 0x27, 0x89, 0xD0, 0xED, 0xC4, 0x9C, 0x65, 0x4E, 0xB9, 0x70, 0xC2, 0x56, 0x0F, 0xB5, 0xC2, 0x89 };
+    const registry_memory = [_]u8{ 0x03, 0x4F, 0xEB, 0x70, 0xDE, 0xC1, 0x73, 0x4F, 0xA0, 0x51, 0x33, 0xD1, 0x3D, 0x54, 0x13, 0xBD };
+    const network_memory = [_]u8{ 0x49, 0x2A, 0xD4, 0x7D, 0x29, 0x53, 0x32, 0x48, 0x8D, 0xFD, 0x43, 0xD9, 0x79, 0x15, 0x3A, 0x88 };
+
+    try std.testing.expectEqualSlices(u8, &process_memory, &KERNEL_PROCESS_GUID.guid);
+    try std.testing.expectEqualSlices(u8, &file_memory, &KERNEL_FILE_GUID.guid);
+    try std.testing.expectEqualSlices(u8, &registry_memory, &KERNEL_REGISTRY_GUID.guid);
+    try std.testing.expectEqualSlices(u8, &network_memory, &KERNEL_NETWORK_GUID.guid);
+
+    // Enable-side and classification-side bytes are one definition: the
+    // session must enable exactly the GUID the callback matches.
+    try std.testing.expectEqualSlices(u8, &KERNEL_PROCESS_GUID.guid, &PROVIDER_KERNEL_PROCESS_RT);
+    try std.testing.expectEqualSlices(u8, &KERNEL_FILE_GUID.guid, &PROVIDER_KERNEL_FILE_RT);
+    try std.testing.expectEqualSlices(u8, &KERNEL_REGISTRY_GUID.guid, &PROVIDER_KERNEL_REGISTRY_RT);
+
+    // Negative control: string-order bytes must differ from memory-order
+    // bytes — using the wrong order is exactly how the pre-fix constants
+    // missed every registered provider (GAP-012).
+    const process_string = [_]u8{ 0x22, 0xFB, 0x2C, 0xD6, 0x0E, 0x7B, 0x42, 0x2B, 0xA0, 0xC7, 0x2F, 0xAD, 0x1F, 0xD0, 0xE7, 0x16 };
+    try std.testing.expect(!std.mem.eql(u8, &process_string, &KERNEL_PROCESS_GUID.guid));
+}
 
 pub const EtwCallback = *const fn (ctx: *anyopaque, rec: *const EtwEventRecord, ext_data: []const u8) void;
 
