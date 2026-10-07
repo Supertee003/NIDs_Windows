@@ -274,6 +274,15 @@ def test_live_daemon_serves_a_full_1000_record_page():
     assert document["available"] is True
     assert document["integrity"] == "ok"
     assert document["verified"] is True
-    assert document["truncated"] is False, "paging must complete instead of stopping early"
     assert document["records_returned"] == len(document["records"])
     assert document["records_returned"] <= 1000
+    if document["truncated"]:
+        # Ring holds more than the requested limit: the client stops at
+        # exactly the limit with an honest continuation cursor (the pinned
+        # unit behavior of test_pagination_stops_at_the_requested_limit),
+        # never a silently short list.
+        assert document["records_returned"] == 1000
+        assert document["next_after"] is not None
+    else:
+        # Small ring: the result set completed; no cursor may remain.
+        assert document["next_after"] is None
