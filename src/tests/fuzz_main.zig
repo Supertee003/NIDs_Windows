@@ -5,7 +5,14 @@ const decoder = @import("../capture/packet_decoder.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
+    // FUZZ-LEAK-147: a fuzzer that silently leaks hides allocator bugs;
+    // fail the run when deinit reports anything but clean.
+    defer {
+        if (gpa.deinit() == .leak) {
+            std.debug.print("fuzz: LEAK detected\n", .{});
+            std.process.exit(1);
+        }
+    }
     const alloc = gpa.allocator();
 
     // Build a small AC with a few patterns
