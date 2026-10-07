@@ -1,5 +1,5 @@
 {
-  "head_sha": "005d519458714f03d1db6d357a1c38f15faaddbb",
+  "head_sha": "f42b752f433c5611bfe5a421e46986f299025483",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -1993,6 +1993,25 @@
       ],
       "result": "PASS",
       "finding": "Producer default preserved for operators; tests are hermetic again."
+    },
+    {
+      "id": "EVT-066",
+      "head_sha": "f42b752f433c5611bfe5a421e46986f299025483",
+      "timestamp": "2026-10-07",
+      "title": "Readiness: clean-cache rebuild from HEAD plus harness and brain plane green",
+      "level": "E5",
+      "component": "build",
+      "description": "Deleted .zig-cache (ignored build cache, regenerates deterministically) and rebuilt: 10/10 steps green with a fresh aegis_nids.exe proving the binary equals HEAD (the prior binary predated only a comment-only change, but certainty beats reasoning). Fresh --version banner OK; harness 3 passed with spawn case skipping on the stale-owned pipe as designed; brain/ suite 75 passed matching the historical count. Running deployment deliberately untouched.",
+      "flow_id": "BUILD",
+      "files_changed": [],
+      "tests": [
+        "zig build 10/10 after cache clear",
+        "fresh binary --version exit 0",
+        "pytest tests/runtime/test_harness_integration.py 3 passed 1 skipped",
+        "pytest brain/ 75 passed"
+      ],
+      "result": "PASS",
+      "finding": "A HEAD-current binary is staged and proven startable; pipe handover stays an ops decision. files_changed is empty by design."
     }
   ],
   "evidence_level_summary": {
@@ -2001,7 +2020,7 @@
     "E2_count": 53,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 9,
+    "E5_count": 10,
     "E6_count": 0,
     "E7_count": 0
   }
