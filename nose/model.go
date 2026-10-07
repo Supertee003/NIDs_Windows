@@ -81,6 +81,10 @@ func initialModel(resourceCh chan ResourceData, trafficCh chan TrafficData, thre
 		trafficCh:  trafficCh,
 		threatCh:   threatCh,
 		startTime:  startTime,
+		// NOSE-SIM-139: assume synthesis until the first sample arrives
+		// carrying the true flag (fail-safe direction: never claim live
+		// data on an empty panel).
+		traffic:    TrafficData{Simulated: true},
 		rxHistory:  make([]int64, 0, maxHistorySize),
 		txHistory:  make([]int64, 0, maxHistorySize),
 		defcon:     5,
@@ -309,10 +313,27 @@ func (m model) renderHealthDynamic(w int) string {
 }
 
 // ── renderTraffic — v5.1: Dynamic width ──
+// NOSE-SIM-139: panel titles follow the Simulated flag so the display can
+// never claim live data while showing synthesis (or vice versa). A future
+// real source flips these automatically by clearing the flag.
+func trafficTitle(t TrafficData) string {
+        if t.Simulated {
+                return "Network Traffic (simulated)"
+        }
+        return "Network Traffic (live)"
+}
+
+func talkersTitle(t TrafficData) string {
+        if t.Simulated {
+                return "Top Talkers (simulated)"
+        }
+        return "Top Talkers (live)"
+}
+
 func (m model) renderTrafficDynamic(w int) string {
 	var b strings.Builder
 
-	b.WriteString(sectionTrafficStyle.Render("Network Traffic (simulated)"))
+	b.WriteString(sectionTrafficStyle.Render(trafficTitle(m.traffic)))
 	b.WriteString("\n")
 
 	b.WriteString(fmt.Sprintf("  %-16s %s\n",
@@ -350,7 +371,7 @@ func (m model) renderTrafficDynamic(w int) string {
 func (m model) renderTopTalkersDynamic(w int) string {
 	var b strings.Builder
 
-	b.WriteString(sectionTrafficStyle.Render("Top Talkers (simulated)"))
+	b.WriteString(sectionTrafficStyle.Render(talkersTitle(m.traffic)))
 	b.WriteString("\n")
 
 	talkers := sortTopTalkers(m.traffic.TopTalkers)

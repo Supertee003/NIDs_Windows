@@ -65,6 +65,11 @@ type TrafficData struct {
         RxBytesPerSec float64 `json:"rx_bytes_sec"`
         TxBytesPerSec float64 `json:"tx_bytes_sec"`
         TotalPkts     int64   `json:"total_pkts"`
+        // Simulated marks synthetic data. Each synthetic stage sets it:
+        // the fallback numbers below and the TopTalkers/Protocols block
+        // in trafficCollector. A future real source clears its own stage;
+        // the TUI and status JSON read this flag instead of assuming.
+        Simulated     bool    `json:"simulated"`
         // v5.0: Enhanced network data
         TopTalkers    []TopTalkerEntry  `json:"top_talkers"`
         Protocols     []ProtocolEntry   `json:"protocols"`
@@ -146,6 +151,22 @@ func gcPauseAvg(pauseTotalNs uint64, numGC uint32) uint64 {
 
 // ── Goroutine 2: Traffic Sensor ──
 // v5.0: เพิ่ม Top Talkers + Protocol Distribution
+// fallbackTraffic — synthetic numbers used when readTrafficFromSystem
+// fails. Pure function (no channels, no sleep) so the synthesis contract
+// is unit-testable. Marks Simulated; the caller keeps it marked while
+// TopTalkers/Protocols stay synthetic (see trafficCollector).
+func fallbackTraffic(now int64, tick int) TrafficData {
+        variation := int64(200 * float64(tick%60) / 60.0)
+        return TrafficData{
+                RxPktsPerSec:  1000 + (now%500) + variation,
+                TxPktsPerSec:  800 + (now%300) + variation/2,
+                ActiveConns:   50 + (now % 20),
+                RxBytesPerSec: float64(1200000 + (now%600000) + variation*1000),
+                TxBytesPerSec: float64(800000 + (now%400000) + variation*500),
+                Simulated:     true,
+        }
+}
+
 func trafficCollector(ch chan<- TrafficData) {
         var totalPkts int64
         tick := 0
@@ -154,18 +175,14 @@ func trafficCollector(ch chan<- TrafficData) {
                 data, err := readTrafficFromSystem()
                 if err != nil {
                         // Simulate realistic traffic with natural variation
-                        variation := int64(200 * float64(tick%60) / 60.0)
-                        data = TrafficData{
-                                RxPktsPerSec:  1000 + (now%500) + variation,
-                                TxPktsPerSec:  800 + (now%300) + variation/2,
-                                ActiveConns:   50 + (now % 20),
-                                RxBytesPerSec: float64(1200000 + (now%600000) + variation*1000),
-                                TxBytesPerSec: float64(800000 + (now%400000) + variation*500),
-                        }
+                        data = fallbackTraffic(now, tick)
                 }
 
                 // v5.0: Simulate Top Talkers (real data would come from packet capture)
                 data.TopTalkers = simulateTopTalkers(now)
+                // Top talkers are synthetic by construction: keep the flag set
+                // even after a future real numbers source lands here.
+                data.Simulated = true
                 data.Protocols = []ProtocolEntry{
                         {Name: "TCP",  Count: data.RxPktsPerSec*70/100 + data.TxPktsPerSec*70/100},
                         {Name: "UDP",  Count: data.RxPktsPerSec*20/100 + data.TxPktsPerSec*20/100},
