@@ -1,5 +1,5 @@
 {
-  "head_sha": "b99aed26171b28e86144da06852ec82b6ddb0238",
+  "head_sha": "65d6a80c853c8dbe894a1b2411161f8c097d016f",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2049,12 +2049,30 @@
       ],
       "result": "PASS",
       "finding": "Synthesis is now labeled at the data layer, not just in display strings."
+    },
+    {
+      "id": "EVT-069",
+      "head_sha": "65d6a80c853c8dbe894a1b2411161f8c097d016f",
+      "timestamp": "2026-10-07",
+      "title": "E2E-TRUTH-141: WFP/RAG test-truth rot fixed (test-only)",
+      "level": "E2",
+      "component": "testing",
+      "description": "Analysis-flagged rot in the never-swept e2e suite (14/14 pass on host): the WFP constant aliased PEP_RS so the suite read rust-src/lib.rs twice, and the RAG test implied core/ is a directory. WFP now asserts the independent REAL wfp_production module; RAG pins alias resolution through canonical_path to the file actually read. Suite runs green locally (CI already collects it).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "tests/e2e/test_t14_windows_golden_path.py"
+      ],
+      "tests": [
+        "pytest tests/e2e 14 passed"
+      ],
+      "result": "PASS",
+      "finding": "Gates now check what they claim; dead ACTION_DISPATCHER constant and stale test_results.txt names left untouched as historical."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 12,
-    "E2_count": 54,
+    "E2_count": 55,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 11,
