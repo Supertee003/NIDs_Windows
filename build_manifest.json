@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "9928400",
+  "source_commit": "3b3c4d3",
   "build_date": "2026-10-03T20:43:09.417869+00:00",
   "build_host": "windows",
   "platform": {
@@ -2148,8 +2148,8 @@
     },
     {
       "path": "runtime_manifest.json",
-      "size": 17896,
-      "sha256": "f800d49576a00553cdd6e6bce185576a5dbef7070b77790ce446ce86f4565aff",
+      "size": 18257,
+      "sha256": "7231e92c551c8721c13349ba12d6a77916342767f8499d9aceb1ecc6fbe3f7b6",
       "language": "json"
     },
     {
@@ -2994,8 +2994,8 @@
     },
     {
       "path": "tools/create_manifest.py",
-      "size": 14279,
-      "sha256": "69079d28c5dc6d17c09bcc59bc47ea2b5af1dccfdca0f1f4fbad79b093f3ee0c",
+      "size": 14641,
+      "sha256": "9fd3824672f82a8d9d82258b36b6bdb6b4b4279e01669db09b63e40ad99843c1",
       "language": "python/cython"
     },
     {

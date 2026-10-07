@@ -140,6 +140,8 @@ authority_invariants = [
     'build provenance records source commit, artifact hashes, and reproducible release inputs',
     'installer preserves user data and upgrade rollback records RPO and RTO',
     'policy_engine is the canonical policy decision model; unsigned privileged policy is rejected',
+    'control plane authority: the Zig control plane authorizes every state mutation; operators act only through tools/aegisctl.py over the authenticated named pipe',
+    'fail-closed: privileged enforcement without a validated Rust PEP receipt is refused (BLOCKED_CONFIRMED is never emitted without receipt); an absent Tier-3 is surfaced, never a silent allow',
 ]
 
 manifest = {

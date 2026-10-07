@@ -1,10 +1,10 @@
 {
   "runtime_version": "5.0.0",
-  "head_sha": "c04fef2dc2aeeb841a3a987863117abbe6ea9d82",
+  "head_sha": "3b3c4d3956560529d441f9ae58edfc343ca14584",
   "entrypoint": "src/main.zig",
   "production_binary": "zig-out/bin/aegis_nids.exe",
-  "source_commit": "c04fef2",
-  "date": "2026-10-07T07:00:42.165727+00:00",
+  "source_commit": "3b3c4d3",
+  "date": "2026-10-07T07:36:44.187627+00:00",
   "production_modules": 3,
   "modules": {
     "nose/capture.go": {
@@ -353,7 +353,9 @@
     "CI matrix authority is the cross-language validation matrix",
     "build provenance records source commit, artifact hashes, and reproducible release inputs",
     "installer preserves user data and upgrade rollback records RPO and RTO",
-    "policy_engine is the canonical policy decision model; unsigned privileged policy is rejected"
+    "policy_engine is the canonical policy decision model; unsigned privileged policy is rejected",
+    "control plane authority: the Zig control plane authorizes every state mutation; operators act only through tools/aegisctl.py over the authenticated named pipe",
+    "fail-closed: privileged enforcement without a validated Rust PEP receipt is refused (BLOCKED_CONFIRMED is never emitted without receipt); an absent Tier-3 is surfaced, never a silent allow"
   ],
   "canonical_entrypoints": {
     "rust_pep_tier3": {
