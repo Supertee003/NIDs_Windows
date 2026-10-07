@@ -1,22 +1,11 @@
 {
   "step": "T20 AC4 (Steps 63-64)",
-  "commit": "c04fef2",
+  "commit": "9928400",
   "declaration": "NOT DECLARED",
   "part_i": {
     "total_modules": 62,
-    "passing": 45,
+    "passing": 56,
     "failing": [
-      "core/event_fabric.zig",
-      "core/fault_injection.zig",
-      "core/fault_matrix.zig",
-      "core/federation_bench.zig",
-      "core/nose_pipe_reader.zig",
-      "core/policy_engine.zig",
-      "core/rag_engine.zig",
-      "core/release_engineering.zig",
-      "core/release_provenance.zig",
-      "core/reliability.zig",
-      "core/windows_adapters.zig",
       "src/federation/cluster_uplink.zig",
       "src/federation/federation_rust_tls.zig",
       "src/policy/shadow_decision.zig",
@@ -162,22 +151,19 @@
       "status": "REAL",
       "golden_path": true,
       "dims": {
-        "Implemented": "MISSING",
+        "Implemented": "alias of src/contract/event_fabric.zig (file on disk)",
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
-        "Verified": "MISSING",
+        "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
-      "missing": [
-        "Implemented",
-        "Verified"
-      ],
-      "pass": false
+      "missing": [],
+      "pass": true
     },
     "core/fault_injection.zig": {
       "file": "fault_injection.zig",
@@ -185,22 +171,19 @@
       "status": "REAL",
       "golden_path": true,
       "dims": {
-        "Implemented": "MISSING",
+        "Implemented": "alias of src/reliability/fault_injection.zig (file on disk)",
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
-        "Verified": "MISSING",
+        "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
-      "missing": [
-        "Implemented",
-        "Verified"
-      ],
-      "pass": false
+      "missing": [],
+      "pass": true
     },
     "core/fault_matrix.zig": {
       "file": "fault_matrix.zig",
@@ -208,22 +191,19 @@
       "status": "REAL",
       "golden_path": true,
       "dims": {
-        "Implemented": "MISSING",
+        "Implemented": "alias of src/reliability/fault_matrix.zig (file on disk)",
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
-        "Verified": "MISSING",
+        "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
-      "missing": [
-        "Implemented",
-        "Verified"
-      ],
-      "pass": false
+      "missing": [],
+      "pass": true
     },
     "core/federation_bench.zig": {
       "file": "federation_bench.zig",
@@ -231,22 +211,19 @@
       "status": "REAL",
       "golden_path": true,
       "dims": {
-        "Implemented": "MISSING",
+        "Implemented": "alias of src/federation/federation_bench.zig (file on disk)",
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
-        "Verified": "MISSING",
+        "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
-      "missing": [
-        "Implemented",
-        "Verified"
-      ],
-      "pass": false
+      "missing": [],
+      "pass": true
     },
     "core/nose_pipe_reader.zig": {
       "file": "nose_pipe_reader.zig",
@@ -254,22 +231,19 @@
       "status": "REAL",
       "golden_path": true,
       "dims": {
-        "Implemented": "MISSING",
+        "Implemented": "alias of src/capture/nose_pipe_reader.zig (file on disk)",
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
-        "Verified": "MISSING",
+        "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
-      "missing": [
-        "Implemented",
-        "Verified"
-      ],
-      "pass": false
+      "missing": [],
+      "pass": true
     },
     "core/policy_engine.zig": {
       "file": "policy_engine.zig",
@@ -277,22 +251,19 @@
       "status": "REAL",
       "golden_path": true,
       "dims": {
-        "Implemented": "MISSING",
+        "Implemented": "alias of src/policy/policy_engine.zig (file on disk)",
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
-        "Verified": "MISSING",
+        "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
-      "missing": [
-        "Implemented",
-        "Verified"
-      ],
-      "pass": false
+      "missing": [],
+      "pass": true
     },
     "core/rag_engine.zig": {
       "file": "rag_engine.zig",
@@ -300,22 +271,19 @@
       "status": "REAL",
       "golden_path": true,
       "dims": {
-        "Implemented": "MISSING",
+        "Implemented": "alias of src/detection/rag_engine.zig (file on disk)",
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
-        "Verified": "MISSING",
+        "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
-      "missing": [
-        "Implemented",
-        "Verified"
-      ],
-      "pass": false
+      "missing": [],
+      "pass": true
     },
     "core/release_engineering.zig": {
       "file": "release_engineering.zig",
@@ -323,22 +291,19 @@
       "status": "REAL",
       "golden_path": true,
       "dims": {
-        "Implemented": "MISSING",
+        "Implemented": "alias of src/reliability/release_engineering.zig (file on disk)",
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
-        "Verified": "MISSING",
+        "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
-      "missing": [
-        "Implemented",
-        "Verified"
-      ],
-      "pass": false
+      "missing": [],
+      "pass": true
     },
     "core/release_provenance.zig": {
       "file": "release_provenance.zig",
@@ -346,22 +311,19 @@
       "status": "REAL",
       "golden_path": true,
       "dims": {
-        "Implemented": "MISSING",
+        "Implemented": "alias of src/reliability/release_provenance.zig (file on disk)",
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
-        "Verified": "MISSING",
+        "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
-      "missing": [
-        "Implemented",
-        "Verified"
-      ],
-      "pass": false
+      "missing": [],
+      "pass": true
     },
     "core/reliability.zig": {
       "file": "reliability.zig",
@@ -369,22 +331,19 @@
       "status": "REAL",
       "golden_path": true,
       "dims": {
-        "Implemented": "MISSING",
+        "Implemented": "alias of src/reliability/reliability.zig (file on disk)",
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
-        "Verified": "MISSING",
+        "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
-      "missing": [
-        "Implemented",
-        "Verified"
-      ],
-      "pass": false
+      "missing": [],
+      "pass": true
     },
     "core/windows_adapters.zig": {
       "file": "windows_adapters.zig",
@@ -392,22 +351,19 @@
       "status": "REAL",
       "golden_path": true,
       "dims": {
-        "Implemented": "MISSING",
+        "Implemented": "alias of src/windows/windows_adapters.zig (file on disk)",
         "Used": "declared module (runtime manifest)",
         "Authoritative": "non-authoritative class; governed by owning authority invariant",
         "Integrated": "CI job covers language",
-        "Verified": "MISSING",
+        "Verified": "zig test suite + fixtures",
         "Secure": "covered by security-scan component scan",
         "Measured": "not subject to perf measurement (non-production class)",
         "Documented": "referenced in docs",
         "Recoverable": "recovery runbook coverage",
         "Auditable": "covered by audit runbook/control-plane audit"
       },
-      "missing": [
-        "Implemented",
-        "Verified"
-      ],
-      "pass": false
+      "missing": [],
+      "pass": true
     },
     "nose/canonical.go": {
       "file": "canonical.go",

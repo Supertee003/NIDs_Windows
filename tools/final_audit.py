@@ -118,14 +118,34 @@ class AuditEngine:
 
         return index
 
+    def _resolve(self, key: str, meta: dict) -> tuple[Path, str | None]:
+        """Resolve a module key to its on-disk path.
+
+        SYSTEM_MAP ALIAS rule: ``core/*.zig`` manifest keys are not
+        filesystem paths; entries carrying ``compatibility_alias`` resolve
+        through ``canonical_path`` into ``src/**``. Returns
+        ``(path, alias_target)`` where ``alias_target`` is None for direct
+        files. A dangling alias (target absent) resolves to the missing
+        direct path so the Implemented dimension still fails honestly.
+        """
+        direct = REPO / key
+        if direct.exists():
+            return direct, None
+        canon = meta.get("canonical_path") or meta.get("real_path")
+        if meta.get("compatibility_alias") and canon and (REPO / canon).exists():
+            return REPO / canon, canon
+        return direct, None
+
     def _dim(self, key: str, meta: dict, base: str) -> dict[str, str]:
         """Return {dim: evidence} truthfully derived from the repo."""
-        path = REPO / key
+        path, alias_of = self._resolve(key, meta)
         cls = meta.get("classification", "")
         role = (meta.get("role", "") or "").lower()
         status = meta.get("status", "")
         golden = bool(meta.get("golden_path", False))
-        imp = "file on disk" if path.exists() else "MISSING FILE"
+        imp = (f"alias of {alias_of} (file on disk)"
+               if alias_of is not None else
+               "file on disk" if path.exists() else "MISSING FILE")
         used = "declared module (runtime manifest)" if key in self.modules else ""
         if cls in ("production", "security"):
             named = (base.lower() in self.inv_joined or
@@ -166,7 +186,7 @@ class AuditEngine:
         return {d: (c if not c.startswith("MISSING") else "MISSING") for d, c in cells.items()}
 
     def _verified(self, key: str, meta: dict, base: str, status: str) -> str:
-        path = REPO / key
+        path, alias_of = self._resolve(key, meta)
         if not path.exists():
             return "MISSING: file absent"
         if not status:
