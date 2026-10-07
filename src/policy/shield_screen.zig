@@ -126,3 +126,20 @@ test "shield_screen candidate paths never include bare CWD (B-01)" {
         try std.testing.expect(!std.mem.startsWith(u8, p, ".\\"));
     }
 }
+
+test "shield_screen positive path against cargo-built DLL (host-conditional)" {
+    // E5 host proof, runs only where the DLL exists (cargo-built tree);
+    // elsewhere it skips instead of failing. Must stay LAST in this file:
+    // a successful load sets process globals that earlier hermetic tests
+    // require to be null.
+    var probe: [512]u8 = undefined;
+    const rel = std.fmt.bufPrint(&probe, "{s}", .{CANDIDATE_PATHS[0]}) catch return error.SkipTest;
+    std.fs.cwd().access(rel, .{}) catch return error.SkipTest;
+    try std.testing.expect(tryLoadDefault());
+    try std.testing.expect(isAvailable());
+    try std.testing.expectEqual(ScreenVerdict.clean, screen("benign"));
+    try std.testing.expectEqual(ScreenVerdict.clean, screen(""));
+    try std.testing.expectEqual(ScreenVerdict.suspicious, screen("prefix DROP! suffix"));
+    var big: [5000]u8 = [_]u8{0} ** 5000;
+    try std.testing.expectEqual(ScreenVerdict.rejected, screen(&big));
+}
