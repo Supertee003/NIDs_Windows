@@ -412,3 +412,34 @@ def test_legacy_tcp_listener_stays_dead():
         assert bad == [], f"production daemon imports legacy TCP chain: {bad}"
     build = (REPO / "build.zig").read_text(encoding="utf-8")
     assert "nids_main" not in build, "build.zig must never build the orphan nids_main entry"
+
+
+def test_shield_screening_surface_is_minimal():
+    """Shield keeps exactly one screening export and no enforcement tokens
+    (PEP-NEG-116: completes the SHIELD_PEP exit-criterion-4 pin)."""
+    lib = (REPO / "shield" / "src" / "lib.rs").read_text(encoding="utf-8")
+    assert "validate_payload_safety" not in lib
+    for tok in ("Wfp", "Fwpm", "DeviceIoControl", "netsh"):
+        assert tok not in lib, f"enforcement token in shield lib: {tok}"
+    pep = (REPO / "shield" / "src" / "pep.rs").read_text(encoding="utf-8")
+    assert "#[no_mangle]" not in pep, "pep.rs must not export FFI symbols"
+    assert 'extern "C"' not in pep, "pep.rs must not declare extern C ABI"
+
+
+def test_zig_has_no_shield_linkage():
+    """No Zig code links the shield crate: no shield FFI names, DLL names,
+    or legacy helper references outside comments (PEP-NEG-116)."""
+    bad = []
+    found = 0
+    for p in (REPO / "src").rglob("*.zig"):
+        if p.suffixes == [".zig", ".scaffold"]:
+            continue
+        if p.name.endswith(".scaffold"):
+            continue
+        found += 1
+        for i, line in code_lines(p, "//"):
+            if re.search(r"aegis_shield_|sec_monitor\.dll|validate_payload_safety"
+                         r"|aegis_pep_evaluate", line):
+                bad.append(f"{p.relative_to(REPO)}:{i}:{line.strip()[:100]}")
+    assert found > 100, f"zig scan surface too small: {found}"
+    assert bad == [], f"shield linkage in Zig code: {bad}"

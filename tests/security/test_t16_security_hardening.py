@@ -12,13 +12,15 @@ Hardening review (AC1) - the categories in the ticket and where the fix
 lives today:
 
   memory safety / bounds / integer overflow
-    Rust PEP (shield/src/pep.rs) is the enforcement authority and is
-    memory-safe by construction (the sole point for privileged actions).
+    The screening helper (shield/src/pep.rs) is memory-safe by
+    construction; the SOLE enforcement authority is the Rust PEP
+    (rust-src/lib.rs), the only point for privileged actions.
     Zig stages use safe slices + bounds-checked arrays; fault matrix
     (core/fault_matrix.zig) counts overflows instead of panicking.
   FFI / ABI
     shield/src/pep.rs converts C inputs into a safe PepRequest only via
-    checked CStr conversion; the shim is the only FFI boundary.
+    checked CStr conversion; the screening shim is advisory-only and never
+    authorizes (enforcement lives solely in rust-src/lib.rs).
   race / deadlock
     Replay is read-only; forensics ring is single-writer; health
     monitoring is isolated from the golden path.
@@ -34,7 +36,7 @@ lives today:
     invalid rulesets are rejected (no partial swap).
   secret handling / certificate handling
     auth token is a non-empty sentinel fingerprinted with FNV-1a
-    (shield/src/pep.rs); federation trust anchors are pinned + verified
+    (shield/src/pep.rs screening helper); federation trust anchors are pinned + verified
     in rust-src (WebPkiClientVerifier, empty roots fail closed).
   privilege boundaries
     ADR-0001: Rust PEP is the ONLY enforcement authority; approaching it
