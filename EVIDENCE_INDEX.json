@@ -1,5 +1,5 @@
 {
-  "head_sha": "5d5ba957213a348f7eea876b8659589d85be2fa0",
+  "head_sha": "3bf65ad757826ff672be704433f7461310ece76d",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2425,12 +2425,40 @@
       ],
       "result": "PASS",
       "finding": "Optional component verified present and green; files_changed is empty by design."
+    },
+    {
+      "id": "EVT-088",
+      "head_sha": "3bf65ad757826ff672be704433f7461310ece76d",
+      "timestamp": "2026-10-07",
+      "title": "PY-ENC-175: invisible BOM bytes stripped, brain banner escapes fixed (additive repair)",
+      "level": "E2",
+      "component": "testing",
+      "description": "Tree-wide warning scan (375 files) found 13 problems: 10 files with invisible UTF-8 BOM (same invisible-char class as the converted UTF-16LE) and 27 brain banner sequences using invalid backslash-e (colors never rendered). Stripped 8 live-tree BOMs and fixed the banner to real ESC; frozen release copy and dead fix_console generator untouched by design. Import-clean under -W error, brain suite green, release verify green.",
+      "flow_id": "VER-001",
+      "files_changed": [
+        "brain/__init__.py",
+        "bridge/__init__.py",
+        "bridge/bridge_status.py",
+        "scripts/aegis_daemon.py",
+        "scripts/tests/aegis_nose_test.py",
+        "shared/__init__.py",
+        "tests/aegis_mouth_test.py",
+        "tests/aegis_nose_test.py",
+        "brain/windows_brain.py"
+      ],
+      "tests": [
+        "warning scan 243 files 0 problems after (excluding frozen/quarantined)",
+        "pytest brain/ 75 passed; edited scripts parse",
+        "import clean under -W error::SyntaxWarning"
+      ],
+      "result": "PASS",
+      "finding": "No invisible bytes left in live sources; the remaining two problem files are quarantined history."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 17,
-    "E2_count": 61,
+    "E2_count": 62,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 18,
