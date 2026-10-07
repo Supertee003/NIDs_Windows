@@ -4,6 +4,27 @@
 Generates build_manifest.json (single source of truth for the release),
 computes SBOM (SPDX 2.3), and packages release artifacts.
 
+Artifact-set selection rule (GAP-008 bullet 1), in priority order:
+  1. Walk include_dirs (core, shield, scripts, tools, config, installer,
+     go, brain, ts_policy, bridge) plus include_files (build.zig,
+     Cargo.toml, CMakeLists.txt, requirements.txt, .gitignore, ROADMAP.md,
+     Rules.json, runtime_manifest.json, ci_coverage.json, CI workflows).
+     Notably NOT walked: src/, nose/, drivers/, tests/, docs/.
+  2. Drop any path containing an EXCLUDE_PARTS fragment (caches and
+     build outputs: node_modules, .zig-cache, .git, target,
+     __pycache__, .venv/venv, zig-out, dist, eggs).
+  3. Hash normalized_bytes (CRLF->LF, binary verbatim); size is the
+     normalized length so size and digest always agree.
+Modes: --manifest rebuilds the whole set (header stamps + full walk);
+--refresh-digests only re-records digests/sizes for already-listed
+artifacts (never adds or drops); --verify fails on any digest/size
+mismatch (missing files count as not-built-locally, not as failure).
+Known limitation (honest): the walk sees the working tree, not the git
+index, so gitignored build products under walked dirs (bridge/build/*,
+brain cython products) are collected when present. Excluding them would
+drop long-recorded entries, which is an owner decision, not a silent
+cleanup — see EVIDENCE EVT-057.
+
 Usage:
     python tools/release_engineering.py --manifest
     python tools/release_engineering.py --sbom
@@ -27,7 +48,7 @@ VERSION = "5.0.0"
 MANIFEST_PATH = ROOT / "build_manifest.json"
 
 # Path fragments that never become release artifacts (build/tool caches).
-EXCLUDE_PARTS = ("node_modules", ".zig-cache", ".zig-cache", ".git", "target",
+EXCLUDE_PARTS = ("node_modules", ".zig-cache", ".git", "target",
                  "__pycache__", ".venv", "venv", "zig-out", "dist", "eggs")
 
 
