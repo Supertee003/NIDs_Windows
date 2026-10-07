@@ -1,5 +1,5 @@
 {
-  "head_sha": "e61de4e6414ad73da28360ff8f02e8e8e9993af3",
+  "head_sha": "42b8d988ba1122a8e874e5216e7229ceea79db26",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -1898,6 +1898,24 @@
       ],
       "result": "PASS",
       "finding": "Fail-closed is now an executed behavior, not just a code branch; full live success still needs NSIS (CI package-release covers that leg)."
+    },
+    {
+      "id": "EVT-061",
+      "head_sha": "42b8d988ba1122a8e874e5216e7229ceea79db26",
+      "timestamp": "2026-10-07",
+      "title": "Host build-truth sweep: Go, Rust PEP, and TypeScript all green on this machine",
+      "level": "E5",
+      "component": "build",
+      "description": "Every non-Zig plane rebuilt and retested from HEAD source on the Windows host: nose go vet clean, go build to TEMP (tree untouched) plus go test -count=1 ok; root cargo build --release ok (1 pre-existing unused-assignment warning) with cargo test 41+3 passed; ts_policy tsc --noEmit clean with npm test:all 76 passed 0 failed. Build outputs land in ignored dirs only (nose exe, target/, node_modules); git status shows no new junk. CMake/MSVC bridge rebuild deliberately not rerun (would dirty tracked bridge/build outputs; pre-existing local build retained).",
+      "flow_id": "BUILD",
+      "files_changed": [],
+      "tests": [
+        "go vet + go build (TEMP output) + go test -count=1 ok",
+        "cargo build --release ok; cargo test 41+3 passed",
+        "npm run typecheck clean; npm run test:all 76 passed"
+      ],
+      "result": "PASS",
+      "finding": "Multi-language build truth holds on-host; files_changed is empty by design (verification only, zero tree mutation)."
     }
   ],
   "evidence_level_summary": {
@@ -1906,7 +1924,7 @@
     "E2_count": 50,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 7,
+    "E5_count": 8,
     "E6_count": 0,
     "E7_count": 0
   }
