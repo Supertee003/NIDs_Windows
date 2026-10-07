@@ -362,5 +362,81 @@ class TestControlApiHealthPayload(unittest.TestCase):
             }, bad)
 
 
+class TestEndpointOwnershipInHealth(unittest.TestCase):
+    """GAP-010 second half: orphan findings surface in health (cached)."""
+
+    def setUp(self):
+        control_api._reset_endpoint_ownership_cache()
+
+    def tearDown(self):
+        control_api._reset_endpoint_ownership_cache()
+
+    def _payload_for(self, census):
+        daemon_health = {
+            "component": "core",
+            "state": "RUNNING",
+            "runtime_state": "RUNNING",
+            "pid": 4321,
+            "uptime_ms": 100,
+            "last_event_ms": 7,
+            "capabilities": {"wfp": False},
+            "subsystems": [],
+            "workers": {"failure_mask": 0},
+            "data_plane": {},
+        }
+        with patch.object(control_api, "_query_daemon_retry", return_value=daemon_health), \
+             patch.object(control_api, "get_all_status", return_value=[]), \
+             patch.object(control_api, "compute_health_state", return_value=("RUNNING", False)), \
+             patch.object(control_api, "diagnose_endpoint_ownership", return_value=census):
+            return control_api.get_health_payload()
+
+    def test_foreign_finding_surfaces_in_health(self):
+        census = {"findings": [
+            {"endpoint": "brain channel", "port": 9999, "pid": 4242,
+             "status": "FOREIGN", "detail": "orphan"},
+        ], "foreign_count": 1}
+        payload = self._payload_for(census)
+        self.assertEqual(payload["endpoint_ownership"]["status"], "FOREIGN")
+        self.assertEqual(payload["endpoint_ownership"]["foreign_count"], 1)
+        self.assertEqual(len(payload["endpoint_ownership"]["findings"]), 1)
+
+    def test_clear_census_surfaces_as_clear(self):
+        census = {"findings": [
+            {"endpoint": "brain channel", "port": 9999, "pid": None,
+             "status": "CLEAR", "detail": "no listener"},
+        ], "foreign_count": 0}
+        payload = self._payload_for(census)
+        self.assertEqual(payload["endpoint_ownership"]["status"], "CLEAR")
+        self.assertEqual(payload["endpoint_ownership"]["foreign_count"], 0)
+
+    def test_unknown_does_not_outrank_clear_but_bows_to_foreign(self):
+        self.assertEqual(control_api.summarize_endpoint_ownership(
+            {"findings": [{"endpoint": "brain channel", "status": "UNKNOWN"}],
+             "foreign_count": 0})["status"], "UNKNOWN")
+        self.assertEqual(control_api.summarize_endpoint_ownership(
+            {"findings": [{"endpoint": "brain channel", "status": "UNKNOWN"},
+                           {"endpoint": "brain channel", "status": "FOREIGN"}],
+             "foreign_count": 1})["status"], "FOREIGN")
+        self.assertEqual(control_api.summarize_endpoint_ownership(
+            {"findings": [], "foreign_count": 0})["status"], "CLEAR")
+
+    def test_census_is_cached_within_ttl(self):
+        calls = []
+        fake = {"findings": [], "foreign_count": 0}
+
+        def fake_census():
+            calls.append(1)
+            return fake
+
+        with patch.object(control_api, "diagnose_endpoint_ownership",
+                          side_effect=fake_census):
+            control_api.get_endpoint_ownership_cached()
+            control_api.get_endpoint_ownership_cached()
+            self.assertEqual(len(calls), 1)
+            control_api._reset_endpoint_ownership_cache()
+            control_api.get_endpoint_ownership_cached()
+            self.assertEqual(len(calls), 2)
+
+
 if __name__ == "__main__":
     unittest.main()

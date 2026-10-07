@@ -730,6 +730,51 @@ def diagnose_endpoint_ownership():
     return {"findings": findings, "foreign_count": foreign}
 
 
+# Cache for the endpoint census: netstat + identity lookups cost real
+# subprocess time, so long-lived consumers (TUI loop, WEB polling) reuse a
+# bounded-stale census instead of rescanning per health call. CLI diagnose
+# calls diagnose_endpoint_ownership() directly for a fresh census.
+_ENDPOINT_OWNERSHIP_TTL_S = 60.0
+_endpoint_ownership_cache = {"at": 0.0, "value": None}
+
+
+def _reset_endpoint_ownership_cache() -> None:
+    """Clear the census cache (tests use this for determinism)."""
+    _endpoint_ownership_cache["at"] = 0.0
+    _endpoint_ownership_cache["value"] = None
+
+
+def get_endpoint_ownership_cached() -> Dict[str, Any]:
+    """Endpoint census, at most _ENDPOINT_OWNERSHIP_TTL_S old."""
+    now = time.monotonic()
+    cached = _endpoint_ownership_cache["value"]
+    if cached is not None and (now - _endpoint_ownership_cache["at"]) < _ENDPOINT_OWNERSHIP_TTL_S:
+        return cached
+    fresh = diagnose_endpoint_ownership()
+    _endpoint_ownership_cache["at"] = now
+    _endpoint_ownership_cache["value"] = fresh
+    return fresh
+
+
+def summarize_endpoint_ownership(census: Dict[str, Any]) -> Dict[str, Any]:
+    """Collapse a census to health-payload shape (GAP-010, additive).
+
+    Worst status wins, FOREIGN over UNKNOWN over CLEAR; the pipe entry is
+    informational (daemon liveness already has its own fields). Only UDP
+    channel findings drive the status.
+    """
+    worst, foreign = "CLEAR", 0
+    for found in census.get("findings", []):
+        if found.get("endpoint") == "control pipe":
+            continue
+        if found.get("status") == "FOREIGN":
+            worst, foreign = "FOREIGN", foreign + 1
+        elif found.get("status") == "UNKNOWN" and worst == "CLEAR":
+            worst = "UNKNOWN"
+    return {"status": worst, "foreign_count": foreign,
+            "findings": census.get("findings", [])}
+
+
 def _daemon_counters_or_synthesized(daemon_health: Dict[str, Any],
                                     synthesized: Dict[str, int]) -> Dict[str, int]:
     """Prefer daemon-owned counters, fall back to the synthesis honestly.
@@ -943,6 +988,7 @@ def get_health_payload() -> Dict[str, Any]:
             "capabilities": daemon_health.get("capabilities", {}),
             "workers": workers,
             "data_plane": data_plane,
+            "endpoint_ownership": summarize_endpoint_ownership(get_endpoint_ownership_cached()),
             "exactly_once": exactly_once,
         }
 
