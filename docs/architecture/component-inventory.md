@@ -71,6 +71,10 @@ Modules added after the 2026-09-02 scan above (paths are `src/**`):
 | `src/windows/ips_canary_order.zig` | 459 | IPS canary order (T18/Step 53): Detection Only -> Shadow -> Canary -> Limited -> Expanded, fail-closed gates + human approval |
 | `src/xdr/xdr_incident_fabric.zig` | 373 | XDR multi-source incident fabric (T18/Step 55): 9 source categories, Entity -> Evidence -> Incident -> Decision -> Action, distinctSources >= 2 |
 | `src/policy/shadow_decision.zig` | 194 | Shadow decision comparison (T19/Step 57): live vs candidate over 6 dimensions, advisory only, never enforces |
+| `src/policy/shield_screen.zig` | 149 | Tier-3 screening provider loader (SHIELD-WIRE-123): DynLib-only sec_monitor load, advisory verdicts, fail-safe absent default |
+| `nose/talkers_live.go` | 218 | Live Top Talkers from Npcap capture (NOSE-TALK-145): endpoint-symmetric table, freshness-gated, opt-in --live-talkers |
+| `nose/traffic_sys_windows.go` | 190 | Real system traffic source (NOSE-SYS-143): IP Helper octets/packets plus ESTAB TCP count, wrap-aware deltas |
+| `tools/fresh_deploy.py` | 126 | Fresh-deploy closure (DEPLOY-117): verify, validate, snapshot, package, report, fail-closed with --plan dry run |
 
 ## Integration Modules (glue code)
 
