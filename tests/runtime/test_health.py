@@ -307,6 +307,60 @@ class TestControlApiHealthPayload(unittest.TestCase):
         self.assertEqual(payload["tier3"]["state"], "UNAVAILABLE")
         self.assertIn("daemon unavailable", payload["availability_error"])
 
+    def _daemon_with(self, **overrides):
+        base = {
+            "component": "core",
+            "state": "RUNNING",
+            "runtime_state": "RUNNING",
+            "pid": 4321,
+            "uptime_ms": 100,
+            "last_event_ms": 7,
+            "capabilities": {"wfp": False},
+            "subsystems": [],
+            "workers": {"failure_mask": 0},
+            "data_plane": {
+                "nose_frames_read": 10,
+                "nose_frames_submitted": 9,
+                "nose_pipe_errors": 1,
+                "nose_frames_dropped": 2,
+            },
+        }
+        base.update(overrides)
+        return base
+
+    def _payload_for(self, daemon_health):
+        with patch.object(control_api, "_query_daemon_retry", return_value=daemon_health), \
+             patch.object(control_api, "get_all_status", return_value=[]), \
+             patch.object(control_api, "compute_health_state", return_value=("RUNNING", False)):
+            return control_api.get_health_payload()
+
+    def test_daemon_counters_used_verbatim_when_present(self):
+        # CTRL-SHIM-150: fresh daemons own the 4.1 shape; prefer it.
+        payload = self._payload_for(self._daemon_with(counters={
+            "in_events": 100, "out_events": 90, "errors": 3, "dropped": 12,
+        }))
+        self.assertEqual(payload["counters"], {
+            "in_events": 100, "out_events": 90, "errors": 3, "dropped": 12,
+        })
+
+    def test_counters_synthesized_when_daemon_lacks_them(self):
+        # Pre-slice daemons carry no counters: fall back to data_plane.
+        payload = self._payload_for(self._daemon_with())
+        self.assertEqual(payload["counters"], {
+            "in_events": 10, "out_events": 9, "errors": 1, "dropped": 2,
+        })
+
+    def test_malformed_daemon_counters_fall_back_whole(self):
+        # Never merge per-field: a half-present object falls back entirely.
+        for bad in ({"in_events": -1, "out_events": 9, "errors": 1, "dropped": 2},
+                    {"in_events": "10", "out_events": 9, "errors": 1, "dropped": 2},
+                    {"in_events": True, "out_events": 9, "errors": 1, "dropped": 2},
+                    {"in_events": 10}):
+            payload = self._payload_for(self._daemon_with(counters=bad))
+            self.assertEqual(payload["counters"], {
+                "in_events": 10, "out_events": 9, "errors": 1, "dropped": 2,
+            }, bad)
+
 
 if __name__ == "__main__":
     unittest.main()

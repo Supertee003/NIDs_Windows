@@ -595,6 +595,30 @@ def query_forensic_records(
     return merged
 
 
+def _daemon_counters_or_synthesized(daemon_health: Dict[str, Any],
+                                    synthesized: Dict[str, int]) -> Dict[str, int]:
+    """Prefer daemon-owned counters, fall back to the synthesis honestly.
+
+    CTRL-SHIM-150: since CTRL-HEALTH-115 the daemon emits RUNTIME_CONTRACT
+    §4.1 counters itself. Use them verbatim when all four are present
+    non-negative ints; otherwise (pre-slice daemons, malformed values)
+    use the caller-supplied data_plane synthesis. Never merged per-field:
+    a half-present daemon object must not produce a half-synthesized one.
+    """
+    raw = daemon_health.get("counters")
+    if isinstance(raw, dict):
+        keys = ("in_events", "out_events", "errors", "dropped")
+        vals = []
+        for key in keys:
+            val = raw.get(key)
+            if isinstance(val, bool) or not isinstance(val, int) or val < 0:
+                break
+            vals.append(val)
+        else:
+            return dict(zip(keys, vals))
+    return dict(synthesized)
+
+
 def get_health_payload() -> Dict[str, Any]:
     """Get the health check payload conforming to RUNTIME_CONTRACT.md §4.1.
 
@@ -760,12 +784,17 @@ def get_health_payload() -> Dict[str, Any]:
             "version": daemon_health.get("version", "5.0.0"),
             "uptime_ms": daemon_health.get("uptime_ms", 0),
             "last_event_ms": int(daemon_health.get("last_event_ms", 0) or max((v["last_event_ms"] for v in subsystem_payload.values()), default=0)),
-            "counters": {
-                "in_events": nose_frames_read,
-                "out_events": nose_frames_submitted,
-                "errors": nose_pipe_errors,
-                "dropped": nose_frames_dropped,
-            },
+            # CTRL-SHIM-150: the daemon owns the RUNTIME_CONTRACT 4.1 shape
+            # since CTRL-HEALTH-115, so prefer its counters verbatim. Fall
+            # back to the data_plane synthesis only for pre-slice daemons
+            # (or malformed values), never silently, never merged.
+            "counters": _daemon_counters_or_synthesized(
+                daemon_health,
+                {"in_events": nose_frames_read,
+                 "out_events": nose_frames_submitted,
+                 "errors": nose_pipe_errors,
+                 "dropped": nose_frames_dropped},
+            ),
             "subsystems": subsystem_payload,
             "tier3": {
                 **tier3_diagnostics,
