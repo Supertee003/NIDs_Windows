@@ -49,6 +49,7 @@ func main() {
 	capturePipe := flag.String("pipe", nosePipeName, "Named pipe consumer (Zig core) for -capture")
 	captureIface := flag.String("iface", "", "Exact Npcap interface name (empty = auto-select) for -capture")
 	requireIface := flag.Bool("require-iface", false, "Refuse auto-selection; required for isolated VMware lab capture")
+	liveTalkers := flag.Bool("live-talkers", false, "Feed Top Talkers from live Npcap capture (non-promiscuous, no pipe writes; falls back to synthetic silently)")
 	selfTest := flag.Bool("capture-self-test", false, "Run capture encoder self-test then exit")
 	injectObserve := flag.Bool("inject-observe", false, "Send canonical alert-only fixture through the Zig Nose pipe")
 	injectCount := flag.Int("inject-count", 1, "Number of observe-only canonical fixtures to send")
@@ -128,6 +129,14 @@ func main() {
 	go resourceCollector(resourceCh, startTime)
 	go trafficCollector(trafficCh)
 	go threatCollector(threatCh)
+
+	// NOSE-TALK-145: opt-in live talkers feed. Any failure (no Npcap,
+	// no permission) keeps today's synthetic path with one stderr note.
+	if *liveTalkers {
+		if err := startLiveTalkersFeed(); err != nil {
+			fmt.Fprintf(os.Stderr, "[AEGIS NOSE] live talkers unavailable, synthetic retained: %v\n", err)
+		}
+	}
 
 	if *headless {
 		// HEADLESS MODE: Continuously print JSON metrics to stdout.

@@ -173,22 +173,25 @@ func trafficCollector(ch chan<- TrafficData) {
         for {
                 now := time.Now().Unix()
                 data, err := readTrafficFromSystem()
+                numbersOK := err == nil
                 if err != nil {
                         // Simulate realistic traffic with natural variation
                         data = fallbackTraffic(now, tick)
                 }
 
-                // v5.0: Simulate Top Talkers (real data would come from packet capture)
+                // v5.0: Synthetic baseline (real data would come from packet
+                // capture). applyLiveTalkers below replaces BOTH blocks
+                // while the live table is fresh; otherwise this stands.
                 data.TopTalkers = simulateTopTalkers(now)
-                // Top talkers are synthetic by construction: keep the flag set
-                // even after a future real numbers source lands here.
-                data.Simulated = true
                 data.Protocols = []ProtocolEntry{
                         {Name: "TCP",  Count: data.RxPktsPerSec*70/100 + data.TxPktsPerSec*70/100},
                         {Name: "UDP",  Count: data.RxPktsPerSec*20/100 + data.TxPktsPerSec*20/100},
                         {Name: "ICMP", Count: data.RxPktsPerSec*5/100 + data.TxPktsPerSec*5/100},
                         {Name: "Other",Count: data.RxPktsPerSec*5/100 + data.TxPktsPerSec*5/100},
                 }
+                // NOSE-TALK-145: live table replaces the synthetic block only
+                // while fresh; Simulated stays set unless every section is real.
+                applyLiveTalkers(&data, numbersOK)
                 data.TCPCount = data.Protocols[0].Count
                 data.UDPCount = data.Protocols[1].Count
                 data.ICMPCount = data.Protocols[2].Count

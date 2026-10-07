@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestFallbackTrafficMarksSimulated(t *testing.T) {
@@ -119,4 +120,110 @@ func TestParseTcpTableRejectsShort(t *testing.T) {
 	if n, err := parseTcpTable(empty); err != nil || n != 0 {
 		t.Fatalf("zero rows must be (0, nil), got (%d, %v)", n, err)
 	}
+}
+
+func resetLiveTalkers() {
+	liveTalkerTable.Lock()
+	defer liveTalkerTable.Unlock()
+	liveTalkerTable.byIP = map[string]*talkerStat{}
+	liveTalkerTable.proto = [4]int64{}
+	liveTalkerTable.updated = 0
+}
+
+func TestObserveMapsDirections(t *testing.T) {
+	resetLiveTalkers()
+	observeLivePacket("10.0.0.1", "10.0.0.2", 100, 6)
+	observeLivePacket("10.0.0.1", "10.0.0.2", 50, 6)
+	observeLivePacket("10.0.0.2", "10.0.0.1", 25, 17)
+	talkers, proto, ok := snapshotLiveTalkersAt(time.Now().UnixNano(), 5)
+	if !ok {
+		t.Fatal("fresh table must snapshot ok")
+	}
+	if len(talkers) != 2 {
+		t.Fatalf("want 2 endpoints, got %d", len(talkers))
+	}
+	// 10.0.0.1: tx=150, rx=25, total=175. 10.0.0.2: tx=25, rx=150, total=175.
+	// Tie on total breaks by IP ascending: 10.0.0.1 first.
+	if talkers[0].IP != "10.0.0.1" || talkers[0].TxBytes != 150 || talkers[0].RxBytes != 25 {
+		t.Fatalf("first talker wrong: %+v", talkers[0])
+	}
+	if talkers[1].IP != "10.0.0.2" || talkers[1].TxBytes != 25 || talkers[1].RxBytes != 150 {
+		t.Fatalf("second talker wrong: %+v", talkers[1])
+	}
+	if proto != [4]int64{2, 1, 0, 0} {
+		t.Fatalf("proto buckets wrong: %v", proto)
+	}
+	resetLiveTalkers()
+}
+
+func TestObserveIgnoresEmpty(t *testing.T) {
+	resetLiveTalkers()
+	observeLivePacket("10.0.0.1", "10.0.0.2", 0, 6)
+	observeLivePacket("10.0.0.1", "10.0.0.2", -5, 6)
+	if _, _, ok := snapshotLiveTalkersAt(time.Now().UnixNano(), 5); ok {
+		t.Fatal("empty observations must not create entries")
+	}
+}
+
+func TestSnapshotExpiresStaleTable(t *testing.T) {
+	resetLiveTalkers()
+	observeLivePacket("10.0.0.1", "10.0.0.2", 100, 6)
+	if _, _, ok := snapshotLiveTalkersAt(time.Now().UnixNano(), 5); !ok {
+		t.Fatal("fresh table must snapshot ok")
+	}
+	// Far-future now exceeds the freshness window.
+	if _, _, ok := snapshotLiveTalkersAt(time.Now().UnixNano()+talkersFreshnessNs*2, 5); ok {
+		t.Fatal("stale table must not snapshot ok")
+	}
+	resetLiveTalkers()
+}
+
+func TestTableEvictionBoundsMemory(t *testing.T) {
+	resetLiveTalkers()
+	for i := 0; i < talkersTableCap+100; i++ {
+		observeLivePacket(string(rune('a'+i%26))+string(rune('0'+i/26%10))+string(rune('0'+i/260%10)), "dst", 10, 6)
+	}
+	liveTalkerTable.Lock()
+	n := len(liveTalkerTable.byIP)
+	liveTalkerTable.Unlock()
+	if n > talkersTableCap {
+		t.Fatalf("table must stay bounded, got %d entries", n)
+	}
+	resetLiveTalkers()
+}
+
+func TestApplyLiveTalkersBranches(t *testing.T) {
+	resetLiveTalkers()
+	// Stale/empty table: synthetic kept, flag set.
+	d := TrafficData{}
+	applyLiveTalkers(&d, true)
+	if !d.Simulated {
+		t.Fatal("without live data the flag must stay set")
+	}
+	if len(d.TopTalkers) != 0 {
+		t.Fatal("without live data no talkers must be installed")
+	}
+	// Fresh table + real numbers: live installed, flag cleared.
+	observeLivePacket("10.9.9.9", "10.9.9.10", 1000, 6)
+	d2 := TrafficData{Simulated: true}
+	applyLiveTalkers(&d2, true)
+	if d2.Simulated {
+		t.Fatal("fully real sections must clear the flag")
+	}
+	if len(d2.TopTalkers) == 0 || d2.TopTalkers[0].Total != 1000 {
+		t.Fatalf("live talkers must be installed: %+v", d2.TopTalkers)
+	}
+	if len(d2.Protocols) != 4 || d2.Protocols[0].Count != 1 {
+		t.Fatalf("live protocol shares must be installed: %+v", d2.Protocols)
+	}
+	// Fresh table + failed numbers: mixed state stays flagged.
+	d3 := TrafficData{}
+	applyLiveTalkers(&d3, false)
+	if !d3.Simulated {
+		t.Fatal("mixed real/synthetic must stay flagged")
+	}
+	if len(d3.TopTalkers) == 0 {
+		t.Fatal("live talkers install even when numbers failed")
+	}
+	resetLiveTalkers()
 }
