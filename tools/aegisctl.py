@@ -53,6 +53,7 @@ try:
         query_control,
         query_forensic_records,
         verify_authority_invariant,
+        diagnose_endpoint_ownership,
     )
     CONTROL_API_AVAILABLE = True
 except ImportError as e:
@@ -73,6 +74,7 @@ except ImportError as e:
             query_control,
             query_forensic_records,
             verify_authority_invariant,
+            diagnose_endpoint_ownership,
         )
         CONTROL_API_AVAILABLE = True
     except ImportError:
@@ -261,6 +263,18 @@ def cmd_diagnose(args) -> int:
                 print(f"  [{'READY' if ready else 'NOT READY'}] {name}")
     else:
         print("  [UNKNOWN] readiness fields unavailable")
+    print("  ENDPOINT OWNERSHIP")
+    ownership = diagnose_endpoint_ownership()
+    for finding in ownership["findings"]:
+        endpoint = finding.get("endpoint", "?")
+        status = finding.get("status", "?")
+        detail = finding.get("detail", "")
+        if finding.get("pid") is not None:
+            detail += " (pid %s)" % finding["pid"]
+        print(f"  [{status}] {endpoint}: {detail}")
+    if ownership["foreign_count"]:
+        print(f"  [ORPHAN?] {ownership['foreign_count']} foreign listener(s) "
+              "on owned endpoints — detection only, nothing was stopped")
     print("  Diagnostic report complete")
     return 0
 

@@ -595,6 +595,141 @@ def query_forensic_records(
     return merged
 
 
+def _udp_listener_pids(port: int):
+    """PIDs listening on a UDP port (any local interface), Windows only.
+
+    Returns None when the scan itself is unavailable (non-Windows, netstat
+    missing), [] when nothing listens. Read-only: netstat never mutates.
+    """
+    if sys.platform != "win32":
+        return None
+    import subprocess
+    try:
+        proc = subprocess.run(
+            ["netstat", "-ano", "-p", "UDP"],
+            capture_output=True, text=True, timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    pids = set()
+    for line in proc.stdout.splitlines():
+        parts = line.split()
+        # UDP    127.0.0.1:9999    *:*    1234
+        if len(parts) >= 4 and parts[0].upper() == "UDP" \
+                and parts[1].endswith(":%d" % port):
+            try:
+                pids.add(int(parts[-1]))
+            except ValueError:
+                continue
+    return sorted(pids)
+
+
+def _process_identity(pid: int):
+    """(image name, command line) of a PID. Read-only; empty strings when
+    the process is not visible to the caller.
+
+    Uses wmic where present (fast) with a PowerShell CIM fallback (wmic
+    was removed from current Windows 11 builds).
+    """
+    if sys.platform != "win32":
+        return "", ""
+    import subprocess
+    try:
+        proc = subprocess.run(
+            ["wmic", "process", "where", "ProcessId=%d" % pid,
+             "get", "Name,CommandLine", "/format:value"],
+            capture_output=True, text=True, timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        proc = None
+    name, cmd = "", ""
+    if proc is not None and proc.returncode == 0:
+        for line in proc.stdout.splitlines():
+            line = line.strip().strip("\x00")
+            if line.startswith("Name="):
+                name = line[len("Name="):].strip()
+            elif line.startswith("CommandLine="):
+                cmd = line[len("CommandLine="):].strip()
+    if not cmd:
+        try:
+            probe = subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                 "(Get-CimInstance Win32_Process -Filter 'ProcessId=%d' | "
+                 "ForEach-Object { $_.Name + '||' + $_.CommandLine })" % pid],
+                capture_output=True, text=True, timeout=60,
+            )
+        except (OSError, subprocess.SubprocessError):
+            probe = None
+        if probe is not None and probe.returncode == 0 and "||" in probe.stdout:
+            name, _, cmd = probe.stdout.strip().partition("||")
+            name, cmd = name.strip(), cmd.strip()
+    return name, cmd
+
+
+def detect_foreign_udp_listener(port, expect_markers):
+    """Classify listeners on an owned UDP channel (GAP-010, read-only).
+
+    expect_markers: substrings identifying the legitimate owner (e.g. the
+    brain script name). A listener whose command line contains none of
+    them is FOREIGN (possibly orphaned); an invisible command line can
+    neither prove nor disprove ownership, so it is reported FOREIGN with
+    the reason recorded, never silently cleared. Returns finding dicts.
+    """
+    pids = _udp_listener_pids(port)
+    if pids is None:
+        return [{"port": port, "pid": None, "status": "UNKNOWN",
+                 "detail": "listener scan unavailable on this platform"}]
+    findings = []
+    for pid in pids:
+        name, cmd = _process_identity(pid)
+        if cmd and any(m.lower() in cmd.lower() for m in expect_markers):
+            status, detail = "OWNED", (name or "owned process")
+        elif not cmd:
+            status = "FOREIGN"
+            detail = "command line not visible; pid %d (%s)" % (pid, name or "unknown image")
+        else:
+            status = "FOREIGN"
+            detail = "pid %d (%s) does not match the expected owner" % (pid, name or "unknown image")
+        findings.append({"port": port, "pid": pid, "status": status,
+                         "process": name, "command_excerpt": cmd[:160],
+                         "detail": detail})
+    if not findings:
+        findings.append({"port": port, "pid": None, "status": "CLEAR",
+                         "detail": "no listener"})
+    return findings
+
+
+def diagnose_endpoint_ownership():
+    """Owned-endpoint census for `aegisctl diagnose` (GAP-010, read-only).
+
+    Checks the brain channel (UDP 9999, owner: the brain script) plus the
+    control-pipe responder identity. Never kills, restarts, or otherwise
+    touches any process: detection only.
+    """
+    findings = []
+    for label, port, markers in (("brain channel", 9999, ("windows_brain.py", "brain/")),):
+        for found in detect_foreign_udp_listener(port, markers):
+            found = dict(found)
+            found["endpoint"] = label
+            findings.append(found)
+    try:
+        health = _query_daemon_retry("system.health")
+    except Exception:
+        health = None
+    if isinstance(health, dict):
+        findings.append({"endpoint": "control pipe", "name": "aegis_control",
+                         "status": "REACHABLE", "pid": health.get("pid"),
+                         "detail": "responder state %s" % health.get("state")})
+    else:
+        findings.append({"endpoint": "control pipe", "name": "aegis_control",
+                         "status": "UNREACHABLE", "pid": None,
+                         "detail": "no daemon answered the health query"})
+    foreign = sum(1 for f in findings if f.get("status") == "FOREIGN")
+    return {"findings": findings, "foreign_count": foreign}
+
+
 def _daemon_counters_or_synthesized(daemon_health: Dict[str, Any],
                                     synthesized: Dict[str, int]) -> Dict[str, int]:
     """Prefer daemon-owned counters, fall back to the synthesis honestly.

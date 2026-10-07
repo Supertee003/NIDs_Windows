@@ -144,6 +144,80 @@ class TestAegisctlDiagnoseCommand(unittest.TestCase):
         self.assertIn("Python:", stdout)
         self.assertIn("Platform:", stdout)
 
+    def test_diagnose_reports_endpoint_ownership(self):
+        # ORPHAN-154: the report names owned endpoints and never stops
+        # anything; on this host the brain channel is expected clear.
+        rc, stdout, stderr = _run_aegisctl("diagnose")
+        self.assertEqual(rc, 0, f"diagnose should exit 0, got {rc}; stderr={stderr}")
+        self.assertIn("ENDPOINT OWNERSHIP", stdout)
+        self.assertIn("brain channel", stdout)
+        self.assertIn("control pipe", stdout)
+
+
+class TestOrphanDetection(unittest.TestCase):
+    """GAP-010: foreign listeners on owned UDP channels must be reported,
+    never acted on. Windows-only (netstat/wmic scans)."""
+
+    def test_ephemeral_squatter_is_foreign(self):
+        if sys.platform != "win32":
+            self.skipTest("netstat scan is Windows-only")
+        import socket
+        from tools.aegisctl.api import control_api
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+            findings = None
+            for _ in range(3):
+                findings = control_api.detect_foreign_udp_listener(
+                    port, ("windows_brain.py",))
+                if findings and findings[0].get("pid") is not None:
+                    break
+                import time
+                time.sleep(0.5)
+            self.assertTrue(findings)
+            self.assertEqual(findings[0]["status"], "FOREIGN")
+            self.assertEqual(findings[0]["port"], port)
+        finally:
+            sock.close()
+
+    def test_clear_port_reports_no_listener(self):
+        if sys.platform != "win32":
+            self.skipTest("netstat scan is Windows-only")
+        import socket
+        from tools.aegisctl.api import control_api
+        probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            probe.bind(("127.0.0.1", 0))
+            free = probe.getsockname()[1]
+        except OSError:
+            self.skipTest("no ephemeral UDP port available")
+            return
+        finally:
+            probe.close()
+        findings = control_api.detect_foreign_udp_listener(free, ("windows_brain.py",))
+        for found in findings:
+            self.assertIn(found["status"], ("CLEAR", "FOREIGN"))
+            if found["status"] == "CLEAR":
+                self.assertIsNone(found["pid"])
+
+    def test_owned_markers_recognize_expected_owner(self):
+        if sys.platform != "win32":
+            self.skipTest("netstat scan is Windows-only")
+        import socket
+        from tools.aegisctl.api import control_api
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+            findings = control_api.detect_foreign_udp_listener(port, ("python",))
+            if not findings or findings[0].get("pid") is None:
+                self.skipTest("own command line not visible to wmic here")
+            # This test process runs under python.exe, so the marker matches.
+            self.assertEqual(findings[0]["status"], "OWNED")
+        finally:
+            sock.close()
+
 
 class TestAegisctlStartStopErrors(unittest.TestCase):
     """`aegisctl start/stop` must validate arguments."""
