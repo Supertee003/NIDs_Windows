@@ -14,37 +14,44 @@ from pathlib import Path
 
 INDEX = Path(__file__).resolve().parents[1] / 'EVIDENCE_INDEX.json'
 
-with open(INDEX, 'r', encoding='utf-8') as f:
-    d = json.load(f)
 
-summary = d['evidence_level_summary']
-print('Evidence level summary:')
-for k in summary:
-    print(f'  {k}: {summary[k]}')
+def main() -> int:
+    with open(INDEX, 'r', encoding='utf-8') as f:
+        d = json.load(f)
 
-actual = Counter(
-    e['level']
-    for key in ('evidence', 'known_gaps')
-    for e in d.get(key, [])
-    if e.get('level')
-)
-mismatch = [
-    f'{lvl}_count: recorded {summary.get(lvl + "_count")}, actual {actual.get(lvl, 0)}'
-    for lvl in ('E0', 'E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7')
-    if summary.get(lvl + '_count') != actual.get(lvl, 0)
-]
+    summary = d['evidence_level_summary']
+    print('Evidence level summary:')
+    for k in summary:
+        print(f'  {k}: {summary[k]}')
 
-print()
-print('Known gaps:')
-for g in d.get('known_gaps', []):
-    if g['id'].startswith('GAP-'):
-        print(f'  {g["id"]}: {g["title"]} (severity: {g.get("severity")}, status: {g.get("status")})')
+    actual = Counter(
+        e['level']
+        for key in ('evidence', 'known_gaps')
+        for e in d.get(key, [])
+        if e.get('level')
+    )
+    mismatch = [
+        f'{lvl}_count: recorded {summary.get(lvl + "_count")}, actual {actual.get(lvl, 0)}'
+        for lvl in ('E0', 'E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7')
+        if summary.get(lvl + '_count') != actual.get(lvl, 0)
+    ]
 
-if mismatch:
     print()
-    print('SUMMARY MISMATCH:')
-    for m in mismatch:
-        print(f'  {m}')
-    sys.exit(1)
-print()
-print('SUMMARY_VALID: evidence_level_summary matches actual entry counts')
+    print('Known gaps:')
+    for g in d.get('known_gaps', []):
+        if g['id'].startswith('GAP-'):
+            print(f'  {g["id"]}: {g["title"]} (severity: {g.get("severity")}, status: {g.get("status")})')
+
+    if mismatch:
+        print()
+        print('SUMMARY MISMATCH:')
+        for m in mismatch:
+            print(f'  {m}')
+        return 1
+    print()
+    print('SUMMARY_VALID: evidence_level_summary matches actual entry counts')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

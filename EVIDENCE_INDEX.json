@@ -1,5 +1,5 @@
 {
-  "head_sha": "1fa1712f1ada1ca2d47bb1d6eafb0a6d473796b0",
+  "head_sha": "7577641f58632e40546d474fdbda37770d1c260f",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2896,12 +2896,30 @@
       ],
       "result": "PARTIAL",
       "finding": "Round 1 code complete unexecuted. Orphan-script deletion and mouth shutdown path remain operator-side; everything else awaits the standard gate battery."
+    },
+    {
+      "id": "EVT-108",
+      "head_sha": "7577641f58632e40546d474fdbda37770d1c260f",
+      "timestamp": "2026-10-08",
+      "title": "Wrong-branch commit dissected: round-1 work landed on public-snapshot, main kept stale copies",
+      "level": "E2",
+      "component": "testing",
+      "description": "Self-reported process failure with a precise mechanism. The stash-based recovery I prescribed was wrong for this case: git stash moves only UNCOMMITTED work, but the round-1 file edits were already committed as 1fa1712 on public-snapshot, so popping onto main restored only stamps and new files while the twelve edited tracked files silently reverted to main stale copies. Proven by the gate output itself: the new installer pins failed against the OLD template text, and the drift detector listed exactly the nine edited manifest-walked files. Nothing was lost (content safe in 1fa1712 plus the working tree) and nothing unreviewed shipped. Recovery prescribed: check out the twelve files by hash from the dangling commit, re-apply the seven script deletions, re-run gates, commit on main, then re-verify. The pagination accumulation test failed a second time in full-suite context while green solo both times — kept classified as load flake, not a regression (its mock-server path shares no code with this patch).",
+      "flow_id": "EVIDENCE-001",
+      "files_changed": [],
+      "tests": [
+        "3 installer pins failing against the stale template as the positive proof of the diagnosis",
+        "drift detector listing exactly the nine edited walked files",
+        "NOT EXECUTED in this session: recovery runs operator-side"
+      ],
+      "result": "PARTIAL",
+      "finding": "Honesty requires recording own-process failures with mechanism, not just code defects. Closes when the recovery block below goes green and the files land committed on main."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 75,
+    "E2_count": 76,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 20,

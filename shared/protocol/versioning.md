@@ -1,5 +1,12 @@
 # AEGIS Wire Protocol Versioning (Rewrite Phase 2)
 
+> SUPERSEDED in parts (EVT-107): wire v2 is ACTIVE (`shared/protocol/wire_v2.md` —
+> 133-byte tail, version 1|2, `struct_size` 128, no reserved-byte path) and
+> `protocol_version.json` has zero readers repo-wide (vestigial — values must
+> not be changed blindly). The v1-frozen bytes below remain true; the
+> reserved-bytes upgrade path in §§Version Compatibility Rules / Bump
+> Procedure no longer describes how v2 shipped.
+
 ## Version Numbers
 
 ### Wire Protocol Version

@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "6b37a0d",
+  "source_commit": "7577641",
   "build_date": "2026-10-08T09:24:23.539444+00:00",
   "build_host": "windows",
   "platform": {
@@ -828,8 +828,8 @@
     },
     {
       "path": "installer/aegis.nsi",
-      "size": 4488,
-      "sha256": "5ab1d8150742591aa70926b5dd6ce39a5fdcf7d0eaf1c450ce4c97b7b999511e",
+      "size": 4918,
+      "sha256": "533a280d1b0a4e8cdfbc2f632f1f05bb7c36f6a7a9ee174362ab5f5fd5da5b81",
       "language": "script"
     },
     {
@@ -1003,7 +1003,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18563,
-      "sha256": "efc4687d62ed14e2c6c55461e55565480a7e18b3d7bf3b4dc5042c43bda16e15",
+      "sha256": "9937437ecd5217cc303204089ca90d877c923ab54e5b50504832676b04f3862f",
       "language": "json"
     },
     {
@@ -1194,8 +1194,8 @@
     },
     {
       "path": "scripts/check_summary.py",
-      "size": 1534,
-      "sha256": "4cca6325deb5e2b7440ee537efef0d2ff4ab62a30466f175fe579bf747533f7d",
+      "size": 1734,
+      "sha256": "6ba6a793d44dc37427fd66c04496c4378f054847adc6f49aa1c3179955f02d58",
       "language": "python/cython"
     },
     {
@@ -1674,8 +1674,8 @@
     },
     {
       "path": "scripts/validate_operator_cli.py",
-      "size": 827,
-      "sha256": "d894fd8953d4731630e0c43f81a6d9197c02d638f4d1d449591c165fc8db4105",
+      "size": 1103,
+      "sha256": "71e29e3129f59370572248dc570c93a8aefbf2767ca2c7aa754db21624b4a348",
       "language": "python/cython"
     },
     {
@@ -3564,8 +3564,8 @@
     },
     {
       "path": "tools/fresh_deploy.py",
-      "size": 5243,
-      "sha256": "066d8d4e9bd1489c1dc75840883cb57ece428c40884d8fd86468a906f236d417",
+      "size": 5215,
+      "sha256": "e5d14fba06505bdcf4545091d62fbd24804c2cf36e86b3350639cb942f73b4f9",
       "language": "python/cython"
     },
     {
@@ -3588,8 +3588,8 @@
     },
     {
       "path": "tools/installer.py",
-      "size": 8292,
-      "sha256": "7004500f39953cbb254da4026616e037bd34c1874bdf2460916439d9c8666ac5",
+      "size": 10420,
+      "sha256": "76f6bd1958090f38026e314393d175dc27ef53a2f286a5fa57590403ea1fa344",
       "language": "python/cython"
     },
     {
@@ -3858,8 +3858,8 @@
     },
     {
       "path": "ts_policy/src/compiler.ts",
-      "size": 15775,
-      "sha256": "68855d95597607fb104a2ac71544355d8be87c04a5e403de7427673fce453696",
+      "size": 15858,
+      "sha256": "184925ba34676695f4b3427505eabe14a2be24eec2d42ec0589765db2060c36e",
       "language": "typescript"
     },
     {
@@ -3888,8 +3888,8 @@
     },
     {
       "path": "ts_policy/src/types.ts",
-      "size": 13071,
-      "sha256": "96250ccdb4888ab3021c649252340b99befd97df0a3040c0431dcdb20c845668",
+      "size": 13189,
+      "sha256": "4d1c12589a35ebeb5d7d8343d7cab81d482723b02c1cdc03c9521fb67a07a5b8",
       "language": "typescript"
     },
     {
@@ -3912,8 +3912,8 @@
     },
     {
       "path": "ts_policy/tests/exporter.test.ts",
-      "size": 3936,
-      "sha256": "71761543d51e8e54b7eef9535a9b8902663c354b22af5a9b3d93af11fff1977a",
+      "size": 3980,
+      "sha256": "34a74e66bdecff978035c4a0fa27963216e1f6a5cbc26e90ae86a691c1625e23",
       "language": "typescript"
     },
     {

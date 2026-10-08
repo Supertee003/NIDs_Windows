@@ -6,7 +6,7 @@
  * This module mirrors the Zig policy schema in `src/policy/policy_plane.zig`
  * (frozen per G9, per `docs/architecture/CONTRACTS.md`). The TypeScript
  * side is the AUTHORING layer; Zig remains the DECISION authority
- * (per ADR-0001, `core/policy_engine.zig`).
+ * (per ADR-0001, `src/policy/policy_engine.zig`).
  *
  * The field names, enum values, and structural shape MUST stay in sync
  * with `src/policy/policy_plane.zig`. Tests in `tests/cross_language_contract.test.ts`
@@ -102,8 +102,7 @@ export enum PolicyAction {
  * Discriminated union for the typed value set.
  *
  * Why a discriminated union: TypeScript's structural type system lets us
- * model the Zig `PolicyValue` sum type (`core/policy_ir.zig`) with full
- * type safety. Every constructor produces a `{ kind, value }` object
+ * model rule values with full type safety. There is no Zig `PolicyValue` twin (authoring-layer only; the runtime loader carries value_int and value_str — see `src/policy/policy_ir.zig::Predicate`). Every constructor produces a `{ kind, value }` object
  * where `value`'s type is narrowed by `kind`. A rule can declare a
  * condition with `value: { kind: 'ipv4', value: '10.0.0.1' }` and the
  * compiler checks that the kind matches `ConditionType` semantics.

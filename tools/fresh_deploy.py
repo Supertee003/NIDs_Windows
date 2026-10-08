@@ -20,9 +20,8 @@ Modes:
            to stdout as JSON with --json; this tool never writes files
            itself (operator redirects stdout for a handoff bundle).
 
-Residual (not closed here): installer NSI body stays a static template;
-per-artifact File lines are not yet manifest-driven (file_directive()
-exists but is unused by generate_nsi).
+Manifest-driven since tools/installer.py emits per-artifact File lines
+(manifest_binaries + file_directive); the NSI template shell itself stays static.
 """
 from __future__ import annotations
 

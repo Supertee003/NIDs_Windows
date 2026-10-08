@@ -10,8 +10,8 @@
  *      specificity DESC, rule_id ASC, version DESC)
  *   3. Conflict resolution (deterministic): when two rules match the
  *      same input, the compiler picks the winner using the same
- *      ordering. This matches `core/policy_ir.zig::ConflictResolver`:
- *      priority > specificity > deny > rule_id.
+ *      ordering. This matches `src/policy/policy_ir.zig::sortByPriority` (POL-PRIO-070):
+ *      priority-DESC file order (TS specificity/rule_id tiebreaks are TS-only).
  *   4. Hash: SHA-256 of the canonicalized rule bytes, take first 8
  *      bytes as u64 (little-endian).
  *   5. Magic / version stamp: writes POLICY_MAGIC and POLICY_IR_VERSION.
@@ -356,8 +356,8 @@ export function compile(
 
   // ---- Conflict resolution ----
   // Rules with the same priority+specificity+id+version are grouped;
-  // the first (lowest sort key) wins. This matches
-  // `core/policy_ir.zig::ConflictResolver.shouldWin`.
+  // the first (lowest sort key) wins. Zig side keeps file order among
+  // equal priorities (`src/policy/policy_ir.zig::sortByPriority`).
   const dropped: number[] = [];
   const winning: number[] = [];
   let lastKey: readonly [number, number, number, number] | null = null;
