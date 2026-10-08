@@ -1,5 +1,5 @@
 {
-  "head_sha": "4cd4917219bd4b41a6b6774e905e6e4d2a325e0b",
+  "head_sha": "be70af7c1c849b63ab83f14522375151b3cbee95",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -3023,11 +3023,12 @@
         "src/policy/pep_bindings.zig"
       ],
       "tests": [
-        "QUAR-RCPT-113 quarantine-without-PEP escalates with null receipt",
-        "NOT EXECUTED in this session: no command-execution tool available"
+        "QUAR-RCPT-113 quarantine-without-PEP escalates with null receipt (green in operator zig run, no abort)",
+        "full pytest 727 passed; only failures are the 4 pre-refresh drift fails (fresh_deploy x3 plus detector naming pep_bindings.zig), resolved in-block by refresh",
+        "release --verify plus truth VALID post-commit at be70af7"
       ],
-      "result": "PARTIAL",
-      "finding": "The quarantine receipt chain is now structurally complete from policy action to confirmed event on both sides of the FFI; every link has a pin except the live-provider links, which need a lab host."
+      "result": "PASS",
+      "finding": "Closed with observed clean full run 2026-10-08: 731 passed, 0 failed, 7 skipped post-commit. Quarantine receipt chain complete with proof at every link except live-provider behavior (lab-gated)."
     }
   ],
   "evidence_level_summary": {
