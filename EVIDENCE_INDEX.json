@@ -3323,6 +3323,27 @@
       ],
       "result": "PASS",
       "finding": "Every operator surface now defaults to live data: terminal (F1/F2) plus native GUI (F3). Remaining frontend: F4 mouth fate, F5 web."
+    },
+    {
+      "id": "EVT-126",
+      "head_sha": "692a8b8",
+      "timestamp": "2026-10-09",
+      "title": "F3 visual closed by operator screenshot plus F4 mouth re-pointed to the live log",
+      "level": "E5",
+      "component": "tooling",
+      "description": "Operator launched the fresh egui binary from the repo root and confirmed live: RUNTIME RUNNING (Control Center), DEFCON 3 HIGH daemon authority, Evidence 689 parsed, Rules 23/23, Forensics ok, 6/6 workers, R1001/R1004 signature_match rows, bottom bar reading Rules loaded: 23, Evidence: C:\\Windows\\System32\\logs\\aegis_core.ndjson, Updated 1.0s ago — the F3 newest-wins path visibly working. F4 in the same slice: mouth (console TUI, already defaulting off dead anomalous.json to aegis_core.ndjson) got the same newest-wins resolution (service System32 log vs dev-tree log, explicit --log always wins) with a testable two-arg core. Proof: cargo test 11/11 (new newest-wins pin, tmp-only), release build clean, 8s console smoke rendering live DEFCON 3 HIGH from daemon authority with alert/mitigation feeds. Pre-existing unused-import warning (AsRawHandle) left untouched. anomalous.json confirmed writerless (zero references in brain/src/tools) — the stale-format era is over on every surface.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "mouth/windows_sec_monitor.rs",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "mouth cargo test --release: 11 passed (1 new F4 pin)",
+        "mouth 8s console smoke: live DEFCON 3 HIGH rendered",
+        "egui operator screenshot: all live values match daemon"
+      ],
+      "result": "PASS",
+      "finding": "Terminal, native GUI, and console TUI all default to live data with labeled provenance. Remaining frontend: F5 web (design first — no consumer exists for the vendored vis/tom-select libs)."
     }
   ],
   "evidence_level_summary": {
@@ -3331,7 +3352,7 @@
     "E2_count": 88,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 25,
+    "E5_count": 26,
     "E6_count": 0,
     "E7_count": 0
   }

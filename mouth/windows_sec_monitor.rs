@@ -18,6 +18,7 @@
 use std::env;
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Seek, SeekFrom, Write};
+use std::path::PathBuf;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::thread;
 
@@ -492,6 +493,42 @@ struct Config {
     refresh_ms: u64,
 }
 
+/// F4: where the live daemon log can live. Same newest-wins rule as the
+/// desktop dashboard and aegisctl events: the service writes relative to
+/// ITS cwd (System32), an interactive run relative to the repo.
+#[cfg(windows)]
+const SERVICE_LOG_PATH: &str = r"C:\Windows\System32\logs\aegis_core.ndjson";
+#[cfg(not(windows))]
+const SERVICE_LOG_PATH: &str = "/var/log/aegis_core.ndjson";
+
+/// F4: newest existing candidate wins; explicit --log always wins over
+/// both. Falls back to the CWD-relative default so a bare checkout
+/// behaves exactly as before.
+fn resolve_log_path_from(default_cwd_relative: &str, service_path: &str) -> String {
+    let candidates = [
+        PathBuf::from(service_path),
+        PathBuf::from(default_cwd_relative),
+    ];
+    let mut best: Option<PathBuf> = None;
+    let mut best_mtime = UNIX_EPOCH;
+    for path in &candidates {
+        if let Ok(meta) = fs::metadata(path) {
+            if let Ok(mtime) = meta.modified() {
+                if mtime > best_mtime {
+                    best_mtime = mtime;
+                    best = Some(path.clone());
+                }
+            }
+        }
+    }
+    best.map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_else(|| default_cwd_relative.to_string())
+}
+
+fn resolve_log_path(default_cwd_relative: &str) -> String {
+    resolve_log_path_from(default_cwd_relative, SERVICE_LOG_PATH)
+}
+
 fn parse_args() -> Config {
     let args: Vec<String> = env::args().collect();
 
@@ -505,9 +542,11 @@ fn parse_args() -> Config {
         }
     }
 
-    // F3: default to the canonical evidence log (GAP-4: anomalous.json is
-    // the stale Brain format; the desktop dashboard moved off it long ago).
-    let mut log_path = "logs/aegis_core.ndjson".to_string();
+    // F4: default to the canonical evidence log (GAP-4: anomalous.json is
+    // the stale Brain format; the desktop dashboard moved off it long ago),
+    // resolved newest-wins (service System32 log vs dev-tree log) unless
+    // --log overrides explicitly.
+    let mut log_path = resolve_log_path("logs/aegis_core.ndjson");
     let mut refresh_ms: u64 = 1000;
 
     let mut i = 1;
@@ -515,6 +554,7 @@ fn parse_args() -> Config {
         match args[i].as_str() {
             "--log" => {
                 if i + 1 < args.len() {
+                    // Explicit --log always wins over auto-resolution.
                     log_path = args[i + 1].clone();
                     i += 1;
                 }
@@ -1194,7 +1234,7 @@ fn render_dashboard(
 mod receipt_tests {
     use super::{
         annotation_for, defcon_for_level, extract_json_field, is_confirmed_block,
-        parse_daemon_defcon, resolve_defcon, AlertFeed, MitigationFeed,
+        parse_daemon_defcon, resolve_defcon, resolve_log_path_from, AlertFeed, MitigationFeed,
     };
 
     #[test]
@@ -1259,6 +1299,31 @@ mod receipt_tests {
         let mut feed2 = AlertFeed::new();
         feed2.push_from_log(line2);
         assert_eq!(feed2.entries[0].action, "ALERTED");
+    }
+
+    #[test]
+    fn log_path_prefers_newest_candidate() {
+        // F4: tmp-only fixtures, never the repo tree. Mirrors the desktop
+        // dashboard and aegisctl events newest-wins rule, in both orders.
+        let dir = std::env::temp_dir().join("aegis_mouth_f4_test");
+        let _ = std::fs::create_dir_all(&dir);
+        let old = dir.join("old.ndjson");
+        let new = dir.join("new.ndjson");
+        let missing = dir.join("missing.ndjson");
+        std::fs::write(&old, "{}\n").unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+        std::fs::write(&new, "{}\n").unwrap();
+        let old_s = old.to_string_lossy().into_owned();
+        let new_s = new.to_string_lossy().into_owned();
+        let missing_s = missing.to_string_lossy().into_owned();
+        assert_eq!(resolve_log_path_from(&old_s, &new_s), new_s);
+        assert_eq!(resolve_log_path_from(&new_s, &old_s), new_s);
+        assert_eq!(resolve_log_path_from(&missing_s, &new_s), new_s);
+        assert_eq!(
+            resolve_log_path_from(&missing_s, &dir.join("also-missing.ndjson").to_string_lossy().into_owned()),
+            missing_s
+        );
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
