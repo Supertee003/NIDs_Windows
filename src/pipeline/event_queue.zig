@@ -8,7 +8,12 @@ const event = @import("../contract/event.zig");
 const canonical = @import("../contract/canonical_event.zig");
 const state = @import("runtime_state.zig");
 
-pub const PIPELINE_QUEUE_SIZE: usize = 4096;
+pub const PIPELINE_QUEUE_SIZE: usize = 16384;
+// GAP-015: 4096 slots held under 11 seconds at sustained ingress and the
+// drop counter proved chronic overflow. 16384 absorbs bursts while the
+// consumer tail is fixed; it is burst insurance, not a fix — Little's law
+// still drops on a sustained mean deficit, and queue.stats now proves it.
+// Memory cost: 16k slots x ~1.6KB ~= 26MB. All references are symbolic.
 pub const MAX_PAYLOAD_BYTES: usize = 1500; // MTU-sized payload buffer
 
 /// Queued event: wraps IpcEvent + actual packet payload bytes.

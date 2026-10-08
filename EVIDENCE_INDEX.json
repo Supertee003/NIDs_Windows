@@ -3232,12 +3232,35 @@
       ],
       "result": "PASS",
       "finding": "GAP-015 bullet 2 is code-proven; bullets 3-4 (zero-drop fix + fixture loop) need the redeploy + numbers. The instrument turns the next slice from guessing into measuring: per-source drops will name the firehose, stage latencies will name the bottleneck."
+    },
+    {
+      "id": "EVT-122",
+      "head_sha": "71c1190",
+      "timestamp": "2026-10-09",
+      "title": "G2 tail fix: matchFirst replaces per-event heap AC enumeration, queue 4096 to 16384 burst absorption",
+      "level": "E2",
+      "component": "zig_core",
+      "description": "GAP-015 fix slice, driven by live queue.stats numbers (90s soak: 23063 pushed, 0 dropped; ETW 23041 = 99.9% of ingress; pipeline p50=1ns [clock-resolution floor], p95=524us, max=15ms). Two changes, both behavior-preserving: (1) event_processor uses AhoCorasick.matchFirst instead of match()+free — the pipeline consumed only matches[0], so the per-event page-allocator ArrayList growth + free (hundreds/sec on the single consumer) was pure tail latency; equivalence pinned field-for-field over 9 texts (empty, no-match, overlap, multi-match, JSON envelope with <script>) in a new test. match() remains for tests/fuzz. (2) PIPELINE_QUEUE_SIZE 4096 to 16384: burst insurance only (documented Little's-law caveat in-code), all references symbolic, ~26MB. Deliberately NOT done: audit-log sampling (audit completeness is a forensic property — no unproven cut), ETW volume filtering (R1004/R1001 live on ETW file events; filtering risks detection blindness), partial-record hashing (forensic format contract). Proof: full zig suite green 4/4 (2125/2126 + 1 skipped) incl. new equivalence test; live zero-drop + p95-down + fixture-loop proof require rebuild + elevated redeploy + soak (operator step, not yet run).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/detection/signature_engine.zig",
+        "src/pipeline/event_processor.zig",
+        "src/pipeline/event_queue.zig",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "new matchFirst-equals-match[0] equivalence test (9 texts): PASS",
+        "zig build test: 4/4 steps green",
+        "live queue.stats soak numbers as the fix driver (p95/max tail, ETW 99.9%)"
+      ],
+      "result": "PASS",
+      "finding": "The consumer tail suspect is removed without touching detection semantics; the queue now absorbs 4x bursts. Whether drops stay zero under storm load is a live question for the redeploy soak, measured by the G1 instrument."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 86,
+    "E2_count": 87,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 23,

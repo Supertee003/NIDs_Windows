@@ -101,9 +101,13 @@ fn processEvent(
         state.g_ac_mutex.unlock();
         if (active_ac) |the_ac| {
             const payload_slice = qe.payload[0..qe.payload_len];
-            const matches = the_ac.match(payload_slice, std.heap.page_allocator) catch &[_]sig.AhoCorasick.Match{};
-            if (matches.len > 0) {
-                matched_rule_id = matches[0].rule_id;
+            // GAP-015: matchFirst, not match. The pipeline consumes only
+            // matches[0] (pinned identical by the equivalence test), so the
+            // heap-allocating full enumeration is pure tail latency: one
+            // page-allocator ArrayList growth plus free, per event, at
+            // hundreds of events/sec on the single consumer thread.
+            if (the_ac.matchFirst(payload_slice)) |first| {
+                matched_rule_id = first.rule_id;
                 // Persist the detector result onto the canonical event before
                 // policy, audit, and forensic stages. Previously the local
                 // variable was updated but ev.rule_id stayed zero, so the
@@ -111,9 +115,6 @@ fn processEvent(
                 ev.rule_id = matched_rule_id;
                 ev.kind = .signature_match;
                 _ = state.g_pipeline_detections.fetchAdd(1, .monotonic);
-            }
-            if (matches.len > 0) {
-                std.heap.page_allocator.free(matches);
             }
         }
     }

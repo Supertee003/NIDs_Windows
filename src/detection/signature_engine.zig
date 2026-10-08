@@ -249,6 +249,44 @@ test "AhoCorasick suffix patterns fire through failure links" {
     try std.testing.expectEqual(@as(u32, 12), first.rule_id);
 }
 
+test "matchFirst equals match[0] on every text (GAP-015 tail fix)" {
+    // The pipeline consumes only matches[0]; matchFirst must agree
+    // field-for-field (or both agree on absence) so the pipeline can
+    // drop the per-event heap allocation with zero behavior change.
+    var ac = try AhoCorasick.init(std.testing.allocator, 1000);
+    defer ac.deinit();
+    try ac.addPattern(1, "he");
+    try ac.addPattern(2, "she");
+    try ac.addPattern(3, "his");
+    try ac.addPattern(4, "hers");
+    try ac.addPattern(5, "<script>");
+    try ac.build();
+    const texts = [_][]const u8{
+        "",
+        "nothing here",
+        "she",
+        "ushers",
+        "he said she sells",
+        "<script> AEGIS_FIXTURE",
+        "{\"attack_type\": \"<script> AEGIS_FIXTURE\", \"x\": 1}",
+        "hhhhhh",
+        "shershe",
+    };
+    for (texts) |text| {
+        const all = try ac.match(text, std.testing.allocator);
+        defer std.testing.allocator.free(all);
+        const first = ac.matchFirst(text);
+        if (all.len == 0) {
+            try std.testing.expect(first == null);
+        } else {
+            const f = first.?;
+            try std.testing.expectEqual(all[0].rule_id, f.rule_id);
+            try std.testing.expectEqual(all[0].offset, f.offset);
+            try std.testing.expectEqual(all[0].length, f.length);
+        }
+    }
+}
+
 test "AhoCorasick rejects overlong patterns and alias overflow" {
     var ac = try AhoCorasick.init(std.testing.allocator, 1000);
     defer ac.deinit();
