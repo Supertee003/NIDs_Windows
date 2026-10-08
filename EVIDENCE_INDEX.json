@@ -1,5 +1,5 @@
 {
-  "head_sha": "6feb7f5c452d366ca2355fb08ad3513d40319d71",
+  "head_sha": "fe7e0607132ccfa734f6e68184598844a53b1b0a",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2674,12 +2674,46 @@
       ],
       "result": "PARTIAL",
       "finding": "With this fix plus the daemon starting, both 84d25fd gate failures should clear. If gauges still fail while core passes, the fallback path needs a deeper look."
+    },
+    {
+      "id": "EVT-098",
+      "head_sha": "fe7e0607132ccfa734f6e68184598844a53b1b0a",
+      "timestamp": "2026-10-08",
+      "title": "Remaining-work specs: Rust quarantine-enforce, join timeout, trust_store, manifest regen, redeploy",
+      "level": "E1",
+      "component": "architecture",
+      "description": "Static scoping only, no code changed. (R1) Rust quarantine-enforce: the adapter exposes block/unblock/query only (rust-src/lib.rs:367-393 loading aegis_wfp_ioctl_* symbols); ACTION_QUARANTINE maps to DECISION_QUARANTINE with no adapter execution and filter_id stays 0, so no receipt can exist. Implementation order when authorized: decide semantics first (recommend per-flow quarantine filter reusing block machinery + query/unblock paths, since Zig verify in EVT-094 is decision-agnostic on read-back), then add a quarantine_flow export to the ioctl DLL (new symbol, never alter block_flow ABI), wrap it in Adapter, run it from aegis_pep_enforce with shared quota accounting and the same severity>=7 two-person gate as block, mirror the block tests including the isolated-WFP #[ignore] pattern at lib.rs:2011. Zig side needs zero changes (EVT-094 lights up). Proof battery: cargo test, elevated isolated-WFP host proof, Zig positive-path verify. Must never be implemented blind: wrong WFP filters isolate hosts. (R2) Join timeout: RuntimeSupervisor.shutdown joins 7/7 workers with no deadline (std.Thread.join has none); implement via WaitForSingleObject + named miss + DEGRADED only if a shutdown hang is ever observed, otherwise leave. (R3) trust_store mock material stays explicitly out of the verify path; consolidation deferred upstream; private keys remain offline TS-side by design. (R4) Manifest regen runs on a scratch copy only (diff first), then clean-checkout verify; redeploy runbook unchanged (Stop-Service, copy exe+dll, Start-Service, expect source=10 within 60s).",
+      "flow_id": "EVIDENCE-001",
+      "files_changed": [],
+      "tests": [
+        "no code change in this entry; each item above names its own proof battery to be executed when implemented"
+      ],
+      "result": "PASS",
+      "finding": "All remaining work is now specified to file:line precision with proof batteries. Nothing actionable is left unspecified; everything left requires execution, elevation, or an owner semantics decision."
+    },
+    {
+      "id": "EVT-099",
+      "head_sha": "fe7e0607132ccfa734f6e68184598844a53b1b0a",
+      "timestamp": "2026-10-08",
+      "title": "Index self-protection: pytest now parses EVIDENCE_INDEX and re-derives the level summary",
+      "level": "E2",
+      "component": "release",
+      "description": "Closes the hole found in EVT-096: a JSON syntax error in this index went unnoticed because no test parsed the file. New tests/release/test_evidence_index_valid.py has two read-only pins (index parses with the expected top-level shape; per-level summary counts match a recount over both entry arrays using the same rule as scripts/check_summary.py, historical duplicates included). No tree writes. Pending operator execution like every other unexecuted pin in this session.",
+      "flow_id": "EVIDENCE-001",
+      "files_changed": [
+        "tests/release/test_evidence_index_valid.py"
+      ],
+      "tests": [
+        "2 new pins described above, not executed in this session"
+      ],
+      "result": "PARTIAL",
+      "finding": "After the operator runs the battery below, the index can no longer break or drift silently."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 18,
-    "E2_count": 68,
+    "E1_count": 19,
+    "E2_count": 69,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 20,
