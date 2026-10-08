@@ -27,8 +27,8 @@ func TestEventFromPacketIPv4Identity(t *testing.T) {
 	if ev == nil {
 		t.Fatal("valid frame must produce an event")
 	}
-	if ev.SourceIP != 0x0A000001 {
-		t.Fatalf("SourceIP = %#x, want 0x0A000001 (BE-numeric, golden-fixture convention)", ev.SourceIP)
+	if ev.SourceIP != 0x0A000005 {
+		t.Fatalf("SourceIP = %#x, want 0x0A000005", ev.SourceIP)
 	}
 	if ev.DestIP != 0xC0A80164 {
 		t.Fatalf("DestIP = %#x, want 0xC0A80164", ev.DestIP)

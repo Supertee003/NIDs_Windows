@@ -1,5 +1,5 @@
 {
-  "head_sha": "98be8f98dd93eb458164f47593479aaa41d28243",
+  "head_sha": "2be237df97966140f987b1bacd119c41ec70546f",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2964,12 +2964,31 @@
       ],
       "result": "PARTIAL",
       "finding": "Every TEST-WORTHY backend file from the inventory is now pinned, proven-justified, or recorded with its exact verification question. The twelve-file sweep is closed pending operator execution."
+    },
+    {
+      "id": "EVT-111",
+      "head_sha": "2be237df97966140f987b1bacd119c41ec70546f",
+      "timestamp": "2026-10-08",
+      "title": "Red proof by accident: capture pin caught a wrong expectation; suite-count wobble tracked",
+      "level": "E2",
+      "component": "testing",
+      "description": "The new capture pin failed on its first run exactly as a pin should: expected 0x0A000001 (10.0.0.1) for a frame built as 10.0.0.5, got 0x0A000005 — the CODE was right, the expectation had a last-octet typo, fixed to 0x0A000005. This accidentally red-proves the pin executes and discriminates (a silently-passing pin would have hidden it). The passing output simultaneously confirms the BE-numeric convention on the Go path. Separately: full-suite totals wobble by 2 across runs (727 vs 731 with no file changes explaining it); all collected tests pass and the only failures are the known pre-refresh drift set, so this is a collection-counting question, not a breakage — diagnosed next via collect-only output.",
+      "flow_id": "EVIDENCE-001",
+      "files_changed": [
+        "nose/capture_hermetic_test.go"
+      ],
+      "tests": [
+        "TestEventFromPacketIPv4Identity failed pre-fix, must pass post-fix",
+        "NOT EXECUTED in this session: operator runs the block below"
+      ],
+      "result": "PARTIAL",
+      "finding": "One-byte fix, fully understood. Closes when the verification block goes green."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 78,
+    "E2_count": 79,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 20,
