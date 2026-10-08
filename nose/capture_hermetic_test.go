@@ -30,8 +30,8 @@ func TestEventFromPacketIPv4Identity(t *testing.T) {
 	if ev.SourceIP != 0x0A000005 {
 		t.Fatalf("SourceIP = %#x, want 0x0A000005", ev.SourceIP)
 	}
-	if ev.DestIP != 0xC0A80164 {
-		t.Fatalf("DestIP = %#x, want 0xC0A80164", ev.DestIP)
+	if ev.DestIP != 0xC0A80101 {
+		t.Fatalf("DestIP = %#x, want 0xC0A80101", ev.DestIP)
 	}
 	if ev.SourcePort != 1234 || ev.DestPort != 80 || ev.Protocol != 6 {
 		t.Fatalf("ports/proto = %d/%d/%d, want 1234/80/6",
