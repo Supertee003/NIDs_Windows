@@ -42,6 +42,54 @@ fn isBlockableSourceIp(source_ip_net: u32) bool {
     return true;
 }
 
+fn beU32(octets: [4]u8) u32 {
+    // Test helper: build the memory-layout u32 the driver ring and the
+    // packet path hand us (raw network-order bytes in memory).
+    return std.mem.readInt(u32, &octets, .little);
+}
+
+test "ipv4OctetsFromMemoryLayout preserves wire order (BYTE-ORDER-096)" {
+    // 127.0.0.1 on the wire is bytes [7F,00,00,01]; as a u32 on a
+    // little-endian host that reads 0x0100007F. Octets must come out in
+    // wire order regardless of what the numeric value looks like.
+    try std.testing.expectEqual([4]u8{ 127, 0, 0, 1 }, ipv4OctetsFromMemoryLayout(beU32(.{ 0x7F, 0x00, 0x00, 0x01 })));
+    try std.testing.expectEqual([4]u8{ 224, 0, 0, 1 }, ipv4OctetsFromMemoryLayout(beU32(.{ 0xE0, 0x00, 0x00, 0x01 })));
+    try std.testing.expectEqual([4]u8{ 10, 0, 0, 5 }, ipv4OctetsFromMemoryLayout(beU32(.{ 0x0A, 0x00, 0x00, 0x05 })));
+}
+
+test "isBlockableSourceIp refuses non-routable sources (P-05)" {
+    // Non-routable: this-host, loopback, link-local, multicast, reserved,
+    // directed broadcast. Addresses are deliberately non-palindromic so a
+    // byte-order regression cannot hide behind symmetric values.
+    try std.testing.expect(!isBlockableSourceIp(beU32(.{ 0, 0, 0, 0 })));
+    try std.testing.expect(!isBlockableSourceIp(beU32(.{ 127, 0, 0, 1 })));
+    try std.testing.expect(!isBlockableSourceIp(beU32(.{ 169, 254, 10, 20 })));
+    try std.testing.expect(!isBlockableSourceIp(beU32(.{ 224, 0, 0, 1 })));
+    try std.testing.expect(!isBlockableSourceIp(beU32(.{ 240, 0, 0, 1 })));
+    try std.testing.expect(!isBlockableSourceIp(beU32(.{ 255, 255, 255, 255 })));
+    // Routable unicast (RFC1918 + public) stays blockable.
+    try std.testing.expect(isBlockableSourceIp(beU32(.{ 10, 0, 0, 5 })));
+    try std.testing.expect(isBlockableSourceIp(beU32(.{ 192, 168, 1, 1 })));
+    try std.testing.expect(isBlockableSourceIp(beU32(.{ 8, 8, 8, 8 })));
+}
+
+/// Octets of an IPv4 address held as raw network-order bytes in memory
+/// (see drivers/wfp_callout/aegis_wfp.h: `UINT32 source_ip` is documented
+/// network byte order, i.e. bytes [a,b,c,d] in memory). On little-endian
+/// hosts the u32 VALUE looks reversed (127.0.0.1 reads as 0x0100007F) —
+/// do NOT reorder the value itself: isBlockableSourceIp converts with
+/// bigToNative, the PEP read-back compares the same representation, and
+/// the packet_callback path bit-casts wire bytes identically. This helper
+/// exists so log formatting never drifts from that convention again.
+fn ipv4OctetsFromMemoryLayout(source_ip_net: u32) [4]u8 {
+    return .{
+        @intCast((source_ip_net >> 0) & 0xFF),
+        @intCast((source_ip_net >> 8) & 0xFF),
+        @intCast((source_ip_net >> 16) & 0xFF),
+        @intCast((source_ip_net >> 24) & 0xFF),
+    };
+}
+
 /// Thread 3 entry point: WFP Kernel Traffic Sensor.
 ///
 /// Reads network events from the AEGIS WFP kernel driver ring buffer via
@@ -159,11 +207,14 @@ pub fn capture_packets(allocator: std.mem.Allocator, address: []const u8) void {
                 };
 
                 if (!is_safe) {
-                    // Network byte order: extract MSB-first for human-readable IP
-                    const d = (ctx.source_ip >> 0) & 0xFF;
-                    const c = (ctx.source_ip >> 8) & 0xFF;
-                    const b = (ctx.source_ip >> 16) & 0xFF;
-                    const a = (ctx.source_ip >> 24) & 0xFF;
+                    // Human-readable octets in wire order (memory layout —
+                    // see ipv4OctetsFromMemoryLayout; the raw u32 value
+                    // looks byte-reversed on little-endian hosts).
+                    const oct = ipv4OctetsFromMemoryLayout(ctx.source_ip);
+                    const a = oct[0];
+                    const b = oct[1];
+                    const c = oct[2];
+                    const d = oct[3];
                     // BP-L13: BLOCKED alert visible in release builds via std.log
                     std.log.warn("[BLOCK] WFP SENSOR {d}.{d}.{d}.{d}:{any} rule={d} (BLOCKED)", .{ a, b, c, d, ctx.dest_port, header.rule_id });
                     std.debug.print("\x1b[31;1m[WFP SENSOR] BLOCKED {d}.{d}.{d}.{d}:{any} rule={d}\x1b[0m\n", .{ a, b, c, d, ctx.dest_port, header.rule_id });

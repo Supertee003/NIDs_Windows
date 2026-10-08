@@ -118,3 +118,84 @@ pub fn captureThread() void {
         adapter.packets_captured, adapter.packets_dropped,
     });
 }
+
+test "packetCallback parses IPv4/TCP frame (BYTE-ORDER-096)" {
+    // Ethernet(14) + IPv4(20, ihl=5, proto=TCP) + ports. Addresses are
+    // non-palindromic so a byte-order regression cannot hide: 10.0.0.5
+    // must decode to 0x0500000A (memory layout), never 0x0A000005.
+    var frame = [_]u8{0} ** 40;
+    frame[12] = 0x08;
+    frame[13] = 0x00;
+    frame[14] = 0x45;
+    frame[14 + 9] = 6;
+    frame[14 + 12] = 10;
+    frame[14 + 15] = 5;
+    frame[14 + 16] = 192;
+    frame[14 + 17] = 168;
+    frame[14 + 18] = 1;
+    frame[14 + 19] = 1;
+    frame[34] = 0x04;
+    frame[35] = 0xD2;
+    frame[36] = 0x00;
+    frame[37] = 0x50;
+    var hdr = npcap.pcap_pkthdr{ .ts_sec = 1700000000, .ts_usec = 123456, .caplen = 40, .len = 40 };
+    packetCallback(undefined, &hdr, &frame);
+    const qe = queue.popEvent() orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(event.EventKind.packet_captured, qe.ev.kind);
+    try std.testing.expectEqual(event.EventSource.capture_npcap, qe.ev.source);
+    try std.testing.expectEqual(@as(u8, 6), qe.ev.protocol);
+    try std.testing.expectEqual(@as(u32, 0x0500000A), qe.ev.src_ip);
+    try std.testing.expectEqual(@as(u32, 0x0101A8C0), qe.ev.dst_ip);
+    try std.testing.expectEqual(@as(u16, 1234), qe.ev.src_port);
+    try std.testing.expectEqual(@as(u16, 80), qe.ev.dst_port);
+    try std.testing.expectEqual(@as(u64, 1700000000123456000), qe.ev.timestamp_ns);
+    try std.testing.expectEqual(@as(u16, 40), qe.payload_len);
+    try std.testing.expectEqualSlices(u8, &frame, qe.payload[0..40]);
+}
+
+test "packetCallback parses IPv6 frame first-32-bits (BYTE-ORDER-096)" {
+    // Ethernet(14, ethertype IPv6) + fixed 40-byte header + ports.
+    // Only the first 4 bytes of each 128-bit address are retained.
+    var frame = [_]u8{0} ** 58;
+    frame[12] = 0x86;
+    frame[13] = 0xDD;
+    frame[14] = 0x60;
+    frame[14 + 6] = 6;
+    // src 2001:0db8::/32 prefix in first 4 bytes
+    frame[22] = 0x20;
+    frame[23] = 0x01;
+    frame[24] = 0x0D;
+    frame[25] = 0xB8;
+    // dst fe80:: prefix in first 4 bytes
+    frame[38] = 0xFE;
+    frame[39] = 0x80;
+    // ports 8080/80 at offset 54
+    frame[54] = 0x1F;
+    frame[55] = 0x90;
+    frame[56] = 0x00;
+    frame[57] = 0x50;
+    var hdr = npcap.pcap_pkthdr{ .ts_sec = 1700000000, .ts_usec = 0, .caplen = 58, .len = 58 };
+    packetCallback(undefined, &hdr, &frame);
+    const qe = queue.popEvent() orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(@as(u32, 0xB80D0120), qe.ev.src_ip);
+    try std.testing.expectEqual(@as(u32, 0x000080FE), qe.ev.dst_ip);
+    try std.testing.expectEqual(@as(u16, 8080), qe.ev.src_port);
+    try std.testing.expectEqual(@as(u16, 80), qe.ev.dst_port);
+}
+
+test "packetCallback drops non-IP and runt frames without enqueue" {
+    // Relies on suite convention: every test pops exactly what it pushes,
+    // so the global queue is empty here; a null pop proves nothing was
+    // enqueued (not merely consumed).
+    var arp = [_]u8{0} ** 14;
+    arp[12] = 0x08;
+    arp[13] = 0x06;
+    var hdr = npcap.pcap_pkthdr{ .ts_sec = 1, .ts_usec = 0, .caplen = 14, .len = 14 };
+    packetCallback(undefined, &hdr, &arp);
+    try std.testing.expect(queue.popEvent() == null);
+    var runt = [_]u8{0} ** 5;
+    hdr.caplen = 5;
+    hdr.len = 5;
+    packetCallback(undefined, &hdr, &runt);
+    try std.testing.expect(queue.popEvent() == null);
+}

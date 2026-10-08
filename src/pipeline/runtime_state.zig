@@ -62,6 +62,27 @@ pub const WorkerFailureKind = enum(u8) {
 pub var g_worker_failure_kind = std.atomic.Value(u8).init(@intFromEnum(WorkerFailureKind.none));
 pub var g_worker_failure_mask = std.atomic.Value(u8).init(0);
 
+test "runtime fail-closed defaults hold (BYTE-ORDER-096 audit)" {
+    // Pinned boot posture: prevention closed (nothing in-tree can open
+    // it — no store to g_prevention_gate_open exists), evidence log on,
+    // no policy mirror loaded, all readiness flags clear, no recorded
+    // worker failure. Only daemon paths and live worker threads mutate
+    // these; unit tests never do, so any drift here is a real regression.
+    try std.testing.expect(!g_prevention_gate_open);
+    try std.testing.expect(g_evidence_log_enabled);
+    try std.testing.expect(g_policy_ir == null);
+    try std.testing.expect(!g_policy_ir_verified.load(.acquire));
+    try std.testing.expect(!g_pipeline_ready.load(.acquire));
+    try std.testing.expect(!g_sensor_ready.load(.acquire));
+    try std.testing.expect(!g_nose_ready.load(.acquire));
+    try std.testing.expect(!g_etw_ready.load(.acquire));
+    try std.testing.expect(!g_fim_ready.load(.acquire));
+    try std.testing.expect(!g_registry_ready.load(.acquire));
+    try std.testing.expect(!g_worker_failed.load(.acquire));
+    try std.testing.expectEqual(WorkerFailureKind.none, @as(WorkerFailureKind, @enumFromInt(g_worker_failure_kind.load(.acquire))));
+    try std.testing.expectEqual(@as(u8, 0), g_worker_failure_mask.load(.acquire));
+}
+
 pub fn markWorkerFailure(kind: WorkerFailureKind) void {
     g_worker_failure_kind.store(@intFromEnum(kind), .release);
     if (kind != .none) {

@@ -109,6 +109,12 @@ comptime {
     // LEN-CLAIM-100: direct edge — transitive-only files' tests do NOT
     // execute in this toolchain's test binary (silent death found live).
     _ = @import("pipeline/event_queue.zig");
+    // BYTE-ORDER-096: capture-path ground-truth pins (parse gates +
+    // anti-spoofing gate + fail-closed defaults). Direct edges: the scope
+    // pin requires proven execution, transitive reachability is not enough.
+    _ = @import("capture/windows_capture.zig");
+    _ = @import("pipeline/packet_callback.zig");
+    _ = @import("pipeline/runtime_state.zig");
     // ETW-GUID-180: classifier ground-truth pins live here; a direct edge
     // is the only proven execution guarantee (scope pin enforces it).
     _ = @import("pipeline/telemetry_threads.zig");

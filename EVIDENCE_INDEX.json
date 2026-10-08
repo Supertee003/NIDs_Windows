@@ -1,5 +1,5 @@
 {
-  "head_sha": "7577641f58632e40546d474fdbda37770d1c260f",
+  "head_sha": "33c289483944d46818d3fcac89517d594c93d089",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2913,13 +2913,41 @@
         "NOT EXECUTED in this session: recovery runs operator-side"
       ],
       "result": "PARTIAL",
-      "finding": "Honesty requires recording own-process failures with mechanism, not just code defects. Closes when the recovery block below goes green and the files land committed on main."
+      "finding": "Honesty requires recording own-process failures with mechanism, not just code defects. Recovery executed 2026-10-08: 12 files restored from 1fa1712, 7 scripts re-deleted, installer pins plus pagination solo green, committed 33c2894 on main with gates green post-stamp. Pending close: one confirmatory re-run of the 4 pre-refresh drift failures post-commit (fresh_deploy x3 plus drift detector) — they fail only on unrefreshed digests by mechanism, but green must be observed, not inferred."
+    },
+    {
+      "id": "EVT-109",
+      "head_sha": "33c289483944d46818d3fcac89517d594c93d089",
+      "timestamp": "2026-10-08",
+      "title": "Backend pins round: byte-order audit plus test-bearing coverage for 6 zero-test files",
+      "level": "E2",
+      "component": "testing",
+      "description": "Zero-test inventory first (subagent sweep): Zig windows/policy/contract full coverage already; only 3 production files lacked tests (runtime_state, packet_callback, windows_capture), brain lacked 3 (windows_brain envelope, _py_fallback, bridge), Go nose needs 6 hermetic pins (2 done here). Byte-order deep audit (the highest-value thread): isBlockableSourceIp bigToNative is CORRECT for driver memory-layout bytes (aegis_wfp.h documents network order; LE value looks swapped) — an early P0 suspicion was refuted by reading the driver write path, and the same audit proved CanonicalEvent BE-numeric convention self-consistent end to end (wire LE-of-value, v2 sidecar BE-of-value, isLocalhost direct compare). The one real defect found was cosmetic: the WFP log printer assumed BE-numeric and printed reversed octets — fixed via ipv4OctetsFromMemoryLayout helper. New pins: P-05 anti-spoof gate table plus octet-order (windows_capture), IPv4/IPv6/negative frame parse via push-pop symmetry (packet_callback), fail-closed boot defaults (runtime_state), TIER-1 HMAC envelope accept/drop matrix (windows_brain), fallback engine shape plus first-match semantics (cython _py_fallback), dispatch fallback ladder via monkeypatch (bridge); Go ratePerSec wrap table plus writeAll fail-closed paths. Three direct all_tests edges added per the scope pin. Remaining Go pins (capture hermetic, ipc malformed, golden fixture, talkers symmetry) need source reads slated next round.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/capture/windows_capture.zig",
+        "src/pipeline/packet_callback.zig",
+        "src/pipeline/runtime_state.zig",
+        "src/all_tests.zig",
+        "brain/test_brain_envelope.py",
+        "brain/test_py_fallback_contract.py",
+        "brain/test_bridge_fallback.py",
+        "nose/traffic_sys_windows_test.go",
+        "nose/pipe_writer_test.go"
+      ],
+      "tests": [
+        "9 new pins listed above (3 Zig files gain first tests; 3 brain contract files; 2 Go files)",
+        "new-pin execution proven only by operator run: deliberate-red cycle recommended for at least the P-05 gate and the HMAC matrix",
+        "NOT EXECUTED in this session: no command-execution tool available"
+      ],
+      "result": "PARTIAL",
+      "finding": "Backend coverage is now inventoried file by file with the highest-risk seams pinned; the byte-order convention is documented in code where the next reader will look. Remaining Go pins plus any red-green proof run operator-side."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 76,
+    "E2_count": 77,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 20,
