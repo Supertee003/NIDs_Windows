@@ -81,7 +81,7 @@ def test_cli_aggregator_matches_binary_version():
 
 def test_daemon_version_handler_matches_contract():
     src = (REPO / "src" / "control" / "handler_registry.zig").read_text(encoding="utf-8")
-    m = re.search(r'fn version\(.*?return "((?:[^"\\]|\\.)*)"', src, re.DOTALL)
+    m = re.search(r'fn version\(.*?return (?:a\.dupe\(u8, )?"((?:[^"\\]|\\.)*)"', src, re.DOTALL)
     assert m, "daemon version handler payload not found"
     payload = json.loads(m.group(1).encode().decode("unicode_escape"))
     for key in ("core", "nose", "pep", "brain"):

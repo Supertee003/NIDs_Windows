@@ -51,7 +51,7 @@ def test_daemon_page_is_byte_budgeted():
         assert field in source, f"forensics.list response is missing {field}"
     # Both response branches must carry the same page contract so a caller can
     # always read `truncated`/`next_after` without a KeyError.
-    unavailable = source.split('return "{\\"available\\":false', 1)[1].split("}", 1)[0]
+    unavailable = source.split('"{\\"available\\":false', 1)[1].split("}", 1)[0]
     assert "truncated" in unavailable and "next_after" in unavailable
 
 

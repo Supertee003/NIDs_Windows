@@ -1,5 +1,5 @@
 {
-  "head_sha": "84d25fd0d5fc933238789f9fb7b52a4a06f2a44d",
+  "head_sha": "6feb7f5c452d366ca2355fb08ad3513d40319d71",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2644,14 +2644,17 @@
       "flow_id": "DATA-001",
       "files_changed": [
         "src/control/handler_registry.zig",
+        "tests/forensics/test_forensic_pagination.py",
+        "tests/security/test_version_truth.py",
         "EVIDENCE_INDEX.json"
       ],
       "tests": [
         "existing 'logsTail returns entries when the forensic log exists' (crashed pre-fix on empty log; passes post-fix) and updated version test (now frees)",
+        "2 source-text pins updated to the owned-return shape (pagination unavailable-branch anchor; version regex accepts the dupe wrapper)",
         "NOT EXECUTED in this session: no command-execution tool available; operator must run zig build, zig build test, then the pytest pair"
       ],
       "result": "PARTIAL",
-      "finding": "Crash class closed on the Zig side by construction (no static returns remain on any freeing path) plus contract pin in HandlerFn docs. Remaining: execute the corrected order (build, then test) and confirm the JSON one-liner goes green."
+      "finding": "Crash class closed by construction plus HandlerFn contract pin; the 2 source-text pins updated to the owned-return shape and green solo. test_large_control_response passes solo (0.19s) — classified full-suite load flake, not a regression: its mock-server path shares no code with this patch. EVIDENCE JSON one-liner green."
     },
     {
       "id": "EVT-097",
