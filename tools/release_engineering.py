@@ -21,9 +21,8 @@ artifacts (never adds or drops); --verify fails on any digest/size
 mismatch (missing files count as not-built-locally, not as failure).
 Known limitation (honest): the walk sees the working tree, not the git
 index, so gitignored build products under walked dirs (bridge/build/*,
-brain cython products) are collected when present under the OLD rule. Grandfather clause (EVT-093, owner-approved hybrid): the committed 539-entry set predates this rule and keeps ~244 non-reproducible entries (232 bridge/build/, ~10 brain cython byproducts, 2 loose go/aggregator .exe) verbatim, so --verify stays green. The NEXT --manifest regeneration applies this rule and drops them — an explicit, owned, one-time break, not silent drift (supersedes EVT-057); the counts above are the audit trail.
-Drops are owner-approved (hybrid settlement above) and auditable, not silent
-cleanups.
+brain cython products) were collected when present under the pre-EVT-093 rule. Settled a871a32 (EVT-102): the committed 633-entry set IS this rule output — canonical sources added — an explicit, owned, one-time break, not silent drift (supersedes EVT-057); the adopted counts are the audit trail.
+That regeneration was the owner-approved, auditable break — not silent cleanups.
 
 Usage:
     python tools/release_engineering.py --manifest

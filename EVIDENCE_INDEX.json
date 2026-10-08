@@ -1,5 +1,5 @@
 {
-  "head_sha": "39afa56bcc2180814c452545b272d3ec08e3e1c9",
+  "head_sha": "a871a32a080f16ed10848ac33da2495d7d76a860",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -1401,7 +1401,7 @@
         "--verify green in a clean checkout"
       ],
       "resolution": null,
-      "evidence": "EVT-031 fixed the inventory generator. EVT-093 (owner-approved hybrid): selection rule rewritten and predicate-pinned; --manifest regeneration + clean-checkout --verify still need execution with a command runner."
+      "evidence": "EVT-031 fixed the inventory generator. EVT-093 settled the rule (hybrid). ADOPTED a871a32 (EVT-102): regenerated 633-entry set committed and green (bridge 13, src 286, configs 26, nose 27, rust-src 2); grandfather retired. Remaining: clean-checkout --verify on a fresh clone."
     },
     {
       "id": "GAP-009",
@@ -2744,12 +2744,33 @@
       ],
       "result": "PASS",
       "finding": "Rust, Go, and Python suites are green on the fixed tree. Zig suite explicitly green: Build Summary 4/4 steps succeeded, test run cached from the clean post-LIT-FREE execution. All verification batteries in this session are now closed with executed proof."
+    },
+    {
+      "id": "EVT-102",
+      "head_sha": "a871a32a080f16ed10848ac33da2495d7d76a860",
+      "timestamp": "2026-10-08",
+      "title": "GAP-008 adopted: 633-entry manifest regenerated, verified, committed",
+      "level": "E2",
+      "component": "release",
+      "description": "Operator ran --manifest on the working tree: 633 entries with bridge 13 (was 245), src 286, configs 26, nose 27, rust-src 2, go minus 2 loose exes, brain minus 13 byproducts — exactly the hybrid-rule prediction, so the junk drop and canonical-source addition were adopted and committed as a871a32 with --verify 633/633 green before and after the stamp cycle. tools/release_engineering.py docstring updated past tense (grandfather retired). Remaining for full closure: clean-checkout --verify on a fresh clone.",
+      "flow_id": "EVIDENCE-001",
+      "files_changed": [
+        "build_manifest.json",
+        "tools/release_engineering.py"
+      ],
+      "tests": [
+        "--manifest count and per-directory distribution matching the rule prediction",
+        "--verify 633/633 green pre-commit, post-commit, and post-stamp",
+        "truth VALID at every step"
+      ],
+      "result": "PASS",
+      "finding": "Bullets 1-2 of GAP-008 are closed with executed proof; bullet 3 (clean-checkout verify) is the only remainder and needs a fresh clone."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 20,
-    "E2_count": 70,
+    "E2_count": 71,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 20,
