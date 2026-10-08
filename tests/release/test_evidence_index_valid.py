@@ -22,6 +22,19 @@ def _load() -> dict:
     return json.loads(INDEX.read_text(encoding="utf-8"))
 
 
+def test_no_duplicate_keys_anywhere():
+    # Guard: json.loads silently lets the LAST duplicate key win, so a
+    # double-written evidence_level_summary hid a stale count (EVT-118).
+    # Re-parse with an object_pairs hook that rejects any repeated key.
+    def reject_dupes(pairs):
+        keys = [k for k, _ in pairs]
+        dupes = {k for k in keys if keys.count(k) > 1}
+        assert not dupes, f"duplicate JSON keys: {sorted(dupes)}"
+        return dict(pairs)
+
+    json.loads(INDEX.read_text(encoding="utf-8"), object_pairs_hook=reject_dupes)
+
+
 def test_index_parses_as_json():
     d = _load()
     assert isinstance(d, dict)

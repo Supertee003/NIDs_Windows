@@ -1,5 +1,5 @@
 {
-  "head_sha": "6c8f81c9b7493a703f89e68ff805691091c0d7a0",
+  "head_sha": "045030dab46079f559ea423b21b3cb47a7cb67c6",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -1410,13 +1410,15 @@
       "severity": "P1",
       "title": "npcap/etw/fim runtime state is not instrumented",
       "description": "health checks for npcap, etw and fim report capability-only because the runtime does not publish their live state. On the Windows host, ETW start fails, FIM fails for System32 and SysWOW64, and Npcap fails to open an adapter, while the runtime keeps running.",
-      "status": "OPEN",
+      "status": "CLOSED",
       "required_evidence": [
         "live per-subsystem flags exposed through the control plane",
         "health reflects them",
         "host verification of each adapter"
       ],
-      "resolution": null,
+      "resolution": "CLOSED 2026-10-09 (EVT-118): all workers flags live and true in deployed-service health (etw/fim/registry/nose/pipeline/sensor_ready, zero failures); Npcap proven live earlier (43,835 packets/15s, EVT-089/CAP-E2E-177); ETW proven live now (source=10 records flowing in the forensic ring, ring growing ~1000 records between consecutive queries); FIM System32/SysWOW64 watches plus registry events observed live in the daemon log. The elevation-era symptoms that defined this gap are gone on the current deployment.",
+      "closed_by": "EVT-081+EVT-089+EVT-118",
+      "closed_at": "2026-10-09",
       "evidence": "EVT-034 records checks[] detail capability-only. EVT-081 bounds the elevation remainder. EVT-091 (ETW-GUID-180) statically closes the ETW leg — GUIDs and classifier gates pinned to host ground truth, silent-loss issue filed as GAP-012 — live ETW records still blocked on redeploy."
     },
     {
@@ -1471,7 +1473,7 @@
       "severity": "P0",
       "title": "STOP-THE-LINE: ETW enabled non-existent provider GUIDs, so etw_ready=true while silently losing every event",
       "description": "All 9 provider GUID constants in src/windows/etw_realtime.zig (6 live-path: PROVIDER_KERNEL_*_RT enable bytes + KERNEL_*_GUID classification bytes; 3 dormant: network/thread/image) failed membership against the reference host's 1,158 registered ETW providers in BOTH byte orders — 18/18 negative lookups — while the four ground-truth GUIDs passed as controls (4/4 positive) and appear nowhere in the source. EnableTraceEx2 accepts a non-existent GUID silently, so the daemon reported etw_ready=True with zero host_telemetry events: the forensic ring held 135k+ file_sensor/registry_sensor records and zero source=10 records. A second silent-loss defect sat in the classifier: the Kernel-Registry gate on Id 0x0E/0x0F selected QuerySecurityKey/SetSecurityKey (ACL operations, wevtutil gp opcodes 45/46), not the configured registry_set_value/registry_create_key (Id 5/Id 1), and the Kernel-File gate 0x0A/0x0B (NameCreate/NameDelete) omitted Write (Id 16), so file_modify could never fire.",
-      "status": "OPEN",
+      "status": "CLOSED",
       "required_evidence": [
         "every enabled provider GUID constant matches a host-registered provider (logman membership)",
         "enable-side and classification-side bytes are one definition, pinned by tests",
@@ -1479,7 +1481,9 @@
         "live host_telemetry (source=10) records appear in the forensic ring after redeploy",
         "aegis_etw_start refuses ready when a provider GUID is not host-registered (hardening)"
       ],
-      "resolution": null,
+      "resolution": "CLOSED 2026-10-09 (EVT-118): bullets 1-3 pinned and proven (EVT-091, deliberate-red executed); bullet 5 proven live via MSVC probe (EVT-117, bogus rc -6, registered rc 0 with real session); bullet 4 proven live on the deployed service (source=10 host_telemetry records flowing, ring 182365 to 183367 between consecutive queries, integrity ok, hash chain verified). The silent-loss class has live proof at every layer.",
+      "closed_by": "EVT-091+EVT-092+EVT-117+EVT-118",
+      "closed_at": "2026-10-09",
       "evidence": "Filed STOP-THE-LINE here. ETW-GUID-180 (EVT-091) closes bullets 1-3 with green pins proven executable by deliberate red; bullet 5 CLOSED by operator-executed MSVC proof (EVT-117): helper built clean from current source, bogus GUID refused rc -6 with no session, registered GUIDs started a real session (rc 0). Only bullet 4 remains: live host_telemetry records in the forensic ring after redeploy (elevation-gated, GAP-009 bounds that boundary)."
     },
     {
@@ -3113,6 +3117,28 @@
       ],
       "result": "PASS",
       "finding": "The silent-loss class is now closed at both layers: constants pinned to registration (EVT-091) and the helper refusing unregistered GUIDs pre-session, both proven live."
+    },
+    {
+      "id": "EVT-118",
+      "head_sha": "045030d",
+      "timestamp": "2026-10-09",
+      "title": "GAP-009 and GAP-012 closed: deployed service RUNNING with live source=10 forensic records",
+      "level": "E5",
+      "component": "zig_core",
+      "description": "Live deployed-service verification after a mixed-vintage incident was diagnosed and fixed. Incident: AegisNids failed with SCM 1053/7009 (30s connect timeout); the deployed Program Files binary (Oct 7 build) died silently interactively while zig-out ran fine — root cause was an inconsistent deployment set (Oct-7 exe beside Sep helper DLLs, never load-compatible), not a source regression. Fix: rebuilt cargo + cmake + zig as one set, backed up the whole runtime dir, redeployed exe + aegis_etw_helper/aegis_fim_helper/aegis_wfp_user + aegis_pep together; service started immediately. Health: runtime_state RUNNING, all 7 subsystems RUNNING, workers etw/fim/registry/nose/pipeline/sensor_ready all true, failure_mask 0, rust_pep + WFP READY, defcon 3 HIGH, control pipe REACHABLE, 6 policies + 22 rules. Forensic proof: source=10 host_telemetry records present and verified in the ring with integrity ok and hash chain verified; ring grew 182365 to 183367 between consecutive queries (~1000 records flowing live, not stale). Closes GAP-009 (all required evidence: live flags, health reflects them, host verification of etw/fim/npcap) and GAP-012 bullet 4 (live source=10 records after redeploy).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "EVIDENCE_INDEX.json",
+        "tests/release/test_evidence_index_valid.py"
+      ],
+      "tests": [
+        "deployed-service health: runtime_state RUNNING, 7/7 subsystems, all workers ready, failure_mask 0",
+        "forensics list --limit 5: source=10 records verified, integrity ok",
+        "forensics list --source 10: records matched, ring grew ~1000 between queries",
+        "new integrity guard: duplicate JSON keys anywhere in EVIDENCE_INDEX.json rejected"
+      ],
+      "result": "PASS",
+      "finding": "The full vertical slice now has live E5 proof: ETW provider enable -> classified host_telemetry events -> forensic ring records -> control-plane query, on the deployed service. GAP-009 and GAP-012 are CLOSED. The mixed-vintage deployment failure mode (fresh exe + stale DLLs exits silently before main) is documented here as the reason deploys must always ship as one rebuilt set."
     }
   ],
   "evidence_level_summary": {
@@ -3121,10 +3147,7 @@
     "E2_count": 84,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 21,
-    "E3_count": 7,
-    "E4_count": 0,
-    "E5_count": 20,
+    "E5_count": 22,
     "E6_count": 0,
     "E7_count": 0
   }
