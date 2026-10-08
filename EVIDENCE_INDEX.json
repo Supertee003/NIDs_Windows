@@ -1,5 +1,5 @@
 {
-  "head_sha": "1028b665e616b2eb61d588b361896252f005808f",
+  "head_sha": "64df0583785066670fd8ff9aa6ce5cf1bb8d44fe",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2708,11 +2708,29 @@
       ],
       "result": "PASS",
       "finding": "Executed green: the index can no longer break or drift silently — any future break fails this pin."
+    },
+    {
+      "id": "EVT-100",
+      "head_sha": "64df0583785066670fd8ff9aa6ce5cf1bb8d44fe",
+      "timestamp": "2026-10-08",
+      "title": "Kernel-NIDS completion plan: deep audit verdict plus phased plan to done",
+      "level": "E1",
+      "component": "architecture",
+      "description": "Deep-audit verdict: the system is a user-mode NIDS consuming kernel telemetry, not a kernel-mode NIDS — enforcement flows through user-mode WFP (aegis_wfp_user.dll loaded by the Rust PEP at rust-src/lib.rs:324, GAP-011 closed); the own WFP callout and minifilter exist as source only with CMake refusing to build them (no WDK authority); driver .sys/.cer/.pdb files on disk are untracked local leftovers, tracked set is sources plus infs. Plan written to docs/KERNEL_NIDS_COMPLETION_PLAN.md in five phases (execution gaps, observe-only live proofs, isolated-lab mutating proofs plus Rust quarantine-enforce, owner decisions, optional kernel-driver program) with per-phase pass criteria, a per-area closure table, and explicit prohibitions (no blind enforcement/driver work, no lab-mutating proofs on workstations, no kernel-mode completeness claims before a driver builds).",
+      "flow_id": "EVIDENCE-001",
+      "files_changed": [
+        "docs/KERNEL_NIDS_COMPLETION_PLAN.md"
+      ],
+      "tests": [
+        "specification and audit only; each phase names its own proof battery"
+      ],
+      "result": "PASS",
+      "finding": "The word complete is now defined two ways (user-mode plus telemetry vs full driver program) with a decision gate between them; every open item from EVT-091 through EVT-099 has a phase, an owner of proof, and a pass criterion."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 19,
+    "E1_count": 20,
     "E2_count": 69,
     "E3_count": 7,
     "E4_count": 0,
