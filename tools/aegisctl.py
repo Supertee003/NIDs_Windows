@@ -749,8 +749,44 @@ def _mutate_rules(args, op: str) -> int:
     return 0
 
 
+def _event_log_candidates() -> list[Path]:
+    # The service writes relative to ITS cwd (System32), an interactive run
+    # relative to the repo. events must read whichever is live, never a
+    # stale default blindly (F2: the CWD file held 2 test lines for weeks
+    # while the service wrote megabytes elsewhere).
+    return [
+        Path(r"C:\Windows\System32\logs\aegis_core.ndjson"),
+        TOOLS_DIR.parent / "logs" / "aegis_core.ndjson",
+    ]
+
+
+def _select_event_log(candidates: list[Path]) -> Path | None:
+    """Newest existing candidate wins; None when nothing exists."""
+    best: Path | None = None
+    best_mtime = -1.0
+    for path in candidates:
+        try:
+            mtime = path.stat().st_mtime
+        except OSError:
+            continue
+        if mtime > best_mtime:
+            best, best_mtime = path, mtime
+    return best
+
+
 def _event_log() -> Path:
+    selected = _select_event_log(_event_log_candidates())
+    if selected is not None:
+        return selected
     return TOOLS_DIR.parent / "logs" / "aegis_core.ndjson"
+
+
+def _event_log_note(path: Path) -> str:
+    try:
+        age = time.time() - path.stat().st_mtime
+        return f"events source: {path} ({age:.0f}s old)"
+    except OSError:
+        return f"events source: {path} (unreadable)"
 
 
 def _read_events() -> list[dict]:
@@ -769,21 +805,26 @@ def _read_events() -> list[dict]:
 
 
 def cmd_events(args) -> int:
+    path = _event_log()
+    note = _event_log_note(path)
     events = _read_events()
     op = getattr(args, "events_command", "count")
     if op == "count":
         if getattr(args, "json", False):
-            print(json.dumps({"events": len(events)}, sort_keys=True))
+            print(json.dumps({"events": len(events), "source": str(path)}, sort_keys=True))
         else:
             print(f"Events: {len(events)}")
+            print(note)
     elif op == "tail":
         count = getattr(args, "count", 10)
         if not events:
             print("No events found")
+            print(note)
         else:
             for item in events[-count:]:
                 print(json.dumps(item, sort_keys=True) if getattr(args, "json", True) else item)
             print(f"{min(count, len(events))} event(s)")
+            print(note)
             if getattr(args, "follow", False):
                 seen = len(events)
                 try:
@@ -798,14 +839,16 @@ def cmd_events(args) -> int:
     else:
         if not events:
             print("No log file or events available")
+            print(note)
         else:
             levels = {}
             for item in events:
                 level = item.get("level", item.get("severity", "unknown"))
                 levels[str(level)] = levels.get(str(level), 0) + 1
             print("Event Statistics")
-            payload = {"total": len(events), "levels": levels}
+            payload = {"total": len(events), "levels": levels, "source": str(path)}
             print(json.dumps(payload, indent=2) if getattr(args, "json", True) else payload)
+            print(note)
     return 0
 
 
@@ -986,7 +1029,14 @@ def _unavailable(command: str, reason: str = "not_implemented") -> int:
 
 
 def cmd_simulate(args) -> int:
-    return _unavailable("simulate", "use scripts/aegis_event_gen.py for controlled fixtures")
+    # Gate-E + T16 AC1: the canonical CLI never spawns processes and
+    # simulation stays fail-closed here. Controlled fixtures run through
+    # the sanctioned script directly (it owns its pipe/protocol contract);
+    # this message names the exact invocation so guidance replaces the stub.
+    return _unavailable(
+        "simulate",
+        "run: python scripts/aegis_event_gen.py --pipe --fixture {xss,command-injection,path-traversal}; verify: forensics --source 0 --after <tip> or: alerts",
+    )
 
 
 def _load_canary_defs() -> tuple[list[dict], str]:
@@ -1375,10 +1425,9 @@ def cmd_alerts(args) -> int:
     """View alerts.
 
     Live composition, no daemon change: pages forensics.list through the
-    control plane (newest window first via the after-cursor), keeps every
-    record whose rule_id is non-zero, and labels it from Rules.json.
-    The scan window is always reported, so a quiet result is
-    distinguishable from a blind result.
+    control plane, keeps every record whose rule_id is non-zero, and
+    labels it from Rules.json. Scan totals are always reported, so a
+    quiet result is distinguishable from a blind result.
     """
     if not CONTROL_API_AVAILABLE:
         return _unavailable("alerts", "control_api_unavailable")
@@ -1443,13 +1492,8 @@ def cmd_alerts(args) -> int:
     return 0
 
 
-def cmd_dashboard(args) -> int:
-    """Real-time dashboard.
-
-    Delegates all business logic to control_api.
-    CLI is thin: just call API and display structured result.
-    Shows subsystem status, DEFCON level, health payload, and readiness gate.
-    """
+def _render_dashboard_once() -> int:
+    """One dashboard frame. Pure display over control_api reads."""
     if CONTROL_API_AVAILABLE:
         statuses = get_all_status()
         defcon = get_defcon()
@@ -1527,6 +1571,39 @@ def cmd_dashboard(args) -> int:
     else:
         print("\nControl API not available")
     return 0
+
+
+def cmd_dashboard(args) -> int:
+    """Real-time dashboard; --watch refreshes every --interval seconds."""
+    try:
+        interval = max(0.5, float(getattr(args, "interval", 2.0) or 2.0))
+    except (TypeError, ValueError):
+        interval = 2.0
+    try:
+        iterations = getattr(args, "iterations", None)
+        remaining = None if iterations is None else max(1, int(iterations))
+    except (TypeError, ValueError):
+        remaining = None
+    if not bool(getattr(args, "watch", False)) and remaining is None:
+        return _render_dashboard_once()
+    try:
+        first = True
+        while True:
+            if bool(getattr(args, "watch", False)) and not first:
+                print("\x1b[2J\x1b[H", end="")
+            first = False
+            if bool(getattr(args, "watch", False)):
+                print(f"aegisctl dashboard --watch every {interval:g}s (Ctrl+C to stop)")
+            rc = _render_dashboard_once()
+            if rc != 0:
+                return rc
+            if remaining is not None:
+                remaining -= 1
+                if remaining <= 0:
+                    return 0
+            time.sleep(interval)
+    except KeyboardInterrupt:
+        return 0
 
 
 def cmd_bridge(args) -> int:
@@ -1729,7 +1806,11 @@ def main() -> int:
     alerts_p.add_argument("--limit", type=int, default=20)
     alerts_p.add_argument("--json", action="store_true")
     alerts_p.set_defaults(func=cmd_alerts)
-    sub.add_parser("dashboard", help="Real-time dashboard").set_defaults(func=cmd_dashboard)
+    dashboard_p = sub.add_parser("dashboard", help="Real-time dashboard")
+    dashboard_p.add_argument("--watch", action="store_true", help="Refresh every --interval seconds")
+    dashboard_p.add_argument("--interval", type=float, default=2.0, help="Refresh interval in seconds")
+    dashboard_p.add_argument("--iterations", type=int, default=None, help="Render N frames then exit (scripted use)")
+    dashboard_p.set_defaults(func=cmd_dashboard)
     sub.add_parser("bridge", help="Bridge IPC status").set_defaults(func=cmd_bridge)
     sub.add_parser("iptest", help="IPC throughput test").set_defaults(func=cmd_iptest)
     sub.add_parser("authority", help="Verify authority invariant").set_defaults(func=cmd_authority)

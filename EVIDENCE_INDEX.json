@@ -3278,6 +3278,30 @@
       ],
       "result": "PASS",
       "finding": "Send -> match -> verified alert is green on the deployed service. The investigation's real yield is methodological: on a 300-events/sec ring, every probe must be tip-anchored and immediate, and unwindowable cursors must not be dressed as windows. GAP-015 stays OPEN (P1) for storm proof and the p95 driver."
+    },
+    {
+      "id": "EVT-124",
+      "head_sha": "cdb1a4a",
+      "timestamp": "2026-10-09",
+      "title": "F2 operator convenience: live-log events source, dashboard watch loop, simulate kept fail-closed",
+      "level": "E5",
+      "component": "tooling",
+      "description": "Second frontend slice, all client-side (tools/aegisctl.py + tests, zero daemon change). (1) events tail/count/stats read the LIVE service log: newest-existing-wins selection between the service path (System32) and the dev-tree path, every output labeled with source path + age — kills the silent-stale where the CWD file held 2 test lines for weeks while the service wrote megabytes elsewhere. Proven live: tail shows fresh R1004 signature_match rows, 0s old, from the System32 log. (2) dashboard gains --watch/--interval/--iterations (single-render extraction _render_dashboard_once, Ctrl+C clean, scripted N-frame mode); proven live with --iterations 2 (2 frames, DEFCON 3 HIGH, 7/7, gate CLOSED, exit 0). (3) simulate: a subprocess bridge to the fixture runner was implemented and proven live once (attack --type xss drove the full loop to verified R9059 record 686163), then REVERTED in the same patch before commit — full pytest caught it violating two standing safety contracts (Gate-E simulation fail-closed pins flood/attack/packet/replay unavailable; T16 AC1 forbids process-spawning tokens in the canonical CLI). Contracts outrank convenience: fixtures stay runnable only via scripts/aegis_event_gen.py directly, and the unavailable message now names the exact sanctioned invocation plus verify pointer. Pins: pure source-selection tests (tmp_path freshness/missing).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "tools/aegisctl.py",
+        "tests/tools/test_aegisctl_f2.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "new test_aegisctl_f2.py source-selection pins: PASS",
+        "events tail live: service-log R1004 rows + source note",
+        "dashboard --iterations 2 live: 2 frames, exit 0",
+        "Gate-E simulation fail-closed + T16 no-spawn gates: green (bridge reverted to honor them)",
+        "direct event_gen fixture loop still proven (R9059 record 686163 via sanctioned path)"
+      ],
+      "result": "PASS",
+      "finding": "The terminal surface is complete for observe-and-probe within the safety contracts: live status/rules/alerts/events/queue, scripted dashboard frames, and precise fixture guidance. The reverted bridge is the evidence the gates work — full pytest refused a convenience that contradicted fail-closed. Remaining frontend: F3 egui data source, F4 mouth fate, F5 web."
     }
   ],
   "evidence_level_summary": {
@@ -3286,7 +3310,7 @@
     "E2_count": 87,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 24,
+    "E5_count": 25,
     "E6_count": 0,
     "E7_count": 0
   }
