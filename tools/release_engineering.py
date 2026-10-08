@@ -372,7 +372,11 @@ def refresh_digests(commit: str) -> int:
     This mode is the bounded alternative for a reviewed local change: it keeps
     the recorded artifact set exactly as-is, refreshes only digests/sizes, drops
     entries whose file is gone, and re-stamps source_commit. The artifact-set
-    reconciliation is tracked separately as a build-truth task.
+    reconciliation is tracked separately as a build-truth task. Release-commit
+    rule (EVT-103): runtime_manifest.json is the ONLY stamp-carrying file
+    inside the artifact set — always commit it together with
+    build_manifest.json (both parent-stamped) or clean-checkout --verify
+    fails on the lagging stamp. Other maps stay dirty by design.
     """
     if not MANIFEST_PATH.exists():
         print("build_manifest.json not found - run --manifest first", file=sys.stderr)
