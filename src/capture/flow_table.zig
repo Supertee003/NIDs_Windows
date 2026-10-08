@@ -278,6 +278,39 @@ test "FlowKey v6 full identity never collides with truncated v4 view" {
     try std.testing.expect(k_full.hash() != k_trunc.hash());
 }
 
+test "FlowKey splits one host across BE-numeric vs memory-layout conventions (JOIN-TRACE-119)" {
+    // EVT-110 join-tracing question, closed by EVT-119. The Go nose path
+    // stores 10.0.0.5 as BE-numeric 0x0A000005 (BigEndian.Uint32 of the
+    // wire bytes) while the disabled Zig npcap path bitcasts the same
+    // wire bytes to memory-layout 0x0500000A (packet_callback.zig, pinned
+    // by its BYTE-ORDER tests). The flow join below is convention-blind
+    // (@bitCast keying, byte-identical to event_processor.zig), so the
+    // two values for ONE host MUST key differently here. Production is
+    // safe only because a single convention enters the queue (Go Nose is
+    // canonical network ingress, daemon.zig). Re-enabling a bitcast
+    // producer without ingress canonicalization would split this host
+    // into two flows here, and likewise split correlator windows,
+    // anomaly baselines, and policy src_ip equality. Missed joins only,
+    // never false blocks.
+    const be_wire: [4]u8 = .{ 0x0A, 0x00, 0x00, 0x05 }; // 10.0.0.5 on the wire
+    const be_value: u32 = std.mem.readInt(u32, &be_wire, .big); // Go capture
+    const ml_value: u32 = @bitCast(be_wire); // Zig packetCallback
+    try std.testing.expectEqual(@as(u32, 0x0A000005), be_value);
+    try std.testing.expectEqual(@as(u32, 0x0500000A), ml_value);
+    // Key exactly as event_processor.zig does: bitcast the u32, zero-pad.
+    var be_ip: [16]u8 = [_]u8{0} ** 16;
+    var ml_ip: [16]u8 = [_]u8{0} ** 16;
+    const be_bytes: [4]u8 = @bitCast(be_value);
+    const ml_bytes: [4]u8 = @bitCast(ml_value);
+    @memcpy(be_ip[0..4], &be_bytes);
+    @memcpy(ml_ip[0..4], &ml_bytes);
+    const peer: [16]u8 = .{ 192, 168, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    const k_be = FlowKey.normalize(be_ip, peer, 4000, 80, 6, false);
+    const k_ml = FlowKey.normalize(ml_ip, peer, 4000, 80, 6, false);
+    try std.testing.expect(!k_be.eql(k_ml));
+    try std.testing.expect(k_be.hash() != k_ml.hash());
+}
+
 test "FlowTable create and lookup" {
     var ft = FlowTable{};
     const k = FlowKey.normalize([_]u8{ 10, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, [_]u8{ 10, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, 1000, 2000, 6, false);

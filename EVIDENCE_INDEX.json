@@ -3139,12 +3139,35 @@
       ],
       "result": "PASS",
       "finding": "The full vertical slice now has live E5 proof: ETW provider enable -> classified host_telemetry events -> forensic ring records -> control-plane query, on the deployed service. GAP-009 and GAP-012 are CLOSED. The mixed-vintage deployment failure mode (fresh exe + stale DLLs exits silently before main) is documented here as the reason deploys must always ship as one rebuilt set."
+    },
+    {
+      "id": "EVT-119",
+      "head_sha": "4458083",
+      "timestamp": "2026-10-09",
+      "title": "EVT-110 join-tracing question closed: single-convention ingress proven and pinned, split mechanism demonstrated",
+      "level": "E2",
+      "component": "testing",
+      "description": "Join tracing across Go capture, Zig capture paths, IPC decode, and every IP-u32 comparison site (two-reader investigation + author verification of all load-bearing file:line claims). Findings: Go side alone is safe (capture BigEndian.Uint32, wire LE-of-value, all comparisons intra-domain BE-vs-BE/bytes-vs-bytes/string-vs-string; no threat-intel/blocklist matching exists in nose/). Zig production today is safe: daemon spawns only BE-or-zero producers (nose pipe reader, BE pipe-JSON sensor, ETW/FIM/registry/pipe-monitor with src_ip=0); the memory-layout bitcast producers are unreachable (direct Zig Npcap path disabled by recorded decision in daemon.zig, WFP windows_capture spawned only from orphaned nids_main). No canonicalization point exists and all joins are convention-blind, so the trap is latent and real: one host would key as two flows (Go 0x0A000005 vs Zig 0x0500000A) with missed-only joins. Standing poison vector flagged: windows_capture.zig sensor_event.source_ip copies a memory-layout u32 into the BE-contract CanonicalEvent domain if that path is ever re-wired. No gap opened (EVT-110 explicitly said 'not a gap yet'); the question is closed as safe-by-construction-today with pins. Pins: Zig JOIN-TRACE-119 mechanism test (same host in both conventions keys differently; proven red-then-green, deliberate failure output recorded) and Python T11 single-convention-ingress guard (canonical-ingress decision present, BE producers spawned, bitcast-producer symbols absent from daemon.zig, @bitCast hazard stays visible). Blessed fix direction if a bitcast producer is ever re-enabled: canonicalize at ingress in the same patch as the T11 update, never silently.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/capture/flow_table.zig",
+        "tests/host_telemetry/test_t11_single_convention_ingress.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "new Zig JOIN-TRACE-119: PASS (after deliberate-red: 2121/2123 passed 1 failed with exact test name, then green 4/4 steps exit 0)",
+        "new T11 guard (4 asserts): 4 passed",
+        "zig build test full suite: green",
+        "--test-filter runs are silently empty in this repo setup (both matching and bogus filters print nothing, exit 0); red-proof used instead — recorded so nobody trusts filter silence as proof"
+      ],
+      "result": "PASS",
+      "finding": "The cross-format IP question is settled with evidence at both layers: production joins happen in exactly one convention (proven by spawn-graph + convention inventory), and the split mechanism is pinned so any future re-enable of a bitcast producer fails loudly instead of silently halving detections."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 84,
+    "E2_count": 85,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 22,
