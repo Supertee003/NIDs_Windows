@@ -1329,6 +1329,10 @@ fn main() {
     let mut alert_feed = AlertFeed::new();
     let mut mitigation_feed = MitigationFeed::new();
 
+    // Shutdown semantics (EVT-112): this loop has no graceful exit — the
+    // SHUTDOWN flag is never set anywhere, so Ctrl+C terminates via the OS.
+    // Accepted because the monitor is read-only (tail + queries, no state
+    // to flush); adding a console handler needs runtime testing first.
     loop {
         let mut new_entries = 0;
 

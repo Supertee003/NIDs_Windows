@@ -252,6 +252,53 @@ pub const PepEnforcer = struct {
         };
     }
 
+    /// Request quarantine enforcement and return the receipt on success.
+    /// QUAR-RCPT-112: mirrors enforceFlow exactly (same guards, same
+    /// receipt shape); only the requested action and the accepted decision
+    /// differ. The Rust side executes quarantine through the flow-block
+    /// primitive and returns DECISION_QUARANTINE with a filter_id, which is
+    /// what verifyEnforcementReceipt keys on. Caller wiring (which policy
+    /// actions route here vs legacy dispatch) is a separate, unexecuted
+    /// step — this function only makes the request provable.
+    pub fn enforceQuarantineFlow(
+        self: *PepEnforcer,
+        dst_ip: u32,
+        dst_port: u16,
+        protocol: u8,
+        policy_id: u32,
+        severity: u8,
+        caller_pid: u32,
+        caller_caps: u32,
+        request_id: u64,
+    ) ?PepEnforcementReceipt {
+        if (!self.available or dst_ip == 0 or dst_port == 0 or protocol == 0 or policy_id == 0) return null;
+        var req = PepRequest{
+            .decision_kind = 0,
+            // requested_action uses the policy.Action ABI, not PepDecision.
+            // Rust maps policy.Action.quarantine to ACTION_QUARANTINE = 5.
+            .requested_action = @intFromEnum(policy.Action.quarantine),
+            .flow_id = request_id,
+            .src_ip = 0,
+            .dst_ip = dst_ip,
+            .src_port = 0,
+            .dst_port = dst_port,
+            .protocol = protocol,
+            .policy_id = policy_id,
+            .severity = severity,
+            .ctx = .{ .caller_pid = caller_pid, .caller_capability_mask = caller_caps, .request_id = request_id },
+        };
+        var resp: PepResponse = undefined;
+        if (aegis_pep_enforce(&req, &resp) != 0) return null;
+        if (resp.decision != @intFromEnum(PepDecision.quarantine) or resp.filter_id == 0) return null;
+        return .{
+            .decision = .quarantine,
+            .reason = resp.reason,
+            .quota_remaining = resp.quota_remaining,
+            .signed_by = resp.signed_by,
+            .filter_id = resp.filter_id,
+        };
+    }
+
     pub fn unblockFilter(self: *PepEnforcer, filter_id: u64, caller_pid: u32, caller_caps: u32, request_id: u64) bool {
         if (!self.available or filter_id == 0) return false;
         return aegis_pep_unblock_filter(filter_id, caller_pid, caller_caps, request_id) == 0;
@@ -378,6 +425,15 @@ test "QUAR-RCPT-094: quarantine receipt fails closed without filter or PEP" {
         .filter_id = 7,
     };
     try std.testing.expect(!pep.verifyEnforcementReceipt(&ev, bad_decision));
+}
+
+test "QUAR-RCPT-112: enforceQuarantineFlow fails closed without provider" {
+    // No PEP available: no request leaves, no receipt fabricates.
+    var pep = PepEnforcer{ .available = false };
+    try std.testing.expect(pep.enforceQuarantineFlow(0xC0A80164, 80, 6, 1, 5, 0, 0, 1) == null);
+    // Zeroed request fields fail closed even in shape (never sent).
+    var pep2 = PepEnforcer{ .available = false };
+    try std.testing.expect(pep2.enforceQuarantineFlow(0, 0, 0, 0, 0, 0, 0, 0) == null);
 }
 
 test "mapAction correctness" {

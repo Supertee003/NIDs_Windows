@@ -574,8 +574,27 @@ pub unsafe extern "C" fn aegis_pep_enforce(
         decision = DECISION_RATE_LIMIT;
         reason = 3; // explicit policy rate limit
     } else if req.requested_action == ACTION_QUARANTINE {
-        decision = DECISION_QUARANTINE;
-        reason = 5; // quarantine requested; adapter execution is downstream
+        // QUAR-RCPT-112: quarantine constrains traffic like a block, so it
+        // clears the same bars: the severity>=7 two-person approval gate
+        // below, the shared quota window, and adapter execution that mints
+        // a filter_id. The WFP primitive underneath is a flow block; the
+        // quarantine semantics live in the returned decision/receipt, which
+        // is what the Zig verifier keys on — never on filter provenance.
+        if req.severity >= 7 && s.two_person_rule {
+            // Need approval
+            match s.pending_approvals.remove(&req.ctx.request_id) {
+                Some(_) => {
+                    decision = DECISION_QUARANTINE;
+                }
+                None => {
+                    decision = DECISION_ESCALATE;
+                    reason = 2; // needs approval
+                }
+            }
+        } else {
+            decision = DECISION_QUARANTINE;
+            reason = 5; // quarantine requested; adapter execution below
+        }
     } else if req.requested_action == ACTION_BLOCK {
         // High-severity block — check two-person rule if enabled.
         // Approvals are one-shot: a consumed approval cannot authorize a
@@ -603,8 +622,10 @@ pub unsafe extern "C" fn aegis_pep_enforce(
         decision = DECISION_ESCALATE;
         reason = 6;
     }
-    if decision == DECISION_BLOCK {
-        // T3-QUOTA: per-source sliding window over BLOCK authorizations.
+    if decision == DECISION_BLOCK || decision == DECISION_QUARANTINE {
+        // T3-QUOTA: per-source sliding window over BLOCK and QUARANTINE
+        // authorizations (shared window: a separate quarantine quota would
+        // let quarantine requests bypass the block rate limit).
         // An exhausted quota fails closed to ESCALATE (reason 7), never to
         // ALLOW, and the window resets after QUOTA_WINDOW_MS.
         let now_ms = std::time::SystemTime::now()
@@ -620,7 +641,10 @@ pub unsafe extern "C" fn aegis_pep_enforce(
     }
     drop(s);
 
-    if decision == DECISION_BLOCK {
+    // QUAR-RCPT-112: quarantine executes through the same WFP flow-block
+    // primitive (no separate quarantine filter class exists below the PEP);
+    // the returned decision/receipt carries the quarantine semantics.
+    if decision == DECISION_BLOCK || decision == DECISION_QUARANTINE {
         #[cfg(windows)]
         {
             // PEP-ADAPTER-CACHE-073: cached bridge (re-probes on failure).
@@ -2074,6 +2098,120 @@ mod tests {
             assert_eq!(resp.decision, DECISION_ESCALATE);
             assert_eq!(resp.reason, 1);
         }
+    }
+
+    #[test]
+    fn pep_quarantine_no_capability_returns_escalate_with_reason() {
+        // QUAR-RCPT-112: quarantine is privilege-gated exactly like block.
+        let req = PepRequest {
+            decision_kind: 61,
+            requested_action: ACTION_QUARANTINE,
+            flow_id: 12,
+            src_ip: 0xC0A8010A,
+            dst_ip: 0x08080808,
+            src_port: 12345,
+            dst_port: 80,
+            protocol: 6,
+            policy_id: 1,
+            severity: 4,
+            ctx: PepContext {
+                caller_pid: 1,
+                caller_capability_mask: 0, // no capability
+                request_id: 12,
+                policy_version: 0,
+            },
+        };
+        let mut resp = PepResponse {
+            decision: 0,
+            reason: 0,
+            quota_remaining: 0,
+            signed_by: 0,
+            filter_id: 0,
+        };
+        unsafe {
+            assert_eq!(aegis_pep_enforce(&req, &mut resp), 0);
+            assert_eq!(resp.decision, DECISION_ESCALATE);
+            assert_eq!(resp.reason, 1);
+            assert_eq!(resp.filter_id, 0);
+        }
+    }
+
+    #[test]
+    fn pep_quarantine_without_adapter_fails_closed_no_filter() {
+        // No WFP provider on a dev/CI host: quarantine must surface as
+        // ESCALATE reason 4 with no filter, never a bare QUARANTINE
+        // decision that the Zig verifier could mistake for enforcement.
+        let req = PepRequest {
+            decision_kind: 61,
+            requested_action: ACTION_QUARANTINE,
+            flow_id: 13,
+            src_ip: 0xC0A8010B,
+            dst_ip: 0x08080808,
+            src_port: 12345,
+            dst_port: 80,
+            protocol: 6,
+            policy_id: 1,
+            severity: 4,
+            ctx: PepContext {
+                caller_pid: 1,
+                caller_capability_mask: 1,
+                request_id: 13,
+                policy_version: 0,
+            },
+        };
+        let mut resp = PepResponse {
+            decision: 0,
+            reason: 0,
+            quota_remaining: 0,
+            signed_by: 0,
+            filter_id: 0,
+        };
+        unsafe {
+            assert_eq!(aegis_pep_enforce(&req, &mut resp), 0);
+            assert_eq!(resp.decision, DECISION_ESCALATE);
+            assert_eq!(resp.reason, 4); // host-effect adapter unavailable
+            assert_eq!(resp.filter_id, 0);
+        }
+    }
+
+    #[test]
+    fn high_severity_quarantine_without_approval_escalates_for_approval() {
+        // QUAR-RCPT-112: quarantine clears the same two-person bar as block.
+        assert_eq!(aegis_pep_set_two_person_rule(1, 1), 0);
+        let req = PepRequest {
+            decision_kind: 61,
+            requested_action: ACTION_QUARANTINE,
+            flow_id: 14,
+            src_ip: 0xC0A8010C,
+            dst_ip: 0x08080808,
+            src_port: 12345,
+            dst_port: 443,
+            protocol: 6,
+            policy_id: 9,
+            severity: 9,
+            ctx: PepContext {
+                caller_pid: 1,
+                caller_capability_mask: 1,
+                request_id: 777014,
+                policy_version: 0,
+            },
+        };
+        let mut resp = PepResponse {
+            decision: 0,
+            reason: 0,
+            quota_remaining: 0,
+            signed_by: 0,
+            filter_id: 0,
+        };
+        unsafe {
+            // No approval recorded: must ESCALATE for approval (reason 2),
+            // short-circuiting before any adapter/WFP contact.
+            assert_eq!(aegis_pep_enforce(&req, &mut resp), 0);
+            assert_eq!(resp.decision, DECISION_ESCALATE);
+            assert_eq!(resp.reason, 2);
+            assert_eq!(resp.filter_id, 0);
+        }
+        assert_eq!(aegis_pep_set_two_person_rule(0, 1), 0);
     }
 
     #[test]

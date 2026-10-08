@@ -10,7 +10,9 @@
 //!   total     = g_pipeline_detections  (matched detections)
 //!   critical  = g_critical_detections  (matched, final severity
 //!               critical/emergency incl. incident escalation)
-//!   confirmed = g_confirmed_blocks     (BLOCKED_CONFIRMED receipts only)
+//!   confirmed = g_confirmed_blocks |+ g_confirmed_quarantines
+//!               (receipt-verified host effects only — QUAR-RCPT-112 widens
+//!               the input from blocks-only; ladder thresholds unchanged)
 //!
 //! Thresholds are the pre-existing three-surface consensus (desktop, web,
 //! mouth agreed on these numbers); only the ownership changes. Labels use

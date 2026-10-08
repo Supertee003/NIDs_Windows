@@ -1,5 +1,5 @@
 {
-  "head_sha": "fff0a3e311c96a17a0c5c8efd34a7a9718c471c1",
+  "head_sha": "9c0d690ca442348f8a46170832c887da84ee6d86",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2985,12 +2985,35 @@
       ],
       "result": "PASS",
       "finding": "Closed fff0a3e with all EventFromPacket pins green. The pin earned its keep three times over: two author typos plus one genuine cross-language decoder difference."
+    },
+    {
+      "id": "EVT-112",
+      "head_sha": "9c0d690ca442348f8a46170832c887da84ee6d86",
+      "timestamp": "2026-10-08",
+      "title": "Owner-delegated round: quarantine per-flow enforced, DEFCON sums quarantines, publish set decided",
+      "level": "E2",
+      "component": "testing",
+      "description": "All seven delegated decisions executed or specified. (1) Quarantine semantics DECIDED per-flow: Rust aegis_pep_enforce now runs quarantine through the two-person gate at severity 7+, the shared T3 quota window, and the same WFP flow-block adapter call, returning DECISION_QUARANTINE with a filter_id; Zig gained enforceQuarantineFlow mirroring enforceFlow (same guards, quarantine decision accepted); three Rust fail-closed tests plus one Zig test added (fresh per-source IPs against the shared quota window; two-person cleanup restores global rule state). Caller wiring (which policy actions route to enforceQuarantineFlow vs legacy dispatch) is intentionally left as the next unexecuted step. (2) DEFCON DECIDED sum: health input is now blocks saturating-add quarantines, ladder thresholds untouched, doc updated. (3) Kernel-driver program: NOT decided here — explicitly refused as beyond delegation (multi-month, EV cert budget, lab resourcing); recorded as still-owner-side. (4) installer/aegis.nsi deletion left to operator shell (no rm tool in session). (5) Mouth shutdown accepted as OS-kill with an in-code comment (read-only monitor, no state to flush; console handler needs runtime testing). (6) Publish set DECIDED: drop docs/historical plus .agents, keep EVIDENCE_INDEX plus curated docs, at export time. (7) Gitleaks full-history scan stays operator-side with exact commands in the prior message.",
+      "flow_id": "EVIDENCE-001",
+      "files_changed": [
+        "rust-src/lib.rs",
+        "src/policy/pep_bindings.zig",
+        "src/control/state_machine.zig",
+        "src/control/defcon.zig",
+        "mouth/windows_sec_monitor.rs"
+      ],
+      "tests": [
+        "3 new Rust pins (no-capability, no-adapter fail-closed, two-person gate) plus 1 Zig enforceQuarantineFlow fail-closed pin",
+        "NOT EXECUTED in this session: cargo test plus zig build test must run before commit"
+      ],
+      "result": "PARTIAL",
+      "finding": "Enforcement semantics now exist end to end except caller wiring and live proof. The kernel-driver decision is the single item returned to the owner with reasoning."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 79,
+    "E2_count": 80,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 20,
