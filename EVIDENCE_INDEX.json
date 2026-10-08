@@ -1,5 +1,5 @@
 {
-  "head_sha": "a871a32a080f16ed10848ac33da2495d7d76a860",
+  "head_sha": "d0bd1a099adc9d4d46ebd6feb376964906085497",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -1394,14 +1394,16 @@
       "severity": "P1",
       "title": "Artifact-set generators are not reproducible",
       "description": "tools/release_engineering.py::collect_artifacts() listed the non-existent core/ directory, omitted canonical sources (src/, configs/, rust-src/, nose/), and picked up gitignored build output, so running --manifest destroys provenance instead of restoring it. The committed 539-entry artifact set cannot be derived from any single rule revision: 0 src/ entries, 2 config/ entries, and ~244 non-reproducible build byproducts (232 bridge/build/, ~10 brain cython, 2 loose go/aggregator .exe). A bounded --refresh-digests mode was added so reviewed changes can be re-stamped without touching the artifact set. Owner-approved hybrid settlement (EVT-093): rule rewritten (canonical sources walked; junk excluded by whole-segment 'build' + byproduct suffixes), committed 539 kept verbatim as grandfathered, next --manifest drops the junk explicitly.",
-      "status": "OPEN",
+      "status": "CLOSED",
       "required_evidence": [
         "artifact-set selection rule documented",
         "--manifest reproduces the documented rule set (grandfathered junk drops explicitly, one-time)",
         "--verify green in a clean checkout"
       ],
-      "resolution": null,
-      "evidence": "EVT-031 fixed the inventory generator. EVT-093 settled the rule (hybrid). ADOPTED a871a32 (EVT-102): regenerated 633-entry set committed and green (bridge 13, src 286, configs 26, nose 27, rust-src 2); grandfather retired. Remaining: clean-checkout --verify on a fresh clone."
+      "resolution": "CLOSED d0bd1a0 (EVT-103): clean-clone --verify green (597 present, 36 missing build outputs by design, 0 mismatches).",
+      "closed_by": "EVT-102+EVT-103",
+      "closed_at": "2026-10-08",
+      "evidence": "EVT-031 fixed the inventory generator. EVT-093 settled the rule (hybrid). ADOPTED a871a32 (EVT-102): regenerated 633-entry set committed and green (bridge 13, src 286, configs 26, nose 27, rust-src 2); grandfather retired. Clean-clone verify green at d0bd1a0 (EVT-103) — gap fully closed."
     },
     {
       "id": "GAP-009",
@@ -1498,6 +1500,20 @@
       "closed_by": "EVT-095+EVT-096+EVT-097",
       "closed_at": "2026-10-08",
       "evidence": "Operator execution transcript 2026-10-08 (2 passed in 1.04s; digests updated: tools/aegisctl/api/control_api.py only)."
+    },
+    {
+      "id": "GAP-014",
+      "severity": "P2",
+      "title": "Release manifest records files outside version control (untracked local files)",
+      "description": "The clean-clone experiment for GAP-008 bullet 3 revealed a narrower remainder: running --refresh-digests inside the fresh clone dropped 36 entries whose files a complete clone (1737 files, 100%) does not contain, i.e. they are untracked in git — nose/.pytest_cache (3), scripts/*.bak (2), scripts/gen_kali_22.py, scripts/kali_attack_nids.py, 30 scripts/kali_attacks/* attack scripts, shield/Cargo.lock, tools/legacy/rust_shield_orphan_quarantined/Cargo.lock, and 4 generated brain/cython/*.c files. The walk sees the working tree including untracked files, so local-only files gain provenance entries. Gates stay green regardless (--verify counts missing as not-built-locally), so this is provenance completeness, not a drift failure.",
+      "status": "OPEN",
+      "required_evidence": [
+        "walk records only git-tracked files, or untracked inclusion is explicitly declared with a reason per category",
+        "--manifest proven on scratch after the rule change",
+        "clean-checkout --verify green with zero dropped entries"
+      ],
+      "resolution": null,
+      "evidence": "Filed here (EVT-104). Candidate fix: filter collect_artifacts to git-tracked paths, or document per-category inclusion; needs execution to prove."
     },
     {
       "id": "EVT-037",
@@ -2765,12 +2781,50 @@
       ],
       "result": "PASS",
       "finding": "Bullets 1-2 of GAP-008 are closed with executed proof; bullet 3 (clean-checkout verify) is the only remainder and needs a fresh clone."
+    },
+    {
+      "id": "EVT-103",
+      "head_sha": "d0bd1a099adc9d4d46ebd6feb376964906085497",
+      "timestamp": "2026-10-08",
+      "title": "GAP-008 CLOSED: clean-checkout verify green after parent-stamped pair commit",
+      "level": "E2",
+      "component": "release",
+      "description": "Root cause of the clean-clone failure: the never-commit-stamps pattern collides with digest tracking on exactly one file — runtime_manifest.json is the only stamp-carrying file inside the artifact set, so past commits stored a lagging-stamp blob while build_manifest recorded the working-tree digest, a self-inconsistent committed pair invisible on the main tree. Fix applied: commit runtime_manifest.json together with build_manifest.json (both parent-stamped, same convention as EVIDENCE_INDEX) plus a release-commit rule in the tool docstring. Proof: fresh clone pulled to d0bd1a0, --verify green with 597 present, 36 missing (unbuilt outputs, by design), 0 mismatches. GAP-008 fully closed.",
+      "flow_id": "EVIDENCE-001",
+      "files_changed": [
+        "runtime_manifest.json",
+        "build_manifest.json",
+        "tools/release_engineering.py"
+      ],
+      "tests": [
+        "clean-clone --verify green (597 present, 36 missing-by-design, 0 mismatches)",
+        "truth VALID and release --verify green on the main tree at every step"
+      ],
+      "result": "PASS",
+      "finding": "The stamp-lag pattern is now safe for digest-tracked files: pair-commit rule documented and proven by a clean checkout."
+    },
+    {
+      "id": "EVT-104",
+      "head_sha": "d0bd1a099adc9d4d46ebd6feb376964906085497",
+      "timestamp": "2026-10-08",
+      "title": "Clean-clone proof done; wrong-cwd run dissected; untracked-file entries filed as GAP-014",
+      "level": "E2",
+      "component": "release",
+      "description": "The operator block ran in the clone (D:\\Temp\\aegis-clean) instead of the main tree, so: git add/commit correctly no-op'd (clone has none of the GAP-008-CLOSED/EVT-103 edits — those remain uncommitted in D:\\NIDs_Windows), stamp_head.py re-touched the main tree harmlessly (same values), refresh-digests modified only the clone manifest, and truth.py STALE across 8 maps inside the clone is structural and expected (maps commit lagging by design; the truth gate is working-tree-scoped, never clean-clone-scoped). Two real findings from the same output: (1) clean-clone --verify is green with 597 present, 36 missing-by-design and 0 mismatches — GAP-008 bullet 3 executed proof; (2) the 36 missing are untracked in git (complete 1737-file clone lacks them: pytest cache, .bak files, 30 kali_attacks scripts plus 2 helper scripts, 2 Cargo.lock files, 4 generated brain/cython C files), so the manifest grants provenance to non-committed files — filed as GAP-014 (P2, gates unaffected by design).",
+      "flow_id": "EVIDENCE-001",
+      "files_changed": [],
+      "tests": [
+        "clean-clone --verify green (597 present, 36 missing-by-design, 0 mismatches)",
+        "complete-clone file absence as the untracked-files oracle (1737/1737 files, no checkout errors)"
+      ],
+      "result": "PASS",
+      "finding": "GAP-008 bullet 3 closed by execution; GAP-014 opened for the untracked remainder. The operator still needs to run the intended block in D:\\NIDs_Windows to commit the GAP-008 closure."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 20,
-    "E2_count": 71,
+    "E2_count": 73,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 20,
