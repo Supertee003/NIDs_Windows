@@ -703,7 +703,7 @@ const handlers = struct {
             }) catch return null;
         }
         writer.writeAll("],\"etw\":{") catch return null;
-        writer.print("\"process_start\":{},\"file_name_create\":{},\"file_name_delete\":{},\"file_write\":{},\"reg_create\":{},\"reg_set\":{},\"dropped_unmapped\":{}}}", .{
+        writer.print("\"process_start\":{},\"file_name_create\":{},\"file_name_delete\":{},\"file_write\":{},\"reg_create\":{},\"reg_set\":{},\"dropped_unmapped\":{}}}}}", .{
             telemetry.g_etw_classes.process_start.load(.acquire),
             telemetry.g_etw_classes.file_name_create.load(.acquire),
             telemetry.g_etw_classes.file_name_delete.load(.acquire),
@@ -2024,6 +2024,26 @@ test "metricsSnapshot exposes SIEM durability counters" {
     try std.testing.expect(std.mem.indexOf(u8, out, "\"loaded\":false") != null);
     // POL-SIGN-079B: observe-only verdict rides along, false by default.
     try std.testing.expect(std.mem.indexOf(u8, out, "\"verified\":false") != null);
+}
+
+test "queueStats emits parseable JSON with shed and etw keys (GAP-015)" {
+    // The G3 etw tail once closed only the etw object, leaving the root
+    // unbalanced: successEnvelope re-parse failed (UnexpectedEndOfInput)
+    // and every queue.stats query answered INTERNAL_ERROR live. This test
+    // parses the real handler output, so no response shape can regress
+    // to unparseable again.
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 29, .caller_role = .read, .caller_pid = 0 };
+    const out = handlers.queueStats(std.testing.allocator, .{ .null = {} }, &ctx).?;
+    defer std.testing.allocator.free(out);
+    var parsed = try std.json.parseFromSlice(std.json.Value, std.testing.allocator, out, .{});
+    defer parsed.deinit();
+    const root = parsed.value.object;
+    try std.testing.expect(root.contains("queue_size"));
+    try std.testing.expect(root.contains("shed_overload"));
+    try std.testing.expect(root.contains("by_source"));
+    try std.testing.expect(root.contains("pipeline"));
+    try std.testing.expect(root.contains("etw"));
+    try std.testing.expect(root.get("etw").?.object.contains("file_write"));
 }
 
 test "metricsSnapshot prints lifetime counters at full u64 width" {
