@@ -24,7 +24,52 @@ fn is_critical_level(level: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_critical_level, resolve_defcon, AlertEntry};
+    use super::{is_critical_level, read_tail, resolve_defcon, resolve_log_path, AlertEntry};
+
+    #[test]
+    fn log_path_prefers_newest_candidate() {
+        // F3: tmp-only fixtures, never the repo tree.
+        let dir = std::env::temp_dir().join("aegis_dash_f3_test");
+        let _ = std::fs::create_dir_all(&dir);
+        let old = dir.join("old.ndjson");
+        let new = dir.join("new.ndjson");
+        std::fs::write(&old, "{}\n").unwrap();
+        // Ensure distinct mtimes (FAT/1s granularity on some volumes).
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+        std::fs::write(&new, "{}\n").unwrap();
+        assert_eq!(resolve_log_path(&[old.clone(), new.clone()]), new);
+        assert_eq!(resolve_log_path(&[new.clone(), old.clone()]), new);
+        assert_eq!(
+            resolve_log_path(&[dir.join("missing.ndjson"), new.clone()]),
+            new
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn read_tail_returns_line_bounded_suffix() {
+        // F3: the refresh loop must never half-parse a leading line.
+        let dir = std::env::temp_dir().join("aegis_dash_f3_tail");
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("log.ndjson");
+        let mut content = String::new();
+        for i in 0..100 {
+            content.push_str(&format!("{{\"n\":{}}}\n", i));
+        }
+        std::fs::write(&path, &content).unwrap();
+        // Whole file when smaller than the window.
+        let all = read_tail(&path, 1_000_000).unwrap();
+        assert_eq!(all.lines().count(), 100);
+        // Bounded window: complete lines only, all from the tail.
+        let tail = read_tail(&path, 100).unwrap();
+        let lines: Vec<&str> = tail.lines().collect();
+        assert!(!lines.is_empty() && lines.len() < 100);
+        assert!(lines.iter().all(|l| l.starts_with("{\"n\":")));
+        assert!(lines.last().unwrap().starts_with("{\"n\":99}"));
+        // Missing file propagates the error (caller keeps old data).
+        assert!(read_tail(&dir.join("nope.ndjson"), 100).is_err());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn critical_level_is_case_insensitive() {
@@ -208,6 +253,61 @@ struct AegisDashboard {
     control_available: bool,
 }
 
+/// F3: where the live daemon log can live. The service writes relative
+/// to ITS cwd (System32); an interactive run writes relative to the repo.
+/// Candidates are ranked by freshness at startup, never hardcoded to one.
+#[cfg(windows)]
+const SERVICE_LOG_PATH: &str = r"C:\Windows\System32\logs\aegis_core.ndjson";
+#[cfg(not(windows))]
+const SERVICE_LOG_PATH: &str = "/var/log/aegis_core.ndjson";
+
+/// F3: newest existing candidate wins; the CWD-relative default is the
+/// fallback so a bare checkout behaves exactly as before.
+fn resolve_log_path(candidates: &[std::path::PathBuf]) -> std::path::PathBuf {
+    let mut best: Option<std::path::PathBuf> = None;
+    let mut best_mtime = std::time::SystemTime::UNIX_EPOCH;
+    for path in candidates {
+        if let Ok(meta) = std::fs::metadata(path) {
+            if let Ok(mtime) = meta.modified() {
+                if mtime > best_mtime {
+                    best_mtime = mtime;
+                    best = Some(path.clone());
+                }
+            }
+        }
+    }
+    best.unwrap_or_else(|| {
+        candidates
+            .last()
+            .cloned()
+            .unwrap_or_else(|| std::path::PathBuf::from("logs/aegis_core.ndjson"))
+    })
+}
+
+/// F3: tail window for the 1s refresh loop. The live log grows past
+/// megabytes; re-reading + re-parsing all of it every second is pure
+/// UI-thread latency. Returns at most max_bytes ending on a line
+/// boundary (a leading partial line is dropped, never half-parsed).
+fn read_tail(path: &std::path::Path, max_bytes: u64) -> std::io::Result<String> {
+    let file = std::fs::File::open(path)?;
+    let len = file.metadata()?.len();
+    let start = len.saturating_sub(max_bytes);
+    use std::io::{Read, Seek, SeekFrom};
+    let mut file = file;
+    file.seek(SeekFrom::Start(start))?;
+    let mut buf = Vec::new();
+    file.read_to_end(&mut buf)?;
+    let mut text = String::from_utf8_lossy(&buf).into_owned();
+    if start > 0 {
+        if let Some(pos) = text.find('\n') {
+            text = text[pos + 1..].to_string();
+        } else {
+            text.clear();
+        }
+    }
+    Ok(text)
+}
+
 impl AegisDashboard {
     fn new() -> Self {
         let base = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
@@ -220,8 +320,13 @@ impl AegisDashboard {
             defcon_level: 5,
             defcon_source: "evidence-log",
             last_refresh: Instant::now(),
-            // GAP-4: Read aegis_core.ndjson (was anomalous.json - old Brain format)
-            log_path: base.join("logs").join("aegis_core.ndjson"),
+            // F3: live-log resolution (service path vs dev-tree path,
+            // newest wins) instead of a blind CWD-relative default that
+            // showed 2 stale test lines while the service wrote elsewhere.
+            log_path: resolve_log_path(&[
+                std::path::PathBuf::from(SERVICE_LOG_PATH),
+                base.join("logs").join("aegis_core.ndjson"),
+            ]),
             // The daemon and aegisctl share this canonical rules location.
             rules_path: base.join("configs").join("Rules.json"),
             auto_refresh: true,
@@ -232,8 +337,7 @@ impl AegisDashboard {
         }
     }
 
-    fn refresh_control_snapshot(&mut self) {
-        let output = Command::new("python")
+    fn refresh_control_snapshot(&mut self) {        let output = Command::new("python")
             .args(["tools/aegisctl.py", "snapshot"])
             .current_dir(std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
             .output();
@@ -257,7 +361,10 @@ impl AegisDashboard {
         self.total_blocked = 0;
         self.total_critical = 0;
 
-        if let Ok(content) = fs::read_to_string(&self.log_path) {
+        // F3: tail window (256KB) instead of the whole multi-MB file.
+        // Display keeps the last 50 alerts anyway; the window covers
+        // thousands of recent lines at 1s refresh for ~zero UI latency.
+        if let Ok(content) = read_tail(&self.log_path, 256 * 1024) {
             for line in content.lines() {
                 if line.trim().is_empty() {
                     continue;

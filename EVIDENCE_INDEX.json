@@ -3302,12 +3302,33 @@
       ],
       "result": "PASS",
       "finding": "The terminal surface is complete for observe-and-probe within the safety contracts: live status/rules/alerts/events/queue, scripted dashboard frames, and precise fixture guidance. The reverted bridge is the evidence the gates work — full pytest refused a convenience that contradicted fail-closed. Remaining frontend: F3 egui data source, F4 mouth fate, F5 web."
+    },
+    {
+      "id": "EVT-125",
+      "head_sha": "3eeadb1",
+      "timestamp": "2026-10-09",
+      "title": "F3 egui dashboard reads the live log: newest-wins path resolution plus 256KB tail window",
+      "level": "E2",
+      "component": "tooling",
+      "description": "Third frontend slice, Rust egui crate only (zero daemon change). Two defects fixed: (1) log_path was a blind CWD-relative default showing 2 stale test lines while the service wrote megabytes to System32 — now resolve_log_path() ranks the service path vs the dev-tree path by mtime (fallback preserves old behavior); the existing Evidence: label displays the chosen path with no UI change. (2) the 1s refresh loop re-read + re-parsed the whole multi-MB file every tick — now read_tail() takes a 256KB line-bounded suffix (partial leading line dropped, never half-parsed; display keeps last 50 alerts regardless). Rules path and snapshot-subprocess feed untouched (live + honest fallback already). Proof: cargo test 7/7 (2 new: newest-wins incl. missing fallback, tail boundedness/completeness/partial-line/errors; tmp-only fixtures), cargo build release clean, 15s GUI smoke (alive, killed clean). Visual correctness needs operator eyes (fresh binary at aegis_dashboard/target/release/aegis_dashboard.exe, run from repo root).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "aegis_dashboard/src/main.rs",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "cargo test --release: 7 passed (2 new F3 pins)",
+        "15s GUI smoke: alive, no crash on start",
+        "operator visual check: pending (binary path recorded)"
+      ],
+      "result": "PASS",
+      "finding": "Every operator surface now defaults to live data: terminal (F1/F2) plus native GUI (F3). Remaining frontend: F4 mouth fate, F5 web."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 87,
+    "E2_count": 88,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 25,
