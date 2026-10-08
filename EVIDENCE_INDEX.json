@@ -3367,12 +3367,37 @@
       ],
       "result": "PASS",
       "finding": "All four operator surfaces are live. The web slice's real yield is the storm proof: spot-check zero-drop claims are worthless on bursty ingress — only cumulative per-source counters tell the truth, and they now exist because of G1."
+    },
+    {
+      "id": "EVT-128",
+      "head_sha": "56715b1",
+      "timestamp": "2026-10-09",
+      "title": "G3 storm shed: depth-triggered File-Write discard, Process-Exit unmapped, ETW composition counters",
+      "level": "E2",
+      "component": "zig_core",
+      "description": "GAP-015 fix slice, designed from the per-opcode payload mapping (reader investigation + author verification): every kept ETW class pushes FileName/ImageName/KeyName TLV bytes, so R1001/R1004 fire iff the path survives — Write carries FileName (dropping it blinds overwrites), NameCreate carries it (must keep, cheap), Process-Exit carries no reliable path with zero consumers. Three changes, detection-preserving by construction: (1) File-Write sheds only at >=75% queue depth (symbolic threshold, pure predicate) with a dedicated shed_overload counter apart from queue-full drops — creates still catch new files in storms, overwrites resume after; (2) Process-Exit unmapped from the classifier (EVT-091 pin updated same patch with reason); (3) per-class ETW counters (start/name+/name-/write/reg+/reg-/unmapped) counted inside classifyEtwEvent, exposed in queue.stats alongside shed_overload (both additive). CLI queue display extended with shed + etw rows. Deliberately NOT done: sampling (random blindness), blind Write filtering (kills overwrite detection always, not just in storms), kernel keyword changes (GAP-012 ground untouched), FIM/registry cuts (single digits, out of scope). Proof: full zig suite green 4/4 (2127/2128 + 1 skipped) incl. 2 new tests (shed parity vs classifier arms, counter deltas) + updated EVT-091 pin; pytest tools 12/12. Live storm proof (drops ~0 with shed absorbing, detections preserved) requires rebuild + elevated redeploy + storm soak.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/pipeline/telemetry_threads.zig",
+        "src/control/handler_registry.zig",
+        "tools/aegisctl.py",
+        "tests/tools/test_aegisctl_queue.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "new shed-parity + classifier-counter tests: PASS",
+        "EVT-091 classifier pin updated same patch (exit unmapped)",
+        "zig build test: 4/4 steps green",
+        "pytest tools: 12 passed"
+      ],
+      "result": "PASS",
+      "finding": "The storm fix sheds the cheapest-duplicated class (Write, covered by NameCreate for new files) only when deep, counts the shed apart from overflow, and exposes composition for the next decision. Whether storms now absorb without overflow is a live question for the redeploy soak."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 88,
+    "E2_count": 89,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 27,

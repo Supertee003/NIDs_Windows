@@ -364,13 +364,23 @@ def _format_queue_rows(response: dict) -> list[str]:
     rows = [
         f"queue {response.get('depth', '?')}/{response.get('queue_size', '?')} "
         f"pushed={response.get('pushed_total', '?')} "
-        f"dropped={response.get('dropped_total', '?')}",
+        f"dropped={response.get('dropped_total', '?')} "
+        f"shed_overload={response.get('shed_overload', '?')}",
     ]
     for bucket in response.get("by_source", []) or []:
         rows.append(
             f"  src={bucket.get('name', '?')}({bucket.get('ordinal', '?')}) "
             f"pushed={bucket.get('pushed', '?')} "
             f"dropped={bucket.get('dropped', '?')}"
+        )
+    etw = response.get("etw") or {}
+    if etw:
+        rows.append(
+            f"  etw start={etw.get('process_start', '?')} "
+            f"name={etw.get('file_name_create', '?')}+{etw.get('file_name_delete', '?')} "
+            f"write={etw.get('file_write', '?')} "
+            f"reg={etw.get('reg_create', '?')}+{etw.get('reg_set', '?')} "
+            f"unmapped={etw.get('dropped_unmapped', '?')}"
         )
     for stage in response.get("pipeline", []) or []:
         rows.append(

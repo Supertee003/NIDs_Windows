@@ -14,6 +14,40 @@ const reg_mon = @import("../windows/registry_monitor.zig");
 const state = @import("runtime_state.zig");
 const queue = @import("event_queue.zig");
 
+/// GAP-015 G3: ETW composition accounting. The 4096→16k queue plus tail
+/// fixes did not survive storm load (687k ETW drops in one storm), so the
+/// next slice needs measured composition, not guesses. One counter per
+/// kept class plus unmapped drops; no allocator, no mutex, monotonic.
+/// Read by queue.stats; never read by any push/drop decision.
+pub const EtwClasses = struct {
+    process_start: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
+    file_name_create: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
+    file_name_delete: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
+    file_write: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
+    reg_create: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
+    reg_set: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
+    dropped_unmapped: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
+};
+pub var g_etw_classes = EtwClasses{};
+/// Deliberate storm shed (see shouldShedWrite): counted apart from
+/// queue-full drops so operators can tell policy from overflow.
+pub var g_shed_overload: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+
+/// GAP-015 G3: shed File-Write events only once the queue is 3/4 full.
+/// Write is the storm class (per-write IRP firehose); NameCreate still
+/// catches every new file (R1004's new-DLL signal) and overwrites are
+/// deferred, not blinded, outside storms. Pure: depth in, decision out.
+pub fn shouldShedWrite(depth: u64) bool {
+    return depth >= queue.PIPELINE_QUEUE_SIZE * 3 / 4;
+}
+
+/// True for Kernel-File Write (Id 0x10) only. The classifier owns the
+/// opcode mapping; this predicate mirrors its Write arm and the parity
+/// test below fails if the two ever disagree.
+fn isSheddableWrite(provider_guid: *const [16]u8, event_id: u16) bool {
+    return event_id == 0x10 and std.mem.eql(u8, provider_guid, &etw.KERNEL_FILE_GUID.guid);
+}
+
 /// ETW thread: receives Windows kernel events via ETW session.
 /// Converts EtwEventRecord to IpcEvent and pushes to pipeline.
 pub fn etwThread(source: *etw.EtwSource) void {
@@ -72,6 +106,15 @@ fn etwCallback(ctx: *anyopaque, rec: *const etw.EtwEventRecord, ext_data: []cons
     };
     ev.kind = kind;
 
+    // GAP-015 G3: storm shed — File-Write into a nearly-full queue is
+    // discarded here (counted as shed policy, not overflow) instead of
+    // evicting NameCreate/Process/Registry events downstream. Creates
+    // still detect new files; overwrites resume after the storm.
+    if (isSheddableWrite(&rec.provider_guid, rec.event_id) and shouldShedWrite(queue.queueDepth())) {
+        _ = g_shed_overload.fetchAdd(1, .monotonic);
+        return;
+    }
+
     // Queue storage is bounded; hash and measure the exact bytes that will be
     // copied so forensic metadata cannot claim more payload than was retained.
     const payload_len = @min(ext_data.len, queue.MAX_PAYLOAD_BYTES);
@@ -85,20 +128,28 @@ fn etwCallback(ctx: *anyopaque, rec: *const etw.EtwEventRecord, ext_data: []cons
 /// Ground truth is host evidence (EVT-091: `wevtutil gp <provider>` task and
 /// opcode names plus the raw EVENT_DESCRIPTOR dump), pinned by the test at
 /// the bottom of this file:
-///   Kernel-Process: Id 1 = ProcessStart, Id 2 = ProcessStop (tasks 1/2)
+///   Kernel-Process: Id 1 = ProcessStart (task 1). Id 2 = ProcessStop is
+///                   deliberately UNMAPPED (G3: exit carries no path TLV,
+///                   zero consumers, storm cost) — see the parity test.
 ///   Kernel-File:    Id 0x0A = NameCreate, 0x0B = NameDelete (tasks 10/11,
 ///                   keyword FILENAME 0x10), Id 0x10 = Write (task 16,
 ///                   keyword WRITE 0x200)
 ///   Kernel-Registry: Id 1 = CreateKey (keyword 0x1000), Id 5 = SetValueKey
 ///                   (keyword 0x100)
 /// Returns null when the pair is unrecognized — the caller drops such
-/// records instead of guessing a kind.
+/// records instead of guessing a kind. Every outcome is counted into
+/// g_etw_classes for queue.stats composition (GAP-015 G3).
 fn classifyEtwEvent(provider_guid: *const [16]u8, event_id: u16) ?event.EventKind {
     if (std.mem.eql(u8, provider_guid, &etw.KERNEL_PROCESS_GUID.guid)) {
         return switch (event_id) {
-            1 => .etw_process_create,
-            2 => .etw_process_exit,
-            else => null,
+            1 => blk: {
+                _ = g_etw_classes.process_start.fetchAdd(1, .monotonic);
+                break :blk .etw_process_create;
+            },
+            else => blk: {
+                _ = g_etw_classes.dropped_unmapped.fetchAdd(1, .monotonic);
+                break :blk null;
+            },
         };
     } else if (std.mem.eql(u8, provider_guid, &etw.KERNEL_FILE_GUID.guid)) {
         // file_create/file_delete arrive as name-level events; file_modify
@@ -106,8 +157,22 @@ fn classifyEtwEvent(provider_guid: *const [16]u8, event_id: u16) ?event.EventKin
         // intentionally unmapped: redundant with the name events or too
         // noisy for the bounded queue.
         return switch (event_id) {
-            0x0A, 0x0B, 0x10 => .fim_change,
-            else => null,
+            0x0A => blk: {
+                _ = g_etw_classes.file_name_create.fetchAdd(1, .monotonic);
+                break :blk .fim_change;
+            },
+            0x0B => blk: {
+                _ = g_etw_classes.file_name_delete.fetchAdd(1, .monotonic);
+                break :blk .fim_change;
+            },
+            0x10 => blk: {
+                _ = g_etw_classes.file_write.fetchAdd(1, .monotonic);
+                break :blk .fim_change;
+            },
+            else => blk: {
+                _ = g_etw_classes.dropped_unmapped.fetchAdd(1, .monotonic);
+                break :blk null;
+            },
         };
     } else if (std.mem.eql(u8, provider_guid, &etw.KERNEL_REGISTRY_GUID.guid)) {
         // configs/test/etw_realtime_config.json intent: registry_create_key
@@ -116,10 +181,21 @@ fn classifyEtwEvent(provider_guid: *const [16]u8, event_id: u16) ?event.EventKin
         // SetSecurityKey (ACL operations) — it could never fire on the
         // value writes persistence detection needs.
         return switch (event_id) {
-            1, 5 => .reg_change,
-            else => null,
+            1 => blk: {
+                _ = g_etw_classes.reg_create.fetchAdd(1, .monotonic);
+                break :blk .reg_change;
+            },
+            5 => blk: {
+                _ = g_etw_classes.reg_set.fetchAdd(1, .monotonic);
+                break :blk .reg_change;
+            },
+            else => blk: {
+                _ = g_etw_classes.dropped_unmapped.fetchAdd(1, .monotonic);
+                break :blk null;
+            },
         };
     }
+    _ = g_etw_classes.dropped_unmapped.fetchAdd(1, .monotonic);
     return null;
 }
 
@@ -242,9 +318,12 @@ test "ETW classifier gates pinned to host manifest ground truth (EVT-091)" {
     const reg_guid = &etw.KERNEL_REGISTRY_GUID.guid;
     const unknown: [16]u8 = [_]u8{0} ** 16;
 
-    // Kernel-Process tasks 1/2 (wevtutil gp): ProcessStart/ProcessStop.
+    // Kernel-Process task 1 (wevtutil gp): ProcessStart.
     try std.testing.expectEqual(event.EventKind.etw_process_create, classifyEtwEvent(proc_guid, 1).?);
-    try std.testing.expectEqual(event.EventKind.etw_process_exit, classifyEtwEvent(proc_guid, 2).?);
+    // G3: ProcessStop (task 2) is deliberately unmapped — exit carries no
+    // path TLV (R1001/R1004 cannot fire), zero consumers read the kind,
+    // and every exit cost queue slots in storms.
+    try std.testing.expect(classifyEtwEvent(proc_guid, 2) == null);
     // ThreadStart (task 3) has no pipeline kind — must not be guessed.
     try std.testing.expect(classifyEtwEvent(proc_guid, 3) == null);
 
@@ -268,4 +347,34 @@ test "ETW classifier gates pinned to host manifest ground truth (EVT-091)" {
     try std.testing.expect(classifyEtwEvent(reg_guid, 2) == null);
     // Unknown provider is dropped, not guessed.
     try std.testing.expect(classifyEtwEvent(&unknown, 1) == null);
+}
+
+test "GAP-015 G3 shed predicate mirrors the classifier Write arm" {
+    // Parity: exactly the (provider, Id) pairs the classifier maps to a
+    // Write push are sheddable — nothing more, nothing less.
+    try std.testing.expect(isSheddableWrite(&etw.KERNEL_FILE_GUID.guid, 0x10));
+    try std.testing.expect(!isSheddableWrite(&etw.KERNEL_FILE_GUID.guid, 0x0A));
+    try std.testing.expect(!isSheddableWrite(&etw.KERNEL_FILE_GUID.guid, 0x0B));
+    try std.testing.expect(!isSheddableWrite(&etw.KERNEL_PROCESS_GUID.guid, 1));
+    try std.testing.expect(!isSheddableWrite(&etw.KERNEL_REGISTRY_GUID.guid, 5));
+    const unknown: [16]u8 = [_]u8{0} ** 16;
+    try std.testing.expect(!isSheddableWrite(&unknown, 0x10));
+    // Threshold: below 3/4 the queue absorbs bursts untouched; at and
+    // above it Write sheds. Symbolic so queue resizes move the line.
+    try std.testing.expect(!shouldShedWrite(0));
+    try std.testing.expect(!shouldShedWrite(queue.PIPELINE_QUEUE_SIZE * 3 / 4 - 1));
+    try std.testing.expect(shouldShedWrite(queue.PIPELINE_QUEUE_SIZE * 3 / 4));
+    try std.testing.expect(shouldShedWrite(queue.PIPELINE_QUEUE_SIZE * 3));
+}
+
+test "GAP-015 G3 classifier counts every outcome" {
+    // Delta-based: the EVT-091 test above also classifies, sharing globals.
+    const before = g_etw_classes.file_write.load(.acquire);
+    const file_guid = &etw.KERNEL_FILE_GUID.guid;
+    _ = classifyEtwEvent(file_guid, 0x10);
+    _ = classifyEtwEvent(file_guid, 0x10);
+    try std.testing.expectEqual(before + 2, g_etw_classes.file_write.load(.acquire));
+    const drops = g_etw_classes.dropped_unmapped.load(.acquire);
+    _ = classifyEtwEvent(file_guid, 0x0C);
+    try std.testing.expectEqual(drops + 1, g_etw_classes.dropped_unmapped.load(.acquire));
 }

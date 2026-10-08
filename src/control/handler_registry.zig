@@ -17,6 +17,7 @@ const forensic_pipeline = @import("../forensic/forensic_pipeline.zig");
 const siem_mod = @import("../forensic/siem_forwarder.zig");
 const event_queue = @import("../pipeline/event_queue.zig");
 const event_contract = @import("../contract/event.zig");
+const telemetry = @import("../pipeline/telemetry_threads.zig");
 
 // ============================================================
 // Handler Function Signature
@@ -671,11 +672,12 @@ const handlers = struct {
         var out = std.ArrayList(u8).init(a);
         errdefer out.deinit();
         var writer = out.writer();
-        writer.print("{{\"queue_size\":{},\"depth\":{},\"pushed_total\":{},\"dropped_total\":{},\"by_source\":[", .{
+        writer.print("{{\"queue_size\":{},\"depth\":{},\"pushed_total\":{},\"dropped_total\":{},\"shed_overload\":{},\"by_source\":[", .{
             event_queue.PIPELINE_QUEUE_SIZE,
             event_queue.queueDepth(),
             pushed_total,
             dropped_total,
+            telemetry.g_shed_overload.load(.acquire),
         }) catch return null;
         var first = true;
         var ord: usize = 0;
@@ -700,7 +702,16 @@ const handlers = struct {
                 stage.name, stage.count, stage.p50_ns, stage.p95_ns, stage.p99_ns, stage.mean_ns, stage.max_ns,
             }) catch return null;
         }
-        writer.writeAll("]}") catch return null;
+        writer.writeAll("],\"etw\":{", .{}) catch return null;
+        writer.print("\"process_start\":{},\"file_name_create\":{},\"file_name_delete\":{},\"file_write\":{},\"reg_create\":{},\"reg_set\":{},\"dropped_unmapped\":{}}}", .{
+            telemetry.g_etw_classes.process_start.load(.acquire),
+            telemetry.g_etw_classes.file_name_create.load(.acquire),
+            telemetry.g_etw_classes.file_name_delete.load(.acquire),
+            telemetry.g_etw_classes.file_write.load(.acquire),
+            telemetry.g_etw_classes.reg_create.load(.acquire),
+            telemetry.g_etw_classes.reg_set.load(.acquire),
+            telemetry.g_etw_classes.dropped_unmapped.load(.acquire),
+        }) catch return null;
         return out.toOwnedSlice() catch null;
     }
 

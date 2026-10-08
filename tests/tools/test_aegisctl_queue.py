@@ -50,13 +50,25 @@ SAMPLE = {
 
 def test_format_queue_rows_renders_buckets_and_stages():
     rows = cli._format_queue_rows(SAMPLE)
-    assert rows[0] == "queue 12/4096 pushed=100 dropped=3"
+    assert rows[0] == "queue 12/4096 pushed=100 dropped=3 shed_overload=?"
     assert rows[1] == "  src=capture_etw(2) pushed=90 dropped=3"
     assert rows[2] == "  src=system(99) pushed=10 dropped=0"
     assert "stage=capture_to_decode" in rows[3]
     assert "p50=1000ns" in rows[3]
 
 
+def test_format_queue_rows_renders_etw_and_shed():
+    response = dict(SAMPLE)
+    response["shed_overload"] = 7
+    response["etw"] = {
+        "process_start": 5, "file_name_create": 50, "file_name_delete": 2,
+        "file_write": 900, "reg_create": 1, "reg_set": 30, "dropped_unmapped": 4,
+    }
+    rows = cli._format_queue_rows(response)
+    assert rows[0] == "queue 12/4096 pushed=100 dropped=3 shed_overload=7"
+    assert rows[3] == "  etw start=5 name=50+2 write=900 reg=1+30 unmapped=4"
+
+
 def test_format_queue_rows_tolerates_missing_keys():
     rows = cli._format_queue_rows({})
-    assert rows == ["queue ?/? pushed=? dropped=?"]
+    assert rows == ["queue ?/? pushed=? dropped=? shed_overload=?"]
