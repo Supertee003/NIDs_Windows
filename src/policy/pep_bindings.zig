@@ -181,6 +181,21 @@ pub const PepEnforcer = struct {
                 .filter_id = resp.filter_id,
             };
         }
+        // QUAR-RCPT-113: same receipt capture for quarantine. The Rust side
+        // now executes quarantine through the flow-block primitive and mints
+        // a filter_id; without this mirror the dispatch path would keep
+        // seeing null receipts and quarantine could never confirm no matter
+        // what the provider did. A decision without a filter still yields
+        // no receipt (verified downstream, never assumed here).
+        if (resp.decision == @intFromEnum(PepDecision.quarantine) and resp.filter_id != 0) {
+            self.last_receipt = .{
+                .decision = .quarantine,
+                .reason = resp.reason,
+                .quota_remaining = resp.quota_remaining,
+                .signed_by = resp.signed_by,
+                .filter_id = resp.filter_id,
+            };
+        }
         return @enumFromInt(resp.decision);
     }
 
@@ -375,6 +390,24 @@ test "PepEnforcer unavailable is not an allow decision" {
     // Unavailable PEP must remain visible to the caller as non-enforcing state.
     const d = pep.enforce(&ev, p, 0, 0, 0);
     try std.testing.expectEqual(PepDecision.escalate, d);
+}
+
+test "QUAR-RCPT-113: quarantine action without PEP escalates, never enforces" {
+    // Caller-wiring corollary: a quarantine policy against an unavailable
+    // PEP must escalate with no receipt, so dispatchWithReceipt can only
+    // take the best-effort legacy path (never a confirmed quarantine).
+    var pep = PepEnforcer{ .available = false };
+    var ev = event.IpcEvent.init(.dns_query);
+    const p = policy.Policy{
+        .id = 9,
+        .name = "",
+        .condition = .{ .clauses = &[_]policy.Clause{} },
+        .action = .quarantine,
+        .severity = .critical,
+        .ttl_sec = 0,
+    };
+    try std.testing.expectEqual(PepDecision.escalate, pep.enforce(&ev, p, 0, 0, 0));
+    try std.testing.expect(pep.lastReceipt() == null);
 }
 
 test "filter query ABI has stable packed layout" {
