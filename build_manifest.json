@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "fcde262",
+  "source_commit": "6b37a0d",
   "build_date": "2026-10-08T09:24:23.539444+00:00",
   "build_host": "windows",
   "platform": {
@@ -1003,7 +1003,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18563,
-      "sha256": "a826a34ccd16269b1581302abd985c7d3cfa28aa9ca8ac55ad71247de848f74d",
+      "sha256": "efc4687d62ed14e2c6c55461e55565480a7e18b3d7bf3b4dc5042c43bda16e15",
       "language": "json"
     },
     {
@@ -1217,12 +1217,6 @@
       "language": "python/cython"
     },
     {
-      "path": "scripts/deploy_local_runtime.ps1",
-      "size": 7424,
-      "sha256": "7e62b05e5580498f95a8c11c70580dacf2c4c130b294fc1703a4c69030802ad7",
-      "language": "script"
-    },
-    {
       "path": "scripts/diag_aegis_dirs.bat",
       "size": 3378,
       "sha256": "f0dfc7c2e51d0af961bcce9bd8b9e097775d0d7f16f996cc48eaf2f2061a8c00",
@@ -1239,12 +1233,6 @@
       "size": 11606,
       "sha256": "3b333c3944eb2128006e3c0890991fcc6245ae66e3224d37462469a5fc048ab3",
       "language": "python/cython"
-    },
-    {
-      "path": "scripts/etw_runtime_probe.ps1",
-      "size": 1574,
-      "sha256": "ea9a05a2e12beb647711c329660dbd28463b36e58ce8a00a38f3e419ebb49fa6",
-      "language": "script"
     },
     {
       "path": "scripts/fim_rule_canary_scan.py",
@@ -1268,12 +1256,6 @@
       "path": "scripts/generate_phase8_lab_manifest.py",
       "size": 12957,
       "sha256": "a26671a494419cd2c37ce2d6c0f552c2c8aa7320556aec0bcf1d40018bc0b6ec",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/generate_rule_policy_mapping_draft.py",
-      "size": 4168,
-      "sha256": "33cec98715a8d6b735d35c846e7d82bb1de96df395fd59ed13ab929024976e2a",
       "language": "python/cython"
     },
     {
@@ -1571,27 +1553,9 @@
       "language": "script"
     },
     {
-      "path": "scripts/run_l7_hostonly_observe_only.ps1",
-      "size": 5267,
-      "sha256": "f08512355d040fde91e6e54a1e295c9439a8d93d676eb885c999b6e95b9bc161",
-      "language": "script"
-    },
-    {
       "path": "scripts/run_lifecycle_recovery_proof.ps1",
       "size": 9000,
       "sha256": "50bc6c841cd3eac09e0eb8c9157b114be0d7c8fb1d234b76f285ea24004f7ab3",
-      "language": "script"
-    },
-    {
-      "path": "scripts/run_milestone_1_2.ps1",
-      "size": 8295,
-      "sha256": "455f6c89b9884236a1ba139fc46c631282a5b9c9f822e13a632166554db849b9",
-      "language": "script"
-    },
-    {
-      "path": "scripts/run_native_verification.ps1",
-      "size": 1508,
-      "sha256": "e15aaa194b3a0ed46f1905bd4c5b87195c938d0f9433374573cf98680c1047c7",
       "language": "script"
     },
     {
@@ -1671,12 +1635,6 @@
       "size": 3252,
       "sha256": "08924fd4720fbeb255b77ac629436a2feec222b2396e22e03b0fef1a3103e4b8",
       "language": "script"
-    },
-    {
-      "path": "scripts/split_22rules_files.py",
-      "size": 3482,
-      "sha256": "bfadd627a523224004e75c019daf59c2012f72db91d03d8f39d27369aa74fff3",
-      "language": "python/cython"
     },
     {
       "path": "scripts/stop_aegis.bat",

@@ -1,5 +1,5 @@
 {
-  "head_sha": "d0bd1a099adc9d4d46ebd6feb376964906085497",
+  "head_sha": "1fa1712f1ada1ca2d47bb1d6eafb0a6d473796b0",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2819,12 +2819,89 @@
       ],
       "result": "PASS",
       "finding": "GAP-008 bullet 3 closed by execution; GAP-014 opened for the untracked remainder. The operator still needs to run the intended block in D:\\NIDs_Windows to commit the GAP-008 closure."
+    },
+    {
+      "id": "EVT-105",
+      "head_sha": "6b37a0d3f1137f2eca88551871bfd6a645bf3f4c",
+      "timestamp": "2026-10-08",
+      "title": "Opensource readiness sweep: no secrets/tokens/PII in tree; SECURITY.md added; ignore gaps closed",
+      "level": "E1",
+      "component": "security",
+      "description": "Static pre-opensource sweep (method: risk-class greps, not line-by-line of every file — stated limit). Findings: no PEM private-key blocks anywhere; no GitHub/AWS/Slack-style tokens; no literal password/api-key/secret assignments in tools/; no hardcoded user-profile paths in src/ or tools/; no .env files; all sampled IPs are RFC1918, loopback, or documentation ranges; ca.key/server.key and driver .sys/.cer/.pdb exist on disk but are untracked and gitignored; LICENSE is MIT. Gaps closed in this entry: SECURITY.md created (private disclosure via GitHub Security Advisories on the known remote, lab-only testing rules, contributor secrets hygiene; verified CI has only a non-blocking Trivy fs scan, so no secret-gate claim is made); .gitignore gained explicit aegis-audit and release rules (both were untracked-but-unignored noise; no test reads those dirs so nothing breaks). Explicitly NOT covered here and left for the operator: full git-history secret scan (gitleaks or equivalent — required before publishing), CONTRIBUTING.md (nice-to-have), third-party license attribution review for vendored lib/ code.",
+      "flow_id": "EVIDENCE-001",
+      "files_changed": [
+        "SECURITY.md",
+        ".gitignore"
+      ],
+      "tests": [
+        "risk-class greps listed in the description (all negative except the documented safe cases)"
+      ],
+      "result": "PASS",
+      "finding": "Working tree is clean for opensource subject to the history scan. Method limit recorded: classes swept, not every line read."
+    },
+    {
+      "id": "EVT-106",
+      "head_sha": "6b37a0d3f1137f2eca88551871bfd6a645bf3f4c",
+      "timestamp": "2026-10-08",
+      "title": "Coverage sweep round 1: mouth/installer/ts-policy/scripts audited, safe fixes applied",
+      "level": "E2",
+      "component": "testing",
+      "description": "Three subagent audits plus direct reads, recorded in docs/COVERAGE_SWEEP.md with per-area verdicts. Fixed without execution risk: import-exit/print-at-import moved behind guards in scripts/check_summary.py and scripts/validate_operator_cli.py (identical CLI behavior); stale installer comment in tools/fresh_deploy.py; stale core-path refs and the nonexistent PolicyValue twin claim in ts_policy (compiler.ts, types.ts); exporter fixture comment pointed at the real generator; shared/policy/policy_ir.md rewritten from the forked v5.0 snapshot to the two live schemas with code anchors (loader tables verified against policy_ir.zig, compiler tables against policy_plane.zig plus TS, both cross-pinned by tests). Deliberately untouched after verification: no_enforcement allow-list (fail-closed by design), versioning.json values (zero readers — vestigial, do not touch blind), mouth shutdown path and installer uninstall gaps (need runtime testing), seal byte-stream reconciliation (crypto-owner decision). NEEDS-HELP list for the operator: mouth TUI fate, static .nsi fate, versioning confirmation, 7 orphan scripts delete-or-adopt, full gate re-run, plus the standing elevation/decision items.",
+      "flow_id": "EVIDENCE-001",
+      "files_changed": [
+        "scripts/check_summary.py",
+        "scripts/validate_operator_cli.py",
+        "tools/fresh_deploy.py",
+        "ts_policy/src/compiler.ts",
+        "ts_policy/src/types.ts",
+        "ts_policy/tests/exporter.test.ts",
+        "shared/policy/policy_ir.md",
+        "docs/COVERAGE_SWEEP.md"
+      ],
+      "tests": [
+        "no new pins: all changes are behavior-preserving refactors, comment corrections, or doc-to-code alignment; existing suite must confirm no regression",
+        "NOT EXECUTED in this session: no command-execution tool available"
+      ],
+      "result": "PARTIAL",
+      "finding": "Coverage discipline now exists as a document with verdicts; the next session continues round 2 (remaining: detection/xdr/forensic depth, .github parity, root scripts) instead of re-auditing these areas."
+    },
+    {
+      "id": "EVT-107",
+      "head_sha": "6b37a0d3f1137f2eca88551871bfd6a645bf3f4c",
+      "timestamp": "2026-10-08",
+      "title": "Coverage round 1 done: mouth/installer/ts-policy/scripts fixed, pins added",
+      "level": "E2",
+      "component": "testing",
+      "description": "Executed the delegated round 1 across all five areas. mouth: build script rewritten to canonical cargo (TUI input never existed), README fixed, shutdown path left for runtime testing. installer: generated template to parity with proven static lines (MUI, drivers File, description, shortcuts, regkeys, SecStart, full uninstall) and the manifest File block moved inside Install (was invalid outside any Section); static .nsi marked superseded, deletion left to operator shell. ts_policy/contracts: stale core-path refs, phantom PolicyValue twin, and wrong generator credit fixed; policy_ir.md rewritten to both live schemas with anchors; versioning.md marked superseded, protocol_version.json confirmed zero readers and untouched. scripts: 2 import-exit bugs guarded, stale installer comment fixed, 7 orphans listed for operator deletion (no rm tool in session). no_enforcement allow-list verified fail-closed, untouched. New pytest pin tests/release/test_installer_template.py asserts template structure without makensis. docs/COVERAGE_SWEEP.md records per-area verdicts.",
+      "flow_id": "EVIDENCE-001",
+      "files_changed": [
+        "mouth/build_mouth.bat",
+        "mouth/README_DEPLOY.txt",
+        "installer/aegis.nsi",
+        "tools/installer.py",
+        "tests/release/test_installer_template.py",
+        "ts_policy/src/compiler.ts",
+        "ts_policy/src/types.ts",
+        "ts_policy/tests/exporter.test.ts",
+        "shared/policy/policy_ir.md",
+        "shared/protocol/versioning.md",
+        "scripts/check_summary.py",
+        "scripts/validate_operator_cli.py",
+        "tools/fresh_deploy.py",
+        "docs/COVERAGE_SWEEP.md"
+      ],
+      "tests": [
+        "new pin test_installer_template.py (File-inside-Section, uninstall coverage, MUI/service, manifest splice placement)",
+        "NOT EXECUTED in this session: no command-execution tool available; operator runs gates then commits"
+      ],
+      "result": "PARTIAL",
+      "finding": "Round 1 code complete unexecuted. Orphan-script deletion and mouth shutdown path remain operator-side; everything else awaits the standard gate battery."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 20,
-    "E2_count": 73,
+    "E1_count": 21,
+    "E2_count": 75,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 20,
