@@ -1,5 +1,5 @@
 {
-  "head_sha": "be70af7c1c849b63ab83f14522375151b3cbee95",
+  "head_sha": "82860c41924b7b82687b6ca1bcc8eb8fa48678db",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -3029,12 +3029,33 @@
       ],
       "result": "PASS",
       "finding": "Closed with observed clean full run 2026-10-08: 731 passed, 0 failed, 7 skipped post-commit. Quarantine receipt chain complete with proof at every link except live-provider behavior (lab-gated)."
+    },
+    {
+      "id": "EVT-114",
+      "head_sha": "82860c41924b7b82687b6ca1bcc8eb8fa48678db",
+      "timestamp": "2026-10-08",
+      "title": "Delegated septet done: probe written, driver deferred, publish set, docs in place",
+      "level": "E2",
+      "component": "testing",
+      "description": "All seven delegated items closed to the maximum extent possible without execution. Probe: tools/etw_provider_probe.c written (MSVC-only by design, excluded from CMake/Zig/pytest wiring by comment contract) asserting bogus GUID refuses with rc -6 pre-session and registered GUIDs pass validation; truth GUID bytes embedded from EVT-091. Kernel-driver program formally DEFERRED in the plan doc (reversible; the one decision refused as beyond delegation is now recorded decided-deferred, not pending). Publish set recorded: drop docs/historical plus .agents, keep EVIDENCE_INDEX plus curated docs, at export time. installer/aegis.nsi deletion and driver-binary disk cleanup left as shell commands (no rm tool in session). Mouth shutdown accepted as OS-kill with in-code comment. CONTRIBUTING.md created (pinned toolchains from build_truth, canonical builds, gate battery, no-go rules, security pointer; no invented CLA/process claims). Vendored lib/ licenses verified compatible: tom-select Apache-2.0, vis-network dual Apache-2.0/MIT, bindings/utils.js vis.js-example-derived. Gitleaks full-history scan stays operator-side.",
+      "flow_id": "EVIDENCE-001",
+      "files_changed": [
+        "tools/etw_provider_probe.c",
+        "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
+        "CONTRIBUTING.md"
+      ],
+      "tests": [
+        "probe is operator-run only (MSVC cl command in its header comment)",
+        "NOT EXECUTED in this session: no command-execution tool available"
+      ],
+      "result": "PARTIAL",
+      "finding": "Everything delegable is done; the remainder is operator shell (mouth build, gitleaks, deletions, probe run, redeploy) plus elevation-gated live proofs."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 81,
+    "E2_count": 82,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 20,

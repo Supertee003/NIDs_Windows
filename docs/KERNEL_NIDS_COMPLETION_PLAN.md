@@ -39,11 +39,11 @@
 - เกณฑ์ผ่าน: block/quarantine receipts ครบวงจรถึง Zig verify (EVT-094 เปิดทางไว้แล้ว)
 
 ### Phase 4 — Owner decisions
-1. Quarantine semantics: per-flow filter vs host isolation (เสนอ per-flow — ใช้ query/unblock เดิมได้)
-2. เอา `g_confirmed_quarantines` เข้า DEFCON ladder ไหม (ต้องทบทวน threshold)
-3. Go/no-go โปรแกรม kernel-driver (Phase 5)
+1. Quarantine semantics: DECIDED per-flow — implemented (EVT-112), caller wiring done (EVT-113)
+2. เอา `g_confirmed_quarantines` เข้า DEFCON ladder: DECIDED รวมแบบ saturate — implemented
+3. Go/no-go โปรแกรม kernel-driver: **DEFERRED อย่างเป็นทางการ (EVT-114)** — จบที่ user-mode + telemetry; กลับคำได้เมื่อมีงบ/เวลา/lab (ดู Phase 5)
 
-### Phase 5 — โปรแกรม kernel-driver (เฉพาะเมื่อ Phase 4 อนุมัติ)
+### Phase 5 — โปรแกรม kernel-driver (DEFERRED — ยังไม่อนุมัติ, เก็บ spec ไว้เฉย ๆ)
 1. ตั้ง WDK authority + wiring build (แทนการ refuse ใน CMake)
 2. Test-signing → HLK → EV cert (production โหลด driver ไม่ได้ถ้าไม่มี)
 3. Version pinning + minifilter ต่อให้จบ + lab proofs
@@ -58,7 +58,7 @@
 | Database | ไม่มี subsystem นี้ (ring + NDJSON) — ไม่ต้องทำ |
 | Security (trust/PEP/receipt/crypto) | Phase 1 (proof) + Phase 3 (quarantine-enforce) |
 | External (Npcap/WFP/SIEM/federation) | Phase 2 (observe) + Phase 3 (mutating/lab) |
-| Kernel driver (own callout/minifilter) | Phase 5 หรือตัดออกอย่างเป็นทางการใน Phase 4 |
+| Kernel driver (own callout/minifilter) | DEFERRED อย่างเป็นทางการ (EVT-114) — จบที่ user-mode + telemetry |
 
 ## 4. สิ่งที่ห้ามทำ
 - Implement/แก้ enforcement หรือ driver แบบ blind (ไม่มี build/test) — ผิด stop-the-line
