@@ -3392,6 +3392,25 @@
       ],
       "result": "PASS",
       "finding": "The storm fix sheds the cheapest-duplicated class (Write, covered by NameCreate for new files) only when deep, counts the shed apart from overflow, and exposes composition for the next decision. Whether storms now absorb without overflow is a live question for the redeploy soak."
+    },
+    {
+      "id": "EVT-129",
+      "head_sha": "79c8add",
+      "timestamp": "2026-10-09",
+      "title": "Live composition: 8M unmapped ETW vs 205k kept; storm design refined to pre-decode gate plus delete-shed",
+      "level": "E5",
+      "component": "zig_core",
+      "description": "First G3-instrumented soak (180s): pushed 205,060 (1139/s, depth 0, dropped 0, shed 0) with ETW classes start=14, name=73,688+72,008, write=26,285, reg=28,615+4,315 — and unmapped=8,072,357. The native callback delivers ~27k records/sec; Zig TDH-decodes every one, then drops 97.5% at the classifier. The queue-visible firehose (1139/s) is 1/40th of the real one; the 687k-drop storm was this 27k/s arriving faster than TDH-decode + single-consumer drain. Two consequences: (1) the cheapest massive win is a pre-decode classify gate (skip TDH/TLV/alloc for unmapped pairs — zero behavior change, those records never entered); (2) queue-volume cuts must come from the kept set, where NameDelete (400/s, FIM-duplicated, near-worthless for R1001/R1004) is the next storm-shed candidate after Write. p95 still exactly 524288ns (tail driver still elsewhere). No alerts in the window (quiet period, honest output). Design approved for G4: pre-decode gate with parity test (same pattern as isSheddableWrite) plus delete-shed at depth; sampling, blind Write filtering, and kernel keyword changes stay rejected.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "queue.stats live with etw composition buckets (first output)",
+        "alerts live (quiet window, honest)"
+      ],
+      "result": "PASS",
+      "finding": "Stop guessing at the queue: 97.5% of ETW cost dies after full decode. G4 moves the gate before the decode and sheds deletes at depth — both preserve every R1001/R1004 path."
     }
   ],
   "evidence_level_summary": {
@@ -3400,7 +3419,7 @@
     "E2_count": 89,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 27,
+    "E5_count": 28,
     "E6_count": 0,
     "E7_count": 0
   }
