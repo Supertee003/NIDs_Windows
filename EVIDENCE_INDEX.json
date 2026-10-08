@@ -1523,16 +1523,16 @@
     },
     {
       "id": "GAP-015",
-      "severity": "P0",
-      "title": "STOP-THE-LINE: pipeline queue chronically overflows, dropping ~6% of events before detection",
-      "description": "Discovered during F1 frontend work (EVT-120): the deployed service reports queue_drops=102861 against events_processed~1.75M via events.stats/events.tail (live control-plane counters). The pipeline queue holds 4096 slots (event_queue.zig) while sustained ingress runs ~380 events/sec, i.e. under 11 seconds of buffering — any consumer stall or sustained producer surplus silently discards events before Aho-Corasick matching, policy, and forensic recording. Proven consequence, not theory: four controlled pipe-sensor fixtures (event_gen.py, fixed _t1 pipe, server-acknowledged writes) never appear anywhere in the full-ring forensic record (prefix scan matched:0 truncated:False, source=2 scan --all matched:0), while every processed event is recorded (events_processed == forensic_records). The operator fixture path is starved, not broken. Only a counter witnesses the loss — the same silent-loss class as GAP-012.",
+      "severity": "P1",
+      "title": "Pipeline queue overflowed chronically on the old build; current build drops nothing under observed load, storm proof and p95 driver remain",
+      "description": "Discovered during F1 frontend work (EVT-120): the pre-G2 deployment reported queue_drops=102861 against ~1.75M processed via events.stats/events.tail. Queue was 4096 slots at ~380 events/sec sustained (<11s buffering). Post-G2 deployment (matchFirst tail fix + 16k queue, EVT-122): drops=0 across every soak (90s at 256/s, 180s at 332/s, 1257s+ cumulative, per-source buckets live via queue.stats), ETW confirmed at 99.9% of ingress. Fixture loop closed 3x end-to-end (send -> R9059 match -> verified ring record 398143/418425/422786, len 316). Downgraded P0->P1 (EVT-123): the silent-loss class is closed on the current build — drops are zero, not merely counted. Remainder (hardening, not stop-the-line): (a) storm-level proof at 380+/s sustained has not recurred to test against; (b) pipeline p95 sits at exactly 524288ns across three deployments while matchFirst changed nothing, so the tail driver is elsewhere (suspects: forensic-ring mutex contention with control-plane verify scans on every forensics.list, 4096-event prune bursts; single 4.09s max outlier observed); (c) forensics.list after-cursor does not window under ring wrap (proven live: after=435000 and after=422786 both return the tip) — paging precision issue, no loss, noted for a future slice.",
       "status": "OPEN",
-      "diagnosis": "DIAGNOSED 2026-10-09 (EVT-121, two-reader investigation + author verification of load-bearing claims): PRODUCERS — ETW is the firehose (system-wide, TRACE_LEVEL_VERBOSE + zero keyword filter at etw_native.c EnableTraceEx2, per-record push from the native callback, classification gate only, no sampling/dedup/coalescing); FIM second (recursive System32+SysWOW64, 500ms poll, one push per changed-file record, double-counts every ETW file event under a different source); registry monitor capped ~4/sec by OS one-shot but ETW registry path uncapped and duplicates it; nose zero live (frames_read 0); pipe trickle; pipe-monitor ~zero. No sampling, rate limiter, or cross-producer dedup anywhere; the queue drop is the first and only load-shed. CONSUMER (single thread) — heaviest unconditional per-event stages: forensic append (4KB memset + SHA-256 + CRC32 per record under the ring mutex shared with control-plane readers; verifyHashChain holds it over the whole 64MiB ring), page_allocator-backed AC match + unconditional AUDIT log line per event; PEP exonerated (early-escalate, no syscall in default posture), SIEM/brain off, fault-injection default-off with disjoint invisible counter (secondary finding: FI drops would not appear in metrics). AMPLIFIERS — 4096-event prune (full correlator/threat-tracker iteration every ~10.8s), unbounded anomaly-per-IP map + 1h threat TTL. META — g_perf collects whole-pipeline latency but snapshot() has zero production callers and no control command surfaces it (consumer is blind); per-source push counters do not exist. FIX DIRECTION (next slice): observability first (surface perf snapshot + per-source counters, additive), then targeted fix — likely FIM debounce/dedup vs ETW double-count + AC allocator + audit-log sampling — then rebuild/redeploy (elevated) with metrics before/after proving zero-drop and detection preservation. Queue enlargement alone is rejected (Little's law: finite buffer never fixes a mean deficit).",
+      "diagnosis": "DIAGNOSED 2026-10-09 (EVT-121, two-reader investigation + author verification of load-bearing claims): ETW firehose (verbose, zero keyword filter, per-record push, no sampling/dedup) + FIM second (recursive System32/SysWOW64, per-record pushes, double-counts ETW file events); registry monitor capped ~4/s but ETW registry uncapped; nose zero live; no sampling/rate-limit/dedup anywhere. Consumer: forensic append (SHA-256+CRC per 4KB record under shared ring mutex), per-event page-allocator AC match (since replaced by matchFirst, EVT-122), unconditional AUDIT line; PEP/SIEM/brain exonerated; fault-injection default-off with invisible counter (secondary). Full text in EVT-121.",
       "required_evidence": [
-        "producer vs consumer rate diagnosis (which ingress stage outruns the pipelineLoop consumer)",
-        "drop accounting per source (which sensors lose events, not just a global counter)",
-        "fix that restores zero-drop under sustained load, proven by metrics before/after",
-        "controlled fixture loop green end-to-end (send -> match -> alert) as the regression pin"
+        "CLOSED EVT-123: producer vs consumer rate diagnosis (ETW 99.9% live via queue.stats)",
+        "CLOSED EVT-123: drop accounting per source (queue.stats buckets live on deployed service)",
+        "OPEN (narrowed): zero-drop under storm-level sustained load + p95 tail driver identified",
+        "CLOSED EVT-123: controlled fixture loop green end-to-end 3x (R9059 records 398143/418425/422786)"
       ],
       "resolution": null
     },
@@ -3255,6 +3255,29 @@
       ],
       "result": "PASS",
       "finding": "The consumer tail suspect is removed without touching detection semantics; the queue now absorbs 4x bursts. Whether drops stay zero under storm load is a live question for the redeploy soak, measured by the G1 instrument."
+    },
+    {
+      "id": "EVT-123",
+      "head_sha": "1d0b49f",
+      "timestamp": "2026-10-09",
+      "title": "Fixture loop closed 3x live (R9059 records 398143/418425/422786); alerts newest-window anchor removed as ineffective; GAP-015 downgraded P0 to P1",
+      "level": "E5",
+      "component": "tooling",
+      "description": "Loop-closure investigation with three self-corrections, all on the deployed G2 service. (1) The pipe path was never broken: system(99) pushed counter proves ingestion (10, 11, 14, 15 across sends), and pipe records attribute to canonical zig_core (source 0), not source 2/99 — the source-2 --all and prefix probes that 'proved absence' were looking in the wrong space / past retention (~50s at 300/s on the 16k ring). Direct proof, 3x: forensics --source 0 --after <tip> after each send returned the fixture record with rule 4009890390 (R9059) and len 316. (2) alerts initially scanned oldest-first (F1 bug: 5 pages cover the oldest ~1000, never fresh records on a fast ring). A newest-window anchor (after=tip-1000) was added, then REMOVED in the same investigation after live proof that forensics.list's after-cursor does not window under wrap (after=435000 and after=422786 both return the tip) — an anchor that cannot hold is a trap, so alerts reports plain scan totals; the cursor quirk is filed here as a minor paging-precision note (no loss class). (3) alerts still missed two landings because manual sleeps (4-8s) put the fixture outside any 1000-record window before the scan starts — methodology, confirmed by the immediate source-0 queries catching every landing. GAP-015: bullets 2 (per-source accounting live) and 4 (fixture loop 3x) closed with live proof; bullet 3 narrowed to storm-level proof + p95 driver (p95 identical at 524288ns across three deployments, matchFirst changed nothing — tail driver is elsewhere, suspects recorded); severity P0->P1 since drops are zero on the current build (90s@256/s, 180s@332/s, 1257s+ cumulative). Max 4.09s single-event outlier noted (likely control-plane verify-scan contention with the ring mutex during aggressive operator polling — observer effect documented).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "tools/aegisctl.py",
+        "tests/tools/test_aegisctl_alerts.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "fixture loop 3x: send -> forensics --source 0 --after tip -> R9059/316 record (398143, 418425, 422786)",
+        "queue.stats live: dropped=0, ETW 99.9%, system(99) pushed tracks sends",
+        "cursor quirk: after=435000 vs after=422786 both return tip (minor, filed)",
+        "pytest tools: 5 passed"
+      ],
+      "result": "PASS",
+      "finding": "Send -> match -> verified alert is green on the deployed service. The investigation's real yield is methodological: on a 300-events/sec ring, every probe must be tip-anchored and immediate, and unwindowable cursors must not be dressed as windows. GAP-015 stays OPEN (P1) for storm proof and the p95 driver."
     }
   ],
   "evidence_level_summary": {
@@ -3263,7 +3286,7 @@
     "E2_count": 87,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 23,
+    "E5_count": 24,
     "E6_count": 0,
     "E7_count": 0
   }

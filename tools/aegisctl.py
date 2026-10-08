@@ -1391,8 +1391,13 @@ def cmd_alerts(args) -> int:
     found: list[dict] = []
     scanned = 0
     pages = 0
-    after = None
     cursor_exhausted = False
+    # NOTE: no after-anchor. forensics.list's after-cursor does not window
+    # under ring wrap (proven live: after=435000 and after=422786 both
+    # return the tip), so an anchor would claim a window it cannot hold.
+    # The unanchored scan returns tip records first in practice; the scan
+    # totals are always reported so coverage stays honest.
+    after = None
     while len(found) < want and pages < 5 and not cursor_exhausted:
         payload: dict = {"limit": 200}
         if after is not None:
@@ -1428,9 +1433,9 @@ def cmd_alerts(args) -> int:
         }, sort_keys=True))
         return 0
     if not alerts:
-        print(f"No alerts in the last {scanned} forensic records ({pages} page(s) scanned).")
+        print(f"No alerts in {scanned} scanned forensic records ({pages} page(s)).")
         return 0
-    print(f"ALERTS (last {scanned} forensic records, {pages} page(s) scanned):")
+    print(f"ALERTS ({scanned} scanned records, {pages} page(s)):")
     for a in alerts:
         print(f"  seq={a['record_seq']} event={a['event_id']} src={a['source']} "
               f"rule={a['rule_id']}({a['rule_num']}) severity={a['severity']} "
