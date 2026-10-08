@@ -29,7 +29,32 @@ app = Flask(__name__)
 app.config["JSON_SORT_KEYS"] = False
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-EVIDENCE_LOG = REPO_ROOT / "logs" / "aegis_core.ndjson"
+# F5: the service writes relative to ITS cwd (System32); an interactive run
+# writes relative to the repo. The feed resolves newest-wins at import so
+# every view renders the live log, never a stale default (same rule as the
+# desktop dashboard, mouth, and aegisctl events).
+SERVICE_EVIDENCE_LOG = Path(r"C:\Windows\System32\logs\aegis_core.ndjson")
+
+
+def _select_evidence_log(candidates: list[Path]) -> Path:
+    """Newest existing candidate wins; last candidate is the fallback."""
+    best: Path | None = None
+    best_mtime = -1.0
+    for path in candidates:
+        try:
+            mtime = path.stat().st_mtime
+        except OSError:
+            continue
+        if mtime > best_mtime:
+            best, best_mtime = path, mtime
+    if best is not None:
+        return best
+    return candidates[-1]
+
+
+EVIDENCE_LOG = _select_evidence_log(
+    [SERVICE_EVIDENCE_LOG, REPO_ROOT / "logs" / "aegis_core.ndjson"]
+)
 FEED_LIMIT = 50
 FEED_SCAN_BYTES = 262_144
 # Statuses that may only be shown when a receipt validates; anything else
@@ -185,6 +210,7 @@ def snapshot() -> dict[str, Any]:
     health = get_health_payload()
     enforcement = _read("enforcement.status")
     metrics = _read("metrics.snapshot")
+    queue = _read("queue.stats")
     incident_counters = _read("incidents.list")
     forensic = _read("forensics.verify")
     feed = _read_detection_feed()
@@ -202,6 +228,7 @@ def snapshot() -> dict[str, Any]:
         "enforcement": enforcement,
         "operator": project_operator_state(health, enforcement),
         "metrics": metrics,
+        "queue": queue,
         "incident_counters": incident_counters,
         "forensic": forensic,
         "feed": {"available": feed["available"], "path": feed["path"], "total_scanned": feed["total_scanned"]},

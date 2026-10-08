@@ -1523,11 +1523,11 @@
     },
     {
       "id": "GAP-015",
-      "severity": "P1",
-      "title": "Pipeline queue overflowed chronically on the old build; current build drops nothing under observed load, storm proof and p95 driver remain",
-      "description": "Discovered during F1 frontend work (EVT-120): the pre-G2 deployment reported queue_drops=102861 against ~1.75M processed via events.stats/events.tail. Queue was 4096 slots at ~380 events/sec sustained (<11s buffering). Post-G2 deployment (matchFirst tail fix + 16k queue, EVT-122): drops=0 across every soak (90s at 256/s, 180s at 332/s, 1257s+ cumulative, per-source buckets live via queue.stats), ETW confirmed at 99.9% of ingress. Fixture loop closed 3x end-to-end (send -> R9059 match -> verified ring record 398143/418425/422786, len 316). Downgraded P0->P1 (EVT-123): the silent-loss class is closed on the current build — drops are zero, not merely counted. Remainder (hardening, not stop-the-line): (a) storm-level proof at 380+/s sustained has not recurred to test against; (b) pipeline p95 sits at exactly 524288ns across three deployments while matchFirst changed nothing, so the tail driver is elsewhere (suspects: forensic-ring mutex contention with control-plane verify scans on every forensics.list, 4096-event prune bursts; single 4.09s max outlier observed); (c) forensics.list after-cursor does not window under ring wrap (proven live: after=435000 and after=422786 both return the tip) — paging precision issue, no loss, noted for a future slice.",
+      "severity": "P0",
+      "title": "STOP-THE-LINE: storm bursts still drop ~35% of ETW events post-fix; volume control required",
+      "description": "P0 REINSTATED (EVT-127): the G1 instrument caught a live storm on the G2 build — ETW dropped 687,738 of 1,966,916 pushed (35%), FIM 10, registry 7, pipe 0, while earlier soaks showed 0 (storms are bursty; spot checks miss them). Likely self-inflicted this time (overlapping cargo/zig/pytest builds + live GUIs churning target/ and .zig-cache = ETW file-write storm), which only proves the point: any busy host can do this. The matchFirst tail fix + 16k queue did NOT survive storm load. What still stands: per-source accounting (caught it), zero drops outside storms, fixture loop green (R9059 records 398143/418425/422786), p95 data flowing. Required evidence narrowed to the real fix: ETW volume control that preserves R1001/R1004 detection, proven by a storm soak with drops ~0 and detections preserved, plus the p95 tail driver identified.",
       "status": "OPEN",
-      "diagnosis": "DIAGNOSED 2026-10-09 (EVT-121, two-reader investigation + author verification of load-bearing claims): ETW firehose (verbose, zero keyword filter, per-record push, no sampling/dedup) + FIM second (recursive System32/SysWOW64, per-record pushes, double-counts ETW file events); registry monitor capped ~4/s but ETW registry uncapped; nose zero live; no sampling/rate-limit/dedup anywhere. Consumer: forensic append (SHA-256+CRC per 4KB record under shared ring mutex), per-event page-allocator AC match (since replaced by matchFirst, EVT-122), unconditional AUDIT line; PEP/SIEM/brain exonerated; fault-injection default-off with invisible counter (secondary). Full text in EVT-121.",
+      "diagnosis": "DIAGNOSED 2026-10-09 (EVT-121): ETW firehose (verbose, zero keyword filter, per-record push, no sampling/dedup) + FIM second (recursive System32/SysWOW64, double-counts ETW file events); registry capped ~4/s but ETW registry uncapped; nose zero live. Consumer: forensic append (SHA-256+CRC per 4KB record under shared ring mutex), per-event page-allocator AC match (since replaced by matchFirst, EVT-122), unconditional AUDIT line; PEP/SIEM/brain exonerated. Full text in EVT-121.",
       "required_evidence": [
         "CLOSED EVT-123: producer vs consumer rate diagnosis (ETW 99.9% live via queue.stats)",
         "CLOSED EVT-123: drop accounting per source (queue.stats buckets live on deployed service)",
@@ -3344,6 +3344,29 @@
       ],
       "result": "PASS",
       "finding": "Terminal, native GUI, and console TUI all default to live data with labeled provenance. Remaining frontend: F5 web (design first — no consumer exists for the vendored vis/tom-select libs)."
+    },
+    {
+      "id": "EVT-127",
+      "head_sha": "b4ecfc4",
+      "timestamp": "2026-10-09",
+      "title": "F5 web serves live plus storm caught red-handed: ETW drops 687k (35%) post-fix, GAP-015 back to P0",
+      "level": "E5",
+      "component": "tooling",
+      "description": "F5 found a complete Flask console already built (routes, SSE, localhost-only bind, read-only doctrine) needing only live-data repair: evidence feed newest-wins resolution (service System32 log vs repo path, same rule as all surfaces) and queue.stats wired into snapshot() (additive key, empty on old daemons). Proof live: 200 on / and /api/snapshot with rules 23/23, policies 6, feed from the service log (687 scanned), queue 4 buckets + 7 stages. Pins: 4 tests (newest-wins incl. fallback, queue key in schema, /api/snapshot 200 without daemon, no 0.0.0.0 bind). SSE route smoke untested (noted). STORM DISCOVERY in the same session: queue.stats showed dropped_total 687,755 against pushed 1,970,948 — all previous spot checks read 0. Breakdown: ETW 687,738 dropped, everything else single digits; depth back to 1 after. Probable trigger was overlapping build/test/GUI activity churning target/ and .zig-cache (self-inflicted firehose), which generalizes to any busy host. Consequences recorded: G2 fix insufficient, GAP-015 reinstated to P0 with narrowed evidence, F1-era downgrade called premature. The instrument paid for itself in the same session it shipped.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "tools/aegisctl/web_dashboard/app.py",
+        "tests/tools/test_web_dashboard.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "new test_web_dashboard.py: 4 passed",
+        "Flask /api/snapshot live 200 with queue buckets + service-log feed",
+        "Flask / live 200 (20KB console)",
+        "storm numbers: ETW 687738 dropped / 1966916 pushed, rest single digits"
+      ],
+      "result": "PASS",
+      "finding": "All four operator surfaces are live. The web slice's real yield is the storm proof: spot-check zero-drop claims are worthless on bursty ingress — only cumulative per-source counters tell the truth, and they now exist because of G1."
     }
   ],
   "evidence_level_summary": {
@@ -3352,7 +3375,7 @@
     "E2_count": 88,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 26,
+    "E5_count": 27,
     "E6_count": 0,
     "E7_count": 0
   }
