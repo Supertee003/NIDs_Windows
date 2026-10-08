@@ -1,5 +1,5 @@
 {
-  "head_sha": "33c289483944d46818d3fcac89517d594c93d089",
+  "head_sha": "7be7caa3bfef3b08b236a5ec729004ebf6a56f90",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2937,11 +2937,11 @@
       ],
       "tests": [
         "9 new pins listed above (3 Zig files gain first tests; 3 brain contract files; 2 Go files)",
-        "new-pin execution proven only by operator run: deliberate-red cycle recommended for at least the P-05 gate and the HMAC matrix",
-        "NOT EXECUTED in this session: no command-execution tool available"
+        "operator run 2026-10-08: installer 4/4, brain envelope 6/6, fallback 3/3, bridge 4/4 — 17 passed in 0.14s",
+        "full suite 727 passed with only pre-refresh drift failures (resolved in-block); Go filtered pins green; zig suite clean post-LIT-FREE"
       ],
-      "result": "PARTIAL",
-      "finding": "Backend coverage is now inventoried file by file with the highest-risk seams pinned; the byte-order convention is documented in code where the next reader will look. Remaining Go pins plus any red-green proof run operator-side."
+      "result": "PASS",
+      "finding": "Backend pins round executed green end to end. Remaining Go pins (capture hermetic, ipc malformed, golden fixture, talkers symmetry) slated next round."
     }
   ],
   "evidence_level_summary": {
