@@ -1,5 +1,5 @@
 {
-  "head_sha": "6dd2a6b239f15101bfbb132d85bda269ba4cc193",
+  "head_sha": "fff0a3e311c96a17a0c5c8efd34a7a9718c471c1",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -2980,10 +2980,11 @@
       "tests": [
         "TestEventFromPacketIPv4Identity failed pre-fix, must pass post-fix",
         "second typo of mine found the same way (dst .1.1 vs fixture .100); code right both times",
+        "third failure was real fixture wisdom, not a typo: gopacket needs a full 20-byte TCP header to decode ports while Zig parses them manually from 4 bytes — fixture extended to 54 bytes, all green",
         "NOT EXECUTED in this session: operator runs the block below"
       ],
-      "result": "PARTIAL",
-      "finding": "One-byte fix, fully understood. Closes when the verification block goes green."
+      "result": "PASS",
+      "finding": "Closed fff0a3e with all EventFromPacket pins green. The pin earned its keep three times over: two author typos plus one genuine cross-language decoder difference."
     }
   ],
   "evidence_level_summary": {
