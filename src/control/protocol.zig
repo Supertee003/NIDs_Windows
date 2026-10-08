@@ -37,6 +37,7 @@ pub const Command = enum(u16) {
     events_count = 400,
     events_stats = 401,
     events_tail = 402,
+    queue_stats = 403,
 
     // --- incidents domain ---
     incidents_list = 500,
@@ -90,6 +91,7 @@ pub const Command = enum(u16) {
             .{ .name = "events.count", .cmd = .events_count },
             .{ .name = "events.stats", .cmd = .events_stats },
             .{ .name = "events.tail", .cmd = .events_tail },
+            .{ .name = "queue.stats", .cmd = .queue_stats },
             .{ .name = "incidents.list", .cmd = .incidents_list },
             .{ .name = "incidents.show", .cmd = .incidents_show },
             .{ .name = "policy.list", .cmd = .policy_list },
@@ -215,6 +217,7 @@ pub fn contract(cmd: Command) CommandContract {
         .events_count => .{ .command = cmd, .name = "events.count", .required_role = .read, .description = "Event count", .is_mutation = false, .has_postcondition = false },
         .events_stats => .{ .command = cmd, .name = "events.stats", .required_role = .read, .description = "Event statistics", .is_mutation = false, .has_postcondition = false },
         .events_tail => .{ .command = cmd, .name = "events.tail", .required_role = .read, .description = "Recent events", .is_mutation = false, .has_postcondition = false },
+        .queue_stats => .{ .command = cmd, .name = "queue.stats", .required_role = .read, .description = "Queue ingress per source plus pipeline latency snapshot", .is_mutation = false, .has_postcondition = false },
 
         // --- incidents domain ---
         .incidents_list => .{ .command = cmd, .name = "incidents.list", .required_role = .read, .description = "List incidents", .is_mutation = false, .has_postcondition = false },
@@ -299,6 +302,7 @@ test "Command.fromString parses all commands" {
     try std.testing.expectEqual(Command.runtime_stop, Command.fromString("runtime.stop").?);
     try std.testing.expectEqual(Command.rules_reload, Command.fromString("rules.reload").?);
     try std.testing.expectEqual(Command.events_tail, Command.fromString("events.tail").?);
+    try std.testing.expectEqual(Command.queue_stats, Command.fromString("queue.stats").?);
     try std.testing.expectEqual(Command.incidents_list, Command.fromString("incidents.list").?);
     try std.testing.expectEqual(Command.policy_simulate, Command.fromString("policy.simulate").?);
     try std.testing.expectEqual(Command.forensics_export, Command.fromString("forensics.export").?);

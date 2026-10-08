@@ -1,0 +1,62 @@
+"""G1: aegisctl queue display stays pure and honest.
+
+Pins _format_queue_rows (the only new logic behind `aegisctl.py queue`):
+  - bucket + stage rows render from the daemon response verbatim,
+  - missing keys degrade to '?' instead of raising,
+  - empty bucket/stage lists still print the summary line.
+
+Read-only: imports the CLI module (import-guarded, no side effects),
+writes nothing to the tree, contacts no daemon.
+"""
+from __future__ import annotations
+
+import importlib.util
+import sys
+from pathlib import Path
+
+TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
+
+
+def _load_cli():
+    if str(TOOLS_DIR) not in sys.path:
+        sys.path.insert(0, str(TOOLS_DIR))
+    spec = importlib.util.spec_from_file_location(
+        "aegisctl_queue_under_test", TOOLS_DIR / "aegisctl.py"
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["aegisctl_queue_under_test"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+cli = _load_cli()
+
+SAMPLE = {
+    "queue_size": 4096,
+    "depth": 12,
+    "pushed_total": 100,
+    "dropped_total": 3,
+    "by_source": [
+        {"ordinal": 2, "name": "capture_etw", "pushed": 90, "dropped": 3},
+        {"ordinal": 99, "name": "system", "pushed": 10, "dropped": 0},
+    ],
+    "pipeline": [
+        {"stage": "capture_to_decode", "count": 100, "p50_ns": 1000,
+         "p95_ns": 2000, "p99_ns": 3000, "mean_ns": 1500.0, "max_ns": 9000},
+    ],
+}
+
+
+def test_format_queue_rows_renders_buckets_and_stages():
+    rows = cli._format_queue_rows(SAMPLE)
+    assert rows[0] == "queue 12/4096 pushed=100 dropped=3"
+    assert rows[1] == "  src=capture_etw(2) pushed=90 dropped=3"
+    assert rows[2] == "  src=system(99) pushed=10 dropped=0"
+    assert "stage=capture_to_decode" in rows[3]
+    assert "p50=1000ns" in rows[3]
+
+
+def test_format_queue_rows_tolerates_missing_keys():
+    rows = cli._format_queue_rows({})
+    assert rows == ["queue ?/? pushed=? dropped=?"]

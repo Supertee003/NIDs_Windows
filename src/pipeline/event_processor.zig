@@ -618,7 +618,9 @@ pub fn pipelineLoop(
             processEvent(&qe, ac, ad, ft, corr, tt, ps, pep_enf, forensic_ring, rules_loaded, hist.Stage.capture_to_decode) catch |err| {
                 diag.warn("pipeline processing error: {}", .{err});
             };
+            state.g_perf_mutex.lock();
             state.g_perf.observe(hist.Stage.capture_to_decode, @intCast(std.time.nanoTimestamp() - start));
+            state.g_perf_mutex.unlock();
             // Bound correlator memory: reap idle windows every 4096 events so
             // spoofed sources cannot grow the window map without bound.
             since_prune += 1;

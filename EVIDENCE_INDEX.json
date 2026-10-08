@@ -3202,12 +3202,42 @@
       ],
       "result": "PASS",
       "finding": "The operator can now SEE live rule matches from the terminal (alerts), and can SEND controlled fixtures at the daemon (fixed pipe) — but fixtures currently starve in an overflowing queue, which is exactly what GAP-015 pins down. Frontend slice F1 is complete; the loop-closure proof becomes GAP-015's regression pin."
+    },
+    {
+      "id": "EVT-121",
+      "head_sha": "fcbd367",
+      "timestamp": "2026-10-09",
+      "title": "G1 observability: per-source ingress accounting, race-free perf snapshot, queue.stats control command, aegisctl queue",
+      "level": "E2",
+      "component": "zig_core",
+      "description": "GAP-015 bullet-2 instrument (code-complete, live proof pending redeploy). Additive only, zero behavior change: event_queue counts every push/drop outcome by legacy source ordinal (256 atomic buckets, one fetchAdd on each path); queueDepth() accessor; legacySourceName() in event.zig labels buckets (unknown ordinals format, never dropped); g_perf zero-initialized at declaration (was undefined until daemon init) with a dedicated g_perf_mutex closing the observe-vs-snapshot data race (observe wrapped in event_processor); new read-only queue.stats command (403, third registration table fromString was missing until the test caught it — null .? panic, fixed same patch); handler emits queue_size/depth/totals/nonzero buckets plus all 7 pipeline stage snapshots (only stage-1 populated live; stages[7..16] are undefined memory and explicitly never read). aegisctl queue added (human table + --json, pure row formatter). Proof: 2 new Zig tests (naming incl. unknown_7, push/drop deltas incl. self-calibrating fill-to-refusal + drain-to-zero), protocol fromString pin extended, 2 new Python pins; full zig suite green 4/4 (one environmental benchmark-threshold flake failed once under host load then passed unmodified on rerun — recorded, not a regression); pytest tools 5/5. Live queue.stats output requires rebuild+redeploy+restart (elevated operator step); until then the old daemon honestly answers UNAVAILABLE (verified). Rejected in-design: enlarging the queue (Little's law), hashing only part of the record (forensic format contract), FI-counter surfacing (separate minor).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/contract/event.zig",
+        "src/pipeline/event_queue.zig",
+        "src/pipeline/runtime_state.zig",
+        "src/pipeline/event_processor.zig",
+        "src/control/protocol.zig",
+        "src/control/handler_registry.zig",
+        "tools/aegisctl.py",
+        "tests/tools/test_aegisctl_queue.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "new legacySourceName test: PASS",
+        "new ingress-accounting test (push deltas + fill-to-refusal drop counts + drain-to-zero): PASS",
+        "protocol fromString pin catches missing third table pre-fix (panic), green post-fix",
+        "new test_aegisctl_queue.py: 2 passed",
+        "zig build test: 4/4 steps, 2124/2125 + 1 skipped (benchmark flake documented)"
+      ],
+      "result": "PASS",
+      "finding": "GAP-015 bullet 2 is code-proven; bullets 3-4 (zero-drop fix + fixture loop) need the redeploy + numbers. The instrument turns the next slice from guessing into measuring: per-source drops will name the firehose, stage latencies will name the bottleneck."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 85,
+    "E2_count": 86,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 23,

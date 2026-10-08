@@ -134,6 +134,7 @@ mutation/postcondition flags.
 | `events.count` | READ | no | Event count |
 | `events.stats` | READ | no | Event statistics |
 | `events.tail` | READ | no | Recent events |
+| `queue.stats` | READ | no | Queue ingress per source plus pipeline latency snapshot |
 | `incidents.list` | READ | no | List incidents |
 | `incidents.show` | READ | no | Show incident details |
 | `policy.list` | READ | no | List policies |

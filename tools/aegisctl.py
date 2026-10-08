@@ -359,6 +359,49 @@ def cmd_metrics(args) -> int:
     return _print_control_query("metrics.snapshot", as_json=getattr(args, "json", True))
 
 
+def _format_queue_rows(response: dict) -> list[str]:
+    """Pure: render queue.stats buckets + pipeline stages as text rows."""
+    rows = [
+        f"queue {response.get('depth', '?')}/{response.get('queue_size', '?')} "
+        f"pushed={response.get('pushed_total', '?')} "
+        f"dropped={response.get('dropped_total', '?')}",
+    ]
+    for bucket in response.get("by_source", []) or []:
+        rows.append(
+            f"  src={bucket.get('name', '?')}({bucket.get('ordinal', '?')}) "
+            f"pushed={bucket.get('pushed', '?')} "
+            f"dropped={bucket.get('dropped', '?')}"
+        )
+    for stage in response.get("pipeline", []) or []:
+        rows.append(
+            f"  stage={stage.get('stage', '?')} count={stage.get('count', '?')} "
+            f"p50={stage.get('p50_ns', '?')}ns p95={stage.get('p95_ns', '?')}ns "
+            f"max={stage.get('max_ns', '?')}ns"
+        )
+    return rows
+
+
+def cmd_queue(args) -> int:
+    """Show pipeline queue ingress per source plus latency snapshot (GAP-015).
+
+    Thin over the queue.stats control command; the daemon owns every number.
+    """
+    if not CONTROL_API_AVAILABLE:
+        return _unavailable("queue", "control_api_unavailable")
+    try:
+        response = query_control("queue.stats")
+    except Exception:
+        response = None
+    if not response:
+        return _unavailable("queue", "control_daemon_query_failed")
+    if bool(getattr(args, "json", False)):
+        print(json.dumps(response, sort_keys=True))
+        return 0
+    for row in _format_queue_rows(response):
+        print(row)
+    return 0
+
+
 def cmd_federation(args) -> int:
     """Show federation cluster status (read-only, runtime federation.status)."""
     return _print_control_query("federation.status", as_json=getattr(args, "json", True))
@@ -1569,6 +1612,9 @@ def main() -> int:
     metrics = sub.add_parser("metrics", help="Show runtime metrics snapshot")
     metrics.add_argument("--compact", action="store_true", help="Emit compact JSON")
     metrics.set_defaults(func=cmd_metrics)
+    queue_p = sub.add_parser("queue", help="Show pipeline queue ingress per source plus latency snapshot")
+    queue_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    queue_p.set_defaults(func=cmd_queue)
     federation = sub.add_parser("federation", help="Show federation cluster status")
     federation.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
     federation.set_defaults(func=cmd_federation)

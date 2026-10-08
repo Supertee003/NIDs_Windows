@@ -175,7 +175,13 @@ pub var g_ac_mutex: std.Thread.Mutex = .{};
 // PATCH-29/30/31: Reliability globals (initialized by daemon.zig)
 pub var g_wd: watchdog.ReliabilityWatchdog = undefined;
 pub var g_fi: fault.FaultInjector = undefined;
-pub var g_perf: hist.PerfTracker = undefined;
+pub var g_perf: hist.PerfTracker = .{};
+pub var g_perf_mutex: std.Thread.Mutex = .{};
+/// GAP-015: guards PerfTracker.observe (pipeline consumer) against
+/// PerfTracker.snapshot (control-plane readers). The consumer previously
+/// raced any reader over plain u64 bins; one uncontended mutex per event
+/// is ~ns against a ~ms service budget. daemon.zig re-inits g_perf at
+/// startup as before; the zero value keeps unit-test contexts valid.
 
 // WD-BEAT-049: one cached watchdog slot per self-beating worker. pop
 // via state.g_wd.beatLazy(&slot, kind, name) from the worker loop only —

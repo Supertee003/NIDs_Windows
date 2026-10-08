@@ -15,6 +15,8 @@ const pep_bindings = @import("../policy/pep_bindings.zig");
 const enforcement_receipt = @import("../policy/enforcement_receipt.zig");
 const forensic_pipeline = @import("../forensic/forensic_pipeline.zig");
 const siem_mod = @import("../forensic/siem_forwarder.zig");
+const event_queue = @import("../pipeline/event_queue.zig");
+const event_contract = @import("../contract/event.zig");
 
 // ============================================================
 // Handler Function Signature
@@ -281,6 +283,7 @@ pub fn initHandlers() void {
     registerHandler(.events_count, handlers.eventsCount);
     registerHandler(.events_stats, handlers.eventsStats);
     registerHandler(.events_tail, handlers.eventsTail);
+    registerHandler(.queue_stats, handlers.queueStats);
     registerHandler(.incidents_list, handlers.incidentsList);
     registerHandler(.incidents_show, handlers.incidentsShow);
     registerHandler(.policy_list, handlers.policyList);
@@ -642,6 +645,63 @@ const handlers = struct {
             state_mod.g_last_event_ms.load(.acquire),
             queue_drops,
         }) catch null;
+    }
+
+    /// GAP-015: per-source ingress accounting plus the pipeline latency
+    /// snapshot. Read-only: counters are monotonic, the perf snapshot is
+    /// taken under g_perf_mutex, and only nonzero source buckets are
+    /// emitted. This is the instrument that turns "dropped=N" into
+    /// "sensor X starves while sensor Y floods".
+    fn queueStats(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
+        var pushed_total: u64 = 0;
+        var dropped_total: u64 = 0;
+        var buckets: [256]struct { pushed: u64, dropped: u64 } = undefined;
+        var i: usize = 0;
+        while (i < 256) : (i += 1) {
+            const p = event_queue.g_ingress_pushed[i].load(.acquire);
+            const d = event_queue.g_ingress_dropped[i].load(.acquire);
+            buckets[i] = .{ .pushed = p, .dropped = d };
+            pushed_total += p;
+            dropped_total += d;
+        }
+        state_mod.g_perf_mutex.lock();
+        const snap = state_mod.g_perf.snapshot();
+        state_mod.g_perf_mutex.unlock();
+
+        var out = std.ArrayList(u8).init(a);
+        errdefer out.deinit();
+        var writer = out.writer();
+        writer.print("{{\"queue_size\":{},\"depth\":{},\"pushed_total\":{},\"dropped_total\":{},\"by_source\":[", .{
+            event_queue.PIPELINE_QUEUE_SIZE,
+            event_queue.queueDepth(),
+            pushed_total,
+            dropped_total,
+        }) catch return null;
+        var first = true;
+        var ord: usize = 0;
+        while (ord < 256) : (ord += 1) {
+            if (buckets[ord].pushed == 0 and buckets[ord].dropped == 0) continue;
+            var name_buf: [32]u8 = undefined;
+            const name = event_contract.legacySourceName(@intCast(ord), &name_buf);
+            if (!first) writer.writeByte(',') catch return null;
+            first = false;
+            writer.print("{{\"ordinal\":{},\"name\":\"{s}\",\"pushed\":{},\"dropped\":{}}}", .{
+                ord, name, buckets[ord].pushed, buckets[ord].dropped,
+            }) catch return null;
+        }
+        writer.writeAll("],\"pipeline\":[") catch return null;
+        first = true;
+        // PerfSnapshot carries 16 slots but only the 7 named stages are
+        // ever observed; the rest are undefined memory, never read.
+        for (snap.stages[0..7]) |stage| {
+            if (!first) writer.writeByte(',') catch return null;
+            first = false;
+            writer.print("{{\"stage\":\"{s}\",\"count\":{},\"p50_ns\":{},\"p95_ns\":{},\"p99_ns\":{},\"mean_ns\":{d},\"max_ns\":{}}}", .{
+                stage.name, stage.count, stage.p50_ns, stage.p95_ns, stage.p99_ns, stage.mean_ns, stage.max_ns,
+            }) catch return null;
+        }
+        writer.writeAll("]}") catch return null;
+        return out.toOwnedSlice() catch null;
     }
 
     fn incidentsList(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {

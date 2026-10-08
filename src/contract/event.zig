@@ -119,6 +119,30 @@ pub const EventSource = enum(u8) {
     _,
 };
 
+/// GAP-015: human name for a legacy source ordinal. The queue.stats
+/// control response labels per-source ingress buckets with these so
+/// operators never decode ordinals by hand. Unknown ordinals format
+/// as "unknown_<N>" into a caller buffer (never dropped, never null).
+pub fn legacySourceName(ordinal: u8, buf: []u8) []const u8 {
+    const known: ?[]const u8 = switch (ordinal) {
+        1 => "capture_npcap",
+        2 => "capture_etw",
+        3 => "capture_fim",
+        4 => "capture_registry",
+        5 => "capture_pipe_monitor",
+        10 => "detection_sig",
+        11 => "detection_anom",
+        12 => "detection_corr",
+        13 => "detection_brain",
+        20 => "policy",
+        30 => "federation",
+        99 => "system",
+        else => null,
+    };
+    if (known) |name| return name;
+    return std.fmt.bufPrint(buf, "unknown_{d}", .{ordinal}) catch "unknown";
+}
+
 pub const IpcEvent = extern struct {
     magic: u32,
     version: u16,
@@ -231,4 +255,16 @@ test "EventKind round-trip" {
     const v: u8 = @intFromEnum(k);
     const back: EventKind = @enumFromInt(v);
     try std.testing.expectEqual(k, back);
+}
+
+test "legacySourceName covers every named source, formats the rest (GAP-015)" {
+    var buf: [32]u8 = undefined;
+    try std.testing.expectEqualStrings("capture_etw", legacySourceName(2, &buf));
+    try std.testing.expectEqualStrings("capture_fim", legacySourceName(3, &buf));
+    try std.testing.expectEqualStrings("capture_registry", legacySourceName(4, &buf));
+    try std.testing.expectEqualStrings("system", legacySourceName(99, &buf));
+    // Pipe-sensor JSON arrives as .system (nids_capture); it must stay
+    // distinguishable from ETW/FIM/registry in queue.stats buckets.
+    try std.testing.expectEqualStrings("unknown_7", legacySourceName(7, &buf));
+    try std.testing.expectEqualStrings("unknown_0", legacySourceName(0, &buf));
 }

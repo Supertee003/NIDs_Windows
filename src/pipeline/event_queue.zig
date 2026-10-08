@@ -35,6 +35,18 @@ pub const QueuedEvent = struct {
 var g_event_queue: [PIPELINE_QUEUE_SIZE]QueuedEvent = undefined;
 var g_queue_head: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 var g_queue_tail: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+// GAP-015: per-source ingress accounting. Every push outcome is counted
+// by legacy source ordinal, so a future queue.stats reader can say WHICH
+// sensor starves instead of only how many events died globally. Counters
+// only: no push/drop decision reads them, so behavior is unchanged.
+pub var g_ingress_pushed: [256]std.atomic.Value(u64) = [_]std.atomic.Value(u64){std.atomic.Value(u64).init(0)} ** 256;
+pub var g_ingress_dropped: [256]std.atomic.Value(u64) = [_]std.atomic.Value(u64){std.atomic.Value(u64).init(0)} ** 256;
+
+/// Current queue occupancy (head - tail, wrapping). Control-plane readers
+/// use this for queue.stats; producers/consumers never branch on it.
+pub fn queueDepth() u64 {
+    return g_queue_head.load(.acquire) -% g_queue_tail.load(.acquire);
+}
 var g_queue_mutex: std.Thread.Mutex = .{};
 // A producer must reserve a head position and publish the completed slot as
 // one transaction.  A load/store pair is not a reservation primitive: two
@@ -59,9 +71,11 @@ pub fn pushEventWithAddrs(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[1
     defer g_queue_producer_mutex.unlock();
     const head = g_queue_head.load(.monotonic);
     const tail = g_queue_tail.load(.acquire);
+    const src_ord: usize = @intFromEnum(ev.source);
     if (head -% tail >= PIPELINE_QUEUE_SIZE) {
         // Queue full — drop event
         _ = state.g_queue_drops.fetchAdd(1, .monotonic);
+        _ = g_ingress_dropped[src_ord].fetchAdd(1, .monotonic);
         return false;
     }
     var qe = QueuedEvent{ .ev = ev };
@@ -72,6 +86,7 @@ pub fn pushEventWithAddrs(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[1
     qe.dst_ipv6 = dst_ipv6;
     g_event_queue[head % PIPELINE_QUEUE_SIZE] = qe;
     g_queue_head.store(head + 1, .release);
+    _ = g_ingress_pushed[src_ord].fetchAdd(1, .monotonic);
     return true;
 }
 
@@ -351,6 +366,38 @@ test "multi producer reservation conserves accepted events" {
     var popped: u32 = 0;
     while (popEvent()) |_| popped += 1;
     try std.testing.expectEqual(accepted.load(.acquire), popped);
+}
+
+test "GAP-015 ingress accounting counts pushes and drops by source" {
+    // Delta-based: the counters are process globals shared with every test.
+    var ev = event.IpcEvent.init(.packet_captured);
+    ev.source = @enumFromInt(77);
+    const p0 = g_ingress_pushed[77].load(.acquire);
+    const d0 = g_ingress_dropped[77].load(.acquire);
+    try std.testing.expect(pushEvent(ev, "abc"));
+    try std.testing.expect(pushEvent(ev, "def"));
+    try std.testing.expectEqual(p0 + 2, g_ingress_pushed[77].load(.acquire));
+    try std.testing.expectEqual(d0, g_ingress_dropped[77].load(.acquire));
+    // Drop path: push until refusal (self-calibrating to whatever the
+    // earlier tests left in the queue), then drain back to balanced.
+    var accepted: u32 = 0;
+    var refused: u32 = 0;
+    var guard: u32 = 0;
+    while (guard < PIPELINE_QUEUE_SIZE * 2 + 16) : (guard += 1) {
+        if (pushEvent(ev, "x")) {
+            accepted += 1;
+        } else {
+            refused += 1;
+            if (refused >= 3) break;
+        }
+    }
+    try std.testing.expect(refused >= 3);
+    try std.testing.expectEqual(d0 + refused, g_ingress_dropped[77].load(.acquire));
+    var drained: u32 = 0;
+    while (popEvent()) |_| drained += 1;
+    try std.testing.expect(drained >= accepted + 2);
+    try std.testing.expect(popEvent() == null);
+    try std.testing.expectEqual(@as(u64, 0), queueDepth());
 }
 
 /// Pop the next queued event from the pipeline queue.
