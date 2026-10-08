@@ -337,7 +337,7 @@ pub const RuntimeState = struct {
         // QUAR-RCPT-112: confirmed counts every receipt-verified host effect
         // (blocks plus quarantines, saturating). Thresholds in defcon.level
         // are unchanged; only the input widens from blocks-only.
-        const defcon_confirmed = runtime_state.g_confirmed_blocks.load(.acquire) |+
+        const defcon_confirmed = runtime_state.g_confirmed_blocks.load(.acquire) +|
             runtime_state.g_confirmed_quarantines.load(.acquire);
         const defcon_level = defcon.level(defcon_total, defcon_critical, defcon_confirmed);
         // STEP-43 + P0-8 remainder, additive keys (older readers ignore
