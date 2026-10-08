@@ -2,8 +2,8 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "84d25fd",
-  "build_date": "2026-10-03T20:43:09.417869+00:00",
+  "source_commit": "39afa56",
+  "build_date": "2026-10-08T09:24:23.539444+00:00",
   "build_host": "windows",
   "platform": {
     "os": "windows",
@@ -27,7 +27,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "f8598f5",
+      "commit": "39afa56",
       "source": "src/main.zig",
       "classification": "CANONICAL"
     },
@@ -38,7 +38,7 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "f8598f5",
+      "commit": "39afa56",
       "source": "rust-src/lib.rs",
       "classification": "CANONICAL"
     },
@@ -49,7 +49,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "f8598f5",
+      "commit": "39afa56",
       "source": "src/windows/aegis_wfp.c",
       "classification": "CANONICAL"
     },
@@ -60,7 +60,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "f8598f5",
+      "commit": "39afa56",
       "source": "src/windows/etw_native.c",
       "classification": "CANONICAL"
     },
@@ -71,7 +71,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "f8598f5",
+      "commit": "39afa56",
       "source": "src/windows/fim_native.c",
       "classification": "CANONICAL"
     },
@@ -82,7 +82,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "go-nose-build-test",
-      "commit": "f8598f5",
+      "commit": "39afa56",
       "source": "nose/main.go",
       "classification": "CANONICAL"
     },
@@ -93,7 +93,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-aggregator-build-test",
-      "commit": "f8598f5",
+      "commit": "39afa56",
       "source": "go/aggregator/main.go",
       "classification": "SUPPORT"
     },
@@ -104,7 +104,7 @@
       "type": "library",
       "required": false,
       "ci_job": "shield-build",
-      "commit": "f8598f5",
+      "commit": "39afa56",
       "source": "shield/src/lib.rs",
       "classification": "SUPPORT"
     },
@@ -115,7 +115,7 @@
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "f8598f5",
+      "commit": "39afa56",
       "source": "tools/aegisctl.py",
       "classification": "CANONICAL"
     },
@@ -126,7 +126,7 @@
       "type": "script",
       "required": true,
       "ci_job": "package-release",
-      "commit": "f8598f5",
+      "commit": "39afa56",
       "source": "tools/installer.py"
     },
     {
@@ -136,7 +136,7 @@
       "type": "toolchain",
       "required": true,
       "ci_job": "ts-policy-build",
-      "commit": "f8598f5",
+      "commit": "39afa56",
       "source": "ts_policy/"
     },
     {
@@ -146,7 +146,7 @@
       "type": "library",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "f8598f5",
+      "commit": "39afa56",
       "source": "brain/"
     }
   ],
@@ -263,40 +263,10 @@
       "language": "python/cython"
     },
     {
-      "path": "brain/aegis_brain_cython/build/lib.win-amd64-cpython-314/aegis_brain_cython/fast_scan.cp314-win_amd64.pyd",
-      "size": 57856,
-      "sha256": "ff265410d4cf80613f8d146b85b4ef94f3df0e05f8259658cb0cc33e4d0d501f",
-      "language": "data"
-    },
-    {
-      "path": "brain/aegis_brain_cython/build/temp.win-amd64-cpython-314/Release/NIDs_Windows/brain/aegis_brain_cython/fast_scan.cp314-win_amd64.exp",
-      "size": 821,
-      "sha256": "d65299edf7fafea5c1127919d7f6c1bb069c0c1e5aba7001d7919bd89d592a4a",
-      "language": "data"
-    },
-    {
-      "path": "brain/aegis_brain_cython/build/temp.win-amd64-cpython-314/Release/NIDs_Windows/brain/aegis_brain_cython/fast_scan.cp314-win_amd64.lib",
-      "size": 2048,
-      "sha256": "c4704be8dbb3444c32581f67ac2b14ba91237655a7859e02b111ad9eef6d6e76",
-      "language": "data"
-    },
-    {
-      "path": "brain/aegis_brain_cython/build/temp.win-amd64-cpython-314/Release/NIDs_Windows/brain/aegis_brain_cython/fast_scan.obj",
-      "size": 601884,
-      "sha256": "ffecd360e288540a4b3c44b82a19f1549cd388300dc98f2b2f92d92242f3ff90",
-      "language": "data"
-    },
-    {
       "path": "brain/aegis_brain_cython/fast_scan.c",
       "size": 468223,
       "sha256": "83c7e930bd528c4984f47786ffa83530295ae5cb662cabb61442ba24d6a2ffab",
       "language": "c/c++"
-    },
-    {
-      "path": "brain/aegis_brain_cython/fast_scan.cp314-win_amd64.pyd",
-      "size": 57856,
-      "sha256": "ff265410d4cf80613f8d146b85b4ef94f3df0e05f8259658cb0cc33e4d0d501f",
-      "language": "data"
     },
     {
       "path": "brain/aegis_brain_cython/fast_scan.pyx",
@@ -347,12 +317,6 @@
       "language": "c/c++"
     },
     {
-      "path": "brain/cython/aegis_hotspot.cp314-win_amd64.pyd",
-      "size": 156160,
-      "sha256": "4d8ae3dbf4b8163623d529b9f1371a45f27d239b6156d0a408ec93590b07b1b5",
-      "language": "data"
-    },
-    {
       "path": "brain/cython/aegis_hotspot.pxd",
       "size": 1434,
       "sha256": "ac1dadcd689bda3b22b8114144217465fadb39c2b0d65ab3c7399ff905c3babc",
@@ -365,58 +329,16 @@
       "language": "python/cython"
     },
     {
+      "path": "brain/cython/bridge_ipc.c",
+      "size": 668968,
+      "sha256": "682c197e88d12c5f97f930663d5692cc5dd4508665ad55036782653424755e7a",
+      "language": "c/c++"
+    },
+    {
       "path": "brain/cython/bridge_ipc.pyx",
       "size": 13512,
       "sha256": "26b142286b207b961efec81e4cd87be06933032307ffe1264d3bed2577de7db1",
       "language": "python/cython"
-    },
-    {
-      "path": "brain/cython/build/lib.win-amd64-cpython-314/aegis_hotspot.cp314-win_amd64.pyd",
-      "size": 156160,
-      "sha256": "4d8ae3dbf4b8163623d529b9f1371a45f27d239b6156d0a408ec93590b07b1b5",
-      "language": "data"
-    },
-    {
-      "path": "brain/cython/build/lib.win-amd64-cpython-314/cython_regex_scan.cp314-win_amd64.pyd",
-      "size": 53760,
-      "sha256": "57d25a45f7fbe02f5eb68ca7044134a42e8dca11def1a12834d3e6e03190a6c1",
-      "language": "data"
-    },
-    {
-      "path": "brain/cython/build/temp.win-amd64-cpython-314/Release/aegis_hotspot.cp314-win_amd64.exp",
-      "size": 791,
-      "sha256": "96af74ccc9bb7a2ee3063ba018dec24e01c073624d76ffb7896dc2e9be8000df",
-      "language": "data"
-    },
-    {
-      "path": "brain/cython/build/temp.win-amd64-cpython-314/Release/aegis_hotspot.cp314-win_amd64.lib",
-      "size": 2120,
-      "sha256": "05d187ec575c9bdbee6d8556a09de26bd7e0bb4c1b1e2c93f13d55d7b99e98cf",
-      "language": "data"
-    },
-    {
-      "path": "brain/cython/build/temp.win-amd64-cpython-314/Release/aegis_hotspot.obj",
-      "size": 1126966,
-      "sha256": "269132daf0f82422fe34d2151f6e585e45fa2cc09aa7186a278e69d4ed2100ba",
-      "language": "data"
-    },
-    {
-      "path": "brain/cython/build/temp.win-amd64-cpython-314/Release/cython_regex_scan.cp314-win_amd64.exp",
-      "size": 811,
-      "sha256": "20854e9a8aee795395b8ecd008c19438baa237e0d8c6dcc6400f32f483925b69",
-      "language": "data"
-    },
-    {
-      "path": "brain/cython/build/temp.win-amd64-cpython-314/Release/cython_regex_scan.cp314-win_amd64.lib",
-      "size": 2192,
-      "sha256": "1c7bb69f0a5bea30f20a303bca5edad7f5ade16551c7898eff97c2575a1ca42e",
-      "language": "data"
-    },
-    {
-      "path": "brain/cython/build/temp.win-amd64-cpython-314/Release/cython_regex_scan.obj",
-      "size": 541022,
-      "sha256": "cacc56f46170b45fef8f60b4b6af9f71e1513ad602cb79cda86651534ff8e92f",
-      "language": "data"
     },
     {
       "path": "brain/cython/cython_regex_scan.c",
@@ -425,16 +347,16 @@
       "language": "c/c++"
     },
     {
-      "path": "brain/cython/cython_regex_scan.cp314-win_amd64.pyd",
-      "size": 53760,
-      "sha256": "57d25a45f7fbe02f5eb68ca7044134a42e8dca11def1a12834d3e6e03190a6c1",
-      "language": "data"
-    },
-    {
       "path": "brain/cython/cython_regex_scan.pyx",
       "size": 5367,
       "sha256": "dc9f44516a770e6b1647f2a3cb0ec54554b0cd8e6439b66c852ac38fe85bbcdb",
       "language": "python/cython"
+    },
+    {
+      "path": "brain/cython/sensor_pipe.c",
+      "size": 323909,
+      "sha256": "eebcd6cab1a001a15f8837a4fbbad47bec4b22447d1043044fc2d2ea9327c90b",
+      "language": "c/c++"
     },
     {
       "path": "brain/cython/sensor_pipe.pyx",
@@ -665,1398 +587,6 @@
       "language": "python/cython"
     },
     {
-      "path": "bridge/build/ALL_BUILD.vcxproj",
-      "size": 18786,
-      "sha256": "5540041f3a0377df384764a5f256e3b8a227cb2c22e208cf8248d85190d2e37d",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/ALL_BUILD.vcxproj.filters",
-      "size": 269,
-      "sha256": "2e7009813941cd9b5f122ae4aa421228ffbc55e1d12916b32d7b515d4a44c14d",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeCache.txt",
-      "size": 13338,
-      "sha256": "8a744e083df1dd7aafeed69ca581c18d2b342fd3bf513cfcba22b64890c1f391",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CMakeCXXCompiler.cmake",
-      "size": 6450,
-      "sha256": "ef7833bc046dda27d50fd5fc9989143a6b0ccba5a26e7edddfa1981674e6b766",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CMakeDetermineCompilerABI_CXX.bin",
-      "size": 53248,
-      "sha256": "6c25cdfe72ea172f00a8d4059bb850e44ef3db5406f9b1d558f91d36de2a1c28",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CMakeRCCompiler.cmake",
-      "size": 206,
-      "sha256": "b68683dd9730784a803ae7247aaa8ef68fc04f7ea7a6e1fa9c26b5c21e13207f",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CMakeSystem.cmake",
-      "size": 380,
-      "sha256": "382228689db77e6d5b86dce535b7750916864b0a91ca8de753882453cba082e8",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/CMakeCXXCompilerId.cpp",
-      "size": 29651,
-      "sha256": "5b0cbdb2a0d0a5b91a89026321eb0202fdecb22328eb5c668566ce5cb17e3cd2",
-      "language": "c/c++"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/CompilerIdCXX.exe",
-      "size": 15360,
-      "sha256": "550f56ae8b308b7021e51ffd998afb491fea24ab6503075ac61cbf02abf930d7",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/CompilerIdCXX.vcxproj",
-      "size": 2734,
-      "sha256": "cb994b049e04e43019a7d39b85c26d7dbc836fc25e0902ea6831b8f547c6ffff",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CMakeCXXCompilerId.obj",
-      "size": 2361,
-      "sha256": "3a55fa7aef8521205ecbdbecf4b3669a475071a12f539c590d1f6675f1f15b78",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CompilerIdCXX.exe.recipe",
-      "size": 310,
-      "sha256": "bfda5565d671336fb1e7101bf5da0baecd6c9e1dd0ad33f34e045c3cd70711a9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CompilerIdCXX.tlog/CL.command.1.tlog",
-      "size": 712,
-      "sha256": "450010cb9f2a552fd62f1167f93e67f961bf0f87c97cfa62b271b158b3e9a227",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CompilerIdCXX.tlog/CL.read.1.tlog",
-      "size": 562,
-      "sha256": "2df7474de204d01bbd2eebaf4fd4bdf1005f1fb85b4447b261e469b0f962b652",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CompilerIdCXX.tlog/CL.write.1.tlog",
-      "size": 352,
-      "sha256": "3eea1f5dd1808af0d09fb5e5fc87bef467f08099d567147a386f66bc09e746c7",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CompilerIdCXX.tlog/Cl.items.tlog",
-      "size": 172,
-      "sha256": "0b752746a63c24068359451d820a93d68547d55e1866b3925b0f4058fef18bb7",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CompilerIdCXX.tlog/CompilerIdCXX.lastbuildstate",
-      "size": 187,
-      "sha256": "87e96ddb809f5be00f19a10dbacbaeb7baff1193c13719430ea5146c3e33118e",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CompilerIdCXX.tlog/link.command.1.tlog",
-      "size": 1022,
-      "sha256": "58b8bd4e5e54ded3faae0d64a1b9f51b4de796e61c9f3ef5c0de7f1c3f7b9b9b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CompilerIdCXX.tlog/link.read.1.tlog",
-      "size": 3412,
-      "sha256": "190345741e3189fad90fd0fc73f93bfd65b4171f4edfef79ed279806b25729d7",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CompilerIdCXX.tlog/link.secondary.1.tlog",
-      "size": 90,
-      "sha256": "f7b42c694558bf0d491a83bd5dcfdf2be7ec164ad60712b3c000ab4e63726393",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/CompilerIdCXX/Debug/CompilerIdCXX.tlog/link.write.1.tlog",
-      "size": 342,
-      "sha256": "fdd673077a788b42bb303ecb297319d2d5ed6bc87c584c2094a615913626ef46",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/VCTargetsPath.txt",
-      "size": 83,
-      "sha256": "115ef5cd305f572e15857f9e2bcf81f33aa038a998515b523f9f4ba18724ca40",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/VCTargetsPath.vcxproj",
-      "size": 1224,
-      "sha256": "6e8ea0b2de012d5e3592dd47c859156b220482760a6b793e669ecc3d4bca133c",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/VCTargetsPath/x64/Debug/VCTargetsPath.recipe",
-      "size": 302,
-      "sha256": "f23694cbc7bf04790ea6305f022eed9ad3c072db3f10d8eab400fd8f697f734a",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/4.4.2/VCTargetsPath/x64/Debug/VCTargetsPath.tlog/VCTargetsPath.lastbuildstate",
-      "size": 173,
-      "sha256": "c0448eae84874b571c9910576c5e4255f2a605ad11c9d5d23c8c08cb58efd0a4",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/6402762c949b7d69a8d3d5c876f42feb/INSTALL_force.rule",
-      "size": 23,
-      "sha256": "e89029bfb6c343825eb2b14b36eba2816b374c0aca12de07804da30b2df309f3",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/6402762c949b7d69a8d3d5c876f42feb/generate.stamp.rule",
-      "size": 23,
-      "sha256": "e89029bfb6c343825eb2b14b36eba2816b374c0aca12de07804da30b2df309f3",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/CMakeConfigureLog.yaml",
-      "size": 79792,
-      "sha256": "d2ccf3972d0086285b537f45dbcdd3d38f50f6e08763901d9343eb17a45cb304",
-      "language": "yaml"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/InstallScripts.json",
-      "size": 105,
-      "sha256": "2068b78f008ee8e262e42cf712fa5d638953bac90f0642ed88e1782907586520",
-      "language": "json"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/TargetDirectories.txt",
-      "size": 459,
-      "sha256": "a2850d69ca57aafe7d9377fec4e08caff2b9034f618f29e3a28b385a003afa9c",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/cmake.check_cache",
-      "size": 85,
-      "sha256": "a26189e394421da57f45706a07713c5720acd200a41711b0c0c590c3c63371c4",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/generate.stamp",
-      "size": 54,
-      "sha256": "f148b18ce93d5771e980b1edad5c7a0fe84afb2388d7995f541a0eec4a4d8168",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/generate.stamp.depend",
-      "size": 1999,
-      "sha256": "a5a17c572fcd3ff6e8db3180ecec86b915c00e0e8c7015041777d9c780638bc2",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/CMakeFiles/generate.stamp.list",
-      "size": 55,
-      "sha256": "820468458a0f9f01f0be40eaafc103624be3359a9044978c19149aadd76e70f6",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/INSTALL.vcxproj",
-      "size": 10327,
-      "sha256": "cab19a4b752604908367c964be709f8cddf7849359641e20fd2caf9330d23c65",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/INSTALL.vcxproj.filters",
-      "size": 506,
-      "sha256": "5641f85cc4187c3f2790b3784b1d1d1f5fbe45fa625d809bede52f2a46d8e285",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/ZERO_CHECK.vcxproj",
-      "size": 18088,
-      "sha256": "af8ce818a42f132742b6187a52d9f7d3266ce5ae51ccd56d386ef4e912ba3448",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/ZERO_CHECK.vcxproj.filters",
-      "size": 507,
-      "sha256": "97884b6e0469446c8eb03e97553cbe66ec9d6ef7ad70dd1f4bfc02719dcb896e",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.dll.recipe",
-      "size": 389,
-      "sha256": "d43afb5060e02ce655d86a2ae13c90d1a3bdcaba4d0352133b2d8b0f8fe4d11e",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.ilk",
-      "size": 679892,
-      "sha256": "51a52ea76258be752ef1ef8708d1ee83323431500700b24c9c44dd68b672db96",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.obj",
-      "size": 96633,
-      "sha256": "d49493d8c809ed172597875dee6ffa7f745e4d789d85699de827b4e3833df8de",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/CL.command.1.tlog",
-      "size": 878,
-      "sha256": "96db615389fb37447ff865dbaf3467879a9eaaf40037ba28fe660c8356f55241",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/CL.read.1.tlog",
-      "size": 20058,
-      "sha256": "ca3c74901ed96ebfcbe7a9251f82d031be131491f6caecf441401efebad53807",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/CL.write.1.tlog",
-      "size": 360,
-      "sha256": "9c972ae29b8b472a9f0d856018e8a30a784f120427f3c3773d7423bb3eacd324",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/Cl.items.tlog",
-      "size": 112,
-      "sha256": "f6808ebe902be3a4a84e77c8ba5d4ff94a8bb8ff360867c3b14a9940329c3ab7",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/CustomBuild.command.1.tlog",
-      "size": 383,
-      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/CustomBuild.read.1.tlog",
-      "size": 1945,
-      "sha256": "5013549efd2fc338c95be568607b3625269b361244c9d77f1851e7bfa730cad5",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/CustomBuild.write.1.tlog",
-      "size": 94,
-      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/aegis_adapter.lastbuildstate",
-      "size": 156,
-      "sha256": "31894e3d7828aa49a6a06fc77804476113ccd08d3c8be58b99a0790ee005bf21",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/link.command.1.tlog",
-      "size": 1176,
-      "sha256": "e7a79c084e43ef1d2727d8ed8a6186900f02c4412ab234ecf6eaffbb62f204f1",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/link.read.1.tlog",
-      "size": 3396,
-      "sha256": "64a9f01ec3492c9de25f18487b9901416d86455454129f7d4bfe791feb786a93",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/link.secondary.1.tlog",
-      "size": 143,
-      "sha256": "75c0d9f49b987177196f24525e4a26c7ac5c8ab50471de8073c2e190a5c873a5",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/aegis_adapter.tlog/link.write.1.tlog",
-      "size": 308,
-      "sha256": "d49ec0e70096d8f9a75d5551aff66c882adce6a1dd92f8790f0ef58808a53ef6",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Debug/vc143.pdb",
-      "size": 118784,
-      "sha256": "2cf29f323ae6305e193550db8068fe8f7b2fff3fa6e32061917f7ba12acfce70",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.dll.recipe",
-      "size": 391,
-      "sha256": "73ae55b0339dfefb0a6be043781122ad022f1f13e6ae4da95aa512bdca174994",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.obj",
-      "size": 39994,
-      "sha256": "41515fc698453c237a865bc827cf51dd8bfb2be0b2fab6cb7b849796c430c6f1",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/CL.command.1.tlog",
-      "size": 888,
-      "sha256": "6039dd1752f0d539b02d69402bd2c924fd9a61968ae25993505184d48e4e36d6",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/CL.read.1.tlog",
-      "size": 20058,
-      "sha256": "ca3c74901ed96ebfcbe7a9251f82d031be131491f6caecf441401efebad53807",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/CL.write.1.tlog",
-      "size": 236,
-      "sha256": "6924064637e1a8841add47244619527b09dced15f1b20ce5726478f9cb53d82d",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/Cl.items.tlog",
-      "size": 114,
-      "sha256": "2d87bb3404b49998fa2f9f70c4c9fa1b6d2f81e709c144af7d0ccf2fb75a8c99",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/CustomBuild.command.1.tlog",
-      "size": 383,
-      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/CustomBuild.read.1.tlog",
-      "size": 7510,
-      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/CustomBuild.write.1.tlog",
-      "size": 94,
-      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/aegis_adapter.lastbuildstate",
-      "size": 158,
-      "sha256": "25dbab9c2a137997d68c48eebd98adf89bfe4805807d534c81ec2139161af14a",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/link.command.1.tlog",
-      "size": 1078,
-      "sha256": "e5a6a64fb598279a81c469058fc423ee947b7cb8519d76b340c43954354c7da6",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/link.read.1.tlog",
-      "size": 3038,
-      "sha256": "412ccf18d3a4c01f4e24c0fb692461256d0c955eafd24d1bbd25be999db82825",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/link.secondary.1.tlog",
-      "size": 74,
-      "sha256": "b798a1f0159fb4bf185b18adf226146b73efb9bae8a79d3b63512e937458d760",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.dir/Release/aegis_adapter.tlog/link.write.1.tlog",
-      "size": 232,
-      "sha256": "d354b61041e9819de6a232d765e4c30bf34ba4702228a510d7b1ac2611b70b1b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.vcxproj",
-      "size": 31912,
-      "sha256": "ffe38bcbe8915b43fc408f27845b787970b9a1906ec919645e79fc909a68652c",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter.vcxproj.filters",
-      "size": 550,
-      "sha256": "53d770c32a0a5ab5e23a8a7789e2d05f1640ba465d737a972c9bfd67fc37b751",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/CL.command.1.tlog",
-      "size": 1738,
-      "sha256": "99651e612f3f777cf5fa9a130bec3e0a203242dcd261907d534c9bd09f3550df",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/CL.read.1.tlog",
-      "size": 24132,
-      "sha256": "4e97c80e8780e2f4dab657e645f835a97350fe846ea8075a40a9b9fb2c9de1f1",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/CL.write.1.tlog",
-      "size": 1188,
-      "sha256": "92c116692463dc20513975865ede5e1f217100597bd90340274d5c99e7b2428d",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/Cl.items.tlog",
-      "size": 270,
-      "sha256": "6f089d99020b89a6889409e14400ce6d5563d47f9372a55f0f6fd65918f175f9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/CustomBuild.command.1.tlog",
-      "size": 383,
-      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/CustomBuild.read.1.tlog",
-      "size": 1945,
-      "sha256": "5013549efd2fc338c95be568607b3625269b361244c9d77f1851e7bfa730cad5",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/CustomBuild.write.1.tlog",
-      "size": 94,
-      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/aegis_adapter_selftest.lastbuildstate",
-      "size": 156,
-      "sha256": "31894e3d7828aa49a6a06fc77804476113ccd08d3c8be58b99a0790ee005bf21",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/link.command.1.tlog",
-      "size": 1612,
-      "sha256": "9ee29b3fb596b1bb03d67534b9d93ab6609fecc480bf9a3c0592a457190dce01",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/link.read.1.tlog",
-      "size": 3374,
-      "sha256": "6ffe80099c2ec338e3e1a38fdb9913e575a4c96abdaae5f792420702ce1fdfb2",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/link.secondary.1.tlog",
-      "size": 264,
-      "sha256": "473929a224e81dc3395965336a0e99decbb43a4d281d1ffad5dbb51a7c132c43",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_ad.A5902826.tlog/link.write.1.tlog",
-      "size": 550,
-      "sha256": "5229548a2980bee041d61448c70a0ecb0aee545294dda08f5b3d23ad7769912e",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_adapter.obj",
-      "size": 96649,
-      "sha256": "5d8660a5fe7b1ce3131443d25983bf17e94fca2671f2dbb5190244f6b2b4702b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_adapter_selftest.exe.recipe",
-      "size": 398,
-      "sha256": "ff2bceb0dfcc2f1fae21e7dce07f571f00af54049042a01d7fa257452b80d822",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_adapter_selftest.ilk",
-      "size": 794448,
-      "sha256": "810416f9eeddfac6601c01dda58b93a020970a25d8d01205033cb4af8c2ed9f9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/aegis_adapter_selftest_main.obj",
-      "size": 14610,
-      "sha256": "b7282b413243424fe4236e5b6044c88b56b80d0bae5371127ddd05f5c78c73c6",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Debug/vc143.pdb",
-      "size": 118784,
-      "sha256": "d0ac18353844d0b1b7fa4158a7c1b30ae398fd5ccff05a2c2f7671e6b3e36fe2",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/CL.command.1.tlog",
-      "size": 1758,
-      "sha256": "00db7037f72f083d79ebf7995f49a5f725949dd4be5293a973a96731812d5ae7",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/CL.read.1.tlog",
-      "size": 24132,
-      "sha256": "1665dd4645ffb7bd49e605388e66e4b37dbb63fbaf055dd2b0b6297e76fc0825",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/CL.write.1.tlog",
-      "size": 558,
-      "sha256": "0fd0388da17a217144321fa311531e3258cdbe2bd1af02cbeb6de9f813eabc51",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/Cl.items.tlog",
-      "size": 274,
-      "sha256": "d6f7ed4879ad2c05de52d6d5c4458976d57ec62777ec77ae50a9a66cd392514d",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/CustomBuild.command.1.tlog",
-      "size": 383,
-      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/CustomBuild.read.1.tlog",
-      "size": 7510,
-      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/CustomBuild.write.1.tlog",
-      "size": 94,
-      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/aegis_adapter_selftest.lastbuildstate",
-      "size": 158,
-      "sha256": "25dbab9c2a137997d68c48eebd98adf89bfe4805807d534c81ec2139161af14a",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/link.command.1.tlog",
-      "size": 1486,
-      "sha256": "b5672720e0fabf5d229ce4fbc3235b997696c1c01ad29cdcfe47adf2c82a644f",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/link.read.1.tlog",
-      "size": 3460,
-      "sha256": "ca5a0a2565dfd355e7909e92ad9ebe98c8a866103410f5c67844c8d7a559ca19",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/link.secondary.1.tlog",
-      "size": 179,
-      "sha256": "bb6bf3fa83b8ffbf76f05c07dfa5e02f9c929f781ab60dce54297798bdb2c169",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_ad.A5902826.tlog/link.write.1.tlog",
-      "size": 460,
-      "sha256": "a425bcbbfc7f8a5f6fd969d4be5e7a03a6b952398c478afe506fbd4795b67e1f",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_adapter.obj",
-      "size": 40002,
-      "sha256": "e8882ea4cab7477033c1f9ce55d7dd78e4796fca845b4f269ea92fc839a7e06b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_adapter_selftest.exe.recipe",
-      "size": 400,
-      "sha256": "fc2017f6d7d71b3bc1e4a8bc984cd5c0eb9c6a408bc9aa50d0e19b687ece2d89",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.dir/Release/aegis_adapter_selftest_main.obj",
-      "size": 7588,
-      "sha256": "e2c4d8196e6c3be5a84be28a6d70e46350425519ec0bf7f76b1109b490cd1e7a",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.vcxproj",
-      "size": 31940,
-      "sha256": "92a615c972f3f28a56e0fb5b6dc283d9177854d760d881ebe6279b42a347195a",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_adapter_selftest.vcxproj.filters",
-      "size": 684,
-      "sha256": "c17a531494fb68681bcaa0a323aaddbe78b5ba59c5d8c26e2a301cbe1fc1175c",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.exe.recipe",
-      "size": 388,
-      "sha256": "ea04aaff75bb224d0c14178cec8b6a3ff72ff02e9653aed7a658730245d3802e",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.ilk",
-      "size": 869158,
-      "sha256": "b829cff65e1e562c3f648691f297320510a34b1c6c8e250ba1a72eee67eaeade",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/CL.command.1.tlog",
-      "size": 2426,
-      "sha256": "caeab19a7ac7bd8b1e483f983af24bd3185f1eafec1373f3adf21495f3e80d7b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/CL.read.1.tlog",
-      "size": 55754,
-      "sha256": "895cc0c23560e4548cae12b2fc1aa30491e6c5a351db649cec2b09a455178784",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/CL.write.1.tlog",
-      "size": 1476,
-      "sha256": "02b404093e031582fb7c2b80be078b2f2e76db6b75b515feb925e3fb14e62f10",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/Cl.items.tlog",
-      "size": 345,
-      "sha256": "be870a479e3210985c2212ef25dae2e895628c3846b2e6474cb6bc43faad9cf3",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/CustomBuild.command.1.tlog",
-      "size": 383,
-      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/CustomBuild.read.1.tlog",
-      "size": 7510,
-      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/CustomBuild.write.1.tlog",
-      "size": 94,
-      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/aegis_bridge.lastbuildstate",
-      "size": 156,
-      "sha256": "31894e3d7828aa49a6a06fc77804476113ccd08d3c8be58b99a0790ee005bf21",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/link.command.1.tlog",
-      "size": 1624,
-      "sha256": "55eeae437ebb762cdc54c50e7dd7201d762d71fa290148ac25d989e9bdf185a4",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/link.read.1.tlog",
-      "size": 3956,
-      "sha256": "d0756ba03376f0cd65a14ee6c1a79ea7aaa2c3267a891806fd0ae62607c2395a",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/link.secondary.1.tlog",
-      "size": 286,
-      "sha256": "210c2647d7913946b3272811eb3571c160434c13b36588b3edd6144d7f6dc2ed",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge.tlog/link.write.1.tlog",
-      "size": 594,
-      "sha256": "5d9a68eda15409041f493fbe507ca30da6338212434c1d427275ca50b6497e71",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_bridge_main.obj",
-      "size": 114581,
-      "sha256": "32c2892afa505cc7c36834691585ea7e5679a583b1a486a492a4624203a6c7bd",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_ipc.obj",
-      "size": 72979,
-      "sha256": "2c5543380747f6b9714254306be5d6c0f9da49c5406e9dd3e81a1c82d6eab700",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/aegis_packet_parser.obj",
-      "size": 28965,
-      "sha256": "629ca2ced376c3816f052acfcb748590bbbc9b39a6c866e169e4bfb6c9710e4a",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Debug/vc143.pdb",
-      "size": 208896,
-      "sha256": "a742b213ed7e442e6a69cda5740504eb6ee5dbb3695a820ae264c7f1af867683",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.exe.recipe",
-      "size": 390,
-      "sha256": "e4d85b339b2f8bfc0a8197f66ecfa7ee047a051a67140e96b0615a8d479b444e",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/CL.command.1.tlog",
-      "size": 2456,
-      "sha256": "e53597018012d5d97d5db4819594148cb82fe87ee954cc1e9541c377189fe141",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/CL.read.1.tlog",
-      "size": 68968,
-      "sha256": "1a2816e1812d62be2c22ccf3c762a32af890e258622846e66f690275747305a7",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/CL.write.1.tlog",
-      "size": 714,
-      "sha256": "ae3f3acab7981fda17758d9411e3cca3f98e78cee9c13d9da06607c22d77f4cf",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/Cl.items.tlog",
-      "size": 351,
-      "sha256": "74e2432c568155e3d53285010022b0df148357a30f345f368937fa0beaae6b11",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/CustomBuild.command.1.tlog",
-      "size": 383,
-      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/CustomBuild.read.1.tlog",
-      "size": 7510,
-      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/CustomBuild.write.1.tlog",
-      "size": 94,
-      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/aegis_bridge.lastbuildstate",
-      "size": 158,
-      "sha256": "25dbab9c2a137997d68c48eebd98adf89bfe4805807d534c81ec2139161af14a",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/link.command.1.tlog",
-      "size": 1546,
-      "sha256": "21ed02824ba1ac2a41ddfe4126c0a698410b880f631042875a5a84dc9f10fbda",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/link.read.1.tlog",
-      "size": 4078,
-      "sha256": "6c6e4d3471ec9e421ba1731dbfe6becc4c1d0697d340c4c5489dbe10850f3afc",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/link.secondary.1.tlog",
-      "size": 299,
-      "sha256": "5f972ec39a504cfb35e061cfcb0d2bb9b1b424cf8836572c0dbba6e929529ffc",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge.tlog/link.write.1.tlog",
-      "size": 528,
-      "sha256": "0f59f4fae5edb1b44ad721d0c93726c32ff8e7d1ad65532b9ffc69a1e4d1657f",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Release/aegis_bridge_main.obj",
-      "size": 35923,
-      "sha256": "de5e9f2be901d3f12603067ec3d43483405d3d98310b871b07385e325d381fcf",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Release/aegis_ipc.obj",
-      "size": 29540,
-      "sha256": "a798c8438a3fac5ef13816ff7e518e11a8c09820e4e5befd2eb546156c3751cc",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.dir/Release/aegis_packet_parser.obj",
-      "size": 9899,
-      "sha256": "21626f95f72e7d988087dfc3224a43f12dd63770c4251ee131d9110950a4976f",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.vcxproj",
-      "size": 31831,
-      "sha256": "846fac619ad489de1557e4d80928e2477e5529995d64077548b68fa04a5649da",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge.vcxproj.filters",
-      "size": 796,
-      "sha256": "1618b9032b8009dcf9731e0104f9e1ed41c3a25796fa2a5e66ea35186f62afa2",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/CL.command.1.tlog",
-      "size": 2486,
-      "sha256": "6eb07f3aa91c407d9734bd7dd95aee648d4e5f66d38940de76fddb4e4854e47b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/CL.read.1.tlog",
-      "size": 42340,
-      "sha256": "eb0c3732e9053b7e44ccbb0a4bb09b79c29a9759f6d26f85e094e72136c6be98",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/CL.write.1.tlog",
-      "size": 1546,
-      "sha256": "bbfad67b3af9ef3d7980a22dd12907ce34947cd7e2cba493e6a1fe73ba51f85c",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/Cl.items.tlog",
-      "size": 360,
-      "sha256": "2b2d8ba8d3fd858c4840d1fe3627b738c977034215bc2e94377344179948b8b1",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/CustomBuild.command.1.tlog",
-      "size": 383,
-      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/CustomBuild.read.1.tlog",
-      "size": 1945,
-      "sha256": "5013549efd2fc338c95be568607b3625269b361244c9d77f1851e7bfa730cad5",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/CustomBuild.write.1.tlog",
-      "size": 94,
-      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/aegis_bridge_test.lastbuildstate",
-      "size": 156,
-      "sha256": "31894e3d7828aa49a6a06fc77804476113ccd08d3c8be58b99a0790ee005bf21",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/link.command.1.tlog",
-      "size": 1734,
-      "sha256": "15cb1b6177418d9739be644b3902f8bb35d8a730326b8d0ca7d642f8722e38a6",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/link.read.1.tlog",
-      "size": 4048,
-      "sha256": "65a57635974859ad51fe3bf7965360c94978d39c36f4d1df8cae0efdfe6d5865",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/link.secondary.1.tlog",
-      "size": 397,
-      "sha256": "0072c174744a82f604224c80cc76bbc7e7217661a12ec39e2ca4b396e38c690f",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_br.29FB6EE4.tlog/link.write.1.tlog",
-      "size": 644,
-      "sha256": "d1ad8c909c37abeac233bef3d97b2f8d8d4fc916d7cefd2d8fdca46d71051379",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_bridge_test.exe.recipe",
-      "size": 393,
-      "sha256": "8325cf5041cc1e30b6c5b2a7b3e306001b8610349df2f49b2e92b89e80657461",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_bridge_test.ilk",
-      "size": 773297,
-      "sha256": "a3dc7e670486d647d6bd8c3eb0d68a2e8d93671bb96a2ae83f431bd057c776e4",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_bridge_test.obj",
-      "size": 37176,
-      "sha256": "c90fff3632dd7df49098c96a0846974a84f67a9e617e9aeb04711f91e5f087a0",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_ipc.obj",
-      "size": 70644,
-      "sha256": "ebad66cf186e08dc23bf025dfe03a2d7abe87f4469c8246ee9ecc3c134059370",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/aegis_packet_parser.obj",
-      "size": 40462,
-      "sha256": "053a0860b3968823a156dfe045656934872df0069c929b433f1a3b89d101432a",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Debug/vc143.pdb",
-      "size": 126976,
-      "sha256": "8f20318b9d6ed9923ace645682cc1f7332159cc9344c0770850661f084c038e6",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/CL.command.1.tlog",
-      "size": 2516,
-      "sha256": "62640fede6c3d6e30cf377038522454f5e7681a2891fef82032d2cf8b1021f65",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/CL.read.1.tlog",
-      "size": 42340,
-      "sha256": "eb0c3732e9053b7e44ccbb0a4bb09b79c29a9759f6d26f85e094e72136c6be98",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/CL.write.1.tlog",
-      "size": 744,
-      "sha256": "2a6b416c7eeef794ff9b9abd506ccbbab5b1b69eec6201e11fd41bc1e40353d9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/Cl.items.tlog",
-      "size": 366,
-      "sha256": "5cffc95f93f264eabfe6006863fbc65a30987847b6ac138e553b146d7d1836b3",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/CustomBuild.command.1.tlog",
-      "size": 383,
-      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/CustomBuild.read.1.tlog",
-      "size": 7510,
-      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/CustomBuild.write.1.tlog",
-      "size": 94,
-      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/aegis_bridge_test.lastbuildstate",
-      "size": 158,
-      "sha256": "25dbab9c2a137997d68c48eebd98adf89bfe4805807d534c81ec2139161af14a",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/link.command.1.tlog",
-      "size": 1636,
-      "sha256": "45aa93990096f7647bc5d65d3c1ae6a507cac81e19146ca9f811ab2f8f380d3d",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/link.read.1.tlog",
-      "size": 3930,
-      "sha256": "5237a06127283fc01eb741d1ef05f78af4a7c06ee516fce2a93ac4dcabffd42e",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/link.secondary.1.tlog",
-      "size": 324,
-      "sha256": "fba12385169c534b5db7d096fa5971a0961c9ad373497db439256c97e6e19c97",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_br.29FB6EE4.tlog/link.write.1.tlog",
-      "size": 568,
-      "sha256": "d9dfc64bcff73cce703a7cbac058802ac60754b3bb506a3362f2ac8b183e4e8f",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_bridge_test.exe.recipe",
-      "size": 395,
-      "sha256": "6813f2517a5b5f3d26097087f4b25e348a0694dfac0f3877237bc183c4a18c92",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_bridge_test.obj",
-      "size": 23331,
-      "sha256": "677f67b215ffaa23fb90034b95d877bc8a1ee28a3628112f5ea12836c311d9bd",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_ipc.obj",
-      "size": 29548,
-      "sha256": "6f2b7b7d2ed75913df8032799bd27882e00933f2f557b9cf010a6fee98db3342",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.dir/Release/aegis_packet_parser.obj",
-      "size": 9903,
-      "sha256": "fa32378ca6e1c0fccd6671a6e66b9380dcc91b12f572aef611eb5ca3f38d8c00",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.vcxproj",
-      "size": 31916,
-      "sha256": "067f52f3084a9b84f45a39ad8be8e078466977e197e58b933fb87c0bfd0826d3",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_bridge_test.vcxproj.filters",
-      "size": 796,
-      "sha256": "4b8ca470249ca73c1d385f5bb0a534dba55fb90f94a7bd27813d4b2afcce106e",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.dll.recipe",
-      "size": 385,
-      "sha256": "67770b4a16e7eb1d1bb6063a30aba7b21742a14fa0c3ff978b758072341f46b6",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.ilk",
-      "size": 690363,
-      "sha256": "0337a09d972463fdcd32dfc1b07d4a7cd9cc761b007403654ac00a25ca4f6518",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.obj",
-      "size": 72971,
-      "sha256": "aac196e882a25e919b289bdb4d031a207626ea783ccce334c116ad559f631773",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/CL.command.1.tlog",
-      "size": 1714,
-      "sha256": "d2ade260a7efa66acb319a9f9316f66dcea970259adb12eb7e686607eda166a2",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/CL.read.1.tlog",
-      "size": 23640,
-      "sha256": "20c588fb919d5637768f17b4916b764589d3a260fef1c19378bbc93314aee5db",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/CL.write.1.tlog",
-      "size": 986,
-      "sha256": "2c53e3a372af11485c16ab9356f74bbdfd2969acb6ecc9598ce796c1c516a1da",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/Cl.items.tlog",
-      "size": 220,
-      "sha256": "25b3b3c8309d8af087eeea2accc07c97b00a245f3de40d8191e9effe1d2400aa",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/CustomBuild.command.1.tlog",
-      "size": 383,
-      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/CustomBuild.read.1.tlog",
-      "size": 7510,
-      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/CustomBuild.write.1.tlog",
-      "size": 94,
-      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/aegis_ipc.lastbuildstate",
-      "size": 156,
-      "sha256": "31894e3d7828aa49a6a06fc77804476113ccd08d3c8be58b99a0790ee005bf21",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/link.command.1.tlog",
-      "size": 1340,
-      "sha256": "c3cfcf21699065d391f071a43e74313a28053b1a3c820a3231d5d57d01bb7e87",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/link.read.1.tlog",
-      "size": 3418,
-      "sha256": "868023b410a5ac473338b7d30a65f759d5a35bcd7c7c1ee946d9fd20f5382c9b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/link.secondary.1.tlog",
-      "size": 200,
-      "sha256": "c25230759872b6a674170f0e4df15cd58568833c2fa34a4bfde422c84ec7f17e",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_ipc.tlog/link.write.1.tlog",
-      "size": 422,
-      "sha256": "cec6a84243cdbda67a71a17935c6d174b37acc15e49ebee5d0062c13b890574e",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/aegis_packet_parser.obj",
-      "size": 28957,
-      "sha256": "c5e9b5cf986eaf353b67bc87e102b1566ab332a0ee7148ee3d007fd2e01b62af",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Debug/vc143.pdb",
-      "size": 126976,
-      "sha256": "b67ca268955d881a2dc7133900810c796feefce38fb4b2202f03c01361c8a915",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.dll.recipe",
-      "size": 387,
-      "sha256": "233602c9e796fa8d3aa35d600e21879bc2b91bc573d05cd9943fd95d77c1efa6",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.obj",
-      "size": 29540,
-      "sha256": "213266f6c250ca95edb39641adba6e77635322a6f00d340f4b4f5f5913848ad1",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/CL.command.1.tlog",
-      "size": 1734,
-      "sha256": "a5e30c258470dc89fdba21a9f6284412b9f27e829a71a8440d44ab09484aa045",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/CL.read.1.tlog",
-      "size": 36854,
-      "sha256": "dcb70cc8243a8cc7bc7bcb77eb1d4a374c0532bc01fdcbf94f2dc854557c5a77",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/CL.write.1.tlog",
-      "size": 458,
-      "sha256": "8f9d4d244a89bacf159fde4b8dad79b81659ea905dfcf025359d0169658ffcc6",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/Cl.items.tlog",
-      "size": 224,
-      "sha256": "2de7937f9178932f9055e0d61dd7e4a8dd1a20838f2e5b362e6cc34561144822",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/CustomBuild.command.1.tlog",
-      "size": 383,
-      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/CustomBuild.read.1.tlog",
-      "size": 7510,
-      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/CustomBuild.write.1.tlog",
-      "size": 94,
-      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/aegis_ipc.lastbuildstate",
-      "size": 158,
-      "sha256": "25dbab9c2a137997d68c48eebd98adf89bfe4805807d534c81ec2139161af14a",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/link.command.1.tlog",
-      "size": 1266,
-      "sha256": "f2249a52afbe749cec0940f36eabd002aa0f2b3ca17ae12a72f8746bd6b1828c",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/link.read.1.tlog",
-      "size": 3540,
-      "sha256": "d8b4f46a18689da9fe6b94b92eb32f2f2a27af2f5bc95b1232c98fbebc2c9a7a",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/link.secondary.1.tlog",
-      "size": 211,
-      "sha256": "0f0cc2f74854928c7569ae4cece31d6b28a6688beb5305fa01b24a87569a0a5c",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_ipc.tlog/link.write.1.tlog",
-      "size": 358,
-      "sha256": "532cd4f8cafcfc27fd435e20f3a81c6d83be6f13bea1641566efa1fc7d628cf5",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.dir/Release/aegis_packet_parser.obj",
-      "size": 9895,
-      "sha256": "a1d16eb934233255d8c9efa1b4fe6a2b0473f311ac293a3896fdeceec2d0eaeb",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.vcxproj",
-      "size": 31883,
-      "sha256": "de8785d03cf46d41909981bcc6f3a4c059762461c95f6f0e9f52b1917bdfdd53",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc.vcxproj.filters",
-      "size": 672,
-      "sha256": "70875c29081e6d915a28aa06916f6001d7e16aeb4a7caced6e1631eee827bbd4",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/aegis_ipc_bridge.sln",
-      "size": 8177,
-      "sha256": "c1622e63210e5c02f4201d1a06112ef8a56629f7351feb90939c8fc94fbd19af",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/cmake_install.cmake",
-      "size": 6586,
-      "sha256": "3f3e6bc29e3f224c9101e725a04dfdf00311817993c78cc6792582f4fa186849",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Debug/ALL_BUILD/ALL_BUILD.recipe",
-      "size": 942,
-      "sha256": "26c4487a5eba2811991dd5147d0e98de6ec787a1914f5853a72095b8aa9b791f",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Debug/ALL_BUILD/ALL_BUILD.tlog/ALL_BUILD.lastbuildstate",
-      "size": 156,
-      "sha256": "31894e3d7828aa49a6a06fc77804476113ccd08d3c8be58b99a0790ee005bf21",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Debug/ALL_BUILD/ALL_BUILD.tlog/CustomBuild.command.1.tlog",
-      "size": 383,
-      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Debug/ALL_BUILD/ALL_BUILD.tlog/CustomBuild.read.1.tlog",
-      "size": 7510,
-      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Debug/ALL_BUILD/ALL_BUILD.tlog/CustomBuild.write.1.tlog",
-      "size": 94,
-      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Debug/ZERO_CHECK/ZERO_CHECK.recipe",
-      "size": 282,
-      "sha256": "069e97f7185c9bd643d645976912090fb420b1f8539f012b88ac4f75939f58af",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Debug/ZERO_CHECK/ZERO_CHECK.tlog/CustomBuild.command.1.tlog",
-      "size": 483,
-      "sha256": "6e12041133ba6e4e483fac8d5e28e71f8179ec304fe13a88b11bb07184c80ac5",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Debug/ZERO_CHECK/ZERO_CHECK.tlog/CustomBuild.read.1.tlog",
-      "size": 2038,
-      "sha256": "72de3e1a54053b673a941c1f5edb21c4f3afe4782edff8964000190799eb4a10",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Debug/ZERO_CHECK/ZERO_CHECK.tlog/CustomBuild.write.1.tlog",
-      "size": 149,
-      "sha256": "3b653afb93861946488c5e2f09c8a74d596c8a04c60cbb467827d58b347f103c",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Debug/ZERO_CHECK/ZERO_CHECK.tlog/ZERO_CHECK.lastbuildstate",
-      "size": 156,
-      "sha256": "31894e3d7828aa49a6a06fc77804476113ccd08d3c8be58b99a0790ee005bf21",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Release/ALL_BUILD/ALL_BUILD.recipe",
-      "size": 946,
-      "sha256": "58cfeda3d1985d0fba3fee2e1b87feccc15307a2743276074750cd8811f7bd17",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Release/ALL_BUILD/ALL_BUILD.tlog/ALL_BUILD.lastbuildstate",
-      "size": 158,
-      "sha256": "25dbab9c2a137997d68c48eebd98adf89bfe4805807d534c81ec2139161af14a",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Release/ALL_BUILD/ALL_BUILD.tlog/CustomBuild.command.1.tlog",
-      "size": 383,
-      "sha256": "e6722012d1e7e4a2f2725938463dfe432996af8f0d48c0ba58995c2ecb1ce73b",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Release/ALL_BUILD/ALL_BUILD.tlog/CustomBuild.read.1.tlog",
-      "size": 7510,
-      "sha256": "38dd610888d0d31775799059adb5265337762cb16043fa7665f34148d09be0a9",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Release/ALL_BUILD/ALL_BUILD.tlog/CustomBuild.write.1.tlog",
-      "size": 94,
-      "sha256": "eabdd34856ecc7388ab19a124e214a6b51a048724a5641cc996b6b9fdd90ffde",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Release/ZERO_CHECK/ZERO_CHECK.recipe",
-      "size": 284,
-      "sha256": "df6c31384103fd5f8c6cf711937e6977f5598c22ef2a2ccaec2e6aea3b8218fa",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Release/ZERO_CHECK/ZERO_CHECK.tlog/CustomBuild.command.1.tlog",
-      "size": 483,
-      "sha256": "6e12041133ba6e4e483fac8d5e28e71f8179ec304fe13a88b11bb07184c80ac5",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Release/ZERO_CHECK/ZERO_CHECK.tlog/CustomBuild.read.1.tlog",
-      "size": 7603,
-      "sha256": "3bfd050d66e377cd6982c6e42f67b9037c07a9e2cfb4023039317bbacffdac32",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Release/ZERO_CHECK/ZERO_CHECK.tlog/CustomBuild.write.1.tlog",
-      "size": 149,
-      "sha256": "3b653afb93861946488c5e2f09c8a74d596c8a04c60cbb467827d58b347f103c",
-      "language": "data"
-    },
-    {
-      "path": "bridge/build/x64/Release/ZERO_CHECK/ZERO_CHECK.tlog/ZERO_CHECK.lastbuildstate",
-      "size": 158,
-      "sha256": "25dbab9c2a137997d68c48eebd98adf89bfe4805807d534c81ec2139161af14a",
-      "language": "data"
-    },
-    {
       "path": "build.zig",
       "size": 9429,
       "sha256": "6b566e7cfdfa009639dd0290f91f0ca4b51633e4730870c8b3cdaea9b6b52221",
@@ -2081,21 +611,165 @@
       "language": "json"
     },
     {
+      "path": "configs/Rules.json",
+      "size": 8321,
+      "sha256": "d7f110f618c7a57ebbfaa1a2b4235cfd3f846d0340436441514b877254e5ba0c",
+      "language": "json"
+    },
+    {
+      "path": "configs/Rules.json.before-reload-test",
+      "size": 7950,
+      "sha256": "b847829c4e9a38c9864f3f5050b44f2bb5aa4c3949b92b091f01c3748fcd1239",
+      "language": "data"
+    },
+    {
+      "path": "configs/aegis.conf",
+      "size": 740,
+      "sha256": "634f9b4fb85162ed9cce7c7e9a01ce4453c082444766bdebd8b1f0bc82385729",
+      "language": "data"
+    },
+    {
+      "path": "configs/canary_tests.json",
+      "size": 5476,
+      "sha256": "183efa9d2eba31ff848a75a33ef4e1ecb4871a4196dd67e7bd39c6aa6f29f77b",
+      "language": "json"
+    },
+    {
+      "path": "configs/cluster.example.json",
+      "size": 186,
+      "sha256": "067a1150b5fcd65e89e931a57b02d7057430eaf34b1acee660c750baf1704e53",
+      "language": "json"
+    },
+    {
+      "path": "configs/policies.json",
+      "size": 3367,
+      "sha256": "b7224fa01572a637336af6629d2a63c44fd9c53854dfd401d6264e5249ca3a4e",
+      "language": "json"
+    },
+    {
+      "path": "configs/policy_trust.example.json",
+      "size": 154,
+      "sha256": "77907f3177f8f1a2459d811ade8f86e76972f5051f2a3a1b7a1c867c78dc534a",
+      "language": "json"
+    },
+    {
+      "path": "configs/runtime.json",
+      "size": 1414,
+      "sha256": "8e13c2cb99960ca4c3966675a1acc3a5dffea8ba28efa00f4e3bb7c0d4cbe5fd",
+      "language": "json"
+    },
+    {
+      "path": "configs/schema.json",
+      "size": 3903,
+      "sha256": "d0bfb8b09f79ba91fab3b94c2ee095faff5393e1239a30457b9c1b33ffd59747",
+      "language": "json"
+    },
+    {
+      "path": "configs/siem_config.json",
+      "size": 3076,
+      "sha256": "c94cb2db8c642f9568920089bc2de9ed9cabccc3d42c75a905ef07f365a5d13a",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/cluster_config.json",
+      "size": 2173,
+      "sha256": "a415fda1e86d04dd365ef95dd80108b5d9d577f609e4e9a08396a03c38491a80",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/etw_realtime_config.json",
+      "size": 2148,
+      "sha256": "e737499d78b7066432ced0911af2473a777c5c93b2d1ebd60ee7f1157b315b67",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/federation_bench_config.json",
+      "size": 2470,
+      "sha256": "5155d45d32089c5d172914656f72cab4b99fa98f048476a8534784a9ab50959d",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/federation_config.json",
+      "size": 2423,
+      "sha256": "bec464f05022dec3c2fe25ae05a2cc6060d2ecc8b3456dab6ef89f005a947a76",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/federation_tcp_config.json",
+      "size": 1979,
+      "sha256": "0a400c81c1d015b484d2cbe2113881859d838616621aa2dd8da8a29b92435c08",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/federation_tls_config.json",
+      "size": 1010,
+      "sha256": "f0d7d6a5e248d86d34ae1e8cd1e5b4cfadb2be2da66684b2cc13d2525a7bd341",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/host_correlator_config.json",
+      "size": 4095,
+      "sha256": "167e3aea0d4f4764157549959a43eaa29807d6ca86ddf9e7704cab7efbfa8c97",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/host_telemetry_config.json",
+      "size": 488,
+      "sha256": "12a2d014925ff31884178031415adf4d0b6884f1fe45c3bb6eedb6b90de12a70",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/host_telemetry_detectors_config.json",
+      "size": 2336,
+      "sha256": "960518dd0bf04d09dc0cb78f3dfdb0518e516fd942be7a1f2af9f56684566b6f",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/host_telemetry_mock_config.json",
+      "size": 2023,
+      "sha256": "8b773ea7020d2d9f71c998daf7ebc68f81fd8710477977fe7f87455c2334192d",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/host_telemetry_scenarios_config.json",
+      "size": 3049,
+      "sha256": "4bfe27742f8aadc8b32493323fdd847778fb312fb85c971c247d7439d01787bf",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/injection_detector_config.json",
+      "size": 1251,
+      "sha256": "2881c30eb3ce6b7e4f94760db8f56761723ccd72e139b135502077994bfad042",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/integration_test_config.json",
+      "size": 1977,
+      "sha256": "4fa64eede804fae072731b56ce9b30b08ef40ff0b88c072f4d12483591b30c3f",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/perf_benchmark_config.json",
+      "size": 2373,
+      "sha256": "20081abf87b4ee67d8c78f143608dc998824f9b2a13e0bfcf6737995c7936b68",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/registry_trie_config.json",
+      "size": 1376,
+      "sha256": "c89d9060ef1e2a4f7534e76438afbb2c5b666e2928ab7137041a74247287d555",
+      "language": "json"
+    },
+    {
+      "path": "configs/test/windows_adapters_config.json",
+      "size": 2350,
+      "sha256": "f42d54e0f412d5c7b60e86510b2cddd98b3753932eeefc26757c53e0596a6690",
+      "language": "json"
+    },
+    {
       "path": "go/aggregator/README.md",
       "size": 2337,
       "sha256": "47138006684f7ba207f0665633224354d7c3e58c903915c896f1e2ff58fc63a7",
-      "language": "data"
-    },
-    {
-      "path": "go/aggregator/aegis-aggregator.exe",
-      "size": 8941568,
-      "sha256": "48882a20a339c1b3fd10bf12029f2fa2dbcbc402836a296434a6df45e81cd690",
-      "language": "data"
-    },
-    {
-      "path": "go/aggregator/aggregator.exe",
-      "size": 8942080,
-      "sha256": "5bee5bace24073c40cb9a6739b899af7389bd1e055589d1ffb51ef987b6fdc86",
       "language": "data"
     },
     {
@@ -2159,6 +833,168 @@
       "language": "script"
     },
     {
+      "path": "nose/.pytest_cache/CACHEDIR.TAG",
+      "size": 191,
+      "sha256": "37dc88ef9a0abeddbe81053a6dd8fdfb13afb613045ea1eb4a5c815a74a3bde4",
+      "language": "data"
+    },
+    {
+      "path": "nose/.pytest_cache/README.md",
+      "size": 302,
+      "sha256": "73fd6fccdd802c419a6b2d983d6c3173b7da97558ac4b589edec2dfe443db9ad",
+      "language": "data"
+    },
+    {
+      "path": "nose/.pytest_cache/v/cache/nodeids",
+      "size": 2,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "language": "data"
+    },
+    {
+      "path": "nose/README_DEPLOY.txt",
+      "size": 2189,
+      "sha256": "9e8d066be46df71c961c41e67c0332bae1e14995314c3fc8907ecedacd64b244",
+      "language": "data"
+    },
+    {
+      "path": "nose/canonical.go",
+      "size": 17168,
+      "sha256": "a3800029b314ba8b1c54df2193d620f3fc466a35572d09c76ea042925deca1e5",
+      "language": "go"
+    },
+    {
+      "path": "nose/canonical_test.go",
+      "size": 19939,
+      "sha256": "37534f9c74f9a8409c6b5ee4815b314711073921e7515373f03846e67ed012a8",
+      "language": "go"
+    },
+    {
+      "path": "nose/capture.go",
+      "size": 13994,
+      "sha256": "0744e1d7af30e6c15dd70b4eb390f9c728225a9b758e835c32adbf2ddf3a263d",
+      "language": "go"
+    },
+    {
+      "path": "nose/capture_pipe_test.go",
+      "size": 4823,
+      "sha256": "5a329213f4151ccc9335c43fed6e86be543d9e66e3f88ed021930972b71a3f38",
+      "language": "go"
+    },
+    {
+      "path": "nose/cleanup_nose_mouth.bat",
+      "size": 5552,
+      "sha256": "59e9823f0cc805ef5b4e9b3c98449efffebc4c73b3e8176a0e398163d15f69b6",
+      "language": "script"
+    },
+    {
+      "path": "nose/collectors.go",
+      "size": 17082,
+      "sha256": "c171260d6225c4247363fca28ffe2754d462590c5719b835677273a531ff83e9",
+      "language": "go"
+    },
+    {
+      "path": "nose/collectors_test.go",
+      "size": 7248,
+      "sha256": "8e5055c5cd98b1c32328b407ef657f231b93141e837105707aff919e46f49e3c",
+      "language": "go"
+    },
+    {
+      "path": "nose/go.mod",
+      "size": 976,
+      "sha256": "f43675874d20a20e9871e69504b3c36610e90d1c52bdb397d849f6bea41ede30",
+      "language": "data"
+    },
+    {
+      "path": "nose/go.sum",
+      "size": 5073,
+      "sha256": "d595574160afbc66b90b9ae792406297214d4675bbd5290ebdc02103ed58cf72",
+      "language": "data"
+    },
+    {
+      "path": "nose/golden_path_ffi.go",
+      "size": 13370,
+      "sha256": "60cfd664fc71edfebd011dfad54aa3899a4240b0641113480da27ae764dc1a1e",
+      "language": "go"
+    },
+    {
+      "path": "nose/headless_test.go",
+      "size": 1843,
+      "sha256": "351515760362aaf3323c2bbd0444587b599000c9ffb3d04a71b808a4b35380ae",
+      "language": "go"
+    },
+    {
+      "path": "nose/inject.go",
+      "size": 2099,
+      "sha256": "42341ff1905f0817fef2116f220a2f524b0bf7cd4901336dd3b57c03a6d6bd2f",
+      "language": "go"
+    },
+    {
+      "path": "nose/ipc_reader.go",
+      "size": 2770,
+      "sha256": "ebe65dcc80ea1460f4f3c46d4ae6c5c646c08f0b7cdd6cd7534d4e5e6e05bbf9",
+      "language": "go"
+    },
+    {
+      "path": "nose/main.go",
+      "size": 7460,
+      "sha256": "f046ecd87a6d377687fdca0a26b2ecf0b65e1ccbe43c5f84eb16bcbd3f4cc598",
+      "language": "go"
+    },
+    {
+      "path": "nose/model.go",
+      "size": 17455,
+      "sha256": "b97cecf8c5986dfa458a5a0a9603e4fc9299ba6856414d3f6c4c1117870a6955",
+      "language": "go"
+    },
+    {
+      "path": "nose/pipe_writer.go",
+      "size": 4696,
+      "sha256": "9800087df7c0fe69024fc4c93740f72c6984a8e5e1961345f3ff4ef5daf5ecdd",
+      "language": "go"
+    },
+    {
+      "path": "nose/run_nose.bat",
+      "size": 1090,
+      "sha256": "434d625bfaa0340c479bd2496fddc22197dc9791610618828c57ec545542419b",
+      "language": "script"
+    },
+    {
+      "path": "nose/signature_classifier.go",
+      "size": 1893,
+      "sha256": "7f306a4b12771c09d96cb1c2757d789b3fe8738bdd2ac33abae12a0ed00a79b3",
+      "language": "go"
+    },
+    {
+      "path": "nose/signature_classifier_test.go",
+      "size": 4281,
+      "sha256": "f1f20a9b24dd10223034be9916fc7e9b0c092ea5c8c9dfc6c5ca11e6fb72326c",
+      "language": "go"
+    },
+    {
+      "path": "nose/styles.go",
+      "size": 6355,
+      "sha256": "1555b103916c9e1dbdbae7bc01f194be69dc7114a97310cd69c33de7d56d03ab",
+      "language": "go"
+    },
+    {
+      "path": "nose/talkers_live.go",
+      "size": 8260,
+      "sha256": "c2cfc1f8a4c0576153fe253a7a15905b98949285d4a8bbbecb719552aa711967",
+      "language": "go"
+    },
+    {
+      "path": "nose/traffic_sys_other.go",
+      "size": 327,
+      "sha256": "537cc96ecbbd31eafef81aa756dbbedda48a9ffe58251c9b5450f55c18e030d5",
+      "language": "go"
+    },
+    {
+      "path": "nose/traffic_sys_windows.go",
+      "size": 7249,
+      "sha256": "917e779e137dc29c1fd55c009e267a06d35cc846a9bbd1cfaa638810ef71e7e8",
+      "language": "go"
+    },
+    {
       "path": "requirements.txt",
       "size": 528,
       "sha256": "7d295f60b0f82d744c78773ad22745dbad02b3fccb96abd61a2df338036266df",
@@ -2167,8 +1003,20 @@
     {
       "path": "runtime_manifest.json",
       "size": 18563,
-      "sha256": "c9675885ce68d884b9353939b79c1a80d10e11418649f82ec727028f6bb84212",
+      "sha256": "a0debe436ab867f94dd80a13b73214cb5723eea36e835fb6b5e11c859a61f386",
       "language": "json"
+    },
+    {
+      "path": "rust-src/bin/aegis_keygen.rs",
+      "size": 11600,
+      "sha256": "41a323a7bc91d0cdcdde4feff01110b4d3c3ae732a7b4806d5c96fac23ece8bd",
+      "language": "rust"
+    },
+    {
+      "path": "rust-src/lib.rs",
+      "size": 82902,
+      "sha256": "0811f8f7e705eb7c143b298a6354b9a24f659bd288a7a65ca60a3f321a3adff3",
+      "language": "rust"
     },
     {
       "path": "scripts/Dashboard.py",
@@ -2937,6 +1785,1722 @@
       "size": 1291,
       "sha256": "4f7c828efb7ddda57a24faf782286e1e19172ed433c098f3c698d3ea6da3ffee",
       "language": "rust"
+    },
+    {
+      "path": "src/all_tests.zig",
+      "size": 10005,
+      "sha256": "28ed28e7a494543a1e33fe36424d6506dde3abccc4eb9b7c3d779616a71a7335",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/flow_engine.zig",
+      "size": 32104,
+      "sha256": "0d4abdc6146d012ef9a0edcbd0c6c5d092ef839b9272a9b85b9ecde917d4b801",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/flow_table.zig",
+      "size": 13940,
+      "sha256": "ed1b6b82d9e2cd583aeeb90f6bb06d37c62f73dd7bd204f887563677ef0ab71e",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/flow_types.zig",
+      "size": 576,
+      "sha256": "9efa4362d32d49fde6a8c7d0120ea685bc60699e735ceaf4284a8ea35c35531a",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/l7_classifier.zig",
+      "size": 3351,
+      "sha256": "2bb87b6b240b97be38824f581f5211923b613c23551cada9b788954f46a7203c",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/minifilter_reader.zig",
+      "size": 14693,
+      "sha256": "51762a1575118fa7d213981b5fb898136ce5248b25336df4478fb8db5526d503",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/nose_contract.zig",
+      "size": 12007,
+      "sha256": "1d04714db969d140e9ca17c7af81061b87d671bf4543ad7ea912845e1ba21288",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/nose_pipe_reader.zig",
+      "size": 18919,
+      "sha256": "d99f36f35a704955aab30cf773f587181c4cf5393b114f38a6fdfbfee941bd0d",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/npcap_adapter.zig",
+      "size": 11290,
+      "sha256": "e5ddbd3c89f1d85f887f25f0d8760b8ce77881e3bff133c092e9bf68994a9ece",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/npcap_capture.zig",
+      "size": 67937,
+      "sha256": "e5b7980eee661d81c423569df46bb8e8cbb499303ab26f46d6aa6eb6357da44b",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/npcap_test_live.zig",
+      "size": 19462,
+      "sha256": "f7274d9dacdba48df8ce3b4c44cbcff8a2a88a808ccde691eb0c5015a4bed137",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/packet_decoder.zig",
+      "size": 8747,
+      "sha256": "45f5e55f300d3ca571b8e7cfc7c7fc311e48fbd4224cc9014bc68b74c3337613",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/pipe_monitor.zig",
+      "size": 13443,
+      "sha256": "ce35c031e438454ad8b24ed6c5d0d9a05aaef1b81cabecb2cdaa716ec1a71f74",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/proto/parsers.zig",
+      "size": 18625,
+      "sha256": "876237582fef852988e01fe09cc0b12d4e64feaf6c93aa7158684e18b8c5c0ce",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/stream_reassembly.zig",
+      "size": 7044,
+      "sha256": "830dff97e44765193586b6a00377681c91819e7553307fe73ad48e114b9d8c4b",
+      "language": "zig"
+    },
+    {
+      "path": "src/capture/windows_capture.zig",
+      "size": 8499,
+      "sha256": "a40e4f8116e136528528b14a431e082ce109785a02a44c08d7fe0dcd8194e172",
+      "language": "zig"
+    },
+    {
+      "path": "src/contract/abi_manifest.zig",
+      "size": 1496,
+      "sha256": "f75ce253b207893abd3f832d82308ae9b5deb3e59c3ab8a151cdfceee32648f4",
+      "language": "zig"
+    },
+    {
+      "path": "src/contract/canonical_event.zig",
+      "size": 47605,
+      "sha256": "ff33e9dc13d9ab081bd0ea4fd19430cc3cafbb956c4de71c674916934c844d83",
+      "language": "zig"
+    },
+    {
+      "path": "src/contract/event.zig",
+      "size": 6361,
+      "sha256": "ecff08a0ddd93902017a344fc72b72336d349c15f08e1a806e9efb06f27f563e",
+      "language": "zig"
+    },
+    {
+      "path": "src/contract/event_fabric.zig",
+      "size": 14754,
+      "sha256": "74f6dd79127bd07f7d12c5f2ae945528998f220e5823b6c0b3a72915c2823dc2",
+      "language": "zig"
+    },
+    {
+      "path": "src/contract/event_queue.zig",
+      "size": 7292,
+      "sha256": "3e96f688ab95dc38479d44e7571e038f2f10466354d57eb200c778dba43a34d9",
+      "language": "zig"
+    },
+    {
+      "path": "src/contract/runtime_manifest.zig",
+      "size": 6505,
+      "sha256": "e3f64eae5ccab9c23ca144d8a971423c8693fa600c3f2c3a7e4f29af4888901c",
+      "language": "zig"
+    },
+    {
+      "path": "src/contract/runtime_spine.zig",
+      "size": 26849,
+      "sha256": "948ec09d509acd63e662847fe2d0e0501139c2973b4c0b5dfa628827552560dc",
+      "language": "zig"
+    },
+    {
+      "path": "src/contract/wire_event.zig",
+      "size": 17462,
+      "sha256": "b01b33c873038ba64ba3ddc5aaa66748c53ba6c9e6c1beeacc909385e71dafba",
+      "language": "zig"
+    },
+    {
+      "path": "src/control.zig",
+      "size": 447,
+      "sha256": "f6ff9adba4e23170bbb48798c11c0bc78bb1888245457c60a1edb9d40ed76e87",
+      "language": "zig"
+    },
+    {
+      "path": "src/control/audit.zig",
+      "size": 4181,
+      "sha256": "71b8e556a8d947f4b0081a2c252e8a6906957446dd7536b5618a9d93e79eb63e",
+      "language": "zig"
+    },
+    {
+      "path": "src/control/authorization.zig",
+      "size": 3443,
+      "sha256": "9f9ca403396a6814742b0dcb5e34df4e14f94199b86f3e1455a1b5678b309e07",
+      "language": "zig"
+    },
+    {
+      "path": "src/control/defcon.zig",
+      "size": 3983,
+      "sha256": "381dd4f2a72ca0c6eca4cb5a84ff616223bee309fca88008f7e7004913a37994",
+      "language": "zig"
+    },
+    {
+      "path": "src/control/handler_registry.zig",
+      "size": 110582,
+      "sha256": "1982e581e5ad4f83eedfa9539e80935e3396be63f0fdb48ac83c46283b057186",
+      "language": "zig"
+    },
+    {
+      "path": "src/control/health/runtime_health.zig.scaffold",
+      "size": 12238,
+      "sha256": "0752e9defb33591fa1a205a301e85952a43930fb5b66ba7d48351c2695bd36b2",
+      "language": "data"
+    },
+    {
+      "path": "src/control/protocol.zig",
+      "size": 20071,
+      "sha256": "8120be1551bf12d7c5641838db333432fb76b7883a311f8b97757b0d88e825db",
+      "language": "zig"
+    },
+    {
+      "path": "src/control/state_machine.zig",
+      "size": 21509,
+      "sha256": "c2de2e9806ed80049b0eff8088779616db23c566a619c84a99a64ed94033ae9b",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/authority_review.zig",
+      "size": 7989,
+      "sha256": "50f8fc955d386ce1fa32001b6d2f008cb960d0db011824582ac9434a1755a7cf",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/brain_engine.zig",
+      "size": 22813,
+      "sha256": "df3613724861dc7b82fbaa6f5df1e5a13e759ca3dd05bebd9c53c3b89f822c3c",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/bridge_init.zig",
+      "size": 24625,
+      "sha256": "5741f1908cd842b06676d7d738e4587ecbaa24d317d369a902767f69b8f5d89e",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/canary_progression.zig",
+      "size": 19395,
+      "sha256": "5a6510636765a4f076d077ab40a9ba48c52b053b243c004c3445f33879a5c715",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/compliance_reporter.zig",
+      "size": 30027,
+      "sha256": "791b856c5124dbb56887473b89e1cd50a91c603daf1eef956607600836f97156",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/concurrency_harden.zig",
+      "size": 20439,
+      "sha256": "07fedf7e65103023664adb9ef21ab82533416b940dfd6bbda13c544fe394954d",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/contract_freeze.zig",
+      "size": 20302,
+      "sha256": "8ab143f1dbd969ff65392556b99af26077fa0a04912455ac32e5e86760956d4a",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/diagnostics.zig",
+      "size": 7839,
+      "sha256": "63e3449ab5804ae80970f435adc5fc0dae513394c0c86222b10bc501ca7522c6",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/e2e_harness.zig",
+      "size": 23144,
+      "sha256": "553151ecbba5f9bf3b2ac56a7e67d4240b731bdd298c5deea7e062b990faf42c",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/fabric_accounting.zig",
+      "size": 27079,
+      "sha256": "f512659afed7443da9b608d9063f5465678764c2e05db998cc9ab13f3d87b3c0",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/integration_test.zig",
+      "size": 27630,
+      "sha256": "ab9ed048eee23a130699212181569a39586ff2dbb9e75435fb0703edb636414a",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/legacy_removal.zig",
+      "size": 8485,
+      "sha256": "eb35ef424b21cceea66a00ff157a6e9269dfe3e3505c23a1f7541b835dbb08e3",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/memory_pool.zig",
+      "size": 10043,
+      "sha256": "ecb37b1112f03a80efafd13153d1f78a4de9b9504e53f57f73653a585379d152",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/nids_analyze.zig",
+      "size": 104176,
+      "sha256": "895e51855c1384bcb1a2a71d47b3c887b430c514dbcb3113463e16b63e157639",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/nids_capture.zig",
+      "size": 15677,
+      "sha256": "339d661e38d98d50f56162f5f0b0e3d094d60cb2c8683ac7a4790c435cb17925",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/nids_main.zig",
+      "size": 19119,
+      "sha256": "e8769ef1a68a85cf9fab8ff152a84251f8e1f4e0d497daefb9c89bbb52c0ba6d",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/perf_benchmark.zig",
+      "size": 29138,
+      "sha256": "e641380b447b07fc842a16720112cbc3cdc21dbbea53f4872c326bc1c76ac5b7",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/performance_harness.zig",
+      "size": 25934,
+      "sha256": "0a243d7a1fa1898e3b766f5f472faefd67fb52c18d7f87ba08b51a7bb610ee7c",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/priority_queue.zig",
+      "size": 9643,
+      "sha256": "0630a24c7054670f984737144dd7378b0312cadbc35e41366e391fe7052b3a4b",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/real_ips_path.zig",
+      "size": 13096,
+      "sha256": "787523d9fd290ba7a6569452583a4f1b3a49178226a2d72bb1fa38341e373270",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/runtime_paths.zig",
+      "size": 4600,
+      "sha256": "f4a3b69735345384e6276031017a479a23314a0a7a7108206848d4884b8a5c0c",
+      "language": "zig"
+    },
+    {
+      "path": "src/core/rust_pep.zig",
+      "size": 21300,
+      "sha256": "ead71a14e9b79a1f56e214b3094efa065a434117137076200ff60aeee45ccf1f",
+      "language": "zig"
+    },
+    {
+      "path": "src/daemon.zig",
+      "size": 42839,
+      "sha256": "f05942328743ea31095550c6cbaae4a383f9403a7f6ad512821a7e90b4850b89",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/anomaly_detector.zig",
+      "size": 7594,
+      "sha256": "b09f1a5b8f799312b21c074b6b0de199c0983fa6221d65971a0c78c306ae8e13",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/correlation_engine.zig",
+      "size": 26805,
+      "sha256": "64c648efa2dfec060767e9087f86f011aaba403b43c561be0a4e88763c63fd95",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/correlator.zig",
+      "size": 14870,
+      "sha256": "a914a89ffedce00faf6c7d655918edfedb848661dd4329f3a18293ba48d6f5a0",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/detection_engine.zig",
+      "size": 21046,
+      "sha256": "9ed871026e70aa1e8ada277a2cb46cc18371c6adf5604b35beb0d6f527fb5870",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/detection_interface.zig",
+      "size": 11903,
+      "sha256": "05be95f1a575f6236cce9dba2096120a921b4d0cc9db5c8261c692cec0b0ae0a",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/detection_result.zig",
+      "size": 944,
+      "sha256": "62fc174b14687512c4532a27f185d9e9f023eeaae8d875fa22ee58b5a0576542",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/injection_detector.zig",
+      "size": 36205,
+      "sha256": "8ec2acdd829f118543ca0fe5a3ee604eaaefe24e990d79ac6f75a139456195de",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/ml_detector.zig",
+      "size": 41129,
+      "sha256": "eea78c4e70d454c3fee8a1f36807fda4d48d6f5e4c42f5574036656820fd498c",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/proto_anomaly.zig",
+      "size": 4842,
+      "sha256": "a916d681d184df4b21ff13197fd44853d6eed05c1e89ab986c90dc36b980642d",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/rag_engine.zig",
+      "size": 23964,
+      "sha256": "e238ceb3c9149ee7db1a7a5bfaf65a13e2963f6d295c110541555f33d5ec0670",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/rag_intelligence.zig",
+      "size": 11825,
+      "sha256": "b1368c7885be5dbc583f9219f216776b09722c0c0ac11b13345067c17a2b3038",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/signature_engine.zig",
+      "size": 11221,
+      "sha256": "c5524301919d81ad5d0e906623923a47e948665a69a4a25611fe254adec3b621",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/threat_intel.zig",
+      "size": 13772,
+      "sha256": "a39235c0d6a6ee41140ff4c62e3fb2612825deaace3a0a63328ac9a9ffa71ad5",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/threat_tracker.zig",
+      "size": 18994,
+      "sha256": "ceb5c7639e179897c1cda783032d7d6d9859b7e4ff6ad2d4f3bfe08e45ba5343",
+      "language": "zig"
+    },
+    {
+      "path": "src/detection/verdict_aggregator.zig",
+      "size": 9608,
+      "sha256": "567f42c236fbd3f135e6a3287f8061886a4bf9e30dbc8efddde8fc84a6ddc606",
+      "language": "zig"
+    },
+    {
+      "path": "src/federation/aggregator.zig",
+      "size": 4295,
+      "sha256": "fb1ecfa2406a49d819ccb601eefde1bc6368ca6f11336521b4871faf18047ec3",
+      "language": "zig"
+    },
+    {
+      "path": "src/federation/cluster_coord.zig",
+      "size": 55479,
+      "sha256": "e60056b387032613ed83692943661e0ca6589b3b51416e73eed99aa7f05014db",
+      "language": "zig"
+    },
+    {
+      "path": "src/federation/cluster_uplink.zig",
+      "size": 19257,
+      "sha256": "0a41c507f5526d1862f3ced9926ba75258f3f609967464adab1b5ed127b490a0",
+      "language": "zig"
+    },
+    {
+      "path": "src/federation/federation.zig",
+      "size": 14546,
+      "sha256": "0d7490149a8e2d84a016406787e1e2a920754b85e47372526ce1d3cf7d857770",
+      "language": "zig"
+    },
+    {
+      "path": "src/federation/federation_bench.zig",
+      "size": 35776,
+      "sha256": "896877bbc3602fe6ee39b9475860e118696188c836b600902a91dd4735866e05",
+      "language": "zig"
+    },
+    {
+      "path": "src/federation/federation_codec.zig",
+      "size": 57138,
+      "sha256": "85692acf3c224b87aed0a7f4215ff313181a72d9905544f6d6f8418be3df1a59",
+      "language": "zig"
+    },
+    {
+      "path": "src/federation/federation_rust_tls.zig",
+      "size": 11195,
+      "sha256": "05f4ab1782db3ac5f17cc3b182f9a4b9220d2018f676c921e96b58698215298b",
+      "language": "zig"
+    },
+    {
+      "path": "src/federation/federation_tcp.zig",
+      "size": 41734,
+      "sha256": "16dd928e9cd56b4b420d4a7aaded3a99c8a7205095e0581d7a5d8bc37759c75e",
+      "language": "zig"
+    },
+    {
+      "path": "src/federation/node_registry.zig",
+      "size": 12638,
+      "sha256": "a74487af8fe2799fea2e0c8f2c451643225403476e18f8a56940e9c036794f69",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/abi_contract.zig",
+      "size": 17937,
+      "sha256": "9666d32cd79db136a17bbf783568743e22715aed48591a97b02bdd2b2274f621",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/decision_trace.zig",
+      "size": 13466,
+      "sha256": "9bc48e44f50f68efbdef93509cf7d5893cc5615ad63dd70a76e338d2c0321fc7",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/evidence_record.zig",
+      "size": 11609,
+      "sha256": "af9dcf8d28fca91c40dc7e7c885620a96996fedf836e08e880fc4d774bf56be8",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/forensic_log.zig",
+      "size": 24202,
+      "sha256": "5e5fdd323a0e3a78d94bc19846d7724f4bdc22ec98974ba7f49dccd5005b26bd",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/forensic_pipeline.zig",
+      "size": 31960,
+      "sha256": "4dff24ea69bbbf3d431327e9909113f361854719f2b83bcfe80c0709c3c7010a",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/forensics_engine.zig",
+      "size": 14893,
+      "sha256": "0277d0800fb2e1d5267ebd3113d42cdbb0187729d64ae02addc4413ad5f448e2",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/installer.zig",
+      "size": 21878,
+      "sha256": "26f8acaf00858f0d036e9c8305a7a7c9e7a1b8d5495f6598bb40ff5991274d37",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/integration_contract.zig",
+      "size": 28282,
+      "sha256": "42caad6bd98450b0c060f196adf7f09696f6678b92c68d9b2817f9500c6a8387",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/policy_contract.zig",
+      "size": 15439,
+      "sha256": "171a85deda8a3ea76ea08987cd9c3d5c4f00e88c4f79cc81605fd61702563611",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/provenance.zig",
+      "size": 14305,
+      "sha256": "c939c60f81e3f5cfea42d94c593269c85a4b0a31065b6d97c73509bde9ec3ae7",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/python_contract.zig",
+      "size": 6952,
+      "sha256": "af61df82c6e1409102351c008fa54a587d54bd2f4483b445805d2dc9d97401d8",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/release_gate.zig",
+      "size": 15554,
+      "sha256": "b9151d23c63cdb9f0c9704e516f4e9a7c7e0aab88618a8b6202b6bf3710e09e0",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/release_manifest.zig",
+      "size": 13231,
+      "sha256": "6981768ee41b42613c2a9cc8d12e711ab3f405eb06d66c811f1a6b02953aed5c",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/replay_contract.zig",
+      "size": 1347,
+      "sha256": "b483d2ea504f3783cd912893b4df33f68a88c7ac97e1ae16058ad40fd7c872cc",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/replay_engine.zig",
+      "size": 23537,
+      "sha256": "197baea9b454f2e38d31bd93b62127a51c028930887d9632d34cd4cc1da17c78",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/replay_integrity.zig",
+      "size": 9958,
+      "sha256": "c08df71040e4c8e2c51ac2ebe40fbb687c60d8f02c0b84f76aa231b33727ea24",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/replay_verifier.zig",
+      "size": 12937,
+      "sha256": "bf86f212bd67da3d87f85cc71bc3782e73d0c8d9ee0bd2d0295b32cef258f0f1",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/replayable_security.zig",
+      "size": 11155,
+      "sha256": "efe70fd349d7df12ff5ea3cb48135d86225ff2a14cb243f00119592528a91c3a",
+      "language": "zig"
+    },
+    {
+      "path": "src/forensic/siem_forwarder.zig",
+      "size": 52441,
+      "sha256": "4491308067bd96ead024498068e7a5ff74314d75aaccdc944740ab71eb75694b",
+      "language": "zig"
+    },
+    {
+      "path": "src/fuzz_entry.zig",
+      "size": 213,
+      "sha256": "9fdaf6a49b19eb770de982d49fa2fee220b3e8125891d01e4dae4281a62ac566",
+      "language": "zig"
+    },
+    {
+      "path": "src/integration_test_main.zig",
+      "size": 366,
+      "sha256": "93e96bf00fe6309332e61289b3551b9d40fdeec15a5c847943faffc26207ff64",
+      "language": "zig"
+    },
+    {
+      "path": "src/lab/scenario_contract.zig",
+      "size": 1276,
+      "sha256": "0421140e5f934732e80076960d5c8cbf9fccc6d6766af6a85de69422b5909532",
+      "language": "zig"
+    },
+    {
+      "path": "src/main.zig",
+      "size": 5222,
+      "sha256": "7491f95068a9fcf4d3868be161a706ebbd2dbd4f3f3233f78230e469d5c1d590",
+      "language": "zig"
+    },
+    {
+      "path": "src/operator/recovery_contract.zig",
+      "size": 1327,
+      "sha256": "68d3e5725e0d857eaef5b44acf44946fc4bd5dd149f9d422e6a077949ce468e5",
+      "language": "zig"
+    },
+    {
+      "path": "src/perf_bench_main.zig",
+      "size": 351,
+      "sha256": "7e1d9fd8ec58d5903d4bf4f28ed10847e9f7ef235c4d3870db4375571506ea1c",
+      "language": "zig"
+    },
+    {
+      "path": "src/pipeline/data_plane_contract.zig",
+      "size": 3315,
+      "sha256": "0a82f3ac46c47ba2c11af3e54d277a07d994ff199698e94339e3a0e88ceb1943",
+      "language": "zig"
+    },
+    {
+      "path": "src/pipeline/event_processor.zig",
+      "size": 30921,
+      "sha256": "f065b0a55b758aa40a5ef8cfa387f6f46b73869e2acf1beb8099ef8220b94315",
+      "language": "zig"
+    },
+    {
+      "path": "src/pipeline/event_queue.zig",
+      "size": 16414,
+      "sha256": "3db1225188c345b890096282ccdf557d169c74f5f43bc705e01ef19fc4ed4cb2",
+      "language": "zig"
+    },
+    {
+      "path": "src/pipeline/packet_callback.zig",
+      "size": 5253,
+      "sha256": "5b9c7dd35dc144a708b5002de41c3975c17be0be97b24facfb18b71cdb628eea",
+      "language": "zig"
+    },
+    {
+      "path": "src/pipeline/rule_loader.zig",
+      "size": 23764,
+      "sha256": "ea17874a99214bf99d8fe93e96fe84fee2a5faad138be8e087f9efb3d0af7bdc",
+      "language": "zig"
+    },
+    {
+      "path": "src/pipeline/runtime_state.zig",
+      "size": 8927,
+      "sha256": "b69bc113623746b6bf03d183f55916c079b03912697866e5369262fd14ba282a",
+      "language": "zig"
+    },
+    {
+      "path": "src/pipeline/telemetry_threads.zig",
+      "size": 12556,
+      "sha256": "086c2141508604953ed665018ed96162ce7d5cc9db07cb57511736fa0cd77309",
+      "language": "zig"
+    },
+    {
+      "path": "src/platform/win32_pipe.zig",
+      "size": 12207,
+      "sha256": "a145c775f357283463b82b6e81b3aedc629e7b1ee52a06d4d112bc546c4ea4d6",
+      "language": "zig"
+    },
+    {
+      "path": "src/platform/win32_service.zig",
+      "size": 5508,
+      "sha256": "55a45bf9a02bfba4e5ba87e04bed530965f12418b8bd24dfe8d8e0b13d9e917d",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/action_dispatcher.zig",
+      "size": 11732,
+      "sha256": "dd9a686bcfb5b27a4c99c019b0cdb596ffb838e248804fdaa3e29bd034ceec13",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/control_ipc.zig",
+      "size": 18309,
+      "sha256": "aeb81bd148cb7d99505a387341f9c1428530a3c06e631c1ee5d4c1f5cda24466",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/dispatcher.zig",
+      "size": 35934,
+      "sha256": "35b070a73abea99e810584fdedee453007c54731bfd1c15181641b6272f0512c",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/dispatcher_phase_b.zig",
+      "size": 25068,
+      "sha256": "84bbebb3db4fe74f640f7945670ff412a8773e000bf92a353b5719288ce8ed70",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/enforcement_receipt.zig",
+      "size": 5553,
+      "sha256": "c46a94e4976dfd90eb70d25a638d4a9dea7db3e87e09214469807c3c3f460738",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/pep_bindings.zig",
+      "size": 21679,
+      "sha256": "a1a88aaaf896be846f77d82829694788e6a36ab5d973a1008ce3d88b00cd1028",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/policy_contract.zig",
+      "size": 18380,
+      "sha256": "6cae896db3c4e2c8b74f14bfdbabbe11a06c4863bb415cee780711ebf6c986aa",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/policy_engine.zig",
+      "size": 16979,
+      "sha256": "4affe0c31479a219a7237508d8046da25b162817043bfe372314dea35beb5174",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/policy_ir.zig",
+      "size": 13767,
+      "sha256": "7cdb88277b79942a9d83678c99093df06cfda64d7d41a51d2bc23916d0f947ea",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/policy_plane.zig",
+      "size": 39965,
+      "sha256": "fa8df2e717ec82eda8fa160091f43b7b656235bccfe67bdad01e5665640993b6",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/policy_signing.zig",
+      "size": 57127,
+      "sha256": "53ded06beb870b2095f67b66815991df9400d12cc4a9bd86555c01b8f16783db",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/rule_action.zig",
+      "size": 7735,
+      "sha256": "8e5216cbed864c37236578f4fdf2fe183d0ea293fe4b6807a4d6d8c0ea57a42e",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/shadow_decision.zig",
+      "size": 9139,
+      "sha256": "3181b1f000cf86b6d34b8466b50f9f240075c79aa3c27ee16356e249271508f5",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/shield_screen.zig",
+      "size": 6416,
+      "sha256": "5c386e1bb34f31293b98a8cc9fd1295ae2339ab0f9f2dbc4fb8a84fa581d2034",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/tier3_state.zig",
+      "size": 8721,
+      "sha256": "eba1873d712878364b3b0bb0f1c94a708777200b2c4d29c716f89120d46df69b",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/trust_store.zig",
+      "size": 6539,
+      "sha256": "58eb186c1314c79e1a10c1c1cb327fcad22b2ec4f0fbd388699c147bd1503aa8",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/wfp_ioctl.zig",
+      "size": 10529,
+      "sha256": "de375b5089bf489c9f66eec6b1f6507b38386c8fd2a6684abbae33122cf4c3b7",
+      "language": "zig"
+    },
+    {
+      "path": "src/policy/wfp_production.zig",
+      "size": 983,
+      "sha256": "a9493cad202527f1cd0fa8f73ff8cc37894b7214dbaa1a9f32a8256f0211e9c2",
+      "language": "zig"
+    },
+    {
+      "path": "src/release/artifact_contract.zig",
+      "size": 1746,
+      "sha256": "73c8b54305fb9271e30c96dd2e347f39770f7320318439b5467e8a17f6f6e0a4",
+      "language": "zig"
+    },
+    {
+      "path": "src/reliability/fault_injection.zig",
+      "size": 23268,
+      "sha256": "41968bb3a893a3716794a45c33a65afafbbc7eaa83c3c95e9bf74e5a6029d71a",
+      "language": "zig"
+    },
+    {
+      "path": "src/reliability/fault_matrix.zig",
+      "size": 18576,
+      "sha256": "81f562efe6d9a18b12cbd2837daa152d89d204a3750c58720f99e6c8693762d9",
+      "language": "zig"
+    },
+    {
+      "path": "src/reliability/latency_histogram.zig",
+      "size": 5768,
+      "sha256": "9e96b64765821aeea23e846f1ebce950418dfa445245aafc53d25e764f1256e1",
+      "language": "zig"
+    },
+    {
+      "path": "src/reliability/lifecycle.zig",
+      "size": 23383,
+      "sha256": "3946fcfb1c593487f0b0b3463b4d27e13fa19ff91ec34e347a2e1238e7ac9237",
+      "language": "zig"
+    },
+    {
+      "path": "src/reliability/release_engineering.zig",
+      "size": 17185,
+      "sha256": "0a7516fa9dc809ddfaa493f87c4baffb516df33adca9592d037da95a66c78b5f",
+      "language": "zig"
+    },
+    {
+      "path": "src/reliability/release_provenance.zig",
+      "size": 14866,
+      "sha256": "120c859bd1d7c1ae189dc1ac7d30dbe8c6f4c1d8b70c333abd49a11b8673698d",
+      "language": "zig"
+    },
+    {
+      "path": "src/reliability/reliability.zig",
+      "size": 22755,
+      "sha256": "5901eba231678b709ce2e92436722d23c49c9554fa7aead43a7131aa124e208b",
+      "language": "zig"
+    },
+    {
+      "path": "src/reliability/security_check.zig",
+      "size": 12938,
+      "sha256": "47fdf95c3bb0b2b7cf5e5dfd4e4fc681d99357c469c6ad3061ba2be0eb8a77aa",
+      "language": "zig"
+    },
+    {
+      "path": "src/reliability/watchdog.zig",
+      "size": 7869,
+      "sha256": "2915877f4c02df616414d30db10d359c9fc5286729f0a28d8a769d4d1af571f0",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/capture/flow_table.zig",
+      "size": 242,
+      "sha256": "f25ed3f922df916e60b3fb64e4e13ea4cf133a4f620e386f59bd72ef2d12ddcf",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/capture/npcap_adapter.zig",
+      "size": 251,
+      "sha256": "c25acb4a1f3e2f2dc70d8d75c633d970a55399205ba3720a2a7eb3ee3d07c856",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/capture/packet_decoder.zig",
+      "size": 254,
+      "sha256": "a320e3af7633fc00cc795d01477b434fc3f499009d838446a9f114f621ec6038",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/capture/proto/parsers.zig",
+      "size": 245,
+      "sha256": "24d605323b707ad992d43d24cfef687cea3c9a6d63b19874437b7e5f69117854",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/capture/stream_reassembly.zig",
+      "size": 263,
+      "sha256": "2b00aacd5bed985a89c4b52523373e12af98f4cf6e3f90b911bcdd9be1bae3f0",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/cluster_cli.zig",
+      "size": 13277,
+      "sha256": "ddd1885f8f7cee3a870104e904aab5ea9a1a7a31a07f3da36eb9338dcb66e430",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/etw_realtime_cli.zig",
+      "size": 5987,
+      "sha256": "607093a86ae2b9f44653cdbcf21b152f3700216b4cf1a9baca66f0d7395b2fca",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/federation_bench_cli.zig",
+      "size": 5856,
+      "sha256": "25fff9f4f36878b85c1176eb10d4394b024ebcfb1ebe97cf6f1e8a85d7147423",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/federation_cli.zig",
+      "size": 11602,
+      "sha256": "d1c2dd7610901fa92a4e2735eab3a00391a77627932766230d3f73f8e11382ea",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/federation_tcp_cli.zig",
+      "size": 12958,
+      "sha256": "f71d96eee95dd1a642cb9e4a2cc231771bcec4f0b93a227c5f950149be0c95b0",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/host_telemetry_cli.zig",
+      "size": 13480,
+      "sha256": "2c8e83fd686eaf688c5cff964dc1821eb1c5630a0fe599d11a9a469c411a617e",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/host_telemetry_detectors_cli.zig",
+      "size": 13253,
+      "sha256": "0f08fb4a3d76e2c08c0c2978c25949222afb1e160f34003722a7f08a4b33a82b",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/host_telemetry_mock_cli.zig",
+      "size": 12376,
+      "sha256": "e4ace64495d544775b4e38eec90802803a2aef91fd123b488920dbc83f8c7536",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/host_telemetry_scenarios_cli.zig",
+      "size": 12050,
+      "sha256": "f56eb6e58623780cf3b1cb8dd3f4cd264f6a28d82c566737b9a1ab2546d91c6b",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/injection_detector_cli.zig",
+      "size": 5184,
+      "sha256": "b244e3dbcc36e9e7fc6885380f74427b09cb74780154874b84f622bd29e822b4",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/integration_test_cli.zig",
+      "size": 4324,
+      "sha256": "c24aa73b88abe17caa01f30484c5124febcc15a48e225acdccf53510b254c70c",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/ml_test_cli.zig",
+      "size": 10814,
+      "sha256": "c70029d7c11afcc4272b2ce1134c6727c40204a5a9f43848d9625fc3e189ef98",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/nose_pipe_e2e_cli.zig",
+      "size": 2327,
+      "sha256": "8d71b00e0d921e6d5ef5d970d2ec294ae5bd04016168974f91dc0e185227d5cb",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/perf_benchmark_cli.zig",
+      "size": 7154,
+      "sha256": "d84e76a0b38cb15a161c2413bdc97d4548b608f7073a562b9ca5552e62b181b4",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/registry_trie_cli.zig",
+      "size": 11256,
+      "sha256": "3a6b3d38e5bac53ce7573826b13bb4062c5497af69aeffc4846e3ca63318271f",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli/windows_adapters_cli.zig",
+      "size": 7808,
+      "sha256": "7d7f3ac6eaa31afd7f41e67afd7014e3eb253e364a5bc01305ed5bb4c6fa108e",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/cli_imports.zig",
+      "size": 929,
+      "sha256": "741833b2629e9f465a16e9679c355d28c5a8a9cd575324946713f3f81782462d",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/contract/event.zig",
+      "size": 229,
+      "sha256": "095f907b25bd8f2d71fc7007affbe9b2ae0939ae607627a1f202a109bb2af2e6",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/contract/runtime_manifest.zig",
+      "size": 262,
+      "sha256": "6d39b19e5dd0b106250e6fb189ce43125361f41d6677e0340a6a8c5ad39e8766",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/core/bisect_a.zig",
+      "size": 657,
+      "sha256": "41f34c09e6e424a6f19199ee30fdfd6d5ec2fab19ee0cdfee173ff0b05a42130",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/core/bisect_b.zig",
+      "size": 1449,
+      "sha256": "621cfa78e714aeb7612fe6624d8ec0a5bf3d9d98dee78dc425d804c51caa91e3",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/core/core_configs.zig",
+      "size": 3068,
+      "sha256": "80a690f70294f898d11ac8ed169d6ada2a21b8467b85d0af3c0b79fbd1af5394",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/core/core_modules.zig",
+      "size": 649,
+      "sha256": "55c092b7e685499639786da0d7cd325eb2c581670fd28ba30b572f86ae55b89a",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/core/diagnostics.zig",
+      "size": 239,
+      "sha256": "439289eb0239f06e3b6fc59f05d4ad97f7241c552c9ea376de344c7d87a9f320",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/core/memory_pool.zig",
+      "size": 239,
+      "sha256": "5df0a42055560891cc4b2cce6481dff17a34339262cde6583ad40f8952501d96",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/detection/anomaly_detector.zig",
+      "size": 264,
+      "sha256": "30239225653aaa6ff1acd0cf3bec083be9035a21b5d40037f16dc55e7338f339",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/detection/correlator.zig",
+      "size": 246,
+      "sha256": "263b89aaeaaf1851664a8b7a99255115d1b0e094e7ab67f9d73e04cf03308d23",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/detection/proto_anomaly.zig",
+      "size": 255,
+      "sha256": "eb338b43abe0f77b18e480c2880b88131377ee5a941fd39e522787592b58144c",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/detection/signature_engine.zig",
+      "size": 264,
+      "sha256": "e66c71823ee331e27e62d1b20e35722556a2239cf2036d9874df3f4da373365e",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/detection/threat_tracker.zig",
+      "size": 258,
+      "sha256": "70ae5c84bee27af7a4fbaebeb4193902112f7c653c98b86574c1921cf21131fc",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/federation/aggregator.zig",
+      "size": 248,
+      "sha256": "72e9821faaca7a5ff3760d085f8ff7ec42c6ec14a151b994ced41dffd347c956",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/federation/cluster_coord.zig",
+      "size": 257,
+      "sha256": "44d7bfde65caa5819f513885cfa5ceb34915eae59563e06b0b0b851c2c7cd553",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/federation/federation_rust_tls.zig",
+      "size": 272,
+      "sha256": "098fc2c0422e4168ecf5a57b4fa69ebf04437292ad6d3bb9cfc01ad4734e9a05",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/federation/federation_tcp.zig",
+      "size": 257,
+      "sha256": "089128df10b8e34521337be549d35f182115e723e896d2560cd06c4082ba6313",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/federation/node_registry.zig",
+      "size": 257,
+      "sha256": "362d603ed36c60f4ee4bec165be60bee20f67c8248e4ce9c1b02944f518f6bb9",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/abi_contract.zig",
+      "size": 247,
+      "sha256": "9dc84cb75cb72ae197152524b084e6fc4b3de1f984c24feed69e23d2aee4e129",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/decision_trace.zig",
+      "size": 253,
+      "sha256": "96768b034d317ba0f10662bb47554554137d7c8d0e9872a9253845c1e326a163",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/evidence_record.zig",
+      "size": 256,
+      "sha256": "416fac778661df8ba9becc7d42159ab15fc91945bf4e1e5c1980735d9ef41374",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/forensic_pipeline.zig",
+      "size": 265,
+      "sha256": "69736a14ea5a3f495915da4f736271174bb5cc0f7dd46ebb4ecde15a0d7eb74f",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/installer.zig",
+      "size": 238,
+      "sha256": "0ec9b5fccb5d4f90942f450c0a70e0a37b49382922f4372ea867b7c7ebede82c",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/integration_contract.zig",
+      "size": 271,
+      "sha256": "91cd099776ea8c29f71b0e0a4e4cb29eefd8b8e8a26fc124c289b49af1062deb",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/policy_contract.zig",
+      "size": 256,
+      "sha256": "d8475db841610210cd0bfd8ee036e66cac075df2e3d23580e31cb9d0416e57e0",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/provenance.zig",
+      "size": 241,
+      "sha256": "091edb9950938eb88713c283824d2210fdddcb22d00d2822d8446bd578f77e8a",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/python_contract.zig",
+      "size": 256,
+      "sha256": "e3402b0acbca2b610ade124244960ea7acfe36b8463507e71a461265fbd7e754",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/release_gate.zig",
+      "size": 247,
+      "sha256": "0d1147cbc3a1eaccf398de06c1b1fdfc750a4a6a96a05e8858009608dcd41db3",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/release_manifest.zig",
+      "size": 259,
+      "sha256": "ad6af2f7a828bd500db60835f59c97d0b2f2d056b58b0d0cbc0b505886d68e6c",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/replay_engine.zig",
+      "size": 253,
+      "sha256": "abede1a76c5a80ff2a4fb6fa5fead64c09077cedd7006b7ee70186d09d5ea9f3",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/replay_integrity.zig",
+      "size": 259,
+      "sha256": "2120d1b130c229fcbe2dd5ac448ff232b958709c4d2fcdec7cce5faeb61c1ae6",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/replay_verifier.zig",
+      "size": 256,
+      "sha256": "42e1fce5516f9af6d98590ad59aa6ebf98f6c9fcba8cff1af6e6a60da6adb51d",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/siem_forwarder.zig",
+      "size": 253,
+      "sha256": "4fcfbb717db4098dbb8b721ce03ef29573ccc4e441c7c674c72c7029fb637369",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/test_fault.zig",
+      "size": 6788,
+      "sha256": "661e9fdfe93d521037af3cebf9c99324703b82331665984a66066364c0383042",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/test_integration.zig",
+      "size": 13616,
+      "sha256": "57115574ee3ac44e6ae933da64308257e7eca2c5a21966603c94863d24166e0b",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/test_release.zig",
+      "size": 6069,
+      "sha256": "a03451dd14882fcc654b9ff53348ccfdb49427b425f5a00698661d16db07a082",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/forensic/test_unit.zig",
+      "size": 5703,
+      "sha256": "db3daab9cf6561c04613c8aaa06743901bc8266e94e1b0fede104c5d89d2ec3d",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/fuzz_main.zig",
+      "size": 1356,
+      "sha256": "883596e17bfce24e2d6b2cc6d1bde745f9aaa446ec51e5d5b78d41312a1e1092",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/brain_integration.zig",
+      "size": 5053,
+      "sha256": "090be22713bcc95df6b9a287b441e0038b39e8cd13411fd56811ffe3aea56eed",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/concurrency_harden_integration.zig",
+      "size": 3158,
+      "sha256": "b30d951e3ee381b86d874d1f7920da30aa25eb998dd699385d7058d17daca084",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/correlation_integration.zig",
+      "size": 5809,
+      "sha256": "967f7388640bccc9bc5fbe5e47aeaed43a25fcd9dfa045dc02756c7805a1be9d",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/detection_integration.zig",
+      "size": 3496,
+      "sha256": "77790f77849df67ea2667a71c98a0ed15b79ab16ac8bc6719317e6dbf88d87ea",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/e2e_harness_integration.zig",
+      "size": 8011,
+      "sha256": "63dc6c3a154ca17580fe31cad852ea676aa6b3d75f501f9aa782002e60de0ce2",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/fault_injection_integration.zig",
+      "size": 4167,
+      "sha256": "270e04d8b296ca13ea7ae04517dd0277a9c4cd7e704be77b6c03ea9e9aeb1b53",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/flow_integration.zig",
+      "size": 5924,
+      "sha256": "8b6afd1634f8bfc7c78ecd76a6f10cd0bfb42bb678a3efc9a5ffe2114a236cdb",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/forensics_integration.zig",
+      "size": 6450,
+      "sha256": "963e5f1f8b6e31a84667bdd06857cb5308df0b1b43dcc1ec566900c0c536d2fb",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/golden_path_e3.zig",
+      "size": 12112,
+      "sha256": "f3c2cdfcf176a70f5da0d504b8ec70cc670e27075560fd505c8947ab0eac30b0",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/golden_path_ffi.zig.scaffold",
+      "size": 14019,
+      "sha256": "acc9a52bac76969bd53f47e6d8c3039ce29972d86b9c76c315f4bc52c3938fb8",
+      "language": "data"
+    },
+    {
+      "path": "src/tests/integration/hids_integration.zig",
+      "size": 5797,
+      "sha256": "a20d7c53c176f57e614842b1f62de9f223f8fe10060ad4c189823451f52762d0",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/ips_canary_integration.zig",
+      "size": 9525,
+      "sha256": "3046f6193c752a2c7cd1ba5c74936b6afe59bb77e6728a179c572054f7c4f9bd",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/ips_simulation_integration.zig",
+      "size": 4900,
+      "sha256": "3cc9af4a505f5ec9da16957a5919ec916ad8fe83317e71d7b4bcf6613e93dd7f",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/nose_integration.zig",
+      "size": 4085,
+      "sha256": "4248c31097ccc492b46b72b03a1ba1c756c05624d6dd5ea3bf0e4d897b32c987",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/performance_integration.zig",
+      "size": 7015,
+      "sha256": "43f02210661f5e8cb017d73432f51f84958e939cd443588997cea0bc821a79bd",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/policy_integration.zig",
+      "size": 5328,
+      "sha256": "2cd4fc9b23c9338c94c4d102f34c11cce6c49f3c0e667020c067736d5e4ed945",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/policy_plane_integration.zig",
+      "size": 4042,
+      "sha256": "9b9eee42901ee07cefbca62b55503981f971ca0a00581c63244cb7bffd7af62c",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/rag_integration.zig",
+      "size": 5363,
+      "sha256": "8e5ca8af697f24fffe65ff8786950013b994211eb25c47bbce1ed45ab258665a",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/release_engineering_integration.zig",
+      "size": 3712,
+      "sha256": "601ea1296856ef3eda4c2d4c0f984736510bba63bf88cd7bda861b63fc7dc662",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/replay_integration.zig",
+      "size": 8035,
+      "sha256": "8543d8dcc3fdd74a4e0c3e9a8627777c299c73514a60d9f0fb34508a70ca4933",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/rust_pep_integration.zig",
+      "size": 4375,
+      "sha256": "473574e4a69f35f48e7dd73a577908b0a190a477a92aa7359c1b5220b0dcfcf9",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/threat_intel_integration.zig",
+      "size": 4236,
+      "sha256": "aae86471b4de7e17cb6341185779596221e8d21ac6d7e6f3126243968a7b6e03",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/integration/xdr_harden_integration.zig",
+      "size": 6680,
+      "sha256": "c3b27b9b55bfd8474f91660c81c39a74a62117123214d9f3d4743ec28621107d",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/policy/action_dispatcher.zig",
+      "size": 261,
+      "sha256": "568e91074ce104fdbcbf45076ef65892ef181fea5183d9c31db566a7f0c6e4f8",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/policy/pep_bindings.zig",
+      "size": 246,
+      "sha256": "b00e4b447298e3c6fee7e941bfe6a9243ed2eca769dd06fdc075a1583b34a6f3",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/policy/policy_ir.zig",
+      "size": 237,
+      "sha256": "63c320ccfb09521dc2d8173d533718edb65b72f79b93f9ed1c2c5474c30787bb",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/policy/policy_signing.zig",
+      "size": 249,
+      "sha256": "560c0801f88e6731856a5b91dc2d80837454c18c13bb1acd1012b7d1e4bf9ee3",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/policy/trust_store.zig",
+      "size": 243,
+      "sha256": "3737fa6cb9db6132e94d549c9434a09a09612625b286dc2f0b3001135bfcb2bb",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/policy/ts_ir_loader.zig",
+      "size": 2544,
+      "sha256": "6a2ac79c3510a80c7a027ca322333ab713f00f33bcd86c83f58d2610fd31e47e",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/audit_trail_proof.zig",
+      "size": 34924,
+      "sha256": "031c4376b4d1dea12f8a394394d5742f14e977bbbb29cc803eabc2cb6065d00e",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/brain_proof.zig",
+      "size": 15051,
+      "sha256": "1e0096b3c89098235ea8f066986aa6a7e924529effa6c8b478114a4378de57e5",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/compliance_proof.zig",
+      "size": 28172,
+      "sha256": "c894e3bcfdb76d317aa15d827c799a8af942e219cce6468163113619c5548362",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/config_reload_proof.zig",
+      "size": 40930,
+      "sha256": "8eb4f7106a42450dabd1c9ffdf35ca782d563cecd3f16be68815a6635dde4d51",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/correlation_proof.zig",
+      "size": 14491,
+      "sha256": "bc81d37cb75d50ce7d626aa7016cdb884580790a6a1b63672870455ab681d4c6",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/detection_fabric_proof.zig",
+      "size": 19518,
+      "sha256": "3a0489f4bfd3e01fee33b934d3103238720300e73825da4efc3519c5b8849bc4",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/documentation_proof.zig",
+      "size": 26897,
+      "sha256": "166c36893cf637c3d55e4cc36198e3a4f28ff8a60ea1db66e8d4c9d5b30465aa",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/final_integration_proof.zig",
+      "size": 28452,
+      "sha256": "38e3f67b9e960d1ef2f4b44979f4e4c5e76e80d1a70cf9cfc0224b6129fb78a1",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/flow_state_proof.zig",
+      "size": 21562,
+      "sha256": "63467567c7e5e77e7e80c1f7978cf8e7fd789f854c2b85457e8760bd9f1a63f0",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/forensic_replay_proof.zig",
+      "size": 44802,
+      "sha256": "8e1ea52f7e54c2ed3a1400d3087f1f5750e35c891a6ecf3a8964ca3019dd2f18",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/health_monitoring_proof.zig",
+      "size": 37274,
+      "sha256": "6a51c9034f771677ccc85a68e3dfef048aee4ac7ccdfef4d461f9305aa0666b0",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/intelligence_proof.zig",
+      "size": 13104,
+      "sha256": "d1bc7ffd277e7bd95ef7180f528dae25d6d7071377f2c2bfc0db16b7ac993ea0",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/pep_enforcement_proof.zig",
+      "size": 42508,
+      "sha256": "11cb545807860cdb25d1e1bac0678f7abafa31f069d90502edb4d75fd86a06b5",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/performance_tuning_proof.zig",
+      "size": 33092,
+      "sha256": "b55257385ff21f4f2876385201d1334ed8fd278f636f950353434a8fe526febf",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/policy_plane_proof.zig",
+      "size": 26008,
+      "sha256": "1abdfabc851f921909e56b92b9b246d75d8e5d87729fb0fe092c35360e8d3412",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/siem_integration_proof.zig",
+      "size": 29246,
+      "sha256": "5ba455d4d4cfe21d8610e596bec9218a06d15eb9b2ca2bde338432c4a65fc05a",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/proofs/telemetry_export_proof.zig",
+      "size": 34194,
+      "sha256": "e8ec0429644e66a2006a59bfe96e690977817295c71077446abbba6d17fa8efd",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/reliability/fault_injection.zig",
+      "size": 265,
+      "sha256": "927026cfe52eff413d746f60326f559eef0d274399e8d8289a765537153bdafb",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/reliability/latency_histogram.zig",
+      "size": 271,
+      "sha256": "baab42d81a7ef090e9e6383402f3c218904ba72bc7f46a91e58c36ff1e2cb36f",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/reliability/security_check.zig",
+      "size": 262,
+      "sha256": "dcf27bfc85ebdaf8d3024c168c13a486ad7cabcee77cdd2f433c11179727a4f2",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/reliability/watchdog.zig",
+      "size": 244,
+      "sha256": "08438e182fc771e73de0e042f42f400445edbd9a0d64d0610456f519378d8254",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/stubs/etw_helper_stub.c",
+      "size": 797,
+      "sha256": "48ef09d4d3b91821697b9448ce8e855ee5e97390950230232ac5bb9ae546d1fe",
+      "language": "c/c++"
+    },
+    {
+      "path": "src/tests/stubs/fim_helper_stub.c",
+      "size": 674,
+      "sha256": "b6af83ed83d0d48691fb4e54e5b3bf6ab69ceb1fcb01c161497956ea8b8b044a",
+      "language": "c/c++"
+    },
+    {
+      "path": "src/tests/windows/etw_realtime.zig",
+      "size": 248,
+      "sha256": "5cb3f88358ab3f012994c1adffa5ce272284948a687be27e81916c15d2731ae1",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/windows/fim.zig",
+      "size": 221,
+      "sha256": "ece54410aeba71c535b88c5a8c39d2c0696497e4f5118bc6e3af2884ab2cc0d1",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/windows/host_telemetry.zig",
+      "size": 254,
+      "sha256": "afd565cdfdd909f8b7d431895efeb3d80579424b3d2f854c046c264a55afb57d",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/windows/injection_detector.zig",
+      "size": 266,
+      "sha256": "5388d70f856578c602c8371e57e9612542d3ea29e8eb46b3aec162de278051dc",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/windows/registry_monitor.zig",
+      "size": 260,
+      "sha256": "c75d33f5b35493f3f95ad7c8e1cca6d84c655977df6fd1899e68ca1cb70ac06f",
+      "language": "zig"
+    },
+    {
+      "path": "src/tests/xdr/xdr_engine.zig",
+      "size": 234,
+      "sha256": "5ce37eb39777630cee4c90a403ee0443a9c7ad123463bf42411f90da7c8764fc",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/adapter_contract.zig",
+      "size": 1491,
+      "sha256": "cdc36fa306592eca3a464dd7e7671a94c9c5b5fb546e88811068d88a3f61f0ae",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/aegis_wfp.c",
+      "size": 2620,
+      "sha256": "f2e1aa73352c8a5bae7179a1080ccab7a30249b6f3ecfc92a7ba6f97648474f6",
+      "language": "c/c++"
+    },
+    {
+      "path": "src/windows/cpp_adapter.zig",
+      "size": 8796,
+      "sha256": "20b2a87a12b6c610d5a80c316630da218f2562ab59f770b5005d4ff15077ba75",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/etw_native.c",
+      "size": 13683,
+      "sha256": "6ac16448ddc8541ce2862c18e0fae8626e6ca5d8a341f7f9d45085bebd76b942",
+      "language": "c/c++"
+    },
+    {
+      "path": "src/windows/etw_realtime.zig",
+      "size": 43505,
+      "sha256": "5a9e6954919d59bf123c995c9099f9477c24c71c810b8a051e675a73d91086f5",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/fim.zig",
+      "size": 11109,
+      "sha256": "b28cbf5cffcd4af6c4e05b531d7f7b355801249079096e8b2974a43755cd1834",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/fim_native.c",
+      "size": 7235,
+      "sha256": "9369d860c4233e35c1f5b668eb511dc399f177a840509a501e899134b3fbdf62",
+      "language": "c/c++"
+    },
+    {
+      "path": "src/windows/hids_engine.zig",
+      "size": 30519,
+      "sha256": "93c835ad9fad4027d7225de5fcbe1e17fd71a3cad85e1fa43a3496a8c24b401a",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/hids_process_monitor.zig",
+      "size": 2311,
+      "sha256": "8c9ac1cce445e709b18d386db72edcc258234ce2cf3605069576323211ca242f",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/host_telemetry.zig",
+      "size": 65829,
+      "sha256": "b12c3a6d201f4a4200cb31e2574b749bd58ef61c5827a3aacdcd5805d058ad5e",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/host_telemetry_detectors.zig",
+      "size": 39036,
+      "sha256": "68c5960a8f2c3a14f911be17365e46d16d40ce35d4aa9cea5ea9ea246b625abf",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/host_telemetry_mock.zig",
+      "size": 35566,
+      "sha256": "6686e960727da03e61f433dd3554b366b106bd05a762b09942d448725ad960ce",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/host_telemetry_scenarios.zig",
+      "size": 29772,
+      "sha256": "3ac29c81f5782d3dd140c45f852b3810217c4152252447e3cf1de8b86f089dc9",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/injection_detector.zig",
+      "size": 8005,
+      "sha256": "e44df032f1c8f69433bc7fbb9f20515dc7e74b7098a66f8a2101d56875d3d68c",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/ips_canary.zig",
+      "size": 30574,
+      "sha256": "e649a4624aebdfbe7e4d08719d996c811d972ab9183651715af39ded19adde0c",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/ips_canary_order.zig",
+      "size": 15836,
+      "sha256": "fa2e0420fdece20b3ba96f8d9c2e37d37216334e058d4eb2bb4560d4be98a06d",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/ips_simulation.zig",
+      "size": 23055,
+      "sha256": "b5e9e70e7a6eafd081ad839491188570fa5231be0dd591e8b08bc4f253162b8b",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/registry_monitor.zig",
+      "size": 12882,
+      "sha256": "549315f570ab884a4d003d2b6d11044bd897d3eefb02e92087667df90cdb91c8",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/registry_trie.zig",
+      "size": 29361,
+      "sha256": "abce4dd48ad8a5e699a546c314fa418f47686cf89793ba080b4d8e97e7a7208f",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/wfp_ioctl.c",
+      "size": 7095,
+      "sha256": "1d705b3b1400c82a72984d26f165ea3f15dbfef0f407efc20e1fdce21d34416a",
+      "language": "c/c++"
+    },
+    {
+      "path": "src/windows/win32_io.zig",
+      "size": 5946,
+      "sha256": "59ccc6672c0e6f9e731f3aeb184ecbd68538d3101eb75bfc3cfe6655df723b8c",
+      "language": "zig"
+    },
+    {
+      "path": "src/windows/windows_adapters.zig",
+      "size": 35093,
+      "sha256": "7a0d084829ec9a42ee12ac823ad138ea164ecb9e575792ed90ef884c4ab723b6",
+      "language": "zig"
+    },
+    {
+      "path": "src/xdr/xdr_correlator.zig",
+      "size": 12351,
+      "sha256": "9a5b92bafe4db4d46af8448a41537992388519358175297fa4710ca3118e6344",
+      "language": "zig"
+    },
+    {
+      "path": "src/xdr/xdr_engine.zig",
+      "size": 6148,
+      "sha256": "b1695f9f4efe0a32b753e96e1c31295cb3eefe8a5ec631e6cb5b2e7338d620ae",
+      "language": "zig"
+    },
+    {
+      "path": "src/xdr/xdr_harden.zig",
+      "size": 22730,
+      "sha256": "97ebabd562018ef083de5324f3ac90210c6bbb0e905eea559458ec7717ed58fb",
+      "language": "zig"
+    },
+    {
+      "path": "src/xdr/xdr_incident_fabric.zig",
+      "size": 12859,
+      "sha256": "743e3958f660f791258fc04c2f3db5160191e1a499e17f083a086a2f1757bd57",
+      "language": "zig"
+    },
+    {
+      "path": "src/xdr/xdr_incident_graph.zig",
+      "size": 27374,
+      "sha256": "731816b38ce77d2c4b07523f1d7fe5fb2722241dc7167c903bd883b16d1e967c",
+      "language": "zig"
     },
     {
       "path": "tools/aegisctl.py",
