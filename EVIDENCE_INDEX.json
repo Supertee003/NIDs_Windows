@@ -1522,6 +1522,20 @@
       "evidence": "Implemented in EVT-116 (git-visible filter plus pins). Proven by operator run: 6 pins green, regen diff exact, --verify green."
     },
     {
+      "id": "GAP-015",
+      "severity": "P0",
+      "title": "STOP-THE-LINE: pipeline queue chronically overflows, dropping ~6% of events before detection",
+      "description": "Discovered during F1 frontend work (EVT-120): the deployed service reports queue_drops=102861 against events_processed~1.75M via events.stats/events.tail (live control-plane counters). The pipeline queue holds 4096 slots (event_queue.zig) while sustained ingress runs ~380 events/sec, i.e. under 11 seconds of buffering — any consumer stall or sustained producer surplus silently discards events before Aho-Corasick matching, policy, and forensic recording. Proven consequence, not theory: four controlled pipe-sensor fixtures (event_gen.py, fixed _t1 pipe, server-acknowledged writes) never appear anywhere in the full-ring forensic record (prefix scan matched:0 truncated:False, source=2 scan --all matched:0), while every processed event is recorded (events_processed == forensic_records). The operator fixture path is starved, not broken. Only a counter witnesses the loss — the same silent-loss class as GAP-012.",
+      "status": "OPEN",
+      "required_evidence": [
+        "producer vs consumer rate diagnosis (which ingress stage outruns the pipelineLoop consumer)",
+        "drop accounting per source (which sensors lose events, not just a global counter)",
+        "fix that restores zero-drop under sustained load, proven by metrics before/after",
+        "controlled fixture loop green end-to-end (send -> match -> alert) as the regression pin"
+      ],
+      "resolution": null
+    },
+    {
       "id": "EVT-037",
       "head_sha": "60c76fe61e2fc2cfc9e436fa001e2b0788f006f5",
       "timestamp": "2026-09-12",
@@ -3162,6 +3176,31 @@
       ],
       "result": "PASS",
       "finding": "The cross-format IP question is settled with evidence at both layers: production joins happen in exactly one convention (proven by spawn-graph + convention inventory), and the split mechanism is pinned so any future re-enable of a bitcast producer fails loudly instead of silently halving detections."
+    },
+    {
+      "id": "EVT-120",
+      "head_sha": "8e5229d",
+      "timestamp": "2026-10-09",
+      "title": "F1 frontend seams: alerts goes live via forensic ring, fixture pipe constant fixed, queue-drop silent loss filed as GAP-015",
+      "level": "E5",
+      "component": "tooling",
+      "description": "First frontend slice. (1) `aegisctl alerts` was a hardcoded _unavailable stub; now it pages forensics.list through the live control plane (200/page, up to 5 pages, after-cursor), keeps rule_id != 0 records, and labels them by re-deriving the FNV-1a numeric map from Rules.json (unknown numerics stay visible as UNKNOWN_RULE, never dropped; scan window always reported). Proven live on the deployed service: R1001 file_sensor + R1004 host_telemetry DLL drops, all verified. (2) scripts/aegis_event_gen.py pointed at a nonexistent pipe (aegis_sensor_pipe vs daemon's aegis_sensor_pipe_t1); one-line fix, server now acknowledges writes. (3) Loop-proof attempt surfaced a bigger finding instead of closing: four server-acknowledged fixtures never appear anywhere in the full ring (prefix scan matched:0 truncated:False, source=2 --all matched:0). Root cause isolated to starvation, not a broken path: events.stats/events.tail report queue_drops=102861 (~6% of ~1.75M processed) against a 4096-slot queue at ~380 events/sec sustained (<11s buffering). Filed as GAP-015 P0 STOP-THE-LINE (same silent-loss class as GAP-012) with rate-diagnosis, per-source accounting, zero-drop proof, and fixture-loop regression pin as required evidence. Queue fix deliberately deferred to its own slice (needs producer/consumer diagnosis first). Incidental notes: `rules add/update/delete` edit only the dev-tree file (the 'already exists' answer came from there, not the daemon); UNKNOWN_RULE numerics observed twice (registry_sensor) and aged out before mapping — open tracing note, display behaved as designed.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "tools/aegisctl.py",
+        "scripts/aegis_event_gen.py",
+        "tests/tools/test_aegisctl_alerts.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "new tests/tools/test_aegisctl_alerts.py: 3 passed (FNV vectors 3813986375/3730098280 from live data, select/enrich incl. malformed + unknown)",
+        "alerts --limit 5 live: R1001 + R1004 rows with names/severity/action, verified",
+        "alerts --limit 3 --json live: schema check (alerts/records_scanned/pages/cursor_exhausted)",
+        "rules reload after R0089 sync: 22 -> 23, all skip buckets 0; metrics rules_loaded 23",
+        "forensics source=2 --all: matched 0 (full-ring completeness proof the pipe path starves)"
+      ],
+      "result": "PASS",
+      "finding": "The operator can now SEE live rule matches from the terminal (alerts), and can SEND controlled fixtures at the daemon (fixed pipe) — but fixtures currently starve in an overflowing queue, which is exactly what GAP-015 pins down. Frontend slice F1 is complete; the loop-closure proof becomes GAP-015's regression pin."
     }
   ],
   "evidence_level_summary": {
@@ -3170,7 +3209,7 @@
     "E2_count": 85,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 22,
+    "E5_count": 23,
     "E6_count": 0,
     "E7_count": 0
   }

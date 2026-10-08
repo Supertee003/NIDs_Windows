@@ -63,8 +63,10 @@ FIXTURES = {
     "command-injection": {"attack_type": ";whoami AEGIS_FIXTURE", "rule_id": "R9064", "severity": "Critical"},
 }
 
-# Pipe name (must match nids_capture.zig PIPE_NAME constant)
-NIDS_PIPE_NAME = r"\\.\pipe\aegis_sensor_pipe"
+# Pipe name (must match nids_capture.zig pipe_name constant).
+# F1: was \\.\pipe\aegis_sensor_pipe (stale) — the daemon listens on the
+# _t1 pipe, so fixtures never arrived until this pointed at it.
+NIDS_PIPE_NAME = r"\\.\pipe\aegis_sensor_pipe_t1"
 
 # Default ports (must match docs/runtime/COMPONENT_MATRIX.md §3)
 BRAIN_UDP_PORT = 9999

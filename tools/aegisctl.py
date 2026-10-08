@@ -1267,13 +1267,132 @@ def cmd_quarantine(args) -> int:
     return 0
 
 
+def _fnv1a32(text: str) -> int:
+    """FNV-1a 32-bit over UTF-8 bytes. Same derivation the Zig loader and
+    the Go nose use for numeric rule IDs (e.g. R1004 -> 3730098280)."""
+    h = 0x811C9DC5
+    for byte in text.encode("utf-8"):
+        h ^= byte
+        h = (h * 0x01000193) & 0xFFFFFFFF
+    return h
+
+
+def _alert_rule_map() -> dict[int, dict]:
+    """Numeric rule_id -> rule object, derived from configs/Rules.json.
+
+    The forensic ring stores only the numeric FNV-1a of the rule_id
+    string, so the CLI re-derives the same mapping to label alerts.
+    Unknown numerics stay visible as UNKNOWN_RULE (never dropped).
+    """
+    by_id, _ = _load_rules_file()
+    return {_fnv1a32(rid): rule for rid, rule in by_id.items()}
+
+
+def _select_alerts(records: list) -> list[dict]:
+    """Pure: every forensic record carrying a rule match becomes an alert.
+
+    rule_id 0 means 'no rule fired'. Tolerates missing/str fields so one
+    malformed record never hides the rest.
+    """
+    alerts = []
+    for rec in records:
+        if not isinstance(rec, dict):
+            continue
+        try:
+            rule_num = int(rec.get("rule_id", 0) or 0)
+        except (TypeError, ValueError):
+            continue
+        if rule_num == 0:
+            continue
+        alerts.append({
+            "record_seq": rec.get("record_seq"),
+            "event_id": rec.get("event_id"),
+            "source": rec.get("source_name") or rec.get("source"),
+            "rule_num": rule_num,
+            "payload_len": rec.get("payload_len"),
+            "verified": rec.get("verified"),
+        })
+    return alerts
+
+
+def _enrich_alert(alert: dict, by_num: dict[int, dict]) -> dict:
+    rule = by_num.get(alert["rule_num"])
+    if rule is None:
+        return {**alert, "rule_id": "UNKNOWN_RULE", "name": "unmapped numeric rule", "severity": "?", "action": "?"}
+    return {
+        **alert,
+        "rule_id": rule.get("rule_id"),
+        "name": rule.get("name"),
+        "severity": rule.get("severity"),
+        "action": rule.get("action"),
+    }
+
+
 def cmd_alerts(args) -> int:
     """View alerts.
 
-    Delegates all business logic to control_api.
-    CLI is thin: just call API and display structured result.
+    Live composition, no daemon change: pages forensics.list through the
+    control plane (newest window first via the after-cursor), keeps every
+    record whose rule_id is non-zero, and labels it from Rules.json.
+    The scan window is always reported, so a quiet result is
+    distinguishable from a blind result.
     """
-    return _unavailable("alerts", "alert_query_not_connected")
+    if not CONTROL_API_AVAILABLE:
+        return _unavailable("alerts", "control_api_unavailable")
+    want = getattr(args, "limit", 20) or 20
+    try:
+        want = max(1, int(want))
+    except (TypeError, ValueError):
+        want = 20
+    as_json = bool(getattr(args, "json", False))
+    found: list[dict] = []
+    scanned = 0
+    pages = 0
+    after = None
+    cursor_exhausted = False
+    while len(found) < want and pages < 5 and not cursor_exhausted:
+        payload: dict = {"limit": 200}
+        if after is not None:
+            payload["after"] = after
+        try:
+            response = query_control("forensics.list", payload=payload)
+        except Exception:
+            response = None
+        if not response or not isinstance(response.get("records"), list):
+            if pages == 0:
+                return _unavailable("alerts", "control_daemon_query_failed")
+            break
+        records = response["records"]
+        scanned += len(records)
+        pages += 1
+        found.extend(_select_alerts(records))
+        nxt = response.get("next_after")
+        if not records or nxt is None or nxt == after:
+            cursor_exhausted = True
+        else:
+            after = nxt
+    by_num = _alert_rule_map()
+    alerts = [_enrich_alert(a, by_num) for a in found[:want]]
+    if as_json:
+        print(json.dumps({
+            "alerts": alerts,
+            "alerts_returned": len(alerts),
+            "available": True,
+            "command": "alerts",
+            "cursor_exhausted": cursor_exhausted,
+            "pages_scanned": pages,
+            "records_scanned": scanned,
+        }, sort_keys=True))
+        return 0
+    if not alerts:
+        print(f"No alerts in the last {scanned} forensic records ({pages} page(s) scanned).")
+        return 0
+    print(f"ALERTS (last {scanned} forensic records, {pages} page(s) scanned):")
+    for a in alerts:
+        print(f"  seq={a['record_seq']} event={a['event_id']} src={a['source']} "
+              f"rule={a['rule_id']}({a['rule_num']}) severity={a['severity']} "
+              f"action={a['action']} verified={a['verified']} :: {a['name']}")
+    return 0
 
 
 def cmd_dashboard(args) -> int:
@@ -1555,7 +1674,10 @@ def main() -> int:
     qadd = quarantine_sub.add_parser("add"); qadd.add_argument("--ip", required=True); qadd.add_argument("--reason", default="")
     qrem = quarantine_sub.add_parser("remove"); qrem.add_argument("--ip", required=True)
     quarantine_sub.add_parser("list"); quarantine.set_defaults(func=cmd_quarantine)
-    sub.add_parser("alerts", help="View alerts").set_defaults(func=cmd_alerts)
+    alerts_p = sub.add_parser("alerts", help="View alerts (live: rule matches from the forensic ring)")
+    alerts_p.add_argument("--limit", type=int, default=20)
+    alerts_p.add_argument("--json", action="store_true")
+    alerts_p.set_defaults(func=cmd_alerts)
     sub.add_parser("dashboard", help="Real-time dashboard").set_defaults(func=cmd_dashboard)
     sub.add_parser("bridge", help="Bridge IPC status").set_defaults(func=cmd_bridge)
     sub.add_parser("iptest", help="IPC throughput test").set_defaults(func=cmd_iptest)
