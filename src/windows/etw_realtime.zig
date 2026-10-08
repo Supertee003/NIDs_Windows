@@ -1030,6 +1030,11 @@ comptime {
 }
 
 extern "aegis_etw_helper" fn aegis_etw_start(session_name: [*]const u8, providers: [*]const [16]u8, provider_count: usize) c_int;
+// Helper return contract (etw_native.c): 0 ready; anything else fail-closed
+// (-1 session active, -2 alloc, -3 thread, -4 none enabled, -5 bad name,
+// -6 provider GUID not host-registered [GAP-012 bullet 5], -7 registration
+// query inconclusive). Any nonzero surfaces as error.EtwStartFailed below,
+// so etw_ready is never set on a session that cannot deliver events.
 extern "aegis_etw_helper" fn aegis_etw_stop(session_name: [*]const u8) c_int;
 extern "aegis_etw_helper" fn aegis_etw_set_callback(cb: *const fn (ctx: *anyopaque, rec: *const NativeEtwEvent, ext_data: [*]const u8, ext_len: usize) callconv(.C) void, ctx: *anyopaque) c_int;
 

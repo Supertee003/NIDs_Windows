@@ -53,6 +53,25 @@ typedef struct {
 static aegis_etw_session_t g_session;
 static CRITICAL_SECTION g_lock;
 
+/* GAP-012 bullet 5: refuse ready for non-registered provider GUIDs.
+ * EnableTraceEx2 succeeds silently for a GUID no provider registered, so
+ * membership must be checked before the session exists. A size query
+ * against the provider manifest is enough: registered -> the API reports
+ * the required buffer (or success); not registered -> ERROR_NOT_FOUND.
+ * Any other status is inconclusive and fails closed (rc -7) rather than
+ * risking another silent-loss session. Returns 1 registered, 0 not
+ * registered, -1 inconclusive. */
+static int provider_is_registered(const uint8_t guid_bytes[16]) {
+    GUID guid;
+    memcpy(&guid, guid_bytes, sizeof(guid));
+    ULONG size = 0;
+    ULONG status = TdhEnumerateManifestProviderEvents(&guid, NULL, &size);
+    if (status == ERROR_NOT_FOUND) return 0;
+    if (status == ERROR_SUCCESS || status == ERROR_INSUFFICIENT_BUFFER) return 1;
+    fprintf(stderr, "[ETW] provider metadata query inconclusive: status=%lu\n", status);
+    return -1;
+}
+
 #define AEGIS_ETW_TLV_MAGIC 0x54474541u /* "AEGT" little-endian */
 #define AEGIS_ETW_TLV_IMAGE 1
 #define AEGIS_ETW_TLV_CMDLINE 2
@@ -183,6 +202,21 @@ int aegis_etw_start(const char* session_name, const uint8_t (*providers)[16], si
                             g_session.session_name, 64) <= 0) {
         fprintf(stderr, "[ETW] invalid session name (empty, invalid UTF-8, or too long)\\n");
         return -5;
+    }
+    /* GAP-012 bullet 5: validate every requested provider against host
+     * registration BEFORE any session state exists, so an unknown GUID can
+     * never produce a ready session with zero events. rc -6 = not
+     * registered, rc -7 = registration query inconclusive (fail closed). */
+    for (size_t i = 0; i < provider_count; i++) {
+        int registered = provider_is_registered(providers[i]);
+        if (registered == 0) {
+            fprintf(stderr, "[ETW] provider %zu is not host-registered; refusing ready state\n", i);
+            return -6;
+        }
+        if (registered < 0) {
+            fprintf(stderr, "[ETW] provider %zu registration unknown; refusing ready state\n", i);
+            return -7;
+        }
     }
     InitializeCriticalSection(&g_lock);
 

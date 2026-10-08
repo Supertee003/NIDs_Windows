@@ -54,6 +54,10 @@ pub const EventKind = enum(u8) {
     action_allow = 62,
     action_rate_limit = 63,
     action_log = 64,
+    // QUAR-RCPT-094: confirmed-quarantine event kind. Additive only: existing
+    // numeric values are frozen (cross-language forensic readers may map
+    // them); new kinds take the next free value, never renumber.
+    action_quarantine = 65,
     etw_process_create = 70,
     etw_process_exit = 71,
     etw_image_load = 72,

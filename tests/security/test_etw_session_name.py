@@ -13,6 +13,11 @@ evntrace.h lacks PROCESSTRACE_HANDLE; canonical build is MSVC) — the pin
 is source-contract level (E1), and the edited region produces zero
 diagnostics where the pristine file's pre-existing header errors occur
 elsewhere. E1.
+
+GAP-012 bullet 5 extends the contract: aegis_etw_start must validate every
+requested provider GUID against host registration (TDH manifest query)
+before any session state exists, refusing ready (-6 unregistered, -7
+inconclusive) instead of enabling a silent-loss session. Pinned below.
 """
 from __future__ import annotations
 
@@ -49,3 +54,20 @@ def test_bad_session_name_fails_closed():
 def test_no_bare_session_copy_remains():
     text = src()
     assert "MultiByteToWideChar(CP_UTF8, 0, session_name" not in text
+
+
+def test_provider_registration_is_validated_before_start():
+    text = src()
+    assert "TdhEnumerateManifestProviderEvents" in text
+    assert "ERROR_NOT_FOUND" in text
+    assert "return -6" in text
+    # Validation must precede any session side effect: the manifest query
+    # appears before the first StartTraceW call in source order.
+    assert text.index("TdhEnumerateManifestProviderEvents") < text.index(
+        "StartTraceW(&g_session.session_handle"
+    )
+
+
+def test_inconclusive_registration_fails_closed():
+    text = src()
+    assert "return -7" in text

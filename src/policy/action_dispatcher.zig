@@ -107,8 +107,10 @@ pub const ActionDispatcher = struct {
         receipt: ?pep.PepEnforcementReceipt,
     ) bool {
         if (decision == .block) {
+            // QUAR-RCPT-094: the receipt must name the SAME decision being
+            // confirmed — a quarantine receipt can never confirm a block.
             if (receipt) |r| {
-                if (enforcer.verifyEnforcementReceipt(ev, r)) {
+                if (r.decision == .block and enforcer.verifyEnforcementReceipt(ev, r)) {
                     var confirmed = ev.*;
                     confirmed.kind = .action_block;
                     confirmed.fate = .blocked;
@@ -117,6 +119,28 @@ pub const ActionDispatcher = struct {
                     // this receipt-verified path increments; the legacy
                     // dispatch() below stays unconfirmed by design.
                     _ = runtime_state.g_confirmed_blocks.fetchAdd(1, .monotonic);
+                    _ = ForensicBackend.write(&confirmed);
+                    return true;
+                }
+            }
+        }
+        // QUAR-RCPT-094: receipt-verified quarantine path. Mirrors the block
+        // branch exactly (same-decision guard, tuple-matched read-back,
+        // daemon-owned counter, forensic projection) but emits
+        // action_quarantine/quarantined instead of action_block/blocked.
+        // OPEN EDGE (Rust): the PEP has no quarantine-enforce path yet
+        // (enforceFlow hardcodes ACTION_BLOCK; no quarantine filter
+        // exists to read back), so no valid quarantine receipt can exist
+        // today — this branch is reachable only when that lands. Until
+        // then quarantine stays on the best-effort legacy path below.
+        if (decision == .quarantine) {
+            if (receipt) |r| {
+                if (r.decision == .quarantine and enforcer.verifyEnforcementReceipt(ev, r)) {
+                    var confirmed = ev.*;
+                    confirmed.kind = .action_quarantine;
+                    confirmed.fate = .quarantined;
+                    diag.info("action=QUARANTINED_CONFIRMED rule={d} policy_id={d} filter_id={d}", .{ ev.rule_id, p.id, r.filter_id });
+                    _ = runtime_state.g_confirmed_quarantines.fetchAdd(1, .monotonic);
                     _ = ForensicBackend.write(&confirmed);
                     return true;
                 }
@@ -190,6 +214,51 @@ test "ActionDispatcher dispatch escalate path" {
         .ttl_sec = 0,
     };
     ActionDispatcher.dispatch(&ev, p, .escalate);
+}
+
+test "QUAR-RCPT-094: confirmed-quarantine kind value is frozen at 65" {
+    // Additive-only contract: existing kind numbers never move (forensic
+    // readers may map them); quarantine takes the next free action value.
+    try std.testing.expectEqual(@as(u8, 65), @intFromEnum(event.EventKind.action_quarantine));
+}
+
+test "QUAR-RCPT-094: quarantine without receipt stays best-effort" {
+    var ev = event.IpcEvent.init(.packet_captured);
+    const p = policy.Policy{
+        .id = 6,
+        .name = "quarantine_noreceipt",
+        .condition = .{ .clauses = &[_]policy.Clause{} },
+        .action = .quarantine,
+        .severity = .critical,
+        .ttl_sec = 0,
+    };
+    var enforcer = pep.PepEnforcer{ .available = false };
+    // No receipt: legacy path, returns false, never touches the
+    // confirmed-quarantine counter.
+    const before = runtime_state.g_confirmed_quarantines.load(.acquire);
+    try std.testing.expect(!ActionDispatcher.dispatchWithReceipt(&ev, p, .quarantine, &enforcer, null));
+    try std.testing.expectEqual(before, runtime_state.g_confirmed_quarantines.load(.acquire));
+    // Bogus receipt (zero filter): fails closed, counter untouched.
+    const bogus = pep.PepEnforcementReceipt{
+        .decision = .quarantine,
+        .reason = 0,
+        .quota_remaining = 0,
+        .signed_by = 0,
+        .filter_id = 0,
+    };
+    try std.testing.expect(!ActionDispatcher.dispatchWithReceipt(&ev, p, .quarantine, &enforcer, bogus));
+    try std.testing.expectEqual(before, runtime_state.g_confirmed_quarantines.load(.acquire));
+    // Cross-decision proof rejected: a BLOCK receipt can never confirm
+    // a quarantine decision (same-decision guard).
+    const cross = pep.PepEnforcementReceipt{
+        .decision = .block,
+        .reason = 0,
+        .quota_remaining = 0,
+        .signed_by = 0,
+        .filter_id = 9,
+    };
+    try std.testing.expect(!ActionDispatcher.dispatchWithReceipt(&ev, p, .quarantine, &enforcer, cross));
+    try std.testing.expectEqual(before, runtime_state.g_confirmed_quarantines.load(.acquire));
 }
 
 test "ActionDispatcher multiple dispatches do not interfere" {

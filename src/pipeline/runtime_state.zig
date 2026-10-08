@@ -102,6 +102,12 @@ pub var g_pipeline_detections = std.atomic.Value(u64).init(0);
 // control/defcon.zig via healthJson. Never file-derived.
 pub var g_critical_detections = std.atomic.Value(u64).init(0);
 pub var g_confirmed_blocks = std.atomic.Value(u64).init(0);
+// QUAR-RCPT-094: confirmed-quarantine counter, incremented ONLY on the
+// receipt-verified quarantine path in dispatchWithReceipt (same
+// daemon-owned discipline as confirmed blocks). DEFCON's `confirmed`
+// input still reads blocks only — quarantines are reported via health,
+// not folded into the DEFCON ladder without a threshold review.
+pub var g_confirmed_quarantines = std.atomic.Value(u64).init(0);
 // ANOM-COUNT-035: g_pipeline_anomalies removed (write-only, zero readers).
 // Anomaly counts live in AnomalyDetector.anomalies_emitted (detector-owned)
 // and diag.metrics.anomalies_detected (metrics-snapshot feed).

@@ -278,12 +278,17 @@ pub const PepEnforcer = struct {
     /// Confirm that a receipt proves the exact host effect requested by ev.
     /// A receipt ID alone is insufficient: provider read-back must report the
     /// same destination tuple and an explicitly present owned filter.
+    /// QUAR-RCPT-094: block and quarantine receipts verify through the same
+    /// filter read-back (the PEP owns the block-vs-quarantine filter
+    /// semantics; the read-back proves presence + tuple match). Any other
+    /// decision, or a zero filter, fails closed.
     pub fn verifyEnforcementReceipt(
         self: *PepEnforcer,
         ev: *const event.IpcEvent,
         receipt: PepEnforcementReceipt,
     ) bool {
-        if (receipt.decision != .block or receipt.filter_id == 0) return false;
+        if (receipt.filter_id == 0) return false;
+        if (receipt.decision != .block and receipt.decision != .quarantine) return false;
         return switch (self.queryFilterResult(receipt.filter_id)) {
             .present => |state| state.filterId() == receipt.filter_id and
                 state.remoteIpv4() == ev.dst_ip and
@@ -341,6 +346,38 @@ test "receipt verification rejects incomplete receipt" {
         .filter_id = 0,
     };
     try std.testing.expect(!pep.verifyEnforcementReceipt(&ev, receipt));
+}
+
+test "QUAR-RCPT-094: quarantine receipt fails closed without filter or PEP" {
+    var pep = PepEnforcer{ .available = false };
+    var ev = event.IpcEvent.init(.flow_created);
+    // Zero filter: rejected by the gate before any provider query.
+    const no_filter = PepEnforcementReceipt{
+        .decision = .quarantine,
+        .reason = 0,
+        .quota_remaining = 0,
+        .signed_by = 0,
+        .filter_id = 0,
+    };
+    try std.testing.expect(!pep.verifyEnforcementReceipt(&ev, no_filter));
+    // Nonzero filter but no provider: read-back fails, never confirms.
+    const no_pep = PepEnforcementReceipt{
+        .decision = .quarantine,
+        .reason = 0,
+        .quota_remaining = 0,
+        .signed_by = 0,
+        .filter_id = 7,
+    };
+    try std.testing.expect(!pep.verifyEnforcementReceipt(&ev, no_pep));
+    // A non-block/quarantine decision can never verify (exhaustive gate).
+    const bad_decision = PepEnforcementReceipt{
+        .decision = .allow,
+        .reason = 0,
+        .quota_remaining = 0,
+        .signed_by = 0,
+        .filter_id = 7,
+    };
+    try std.testing.expect(!pep.verifyEnforcementReceipt(&ev, bad_decision));
 }
 
 test "mapAction correctness" {
