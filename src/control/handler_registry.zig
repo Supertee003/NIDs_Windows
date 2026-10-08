@@ -702,7 +702,7 @@ const handlers = struct {
                 stage.name, stage.count, stage.p50_ns, stage.p95_ns, stage.p99_ns, stage.mean_ns, stage.max_ns,
             }) catch return null;
         }
-        writer.writeAll("],\"etw\":{", .{}) catch return null;
+        writer.writeAll("],\"etw\":{") catch return null;
         writer.print("\"process_start\":{},\"file_name_create\":{},\"file_name_delete\":{},\"file_write\":{},\"reg_create\":{},\"reg_set\":{},\"dropped_unmapped\":{}}}", .{
             telemetry.g_etw_classes.process_start.load(.acquire),
             telemetry.g_etw_classes.file_name_create.load(.acquire),
