@@ -1,5 +1,5 @@
 {
-  "head_sha": "9c0d690ca442348f8a46170832c887da84ee6d86",
+  "head_sha": "c8463dfc1225612ddd67087afceba1ae526b5e31",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -3003,11 +3003,12 @@
         "mouth/windows_sec_monitor.rs"
       ],
       "tests": [
-        "3 new Rust pins (no-capability, no-adapter fail-closed, two-person gate) plus 1 Zig enforceQuarantineFlow fail-closed pin",
-        "NOT EXECUTED in this session: cargo test plus zig build test must run before commit"
+        "3 new Rust pins green in operator cargo run (44 passed total plus keygen 3; high_severity_quarantine, no_capability, no_adapter all ok)",
+        "1 new Zig enforceQuarantineFlow pin plus full zig build test green",
+        "full pytest 731 passed with zero failures post-commit-refresh"
       ],
-      "result": "PARTIAL",
-      "finding": "Enforcement semantics now exist end to end except caller wiring and live proof. The kernel-driver decision is the single item returned to the owner with reasoning."
+      "result": "PASS",
+      "finding": "Executed green end to end at c8463df: the one Zig compile error in the round (saturating-add operator) was caught by the very gate battery this entry demanded, fixed to +|, and re-verified. Quarantine enforcement semantics now exist with proof on both sides of the FFI; only caller wiring and live proof remain."
     }
   ],
   "evidence_level_summary": {
