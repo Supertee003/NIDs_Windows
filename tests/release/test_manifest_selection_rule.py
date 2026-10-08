@@ -11,6 +11,8 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 REPO = Path(__file__).resolve().parents[2]
 
 
@@ -72,3 +74,24 @@ def test_legit_sources_are_kept():
         "brain/windows_brain.py",
     ):
         assert not mod._is_excluded(p), p
+
+
+def test_releasable_predicate_needs_git_visibility():
+    mod = _load()
+    visible = {"src/main.zig", "scripts/kali_attack_nids.py"}
+    assert mod._is_releasable("src/main.zig", visible)
+    # Untracked AND ignored (attack sims, caches, backups, generated C)
+    # must never gain provenance entries, even when present on disk.
+    assert not mod._is_releasable("scripts/kali_attacks/R2001_mimikatz.py", visible)
+    assert not mod._is_releasable("nose/.pytest_cache/CACHEDIR.TAG", visible)
+    # None (git unavailable) preserves the old accept-all behavior.
+    assert mod._is_releasable("anything/at/all.py", None)
+
+
+def test_git_visible_files_returns_usable_set_or_none():
+    mod = _load()
+    visible = mod.git_visible_files()
+    if visible is None:
+        pytest.skip("git unavailable in this environment")
+    assert "src/main.zig" in visible
+    assert isinstance(visible, set)

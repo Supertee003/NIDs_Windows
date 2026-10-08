@@ -2,8 +2,8 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "d209e10",
-  "build_date": "2026-10-08T15:58:31.325398+00:00",
+  "source_commit": "6b0b2db",
+  "build_date": "2026-10-08T16:31:09.245790+00:00",
   "build_host": "windows",
   "platform": {
     "os": "windows",
@@ -27,7 +27,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "d209e10",
+      "commit": "6b0b2db",
       "source": "src/main.zig",
       "classification": "CANONICAL"
     },
@@ -38,7 +38,7 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "d209e10",
+      "commit": "6b0b2db",
       "source": "rust-src/lib.rs",
       "classification": "CANONICAL"
     },
@@ -49,7 +49,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "d209e10",
+      "commit": "6b0b2db",
       "source": "src/windows/aegis_wfp.c",
       "classification": "CANONICAL"
     },
@@ -60,7 +60,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "d209e10",
+      "commit": "6b0b2db",
       "source": "src/windows/etw_native.c",
       "classification": "CANONICAL"
     },
@@ -71,7 +71,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "d209e10",
+      "commit": "6b0b2db",
       "source": "src/windows/fim_native.c",
       "classification": "CANONICAL"
     },
@@ -82,7 +82,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "go-nose-build-test",
-      "commit": "d209e10",
+      "commit": "6b0b2db",
       "source": "nose/main.go",
       "classification": "CANONICAL"
     },
@@ -93,7 +93,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-aggregator-build-test",
-      "commit": "d209e10",
+      "commit": "6b0b2db",
       "source": "go/aggregator/main.go",
       "classification": "SUPPORT"
     },
@@ -104,7 +104,7 @@
       "type": "library",
       "required": false,
       "ci_job": "shield-build",
-      "commit": "d209e10",
+      "commit": "6b0b2db",
       "source": "shield/src/lib.rs",
       "classification": "SUPPORT"
     },
@@ -115,7 +115,7 @@
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "d209e10",
+      "commit": "6b0b2db",
       "source": "tools/aegisctl.py",
       "classification": "CANONICAL"
     },
@@ -126,7 +126,7 @@
       "type": "script",
       "required": true,
       "ci_job": "package-release",
-      "commit": "d209e10",
+      "commit": "6b0b2db",
       "source": "tools/installer.py"
     },
     {
@@ -136,7 +136,7 @@
       "type": "toolchain",
       "required": true,
       "ci_job": "ts-policy-build",
-      "commit": "d209e10",
+      "commit": "6b0b2db",
       "source": "ts_policy/"
     },
     {
@@ -146,7 +146,7 @@
       "type": "library",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "d209e10",
+      "commit": "6b0b2db",
       "source": "brain/"
     }
   ],
@@ -311,12 +311,6 @@
       "language": "python/cython"
     },
     {
-      "path": "brain/cython/aegis_hotspot.c",
-      "size": 1196879,
-      "sha256": "dd01bef88eec7f3ecd02daa7b71b3d62e11a591eec71cbcd84a558945e3d6dfe",
-      "language": "c/c++"
-    },
-    {
       "path": "brain/cython/aegis_hotspot.pxd",
       "size": 1434,
       "sha256": "ac1dadcd689bda3b22b8114144217465fadb39c2b0d65ab3c7399ff905c3babc",
@@ -329,34 +323,16 @@
       "language": "python/cython"
     },
     {
-      "path": "brain/cython/bridge_ipc.c",
-      "size": 668968,
-      "sha256": "682c197e88d12c5f97f930663d5692cc5dd4508665ad55036782653424755e7a",
-      "language": "c/c++"
-    },
-    {
       "path": "brain/cython/bridge_ipc.pyx",
       "size": 13512,
       "sha256": "26b142286b207b961efec81e4cd87be06933032307ffe1264d3bed2577de7db1",
       "language": "python/cython"
     },
     {
-      "path": "brain/cython/cython_regex_scan.c",
-      "size": 411804,
-      "sha256": "21c63ba892d978c2e47fce8aaef7311909f38d450a646db1b3523ec29ee25c1d",
-      "language": "c/c++"
-    },
-    {
       "path": "brain/cython/cython_regex_scan.pyx",
       "size": 5367,
       "sha256": "dc9f44516a770e6b1647f2a3cb0ec54554b0cd8e6439b66c852ac38fe85bbcdb",
       "language": "python/cython"
-    },
-    {
-      "path": "brain/cython/sensor_pipe.c",
-      "size": 323909,
-      "sha256": "eebcd6cab1a001a15f8837a4fbbad47bec4b22447d1043044fc2d2ea9327c90b",
-      "language": "c/c++"
     },
     {
       "path": "brain/cython/sensor_pipe.pyx",
@@ -851,24 +827,6 @@
       "language": "script"
     },
     {
-      "path": "nose/.pytest_cache/CACHEDIR.TAG",
-      "size": 191,
-      "sha256": "37dc88ef9a0abeddbe81053a6dd8fdfb13afb613045ea1eb4a5c815a74a3bde4",
-      "language": "data"
-    },
-    {
-      "path": "nose/.pytest_cache/README.md",
-      "size": 302,
-      "sha256": "73fd6fccdd802c419a6b2d983d6c3173b7da97558ac4b589edec2dfe443db9ad",
-      "language": "data"
-    },
-    {
-      "path": "nose/.pytest_cache/v/cache/nodeids",
-      "size": 2,
-      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-      "language": "data"
-    },
-    {
       "path": "nose/README_DEPLOY.txt",
       "size": 2189,
       "sha256": "9e8d066be46df71c961c41e67c0332bae1e14995314c3fc8907ecedacd64b244",
@@ -1057,7 +1015,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18563,
-      "sha256": "3d6350c4cb961a4a888571cf9f79895b857e819d3c5003999e40731c4681b600",
+      "sha256": "dbb47db1b79637eb9c59eb07c2f019b74dd3a697807a4566f982a07544345574",
       "language": "json"
     },
     {
@@ -1149,18 +1107,6 @@
       "size": 6171,
       "sha256": "4550be1d33036fb0c0ccc518e95f751d5a9832cab919eceb1a103a7347dd6715",
       "language": "python/cython"
-    },
-    {
-      "path": "scripts/aegis_graph.py.bak",
-      "size": 2820,
-      "sha256": "1f89f153973cc681570cad6ad064374987c3b469f27899a24f26bd6baf24433a",
-      "language": "data"
-    },
-    {
-      "path": "scripts/aegis_graph.py.before-watch.bak",
-      "size": 5041,
-      "sha256": "a3e13c0c57a159db402e784dff076ce75a925915de70f8a5c364c5d5768a20b3",
-      "language": "data"
     },
     {
       "path": "scripts/aegis_metrics.py",
@@ -1295,12 +1241,6 @@
       "language": "python/cython"
     },
     {
-      "path": "scripts/gen_kali_22.py",
-      "size": 11546,
-      "sha256": "9ade0999edb3fefb06b69b6e7bf4948f6b8320a03ab2a0122393f3bc9bf6faeb",
-      "language": "python/cython"
-    },
-    {
       "path": "scripts/generate_detection_fixture_manifest.py",
       "size": 5162,
       "sha256": "e23ee0ec37aa03f471d4b1ff2f794d22e7bfdc409ab3db269cba2aaf367415a3",
@@ -1329,150 +1269,6 @@
       "size": 8330,
       "sha256": "3e873f2baefa705f6b79654e651e18e3247b049a80ac989d8a38279b785d8f4d",
       "language": "script"
-    },
-    {
-      "path": "scripts/kali_attack_nids.py",
-      "size": 5818,
-      "sha256": "d1182460f80e663110cc50ec39f55d9dcb8ef19f3464d990f2b166bb4bc2e4fd",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R0056_sqli_auth_bypass.py",
-      "size": 2189,
-      "sha256": "ba8961beb92ce28d4db961329ceafe023e57bb69157134827ef307daef15108d",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R0088_path_traversal.py",
-      "size": 2202,
-      "sha256": "1f5a84cb01be0a0637f1f11956765222c02dd1e411dcb3f0f8085ec52097bf89",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R0089_rfi_param.py",
-      "size": 2201,
-      "sha256": "8dbe94690c2cd63b9d47228b56591d26dc353b88823718f52d769519b050ade1",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R1001_system32_write.py",
-      "size": 2668,
-      "sha256": "35cd56af81f739d786f4285f0d2b7a129b8d67c8bda5367e5aa8690a347b4d56",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R1002_ransomware_rename.py",
-      "size": 2674,
-      "sha256": "2ce0aec0bd2c63e49bd066c4a6fd41036e55a158403ae207b02165c54cde3202",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R1003_startup_folder.py",
-      "size": 2668,
-      "sha256": "17d102dc76d6820a07e01c55360e171ad5a94ecb48ac14fcd1c64a842bc74d22",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R1004_dll_drop_system32.py",
-      "size": 2665,
-      "sha256": "7816dc39ffdaf8898395f13a571e44832858581d260f4b69b78ff0e33689cfbf",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R1005_hosts_file.py",
-      "size": 2660,
-      "sha256": "bae1326d5f7509454c5b8020262164dca0425f6e08ddaeaf5b178fbdbeea6f55",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R2001_mimikatz.py",
-      "size": 2028,
-      "sha256": "d000c4238af89bb74bb12b7a1b4ab61611cde2e59be27d5ee3dcedf771cab98a",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R2002_svchost_hollowing.py",
-      "size": 2051,
-      "sha256": "db17874a544401ad0ebcf0d9cb4d7844833e4d58f7dd898ff68d01f4bfab49fe",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R2003_ps_cradle.py",
-      "size": 2150,
-      "sha256": "470b9bd8f951e90b17e3ad1ced88ec5aba90dccc564bd6e00d8870794dc676d6",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R2004_certutil_abuse.py",
-      "size": 2046,
-      "sha256": "fa7b4f95f9c52bbd9ef02552ccaded540fc7ca5a08de9e87b37168503e898dbe",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R2005_procdump_harvest.py",
-      "size": 2044,
-      "sha256": "276c0567af7a26ac00002df99dfb70ee750726c25ec4538486d016cab6089cbb",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R3001_cobalt_pipe.py",
-      "size": 2416,
-      "sha256": "b0b95b4a747d78cf2a2a57c2e89bc1a1289c7a519f705d540c7c750e1f198a46",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R3002_psexec.py",
-      "size": 2132,
-      "sha256": "fbd7a538d0aa5647aac2a4abb584a91926b24e1fb2aa9901c7b0df708af95cd0",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R3003_anon_pipe.py",
-      "size": 2412,
-      "sha256": "7386d582d34226114b77c9493cbe6707e2577ea0ca1f6e870ec8757a7f2fb517",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R3004_meterpreter_pipe.py",
-      "size": 2426,
-      "sha256": "539042de954eafd600a056ef580e4f871502475c6e8de667d9ff2103a9905b24",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R3005_atexec_pipe.py",
-      "size": 2064,
-      "sha256": "f01f5678645182bf40bd3f3c773d9b2445c5b2939ef108d69984bf145aea4394",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R9002_icmp_flood.py",
-      "size": 1817,
-      "sha256": "4f3441ab650683164f2e25e8b7467d6d2d46af4deae95460ed908dce2395f157",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R9006_syn_stealth_scan.py",
-      "size": 1784,
-      "sha256": "86a377defbe993dca1a70699147207426aeef5f7a70923166a08211c2b771730",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R9007_xmas_scan.py",
-      "size": 1778,
-      "sha256": "38bbe32d719e7f32b0237844196acd9a8e0120ea9bad70ef18f958f6210e4424",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R9059_xss_basic.py",
-      "size": 2154,
-      "sha256": "cbdf228284ecdab00fa61dbfd6f07a2f41b8efdda6a059a04c9da61196028bf9",
-      "language": "python/cython"
-    },
-    {
-      "path": "scripts/kali_attacks/R9064_cmdi_semicolon.py",
-      "size": 2173,
-      "sha256": "1372b7706d02a1695d3e7e6eaf23e5cdd00497f04172faf775bf1ee1926c4906",
-      "language": "python/cython"
     },
     {
       "path": "scripts/kali_hostonly_probe.sh",
@@ -1773,12 +1569,6 @@
       "size": 6346,
       "sha256": "9760ee0514497dd0d2d6835063de8a319251944d17d8ea11be3cfceb63872f4a",
       "language": "python/cython"
-    },
-    {
-      "path": "shield/Cargo.lock",
-      "size": 156,
-      "sha256": "437fe0e1f6624569c72ca969bc5f648604f6b96bfb43845d7034e7604e57e234",
-      "language": "data"
     },
     {
       "path": "shield/Cargo.toml",
@@ -3815,12 +3605,6 @@
       "language": "python/cython"
     },
     {
-      "path": "tools/legacy/rust_shield_orphan_quarantined/Cargo.lock",
-      "size": 156,
-      "sha256": "437fe0e1f6624569c72ca969bc5f648604f6b96bfb43845d7034e7604e57e234",
-      "language": "data"
-    },
-    {
       "path": "tools/legacy/rust_shield_orphan_quarantined/Cargo.toml",
       "size": 147,
       "sha256": "95529172e50a3bc9d76033aeec28d78cfc5e505e539cf307ac012ded7e5cda2e",
@@ -3876,8 +3660,8 @@
     },
     {
       "path": "tools/release_engineering.py",
-      "size": 22004,
-      "sha256": "495d409edc89666ef051f265c215bb56c8146168b7ea10d170a388545cdcb4a5",
+      "size": 24051,
+      "sha256": "b1a8a8f15534664254f31b34e4e09c2154adbaf8be73fe080a6f8365ec10103b",
       "language": "python/cython"
     },
     {

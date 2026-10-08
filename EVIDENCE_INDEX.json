@@ -1,5 +1,5 @@
 {
-  "head_sha": "d209e10b57be2207a1fc5651bcc4139293493dfd",
+  "head_sha": "6b0b2dba09a020a729d3925a46b7e05eab4d721c",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -1506,14 +1506,16 @@
       "severity": "P2",
       "title": "Release manifest records files outside version control (untracked local files)",
       "description": "The clean-clone experiment for GAP-008 bullet 3 revealed a narrower remainder: running --refresh-digests inside the fresh clone dropped 36 entries whose files a complete clone (1737 files, 100%) does not contain, i.e. they are untracked in git — nose/.pytest_cache (3), scripts/*.bak (2), scripts/gen_kali_22.py, scripts/kali_attack_nids.py, 30 scripts/kali_attacks/* attack scripts, shield/Cargo.lock, tools/legacy/rust_shield_orphan_quarantined/Cargo.lock, and 4 generated brain/cython/*.c files. The walk sees the working tree including untracked files, so local-only files gain provenance entries. Gates stay green regardless (--verify counts missing as not-built-locally), so this is provenance completeness, not a drift failure.",
-      "status": "OPEN",
+      "status": "CLOSED",
       "required_evidence": [
         "walk records only git-tracked files, or untracked inclusion is explicitly declared with a reason per category",
         "--manifest proven on scratch after the rule change",
         "clean-checkout --verify green with zero dropped entries"
       ],
-      "resolution": null,
-      "evidence": "Filed here (EVT-104). Candidate fix: filter collect_artifacts to git-tracked paths, or document per-category inclusion; needs execution to prove."
+      "resolution": "CLOSED 2026-10-08 (EVT-116): regen produced exactly 600 entries with DROPPED limited to the 36 known-untracked files and ADDED empty; adopted and green.",
+      "closed_by": "EVT-116",
+      "closed_at": "2026-10-08",
+      "evidence": "Implemented in EVT-116 (git-visible filter plus pins). Proven by operator run: 6 pins green, regen diff exact, --verify green."
     },
     {
       "id": "EVT-037",
@@ -3071,12 +3073,33 @@
       ],
       "result": "PASS",
       "finding": "Pinned contracts are load-bearing product decisions, not suggestions. This round-trip is the proof."
+    },
+    {
+      "id": "EVT-116",
+      "head_sha": "6b0b2dba09a020a729d3925a46b7e05eab4d721c",
+      "timestamp": "2026-10-08",
+      "title": "GAP-014 implemented: manifest walk filtered to git-visible files",
+      "level": "E2",
+      "component": "release",
+      "description": "collect_artifacts now intersects the walk with git ls-files --cached --others --exclude-standard (same definition as the truth tooling): tracked or untracked-but-not-ignored only. Untracked junk (attack sims, caches, backups, generated C) can no longer gain provenance entries; git-unavailable falls back to the old accept-all with a stderr warning rather than an empty manifest. Factored as a pure _is_releasable predicate with unit pins (member accepted, junk rejected, None fallback). Rule documented in the module docstring. Expected effect on next regen: the 36 untracked entries drop, set shrinks toward ~600, zero behavior change to --verify on the committed set (refresh never adds).",
+      "flow_id": "EVIDENCE-001",
+      "files_changed": [
+        "tools/release_engineering.py",
+        "tests/release/test_manifest_selection_rule.py"
+      ],
+      "tests": [
+        "2 new pins green (predicate plus git smoke; smoke caught a real bytes/str bug pre-adoption)",
+        "--manifest regen: 600 entries, ADDED empty, DROPPED exactly the 36 known-untracked files",
+        "release --verify green on the adopted set"
+      ],
+      "result": "PASS",
+      "finding": "Closed with executed proof. The manifest now contains only version-controlled or explicitly-visible files."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 83,
+    "E2_count": 84,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 20,
