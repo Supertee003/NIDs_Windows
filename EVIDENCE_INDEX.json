@@ -1,5 +1,5 @@
 {
-  "head_sha": "97bb4a15d8da6dbf637395f00aeaed83c9b3347a",
+  "head_sha": "84d25fd0d5fc933238789f9fb7b52a4a06f2a44d",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -1393,7 +1393,7 @@
       "id": "GAP-008",
       "severity": "P1",
       "title": "Artifact-set generators are not reproducible",
-      "description": "tools/release_engineering.py::collect_artifacts() listed the non-existent core/ directory, omitted canonical sources (src/, configs/, rust-src/, nose/), and picked up gitignored build output, so running --manifest destroys provenance instead of restoring it. The committed 539-entry artifact set cannot be derived from any single rule revision: 0 src/ entries, 2 config/ entries, and ~244 non-reproducible build byproducts (232 bridge/build/, ~10 brain cython, 2 loose go/aggregator .exe). A bounded --refresh-digests mode was added so reviewed changes can be re-stamped without touching the artifact set. Owner-approved hybrid settlement (EVT-093): rule rewritten (canonical sources walked; junk excluded by whole-segment "build" + byproduct suffixes), committed 539 kept verbatim as grandfathered, next --manifest drops the junk explicitly.",
+      "description": "tools/release_engineering.py::collect_artifacts() listed the non-existent core/ directory, omitted canonical sources (src/, configs/, rust-src/, nose/), and picked up gitignored build output, so running --manifest destroys provenance instead of restoring it. The committed 539-entry artifact set cannot be derived from any single rule revision: 0 src/ entries, 2 config/ entries, and ~244 non-reproducible build byproducts (232 bridge/build/, ~10 brain cython, 2 loose go/aggregator .exe). A bounded --refresh-digests mode was added so reviewed changes can be re-stamped without touching the artifact set. Owner-approved hybrid settlement (EVT-093): rule rewritten (canonical sources walked; junk excluded by whole-segment 'build' + byproduct suffixes), committed 539 kept verbatim as grandfathered, next --manifest drops the junk explicitly.",
       "status": "OPEN",
       "required_evidence": [
         "artifact-set selection rule documented",
@@ -1479,6 +1479,25 @@
       ],
       "resolution": null,
       "evidence": "Filed STOP-THE-LINE here. ETW-GUID-180 (EVT-091) closes bullets 1-3 with green pins proven executable by deliberate red; bullet 4 remains elevation-gated (GAP-009 bounds that boundary); bullet 5 implemented statically in EVT-092 (TDH pre-start validation, rc -6/-7, source-pinned) but runtime proof pending (MSVC build + host run not executed this session)."
+    },
+    {
+      "id": "GAP-013",
+      "severity": "P0",
+      "title": "Segfaults from freeing non-owned memory (envOr literal, g_uplink stack pointer, handler literals)",
+      "description": "One bug class, three sites. (1) src/federation/cluster_uplink.zig::envOr returned the static default literal on getEnvVarOwned failure while every configFromEnv caller frees unconditionally: freeing non-heap memory segfaulted inside page_allocator.free during daemon startup (configFromEnv -> initFromEnv -> runDaemon), exit 2147483651 before the control pipe existed whenever AEGIS_CLUSTOM was absent. This single crash explains both live failures in the 84d25fd gate run: test_core_reaches_running timed out and test_status_json_carries_traffic_gauges saw only the key-less diagnostic fallback. (2) Same function stored &uplink (stack local) into global g_uplink: use-after-free on first publish when enabled. (3) src/control/handler_registry.zig returned static literals from 6 handlers (version, forensicsRead-empty, forensicsVerify-absent, logsTail-empty, federationStatus-standalone, daemonShutdown) while tests — and the natural caller contract — free unconditionally: test.exe aborted in 'logsTail returns entries when the forensic log exists' on an empty log file, hiding all later tests. Same-area audit: all other getEnvVarOwned sites free only on success; production dispatch never frees (pre-existing per-request leak, unchanged). A separate self-inflicted wound: EVIDENCE_INDEX.json line 1396 carried unescaped \"build\" quotes inside the GAP-008 description (added with EVT-093), breaking JSON parsing — invisible because no pytest test parses the index (truth.py reported NO_SHA, still TRUTH_VALID non-strict).",
+      "status": "CLOSED",
+      "required_evidence": [
+        "zig build test green including the new FED-UPLINK-095 ownership pin",
+        "test.exe completes without abort (logsTail empty-file path passes; no later tests hidden)",
+        "test_core_reaches_running green with AEGIS_CLUSTER absent (default env)",
+        "test_status_json_carries_traffic_gauges green (live daemon answers with gauges)",
+        "EVIDENCE_INDEX.json parses as JSON (one-liner check green)",
+        "no other free-literal pattern remains (env + handler literals audited)"
+      ],
+      "resolution": "CLOSED 2026-10-08 by operator gate run: JSON one-liner green (E1=18, E2=68), zig build + zig build test clean with no test.exe abort, targeted pytest 2 passed — core reaches RUNNING on the default path (envOr crash gone) and status carries gauges. EVT-095 (envOr + g_uplink), EVT-096 (LIT-FREE-096 + JSON repair + build-before-test protocol), EVT-097 (diagnostic gauges).",
+      "closed_by": "EVT-095+EVT-096+EVT-097",
+      "closed_at": "2026-10-08",
+      "evidence": "Operator execution transcript 2026-10-08 (2 passed in 1.04s; digests updated: tools/aegisctl/api/control_api.py only)."
     },
     {
       "id": "EVT-037",
@@ -2594,12 +2613,70 @@
       ],
       "result": "PARTIAL",
       "finding": "Zig side of quarantine receipts is contracted and pinned; positive-path proof needs the Rust quarantine-enforce path plus a live PEP. Supervisor and trust chains needed no code — verified complete by source inspection with remainders precisely bounded."
+    },
+    {
+      "id": "EVT-095",
+      "head_sha": "84d25fd0d5fc933238789f9fb7b52a4a06f2a44d",
+      "timestamp": "2026-10-08",
+      "title": "FED-UPLINK-095: startup segfault fixed (envOr ownership + g_uplink heap lifetime), filed as GAP-013",
+      "level": "E2",
+      "component": "zig_core",
+      "description": "Root-caused both 84d25fd gate failures to one defect: envOr returned the static default literal when AEGIS_CLUSTER was absent and configFromEnv frees unconditionally -> segfault in page_allocator.free before the control pipe existed (exit 2147483651). Fix: envOr dupes the default (always heap-owned); all 8 call sites already free unconditionally so no leak is introduced. Same-area fix: initFromEnv stored &uplink (stack local) into global g_uplink (use-after-free on first publish when enabled) -> instance is now allocator.create'd and shutdown() destroys it after deinit. Same-bug-class audit over every getEnvVarOwned site in src/: all others free only on success — envOr was the sole free-literal site. New regression pin 'FED-UPLINK-095: envOr default is heap-owned and always freeable' (cluster_uplink.zig already has a direct all_tests edge). Causal hypothesis for the operator to confirm: with the daemon starting, test_core_reaches_running and test_status_json_carries_traffic_gauges both go green (gauges need a live daemon; the key-less diagnostic fallback was collateral of the crash).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/federation/cluster_uplink.zig"
+      ],
+      "tests": [
+        "new Zig pin FED-UPLINK-095 (absent-var default is owned, content-identical, freeable)",
+        "NOT EXECUTED in this session: no command-execution tool available; operator must run zig build test plus the two failing pytest tests"
+      ],
+      "result": "PARTIAL",
+      "finding": "Fix is implemented, pinned, and review-clean but unexecuted. If the two pytest failures persist after this fix with AEGIS_CLUSTER absent, the gauges failure is independent and gets its own gap."
+    },
+    {
+      "id": "EVT-096",
+      "head_sha": "84d25fd0d5fc933238789f9fb7b52a4a06f2a44d",
+      "timestamp": "2026-10-08",
+      "title": "LIT-FREE-096: uniform handler ownership + EVIDENCE JSON repair; stale-binary retest explained",
+      "level": "E2",
+      "component": "zig_core",
+      "description": "Two fixes from the 84d25fd gate-run output. (1) test.exe aborted in 'logsTail returns entries when the forensic log exists': logsTail returned a static literal for the empty-file path while the test frees unconditionally. Audit found 6 literal-returning handlers against a split contract (version test documented literal/no-free). Fix LIT-FREE-096: HandlerFn contract now mandates always-owned returns; all 6 literals dupe (version, forensicsRead-empty, forensicsVerify-absent, logsTail-empty, federationStatus-standalone, daemonShutdown); version test frees. Production dispatch never frees (pre-existing per-request leak, unchanged behavior). The abort had been hiding every test after logsTail in file order. (2) EVIDENCE_INDEX.json failed to parse: unescaped 'build' quotes inside the GAP-008 description (mine, EVT-093) — repaired to single quotes and scanned the touched regions for further internal quotes (clean); no pytest test parses the index, which is why 723 passed regardless and truth.py showed NO_SHA yet TRUTH_VALID. (3) Retest protocol correction: the daemon crash reappeared because `zig build test` does not rebuild aegis_nids.exe — the lifecycle tests ran a stale binary. Operator must run `zig build` BEFORE pytest, with AEGIS_CLUSTER absent to cover the default path.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/control/handler_registry.zig",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "existing 'logsTail returns entries when the forensic log exists' (crashed pre-fix on empty log; passes post-fix) and updated version test (now frees)",
+        "NOT EXECUTED in this session: no command-execution tool available; operator must run zig build, zig build test, then the pytest pair"
+      ],
+      "result": "PARTIAL",
+      "finding": "Crash class closed on the Zig side by construction (no static returns remain on any freeing path) plus contract pin in HandlerFn docs. Remaining: execute the corrected order (build, then test) and confirm the JSON one-liner goes green."
+    },
+    {
+      "id": "EVT-097",
+      "head_sha": "84d25fd0d5fc933238789f9fb7b52a4a06f2a44d",
+      "timestamp": "2026-10-08",
+      "title": "CLI-SHOP-158 completion: diagnostic health carries traffic gauges (absent reads as 0)",
+      "level": "E2",
+      "component": "control-plane",
+      "description": "The gauges failure proved independent of the daemon crash (core green, gauges still red): the live health path forwards packets_captured/flows_active with absent-to-0, but _diagnostic_health_payload (daemon unreachable) omitted both keys while the CLI-SHOP-158 pin expects presence even against absent daemons. Fix: both keys added as 0 (unknown) with a comment citing the convention. Additive-only: JSON readers gate on presence; the human status display already used .get(key, 0). Note this also changes tools/aegisctl/api/control_api.py, which IS manifest-walked (tools/) — operator must --refresh-digests before --verify.",
+      "flow_id": "CONTROL-001",
+      "files_changed": [
+        "tools/aegisctl/api/control_api.py"
+      ],
+      "tests": [
+        "existing pin test_status_json_carries_traffic_gauges (failed standalone pre-fix; passes post-fix)",
+        "NOT EXECUTED in this session: no command-execution tool available"
+      ],
+      "result": "PARTIAL",
+      "finding": "With this fix plus the daemon starting, both 84d25fd gate failures should clear. If gauges still fail while core passes, the fallback path needs a deeper look."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 18,
-    "E2_count": 65,
+    "E2_count": 68,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 20,

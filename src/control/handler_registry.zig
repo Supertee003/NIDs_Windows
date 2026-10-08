@@ -22,6 +22,9 @@ const siem_mod = @import("../forensic/siem_forwarder.zig");
 
 /// A handler receives the allocator, the raw payload JSON value, and context.
 /// Returns a raw JSON string for the "data" field, or null on error.
+/// OWNERSHIP CONTRACT (LIT-FREE-096): the return is ALWAYS allocator-owned
+/// (dupe literals); the caller frees unconditionally. A static string here
+/// segfaults every freeing caller (test.exe abort observed).
 pub const HandlerFn = *const fn (a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8;
 
 pub const HandlerContext = struct {
@@ -379,11 +382,11 @@ const handlers = struct {
         };
     }
 
-    fn version(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
+    fn version(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
         // VER-TRUTH-032: every value mirrors its component's own source of
         // truth — core/nose 5.0.0 (product line), pep 5.0.0 (Cargo package
         // aegis_pep), brain 2.0.0 (windows_brain --version/banner).
-        return "{\"core\":\"5.0.0\",\"nose\":\"5.0.0\",\"pep\":\"5.0.0\",\"brain\":\"2.0.0\"}";
+        return a.dupe(u8, "{\"core\":\"5.0.0\",\"nose\":\"5.0.0\",\"pep\":\"5.0.0\",\"brain\":\"2.0.0\"}") catch null;
     }
 
     fn diagnose(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
@@ -877,7 +880,7 @@ const handlers = struct {
         ));
 
         const ring = state_mod.g_forensic_ring orelse
-            return "{\"available\":false,\"records\":[],\"records_returned\":0,\"records_matched\":0,\"truncated\":false,\"next_after\":null,\"integrity\":\"unavailable\",\"verified\":false}";
+            return a.dupe(u8, "{\"available\":false,\"records\":[],\"records_returned\":0,\"records_matched\":0,\"truncated\":false,\"next_after\":null,\"integrity\":\"unavailable\",\"verified\":false}") catch null;
 
         const count = ring.recordCount();
         const slots = ring.capacity() / forensic_pipeline.RECORD_BYTES;
@@ -1089,7 +1092,7 @@ const handlers = struct {
                 oldest,
             }) catch null;
         }
-        return "{\"verified\":false,\"integrity\":\"unavailable\",\"records\":0}";
+        return a.dupe(u8, "{\"verified\":false,\"integrity\":\"unavailable\",\"records\":0}") catch null;
     }
 
     fn forensicsExport(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
@@ -1773,7 +1776,7 @@ const handlers = struct {
         };
         const max_bytes: u64 = 64 * 1024;
         const tail_len: usize = @intCast(@min(stat.size, max_bytes));
-        if (tail_len == 0) return "{\"entries\":[]}";
+        if (tail_len == 0) return a.dupe(u8, "{\"entries\":[]}") catch null;
         const start: u64 = stat.size - tail_len;
         file.seekTo(start) catch {
             ctx.failure_code = "LOG_UNAVAILABLE";
@@ -1837,7 +1840,7 @@ const handlers = struct {
         if (uplink.g_uplink) |u| {
             return u.statusJson(a) catch null;
         }
-        return "{\"mode\":\"standalone\",\"cluster_enabled\":false,\"nodes\":0,\"role\":\"standalone\"}";
+        return a.dupe(u8, "{\"mode\":\"standalone\",\"cluster_enabled\":false,\"nodes\":0,\"role\":\"standalone\"}") catch null;
     }
 
     fn runtimeStart(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
@@ -1879,7 +1882,7 @@ const handlers = struct {
         return null;
     }
 
-    fn daemonShutdown(_: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
+    fn daemonShutdown(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
         // The daemon supervisor owns the STOPPED postcondition. This handler
         // only requests cancellation; workers and pipe handles may still be
         // live while the control response is being returned.
@@ -1893,7 +1896,7 @@ const handlers = struct {
 
         bridge_init.requestShutdown();
 
-        return "{\"shutdown_requested\":true,\"state\":\"STOPPING\"}";
+        return a.dupe(u8, "{\"shutdown_requested\":true,\"state\":\"STOPPING\"}") catch null;
     }
 };
 
@@ -2104,8 +2107,10 @@ test "version handler mirrors each component's own source of truth" {
     // hardcoded version here misleads operators into debugging the wrong
     // binary, so the exact values are pinned.
     var ctx = HandlerContext{ .start_ns = 0, .request_id = 24, .caller_role = .read, .caller_pid = 0 };
-    // version() returns a string literal (no allocation), so no free.
+    // LIT-FREE-096: version() output is allocator-owned like every handler
+    // (uniform caller-frees contract), so it is freed here.
     const out = handlers.version(std.testing.allocator, .{ .null = {} }, &ctx).?;
+    defer std.testing.allocator.free(out);
     try std.testing.expectEqualStrings("{\"core\":\"5.0.0\",\"nose\":\"5.0.0\",\"pep\":\"5.0.0\",\"brain\":\"2.0.0\"}", out);
 }
 

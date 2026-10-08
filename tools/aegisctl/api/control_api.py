@@ -1032,6 +1032,12 @@ def _diagnostic_health_payload(reason: str) -> Dict[str, Any]:
         "version": "5.0.0",
         "uptime_ms": max(0, time.monotonic_ns() // 1_000_000 - _PROCESS_START_MONOTONIC_MS),
         "last_event_ms": 0,
+        # CLI-SHOP-158: traffic gauges are present even when the daemon is
+        # unreachable — absent reads as 0 (unknown), same convention as the
+        # live path's daemon_health.get(key, 0). Machine readers gate on
+        # key presence, so omitting them here breaks status --json.
+        "packets_captured": 0,
+        "flows_active": 0,
         "counters": {
             "in_events": 0,
             "out_events": 0,

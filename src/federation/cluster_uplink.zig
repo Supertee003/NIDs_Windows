@@ -44,7 +44,12 @@ pub const UplinkConfig = struct {
 };
 
 fn envOr(allocator: std.mem.Allocator, key: []const u8, default: []const u8) ![]const u8 {
-    return std.process.getEnvVarOwned(allocator, key) catch default;
+    // FED-UPLINK-095: the default MUST be heap-owned. Every caller frees
+    // unconditionally, so returning the static literal segfaulted daemon
+    // startup whenever the variable was absent (free of non-heap memory
+    // in page_allocator). getEnvVarOwned failure is the normal absent
+    // case, not an error worth propagating here.
+    return std.process.getEnvVarOwned(allocator, key) catch try allocator.dupe(u8, default);
 }
 
 pub fn configFromEnv(allocator: std.mem.Allocator) !UplinkConfig {
@@ -363,18 +368,24 @@ pub fn initFromEnv(allocator: std.mem.Allocator) !void {
         diag.info("[CLUSTER] standalone (AEGIS_CLUSTER not set)", .{});
         return;
     }
-    var uplink = try ClusterUplink.init(allocator, cfg);
+    // FED-UPLINK-095: heap-own the instance. Storing &local would leave
+    // g_uplink dangling after return (use-after-free on first publish).
+    const uplink = try allocator.create(ClusterUplink);
+    errdefer allocator.destroy(uplink);
+    uplink.* = try ClusterUplink.init(allocator, cfg);
     errdefer uplink.deinit();
     try uplink.loadPeers();
     uplink.install();
-    g_uplink = &uplink;
+    g_uplink = uplink;
     runtime_state.g_cluster_enabled.store(true, .release);
     diag.info("[CLUSTER] uplink active (node {d}, {d} peers)", .{ cfg.node_id, uplink.peers.items.len });
 }
 
 pub fn shutdown() void {
     if (g_uplink) |u| {
+        const alloc = u.allocator;
         u.deinit();
+        alloc.destroy(u);
         g_uplink = null;
         runtime_state.g_cluster_enabled.store(false, .release);
     }
@@ -390,6 +401,15 @@ test "uplink config defaults to standalone" {
     //  disabled path by constructing directly.)
     const cfg = UplinkConfig{ .enabled = false };
     try std.testing.expect(!cfg.enabled);
+}
+
+test "FED-UPLINK-095: envOr default is heap-owned and always freeable" {
+    // Regression pin for the daemon startup segfault: envOr used to
+    // return the static default literal, which every caller frees.
+    // Absent variable -> owned copy with identical content.
+    const v = try envOr(std.testing.allocator, "AEGIS_TEST_ABSENT_VAR_XYZ_123", "0");
+    defer std.testing.allocator.free(v);
+    try std.testing.expectEqualStrings("0", v);
 }
 
 test "uplink status reports standalone when not installed" {
