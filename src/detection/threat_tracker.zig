@@ -59,7 +59,11 @@ pub const FlowThreat = struct {
         };
         _ = self.score.fetchAdd(weight, .monotonic);
         _ = self.evidence_count.fetchAdd(1, .monotonic);
-        self.last_seen_ns.store(@intCast(ev.timestamp_ns), .release);
+        // GAP-016: hostile timestamps must not int3 the pipeline. Nose
+        // monotonic_ns is copied verbatim and canonical validation never
+        // bounds it, so clamp to i64 range (saturating, fail-open) instead
+        // of trapping on values past 292 years in nanoseconds.
+        self.last_seen_ns.store(@intCast(@min(ev.timestamp_ns, @as(u64, @intCast(std.math.maxInt(i64))))), .release);
     }
 
     pub fn currentScore(self: *const FlowThreat) u32 {
@@ -271,6 +275,20 @@ test "FlowThreat add evidence" {
     }
     try std.testing.expectEqual(@as(u32, 130), ft.currentScore());
     try std.testing.expectEqual(@as(u32, 6), ft.evidence_count.load(.monotonic));
+}
+
+test "FlowThreat clamps hostile timestamps instead of trapping (GAP-016)" {
+    var ft = FlowThreat{ .flow_id = 43, .first_seen_ns = 1000 };
+    var ev = event.IpcEvent.init(.signature_match);
+    ev.timestamp_ns = std.math.maxInt(u64);
+    ev.event_id = 1;
+    ev.rule_id = 100;
+    ft.addEvidence(&ev, 30);
+    try std.testing.expectEqual(std.math.maxInt(i64), ft.last_seen_ns.load(.monotonic));
+    // Sane values still land verbatim.
+    ev.timestamp_ns = 2000;
+    ft.addEvidence(&ev, 1);
+    try std.testing.expectEqual(@as(i64, 2000), ft.last_seen_ns.load(.monotonic));
 }
 
 test "ThreatTracker escalates to incident" {

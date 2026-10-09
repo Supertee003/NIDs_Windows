@@ -425,7 +425,10 @@ fn siemForward(ev: *const event.IpcEvent, rule_id: u32, severity: event.EventSev
     const rule = std.fmt.bufPrint(&rule_buf, "{}", .{rule_id}) catch return;
     const proto: []const u8 = if (ev.protocol == 6) "TCP" else if (ev.protocol == 17) "UDP" else if (ev.protocol == 1) "ICMP" else std.fmt.bufPrint(&proto_buf, "{}", .{ev.protocol}) catch return;
     siem_mod.forwardEvent(.{
-        .timestamp = @as(i64, @intCast(ev.timestamp_ns / 1_000_000)),
+        // GAP-016: saturating timestamp (threat_tracker rationale applies
+        // here too — the cast below executes per detection even with SIEM
+        // off, since the struct builds before the forward no-op).
+        .timestamp = @as(i64, @intCast(@min(ev.timestamp_ns / 1_000_000, @as(u64, @intCast(std.math.maxInt(i64)))))),
         .attack_type = @tagName(ev.kind),
         .src_ip = src,
         .dst_ip = dst,
@@ -493,6 +496,17 @@ test "siemForward renders v6 sidecars as text, never dotted prefix" {
     try std.testing.expect(std.mem.indexOf(u8, body, "2001:0db8:0000:0000:0000:0000:0000:0001") != null);
     try std.testing.expect(std.mem.indexOf(u8, body, "2001:0db8:0000:0000:0000:0000:0000:0002") != null);
     try std.testing.expect(std.mem.indexOf(u8, body, "32.1.13.184") == null);
+}
+
+test "siemForward clamps hostile timestamps instead of trapping (GAP-016)" {
+    // The timestamp cast below executes per detection even with SIEM off
+    // (the struct builds before the forward no-op), so a garbage
+    // monotonic_ns must saturate, never int3 the pipeline thread.
+    var ev = event.IpcEvent.init(.packet_captured);
+    ev.timestamp_ns = std.math.maxInt(u64);
+    ev.src_ip = 0xC0A80164;
+    ev.dst_ip = 0x0A000001;
+    siemForward(&ev, 4242, .alert, .alert, null, null);
 }
 
 test "formatIp6 renders full hextets deterministically" {

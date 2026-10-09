@@ -36,7 +36,10 @@ pub const Metric = struct {
         self.ewma = self.ewma + ALPHA * delta;
         const delta2 = value - self.ewma;
         self.m2 = (1 - ALPHA) * self.m2 + ALPHA * delta2 * delta2;
-        self.count += 1;
+        // GAP-016: saturating (CORR-SAT-069 idiom). A plain += traps at
+        // 2^32 same-key observations (~71 min at 1M eps) and kills the
+        // pipeline thread in -ODebug builds.
+        self.count +|= 1;
         if (self.count < WARMUP_SAMPLES) return null;
         const variance = self.m2;
         const sigma = @sqrt(variance);
@@ -107,6 +110,13 @@ test "Metric warmup does not emit" {
         const z = m.observe(10.0);
         try std.testing.expect(z == null);
     }
+}
+
+test "Metric count saturates instead of trapping (GAP-016)" {
+    var m = Metric{};
+    m.count = std.math.maxInt(u32);
+    _ = m.observe(10.0);
+    try std.testing.expectEqual(std.math.maxInt(u32), m.count);
 }
 
 test "Metric detects spike after warmup" {

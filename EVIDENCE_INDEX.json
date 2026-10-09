@@ -1537,6 +1537,19 @@
       "resolution": null
     },
     {
+      "id": "GAP-016",
+      "severity": "P1",
+      "title": "Service crash resilience: 02:50 int3 crash on superseded binary plus a 2h blind gap with no SCM recovery",
+      "description": "Found while closing the loop (EVT-133): the Application log holds a 0x80000003 (int3) crash of the DEPLOYED service binary at 02:50:57 on an older build (PE stamp differs from current), and sc qfailure shows NO recovery actions — the service sat dead until the next operator redeploy (~2h blind). Root cause of that crash is unproven (candidates from the era: since-pinned u8-wrap/u32-narrow/pre-mutex classes); a full -ODebug panic-class sweep found no legitimate-input storm panic remaining and closed the three genuine residuals in EVT-133. Remaining: SCM recovery config + watchdog scheduling (both operator one-liners, no daemon change; watchdog script added and proven exit 0 live).",
+      "status": "OPEN",
+      "required_evidence": [
+        "SCM failure recovery configured (sc failure output showing restart actions)",
+        "watchdog scheduled task active with clean history",
+        "no further int3 crashes across storm load"
+      ],
+      "resolution": null
+    },
+    {
       "id": "EVT-037",
       "head_sha": "60c76fe61e2fc2cfc9e436fa001e2b0788f006f5",
       "timestamp": "2026-09-12",
@@ -3463,12 +3476,37 @@
       ],
       "result": "PASS",
       "finding": "Stop guessing at the queue: 97.5% of ETW cost dies after full decode. G4 moves the gate before the decode and sheds deletes at depth — both preserve every R1001/R1004 path."
+    },
+    {
+      "id": "EVT-133",
+      "head_sha": "283780d",
+      "timestamp": "2026-10-09",
+      "title": "Crash-class hardening plus crash-resilience gaps: timestamp clamps, saturating anomaly count, watchdog",
+      "level": "E2",
+      "component": "zig_core",
+      "description": "Prompted by a 0x80000003 crash of a superseded deployed binary (02:50, PE stamp differs from current) plus a ~2h blind gap (no SCM recovery configured). A full -ODebug panic-class sweep (reader investigation + author verification of every load-bearing claim) found: no legitimate-input storm panic remains (prior classes carry pins: CORR-SAT-069, METR-U64-061); atomic RMW wraps rather than traps (framing correction: incidents_open cannot int3); all hot-path .?/casts/indexing audited with three genuine residuals closed here — threat_tracker/siemForward timestamp clamps (nose monotonic_ns is unbounded by validation; saturating fail-open) and anomaly saturating count (u32 horizon at 2^32 same-key observations, CORR-SAT-069 idiom). Residual risks honestly graded (garbage-timestamp needs signature match too; saturation needs 71min at 1M eps; callback_ctx fragility needs a code edit to arm). My new G-code verified clean line by line. Watchdog script added (detection-only, no-spawn, exit-code contract; proven exit 0 live). Filed GAP-016 (P1) for the crash aftermath: SCM recovery config + watchdog scheduling + no-further-crashes evidence.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/detection/threat_tracker.zig",
+        "src/detection/anomaly_detector.zig",
+        "src/pipeline/event_processor.zig",
+        "tools/service_watchdog.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "new timestamp-clamp tests (threat_tracker, siemForward hostile maxInt): PASS",
+        "new saturating-count test: PASS",
+        "zig build + zig build test: both green 4/4 (2133/2134 + 1 skipped)",
+        "watchdog live: exit 0, no log spam"
+      ],
+      "result": "PASS",
+      "finding": "The crash classes that can kill a -ODebug daemon are now all pinned or graded; the service cannot die silently again once SCM recovery + watchdog land (operator one-liners)."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 91,
+    "E2_count": 92,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 28,
