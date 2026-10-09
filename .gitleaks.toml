@@ -1,0 +1,22 @@
+# AEGIS NIDS gitleaks policy (publish gate).
+#
+# Full-history scan (2026-10-09, gitleaks v8) found 26 findings, ALL
+# triaged false positives — this file pins the triage so rescans and CI
+# stay green without hiding anything new:
+#   1. lib/vis-9.1.2 (vendored minified JS): identifiers like
+#      `_getDistance` trip generic-api-key. Vendored code is not ours.
+#   2. AEGIS_NIDS_INTEGRITY_KEY_v1: dev-default HMAC label inside
+#      scripts/aegis_rules.py (env override + loud warning at runtime;
+#      production policy verification is Ed25519 on a separate path).
+#      Not a credential.
+#   3. Commit d7592f3fa6 (phase-A-B-complete.patch, long deleted): the
+#      patch's own `From <40-hex-sha>` lines trip
+#      sourcegraph-access-token. Git object IDs, not tokens.
+# Any NEW finding fails the scan. Re-triage before adding here.
+title = "AEGIS NIDS gitleaks policy"
+
+[allowlist]
+description = "pinned false positives (see header)"
+paths = ['''lib/vis-9\.1\.2/''']
+regexes = ['''AEGIS_NIDS_INTEGRITY_KEY_v1''']
+commits = ["d7592f3fa64710d15c964d3e21e1d753a448b1fb"]

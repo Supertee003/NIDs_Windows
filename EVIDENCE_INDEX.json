@@ -3521,11 +3521,32 @@
       ],
       "result": "PASS",
       "finding": "Crash resilience is now structural (SCM) plus observed (watchdog); only time can close the last bullet."
+    },
+    {
+      "id": "EVT-135",
+      "head_sha": "5efbce9",
+      "timestamp": "2026-10-09",
+      "title": "Publish gate history scan clean: 26 findings all false positives, allowlist pinned, export set measured",
+      "level": "E1",
+      "component": "release",
+      "description": "Installed gitleaks v8 (go install, network OK) and ran the blocking full-history scan: 26 findings, every one triaged with evidence — 9x sourcegraph-access-token are the deleted patch file's own From-line git SHAs, 15x generic-api-key are one dev-default HMAC label plus minified vis.js identifiers, 2x more of the same in release snapshots; .bak hits are untracked-and-absent. Zero real credentials. Verified the HMAC default is dev-tool-only (env override + loud warning; runtime policy verification is Ed25519 on a separate path — no bypass). Pinned the triage in .gitleaks.toml (vendored path + label regex + historical commit); rescan reports no leaks found. Export-set math for the publish decision (1748 tracked files): delegated drops (docs/historical/ + .agents/) = 131; broader lab bulk (audit snapshots, release/, vm kits) = 368 more; export set ~1249 files. History is secrets-clean, so push-as-is is safe from a secrets standpoint; subset export remains an operator presentation choice. Quarantine read-only projection also proven this round (enforce simulate quarantine/sev8: outcome allow, gate closed, pep_not_invoked — honest detection-only; full positive-path stays lab-only).",
+      "flow_id": "EVIDENCE-001",
+      "files_changed": [
+        ".gitleaks.toml",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "gitleaks full-history scan: 26 findings, all FP with per-item evidence",
+        "gitleaks rescan with policy: no leaks found",
+        "enforce simulate quarantine: honest detection-only projection"
+      ],
+      "result": "PASS",
+      "finding": "The publish gate that blocked opensource work is satisfied: history holds no secrets, the pin keeps it that way, and the export set is measured. Remaining publish acts are operator presentation decisions (push vs subset export), not investigations."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 21,
+    "E1_count": 22,
     "E2_count": 92,
     "E3_count": 7,
     "E4_count": 0,
