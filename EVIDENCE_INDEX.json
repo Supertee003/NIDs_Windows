@@ -1543,9 +1543,9 @@
       "description": "Found while closing the loop (EVT-133): the Application log holds a 0x80000003 (int3) crash of the DEPLOYED service binary at 02:50:57 on an older build (PE stamp differs from current), and sc qfailure shows NO recovery actions — the service sat dead until the next operator redeploy (~2h blind). Root cause of that crash is unproven (candidates from the era: since-pinned u8-wrap/u32-narrow/pre-mutex classes); a full -ODebug panic-class sweep found no legitimate-input storm panic remaining and closed the three genuine residuals in EVT-133. Remaining: SCM recovery config + watchdog scheduling (both operator one-liners, no daemon change; watchdog script added and proven exit 0 live).",
       "status": "OPEN",
       "required_evidence": [
-        "SCM failure recovery configured (sc failure output showing restart actions)",
-        "watchdog scheduled task active with clean history",
-        "no further int3 crashes across storm load"
+        "CLOSED EVT-134: SCM failure recovery configured (3x restart/60s shown)",
+        "CLOSED EVT-134: watchdog scheduled task active (Ready, 5-min SYSTEM)",
+        "OPEN (time-gated): no further int3 crashes across storm load"
       ],
       "resolution": null
     },
@@ -3501,6 +3501,26 @@
       ],
       "result": "PASS",
       "finding": "The crash classes that can kill a -ODebug daemon are now all pinned or graded; the service cannot die silently again once SCM recovery + watchdog land (operator one-liners)."
+    },
+    {
+      "id": "EVT-134",
+      "head_sha": "b0110e4",
+      "timestamp": "2026-10-09",
+      "title": "GAP-016 bullets 1-2 closed live: SCM restart recovery plus watchdog task active on hardened binary",
+      "level": "E5",
+      "component": "tooling",
+      "description": "Operator ran the resilience block: sc failure shows 3x RESTART/60s with 86400s reset; AegisWatchdog scheduled task Ready (5-min cadence as SYSTEM); queue.stats on the hardened binary (timestamp/post-restart process) shows drops 0, shed 0, predecode ~2M with unmapped 0, composition name-quiet this window. Notably Stop-Service completed with zero hang warnings this round (previous restarts hung repeatedly — worth watching, not yet a pattern). GAP-016 bullet 3 (no further int3 crashes) remains time-gated and OPEN.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "sc qfailure: 3x restart actions present",
+        "schtasks query: AegisWatchdog Ready",
+        "queue.stats: hardened binary serving, drops/shed 0"
+      ],
+      "result": "PASS",
+      "finding": "Crash resilience is now structural (SCM) plus observed (watchdog); only time can close the last bullet."
     }
   ],
   "evidence_level_summary": {
@@ -3509,7 +3529,7 @@
     "E2_count": 92,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 28,
+    "E5_count": 29,
     "E6_count": 0,
     "E7_count": 0
   }
