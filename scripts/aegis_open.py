@@ -120,6 +120,18 @@ def render(rows: list[dict], as_json: bool) -> str:
     return "\n".join(lines)
 
 
+def emit(row: dict, as_json: bool) -> None:
+    """Print one row immediately (human mode). Long opens used to buffer
+    every row until the end, so a healthy 60s wait looked like a hang."""
+    if not as_json:
+        print(render([row], False), flush=True)
+
+
+def progress(text: str) -> None:
+    """Progress chatter on stderr so it never corrupts --json stdout."""
+    print("  ... %s" % text, file=sys.stderr, flush=True)
+
+
 # --------------------------------------------------------------------------
 # Live probes (read-only unless stated)
 # --------------------------------------------------------------------------
@@ -154,16 +166,24 @@ def udp_port_owned(port: int) -> bool:
     return rc == 0 and bool(out.strip())
 
 
-def tcp_port_responds(port: int, path: str = "/api/snapshot", timeout_s: float = 8.0) -> bool:
-    """Pure-stdlib HTTP probe: True only when OUR console answers."""
+def console_alive(port: int = WEB_PORT, timeout_s: float = 5.0) -> bool:
+    """True only when OUR console answers, judged by its static index page.
+
+    Why not /api/snapshot: that endpoint runs ~6 control queries including
+    forensics.verify (~4.5s) -> ~7s per call, right at the old 8s timeout.
+    Under any extra load a perfectly healthy console then read as "no
+    answer", so the launcher waited its full 60s, reported FAIL, and
+    spawned duplicates. The index page is static and answers in ~0.2s
+    while identifying our console ("AEGIS"), so liveness no longer depends
+    on control-plane latency. The full snapshot cost stays in the browser.
+    """
     import urllib.request
-    import urllib.error
     try:
-        with urllib.request.urlopen("http://127.0.0.1:%d%s" % (port, path), timeout=timeout_s) as response:
+        with urllib.request.urlopen("http://127.0.0.1:%d/" % port, timeout=timeout_s) as response:
             if response.status != 200:
                 return False
             body = response.read(4096).decode("utf-8", errors="replace")
-            return "aegis.operator.snapshot" in body or "AEGIS" in body
+            return "AEGIS" in body
     except Exception:
         return False
 
@@ -192,12 +212,16 @@ _DISPLAY_MATCH = {
 
 def display_running(name: str) -> bool:
     if name == "web":
-        return tcp_port_responds(WEB_PORT)
+        return console_alive(WEB_PORT)
     if name == "gui":
         return process_running("aegis_dashboard")
     if name == "tui":
         return process_running("windows_sec_monitor")
-    return False  # terminal windows are not tracked; always fresh
+    if name == "terminal":
+        # Tracked by its command line so repeated launches do not stack
+        # watch windows (the old always-False stacked one per run).
+        return bool(_pids_by_cmdline("dashboard --watch"))
+    return False
 
 
 def start_display(name: str, open_browser: bool = True) -> dict:
@@ -206,16 +230,27 @@ def start_display(name: str, open_browser: bool = True) -> dict:
     if name == "web":
         env = dict(os.environ)
         env["DASHBOARD_PORT"] = str(WEB_PORT)
+        # A dead-but-holding server would block the port and fail every
+        # restart. Clear only OUR python listener squatting on the port.
+        for pid in _pids_on_tcp_port(WEB_PORT):
+            if _pid_is_python(pid):
+                _kill_pids([pid])
+        web_log = Path(r"C:\Temp\aegis_web.log")
+        try:
+            web_log.parent.mkdir(parents=True, exist_ok=True)
+            sink = open(web_log, "ab")
+        except OSError:
+            sink = subprocess.DEVNULL
         try:
             proc = subprocess.Popen(
                 [sys.executable, "-m", "aegisctl.web_dashboard.app"],
                 cwd=str(TOOLS_DIR), env=env,
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                stdout=sink, stderr=sink,
                 creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
             )
         except OSError as exc:
             return summarize("start display web", False, "spawn failed: %s" % exc)
-        if wait_for(lambda: tcp_port_responds(WEB_PORT), 60):
+        if wait_for(lambda: console_alive(WEB_PORT), 40, poll_s=2.0):
             if open_browser:
                 try:
                     import webbrowser
@@ -223,7 +258,12 @@ def start_display(name: str, open_browser: bool = True) -> dict:
                 except Exception:
                     pass
             return summarize("start display web", True, "%s serving (pid %s)" % (WEB_URL, proc.pid))
-        return summarize("start display web", False, "no snapshot answer in 60s")
+        hint = ""
+        try:
+            hint = web_log.read_text(encoding="utf-8", errors="replace").strip().splitlines()[-1][:120]
+        except (OSError, IndexError):
+            pass
+        return summarize("start display web", False, "no answer in 40s%s" % (" - %s" % hint if hint else ""))
     if name == "gui":
         if not GUI_EXE.is_file():
             return summarize("start display gui", False, "missing: %s" % GUI_EXE)
@@ -262,10 +302,18 @@ def stop_display(name: str) -> dict:
         pids = _pids_by_name(fragment)
     else:
         pids = _pids_by_cmdline(fragment)
+    if name == "web":
+        # A detached server can carry an unreadable command line yet still
+        # hold the port; find it by its listener identity as well.
+        for pid in _pids_on_tcp_port(WEB_PORT):
+            if pid not in pids and _pid_is_python(pid):
+                pids.append(pid)
     if not pids:
         return summarize("stop display %s" % name, True, "was not running")
     killed, failed = _kill_pids(pids)
-    if kind == "exe":
+    if name == "web":
+        gone = [] if console_alive(WEB_PORT) else list(pids)
+    elif kind == "exe":
         gone = [p for p in killed if p not in _pids_by_name(fragment)]
     else:
         gone = [p for p in killed if p not in _pids_by_cmdline(fragment)]
@@ -283,14 +331,16 @@ def cmd_displays(args) -> int:
     if getattr(args, "stop", False):
         targets = wanted or ["web", "gui", "tui", "terminal"]
         for name in targets:
-            rows.append(stop_display(name))
-        print(render(rows, bool(args.json)))
-        for row in rows:
-            log_line("displays %s ok=%s %s" % (row["check"], row["ok"], row.get("detail", "")))
-        return overall_exit(rows)
-    for name in wanted:
-        rows.append(start_display(name, open_browser=not getattr(args, "no_browser", False)))
-    print(render(rows, bool(args.json)))
+            row = stop_display(name)
+            rows.append(row)
+            emit(row, bool(args.json))
+    else:
+        for name in wanted:
+            row = start_display(name, open_browser=not getattr(args, "no_browser", False))
+            rows.append(row)
+            emit(row, bool(args.json))
+    if bool(args.json):
+        print(render(rows, True))
     for row in rows:
         log_line("displays %s ok=%s %s" % (row["check"], row["ok"], row.get("detail", "")))
     return overall_exit(rows)
@@ -363,6 +413,7 @@ def check_brain() -> dict:
 def start_service() -> dict:
     if service_state() == "RUNNING":
         return summarize("start service", None, "already RUNNING (skipped)")
+    progress("starting service AegisNids ...")
     rc, _, err = run(["sc.exe", "start", SERVICE_NAME], timeout=60)
     if rc != 0:
         return summarize("start service", False, "sc start failed (admin?): %s" % err.strip()[:160])
@@ -394,6 +445,7 @@ def start_nose() -> dict:
         )
     except OSError as exc:
         return summarize("start nose", False, "spawn failed: %s" % exc)
+    progress("nose capture initializing (Npcap bind, up to 15s) ...")
     time.sleep(15)
     if not process_running("aegis-nose"):
         return summarize("start nose", False, "exited immediately (see daemon pipe/Npcap)")
@@ -414,6 +466,7 @@ def start_brain() -> dict:
         )
     except OSError as exc:
         return summarize("start brain", False, "spawn failed: %s" % exc)
+    progress("brain analytics starting (up to 8s) ...")
     time.sleep(8)
     if udp_port_owned(BRAIN_PORT):
         return summarize("start brain", True, "listener present")
@@ -440,6 +493,31 @@ def _pids_by_cmdline(fragment: str) -> list[int]:
     if rc != 0:
         return []
     return [int(line.strip()) for line in out.splitlines() if line.strip().isdigit()]
+
+
+def _pids_on_tcp_port(port: int) -> list[int]:
+    """Owning PIDs of TCP listeners on a port (identity by socket, not argv).
+
+    A detached server can expose an unreadable command line, so exact-
+    identity by argv alone misses it; the listener socket is authoritative.
+    """
+    rc, out, _ = run(
+        ["powershell", "-NoProfile", "-Command",
+         "(Get-NetTCPConnection -LocalPort %d -State Listen -ErrorAction SilentlyContinue).OwningProcess" % port],
+        timeout=30,
+    )
+    if rc != 0:
+        return []
+    return sorted({int(tok) for tok in out.split() if tok.strip().isdigit()})
+
+
+def _pid_is_python(pid: int) -> bool:
+    rc, out, _ = run(
+        ["powershell", "-NoProfile", "-Command",
+         "(Get-Process -Id %d -ErrorAction SilentlyContinue).ProcessName" % pid],
+        timeout=30,
+    )
+    return rc == 0 and out.strip().lower().startswith("python")
 
 
 def _kill_pids(pids: list[int]) -> tuple[list[int], list[int]]:
@@ -494,27 +572,46 @@ def cmd_status(args) -> int:
 
 
 def cmd_open(args) -> int:
-    rows = [start_service(), start_nose(), start_brain()]
+    rows = []
+    for step in (start_service, start_nose, start_brain):
+        row = step()
+        rows.append(row)
+        emit(row, bool(args.json))
+    progress("stabilizing (5s)")
     time.sleep(5)
-    rows += [check_service(), check_daemon(), check_nose(), check_brain()]
-    print(render(rows, bool(args.json)))
+    for check in (check_service, check_daemon, check_nose, check_brain):
+        row = check()
+        rows.append(row)
+        emit(row, bool(args.json))
+    if bool(args.json):
+        print(render(rows, True))
     for row in rows:
         log_line("open %s ok=%s %s" % (row["check"], row["ok"], row.get("detail", "")))
     return overall_exit([r for r in rows if r["ok"] is not None])
 
 
 def cmd_close(args) -> int:
-    rows = stop_supervised()
+    rows = []
+    for row in stop_supervised():
+        rows.append(row)
+        emit(row, bool(args.json))
     if args.with_service:
-        rows.append(stop_service())
+        row = stop_service()
     else:
-        rows.append(summarize("service left running", True, "detection continues (use --with-service to stop)"))
+        row = summarize("service left running", True, "detection continues (use --with-service to stop)")
+    rows.append(row)
+    emit(row, bool(args.json))
     # After close, absence is success: invert the running-checks.
     nose_gone = not process_running("aegis-nose")
     brain_gone = not udp_port_owned(BRAIN_PORT)
-    rows.append(summarize("nose stopped", True if nose_gone else False, "" if nose_gone else "still running"))
-    rows.append(summarize("brain stopped", True if brain_gone else False, "" if brain_gone else "port still owned"))
-    print(render(rows, bool(args.json)))
+    for row in (
+        summarize("nose stopped", nose_gone, "" if nose_gone else "still running"),
+        summarize("brain stopped", brain_gone, "" if brain_gone else "port still owned"),
+    ):
+        rows.append(row)
+        emit(row, bool(args.json))
+    if bool(args.json):
+        print(render(rows, True))
     for row in rows:
         log_line("close %s ok=%s %s" % (row["check"], row["ok"], row.get("detail", "")))
     return overall_exit(rows)

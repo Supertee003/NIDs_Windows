@@ -80,6 +80,7 @@ def test_empty_feed_with_live_daemon_defcon_does_not_render_safe():
             dashboard, "_read_detection_feed",
             return_value={"available": False, "path": "mocked", "records": [], "total_scanned": 0},
         ):
+            dashboard._reset_snapshot_cache()  # TTL cache would stale this mock
             snap = dashboard.snapshot()
             assert snap["threat"]["records"] == 0
             assert snap["threat"]["defcon"] == 3
@@ -101,6 +102,7 @@ def test_missing_daemon_defcon_falls_back_to_labeled_ladder():
             dashboard, "_read_detection_feed",
             return_value={"available": False, "path": "mocked", "records": [], "total_scanned": 0},
         ):
+            dashboard._reset_snapshot_cache()  # TTL cache would stale this mock
             snap = dashboard.snapshot()
             assert snap["threat"]["defcon"] == 5
             assert snap["threat"]["label"] == "SAFE"

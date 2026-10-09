@@ -72,10 +72,42 @@ def test_display_match_table_is_known_surfaces_only():
     assert set(opener._DISPLAY_MATCH) == {"web", "gui", "tui", "terminal"}
     assert opener.stop_display("bogus-surface")["ok"] is False
     assert opener.start_display("bogus-surface")["ok"] is False
-    # Terminal windows are never tracked: always a fresh start decision.
-    assert opener.display_running("terminal") is False
+    # Terminal is now tracked by command line (no more stacking watch
+    # windows); assert the shape of the live probe, not its state.
+    assert isinstance(opener.display_running("terminal"), bool)
 
 
 def test_display_running_returns_bool():
-    # Live probe (loopback read-only); assert shape, not state.
+    # Live probes (loopback read-only); assert shape, not state.
     assert isinstance(opener.display_running("web"), bool)
+    assert isinstance(opener.display_running("gui"), bool)
+    assert isinstance(opener.display_running("tui"), bool)
+
+
+def test_console_alive_probes_index_not_snapshot():
+    # The old readiness probe hit /api/snapshot (~7s, dominated by
+    # forensics.verify) with an 8s timeout, so a healthy console was
+    # misread as dead and the launcher waited its full 60s and spawned
+    # duplicates. The new probe reads the static index and must be fast.
+    import socket
+    import time
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        free_port = s.getsockname()[1]
+    t0 = time.time()
+    assert opener.console_alive(free_port, timeout_s=4.0) is False
+    assert time.time() - t0 < 4.0
+    # And it must probe the static index page, not a control-query endpoint.
+    src = Path(__file__).resolve().parents[2] / "scripts" / "aegis_open.py"
+    text = src.read_text(encoding="utf-8", errors="replace")
+    assert 'urllib.request.urlopen("http://127.0.0.1:%d/" % port' in text
+
+
+def test_port_owner_helpers_are_safe():
+    # Read-only: an idle port has no owner, a bogus pid is not python.
+    import socket
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        free_port = s.getsockname()[1]
+    assert opener._pids_on_tcp_port(free_port) == []
+    assert opener._pid_is_python(2**31 - 1) is False

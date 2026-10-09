@@ -205,14 +205,14 @@ def _threat_posture(records: list[dict[str, Any]], health: dict[str, Any] | None
     }
 
 
-def snapshot() -> dict[str, Any]:
+def _build_snapshot() -> dict[str, Any]:
     """Return one consistent read-only snapshot for all web views."""
     health = get_health_payload()
     enforcement = _read("enforcement.status")
     metrics = _read("metrics.snapshot")
     queue = _read("queue.stats")
     incident_counters = _read("incidents.list")
-    forensic = _read("forensics.verify")
+    forensic = _read_forensic_cached()
     feed = _read_detection_feed()
     incidents = [incident_from_record(x) for x in feed["records"]]
     rules = load_rules()
@@ -242,6 +242,64 @@ def snapshot() -> dict[str, Any]:
         },
         "rules": rules.get("nids_rules", []) if isinstance(rules, dict) else [],
     }
+
+
+# Short-TTL cache: snapshot() costs ~5-7s (forensics.verify alone is ~4.5s),
+# and the page polls every 3s. Without a cache every client tick re-verified
+# the whole forensic ring and competed with the launcher's readiness probe
+# on the single control pipe. TTL 5s (>= the 3s poll) serves most polls from
+# cache; the stamp is the COMPLETION time -- stamping the start time made a
+# 5s build always exceed the TTL, so the cache never hit.
+_SNAPSHOT_TTL_S = 5.0
+_snapshot_cache: dict[str, Any] = {"at": 0.0, "doc": None}
+
+# forensics.verify is the snapshot's dominant cost (~4.5s: a full ring
+# hash-chain check). It is slow-moving integrity data -- re-verifying on
+# every 3-5s dashboard tick put the single control pipe at ~100% duty the
+# moment any display was up (health reads and the launcher probe starved).
+# Cached 60s: periodic snapshots cost ~0.4s and the page still shows a
+# recent verification. On-demand full verify remains available on the CLI.
+_FORENSIC_TTL_S = 60.0
+_forensic_cache: dict[str, Any] = {"at": 0.0, "doc": None}
+
+
+def _read_forensic_cached() -> Any:
+    now = time.time()
+    fc = _forensic_cache
+    if fc["doc"] is not None and now - fc["at"] < _FORENSIC_TTL_S:
+        return fc["doc"]
+    # Never cache a read failure: a transient pipe hiccup must not pin a
+    # stale "verified" answer for a minute.
+    doc = _read("forensics.verify")
+    if doc is None:
+        return None
+    fc["at"] = time.time()
+    fc["doc"] = doc
+    return doc
+
+
+def _reset_snapshot_cache() -> None:
+    """Drop all web-side caches.
+
+    Test/lab hook: the suite drives snapshot() with per-test mocks and must
+    see each mock's fresh doc, never the previous test's cached one. The
+    live server never calls this; polling is exactly what the cache serves.
+    """
+    _snapshot_cache["at"] = 0.0
+    _snapshot_cache["doc"] = None
+    _forensic_cache["at"] = 0.0
+    _forensic_cache["doc"] = None
+
+
+def snapshot() -> dict[str, Any]:
+    now = time.time()
+    cached = _snapshot_cache
+    if cached["doc"] is not None and now - cached["at"] < _SNAPSHOT_TTL_S:
+        return cached["doc"]
+    doc = _build_snapshot()
+    cached["at"] = time.time()  # completion time: a slow build must not
+    cached["doc"] = doc         # instantly age past its own TTL
+    return doc
 
 
 INDEX_HTML = """<!doctype html>
@@ -656,4 +714,7 @@ if __name__ == "__main__":
     import os
     # T1-NET-019: loopback only. This console exposes detection logic
     # (Rules.json) and log contents; it must never listen on LAN interfaces.
-    app.run(host="127.0.0.1", port=int(os.environ.get("DASHBOARD_PORT", "5000")), debug=False)
+    # threaded=True: one slow snapshot (forensics.verify) must never block
+    # the static index, the SSE stream, or other clients -- the launcher's
+    # readiness probe and the browser page share this server.
+    app.run(host="127.0.0.1", port=int(os.environ.get("DASHBOARD_PORT", "5000")), debug=False, threaded=True)

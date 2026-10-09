@@ -87,6 +87,7 @@ class TestWebDashboardSurface(unittest.TestCase):
                  "incidents.list": {"incidents": []},
              }.get(command, {})), \
              patch.object(dashboard, "load_rules", return_value={"nids_rules": []}):
+            dashboard._reset_snapshot_cache()  # TTL cache would stale this mock
             client = dashboard.app.test_client()
             response = client.get("/api/snapshot")
             self.assertEqual(response.status_code, 200)
@@ -123,6 +124,7 @@ class TestWebDashboardSurface(unittest.TestCase):
                  "incidents.list": {"incidents": []},
              }.get(command, {})), \
              patch.object(dashboard, "load_rules", return_value={"nids_rules": []}):
+            dashboard._reset_snapshot_cache()  # TTL cache would stale this mock
             client = dashboard.app.test_client()
             body = client.get("/api/snapshot").get_json()
             self.assertEqual(body["health"]["packets_captured"], 424242)

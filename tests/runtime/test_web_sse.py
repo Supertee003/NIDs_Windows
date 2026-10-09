@@ -49,11 +49,18 @@ def _drive(gen, count):
     return [next(gen) for _ in range(count)]
 
 
+def _fresh_snapshot_cache():
+    # The live server TTL-caches snapshot(); tests drive mocked control and
+    # must see each mock's fresh doc, never another test's cached one.
+    dashboard._reset_snapshot_cache()
+
+
 def test_stream_endpoint_is_event_stream_with_retry_hint():
     mocks = _mocked_control()
     for m in mocks:
         m.start()
     try:
+        _fresh_snapshot_cache()
         client = dashboard.app.test_client()
         response = client.get("/stream", buffered=False)
         assert response.status_code == 200
@@ -73,6 +80,7 @@ def test_disconnect_ends_the_generator_immediately():
     for m in mocks:
         m.start()
     try:
+        _fresh_snapshot_cache()
         gen = dashboard._sse_events(interval_s=0)
         chunks = _drive(gen, 2)  # hello + one snapshot
         assert chunks[0].startswith(": connected")
@@ -94,6 +102,7 @@ def test_failed_snapshot_becomes_error_event_not_dead_stream():
     for m in mocks:
         m.start()
     try:
+        _fresh_snapshot_cache()
         calls = {"n": 0}
         real_snapshot = dashboard.snapshot
 
@@ -126,6 +135,7 @@ def test_error_event_never_claims_enforcement():
     for m in mocks:
         m.start()
     try:
+        _fresh_snapshot_cache()
         with patch.object(dashboard, "snapshot", side_effect=RuntimeError("down")):
             gen = dashboard._sse_events(interval_s=0)
             next(gen)

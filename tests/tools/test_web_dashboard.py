@@ -54,10 +54,12 @@ def test_select_evidence_log_prefers_newest(tmp_path):
 
 
 def test_snapshot_schema_carries_queue_key():
+    app_module._reset_snapshot_cache()  # live TTL cache; tests want fresh
     assert "queue" in app_module.snapshot()
 
 
 def test_api_snapshot_answers_without_daemon():
+    app_module._reset_snapshot_cache()  # live TTL cache; tests want fresh
     client = app_module.app.test_client()
     response = client.get("/api/snapshot")
     assert response.status_code == 200

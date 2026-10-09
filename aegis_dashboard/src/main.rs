@@ -15,6 +15,9 @@ use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
 use std::time::Instant;
 
 // Case-insensitive critical level detection
@@ -251,6 +254,15 @@ struct AegisDashboard {
     last_refresh_ago: f32,
     runtime_snapshot: RuntimeSnapshot,
     control_available: bool,
+    // Control-plane snapshot subprocess handling. The full snapshot costs
+    // ~5-7s (forensics.verify alone is ~4.5s), so it must NEVER run on the
+    // UI thread: a 1s refresh with Command::output() froze the window for
+    // seconds at a time (spawning a new subprocess every second on top of
+    // that hammered the single control pipe -> every display slowed down
+    // and windows flashed). Now one python snapshot is launched at most
+    // every 30s on a background thread; update() drains the finished one.
+    control_rx: Option<mpsc::Receiver<std::process::Output>>,
+    control_next_due: Instant,
 }
 
 /// F3: where the live daemon log can live. The service writes relative
@@ -334,23 +346,54 @@ impl AegisDashboard {
             last_refresh_ago: 0.0,
             runtime_snapshot: RuntimeSnapshot::default(),
             control_available: false,
+            control_rx: None,
+            control_next_due: Instant::now(),
         }
     }
 
-    fn refresh_control_snapshot(&mut self) {        let output = Command::new("python")
-            .args(["tools/aegisctl.py", "snapshot"])
-            .current_dir(std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
-            .output();
-        if let Ok(output) = output {
-            if output.status.success() {
-                if let Ok(snapshot) = serde_json::from_slice::<RuntimeSnapshot>(&output.stdout) {
-                    self.runtime_snapshot = snapshot;
-                    self.control_available = true;
-                    return;
+    fn refresh_control_snapshot(&mut self) {
+        // Drain a finished background snapshot (never block on launch).
+        if let Some(rx) = self.control_rx.take() {
+            match rx.try_recv() {
+                Ok(output) => {
+                    if output.status.success() {
+                        if let Ok(snapshot) = serde_json::from_slice::<RuntimeSnapshot>(&output.stdout) {
+                            self.runtime_snapshot = snapshot;
+                            self.control_available = true;
+                            return;
+                        }
+                    }
+                    self.control_available = false;
+                }
+                Err(mpsc::TryRecvError::Empty) => {
+                    // Still running; keep the receiver for the next drain.
+                    self.control_rx = Some(rx);
+                }
+                Err(mpsc::TryRecvError::Disconnected) => {
+                    self.control_available = false;
                 }
             }
         }
-        self.control_available = false;
+        // Launch one background snapshot at most every 30s, off the UI
+        // thread: the subprocess (aegisctl.py snapshot) re-verifies the
+        // forensic ring (~4.5s of the ~5s cost) and must not dominate the
+        // shared control pipe. 30s is plenty for counters/DEFCON/enforcement
+        // on an operator dashboard; the 1s evidence-feed refresh is separate.
+        if self.control_rx.is_none() && Instant::now() >= self.control_next_due {
+            self.control_next_due = Instant::now() + Duration::from_secs(30);
+            let (tx, rx) = mpsc::channel::<std::process::Output>();
+            let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+            thread::spawn(move || {
+                let output = Command::new("python")
+                    .args(["tools/aegisctl.py", "snapshot"])
+                    .current_dir(cwd)
+                    .output();
+                if let Ok(output) = output {
+                    let _ = tx.send(output);
+                }
+            });
+            self.control_rx = Some(rx);
+        }
     }
 
     fn refresh_data(&mut self) {

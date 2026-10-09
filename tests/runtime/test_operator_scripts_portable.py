@@ -57,6 +57,14 @@ def test_bat_timestamp_survives_without_wmic():
     assert "%DATE%" in text and "%TIME%" in text
 
 
+def test_bat_unknown_flags_warn_and_help_exists():
+    # A typo'd flag must never silently open the system: warn loudly.
+    # --help prints usage without touching anything.
+    text = BAT.read_text(encoding="utf-8", errors="replace")
+    assert 'unknown flag' in text
+    assert "--help" in text and ":usage" in text
+
+
 def test_lab_preflight_subnet_is_parameterized():
     text = PREFLIGHT.read_text(encoding="utf-8", errors="replace")
     assert "param(" in text.lower() or "ExpectedLabSubnet" in text
