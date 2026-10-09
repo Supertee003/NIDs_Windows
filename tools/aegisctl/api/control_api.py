@@ -184,14 +184,25 @@ def _daemon_subsystems(payload: Dict[str, Any]) -> List[Tuple[str, bool, Optiona
     return result
 
 
-def _query_daemon_retry(command: str, payload: Optional[Dict[str, Any]] = None, attempts: int = 3) -> Optional[Dict[str, Any]]:
-    """Retry read-only queries because the daemon accepts one pipe client at a time."""
+def _query_daemon_retry(command: str, payload: Optional[Dict[str, Any]] = None, attempts: int = 5) -> Optional[Dict[str, Any]]:
+    """Retry read-only queries because the daemon accepts one pipe client at a time.
+
+    Contention is routine, not exceptional: the 1s dashboard refresh, web
+    snapshots, pytest live-daemon tests, and operator scans all share the
+    single control instance, and a full-ring verify holds it for seconds
+    under load. Backoff (0.05→0.4s, ~0.75s worst) rides out millisecond
+    contention without masking a truly dead daemon for long. It cannot
+    fix a verify-hogged pipe — that needs daemon-side multi-instance,
+    deliberately deferred (see EVIDENCE_INDEX GAP-015 notes).
+    """
+    delay = 0.05
     for attempt in range(attempts):
         result = _query_daemon(command, payload)
         if result is not None:
             return result
         if attempt + 1 < attempts:
-            time.sleep(0.05)
+            time.sleep(delay)
+            delay = min(delay * 2, 0.4)
     return None
 
 

@@ -3524,6 +3524,28 @@
       "finding": "Green suite and open system coexist: environment-aware tests distinguish operator state (running brain) from product defects (import side effects). Flakes are load-coupled test fragility under a 1100/s ring, documented each time, never waved through silently."
     },
     {
+      "id": "EVT-148",
+      "head_sha": "1e89c85",
+      "timestamp": "2026-10-10",
+      "title": "Observer-effect fix: control retry backoff plus measurement hygiene doctrine",
+      "level": "E2",
+      "component": "tooling",
+      "description": "Yes, fixable — at the layer we own. Root cause is structural, not a daemon bug: one single-client control instance shared by dashboard refresh, web snapshots, pytest live tests, and operator scans, plus full-ring verify holding the ring mutex for seconds under load. Our own full-pytest run starved the CLI into misreporting a healthy daemon (the F2 follow-up). Fix, client-side: _query_daemon_retry goes 3x50ms to 5 attempts with 0.05-to-0.4s backoff (~0.75s worst) — rides out millisecond contention, still fails a dead daemon fast, and cannot fix verify-hogs (documented as needing daemon multi-instance, deferred). Doctrine: docs/MEASUREMENT_HYGIENE.md records the four observer-effect incidents plus the rules (no soaks during suites, one heavy scan at a time, budget pages are sub-second windows, unknown is an answer) with this host's rate table. Proof: 2 new retry pins (succeed-after-flakes with exact attempt count, give-up after 5); full suite unaffected in shape (backoff only triggers on failure).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "tools/aegisctl/api/control_api.py",
+        "tests/tools/test_control_retry.py",
+        "docs/MEASUREMENT_HYGIENE.md",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "new retry pins: 2 passed (3rd-attempt success, 5-attempt give-up)",
+        "soak discipline: documented, not coded"
+      ],
+      "result": "PASS",
+      "finding": "Contention is now budgeted and documented instead of surprising: transient collisions resolve, dead daemons still fail fast, and the next person to measure a soak knows not to pytest through it."
+    },
+    {
       "id": "EVT-144",
       "head_sha": "4a2c473",
       "timestamp": "2026-10-10",
@@ -3825,7 +3847,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
-    "E2_count": 101,
+    "E2_count": 102,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 32,
