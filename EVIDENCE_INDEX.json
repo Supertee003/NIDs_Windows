@@ -3524,6 +3524,30 @@
       "finding": "Green suite and open system coexist: environment-aware tests distinguish operator state (running brain) from product defects (import side effects). Flakes are load-coupled test fragility under a 1100/s ring, documented each time, never waved through silently."
     },
     {
+      "id": "EVT-144",
+      "head_sha": "4a2c473",
+      "timestamp": "2026-10-10",
+      "title": "One-command system opening: aegis_open status/open/close with honest stop semantics",
+      "level": "E2",
+      "component": "tooling",
+      "description": "The requested simple opener for the production topology (service + nose + brain + verify), replacing ad-hoc per-component blocks. status (default, read-only), open (idempotent start-missing + verify), close (stop supervised, service stays up unless --with-service). Hard-won details baked in: repo-root-relative paths (never CWD), nose CWD=repo (else ruleless), $AEGIS_NOSE_IFACE override with auto-select default, frames-flowing (not flags) as the nose gate, deadline loops for hanging service stops, logs to C:\\Temp (never repo), exit 0/1/2 with --json. One real bug found by live use and fixed: stop reported 'was not running' when the kill failed on a foreign-elevated process (access denied) — presence, kill, and re-verify are now separate steps with elevate-hints, proven by the honest FAIL on PID 9184. Session lesson recorded: processes spawned from transient shells die with the session, so long-lived supervision (scheduled tasks) stays an operator step. Proven live: status 4xOK, open idempotent (3 SKIP + 4 OK, exit 0), brain start path (listener present, new PID), close honest-fail on elevated nose. Pins: 5 pure tests (iface/rows/exit/safe probes). nose start path itself still needs a persistent shell (same session lesson).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "scripts/aegis_open.py",
+        "tests/tools/test_aegis_open.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "new test_aegis_open.py: 5 passed (no system touch)",
+        "status live: 4 OK (service/daemon/nose-frames/brain)",
+        "open live: idempotent skips + verify green",
+        "close live: honest FAIL on elevated foreign process (no lying)",
+        "brain start live: listener present on fresh PID"
+      ],
+      "result": "PASS",
+      "finding": "Opening the system is now one memorized command with verified output instead of a dozen paste-blocks. The tool distrusts itself in the right places (frames not flags, kills verified, skips explicit)."
+    },
+    {
       "id": "EVT-139",
       "head_sha": "808f6b6",
       "timestamp": "2026-10-09",
@@ -3736,7 +3760,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
-    "E2_count": 97,
+    "E2_count": 98,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 32,
