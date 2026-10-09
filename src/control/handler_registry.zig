@@ -2520,10 +2520,14 @@ test "RING-STAT-103: forensics.verify reports retention additively" {
 }
 
 test "GAP-015 forensics.list after-cursor windows under ring wrap" {
-    // 2-slot ring, 5 appends: seqs 0-2 overwritten, 3-4 retained. The old
-    // per-record seq<=after skip compared STORED seqs (newest aliasing)
-    // and returned the tip for any mid-ring cursor; the cursor must now
-    // select by sequence exactly.
+    // CHARACTERIZATION, not regression reproduction: static analysis
+    // proves old and new code agree on quiescent rings (residue math),
+    // so this pins the cursor contract (after=3->[4], after=99->empty,
+    // none->[3,4]) against future drift. The live incident it addresses
+    // was mid-scan churn (appends during multi-page scans alias stored
+    // seqs past fixed cursors at 1100/s) — unreproducible single-threaded
+    // by construction; the floor-start plus seq-identity code above is
+    // what makes that case honest.
     const event_mod = @import("../contract/event.zig");
     const state_mod = @import("../pipeline/runtime_state.zig");
     var ring = try forensic_pipeline.ForensicRing.initMemory(std.testing.allocator, 2 * forensic_pipeline.RECORD_BYTES);

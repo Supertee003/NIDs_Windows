@@ -3384,6 +3384,29 @@
       "finding": "All four operator surfaces are live. The web slice's real yield is the storm proof: spot-check zero-drop claims are worthless on bursty ingress — only cumulative per-source counters tell the truth, and they now exist because of G1."
     },
     {
+      "id": "EVT-140",
+      "head_sha": "0db149d",
+      "timestamp": "2026-10-09",
+      "title": "Deep verification round: deployed equals HEAD, FI and SSE live, wrap test labeled honestly, runbook status",
+      "level": "E5",
+      "component": "testing",
+      "description": "Pre-opening audit of our own work. (1) Currency: deployed exe timestamp analyzed against commit timeline — no production-code diffs postdate the build (only tests/evidence/docs), so the service behaviorally equals HEAD; G5 verb + polish stages both previously proven live on it. (2) FI surfacing proven live (events.stats: fi_enabled false, fi_dropped/corrupted 0). (3) SSE /stream proven live (HTTP 200, infinite-stream semantics observed; route is /stream, not /api/stream). (4) Wrap-test honesty fix: static analysis proves old and new cursor code agree on quiescent rings, so the test is relabeled characterization (pins the contract) rather than regression reproduction — the live churn case it addresses is unreproducible single-threaded by construction. (5) Runbook README gains a Status column (RB-012..015 NOT YET EXECUTED, RB-016/017 OPERATOR ACTION). Finding: new-test teeth reviewed file by file — red-proven (JOIN-TRACE, queueStats parse), live-vectored (FNV, alerts, exemption state machine, parity tests), shape-guarding (formatters, schema), graceful-degradation (web without daemon); no vacuous tests found.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/control/handler_registry.zig",
+        "docs/runbooks/README.md",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "FI fields live via events.stats",
+        "SSE /stream live 200 with infinite semantics",
+        "deployed-vs-HEAD behavioral equivalence analysis",
+        "new-test teeth review (no vacuous tests)"
+      ],
+      "result": "PASS",
+      "finding": "Nothing we claimed is unproven at its claimed level; the two items that overstated (wrap test as regression, SSE as done) are corrected and closed. The system is audited ready for opening."
+    },
+    {
       "id": "EVT-128",
       "head_sha": "56715b1",
       "timestamp": "2026-10-09",
@@ -3653,7 +3676,7 @@
     "E2_count": 95,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 30,
+    "E5_count": 31,
     "E6_count": 0,
     "E7_count": 0
   }
