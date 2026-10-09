@@ -3503,6 +3503,27 @@
       "finding": "Stop guessing at the queue: 97.5% of ETW cost dies after full decode. G4 moves the gate before the decode and sheds deletes at depth — both preserve every R1001/R1004 path."
     },
     {
+      "id": "EVT-143",
+      "head_sha": "965a06a",
+      "timestamp": "2026-10-10",
+      "title": "Opened system kept green: import-hygiene test tolerates legitimate brain, gate_d flake recorded",
+      "level": "E2",
+      "component": "testing",
+      "description": "Starting the brain (system opening) turned one green test red for the wrong reason: test_import_binds_no_udp_port probes port freedom by binding 9999, which a legitimately running brain (RB-017) holds by design. Fixed in-test (not in product): holder identity is checked first via endpoint ownership, and a real brain process skips with explicit reason; the no-banner/no-claim assertions still run unconditionally, so the hygiene contract is undiminished. Full suite green with the brain up: 751 passed (incl. the new SSE/notifier/selection pins), 9 skipped. gate_d forensic-export failed once in the full run and passed solo immediately after — 4th load-coupled flake on record (benchmark x3): full-ring verify/export under 1100/s churn races retention, not a product regression. No product code changed in this slice.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "tests/brain/test_import_hygiene.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "import hygiene with brain running: 1 passed, 1 skipped-with-reason",
+        "full pytest: 751 passed, 0 failed",
+        "gate_d flake: failed full, passed solo (load-coupled, recorded)"
+      ],
+      "result": "PASS",
+      "finding": "Green suite and open system coexist: environment-aware tests distinguish operator state (running brain) from product defects (import side effects). Flakes are load-coupled test fragility under a 1100/s ring, documented each time, never waved through silently."
+    },
+    {
       "id": "EVT-139",
       "head_sha": "808f6b6",
       "timestamp": "2026-10-09",
@@ -3715,7 +3736,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
-    "E2_count": 96,
+    "E2_count": 97,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 32,

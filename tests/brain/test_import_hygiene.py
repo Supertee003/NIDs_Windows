@@ -13,6 +13,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
@@ -21,6 +23,35 @@ def _import_brain():
         [sys.executable, "-c", "import brain.windows_brain"],
         capture_output=True, text=True, timeout=120, cwd=REPO_ROOT,
     )
+
+
+def _brain_port_holder_cmdline() -> str:
+    """Command line of the process holding UDP 9999, or "" if free/unknown.
+
+    A legitimately running brain (RB-017 opened system) holds this port
+    by design; that is operator state, not an import side effect.
+    """
+    try:
+        out = subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             "Get-NetUDPEndpoint -LocalPort 9999 | Select-Object -ExpandProperty OwningProcess"],
+            capture_output=True, text=True, timeout=30,
+        ).stdout
+        pids = [int(tok) for tok in out.split() if tok.strip().isdigit()]
+    except Exception:
+        return ""
+    for pid in pids:
+        try:
+            cmd = subprocess.run(
+                ["powershell", "-NoProfile", "-Command",
+                 "(Get-CimInstance Win32_Process -Filter \"ProcessId=%d\").CommandLine" % pid],
+                capture_output=True, text=True, timeout=30,
+            ).stdout
+        except Exception:
+            continue
+        if "windows_brain" in cmd:
+            return cmd.strip()
+    return ""
 
 
 def test_import_produces_no_banner_or_listen_claim():
@@ -34,6 +65,9 @@ def test_import_produces_no_banner_or_listen_claim():
 def test_import_binds_no_udp_port():
     proc = _import_brain()
     assert proc.returncode == 0, proc.stderr
+    holder = _brain_port_holder_cmdline()
+    if holder:
+        pytest.skip("brain legitimately running (RB-017 opened system): %s" % holder[:120])
     # Nothing from the import may own the brain's UDP port afterwards.
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
