@@ -3531,6 +3531,27 @@
       "finding": "Database (scattered-files reality documented, no DB to fix), security (hardening deltas applied, trust deployed via checklist), and external (dead listener ruled out, pipes documented/tightened, brain path runbooked) are each closed to the extent this host allows. What remains is operator decisions (AU scope, secrets provisioning, brain start) and lab/design slices, all named."
     },
     {
+      "id": "EVT-142",
+      "head_sha": "77c9c6a",
+      "timestamp": "2026-10-10",
+      "title": "System opening: nose capture complete with wire content proof, brain owned, SDDL fix live",
+      "level": "E5",
+      "component": "testing",
+      "description": "Full system opening on the production host. (1) Nose: SDDL fix proven live — medium-IL open of aegis_nose now passes ACL (error 231 busy-instance, not 5 denied); capture flows (thousands of frames, drops only under queue pressure, counted). Source-9 records queryable in-ring with empty payloads by wire contract. (2) Wire CONTENT path proven end to end, the case that matters: 5 reflected-XSS-probe fetches produced 5 R0089 signature_match records in the daemon log (rule 4237725842, host src_ip, sequential ports/sessions, policy block observed-not-enforced = fail-safe posture demonstrating itself). Dead ends documented honestly along the way: hairpin traffic uncapturable, ICMP/ping has no application layer for the substring classifier, META patterns (PROTO/FLAGS) unmatchable by payload-substring design, 15s retention + 64KB pages defeat slow manual probes (differentials + daemon-log timestamps win). Nose classifier confirmed payload-substring-only (no direction filter). (3) Brain started supervised (PID 29084): UDP 9999 owned by python.exe, endpoint_ownership CLEAR with zero foreign, secret unprovisioned (bare-JSON per RB-017 smoke allowance; RB-016 covers provisioning). (4) Nose supervision permanence (scheduled task) and brain secret/schedule stay operator actions. Remaining for attack testing: lab VM + RB-012..015; never the production host.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "nose SDDL live: medium-IL passes ACL (231 not 5)",
+        "R0089 x5 with sequential session/port attribution in daemon log",
+        "brain listener owned by brain PID, endpoint CLEAR",
+        "differentials: control +5 background vs pattern +25 (signal above noise)"
+      ],
+      "result": "PASS",
+      "finding": "Every acquisition path is now open and proven: ETW/FIM/registry (host), nose (network, content-matching), pipe (fixtures/brain returns), brain (analytics, listening). The system is opened; attack testing moves to the lab."
+    },
+    {
       "id": "EVT-141",
       "head_sha": "0db149d",
       "timestamp": "2026-10-10",
@@ -3697,7 +3718,7 @@
     "E2_count": 96,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 31,
+    "E5_count": 32,
     "E6_count": 0,
     "E7_count": 0
   }
