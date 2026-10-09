@@ -3571,6 +3571,28 @@
       "finding": "One launcher, one logic: the bat is habit and habit is preserved, while every decision lives in tested Python. Running the old phases against the service would have been an outage; now it cannot happen from this file."
     },
     {
+      "id": "EVT-146",
+      "head_sha": "aafc61a",
+      "timestamp": "2026-10-10",
+      "title": "Launcher owns all four displays: web/gui/tui/terminal start/stop with exact-identity discipline",
+      "level": "E2",
+      "component": "tooling",
+      "description": "The launcher now opens the displays together with the system, per the operator's direction. aegis_open.py gains a displays command (start missing/all, --web/--gui/--tui/--terminal subset, --stop, --no-browser): web spawns the Flask console on loopback and verifies a real snapshot answer before opening the browser; gui/tui spawn detached with CWD=repo and aliveness checks; terminal opens a watch window; every surface is single-instance (running ones SKIPPED) and stops by exact tool identity (web by web_dashboard cmdline, gui/tui by exe name, terminal by watch cmdline — the nose/brain precision rule extended, never blanket-kill). run_aegis.bat composes open+displays by default (--no-displays opts out, --stop stops everything). Full starts need the operator's desktop (GUI/browser popups); proven here: 7 pure pins, displays --stop clean no-op, start paths reviewed. Live full-start proof stays an operator step (one command, visible windows).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "scripts/aegis_open.py",
+        "scripts/run_aegis.bat",
+        "tests/tools/test_aegis_open.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "opener display pins: 7 passed (match table, unknown safe, terminal fresh, bool shape)",
+        "displays --stop live: 4 OK no-op, exit 0"
+      ],
+      "result": "PASS",
+      "finding": "Displays are managed with the same discipline as the pipeline: verify, never assume; single-instance; stop what you started by exact identity."
+    },
+    {
       "id": "EVT-139",
       "head_sha": "808f6b6",
       "timestamp": "2026-10-09",
@@ -3783,7 +3805,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
-    "E2_count": 99,
+    "E2_count": 100,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 32,

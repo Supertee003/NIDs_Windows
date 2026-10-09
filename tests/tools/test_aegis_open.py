@@ -66,3 +66,16 @@ def test_process_queries_are_safe():
     assert opener._pids_by_name("definitely-not-a-process-xyz-123") == []
     assert opener.process_running("definitely-not-a-process-xyz-123") is False
     assert opener._kill_pids([]) == ([], [])
+
+
+def test_display_match_table_is_known_surfaces_only():
+    assert set(opener._DISPLAY_MATCH) == {"web", "gui", "tui", "terminal"}
+    assert opener.stop_display("bogus-surface")["ok"] is False
+    assert opener.start_display("bogus-surface")["ok"] is False
+    # Terminal windows are never tracked: always a fresh start decision.
+    assert opener.display_running("terminal") is False
+
+
+def test_display_running_returns_bool():
+    # Live probe (loopback read-only); assert shape, not state.
+    assert isinstance(opener.display_running("web"), bool)

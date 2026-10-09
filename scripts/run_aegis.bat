@@ -17,11 +17,12 @@ REM scripts\aegis_open.py (status/open/close + verify). Do not
 REM re-implement startup logic here; extend the Python opener instead.
 REM
 REM Usage:  run_aegis.bat [options]
-REM   (no args)      open missing parts, then verify (same as before)
+REM   (no args)      open missing parts + start all displays, then verify
 REM   --status       check everything, start nothing
-REM   --stop         stop supervised parts AND the service
+REM   --stop         stop displays + supervised parts AND the service
+REM   --no-displays  open the system without starting displays
 REM   --skip-build   retired: builds are a separate step (build_all.bat)
-REM   --no-dashboard retired: dashboards open on demand (see tips)
+REM   --no-dashboard retired alias for --no-displays
 REM   --skip-check   accepted, no separate check phase exists anymore
 setlocal enabledelayedexpansion
 
@@ -58,12 +59,14 @@ if not exist "scripts\aegis_open.py" (
 
 :: -- Map legacy flags to opener commands --
 set "CMD=open"
+set "DISPLAYS=displays"
 :parse_args
 if "%~1"=="" goto :done_parse
-if /I "%~1"=="--status" set "CMD=status"
-if /I "%~1"=="--stop" set "CMD=close --with-service"
+if /I "%~1"=="--status" set "CMD=status" & set "DISPLAYS="
+if /I "%~1"=="--stop" set "CMD=close --with-service" & set "DISPLAYS=displays --stop"
+if /I "%~1"=="--no-displays" set "DISPLAYS="
 if /I "%~1"=="--skip-build" echo  [note] --skip-build retired: builds are separate (scripts\build_all.bat); opening as-is.
-if /I "%~1"=="--no-dashboard" echo  [note] --no-dashboard retired: dashboards open on demand (tips below).
+if /I "%~1"=="--no-dashboard" echo  [note] --no-dashboard retired: use --no-displays to skip all displays.
 if /I "%~1"=="--skip-check" echo  [note] --skip-check accepted: opener verifies as it goes, no separate phase.
 shift
 goto :parse_args
@@ -78,6 +81,11 @@ echo  Start time: %DATE% %TIME%
 echo.
 python scripts\aegis_open.py %CMD%
 set "RC=%errorlevel%"
+if defined DISPLAYS (
+    echo.
+    python scripts\aegis_open.py %DISPLAYS%
+    if %errorlevel% neq 0 set "RC=%errorlevel%"
+)
 echo.
 echo  Tips:
 echo    - Run 'scripts\run_aegis.bat --status' to check anytime

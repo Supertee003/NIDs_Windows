@@ -46,6 +46,10 @@ BRAIN_PORT = 9999
 OPEN_LOG = Path(r"C:\Temp\aegis_open.log")
 START_TIMEOUT_S = 180
 STOP_TIMEOUT_S = 180
+GUI_EXE = REPO_ROOT / "aegis_dashboard" / "target" / "release" / "aegis_dashboard.exe"
+TUI_EXE = REPO_ROOT / "mouth" / "target" / "release" / "windows_sec_monitor.exe"
+WEB_PORT = int(os.environ.get("DASHBOARD_PORT", "5000"))
+WEB_URL = "http://127.0.0.1:%d/" % WEB_PORT
 
 
 def log_line(text: str) -> None:
@@ -148,6 +152,148 @@ def udp_port_owned(port: int) -> bool:
         timeout=30,
     )
     return rc == 0 and bool(out.strip())
+
+
+def tcp_port_responds(port: int, path: str = "/api/snapshot", timeout_s: float = 8.0) -> bool:
+    """Pure-stdlib HTTP probe: True only when OUR console answers."""
+    import urllib.request
+    import urllib.error
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:%d%s" % (port, path), timeout=timeout_s) as response:
+            if response.status != 200:
+                return False
+            body = response.read(4096).decode("utf-8", errors="replace")
+            return "aegis.operator.snapshot" in body or "AEGIS" in body
+    except Exception:
+        return False
+
+
+def _detached(args: list[str], cwd: Path) -> bool:
+    try:
+        subprocess.Popen(
+            args, cwd=str(cwd),
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
+        )
+        return True
+    except OSError:
+        return False
+
+
+# Display surfaces and their stop matchers (exact tool identity only —
+# the same precision rule as nose/brain: never blanket-kill consoles).
+_DISPLAY_MATCH = {
+    "web": ("python", "web_dashboard"),
+    "gui": ("exe", "aegis_dashboard"),
+    "tui": ("exe", "windows_sec_monitor"),
+    "terminal": ("python", "dashboard --watch"),
+}
+
+
+def display_running(name: str) -> bool:
+    if name == "web":
+        return tcp_port_responds(WEB_PORT)
+    if name == "gui":
+        return process_running("aegis_dashboard")
+    if name == "tui":
+        return process_running("windows_sec_monitor")
+    return False  # terminal windows are not tracked; always fresh
+
+
+def start_display(name: str, open_browser: bool = True) -> dict:
+    if display_running(name):
+        return summarize("start display %s" % name, None, "already running (skipped)")
+    if name == "web":
+        env = dict(os.environ)
+        env["DASHBOARD_PORT"] = str(WEB_PORT)
+        try:
+            proc = subprocess.Popen(
+                [sys.executable, "-m", "aegisctl.web_dashboard.app"],
+                cwd=str(TOOLS_DIR), env=env,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
+            )
+        except OSError as exc:
+            return summarize("start display web", False, "spawn failed: %s" % exc)
+        if wait_for(lambda: tcp_port_responds(WEB_PORT), 60):
+            if open_browser:
+                try:
+                    import webbrowser
+                    webbrowser.open(WEB_URL)
+                except Exception:
+                    pass
+            return summarize("start display web", True, "%s serving (pid %s)" % (WEB_URL, proc.pid))
+        return summarize("start display web", False, "no snapshot answer in 60s")
+    if name == "gui":
+        if not GUI_EXE.is_file():
+            return summarize("start display gui", False, "missing: %s" % GUI_EXE)
+        if not _detached([str(GUI_EXE)], REPO_ROOT):
+            return summarize("start display gui", False, "spawn failed")
+        time.sleep(6)
+        if process_running("aegis_dashboard"):
+            return summarize("start display gui", True, "window open (eyeball check)")
+        return summarize("start display gui", False, "exited immediately")
+    if name == "tui":
+        if not TUI_EXE.is_file():
+            return summarize("start display tui", False, "missing: %s" % TUI_EXE)
+        if not _detached(["cmd", "/c", "start", "AEGIS MOUTH", str(TUI_EXE)], REPO_ROOT):
+            return summarize("start display tui", False, "spawn failed")
+        time.sleep(4)
+        if process_running("windows_sec_monitor"):
+            return summarize("start display tui", True, "console open")
+        return summarize("start display tui", False, "exited immediately")
+    if name == "terminal":
+        if not _detached(
+            ["cmd", "/c", "start", "AEGIS DASHBOARD",
+             sys.executable, "tools\\aegisctl.py", "dashboard", "--watch"],
+            REPO_ROOT,
+        ):
+            return summarize("start display terminal", False, "spawn failed")
+        return summarize("start display terminal", True, "watch window open (Ctrl+C there stops it)")
+    return summarize("start display %s" % name, False, "unknown surface")
+
+
+def stop_display(name: str) -> dict:
+    """Stop one display surface by exact tool identity. Never the service."""
+    if name not in _DISPLAY_MATCH:
+        return summarize("stop display %s" % name, False, "unknown surface")
+    kind, fragment = _DISPLAY_MATCH[name]
+    if kind == "exe":
+        pids = _pids_by_name(fragment)
+    else:
+        pids = _pids_by_cmdline(fragment)
+    if not pids:
+        return summarize("stop display %s" % name, True, "was not running")
+    killed, failed = _kill_pids(pids)
+    if kind == "exe":
+        gone = [p for p in killed if p not in _pids_by_name(fragment)]
+    else:
+        gone = [p for p in killed if p not in _pids_by_cmdline(fragment)]
+    still = [p for p in pids if p not in gone]
+    if not still:
+        return summarize("stop display %s" % name, True, "stopped %s" % ",".join(map(str, gone or killed)))
+    return summarize("stop display %s" % name, False, "cannot stop %s (elevate?)" % ",".join(map(str, still)))
+
+
+def cmd_displays(args) -> int:
+    wanted = [a for a in ("web", "gui", "tui", "terminal") if getattr(args, a, False)]
+    if not wanted and not getattr(args, "stop", False):
+        wanted = ["web", "gui", "tui", "terminal"]
+    rows = []
+    if getattr(args, "stop", False):
+        targets = wanted or ["web", "gui", "tui", "terminal"]
+        for name in targets:
+            rows.append(stop_display(name))
+        print(render(rows, bool(args.json)))
+        for row in rows:
+            log_line("displays %s ok=%s %s" % (row["check"], row["ok"], row.get("detail", "")))
+        return overall_exit(rows)
+    for name in wanted:
+        rows.append(start_display(name, open_browser=not getattr(args, "no_browser", False)))
+    print(render(rows, bool(args.json)))
+    for row in rows:
+        log_line("displays %s ok=%s %s" % (row["check"], row["ok"], row.get("detail", "")))
+    return overall_exit(rows)
 
 
 def daemon_snapshot() -> dict:
@@ -375,12 +521,18 @@ def main(argv: list[str] | None = None) -> int:
         ("status", cmd_status, "check everything (read-only, default)"),
         ("open", cmd_open, "start whatever is missing, then verify"),
         ("close", cmd_close, "stop supervised nose+brain (service stays up)"),
+        ("displays", cmd_displays, "start/stop the web+gui+tui+terminal displays"),
     ):
         parser_sub = sub.add_parser(name, help=help_text)
         parser_sub.add_argument("--json", action="store_true")
         parser_sub.set_defaults(func=func)
     close_parser = sub.choices["close"]
     close_parser.add_argument("--with-service", action="store_true", help="also stop the AegisNids service")
+    displays_parser = sub.choices["displays"]
+    for flag in ("web", "gui", "tui", "terminal"):
+        displays_parser.add_argument("--" + flag, action="store_true", help="only this surface")
+    displays_parser.add_argument("--stop", action="store_true", help="stop instead of start")
+    displays_parser.add_argument("--no-browser", action="store_true", help="do not open a browser for web")
     parser.set_defaults(cmd="status", func=cmd_status, json=False)
     args = parser.parse_args(argv)
     return int(args.func(args)) or 0
