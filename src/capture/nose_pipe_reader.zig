@@ -137,6 +137,11 @@ fn createPipeServer() !usize {
             0, // no output buffer
             FRAME_SIZE * 256, // input buffer: 256 frames
             0, // default timeout
+            // Null descriptor = default DACL (NOT a null DACL): the pipe
+            // inherits restrictive default security. Keep it so — an
+            // explicit SDDL here must be reviewed, and a non-admin Nose
+            // writer getting access-denied means widening deliberately,
+            // never silently.
             null,
         );
         if (handle != INVALID_HANDLE) return handle;

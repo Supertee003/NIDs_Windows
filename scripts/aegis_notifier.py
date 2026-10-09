@@ -90,10 +90,16 @@ def notify_email(subject: str, body: str) -> bool:
 def notify_webhook(payload: dict) -> bool:
     """Send HTTP POST with HMAC-SHA256 signature."""
     url = os.getenv("AEGIS_NOTIFIER_WEBHOOK_URL")
-    secret = os.getenv("AEGIS_NOTIFIER_WEBHOOK_SECRET", "")
+    secret = os.getenv("AEGIS_NOTIFIER_WEBHOOK_SECRET")
 
     if not url:
         print("[WEBHOOK] Not configured (set AEGIS_NOTIFIER_WEBHOOK_URL)", file=sys.stderr)
+        return False
+
+    # Fail closed: an empty-key HMAC authenticates nothing and would let
+    # anyone holding the URL forge signed callbacks. Refuse instead.
+    if not secret:
+        print("[WEBHOOK] Refusing unsigned send (set AEGIS_NOTIFIER_WEBHOOK_SECRET)", file=sys.stderr)
         return False
 
     body = json.dumps(payload).encode('utf-8')

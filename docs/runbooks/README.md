@@ -21,6 +21,8 @@ This directory contains operational runbooks for the AEGIS NIDS system.
 | [RB-013](RB-013-quarantine-lab-proof.md) | Lab Proof | Quarantine positive-path proof (isolated lab VM only) | enforcement_proof |
 | [RB-014](RB-014-federation-lab-proof.md) | Lab Proof | Federation live cluster verification (lab) | federation_proof |
 | [RB-015](RB-015-siem-delivery-proof.md) | Lab Proof | SIEM delivery proof (lab) | siem_proof |
+| [RB-016](RB-016-production-trust-checklist.md) | Deployment | Production trust (signed policy, secrets, gates) | policy_signing |
+| [RB-017](RB-017-brain-bring-up.md) | Deployment | Brain Tier-2 supervised bring-up | brain_channel |
 
 ## Runbook Types
 

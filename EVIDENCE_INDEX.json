@@ -3480,6 +3480,34 @@
       "finding": "Stop guessing at the queue: 97.5% of ETW cost dies after full decode. G4 moves the gate before the decode and sheds deletes at depth — both preserve every R1001/R1004 path."
     },
     {
+      "id": "EVT-139",
+      "head_sha": "808f6b6",
+      "timestamp": "2026-10-09",
+      "title": "DB/SEC/EXT sweep: dead TCP listener ruled out, pipe DACL documented, mouth single-instance, webhook fail-closed, trust+brain runbooks",
+      "level": "E2",
+      "component": "tooling",
+      "description": "Three-reader survey (database/security/external, all file:line) converted to verdicts plus minimal fixes. P0 alarm cleared by evidence: TCP 0.0.0.0:12345 has no listener on the host and no bind/listen in src/ (legacy nids_analyze path, orphaned entrypoint) — dead code, not exposure. Pipe DACL claims corrected: null descriptor means restrictive default DACL, not null-DACL holes (nose pipe + mouth health pipe); nose keeps default with an in-code review note, mouth health drops 255 instances to 1 with the same note. Webhook empty-key HMAC now refuses instead of signing with nothing (deprecated script, 2 pins, no network in tests). udp_brain honesty: the flag is a static capability; the CLI bridge ownership check already reports no-listener truthfully — recorded, no change. Deliberately not built: DB durability architecture, audit unification, metrics history (design slices, not patches); kernel (deferred); SDDL AU tightening (breaks non-admin operators — operator decision); control-pipe operate includes rules.reload but only re-reads admin-owned files (low impact, noted). Added RB-016 (production trust checklist: key, sidecar, flag, secrets, gates) and RB-017 (brain supervised bring-up with listener proof), README index extended. Proof: mouth cargo test 11/11 + release build + live DEFCON smoke; webhook pins 2/2; zig build + test green (comment-only core change).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/capture/nose_pipe_reader.zig",
+        "mouth/windows_sec_monitor.rs",
+        "scripts/aegis_notifier.py",
+        "tests/tools/test_notifier_failclosed.py",
+        "docs/runbooks/RB-016-production-trust-checklist.md",
+        "docs/runbooks/RB-017-brain-bring-up.md",
+        "docs/runbooks/README.md",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "mouth cargo test: 11 passed; release build clean; live DEFCON smoke",
+        "new notifier fail-closed pins: 2 passed (no network)",
+        "zig build + zig build test: both green",
+        "TCP 12345: netstat silent + no bind in src (dead-code verdict)"
+      ],
+      "result": "PASS",
+      "finding": "Database (scattered-files reality documented, no DB to fix), security (hardening deltas applied, trust deployed via checklist), and external (dead listener ruled out, pipes documented/tightened, brain path runbooked) are each closed to the extent this host allows. What remains is operator decisions (AU scope, secrets provisioning, brain start) and lab/design slices, all named."
+    },
+    {
       "id": "EVT-133",
       "head_sha": "283780d",
       "timestamp": "2026-10-09",
@@ -3622,7 +3650,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
-    "E2_count": 94,
+    "E2_count": 95,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 30,

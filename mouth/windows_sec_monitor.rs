@@ -38,7 +38,11 @@ mod health_pipe {
     const PIPE_TYPE_MESSAGE: u32 = 0x00000004;
     const PIPE_READMODE_MESSAGE: u32 = 0x00000002;
     const PIPE_WAIT: u32 = 0x00000000;
-    const PIPE_UNLIMITED_INSTANCES: u32 = 255;
+    // Single health-probe client at a time: one instance is enough and
+    // bounds kernel handle/buffer commitment. (Default DACL is kept
+    // deliberately — an explicit SDDL would only widen it here; the
+    // null descriptor argument means default security, not a null DACL.)
+    const PIPE_MAX_INSTANCES: u32 = 1;
     const ERROR_PIPE_CONNECTED: u32 = 0x217;
     const ERROR_IO_PENDING: u32 = 0x3E5;
     const FILE_FLAG_OVERLAPPED: u32 = 0x40000000;
@@ -129,7 +133,7 @@ mod health_pipe {
                     PIPE_NAME.as_ptr(),
                     PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
                     PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
-                    PIPE_UNLIMITED_INSTANCES,
+                    PIPE_MAX_INSTANCES,
                     4096, 4096, 0,
                     std::ptr::null_mut(),
                 );
