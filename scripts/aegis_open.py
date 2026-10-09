@@ -83,9 +83,10 @@ def resolve_nose_iface(env: dict | None = None) -> list[str]:
 
     Returns [] for auto-select so a bad env value can never break the
     default; the frames-flowing check below is the real gate anyway.
+    AEGIS_CAPTURE_IFACE is honored as a legacy alias (run_aegis.bat era).
     """
     env = os.environ if env is None else env
-    iface = (env.get("AEGIS_NOSE_IFACE") or "").strip()
+    iface = (env.get("AEGIS_NOSE_IFACE") or env.get("AEGIS_CAPTURE_IFACE") or "").strip()
     if iface:
         return ["-iface", iface]
     return []

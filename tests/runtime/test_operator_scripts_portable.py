@@ -50,9 +50,11 @@ def test_bridge_script_parses_without_execution():
 
 
 def test_bat_timestamp_survives_without_wmic():
+    # Launcher shows a start time with zero wmic dependency (the old
+    # v5.0 phases needed a fallback; the wrapper needs none at all).
     text = BAT.read_text(encoding="utf-8", errors="replace")
-    assert "if defined DT (" in text
-    assert "%DATE% %TIME%" in text
+    assert "wmic" not in text.lower()
+    assert "%DATE%" in text and "%TIME%" in text
 
 
 def test_lab_preflight_subnet_is_parameterized():

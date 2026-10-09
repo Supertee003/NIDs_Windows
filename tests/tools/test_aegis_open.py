@@ -30,6 +30,8 @@ opener = _load_opener()
 def test_resolve_nose_iface_explicit_wins():
     cmd = opener.resolve_nose_iface({"AEGIS_NOSE_IFACE": r"\Device\NPF_X"})
     assert cmd == ["-iface", r"\Device\NPF_X"]
+    legacy = opener.resolve_nose_iface({"AEGIS_CAPTURE_IFACE": r"\Device\NPF_Y"})
+    assert legacy == ["-iface", r"\Device\NPF_Y"]
 
 
 def test_resolve_nose_iface_blank_or_absent_means_auto():
