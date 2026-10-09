@@ -111,3 +111,86 @@ def test_port_owner_helpers_are_safe():
         free_port = s.getsockname()[1]
     assert opener._pids_on_tcp_port(free_port) == []
     assert opener._pid_is_python(2**31 - 1) is False
+
+
+def test_keeper_plan_converges_only_the_dead():
+    # Pure decision: alive members are never restarted, unknown counts as
+    # dead (a watchdog that skips on "unknown" is how the 2h blind gap
+    # happened). Order is service-first: nose/brain depend on the daemon.
+    assert opener.keeper_plan(True, True, True) == []
+    assert opener.keeper_plan(False, True, True) == ["service"]
+    assert opener.keeper_plan(True, False, True) == ["nose"]
+    assert opener.keeper_plan(True, True, False) == ["brain"]
+    assert opener.keeper_plan(False, False, False) == ["service", "nose", "brain"]
+
+
+def test_keeper_task_cmd_shape():
+    # The scheduled-task command must converge core only (keep, never open
+    # with displays), run every 5 minutes, and run as SYSTEM so an
+    # unattended tick can sc-start the service.
+    install = opener.keeper_task_cmd("install")
+    assert install[:4] == ["schtasks", "/create", "/tn", "AegisKeeper"]
+    assert "/tr" in install and install[install.index("/tr") + 1].endswith("keep")
+    for token in ("/sc", "minute", "/mo", "5", "/ru", "SYSTEM", "/f"):
+        assert token in install
+    assert opener.keeper_task_cmd("uninstall") == ["schtasks", "/delete", "/tn", "AegisKeeper", "/f"]
+    try:
+        opener.keeper_task_cmd("bogus")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("bad keeper task action must raise, not build")
+
+
+def _keep_args(**over):
+    import types
+    base = {"install_task": False, "uninstall_task": False, "json": False}
+    base.update(over)
+    return types.SimpleNamespace(**base)
+
+
+def test_cmd_keep_noop_when_all_alive():
+    # Live predicates mocked alive: one True row, exit 0, no starter runs.
+    from unittest.mock import patch
+    with patch.object(opener, "service_state", return_value="RUNNING"), \
+         patch.object(opener, "process_running", return_value=True), \
+         patch.object(opener, "udp_port_owned", return_value=True), \
+         patch.object(opener, "start_service") as svc, \
+         patch.object(opener, "start_nose") as nose, \
+         patch.object(opener, "start_brain") as brain:
+        assert opener.cmd_keep(_keep_args()) == 0
+    svc.assert_not_called()
+    nose.assert_not_called()
+    brain.assert_not_called()
+
+
+def test_cmd_keep_restarts_only_dead_nose():
+    # Nose down at plan time, alive at re-verify: starter runs once and
+    # the converge row is green.
+    from unittest.mock import patch
+    ok_row = opener.summarize("start nose", True, "mocked")
+    with patch.object(opener, "service_state", return_value="RUNNING"), \
+         patch.object(opener, "process_running", side_effect=[False, True]), \
+         patch.object(opener, "udp_port_owned", return_value=True), \
+         patch.object(opener, "start_nose", return_value=ok_row) as nose:
+        assert opener.cmd_keep(_keep_args()) == 0
+    nose.assert_called_once_with()
+
+
+def test_keep_service_prefers_scm_recovery():
+    # SCM failure actions get the first chance; sc start only fires when
+    # the grace wait observes nothing (patched here: no real sleeping).
+    from unittest.mock import patch
+    with patch.object(opener, "service_state", return_value="UNKNOWN"), \
+         patch.object(opener, "wait_for", return_value=True), \
+         patch.object(opener, "start_service") as svc:
+        row = opener.keep_service()
+        assert row["ok"] is True and "SCM" in row["detail"]
+    svc.assert_not_called()
+    with patch.object(opener, "service_state", return_value="STOPPED"), \
+         patch.object(opener, "wait_for", return_value=False), \
+         patch.object(opener, "start_service",
+                       return_value=opener.summarize("start service", True, "mocked")) as svc:
+        row = opener.keep_service()
+        assert row["ok"] is True
+    svc.assert_called_once_with()

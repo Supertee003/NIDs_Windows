@@ -10,6 +10,7 @@ Usage:
   python scripts/aegis_open.py open        # start whatever is missing, then verify
   python scripts/aegis_open.py close       # stop supervised nose+brain (service stays up)
   python scripts/aegis_open.py close --with-service
+  python scripts/aegis_open.py keep        # watchdog: converge service+nose+brain (no displays)
   python scripts/aegis_open.py status --json
 
 Safety rules baked in from incident history:
@@ -617,6 +618,108 @@ def cmd_close(args) -> int:
     return overall_exit(rows)
 
 
+# --------------------------------------------------------------------------
+# Keeper (GAP-016): converge service+nose+brain, no displays, no pipe load
+# --------------------------------------------------------------------------
+# The service once sat dead ~2h because SCM had no recovery actions. SCM now
+# restarts it twice (sc qfailure: 2x RESTART/60s), but after the restarts are
+# exhausted -- and for the unsupervised nose/brain -- nothing converges.
+# `keep` is that backstop, meant for a 5-minute scheduled task. It uses
+# LIVENESS ONLY (service state, nose process, brain UDP port), never
+# control-pipe counters: a watchdog must not add pipe load on every tick,
+# and liveness is exactly what "dead" means here.
+
+KEEPER_TASK_NAME = "AegisKeeper"
+KEEPER_INTERVAL_MIN = 5
+KEEPER_SCM_GRACE_S = 60
+
+
+def keeper_plan(svc_alive: bool, nose_alive: bool, brain_alive: bool) -> list[str]:
+    """Pure decision: which starters the keeper must run, in order.
+
+    Unit-pinned. True means confirmed-alive; False/unknown both converge
+    (a watchdog that skips on "unknown" is how the 2h blind gap happened).
+    """
+    plan = []
+    if not svc_alive:
+        plan.append("service")
+    if not nose_alive:
+        plan.append("nose")
+    if not brain_alive:
+        plan.append("brain")
+    return plan
+
+
+def keeper_task_cmd(action: str) -> list[str]:
+    """Pure constructor for the converge-task schtasks command. Pinned."""
+    target = '"%s" "%s" keep' % (sys.executable, REPO_ROOT / "scripts" / "aegis_open.py")
+    if action == "install":
+        return ["schtasks", "/create", "/tn", KEEPER_TASK_NAME, "/tr", target,
+                "/sc", "minute", "/mo", str(KEEPER_INTERVAL_MIN),
+                "/ru", "SYSTEM", "/f"]
+    if action == "uninstall":
+        return ["schtasks", "/delete", "/tn", KEEPER_TASK_NAME, "/f"]
+    raise ValueError("keeper task action must be install|uninstall, got %r" % (action,))
+
+
+def keep_service() -> dict:
+    """Service branch: let SCM recovery win; start only if truly stopped."""
+    if service_state() == "RUNNING":
+        return summarize("keeper service", None, "already RUNNING (skipped)")
+    progress("service not RUNNING; waiting %ds for SCM recovery first ..." % KEEPER_SCM_GRACE_S)
+    if wait_for(lambda: service_state() == "RUNNING", KEEPER_SCM_GRACE_S, poll_s=5.0):
+        return summarize("keeper service", True, "recovered via SCM failure actions (keeper did not start)")
+    return start_service()
+
+
+def _keep_task_row(action: str, as_json: bool) -> dict:
+    cmd = keeper_task_cmd(action)
+    rc, _, err = run(cmd, timeout=60)
+    if rc == 0:
+        if action == "install":
+            return summarize("keeper task install", True,
+                             "%s every %dmin as SYSTEM" % (KEEPER_TASK_NAME, KEEPER_INTERVAL_MIN))
+        return summarize("keeper task uninstall", True, "%s removed" % KEEPER_TASK_NAME)
+    return summarize("keeper task %s" % action, False,
+                     "schtasks failed (admin?): %s" % err.strip()[:160])
+
+
+def cmd_keep(args) -> int:
+    if bool(args.install_task) or bool(args.uninstall_task):
+        action = "install" if bool(args.install_task) else "uninstall"
+        row = _keep_task_row(action, bool(args.json))
+        emit(row, bool(args.json))
+        log_line("keep %s ok=%s %s" % (row["check"], row["ok"], row.get("detail", "")))
+        return overall_exit([row])
+    plan = keeper_plan(service_state() == "RUNNING",
+                       process_running("aegis-nose"),
+                       udp_port_owned(BRAIN_PORT))
+    rows: list[dict] = []
+    if not plan:
+        row = summarize("keeper converge", True, "service+nose+brain alive (no-op)")
+        rows.append(row)
+        emit(row, bool(args.json))
+    else:
+        starters = {"service": keep_service, "nose": start_nose, "brain": start_brain}
+        for name in plan:
+            row = starters[name]()
+            rows.append(row)
+            emit(row, bool(args.json))
+        alive = (service_state() == "RUNNING",
+                 process_running("aegis-nose"),
+                 udp_port_owned(BRAIN_PORT))
+        if all(alive):
+            rows.append(summarize("keeper converge", True, "all three alive after restart"))
+        else:
+            dead = [n for n, ok in zip(("service", "nose", "brain"), alive) if not ok]
+            rows.append(summarize("keeper converge", False, "still down: %s" % ",".join(dead)))
+    if bool(args.json):
+        print(render(rows, True))
+    for row in rows:
+        log_line("keep %s ok=%s %s" % (row["check"], row["ok"], row.get("detail", "")))
+    return overall_exit([r for r in rows if r["ok"] is not None])
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="aegis_open.py", description="Open, inspect, or close the AEGIS system")
     sub = parser.add_subparsers(dest="cmd")
@@ -624,6 +727,7 @@ def main(argv: list[str] | None = None) -> int:
         ("status", cmd_status, "check everything (read-only, default)"),
         ("open", cmd_open, "start whatever is missing, then verify"),
         ("close", cmd_close, "stop supervised nose+brain (service stays up)"),
+        ("keep", cmd_keep, "watchdog: converge service+nose+brain (no displays)"),
         ("displays", cmd_displays, "start/stop the web+gui+tui+terminal displays"),
     ):
         parser_sub = sub.add_parser(name, help=help_text)
@@ -631,6 +735,11 @@ def main(argv: list[str] | None = None) -> int:
         parser_sub.set_defaults(func=func)
     close_parser = sub.choices["close"]
     close_parser.add_argument("--with-service", action="store_true", help="also stop the AegisNids service")
+    keep_parser = sub.choices["keep"]
+    keep_parser.add_argument("--install-task", action="store_true",
+                             help="register the %d-minute %s scheduled task (needs admin)" % (KEEPER_INTERVAL_MIN, KEEPER_TASK_NAME))
+    keep_parser.add_argument("--uninstall-task", action="store_true",
+                             help="remove the %s scheduled task (needs admin)" % KEEPER_TASK_NAME)
     displays_parser = sub.choices["displays"]
     for flag in ("web", "gui", "tui", "terminal"):
         displays_parser.add_argument("--" + flag, action="store_true", help="only this surface")

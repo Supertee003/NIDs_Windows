@@ -24,6 +24,7 @@ REM
 REM Usage:  run_aegis.bat [options]
 REM   (no args)      open missing parts + start all displays, then verify
 REM   --status       check everything, start nothing
+REM   --keep         watchdog converge of service+nose+brain (no displays)
 REM   --stop         stop displays + supervised parts AND the service
 REM   --no-displays  open the system without starting displays
 REM   --skip-build   retired: builds are a separate step (build_all.bat)
@@ -70,6 +71,7 @@ if "%~1"=="" goto :done_parse
 set "HAD_ARGS=1"
 set "KNOWN="
 if /I "%~1"=="--status" set "CMD=status" & set "DISPLAYS=" & set "KNOWN=1"
+if /I "%~1"=="--keep" set "CMD=keep" & set "DISPLAYS=" & set "KNOWN=1"
 if /I "%~1"=="--stop" set "CMD=close --with-service" & set "DISPLAYS=displays --stop" & set "KNOWN=1"
 if /I "%~1"=="--no-displays" set "DISPLAYS=" & set "KNOWN=1"
 if /I "%~1"=="--help" goto :usage
@@ -86,9 +88,10 @@ shift
 goto :parse_args
 :usage
 echo.
-echo   Usage: run_aegis.bat [--status] [--stop] [--no-displays] [--help]
+echo   Usage: run_aegis.bat [--status] [--keep] [--stop] [--no-displays] [--help]
 echo     (no args)   open missing parts + start all displays, then verify
 echo     --status    check everything, start nothing
+echo     --keep      watchdog converge of service+nose+brain, no displays
 echo     --stop      stop displays + supervised parts AND the service
 echo     --no-displays  open the system without starting displays
 echo.

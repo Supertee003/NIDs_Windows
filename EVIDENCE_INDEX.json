@@ -1,5 +1,5 @@
 {
-  "head_sha": "afdc9ff5a6381b6df7869908fbdbbefda0573756",
+  "head_sha": "018a2e34f3e4d82e9a0f42f9f3760c2e680457ca",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -3876,6 +3876,31 @@
       ],
       "result": "PASS",
       "finding": "The launcher converges fast when everything is already up (433ms skip instead of a 95s hang), never duplicates displays, the GUI cannot freeze or flood the single control pipe, and the bat is parse-safe under real cmd."
+    },
+    {
+      "id": "EVT-150",
+      "head_sha": "018a2e3",
+      "timestamp": "2026-10-10",
+      "title": "Keeper watchdog: service+nose+brain converge verb plus scheduled-task wiring (GAP-016 backstop)",
+      "level": "E5",
+      "component": "tooling",
+      "description": "GAP-016 showed the service could sit dead ~2h: SCM had no recovery actions then. SCM now restarts twice (sc qfailure: 2x RESTART/60s, verified live), but after the restarts are exhausted -- and for the unsupervised nose/brain -- nothing converges. `python scripts/aegis_open.py keep` is that backstop: liveness-only plan (service state, nose process, brain UDP port -- never control-pipe counters, so a 5-minute tick adds no pipe load), SCM recovery gets a 60s grace before sc start so the keeper never fights it, unknown counts as dead, plus keep --install-task / --uninstall-task wiring a 5-minute AegisKeeper task as SYSTEM. run_aegis.bat --keep maps to it (core only, no displays). Elevation boundary proven live, not assumed: this session is non-elevated, so --install-task fails closed with [FAIL] Access is denied and registers nothing; the one admin-prompt command is recorded for the operator.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "scripts/aegis_open.py",
+        "scripts/run_aegis.bat",
+        "tests/tools/test_aegis_open.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "new keeper pins: 5 passed (plan table, task-cmd shape+ValueError, no-op exit 0 with starters untouched, dead-nose restart-once green, SCM-first ordering)",
+        "live: keep no-op 2.7s exit 0 (service+nose+brain alive)",
+        "live: run_aegis.bat --keep renders + converges, no displays",
+        "live: keep --install-task fail-closed Access is denied, task absent (schtasks query negative)",
+        "live: sc qfailure shows 2x RESTART/60s recovery actions present"
+      ],
+      "result": "PASS",
+      "finding": "The 2h blind gap class is closed by construction: SCM restarts twice, then the keeper converges everything SCM cannot (nose, brain, exhausted restarts) every 5 minutes once the operator runs the single admin command."
     }
   ],
   "evidence_level_summary": {
@@ -3884,7 +3909,7 @@
     "E2_count": 102,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 32,
+    "E5_count": 34,
     "E6_count": 0,
     "E7_count": 0
   }
