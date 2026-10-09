@@ -49,8 +49,10 @@ To unblock the IP:
 3. Audit trail records the unblock action automatically
 
 ## Notes
-- PEP quarantine action is currently DEFERRED (see `docs/PEP_QUARANTINE_STATUS.md`)
-- WFP IOCTL is in tracking-only mode (see `docs/WFP_IOCTL_STATUS.md`)
+- Quarantine is implemented (two-person gate, WFP adapter, receipts —
+  EVT-112/113); the LAB PROOF is RB-013, not the implementation.
+- WFP provider reports READY with live filters on an open gate
+  (Phase-8 proof); tracking-only was the pre-enforcement posture.
 - Block action is recorded even if kernel enforcement is not active
 
 ## References

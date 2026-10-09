@@ -153,6 +153,7 @@ mutation/postcondition flags.
 | `enforcement.unblock` | PRIVILEGED | yes | Remove a filter by receipt filter_id |
 | `enforcement.two_person` | PRIVILEGED | yes | Two-person rule on/off (Rust PEP) |
 | `enforcement.approve` | PRIVILEGED | yes | One-shot second-human approval |
+| `enforcement.quarantine` | PRIVILEGED | yes | Quarantine an exact flow (severity-gated, DECISION_QUARANTINE receipt) |
 | `metrics.snapshot` | READ | no | Metrics snapshot |
 | `logs.tail` | READ | no | Recent log entries |
 | `federation.status` | READ | no | Federation cluster status |

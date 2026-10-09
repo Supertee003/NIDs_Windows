@@ -3523,6 +3523,34 @@
       "finding": "Crash resilience is now structural (SCM) plus observed (watchdog); only time can close the last bullet."
     },
     {
+      "id": "EVT-136",
+      "head_sha": "5efbce9",
+      "timestamp": "2026-10-09",
+      "title": "G5 workable ceremony plus quarantine verb: request_id travels in payload, DECISION_QUARANTINE reachable",
+      "level": "E2",
+      "component": "zig_core",
+      "description": "Writing the lab runbooks exposed two blockers that would have failed lab execution. (1) The two-person ceremony was unworkable: approvals key on the daemon's control request_id, a GLOBAL counter shared with pipeline audit entries at 1100+/s, so approve-then-hit is a race no operator can win. Fix: optional payload request_id (absent/zero keeps legacy ctx id) threaded through enforceFlow and the receipt's request_id (audit_id stays control truth); approve(X) then block/quarantine carrying request_id=X works at any pace. (2) No control-plane path could mint DECISION_QUARANTINE: enforcement.block hardcodes decision 1 and no quarantine verb existed (unit-tested gate + mirror with no trigger). Fix: new privileged enforcement.quarantine verb mirroring block (same gates/read-back/cleanup, decision 3), plus receipt validate() accepting decision 3 (block behavior unchanged; Python receipt gate already decision-agnostic). Runbooks RB-012/RB-013 rewritten to the true mechanics (exact calls, ceremony dance, ESCALATE-reason-2 retry rule) and RB-001's stale notes corrected. Proof: zig build + test green 4/4 (2136/2137 + 1 skipped) incl. 4 new tests (ceremony extractor, quarantine INVALID_INPUT/AUTH paths, receipt quarantine validation, protocol pin) + control_protocol.md row (CTL-DOC auto-check). Live block/quarantine proofs stay lab-gated per the runbooks.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/control/protocol.zig",
+        "src/control/handler_registry.zig",
+        "src/policy/enforcement_receipt.zig",
+        "shared/protocol/control_protocol.md",
+        "docs/runbooks/RB-001-block-ip-via-pep.md",
+        "docs/runbooks/RB-012-wfp-block-lab-proof.md",
+        "docs/runbooks/RB-013-quarantine-lab-proof.md",
+        "docs/runbooks/README.md",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "new ceremony/quarantine/receipt/protocol tests: 4 PASS",
+        "zig build + zig build test: both green",
+        "RB-012/13 procedure verified against handler code paths (no lab run yet)"
+      ],
+      "result": "PASS",
+      "finding": "Enforcement is now operable, not just implemented: a deterministic ceremony plus a quarantine verb with receipt proof, all reachable through documented control calls. The lab runbooks are executable as written."
+    },
+    {
       "id": "EVT-135",
       "head_sha": "5efbce9",
       "timestamp": "2026-10-09",
@@ -3547,7 +3575,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
-    "E2_count": 92,
+    "E2_count": 93,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 29,

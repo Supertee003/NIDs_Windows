@@ -68,7 +68,10 @@ pub const EnforcementReceipt = struct {
 
     pub fn validate(self: EnforcementReceipt) bool {
         if (self.receipt_version != VERSION or self.request_id == 0 or self.event_id == 0) return false;
-        if (self.status == .enforced and (self.policy_id == 0 or self.decision != 1)) return false;
+        // G5: enforced decisions are block (1) and quarantine (3). Any
+        // other decision value on an enforced receipt is malformed —
+        // never widen this without a control-plane verb that mints it.
+        if (self.status == .enforced and (self.policy_id == 0 or (self.decision != 1 and self.decision != 3))) return false;
         if (self.status == .enforced and !self.host_effect_confirmed) return false;
         if (self.host_effect_confirmed and self.status != .enforced) return false;
         if (self.status == .enforced and (self.provider.len == 0 or self.filter_id == 0 or self.trace_id == 0 or self.audit_id == 0)) return false;
@@ -85,6 +88,18 @@ test "enforcement receipt does not equate decision with host effect" {
     try std.testing.expect(!pending.isSuccess());
     const enforced = EnforcementReceipt{ .request_id = 1, .event_id = 2, .policy_id = 3, .decision = 1, .status = .enforced, .provider = "wfp", .filter_id = 9, .host_effect_confirmed = true, .reason = "filter_installed", .trace_id = 4, .audit_id = 5 };
     try std.testing.expect(enforced.isSuccess());
+}
+
+test "G5 quarantine receipt validates like block, unknown decisions do not" {
+    const base = EnforcementReceipt{ .request_id = 7, .event_id = 8, .policy_id = 3, .status = .enforced, .provider = "wfp", .filter_id = 9, .host_effect_confirmed = true, .reason = "filter_installed", .trace_id = 4, .audit_id = 5, .decision = 0 };
+    var q = base;
+    q.decision = 3;
+    try std.testing.expect(q.validate());
+    try std.testing.expect(q.isSuccess());
+    var bad = base;
+    bad.decision = 4;
+    try std.testing.expect(!bad.validate());
+    try std.testing.expect(!bad.isSuccess());
 }
 
 test "forensic linkage requires trace and audit identity" {

@@ -17,6 +17,10 @@ This directory contains operational runbooks for the AEGIS NIDS system.
 | [RB-009](RB-009-hot-reload-config.md) | Deployment | Hot reload config (no restart) | config_reload_proof |
 | [RB-010](RB-010-telemetry-export-setup.md) | Deployment | Telemetry export setup | telemetry_export_proof |
 | [RB-011](RB-011-policy-ir-mirror-workflow.md) | Deployment | Author, seal, export, verify TS policy IR mirror | policy_ir_proof |
+| [RB-012](RB-012-wfp-block-lab-proof.md) | Lab Proof | WFP BLOCK live proof (isolated lab VM only) | enforcement_proof |
+| [RB-013](RB-013-quarantine-lab-proof.md) | Lab Proof | Quarantine positive-path proof (isolated lab VM only) | enforcement_proof |
+| [RB-014](RB-014-federation-lab-proof.md) | Lab Proof | Federation live cluster verification (lab) | federation_proof |
+| [RB-015](RB-015-siem-delivery-proof.md) | Lab Proof | SIEM delivery proof (lab) | siem_proof |
 
 ## Runbook Types
 
@@ -24,6 +28,7 @@ This directory contains operational runbooks for the AEGIS NIDS system.
 - **Recovery** -- System recovery (restore, rollback)
 - **Troubleshooting** -- Debug and diagnose issues
 - **Deployment** -- Install, upgrade, configure
+- **Lab Proof** -- Isolated-lab verification procedures with exact postconditions (never production)
 
 ## Using Runbooks
 

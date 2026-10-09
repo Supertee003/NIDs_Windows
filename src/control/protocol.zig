@@ -64,6 +64,7 @@ pub const Command = enum(u16) {
     enforcement_unblock = 804,
     enforcement_two_person = 805,
     enforcement_approve = 806,
+    enforcement_quarantine = 807,
 
     // --- metrics/logs domain ---
     metrics_snapshot = 900,
@@ -110,6 +111,7 @@ pub const Command = enum(u16) {
             .{ .name = "enforcement.unblock", .cmd = .enforcement_unblock },
             .{ .name = "enforcement.two_person", .cmd = .enforcement_two_person },
             .{ .name = "enforcement.approve", .cmd = .enforcement_approve },
+            .{ .name = "enforcement.quarantine", .cmd = .enforcement_quarantine },
             .{ .name = "metrics.snapshot", .cmd = .metrics_snapshot },
             .{ .name = "logs.tail", .cmd = .logs_tail },
             .{ .name = "federation.status", .cmd = .federation_status },
@@ -244,6 +246,7 @@ pub fn contract(cmd: Command) CommandContract {
         .enforcement_unblock => .{ .command = cmd, .name = "enforcement.unblock", .required_role = .privileged, .description = "Remove an exact filter by EnforcementReceipt filter_id", .is_mutation = true, .has_postcondition = true },
         .enforcement_two_person => .{ .command = cmd, .name = "enforcement.two_person", .required_role = .privileged, .description = "Enable/disable the two-person rule for high-severity BLOCKs (Rust PEP)", .is_mutation = true, .has_postcondition = true },
         .enforcement_approve => .{ .command = cmd, .name = "enforcement.approve", .required_role = .privileged, .description = "Record a one-shot second-human approval for an enforcement request_id", .is_mutation = true, .has_postcondition = true },
+        .enforcement_quarantine => .{ .command = cmd, .name = "enforcement.quarantine", .required_role = .privileged, .description = "Quarantine an exact IP/port/protocol flow through Rust PEP (severity-gated, receipt DECISION_QUARANTINE)", .is_mutation = true, .has_postcondition = true },
 
         // --- metrics/logs domain ---
         .metrics_snapshot => .{ .command = cmd, .name = "metrics.snapshot", .required_role = .read, .description = "Metrics snapshot", .is_mutation = false, .has_postcondition = false },
@@ -308,6 +311,7 @@ test "Command.fromString parses all commands" {
     try std.testing.expectEqual(Command.forensics_export, Command.fromString("forensics.export").?);
     try std.testing.expectEqual(Command.enforcement_status, Command.fromString("enforcement.status").?);
     try std.testing.expectEqual(Command.enforcement_two_person, Command.fromString("enforcement.two_person").?);
+    try std.testing.expectEqual(Command.enforcement_quarantine, Command.fromString("enforcement.quarantine").?);
     try std.testing.expectEqual(Command.enforcement_approve, Command.fromString("enforcement.approve").?);
     try std.testing.expectEqual(Command.metrics_snapshot, Command.fromString("metrics.snapshot").?);
     try std.testing.expectEqual(Command.logs_tail, Command.fromString("logs.tail").?);
