@@ -3531,6 +3531,27 @@
       "finding": "Database (scattered-files reality documented, no DB to fix), security (hardening deltas applied, trust deployed via checklist), and external (dead listener ruled out, pipes documented/tightened, brain path runbooked) are each closed to the extent this host allows. What remains is operator decisions (AU scope, secrets provisioning, brain start) and lab/design slices, all named."
     },
     {
+      "id": "EVT-141",
+      "head_sha": "0db149d",
+      "timestamp": "2026-10-10",
+      "title": "G6 nose pipe SDDL: authenticated writers admitted, capture path unblocked",
+      "level": "E2",
+      "component": "zig_core",
+      "description": "System-opening found the Go capture path dead on arrival: nose captured thousands of frames but dropped 100% (consumer unavailable) while the daemon waited with zero reads. Root cause isolated by elimination (pipe names match on both sides; daemon server exists and listens): the daemon-created pipe's default DACL rejects non-SYSTEM writers, proven by medium-IL CreateFile returning ERROR_ACCESS_DENIED (5). Fix mirrors the sensor pipe exactly (BA+AU SDDL string, fail-closed on conversion failure, documented posture: pipe input is untrusted sensor data, observe-only with trust-gated enforcement). Also pins the SDDL conversion itself (a typo would fail closed at startup — the test catches rot). Nose runs as the operator here (same posture as the sensor pipe's Python writers), so no supervision change is implied by this patch. Proof: zig build + test green (2138/2139 + 1 skipped) incl. new SDDL test; benchmark-threshold flake re-observed a 3rd time under host load, green on unmodified rerun (environmental, recorded). Live frame flow (source-9 records, nose_connected) needs the redeploy carrying this change plus a running nose.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/capture/nose_pipe_reader.zig",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "new SDDL conversion test: PASS",
+        "zig build + zig build test: both green",
+        "benchmark flake 3rd occurrence, green on rerun (environmental)"
+      ],
+      "result": "PASS",
+      "finding": "The canonical network ingress was plumbed but padlocked: capture worked, delivery was impossible for any non-SYSTEM writer. One SDDL string reopens it under the same posture the sensor pipe already lives with."
+    },
+    {
       "id": "EVT-133",
       "head_sha": "283780d",
       "timestamp": "2026-10-09",
@@ -3673,7 +3694,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
-    "E2_count": 95,
+    "E2_count": 96,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 31,

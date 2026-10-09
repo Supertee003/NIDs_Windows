@@ -109,6 +109,32 @@ extern "kernel32" fn CloseHandle(
     hObject: usize,
 ) callconv(.C) i32;
 
+extern "advapi32" fn ConvertStringSecurityDescriptorToSecurityDescriptorW(
+    StringSecurityDescriptor: [*:0]const u16,
+    StringSDRevision: u32,
+    SecurityDescriptor: *?*anyopaque,
+    SecurityDescriptorSize: ?*u32,
+) callconv(.C) i32;
+
+extern "kernel32" fn LocalFree(
+    hMem: ?*anyopaque,
+) callconv(.C) ?*anyopaque;
+
+// G6: explicit SDDL identical to the sensor pipe (BA+AU). The previous
+// null descriptor inherited a restrictive default DACL that rejected
+// non-SYSTEM writers (proven live: medium-IL client got ERROR_ACCESS_DENIED
+// while the daemon waited forever), so Go nose could never deliver.
+// Authenticated-user writers match the sensor pipe posture: pipe input is
+// untrusted sensor data by design (observe-only, trust-gated enforcement).
+const SDDL_NOSE_PIPE: [*:0]const u16 = @import("std").unicode.utf8ToUtf16LeStringLiteral("D:(A;;GA;;;BA)(A;;GA;;;AU)");
+const SDDL_REVISION: u32 = 1;
+
+const NoseSecurityAttributes = extern struct {
+    nLength: u32,
+    lpSecurityDescriptor: ?*anyopaque,
+    bInheritHandle: i32,
+};
+
 extern "kernel32" fn DisconnectNamedPipe(
     hNamedPipe: usize,
 ) callconv(.C) i32;
@@ -128,6 +154,30 @@ fn createPipeServer() !usize {
     // bounded handoff window instead of converting a transient ERROR_PIPE_BUSY
     // into nose_init_failed immediately.
     var attempt: u32 = 0;
+    // G6: explicit SDDL (fail-closed like the sensor pipe). The old null
+    // descriptor inherited a restrictive default DACL that rejected
+    // non-SYSTEM writers (proven live: medium-IL client got
+    // ERROR_ACCESS_DENIED while the daemon waited forever), so Go nose
+    // could never deliver. AU writers match the sensor pipe posture.
+    var pipe_sd: ?*anyopaque = null;
+    var sec_attr = NoseSecurityAttributes{
+        .nLength = @sizeOf(NoseSecurityAttributes),
+        .lpSecurityDescriptor = null,
+        .bInheritHandle = 0,
+    };
+    if (ConvertStringSecurityDescriptorToSecurityDescriptorW(
+        SDDL_NOSE_PIPE,
+        SDDL_REVISION,
+        &pipe_sd,
+        null,
+    ) != 0) {
+        sec_attr.lpSecurityDescriptor = pipe_sd;
+    } else {
+        std.log.err("[NOSE PIPE] CRITICAL: SDDL conversion failed - REFUSING to create pipe (fail-closed)", .{});
+        runtime_state.markWorkerFailure(.nose);
+        return error.CreatePipeFailed;
+    }
+    defer _ = LocalFree(pipe_sd);
     while (attempt < 120) { // 60 seconds at 500 ms intervals
         const handle = CreateNamedPipeW(
             &PIPE_NAME,
@@ -137,12 +187,7 @@ fn createPipeServer() !usize {
             0, // no output buffer
             FRAME_SIZE * 256, // input buffer: 256 frames
             0, // default timeout
-            // Null descriptor = default DACL (NOT a null DACL): the pipe
-            // inherits restrictive default security. Keep it so — an
-            // explicit SDDL here must be reviewed, and a non-admin Nose
-            // writer getting access-denied means widening deliberately,
-            // never silently.
-            null,
+            @ptrCast(&sec_attr),
         );
         if (handle != INVALID_HANDLE) return handle;
 
@@ -415,4 +460,20 @@ test "classifyFrameLen bounds the drain and resyncs on absurd lengths" {
     try std.testing.expectEqual(LengthVerdict.drain, classifyFrameLen(MAX_DISCARD_BYTES));
     try std.testing.expectEqual(LengthVerdict.resync, classifyFrameLen(MAX_DISCARD_BYTES + 1));
     try std.testing.expectEqual(LengthVerdict.resync, classifyFrameLen(std.math.maxInt(u32)));
+}
+
+test "G6 nose pipe SDDL converts (fail-closed path would refuse)" {
+    // A typo in the SDDL string makes createPipeServer refuse to create
+    // the pipe at all; pin the conversion itself so the constant cannot
+    // silently rot. Windows-only API — skip cleanly elsewhere.
+    if (@import("builtin").os.tag != .windows) return error.SkipZigTest;
+    var sd: ?*anyopaque = null;
+    try std.testing.expect(ConvertStringSecurityDescriptorToSecurityDescriptorW(
+        SDDL_NOSE_PIPE,
+        SDDL_REVISION,
+        &sd,
+        null,
+    ) != 0);
+    try std.testing.expect(sd != null);
+    _ = LocalFree(sd);
 }
