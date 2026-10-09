@@ -18,6 +18,7 @@ const siem_mod = @import("../forensic/siem_forwarder.zig");
 const event_queue = @import("../pipeline/event_queue.zig");
 const event_contract = @import("../contract/event.zig");
 const telemetry = @import("../pipeline/telemetry_threads.zig");
+const etw_rt = @import("../windows/etw_realtime.zig");
 
 // ============================================================
 // Handler Function Signature
@@ -703,7 +704,7 @@ const handlers = struct {
             }) catch return null;
         }
         writer.writeAll("],\"etw\":{") catch return null;
-        writer.print("\"process_start\":{},\"file_name_create\":{},\"file_name_delete\":{},\"file_write\":{},\"reg_create\":{},\"reg_set\":{},\"dropped_unmapped\":{}}}}}", .{
+        writer.print("\"process_start\":{},\"file_name_create\":{},\"file_name_delete\":{},\"file_write\":{},\"reg_create\":{},\"reg_set\":{},\"dropped_unmapped\":{},\"predecode_dropped\":{}}}}}", .{
             telemetry.g_etw_classes.process_start.load(.acquire),
             telemetry.g_etw_classes.file_name_create.load(.acquire),
             telemetry.g_etw_classes.file_name_delete.load(.acquire),
@@ -711,6 +712,7 @@ const handlers = struct {
             telemetry.g_etw_classes.reg_create.load(.acquire),
             telemetry.g_etw_classes.reg_set.load(.acquire),
             telemetry.g_etw_classes.dropped_unmapped.load(.acquire),
+            etw_rt.g_etw_predecode_dropped.load(.acquire),
         }) catch return null;
         return out.toOwnedSlice() catch null;
     }
@@ -2044,6 +2046,7 @@ test "queueStats emits parseable JSON with shed and etw keys (GAP-015)" {
     try std.testing.expect(root.contains("pipeline"));
     try std.testing.expect(root.contains("etw"));
     try std.testing.expect(root.get("etw").?.object.contains("file_write"));
+    try std.testing.expect(root.get("etw").?.object.contains("predecode_dropped"));
 }
 
 test "metricsSnapshot prints lifetime counters at full u64 width" {

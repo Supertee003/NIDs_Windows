@@ -3394,6 +3394,33 @@
       "finding": "The storm fix sheds the cheapest-duplicated class (Write, covered by NameCreate for new files) only when deep, counts the shed apart from overflow, and exposes composition for the next decision. Whether storms now absorb without overflow is a live question for the redeploy soak."
     },
     {
+      "id": "EVT-130",
+      "head_sha": "32546cf",
+      "timestamp": "2026-10-09",
+      "title": "G4 storm volume control: pre-decode ETW gate plus NameDelete storm shed",
+      "level": "E2",
+      "component": "zig_core",
+      "description": "GAP-015 fix slice from the 8M-unmapped finding (EVT-129): the native callback delivered ~27k records/sec while the queue saw 1.1k/s — 97.5% decoded-then-dropped. Two changes: (1) pre-decode gate in the ETW wrapper (shouldDecodeEtw mirrors the 6 kept pairs; unmapped pairs skip TDH decode + callback, counted as predecode_dropped apart from classifier-side unmapped so drift is detectable; zero behavior change by construction). (2) storm shed generalized from Write-only to Write+NameDelete at >=75% depth (deletes are 400/s, FIM-duplicated, near-worthless for R1001/R1004; NameCreate/Process/Registry untouched). Parity tests on both mirrors (gate-vs-classifier, shed-vs-classifier) fail on any drift. Along the way: fixed a duplicated-tuple edit slip (caught by zig build), a test pointer-type error (caught by zig build test — production and test graphs cover different files, both must run), and re-observed the known benchmark-threshold flake (fails under host load, green on unmodified rerun, 2nd occurrence). Proof: zig build + test green 4/4 (2129/2130 + 1 skipped) incl. 2 new tests + queueStats parse pin; pytest tools 12/12. Live storm proof needs rebuild + elevated redeploy + soak.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/windows/etw_realtime.zig",
+        "src/pipeline/telemetry_threads.zig",
+        "src/control/handler_registry.zig",
+        "tools/aegisctl.py",
+        "tests/tools/test_aegisctl_queue.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "new pre-decode parity test (6 kept + 6 exclusions): PASS",
+        "shed parity generalized (Write+Delete): PASS",
+        "queueStats parse pin extended (predecode_dropped): PASS",
+        "zig build + zig build test: both green (rule: both roots every Zig patch)",
+        "benchmark flake re-observed, green on rerun (not a regression)"
+      ],
+      "result": "PASS",
+      "finding": "The 97.5% waste dies before decode; storm shedding covers the two cheapest-duplicated file classes at depth. Storm soak on the redeploy decides whether the queue finally holds."
+    },
+    {
       "id": "EVT-129",
       "head_sha": "79c8add",
       "timestamp": "2026-10-09",
@@ -3416,7 +3443,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 89,
+    "E2_count": 90,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 28,

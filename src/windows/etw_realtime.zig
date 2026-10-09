@@ -1086,6 +1086,16 @@ pub const EtwSource = struct {
                     .process_id = native.process_id,
                     .thread_id = native.thread_id,
                 };
+                // GAP-015 G4: pre-decode gate. ~97% of native records are
+                // unmapped pairs the classifier would drop AFTER full TDH
+                // decode; skip decode + callback here (no behavior change —
+                // those records never entered). Counted apart so a nonzero
+                // classifier-side unmapped count means gate/classifier drift.
+                if (!shouldDecodeEtw(&rec.provider_guid, rec.event_id)) {
+                    _ = g_etw_predecode_dropped.fetchAdd(1, .monotonic);
+                    outer.events_received += 1;
+                    return;
+                }
                 decodeTdhPayload(&rec, ext_data[0..ext_len]);
                 if (outer.callback) |cb_fn| cb_fn(outer.callback_ctx.?, &rec, ext_data[0..ext_len]);
                 outer.events_received += 1;
@@ -1096,6 +1106,29 @@ pub const EtwSource = struct {
     }
 };
 
+/// GAP-015 G4: records worth TDH-decoding. Mirrors the kept arms of the
+/// pipeline classifier (telemetry_threads.classifyEtwEvent) — the parity
+/// test below fails if the two ever disagree, since drift would silently
+/// drop keepable events (gate too narrow) or decode waste (gate too wide).
+/// Process-Exit (Id 2) stays out on both sides (G3: no path TLV, zero
+/// consumers).
+pub fn shouldDecodeEtw(provider_guid: *const [16]u8, event_id: u16) bool {
+    if (std.mem.eql(u8, provider_guid, &KERNEL_PROCESS_GUID.guid)) {
+        return event_id == 1;
+    }
+    if (std.mem.eql(u8, provider_guid, &KERNEL_FILE_GUID.guid)) {
+        return event_id == 0x0A or event_id == 0x0B or event_id == 0x10;
+    }
+    if (std.mem.eql(u8, provider_guid, &KERNEL_REGISTRY_GUID.guid)) {
+        return event_id == 1 or event_id == 5;
+    }
+    return false;
+}
+
+/// Pre-decode discards (see shouldDecodeEtw). Read by queue.stats; never
+/// read by any forward/drop decision.
+pub var g_etw_predecode_dropped: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+
 test "EtwSource init produces a session name" {
     const s = EtwSource.init();
     const name = std.mem.sliceTo(&s.session_name, 0);
@@ -1105,6 +1138,29 @@ test "EtwSource init produces a session name" {
 test "EtwSource start with no providers fails" {
     var s = EtwSource.init();
     try std.testing.expectError(error.NoProviders, s.start(&[_][16]u8{}));
+}
+
+test "GAP-015 G4 pre-decode gate mirrors the classifier kept set" {
+    // Parity with telemetry_threads.classifyEtwEvent: exactly the 6 kept
+    // (provider, Id) pairs decode; everything else — including Process
+    // Exit (Id 2, unmapped since G3) — skips TDH decode. Drift in either
+    // direction fails here before it can cost CPU or detections.
+    const proc = &KERNEL_PROCESS_GUID.guid;
+    const file = &KERNEL_FILE_GUID.guid;
+    const reg = &KERNEL_REGISTRY_GUID.guid;
+    const unknown: [16]u8 = [_]u8{0} ** 16;
+    try std.testing.expect(shouldDecodeEtw(proc, 1));
+    try std.testing.expect(!shouldDecodeEtw(proc, 2));
+    try std.testing.expect(!shouldDecodeEtw(proc, 3));
+    try std.testing.expect(shouldDecodeEtw(file, 0x0A));
+    try std.testing.expect(shouldDecodeEtw(file, 0x0B));
+    try std.testing.expect(shouldDecodeEtw(file, 0x10));
+    try std.testing.expect(!shouldDecodeEtw(file, 0x0C));
+    try std.testing.expect(shouldDecodeEtw(reg, 1));
+    try std.testing.expect(shouldDecodeEtw(reg, 5));
+    try std.testing.expect(!shouldDecodeEtw(reg, 0x0E));
+    try std.testing.expect(!shouldDecodeEtw(&unknown, 1));
+    try std.testing.expect(!shouldDecodeEtw(file, 1));
 }
 
 test "TDH TLV payload decodes bounded host properties" {

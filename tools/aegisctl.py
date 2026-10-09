@@ -380,7 +380,8 @@ def _format_queue_rows(response: dict) -> list[str]:
             f"name={etw.get('file_name_create', '?')}+{etw.get('file_name_delete', '?')} "
             f"write={etw.get('file_write', '?')} "
             f"reg={etw.get('reg_create', '?')}+{etw.get('reg_set', '?')} "
-            f"unmapped={etw.get('dropped_unmapped', '?')}"
+            f"unmapped={etw.get('dropped_unmapped', '?')} "
+            f"predecode={etw.get('predecode_dropped', '?')}"
         )
     for stage in response.get("pipeline", []) or []:
         rows.append(

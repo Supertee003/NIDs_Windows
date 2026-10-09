@@ -33,19 +33,22 @@ pub var g_etw_classes = EtwClasses{};
 /// queue-full drops so operators can tell policy from overflow.
 pub var g_shed_overload: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 
-/// GAP-015 G3: shed File-Write events only once the queue is 3/4 full.
-/// Write is the storm class (per-write IRP firehose); NameCreate still
-/// catches every new file (R1004's new-DLL signal) and overwrites are
-/// deferred, not blinded, outside storms. Pure: depth in, decision out.
+/// GAP-015 G3/G4: shed storm classes only once the queue is 3/4 full.
+/// G3 covered File-Write (per-write IRP firehose); G4 adds NameDelete
+/// (400/s of deletions the FIM watcher duplicates anyway, near-worthless
+/// for R1001/R1004). NameCreate still catches every new file (R1004's
+/// new-DLL signal) and overwrites resume after the storm. Pure: depth in,
+/// decision out.
 pub fn shouldShedWrite(depth: u64) bool {
     return depth >= queue.PIPELINE_QUEUE_SIZE * 3 / 4;
 }
 
-/// True for Kernel-File Write (Id 0x10) only. The classifier owns the
-/// opcode mapping; this predicate mirrors its Write arm and the parity
-/// test below fails if the two ever disagree.
-fn isSheddableWrite(provider_guid: *const [16]u8, event_id: u16) bool {
-    return event_id == 0x10 and std.mem.eql(u8, provider_guid, &etw.KERNEL_FILE_GUID.guid);
+/// True for Kernel-File Write (Id 0x10) and NameDelete (Id 0x0B) only.
+/// The classifier owns the opcode mapping; this predicate mirrors its
+/// arms and the parity test below fails if the two ever disagree.
+fn isStormSheddable(provider_guid: *const [16]u8, event_id: u16) bool {
+    if (!std.mem.eql(u8, provider_guid, &etw.KERNEL_FILE_GUID.guid)) return false;
+    return event_id == 0x10 or event_id == 0x0B;
 }
 
 /// ETW thread: receives Windows kernel events via ETW session.
@@ -106,11 +109,12 @@ fn etwCallback(ctx: *anyopaque, rec: *const etw.EtwEventRecord, ext_data: []cons
     };
     ev.kind = kind;
 
-    // GAP-015 G3: storm shed — File-Write into a nearly-full queue is
-    // discarded here (counted as shed policy, not overflow) instead of
-    // evicting NameCreate/Process/Registry events downstream. Creates
-    // still detect new files; overwrites resume after the storm.
-    if (isSheddableWrite(&rec.provider_guid, rec.event_id) and shouldShedWrite(queue.queueDepth())) {
+    // GAP-015 G3/G4: storm shed — File-Write and NameDelete into a
+    // nearly-full queue are discarded here (counted as shed policy, not
+    // overflow) instead of evicting NameCreate/Process/Registry events
+    // downstream. Creates still detect new files; overwrites and deletes
+    // resume after the storm (FIM duplicates deletes regardless).
+    if (isStormSheddable(&rec.provider_guid, rec.event_id) and shouldShedWrite(queue.queueDepth())) {
         _ = g_shed_overload.fetchAdd(1, .monotonic);
         return;
     }
@@ -349,16 +353,16 @@ test "ETW classifier gates pinned to host manifest ground truth (EVT-091)" {
     try std.testing.expect(classifyEtwEvent(&unknown, 1) == null);
 }
 
-test "GAP-015 G3 shed predicate mirrors the classifier Write arm" {
-    // Parity: exactly the (provider, Id) pairs the classifier maps to a
-    // Write push are sheddable — nothing more, nothing less.
-    try std.testing.expect(isSheddableWrite(&etw.KERNEL_FILE_GUID.guid, 0x10));
-    try std.testing.expect(!isSheddableWrite(&etw.KERNEL_FILE_GUID.guid, 0x0A));
-    try std.testing.expect(!isSheddableWrite(&etw.KERNEL_FILE_GUID.guid, 0x0B));
-    try std.testing.expect(!isSheddableWrite(&etw.KERNEL_PROCESS_GUID.guid, 1));
-    try std.testing.expect(!isSheddableWrite(&etw.KERNEL_REGISTRY_GUID.guid, 5));
+test "GAP-015 G3/G4 shed predicate mirrors the classifier storm arms" {
+    // Parity: exactly the (provider, Id) pairs the classifier maps to
+    // Write/Delete pushes are sheddable — nothing more, nothing less.
+    try std.testing.expect(isStormSheddable(&etw.KERNEL_FILE_GUID.guid, 0x10));
+    try std.testing.expect(isStormSheddable(&etw.KERNEL_FILE_GUID.guid, 0x0B));
+    try std.testing.expect(!isStormSheddable(&etw.KERNEL_FILE_GUID.guid, 0x0A));
+    try std.testing.expect(!isStormSheddable(&etw.KERNEL_PROCESS_GUID.guid, 1));
+    try std.testing.expect(!isStormSheddable(&etw.KERNEL_REGISTRY_GUID.guid, 5));
     const unknown: [16]u8 = [_]u8{0} ** 16;
-    try std.testing.expect(!isSheddableWrite(&unknown, 0x10));
+    try std.testing.expect(!isStormSheddable(&unknown, 0x10));
     // Threshold: below 3/4 the queue absorbs bursts untouched; at and
     // above it Write sheds. Symbolic so queue resizes move the line.
     try std.testing.expect(!shouldShedWrite(0));
