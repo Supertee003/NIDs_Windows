@@ -3593,6 +3593,26 @@
       "finding": "Displays are managed with the same discipline as the pipeline: verify, never assume; single-instance; stop what you started by exact identity."
     },
     {
+      "id": "EVT-147",
+      "head_sha": "cc56296",
+      "timestamp": "2026-10-10",
+      "title": "Opener stops lying under load: unknown distinguished from failed/zero",
+      "level": "E2",
+      "component": "tooling",
+      "description": "The bat --status run during the full pytest suite reported daemon FAIL + nose FAIL while the service was healthy: client-side control timeouts under test-induced ring-mutex contention (forensics verify/export tests pound the ring at 1100/s), compounded by two misreports of ours — an empty health answer became FAIL (should be unknown) and an empty data_plane became frames_read=0 (should be unknown). Fixed: both degrade to None/unknown with explicit reasons; overall_exit already maps all-unknown to partial (exit 2), never false-green. Proven by re-run after the suite: 4 OK exit 0 with nose at 1.27M frames. Lesson recorded: our own verification traffic (full pytest with live-daemon tests, aggressive forensics scans) is itself a load source that slows the control plane — observer effect, third instance this session.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "scripts/aegis_open.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "bat --status post-suite: 4 OK, exit 0, nose 1.27M frames",
+        "raw system.status/system.health: OK during the same window (daemon was never down)"
+      ],
+      "result": "PASS",
+      "finding": "Unknown is a first-class answer: the opener now reports it instead of failing healthy systems or zeroing live counters during contention."
+    },
+    {
       "id": "EVT-139",
       "head_sha": "808f6b6",
       "timestamp": "2026-10-09",
@@ -3805,7 +3825,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
-    "E2_count": 100,
+    "E2_count": 101,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 32,

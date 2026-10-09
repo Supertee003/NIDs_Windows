@@ -318,7 +318,11 @@ def check_service() -> dict:
 def check_daemon() -> dict:
     health = daemon_snapshot()
     if not health:
-        return summarize("daemon control plane reachable", False, "no response")
+        # Unknown, not failed: a contended pipe (e.g. a full-ring verify
+        # holding the forensic mutex under load) times out the client
+        # while the daemon is healthy. Reporting failure here lied
+        # during load spikes; None keeps it an explicit unknown.
+        return summarize("daemon control plane reachable", None, "no response (unknown, not failed)")
     state = health.get("state", "?")
     rules = health.get("rules_loaded", "?")
     workers = health.get("workers", {}) if isinstance(health.get("workers"), dict) else {}
@@ -335,6 +339,8 @@ def check_nose() -> dict:
     try:
         query_control = control_api()
         data = query_control("system.health") or {}
+        if not data:
+            return summarize("nose capture counters", None, "health unreadable (unknown, not zero)")
         dp = data.get("data_plane", {}) if isinstance(data, dict) else {}
         read = int(dp.get("nose_frames_read", 0) or 0)
     except Exception:
