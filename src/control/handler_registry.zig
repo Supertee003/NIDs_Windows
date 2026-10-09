@@ -19,6 +19,7 @@ const event_queue = @import("../pipeline/event_queue.zig");
 const event_contract = @import("../contract/event.zig");
 const telemetry = @import("../pipeline/telemetry_threads.zig");
 const etw_rt = @import("../windows/etw_realtime.zig");
+const fault = @import("../reliability/fault_injection.zig");
 
 // ============================================================
 // Handler Function Signature
@@ -629,8 +630,12 @@ const handlers = struct {
 
     fn eventsStats(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
         const queue_drops = state_mod.g_queue_drops.load(.acquire);
+        // GAP-015: fault-injection drops were invisible in metrics (only
+        // g_queue_drops surfaced). Exact when FI is off (production: always
+        // off, zeros); best-effort while a test enables it mid-run.
+        const fi = &state_mod.g_fi;
         return std.fmt.allocPrint(a,
-            \\{{"processed":{},"detections":{},"anomalies":{},"correlations":{},"policies_matched":{},"errors":{},"dropped":{}}}
+            \\{{"processed":{},"detections":{},"anomalies":{},"correlations":{},"policies_matched":{},"errors":{},"dropped":{},"fi_enabled":{},"fi_dropped":{},"fi_corrupted":{}}}
         , .{
             state_mod.g_pipeline_events_processed.load(.acquire),
             state_mod.g_pipeline_detections.load(.acquire),
@@ -639,6 +644,9 @@ const handlers = struct {
             state_mod.g_pipeline_policies_matched.load(.acquire),
             diag.metrics.errors.get(),
             queue_drops,
+            fi.cfg.enabled,
+            fi.injected[@intFromEnum(fault.FaultKind.drop_packet)],
+            fi.injected[@intFromEnum(fault.FaultKind.corrupt_event)],
         }) catch null;
     }
 
@@ -974,6 +982,19 @@ const handlers = struct {
         var truncated = false;
         var last_returned: ?u64 = null;
 
+        // GAP-015: cursor exactness under ring wrap. Sequence space is
+        // append-ordered and slot S%capacity holds the newest record with
+        // that residue, so starting at max(oldest, after+1) reads each
+        // retained seq exactly once. The old per-record seq<=after skip
+        // compared STORED seqs (newest aliasing) against the cursor and
+        // returned the tip for any mid-ring cursor — windowing that never
+        // windowed. A stored seq disagreeing with its index was
+        // overwritten mid-scan; skip it (retention loss, not a lie).
+        if (requested_after) |after| {
+            const floor = if (after >= count) count else after + 1;
+            if (floor > index) index = floor;
+        }
+
         while (index < count) : (index += 1) {
             const record = ring.readRecord(index, a) orelse continue;
             defer a.free(record);
@@ -986,9 +1007,7 @@ const handlers = struct {
                 record[0..forensic_pipeline.HEADER_BYTES],
             );
 
-            if (requested_after) |after| {
-                if (header.record_seq <= after) continue;
-            }
+            if (header.record_seq != index) continue;
 
             const origin = forensicRecordOrigin(header.reserved[6], header.reserved[5]);
 
@@ -2498,4 +2517,43 @@ test "RING-STAT-103: forensics.verify reports retention additively" {
     try std.testing.expect(std.mem.indexOf(u8, out, "\"overwritten\":1") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"capacity_slots\":2") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"oldest_record_seq\":1") != null);
+}
+
+test "GAP-015 forensics.list after-cursor windows under ring wrap" {
+    // 2-slot ring, 5 appends: seqs 0-2 overwritten, 3-4 retained. The old
+    // per-record seq<=after skip compared STORED seqs (newest aliasing)
+    // and returned the tip for any mid-ring cursor; the cursor must now
+    // select by sequence exactly.
+    const event_mod = @import("../contract/event.zig");
+    const state_mod = @import("../pipeline/runtime_state.zig");
+    var ring = try forensic_pipeline.ForensicRing.initMemory(std.testing.allocator, 2 * forensic_pipeline.RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+    var i: u64 = 0;
+    while (i < 5) : (i += 1) {
+        var ev = event_mod.IpcEvent.init(.signature_match);
+        ev.event_id = 500 + i;
+        ev.timestamp_ns = 5000 + i;
+        _ = ring.append(&ev, "", 900 + i, 0, 0, 2);
+    }
+    const prev = state_mod.g_forensic_ring;
+    state_mod.g_forensic_ring = &ring;
+    defer state_mod.g_forensic_ring = prev;
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 35, .caller_role = .read, .caller_pid = 0 };
+    const q_after3 = std.json.parseFromSlice(std.json.Value, std.testing.allocator, "{\"after\":3,\"limit\":100}", .{}) catch unreachable;
+    defer q_after3.deinit();
+    const out3 = handlers.forensicsList(std.testing.allocator, q_after3.value, &ctx).?;
+    defer std.testing.allocator.free(out3);
+    try std.testing.expect(std.mem.indexOf(u8, out3, "\"record_seq\":4") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out3, "\"record_seq\":3") == null);
+    const q_after99 = std.json.parseFromSlice(std.json.Value, std.testing.allocator, "{\"after\":99,\"limit\":100}", .{}) catch unreachable;
+    defer q_after99.deinit();
+    const out99 = handlers.forensicsList(std.testing.allocator, q_after99.value, &ctx).?;
+    defer std.testing.allocator.free(out99);
+    try std.testing.expect(std.mem.indexOf(u8, out99, "\"records_returned\":0") != null);
+    const q_all = std.json.parseFromSlice(std.json.Value, std.testing.allocator, "{\"limit\":100}", .{}) catch unreachable;
+    defer q_all.deinit();
+    const out_all = handlers.forensicsList(std.testing.allocator, q_all.value, &ctx).?;
+    defer std.testing.allocator.free(out_all);
+    try std.testing.expect(std.mem.indexOf(u8, out_all, "\"record_seq\":3") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out_all, "\"record_seq\":4") != null);
 }

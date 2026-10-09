@@ -70,3 +70,13 @@ def test_no_wildcard_bind():
     source = (TOOLS_DIR / "aegisctl" / "web_dashboard" / "app.py").read_text(encoding="utf-8")
     assert 'host="127.0.0.1"' in source
     assert 'host="0.0.0.0"' not in source
+
+
+def test_stream_emits_connected_frame_first():
+    # SSE smoke: the first frame must be the connect preamble (no
+    # snapshot required), so this stays fast and daemon-independent.
+    stream = app_module._sse_events(interval_s=3600)
+    first = next(stream)
+    assert first.startswith(": connected")
+    assert "retry:" in first
+    stream.close()

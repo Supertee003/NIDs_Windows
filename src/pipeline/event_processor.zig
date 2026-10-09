@@ -27,6 +27,18 @@ const queue = @import("event_queue.zig");
 const siem_mod = @import("../forensic/siem_forwarder.zig");
 const brain_mod = @import("../core/bridge_init.zig");
 
+/// GAP-015 p95: record one stage interval and return now for chaining.
+/// Mutex-guarded like the whole-pipeline observe (same race, same fix);
+/// saturating cast keeps a clock step harmless instead of trapping.
+fn markStage(stage: hist.Stage, since_ns: i128) i128 {
+    const now = std.time.nanoTimestamp();
+    const delta: u64 = @intCast(@max(0, now - since_ns));
+    state.g_perf_mutex.lock();
+    state.g_perf.observe(stage, delta);
+    state.g_perf_mutex.unlock();
+    return now;
+}
+
 /// Process a single event through the detection pipeline:
 ///   1. Flow table lookup/update
 ///   2. Aho-Corasick signature matching
@@ -52,6 +64,10 @@ fn processEvent(
     var ev_copy = qe.ev;
     const ev = &ev_copy;
     _ = state.g_pipeline_events_processed.fetchAdd(1, .monotonic);
+    // GAP-015 p95: per-stage latency marks (the whole-pipeline observe in
+    // pipelineLoop cannot attribute the tail). Each mark is one uncontended
+    // mutex hold; readers snapshot under the same mutex.
+    var t_prev = std.time.nanoTimestamp();
     // CTRL-002: real liveness timestamp for the health contract (§4.1).
     state.g_last_event_ms.store(std.time.milliTimestamp(), .monotonic);
 
@@ -83,6 +99,7 @@ fn processEvent(
     // lookup result used to be discarded, so every event kept flow_id=0
     // and the threat tracker scored the whole world on one shared Flow 0.
     assignFlowId(ft, ev, fkey);
+    t_prev = markStage(.decode_to_flow, t_prev);
 
     // 2. Aho-Corasick signature matching (if rules are loaded)
     // Use mutex-protected global AC pointer for hot-reload support
@@ -118,6 +135,7 @@ fn processEvent(
             }
         }
     }
+    t_prev = markStage(.flow_to_detection, t_prev);
 
     // 2b. Correlation (multi-event rules). A correlation hit on an event
     // with no signature match is carried as detection identity so threat
@@ -183,6 +201,7 @@ fn processEvent(
         if (active_incident) |inc| @as(u64, inc.id) else @as(u64, 0),
         if (active_incident) |inc| @as(u8, @intFromEnum(inc.severity)) else @as(u8, 0),
     );
+    t_prev = markStage(.detection_to_correlation, t_prev);
 
     // 5. Policy evaluation — use escalated severity for policy matching
     var policy_action: policy.Action = .pass;
@@ -196,6 +215,7 @@ fn processEvent(
         // Record policy match in trace (Policy has no version field; use 1)
         decision_trace.setPolicy(pol.id, 1);
     }
+    t_prev = markStage(.correlation_to_policy, t_prev);
 
     // 6. PEP enforcement (final authorization gate)
     // Only PEP call — ActionDispatcher must NOT call PEP again
@@ -236,6 +256,7 @@ fn processEvent(
             }
         }
     }
+    t_prev = markStage(.policy_to_action, t_prev);
 
     // Audit trace — every security decision gets a unique audit_id
     const audit_id = state.g_pipeline_audit_id.fetchAdd(1, .monotonic);
@@ -264,6 +285,7 @@ fn processEvent(
     if (forensic_seq != 0) {
         _ = state.g_forensic_records_written.fetchAdd(1, .monotonic);
     }
+    _ = markStage(.action_to_forensic, t_prev);
 
     // 8. SIEM forwarding (detections only; observe path, never host effects).
     // Zero-cost when uninitialized: one bool check. The forwarder duplicates

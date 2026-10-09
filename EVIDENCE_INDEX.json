@@ -3551,6 +3551,30 @@
       "finding": "Enforcement is now operable, not just implemented: a deterministic ceremony plus a quarantine verb with receipt proof, all reachable through documented control calls. The lab runbooks are executable as written."
     },
     {
+      "id": "EVT-137",
+      "head_sha": "09d558b",
+      "timestamp": "2026-10-09",
+      "title": "Observability batch: per-stage latency marks, FI counters surfaced, after-cursor fixed, SSE pinned, export dry-run clean",
+      "level": "E2",
+      "component": "zig_core",
+      "description": "One observability+polish patch, four items. (1) Per-stage latency: reference crypto rules OUT forensic-append as the p95 driver (3.9us for hash+CRC+memset at OpenSSL speed; even 20x slower cannot fill 524us), so the six remaining stages get mutex-guarded marks (single markStage helper returning now for chaining; saturating cast) feeding the already-surfaced snapshot — the next redeploy attributes the tail live instead of guessing. (2) FI drops surfaced in events.stats (fi_enabled/dropped/corrupted; exact when FI off, documented best-effort when on) — closes the invisibility finding. (3) forensics.list after-cursor fixed: root cause found in readRecord mapping (slot S%capacity holds newest residue; mid-scan appends alias stored seqs past any fixed cursor at 1100/s). Fix starts the scan at max(oldest, after+1) and enforces seq==index (mid-scan overwrites skip honestly); wrap test pins after=3->[4], after=99->empty, none->[3,4] on a 2-slot ring with 5 appends. (4) SSE first-frame smoke test (connected preamble without snapshot = fast, daemon-independent). Plus: publish-subset export dry-run proven (1753 tracked -> 499 dropped -> 1254 exported, runbooks + evidence present, historical/.agents absent) and gitleaks-clean on the export set itself. Proof: zig build + test green (incl. new wrap + FI-adjacent coverage), pytest tools green incl. SSE. Live proof (stages lighting up, FI fields, windowed paging) needs the redeploy carrying G5.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/pipeline/event_processor.zig",
+        "src/control/handler_registry.zig",
+        "tests/tools/test_web_dashboard.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "wrap-cursor test (after/empty/full on 2-slot ring): PASS",
+        "SSE connected-frame test: PASS",
+        "zig build + zig build test: both green",
+        "export dry-run: 1254 files, structure verified, gitleaks clean"
+      ],
+      "result": "PASS",
+      "finding": "The p95 question is now instrumented rather than argued, the cursor windows instead of pretending, and the publish subset is proven executable. One redeploy carries G5-live plus all of this."
+    },
+    {
       "id": "EVT-135",
       "head_sha": "5efbce9",
       "timestamp": "2026-10-09",
@@ -3575,7 +3599,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
-    "E2_count": 93,
+    "E2_count": 94,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 29,
