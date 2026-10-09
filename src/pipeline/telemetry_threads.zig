@@ -33,6 +33,57 @@ pub var g_etw_classes = EtwClasses{};
 /// queue-full drops so operators can tell policy from overflow.
 pub var g_shed_overload: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 
+/// GAP-015 G4.1: first-write exemption. Storm shed must never blind a
+/// file the pipeline has never seen (new DLL drop amid a write storm is
+/// exactly the attacker-relevant case): the first sighting of a payload
+/// passes even at depth, repeats shed. Bounded 4096-hash FIFO ring plus
+/// a 200-token / 100-per-second bucket so distinct-path floods cannot
+/// launder themselves through the exemption either. State is plain
+/// statics: the native layer invokes this callback serialized under its
+/// critical section, so no two exemptions interleave.
+pub const SHED_SEEN_SIZE: usize = 4096;
+pub const SHED_BUCKET_CAP: f64 = 200.0;
+pub const SHED_REFILL_PER_S: f64 = 100.0;
+var g_shed_seen: [SHED_SEEN_SIZE]u64 = [_]u64{0} ** SHED_SEEN_SIZE;
+var g_shed_seen_idx: usize = 0;
+var g_shed_tokens: f64 = SHED_BUCKET_CAP;
+var g_shed_last_ms: i64 = 0;
+pub var g_shed_exempted: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+
+pub fn fnv1a64(bytes: []const u8) u64 {
+    var h: u64 = 0xcbf29ce484222325;
+    for (bytes) |b| {
+        h ^= b;
+        h *%= 0x100000001b3;
+    }
+    return h;
+}
+
+/// Refill overdue tokens (pure math on explicit state, tested).
+pub fn shedRefill(tokens: f64, cap: f64, rate_per_s: f64, elapsed_ms: i64) f64 {
+    if (elapsed_ms <= 0) return tokens;
+    const add = @as(f64, @floatFromInt(elapsed_ms)) / 1000.0 * rate_per_s;
+    return @min(cap, tokens + add);
+}
+
+/// Full exemption decision: first sighting spends one token and passes;
+/// repeats, or an empty bucket, shed. Returns true when the caller must
+/// push despite the storm.
+pub fn tryExempt(payload: []const u8, now_ms: i64) bool {
+    g_shed_tokens = shedRefill(g_shed_tokens, SHED_BUCKET_CAP, SHED_REFILL_PER_S, now_ms - g_shed_last_ms);
+    g_shed_last_ms = now_ms;
+    if (g_shed_tokens < 1.0) return false;
+    const h = fnv1a64(payload);
+    for (g_shed_seen) |seen| {
+        if (seen == h) return false;
+    }
+    g_shed_seen[g_shed_seen_idx % SHED_SEEN_SIZE] = h;
+    g_shed_seen_idx +%= 1;
+    g_shed_tokens -= 1.0;
+    _ = g_shed_exempted.fetchAdd(1, .monotonic);
+    return true;
+}
+
 /// GAP-015 G3/G4: shed storm classes only once the queue is 3/4 full.
 /// G3 covered File-Write (per-write IRP firehose); G4 adds NameDelete
 /// (400/s of deletions the FIM watcher duplicates anyway, near-worthless
@@ -109,20 +160,24 @@ fn etwCallback(ctx: *anyopaque, rec: *const etw.EtwEventRecord, ext_data: []cons
     };
     ev.kind = kind;
 
-    // GAP-015 G3/G4: storm shed — File-Write and NameDelete into a
-    // nearly-full queue are discarded here (counted as shed policy, not
-    // overflow) instead of evicting NameCreate/Process/Registry events
-    // downstream. Creates still detect new files; overwrites and deletes
-    // resume after the storm (FIM duplicates deletes regardless).
-    if (isStormSheddable(&rec.provider_guid, rec.event_id) and shouldShedWrite(queue.queueDepth())) {
-        _ = g_shed_overload.fetchAdd(1, .monotonic);
-        return;
-    }
-
     // Queue storage is bounded; hash and measure the exact bytes that will be
     // copied so forensic metadata cannot claim more payload than was retained.
     const payload_len = @min(ext_data.len, queue.MAX_PAYLOAD_BYTES);
     const payload = ext_data[0..payload_len];
+
+    // GAP-015 G3/G4.1: storm shed — File-Write and NameDelete into a
+    // nearly-full queue are discarded here (counted as shed policy, not
+    // overflow) instead of evicting NameCreate/Process/Registry events
+    // downstream. First sightings are exempt (tryExempt) so a new file's
+    // content is always evaluated once even mid-storm; FIM duplicates
+    // deletes regardless.
+    if (isStormSheddable(&rec.provider_guid, rec.event_id) and shouldShedWrite(queue.queueDepth())) {
+        if (!tryExempt(payload, std.time.milliTimestamp())) {
+            _ = g_shed_overload.fetchAdd(1, .monotonic);
+            return;
+        }
+    }
+
     ev.setPayload(payload);
     _ = queue.pushEvent(ev, payload);
 }
@@ -381,4 +436,29 @@ test "GAP-015 G3 classifier counts every outcome" {
     const drops = g_etw_classes.dropped_unmapped.load(.acquire);
     _ = classifyEtwEvent(file_guid, 0x0C);
     try std.testing.expectEqual(drops + 1, g_etw_classes.dropped_unmapped.load(.acquire));
+}
+
+test "GAP-015 G4.1 exemption passes first sighting, sheds repeats, respects bucket" {
+    // Test-owned globals, single-threaded runner: reset first.
+    g_shed_tokens = SHED_BUCKET_CAP;
+    g_shed_last_ms = 0;
+    g_shed_seen_idx = 0;
+    for (&g_shed_seen) |*s| s.* = 0;
+    const exempt0 = g_shed_exempted.load(.acquire);
+    const t0: i64 = 1000000;
+    try std.testing.expect(tryExempt("payload-A", t0));
+    try std.testing.expect(!tryExempt("payload-A", t0 + 10));
+    try std.testing.expect(tryExempt("payload-B", t0 + 20));
+    try std.testing.expectEqual(exempt0 + 2, g_shed_exempted.load(.acquire));
+    // Empty bucket refuses even novelty.
+    g_shed_tokens = 0.0;
+    g_shed_last_ms = t0 + 20;
+    try std.testing.expect(!tryExempt("payload-C", t0 + 20));
+    // Refill over wall time reopens (20s at 100/s refills past cap).
+    try std.testing.expect(tryExempt("payload-C", t0 + 20 + 20000));
+    try std.testing.expectEqual(exempt0 + 3, g_shed_exempted.load(.acquire));
+    // Refill math: capped, zero-elapsed passthrough, avalanche bit.
+    try std.testing.expectEqual(200.0, shedRefill(150.0, 200.0, 100.0, 1000));
+    try std.testing.expectEqual(50.0, shedRefill(50.0, 200.0, 100.0, 0));
+    try std.testing.expect(fnv1a64("abc") != fnv1a64("abd"));
 }

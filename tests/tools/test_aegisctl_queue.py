@@ -63,11 +63,11 @@ def test_format_queue_rows_renders_etw_and_shed():
     response["etw"] = {
         "process_start": 5, "file_name_create": 50, "file_name_delete": 2,
         "file_write": 900, "reg_create": 1, "reg_set": 30, "dropped_unmapped": 4,
-        "predecode_dropped": 8000,
+        "predecode_dropped": 8000, "shed_exempted": 11,
     }
     rows = cli._format_queue_rows(response)
     assert rows[0] == "queue 12/4096 pushed=100 dropped=3 shed_overload=7"
-    assert rows[3] == "  etw start=5 name=50+2 write=900 reg=1+30 unmapped=4 predecode=8000"
+    assert rows[3] == "  etw start=5 name=50+2 write=900 reg=1+30 unmapped=4 predecode=8000 exempt=11"
 
 
 def test_format_queue_rows_tolerates_missing_keys():

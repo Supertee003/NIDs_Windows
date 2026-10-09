@@ -3421,6 +3421,31 @@
       "finding": "The 97.5% waste dies before decode; storm shedding covers the two cheapest-duplicated file classes at depth. Storm soak on the redeploy decides whether the queue finally holds."
     },
     {
+      "id": "EVT-131",
+      "head_sha": "3d6aa42",
+      "timestamp": "2026-10-09",
+      "title": "G4.1 first-write exemption: storms shed repeats but always evaluate new files once",
+      "level": "E2",
+      "component": "zig_core",
+      "description": "Closes the sharp edge the canary investigation exposed: FIM-delivered System32 .dll paths match R1001 (len-36 records rule 3813986375, 6x for 3 files = create+write each) while first-match-wins shadows R1004 on dual-pattern payloads — and a storm-shedding Write could blind a genuinely new file's only evaluation. Fix: bounded 4096-hash FIFO exemption ring (FNV-1a64 over the exact queued bytes) plus a 200-token / 100-per-second bucket, consulted only inside the already-gated shed branch. First sighting spends a token and pushes despite depth; repeats and empty-bucket shed; overflow past push still counts as dropped (not exempted). State is plain statics, safe because the native layer serializes the callback under its critical section (documented in-code). queue.stats and CLI gain shed_exempted. Deliberately untouched: NameCreate (never shed), FIM/registry paths, token rates as consts. Proof: new exemption test (first-pass/repeat-shed/empty-refuse/refill-reopen/refill math/avalanche) + extended parse pin; zig build + test green 4/4 (2130/2131 + 1 skipped); pytest tools green. Live storm proof needs rebuild + elevated redeploy + soak with exemption metrics.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/pipeline/telemetry_threads.zig",
+        "src/control/handler_registry.zig",
+        "tools/aegisctl.py",
+        "tests/tools/test_aegisctl_queue.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "new exemption test (pass/repeat/refill/math): PASS",
+        "queueStats parse pin extended (shed_exempted): PASS",
+        "zig build + zig build test: both green",
+        "pytest tools: 12 passed"
+      ],
+      "result": "PASS",
+      "finding": "Storm handling is now complete by design: unsheddable creates, exempted first-writes, shed repeats, counted overflow, per-class composition to prove it. The redeploy soak watches shed vs exempt vs dropped."
+    },
+    {
       "id": "EVT-129",
       "head_sha": "79c8add",
       "timestamp": "2026-10-09",
@@ -3443,7 +3468,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 21,
-    "E2_count": 90,
+    "E2_count": 91,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 28,
