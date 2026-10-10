@@ -104,6 +104,27 @@ same commands (`tui`/`console`/`web`/`gui`/`graph` route live; `test
 golden-path` is the sanctioned canary). Do not reimplement startup
 anywhere else.
 
+## Security boundaries (read before hardening)
+
+Audited adversarially (EVT-174). All listeners are loopback-only
+(:5000 web, :9999 brain, control/sensor pipes); the web surface is
+GET-only; the service DACL is query-only for non-admins; control
+mutations are role-gated by impersonated token (unit-tested), with
+blocks/quarantine/shutdown privileged-only; the tree carries no secrets
+(gitleaks green). Three accepted costs to know:
+- The repo tree and `configs/Rules.json` are writable by Authenticated
+  Users, while the keeper task executes repo scripts as SYSTEM and any
+  authenticated user may trigger `rules.reload` (.operate role). Until
+  hardened, ANY local user can reach SYSTEM (via the task path) and
+  mute detection (via rules+reload). Harden with the ADMIN icacls block
+  in EVT-174 (root RX + logs/ M, backup first), then non-admin pytest
+  needs `-o cache_dir` outside the tree.
+- `AEGIS_BRAIN_SECRET` lives in machine env: world-readable by design
+  (loopback model trusts local). Local malware voids it like any local
+  secret; rotation = setx + restart both ends (RB-016).
+- The WFP driver is test-signed (expires 2029): WHQL is the proper fix;
+  review testsigning state before calling the host hardened.
+
 ## Troubleshooting (earned the hard way)
 
 - **Non-elevated `close`/`stop` cannot stop keeper-spawned parts**

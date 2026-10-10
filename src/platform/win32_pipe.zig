@@ -63,8 +63,10 @@ extern "kernel32" fn GetNamedPipeClientProcessId(
 ) std.os.windows.BOOL;
 extern "kernel32" fn LocalFree(h_mem: ?*anyopaque) ?*anyopaque;
 const SDDL_REVISION_1_V: std.os.windows.DWORD = 1;
-// Local SYSTEM and built-in Administrators only; no Everyone ACE. The client
-// token is still impersonated and checked before dispatch.
+// Pipe DACL admits SY + BA + AU: reads/operate for any authenticated
+// local user, mutations gated per-command by role below (impersonated
+// token). There is deliberately no Everyone ACE; file ACLs (repo,
+// Rules.json) are the second wall -- see OPERATOR_COMMAND_MAP.md.
 const CONTROL_PIPE_SDDL = "D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GA;;;AU)";
 
 // The role is derived from the impersonated client token below; the JSON

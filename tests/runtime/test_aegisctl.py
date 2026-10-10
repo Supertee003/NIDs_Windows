@@ -470,5 +470,32 @@ class TestAegisctlIptest(unittest.TestCase):
             self.assertLessEqual(doc["p50_ms"], doc["p99_ms"])
 
 
+class TestRulesWriteRefusedGracefully(unittest.TestCase):
+    """EVT-174: unwritable Rules.json must read as a message, not a traceback."""
+
+    def test_mutate_rules_reports_oserror(self):
+        import importlib.util
+        import types
+        from unittest.mock import patch
+        sys.path.insert(0, str(REPO_ROOT / "tools"))
+        path = REPO_ROOT / "tools" / "aegisctl.py"
+        spec = importlib.util.spec_from_file_location("aegisctl_under_test", path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["aegisctl_under_test"] = module
+        spec.loader.exec_module(module)
+        args = types.SimpleNamespace(
+            id="R1", rule_json=None, name="n", category="c", layer=None,
+            severity="Low", action="Alert", match_pattern="x",
+            regex_pattern=None)
+        with patch.object(module, "load_rules", return_value={"nids_rules": []}), \
+             patch.object(module, "_save_rules", side_effect=OSError("denied")), \
+             patch("builtins.print") as pr:
+            rc = module._mutate_rules(args, "add")
+        self.assertEqual(rc, 1)
+        printed = " ".join(str(c.args[0]) for c in pr.call_args_list)
+        self.assertIn("elevation", printed)
+        self.assertNotIn("Traceback", printed)
+
+
 if __name__ == "__main__":
     unittest.main()

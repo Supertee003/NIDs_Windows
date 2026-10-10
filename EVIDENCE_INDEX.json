@@ -1,5 +1,5 @@
 {
-  "head_sha": "7d83c47dfc96e8cd9615666ec08ca6d95f2276e0",
+  "head_sha": "c1f67354b7f84932d49467fb7847d6163d984ab6",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4487,6 +4487,30 @@
       ],
       "result": "PASS",
       "finding": "Every way into the system now tells the truth about where it goes. No wrapper launches anything retired, mislabeled, or duplicated."
+    },
+    {
+      "id": "EVT-174",
+      "head_sha": "c1f6735",
+      "timestamp": "2026-10-11",
+      "title": "Adversarial audit: two HIGH local findings, guest-hardening first fix",
+      "level": "E5",
+      "component": "tooling+security",
+      "description": "Red-team pass over the live host, verified read-only. SOUND: loopback-only listeners (:5000 web pid 11252, :9999 brain), GET-only web routes, query-only service DACL for non-admins, control mutations role-gated by impersonated token (blocks/quarantine/shutdown privileged, unit-tested), tree secret-free. FINDINGS: [HIGH] repo tree writable by Authenticated Users while the keeper task executes repo scripts as SYSTEM every 5 min = local privesc for any local writer; [HIGH-for-NIDS] configs/Rules.json equally writable + rules.reload is .operate role = any local user can mute detection; [accepted] BRAIN_SECRET is machine-env world-readable (loopback model trusts local); [cost] test-signed WFP driver (expires 2029, WHQL later); pipe comment claiming admin-only corrected (AU reads by design). Guest hardening first fix: rules mutations report unwritable files gracefully (no traceback/path leak) with pin. Operator context: the machine is being prepared to hand to hackers as users -- the two HIGHs become handover blockers, not backlog.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/platform/win32_pipe.zig",
+        "docs/OPERATOR_COMMAND_MAP.md",
+        "tools/aegisctl.py",
+        "tests/runtime/test_aegisctl.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "ACL/listener/route/DACL/role findings all read-verified live",
+        "rules OSError pin (message, exit 1, no traceback)",
+        "zig build test + map pins green post-comment-fix"
+      ],
+      "result": "PASS",
+      "finding": "The design is sound; the file permissions are not. Fix the ACLs before guests arrive, and the model holds."
     }
   ],
   "evidence_level_summary": {
@@ -4495,7 +4519,7 @@
     "E2_count": 108,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 51,
+    "E5_count": 52,
     "E6_count": 0,
     "E7_count": 0
   }

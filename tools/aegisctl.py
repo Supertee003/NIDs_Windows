@@ -771,6 +771,11 @@ def _mutate_rules(args, op: str) -> int:
     except ValueError as exc:
         print(f"INVALID rule set: {exc}")
         return 1
+    except OSError as exc:
+        # Guest/hardened hosts: Rules.json may be admin-writable only.
+        # A traceback here would leak paths and confuse operators.
+        print(f"Cannot write rules file (need elevation?): {exc}")
+        return 1
     print(f"Rule {rid} {'deleted' if op == 'delete' else 'added' if op == 'add' else 'updated'}")
     return 0
 
