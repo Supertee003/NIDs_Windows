@@ -1,5 +1,5 @@
 {
-  "head_sha": "01a6a4e4c87cd57b2deb2006d8c6a325edef1cfd",
+  "head_sha": "72ebe1e97445023587bda3916f22e48ce9d25f1c",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4240,10 +4240,12 @@
       "tests": [
         "opener pins 20 passed (pythonw target, lock fresh/stale/dead/malformed, overlap skip exit 2, crash guard returns 1)",
         "cargo test dashboard 8/8; GUI rebuilt clean post-kill, exe timestamped fresh",
-        "live keep no-op exit 0 with lock write+unlink; task cmd preview shows pythonw"
+        "live keep no-op exit 0 with lock write+unlink; task cmd preview shows pythonw",
+        "instrumented 200s watch: 0 titled python consoles in 20 samples; 7 snapshot ticks all untitled (CREATE_NO_WINDOW proven on the new GUI binary)",
+        "pid 25932 identified: elevated pre-fix web server since 21:37 holding :5000; opener identity finds it (FAIL elevate? is honest, not a miss); operator one-liner below replaces it with the cached build"
       ],
       "result": "PASS",
-      "finding": "No managed python can show a window anymore (pythonw task, windowless GUI spawn), runs cannot pile up (lock), and crashes leave a log trail. Observation of 2-3 popup-free minutes with the relaunched GUI is the operator-side close."
+      "finding": "No managed python can show a window anymore (pythonw task, windowless GUI spawn), runs cannot pile up (lock), and crashes leave a log trail. Observation of 2-3 popup-free minutes with the relaunched GUI is the operator-side close. Operator close-out: stop the old server + start fresh web, then 3 carefree minutes."
     },
     {
       "id": "EVT-165",
