@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "b02f3c1",
+  "source_commit": "918acae",
   "build_date": "2026-10-08T16:31:09.245790+00:00",
   "build_host": "windows",
   "platform": {
@@ -1015,7 +1015,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18563,
-      "sha256": "91dc0db2e29dcc676dd062142549f45a9f34cdccbf55d5327e67724641768af4",
+      "sha256": "3e7f0f68228f54c84578e8d2a07c24e213a36d485aa6b0966c57221bc7ff20dd",
       "language": "json"
     },
     {
@@ -1032,8 +1032,8 @@
     },
     {
       "path": "scripts/Dashboard.py",
-      "size": 11242,
-      "sha256": "1f57fa2761d0147d6bf87bd1cf685daef2dbbeb5fb3129cb83c2502451035bff",
+      "size": 11425,
+      "sha256": "89359d1a78b6d0cb0d1f8319d772903152bc0a2a60f5367cf02016c4f0b7f9b9",
       "language": "python/cython"
     },
     {
@@ -1146,14 +1146,14 @@
     },
     {
       "path": "scripts/analyze_existing.py",
-      "size": 1695,
-      "sha256": "75ad7a4845bbc657e9d0f2e90179bc3cf53e72e9bd27989809b564ef2d49e674",
+      "size": 1836,
+      "sha256": "6f6b4ec8bf90591c4b9fbfdee1db899b3d69c8ee28b753199a85201be87f5b74",
       "language": "python/cython"
     },
     {
       "path": "scripts/analyze_vectors.py",
-      "size": 3330,
-      "sha256": "d4940e97f254d730db76957a06d1a956770c7e06c81d2e8ccfbce150dc43aadf",
+      "size": 1703,
+      "sha256": "d11693f6909ecd9b9d9393203a6c442dbdab4927d8673382369d964849813bd1",
       "language": "python/cython"
     },
     {
@@ -1188,8 +1188,8 @@
     },
     {
       "path": "scripts/check_evidence.py",
-      "size": 445,
-      "sha256": "f2c9c0dc787a9b339b20a47076e670fe99e9ba27f149f0b0fe10627c3ad281c4",
+      "size": 707,
+      "sha256": "3baba78359a19ab83597116c3c8967c9390eff5be12bb444963778101823f3cb",
       "language": "python/cython"
     },
     {
@@ -1326,8 +1326,8 @@
     },
     {
       "path": "scripts/read_vectors.py",
-      "size": 656,
-      "sha256": "0e694e02d99a59dff7e175ade58ece0d63530a4fc4c462d4a18db20f48e3ea19",
+      "size": 664,
+      "sha256": "7ab5a412f27c0bde6add2c88df32d102ec0c3eed6a1216dc046637817aa15c7a",
       "language": "python/cython"
     },
     {
@@ -1590,8 +1590,8 @@
     },
     {
       "path": "src/all_tests.zig",
-      "size": 10564,
-      "sha256": "e4931dde9fa3ae2cfb880a45df4513c001af1ca0dfbfcc4fa87534251de4203d",
+      "size": 10687,
+      "sha256": "326e2409b2d4eb50a00da180fdf52af69be31a2b1c16a871790e733bd0e2e9e2",
       "language": "zig"
     },
     {

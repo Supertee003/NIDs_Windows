@@ -59,3 +59,15 @@ def test_headers_point_at_real_commands():
             else:
                 assert token in header, (rel, token)
                 assert (REPO / token).is_file(), (rel, token)
+
+
+def test_retired_bats_stay_retired():
+    # EVT-167: blanket clean/kill bats contradict the service topology
+    # (service kills orphan SCM, dist wipes fight the live brain).
+    for rel in ("scripts/clean_aegis.bat", "scripts/build_all.bat"):
+        text = (REPO / rel).read_text(encoding="utf-8", errors="replace")[:1500]
+        assert "SUPERSEDED (EVT-167)" in text, rel
+    stop = (REPO / "scripts" / "stop_aegis.bat").read_text(encoding="utf-8", errors="replace")
+    assert "stop --all" in stop
+    assert "taskkill /IM aegis_nids.exe" not in stop
+    assert "taskkill /F /IM aegis_nids.exe" not in stop

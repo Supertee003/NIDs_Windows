@@ -1,3 +1,8 @@
+REM SUPERSEDED (EVT-167): blanket clean + process kills retired. Step [0]
+REM taskkills the SERVICE binary (orphans SCM state) and restarts Explorer;
+REM dist/ wipes fight the running brain's loaded DLL. Rebuild per-toolchain
+REM via build_truth.json commands instead (all proven); delete ignored dirs
+REM by hand when needed. This file stays for reference only -- do not run.
 @echo off
 setlocal enabledelayedexpansion
 

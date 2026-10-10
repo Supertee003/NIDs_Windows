@@ -1,3 +1,7 @@
+REM SUPERSEDED (EVT-167): steps reference dead trees (go/aggregator,
+REM shield quarantine orphan, pip install on prod). Canonical per-toolchain
+REM builds live in build_truth.json (all proven green) -- run those, not
+REM this frozen Vol.02 sequence. This file stays for reference only.
 @echo off
 REM =====================================================
 REM  AEGIS NIDS - Full Build Pipeline (Vol.02 BUILD)
