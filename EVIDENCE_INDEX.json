@@ -1,5 +1,5 @@
 {
-  "head_sha": "4f645b62648f0b29aadd7dc73845d20eab94996f",
+  "head_sha": "7d83c47dfc96e8cd9615666ec08ca6d95f2276e0",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4439,6 +4439,54 @@
       ],
       "result": "PASS",
       "finding": "Rule management is real and safe: validated gates, explicit reload step, stable file format. The operator can add/edit/delete rules any time."
+    },
+    {
+      "id": "EVT-171",
+      "head_sha": "7d83c47",
+      "timestamp": "2026-10-11",
+      "title": "Terminal/brain supervision sees elevated processes (re-issued)",
+      "level": "E5",
+      "component": "tooling",
+      "description": "Re-issued: the terminal-hardening record never landed under its number, so the full arc is recorded here once, completely. Operator testing showed stop reporting 'was not running' after an OK start. Three layered fixes: (1) start_display terminal verifies like gui/tui (no more fire-and-forget OK); (2) _pids_by_cmdline excludes the asker's own pid and matches pythonw.exe (keeper-spawned brains were invisible to a python.exe-only filter); (3) when elevation hides command lines entirely, stop_supervised adds python owners of the :9999 socket (web-pattern mirror) -- elevated parts report honestly unkillable instead of missed. Live: elevated pythonw brain found by socket; close/open cycle green; 23 opener pins.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "scripts/aegis_open.py",
+        "tests/tools/test_aegis_open.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "verified terminal start/stop cycle (pid 29688, CIM confirms gone)",
+        "elevated brain found by socket, honest cannot-stop from plain shell",
+        "opener pins incl self-exclusion, pythonw shape, socket-owner, displacement"
+      ],
+      "result": "PASS",
+      "finding": "Supervision degrades by privilege, never by blindness: found-and-unstoppable reads cannot-stop, only truly-absent reads was-not-running."
+    },
+    {
+      "id": "EVT-173",
+      "head_sha": "7d83c47",
+      "timestamp": "2026-10-11",
+      "title": "Wrapper truth: ps1 routes live, status fallback honest, mirror refreshed",
+      "level": "E5",
+      "component": "tooling+docs",
+      "description": "Closing loop on the entry-point layer. scripts/aegis.ps1 routed tui/console/web to retired scripts and a mislabeled desktop binary -- now tui/web go through the opener (with --stop passthrough), console/graph delegate to aegisctl with args passthrough, and gui names the desktop exe truthfully; help rewritten to match. aegis_status.bat fallback no longer declares STOPPED from nose+mouth absence alone (checks the service first). install_drivers printed hints fixed to sc.exe. Command map gained the earned troubleshooting rows (elevated close, QuickEdit freeze, exit-2, sc.exe rule). Legacy mirror config/Rules.json refreshed byte-true from canonical (pin contract) after the normalization proved the canonical file round-trips byte-stable.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "scripts/aegis.ps1",
+        "scripts/aegis_status.bat",
+        "scripts/install_drivers.bat",
+        "docs/OPERATOR_COMMAND_MAP.md",
+        "config/Rules.json",
+        "tests/tools/test_ps1_routes.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "ps1 help renders new routes; web skip-noop + console passthrough proven live",
+        "ps1 route pins (no retired refs, truthful gui)",
+        "mirror 7/7 green after refresh"
+      ],
+      "result": "PASS",
+      "finding": "Every way into the system now tells the truth about where it goes. No wrapper launches anything retired, mislabeled, or duplicated."
     }
   ],
   "evidence_level_summary": {
@@ -4447,7 +4495,7 @@
     "E2_count": 108,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 49,
+    "E5_count": 51,
     "E6_count": 0,
     "E7_count": 0
   }

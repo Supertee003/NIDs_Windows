@@ -99,5 +99,19 @@ rebuilds (`build_truth.json`), `scripts/run_*` kit/canary runners,
 
 `run_aegis.bat` (double-click) -> `scripts/aegis_open.py` (owns all
 logic) -> service/nose/brain/displays. `aegisctl console` is the
-interactive menu over the same engine. Do not reimplement startup
+interactive menu over the same engine. `scripts/aegis.ps1` wraps the
+same commands (`tui`/`console`/`web`/`gui`/`graph` route live; `test
+golden-path` is the sanctioned canary). Do not reimplement startup
 anywhere else.
+
+## Troubleshooting (earned the hard way)
+
+- **Non-elevated `close`/`stop` cannot stop keeper-spawned parts**
+  (nose/brain run elevated under the SYSTEM task): expect honest
+  `[FAIL] ... (elevate?)`, then use an elevated shell. Never silent.
+- **Watch window frozen?** Look for a `Select ` prefix in its title:
+  QuickEdit selection pauses console output. Press Enter/Esc to resume.
+- **`displays` exit 2 with OK rows** means skipped surfaces, never
+  failure (pinned exit-code contract, EVT-147).
+- **In PowerShell, always `sc.exe`** (with the extension): bare `sc`
+  is the Set-Content alias and writes junk files (EVT-163).
