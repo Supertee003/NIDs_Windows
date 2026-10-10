@@ -627,6 +627,7 @@ def send_to_sensor_pipe(payload: dict) -> str:
 # ====== Bridge Event Polling ======
 
 def poll_bridge_events():
+    """Poll C++ bridge for new events (every 10 iterations)."""
     """Poll C++ Bridge for events from other subsystems (Zig, Rust, Go)."""
     if not BRIDGE_AVAILABLE:
         return
@@ -652,6 +653,32 @@ def poll_bridge_events():
             pass  # Already handled via UDP from Zig
 
 # ====== Main Brain Loop ======
+
+def _health_response() -> dict:
+    """Supervisor-visible HEALTH payload (Gate-A schema + AUTH posture).
+
+    Factored out of the loop so tests pin the schema without sockets.
+    The "auth" key is posture only ("on"/"off", from the import-time
+    secret read) -- the secret value never leaves the process.
+    """
+    return {
+        "component":     "brain",
+        "state":         "RUNNING",
+        "pid":           os.getpid(),
+        "uptime_ms":     int(time.time() * 1000 - BRAIN_START_MS),
+        "last_event_ms": int((time.time() - LAST_EVENT_TS) * 1000) if LAST_EVENT_TS else 0,
+        "auth":          "on" if BRAIN_AUTH_SECRET is not None else "off",
+        "counters": {
+            "in_events":  IN_EVENT_COUNT,
+            "out_events": OUT_EVENT_COUNT,
+            "errors":     ERROR_COUNT,
+            "dropped":    DROPPED_COUNT,
+        },
+        "deps": [
+            {"name": "core", "state": "RUNNING" if BRIDGE_AVAILABLE else "DEGRADED"},
+        ],
+    }
+
 
 def main():
     global BRIDGE_AVAILABLE
@@ -778,22 +805,7 @@ def main():
             try:
                 health_check = json.loads(raw_payload)
                 if isinstance(health_check, dict) and health_check.get("op") == "HEALTH":
-                    health_response = {
-                        "component":     "brain",
-                        "state":         "RUNNING",
-                        "pid":           os.getpid(),
-                        "uptime_ms":     int(time.time() * 1000 - BRAIN_START_MS),
-                        "last_event_ms": int((time.time() - LAST_EVENT_TS) * 1000) if LAST_EVENT_TS else 0,
-                        "counters": {
-                            "in_events":  IN_EVENT_COUNT,
-                            "out_events": OUT_EVENT_COUNT,
-                            "errors":     ERROR_COUNT,
-                            "dropped":    DROPPED_COUNT,
-                        },
-                        "deps": [
-                            {"name": "core", "state": "RUNNING" if BRIDGE_AVAILABLE else "DEGRADED"},
-                        ],
-                    }
+                    health_response = _health_response()
                     sock.sendto(
                         json.dumps(health_response).encode("utf-8"),
                         addr,

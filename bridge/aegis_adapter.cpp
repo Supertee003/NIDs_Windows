@@ -367,7 +367,14 @@ Adapter* registry_add(AdapterRegistry* r, Kind kind, const char* name) {
     RegistryEntry* e = new RegistryEntry;
     e->kind = kind;
     std::memset(e->name, 0, sizeof(e->name));
+#if defined(_MSC_VER)
+    // MSVC deprecates strncpy (C4996); strncpy_s is equivalent here given
+    // the bound, and the memset above already zeroed the buffer. Other
+    // compilers (Linux CI) have no Annex K, so keep strncpy there.
+    strncpy_s(e->name, sizeof(e->name), name ? name : "adapter", sizeof(e->name) - 1);
+#else
     std::strncpy(e->name, name ? name : "adapter", sizeof(e->name) - 1);
+#endif
     e->next = r->head;
 
     void* ctx = nullptr;

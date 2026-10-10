@@ -13,6 +13,9 @@ comptime {
     _ = @import("tests/core/core_modules.zig");
     // Service-cwd bundle resolution: the installed layout must win over cwd.
     _ = @import("core/runtime_paths.zig");
+    // EVT-156: bridge_init carries inline unit tests (HMAC goldens + spool
+    // join ownership) that never ran -- the module was never imported here.
+    _ = @import("core/bridge_init.zig");
     _ = @import("tests/capture/npcap_adapter.zig");
     _ = @import("tests/capture/packet_decoder.zig");
     _ = @import("tests/capture/flow_table.zig");

@@ -353,6 +353,46 @@ class TestBridgeDiagnosticLogic(unittest.TestCase):
             self.assertIsNone(doc["owner_is_brain"])
             self.assertIn("unknown", (doc.get("reason", "") + doc.get("note", "")).lower())
 
+    def test_doc_secret_posture_branches(self):
+        # EVT-156: posture comes from the listener's own HEALTH reply
+        # (on/off only); timeout/garbage stays unknown, never fabricated.
+        from unittest.mock import patch
+        from tools.aegisctl.api import control_api
+        owner = (1234, "python", "C:\\x\\windows_brain.py")
+        with patch.object(control_api, "udp_listener_owner", return_value=owner), \
+             patch.object(control_api, "_udp_health", return_value={"auth": "on", "pid": 1234}), \
+             patch.object(control_api, "query_control", return_value={}):
+            doc = control_api.bridge_diagnostic()
+            self.assertEqual(doc["secret_posture"], "on")
+            self.assertTrue(doc["available"])
+        with patch.object(control_api, "udp_listener_owner", return_value=owner), \
+             patch.object(control_api, "_udp_health", return_value={"auth": "off", "pid": 1234}), \
+             patch.object(control_api, "query_control", return_value={}):
+            self.assertEqual(control_api.bridge_diagnostic()["secret_posture"], "off")
+        with patch.object(control_api, "udp_listener_owner", return_value=owner), \
+             patch.object(control_api, "_udp_health", return_value=None), \
+             patch.object(control_api, "query_control", return_value={}):
+            self.assertEqual(control_api.bridge_diagnostic()["secret_posture"], "unknown")
+        with patch.object(control_api, "udp_listener_owner", return_value=owner), \
+             patch.object(control_api, "_udp_health", return_value={"auth": "maybe"}), \
+             patch.object(control_api, "query_control", return_value={}):
+            self.assertEqual(control_api.bridge_diagnostic()["secret_posture"], "unknown")
+
+    def test_doc_pid_corroboration_when_cmdline_unreadable(self):
+        # Command line unreadable (None) but a schema-correct HEALTH reply
+        # from the listener pid itself corroborates identity.
+        from unittest.mock import patch
+        from tools.aegisctl.api import control_api
+        with patch.object(control_api, "udp_listener_owner",
+                          return_value=(999, "python", None)), \
+             patch.object(control_api, "_udp_health",
+                          return_value={"auth": "off", "pid": 999}), \
+             patch.object(control_api, "query_control", return_value={}):
+            doc = control_api.bridge_diagnostic()
+            self.assertTrue(doc["owner_is_brain"])
+            self.assertTrue(doc["available"])
+            self.assertEqual(doc["secret_posture"], "off")
+
 
 if __name__ == "__main__":
     unittest.main()

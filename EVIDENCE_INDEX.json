@@ -1,5 +1,5 @@
 {
-  "head_sha": "fd2b413feb4fa354c81470238faa486879972d69",
+  "head_sha": "8e6d2ca8c9acce92b94cb490610fc08bddb0cb56",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4008,15 +4008,124 @@
       ],
       "result": "PASS",
       "finding": "Every toolchain builds green at this HEAD with zero production impact. Two notes for later: tracked tools/legacy/fix_console.py has a syntax error (legacy, untouched), and GAP-004 appears fixed (FIM helper links clean)."
+    },
+    {
+      "id": "EVT-156",
+      "head_sha": "8e6d2ca",
+      "timestamp": "2026-10-10",
+      "title": "Core: spool drain thread stored+joined, inline tests wired into the graph",
+      "level": "E2",
+      "component": "zig_core",
+      "description": "Closed the .analysis/runtime.md ownership gap: initAll dropped the drain-thread handle, so shutdownAll closed the UDP socket while the thread could be inside sendto (TOCTOU + leaked join). Now the handle is stored, shutdownAll does requestShutdown (idempotent) + join BEFORE the socket close (bounded: loop sleeps at most 1s once flagged; null-safe, idempotent). Bonus find: bridge_init's 3 inline HMAC tests NEVER RAN (module absent from src/all_tests.zig) -- wired in, plus a new join-ownership test that save/restores g_shutdown so the shared test process is unaffected. Deploy (service binary copy + restart) is admin-gated; code + unit proof land now.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/core/bridge_init.zig",
+        "src/all_tests.zig",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "zig build test exit 0",
+        "zig test bridge_init: 4/4 pass incl new join test",
+        "zig build exit 0"
+      ],
+      "result": "PASS",
+      "finding": "Shutdown owns its threads again. The previously-dead HMAC tests now execute every suite."
+    },
+    {
+      "id": "EVT-157",
+      "head_sha": "8e6d2ca",
+      "timestamp": "2026-10-10",
+      "title": "Brain: AUTH posture joins the HEALTH schema; bridge reads it live",
+      "level": "E5",
+      "component": "python_brain+tooling",
+      "description": "The secret value stays secret, but supervisors were blind to posture (daemon publishes no brain-auth keys; brain banner goes to DEVNULL). _health_response() factored out of the loop with an 'auth' on/off key; control_api._udp_health asks the listener itself (ms, no control pipe); bridge_diagnostic reports secret_posture on/off/unknown and corroborates identity when the command line is unreadable (schema-correct reply from the listener pid). Pins: schema + on/off reflection + value-absence; doc branches incl pid-corroboration. Live: brain restarted (7704 -> 8748, ~10s advisory gap), bridge shows auth 'off' = today's truth.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "brain/windows_brain.py",
+        "tools/aegisctl/api/control_api.py",
+        "tests/brain/test_brain_udp_auth.py",
+        "tests/runtime/test_aegisctl.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "17 auth/bridge pins pass",
+        "live restart + bridge --json: owner True, posture off, new pid"
+      ],
+      "result": "PASS",
+      "finding": "Posture is observable without ever moving the value. Provisioning (RB-016) still admin-gated."
+    },
+    {
+      "id": "EVT-158",
+      "head_sha": "8e6d2ca",
+      "timestamp": "2026-10-10",
+      "title": "Bridge: C4996 fixed portably + five more warnings cleared, selftests green",
+      "level": "E2",
+      "component": "cpp_bridge",
+      "description": "strncpy at aegis_adapter.cpp:370 went strncpy_s under _MSC_VER (kept strncpy elsewhere: Annex K absent on the Linux CI leg). Rebuilding exposed five more pre-existing warnings, all mechanical zero-behavior-change fixes: unnamed unused dataLen params (IPv4/TCP Validate), dropped dead DNS flags local (noted as future hardening, not silently wired), WIN32_LEAN_AND_MEAN ifndef guard, static_cast on an in-range test port, dropped unused YEL. Bridge test targets rebuild with zero warnings; 36/36 IPC + adapter selftest pass. dist DLL link stays lock-gated by the live brain (documented, not fought).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "bridge/aegis_adapter.cpp",
+        "bridge/aegis_packet_parser.hpp",
+        "bridge/aegis_bridge_main.cpp",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "rebuild: no warnings/errors",
+        "aegis_bridge_test 36/36",
+        "adapter selftest OK"
+      ],
+      "result": "PASS",
+      "finding": "Bridge compiles warning-free; the only unbuilt artifact is the live-locked DLL link."
+    },
+    {
+      "id": "EVT-159",
+      "head_sha": "8e6d2ca",
+      "timestamp": "2026-10-10",
+      "title": "Mouth: 12 warnings to zero, behavior unchanged, live cycle re-proven",
+      "level": "E5",
+      "component": "rust_mouth",
+      "description": "Warning cleanup, each provably zero-behavior-change: THREAT STATS line used positional {} with named args (values landed right only by order -- a mislabel trap; now named), removed write-only MitigationEntry.time (+3 inits + its now-unused let), unused import/consts (AsRawHandle, C_BLUE, INFINITE), never-called health_pipe::shutdown (opener force-kills; EVT-112 no-graceful-exit stands), future-hook ETW stubs (history in git). cargo build --release: zero warnings; cargo test: 11/11; --version clean; live start/stop cycle on the new binary clean.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "mouth/windows_sec_monitor.rs",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "cargo build zero warnings",
+        "cargo test 11/11",
+        "live tui start/stop clean (pid 8568)"
+      ],
+      "result": "PASS",
+      "finding": "The TUI is warning-free with identical behavior; the stats line can no longer silently mislabel."
+    },
+    {
+      "id": "EVT-160",
+      "head_sha": "8e6d2ca",
+      "timestamp": "2026-10-10",
+      "title": "Nose: audited clean, no change made (evidence over churn)",
+      "level": "E2",
+      "component": "go_nose",
+      "description": "Improvement program audited nose for debt before touching it: zero TODO/FIXME, zero panics in non-test code, talkers table bounded (cap 1024/keep 512, prune-heaviest), --version Gate-A present, go vet clean, full go test green this session, 2.85M frames flowing live. No defect, no dead code, no missing contract found -- so no code changed. Touching a healthy capture path to satisfy a quota would add risk for zero value; the audit itself is the deliverable, re-verifiable by vet+test on any HEAD.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "go vet 0",
+        "go test ok 9.45s",
+        "live 2.85M frames flowing"
+      ],
+      "result": "PASS",
+      "finding": "Nose needs nothing. Saying so with evidence beats invented churn on a live capture path."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
-    "E2_count": 104,
+    "E2_count": 107,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 37,
+    "E5_count": 39,
     "E6_count": 0,
     "E7_count": 0
   }

@@ -28,7 +28,6 @@ use std::thread;
 // RUNTIME_CONTRACT.md §4.1.
 #[cfg(windows)]
 mod health_pipe {
-    use std::os::windows::io::AsRawHandle;
     use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
     use std::thread;
     use std::time::{Duration, Instant};
@@ -46,7 +45,6 @@ mod health_pipe {
     const ERROR_PIPE_CONNECTED: u32 = 0x217;
     const ERROR_IO_PENDING: u32 = 0x3E5;
     const FILE_FLAG_OVERLAPPED: u32 = 0x40000000;
-    const INFINITE: u32 = 0xFFFFFFFF;
     const WAIT_TIMEOUT: u32 = 0x102;
     const WAIT_OBJECT_0: u32 = 0;
 
@@ -248,11 +246,6 @@ mod health_pipe {
         thread::spawn(move || {
             server_loop(start_time);
         });
-    }
-
-    /// Signal the health server to exit (called from main on shutdown).
-    pub fn shutdown() {
-        SHUTDOWN.store(true, Ordering::Release);
     }
 }
 
@@ -591,7 +584,6 @@ const C_CYAN: &str = "\x1b[96;1m";
 const C_MAGENTA: &str = "\x1b[95;1m";
 const C_DIM: &str = "\x1b[2m";
 const C_BOLD: &str = "\x1b[1m";
-const C_BLUE: &str = "\x1b[94m";
 const C_WHITE: &str = "\x1b[97m";
 
 // v3.0: Cursor-based rendering (no flickering)
@@ -787,7 +779,6 @@ const MITIGATION_FEED_SIZE: usize = 6;
 
 #[derive(Clone)]
 struct MitigationEntry {
-    time: String,
     action: String,    // "BLOCKED IP" or "TERMINATED PID"
     target: String,    // IP address or PID
     reason: String,    // Why it was blocked
@@ -821,11 +812,6 @@ impl MitigationFeed {
         let is_terminate = policy == "Terminate" || policy == "Kill";
 
         if is_block || is_terminate {
-            let time = extract_json_field(line, "timestamp")
-                .unwrap_or_else(|| format!("{}", SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap_or(Duration::from_secs(0))
-                    .as_secs()));
             let source_ip = extract_json_field(line, "source_ip")
                 .or_else(|| extract_json_field(line, "src_ip"))
                 .unwrap_or_else(|| "unknown".to_string());
@@ -835,14 +821,12 @@ impl MitigationFeed {
 
             if is_block {
                 self.push(MitigationEntry {
-                    time,
                     action: "BLOCKED IP".to_string(),
                     target: source_ip,
                     reason: attack,
                 });
             } else {
                 self.push(MitigationEntry {
-                    time,
                     action: "TERMINATED".to_string(),
                     target: source_ip,
                     reason: attack,
@@ -1019,13 +1003,6 @@ fn write_defcon_annotation_log(annotation_path: &str, level: u8, label: &str, pr
 
     eprintln!("{}", entry);
 }
-
-// =====================================================================
-// ETW HOOK STUBS (future security monitoring)
-// =====================================================================
-
-fn etw_security_monitor_poll() -> u32 { 0 }
-fn process_creation_monitor_poll() -> u32 { 0 }
 
 // =====================================================================
 // RENDER — v3.0: "ยามรักษาความปลอดภัย + กระบอกเสียง"
@@ -1215,7 +1192,7 @@ fn render_dashboard(
     // ── Threat Statistics (compact but wider) ──
     render_border_side(bc, &format!("{C_CYAN}[ THREAT STATS ]{C_RESET}"));
     render_border_side(bc, &format!(
-        "  {}  {}  {}  {}  {}",
+        "  {total}  {crit}  {blk}  {kern}  {new}",
         total=stats.total_alerts, crit=stats.critical_count, blk=stats.blocked_count,
         kern=stats.kernel_count, new=new_entries
     ));
@@ -1450,10 +1427,6 @@ fn main() {
             // v3.0: Add DEFCON change to mitigation feed as well
             let action_label = if defcon.level < prev_defcon_level { "ESCALATED" } else { "DE-ESCALATED" };
             mitigation_feed.push(MitigationEntry {
-                time: format!("{}", SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap_or(Duration::from_secs(0))
-                    .as_secs()),
                 action: format!("DEFCON {}", action_label),
                 target: format!("Level {} → {}", prev_defcon_level, defcon.level),
                 reason: "Threat level change".to_string(),

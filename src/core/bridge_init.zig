@@ -156,6 +156,12 @@ var g_brain_spool_count: usize = 0;
 var g_brain_spool_lock: std.Thread.Mutex = .{};
 pub var g_brain_dropped_events: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 var g_spool_drain_running: bool = false;
+// EVT-156: the drain thread handle used to be dropped at spawn
+// (see initAll): shutdown closed the UDP socket while the thread could
+// still be inside sendto -> TOCTOU + leaked join (.analysis/runtime.md
+// "Ownership gap: bridge spool thread"). Stored now, joined in
+// joinSpoolDrainThread before any socket close.
+var g_spool_drain_thread: ?std.Thread = null;
 
 /// GAP-3: Background thread that drains the spool queue.
 /// Retries failed UDP sends every 100ms until queue is empty.
@@ -365,6 +371,18 @@ fn shutdownUdpBrain() void {
     }
 }
 
+/// Join the spool drain thread. Bounded: once g_shutdown is set the loop
+/// sleeps at most 1s per iteration before breaking, and the flag store
+/// below makes the join safe even if the caller never signaled shutdown.
+/// Idempotent: a second call is a no-op (handle is nulled after join).
+fn joinSpoolDrainThread() void {
+    const t = g_spool_drain_thread orelse return;
+    g_spool_drain_running = false;
+    g_shutdown.store(true, .seq_cst);
+    t.join();
+    g_spool_drain_thread = null;
+}
+
 // ============================================================
 // PUBLIC API
 // ============================================================
@@ -413,7 +431,8 @@ pub fn initAll() void {
             };
             break :blk t;
         };
-        if (drain_thread) |_| {
+        if (drain_thread) |t| {
+            g_spool_drain_thread = t;
             g_spool_drain_running = true;
         }
     }
@@ -441,6 +460,12 @@ pub fn initAll() void {
 pub fn shutdownAll() void {
     std.log.info("[SHUTDOWN] AEGIS BRIDGE SHUTDOWN", .{});
     std.debug.print("\n--- AEGIS BRIDGE SHUTDOWN ---\n", .{});
+    // EVT-156: requestShutdown is idempotent; calling it here guarantees
+    // the drain loop can exit even on paths that never signaled shutdown.
+    requestShutdown();
+    // Join BEFORE the socket close: the thread must never be inside
+    // sendto while shutdownUdpBrain closes the fd (TOCTOU, leaked join).
+    joinSpoolDrainThread();
     shutdownUdpBrain();
     shutdownCppBridge();
     shutdownWfpIoctl();
@@ -612,4 +637,23 @@ test "brain wire without secret is the bare body" {
     const wire = try formatBrainWire(std.testing.allocator, "{\"op\":\"HEALTH\"}", null);
     defer std.testing.allocator.free(wire);
     try std.testing.expectEqualStrings("{\"op\":\"HEALTH\"}", wire);
+}
+
+test "spool drain thread is stored and joined, never dropped" {
+    // Ownership mechanics without UDP: store a short-lived thread through
+    // the same globals shutdownAll joins, then join twice. join() stores
+    // g_shutdown, so save/restore it: the test runner shares one process
+    // with every other test and must not observe a shutdown.
+    const prev_shutdown = g_shutdown.load(.seq_cst);
+    defer g_shutdown.store(prev_shutdown, .seq_cst);
+    const Quick = struct {
+        fn run() void {}
+    };
+    g_spool_drain_thread = try std.Thread.spawn(.{}, Quick.run, .{});
+    g_spool_drain_running = true;
+    joinSpoolDrainThread();
+    try std.testing.expect(g_spool_drain_thread == null);
+    try std.testing.expect(!g_spool_drain_running);
+    joinSpoolDrainThread(); // idempotent no-op, must not hang
+    try std.testing.expect(g_spool_drain_thread == null);
 }

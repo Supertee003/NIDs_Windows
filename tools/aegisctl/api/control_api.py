@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import ipaddress
 import os
+import socket
 import subprocess
 import sys
 import time
@@ -328,6 +329,23 @@ def udp_listener_owner(port: int) -> Optional[Tuple[int, str, Optional[str]]]:
     return (pid, name, cmdline)
 
 
+def _udp_health(port: int, timeout_s: float = 2.0) -> Optional[Dict[str, Any]]:
+    """One HEALTH probe datagram to a UDP listener; parsed dict or None.
+
+    Supervisor-channel read (milliseconds, no control pipe, no tree).
+    None means unknown (timeout/refused/garbage) -- never a negative.
+    """
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.settimeout(timeout_s)
+            s.sendto(b'{"op":"HEALTH"}', ("127.0.0.1", port))
+            data, _ = s.recvfrom(65535)
+        doc = json.loads(data.decode("utf-8", errors="ignore"))
+        return doc if isinstance(doc, dict) else None
+    except Exception:
+        return None
+
+
 def bridge_diagnostic() -> Dict[str, Any]:
     """Brain-channel diagnostic document for `aegisctl bridge`.
 
@@ -370,6 +388,20 @@ def bridge_diagnostic() -> Dict[str, Any]:
     else:
         doc["reason"] = "owner command line unreadable (elevate?)"
         doc["note"] = "listener exists but identity is unknown, not negative."
+    # EVT-156: ask the listener itself. The brain answers HEALTH with an
+    # "auth" posture key (on/off, never the value). A schema-correct reply
+    # from the listener pid corroborates identity when the command line is
+    # unreadable, and reports posture otherwise. Timeout/garbage stays
+    # "unknown" -- never a negative, never fabricated.
+    health = _udp_health(BRAIN_UDP_PORT)
+    if isinstance(health, dict):
+        if health.get("auth") in ("on", "off"):
+            doc["secret_posture"] = health["auth"]
+        if match is None and health.get("pid") == pid:
+            doc["owner_is_brain"] = True
+            doc["available"] = True
+            doc["note"] = ("command line unreadable, but the schema-correct HEALTH "
+                           "reply comes from the listener pid itself: corroborated.")
     try:
         health = query_control("system.health") or {}
         subs = health.get("subsystems")

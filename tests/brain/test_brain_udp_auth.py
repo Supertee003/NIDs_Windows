@@ -99,3 +99,22 @@ def test_mac_is_lowercase_hex_of_fixed_width():
     mac, _ = split_brain_envelope(GOLDEN_WIRE)
     assert len(mac) == 64
     assert mac.decode("ascii") == mac.decode("ascii").lower()
+
+
+def test_health_response_carries_auth_posture_never_the_value():
+    # EVT-156: the supervisor-visible HEALTH payload reports AUTH posture
+    # ("on"/"off") so `aegisctl bridge` can show it. The secret value must
+    # never appear on the wire: assert schema + absence, not liveness.
+    import json
+    from unittest.mock import patch
+    import brain.windows_brain as wb
+    doc = wb._health_response()
+    assert doc["component"] == "brain" and doc["state"] == "RUNNING"
+    assert isinstance(doc["pid"], int) and isinstance(doc["uptime_ms"], int)
+    assert doc["auth"] == ("on" if wb.BRAIN_AUTH_SECRET is not None else "off")
+    blob = json.dumps(doc)
+    assert "AEGIS_BRAIN_SECRET" not in blob
+    with patch.object(wb, "BRAIN_AUTH_SECRET", b"test-secret-16byte"):
+        assert wb._health_response()["auth"] == "on"
+    with patch.object(wb, "BRAIN_AUTH_SECRET", None):
+        assert wb._health_response()["auth"] == "off"

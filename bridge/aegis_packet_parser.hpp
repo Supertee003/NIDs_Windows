@@ -157,7 +157,7 @@ public:
         return kParseSuccess;
     }
 
-    static ParseStatus Validate(const IPv4Header* header, size_t dataLen) {
+    static ParseStatus Validate(const IPv4Header* header, size_t /*dataLen*/) {
         if (!header) return kParseMalformed;
         uint8_t version = (header->version_ihl >> 4) & 0x0F;
         if (version != 4) return kParseMalformed;
@@ -198,7 +198,7 @@ public:
         return kParseSuccess;
     }
 
-    static ParseStatus Validate(const TCPHeader* header, size_t dataLen) {
+    static ParseStatus Validate(const TCPHeader* header, size_t /*dataLen*/) {
         if (!header) return kParseMalformed;
         uint8_t dataOffset = (header->data_offset >> 4) & 0x0F;
         if (dataOffset < 5) return kParseMalformed;
@@ -341,7 +341,7 @@ public:
         uint16_t dstPort = udp->dest_port;
         if (srcPort != 53 && dstPort != 53) return false;
         // DNS header: Transaction ID (2) + Flags (2) + Questions (2) + ...
-        uint16_t flags = (payload[2] << 8) | payload[3];
+        // NOTE: flags intentionally unchecked (query-shape match only).
         uint16_t questions = (payload[4] << 8) | payload[5];
         return (questions > 0);
     }
