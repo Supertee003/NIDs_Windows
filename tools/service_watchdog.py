@@ -11,7 +11,7 @@ minutes as SYSTEM; alerting reads the exit code / task history.
 Scheduled-task setup (elevated, once):
   schtasks /create /tn AegisWatchdog /tr "python D:\\NIDs_Windows\\tools\\service_watchdog.py" /sc minute /mo 5 /ru SYSTEM /rl highest /f
 SCM crash recovery (elevated, once — restarts the service 60s after a crash):
-  sc failure AegisNids reset= 86400 actions= restart/60000/restart/60000/restart/60000
+  sc.exe failure AegisNids reset= 86400 actions= restart/60000/restart/60000/restart/60000
 """
 from __future__ import annotations
 

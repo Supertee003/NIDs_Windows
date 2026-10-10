@@ -27,7 +27,7 @@ fn is_critical_level(level: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_critical_level, read_tail, resolve_defcon, resolve_log_path, AlertEntry};
+    use super::{is_critical_level, read_tail, resolve_defcon, resolve_log_path, AlertEntry, format_component};
 
     #[test]
     fn log_path_prefers_newest_candidate() {
@@ -128,6 +128,22 @@ mod tests {
         let observed = r#"{"ts_ms":1791296893401,"level":"warn","event":"signature_match","rule":"1","src_ip":"10.0.0.1","policy":"alert","enforcement_status":"observed","host_effect_confirmed":false,"filter_id":0,"request_id":0}"#;
         let entry: AlertEntry = serde_json::from_str(observed).unwrap();
         assert!(!entry.confirmed_block());
+    }
+
+    #[test]
+    fn component_row_formats_identity_and_degrades() {
+        // EVT-163: full entry renders name (lang) version — status;
+        // an older snapshot without the block degrades to placeholders.
+        let full: serde_json::Value = serde_json::from_str(
+            r#"{"name":"AEGIS Nose","language":"Go","version":"5.0.0","status":"running"}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            format_component(&full),
+            "AEGIS Nose (Go) v5.0.0 — running"
+        );
+        let empty = serde_json::Value::Null;
+        assert_eq!(format_component(&empty), "? (?) v? — unknown");
     }
 }
 
@@ -231,6 +247,23 @@ struct RuntimeSnapshot {
 
     metrics: serde_json::Value,
     forensic: serde_json::Value,
+
+    // EVT-163: the five components as concepts (added by `aegisctl.py
+    // snapshot`; default keeps older snapshots parsing).
+    #[serde(default)]
+    components: serde_json::Value,
+}
+
+
+/// One-line concept row for a component entry. Unknown fields degrade to
+/// placeholders, never panic: the dashboard must survive older snapshots
+/// that predate the components block.
+fn format_component(c: &serde_json::Value) -> String {
+    let name = c.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+    let lang = c.get("language").and_then(|v| v.as_str()).unwrap_or("?");
+    let ver = c.get("version").and_then(|v| v.as_str()).unwrap_or("?");
+    let status = c.get("status").and_then(|v| v.as_str()).unwrap_or("unknown");
+    format!("{name} ({lang}) v{ver} — {status}")
 }
 
 
@@ -733,6 +766,17 @@ ui.label(format!(
     "Compatibility alias: rust_shield -> {} | alias-only",
     alias_of
 ));
+
+// EVT-163: the five components as concepts (from `aegisctl.py snapshot`;
+// missing on older snapshots degrades to a note, never a panic).
+ui.label("AEGIS Components (concept + status):");
+if let Some(list) = self.runtime_snapshot.components.as_array() {
+    for c in list {
+        ui.label(format_component(c));
+    }
+} else {
+    ui.small("component data unavailable (snapshot predates the block)");
+}
             let metrics = &self.runtime_snapshot.metrics;
             let metric_events = metrics.get("events_total").or_else(|| metrics.get("events"))
                 .and_then(|v| v.as_u64()).unwrap_or(0);

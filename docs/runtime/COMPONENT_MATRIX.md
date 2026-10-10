@@ -56,8 +56,8 @@ component into `DEGRADED` instead of blocking startup.
 
 | Component        | Binary                                    | Language | Inputs                              | Outputs                              | Deps                  | Start                          | Health                                | Stop                         | Required | Gate |
 |------------------|-------------------------------------------|----------|-------------------------------------|--------------------------------------|-----------------------|--------------------------------|---------------------------------------|------------------------------|----------|------|
-| `wfp-callout`    | `drivers/wfp_callout/aegis_wfp.sys`       | C        | WFP layer callbacks                  | IOCTL to core, block actions          | `core`                | `sc start aegis_wfp`           | IOCTL `GET_HEALTH` (via core)         | `sc stop aegis_wfp`           | no* | D |
-| `minifilter`     | `drivers/minifilter/aegis_minifilter.sys` | C        | filesystem IRPs                      | pipe events to core                   | `core`                | `sc start aegis_minifilter`    | IOCTL `GET_HEALTH` (via core)         | `sc stop aegis_minifilter`    | no* | D |
+| `wfp-callout`    | `drivers/wfp_callout/aegis_wfp.sys`       | C        | WFP layer callbacks                  | IOCTL to core, block actions          | `core`                | `sc.exe start aegis_wfp`       | IOCTL `GET_HEALTH` (via core)         | `sc.exe stop aegis_wfp`           | no* | D |
+| `minifilter`     | `drivers/minifilter/aegis_minifilter.sys` | C        | filesystem IRPs                      | pipe events to core                   | `core`                | `sc.exe start aegis_minifilter` | IOCTL `GET_HEALTH` (via core)         | `sc.exe stop aegis_minifilter`    | no* | D |
 
 > Drivers marked `no*` are optional for the runtime contract — the system
 > can run in "sensor-only" mode without them — but they are required for

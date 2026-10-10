@@ -81,9 +81,9 @@ python scripts/aegis_defcon.py
 
 ### Zig Core (as Windows Service)
 ```powershell
-sc create AEGIS_NIDS binPath= "C:\AEGIS\aegis.exe" start= auto
-sc description AEGIS_NIDS "AEGIS NIDS Core - 3-Tier Detection Engine"
-sc start AEGIS_NIDS
+sc.exe create AEGIS_NIDS binPath= "C:\AEGIS\aegis.exe" start= auto
+sc.exe description AEGIS_NIDS "AEGIS NIDS Core - 3-Tier Detection Engine"
+sc.exe start AEGIS_NIDS
 ```
 
 ### Go Aggregator (background)
@@ -104,9 +104,9 @@ Start-Process -NoNewWindow -FilePath "python" -ArgumentList "scripts/aegis_metri
 
 ## Rollback Procedure
 
-1. Stop AEGIS service: `sc stop AEGIS_NIDS`
+1. Stop AEGIS service: `sc.exe stop AEGIS_NIDS`
 2. Restore from `.phase*_backup` files
-3. Restart service: `sc start AEGIS_NIDS`
+3. Restart service: `sc.exe start AEGIS_NIDS`
 
 ## Troubleshooting
 

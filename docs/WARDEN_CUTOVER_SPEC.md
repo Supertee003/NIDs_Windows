@@ -2,7 +2,7 @@
 
 ## Verified production state (2026-10-10, this host)
 
-- `aegiswfp` kernel driver service: RUNNING (`sc query aegiswfp`).
+- `aegiswfp` kernel driver service: RUNNING (`sc.exe query aegiswfp`).
 - Daemon `enforcement.status`: `tier3 READY`, `pep_available true`,
   `provider_ready true`, but `tier3_enforcing false`,
   `host_effect_capable false`, `enforcement_mode "detection-only"`,

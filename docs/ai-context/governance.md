@@ -139,7 +139,7 @@ deployed, and the failure is reported upstream in the incident log.
 2. Policy rollback: policy packages are versioned; activation of an
    older version goes through the same PEP validation path.
 3. Driver rollback: the installer keeps the previous .sys files for one
-   generation; `sc stop` + file swap + `sc start` is the documented path.
+   generation; `sc.exe stop` + file swap + `sc.exe start` is the documented path.
 4. Every rollback MUST be recorded with: trigger, decision owner, gates
    re-run afterward, and the provenance manifest of the restored build.
 

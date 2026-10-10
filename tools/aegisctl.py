@@ -471,12 +471,20 @@ def cmd_snapshot(args) -> int:
     ).lower()
 
     operator = project_operator_state(health, enforcement)
+    try:
+        # EVT-163: the five components as concepts for native dashboards.
+        # Fast path only (health-derived + path checks): the GUI polls this
+        # every 30s, so no process probes here -- see `aegisctl components`.
+        components = components_status(health if isinstance(health, dict) else {})
+    except Exception:
+        components = []
     document = {
         "available": True,
         "health": health,
         "metrics": metrics,
         "forensic": forensic,
         "enforcement": enforcement,
+        "components": components,
         "authority": {
             "canonical": health.get(
                 "canonical_enforcement_authority",

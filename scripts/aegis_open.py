@@ -422,7 +422,7 @@ def start_service() -> dict:
     progress("starting service AegisNids ...")
     rc, _, err = run(["sc.exe", "start", SERVICE_NAME], timeout=60)
     if rc != 0:
-        return summarize("start service", False, "sc start failed (admin?): %s" % err.strip()[:160])
+        return summarize("start service", False, "sc.exe start failed (admin?): %s" % err.strip()[:160])
     if wait_for(lambda: service_state() == "RUNNING", START_TIMEOUT_S):
         return summarize("start service", True, "RUNNING")
     return summarize("start service", False, "did not reach RUNNING in %ds" % START_TIMEOUT_S)
