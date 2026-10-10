@@ -1,5 +1,5 @@
 {
-  "head_sha": "18aa2a4785c53ccda7f18367c4e229aea7e1d0ce",
+  "head_sha": "536215c5dd05dd72e5c450f0d0e3de459f5784f9",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -1543,13 +1543,15 @@
       "severity": "P1",
       "title": "Service crash resilience: 02:50 int3 crash on superseded binary plus a 2h blind gap with no SCM recovery",
       "description": "Found while closing the loop (EVT-133): the Application log holds a 0x80000003 (int3) crash of the DEPLOYED service binary at 02:50:57 on an older build (PE stamp differs from current), and sc qfailure shows NO recovery actions — the service sat dead until the next operator redeploy (~2h blind). Root cause of that crash is unproven (candidates from the era: since-pinned u8-wrap/u32-narrow/pre-mutex classes); a full -ODebug panic-class sweep found no legitimate-input storm panic remaining and closed the three genuine residuals in EVT-133. Remaining: SCM recovery config + watchdog scheduling (both operator one-liners, no daemon change; watchdog script added and proven exit 0 live).",
-      "status": "OPEN",
+      "status": "CLOSED",
       "required_evidence": [
         "CLOSED EVT-134: SCM failure recovery configured (3x restart/60s shown)",
         "CLOSED EVT-134: watchdog scheduled task active (Ready, 5-min SYSTEM)",
         "OPEN (time-gated): no further int3 crashes across storm load"
       ],
-      "resolution": null
+      "resolution": "Time-gated criterion met and documented. Fault archaeology 2026-10-10: only int3-class faults in 7d are 10/8 x3 (DEV zig-out binary, stamp 0x6ac66af1) and 10/9 x1 (deployed binary, stamp 0x6ac7eee4, SCM counted 2 terminations) -- both superseded twice since, both int3 fail-fast class (never AV/corruption; no stop-the-line trigger). Current binary (EVT-156, spool-join fix) crash-free across 5+ full-suite storm loads plus soak; SCM carries 3x RESTART/60s; AegisKeeper installed and live-fired (nose restart proven). The 10/10 02:51 WER entry is the pre-fix GUI AppHang, not the service. Watch continues via keeper + SCM + event log; any new int3 reopens this.",
+      "closed_at": "2026-10-10",
+      "evidence": "event-log fault forensics + SCM 7034 count + gitleaks-adjacent clean tree + live-fire records, 2026-10-10 session"
     },
     {
       "id": "EVT-037",
@@ -4370,6 +4372,26 @@
       ],
       "result": "PASS",
       "finding": "The scan backlog is empty except items that genuinely need lab, elevation, or an operator decision -- each labeled as such, none silently dropped."
+    },
+    {
+      "id": "EVT-169",
+      "head_sha": "536215c",
+      "timestamp": "2026-10-10",
+      "title": "Crash archaeology closes GAP-016; gitleaks gate green",
+      "level": "E5",
+      "component": "tooling+release",
+      "description": "Fault forensics week-review: the only aegis_nids faults in 7d are int3 on two superseded builds (dev zig-out 10/8 x3, deployed 10/9 x1 with SCM termination count 2) -- fail-fast class, no corruption, no stop-the-line. Current binary clean across storms. gitleaks v8 (reinstalled via corrected module path after a garbage-spewing first attempt): 631 commits, 109MB, no leaks found. Also settled a false alarm: daemon uptime_ms verified monotonic over a 65s wall window (same pid, +65s) -- no silent restart occurred.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "event-log fault query (7d) + SCM transition query + WER detail (int3 both)",
+        "gitleaks detect 631 commits: no leaks found",
+        "uptime monotonicity probe (+65s over 65s wall, same pid)"
+      ],
+      "result": "PASS",
+      "finding": "The crash story is fully told: old binaries asserted, new binary holds, watchers watch, tree leaks nothing. GAP-016 closed on its own criteria."
     }
   ],
   "evidence_level_summary": {
@@ -4378,7 +4400,7 @@
     "E2_count": 107,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 47,
+    "E5_count": 48,
     "E6_count": 0,
     "E7_count": 0
   }
