@@ -54,6 +54,7 @@ try:
         query_forensic_records,
         verify_authority_invariant,
         diagnose_endpoint_ownership,
+        bridge_diagnostic,
     )
     CONTROL_API_AVAILABLE = True
 except ImportError as e:
@@ -75,6 +76,7 @@ except ImportError as e:
             query_forensic_records,
             verify_authority_invariant,
             diagnose_endpoint_ownership,
+            bridge_diagnostic,
         )
         CONTROL_API_AVAILABLE = True
     except ImportError:
@@ -1619,12 +1621,36 @@ def cmd_dashboard(args) -> int:
 
 
 def cmd_bridge(args) -> int:
-    """Bridge IPC status.
+    """Bridge IPC status (RB-017 step 3): brain-channel listener honesty.
 
     Delegates all business logic to control_api.
     CLI is thin: just call API and display structured result.
+    Exit 0 = listener owned by the brain entrypoint; 1 = no/wrong
+    listener (actionable); 2 = identity indeterminate (unknown, not failed).
     """
-    return _unavailable("bridge", "bridge_diagnostic_not_connected")
+    if not CONTROL_API_AVAILABLE:
+        return _unavailable("bridge", "control_api_unavailable")
+    doc = bridge_diagnostic()
+    if bool(getattr(args, "json", False)):
+        print(json.dumps(doc, sort_keys=True))
+    else:
+        listener = doc.get("listener") or {}
+        print("Brain channel (UDP :%s)" % doc.get("port"))
+        if listener:
+            print("  listener: pid %s (%s)" % (listener.get("pid"), listener.get("process")))
+            print("  brain entrypoint match: %s" % listener.get("cmdline_match"))
+        else:
+            print("  listener: none (%s)" % doc.get("reason", "?"))
+        print("  owner_is_brain: %s" % doc.get("owner_is_brain"))
+        print("  this-shell secret configured: %s" % doc.get("this_shell_secret_configured"))
+        if doc.get("sender_side") is not None:
+            print("  sender-side daemon bit: %s" % (doc["sender_side"],))
+        print("  note: %s" % doc.get("note", ""))
+    if doc.get("owner_is_brain") is True:
+        return 0
+    if doc.get("available") is False and doc.get("listener") is None:
+        return 1
+    return 2
 
 
 def cmd_iptest(args) -> int:
@@ -1823,7 +1849,9 @@ def main() -> int:
     dashboard_p.add_argument("--interval", type=float, default=2.0, help="Refresh interval in seconds")
     dashboard_p.add_argument("--iterations", type=int, default=None, help="Render N frames then exit (scripted use)")
     dashboard_p.set_defaults(func=cmd_dashboard)
-    sub.add_parser("bridge", help="Bridge IPC status").set_defaults(func=cmd_bridge)
+    _bridge_p = sub.add_parser("bridge", help="Bridge IPC status")
+    _bridge_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    _bridge_p.set_defaults(func=cmd_bridge)
     sub.add_parser("iptest", help="IPC throughput test").set_defaults(func=cmd_iptest)
     sub.add_parser("authority", help="Verify authority invariant").set_defaults(func=cmd_authority)
     sub.add_parser("help", help="Show help").set_defaults(func=cmd_help)

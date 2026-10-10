@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import ipaddress
 import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -271,6 +272,112 @@ def get_all_status() -> List[Tuple[str, bool, Optional[int]]]:
         status = get_subsystem_status(name)
         results.append((name, status["status"] == "RUNNING", status["pid"]))
     return results
+
+
+# --------------------------------------------------------------------------
+# Bridge diagnostic (RB-017 step 3): honest brain-channel signal.
+# --------------------------------------------------------------------------
+# The daemon publishes no brain-channel posture (system.health carries no
+# udp_brain/auth keys), so this synthesizes host-local truth: the UDP :9999
+# listener owner. Anything sender-side is labeled as such; anything about
+# the secret is reported as unknown unless it is this shell's own env
+# (never another process's). Read-only; no pipe writes, no tree writes.
+
+BRAIN_UDP_PORT = 9999
+BRAIN_ENTRY_BASENAME = "windows_brain.py"
+
+
+def _ps_output(script: str, timeout: int = 30) -> str:
+    """Run one PowerShell probe; '' on any failure (unknown, never zero)."""
+    try:
+        proc = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", script],
+            capture_output=True, text=True, timeout=timeout,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    if proc.returncode != 0:
+        return ""
+    return (proc.stdout or "").strip()
+
+
+def udp_listener_owner(port: int) -> Optional[Tuple[int, str, Optional[str]]]:
+    """(pid, process name, command line) owning a local UDP listener.
+
+    Returns None when there is no listener or the owner is unreadable.
+    Command line may itself be None (e.g. elevated owner): callers must
+    treat that as unknown identity, not as a negative.
+    """
+    if os.name != "nt":
+        return None
+    pid_text = _ps_output(
+        "Get-NetUDPEndpoint -LocalPort %d -ErrorAction SilentlyContinue | "
+        "Select-Object -ExpandProperty OwningProcess | Select-Object -First 1" % port
+    )
+    try:
+        pid = int(pid_text.split()[0])
+    except (ValueError, IndexError):
+        return None
+    name = _ps_output(
+        "(Get-Process -Id %d -ErrorAction SilentlyContinue).ProcessName" % pid
+    ) or None
+    cmdline = _ps_output(
+        "(Get-CimInstance Win32_Process -Filter \"ProcessId=%d\" "
+        "-ErrorAction SilentlyContinue).CommandLine" % pid
+    ) or None
+    return (pid, name, cmdline)
+
+
+def bridge_diagnostic() -> Dict[str, Any]:
+    """Brain-channel diagnostic document for `aegisctl bridge`.
+
+    Keys: command, port, available, listener {pid, process, cmdline_match}
+    or None, owner_is_brain True/False/None, this_shell_secret_configured
+    bool, sender_side (daemon brain bit or None, labeled), note.
+    Pure composition over udp_listener_owner + one budgeted health read;
+    unit-pinned with both patched (no system touch in tests).
+    """
+    doc: Dict[str, Any] = {
+        "command": "bridge",
+        "port": BRAIN_UDP_PORT,
+        "available": False,
+        "listener": None,
+        "owner_is_brain": None,
+        "this_shell_secret_configured": bool(os.environ.get("AEGIS_BRAIN_SECRET", "")),
+        "secret_posture": "unknown",
+        "sender_side": None,
+    }
+    owner = udp_listener_owner(BRAIN_UDP_PORT)
+    if owner is None:
+        doc["reason"] = "no listener on :%d (brain not running)" % BRAIN_UDP_PORT
+        doc["note"] = ("RB-017 step 3 needs a listener owned by the brain process; "
+                       "start it supervised, then re-run.")
+        return doc
+    pid, name, cmdline = owner
+    if cmdline is None:
+        match: Optional[bool] = None
+    else:
+        match = BRAIN_ENTRY_BASENAME.lower() in cmdline.lower()
+    doc["listener"] = {"pid": pid, "process": name, "cmdline_match": match}
+    doc["owner_is_brain"] = match
+    if match is True:
+        doc["available"] = True
+        doc["note"] = ("listener owned by the brain entrypoint; sender-side daemon bits "
+                       "(if any) prove nothing alone -- this owner row is the honest signal.")
+    elif match is False:
+        doc["reason"] = ":%d owned by pid %s (%s), not the brain" % (BRAIN_UDP_PORT, pid, name)
+        doc["note"] = "another process holds the brain port; stop it or move the brain."
+    else:
+        doc["reason"] = "owner command line unreadable (elevate?)"
+        doc["note"] = "listener exists but identity is unknown, not negative."
+    try:
+        health = query_control("system.health") or {}
+        subs = health.get("subsystems")
+        if isinstance(subs, dict) and "brain" in subs:
+            doc["sender_side"] = {"brain": subs.get("brain"), "label": "sender-side only"}
+    except Exception:
+        pass
+    return doc
 
 
 def load_rules() -> Dict[str, Any]:

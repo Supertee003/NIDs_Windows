@@ -285,5 +285,74 @@ class TestAegisctlExitCodes(unittest.TestCase):
         self.assertEqual(rc, 2, f"bad command should exit 2, got {rc}")
 
 
+class TestAegisctlBridgeDiagnostic(unittest.TestCase):
+    """`aegisctl bridge` answers RB-017 step 3 honestly (EVT-154).
+
+    The old stub always reported bridge_diagnostic_not_connected. The new
+    command synthesizes host-local truth (UDP :9999 listener owner).
+    Live-shape test is state-tolerant: it pins the document contract,
+    not whether the brain happens to be up right now.
+    """
+
+    def test_bridge_json_is_a_shaped_document(self):
+        rc, stdout, _ = _run_aegisctl("bridge", "--json")
+        self.assertIn(rc, (0, 1, 2), f"bridge exit must be 0/1/2, got {rc}")
+        try:
+            doc = __import__("json").loads(stdout)
+        except Exception as exc:
+            self.fail(f"bridge --json must parse: {exc}\n{stdout[:300]}")
+        for key in ("command", "port", "available", "listener",
+                    "owner_is_brain", "secret_posture", "note"):
+            self.assertIn(key, doc, f"bridge doc missing {key}")
+        self.assertEqual(doc["command"], "bridge")
+        self.assertEqual(doc["port"], 9999)
+        if doc["listener"] is not None:
+            self.assertIn("pid", doc["listener"])
+            self.assertIsInstance(doc["owner_is_brain"], bool)
+            if doc["owner_is_brain"] is True:
+                self.assertEqual(rc, 0)
+                self.assertTrue(doc["available"])
+
+    def test_bridge_human_output_names_the_owner(self):
+        rc, stdout, _ = _run_aegisctl("bridge")
+        self.assertIn(rc, (0, 1, 2), f"bridge exit must be 0/1/2, got {rc}")
+        self.assertIn("9999", stdout)
+        self.assertIn("owner_is_brain", stdout)
+
+
+class TestBridgeDiagnosticLogic(unittest.TestCase):
+    """Deterministic doc-logic pins (mocked probes, no system touch)."""
+
+    def test_doc_branches(self):
+        from unittest.mock import patch
+        from tools.aegisctl.api import control_api
+        base = {"listener": None}
+        with patch.object(control_api, "udp_listener_owner", return_value=None), \
+             patch.object(control_api, "query_control", return_value={}):
+            doc = control_api.bridge_diagnostic()
+            self.assertFalse(doc["available"])
+            self.assertIsNone(doc["listener"])
+            self.assertIsNone(doc["owner_is_brain"])
+        with patch.object(control_api, "udp_listener_owner",
+                          return_value=(1234, "python", "C:\\x\\windows_brain.py")), \
+             patch.object(control_api, "query_control", return_value={}):
+            doc = control_api.bridge_diagnostic()
+            self.assertTrue(doc["available"])
+            self.assertTrue(doc["owner_is_brain"])
+            self.assertEqual(doc["listener"]["pid"], 1234)
+        with patch.object(control_api, "udp_listener_owner",
+                          return_value=(999, "other", "C:\\x\\other.exe")), \
+             patch.object(control_api, "query_control", return_value={}):
+            doc = control_api.bridge_diagnostic()
+            self.assertFalse(doc["owner_is_brain"])
+            self.assertFalse(doc["available"])
+        with patch.object(control_api, "udp_listener_owner",
+                          return_value=(999, "python", None)), \
+             patch.object(control_api, "query_control", return_value={}):
+            doc = control_api.bridge_diagnostic()
+            self.assertIsNone(doc["owner_is_brain"])
+            self.assertIn("unknown", (doc.get("reason", "") + doc.get("note", "")).lower())
+
+
 if __name__ == "__main__":
     unittest.main()
