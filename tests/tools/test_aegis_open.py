@@ -203,3 +203,12 @@ def test_tui_surface_is_mouth_identity():
     assert opener._DISPLAY_MATCH["tui"] == ("exe", "windows_sec_monitor")
     assert opener.TUI_EXE.name == "windows_sec_monitor.exe"
     assert opener.TUI_EXE.parent.name == "release"
+
+
+def test_pids_by_cmdline_never_matches_self():
+    # EVT-161: the query once matched the asker's own python command line
+    # (a probe running this module reported itself as the watch window).
+    # The pytest process command line always contains "pytest", so this
+    # pin is deterministic on any host with no other pytest running it.
+    import os
+    assert os.getpid() not in opener._pids_by_cmdline("pytest")

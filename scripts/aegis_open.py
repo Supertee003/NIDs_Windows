@@ -290,7 +290,12 @@ def start_display(name: str, open_browser: bool = True) -> dict:
             REPO_ROOT,
         ):
             return summarize("start display terminal", False, "spawn failed")
-        return summarize("start display terminal", True, "watch window open (Ctrl+C there stops it)")
+        # Verify like gui/tui do: an instant crash (flash-and-gone window)
+        # must read "exited immediately", never a false OK.
+        time.sleep(4)
+        if _pids_by_cmdline("dashboard --watch"):
+            return summarize("start display terminal", True, "watch window open (Ctrl+C there stops it)")
+        return summarize("start display terminal", False, "exited immediately")
     return summarize("start display %s" % name, False, "unknown surface")
 
 
@@ -486,6 +491,10 @@ def _pids_by_name(exe_name: str) -> list[int]:
 
 
 def _pids_by_cmdline(fragment: str) -> list[int]:
+    # A supervision query must never match the asker: a python caller whose
+    # own command line contains the fragment (e.g. a probe running this
+    # very module) would otherwise report itself as the supervised
+    # component -- false "already running" SKIP, or stopping itself.
     rc, out, _ = run(
         ["powershell", "-NoProfile", "-Command",
          "Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { $_.CommandLine -like '*%s*' } | Select-Object -ExpandProperty ProcessId" % fragment],
@@ -493,7 +502,10 @@ def _pids_by_cmdline(fragment: str) -> list[int]:
     )
     if rc != 0:
         return []
-    return [int(line.strip()) for line in out.splitlines() if line.strip().isdigit()]
+    me = os.getpid()
+    return [pid for pid in
+            (int(line.strip()) for line in out.splitlines() if line.strip().isdigit())
+            if pid != me]
 
 
 def _pids_on_tcp_port(port: int) -> list[int]:

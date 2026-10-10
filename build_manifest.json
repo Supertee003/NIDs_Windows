@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "8e6d2ca",
+  "source_commit": "11b9453",
   "build_date": "2026-10-08T16:31:09.245790+00:00",
   "build_host": "windows",
   "platform": {
@@ -498,8 +498,8 @@
     },
     {
       "path": "brain/windows_brain.py",
-      "size": 45479,
-      "sha256": "bd018355d90738a3de04b3413dfcc1a104789fa77fd8a016d6ebfe6138170891",
+      "size": 45726,
+      "sha256": "2a2deb71b99c81c8048d388606ea7471a76b966f8a9dd3a9fbe2f1eeeba487c9",
       "language": "python/cython"
     },
     {
@@ -516,8 +516,8 @@
     },
     {
       "path": "bridge/aegis_adapter.cpp",
-      "size": 16234,
-      "sha256": "47bcd040d21fca97c5a1f825c6a0af44090b04b86058a54f204f8f9e48c9f63a",
+      "size": 16571,
+      "sha256": "be4195b5413e1ce3ae23f7fa93577e8c1654b5a9073dd6bd9c57ecd1b5feb130",
       "language": "c/c++"
     },
     {
@@ -540,8 +540,8 @@
     },
     {
       "path": "bridge/aegis_bridge_main.cpp",
-      "size": 15880,
-      "sha256": "74714e6b4f63feda5e800d5115227bc818d1bfd075d655e798aaa073ab94abf7",
+      "size": 15904,
+      "sha256": "03c57edfad3e74bc85563b678e0871b930a3019732235286e6b344d3341fea20",
       "language": "c/c++"
     },
     {
@@ -570,8 +570,8 @@
     },
     {
       "path": "bridge/aegis_packet_parser.hpp",
-      "size": 15287,
-      "sha256": "03944a223a9b92b1886124f9528fdc303bd6e023965a442a7b4e18abe3c604da",
+      "size": 15311,
+      "sha256": "494a4405e8226377369fbd7ee36046b087902a5ad33d792ebd7942e83ac71725",
       "language": "c/c++"
     },
     {
@@ -1015,7 +1015,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18563,
-      "sha256": "5775737dc1273c2d44d096ad827d8a02e317dbcf0b6290156c7b491a42279b46",
+      "sha256": "d51561dc2053784f8003a9d4d5e1a2bf974d50b346f3429980c78ef1e6745a56",
       "language": "json"
     },
     {
@@ -1590,8 +1590,8 @@
     },
     {
       "path": "src/all_tests.zig",
-      "size": 10370,
-      "sha256": "048977c9b2ff0e1299b0b86955f82e2b95faa09a641f1fdc2b0160a3966013ca",
+      "size": 10564,
+      "sha256": "e4931dde9fa3ae2cfb880a45df4513c001af1ca0dfbfcc4fa87534251de4203d",
       "language": "zig"
     },
     {
@@ -1794,8 +1794,8 @@
     },
     {
       "path": "src/core/bridge_init.zig",
-      "size": 24625,
-      "sha256": "5741f1908cd842b06676d7d738e4587ecbaa24d317d369a902767f69b8f5d89e",
+      "size": 26751,
+      "sha256": "5d940aa28aefeb2fb0c0f5e79c94787571747d87aa1cac33d0c78dce25aca2f5",
       "language": "zig"
     },
     {
@@ -3324,8 +3324,8 @@
     },
     {
       "path": "tools/aegisctl/api/control_api.py",
-      "size": 57954,
-      "sha256": "43cc2bf68ca70e6a06f80194be896fed85b04d5db15e25c165fcc38f615406bd",
+      "size": 59472,
+      "sha256": "ab5524f9bca283d8921b9db5d23932233f56ad7e4770964776b2ff3247bcc605",
       "language": "python/cython"
     },
     {
