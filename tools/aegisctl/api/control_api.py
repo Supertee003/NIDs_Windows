@@ -669,6 +669,31 @@ def query_control(command: str, payload: Optional[Dict[str, Any]] = None) -> Opt
     return _query_daemon_retry(command, payload=payload)
 
 
+def rule_id_to_u32(value: str) -> int:
+    """Rule id string to the daemon's numeric rule space.
+
+    Accepts a bare integer ("4009890390") or a catalog id ("R9059",
+    FNV-1a over the exact string bytes -- the same algorithm as
+    rule_loader.zig hashRuleId, cross-pinned with Go and the contract
+    suite). Raises ValueError on empty/unparseable input.
+    """
+    text = (value or "").strip()
+    if not text:
+        raise ValueError("empty rule id")
+    try:
+        number = int(text, 0)
+        if number < 0:
+            raise ValueError("negative rule id")
+        return number
+    except ValueError:
+        pass
+    h = 0x811C9DC5
+    for byte in text.encode("utf-8"):
+        h ^= byte
+        h = (h * 0x01000193) & 0xFFFFFFFF
+    return h
+
+
 PIPE_LATENCY_ROUNDS_DEFAULT = 20
 PIPE_LATENCY_ROUNDS_MAX = 100
 

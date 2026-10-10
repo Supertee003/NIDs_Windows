@@ -164,6 +164,25 @@ def test_rule_id_hash_is_fnv1a_in_both_compiled_tiers():
         assert "0x01000193" in source, f"{path.name} must use the FNV-1a prime"
 
 
+def test_cli_rule_hash_joins_the_shared_table():
+    # EVT-176: `forensic search --field rule` hashes catalog ids
+    # client-side, so the CLI joins the Go/Zig/Python agreement as the
+    # fourth implementation. Bare integers pass through untouched.
+    from tools.aegisctl.api.control_api import rule_id_to_u32
+    golden = {rule["rule_id"]: _fnv1a32(rule["rule_id"]) for rule in _canonical_rules()}
+    for rid, want in golden.items():
+        assert rule_id_to_u32(rid) == want, rid
+    assert rule_id_to_u32("R9059") == 4009890390
+    assert rule_id_to_u32("4009890390") == 4009890390
+    for bad in ("", "   "):
+        try:
+            rule_id_to_u32(bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("empty rule id must raise, not hash")
+
+
 # ── AC4: the canonical file carries both fields for every rule ─────────────
 
 def test_every_canonical_rule_declares_both_pattern_fields():

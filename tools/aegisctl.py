@@ -56,6 +56,7 @@ try:
         diagnose_endpoint_ownership,
         bridge_diagnostic,
         pipe_latency_probe,
+        rule_id_to_u32,
     )
     from aegisctl.components import components_status
     CONTROL_API_AVAILABLE = True
@@ -80,6 +81,7 @@ except ImportError as e:
             diagnose_endpoint_ownership,
             bridge_diagnostic,
             pipe_latency_probe,
+            rule_id_to_u32,
         )
         from aegisctl.components import components_status
         CONTROL_API_AVAILABLE = True
@@ -905,6 +907,16 @@ def cmd_forensic(args) -> int:
                 print(json.dumps({"available": False, "command": "forensics.search",
                                   "reason": "source_must_be_a_numeric_ordinal",
                                   "hint": "use --field payload_prefix for text"}, sort_keys=True),
+                      file=sys.stderr)
+                return 2
+        elif field == "rule":
+            # Catalog id ("R9059") or bare integer: hashed client-side to
+            # the daemon's u32 rule space (FNV-1a, same as the engine).
+            try:
+                payload = {"rule": rule_id_to_u32(value)}
+            except ValueError:
+                print(json.dumps({"available": False, "command": "forensics.search",
+                                  "reason": "rule_must_be_an_id_or_integer"}, sort_keys=True),
                       file=sys.stderr)
                 return 2
         elif field == "payload_prefix":
@@ -1944,9 +1956,9 @@ def main() -> int:
     forensic = sub.add_parser("forensic", help="Inspect forensic records")
     forensic_sub = forensic.add_subparsers(dest="forensic_command")
     fshow = forensic_sub.add_parser("show"); fshow.add_argument("--id", required=True, type=int)
-    fsearch = forensic_sub.add_parser("search", help="Filter ring records (source ordinal or payload-bytes prefix)");
-    fsearch.add_argument("--field", required=True, help="source = numeric origin ordinal (9 npcap, 10 host); payload_prefix = raw record-bytes prefix, not text search");
-    fsearch.add_argument("--value", required=True, help="Ordinal for source; byte prefix for payload_prefix")
+    fsearch = forensic_sub.add_parser("search", help="Filter ring records (source ordinal, rule id, or payload-bytes prefix)");
+    fsearch.add_argument("--field", required=True, help="source = numeric origin ordinal (9 npcap, 10 host); rule = catalog id (R9059) or integer, hashed client-side; payload_prefix = raw record-bytes prefix, not text search");
+    fsearch.add_argument("--value", required=True, help="Ordinal for source; id for rule; byte prefix for payload_prefix")
     forensic_sub.add_parser("verify", help="Verify forensic hash chain")
     fexport = forensic_sub.add_parser("export"); fexport.add_argument("--output", required=True)
     forensic.set_defaults(forensic_command="list", func=cmd_forensic)

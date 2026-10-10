@@ -1016,6 +1016,16 @@ const handlers = struct {
                     origin.ordinal != @as(u8, @intCast(source))) continue;
             }
 
+            // EVT-176 / GAP-019: rule-id filter. Ring responses carry no
+            // payload text, so content search cannot find one marked event
+            // on a busy host; the u32 rule hash (FNV-1a of the rule string,
+            // cross-pinned Zig/Go/Python) gives exact attribution instead.
+            const requested_rule = payloadU64(payload, "rule");
+            if (requested_rule) |rule| {
+                if (rule > std.math.maxInt(u32) or
+                    header.rule_id != @as(u32, @intCast(rule))) continue;
+            }
+
             const payload_start = forensic_pipeline.HEADER_BYTES;
             const payload_end = payload_start + @as(usize, header.payload_len);
             if (payload_end > record.len) continue;
@@ -2560,4 +2570,35 @@ test "GAP-015 forensics.list after-cursor windows under ring wrap" {
     defer std.testing.allocator.free(out_all);
     try std.testing.expect(std.mem.indexOf(u8, out_all, "\"record_seq\":3") != null);
     try std.testing.expect(std.mem.indexOf(u8, out_all, "\"record_seq\":4") != null);
+}
+
+test "EVT-176 forensics.list rule filter attributes exact rule ids" {
+    // GAP-019: ring responses carry no payload text, so a marked event
+    // cannot be found by content on a busy host. The u32 rule hash gives
+    // exact attribution: three records with rule ids [111, 222, 111], a
+    // {"rule":111} query must return seqs 0 and 2 but never 1.
+    const event_mod = @import("../contract/event.zig");
+    const state_mod = @import("../pipeline/runtime_state.zig");
+    var ring = try forensic_pipeline.ForensicRing.initMemory(std.testing.allocator, 4 * forensic_pipeline.RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+    const rule_ids = [_]u32{ 111, 222, 111 };
+    for (rule_ids, 0..) |rid, i| {
+        var ev = event_mod.IpcEvent.init(.signature_match);
+        ev.event_id = 600 + i;
+        ev.timestamp_ns = 6000 + i;
+        ev.rule_id = rid;
+        _ = ring.append(&ev, "", 900 + i, 0, 0, 2);
+    }
+    const prev = state_mod.g_forensic_ring;
+    state_mod.g_forensic_ring = &ring;
+    defer state_mod.g_forensic_ring = prev;
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 36, .caller_role = .read, .caller_pid = 0 };
+    const q = std.json.parseFromSlice(std.json.Value, std.testing.allocator, "{\"rule\":111,\"limit\":100}", .{}) catch unreachable;
+    defer q.deinit();
+    const out = handlers.forensicsList(std.testing.allocator, q.value, &ctx).?;
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"record_seq\":0") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"record_seq\":2") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"record_seq\":1") == null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"records_returned\":2") != null);
 }

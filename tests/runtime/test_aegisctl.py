@@ -491,6 +491,19 @@ class TestForensicSearchContracts(unittest.TestCase):
         self.assertEqual(rc, 2)
         self.assertIn("source_or_payload_prefix", stdout + stderr)
 
+    def test_rule_field_accepts_catalog_id_shape(self):
+        # Live shape only (the daemon filter it addresses deploys
+        # separately): catalog id accepted, JSON parses, no traceback.
+        import json as _json
+        rc, stdout, stderr = _run_aegisctl(
+            "forensic", "search", "--field", "rule", "--value", "R9059",
+            timeout=90)
+        combined = stdout + stderr
+        self.assertNotIn("Traceback", combined)
+        self.assertEqual(rc, 0, f"rule search must not fail, got {rc}")
+        doc = _json.loads(stdout)
+        self.assertIn("records_matched", doc)
+
 
 class TestRulesWriteRefusedGracefully(unittest.TestCase):
     """EVT-174: unwritable Rules.json must read as a message, not a traceback."""

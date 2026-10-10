@@ -7,7 +7,8 @@ path: bridge → core → brain → aggregator → dashboard.
 
 Two transport modes:
   --pipe   : Send events via the named pipe `\\.\pipe\aegis_sensor_pipe` (the
-             sensor pipe that nids_capture.zig listens on).
+             sensor pipe that nids_capture.zig listens on). Needs
+             elevation: the pipe admits SYSTEM/Administrators only.
   --udp    : Send events via UDP to 127.0.0.1:9999 (the brain's alert
              port — used to test brain IPS directly).
   --tcp    : Send events via TCP to 127.0.0.1:12345 (the core's TCP

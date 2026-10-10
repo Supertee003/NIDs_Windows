@@ -98,6 +98,10 @@ extern "kernel32" fn ReadFile(
 ) win.BOOL;
 
 // ====== BP19: Admin-Only Pipe ACL via SDDL ======
+// EVT-176 / GAP-018: Authenticated Users was listed here, letting any
+// local process inject detection input. Removed: sensor writes now need
+// SYSTEM or Administrators (gate-E canary flows already run elevated;
+// non-admin writers get an access-denied open, never silent loss).
 extern "advapi32" fn ConvertStringSecurityDescriptorToSecurityDescriptorA(
     StringSecurityDescriptor: [*:0]const u8,
     StringSDRevision: u32,
@@ -107,7 +111,7 @@ extern "advapi32" fn ConvertStringSecurityDescriptorToSecurityDescriptorA(
 
 extern "kernel32" fn LocalFree(hMem: ?*anyopaque) ?*anyopaque;
 
-const SDDL_ADMIN_ONLY = "D:(A;;GA;;;BA)(A;;GA;;;AU)";
+const SDDL_ADMIN_ONLY = "D:(A;;GA;;;SY)(A;;GA;;;BA)";
 const SDDL_REVISION: u32 = 1;
 
 const AegisSecurityAttributes = extern struct {

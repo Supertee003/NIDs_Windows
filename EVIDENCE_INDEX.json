@@ -1,5 +1,5 @@
 {
-  "head_sha": "9c667c91919c18886d43b945587fb892bb2d707a",
+  "head_sha": "865c515bd68969a0b33394504dfff050358bf59e",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4564,12 +4564,41 @@
       ],
       "result": "PASS",
       "finding": "A demo that says what it cannot prove is worth more than a proof that falls apart on stage. The two gaps it exposed are filed with owners."
+    },
+    {
+      "id": "EVT-176",
+      "head_sha": "865c515",
+      "timestamp": "2026-10-11",
+      "title": "Close the pipe gaps in code: tightened SDDL, rule-id filter, search honesty",
+      "level": "E2",
+      "component": "zig_core+tooling",
+      "description": "Both scan findings implemented. GAP-018: sensor-pipe SDDL tightened to SY+BA (one-line string + intent comment); verified no pytest writes the pipe, so no skip guards needed; gate-E/event_gen now honestly require elevation (docnoted). GAP-019: rule-id filter on forensics.list mirroring the source branch (u32 compare, overflow-guarded) + Zig unit test on a synthetic ring ([111,222,111] queried for 111 returns seqs 0+2, never 1; execution proven by sabotage-then-green because zig 0.13 has no test filter); CLI hashes catalog ids client-side (FNV-1a, fourth implementation in the cross-pin family) with --field rule; search help documents real field semantics. Same session: forensic search text-ordinal crash fixed to clean exit-2 guidance. Deploy (rebuild + admin restart) stays operator-side; gaps close on live proof (non-admin pipe denial + marked canary found by rule).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/core/nids_capture.zig",
+        "src/control/handler_registry.zig",
+        "tools/aegisctl/api/control_api.py",
+        "tools/aegisctl.py",
+        "scripts/aegis_event_gen.py",
+        "docs/runbooks/RB-019-attack-visibility-demo.md",
+        "tests/security/test_detection_contract_pin.py",
+        "tests/runtime/test_aegisctl.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "zig build + zig build test green (sabotage run proved the new test executes)",
+        "CLI hash joins golden table (4-way agreement incl census)",
+        "search misuse pins (ordinal guidance, rule shape, unknown field)",
+        "full suite: 918 passed + 4 release green post-refresh"
+      ],
+      "result": "PASS",
+      "finding": "Code-complete on both gaps; only the privileged deploy + live proof remain. The SDDL one-liner is the highest-leverage line of the session."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
-    "E2_count": 108,
+    "E2_count": 109,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 53,

@@ -11,6 +11,8 @@ hidden (GAP-019).
 ## Prerequisites
 
 - System running (service + nose + brain). Operator shell in repo root.
+- Elevation: firing writes the sensor pipe (SYSTEM/Administrators
+  only since EVT-176), so run elevated; reads need nothing.
 - Accept one marked record in the evidence log + ring (clearly labeled
   `AEGIS_FIXTURE`, never confusable with real incidents; retention
   overwrites it in time).
