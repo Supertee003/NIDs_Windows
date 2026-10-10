@@ -23,6 +23,7 @@ from typing import Any, Iterator
 from flask import Flask, Response, jsonify, render_template_string
 
 from ..api.control_api import get_health_payload, load_rules, query_control
+from ..components import components_status
 from ..contracts import incident_from_record, project_operator_state
 
 app = Flask(__name__)
@@ -241,6 +242,11 @@ def _build_snapshot() -> dict[str, Any]:
             "source": "control_daemon_health",
         },
         "rules": rules.get("nids_rules", []) if isinstance(rules, dict) else [],
+        # EVT-162: the five components as concepts (fast path: health-derived
+        # + path checks, so the cached snapshot stays cheap; deep probes live
+        # in `aegisctl components`). Built inside the snapshot, so the test
+        # hook _reset_snapshot_cache covers it with no new hook.
+        "components": components_status(health),
     }
 
 
@@ -408,6 +414,8 @@ footer{color:var(--muted);font-size:11.5px;text-align:center;margin-top:26px}
       <div class="panel" id="system">
         <h2>Runtime &amp; Subsystems</h2>
         <div id="sysBody"></div>
+        <h2 style="margin-top:14px">AEGIS Components</h2>
+        <div id="compBody"></div>
         <h2 style="margin-top:14px">Workers &amp; Data Plane</h2>
         <div id="workerBody" class="kv"></div>
         <h2 style="margin-top:14px">Forensic Integrity</h2>
@@ -590,10 +598,17 @@ function renderSystem(){
   ]);
 }
 
+function renderComponents(){
+  const rows=snap.components||[];
+  if(!rows.length){$('compBody').innerHTML='<div class="feed-empty">No component data.</div>';return;}
+  const pill=s=>s==='running'?'ok':(s==='stopped'?'bad':(s==='degraded'?'warn':'mut'));
+  $('compBody').innerHTML='<div>'+rows.map(c=>`<div class="subrow"><span><b>${esc(c.name)}</b> <span class="muted small">${esc(c.language)} · v${esc(c.version)}${c.required?'':' · optional'}</span><br><span class="muted small">${esc(c.role)}</span></span><span><span class="pill ${pill(c.status)}">${esc((c.status||'unknown').toUpperCase())}</span> <span class="muted small">${esc(c.detail||'')}</span></span></div>`).join('')+'</div>';
+}
+
 function render(){
   if(!snap)return;
   mode='online';
-  renderHeader();renderBanner();renderOverview();renderFeed();renderRules();renderEnforcement();renderSystem();
+  renderHeader();renderBanner();renderOverview();renderFeed();renderRules();renderEnforcement();renderSystem();renderComponents();
 }
 
 async function refresh(){

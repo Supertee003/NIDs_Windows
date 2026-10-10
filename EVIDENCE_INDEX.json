@@ -1,5 +1,5 @@
 {
-  "head_sha": "dfd5d1abe4d1d93afc7f9f98275c3a15009cdaa1",
+  "head_sha": "6b6d4f653c4fb1e4775e0f98742eb537e255f538",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -3875,7 +3875,8 @@
         "pinned subset: 45 passed (opener + web + defcon + contracts + portable)",
         "full suite brain tests tools: 847 passed, 9 skipped, 27 subtests (4 release tests green after --refresh-digests)",
         "rehearsal: full no-arg run_aegis.bat 25.6s exit 0 (open all-skip + 4 verify OK incl nose 2.64M frames; displays web-skip + gui/tui/terminal OK); round 2 all-skip exit 0 with corrected exit-2 note; displays stopped clean after",
-        "post-elevated-stop re-serve: fresh web pid 10308 on :5000, index 0.13s, snapshot cold 9.13s -> warm 0.02s same-doc (cache proven on the real port)"
+        "post-elevated-stop re-serve: fresh web pid 10308 on :5000, index 0.13s, snapshot cold 9.13s -> warm 0.02s same-doc (cache proven on the real port)",
+        "operator acceptance full-system run: bat open all-skip + 4 OK, 4 displays OK (fresh web pid 13440), bridge posture on, detection-only, web index 0.05s, keeper Last Result 0, stop clean all 4 incl terminal pid 11516"
       ],
       "result": "PASS",
       "finding": "The launcher converges fast when everything is already up (433ms skip instead of a 95s hang), never duplicates displays, the GUI cannot freeze or flood the single control pipe, and the bat is parse-safe under real cmd."
@@ -4030,7 +4031,8 @@
         "zig test bridge_init: 4/4 pass incl new join test",
         "zig build exit 0",
         "operator deploy: Copy-Item landed (hashes match), sc start hung so Start-Service used; new daemon pid 15240, uptime fresh, 4 OK rows",
-        "nose frames_read reset 3.1M -> 851: correct per-daemon-lifetime semantics (nose process itself never stopped)"
+        "nose frames_read reset 3.1M -> 851: correct per-daemon-lifetime semantics (nose process itself never stopped)",
+        "operator post-deploy matrix green: status 4 OK, posture on, detection-only, forensic verified:true (62821 records), keeper Last Result 0, displays cycle incl terminal stop pid 6060 clean, bridge 36/36 + adapter OK"
       ],
       "result": "PASS",
       "finding": "Shutdown owns its threads again. The previously-dead HMAC tests now execute every suite. Deployed by the operator: hash match + new pid + green status. Deploy exposed GAP-017 (SCM stop never completes)."
@@ -4157,6 +4159,34 @@
         "sc stop reaching STOPPED, or documented decision to standardize on stop --all"
       ],
       "evidence": "Deploy transcript 2026-10-10: repeated sc stop without STOPPED; stop --all clean."
+    },
+    {
+      "id": "EVT-162",
+      "head_sha": "6b6d4f6",
+      "timestamp": "2026-10-10",
+      "title": "Five components render as concepts: one registry, CLI + web + watch",
+      "level": "E5",
+      "component": "tooling+web",
+      "description": "Operator complaint: core/brain/nose/mouth/bridge existed in code but appeared nowhere as concepts of their own. New tools/aegisctl/components.py is the single registry (name, language, role, owns, version, entrypoint, required) rendered by three surfaces: `aegisctl components [--json]` (deep probes), the web console 'AEGIS Components' cards (fast path inside the cached snapshot: health-derived + path checks, snapshot cold cost unchanged at ~4s), and the terminal watch COMPONENTS section. Statuses never claim running without evidence (unknown stays unknown). Versions are constants cross-pinned to `aegisctl version`. Native GUI/mouth rendering deferred (needs Rust struct + rebuild). Suite-found bonus fix in the same run: the elevated brain (post-secret) hid its command line, blinding the import-hygiene skip guard into a false bind failure -- the guard now corroborates via a schema-correct HEALTH reply from the listener pid (same doctrine as EVT-157).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "tools/aegisctl/components.py",
+        "tools/aegisctl.py",
+        "tools/aegisctl/web_dashboard/app.py",
+        "tests/tools/test_components.py",
+        "tests/tools/test_web_dashboard.py",
+        "tests/runtime/test_aegisctl.py",
+        "tests/brain/test_import_hygiene.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "new test_components.py: 5 pass (registry, version cross-pin, no-false-running, no-spawn fast path, mocked deep)",
+        "CLI components x2 + web x2 pass; live CLI shows 4 running + mouth stopped, watch COMPONENTS renders",
+        "hygiene guard fixed: 1 passed, 1 skipped (health-corroborated)",
+        "full suite brain tests tools: 872 passed + 4 release green post-refresh (5th failure was the hygiene blind spot above)"
+      ],
+      "result": "PASS",
+      "finding": "Each aegis now has a visible identity everywhere it matters. The fast/deep split keeps the snapshot cheap while the one-shot CLI tells the full truth."
     }
   ],
   "evidence_level_summary": {
@@ -4165,7 +4195,7 @@
     "E2_count": 107,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 40,
+    "E5_count": 41,
     "E6_count": 0,
     "E7_count": 0
   }

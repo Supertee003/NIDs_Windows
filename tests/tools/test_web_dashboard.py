@@ -82,3 +82,24 @@ def test_stream_emits_connected_frame_first():
     assert first.startswith(": connected")
     assert "retry:" in first
     stream.close()
+
+
+def test_snapshot_carries_five_components():
+    # EVT-162: every snapshot carries the concept registry (fast path:
+    # health-derived + path checks, so no new mocks needed here).
+    app_module._reset_snapshot_cache()  # live TTL cache; tests want fresh
+    comps = app_module.snapshot()["components"]
+    assert [c["id"] for c in comps] == ["core", "brain", "nose", "mouth", "bridge"]
+    for comp in comps:
+        for key in ("name", "language", "role", "version", "status"):
+            assert comp[key], (comp["id"], key)
+    assert [c["name"] for c in comps] == [
+        "AEGIS Core", "AEGIS Brain", "AEGIS Nose", "AEGIS Mouth", "AEGIS Bridge"]
+
+
+def test_index_page_has_components_section():
+    # The section exists in the served template (JS renders the rows).
+    client = app_module.app.test_client()
+    html = client.get("/").get_data(as_text=True)
+    assert "AEGIS Components" in html
+    assert "compBody" in html

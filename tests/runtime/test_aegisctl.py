@@ -394,5 +394,32 @@ class TestBridgeDiagnosticLogic(unittest.TestCase):
             self.assertEqual(doc["secret_posture"], "off")
 
 
+class TestAegisctlComponents(unittest.TestCase):
+    """`aegisctl components` shows the five as concepts (EVT-162)."""
+
+    def test_components_json_shape(self):
+        import json as _json
+        rc, stdout, stderr = _run_aegisctl("components", "--json", timeout=60)
+        self.assertEqual(rc, 0, f"components --json exit 0, got {rc}; {stderr[-300:]}")
+        doc = _json.loads(stdout)
+        self.assertEqual(doc["command"], "components")
+        rows = {r["id"]: r for r in doc["components"]}
+        self.assertEqual(sorted(rows), ["brain", "bridge", "core", "mouth", "nose"])
+        for rid, row in rows.items():
+            for key in ("name", "language", "role", "version",
+                        "entrypoint", "status", "detail"):
+                self.assertIn(key, row, (rid, key))
+            self.assertIn(row["status"], ("running", "stopped", "degraded", "unknown"))
+
+    def test_components_human_names_all_five(self):
+        rc, stdout, stderr = _run_aegisctl("components", timeout=60)
+        self.assertEqual(rc, 0, f"components exit 0, got {rc}; {stderr[-300:]}")
+        for name in ("AEGIS Core", "AEGIS Brain", "AEGIS Nose",
+                     "AEGIS Mouth", "AEGIS Bridge"):
+            self.assertIn(name, stdout)
+        for lang in ("Zig", "Python", "Go", "Rust", "C++"):
+            self.assertIn(lang, stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

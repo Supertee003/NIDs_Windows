@@ -30,6 +30,10 @@ def _brain_port_holder_cmdline() -> str:
 
     A legitimately running brain (RB-017 opened system) holds this port
     by design; that is operator state, not an import side effect.
+    EVT-162: an ELEVATED brain (post-secret provisioning from an admin
+    shell) hides its command line from this process, so an unreadable
+    owner is corroborated with a schema-correct HEALTH reply instead of
+    being mistaken for a rogue squatter.
     """
     try:
         out = subprocess.run(
@@ -51,7 +55,28 @@ def _brain_port_holder_cmdline() -> str:
             continue
         if "windows_brain" in cmd:
             return cmd.strip()
+    if pids and _health_answers_from(pids[0]):
+        return "brain (health-corroborated, pid %d, cmdline unreadable)" % pids[0]
     return ""
+
+
+def _health_answers_from(pid: int) -> bool:
+    """True when UDP :9999 answers a HEALTH probe from the given pid.
+
+    Owner check first (cheap, no packets): the reply must come from the
+    listener pid itself, and carry the brain schema marker.
+    """
+    try:
+        import json
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.settimeout(2.0)
+            s.sendto(b'{"op":"HEALTH"}', ("127.0.0.1", 9999))
+            data, _ = s.recvfrom(65535)
+        doc = json.loads(data.decode("utf-8", errors="ignore"))
+        return isinstance(doc, dict) and doc.get("component") == "brain" \
+            and doc.get("pid") == pid
+    except Exception:
+        return False
 
 
 def test_import_produces_no_banner_or_listen_claim():

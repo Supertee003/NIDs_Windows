@@ -56,6 +56,7 @@ try:
         diagnose_endpoint_ownership,
         bridge_diagnostic,
     )
+    from aegisctl.components import components_status
     CONTROL_API_AVAILABLE = True
 except ImportError as e:
     # Fallback: try adding api to path
@@ -78,6 +79,7 @@ except ImportError as e:
             diagnose_endpoint_ownership,
             bridge_diagnostic,
         )
+        from aegisctl.components import components_status
         CONTROL_API_AVAILABLE = True
     except ImportError:
         CONTROL_API_AVAILABLE = False
@@ -1581,6 +1583,16 @@ def _render_dashboard_once() -> int:
         gate_text = "CLOSED - Ready for operations" if overall_gate else "OPEN - Issues must be resolved"
         gate_color = C_GREEN if overall_gate else C_RED
         print(f"  READY GATE: {gate_color}{C_BOLD}{gate_text}{C_RESET}")
+        # EVT-162: the five components as concepts of their own. Fast path
+        # only (health-derived + path checks): the watch polls every few
+        # seconds, so no process probes here -- see `aegisctl components`.
+        print(f"  COMPONENTS:")
+        try:
+            comp_rows = components_status(health if isinstance(health, dict) else {})
+        except Exception:
+            comp_rows = []
+        for row in comp_rows:
+            print(f"    [{str(row.get('status', '?')).upper():<8}] {row.get('name', '?')} ({row.get('language', '?')}) v{row.get('version', '?')}")
         print(f"  {footer}")
     else:
         print("\nControl API not available")
@@ -1651,6 +1663,43 @@ def cmd_bridge(args) -> int:
     if doc.get("available") is False and doc.get("listener") is None:
         return 1
     return 2
+
+
+def cmd_components(args) -> int:
+    """Show the five AEGIS runtime components as concepts of their own.
+
+    EVT-162: name, language, role, version, entrypoint, and best-available
+    live status per component. Thin: components_status() owns all logic.
+    Deep probes (process checks) run here -- the call is one-shot, never
+    a poll loop -- while the web/watch surfaces use the fast path.
+    """
+    if not CONTROL_API_AVAILABLE:
+        return _unavailable("components", "control_api_unavailable")
+    try:
+        health = get_health_payload()
+    except Exception:
+        health = {}
+    try:
+        rows = components_status(health if isinstance(health, dict) else {}, deep=True)
+    except Exception as exc:
+        print(json.dumps({"available": False, "command": "components",
+                          "reason": "components_probe_failed",
+                          "error": str(exc)[:160]}, sort_keys=True))
+        return 3
+    if bool(getattr(args, "json", False)):
+        print(json.dumps({"command": "components", "components": rows}, sort_keys=True))
+        return 0
+    print("AEGIS runtime components (concept + best-available status)")
+    for row in rows:
+        mark = {"running": "OK  ", "stopped": "DOWN ", "degraded": "DEGR ",
+                "unknown": "????"}.get(row["status"], "????")
+        req = "" if row["required"] else " (optional)"
+        print("[%s] %s (%s) v%s - %s%s" % (
+            mark, row["name"], row["language"], row["version"], row["status"], req))
+        print("       role: %s" % row["role"])
+        if row["detail"]:
+            print("       %s" % row["detail"])
+    return 0
 
 
 def cmd_iptest(args) -> int:
@@ -1852,6 +1901,9 @@ def main() -> int:
     _bridge_p = sub.add_parser("bridge", help="Bridge IPC status")
     _bridge_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
     _bridge_p.set_defaults(func=cmd_bridge)
+    _comp_p = sub.add_parser("components", help="The five runtime components as concepts")
+    _comp_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    _comp_p.set_defaults(func=cmd_components)
     sub.add_parser("iptest", help="IPC throughput test").set_defaults(func=cmd_iptest)
     sub.add_parser("authority", help="Verify authority invariant").set_defaults(func=cmd_authority)
     sub.add_parser("help", help="Show help").set_defaults(func=cmd_help)
