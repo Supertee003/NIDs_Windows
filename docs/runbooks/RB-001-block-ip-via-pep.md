@@ -1,61 +1,71 @@
 # RB-001: Block IP via PEP
 
 ## Objective
-Manually block a source IP address using the Policy Enforcement Point (PEP). This runbook covers the incident response procedure for blocking malicious traffic.
+
+Respond to a confirmed-malicious source IP through the PEP-gated block
+flow. On this production host the gate is closed, so a block is
+REFUSED by design -- this runbook proves the refusal path too. Real
+blocking happens only on the lab cutover (RB-012, WARDEN_CUTOVER_SPEC).
 
 ## Prerequisites
-- AEGIS NIDS running with PEP initialized
-- Operator access to the Mouth (DEFCON TUI) or API
-- Confirmed malicious source IP from detection or threat intel
+
+- System running; operator shell in `D:\NIDs_Windows`.
+- Confirmed-malicious IP (detection evidence, not a hunch).
 
 ## Steps
 
-1. **Verify the threat**
-   - Check detection evidence in forensic log:
-     ```
-     query ForensicLog by src_ip=<malicious_ip>
-     ```
-   - Confirm verdict is "malicious" with severity >= "high"
+1. **Verify the threat (read-only)**
+   ```bat
+   python tools\aegisctl.py events tail --count 20
+   python tools\aegisctl.py forensic search --field src_ip --value <ip>
+   ```
+   - Proceed only on a matching record with severity high/critical.
 
-2. **Issue block command via PEP**
-   - Through Mouth TUI: select "Manual Block IP" action
-   - Through API: call `pep_enforcement.block_ip(ip)`
-   - The PEP will:
-     - Validate the decision (event_id, source_ip non-zero)
-     - Execute the block action
-     - Return EnforcementResult with status=executed
+2. **Attempt the block (PEP-gated)**
+   ```bat
+   python tools\aegisctl.py block add --ip <ip> --reason "<why>"
+   ```
+   - Production (gate closed): expect a structured refusal, exit
+     nonzero, NO host effect. That refusal IS the correct outcome --
+     record it.
+   - Lab with an open gate: expect a validated receipt; without one,
+     treat any success claim as false.
 
-3. **Verify enforcement**
-   - Check PEP result: `status == .executed`, `blocked_ip == <malicious_ip>`
-   - Verify IP appears in blocked list: `wfp_ioctl.is_blocked(ip)`
+3. **Verify enforcement state (never trust the request alone)**
+   ```bat
+   python tools\aegisctl.py block list
+   python tools\aegisctl.py enforce status
+   ```
+   - A real block needs `BLOCKED_CONFIRMED` + receipt fields
+     (filter/request ids, provider). Anything less is PEP_UNVERIFIED.
+   - Do NOT use the retired `scripts/aegis_block.py` (direct UDP flow
+     bypasses the receipt postcondition -- quarantined).
 
-4. **Record in audit trail**
-   - Audit trail automatically records: action=manual_block_ip, operator_id=<you>, target=<ip>
-   - Verify audit record created: `audit_trail.getById(record_id)`
-
-5. **Monitor for effectiveness**
-   - Watch telemetry for blocked traffic attempts
-   - Check if source IP continues to attempt connections (should be dropped)
+4. **Monitor**
+   - `events tail` for continued attempts from the IP; closed gate =
+     detections only, no drops claimed.
 
 ## Verification
-- PEP returns `EnforcementResult{ status = .executed, blocked_ip = <ip> }`
-- Audit trail contains record with `action = .manual_block_ip`
-- Forensic log shows the block action was recorded
+
+- Refusal on prod: nonzero exit + reason naming the closed gate.
+- Lab success: `block list` shows the IP AND `enforce status` shows a
+  receipt-backed confirmation.
+- Forensic ring shows the attempt record either way.
 
 ## Rollback
-To unblock the IP:
-1. Issue unblock command: `pep_enforcement.unblock_ip(ip)`
-2. Verify `wfp_ioctl.is_blocked(ip) == false`
-3. Audit trail records the unblock action automatically
+
+```bat
+python tools\aegisctl.py block remove --ip <ip>
+python tools\aegisctl.py block list
+```
+Second command must no longer show the IP.
 
 ## Notes
-- Quarantine is implemented (two-person gate, WFP adapter, receipts —
-  EVT-112/113); the LAB PROOF is RB-013, not the implementation.
-- WFP provider reports READY with live filters on an open gate
-  (Phase-8 proof); tracking-only was the pre-enforcement posture.
-- Block action is recorded even if kernel enforcement is not active
+
+- WFP provider READY but gate closed is the steady state here.
+- Quarantine positive path is a lab proof: RB-013.
 
 ## References
-- G10: `core/pep_enforcement_proof.zig` - PEP enforcement proof
-- G14: `core/audit_trail_proof.zig` - Audit trail
-- G11: `core/forensic_replay_proof.zig` - Forensic query
+
+- RB-012 (lab block proof), RB-013 (quarantine), WARDEN_CUTOVER_SPEC.md
+- EVT-153 (gate closed on prod), EVT-112/113 (quarantine receipts)

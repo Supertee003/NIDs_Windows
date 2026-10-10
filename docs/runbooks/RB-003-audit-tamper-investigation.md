@@ -1,73 +1,63 @@
 # RB-003: Audit Trail Tamper Investigation
 
 ## Objective
-Investigate suspected tampering of the audit trail. This runbook covers detecting and responding to modifications of historical audit records using the hash chain verification.
+
+Respond to a suspected-tampered record store. Do not fix anything by
+hand -- the chain is tamper-evident by design, and hand edits destroy
+the evidence you are investigating.
 
 ## Prerequisites
-- AEGIS NIDS running with audit trail enabled
-- Suspicion of tampering (e.g., unexpected behavior, missing records)
-- Operator access to audit trail API
+
+- A reason for suspicion (verify failure, gap, anomaly). No elevation.
 
 ## Steps
 
-1. **Run hash chain verification**
+1. **Run hash-chain verification**
+   ```bat
+   python tools\aegisctl.py forensic verify
    ```
-   audit_trail.verifyChain()
+   - `verified: true` ends the investigation (record the all-clear).
+   - Anything else (or a timeout under load -- re-run quiet first,
+     see EVT-148) starts it.
+
+2. **Export the current state BEFORE touching anything**
+   ```bat
+   python tools\aegisctl.py forensic export
    ```
-   - Returns `true` if chain is intact
-   - Returns `false` if any record was tampered with
+   - Keep the export offline. This is your evidence copy.
 
-2. **If verification FAILS, identify the tampered record**
-   - Walk the chain manually to find the break point:
-     ```
-     for each record in audit_trail:
-         if record.prev_hash != expected_prev_hash:
-             # This record's prev_hash link is broken
-         if record.record_hash != computeRecordHash(record):
-             # This record's content was modified
-     ```
+3. **Scope with record queries**
+   ```bat
+   python tools\aegisctl.py forensics list
+   python tools\aegisctl.py forensic show --id <first-suspect>
+   ```
+   - Chain breaks cascade forward: the earliest anomaly bounds the
+     scope; everything after it is suspect until proven otherwise.
 
-3. **Classify the tampering type**
-   - **record_hash tampering**: The stored hash doesn't match recomputed hash
-     - Indicates: record content was modified after creation
-   - **prev_hash tampering**: The prev_hash link doesn't match previous record
-     - Indicates: record was inserted, deleted, or reordered
-   - **field tampering**: Recomputed hash differs (e.g., timestamp changed)
-     - Indicates: a field was modified, breaking the hash
+4. **Classify (record for the report, do not repair)**
+   - Content changed under a stored hash, link break (insert/delete/
+     reorder), or field edit -- note which, with ids.
 
-4. **Preserve evidence**
-   - Do NOT modify the tampered audit trail
-   - Export a copy of the current state for forensic analysis
-   - Record the tampering in a SEPARATE audit trail (if available)
-
-5. **Determine scope of tampering**
-   - Check if multiple records are affected
-   - Identify the earliest tampered record (chain breaks cascade forward)
-   - Check if the tampering affects operator actions or system events
-
-6. **Report and escalate**
-   - Document: which records were tampered, what fields were changed
-   - Escalate to security team (potential insider threat or compromise)
-   - Consider restoring from backup (see RB-004: Restore from snapshot)
+5. **Escalate, then restore**
+   - Escalate suspected compromise per local incident process.
+   - Restore integrity only via RB-004 (known-good snapshot), never
+     by editing records.
 
 ## Verification
-- `verifyChain()` returns `true` for intact chains
-- `verifyChain()` returns `false` for tampered chains
-- Three tamper types are detectable: record_hash, prev_hash, field modification
-- Genesis hash (0xA171BAC5) seeds the first record's prev_hash
+
+- `verify` true after restore, on the restored store.
+- Export + written scope note exist before any restore ran.
 
 ## Rollback
-- **DO NOT** attempt to "fix" the tampered records manually
-- The hash chain is append-only; modifications break the chain by design
-- To restore integrity: restore from a known-good snapshot (see RB-004)
+
+- Do NOT "fix" records. Rollback here means RB-004 restore.
 
 ## Notes
-- Audit trail is append-only (no edit/delete API by design)
-- Hash chain uses FNV-1a over: record_id, timestamp, action, outcome, operator_id, target, detail, prev_hash
-- Genesis hash: 0xA171BAC5 (constant seed for first record)
-- Tamper detection is cryptographically sound (modifying any field breaks the chain)
+
+- Genesis-seeded chain; any field edit breaks verification loudly.
+- A verify timeout under display/test load is contention, not
+  tampering -- re-run quiet (EVT-147/148).
 
 ## References
-- G14: `core/audit_trail_proof.zig` - Audit trail proof (chain of custody, tamper-evident)
-- G17: `core/backup_recovery_proof.zig` - Backup & recovery (for restore from snapshot)
-- `core/audit_trail_proof.zig:computeRecordHash()` - FNV-1a hash computation
+
+- RB-002 (query), RB-004 (restore), EVT-156 deploy proofs

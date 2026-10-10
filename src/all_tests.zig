@@ -39,6 +39,8 @@ comptime {
     _ = @import("policy/enforcement_receipt.zig");
     _ = @import("policy/rule_action.zig");
     _ = @import("tests/forensic/forensic_pipeline.zig");
+    // EVT-166: siem_forwarder carries 24 inline CEF tests that never ran.
+    _ = @import("forensic/siem_forwarder.zig");
     _ = @import("tests/forensic/decision_trace.zig");
     _ = @import("tests/forensic/evidence_record.zig");
     _ = @import("tests/forensic/provenance.zig");

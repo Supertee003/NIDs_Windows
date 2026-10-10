@@ -1,3 +1,7 @@
+"""SUPERSEDED by 'python tools/aegisctl.py console' (EVT-166): duplicate
+command center with stale paths (root Rules.json). This v2.1 file stays
+for reference only -- do not run.
+"""
 import json, os, time
 from datetime import datetime
 from pathlib import Path

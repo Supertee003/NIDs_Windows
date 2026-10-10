@@ -1,102 +1,94 @@
 # RB-006: Subsystem Health Check
 
 ## Objective
-Perform a comprehensive health check of all AEGIS NIDS subsystems. This runbook covers verifying system readiness, detecting degraded components, and computing the current DEFCON level.
+
+Verify the whole system is alive and honest in under a minute: service,
+daemon, nose, brain, workers, queue, DEFCON. Everything here is
+read-only and safe to run anytime, on any state.
 
 ## Prerequisites
-- AEGIS NIDS running (at least partially)
-- Access to health monitoring API
-- No active incidents (run during maintenance window if possible)
+
+- Shell in `D:\NIDs_Windows` (repo root; commands below assume it).
+- No elevation needed (all reads).
 
 ## Steps
 
-1. **Check liveness (process heartbeat)**
+1. **Liveness (processes + listeners)**
+   ```bat
+   python scripts\aegis_open.py status
    ```
-   liveness = LivenessState.init(pid, now_ms)
-   liveness.isAlive(now_ms)  # true if within 5s threshold
-   ```
-   - Verify the main process is sending heartbeats
-   - Threshold: 5 seconds (LIVENESS_STALE_THRESHOLD_MS)
-   - If stale: process may be deadlocked or hung
+   - 4 rows: service / daemon / nose / brain. OK = alive.
+   - Exit code is information, not just pass/fail: **0** all green,
+     **1** something failed, **2** something is unknown/skipped
+     (unknown is an answer, not a failure -- see EVT-147).
 
-2. **Check subsystem readiness (5 subsystems)**
+2. **Readiness (workers + gate)**
+   ```bat
+   python tools\aegisctl.py readiness
+   python tools\aegisctl.py components
    ```
-   statuses = [
-       .nose,       # Sensor ingestion
-       .flow,       # Flow tracking
-       .detection,  # Rule matching
-       .policy,     # Decision making
-       .pep,        # Enforcement
-   ]
-   report = ReadinessReport.fromStatuses(statuses)
-   ```
-   - Each subsystem reports: ready, starting, degraded, or down
-   - System ready only when ALL 5 are ready
-   - Any `down` status fails the readiness check
+   - `readiness` lists `degraded_components` (empty = ready).
+   - `components` shows the five concepts (Core/Brain/Nose/Mouth/Bridge)
+     with best-available status; Mouth `stopped` is normal (optional
+     display), anything else `stopped` is not.
 
-3. **Capture metrics snapshot**
+3. **Metrics snapshot (queue + flow)**
+   ```bat
+   python tools\aegisctl.py metrics
+   python tools\aegisctl.py queue
    ```
-   metrics = MetricsSnapshot{
-       .total_events = ...,
-       .total_blocks = ...,
-       .total_alerts = ...,
-       .queue_depth = ...,
-       .max_queue_depth = ...,
-       .latency_samples_us = ...,
-       .latency_sample_count = ...,
-   }
+   - Watch `depth` vs `queue_size`, `dropped_total`, `shed_overload`.
+   - Nose frames must advance between two reads minutes apart
+     (`frames_read` is per-daemon-lifetime: a reset means the daemon
+     restarted, not that data was lost).
+
+4. **DEFCON (daemon is the authority)**
+   - Read `defcon_level`/`defcon_label` from step 1-2 output
+     (1 MAXIMUM .. 5 SAFE). The file-tail ladder in dashboards is a
+     labeled fallback only -- never the authority.
+
+5. **Degraded drill-down (only if something is not OK)**
+   ```bat
+   python tools\aegisctl.py diagnose
+   python tools\aegisctl.py bridge
+   python tools\aegisctl.py forensic verify
    ```
-   - EPS rate: `metrics.epsRate(window_start_ms)`
-   - p50/p95/p99 latency: `metrics.p50LatencyUs()`, etc.
-   - Block rate: `metrics.blockRate()`
+   - `diagnose` for the structured picture, `bridge` for the
+     brain-channel listener honesty, `forensic verify` for ring
+     integrity (~5s).
 
-4. **Compute DEFCON level**
-   ```
-   defcon = computeDefcon(readiness, metrics)
-   ```
-   - DEFCON 1 (critical): any subsystem DOWN -> fail-closed mode
-   - DEFCON 2 (severe): 2+ subsystems degraded
-   - DEFCON 3 (elevated): 1 subsystem degraded
-   - DEFCON 4 (guarded): all ready but queue > 80% full
-   - DEFCON 5 (normal): all healthy, low queue
+6. **Corrective action (only if needed)**
+   - Anything down: `python scripts\aegis_open.py keep` (converges;
+     the AegisKeeper task already does this every 5 minutes).
+   - DEFCON 1 with cause found: see RB-004 (restore from snapshot).
+   - Config suspect: see RB-005. Slow: see RB-007 (performance tuning).
 
-5. **Identify degraded subsystems**
-   - For each degraded subsystem, investigate:
-     - Check recent audit records for errors
-     - Check forensic log for subsystem-specific events
-     - Check subsystem logs (if available)
-
-6. **Take corrective action based on DEFCON**
-   - DEFCON 1: System in fail-closed. Investigate immediately. Consider restore from snapshot (RB-004).
-   - DEFCON 2: Multiple failures. Check for systemic issues (config, network, resources).
-   - DEFCON 3: Single degraded. Monitor closely. May self-recover.
-   - DEFCON 4: Queue pressure. Check for event spikes or slow processing.
-   - DEFCON 5: Normal operation. No action needed.
-
-7. **Record health check in audit trail**
-   - Audit trail records: action=health_check, outcome=success/failed
-   - Include DEFCON level in the detail field
+7. **Record the check**
+   - Note date, HEAD (`git rev-parse --short HEAD`), and the four
+     status rows in your change/incident record. No tree writes.
 
 ## Verification
-- Liveness: `isAlive(now_ms) == true`
-- Readiness: `system_ready == true` (all 5 subsystems ready)
-- Metrics: EPS, p99 latency, block rate within expected ranges
-- DEFCON: level 5 (normal) for healthy system
+
+- `status` exit 0 (or 2 with an understood unknown, never 1 unexplained).
+- `readiness`: `degraded_components` empty, `over` field sane.
+- `forensic verify`: `verified: true` when run.
+- DEFCON matches the operator's expectation for current activity
+  (quiet host is normally 5 SAFE; live detection raises it).
 
 ## Rollback
-No rollback needed - health checks are read-only. If issues are found, follow the appropriate runbook:
-- Subsystem down: RB-004 (restore from snapshot)
-- Config issues: RB-005 (config rollback)
-- Performance issues: RB-007 (performance tuning)
+
+None -- health checks are read-only.
 
 ## Notes
-- Liveness threshold: 5 seconds (5 missed heartbeats)
-- 5 subsystems: Nose, Flow, Detection, Policy, PEP
-- 4 subsystem statuses: ready, starting, degraded, down
-- 5 DEFCON levels: 1 (critical) to 5 (normal)
-- DEFCON rollup: failed_count + degraded_count + queue_depth
+
+- Exit 2 (`unknown`) during load spikes is normal observer effect: the
+  single control pipe contends (full-ring verify holds it for seconds).
+  Re-run after the load passes instead of treating it as failure.
+- Nose `frames_read=0` with the process up means no flow, not health;
+  process down is the failure signal.
 
 ## References
-- G13: `core/health_monitoring_proof.zig` - Health monitoring proof
-- G18: `core/performance_tuning_proof.zig` - Performance metrics
-- G14: `core/audit_trail_proof.zig` - Audit trail (records health checks)
+
+- `python tools\aegisctl.py health` (single-shot daemon health)
+- EVT-147 (unknown is a first-class answer), EVT-148 (observer effect),
+  EVT-150 (keeper), EVT-157 (brain posture)

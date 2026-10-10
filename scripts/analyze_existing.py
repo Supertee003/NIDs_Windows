@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+"""SUPERSEDED by scripts/analyze_vectors.py (EVT-166): same dump idea,
+kept current with the descriptor-table schema. This file stays for
+reference only.
+"""
 import json, struct, os
 
 gv = json.load(open('tests/contracts/event_vectors/event_vectors/golden_vectors.json'))
@@ -7,7 +11,7 @@ vectors = gv.get('vectors', {})
 print('Golden vectors count:', len(vectors))
 print('Schema version:', gv.get('schema_version'))
 print('Wire size:', gv.get('wire_size'))
-print('Magic (int):', hex(gv.get('magic')))
+print('Magic:', gv.get('magic'))
 
 fname = list(vectors.keys())[0]
 v = vectors[fname]
@@ -60,4 +64,3 @@ print('DEFCON impact:', di, '(1-5)')
 # Reserved
 res = data[93:109].hex()
 print('Reserved (bytes 93-108):', res)
-PYEOF

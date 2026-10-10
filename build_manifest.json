@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "89c33ec",
+  "source_commit": "b02f3c1",
   "build_date": "2026-10-08T16:31:09.245790+00:00",
   "build_host": "windows",
   "platform": {
@@ -1015,7 +1015,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18563,
-      "sha256": "07b62f5d7ff51fd56e7c4f74b1bd131bf73fb595641ea4473160fa8b00a658e3",
+      "sha256": "91dc0db2e29dcc676dd062142549f45a9f34cdccbf55d5327e67724641768af4",
       "language": "json"
     },
     {
@@ -1062,8 +1062,8 @@
     },
     {
       "path": "scripts/aegis_api.py",
-      "size": 5381,
-      "sha256": "6e859df269debf3c983e12688768a035cafce832a06477849a5f8ed26491b746",
+      "size": 5517,
+      "sha256": "bb52c4fa4b91b52112e1920e36aa3a1025262b8ab8e36bdc946b5b6051d5e4b5",
       "language": "python/cython"
     },
     {
@@ -1074,14 +1074,14 @@
     },
     {
       "path": "scripts/aegis_console.py",
-      "size": 66257,
-      "sha256": "6db7efaef4816ce6cad118dd3611ab1dc5eb49134d53cfd3f3be741059d2eeae",
+      "size": 66449,
+      "sha256": "6d2e0391456d751c2bb47ec05cd50ed7f71ecd8177b0985ebda0245daa1c36dd",
       "language": "python/cython"
     },
     {
       "path": "scripts/aegis_console_pro.py",
-      "size": 11944,
-      "sha256": "b7298a574e14337c22bf4234b7bc95bf1369957b084490067521899f654384c1",
+      "size": 12100,
+      "sha256": "dde25d629856775e5254ad050a5f1e83f65edce395c2f0539fe39c8bc637e3be",
       "language": "python/cython"
     },
     {
@@ -1104,8 +1104,8 @@
     },
     {
       "path": "scripts/aegis_graph.py",
-      "size": 6171,
-      "sha256": "4550be1d33036fb0c0ccc518e95f751d5a9832cab919eceb1a103a7347dd6715",
+      "size": 6359,
+      "sha256": "2f31f195926aff291bd7b1a5f88b5c5a77ca48f46b0d777c1d3c9e34e83784ff",
       "language": "python/cython"
     },
     {
@@ -1134,14 +1134,14 @@
     },
     {
       "path": "scripts/aegis_status.py",
-      "size": 6750,
-      "sha256": "c7b58609d1b4459d7b6c48ab48561b4257bebbd79d89838ae2029766bca41a52",
+      "size": 6796,
+      "sha256": "e38bed5715688f5c68e8e83b72f03f580bb3cec63a1458fe9f0fd36d6e739650",
       "language": "python/cython"
     },
     {
       "path": "scripts/aegis_unblock.py",
-      "size": 3069,
-      "sha256": "7c0c1dbdda9f3b425f5b1c9d406e5ba6b862c51eda4f988945be2fa1d4683d81",
+      "size": 3312,
+      "sha256": "885a9106c40c1f773431c3a21ccadcb1d8067a482797a8a3114edee895e11eea",
       "language": "python/cython"
     },
     {
@@ -3306,8 +3306,8 @@
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 82823,
-      "sha256": "3fc29f4c31ec0d1cf3fbc4bdcae7ea67d6ef7f62b675d2607c459d5a191ea915",
+      "size": 85880,
+      "sha256": "3523b2e32c9147a14a8910eb944ca6fbd416fa5cfe89434df1bbb2098f0950c4",
       "language": "python/cython"
     },
     {

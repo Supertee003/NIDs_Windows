@@ -1,113 +1,65 @@
 # RB-007: Performance Tuning (Queue Depth + Batching)
 
 ## Objective
-Tune AEGIS NIDS performance by adjusting thread pool size, queue capacity, and batching parameters. This runbook covers diagnosing performance issues and applying tuning changes.
+
+Diagnose a slow system with live numbers, then change only knobs that
+exist. Several knobs in the old revision (worker count, queue capacity
+at runtime) have no live command on this host -- this runbook says
+which, instead of printing Zig structs.
 
 ## Prerequisites
-- AEGIS NIDS running with performance monitoring enabled
-- Access to performance metrics (EPS, p99 latency, queue depth)
-- Operator access to configuration
+
+- System running. Reads need no elevation.
 
 ## Steps
 
-1. **Capture current performance baseline**
+1. **Capture the baseline (live)**
+   ```bat
+   python tools\aegisctl.py metrics
+   python tools\aegisctl.py queue
    ```
-   metrics = MetricsSnapshot{
-       .total_events = ...,
-       .queue_depth = ...,
-       .max_queue_depth = ...,
-       .latency_samples_us = ...,
-   }
-   eps = metrics.epsRate(window_start_ms)
-   p99 = metrics.p99LatencyUs()
-   ```
-   - Record: current EPS, p99 latency, queue fill %
-   - Identify the performance issue:
-     - Low EPS (< expected throughput)
-     - High p99 latency (> 10ms)
-     - Queue nearly full (> 80%)
+   - Record: queue `depth`/`queue_size`, `dropped_total`,
+     `shed_overload`, per-stage p50/p95/max, nose frames rate.
 
-2. **Diagnose the bottleneck**
-   - **Queue full (backpressure critical)**:
-     - Detection/policy/PEP too slow
-     - Need: larger queue OR faster processing OR more workers
-   - **High latency (p99 > 10ms)**:
-     - Batch timeout too long
-     - Need: smaller batch timeout OR smaller batch size
-   - **Low throughput (EPS low)**:
-     - Batch size too small (too many flushes)
-     - Need: larger batch size OR longer timeout
+2. **Diagnose from numbers, not guesses**
+   - `dropped_total`/`shed_overload` climbing: pipe is saturated --
+     stop heavy scans first (full pytest, forensics verify loops,
+     extra dashboards). Re-measure quiet before touching config.
+   - Per-stage p95 dominated by one stage: that stage is the
+     bottleneck; note it for engineering (no live per-stage knob).
+   - Queue depth pinned near capacity with drops: backpressure is
+     working as designed (better slow than OOM).
 
-3. **Adjust thread pool (if CPU-bound)**
-   ```
-   config = ThreadPoolConfig{
-       .worker_count = 8,  # increase from default 4
-       .work_stealing = true,
-       .stack_size = 64 * 1024,
-   }
-   validatePoolConfig(config)  # must return true
-   ```
-   - Default: 4 workers
-   - Max: 32 workers (MAX_WORKER_COUNT)
-   - Min stack: 4KB
-   - Work-stealing: always enable (balances load)
+3. **Knobs that exist**
+   - `configs/runtime.json`: validated by
+     `python tools/config_validator.py --config configs/runtime.json`.
+     Change ONLY documented keys; re-validate; restart the service
+     (admin) to apply. There is no live thread-pool/queue-resize
+     command -- any doc claiming one is stale.
+   - Ruleset weight: fewer/heavier rules via RB-005 + `rules reload`.
 
-4. **Adjust queue capacity (if memory available)**
-   ```
-   queue = BoundedQueue.init(2048)  # increase from default 1024
-   ```
-   - Default: 1024 capacity
-   - Max: 65536 (MAX_QUEUE_CAPACITY)
-   - Backpressure levels: normal (<50%), elevated (50-80%), high (80-95%), critical (>95%)
-   - At "high": start dropping low-priority events
-   - At "critical": reject new events
+4. **Apply + compare**
+   - One change at a time; re-run step 1; compare drops/latency.
+   - Expect DEFCON to follow load down, not instantly.
 
-5. **Adjust batch size and timeout (throughput vs latency tradeoff)**
-   ```
-   batcher = Batcher.init(128, 5)  # batch_size=128, timeout=5ms
-   ```
-   - Default batch size: 64 (DEFAULT_BATCH_SIZE)
-   - Max batch size: 256 (MAX_BATCH_SIZE)
-   - Default timeout: 10ms (DEFAULT_BATCH_TIMEOUT_MS)
-   - Larger batch = higher throughput, higher latency
-   - Smaller timeout = lower latency, more flushes
-
-6. **Apply changes (hot reload where possible)**
-   - Thread pool: requires restart (cannot change worker count at runtime)
-   - Queue capacity: requires restart (bounded queue size is fixed at init)
-   - Batch size/timeout: can be hot-reloaded via config
-
-7. **Verify performance improvement**
-   - Capture new metrics after changes
-   - Compare: EPS, p99 latency, queue fill %
-   - Verify DEFCON level improved (e.g., guarded -> normal)
-
-8. **Record changes in audit trail**
-   - Audit trail records: action=config_reload, detail="performance tuning"
-   - Include before/after metrics in the detail field
+5. **Record**: before/after metrics output + config diff + HEAD.
 
 ## Verification
-- EPS increased (or maintained at expected level)
-- p99 latency < 10ms (bounded by batch timeout)
-- Queue fill % < 80% (backpressure not elevated+)
-- DEFCON level: 5 (normal) or 4 (guarded at worst)
-- No events dropped (total_dropped == 0)
+
+- Drops stop climbing; p95 back under the stage budget; DEFCON sane.
+- `forensic verify` still true (perf work must never break the ring).
 
 ## Rollback
-If tuning makes performance worse:
-1. Revert to previous configuration
-2. Restart the system (for thread pool/queue changes)
-3. Verify metrics return to baseline
-4. Consider alternative tuning parameters
+
+- Revert the config edit, re-validate, restart, re-measure.
 
 ## Notes
-- Thread pool: 4 workers (default), 32 max, work-stealing enabled
-- Queue: 1024 capacity (default), 65536 max, 4 backpressure levels
-- Batcher: 64 events/batch (default), 10ms timeout (default)
-- p99 latency bounded by batch timeout (worst case: wait for timeout + processing)
-- Backpressure prevents OOM (count never exceeds capacity)
+
+- Observer effect (EVT-148): measuring IS load. One heavy scan at a
+  time; never tune against numbers taken during a suite.
+- Backpressure dropping beats OOM crashing -- drops are a signal,
+  not a bug, until they climb without load explanation.
 
 ## References
-- G18: `core/performance_tuning_proof.zig` - Performance tuning proof
-- G13: `core/health_monitoring_proof.zig` - Health monitoring (DEFCON rollup)
-- G12: `core/config_reload_proof.zig` - Config reload (hot reload batcher params)
+
+- RB-006 (health baseline), RB-005 (config mechanics), EVT-148

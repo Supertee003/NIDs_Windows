@@ -1,95 +1,65 @@
 # RB-005: Config Rollback
 
 ## Objective
-Roll back the AEGIS NIDS configuration to a previous version. This runbook covers reverting a failed config reload or undoing policy changes using the atomic swap mechanism.
+
+Revert a bad ruleset to the previous one. Lighter than RB-004 (files
+only, daemon reloads without reinstall).
 
 ## Prerequisites
-- AEGIS NIDS running with ConfigStore initialized
-- Previous ruleset version available (version history maintained)
-- Operator access to config reload API
-- Estimated rollback time: < 5 seconds (atomic swap)
+
+- Operator shell in `D:\NIDs_Windows`. No elevation for validate;
+  reload is daemon-side (no elevation either).
 
 ## Steps
 
-1. **Identify the current (broken) config version**
+1. **Back up the current (broken) file**
+   ```bat
+   copy configs\Rules.json configs\Rules.json.bak
    ```
-   store.currentVersion()  # current ruleset version
+
+2. **Restore the previous file** (your versioned copy or repo HEAD):
+   ```bat
+   copy configs\Rules.json.v<target> configs\Rules.json
    ```
-   - Note the current version number
-   - Identify the target version to roll back to (usually current - 1)
+   - No versioned copy? `git show HEAD:configs/Rules.json` to inspect
+     what HEAD holds before overwriting anything.
 
-2. **Prepare the previous ruleset**
-   - The previous ruleset must be available (stored in version history)
-   - If using file-based config, restore the previous Rules.json:
-     ```
-     copy config/Rules.json.v<current> config/Rules.json.bak
-     copy config/Rules.json.v<target> config/Rules.json
-     ```
-
-3. **Trigger hot reload (mtime watchdog)**
-   - The config reload watchdog detects Rules.json mtime changes within 5 seconds
-   - Wait for the watchdog to detect the change:
-     ```
-     # Watchdog checks every 5 seconds (WATCHDOG_INTERVAL_MS)
-     # Detection latency: <= 5 seconds
-     ```
-
-4. **Verify validation passes**
-   - The ConfigStore validates the new ruleset BEFORE swap:
-     - No empty rulesets
-     - No duplicate rule_ids
-     - No rule_id == 0 (reserved)
-     - No exceeding MAX_RULES_PER_RULESET (256)
-   - If validation FAILS, the live config is preserved (no swap occurs)
-
-5. **Verify atomic swap succeeded**
+3. **Validate BEFORE asking for reload**
+   ```bat
+   python tools\aegisctl.py rules validate
    ```
-   store.currentVersion()  # should be the target version
-   store.getActive().ruleCount()  # should match expected rule count
+   - Must pass: non-empty, no duplicate ids, no id 0, within limits.
+     Fix the file, never force past this gate.
+
+4. **Reload and confirm**
+   ```bat
+   python tools\aegisctl.py rules reload
+   python tools\aegisctl.py rules list
+   python scripts\aegis_open.py status
    ```
-   - The swap is atomic (RCU pattern: prepare -> validate -> swap -> retire)
-   - Concurrent readers see consistent state (old or new, never torn)
+   - `list` count must match the restored file; daemon `rules_loaded`
+     in status must agree. If the count disagrees, the reload did not
+     take: restart the service (admin) and re-check.
 
-6. **Verify event processing uses new version**
-   - Process a test event:
-     ```
-     processEventWithVersion(store, test_event_id, test_rule_id)
-     ```
-   - Verify the event records the new ruleset_version
-
-7. **Record in audit trail**
-   - Audit trail automatically records: action=config_reload, outcome=success
-   - Verify audit record created with the version change detail
+5. **Record**: file versions, validate output, before/after counts.
 
 ## Verification
-- `currentVersion()` returns the target version
-- `getActive().ruleCount()` matches expected
-- Events processed after rollback record the new version
-- Audit trail contains config_reload action
 
-## Rollback of the Rollback
-If the rollback itself causes issues:
-1. The previous (broken) config is still available in version history
-2. Repeat this procedure to roll forward to the broken version
-3. If validation fails on rollback, live config is preserved (no swap)
+- `rules validate` exit 0; `list` count == file count; status green.
+- New events flow (nose frames advance).
+
+## Rollback of the rollback
+
+- The `.bak` from step 1 is the way forward again; repeat the
+  procedure with it.
 
 ## Notes
-- Config reload is HOT (no process restart needed)
-- Atomic swap uses RCU (Read-Copy-Update) pattern
-- Validation happens BEFORE swap (invalid ruleset rejected, live config preserved)
-- Mtime watchdog: 5-second detection interval (Phase 14 P-11 pattern)
-- Every event records ruleset_version at decision time (audit trail)
 
-## Tooling
-
-- `tools/upgrade_rollback.py` (237 lines, T17/Steps 46-52): executable
-  counterpart of this runbook — drives fresh-install -> snapshot ->
-  upgrade -> failed-upgrade/rollback -> reinstall/uninstall and measures
-  RPO (snapshot-to-trigger window), RTO (measured restore wall-clock)
-  and restore_success over the installer data set.
+- Canonical path is `configs/Rules.json` (not `config/`).
+- Every event records the active ruleset version at decision time.
 
 ## References
-- G12: `core/config_reload_proof.zig` - Config reload proof (hot reload, atomic swap)
-- G14: `core/audit_trail_proof.zig` - Audit trail (records config changes)
-- `config/Rules.json` - Detection rules file
-- `config/aegis.conf` - System configuration
+
+- RB-004 (full restore), RB-009 (hot-reload mechanics)
+- `tools/config_validator.py --config configs/runtime.json`
+  (runtime config sibling check)

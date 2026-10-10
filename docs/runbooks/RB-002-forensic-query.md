@@ -1,83 +1,71 @@
 # RB-002: Forensic Query for Incident Reconstruction
 
 ## Objective
-Query the forensic log to reconstruct a security incident. This runbook covers querying events by event_id, source IP, time range, or severity for incident response and post-incident analysis.
+
+Reconstruct an incident from the forensic record store. Everything here
+is read-only; the log is append-only and immutable.
 
 ## Prerequisites
-- AEGIS NIDS running with forensic logging enabled
-- Incident details (event_id, IP, or approximate time)
-- Operator access to forensic query API
+
+- System running (any state). No elevation needed.
 
 ## Steps
 
-1. **Identify the incident scope**
-   - Determine the key parameter for the query:
-     - event_id (if known)
-     - source IP (if investigating a specific host)
-     - time range (if investigating a time window)
-     - minimum severity (to filter noise)
+1. **Scope the incident**: fix one of event_id, source IP, time window,
+   or minimum severity before querying.
 
-2. **Query by event_id (most precise)**
+2. **Query by event id (most precise)**
+   ```bat
+   python tools\aegisctl.py forensic show --id <event_id>
    ```
-   query ForensicLog by event_id=<incident_event_id>
-   ```
-   - Returns the specific event with full details
-   - Includes: timestamp, level, event type, rule, src_ip, verdict, action
 
 3. **Query by source IP (host investigation)**
+   ```bat
+   python tools\aegisctl.py forensic search --field src_ip --value <ip>
    ```
-   query ForensicLog by src_ip=<malicious_ip>
-   ```
-   - Returns ALL events from that IP
-   - Useful for identifying attack patterns and timeline
 
-4. **Query by time range (window investigation)**
+4. **Query by time window / severity (sweep)**
+   ```bat
+   python tools\aegisctl.py events tail --count 50
+   python tools\aegisctl.py events stats
+   python tools\aegisctl.py forensics list
    ```
-   query ForensicLog by start_ms=<start>, end_ms=<end>
-   ```
-   - Returns events within the time window
-   - Use for "what happened between X and Y" investigations
+   - `stats`/`count` bound the sweep before you page through it.
 
-5. **Query by minimum severity (filter noise)**
+5. **Verify integrity first when it matters**
+   ```bat
+   python tools\aegisctl.py forensic verify
    ```
-   query ForensicLog by min_level=.critical
-   ```
-   - Returns only critical+ events
-   - Useful for post-incident review of high-severity events
+   - `verified: true` (~5s) or stop and say why: no conclusion from an
+     unverified ring.
 
-6. **Redact PII for export**
-   ```
-   redactInto(record, &redacted)
-   ```
-   - Source IP last octet masked (10.0.0.123 -> 10.0.0.X)
-   - Source port dropped
-   - Payload content dropped (length preserved)
-   - Use redacted records for external sharing
+6. **Share carefully (no redact command exists)**
+   - Mask the last IP octet and drop ports/payloads BY HAND before any
+     external sharing. There is no automated redactor on this host;
+     anyone promising one is selling the old design doc.
 
-7. **Replay through pipeline (regression test)**
-   ```
-   replayRecord(record)
-   ```
-   - Re-runs the event through the pipeline
-   - Verifies detection still produces the same verdict
-   - Useful for validating rule changes didn't break detection
+7. **Replay (lab/CI only)**
+   - Deterministic replay is proven in `zig build test`, not by hand
+     on prod. Do not inject synthetic events into the production ring.
 
 ## Verification
-- Query returns expected records (count > 0 for valid queries)
-- Each record has: record_id, timestamp, level, event, verdict, action
-- Redacted records have masked IPs (end with ".X")
-- Replay produces matching verdict (deterministic)
+
+- Returned records carry identifiers (event/rule/trace/audit ids).
+- `verify` true for any integrity claim.
+- Shared material hand-masked.
 
 ## Rollback
-No rollback needed - forensic queries are read-only. The forensic log is append-only and immutable.
+
+None -- queries are read-only.
 
 ## Notes
-- Forensic log is append-only (no edit/delete API)
-- Hash chain verifies integrity: `forensic_log.verifyHashChain()`
-- Empty filter returns ALL records (use carefully)
-- Max capacity: 1024 records per in-memory log (production uses file rotation)
+
+- The log is append-only; empty filters return broad results, so scope
+  first (step 1).
+- Retention is bounded (ring overwrites oldest); export promptly
+  (`forensic export`) when an incident matters.
 
 ## References
-- G11: `core/forensic_replay_proof.zig` - Forensic replay + redaction proof
-- G14: `core/audit_trail_proof.zig` - Audit trail (operator actions)
-- `core/forensic_log.zig` - NDJSON append-only logger
+
+- RB-003 (tamper response when verify fails)
+- `zig build test` (replay determinism proofs)

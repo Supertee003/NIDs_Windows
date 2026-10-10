@@ -14,14 +14,18 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 
-# script -> subcommands its header must reference (all must exist).
+# script -> pointers it must reference. ("cmd", x) must be a live aegisctl
+# subcommand; ("file", rel) must exist in the repo. No silent deletions,
+# no pointers to dead ends.
 POINTERS = {
-    "scripts/aegis_console.py": ["console"],
-    "scripts/aegis_console_pro.py": ["console"],
-    "scripts/aegis_graph.py": ["graph"],
-    "scripts/aegis_status.py": ["components"],
-    "scripts/aegis_api.py": ["health", "metrics", "events"],
-    "scripts/aegis_unblock.py": ["block"],
+    "scripts/aegis_console.py": [("cmd", "console")],
+    "scripts/aegis_console_pro.py": [("cmd", "console")],
+    "scripts/aegis_graph.py": [("cmd", "graph")],
+    "scripts/aegis_status.py": [("cmd", "components")],
+    "scripts/aegis_api.py": [("cmd", "health"), ("cmd", "metrics"), ("cmd", "events")],
+    "scripts/aegis_unblock.py": [("cmd", "block")],
+    "scripts/Dashboard.py": [("cmd", "console")],
+    "scripts/analyze_existing.py": [("file", "scripts/analyze_vectors.py")],
 }
 
 
@@ -47,7 +51,11 @@ def test_headers_point_at_real_commands():
     for rel, wants in POINTERS.items():
         header = (REPO / rel).read_text(encoding="utf-8", errors="replace")[:1200]
         assert "SUPERSEDED" in header, rel
-        for token in wants:
-            assert ("aegisctl %s" % token) in header or \
-                   ("aegisctl.py %s" % token) in header, (rel, token)
-            assert token in subcommands, (rel, token)
+        for kind, token in wants:
+            if kind == "cmd":
+                assert ("aegisctl %s" % token) in header or \
+                       ("aegisctl.py %s" % token) in header, (rel, token)
+                assert token in subcommands, (rel, token)
+            else:
+                assert token in header, (rel, token)
+                assert (REPO / token).is_file(), (rel, token)
