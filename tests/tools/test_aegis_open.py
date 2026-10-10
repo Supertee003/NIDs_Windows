@@ -212,3 +212,60 @@ def test_pids_by_cmdline_never_matches_self():
     # pin is deterministic on any host with no other pytest running it.
     import os
     assert os.getpid() not in opener._pids_by_cmdline("pytest")
+
+
+def test_keeper_task_runs_windowless():
+    # EVT-164: python.exe under a console-less task parent allocates a
+    # visible console per tick (the blank Administrator popup). The task
+    # must use pythonw.exe (same interpreter, GUI subsystem, no console).
+    cmd = opener.keeper_task_cmd("install")
+    target = cmd[cmd.index("/tr") + 1]
+    assert "keep" in target
+    assert target.startswith('"') and "pythonw.exe" in target
+
+
+def test_keeper_lock_blocks_overlaps_only():
+    # Fresh lock by a live pid blocks; stale/malformed/missing do not.
+    import os
+    import time
+    from unittest.mock import patch
+    with patch.object(opener, "KEEPER_LOCK_FILE", opener.Path(r"C:\Temp\aegis_keep_testprobe.lock")):
+        probe = opener.KEEPER_LOCK_FILE
+        try:
+            probe.write_text("bogus", encoding="utf-8")
+            assert opener._keeper_lock_busy() is False
+            probe.write_text("%d %f" % (os.getpid(), time.time()), encoding="utf-8")
+            assert opener._keeper_lock_busy() is True
+            probe.write_text("%d %f" % (os.getpid(), time.time() - 3600), encoding="utf-8")
+            assert opener._keeper_lock_busy() is False
+            probe.write_text("999999999 %f" % (time.time(),), encoding="utf-8")
+            assert opener._keeper_lock_busy() is False  # dead owner: takeover
+        finally:
+            try:
+                probe.unlink()
+            except OSError:
+                pass
+
+
+def test_cmd_keep_skips_when_another_run_is_fresh():
+    from unittest.mock import patch
+    with patch.object(opener, "_keeper_lock_busy", return_value=True), \
+         patch.object(opener, "start_service") as svc, \
+         patch.object(opener, "start_nose") as nose, \
+         patch.object(opener, "start_brain") as brain:
+        assert opener.cmd_keep(_keep_args()) == 2
+    svc.assert_not_called()
+    nose.assert_not_called()
+    brain.assert_not_called()
+
+
+def test_main_logs_and_returns_1_on_crash():
+    # Under pythonw there is no console for the traceback: main() must
+    # log it and return 1, never propagate.
+    from unittest.mock import patch
+
+    def _boom(args):
+        raise RuntimeError("boom-marker-164")
+
+    with patch.object(opener, "cmd_keep", side_effect=_boom):
+        assert opener.main(["keep"]) == 1

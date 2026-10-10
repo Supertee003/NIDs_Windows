@@ -417,10 +417,19 @@ impl AegisDashboard {
             let (tx, rx) = mpsc::channel::<std::process::Output>();
             let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
             thread::spawn(move || {
-                let output = Command::new("python")
-                    .args(["tools/aegisctl.py", "snapshot"])
-                    .current_dir(cwd)
-                    .output();
+                let mut cmd = Command::new("python");
+                cmd.args(["tools/aegisctl.py", "snapshot"])
+                    .current_dir(cwd);
+                #[cfg(windows)]
+                {
+                    use std::os::windows::process::CommandExt;
+                    // EVT-164: never allocate a console for the snapshot
+                    // child. On a console-less parent each 30s tick flashed
+                    // a blank Administrator python window; the flag is a
+                    // no-op when the parent already has a console.
+                    cmd.creation_flags(0x08000000);
+                }
+                let output = cmd.output();
                 if let Ok(output) = output {
                     let _ = tx.send(output);
                 }

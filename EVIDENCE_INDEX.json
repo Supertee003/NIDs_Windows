@@ -1,5 +1,5 @@
 {
-  "head_sha": "b52a34acd4e79240602bef8665bbb979605146c3",
+  "head_sha": "a633c23bfbbe6e9e951b529e711a84a145516aaf",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -3902,7 +3902,8 @@
         "live: run_aegis.bat --keep renders + converges, no displays",
         "live: keep --install-task fail-closed Access is denied, task absent (schtasks query negative)",
         "live: sc qfailure shows 2x RESTART/60s recovery actions present",
-        "operator-verified from elevated shell: install OK, schtasks shows AegisKeeper Ready with Next Run time; sc qfailure now 3x RESTART (was 2)"
+        "operator-verified from elevated shell: install OK, schtasks shows AegisKeeper Ready with Next Run time; sc qfailure now 3x RESTART (was 2)",
+        "keeper fired live: nose pid 7544->7296 restarted by the task, frames flowing (291K+); daemon SKIP during display storm self-recovered to 0.01s (transient contention, unknown-not-failed as designed)"
       ],
       "result": "PASS",
       "finding": "The 2h blind gap class is closed by construction: SCM restarts twice, then the keeper converges everything SCM cannot (nose, brain, exhausted restarts) every 5 minutes once the operator runs the single admin command."
@@ -4218,6 +4219,29 @@
       ],
       "result": "PASS",
       "finding": "Concepts are now visible on CLI, web, watch, and GUI. The alias trap cannot recur through repo docs, and GAP-017 says exactly what is (un)proven."
+    },
+    {
+      "id": "EVT-164",
+      "head_sha": "a633c23",
+      "timestamp": "2026-10-10",
+      "title": "Blank Administrator popups killed: GUI no-window spawn, pythonw keeper, run lock",
+      "level": "E5",
+      "component": "tooling+gui",
+      "description": "Operator report: a blank 'Administrator: ...python.exe' console kept popping while the system ran. Forensics: the elevated GUI (pid 27172) runs detached with no console of its own, and its 30s snapshot tick spawned bare Command::new('python') -- each tick allocated a fresh blank console for ~5s. The keeper task (python.exe) was the second candidate class, plus a 14-minute stuck python (pid 4956) proved runs could pile up. Fixes, all three layers: (1) GUI snapshot spawn sets CREATE_NO_WINDOW on Windows (no-op when a console exists); (2) keeper task uses pythonw.exe (same interpreter, GUI subsystem, can never own a console), task must be REINSTALLED to pick it up; (3) keep takes C:\\Temp\\aegis_keep.lock (600s TTL, dead-owner takeover) and skips with exit 2 when a fresh run holds it, so stuck runs never stack; (4) main() logs tracebacks to C:\\Temp\\aegis_open.log and returns 1, so pythonw crashes are never silent. Operator killed 27172/4956 from the admin shell (elevated processes the agent cannot touch) and re-registered the task.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "aegis_dashboard/src/main.rs",
+        "scripts/aegis_open.py",
+        "tests/tools/test_aegis_open.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "opener pins 20 passed (pythonw target, lock fresh/stale/dead/malformed, overlap skip exit 2, crash guard returns 1)",
+        "cargo test dashboard 8/8; GUI rebuilt clean post-kill, exe timestamped fresh",
+        "live keep no-op exit 0 with lock write+unlink; task cmd preview shows pythonw"
+      ],
+      "result": "PASS",
+      "finding": "No managed python can show a window anymore (pythonw task, windowless GUI spawn), runs cannot pile up (lock), and crashes leave a log trail. Observation of 2-3 popup-free minutes with the relaunched GUI is the operator-side close."
     }
   ],
   "evidence_level_summary": {
@@ -4226,7 +4250,7 @@
     "E2_count": 107,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 42,
+    "E5_count": 43,
     "E6_count": 0,
     "E7_count": 0
   }

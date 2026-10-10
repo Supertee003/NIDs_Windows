@@ -33,6 +33,7 @@ import os
 import subprocess
 import sys
 import time
+import traceback
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -644,6 +645,11 @@ def cmd_close(args) -> int:
 KEEPER_TASK_NAME = "AegisKeeper"
 KEEPER_INTERVAL_MIN = 5
 KEEPER_SCM_GRACE_S = 60
+# EVT-164: anti-pile-up lock. A hung keep run must never stack siblings
+# every 5 minutes (each flashing its own window pre-pythonw). Fresh =
+# younger than TTL with a live owner; anything else is taken over.
+KEEPER_LOCK_FILE = Path(r"C:\Temp\aegis_keep.lock")
+KEEPER_LOCK_TTL_S = 600
 
 
 def keeper_plan(svc_alive: bool, nose_alive: bool, brain_alive: bool) -> list[str]:
@@ -662,9 +668,23 @@ def keeper_plan(svc_alive: bool, nose_alive: bool, brain_alive: bool) -> list[st
     return plan
 
 
+def _keeper_python() -> str:
+    """Interpreter for the scheduled task: windowless when available.
+
+    EVT-164: python.exe under a console-less task parent allocates a
+    visible console per tick (the blank Administrator popup). pythonw.exe
+    is the same interpreter as a GUI-subsystem binary: it can never own
+    a console. Falls back to sys.executable where pythonw is absent.
+    """
+    windowless = Path(sys.executable).with_name("pythonw.exe")
+    if windowless.is_file():
+        return str(windowless)
+    return sys.executable
+
+
 def keeper_task_cmd(action: str) -> list[str]:
     """Pure constructor for the converge-task schtasks command. Pinned."""
-    target = '"%s" "%s" keep' % (sys.executable, REPO_ROOT / "scripts" / "aegis_open.py")
+    target = '"%s" "%s" keep' % (_keeper_python(), REPO_ROOT / "scripts" / "aegis_open.py")
     if action == "install":
         return ["schtasks", "/create", "/tn", KEEPER_TASK_NAME, "/tr", target,
                 "/sc", "minute", "/mo", str(KEEPER_INTERVAL_MIN),
@@ -696,6 +716,33 @@ def _keep_task_row(action: str, as_json: bool) -> dict:
                      "schtasks failed (admin?): %s" % err.strip()[:160])
 
 
+def _pid_alive(pid: int) -> bool:
+    """True if the pid exists (own handle probe). Never raises."""
+    try:
+        import ctypes
+        return ctypes.windll.kernel32.OpenProcess(1, 0, pid) != 0
+    except Exception:
+        return False
+
+
+def _keeper_lock_busy() -> bool:
+    """True when another keep run holds a fresh lock. Never raises.
+
+    Lock format: "<pid> <epoch-seconds>". Missing, malformed, stale
+    (>TTL), or dead-owner locks read as free (takeover).
+    """
+    try:
+        parts = KEEPER_LOCK_FILE.read_text(encoding="utf-8").strip().split()
+        if len(parts) != 2:
+            return False
+        pid, at = int(parts[0]), float(parts[1])
+    except (OSError, ValueError):
+        return False
+    if time.time() - at > KEEPER_LOCK_TTL_S:
+        return False
+    return _pid_alive(pid)
+
+
 def cmd_keep(args) -> int:
     if bool(args.install_task) or bool(args.uninstall_task):
         action = "install" if bool(args.install_task) else "uninstall"
@@ -703,6 +750,25 @@ def cmd_keep(args) -> int:
         emit(row, bool(args.json))
         log_line("keep %s ok=%s %s" % (row["check"], row["ok"], row.get("detail", "")))
         return overall_exit([row])
+    if _keeper_lock_busy():
+        row = summarize("keeper converge", None, "another keep run is fresh (skipped)")
+        emit(row, bool(args.json))
+        log_line("keep %s ok=%s %s" % (row["check"], row["ok"], row.get("detail", "")))
+        return overall_exit([row])
+    try:
+        KEEPER_LOCK_FILE.write_text("%d %f" % (os.getpid(), time.time()), encoding="utf-8")
+    except OSError:
+        pass
+    try:
+        return _keep_converge(args)
+    finally:
+        try:
+            KEEPER_LOCK_FILE.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+def _keep_converge(args) -> int:
     plan = keeper_plan(service_state() == "RUNNING",
                        process_running("aegis-nose"),
                        udp_port_owned(BRAIN_PORT))
@@ -759,7 +825,13 @@ def main(argv: list[str] | None = None) -> int:
     displays_parser.add_argument("--no-browser", action="store_true", help="do not open a browser for web")
     parser.set_defaults(cmd="status", func=cmd_status, json=False)
     args = parser.parse_args(argv)
-    return int(args.func(args)) or 0
+    try:
+        return int(args.func(args)) or 0
+    except Exception as exc:
+        # EVT-164: a watchdog must never die silently -- under pythonw
+        # there is no console for the traceback, so it goes to the log.
+        log_line("fatal: %r\n%s" % (exc, traceback.format_exc()))
+        return 1
 
 
 if __name__ == "__main__":
