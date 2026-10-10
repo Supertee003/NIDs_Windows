@@ -1,5 +1,5 @@
 {
-  "head_sha": "536215c5dd05dd72e5c450f0d0e3de459f5784f9",
+  "head_sha": "01a6a4e4c87cd57b2deb2006d8c6a325edef1cfd",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4156,12 +4156,12 @@
       "description": "CORRECTED 2026-10-10 (EVT-163): the original report was VOID -- every observed bare sc stop ran under PowerShell, where sc is the Set-Content alias, so no stop control was ever delivered (junk files start/stop/queryex committed by accident, since removed). The SCM stop path is therefore UNPROVEN, not proven-hung. stop --all (daemon-owned join) remains the proven working path. Single instance confirmed; no SCM/crash events in 24h.",
       "status": "CLOSED",
       "closed_at": "2026-10-10",
-      "resolution": "Genuine sc.exe stop/start cycle proven by the operator: STOP_PENDING -> STOPPED -> START_PENDING (new pid 25940) -> RUNNING, 4 OK rows, keeper re-enabled. The SCM path works; all prior failures were the PowerShell sc alias trap (no control was ever delivered). waitHint=0/checkpoint-1 sufficed for this shutdown (~1min). stop --all remains the recommended path (daemon-owned join).",
+      "resolution": "Genuine sc.exe stop observed end-to-end by the operator: STOP_PENDING (checkpoint 1) -> STOPPED (copy unlocked, hashes matched) -> START_PENDING (new pid 25940) -> RUNNING, 4 OK rows. The SCM path works; every prior failure was the alias trap delivering nothing. stop --all stays recommended (daemon-owned join), sc.exe stop proven as backup.",
       "required_evidence": [
         "a genuine sc.exe stop observed to STOPPED (or hung, with STATE trail)",
         "then decide: standardize on stop --all or fix the SCM path"
       ],
-      "evidence": "Operator transcript 2026-10-10 + agent-side confirm (new pid, 15s uptime, RUNNING, 23 rules)."
+      "evidence": "Operator transcript 2026-10-10 (STATE trail) + agent-side new-pid/hash/status confirm."
     },
     {
       "id": "EVT-162",
