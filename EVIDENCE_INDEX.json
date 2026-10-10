@@ -1,5 +1,5 @@
 {
-  "head_sha": "11b94538befcd41071ea0ac91c29c54a33ff2948",
+  "head_sha": "dfd5d1abe4d1d93afc7f9f98275c3a15009cdaa1",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -3874,7 +3874,8 @@
         "live: GUI (30s-throttle build) alive 12s+; daemon system.health 0.03s ok once load settled",
         "pinned subset: 45 passed (opener + web + defcon + contracts + portable)",
         "full suite brain tests tools: 847 passed, 9 skipped, 27 subtests (4 release tests green after --refresh-digests)",
-        "rehearsal: full no-arg run_aegis.bat 25.6s exit 0 (open all-skip + 4 verify OK incl nose 2.64M frames; displays web-skip + gui/tui/terminal OK); round 2 all-skip exit 0 with corrected exit-2 note; displays stopped clean after"
+        "rehearsal: full no-arg run_aegis.bat 25.6s exit 0 (open all-skip + 4 verify OK incl nose 2.64M frames; displays web-skip + gui/tui/terminal OK); round 2 all-skip exit 0 with corrected exit-2 note; displays stopped clean after",
+        "post-elevated-stop re-serve: fresh web pid 10308 on :5000, index 0.13s, snapshot cold 9.13s -> warm 0.02s same-doc (cache proven on the real port)"
       ],
       "result": "PASS",
       "finding": "The launcher converges fast when everything is already up (433ms skip instead of a 95s hang), never duplicates displays, the GUI cannot freeze or flood the single control pipe, and the bat is parse-safe under real cmd."
@@ -3899,7 +3900,8 @@
         "live: keep no-op 2.7s exit 0 (service+nose+brain alive)",
         "live: run_aegis.bat --keep renders + converges, no displays",
         "live: keep --install-task fail-closed Access is denied, task absent (schtasks query negative)",
-        "live: sc qfailure shows 2x RESTART/60s recovery actions present"
+        "live: sc qfailure shows 2x RESTART/60s recovery actions present",
+        "operator-verified from elevated shell: install OK, schtasks shows AegisKeeper Ready with Next Run time; sc qfailure now 3x RESTART (was 2)"
       ],
       "result": "PASS",
       "finding": "The 2h blind gap class is closed by construction: SCM restarts twice, then the keeper converges everything SCM cannot (nose, brain, exhausted restarts) every 5 minutes once the operator runs the single admin command."
@@ -4026,10 +4028,12 @@
       "tests": [
         "zig build test exit 0",
         "zig test bridge_init: 4/4 pass incl new join test",
-        "zig build exit 0"
+        "zig build exit 0",
+        "operator deploy: Copy-Item landed (hashes match), sc start hung so Start-Service used; new daemon pid 15240, uptime fresh, 4 OK rows",
+        "nose frames_read reset 3.1M -> 851: correct per-daemon-lifetime semantics (nose process itself never stopped)"
       ],
       "result": "PASS",
-      "finding": "Shutdown owns its threads again. The previously-dead HMAC tests now execute every suite."
+      "finding": "Shutdown owns its threads again. The previously-dead HMAC tests now execute every suite. Deployed by the operator: hash match + new pid + green status. Deploy exposed GAP-017 (SCM stop never completes)."
     },
     {
       "id": "EVT-157",
@@ -4049,7 +4053,8 @@
       ],
       "tests": [
         "17 auth/bridge pins pass",
-        "live restart + bridge --json: owner True, posture off, new pid"
+        "live restart + bridge --json: owner True, posture off, new pid",
+        "operator-provisioned: bridge secret_posture on (brain restarted, new pid); cmdline unreadable from non-elevated shell AND pid-corroboration path fired live as designed (owner True via HEALTH reply from listener pid)"
       ],
       "result": "PASS",
       "finding": "Posture is observable without ever moving the value. Provisioning (RB-016) still admin-gated."
@@ -4138,6 +4143,20 @@
       ],
       "result": "PASS",
       "finding": "The terminal surface can no longer lie in either direction; the one unexplained stop remains explicitly unexplained, not papered over."
+    },
+    {
+      "id": "GAP-017",
+      "severity": "P2",
+      "title": "SCM stop control never completes; only daemon-owned shutdown works",
+      "description": "During the EVT-156 deploy, `sc stop AegisNids` never reached STOPPED across repeated attempts (copy stayed locked on the running image), while `aegisctl stop --all` (daemon-owned worker join via the control plane) shut down cleanly to STOPPED, verified stable 12x. Single instance confirmed (no duplicate process disease). No SCM or crash events in 24h; the 02:51 WER entry is the GUI AppHang (pre-EVT-149 binary), not the service. Suspect: SCM control-handler path vs a join that only the daemon-owned path drives to completion. Workaround (proven): stop --all for all future deploys; taskkill /F reserved as last resort (forensic tail + spool cost).",
+      "status": "OPEN",
+      "closed_at": null,
+      "resolution": null,
+      "required_evidence": [
+        "root cause of the hung SCM stop path (handler vs join)",
+        "sc stop reaching STOPPED, or documented decision to standardize on stop --all"
+      ],
+      "evidence": "Deploy transcript 2026-10-10: repeated sc stop without STOPPED; stop --all clean."
     }
   ],
   "evidence_level_summary": {
