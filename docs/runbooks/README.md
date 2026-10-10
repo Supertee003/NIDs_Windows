@@ -24,6 +24,7 @@ This directory contains operational runbooks for the AEGIS NIDS system.
 | [RB-016](RB-016-production-trust-checklist.md) | Deployment | Production trust (signed policy, secrets, gates) | policy_signing | OPERATOR ACTION |
 | [RB-017](RB-017-brain-bring-up.md) | Deployment | Brain Tier-2 supervised bring-up | brain_channel | OPERATOR ACTION |
 | [RB-018](RB-018-hostonly-observe-only-qualification.md) | Lab Proof | Host-only observe-only qualification (Kali VM) | wfp_telemetry | NOT YET EXECUTED |
+| [RB-019](RB-019-attack-visibility-demo.md) | Troubleshooting | Attack-visibility demo (marked canary end to end) | detection_chain | procedure |
 
 ## Runbook Types
 

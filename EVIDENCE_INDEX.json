@@ -1,5 +1,5 @@
 {
-  "head_sha": "c1f67354b7f84932d49467fb7847d6163d984ab6",
+  "head_sha": "e353be09f76db8cfc46d5cbd0ea70c66f70c72fa",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4511,6 +4511,58 @@
       ],
       "result": "PASS",
       "finding": "The design is sound; the file permissions are not. Fix the ACLs before guests arrive, and the model holds."
+    },
+    {
+      "id": "GAP-018",
+      "severity": "P2",
+      "title": "Sensor pipe writable by any authenticated user (AU in ADMIN_ONLY SDDL)",
+      "description": "nids_capture names its pipe ACL ADMIN_ONLY but the SDDL admits Authenticated Users, mirroring the control-pipe pattern without the control plane's per-command role gate: pipe writes land as events with no caller authentication. Impact is bounded today (ingest is variant-checked, unknown fields ignored, enforcement still needs privileged receipts), but any local process can inject detection input (alert fatigue, cover, DEFCON influence). Fix needs a coordinated decision, not a solo edit: tighten SDDL to BA+SY (breaks non-admin gate-E canary runs) or MAC the sensor wire like the brain loop (needs daemon+generator protocol change + deploy).",
+      "status": "OPEN",
+      "closed_at": null,
+      "resolution": null,
+      "required_evidence": [
+        "SDDL tightened or sensor-wire MAC, with gate-E tests green under the new rule"
+      ],
+      "evidence": "SDDL line + ingest code read + live pipe-accept proof, 2026-10-11 session."
+    },
+    {
+      "id": "GAP-019",
+      "severity": "P2",
+      "title": "No per-event retrieval: ring has no payload text or rule filter",
+      "description": "Proven by experiment, twice: a bare canary is accepted at transport but cannot be found again -- events tail reads a different feed (ndjson), ring responses carry no payload bytes, payload_prefix matches raw struct bytes (useless for text), and search has no rule filter. Consequence: single-event attack proof on a busy host is impossible with current retrieval, and the gate-E 'golden-path via metrics delta' argument is background-confounded. Fix direction: rule-id filter on forensics.list (small, daemon-side) and/or payload excerpt in responses; both need rebuild + deploy + admin restart.",
+      "status": "OPEN",
+      "closed_at": null,
+      "resolution": null,
+      "required_evidence": [
+        "rule-id filter or payload excerpt live, demonstrated by a marked canary found by content"
+      ],
+      "evidence": "Two live firings + transport/ingest/ring/search code reads, 2026-10-11 session."
+    },
+    {
+      "id": "EVT-175",
+      "head_sha": "e353be0",
+      "timestamp": "2026-10-11",
+      "title": "Attack demo honest: chain health proven, attribution boundary printed",
+      "level": "E5",
+      "component": "tooling+docs",
+      "description": "The first demo draft promised per-event proof it could not deliver (tail is the wrong feed; ring has no retrievable payload). Rebuilt honestly after live experiments: transport accepted, daemon alive + nose flowing, ring tip advances + verify true, graph rebuilt -- with the GAP-019 boundary printed, not hidden. Same session: forensic search text-ordinal crash fixed (clean exit-2 guidance), search help documents real field semantics, graph --json added, RB-019 rewritten to match. The demo exits 0 for a healthy chain and says exactly what it did and did not prove.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "scripts/attack_demo.py",
+        "tools/aegisctl.py",
+        "docs/runbooks/RB-019-attack-visibility-demo.md",
+        "tests/runtime/test_aegisctl.py",
+        "tests/tools/test_attack_demo.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "live honest demo exit 0 (ring advanced, verified, graph built)",
+        "search misuse pins (ordinal guidance, unknown field, no traceback)",
+        "graph --json machine-readable",
+        "full suite: 916 passed + 4 release green post-refresh"
+      ],
+      "result": "PASS",
+      "finding": "A demo that says what it cannot prove is worth more than a proof that falls apart on stage. The two gaps it exposed are filed with owners."
     }
   ],
   "evidence_level_summary": {
@@ -4519,7 +4571,7 @@
     "E2_count": 108,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 52,
+    "E5_count": 53,
     "E6_count": 0,
     "E7_count": 0
   }

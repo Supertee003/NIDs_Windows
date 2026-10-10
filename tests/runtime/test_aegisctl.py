@@ -470,6 +470,28 @@ class TestAegisctlIptest(unittest.TestCase):
             self.assertLessEqual(doc["p50_ms"], doc["p99_ms"])
 
 
+class TestForensicSearchContracts(unittest.TestCase):
+    """EVT-175: search misuse degrades to guidance, never a traceback."""
+
+    def test_text_source_value_explains_ordinal(self):
+        import json as _json
+        rc, stdout, stderr = _run_aegisctl(
+            "forensic", "search", "--field", "source", "--value", "1.2.3.4",
+            timeout=60)
+        combined = stdout + stderr
+        self.assertEqual(rc, 2, f"expected exit 2, got {rc}")
+        self.assertNotIn("Traceback", combined)
+        body = _json.loads(combined.strip().splitlines()[-1])
+        self.assertEqual(body.get("reason"), "source_must_be_a_numeric_ordinal")
+
+    def test_unknown_field_names_valid_filters(self):
+        rc, stdout, stderr = _run_aegisctl(
+            "forensic", "search", "--field", "bogus", "--value", "x",
+            timeout=60)
+        self.assertEqual(rc, 2)
+        self.assertIn("source_or_payload_prefix", stdout + stderr)
+
+
 class TestRulesWriteRefusedGracefully(unittest.TestCase):
     """EVT-174: unwritable Rules.json must read as a message, not a traceback."""
 

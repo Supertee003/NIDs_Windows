@@ -897,7 +897,16 @@ def cmd_forensic(args) -> int:
         field = str(args.field)
         value = str(args.value)
         if field == "source":
-            payload = {"source": int(value)}
+            # Source is the numeric origin ordinal (9 npcap, 10 host
+            # telemetry), not an IP: reject text cleanly, never traceback.
+            try:
+                payload = {"source": int(value)}
+            except ValueError:
+                print(json.dumps({"available": False, "command": "forensics.search",
+                                  "reason": "source_must_be_a_numeric_ordinal",
+                                  "hint": "use --field payload_prefix for text"}, sort_keys=True),
+                      file=sys.stderr)
+                return 2
         elif field == "payload_prefix":
             payload = {"payload_prefix": value}
         else:
@@ -1706,6 +1715,9 @@ def cmd_graph(args) -> int:
     print("Threat graph: %s" % out)
     print("Events parsed: %d; nodes: %d; edges: %d (log: %s)" % (parsed, nodes, edges, log))
     print("Colors are claim-based triage (green=receipt, red dashed=unverified claim); authority: forensics verify.")
+    if bool(getattr(args, "json", False)):
+        print(json.dumps({"command": "graph", "html": str(out), "parsed": parsed,
+                          "nodes": nodes, "edges": edges, "log": str(log)}, sort_keys=True))
     if bool(getattr(args, "open", False)):
         try:
             import webbrowser
@@ -1932,7 +1944,9 @@ def main() -> int:
     forensic = sub.add_parser("forensic", help="Inspect forensic records")
     forensic_sub = forensic.add_subparsers(dest="forensic_command")
     fshow = forensic_sub.add_parser("show"); fshow.add_argument("--id", required=True, type=int)
-    fsearch = forensic_sub.add_parser("search"); fsearch.add_argument("--field", required=True); fsearch.add_argument("--value", required=True)
+    fsearch = forensic_sub.add_parser("search", help="Filter ring records (source ordinal or payload-bytes prefix)");
+    fsearch.add_argument("--field", required=True, help="source = numeric origin ordinal (9 npcap, 10 host); payload_prefix = raw record-bytes prefix, not text search");
+    fsearch.add_argument("--value", required=True, help="Ordinal for source; byte prefix for payload_prefix")
     forensic_sub.add_parser("verify", help="Verify forensic hash chain")
     fexport = forensic_sub.add_parser("export"); fexport.add_argument("--output", required=True)
     forensic.set_defaults(forensic_command="list", func=cmd_forensic)
@@ -1998,6 +2012,7 @@ def main() -> int:
     _graph_p = sub.add_parser("graph", help="Receipt-aware threat graph (HTML)")
     _graph_p.add_argument("--out", default=None, help="Output HTML path (default reports/threat_graph.html)")
     _graph_p.add_argument("--limit", default=500, help="Max records from the log tail")
+    _graph_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
     _graph_p.add_argument("--open", action="store_true", help="Open the graph in a browser")
     _graph_p.set_defaults(func=cmd_graph)
     _console_p = sub.add_parser("console", help="Interactive Command Control Center")
