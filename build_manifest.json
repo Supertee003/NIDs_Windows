@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "f14211b",
+  "source_commit": "cd4beb1",
   "build_date": "2026-10-08T16:31:09.245790+00:00",
   "build_host": "windows",
   "platform": {
@@ -1015,7 +1015,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18563,
-      "sha256": "837ef7b7543116b35230845d7d7e866f86d71742f0f53d31d7c2e64627f19389",
+      "sha256": "f95628d24c4759b1385f6b8e19ab4779b9adc3d9f29e5ad932932321f90660ff",
       "language": "json"
     },
     {
@@ -1128,8 +1128,8 @@
     },
     {
       "path": "scripts/aegis_status.bat",
-      "size": 1046,
-      "sha256": "52e70a8d5c3ae842d7e2083122d340d5334e62fb7d7d5bfe51a0b4c54884d57f",
+      "size": 1245,
+      "sha256": "b3e67d109c91b475684f0a23b082b0e91c9f45b13f892074f4b09b99f9c1ec6b",
       "language": "script"
     },
     {
@@ -1266,8 +1266,8 @@
     },
     {
       "path": "scripts/install_drivers.bat",
-      "size": 8330,
-      "sha256": "3e873f2baefa705f6b79654e651e18e3247b049a80ac989d8a38279b785d8f4d",
+      "size": 8338,
+      "sha256": "49dc2ac8cf0bc8dffd142070fff564c2822b5e4abcd044e8820eadd5fd6f7cc8",
       "language": "script"
     },
     {
@@ -3306,8 +3306,8 @@
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 85880,
-      "sha256": "3523b2e32c9147a14a8910eb944ca6fbd416fa5cfe89434df1bbb2098f0950c4",
+      "size": 86980,
+      "sha256": "34a21844d276599f8a2bc9800b06b2485cfb1baea0bcecda714affad5a4bd0cd",
       "language": "python/cython"
     },
     {
@@ -3324,8 +3324,8 @@
     },
     {
       "path": "tools/aegisctl/api/control_api.py",
-      "size": 59472,
-      "sha256": "ab5524f9bca283d8921b9db5d23932233f56ad7e4770964776b2ff3247bcc605",
+      "size": 61134,
+      "sha256": "10e2e3ee56f389c578386b34fb8e26590955617811061978b54e9177c60e6f35",
       "language": "python/cython"
     },
     {

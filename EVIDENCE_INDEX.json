@@ -1,5 +1,5 @@
 {
-  "head_sha": "e3719bce037db1006f7f44cb77c627a63c47d98a",
+  "head_sha": "cd4beb1a7e12194d8d9894ac78406375bc6da903",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4395,12 +4395,35 @@
       ],
       "result": "PASS",
       "finding": "The crash story is fully told: old binaries asserted, new binary holds, watchers watch, tree leaks nothing. GAP-016 closed on its own criteria."
+    },
+    {
+      "id": "EVT-170",
+      "head_sha": "cd4beb1",
+      "timestamp": "2026-10-11",
+      "title": "Command map: naming confusion resolved by roles, not deletions",
+      "level": "E2",
+      "component": "tooling+docs",
+      "description": "Operator complaint: too many commands, wrong choices made. Deep analysis (live sweep of all 30 subcommands + overlap probes): almost NOTHING is truly duplicated. aegisctl start/stop ask the daemon over the pipe while the opener owns OS processes (different layers); metrics/queue, forensics/forensic, events/alerts are complementary pairs with disjoint data; status/health/diagnose/readiness are four depths; snapshot now carries components; version vs components answer different questions. The disease is naming without a role map. Cure: docs/OPERATOR_COMMAND_MAP.md (5 roles, look-alike pairs explained, scripts by hat, one-engine entry points) plus a role epilog on every --help. Pins: map covers every subcommand, epilog renders.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "docs/OPERATOR_COMMAND_MAP.md",
+        "tools/aegisctl.py",
+        "tests/tools/test_command_map.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "map covers all 30 subcommands (authority/help gap found and fixed by the pin itself)",
+        "epilog role lines render",
+        "CLI+tools suites: 105 passed"
+      ],
+      "result": "PASS",
+      "finding": "Nothing deleted, nothing merged: the map turns 30 confusing names into 5 role-shaped answers. Choosing is now lookup, not lore."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
-    "E2_count": 107,
+    "E2_count": 108,
     "E3_count": 7,
     "E4_count": 0,
     "E5_count": 48,

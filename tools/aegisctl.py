@@ -1815,6 +1815,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="AEGIS NIDS control plane CLI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="roles (full map: docs/OPERATOR_COMMAND_MAP.md):\n"
+               "  daily     run_aegis.bat / status / bridge / components / dashboard / console\n"
+               "  incident  events / alerts / forensic(s) / enforce status / block list / diagnose\n"
+               "  maintain  keep / close / rules / policy / forensics verify (admin where noted)\n"
+               "  lab/dev   simulate / canary / graph / federation / quarantine / builds (lab host only)\n"
+               "layers: the opener owns OS processes; start/stop ask the daemon;\n"
+               "restart refuses by design (needs an external service manager).",
     )
     # P1/T1-NET-019: pipe only. The unauthenticated TCP branch was removed;
     # the daemon never listens on TCP, so --transport=tcp is rejected.
