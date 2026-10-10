@@ -68,7 +68,7 @@ component into `DEGRADED` instead of blocking startup.
 | Component        | Binary                       | Language | Inputs                          | Outputs                              | Deps                  | Start                          | Health                                | Stop                          | Required | Gate |
 |------------------|------------------------------|----------|---------------------------------|--------------------------------------|-----------------------|--------------------------------|---------------------------------------|-------------------------------|----------|------|
 | `metrics`        | `scripts/aegis_metrics.py`    | Python   | core NDJSON, brain log          | Prometheus :9100 /metrics            | `core`*               | `python aegis_metrics.py`      | `127.0.0.1:9100/-/healthy`           | SIGINT → 2s → kill            | no  | C |
-| `notifier`       | `scripts/aegis_notifier.py`   | Python   | aggregator REST                 | email / webhook / syslog             | `aggregator`*         | `python aegis_notifier.py`      | `\\.\pipe\aegis-notifier-health`     | SIGINT → 2s → kill            | no  | C |
+| `notifier`       | `scripts/aegis_notifier.py`   | Python   | aggregator REST                 | email / webhook / syslog             | `aggregator`*         | RETIRED (EVT-152, no runner)   | n/a (retired)                         | n/a                           | no (retired) | C |
 | `dashboard`      | `aegis_dashboard/aegis_dashboard.exe` | Rust | core NDJSON, aggregator API     | egui window + axum :8080             | `core`*, `aggregator`* | `aegis_dashboard.exe`          | `127.0.0.1:8080/health`              | SIGINT → 2s → kill            | no  | C |
 
 ---
@@ -171,7 +171,7 @@ manifest (`aegis.manifest.json`).
 | `shield`     | Embedded in core's version string (`shield=<semver>`) |
 | `aggregator` | `aegis-aggregator.exe --version`                    |
 | `metrics`    | `python aegis_metrics.py --version`                 |
-| `notifier`   | `python aegis_notifier.py --version`                |
+| `notifier`   | n/a (retired EVT-152)                               |
 | `dashboard`  | `aegis_dashboard.exe --version`                     |
 
 If a component does not yet implement `--version`, it is **not** Gate-A

@@ -194,3 +194,12 @@ def test_keep_service_prefers_scm_recovery():
         row = opener.keep_service()
         assert row["ok"] is True
     svc.assert_called_once_with()
+
+
+def test_tui_surface_is_mouth_identity():
+    # EVT-151 decision: mouth stays as the "tui" display surface. Pin the
+    # exact identity so a rename silently orphaning windows_sec_monitor
+    # (or the stop matcher missing it) fails loudly. Pure, no system touch.
+    assert opener._DISPLAY_MATCH["tui"] == ("exe", "windows_sec_monitor")
+    assert opener.TUI_EXE.name == "windows_sec_monitor.exe"
+    assert opener.TUI_EXE.parent.name == "release"

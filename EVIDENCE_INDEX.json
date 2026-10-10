@@ -1,5 +1,5 @@
 {
-  "head_sha": "e17a7224ed62c30abf3d238ee89c0be6f9929602",
+  "head_sha": "c1c255795b13140e149a50a368110bf99d7623e3",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -3901,15 +3901,78 @@
       ],
       "result": "PASS",
       "finding": "The 2h blind gap class is closed by construction: SCM restarts twice, then the keeper converges everything SCM cannot (nose, brain, exhausted restarts) every 5 minutes once the operator runs the single admin command."
+    },
+    {
+      "id": "EVT-151",
+      "head_sha": "c1c2557",
+      "timestamp": "2026-10-10",
+      "title": "Mouth fate decided KEEP: binary==source, Gate-A smoke, live start/stop cycle clean",
+      "level": "E5",
+      "component": "tooling+mouth",
+      "description": "Operator-authorized fate decision for mouth (NEEDS-HELP since EVT-106): KEEP as the `tui` display surface. Evidence: mouth/target/release/windows_sec_monitor.exe (Oct 9) is newer than windows_sec_monitor.rs, so binary==source, no rebuild needed; `--version` prints aegis-mouth 3.0.0 exit 0 (Gate-A, no window); live cycle via the opener: displays --tui opens (pid observed, alive 6s+), displays --stop --tui stops it and the process is gone. The EVT-112 no-graceful-exit loop is a non-issue in practice: the monitor is a read-only tailer and the opener stops it with Stop-Process -Force, verified gone. Pinned: _DISPLAY_MATCH['tui'] identity so a rename can never silently orphan the exe.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "tests/tools/test_aegis_open.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "mouth --version: aegis-mouth 3.0.0 exit 0",
+        "live: start tui OK, alive 6s, stop tui OK, process gone (shutdown path proven)",
+        "new pin test_tui_surface_is_mouth_identity: passed"
+      ],
+      "result": "PASS",
+      "finding": "Mouth stays. The shutdown-path NEEDS-HELP is closed by runtime test, not by code change."
+    },
+    {
+      "id": "EVT-152",
+      "head_sha": "c1c2557",
+      "timestamp": "2026-10-10",
+      "title": "Herald retired truthfully: false deprecation pointer fixed, matrix + pins lock it",
+      "level": "E2",
+      "component": "tooling",
+      "description": "Operator-authorized fate decision for herald (scripts/aegis_notifier.py): RETIRE, file kept, no deletion. The header said 'DEPRECATED, use aegisctl events instead' -- false: aegisctl events is VIEW-only (count/tail/follow/stats, verified in tools/aegisctl.py) and sends nothing, while the notifier sat fully coded with zero configuration (no configs/notifier.json, no AEGIS_NOTIFIER_* env) and zero ownership (not in opener, bat, manifests, or any task). Reviving push notify needs secrets management, a managed runner, and lab proof -- none of which exist -- so retire is the honest state. Header rewritten to RETIRED with the true pointers; COMPONENT_MATRIX notifier + version rows marked retired. Nothing references it as live (only audit inventories).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "scripts/aegis_notifier.py",
+        "docs/runtime/COMPONENT_MATRIX.md",
+        "tests/tools/test_notifier_retired.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "new tests/tools/test_notifier_retired.py: 3 passed (header, no-runner, matrix)",
+        "live probe: feed file exists, transports all unconfigured (fail-closed as-run)"
+      ],
+      "result": "PASS",
+      "finding": "Push notification is now honestly UNOWNED instead of falsely deprecated-to-a-viewer. Resurrection must be deliberate."
+    },
+    {
+      "id": "EVT-153",
+      "head_sha": "c1c2557",
+      "timestamp": "2026-10-10",
+      "title": "Warden scoped: provider READY but gate closed on prod; cutover spec is lab-only",
+      "level": "E5",
+      "component": "tooling+wfp",
+      "description": "Warden development stopped exactly at the production safety line. Verified live: aegiswfp driver RUNNING; enforcement.status tier3 READY, pep_available true, provider_ready true, yet tier3_enforcing false, host_effect_capable false, enforcement_mode detection-only, prevention_gate closed, receipt_required true. Security reviews require detection-only until P0/Gate A-E pass at current HEAD, so no flip, reinstall, or filter change was made on prod. Deliverable: docs/WARDEN_CUTOVER_SPEC.md -- lab/VM preconditions, receipt-gated canary steps, 24h soak + rollback drill, confirmation gate, explicit prod non-goals (minifilter stays out until its own Gate D). T11 WFP suite re-run green as the verify baseline.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "docs/WARDEN_CUTOVER_SPEC.md",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "tests/wfp: 10 passed, 1 skipped (pre-existing skip)",
+        "live: sc query aegiswfp RUNNING; enforcement.status snapshot recorded"
+      ],
+      "result": "PASS",
+      "finding": "The enforcing cutover is fully specified and fully gated. Prod keeps telemetry + closed gate until lab evidence exists."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
-    "E2_count": 102,
+    "E2_count": 103,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 34,
+    "E5_count": 36,
     "E6_count": 0,
     "E7_count": 0
   }

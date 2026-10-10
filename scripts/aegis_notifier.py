@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
-"""DEPRECATED: Use 'python tools/aegisctl.py events' instead.
-This script is kept for backward compatibility only.
+"""RETIRED (EVT-152): do not run as a service. No managed runner owns this
+script (not in the opener, launcher, manifests, or any scheduled task),
+no transport is configured on this host (no configs/notifier.json, no
+AEGIS_NOTIFIER_* env), and every send path fails closed when unconfigured.
+
+The old pointer below ("use aegisctl.py events instead") was wrong and is
+kept only as history: `python tools/aegisctl.py events` is VIEW-only
+(count/tail/follow/stats) -- it sends nothing. Push notification
+(email/webhook/syslog) is currently UNOWNED: reviving it needs secrets
+management, a managed runner, and lab proof before any production use.
+See docs/runtime/COMPONENT_MATRIX.md (notifier row: retired) and EVT-152.
 """
 """
 aegis_notifier.py - AEGIS NIDS Alert Notifier (Phase 13, UX-07)
