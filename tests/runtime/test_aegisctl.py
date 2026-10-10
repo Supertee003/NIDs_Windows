@@ -455,5 +455,20 @@ class TestAegisctlConsoleGraph(unittest.TestCase):
             self.assertTrue(os.path.isfile(out))
 
 
+class TestAegisctlIptest(unittest.TestCase):
+    """EVT-167: bounded latency probe instead of the stub (live)."""
+
+    def test_iptest_reports_bounded_sample(self):
+        import json as _json
+        rc, stdout, stderr = _run_aegisctl("iptest", "--rounds", "3", "--json", timeout=60)
+        self.assertEqual(rc, 0, f"iptest exit 0, got {rc}; {stderr[-300:]}")
+        doc = _json.loads(stdout)
+        self.assertEqual(doc["rounds"], 3)
+        self.assertFalse(doc["capped"])
+        self.assertEqual(doc["ok"] + doc["failed"], 3)
+        if doc["ok"]:
+            self.assertLessEqual(doc["p50_ms"], doc["p99_ms"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -669,6 +669,55 @@ def query_control(command: str, payload: Optional[Dict[str, Any]] = None) -> Opt
     return _query_daemon_retry(command, payload=payload)
 
 
+PIPE_LATENCY_ROUNDS_DEFAULT = 20
+PIPE_LATENCY_ROUNDS_MAX = 100
+
+
+def pipe_latency_probe(rounds: int = PIPE_LATENCY_ROUNDS_DEFAULT) -> Dict[str, Any]:
+    """Bounded control-pipe latency probe (EVT-167).
+
+    N system.health round-trips through the budgeted retry path,
+    reporting attempts/ok plus p50/p99/max over the successful ones.
+    This is a latency SAMPLE, not a throughput flood: rounds are capped
+    at 100 and the result says so. Never raises; total failure reads as
+    ok=0 (unknown pipe), never fabricated timings.
+    """
+    try:
+        n = max(1, min(int(rounds), PIPE_LATENCY_ROUNDS_MAX))
+    except (TypeError, ValueError):
+        n = PIPE_LATENCY_ROUNDS_DEFAULT
+    samples: List[float] = []
+    ok = 0
+    for _ in range(n):
+        start = time.perf_counter()
+        try:
+            reply = query_control("system.health", {})
+        except Exception:
+            reply = None
+        elapsed_ms = (time.perf_counter() - start) * 1000.0
+        if isinstance(reply, dict) and reply:
+            ok += 1
+            samples.append(elapsed_ms)
+    ordered = sorted(samples)
+    def _pct(p: float) -> Optional[float]:
+        if not ordered:
+            return None
+        idx = min(len(ordered) - 1, int(p * len(ordered)))
+        return ordered[idx]
+    return {
+        "command": "iptest",
+        "rounds_requested": rounds,
+        "rounds": n,
+        "capped": n != rounds,
+        "ok": ok,
+        "failed": n - ok,
+        "p50_ms": _pct(0.50),
+        "p99_ms": _pct(0.99),
+        "max_ms": ordered[-1] if ordered else None,
+        "note": "bounded latency sample, not a flood; p99 over successful rounds only",
+    }
+
+
 # The daemon page budget is authoritative; these only bound the client loop.
 FORENSIC_PAGE_LIMIT_CAP = 1000
 FORENSIC_PAGE_CAP = 64

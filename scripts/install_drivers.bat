@@ -233,8 +233,8 @@ echo ============================================================
 echo [DONE] Driver installation complete
 echo.
 echo   Verify with:
-echo     sc query AegisWfp
-echo     sc query AegisMinifilter
+echo     sc.exe query AegisWfp
+echo     sc.exe query AegisMinifilter
 echo     fltmc  (list loaded minifilters)
 echo ============================================================
 

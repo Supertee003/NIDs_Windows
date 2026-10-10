@@ -23,6 +23,7 @@ This directory contains operational runbooks for the AEGIS NIDS system.
 | [RB-015](RB-015-siem-delivery-proof.md) | Lab Proof | SIEM delivery proof (lab) | siem_proof | NOT YET EXECUTED |
 | [RB-016](RB-016-production-trust-checklist.md) | Deployment | Production trust (signed policy, secrets, gates) | policy_signing | OPERATOR ACTION |
 | [RB-017](RB-017-brain-bring-up.md) | Deployment | Brain Tier-2 supervised bring-up | brain_channel | OPERATOR ACTION |
+| [RB-018](RB-018-hostonly-observe-only-qualification.md) | Lab Proof | Host-only observe-only qualification (Kali VM) | wfp_telemetry | NOT YET EXECUTED |
 
 ## Runbook Types
 

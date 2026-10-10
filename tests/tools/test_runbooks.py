@@ -51,6 +51,18 @@ def test_runbooks_have_bones():
         assert _has(text, "## Rollback", "## Safety contract"), (path.name, "backout")
 
 
+def test_runbook_index_matches_files():
+    # Renames (RB-007 double-numbering, EVT-167) must update the index,
+    # or the catalog silently rots.
+    import re
+    index = (RB / "README.md").read_text(encoding="utf-8")
+    listed = set(re.findall(r"\[RB-(\d+)\]\(", index))
+    present = {p.name[3:6] for p in _files()}
+    assert listed == present, (listed ^ present)
+    numbers = sorted(p.name[3:6] for p in _files())
+    assert len(numbers) == len(set(numbers)), "duplicate RB numbers"
+
+
 def test_runbooks_carry_no_stale_markers():
     bad = []
     for path in _files():

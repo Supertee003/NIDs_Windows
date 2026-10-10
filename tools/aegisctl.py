@@ -55,6 +55,7 @@ try:
         verify_authority_invariant,
         diagnose_endpoint_ownership,
         bridge_diagnostic,
+        pipe_latency_probe,
     )
     from aegisctl.components import components_status
     CONTROL_API_AVAILABLE = True
@@ -78,6 +79,7 @@ except ImportError as e:
             verify_authority_invariant,
             diagnose_endpoint_ownership,
             bridge_diagnostic,
+            pipe_latency_probe,
         )
         from aegisctl.components import components_status
         CONTROL_API_AVAILABLE = True
@@ -1762,12 +1764,30 @@ def cmd_components(args) -> int:
 
 
 def cmd_iptest(args) -> int:
-    """IPC throughput test.
+    """Bounded control-pipe latency probe (EVT-167).
 
     Delegates all business logic to control_api.
     CLI is thin: just call API and display structured result.
+    Exit 0 when at least one round-trip succeeded, else 1.
     """
-    return _unavailable("iptest", "throughput_probe_not_connected")
+    if not CONTROL_API_AVAILABLE:
+        return _unavailable("iptest", "control_api_unavailable")
+    try:
+        rounds = int(getattr(args, "rounds", 20))
+    except (TypeError, ValueError):
+        rounds = 20
+    doc = pipe_latency_probe(rounds)
+    if bool(getattr(args, "json", False)):
+        print(json.dumps(doc, sort_keys=True))
+    else:
+        print("Control-pipe latency (%d rounds, capped at %d)" % (doc["rounds"], 100))
+        print("  ok %d / failed %d" % (doc["ok"], doc["failed"]))
+        if doc["ok"]:
+            print("  p50 %.1f ms · p99 %.1f ms · max %.1f ms" % (
+                doc["p50_ms"], doc["p99_ms"], doc["max_ms"]))
+        else:
+            print("  no successful round-trip (pipe unknown, not measured)")
+    return 0 if doc["ok"] > 0 else 1
 
 
 def cmd_authority(args) -> int:
@@ -1975,7 +1995,10 @@ def main() -> int:
                             help="Run one --choice non-interactively and exit")
     _console_p.add_argument("--choice", default=None, help="Menu key for --once (0-9/A-C)")
     _console_p.set_defaults(func=cmd_console)
-    sub.add_parser("iptest", help="IPC throughput test").set_defaults(func=cmd_iptest)
+    _iptest_p = sub.add_parser("iptest", help="Bounded control-pipe latency probe")
+    _iptest_p.add_argument("--rounds", default=20, help="Round-trips (1-100, default 20; never a flood)")
+    _iptest_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    _iptest_p.set_defaults(func=cmd_iptest)
     sub.add_parser("authority", help="Verify authority invariant").set_defaults(func=cmd_authority)
     sub.add_parser("help", help="Show help").set_defaults(func=cmd_help)
 
