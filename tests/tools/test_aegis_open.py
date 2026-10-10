@@ -214,6 +214,50 @@ def test_pids_by_cmdline_never_matches_self():
     assert os.getpid() not in opener._pids_by_cmdline("pytest")
 
 
+def test_pids_by_cmdline_covers_pythonw():
+    # EVT-171: keeper-spawned brains run as pythonw.exe; a python.exe-only
+    # WQL filter missed them (stop said "was not running" with :9999
+    # owned). Pin the query shape (no system touch) ...
+    from unittest.mock import patch
+    seen = {}
+
+    def fake_run(cmd, timeout=60):
+        seen["cmd"] = " ".join(cmd)
+        return (0, "", "")
+
+    with patch.object(opener, "run", side_effect=fake_run):
+        assert opener._pids_by_cmdline("windows_brain") == []
+    assert "pythonw.exe" in seen["cmd"]
+    assert "python.exe" in seen["cmd"]
+
+
+def test_udp_port_owner_is_readable_cross_elevation():
+    # ... but argv matching cannot see an ELEVATED brain from a plain
+    # shell, so the socket owner is authoritative. Live and read-only:
+    # the current brain holds :9999 and the helper must name it.
+    assert opener._pids_on_udp_port(9999), "live brain port owner missing"
+
+
+def test_stop_brain_displaces_python_port_owners():
+    # stop_supervised adds python owners of :9999 even when argv shows
+    # nothing (same rule as the web stale-port cleanup).
+    from unittest.mock import patch
+    killed_with = []
+
+    def fake_kill(pids):
+        killed_with.extend(pids)
+        return (list(pids), [])
+
+    with patch.object(opener, "_pids_by_cmdline", return_value=[]), \
+         patch.object(opener, "_pids_on_udp_port", return_value=[1234]), \
+         patch.object(opener, "_pid_is_python", return_value=True), \
+         patch.object(opener, "_kill_pids", side_effect=fake_kill), \
+         patch.object(opener, "_pids_by_name", return_value=["n"]):
+        rows = opener.stop_supervised()
+    assert killed_with.count(1234) >= 1
+    assert any(r["check"] == "stop brain" for r in rows)
+
+
 def test_keeper_task_runs_windowless():
     # EVT-164: python.exe under a console-less task parent allocates a
     # visible console per tick (the blank Administrator popup). The task

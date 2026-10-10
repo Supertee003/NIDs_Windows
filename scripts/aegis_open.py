@@ -496,9 +496,13 @@ def _pids_by_cmdline(fragment: str) -> list[int]:
     # own command line contains the fragment (e.g. a probe running this
     # very module) would otherwise report itself as the supervised
     # component -- false "already running" SKIP, or stopping itself.
+    # EVT-171: also match pythonw.exe. Keeper-spawned brains run under the
+    # task's pythonw interpreter; a python.exe-only filter is blind to them
+    # (stop said "was not running" while :9999 stayed owned). WQL OR keeps
+    # it one query.
     rc, out, _ = run(
         ["powershell", "-NoProfile", "-Command",
-         "Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { $_.CommandLine -like '*%s*' } | Select-Object -ExpandProperty ProcessId" % fragment],
+         "Get-CimInstance Win32_Process -Filter \"(Name='python.exe') OR (Name='pythonw.exe')\" | Where-Object { $_.CommandLine -like '*%s*' } | Select-Object -ExpandProperty ProcessId" % fragment],
         timeout=30,
     )
     if rc != 0:
@@ -507,6 +511,23 @@ def _pids_by_cmdline(fragment: str) -> list[int]:
     return [pid for pid in
             (int(line.strip()) for line in out.splitlines() if line.strip().isdigit())
             if pid != me]
+
+
+def _pids_on_udp_port(port: int) -> list[int]:
+    """Owning PIDs of UDP listeners on a port (socket identity).
+
+    Mirrors _pids_on_tcp_port for the brain channel: an elevated brain
+    hides its command line from a plain shell, but the socket owner is
+    still readable, so supervision never goes blind by privilege alone.
+    """
+    rc, out, _ = run(
+        ["powershell", "-NoProfile", "-Command",
+         "Get-NetUDPEndpoint -LocalPort %d -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess" % port],
+        timeout=30,
+    )
+    if rc != 0:
+        return []
+    return sorted({int(tok) for tok in out.split() if tok.strip().isdigit()})
 
 
 def _pids_on_tcp_port(port: int) -> list[int]:
@@ -564,6 +585,13 @@ def stop_supervised() -> list[dict]:
         else:
             rows.append(summarize("stop nose", False, "cannot stop pid(s) %s (elevate?) kill_rc_failed=%s" % (",".join(map(str, still)), ",".join(map(str, failed)) or "none")))
     brain = _pids_by_cmdline("windows_brain")
+    # EVT-171: an elevated brain hides its command line, so argv alone
+    # misses it while :9999 stays owned. The listener socket is still
+    # readable: add python owners of the brain's registered port (same
+    # rule as the web stale-port cleanup -- :9999 belongs to the brain).
+    for pid in _pids_on_udp_port(BRAIN_PORT):
+        if pid not in brain and _pid_is_python(pid):
+            brain.append(pid)
     if not brain:
         rows.append(summarize("stop brain", True, "was not running"))
     else:

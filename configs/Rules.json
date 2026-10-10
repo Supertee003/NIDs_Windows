@@ -11,8 +11,16 @@
       "regex_pattern": "'\\s*OR\\s*1=1|'\\s*OR\\s*'1'='1|INFO:SQLI_BYPASS",
       "severity": "Critical",
       "action": "Drop",
-      "target_ports": [80, 443, 8080, 3306, 8443],
-      "target_protocols": ["TCP"]
+      "target_ports": [
+        80,
+        443,
+        8080,
+        3306,
+        8443
+      ],
+      "target_protocols": [
+        "TCP"
+      ]
     },
     {
       "rule_id": "R9064",
@@ -24,8 +32,15 @@
       "regex_pattern": "INFO:OSI_SEMI|;\\s*id|;\\s*whoami|;\\s*cat",
       "severity": "Critical",
       "action": "Drop",
-      "target_ports": [80, 443, 8080, 8443],
-      "target_protocols": ["TCP"]
+      "target_ports": [
+        80,
+        443,
+        8080,
+        8443
+      ],
+      "target_protocols": [
+        "TCP"
+      ]
     },
     {
       "rule_id": "R9059",
@@ -37,8 +52,15 @@
       "regex_pattern": "<script>|alert[(]|INFO:XSS_BASIC|onerror=",
       "severity": "High",
       "action": "Alert",
-      "target_ports": [80, 443, 8080, 8443],
-      "target_protocols": ["TCP"]
+      "target_ports": [
+        80,
+        443,
+        8080,
+        8443
+      ],
+      "target_protocols": [
+        "TCP"
+      ]
     },
     {
       "rule_id": "R0088",
@@ -62,7 +84,9 @@
       "severity": "High",
       "action": "Drop",
       "target_ports": [],
-      "target_protocols": ["ICMP"]
+      "target_protocols": [
+        "ICMP"
+      ]
     },
     {
       "rule_id": "R9006",
@@ -75,7 +99,9 @@
       "severity": "Medium",
       "action": "Alert",
       "target_ports": [],
-      "target_protocols": ["TCP"]
+      "target_protocols": [
+        "TCP"
+      ]
     },
     {
       "rule_id": "R9007",
@@ -88,7 +114,9 @@
       "severity": "Medium",
       "action": "Alert",
       "target_ports": [],
-      "target_protocols": ["TCP"]
+      "target_protocols": [
+        "TCP"
+      ]
     },
     {
       "rule_id": "R1001",
