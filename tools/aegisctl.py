@@ -111,6 +111,55 @@ def cmd_status(args) -> int:
             accepted = aliases.get(component, {component})
             statuses = [item for item in statuses if item[0] in accepted]
             if not statuses:
+                # A named component that the daemon does not track as a
+                # subsystem is not necessarily down: bridge/brain/mouth
+                # live outside the daemon's worker list. Consult the
+                # concept registry (host-local, deep probes for this one
+                # component only) before reporting absence. Anything not
+                # a known concept stays NOT_REGISTERED.
+                concept = None
+                if component in ("bridge", "brain", "mouth"):
+                    try:
+                        found = [c for c in components_status(
+                            health if isinstance(health, dict) else {},
+                            deep=True, only={component})]
+                        concept = found[0] if found else None
+                    except Exception:
+                        concept = None
+                if concept is not None and concept.get("status") == "running":
+                    state = "RUNNING"
+                    if getattr(args, "json", False):
+                        print(json.dumps({
+                            "component": component,
+                            "subsystem_list": [],
+                            "available": True,
+                            "state": state,
+                            "source": "host-local",
+                            "detail": concept.get("detail", ""),
+                        }, sort_keys=True))
+                    else:
+                        print(f"\n  Component: {component}")
+                        print("  Subsystem list: (host-local, not a daemon subsystem)")
+                        print(f"  State: {state}")
+                        print(f"  Detail: {concept.get('detail', '')}")
+                    return 0
+                if concept is not None:
+                    state = str(concept.get("status", "unknown")).upper()
+                    if getattr(args, "json", False):
+                        print(json.dumps({
+                            "component": component,
+                            "subsystem_list": [],
+                            "available": False,
+                            "state": state,
+                            "source": "host-local",
+                            "detail": concept.get("detail", ""),
+                        }, sort_keys=True))
+                    else:
+                        print(f"\n  Component: {component}")
+                        print("  Subsystem list: (host-local, not a daemon subsystem)")
+                        print(f"  State: {state}")
+                        print(f"  Detail: {concept.get('detail', '')}")
+                    return 1
                 # A named component that the daemon does not know about is
                 # NOT running. Reporting the global daemon state here (with a
                 # 0/0 subsystem list) would claim a component exists when it

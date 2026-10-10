@@ -139,20 +139,26 @@ def _bridge_files_ok() -> bool:
 
 
 def components_status(health: Optional[Dict[str, Any]] = None,
-                      deep: bool = False) -> List[Dict[str, Any]]:
+                      deep: bool = False,
+                      only: Optional[set] = None) -> List[Dict[str, Any]]:
     """Identity + best-available status for the five components.
 
     deep=False: health doc + instant path checks only (web/watch hot path).
-    deep=True: adds process probes (one-shot CLI). Never raises; unknown
-    is a first-class answer, never a guessed "running".
+    deep=True: adds process probes (one-shot CLI). only={ids} restricts
+    deep probing to named components (status --component fast path).
+    Never raises; unknown is a first-class answer, never a guessed
+    "running".
     """
     health = health if isinstance(health, dict) else {}
     daemon_running = health.get("state") == "RUNNING"
     frames = _nose_frames(health)
     caps = health.get("capabilities", {}) if isinstance(health.get("capabilities"), dict) else {}
 
+    def _wants(cid: str) -> bool:
+        return only is None or cid in only
+
     brain_doc: Optional[Dict[str, Any]] = None
-    if deep:
+    if deep and _wants("brain"):
         try:
             brain_doc = bridge_diagnostic()
         except Exception:
@@ -161,11 +167,13 @@ def components_status(health: Optional[Dict[str, Any]] = None,
     out: List[Dict[str, Any]] = []
     for comp in COMPONENTS:
         cid = comp["id"]
+        if only is not None and cid not in only:
+            continue
         status = "unknown"
         detail = ""
         if cid == "core":
             if deep:
-                svc = _service_running()
+                svc = _service_running() if _wants("core") else None
                 if svc is True and daemon_running:
                     status, detail = "running", "service + daemon RUNNING"
                 elif svc is False:
@@ -189,7 +197,8 @@ def components_status(health: Optional[Dict[str, Any]] = None,
             else:
                 detail = "no brain keys in health (see aegisctl bridge)"
         elif cid == "nose":
-            proc = _proc_running("aegis-nose") if deep else None
+            proc = (_proc_running("aegis-nose")
+                    if deep and _wants("nose") else None)
             if frames is not None and frames > 0:
                 status, detail = "running", "frames_read=%d" % frames
             elif proc is True:
@@ -200,7 +209,7 @@ def components_status(health: Optional[Dict[str, Any]] = None,
                 detail = "no flow evidence (see status)"
         elif cid == "mouth":
             binary = _MOUTH_EXE.is_file()
-            if deep:
+            if deep and _wants("mouth"):
                 proc = _proc_running("windows_sec_monitor")
                 if proc is True:
                     status, detail = "running", "TUI console open"

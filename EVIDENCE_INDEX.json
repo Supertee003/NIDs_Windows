@@ -1,5 +1,5 @@
 {
-  "head_sha": "dcd8e5a82e198d3f531b66b917066c1b23600a5e",
+  "head_sha": "98a06114f9d70303a27f7e3040457d0746113fc2",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4613,6 +4613,32 @@
       ],
       "result": "PASS",
       "finding": "The daemon now enforces at the pipe door and answers by rule. Both scan findings are closed with live evidence, not just code."
+    },
+    {
+      "id": "EVT-178",
+      "head_sha": "98a0611",
+      "timestamp": "2026-10-11",
+      "title": "Skips eliminated: component truth + isolated brains (9 -> 6, rest by design)",
+      "level": "E5",
+      "component": "tooling+testing",
+      "description": "Every suite skip triaged live. Convertible: (1) golden-path x3 skipped on a stale probe -- `status --component` said NOT_REGISTERED for live bridge/brain because the daemon tracks workers, not host components. status now consults the concept registry (host-local, single-component deep probes) and reports RUNNING with source labeled; aggregator correctly stays NOT_REGISTERED (dead). The 3 tests now run (health + isolated synthetic green). (2) error_counter + synthetic moved to isolated brains: new brain --port flag (default 9999 untouched, daemon still sends there), secret scrubbed via harness env= passthrough, zero prod touch -- required, since the provisioned secret fail-closes bare test traffic and background counters break exact assertions. Remaining 6 skips are by-design and labeled: DLL-present fallback, corroborated live brain, non-empty-log, dead aggregator, single-owner pipe, lab-only WFP.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "tools/aegisctl.py",
+        "tools/aegisctl/components.py",
+        "brain/windows_brain.py",
+        "tests/runtime/conftest.py",
+        "tests/brain/test_error_counter.py",
+        "tests/runtime/test_golden_path.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "golden-path 3 now run green (no skips)",
+        "isolated brains green in ~4s each (error exact, synthetic +3 exact)",
+        "full suite: 921 passed, 6 by-design skips + 4 release green post-refresh"
+      ],
+      "result": "PASS",
+      "finding": "Skips are now either running proof or labeled design -- nothing hides behind 'occupied' anymore, and the suite touches prod exactly nowhere it didn't before."
     }
   ],
   "evidence_level_summary": {
@@ -4621,7 +4647,7 @@
     "E2_count": 109,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 54,
+    "E5_count": 55,
     "E6_count": 0,
     "E7_count": 0
   }

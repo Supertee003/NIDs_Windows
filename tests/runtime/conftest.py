@@ -161,7 +161,8 @@ def _drain(stream: Any, sink: list[str]) -> None:
             pass
 
 
-def start_component(cmd: list[str], cwd: Optional[Path] = None) -> "subprocess.Popen":
+def start_component(cmd: list[str], cwd: Optional[Path] = None,
+                    env: Optional[dict] = None) -> "subprocess.Popen":
     """Start a component process with its stdout/stderr actively drained.
 
     A component started with `stdout=PIPE` and never read blocks as soon as the
@@ -173,12 +174,16 @@ def start_component(cmd: list[str], cwd: Optional[Path] = None) -> "subprocess.P
 
     Output is retained per pid (see component_output) so a genuine startup
     failure can be diagnosed instead of guessed at.
+
+    env overrides the child environment when given (e.g. scrubbing secrets
+    for isolated test brains); None inherits (previous behavior, unchanged).
     """
     proc = subprocess.Popen(
         cmd,
         cwd=str(cwd) if cwd is not None else None,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        env=env,
     )
     buffers: dict[str, list[str]] = {"stdout": [], "stderr": []}
     _SPAWNED_OUTPUT[proc.pid] = buffers

@@ -263,55 +263,83 @@ class TestGoldenPathLive(unittest.TestCase):
             self.skipTest(f"brain health probe failed: {e}")
 
     def test_brain_receives_synthetic_event(self):
-        """Send a synthetic event via UDP to brain and verify it processes it.
+        """Send synthetic events to an ISOLATED brain and verify processing.
 
-        We send an event with a unique rule_id, then query the brain's
-        HEALTH endpoint to see if in_events counter increased.
+        EVT-177: the old version sent bare UDP at the production brain,
+        which the provisioned secret now drops by design (fail-closed),
+        and it perturbed prod counters either way. The isolated brain
+        (alt port, scrubbed secret, same binary) proves the receive path
+        deterministically; prod-brain liveness stays covered by the
+        bridge/status/components pins, which never inject traffic.
         """
-        # Get baseline counter
+        import os
+        from tests.runtime.conftest import start_component
+        target = 51994
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-                s.settimeout(2.0)
-                s.sendto(b'{"op":"HEALTH"}', UDP_BRAIN_ALERT)
-                data, _ = s.recvfrom(8192)
-            baseline = json.loads(data.decode("utf-8"))
-            baseline_in = baseline.get("counters", {}).get("in_events", 0)
-        except Exception as e:
-            self.skipTest(f"cannot get baseline brain health: {e}")
-            return
-
-        # Send 3 synthetic events via UDP
-        unique_rule = f"GATE-B-LIVE-{int(time.time())}"
-        rc, _, _ = _run([
-            sys.executable, str(EVENT_GEN),
-            "--udp", "--count", "3", "--rule-id", unique_rule,
-            "--attack", "GATE-B-TEST", "--severity", "High",
-        ], timeout=10)
-        if rc != 0:
-            self.skipTest("event_gen failed to send events")
-            return
-
-        # Wait a moment for the brain to process
-        time.sleep(0.5)
-
-        # Get updated counter
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+                probe.bind(("127.0.0.1", target))
+        except OSError:
+            self.skipTest("isolated brain port busy; retry the suite")
+        child_env = dict(os.environ)
+        child_env.pop("AEGIS_BRAIN_SECRET", None)
+        brain_cmd = [sys.executable, str(REPO_ROOT / "brain" / "windows_brain.py"),
+                     "--port", str(target)]
+        proc = start_component(brain_cmd, cwd=str(REPO_ROOT), env=child_env)
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-                s.settimeout(2.0)
-                s.sendto(b'{"op":"HEALTH"}', UDP_BRAIN_ALERT)
-                data, _ = s.recvfrom(8192)
-            updated = json.loads(data.decode("utf-8"))
-            updated_in = updated.get("counters", {}).get("in_events", 0)
-        except Exception as e:
-            self.skipTest(f"cannot get updated brain health: {e}")
-            return
+            peer = ("127.0.0.1", target)
 
-        # Counter should have increased by at least 3
-        self.assertGreaterEqual(
-            updated_in, baseline_in + 3,
-            f"brain in_events did not increase by 3 (baseline={baseline_in}, "
-            f"updated={updated_in}). The brain may not be receiving events."
-        )
+            def _health():
+                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                    s.settimeout(2.0)
+                    s.sendto(b'{"op":"HEALTH"}', peer)
+                    data, _ = s.recvfrom(8192)
+                return json.loads(data.decode("utf-8"))
+
+            deadline = time.time() + 30
+            baseline_in = None
+            while time.time() < deadline:
+                try:
+                    doc = _health()
+                    if doc.get("state") == "RUNNING":
+                        baseline_in = doc.get("counters", {}).get("in_events", 0)
+                        break
+                except (OSError, ValueError):
+                    pass
+                time.sleep(0.5)
+            if baseline_in is None:
+                self.skipTest("isolated brain never RUNNING")
+                return
+
+            # Send 3 synthetic events via the real sender at the alt port.
+            unique_rule = f"GATE-B-LIVE-{int(time.time())}"
+            rc, _, _ = _run([
+                sys.executable, str(EVENT_GEN),
+                "--udp", "--port", str(target), "--count", "3",
+                "--rule-id", unique_rule,
+                "--attack", "GATE-B-TEST", "--severity", "High",
+            ], timeout=10)
+            self.assertEqual(rc, 0, "event_gen failed to send events")
+
+            # The isolated brain must count exactly our 3 (zero background
+            # on its private port -- the assertion prod could never make).
+            deadline = time.time() + 10
+            updated_in = baseline_in
+            while time.time() < deadline:
+                try:
+                    updated_in = _health().get("counters", {}).get("in_events", 0)
+                    if updated_in >= baseline_in + 3:
+                        break
+                except (OSError, ValueError):
+                    pass
+                time.sleep(0.5)
+            self.assertGreaterEqual(
+                updated_in, baseline_in + 3,
+                f"isolated brain in_events did not increase by 3 "
+                f"(baseline={baseline_in}, updated={updated_in})")
+        finally:
+            if proc.poll() is None:
+                proc.terminate()
+                proc.wait(timeout=15)
 
     def test_aggregator_health_endpoint_responds(self):
         """Aggregator's /api/health should respond with the full schema."""

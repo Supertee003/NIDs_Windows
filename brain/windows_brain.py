@@ -749,6 +749,16 @@ def main():
 
     UDP_IP = "127.0.0.1"
     UDP_PORT = 9999
+    # EVT-177: --port N isolates a brain for tests/lab (default 9999
+    # unchanged). The daemon always sends to 9999; an alternate port
+    # receives only what is sent to it directly -- production flow is
+    # untouched and the suite needs no live-brain outage.
+    for _i, _arg in enumerate(sys.argv[1:]):
+        if _arg == "--port" and _i + 2 <= len(sys.argv[1:]):
+            try:
+                UDP_PORT = int(sys.argv[1:][_i + 1])
+            except ValueError:
+                pass
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
