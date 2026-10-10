@@ -121,7 +121,7 @@ if defined DISPLAYS (
     python scripts\aegis_open.py %DISPLAYS%
     if !errorlevel! equ 2 (
         echo.
-        echo   [note] all display surfaces were already running - nothing started.
+        echo   [note] displays exit 2 means skipped surfaces, nothing failed.
     ) else if !errorlevel! neq 0 (
         set "RC=!errorlevel!"
     )
