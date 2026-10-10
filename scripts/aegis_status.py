@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""DEPRECATED: Use 'python tools/aegisctl.py status' instead.
-This script is kept for backward compatibility only.
+"""SUPERSEDED by 'python tools/aegisctl.py components' (EVT-165): the
+five-subsystem table is reborn there with live status. This file stays
+for reference only.
 """
 """
 aegis_status.py - AEGIS NIDS Status CLI (Phase 13, UX-03)

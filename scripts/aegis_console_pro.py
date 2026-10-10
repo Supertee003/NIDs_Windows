@@ -1,5 +1,9 @@
 """AEGIS Pro Control Center console.
 
+SUPERSEDED by 'python tools/aegisctl.py console --role admin' (EVT-165):
+role gating and read-only views merged there. This file stays for
+reference only.
+
 This is an operator control surface, not a second runtime authority.
 Read-only views use aegisctl snapshot/health. Mutations are restricted to
 Admin mode and are routed through the existing launcher/control contract.

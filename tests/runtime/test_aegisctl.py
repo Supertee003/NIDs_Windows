@@ -421,5 +421,39 @@ class TestAegisctlComponents(unittest.TestCase):
             self.assertIn(lang, stdout)
 
 
+class TestAegisctlConsoleGraph(unittest.TestCase):
+    """EVT-165: reborn console + receipt-aware graph (subprocess, live)."""
+
+    def test_console_once_rules_is_deterministic(self):
+        # Read-only catalog view: no daemon, no elevation, always exit 0.
+        rc, stdout, stderr = _run_aegisctl(
+            "console", "--once", "--choice", "7", timeout=60)
+        self.assertEqual(rc, 0, f"console rules exit 0, got {rc}; {stderr[-300:]}")
+        self.assertIn("Detection catalog", stdout)
+
+    def test_console_once_invalid_choice_lists_keys(self):
+        rc, stdout, _ = _run_aegisctl(
+            "console", "--once", "--choice", "bogus", timeout=60)
+        self.assertEqual(rc, 2)
+        self.assertIn("0", stdout)
+
+    def test_console_blocks_mutation_for_operator(self):
+        rc, stdout, _ = _run_aegisctl(
+            "console", "--once", "--choice", "1", timeout=60)
+        self.assertEqual(rc, 1)
+        self.assertIn("BLOCKED", stdout)
+
+    def test_graph_builds_to_tmp(self):
+        import tempfile
+        import os
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "g.html")
+            rc, stdout, stderr = _run_aegisctl(
+                "graph", "--out", out, "--limit", "50", timeout=120)
+            self.assertEqual(rc, 0, f"graph exit 0, got {rc}; {stderr[-300:]}")
+            self.assertIn("Threat graph", stdout)
+            self.assertTrue(os.path.isfile(out))
+
+
 if __name__ == "__main__":
     unittest.main()

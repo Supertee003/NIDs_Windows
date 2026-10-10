@@ -1,5 +1,5 @@
 {
-  "head_sha": "a633c23bfbbe6e9e951b529e711a84a145516aaf",
+  "head_sha": "89c33ec56b7da992b4bffcc5ed4a0f11a743684a",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4242,6 +4242,41 @@
       ],
       "result": "PASS",
       "finding": "No managed python can show a window anymore (pythonw task, windowless GUI spawn), runs cannot pile up (lock), and crashes leave a log trail. Observation of 2-3 popup-free minutes with the relaunched GUI is the operator-side close."
+    },
+    {
+      "id": "EVT-165",
+      "head_sha": "89c33ec",
+      "timestamp": "2026-10-10",
+      "title": "Old displays reborn better: console menu, receipt-aware graph, true headers",
+      "level": "E5",
+      "component": "tooling",
+      "description": "Operator verdict: new displays showed less than the old ones (command control, windows, graphs gone). Archaeology: nothing was deleted -- v8.0 menu console, Pro console, threat graph, 5-system status all still in the tree, but retired with several FALSE deprecation pointers, targeting a dead architecture (aggregator :9200, anomalous.json, duplicate starters, direct-UDP block). Rebuilt better, not just equal: (A) `aegisctl console` -- the v8.0 menu (SYSTEM/CONTROL/ANALYSIS, Thai labels kept) with every action rewired to current contracts, mutations gated by --role admin + real elevation, inline streaming (no popup consoles), --once --choice for tests; (B) `aegisctl graph` -- threat graph v2 from the newest-wins log with receipt-evidence edge colors (green receipt / amber observed / red dashed unverified claim, legend states claim-based), on-demand to ignored reports/; (C) header-truth pass -- 6 legacy scripts marked SUPERSEDED with verified-true pointers (block/unblock direct-UDP flows stay quarantined, never revived). Smoke-found fix in the run: Thai labels crashed on piped cp1252 stdout -- stdout reconfigured to UTF-8 only when piped (attached consoles already Unicode-safe).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "tools/aegisctl/console.py",
+        "tools/aegisctl/graph.py",
+        "tools/aegisctl.py",
+        "tests/tools/test_console.py",
+        "tests/tools/test_graph.py",
+        "tests/tools/test_legacy_pointers.py",
+        "tests/runtime/test_aegisctl.py",
+        "scripts/aegis_console.py",
+        "scripts/aegis_console_pro.py",
+        "scripts/aegis_graph.py",
+        "scripts/aegis_status.py",
+        "scripts/aegis_api.py",
+        "scripts/aegis_unblock.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "console pins: menu table, touch-free admin refusal, invalid choice, import hygiene, piped-Thai render",
+        "graph pins: receipt colors incl lying-claim red, newest-wins, limit/garbage, HTML build with colors",
+        "legacy pins: files present, SUPERSEDED headers, pointers name real subcommands",
+        "CLI: console rules/watch-block/graph-to-tmp live; menu renders Thai piped",
+        "full suite: 890 passed + 4 release green post-refresh"
+      ],
+      "result": "PASS",
+      "finding": "The old breadth is back on top of the new architecture: same menu the operator loved, none of the patterns that fought the service. Graphs now know receipts."
     }
   ],
   "evidence_level_summary": {
@@ -4250,7 +4285,7 @@
     "E2_count": 107,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 43,
+    "E5_count": 44,
     "E6_count": 0,
     "E7_count": 0
   }

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-"""DEPRECATED: Use 'python tools/aegisctl.py health' instead.
-This script is kept for backward compatibility only.
+"""SUPERSEDED (EVT-165): the Go aggregator (:9200) this client talks to
+is retired. Live data comes from 'python tools/aegisctl.py health',
+'python tools/aegisctl.py metrics', and 'python tools/aegisctl.py events'.
+This file stays for reference only.
 """
 """
 aegis_api.py - AEGIS NIDS Go Aggregator API Client (Phase 19, GAP-2)

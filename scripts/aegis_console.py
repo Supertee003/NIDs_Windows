@@ -1,5 +1,8 @@
-"""DEPRECATED: Use 'python tools/aegisctl.py events' instead.
-This script is kept for backward compatibility only.
+"""SUPERSEDED by 'python tools/aegisctl.py console' (EVT-165): the menu is
+reborn there with the same sections, rewired to current contracts. This
+v8.0 file stays for reference only -- its actions (_kill_all_subsystems,
+duplicate starters, direct-UDP block) are unsafe against the service and
+must not run.
 """
 """
 AEGIS NIDS -- Command Control Center v8.0

@@ -7,6 +7,11 @@ Sends an unblock request to the AEGIS core via UDP control channel.
 Usage:
   python aegis_unblock.py 192.168.1.100
   python aegis_unblock.py --all        # Unblock all IPs (use with caution)
+
+QUARANTINED and SUPERSEDED like aegis_block.py (EVT-165): the UDP unblock
+flow below bypasses the Rust PEP EnforcementReceipt postcondition. Use
+'python tools/aegisctl.py block remove' (PEP-gated) instead. This file
+stays for reference only.
 """
 
 import argparse

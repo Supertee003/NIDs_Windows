@@ -1,4 +1,9 @@
-"""Generate or watch a verified AEGIS forensic evidence graph."""
+"""Generate or watch a verified AEGIS forensic evidence graph.
+
+SUPERSEDED by 'python tools/aegisctl.py graph' (EVT-165) for log-based
+triage: receipt-aware colors and newest-wins log selection. This
+forensic-record variant stays for reference only.
+"""
 
 from __future__ import annotations
 

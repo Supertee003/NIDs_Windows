@@ -1673,6 +1673,57 @@ def cmd_bridge(args) -> int:
     return 2
 
 
+def cmd_graph(args) -> int:
+    """Build the receipt-aware threat graph (EVT-165).
+
+    Reads the newest-wins canonical log, colors edges by receipt
+    evidence (legend states claim-based), writes interactive HTML.
+    On-demand only. --open launches the browser (explicit gesture).
+    """
+    from aegisctl.graph import DEFAULT_LIMIT, DEFAULT_OUT, build_threat_graph, read_records, select_log
+    out = Path(getattr(args, "out", None) or DEFAULT_OUT)
+    try:
+        limit = max(0, int(getattr(args, "limit", DEFAULT_LIMIT)))
+    except (TypeError, ValueError):
+        limit = DEFAULT_LIMIT
+    log = select_log()
+    records = read_records(log, limit)
+    try:
+        parsed, nodes, edges = build_threat_graph(records, out, limit)
+    except ImportError:
+        print("graph unavailable -- pip install networkx pyvis", file=sys.stderr)
+        return 4
+    except OSError as exc:
+        print("graph write failed: %s" % exc, file=sys.stderr)
+        return 1
+    print("Threat graph: %s" % out)
+    print("Events parsed: %d; nodes: %d; edges: %d (log: %s)" % (parsed, nodes, edges, log))
+    print("Colors are claim-based triage (green=receipt, red dashed=unverified claim); authority: forensics verify.")
+    if bool(getattr(args, "open", False)):
+        try:
+            import webbrowser
+            webbrowser.open(out.as_uri())
+        except Exception as exc:
+            print("browser open failed: %s" % exc, file=sys.stderr)
+            return 1
+    return 0
+
+
+def cmd_console(args) -> int:
+    """Interactive Command Control Center (EVT-165).
+
+    The v8.0 menu operators miss, rewired to current contracts (never a
+    second runtime; mutations need --role admin + elevation). --once
+    --choice KEY runs one action non-interactively (tests drive this).
+    """
+    from aegisctl.console import console_menu
+    role = getattr(args, "role", "operator") or "operator"
+    if bool(getattr(args, "once", False)):
+        return console_menu(role=role, once=True,
+                            choice=getattr(args, "choice", None))
+    return console_menu(role=role)
+
+
 def cmd_components(args) -> int:
     """Show the five AEGIS runtime components as concepts of their own.
 
@@ -1912,6 +1963,18 @@ def main() -> int:
     _comp_p = sub.add_parser("components", help="The five runtime components as concepts")
     _comp_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
     _comp_p.set_defaults(func=cmd_components)
+    _graph_p = sub.add_parser("graph", help="Receipt-aware threat graph (HTML)")
+    _graph_p.add_argument("--out", default=None, help="Output HTML path (default reports/threat_graph.html)")
+    _graph_p.add_argument("--limit", default=500, help="Max records from the log tail")
+    _graph_p.add_argument("--open", action="store_true", help="Open the graph in a browser")
+    _graph_p.set_defaults(func=cmd_graph)
+    _console_p = sub.add_parser("console", help="Interactive Command Control Center")
+    _console_p.add_argument("--role", choices=["operator", "admin"], default="operator",
+                            help="operator = read-only views; admin unlocks mutations (needs elevation)")
+    _console_p.add_argument("--once", action="store_true",
+                            help="Run one --choice non-interactively and exit")
+    _console_p.add_argument("--choice", default=None, help="Menu key for --once (0-9/A-C)")
+    _console_p.set_defaults(func=cmd_console)
     sub.add_parser("iptest", help="IPC throughput test").set_defaults(func=cmd_iptest)
     sub.add_parser("authority", help="Verify authority invariant").set_defaults(func=cmd_authority)
     sub.add_parser("help", help="Show help").set_defaults(func=cmd_help)
