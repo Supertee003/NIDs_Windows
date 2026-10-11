@@ -319,7 +319,11 @@ mod wfp_adapter {
 
     impl Adapter {
         pub fn load() -> Option<Self> {
-            let mut module = std::ptr::null_mut();
+            // EVT-184: fall through candidates on INCOMPLETE loads, not just
+            // missing files. A stale shadow copy (e.g. repo root, first on the
+            // search order via CWD) that loads but lacks one export must not
+            // poison the whole load -- it once failed T11 for weeks while
+            // every direct probe passed. Each rejected module is freed.
             for candidate in [
                 "aegis_wfp_user.dll",
                 "build\\Release\\aegis_wfp_user.dll",
@@ -328,17 +332,12 @@ mod wfp_adapter {
                     .encode_wide()
                     .chain(Some(0))
                     .collect();
-                module = unsafe { LoadLibraryW(name.as_ptr()) };
-                if !module.is_null() {
-                    break;
+                let module = unsafe { LoadLibraryW(name.as_ptr()) };
+                if module.is_null() {
+                    continue;
                 }
-            }
-            if module.is_null() {
-                return None;
-            }
-
-            let block_flow_name = b"aegis_wfp_ioctl_block_flow\0";
-            let unblock_filter_name = b"aegis_wfp_ioctl_unblock_filter\0";
+                let block_flow_name = b"aegis_wfp_ioctl_block_flow\0";
+                let unblock_filter_name = b"aegis_wfp_ioctl_unblock_filter\0";
             let query_filter_name = b"aegis_wfp_ioctl_query_filter\0";
             let open_name = b"aegis_wfp_ioctl_open\0";
             let open = unsafe { GetProcAddress(module, open_name.as_ptr()) };
@@ -347,7 +346,7 @@ mod wfp_adapter {
             let query_filter = unsafe { GetProcAddress(module, query_filter_name.as_ptr()) };
             if open.is_null() || block_flow.is_null() || unblock_filter.is_null() || query_filter.is_null() {
                 unsafe { FreeLibrary(module) };
-                return None;
+                continue; // incomplete shadow copy: try the next candidate
             }
 
             let adapter = Self {
@@ -359,10 +358,12 @@ mod wfp_adapter {
             };
             if unsafe { (adapter.open)() } != 0 {
                 unsafe { FreeLibrary(module) };
-                return None;
+                continue; // device closed for this copy: try the next one
             }
-            Some(adapter)
+            return Some(adapter);
         }
+        None
+    }
 
         pub fn block_flow(&self, request: &FlowRequest) -> Option<u64> {
             let mut response = FlowResponse { filter_id: 0, provider_status: 0 };

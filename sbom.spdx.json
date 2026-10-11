@@ -9,7 +9,7 @@
       "Organization: AEGIS",
       "Tool: release_engineering.py"
     ],
-    "created": "2026-10-11T01:49:24.349906+00:00"
+    "created": "2026-10-11T07:14:41.997008+00:00"
   },
   "packages": [
     {
@@ -2545,7 +2545,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "b654fe6554772d581a6ab138a1009666f5d6c623e149ac1190d6e056edefd494"
+          "checksumValue": "b7decd669f96c1cd74cb9714bd2e1b760c713b22c1932e5dea1cdd476717de46"
         }
       ],
       "filePath": "runtime_manifest.json"
@@ -2581,7 +2581,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "123617f11d43303ec258278ccb19d5efd24a60aa89eaf7d3198be302f3d9d072"
+          "checksumValue": "961fc615f750f558ec3cf76df5cba91348f4d6be6a4a15ff4e05e101330b180d"
         }
       ],
       "filePath": "rust-src/lib.rs"
@@ -3067,7 +3067,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "b9ef9f9607e30bb8bc62ad852f90652d6476f3151355f6d7c46f35abfcd0b578"
+          "checksumValue": "4e1a3ae50afea2ac2d4fd27b2678457109a05a3273afada8f41e4e3a487e8791"
         }
       ],
       "filePath": "scripts/build_wfp_user_bridge.ps1"
@@ -4169,6 +4169,24 @@
         }
       ],
       "filePath": "scripts/wdk_build_production.ps1"
+    },
+    {
+      "name": "wfp_s6_cleanup.py",
+      "SPDXID": "SPDXRef-d6fdfd23",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "4e4a150064b4b801ce226b726e3ecda1410f16349847e981e0e97a79e21c7658"
+        }
+      ],
+      "filePath": "scripts/wfp_s6_cleanup.py"
     },
     {
       "name": "wfp_service.ps1",
@@ -5281,7 +5299,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "f05942328743ea31095550c6cbaae4a383f9403a7f6ad512821a7e90b4850b89"
+          "checksumValue": "f173cc9d4df8e1965f2455402dc387319804554cd7e6a03143b698e9eb07e3ad"
         }
       ],
       "filePath": "src/daemon.zig"
@@ -6307,7 +6325,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "c80d7d93a4aba89b9fddf2f4886f1d6dcd8265fd6d0c5cdeafa73aa6272f3240"
+          "checksumValue": "93ba7d4b69df00a977c615715d013a5237ca213e564c01f0a1957f3c348a2739"
         }
       ],
       "filePath": "src/platform/win32_pipe.zig"
@@ -9457,7 +9475,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "5c14c18b52fe64e94314e427e1ed3e0325620895b6720756764035acc8434b62"
+          "checksumValue": "c96f38414f5dfbde4a949636dca7ab027b6cb364ce1b24dea06e644162ceda11"
         }
       ],
       "filePath": "tools/aegisctl.py"

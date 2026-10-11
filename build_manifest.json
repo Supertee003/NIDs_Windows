@@ -2,8 +2,8 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "53a2071",
-  "build_date": "2026-10-11T01:49:23.811673+00:00",
+  "source_commit": "4dcacb1",
+  "build_date": "2026-10-11T07:14:41.353907+00:00",
   "build_host": "windows",
   "platform": {
     "os": "windows",
@@ -27,7 +27,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "b7f583c",
+      "commit": "4dcacb1",
       "source": "src/main.zig",
       "classification": "CANONICAL"
     },
@@ -38,7 +38,7 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "b7f583c",
+      "commit": "4dcacb1",
       "source": "rust-src/lib.rs",
       "classification": "CANONICAL"
     },
@@ -49,7 +49,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "b7f583c",
+      "commit": "4dcacb1",
       "source": "src/windows/aegis_wfp.c",
       "classification": "CANONICAL"
     },
@@ -60,7 +60,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "b7f583c",
+      "commit": "4dcacb1",
       "source": "src/windows/etw_native.c",
       "classification": "CANONICAL"
     },
@@ -71,7 +71,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "b7f583c",
+      "commit": "4dcacb1",
       "source": "src/windows/fim_native.c",
       "classification": "CANONICAL"
     },
@@ -82,7 +82,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "go-nose-build-test",
-      "commit": "b7f583c",
+      "commit": "4dcacb1",
       "source": "nose/main.go",
       "classification": "CANONICAL"
     },
@@ -93,7 +93,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-aggregator-build-test",
-      "commit": "b7f583c",
+      "commit": "4dcacb1",
       "source": "go/aggregator/main.go",
       "classification": "SUPPORT"
     },
@@ -104,7 +104,7 @@
       "type": "library",
       "required": false,
       "ci_job": "shield-build",
-      "commit": "b7f583c",
+      "commit": "4dcacb1",
       "source": "shield/src/lib.rs",
       "classification": "SUPPORT"
     },
@@ -115,7 +115,7 @@
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "b7f583c",
+      "commit": "4dcacb1",
       "source": "tools/aegisctl.py",
       "classification": "CANONICAL"
     },
@@ -126,7 +126,7 @@
       "type": "script",
       "required": true,
       "ci_job": "package-release",
-      "commit": "b7f583c",
+      "commit": "4dcacb1",
       "source": "tools/installer.py"
     },
     {
@@ -136,7 +136,7 @@
       "type": "toolchain",
       "required": true,
       "ci_job": "ts-policy-build",
-      "commit": "b7f583c",
+      "commit": "4dcacb1",
       "source": "ts_policy/"
     },
     {
@@ -146,7 +146,7 @@
       "type": "library",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "b7f583c",
+      "commit": "4dcacb1",
       "source": "brain/"
     }
   ],
@@ -1039,7 +1039,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18563,
-      "sha256": "5cc4f171736bc39c506cd2ba5fbc1334b6d721a750d9db77f27861091082afc4",
+      "sha256": "b7decd669f96c1cd74cb9714bd2e1b760c713b22c1932e5dea1cdd476717de46",
       "language": "json"
     },
     {
@@ -1050,8 +1050,8 @@
     },
     {
       "path": "rust-src/lib.rs",
-      "size": 87989,
-      "sha256": "123617f11d43303ec258278ccb19d5efd24a60aa89eaf7d3198be302f3d9d072",
+      "size": 88364,
+      "sha256": "961fc615f750f558ec3cf76df5cba91348f4d6be6a4a15ff4e05e101330b180d",
       "language": "rust"
     },
     {
@@ -1583,6 +1583,12 @@
       "language": "script"
     },
     {
+      "path": "scripts/wfp_s6_cleanup.py",
+      "size": 3748,
+      "sha256": "4e4a150064b4b801ce226b726e3ecda1410f16349847e981e0e97a79e21c7658",
+      "language": "python/cython"
+    },
+    {
       "path": "scripts/wfp_service.ps1",
       "size": 5673,
       "sha256": "c8b36a3a2994813b6406472eed23e49cde43fbff8ecde3747e336ab5da46474a",
@@ -1950,8 +1956,8 @@
     },
     {
       "path": "src/daemon.zig",
-      "size": 42839,
-      "sha256": "f05942328743ea31095550c6cbaae4a383f9403a7f6ad512821a7e90b4850b89",
+      "size": 43588,
+      "sha256": "f173cc9d4df8e1965f2455402dc387319804554cd7e6a03143b698e9eb07e3ad",
       "language": "zig"
     },
     {
@@ -2292,8 +2298,8 @@
     },
     {
       "path": "src/platform/win32_pipe.zig",
-      "size": 12344,
-      "sha256": "c80d7d93a4aba89b9fddf2f4886f1d6dcd8265fd6d0c5cdeafa73aa6272f3240",
+      "size": 14027,
+      "sha256": "93ba7d4b69df00a977c615715d013a5237ca213e564c01f0a1957f3c348a2739",
       "language": "zig"
     },
     {

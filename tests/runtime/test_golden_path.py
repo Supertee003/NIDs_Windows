@@ -244,9 +244,18 @@ class TestGoldenPathLive(unittest.TestCase):
             raise unittest.SkipTest("live tests are Windows-only")
 
     def setUp(self):
-        # Check that bridge + core + brain are running
+        # Check that bridge + core + brain are running. The component probe
+        # shells out per name and can miss under full-suite load; retry
+        # briefly before concluding a component is down (same transient
+        # class as the pipe probes in test_harness_integration.py).
         for name in ("bridge", "core", "brain"):
-            if not _is_component_running(name):
+            running = False
+            for _ in range(3):
+                if _is_component_running(name):
+                    running = True
+                    break
+                time.sleep(1.0)
+            if not running:
                 self.skipTest(f"component {name} not running (use 'aegisctl start --all')")
 
     def test_brain_health_endpoint_responds(self):

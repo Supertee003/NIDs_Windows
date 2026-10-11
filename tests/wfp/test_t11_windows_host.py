@@ -51,6 +51,54 @@ ACTION_BLOCK = 4
 PEP_UNBLOCK_NO_CAPABILITY = -3
 PEP_UNBLOCK_RECEIPT_REQUIRED = -4
 
+# The driver installs every proof BLOCK under ONE static key
+# (drivers/wfp_callout/aegis_wfp.c: AEGIS_PROOF_FILTER_KEY), so exactly one
+# proof filter can exist: a second BLOCK is FWP_E_ALREADY_EXISTS. The test
+# therefore pre-cleans that key (best-effort, FWPM direct) for idempotency:
+# re-runs pass on a clean host instead of tripping over their own litter.
+PROOF_FILTER_KEY = "{b2c3d4e5-f607-4b8c-9d0e-1f2a3b4c5d6e}"
+FWP_E_OBJECT_NOT_FOUND = 0x80320003
+
+
+def _guid_struct(key: str):
+    class GUID(ctypes.Structure):
+        _fields_ = [("Data1", ctypes.c_uint32),
+                    ("Data2", ctypes.c_uint16),
+                    ("Data3", ctypes.c_uint16),
+                    ("Data4", ctypes.c_uint8 * 8)]
+    s = key.strip().strip("{}")
+    parts = s.split("-")
+    d4 = bytes.fromhex(parts[3] + parts[4])
+    return GUID(int(parts[0], 16), int(parts[1], 16), int(parts[2], 16),
+                (ctypes.c_uint8 * 8)(*d4))
+
+
+def _delete_stale_proof_filter() -> int:
+    """Delete any filter holding the static proof key. Returns the FWPM rc
+    (0 deleted, NOT_FOUND when clean). Never raises: a dirty host must not
+    fail collection, and a stuck filter surfaces at BLOCK time instead."""
+    try:
+        fwpuclnt = ctypes.WinDLL("fwpuclnt.dll")
+        fwpuclnt.FwpmEngineOpen0.argtypes = [ctypes.c_wchar_p, ctypes.c_uint32,
+                                             ctypes.c_void_p, ctypes.c_void_p,
+                                             ctypes.POINTER(ctypes.c_void_p)]
+        fwpuclnt.FwpmEngineOpen0.restype = ctypes.c_uint32
+        fwpuclnt.FwpmFilterDeleteByKey0.argtypes = [ctypes.c_void_p,
+                                                    ctypes.c_void_p]
+        fwpuclnt.FwpmFilterDeleteByKey0.restype = ctypes.c_uint32
+        fwpuclnt.FwpmEngineClose0.argtypes = [ctypes.c_void_p]
+        engine = ctypes.c_void_p()
+        if fwpuclnt.FwpmEngineOpen0(None, 10, None, None,
+                                    ctypes.byref(engine)) != 0:
+            return -1
+        try:
+            return fwpuclnt.FwpmFilterDeleteByKey0(
+                engine, ctypes.byref(_guid_struct(PROOF_FILTER_KEY)))
+        finally:
+            fwpuclnt.FwpmEngineClose0(engine)
+    except Exception:
+        return -1
+
 
 class PepContext(ctypes.Structure):
     _fields_ = [
@@ -141,9 +189,22 @@ def test_rust_pep_blocks_and_unblocks_on_windows() -> None:
         ctypes.c_uint64,
     ]
     pep.aegis_pep_unblock_ip.restype = ctypes.c_int
+    pep.aegis_pep_unblock_filter.argtypes = [
+        ctypes.c_uint64,
+        ctypes.c_uint32,
+        ctypes.c_uint32,
+        ctypes.c_uint64,
+    ]
+    pep.aegis_pep_unblock_filter.restype = ctypes.c_int
     pep.aegis_pep_shutdown.restype = None
 
     assert pep.aegis_pep_init() == 0
+    # Idempotency: the driver holds ONE proof filter under the static key,
+    # so a leftover (prior run, probe) would fail this BLOCK with
+    # ALREADY_EXISTS. Best-effort pre-clean; 0x80320003 (not found) is the
+    # clean-host case.
+    clean_rc = _delete_stale_proof_filter()
+    print(f"proof-key pre-clean rc={clean_rc:#x}")
     try:
         request = PepRequest(
             decision_kind=61,
@@ -191,16 +252,24 @@ def test_rust_pep_blocks_and_unblocks_on_windows() -> None:
                 "(WFP filter install needs admin) with the driver installed: "
                 "$env:AEGIS_RUN_WFP_HOST_TESTS='1'; "
                 "python -m pytest tests/wfp/test_t11_windows_host.py -q. "
-                "A BLOCK installs a TEST-NET-3 filter whose id is printed "
-                "for the plan-§6 cleanup round."
+                "A BLOCK installs an 8.8.8.8:443 filter whose id is printed; "
+                "remove it afterwards (the test unblocks its own filter, and "
+                "leftovers go to the plan-§6 cleanup round)."
             )
 
         # WFP-capable host: a concrete filter must have been installed.
         assert response.filter_id != 0, "BLOCK without an installed WFP filter_id"
-        # Bookkeeping for the WFP cleanup round (plan §6): this TEST-NET-3
-        # filter persists (receipt-aware unblock rejects IP-only cleanup
-        # by design), so its id is printed for later removal.
+        # Full receipt lifecycle: the issued filter is removed by its own id
+        # (IP-only cleanup stays rejected below). The id prints as the
+        # cleanup receipt either way.
         print(f"WFP test filter installed: filter_id={response.filter_id}")
+        assert pep.aegis_pep_unblock_filter(
+            response.filter_id,
+            request.ctx.caller_pid,
+            request.ctx.caller_capability_mask,
+            request.ctx.request_id + 1,
+        ) == 0, "receipt-aware unblock of the issued filter must succeed"
+        print(f"WFP test filter removed: filter_id={response.filter_id}")
 
         # Receipt-aware unblock is required; IP-only cleanup is intentionally
         # rejected by the canonical PEP so it cannot bypass receipt ownership.

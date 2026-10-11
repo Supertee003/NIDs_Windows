@@ -642,6 +642,13 @@ pub fn runDaemon() !void {
         // REBUILD-003: Initialize all bridges (WFP IOCTL, C++ IPC DLL, Rust Shield
         // DLL, UDP Brain). Bridges that fail to load degrade gracefully — same
         // contract as the legacy nids_main.zig startup path.
+        // GAP-020: single-owner preflight FIRST -- before any worker (the
+        // sensor pipe is unlimited-instance, so a stray second daemon would
+        // split nose flow). Exit 3 = owned by another runtime, fail fast.
+        if (control.controlPipeOwnedByAnother()) {
+            diag.critical("control pipe already owned by another runtime -- refusing second instance (exit 3)", .{});
+            std.process.exit(3);
+        }
         bridge_init.initAll();
         defer bridge_init.shutdownAll();
 
@@ -789,9 +796,13 @@ pub fn runDaemon() !void {
         }
         service.setServiceStatus(SERVICE_RUNNING, 0);
 
-        // Serve control pipe on main thread
+        // Serve control pipe on main thread. GAP-020: a create failure means
+        // no control plane (duplicate owner or broken endpoint) -- exit
+        // non-zero fast instead of running blind; the preflight above
+        // catches the common case, this covers the race.
         control.serveWindowsPipe(&caps, start_ns) catch |err| {
             diag.err("control server error: {}", .{err});
+            if (err == error.ControlPipeCreateFailed) std.process.exit(1);
         };
         supervisor.requestStop();
     } else {

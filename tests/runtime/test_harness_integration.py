@@ -301,6 +301,60 @@ class TestCoreLifecycle(unittest.TestCase):
         self.assertIn("bridge", dep_names)
 
 
+class TestSecondCoreRefusal(unittest.TestCase):
+    """A second daemon refuses fast while the pipe is owned (GAP-020).
+
+    The preflight probe runs before any worker arms, so refusal is
+    zero-touch: no sensor instance, no log writes, no flow split. The
+    owner must be unchanged afterwards. Needs a live owner; without one
+    there is nothing to refuse against (the main lifecycle test covers
+    the free-pipe path).
+    """
+
+    def test_second_core_exits_3_fast_with_owner_intact(self):
+        core = next(c for c in COMPONENTS if c["name"] == "core")
+        _skip_if_no(core)
+        probe = RuntimeProbe.for_component(core["name"])
+        # The pipe is max-1-instance: back-to-back probes can transiently
+        # fail while a handle drains. Retry before concluding no owner.
+        owner = None
+        for _ in range(5):
+            owner = _foreign_owner_pid(probe)
+            if owner is not None:
+                break
+            time.sleep(1.0)
+        if owner is None:
+            self.skipTest("no live owner: refusal needs an owned pipe")
+        proc = start_component(_start_command(core), cwd=REPO_ROOT)
+        try:
+            try:
+                rc = proc.wait(timeout=30)
+            except subprocess.TimeoutExpired:
+                self.fail("second core lingered past 30s instead of "
+                          "refusing fast (GAP-020)")
+                return
+            self.assertEqual(rc, 3,
+                             "second core must refuse with exit 3, got %r" % rc)
+            # Same transient as the pre-check: under suite load the pipe can
+            # briefly refuse probes while handles drain. Retry before
+            # concluding the owner moved.
+            still_owner = None
+            for _ in range(5):
+                still_owner = _foreign_owner_pid(probe)
+                if still_owner is not None:
+                    break
+                time.sleep(1.0)
+            self.assertEqual(still_owner, owner,
+                             "pipe owner must be unchanged after refusal")
+        finally:
+            if proc.poll() is None:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=15)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+
+
 class TestBrainLifecycle(unittest.TestCase):
     """Start brain, verify it reaches RUNNING.
 

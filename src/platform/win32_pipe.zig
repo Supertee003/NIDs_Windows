@@ -174,8 +174,44 @@ fn getClientRole(pipe: std.os.windows.HANDLE) ?control.protocol.Role {
     return .operate;
 }
 
-pub fn serveWindowsPipe(caps: *const manifest.Capability, start_ns: i128) !void {
-    // P0.4: Initialize the command handler registry
+/// GAP-020: single-owner preflight. Returns true when another runtime
+/// already owns the control pipe, so the caller can refuse fast BEFORE
+/// arming workers (sensor pipe is unlimited-instance: a stray second
+/// daemon would split nose flow = silent event loss).
+///
+/// Zero-touch when prod runs: a failed CreateNamedPipe creates nothing.
+/// When prod is down the probe briefly holds instance #1 and closes it;
+/// a racily-starting peer either takes ownership (we then see BUSY and
+/// refuse) or loses the race (it sees BUSY and refuses) -- exactly one
+/// owner survives either way. Daemon exit code for refusal is 3.
+pub fn controlPipeOwnedByAnother() bool {
+    const w = std.os.windows;
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const pipe_name_z = utf16zFromSlice(arena.allocator(), control_pipe_name) catch return false;
+    const probe = CreateNamedPipeW(
+        pipe_name_z,
+        PIPE_ACCESS_DUPLEX,
+        PIPE_TYPE_MESSAGE_V | PIPE_READMODE_MESSAGE_V | PIPE_WAIT_V,
+        CONTROL_PIPE_MAX_INSTANCES,
+        CONTROL_PIPE_BUFFER_SIZE,
+        CONTROL_PIPE_BUFFER_SIZE,
+        0,
+        null, // probe carries no DACL: the handle is closed immediately
+    );
+    if (probe == w.INVALID_HANDLE_VALUE) {
+        const err = w.kernel32.GetLastError();
+        const code = @intFromEnum(err);
+        // 231 BUSY = instance held; 5 ACCESS_DENIED = held under a
+        // tighter DACL (e.g. SYSTEM service vs unelevated probe).
+        // Anything else is our own problem; let the real create surface it.
+        return code == 231 or code == 5;
+    }
+    _ = w.CloseHandle(probe);
+    return false;
+}
+
+pub fn serveWindowsPipe(caps: *const manifest.Capability, start_ns: i128) !void {    // P0.4: Initialize the command handler registry
     control.handler_registry.initHandlers();
     diag.info("control plane: {d} command handlers registered", .{control.handler_registry.g_handler_count});
     const w = std.os.windows;

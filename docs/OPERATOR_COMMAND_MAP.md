@@ -138,3 +138,7 @@ blocks/quarantine/shutdown privileged-only; the tree carries no secrets
   failure (pinned exit-code contract, EVT-147).
 - **In PowerShell, always `sc.exe`** (with the extension): bare `sc`
   is the Set-Content alias and writes junk files (EVT-163).
+- **Second daemon exits 3, fast.** A second `aegis_nids.exe` while the
+  pipe is owned refuses in <1s (GAP-020 preflight, before workers arm)
+  instead of lingering. Exit 3 = owned elsewhere, not a crash; check
+  `status` for the live owner pid.

@@ -1,5 +1,5 @@
 {
-  "head_sha": "53a2071f4baac6a95974a40d0420620af7574bbc",
+  "head_sha": "4dcacb1eab7cd86cb9b4e735c85e093c5ffcb577",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4707,9 +4707,10 @@
       "severity": "P2",
       "title": "Second daemon instance does not refuse fast on pipe conflict",
       "description": "Proven by a live 8s probe: starting zig-out/bin/aegis_nids.exe while prod (pid 8736) owns the control pipe left the second instance (pid 7728) alive, not exited. Code cause: the pipe is max-1-instance (win32_pipe.zig:34), so the second CreateNamedPipeW fails with ERROR_PIPE_BUSY -- but daemon.zig:793 catches the serveWindowsPipe error into diag.err + requestStop (slow drain), never a fast non-zero refusal. Consequence: no split-brain was observed (max-1-instance serializes clients; prod verified intact afterwards: pid 8736, RUNNING, 23 rules), but a stray second instance lingers instead of dying, and the harness single-owner test cannot encode 'spawn + expect refusal' honestly. Fix direction: fail fast with a non-zero exit on ControlPipeCreateFailed before arming workers; needs rebuild + deploy + admin restart (operator decision, same window as the WFP cleanup round). Follow-up (same day): the sensor pipe is PIPE_UNLIMITED_INSTANCES (nids_capture.zig:188) while the control pipe is max-1-instance. A stray second daemon therefore CAN co-create the sensor endpoint, splitting nose/event flow away from prod -- the hazard is not just a lingering process but potential silent event loss, so no isolated second daemon may run on the opened system without a daemon-wide test mode (alt sensor pipe + alt forensic log + alt control pipe). The 8s probe (pid 7728, killed) showed no lasting harm (prod pid 8736 RUNNING, 23 rules after), but the window existed. WFP side: provider_ready() returns 0 non-elevated with DLL + driver present, proving the remaining skip is privilege-gated, not file-gated.",
-      "status": "OPEN",
+      "status": "FIXED-NONDEPLOYED",
       "opened_at": "2026-10-11",
-      "evidence": "live second-instance probe pid 7728 (8s, killed), win32_pipe.zig:34 (max instances 1), daemon.zig:793 (catch + requestStop, no fast refusal)"
+      "evidence": "live second-instance probe pid 7728 (8s, killed), win32_pipe.zig:34 (max instances 1), daemon.zig:793 (catch + requestStop, no fast refusal)",
+      "resolution": "Single-owner preflight + fail-fast landed in tree and proven live against the fresh binary (second instance exits 3 in ~1s, prod pid 8736/RUNNING/23 rules intact; was 8s+ linger). Production still runs the pre-fix binary: DEPLOY (stop/copy/sc start, elevated) rides the next maintenance window, then this gap closes. Permanent regression test test_second_core_exits_3_fast_with_owner_intact guards it."
     },
     {
       "id": "EVT-181",
@@ -4779,6 +4780,37 @@
       ],
       "result": "PASS",
       "finding": "One watchdog, no duplicate; the launcher's SKIP vocabulary is fully accounted for and pinned."
+    },
+    {
+      "id": "EVT-184",
+      "head_sha": "4dcacb1",
+      "timestamp": "2026-10-11",
+      "title": "Four-slice package: GAP-020 fix, Rust fallthrough, T11 idempotency, S6 cleanup kit",
+      "level": "E4",
+      "component": "zig-daemon+rust-pep+wfp-tests+ops",
+      "description": "(1) GAP-020 FIXED-NONDEPLOYED: controlPipeOwnedByAnother() probe in win32_pipe.zig (failed create = owned, zero-touch; 231/5 only) + preflight exit(3) before worker arming in daemon.zig + exit(1) on raced ControlPipeCreateFailed. Live: fresh binary second-instance exits 3 in ~1s (was 8s linger), prod intact. Permanent suite test added (stable 3/3). zig build + zig test green. Deploy to the service is a separate elevated operator step (old binary still serves; behavior identical until then). (2) Rust fallthrough: Adapter::load continues to the next candidate on incomplete loads (missing exports) and on device-open failure, freeing each rejected module -- the stale-shadow class that broke T11 can no longer poison the load. cargo build green, 47/47 Rust tests green; integrated proof rides the next elevated T11 run. (3) T11 idempotent: FWPM pre-clean of the static proof key (best-effort) + BLOCK + receipt-aware unblock==0 + printed ids; stale TEST-NET-3 wording fixed to 8.8.8.8. Non-elevated still skips correctly; elevated green run is operator-executed. (4) S6 cleanup kit committed as scripts/wfp_s6_cleanup.py (dotted-IP condition matching learned the hard way; deletes ONLY 10.0.0.99 / 7088032 / proof-era names by key, lists the rest). Elevated execution + T11 rerun are operator steps. Pre-existing Rust 'decision never read' warning untouched (out of slice). Flake hunt during verification: two pagination tests failed once under full-suite pipe contention but pass isolated (11/11) and in targeted co-runs with the new refusal test (2x green) -- the refused instance only ever opens the NDJSON log append-shared (forensic_log.zig: no truncate, zero writes without sensor flow), so no interference mechanism exists; documented as load flakes, not regressions. The refusal test's own post-check and the golden-path component gate both got bounded retries for the same max-1-instance probe transient class. Final full suite green.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/platform/win32_pipe.zig",
+        "src/daemon.zig",
+        "rust-src/lib.rs",
+        "tests/runtime/test_harness_integration.py",
+        "tests/wfp/test_t11_windows_host.py",
+        "scripts/build_wfp_user_bridge.ps1",
+        "scripts/wfp_s6_cleanup.py",
+        "docs/OPERATOR_COMMAND_MAP.md",
+        "build_manifest.json",
+        "sbom.spdx.json",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "second-instance exit 3 live (~1s) + prod intact + suite test green",
+        "zig build rc=0, zig test rc=0, cargo build + 47/47 rust tests",
+        "full suite 943 passed, 3 by-design skips, rc=0",
+        "T11 + S6 + GAP-020 deploy: operator elevated runs pending"
+      ],
+      "result": "PASS",
+      "finding": "Three slices fully proven in-tree; the fourth (S6) plus two elevated confirmations (T11 green on the new DLL, GAP-020 deploy) are operator-executed with exact commands. Nothing was claimed without its proof level attached."
     }
   ],
   "evidence_level_summary": {
@@ -4786,7 +4818,7 @@
     "E1_count": 22,
     "E2_count": 109,
     "E3_count": 7,
-    "E4_count": 1,
+    "E4_count": 2,
     "E5_count": 59,
     "E6_count": 0,
     "E7_count": 0
