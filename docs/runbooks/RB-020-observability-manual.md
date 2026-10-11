@@ -27,6 +27,22 @@ python scripts/aegis_open.py keep # watchdog converge, no displays
 SKIP rows mean already-running idempotency, not failure. `displays`
 exit code 2 means skipped surfaces, never failure.
 
+Layer rule (three different things): the opener owns OS processes;
+`aegisctl start/stop` ask the DAEMON over the pipe; `restart` honestly
+refuses (needs an external manager) — stop, then start. A second
+daemon copy exits 3 fast (owned elsewhere), never fights the service.
+In PowerShell always spell `sc.exe` (bare `sc` is Set-Content).
+
+Watchdog (no displays, converges the dead):
+```
+python scripts/aegis_open.py keep          # converge service+nose+brain
+python scripts/aegis_open.py close         # stop nose+brain, service stays
+python scripts/aegis_open.py close --with-service   # [ADMIN] also stops it
+```
+The keeper runs as scheduled task AegisKeeper every 5 minutes, using
+liveness only (never pipe counters). One watchdog only: the retired
+AegisWatchdog task was deleted (EVT-183).
+
 ### 2. The five components as concepts
 
 ```
@@ -37,6 +53,14 @@ python tools/aegisctl.py diagnose     # structured snapshot when wrong
 python tools/aegisctl.py readiness    # gate verdict
 python tools/aegisctl.py version      # static versions incl pep/aggregator
 ```
+
+Four depths of the same truth, escalate inward: `status` (rows),
+`health` (single shot), `diagnose` (structured doc), `readiness`
+(gate verdict). `snapshot` emits one JSON doc for dashboards;
+`components` answers identity (the five) while `version` answers
+static builds (the seven) — different questions, keep both.
+One-shot `dashboard` probes deep like `components`; `dashboard
+--watch` stays shallow for cheap polling.
 
 ### 3. The three tiers (where each decides)
 
@@ -68,12 +92,18 @@ python tools/aegisctl.py version      # static versions incl pep/aggregator
 
 ```
 python tools/aegisctl.py queue                        # pipeline stages + p50/p95
+python tools/aegisctl.py metrics                      # totals: detections, anomalies, blocks (0 here)
 python tools/aegisctl.py events count                 # how many
 python tools/aegisctl.py events tail --count 20       # recent records
+python tools/aegisctl.py events stats                 # per-shape summary
 python tools/aegisctl.py alerts                       # alert-level only (quiet hosts: empty is normal)
+python tools/aegisctl.py forensic show --id 11411052  # one record by seq
 python tools/aegisctl.py forensic search --field rule --value R1004
+python tools/aegisctl.py forensic export --output out.json   # export matches
+python tools/aegisctl.py forensics list --limit 100   # ring pages (bulk)
 python tools/aegisctl.py forensics verify             # ring integrity (~5s, never during measurements)
 python tools/aegisctl.py graph --limit 50             # threat graph HTML
+python tools/aegisctl.py graph --json                 # machine-readable graph
 ```
 
 `--field rule` takes a catalog id (R1004) or integer, hashed
@@ -83,13 +113,22 @@ client-side; `--field source` takes a numeric origin ordinal only
 ### 6. Rules and policy
 
 ```
-python tools/aegisctl.py rules validate && python tools/aegisctl.py rules reload
-python tools/aegisctl.py rules list
-python tools/aegisctl.py policy verify
+python tools/aegisctl.py rules list                   # all 23 with severity
+python tools/aegisctl.py rules show --id R1004        # one rule
+python tools/aegisctl.py rules validate               # always first
+python tools/aegisctl.py rules reload                 # daemon picks it up
+python tools/aegisctl.py rules add --help             # add/update/delete shapes
+python tools/aegisctl.py policy list
+python tools/aegisctl.py policy show --id 3
+python tools/aegisctl.py policy verify                # trust posture
+python tools/aegisctl.py policy validate
+python tools/aegisctl.py enforce two-person --help    # Project-3 approval gate
+python tools/aegisctl.py enforce approve --help       # second-human approval
 ```
 
 Rule catalog: configs/Rules.json (23 rules). Unsigned policy default
-is normal.
+is normal. Rule add/update/delete are live-tested flows (byte-stable
+writes); validate-before-reload is mandatory.
 
 ### 7. Displays (the four visible surfaces)
 
@@ -105,15 +144,47 @@ python tools/aegisctl.py console                   # interactive Thai menu over 
 
 Web UI: http://127.0.0.1:5000/ (loopback-only, GET-only).
 
-### 8. Lab-only surfaces (never prod)
+### 8. Recovery and audit gates (read these before touching prod)
+
+```
+python tools/upgrade_rollback.py snapshot --json      # capture restore point
+python tools/upgrade_rollback.py report --json        # what would roll back
+python tools/upgrade_rollback.py rollback --snapshot ID --json   # [MUTATES] restore
+python tools/truth.py verify                          # maps carry HEAD (seconds)
+python tools/release_engineering.py --verify          # 611 digests (seconds)
+python tools/fresh_deploy.py --plan                   # deploy dry-run, writes nothing
+```
+
+### 9. Where the logs live
+
+- Forensic NDJSON: `C:\Windows\System32\logs\aegis_core.ndjson`
+  (service view) and `logs\aegis_core.ndjson` (repo view) — `events`
+  reads whichever is live, never a stale default.
+- Web server log: `C:\Temp\aegis_web.log` (last line is the honest
+  hint when the console does not answer).
+- Watchdog log: `C:\Temp\aegis_watchdog.log` (legacy, task deleted).
+- Keeper lock: `C:\Temp\aegis_keep.lock` (anti-pile-up, 10-min TTL).
+
+### 10. Lab-only surfaces (never prod)
 
 `simulate`, `canary`, `quarantine`, `federation`, `enforce simulate`
 projections, full pytest, per-toolchain rebuilds, `kali_*.py`,
 generators. See docs/OPERATOR_COMMAND_MAP.md for the role map.
 
+### 11. Troubleshooting (earned the hard way)
+
+- Non-elevated `close`/`stop` cannot stop keeper-spawned nose/brain:
+  expect honest `cannot stop ... (elevate?)`, then use Admin.
+- Watch window frozen? Look for a `Select ` title prefix: QuickEdit
+  selection pauses output. Enter/Esc resumes.
+- `displays` exit 2 with OK rows = skipped surfaces, never failure.
+- GUI missing but process runs? It now needs a visible window;
+  windowless zombies are cleared and re-reported, never SKIP-hid.
+- Second daemon exits 3 fast = owned elsewhere, not a crash.
+
 ## Verification
 
-Walk Steps 1-7 top to bottom on a running host: every command exits
+Walk Steps 1-11 top to bottom on a running host: every read exits
 0, `status` shows 7/7 subsystems, `components` shows five running,
 `enforce status` shows detection-only with a closed gate, `metrics`
 flows climb. Anything else is either a failure to investigate or an

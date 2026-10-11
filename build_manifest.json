@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "ceed798",
+  "source_commit": "29c6f1c",
   "build_date": "2026-10-11T07:14:41.353907+00:00",
   "build_host": "windows",
   "platform": {
@@ -1039,7 +1039,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18563,
-      "sha256": "3871a899998ee0182c493e6662710433a0f4963b18a0df978967a48ab2c0beb2",
+      "sha256": "0df4347af2bb47895ba733428e575d5fe1b379a1dd8a652e18de6bf4e8d1fb24",
       "language": "json"
     },
     {

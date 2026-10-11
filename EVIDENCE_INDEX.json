@@ -1,5 +1,5 @@
 {
-  "head_sha": "ceed7983fda33fcaf705e1a6d1dcbba919fe28c9",
+  "head_sha": "29c6f1c15839b06be5132e2eda74670de43e89ec",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4976,12 +4976,32 @@
       ],
       "result": "PASS",
       "finding": "The flag the operator asked for is true on prod. Advisory scope unchanged and restated: screening verdicts only, never enforcement."
+    },
+    {
+      "id": "EVT-193",
+      "head_sha": "29c6f1c",
+      "timestamp": "2026-10-11",
+      "title": "RB-020 completed: keeper layers, depth ladder, full CRUD, recovery, logs, troubleshooting",
+      "level": "E2",
+      "component": "docs",
+      "description": "Operator review: RB-020 did not cover the whole system. Expanded in place: opener/daemon layer rule + exit-3 + sc.exe spelling, keeper task/lock/single-watchdog state, status/health/diagnose/readiness/ snapshot depth ladder with the deep/shallow dashboard split, full rules CRUD + policy set + two-person/approve surfaces, forensic show/export + forensics list flags, metrics/alerts/stats rows, recovery (snapshot/report/rollback with exact --snapshot shape), auditor gates, log locations (service vs repo views, web/keeper logs), and the troubleshooting section. Every newly documented flag verified against live --help or live runs (rules show, policy list, block list, readiness --pretty all green); rollback flag shape checked. Runbook pins green.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "docs/runbooks/RB-020-observability-manual.md",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "runbook pins green",
+        "new flags verified live"
+      ],
+      "result": "PASS",
+      "finding": "The manual now covers every inspectable surface the operator asked about, with limits labeled where reads do not exist."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
-    "E2_count": 111,
+    "E2_count": 112,
     "E3_count": 7,
     "E4_count": 5,
     "E5_count": 62,
