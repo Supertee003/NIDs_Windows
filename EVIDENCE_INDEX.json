@@ -1,5 +1,5 @@
 {
-  "head_sha": "00943ff4a052ac9d104f24797225f9ba48059d7b",
+  "head_sha": "ff4784334d495c56e44bd1026a7ed484321b7510",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4916,12 +4916,32 @@
       ],
       "result": "PASS",
       "finding": "SKIP now means 'already visible or just made visible', never 'running somewhere unseen'."
+    },
+    {
+      "id": "EVT-190",
+      "head_sha": "ff47843",
+      "timestamp": "2026-10-11",
+      "title": "RB-020 observability manual: every surface mapped to its command",
+      "level": "E2",
+      "component": "docs",
+      "description": "Operator request: one manual covering all inspection outputs. New docs/runbooks/RB-020-observability-manual.md maps the launcher, five components, three tiers, kernel touchpoints (WFP/ETW/npcap, with the minifilter read gap stated, not hidden), traffic flow, enforcement truth, rules/policy, displays, and lab-only surfaces to exact commands, plus verification and honest limits. Runbook index updated (the index pin caught the missing row before commit). docs/ is outside manifest coverage (same as RB-019), so no digest impact. Level E2: commands cited were all verified live this session except where the manual itself marks limits.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "docs/runbooks/RB-020-observability-manual.md",
+        "docs/runbooks/README.md",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "runbook pins 6/6 (incl. index match after fix)"
+      ],
+      "result": "PASS",
+      "finding": "The manual the operator asked for, with every limit labeled in place rather than footnoted away."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
-    "E2_count": 109,
+    "E2_count": 110,
     "E3_count": 7,
     "E4_count": 5,
     "E5_count": 61,
