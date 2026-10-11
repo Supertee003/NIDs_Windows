@@ -1,5 +1,5 @@
 {
-  "head_sha": "7b7a6545277bed575db67d59bed95ec14cf047f6",
+  "head_sha": "341260042f5f19a32dba9bc1afbb01c1454d51ff",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4736,6 +4736,31 @@
       ],
       "result": "PASS",
       "finding": "Skips are down to the single one that physically requires an elevated operator run; the attempt to eliminate the single-owner skip instead uncovered GAP-020, which is filed OPEN rather than paved over."
+    },
+    {
+      "id": "EVT-182",
+      "head_sha": "3412600",
+      "timestamp": "2026-10-11",
+      "title": "WFP skip eliminated live: stale root DLL shadowed the bridge loader (3 passed elevated)",
+      "level": "E5",
+      "component": "tooling+testing+wfp",
+      "description": "Full detective chain, all proven live. ESCALATE/HOST_EFFECT_UNAVAILABLE with provider_ready()=1 elevated killed the privilege theory; driver source read found the static AEGIS_PROOF_FILTER_KEY (one proof filter at a time -- every second BLOCK is ALREADY_EXISTS by construction). Three stale 8.8.8.8 proof filters (7023741-43, prior era, distinct keys) explained the first failures; they were deleted via FWPM by key (the driver's unblock correctly refuses foreign filters with ACCESS_DENIED). The next failure was self-inflicted twice over: my probe used byte order 0x0A7100CB (blocked 10.113.0.203, not TEST-NET-3) and thereby occupied THE static key (7224028). After freeing it, failure persisted with correct cwd -- killing the cwd theory -- and a handle-level probe found the true cause: a stale 9/20 aegis_wfp_user.dll in the repo ROOT (untracked build-script litter) shadowed the Rust bare-name LoadLibrary candidate; missing one export (query_filter) failed the whole adapter load with no fallback to build/Release. Deleted the litter, removed the root-copy step from build_wfp_user_bridge.ps1, re-ran elevated: 3 passed with a real filter id printed. Pinned by test_no_shadow_dll.py (no root DLL, no root destination in the build script, all four exports present on the fallback candidate -- load-only, never opened). Remaining host hygiene: the green run's fresh 8.8.8.8 filter (printed id) is removed with wfp_unblock.py right after; the six AEGIS_BLOCK_10.0.0.99 stay untouched as plan-S6 deferred scope.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "scripts/build_wfp_user_bridge.ps1",
+        "tests/tools/test_no_shadow_dll.py",
+        "tests/wfp/test_t11_windows_host.py",
+        "build_manifest.json",
+        "sbom.spdx.json",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "T11 elevated: 3 passed with real filter id (E5 host proof)",
+        "no_shadow_dll 3/3 green non-elevated",
+        "full suite + release + zig + gitleaks (see commit)"
+      ],
+      "result": "PASS",
+      "finding": "The last skip was never a product failure: a stale build artifact shadowed the loader while every direct probe passed. The suite is now skip-free except the proof-gated single-owner harness skip (GAP-020), which is a contract assertion, not a gap."
     }
   ],
   "evidence_level_summary": {
@@ -4744,7 +4769,7 @@
     "E2_count": 109,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 58,
+    "E5_count": 59,
     "E6_count": 0,
     "E7_count": 0
   }
