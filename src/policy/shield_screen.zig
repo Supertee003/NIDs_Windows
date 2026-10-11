@@ -69,11 +69,39 @@ pub fn tryLoadPath(path: []const u8) bool {
 
 /// Load from the first candidate path that works. Intended for daemon
 /// startup (single-threaded init, before worker threads spawn).
+///
+/// EVT-191: the executable's own directory is tried FIRST, before the
+/// repo-relative candidates below. The deployed service runs with
+/// CWD=System32, so repo-relative paths never resolve there while the
+/// exe directory (Program Files, admin-writable only) is a fixed
+/// non-plantable location in the B-01 sense -- CWD planting stays
+/// forbidden and CANDIDATE_PATHS is untouched (pinned order below).
+/// Dev runs from the repo root keep working via the relative entries.
 pub fn tryLoadDefault() bool {
+    var exe_buf: [1024]u8 = undefined;
+    var fba = std.heap.FixedBufferAllocator.init(&exe_buf);
+    if (exeDirDisplayPath(fba.allocator(), null)) |owned| {
+        defer fba.allocator().free(owned);
+        if (tryLoadPath(owned)) return true;
+    } else |_| {}
     for (CANDIDATE_PATHS) |path| {
         if (tryLoadPath(path)) return true;
     }
     return false;
+}
+
+/// Display path for sec_monitor.dll beside the daemon executable.
+/// Pass exe_path explicitly (null = query this process) so the join is
+/// unit-testable without a process image. Returns allocated path.
+pub fn exeDirDisplayPath(allocator: std.mem.Allocator, exe_path: ?[]const u8) ![]const u8 {
+    var owned_exe: ?[]const u8 = null;
+    defer if (owned_exe) |p| allocator.free(p);
+    const exe = exe_path orelse blk: {
+        owned_exe = try std.fs.selfExePathAlloc(allocator);
+        break :blk owned_exe.?;
+    };
+    const dir = std.fs.path.dirname(exe) orelse return error.NoParentDir;
+    return std.fs.path.join(allocator, &.{ dir, "sec_monitor.dll" });
 }
 
 /// True once a library + symbol pair is loaded.
@@ -125,6 +153,14 @@ test "shield_screen candidate paths never include bare CWD (B-01)" {
         try std.testing.expect(!std.mem.startsWith(u8, p, "./"));
         try std.testing.expect(!std.mem.startsWith(u8, p, ".\\"));
     }
+}
+
+test "shield_screen exe-dir candidate joins beside the daemon" {
+    const alloc = std.testing.allocator;
+    const win_path = try exeDirDisplayPath(alloc, "C:\\Program Files\\AEGIS NIDS\\runtime\\aegis_nids.exe");
+    defer alloc.free(win_path);
+    try std.testing.expect(std.mem.endsWith(u8, win_path, "\\sec_monitor.dll"));
+    try std.testing.expect(std.mem.indexOf(u8, win_path, "runtime") != null);
 }
 
 test "shield_screen positive path against cargo-built DLL (host-conditional)" {
