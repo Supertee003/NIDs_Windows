@@ -1,5 +1,5 @@
 {
-  "head_sha": "e9f00d26e66641abf3220acf78f312d2565fb5dd",
+  "head_sha": "c519ee7175bfc5115b98c5e5c41a59f5f5312b50",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4850,6 +4850,26 @@
       ],
       "result": "PASS",
       "finding": "The daemon fleet is homogeneous again: tree, build, and prod all carry the fix. Zero OPEN gaps."
+    },
+    {
+      "id": "EVT-187",
+      "head_sha": "c519ee7",
+      "timestamp": "2026-10-11",
+      "title": "Pagination fixture flake: signal-before-Connect race, fixed via canonical retry",
+      "level": "E4",
+      "component": "testing+tooling",
+      "description": "The large-response fixture failed ~1/1000 suite runs and ~30% under CPU burn. Mechanism proven: listening.set() fires BEFORE the server thread reaches blocking ConnectNamedPipe, so a starved client wins the race with ERROR_PIPE_BUSY (231) and _query_daemon returns None silently (no exception, no debug line -- verified). Product code is innocent (the real daemon always has Connect pending). Fix: the fixture now uses control_api._query_daemon_retry (attempts=8), the canonical path built exactly for single-instance contention; the test still pins accumulation (a broken accumulator returns None on every attempt). Dead end recorded honestly: an overlapped-Connect variant was tried and REVERTED -- pywin32's ConnectNamedPipe blocks for a client even with an OVERLAPPED, deadlocking the fixture (15/15 fail); the EVT comment in the test says so. Verified: 11/11 file-green plus 12/12 fresh-process loop (each iter is its own pytest startup storm). Operational note: the CPU-burn repro left ~90 orphaned multiprocessing children saturating the box (parent-only kills don't reap them); all reaped, prod re-verified (4240/RUNNING/23), no burner processes remain. Lesson: never burn on the opened system again; storm simulation via process spawn only.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "tests/forensics/test_forensic_pagination.py",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "pagination file 11/11 + 12/12 storm loop green",
+        "orphan reaping verified (0 remain), prod health re-verified"
+      ],
+      "result": "PASS",
+      "finding": "A test-only race with a test-only fix; product accumulation logic untouched. The dead-end stays documented so nobody retries overlapped Connect in a fixture."
     }
   ],
   "evidence_level_summary": {
@@ -4857,7 +4877,7 @@
     "E1_count": 22,
     "E2_count": 109,
     "E3_count": 7,
-    "E4_count": 2,
+    "E4_count": 3,
     "E5_count": 61,
     "E6_count": 0,
     "E7_count": 0

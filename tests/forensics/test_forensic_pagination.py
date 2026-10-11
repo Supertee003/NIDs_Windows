@@ -223,6 +223,13 @@ def test_large_control_response_is_accumulated_across_message_reads(monkeypatch,
                 1, 65536, 65536, 0, None,
             )
             try:
+                # NOTE (EVT-187): an overlapped-Connect variant was tried
+                # here and reverted -- pywin32's ConnectNamedPipe blocks
+                # for a client even when handed an OVERLAPPED, so with no
+                # client yet connected the server deadlocks before
+                # signalling. Plain blocking Connect + client-side retry
+                # below is the correct shape: the race window is microseconds
+                # (server set() -> Connect call), covered by attempts=8.
                 listening.set()
                 win32pipe.ConnectNamedPipe(handle, None)
                 win32file.ReadFile(handle, 65536)
@@ -243,7 +250,11 @@ def test_large_control_response_is_accumulated_across_message_reads(monkeypatch,
     assert listening.wait(timeout=5), "named-pipe fixture never started listening"
     monkeypatch.setattr(control_api, "CONTROL_PIPE", pipe_name)
     try:
-        response = control_api._query_daemon("forensics.list", {"limit": 1000})
+        # Canonical retry path for single-instance contention (dashboard
+        # refresh, web snapshots, parallel scans share the real pipe).
+        # The fixture's own signal/connect race is fixed structurally
+        # (overlapped Connect, above); this stays as belt-and-braces.
+        response = control_api._query_daemon_retry("forensics.list", {"limit": 1000}, attempts=8)
     finally:
         server.join(timeout=10)
     assert not failures, f"named-pipe fixture failed: {failures}"
