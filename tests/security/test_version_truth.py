@@ -73,10 +73,20 @@ def test_cli_brain_matches_brain_banner():
 
 
 def test_cli_aggregator_matches_binary_version():
-    src = (REPO / "go" / "aggregator" / "main.go").read_text(encoding="utf-8")
-    m = re.search(r'Println\("aegis-aggregator ([^"]+)"\)', src)
-    assert m, "aggregator --version string not found"
-    assert cli_table()["aggregator"] == m.group(1)
+    # EVT-179: the --version print site moved from main.go to
+    # console_main.go in the console/service split. The pin follows the
+    # print site and asserts it is the ONLY one, so the two entrypoints
+    # can never report different versions (same rationale as the mouth
+    # pin below).
+    sites = []
+    for name in ("main.go", "console_main.go", "service_main.go",
+                 "server_runtime.go", "uuid_util.go"):
+        src = (REPO / "go" / "aggregator" / name).read_text(encoding="utf-8")
+        for m in re.finditer(r'Println\("aegis-aggregator ([^"]+)"\)', src):
+            sites.append((name, m.group(1)))
+    assert sites, "aggregator --version string not found"
+    assert len(sites) == 1, f"competing version print sites: {sites}"
+    assert cli_table()["aggregator"] == sites[0][1]
 
 
 def test_daemon_version_handler_matches_contract():

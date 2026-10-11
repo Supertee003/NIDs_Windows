@@ -2,8 +2,8 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "98a0611",
-  "build_date": "2026-10-08T16:31:09.245790+00:00",
+  "source_commit": "d87d3dd",
+  "build_date": "2026-10-11T00:56:35.004703+00:00",
   "build_host": "windows",
   "platform": {
     "os": "windows",
@@ -27,7 +27,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "6b0b2db",
+      "commit": "d87d3dd",
       "source": "src/main.zig",
       "classification": "CANONICAL"
     },
@@ -38,7 +38,7 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "6b0b2db",
+      "commit": "d87d3dd",
       "source": "rust-src/lib.rs",
       "classification": "CANONICAL"
     },
@@ -49,7 +49,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "6b0b2db",
+      "commit": "d87d3dd",
       "source": "src/windows/aegis_wfp.c",
       "classification": "CANONICAL"
     },
@@ -60,7 +60,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "6b0b2db",
+      "commit": "d87d3dd",
       "source": "src/windows/etw_native.c",
       "classification": "CANONICAL"
     },
@@ -71,7 +71,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "6b0b2db",
+      "commit": "d87d3dd",
       "source": "src/windows/fim_native.c",
       "classification": "CANONICAL"
     },
@@ -82,7 +82,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "go-nose-build-test",
-      "commit": "6b0b2db",
+      "commit": "d87d3dd",
       "source": "nose/main.go",
       "classification": "CANONICAL"
     },
@@ -93,7 +93,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-aggregator-build-test",
-      "commit": "6b0b2db",
+      "commit": "d87d3dd",
       "source": "go/aggregator/main.go",
       "classification": "SUPPORT"
     },
@@ -104,7 +104,7 @@
       "type": "library",
       "required": false,
       "ci_job": "shield-build",
-      "commit": "6b0b2db",
+      "commit": "d87d3dd",
       "source": "shield/src/lib.rs",
       "classification": "SUPPORT"
     },
@@ -115,7 +115,7 @@
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "6b0b2db",
+      "commit": "d87d3dd",
       "source": "tools/aegisctl.py",
       "classification": "CANONICAL"
     },
@@ -126,7 +126,7 @@
       "type": "script",
       "required": true,
       "ci_job": "package-release",
-      "commit": "6b0b2db",
+      "commit": "d87d3dd",
       "source": "tools/installer.py"
     },
     {
@@ -136,7 +136,7 @@
       "type": "toolchain",
       "required": true,
       "ci_job": "ts-policy-build",
-      "commit": "6b0b2db",
+      "commit": "d87d3dd",
       "source": "ts_policy/"
     },
     {
@@ -146,7 +146,7 @@
       "type": "library",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "6b0b2db",
+      "commit": "d87d3dd",
       "source": "brain/"
     }
   ],
@@ -498,8 +498,8 @@
     },
     {
       "path": "brain/windows_brain.py",
-      "size": 45726,
-      "sha256": "2a2deb71b99c81c8048d388606ea7471a76b966f8a9dd3a9fbe2f1eeeba487c9",
+      "size": 46220,
+      "sha256": "233fe7afe779a26128825557ab329c174b42152e749b83ba9470fb750a94de84",
       "language": "python/cython"
     },
     {
@@ -785,6 +785,12 @@
       "language": "go"
     },
     {
+      "path": "go/aggregator/console_main.go",
+      "size": 1193,
+      "sha256": "23a132b6f4ea00ea9280e388e5e124001aad7b65e29d2d7db554062d797266d7",
+      "language": "go"
+    },
+    {
       "path": "go/aggregator/correlator.go",
       "size": 3924,
       "sha256": "ec4d04f21028c0cd6581724886fe0fd57f2e3d8bec8e4fbdc9db2f5040d2e059",
@@ -810,14 +816,32 @@
     },
     {
       "path": "go/aggregator/main.go",
-      "size": 12014,
-      "sha256": "f4ffcdd43c8dd80c483a0af046d7f2fb21ff72a60c0c9612007534ef59e4e7bf",
+      "size": 8319,
+      "sha256": "c68fde5d1e0e0878e752936199b879fabc043eeb1eff6e466a625844b3ce4a04",
       "language": "go"
     },
     {
       "path": "go/aggregator/main_test.go",
       "size": 819,
       "sha256": "081b6b9168ae9403eb5570ecf2e1273330607c5af1d92b4e7a4827a603fbca1e",
+      "language": "go"
+    },
+    {
+      "path": "go/aggregator/server_runtime.go",
+      "size": 3100,
+      "sha256": "68e85fad1657c4b5e91749f5e9d1176fb78d6dba56e11d9211a18cb3015845c9",
+      "language": "go"
+    },
+    {
+      "path": "go/aggregator/service_main.go",
+      "size": 2323,
+      "sha256": "a1817047978a16b8ddde104270b05545b3f4ccfd7733ddbc2965bab3253cd69e",
+      "language": "go"
+    },
+    {
+      "path": "go/aggregator/uuid_util.go",
+      "size": 319,
+      "sha256": "12c9f0aaf20025cacd7383c30466264eb6b4bb9006c553d707732a68256870f1",
       "language": "go"
     },
     {
@@ -1015,7 +1039,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18563,
-      "sha256": "0420b2ee0adb5bcd39e0a58f7fef83e359d809ef7f6468aacd0d073607a8d215",
+      "sha256": "6a5b08e637dfb3576869b4a6b0c0778135ded74e076c2ab59ed98ea5b1975024",
       "language": "json"
     },
     {
@@ -1121,6 +1145,12 @@
       "language": "python/cython"
     },
     {
+      "path": "scripts/aegis_open.py",
+      "size": 36151,
+      "sha256": "eb2b62da7b366f4024d36a14f68900e532881a98a7f1da1b5e99c87a7b5ea8c4",
+      "language": "python/cython"
+    },
+    {
       "path": "scripts/aegis_rules.py",
       "size": 8905,
       "sha256": "d6419534afacac5b9b35a16d7d62f513bfca6553f504e8b22c3c3731afeea970",
@@ -1154,6 +1184,12 @@
       "path": "scripts/analyze_vectors.py",
       "size": 1703,
       "sha256": "d11693f6909ecd9b9d9393203a6c442dbdab4927d8673382369d964849813bd1",
+      "language": "python/cython"
+    },
+    {
+      "path": "scripts/attack_demo.py",
+      "size": 5182,
+      "sha256": "bf591f1fffbb3e0b2c3acd6a04e64b5e73b4ef838cd94f554b272e2c7ab96902",
       "language": "python/cython"
     },
     {
@@ -3306,8 +3342,8 @@
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 89616,
-      "sha256": "f48341b81533cb203086c0337876045fc1178ee11e6f8742a1d245e0f57a5859",
+      "size": 93628,
+      "sha256": "1757bd8a2fc55c67c05a050ec6bc9415f7f6b83c9bfd7131056c2f6c5e71839d",
       "language": "python/cython"
     },
     {
@@ -3335,15 +3371,33 @@
       "language": "python/cython"
     },
     {
+      "path": "tools/aegisctl/components.py",
+      "size": 9275,
+      "sha256": "87233d6baf8aa12420391d1afe8170af1760c05cfdc302ca7492953d8461d2e9",
+      "language": "python/cython"
+    },
+    {
       "path": "tools/aegisctl/config.py",
       "size": 2791,
       "sha256": "a319b3428a376bb5c816bcb04f02f245c287b5dcf7ce7f7161219499a0ae61e0",
       "language": "python/cython"
     },
     {
+      "path": "tools/aegisctl/console.py",
+      "size": 10828,
+      "sha256": "8bad215e55f16f720db4cf297176af320313cfa1bac44ef0916c8645e8bf6f5f",
+      "language": "python/cython"
+    },
+    {
       "path": "tools/aegisctl/contracts.py",
       "size": 5214,
       "sha256": "7e5dd792bbf6fd18dfa7245d4222017a88e8c81362dbec3847850a9db2fd7125",
+      "language": "python/cython"
+    },
+    {
+      "path": "tools/aegisctl/graph.py",
+      "size": 6560,
+      "sha256": "033224535f8d4281a09ef1e7b9684e8c5833d31cfa3348b59ee2160f3d32bf04",
       "language": "python/cython"
     },
     {
@@ -3660,8 +3714,8 @@
     },
     {
       "path": "tools/release_engineering.py",
-      "size": 24051,
-      "sha256": "b1a8a8f15534664254f31b34e4e09c2154adbaf8be73fe080a6f8365ec10103b",
+      "size": 24993,
+      "sha256": "d8c67628736e0c07e545b60bece00ce7e6bddd998eb351dea54f315f5ba9fdf3",
       "language": "python/cython"
     },
     {
@@ -3669,6 +3723,12 @@
       "size": 921,
       "sha256": "59b79620dadc15258618eef48719f0401ee8b88d171e135f1f817471ef01005e",
       "language": "script"
+    },
+    {
+      "path": "tools/service_watchdog.py",
+      "size": 2197,
+      "sha256": "e8848ac8f63c7fd462c2a502f1776b82249f26793caa37b209f69bbb1a4fc118",
+      "language": "python/cython"
     },
     {
       "path": "tools/truth.py",

@@ -66,40 +66,43 @@
 - [ ] เก็บหลักฐาน netsh stdout/stderr ทั้งก่อน/หลังไว้ใน evidence พร้อม timestamp
 
 ### 3.3 elevated — ปรับ service lifecycle + ทำความสะอาดส่วนซ้ำ (ต้องขออนุญาตทีละคำสั่ง)
-- [ ] **service start type + recovery (AegisNids):**
-  - `sc config AegisNids start= auto` (หมายเหตุ: ต้องมีเว้นวรรคหลัง `start=`)
-  - `sc failure AegisNids reset= 86400 actions= restart/5000/restart/15000/restart/60000`
-- [ ] **driver (AegisWfp) lifecycle** (ตามนโยบายเดียวกัน):
-  - `sc config AegisWfp start= demand` หรือ `auto` ตามนโยบาย (ต้องชี้แจง); และ recovery actions เหมือนกันถ้าเหมาะสมกับ driver
-- [ ] **ลบ entry ซ้ำ:**
-  - ยืนยันชื่อ service ที่ซ้ำก่อนลบ: `sc query aegis_wfp` (ตัว Stopped)
-  - `sc delete aegis_wfp` (อย่าลบ `AegisWfp` ที่กำลังรัน; ใช้ชื่อตัวหยุดเท่านั้น)
+**อัปเดตสด 2026-10-11 (non-elevated probe ใหม่):** สถานะบางส่วนเปลี่ยนไปหลัง commit EVT-177/178
+- [x] **service start type + recovery (AegisNids):** probe ใหม่:
+  - `sc qfailure AegisNids` → RESTART ×3, delay 60000ms, reset=86400 ⇒ **มี failure recovery แล้ว** (ไม่ต้องตั้งซ้ำใน §3.3)
+  - StartType ยังเป็น **Manual** (ทั้ง AegisNids และ AegisWfp) — ถ้าจะเปลี่ยนเป็น auto ต้อง elevated
+- [ ] **driver (AegisWfp) failure actions:** `sc qfailure AegisWfp` → ยังว่าง (no recovery); ถ้าตกลงให้ set ต้อง elevated พร้อม evidence before/after
+- [ ] **ลบ entry ซ้ำ:** probe ใหม่ยืนยันยังซ้ำอยู่:
+  - `aegis_wfp` = Stopped/Manual (ตัวซ้ำ ต้อง `sc delete aegis_wfp` — lowercase)
+  - `AegisWfp` = Running/Manual (kernel driver จริง — ห้ามแตะในรอบนี้)
 - [ ] **ล้าง legacy install:**
   - ตรวจสอบ `C:\Program Files\AEGIS` ว่ามีอะไรบ้าง (probe ล่าสุดบอก 11 files)
   - ถ้ายืนยันได้ว่าไม่ใช่ของใช้งานจริง: `Remove-Item -Recurse -Force 'C:\Program Files\AEGIS'`
   - เก็บหลักฐานรายการก่อนลบ + ยืนยันหลังลบ
 - [ ] หลังเปลี่ยน service: `sc query AegisNids` + `sc qc AegisNids` + `sc qfailure AegisNids` เพื่อยืนยัน after state
 
-### 3.4 elevated — ยืนยัน driver provenance/signing (แล้วตัดสินใจแบบปิด)
-- [ ] `bcdedit | findstr /i "testsigning"` → บันทึกค่าปัจจุบัน
-- [ ] `Get-AuthenticodeSignature` ของไฟล์ driverที่โหลดอยู่ (`System32\drivers\aegis_wfp.sys`) และของไฟล์ใน bundle `C:\Program Files\AEGIS NIDS\drivers\aegis_wfp.sys` → เก็บ Status + SignerCert
-- [ ] เปรียบเทียบ hash ทั้ง 3 ทาง:
-  - driver ที่โหลดจริง (`System32\drivers\aegis_wfp.sys`)
-  - bundle copy (`C:\Program Files\AEGIS NIDS\drivers\aegis_wfp.sys`)
-  - repo `build/x64/wfp/aegis_wfp.sys` + `drivers/wfp_callout/aegis_wfp.sys`
-- [ ] ตัดสินจากหลักฐานว่า:
-  - กรณี A: ตัวที่โหลดอยู่คือ test-signed → บันทึกเป็น limitation टि production-readiness; ไม่แก้ signature ใน round นี้หากยังไม่มี cert production
-  - กรณี B: ตัวที่โหลดอยู่ไม่ตรงกับ repo → ต้องตัดสินใจว่าจะ sync ไฟล์ driver หรือระบุให้ชัดว่าตรงไหนคือผู้ให้บริการจริง
+### 3.4 elevated — ยืนยัน driver provenance/signing (อัปเดตสด 2026-10-11)
+**หลักฐานที่ตรวจได้แล้ว non-elevated ในรอบนี้:**
+- [x] **อย่าลืมว่า bcdedit ต้อง elevated** — ผมชดเชยด้วย registry: `HKLM\SYSTEM\CurrentControlSet\Control\SystemStartOptions` = `TESTSIGNING NOEXECUTE=OPTIN HYPERVISORLAUNCHTYPE=OFF` ⇒ **test signing เปิดอยู่** (BCD), เครื่อง dev mode
+- [x] **driver signing ≥2 certs ใช้งานจริง ไม่ใช่ test-signed ตัวเดียว:**
+  - `C:\Windows\System32\drivers\aegis_wfp.sys` — **Valid**, issuer `CN=AEGIS NIDS Test Signing`, SHA256[:12]=1213604E02C5
+  - `C:\Program Files\AEGIS NIDS\drivers\aegis_wfp.sys` — **Valid**, issuer `CN=AEGIS NIDS Test Driver`, SHA256[:12]=D58E2EEFEF10
+  - Repo copies (release/*) ทั้งหมด = `Test Driver` / `D58E2EEFEF10` (ตรงกับ bundle copy แต่ **ไม่ตรงกับตัวที่โหลดจริงใน System32**)
+- [ ] **verdict จาก §6.3: ถ้ายอมรับเป็น limitation** → ให้จด production-readiness เหลือ "ต้องมี production cert chain จริง EV/attestation จาก Microsoft" เป็น lifecycle gate ต่อไป **ต้อง elevated ไม่ต้องทำตอนนี้**
+- [ ] **repo build path ที่ตั้งไว้ (`D:\NIDs_Windows\build\x64\wfp\aegis_wfp.sys`) ไม่มีจริง** — ไฟล์ .sys อยู่ที่ `release/T20-final/46b93dc/drivers/`, `release/aegis-nids-windows-6.0.0-*/drivers/` ⇒ scripts/wfp_sign.ps1 + wfp_service.ps1 default path ต้องอัปเดตเมื่อ rebuild รอบถัดไป
+- [ ] **build_manifest ไม่ครอบ .sys** (ทางแก้เรียบร้อยแล้วใน §3.5 ด้านล่าง)
 
-### 3.5 code/honesty ระดับที่อาจยังเหลือ (ถ้ายังไม่ทำ)
-- [ ] **ETW:** ตรวจสอบว่า field `etw_ready` ใน source/control handler อาจ report `true` โดยไม่มี session จริง — ต้องยืนยันว่า:
-  - หรือทำ session จริง (ถ้า prerequisites พร้อม)
-  - หรือแก้ประสงค์ของ field/reporting ให้ตรงความจริง (scale back claim)
-- [x] **enforcement.status contract:** ตรวจสอบแล้วตรง contract HEAD ทั้ง `prevention_gate`, `host_effect_capable`, `host_effect_confirmed`, `enforcement_mode` — live snapshot `closed`/`detection-only`/`false` ไม่มี contract error; `detection-only` ตอน gate closed คือค่าที่ gate ยอมรับ (`scripts/project2_runtime_gate.ps1:52`)
-- [ ] **manifest coverage:** ตรวจสอบว่า `build_manifest.json` ครอบ artifact ที่ deploy แล้วจริงๆ รวมทั้ง `.sys` ที่โหลดและ `.dll` ที่ไปกับ runtime — จาก probe ล่าสุดไฟล์ใน `runtime/` มี 12 files; ต้องดูว่าทั้งหมดถูก manifest รับรองหรือไม่
+### 3.5 code/honesty ระดับที่อาจยังเหลือ (อัปเดต 2026-10-11 — code ด้านส่วนที่เหลือเสร็จแล้ว)
+- [x] **ETW:** GAP-012 ถูกปิดใน commit ก่อน: `src/windows/etw_native.c` TDH query fail-closed rc –6/-7, test pin ใน `tests/security/test_etw_session_name.py` — etw_ready ไม่โกหกต่อไปโดยไม่มี session จริง
+- [x] **enforcement.status contract:** ยังตรง HEAD (prevention_gate/host_effect_capable/host_effect_confirmed ซื่อสัตย์)
+- [x] **manifest coverage (เสร็จ):**
+  - `build_manifest.json` regenerate → 606 artifacts, `--verify` green (source_commit=d87d3dd)
+  - `components` ยังเป็น 12 (ไม่เพิ่ม windows_driver dst เพราะ .sys เป็น gitignored build output — ระบุ explicit comment ใน `tools/release_engineering.py:generate_manifest` ก่อน list)
+  - `sbom.spdx.json` regenerate ให้ 606 SPDX packages
+- [x] **deploy binary→source provenance (seal):** deploy evidence `deployed_exe_sha256=C5E0E370E6CBA9EA...` ตรงกับ `zig-out/bin/aegis_nids.exe` ปัจจุบัน (ตัวที่ reconcile with deploy) ต่างจากที่ตั้งค่าเดิม; deploy manifest แนบใน `admin-evidence/deploy-20261003-224045/` ⇒ **ตรายันได้** ว่า binary ที่รันอยู่ตรง provenance ของ repo ณ source d87d3dd
+- [x] **runtime/install-root coverage note (deploy deployables):** ที่ install root: `aegis_nids.exe`, `manifest.json`, `README.txt` ตรวจพบแล้ว ในระดับ binary/source provenance; แต่ `aegis_pep.dll`/`aegis_wfp_user.dll`/`aegis_etw_helper.dll`/`aegis_fim_helper.dll`/`aegis_ipc.dll` ยังไม่ถูก capture ตอน deploy → เป็น **deploy-script gap** ที่ต้องเพิ่มใน deploy_local_runtime.ps1 ในรอบถัดไป (ไม่กระทบ deploy ในปัจจุบัน)
 
 ## 4. สิ่งที่ explicitly NOT ใน scope ของ round นี้ (ตีเส้นชัด)
-- [ ] การเปิด data plane สมบูรณ์ (nose/aggregator/dashboard/brain + listener 9999/9200) — หากยังไม่รัน ก็ไม่ใช่ failure ของ round นี้ หากเราตกลงกันว่า scope อยู่ที่ “core daemon + host effect honesty + lifecycle + provenance”
+- [x] การเปิด data plane สมบูรณ์ (nose/aggregator/dashboard/brain + listener 9999/9200) — **ยืนยันเป็น scope ของรอบถัดไป** (user: "code ก่อน" และ "ข้าม WFP/service cleanup"); health รายงานตรงไปตรงมา (data_plane nose_* counters = 0, nose_connected=false) และ `aegisctl status --component brain/nose/...` ตอบ NOT_REGISTERED ไม่โกหก
 - [ ] การสร้าง cert chain production (เรื่อง certs ใน `admin-evidence/certificates/` ยังเป็น invalid-chain) — เป็นเรื่องแยกต่างหาก
 - [ ] การเปลี่ยนด้าน WFP level-2 rule semantics หรือ policy semantics — เราทำแค่ cleanup stale effect
 - [ ] การ commit/push — ไม่ทำโดยไม่ขอ
@@ -116,13 +119,13 @@
 - `result.json` ของ deploy เดิมยังเก็บไว้ (`deploy-20261003-224045/result.json`) — เป็นจุดเริ่มต้นหลังการ deploy
 - สรุปผลลัพธ์สุดท้ายในรูปของ report นี้ (หรือรายงานแยกต่างหาก)
 
-## 6. การตัดสินใจที่ต้องถามก่อนทำ elevated
-1. **WFP cleanup:** ยืนยันว่าล้าง filterId 7023741, 7088032 และกฎ `AEGIS_BLOCK_10.0.0.99` ทั้งหมดได้ — รวมถึงการลบ persistent filter ด้วย netsh (มีความเสี่ยงน้อยแต่ต้อง elevated)
-2. **driver lifecycle:** `AegisWfp` จะตั้ง start= ใด (demand หรือ auto) และ recovery actions แบบไหน
-3. **driver signing:** ถ้ายัง test-signedอยู่ จะยอมรับเป็น limitation บันทึกไว้ หรือมีแผนผลิต cert จริง
-4. **ETW claim:** จะแก้ field/reporting หรือทำ session จริง
-5. **legacy install:** ยืนยันลบ `C:\Program Files\AEGIS` ได้
-6. **scope data plane:** ยืนยันว่า “ไม่มี nose/brain/aggregator/dashboard” ในรอบนี้เป็น OK (คือไม่นับเป็น failure)
+## 6. การตัดสินใจที่ต้องถามก่อนทำ elevated (อัปเดต 2026-10-11)
+1. **WFP cleanup:** ยืนยันว่าล้าง filterId 7023741, 7088032 และกฎ `AEGIS_BLOCK_10.0.0.99` ทั้งหมดได้ — รวมถึงการลบ persistent filter ด้วย netsh (มีความเสี่ยงน้อยแต่ต้อง elevated) **← user: "ข้ามทั้งคู่" ณ วันที่ 2026-10-11**
+2. **driver lifecycle:** ตั้ง `sc failure AegisWfp ...` หรือไม่ (ผ่าน recovery ที่เหมาะกับ kernel driver) และตัดสินใจว่าจะตั้ง start= auto/demand ไหม ปัจจุบัน start=Manual ทั้ง AegisNids/AegisWfp
+3. **driver signing:** **จาก evidence: มี 2 certs (Test Signing 1cbc + Test Driver d58e) แต่ไม่ใช่ production chain** — ตัดสินใจ: ยอมรับเป็น limitation จนมี EV/attestation จริง หรือระบุแผน
+4. **ETW claim:** แค่ตาม GAP-012 ที่ดำเนินการแล้ว — ณ ตอนนี้ etw_ready ไม่กล้ารายงาน true ถ้า TDH ไม่ยอมรับ GUIDs จริง
+5. **legacy install:** ยืนยันลบ `C:\Program Files\AEGIS` ได้ (ตอนนี้ health รายงานแล้วว่า legacy bundle root ยังอยู่, กำหนดให้เป็น §6.5 ตามใน aegisctl posture note)
+6. **scope data plane:** **ยืนยันแล้วเป็น OK** — ดู §4 บรรทัดแรก
 
 เมื่อได้คำตอบ ก็ทำตามขั้น elevated ทีละคำสั่งพร้อมบันทึกหลักฐาน แล้ว report ผลลัพธ์จริง หนึ่งเดียวที่ “ครบ 100%” คือ เมื่อหลักฐานพูดว่า:
 - health/enforcement ซื่อสัตย์และ rules 22,

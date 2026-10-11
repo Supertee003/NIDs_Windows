@@ -342,25 +342,69 @@ class TestGoldenPathLive(unittest.TestCase):
                 proc.wait(timeout=15)
 
     def test_aggregator_health_endpoint_responds(self):
-        """Aggregator's /api/health should respond with the full schema."""
-        if not _is_component_running("aggregator"):
-            self.skipTest("aggregator not running")
+        """Isolated aggregator's /api/health responds with the full schema.
+
+        EVT-179: the old version probed the production :9200 listener and
+        skipped when no aggregator ran (it never runs -- it is an
+        optional sidecar, Required=no). The isolated instance (fresh
+        `go build` of the CURRENT sources to a temp dir, alt port via
+        AEGIS_API_PORT, temp log via AEGIS_LOG_PATH) proves the serve
+        path deterministically with zero prod touch -- and it exercises
+        the EVT-179 console/service split binary end to end.
+        """
+        import tempfile
+        import urllib.request
+        from tests.runtime.conftest import start_component
+        agg_dir = REPO_ROOT / "go" / "aggregator"
+        tmp = tempfile.mkdtemp(prefix="agg-isolated-")
         try:
-            import urllib.request
-            host, port = HTTP_AGGREGATOR
-            url = f"http://{host}:{port}/api/health"
-            with urllib.request.urlopen(url, timeout=2.0) as resp:
-                data = resp.read().decode("utf-8")
-            parsed = json.loads(data)
-            # G35: aggregator now returns full schema
-            self.assertEqual(parsed.get("component"), "aggregator")
-            self.assertEqual(parsed.get("state"), "RUNNING")
-            self.assertIn("counters", parsed)
-            self.assertIn("deps", parsed)
-        except ImportError:
-            self.skipTest("urllib not available")
-        except Exception as e:
-            self.skipTest(f"aggregator health probe failed: {e}")
+            exe = str(Path(tmp) / "aegis-aggregator-test.exe")
+            try:
+                build = subprocess.run(
+                    ["go", "build", "-o", exe, "."], capture_output=True,
+                    text=True, timeout=300, cwd=str(agg_dir))
+            except FileNotFoundError:
+                self.skipTest("go toolchain unavailable")
+                return
+            self.assertEqual(build.returncode, 0,
+                             f"go build failed: {build.stderr[-2000:]}")
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(("127.0.0.1", 0))
+                target = s.getsockname()[1]
+            child_env = dict(os.environ)
+            child_env["AEGIS_API_PORT"] = str(target)
+            child_env["AEGIS_LOG_PATH"] = str(Path(tmp) / "test.ndjson")
+            proc = start_component([exe], cwd=str(REPO_ROOT), env=child_env)
+            try:
+                url = f"http://127.0.0.1:{target}/api/health"
+                parsed = None
+                deadline = time.time() + 30
+                last_err = ""
+                while time.time() < deadline:
+                    if proc.poll() is not None:
+                        break
+                    try:
+                        with urllib.request.urlopen(url, timeout=2.0) as resp:
+                            parsed = json.loads(
+                                resp.read().decode("utf-8"))
+                        break
+                    except Exception as e:
+                        last_err = str(e)
+                    time.sleep(0.5)
+                self.assertIsNotNone(
+                    parsed, f"isolated aggregator never answered: {last_err}")
+                # G35: aggregator now returns full schema
+                self.assertEqual(parsed.get("component"), "aggregator")
+                self.assertEqual(parsed.get("state"), "RUNNING")
+                self.assertIn("counters", parsed)
+                self.assertIn("deps", parsed)
+            finally:
+                if proc.poll() is None:
+                    proc.terminate()
+                    proc.wait(timeout=15)
+        finally:
+            import shutil
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 # =====================================================================

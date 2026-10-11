@@ -125,6 +125,40 @@ class TestAegisctlStatusCommand(unittest.TestCase):
         self.assertIn("packets_captured", document["health"])
         self.assertIn("flows_active", document["health"])
 
+    def test_status_json_carries_host_effect_posture(self):
+        # EVT-179: host-effect honesty is observable, not claimed.
+        # status --json carries host_effect_posture with filesystem
+        # observations only; blocking truth stays with `enforce status`
+        # (prevention_gate), never with file presence.
+        import json as _json
+        import os as _os
+        rc, stdout, stderr = _run_aegisctl("status", "--json")
+        self.assertEqual(rc, 0, f"status --json should exit 0, got {rc}; stderr={stderr}")
+        document = _json.loads(stdout)
+        posture = document.get("host_effect_posture")
+        self.assertIsInstance(posture, dict)
+        for key in ("installed_driver_present", "deploy_bundle_root",
+                    "legacy_bundle_root", "legacy_scope_note"):
+            self.assertIn(key, posture)
+        sysroot = _os.environ.get("SystemRoot", r"C:\Windows")
+        self.assertEqual(posture["installed_driver_present"],
+                         _os.path.exists(_os.path.join(
+                             sysroot, "System32", "drivers", "aegis_wfp.sys")))
+        self.assertEqual(posture["deploy_bundle_root"],
+                         _os.path.exists(r"C:\Program Files\AEGIS NIDS"))
+        self.assertEqual(posture["legacy_bundle_root"],
+                         _os.path.exists(r"C:\Program Files\AEGIS"))
+        self.assertIn("pre-rename bundle", posture["legacy_scope_note"])
+        self.assertIn("6.5", posture["legacy_scope_note"])
+
+    def test_status_text_shows_host_posture_lines(self):
+        # EVT-179: operator-visible posture lines, same source as --json.
+        rc, stdout, stderr = _run_aegisctl("status")
+        self.assertEqual(rc, 0, f"status should exit 0, got {rc}; stderr={stderr}")
+        self.assertIn("Driver present:", stdout)
+        self.assertIn("Deploy bundle root:", stdout)
+        self.assertIn("Legacy bundle root:", stdout)
+
 
 class TestAegisctlHealthCommand(unittest.TestCase):
     """`aegisctl health` must probe runtime health via pipe."""

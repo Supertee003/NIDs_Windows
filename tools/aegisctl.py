@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import os
 import pkgutil
 import sys
 import time
@@ -180,14 +181,35 @@ def cmd_status(args) -> int:
                 return 1
         running = sum(1 for _, r, _ in statuses if r)
         total = len(statuses)
+        host_posture = {
+            # Observable host-effect truth (non-elevated probes), populated
+            # live so `aegisctl status` never claims a kernel-overlay posture
+            # the operator cannot independently confirm. These are filesystem
+            # observations only: actual blocking is governed by
+            # daemon `enforce status` (prevention_gate), not file presence.
+            "installed_driver_present": os.path.exists(
+                os.path.join(os.environ.get("SystemRoot", r"C:\Windows"),
+                             "System32", "drivers", "aegis_wfp.sys")),
+            "deploy_bundle_root": os.path.exists(r"C:\Program Files\AEGIS NIDS"),
+            "legacy_bundle_root": os.path.exists(r"C:\Program Files\AEGIS"),
+            "legacy_scope_note": (
+                "`C:\\Program Files\\AEGIS` is the pre-rename bundle (v6-era "
+                "deploy 2026-09-16). It is out-of-scope for the current round "
+                "until the operator confirms legacy cleanup (plan §6.5)."
+            ),
+        }
         if getattr(args, "json", False):
-            print(json.dumps({"health": health, "subsystems": statuses}, sort_keys=True))
+            print(json.dumps({"health": health, "subsystems": statuses,
+                              "host_effect_posture": host_posture}, sort_keys=True))
             return 0
         print(f"\n  State: {health['state']}")
         print(f"  Version: {health.get('version', 'unknown')}")
         print(f"  Uptime: {health.get('uptime_ms', 0)} ms")
         print(f"  Packets captured: {health.get('packets_captured', 0)}")
         print(f"  Flows active: {health.get('flows_active', 0)}")
+        print(f"  Driver present: {host_posture['installed_driver_present']}")
+        print(f"  Deploy bundle root: {host_posture['deploy_bundle_root']}")
+        print(f"  Legacy bundle root: {host_posture['legacy_bundle_root']}")
         print(f"  {running}/{total} subsystems running")
         for name, is_running, pid in statuses:
             if is_running:

@@ -95,3 +95,23 @@ def test_git_visible_files_returns_usable_set_or_none():
         pytest.skip("git unavailable in this environment")
     assert "src/main.zig" in visible
     assert isinstance(visible, set)
+
+
+def test_windows_driver_stays_out_of_components():
+    # EVT-179: the .sys is gitignored WDK build output (see the
+    # generate_manifest docstring); listing it under components would make
+    # the manifest self-refute with a digest that is never verified.
+    # Driver provenance rides in signed_driver_provenance/* instead.
+    import re
+    text = (REPO / "tools" / "release_engineering.py").read_text(encoding="utf-8")
+    assert "signed_driver_provenance" in text
+    assert "NOT guaranteed by this manifest" in text
+    assert "intentionally ABSENT from components" in text
+    start = text.index("def generate_manifest")
+    end = text.index('"modules": {', start)
+    body = text[start:end]
+    ids = re.findall(r'\{"id":\s*"([^"]+)"', body)
+    assert ids, "components list must exist"
+    assert not any("driver" in i or i == "sys" for i in ids), ids
+    assert not any('"id"' in line and ".sys" in line
+                   for line in body.splitlines()), "no .sys component entry"

@@ -229,6 +229,16 @@ def _detect_language(rel: str) -> str:
 
 
 def generate_manifest(version: str) -> Dict[str, Any]:
+    """Build the release manifest from real repo layout.
+
+    Windows driver honesty (host probe 2026-10-11): drivers/wfp_callout aegis_wfp
+    sources build via external WDK (scripts/wfp_sign.ps1) into build/x64/wfp*,
+    which *.gitignore excludes. Coverage of that .sys (and any deployed driver
+    running in kernel) is therefore NOT guaranteed by this manifest; the
+    driver's provenance remained documented-but-unverified on the host and is
+    always sealed separately in a signed_driver_provenance/* sidecard rather
+    than double-counted here.
+    """
     commit = git_source_commit()
     manifest: Dict[str, Any] = {
         "schema_version": "2.0",
@@ -289,6 +299,11 @@ def generate_manifest(version: str) -> Dict[str, Any]:
              "required": True, "ci_job": "ts-policy-build", "commit": commit, "source": "ts_policy/"},
             {"id": "brain", "name": "brain/aegis_brain_cython/fast_scan.pyx", "language": "cython", "type": "library",
              "required": True, "ci_job": "python-tests", "commit": commit, "source": "brain/"},
+            # windows_driver intentionally ABSENT from components: the .sys is
+            # gitignored build output (see generate_manifest docstring); adding it
+            # here would make build_manifest.json self-refute by listing a file
+            # whose digest is never verified. Driver provenance rides in the
+            # signed_driver_provenance/* sidecard instead.
         ],
         "modules": {
             "I01": "build.zig, Cargo.toml, CMakeLists.txt, .github/workflows/ci.yml",

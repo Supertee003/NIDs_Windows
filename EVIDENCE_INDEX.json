@@ -1,5 +1,5 @@
 {
-  "head_sha": "98a06114f9d70303a27f7e3040457d0746113fc2",
+  "head_sha": "d87d3dd89db2752fd910e7a9d46bc7cba493d677",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4639,6 +4639,43 @@
       ],
       "result": "PASS",
       "finding": "Skips are now either running proof or labeled design -- nothing hides behind 'occupied' anymore, and the suite touches prod exactly nowhere it didn't before."
+    },
+    {
+      "id": "EVT-179",
+      "head_sha": "d87d3dd",
+      "timestamp": "2026-10-11",
+      "title": "Pending tree closed: posture, aggregator split, driver honesty pinned; skips 9 -> 4",
+      "level": "E5",
+      "component": "tooling+testing",
+      "description": "Everything pending in the tree is now pinned and green. (1) `status --json` host_effect_posture (driver/bundle filesystem observations; blocking truth stays with enforce status) pinned in test_aegisctl.py for both --json schema and text lines. (2) go/aggregator console/service split pinned in test_aggregator_entrypoints.py (tags, Execute-without-exit, single version site, go vet on both tag variants, live --version); the split moved the version print site, which broke test_version_truth.py -- the pin did its job, and it now follows the print site across all five files asserting exactly one. (3) generate_manifest driver-honesty (.sys stays out of components, provenance via signed_driver_provenance/*) pinned in test_manifest_selection_rule.py. (4) import_hygiene no longer skips on a live prod brain: the import runs in a child that stays alive and the parent asserts the child's own pid owns no UDP endpoint (read-only, zero packets). (5) golden-path aggregator test no longer skips: fresh go build of current sources to a temp dir, alt port via AEGIS_API_PORT, temp log, full /api/health schema asserted. Remaining 4 skips are by-design and labeled: DLL-present fallback, non-empty forensic log, single-owner pipe, lab-only WFP. Stray `query` file removed.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "tools/aegisctl.py",
+        "tools/release_engineering.py",
+        "go/aggregator/main.go",
+        "go/aggregator/console_main.go",
+        "go/aggregator/server_runtime.go",
+        "go/aggregator/service_main.go",
+        "go/aggregator/uuid_util.go",
+        "analysis/MAKING_REAL_COMPLETION_PLAN.md",
+        "tests/brain/test_import_hygiene.py",
+        "tests/runtime/test_aegisctl.py",
+        "tests/runtime/test_aggregator_entrypoints.py",
+        "tests/runtime/test_golden_path.py",
+        "tests/security/test_version_truth.py",
+        "tests/release/test_manifest_selection_rule.py",
+        "build_manifest.json",
+        "sbom.spdx.json",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "15/15 new+revised pins green (hygiene 2, posture 2, aggregator 6, manifest 1, version_truth 8)",
+        "isolated aggregator green in ~8s incl. fresh go build",
+        "full suite: 934 passed + 1 fixed regression, 4 by-design skips",
+        "zig build rc=0, zig build test rc=0, gitleaks clean"
+      ],
+      "result": "PASS",
+      "finding": "The tree holds no unpinned work: every substantive change has a pin, every skip is either running proof or labeled design, and a refactor regression was caught by an existing pin before it could ship."
     }
   ],
   "evidence_level_summary": {
@@ -4647,7 +4684,7 @@
     "E2_count": 109,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 55,
+    "E5_count": 56,
     "E6_count": 0,
     "E7_count": 0
   }

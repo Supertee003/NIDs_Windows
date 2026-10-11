@@ -25,13 +25,8 @@ import (
         "log"
         "net/http"
         "os"
-        "os/signal"
-        "path/filepath"
         "strconv"
-        "syscall"
         "time"
-
-        "github.com/google/uuid"
 )
 
 const (
@@ -51,98 +46,6 @@ type Server struct {
         startTime time.Time
 }
 
-func main() {
-        // G27 Gate-A: --version flag. Print SEMVER + exit 0 before any
-        // initialization so the supervisor (and tests/runtime/test_version.py)
-        // can verify the binary is present and reports a parseable version.
-        for _, arg := range os.Args[1:] {
-                if arg == "--version" || arg == "-v" || arg == "-V" {
-                        fmt.Println("aegis-aggregator 0.1.0")
-                        os.Exit(0)
-                }
-        }
-
-        // G35: record start time for uptime calculation in /api/health.
-        startTime := time.Now()
-
-        // Get config from env or defaults
-        logPath := getEnv("AEGIS_LOG_PATH", DEFAULT_LOG_PATH)
-        apiPort := getEnvInt("AEGIS_API_PORT", DEFAULT_API_PORT)
-        maxAlerts := getEnvInt("AEGIS_MAX_ALERTS", DEFAULT_MAX_ALERTS)
-
-        // Resolve absolute path
-        absLogPath, err := filepath.Abs(logPath)
-        if err != nil {
-                log.Fatalf("Failed to resolve log path: %v", err)
-        }
-
-        log.Printf("[AGGREGATOR] AEGIS NIDS Alert Aggregator starting")
-        log.Printf("[AGGREGATOR] Log file: %s", absLogPath)
-        log.Printf("[AGGREGATOR] API port: %d", apiPort)
-        log.Printf("[AGGREGATOR] Max alerts: %d", maxAlerts)
-
-        // Initialize components
-        aggregator := NewAlertAggregator(maxAlerts)
-        correlator := NewCorrelator(24 * time.Hour)
-
-        collector, err := NewCollector(absLogPath, aggregator)
-        if err != nil {
-                log.Fatalf("Failed to create collector: %v", err)
-        }
-
-        if err := collector.Start(); err != nil {
-                log.Fatalf("Failed to start collector: %v", err)
-        }
-
-        // Create server
-        server := &Server{
-                aggregator: aggregator,
-                collector:  collector,
-                correlator: correlator,
-                startTime:  startTime,
-        }
-
-        // Start correlator that watches for new alerts
-        go server.correlateAlerts()
-
-        // Start purge goroutine (every 5 min)
-        go server.purgeLoop()
-
-        // Setup HTTP server
-        mux := http.NewServeMux()
-        mux.HandleFunc("/api/alerts", server.handleAlerts)
-        mux.HandleFunc("/api/alerts/critical", server.handleCriticalAlerts)
-        mux.HandleFunc("/api/alerts/", server.handleAlertByHash)
-        mux.HandleFunc("/api/sessions", server.handleSessions)
-        mux.HandleFunc("/api/sessions/", server.handleSessionByID)
-        mux.HandleFunc("/api/stats", server.handleStats)
-        mux.HandleFunc("/api/health", server.handleHealth)
-        mux.HandleFunc("/api/purge", server.handlePurge)
-        mux.HandleFunc("/", server.handleRoot)
-
-        server.httpServer = &http.Server{
-                Addr:    apiAddr(apiPort),
-                Handler: mux,
-        }
-
-        // Start HTTP server
-        go func() {
-                log.Printf("[AGGREGATOR] REST API available at http://localhost:%d", apiPort)
-                if err := server.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-                        log.Fatalf("HTTP server error: %v", err)
-                }
-        }()
-
-        // Wait for shutdown signal
-        sigCh := make(chan os.Signal, 1)
-        signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-        <-sigCh
-
-        log.Printf("[AGGREGATOR] Shutting down...")
-        collector.Stop()
-        server.httpServer.Close()
-        log.Printf("[AGGREGATOR] Shutdown complete")
-}
 
 // correlateAlerts feeds alerts to the correlator
 func (s *Server) correlateAlerts() {
@@ -303,11 +206,6 @@ func (s *Server) handlePurge(w http.ResponseWriter, r *http.Request) {
 // the LAN with no authentication, so bare ":port" is never constructed.
 func apiAddr(apiPort int) string {
         return fmt.Sprintf("127.0.0.1:%d", apiPort)
-}
-
-// generateUUID creates a new UUID string
-func generateUUID() string {
-        return uuid.New().String()
 }
 
 // writeJSON writes a JSON response
