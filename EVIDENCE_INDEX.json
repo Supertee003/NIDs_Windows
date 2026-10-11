@@ -1,5 +1,5 @@
 {
-  "head_sha": "47ff7efca938b926a656cae51e3ece63e8235297",
+  "head_sha": "7b7a6545277bed575db67d59bed95ec14cf047f6",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4706,7 +4706,7 @@
       "id": "GAP-020",
       "severity": "P2",
       "title": "Second daemon instance does not refuse fast on pipe conflict",
-      "description": "Proven by a live 8s probe: starting zig-out/bin/aegis_nids.exe while prod (pid 8736) owns the control pipe left the second instance (pid 7728) alive, not exited. Code cause: the pipe is max-1-instance (win32_pipe.zig:34), so the second CreateNamedPipeW fails with ERROR_PIPE_BUSY -- but daemon.zig:793 catches the serveWindowsPipe error into diag.err + requestStop (slow drain), never a fast non-zero refusal. Consequence: no split-brain was observed (max-1-instance serializes clients; prod verified intact afterwards: pid 8736, RUNNING, 23 rules), but a stray second instance lingers instead of dying, and the harness single-owner test cannot encode 'spawn + expect refusal' honestly. Fix direction: fail fast with a non-zero exit on ControlPipeCreateFailed before arming workers; needs rebuild + deploy + admin restart (operator decision, same window as the WFP cleanup round).",
+      "description": "Proven by a live 8s probe: starting zig-out/bin/aegis_nids.exe while prod (pid 8736) owns the control pipe left the second instance (pid 7728) alive, not exited. Code cause: the pipe is max-1-instance (win32_pipe.zig:34), so the second CreateNamedPipeW fails with ERROR_PIPE_BUSY -- but daemon.zig:793 catches the serveWindowsPipe error into diag.err + requestStop (slow drain), never a fast non-zero refusal. Consequence: no split-brain was observed (max-1-instance serializes clients; prod verified intact afterwards: pid 8736, RUNNING, 23 rules), but a stray second instance lingers instead of dying, and the harness single-owner test cannot encode 'spawn + expect refusal' honestly. Fix direction: fail fast with a non-zero exit on ControlPipeCreateFailed before arming workers; needs rebuild + deploy + admin restart (operator decision, same window as the WFP cleanup round). Follow-up (same day): the sensor pipe is PIPE_UNLIMITED_INSTANCES (nids_capture.zig:188) while the control pipe is max-1-instance. A stray second daemon therefore CAN co-create the sensor endpoint, splitting nose/event flow away from prod -- the hazard is not just a lingering process but potential silent event loss, so no isolated second daemon may run on the opened system without a daemon-wide test mode (alt sensor pipe + alt forensic log + alt control pipe). The 8s probe (pid 7728, killed) showed no lasting harm (prod pid 8736 RUNNING, 23 rules after), but the window existed. WFP side: provider_ready() returns 0 non-elevated with DLL + driver present, proving the remaining skip is privilege-gated, not file-gated.",
       "status": "OPEN",
       "opened_at": "2026-10-11",
       "evidence": "live second-instance probe pid 7728 (8s, killed), win32_pipe.zig:34 (max instances 1), daemon.zig:793 (catch + requestStop, no fast refusal)"
