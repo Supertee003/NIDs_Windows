@@ -209,8 +209,34 @@ class TestCoreLifecycle(unittest.TestCase):
         # The runtime is single-owner (one pipe instance, one runtime owner).
         # If another core already answers, the process started here could never
         # serve the contract, and the probe would report the foreign pid.
-        owner = _foreign_owner_pid(probe)
+        # Single response object, reused below: the pipe is max-1-instance
+        # and an immediate re-probe can transiently fail while the first
+        # handle drains, which would fake a "no health" failure.
+        resp = _probe_health(probe)
+        owner = None
+        if resp is not None and resp.get("pid"):
+            owner = int(resp.get("pid"))
+        if owner is None:
+            owner = _foreign_owner_pid(probe)
+            if owner is not None:
+                resp = _probe_health(probe)
         if owner is not None:
+            # Single-owner contract, proven before skipping: a second core
+            # cannot be started here (the pipe is max-1-instance; a
+            # concurrent server sees ERROR_PIPE_BUSY and the daemon only
+            # logs + stops slowly instead of refusing fast -- GAP-020).
+            # The holder must be a real runtime under the contract: its
+            # health names its own pid and reports RUNNING or an honest
+            # named-reason DEGRADED. A squatter or stale pipe fails here
+            # loudly instead of hiding behind the skip.
+            self.assertIsNotNone(
+                resp, f"pipe owner pid={owner} answers no health")
+            self.assertEqual(resp.get("pid"), owner)
+            self.assertIn(resp.get("state"), ("RUNNING", "DEGRADED"))
+            if resp.get("state") == "DEGRADED":
+                self.assertTrue(
+                    _worker_failure_reasons(resp),
+                    "DEGRADED owner must name its failure reasons")
             self.skipTest(
                 f"another core instance (pid={owner}) already owns the control "
                 "pipe; the runtime contract is single-owner"

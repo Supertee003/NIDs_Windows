@@ -29,12 +29,13 @@ RULES_FILE = REPO_ROOT / "configs" / "Rules.json"
 FORENSIC_LOG = REPO_ROOT / "logs" / "aegis_core.ndjson"
 
 
-def _run_aegisctl(*args: str, timeout: int = 10) -> tuple[int, str, str]:
+def _run_aegisctl(*args: str, timeout: int = 10,
+                  env: dict | None = None) -> tuple[int, str, str]:
     cmd = [sys.executable, str(AEGISCTL)] + list(args)
     try:
         result = subprocess.run(
             cmd, capture_output=True, text=True, timeout=timeout,
-            cwd=str(REPO_ROOT),
+            cwd=str(REPO_ROOT), env=env,
         )
         return result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired:
@@ -134,12 +135,26 @@ class TestEventsCommands(unittest.TestCase):
         )
 
     def test_events_count_with_no_log(self):
-        """If the log doesn't exist, count should report 0 gracefully."""
-        if FORENSIC_LOG.exists():
-            self.skipTest("forensic log already exists -- can't test empty case")
-        rc, stdout, _ = _run_aegisctl("events", "count")
+        """Missing and empty logs both report 0 gracefully, isolated.
+
+        EVT-181: the old version skipped whenever the production log
+        existed (always, on the opened system). AEGIS_EVENT_LOG points
+        the CLI at scratch instead: a nonexistent path and an empty
+        file must both read as Events: 0 with rc 0. Zero prod touch.
+        """
+        child_env = dict(os.environ)
+        missing = str(Path(tempfile.mkdtemp(prefix="events-empty-"))
+                      / "absent.ndjson")
+        child_env["AEGIS_EVENT_LOG"] = missing
+        rc, stdout, _ = _run_aegisctl("events", "count", env=child_env)
         self.assertEqual(rc, 0)
-        self.assertIn("0", stdout)
+        self.assertIn("Events: 0", stdout)
+        empty = Path(missing).parent / "empty.ndjson"
+        empty.write_text("", encoding="utf-8")
+        child_env["AEGIS_EVENT_LOG"] = str(empty)
+        rc, stdout, _ = _run_aegisctl("events", "count", env=child_env)
+        self.assertEqual(rc, 0)
+        self.assertIn("Events: 0", stdout)
 
 
 class TestForensicCommands(unittest.TestCase):

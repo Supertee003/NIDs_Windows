@@ -858,6 +858,12 @@ def _event_log_candidates() -> list[Path]:
     # relative to the repo. events must read whichever is live, never a
     # stale default blindly (F2: the CWD file held 2 test lines for weeks
     # while the service wrote megabytes elsewhere).
+    # EVT-181: AEGIS_EVENT_LOG isolates one invocation to a chosen file
+    # (lab/tests point it at scratch; the suite proves the empty case with
+    # zero prod touch). Production default order is unchanged.
+    override = os.environ.get("AEGIS_EVENT_LOG")
+    if override:
+        return [Path(override)]
     return [
         Path(r"C:\Windows\System32\logs\aegis_core.ndjson"),
         TOOLS_DIR.parent / "logs" / "aegis_core.ndjson",
@@ -879,6 +885,12 @@ def _select_event_log(candidates: list[Path]) -> Path | None:
 
 
 def _event_log() -> Path:
+    # An explicit override is authoritative even when the file does not
+    # exist (yet): _select_event_log() filters on existence, which would
+    # silently fall back to production logs and defeat isolation.
+    override = os.environ.get("AEGIS_EVENT_LOG")
+    if override:
+        return Path(override)
     selected = _select_event_log(_event_log_candidates())
     if selected is not None:
         return selected

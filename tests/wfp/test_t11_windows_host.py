@@ -187,12 +187,20 @@ def test_rust_pep_blocks_and_unblocks_on_windows() -> None:
             )
             pytest.skip(
                 "WFP host effect provider unavailable — fail-closed ESCALATE "
-                "observed. Run on a test-signed host with the AEGIS WFP driver "
-                "installed to claim E5 Windows enforcement verification."
+                "observed. For E5 Windows enforcement verification, run ELEVATED "
+                "(WFP filter install needs admin) with the driver installed: "
+                "$env:AEGIS_RUN_WFP_HOST_TESTS='1'; "
+                "python -m pytest tests/wfp/test_t11_windows_host.py -q. "
+                "A BLOCK installs a TEST-NET-3 filter whose id is printed "
+                "for the plan-§6 cleanup round."
             )
 
         # WFP-capable host: a concrete filter must have been installed.
         assert response.filter_id != 0, "BLOCK without an installed WFP filter_id"
+        # Bookkeeping for the WFP cleanup round (plan §6): this TEST-NET-3
+        # filter persists (receipt-aware unblock rejects IP-only cleanup
+        # by design), so its id is printed for later removal.
+        print(f"WFP test filter installed: filter_id={response.filter_id}")
 
         # Receipt-aware unblock is required; IP-only cleanup is intentionally
         # rejected by the canonical PEP so it cannot bypass receipt ownership.

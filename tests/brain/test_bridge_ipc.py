@@ -39,21 +39,48 @@ def test_abi_struct_sizes_match_cpp_header():
 
 
 def test_fallback_honesty_without_dll():
-    if cy.is_available():
-        pytest.skip("DLL present: fallback path not active")
-    assert cy.bridge_init() == -1
-    assert cy.bridge_shutdown() == -1
-    assert cy.push_event(0, 1, 2, 3, 4, 6, 2, "R1", 3) == -1
-    assert cy.pop_event() is None
-    assert cy.get_event_count() == 0
-    assert cy.get_dropped_count() == 0
-    assert cy.get_defcon_level() == 5
-    assert cy.get_defcon_label() == "SAFE"
-    assert cy.block_ip("10.0.0.1") == -1
-    assert cy.unblock_ip("10.0.0.1") == -1
-    assert cy.push_tier2_match("R0056", "10.0.0.1", "0.0.0.0", 0, 0, 6, 2) == -1
-    assert cy.ips_decide("R0056", 3, "10.0.0.1") == "enforcement_unavailable"
-    assert cy.ips_decide("R1", 0, "10.0.0.1") == "alert"
+    # Always isolated, never skipped: the battery runs in a child whose
+    # DLL search sees nothing. The compiled module resolves the DLL from
+    # absolute candidates rooted at its own __file__ plus a bare name, so
+    # a copy of the .pyd in a fresh temp dir loads with _dll == NULL --
+    # exactly the no-DLL host shape. Zero prod touch: no files moved, the
+    # production brain keeps its loaded DLL (Windows file-locks it anyway).
+    # The probe self-checks is_available() is False first, so a DLL leak
+    # into the child fails loudly instead of faking the fallback.
+    import shutil
+    import subprocess
+    import tempfile
+    pyds = sorted((REPO_ROOT / "brain" / "cython").glob("bridge_ipc.*.pyd"))
+    assert pyds, "no compiled bridge_ipc module to isolate"
+    tmp = tempfile.mkdtemp(prefix="bridge-standalone-")
+    try:
+        shutil.copy2(pyds[0], Path(tmp) / pyds[0].name)
+        probe = ";".join([
+            "import bridge_ipc as cy",
+            "assert cy.is_available() is False, cy.dll_path()",
+            "assert cy.dll_path() is None",
+            "assert cy.bridge_init() == -1",
+            "assert cy.bridge_shutdown() == -1",
+            "assert cy.push_event(0, 1, 2, 3, 4, 6, 2, 'R1', 3) == -1",
+            "assert cy.pop_event() is None",
+            "assert cy.get_event_count() == 0",
+            "assert cy.get_dropped_count() == 0",
+            "assert cy.get_defcon_level() == 5",
+            "assert cy.get_defcon_label() == 'SAFE'",
+            "assert cy.block_ip('10.0.0.1') == -1",
+            "assert cy.unblock_ip('10.0.0.1') == -1",
+            "assert cy.push_tier2_match('R0056', '10.0.0.1', '0.0.0.0', 0, 0, 6, 2) == -1",
+            "assert cy.ips_decide('R0056', 3, '10.0.0.1') == 'enforcement_unavailable'",
+            "assert cy.ips_decide('R1', 0, '10.0.0.1') == 'alert'",
+            "print('FALLBACK_OK')",
+        ])
+        proc = subprocess.run(
+            [sys.executable, "-c", probe], capture_output=True, text=True,
+            timeout=120, cwd=tmp)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert proc.returncode == 0, proc.stderr[-3000:]
+    assert "FALLBACK_OK" in proc.stdout
 
 
 def test_live_round_trip_when_connected():

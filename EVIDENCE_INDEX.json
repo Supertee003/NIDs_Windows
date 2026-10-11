@@ -1,5 +1,5 @@
 {
-  "head_sha": "b7f583c54feed37de70f97193653ef21aa6ac95c",
+  "head_sha": "47ff7efca938b926a656cae51e3ece63e8235297",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4701,6 +4701,41 @@
       ],
       "result": "PASS",
       "finding": "One real bug fixed (dashboard depth); four operator-seen 'failures' proven to be correct behavior with live evidence, each traceable to its pin or contract line."
+    },
+    {
+      "id": "GAP-020",
+      "severity": "P2",
+      "title": "Second daemon instance does not refuse fast on pipe conflict",
+      "description": "Proven by a live 8s probe: starting zig-out/bin/aegis_nids.exe while prod (pid 8736) owns the control pipe left the second instance (pid 7728) alive, not exited. Code cause: the pipe is max-1-instance (win32_pipe.zig:34), so the second CreateNamedPipeW fails with ERROR_PIPE_BUSY -- but daemon.zig:793 catches the serveWindowsPipe error into diag.err + requestStop (slow drain), never a fast non-zero refusal. Consequence: no split-brain was observed (max-1-instance serializes clients; prod verified intact afterwards: pid 8736, RUNNING, 23 rules), but a stray second instance lingers instead of dying, and the harness single-owner test cannot encode 'spawn + expect refusal' honestly. Fix direction: fail fast with a non-zero exit on ControlPipeCreateFailed before arming workers; needs rebuild + deploy + admin restart (operator decision, same window as the WFP cleanup round).",
+      "status": "OPEN",
+      "opened_at": "2026-10-11",
+      "evidence": "live second-instance probe pid 7728 (8s, killed), win32_pipe.zig:34 (max instances 1), daemon.zig:793 (catch + requestStop, no fast refusal)"
+    },
+    {
+      "id": "EVT-181",
+      "head_sha": "47ff7ef",
+      "timestamp": "2026-10-11",
+      "title": "Skips 4 -> 1: bridge + gate_d converted, harness proof-gated, GAP-020 filed",
+      "level": "E5",
+      "component": "tooling+testing",
+      "description": "(1) bridge_ipc fallback converted: the battery now runs in a child that imports a copy of the .pyd from a fresh temp dir, where no DLL candidate resolves (self-checked is_available() is False first). Zero prod touch -- the production DLL stays file-locked and loaded. (2) gate_d empty-case converted: new AEGIS_EVENT_LOG override isolates one CLI invocation to a chosen file (missing + empty both read as Events: 0); production default order unchanged. A first version of the override was silently defeated by the newest-existing selector -- caught by the new test itself, fixed by making the override authoritative in _event_log(). (3) harness single-owner skip now carries proof: before skipping, the holder's health must name its own pid and report RUNNING or named-reason DEGRADED (single response object reused -- an immediate re-probe flakes on the max-1-instance pipe). A second core cannot be spawned-and-expected-to-refuse: filed as GAP-020 (OPEN) instead of worked around. (4) WFP skip cannot convert from a non-elevated shell (verified non-elevated here): the skip message now carries the exact elevated one-liner, and a BLOCK will print its TEST-NET-3 filter_id for the plan-S6 cleanup round.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "tools/aegisctl.py",
+        "tests/brain/test_bridge_ipc.py",
+        "tests/runtime/test_gate_d.py",
+        "tests/runtime/test_harness_integration.py",
+        "tests/wfp/test_t11_windows_host.py",
+        "build_manifest.json",
+        "sbom.spdx.json",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "bridge 6/6, gate_d 25/25, harness skip-branch stable 3/3",
+        "full suite + release + zig + gitleaks (see commit)"
+      ],
+      "result": "PASS",
+      "finding": "Skips are down to the single one that physically requires an elevated operator run; the attempt to eliminate the single-owner skip instead uncovered GAP-020, which is filed OPEN rather than paved over."
     }
   ],
   "evidence_level_summary": {
@@ -4709,7 +4744,7 @@
     "E2_count": 109,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 57,
+    "E5_count": 58,
     "E6_count": 0,
     "E7_count": 0
   }
