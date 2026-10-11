@@ -1615,8 +1615,14 @@ def cmd_alerts(args) -> int:
     return 0
 
 
-def _render_dashboard_once() -> int:
-    """One dashboard frame. Pure display over control_api reads."""
+def _render_dashboard_once(deep_components: bool = False) -> int:
+    """One dashboard frame. Pure display over control_api reads.
+
+    deep_components=True runs the concept-registry process probes (same
+    cost as `aegisctl components`): used for the one-shot render only.
+    The watch/iterations loop keeps the fast path so polling every few
+    seconds stays cheap.
+    """
     if CONTROL_API_AVAILABLE:
         statuses = get_all_status()
         defcon = get_defcon()
@@ -1690,12 +1696,14 @@ def _render_dashboard_once() -> int:
         gate_text = "CLOSED - Ready for operations" if overall_gate else "OPEN - Issues must be resolved"
         gate_color = C_GREEN if overall_gate else C_RED
         print(f"  READY GATE: {gate_color}{C_BOLD}{gate_text}{C_RESET}")
-        # EVT-162: the five components as concepts of their own. Fast path
-        # only (health-derived + path checks): the watch polls every few
-        # seconds, so no process probes here -- see `aegisctl components`.
+        # EVT-180: one-shot renders probe deep (same answer as
+        # `aegisctl components`); the watch loop below keeps the fast
+        # path -- see _render_dashboard_once's deep_components flag.
         print(f"  COMPONENTS:")
         try:
-            comp_rows = components_status(health if isinstance(health, dict) else {})
+            comp_rows = components_status(
+                health if isinstance(health, dict) else {},
+                deep=deep_components)
         except Exception:
             comp_rows = []
         for row in comp_rows:
@@ -1718,7 +1726,7 @@ def cmd_dashboard(args) -> int:
     except (TypeError, ValueError):
         remaining = None
     if not bool(getattr(args, "watch", False)) and remaining is None:
-        return _render_dashboard_once()
+        return _render_dashboard_once(deep_components=True)
     try:
         first = True
         while True:

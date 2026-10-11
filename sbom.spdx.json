@@ -9,7 +9,7 @@
       "Organization: AEGIS",
       "Tool: release_engineering.py"
     ],
-    "created": "2026-10-11T00:56:35.624929+00:00"
+    "created": "2026-10-11T01:49:24.349906+00:00"
   },
   "packages": [
     {
@@ -2545,7 +2545,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "6a5b08e637dfb3576869b4a6b0c0778135ded74e076c2ab59ed98ea5b1975024"
+          "checksumValue": "b654fe6554772d581a6ab138a1009666f5d6c623e149ac1190d6e056edefd494"
         }
       ],
       "filePath": "runtime_manifest.json"
@@ -9457,7 +9457,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "1757bd8a2fc55c67c05a050ec6bc9415f7f6b83c9bfd7131056c2f6c5e71839d"
+          "checksumValue": "5c14c18b52fe64e94314e427e1ed3e0325620895b6720756764035acc8434b62"
         }
       ],
       "filePath": "tools/aegisctl.py"

@@ -1,5 +1,5 @@
 {
-  "head_sha": "d87d3dd89db2752fd910e7a9d46bc7cba493d677",
+  "head_sha": "b7f583c54feed37de70f97193653ef21aa6ac95c",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4676,6 +4676,31 @@
       ],
       "result": "PASS",
       "finding": "The tree holds no unpinned work: every substantive change has a pin, every skip is either running proof or labeled design, and a refactor regression was caught by an existing pin before it could ship."
+    },
+    {
+      "id": "EVT-180",
+      "head_sha": "b7f583c",
+      "timestamp": "2026-10-11",
+      "title": "Operator round: dashboard one-shot probes deep; search/R9059 proven honest",
+      "level": "E5",
+      "component": "tooling+testing",
+      "description": "Operator session triage, live. (1) REAL BUG: one-shot `dashboard` rendered Brain/Mouth UNKNOWN while `components` said RUNNING -- the render used the poll-loop fast path. One-shot now passes deep_components=True (same probes as components); --watch and --iterations keep the cheap shallow path. Pinned live + static in test_aegisctl.py; command map documents the split. (2) NOT BUGS, proven on the spot: `events tail` takes --count not --limit (operator typo, docs use --count); `forensic search --field rule --value R9059` -> 0 records with integrity ok + verified true is the honest answer (XSS rule never fired here; EVT-177 saw the same), and the same query for R1004 (the rule actually firing, hash 3730098280) -> 100/100; `alerts` empty on a quiet host is documented normal; `enforce status` host_effect_capable=false with gate closed vs health rust_pep=true is provider-capable vs gate-closed layering (OBSERVE_ONLY projection in contracts.py), not a contradiction.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "tools/aegisctl.py",
+        "tests/runtime/test_aegisctl.py",
+        "docs/OPERATOR_COMMAND_MAP.md",
+        "build_manifest.json",
+        "sbom.spdx.json",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "dashboard pins green (one-shot deep live + static wiring)",
+        "R1004 search 100/100 vs R9059 0 (discrimination live)",
+        "full suite + release + zig + gitleaks (see commit)"
+      ],
+      "result": "PASS",
+      "finding": "One real bug fixed (dashboard depth); four operator-seen 'failures' proven to be correct behavior with live evidence, each traceable to its pin or contract line."
     }
   ],
   "evidence_level_summary": {
@@ -4684,7 +4709,7 @@
     "E2_count": 109,
     "E3_count": 7,
     "E4_count": 0,
-    "E5_count": 56,
+    "E5_count": 57,
     "E6_count": 0,
     "E7_count": 0
   }

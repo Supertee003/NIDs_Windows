@@ -2,8 +2,8 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "d87d3dd",
-  "build_date": "2026-10-11T00:56:35.004703+00:00",
+  "source_commit": "b7f583c",
+  "build_date": "2026-10-11T01:49:23.811673+00:00",
   "build_host": "windows",
   "platform": {
     "os": "windows",
@@ -27,7 +27,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "zig-build-test",
-      "commit": "d87d3dd",
+      "commit": "b7f583c",
       "source": "src/main.zig",
       "classification": "CANONICAL"
     },
@@ -38,7 +38,7 @@
       "type": "library",
       "required": true,
       "ci_job": "rust-pep-build",
-      "commit": "d87d3dd",
+      "commit": "b7f583c",
       "source": "rust-src/lib.rs",
       "classification": "CANONICAL"
     },
@@ -49,7 +49,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "d87d3dd",
+      "commit": "b7f583c",
       "source": "src/windows/aegis_wfp.c",
       "classification": "CANONICAL"
     },
@@ -60,7 +60,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "d87d3dd",
+      "commit": "b7f583c",
       "source": "src/windows/etw_native.c",
       "classification": "CANONICAL"
     },
@@ -71,7 +71,7 @@
       "type": "library",
       "required": true,
       "ci_job": "c-native-build",
-      "commit": "d87d3dd",
+      "commit": "b7f583c",
       "source": "src/windows/fim_native.c",
       "classification": "CANONICAL"
     },
@@ -82,7 +82,7 @@
       "type": "executable",
       "required": true,
       "ci_job": "go-nose-build-test",
-      "commit": "d87d3dd",
+      "commit": "b7f583c",
       "source": "nose/main.go",
       "classification": "CANONICAL"
     },
@@ -93,7 +93,7 @@
       "type": "executable",
       "required": false,
       "ci_job": "go-aggregator-build-test",
-      "commit": "d87d3dd",
+      "commit": "b7f583c",
       "source": "go/aggregator/main.go",
       "classification": "SUPPORT"
     },
@@ -104,7 +104,7 @@
       "type": "library",
       "required": false,
       "ci_job": "shield-build",
-      "commit": "d87d3dd",
+      "commit": "b7f583c",
       "source": "shield/src/lib.rs",
       "classification": "SUPPORT"
     },
@@ -115,7 +115,7 @@
       "type": "script",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "d87d3dd",
+      "commit": "b7f583c",
       "source": "tools/aegisctl.py",
       "classification": "CANONICAL"
     },
@@ -126,7 +126,7 @@
       "type": "script",
       "required": true,
       "ci_job": "package-release",
-      "commit": "d87d3dd",
+      "commit": "b7f583c",
       "source": "tools/installer.py"
     },
     {
@@ -136,7 +136,7 @@
       "type": "toolchain",
       "required": true,
       "ci_job": "ts-policy-build",
-      "commit": "d87d3dd",
+      "commit": "b7f583c",
       "source": "ts_policy/"
     },
     {
@@ -146,7 +146,7 @@
       "type": "library",
       "required": true,
       "ci_job": "python-tests",
-      "commit": "d87d3dd",
+      "commit": "b7f583c",
       "source": "brain/"
     }
   ],
@@ -1039,7 +1039,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18563,
-      "sha256": "6a5b08e637dfb3576869b4a6b0c0778135ded74e076c2ab59ed98ea5b1975024",
+      "sha256": "b654fe6554772d581a6ab138a1009666f5d6c623e149ac1190d6e056edefd494",
       "language": "json"
     },
     {
@@ -3342,8 +3342,8 @@
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 93628,
-      "sha256": "1757bd8a2fc55c67c05a050ec6bc9415f7f6b83c9bfd7131056c2f6c5e71839d",
+      "size": 93956,
+      "sha256": "5c14c18b52fe64e94314e427e1ed3e0325620895b6720756764035acc8434b62",
       "language": "python/cython"
     },
     {

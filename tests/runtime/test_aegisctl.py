@@ -160,6 +160,32 @@ class TestAegisctlStatusCommand(unittest.TestCase):
         self.assertIn("Legacy bundle root:", stdout)
 
 
+class TestAegisctlDashboardCommand(unittest.TestCase):
+    """`aegisctl dashboard` one-shot must answer like `components`."""
+
+    def test_oneshot_dashboard_probes_deep(self):
+        # EVT-180: the one-shot render uses the deep concept probes, so a
+        # live brain reads RUNNING here exactly as in `aegisctl
+        # components`. The watch/iterations loop keeps the fast path
+        # (cheap polling); only the single render pays for probes.
+        rc, stdout, stderr = _run_aegisctl("dashboard")
+        self.assertEqual(rc, 0, f"dashboard should exit 0, got {rc}; stderr={stderr}")
+        brain_lines = [l for l in stdout.splitlines() if "AEGIS Brain" in l]
+        self.assertTrue(brain_lines, "dashboard must list AEGIS Brain")
+        self.assertNotIn("UNKNOWN", brain_lines[0],
+                         f"one-shot dashboard must probe deep: {brain_lines[0]!r}")
+
+    def test_dashboard_wiring_pins_depth_by_mode(self):
+        # Static wiring: one-shot passes deep_components=True; the poll
+        # loop uses the default (fast path). Guards a silent revert to
+        # all-shallow.
+        import pathlib as _pl
+        src = (_pl.Path(__file__).resolve().parents[2]
+               / "tools" / "aegisctl.py").read_text(encoding="utf-8")
+        self.assertIn("def _render_dashboard_once(deep_components", src)
+        self.assertIn("_render_dashboard_once(deep_components=True)", src)
+
+
 class TestAegisctlHealthCommand(unittest.TestCase):
     """`aegisctl health` must probe runtime health via pipe."""
 

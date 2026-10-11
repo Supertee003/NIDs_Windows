@@ -72,6 +72,8 @@ rebuilds (`build_truth.json`), `scripts/run_*` kit/canary runners,
   (adds feed/incidents/threat/forensic-cache) vs `components` (identity).
 - `version` (static 7 incl pep/shield/aggregator) vs `components`
   (live 5). Both, different questions.
+- `dashboard` one-shot probes deep (same answer as `components`);
+  `dashboard --watch` stays shallow for cheap polling (EVT-180).
 - `block` (candidates) / `enforce` (PEP state) / `quarantine` (lab
   path) / `policy` (signed lifecycle) / `rules` (detection content).
 - `aegisctl start/stop` ask the DAEMON over the pipe; the opener owns
