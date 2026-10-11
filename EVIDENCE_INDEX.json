@@ -1,5 +1,5 @@
 {
-  "head_sha": "4dcacb1eab7cd86cb9b4e735c85e093c5ffcb577",
+  "head_sha": "518a3fe6b38ab84c223f853319574c90f5534908",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4811,6 +4811,25 @@
       ],
       "result": "PASS",
       "finding": "Three slices fully proven in-tree; the fourth (S6) plus two elevated confirmations (T11 green on the new DLL, GAP-020 deploy) are operator-executed with exact commands. Nothing was claimed without its proof level attached."
+    },
+    {
+      "id": "EVT-185",
+      "head_sha": "518a3fe",
+      "timestamp": "2026-10-11",
+      "title": "Operator rounds green: S6 six filters removed, T11 full lifecycle 3 passed",
+      "level": "E5",
+      "component": "wfp-ops",
+      "description": "S6 cleanup (elevated, scripts/wfp_s6_cleanup.py): all six AEGIS_BLOCK_10.0.0.99 (ids 7220218-7220223) deleted by key, rc=0 each with receipts; 7088032 already absent. T11 (elevated): 3 passed in 0.08s -- pre-clean NOT_FOUND on a clean host, BLOCK installed 7224031, receipt-aware unblock returned 0, zero litter left behind. This run also proves the rebuilt Rust DLL (fallthrough) end to end and the idempotent test design (pre-clean + self-unblock). The 'cannot get C stack' line is a harmless Windows-console artifact of the test process, not a failure.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "S6 receipts 6/6",
+        "T11 3 passed with install+remove lifecycle"
+      ],
+      "result": "PASS",
+      "finding": "WFP enforcement is now proven end to end on a clean host with no leftovers; the only remaining elevated step in the package is the GAP-020 daemon deploy, awaiting operator approval."
     }
   ],
   "evidence_level_summary": {
@@ -4819,7 +4838,7 @@
     "E2_count": 109,
     "E3_count": 7,
     "E4_count": 2,
-    "E5_count": 59,
+    "E5_count": 60,
     "E6_count": 0,
     "E7_count": 0
   }
