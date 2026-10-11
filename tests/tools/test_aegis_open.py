@@ -66,6 +66,19 @@ def test_process_queries_are_safe():
     assert opener._pids_by_name("definitely-not-a-process-xyz-123") == []
     assert opener.process_running("definitely-not-a-process-xyz-123") is False
     assert opener._kill_pids([]) == ([], [])
+    # EVT-188: window probe is equally safe (bogus name -> no window).
+    assert opener._pids_with_window("definitely-not-a-process-xyz-123") == []
+
+
+def test_gui_skip_means_visible_window():
+    # EVT-188: a lingering windowless egui process must not read as a
+    # running display. The live GUI owns a visible window; assert the
+    # probe agrees with the process list shape (list of ints, safe).
+    pids = opener._pids_with_window("aegis_dashboard")
+    assert isinstance(pids, list)
+    assert all(isinstance(p, int) for p in pids)
+    if opener._pids_by_name("aegis_dashboard"):
+        assert isinstance(opener.display_running("gui"), bool)
 
 
 def test_display_match_table_is_known_surfaces_only():

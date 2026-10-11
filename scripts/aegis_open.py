@@ -159,6 +159,26 @@ def process_running(exe_name: str) -> bool:
     return len(_pids_by_name(exe_name)) > 0
 
 
+def _pids_with_window(exe_name: str) -> list[int]:
+    """Pids of exe_name that own a visible top-level window.
+
+    EVT-188: process existence is not a display. A crashed egui process
+    can linger windowless (MainWindowHandle 0) while display_running()
+    keeps reporting SKIP -- the same false-running class as a
+    dead-but-holding web port, which the web path already clears. Only
+    the GUI uses this (the TUI is a console app: its window belongs to
+    conhost, so MainWindowHandle is always 0 there by design).
+    """
+    rc, out, _ = run(
+        ["powershell", "-NoProfile", "-Command",
+         "Get-Process -Name %s -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -ExpandProperty Id" % exe_name],
+        timeout=30,
+    )
+    if rc != 0:
+        return []
+    return [int(line.strip()) for line in out.splitlines() if line.strip().isdigit()]
+
+
 def udp_port_owned(port: int) -> bool:
     rc, out, _ = run(
         ["powershell", "-NoProfile", "-Command",
@@ -216,7 +236,7 @@ def display_running(name: str) -> bool:
     if name == "web":
         return console_alive(WEB_PORT)
     if name == "gui":
-        return process_running("aegis_dashboard")
+        return len(_pids_with_window("aegis_dashboard")) > 0
     if name == "tui":
         return process_running("windows_sec_monitor")
     if name == "terminal":
@@ -228,6 +248,9 @@ def display_running(name: str) -> bool:
 
 def start_display(name: str, open_browser: bool = True) -> dict:
     if display_running(name):
+        if name == "web":
+            return summarize("start display %s" % name, None,
+                             "already running (skipped) - %s" % WEB_URL)
         return summarize("start display %s" % name, None, "already running (skipped)")
     if name == "web":
         env = dict(os.environ)
@@ -269,11 +292,19 @@ def start_display(name: str, open_browser: bool = True) -> dict:
     if name == "gui":
         if not GUI_EXE.is_file():
             return summarize("start display gui", False, "missing: %s" % GUI_EXE)
+        # Clear windowless zombies first: same rule as the web stale-port
+        # cleanup -- a lingering process with no window is not a display.
+        zombies = [pid for pid in _pids_by_name("aegis_dashboard")
+                   if pid not in _pids_with_window("aegis_dashboard")]
+        if zombies:
+            _kill_pids(zombies)
         if not _detached([str(GUI_EXE)], REPO_ROOT):
             return summarize("start display gui", False, "spawn failed")
         time.sleep(6)
-        if process_running("aegis_dashboard"):
+        if _pids_with_window("aegis_dashboard"):
             return summarize("start display gui", True, "window open (eyeball check)")
+        if process_running("aegis_dashboard"):
+            return summarize("start display gui", False, "running without a window")
         return summarize("start display gui", False, "exited immediately")
     if name == "tui":
         if not TUI_EXE.is_file():
