@@ -1,5 +1,5 @@
 {
-  "head_sha": "518a3fe6b38ab84c223f853319574c90f5534908",
+  "head_sha": "e9f00d26e66641abf3220acf78f312d2565fb5dd",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4707,10 +4707,11 @@
       "severity": "P2",
       "title": "Second daemon instance does not refuse fast on pipe conflict",
       "description": "Proven by a live 8s probe: starting zig-out/bin/aegis_nids.exe while prod (pid 8736) owns the control pipe left the second instance (pid 7728) alive, not exited. Code cause: the pipe is max-1-instance (win32_pipe.zig:34), so the second CreateNamedPipeW fails with ERROR_PIPE_BUSY -- but daemon.zig:793 catches the serveWindowsPipe error into diag.err + requestStop (slow drain), never a fast non-zero refusal. Consequence: no split-brain was observed (max-1-instance serializes clients; prod verified intact afterwards: pid 8736, RUNNING, 23 rules), but a stray second instance lingers instead of dying, and the harness single-owner test cannot encode 'spawn + expect refusal' honestly. Fix direction: fail fast with a non-zero exit on ControlPipeCreateFailed before arming workers; needs rebuild + deploy + admin restart (operator decision, same window as the WFP cleanup round). Follow-up (same day): the sensor pipe is PIPE_UNLIMITED_INSTANCES (nids_capture.zig:188) while the control pipe is max-1-instance. A stray second daemon therefore CAN co-create the sensor endpoint, splitting nose/event flow away from prod -- the hazard is not just a lingering process but potential silent event loss, so no isolated second daemon may run on the opened system without a daemon-wide test mode (alt sensor pipe + alt forensic log + alt control pipe). The 8s probe (pid 7728, killed) showed no lasting harm (prod pid 8736 RUNNING, 23 rules after), but the window existed. WFP side: provider_ready() returns 0 non-elevated with DLL + driver present, proving the remaining skip is privilege-gated, not file-gated.",
-      "status": "FIXED-NONDEPLOYED",
+      "status": "CLOSED",
       "opened_at": "2026-10-11",
       "evidence": "live second-instance probe pid 7728 (8s, killed), win32_pipe.zig:34 (max instances 1), daemon.zig:793 (catch + requestStop, no fast refusal)",
-      "resolution": "Single-owner preflight + fail-fast landed in tree and proven live against the fresh binary (second instance exits 3 in ~1s, prod pid 8736/RUNNING/23 rules intact; was 8s+ linger). Production still runs the pre-fix binary: DEPLOY (stop/copy/sc start, elevated) rides the next maintenance window, then this gap closes. Permanent regression test test_second_core_exits_3_fast_with_owner_intact guards it."
+      "resolution": "Deployed live: service stopped cleanly, binary replaced at C:\\Program Files\\AEGIS NIDS\\runtime\\aegis_nids.exe (sha256 75795853...F31 matches zig-out build; pre-gap020 backup kept beside it; one wrong-path copy to the install root made and removed in the same round), service RUNNING as pid 4240 with 23 rules, nose flow recovering, brain still owned by 8840. Second-instance probe against the DEPLOYED binary exits 3 fast, prod intact. No OPEN gaps remain.",
+      "closed_at": "2026-10-11"
     },
     {
       "id": "EVT-181",
@@ -4830,6 +4831,25 @@
       ],
       "result": "PASS",
       "finding": "WFP enforcement is now proven end to end on a clean host with no leftovers; the only remaining elevated step in the package is the GAP-020 daemon deploy, awaiting operator approval."
+    },
+    {
+      "id": "EVT-186",
+      "head_sha": "e9f00d2",
+      "timestamp": "2026-10-11",
+      "title": "GAP-020 deployed live: new daemon serves, refusal proven on prod binary",
+      "level": "E5",
+      "component": "zig-daemon+ops",
+      "description": "Operator-executed deploy, step-verified: STOPPED confirmed before copy; hash match on the deployed binary; START_PENDING to RUNNING; health pid 4240/RUNNING/23 rules/flows climbing; deployed-binary second-instance probe exits 3 with prod intact. Rollback available as runtime\\aegis_nids.exe.pre-gap020 (unused). Detection gap was the stop-to-RUNNING window only.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "deployed refusal exit 3",
+        "health 4240/RUNNING/23"
+      ],
+      "result": "PASS",
+      "finding": "The daemon fleet is homogeneous again: tree, build, and prod all carry the fix. Zero OPEN gaps."
     }
   ],
   "evidence_level_summary": {
@@ -4838,7 +4858,7 @@
     "E2_count": 109,
     "E3_count": 7,
     "E4_count": 2,
-    "E5_count": 60,
+    "E5_count": 61,
     "E6_count": 0,
     "E7_count": 0
   }
