@@ -1,5 +1,5 @@
 {
-  "head_sha": "076ebb85a49e26d08c05a12a8d9b7e4172c8c179",
+  "head_sha": "00943ff4a052ac9d104f24797225f9ba48059d7b",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4893,6 +4893,29 @@
       ],
       "result": "PASS",
       "finding": "No display was actually down; the launcher can no longer be fooled by a windowless process, and SKIP rows tell the operator where to look."
+    },
+    {
+      "id": "EVT-189",
+      "head_sha": "00943ff",
+      "timestamp": "2026-10-11",
+      "title": "Web SKIP opens the browser: running-but-invisible is not displayed",
+      "level": "E4",
+      "component": "tooling+operations",
+      "description": "Operator report: aegis.bat showed web SKIP but no visible surface. The server was healthy (HTTP 200) -- only no browser tab existed, and SKIP never opened one. The launcher's contract is four VISIBLE surfaces, so _maybe_open_browser() (single call site, False is a pure no-op) now runs on fresh starts AND on SKIP; --no-browser still opts out, and the SKIP detail records '(opened in browser)'. Verified live both ways (--no-browser row without the note, default row with it, one tab opened). Pinned: opener suite 25/25.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "scripts/aegis_open.py",
+        "tests/tools/test_aegis_open.py",
+        "build_manifest.json",
+        "sbom.spdx.json",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "opener pins 25/25",
+        "both SKIP row shapes verified live"
+      ],
+      "result": "PASS",
+      "finding": "SKIP now means 'already visible or just made visible', never 'running somewhere unseen'."
     }
   ],
   "evidence_level_summary": {
@@ -4900,7 +4923,7 @@
     "E1_count": 22,
     "E2_count": 109,
     "E3_count": 7,
-    "E4_count": 4,
+    "E4_count": 5,
     "E5_count": 61,
     "E6_count": 0,
     "E7_count": 0

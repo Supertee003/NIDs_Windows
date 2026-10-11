@@ -246,11 +246,32 @@ def display_running(name: str) -> bool:
     return False
 
 
+def _maybe_open_browser(open_browser: bool) -> bool:
+    """Open the console URL when the operator wants to SEE it.
+
+    Separated for pinning: False is a pure no-op (suite-safe), True opens
+    exactly one tab. Called on fresh starts AND on already-running SKIP --
+    a running-but-invisible server is not a displayed surface, and the
+    launcher's contract is four VISIBLE surfaces.
+    """
+    if not open_browser:
+        return False
+    try:
+        import webbrowser
+        webbrowser.open(WEB_URL)
+        return True
+    except Exception:
+        return False
+
+
 def start_display(name: str, open_browser: bool = True) -> dict:
     if display_running(name):
         if name == "web":
+            shown = _maybe_open_browser(open_browser)
             return summarize("start display %s" % name, None,
-                             "already running (skipped) - %s" % WEB_URL)
+                             "already running (skipped) - %s%s" % (
+                                 WEB_URL,
+                                 " (opened in browser)" if shown else ""))
         return summarize("start display %s" % name, None, "already running (skipped)")
     if name == "web":
         env = dict(os.environ)
@@ -276,12 +297,7 @@ def start_display(name: str, open_browser: bool = True) -> dict:
         except OSError as exc:
             return summarize("start display web", False, "spawn failed: %s" % exc)
         if wait_for(lambda: console_alive(WEB_PORT), 40, poll_s=2.0):
-            if open_browser:
-                try:
-                    import webbrowser
-                    webbrowser.open(WEB_URL)
-                except Exception:
-                    pass
+            _maybe_open_browser(open_browser)
             return summarize("start display web", True, "%s serving (pid %s)" % (WEB_URL, proc.pid))
         hint = ""
         try:

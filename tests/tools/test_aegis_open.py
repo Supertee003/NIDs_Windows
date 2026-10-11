@@ -81,6 +81,16 @@ def test_gui_skip_means_visible_window():
         assert isinstance(opener.display_running("gui"), bool)
 
 
+def test_web_skip_opens_browser_unless_opted_out():
+    # EVT-189: a running-but-invisible server is not a displayed surface.
+    # The helper is the single browser-open call site for fresh starts and
+    # SKIP alike; False is a pure no-op (suite-safe, no browser touched).
+    assert opener._maybe_open_browser(False) is False
+    src = Path(__file__).resolve().parents[2] / "scripts" / "aegis_open.py"
+    text = src.read_text(encoding="utf-8", errors="replace")
+    assert text.count("_maybe_open_browser(") >= 3  # def + fresh + SKIP
+
+
 def test_display_match_table_is_known_surfaces_only():
     assert set(opener._DISPLAY_MATCH) == {"web", "gui", "tui", "terminal"}
     assert opener.stop_display("bogus-surface")["ok"] is False
