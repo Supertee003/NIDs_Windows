@@ -1,5 +1,5 @@
 {
-  "head_sha": "29c6f1c15839b06be5132e2eda74670de43e89ec",
+  "head_sha": "3b5645418ddb1bd1085a00ed0cefaec05158a014",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -4996,6 +4996,24 @@
       ],
       "result": "PASS",
       "finding": "The manual now covers every inspectable surface the operator asked about, with limits labeled where reads do not exist."
+    },
+    {
+      "id": "EVT-194",
+      "head_sha": "3b56454",
+      "timestamp": "2026-10-13",
+      "title": "Full kernel-NIDS audit: backend green, two dead displays restarted",
+      "level": "E5",
+      "component": "system-audit",
+      "description": "End-to-end live audit as a kernel-level NIDS. Backend: AegisNids + AegisWfp services Running; daemon 21540 RUNNING 37h, 23 rules, all six workers ready; nose 29.8M frames pushed; brain owns :9999 (health-corroborated); PEP/tier3 READY, shield true, gate closed detection-only; driver present; ring integrity ok + verified (16384 retained of 29.8M, heavy rotation); live Critical R1001 alert firing verified; search path proven via rule 0 (100/100). R1004 reads 0 because its matches aged out of the 16K window -- correct, not broken. Frontend: web (pid 6000) and GUI had died silently -- no watcher covers displays (keeper is service/nose/ brain only, by design); all four restarted OK and verified (web 200, GUI window titled and responding). Methodology notes: aegisctl queries must run SERIALLY (parallel calls raced the single-instance pipe and returned UNAVAILABLE_NOT_IMPLEMENTED -- self-caught, not a product fault); ETW shed counters (dropped/shed_overload) under high-volume flow are a known pre-existing characteristic.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "every row above read live this session"
+      ],
+      "result": "PASS",
+      "finding": "Backend fully green as a kernel NIDS; frontend restored to 4/4. The only structural gap found is display supervision (nothing restarts dead displays) -- operator runs displays to converge, by design."
     }
   ],
   "evidence_level_summary": {
@@ -5004,7 +5022,7 @@
     "E2_count": 112,
     "E3_count": 7,
     "E4_count": 5,
-    "E5_count": 62,
+    "E5_count": 63,
     "E6_count": 0,
     "E7_count": 0
   }
