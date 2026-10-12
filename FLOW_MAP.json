@@ -1,16 +1,16 @@
 {
-  "head_sha": "35be0244d0705ff6dd895b3ffe351aa2067787ce",
+  "head_sha": "1424b6b375206004a4dd5d1229e0ee54877273ca",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
   "flows": [
     {
       "id": "DATA-001",
-      "name": "Packet Capture \u00e2\u2020\u2019 Canonical Event \u00e2\u2020\u2019 Detection \u00e2\u2020\u2019 Policy \u00e2\u2020\u2019 Enforcement \u00e2\u2020\u2019 Audit \u00e2\u2020\u2019 Forensics",
+      "name": "Packet Capture â†’ Canonical Event â†’ Detection â†’ Policy â†’ Enforcement â†’ Audit â†’ Forensics",
       "type": "data_plane",
-      "plane": "PLANE-A \u00e2\u2020\u2019 PLANE-B \u00e2\u2020\u2019 PLANE-D",
+      "plane": "PLANE-A â†’ PLANE-B â†’ PLANE-D",
       "description": "Primary network data path from packet capture to forensic recording",
-      "boundary": "C ABI (Go \u00e2\u2020\u2019 Zig) \u00e2\u2020\u2019 PEP ABI (Zig \u00e2\u2020\u2019 Rust)",
+      "boundary": "C ABI (Go â†’ Zig) â†’ PEP ABI (Zig â†’ Rust)",
       "layers": [
         {
           "step": 1,
@@ -36,8 +36,8 @@
         {
           "step": 3,
           "name": "C ABI Transport",
-          "plane": "PLANE-A \u00e2\u2020\u2019 PLANE-B",
-          "owner": "Go \u00e2\u2020\u2019 Zig",
+          "plane": "PLANE-A â†’ PLANE-B",
+          "owner": "Go â†’ Zig",
           "component": "c_abi",
           "input": "CanonicalEvent bytes",
           "output": "EventQueue",
@@ -87,8 +87,8 @@
         {
           "step": 8,
           "name": "Policy Evaluation",
-          "plane": "PLANE-B \u00e2\u2020\u2019 PLANE-D",
-          "owner": "Zig \u00e2\u2020\u2019 Rust PEP",
+          "plane": "PLANE-B â†’ PLANE-D",
+          "owner": "Zig â†’ Rust PEP",
           "component": "rust_pep",
           "input": "Incident + PolicyIR",
           "output": "PEPDecision",
@@ -140,9 +140,9 @@
     },
     {
       "id": "CONTROL-001",
-      "name": "Operator \u00e2\u2020\u2019 Control API \u00e2\u2020\u2019 Authorization \u00e2\u2020\u2019 State Mutation \u00e2\u2020\u2019 Audit",
+      "name": "Operator â†’ Control API â†’ Authorization â†’ State Mutation â†’ Audit",
       "type": "control_plane",
-      "plane": "PLANE-E \u00e2\u2020\u2019 PLANE-B",
+      "plane": "PLANE-E â†’ PLANE-B",
       "description": "Operator command execution path",
       "boundary": "Control Protocol (JSON over named pipe)",
       "contract": "CONTRACT-04",
@@ -159,8 +159,8 @@
         {
           "step": 2,
           "name": "Control Protocol Transport",
-          "plane": "PLANE-E \u00e2\u2020\u2019 PLANE-B",
-          "owner": "CLI \u00e2\u2020\u2019 Zig",
+          "plane": "PLANE-E â†’ PLANE-B",
+          "owner": "CLI â†’ Zig",
           "input": "CommandRequest (JSON)",
           "output": "PipeMessage",
           "file": "src/main.zig (named pipe server)",
@@ -206,9 +206,9 @@
     },
     {
       "id": "BRAIN-001",
-      "name": "Event \u00e2\u2020\u2019 Brain Analysis \u00e2\u2020\u2019 Threat Score \u00e2\u2020\u2019 Zig",
+      "name": "Event â†’ Brain Analysis â†’ Threat Score â†’ Zig",
       "type": "intelligence_plane",
-      "plane": "PLANE-B \u00e2\u2020\u2019 PLANE-C \u00e2\u2020\u2019 PLANE-B",
+      "plane": "PLANE-B â†’ PLANE-C â†’ PLANE-B",
       "description": "Python Brain analytics path",
       "boundary": "Analytics Contract",
       "layers": [
@@ -243,8 +243,8 @@
         {
           "step": 4,
           "name": "Threat Score Response",
-          "plane": "PLANE-C \u00e2\u2020\u2019 PLANE-B",
-          "owner": "Python \u00e2\u2020\u2019 Zig",
+          "plane": "PLANE-C â†’ PLANE-B",
+          "owner": "Python â†’ Zig",
           "input": "ThreatScore",
           "output": "UpdatedThreatLevel",
           "file": "src/detection/rag_engine.zig"
@@ -253,7 +253,7 @@
     },
     {
       "id": "EVIDENCE-001",
-      "name": "Forensic Record \u00e2\u2020\u2019 Verify \u00e2\u2020\u2019 Replay \u00e2\u2020\u2019 Compare \u00e2\u2020\u2019 Evidence",
+      "name": "Forensic Record â†’ Verify â†’ Replay â†’ Compare â†’ Evidence",
       "type": "evidence_plane",
       "plane": "PLANE-B",
       "description": "Forensic evidence verification and replay path",
@@ -316,9 +316,9 @@
     },
     {
       "id": "FFI-001",
-      "name": "Zig \u00e2\u2020\u201d Rust PEP FFI",
+      "name": "Zig â†” Rust PEP FFI",
       "type": "ffi_boundary",
-      "plane": "PLANE-B \u00e2\u2020\u201d PLANE-D",
+      "plane": "PLANE-B â†” PLANE-D",
       "description": "Cross-language boundary between Zig runtime and Rust PEP",
       "contract": "CONTRACT-02",
       "boundary": "PEP ABI (C ABI)",
@@ -344,8 +344,8 @@
         {
           "step": 3,
           "name": "PEP Response",
-          "plane": "PLANE-D \u00e2\u2020\u2019 PLANE-B",
-          "owner": "Rust \u00e2\u2020\u2019 Zig",
+          "plane": "PLANE-D â†’ PLANE-B",
+          "owner": "Rust â†’ Zig",
           "input": "PepResponse (16 bytes)",
           "output": "PepDecision to Zig",
           "file": "src/policy/pep_bindings.zig"
@@ -354,9 +354,9 @@
     },
     {
       "id": "FFI-002",
-      "name": "Zig \u00e2\u2020\u201d C++ Native Adapter FFI",
+      "name": "Zig â†” C++ Native Adapter FFI",
       "type": "ffi_boundary",
-      "plane": "PLANE-B \u00e2\u2020\u201d PLANE-A",
+      "plane": "PLANE-B â†” PLANE-A",
       "description": "Cross-language boundary between Zig runtime and C++ native adapters",
       "contract": "CONTRACT-03",
       "boundary": "C ABI",
@@ -382,8 +382,8 @@
         {
           "step": 3,
           "name": "Adapter Response",
-          "plane": "PLANE-A \u00e2\u2020\u2019 PLANE-B",
-          "owner": "C++ \u00e2\u2020\u2019 Zig",
+          "plane": "PLANE-A â†’ PLANE-B",
+          "owner": "C++ â†’ Zig",
           "input": "adapter response",
           "output": "CanonicalEvent to Zig",
           "file": "src/windows/etw_realtime.zig"
@@ -392,9 +392,9 @@
     },
     {
       "id": "FFI-003",
-      "name": "Go \u00e2\u2020\u201d Zig Acquisition FFI",
+      "name": "Go â†” Zig Acquisition FFI",
       "type": "ffi_boundary",
-      "plane": "PLANE-A \u00e2\u2020\u201d PLANE-B",
+      "plane": "PLANE-A â†” PLANE-B",
       "description": "Cross-language boundary between Go sensors and Zig runtime",
       "contract": "CONTRACT-01",
       "boundary": "C ABI",

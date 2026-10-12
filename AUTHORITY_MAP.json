@@ -1,5 +1,5 @@
 {
-  "head_sha": "35be0244d0705ff6dd895b3ffe351aa2067787ce",
+  "head_sha": "1424b6b375206004a4dd5d1229e0ee54877273ca",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -12,7 +12,7 @@
         "Go",
         "C/C++"
       ],
-      "boundary": "C ABI \u00e2\u2020\u2019 Zig Runtime Spine",
+      "boundary": "C ABI â†’ Zig Runtime Spine",
       "components": [
         {
           "id": "GO_NOSE",
@@ -32,7 +32,7 @@
           "files": [
             "nose/*.go"
           ],
-          "boundary": "C ABI \u00e2\u2020\u2019 Zig",
+          "boundary": "C ABI â†’ Zig",
           "note": "`go/aggregator/` is NOT part of the acquisition authority. It is an optional operator alert sidecar (SUPPORT) that reads NDJSON logs and serves REST :9200. It produces no Canonical Event."
         },
         {
@@ -55,7 +55,7 @@
             "bridge/*.cpp",
             "bridge/*.hpp"
           ],
-          "boundary": "C ABI \u00e2\u2020\u2019 Zig"
+          "boundary": "C ABI â†’ Zig"
         }
       ]
     },
@@ -112,7 +112,7 @@
         "Python",
         "Cython"
       ],
-      "boundary": "Analytics Contract \u00e2\u2020\u2019 Zig Runtime Spine",
+      "boundary": "Analytics Contract â†’ Zig Runtime Spine",
       "components": [
         {
           "id": "PYTHON_BRAIN",
@@ -134,7 +134,7 @@
             "brain/windows_brain.py",
             "brain/**/*.py"
           ],
-          "boundary": "Analytics Contract \u00e2\u2020\u2019 Zig"
+          "boundary": "Analytics Contract â†’ Zig"
         },
         {
           "id": "CYTHON_BRIDGE",
@@ -154,7 +154,7 @@
           "files": [
             "brain/**/*.pyx"
           ],
-          "boundary": "Python \u00e2\u2020\u201d C/C++",
+          "boundary": "Python â†” C/C++",
           "note": "Cython is a performance bridge, NOT the system integration bus"
         }
       ]
@@ -166,7 +166,7 @@
       "languages": [
         "Rust"
       ],
-      "boundary": "PEP ABI \u00e2\u2020\u2019 Zig Runtime Spine",
+      "boundary": "PEP ABI â†’ Zig Runtime Spine",
       "components": [
         {
           "id": "RUST_PEP",
@@ -189,7 +189,7 @@
           "files": [
             "rust-src/lib.rs"
           ],
-          "boundary": "PEP ABI \u00e2\u2020\u2019 Zig",
+          "boundary": "PEP ABI â†’ Zig",
           "is_final_enforcement": true,
           "note": "There is exactly ONE security truth: the Rust PEP (rust-src/). No other component may claim final enforcement authority. `shield/src/pep.rs` and `shield/src/windows_enforce.rs` contain a duplicate PEP + WFP enforcement implementation and are NOT an authority (OPEN P0-7)."
         },
@@ -228,7 +228,7 @@
         "TypeScript",
         "Python"
       ],
-      "boundary": "Control Protocol \u00e2\u2020\u2019 Zig Runtime Spine",
+      "boundary": "Control Protocol â†’ Zig Runtime Spine",
       "components": [
         {
           "id": "TYPESCRIPT_POLICY",
@@ -249,7 +249,7 @@
             "ts_policy/src/*.ts",
             "ts_policy/tests/*.ts"
           ],
-          "boundary": "Control Protocol \u00e2\u2020\u2019 Zig"
+          "boundary": "Control Protocol â†’ Zig"
         },
         {
           "id": "PYTHON_CLI",
@@ -267,7 +267,7 @@
           "files": [
             "tools/aegisctl.py"
           ],
-          "boundary": "Control Protocol \u00e2\u2020\u2019 Zig",
+          "boundary": "Control Protocol â†’ Zig",
           "note": "`tools/aegisctl.py` is the single canonical operator client. `scripts/aegisctl.py` does not exist."
         }
       ]
@@ -293,7 +293,7 @@
       },
       {
         "language": "Cython",
-        "boundary": "Python \u00e2\u2020\u201d C/C++",
+        "boundary": "Python â†” C/C++",
         "direction": "internal"
       },
       {

@@ -1,5 +1,5 @@
 {
-  "head_sha": "35be0244d0705ff6dd895b3ffe351aa2067787ce",
+  "head_sha": "1424b6b375206004a4dd5d1229e0ee54877273ca",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5032,6 +5032,24 @@
       ],
       "result": "PASS",
       "finding": "No open defects in tree, toolchains, or live host. Standing non-defects unchanged: Project-3 gate, dev signing, lab/VM, push/export, single-owner harness skip."
+    },
+    {
+      "id": "EVT-196",
+      "head_sha": "1424b6b",
+      "timestamp": "2026-10-13",
+      "title": "Deep audit: loopback-only, fail-closed pipe, clean deps, 2GB disk flag",
+      "level": "E5",
+      "component": "system-audit",
+      "description": "Beyond-gates deep pass, all live. Network: every non-loopback listener belongs to Windows itself (services/spooler/svchost/ Hyper-V); no AEGIS surface leaves loopback. Control plane: malformed/unknown/null-shape inputs get typed errors with audit ids (INVALID_JSON, UNKNOWN_COMMAND, INVALID_ENVELOPE); a 200KB abusive write is server-rejected (233) with zero state change; daemon still RUNNING 23 after the abuse. First probe batch hit WRITE-FAILs from back-to-back racing the single-instance pipe -- probe artifact, serial+settle runs clean (same lesson as the suite: query serially). SCM: zero Aegis events in 7d (no crash loops). Deps: npm audit 0 vulns; testsigning still on (dev mode, known). Disk: 2GB free of 267GB is the one real risk -- Users 34GB + ProgramData 13.8GB dominate; repo caches (target 1.8GB + .zig-cache 2.9GB) are regenerable but target/ is a live test dependency, so no unilateral wipe; operator decides.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "every row above read live this session"
+      ],
+      "result": "PASS",
+      "finding": "No defects at depth. Two actionables, both operator-owned: disk pressure (2GB free) and the standing Project-3/dev-mode boundaries. Nothing in-tree to fix."
     }
   ],
   "evidence_level_summary": {
@@ -5040,7 +5058,7 @@
     "E2_count": 112,
     "E3_count": 7,
     "E4_count": 5,
-    "E5_count": 64,
+    "E5_count": 65,
     "E6_count": 0,
     "E7_count": 0
   }
