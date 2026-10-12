@@ -1,5 +1,5 @@
 {
-  "head_sha": "3b5645418ddb1bd1085a00ed0cefaec05158a014",
+  "head_sha": "35be0244d0705ff6dd895b3ffe351aa2067787ce",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5014,6 +5014,24 @@
       ],
       "result": "PASS",
       "finding": "Backend fully green as a kernel NIDS; frontend restored to 4/4. The only structural gap found is display supervision (nothing restarts dead displays) -- operator runs displays to converge, by design."
+    },
+    {
+      "id": "EVT-195",
+      "head_sha": "35be024",
+      "timestamp": "2026-10-13",
+      "title": "Full bug sweep green across every toolchain and the live host",
+      "level": "E5",
+      "component": "system-audit",
+      "description": "Operator-ordered bug hunt, everything executed, no new code. pytest 946 passed + 2 by-contract skips (rc=0); zig build + zig test rc=0; cargo 47/47; go nose + aggregator ok; ts_policy typecheck clean + 76/0 tests; gitleaks clean; live host green (service + driver Running, daemon RUNNING 23 rules, 6/6 workers, nose flowing, brain owns :9999, defcon live at SEVERE). Static sweeps: zero TODO/FIXME in src (one XXXX redaction filler in federation test code), zero unwrap/panic/unreachable/todo/expect in production Rust (all hits inside #[cfg(test)] mods). No bugs found; nothing changed.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "all gates listed above, live this session"
+      ],
+      "result": "PASS",
+      "finding": "No open defects in tree, toolchains, or live host. Standing non-defects unchanged: Project-3 gate, dev signing, lab/VM, push/export, single-owner harness skip."
     }
   ],
   "evidence_level_summary": {
@@ -5022,7 +5040,7 @@
     "E2_count": 112,
     "E3_count": 7,
     "E4_count": 5,
-    "E5_count": 63,
+    "E5_count": 64,
     "E6_count": 0,
     "E7_count": 0
   }
