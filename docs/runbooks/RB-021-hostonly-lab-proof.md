@@ -48,11 +48,18 @@ interface). Lab frames enter the prod ring carrying `192.168.126.x`,
 attributable and separable via Step 4. Stop it with Ctrl+C when done:
 
 ```
-nose\aegis-nose.exe -capture -iface "\Device\NPF_{...VMnet1...}" -require-iface
+nose\aegis-nose.exe -capture -iface "\Device\NPF_{...VMnet1...}" -require-iface -pipe \\.\pipe\aegis_sensor_pipe_t1
 ```
 
 `-require-iface` refuses auto-selection: a lab feed must never
-silently fall back to the wrong interface.
+silently fall back to the wrong interface. `-pipe` is MANDATORY, not
+optional: the nose default (`aegis_nose`) matches no live daemon
+reader (the daemon serves `aegis_sensor_pipe_t1`); without it 100% of
+lab frames drop with "consumer unavailable". The window must be
+ELEVATED: the sensor pipe SDDL (SY+BA since the GAP-018 fix) rejects
+non-elevated writers. A `\\.\pipe\aegis_nose` name exists on this host
+with no identifiable in-tree server -- documented unknown, irrelevant
+to the lab path above; do not point anything at it.
 
 ### 3. Fire the network rules from Kali (in this order)
 

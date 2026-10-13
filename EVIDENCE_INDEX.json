@@ -1,5 +1,5 @@
 {
-  "head_sha": "db8db82db08e553e969ac35d4a265f495bfdb76c",
+  "head_sha": "5ced94dae9541f7515f988baa0b39b20f33b24bf",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5103,6 +5103,26 @@
       ],
       "result": "PASS",
       "finding": "The scripts were the broken half of the first run; the NIDS half is still unproven until the lab feed is confirmed."
+    },
+    {
+      "id": "EVT-199",
+      "head_sha": "5ced94d",
+      "timestamp": "2026-10-13",
+      "title": "Lab pipe topology: explicit sensor pipe + elevated feed required",
+      "level": "E4",
+      "component": "lab",
+      "description": "Second lab fire still dark; triage found the delivery path broken, not detection. (1) The lab nose used the default pipe aegis_nose, which matches NO live daemon reader (daemon serves aegis_sensor_pipe_t1) -- 100% dropped with 'consumer unavailable'. RB-021 now mandates -pipe sensor_pipe_t1. (2) The sensor SDDL (SY+BA) rejects non-elevated writers, so the feed window must be elevated. (3) R9002 hping3 failed rc=1 because Kali runs as non-root kali@kali (raw sockets need root) -- sudo-first, then plain, then ping fallback. (4) Victim :80 still unconfirmed (L7 TimeoutError = no handshake). HONEST UNKNOWN recorded: a \\pipe\\aegis_nose name exists with a restrictive DACL (R/W both denied to this shell) but no in-tree server creates it (only tests + comments reference it); the holder is unidentifiable non-elevated and irrelevant to both prod flow (frames rising via sensor_t1) and the lab path. Deliberately NOT changing the nose default: redirecting it without understanding the mystery server risks the working prod flow -- explicit -pipe for lab instead.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "scripts/kali_attacks/R9002_icmp_flood.py",
+        "docs/runbooks/RB-021-hostonly-lab-proof.md",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "coverage pin 3/3 after patch"
+      ],
+      "result": "PASS",
+      "finding": "Every dark-fire cause so far was delivery, never detection. The range is one elevated feed + one victim listener away from first light."
     }
   ],
   "evidence_level_summary": {
@@ -5110,7 +5130,7 @@
     "E1_count": 22,
     "E2_count": 112,
     "E3_count": 7,
-    "E4_count": 7,
+    "E4_count": 8,
     "E5_count": 65,
     "E6_count": 0,
     "E7_count": 0
