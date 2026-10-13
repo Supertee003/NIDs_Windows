@@ -45,8 +45,15 @@ pub fn packetCallback(ctx: *anyopaque, hdr: *const npcap.pcap_pkthdr, data: []co
         ev.protocol = data[ip_offset + 9];
         const src_bytes: [4]u8 = data[ip_offset + 12 .. ip_offset + 16][0..4].*;
         const dst_bytes: [4]u8 = data[ip_offset + 16 .. ip_offset + 20][0..4].*;
-        ev.src_ip = @bitCast(src_bytes);
-        ev.dst_ip = @bitCast(dst_bytes);
+        // EVT-201: network-integer (big-endian) convention, identical to Go
+        // nose (binary.BigEndian.Uint32). The old @bitCast stored LE memory
+        // layout, which the shared projector rendered byte-reversed
+        // (192.168.126.10 displayed as 10.126.168.192) and which split
+        // flows/joins against Go-sourced events for the same host
+        // (JOIN-TRACE-119). Ingress canonicalization: every producer emits
+        // BE, so identity is single-convention end to end.
+        ev.src_ip = std.mem.readInt(u32, &src_bytes, .big);
+        ev.dst_ip = std.mem.readInt(u32, &dst_bytes, .big);
 
         // Parse TCP/UDP ports if applicable
         const transport_offset = ip_offset + ihl;
@@ -60,9 +67,10 @@ pub fn packetCallback(ctx: *anyopaque, hdr: *const npcap.pcap_pkthdr, data: []co
         ev.protocol = data[ip6_offset + 6];
         const src_bytes: [16]u8 = data[ip6_offset + 8 .. ip6_offset + 24][0..16].*;
         const dst_bytes: [16]u8 = data[ip6_offset + 24 .. ip6_offset + 40][0..16].*;
-        // For IPv6, store first 4 bytes of 128-bit address into u32
-        ev.src_ip = @bitCast(src_bytes[0..4].*);
-        ev.dst_ip = @bitCast(dst_bytes[0..4].*);
+        // For IPv6, store first 4 bytes of 128-bit address into u32 --
+        // same BE convention as IPv4 above (EVT-201).
+        ev.src_ip = std.mem.readInt(u32, src_bytes[0..4], .big);
+        ev.dst_ip = std.mem.readInt(u32, dst_bytes[0..4], .big);
 
         // Parse TCP/UDP ports if applicable
         const transport_offset = ip6_offset + 40;
@@ -122,7 +130,10 @@ pub fn captureThread() void {
 test "packetCallback parses IPv4/TCP frame (BYTE-ORDER-096)" {
     // Ethernet(14) + IPv4(20, ihl=5, proto=TCP) + ports. Addresses are
     // non-palindromic so a byte-order regression cannot hide: 10.0.0.5
-    // must decode to 0x0500000A (memory layout), never 0x0A000005.
+    // must decode to BE-network-integer 0x0A000005 -- the Go nose
+    // convention (binary.BigEndian.Uint32) and the shared projector's
+    // assumption. EVT-201 fixed the old LE memory-layout values here
+    // (0x0500000A), which rendered dotted IPs byte-reversed downstream.
     var frame = [_]u8{0} ** 40;
     frame[12] = 0x08;
     frame[13] = 0x00;
@@ -144,8 +155,8 @@ test "packetCallback parses IPv4/TCP frame (BYTE-ORDER-096)" {
     try std.testing.expectEqual(event.EventKind.packet_captured, qe.ev.kind);
     try std.testing.expectEqual(event.EventSource.capture_npcap, qe.ev.source);
     try std.testing.expectEqual(@as(u8, 6), qe.ev.protocol);
-    try std.testing.expectEqual(@as(u32, 0x0500000A), qe.ev.src_ip);
-    try std.testing.expectEqual(@as(u32, 0x0101A8C0), qe.ev.dst_ip);
+    try std.testing.expectEqual(@as(u32, 0x0A000005), qe.ev.src_ip);
+    try std.testing.expectEqual(@as(u32, 0xC0A80101), qe.ev.dst_ip);
     try std.testing.expectEqual(@as(u16, 1234), qe.ev.src_port);
     try std.testing.expectEqual(@as(u16, 80), qe.ev.dst_port);
     try std.testing.expectEqual(@as(u64, 1700000000123456000), qe.ev.timestamp_ns);
@@ -177,8 +188,8 @@ test "packetCallback parses IPv6 frame first-32-bits (BYTE-ORDER-096)" {
     var hdr = npcap.pcap_pkthdr{ .ts_sec = 1700000000, .ts_usec = 0, .caplen = 58, .len = 58 };
     packetCallback(undefined, &hdr, &frame);
     const qe = queue.popEvent() orelse return error.TestUnexpectedResult;
-    try std.testing.expectEqual(@as(u32, 0xB80D0120), qe.ev.src_ip);
-    try std.testing.expectEqual(@as(u32, 0x000080FE), qe.ev.dst_ip);
+    try std.testing.expectEqual(@as(u32, 0x20010DB8), qe.ev.src_ip);
+    try std.testing.expectEqual(@as(u32, 0xFE800000), qe.ev.dst_ip);
     try std.testing.expectEqual(@as(u16, 8080), qe.ev.src_port);
     try std.testing.expectEqual(@as(u16, 80), qe.ev.dst_port);
 }
