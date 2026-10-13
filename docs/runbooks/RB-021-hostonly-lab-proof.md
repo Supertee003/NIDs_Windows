@@ -20,6 +20,12 @@ as canaries on the monitored host itself.
   targets outside `192.168.126.0/24` by construction).
 - Elevation: starting the lab nose feed needs a shell that may open the
   sensor pipe (administrators); reads need nothing.
+- Victim listener on :80 (Admin PowerShell on the victim ONCE — any TCP
+  payload needs an established connection before it exists on the wire;
+  without it every L7 script reports `port closed` and nothing is sent):
+  `python -m http.server 80`
+- L7 scripts send via raw socket (urllib mangles spaces the Tier-1
+  regexes match literally); R9002 prefers hping3 flood volume.
 
 ## Steps
 
