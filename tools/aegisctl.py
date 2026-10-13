@@ -920,10 +920,31 @@ def _read_events() -> list[dict]:
     return rows
 
 
+def _valid_ipv4(value: str) -> bool:
+    try:
+        parts = str(value).split(".")
+        return len(parts) == 4 and all(p.isdigit() and 0 <= int(p) <= 255 for p in parts)
+    except (ValueError, AttributeError):
+        return False
+
+
 def cmd_events(args) -> int:
     path = _event_log()
     note = _event_log_note(path)
     events = _read_events()
+    src_ip = getattr(args, "src_ip", None)
+    if src_ip:
+        # EVT-197: attacker-centric lab view. The ring speaks ordinal/rule
+        # space by design (no IP in ring records); the evidence LOG carries
+        # dotted src_ip, so filter client-side here. No daemon change, no
+        # restart, works today.
+        if not _valid_ipv4(src_ip):
+            print(json.dumps({"available": False, "command": "events",
+                              "reason": "src_ip_must_be_a_dotted_quad"}, sort_keys=True),
+                  file=sys.stderr)
+            return 2
+        events = [e for e in events if e.get("src_ip") == src_ip]
+        note = "%s | src_ip=%s" % (note, src_ip)
     op = getattr(args, "events_command", "count")
     if op == "count":
         if getattr(args, "json", False):
@@ -947,6 +968,8 @@ def cmd_events(args) -> int:
                     while True:
                         time.sleep(max(0.1, getattr(args, "interval", 1.0)))
                         current = _read_events()
+                        if src_ip:
+                            current = [e for e in current if e.get("src_ip") == src_ip]
                         for item in current[seen:]:
                             print(json.dumps(item, sort_keys=True) if getattr(args, "json", True) else item, flush=True)
                         seen = len(current)
@@ -2039,10 +2062,13 @@ def main() -> int:
     etail.add_argument("--follow", action="store_true", help="Continue watching for new events")
     etail.add_argument("--interval", type=float, default=1.0, help="Polling interval for --follow")
     etail.add_argument("--json", action="store_true", help="Emit JSON records")
+    etail.add_argument("--src-ip", default=None, help="Show only records from this source IP (lab attacker view)")
     ecount = events_sub.add_parser("count", help="Count event evidence")
     ecount.add_argument("--json", action="store_true", help="Emit JSON")
+    ecount.add_argument("--src-ip", default=None, help="Count only records from this source IP")
     estats = events_sub.add_parser("stats", help="Summarize event evidence")
     estats.add_argument("--json", action="store_true", help="Emit JSON")
+    estats.add_argument("--src-ip", default=None, help="Summarize only records from this source IP")
     events.set_defaults(events_command="count", func=cmd_events)
     forensic = sub.add_parser("forensic", help="Inspect forensic records")
     forensic_sub = forensic.add_subparsers(dest="forensic_command")

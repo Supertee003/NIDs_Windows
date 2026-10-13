@@ -9,7 +9,7 @@
       "Organization: AEGIS",
       "Tool: release_engineering.py"
     ],
-    "created": "2026-10-11T07:14:41.997008+00:00"
+    "created": "2026-10-13T00:37:12.694999+00:00"
   },
   "packages": [
     {
@@ -2545,7 +2545,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "b7decd669f96c1cd74cb9714bd2e1b760c713b22c1932e5dea1cdd476717de46"
+          "checksumValue": "2d651a9368275317f4a5d03e49b72bb4fc3f5b19a5fac8a0722bbddc1ea2b65a"
         }
       ],
       "filePath": "runtime_manifest.json"
@@ -2869,7 +2869,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "eb2b62da7b366f4024d36a14f68900e532881a98a7f1da1b5e99c87a7b5ea8c4"
+          "checksumValue": "6f290b49a02a5028eb3f51781840c4b22728712cf53ec6a5ffec15eb8640efbe"
         }
       ],
       "filePath": "scripts/aegis_open.py"
@@ -6595,7 +6595,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "5c386e1bb34f31293b98a8cc9fd1295ae2339ab0f9f2dbc4fb8a84fa581d2034"
+          "checksumValue": "d7f076a2d78389c8362f9fd88da8622c148de3eca841e05640fed9b55a1c6a0b"
         }
       ],
       "filePath": "src/policy/shield_screen.zig"
@@ -9475,7 +9475,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "c96f38414f5dfbde4a949636dca7ab027b6cb364ce1b24dea06e644162ceda11"
+          "checksumValue": "944d09b193292a981e494a18cf6cea2bb2ec545cda616d6ccd287f39935c2de2"
         }
       ],
       "filePath": "tools/aegisctl.py"

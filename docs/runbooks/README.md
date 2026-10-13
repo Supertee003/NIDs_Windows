@@ -26,6 +26,7 @@ This directory contains operational runbooks for the AEGIS NIDS system.
 | [RB-018](RB-018-hostonly-observe-only-qualification.md) | Lab Proof | Host-only observe-only qualification (Kali VM) | wfp_telemetry | NOT YET EXECUTED |
 | [RB-019](RB-019-attack-visibility-demo.md) | Troubleshooting | Attack-visibility demo (marked canary end to end) | detection_chain | procedure |
 | [RB-020](RB-020-observability-manual.md) | Reference | Full-system observability manual (all surfaces) | observability | procedure |
+| [RB-021](RB-021-hostonly-lab-proof.md) | Lab Proof | Host-only Kali→victim kernel detection proof | lab_attack_range | OPERATOR ACTION |
 
 ## Runbook Types
 

@@ -156,6 +156,39 @@ class TestEventsCommands(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn("Events: 0", stdout)
 
+    def test_events_src_ip_filters_attacker_view(self):
+        """EVT-197: --src-ip isolates one source (lab attacker tracking).
+
+        The ring has no IP field by design; the evidence log does, so the
+        filter runs client-side over an isolated scratch log: exact counts
+        per IP, src_ip echoed in the note, garbage rejected with rc 2.
+        """
+        import json as _json
+        tmp = Path(tempfile.mkdtemp(prefix="events-srcip-"))
+        log = tmp / "lab.ndjson"
+        rows = [
+            {"event": "signature_match", "rule": "1", "src_ip": "192.168.126.10"},
+            {"event": "signature_match", "rule": "2", "src_ip": "192.168.126.10"},
+            {"event": "signature_match", "rule": "3", "src_ip": "192.168.126.20"},
+        ]
+        log.write_text("\n".join(_json.dumps(r) for r in rows) + "\n",
+                       encoding="utf-8")
+        child_env = dict(os.environ)
+        child_env["AEGIS_EVENT_LOG"] = str(log)
+        rc, stdout, _ = _run_aegisctl("events", "count", "--src-ip",
+                                      "192.168.126.10", env=child_env)
+        self.assertEqual(rc, 0)
+        self.assertIn("Events: 2", stdout)
+        self.assertIn("src_ip=192.168.126.10", stdout)
+        rc, stdout, _ = _run_aegisctl("events", "tail", "--count", "10",
+                                      "--src-ip", "192.168.126.20",
+                                      env=child_env)
+        self.assertEqual(rc, 0)
+        self.assertIn("1 event(s)", stdout)
+        rc, _, _ = _run_aegisctl("events", "count", "--src-ip", "nope",
+                                 env=child_env)
+        self.assertEqual(rc, 2)
+
 
 class TestForensicCommands(unittest.TestCase):
     """Tests for 'aegisctl forensic show/search/export'."""

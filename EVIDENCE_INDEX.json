@@ -1,5 +1,5 @@
 {
-  "head_sha": "1424b6b375206004a4dd5d1229e0ee54877273ca",
+  "head_sha": "d115c541fc3f2ef3ad18dd387e235c4c84927037",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5050,6 +5050,33 @@
       ],
       "result": "PASS",
       "finding": "No defects at depth. Two actionables, both operator-owned: disk pressure (2GB free) and the standing Project-3/dev-mode boundaries. Nothing in-tree to fix."
+    },
+    {
+      "id": "EVT-197",
+      "head_sha": "d115c54",
+      "timestamp": "2026-10-13",
+      "title": "Lab range package: 23 scripts pinned, attacker view, RB-021",
+      "level": "E4",
+      "component": "lab+tooling+docs",
+      "description": "Operator-ordered Kali(.10)->victim(.20) host-only program. (1) All 23 kali_attacks scripts exist, parse, and refuse non-lab targets; a naive literal audit false-flagged R0056 (payload quotes fooled the scraper) -- redone AST+regex-aware and pinned as tests/lab/test_kali_script_coverage.py (existence, guard, >=1 payload matching the rule regex; 3/3 green). (2) Attacker-centric visibility: the ring carries no IP by design, so events tail/count/stats gained --src-ip over the evidence log (client-side, validated quad, exit 2 on garbage, follow-loop filtered too; no daemon change, no restart) -- proven live (261510/0/clean-reject) and pinned isolated (scratch log, exact counts). (3) Lab topology verified from here: host .1 on VMnet1, npcap device enumerated, nose already ships -iface/-require-iface/-capture-probe for exactly this (a second nose feeds marked .126.x frames; prod nose untouched). (4) RB-021 runbook: probe, feed, fire order, attribute, host-rule canaries, close, rollback, honest limits (prod-ring mixing by design, no second daemon exists). Live VM firing is operator-executed.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "tools/aegisctl.py",
+        "tests/lab/test_kali_script_coverage.py",
+        "tests/runtime/test_gate_d.py",
+        "docs/runbooks/RB-021-hostonly-lab-proof.md",
+        "docs/runbooks/README.md",
+        "build_manifest.json",
+        "sbom.spdx.json",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "kali coverage 3/3, gate_d incl. src_ip pin green (29/29 on rerun)",
+        "runbook pins green (index row caught pre-commit)",
+        "--src-ip live triple-path proof (hit/empty/reject)"
+      ],
+      "result": "PASS",
+      "finding": "Everything short of live VM fire is built and pinned; the range procedure is ready for the operator to execute."
     }
   ],
   "evidence_level_summary": {
@@ -5057,7 +5084,7 @@
     "E1_count": 22,
     "E2_count": 112,
     "E3_count": 7,
-    "E4_count": 5,
+    "E4_count": 6,
     "E5_count": 65,
     "E6_count": 0,
     "E7_count": 0
