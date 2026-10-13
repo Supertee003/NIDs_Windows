@@ -47,6 +47,7 @@ const corr_mod = @import("detection/correlator.zig");
 const telemetry = @import("pipeline/telemetry_threads.zig");
 const nose_reader = @import("capture/nose_pipe_reader.zig");
 const pipe_monitor = @import("capture/pipe_monitor.zig");
+const packet_callback = @import("pipeline/packet_callback.zig");
 const event_queue = @import("pipeline/event_queue.zig");
 const service = @import("platform/win32_service.zig");
 const control = @import("platform/win32_pipe.zig");
@@ -63,6 +64,7 @@ const RuntimeSupervisor = struct {
     pipeline: ?std.Thread = null,
     sensor: ?std.Thread = null,
     nose_reader: ?std.Thread = null,
+    direct_capture: ?std.Thread = null,
     etw: ?std.Thread = null,
     fim: ?std.Thread = null,
     registry: ?std.Thread = null,
@@ -86,6 +88,8 @@ const RuntimeSupervisor = struct {
         self.etw = null;
         if (self.nose_reader) |thread| thread.join();
         self.nose_reader = null;
+        if (self.direct_capture) |thread| thread.join();
+        self.direct_capture = null;
         if (self.sensor) |thread| thread.join();
         self.sensor = null;
         if (self.pipeline) |thread| thread.join();
@@ -690,7 +694,30 @@ pub fn runDaemon() !void {
         // making exactly-once forensic identity impossible. The direct adapter
         // remains available to focused diagnostics/tests, but is not a runtime
         // acquisition authority.
-        diag.info("direct Zig Npcap capture disabled; Go Nose is canonical network ingress", .{});
+        //
+        // EVT-200: single exception -- AEGIS_DAEMON_IFACE set. A pinned lab
+        // interface (e.g. host-only VMnet) carries DISJOINT traffic from the
+        // nose path, so no duplicates arise, and nose-pipe frames are
+        // metadata-only (lengths+hashes, no payload bytes) while direct
+        // capture pushes full packets -- L7 Tier-1 can only match here.
+        // Unset keeps the historical disabled behavior byte-identically.
+        // A set-but-unmatched value fails closed inside NpcapAdapter.open.
+        const lab_iface = std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_DAEMON_IFACE") catch null;
+        if (lab_iface) |filter| {
+            defer std.heap.page_allocator.free(filter);
+            if (filter.len > 0) {
+                supervisor.direct_capture = std.Thread.spawn(.{}, packet_callback.captureThread, .{}) catch |err| blk: {
+                    diag.warn("failed to spawn direct capture thread: {} -- lab capture disabled", .{err});
+                    state.markWorkerFailure(.sensor);
+                    break :blk null;
+                };
+                if (supervisor.direct_capture != null) diag.info("direct Zig Npcap capture STARTED (lab interface pin: {s})", .{filter});
+            } else {
+                diag.info("direct Zig Npcap capture disabled; Go Nose is canonical network ingress", .{});
+            }
+        } else {
+            diag.info("direct Zig Npcap capture disabled; Go Nose is canonical network ingress", .{});
+        }
 
         // Canonical Go Nose -> named pipe -> detector pipeline queue path.
         supervisor.nose_reader = std.Thread.spawn(.{}, nose_reader.runPipeReaderLoop, .{&state.g_stop_requested}) catch |err| blk: {

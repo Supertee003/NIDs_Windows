@@ -1,5 +1,5 @@
 {
-  "head_sha": "5ced94dae9541f7515f988baa0b39b20f33b24bf",
+  "head_sha": "107f5d103cab6b16afaac4a771f3cacbb0834a70",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5123,6 +5123,29 @@
       ],
       "result": "PASS",
       "finding": "Every dark-fire cause so far was delivery, never detection. The range is one elevated feed + one victim listener away from first light."
+    },
+    {
+      "id": "EVT-200",
+      "head_sha": "107f5d1",
+      "timestamp": "2026-10-13",
+      "title": "Lab acquisition fix: AEGIS_DAEMON_IFACE pins direct capture (payloads intact)",
+      "level": "E4",
+      "component": "zig-daemon+lab",
+      "description": "Four dark rounds explained, all delivery-side until the last link. Proven chain: (1) daemon's live capture is interface-locked with no knob, so VMnet lab traffic is invisible to it; (2) nose-pipe frames are metadata-only (lengths+hashes, no payload bytes), so Tier-1 L7 can never match them -- and the 5000-event tally shows zero network-rule hits ever, all firings host-sourced; (3) a second nose fights the single reader loop (drops) for zero L7 gain. Fix in tree: AEGIS_DAEMON_IFACE (deliberately distinct from the nose knobs, which would swing prod nose on keeper restart) pins direct Zig capture by exact name or description substring; unset keeps the disabled-by-design behavior byte-identically (no duplicate-event risk: VMnet vs Wi-Fi traffic is disjoint); set-but-unmatched fails closed. Pure matcher unit-tested hermetically (sabotage-proven), supervisor slot + reverse-order join added. Fresh binary 818cf2f8. Almost-shipped bug caught pre-commit: the knob was first wired into NpcapAdapter.open's auto path, which production never reaches (direct capture stays disabled there) -- moved to a gated spawn in runDaemon. Deploy (env + restart + fire + restore) is an elevated operator round per RB-021.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/capture/npcap_adapter.zig",
+        "src/daemon.zig",
+        "build_manifest.json",
+        "sbom.spdx.json",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "zig build rc=0, zig test rc=0, matcher sabotage-proven",
+        "RB-021 Step 2 already describes exactly this (env+restart)"
+      ],
+      "result": "PASS",
+      "finding": "The lab was unprovable by construction until this slice; the knob makes VMnet acquisition a restart away with zero prod-behavior change while unset."
     }
   ],
   "evidence_level_summary": {
@@ -5130,7 +5153,7 @@
     "E1_count": 22,
     "E2_count": 112,
     "E3_count": 7,
-    "E4_count": 8,
+    "E4_count": 9,
     "E5_count": 65,
     "E6_count": 0,
     "E7_count": 0

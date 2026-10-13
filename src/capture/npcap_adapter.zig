@@ -78,6 +78,39 @@ fn isVirtualOrUnsupportedDescription(description: ?[*:0]const u8) bool {
 // ============================================================================
 // NpcapAdapter â€” live capture handle
 // ============================================================================
+// Lab capture selection (EVT-200).
+//
+// AEGIS_DAEMON_IFACE pins daemon-side capture to one Npcap device by
+// exact canonical name or case-insensitive description substring
+// (e.g. "VMnet1"). Empty/unset keeps the historical auto-select,
+// byte for byte. A SET but unmatched value FAILS CLOSED (no capture +
+// loud error) -- silently sniffing the wrong interface would blind the
+// operator while reporting healthy.
+//
+// Deliberately NOT AEGIS_CAPTURE_IFACE / AEGIS_NOSE_IFACE: the opener
+// reads those for the Go nose process, and sharing one knob would swing
+// the prod nose onto the lab interface on the next keeper restart.
+pub const DAEMON_IFACE_ENV = "AEGIS_DAEMON_IFACE";
+
+/// Pure matcher, unit-tested without Npcap hardware. Empty filter never
+/// matches (unset means auto-select, handled by the caller).
+pub fn deviceMatchesFilter(name: []const u8, desc: []const u8, filter: []const u8) bool {
+    if (filter.len == 0) return false;
+    if (std.mem.eql(u8, name, filter)) return true;
+    var name_lower: [256]u8 = undefined;
+    var desc_lower: [256]u8 = undefined;
+    var filter_lower: [256]u8 = undefined;
+    if (filter.len > filter_lower.len) return std.mem.eql(u8, name, filter);
+    const nl = @min(name.len, name_lower.len);
+    const dl = @min(desc.len, desc_lower.len);
+    _ = std.ascii.lowerString(name_lower[0..nl], name[0..nl]);
+    _ = std.ascii.lowerString(desc_lower[0..dl], desc[0..dl]);
+    _ = std.ascii.lowerString(filter_lower[0..filter.len], filter);
+    const fl = filter_lower[0..filter.len];
+    return std.mem.indexOf(u8, name_lower[0..nl], fl) != null or
+        std.mem.indexOf(u8, desc_lower[0..dl], fl) != null;
+}
+
 pub const NpcapAdapter = struct {
     handle: ?*pcap_t = null,
     device: [256]u8 = [_]u8{0} ** 256,
@@ -107,29 +140,60 @@ pub const NpcapAdapter = struct {
             }
             defer pcap_freealldevs(alldevs);
 
-            var selected: ?[*:0]const u8 = null;
-            var fallback: ?[*:0]const u8 = null;
-            var cur = alldevs;
-            while (cur) |dev| : (cur = dev.next) {
-                if (dev.name) |name| {
-                    // Npcap's first "up" device is frequently WAN Miniport
-                    // (Network Monitor), which opens successfully but carries
-                    // no ordinary host traffic. Prefer a real Wi-Fi/Ethernet
-                    // adapter and retain a non-virtual fallback only.
-                    if (isVirtualOrUnsupportedDescription(dev.description)) continue;
-                    if (fallback == null) fallback = name;
-                    if ((dev.flags & 0x1) == 0 and (dev.flags & 0x6) != 0) {
-                        selected = name;
-                        break;
+            // EVT-200: explicit lab pin. Env-gated and fail-closed; the
+            // historical auto-select below runs byte-identically when unset.
+            var env_buf: [512]u8 = undefined;
+            var env_fba = std.heap.FixedBufferAllocator.init(&env_buf);
+            const env_filter = std.process.getEnvVarOwned(env_fba.allocator(), DAEMON_IFACE_ENV) catch null;
+            if (env_filter) |filter| {
+                if (filter.len > 0) {
+                    var pinned: ?[*:0]const u8 = null;
+                    var mcur = alldevs;
+                    while (mcur) |mdev| : (mcur = mdev.next) {
+                        if (mdev.name) |mname| {
+                            const mdesc: []const u8 = if (mdev.description) |md| std.mem.span(md) else "";
+                            if (deviceMatchesFilter(std.mem.span(mname), mdesc, filter)) {
+                                pinned = mname;
+                                break;
+                            }
+                        }
                     }
+                    const pinned_name = pinned orelse {
+                        diag.err("AEGIS_DAEMON_IFACE={s} matches no Npcap device -- capture disabled (refusing silent wrong-iface)", .{filter});
+                        return error.CaptureIfaceNotFound;
+                    };
+                    const pinned_slice = std.mem.span(pinned_name);
+                    if (pinned_slice.len >= device.len) return error.PcapDeviceNameTooLong;
+                    @memset(&device, 0);
+                    @memcpy(device[0..pinned_slice.len], pinned_slice);
+                    diag.info("Npcap pinned device via {s}: {s}", .{ DAEMON_IFACE_ENV, pinned_slice });
                 }
             }
-            const selected_name = selected orelse fallback orelse return error.PcapNoDevices;
-            const selected_slice = std.mem.span(selected_name);
-            if (selected_slice.len >= device.len) return error.PcapDeviceNameTooLong;
-            @memset(&device, 0);
-            @memcpy(device[0..selected_slice.len], selected_slice);
-            diag.info("Npcap auto-selected device: {s}", .{selected_slice});
+            if (std.mem.sliceTo(&device, 0).len == 0) {
+                var selected: ?[*:0]const u8 = null;
+                var fallback: ?[*:0]const u8 = null;
+                var cur = alldevs;
+                while (cur) |dev| : (cur = dev.next) {
+                    if (dev.name) |name| {
+                        // Npcap's first "up" device is frequently WAN Miniport
+                        // (Network Monitor), which opens successfully but carries
+                        // no ordinary host traffic. Prefer a real Wi-Fi/Ethernet
+                        // adapter and retain a non-virtual fallback only.
+                        if (isVirtualOrUnsupportedDescription(dev.description)) continue;
+                        if (fallback == null) fallback = name;
+                        if ((dev.flags & 0x1) == 0 and (dev.flags & 0x6) != 0) {
+                            selected = name;
+                            break;
+                        }
+                    }
+                }
+                const selected_name = selected orelse fallback orelse return error.PcapNoDevices;
+                const selected_slice = std.mem.span(selected_name);
+                if (selected_slice.len >= device.len) return error.PcapDeviceNameTooLong;
+                @memset(&device, 0);
+                @memcpy(device[0..selected_slice.len], selected_slice);
+                diag.info("Npcap auto-selected device: {s}", .{selected_slice});
+            }
         }
 
         var ad = NpcapAdapter{ .device = device };
@@ -257,6 +321,23 @@ test "CaptureConfig defaults are sane" {
     const cfg = CaptureConfig{};
     try std.testing.expect(cfg.snaplen >= 1500);
     try std.testing.expect(cfg.buffer_size >= 1024 * 1024);
+}
+
+test "deviceMatchesFilter pins lab selection without hardware" {
+    const guid = "\\Device\\NPF_{CE375996-106D-46F7-A67C-0168EAE8C96F}";
+    const desc = "VMware Virtual Ethernet Adapter for VMnet1";
+    // Exact canonical name always wins.
+    try std.testing.expect(deviceMatchesFilter(guid, desc, guid));
+    // Case-insensitive description substring (operator-friendly).
+    try std.testing.expect(deviceMatchesFilter(guid, desc, "vmnet1"));
+    try std.testing.expect(deviceMatchesFilter(guid, desc, "VMNET1"));
+    // Non-matches and the empty (unset) filter never match.
+    try std.testing.expect(!deviceMatchesFilter(guid, desc, "VMnet2"));
+    try std.testing.expect(!deviceMatchesFilter(guid, desc, "Wi-Fi"));
+    try std.testing.expect(!deviceMatchesFilter(guid, desc, ""));
+    // Overlong filters fall back to exact compare only (no truncation).
+    var long: [300]u8 = [_]u8{'x'} ** 300;
+    try std.testing.expect(!deviceMatchesFilter(guid, desc, &long));
 }
 
 test "Windows pcap_pkthdr matches Npcap ABI" {

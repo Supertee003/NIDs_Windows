@@ -18,8 +18,8 @@ as canaries on the monitored host itself.
   `nose\aegis-nose.exe --list-devices`
 - Kali scripts copied to Kali: `scripts/kali_attacks/R*.py` (all refuse
   targets outside `192.168.126.0/24` by construction).
-- Elevation: starting the lab nose feed needs a shell that may open the
-  sensor pipe (administrators); reads need nothing.
+- Elevation: restarting the service and setting machine env need Admin;
+  reads need nothing. No second nose is used (retired -- see Step 2).
 - Victim listener on :80 (Admin PowerShell on the victim ONCE — any TCP
   payload needs an established connection before it exists on the wire;
   without it every L7 script reports `port closed` and nothing is sent):
@@ -41,25 +41,38 @@ nose\aegis-nose.exe -capture-probe -iface "\Device\NPF_{...VMnet1...}"
 Stays silent until frames cross. No packets with live VMs = stop here
 and check the VMnet wiring, not the NIDS.
 
-### 2. Feed lab traffic (marked, operator-sanctioned)
+### 2. Point daemon capture at VMnet1 (one Admin round-trip)
 
-Start a SECOND nose on VMnet1 (the prod nose keeps its own
-interface). Lab frames enter the prod ring carrying `192.168.126.x`,
-attributable and separable via Step 4. Stop it with Ctrl+C when done:
+The daemon's own capture carries full packets WITH payloads, so Tier-1
+L7 can match -- unlike nose-pipe frames (metadata-only: lengths and
+hashes, no bytes), which is why four dark rounds never produced a
+single lab event. Pin it with a machine env var, then restart:
 
 ```
-nose\aegis-nose.exe -capture -iface "\Device\NPF_{...VMnet1...}" -require-iface -pipe \\.\pipe\aegis_sensor_pipe_t1
+setx /M AEGIS_DAEMON_IFACE "\Device\NPF_{CE375996-106D-46F7-A67C-0168EAE8C96F}"
+sc.exe stop AegisNids
+(wait STATE: 1 STOPPED)
+sc.exe start AegisNids
 ```
 
-`-require-iface` refuses auto-selection: a lab feed must never
-silently fall back to the wrong interface. `-pipe` is MANDATORY, not
-optional: the nose default (`aegis_nose`) matches no live daemon
-reader (the daemon serves `aegis_sensor_pipe_t1`); without it 100% of
-lab frames drop with "consumer unavailable". The window must be
-ELEVATED: the sensor pipe SDDL (SY+BA since the GAP-018 fix) rejects
-non-elevated writers. A `\\.\pipe\aegis_nose` name exists on this host
-with no identifiable in-tree server -- documented unknown, irrelevant
-to the lab path above; do not point anything at it.
+A description substring works too (`VMnet1`); the exact GUID is
+preferred (it cannot drift). Unset keeps the historical auto-select;
+a SET-but-unmatched value fails closed (no capture + loud error),
+never a silent wrong interface. Deliberately NOT the nose knobs
+(`AEGIS_CAPTURE_IFACE`/`AEGIS_NOSE_IFACE`): sharing one would swing
+the prod nose onto the lab interface at the next keeper restart. No
+second nose is needed anymore -- retire window B (it fought the single
+reader loop and dropped most frames).
+
+Restore prod afterwards (bounded lab window -- VMnet capture is blind
+to host Wi-Fi traffic while set):
+
+```
+REG DELETE "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /V AEGIS_DAEMON_IFACE /F
+sc.exe stop AegisNids
+(wait STATE: 1 STOPPED)
+sc.exe start AegisNids
+```
 
 ### 3. Fire the network rules from Kali (in this order)
 
@@ -98,10 +111,10 @@ remote-shaped one: run it Kali→victim and watch the pipe rule fire.
 
 ### 6. Close the lab
 
-Ctrl+C the lab nose. Prod flow (own nose, own interface) never
-stopped. Lab records stay in the ring, marked `.126.x` and
-attributable -- detection-only means nothing was ever blocked, so
-there is nothing to unblock.
+Restore the daemon interface (Step 2, second block) and restart: prod
+(Wi-Fi) flow resumes on the next start. Lab records stay in the ring,
+marked `.126.x` and attributable -- detection-only means nothing was
+ever blocked, so there is nothing to unblock.
 
 ## Verification
 
@@ -112,10 +125,10 @@ hits. 8/8 network rules from Kali, 15/15 host rules from canaries.
 
 ## Rollback
 
-Kill the lab nose process; delete nothing (evidence is append-only by
-design). If a proof filter was installed during recon (T11-style),
-remove it by its printed id. No host effect was ever applied, so no
-effect needs undoing.
+Restore the Step-2 interface block (env delete + restart); delete
+nothing (evidence is append-only by design). If a proof filter was
+installed during recon (T11-style), remove it by its printed id. No
+host effect was ever applied, so no effect needs undoing.
 
 ## Honest limits
 
