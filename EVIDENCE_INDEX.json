@@ -1,5 +1,5 @@
 {
-  "head_sha": "e8555f2e4e61eca8374a61f6bdbb38cbfe2621ce",
+  "head_sha": "4783fd730b0ac1d8da6d967d63ac5ad6ba998e00",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5194,6 +5194,26 @@
       ],
       "result": "PASS",
       "finding": "Code-proven; live proof (capabilities.wfp true, WFP flow rows, state RUNNING) needs deploy+restart, then a full suite because health-projection pins may feel the capability flip."
+    },
+    {
+      "id": "EVT-203",
+      "head_sha": "4783fd7",
+      "timestamp": "2026-10-15",
+      "title": "WFP driver runs but registers nothing: no callout, no device",
+      "level": "E5",
+      "component": "wfp-driver-ops",
+      "description": "DEGRADED chase closed at the driver, exonerating all code: the AegisWfp service is RUNNING yet \\\\.\\AegisWfpDevice does not exist (direct open fails FILE_NOT_FOUND) and the FWPM state dump contains zero AEGIS callouts (only Microsoft built-ins) -- the driver loads without registering its callout or device. The System32 vs bundle .sys divergence from plan-S3.4 persists (1213604E Test Signing loaded vs D58E2EEF Test Driver bundled). Stale AEGIS_BLOCK_10.0.0.99 entries still appear in the dump (ids unreadable in that section; left for the reinstall to sweep). Consequence: capabilities.wfp false is CORRECT reporting, and no code change (loader, sharing, attest paths) can fix a driver that never registers. Fix is driver-ops: remove both service entries, install one consistent signed copy, reboot, re-verify device + callout + T11. Lab attack testing (Tier-1/2) is unaffected and unblocked.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "direct device open err 2",
+        "FWPM dump: no AEGIS callout",
+        "hash divergence re-confirmed"
+      ],
+      "result": "PASS",
+      "finding": "The DEGRADED flag told the truth end to end. The remaining work is outside the tree: a driver reinstall with a reboot window, awaiting operator approval."
     }
   ],
   "evidence_level_summary": {
@@ -5202,7 +5222,7 @@
     "E2_count": 112,
     "E3_count": 7,
     "E4_count": 11,
-    "E5_count": 65,
+    "E5_count": 66,
     "E6_count": 0,
     "E7_count": 0
   }
