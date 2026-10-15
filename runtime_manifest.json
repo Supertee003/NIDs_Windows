@@ -1,9 +1,9 @@
 {
   "runtime_version": "5.0.0",
-  "head_sha": "d0b60ce97f54ff96168fa5fc863dbe4fc24d9cf1",
+  "head_sha": "0844c4bad20e3ec4310b99789f1a4ca2bf71969a",
   "entrypoint": "src/main.zig",
   "production_binary": "zig-out/bin/aegis_nids.exe",
-  "source_commit": "d0b60ce",
+  "source_commit": "0844c4b",
   "date": "2026-10-10T20:38:58.757572+00:00",
   "production_modules": 3,
   "modules": {

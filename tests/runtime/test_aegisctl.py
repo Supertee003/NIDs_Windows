@@ -185,6 +185,33 @@ class TestAegisctlDashboardCommand(unittest.TestCase):
         self.assertIn("def _render_dashboard_once(deep_components", src)
         self.assertIn("_render_dashboard_once(deep_components=True)", src)
 
+    def test_incidents_list_reports_counters(self):
+        # EVT-207: the command every Kali hint points at must exist and
+        # report the daemon's counters (quiet reads zero, never an error).
+        import json as _json
+        rc, stdout, stderr = _run_aegisctl("incidents", "list", "--json")
+        self.assertEqual(rc, 0, f"incidents list should exit 0, got {rc}; stderr={stderr}")
+        document = _json.loads(stdout)
+        for key in ("incidents_total", "incidents_open", "detections",
+                    "policies_matched", "correlations"):
+            self.assertIn(key, document)
+        rc, stdout, stderr = _run_aegisctl("incidents", "list")
+        self.assertEqual(rc, 0, f"incidents list should exit 0, got {rc}; stderr={stderr}")
+        self.assertIn("Incidents open:", stdout)
+
+    def test_dashboard_shows_detections_section(self):
+        # EVT-207: the one-shot frame carries the same detection counters
+        # as `incidents list` (or a labeled unavailable line, never silence).
+        # Generous timeout: one-shot deep probes + several pipe round-trips
+        # can exceed 10s under full-suite load; the command itself is fine.
+        rc, stdout, stderr = _run_aegisctl("dashboard", timeout=60)
+        self.assertEqual(rc, 0, f"dashboard should exit 0, got {rc}; stderr={stderr}")
+        self.assertIn("DETECTIONS:", stdout)
+        self.assertTrue(
+            "Incidents open:" in stdout or "unavailable" in stdout,
+            f"DETECTIONS section must report or admit: {stdout[-500:]!r}"
+        )
+
 
 class TestAegisctlHealthCommand(unittest.TestCase):
     """`aegisctl health` must probe runtime health via pipe."""

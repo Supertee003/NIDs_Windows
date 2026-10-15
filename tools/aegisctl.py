@@ -1650,6 +1650,39 @@ def cmd_alerts(args) -> int:
     return 0
 
 
+def cmd_incidents(args) -> int:
+    """Show threat-tracker incident counters.
+
+    Thin read-only view over the daemon's incidents.list: totals only
+    (total/open/detections/policies/correlations), no per-incident detail
+    exists on the wire. This is the command every Kali lab script's verify
+    hint points at -- it must exist and stay honest (quiet reads zero,
+    never an error).
+    """
+    if not CONTROL_API_AVAILABLE:
+        return _unavailable("incidents", "control_api_unavailable")
+    as_json = bool(getattr(args, "json", False))
+    try:
+        response = query_control("incidents.list")
+    except Exception:
+        response = None
+    if not isinstance(response, dict):
+        return _unavailable("incidents", "control_daemon_query_failed")
+    keys = ("incidents_total", "incidents_open", "detections",
+            "policies_matched", "correlations")
+    if as_json:
+        print(json.dumps({k: response.get(k, 0) for k in keys} |
+                         {"available": True, "command": "incidents"},
+                         sort_keys=True))
+        return 0
+    print(f"Incidents open: {response.get('incidents_open', 0)} "
+          f"(total {response.get('incidents_total', 0)})")
+    print(f"Detections: {response.get('detections', 0)}  "
+          f"Policies matched: {response.get('policies_matched', 0)}  "
+          f"Correlations: {response.get('correlations', 0)}")
+    return 0
+
+
 def _render_dashboard_once(deep_components: bool = False) -> int:
     """One dashboard frame. Pure display over control_api reads.
 
@@ -1743,6 +1776,21 @@ def _render_dashboard_once(deep_components: bool = False) -> int:
             comp_rows = []
         for row in comp_rows:
             print(f"    [{str(row.get('status', '?')).upper():<8}] {row.get('name', '?')} ({row.get('language', '?')}) v{row.get('version', '?')}")
+        # EVT-207: detection counters, same numbers as `incidents list`
+        # (one extra query; unavailable reads as a labeled line, never
+        # a silent gap -- but never fail the whole frame for it).
+        print(f"  DETECTIONS:")
+        try:
+            inc = query_control("incidents.list")
+        except Exception:
+            inc = None
+        if isinstance(inc, dict):
+            print(f"    Incidents open: {inc.get('incidents_open', 0)} "
+                  f"(total {inc.get('incidents_total', 0)})")
+            print(f"    Detections: {inc.get('detections', 0)}  "
+                  f"Correlations: {inc.get('correlations', 0)}")
+        else:
+            print(f"    (unavailable: daemon query failed)")
         print(f"  {footer}")
     else:
         print("\nControl API not available")
@@ -2127,6 +2175,12 @@ def main() -> int:
     alerts_p.add_argument("--limit", type=int, default=20)
     alerts_p.add_argument("--json", action="store_true")
     alerts_p.set_defaults(func=cmd_alerts)
+    incidents_p = sub.add_parser("incidents", help="Threat-tracker incident counters")
+    incidents_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    incidents_sub = incidents_p.add_subparsers(dest="incidents_command")
+    incidents_list_p = incidents_sub.add_parser("list", help="Show incident counters")
+    incidents_list_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    incidents_p.set_defaults(func=cmd_incidents)
     dashboard_p = sub.add_parser("dashboard", help="Real-time dashboard")
     dashboard_p.add_argument("--watch", action="store_true", help="Refresh every --interval seconds")
     dashboard_p.add_argument("--interval", type=float, default=2.0, help="Refresh interval in seconds")

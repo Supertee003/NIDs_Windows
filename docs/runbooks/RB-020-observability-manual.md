@@ -97,6 +97,7 @@ python tools/aegisctl.py events count                 # how many
 python tools/aegisctl.py events tail --count 20       # recent records
 python tools/aegisctl.py events stats                 # per-shape summary
 python tools/aegisctl.py alerts                       # alert-level only (quiet hosts: empty is normal)
+python tools/aegisctl.py incidents list              # threat-tracker counters (open/total/detections)
 python tools/aegisctl.py forensic show --id 11411052  # one record by seq
 python tools/aegisctl.py forensic search --field rule --value R1004
 python tools/aegisctl.py forensic export --output out.json   # export matches
