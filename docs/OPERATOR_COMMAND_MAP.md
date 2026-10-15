@@ -15,6 +15,7 @@ with a pointer, or a support script -- ask before running it on prod.
 | `run_aegis.bat --status` | Check anytime, starts nothing |
 | `aegisctl dashboard [--watch]` | Live terminal view |
 | `aegisctl bridge` | Brain-channel honesty (RB-017 step 3) |
+| `aegisctl brain` | Tier-2 counters + inbox tail (labeled, not verdicts) |
 | `aegisctl components` | The five as concepts (Core/Brain/Nose/Mouth/Bridge) |
 | `aegisctl console` | Menu over all of the below (Thai, role-gated) |
 | web `http://127.0.0.1:5000` | Cards, feed, rules, components |
@@ -27,6 +28,7 @@ with a pointer, or a support script -- ask before running it on prod.
 | `events count/tail/stats` | Raw evidence firehose (193K records live) |
 | `alerts` | Filtered alert-level view only (quiet hosts: empty is normal) |
 | `incidents list` | Threat-tracker counters (open/total/detections) |
+| `incidents top` | Top firing rules, ring-derived grouping |
 | `forensic show/search/verify/export` | Targeted: one record / one field / chain / export |
 | `forensics list/verify` | Bulk: ring pages + chain (different granularity, keep both) |
 | `enforce status` | PEP truth: mode, gate, receipts (detection-only here) |

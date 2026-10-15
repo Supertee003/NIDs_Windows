@@ -56,6 +56,7 @@ try:
         verify_authority_invariant,
         diagnose_endpoint_ownership,
         bridge_diagnostic,
+        brain_health,
         pipe_latency_probe,
         rule_id_to_u32,
     )
@@ -81,6 +82,7 @@ except ImportError as e:
             verify_authority_invariant,
             diagnose_endpoint_ownership,
             bridge_diagnostic,
+            brain_health,
             pipe_latency_probe,
             rule_id_to_u32,
         )
@@ -1579,6 +1581,47 @@ def _enrich_alert(alert: dict, by_num: dict[int, dict]) -> dict:
     }
 
 
+def _scan_ring_alerts(want: int):
+    """Scan the forensic ring for alert-level records (shared core).
+
+    Returns (found, scanned, pages, cursor_exhausted, failed): failed is
+    True only when the very first page is unreachable (blind, not quiet).
+    NOTE: no after-anchor. forensics.list's after-cursor does not window
+    under ring wrap (proven live: after=435000 and after=422786 both
+    return the tip), so an anchor would claim a window it cannot hold.
+    The unanchored scan returns tip records first in practice; the scan
+    totals are always reported so coverage stays honest.
+    """
+    found: list[dict] = []
+    scanned = 0
+    pages = 0
+    cursor_exhausted = False
+    failed = False
+    after = None
+    while len(found) < want and pages < 5 and not cursor_exhausted:
+        payload: dict = {"limit": 200}
+        if after is not None:
+            payload["after"] = after
+        try:
+            response = query_control("forensics.list", payload=payload)
+        except Exception:
+            response = None
+        if not response or not isinstance(response.get("records"), list):
+            if pages == 0:
+                failed = True
+            break
+        records = response["records"]
+        scanned += len(records)
+        pages += 1
+        found.extend(_select_alerts(records))
+        nxt = response.get("next_after")
+        if not records or nxt is None or nxt == after:
+            cursor_exhausted = True
+        else:
+            after = nxt
+    return found, scanned, pages, cursor_exhausted, failed
+
+
 def cmd_alerts(args) -> int:
     """View alerts.
 
@@ -1595,37 +1638,9 @@ def cmd_alerts(args) -> int:
     except (TypeError, ValueError):
         want = 20
     as_json = bool(getattr(args, "json", False))
-    found: list[dict] = []
-    scanned = 0
-    pages = 0
-    cursor_exhausted = False
-    # NOTE: no after-anchor. forensics.list's after-cursor does not window
-    # under ring wrap (proven live: after=435000 and after=422786 both
-    # return the tip), so an anchor would claim a window it cannot hold.
-    # The unanchored scan returns tip records first in practice; the scan
-    # totals are always reported so coverage stays honest.
-    after = None
-    while len(found) < want and pages < 5 and not cursor_exhausted:
-        payload: dict = {"limit": 200}
-        if after is not None:
-            payload["after"] = after
-        try:
-            response = query_control("forensics.list", payload=payload)
-        except Exception:
-            response = None
-        if not response or not isinstance(response.get("records"), list):
-            if pages == 0:
-                return _unavailable("alerts", "control_daemon_query_failed")
-            break
-        records = response["records"]
-        scanned += len(records)
-        pages += 1
-        found.extend(_select_alerts(records))
-        nxt = response.get("next_after")
-        if not records or nxt is None or nxt == after:
-            cursor_exhausted = True
-        else:
-            after = nxt
+    found, scanned, pages, cursor_exhausted, failed = _scan_ring_alerts(want)
+    if failed:
+        return _unavailable("alerts", "control_daemon_query_failed")
     by_num = _alert_rule_map()
     alerts = [_enrich_alert(a, by_num) for a in found[:want]]
     if as_json:
@@ -1651,17 +1666,22 @@ def cmd_alerts(args) -> int:
 
 
 def cmd_incidents(args) -> int:
-    """Show threat-tracker incident counters.
+    """Show threat-tracker incident counters, or top firing rules.
 
-    Thin read-only view over the daemon's incidents.list: totals only
-    (total/open/detections/policies/correlations), no per-incident detail
-    exists on the wire. This is the command every Kali lab script's verify
-    hint points at -- it must exist and stay honest (quiet reads zero,
-    never an error).
+    `list` (default) is a thin read-only view over the daemon's
+    incidents.list: totals only (total/open/detections/policies/
+    correlations), no per-incident detail exists on the wire.
+    `top` composes ring alerts client-side grouped by rule (count +
+    latest seq + severity + name) -- ring-derived scene-setting, labeled
+    as such, distinct from the tracker's authoritative counters above.
+    This is the command every Kali lab script's verify hint points at --
+    it must exist and stay honest (quiet reads zero, never an error).
     """
     if not CONTROL_API_AVAILABLE:
         return _unavailable("incidents", "control_api_unavailable")
     as_json = bool(getattr(args, "json", False))
+    if getattr(args, "incidents_command", "list") == "top":
+        return _cmd_incidents_top(args, as_json)
     try:
         response = query_control("incidents.list")
     except Exception:
@@ -1680,6 +1700,47 @@ def cmd_incidents(args) -> int:
     print(f"Detections: {response.get('detections', 0)}  "
           f"Policies matched: {response.get('policies_matched', 0)}  "
           f"Correlations: {response.get('correlations', 0)}")
+    return 0
+
+
+def _cmd_incidents_top(args, as_json: bool) -> int:
+    """Top firing rules from a bounded ring scan (client-side grouping)."""
+    want = getattr(args, "limit", 200) or 200
+    try:
+        want = max(1, min(int(want), 1000))
+    except (TypeError, ValueError):
+        want = 200
+    found, scanned, pages, _, failed = _scan_ring_alerts(want)
+    if failed:
+        return _unavailable("incidents", "control_daemon_query_failed")
+    by_num = _alert_rule_map()
+    groups: dict = {}
+    for a in [_enrich_alert(r, by_num) for r in found]:
+        key = a.get("rule_num", "?")
+        g = groups.get(key)
+        if g is None:
+            groups[key] = {"rule": key, "name": a.get("name", "?"),
+                           "severity": a.get("severity", "?"), "count": 0,
+                           "latest_seq": 0}
+            g = groups[key]
+        g["count"] += 1
+        if a.get("record_seq", 0) > g["latest_seq"]:
+            g["latest_seq"] = a.get("record_seq", 0)
+    rows = sorted(groups.values(), key=lambda g: (-g["count"], g["rule"]))
+    if as_json:
+        print(json.dumps({"groups": rows, "groups_returned": len(rows),
+                          "records_scanned": scanned,
+                          "available": True, "command": "incidents",
+                          "mode": "top", "source": "ring"},
+                         sort_keys=True))
+        return 0
+    if not rows:
+        print(f"No firing rules in {scanned} scanned records ({pages} page(s)).")
+        return 0
+    print(f"TOP FIRING RULES ({scanned} scanned records, ring-derived):")
+    for g in rows:
+        print(f"  {g['count']:>5}x {g['rule']:<8} {str(g['severity']):<8} "
+              f"latest={g['latest_seq']} :: {g['name']}")
     return 0
 
 
@@ -1861,6 +1922,70 @@ def cmd_bridge(args) -> int:
     if doc.get("available") is False and doc.get("listener") is None:
         return 1
     return 2
+
+
+def cmd_brain(args) -> int:
+    """Tier-2 brain: liveness counters + inbox tail.
+
+    Three honest parts, none invented: (1) UDP HEALTH counters from the
+    live brain (or an unreachable line); (2) listener ownership from the
+    same diagnostic `bridge` uses; (3) the tail of logs/anomalous.json,
+    labeled INBOX -- offers the brain received, not its verdicts
+    (verdicts leave via the sensor pipe). Exit 0 always when readable;
+    an unreachable brain still prints what is known.
+    """
+    if not CONTROL_API_AVAILABLE:
+        return _unavailable("brain", "control_api_unavailable")
+    try:
+        want = max(1, int(getattr(args, "count", 10) or 10))
+    except (TypeError, ValueError):
+        want = 10
+    as_json = bool(getattr(args, "json", False))
+    health = None
+    try:
+        health = brain_health()
+    except Exception:
+        health = None
+    inbox: list = []
+    try:
+        from collections import deque
+        log_path = TOOLS_DIR.parent / "logs" / "anomalous.json"
+        with open(log_path, encoding="utf-8", errors="replace") as fh:
+            tail = deque(fh, maxlen=max(want, 1))
+        for line in tail:
+            try:
+                doc = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(doc, dict):
+                inbox.append(doc)
+        inbox = inbox[-want:]
+    except OSError:
+        inbox = []
+    if as_json:
+        print(json.dumps({"health": health, "inbox": inbox,
+                          "inbox_returned": len(inbox),
+                          "available": True, "command": "brain"},
+                         sort_keys=True))
+        return 0
+    if isinstance(health, dict):
+        counters = health.get("counters", {}) if isinstance(
+            health.get("counters"), dict) else {}
+        print(f"Brain: {health.get('state', '?')} "
+              f"(in={counters.get('in_events', '?')} "
+              f"out={counters.get('out_events', '?')} "
+              f"errors={counters.get('errors', '?')})")
+    else:
+        print("Brain: HEALTH unreachable (no UDP answer on :9999)")
+    if not inbox:
+        print("Inbox: empty (no offers recorded in logs/anomalous.json)")
+    else:
+        print(f"Inbox (last {len(inbox)}, offers received -- not verdicts):")
+        for doc in inbox:
+            print(f"  {doc.get('rule_id', '?')} {doc.get('severity', '?')} "
+                  f"{doc.get('src_ip', '?')} :: "
+                  f"{str(doc.get('attack_type', '?'))[:60]}")
+    return 0
 
 
 def cmd_graph(args) -> int:
@@ -2180,6 +2305,9 @@ def main() -> int:
     incidents_sub = incidents_p.add_subparsers(dest="incidents_command")
     incidents_list_p = incidents_sub.add_parser("list", help="Show incident counters")
     incidents_list_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    incidents_top_p = incidents_sub.add_parser("top", help="Top firing rules from the ring (client-side grouping)")
+    incidents_top_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    incidents_top_p.add_argument("--limit", type=int, default=200, help="Max alerts to group")
     incidents_p.set_defaults(func=cmd_incidents)
     dashboard_p = sub.add_parser("dashboard", help="Real-time dashboard")
     dashboard_p.add_argument("--watch", action="store_true", help="Refresh every --interval seconds")
@@ -2189,6 +2317,10 @@ def main() -> int:
     _bridge_p = sub.add_parser("bridge", help="Bridge IPC status")
     _bridge_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
     _bridge_p.set_defaults(func=cmd_bridge)
+    _brain_p = sub.add_parser("brain", help="Tier-2 brain counters + inbox tail")
+    _brain_p.add_argument("--count", type=int, default=10, help="Inbox rows to show")
+    _brain_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    _brain_p.set_defaults(func=cmd_brain)
     _comp_p = sub.add_parser("components", help="The five runtime components as concepts")
     _comp_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
     _comp_p.set_defaults(func=cmd_components)

@@ -212,6 +212,39 @@ class TestAegisctlDashboardCommand(unittest.TestCase):
             f"DETECTIONS section must report or admit: {stdout[-500:]!r}"
         )
 
+    def test_incidents_top_groups_rules(self):
+        # EVT-208: ring-derived top-rules view shares the alerts scan core.
+        # Quiet hosts print the labeled empty line; firing hosts print rows.
+        import json as _json
+        rc, stdout, stderr = _run_aegisctl("incidents", "top", "--json", timeout=60)
+        self.assertEqual(rc, 0, f"incidents top should exit 0, got {rc}; stderr={stderr}")
+        document = _json.loads(stdout)
+        self.assertIn("groups", document)
+        self.assertEqual(document.get("source"), "ring")
+        rc, stdout, stderr = _run_aegisctl("incidents", "top", timeout=60)
+        self.assertEqual(rc, 0, f"incidents top should exit 0, got {rc}; stderr={stderr}")
+        self.assertTrue(
+            "TOP FIRING RULES" in stdout or "No firing rules" in stdout,
+            f"unexpected output: {stdout[-300:]!r}"
+        )
+
+    def test_brain_reports_counters_and_inbox(self):
+        # EVT-208: Tier-2 visibility = liveness counters + labeled inbox
+        # tail (offers received, never claimed as verdicts).
+        import json as _json
+        rc, stdout, stderr = _run_aegisctl("brain", "--count", "2", "--json")
+        self.assertEqual(rc, 0, f"brain should exit 0, got {rc}; stderr={stderr}")
+        document = _json.loads(stdout)
+        self.assertIn("health", document)
+        self.assertIn("inbox", document)
+        self.assertLessEqual(document.get("inbox_returned", 99), 2)
+        rc, stdout, stderr = _run_aegisctl("brain", "--count", "2")
+        self.assertEqual(rc, 0, f"brain should exit 0, got {rc}; stderr={stderr}")
+        self.assertTrue(
+            "Brain:" in stdout and ("Inbox" in stdout),
+            f"unexpected output: {stdout[-300:]!r}"
+        )
+
 
 class TestAegisctlHealthCommand(unittest.TestCase):
     """`aegisctl health` must probe runtime health via pipe."""

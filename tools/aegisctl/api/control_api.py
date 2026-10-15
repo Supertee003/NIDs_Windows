@@ -346,6 +346,16 @@ def _udp_health(port: int, timeout_s: float = 2.0) -> Optional[Dict[str, Any]]:
         return None
 
 
+def brain_health() -> Optional[Dict[str, Any]]:
+    """Brain HEALTH doc via one UDP probe, or None when unreachable.
+
+    Public wrapper over _udp_health for CLI/TUI consumers (the leading
+    underscore stays private). Carries state + counters when the brain
+    answers; None is unknown, never a negative.
+    """
+    return _udp_health(BRAIN_UDP_PORT)
+
+
 def bridge_diagnostic() -> Dict[str, Any]:
     """Brain-channel diagnostic document for `aegisctl bridge`.
 
