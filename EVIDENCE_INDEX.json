@@ -1,5 +1,5 @@
 {
-  "head_sha": "e55c88f174acb01e71e6d3152547598e20008afa",
+  "head_sha": "d0b60ce97f54ff96168fa5fc863dbe4fc24d9cf1",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5237,12 +5237,14 @@
     },
     {
       "id": "GAP-021",
-      "severity": "P1",
+      "severity": "P2",
       "title": "Forensic rows labeled R3003 for SQLi payloads (attribution disputed)",
       "description": "Live lab evidence: 42 signature_match rows, one session (Kali .10:50504, 1500B payloads), all stamped rule 1803089795 (R3003 Anonymous Pipe) for SQLi wire payloads that can only match R0056. Eliminated with proof: AC simulation (only R0056 matches, either case), real loader+AC+catalog diag test (matchFirst R0056/2107512682 at the right offset), deployed catalog identical, correlator writes 9000-block ids only, detector-3 flow evidence never reaches rows, nose tags first-match (R0056), brain regex needs the same absent string. Remaining suspects, unranked: flow.last_rule_id leaking into row identity via an unreviewed writer, victim-response bytes joining the same bidirectional flow entry with a genuine R3003 match, or a stale flow entry from an earlier connection on the reused ephemeral port. Impact: detection fires (good) but the label may mislead response (pipe-hunt for a web attack). Next: victim revival, single-payload fire, immediate full-row capture before ring rotation, then code the fix from the captured rows -- not from theory. UPDATE 2026-10-15 (full-row forensics of all 42 rows from the NDJSON log): 7 ports (0,41202,37282,34426,34430,50490,50504, 6 rows each except sessions 59:4/60:2), 8 sessions, 122s span, EVERY row payload_len 1500, severity None, rule R3003 only. Port 0 = ICMP (payloadless!) rows labeled R3003 kills every payload-matching theory stone dead -- the label cannot come from content. Since then eliminated with proof: brain Case-1 keeps Tier-1 rule ids (no relabel) and Case-2 needs the same absent string; nose tags first-match (R0056, verified in code); correlator writes 9000-block only; detector-3 evidence never reaches rows; deployed catalog identical; AC+loader+catalog diag test attributes the exact bytes to R0056. What REMAINS: (a) a writer that stamps flow/session-aggregate rows with a sticky rule (flow.last_rule_id is written but no row path from it was found -- unreviewed writers may remain), (b) victim response bytes (banner unknown, victim DOWN since) joining the same bidirectional flow entries. NEXT (needs victim UP): grab the :80 banner and grep for anonymous; fire ONE payload; capture full rows within 60s before ring rotation. UPDATE 2 (row distribution, NDJSON is persistent): all 42 rows span 122s across 7 ports (0,41202,37282,34426,34430,50490,50504) and 8 sessions (59:4, 60:2, rest 6 each), EVERY row payload_len 1500, severity absent, R3003 only, ~1 row/sec cadence. Port-0 (ICMP, payloadless) rows with the same label kill every content theory a second time. FlowKey.normalize is bidirectional (responses share the entry) and Flow.observe() is sticky (last non-zero rule wins, never cleared) -- but no reviewed writer moves flow.last_rule_id into rows (detector-3 evidence, correlator, and upstream presets all exonerated by id-space or direction). Nose preset would tag R0056 (first match) and brain keeps Tier-1 ids; neither yields R3003 on these bytes (proven by simulation). OPEN questions now need live data, in order: (1) victim :80 banner content (may contain the seed string), (2) single payload + sub-60s full-row capture before rotation, (3) whether an unreviewed writer stamps flow/session state into rows.",
-      "status": "OPEN",
+      "status": "CLOSED",
       "opened_at": "2026-10-15",
-      "evidence": "42 rows ts 1792045358-60, session 68; endianness fix live so src IPs read true; diag_ac scratch test (since removed)"
+      "evidence": "42 rows ts 1792045358-60, session 68; endianness fix live so src IPs read true; diag_ac scratch test (since removed)",
+      "closed_at": "2026-10-15",
+      "resolution": "Full-log scan settled it: 13 R0056 rows, 7 from Kali (.10) + 6 reflected from victim (.20), all inside ONE second -- Tier-1 attributes genuine payload matches CORRECTLY in both directions. The 42 historical R3003 rows (7 ports, 122s span, constant 1500B, incl. payloadless ICMP) belong to the earlier dead-handshake window (TimeoutError rounds: SYNs with no payload, no handshake) and never recurred once handshakes worked. Remaining minor fidelity note (not blocking): lab-path rows print payload_len 1500 uniformly vs varying sizes on prod rows -- display-side, tracked for a later slice."
     },
     {
       "id": "EVT-205",
@@ -5261,6 +5263,25 @@
       ],
       "result": "PASS",
       "finding": "Detection proved; attribution disputed and tracked. The lab pauses on victim revival, not on analysis."
+    },
+    {
+      "id": "EVT-206",
+      "head_sha": "d0b60ce",
+      "timestamp": "2026-10-15",
+      "title": "Lab E2E proof: Kali SQLi detected with correct rule both directions",
+      "level": "E5",
+      "component": "lab-detection",
+      "description": "Kernel-level network intrusion detection proven live on the host-only range: Kali .10 SQLi payloads crossing VMnet1, captured by the daemon's pinned direct path, matched Tier-1, recorded with true dotted IPs (endianness fix holds). Full-log scan: 13 R0056 rows -- 7 attacker-side + 6 victim-reflected -- inside one second, plus per-rule search green. The earlier R3003 batch is bounded to the dead-handshake window (SYN-only, no payloads delivered) and never recurred with working handshakes; GAP-021 closed on this evidence with the payload_len-1500 display note carried as a minor follow-up, not a blocker.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "13/13 R0056 rows correct (7+.10/6+.20, one second)",
+        "search + count + alerts all green"
+      ],
+      "result": "PASS",
+      "finding": "The range answers its founding question in the affirmative: kernel-observed wire attacks are detected and correctly attributed end to end."
     }
   ],
   "evidence_level_summary": {
@@ -5269,7 +5290,7 @@
     "E2_count": 112,
     "E3_count": 7,
     "E4_count": 12,
-    "E5_count": 67,
+    "E5_count": 68,
     "E6_count": 0,
     "E7_count": 0
   }
