@@ -1,5 +1,5 @@
 {
-  "head_sha": "cd4995ae90a12ddd4505ddd3db9efffc7cdc2d6b",
+  "head_sha": "0c8c658cbf90c692ac318f72e3792d145ac14350",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5419,12 +5419,39 @@
       ],
       "result": "PASS",
       "finding": "Kernel flow telemetry now reads through the single device owner with a persistent handle; provider absence renders as a labeled state in queue.stats, never a silent zero. Live row proof pending the deploy round."
+    },
+    {
+      "id": "EVT-212",
+      "head_sha": "0c8c658",
+      "timestamp": "2026-10-15",
+      "title": "First daemon deploy of the WFP read path exposed orphaned-handle starvation; close-on-drop + cache attestation",
+      "level": "E2",
+      "component": "policy+core+control+docs",
+      "description": "First daemon deploy of the EVT-211 pair (exe B55C53FE..., dll 7226B648...) immediately showed queue wfp state=unavailable reads=0 rows=0. Hash check proved the deployed pair was byte-exact the built pair; the export probe proved the five ioctl exports plus close/is_connected/get_stats present in the deployed aegis_wfp_user.dll (F7240A0D...); the service runs LocalSystem and the device SDDL admits SY -- so the daemon-side -1 was context starvation, not a stale copy. Root cause: initWfpIoctl -> providerAttested -> aegis_pep_provider_ready loaded a THROWAWAY adapter (Adapter::load().is_some()); Drop ran FreeLibrary only, while the bridge DLL keeps the exclusive \\\\.\\AegisWfpDevice handle in a static (CreateFileW share 0). Module unload ORPHANED that open FILE_OBJECT, so every later open in the daemon process failed with a sharing violation -- the daemon starved its own telemetry while fresh-process console probes kept reading fine (which is why every pre-deploy probe passed). The earlier daemon never showed it because its boot attestation predated the 10/15 driver recovery. Fix (rust-src/lib.rs): (1) Adapter resolves an OPTIONAL aegis_wfp_ioctl_close and calls it in Drop BEFORE FreeLibrary, so every successful open is released exactly once; (2) open() is now probed BEFORE the owner struct is assembled -- the old failure path built Self, freed the module explicitly, then the immediate drop freed it AGAIN (benign while Drop only double-FreedLibrary'd; lethal once Drop called close() into the unmapped module -- the first rebuild showed exactly that as a 0xc0000005 AV in the cache test); (3) aegis_pep_provider_ready now attests THROUGH adapter_cache::with_adapter, adopting the single sole-owner handle -- a private temp adapter ALSO failed whenever the cache already held the device, and its drop orphaned the handle; (4) the cargo cache test is host-honest: miss reprobes and stays None, hit stays live, enforce half (ESCALATE 4) only on miss, because real WFP filter creation must never run from a unit test. Docs: pep_abi.md provider_ready semantics, bridge_init/pep_bindings comments, RB-020 gains the single-owner + DEMAND_START driver ops note. Claims boundary: live kernel rows remain unproven until the post-commit deploy round (pair rule applies: new exe + new dll together).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "rust-src/lib.rs",
+        "src/core/bridge_init.zig",
+        "src/policy/pep_bindings.zig",
+        "shared/abi/pep_abi.md",
+        "docs/runbooks/RB-020-observability-manual.md",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "cargo build --release + cargo test --release: 45 passed / 0 failed (1 host-effect test intentionally ignored); the first rebuild caught the owner-struct double-free as 0xc0000005 and the restructure cleared it",
+        "zig build + zig build test green; relinked exe 558B3F64... and new aegis_pep.dll 11107A7A... (children hashes recorded for the deploy round)",
+        "full pytest tests/: 868 passed / 2 skipped / 0 failed (27 subtests passed)",
+        "release_engineering --refresh-digests + --verify: 611 artifacts match recorded digests (3 source digests updated)",
+        "truth.py verify: TRUTH_VALID"
+      ],
+      "result": "PASS",
+      "finding": "Daemon-only WFP starvation root-caused to an orphaned exclusive handle from boot attestation; the handle is now closed on adapter drop and attestation adopts the cached sole owner, so the daemon can hold and serve kernel flow telemetry itself. Live rows remain the deploy round's E5 proof."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
-    "E2_count": 114,
+    "E2_count": 115,
     "E3_count": 7,
     "E4_count": 14,
     "E5_count": 69,

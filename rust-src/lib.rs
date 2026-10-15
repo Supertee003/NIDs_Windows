@@ -302,11 +302,21 @@ mod wfp_adapter {
     type WfpUnblockFilter = unsafe extern "system" fn(u64) -> i32;
     type WfpQueryFilter = unsafe extern "system" fn(u64, *mut FilterState) -> i32;
     type WfpOpen = unsafe extern "system" fn() -> i32;
+    type WfpClose = unsafe extern "system" fn() -> i32;
     type WfpReadEvents = unsafe extern "system" fn(*mut u8, u32, *mut u32) -> i32;
 
     pub struct Adapter {
         module: *mut c_void,
         open: WfpOpen,
+        /// EVT-212: optional device-release export, called on drop BEFORE
+        /// FreeLibrary. The bridge DLL keeps the exclusive handle in a
+        /// static; without the close, module unload orphans that open
+        /// FILE_OBJECT (share 0) and starves every later CreateFileW in
+        /// this process -- the exact starvation this daemon hit at boot.
+        /// Optional like read_events: a provider copy that predates the
+        /// export must still attest for enforcement; only handle hygiene
+        /// is lost.
+        close: Option<WfpClose>,
         block_flow: WfpBlockFlow,
         unblock_filter: WfpUnblockFilter,
         query_filter: WfpQueryFilter,
@@ -345,8 +355,10 @@ mod wfp_adapter {
                 let unblock_filter_name = b"aegis_wfp_ioctl_unblock_filter\0";
             let query_filter_name = b"aegis_wfp_ioctl_query_filter\0";
             let open_name = b"aegis_wfp_ioctl_open\0";
+            let close_name = b"aegis_wfp_ioctl_close\0";
             let read_events_name = b"aegis_wfp_ioctl_read_events\0";
             let open = unsafe { GetProcAddress(module, open_name.as_ptr()) };
+            let close = unsafe { GetProcAddress(module, close_name.as_ptr()) };
             let block_flow = unsafe { GetProcAddress(module, block_flow_name.as_ptr()) };
             let unblock_filter = unsafe { GetProcAddress(module, unblock_filter_name.as_ptr()) };
             let query_filter = unsafe { GetProcAddress(module, query_filter_name.as_ptr()) };
@@ -363,20 +375,35 @@ mod wfp_adapter {
             } else {
                 Some(unsafe { transmute::<*mut c_void, WfpReadEvents>(read_events) })
             };
+            // EVT-212: device release is hygiene, not capability -- the same
+            // optionality contract as read_events. Without it the drop below
+            // leaks the exclusive handle (see Drop).
+            let close = if close.is_null() {
+                None
+            } else {
+                Some(unsafe { transmute::<*mut c_void, WfpClose>(close) })
+            };
 
-            let adapter = Self {
+            // EVT-212: probe open BEFORE assembling the owner struct. The
+            // old order built `Self` first and dropped it on the failure
+            // path, so a rejected module was released twice (explicit
+            // FreeLibrary + Drop) -- and once Drop also closed the handle
+            // that became a call into an unmapped module. An adapter value
+            // must only ever exist for a module whose open SUCCEEDED.
+            let open_fn: WfpOpen = unsafe { transmute(open) };
+            if unsafe { open_fn() } != 0 {
+                unsafe { FreeLibrary(module) };
+                continue; // device closed for this copy: try the next one
+            }
+            return Some(Self {
                 module,
-                open: unsafe { transmute(open) },
+                open: open_fn,
+                close,
                 block_flow: unsafe { transmute(block_flow) },
                 unblock_filter: unsafe { transmute(unblock_filter) },
                 query_filter: unsafe { transmute(query_filter) },
                 read_events,
-            };
-            if unsafe { (adapter.open)() } != 0 {
-                unsafe { FreeLibrary(module) };
-                continue; // device closed for this copy: try the next one
-            }
-            return Some(adapter);
+            });
         }
         None
     }
@@ -432,6 +459,15 @@ mod wfp_adapter {
 
     impl Drop for Adapter {
         fn drop(&mut self) {
+            // EVT-212: release the exclusive device handle BEFORE the module
+            // goes away. g_wfp_device lives in a DLL static: FreeLibrary
+            // alone leaves an orphaned open FILE_OBJECT (share 0) that fails
+            // every later CreateFileW in this process, even through a fresh
+            // module map. Boot attestation used to orphan it and the
+            // daemon's kernel telemetry could then never open again.
+            if let Some(close) = self.close {
+                unsafe { close() };
+            }
             unsafe { FreeLibrary(self.module) };
         }
     }
@@ -528,11 +564,17 @@ pub extern "C" fn aegis_pep_init() -> c_int {
 /// the required IOCTL surface, and can open the kernel device. This does not
 /// assert that a block has occurred; host-effect capability remains a separate
 /// controlled-proof result.
+///
+/// EVT-212: attestation runs THROUGH the adapter cache, adopting the single
+/// sole-owner handle. A private load-and-drop here orphaned that exclusive
+/// handle whenever it succeeded, and failed with a sharing violation
+/// whenever the cache already held the device -- either way the daemon's own
+/// telemetry was starved while every fresh-process probe still read fine.
 #[no_mangle]
 pub extern "C" fn aegis_pep_provider_ready() -> c_int {
     #[cfg(windows)]
     {
-        if wfp_adapter::Adapter::load().is_some() {
+        if adapter_cache::with_adapter(|_| Some(1u8)).is_some() {
             return 1;
         }
     }
@@ -2056,13 +2098,24 @@ mod tests {
 
     #[cfg(windows)]
     #[test]
-    fn adapter_cache_miss_reprobes_without_sticking() {
-        // PEP-ADAPTER-CACHE-073: with no provider device here every use
-        // misses. Repeated misses must re-probe (return None) rather than
-        // wedge, and an approved BLOCK must surface as ESCALATE reason 4
-        // through the cache path exactly as the old per-call load did.
-        assert!(adapter_cache::with_adapter(|_| Some(1u64)).is_none());
-        assert!(adapter_cache::with_adapter(|_| Some(1u64)).is_none());
+    fn adapter_cache_reuses_hits_and_reprobes_misses_without_sticking() {
+        // PEP-ADAPTER-CACHE-073 + EVT-212: a cache miss must re-probe
+        // (never stick), a hit must stay live. Honest about the host:
+        // ISO hosts miss; a host with a live device hits. Either way the
+        // invariant is no-stick/no-wedge.
+        let first = adapter_cache::with_adapter(|_| Some(1u64));
+        let second = adapter_cache::with_adapter(|_| Some(1u64));
+        assert_eq!(first.is_some(), second.is_some());
+        if first.is_some() {
+            // Live provider on this host: `with_adapter` reusing the cached
+            // handle IS the contract. The enforce half is skipped
+            // deliberately -- creating real WFP filters from a unit test
+            // would mutate the host.
+            return;
+        }
+        // No provider device here: an approved BLOCK must surface as
+        // ESCALATE reason 4 through the cache path exactly as the old
+        // per-call load did.
         assert_eq!(aegis_pep_set_two_person_rule(0, 1), 0);
         let req = PepRequest {
             decision_kind: 61,

@@ -100,7 +100,10 @@ int aegis_pep_unblock_filter(
 // Query WFP filter state into a 20-byte PepFilterState
 int aegis_pep_query_filter(uint64_t filter_id, void* out_state);
 
-// Provider readiness probe (1 = WFP provider reachable)
+// Provider readiness probe (1 = WFP provider reachable). EVT-212: attests
+// through the cached sole-owner adapter (adopts/reuses its single device
+// handle); it never opens a second handle, and the handle is released
+// cleanly whenever the adapter is dropped (closed before module unload).
 int aegis_pep_provider_ready(void);
 
 // Read-only kernel flow telemetry (EVT-211): 5-tuple ring records via the

@@ -620,6 +620,9 @@ test "FFI-001: flow enforcement uses policy block ordinal" {
 /// DLL); every other component MUST query through here instead of
 /// CreateFile -- exclusive opens race each other (EVT-202: the Zig
 /// bridge and the Rust adapter took turns failing the capability).
+/// EVT-212: the first successful attestation adopts that cached handle
+/// (the DLL closes it cleanly on drop), so repeated calls reuse one
+/// owner instead of leaking an exclusive orphan per probe.
 /// Read-only: never a host-effect claim by itself.
 pub fn providerAttested() bool {
     if (@import("builtin").os.tag != .windows) return false;

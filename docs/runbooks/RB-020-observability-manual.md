@@ -95,6 +95,14 @@ One-shot `dashboard` probes deep like `components`; `dashboard
   stopped, old provider DLL, or IOCTL failure); `state=unknown` = the
   telemetry loop has not reported yet. A daemon binary that predates this
   row renders nothing -- itself the honest signal of an older build.
+- WFP device ownership (single-opener, EVT-211/EVT-212): while `AegisNids`
+  runs it holds the one exclusive `\\.\AegisWfpDevice` handle (attested at
+  boot, shared by enforcement and telemetry). A console tool that opens the
+  device directly then fails with a sharing violation -- that is the
+  expected single-owner contract, not a fault; read kernel flows via
+  `aegisctl queue`/`aegisctl events` instead. The `AegisWfp` driver service
+  is DEMAND_START: after a host reboot start it, or the `wfp` row stays
+  labeled `unavailable` until the driver returns.
 - ETW (kernel trace telemetry):
   `python tools/aegisctl.py status` (etw_ready in workers)
   `python tools/aegisctl.py queue` (capture_etw row)

@@ -238,7 +238,9 @@ fn initWfpIoctl() void {
     // EVT-202: single opener. The Rust adapter owns the device handle
     // (adapter_cache); a second exclusive CreateFile here raced it and
     // the two took turns failing the capability. Attest through Rust
-    // instead of opening -- read-only, no handle, no race.
+    // instead of opening -- EVT-212: the first successful attestation
+    // ADOPTS that single cached handle (no second opener, no orphan);
+    // read-only, no host effect.
     if (pep_bindings.providerAttested()) {
         g_state.wfp_ioctl = true;
     } else {
