@@ -46,6 +46,7 @@ const processor = @import("pipeline/event_processor.zig");
 const corr_mod = @import("detection/correlator.zig");
 const telemetry = @import("pipeline/telemetry_threads.zig");
 const nose_reader = @import("capture/nose_pipe_reader.zig");
+const wfp_telemetry = @import("capture/wfp_telemetry.zig");
 const pipe_monitor = @import("capture/pipe_monitor.zig");
 const packet_callback = @import("pipeline/packet_callback.zig");
 const event_queue = @import("pipeline/event_queue.zig");
@@ -64,6 +65,7 @@ const RuntimeSupervisor = struct {
     pipeline: ?std.Thread = null,
     sensor: ?std.Thread = null,
     nose_reader: ?std.Thread = null,
+    wfp_telemetry: ?std.Thread = null,
     direct_capture: ?std.Thread = null,
     etw: ?std.Thread = null,
     fim: ?std.Thread = null,
@@ -88,6 +90,8 @@ const RuntimeSupervisor = struct {
         self.etw = null;
         if (self.nose_reader) |thread| thread.join();
         self.nose_reader = null;
+        if (self.wfp_telemetry) |thread| thread.join();
+        self.wfp_telemetry = null;
         if (self.direct_capture) |thread| thread.join();
         self.direct_capture = null;
         if (self.sensor) |thread| thread.join();
@@ -723,6 +727,16 @@ pub fn runDaemon() !void {
         supervisor.nose_reader = std.Thread.spawn(.{}, nose_reader.runPipeReaderLoop, .{&state.g_stop_requested}) catch |err| blk: {
             diag.warn("failed to spawn Go Nose pipe reader: {} — external capture disabled", .{err});
             state.markWorkerFailure(.nose);
+            break :blk null;
+        };
+
+        // EVT-202: kernel WFP flow telemetry (submit-only). Always spawned:
+        // driver-absent hosts idle in a quiet retry loop, and the Rust
+        // adapter is the sole device owner (no handle taken here), so this
+        // cannot race or blind anything. See wfp_telemetry.zig for the
+        // never-inspect-never-block contract.
+        supervisor.wfp_telemetry = std.Thread.spawn(.{}, wfp_telemetry.telemetryLoop, .{&state.g_stop_requested}) catch |err| blk: {
+            diag.warn("failed to spawn WFP telemetry thread: {} — kernel flow telemetry disabled", .{err});
             break :blk null;
         };
 

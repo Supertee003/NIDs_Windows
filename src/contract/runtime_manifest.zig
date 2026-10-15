@@ -7,7 +7,7 @@
 
 const std = @import("std");
 const event = @import("event.zig");
-const wfp_ioctl = @import("../policy/wfp_ioctl.zig");
+const pep_bindings = @import("../policy/pep_bindings.zig");
 
 // ----------------------------------------------------------------------------
 // Capability flags (bitmask)
@@ -140,13 +140,10 @@ fn probeRegistry() bool {
 
 fn probeWfp() bool {
     if (@import("builtin").os.tag != .windows) return false;
-    // fwpuclnt.dll being present is not provider readiness. Attest the
-    // AEGIS device and its GET_STATS IOCTL, then leave the live handle to the
-    // bridge initializer. This keeps health truthful and fail-closed.
-    if (!wfp_ioctl.init()) return false;
-    const ready = wfp_ioctl.get_stats() != null;
-    wfp_ioctl.shutdown();
-    return ready;
+    // EVT-202: attest through the Rust adapter (sole device owner) instead
+    // of a transient exclusive open, which raced it. fwpuclnt.dll being
+    // present is not provider readiness; a successful attestation is.
+    return pep_bindings.providerAttested();
 }
 
 // ----------------------------------------------------------------------------

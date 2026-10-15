@@ -1,5 +1,5 @@
 {
-  "head_sha": "bb464559a25a6dede7f6ce0b247ad0e4c6e7ae84",
+  "head_sha": "e8555f2e4e61eca8374a61f6bdbb38cbfe2621ce",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5168,6 +5168,32 @@
       ],
       "result": "PASS",
       "finding": "Cross-language identity is single-convention end to end; the lab's missing attribution was a display-layer byte swap on top of working detection."
+    },
+    {
+      "id": "EVT-202",
+      "head_sha": "e8555f2",
+      "timestamp": "2026-10-15",
+      "title": "WFP single-opener + submit-only kernel telemetry loop",
+      "level": "E4",
+      "component": "zig-daemon+wfp",
+      "description": "Operator demand: kernel data must display. Investigation corrected the premise twice: (1) the capability flag flaps because Zig and Rust exclusive-opens race -- NOT standby redundancy; there is no standby, only a race. (2) The quarantined windows_capture reader does inspect+direct-block through the pre-REBUILD-004 bypass path and feeds a fabric nothing consumes -- reviving it would restore a P0-class hole for zero visible gain. Design instead: Rust adapter is the SOLE device owner; bridge_init + manifest probe attest through providerAttested() (new 3-line query, no handles); new wfp_telemetry.telemetryLoop polls the kernel ring and submits 5-tuple flow events (canonical .wfp_sensor, BE IPs, full payloads, layer_id=1) to the consumed queue -- submit-only, never inspect, never block, REBUILD-004 cited. Driver ring carries headers only (payload_length=0), so this is FLOW visibility for correlator/flow stages, not L7 -- stated, not oversold. Unit tests hermetic (48-byte header layout corrected mid-flight after the first version assumed 40). Perf-threshold zig failure re-ran green (load flake).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/policy/pep_bindings.zig",
+        "src/core/bridge_init.zig",
+        "src/contract/runtime_manifest.zig",
+        "src/capture/wfp_telemetry.zig",
+        "src/daemon.zig",
+        "src/all_tests.zig",
+        "build_manifest.json",
+        "sbom.spdx.json",
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "zig build rc=0, zig test rc=0 (incl. 2 new hermetic tests)"
+      ],
+      "result": "PASS",
+      "finding": "Code-proven; live proof (capabilities.wfp true, WFP flow rows, state RUNNING) needs deploy+restart, then a full suite because health-projection pins may feel the capability flip."
     }
   ],
   "evidence_level_summary": {
@@ -5175,7 +5201,7 @@
     "E1_count": 22,
     "E2_count": 112,
     "E3_count": 7,
-    "E4_count": 10,
+    "E4_count": 11,
     "E5_count": 65,
     "E6_count": 0,
     "E7_count": 0

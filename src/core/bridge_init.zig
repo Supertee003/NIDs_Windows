@@ -18,6 +18,7 @@ pub const AEGIS_VERSION = "1.0.0-dev";
 pub const AEGIS_BUILD = "zig-0.13.0";
 pub const SHIELD_VERSION = "REMOVED";  // PEP-001: shield removed, enforcement via Rust PEP only
 const rust_pep = @import("rust_pep.zig");
+const pep_bindings = @import("../policy/pep_bindings.zig");
 const win = std.os.windows;
 
 // BP-I2: Named constants for UDP Brain logger configuration
@@ -234,11 +235,15 @@ pub fn setBrainAllocator(allocator: std.mem.Allocator) void {
 // ============================================================
 
 fn initWfpIoctl() void {
-    if (rust_pep.wfpInit()) {
+    // EVT-202: single opener. The Rust adapter owns the device handle
+    // (adapter_cache); a second exclusive CreateFile here raced it and
+    // the two took turns failing the capability. Attest through Rust
+    // instead of opening -- read-only, no handle, no race.
+    if (pep_bindings.providerAttested()) {
         g_state.wfp_ioctl = true;
     } else {
-        std.log.warn("[INIT] WFP IOCTL: device not available (driver not loaded?)", .{});
-        std.debug.print("[INIT] WFP IOCTL: device not available (driver not loaded?)\n", .{});
+        std.log.warn("[INIT] WFP IOCTL: provider not attested (driver not loaded?)", .{});
+        std.debug.print("[INIT] WFP IOCTL: provider not attested (driver not loaded?)\n", .{});
     }
 }
 

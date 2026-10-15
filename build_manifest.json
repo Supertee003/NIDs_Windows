@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "bb46455",
+  "source_commit": "e8555f2",
   "build_date": "2026-10-13T01:11:10.065507+00:00",
   "build_host": "windows",
   "platform": {
@@ -1039,7 +1039,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18564,
-      "sha256": "b4b6c342f3128919fb7b5dddd1eee34cac1c78d084be37c37ff5a284ab91187e",
+      "sha256": "d6e216364ad463cd14efa243ee26da516cdfbe1db9fb3b345da18e03bcfeae0d",
       "language": "json"
     },
     {
@@ -1632,8 +1632,8 @@
     },
     {
       "path": "src/all_tests.zig",
-      "size": 10687,
-      "sha256": "326e2409b2d4eb50a00da180fdf52af69be31a2b1c16a871790e733bd0e2e9e2",
+      "size": 10733,
+      "sha256": "01d2640e14cc3abf8204f5a10f9f827b7eeaedbdc43279633991c7e5a77fc437",
       "language": "zig"
     },
     {
@@ -1758,8 +1758,8 @@
     },
     {
       "path": "src/contract/runtime_manifest.zig",
-      "size": 6505,
-      "sha256": "e3f64eae5ccab9c23ca144d8a971423c8693fa600c3f2c3a7e4f29af4888901c",
+      "size": 6419,
+      "sha256": "64ab360bcbff375b9b183deb13ae0c9554c6a846de8206210b8d93efe948b64c",
       "language": "zig"
     },
     {
@@ -1836,8 +1836,8 @@
     },
     {
       "path": "src/core/bridge_init.zig",
-      "size": 26751,
-      "sha256": "5d940aa28aefeb2fb0c0f5e79c94787571747d87aa1cac33d0c78dce25aca2f5",
+      "size": 27099,
+      "sha256": "f0e0a2199bf33ef949f9bd5e7ca1bcfb7d7e4abfe290dd668823e7f08ccfb3c5",
       "language": "zig"
     },
     {
@@ -1956,8 +1956,8 @@
     },
     {
       "path": "src/daemon.zig",
-      "size": 45205,
-      "sha256": "c00e9c82a7f1a153ae53abe36b85a4c387f590a4d9c374cf0ee434f4f99f1faa",
+      "size": 46023,
+      "sha256": "0ff0f9fcb385f36f88ffd137ba7fcf66fe8c0a39755f49b7a4efc4ef2f890afe",
       "language": "zig"
     },
     {
@@ -2340,8 +2340,8 @@
     },
     {
       "path": "src/policy/pep_bindings.zig",
-      "size": 25848,
-      "sha256": "dec7df84ee2f8a557f323c8827c5182b3b684bda681f17498bffa918a2ff04e1",
+      "size": 26384,
+      "sha256": "53a5cac5f4039aaac9172c9a755e540cf9532c02fa5a07d4c8c3a2004a68fe7b",
       "language": "zig"
     },
     {
