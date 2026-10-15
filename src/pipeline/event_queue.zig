@@ -110,7 +110,8 @@ pub fn pushEventWithAddrs(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[1
 pub fn legacySourceFor(source: canonical.EventSource) event.EventSource {
     return switch (source) {
         .zig_core => .system,
-        .wfp_sensor, .rust_shield => .policy,
+        .wfp_sensor => .capture_wfp,
+        .rust_shield => .policy,
         .pipe_sensor, .pipe_monitor => .capture_pipe_monitor,
         .minifilter, .file_sensor => .capture_fim,
         .python_brain, .ml_detector => .detection_anom,
@@ -222,6 +223,7 @@ test "pushCanonicalEventWithPayload attributes the observing sensor" {
     // canonicalization without changing identity.
     const live = [_]canonical.EventSource{
         .npcap_sensor,
+        .wfp_sensor,
         .host_telemetry,
         .file_sensor,
         .registry_sensor,

@@ -27,7 +27,7 @@ with a pointer, or a support script -- ask before running it on prod.
 |---|---|
 | `events count/tail/stats` | Raw evidence firehose (193K records live) |
 | `alerts` | Filtered alert-level view only (quiet hosts: empty is normal) |
-| `incidents list` | Threat-tracker counters (open/total/detections) |
+| `incidents list` | Threat-tracker counters + open-incident detail (highest score first) |
 | `incidents top` | Top firing rules, ring-derived grouping |
 | `forensic show/search/verify/export` | Targeted: one record / one field / chain / export |
 | `forensics list/verify` | Bulk: ring pages + chain (different granularity, keep both) |

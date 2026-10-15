@@ -114,6 +114,10 @@ pub const EventSource = enum(u8) {
     /// sensor event, never a host-effect claim by itself.
     detection_brain = 13,
     policy = 20,
+    /// Kernel WFP flow telemetry (EVT-210): the driver ring is a sensor
+    /// in its own right, not policy output. Values below 32 stay clear
+    /// of every existing bucket, so old readers keep working.
+    capture_wfp = 21,
     federation = 30,
     system = 99,
     _,
@@ -135,6 +139,7 @@ pub fn legacySourceName(ordinal: u8, buf: []u8) []const u8 {
         12 => "detection_corr",
         13 => "detection_brain",
         20 => "policy",
+        21 => "capture_wfp",
         30 => "federation",
         99 => "system",
         else => null,
@@ -262,6 +267,7 @@ test "legacySourceName covers every named source, formats the rest (GAP-015)" {
     try std.testing.expectEqualStrings("capture_etw", legacySourceName(2, &buf));
     try std.testing.expectEqualStrings("capture_fim", legacySourceName(3, &buf));
     try std.testing.expectEqualStrings("capture_registry", legacySourceName(4, &buf));
+    try std.testing.expectEqualStrings("capture_wfp", legacySourceName(21, &buf));
     try std.testing.expectEqualStrings("system", legacySourceName(99, &buf));
     // Pipe-sensor JSON arrives as .system (nids_capture); it must stay
     // distinguishable from ETW/FIM/registry in queue.stats buckets.

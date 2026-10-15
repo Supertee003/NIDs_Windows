@@ -103,6 +103,7 @@ pub fn canonicalSourceOf(src: event.EventSource) canonical_event.EventSource {
         .capture_fim => .file_sensor,
         .capture_registry => .registry_sensor,
         .capture_pipe_monitor => .pipe_monitor,
+        .capture_wfp => .wfp_sensor,
         .detection_sig => .zig_core,
         .detection_anom => .ml_detector,
         .detection_corr => .zig_core,

@@ -81,6 +81,11 @@ One-shot `dashboard` probes deep like `components`; `dashboard
 - WFP callout driver (flows + block primitive):
   `python tools/aegisctl.py enforce status` (tier3/provider_ready)
   `sc.exe query AegisWfp` (driver service state)
+- WFP flow rows (submit-only kernel telemetry; source ordinal 21):
+  `python tools/aegisctl.py queue` shows a `capture_wfp` row once a daemon
+  built with the telemetry loop is deployed and traffic crosses the callout.
+  These rows are 5-tuple flow visibility (payload_length 0 by driver
+  construction), never payload; L7 stays with npcap/host paths.
 - ETW (kernel trace telemetry):
   `python tools/aegisctl.py status` (etw_ready in workers)
   `python tools/aegisctl.py queue` (capture_etw row)
@@ -98,7 +103,7 @@ python tools/aegisctl.py events count                 # how many
 python tools/aegisctl.py events tail --count 20       # recent records
 python tools/aegisctl.py events stats                 # per-shape summary
 python tools/aegisctl.py alerts                       # alert-level only (quiet hosts: empty is normal)
-python tools/aegisctl.py incidents list              # threat-tracker counters (open/total/detections)
+python tools/aegisctl.py incidents list              # counters + open-incident detail (highest score first)
 python tools/aegisctl.py incidents top               # top firing rules, ring-derived grouping
 python tools/aegisctl.py forensic show --id 11411052  # one record by seq
 python tools/aegisctl.py forensic search --field rule --value R1004

@@ -254,6 +254,102 @@ pub const ThreatTracker = struct {
 };
 
 // ============================================================================
+// EVT-210: control-plane incident snapshot
+// ============================================================================
+
+/// Flat, pointer-free incident row safe to hand to another thread. `Incident`
+/// itself embeds no pointers, but a reader outside the mutex could still see a
+/// slot mid-swap (pruneExpired moves the last entry over an expired one), so
+/// the control plane only ever consumes these copies.
+pub const SnapshotRow = struct {
+    id: u64,
+    flow_id: u64,
+    /// BE network-order IPv4, the canonical rendering convention (EVT-201).
+    src_ip: u32,
+    /// EventSeverity ordinal (event.EventSeverity).
+    severity: u8,
+    /// IncidentState ordinal.
+    state: u8,
+    score: u32,
+    evidence_count: u32,
+};
+
+/// How many rows the control plane copies per request. The true open count is
+/// always reported alongside, so a full table still shows its size honestly.
+pub const SNAPSHOT_CAP: usize = 64;
+
+/// The daemon publishes its live tracker here before spawning any worker.
+/// Null means "no tracker in this process" (unit tests, tooling): the reader
+/// gets an empty, labeled snapshot rather than a crash or a stale pointer.
+pub var g_live: ?*ThreatTracker = null;
+
+/// EVT-210: thread-safe read of the open incidents for the control plane.
+///
+/// Copies up to `buf.len` incidents, HIGHEST score first (ties by id), into
+/// pointer-free SnapshotRow values while holding the same mutex every mutation
+/// of `incidents`/`incident_count` takes (observeFlowThreat creation +
+/// pruneExpired). A handler thread can therefore never observe a torn row or a
+/// half-swapped slot. `total_out` receives the true open count, which may
+/// exceed the copied rows: the view is bounded, the total is not. Returns the
+/// number of rows written. With no live tracker the snapshot is empty and
+/// `total_out` is 0 -- labeled absence, never a stale read.
+pub fn snapshotOpenIncidents(buf: []SnapshotRow, total_out: *u64) usize {
+    const self = g_live orelse {
+        total_out.* = 0;
+        return 0;
+    };
+    self.mutex.lock();
+    defer self.mutex.unlock();
+    const n: usize = self.incident_count;
+    total_out.* = n;
+    const k = @min(buf.len, n);
+    var out: usize = 0;
+    var have_floor = false;
+    var floor_score: u32 = 0;
+    var floor_id: u64 = 0;
+    while (out < k) {
+        var best: ?usize = null;
+        var i: usize = 0;
+        while (i < n) : (i += 1) {
+            const inc = &self.incidents[i];
+            // Select strictly below the previous pick so a key can never be
+            // emitted twice (ids are unique; score ties break by id).
+            if (have_floor) {
+                const below = inc.score < floor_score or
+                    (inc.score == floor_score and inc.id < floor_id);
+                if (!below) continue;
+            }
+            if (best == null) {
+                best = i;
+                continue;
+            }
+            const b = &self.incidents[best.?];
+            if (inc.score > b.score or
+                (inc.score == b.score and inc.id > b.id))
+            {
+                best = i;
+            }
+        }
+        const sel = best orelse break;
+        const inc = &self.incidents[sel];
+        buf[out] = .{
+            .id = inc.id,
+            .flow_id = inc.flow_id,
+            .src_ip = std.mem.readInt(u32, inc.src_ip[0..4], .little),
+            .severity = @intFromEnum(inc.severity),
+            .state = @intFromEnum(inc.state),
+            .score = inc.score,
+            .evidence_count = inc.evidence_count,
+        };
+        out += 1;
+        have_floor = true;
+        floor_score = inc.score;
+        floor_id = inc.id;
+    }
+    return out;
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 test "FlowThreat add evidence" {
@@ -476,4 +572,69 @@ test "A1: expiry reclaims a full table (cap-063 follow-up)" {
     const inc = try tt.observeFlowThreat(&ev_new, 100);
     try std.testing.expect(inc != null);
     try std.testing.expectEqual(@as(u32, 1), tt.incident_count);
+}
+
+test "EVT-210 snapshotOpenIncidents copies highest-score-first under the mutex" {
+    var tt = ThreatTracker.init(std.testing.allocator);
+    defer tt.deinit();
+    g_live = &tt;
+    defer g_live = null;
+
+    var lo = event.IpcEvent.init(.signature_match);
+    lo.flow_id = 1;
+    lo.timestamp_ns = 1000;
+    lo.event_id = 1;
+    lo.src_ip = 0xC0A87E0A;
+    lo.rule_id = 1;
+    _ = try tt.observeFlowThreat(&lo, 100); // score 100 -> warning
+
+    var hi = event.IpcEvent.init(.signature_match);
+    hi.flow_id = 2;
+    hi.timestamp_ns = 2000;
+    hi.event_id = 2;
+    hi.src_ip = 0xC0A87E14;
+    hi.rule_id = 1;
+    _ = try tt.observeFlowThreat(&hi, 300); // score 300 -> alert
+
+    var buf: [SNAPSHOT_CAP]SnapshotRow = undefined;
+    var total: u64 = 0;
+    const n = snapshotOpenIncidents(&buf, &total);
+    try std.testing.expectEqual(@as(usize, 2), n);
+    try std.testing.expectEqual(@as(u64, 2), total);
+    try std.testing.expectEqual(@as(u32, 300), buf[0].score);
+    try std.testing.expectEqual(@as(u32, 100), buf[1].score);
+    // BE integer survives the asBytes/readInt round trip (EVT-201).
+    try std.testing.expectEqual(@as(u32, 0xC0A87E14), buf[0].src_ip);
+    try std.testing.expectEqual(@as(u8, @intFromEnum(event.EventSeverity.alert)), buf[0].severity);
+    try std.testing.expectEqual(@as(u8, @intFromEnum(IncidentState.open)), buf[0].state);
+}
+
+test "EVT-210 snapshotOpenIncidents is empty and honest without a live tracker" {
+    g_live = null;
+    var buf: [SNAPSHOT_CAP]SnapshotRow = undefined;
+    var total: u64 = 99;
+    try std.testing.expectEqual(@as(usize, 0), snapshotOpenIncidents(&buf, &total));
+    try std.testing.expectEqual(@as(u64, 0), total);
+}
+
+test "EVT-210 snapshotOpenIncidents bounds rows but reports the true total" {
+    var tt = ThreatTracker.init(std.testing.allocator);
+    defer tt.deinit();
+    g_live = &tt;
+    defer g_live = null;
+    var flow: u64 = 1;
+    while (flow <= 5) : (flow += 1) {
+        var ev = event.IpcEvent.init(.signature_match);
+        ev.flow_id = flow;
+        ev.timestamp_ns = 1000;
+        ev.event_id = flow;
+        _ = try tt.observeFlowThreat(&ev, @intCast(100 + flow));
+    }
+    var buf: [2]SnapshotRow = undefined;
+    var total: u64 = 0;
+    const n = snapshotOpenIncidents(&buf, &total);
+    try std.testing.expectEqual(@as(usize, 2), n);
+    try std.testing.expectEqual(@as(u64, 5), total); // bounded view, true total
+    try std.testing.expectEqual(@as(u32, 105), buf[0].score);
+    try std.testing.expectEqual(@as(u32, 104), buf[1].score);
 }

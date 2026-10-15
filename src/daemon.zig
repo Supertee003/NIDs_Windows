@@ -564,6 +564,10 @@ pub fn runDaemon() !void {
 
     var tt = tracker.ThreatTracker.init(std.heap.page_allocator);
     defer tt.deinit();
+    // EVT-210: publish the live tracker for the control plane before any
+    // worker spawns. The incidents handler reads a bounded, mutex-copied
+    // snapshot through this pointer; nothing else dereferences it.
+    tracker.g_live = &tt;
 
     // Tier-1 correlation stage (FLOW_MAP DATA-001 step 6). Static rule set:
     // IDs live in the 9000 block, outside the FNV-1a signature space, so a

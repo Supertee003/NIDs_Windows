@@ -1,33 +1,33 @@
-"""T11: single IP-convention ingress (EVT-110 join-tracing, closed by EVT-119).
+"""T11: single IP-convention ingress (EVT-110 join-tracing; re-baselined EVT-210).
 
-The join-tracing question: Go capture stores IPv4 as BE-numeric u32
-(BigEndian.Uint32 of wire bytes: 10.0.0.5 = 0x0A000005) while the Zig
-npcap path bitcasts the same wire bytes (memory-layout: 0x0500000A),
-and every downstream join (flow table, correlator windows, anomaly
-baselines, policy src_ip equality) keys the raw u32 convention-blind.
-If both conventions ever entered one queue, one host would become two
-flow identities (proved by the JOIN-TRACE-119 test in
-src/capture/flow_table.zig) — missed joins, never false blocks.
+History: Go capture stores IPv4 as a BE-numeric u32 (BigEndian.Uint32 of
+wire bytes: 10.0.0.5 = 0x0A000005) while the old Zig npcap path bitcast
+the same wire bytes (memory-layout: 0x0500000A). If both conventions ever
+entered one queue, one host would become two flow identities (proved by
+the JOIN-TRACE-119 test in src/capture/flow_table.zig).
 
-Production is safe because exactly one convention enters the live
-queue. This file pins that ingress invariant by scanning daemon.zig:
+Two later changes moved this invariant, and this file moves with them in
+the same patch family (load-bearing: never silently, per the original doc):
 
-  AC1. The canonical-ingress decision is recorded in the source
-       ("Go Nose is canonical network ingress").
-  AC2. The daemon spawns the two BE-convention live producers: the Go
-       nose pipe reader and the BE pipe-JSON sensor (parseIpv4 builds
-       (value << 8) | octet, i.e. BE-numeric).
-  AC3. The daemon never references the memory-layout producers: no
-       packetCallback / packet_callback / captureThread spawn, no
-       windows_capture import. (The single "nids_main" mention is a
-       comment naming the legacy startup contract, not a spawn.)
+  * EVT-200 re-enabled the direct Zig npcap path for the host-only lab,
+    but ONLY behind AEGIS_DAEMON_IFACE (unset => historical disabled
+    behavior, byte-identical). It is not a second production runtime.
+  * EVT-201 canonicalized that path to BE-numeric (readInt(.big)), the
+    blessed fix direction named by the original test -- so BOTH live
+    producers now share one convention instead of one convention being
+    merely absent.
 
-Hazard visibility: src/pipeline/packet_callback.zig still bitcasts
-(@bitCast(src_bytes)). That is intentional — the convention is pinned
-by its BYTE-ORDER tests — and it is exactly why AC3 is load-bearing.
-Canonicalizing that path to BE is the blessed fix direction IF the
-direct Zig path is ever re-enabled; do it in the same patch as this
-test update, never silently.
+This file re-pins the (now stronger) invariant by scanning source text:
+
+  AC1. The canonical-ingress decision is recorded in the source.
+  AC2. The two live producers are BE-convention (nose reader + pipe-JSON
+       sensor parseIpv4 builds (value << 8) | octet, i.e. BE-numeric).
+  AC3. The direct Zig npcap path is LAB-ONLY and ENV-GATED: daemon.zig
+       reads AEGIS_DAEMON_IFACE and only then spawns
+       packet_callback.captureThread. The quarantined windows_capture
+       reader is still never referenced.
+  AC4. packet_callback.zig reads BE (.big) and no longer bitcasts the
+       wire bytes, so no memory-layout producer remains anywhere.
 
 Read-only: scans source text, writes nothing to the tree.
 """
@@ -54,18 +54,21 @@ def test_live_producers_are_be_convention():
     assert "legacy_capture.capture_packets" in daemon
 
 
-def test_no_memory_layout_producer_in_daemon():
+def test_direct_capture_is_env_gated_lab_path():
     daemon = _text(DAEMON)
-    for symbol in (
-        "packetCallback",
-        "packet_callback",
-        "captureThread",
-        "windows_capture",
-    ):
-        assert symbol not in daemon, symbol
+    # The direct Zig path exists for the lab ...
+    assert "packet_callback.captureThread" in daemon
+    # ... but only behind the pin, and the pin is read before the spawn.
+    gate = daemon.index("AEGIS_DAEMON_IFACE")
+    spawn = daemon.index("packet_callback.captureThread")
+    assert gate < spawn, "direct capture must be gated by AEGIS_DAEMON_IFACE"
+    # The quarantined bypass reader (REBUILD-004) must never come back.
+    assert "windows_capture" not in daemon
 
 
-def test_bitcast_hazard_stays_visible():
-    # If packet_callback.zig is ever canonicalized to BE-numeric, update
-    # this test in the SAME patch (one schema, N codecs rule).
-    assert "@bitCast(src_bytes)" in _text(PACKET_CALLBACK)
+def test_packet_callback_is_be_canonical():
+    # EVT-201 did the blessed fix the original test named: the wire bytes
+    # are decoded as a BE network integer, so both live producers agree.
+    src = _text(PACKET_CALLBACK)
+    assert "readInt(u32" in src and ".big" in src
+    assert "@bitCast(src_bytes)" not in src

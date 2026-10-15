@@ -20,6 +20,7 @@ const event_contract = @import("../contract/event.zig");
 const telemetry = @import("../pipeline/telemetry_threads.zig");
 const etw_rt = @import("../windows/etw_realtime.zig");
 const fault = @import("../reliability/fault_injection.zig");
+const tracker_mod = @import("../detection/threat_tracker.zig");
 
 // ============================================================
 // Handler Function Signature
@@ -727,16 +728,72 @@ const handlers = struct {
         return out.toOwnedSlice() catch null;
     }
 
+    /// EVT-210: numeric → stable string for incident severity/state. Switch,
+    /// not @tagName: a row from a future/hostile ordinal must degrade to a
+    /// printed "unknown", never trap the control thread.
+    fn severityName(v: u8) []const u8 {
+        return switch (v) {
+            0 => "trace",
+            1 => "debug",
+            2 => "info",
+            3 => "notice",
+            4 => "warning",
+            5 => "error",
+            6 => "critical",
+            7 => "alert",
+            8 => "emergency",
+            else => "unknown",
+        };
+    }
+
+    fn incidentStateName(v: u8) []const u8 {
+        return switch (v) {
+            0 => "open",
+            1 => "escalated",
+            2 => "blocked",
+            3 => "resolved",
+            4 => "false_positive",
+            else => "unknown",
+        };
+    }
+
     fn incidentsList(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
-        return std.fmt.allocPrint(a,
-            \\{{"incidents_total":{},"incidents_open":{},"detections":{},"policies_matched":{},"correlations":{}}}
-        , .{
+        // EVT-210: counters + a bounded, mutex-copied snapshot of the open
+        // incidents themselves (highest score first). The counters stay the
+        // authority for totals; the array is the detail view, capped at
+        // SNAPSHOT_CAP with the true open count already in "incidents_open".
+        var rows: [tracker_mod.SNAPSHOT_CAP]tracker_mod.SnapshotRow = undefined;
+        var total: u64 = 0;
+        const n = tracker_mod.snapshotOpenIncidents(&rows, &total);
+        var out = std.ArrayList(u8).init(a);
+        errdefer out.deinit();
+        const writer = out.writer();
+        writer.print("{{\"incidents_total\":{},\"incidents_open\":{},\"detections\":{},\"policies_matched\":{},\"correlations\":{},\"incidents\":[", .{
             state_mod.g_incidents_total.load(.acquire),
             state_mod.g_incidents_open.load(.acquire),
             state_mod.g_pipeline_detections.load(.acquire),
             state_mod.g_pipeline_policies_matched.load(.acquire),
             state_mod.g_pipeline_correlations.load(.acquire),
-        }) catch null;
+        }) catch return null;
+        for (rows[0..n], 0..) |r, i| {
+            if (i != 0) writer.writeByte(',') catch return null;
+            writer.print("{{\"id\":{},\"flow_id\":{},\"src_ip\":\"{}.{}.{}.{}\",\"severity\":\"{s}\",\"state\":\"{s}\",\"score\":{},\"evidence\":{}}}", .{
+                r.id,
+                r.flow_id,
+                (r.src_ip >> 24) & 0xFF,
+                (r.src_ip >> 16) & 0xFF,
+                (r.src_ip >> 8) & 0xFF,
+                r.src_ip & 0xFF,
+                severityName(r.severity),
+                incidentStateName(r.state),
+                r.score,
+                r.evidence_count,
+            }) catch return null;
+        }
+        writer.print("],\"incidents_returned\":{},\"incident_view_cap\":{}}}", .{
+            n, tracker_mod.SNAPSHOT_CAP,
+        }) catch return null;
+        return out.toOwnedSlice() catch null;
     }
 
     fn incidentsShow(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {

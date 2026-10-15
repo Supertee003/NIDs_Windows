@@ -1666,14 +1666,17 @@ def cmd_alerts(args) -> int:
 
 
 def cmd_incidents(args) -> int:
-    """Show threat-tracker incident counters, or top firing rules.
+    """Show threat-tracker incident counters and open-incident detail.
 
-    `list` (default) is a thin read-only view over the daemon's
-    incidents.list: totals only (total/open/detections/policies/
-    correlations), no per-incident detail exists on the wire.
+    `list` (default) is a read-only view over the daemon's
+    incidents.list: totals (total/open/detections/policies/correlations)
+    plus, from EVT-210 onward, a bounded array of the open incidents
+    themselves (highest score first, mutex-copied on the daemon side --
+    not a ring reconstruction). An older daemon that sends no array
+    degrades honestly: the detail block says so instead of inventing rows.
     `top` composes ring alerts client-side grouped by rule (count +
     latest seq + severity + name) -- ring-derived scene-setting, labeled
-    as such, distinct from the tracker's authoritative counters above.
+    as such, distinct from the tracker's authoritative incident rows.
     This is the command every Kali lab script's verify hint points at --
     it must exist and stay honest (quiet reads zero, never an error).
     """
@@ -1690,16 +1693,41 @@ def cmd_incidents(args) -> int:
         return _unavailable("incidents", "control_daemon_query_failed")
     keys = ("incidents_total", "incidents_open", "detections",
             "policies_matched", "correlations")
+    rows = response.get("incidents")
+    if not isinstance(rows, list):
+        rows = []
     if as_json:
-        print(json.dumps({k: response.get(k, 0) for k in keys} |
-                         {"available": True, "command": "incidents"},
-                         sort_keys=True))
+        doc = {k: response.get(k, 0) for k in keys}
+        doc["incidents"] = rows
+        doc["incidents_returned"] = response.get("incidents_returned", len(rows))
+        if "incident_view_cap" in response:
+            doc["incident_view_cap"] = response.get("incident_view_cap")
+        doc.update({"available": True, "command": "incidents"})
+        print(json.dumps(doc, sort_keys=True))
         return 0
     print(f"Incidents open: {response.get('incidents_open', 0)} "
           f"(total {response.get('incidents_total', 0)})")
     print(f"Detections: {response.get('detections', 0)}  "
           f"Policies matched: {response.get('policies_matched', 0)}  "
           f"Correlations: {response.get('correlations', 0)}")
+    open_count = response.get("incidents_open", 0)
+    has_detail = "incidents" in response
+    if not has_detail:
+        if open_count:
+            print(f"Open incidents: {open_count} "
+                  f"(detail unavailable -- daemon predates the incident view)")
+        return 0
+    if not rows:
+        print("No open incidents.")
+        return 0
+    cap = response.get("incident_view_cap")
+    suffix = f" of {open_count}" if (cap and open_count > len(rows)) else ""
+    print(f"OPEN INCIDENTS (highest score first{', showing ' + str(len(rows)) + suffix if suffix else ''}):")
+    for r in rows:
+        print(f"  id={r.get('id')} score={r.get('score')} "
+              f"sev={r.get('severity')} state={r.get('state')} "
+              f"src={r.get('src_ip')} flow={r.get('flow_id')} "
+              f"evidence={r.get('evidence')}")
     return 0
 
 
@@ -1850,6 +1878,15 @@ def _render_dashboard_once(deep_components: bool = False) -> int:
                   f"(total {inc.get('incidents_total', 0)})")
             print(f"    Detections: {inc.get('detections', 0)}  "
                   f"Correlations: {inc.get('correlations', 0)}")
+            # EVT-210: surface the top open incidents inline when the
+            # daemon supplies them (highest score first). Older daemons
+            # send no array -- keep the frame identical, say nothing.
+            inc_rows = inc.get("incidents")
+            if isinstance(inc_rows, list) and inc_rows:
+                print(f"    Top incidents:")
+                for r in inc_rows[:3]:
+                    print(f"      id={r.get('id')} score={r.get('score')} "
+                          f"sev={r.get('severity')} src={r.get('src_ip')}")
         else:
             print(f"    (unavailable: daemon query failed)")
         print(f"  {footer}")

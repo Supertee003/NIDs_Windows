@@ -1,5 +1,5 @@
 {
-  "head_sha": "e01133a257b55ad833a6195f7187acbda357b468",
+  "head_sha": "80cf0236a259d5804dee5840fb73a9fd90ee0de0",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5354,12 +5354,43 @@
       ],
       "result": "PASS",
       "finding": "Kernel telemetry is live end to end; the display package from EVT-208 now has all four backends behind it."
+    },
+    {
+      "id": "EVT-210",
+      "head_sha": "80cf023",
+      "timestamp": "2026-10-15",
+      "title": "Tracker-backed incident detail + dedicated WFP source bucket",
+      "level": "E2",
+      "component": "detection+control+tooling",
+      "description": "Closed the last display gap structurally: per-incident detail is now read from the live ThreatTracker, not reconstructed from the ring. (1) threat_tracker.zig gains SnapshotRow/SNAPSHOT_CAP/g_live and snapshotOpenIncidents(): a pointer-free copy taken under the same mutex every incidents[] mutation holds (create + prune), highest score first, bounded to 64 rows with the true open count reported alongside. (2) daemon.zig publishes g_live = &tt before any worker spawns. (3) handler_registry.incidentsList now emits an incidents array plus incidents_returned/incident_view_cap and severity/state names via a trap-safe switch. (4) contract event gains legacy source ordinal 21 capture_wfp; forensics maps wfp_sensor<->capture_wfp and the live-sensor round-trip test is extended, so kernel WFP flow rows stop colliding with the policy bucket and show their own queue.stats row. (5) aegisctl incidents list renders the rows (and admits 'detail unavailable' against a daemon that predates the view); dashboard shows the top three. Zig unit proof: 3 new tracker tests + extended round-trip, full zig build test green. CLI proof: 5 new in-process pins (rows, absent-array admission, quiet, JSON shape, source wiring). Deployed binary in the live lab is 35cecc8a (predates this view); live-daemon proof is E5 and waits on the next deploy round. Re-baselined the EVT-119 single-convention ingress test in the same patch family it named: it still assumed the direct Zig path was never spawned and still bitcast wire bytes. EVT-200 (env-gated lab path) and EVT-201 (BE canonicalization) had moved that invariant without updating it, so the full suite had two stale failures. The test now pins the stronger truth: direct capture is gated by AEGIS_DAEMON_IFACE, the quarantined windows_capture reader stays unreferenced, and packet_callback is BE-canonical (no memory-layout producer anywhere).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "src/detection/threat_tracker.zig",
+        "src/control/handler_registry.zig",
+        "src/daemon.zig",
+        "src/contract/event.zig",
+        "src/pipeline/event_queue.zig",
+        "src/forensic/forensic_pipeline.zig",
+        "tools/aegisctl.py",
+        "tests/tools/test_aegisctl_incidents.py",
+        "docs/runbooks/RB-020-observability-manual.md",
+        "docs/OPERATOR_COMMAND_MAP.md",
+        "tests/host_telemetry/test_t11_single_convention_ingress.py"
+      ],
+      "tests": [
+        "zig build test green (incl. 3 new tracker tests)",
+        "5 new CLI pins green",
+        "61-test display/doc slice green",
+        "T11 re-baseline green (4/4)"
+      ],
+      "result": "PASS",
+      "finding": "Per-incident detail is real tracker state on the wire; WFP flows have their own honest source bucket."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
-    "E2_count": 112,
+    "E2_count": 113,
     "E3_count": 7,
     "E4_count": 14,
     "E5_count": 69,
