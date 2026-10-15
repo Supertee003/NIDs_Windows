@@ -102,6 +102,17 @@ int aegis_pep_query_filter(uint64_t filter_id, void* out_state);
 
 // Provider readiness probe (1 = WFP provider reachable)
 int aegis_pep_provider_ready(void);
+
+// Read-only kernel flow telemetry (EVT-211): 5-tuple ring records via the
+// cached provider adapter handle. NEVER enforcement -- no block, no policy
+// decision, no receipt. Returns 0 with *bytes_read set (0 = idle ring),
+// -1 when no provider copy supports the read surface, -3 invalid args.
+// Callers label -1 as absence; it must never render as a zero-row reading.
+int aegis_pep_read_events(
+    uint8_t* out_buf,
+    uint32_t buf_size,
+    uint32_t* bytes_read
+);
 ```
 
 ## Authorization Flow

@@ -714,7 +714,7 @@ const handlers = struct {
             }) catch return null;
         }
         writer.writeAll("],\"etw\":{") catch return null;
-        writer.print("\"process_start\":{},\"file_name_create\":{},\"file_name_delete\":{},\"file_write\":{},\"reg_create\":{},\"reg_set\":{},\"dropped_unmapped\":{},\"predecode_dropped\":{},\"shed_exempted\":{}}}}}", .{
+        writer.print("\"process_start\":{},\"file_name_create\":{},\"file_name_delete\":{},\"file_write\":{},\"reg_create\":{},\"reg_set\":{},\"dropped_unmapped\":{},\"predecode_dropped\":{},\"shed_exempted\":{}}}", .{
             telemetry.g_etw_classes.process_start.load(.acquire),
             telemetry.g_etw_classes.file_name_create.load(.acquire),
             telemetry.g_etw_classes.file_name_delete.load(.acquire),
@@ -725,7 +725,28 @@ const handlers = struct {
             etw_rt.g_etw_predecode_dropped.load(.acquire),
             telemetry.g_shed_exempted.load(.acquire),
         }) catch return null;
+        // EVT-211: kernel WFP telemetry health, stamped by the capture
+        // loop. "unavailable" is a LABELED absence (no silent zero);
+        // rows>0 is the only "kernel flows are flowing" claim.
+        writer.writeAll(",\"wfp\":{") catch return null;
+        writer.print("\"state\":\"{s}\",\"reads\":{},\"rows\":{},\"last_bytes\":{}}}}}", .{
+            wfpProviderStateName(state_mod.g_wfp_provider_state.load(.acquire)),
+            state_mod.g_wfp_reads.load(.acquire),
+            state_mod.g_wfp_rows.load(.acquire),
+            state_mod.g_wfp_last_bytes.load(.acquire),
+        }) catch return null;
         return out.toOwnedSlice() catch null;
+    }
+
+    /// EVT-211: stable names for runtime_state.WfpProviderState ordinals.
+    /// Switch, not @tagName: an unrecognized host value degrades to a
+    /// printed "unknown", never a trap on the control thread.
+    fn wfpProviderStateName(v: u8) []const u8 {
+        return switch (v) {
+            1 => "ok",
+            2 => "unavailable",
+            else => "unknown",
+        };
     }
 
     /// EVT-210: numeric → stable string for incident severity/state. Switch,
@@ -2273,6 +2294,14 @@ test "queueStats emits parseable JSON with shed and etw keys (GAP-015)" {
     try std.testing.expect(root.get("etw").?.object.contains("file_write"));
     try std.testing.expect(root.get("etw").?.object.contains("predecode_dropped"));
     try std.testing.expect(root.get("etw").?.object.contains("shed_exempted"));
+    // EVT-211: the wfp health block must be present and parseable; state
+    // is a string so operators can tell labeled absence from flowing.
+    try std.testing.expect(root.contains("wfp"));
+    const wfp = root.get("wfp").?.object;
+    try std.testing.expect(wfp.contains("state"));
+    try std.testing.expect(wfp.contains("reads"));
+    try std.testing.expect(wfp.contains("rows"));
+    try std.testing.expect(wfp.contains("last_bytes"));
 }
 
 test "ceremonyRequestId prefers explicit identity, falls back to ctx (G5)" {

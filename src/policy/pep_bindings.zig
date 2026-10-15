@@ -107,6 +107,7 @@ extern "aegis_pep" fn aegis_pep_shutdown() void;
 extern "aegis_pep" fn aegis_pep_quota_remaining(src_ip: u32) u32;
 extern "aegis_pep" fn aegis_pep_set_two_person_rule(enabled: u32, caller_capability_mask: u32) c_int;
 extern "aegis_pep" fn aegis_pep_approve(request_id: u64, approver_pid: u32, caller_capability_mask: u32) c_int;
+extern "aegis_pep" fn aegis_pep_read_events(out_buf: [*]u8, buf_size: u32, bytes_read: *u32) c_int;
 
 // ============================================================================
 // PepEnforcer â€” Zig wrapper
@@ -558,13 +559,25 @@ test "FFI-001: extern function signatures are C ABI" {
     const init_type = @TypeOf(aegis_pep_init);
     const shutdown_type = @TypeOf(aegis_pep_shutdown);
     const quota_type = @TypeOf(aegis_pep_quota_remaining);
+    const read_type = @TypeOf(aegis_pep_read_events);
     // Just verify they compile and are callable — the extern link will be checked at link time
     _ = enforce_type;
     _ = init_type;
     _ = shutdown_type;
     _ = quota_type;
+    _ = read_type;
     // If we reach here, the declarations are syntactically valid
     try std.testing.expect(true);
+}
+
+test "EVT-211: readWfpEvents labels empty-buffer calls without probing" {
+    // The zero-size guard returns before the extern call, so this test
+    // never opens a device (host stays untouched) while pinning the
+    // labeled-absence contract the capture loop depends on.
+    switch (readWfpEvents(&.{})) {
+        .unavailable => {},
+        .bytes => return error.TestUnexpectedResult,
+    }
 }
 
 test "FFI-001: PepRequest binary serialization roundtrip" {
@@ -611,4 +624,27 @@ test "FFI-001: flow enforcement uses policy block ordinal" {
 pub fn providerAttested() bool {
     if (@import("builtin").os.tag != .windows) return false;
     return aegis_pep_provider_ready() == 1;
+}
+
+pub const WfpEventsRead = union(enum) {
+    /// Provider answered: bytes written into the buffer (0 = idle ring,
+    /// a valid non-error state).
+    bytes: u32,
+    /// No provider read surface: no adapter/old provider copy/IOCTL
+    /// failure. Callers MUST label this state; it is not a zero reading.
+    unavailable: void,
+};
+
+/// EVT-211: read-only kernel flow telemetry through the provider adapter
+/// (sole device owner; adapter_cache inside aegis_pep.dll). FLOW
+/// visibility only -- never enforcement, no policy decision, no receipt.
+/// `.unavailable` is returned on any failure so the capture loop labels
+/// absence instead of rendering a silent zero.
+pub fn readWfpEvents(out_buf: []u8) WfpEventsRead {
+    if (@import("builtin").os.tag != .windows) return .unavailable;
+    const buf_size = std.math.cast(u32, out_buf.len) orelse return .unavailable;
+    if (buf_size == 0) return .unavailable;
+    var bytes: u32 = 0;
+    if (aegis_pep_read_events(out_buf.ptr, buf_size, &bytes) != 0) return .unavailable;
+    return .{ .bytes = bytes };
 }

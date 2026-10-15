@@ -82,10 +82,19 @@ One-shot `dashboard` probes deep like `components`; `dashboard
   `python tools/aegisctl.py enforce status` (tier3/provider_ready)
   `sc.exe query AegisWfp` (driver service state)
 - WFP flow rows (submit-only kernel telemetry; source ordinal 21):
-  `python tools/aegisctl.py queue` shows a `capture_wfp` row once a daemon
-  built with the telemetry loop is deployed and traffic crosses the callout.
-  These rows are 5-tuple flow visibility (payload_length 0 by driver
-  construction), never payload; L7 stays with npcap/host paths.
+  `python tools/aegisctl.py queue` shows a `capture_wfp` row once traffic
+  crosses the callout. Reads run through the Rust PEP adapter (the sole
+  device owner) -- the Zig side never opens the device; only the SYSTEM
+  service can read it (EVT-211). These rows are 5-tuple flow visibility
+  (payload_length 0 by driver construction), never payload; L7 stays with
+  npcap/host paths.
+- WFP telemetry health (labeled absence, never a silent zero):
+  `python tools/aegisctl.py queue` prints a `wfp state=... reads=... rows=...
+  last_bytes=...` row. `state=ok` = the provider answered the poll (rows>0
+  = kernel flows flowing); `state=unavailable` names the absence (driver
+  stopped, old provider DLL, or IOCTL failure); `state=unknown` = the
+  telemetry loop has not reported yet. A daemon binary that predates this
+  row renders nothing -- itself the honest signal of an older build.
 - ETW (kernel trace telemetry):
   `python tools/aegisctl.py status` (etw_ready in workers)
   `python tools/aegisctl.py queue` (capture_etw row)

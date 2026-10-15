@@ -302,6 +302,7 @@ mod wfp_adapter {
     type WfpUnblockFilter = unsafe extern "system" fn(u64) -> i32;
     type WfpQueryFilter = unsafe extern "system" fn(u64, *mut FilterState) -> i32;
     type WfpOpen = unsafe extern "system" fn() -> i32;
+    type WfpReadEvents = unsafe extern "system" fn(*mut u8, u32, *mut u32) -> i32;
 
     pub struct Adapter {
         module: *mut c_void,
@@ -309,6 +310,10 @@ mod wfp_adapter {
         block_flow: WfpBlockFlow,
         unblock_filter: WfpUnblockFilter,
         query_filter: WfpQueryFilter,
+        /// EVT-211: optional read-only telemetry export. Optional on
+        /// purpose: a provider copy that predates the read surface must
+        /// still attest for enforcement; its reads surface as unavailable.
+        read_events: Option<WfpReadEvents>,
     }
 
     unsafe extern "system" {
@@ -340,14 +345,24 @@ mod wfp_adapter {
                 let unblock_filter_name = b"aegis_wfp_ioctl_unblock_filter\0";
             let query_filter_name = b"aegis_wfp_ioctl_query_filter\0";
             let open_name = b"aegis_wfp_ioctl_open\0";
+            let read_events_name = b"aegis_wfp_ioctl_read_events\0";
             let open = unsafe { GetProcAddress(module, open_name.as_ptr()) };
             let block_flow = unsafe { GetProcAddress(module, block_flow_name.as_ptr()) };
             let unblock_filter = unsafe { GetProcAddress(module, unblock_filter_name.as_ptr()) };
             let query_filter = unsafe { GetProcAddress(module, query_filter_name.as_ptr()) };
+            let read_events = unsafe { GetProcAddress(module, read_events_name.as_ptr()) };
             if open.is_null() || block_flow.is_null() || unblock_filter.is_null() || query_filter.is_null() {
                 unsafe { FreeLibrary(module) };
                 continue; // incomplete shadow copy: try the next candidate
             }
+            // EVT-211: telemetry is additive, so this export is NOT part of
+            // the required-enforcement set (unlike the four above). An old
+            // copy without it still enforces; its reads are labeled absent.
+            let read_events = if read_events.is_null() {
+                None
+            } else {
+                Some(unsafe { transmute::<*mut c_void, WfpReadEvents>(read_events) })
+            };
 
             let adapter = Self {
                 module,
@@ -355,6 +370,7 @@ mod wfp_adapter {
                 block_flow: unsafe { transmute(block_flow) },
                 unblock_filter: unsafe { transmute(unblock_filter) },
                 query_filter: unsafe { transmute(query_filter) },
+                read_events,
             };
             if unsafe { (adapter.open)() } != 0 {
                 unsafe { FreeLibrary(module) };
@@ -388,6 +404,25 @@ mod wfp_adapter {
             let rc = unsafe { (self.query_filter)(filter_id, &mut state) };
             if rc == 0 && state.filter_id == filter_id {
                 Some(state)
+            } else {
+                None
+            }
+        }
+
+        /// EVT-211: read-only ring telemetry through this adapter's open
+        /// device handle. None when the provider copy predates the read
+        /// export or the IOCTL fails (caller re-probes); Some(0) is a valid
+        /// idle reading, never an error. Never blocks or mutates policy.
+        pub fn read_events(&self, out: &mut [u8]) -> Option<u32> {
+            let f = self.read_events?;
+            let len = u32::try_from(out.len()).ok()?;
+            if len == 0 {
+                return None;
+            }
+            let mut n: u32 = 0;
+            let rc = unsafe { f(out.as_mut_ptr(), len, &mut n) };
+            if rc == 0 {
+                Some(n)
             } else {
                 None
             }
@@ -780,6 +815,35 @@ pub extern "C" fn aegis_pep_query_filter(
         }
     }
     -2
+}
+
+/// EVT-211: read-only kernel flow telemetry (5-tuple ring records) through
+/// the cached sole-owner adapter. FLOW visibility only -- the ring carries
+/// no payload bytes (driver construction), it can never block or mutate
+/// host policy, and it mints no receipt. Returns 0 with `bytes_read` set
+/// (0 = idle ring, a valid non-error state), -1 when no provider copy
+/// supports the read surface, -3 on invalid arguments. A -1 must be
+/// labeled by callers, never rendered as a zero-row reading.
+#[no_mangle]
+pub extern "C" fn aegis_pep_read_events(
+    out_buf: *mut u8,
+    buf_size: u32,
+    bytes_read: *mut u32,
+) -> c_int {
+    if out_buf.is_null() || bytes_read.is_null() || buf_size == 0 {
+        return -3;
+    }
+    #[cfg(windows)]
+    {
+        let out = unsafe { std::slice::from_raw_parts_mut(out_buf, buf_size as usize) };
+        if let Some(n) = adapter_cache::with_adapter(|a| a.read_events(out)) {
+            unsafe {
+                *bytes_read = n;
+            }
+            return 0;
+        }
+    }
+    -1
 }
 
 #[no_mangle]
@@ -2030,6 +2094,20 @@ mod tests {
             assert_eq!(resp.decision, DECISION_ESCALATE);
             assert_eq!(resp.reason, 4);
         }
+    }
+
+    #[test]
+    fn wfp_read_events_rejects_invalid_arguments_before_provider() {
+        // EVT-211 hermetic guard: argument rejection happens before any
+        // provider contact, so this test never opens the device -- ISO
+        // hosts, CI, and developer machines stay untouched. A valid-buffer
+        // call is intentionally NOT tested here: on a host where the device
+        // opens it would drain live kernel telemetry.
+        use std::ptr;
+        assert_eq!(aegis_pep_read_events(ptr::null_mut(), 16, &mut 0u32), -3);
+        let mut buf = [0u8; 4];
+        assert_eq!(aegis_pep_read_events(buf.as_mut_ptr(), 0, &mut 0u32), -3);
+        assert_eq!(aegis_pep_read_events(buf.as_mut_ptr(), 4, ptr::null_mut()), -3);
     }
 
     #[test]

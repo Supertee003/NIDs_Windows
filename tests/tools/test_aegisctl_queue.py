@@ -3,7 +3,9 @@
 Pins _format_queue_rows (the only new logic behind `aegisctl.py queue`):
   - bucket + stage rows render from the daemon response verbatim,
   - missing keys degrade to '?' instead of raising,
-  - empty bucket/stage lists still print the summary line.
+  - empty bucket/stage lists still print the summary line,
+  - EVT-211: the wfp health row renders the provider state, and a missing
+    provider is a LABELED absence, never a silent zero.
 
 Read-only: imports the CLI module (import-guarded, no side effects),
 writes nothing to the tree, contacts no daemon.
@@ -73,3 +75,39 @@ def test_format_queue_rows_renders_etw_and_shed():
 def test_format_queue_rows_tolerates_missing_keys():
     rows = cli._format_queue_rows({})
     assert rows == ["queue ?/? pushed=? dropped=? shed_overload=?"]
+
+
+def test_format_queue_rows_renders_wfp_health_row():
+    response = dict(SAMPLE)
+    response["wfp"] = {"state": "ok", "reads": 42, "rows": 7, "last_bytes": 256}
+    rows = cli._format_queue_rows(response)
+    # SAMPLE has no etw block, so wfp lands right after the source rows.
+    assert "  wfp state=ok reads=42 rows=7 last_bytes=256" in rows
+
+
+def test_format_queue_rows_labels_wfp_absence():
+    # EVT-211: an absent provider must render as a LABELED state, never a
+    # silent zero; 'unavailable' carries the explicit absence note.
+    response = dict(SAMPLE)
+    response["wfp"] = {"state": "unavailable", "reads": 0, "rows": 0, "last_bytes": 0}
+    rows = cli._format_queue_rows(response)
+    assert (
+        "  wfp state=unavailable reads=0 rows=0 last_bytes=0 "
+        "(kernel flow rows absent until provider returns)" in rows
+    )
+
+
+def test_format_queue_rows_labels_wfp_unknown():
+    response = dict(SAMPLE)
+    response["wfp"] = {"state": "unknown"}
+    rows = cli._format_queue_rows(response)
+    assert (
+        "  wfp state=unknown reads=? rows=? last_bytes=? "
+        "(telemetry loop has not reported)" in rows
+    )
+
+
+def test_format_queue_rows_omits_wfp_when_absent():
+    # Daemons that predate the wfp block must not get an invented row.
+    rows = cli._format_queue_rows(SAMPLE)
+    assert not any("wfp" in row for row in rows)

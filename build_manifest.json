@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "80cf023",
+  "source_commit": "cd4995a",
   "build_date": "2026-10-13T01:11:10.065507+00:00",
   "build_host": "windows",
   "platform": {
@@ -1039,7 +1039,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18564,
-      "sha256": "1ffe18fd24ebf6228334b05b5a7770924d641f2f56cb9e456c52e6e807e72ea5",
+      "sha256": "07d8db1fe46a3ab9f3c4a9754b20b2306c23dca2c33df29842b2c17e87a6fbde",
       "language": "json"
     },
     {
@@ -1050,8 +1050,8 @@
     },
     {
       "path": "rust-src/lib.rs",
-      "size": 88364,
-      "sha256": "961fc615f750f558ec3cf76df5cba91348f4d6be6a4a15ff4e05e101330b180d",
+      "size": 91847,
+      "sha256": "3a0635210a35c6e21e5bce992ce88d2f29f494e169958cb5c31ba0ad49a719e1",
       "language": "rust"
     },
     {
@@ -1800,8 +1800,8 @@
     },
     {
       "path": "src/control/handler_registry.zig",
-      "size": 134553,
-      "sha256": "bac398893d57e9da51acf8beef55440041ae47746c360e561126793f5d46d9c1",
+      "size": 136005,
+      "sha256": "e21e350f48299b173aaa599dfda9afee6058f177b332eff163690729c8cde31d",
       "language": "zig"
     },
     {
@@ -1950,8 +1950,8 @@
     },
     {
       "path": "src/core/rust_pep.zig",
-      "size": 21300,
-      "sha256": "ead71a14e9b79a1f56e214b3094efa065a434117137076200ff60aeee45ccf1f",
+      "size": 22985,
+      "sha256": "a1de48716d40a0a2216d0f2498d18b61588d2f0f1e94171b9f13bd59172dbbc3",
       "language": "zig"
     },
     {
@@ -2286,8 +2286,8 @@
     },
     {
       "path": "src/pipeline/runtime_state.zig",
-      "size": 10611,
-      "sha256": "868118d4feb60ba1f236d59e224847c957bf5c62eb1d5e85702bd73014015639",
+      "size": 11277,
+      "sha256": "a3ad76354214ee85e8a8f7963484da254f2dcd971be175fcc7917077a7a7acb6",
       "language": "zig"
     },
     {
@@ -2340,8 +2340,8 @@
     },
     {
       "path": "src/policy/pep_bindings.zig",
-      "size": 26384,
-      "sha256": "53a5cac5f4039aaac9172c9a755e540cf9532c02fa5a07d4c8c3a2004a68fe7b",
+      "size": 28018,
+      "sha256": "4abda5bb4bf11b01a984eaec1083db189c9e9815b11f1dd691653ac337e49592",
       "language": "zig"
     },
     {
@@ -3348,8 +3348,8 @@
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 106206,
-      "sha256": "f5b9c79ee25f1022ee487dec75078742c76c764f491aedece34cea9d97dc6b18",
+      "size": 106719,
+      "sha256": "fa475c7e666c61ac9a7166f68b5cb7b0a3c7e076e33ec0c3ddaeeadc54119659",
       "language": "python/cython"
     },
     {

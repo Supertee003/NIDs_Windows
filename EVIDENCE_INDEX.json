@@ -1,5 +1,5 @@
 {
-  "head_sha": "80cf0236a259d5804dee5840fb73a9fd90ee0de0",
+  "head_sha": "cd4995ae90a12ddd4505ddd3db9efffc7cdc2d6b",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5385,12 +5385,46 @@
       ],
       "result": "PASS",
       "finding": "Per-incident detail is real tracker state on the wire; WFP flows have their own honest source bucket."
+    },
+    {
+      "id": "EVT-211",
+      "head_sha": "cd4995a",
+      "timestamp": "2026-10-15",
+      "title": "WFP kernel read path wired through the sole device owner + labeled telemetry health",
+      "level": "E2",
+      "component": "capture+policy+control+tooling",
+      "description": "Found and closed the last structural gap in kernel WFP display: wfp_telemetry.telemetryLoop read through rust_pep.read_events -> the Zig-side wfp_ioctl handle, which the daemon never opens (only the quarantined windows_capture.zig called wfpInit), so the loop was a silent no-op and capture_wfp rows could never flow. Diagnosis: the sole device owner is the Rust PEP adapter, which loads aegis_wfp_user.dll -- which already exports aegis_wfp_ioctl_read_events -- but keeps the device only inside adapter_cache during enforcement; provider_ready attestation loads a temp adapter and drops it, so no read surface persisted. Fix: (1) aegis_pep.dll gains aegis_pep_read_events(out_buf, buf_size, bytes_read) served by adapter_cache::with_adapter (the same cached adapter enforcement uses), so reads pin the single owner and the handle persists; (2) Adapter gains an OPTIONAL read_events field -- telemetry is deliberately NOT part of the required-enforcement export set, so older provider copies still attest and enforce while their reads surface as labeled-absent; (3) Zig pep_bindings gains the extern + readWfpEvents (bytes|unavailable), rust_pep.read_events is provider-first with the local-handle path kept only for test contexts; (4) the loop stamps runtime_state g_wfp_provider_state/reads/rows/last_bytes and labels provider absence once via diag; queue.stats emits a wfp block and aegisctl queue prints the row with explicit absence notes -- a missing provider is a LABELED state, never a silent zero; (5) CONTRACT-02 + shared/abi/pep_abi.md record the new read-only export; pep_bindings ABI pin extended. Environment facts pinned for the record: driver SDDL SYSTEM+Administrators; deployed/build-Release C DLLs export the read surface (sha256 F7240A0D...); driver create handler accepts every open; non-elevated open returns win32 5. Claims boundary: no kernel row observed yet -- live row proof stays E5 and is the deploy round (new exe and new aegis_pep.dll must deploy together: the exe imports the new export at load).",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "rust-src/lib.rs",
+        "src/policy/pep_bindings.zig",
+        "src/core/rust_pep.zig",
+        "src/capture/wfp_telemetry.zig",
+        "src/pipeline/runtime_state.zig",
+        "src/control/handler_registry.zig",
+        "tools/aegisctl.py",
+        "tests/tools/test_aegisctl_queue.py",
+        "shared/abi/pep_abi.md",
+        "CONTRACT_MAP.json",
+        "docs/runbooks/RB-020-observability-manual.md",
+        "docs/OPERATOR_COMMAND_MAP.md"
+      ],
+      "tests": [
+        "cargo test --release: 45 passed / 0 failed (1 host-effect test intentionally ignored)",
+        "zig build + zig build test green (queueStats wfp block + labeled-absence pins)",
+        "tests/tools/test_aegisctl_queue.py: 7 passed",
+        "full pytest tests/: 868 passed / 2 skipped / 0 failed (27 subtests passed)",
+        "release_engineering --verify green: 611 artifacts match recorded digests",
+        "fresh_deploy.py --plan: DEPLOY_PLAN_OK"
+      ],
+      "result": "PASS",
+      "finding": "Kernel flow telemetry now reads through the single device owner with a persistent handle; provider absence renders as a labeled state in queue.stats, never a silent zero. Live row proof pending the deploy round."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
-    "E2_count": 113,
+    "E2_count": 114,
     "E3_count": 7,
     "E4_count": 14,
     "E5_count": 69,

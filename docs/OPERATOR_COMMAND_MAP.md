@@ -71,6 +71,9 @@ rebuilds (`build_truth.json`), `scripts/run_*` kit/canary runners,
   same truth (process rows / single shot / structured doc / gate
   verdict). Start with `status`; escalate inward.
 - `metrics` / `queue`: disjoint keys (totals vs depth/sources/stages).
+  `queue` also carries the `wfp` telemetry-health block (EVT-211): provider
+  state + reads + rows + last_bytes, so kernel-flow absence is a labeled
+  state, not a silent zero.
 - `snapshot` (daemon doc, now carries `components`) vs web snapshot
   (adds feed/incidents/threat/forensic-cache) vs `components` (identity).
 - `version` (static 7 incl pep/shield/aggregator) vs `components`

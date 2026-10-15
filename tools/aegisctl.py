@@ -465,6 +465,20 @@ def _format_queue_rows(response: dict) -> list[str]:
             f"predecode={etw.get('predecode_dropped', '?')} "
             f"exempt={etw.get('shed_exempted', '?')}"
         )
+    wfp = response.get("wfp") or {}
+    if wfp:
+        state = wfp.get("state", "?")
+        row = (
+            f"  wfp state={state} "
+            f"reads={wfp.get('reads', '?')} "
+            f"rows={wfp.get('rows', '?')} "
+            f"last_bytes={wfp.get('last_bytes', '?')}"
+        )
+        if state == "unavailable":
+            row += " (kernel flow rows absent until provider returns)"
+        elif state == "unknown":
+            row += " (telemetry loop has not reported)"
+        rows.append(row)
     for stage in response.get("pipeline", []) or []:
         rows.append(
             f"  stage={stage.get('stage', '?')} count={stage.get('count', '?')} "

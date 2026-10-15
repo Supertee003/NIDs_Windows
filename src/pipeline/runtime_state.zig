@@ -142,6 +142,14 @@ pub var g_pipeline_audit_id = std.atomic.Value(u64).init(0); // monotonic audit 
 pub var g_pep_request_id = std.atomic.Value(u64).init(0); // unique PEP request ID counter
 pub var g_trace_id = std.atomic.Value(u64).init(0); // monotonic trace counter
 pub var g_pep_available = std.atomic.Value(bool).init(false); // PEP availability for health check
+// EVT-211: kernel WFP flow-telemetry health. The capture loop owns these;
+// control/queue renders them so a missing provider read surface is a
+// LABELED state, never a silent zero. Ordinals: see WfpProviderState.
+pub const WfpProviderState = enum(u8) { unknown = 0, ok = 1, unavailable = 2 };
+pub var g_wfp_provider_state = std.atomic.Value(u8).init(@intFromEnum(WfpProviderState.unknown));
+pub var g_wfp_reads = std.atomic.Value(u64).init(0); // provider poll calls answered
+pub var g_wfp_rows = std.atomic.Value(u64).init(0); // ring records submitted to the pipeline
+pub var g_wfp_last_bytes = std.atomic.Value(u64).init(0); // bytes in the last answered read
 /// Identity used for events originating from the verified daemon process.
 /// Set during daemon startup; never use a fabricated all-capability mask.
 pub var g_runtime_pid: u32 = 0;

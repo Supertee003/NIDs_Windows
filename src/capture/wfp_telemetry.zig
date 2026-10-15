@@ -1,11 +1,16 @@
-//! capture/wfp_telemetry.zig — EVT-202: kernel WFP flow telemetry, submit-only.
+//! capture/wfp_telemetry.zig — EVT-202/EVT-211: kernel WFP flow telemetry,
+//! submit-only.
 //!
 //! Reads flow records from the kernel ring through the Rust PEP adapter
-//! (the SOLE device owner) and submits them to the pipeline queue. The
-//! driver ring carries 5-tuples only (payload_length = 0 by driver
-//! construction): this is FLOW visibility for correlator/flow/threat
-//! stages, never L7 payload matching -- L7 stays with npcap/host paths
-//! that actually carry bytes. Claiming otherwise would be dishonest.
+//! (the SOLE device owner; aegis_pep_read_events on the adapter_cache
+//! handle inside aegis_pep.dll, EVT-211) and submits them to the pipeline
+//! queue. A missing provider read surface is LABELED, not silent: the loop
+//! stamps runtime_state.g_wfp_provider_state, which control/queue renders
+//! as the `wfp` block of queue.stats. The driver ring carries 5-tuples
+//! only (payload_length = 0 by driver construction): this is FLOW
+//! visibility for correlator/flow/threat stages, never L7 payload
+//! matching -- L7 stays with npcap/host paths that actually carry bytes.
+//! Claiming otherwise would be dishonest.
 //!
 //! What this loop NEVER does (REBUILD-004): inspect_packet verdicts,
 //! block/unblock calls, receipt handling, or policy decisions. The
@@ -83,25 +88,53 @@ pub fn submitRecord(rec: ParsedRecord) bool {
 }
 
 /// Kernel telemetry loop: poll the ring, submit, sleep when quiet, exit
-/// on supervisor stop. Driver-absent hosts sleep-retry (quiet).
+/// on supervisor stop. Driver-absent hosts sleep-retry and stamp the
+/// labeled `unavailable` provider state (queue.stats renders it).
 pub fn telemetryLoop(stopSignal: *std.atomic.Value(bool)) void {
     var ring: [RING_BUF]u8 = undefined;
     diag.info("[WFP TELEMETRY] loop starting (submit-only, no inspect/block)", .{});
+    var labeled_missing = false;
     while (!stopSignal.load(.acquire)) {
-        const n = rust_pep.read_events(&ring);
-        if (n == 0) {
-            std.time.sleep(IDLE_SLEEP_MS * std.time.ns_per_ms);
-            continue;
-        }
-        var off: usize = 0;
-        while (off < n) {
-            const rec = parseRecord(ring[off..n]) orelse break;
-            const adv = @sizeOf(rust_pep.WfpEventHeader) + rec.payload.len;
-            if (!submitRecord(rec)) {
-                _ = runtime_state.g_queue_drops.fetchAdd(1, .monotonic);
-            }
-            off += adv;
-            if (adv == 0) break;
+        switch (rust_pep.read_events_status(&ring)) {
+            .no_provider => {
+                runtime_state.g_wfp_provider_state.store(
+                    @intFromEnum(runtime_state.WfpProviderState.unavailable),
+                    .release,
+                );
+                if (!labeled_missing) {
+                    diag.warn("[WFP TELEMETRY] kernel read provider unavailable; kernel flow rows will be absent until it returns (labeled, not silent)", .{});
+                    labeled_missing = true;
+                }
+                std.time.sleep(IDLE_SLEEP_MS * std.time.ns_per_ms);
+            },
+            .bytes => |n| {
+                runtime_state.g_wfp_provider_state.store(
+                    @intFromEnum(runtime_state.WfpProviderState.ok),
+                    .release,
+                );
+                if (labeled_missing) {
+                    diag.info("[WFP TELEMETRY] kernel read provider restored", .{});
+                    labeled_missing = false;
+                }
+                _ = runtime_state.g_wfp_reads.fetchAdd(1, .monotonic);
+                runtime_state.g_wfp_last_bytes.store(n, .monotonic);
+                if (n == 0) {
+                    std.time.sleep(IDLE_SLEEP_MS * std.time.ns_per_ms);
+                } else {
+                    var off: usize = 0;
+                    while (off < n) {
+                        const rec = parseRecord(ring[off..n]) orelse break;
+                        const adv = @sizeOf(rust_pep.WfpEventHeader) + rec.payload.len;
+                        if (submitRecord(rec)) {
+                            _ = runtime_state.g_wfp_rows.fetchAdd(1, .monotonic);
+                        } else {
+                            _ = runtime_state.g_queue_drops.fetchAdd(1, .monotonic);
+                        }
+                        off += adv;
+                        if (adv == 0) break;
+                    }
+                }
+            },
         }
     }
     diag.info("[WFP TELEMETRY] loop exiting", .{});
