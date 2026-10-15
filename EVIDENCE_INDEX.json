@@ -1,5 +1,5 @@
 {
-  "head_sha": "745524eb7c067485b52b6ba00f16e01405e39a58",
+  "head_sha": "e01133a257b55ad833a6195f7187acbda357b468",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5333,6 +5333,27 @@
       ],
       "result": "PASS",
       "finding": "Every display asked for now renders; the WFP rows await their driver + deploy round."
+    },
+    {
+      "id": "EVT-209",
+      "head_sha": "e01133a",
+      "timestamp": "2026-10-15",
+      "title": "WFP live: reinstalled driver + new binary, triple-true, device opens",
+      "level": "E5",
+      "component": "wfp-ops",
+      "description": "Driver round closed without reinstall roulette: stopping the stale instance and starting clean recovered it (no reinstall needed this time). Deployed binary verified 35cecc8a (telemetry loop inside). Capabilities triple-true (cpp/udp/wfp) on a fresh daemon, direct device open rc 0, provider_ready 1. The stop-then-copy ordering discipline held (no locked-file repeat). WFP flow rows surface as kernel traffic crosses the callout; the submit-only loop feeds the consumed queue with no inspect/block path anywhere near it.",
+      "flow_id": "DATA-001",
+      "files_changed": [
+        "EVIDENCE_INDEX.json"
+      ],
+      "tests": [
+        "device open rc 0",
+        "triple-true caps",
+        "hash match",
+        "queue flowing"
+      ],
+      "result": "PASS",
+      "finding": "Kernel telemetry is live end to end; the display package from EVT-208 now has all four backends behind it."
     }
   ],
   "evidence_level_summary": {
@@ -5341,7 +5362,7 @@
     "E2_count": 112,
     "E3_count": 7,
     "E4_count": 14,
-    "E5_count": 68,
+    "E5_count": 69,
     "E6_count": 0,
     "E7_count": 0
   }
