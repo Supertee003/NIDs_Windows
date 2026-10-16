@@ -76,7 +76,15 @@ def _guid_struct(key: str):
 def _delete_stale_proof_filter() -> int:
     """Delete any filter holding the static proof key. Returns the FWPM rc
     (0 deleted, NOT_FOUND when clean). Never raises: a dirty host must not
-    fail collection, and a stuck filter surfaces at BLOCK time instead."""
+    fail collection, and a stuck filter surfaces at BLOCK time instead.
+
+    Expected noise on the clean-host path: FwpmFilterDeleteByKey0 can
+    raise-and-catch an internal first-chance exception; faulthandler's
+    vectored handler logs it as "Windows fatal exception: code
+    0x80320003" (FWP_E_OBJECT_NOT_FOUND) while the FWPM/RPC stack then
+    handles it normally. Benign and count-neutral -- the call still
+    returns the rc and the suite proceeds (explained 2026-10-16 after
+    repeated "fatal exception" sightings were triaged to this helper)."""
     try:
         fwpuclnt = ctypes.WinDLL("fwpuclnt.dll")
         fwpuclnt.FwpmEngineOpen0.argtypes = [ctypes.c_wchar_p, ctypes.c_uint32,
