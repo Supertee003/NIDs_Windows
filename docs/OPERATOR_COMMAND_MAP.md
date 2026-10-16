@@ -130,8 +130,9 @@ blocks/quarantine/shutdown privileged-only; the tree carries no secrets
 - `AEGIS_BRAIN_SECRET` lives in machine env: world-readable by design
   (loopback model trusts local). Local malware voids it like any local
   secret; rotation = setx + restart both ends (RB-016).
-- The WFP driver is test-signed (expires 2029): WHQL is the proper fix;
-  review testsigning state before calling the host hardened.
+- The WFP driver is test-signed (expires 2029): WHQL is the proper fix.
+  Testsigning state reviewed 2026-10-16 (elevated `bcdedit`): `Yes` --
+  it must be off (plus a WHQL driver) before the host is called hardened.
 
 ## Troubleshooting (earned the hard way)
 
