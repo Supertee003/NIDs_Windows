@@ -215,6 +215,18 @@ generators. See docs/OPERATOR_COMMAND_MAP.md for the role map.
 
 - Non-elevated `close`/`stop` cannot stop keeper-spawned nose/brain:
   expect honest `cannot stop ... (elevate?)`, then use Admin.
+- `diagnose` shows the brain channel FOREIGN with "command line not
+  visible; pid N (pythonw.exe)"? That is the expected shape of the
+  keeper-spawned brain: AegisKeeper runs as SYSTEM, so its pythonw
+  child hides its command line from a non-elevated census while the
+  socket (UDP 127.0.0.1:9999) still names the owner. The census is
+  honest-cautious by design (never silently cleared, EVT-076/EVT-077)
+  and stops nothing. Corroborate on other surfaces instead:
+  `python tools/aegisctl.py bridge` (`owner_is_brain: True` -- the
+  HEALTH reply named the listener pid itself) and
+  `python tools/aegisctl.py brain` (live UDP HEALTH answer). Stop it
+  only via `aegis_open.py close` [ADMIN] (socket-owner aware, EVT-171).
+  Live-observed 2026-10-16 (EVT-214).
 - Watch window frozen? Look for a `Select ` title prefix: QuickEdit
   selection pauses output. Enter/Esc resumes.
 - `displays` exit 2 with OK rows = skipped surfaces, never failure.

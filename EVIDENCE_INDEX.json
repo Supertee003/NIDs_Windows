@@ -1,5 +1,5 @@
 {
-  "head_sha": "e4625128542852221657ba9ac0df34a11b2360ad",
+  "head_sha": "a9b33c4608a263145d5f4a151c17438a7f037082",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5481,6 +5481,27 @@
       ],
       "result": "PASS",
       "finding": "The kernel row display chain is now correct at every layer provable off-host: the callout binds (terminating-action filter), the writer and all consumers share one 48-byte packed stride, and an idle ring reads rc 0 bytes 0 instead of a fake failure. The live kernel row proof (E5) is the operator deploy round. E5: records flow end-to-end at the 48-byte stride with dropped=0 (2026-10-16)."
+    },
+    {
+      "id": "EVT-214",
+      "title": "Endpoint census FOREIGN on :9999 = elevated keeper-spawned brain (expected-shape disposition)",
+      "level": "E5",
+      "component": "tools+docs",
+      "flow_id": "CONTROL-001",
+      "head_sha": "a9b33c4",
+      "timestamp": "2026-10-16",
+      "result": "PASS",
+      "finding": "The live FOREIGN reading on the brain channel is the expected shape of the keeper-spawned elevated brain, not a squatter: the socket owner pid 8944 (pythonw.exe) matches the brain's own UDP HEALTH reply (pid 8944, state RUNNING) and the bridge diagnostic's owner_is_brain true. The census stays strict and honest; nothing was stopped; guidance added to RB-020 section 11.",
+      "description": "Live observation 2026-10-16 (HEAD a9b33c4, non-elevated shell): `aegisctl diagnose` reported '[FOREIGN] brain channel: command line not visible; pid 8944 (pythonw.exe)' plus '[ORPHAN?] 1 foreign listener(s) on owned endpoints -- detection only, nothing was stopped'. Disposition, proven without elevation: (1) netstat -ano shows UDP 127.0.0.1:9999 owned by pid 8944; (2) `aegisctl brain --json` received a live UDP HEALTH reply from that socket whose own document reports pid 8944, component brain, state RUNNING, auth on, uptime 99424493 ms (~27.6 h) -- the listener pid answers for itself; (3) `aegisctl bridge` corroborates: listener pid 8944 (pythonw), owner_is_brain true, note 'schema-correct HEALTH reply comes from the listener pid itself: corroborated'. The invisible command line is the documented elevated-context shape (EVT-164/EVT-171: AegisKeeper /ru SYSTEM spawns the brain as pythonw.exe; a non-elevated schtasks query of the task is access-denied). Census semantics stay intact: it never clears silently and nothing is ever killed on a hunch (EVT-076/EVT-077 contract). Counter triage, no fault: brain in_events 0 is expected because daemon->brain offers are opt-in (AEGIS_BRAIN=1, default off -- daemon.zig step 4b; machine/user/process env all unset), and dropped 9 is the fail-closed auth gate counting (never hiding) unsigned envelopes while a machine-level secret is configured (windows_brain.py B2-AUTH-076). Guidance bullet added to RB-020 section 11; no code change.",
+      "tests": [
+        "live 2026-10-16: netstat socket owner pid == brain HEALTH self-reported pid (8944) == bridge listener pid; owner_is_brain true",
+        "aegisctl brain --json: live UDP HEALTH answered from the socket owner (state RUNNING, uptime ~27.6 h)",
+        "counter triage: in_events 0 + dropped 9 explained by opt-in AEGIS_BRAIN (unset) and the counted fail-closed auth gate"
+      ],
+      "files_changed": [
+        "docs/runbooks/RB-020-observability-manual.md",
+        "EVIDENCE_INDEX.json"
+      ]
     }
   ],
   "evidence_level_summary": {
@@ -5489,7 +5510,7 @@
     "E2_count": 112,
     "E3_count": 7,
     "E4_count": 14,
-    "E5_count": 73,
+    "E5_count": 74,
     "E6_count": 0,
     "E7_count": 0
   }
