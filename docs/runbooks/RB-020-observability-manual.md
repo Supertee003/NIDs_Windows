@@ -83,9 +83,14 @@ One-shot `dashboard` probes deep like `components`; `dashboard
   `sc.exe query AegisWfp` (driver service state)
 - WFP flow rows (submit-only kernel telemetry; source ordinal 21):
   `python tools/aegisctl.py queue` shows a `capture_wfp` row once traffic
-  crosses the callout. Reads run through the Rust PEP adapter (the sole
-  device owner) -- the Zig side never opens the device; only the SYSTEM
-  service can read it (EVT-211). These rows are 5-tuple flow visibility
+  crosses the callout. Reads run through the Rust PEP adapter, which holds
+  the long-lived `\\.\AegisWfpDevice` handle and is the only ROUTINE
+  reader; the Zig side never opens the device. The create handler accepts
+  every open and the SDDL admits SYSTEM + Administrators (EVT-211), so an
+  elevated one-shot probe CAN co-open while the daemon runs (observed
+  2026-10-16: probe open rc 0 with the daemon mid-drain) -- concurrent
+  readers split ring drains, so stop `AegisNids` for a clean full-drain
+  probe. These rows are 5-tuple flow visibility
   (payload_length 0 by driver construction), never payload; L7 stays with
   npcap/host paths.
 - WFP telemetry health (labeled absence, never a silent zero):
@@ -96,14 +101,23 @@ One-shot `dashboard` probes deep like `components`; `dashboard
   (driver stopped, old provider DLL, or IOCTL failure); `state=unknown` = the
   telemetry loop has not reported yet. A daemon binary that predates this
   row renders nothing -- itself the honest signal of an older build.
-- WFP device ownership (single-opener, EVT-211/EVT-212): while `AegisNids`
-  runs it holds the one exclusive `\\.\AegisWfpDevice` handle (attested at
-  boot, shared by enforcement and telemetry). A console tool that opens the
-  device directly then fails with a sharing violation -- that is the
-  expected single-owner contract, not a fault; read kernel flows via
-  `aegisctl queue`/`aegisctl events` instead. The `AegisWfp` driver service
-  is DEMAND_START: after a host reboot start it, or the `wfp` row stays
-  labeled `unavailable` until the driver returns.
+- WFP device ownership and start order (EVT-211/EVT-212, corrected by the
+  2026-10-16 deploy round): the Rust PEP adapter holds the one long-lived
+  `\\.\AegisWfpDevice` handle (adopted at provider attestation, shared by
+  enforcement and telemetry) and is the sole routine reader. The device is
+  not hard-exclusive: a fresh elevated probe opens it fine even while the
+  daemon drains (observed open rc 0), but two live readers split ring
+  drains -- probe only with the daemon stopped, and read kernel flows via
+  `aegisctl queue`/`aegisctl events`. The `AegisWfp` driver service is
+  DEMAND_START: after a host reboot start the DRIVER FIRST, then the
+  daemon. Start order matters for boot-state DISPLAY, not for data:
+  `status` state and `health` capabilities.wfp / provider_ready reflect
+  the provider attestation taken once at daemon startup -- a daemon
+  booted while the driver is down stays DEGRADED for that session even
+  after the driver returns, while its `queue` wfp row and
+  `enforce status` provider_ready are live and tell the truth (observed
+  2026-10-16: 27,029 rows flowing under a boot DEGRADED; a daemon restart
+  with the driver up flips state RUNNING and capabilities.wfp true).
 - ETW (kernel trace telemetry):
   `python tools/aegisctl.py status` (etw_ready in workers)
   `python tools/aegisctl.py queue` (capture_etw row)
