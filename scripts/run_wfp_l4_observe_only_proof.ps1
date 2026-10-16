@@ -25,7 +25,10 @@ $device = '\\.\AegisWfpDevice'
 $serviceCandidates = if ($ServiceName) { @($ServiceName) } else { @('AegisWfp', 'aegis_wfp') }
 $IOCTL_READ_EVENTS = [Convert]::ToUInt32('00126000', 16)
 $IOCTL_GET_STATS = [Convert]::ToUInt32('00126008', 16)
-$EVENT_HEADER_SIZE = 44
+$EVENT_HEADER_SIZE = 48
+# EVT-213: 48-byte packed record stride (kernel reserved2 aligns timestamp
+# to @40). The 44-byte pre-EVT-213 stride shifted every record after the
+# first for 48-byte consumers.
 # Do not cast the PowerShell-parsed 0x80000000 signed Int32; convert the
 # hexadecimal text directly so GENERIC_READ remains UInt32 2147483648.
 $GENERIC_READ = [Convert]::ToUInt32('80000000', 16)
@@ -71,10 +74,10 @@ function Read-Stats([IntPtr]$Handle) {
 }
 
 function Read-Events([IntPtr]$Handle) {
-    # Keep reads frame-aligned: 44-byte packed header x 93 = 4092 bytes.
-    # Reading 4096 bytes would advance the kernel ring by 4 bytes modulo the
+    # Keep reads frame-aligned: 48-byte packed header x 85 = 4080 bytes.
+    # Reading 4096 bytes would advance the kernel ring by 16 bytes modulo the
     # frame size and make the next parse start in the middle of a header.
-    $out = New-Object byte[] 4092
+    $out = New-Object byte[] 4080
     [uint32]$returned = 0
     $ok = [Aegis.WfpProof.Native]::DeviceIoControl($Handle, $IOCTL_READ_EVENTS, $null, 0, $out, $out.Length, [ref]$returned, [IntPtr]::Zero)
     if (-not $ok) {
@@ -97,7 +100,7 @@ function Drain-Events([IntPtr]$Handle) {
         $batchParsed = Parse-EventFrames $batch.data $batch.bytes
         $allFrames += $batchParsed.frames
         $reads++
-        if ($batch.bytes -lt 4092) { break }
+        if ($batch.bytes -lt 4080) { break }
     }
     [pscustomobject]@{
         bytes = $totalBytes

@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "0c8c658",
+  "source_commit": "048bdeb",
   "build_date": "2026-10-13T01:11:10.065507+00:00",
   "build_host": "windows",
   "platform": {
@@ -1039,7 +1039,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18564,
-      "sha256": "bf38506e5b2402e27777c635ad095f7a17bce2a36c8e1035aea7666086d3877b",
+      "sha256": "79593d31aab872140d4aa9ac425dac00061bf9dc811f0c8713a8e196d8c429aa",
       "language": "json"
     },
     {
@@ -1506,8 +1506,8 @@
     },
     {
       "path": "scripts/run_wfp_l4_observe_only_proof.ps1",
-      "size": 12671,
-      "sha256": "d135cd240c642f5b355f85abd7d27954d20b5bef3f7971f787da70af84b6b32f",
+      "size": 12851,
+      "sha256": "192f8bb94fbf03bc9b7690ac5bf80a504a47aa670f69d297c6ba27c15c7d9153",
       "language": "script"
     },
     {
@@ -2406,8 +2406,8 @@
     },
     {
       "path": "src/policy/wfp_ioctl.zig",
-      "size": 10529,
-      "sha256": "de375b5089bf489c9f66eec6b1f6507b38386c8fd2a6684abbae33122cf4c3b7",
+      "size": 11940,
+      "sha256": "33618d8ace78c5be3b036447854272e9d714c0226b47ed1b1404aa3ab5362b82",
       "language": "zig"
     },
     {
@@ -3300,8 +3300,8 @@
     },
     {
       "path": "src/windows/wfp_ioctl.c",
-      "size": 7095,
-      "sha256": "1d705b3b1400c82a72984d26f165ea3f15dbfef0f407efc20e1fdce21d34416a",
+      "size": 8196,
+      "sha256": "0cf156cab429933474047930c7f78fc22f8821714d5ea77ce00f9b8eb905d5cf",
       "language": "c/c++"
     },
     {

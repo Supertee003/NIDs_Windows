@@ -63,7 +63,7 @@ typedef char aegis_filter_query_must_be_8_bytes[
 typedef char aegis_filter_state_must_be_20_bytes[
     sizeof(AEGIS_WFP_FILTER_STATE) == 20 ? 1 : -1];
 
-/* 40-byte AEGIS event header (packed, mirrors drivers/wfp_callout/aegis_wfp.h) */
+/* 48-byte AEGIS event header (packed, mirrors drivers/wfp_callout/aegis_wfp.h; EVT-213 stride) */
 #pragma pack(push, 1)
 typedef struct _AEGIS_WFP_EVENT_HEADER {
     uint32_t event_type;     /* 0=NETWORK, 1=FILE, 2=PROCESS, 3=PIPE */
@@ -79,6 +79,7 @@ typedef struct _AEGIS_WFP_EVENT_HEADER {
     uint32_t rule_id;
     uint32_t severity;
     uint32_t reserved;
+    uint32_t reserved2;      /* aligns timestamp to @40 (EVT-213) */
     uint64_t timestamp;
 } AEGIS_WFP_EVENT_HEADER;
 
@@ -92,6 +93,11 @@ typedef struct _AEGIS_WFP_RING_STATS {
     uint32_t padding;
 } AEGIS_WFP_RING_STATS;
 #pragma pack(pop)
+
+/* EVT-213: the ring record stride is 48 bytes; the kernel writer and the
+ * Zig WfpEventHeader consumer pin the same layout (timestamp @40). */
+typedef char aegis_event_header_must_be_48_bytes[
+    sizeof(AEGIS_WFP_EVENT_HEADER) == 48 ? 1 : -1];
 
 static HANDLE g_wfp_device = INVALID_HANDLE_VALUE;
 
@@ -183,6 +189,19 @@ int aegis_wfp_ioctl_read_events(void *out_buf, uint32_t buf_size,
     if (out_buf == NULL || buf_size == 0) return -1;
     if (wfp_ioctl_send(IOCTL_AEGIS_READ_EVENTS, NULL, 0,
                        out_buf, buf_size, &out_len) != 0) {
+        /* EVT-213: an empty ring is a valid idle reading, not a provider
+         * failure. The kernel completes READ_EVENTS with
+         * STATUS_NO_MORE_ENTRIES once the ring is drained; the I/O manager
+         * reports that as DeviceIoControl == FALSE with ERROR_NO_MORE_ITEMS
+         * (259). The raw 0x8000001A form is accepted too: both name the same
+         * kernel completion. Collapsing it into -1 made the telemetry loop
+         * mislabel a healthy idle provider "unavailable"; the Rust adapter
+         * and pep_abi.md already document 0 bytes as the idle reading. */
+        DWORD err = GetLastError();
+        if (err == ERROR_NO_MORE_ITEMS || err == 0x8000001AUL) {
+            if (bytes_read) *bytes_read = 0;
+            return 0;
+        }
         return -1;
     }
     if (bytes_read) *bytes_read = (uint32_t)out_len;

@@ -91,8 +91,9 @@ One-shot `dashboard` probes deep like `components`; `dashboard
 - WFP telemetry health (labeled absence, never a silent zero):
   `python tools/aegisctl.py queue` prints a `wfp state=... reads=... rows=...
   last_bytes=...` row. `state=ok` = the provider answered the poll (rows>0
-  = kernel flows flowing); `state=unavailable` names the absence (driver
-  stopped, old provider DLL, or IOCTL failure); `state=unknown` = the
+  = kernel flows flowing; a drained ring reads 0 bytes and stays ok --
+  idle is not a failure, EVT-213); `state=unavailable` names the absence
+  (driver stopped, old provider DLL, or IOCTL failure); `state=unknown` = the
   telemetry loop has not reported yet. A daemon binary that predates this
   row renders nothing -- itself the honest signal of an older build.
 - WFP device ownership (single-opener, EVT-211/EVT-212): while `AegisNids`

@@ -42,7 +42,8 @@ The run is `L4_HOSTONLY_TRANSPORT_PASS` only when the Windows evidence shows:
 - device access is `GENERIC_READ`;
 - only `GET_STATS` and `READ_EVENTS` were requested;
 - `BLOCK_FLOW` and `UNBLOCK_FLOW` were not called;
-- a complete 44-byte frame exists;
+- a complete 48-byte frame exists (EVT-213 pinned the kernel record stride
+  at 48: packed header with explicit reserved2, timestamp @40);
 - `expected_flow.required` is true;
 - a frame matches the expected Kali source IP and listener destination port;
 - `prevention_gate` is `closed` and `host_effect` is `none`.

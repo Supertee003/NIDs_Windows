@@ -173,3 +173,31 @@ test "parseRecord rejects truncation instead of partial-submit" {
     hdr_only[20] = 8; // claims 8 payload bytes, none present
     try std.testing.expect(parseRecord(&hdr_only) == null);
 }
+
+test "EVT-213: records advance by the 48-byte wrapped header stride" {
+    // Two back-to-back kernel records: rec0 carries a 4-byte payload,
+    // rec1 none. The consumer advance must be 48 + payload_length for
+    // each record (a 44-byte writer stride used to shift every record
+    // after the first). Pins kernel/consumer stride agreement.
+    var buf: [48 + 4 + 48]u8 = [_]u8{0} ** (48 + 4 + 48);
+    std.mem.writeInt(u32, buf[4..8], 0x0A000001, .little);   // rec0 src 10.0.0.1
+    std.mem.writeInt(u16, buf[14..16], 80, .little);         // rec0 dest port
+    std.mem.writeInt(u32, buf[20..24], 4, .little);          // rec0 payload_length
+    buf[48] = 'P'; buf[49] = 'I'; buf[50] = 'N'; buf[51] = 'G';
+    const off1: usize = 48 + 4;
+    std.mem.writeInt(u32, buf[off1 + 4 .. off1 + 8], 0x0A000002, .little); // rec1 src
+    std.mem.writeInt(u16, buf[off1 + 14 .. off1 + 16], 443, .little);      // rec1 dest port
+
+    const r0 = parseRecord(&buf) orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(@as(u32, 0x0A000001), r0.source_ip);
+    try std.testing.expectEqual(@as(u16, 80), r0.dest_port);
+    try std.testing.expectEqualSlices(u8, "PING", r0.payload);
+
+    const adv0 = @sizeOf(rust_pep.WfpEventHeader) + r0.payload.len;
+    try std.testing.expectEqual(off1, adv0);
+
+    const r1 = parseRecord(buf[adv0..]) orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(@as(u32, 0x0A000002), r1.source_ip);
+    try std.testing.expectEqual(@as(u16, 443), r1.dest_port);
+    try std.testing.expectEqual(@as(usize, 0), r1.payload.len);
+}

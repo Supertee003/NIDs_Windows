@@ -71,7 +71,7 @@ static NTSTATUS AegisWfpStartupFailure(ULONG stage, NTSTATUS status)
 
 /* ====== WFP Classify Callback ======
  * Called by WFP for every inbound IPv4 transport packet.
- * Extracts 5-tuple, writes 40-byte header to ring buffer,
+ * Extracts 5-tuple, writes 48-byte header to ring buffer,
  * always permits the packet (fail-open).
  */
 void AegisWfpClassifyFn(
@@ -139,7 +139,7 @@ void AegisWfpClassifyFn(
      * payload_length = 0: user-mode reader gets 5-tuple only. */
     hdr.payload_length = 0;
 
-    /* --- Write 40-byte header to ring buffer --- */
+    /* --- Write 48-byte header to ring buffer --- */
     totalSize = sizeof(AEGIS_EVENT_HEADER);
 
     KeAcquireSpinLock(&g_RingLock, &oldIrql);

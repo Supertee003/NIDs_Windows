@@ -1,7 +1,8 @@
 /**
  * aegis_wfp.h - AEGIS WFP Callout Driver Shared Header
  *
- * 44-byte AEGIS_EVENT_HEADER (packed, Zig FFI compatible),
+ * 48-byte AEGIS_EVENT_HEADER (packed; EVT-213 reserved2 aligns the stride
+ * with the 8-byte-aligned Zig FFI consumer layout; timestamp @40),
  * IOCTL codes, device names, GUID decl, extern globals,
  * cross-file function declarations.
  */
@@ -78,7 +79,12 @@ typedef struct _AEGIS_WFP_FILTER_STATE {
      (g_RingWriteOffset - g_RingReadOffset) : \
      (g_RingBufferSize - g_RingReadOffset + g_RingWriteOffset))
 
-/* ====== Event Header (44 bytes, packed for Zig FFI) ====== */
+/* ====== Event Header (48 bytes, packed; EVT-213) ======
+ * Explicit reserved2 keeps the packed stride identical to the 8-byte
+ * aligned consumer layout (src/policy/wfp_ioctl.zig WfpEventHeader,
+ * extern struct): payload_length @20, rule_id @24, timestamp @40,
+ * total 48. The previous 44-byte packed stride shifted every record
+ * after the first for the 48-byte consumer. Do not shrink. */
 #pragma pack(push, 1)
 typedef struct _AEGIS_EVENT_HEADER {
     UINT32  event_type;     /* 0=NETWORK, 1=FILE, 2=PROCESS, 3=PIPE */
@@ -94,9 +100,11 @@ typedef struct _AEGIS_EVENT_HEADER {
     UINT32  rule_id;        /* Matched rule ID (0=none) */
     UINT32  severity;       /* 0=Low 1=Med 2=High 3=Critical */
     UINT32  reserved;       /* Reserved */
+    UINT32  reserved2;      /* Reserved - aligns timestamp to @40 (EVT-213) */
     UINT64  timestamp;      /* KeQueryPerformanceCounter */
 } AEGIS_EVENT_HEADER;
 #pragma pack(pop)
+C_ASSERT(sizeof(AEGIS_EVENT_HEADER) == 48);  /* EVT-213: consumer stride */
 
 /* ====== Ring Buffer Statistics (24 bytes, packed) ====== */
 #pragma pack(push, 1)
