@@ -1,5 +1,5 @@
 {
-  "head_sha": "a913fb57a2ce80748fe746b93d8d4b2188cb3cb0",
+  "head_sha": "d6792aae2e9fb30e2799c4049ffa1a1620e344ac",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -772,8 +772,8 @@
         "grep: no Zig or Rust caller of aegis_pep_evaluate exists outside the dormant declaration in src/forensic/policy_contract.zig",
         "runtime: the only shield symbol the running core uses is validate_payload_safety (core log: 'Rust Shield loaded: shield\\target\\release\\sec_monitor.dll')"
       ],
-      "result": "PARTIAL",
-      "finding": "The duplicate authority is now explicit and cannot be extended silently, but it is still compiled and exported. GAP-007 stays OPEN until PEP-001 removes it."
+      "result": "PASS",
+      "finding": "The duplicate authority is now explicit and cannot be extended silently, but it is still compiled and exported. GAP-007 stays OPEN until PEP-001 removes it. UPDATE (EVT-226, 2026-10-17): GAP-007 registry is CLOSED (2026-09-14; closed_by EVT-040+shield-work; resolution: shield structurally quarantined, 4/4 exit criteria met, no active enforcement path). The formal shield-crate removal remains the planned PEP-001 migration item tracked separately. Result PARTIAL -> PASS."
     },
     {
       "id": "EVT-036",
@@ -2623,8 +2623,8 @@
         "static contract pins added (E1, same class as ETW-STR-046: mingw cannot fully compile etw_native.c, canonical build is MSVC)",
         "NOT EXECUTED in this session: no command-execution tool available, so zig build test / pytest / MSVC build were not run; operator must run the full gate battery before treating this as verified"
       ],
-      "result": "PARTIAL",
-      "finding": "Bullet 5 is implemented and source-pinned but unverified at runtime: needs MSVC build of aegis_etw_helper plus a host run proving (a) valid GUIDs still start, (b) a bogus GUID returns -6 with no session, before GAP-012 can close."
+      "result": "PASS",
+      "finding": "Bullet 5 is implemented and source-pinned but unverified at runtime: needs MSVC build of aegis_etw_helper plus a host run proving (a) valid GUIDs still start, (b) a bogus GUID returns -6 with no session, before GAP-012 can close. UPDATE (EVT-226, 2026-10-17): GAP-012 CLOSED 2026-10-09 (closed_by EVT-091+092+117+118); bullet 5 proven live by the MSVC probe (EVT-117: bogus GUID refused rc -6 pre-session, registered GUIDs accepted). Result PARTIAL -> PASS."
     },
     {
       "id": "EVT-093",
@@ -2643,8 +2643,8 @@
         "4 new pins in tests/release/test_manifest_selection_rule.py (canonical dirs walked; build trees excluded; byproduct suffixes excluded; 12 legit sources kept) — pure predicate plus source facts, no build needed",
         "NOT EXECUTED in this session: no command-execution tool available, so pytest, --manifest regeneration, and clean-checkout --verify were not run; operator must execute before bullets 2-3 close"
       ],
-      "result": "PARTIAL",
-      "finding": "Rule and pins are in place with zero behavior change to the committed set. Remaining: run pytest (new pins), run --manifest on a scratch copy to diff the future set, then clean-checkout --verify. GAP-008 stays OPEN until then."
+      "result": "PASS",
+      "finding": "Rule and pins are in place with zero behavior change to the committed set. Remaining: run pytest (new pins), run --manifest on a scratch copy to diff the future set, then clean-checkout --verify. GAP-008 stays OPEN until then. UPDATE (EVT-226, 2026-10-17): GAP-008 CLOSED 2026-10-08 (closed_by EVT-102+EVT-103): hybrid set adopted (a871a32, 633 entries regenerated) and clean-clone --verify green at d0bd1a0 (597 present / 36 untracked-by-design / 0 mismatches); later lineage extended by EVT-223. Result PARTIAL -> PASS."
     },
     {
       "id": "EVT-094",
@@ -2665,8 +2665,8 @@
         "new Zig pins: quarantine receipt fail-closed (zero filter, no PEP, bad decision); dispatchWithReceipt quarantine best-effort without receipt, bogus receipt, cross-decision rejection, counter untouched; action_quarantine==65 frozen",
         "NOT EXECUTED in this session: no command-execution tool available, so zig build test was not run; operator must execute before treating as verified"
       ],
-      "result": "PARTIAL",
-      "finding": "Zig side of quarantine receipts is contracted and pinned; positive-path proof needs the Rust quarantine-enforce path plus a live PEP. Supervisor and trust chains needed no code — verified complete by source inspection with remainders precisely bounded."
+      "result": "PASS",
+      "finding": "Zig side of quarantine receipts is contracted and pinned; positive-path proof needs the Rust quarantine-enforce path plus a live PEP. Supervisor and trust chains needed no code — verified complete by source inspection with remainders precisely bounded. UPDATE (EVT-226, 2026-10-17): positive path delivered and live-validated: Rust quarantine-enforce path shipped (EVT-112 per-flow quarantine enforced end-to-end at c8463df; EVT-113 enforce() mints quarantine receipts) and live-provider behavior proven on the deployed service (EVT-136 quarantine verb reachable; EVT-138 quarantine verb validated live). Result PARTIAL -> PASS."
     },
     {
       "id": "EVT-095",
@@ -2684,8 +2684,8 @@
         "new Zig pin FED-UPLINK-095 (absent-var default is owned, content-identical, freeable)",
         "NOT EXECUTED in this session: no command-execution tool available; operator must run zig build test plus the two failing pytest tests"
       ],
-      "result": "PARTIAL",
-      "finding": "Fix is implemented, pinned, and review-clean but unexecuted. If the two pytest failures persist after this fix with AEGIS_CLUSTER absent, the gauges failure is independent and gets its own gap."
+      "result": "PASS",
+      "finding": "Fix is implemented, pinned, and review-clean but unexecuted. If the two pytest failures persist after this fix with AEGIS_CLUSTER absent, the gauges failure is independent and gets its own gap. UPDATE (EVT-226, 2026-10-17): GAP-013 CLOSED 2026-10-08 (closed_by EVT-095+EVT-096+EVT-097) by the operator gate run: zig build + zig build test clean with no test.exe abort; core reaches RUNNING on the default path (envOr crash gone). Result PARTIAL -> PASS."
     },
     {
       "id": "EVT-096",
@@ -2707,8 +2707,8 @@
         "2 source-text pins updated to the owned-return shape (pagination unavailable-branch anchor; version regex accepts the dupe wrapper)",
         "NOT EXECUTED in this session: no command-execution tool available; operator must run zig build, zig build test, then the pytest pair"
       ],
-      "result": "PARTIAL",
-      "finding": "Crash class closed by construction plus HandlerFn contract pin; the 2 source-text pins updated to the owned-return shape and green solo. test_large_control_response passes solo (0.19s) — classified full-suite load flake, not a regression: its mock-server path shares no code with this patch. EVIDENCE JSON one-liner green."
+      "result": "PASS",
+      "finding": "Crash class closed by construction plus HandlerFn contract pin; the 2 source-text pins updated to the owned-return shape and green solo. test_large_control_response passes solo (0.19s) — classified full-suite load flake, not a regression: its mock-server path shares no code with this patch. EVIDENCE JSON one-liner green. UPDATE (EVT-226, 2026-10-17): folded into the GAP-013 closure (closed_by lists EVT-096); the classified full-suite flake has not recurred - full suites green repeatedly since, latest 2026-10-17: 887 passed / 2 skipped / 27 subtests. Result PARTIAL -> PASS."
     },
     {
       "id": "EVT-097",
@@ -2726,8 +2726,8 @@
         "existing pin test_status_json_carries_traffic_gauges (failed standalone pre-fix; passes post-fix)",
         "NOT EXECUTED in this session: no command-execution tool available"
       ],
-      "result": "PARTIAL",
-      "finding": "With this fix plus the daemon starting, both 84d25fd gate failures should clear. If gauges still fail while core passes, the fallback path needs a deeper look."
+      "result": "PASS",
+      "finding": "With this fix plus the daemon starting, both 84d25fd gate failures should clear. If gauges still fail while core passes, the fallback path needs a deeper look. UPDATE (EVT-226, 2026-10-17): GAP-013 CLOSED (closed_by EVT-095+EVT-096+EVT-097); the operator gate run confirmed status carries the gauges, and live health payloads have carried packets_captured/flows_active since. Result PARTIAL -> PASS."
     },
     {
       "id": "EVT-098",
@@ -2900,8 +2900,8 @@
         "no new pins: all changes are behavior-preserving refactors, comment corrections, or doc-to-code alignment; existing suite must confirm no regression",
         "NOT EXECUTED in this session: no command-execution tool available"
       ],
-      "result": "PARTIAL",
-      "finding": "Coverage discipline now exists as a document with verdicts; the next session continues round 2 (remaining: detection/xdr/forensic depth, .github parity, root scripts) instead of re-auditing these areas."
+      "result": "PASS",
+      "finding": "Coverage discipline now exists as a document with verdicts; the next session continues round 2 (remaining: detection/xdr/forensic depth, .github parity, root scripts) instead of re-auditing these areas. UPDATE (EVT-226, 2026-10-17): round-2 remainder absorbed by the subsequent round tail - .github parity materialized (ci.yml + host-regression.yml tracked; host-regression.yml in the manifest include set) and detection/xdr/forensic depth was covered by later executed rounds. The round-1 verdict doc was a session artifact and never entered git history; its substance is the committed round-1 fixes (guards in scripts/check_summary.py + scripts/validate_operator_cli.py, tests/release/test_installer_template.py, orphan deletions in 7577641/33c2894). No re-audit item remains. Result PARTIAL -> PASS."
     },
     {
       "id": "EVT-107",
@@ -2932,8 +2932,8 @@
         "new pin test_installer_template.py (File-inside-Section, uninstall coverage, MUI/service, manifest splice placement)",
         "NOT EXECUTED in this session: no command-execution tool available; operator runs gates then commits"
       ],
-      "result": "PARTIAL",
-      "finding": "Round 1 code complete unexecuted. Orphan-script deletion and mouth shutdown path remain operator-side; everything else awaits the standard gate battery."
+      "result": "PASS",
+      "finding": "Round 1 code complete unexecuted. Orphan-script deletion and mouth shutdown path remain operator-side; everything else awaits the standard gate battery. UPDATE (EVT-226, 2026-10-17): remainders resolved - the 7 orphan scripts were deleted in the round-1 commits (7577641/33c2894) and re-deleted during EVT-108 recovery; mouth shutdown was decided (EVT-114 OS-kill with in-code comment) and the mouth fate finalized KEEP with a live start/stop cycle (EVT-151); the static-.nsi deletion item was revoked by design - installer.nsi (QUARANTINED FOSSIL) and installer/aegis.nsi (SUPERSEDED reference) stay tracked with in-file notices, pinned by test_ac4_generated_installer_outputs_ignored (DEPLOY-119), generated output gitignored. Result PARTIAL -> PASS."
     },
     {
       "id": "EVT-108",
@@ -2950,8 +2950,8 @@
         "drift detector listing exactly the nine edited walked files",
         "NOT EXECUTED in this session: recovery runs operator-side"
       ],
-      "result": "PARTIAL",
-      "finding": "Honesty requires recording own-process failures with mechanism, not just code defects. Recovery executed 2026-10-08: 12 files restored from 1fa1712, 7 scripts re-deleted, installer pins plus pagination solo green, committed 33c2894 on main with gates green post-stamp. Pending close: one confirmatory re-run of the 4 pre-refresh drift failures post-commit (fresh_deploy x3 plus drift detector) — they fail only on unrefreshed digests by mechanism, but green must be observed, not inferred."
+      "result": "PASS",
+      "finding": "Honesty requires recording own-process failures with mechanism, not just code defects. Recovery executed 2026-10-08: 12 files restored from 1fa1712, 7 scripts re-deleted, installer pins plus pagination solo green, committed 33c2894 on main with gates green post-stamp. Pending close: one confirmatory re-run of the 4 pre-refresh drift failures post-commit (fresh_deploy x3 plus drift detector) — they fail only on unrefreshed digests by mechanism, but green must be observed, not inferred. UPDATE (EVT-226, 2026-10-17): the confirmatory re-runs were performed since - fresh_deploy re-ran green live (latest EVT-220: 5/5 live fresh_deploy) and the drift detector / truth gate is green every round (latest TRUTH_VALID 2026-10-17). Result PARTIAL -> PASS."
     },
     {
       "id": "EVT-109",
@@ -3000,8 +3000,8 @@
         "4 new Go pin files listed above, hermetic except committed-fixture reads",
         "NOT EXECUTED in this session: no command-execution tool available"
       ],
-      "result": "PARTIAL",
-      "finding": "Every TEST-WORTHY backend file from the inventory is now pinned, proven-justified, or recorded with its exact verification question. The twelve-file sweep is closed pending operator execution."
+      "result": "PASS",
+      "finding": "Every TEST-WORTHY backend file from the inventory is now pinned, proven-justified, or recorded with its exact verification question. The twelve-file sweep is closed pending operator execution. UPDATE (EVT-226, 2026-10-17): operator execution performed - the sweep's pins run in every suite since; latest full suite 2026-10-17: 887 passed / 2 skipped / 27 subtests (also EVT-119 closed the one open join-tracing question from this round). Result PARTIAL -> PASS."
     },
     {
       "id": "EVT-111",
@@ -3086,8 +3086,8 @@
         "probe is operator-run only (MSVC cl command in its header comment; VS Enterprise with VC tools confirmed present on the host — needs a Developer PowerShell for cl.exe; full pytest 733 passed with zero failures in the same battery)",
         "NOT EXECUTED in this session: no command-execution tool available"
       ],
-      "result": "PARTIAL",
-      "finding": "Everything delegable is done; the remainder is operator shell (mouth build, gitleaks, deletions, probe run, redeploy) plus elevation-gated live proofs."
+      "result": "PASS",
+      "finding": "Everything delegable is done; the remainder is operator shell (mouth build, gitleaks, deletions, probe run, redeploy) plus elevation-gated live proofs. UPDATE (EVT-226, 2026-10-17): remainders resolved/superseded - the probe's verification question was answered live (EVT-117 MSVC run: bogus rc -6 pre-session); gitleaks history scan completed clean (EVT-135; .gitleaks.toml pinned); installer/aegis.nsi deletion revoked by design (tracked reference with in-file notice; DEPLOY-119 pins); driver binary rebuilt and re-signed (EVT-213; single current drivers/wfp_callout/aegis_wfp.sys on disk); redeploy + elevation-gated live proofs delivered by later E5 rounds. Result PARTIAL -> PASS."
     },
     {
       "id": "EVT-115",
@@ -5788,12 +5788,34 @@
         "admin-evidence/web001-live-20261017/crosscheck.json",
         "EVIDENCE_INDEX.json"
       ]
+    },
+    {
+      "id": "EVT-226",
+      "title": "Backlog audit: 12 stale non-PASS entries reconciled with the closed GAP registry (EVT-035, EVT-092..EVT-114) - zero non-PASS entries remain",
+      "level": "E2",
+      "component": "process+evidence",
+      "flow_id": "DATA-001",
+      "head_sha": "d6792aa",
+      "timestamp": "2026-10-17",
+      "result": "PASS",
+      "command": "cross-read: non-PASS scan vs GAP-* registry (status/closed_by/closed_at/resolution) vs later EVT closure evidence ; python -m pytest tests -q",
+      "expected": "every non-PASS entry is either reconciled to PASS against named closure evidence or explicitly maintained with a live reason; no stale PENDING/PARTIAL remains",
+      "actual": "PASS - 12 entries reconciled and flipped with UPDATE notes (EVT-035, EVT-092, EVT-093, EVT-094, EVT-095, EVT-096, EVT-097, EVT-106, EVT-107, EVT-108, EVT-110, EVT-114); post-audit non-PASS scan = 0; full suite 887 passed / 2 skipped / 27 subtests",
+      "finding": "The EVI ledger is now fully reconciled: all 21 GAP-* registry entries are CLOSED and every stale PARTIAL entry carries its closure pointer (registry closure and/or later executed evidence). The only open project items are forward-looking: the planned PEP-001 migration slice (formal shield-crate removal, per GAP-007 resolution) and operator-side optional items (NSIS drill, code signing).",
+      "description": "Method: (1) scan EVI for result not PASS - found 12 (EVT-035 + the EVT-092..114 era); (2) cross-read each against the GAP registry (status/closed_by/closed_at/resolution) and later executed entries; (3) append UPDATE notes and flip result so no stale non-PASS remains; (4) recount summary. Per-entry resolutions: EVT-035 -> GAP-007 CLOSED (EVT-040+shield-work; PEP-001 removal separate); EVT-092 -> GAP-012 CLOSED (EVT-117 live MSVC proof); EVT-093 -> GAP-008 CLOSED (EVT-102+103, clean-clone green d0bd1a0); EVT-094 -> quarantine positive path (EVT-112/113) + live validation (EVT-136/138); EVT-095/096/097 -> GAP-013 CLOSED by operator gate run; EVT-106/107 -> round-2 remainder absorbed (.github parity present; orphan deletions in 7577641/33c2894; mouth KEEP EVT-151; .nsi deletion revoked by the DEPLOY-119 tracked-template decision); EVT-108 -> fresh_deploy 5/5 live (EVT-220) + drift/truth green every round; EVT-110 -> pins execute every suite (EVT-119 closed the join-tracing question); EVT-114 -> probe answered (EVT-117), gitleaks clean (EVT-135), driver rebuilt/re-signed (EVT-213). Honest notes: docs/COVERAGE_SWEEP.md (named by EVT-106/107) was a session artifact never committed - its substance is the committed round-1 fixes; result flips are completion edits (append-only UPDATE text + status flip), matching the WEB-001 precedent from EVT-225.",
+      "tests": [
+        "python -m pytest tests -q -> 887 passed, 2 skipped, 27 subtests passed",
+        "post-audit non-PASS scan -> 0 entries"
+      ],
+      "files_changed": [
+        "EVIDENCE_INDEX.json"
+      ]
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
-    "E2_count": 114,
+    "E2_count": 115,
     "E3_count": 8,
     "E4_count": 14,
     "E5_count": 81,
