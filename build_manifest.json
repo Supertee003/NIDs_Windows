@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "bd7122c",
+  "source_commit": "eb25ec1",
   "build_date": "2026-10-13T01:11:10.065507+00:00",
   "build_host": "windows",
   "platform": {
@@ -1039,7 +1039,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18564,
-      "sha256": "f3b5512c92228ed44b80262dcc27d7eb3750b104df9633ba22cb3a60e2d996a9",
+      "sha256": "9213e897873e72b6007afd8fef8e15755a5b69e6bed95e8274636a1aca040831",
       "language": "json"
     },
     {
@@ -1721,6 +1721,12 @@
       "language": "zig"
     },
     {
+      "path": "src/capture/wfp_telemetry.zig",
+      "size": 9543,
+      "sha256": "8cf4e8167cb05f6eb7d499e04642ea9064aa60355c5dcde19147735e744f1508",
+      "language": "zig"
+    },
+    {
       "path": "src/capture/windows_capture.zig",
       "size": 11376,
       "sha256": "72ea384cfb98437110596c5c825da267fb85e63fa167247917c1f9b3e51d1690",
@@ -1800,8 +1806,8 @@
     },
     {
       "path": "src/control/handler_registry.zig",
-      "size": 136005,
-      "sha256": "e21e350f48299b173aaa599dfda9afee6058f177b332eff163690729c8cde31d",
+      "size": 136058,
+      "sha256": "657a909c92d9f385cb5a5b604d7258dc6873aef206aac4df90ad7c09d05e723d",
       "language": "zig"
     },
     {
@@ -1818,8 +1824,8 @@
     },
     {
       "path": "src/control/state_machine.zig",
-      "size": 21798,
-      "sha256": "2f7b71d0998f4466fe8ebda3830b1f92fa1fd412cd629d96de1eb59a20023bcc",
+      "size": 21855,
+      "sha256": "9380d6deaa425b3f62c0655cfbce014bb0c0e96e4f3bccbd268264b828a485a2",
       "language": "zig"
     },
     {
@@ -2286,8 +2292,8 @@
     },
     {
       "path": "src/pipeline/runtime_state.zig",
-      "size": 11277,
-      "sha256": "a3ad76354214ee85e8a8f7963484da254f2dcd971be175fcc7917077a7a7acb6",
+      "size": 12289,
+      "sha256": "1497894858151b3be9e6019b7af402f2f768410f6c3babb736659f783fdc90f4",
       "language": "zig"
     },
     {
@@ -3720,8 +3726,8 @@
     },
     {
       "path": "tools/release_engineering.py",
-      "size": 24993,
-      "sha256": "d8c67628736e0c07e545b60bece00ce7e6bddd998eb351dea54f315f5ba9fdf3",
+      "size": 26302,
+      "sha256": "04ee00f4284655d5eeacdfd24484241e2bae275443c2097ed5d520153e1bd42f",
       "language": "python/cython"
     },
     {

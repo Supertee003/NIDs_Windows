@@ -654,7 +654,7 @@ const handlers = struct {
     fn eventsTail(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
         const queue_drops = state_mod.g_queue_drops.load(.acquire);
         return std.fmt.allocPrint(a, "{{\"last_event_ms\":{},\"queue_drops\":{}}}", .{
-            state_mod.g_last_event_ms.load(.acquire),
+            state_mod.lastEventAgeMs(state_mod.g_last_event_ms.load(.acquire), std.time.milliTimestamp()),
             queue_drops,
         }) catch null;
     }

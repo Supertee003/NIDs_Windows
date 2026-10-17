@@ -1,5 +1,5 @@
 {
-  "head_sha": "bd7122ccdf3c64c0fe86051548df7aeaa0f89bad",
+  "head_sha": "eb25ec13a18d35dda6f70046a064466bd553e838",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5693,12 +5693,61 @@
       "files_changed": [
         "EVIDENCE_INDEX.json"
       ]
+    },
+    {
+      "id": "EVT-222",
+      "title": "last_event_ms section 4.1 conformance: control-plane emitters switched from epoch-ms leak to contract AGE semantics (pure helper + zig pin; full emitter audit across languages)",
+      "level": "E2",
+      "component": "runtime+control+contract",
+      "flow_id": "DATA-001",
+      "head_sha": "eb25ec1",
+      "timestamp": "2026-10-17",
+      "result": "PASS",
+      "command": "zig build test; python -m pytest tests -q",
+      "expected": "control-plane health (state_machine) and eventsTail (handler_registry) emit last_event_ms as an AGE (ms since the last processed event) per RUNTIME_CONTRACT.md section 4.1, matching the brain / nids_main probe / bridge / mouth emitters",
+      "actual": "PASS - pure helper runtime_state.lastEventAgeMs(last_ms, now_ms) added; both leak sites converted; zig pin green (zig build test exit 0); full python suite 883 passed / 2 skipped / 27 subtests; live binary refresh deferred to the next deploy window (labeled, see finding)",
+      "finding": "The tracked deferred decision 'normalize emitter vs amend section 4.1' is resolved in favor of the contract: section 4.1 defines last_event_ms as the time SINCE the component processed (or emitted) its last event (example 412; stale = >5x health_interval = soft failure) - AGE semantics. Every emitter now conforms; no spec change needed.",
+      "description": "(1) CONTRACT: docs/runtime/RUNTIME_CONTRACT.md section 4.1 (line 164) - 'last_event_ms is the time since the component processed (or emitted) its last event'; example value 412; a stale value (> 5 x health_interval) is a soft failure. That is an AGE in ms, never an absolute timestamp. (2) EMITTER AUDIT (all languages, this round): Python brain (brain/windows_brain.py:669) emits an age; the nids_main probe (src/core/nids_main.zig:404, GetTickCount64-based) emits an age; bridge (bridge/aegis_bridge_main.cpp:141-150) and mouth (mouth/windows_sec_monitor.rs:194-218) subtract monotonic ticks (ages); nose/main.go and go/aggregator emit static 0 (= no tracked events yet). The TWO control-plane emitters leaked the raw store: src/control/state_machine.zig health aggregator + src/control/handler_registry.zig eventsTail both emitted runtime_state.g_last_event_ms, which src/pipeline/event_processor.zig stores as std.time.milliTimestamp() - epoch-ms. The live payload showed 1792229236671 (epoch ms) where the contract wants an age. (3) FIX: new pure helper runtime_state.lastEventAgeMs(last_ms, now_ms) (returns 0 when unset, clock-not-advanced or skew; else now-last) + both emit sites convert at emit time; the stored value stays absolute epoch-ms (single source of 'when'), the wire value conforms. (4) PIN: zig test 'lastEventAgeMs: section 4.1 age semantics, clamped (EVT-222)' covers unset / just-now / 250ms-ago / clock-skew / defensive-negative; zig build test exit 0. (5) HONESTY / OUT OF SCOPE: the deployed binary (65CCD7CD era) still emits epoch until the next deploy window refreshes the attested set - live observation of the new wire behavior is a follow-up (operator block offered this round); subsystem-level last_event_ms remains 0 because state_machine.recordEvent is never called (pre-existing dead API, noted not fixed); nose/aggregator static 0 unchanged (no event-tracking surface yet).",
+      "tests": [
+        "zig build test -> exit 0 (includes the new lastEventAgeMs pin)",
+        "python -m pytest tests -q -> 883 passed, 2 skipped, 27 subtests passed",
+        "static audit: all last_event_ms emitters across zig/python/cpp/rust/go classified (2 leaks found, both fixed; rest already ages or static 0)"
+      ],
+      "files_changed": [
+        "src/pipeline/runtime_state.zig",
+        "src/control/state_machine.zig",
+        "src/control/handler_registry.zig"
+      ]
+    },
+    {
+      "id": "EVT-223",
+      "title": "Artifact-set reconciliation closed: 611 -> 612 via new --adopt-missing (src/capture/wfp_telemetry.zig adopted; dropped 0; SBOM/manifest delta closed)",
+      "level": "E2",
+      "component": "release+tooling+manifest",
+      "flow_id": "DATA-001",
+      "head_sha": "eb25ec1",
+      "timestamp": "2026-10-17",
+      "result": "PASS",
+      "command": "python tools/release_engineering.py --refresh-digests --adopt-missing",
+      "expected": "the recorded 611-entry artifact set grows by exactly the releasable files collect_artifacts() walks and the set lacks (expected: src/capture/wfp_telemetry.zig), nothing dropped, end-to-end verify 612/612 OK",
+      "actual": "PASS - artifacts kept: 612; digests updated: 4 (this round's edited sources); dropped: 0; adopted: 1 (src/capture/wfp_telemetry.zig); verify: 612 present, 0 missing, OK @ source_commit=eb25ec1",
+      "finding": "The EVT-220 reconciliation item (build_manifest 611 vs fresh-collect 612; refresh never adds by design) is closed with an explicit, pinned, printed adoption path: --refresh-digests --adopt-missing. The measured delta is exactly +1 add / 0 drops / 0 other adds, so the SBOM (612 packages) and the manifest now agree. Full-set regeneration (--manifest) was NOT used - it remains the owner-approved, auditable break per the tool docstring.",
+      "description": "(1) GAP (quantified EVT-220): recorded build_manifest set was 611 while a fresh collect_artifacts() walk saw 612 - delta = src/capture/wfp_telemetry.zig (canonical source added EVT-202/211/213); refresh-digests never adds entries by design; SBOM (--sbom collects fresh) already had 612. (2) DECISION: keep the stable-set guarantee and add an explicit reviewed growth path instead of provenance-destroying full regeneration: refresh_digests(commit, adopt_missing=False) + CLI --adopt-missing. With the flag the set may GROW by exactly the releasable files collect_artifacts() finds and the set lacks - each adoption printed, entries digest-recorded and re-sorted, verify runs at the end; without the flag refresh still never changes the set; drops unchanged and always reported. (3) PINS: tests/release/test_refresh_adopt.py - 3 tests against a monkeypatched tmp ROOT/MANIFEST_PATH (no tracked-tree writes): flag-less refresh keeps the set (source_commit re-stamped); adopt adds exactly src/new.zig with correct digest/language and prints 'adopted: 1' + 'adopted: src/new.zig'; adopt is idempotent. (4) LIVE RUN: see command/actual above; the four digest-updated entries are exactly this round's edited sources (src/control/handler_registry.zig, src/control/state_machine.zig, src/pipeline/runtime_state.zig, tools/release_engineering.py). (5) HONESTY: tests/ and docs/ stay out of the artifact set by the selection rule (unchanged); the adopted entry carries the standard per-file digest/size/language fields; future new canonical sources get the same one-command, printed adoption.",
+      "tests": [
+        "tests/release/test_refresh_adopt.py -> 3 passed (flag-less stability; exact adoption incl. digest/language + printed audit line; idempotence)",
+        "live: python tools/release_engineering.py --refresh-digests --adopt-missing -> exit 0, 612/612 verify OK"
+      ],
+      "files_changed": [
+        "tools/release_engineering.py",
+        "tests/release/test_refresh_adopt.py",
+        "build_manifest.json"
+      ]
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
-    "E2_count": 112,
+    "E2_count": 114,
     "E3_count": 7,
     "E4_count": 14,
     "E5_count": 80,

@@ -17,8 +17,11 @@ Artifact-set selection rule (GAP-008, hybrid settlement EVT-093), in priority or
      normalized length so size and digest always agree.
 Modes: --manifest rebuilds the whole set (header stamps + full walk);
 --refresh-digests only re-records digests/sizes for already-listed
-artifacts (never adds or drops); --verify fails on any digest/size
-mismatch (missing files count as not-built-locally, not as failure).
+artifacts (never adds or drops); --refresh-digests --adopt-missing is the
+explicit, reviewed growth path that records releasable files the set lacks
+(printed and verified, never silent; EVT-223); --verify fails on any
+digest/size mismatch (missing files count as not-built-locally, not as
+failure).
 Known limitation (honest): the walk sees the working tree, not the git
 index, so gitignored build products under walked dirs (bridge/build/*,
 brain cython products) were collected when present under the pre-EVT-093 rule. Settled a871a32 (EVT-102): the committed 633-entry set IS this rule output — canonical sources added — an explicit, owned, one-time break, not silent drift (supersedes EVT-057); the adopted counts are the audit trail.
@@ -27,6 +30,7 @@ That regeneration was the owner-approved, auditable break — not silent cleanup
 Usage:
     python tools/release_engineering.py --manifest
     python tools/release_engineering.py --sbom
+    python tools/release_engineering.py --refresh-digests --adopt-missing
     python tools/release_engineering.py --package --version 5.0.0
 """
 from __future__ import annotations
@@ -422,7 +426,7 @@ def verify_manifest() -> int:
     return 0
 
 
-def refresh_digests(commit: str) -> int:
+def refresh_digests(commit: str, adopt_missing: bool = False) -> int:
     """Re-record digests for artifacts ALREADY listed in build_manifest.json.
 
     `--manifest` re-derives the whole artifact set from `collect_artifacts()`,
@@ -433,12 +437,16 @@ def refresh_digests(commit: str) -> int:
 
     This mode is the bounded alternative for a reviewed local change: it keeps
     the recorded artifact set exactly as-is, refreshes only digests/sizes, drops
-    entries whose file is gone, and re-stamps source_commit. The artifact-set
-    reconciliation is tracked separately as a build-truth task. Release-commit
-    rule (EVT-103): runtime_manifest.json is the ONLY stamp-carrying file
-    inside the artifact set — always commit it together with
-    build_manifest.json (both parent-stamped) or clean-checkout --verify
-    fails on the lagging stamp. Other maps stay dirty by design.
+    entries whose file is gone, and re-stamps source_commit. With
+    ``adopt_missing`` (EVT-223) the set may also GROW by exactly the releasable
+    files ``collect_artifacts()`` walks and the set lacks — each one printed,
+    so adopting a newly added canonical source is an explicit, audited act and
+    never silent drift (the full-set `--manifest` reconciliation remains an
+    owner-approved break). Release-commit rule (EVT-103):
+    runtime_manifest.json is the ONLY stamp-carrying file inside the artifact
+    set — always commit it together with build_manifest.json (both
+    parent-stamped) or clean-checkout --verify fails on the lagging stamp.
+    Other maps stay dirty by design.
     """
     if not MANIFEST_PATH.exists():
         print("build_manifest.json not found - run --manifest first", file=sys.stderr)
@@ -459,16 +467,28 @@ def refresh_digests(commit: str) -> int:
             art["sha256"] = digest
             art["size"] = size
         kept.append(art)
+    adopted: List[str] = []
+    if adopt_missing:
+        recorded = {a["path"] for a in kept}
+        for art in collect_artifacts():
+            if art["path"] in recorded:
+                continue
+            recorded.add(art["path"])
+            kept.append(art)
+            adopted.append(art["path"])
+        kept.sort(key=lambda a: a["path"])
     manifest["artifacts"] = kept
     manifest["source_commit"] = commit
     MANIFEST_PATH.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
                              encoding="utf-8")
     print(f"Refreshed {MANIFEST_PATH}")
-    print(f"   artifacts kept: {len(kept)}; digests updated: {len(updated)}; dropped: {len(dropped)}")
+    print(f"   artifacts kept: {len(kept)}; digests updated: {len(updated)}; dropped: {len(dropped)}; adopted: {len(adopted)}")
     for path in updated:
         print(f"   updated: {path}")
     for path in dropped:
         print(f"   dropped: {path}")
+    for path in adopted:
+        print(f"   adopted: {path}")
     return verify_manifest()
 
 
@@ -480,14 +500,17 @@ def main() -> int:
     parser.add_argument("--verify", action="store_true", help="Verify artifact digests vs manifest")
     parser.add_argument("--refresh-digests", action="store_true",
                         help="Re-record digests for already-manifested artifacts (no artifact-set change)")
+    parser.add_argument("--adopt-missing", action="store_true",
+                        help="With --refresh-digests: also record releasable files collect_artifacts() "
+                             "finds but the manifest lacks (explicit artifact-set growth, printed; never silent)")
     parser.add_argument("--version", default=VERSION)
     args = parser.parse_args()
 
     if args.verify:
         return verify_manifest()
 
-    if args.refresh_digests:
-        return refresh_digests(git_source_commit())
+    if args.refresh_digests or args.adopt_missing:
+        return refresh_digests(git_source_commit(), adopt_missing=args.adopt_missing)
 
     if args.manifest or args.sbom or args.package:
         manifest = generate_manifest(args.version)

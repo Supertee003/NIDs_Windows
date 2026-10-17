@@ -174,6 +174,24 @@ pub var g_nose_non_monotonic_event_ids = std.atomic.Value(u64).init(0);
 /// `last_event_ms` in RUNTIME_CONTRACT.md §4.1 is real data, never a placeholder.
 pub var g_last_event_ms = std.atomic.Value(i64).init(0);
 
+/// §4.1 wire conformance (EVT-222): on the wire `last_event_ms` is the AGE
+/// (ms since the last processed event), never an absolute timestamp. The
+/// stored value above is epoch-ms, so every emitter converts at emit time
+/// through this helper (the Python brain and the nids_main probe already
+/// emit ages; the two control-plane emitters leaked epoch-ms).
+pub fn lastEventAgeMs(last_ms: i64, now_ms: i64) i64 {
+    if (last_ms <= 0 or now_ms <= last_ms) return 0;
+    return now_ms - last_ms;
+}
+
+test "lastEventAgeMs: §4.1 age semantics, clamped (EVT-222)" {
+    try std.testing.expectEqual(@as(i64, 0), lastEventAgeMs(0, 1_000)); // nothing yet
+    try std.testing.expectEqual(@as(i64, 0), lastEventAgeMs(1_000, 1_000)); // just now
+    try std.testing.expectEqual(@as(i64, 250), lastEventAgeMs(1_000, 1_250)); // 250ms ago
+    try std.testing.expectEqual(@as(i64, 0), lastEventAgeMs(2_000, 1_500)); // skew -> 0
+    try std.testing.expectEqual(@as(i64, 0), lastEventAgeMs(-7, 1_000)); // defensive
+}
+
 // PATCH-14: Rules reload mechanism.
 // The pipeline thread reads the active AC automaton pointer; the control
 // pipe thread rebuilds a new AC and swaps the pointer atomically.
