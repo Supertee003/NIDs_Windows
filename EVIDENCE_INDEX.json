@@ -1,5 +1,5 @@
 {
-  "head_sha": "eb25ec13a18d35dda6f70046a064466bd553e838",
+  "head_sha": "8aaec2a4546a77ce6ec871a7193115a6492c7753",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5707,7 +5707,7 @@
       "expected": "control-plane health (state_machine) and eventsTail (handler_registry) emit last_event_ms as an AGE (ms since the last processed event) per RUNTIME_CONTRACT.md section 4.1, matching the brain / nids_main probe / bridge / mouth emitters",
       "actual": "PASS - pure helper runtime_state.lastEventAgeMs(last_ms, now_ms) added; both leak sites converted; zig pin green (zig build test exit 0); full python suite 883 passed / 2 skipped / 27 subtests; live binary refresh deferred to the next deploy window (labeled, see finding)",
       "finding": "The tracked deferred decision 'normalize emitter vs amend section 4.1' is resolved in favor of the contract: section 4.1 defines last_event_ms as the time SINCE the component processed (or emitted) its last event (example 412; stale = >5x health_interval = soft failure) - AGE semantics. Every emitter now conforms; no spec change needed.",
-      "description": "(1) CONTRACT: docs/runtime/RUNTIME_CONTRACT.md section 4.1 (line 164) - 'last_event_ms is the time since the component processed (or emitted) its last event'; example value 412; a stale value (> 5 x health_interval) is a soft failure. That is an AGE in ms, never an absolute timestamp. (2) EMITTER AUDIT (all languages, this round): Python brain (brain/windows_brain.py:669) emits an age; the nids_main probe (src/core/nids_main.zig:404, GetTickCount64-based) emits an age; bridge (bridge/aegis_bridge_main.cpp:141-150) and mouth (mouth/windows_sec_monitor.rs:194-218) subtract monotonic ticks (ages); nose/main.go and go/aggregator emit static 0 (= no tracked events yet). The TWO control-plane emitters leaked the raw store: src/control/state_machine.zig health aggregator + src/control/handler_registry.zig eventsTail both emitted runtime_state.g_last_event_ms, which src/pipeline/event_processor.zig stores as std.time.milliTimestamp() - epoch-ms. The live payload showed 1792229236671 (epoch ms) where the contract wants an age. (3) FIX: new pure helper runtime_state.lastEventAgeMs(last_ms, now_ms) (returns 0 when unset, clock-not-advanced or skew; else now-last) + both emit sites convert at emit time; the stored value stays absolute epoch-ms (single source of 'when'), the wire value conforms. (4) PIN: zig test 'lastEventAgeMs: section 4.1 age semantics, clamped (EVT-222)' covers unset / just-now / 250ms-ago / clock-skew / defensive-negative; zig build test exit 0. (5) HONESTY / OUT OF SCOPE: the deployed binary (65CCD7CD era) still emits epoch until the next deploy window refreshes the attested set - live observation of the new wire behavior is a follow-up (operator block offered this round); subsystem-level last_event_ms remains 0 because state_machine.recordEvent is never called (pre-existing dead API, noted not fixed); nose/aggregator static 0 unchanged (no event-tracking surface yet).",
+      "description": "(1) CONTRACT: docs/runtime/RUNTIME_CONTRACT.md section 4.1 (line 164) - 'last_event_ms is the time since the component processed (or emitted) its last event'; example value 412; a stale value (> 5 x health_interval) is a soft failure. That is an AGE in ms, never an absolute timestamp. (2) EMITTER AUDIT (all languages, this round): Python brain (brain/windows_brain.py:669) emits an age; the nids_main probe (src/core/nids_main.zig:404, GetTickCount64-based) emits an age; bridge (bridge/aegis_bridge_main.cpp:141-150) and mouth (mouth/windows_sec_monitor.rs:194-218) subtract monotonic ticks (ages); nose/main.go and go/aggregator emit static 0 (= no tracked events yet). The TWO control-plane emitters leaked the raw store: src/control/state_machine.zig health aggregator + src/control/handler_registry.zig eventsTail both emitted runtime_state.g_last_event_ms, which src/pipeline/event_processor.zig stores as std.time.milliTimestamp() - epoch-ms. The live payload showed 1792229236671 (epoch ms) where the contract wants an age. (3) FIX: new pure helper runtime_state.lastEventAgeMs(last_ms, now_ms) (returns 0 when unset, clock-not-advanced or skew; else now-last) + both emit sites convert at emit time; the stored value stays absolute epoch-ms (single source of 'when'), the wire value conforms. (4) PIN: zig test 'lastEventAgeMs: section 4.1 age semantics, clamped (EVT-222)' covers unset / just-now / 250ms-ago / clock-skew / defensive-negative; zig build test exit 0. (5) HONESTY / OUT OF SCOPE: the deployed binary (65CCD7CD era) still emits epoch until the next deploy window refreshes the attested set - live observation of the new wire behavior is a follow-up (operator block offered this round); subsystem-level last_event_ms remains 0 because state_machine.recordEvent is never called (pre-existing dead API, noted not fixed); nose/aggregator static 0 unchanged (no event-tracking surface yet).\n\nUPDATE (EVT-224, 2026-10-17, same day): the deferred live step is delivered - the operator refresh window deployed the current build (aegis_nids.exe 14A9F7C0...) and the health payload now shows last_event_ms=16 (AGE) where pre-refresh it was 1792229236671 (epoch-ms). Section 4.1 conformance is live-observed (E5 via EVT-224), not only unit-pinned.",
       "tests": [
         "zig build test -> exit 0 (includes the new lastEventAgeMs pin)",
         "python -m pytest tests -q -> 883 passed, 2 skipped, 27 subtests passed",
@@ -5742,6 +5742,28 @@
         "tests/release/test_refresh_adopt.py",
         "build_manifest.json"
       ]
+    },
+    {
+      "id": "EVT-224",
+      "title": "Runtime refresh window executed (operator): deployed set = current source build (nids 14A9F7C0 / ipc 838281DA), last_event_ms=16 AGE live-observed - EVT-222 E5 follow-up closed same day",
+      "level": "E5",
+      "component": "ops+runtime+contract",
+      "flow_id": "DATA-001",
+      "head_sha": "8aaec2a",
+      "timestamp": "2026-10-17",
+      "result": "PASS",
+      "command": "elevated PS: .pre-EVT-222 backups; Stop-Service AegisNids -Force; Copy-Item zig-out->runtime (aegis_nids.exe + aegis_ipc.dll); Start-Service; Get-FileHash; .\\scripts\\aegis.ps1 health",
+      "expected": "deployed runtime equals the current source build (14A9F7C0 exe / 838281DA ipc); service RUNNING; health green; last_event_ms emitted as an AGE per RUNTIME_CONTRACT section 4.1 (not epoch-ms)",
+      "actual": "PASS - deployed hashes match the build byte-identical; AegisNids RUNNING as PID 9084; health state RUNNING / defcon 3 HIGH / uptime 5469 ms / last_event_ms=16 (AGE; pre-refresh payload showed epoch 1792229236671); workers failed NO (all 6 READY); rust_pep READY canonical sole_enforcement_authority; endpoint ownership CLEAR; exactly_once dup 0; counters errors 0",
+      "finding": "The EVT-222 'live observation deferred to the next deploy window' follow-up is closed the same day: the refreshed deployed binary emits last_event_ms as an age (16 ms) instead of an epoch timestamp, so section 4.1 conformance is now live-observed (E5), not only unit-pinned. The deployed set now equals the current source build; the pre-refresh binaries are preserved as .pre-EVT-222 files for a byte-exact rollback.",
+      "description": "(1) SCOPE: exactly two files copied (aegis_nids.exe + aegis_ipc.dll); aegis_pep.dll, WFP driver, configs, nose untouched by design; .pre-EVT-222 pre-copies were made first (rollback path). (2) DOUBLE VERIFY (operator capture + agent re-check): deployed nids = 14A9F7C0AA3C6ADAA4596F14B11269E28A2C798F78D332CE8ABA8CB2E6D37A43 and ipc = 838281DA1F06511BD07D4DD4D24A9FE55E94460D279E4F232FF4295A80D3B98C, both byte-identical to zig-out\\bin; backups verified present (65CCD7CD... exe / 95E4F5B1... ipc); sc query + Get-Process re-confirmed AegisNids RUNNING PID 9084; aegis-nose PID 21568 untouched; deployed aegis_pep.dll 617FA3C7... unchanged; deployed configs unchanged (configs\\Rules.json D7F110F6..., configs\\policies.json B7224FA0... - identical to the EVT-221 post-drill values). (3) SECTION 4.1 LIVE: health last_event_ms = 16 (age ms) at +5 s uptime - the contract-conformant value from the fixed emitters; subsystem-level last_event_ms remain 0 (dead recordEvent, pre-noted in EVT-222; unchanged, out of scope). (4) HONEST OBSERVATIONS (non-defects): (a) Stop-Service printed 'Waiting for service to stop...' three times - the daemon needed a few seconds to shut down; the stop completed cleanly (same restart pattern as the EVT-221 drill); (b) restart-window traffic: nose read 39 / submitted 8 / dropped 31 / pipe errors 0, packets captured 8 - consistent with the EVT-221-recorded restart-window drops (nose submits while the fresh core is still starting; no error surface, not a defect); (c) tier3 artifact_path still resolves the repo zig-out pep (D:\\NIDs_Windows\\zig-out\\bin\\aegis_pep.dll) - the pre-existing labeled observation (byte-identical 617FA3C7 to the installed copy), unchanged by this window. (5) ROLLBACK REMAINS ARMED: copying the two .pre-EVT-222 files back + restarting restores the previous deployed set byte-exact; normal operation is green without it.",
+      "tests": [
+        "operator live capture: hash table (both files) + full health JSON (see actual/finding) + worker readiness block",
+        "agent re-verify: deployed/zig-out hash equality (4 files), .pre-EVT-222 backups present, sc query RUNNING, Get-Process aegis_nids PID 9084 + aegis-nose PID 21568, deployed pep + configs byte-unchanged"
+      ],
+      "files_changed": [
+        "EVIDENCE_INDEX.json"
+      ]
     }
   ],
   "evidence_level_summary": {
@@ -5750,7 +5772,7 @@
     "E2_count": 114,
     "E3_count": 7,
     "E4_count": 14,
-    "E5_count": 80,
+    "E5_count": 81,
     "E6_count": 0,
     "E7_count": 1
   }
