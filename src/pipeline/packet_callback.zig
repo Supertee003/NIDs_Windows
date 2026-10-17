@@ -109,18 +109,29 @@ pub fn captureThread() void {
     adapter.running.store(true, .release);
     diag.info("Npcap capture loop starting", .{});
     while (adapter.running.load(.acquire) and !state.g_stop_requested.load(.acquire)) {
-        var hdr: npcap.pcap_pkthdr = undefined;
-        var data_ptr: [*]const u8 = undefined;
-        const rc = npcap.pcap_next_ex(adapter.handle.?, &hdr, &data_ptr);
+        // EVT-216: pcap_next_ex publishes pointers; read through them.
+        // The old one-indirection-short declaration left caplen/len
+        // unwritten (0xAA safety fill >= 1500) and padded every window.
+        var hdr_ptr: ?*const npcap.pcap_pkthdr = null;
+        var data_ptr: ?[*]const u8 = null;
+        const rc = npcap.pcap_next_ex(adapter.handle.?, &hdr_ptr, &data_ptr);
         if (rc == 0) continue;
         if (rc < 0) {
             diag.err("pcap_next_ex error: {}", .{rc});
             break;
         }
-        const slice = data_ptr[0..hdr.caplen];
+        const hdr = hdr_ptr orelse {
+            adapter.packets_dropped += 1;
+            continue;
+        };
+        const data = data_ptr orelse {
+            adapter.packets_dropped += 1;
+            continue;
+        };
+        const slice = data[0..hdr.caplen];
         adapter.packets_captured += 1;
         diag.metrics.packets_captured.inc();
-        packetCallback(undefined, &hdr, slice);
+        packetCallback(undefined, hdr, slice);
     }
     diag.info("capture thread stopped: captured={}, dropped={}", .{
         adapter.packets_captured, adapter.packets_dropped,

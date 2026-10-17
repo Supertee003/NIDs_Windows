@@ -30,7 +30,21 @@ extern "c" fn pcap_set_snaplen(p: *pcap_t, snaplen: c_int) c_int;
 extern "c" fn pcap_set_promisc(p: *pcap_t, promisc: c_int) c_int;
 extern "c" fn pcap_set_timeout(p: *pcap_t, to_ms: c_int) c_int;
 extern "c" fn pcap_set_buffer_size(p: *pcap_t, buffer_size: c_int) c_int;
-pub extern "c" fn pcap_next_ex(p: *pcap_t, hdr: *pcap_pkthdr, data: *[*]const u8) c_int;
+// EVT-216 (RB-021 follow-up): Npcap SDK pcap/pcap.h:574 declares
+//   PCAP_API int pcap_next_ex(pcap_t *, struct pcap_pkthdr **, const u_char **);
+// Both out-params are POINTER-TO-POINTER: the DLL stores its own header
+// and data pointers into the caller's variables; the caller reads through
+// them. The previous declaration took `*pcap_pkthdr` (one indirection
+// short): the returned header pointer landed in the first 8 bytes of our
+// struct, and caplen/len (offsets 8/12) were never written -- in a
+// safety-checked build they read the 0xAA undefined fill (2863311530),
+// padding every direct-capture window to the 1500-byte queue cap and
+// letting trailing buffer bytes match text rules (RB-021 lab anomaly:
+// a plain frame matching R9064 via a following frame's ;whoami bytes).
+// Same shape as npcap_capture.zig's PcapNextExFn; the header behind the
+// pointer is the 16-byte layout below (live-measured 2026-10-17:
+// caplen == len == true frame size on captured frames).
+pub extern "c" fn pcap_next_ex(p: *pcap_t, hdr: *?*const pcap_pkthdr, data: *?[*]const u8) c_int;
 extern "c" fn pcap_close(p: *pcap_t) void;
 extern "c" fn pcap_geterr(p: *pcap_t) [*:0]const u8;
 extern "c" fn pcap_datalink(p: *pcap_t) c_int;
@@ -234,19 +248,31 @@ pub const NpcapAdapter = struct {
         self.running.store(true, .release);
         diag.info("capture loop starting on {s}", .{std.mem.sliceTo(&self.device, 0)});
         while (self.running.load(.acquire)) {
-            var hdr: pcap_pkthdr = undefined;
-            var data_ptr: [*]const u8 = undefined;
-            const rc = pcap_next_ex(h, &hdr, &data_ptr);
+            // EVT-216: both out-params are pointers the DLL publishes;
+            // read through them, never from a local header struct.
+            var hdr_ptr: ?*const pcap_pkthdr = null;
+            var data_ptr: ?[*]const u8 = null;
+            const rc = pcap_next_ex(h, &hdr_ptr, &data_ptr);
             if (rc == 0) continue; // timeout, no packet
             if (rc < 0) {
                 diag.err("pcap_next_ex returned {d}", .{rc});
                 self.packets_dropped += 1;
                 break;
             }
-            const slice = data_ptr[0..hdr.caplen];
+            // rc == 1: both pointers are set. A missing one is a drop,
+            // not a reason to slice stale memory.
+            const hdr = hdr_ptr orelse {
+                self.packets_dropped += 1;
+                continue;
+            };
+            const data = data_ptr orelse {
+                self.packets_dropped += 1;
+                continue;
+            };
+            const slice = data[0..hdr.caplen];
             self.packets_captured += 1;
             diag.metrics.packets_captured.inc();
-            cb(ctx, &hdr, slice);
+            cb(ctx, hdr, slice);
         }
     }
 
@@ -346,4 +372,24 @@ test "Windows pcap_pkthdr matches Npcap ABI" {
     try std.testing.expectEqual(@as(usize, 16), @sizeOf(pcap_pkthdr));
     try std.testing.expectEqual(@as(usize, 8), @offsetOf(pcap_pkthdr, "caplen"));
     try std.testing.expectEqual(@as(usize, 12), @offsetOf(pcap_pkthdr, "len"));
+}
+
+test "pcap_next_ex declaration matches Npcap C ABI (EVT-216)" {
+    // Npcap SDK pcap/pcap.h:574:
+    //   int pcap_next_ex(pcap_t *, struct pcap_pkthdr **, const u_char **);
+    // The DLL writes ITS pointers into the caller's variables. This pin
+    // exists because RB-021's 1500-byte window over-read came from this
+    // declaration being one indirection short (see the declaration
+    // comment): a future "simplification" back to *pcap_pkthdr must fail
+    // to compile right here.
+    comptime {
+        const P = @typeInfo(@TypeOf(pcap_next_ex)).Fn.params;
+        if (P.len != 3) @compileError("pcap_next_ex arity changed (Npcap pcap/pcap.h:574)");
+        if (P[1].type.? != *?*const pcap_pkthdr) @compileError(
+            "pcap_next_ex header out-param must be *?*const pcap_pkthdr (struct pcap_pkthdr **)",
+        );
+        if (P[2].type.? != *?[*]const u8) @compileError(
+            "pcap_next_ex data out-param must be *?[*]const u8 (const u_char **)",
+        );
+    }
 }

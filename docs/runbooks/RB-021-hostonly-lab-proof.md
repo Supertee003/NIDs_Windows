@@ -180,6 +180,24 @@ the window. Fix = trim the match slice to the frame's truth length
 before AC: follow-up slice, no code changed in this run (deployed pins
 frozen).
 
+UPDATE 2026-10-17 (same-day follow-up; EVT-216). Root cause CORRECTED.
+The >=1500-byte window was not driver behavior and not a slice-trim
+matter: the daemon's pcap_next_ex FFI declaration was one indirection
+short (Npcap SDK pcap/pcap.h:574 takes `struct pcap_pkthdr **`), so the
+DLL's header pointer landed in our struct and caplen/len were never
+written -- safety builds read the 0xAA fill (2863311530 >= 1500), making
+EVERY direct frame's slice >=1500. Reproduced byte-exactly with a
+repo-code probe on VMnet1 (before: 30/30 frames caplen=len=2863311530
+while the data bytes were the real frames; after the source fix:
+caplen==len==83/75 exact, timestamps sane). The fix landed in source the
+same day: declaration corrected, both call sites read through the
+published pointers, compile-time ABI pin test added; zig-out rebuilt,
+deployed copies unchanged. The section-4 "trim the match slice"
+follow-up is superseded (with caplen read correctly, the window IS the
+frame). Daemon-side re-proof (rows payload_len == frame size, no
+window-only matches) happens at the next operator pin round on the
+rebuilt binary.
+
 5. Counter semantics. `detections` increments twice per matched +
 policy-matched event (event_processor.zig: signature match then policy
 match; `policies_matched` once), so the earlier burst delta of about
@@ -203,7 +221,7 @@ rules can also fire on trailing window bytes (own-payload matches win
 leftmost; see the lab-run record). Payloadless/protocol-control rows
 (ICMP port-0, DHCP) matching a text rule are always window artifacts,
 never fire proof. Zero rows after a fire = check target liveness first,
-not the NIDS.
+not the NIDS. (Same-day UPDATE: the >=1500-byte window described above applies to the pre-fix build only; root cause was the pcap_next_ex FFI indirection, fixed in source -- EVT-216.)
 
 ## Rollback
 
