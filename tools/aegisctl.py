@@ -342,6 +342,12 @@ def cmd_diagnose(args) -> int:
                 print(f"  [MASK] {ready}")
             elif name == "failure_reasons":
                 print(f"  [REASONS] {', '.join(ready) if ready else 'none'}")
+            elif name == "failed":
+                # EVT-218: `failed` is the aggregate boolean flag (the gate
+                # reads workers.get("failed", False)) -- not a worker slot.
+                # As a slot it rendered "[NOT READY] failed" on a healthy
+                # host (Degraded: False, MASK 0, REASONS none).
+                print(f"  [FAILED] {'yes' if ready else 'no'}")
             else:
                 print(f"  [{'READY' if ready else 'NOT READY'}] {name}")
     else:
@@ -1853,7 +1859,9 @@ def _render_dashboard_once(deep_components: bool = False) -> int:
                 reasons = ready if ready else []
                 print(f"    [REASONS] {', '.join(reasons) if reasons else 'none'}")
             elif name == "failed":
-                print(f"    [FAILED] {ready}")
+                # EVT-218: same boolean flag as `diagnose`; render yes/no
+                # instead of the bare Python bool ("[FAILED] False").
+                print(f"    [FAILED] {'yes' if ready else 'no'}")
             elif ready:
                 print(f"    [READY] {name}")
             else:

@@ -1,5 +1,5 @@
 {
-  "head_sha": "4e18683b4654ee400ee21a9d3d508eaf3445c58f",
+  "head_sha": "2088031f8247a4dfdec546d3b65c11d94d227f1c",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5580,6 +5580,31 @@
         "docs/runbooks/RB-021-hostonly-lab-proof.md",
         "EVIDENCE_INDEX.json"
       ]
+    },
+    {
+      "id": "EVT-218",
+      "title": "Deployed-component attestation round: every running artifact resolves to a current build anchor; aegisctl diagnose worker-flag display honesty fixed ([NOT READY] failed -> [FAILED] no, live repro)",
+      "level": "E5",
+      "component": "cli+ops+deploy",
+      "flow_id": "DATA-001",
+      "head_sha": "2088031",
+      "timestamp": "2026-10-17",
+      "result": "PASS",
+      "finding": "Attestation: every deployed component resolves to a current build anchor, byte-verified where a repo artifact exists -- aegis_nids.exe 65CCD7CD (= zig-out, the EVT-217 anchor), aegis_pep.dll 617FA3C7 (zig-out == target\\release, byte-identical), aegis_wfp_user.dll EF9BFD22 (byte-identical to build\\Release, post-EVT-213), sec_monitor.dll D0727B91 (byte-identical to the shield build), aegis_wfp.sys EC4A5683 (the EVT-213 signed driver; AegisWfp RUNNING). etw/fim helper DLLs: the deployed 10/8 builds postdate their last source changes (etw_native.c last touched 10/8, fim_native.c 10/5), so they are behaviorally current; the 10/16 rebuild siblings differ by build metadata only (no byte-identical repo copy of the deployed pair remains). One honest asymmetry: deployed aegis_ipc.dll 95E4F5B1 is the 9/15 pre-bdd9dc7 build (exports=5) while the current-source build (dist 838281DA, 9/24) exports 14 -- all five symbols the daemon looks up are exported (init/shutdown/push_event/get_defcon/get_event_count), so the runtime bridge is daemon-complete; the 9 added exports serve Python/Cython tooling, which resolves dist first; refreshing the zig-out copy (and optional redeploy) is deferred to the next prod-touch window -- no live consumer affected. During the round, live aegisctl diagnose printed '[NOT READY] failed' on a healthy host: workers.failed is the aggregate boolean flag (the readiness gate reads workers.get(\"failed\", False)); the diagnose renderer special-cased only failure_reason/failure_mask/failure_reasons, so the boolean fell into the worker-slot branch with polarity inverted (failed=False printed NOT READY; failed=True would have printed READY). Fixed with an explicit yes/no branch in diagnose plus the dashboard renderer; three unit tests pin the branches (red first on the unfixed tree) and the live re-run prints [FAILED] no.",
+      "description": "(1) ATTESTATION (read-only; sha256 comparisons Get-FileHash vs repo build outputs): runtime C:\\Program Files\\AEGIS NIDS\\runtime -- aegis_nids.exe 65CCD7CD == zig-out (EVT-217 deployed build; .pre-evt213/.pre-evt216 hold 6D03115B), aegis_pep.dll 617FA3C7 == zig-out == target\\release (10/16), aegis_wfp_user.dll EF9BFD22 == build\\Release (10/16, EVT-213 era), sec_monitor.dll D0727B91 == shield build (9/24), aegis_etw_helper.dll E43C469D / aegis_fim_helper.dll AB1D8294 = 10/8 builds (sources frozen since 10/8 / 10/5; 10/16 rebuild siblings 09453FE1/1291A73E differ by metadata only), aegis_ipc.dll 95E4F5B1 == zig-out (export note below). Driver: System32\\drivers\\aegis_wfp.sys EC4A5683 = EVT-213 test-signed artifact; service RUNNING. Live surfaces at check time: readiness gate PASS (ready=true, degraded=false, 23 rules / 6 policies), subsystems all RUNNING, workers all READY, daemon PID 22884 + nose PID 21568 + aggregator PID 5404 running. (2) EXPORT PARITY (inspect_pe_exports.py): runtime aegis_ipc.dll exports 5 = exactly the daemon lookups (bridge_init.zig:298-302); dist aegis_ipc.dll exports 14; the 9 extra symbols arrived with bdd9dc7 (9/24, VOL06/VOL09 dllexport additions) for bridge_status.py / ctypes / Cython consumers, whose search order resolves repo dist first. Packaging note: scripts/package_release.ps1 stages runtime helpers from zig-out\\bin, whose etw/fim/wfp_user/sec_monitor copies are older than the builds the host runs (9/16 or 9/1 vs 10/8/10/16) -- low risk, affects only future packaging runs; refresh before any release packaging (deferred). (3) DISPLAY FIX: live repro python tools\\aegisctl.py diagnose showed '[NOT READY] failed' under Degraded: False with [MASK] 0 / [REASONS] none. Root cause: cmd_diagnose's worker loop lacked a 'failed' branch; the boolean payload key fell into the generic worker-slot branch, polarities inverted. Fix: explicit '[FAILED] yes|no' branch in cmd_diagnose and the same rendering for the dashboard loop (was '[FAILED] False'). Tests: tests/tools/test_aegisctl_diagnose.py, 3 branches, red first on the unfixed tree ('[NOT READY] failed' present), green after. Live re-run: [FAILED] no / [REASON] none / [MASK] 0 / [REASONS] none. (4) SCOPE: no daemon/service change; aegisctl.py runs from the repo (no redeploy needed); no operator action taken in this round. Backups: runtime .pre-evt213/.pre-evt216 artifacts unchanged and hash-checked (rollback guidance RB-021 item 7 stands).",
+      "tests": [
+        "unit (red->green): tests/tools/test_aegisctl_diagnose.py -- healthy host renders [FAILED] no and never [NOT READY] failed; failed=true renders [FAILED] yes with reason fields; NOT READY worker slots unchanged",
+        "live re-run: python tools/aegisctl.py diagnose against the running daemon (PID 22884) -> [FAILED] no / [REASON] none / [MASK] 0 / [REASONS] none",
+        "attestation: sha256 equality for aegis_nids.exe + 5 runtime DLLs + driver (EC4A5683 == EVT-213 artifact) vs repo build outputs (zig-out, target/release, build/Release, shield build, System32 drivers)",
+        "export tables: inspect_pe_exports.py runtime=5 vs dist=14; all five daemon lookups covered",
+        "source timeline: git log last-touch for etw_native.c (10/8), fim_native.c (10/5), bridge/aegis_ipc.cpp (bdd9dc7 9/24) vs deployed build stamps",
+        "live state: readiness gate PASS (ready=true, degraded=false), subsystems RUNNING, workers READY (diagnose/readiness at check time)"
+      ],
+      "files_changed": [
+        "tools/aegisctl.py",
+        "tests/tools/test_aegisctl_diagnose.py",
+        "EVIDENCE_INDEX.json"
+      ]
     }
   ],
   "evidence_level_summary": {
@@ -5588,7 +5613,7 @@
     "E2_count": 112,
     "E3_count": 7,
     "E4_count": 14,
-    "E5_count": 77,
+    "E5_count": 78,
     "E6_count": 0,
     "E7_count": 0
   }
