@@ -73,6 +73,8 @@ cd D:\NIDs_Windows
 powershell -ExecutionPolicy Bypass -File .\scripts\package_release.ps1 -Version 6.0.0
 ```
 
+> หมายเหตุ version: `-Version 6.0.0` นี้คือ **Windows release bundle line** ส่วนเวอร์ชัน **product/runtime** ภายใน (core/nose/pep) เป็น `5.0.0` ตาม `runtime_manifest.json` และ `aegisctl version` — สองแกนนี้แยกกันโดยเจตนา
+
 เลือก directory ล่าสุดใน `release` และตรวจ manifest:
 
 ```powershell

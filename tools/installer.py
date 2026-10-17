@@ -114,6 +114,14 @@ VIAddVersionKey "FileDescription" "AEGIS Network Intrusion Detection System"
 ;   <install>\runtime\  binaries (service entrypoint + DLLs + nose)
 ;   <install>\configs\  Rules.json + policies.json
 Section "Install"
+  ; Upgrade safety (EVT-221): a running service locks its own image, so a
+  ; reinstall/upgrade over a live install fails mid-copy without this stop.
+  ; Reinstall-safe: an absent service/process just logs and continues;
+  ; "Start AEGIS Service Now" below restarts the service after the swap.
+  nsExec::ExecToLog "sc stop AegisNids"
+  nsExec::ExecToLog "taskkill /f /im aegis_nids.exe"
+  Sleep 2000
+
   SetOutPath "$INSTDIR\configs"
   File /oname=Rules.json "configs\Rules.json"
   File /oname=policies.json "configs\policies.json"

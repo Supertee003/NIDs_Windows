@@ -82,3 +82,16 @@ def test_preprocessor_defines_are_real_and_version_block_is_valid_nsis():
         assert f"!define {name} " in tpl, name
     assert 'VIAddVersionKey "PrivateBuild"' in tpl
     assert "\nPrivateBuild " not in tpl
+
+
+def test_upgrade_stops_service_and_process_before_overwriting_runtime():
+    """EVT-221: preparing the first host install/upgrade drill exposed that
+    the Install section overwrites the runtime without stopping the running
+    service/process first - a live image file is locked and File fails
+    mid-copy on any reinstall over a live install. Pin the stop/kill
+    ordering relative to the first runtime File directive."""
+    mod = _load()
+    tpl = mod.NSIS_TEMPLATE
+    first_file = tpl.index('File "zig-out\\bin\\aegis_nids.exe"')
+    assert tpl.index('nsExec::ExecToLog "sc stop AegisNids"') < first_file
+    assert tpl.index("taskkill /f /im aegis_nids.exe") < first_file
