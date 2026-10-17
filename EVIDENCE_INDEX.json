@@ -1,5 +1,5 @@
 {
-  "head_sha": "029e15aca66fac1b143103c9f291cd0abfaf02e1",
+  "head_sha": "fd699ce25d3763dac15121fa7fc74de5ff47a343",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5632,6 +5632,34 @@
         "docs/runbooks/RB-021-hostonly-lab-proof.md",
         "EVIDENCE_INDEX.json"
       ]
+    },
+    {
+      "id": "EVT-220",
+      "title": "E7 release-artifact verification: 6.0.0 bundle 2026-10-17_154714 produced + verified + committed (manifest 9/9, binaries byte-match, zip 12 entries); SBOM refreshed (612 pkgs) with the 612-vs-611 set delta and the 5.0.0-vs-6.0.0 version axes recorded; installer generates + fail-closed without NSIS; data-plane snapshot/tamper/rollback byte-exact (RPO 693 ms / RTO 3 ms); fresh_deploy --plan green",
+      "level": "E7",
+      "component": "release+packaging+installer",
+      "flow_id": "DATA-001",
+      "head_sha": "fd699ce",
+      "timestamp": "2026-10-17",
+      "result": "PASS",
+      "finding": "Release-artifact side verified end-to-end at E7 scope: the Windows bundle was produced by the canonical packager, hash-verified against the attested build set, and committed; the SPDX SBOM was refreshed to current digests; installer script generation and fail-closed packaging were exercised on this host; the data-plane failed-upgrade/rollback path was proven byte-exact with measured RPO/RTO; and the fresh-deploy plan chain is green. Explicitly NOT covered (scope limit, not a gap silently closed): host install/upgrade execution (elevated; stops the service and overwrites Program Files - deferred to an explicit release-drill decision) and the NSIS installer binary itself (NSIS is absent on this host). Three observations are recorded without silent fixes: the 5.0.0-vs-6.0.0 version axes, the fresh-vs-recorded artifact-set delta (612/611), and the installer's manifest-derived dist\\ extras.",
+      "description": "(1) BUNDLE: release/aegis-nids-windows-6.0.0-20261017_154714 was produced by scripts/package_release.ps1 (exit 0, default OutputRoot, Version 6.0.0 - the established Windows bundle line matching the 2026-09-16 bundle). manifest.json: version 6.0.0, 9 artifacts, 0 sha256 mismatches on recompute, created 2026-10-17T08:47:14.4104887Z; all 7 runtime/driver files byte-match the attested set (aegis_nids.exe 65CCD7CD, aegis_pep.dll 617FA3C7, aegis_fim_helper 1291A73E, aegis_etw_helper 09453FE1, aegis_wfp_user EF9BFD22, aegis_ipc 838281DA, aegis_wfp.sys EC4A5683); both configs byte-match the repo; scripts/install_aegis.ps1 included. The zip has 12 entries (9 artifacts + manifest.json + README.txt + scripts/install_aegis.ps1), 3,732,006 bytes, sha256 2374D51FA7E9323A... . Commit shape mirrors the 9/16 bundle precedent: the text files (README.txt, configs/*, manifest.json, scripts/install_aegis.ps1) are tracked; binaries and the zip stay untracked-ignored per the no-build-artifacts policy. The EVT-219 dry-run temp copy is superseded by this kept bundle and was removed. (2) SBOM: sbom.spdx.json refreshed via tools/release_engineering.py --sbom (612 packages, created 2026-10-17T08:47:42.010885+00:00, name AEGIS-NIDS-5.0.0); digests are consistent with build_manifest.json for every shared path (0 mismatches); the set delta is only_in_sbom=['src/capture/wfp_telemetry.zig'] / only_in_manifest=[] - i.e. the fresh collection sees one more walked file than the recorded 611-entry manifest. This is the known artifact-set reconciliation gap (refresh-digests keeps the recorded set stable by design and never adds entries); it is quantified here and left for the tracked build-truth reconciliation task, not silently reconciled via --manifest (which the tool documentation marks as provenance-destroying today). (3) INSTALLER: python tools/installer.py --generate regenerated the ignored installer.generated.nsi with AEGIS_COMMIT fd699ce baked in, 13 File directives total, and the manifest-derived block carrying 2 extras (dist\\aegis_adapter.dll, dist\\aegis_bridge.exe, present on disk) - the DEPLOY-119 additive behavior working as designed; note the installer is built on a machine where the build outputs exist. python tools/installer.py --package was run and failed closed exactly as designed without NSIS: rc=2, 'ERROR: makensis not found', no aegis_setup.exe produced. (4) DATA-PLANE DRILL (failed-upgrade simulation): snapshot 20261017084743-snap captured the data plane (5 entries copied, 0 required missing, 3 optional absent); configs/Rules.json was then deliberately tampered (sha256 444F8956... -> 0BA1E8B5..., change detected); rollback restored it with ok=true, restored_count=5, restore_errors=0, RPO 693 ms, RTO 3 ms; the post-restore hash is byte-exact 444F8956FEE6C9DB94F4A2CCA8BE7BB5951A31D2E7D7638E7A7998CE97423BC4 and the tree stayed clean (git status empty for configs/Rules.json; a temp pre-drill copy existed as fallback and was not needed). report lists 498 snapshots accumulated in logs/snapshots (runtime state, ignored). (5) FRESH-DEPLOY PLAN: tools/fresh_deploy.py --plan --json returned exit 0 with ok=true: preflight OK (611 artifacts match source_commit fd699ce), validate OK (configs/runtime.json), snapshot DEFERRED (mutating), package DEFERRED (mutating), report OK. (6) FINDINGS RECORDED, NOT SILENTLY FIXED: (a) version axes disagree - release_engineering.py VERSION=5.0.0 (stamped into build_manifest.json version and the SBOM name AEGIS-NIDS-5.0.0) and the installer template's APPVERSION/VIProductVersion/DisplayVersion 5.0.0/5.0.0.0 versus the Windows bundle line 6.0.0 (package_release.ps1 default; both bundles) - a release decision is needed (align or codify the split); (b) the 612-vs-611 artifact-set delta above; (c) the dist\\ extras note above. (7) NOT COVERED (explicit): host install/upgrade execution (elevated; would stop the AegisNids service and overwrite Program Files - requires an explicit release-drill decision) and the NSIS installer binary (requires installing NSIS on the host; operator block prepared). E7 is claimed for the artifact-side release verification only.",
+      "tests": [
+        "release bundle verify: scripts/package_release.ps1 exit 0; manifest 6.0.0, 9 artifacts, 0 sha256 mismatches on recompute; 7 runtime/driver files byte-match the attested set (65CCD7CD/617FA3C7/1291A73E/09453FE1/EF9BFD22/838281DA/EC4A5683); configs byte-match repo; zip 12 entries / 3,732,006 bytes",
+        "sbom refresh: tools/release_engineering.py --sbom -> 612 packages; shared-path digest mismatches vs build_manifest: 0; only_in_sbom=['src/capture/wfp_telemetry.zig']; only_in_manifest=[]",
+        "installer: --generate writes ignored installer.generated.nsi (AEGIS_COMMIT fd699ce, 13 File directives, 2 manifest-derived dist extras); --package fail-closed rc=2 'makensis not found', no aegis_setup.exe",
+        "fresh_deploy --plan --json: exit 0, ok=true; preflight OK (611 match fd699ce), validate OK, snapshot/package DEFERRED, report OK",
+        "data-plane drill: snapshot 20261017084743-snap (5 copied / 0 missing) -> tamper detected -> rollback ok=true restored=5 errors=0 RPO=693 ms RTO=3 ms -> byte-exact restore 444F8956...; git tree clean"
+      ],
+      "files_changed": [
+        "release/aegis-nids-windows-6.0.0-20261017_154714/README.txt",
+        "release/aegis-nids-windows-6.0.0-20261017_154714/configs/Rules.json",
+        "release/aegis-nids-windows-6.0.0-20261017_154714/configs/policies.json",
+        "release/aegis-nids-windows-6.0.0-20261017_154714/manifest.json",
+        "release/aegis-nids-windows-6.0.0-20261017_154714/scripts/install_aegis.ps1",
+        "sbom.spdx.json",
+        "EVIDENCE_INDEX.json"
+      ]
     }
   ],
   "evidence_level_summary": {
@@ -5642,6 +5670,6 @@
     "E4_count": 14,
     "E5_count": 79,
     "E6_count": 0,
-    "E7_count": 0
+    "E7_count": 1
   }
 }

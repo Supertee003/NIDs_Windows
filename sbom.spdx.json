@@ -9,7 +9,7 @@
       "Organization: AEGIS",
       "Tool: release_engineering.py"
     ],
-    "created": "2026-10-13T01:11:10.768591+00:00"
+    "created": "2026-10-17T08:47:42.010885+00:00"
   },
   "packages": [
     {
@@ -2545,7 +2545,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "b5475655b6bbf2e4133f74f5a3416b686ea9a9fc8dec51171ab053441438a258"
+          "checksumValue": "2efd5a5e6943501de6c277b7ce27fe9a9bb9689d456080948fda2221d7c88478"
         }
       ],
       "filePath": "runtime_manifest.json"
@@ -2581,7 +2581,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "961fc615f750f558ec3cf76df5cba91348f4d6be6a4a15ff4e05e101330b180d"
+          "checksumValue": "c73039e7aa53878732527f02bb1f860236be475da61d16613741abeebf2bc004"
         }
       ],
       "filePath": "rust-src/lib.rs"
@@ -3949,7 +3949,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "d135cd240c642f5b355f85abd7d27954d20b5bef3f7971f787da70af84b6b32f"
+          "checksumValue": "192f8bb94fbf03bc9b7690ac5bf80a504a47aa670f69d297c6ba27c15c7d9153"
         }
       ],
       "filePath": "scripts/run_wfp_l4_observe_only_proof.ps1"
@@ -4327,7 +4327,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "326e2409b2d4eb50a00da180fdf52af69be31a2b1c16a871790e733bd0e2e9e2"
+          "checksumValue": "01d2640e14cc3abf8204f5a10f9f827b7eeaedbdc43279633991c7e5a77fc437"
         }
       ],
       "filePath": "src/all_tests.zig"
@@ -4363,7 +4363,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "1e7a8373bc1d92b39ff3f750d05e5988035e4b5db95f415c7a39b2735c512787"
+          "checksumValue": "9a68500b0f2e112c55a1af1ad2017ff4eae5c6613c829aa2ce690245efa64a43"
         }
       ],
       "filePath": "src/capture/flow_table.zig"
@@ -4471,7 +4471,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "e5ddbd3c89f1d85f887f25f0d8760b8ce77881e3bff133c092e9bf68994a9ece"
+          "checksumValue": "77dfd03fc90dc04aa8adb79a67926d8ec933c236e0e3c03ed4ab7b5d2d612e0d"
         }
       ],
       "filePath": "src/capture/npcap_adapter.zig"
@@ -4585,6 +4585,24 @@
       "filePath": "src/capture/stream_reassembly.zig"
     },
     {
+      "name": "wfp_telemetry.zig",
+      "SPDXID": "SPDXRef-8c9b4477",
+      "versionInfo": "5.0.0",
+      "supplier": "Organization: AEGIS",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright (c) 2026 AEGIS",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "8cf4e8167cb05f6eb7d499e04642ea9064aa60355c5dcde19147735e744f1508"
+        }
+      ],
+      "filePath": "src/capture/wfp_telemetry.zig"
+    },
+    {
       "name": "windows_capture.zig",
       "SPDXID": "SPDXRef-18423013",
       "versionInfo": "5.0.0",
@@ -4651,7 +4669,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "ae72f4b96c8707accfad9c609e6f4d7cbc0b014e0af67fdaec4ae643f466780d"
+          "checksumValue": "3636aaf5e2bba227b4064a73001ff4749944f1688ff41b0b4bd1cabc69b21916"
         }
       ],
       "filePath": "src/contract/event.zig"
@@ -4705,7 +4723,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "e3f64eae5ccab9c23ca144d8a971423c8693fa600c3f2c3a7e4f29af4888901c"
+          "checksumValue": "64ab360bcbff375b9b183deb13ae0c9554c6a846de8206210b8d93efe948b64c"
         }
       ],
       "filePath": "src/contract/runtime_manifest.zig"
@@ -4831,7 +4849,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "d926ab9a9bd4055914b32721ac5ae80917ef50e1e04da5d9341713468866c124"
+          "checksumValue": "e21e350f48299b173aaa599dfda9afee6058f177b332eff163690729c8cde31d"
         }
       ],
       "filePath": "src/control/handler_registry.zig"
@@ -4939,7 +4957,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "5d940aa28aefeb2fb0c0f5e79c94787571747d87aa1cac33d0c78dce25aca2f5"
+          "checksumValue": "606475aa72823d6f9b37105bde5a232db8684fc28a3ab2ec3930267dd61f990f"
         }
       ],
       "filePath": "src/core/bridge_init.zig"
@@ -5281,7 +5299,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "ead71a14e9b79a1f56e214b3094efa065a434117137076200ff60aeee45ccf1f"
+          "checksumValue": "a1de48716d40a0a2216d0f2498d18b61588d2f0f1e94171b9f13bd59172dbbc3"
         }
       ],
       "filePath": "src/core/rust_pep.zig"
@@ -5299,7 +5317,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "f173cc9d4df8e1965f2455402dc387319804554cd7e6a03143b698e9eb07e3ad"
+          "checksumValue": "dab8d0ef4137302402e495c61452fdde9b1f195c2a022d1155c52bf07b5b3d50"
         }
       ],
       "filePath": "src/daemon.zig"
@@ -5551,7 +5569,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "b655d47d18fc35dba2e378e8461ca06d77504c99085b1dfa97463e45ae73b14d"
+          "checksumValue": "fc3dbf7a03a1d92f5e955eae1f9e73d0a46c08983b00f83be337de2e1ca6b7f0"
         }
       ],
       "filePath": "src/detection/threat_tracker.zig"
@@ -5821,7 +5839,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "4dff24ea69bbbf3d431327e9909113f361854719f2b83bcfe80c0709c3c7010a"
+          "checksumValue": "d5382b0c0d6d7e1a1d7627924f113c3d8003962f5e74f5f7d317c02ff61e4186"
         }
       ],
       "filePath": "src/forensic/forensic_pipeline.zig"
@@ -6235,7 +6253,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "534d505f1912eebef004fea35155098daba60d2b50ad3a32d85e55a4f11f1db9"
+          "checksumValue": "d678dfdaea4c40b2f33fd478b3aef10c297ea2e7119510977d071c22f4c42f62"
         }
       ],
       "filePath": "src/pipeline/event_queue.zig"
@@ -6253,7 +6271,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "5e599aad69f9f670eece654ac0e31eb5672bcf03afff46f1d53a657467e280ed"
+          "checksumValue": "1ec65115e4bd2acae8129d1f8a22c9d5a70e69e6ce99bfa48da095da3ec9940b"
         }
       ],
       "filePath": "src/pipeline/packet_callback.zig"
@@ -6289,7 +6307,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "868118d4feb60ba1f236d59e224847c957bf5c62eb1d5e85702bd73014015639"
+          "checksumValue": "a3ad76354214ee85e8a8f7963484da254f2dcd971be175fcc7917077a7a7acb6"
         }
       ],
       "filePath": "src/pipeline/runtime_state.zig"
@@ -6451,7 +6469,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "dec7df84ee2f8a557f323c8827c5182b3b684bda681f17498bffa918a2ff04e1"
+          "checksumValue": "3972500177ba27973f88e5f5a526bbf0095e1c79623a586da755fc683ba9849e"
         }
       ],
       "filePath": "src/policy/pep_bindings.zig"
@@ -6649,7 +6667,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "de375b5089bf489c9f66eec6b1f6507b38386c8fd2a6684abbae33122cf4c3b7"
+          "checksumValue": "33618d8ace78c5be3b036447854272e9d714c0226b47ed1b1404aa3ab5362b82"
         }
       ],
       "filePath": "src/policy/wfp_ioctl.zig"
@@ -9331,7 +9349,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "1d705b3b1400c82a72984d26f165ea3f15dbfef0f407efc20e1fdce21d34416a"
+          "checksumValue": "0cf156cab429933474047930c7f78fc22f8821714d5ea77ce00f9b8eb905d5cf"
         }
       ],
       "filePath": "src/windows/wfp_ioctl.c"
@@ -9475,7 +9493,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "944d09b193292a981e494a18cf6cea2bb2ec545cda616d6ccd287f39935c2de2"
+          "checksumValue": "c265a96575788221bfe782c237be4c6ebbbb343bb59432bb78f82dd3f2f50139"
         }
       ],
       "filePath": "tools/aegisctl.py"
@@ -9529,7 +9547,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "f10c42ba64c7571e804dd7b1016b8a337bf7c3768c6c013fc52947dbce5b486f"
+          "checksumValue": "ef12dc48b64557ec29d8fd916f16551611eecdb1d542128a2ff106f29ad9a7a1"
         }
       ],
       "filePath": "tools/aegisctl/api/control_api.py"
