@@ -226,6 +226,23 @@ deployed. Operator note: the service can sit in STOP_PENDING for a
 while -- copy the exe only after `sc.exe query` prints STATE: 1 STOPPED
 (a copy while stopping fails with the file in use).
 
+8. Backup-artifact inventory + restore anchors (EVT-219, 2026-10-17).
+   Runtime dir `C:\Program Files\AEGIS NIDS\runtime` -- exe anchors:
+   `.pre-evt213` / `.pre-evt216` hold 6D03115B (hash-equal pair; older
+   snapshots pre-evt211 / pre-wfptele / pre-endian / pre-gap020 /
+   pre-iface / pre-shield also present). pep.dll: deployed 617FA3C7; the
+   last pre-10/16 build is kept as `aegis_pep.dll.pre-evt211` (7226B648;
+   `.pre-fresh` holds 4BAFE8D7). pep `.pre-evt213` == current deployed
+   build (not a distinct anchor). `aegis_wfp_user.dll.pre-evt213` ==
+   current (EF9BFD22) and is NOT a usable standalone rollback: the WFP
+   user DLL pairs with the driver build-era layout (EVT-213), so any WFP
+   rollback is a paired driver+DLL operation. Driver: the running image
+   `System32\drivers\aegis_wfp.sys` = EC4A5683 (EVT-213 signed); the
+   pre-EVT-213 build D58E2EEF survives only as stale copies inside the
+   9/16 release bundles and `C:\Program Files\AEGIS NIDS\drivers\`
+   (inert -- the loader path is System32). Check hashes before using any
+   backup for a rollback.
+
 ## Verification
 
 Per-rule table, one row each: script ran (rc 0) AND a detection row

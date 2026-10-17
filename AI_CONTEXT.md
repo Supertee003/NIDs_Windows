@@ -4,7 +4,7 @@
 
 
 
-**HEAD:** `2088031f8247a4dfdec546d3b65c11d94d227f1c` (working tree has uncommitted changes)
+**HEAD:** `9f0df39915f052432e4e58ccceacbaa5cf38cfe6` (working tree has uncommitted changes)
 
 **BRANCH:** `main`
 
@@ -428,6 +428,22 @@ P0 risks as of HEAD `60c76fe` (2026-09-12) — HISTORICAL snapshot:
   (missing `pid`, `last_event_ms`, `counters`) and reports capability flags
 
   (`etw`/`fim`/`wfp` = "available") instead of live subsystem state. OPEN.
+
+  UPDATE (2026-10-17, EVT-219): remainder closed by EVT-097 (live metrics
+
+  bound into `health.check`). Re-verified against the live daemon at HEAD
+
+  `9f0df39`: all RUNTIME_CONTRACT §4.1 fields present -- `component`, `state`,
+
+  `pid`, `uptime_ms`, `last_event_ms`, `defcon_level`/`defcon_label`,
+
+  `counters` (in_events/out_events/errors/dropped) and `deps[]` live
+
+  subsystem states (all RUNNING); capability flags are additive extra keys. One
+
+  value-semantics nuance -- the control-surface `last_event_ms` is an epoch-ms
+
+  stamp, not age -- is recorded in EVT-219. Not a current blocker.
 
 - P0-9: Stale pytest dumps (`test_failures_full.txt`, `test_failed_lines.txt`,
 
