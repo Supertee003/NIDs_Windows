@@ -103,3 +103,76 @@ def test_index_page_has_components_section():
     html = client.get("/").get_data(as_text=True)
     assert "AEGIS Components" in html
     assert "compBody" in html
+
+
+# --- WEB-001 (UI-001) integration pins ------------------------------------
+# The four bullets the EVI entry WEB-001 listed as its pending integration
+# test, pinned here: (1) the Flask app imports with the expected routes;
+# (2) /api/status returns JSON carrying subsystem status; (3) / renders the
+# dashboard HTML; (4) CLI + TUI + Web delegate to ONE control_api truth
+# source (no duplicated business logic, no second wire):
+
+def test_web001_flask_app_exposes_expected_routes():
+    routes = {rule.rule for rule in app_module.app.url_map.iter_rules()}
+    assert {"/", "/api/status", "/api/snapshot", "/api/incidents", "/health"} <= routes
+
+
+def test_web001_api_status_returns_json_with_subsystem_status():
+    app_module._reset_snapshot_cache()  # live TTL cache; tests want fresh
+    client = app_module.app.test_client()
+    response = client.get("/api/status")
+    assert response.status_code == 200
+    assert response.is_json
+    body = response.get_json()
+    assert body["schema"] == "aegis.operator.snapshot.v1"
+    health = body["health"]
+    assert isinstance(health, dict) and health.get("state")
+    subsystems = health.get("subsystems")
+    assert isinstance(subsystems, dict)  # never invented; empty is honest
+    for name, sub in subsystems.items():
+        assert isinstance(sub, dict) and sub.get("state"), name
+
+
+def test_web001_index_renders_dashboard_html():
+    client = app_module.app.test_client()
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.mimetype == "text/html"
+    html = response.get_data(as_text=True)
+    assert html.lstrip()[:15].lower().startswith("<!doctype html>")
+    assert "AEGIS NIDS" in html
+    assert "Operator Console" in html
+    assert "/api/snapshot" in html  # the page polls the same JSON endpoint
+
+
+def test_web001_cli_tui_web_share_one_control_api_truth_source():
+    import importlib
+    import importlib.util
+
+    control_api = importlib.import_module("aegisctl.api.control_api")
+
+    # WEB: identity, not a re-implementation.
+    assert app_module.get_health_payload is control_api.get_health_payload
+    assert app_module.query_control is control_api.query_control
+    assert app_module.load_rules is control_api.load_rules
+
+    # TUI (console.py): the same functions from the same module.
+    tui = importlib.import_module("aegisctl.console")
+    assert tui.get_all_status is control_api.get_all_status
+    assert tui.load_rules is control_api.load_rules
+
+    # CLI (tools/aegisctl.py): same module identity; business logic delegated.
+    spec = importlib.util.spec_from_file_location(
+        "aegisctl_cli_under_test", TOOLS_DIR / "aegisctl.py")
+    cli = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(cli)
+    assert cli.CONTROL_API_AVAILABLE is True
+    assert cli.get_health_payload is control_api.get_health_payload
+    assert cli.query_control is control_api.query_control
+
+    # No UI owns a second wire: the control-pipe name appears only in
+    # control_api (single definition point for the pipe endpoint).
+    for rel in ("aegisctl.py", "aegisctl/console.py", "aegisctl/web_dashboard/app.py"):
+        src = (TOOLS_DIR / rel).read_text(encoding="utf-8")
+        assert "aegis_control" not in src, rel

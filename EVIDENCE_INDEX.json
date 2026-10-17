@@ -1,5 +1,5 @@
 {
-  "head_sha": "8aaec2a4546a77ce6ec871a7193115a6492c7753",
+  "head_sha": "a913fb57a2ce80748fe746b93d8d4b2188cb3cb0",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -884,8 +884,8 @@
         "GET / endpoint renders dashboard HTML",
         "All three UIs (CLI/TUI/Web) read from same control_api"
       ],
-      "result": "PENDING",
-      "finding": "Web dashboard scaffold created; integration test pending"
+      "result": "PASS",
+      "finding": "Web dashboard scaffold created; integration test pending UPDATE (EVT-225, 2026-10-17): integration test delivered - the four listed bullets are pinned in tests/tools/test_web_dashboard.py and the all-UIs-same-source claim is proven live (admin-evidence/web001-live-20261017/crosscheck.json). Result PENDING -> PASS."
     },
     {
       "id": "VOL01-FOUNDATION-001",
@@ -5764,13 +5764,37 @@
       "files_changed": [
         "EVIDENCE_INDEX.json"
       ]
+    },
+    {
+      "id": "EVT-225",
+      "title": "WEB-001 closed: web dashboard integration tests pinned (4 UI-001 bullets) + live host crosscheck - WEB, CLI and direct control_api agree on state/PID/DEFCON/subsystem states (one truth source)",
+      "level": "E3",
+      "component": "ui+control-api",
+      "flow_id": "UI-001",
+      "head_sha": "a913fb5",
+      "timestamp": "2026-10-17",
+      "result": "PASS",
+      "command": "python -m pytest tests/tools/test_web_dashboard.py -q ; live probe: werkzeug server 127.0.0.1:5091 GET /api/status + python tools/aegisctl.py snapshot",
+      "expected": "the four UI-001 bullets are pinned (Flask app imports with expected routes; /api/status returns JSON with subsystem status; / renders the dashboard HTML; CLI/TUI/Web share one control_api) and the live host crosscheck shows WEB + CLI reading the same control plane truth",
+      "actual": "PASS - 11/11 tests in the file (7 pre-existing + 4 new WEB-001 pins); live crosscheck: web HTTP 200 schema aegis.operator.snapshot.v1, state RUNNING / defcon 3 HIGH / pid 9084; web-vs-direct equal (state/PID/DEFCON/subsystem states), web-vs-CLI equal (state/PID/DEFCON); CLI snapshot rc 0; artifact admin-evidence/web001-live-20261017/crosscheck.json",
+      "finding": "WEB-001 (recorded PENDING, E1) is completed and flipped to PASS: the scaffold's missing integration test now exists, the four listed bullets are pinned, and the 'all three UIs read from the same control_api truth source' claim is proven structurally (module identity for CLI/TUI/WEB + single control-pipe definition point) and live (WEB vs CLI vs direct control_api agree). TUI interactive loop itself is not exercised (interactive); the two standalone diagnostic scripts (tools/probe_control_pipe.py, tools/audit_kernel_runtime.py) keep their own pipe literals by design - out of UI scope.",
+      "description": "(1) PRE-EXISTING: scaffold tools/aegisctl/web_dashboard/app.py (Flask, loopback-only, read-only thin client over control_api) + 7 pins in tests/tools/test_web_dashboard.py (F5 evidence-log selection, snapshot queue key, /api/snapshot answering without a daemon, no wildcard bind, SSE preamble frame, EVT-162 components registry, index components section). (2) ADDED this round: test_web001_flask_app_exposes_expected_routes; test_web001_api_status_returns_json_with_subsystem_status (daemon-optional: the diagnostic fallback also carries subsystems - shape asserted, empty is honest); test_web001_index_renders_dashboard_html (doctype/title/console/poller endpoint); test_web001_cli_tui_web_share_one_control_api_truth_source (identity pins: app_module/console/cli functions ARE control_api functions; the CLI is loaded via importlib from tools/aegisctl.py with CONTROL_API_AVAILABLE True; the literal 'aegis_control' appears in none of the three UI sources - control_api.py owns the single wire definition). (3) LIVE CROSSCHECK (this host, live daemon PID 9084): real flask server on 127.0.0.1:5091 answered GET /api/status 200; direct control_api.get_health_payload() and CLI 'aegisctl.py snapshot' (rc 0) compared - state/PID/DEFCON equal across WEB/direct/CLI, subsystem state maps equal; last_event_ms stayed int (age; 324/170 - ages advance with time, so only stable fields are compared). Artifact: admin-evidence/web001-live-20261017/crosscheck.json. (4) HONESTY: the web layer remains read-only (no host mutation added); all new tests write nothing to the tracked tree; the live probe is producer-run (agent), not part of the suite.",
+      "tests": [
+        "python -m pytest tests/tools/test_web_dashboard.py -q -> 11 passed",
+        "live crosscheck: web_vs_direct + web_vs_cli equalities all true (admin-evidence/web001-live-20261017/crosscheck.json)"
+      ],
+      "files_changed": [
+        "tests/tools/test_web_dashboard.py",
+        "admin-evidence/web001-live-20261017/crosscheck.json",
+        "EVIDENCE_INDEX.json"
+      ]
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
     "E2_count": 114,
-    "E3_count": 7,
+    "E3_count": 8,
     "E4_count": 14,
     "E5_count": 81,
     "E6_count": 0,
