@@ -243,6 +243,15 @@ while -- copy the exe only after `sc.exe query` prints STATE: 1 STOPPED
    (inert -- the loader path is System32). Check hashes before using any
    backup for a rollback.
 
+   Same-day UPDATE (EVT-219 operator completion, 2026-10-17): the pep
+   `.pre-evt213` slot was refreshed from `.pre-evt211` -- both now hold
+   7226B648 (a distinct pre-10/16 anchor; the deployed `aegis_pep.dll`
+   itself remains 617FA3C7 and `.pre-fresh` stays 4BAFE8D7). The stale
+   Program Files driver copy was refreshed to EC4A5683 (== the running
+   System32 image); D58E2EEF now survives only inside the 9/16 + T20
+   release bundles. No service restart was needed (only backup/inert
+   files changed).
+
 ## Verification
 
 Per-rule table, one row each: script ran (rc 0) AND a detection row
