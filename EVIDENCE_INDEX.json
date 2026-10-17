@@ -1,5 +1,5 @@
 {
-  "head_sha": "c885008b1c8ff4633f92e10cdfc143b5c2044fc8",
+  "head_sha": "c02ec546d757661b07f38f0a73bf3bfbef94d1cd",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5861,6 +5861,30 @@
         "deployment refresh (operator, 2026-10-17 21:38): deployed sec_monitor.dll -> 9C738984 (hash verified on disk); service RUNNING, daemon PID 25292; aegisctl snapshot post-refresh: RUNNING / shield_loaded + payload_screening true / tier3 READY / nose_connected true (frames 13568, pipe_errors 0)",
         "rollback image preserved: admin-evidence/pep001-deploy-refresh-20261017/sec_monitor.dll.pre-PEP-001 = D0727B91...B45A6 (runtime sidecar anomaly noted; operator fix step issued)",
         "deployment refresh sidecar fixed (operator, 2026-10-17): runtime sec_monitor.dll.pre-PEP-001 = D0727B91...B45A6 verified on disk; deployed DLL untouched at 9C738984; service RUNNING"
+      ]
+    },
+    {
+      "id": "EVT-229",
+      "title": "Kernel-path readiness scan (whole-system, read-only): kernel telemetry live end-to-end; remaining work enumerated",
+      "level": "E5",
+      "component": "system-audit",
+      "flow_id": "DATA-001",
+      "head_sha": "c02ec54",
+      "timestamp": "2026-10-17",
+      "result": "PASS",
+      "command": "read-only scan: git status/log; Get-FileHash + Get-AuthenticodeSignature (driver); sc.exe query AegisWfp; aegisctl queue/readiness; EVI registry scan; reads of docs/KERNEL_NIDS_COMPLETION_PLAN.md, docs/platform/p2+p4, RB-021",
+      "expected": "enumerate all remaining work for the kernel-level NIDS goal from live reads + tracked evidence only; no mutations",
+      "actual": "PASS - kernel telemetry live: AegisWfp RUNNING (EC4A5683..., test-signed Valid); queue src=capture_wfp(21) pushed=365239 reads=4367 state=ok; total queue 1033401 pushed dropped=0 shed=0; readiness gate ready=true overall_gate=true degraded=false; GAP-001..021 all CLOSED; remaining items enumerated in description",
+      "finding": "No silent kernel-path gap found. The system already is a kernel-telemetry-consuming NIDS: three kernel data sources are live end-to-end (npcap payload capture 253k, WFP flow callout 365k, ETW host 414k + FIM/registry). The genuinely remaining items: (1) production code signing (driver+installer; test cert only today); (2) minifilter build-out (source-only); (3) kernel payload copy in the WFP ring (deferred by design, ndis.h NBL; payload_length=0); (4) CMake BUILD_KERNEL_DRIVER wiring (deliberate FATAL_ERROR; sanctioned path is scripts/wdk_build_production.ps1); (5) optional enforcement activation beyond the closed prevention gate (canary machinery + kernel BlockFlow already host-verified).",
+      "description": "Read-only whole-system scan against the kernel-level NIDS goal (user request: enumerate remaining work; WFP as the kernel data-access layer). Method: live host reads only (no service/driver mutations, no code changes). Findings: (1) KERNEL DATA IS LIVE END-TO-END: queue shows capture_wfp(21) pushed=365,239 rows consumed across all pipeline stages (reads=4,367, state=ok, last_bytes=0 by construction), alongside capture_npcap(1)=253,113 (full payloads via the daemon's own capture; nose-pipe frames are metadata-only per RB-021), capture_etw(2)=414,225, capture_fim(3)=499, capture_registry(4)=325; totals 1,033,401 pushed / 0 dropped / 0 shed; readiness gate ready=true overall_gate=true degraded=false. (2) WFP DRIVER: AegisWfp RUNNING (kernel/demand); System32\\drivers\\aegis_wfp.sys hash EC4A5683...F0DE identical across System32, build\\x64\\wfp, and drivers\\wfp_callout; signature Valid with test cert CN=AEGIS Test Signer; EVT-213 fixed the unbound callout (FWP_ACTION_CALLOUT_TERMINATING) and idle-ring honesty; EVT-211/212 established the sole-device-owner read path through aegis_pep.dll. (3) PLAN: docs/KERNEL_NIDS_COMPLETION_PLAN.md (EVT-100) phases 1-2 done, phase 3 quarantine-enforce + WFP block host-verified (GAP-002/005 CLOSED; T11 suites present at tests/wfp/), phase 4 decisions done (kernel-driver program DEFERRED at EVT-114), phase 5 partially advanced incidentally (built/test-signed/running telemetry driver + packaging hooks EVT-219). REMAINING WORK (complete list): (a) production signing - EV cert/HLK for the driver + signed installer (test-sign only today; distribution blocked); (b) minifilter build-out - drivers/minifilter/ is source-only (no build/deploy tooling; ETW FIM is the live user-mode host path); (c) kernel payload copy - deferred in driver source aegis_wfp_callout.c:138-140 ('requires ndis.h for NBL', payload_length=0): L7 stays with npcap by design; enable only if kernel-L7 capture becomes a goal; (d) CMake BUILD_KERNEL_DRIVER stays a deliberate FATAL_ERROR; sanctioned build is scripts/wdk_build_production.ps1 - decide if wiring is ever wanted; (e) optional: enforcement activation beyond the detection-only posture (canary progression simulation->shadow->canary->enforce + receipts ready; requires operator decision + lab); (f) minor operations: display processes unsupervised by design (EVT-194), endpoint_ownership FOREIGN on :9999 (pre-existing pythonw, not ours). Non-claims: the system is a user-mode NIDS consuming kernel telemetry (per plan verdict); no kernel-mode-detection claim is made or implied.",
+      "tests": [
+        "aegisctl queue (live): src=capture_wfp(21) pushed=365239 dropped=0; wfp state=ok reads=4367 rows=365239 last_bytes=0; totals 1033401 pushed / 0 dropped / 0 shed",
+        "driver attestation: System32\\drivers\\aegis_wfp.sys == build\\x64\\wfp == drivers\\wfp_callout == EC4A5683E3072FA5D26A083BB8550627D8E8664C2E7ACD7060437EF41184F0DE; Get-AuthenticodeSignature Valid (CN=AEGIS Test Signer); sc.exe query AegisWfp RUNNING",
+        "aegisctl readiness: ready=true overall_gate=true degraded=false, 6 policies, 23 rules",
+        "EVI registry: GAP-001..021 all CLOSED (21/21); 191 PASS evidence entries; kernel-NIDS completion plan phases 1-4 executed/decided, phase 5 officially deferred (EVT-114) with incidental advancement (EVT-202..219)"
+      ],
+      "files_changed": [
+        "EVIDENCE_INDEX.json"
       ]
     }
   ],
