@@ -1,5 +1,5 @@
 {
-  "head_sha": "fac1c5543d42df5916f10b43c78b86e286d60823",
+  "head_sha": "ab3bdb69c9c713aff8fe01cbc1d3fed300797c62",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5927,6 +5927,42 @@
         "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
         "EVIDENCE_INDEX.json"
       ]
+    },
+    {
+      "id": "EVT-231",
+      "title": "WFP Slice B - kernel payload copy live end-to-end: variable-length records (48 B header + bounded raw payload), whole-record READ_EVENTS, honest ring counters, kernel + forensic byte proof",
+      "level": "E5",
+      "component": "kernel-telemetry",
+      "flow_id": "FOR-001",
+      "head_sha": "ab3bdb6",
+      "timestamp": "2026-10-18",
+      "result": "PASS",
+      "command": "Operator (elevated) block admin-evidence/evt231-wfp-payload-copy-20261018/operator-block-evt231.ps1: artifact hash/signature gate (AD23EFB9..., CN=AEGIS Test Signer) -> keep rollback backup -> stop AegisNids -> driver swap via scripts/wfp_service.ps1 install+start (skipped when the deployed binary is already the artifact) -> kernel-side ring probe wfp-ring-probe.ps1 with the daemon stopped (GET_STATS + READ_EVENTS drain + marker datagrams + hex dump) -> start daemon -> live marker datagrams + forensics list --payload-prefix AEGIS -> queue stats + forensics verify",
+      "expected": "payload bytes copied in-kernel flow end to end: WFP callout ring record = 48 B header + bounded raw payload exactly as delivered at FWPM_LAYER_INBOUND_TRANSPORT_V4 (<= 4096 B, no L7 parse, no reassembly); READ_EVENTS returns whole records only; drops counted; kernel probe sees the marker bytes and the daemon + forensic ring match the marker prefix with no silent loss",
+      "actual": "PASS (run 3, 01:10 local): gate kernel_marker_matches=5 live_records_matched=4 (the agent-run live proof also matched 6). Driver AD23EFB97C06D8E73BF34D09BF5B9A5076BDA378D5A97ECD72CACA82183AEEAF (27648 B, sig Valid) RUNNING as AegisWfp; rollback backup EC4A5683E3072FA5D26A083BB8550627D8E8664C2E7ACD7060437EF41184F0DE kept. Kernel probe (daemon stopped): 5 marker records, payload_length=180 B byte-exact ASCII AEGIS-EVT231-WFP-PAYLOAD-MARKER- + 148 x X, marker at offset 0, ports 24931->24930 proto 17, aegis_prefix=5; drops_delta=0; byte accounting exact: bytes_written_delta=9641 = drained_bytes 9641 = sum(48+payload_len) over the histogram (10x48 + 5x228 + 4x1500 + 287+659+305+411+359). Live chain: 4 records matched prefix AEGIS, payload_len=180, source_name=wfp_sensor, verified=true; a precheck before the marker burst matched 0 (causality); queue capture_wfp dropped=0; forensics verify integrity=ok verified=true.",
+      "finding": "Delivered-layout finding: on the loopback path the bytes delivered at FWPM_LAYER_INBOUND_TRANSPORT_V4 begin at the transport payload - a 180-byte UDP payload was copied with no UDP header (neither the 188 B transport-first nor the 208 B IP-first hypothesis). The copy contract is therefore exactly-as-delivered with no layout assumption; driver/documented comments corrected (doc-only, deployed artifact behavior identical). Operator-kit defects found and fixed before the passing run: (1) PS 5.1 [uint32]0x80000000 throws (hex literal parses as Int32 -2147483648) - use [Convert]::ToUInt32('80000000',16); (2) child-process stderr with ErrorActionPreference=Stop aborted the block - Invoke-Child helper with exit-code checks; (3) re-runs must preserve the rollback backup instead of overwriting it; (4) the pass gate requires BOTH the kernel probe and the live query to see the marker.",
+      "description": "Slice B of the kernel NIDS program: the own WFP callout moves from header-only records to bounded in-kernel payload capture, proven live. Wire record = pinned 48-byte AEGIS_EVENT_HEADER + payload_length bytes. Callout classify (FWPM_LAYER_INBOUND_TRANSPORT_V4): copyLen = min(NET_BUFFER_DATA_LENGTH(nb), AEGIS_MAX_PAYLOAD_SIZE=4096); NdisGetDataBuffer into the global non-paged g_PayloadScratch (never a kernel stack buffer) under g_RingLock; fail-open - when bytes cannot be gathered payload_length=0 and the packet is still FWP_ACTION_PERMIT. Read path (aegis_wfp.c): whole records only - 48 B header peek is wrap-safe, total = 48 + payload_length, the read stops before a record that does not fit, and a payload_length > 4096 sanity guard resyncs read=write and counts the drop (no mid-record splits, no ring desync). Counters: g_WfpTotalEventsWritten/Drops/BytesWritten/BytesRead under g_RingLock; AegisWfpGetStats fills all four + currentUsedBytes in the unchanged 24 B layout. Consumer: src/capture/wfp_telemetry.zig already parsed variable-stride records (comment updated only); no 6-codec wire schema change (payload was already in the record contract). Build: CMake BUILD_KERNEL_DRIVER=ON now delegates to scripts/wdk_build_production.ps1 via add_custom_target(aegis_wfp_kernel ALL); default OFF unchanged; signing and deploy remain explicit separate steps. Evidence dir admin-evidence/evt231-wfp-payload-copy-20261018/ (operator block, probe, run2/run3 dumps, live proof JSONs, closeout note). Rollback: copy aegis_wfp.sys.pre-evt231 (EC4A5683) back, sc stop/delete AegisWfp, copy, sc create type= kernel start= demand, sc start. Observe-only: no kernel enforcement was added; the system remains detection-only (Slice C not required).",
+      "tests": [
+        "static pins tests/wfp/test_evt231_wfp_payload_copy.py: 48 B header C_ASSERT + AEGIS_MAX_PAYLOAD_SIZE, callout copies via NdisGetDataBuffer/NET_BUFFER_DATA_LENGTH/g_PayloadScratch + fail-open permit, whole-record read + g_WfpTotalDrops + g_WfpTotalBytesRead + scratch alloc/free, GetStats all counters, zig bounded-copy doc contract, variable-record proof script (no 4080 stride) - tests/wfp 16 passed / 1 skipped",
+        "kernel probe runs 2+3 (daemon stopped): marker_matches=5 aegis_prefix=5 drops_delta=0; payload_length_histogram_top 0=10 / 180=5 / 1452=4 / 239=1 / 611=1 / 257=1 / 363=1 / 311=1 summing exactly to drained 9641 B",
+        "live chain: forensics list --payload-prefix AEGIS records_matched=4 (run 3) / 6 (agent live proof), payload_len=180, source_name=wfp_sensor, verified=true; precheck 0",
+        "queue stats: capture_wfp rows counted, dropped_total=0, no shed; forensics verify integrity=ok verified=true",
+        "zig build rc 0 + zig build test rc 0; CMake default OFF configures rc 0 and BUILD_KERNEL_DRIVER=ON target aegis_wfp_kernel rc 0 (delegation)",
+        "driver build scripts/wdk_build_production.ps1 rc 0 (two pre-existing-class C4996 pool warnings only); sign + deploy verified on host (sc query RUNNING, deployed hash == artifact)"
+      ],
+      "files_changed": [
+        "drivers/wfp_callout/aegis_wfp.h",
+        "drivers/wfp_callout/aegis_wfp.c",
+        "drivers/wfp_callout/aegis_wfp_callout.c",
+        "src/capture/wfp_telemetry.zig",
+        "scripts/run_wfp_l4_observe_only_proof.ps1",
+        "CMakeLists.txt",
+        "tests/wfp/test_evt231_wfp_payload_copy.py",
+        "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
+        "EVIDENCE_INDEX.json",
+        "build_manifest.json",
+        "runtime_manifest.json"
+      ]
     }
   ],
   "evidence_level_summary": {
@@ -5935,7 +5971,7 @@
     "E2_count": 115,
     "E3_count": 9,
     "E4_count": 14,
-    "E5_count": 82,
+    "E5_count": 85,
     "E6_count": 0,
     "E7_count": 1
   }

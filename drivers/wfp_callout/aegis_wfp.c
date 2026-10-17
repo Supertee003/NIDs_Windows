@@ -49,6 +49,16 @@ KSPIN_LOCK g_RingLock;
 SIZE_T g_RingWriteOffset = 0;
 SIZE_T g_RingReadOffset = 0;
 
+// EVT-231: non-paged scratch for NdisGetDataBuffer storage (payloads that
+// span non-contiguous MDLs are copied here; never the kernel stack).
+PVOID g_PayloadScratch = NULL;
+
+// EVT-231: honest ring accounting. Every update happens under g_RingLock.
+ULONG g_WfpTotalEventsWritten = 0;
+ULONG g_WfpTotalDrops = 0;
+ULONG g_WfpTotalBytesWritten = 0;
+ULONG g_WfpTotalBytesRead = 0;
+
 // WFP engine handle
 HANDLE g_WfpEngineHandle = NULL;
 UINT32 g_CalloutId = 0;
@@ -129,11 +139,28 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
     }
     RtlZeroMemory(g_RingBuffer, g_RingBufferSize);
 
+    /* EVT-231: non-paged payload scratch for NdisGetDataBuffer. */
+    g_PayloadScratch = ExAllocatePoolWithTag(NonPagedPoolNx,
+        AEGIS_MAX_PAYLOAD_SIZE, 'AEGP');
+    if (!g_PayloadScratch) {
+        DbgPrint("[AEGIS WFP] Failed to allocate payload scratch\n");
+        ExFreePool(g_RingBuffer);
+        g_RingBuffer = NULL;
+        IoDeleteSymbolicLink(&g_SymlinkName);
+        IoDeleteDevice(g_DeviceObject);
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
+
     // 5. Register WFP callout and filter
     status = AegisWfpRegisterCallout(DriverObject);
     if (!NT_SUCCESS(status)) {
         DbgPrint("[AEGIS WFP] Callout registration failed: 0x%08X\n", status);
         ExFreePool(g_RingBuffer);
+        g_RingBuffer = NULL;
+        if (g_PayloadScratch) {
+            ExFreePool(g_PayloadScratch);
+            g_PayloadScratch = NULL;
+        }
         IoDeleteSymbolicLink(&g_SymlinkName);
         IoDeleteDevice(g_DeviceObject);
         return status;
@@ -151,6 +178,12 @@ VOID AegisWfpUnload(PDRIVER_OBJECT DriverObject)
 
     // Unregister WFP callout and filter
     AegisWfpUnregisterCallout();
+
+    // Free payload scratch (EVT-231)
+    if (g_PayloadScratch) {
+        ExFreePool(g_PayloadScratch);
+        g_PayloadScratch = NULL;
+    }
 
     // Free ring buffer
     if (g_RingBuffer) {
@@ -222,34 +255,82 @@ NTSTATUS AegisWfpDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
 // ====== IOCTL_AEGIS_READ_EVENTS ======
 NTSTATUS AegisWfpReadEvents(PIRP Irp)
 {
-    // Read events from ring buffer into user-mode buffer
-    // This is called by windows_capture.zig (Zig user-mode reader)
+    // Read whole event records from the ring into the user-mode buffer.
+    // EVT-231: records are variable length (48-byte header + payload) and
+    // this path never splits one: it stops before the first record that
+    // would not fit the caller buffer (that record stays for the next
+    // read). Alignment is by construction: writers store whole records
+    // and readers consume whole records under g_RingLock.
     PVOID userBuffer = Irp->AssociatedIrp.SystemBuffer;
     ULONG userBufferSize = IoGetCurrentIrpStackLocation(Irp)->Parameters.DeviceIoControl.OutputBufferLength;
 
     KIRQL oldIrql;
+    SIZE_T copied = 0;
+
     KeAcquireSpinLock(&g_RingLock, &oldIrql);
 
-    SIZE_T available = (g_RingWriteOffset - g_RingReadOffset) % g_RingBufferSize;
-    SIZE_T toCopy = (available < userBufferSize) ? available : userBufferSize;
+    while (userBuffer != NULL &&
+           copied + sizeof(AEGIS_EVENT_HEADER) <= userBufferSize) {
+        AEGIS_EVENT_HEADER hdr;
+        SIZE_T available = AEGIS_RING_USED();
+        SIZE_T total;
+        SIZE_T firstPart;
 
-    if (toCopy > 0 && userBuffer) {
-        // Copy from ring buffer to user buffer
-        // Handle wrap-around case
-        if (g_RingReadOffset + toCopy <= g_RingBufferSize) {
-            RtlCopyMemory(userBuffer, (PUCHAR)g_RingBuffer + g_RingReadOffset, toCopy);
-        } else {
-            SIZE_T firstPart = g_RingBufferSize - g_RingReadOffset;
-            RtlCopyMemory(userBuffer, (PUCHAR)g_RingBuffer + g_RingReadOffset, firstPart);
-            RtlCopyMemory((PUCHAR)userBuffer + firstPart, g_RingBuffer, toCopy - firstPart);
+        if (available < sizeof(AEGIS_EVENT_HEADER)) {
+            break;
         }
-        g_RingReadOffset = (g_RingReadOffset + toCopy) % g_RingBufferSize;
+
+        // Peek the next record header without consuming it (wrap-aware).
+        if (g_RingReadOffset + sizeof(hdr) <= g_RingBufferSize) {
+            RtlCopyMemory(&hdr, (PUCHAR)g_RingBuffer + g_RingReadOffset,
+                sizeof(hdr));
+        } else {
+            firstPart = g_RingBufferSize - g_RingReadOffset;
+            RtlCopyMemory(&hdr, (PUCHAR)g_RingBuffer + g_RingReadOffset,
+                firstPart);
+            RtlCopyMemory((PUCHAR)&hdr + firstPart, g_RingBuffer,
+                sizeof(hdr) - firstPart);
+        }
+
+        // Defensive: a payload length outside the write contract means the
+        // ring lost alignment (impossible under g_RingLock). Reset to the
+        // write head instead of emitting garbage downstream, and count it.
+        if (hdr.payload_length > AEGIS_MAX_PAYLOAD_SIZE) {
+            g_WfpTotalDrops++;
+            g_RingReadOffset = g_RingWriteOffset;
+            break;
+        }
+
+        total = sizeof(AEGIS_EVENT_HEADER) + (SIZE_T)hdr.payload_length;
+        if (total > available || copied + total > userBufferSize) {
+            // Writer bytes are whole records under the lock, so
+            // total > available cannot happen once aligned; keep the check.
+            break;
+        }
+
+        // Consume the whole record (wrap-aware) into the caller buffer.
+        firstPart = g_RingBufferSize - g_RingReadOffset;
+        if (firstPart >= total) {
+            RtlCopyMemory((PUCHAR)userBuffer + copied,
+                (PUCHAR)g_RingBuffer + g_RingReadOffset, total);
+        } else {
+            RtlCopyMemory((PUCHAR)userBuffer + copied,
+                (PUCHAR)g_RingBuffer + g_RingReadOffset, firstPart);
+            RtlCopyMemory((PUCHAR)userBuffer + copied + firstPart,
+                g_RingBuffer, total - firstPart);
+        }
+        g_RingReadOffset = (g_RingReadOffset + total) % g_RingBufferSize;
+        copied += total;
+    }
+
+    if (copied > 0) {
+        g_WfpTotalBytesRead += (ULONG)copied;
     }
 
     KeReleaseSpinLock(&g_RingLock, oldIrql);
 
-    Irp->IoStatus.Information = toCopy;
-    return (toCopy > 0) ? STATUS_SUCCESS : STATUS_NO_MORE_ENTRIES;
+    Irp->IoStatus.Information = (ULONG)copied;
+    return (copied > 0) ? STATUS_SUCCESS : STATUS_NO_MORE_ENTRIES;
 }
 
 // ====== Port-specific WFP block contract ======
@@ -333,10 +414,15 @@ NTSTATUS AegisWfpGetStats(PIRP Irp) {
     AEGIS_RING_STATS *stats = (AEGIS_RING_STATS *)Irp->AssociatedIrp.SystemBuffer;
     RtlZeroMemory(stats, sizeof(*stats));
 
-    /* GET_STATS is a read-only ring ABI. Keep it independent of WFP filter
-     * enumeration: callers need the same 24-byte layout as READ_EVENTS. */
+    /* GET_STATS is a read-only ring ABI: same 24-byte layout as
+     * READ_EVENTS. EVT-231 populates every counter; all updates happen
+     * under g_RingLock, so this snapshot is consistent. */
     KIRQL oldIrql;
     KeAcquireSpinLock(&g_RingLock, &oldIrql);
+    stats->totalEventsWritten = g_WfpTotalEventsWritten;
+    stats->totalDrops = g_WfpTotalDrops;
+    stats->totalBytesWritten = g_WfpTotalBytesWritten;
+    stats->totalBytesRead = g_WfpTotalBytesRead;
     stats->currentUsedBytes = (ULONG)AEGIS_RING_USED();
     KeReleaseSpinLock(&g_RingLock, oldIrql);
 

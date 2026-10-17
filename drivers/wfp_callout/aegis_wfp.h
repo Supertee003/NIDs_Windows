@@ -5,6 +5,11 @@
  * with the 8-byte-aligned Zig FFI consumer layout; timestamp @40),
  * IOCTL codes, device names, GUID decl, extern globals,
  * cross-file function declarations.
+ *
+ * EVT-231: a ring record is the 48-byte header followed by
+ * payload_length raw transport-layer bytes (bounded by
+ * AEGIS_MAX_PAYLOAD_SIZE). READ_EVENTS returns whole records only; it
+ * never splits one across reads.
  */
 
 #ifndef AEGIS_WFP_H
@@ -34,6 +39,10 @@
 #define IOCTL_AEGIS_GET_STATS    CTL_CODE(FILE_DEVICE_NETWORK, 0x802, METHOD_BUFFERED, FILE_READ_DATA)
 #define IOCTL_AEGIS_UNBLOCK_FLOW CTL_CODE(FILE_DEVICE_NETWORK, 0x803, METHOD_BUFFERED, FILE_WRITE_DATA)
 #define IOCTL_AEGIS_QUERY_FILTER CTL_CODE(FILE_DEVICE_NETWORK, 0x804, METHOD_BUFFERED, FILE_READ_DATA)
+
+/* EVT-231: READ_EVENTS copies whole records only. It stops before the
+ * first record that would not fit the caller buffer; a partial record is
+ * never consumed and never emitted. */
 
 /* Port-specific enforcement contract. All multi-byte fields use the same
  * host representation across the Rust/C boundary; IPv4 is network order,
@@ -71,6 +80,9 @@ typedef struct _AEGIS_WFP_FILTER_STATE {
 
 /* ====== Ring Buffer ====== */
 #define AEGIS_RING_BUFFER_SIZE     (2 * 1024 * 1024)   /* 2 MB */
+/* EVT-231: max raw packet bytes copied per record. Records are variable
+ * length (48-byte header + payload_length); consumers advance by
+ * 48 + payload_length, never a fixed stride. */
 #define AEGIS_MAX_PAYLOAD_SIZE     4096
 
 /* Ring used-space helper (call under spinlock) */
@@ -96,7 +108,7 @@ typedef struct _AEGIS_EVENT_HEADER {
     UINT8   direction;      /* 0=inbound, 1=outbound */
     UINT8   layer_id;       /* WFP layer ID (low byte) */
     UINT8   flags;          /* Reserved */
-    UINT32  payload_length; /* Captured payload length (0=none) */
+    UINT32  payload_length; /* EVT-231: raw bytes after header (0=copy unavailable; <= AEGIS_MAX_PAYLOAD_SIZE) */
     UINT32  rule_id;        /* Matched rule ID (0=none) */
     UINT32  severity;       /* 0=Low 1=Med 2=High 3=Critical */
     UINT32  reserved;       /* Reserved */
@@ -106,7 +118,7 @@ typedef struct _AEGIS_EVENT_HEADER {
 #pragma pack(pop)
 C_ASSERT(sizeof(AEGIS_EVENT_HEADER) == 48);  /* EVT-213: consumer stride */
 
-/* ====== Ring Buffer Statistics (24 bytes, packed) ====== */
+/* ====== Ring Buffer Statistics (24 bytes, packed; populated since EVT-231) ====== */
 #pragma pack(push, 1)
 typedef struct _AEGIS_RING_STATS {
     ULONG totalEventsWritten;
@@ -128,6 +140,11 @@ extern SIZE_T         g_RingBufferSize;
 extern KSPIN_LOCK     g_RingLock;
 extern SIZE_T         g_RingWriteOffset;
 extern SIZE_T         g_RingReadOffset;
+extern PVOID          g_PayloadScratch;
+extern ULONG          g_WfpTotalEventsWritten;
+extern ULONG          g_WfpTotalDrops;
+extern ULONG          g_WfpTotalBytesWritten;
+extern ULONG          g_WfpTotalBytesRead;
 extern HANDLE         g_WfpEngineHandle;
 extern UINT32         g_CalloutId;
 extern UINT64         g_CaptureFilterId;

@@ -69,15 +69,16 @@ function Read-Stats([IntPtr]$Handle) {
         total_bytes_read = [BitConverter]::ToUInt32($out, 12)
         current_used_bytes = [BitConverter]::ToUInt32($out, 16)
         stats_bytes = $returned
-        counters_implemented = $false
+        counters_note = 'evt231+ drivers populate all counters; pre-evt231 report only current_used_bytes'
     }
 }
 
 function Read-Events([IntPtr]$Handle) {
-    # Keep reads frame-aligned: 48-byte packed header x 85 = 4080 bytes.
-    # Reading 4096 bytes would advance the kernel ring by 16 bytes modulo the
-    # frame size and make the next parse start in the middle of a header.
-    $out = New-Object byte[] 4080
+    # Records are variable length (48-byte header + payload_length bytes;
+    # EVT-231 caps payload at 4096). The kernel returns whole records only,
+    # so the buffer just needs to fit one maximum record (48 + 4096 = 4144);
+    # 64 KiB also matches the daemon reader.
+    $out = New-Object byte[] 65536
     [uint32]$returned = 0
     $ok = [Aegis.WfpProof.Native]::DeviceIoControl($Handle, $IOCTL_READ_EVENTS, $null, 0, $out, $out.Length, [ref]$returned, [IntPtr]::Zero)
     if (-not $ok) {
@@ -100,7 +101,7 @@ function Drain-Events([IntPtr]$Handle) {
         $batchParsed = Parse-EventFrames $batch.data $batch.bytes
         $allFrames += $batchParsed.frames
         $reads++
-        if ($batch.bytes -lt 4080) { break }
+        if ($batch.bytes -lt 65536) { break }
     }
     [pscustomobject]@{
         bytes = $totalBytes
@@ -117,11 +118,15 @@ function Convert-EventIp([byte[]]$Bytes, [int]$Offset) {
 }
 
 function Parse-EventFrames([byte[]]$Bytes, [uint32]$ByteCount) {
-    $complete = [math]::Floor($ByteCount / $EVENT_HEADER_SIZE)
-    $trailing = $ByteCount % $EVENT_HEADER_SIZE
+    # Variable stride: advance by 48 + payload_length per record (EVT-231).
+    # A tail that does not hold one complete record is reported as trailing
+    # bytes (the kernel never emits a split record; this stays defensive).
     $frames = @()
-    for ($i = 0; $i -lt $complete; $i++) {
-        $offset = $i * $EVENT_HEADER_SIZE
+    $offset = 0
+    while ($offset + $EVENT_HEADER_SIZE -le $ByteCount) {
+        $payloadLength = [BitConverter]::ToUInt32($Bytes, $offset + 20)
+        $recordSize = $EVENT_HEADER_SIZE + [int]$payloadLength
+        if ($offset + $recordSize -gt $ByteCount) { break }
         $frames += [pscustomobject]@{
             source_ip = Convert-EventIp $Bytes ($offset + 4)
             dest_ip = Convert-EventIp $Bytes ($offset + 8)
@@ -130,15 +135,16 @@ function Parse-EventFrames([byte[]]$Bytes, [uint32]$ByteCount) {
             protocol = $Bytes[$offset + 16]
             direction = $Bytes[$offset + 17]
             layer_id = $Bytes[$offset + 18]
-            payload_length = [BitConverter]::ToUInt32($Bytes, $offset + 20)
+            payload_length = $payloadLength
             rule_id = [BitConverter]::ToUInt32($Bytes, $offset + 24)
             severity = [BitConverter]::ToUInt32($Bytes, $offset + 28)
         }
+        $offset += $recordSize
     }
     [pscustomobject]@{
         header_size = $EVENT_HEADER_SIZE
-        complete_frames = [int]$complete
-        trailing_bytes = [int]$trailing
+        complete_frames = [int]$frames.Count
+        trailing_bytes = [int]($ByteCount - $offset)
         frames = $frames
     }
 }
@@ -250,9 +256,9 @@ try {
     }
     $eventPass = (-not $RequireEvent -or $readBytes -gt 0)
     $flowPass = (-not $RequireExpectedFlow -or $expectedMatches.Count -gt 0)
-    # The current driver implementation populates only currentUsedBytes in
-    # AegisWfpGetStats; the other counter fields are reserved/unimplemented.
-    # Do not infer event or drop counts from those zero-valued fields.
+    # EVT-231 drivers populate every AEGIS_RING_STATS counter under
+    # g_RingLock; pre-EVT-231 drivers report only currentUsedBytes. Both
+    # are read as-is (no inference) and reported in baseline/after.
     $statsDelta = [int64]$after.current_used_bytes - [int64]$before.current_used_bytes
     $result = [pscustomobject]@{
         proof = 'l4_wfp_observe_only'
@@ -277,13 +283,13 @@ try {
             sample_frames = @($expectedMatches | Select-Object -First 10)
         }
         current_used_bytes_delta = $statsDelta
-        driver_reported_counters = 'unimplemented_current_driver'
+        driver_reported_counters = 'evt231_fields (all counters populated on evt231+ drivers)'
         baseline = $before
         baseline_drain = [pscustomobject]@{ bytes = $baselineDrain.bytes; frames = $baselineDrain.frames.Count }
         after = $after
         host_effect = 'none'
         prevention_gate = 'closed'
-        note = 'This proves only device/ring readback. It is not a rule-match or IPS host-effect proof. The current driver GET_STATS implementation reports only currentUsedBytes.'
+        note = 'This proves only device/ring readback. It is not a rule-match or IPS host-effect proof. EVT-231 drivers populate all GET_STATS counters; pre-EVT-231 drivers report only currentUsedBytes.'
     }
     $result | ConvertTo-Json -Depth 6
     if (-not $result.passed) { exit 2 }

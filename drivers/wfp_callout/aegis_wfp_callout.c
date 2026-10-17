@@ -4,6 +4,9 @@
  * C1 FIX: Extracts 5-tuple from inFixedValues->incomingValue[]
  *         indexed by FWPS_FIELD_INBOUND_TRANSPORT_V4_* constants.
  * C2 FIX: Calls FwpmFilterAdd0 so callout is actually invoked.
+ * EVT-231: classify copies a bounded raw payload (<= AEGIS_MAX_PAYLOAD_SIZE
+ *         bytes as delivered at the transport layer) into the ring after
+ *         the 48-byte header.
  *
  * FAIL-OPEN design: classify never blocks packets.
  */
@@ -69,10 +72,31 @@ static NTSTATUS AegisWfpStartupFailure(ULONG stage, NTSTATUS status)
     return (NTSTATUS)(0xE0010000UL | (stage & 0xFF));
 }
 
+/* ====== Ring write helper (EVT-231) ======
+ * Copies bytes into the event ring, wrapping at the end of the buffer.
+ * Call under g_RingLock; the caller has already checked the bytes fit. */
+static VOID AegisWfpRingWrite(const VOID *source, SIZE_T length)
+{
+    PUCHAR writePos  = (PUCHAR)g_RingBuffer + g_RingWriteOffset;
+    SIZE_T firstPart = g_RingBufferSize - g_RingWriteOffset;
+
+    if (firstPart >= length) {
+        RtlCopyMemory(writePos, source, length);
+        g_RingWriteOffset += length;
+    } else {
+        RtlCopyMemory(writePos, source, firstPart);
+        RtlCopyMemory(g_RingBuffer, (PUCHAR)source + firstPart,
+            length - firstPart);
+        g_RingWriteOffset = length - firstPart;
+    }
+    g_RingWriteOffset %= g_RingBufferSize;
+}
+
 /* ====== WFP Classify Callback ======
- * Called by WFP for every inbound IPv4 transport packet.
- * Extracts 5-tuple, writes 48-byte header to ring buffer,
- * always permits the packet (fail-open).
+ * Called by WFP for every inbound IPv4 transport packet. Extracts the
+ * 5-tuple, copies a bounded raw payload (EVT-231), and writes one
+ * variable-length record (48-byte header + payload) to the ring buffer.
+ * Always permits the packet (fail-open).
  */
 void AegisWfpClassifyFn(
     IN const FWPS_INCOMING_VALUES0          *inFixedValues,
@@ -84,11 +108,14 @@ void AegisWfpClassifyFn(
 {
     AEGIS_EVENT_HEADER hdr;
     KIRQL  oldIrql;
-    SIZE_T usedSpace, totalSize, firstPart;
-    PUCHAR writePos;
+    SIZE_T usedSpace, totalSize;
+    PNET_BUFFER_LIST nbl;
+    PNET_BUFFER nb = NULL;
+    ULONG  availableBytes = 0;
+    ULONG  copyLen = 0;
+    PVOID  payload = NULL;
 
     UNREFERENCED_PARAMETER(inMetaValues);
-    UNREFERENCED_PARAMETER(layerData);
     UNREFERENCED_PARAMETER(filter);
     UNREFERENCED_PARAMETER(flowContext);
 
@@ -135,34 +162,60 @@ void AegisWfpClassifyFn(
      * FWPS_INCOMING_METADATA_VALUES0 in WDK 10.0.28000) */
     hdr.layer_id = 0;  /* implicit: FWPM_LAYER_INBOUND_TRANSPORT_V4 */
 
-    /* Payload length capture deferred (requires ndis.h for NBL).
-     * payload_length = 0: user-mode reader gets 5-tuple only. */
-    hdr.payload_length = 0;
+    /* --- EVT-231: bounded kernel payload copy ---
+     * layerData is the WFP NET_BUFFER_LIST for the inbound transport
+     * layer. Copy at most AEGIS_MAX_PAYLOAD_SIZE raw bytes exactly as
+     * delivered at the layer: no L7 parse, no stream reassembly, and no
+     * assumption about which header the bytes start with. Verified on the
+     * loopback test path (EVT-231 probe dump): the delivered data begins
+     * at the transport payload -- a 180-byte UDP payload was copied
+     * byte-exact with no UDP header. Fail-open: when the bytes cannot be
+     * gathered the record degrades to the 48-byte header
+     * (payload_length = 0) and the packet is still permitted. */
+    nbl = (PNET_BUFFER_LIST)layerData;
+    if (nbl != NULL) {
+        nb = NET_BUFFER_LIST_FIRST_NB(nbl);
+    }
+    if (nb != NULL) {
+        availableBytes = NET_BUFFER_DATA_LENGTH(nb);
+        copyLen = (availableBytes > AEGIS_MAX_PAYLOAD_SIZE)
+            ? AEGIS_MAX_PAYLOAD_SIZE : availableBytes;
+    }
+    hdr.payload_length = copyLen;
 
-    /* --- Write 48-byte header to ring buffer --- */
-    totalSize = sizeof(AEGIS_EVENT_HEADER);
+    totalSize = sizeof(AEGIS_EVENT_HEADER) + (SIZE_T)copyLen;
 
     KeAcquireSpinLock(&g_RingLock, &oldIrql);
 
+    /* Gather the payload under the ring lock: NdisGetDataBuffer returns a
+     * pointer into the packet when the data is contiguous, else copies
+     * into the pre-allocated non-paged scratch buffer (never the kernel
+     * stack). */
+    if (copyLen > 0) {
+        payload = NdisGetDataBuffer(nb, copyLen, g_PayloadScratch, 1, 0);
+        if (payload == NULL) {
+            copyLen = 0;
+            hdr.payload_length = 0;
+            totalSize = sizeof(AEGIS_EVENT_HEADER);
+        }
+    }
+
     usedSpace = AEGIS_RING_USED();
 
-    if (totalSize <= g_RingBufferSize - usedSpace) {
-        writePos  = (PUCHAR)g_RingBuffer + g_RingWriteOffset;
-        firstPart = g_RingBufferSize - g_RingWriteOffset;
-
-        if (firstPart >= totalSize) {
-            RtlCopyMemory(writePos, &hdr, totalSize);
-            g_RingWriteOffset += totalSize;
-        } else {
-            RtlCopyMemory(writePos, &hdr, firstPart);
-            RtlCopyMemory(g_RingBuffer,
-                (PUCHAR)&hdr + firstPart,
-                totalSize - firstPart);
-            g_RingWriteOffset = totalSize - firstPart;
+    /* Strict less-than keeps empty/full unambiguous: AEGIS_RING_USED
+     * reads used == size as empty, so a write must never fill the ring
+     * exactly. Honest accounting: drops are counted, not just logged. */
+    if (totalSize < g_RingBufferSize - usedSpace) {
+        AegisWfpRingWrite(&hdr, sizeof(AEGIS_EVENT_HEADER));
+        if (copyLen > 0) {
+            AegisWfpRingWrite(payload, copyLen);
         }
-        g_RingWriteOffset %= g_RingBufferSize;
+        g_WfpTotalEventsWritten++;
+        g_WfpTotalBytesWritten += (ULONG)totalSize;
     } else {
-        DbgPrint("[AEGIS WFP] Ring buffer full, event dropped\n");
+        g_WfpTotalDrops++;
+        DbgPrint("[AEGIS WFP] Ring buffer full, event dropped (drops=%lu)\n",
+            g_WfpTotalDrops);
     }
 
     KeReleaseSpinLock(&g_RingLock, oldIrql);
