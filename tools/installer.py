@@ -79,10 +79,10 @@ def manifest_binaries() -> list[str]:
     return sorted(out)
 
 
-NSIS_TEMPLATE = r"""#!define APPNAME "AEGIS NIDS"
-#!define APPVERSION "5.0.0"
-#!define PUBLISHER "AEGIS Security"
-#!define AEGIS_COMMIT "@AEGIS_COMMIT@"
+NSIS_TEMPLATE = r"""!define APPNAME "AEGIS NIDS"
+!define APPVERSION "5.0.0"
+!define PUBLISHER "AEGIS Security"
+!define AEGIS_COMMIT "@AEGIS_COMMIT@"
 
 Name "${APPNAME} ${APPVERSION}"
 OutFile "aegis-installer-${APPVERSION}.exe"
@@ -91,7 +91,7 @@ Unicode True
 RequestExecutionLevel admin
 ShowInstDetails show
 !include "MUI2.nsh"
-PrivateBuild "${APPNAME} ${APPVERSION} @AEGIS_COMMIT@"
+VIAddVersionKey "PrivateBuild" "${APPNAME} ${APPVERSION} @AEGIS_COMMIT@"
 VIProductVersion "5.0.0.0"
 VIAddVersionKey "ProductName" "AEGIS NIDS"
 VIAddVersionKey "CompanyName" "AEGIS"

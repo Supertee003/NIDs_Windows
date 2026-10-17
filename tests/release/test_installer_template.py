@@ -66,3 +66,19 @@ def test_generate_nsi_splices_manifest_block_inside_install(tmp_path):
     text = out.read_text(encoding="utf-8")
     assert "; manifest binaries included:" in text
     assert _file_lines_outside_sections(text) == []
+
+
+def test_preprocessor_defines_are_real_and_version_block_is_valid_nsis():
+    """EVT-220: the template's four '#!define' lines were NSIS comments ('#'
+    starts a comment), so APPNAME/APPVERSION/PUBLISHER/AEGIS_COMMIT never
+    existed: makensis warned 'unknown variable {APPNAME}/{APPVERSION}' and
+    OutFile wrote the literal 'aegis-installer-${APPVERSION}.exe'. Also pin
+    the version-key syntax that actually compiles (bare 'PrivateBuild' is an
+    invalid command - makensis v3.12 aborts on it)."""
+    mod = _load()
+    tpl = mod.NSIS_TEMPLATE
+    assert "#!define" not in tpl
+    for name in ("APPNAME", "APPVERSION", "PUBLISHER", "AEGIS_COMMIT"):
+        assert f"!define {name} " in tpl, name
+    assert 'VIAddVersionKey "PrivateBuild"' in tpl
+    assert "\nPrivateBuild " not in tpl
