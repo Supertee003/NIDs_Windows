@@ -1,5 +1,5 @@
 {
-  "head_sha": "cf93020b55692d91860310fda7667037769de7cb",
+  "head_sha": "bd7122ccdf3c64c0fe86051548df7aeaa0f89bad",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5669,6 +5669,30 @@
         "tests/release/test_installer_template.py",
         "docs/AEGIS_Operator_Usage_Manual.md"
       ]
+    },
+    {
+      "id": "EVT-221",
+      "title": "Host install/upgrade + rollback drill executed live (operator): all 9 bundle artifacts hash-verified, service swapped PID 22884->22724, rollback byte-exact (65CCD7CD restored), health green on both legs - closes the EVT-220 not-covered item",
+      "level": "E5",
+      "component": "release+ops+runtime",
+      "flow_id": "DATA-001",
+      "head_sha": "bd7122c",
+      "timestamp": "2026-10-17",
+      "result": "PASS",
+      "command": "powershell -ExecutionPolicy Bypass -File .\\scripts\\install_aegis.ps1 -BundleRoot release\\aegis-nids-windows-6.0.0-20261017_154714 ; then -Rollback",
+      "expected": "install over a live service and rollback must both complete with health green and a byte-exact restore of the previous install",
+      "actual": "PASS - install leg green (new PID 22724; defcon 3/HIGH; workers failed NO), rollback leg byte-exact (aegis_nids.exe back to 65CCD7CD; backup consumed), health green both legs",
+      "finding": "The last E7-adjacent item - the host install/upgrade drill left explicitly not covered by EVT-220 items (7)/(12) - is now executed live and green on the canonical operator path (install_aegis.ps1, manual sections 3-4): all 9 bundle artifacts hash-verified, the live install was swapped in place, and the rollback restored the previous install byte-exact with the service healthy on both legs. Evidence-only round: no code changes.",
+      "description": "(1) PRE-DRILL STATE (agent capture): deployed aegis_nids.exe 65CCD7CDB026700ACB6B2BAE40B4213AA5DEC18F537F6609904C92072AE7E3AF; aegis_pep.dll 617FA3C77E59CD8245D0A039F147607C271D31CDC245C8D40D2392F518CA5F5A; deployed configs Rules.json D7F110F618C7A57EBBFAA1A2B4235CFD3F846D0340436441514B877254E5BA0C / policies.json B7224FA01572A637336AF6629D2A63C44FD9C53854DFD401D6264E5249CA3A4E (the DEPLOYED configs differ from the repo/bundle copies, which is why they were captured explicitly); AegisNids service RUNNING; 'C:\\Program Files\\AEGIS NIDS.backup' absent. (2) INSTALL LEG (operator, elevated): install_aegis.ps1 -BundleRoot release\\aegis-nids-windows-6.0.0-20261017_154714 hash-verified ALL 9 manifest artifacts (the script throws on any mismatch; it completed clean), stopped the core (process kill + sc stop + 2 s), moved the live install to 'C:\\Program Files\\AEGIS NIDS.backup', copied the bundle; sc start brought the service up as NEW PID 22724. Health at +5 s: state RUNNING, version 5.0.0, defcon 3/HIGH, rules 23 / policies 6, workers failed NO (all 7 subsystem flags READY), data plane connected (nose_connected True), counters in 1067 / out 1061 / dropped 6 / errors 0, uptime 5,206 ms. Status: Deploy bundle root True, Legacy bundle root True, 7/7 subsystems running. (3) ROLLBACK LEG (operator): install_aegis.ps1 -Rollback -> 'Rollback completed: C:\\Program Files\\AEGIS NIDS'; sc start -> NEW PID 6316. Health at +5 s: RUNNING, failed NO, nose_connected True, counters in 93 / out 82 / dropped 11 / errors 0, uptime 5,131 ms. aegis_nids.exe hash = 65CCD7CD... byte-exact to pre-drill; the backup directory is consumed (absent). (4) POST-DRILL AGENT RE-VERIFICATION: aegis_pep.dll 617FA3C7..., aegis_wfp_user.dll EF9BFD22..., configs Rules D7F110F6... / policies B7224FA0... all byte-exact to pre-drill; service RUNNING (PID 6316); aegis-nose PID 21568 untouched throughout (never killed; kept its handles across the install/replace/rollback swap); repo tree clean apart from the 9 stamp files. (5) OBSERVATIONS (recorded, not defects): (a) health payloads on both legs report tier3.artifact_path = 'D:\\NIDs_Windows\\zig-out\\bin\\aegis_pep.dll' - the bundle-root resolution includes the dev tree as legacy root; that copy is byte-identical (617FA3C7) to the installed one, so no functional divergence; (b) dropped counters of 6 / 11 with errors 0 on both legs are restart-window drops while subsystems come up (consistent with the baseline drop counter); the exactly-once counters (duplicate/non-monotonic event ids) are 0/0; (c) AegisWfp was never touched (service binPath \\??\\C:\\WINDOWS\\System32\\drivers\\aegis_wfp.sys - the drill only replaces 'C:\\Program Files\\AEGIS NIDS'). (6) SCOPE: this closes the host install/upgrade drill that EVT-220 left explicitly not covered. The NSIS installer path remains built + payload-verified + upgrade-safe (EVT-220 UPDATE 2) but is NOT host-executed - install_aegis.ps1 is the canonical operator path per the manual; a NSIS-path host drill stays optional. The drill re-installed the SAME attested version set (65CCD7CD / 617FA3C7 / 09453FE1 / 1291A73E / EF9BFD22 / 838281DA / EC4A5683), so it proves the deploy/rollback machinery end-to-end, not a version change. Code signing of release artifacts remains open.",
+      "tests": [
+        "pre-drill capture: nids 65CCD7CD / pep 617FA3C7 / Rules D7F110F6 / policies B7224FA0; AegisNids RUNNING; no backup",
+        "install leg: all-9-artifact SHA-256 verify passed (script throws on mismatch); new PID 22724 RUNNING; health defcon 3/HIGH, workers failed NO, in 1067/out 1061/dropped 6/errors 0, uptime 5,206 ms; 7/7 subsystems",
+        "rollback leg: 'Rollback completed'; new PID 6316; health failed NO, in 93/out 82/dropped 11/errors 0; nids hash back to 65CCD7CD byte-exact; backup consumed (absent)",
+        "post-drill re-verification (agent): pep 617FA3C7 / wfp_user EF9BFD22 / Rules D7F110F6 / policies B7224FA0 all byte-exact; nose PID 21568 untouched; tree = 9 stamp files only"
+      ],
+      "files_changed": [
+        "EVIDENCE_INDEX.json"
+      ]
     }
   ],
   "evidence_level_summary": {
@@ -5677,7 +5701,7 @@
     "E2_count": 112,
     "E3_count": 7,
     "E4_count": 14,
-    "E5_count": 79,
+    "E5_count": 80,
     "E6_count": 0,
     "E7_count": 1
   }
