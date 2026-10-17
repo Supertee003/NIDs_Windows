@@ -12,15 +12,16 @@ Hardening review (AC1) - the categories in the ticket and where the fix
 lives today:
 
   memory safety / bounds / integer overflow
-    The screening helper (shield/src/pep.rs) is memory-safe by
-    construction; the SOLE enforcement authority is the Rust PEP
-    (rust-src/lib.rs), the only point for privileged actions.
-    Zig stages use safe slices + bounds-checked arrays; fault matrix
-    (core/fault_matrix.zig) counts overflows instead of panicking.
+    The screening boundary (shield/src/lib.rs) rejects null and oversize
+    inputs before any slice is constructed; the SOLE enforcement authority
+    is the Rust PEP (rust-src/lib.rs), the only point for privileged
+    actions. Zig stages use safe slices + bounds-checked arrays; fault
+    matrix (core/fault_matrix.zig) counts overflows instead of panicking.
   FFI / ABI
-    shield/src/pep.rs converts C inputs into a safe PepRequest only via
-    checked CStr conversion; the screening shim is advisory-only and never
-    authorizes (enforcement lives solely in rust-src/lib.rs).
+    The screening shim exports exactly one C symbol (aegis_shield_screen),
+    loaded DynLib-only by src/policy/shield_screen.zig (no link-time
+    extern); it is advisory-only and never authorizes (enforcement lives
+    solely in rust-src/lib.rs).
   race / deadlock
     Replay is read-only; forensics ring is single-writer; health
     monitoring is isolated from the golden path.
@@ -35,9 +36,11 @@ lives today:
     Config hot reload validates before atomic swap (config_reload_proof);
     invalid rulesets are rejected (no partial swap).
   secret handling / certificate handling
-    auth token is a non-empty sentinel fingerprinted with FNV-1a
-    (shield/src/pep.rs screening helper); federation trust anchors are pinned + verified
-    in rust-src (WebPkiClientVerifier, empty roots fail closed).
+    No secret material lives in the screening crate (PEP-001 removed the
+    former auth-sentinel vestige); privileged authorization binds caller
+    identity (caller_hash) + replay nonce in control_ipc.zig; federation
+    trust anchors are pinned + verified in rust-src (WebPkiClientVerifier,
+    empty roots fail closed).
   privilege boundaries
     ADR-0001: Rust PEP is the ONLY enforcement authority; approaching it
     are only requests. See authority_invariants.
@@ -72,8 +75,8 @@ SPAWN_TOKENS = (
     ".terminate()",
     ".kill()",
 )
-PEP_RS = "shield/src/pep.rs"
-PEP_LIB = "shield/src/lib.rs"
+SCREEN_RS = "shield/src/screen.rs"
+SCREEN_LIB = "shield/src/lib.rs"
 NOSE_PR = "src/capture/nose_pipe_reader.zig"
 CONFIG_RELOAD = "src/tests/proofs/config_reload_proof.zig"
 FED_TLS_RUST = "rust-src/lib.rs"
@@ -140,8 +143,8 @@ def test_hardening_categories_coverage() -> None:
     concrete evidence tokens exist (structurally, what implements each fix).
     """
     ipc = _read(CONTROL_IPC)
-    pep = _read(PEP_RS)
-    pep_lib = _read(PEP_LIB)
+    screen = _read(SCREEN_RS)
+    screen_lib = _read(SCREEN_LIB)
     nose = _read(NOSE_PR)
     config = _read(CONFIG_RELOAD)
     fed_rust = _read(FED_TLS_RUST)
@@ -149,12 +152,12 @@ def test_hardening_categories_coverage() -> None:
 
     checks = {
         "memory safety / bounds": (
-            "PepRequest" in pep and "CStr" in pep_lib,
-            "Rust PEP (memory-safe authority) MUST convert C inputs via checked CStr (pep.rs/lib.rs)",
+            "is_null()" in screen_lib and "MAX_PAYLOAD_SIZE" in screen_lib,
+            "screening boundary must reject null/oversize input before any slice construction",
         ),
         "FFI / ABI": (
-            "fnv1a_64" in pep or "CStr" in pep_lib,
-            "PEP shim must have explicit FFI conversion surface",
+            "#[no_mangle]" in screen_lib and 'extern "C"' in screen_lib,
+            "screening shim must expose exactly one explicit C ABI symbol",
         ),
         "race / deadlock": (
             "getBySequence" in _read("src/forensic/forensics_engine.zig"),
@@ -174,15 +177,15 @@ def test_hardening_categories_coverage() -> None:
             "config reload must validate before atomic swap",
         ),
         "secret handling": (
-            "auth_token" in pep and "non-empty sentinel" in pep,
-            "auth token must be a non-empty sentinel fingerprint",
+            "caller_hash" in ipc and "nonce" in ipc,
+            "control-plane authorization must bind caller identity + replay nonce (no secret material in the screening crate)",
         ),
         "certificate handling": (
             "WebPkiClientVerifier" in fed_rust and "no trust anchors (empty roots fail closed)" in fed_rust,
             "federation TLS must verify peer chains against pinned trust anchors (Rust stack, P2B2 cutover)",
         ),
         "privilege boundaries": (
-            "advisory" in _read("src/core/brain_engine.zig") or "never" in pep.lower(),
+            "advisory" in screen_lib and "never" in screen_lib,
             "non-authoritative stages must be advisory-only",
         ),
         "audit integrity": (

@@ -1,28 +1,28 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
-//! Shield is an advisory Tier-3 screening component. It never authorizes
-//! privileged actions and never calls the WFP enforcement boundary.
+//! Shield is an advisory Tier-3 screening component (SUPPORT). It never
+//! authorizes privileged actions and never calls the WFP enforcement
+//! boundary. PEP-001 (2026-10-17) removed the former duplicate PEP/WFP
+//! surface; the sole enforcement authority is the Rust PEP (rust-src/lib.rs).
+//!
+//! The crate exports exactly ONE C symbol:
+//!   aegis_shield_screen(ptr: *const u8, len: usize) -> i32
+//!     0 = clean/advisory-allow, >0 = suspicious (escalate to the canonical
+//!     policy path, never enforce), <0 = rejected (null/oversize input).
+//! The Zig core loads it DynLib-only via src/policy/shield_screen.zig.
 
-mod pep;
-
-use std::ffi::CStr;
-
-/// Checked string boundary for callers that provide metadata to Shield.
-/// Invalid or null pointers are rejected before any screening work.
-pub fn checked_label(ptr: *const std::ffi::c_char) -> Option<String> {
-    if ptr.is_null() { return None; }
-    let value = unsafe { CStr::from_ptr(ptr) };
-    value.to_str().ok().map(str::to_owned)
-}
+mod screen;
 
 #[no_mangle]
 pub extern "C" fn aegis_shield_screen(ptr: *const u8, len: usize) -> i32 {
     const MAX_PAYLOAD_SIZE: usize = 4096;
-    if ptr.is_null() || len > MAX_PAYLOAD_SIZE { return -1; }
+    if ptr.is_null() || len > MAX_PAYLOAD_SIZE {
+        return -1;
+    }
     // SAFETY: the C caller supplies a valid read-only buffer of `len` bytes;
     // null and oversized inputs are rejected before constructing the slice.
     let input = unsafe { std::slice::from_raw_parts(ptr, len) };
-    pep::screen_payload(input)
+    screen::screen_payload(input)
 }
 
 #[cfg(test)]
@@ -45,7 +45,13 @@ mod tests {
     }
 
     #[test]
+    fn ffi_suspicious_payload_escalates_without_enforcing() {
+        let payload = b"prefix DROP! suffix";
+        assert_eq!(crate::aegis_shield_screen(payload.as_ptr(), payload.len()), 1);
+    }
+
+    #[test]
     fn benign_payload_is_advisory_allow() {
-        assert_eq!(crate::pep::screen_payload(b"benign"), 0);
+        assert_eq!(crate::screen::screen_payload(b"benign"), 0);
     }
 }

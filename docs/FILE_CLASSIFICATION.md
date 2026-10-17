@@ -28,8 +28,8 @@ Categories follow the 64-step plan STEP 1 taxonomy: SOURCE / TEST / PROOF / DOC 
 | `core/` | **LEGACY/DEV (kept per user decision)** | 159 | Original development tree, restored and tracked 2026-09-08. NOT in the production build (`build.zig` → `src/main.zig`); retained for reference and as contract context for the T8–T19 tests. Encoding normalized UTF-16LE → UTF-8 + LF (Step 2 round 3). |
 | `src/tests/` | TEST | ~50 | Unit test harnesses mirroring src/ submodules. |
 | `tests/` | TEST | 50 | Test corpus / integration tests. |
-| `shield/` | **SOURCE (canonical Rust PEP)** | 211 | Real enforcement authority: `src/lib.rs` (Tier-3 payload safety) + `src/windows_enforce.rs` (decision matrix + IOCTL WFP). `target/` subtree (build) present → remove build. |
-| `rust-src/` | SOURCE (Rust PEP variant) | 1 | `lib.rs` PEP (`aegis_pep`) linked by build.zig via `target/release/aegis_pep.dll.lib`. Needs consolidation decision with shield/. |
+| `shield/` | **SOURCE (SUPPORT: Tier-3 payload screening)** | 3 | Advisory screening crate built to `sec_monitor.dll` (single export `aegis_shield_screen`, DynLib-loaded by `src/policy/shield_screen.zig`). PEP-001 (2026-10-17): the former duplicate PEP/WFP surface is fully removed (`windows_enforce.rs` deleted; `pep.rs` → `screen.rs`). `target/` subtree (build) present → remove build. |
+| `rust-src/` | SOURCE (canonical Rust PEP) | 1 | `lib.rs` PEP (`aegis_pep`) linked by build.zig via `target/release/aegis_pep.dll.lib`. Sole enforcement authority; the shield consolidation question is closed (PEP-001: shield/ keeps advisory screening only). |
 | `shield_rust/` | **LEGACY (duplicate; removed in Step 2)** | 0 | Stale duplicate of `shield/src/windows_enforce.rs`; no Cargo.toml → could not build. Deleted from disk 2026-09-08. |
 | `brain/` | SOURCE (Python Brain) | 15 | Advisory Brain modules. |
 | `nose/` | SOURCE (Go Nose) | 10 | Go acquisition/ingestion. |

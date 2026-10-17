@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "ce83b03",
+  "source_commit": "ee3b41a",
   "build_date": "2026-10-13T01:11:10.065507+00:00",
   "build_host": "windows",
   "platform": {
@@ -1039,7 +1039,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18564,
-      "sha256": "84d810492931a678f7c5155704ee67ad797fbcc8e7429f28e13b8ffb3cf56170",
+      "sha256": "9eca678bb93295b4d370513a779ff393d4f9e76f6dc641af53b81ab51cc32610",
       "language": "json"
     },
     {
@@ -1620,14 +1620,14 @@
     },
     {
       "path": "shield/src/lib.rs",
-      "size": 1612,
-      "sha256": "d3d74bf0c3ae8029a1cd2a7f6c247f43362b56bc05f56296335e800fe26f6457",
+      "size": 1961,
+      "sha256": "cc0f07fbf058fd95857f6c8a03ecdeb3a8945ae365f545f9fe392d8b30968f42",
       "language": "rust"
     },
     {
-      "path": "shield/src/pep.rs",
-      "size": 1291,
-      "sha256": "4f7c828efb7ddda57a24faf782286e1e19172ed433c098f3c698d3ea6da3ffee",
+      "path": "shield/src/screen.rs",
+      "size": 1014,
+      "sha256": "e887ec615b688d1bfb6a9eb979bcada324d32b18f758929e120edd8d354c3292",
       "language": "rust"
     },
     {
@@ -2160,8 +2160,8 @@
     },
     {
       "path": "src/forensic/policy_contract.zig",
-      "size": 15439,
-      "sha256": "171a85deda8a3ea76ea08987cd9c3d5c4f00e88c4f79cc81605fd61702563611",
+      "size": 13235,
+      "sha256": "222f8a902d8794a4386ede828a617edeca943e0719f433a6b11338f0526f81f5",
       "language": "zig"
     },
     {

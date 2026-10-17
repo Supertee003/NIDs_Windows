@@ -1,5 +1,5 @@
 {
-  "head_sha": "ce83b03469e1a1c4106e281fcd048b766bd3ec0a",
+  "head_sha": "ee3b41a91f0839737869e330958cc3cb1549cb10",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -1439,7 +1439,7 @@
     {
       "id": "GAP-007",
       "severity": "P0",
-      "title": "shield/ contains a duplicate enforcement authority (QUARANTINED, removal open)",
+      "title": "shield/ contained a duplicate enforcement authority (REMOVED by PEP-001; was QUARANTINED)",
       "description": "shield/src/pep.rs implements a second Policy Enforcement Point and shield/src/windows_enforce.rs a second WFP enforcement path, while AUTHORITY_MAP declares rust-src/lib.rs the ONLY final enforcement authority. shield/src/lib.rs additionally exports aegis_pep_evaluate, aegis_pep_status_count and aegis_pep_version. All are now marked QUARANTINED in code and in AUTHORITY_MAP.json quarantined_duplicates[SHIELD_PEP]. Three bindings block isolated deletion: src/forensic/policy_contract.zig's dormant extern \"sec_monitor\" fn aegis_pep_evaluate (declared, never called), the shield C-ABI shim, and tests/pep/test_t8_rust_pep.py which asserts shield/src/pep.rs as the PEP schema source.",
       "status": "CLOSED",
       "required_evidence": [
@@ -1449,8 +1449,8 @@
         "a negative control fails if a PEP surface reappears in shield/",
         "shield build and tests stay green"
       ],
-      "resolution": "Shield crate structurally quarantined with 4/4 exit criteria met. PEP-001 migration slice to formally remove duplicate authority in progress. No active enforcement path exists.",
-      "evidence": "EVT-029 (classification), EVT-035 (quarantine). The running core loads sec_monitor.dll for validate_payload_safety only; src/forensic/policy_contract.zig declares but never calls aegis_pep_evaluate.",
+      "resolution": "Shield crate structurally quarantined with 4/4 exit criteria met. PEP-001 migration slice to formally remove duplicate authority in progress. No active enforcement path exists. UPDATE (2026-10-17, EVT-228): PEP-001 COMPLETE - formal removal executed. shield/src/pep.rs stripped of dead second-PEP vestiges (PepRequest, AUTH_TOKEN_SENTINEL, auth_token_is_valid, checked_cstr - zero callers tree-wide) and renamed shield/src/screen.rs (advisory screening only); shield/src/windows_enforce.rs already deleted; PEP exports absent from shield/src/lib.rs (single export aegis_shield_screen); dormant extern + ShieldPep*/ShieldScore* contract mirrors removed from src/forensic/policy_contract.zig; T8/T16 expectations point at rust-src/lib.rs; negative controls extended (pep.rs absence pinned).",
+      "evidence": "EVT-029 (classification), EVT-035 (quarantine), EVT-228 (PEP-001 formal removal complete). The running core loads sec_monitor.dll for the aegis_shield_screen screening symbol only; the former dormant aegis_pep_evaluate declaration is removed from src/forensic/policy_contract.zig.",
       "closed_at": "2026-09-14",
       "closed_by": "EVT-040+shield-work"
     },
@@ -5832,13 +5832,37 @@
       "files_changed": [
         "EVIDENCE_INDEX.json"
       ]
+    },
+    {
+      "id": "EVT-228",
+      "title": "PEP-001 complete: shield duplicate-authority formally removed (pep.rs -> screen.rs advisory-only; ShieldPep*/ShieldScore* contract mirrors removed; dormant surface fully gone)",
+      "level": "E3",
+      "component": "shield+zig-contract+tests",
+      "flow_id": "PEP-001",
+      "head_sha": "ee3b41a",
+      "timestamp": "2026-10-17",
+      "result": "PASS",
+      "command": "cd shield && cargo test --release && cargo build --release ; zig build ; zig build test ; zig test src/policy/shield_screen.zig ; python -m pytest tests -q ; python tools/release_engineering.py --refresh-digests --adopt-missing",
+      "expected": "the former duplicate PEP/WFP surface in shield/ is formally removed with no runtime regression: cargo 5/5, zig suite rc 0, shield_screen DynLib loader 6/6 against the rebuilt sec_monitor.dll, full pytest suite green",
+      "actual": "PASS - cargo test 5/5; cargo build produced sec_monitor.dll (112128 B); zig build rc 0; zig build test rc 0; zig test src/policy/shield_screen.zig 6/6 (positive path against the rebuilt DLL); pytest 887 passed / 2 skipped / 27 subtests passed (174.56s); refresh: 612 kept, 2 updated (shield/src/lib.rs, src/forensic/policy_contract.zig), 1 dropped (shield/src/pep.rs), 1 adopted (shield/src/screen.rs)",
+      "finding": "GAP-007/PEP-001 was the last open migration item: the shield crate kept the legacy pep.rs name with dead second-PEP vestiges (PepRequest, AUTH_TOKEN_SENTINEL, auth_token_is_valid, checked_cstr - no caller anywhere) and src/forensic/policy_contract.zig still mirrored a removed shield PEP/scoring ABI (ShieldPepRequest/Response, ShieldScoreRequest/Response - no producer or consumer). Neither was an active enforcement path, but both kept a PEP-shaped surface in the tree, contradicting the AUTHORITY_MAP SHIELD_PEP record and the P0-7 exit criteria.",
+      "description": "Executed the PEP-001 migration slice: (1) shield/src/pep.rs stripped to the screening predicate and renamed shield/src/screen.rs; shield/src/lib.rs keeps exactly one C export (aegis_shield_screen) with null/oversize rejection and no dead helpers; (2) src/forensic/policy_contract.zig: Contract 2 mirrors (ShieldScore*/ShieldPep*) and their 4 size tests removed with a REMOVED note; (3) tests/security/test_t16_security_hardening.py re-pointed (SCREEN_RS/SCREEN_LIB; memory-safety/FFI/secret/privilege evidence tokens now describe the real post-removal protections); (4) tests/security/test_forbidden_edges.py extended - pep.rs absence pinned, screening surface asserted on screen.rs; (5) AUTHORITY_MAP.json (RUST_PEP note P0-7 CLOSED, SHIELD_TIER3 fields, quarantined_duplicates[SHIELD_PEP] = REMOVED, invariants), SYSTEM_MAP.json shield note, AI_CONTEXT.md P0-7/component-list/table, FILE_CLASSIFICATION.md, authority-matrix.md, ai-context 00/01 updated; SHIELD-AUTHORITY.md + SHIELD_ARCHITECTURE_DECISION.md carry SUPERSEDED banners. Build outputs rebuilt locally (sec_monitor.dll, zig-out exe); deployed runtime untouched (behavior-identical change; optional refresh window).",
+      "tests": [
+        "cargo test --release (shield): 5 passed / 0 failed",
+        "cargo build --release (shield): sec_monitor.dll built (112128 B)",
+        "zig build: rc 0",
+        "zig build test: rc 0",
+        "zig test src/policy/shield_screen.zig: 6/6 passed (positive DynLib path against the rebuilt DLL)",
+        "python -m pytest tests -q: 887 passed, 2 skipped, 27 subtests passed (174.56s)",
+        "python tools/release_engineering.py --refresh-digests --adopt-missing: kept 612, updated 2, dropped 1, adopted 1; verify OK"
+      ]
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
     "E2_count": 115,
-    "E3_count": 8,
+    "E3_count": 9,
     "E4_count": 14,
     "E5_count": 82,
     "E6_count": 0,

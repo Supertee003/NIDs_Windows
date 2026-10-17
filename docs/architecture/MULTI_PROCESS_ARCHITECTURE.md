@@ -159,7 +159,7 @@ Zig Core → NDJSON Log → Go Aggregator (fsnotify) → REST API → Dashboard/
 
 ### Payload Safety Screening (In-Process)
 ```
-Zig Core → Rust Shield (validate_payload_safety) → Pass/Fail → Zig Core
+Zig Core → Rust Shield (aegis_shield_screen, advisory verdict) → Escalate/Clean → Zig Core
 ```
 
 ---
@@ -171,7 +171,7 @@ Zig Core → Rust Shield (validate_payload_safety) → Pass/Fail → Zig Core
 | Zig Core | Runtime orchestration, event fabric, detection, correlation | Privileged enforcement, crypto |
 | Go Nose | Packet acquisition, canonical event production | Policy, enforcement, detection |
 | Go Aggregator | Alert dedup, correlation, REST API | Runtime, enforcement, detection |
-| Rust Shield | Payload safety screening, threat scoring | Final enforcement decisions |
+| Rust Shield | Advisory Tier-3 payload screening (aegis_shield_screen) | Final enforcement decisions |
 | Rust PEP | Privileged action authorization, crypto | Payload screening, runtime |
 | C++ Bridge | Windows native adapters (ETW, FIM, WFP) | Policy, enforcement, detection |
 

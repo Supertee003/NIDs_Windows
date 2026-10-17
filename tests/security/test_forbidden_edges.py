@@ -78,7 +78,8 @@ def hits(pattern: str, files, strip=None):
 
 
 def test_shield_exports_no_pep_surface():
-    """Shield must export only the screening symbol (SHIELD_PEP exit criterion)."""
+    """Shield must export only the screening symbol (SHIELD_PEP exit criterion;
+    PEP-001 removed the legacy pep.rs name and its dead second-PEP surface)."""
     lib = REPO / "shield" / "src" / "lib.rs"
     text = lib.read_text(encoding="utf-8")
     assert "aegis_shield_screen" in text, "screening symbol missing"
@@ -89,6 +90,8 @@ def test_shield_exports_no_pep_surface():
     assert len(mangled) == 1, f"expected exactly 1 no_mangle export, got {len(mangled)}"
     assert not (REPO / "shield" / "src" / "windows_enforce.rs").exists(), \
         "duplicate WFP module must stay deleted"
+    assert not (REPO / "shield" / "src" / "pep.rs").exists(), \
+        "legacy shield PEP module must stay removed (PEP-001)"
 
 
 def test_go_never_touches_pep_or_wfp():
@@ -416,14 +419,16 @@ def test_legacy_tcp_listener_stays_dead():
 
 def test_shield_screening_surface_is_minimal():
     """Shield keeps exactly one screening export and no enforcement tokens
-    (PEP-NEG-116: completes the SHIELD_PEP exit-criterion-4 pin)."""
+    (PEP-NEG-116: completes the SHIELD_PEP exit-criterion-4 pin; PEP-001
+    renamed the legacy pep.rs surface to screen.rs - advisory screening
+    only)."""
     lib = (REPO / "shield" / "src" / "lib.rs").read_text(encoding="utf-8")
     assert "validate_payload_safety" not in lib
     for tok in ("Wfp", "Fwpm", "DeviceIoControl", "netsh"):
         assert tok not in lib, f"enforcement token in shield lib: {tok}"
-    pep = (REPO / "shield" / "src" / "pep.rs").read_text(encoding="utf-8")
-    assert "#[no_mangle]" not in pep, "pep.rs must not export FFI symbols"
-    assert 'extern "C"' not in pep, "pep.rs must not declare extern C ABI"
+    screen = (REPO / "shield" / "src" / "screen.rs").read_text(encoding="utf-8")
+    assert "#[no_mangle]" not in screen, "screen.rs must not export FFI symbols"
+    assert 'extern "C"' not in screen, "screen.rs must not declare extern C ABI"
 
 
 def test_zig_has_no_shield_linkage():

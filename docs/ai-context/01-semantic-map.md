@@ -15,7 +15,7 @@ Every source file belongs to exactly ONE semantic position.
 | CORRELATE | Combine events/entities into context or incidents | core/correlation_engine.zig |
 | INTELLIGENCE | Threat intel, Brain, RAG, contextual enrichment | core/threat_intel.zig, brain/ |
 | DECIDE | Policy and decision planning | core/policy_engine.zig |
-| ENFORCE | PEP and privileged actions | shield/ (Rust) |
+| ENFORCE | PEP and privileged actions | rust-src/ (Rust PEP; shield/ is advisory screening only) |
 | REMEMBER | Forensics, audit, replay | core/forensics_engine.zig |
 | OPERATE | Lifecycle, health, metrics, deployment, config | core/lifecycle.zig, core/dispatcher.zig |
 | PROVE | Tests, proof modules, fault injection, benchmarks | core/*_proof.zig, tests/ |

@@ -10,7 +10,7 @@ Observation -> Canonical Semantics -> Stateful Context -> Evidence -> Decision -
 - Zig core (runtime, event fabric, flow, detection, correlation, forensics)
 - C/C++ bridge (IPC, Windows interop)
 - Go nose (sensor ingestion, I/O concurrency)
-- Rust shield (PEP, enforcement boundary)
+- Rust shield (advisory Tier-3 screening; the PEP/enforcement boundary is rust-src/)
 - Python brain (advisory, RAG, analytics)
 - Rust mouth (DEFCON TUI)
 

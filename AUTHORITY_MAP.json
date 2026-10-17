@@ -1,5 +1,5 @@
 {
-  "head_sha": "ce83b03469e1a1c4106e281fcd048b766bd3ec0a",
+  "head_sha": "ee3b41a91f0839737869e330958cc3cb1549cb10",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -191,14 +191,14 @@
           ],
           "boundary": "PEP ABI â†’ Zig",
           "is_final_enforcement": true,
-          "note": "There is exactly ONE security truth: the Rust PEP (rust-src/). No other component may claim final enforcement authority. `shield/src/pep.rs` and `shield/src/windows_enforce.rs` contain a duplicate PEP + WFP enforcement implementation and are NOT an authority (OPEN P0-7)."
+          "note": "There is exactly ONE security truth: the Rust PEP (rust-src/). No other component may claim final enforcement authority. The former duplicate PEP + WFP surface in `shield/` is fully REMOVED (PEP-001, 2026-10-17): `pep.rs` is gone (advisory screening lives in `shield/src/screen.rs`), `windows_enforce.rs` is deleted, and the PEP exports are gone (P0-7 CLOSED)."
         },
         {
           "id": "SHIELD_TIER3",
           "language": "Rust",
           "role": "SUPPORT: Tier-3 payload screening",
           "scope": [
-            "payload safety screening symbol (validate_payload_safety)"
+            "advisory payload screening symbol (aegis_shield_screen)"
           ],
           "does_not_own": [
             "enforcement decisions",
@@ -208,15 +208,16 @@
             "policy evaluation"
           ],
           "files": [
-            "shield/src/lib.rs"
+            "shield/src/lib.rs",
+            "shield/src/screen.rs"
           ],
           "excluded_files": [
-            "shield/src/pep.rs",
-            "shield/src/windows_enforce.rs"
+            "shield/src/pep.rs (REMOVED -> screen.rs; advisory-only)",
+            "shield/src/windows_enforce.rs (DELETED)"
           ],
-          "boundary": "in-process DynLib call from src/core/bridge_init.zig",
+          "boundary": "in-process DynLib call from src/policy/shield_screen.zig (SHIELD-WIRE-123; no link-time extern)",
           "is_final_enforcement": false,
-          "note": "Loaded in-process to screen payloads. It must remain a screening helper only; a second enforcement authority is STOP-THE-LINE."
+          "note": "Loaded in-process to screen payloads (DynLib only). Advisory; never enforces. PEP-001 (2026-10-17): the former duplicate PEP/WFP surface is fully removed; a second enforcement authority remains STOP-THE-LINE."
         }
       ]
     },
@@ -394,17 +395,17 @@
       "id": "SHIELD_PEP",
       "authority": "rust-src/lib.rs (aegis_pep.dll)",
       "files": [
-        "shield/src/pep.rs",
-        "shield/src/windows_enforce.rs",
-        "shield/src/lib.rs (aegis_pep_evaluate / aegis_pep_status_count / aegis_pep_version)"
+        "shield/src/pep.rs (REMOVED -> shield/src/screen.rs, advisory screening only)",
+        "shield/src/windows_enforce.rs (DELETED)",
+        "shield/src/lib.rs (PEP exports REMOVED; single screening export remains)"
       ],
-      "status": "QUARANTINED",
+      "status": "REMOVED (PEP-001 complete, 2026-10-17)",
       "severity": "P0",
       "reason": "Second Policy Enforcement Point plus a second WFP enforcement path inside a crate that the runtime loads for payload screening only.",
       "still_bound": [
-        "# DORMANT: extern \"sec_monitor\" fn aegis_pep_evaluate removed from policy_contract.zig (PEP-001)",
-        "# Tests updated to point at rust-src/lib.rs instead of shield/src/pep.rs",
-        "# Shield PEP/WFP exports are quarantined; no active binding exists"
+        "# RESOLVED: dormant extern removed from policy_contract.zig",
+        "# RESOLVED: T8/T16 expectations point at rust-src/lib.rs",
+        "# RESOLVED: no PEP/WFP exports; legacy pep.rs name and dead second-PEP surface removed"
       ],
       "exit_criteria": [
         "shield exports no PEP symbol",
@@ -412,20 +413,20 @@
         "T8 PEP expectations point at rust-src/lib.rs",
         "a negative control fails if a PEP surface reappears in shield"
       ],
-      "tracking": "GAP-007; migration slice PEP-001",
-      "exit_criteria_status": "met 4/4: shield exports no PEP symbol, dormant Zig extern removed, T8 expectations point at rust-src/lib.rs, negative controls pin the quarantine (test_shield_exports_no_pep_surface + test_shield_screening_surface_is_minimal + test_zig_has_no_shield_linkage + test_zig_pep_extern_lives_in_one_module)"
+      "tracking": "GAP-007; migration slice PEP-001 - COMPLETE (EVT-228)",
+      "exit_criteria_status": "complete 4/4: shield exports no PEP symbol, dormant Zig extern removed, T8/T16 expectations point at rust-src/lib.rs, negative controls pin the removal (test_shield_exports_no_pep_surface + test_shield_screening_surface_is_minimal + test_zig_has_no_shield_linkage + test_zig_pep_extern_lives_in_one_module). PEP-001 additionally stripped the dead second-PEP vestiges and renamed pep.rs -> screen.rs, removed the ShieldPep*/ShieldScore* contract mirrors from policy_contract.zig, and extended the pins to the pep.rs absence."
     }
   ],
   "invariants": [
     "Exactly one production enforcement authority (Rust PEP)",
-    "shield/ exports a payload-screening symbol only; its PEP and WFP enforcement modules are QUARANTINED and may not be called",
+    "shield/ exports a payload-screening symbol only; its former PEP and WFP enforcement modules are REMOVED (PEP-001) and must not reappear",
     "Every privileged action passes through Rust PEP",
     "No UI may become an authoritative state owner",
     "No second runtime may exist",
     "No second Canonical Event may exist",
     "No second Policy Authority may exist",
     "No second Enforcement Authority may exist",
-    "`shield/` is a payload-screening SUPPORT crate only; its enforcement modules are excluded from the authority surface",
+    "`shield/` is a payload-screening SUPPORT crate only; its former enforcement modules are removed from the tree (PEP-001)",
     "`go/aggregator/` is an optional operator sidecar and produces no Canonical Event",
     "One canonical operator client: tools/aegisctl.py",
     "Zig is the runtime hub - all languages connect through C ABI or FFI",

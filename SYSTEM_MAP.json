@@ -1,5 +1,5 @@
 {
-  "head_sha": "ce83b03469e1a1c4106e281fcd048b766bd3ec0a",
+  "head_sha": "ee3b41a91f0839737869e330958cc3cb1549cb10",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -429,7 +429,7 @@
       "boundary": "in-process DynLib",
       "classification": "SUPPORT",
       "is_final_enforcement": false,
-      "note": "Screening helper only. `shield/src/pep.rs` and `shield/src/windows_enforce.rs` duplicate PEP/WFP enforcement and must not be reachable from the runtime (OPEN P0-7)."
+      "note": "Screening helper only (PEP-001, 2026-10-17): the former duplicate PEP/WFP modules are fully removed - `shield/src/pep.rs` was stripped to `shield/src/screen.rs` (advisory screening only) and `shield/src/windows_enforce.rs` is deleted. The single export `aegis_shield_screen` is DynLib-loaded by `src/policy/shield_screen.zig`."
     },
     {
       "id": "dashboard",

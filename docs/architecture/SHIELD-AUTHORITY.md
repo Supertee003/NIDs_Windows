@@ -1,5 +1,11 @@
 # Shield Authority Resolution (Step 8)
 
+**SUPERSEDED (PEP-001, 2026-10-17):** this Step-8 resolution predates the authority
+consolidation. `shield/` is now an advisory Tier-3 screening crate only; the sole
+enforcement authority is `rust-src/lib.rs`. The former duplicate PEP/WFP surface in
+shield/ is removed — see `AUTHORITY_MAP.json` quarantined_duplicates[SHIELD_PEP]
+and EVIDENCE_INDEX EVT-228. The body below is kept as the historical record.
+
 **Status:** ACCEPTED — Single enforcement authority established
 **Date:** 2026-09-08
 **Baseline Commit:** 61f85f6 (after Step 2 Round 2 cleanup + core restore)

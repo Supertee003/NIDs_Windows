@@ -4,7 +4,7 @@
 
 
 
-**HEAD:** `ce83b03469e1a1c4106e281fcd048b766bd3ec0a` (working tree has uncommitted changes)
+**HEAD:** `ee3b41a91f0839737869e330958cc3cb1549cb10` (working tree has uncommitted changes)
 
 **BRANCH:** `main`
 
@@ -399,29 +399,29 @@ P0 risks as of HEAD `60c76fe` (2026-09-12) — HISTORICAL snapshot:
 
   authority and NOT part of the runtime path.
 
-- P0-7: `shield/` ownership — **CLASSIFIED + QUARANTINED, REMOVAL OPEN**: the
+- P0-7: `shield/` ownership — **RESOLVED (PEP-001 COMPLETE, 2026-10-17)**: the
 
-  crate is SUPPORT (Tier-3 payload screening DLL loaded in-process by
+  crate is SUPPORT (advisory Tier-3 payload screening, single export
 
-  `src/core/bridge_init.zig`). `shield/src/pep.rs`,
+  `aegis_shield_screen`, DynLib-only load from `src/policy/shield_screen.zig`).
 
-  `shield/src/windows_enforce.rs` and the `aegis_pep_evaluate` /
+  The former duplicate PEP/WFP surface was formally removed by the PEP-001
 
-  `aegis_pep_status_count` / `aegis_pep_version` exports in `shield/src/lib.rs`
+  slice (EVT-228): `shield/src/pep.rs` stripped and renamed
 
-  are a duplicate PEP + WFP enforcement surface and are now marked QUARANTINED
+  `shield/src/screen.rs` (screening predicate only), `shield/src/windows_enforce.rs`
 
-  in code and in `AUTHORITY_MAP.json` (`quarantined_duplicates[SHIELD_PEP]`).
+  deleted, the `aegis_pep_evaluate` / `aegis_pep_status_count` /
 
-  They cannot be deleted in isolation because three things still bind to them:
+  `aegis_pep_version` exports gone, the dormant `extern "sec_monitor"`
 
-  the dormant `extern "sec_monitor" fn aegis_pep_evaluate` in
+  declaration and the stale `ShieldPep*`/`ShieldScore*` contract mirrors
 
-  `src/forensic/policy_contract.zig` (declared, never called), the
+  removed from `src/forensic/policy_contract.zig`, and the T8/T16 expectations
 
-  `tests/pep/test_t8_rust_pep.py` expectations, and the shield C-ABI shim.
+  point at `rust-src/lib.rs`. Negative controls pin the removal
 
-  Removal is slice **PEP-001** (tracked as GAP-007).
+  (`tests/security/test_forbidden_edges.py`). See GAP-007.
 
 - P0-8: `health.check` payload does not conform to `RUNTIME_CONTRACT.md` §4.1
 
@@ -501,7 +501,7 @@ cd ts_policy && npm run typecheck && npm run test:all   # TypeScript policy comp
 
 | `ts_policy/` | CANONICAL | Policy authoring + compilation to Policy IR (advisory, no artifact) | enforcement, runtime |
 
-| `shield/` | SUPPORT | Tier-3 payload screening symbol (`validate_payload_safety`) exported to Zig | **any enforcement decision or WFP action** |
+| `shield/` | SUPPORT | Advisory Tier-3 payload screening symbol (`aegis_shield_screen`) exported to Zig (DynLib-only) | **any enforcement decision or WFP action** |
 
 | `go/aggregator/` | SUPPORT | Optional operator alert sidecar (NDJSON → REST :9200) | acquisition, policy, enforcement |
 
@@ -551,15 +551,15 @@ golden path. OPTIONAL is operator-only.
 
 
 
-4. **Rust Shield** (`shield/src/lib.rs` → `sec_monitor.dll`) — SUPPORT: loaded in-process by Zig core
+4. **Rust Shield** (`shield/src/lib.rs` → `sec_monitor.dll`) — SUPPORT: loaded in-process by Zig core (DynLib-only, `src/policy/shield_screen.zig`)
 
-   - Tier-3 payload safety validation (`validate_payload_safety`).
+   - Advisory Tier-3 payload screening (single export `aegis_shield_screen`).
 
-   - NOT an enforcement authority. `shield/src/pep.rs` and
+   - NOT an enforcement authority. The former duplicate PEP/WFP surface was
 
-     `shield/src/windows_enforce.rs` are a duplicate PEP/WFP implementation and
+     formally removed by PEP-001 (2026-10-17; `shield/src/pep.rs` → `screen.rs`,
 
-     are tracked as OPEN STOP-THE-LINE (P0-7).
+     `windows_enforce.rs` deleted); P0-7 resolved — see EVT-228.
 
 
 
