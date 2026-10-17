@@ -13,8 +13,12 @@
 
 mod screen;
 
+/// # Safety
+/// The caller must pass either a null pointer (rejected with `-1`) or a valid
+/// read-only buffer of `len` bytes. Oversized inputs (`len > 4096`) are
+/// rejected before any dereference. Loaded DynLib-only by the Zig core.
 #[no_mangle]
-pub extern "C" fn aegis_shield_screen(ptr: *const u8, len: usize) -> i32 {
+pub unsafe extern "C" fn aegis_shield_screen(ptr: *const u8, len: usize) -> i32 {
     const MAX_PAYLOAD_SIZE: usize = 4096;
     if ptr.is_null() || len > MAX_PAYLOAD_SIZE {
         return -1;
@@ -29,25 +33,34 @@ pub extern "C" fn aegis_shield_screen(ptr: *const u8, len: usize) -> i32 {
 mod tests {
     #[test]
     fn null_pointer_is_rejected() {
-        assert_eq!(crate::aegis_shield_screen(std::ptr::null(), 0), -1);
+        assert_eq!(
+            unsafe { crate::aegis_shield_screen(std::ptr::null(), 0) },
+            -1
+        );
     }
 
     #[test]
     fn oversized_payload_is_rejected() {
         let byte = 0u8;
-        assert_eq!(crate::aegis_shield_screen(&byte, 4097), -1);
+        assert_eq!(unsafe { crate::aegis_shield_screen(&byte, 4097) }, -1);
     }
 
     #[test]
     fn ffi_benign_payload_is_advisory_allow() {
         let payload = b"benign";
-        assert_eq!(crate::aegis_shield_screen(payload.as_ptr(), payload.len()), 0);
+        assert_eq!(
+            unsafe { crate::aegis_shield_screen(payload.as_ptr(), payload.len()) },
+            0
+        );
     }
 
     #[test]
     fn ffi_suspicious_payload_escalates_without_enforcing() {
         let payload = b"prefix DROP! suffix";
-        assert_eq!(crate::aegis_shield_screen(payload.as_ptr(), payload.len()), 1);
+        assert_eq!(
+            unsafe { crate::aegis_shield_screen(payload.as_ptr(), payload.len()) },
+            1
+        );
     }
 
     #[test]
