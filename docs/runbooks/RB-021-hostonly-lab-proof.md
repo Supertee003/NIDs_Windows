@@ -206,6 +206,26 @@ match; `policies_matched` once), so the earlier burst delta of about
 
 6. Close-out. Operator round 2026-10-17: the AEGIS_DAEMON_IFACE machine-env value was found already absent (the delete returned not-found; no per-service Environment key either); the daemon came up on a fresh process (PID 12140, ~12:01 local) -- a registry delete alone does not touch a running process, and the restarted process starts unpinned. Post-restart checks: 7/7 subsystems RUNNING, nose connected with frames flowing (packets_captured advancing in lockstep with the capture_npcap queue bucket and nose_frames_submitted), event rows continuing through 12:05, and zero rows with src 192.168.126.* in the 11:54-12:07 window (0 of 1,634). Lab records stay in the append-only log; no code changed or binary rebuilt in this run.
 
+7. Same-day re-proof of the EVT-216 fix (daemon deploy round; EVT-217).
+The fixed exe (sha256 65CCD7CD..., repo zig-out == deployed) went live
+as the AegisNids service with the Step-2 VMnet1 pin; the previous build
+was kept as aegis_nids.exe.pre-evt216 (aegis_nids.exe.pre-evt213 holds
+the same 6D03115B build; both hash-verified -- check hashes before
+using either for an exe rollback). The identical send shapes now behave
+exactly as the fix predicts: broadcast probe -- 5/5 own-payload rows at
+plen=83 for the red frames (eids 1-5, ports 56300-56304) and ZERO rows
+for the five plain frames (pre-fix: all ten matched at plen=1500);
+attribution set F1-F5 -- F1 (no pattern) silent, F2-F5 own-pattern rows
+only (R9064/R9059/R1005/R9002) at plen 49/50/47/52 (eids 12-15). Ring
+records for all 15 frames carry payload_len == frame size
+(83/75/44/49/50/47/52) -- no >=1500 slices anywhere; the capture_npcap
+queue bucket advanced 15->49 during the round, dropped=0. Restore
+(Step-2 second block + restart, PID 22884): prod rows continuing, zero
+192.168.126.* rows after the lab window; the fixed binary stays
+deployed. Operator note: the service can sit in STOP_PENDING for a
+while -- copy the exe only after `sc.exe query` prints STATE: 1 STOPPED
+(a copy while stopping fails with the file in use).
+
 ## Verification
 
 Per-rule table, one row each: script ran (rc 0) AND a detection row
@@ -246,7 +266,7 @@ host effect was ever applied, so no effect needs undoing.
   bytes win leftmost, but plain frames can false-positive on trailing
   bytes (2026-10-17). Treat ambient text-rule rows on the lab path as
   window artifacts unless the rule's bytes are in the frame's own payload
-  (see the lab-run record).
+  (see the lab-run record). (Same-day UPDATE: fixed at source -- EVT-216; re-proven on the deployed build -- EVT-217.)
 - Unicast fires need a live, resolved target: unresolvable .10/.20
   drop pre-wire and record nothing (not a NIDS fault). Broadcast
   and resolved-neighbour sends are the capture-liveness tests.
