@@ -4,17 +4,30 @@
 
 #include <fltKernel.h>
 
-/* Altitude from INF: 370000 (Anti-Virus) */
+/* Altitude from INF: 370000 (Anti-Virus class) */
 #define AEGIS_MINIFILTER_ALTITUDE   L"370000"
-#define AEGIS_FILTER_PORT_NAME      L"\AegisMinifilterPort"
+/* Port name. Must be written with a DOUBLE backslash in source so the
+ * runtime string is a single-leading-backslash name ("\AegisMinifilterPort"),
+ * matching the user-mode FilterConnectCommunicationPort argument (the WDK
+ * minispy sample uses the identical L"\\MiniSpyPort" form). The previous
+ * single-backslash form was an invalid escape sequence (MSVC C4129): the
+ * backslash was dropped and the registered name had no leading backslash. */
+#define AEGIS_FILTER_PORT_NAME      L"\\AegisMinifilterPort"
 
 /* C5: Event types */
 #define AEGIS_EVT_FILE              1
 #define AEGIS_EVT_PROC_CREATE       2
 #define AEGIS_EVT_PROC_EXIT         3
 
-/* C5: Ring buffer */
-#define AEGIS_RING_SIZE             (64 * 1024)
+/* C5: Ring buffer.
+ * EVT-230 hardening: sized for burst absorption, not demo traffic. The
+ * original 64 KiB ring (139 records) overflowed on bursty hosts while the
+ * user-mode reader was between pulls; EVT-230 measured cumulative drop
+ * ~80%+ on this lab host with the counter non-silent (see EVIDENCE_INDEX
+ * EVT-230). 1 MiB = ~2220 records = several seconds of burst headroom at
+ * observed peak rates. No wire/layout change: the record struct and the
+ * READ_EVENTS contract are unchanged. */
+#define AEGIS_RING_SIZE             (1024 * 1024)
 
 /* C5: User->Kernel message commands */
 #define AEGIS_MSG_READ_EVENTS       1
@@ -51,5 +64,18 @@ typedef struct _AEGIS_RING_BUFFER {
 extern PFLT_FILTER        g_FilterHandle;
 extern PFLT_PORT          g_ServerPort;
 extern PAEGIS_RING_BUFFER g_EventRing;
+
+/* Ring buffer API (aegis_minifilter_comm.c). Prototypes are mandatory: the
+ * file/proc callbacks previously compiled with C4013 ("assuming extern
+ * returning int") because this header declared none of these. On x64 that
+ * happened to link, but any future signature drift would be silently
+ * accepted instead of rejected at compile time. */
+NTSTATUS AegisRingInitialize(ULONG size);
+VOID     AegisRingDestroy(void);
+NTSTATUS AegisRingWriteEvent(ULONG type, ULONG pid, ULONG parentPid,
+    NTSTATUS status, PWSTR path);
+ULONG    AegisRingReadEvents(PUCHAR outBuf, ULONG outSize);
+VOID     AegisRingGetStats(PULONG totalEvents, PULONG droppedEvents,
+    PULONG usedBytes, PULONG capacity);
 
 #endif /* _AEGIS_MINIFILTER_H_ */

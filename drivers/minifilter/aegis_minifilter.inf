@@ -41,10 +41,18 @@ ServiceType    = 2       ; SERVICE_FILE_SYSTEM_DRIVER
 StartType      = 3       ; SERVICE_DEMAND_START
 ErrorControl   = 1       ; SERVICE_ERROR_NORMAL
 ServiceBinary  = %12%\aegis_minifilter.sys
-AddReg         = AegisMF_Params
+AddReg         = AegisMF_Service_AddReg
 
-[AegisMF_Params]
-HKR, "Parameters", "Altitude", 0x00010001, 370000
+; Standard minifilter altitude registration (see the WDK minispy INF for
+; the same shape): the filter manager reads the load order from the
+; Instances subkey, not from Parameters. DefaultInstance makes the
+; instance auto-attach: FLTMGR attaches it to every mounted volume, which
+; is what makes the PostCreate / process callbacks fire host-wide.
+[AegisMF_Service_AddReg]
+HKR,,"SupportedFeatures",0x00010001,0x3
+HKR,"Instances","DefaultInstance",0x00000000,%DefaultInstance%
+HKR,"Instances\%DefaultInstance%","Altitude",0x00000000,"370000"
+HKR,"Instances\%DefaultInstance%","Flags",0x00010001,0x0
 
 [Strings]
 ProviderString     = "AEGIS NIDS Project"
@@ -52,3 +60,4 @@ ManufacturerName   = "AEGIS"
 DiskName           = "AEGIS Minifilter Driver Installation Disk"
 AegisMF.DeviceDesc = "AEGIS NIDS Minifilter File/Process Monitor"
 ServiceDesc        = "AEGIS NIDS Minifilter Driver"
+DefaultInstance    = "AegisMinifilter Instance"

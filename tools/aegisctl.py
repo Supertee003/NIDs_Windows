@@ -485,6 +485,21 @@ def _format_queue_rows(response: dict) -> list[str]:
         elif state == "unknown":
             row += " (telemetry loop has not reported)"
         rows.append(row)
+    mf = response.get("minifilter") or {}
+    if mf:
+        state = mf.get("state", "?")
+        row = (
+            f"  minifilter state={state} "
+            f"reads={mf.get('reads', '?')} "
+            f"rows={mf.get('rows', '?')} "
+            f"last_bytes={mf.get('last_bytes', '?')} "
+            f"dropped={mf.get('dropped', '?')}"
+        )
+        if state == "unavailable":
+            row += " (kernel file/process rows absent until driver loads)"
+        elif state == "unknown":
+            row += " (reader loop has not reported)"
+        rows.append(row)
     for stage in response.get("pipeline", []) or []:
         rows.append(
             f"  stage={stage.get('stage', '?')} count={stage.get('count', '?')} "

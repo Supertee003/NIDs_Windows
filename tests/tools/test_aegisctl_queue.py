@@ -111,3 +111,44 @@ def test_format_queue_rows_omits_wfp_when_absent():
     # Daemons that predate the wfp block must not get an invented row.
     rows = cli._format_queue_rows(SAMPLE)
     assert not any("wfp" in row for row in rows)
+
+
+def test_format_queue_rows_renders_minifilter_health_row():
+    # EVT-230: the kernel minifilter health row, including the kernel ring's
+    # own dropped counter (ring overflow is operator-visible, never silent).
+    response = dict(SAMPLE)
+    response["minifilter"] = {
+        "state": "ok", "reads": 12, "rows": 3, "last_bytes": 1416, "dropped": 0,
+    }
+    rows = cli._format_queue_rows(response)
+    assert "  minifilter state=ok reads=12 rows=3 last_bytes=1416 dropped=0" in rows
+
+
+def test_format_queue_rows_labels_minifilter_absence():
+    # EVT-230: a driver-absent host must render a LABELED state with the
+    # explicit absence note, never a silent zero.
+    response = dict(SAMPLE)
+    response["minifilter"] = {
+        "state": "unavailable", "reads": 0, "rows": 0, "last_bytes": 0, "dropped": 0,
+    }
+    rows = cli._format_queue_rows(response)
+    assert (
+        "  minifilter state=unavailable reads=0 rows=0 last_bytes=0 dropped=0 "
+        "(kernel file/process rows absent until driver loads)" in rows
+    )
+
+
+def test_format_queue_rows_labels_minifilter_unknown():
+    response = dict(SAMPLE)
+    response["minifilter"] = {"state": "unknown"}
+    rows = cli._format_queue_rows(response)
+    assert (
+        "  minifilter state=unknown reads=? rows=? last_bytes=? dropped=? "
+        "(reader loop has not reported)" in rows
+    )
+
+
+def test_format_queue_rows_omits_minifilter_when_absent():
+    # Daemons that predate the minifilter block must not get an invented row.
+    rows = cli._format_queue_rows(SAMPLE)
+    assert not any("minifilter" in row for row in rows)

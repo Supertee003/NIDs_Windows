@@ -729,19 +729,32 @@ const handlers = struct {
         // loop. "unavailable" is a LABELED absence (no silent zero);
         // rows>0 is the only "kernel flows are flowing" claim.
         writer.writeAll(",\"wfp\":{") catch return null;
-        writer.print("\"state\":\"{s}\",\"reads\":{},\"rows\":{},\"last_bytes\":{}}}}}", .{
-            wfpProviderStateName(state_mod.g_wfp_provider_state.load(.acquire)),
+        writer.print("\"state\":\"{s}\",\"reads\":{},\"rows\":{},\"last_bytes\":{}}}", .{
+            providerStateName(state_mod.g_wfp_provider_state.load(.acquire)),
             state_mod.g_wfp_reads.load(.acquire),
             state_mod.g_wfp_rows.load(.acquire),
             state_mod.g_wfp_last_bytes.load(.acquire),
         }) catch return null;
+        // EVT-230: kernel minifilter host telemetry health (file/process
+        // events via \AegisMinifilterPort), stamped by the reader loop.
+        // Same labeled-absence rule as wfp; `dropped` is the KERNEL ring's
+        // own loss counter, so ring overflow is never silent.
+        writer.writeAll(",\"minifilter\":{") catch return null;
+        writer.print("\"state\":\"{s}\",\"reads\":{},\"rows\":{},\"last_bytes\":{},\"dropped\":{}}}}}", .{
+            providerStateName(state_mod.g_minifilter_state.load(.acquire)),
+            state_mod.g_minifilter_reads.load(.acquire),
+            state_mod.g_minifilter_rows.load(.acquire),
+            state_mod.g_minifilter_last_bytes.load(.acquire),
+            state_mod.g_minifilter_dropped.load(.acquire),
+        }) catch return null;
         return out.toOwnedSlice() catch null;
     }
 
-    /// EVT-211: stable names for runtime_state.WfpProviderState ordinals.
-    /// Switch, not @tagName: an unrecognized host value degrades to a
-    /// printed "unknown", never a trap on the control thread.
-    fn wfpProviderStateName(v: u8) []const u8 {
+    /// EVT-211/EVT-230: stable names for the three-state kernel provider
+    /// health ordinals (WfpProviderState / MinifilterState; identical
+    /// ordinal space). Switch, not @tagName: an unrecognized host value
+    /// degrades to a printed "unknown", never a trap on the control thread.
+    fn providerStateName(v: u8) []const u8 {
         return switch (v) {
             1 => "ok",
             2 => "unavailable",
@@ -2302,6 +2315,15 @@ test "queueStats emits parseable JSON with shed and etw keys (GAP-015)" {
     try std.testing.expect(wfp.contains("reads"));
     try std.testing.expect(wfp.contains("rows"));
     try std.testing.expect(wfp.contains("last_bytes"));
+    // EVT-230: the minifilter health block (same labeled-absence rule as
+    // wfp) plus the KERNEL ring's own dropped counter - loss visibility.
+    try std.testing.expect(root.contains("minifilter"));
+    const mf = root.get("minifilter").?.object;
+    try std.testing.expect(mf.contains("state"));
+    try std.testing.expect(mf.contains("reads"));
+    try std.testing.expect(mf.contains("rows"));
+    try std.testing.expect(mf.contains("last_bytes"));
+    try std.testing.expect(mf.contains("dropped"));
 }
 
 test "ceremonyRequestId prefers explicit identity, falls back to ctx (G5)" {

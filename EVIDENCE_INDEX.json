@@ -1,5 +1,5 @@
 {
-  "head_sha": "c02ec546d757661b07f38f0a73bf3bfbef94d1cd",
+  "head_sha": "fac1c5543d42df5916f10b43c78b86e286d60823",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5884,6 +5884,47 @@
         "EVI registry: GAP-001..021 all CLOSED (21/21); 191 PASS evidence entries; kernel-NIDS completion plan phases 1-4 executed/decided, phase 5 officially deferred (EVT-114) with incidental advancement (EVT-202..219)"
       ],
       "files_changed": [
+        "EVIDENCE_INDEX.json"
+      ]
+    },
+    {
+      "id": "EVT-230",
+      "title": "Minifilter Slice A - kernel file/process event flow live end-to-end: driver built/signed/loaded, pull-model reader hardened to zero drops, path byte-proof via payload-prefix",
+      "level": "E5",
+      "component": "kernel-telemetry",
+      "flow_id": "FOR-001",
+      "head_sha": "fac1c55",
+      "timestamp": "2026-10-18",
+      "result": "PASS",
+      "command": "Operator (elevated) blocks: scripts/wdk_build_minifilter.ps1 (WDK 26100, /INTEGRITYCHECK) -> scripts/minifilter_sign.ps1 (test cert CN=AEGIS Test Signer) -> scripts/minifilter_service.ps1 load; deploy signed driver + exe; Start-Service AegisNids; verify: sc query, fltmc filters/instances, aegisctl queue, forensics verify, forensics.list --payload-prefix, ring-probe.ps1 real-record dump",
+      "expected": "kernel file/process events flow end-to-end (driver ring -> pull reader -> pipeline -> forensic ring) carrying real path text, with no silent loss, byte-verifiable against a freshly created file",
+      "actual": "PASS - driver v4 sha256 082F6A43CF036CDF6DAE6F519D4E0A2C4E53CF0F46C57E69947C57842F6909A5 loaded (fltmc: AegisMinifilter, 6 instances, altitude 370000; volumes C:, D:, Harddisk0 DR0, Mup); daemon exe v4 sha256 C1B9266FAA5189A61072E1137C5B63B95C18248F19A1DF4A5C02029A35942CEB (PID 16560); aegisctl queue minifilter state=ok reads=18099 rows=145770 dropped=0 last_bytes=0; forensic chain verified=true integrity=ok; marker byte-proof via forensics.list --payload-prefix (payload = raw normalized path UTF-8): C: marker at 00:23:56 -> matched=4 source=14 payload_len=84 verified; D: marker at 00:25:13 -> matched=1 seq=350691 payload_len=113; C: repeat at 00:25:18 -> matched=4 payload_len=87 - all equal DOS path length + 21 (volume prefixes \\Device\\HarddiskVolume3 and \\Device\\HarddiskVolume5); probe dump 138 real kernel records with full paths and pids (artifact probe-dump-20261018-001103.txt)",
+      "finding": "Two root causes found and fixed live during bring-up: (1) New-Item -Force on the existing filter service registry key wiped the SCM configuration -> fltmc load failed 1243 (0x4DB); fixed with guarded key writes (never -Force the service key). (2) PsSetCreateProcessNotifyRoutineEx returned STATUS_ACCESS_DENIED (SCM error 5) because the built image lacked IMAGE_DLLCHARACTERISTICS_FORCE_INTEGRITY; fixed with the /INTEGRITYCHECK link flag (DllCharacteristics 0x160 -> 0x1E0) - consequence: every build must be signed before any load attempt (CI enforces the embedded signature; test-signed today). Pre-hardening capture was about 18 percent (64 KiB ring = 139 slots, 250 ms idle cadence; dropped grew ~26-36/s to a cumulative 265,700) and the ring sat full while idle - the v4 hardening (1 MiB ring = ~2220 records, 256 KiB pulls, 50 ms idle) reached dropped=0 sustained under live load at 72-123 records/s production. Forensic ring retention at lab rates is ~25-50 s (16384 slots), so byte-proofs are windowed; the ring probe dump remains the text-rich artifact.",
+      "description": "Slice A of the kernel-level NIDS program: the own minifilter moves from source-only to a live, proven observe-only kernel file/process telemetry path. Architecture: pull model - the kernel never calls FltSendMessage; user mode connects the single-client port \\AegisMinifilterPort (maxConnections=1) and issues READ_EVENTS (cmd 1; records copied, byte count returned) and GET_STATS (cmd 2; total/dropped/used/capacity with a persistent g_minifilter_dropped counter - loss is never silent). Wire record is the 472 B _AEGIS_EVENT_RECORD (EventType FILE/PROC_CREATE/PROC_EXIT, ProcessId/ParentPid, 100ns-1601 timestamp, NameLen, Path [220]u16 with a 219-wchar writer cap). Reader src/capture/minifilter_reader.zig: connect/retry, 256 KiB pulls at 50 ms idle cadence, UTF-16->UTF-8 path payload, canonical .minifilter source with HIDS reserved type and layer_id=2, then pipeline_queue.pushDecodedFrame with legacy kind capture_fim (the forensic ring canonicalizes it to source=14 file_sensor - source 3 legitimately holds 0 records; the ring uses the legacy->canonical mapping). No 6-codec wire schema change. Deployment: filesys driver service + fltmc load, altitude 370000 (service key + Instances\\DefaultInstance), test certificate CN=AEGIS Test Signer (thumbprint 60B05537FEB7A40D6F6624FF5C005C09DC245A63). Control surface: queue.stats minifilter block (state/reads/rows/last_bytes/dropped) rendered by tools/aegisctl.py (tests/tools/test_aegisctl_queue.py). Observe-only: no kernel enforcement was added; the system remains detection-only and Slice C activation is not required. Evidence artifact directory: admin-evidence/evt230-minifilter-slice-a-20261017/ (staged v4 driver+exe, ring-probe.ps1, operator-block-*.ps1, probe dumps, incident notes, marker files, evt230-slice-a-closeout.md). Rollback: scripts/minifilter_service.ps1 uninstall; exe backup .pre-EVT-230-harden (or .pre-EVT-230); driver v3 preserved in the artifact directory. Remaining outside this slice: production code signing (EV cert/HLK), Slice B kernel payload copy in the WFP callout, CMake BUILD_KERNEL_DRIVER wiring.",
+      "tests": [
+        "zig build: rc 0 (minifilter reader + daemon wiring)",
+        "zig build test: rc 0 (472 B record asserts, reader unit tests, aegisctl queue renderer tests)",
+        "host load: sc query AegisMinifilter STATE 4 RUNNING; fltmc filters AegisMinifilter 6 instances at 370000; FilterManager id=1 clean unload of v3 then id=6 load registered for v4",
+        "live flow: aegisctl queue minifilter state=ok reads=237 rows=1481 dropped=0 at 12 s post-load, sustained to reads=18099 rows=145770 dropped=0; all pipeline stages equal counts; legacy src=capture_fim(3) pushed matches rows",
+        "content probe: ring-probe dump captured 138 real kernel records with full volume paths and pids; drain burst 28,000 records/s (3 calls in 1 ms) with the daemon stopped",
+        "marker byte-proof: forensics.list --payload-prefix matched freshly created marker files in the forensic ring with exact payload lengths (C: 84 = DOS 63 + 21; D: 113 = DOS 92 + 21; C: repeat 87) - kernel-to-ring path text verified byte-for-byte",
+        "wiring regression: tests/tools/test_aegisctl_queue.py green; queue totals dropped=0 shed=0"
+      ],
+      "files_changed": [
+        "drivers/minifilter/aegis_minifilter.c",
+        "drivers/minifilter/aegis_minifilter.h",
+        "drivers/minifilter/aegis_minifilter_proc.c",
+        "drivers/minifilter/aegis_minifilter.inf",
+        "src/capture/minifilter_reader.zig",
+        "src/daemon.zig",
+        "src/control/handler_registry.zig",
+        "src/pipeline/runtime_state.zig",
+        "tools/aegisctl.py",
+        "tests/tools/test_aegisctl_queue.py",
+        "scripts/wdk_build_minifilter.ps1",
+        "scripts/minifilter_service.ps1",
+        "scripts/minifilter_sign.ps1",
+        "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
         "EVIDENCE_INDEX.json"
       ]
     }

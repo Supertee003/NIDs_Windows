@@ -47,6 +47,7 @@ const corr_mod = @import("detection/correlator.zig");
 const telemetry = @import("pipeline/telemetry_threads.zig");
 const nose_reader = @import("capture/nose_pipe_reader.zig");
 const wfp_telemetry = @import("capture/wfp_telemetry.zig");
+const minifilter_reader = @import("capture/minifilter_reader.zig");
 const pipe_monitor = @import("capture/pipe_monitor.zig");
 const packet_callback = @import("pipeline/packet_callback.zig");
 const event_queue = @import("pipeline/event_queue.zig");
@@ -66,6 +67,7 @@ const RuntimeSupervisor = struct {
     sensor: ?std.Thread = null,
     nose_reader: ?std.Thread = null,
     wfp_telemetry: ?std.Thread = null,
+    minifilter: ?std.Thread = null,
     direct_capture: ?std.Thread = null,
     etw: ?std.Thread = null,
     fim: ?std.Thread = null,
@@ -92,6 +94,8 @@ const RuntimeSupervisor = struct {
         self.nose_reader = null;
         if (self.wfp_telemetry) |thread| thread.join();
         self.wfp_telemetry = null;
+        if (self.minifilter) |thread| thread.join();
+        self.minifilter = null;
         if (self.direct_capture) |thread| thread.join();
         self.direct_capture = null;
         if (self.sensor) |thread| thread.join();
@@ -743,6 +747,17 @@ pub fn runDaemon() !void {
             diag.warn("failed to spawn WFP telemetry thread: {} — kernel flow telemetry disabled", .{err});
             break :blk null;
         };
+
+        // EVT-230: kernel minifilter host telemetry (file-create + process
+        // create/exit rows) via \AegisMinifilterPort. Always spawned:
+        // driver-absent hosts stay in a labeled retry loop (queue.stats
+        // `minifilter` block reports unavailable), never silent.
+        // Observe-only: drained rows are detection input, never enforcement.
+        supervisor.minifilter = std.Thread.spawn(.{}, minifilter_reader.minifilterReaderLoop, .{}) catch |err| blk: {
+            diag.warn("failed to spawn minifilter reader: {} — kernel host telemetry disabled", .{err});
+            break :blk null;
+        };
+        if (supervisor.minifilter != null) diag.info("minifilter kernel host telemetry reader started", .{});
 
         // Native named-pipe enumeration is part of the active daemon path.
         // It remains observe-only and publishes into the same pipeline queue.

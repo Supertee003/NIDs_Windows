@@ -64,3 +64,22 @@
 - Implement/แก้ enforcement หรือ driver แบบ blind (ไม่มี build/test) — ผิด stop-the-line
 - Block proof หรือ driver install บน business workstation (lab เท่านั้น)
 - อ้างว่า kernel-mode สมบูรณ์ทั้งที่ driver ยังไม่ build — อ้างได้แค่ kernel telemetry
+
+## 6. สถานะล่าสุด — Minifilter "Slice A" สำเร็จ (EVT-230, 2026-10-18, E5)
+
+minifilter ของเราเอง (drivers/minifilter/) หลุดจากสถานะ source-only แล้ว: build + sign (test cert) + load
+บนโฮสต์จริง (altitude 370000, 6 instances), pull-model comm port (\AegisMinifilterPort), reader hardened
+(1 MiB ring / 256 KiB pulls / 50 ms idle) — dropped=0 ตลอดภายใต้โหลดจริง (ก่อน hardening ~18%),
+และพิสูจน์เนื้อหาแบบ byte เป๊ะ: สร้าง marker แล้วเจอใน forensic ring ด้วย forensics.list --payload-prefix
+ตรง path จริงสอง volume (C:/D:, payload_len = DOS+21 เป๊ะ). observe-only — ไม่แตะ enforcement.
+หลักฐาน: EVIDENCE_INDEX EVT-230 + admin-evidence/evt230-minifilter-slice-a-20261017/ (probe dump,
+closeout note, operator blocks). รายละเอียดสไลซ์: drivers/minifilter + src/capture/minifilter_reader.zig
++ queue.stats minifilter block (aegisctl queue) + scripts/wdk_build_minifilter.ps1 /
+minifilter_sign.ps1 / minifilter_service.ps1
+
+สิ่งที่เหลือ (นอกสไลซ์นี้):
+
+1. Production code signing (EV cert / HLK) — ปัจจุบัน test-signed เท่านั้น (โหลดได้เฉพาะเครื่องที่เปิด test-signing)
+2. Slice B — kernel payload copy ใน WFP callout (drivers/wfp_callout/aegis_wfp_callout.c; ndis.h/NBL)
+3. CMake BUILD_KERNEL_DRIVER wiring (ตอนนี้ FATAL_ERROR โดยเจตนา; เส้นทาง sanctioned = scripts/wdk_build_production.ps1)
+4. Enforcement activation (Slice C) — ไม่จำเป็นตามข้อกำหนด; ระบบเป็น detection-only

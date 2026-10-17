@@ -150,6 +150,18 @@ pub var g_wfp_provider_state = std.atomic.Value(u8).init(@intFromEnum(WfpProvide
 pub var g_wfp_reads = std.atomic.Value(u64).init(0); // provider poll calls answered
 pub var g_wfp_rows = std.atomic.Value(u64).init(0); // ring records submitted to the pipeline
 pub var g_wfp_last_bytes = std.atomic.Value(u64).init(0); // bytes in the last answered read
+// EVT-230: kernel minifilter host-telemetry health (file/process events via
+// \AegisMinifilterPort). The reader loop owns these; control/queue renders
+// them so a driver-absent host shows a LABELED `unavailable` state, never a
+// silent zero. rows>0 is the only "kernel file/process rows are flowing"
+// claim; dropped is the KERNEL ring's own loss counter (never silent).
+// Ordinals: same three-state shape as WfpProviderState.
+pub const MinifilterState = enum(u8) { unknown = 0, ok = 1, unavailable = 2 };
+pub var g_minifilter_state = std.atomic.Value(u8).init(@intFromEnum(MinifilterState.unknown));
+pub var g_minifilter_reads = std.atomic.Value(u64).init(0); // READ_EVENTS pulls answered
+pub var g_minifilter_rows = std.atomic.Value(u64).init(0); // kernel records submitted to the pipeline
+pub var g_minifilter_last_bytes = std.atomic.Value(u64).init(0); // bytes in the last answered pull
+pub var g_minifilter_dropped = std.atomic.Value(u64).init(0); // kernel ring DroppedEvents (polled)
 /// Identity used for events originating from the verified daemon process.
 /// Set during daemon startup; never use a fabricated all-capability mask.
 pub var g_runtime_pid: u32 = 0;
