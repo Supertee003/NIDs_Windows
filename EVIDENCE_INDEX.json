@@ -1,5 +1,5 @@
 {
- "head_sha": "b3fe986ac1860c8d7d71a0a53e51f5756592e110",
+ "head_sha": "37059ec15a2dda54e7efe99c329c6a3c79de85cb",
  "created_at": "2026-09-24",
  "generator_version": "3.0",
  "evidence_levels": {
@@ -6116,11 +6116,28 @@
    "description": "G1 closure per docs/KERNEL_NIDS_COMPLETION_PLAN.md section 13 and docs/SLICE_C_LAB_GATE_DESIGN.md (APPROVED/IMPLEMENTED; operator proceed instruction 2026-10-18 adopted the recommended defaults; external security review still open). G2 (RB-012 -> RB-013 on an isolated lab VM) remains NOT YET EXECUTED.",
    "tests": "tests/security/test_prevention_gate_surface.py (5 pins); src/pipeline/runtime_state.zig (lab preconditions, single-writer provenance, updated boot pin); src/policy/pep_bindings.zig (verdict spec, closed-gate block path); src/policy/policy_ir.zig (isHostMutating); zig build test rc=0; full pytest 921 passed / 2 skipped / 27 subtests; mutation-red transcript",
    "files_changed": "build.zig, src/pipeline/runtime_state.zig, src/policy/policy_ir.zig, src/policy/pep_bindings.zig, src/pipeline/event_processor.zig, src/control/handler_registry.zig, src/daemon.zig, tests/security/test_prevention_gate_surface.py, docs/SLICE_C_LAB_GATE_DESIGN.md, docs/runbooks/RB-012-wfp-block-lab-proof.md, docs/KERNEL_NIDS_COMPLETION_PLAN.md"
+  },
+  {
+   "id": "SLICE-C-LAB-ART",
+   "title": "Artifact rehearsal for SLICE-C-LAB: the default build binary carries no compiled gate-opener code (all eight opener-unique literals absent; the lab build carries them all), and the live daemon is confirmed pre-slice (no gate_source) - no deployment in this slice",
+   "level": "E1",
+   "component": "zig-daemon+artifacts",
+   "flow_id": "FOR-001",
+   "head_sha": "37059ec",
+   "timestamp": "2026-10-18",
+   "result": "PASS",
+   "command": "Agent run (non-elevated), repo D:\\NIDs_Windows at 37059ec. zig build rc=0 -> zig-out/bin/aegis_nids.exe 9,626,624 B sha256 b8f1a92c490d58e1f3269e64104bf0dffcd6f49e9c838d0dfbd3bd24dcd0eedd; zig build -Dlab-prevention-gate=true --prefix zig-out/lab-rehearsal rc=0 -> 9,631,232 B sha256 60a5c920e4fb344560576ed0837dd391f3798c47b8684336d46721e6c0104786; raw byte probes over both PE images (slicec-artifact-scan.py/.2); read-only live enforcement.status via the aegisctl control API.",
+   "expected": "Default binary: absent = all opener-unique literals ('LAB: prevention gate OPEN', 'LAB: prevention gate stays closed', 'host mutation enabled for lab qualification ONLY', 'lab_prevention_gate_open', 'pep-unavailable', 'provider-not-ready', 'tier3-not-ready', 'forensic-ring-absent') with runtime-layer strings still present ('gate_source', 'lab-build-optin', prevention_gate templates); lab binary: all eight present. Live daemon (pre-redeploy): no gate_source, detection-only posture.",
+   "actual": "Exactly as expected. Probe table + string-pool diff in admin-evidence/sliceC-lab-gate-20261018/artifact-rehearsal.md: default ABSENT / lab PRESENT for all eight opener literals; PRESENT-both for gate_source, lab-build-optin, prevention_gate; the only lab-only protection string is 'lab_prevention_gate_open'. Function-name bytes are not usable probes on these PE debug builds (enforcementStatus / parseExpiresAt names are absent in both), so literal uniqueness (git grep: opener reasons only at src/pipeline/runtime_state.zig:37-40; open diag only at src/daemon.zig:638) is the discriminating evidence. Live read-out: tier3 READY, pep_available true, provider_ready true, prevention_gate closed, host_effect_capable false, enforcement_mode detection-only, no gate_source.",
+   "finding": "Built-artifact confirmation of the SLICE-C-LAB structural claim: the comptime-false branch leaves no compiled opener code in the default binary (sizes 9,625,088 B pre-slice -> 9,626,624 B default -> 9,631,232 B lab). Writer-path audit in the same kit: S2 block (handler_registry.zig:1749) and quarantine (1873) gate-checked; unblock (1935) is destroy-only by design; the C bridge block primitive (src/windows/wfp_ioctl.c:151) is reachable only via the Rust PEP (rust-src/lib.rs:354-356), which is reachable only through the gated aegis_pep_enforce. Lab E5 (RB-012 -> RB-013) still pending the operator.",
+   "description": "Post-commit rehearsal for SLICE-C-LAB (37059ec). Complements the E2 source/test pins; does not replace the pending lab E5. No deployment happened in this slice - live still runs the pre-V6 binary.",
+   "tests": "byte-probe transcripts (artifact-rehearsal.md); live enforcement.status control read; source-level uniqueness greps",
+   "files_changed": "EVIDENCE_INDEX.json"
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
-  "E1_count": 22,
+  "E1_count": 23,
   "E2_count": 117,
   "E3_count": 10,
   "E4_count": 14,
