@@ -1,5 +1,5 @@
 {
-  "head_sha": "390b7fa10a17adcdb32d6f916b40a43f0e3bbb49",
+  "head_sha": "15f51395013d80ddeea25610c88c542bc67008f8",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -6018,13 +6018,41 @@
         "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
         "EVIDENCE_INDEX.json"
       ]
+    },
+    {
+      "id": "DEPLOY-120",
+      "title": "Installer deployment refresh - kernel telemetry drivers (WFP callout + minifilter) packaged from canonical WDK build outputs with service registration mirroring the proven lifecycle scripts; real makensis v3.12 EXE built, payload extraction byte-equal to the deployed drivers, registration parity 7/7 vs the live registry",
+      "level": "E3",
+      "component": "release+packaging+installer",
+      "flow_id": "DATA-001",
+      "head_sha": "15f5139",
+      "timestamp": "2026-10-18",
+      "result": "PASS",
+      "command": "Agent run (non-elevated; SCM/services read-only): powershell -NoProfile -ExecutionPolicy Bypass -File admin-evidence/deploy120-installer-kernel-drivers-20261018/deploy120-proof.ps1 -> python tools/installer.py --package (makensis v3.12 via PATH-then-standard-dirs discovery) builds aegis_setup.exe; 7z l/x verifies the payload; SHA-256 4-way compare (packaged == build\\x64 source == live System32 deployed copy) per driver; registry parity vs HKLM\\SYSTEM\\CurrentControlSet\\Services\\AegisWfp|AegisMinifilter; Authenticode status per driver; generated NSI structural re-assertions.",
+      "expected": "The fresh-install path carries the kernel sensors: the generated installer packages build\\x64\\wfp\\aegis_wfp.sys (AD23EFB9...) and build\\x64\\minifilter\\aegis_minifilter.sys (082F6A43...) - never the stale pre-EVT-231 drivers\\wfp_callout copy (EC4A5683) - and setup registers AegisWfp (kernel/demand) and AegisMinifilter (filesys/demand + DisplayName + altitude 370000 in both forms) with the exact parameters of the proven scripts and the live services; a payload without a driver degrades honestly (FileExists-guarded skip + log), never a broken service; uninstall unloads/deletes services and removes the System32 copies without ever DeleteRegKey-ing an SCM key.",
+      "actual": "PASS 28/28 gates (deploy120-result.json, deploy120-run.log). package rc=0; aegis_setup.exe 7,404,405 bytes sha256 AAE7C060688E13513213DE360445F84897BC915809F9B841264000F05D8E047C (pinned as-built; makensis is not byte-reproducible). Both drivers listed in the 7z payload listing and extracted byte-equal 4-way: wfp AD23EFB97C06D8E73BF34D09BF5B9A5076BDA378D5A97ECD72CACA82183AEEAF (packaged == build output == deployed System32 copy - the exact EVT-231/232-proven driver), minifilter 082F6A43CF036CDF6DAE6F519D4E0A2C4E53CF0F46C57E69947C57842F6909A5. Authenticode Valid for both (CN=AEGIS Test Signer, O=AEGIS NIDS, C=TH). Live registry parity 7/7 fields per service: AegisWfp Type=1 Start=3 ImagePath \\??\\C:\\WINDOWS\\System32\\drivers\\aegis_wfp.sys; AegisMinifilter Type=2 Start=3 ImagePath ...\\aegis_minifilter.sys DisplayName 'AEGIS NIDS Minifilter Driver' Altitude=370000 Instances\\DefaultInstance='AegisMinifilter Instance' sub-Altitude=370000 Flags=0; both services observed RUNNING. generated NSI structural gates 7/7 (canonical sources, stale source absent, both sc create lines, altitude both forms, presence annotation both-present). NOT executed: the host install itself (elevated; replaces the live driver services) - the operator block is in the closeout. Limits recorded: CI packaging ships a driver-less installer unless the .sys outputs were built on the builder (annotated + WARN); kernel sensors are demand-start by contract (no boot persistence - product decision open); test-signed (production EV cert/HLK still pending).",
+      "finding": "Deployment truth closed for the kernel sensors: before this slice the canonical installer (a) packaged the pre-EVT-231 WFP driver (no kernel payload copy), (b) shipped no minifilter at all, (c) registered no driver services - a fresh install could not have reproduced the live kernel detection path EVT-232 proved. The installer now mirrors the proven lifecycle scripts field-by-field (verified against the live registry), and --package works on hosts where NSIS is installed off-PATH (find_makensis falls back to the standard dirs; fail-closed only when truly absent). Fail-soft by design: teardown-before-copy attempts with every step logged; a driver that cannot unload leaves the old service intact and the install log carries the truth.",
+      "description": "tools/installer.py: DRIVER_SOURCES + driver_presence() annotate generation output per driver and WARN when a build output is missing; template driver File lines moved from drivers\\wfp_callout\\aegis_wfp.sys to build\\x64\\wfp\\aegis_wfp.sys + added build\\x64\\minifilter\\aegis_minifilter.sys (/nonfatal); LogicLib.nsh included; new Install-section block (detection-only) does fltmc unload -> sc stop/delete teardown, cmd /c copy /y to %SystemRoot%\\System32\\drivers, logs AEGIS_DRIVER_SIG_WFP/FIM, then mirrors sc create (kernel/demand; filesys/demand + DisplayName + altitude 370000 service key + Instances\\DefaultInstance; WriteRegStr never recreates the key - the EVT-230 incident was PowerShell New-Item -Force wiping SCM values), guarded by ${If} ${FileExists} with honest DetailPrint skips; Start section starts drivers before the daemon (sc start AegisWfp -> fltmc load AegisMinifilter (+sc start fallback) -> sc start AegisNids); Uninstall unloads/stops/deletes both services and removes the System32 copies. tests/release/test_installer_template.py +11 pins. docs/DEPLOYMENT.md: Build Order steps 8-9 (driver build + sign), Kernel Telemetry Drivers section (prerequisite test-signing, verification commands, demand-start note), troubleshooting rows.",
+      "tests": [
+        "tests/release/test_installer_template.py: 17/17 pass (6 pre-existing + 11 DEPLOY-120 pins: canonical driver sources + stale source absent, script-source parity, service registration parameters, altitude both forms + no DeleteRegKey, LogicLib FileExists guards + signature status logging, teardown-before-copy + copy-before-create ordering, drivers-before-daemon start order, uninstall service + System32 cleanup, generation presence annotation, makensis PATH-then-standard-dirs discovery)",
+        "live proof run PASS 28/28 gates (deploy120-result.json): package rc=0; payload extraction yields both drivers byte-equal to build outputs and the deployed System32 copies; Authenticode Valid x2; live registry parity 7/7 per service; both services RUNNING",
+        "generated installer.generated.nsi compiles rc=0 with makensis v3.12 (495 install instructions, 2 install sections) - the added NSIS blocks are compiler-validated, not just string-pinned",
+        "full pytest suite + release_engineering --verify + truth.py verify green (recorded in the commit message)"
+      ],
+      "files_changed": [
+        "tools/installer.py",
+        "tests/release/test_installer_template.py",
+        "docs/DEPLOYMENT.md",
+        "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
+        "EVIDENCE_INDEX.json"
+      ]
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 22,
     "E2_count": 115,
-    "E3_count": 9,
+    "E3_count": 10,
     "E4_count": 14,
     "E5_count": 87,
     "E6_count": 0,

@@ -144,3 +144,31 @@ run 2 canonical PASS: wfp page 84/84 truncated=false, marker overlap 9/9 ???? 6 
 integrity ok verified_all, cold 6601 ms vs hot 79 ms cache hit, snapshot sensors-only has_feeds=false, audit 9 rows,
 blocks 0; DOM capture kernel-panel-capture.html + dom-kernel-state.json). ??????????: tools/aegisctl/web_dashboard/app.py +
 tests/tools/test_web_dashboard.py (8 pins ????) + EVIDENCE_INDEX + ??????
+
+## 10. Deployment refresh — installer พา kernel drivers ไปด้วย (DEPLOY-120, 2026-10-18, E3)
+
+สืบเนื่องจาก EVT-232/WEB-002: ตัวติดตั้งที่ generate จริง (tools/installer.py → makensis) ยังไม่ครอบ kernel sensors —
+ไม่มี minifilter, ไม่มี service registration ของทั้งสอง driver, ไม่ log สถานะ signature, และชี้ source ของ WFP ไปที่
+สำเนาเก่า `drivers\wfp_callout\aegis_wfp.sys` (EC4A5683, ก่อน EVT-231) แทน build output จริง `build\x64\wfp\aegis_wfp.sys`
+(AD23EFB9 = ตัวที่ deploy อยู่และพิสูจน์แล้ว) → fresh install ได้ driver เก่าและได้ kernel telemetry ไม่ครบ. รอบนี้ปิด:
+
+- source ของทั้งสอง driver ชี้ canonical WDK output (build\x64\wfp + build\x64\minifilter, `/nonfatal`); generate
+  annotate presence ต่อ driver และ WARN เมื่อ output หาย (ไม่ fail-closed — installer ยังประกอบได้)
+- Install section เพิ่มบล็อก drivers (guarded ด้วย LogicLib `${If} ${FileExists}`): teardown ก่อน (fltmc unload →
+  sc stop/delete — driver ที่โหลดอยู่แทนที่ไฟล์ไม่ได้), copy ไป System32\drivers, log สถานะ signature
+  (AEGIS_DRIVER_SIG_WFP/FIM), แล้ว `sc create` เหมือนสคริปต์ที่พิสูจน์แล้วเป๊ะ — AegisWfp type=kernel start=demand;
+  AegisMinifilter type=filesys start=demand + DisplayName + altitude 370000 ทั้ง service key และ
+  Instances\DefaultInstance (WriteReg* ไม่ recreate key — บทเรียน EVT-230); payload ไม่มี driver = skip แบบ honest
+- Start section: `sc start AegisWfp` → `fltmc load AegisMinifilter` (fallback sc start) → `sc start AegisNids`
+  (drivers ก่อน daemon); Uninstall: unload/delete services + ลบสำเนา System32 (ไม่ DeleteRegKey SCM key)
+- `find_makensis()`: PATH ก่อน แล้วค่อย %ProgramFiles(x86)%\NSIS — `--package` บิลด์ได้บน host นี้ (ก่อนหน้านี้ fail-closed)
+
+หลักฐาน (E3 — ยังไม่รัน install บน host เพราะต้อง elevation; operator block อยู่ใน closeout): บิลด์ EXE จริงด้วย
+makensis v3.12 (aegis_setup AAE7C060… size 7,404,405 B), 7z extract เทียบ SHA-256 4 ทางต่อ driver (packaged ==
+build output == System32 ที่ deploy จริง: wfp AD23EFB9…83AEEAF / minifilter 082F6A43…F6909A5), signature Valid
+ทั้งคู่ (CN=AEGIS Test Signer), registry parity กับ services ที่ RUNNING จริงครบ 7/7 ช่อง ต่อ service, gates 28/28.
+ไฟล์ที่แก้: tools/installer.py + tests/release/test_installer_template.py (+11 pins) + docs/DEPLOYMENT.md +
+แผนนี้ + EVIDENCE_INDEX + maps
+
+คงเหลือ (ไม่เปลี่ยน): production code signing (EV cert/HLK), real-NIC proof, IPv6/outbound decision, Slice C
+(enforcement) decision, host install drill ของ installer นี้ (E5, elevation) — ระบบยัง detection-only

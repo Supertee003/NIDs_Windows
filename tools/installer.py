@@ -2,8 +2,9 @@
 """G27: Installer - NSIS script generator for AEGIS NIDS
 
 Consumes build artifacts and build_manifest.json to produce an installer.nsi
-that packages the runtime, preserves user data on upgrade, and writes a
-manifest-derived directive for every component.
+that packages the runtime - including the kernel telemetry drivers (WFP
+callout + minifilter, DEPLOY-120) - preserves user data on upgrade, and
+writes a manifest-derived directive for every component.
 """
 import argparse
 import json
@@ -23,7 +24,48 @@ STATIC_FILES = {
     "rules.json", "policies.json", "aegis_nids.exe", "aegis_pep.dll",
     "aegis-nose.exe", "aegis_ipc.dll", "aegis_wfp_user.dll",
     "aegis_etw_helper.dll", "aegis_fim_helper.dll", "build_manifest.json",
+    "aegis_wfp.sys", "aegis_minifilter.sys",
 }
+
+# Kernel telemetry drivers (DEPLOY-120, detection-only). The source paths are
+# the canonical WDK build outputs that scripts/wfp_service.ps1 and
+# scripts/minifilter_service.ps1 deploy to System32\drivers - the same
+# binaries EVT-231/EVT-232 proved live (payload copy + rule match).
+DRIVER_SOURCES = (
+    ("wfp", "build\\x64\\wfp\\aegis_wfp.sys"),
+    ("minifilter", "build\\x64\\minifilter\\aegis_minifilter.sys"),
+)
+
+
+def driver_presence() -> list:
+    """(tag, nsis-source-path, present-on-disk) for each kernel driver."""
+    return [
+        (tag, rel, (ROOT / rel.replace("\\", "/")).is_file())
+        for tag, rel in DRIVER_SOURCES
+    ]
+
+
+def _makensis_candidates() -> list:
+    """Standard NSIS install locations, checked after PATH."""
+    cands = []
+    for env_name in ("ProgramFiles(x86)", "ProgramFiles", "ProgramW6432"):
+        base = os.environ.get(env_name)
+        if base:
+            cands.append(Path(base) / "NSIS" / "makensis.exe")
+    return cands
+
+
+def find_makensis() -> str | None:
+    """PATH first, then the standard install dirs (NSIS is commonly installed
+    without a PATH entry; the EVT-227 host drill packaged from the standard
+    location). Returns the executable path or None (callers fail closed)."""
+    found = shutil.which("makensis")
+    if found:
+        return found
+    for cand in _makensis_candidates():
+        if cand.is_file():
+            return str(cand)
+    return None
 
 
 def load_manifest() -> dict:
@@ -91,6 +133,7 @@ Unicode True
 RequestExecutionLevel admin
 ShowInstDetails show
 !include "MUI2.nsh"
+!include "LogicLib.nsh"
 VIAddVersionKey "PrivateBuild" "${APPNAME} ${APPVERSION} @AEGIS_COMMIT@"
 VIProductVersion "5.0.0.0"
 VIAddVersionKey "ProductName" "AEGIS NIDS"
@@ -113,6 +156,14 @@ VIAddVersionKey "FileDescription" "AEGIS Network Intrusion Detection System"
 ; Canonical install layout (matches src/core/runtime_paths.zig):
 ;   <install>\runtime\  binaries (service entrypoint + DLLs + nose)
 ;   <install>\configs\  Rules.json + policies.json
+;   <install>\drivers\  kernel telemetry drivers (payload/provenance copy)
+; The kernel drivers also get a System32\drivers copy plus a service so the
+; daemon finds them where the proven scripts put them: AegisWfp (kernel,
+; demand) and AegisMinifilter (filesys, demand, altitude 370000). Both are
+; detection-only (observe/copy, never block) and TEST-SIGNED: loading needs
+; test signing plus the signing cert trusted on the target machine, and
+; setup logs each driver's signature status - see docs/DEPLOYMENT.md.
+; Production signing (EV cert/HLK) is still pending.
 Section "Install"
   ; Upgrade safety (EVT-221): a running service locks its own image, so a
   ; reinstall/upgrade over a live install fails mid-copy without this stop.
@@ -135,8 +186,13 @@ Section "Install"
   File "zig-out\bin\aegis_etw_helper.dll"
   File "zig-out\bin\aegis_fim_helper.dll"
 
+  ; DEPLOY-120: kernel telemetry drivers from their canonical WDK build
+  ; outputs (build\x64\wfp + build\x64\minifilter). /nonfatal keeps
+  ; packaging possible on hosts that have not built the drivers yet;
+  ; setup then skips the matching service registration below.
   SetOutPath "$INSTDIR\drivers"
-  File "/nonfatal" "/oname=aegis_wfp.sys" "drivers\wfp_callout\aegis_wfp.sys"
+  File "/nonfatal" "/oname=aegis_wfp.sys" "build\x64\wfp\aegis_wfp.sys"
+  File "/nonfatal" "/oname=aegis_minifilter.sys" "build\x64\minifilter\aegis_minifilter.sys"
 
   SetOutPath "$INSTDIR"
   File "build_manifest.json"
@@ -145,6 +201,45 @@ Section "Install"
   nsExec::ExecToLog 'sc create AegisNids binPath= "$INSTDIR\runtime\aegis_nids.exe" start= auto'
   nsExec::ExecToLog 'sc description AegisNids "AEGIS Network Intrusion Detection System"'
   nsExec::ExecToLog 'sc failure AegisNids reset= 86400 actions= restart/5000/restart/15000/restart/60000'
+
+  ; ---- Kernel telemetry drivers (DEPLOY-120, detection-only) ----
+  ; Registration mirrors the proven lifecycle scripts exactly
+  ; (scripts\wfp_service.ps1: sc create type= kernel start= demand;
+  ;  scripts\minifilter_service.ps1: type= filesys + DisplayName + altitude
+  ;  370000 in both the service key and Instances\DefaultInstance).
+  ; Fail-soft + reinstall-safe: every step logs and continues; a payload
+  ; without a driver skips registration with an honest DetailPrint instead
+  ; of leaving a broken service behind. Teardown runs first because a
+  ; loaded driver image cannot be replaced on disk.
+  nsExec::ExecToLog "fltmc unload AegisMinifilter"
+  nsExec::ExecToLog "sc stop AegisMinifilter"
+  nsExec::ExecToLog "sc delete AegisMinifilter"
+  nsExec::ExecToLog "sc stop AegisWfp"
+  nsExec::ExecToLog "sc delete AegisWfp"
+  Sleep 1500
+  ${If} ${FileExists} "$INSTDIR\drivers\aegis_wfp.sys"
+    nsExec::ExecToLog 'cmd /c copy /y "$INSTDIR\drivers\aegis_wfp.sys" "$SYSDIR\drivers\aegis_wfp.sys"'
+    nsExec::ExecToLog 'powershell -NoProfile -Command "Write-Host AEGIS_DRIVER_SIG_WFP (Get-AuthenticodeSignature $SYSDIR\drivers\aegis_wfp.sys).Status"'
+    nsExec::ExecToLog 'sc create AegisWfp type= kernel start= demand binPath= "$SYSDIR\drivers\aegis_wfp.sys"'
+  ${Else}
+    DetailPrint "AEGIS: aegis_wfp.sys not in payload - AegisWfp service not registered (build it: scripts\wdk_build_production.ps1)"
+  ${EndIf}
+  ${If} ${FileExists} "$INSTDIR\drivers\aegis_minifilter.sys"
+    nsExec::ExecToLog 'cmd /c copy /y "$INSTDIR\drivers\aegis_minifilter.sys" "$SYSDIR\drivers\aegis_minifilter.sys"'
+    nsExec::ExecToLog 'powershell -NoProfile -Command "Write-Host AEGIS_DRIVER_SIG_FIM (Get-AuthenticodeSignature $SYSDIR\drivers\aegis_minifilter.sys).Status"'
+    nsExec::ExecToLog 'sc create AegisMinifilter type= filesys start= demand binPath= "$SYSDIR\drivers\aegis_minifilter.sys" DisplayName= "AEGIS NIDS Minifilter Driver"'
+    ; Altitude: both registration forms (FLTMGR consumes the service-key
+    ; value or the Instances\DefaultInstance shape depending on the load
+    ; path). WriteRegStr writes values only - it never recreates the key -
+    ; so the SCM config sc create just wrote survives (the EVT-230 incident
+    ; was PowerShell New-Item -Force wiping it).
+    WriteRegStr HKLM "SYSTEM\CurrentControlSet\Services\AegisMinifilter" "Altitude" "370000"
+    WriteRegStr HKLM "SYSTEM\CurrentControlSet\Services\AegisMinifilter\Instances" "DefaultInstance" "AegisMinifilter Instance"
+    WriteRegStr HKLM "SYSTEM\CurrentControlSet\Services\AegisMinifilter\Instances\AegisMinifilter Instance" "Altitude" "370000"
+    WriteRegDWORD HKLM "SYSTEM\CurrentControlSet\Services\AegisMinifilter\Instances\AegisMinifilter Instance" "Flags" 0
+  ${Else}
+    DetailPrint "AEGIS: aegis_minifilter.sys not in payload - AegisMinifilter service not registered (build it: scripts\wdk_build_minifilter.ps1)"
+  ${EndIf}
 
   ; Start menu shortcuts
   CreateDirectory "$SMPROGRAMS\AEGIS NIDS"
@@ -162,12 +257,29 @@ Section "Install"
 SectionEnd
 
 Section "Start AEGIS Service Now"
+  ; Drivers first: the daemon opens the callout device and the filter comm
+  ; port at startup. fltmc load is the proven minifilter path; sc start
+  ; stays as the script's fallback - both are logged either way.
+  nsExec::ExecToLog 'sc start AegisWfp'
+  nsExec::ExecToLog "fltmc load AegisMinifilter"
+  Sleep 1500
+  nsExec::ExecToLog "sc start AegisMinifilter"
   nsExec::ExecToLog 'sc start AegisNids'
 SectionEnd
 
 Section "Uninstall"
   nsExec::ExecToLog "sc stop AegisNids"
   nsExec::ExecToLog "sc delete AegisNids"
+  ; Kernel telemetry drivers (DEPLOY-120): unload before delete before
+  ; removing the System32 copies. The altitude values live inside the
+  ; service key and go with sc delete - never DeleteRegKey an SCM key.
+  nsExec::ExecToLog "fltmc unload AegisMinifilter"
+  nsExec::ExecToLog "sc stop AegisMinifilter"
+  nsExec::ExecToLog "sc delete AegisMinifilter"
+  nsExec::ExecToLog "sc stop AegisWfp"
+  nsExec::ExecToLog "sc delete AegisWfp"
+  Delete "$SYSDIR\drivers\aegis_wfp.sys"
+  Delete "$SYSDIR\drivers\aegis_minifilter.sys"
   Delete "$SMPROGRAMS\AEGIS NIDS\AEGIS Snapshot.lnk"
   Delete "$SMPROGRAMS\AEGIS NIDS\Uninstall AEGIS.lnk"
   RMDir "$SMPROGRAMS\AEGIS NIDS"
@@ -198,6 +310,21 @@ def generate_nsi(nsi_path: Path) -> None:
     lines = []
     for comp in components:
         lines.append(f"; component: {comp.get('id', 'unknown')} ({comp.get('language', '?')})")
+    # DEPLOY-120: record which kernel drivers this generation can package.
+    presence = driver_presence()
+    for tag, rel, present in presence:
+        state = "present" if present else "ABSENT - not packaged"
+        lines.append(f"; kernel driver {tag}: {rel} ({state})")
+    missing = [tag for tag, _rel, present in presence if not present]
+    if missing:
+        print(
+            "WARN: kernel driver build output(s) missing: "
+            + ", ".join(missing)
+            + " - the installer ships without them and setup skips their "
+            "service registration; build first: "
+            "scripts\\wdk_build_production.ps1 + scripts\\wdk_build_minifilter.ps1",
+            file=sys.stderr,
+        )
     body = NSIS_TEMPLATE.replace("@AEGIS_COMMIT@", head)
     # Manifest-derived runtime outputs (DEPLOY-119). The File lines MUST be
     # spliced INSIDE the Install section: NSIS rejects File outside any
@@ -237,9 +364,10 @@ def main() -> int:
     if args.package:
         nsi_path = args.nsi or (ROOT / "installer.generated.nsi")
         generate_nsi(nsi_path)
-        makensis = shutil.which("makensis")
+        makensis = find_makensis()
         if makensis is None:
-            print("ERROR: makensis not found; install NSIS to build the installer",
+            print("ERROR: makensis not found (PATH or the standard NSIS "
+                  "install dirs); install NSIS to build the installer",
                   file=sys.stderr)
             return 2
         proc = subprocess.run([makensis, str(nsi_path)], cwd=str(ROOT))
