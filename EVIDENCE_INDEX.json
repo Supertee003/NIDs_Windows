@@ -1,5 +1,5 @@
 {
-  "head_sha": "ab3bdb69c9c713aff8fe01cbc1d3fed300797c62",
+  "head_sha": "3ecc9540a233419e6d1d264a7e57750d9dd10c82",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "evidence_levels": {
@@ -5963,6 +5963,33 @@
         "build_manifest.json",
         "runtime_manifest.json"
       ]
+    },
+    {
+      "id": "EVT-232",
+      "title": "Kernel payload to detection rule - WFP-copied bytes match L7 rule R0056 end-to-end (forensic record + signature_match audit row + detections counter); agent-run non-elevated",
+      "level": "E5",
+      "component": "kernel-telemetry",
+      "flow_id": "FOR-001",
+      "head_sha": "3ecc954",
+      "timestamp": "2026-10-18",
+      "result": "PASS",
+      "command": "Agent run (non-elevated; driver AegisWfp RUNNING AD23EFB9...; daemon AegisNids live): powershell -NoProfile -ExecutionPolicy Bypass -File admin-evidence/evt232-kernel-payload-detection-20261018/evt232-proof.ps1 -Tag AEGIS-EVT232R2 - precheck (metrics, queue --json, forensic search --field payload_prefix, forensic search --field rule R0056) -> traffic through the live kernel callout: 6 UDP datagrams (42 B) to 127.0.0.1:24940 + 3 TCP writes (46 B) to 127.0.0.1:18080, each containing the literal pattern ' OR 1=1 -> postcheck (prefix search, rule search R0056, metrics, queue --json, forensics verify, events tail --json, audit-log grep by event id). Exploratory run 1 (tag AEGIS-EVT232, 13:22) preserved in run1/.",
+      "expected": "Kernel-copied payload bytes reach the pipeline Aho-Corasick matcher and set rule_id = FNV-1a hash of R0056; forensic ring records carry that rule id with source_name=wfp_sensor; the live audit log emits signature_match rows for the same event ids; the detections counter increments; blocks stay 0 (detection-only, no kernel enforcement)",
+      "actual": "PASS (kit-final run 2, 13:27 local; run 1 13:22 also PASS). Gate run 2: kernel_rule_matched=9 detections_delta=1392 rule_search_overlap=9 blocks_delta=0 audit_rows=9. Nine records matched prefix AEGIS-EVT232R2 with precheck 0 (6 UDP payload_len=42 + 3 TCP payload_len=46, byte-exact sent lengths); all 9 source_name=wfp_sensor (in-kernel copy) and rule_id=2107512682 (= client-side rule_id_to_u32('R0056'), confirmed because forensic search --field rule --value R0056 returned exactly the same 9 event_ids), verified=true integrity=ok. Audit log: 9 signature_match rows for our event ids with rule=2107512682 policy=block policy_id=3 enforcement_status=observed host_effect_confirmed=false. queue capture_wfp pushed 91428 -> 91487 (delta 59 incl. TCP control segments; dropped constant at 1520 - no kernel-path loss attributable to the run). metrics detections delta 1392 across the approx 17 s window is ambient-inclusive on this host; causality rests on the prefix-scoped pre/post 0 -> 9 plus the per-event-id anchors. Run 1 (tag AEGIS-EVT232, prefix AEGIS-EVT232-KSQLI): same shape - 9/9 wfp_sensor rule-matched (lens 40,44), R0056 ring search 0 -> 9, 9 audit rows, queue 86607 -> 86674 with drops constant.",
+      "finding": "(1) Runtime rule matching is payload-only: rule_loader.zig loads only rule_id + match_pattern into the Aho-Corasick automaton and matchFirst(payload) consults no ports or protocols, so Rules.json target_ports/target_protocols are documentation for this observe-only path (pre-existing contract, unchanged here). (2) TCP delivery at FWPM_LAYER_INBOUND_TRANSPORT_V4 also begins at the transport payload (46 B of TCP payload copied with 0 header bytes), extending the EVT-231 no-layout-assumption contract from UDP to TCP. (3) An ambient lab source (loopback TCP sport 49374, sessions 662/1675) also triggers R0056 in bursts across the live log; its historical profile is preserved (run1/log-rule-2107512682.ndjson, 127 rows) and this proof's causality deliberately rests on prefix-scoped pre/post plus event-id overlap, not on the global counter. No product code changed - evidence-only round; the proof kit lives in the gitignored admin-evidence directory.",
+      "description": "Completes the kernel-to-detection link of the kernel NIDS program: bytes copied by the own WFP callout (Slice B, EVT-231) are proven to drive real L7 detection end-to-end. Chain: callout at INBOUND_TRANSPORT_V4 copies the payload -> driver ring -> wfp_telemetry -> pipeline_queue -> event_processor runs g_active_ac.matchFirst(payload) -> rule_id set and g_pipeline_detections incremented -> policy stage maps the rule to policy_id 3 (block) and enforces as observed -> signature_match audit row + forensic ring record. The kit evt232-proof.ps1 is parameterized by -Tag, gates on five conditions (kernel rule-matched records >= 1, detections delta >= 1, rule-search overlap >= 1, blocks delta = 0, audit rows >= 1 when the log is readable) and writes all pre/post artifacts (metrics, queue json, forensic searches, verify, audit rows, events tail) into the evidence directory. Rollback: none needed - no product or driver change, traffic-only proof. Observe-only confirmed: rule action Drop stays mapped to policy block with enforcement_status=observed and host_effect_confirmed=false; the blocks counter stayed 0 across both runs.",
+      "tests": [
+        "run 2 gate PASS: prefix_matched=9 wfp_sensor_records=9 rule_matched=9 kernel_rule_matched=9 overlap=9 det_delta=1392 blocks_delta=0 wfp_delta=59 audit_rows=9 (payload_lens 42,46; rule_ids_seen 2107512682)",
+        "run 1 gate PASS: prefix_matched=9 (lens 40,44) all wfp_sensor rule-matched, R0056 ring search 0 -> 9, audit rows 9 extracted to run1/audit-rows-ours.ndjson, queue 86607 -> 86674 with drops constant at 1520",
+        "audit surface: 9 signature_match rows in the live log for our event ids (rule hash 2107512682, policy block observed, host_effect_confirmed false) - the same rows are visible through aegisctl events tail --json",
+        "integrity: forensics verify integrity=ok verified=true after the run; both forensic searches integrity=ok",
+        "detection-only: metrics blocks stayed 0 in both runs; no enforcement activation, no driver reload, no daemon restart"
+      ],
+      "files_changed": [
+        "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
+        "build_manifest.json",
+        "EVIDENCE_INDEX.json"
+      ]
     }
   ],
   "evidence_level_summary": {
@@ -5971,7 +5998,7 @@
     "E2_count": 115,
     "E3_count": 9,
     "E4_count": 14,
-    "E5_count": 85,
+    "E5_count": 86,
     "E6_count": 0,
     "E7_count": 1
   }
