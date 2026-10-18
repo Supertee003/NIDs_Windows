@@ -455,6 +455,30 @@ pub fn deserializeDispatch(bytes: []const u8) ?DecodedFrame {
     return .{ .event = event, .src_ipv6 = src6, .dst_ipv6 = dst6 };
 }
 
+/// Validate a decoded frame (the wire-dispatch product) for the queue gate.
+///
+/// Shape contract, enforced fail-closed (both directions are codec
+/// invariants, not conventions):
+///   - v1 frames decode to version==EVENT_VERSION with null sidecars;
+///   - v2 frames decode to version==EVENT_VERSION_V2 with BOTH sidecars
+///     (the 24-byte tail always carries both truncated addresses).
+/// A mixed shape cannot be produced by the frozen codecs; rejecting it
+/// keeps a future codec bug loud instead of silently widening the ABI.
+///
+/// V6-QUEUE-DROP (found by NIC-001): the queue gate used the strict event
+/// validator, which pins version==EVENT_VERSION and therefore rejected
+/// every wire-decoded v2 frame - all IPv6 acquisition - as an untracked
+/// frames_dropped increment (live: 87.7% of frames read, silent).
+pub fn validateDecodedFrame(frame: *const DecodedFrame) bool {
+    if (frame.event.magic != EVENT_MAGIC) return false;
+    if (frame.event.struct_size != EVENT_SCHEMA_SIZE) return false;
+    const has_src = frame.src_ipv6 != null;
+    const has_dst = frame.dst_ipv6 != null;
+    if (has_src != has_dst) return false; // sidecars are all-or-nothing
+    if (has_src) return frame.event.version == EVENT_VERSION_V2;
+    return frame.event.version == EVENT_VERSION;
+}
+
 /// Serialize CanonicalEvent to bytes via explicit field-by-field encoding.
 /// STEP 2: No memcpy, no pointer cast, no compiler-padding dependency.
 /// All fields little-endian, fixed-width.

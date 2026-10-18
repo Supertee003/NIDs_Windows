@@ -205,3 +205,35 @@ All 98 passed). ต้องเป็น slice แยก (V6-QUEUE-DROP) + opera
   งานถัดไป = ซ่อม queue drop (O0) แล้ว operator redeploy
 - ไฟล์: แผนนี้ + EVIDENCE_INDEX + maps (evidence-only — ไม่แตะ product code)
 - คงเหลือ: production code signing (EV cert/HLK), Slice C (enforcement) decision, ซ่อม v6 queue + redeploy
+
+## 12. ซ่อม V6-QUEUE-DROP - IPv6 ถูกทิ้งเงียบที่ queue gate (2026-10-18, E2)
+
+ปิดบั๊ก STOP-THE-LINE ที่ NIC-001 พบ: เฟรม IPv6 (wire v2) ถูกอ่านเข้าสู่ pipeline แล้วทิ้งเงียบ
+ที่ queue (วัดจริง 2,749,221 เฟรม = 87.7% ของ frames read) — ต้นเหตุคือ `pushDecodedFrame`
+เรียก `canonical.validate` ซึ่ง pin `event.version == EVENT_VERSION (1)` แต่ v2 decode ตาม
+contract (pinned โดย canonical tests + tests/contracts/test_ipv6_wire_v2.py) ให้ version == 2
+→ push คืน false → reader นับ frames_dropped เงียบ (ไม่มี log, rejected = 0)
+
+TDD แดง → เขียว (transcripts ใน admin-evidence/v6queue-drop-20261018/):
+- regression: "wire-decoded v2 frame survives the queue gate" เดินเส้นทางจริง
+  serializeV2 → deserializeDispatch → pushDecodedFrame → popEvent; pin acceptance + sidecars
+  + u32 identity + kind (dns_response)
+- negative: "decoded-frame gate rejects shapes no codec can emit" — fail-closed (v2 ไร้ sidecars /
+  v1 มี sidecars / sidecar ข้างเดียว / magic เสีย)
+- fixture เดิมของ v2 sidecar test แก้ให้เป็น shape จริงของ wire (version 2 + sidecars ครบ)
+- RED: 97 passed; 3 failed (ตามคาด) → GREEN: All 100 tests passed; postfix driver พิสูจน์ flip
+  (ก่อน fix push=false, หลัง fix push=true โดย `validate` ตัว strict ยัง false ตามเดิม)
+
+Patch: เพิ่ม `validateDecodedFrame` ใน `src/contract/canonical_event.zig` (shape-strict: v1 = version 1
++ sidecars ว่าง; v2 = version 2 + sidecars ครบทั้งคู่; shape ผสม = reject) และสลับ
+`pushDecodedFrame` (src/pipeline/event_queue.zig) ให้ใช้ตัวนี้ — `validate` เดิมยังเป็น strict ABI
+gate (ไม่แตะ) และ wire contract ไม่เปลี่ยน; เพิ่มหัวข้อ Queue acceptance ใน wire_v2.md
+
+- หลักฐาน: focused zig test All 100 passed; zig build test rc=0; zig build rc=0;
+  pytest 916 passed / 2 skipped; release_engineering --refresh-digests + --verify OK (612 artifacts);
+  truth verify TRUTH_VALID
+- ยังไม่ครบ live (E2): daemon ที่รันอยู่เป็น binary เดิม — operator ต้อง redeploy (elevated block ใน
+  closeout) แล้วรันสคริปต์ v6queue-drop-live-verify.py (ใน kit) เพื่อปิด E5
+- ไฟล์: src/contract/canonical_event.zig, src/pipeline/event_queue.zig, shared/protocol/wire_v2.md,
+  แผนนี้, EVIDENCE_INDEX + maps
+- คงเหลือ: operator redeploy + live verify (E5), production signing (EV cert/HLK), Slice C decision

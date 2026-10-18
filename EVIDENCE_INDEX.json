@@ -1,5 +1,5 @@
 {
- "head_sha": "8cd4837be30fd18024a3013af6bfaf4b7631038a",
+ "head_sha": "1a59711c202f578a9b81180e9f05637e1e9eb555",
  "created_at": "2026-09-24",
  "generator_version": "3.0",
  "evidence_levels": {
@@ -6070,12 +6070,41 @@
     "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
     "EVIDENCE_INDEX.json"
    ]
+  },
+  {
+   "id": "V6-QUEUE-DROP",
+   "title": "Silent IPv6 event loss fixed - wire-decoded v2 frames now pass the pipeline queue gate (validateDecodedFrame: v1 null sidecars / v2 version==2 + both sidecars, mixed shapes fail closed); regression test walks serializeV2 -> deserializeDispatch -> pushDecodedFrame -> popEvent; the live drop was 2.75M frames (87.7% of read) on the NIC-001 host",
+   "level": "E2",
+   "component": "zig-contract+pipeline-queue",
+   "flow_id": "FOR-001",
+   "head_sha": "1a59711",
+   "timestamp": "2026-10-18",
+   "result": "PASS",
+   "command": "Agent run (non-elevated), TDD red->green: RED first - focused zig test (root file importing src/pipeline/event_queue.zig) -> 97 passed; 3 failed (new wire-path regression + new shape gate + the corrected v2 fixture); patch: canonical_event.zig gains validateDecodedFrame, event_queue.zig pushDecodedFrame switches to it; GREEN - focused zig test All 100 tests passed; zig build test (full Zig suite) rc=0; zig build rc=0; python -m pytest tests -q -> 916 passed / 2 skipped / 27 subtests; release_engineering.py --refresh-digests (2 source artifacts re-recorded) + --verify OK (612 artifacts); truth.py verify TRUTH_VALID; postfix driver transcript [POSTFIX] pushDecodedFrame(decoded v2) = true (the pre-fix repro pinned false).",
+   "expected": "A wire-decoded v2 frame (version==2 + both sidecars - the exact shape the frozen codec emits for IPv6) queues, its sidecars survive to popEvent, kind classification is unchanged; v1 frames keep byte-identical acceptance; shapes no codec can emit are rejected fail-closed; the strict v1-only ABI validator and the frozen wire contract stay untouched.",
+   "actual": "As designed. Pre-fix the live pipeline read every IPv6 frame and dropped it silently at the queue gate (validate pinned version==1 vs the v2 decode contract yielding version==2): NIC-001 live counters 2,749,221 dropped / 3,134,374 read (87.7%), rejected=0, no log line. Post-fix the gate accepts v2 and the queue carries sidecars; postfix driver: control v1 true; decoded v2 version=2 sidecars=(true/true); push=true; all four negative shape cases false.",
+   "finding": "The queue gate conflated two different contracts: the in-memory event ABI (version==1, unchanged) and the wire-dispatch product (v2 frames legitimately decode to version==2 + sidecars). canonical.validate is the ABI gate and correctly stays strict; the queue needed its own decoded-frame shape gate. Fix adds validateDecodedFrame to the contract module and switches pushDecodedFrame to it - the v1 path is acceptance-identical, v2 is accepted, mixed shapes fail closed so a future codec bug is loud instead of silently widening the ABI.",
+   "description": "STOP-THE-LINE closure for the silent event loss NIC-001 found (EVI NIC-001; plan section 11). TDD red transcript (3 expected failures) and green transcript (All 100) archived with the full zig build test log and full pytest log. Tracked changes: src/contract/canonical_event.zig (validateDecodedFrame + doc), src/pipeline/event_queue.zig (gate switch + doc + regression/shape-gate tests + corrected v2 fixture), shared/protocol/wire_v2.md (new 'Queue acceptance (Zig pipeline gate)' section), docs/KERNEL_NIDS_COMPLETION_PLAN.md section 12, EVIDENCE_INDEX.json, maps. Kit admin-evidence/v6queue-drop-20261018/: v6queue-drop-red.txt, v6queue-drop-green.txt, v6queue-drop-postfix.zig + .txt, zig-build-test-full.txt, zig-build-fix.txt, pytest-full.txt + pytest-final.txt, v6queue-drop-live-verify.py, v6queue-drop-closeout.md (operator redeploy block). LIMITS: E2 (unit proof) - the running daemon still executes the pre-fix binary until the operator redeploys; the live E5 flip is verified by the kit script after redeploy; the nose process needs no restart (already emits v2 1:1).",
+   "tests": [
+    "regression: wire-decoded v2 frame survives the queue gate (serializeV2 -> deserializeDispatch -> pushDecodedFrame -> popEvent; acceptance + sidecars + u32 identity + dns_response kind)",
+    "negative: decoded-frame gate rejects shapes no codec can emit (v2 without sidecars / v1 with sidecars / one-sided sidecars / bad magic)",
+    "focused zig test RED 97 passed; 3 failed -> GREEN All 100 tests passed",
+    "zig build test (full Zig suite) rc=0; zig build rc=0 (new zig-out binary)",
+    "pytest 916 passed / 2 skipped / 27 subtests; release_engineering --refresh-digests + --verify OK (612 artifacts); truth.py verify TRUTH_VALID"
+   ],
+   "files_changed": [
+    "src/contract/canonical_event.zig",
+    "src/pipeline/event_queue.zig",
+    "shared/protocol/wire_v2.md",
+    "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
+    "EVIDENCE_INDEX.json"
+   ]
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 22,
-  "E2_count": 115,
+  "E2_count": 116,
   "E3_count": 10,
   "E4_count": 14,
   "E5_count": 88,

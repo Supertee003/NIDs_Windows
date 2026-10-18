@@ -55,6 +55,22 @@ v2 payload: 133 bytes = v1 109 bytes ++ v6 tail 24 bytes
 - Python: `shared/wire/wire_codec.py::WireCodec.encode_event_v2` /
   `decode_event` (version-dispatched)
 
+## Queue acceptance (Zig pipeline gate — V6-QUEUE-DROP)
+
+Decoded frames enter the pipeline queue through
+`src/pipeline/event_queue.zig::pushDecodedFrame`, gated by
+`src/contract/canonical_event.zig::validateDecodedFrame`:
+
+- v1 frames: `version == 1` with null sidecars — accepted, unchanged.
+- v2 frames: `version == 2` with BOTH sidecars — accepted.
+- Mixed shapes (v2 without sidecars, v1 with sidecars, one-sided sidecars,
+  bad magic/struct_size): rejected fail-closed.
+
+The strict event validator (`validate`, pins `version == 1`) stays the ABI
+gate for in-memory events and must NOT gate wire-decoded frames — doing so
+silently dropped every v2 frame until NIC-001 found it (live: 87.7 % of
+frames read, counted only as `frames_dropped`).
+
 ## Out of scope (scheduled follow-ups, NOT this slice)
 
 - ~~Nose emitting v2 on the live pipe (decode-ready first, emit second).~~

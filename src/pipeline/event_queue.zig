@@ -173,8 +173,13 @@ fn classifyForward(ce: *const canonical.CanonicalEvent) event.EventKind {
     return .packet_captured;
 }
 
+/// Gate: canonical.validateDecodedFrame - v1 frames (null sidecars) vs v2
+/// frames (version==EVENT_VERSION_V2 + both sidecars); mixed shapes fail
+/// closed. V6-QUEUE-DROP: this gate used the strict event validator
+/// (version==EVENT_VERSION only) and silently dropped every wire-decoded
+/// v2 frame - all IPv6 acquisition (NIC-001 run3 evidence).
 pub fn pushDecodedFrame(frame: *const canonical.DecodedFrame, payload: []const u8) bool {
-    if (!canonical.validate(&frame.event)) return false;
+    if (!canonical.validateDecodedFrame(frame)) return false;
     const ce = &frame.event;
 
     const kind: event.EventKind = switch (ce.event_type) {
@@ -251,8 +256,15 @@ test "pushDecodedFrame carries v2 sidecars; v1 path queues nulls" {
     // touching the wire ABI or the u32 detection identity.
     var ce = canonical.create(.npcap_sensor);
     ce.event_type = .forward;
+    // V6-QUEUE-DROP: the fixture is the exact wire-v2 shape — version 2 with
+    // both sidecars and sidecar first-4 == BigEndian(u32 fields). A
+    // version-1 event with sidecars is a shape no codec can emit; the
+    // decoded-frame gate now rejects it (see the shape-gate test below).
+    ce.version = canonical.EVENT_VERSION_V2;
     const src6 = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
     const dst6 = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2 };
+    ce.source_ip = std.mem.readInt(u32, src6[0..4], .big);
+    ce.dest_ip = std.mem.readInt(u32, dst6[0..4], .big);
     const frame = canonical.DecodedFrame{ .event = ce, .src_ipv6 = src6, .dst_ipv6 = dst6 };
     try std.testing.expect(pushDecodedFrame(&frame, &[_]u8{}));
     const queued = popEvent().?;
@@ -264,10 +276,79 @@ test "pushDecodedFrame carries v2 sidecars; v1 path queues nulls" {
     try std.testing.expectEqual(ce.source_ip, queued.ev.src_ip);
     try std.testing.expectEqual(ce.dest_ip, queued.ev.dst_ip);
 
-    try std.testing.expect(pushCanonicalEvent(&ce));
+    // v1 path: a fresh v1 event queues with null sidecars (unchanged shape).
+    var ce_v1 = canonical.create(.npcap_sensor);
+    try std.testing.expect(pushCanonicalEvent(&ce_v1));
     const queued_v1 = popEvent().?;
     try std.testing.expect(queued_v1.src_ipv6 == null);
     try std.testing.expect(queued_v1.dst_ipv6 == null);
+}
+
+test "wire-decoded v2 frame survives the queue gate (V6-QUEUE-DROP regression)" {
+    // NIC-001 run3 proved the live pipeline READS every IPv6 frame and then
+    // silently dropped it here: decodeFields reads the wire version, so
+    // deserializeDispatch yields version==EVENT_VERSION_V2, while the queue
+    // gate used canonical.validate (version==EVENT_VERSION only) -> push
+    // false -> nose counted frames_dropped with no log (2.75M cumulative /
+    // 87.7% of frames read on the NIC-001 host). This test walks the exact
+    // reader sequence - serializeV2 -> deserializeDispatch -> pushDecodedFrame
+    // -> popEvent - and pins acceptance, sidecars, identity and kind.
+    var ce = canonical.create(.npcap_sensor);
+    ce.event_type = .forward;
+    ce.protocol = 17;
+    ce.source_port = 53; // DNS response (CORR-DNS-080)
+    ce.dest_port = 45678;
+    ce.context_flags |= canonical.CONTEXT_V6_TRUNCATED;
+    const src6 = [_]u8{ 0x26, 0x06, 0x47, 0x00, 0x47, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0x11, 0x11 };
+    const dst6 = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x39 };
+    ce.source_ip = std.mem.readInt(u32, src6[0..4], .big);
+    ce.dest_ip = std.mem.readInt(u32, dst6[0..4], .big);
+
+    var wire: [canonical.WIRE_V2_PAYLOAD_SIZE]u8 = undefined;
+    const n = try canonical.serializeV2(&ce, src6, dst6, &wire);
+    try std.testing.expectEqual(canonical.WIRE_V2_PAYLOAD_SIZE, n);
+    const frame = canonical.deserializeDispatch(wire[0..n]).?;
+    try std.testing.expectEqual(canonical.EVENT_VERSION_V2, frame.event.version);
+
+    try std.testing.expect(pushDecodedFrame(&frame, &[_]u8{}));
+    const queued = popEvent().?;
+    try std.testing.expectEqualSlices(u8, &src6, &queued.src_ipv6.?);
+    try std.testing.expectEqualSlices(u8, &dst6, &queued.dst_ipv6.?);
+    try std.testing.expectEqual(ce.source_ip, queued.ev.src_ip);
+    try std.testing.expectEqual(ce.dest_ip, queued.ev.dst_ip);
+    try std.testing.expectEqual(event.EventKind.dns_response, queued.ev.kind);
+}
+
+test "decoded-frame gate rejects shapes no codec can emit (V6-QUEUE-DROP)" {
+    // Shape-strict fail-closed: sidecars are present iff the frame was wire
+    // v2, and wire v2 always decodes to version==EVENT_VERSION_V2 with BOTH
+    // sidecars (the 24-byte tail always carries both truncated addresses).
+    // A mixed shape means a codec bug and must be rejected, never queued.
+    const src6 = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
+    const dst6 = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2 };
+    var v2 = canonical.create(.npcap_sensor);
+    v2.version = canonical.EVENT_VERSION_V2;
+    const v1 = canonical.create(.npcap_sensor);
+    var bad_magic = canonical.create(.npcap_sensor);
+    bad_magic.magic = 0;
+
+    const f_v2_no_sidecars = canonical.DecodedFrame{ .event = v2, .src_ipv6 = null, .dst_ipv6 = null };
+    const f_v1_with_sidecars = canonical.DecodedFrame{ .event = v1, .src_ipv6 = src6, .dst_ipv6 = dst6 };
+    const f_one_sided = canonical.DecodedFrame{ .event = v2, .src_ipv6 = src6, .dst_ipv6 = null };
+    const f_bad_magic = canonical.DecodedFrame{ .event = bad_magic, .src_ipv6 = null, .dst_ipv6 = null };
+    const r_v2_no_sidecars = pushDecodedFrame(&f_v2_no_sidecars, &[_]u8{});
+    const r_v1_with_sidecars = pushDecodedFrame(&f_v1_with_sidecars, &[_]u8{});
+    const r_one_sided = pushDecodedFrame(&f_one_sided, &[_]u8{});
+    const r_bad_magic = pushDecodedFrame(&f_bad_magic, &[_]u8{});
+
+    // On the buggy pre-fix binary some of these pushed; drain before the
+    // asserts so a failure cannot leak events into neighbour tests.
+    while (popEvent()) |_| {}
+
+    try std.testing.expect(!r_v2_no_sidecars);
+    try std.testing.expect(!r_v1_with_sidecars);
+    try std.testing.expect(!r_one_sided);
+    try std.testing.expect(!r_bad_magic);
 }
 
 test "classifyForward names DNS by port, keeps everything else generic" {
