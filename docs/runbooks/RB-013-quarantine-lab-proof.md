@@ -18,6 +18,9 @@ primitive and only the receipt distinguishes them.
 - RB-012 steps 1-3 complete (open gate, provider ready, signed-policy
   trust, two-person rule ON). Quarantine requires the same posture plus
   severity >= 7 (the two-person gate ignores lower severities).
+- Elevated shell for the mutating steps (3 and 6): `approve`,
+  `quarantine` and `unblock` are privileged-only control verbs — the
+  role comes from the client token elevation (same rule as RB-012).
 - Target: TEST-NET only (`203.0.113.10` preferred; never production).
 
 ## Steps

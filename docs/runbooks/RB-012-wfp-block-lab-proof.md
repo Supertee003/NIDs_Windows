@@ -23,6 +23,14 @@ anything else is not proof.
   code path that can open it, and the gate re-closes on restart.
 - Signed policy trust established (step 2). Unsigned policy can never
   enforce (fail-closed by construction).
+- Elevated shell for the mutating steps (3, 4 and the rollback): the
+  control pipe derives the caller role from the client token elevation
+  (elevated -> `privileged`, otherwise `operate`); `block`/`unblock`/
+  `two_person`/`approve`/`quarantine` are privileged-only. Reads,
+  simulate and verify work unelevated. A non-elevated mutation is denied
+  before any action: the raw envelope reads `AUTH_DENIED`/`UNAUTHORIZED`
+  ("insufficient privilege") while aegisctl's read helper shows `None` —
+  that is not a daemon outage.
 - Target: a TEST-NET address that answers no production role. Sanctioned:
   `203.0.113.10` (TEST-NET-3 canary), `192.0.2.10` (TEST-NET-1 WFP
   proof). Never production peers, never the lab gateway.

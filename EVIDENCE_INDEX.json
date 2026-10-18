@@ -1,5 +1,5 @@
 {
- "head_sha": "812f902b667e2715cc9ddf3a29f049fb129a20c6",
+ "head_sha": "6488fcdc89347c45395c0ae6155bbb350ec3d1c7",
  "created_at": "2026-09-24",
  "generator_version": "3.0",
  "evidence_levels": {
@@ -6133,11 +6133,28 @@
    "description": "Post-commit rehearsal for SLICE-C-LAB (37059ec). Complements the E2 source/test pins; does not replace the pending lab E5. No deployment happened in this slice - live still runs the pre-V6 binary.",
    "tests": "byte-probe transcripts (artifact-rehearsal.md); live enforcement.status control read; source-level uniqueness greps",
    "files_changed": "EVIDENCE_INDEX.json"
+  },
+  {
+   "id": "RB012-013-ELEV",
+   "title": "Pre-lab role-gating validation for RB-012/RB-013: privileged-only mutation verbs deny non-elevated callers before any action (AUTH_DENIED/UNAUTHORIZED) while operate verbs pass unelevated - runbook elevation notes added",
+   "level": "E1",
+   "component": "zig-control+runbooks",
+   "flow_id": "FOR-001",
+   "head_sha": "6488fcd",
+   "timestamp": "2026-10-18",
+   "result": "PASS",
+   "command": "Agent run (non-elevated, read/deny-only probes against the live daemon via admin-evidence/sliceC-lab-gate-20261018/raw-control-probe.py): enforcement.block (full RB-012 payload) -> AUTH_DENIED/UNAUTHORIZED 'insufficient privilege'; enforcement.two_person {\"enabled\":true} -> AUTH_DENIED (rule untouched); enforcement.verify {\"filter_id\":91001,...} -> POSTCONDITION_FAILED (role passed, handler reached); enforcement.status -> OK (no gate_source on the pre-redeploy binary). Source cross-check: src/control/protocol.zig role table (status=read; simulate/verify=operate; block/unblock/two_person/approve/quarantine=privileged); src/platform/win32_pipe.zig getClientRole (client token elevation -> privileged, else operate).",
+   "expected": "Non-elevated mutations denied before any handler action; operate verbs (simulate/verify) pass unelevated; denial envelope = AUTH_DENIED/UNAUTHORIZED 'insufficient privilege' (aegisctl's read helper collapses it to None - not a daemon outage).",
+   "actual": "Exactly as expected. Transcript: admin-evidence/sliceC-lab-gate-20261018/raw-role-probe.txt. The denied probes prove no state change is possible (auth deny precedes payload validation and handlers); the two_person probe left the rule untouched.",
+   "finding": "RB-012/RB-013 mutating steps (two-person/approve/block/quarantine/unblock) require an elevated shell; neither runbook stated it. Both now do, plus the lab campaign checklist. Operator-facing vagueness noted (None / control_daemon_query_failed for denials) - a CLI improvement could surface the raw envelope code; not changed in this commit (docs+evidence only).",
+   "description": "Pre-lab validation for the pending G2 session (docs+evidence only; no code change). Same commit ships the RB-012/013 elevation notes.",
+   "tests": "live raw-envelope probes (4); source role-table cross-check",
+   "files_changed": "docs/runbooks/RB-012-wfp-block-lab-proof.md, docs/runbooks/RB-013-quarantine-lab-proof.md, docs/KERNEL_NIDS_COMPLETION_PLAN.md, EVIDENCE_INDEX.json"
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
-  "E1_count": 23,
+  "E1_count": 24,
   "E2_count": 117,
   "E3_count": 10,
   "E4_count": 14,
