@@ -320,3 +320,15 @@ gate (ไม่แตะ) และ wire contract ไม่เปลี่ยน
 - ถ้าจะเดินหน้า: เริ่ม B เท่านั้น (lab-scoped; ไม่แตะ production) - C รอ B + G3 + G4 ครบก่อน
 
 สถานะการตัดสินใจ: PENDING (รอ operator/user)
+
+### 13.7 เอกสาร Design Review ของกลไกเปิด gate (G1) - draft
+
+- docs/SLICE_C_LAB_GATE_DESIGN.md (DRAFT, ตรวจที่ HEAD 0cc8bee): เสนอกลไก compile-time lab option
+  (`lab-prevention-gate`, default false) เป็น master switch เดียวของ host mutation ทั้ง S1
+  (pipeline/policy-driven ผ่าน pep.enforce) และ S2 (control plane) + S1 boundary hardening +
+  test/evidence plan + คำถามเปิดรอ reviewer
+- ข้อค้นของ draft: วันนี้ S1 ไม่ได้ถูกคุมด้วย prevention gate (guard มีแค่ trusted policy +
+  PEP availability) - ถ้า trust ถูกตั้งบน prod โดยผิดพลาด S1 host-mutate ได้ขณะ projection บอก
+  detection-only; draft เสนอปิดช่องนี้ด้วย gate เดียว (gate closed = ไม่มี host mutation จากทุก surface)
+- สถานะ: รอ signed-off review (sign-off table ในเอกสาร) - ยังไม่ implement ใด ๆ;
+  production ยัง detection-only เหมือนเดิม

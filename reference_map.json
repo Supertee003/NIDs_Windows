@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-17T12:03:57.409321+00:00",
+  "generated_at": "2026-10-18T11:09:39.452746+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1692,
+  "total_files": 1697,
   "by_role": {
-    "documentation": 557,
+    "documentation": 558,
     "build-config": 211,
     "other": 21,
-    "source": 333,
+    "source": 336,
     "lockfile": 6,
     "rust-build": 4,
-    "test-artifact": 197,
+    "test-artifact": 198,
     "config-data": 34,
     "architecture-decision": 10,
     "step-document": 2,
@@ -3123,6 +3123,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "docs/SLICE_C_LAB_GATE_DESIGN.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "docs/SPRINT_2_PLAN.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -4583,6 +4587,14 @@
       "class": "canonical-source",
       "role": "source"
     },
+    "scripts/minifilter_service.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/minifilter_sign.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
     "scripts/ml_train.py": {
       "class": "canonical-source",
       "role": "source"
@@ -4752,6 +4764,10 @@
       "role": "source"
     },
     "scripts/verify_release.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/wdk_build_minifilter.ps1": {
       "class": "canonical-source",
       "role": "source"
     },
@@ -6714,6 +6730,10 @@
     "tests/vectors/rules22/R9064.json": {
       "class": "canonical-build",
       "role": "build-config"
+    },
+    "tests/wfp/test_evt231_wfp_payload_copy.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
     },
     "tests/wfp/test_t11_wfp_enforcement.py": {
       "class": "canonical-test",
