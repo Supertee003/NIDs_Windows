@@ -172,3 +172,36 @@ build output == System32 ที่ deploy จริง: wfp AD23EFB9…83AEEAF /
 
 คงเหลือ (ไม่เปลี่ยน): production code signing (EV cert/HLK), real-NIC proof, IPv6/outbound decision, Slice C
 (enforcement) decision, host install drill ของ installer นี้ (E5, elevation) — ระบบยัง detection-only
+
+## 11. Real-NIC ingress + ขอบเขต IPv6/outbound — NIC-001 (2026-10-18, E5)
+
+ปิดคำถาม "kernel จับ payload จริงบนการ์ดจริงไหม": agent-run (non-elevated) บน production host
+(daemon AegisNids + driver AegisWfp รันอยู่, base HEAD 8cd4837) ขับ DNS responses จริงผ่าน Wi-Fi
+Killer AX1650i (@192.168.1.39) แล้วพิสูจน์ครบวง:
+
+- **ขาเข้า v4 (kernel L7)**: responses 6/6 echo marker กลับผ่านการ์ดจริง และเข้า forensic ring
+  เป็น record wfp_sensor rule R0056 (2107512682) ครบทุก ID — S1..S6 → event_ids
+  5471356/57, 5471696-99 (attribution: payload_prefix ตาม DNS-ID ∩ rule search ∩ payload_len ตรง),
+  integrity ok, audit rows 10 แถว
+- **acquisition mirror**: egress 600 → capture_npcap +600 / capture_wfp +17; loopback 600 →
+  npcap +1 / wfp +600 (ตรงข้ามกันเป๊ะ); probe บน Wi-Fi 189 packets; blocks delta 0
+- **ขอบเขต v6/outbound (วัดจริง ไม่ใช่ assumption)**: kernel = v4-only (v6 marker 2/2 ตอบผ่าน wire
+  แต่ record 0 — callout ผูก FWPM_LAYER_INBOUND_TRANSPORT_V4), outbound ไม่มี kernel L7 (egress
+  marker 0 match), ฝั่ง acquisition: burst 300 → adapter TX +304 / pipe read +311 / submitted +3 /
+  dropped +308 / npcap +0 — ฝั่ง capture/encode ถูก (nose binary emit v2 frames 1:1: 200/200 dst6 ตรง)
+  แต่ frame ถูกทิ้งเงียบที่ queue gate
+
+**บั๊ก silent event loss ที่พบ (STOP-THE-LINE)**: decode v2 ให้ `event.version=2` + sidecars (ตาม
+contract ที่ pin ไว้ + tests/contracts/test_ipv6_wire_v2.py) แต่ `canonical.validate` pin `version == 1`
+→ `pushDecodedFrame` คืน false → reader นับ frames_dropped เงียบ (rejected=0, ไม่มี log) — live สะสม
+dropped=2,749,221 (87.7% ของ frames read). Repro บน HEAD: nic001-v6queue-repro.zig (zig test,
+All 98 passed). ต้องเป็น slice แยก (V6-QUEUE-DROP) + operator redeploy จึงเปลี่ยน behavior จริง
+
+- หลักฐาน: admin-evidence/nic001-real-nic-ingress-20261018/ (nic001-proof.py run3 official PASS 20/20;
+  nic001-result.json, nic001-run.log, audit rows; run1/ + run2/ = ประวัติ; closeout มี operator block)
+- หมายเหตุเชิงปฏิบัติ: forensic ring = 4096 records รวมทุก source (src/forensic/forensics_engine.zig)
+  → per-tag search ต้องทำภายในไม่กี่วินาทีหลัง traffic (บทเรียนจาก run2)
+- ตัดสินใจขอบเขต: คง kernel scope = IPv4 inbound (O3) + ยังไม่ทำ O1 (kernel v6) / O2 (nose payload);
+  งานถัดไป = ซ่อม queue drop (O0) แล้ว operator redeploy
+- ไฟล์: แผนนี้ + EVIDENCE_INDEX + maps (evidence-only — ไม่แตะ product code)
+- คงเหลือ: production code signing (EV cert/HLK), Slice C (enforcement) decision, ซ่อม v6 queue + redeploy
