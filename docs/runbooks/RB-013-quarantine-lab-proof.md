@@ -34,8 +34,9 @@ primitive and only the receipt distinguishes them.
    python tools/aegisctl.py enforce simulate --action quarantine --severity 8
    ```
    On an open gate with provider ready, expect `outcome:"would_request"`
-   (on a closed gate: `outcome:"allow"` + `prevention_gate_closed` —
-   that answer is correct, not a failure; open the gate per RB-012).
+   (on a closed gate: `outcome:"allow"` with `reason` starting
+   `prevention_gate_closed;` — that answer is correct, not a failure;
+   open the gate per RB-012).
 
 3. **Issue + approve with ceremony identity** (same workable ceremony
    as RB-012 step 4 — the daemon's control counter races at 1000+/s,

@@ -353,3 +353,5 @@ gate (ไม่แตะ) และ wire contract ไม่เปลี่ยน
 - ยังเปิด: G2 (execute RB-012 -> RB-013 บน isolated lab VM ด้วย lab build - operator), external security review ของ design,
   operator redeploy daemon (ค้างจาก V6-QUEUE-DROP)
 - เอกสาร: docs/SLICE_C_LAB_GATE_DESIGN.md -> APPROVED/IMPLEMENTED + §6.1 + §8.1; RB-012 prerequisite เพิ่ม lab build line
+- post-commit artifact rehearsal (E1, commit SLICE-C-LAB-ART): binary default ไม่มี literal เฉพาะของ gate opener แม้แต่ตัวเดียว (comptime flag ตัดโค้ดทั้งชุด) ขณะที่ lab build มีครบ; runtime strings อยู่ทั้งสอง build; live ยืนยันยังรัน binary เก่า (ไม่มี gate_source) - ไม่มี deploy ในสไลซ์นี้
+- runbook precision สำหรับ E5: RB-012 step 1 require เพิ่ม gate_source:"lab-build-optin"; RB-013 ระบุ closed-gate answer ที่ reason เริ่ม prevention_gate_closed; operator tool post-redeploy-gate-check.py เพิ่มใน kit

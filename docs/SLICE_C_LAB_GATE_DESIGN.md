@@ -128,3 +128,5 @@
 - pins ใหม่: tests/security/test_prevention_gate_surface.py (5) - writer เดียว / opener เฉพาะ owner+daemon / open call หลัง build option / flag ไม่หลุด release surfaces / S1 call site ส่ง gate
 - ไม่มี redeploy ในสไลซ์นี้: production ยังรัน binary เดิม (ค้าง operator redeploy จาก V6-QUEUE-DROP); `gate_source` จะโผล่บน live หลัง redeploy ครั้งถัดไป
 - RB-012 prerequisite อัปเดตแล้ว (lab build เท่านั้น); ขั้น RB-012/RB-013 ยัง NOT YET EXECUTED (operator บน lab VM)
+- post-commit artifact rehearsal (E1, EVI `SLICE-C-LAB-ART`, 2026-10-18): binary default ไม่มี literal เฉพาะของ gate opener แม้แต่ตัวเดียว (comptime flag ตัดโค้ดทั้งชุด) ขณะที่ lab build มีครบ; runtime strings (`gate_source`, `lab-build-optin`) อยู่ทั้งสอง build; live ยืนยันยังไม่มี `gate_source` (ยังไม่ redeploy)
+- runbook precision สำหรับ E5: RB-012 step 1 require เพิ่ม `gate_source:"lab-build-optin"`; RB-013 ระบุว่า closed-gate answer มี `reason` เริ่มด้วย `prevention_gate_closed;`; operator tool `post-redeploy-gate-check.py` เพิ่มใน kit (ตรวจ binary ใหม่ + gate ปิด บน production หลัง redeploy)

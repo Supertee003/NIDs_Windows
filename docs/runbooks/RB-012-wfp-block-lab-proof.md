@@ -33,8 +33,8 @@ anything else is not proof.
    ```
    python tools/aegisctl.py enforce status
    ```
-   Require: `prevention_gate:"open"`, `provider_ready:true`,
-   `host_effect_capable:true`,
+   Require: `prevention_gate:"open"`, `gate_source:"lab-build-optin"`,
+   `provider_ready:true`, `host_effect_capable:true`,
    `enforcement_mode:"provider-attested-enforcement-enabled"`.
    Anything else: STOP (posture is detection-only; see step 2).
 
