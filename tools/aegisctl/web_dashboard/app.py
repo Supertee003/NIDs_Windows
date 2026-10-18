@@ -5,7 +5,10 @@ The web layer is deliberately thin. It queries the Zig control plane through
 Confirmed blocking is displayed only when an EnforcementReceipt validates.
 
 Data sources (all read-only):
-  * control plane  - health / enforcement / metrics / forensics / incident counters
+  * control plane  - health / enforcement / metrics / forensics / incident
+                     counters, queue.stats (kernel sensor blocks), and the
+                     kernel record pages (forensics.list by canonical
+                     source: 1 wfp_sensor, 14 file_sensor)
   * evidence log   - logs/aegis_core.ndjson (canonical event records, same
                      data path as the desktop dashboard)
   * rule config    - configs/Rules.json
@@ -230,6 +233,10 @@ def _build_snapshot() -> dict[str, Any]:
         "operator": project_operator_state(health, enforcement),
         "metrics": metrics,
         "queue": queue,
+        # WEB-002 kernel view: sensor counters only, derived from the queue
+        # doc above, so the 3s snapshot/SSE path gains no control cost. The
+        # kernel record pages are a separate 60s-cached endpoint.
+        "kernel": {"sensors": _kernel_sensors(queue)},
         "incident_counters": incident_counters,
         "forensic": forensic,
         "feed": {"available": feed["available"], "path": feed["path"], "total_scanned": feed["total_scanned"]},
@@ -284,6 +291,140 @@ def _read_forensic_cached() -> Any:
     return doc
 
 
+# WEB-002 kernel sensor view. The sensors block derives from the queue.stats
+# doc the snapshot already fetches, so it costs zero extra control calls. The
+# record pages are two forensics.list calls (canonical source 1 = wfp_sensor,
+# 14 = file_sensor); each costs ~4s (~retained-window scan + hash-chain
+# verify), which is why they ride their own 60s cache and a separate
+# endpoint -- never the 3s snapshot/SSE loop.
+#
+# Page sizing: 256KB is the daemon's own per-page ceiling (advertised in
+# max_bytes and clamped at FORENSIC_PAGE_MAX_BYTES); at ~330B/entry that is
+# ~770 records. The wfp page typically covers the complete retained window
+# (truncated=false) at lab rates, so the newest kernel records are included;
+# minifilter volume is orders of magnitude higher, so its page truncates at
+# the ceiling and the view labels that instead of pretending otherwise.
+_KERNEL_FEED_TTL_S = 60.0
+_KERNEL_FEED_LIMIT = 800
+_KERNEL_FEED_MAX_BYTES = 256 * 1024
+_KERNEL_SOURCES = (("wfp", 1), ("file", 14))
+_kernel_feed_cache: dict[str, Any] = {"at": 0.0, "doc": None}
+
+
+def _as_int(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _kernel_sensors(queue: Any) -> dict[str, Any]:
+    """Kernel-sensor counters extracted from a queue.stats document.
+
+    Passes the daemon's own blocks through unmodified (wfp callout,
+    minifilter) plus the kernel ingress producers' pushed/dropped counters.
+    No record content and no inference -- the view never invents state.
+    """
+    q = queue if isinstance(queue, dict) else {}
+    wfp = q.get("wfp") if isinstance(q.get("wfp"), dict) else None
+    minifilter = q.get("minifilter") if isinstance(q.get("minifilter"), dict) else None
+    by_source = q.get("by_source") if isinstance(q.get("by_source"), list) else []
+    ingress = [
+        {
+            "name": item.get("name"),
+            "pushed": _as_int(item.get("pushed")),
+            "dropped": _as_int(item.get("dropped")),
+        }
+        for item in by_source
+        if isinstance(item, dict) and item.get("name") in ("capture_wfp", "capture_fim")
+    ]
+    return {
+        "available": bool(wfp or minifilter or ingress),
+        "wfp": wfp,
+        "minifilter": minifilter,
+        "ingress": ingress,
+        "depth": q.get("depth"),
+        "pushed_total": q.get("pushed_total"),
+        "dropped_total": q.get("dropped_total"),
+        "shed_overload": q.get("shed_overload"),
+    }
+
+
+def _kernel_feed_doc(doc: Any) -> dict[str, Any]:
+    """Normalize one forensics.list page; never invent records."""
+    if not isinstance(doc, dict) or not doc:
+        return {
+            "available": False,
+            "records": [],
+            "records_matched": 0,
+            "records_returned": 0,
+            "ring_records": 0,
+            "oldest_record_seq": None,
+            "truncated": False,
+            "verified": False,
+            "integrity": "unavailable",
+        }
+    records = doc.get("records")
+    return {
+        "available": bool(doc.get("available", True)),
+        "records": records if isinstance(records, list) else [],
+        "records_matched": _as_int(doc.get("records_matched")),
+        "records_returned": _as_int(doc.get("records_returned")),
+        "ring_records": _as_int(doc.get("ring_records")),
+        "oldest_record_seq": doc.get("oldest_record_seq"),
+        "truncated": bool(doc.get("truncated")),
+        "verified": bool(doc.get("verified")),
+        "integrity": str(doc.get("integrity", "unknown")),
+    }
+
+
+def _read_kernel_feeds_cached() -> dict[str, Any]:
+    """One forensics.list page per kernel source, cached 60s.
+
+    Each page scans the retained forensic window and verifies its hash
+    chain (~4s), so this must stay off the snapshot path: the 3s dashboard
+    tick never waits on it. Cached pages carry their fetch time so the view
+    can label freshness; a failed read is never cached.
+    """
+    now = time.time()
+    kc = _kernel_feed_cache
+    if kc["doc"] is not None and now - kc["at"] < _KERNEL_FEED_TTL_S:
+        return kc["doc"]
+    feeds: dict[str, Any] = {}
+    answered = False
+    for key, source in _KERNEL_SOURCES:
+        page = _read(
+            "forensics.list",
+            {
+                "source": source,
+                "limit": _KERNEL_FEED_LIMIT,
+                "max_bytes": _KERNEL_FEED_MAX_BYTES,
+            },
+        )
+        if page:
+            answered = True
+        feeds[key] = _kernel_feed_doc(page)
+    doc = {"fetched_at_ms": int(time.time() * 1000), "feeds": feeds}
+    if answered:  # a transient pipe hiccup must not pin an empty answer
+        kc["at"] = time.time()
+        kc["doc"] = doc
+    return doc
+
+
+def _kernel_payload() -> dict[str, Any]:
+    """Complete kernel view: live counters + cached record pages.
+
+    Composed here rather than inside snapshot(): the counters ride the
+    snapshot (cheap), the pages ride /api/kernel (heavy, 60s cached).
+    """
+    return {
+        "schema": "aegis.kernel.v1",
+        "timestamp_ms": int(time.time() * 1000),
+        "sensors": _kernel_sensors(_read("queue.stats")),
+        **_read_kernel_feeds_cached(),
+    }
+
+
 def _reset_snapshot_cache() -> None:
     """Drop all web-side caches.
 
@@ -295,6 +436,8 @@ def _reset_snapshot_cache() -> None:
     _snapshot_cache["doc"] = None
     _forensic_cache["at"] = 0.0
     _forensic_cache["doc"] = None
+    _kernel_feed_cache["at"] = 0.0
+    _kernel_feed_cache["doc"] = None
 
 
 def snapshot() -> dict[str, Any]:
@@ -374,6 +517,7 @@ footer{color:var(--muted);font-size:11.5px;text-align:center;margin-top:26px}
   <span class="sub" id="hdrUpdated"></span>
   <nav>
     <a href="#overview">Overview</a><a href="#detection">Detection</a>
+    <a href="#kernel">Kernel</a>
     <a href="#rules">Rules</a><a href="#enforcement">Enforcement</a><a href="#system">System</a>
   </nav>
 </header>
@@ -397,6 +541,13 @@ footer{color:var(--muted);font-size:11.5px;text-align:center;margin-top:26px}
       <span class="small muted" id="feedCount"></span>
     </div>
     <div id="feedTable"></div>
+  </div>
+
+  <div id="kernel" class="panel">
+    <h2>Kernel Sensors <span class="muted small" id="kernelMeta"></span></h2>
+    <div id="kernelSensors"></div>
+    <div id="kernelFeeds"></div>
+    <div class="receipt-note">Observe-only: the WFP payload callout (AegisWfp) and the minifilter copy what the kernel delivered — counters come from the daemon, records are ring-attested (CRC + hash chain, verified per record). Payload text stays in the ring; this view shows lengths, never bytes.</div>
   </div>
 
   <div class="grid2">
@@ -605,10 +756,77 @@ function renderComponents(){
   $('compBody').innerHTML='<div>'+rows.map(c=>`<div class="subrow"><span><b>${esc(c.name)}</b> <span class="muted small">${esc(c.language)} · v${esc(c.version)}${c.required?'':' · optional'}</span><br><span class="muted small">${esc(c.role)}</span></span><span><span class="pill ${pill(c.status)}">${esc((c.status||'unknown').toUpperCase())}</span> <span class="muted small">${esc(c.detail||'')}</span></span></div>`).join('')+'</div>';
 }
 
+// --- WEB-002 kernel sensor view -------------------------------------------
+// Rule ids in forensic records are the daemon's numeric FNV-1a hashes; map
+// them back to catalog ids client-side (same algorithm as rule_loader.zig:
+// init 0x811c9dc5, xor byte, mul 0x01000193, mask 32-bit).
+function fnv1a32(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0}return h>>>0}
+function ruleNameByHash(){
+  const m=new Map();
+  for(const r of (snap&&snap.rules)||[]){if(r.rule_id)m.set(fnv1a32(String(r.rule_id)),r)}
+  return m;
+}
+function ruleCell(id,byHash){
+  const n=Number(id||0);
+  if(!n)return '<span class="muted">—</span>';
+  const r=byHash.get(n>>>0);
+  return r?`<span class="pill info" title="rule hash ${n}">${esc(r.rule_id)}</span> <span class="small muted">${esc(r.name||'')}</span>`
+          :`<span class="muted small" title="rule hash with no catalog match">#${esc(String(n))}</span>`;
+}
+function kernelFeedTable(title,feed,byHash){
+  if(!feed||feed.available===false)return `<div class="feed-empty">${esc(title)} — page unavailable (control plane read failed); counters above are unaffected.</div>`;
+  const recs=(feed.records||[]).slice(-12).reverse(); // newest-first, bounded
+  const meta=`${num(feed.records_returned)} of ${num(feed.records_matched)} matched · ring ${num(feed.ring_records)} retained · integrity ${esc(feed.integrity)}${feed.truncated?' · truncated (older page of window)':''}`;
+  if(!recs.length)return `<div class="feed-empty">${esc(title)} — ${meta}<br>No retained records for this source in the current ring window.</div>`;
+  let html=`<div class="small muted" style="margin:10px 0 4px">${esc(title)} — ${meta}</div>`;
+  html+='<table><thead><tr><th>Seq</th><th>Event</th><th>Rule</th><th>Payload</th><th>Verified</th></tr></thead><tbody>';
+  for(const r of recs){
+    html+=`<tr><td class="small">${num(r.record_seq)}</td><td class="small">${num(r.event_id)}</td>
+      <td class="small">${ruleCell(r.rule_id,byHash)}</td>
+      <td class="small">${r.payload_len?num(r.payload_len)+' B':'—'}</td>
+      <td>${r.verified?'<span class="pill ok">YES</span>':'<span class="pill bad">NO</span>'}</td></tr>`;
+  }
+  return html+'</tbody></table>';
+}
+let kernelDoc=null;
+function renderKernel(){
+  const s=(snap&&snap.kernel&&snap.kernel.sensors)||{};
+  $('kernelMeta').textContent=s.available?`· queue depth ${num(s.depth)} · pushed ${num(s.pushed_total)} · dropped ${num(s.dropped_total)} · shed ${num(s.shed_overload)}`:'· queue.stats unavailable (diagnostic mode)';
+  const w=s.wfp,m=s.minifilter;
+  const ing={};for(const e of s.ingress||[])ing[e.name]=e;
+  const kp=ing.capture_wfp||{},kf=ing.capture_fim||{};
+  const wState=w?(w.state==='ok'?'<span class="pill ok">OK</span>':`<span class="pill warn">${esc(w.state||'?')}</span>`):'<span class="pill mut">NO DATA</span>';
+  const mState=m?(m.state==='ok'?'<span class="pill ok">OK</span>':`<span class="pill warn">${esc(m.state||'?')}</span>`):'<span class="pill mut">NO DATA</span>';
+  const pushed=Number(kp.pushed||0)+Number(kf.pushed||0),dropped=Number(kp.dropped||0)+Number(kf.dropped||0);
+  let html='<div class="cards">';
+  html+=kpi('WFP payload callout',wState,'',w?`reads ${num(w.reads)} · rows ${num(w.rows)} · last ${num(w.last_bytes)} B`:'no wfp block in queue.stats');
+  html+=kpi('Minifilter (file/process)',mState,'',m?`reads ${num(m.reads)} · rows ${num(m.rows)} · dropped ${num(m.dropped)}`:'no minifilter block in queue.stats');
+  html+=kpi('Kernel ingress pushed',num(pushed),'ok',`wfp ${num(kp.pushed)} · fim ${num(kf.pushed)}`);
+  html+=kpi('Kernel ingress dropped',num(dropped),dropped?'warn':'ok',`wfp ${num(kp.dropped)} · fim ${num(kf.dropped)}`);
+  html+='</div>';
+  $('kernelSensors').innerHTML=html;
+  if(!kernelDoc){$('kernelFeeds').innerHTML='<div class="feed-empty">Loading kernel record pages (one forensics.list page per source; server-cached 60s)…</div>';return}
+  const byHash=ruleNameByHash();
+  const age=kernelDoc.fetched_at_ms?` · page fetched ${relTime(kernelDoc.fetched_at_ms)}`:'';
+  const feeds=kernelDoc.feeds||{};
+  $('kernelFeeds').innerHTML=
+    kernelFeedTable('WFP payload records (wfp_sensor)',feeds.wfp,byHash)
+    +kernelFeedTable('File/process records (file_sensor · minifilter)',feeds.file,byHash)
+    +`<div class="small muted" style="margin-top:6px">Records newest-first from the retained forensic window${age}.</div>`;
+}
+async function refreshKernel(){
+  try{
+    const r=await fetch('/api/kernel',{cache:'no-store'});
+    if(!r.ok)throw new Error('http '+r.status);
+    kernelDoc=await r.json();
+  }catch(e){/* keep the last rendered page; counters still render from snapshots */}
+  if(snap)renderKernel();
+}
+
 function render(){
   if(!snap)return;
   mode='online';
-  renderHeader();renderBanner();renderOverview();renderFeed();renderRules();renderEnforcement();renderSystem();renderComponents();
+  renderHeader();renderBanner();renderOverview();renderFeed();renderKernel();renderRules();renderEnforcement();renderSystem();renderComponents();
 }
 
 async function refresh(){
@@ -628,6 +846,13 @@ async function refresh(){
 setInterval(refresh,REFRESH_MS);
 ['q','sevFilter','stFilter','confirmedOnly','ruleQ'].forEach(id=>$(id).addEventListener('input',()=>{if(snap){renderFeed();if(id==='ruleQ')renderRules()}}));
 refresh();
+
+// WEB-002: kernel record pages are heavy (one ~4s forensics.list page per
+// source) and 60s-cached server-side -- fetched on their own slow cadence,
+// never in the 3s tick above.
+const KERNEL_MS=60000;
+setInterval(refreshKernel,KERNEL_MS);
+refreshKernel();
 </script></body></html>"""
 
 
@@ -639,6 +864,14 @@ def index() -> str:
 @app.get("/api/snapshot")
 def api_snapshot():
     return jsonify(snapshot())
+
+
+@app.get("/api/kernel")
+def api_kernel():
+    # WEB-002: kernel sensor view. Counters are live; record pages are
+    # cached server-side (60s) because each forensics.list page costs a
+    # retained-window scan + hash-chain verify.
+    return jsonify(_kernel_payload())
 
 
 @app.get("/api/status")

@@ -6,6 +6,10 @@ Pins the F5-changed behavior of tools/aegisctl/web_dashboard/app.py:
     Uses tmp_path fixtures only; never touches the repo tree.
   - snapshot() carries the queue.stats key (additive; {} when the
     daemon predates the command) alongside the existing schema.
+  - WEB-002: the kernel sensor view is additive and cost-separated --
+    the snapshot carries sensor counters derived from queue.stats (never
+    the ~4s forensic pages), /api/kernel serves the 60s-cached record
+    pages, and both degrade honestly.
   - the Flask app answers /api/snapshot with HTTP 200 even when the
     daemon is unreachable (graceful diagnostic mode), and binds
     localhost only (checked statically: no 0.0.0.0 bind).
@@ -176,3 +180,158 @@ def test_web001_cli_tui_web_share_one_control_api_truth_source():
     for rel in ("aegisctl.py", "aegisctl/console.py", "aegisctl/web_dashboard/app.py"):
         src = (TOOLS_DIR / rel).read_text(encoding="utf-8")
         assert "aegis_control" not in src, rel
+
+
+# --- WEB-002 kernel sensor view pins ---------------------------------------
+# The view is additive and cost-separated: sensor counters derive from the
+# queue.stats doc the snapshot already carries (zero extra control calls);
+# record pages ride /api/kernel behind a 60s cache because each
+# forensics.list page costs a retained-window scan + hash-chain verify
+# (~4s). Nothing here is inferred: failures render as unavailable.
+
+def _queue_doc():
+    return {
+        "depth": 7, "pushed_total": 100, "dropped_total": 4, "shed_overload": 1,
+        "wfp": {"state": "ok", "reads": 10, "rows": 20, "last_bytes": 0},
+        "minifilter": {"state": "ok", "reads": 11, "rows": 21, "last_bytes": 0, "dropped": 2},
+        "by_source": [
+            {"name": "capture_etw", "ordinal": 2, "pushed": 90, "dropped": 3},
+            {"name": "capture_wfp", "ordinal": 21, "pushed": 20, "dropped": 1},
+            {"name": "capture_fim", "ordinal": 3, "pushed": 30, "dropped": 2},
+        ],
+    }
+
+
+def test_web002_kernel_sensors_extracted_from_queue_doc():
+    sensors = app_module._kernel_sensors(_queue_doc())
+    assert sensors["available"] is True
+    assert sensors["wfp"]["rows"] == 20
+    assert sensors["minifilter"]["dropped"] == 2
+    assert [e["name"] for e in sensors["ingress"]] == ["capture_wfp", "capture_fim"]
+    assert sensors["ingress"][0] == {"name": "capture_wfp", "pushed": 20, "dropped": 1}
+    assert sensors["depth"] == 7 and sensors["dropped_total"] == 4
+
+
+def test_web002_kernel_sensors_without_queue_doc_degrade():
+    sensors = app_module._kernel_sensors(None)
+    assert sensors["available"] is False
+    assert sensors["wfp"] is None and sensors["minifilter"] is None
+    assert sensors["ingress"] == []
+
+
+def test_web002_kernel_feed_doc_normalizes_and_degrades():
+    ok = app_module._kernel_feed_doc({
+        "available": True, "records": [{"record_seq": 5}], "records_matched": 1,
+        "records_returned": 1, "ring_records": 100, "oldest_record_seq": 50,
+        "truncated": False, "verified": True, "integrity": "ok"})
+    assert ok["available"] is True and ok["records"][0]["record_seq"] == 5
+    assert ok["verified"] is True and ok["integrity"] == "ok"
+    down = app_module._kernel_feed_doc(None)
+    assert down["available"] is False and down["records"] == []
+    assert down["integrity"] == "unavailable" and down["verified"] is False
+
+
+def test_web002_kernel_feeds_query_both_sources_once(monkeypatch):
+    calls = []
+
+    def fake_read(command, payload=None):
+        calls.append((command, dict(payload or {})))
+        return {
+            "available": True,
+            "records": [{"record_seq": 42, "event_id": 7, "rule_id": 0,
+                         "source": 1, "source_name": "wfp_sensor",
+                         "source_space": "canonical", "payload_len": 42,
+                         "verified": True}],
+            "records_matched": 1, "records_returned": 1, "truncated": False,
+            "next_after": None, "ring_records": 100, "oldest_record_seq": 9,
+            "max_bytes": 65536, "integrity": "ok", "verified": True,
+        }
+
+    monkeypatch.setattr(app_module, "_read", fake_read)
+    app_module._reset_snapshot_cache()
+    try:
+        doc = app_module._read_kernel_feeds_cached()
+        forensic_calls = [c for c in calls if c[0] == "forensics.list"]
+        assert sorted(c[1]["source"] for c in forensic_calls) == [1, 14]
+        assert all(c[1]["limit"] == app_module._KERNEL_FEED_LIMIT for c in forensic_calls)
+        assert all(c[1]["max_bytes"] == app_module._KERNEL_FEED_MAX_BYTES for c in forensic_calls)
+        assert doc["feeds"]["wfp"]["records"][0]["record_seq"] == 42
+        assert doc["feeds"]["file"]["available"] is True
+        before = len(calls)
+        app_module._read_kernel_feeds_cached()  # inside TTL: served from cache
+        assert len(calls) == before
+    finally:
+        app_module._reset_snapshot_cache()
+
+
+def test_web002_kernel_feeds_do_not_cache_pipe_failure(monkeypatch):
+    calls = []
+
+    def failing_read(command, payload=None):
+        calls.append(command)
+        return {}
+
+    monkeypatch.setattr(app_module, "_read", failing_read)
+    app_module._reset_snapshot_cache()
+    try:
+        doc = app_module._read_kernel_feeds_cached()
+        assert doc["feeds"]["wfp"]["available"] is False
+        assert doc["feeds"]["file"]["integrity"] == "unavailable"
+        # A failed read must not pin an empty answer: the next call retries.
+        app_module._read_kernel_feeds_cached()
+        assert calls.count("forensics.list") == 4
+    finally:
+        app_module._reset_snapshot_cache()
+
+
+def test_web002_snapshot_carries_kernel_sensors_without_forensic_feeds(monkeypatch):
+    calls = []
+
+    def fake_read(command, payload=None):
+        calls.append(command)
+        return _queue_doc() if command == "queue.stats" else {}
+
+    monkeypatch.setattr(app_module, "_read", fake_read)
+    app_module._reset_snapshot_cache()
+    try:
+        snap = app_module.snapshot()
+        sensors = snap["kernel"]["sensors"]
+        assert sensors["wfp"]["rows"] == 20
+        assert [e["name"] for e in sensors["ingress"]] == ["capture_wfp", "capture_fim"]
+        # The 3s/SSE snapshot path must never carry the ~4s forensic pages.
+        assert "forensics.list" not in calls
+    finally:
+        app_module._reset_snapshot_cache()
+
+
+def test_web002_api_kernel_endpoint_answers(monkeypatch):
+    routes = {rule.rule for rule in app_module.app.url_map.iter_rules()}
+    assert "/api/kernel" in routes
+
+    def fake_read(command, payload=None):
+        return _queue_doc() if command == "queue.stats" else {}
+
+    monkeypatch.setattr(app_module, "_read", fake_read)
+    app_module._reset_snapshot_cache()
+    try:
+        client = app_module.app.test_client()
+        response = client.get("/api/kernel")
+        assert response.status_code == 200
+        body = response.get_json()
+        assert body["schema"] == "aegis.kernel.v1"
+        assert body["sensors"]["minifilter"]["dropped"] == 2
+        assert set(body["feeds"]) == {"wfp", "file"}
+        assert body["feeds"]["wfp"]["available"] is False  # failure labeled, not hidden
+    finally:
+        app_module._reset_snapshot_cache()
+
+
+def test_web002_index_page_has_kernel_section():
+    client = app_module.app.test_client()
+    response = client.get("/")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "Kernel Sensors" in html
+    assert "kernelSensors" in html and "kernelFeeds" in html
+    assert "/api/kernel" in html
+    assert 'href="#kernel"' in html
