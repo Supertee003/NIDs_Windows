@@ -237,3 +237,86 @@ gate (ไม่แตะ) และ wire contract ไม่เปลี่ยน
 - ไฟล์: src/contract/canonical_event.zig, src/pipeline/event_queue.zig, shared/protocol/wire_v2.md,
   แผนนี้, EVIDENCE_INDEX + maps
 - คงเหลือ: operator redeploy + live verify (E5), production signing (EV cert/HLK), Slice C decision
+
+## 13. Slice C (Enforcement Activation) - Decision Brief (2026-10-18, รอการตัดสินใจ)
+
+ข้อกำหนดปัจจุบัน: production เป็น detection-only; Slice C "ไม่จำเป็น" - ส่วนนี้สรุปสถานะที่ยืนยันแล้ว
+และทางเลือกไว้ให้ตัดสินใจได้ทันทีโดยไม่ต้อง recon ใหม่
+
+### 13.1 สถานะที่ยืนยันวันนี้ (HEAD 641d91c)
+
+- live `enforcement.status` (ผ่าน control plane, non-elevated): tier3 READY, pep_available true,
+  provider_ready true, shield_loaded true, tier3_enforcing false, host_effect_capable false,
+  prevention_gate "closed", receipt_required true, enforcement_mode "detection-only"
+  -> PEP พร้อม แต่ประตู host mutation ปิดสนิทโดยออกแบบ
+- โค้ด: `g_prevention_gate_open = false` (src/pipeline/runtime_state.zig:20); คอมเมนต์กำกับ
+  "Host mutation remains disabled until the isolated WFP proof opens this gate. Provider readiness
+  alone must never change it."; audit pin (บรรทัด 65-84) ระบุ "nothing in-tree can open it -
+  no store to g_prevention_gate_open exists" -> ไม่มี build option / env / handler ใดเปิด gate ได้
+- projection: host_effect_capable := provider_ready และ gate_open (src/control/handler_registry.zig:1533);
+  enforcement_mode เป็น "enforcing" เฉพาะเมื่อ gate_open และ provider_ready (บรรทัด 1538)
+  ตามสัญญา "Project 2 observe-only": provider พร้อมอย่างเดียวห้ามรายงานว่า enforcing
+- control plane มีครบ: enforcement.status/simulate/verify/block/quarantine/unblock/two_person/approve
+  (src/control/protocol.zig enforcement.*; ดู RB-012 References); block/quarantine ถูกปฏิเสธด้วย
+  PREVENTION_GATE_CLOSED "blocking is disabled until controlled host-effect proof and receipt
+  validation complete"
+- พาธ enforcement (เมื่อ gate เปิด) ผ่าน Rust PEP เท่านั้น: pep_bindings.PepEnforcer (enforceFlow /
+  enforceQuarantineFlow -> aegis_pep.dll -> WFP exact 3-tuple filter -> queryFilterResult read-back
+  ต้อง MATCH -> EnforcementReceipt host_effect_confirmed:true -> ENFORCED) พร้อม cleanup discipline
+  (read-back absent/mismatch -> unblockFilter + POSTCONDITION_FAILED/RECEIPT_INVALID;
+  src/control/handler_registry.zig:1746-1806); Zig ไม่มี direct WFP mutation (src/policy/wfp_production.zig
+  เป็น fail-closed boundary)
+- เอกสารควบคุมเขียนครบแล้ว (ยังไม่ execute):
+  - docs/WARDEN_CUTOVER_SPEC.md (EVT-153, E5): cutover เฉพาะ lab/VM; preconditions (VM snapshot,
+    test-signed driver+provider HEAD เดียวกัน, forensic ring healthy); canary block โดย
+    BLOCKED_CONFIRMED ต้องมี receipt + host postcondition เท่านั้น; soak 24h (zero PEP_UNVERIFIED,
+    zero receipt mismatch, ring verify + replay); rollback drill <5 นาที; prod non-goals:
+    ห้าม flip/re-install/re-sign/filter change - driver คง RUNNING (telemetry), gate คงปิด
+  - RB-012 / RB-013 (lab proof; status NOT YET EXECUTED), RB-016 (production trust, OPERATOR ACTION),
+    RB-001 (IR)
+  - .analysis/security.md: detection-only จนกว่า P0/Gate A-E ผ่านที่ HEAD ปัจจุบัน
+  - configs/aegis.conf [ips]: QUARANTINED (observe-only)
+
+### 13.2 ช่องว่างก่อน activate (เรียงตามลำดับที่ต้องปิด)
+
+- G1 กลไก "เปิด prevention gate" สำหรับ lab ไม่มีใน-tree (มีแต่ pin ห้ามเปิด) -> ต้องมีกติกาเปิดแบบ
+  lab-scoped + signed-off design review ก่อน (หมายเหตุในไฟล์ quarantined ของ driver: "DO NOT RESTORE
+  WITHOUT A SIGNED-OFF DESIGN REVIEW") จึงค่อย implement สไลซ์เล็กที่เพิ่มกลไกนี้
+- G2 ยังไม่เคย execute RB-012/RB-013 บน isolated VM -> E5 host-effect proof (receipt + filter จริง +
+  traffic ตายจริง) และ soak 24h + rollback drill ยังขาด
+- G3 production trust ยังไม่ตั้ง (RB-016: Ed25519 keypair offline + policies.sig.json +
+  AEGIS_POLICY_ENFORCE_TRUSTED) - unsigned policy escalate เสมอ (fail-closed ที่ถูกต้อง แต่ยัง enforce ไม่ได้)
+- G4 production signing (EV/HLK) ยังไม่ทำ - driver/instrument test-signed เท่านั้น
+  G3/G4 = งาน operator; G1/G2 = งาน code + lab (ฝั่ง agent ทำได้หลังอนุมัติ)
+
+### 13.3 ทางเลือก
+
+- A) คง detection-only (ไม่ทำอะไรต่อ): ตรงข้อกำหนดปัจจุบัน, blocks delta คง 0, ไม่มีงานเพิ่ม
+- B) Lab qualification only (Slice C-lab): ปิด G1 (กลไกเปิด gate lab-scoped หลัง design review) +
+  ปิด G2 (execute WARDEN spec step 1-4 / RB-012 -> RB-013 บน isolated VM ที่ HEAD ปัจจุบัน) + เก็บ
+  evidence kit -> production ไม่เปลี่ยนเลย (gate คงปิด)
+- C) Production enforcement: ต้องมี B ผ่าน + G3 + G4 + operator อนุมัติ; WARDEN spec ห้าม flip บน
+  production ก่อนมีหลักฐาน lab ที่ HEAD ปัจจุบัน -> ยังไม่เสนอให้ทำตอนนี้
+
+### 13.4 ความเสี่ยงหลัก (ของ B) และการควบคุม
+
+- false positive/self-lockout: จำกัด TEST-NET (203.0.113.10 / 192.0.2.10 ตาม spec), exact 3-tuple,
+  two-person rule severity>=7, quota 100 block/s, rollback enforcement.unblock + drill <5 นาที
+- lab ต้องเป็น VM snapshot + host-only network (RB-012: NEVER run on production)
+- ห้าม cite in-memory block / log / exit code เป็น host-block proof - ต้องมี receipt + read-back +
+  traffic effect + forensics (spec ย้ำ; .analysis/security.md:23)
+- minifilter ต้องอยู่นอก cutover (Gate D ของตัวเอง); driver/service บน production ห้ามแตะ
+
+### 13.5 หลักฐานเป้าหมาย (ถ้าเลือก B)
+
+- E5: WFP BLOCK live proof (receipt ENFORCED, enforcement.verify MATCH, Test-NetConnection fail -> recover)
+- E5/E6: soak 24h + rollback drill + forensic ring verify/replay
+- kit: admin-evidence/sliceC-lab-<date>/ + EVI entries + บันทึกปิด slice ในแผนนี้ (§14) เมื่อจบ
+- invariant: production blocks delta คง 0 ตลอด (B ไม่แตะ host ที่รันจริง)
+
+### 13.6 คำแนะนำ
+
+- ถ้ายังไม่มี use case enforcement: คง A - เอกสารนี้พร้อมใช้ทันทีเมื่อต้องการ
+- ถ้าจะเดินหน้า: เริ่ม B เท่านั้น (lab-scoped; ไม่แตะ production) - C รอ B + G3 + G4 ครบก่อน
+
+สถานะการตัดสินใจ: PENDING (รอ operator/user)
