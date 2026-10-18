@@ -332,3 +332,24 @@ gate (ไม่แตะ) และ wire contract ไม่เปลี่ยน
   detection-only; draft เสนอปิดช่องนี้ด้วย gate เดียว (gate closed = ไม่มี host mutation จากทุก surface)
 - สถานะ: รอ signed-off review (sign-off table ในเอกสาร) - ยังไม่ implement ใด ๆ;
   production ยัง detection-only เหมือนเดิม
+
+## 14. Slice C-lab (G1): prevention gate master switch + lab opt-in - IMPLEMENTED (E2)
+
+ฐาน HEAD b3fe986; patch เดียว (commit: SLICE-C-LAB) - ดู EVI entry "SLICE-C-LAB" + admin-evidence/sliceC-lab-gate-20261018/
+
+- Patch: build.zig (-Dlab-prevention-gate default false + build_options เฉพาะ exe graph); runtime_state.openPreventionGateLab
+  (writer เดียว, preconditions 4 ข้อ fail-closed, in-memory) + GateSource; policy_ir.isHostMutating; pep_bindings.
+  hostEffectGuardVerdict (gate -> trust -> availability) + enforce(..., gate_open); event_processor ส่ง
+  state.g_prevention_gate_open; handler_registry enforcement.status เพิ่ม "gate_source" (additive); daemon เปิดเฉพาะ lab build
+- S1 hardening (ปิด G1 หลัก): gate closed => block/quarantine/rate_limit ไม่ถึง provider boundary แม้ trusted+available
+  (ปิดช่อง trust-misconfig ที่ projection เคยโกหกได้); pass/log/alert/escalate คงเดิม byte-identical
+- TDD: RED - pytest surface pins 5 failed -> GREEN 5 passed; zig build test rc=0 (2161 total, 1 skipped; รอบแรกเจอ perf flake
+  RegistryWatchQueue ที่รู้จัก -> rerun เขียว); mutation-red (ปิด guard + ring precondition ชั่วคราว) => 2 เทสต์เป้าหมาย fail
+  ตามชื่อ (verdict spec; lab preconditions); full pytest 921 passed / 2 skipped / 27 subtests
+- Pins ใหม่: tests/security/test_prevention_gate_surface.py (5) + unit ใหม่ 5 (verdict spec, closed-gate block path,
+  lab preconditions x2, isHostMutating) + boot pin อัปเดตเป็น single-writer contract
+- Default build = zero behavior change: ไม่มี caller ของ openPreventionGateLab ใน non-lab build; production ไม่ redeploy
+  ในสไลซ์นี้; blocks delta คง 0
+- ยังเปิด: G2 (execute RB-012 -> RB-013 บน isolated lab VM ด้วย lab build - operator), external security review ของ design,
+  operator redeploy daemon (ค้างจาก V6-QUEUE-DROP)
+- เอกสาร: docs/SLICE_C_LAB_GATE_DESIGN.md -> APPROVED/IMPLEMENTED + §6.1 + §8.1; RB-012 prerequisite เพิ่ม lab build line

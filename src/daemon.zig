@@ -12,6 +12,8 @@
 
 const std = @import("std");
 const builtin = @import("builtin");
+// SLICE-C-LAB: build-option module wired in build.zig (exe graph only).
+const build_options = @import("build_options");
 const event = @import("contract/event.zig");
 const manifest = @import("contract/runtime_manifest.zig");
 const diag = @import("core/diagnostics.zig");
@@ -620,6 +622,30 @@ pub fn runDaemon() !void {
         diag.critical("PEP unavailable (aegis_pep.dll not loaded) — DETECTION-ONLY MODE: no enforcement", .{});
     } else {
         diag.info("PEP available — prevention gate closed, DETECTION-ONLY MODE: provider ready, no host effect without receipt", .{});
+    }
+    // SLICE-C-LAB: lab-only prevention gate (G1). Compiled in only with
+    // -Dlab-prevention-gate=true; default/production builds contain no
+    // reachable caller, so the gate cannot open. In-memory only: a restart
+    // re-closes it. Preconditions fail closed (docs/SLICE_C_LAB_GATE_DESIGN.md).
+    if (build_options.lab_prevention_gate) {
+        const gate_outcome = state.openPreventionGateLab(
+            pep_enf.available,
+            pep_enf.providerReady(),
+            tier3.g_tier3.state == .ready,
+            state.g_forensic_ring != null,
+        );
+        if (gate_outcome.opened) {
+            diag.critical("LAB: prevention gate OPEN ({s}) — host mutation enabled for lab qualification ONLY", .{gate_outcome.reason});
+            if (state.g_evidence_log_enabled) {
+                @import("forensic/forensic_log.zig").log(.{
+                    .level = .critical,
+                    .event = "lab_prevention_gate_open",
+                    .extra = "SLICE-C-LAB; in-memory only; restart re-closes; lab qualification builds only",
+                });
+            }
+        } else {
+            diag.warn("LAB: prevention gate stays closed ({s})", .{gate_outcome.reason});
+        }
     }
     dispatcher.ActionDispatcher.init();
     defer dispatcher.ActionDispatcher.deinit();

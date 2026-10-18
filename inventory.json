@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-18T11:09:39.448819+00:00",
+  "generated_at": "2026-10-18T13:12:02.310958+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1697,
+  "total_files": 1698,
   "by_class": {
     "canonical-docs": 570,
     "canonical-build": 222,
     "unclassified": 21,
     "canonical-source": 619,
-    "canonical-test": 198,
+    "canonical-test": 199,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -2928,13 +2928,13 @@
       "path": "build.zig",
       "class": "canonical-source",
       "role": "source",
-      "size": 9429
+      "size": 10141
     },
     {
       "path": "build_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 128042
+      "size": 128043
     },
     {
       "path": "build_truth.json",
@@ -3978,7 +3978,7 @@
       "path": "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 32629
+      "size": 33853
     },
     {
       "path": "docs/MASTER_TARGET_ALIGNMENT_2026-09-14.md",
@@ -4116,7 +4116,7 @@
       "path": "docs/runbooks/RB-012-wfp-block-lab-proof.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5900
+      "size": 6136
     },
     {
       "path": "docs/runbooks/RB-013-quarantine-lab-proof.md",
@@ -4236,7 +4236,7 @@
       "path": "docs/SLICE_C_LAB_GATE_DESIGN.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 11839
+      "size": 12007
     },
     {
       "path": "docs/SPRINT_2_PLAN.md",
@@ -4800,7 +4800,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 273758
+      "size": 274508
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -5076,7 +5076,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 224654
+      "size": 225220
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -7050,7 +7050,7 @@
       "path": "src/control/handler_registry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 137442
+      "size": 137871
     },
     {
       "path": "src/control/health/runtime_health.zig.scaffold",
@@ -7212,7 +7212,7 @@
       "path": "src/daemon.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 47194
+      "size": 48532
     },
     {
       "path": "src/detection/anomaly_detector.zig",
@@ -7518,7 +7518,7 @@
       "path": "src/pipeline/event_processor.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 32989
+      "size": 33181
     },
     {
       "path": "src/pipeline/event_queue.zig",
@@ -7542,7 +7542,7 @@
       "path": "src/pipeline/runtime_state.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 13289
+      "size": 16237
     },
     {
       "path": "src/pipeline/telemetry_threads.zig",
@@ -7596,7 +7596,7 @@
       "path": "src/policy/pep_bindings.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 28219
+      "size": 31495
     },
     {
       "path": "src/policy/policy_contract.zig",
@@ -7614,7 +7614,7 @@
       "path": "src/policy/policy_ir.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 13767
+      "size": 15044
     },
     {
       "path": "src/policy/policy_plane.zig",
@@ -9295,6 +9295,12 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 1333
+    },
+    {
+      "path": "tests/security/test_prevention_gate_surface.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 4951
     },
     {
       "path": "tests/security/test_receipt_contract.py",

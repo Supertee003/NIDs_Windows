@@ -1,6 +1,7 @@
-# Slice C Lab Gate - Design Review (DRAFT)
+# Slice C Lab Gate - Design Review (APPROVED - IMPLEMENTED)
 
-**สถานะ:** DRAFT - ต้องมี SIGNED-OFF REVIEW ก่อน implement ใด ๆ (ห้าม implement จากเอกสารนี้โดยตรง)
+**สถานะ:** APPROVED 2026-10-18 (operator: "ดำเนินการต่อไปได้" - adopt recommended defaults §6) และ IMPLEMENTED
+ในสไลซ์ SLICE-C-LAB แล้ว (implementation note §8.1; slice record แผน §14) - **external security review ยังเปิดอยู่**
 **ขอบเขต:** LAB ONLY - production ต้องคง detection-only (WARDEN_CUTOVER_SPEC) เอกสารนี้ไม่ได้อนุญาตให้เปิด gate บน production
 **ที่มา:** แผน §13 (Slice C decision brief) ช่องว่าง G1/G2; docs/WARDEN_CUTOVER_SPEC.md; RB-012/RB-013; .analysis/security.md
 **HEAD ที่ตรวจ:** 0cc8bee (2026-10-18)
@@ -90,6 +91,14 @@
 4. ระดับหลักฐานตอนเปิด: `diag.critical` + evidence line พอไหม หรือต้องมี forensic record ด้วย?
 5. preconditions: ต้องเพิ่ม "trusted policy verified" เป็นเงื่อนไขเปิดไหม? (แนะนำ: ไม่บังคับ - trust เป็นเงื่อนไขต่อ action ของ S1 อยู่แล้ว แต่บันทึกสถานะ trust ตอนเปิดไว้ใน open record)
 
+### 6.1 ข้อสรุปที่ adopt (2026-10-18)
+
+1. รับพารามิเตอร์ `gate_open` ใน `enforce(...)` ตามที่แนะนำ - implemented (เหตุผล import cycle ยืนยันแล้วตอน implement: pep_bindings ที่ import runtime_state จะวนผ่าน runtime_manifest -> forensic_pipeline)
+2. Gate check ก่อน trust check ตามที่แนะนำ แต่ **refine ขอบเขต**: guard ใช้เฉพาะ host-mutating actions (`.rate_limit/.block/.quarantine`) ผ่าน `policy_ir.isHostMutating` เพื่อให้ `.pass/.log/.alert/.escalate` คง flow เดิม byte-identical (`.escalate` ไม่ host-mutate); ถ้าไม่ refine จะเป็นการเปลี่ยน behavior ของ detection-only path
+3. `gate_source` ("closed"|"lab-build-optin") เพียงพอสำหรับสไลซ์นี้; การเพิ่ม `policy_trust` ใน projection = งานแยกถ้าต้องการ (ไม่ทำในสไลซ์นี้)
+4. Open record = `diag.critical` + evidence log line (`lab_prevention_gate_open` ใน logs/aegis_core.ndjson) - implemented; forensic ring record ไม่เพิ่มในสไลซ์นี้
+5. ไม่บังคับ trust เป็น precondition ตอนเปิด ตามที่แนะนำ; reason codes ของ outcome (`pep-unavailable`/`provider-not-ready`/`tier3-not-ready`/`forensic-ring-absent`/`opened`/`already-open`) เป็นหลักฐาน
+
 ---
 
 ## 7. Non-goals
@@ -105,6 +114,17 @@
 
 | บทบาท | ชื่อ | วันที่ | ผล |
 |---|---|---|---|
-| Operator/User | | | |
-| Security review | | | |
-| Implementer | | | |
+| Operator/User | operator (คำสั่ง "ดำเนินการต่อไปได้") | 2026-10-18 | APPROVED - adopt recommended defaults §6 (ดู §6.1) |
+| Security review | agent self-review (invariants + RED/GREEN + mutation check + release-surface pins) | 2026-10-18 | PASS (self) - external review ยังเปิด (ไม่ block E2) |
+| Implementer | agent | 2026-10-18 | IMPLEMENTED (E2) - slice record แผน §14; kit admin-evidence/sliceC-lab-gate-20261018/ |
+
+### 8.1 Implementation note (SLICE-C-LAB, 2026-10-18)
+
+- build.zig: `-Dlab-prevention-gate` (default false) + module `build_options` เฉพาะ exe graph (test graph ไม่มี daemon จึงไม่ต้องใช้)
+- runtime_state: `openPreventionGateLab()` = writer เดียว + `g_gate_source`; pin เดิมอัปเดตจาก "no store exists" เป็น single-writer contract
+- daemon: เรียกเฉพาะใน `if (build_options.lab_prevention_gate)` หลัง PEP/tier3 init; preconditions ไม่ครบ => คงปิด + diag.warn เหตุผล
+- pep_bindings: `hostEffectGuardVerdict` (pure, FFI-free) + `enforce(..., gate_open)`; ลำดับ gate -> trust -> availability (gate เฉพาะ host-mutating actions ตาม §6.1 ข้อ 2)
+- projection: `enforcement.status` + `"gate_source":"closed"|"lab-build-optin"` (additive; pins เดิมไม่กระทบ)
+- pins ใหม่: tests/security/test_prevention_gate_surface.py (5) - writer เดียว / opener เฉพาะ owner+daemon / open call หลัง build option / flag ไม่หลุด release surfaces / S1 call site ส่ง gate
+- ไม่มี redeploy ในสไลซ์นี้: production ยังรัน binary เดิม (ค้าง operator redeploy จาก V6-QUEUE-DROP); `gate_source` จะโผล่บน live หลัง redeploy ครั้งถัดไป
+- RB-012 prerequisite อัปเดตแล้ว (lab build เท่านั้น); ขั้น RB-012/RB-013 ยัง NOT YET EXECUTED (operator บน lab VM)

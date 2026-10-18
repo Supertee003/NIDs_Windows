@@ -232,6 +232,9 @@ fn processEvent(
             state.g_runtime_pid,
             state.g_runtime_capability_mask,
             pep_req_id,
+            // SLICE-C-LAB: the prevention gate is read per decision so the
+            // S1 path is gate-controlled (closed by default everywhere).
+            state.g_prevention_gate_open,
         );
         _ = state.g_pipeline_detections.fetchAdd(1, .monotonic); // policy matched = detection event
 

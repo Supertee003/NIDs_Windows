@@ -94,6 +94,18 @@ pub fn requiresTrustedAuthorization(action: Action) bool {
     };
 }
 
+/// SLICE-C-LAB: actions that can mutate host state (install a filter /
+/// throttle) when handed to the Rust PEP. Exact scope of the prevention
+/// gate master switch: while the gate is closed these actions never reach
+/// the provider boundary. `.escalate` is authorization-gated but not
+/// host-mutating; alert/log/pass keep their detection-only flow.
+pub fn isHostMutating(action: Action) bool {
+    return switch (action) {
+        .rate_limit, .block, .quarantine => true,
+        .pass, .log, .alert, .escalate => false,
+    };
+}
+
 pub const PolicySet = struct {
     policies: std.ArrayList(Policy),
     allocator: std.mem.Allocator,
@@ -356,6 +368,21 @@ test "privileged policy actions require verified trust" {
     try std.testing.expect(requiresTrustedAuthorization(.rate_limit));
     try std.testing.expect(!requiresTrustedAuthorization(.alert));
     try std.testing.expect(!requiresTrustedAuthorization(.log));
+}
+
+test "SLICE-C-LAB: isHostMutating covers exactly the host-mutation actions" {
+    try std.testing.expect(isHostMutating(.block));
+    try std.testing.expect(isHostMutating(.quarantine));
+    try std.testing.expect(isHostMutating(.rate_limit));
+    try std.testing.expect(!isHostMutating(.pass));
+    try std.testing.expect(!isHostMutating(.log));
+    try std.testing.expect(!isHostMutating(.alert));
+    try std.testing.expect(!isHostMutating(.escalate));
+    // Every host-mutating action is also authorization-gated (the converse
+    // is not true: escalate is trust-gated but never host-mutating).
+    for ([_]Action{ .rate_limit, .block, .quarantine }) |a| {
+        try std.testing.expect(requiresTrustedAuthorization(a));
+    }
 }
 
 test "PolicySet field kind match works" {    var ps = PolicySet.init(std.testing.allocator);

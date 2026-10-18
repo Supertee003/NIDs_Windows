@@ -1,8 +1,8 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-18T11:09:39.452746+00:00",
+  "generated_at": "2026-10-18T13:12:02.314117+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1697,
+  "total_files": 1698,
   "by_role": {
     "documentation": 558,
     "build-config": 211,
@@ -10,7 +10,7 @@
     "source": 336,
     "lockfile": 6,
     "rust-build": 4,
-    "test-artifact": 198,
+    "test-artifact": 199,
     "config-data": 34,
     "architecture-decision": 10,
     "step-document": 2,
@@ -6496,6 +6496,10 @@
       "role": "test-artifact"
     },
     "tests/security/test_nose_log_discipline.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_prevention_gate_surface.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

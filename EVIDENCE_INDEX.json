@@ -1,5 +1,5 @@
 {
- "head_sha": "0cc8bee1aa91a4746d5eeb25f7fc8b546b16395e",
+ "head_sha": "b3fe986ac1860c8d7d71a0a53e51f5756592e110",
  "created_at": "2026-09-24",
  "generator_version": "3.0",
  "evidence_levels": {
@@ -6099,12 +6099,29 @@
     "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
     "EVIDENCE_INDEX.json"
    ]
+  },
+  {
+   "id": "SLICE-C-LAB",
+   "title": "Prevention gate master switch (G1): lab-only open mechanism + S1 enforcement hardening - default/production builds cannot open the gate; a closed gate refuses host-mutating actions (block/quarantine/rate_limit) before the provider boundary even for trusted policies on a ready provider; gate_source provenance exposed additively in enforcement.status",
+   "level": "E2",
+   "component": "zig-policy+pipeline+control",
+   "flow_id": "FOR-001",
+   "head_sha": "b3fe986",
+   "timestamp": "2026-10-18",
+   "result": "PASS",
+   "command": "Agent run (non-elevated). RED first: python -m pytest tests/security/test_prevention_gate_surface.py -q -> 5 failed (single writer, opener surface, build-option guard, release-surface flag scan, S1 call-site thread). Patch: build.zig -Dlab-prevention-gate (default false) + build_options module (exe graph only); runtime_state.openPreventionGateLab (single writer, 4 fail-closed preconditions, in-memory) + GateSource; policy_ir.isHostMutating; pep_bindings.hostEffectGuardVerdict (gate -> trust -> availability) wired into enforce(..., gate_open); event_processor threads state.g_prevention_gate_open; handler_registry enforcement.status gains additive gate_source; daemon opens only behind build_options.lab_prevention_gate. GREEN: pytest surface 5 passed; zig build test rc=0 (2161 total, 1 skipped; first run hit the known RegistryWatchQueue perf flake -> rerun green); zig build rc=0; full pytest 921 passed / 2 skipped / 27 subtests. Mutation check (guard + ring precondition disabled in a scratch build): the two dedicated tests fail by name, then restored and re-greened.",
+   "expected": "A closed gate (every default build) refuses block/quarantine/rate_limit at the S1 boundary even when policy.trusted=true and the provider is ready - escalate, no receipt, no FFI reach; pass/log/alert/escalate keep their detection-only flow byte-identical; the gate opens only via openPreventionGateLab in builds compiled with -Dlab-prevention-gate=true with all four preconditions met, never persists, and records provenance; enforcement.status gains the additive gate_source field; production posture (detection-only, blocks delta 0) is unchanged by construction.",
+   "actual": "As designed. Default build: no reachable caller of openPreventionGateLab (pinned at source level; the build flag appears only in build.zig/docs/tests, absent from scripts/tools/configs/CI/drivers surfaces); S1 gate guard runs before trust/availability checks; runtime_state boot pin updated to the single-writer contract (writer exists, GateSource closed at boot, tests restore state). No deployment in this slice: the live daemon keeps running the pre-V6 binary (operator redeploy still pending); nothing on production can open the gate.",
+   "finding": "The S1 pipeline path had no gate concept: a trust misconfiguration (AEGIS_POLICY_ENFORCE_TRUSTED mis-set with a mis-signed policies.sig.json) could have host-mutated while enforcement.status still projected detection-only. The gate is now the single master switch for host mutation on both entry points (S1 guarded per decision, S2 already gate-checked) and its provenance is observable (gate_source). Rollback = revert one commit; no persistent state to unwind. Lab activation still requires the operator RB-012/RB-013 sequence on a lab build.",
+   "description": "G1 closure per docs/KERNEL_NIDS_COMPLETION_PLAN.md section 13 and docs/SLICE_C_LAB_GATE_DESIGN.md (APPROVED/IMPLEMENTED; operator proceed instruction 2026-10-18 adopted the recommended defaults; external security review still open). G2 (RB-012 -> RB-013 on an isolated lab VM) remains NOT YET EXECUTED.",
+   "tests": "tests/security/test_prevention_gate_surface.py (5 pins); src/pipeline/runtime_state.zig (lab preconditions, single-writer provenance, updated boot pin); src/policy/pep_bindings.zig (verdict spec, closed-gate block path); src/policy/policy_ir.zig (isHostMutating); zig build test rc=0; full pytest 921 passed / 2 skipped / 27 subtests; mutation-red transcript",
+   "files_changed": "build.zig, src/pipeline/runtime_state.zig, src/policy/policy_ir.zig, src/policy/pep_bindings.zig, src/pipeline/event_processor.zig, src/control/handler_registry.zig, src/daemon.zig, tests/security/test_prevention_gate_surface.py, docs/SLICE_C_LAB_GATE_DESIGN.md, docs/runbooks/RB-012-wfp-block-lab-proof.md, docs/KERNEL_NIDS_COMPLETION_PLAN.md"
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 22,
-  "E2_count": 116,
+  "E2_count": 117,
   "E3_count": 10,
   "E4_count": 14,
   "E5_count": 88,

@@ -16,8 +16,32 @@ const forensic = @import("../forensic/forensic_pipeline.zig");
 pub var g_stop_requested = std.atomic.Value(bool).init(false);
 
 /// Host mutation remains disabled until the isolated WFP proof opens this
-/// gate. Provider readiness alone must never change it.
+/// gate. Provider readiness alone must never change it. SLICE-C-LAB: the
+/// only writer is openPreventionGateLab() below (daemon, lab builds only).
 pub var g_prevention_gate_open: bool = false;
+
+/// SLICE-C-LAB: provenance of the gate position. Only the dedicated lab
+/// opener may move this off `.closed`; it is never persisted, so a restart
+/// re-closes the gate.
+pub const GateSource = enum { closed, lab_build_optin };
+pub var g_gate_source: GateSource = .closed;
+
+pub const GateOpenOutcome = struct { opened: bool, reason: []const u8 };
+
+/// SLICE-C-LAB: THE single writer of g_prevention_gate_open. Called by the
+/// daemon only when compiled with -Dlab-prevention-gate=true (see
+/// docs/SLICE_C_LAB_GATE_DESIGN.md). Fails closed on any missing
+/// precondition and stays in-memory only.
+pub fn openPreventionGateLab(pep_available: bool, provider_ready: bool, tier3_ready: bool, ring_present: bool) GateOpenOutcome {
+    if (g_prevention_gate_open) return .{ .opened = true, .reason = "already-open" };
+    if (!pep_available) return .{ .opened = false, .reason = "pep-unavailable" };
+    if (!provider_ready) return .{ .opened = false, .reason = "provider-not-ready" };
+    if (!tier3_ready) return .{ .opened = false, .reason = "tier3-not-ready" };
+    if (!ring_present) return .{ .opened = false, .reason = "forensic-ring-absent" };
+    g_prevention_gate_open = true;
+    g_gate_source = .lab_build_optin;
+    return .{ .opened = true, .reason = "opened" };
+}
 // BE-EVI-097: evidence-log projection (logs/aegis_core.ndjson) on by
 // default so file-tail surfaces see live detections. AEGIS_EVIDENCE_LOG=0
 // opts out. A failed write never fails detection (drop-on-error in
@@ -63,12 +87,15 @@ pub var g_worker_failure_kind = std.atomic.Value(u8).init(@intFromEnum(WorkerFai
 pub var g_worker_failure_mask = std.atomic.Value(u8).init(0);
 
 test "runtime fail-closed defaults hold (BYTE-ORDER-096 audit)" {
-    // Pinned boot posture: prevention closed (nothing in-tree can open
-    // it — no store to g_prevention_gate_open exists), evidence log on,
-    // no policy mirror loaded, all readiness flags clear, no recorded
-    // worker failure. Only daemon paths and live worker threads mutate
-    // these; unit tests never do, so any drift here is a real regression.
+    // Pinned boot posture: prevention closed (the only writer is
+    // openPreventionGateLab, called solely by the daemon behind the lab
+    // build option; default builds have no reachable caller), gate
+    // provenance closed, evidence log on, no policy mirror loaded, all
+    // readiness flags clear, no recorded worker failure. Only daemon paths
+    // and live worker threads mutate these; unit tests restore any state
+    // they touch, so any drift here is a real regression.
     try std.testing.expect(!g_prevention_gate_open);
+    try std.testing.expect(g_gate_source == .closed);
     try std.testing.expect(g_evidence_log_enabled);
     try std.testing.expect(g_policy_ir == null);
     try std.testing.expect(!g_policy_ir_verified.load(.acquire));
@@ -81,6 +108,36 @@ test "runtime fail-closed defaults hold (BYTE-ORDER-096 audit)" {
     try std.testing.expect(!g_worker_failed.load(.acquire));
     try std.testing.expectEqual(WorkerFailureKind.none, @as(WorkerFailureKind, @enumFromInt(g_worker_failure_kind.load(.acquire))));
     try std.testing.expectEqual(@as(u8, 0), g_worker_failure_mask.load(.acquire));
+}
+
+fn resetGateForTest() void {
+    g_prevention_gate_open = false;
+    g_gate_source = .closed;
+}
+
+test "SLICE-C-LAB: prevention gate stays closed unless every lab precondition holds" {
+    defer resetGateForTest();
+    try std.testing.expect(!openPreventionGateLab(false, true, true, true).opened);
+    try std.testing.expect(!g_prevention_gate_open);
+    try std.testing.expect(!openPreventionGateLab(true, false, true, true).opened);
+    try std.testing.expect(!g_prevention_gate_open);
+    try std.testing.expect(!openPreventionGateLab(true, true, false, true).opened);
+    try std.testing.expect(!g_prevention_gate_open);
+    try std.testing.expect(!openPreventionGateLab(true, true, true, false).opened);
+    try std.testing.expect(!g_prevention_gate_open);
+    try std.testing.expect(g_gate_source == .closed);
+}
+
+test "SLICE-C-LAB: gate opens only via the dedicated writer and records its source" {
+    defer resetGateForTest();
+    const r = openPreventionGateLab(true, true, true, true);
+    try std.testing.expect(r.opened);
+    try std.testing.expect(std.mem.eql(u8, r.reason, "opened"));
+    try std.testing.expect(g_prevention_gate_open);
+    try std.testing.expect(g_gate_source == .lab_build_optin);
+    const again = openPreventionGateLab(true, true, true, true);
+    try std.testing.expect(again.opened);
+    try std.testing.expect(std.mem.eql(u8, again.reason, "already-open"));
 }
 
 pub fn markWorkerFailure(kind: WorkerFailureKind) void {

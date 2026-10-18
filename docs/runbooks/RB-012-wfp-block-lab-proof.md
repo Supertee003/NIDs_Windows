@@ -17,6 +17,10 @@ anything else is not proof.
 - Lab VM with the AEGIS service installed from a release build.
 - Prevention gate OPEN and provider ready (see step 1). Default posture
   is detection-only; that is correct everywhere except this runbook.
+  Gate open comes ONLY from a lab-qualification build
+  (`zig build -Dlab-prevention-gate=true`, see
+  docs/SLICE_C_LAB_GATE_DESIGN.md): default/production builds have no
+  code path that can open it, and the gate re-closes on restart.
 - Signed policy trust established (step 2). Unsigned policy can never
   enforce (fail-closed by construction).
 - Target: a TEST-NET address that answers no production role. Sanctioned:

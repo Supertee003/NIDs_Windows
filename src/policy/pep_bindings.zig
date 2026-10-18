@@ -97,6 +97,31 @@ pub const FilterQueryResult = union(enum) {
     present: PepFilterState,
 };
 
+// ============================================================================
+// SLICE-C-LAB: host-mutation guard order (pure, FFI-free, unit-tested)
+// ============================================================================
+
+/// Fail-closed guards shared by every S1 enforcement entry, in evaluation
+/// order. Returns the decision to short-circuit with, or null when the
+/// request may reach the provider boundary (aegis_pep_enforce).
+pub fn hostEffectGuardVerdict(gate_open: bool, action: policy.Action, trusted: bool, available: bool) ?PepDecision {
+    // 1. SLICE-C-LAB prevention gate (master switch): while closed, actions
+    //    that can mutate host state never reach the provider boundary, even
+    //    when the policy is trusted and the provider is ready. Non-mutating
+    //    actions (pass/log/alert) keep their detection-only flow; escalate
+    //    is authorization-gated but not host-mutating.
+    if (policy.isHostMutating(action) and !gate_open) return .escalate;
+    // 2. Trust guard: the active JSON loader does not verify a signed
+    //    canonical policy envelope. Keep every privileged action
+    //    non-enforcing until a verified loader marks the policy trusted.
+    if (policy.requiresTrustedAuthorization(action) and !trusted) return .escalate;
+    // 3. SAFETY CONTAINMENT: unavailable PEP is not an ALLOW decision.
+    //    Escalate to the non-enforcing/degraded path so callers cannot
+    //    confuse detection-only mode with an authorized action.
+    if (!available) return .escalate;
+    return null;
+}
+
 // Rust FFI functions
 extern "aegis_pep" fn aegis_pep_enforce(req: *const PepRequest, resp: *PepResponse) c_int;
 extern "aegis_pep" fn aegis_pep_unblock_filter(filter_id: u64, caller_pid: u32, caller_capability_mask: u32, request_id: u64) c_int;
@@ -136,20 +161,10 @@ pub const PepEnforcer = struct {
         return aegis_pep_provider_ready() == 1;
     }
 
-    pub fn enforce(self: *PepEnforcer, ev: *const event.IpcEvent, p: policy.Policy, caller_pid: u32, caller_caps: u32, request_id: u64) PepDecision {
+    pub fn enforce(self: *PepEnforcer, ev: *const event.IpcEvent, p: policy.Policy, caller_pid: u32, caller_caps: u32, request_id: u64, gate_open: bool) PepDecision {
         self.last_receipt = null;
-        // The active JSON loader does not verify a signed canonical policy
-        // envelope. Keep every privileged action non-enforcing until a
-        // verified loader marks the policy trusted. Alert/log paths remain
-        // available for detection-only operation.
-        if (policy.requiresTrustedAuthorization(p.action) and !p.trusted) {
-            return .escalate;
-        }
-        if (!self.available) {
-            // SAFETY CONTAINMENT: unavailable PEP is not an ALLOW decision.
-            // Escalate to the non-enforcing/degraded path so callers cannot
-            // confuse detection-only mode with an authorized action.
-            return .escalate;
+        if (hostEffectGuardVerdict(gate_open, p.action, p.trusted, self.available)) |d| {
+            return d;
         }
         var req = PepRequest{
             .decision_kind = @intFromEnum(ev.kind),
@@ -389,7 +404,7 @@ test "PepEnforcer unavailable is not an allow decision" {
         .ttl_sec = 0,
     };
     // Unavailable PEP must remain visible to the caller as non-enforcing state.
-    const d = pep.enforce(&ev, p, 0, 0, 0);
+    const d = pep.enforce(&ev, p, 0, 0, 0, true);
     try std.testing.expectEqual(PepDecision.escalate, d);
 }
 
@@ -407,7 +422,49 @@ test "QUAR-RCPT-113: quarantine action without PEP escalates, never enforces" {
         .severity = .critical,
         .ttl_sec = 0,
     };
-    try std.testing.expectEqual(PepDecision.escalate, pep.enforce(&ev, p, 0, 0, 0));
+    try std.testing.expectEqual(PepDecision.escalate, pep.enforce(&ev, p, 0, 0, 0, true));
+    try std.testing.expect(pep.lastReceipt() == null);
+}
+
+test "SLICE-C-LAB: hostEffectGuardVerdict spec — gate-first, fail-closed" {
+    const t = std.testing;
+    const esc = @as(?PepDecision, .escalate);
+    const none = @as(?PepDecision, null);
+    // Gate closed: every host-mutating action escalates regardless of
+    // trust or availability (the master switch is checked first).
+    try t.expectEqual(esc, hostEffectGuardVerdict(false, .block, true, true));
+    try t.expectEqual(esc, hostEffectGuardVerdict(false, .quarantine, true, true));
+    try t.expectEqual(esc, hostEffectGuardVerdict(false, .rate_limit, true, true));
+    // Gate closed leaves non-mutating actions untouched (not short-circuited).
+    try t.expectEqual(none, hostEffectGuardVerdict(false, .alert, false, true));
+    try t.expectEqual(none, hostEffectGuardVerdict(false, .log, false, true));
+    try t.expectEqual(none, hostEffectGuardVerdict(false, .pass, false, true));
+    try t.expectEqual(none, hostEffectGuardVerdict(false, .escalate, true, true));
+    // Gate open: trust guard and availability guard keep their order.
+    try t.expectEqual(esc, hostEffectGuardVerdict(true, .block, false, true));
+    try t.expectEqual(esc, hostEffectGuardVerdict(true, .block, true, false));
+    try t.expectEqual(none, hostEffectGuardVerdict(true, .block, true, true));
+    try t.expectEqual(esc, hostEffectGuardVerdict(true, .escalate, false, true));
+    try t.expectEqual(esc, hostEffectGuardVerdict(true, .alert, false, false));
+    try t.expectEqual(none, hostEffectGuardVerdict(true, .alert, false, true));
+}
+
+test "SLICE-C-LAB: closed gate stops block enforcement before the provider boundary" {
+    var pep = PepEnforcer{ .available = true };
+    var ev = event.IpcEvent.init(.dns_query);
+    var p = policy.Policy{
+        .id = 77,
+        .name = "",
+        .condition = .{ .clauses = &[_]policy.Clause{} },
+        .action = .block,
+        .severity = .critical,
+        .ttl_sec = 0,
+    };
+    p.trusted = true;
+    // No FFI call is reachable here: the gate guard returns first (with
+    // available=true the provider would otherwise be contacted).
+    const d = pep.enforce(&ev, p, 0, 0, 1, false);
+    try std.testing.expectEqual(PepDecision.escalate, d);
     try std.testing.expect(pep.lastReceipt() == null);
 }
 

@@ -1520,8 +1520,15 @@ const handlers = struct {
         var provider_probe = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available.load(.acquire) };
         const provider_ready = provider_probe.providerReady();
         const gate_open = state_mod.g_prevention_gate_open;
+        // SLICE-C-LAB: additive provenance of the gate position. "closed"
+        // is the boot default everywhere; "lab-build-optin" can only be set
+        // in memory by a build compiled with -Dlab-prevention-gate=true.
+        const gate_source = switch (state_mod.g_gate_source) {
+            .closed => "closed",
+            .lab_build_optin => "lab-build-optin",
+        };
         return std.fmt.allocPrint(a,
-            \\{{"tier3":"{s}","tier3_ready":{},"shield_loaded":{},"payload_screening":{},"tier3_enforcing":{},"pep_available":{},"provider_ready":{},"host_effect_capable":{},"prevention_gate":"{s}","receipt_required":true,"enforcement_mode":"{s}"}}
+            \\{{"tier3":"{s}","tier3_ready":{},"shield_loaded":{},"payload_screening":{},"tier3_enforcing":{},"pep_available":{},"provider_ready":{},"host_effect_capable":{},"prevention_gate":"{s}","gate_source":"{s}","receipt_required":true,"enforcement_mode":"{s}"}}
         , .{
             t3.toString(),
             t3.isEnforcementAllowed(),
@@ -1532,6 +1539,7 @@ const handlers = struct {
             provider_ready,
             provider_ready and gate_open,
             if (gate_open) "open" else "closed",
+            gate_source,
             // Project 2 observe-only contract: a closed prevention gate must
             // always project detection-only, even when the PEP provider is
             // ready. Provider readiness alone is never active enforcement.

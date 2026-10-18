@@ -11,6 +11,12 @@ pub fn build(b: *std.Build) void {
     // when the build graph is loaded from a cached Windows build runner.
     const optimize = b.option(std.builtin.OptimizeMode, "optimize", "Build optimization mode") orelse .Debug;
 
+    // SLICE-C-LAB: lab-only prevention-gate open path. Defaults to false and
+    // is never passed by release/CI scripts (pinned by
+    // tests/security/test_prevention_gate_surface.py). A default build has no
+    // code path that can open the gate (docs/SLICE_C_LAB_GATE_DESIGN.md).
+    const lab_prevention_gate = b.option(bool, "lab-prevention-gate", "LAB ONLY: compile in the prevention-gate open path (never for production)") orelse false;
+
     // ----- Core NIDS Executable -----
     const exe = b.addExecutable(.{
         .name = "aegis_nids",
@@ -19,6 +25,11 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     exe.linkLibC();
+
+    // SLICE-C-LAB: surfaced to src/daemon.zig only (main.zig graph).
+    const gate_build_opts = b.addOptions();
+    gate_build_opts.addOption(bool, "lab_prevention_gate", lab_prevention_gate);
+    exe.root_module.addOptions("build_options", gate_build_opts);
 
     // Link Windows system libraries
     exe.linkSystemLibrary("ws2_32");
