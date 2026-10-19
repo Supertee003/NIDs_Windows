@@ -1,8 +1,19 @@
 // PATCH-45 - Installer / Upgrade / Recovery
 // AEGIS NIDS v5.0+ -- Installation, upgrade, and recovery procedures
 //
+// STATUS (REL-CLOSURE, 2026-10-19): SPEC-REFERENCE ONLY. This v5.0
+// PATCH-45 module is a reference structure exercised by the zig test
+// suite (EVT-018..020); production does not load it. The production
+// installer path is tools/installer.py (manifest-driven NSIS with
+// services/drivers + upgrade-safety service stop, EVT-221) plus
+// scripts/verify_release.ps1 and scripts/install_aegis.ps1; recovery
+// procedures live in docs/runbooks/ (RB-004, RB-005). Keep src/main.zig
+// and src/daemon.zig free of this module (pinned by
+// tests/docs/test_stale_doc_sweep.py); wiring it in is a dedicated-slice
+// decision.
+//
 // This module defines the installer manifest, upgrade path, and
-// recovery procedures for the AEGIS system.
+// recovery procedures for the AEGIS system (reference shape only).
 
 const std = @import("std");
 

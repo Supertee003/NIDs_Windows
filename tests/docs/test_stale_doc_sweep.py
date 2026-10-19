@@ -29,6 +29,20 @@ docs swept in the STALE-DOC-SWEEP slice to the CURRENT source truth:
 - src/contract/runtime_spine.zig is a spec/proof registry, not a
   production loader: the header must say so, and src/main.zig /
   src/daemon.zig must stay free of it (LEFTOVER-SWEEP).
+- The v5.0 PATCH-44/45 release spec modules (src/forensic/
+  release_manifest.zig, src/forensic/installer.zig) and
+  src/core/compliance_reporter.zig are test-graph-only references: the
+  headers must carry SPEC-REFERENCE ONLY / TEST-GRAPH SCAFFOLD and
+  src/main.zig + src/daemon.zig must stay free of them (REL-CLOSURE).
+- rust-src/lib.rs POL-SIGN-078 comments must state the wired state
+  (src/policy/policy_signing.zig verifyViaRust); the stale "Still
+  unwired (no Zig caller)" claim must not come back (REL-CLOSURE).
+- drivers/minifilter/aegis_minifilter.inf is the only minifilter INF;
+  the stale drivers/wfp_callout/ copy (wrong dir + old altitude shape)
+  stays deleted (REL-CLOSURE).
+- src/forensic/replay_integrity.zig must not reintroduce the
+  "mismatches = undefined" footgun; compareAlloc is the only comparison
+  path (REL-CLOSURE).
 
 Read-only: no tree writes.
 """
@@ -206,3 +220,55 @@ def test_runtime_spine_header_is_spec_proof_not_production_loader():
             f"{rel} now imports the spine registry - wiring it into production is a "
             f"dedicated-slice decision; update the header + this pin together"
         )
+
+
+def test_v_era_spec_modules_carry_status_and_stay_out_of_production():
+    specs = {
+        "src/forensic/release_manifest.zig": "SPEC-REFERENCE ONLY",
+        "src/forensic/installer.zig": "SPEC-REFERENCE ONLY",
+        "src/core/compliance_reporter.zig": "TEST-GRAPH SCAFFOLD",
+    }
+    for rel, marker in specs.items():
+        head = _head_block(_read(rel), 30)
+        assert marker in head, (
+            f"{rel} lost its honest status marker {marker!r} (REL-CLOSURE)"
+        )
+    for rel in ("src/main.zig", "src/daemon.zig"):
+        text = _read(rel)
+        for needle in ("release_manifest", "compliance_reporter", "forensic/installer"):
+            assert needle not in text, (
+                f"{rel} now reaches {needle} - wiring a test-graph spec module into "
+                f"production is a dedicated-slice decision; update the module header "
+                f"+ this pin together"
+            )
+
+
+def test_rust_policy_verify_ffi_docs_match_wired_state():
+    lib = _read("rust-src/lib.rs")
+    assert "Still unwired (no Zig caller)" not in lib, (
+        "rust-src/lib.rs claims the policy-verify FFI has no Zig caller; it is wired "
+        "via src/policy/policy_signing.zig (verifyViaRust -> sidecar envelope v1)"
+    )
+    signing = _read("src/policy/policy_signing.zig")
+    assert "aegis_policy_verify" in signing, (
+        "policy_signing.zig lost the Rust FFI path the rust-src comment must match"
+    )
+
+
+def test_minifilter_inf_exists_only_in_canonical_dir():
+    assert (REPO / "drivers" / "minifilter" / "aegis_minifilter.inf").is_file(), (
+        "the canonical minifilter INF (drivers/minifilter/) is missing"
+    )
+    stray = REPO / "drivers" / "wfp_callout" / "aegis_minifilter.inf"
+    assert not stray.exists(), (
+        "the stale minifilter INF is back under drivers/wfp_callout (wrong dir, old "
+        "altitude shape) - installer risk; it belongs only in drivers/minifilter"
+    )
+
+
+def test_replay_integrity_has_no_undefined_mismatches_footgun():
+    text = _read("src/forensic/replay_integrity.zig")
+    assert "mismatches = undefined" not in text, (
+        "ReplayComparison.compare() footgun is back (REL-CLOSURE removed the unused "
+        "no-alloc variant; compareAlloc owns mismatch details)"
+    )

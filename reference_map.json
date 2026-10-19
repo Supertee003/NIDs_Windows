@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-19T12:01:11.738238+00:00",
+  "generated_at": "2026-10-19T12:34:57.663412+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1698,
+  "total_files": 1697,
   "by_role": {
     "documentation": 558,
-    "build-config": 211,
+    "build-config": 210,
     "other": 19,
     "source": 335,
     "lockfile": 6,
@@ -3174,10 +3174,6 @@
     "drivers/minifilter/aegis_minifilter_proc.c": {
       "class": "canonical-source",
       "role": "source"
-    },
-    "drivers/wfp_callout/aegis_minifilter.inf": {
-      "class": "canonical-build",
-      "role": "build-config"
     },
     "drivers/wfp_callout/aegis_wfp.c": {
       "class": "canonical-source",

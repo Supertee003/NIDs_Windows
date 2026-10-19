@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-10-19T12:01:12.025439+00:00",
-  "head": "7171e1f128b9c371eabe8cdb065fce58058ec697",
+  "generated_at": "2026-10-19T12:34:57.975614+00:00",
+  "head": "557b4cef00cf5a17d73afab35b5db3b073ec3059",
   "steps": [
     {
       "label": "inventory/reference",
@@ -9,7 +9,7 @@
         "tools/generate_truth_artifacts.py"
       ],
       "returncode": 0,
-      "stdout": "============================================================\n AEGIS Truth Artifact Generator\n inventory.json + reference_map.json\n============================================================\n\n Scanned 1698 files\n Classification:\n   canonical-source        618\n   canonical-docs          570\n   canonical-build         222\n   canonical-test          202\n   canonical-config         34\n   legacy                   33\n   unclassified             19\n\n Wrote: D:\\NIDs_Windows\\inventory.json (274,709 bytes)\n Wrote: D:\\NIDs_Windows\\reference_map.json (225,381 bytes)\n\n Done.\n",
+      "stdout": "============================================================\n AEGIS Truth Artifact Generator\n inventory.json + reference_map.json\n============================================================\n\n Scanned 1697 files\n Classification:\n   canonical-source        618\n   canonical-docs          570\n   canonical-build         221\n   canonical-test          202\n   canonical-config         34\n   legacy                   33\n   unclassified             19\n\n Wrote: D:\\NIDs_Windows\\inventory.json (274,550 bytes)\n Wrote: D:\\NIDs_Windows\\reference_map.json (225,257 bytes)\n\n Done.\n",
       "stderr": ""
     },
     {
@@ -30,7 +30,7 @@
         "verify"
       ],
       "returncode": 0,
-      "stdout": "HEAD: 7171e1f128b9c371eabe8cdb065fce58058ec697\n------------------------------------------------------------------------\n  SYSTEM_MAP.json              head_sha       PASS\n  FLOW_MAP.json                head_sha       PASS\n  AUTHORITY_MAP.json           head_sha       PASS\n  CONTRACT_MAP.json            head_sha       PASS\n  EVIDENCE_INDEX.json          head_sha       PASS\n  build_truth.json             head_sha       PASS\n  runtime_manifest.json        head_sha       PASS\n  build_manifest.json          source_commit  PASS\n  AI_CONTEXT.md                markdown_head  PASS\n  inventory.json               none           PASS (no SHA expected)\n  reference_map.json           none           PASS (no SHA expected)\n------------------------------------------------------------------------\nTRUTH_VALID — all artifacts carry current HEAD\n",
+      "stdout": "HEAD: 557b4cef00cf5a17d73afab35b5db3b073ec3059\n------------------------------------------------------------------------\n  SYSTEM_MAP.json              head_sha       PASS\n  FLOW_MAP.json                head_sha       PASS\n  AUTHORITY_MAP.json           head_sha       PASS\n  CONTRACT_MAP.json            head_sha       PASS\n  EVIDENCE_INDEX.json          head_sha       PASS\n  build_truth.json             head_sha       PASS\n  runtime_manifest.json        head_sha       PASS\n  build_manifest.json          source_commit  PASS\n  AI_CONTEXT.md                markdown_head  PASS\n  inventory.json               none           PASS (no SHA expected)\n  reference_map.json           none           PASS (no SHA expected)\n------------------------------------------------------------------------\nTRUTH_VALID — all artifacts carry current HEAD\n",
       "stderr": ""
     }
   ],

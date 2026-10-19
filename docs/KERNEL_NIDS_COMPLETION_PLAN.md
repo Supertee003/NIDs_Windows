@@ -619,3 +619,39 @@ gate (ไม่แตะ) และ wire contract ไม่เปลี่ยน
   เป็น HEAD ปัจจุบัน (rebaseline side effect ตามแบบ 74864cd)
 - Hygiene: ไม่แตะ enforcement (blocks delta 0); agent non-elevated ทั้งรอบ; ไม่ push;
   temp zig runner ถูกใช้เฉพาะ focused test แล้วลบก่อน commit
+
+## 22. Slice REL-CLOSURE: Phase 9 re-scope (REL-001..004) + เศษ v-era สุดท้ายตรงกับ source - IMPLEMENTED (E2)
+
+ฐาน HEAD 557b4ce; patch เดียว (commit: REL-CLOSURE) - ดู EVI entry "REL-CLOSURE"
++ admin-evidence/rel-closure-20261019/
+
+- Phase 9 re-scope (re-verify ทุกข้อกับ source ที่ HEAD นี้ก่อนแก้): REL-001..004 = EVT-017..020
+  (E2 @e6de1ae) ครอบ v5.0 PATCH-44/45 (src/forensic/release_manifest.zig + installer.zig) ซึ่งถูก
+  อ้างจาก all_tests เท่านั้น -> คงเป็น spec reference และติด marker "SPEC-REFERENCE ONLY" +
+  pin ห้าม main/daemon import (แบบเดียวกับ runtime_spine); ตัว implement จริงของแต่ละธีมถูกอ้างจาก
+  entry เก่า: REL-001 = tools/release_engineering.py (digests/SBOM) + fresh_deploy preflight;
+  REL-002 = tools/installer.py (NSIS manifest-driven + drivers) + verify_release.ps1 +
+  install_aegis.ps1; REL-003 = installer upgrade-safety (EVT-221) + upgrade_rollback (RB-005);
+  REL-004 = uninstall paths (configs preserved) + RB-004/RB-005 - Authenticode/HLK เหลือฝั่ง
+  operator (G4)
+- ปิดเศษ deep scan §3/§5/[S] สุดท้าย:
+  (1) rust-src/lib.rs:63,2569 "Still unwired (no Zig caller)" = comment เก่า (จริง: wired ผ่าน
+  src/policy/policy_signing.zig verifyViaRust -> sidecar envelope v1; key custody ยังตาม ADR-0005 Q3)
+  -> แก้ comment ตรงความจริง + pin กันกลับมา
+  (2) drivers/wfp_callout/aegis_minifilter.inf = T20-era leftover ผิดที่ (altitude แบบเก่า
+  Parameters-DWORD ขณะที่ตัว canonical ใต้ drivers/minifilter ใช้ Instances-based) - 0 refs
+  ปัจจุบัน รวมทั้ง installer -> git rm + pin "มีได้ที่เดียว"
+  (3) compliance_reporter.zig = test-graph scaffold: 13/32 controls เป็น checkAlwaysTrue placeholder
+  -> marker "TEST-GRAPH SCAFFOLD" + pin ห้าม production import (กัน compliance เคลมเท็จถ้ามีคน wire)
+  (4) replay_integrity.zig ReplayComparison.compare() = 0 callers + คืน mismatches = undefined
+  (deinit footgun) -> ลบ; compareAlloc เป็นทางเดียว + pin
+- RED->GREEN: tests/docs/test_stale_doc_sweep.py +4 pins -> 4F/11P -> GREEN 15P;
+  zig focused 114/114 (temp runner ลบก่อน commit); zig build rc=0; zig build test
+  2190/2192 (1 = registered PERF-FLAKE RegistryWatchQueue 4895.1 vs floor 5000 ใต้โหลด; warm
+  rerun rc=0); cargo check rc=0 (2 dead_code warnings เดิมของ aegis_pep); full pytest CI scope
+  959P/2S/27 subtests; refresh-digests 608 kept / 6 updated (drivers tree ไม่อยู่ใน manifest อยู่แล้ว
+  -> INF removal ไม่กระทบ digests) -> verify OK (source_commit=557b4ce)
+- inventory regen 1697 ไฟล์ (1698 - INF); PHASE_0_TRUTH_REBUILD_REPORT.json refresh (head 557b4ce,
+  valid; ไม่มี unresolved)
+- Hygiene: ไม่แตะ enforcement (blocks delta 0); agent non-elevated ทั้งรอบ; ไม่ push; digest
+  order = truth rebuild ก่อน refresh (runtime_manifest เป็น artifact)

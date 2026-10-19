@@ -60,8 +60,11 @@ pub fn verify_policy_signature(
 // 0 = valid signature, -1 = null pointer, -2 = verification failure
 // (bad lengths, zero material, or crypto reject). No state, no policy
 // mutation, no enforcement path — the caller decides what a valid or
-// invalid verdict means. Still unwired (no Zig caller) until key
-// custody lands (ADR-0005 Q3).
+// invalid verdict means. Wired: src/policy/policy_signing.zig
+// (`verifyViaRust` -> sidecar envelope v1, verifyIrSidecar /
+// verifyIrWithAnchors). Key custody (key generation/pinning/rotation)
+// remains per ADR-0005 Q3; unsigned deployments stay untrusted until
+// then.
 // ============================================================================
 
 /// Verify an Ed25519 signature over policy bytes.
@@ -2566,8 +2569,8 @@ mod tests {
     }
 
     // POL-SIGN-078: the C ABI proves itself through real sign/verify and
-    // every fail-closed code. Still unwired (no Zig caller) until key
-    // custody lands (ADR-0005 Q3).
+    // every fail-closed code. Wired via src/policy/policy_signing.zig
+    // (verifyViaRust); key custody remains per ADR-0005 Q3.
     #[test]
     fn policy_verify_ffi_roundtrip() {
         use ring::signature;

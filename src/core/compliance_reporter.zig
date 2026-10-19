@@ -1,5 +1,13 @@
 ﻿// compliance_reporter.zig - AEGIS Compliance Reporter (Phase 40)
 //
+// STATUS (REL-CLOSURE, 2026-10-19): TEST-GRAPH SCAFFOLD. This module is
+// exercised by the zig test suite only and is not wired into the
+// product. 13 of the 32 framework controls below are placeholders
+// (checkAlwaysTrue) - a real compliance claim needs real checks and
+// evidence first. Do not wire this module into production before
+// replacing the placeholders; keep src/main.zig / src/daemon.zig free
+// of it (pinned by tests/docs/test_stale_doc_sweep.py).
+//
 // Generates compliance reports from forensic logs for audit purposes.
 // Supports frameworks: PCI-DSS, HIPAA, ISO 27001.
 // Output formats: JSON, HTML, text summary.
