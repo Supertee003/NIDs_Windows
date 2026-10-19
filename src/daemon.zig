@@ -326,6 +326,10 @@ pub fn runDaemon() !void {
     // 6b. Load policy rules from configs/policies.json
     var ps = policy.PolicySet.init(std.heap.page_allocator);
     defer ps.deinit();
+    // POLICY-EVAL-FULL: the parsed policy document must outlive the
+    // PolicySet because predicate value_str slices point into it.
+    var policy_doc: ?std.json.Parsed(std.json.Value) = null;
+    defer if (policy_doc) |d| d.deinit();
     var policies_loaded: u32 = 0;
     policy_load_blk: {
         const pol_path = runtime_paths.configPath(std.heap.page_allocator, runtime_root, "policies.json") catch |err| {
@@ -344,130 +348,12 @@ pub fn runDaemon() !void {
         };
         defer std.heap.page_allocator.free(pol_bytes);
 
-        var pol_parsed = std.json.parseFromSlice(std.json.Value, std.heap.page_allocator, pol_bytes, .{}) catch |err| {
-            diag.warn("cannot parse {s}: {}", .{ pol_path, err });
-            break :policy_load_blk;
-        };
-        defer pol_parsed.deinit();
-
-        const root = pol_parsed.value;
-        if (root != .object) {
-            diag.warn("{s}: expected object at root", .{pol_path});
-            break :policy_load_blk;
-        }
-        const policies_arr = root.object.get("policies") orelse {
-            diag.warn("{s}: missing policies key", .{pol_path});
-            break :policy_load_blk;
-        };
-        if (policies_arr != .array) {
-            diag.warn("{s}: policies is not an array", .{pol_path});
-            break :policy_load_blk;
-        }
-
-        for (policies_arr.array.items) |pol_val| {
-            if (pol_val != .object) continue;
-            const pol_obj = pol_val.object;
-
-            const id_val = pol_obj.get("id") orelse continue;
-            if (id_val != .integer) continue;
-            const pol_id: u32 = @intCast(id_val.integer);
-
-            const name_val = pol_obj.get("name") orelse continue;
-            if (name_val != .string) continue;
-            const pol_name = std.heap.page_allocator.dupe(u8, name_val.string) catch continue;
-
-            const action_val = pol_obj.get("action") orelse continue;
-            if (action_val != .string) continue;
-            const pol_action: policy.Action = blk: {
-                if (std.mem.eql(u8, action_val.string, "block")) break :blk .block;
-                if (std.mem.eql(u8, action_val.string, "alert")) break :blk .alert;
-                if (std.mem.eql(u8, action_val.string, "rate_limit")) break :blk .rate_limit;
-                if (std.mem.eql(u8, action_val.string, "quarantine")) break :blk .quarantine;
-                if (std.mem.eql(u8, action_val.string, "log")) break :blk .log;
-                if (std.mem.eql(u8, action_val.string, "escalate")) break :blk .escalate;
-                // Unknown actions are malformed policy, never implicit allow.
-                diag.err("{s}: policy {} has unknown action '{s}'; rejecting policy", .{ pol_path, pol_id, action_val.string });
-                std.heap.page_allocator.free(pol_name);
-                continue;
-            };
-
-            const severity_val = pol_obj.get("severity") orelse continue;
-            if (severity_val != .string) continue;
-            const pol_severity: event.EventSeverity = if (std.mem.eql(u8, severity_val.string, "critical")) .critical else if (std.mem.eql(u8, severity_val.string, "alert")) .alert else if (std.mem.eql(u8, severity_val.string, "warning")) .warning else if (std.mem.eql(u8, severity_val.string, "error")) .@"error" else .info;
-
-            const ttl_val = pol_obj.get("ttl_sec") orelse continue;
-            if (ttl_val != .integer) continue;
-            const pol_ttl: u32 = @intCast(ttl_val.integer);
-
-            // POL-PRIO-070: optional priority (default 0 = file order).
-            // Negative, non-integer, or oversized values fall back to 0,
-            // never abort the load: one bad entry must not void the whole
-            // PolicySet.
-            var pol_priority: u32 = 0;
-            if (pol_obj.get("priority")) |pri_val| {
-                if (pri_val == .integer and pri_val.integer >= 0) {
-                    pol_priority = if (pri_val.integer > std.math.maxInt(u32))
-                        std.math.maxInt(u32)
-                    else
-                        @intCast(pri_val.integer);
-                }
-            }
-
-            // Build condition from JSON (simplified: single clause with single predicate)
-            var preds = std.heap.page_allocator.alloc(policy.Predicate, 1) catch continue;
-            preds[0] = .{ .field = .kind, .op = .eq, .value_int = 0 }; // default
-
-            // Parse condition if present
-            if (pol_obj.get("condition")) |cond_val| {
-                if (cond_val == .object) {
-                    if (cond_val.object.get("clauses")) |clauses_val| {
-                        if (clauses_val == .array and clauses_val.array.items.len > 0) {
-                            const first_clause = clauses_val.array.items[0];
-                            if (first_clause == .object) {
-                                if (first_clause.object.get("predicates")) |preds_val| {
-                                    if (preds_val == .array and preds_val.array.items.len > 0) {
-                                        const first_pred = preds_val.array.items[0];
-                                        if (first_pred == .object) {
-                                            const field_str = first_pred.object.get("field") orelse std.json.Value{ .string = "kind" };
-                                            const op_str = first_pred.object.get("op") orelse std.json.Value{ .string = "eq" };
-                                            const val_int = first_pred.object.get("value_int") orelse std.json.Value{ .integer = 0 };
-
-                                            if (field_str == .string) {
-                                                preds[0].field = if (std.mem.eql(u8, field_str.string, "kind")) .kind else if (std.mem.eql(u8, field_str.string, "severity")) .severity else if (std.mem.eql(u8, field_str.string, "src_ip")) .src_ip else if (std.mem.eql(u8, field_str.string, "dst_ip")) .dst_ip else if (std.mem.eql(u8, field_str.string, "src_port")) .src_port else if (std.mem.eql(u8, field_str.string, "dst_port")) .dst_port else if (std.mem.eql(u8, field_str.string, "protocol")) .protocol else if (std.mem.eql(u8, field_str.string, "rule_id")) .rule_id else .kind;
-                                            }
-                                            if (op_str == .string) {
-                                                preds[0].op = if (std.mem.eql(u8, op_str.string, "eq")) .eq else if (std.mem.eql(u8, op_str.string, "ne")) .ne else if (std.mem.eql(u8, op_str.string, "gt")) .gt else if (std.mem.eql(u8, op_str.string, "lt")) .lt else if (std.mem.eql(u8, op_str.string, "gte")) .gt // simplified: gte -> gt
-                                                else if (std.mem.eql(u8, op_str.string, "match")) .match else .eq;
-                                            }
-                                            if (val_int == .integer) {
-                                                preds[0].value_int = @intCast(val_int.integer);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            var clauses = std.heap.page_allocator.alloc(policy.Clause, 1) catch continue;
-            clauses[0] = .{ .predicates = preds };
-
-            ps.add(.{
-                .id = pol_id,
-                .name = pol_name,
-                .condition = .{ .clauses = clauses },
-                .action = pol_action,
-                .severity = pol_severity,
-                .ttl_sec = pol_ttl,
-                .priority = pol_priority,
-            }) catch |err| {
-                diag.warn("failed to add policy {}: {}", .{ pol_id, err });
-                std.heap.page_allocator.free(pol_name);
-                continue;
-            };
-            policies_loaded += 1;
+        const pol_load = policy.loadPolicySetFromJson(std.heap.page_allocator, pol_bytes);
+        if (pol_load.doc) |doc| policy_doc = doc;
+        ps = pol_load.ps;
+        policies_loaded = pol_load.report.loaded;
+        if (pol_load.report.first_reject_reason) |reason| {
+            diag.warn("{s}: policy load: {d} loaded, {d} rejected (first: id={d} reason={s})", .{ pol_path, pol_load.report.loaded, pol_load.report.rejected, pol_load.report.first_reject_id, reason });
         }
 
         // POL-PRIO-070: order by priority (stable — files without

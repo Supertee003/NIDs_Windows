@@ -376,3 +376,37 @@ gate (ไม่แตะ) และ wire contract ไม่เปลี่ยน
 - Hygiene: เทสต์เขียน logs/anomalous.json ลง cwd ชั่วคราว (tmp_path) ไม่แตะ tree; spawn child ด้วย -u ให้เห็น match print ขณะรัน
 - พฤติกรรมหลังแก้: pre-filter รันทุก build (accelerator = ความเร็วเท่านั้น), regex scan ไม่ถูกข้าม, ไม่มี enforcement ใหม่
 - ยังเปิด: C acceleration ของ 3 detectors (ถ้าต้องการ perf), prod redeploy daemon (ค้างเดิมจาก V6-QUEUE-DROP), G2 lab (operator)
+
+## 16. Slice POLICY-EVAL-FULL: policy evaluation เต็มรูปแบบของ live config - IMPLEMENTED (E2)
+
+ฐาน HEAD d8a2064; patch เดียว (commit: POLICY-EVAL-FULL) - ดู EVI entry "POLICY-EVAL-FULL" + admin-evidence/policy-eval-full-20261019/
+
+- ปิด P1 จาก deep scan (re-verified กับ source จริงก่อนแก้): loader ของ configs/policies.json เดิมเป็น inline ใน daemon.zig
+  (326-471) ป้อน PolicySet ให้ event_processor.zig:211 - มี defect เงียบ 6 ชั้น: parse แค่ clauses[0].predicates[0]
+  (multi-clause OR / multi-predicate AND ถูกตัด), gte -> gt, field/op ที่ไม่รู้จัก -> .kind/.eq, in -> .eq,
+  ไม่ parse value_str เลย (match จาก JSON = pattern ว่าง = true ทุก event ที่ field นั้นมีค่า), @intCast id/ttl/value
+  ติดลบ/overflow = panic/UB, condition หาย -> kind eq 0 (EventKind เริ่มที่ 1) = never-match เงียบ
+- ผลจริงของ bug วันนี้: rule 1 "severity gte 6 / block" พลาด severity == 6 (critical, EventSeverity critical=6)
+- evaluator (policy_ir.zig): Op +gte/+lte (ต่อท้าย enum ค่าเดิมไม่ขยับ), Predicate +value_list (in = membership จริง;
+  ว่าง = single-value แบบ rule 5), field-domain dispatch: string fields {sni,dns_name,http_uri,http_host} เทียบ value_str,
+  ที่เหลือ numeric เทียบ value_int - op ข้ามโดเมน / pattern ว่าง / string หาย = false เสมอ (ไม่มี true โดยบังเอิญ);
+  deinit คืน value_list (เฉพาะ len>0)
+- loader: extract เป็น policy_ir.loadPolicySetFromJson(allocator, bytes) -> LoadedPolicySet { ps, doc, report }
+  (doc คงอายุ value_str; std.json.parseFromSlice duplicate string จริง - พิสูจน์ด้วย clobber-input + test pin);
+  parse ครบทุก clause/predicate (cap 8x8), field 13 ตัว + op 9 ตัวครบ, value_str + "values":[...], POL-PRIO-070
+  priority เดิม, validate id/ttl/value ขอบเขต (ไม่ @intCast ระเบิด), entry เสีย reject + นับ + reason keyword -
+  set ไม่พัง, ไม่ reshape เงียบ; daemon เรียก loader ตัวเดียว (diff 10+/124-)
+- policy_plane: compile path ตั้ง ir.signature = 0 (เดิมยัด SHA-256 8 bytes ลงฟิลด์ที่ doc เขียนว่า Ed25519;
+  fingerprint ไม่ใช่ signature - ตัวจริงคือ policy_signing.zig Ed25519 ที่ต่อสาย daemon TRUST-WIRE-082 +
+  policy.verify) + แก้ doc comment/header; test เปลี่ยนเป็น pin signature == 0; matches_any: pin single-value
+  equality + comment (ไม่มี producer ส่ง list payload; reachable เฉพาะ policy simulate observe-only) - list semantics รอ contract decision
+- TDD: RED - evaluator 6 fail runtime (0P/6F, red-01) -> GREEN 26/26; loader compile-RED (function ไม่มีอยู่, red-02 -
+  จุดนี้คือเหตุผลที่ extract ออกมาให้ testable) -> GREEN 37/37; policy_plane signature pin RED ที่บรรทัด 580 (red-04)
+  -> GREEN 62/62; real-config evidence runner: 6 loaded / 0 rejected / critical(6) -> rule 1 block (green-04)
+- Gates: zig build exe rc=0; full zig suite 2182 passed / 1 skipped / 0 failed (rerun; รอบแรกเจอ perf flake
+  RegistryWatchQueue ที่รู้จัก -> เขียว); full pytest 928 passed / 2 skipped / 27 subtests (frozen wire contract เขียว;
+  รอบแรก 4 fails = digest drift ของ 3 ไฟล์ที่แก้ fresh_deploy preflight/t17 verify จับ -> --refresh-digests 612/612 แล้วเขียว)
+- Hygiene: temp zig runner ที่วางใน src/ ชั่วคราวถูก pin tests/security/test_zig_test_scope.py จับทันที (test-bearing file
+  ไม่มี proven execution edge) - ลบและ rerun scope เขียว; ยืนยันว่า hygiene pin ทำงานจริง
+- พฤติกรรมเปลี่ยน: matched_policy ของ event severity==6 เข้า rule 1 (block) ก่อน - ตรง intent ของ config; enforcement
+  ไม่ขยับ (gate/trust/PEP เดิม, production ยัง detection-only, blocks delta 0); live daemon ยังเป็น binary เก่า (redeploy ค้าง)

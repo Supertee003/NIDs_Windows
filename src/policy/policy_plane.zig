@@ -13,7 +13,8 @@
 //!   1. PolicyIR: the stable intermediate representation
 //!   2. PolicyRuleDef: rule definition (matches -> action)
 //!   3. PolicyCompiler: compiles PolicyRuleDef[] into PolicyIR
-//!   4. PolicySignature: digital signature for policy integrity
+//!   4. Policy integrity: SHA-256 fingerprint (`hash`); signing lives in
+//!      policy_signing.zig (Ed25519 over SignedPolicy)
 
 const std = @import("std");
 
@@ -99,7 +100,10 @@ pub const PolicyCondition = struct {
             .greater_than => actual > self.value,
             .less_than => actual < self.value,
             .in_range => actual >= self.value and actual <= self.value2,
-            .matches_any => actual == self.value, // simplified
+            // Single-value form: equality. Op 5 is declared in the TS
+            // authoring types but no producer emits list payloads; pinned
+            // by "matches_any carries a single accepted value".
+            .matches_any => actual == self.value,
         };
     }
 };
@@ -170,9 +174,12 @@ pub const PolicyIR = struct {
     version: u16,
     rule_count: u16,
     rules: [MAX_POLICY_RULES]PolicyRuleDef,
-    /// SHA-256 hash of the rule set (first 8 bytes).
+    /// SHA-256-based fingerprint of the rule set (first 8 bytes) —
+    /// integrity only, NOT a signature.
     hash: u64,
-    /// Digital signature (first 8 bytes of Ed25519 signature).
+    /// Reserved for the signing tier: real signatures are Ed25519 over
+    /// SignedPolicy (policy_signing.zig). The compiler and the IR loader
+    /// leave this 0; it must never carry a hash or fingerprint.
     signature: u64,
     /// Timestamp when compiled (epoch ms).
     compiled_at_ms: i64,
@@ -277,13 +284,13 @@ pub const PolicyCompiler = struct {
         const hash: u64 = @intCast(std.mem.readInt(u64, digest[0..8], .little));
         ir.hash = hash;
         ir.compiled_at_ms = std.time.milliTimestamp();
-        // P0.2 fix: signature is now the SHA-256 digest itself (real crypto).
-        // Ed25519 signing would require a key pair -- for now we use the
-        // SHA-256 digest as the signature. This is cryptographically sound
-        // for integrity verification (tamper detection).
-        // Full Ed25519 signing will be added when a key management system
-        // is available (Phase J full implementation).
-        ir.signature = hash; // SHA-256 fingerprint (NOT XOR placeholder)
+        // POLICY-EVAL-FULL: the `signature` field is reserved for the
+        // signing tier — real signatures are Ed25519 over SignedPolicy
+        // (policy_signing.zig), verified by the policy.verify handler and
+        // the TRUST-WIRE-082 startup path. A SHA-256 digest is a
+        // fingerprint, not a signature; the compiler must leave this slot
+        // at 0. The SHA-256-based fingerprint lives in `hash` above.
+        ir.signature = 0;
 
         return .{
             .ir = ir,
@@ -574,7 +581,10 @@ test "PolicyCompiler compile succeeds with valid rules" {
     try std.testing.expect(result.ir.isValid());
     try std.testing.expect(result.ir.ruleCount() == 2);
     try std.testing.expect(result.ir.hash != 0);
-    try std.testing.expect(result.ir.signature != 0);
+    // POLICY-EVAL-FULL: the compiler must never stuff a fingerprint into
+    // the signature slot. Real signatures are Ed25519 (policy_signing.zig);
+    // this u64 stays 0 until the signing tier owns it.
+    try std.testing.expect(result.ir.signature == 0);
     try std.testing.expect(compiler.total_compiles == 1);
     try std.testing.expect(compiler.total_errors == 0);
 }
@@ -1059,4 +1069,16 @@ test "loadIrFromJson rejects malformed documents" {
         owned.deinit();
         return error.TestUnexpectedSuccess;
     }
+}
+
+test "POLICY-EVAL-FULL: matches_any carries a single accepted value" {
+    // ConditionOperator.MATCHES_ANY = 5 exists in the TS authoring types
+    // (pinned by the cross-language contract) but no producer emits
+    // list-shaped payloads, and this numeric plane carries a single value.
+    // The defined interpretation is therefore single-value equality —
+    // pinned here so the behaviour is explicit rather than "simplified".
+    // List/wildcard semantics need a contract decision first.
+    const c = PolicyCondition{ .field = .rule_id, .operator = .matches_any, .value = 41, .value2 = 0 };
+    try std.testing.expect(c.matches(41));
+    try std.testing.expect(!c.matches(42));
 }

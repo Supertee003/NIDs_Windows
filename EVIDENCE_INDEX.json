@@ -1,5 +1,5 @@
 {
- "head_sha": "dba2d75bcd5152ccf8193d6f5e3e54449fa07d68",
+ "head_sha": "d8a2064bac18fb839b0affd990b1d140f4ed5817",
  "created_at": "2026-09-24",
  "generator_version": "3.0",
  "evidence_levels": {
@@ -6167,12 +6167,25 @@
    "description": "Fix: the three detectors live in aegis_brain_cython.bridge (pure Python; C acceleration is a fast_scan.pyx follow-up) with behaviorally identical mirrors in the windows_brain.py import fallback, and the pre-filter block no longer sits behind `if CYTHON_AVAILABLE` so detection never depends on whether the optional accelerator was compiled (build/runtime parity). Return shapes match the call sites and replicate the retired pyx hotspot semantics: (found, run_len, offset) / [(name, offset)] / (found, byte, run_len, offset).",
    "tests": "tests/brain/test_cython_prefilter.py (new, 7: 6 x E2 unit semantics + 1 x E4-local loopback brain subprocess asserting stdout [CYTHON MATCH]/CYTHON-003 and tmp logs/anomalous.json)",
    "files_changed": "brain/windows_brain.py, brain/aegis_brain_cython/bridge.py, tests/brain/test_cython_prefilter.py, EVIDENCE_INDEX.json, docs/KERNEL_NIDS_COMPLETION_PLAN.md"
+  },
+  {
+   "id": "POLICY-EVAL-FULL",
+   "title": "Runtime policy evaluation made full-fidelity: daemon policy.json loader extracted to policy_ir.loadPolicySetFromJson (every clause/predicate parsed, full field+op vocabulary incl. gte/lte/in value lists + value_str operands, malformed entries rejected loudly with a counted reason); evaluator field-domain dispatched so no predicate fires on accidental true; policy_plane.signature no longer receives a SHA-256 fingerprint (Ed25519 signing tier owns it)",
+   "level": "E2",
+   "component": "policy",
+   "flow_id": "DATA-001",
+   "head_sha": "d8a2064",
+   "timestamp": "2026-10-19",
+   "result": "PASS",
+   "command": "zig test focus (RED: evaluator 0P/6F -> GREEN 26/26; loader compile-RED -> GREEN 37/37; signature pin RED at policy_plane.zig:580 -> GREEN 62/62); real configs/policies.json evidence runner: 6 loaded / 0 rejected / severity==6 -> rule 1 block (37/37); zig build rc=0; full zig suite 2182 passed / 1 skipped / 0 failed (rerun; run 1 hit the known PERF-FLAKE RegistryWatchQueue threshold miss); python -m pytest tests -q 928 passed / 2 skipped / 27 subtests (incl. frozen wire contract)",
+   "expected": "configs/policies.json rule 1 `severity gte 6` (block) includes EventSeverity.critical == 6; JSON match/nomatch predicates carry their value_str pattern instead of matching every event; multi-clause OR / multi-predicate AND evaluate in full; `.in` is real membership (list or single value); unknown field/op, cross-domain payloads, malformed id/ttl/value and condition-less entries are rejected with a counted reason - no @intCast crash, no silent .kind/.eq reshaping.",
+   "actual": "All pinned and GREEN. The real config loads 6/6 with 0 rejected; a severity==6 event now matches id 1 block_critical_threats (pre-fix the loader lowered gte to gt and the event matched nothing). Evaluator pins: cross-domain ops, empty patterns and absent strings never match. policy_plane compiler test pins signature == 0 (hash != signature). Transcripts: admin-evidence/policy-eval-full-20261019/ (red-01..red-04, green-01..green-04)."
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 24,
-  "E2_count": 117,
+  "E2_count": 118,
   "E3_count": 10,
   "E4_count": 15,
   "E5_count": 88,
