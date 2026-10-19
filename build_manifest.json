@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "e1ff552",
+  "source_commit": "7171e1f",
   "build_date": "2026-10-13T01:11:10.065507+00:00",
   "build_host": "windows",
   "platform": {
@@ -240,8 +240,8 @@
     },
     {
       "path": "brain/acceptance_gates.py",
-      "size": 1748,
-      "sha256": "6d21209a3d8549c9b531f012a2a9e00c3799bac919960be41a0217dec894bab4",
+      "size": 1854,
+      "sha256": "aa54d5f16ad87f5d2b061a22650555180059c3f8e1b6eb8a3df980623b4d787b",
       "language": "python/cython"
     },
     {
@@ -288,14 +288,14 @@
     },
     {
       "path": "brain/canonical_event.py",
-      "size": 6806,
-      "sha256": "5a9ce1aca99aec7ad014ea0f89c688e0aadb584d871415c83f319fc24de8459e",
+      "size": 6912,
+      "sha256": "4aea08fa9c0d2c51774b0d6fd10db37f5568f36479eb3164bc46d5ea3fac1f8d",
       "language": "python/cython"
     },
     {
       "path": "brain/core_routing.py",
-      "size": 1840,
-      "sha256": "47676674267bd7d3f71a145780c15c6cff94006e65cadefae1803bd09b9e0c7c",
+      "size": 1946,
+      "sha256": "4d7df49d0928466133dba3a7af691d20cf9f4da1ebde407e7d36c76bf716e0e1",
       "language": "python/cython"
     },
     {
@@ -360,38 +360,38 @@
     },
     {
       "path": "brain/enforcement_pipeline.py",
-      "size": 2395,
-      "sha256": "2d056ee5b4d2374932929f05b453397fb59ca5c33e8e4f4fccd03dc35339d479",
+      "size": 2501,
+      "sha256": "bf0b1f4dbf6b2304dd7edde4eb81a3063c341b8bcbbdc51d9b9332224e00b3ee",
       "language": "python/cython"
     },
     {
       "path": "brain/enforcement_receipt.py",
-      "size": 2856,
-      "sha256": "14a5d3ab42c42084df054097f5e5ac979527d1922cbc53265d6a085ff711106d",
+      "size": 2962,
+      "sha256": "8c5eb4750b1116b7cff70cad909ab5cdca67ad49563f1af5ad7b14b69c849213",
       "language": "python/cython"
     },
     {
       "path": "brain/forensic_evidence.py",
-      "size": 3066,
-      "sha256": "a391bbf346a528b16dd0472d7af12b5a1e2585bf033e3daa7d69a72b838356b1",
+      "size": 3172,
+      "sha256": "9ec42a6800260ed4eca30eed3fe3662beef9cbae89b76754d9a97d623274783e",
       "language": "python/cython"
     },
     {
       "path": "brain/pep_receipt.py",
-      "size": 2714,
-      "sha256": "a1724779b3711eea49490be85ac67cdb213ea6741ca6f0cc5ca77d34e7c484dd",
+      "size": 2820,
+      "sha256": "f09afb49d775f53c539fb05fefb83d748885bbc442daab14fad10e7c46ccc8ea",
       "language": "python/cython"
     },
     {
       "path": "brain/pep_request.py",
-      "size": 2111,
-      "sha256": "3d94472e33e98cc33a0dc96632581c0778dd61180c969bd012ec4b4da97f9de2",
+      "size": 2217,
+      "sha256": "1f7e8d08880e3d43f568d67cf15182ab2cfd9635ab40e5d2af3ad8a86dcf4cba",
       "language": "python/cython"
     },
     {
       "path": "brain/policy_decision.py",
-      "size": 2336,
-      "sha256": "abaedbf40e417bbfdb0b94cf2cc699ce4b227abd2141bf032590284501024d82",
+      "size": 2442,
+      "sha256": "d9b1993acc2e679a6ee4c1a63ef447df812bc4ed12926d925ae10e64e5a66eeb",
       "language": "python/cython"
     },
     {
@@ -492,8 +492,8 @@
     },
     {
       "path": "brain/tier_routing.py",
-      "size": 1963,
-      "sha256": "2fc6f0a0552a925f74063c77c39daf098929a3ac8058431f05c8267d8b4e4aec",
+      "size": 2069,
+      "sha256": "7bd1df83d6b38dd031a09ee0a62ba3bd77415dbd2c976995e6cd006fbfee4955",
       "language": "python/cython"
     },
     {
@@ -941,18 +941,6 @@
       "language": "go"
     },
     {
-      "path": "nose/ipc_reader.go",
-      "size": 2770,
-      "sha256": "ebe65dcc80ea1460f4f3c46d4ae6c5c646c08f0b7cdd6cd7534d4e5e6e05bbf9",
-      "language": "go"
-    },
-    {
-      "path": "nose/ipc_reader_test.go",
-      "size": 2171,
-      "sha256": "7f4d34f4ff1fc1eb85b4600e59ec5fa80685b7eee181a1d97b12a07f49fd66c1",
-      "language": "go"
-    },
-    {
       "path": "nose/main.go",
       "size": 9071,
       "sha256": "9038c4e75a3c7198a7c20e6809b818e24b240da761d81bdb963476c64749afc3",
@@ -1038,8 +1026,8 @@
     },
     {
       "path": "runtime_manifest.json",
-      "size": 18564,
-      "sha256": "9c46cc97aaacf4d2221a1939ff74b21e5283e413ca22406f4af86964463c5f92",
+      "size": 18563,
+      "sha256": "cfe5513178d3049fed6a875f37c2def267abaf1d3712165fec0ac833069061fc",
       "language": "json"
     },
     {
@@ -1770,8 +1758,8 @@
     },
     {
       "path": "src/contract/runtime_spine.zig",
-      "size": 26849,
-      "sha256": "948ec09d509acd63e662847fe2d0e0501139c2973b4c0b5dfa628827552560dc",
+      "size": 27499,
+      "sha256": "103197f21c6afb31673e6093fe5d0ce6a27aaaeec730e7f0ed21df05aac5b861",
       "language": "zig"
     },
     {
@@ -1860,8 +1848,8 @@
     },
     {
       "path": "src/core/contract_freeze.zig",
-      "size": 20302,
-      "sha256": "8ab143f1dbd969ff65392556b99af26077fa0a04912455ac32e5e86760956d4a",
+      "size": 22404,
+      "sha256": "bf69c71e2e6a433f11d4a9302657e45c6fa096e1d37139ea5d81b06b3c1c7f16",
       "language": "zig"
     },
     {
@@ -3043,7 +3031,7 @@
     {
       "path": "src/tests/proofs/documentation_proof.zig",
       "size": 26897,
-      "sha256": "166c36893cf637c3d55e4cc36198e3a4f28ff8a60ea1db66e8d4c9d5b30465aa",
+      "sha256": "8e4c0715d804c9bef7e906605b6d00ab7b6113f42d529d3044f01fb1c98018a1",
       "language": "zig"
     },
     {
@@ -3342,8 +3330,8 @@
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 107842,
-      "sha256": "b92468dc799c52a8c3f83062619762028ceab5f94c47025329139f293d531cf8",
+      "size": 107114,
+      "sha256": "3e947f5c505dcc49ec084332347cd48b3a2a8ce924492eeac15fc68bcbcf83a8",
       "language": "python/cython"
     },
     {
@@ -3762,8 +3750,8 @@
     },
     {
       "path": "ts_policy/src/compiler.ts",
-      "size": 15858,
-      "sha256": "184925ba34676695f4b3427505eabe14a2be24eec2d42ec0589765db2060c36e",
+      "size": 15935,
+      "sha256": "6db33dbc9735a6b92a9a405c6e9d422b177582bad405a2bcace7804c4b399101",
       "language": "typescript"
     },
     {
@@ -3798,8 +3786,8 @@
     },
     {
       "path": "ts_policy/tests/compiler.test.ts",
-      "size": 8719,
-      "sha256": "7cd67b24e0f7c78363583abe9092066966c194b48f7400914f6d9185e612ff55",
+      "size": 8703,
+      "sha256": "2ba1694f75bf6613a942681cc4c94159475aad7fc06510b1749869a6039e8b69",
       "language": "typescript"
     },
     {

@@ -23,6 +23,12 @@ docs swept in the STALE-DOC-SWEEP slice to the CURRENT source truth:
   core/ paths.
 - EVIDENCE_INDEX.json must carry the V6-FLOW-036 / V6-DETECT-037
   traceability entries and the last_updated_at stamp.
+- docs/USER_OPERATIONS_GUIDE.md must not advertise the fail-closed
+  ``policy enable/disable/reload`` commands; it must point at the
+  operator-state disabled file plus ``rules reload`` (LEFTOVER-SWEEP).
+- src/contract/runtime_spine.zig is a spec/proof registry, not a
+  production loader: the header must say so, and src/main.zig /
+  src/daemon.zig must stay free of it (LEFTOVER-SWEEP).
 
 Read-only: no tree writes.
 """
@@ -167,3 +173,36 @@ def test_evidence_index_has_v6_traceability_and_metadata_stamp():
     assert index.get("last_updated_at"), (
         "EVIDENCE_INDEX.json lacks the last_updated_at metadata stamp"
     )
+
+
+def test_operations_guide_does_not_advertise_fail_closed_policy_mutations():
+    text = _read("docs/USER_OPERATIONS_GUIDE.md")
+    for cmd in ("policy disable", "policy enable", "policy reload"):
+        assert f"aegisctl.py {cmd}" not in text, (
+            f"USER_OPERATIONS_GUIDE.md still advertises the fail-closed command: {cmd}"
+        )
+    assert "disabled_rules.json" in text, (
+        "USER_OPERATIONS_GUIDE.md must point at the operator-state disabled file"
+    )
+    assert "rules reload" in text, (
+        "USER_OPERATIONS_GUIDE.md must show 'rules reload' as the apply step"
+    )
+    assert "exit code 4" in text, (
+        "USER_OPERATIONS_GUIDE.md must state the fail-closed exit code"
+    )
+
+
+def test_runtime_spine_header_is_spec_proof_not_production_loader():
+    text = _read("src/contract/runtime_spine.zig")
+    head = _head_block(text, 40)
+    for marker in (
+        "REGISTRY (specification + proof)",
+        "does NOT load this registry",
+        "quarantined",
+    ):
+        assert marker in head, f"runtime_spine header lost its status marker: {marker!r}"
+    for rel in ("src/main.zig", "src/daemon.zig"):
+        assert "runtime_spine" not in _read(rel), (
+            f"{rel} now imports the spine registry - wiring it into production is a "
+            f"dedicated-slice decision; update the header + this pin together"
+        )

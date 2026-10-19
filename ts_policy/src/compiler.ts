@@ -77,13 +77,15 @@ export class PolicyCompileError extends Error {
 
 export interface CompileResult {
   readonly ir: PolicyIR;
-  /** Indices of rules that were DROPPED due to conflict resolution.
-   *  These are kept in the IR (for audit) but the conflict resolver
-   *  treats them as disabled. Empty if there were no conflicts. */
-  readonly dropped_rule_indices: readonly number[];
-  /** Indices of rules that are the WINNERS of their conflict group.
-   *  Always length === rules.length - dropped_rule_indices.length. */
-  readonly winning_rule_indices: readonly number[];
+  /** Rule IDs (not indices) that conflict resolution DROPPED, in sort
+   *  order. Structurally empty today: rule_id is part of the sort key and
+   *  duplicate IDs are rejected, so no two rules can share a key - the
+   *  drop branch is the deterministic tie-break guard for future key
+   *  changes. */
+  readonly dropped_rule_ids: readonly number[];
+  /** Rule IDs (not indices) that won their group, in sort order.
+   *  Always length === rules.length - dropped_rule_ids.length. */
+  readonly winning_rule_ids: readonly number[];
   /** SHA-256 of the canonicalized rules (the same bytes the hash is
    *  derived from). Hex string for easy logging. */
   readonly canonical_hash_hex: string;
@@ -404,8 +406,8 @@ export function compile(
 
   return {
     ir,
-    dropped_rule_indices: dropped,
-    winning_rule_indices: winning,
+    dropped_rule_ids: dropped,
+    winning_rule_ids: winning,
     canonical_hash_hex,
   };
 }

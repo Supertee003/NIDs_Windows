@@ -46,12 +46,14 @@ python tools\aegisctl.py rules list
 python tools\aegisctl.py rules show --id R0056
 python tools\aegisctl.py rules validate
 python tools\aegisctl.py policy list
-python tools\aegisctl.py policy disable --id R0056
-python tools\aegisctl.py policy enable --id R0056
-python tools\aegisctl.py policy reload
+python tools\aegisctl.py policy show --id R0056
+python tools\aegisctl.py policy verify
+python tools\aegisctl.py policy validate
 ```
 
-Rule CRUD is atomic and validates the complete ruleset before replacing the canonical file. Use `rules add`, `rules update`, and `rules delete` only for reviewed changes. Policy enable/disable is runtime state; it does not mutate WFP directly.
+Rule CRUD is atomic and validates the complete ruleset before replacing the canonical file. Use `rules add`, `rules update`, and `rules delete` only for reviewed changes.
+
+`policy enable/disable/reload` are fail-closed: there is no active-policy postcondition behind them yet, so they return JSON with `available: false` and **exit code 4** instead of reporting success (see `docs/AEGIS_Command_Capability_Matrix.md`). To change rule state today, edit the operator-state file `configs/disabled_rules.json` (untracked, like `policy_trust.json`) and apply it with `python tools\aegisctl.py rules reload`; `policy list` shows the disabled set as a local candidate until the reload lands.
 
 ## Observe and investigate
 

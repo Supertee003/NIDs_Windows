@@ -12,6 +12,7 @@ Wire layout (little-endian, offsets from shared/event/canonical_event.md):
   pay_len(4) pay_hash(8) pol_act(1) enf(1) defcon(1) ctx_flags(4) reserved(16)
 Total = 109 bytes.
 """
+# SEAM-STATUS: not wired to the production entrypoint (brain/windows_brain.py); exercised by brain tests.
 from __future__ import annotations
 
 import struct

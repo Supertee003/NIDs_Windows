@@ -5,6 +5,7 @@ from a Python/Cython rule into a privileged decision. Production policy
 selection remains owned by the Zig PolicyEngine; this module is the safe
 integration fixture for Phase 5 and emits only ALERT or ALLOW.
 """
+# SEAM-STATUS: not wired to the production entrypoint (brain/windows_brain.py); exercised by brain tests.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass

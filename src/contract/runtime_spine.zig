@@ -6,11 +6,21 @@
 //!     Threat Intel, Brain, Policy, PEP, Forensics
 //!   Tooling: Replay, E2E, Performance, Canary, Fault Injection, Release
 //!
-//! T3: This file is the SINGLE runtime spine. It is the one authoritative
-//! registry of every runtime module (production + optional + tooling + proof),
-//! its init order, its shutdown order (reverse of init), and whether it sits
-//! on the golden path. No other file may maintain a second module list with
-//! different ordering (violated = "duplicate spine").
+//! T3: This file is the SINGLE runtime-spine REGISTRY (specification + proof)
+//! of every runtime module (production + optional + tooling + proof), its init
+//! order, its shutdown order (reverse of init), and whether it sits on the
+//! golden path. Any second module list in the tree is a duplicate-spine
+//! violation against THIS registry (docs may describe it; only this file
+//! enumerates it).
+//!
+//! T3 STATUS (pinned by tests/docs/test_stale_doc_sweep.py, LEFTOVER-SWEEP):
+//! the production binary does NOT load this registry. src/main.zig composes
+//! the runtime directly, and the lifecycle orchestrator built to consume the
+//! registry (src/reliability/lifecycle.zig) is quarantined - never invoked,
+//! registered in tests/security/test_zig_test_scope.py QUARANTINED_UNREACHABLE.
+//! Consumers today are tests and proofs only (src/all_tests.zig,
+//! src/tests/proofs/documentation_proof.zig). Wiring the registry into the
+//! production startup path is a dedicated-slice decision, never a default.
 //!
 //! v5.0 Section 17: Lifecycle
 //!   main -> runtime.start() -> runtime.run() -> runtime.shutdown()

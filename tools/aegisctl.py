@@ -1116,12 +1116,6 @@ def cmd_forensic(args) -> int:
     print(json.dumps(response, indent=2, sort_keys=True))
     return 0
 
-def _state_file(name: str) -> Path:
-    path = TOOLS_DIR.parent / "logs" / "runtime" / name
-    path.parent.mkdir(parents=True, exist_ok=True)
-    return path
-
-
 def _load_state(path: Path, default: dict) -> dict:
     if not path.exists():
         return default.copy()
@@ -1129,10 +1123,6 @@ def _load_state(path: Path, default: dict) -> dict:
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return default.copy()
-
-
-def _save_state(path: Path, value: dict) -> None:
-    path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
 
 
 def _rules() -> list[dict]:
@@ -1190,26 +1180,13 @@ def cmd_policy(args) -> int:
         return _print_control_query("policy.verify", as_json=getattr(args, "json", True))
     if op == "validate":
         return _print_control_query("policy.validate", as_json=getattr(args, "json", True))
-    if op in {"enable", "disable"}:
-        if match is None: print(f"Rule {rid} not found"); return 1
-        if op == "disable":
-            if str(rid) in disabled: print(f"Rule {rid} already DISABLED")
-            else: disabled.add(str(rid)); print(f"Rule {rid} DISABLED")
-        else:
-            if str(rid) not in disabled: print(f"Rule {rid} already ENABLED")
-            else: disabled.discard(str(rid)); print(f"Rule {rid} ENABLED")
-        _save_state(disabled_path, {"disabled_rules": sorted(disabled)})
-        return 0
-    if op == "reload":
-        reachable = _query_control_safe("policy.reload")
-        print("Policy reloaded" if reachable else "Policy reload: core not running")
-        return 0 if reachable else 1
+    # LEFTOVER-SWEEP: enable/disable/reload are refused by the fail-closed
+    # guard at the top of this command (never a local write, never a fake
+    # success); pinned by tests/runtime/test_gate_e.py + the capability
+    # matrix. The old unreachable implementations (disabled_rules.json
+    # write + a policy.reload control query; no such control command
+    # exists) and the now-dead local-state helpers were removed here.
     return 2
-
-
-def _query_control_safe(command: str) -> bool:
-    try: return query_control(command) is not None
-    except Exception: return False
 
 
 def _unavailable(command: str, reason: str = "not_implemented") -> int:

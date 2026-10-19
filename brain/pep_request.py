@@ -1,4 +1,5 @@
 """Typed, policy-authority-bound request adapter for Rust Shield/PEP."""
+# SEAM-STATUS: not wired to the production entrypoint (brain/windows_brain.py); exercised by brain tests.
 from __future__ import annotations
 
 from dataclasses import dataclass

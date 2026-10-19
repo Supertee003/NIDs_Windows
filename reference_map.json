@@ -1,13 +1,13 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-19T11:39:14.112305+00:00",
+  "generated_at": "2026-10-19T12:01:11.738238+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1699,
+  "total_files": 1698,
   "by_role": {
     "documentation": 558,
     "build-config": 211,
     "other": 19,
-    "source": 336,
+    "source": 335,
     "lockfile": 6,
     "rust-build": 4,
     "test-artifact": 202,
@@ -3611,14 +3611,6 @@
       "class": "canonical-source",
       "role": "source"
     },
-    "nose/ipc_reader.go": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "nose/ipc_reader_test.go": {
-      "class": "canonical-test",
-      "role": "test-artifact"
-    },
     "nose/main.go": {
       "class": "canonical-source",
       "role": "source"
@@ -6108,6 +6100,10 @@
       "role": "test-artifact"
     },
     "tests/brain/test_scan_windows.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/brain/test_seam_disposition.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

@@ -1,4 +1,5 @@
 """Core-facing orchestration seam for detection and Tier-3 routing."""
+# SEAM-STATUS: not wired to the production entrypoint (brain/windows_brain.py); exercised by brain tests.
 from __future__ import annotations
 
 from dataclasses import dataclass

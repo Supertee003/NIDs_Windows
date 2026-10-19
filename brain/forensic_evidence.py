@@ -4,6 +4,7 @@ The envelope is a persistence-neutral representation. It does not write files,
 call the Zig ring, or perform enforcement; it validates that evidence fields
 are copied from one authoritative EnforcementReceipt without identity drift.
 """
+# SEAM-STATUS: not wired to the production entrypoint (brain/windows_brain.py); exercised by brain tests.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass

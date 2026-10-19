@@ -155,8 +155,17 @@ pub fn verifyWireABI() WireABIStatus {
 }
 
 // ============================================================
-// F04: Cross-language Test Vectors
+// F04: Cross-language Test Vectors (freeze checklist)
 // ============================================================
+//
+// These entries freeze the vector SET: identity, type, expected semantics,
+// and the language matrix. They intentionally carry no payload bytes - the
+// executable vectors live with the per-language suites:
+//   tests/contracts/event_vectors/golden_vectors.json (+ generator)
+//   tests/contracts/policy_signing/ (signature vectors)
+//   tests/contracts/test_ipv6_wire_v2.py (wire v2)
+// verifyVectorTable() validates the checklist invariants (unique ids and
+// names, every vector type covered, non-empty fields).
 
 pub const CROSS_LANG_CONTRACT = ContractMeta{
     .name = "CrossLanguageVectors",
@@ -187,8 +196,6 @@ pub const TestVector = struct {
     id: u32,
     vector_type: TestVectorType,
     name: []const u8,
-    /// Input bytes (wire format) or serialized event.
-    input: []const u8,
     /// Expected semantic result description.
     expected: []const u8,
     /// Languages this vector applies to.
@@ -201,7 +208,6 @@ pub const TEST_VECTORS = [_]TestVector{
         .id = 1,
         .vector_type = .event,
         .name = "benign_wfp_event",
-        .input = "",
         .expected = "valid CanonicalEvent with source=wfp_sensor, severity=0",
         .languages = &.{ "Zig", "C", "C++", "Rust", "Go", "Python" },
     },
@@ -209,7 +215,6 @@ pub const TEST_VECTORS = [_]TestVector{
         .id = 2,
         .vector_type = .event,
         .name = "malicious_rule_match",
-        .input = "",
         .expected = "valid CanonicalEvent with rule_id=0xDEAD, severity=3",
         .languages = &.{ "Zig", "C", "C++", "Rust", "Go", "Python" },
     },
@@ -217,7 +222,6 @@ pub const TEST_VECTORS = [_]TestVector{
         .id = 3,
         .vector_type = .wire,
         .name = "wire_roundtrip_benign",
-        .input = "",
         .expected = "encode(event) -> decode(bytes) == event",
         .languages = &.{ "Zig", "C", "C++" },
     },
@@ -225,7 +229,6 @@ pub const TEST_VECTORS = [_]TestVector{
         .id = 4,
         .vector_type = .wire,
         .name = "wire_reject_invalid_magic",
-        .input = "",
         .expected = "decode with magic=0xDEADBEEF returns null",
         .languages = &.{ "Zig", "C", "C++" },
     },
@@ -233,7 +236,6 @@ pub const TEST_VECTORS = [_]TestVector{
         .id = 5,
         .vector_type = .verdict,
         .name = "verdict_benign_from_no_evidence",
-        .input = "",
         .expected = "empty EvidenceList -> Verdict.benign (not unknown)",
         .languages = &.{ "Zig" },
     },
@@ -241,7 +243,6 @@ pub const TEST_VECTORS = [_]TestVector{
         .id = 6,
         .vector_type = .verdict,
         .name = "verdict_malicious_from_critical",
-        .input = "",
         .expected = "MALICIOUS evidence -> Verdict.malicious",
         .languages = &.{ "Zig" },
     },
@@ -249,7 +250,6 @@ pub const TEST_VECTORS = [_]TestVector{
         .id = 7,
         .vector_type = .policy,
         .name = "policy_allow_benign",
-        .input = "",
         .expected = "benign verdict -> action=allow",
         .languages = &.{ "Zig", "Rust" },
     },
@@ -257,20 +257,20 @@ pub const TEST_VECTORS = [_]TestVector{
         .id = 8,
         .vector_type = .policy,
         .name = "policy_block_malicious",
-        .input = "",
         .expected = "malicious verdict + public IP -> action=block, executed",
         .languages = &.{ "Zig", "Rust" },
     },
 };
 
-/// Verify all test vectors are defined and valid.
-pub fn verifyTestVectors() VectorStatus {
-    if (TEST_VECTORS.len == 0) {
+/// Validate one vector table: unique ids, unique names, all four vector
+/// types covered, and non-empty fields for every entry.
+pub fn verifyVectorTable(vectors: []const TestVector) VectorStatus {
+    if (vectors.len == 0) {
         return .{ .status = .violation, .reason = "no test vectors defined" };
     }
 
-    // Check each vector has required fields
-    for (TEST_VECTORS) |v| {
+    var seen_types = [_]bool{ false, false, false, false };
+    for (vectors, 0..) |v, i| {
         if (v.id == 0) {
             return .{ .status = .violation, .reason = "test vector with id=0" };
         }
@@ -283,9 +283,28 @@ pub fn verifyTestVectors() VectorStatus {
         if (v.languages.len == 0) {
             return .{ .status = .violation, .reason = "test vector with no languages" };
         }
+        seen_types[@intFromEnum(v.vector_type)] = true;
+        for (vectors[i + 1 ..]) |other| {
+            if (other.id == v.id) {
+                return .{ .status = .violation, .reason = "duplicate test vector id" };
+            }
+            if (std.mem.eql(u8, other.name, v.name)) {
+                return .{ .status = .violation, .reason = "duplicate test vector name" };
+            }
+        }
+    }
+    for (seen_types) |seen| {
+        if (!seen) {
+            return .{ .status = .violation, .reason = "vector type not covered" };
+        }
     }
 
     return .{ .status = .compliant, .reason = "all test vectors valid" };
+}
+
+/// Verify the built-in test-vector table.
+pub fn verifyTestVectors() VectorStatus {
+    return verifyVectorTable(&TEST_VECTORS);
 }
 
 // ============================================================
@@ -547,6 +566,29 @@ test "TEST_VECTORS cover all types" {
 test "verifyTestVectors returns compliant" {
     const status = verifyTestVectors();
     try std.testing.expect(status.isCompliant());
+}
+
+test "verifyVectorTable rejects a duplicate-id table" {
+    const bad = [_]TestVector{
+        .{ .id = 1, .vector_type = .event, .name = "a", .expected = "x", .languages = &.{"Zig"} },
+        .{ .id = 1, .vector_type = .wire, .name = "b", .expected = "y", .languages = &.{"Zig"} },
+    };
+    try std.testing.expect(!verifyVectorTable(&bad).isCompliant());
+}
+
+test "verifyVectorTable rejects duplicate names" {
+    const bad = [_]TestVector{
+        .{ .id = 1, .vector_type = .event, .name = "same", .expected = "x", .languages = &.{"Zig"} },
+        .{ .id = 2, .vector_type = .wire, .name = "same", .expected = "y", .languages = &.{"Zig"} },
+    };
+    try std.testing.expect(!verifyVectorTable(&bad).isCompliant());
+}
+
+test "verifyVectorTable rejects an uncovered vector type" {
+    const bad = [_]TestVector{
+        .{ .id = 1, .vector_type = .event, .name = "only-event", .expected = "x", .languages = &.{"Zig"} },
+    };
+    try std.testing.expect(!verifyVectorTable(&bad).isCompliant());
 }
 
 test "FreezeReport allFrozen" {

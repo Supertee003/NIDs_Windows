@@ -584,3 +584,38 @@ gate (ไม่แตะ) และ wire contract ไม่เปลี่ยน
   structural + parse + synthetic); bundle tracked 20261017 คงเป็น frozen snapshot (สำเนา install_aegis.ps1 เก่า
   ใน bundle ไม่แก้); NSIS template ไม่แตะ (Authenticode runtime check ฝั่ง NSIS รอ signing gate G4 - บันทึกเป็น
   remaining); live daemon ยัง binary เก่า (redeploy ค้างตามเดิม)
+
+## 21. Slice LEFTOVER-SWEEP: เศษ §3/§4 ที่เหลือ - ทุกจุดบอกความจริงตรงกับโค้ดจริง - IMPLEMENTED (E2)
+
+ฐาน HEAD 7171e1f; patch เดียว (commit: LEFTOVER-SWEEP) - ดู EVI entry "LEFTOVER-SWEEP"
++ admin-evidence/leftover-sweep-20261019/
+
+- ปิด 6 ข้อสุดท้ายจาก deep scan §3/§4 (re-verify ทุกข้อกับ source จริงที่ HEAD ก่อนแก้):
+  (1) aegisctl policy enable/disable/reload = fail-closed จริงตาม capability matrix (guard ถูก pin ด้วย
+  tests/runtime/test_gate_e.py) แต่ยังมี implementation ที่ไม่มีวันถูกเรียก + helper ตาย 3 ตัว
+  (_state_file/_save_state/_query_control_safe) -> ลบออกทั้งหมด; USER_OPERATIONS_GUIDE.md เดิมโฆษณา
+  คำสั่งที่ใช้ไม่ได้ -> แก้ให้ตรง (path จริง: configs/disabled_rules.json + rules reload; ระบุ exit code 4)
+  (2) ts_policy dropped/winning_rule_indices เก็บ rule IDs ไม่ใช่ indices -> rename เป็น *_rule_ids +
+  docstring บอกจริง (drop branch ว่างโดยโครงสร้าง: rule_id อยู่ใน sort key + duplicate id ถูก reject)
+  (3) contract_freeze TEST_VECTORS: input="" ทั้ง 8 และไม่มีใครอ่าน .input -> ตัด field ทิ้ง + แยก
+  verifyVectorTable() ตรวจ unique id/name + ครบ 4 vector types + non-empty; เพิ่ม test จับ duplicate จริง
+  (F04 comment ชี้ executable suites ใน tests/contracts)
+  (4) runtime_spine.zig header เดิมอ้าง "SINGLE runtime spine / authoritative registry" แต่ production
+  ไม่โหลด (main.zig compose เอง; lifecycle.zig ถูก quarantine) -> เขียน header เป็น spec/proof-only +
+  doc pin ห้าม main/daemon import (ปัก gap ตรงๆ; wiring = dedicated slice decision)
+  (5) nose/ipc_reader.go (+ipc_reader_test.go): Bridge-era orphan, 0 non-test refs -> git rm
+  (6) brain seam 10 โมดูล (acceptance_gates, canonical_event, core_routing, tier_routing,
+  enforcement_pipeline, pep_request, pep_receipt, enforcement_receipt, policy_decision, forensic_evidence)
+  ไม่ถึงจาก entrypoint production -> ติด SEAM-STATUS marker 10 ไฟล์ + pin import-graph ใหม่
+  tests/brain/test_seam_disposition.py (closure(windows_brain.py) == module set - registry, สองทิศ)
+- RED->GREEN ครบทุก workstream: 2F/9P -> 11P (stale-doc pins), 1F/2P -> 3P (seam pin),
+  tsc 4 errors -> rc=0 + 76/76, zig focused undeclared verifyVectorTable -> 89/89;
+  nose go build/test/vet rc=0; zig build rc=0
+- zig build test 2190/2192: 1 fail = registered PERF-FLAKE (RegistryWatchQueue threshold 4807.3 vs
+  floor 5000 ใต้โหลด build; warm rerun rc=0; perf path ไม่ถูกแตะโดย slice)
+- full pytest CI scope 955P/2S/27 subtests (pre-refresh เจอ 5 digest-drift fails ใน tests/release
+  ตามคาด -> refresh 608/608 dropped nose 2 entries -> verify OK, source_commit=7171e1f)
+- inventory regen 1698 ไฟล์ (1699 -2 nose +1 test ใหม่); PHASE_0_TRUTH_REBUILD_REPORT.json refresh
+  เป็น HEAD ปัจจุบัน (rebaseline side effect ตามแบบ 74864cd)
+- Hygiene: ไม่แตะ enforcement (blocks delta 0); agent non-elevated ทั้งรอบ; ไม่ push;
+  temp zig runner ถูกใช้เฉพาะ focused test แล้วลบก่อน commit
