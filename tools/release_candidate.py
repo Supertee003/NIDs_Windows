@@ -1,8 +1,8 @@
 """Release Candidate assembler (T20 AC3, Step 62).
 
-Assembles the T20 final release candidate tree under
-release/T20-final/<commit>/, following scripts/release_package.ps1
-layout (bin/ configs/ core/ docs/ + SHA-256 checksums), extended with:
+Assembles the T20-era release candidate tree under
+release/T20-final/<commit>/, following the legacy T20 layout
+(bin/ configs/ docs/ + SHA-256 checksums), extended with:
 
   - SBOM.json            : build_manifest artifact inventory (from
                            1203-line manifest)
@@ -98,7 +98,6 @@ def assemble(commit: str) -> Path:
     if out.exists():
         shutil.rmtree(out)
     (out / "config").mkdir(parents=True, exist_ok=True)
-    (out / "core").mkdir(exist_ok=True)
     (out / "scripts").mkdir(exist_ok=True)
     (out / "bin").mkdir(exist_ok=True)
     (out / "drivers").mkdir(exist_ok=True)
@@ -109,8 +108,6 @@ def assemble(commit: str) -> Path:
             dst = out / rel
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(REPO / rel, dst)
-    for z in (REPO / "core").glob("*.zig"):
-        shutil.copy2(z, out / "core" / z.name)
     for s in (REPO / "scripts").glob("*"):
         if s.is_file():
             shutil.copy2(s, out / "scripts" / s.name)
@@ -150,7 +147,7 @@ def assemble(commit: str) -> Path:
         sums.append("%s  %s" % (sha256(f), rel))
     (out / "SHA256SUMS").write_text("\n".join(sums) + "\n", encoding="ascii")
 
-    sig = {"policy": "configs/Rules.json (ed25519 via core/policy_signing.zig)",
+    sig = {"policy": "configs/Rules.json (ed25519 via src/policy/policy_signing.zig)",
            "immutable": "build_manifest digests match committed records",
            "commit": commit,
            "shipped_files": len(sums)}

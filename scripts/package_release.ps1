@@ -27,7 +27,7 @@ $artifacts = @(
     @{ Source = "zig-out\bin\aegis_ipc.dll"; Destination = "runtime\aegis_ipc.dll" },
     @{ Source = "configs\Rules.json"; Destination = "configs\Rules.json" },
     @{ Source = "configs\policies.json"; Destination = "configs\policies.json" },
-    @{ Source = "drivers\wfp_callout\aegis_wfp.sys"; Destination = "drivers\aegis_wfp.sys" }
+    @{ Source = "build\x64\wfp\aegis_wfp.sys"; Destination = "drivers\aegis_wfp.sys" }
 )
 
 $manifest = @()
@@ -65,8 +65,11 @@ Platform: Windows x86_64
 Install (elevated PowerShell):
   powershell -ExecutionPolicy Bypass -File .\scripts\install_aegis.ps1 -BundleRoot .
 
-Verify:
-  Get-Content .\manifest.json | ConvertFrom-Json
+Verify (read-only):
+  powershell -ExecutionPolicy Bypass -File .\scripts\verify_release.ps1 -BundleRoot .
+
+Uninstall (elevated; configs preserved):
+  powershell -ExecutionPolicy Bypass -File .\scripts\install_aegis.ps1 -Uninstall
 
 Rollback:
   powershell -ExecutionPolicy Bypass -File .\scripts\install_aegis.ps1 -BundleRoot . -Rollback
@@ -74,6 +77,8 @@ Rollback:
 
 $installer = Join-Path $root "scripts\install_aegis.ps1"
 if (Test-Path $installer) { Copy-Item $installer (Join-Path $scripts "install_aegis.ps1") -Force }
+$verifier = Join-Path $root "scripts\verify_release.ps1"
+if (Test-Path $verifier) { Copy-Item $verifier (Join-Path $scripts "verify_release.ps1") -Force }
 
 $zip = "$bundle.zip"
 Compress-Archive -Path "$bundle\*" -DestinationPath $zip -Force

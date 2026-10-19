@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-19T11:21:46.458064+00:00",
+  "generated_at": "2026-10-19T11:39:14.109344+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1698,
+  "total_files": 1699,
   "by_class": {
     "canonical-docs": 570,
     "canonical-build": 222,
     "unclassified": 19,
     "canonical-source": 619,
-    "canonical-test": 201,
+    "canonical-test": 202,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -3690,7 +3690,7 @@
       "path": "docs/DEPLOYMENT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 8199
+      "size": 8709
     },
     {
       "path": "docs/ENV_VARS.md",
@@ -4800,7 +4800,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 274669
+      "size": 274671
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -6408,7 +6408,7 @@
       "path": "scripts/install_aegis.ps1",
       "class": "canonical-source",
       "role": "source",
-      "size": 2363
+      "size": 6425
     },
     {
       "path": "scripts/install_drivers.bat",
@@ -6450,7 +6450,7 @@
       "path": "scripts/package_release.ps1",
       "class": "canonical-source",
       "role": "source",
-      "size": 3134
+      "size": 3456
     },
     {
       "path": "scripts/pep_analysis.py",
@@ -6492,7 +6492,7 @@
       "path": "scripts/release_package.ps1",
       "class": "canonical-source",
       "role": "source",
-      "size": 6732
+      "size": 1151
     },
     {
       "path": "scripts/reload_rules_control.ps1",
@@ -6696,7 +6696,7 @@
       "path": "scripts/verify_release.ps1",
       "class": "canonical-source",
       "role": "source",
-      "size": 5100
+      "size": 5546
     },
     {
       "path": "scripts/wdk_build_minifilter.ps1",
@@ -9039,6 +9039,12 @@
       "size": 3337
     },
     {
+      "path": "tests/release/test_release_tooling.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 11916
+    },
+    {
       "path": "tests/release/test_t17_perf_ci_installer.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -10044,7 +10050,7 @@
       "path": "tools/release_candidate.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 10794
+      "size": 10648
     },
     {
       "path": "tools/release_engineering.py",

@@ -73,9 +73,17 @@ cd ts_policy && npm run typecheck && npm run test:all
 
 A packaged release (`aegis-nids-windows-*`) ships `runtime\` with
 `aegis_nids.exe`, `aegis_pep.dll`, `aegis_wfp_user.dll`,
-`aegis_etw_helper.dll`, `aegis_fim_helper.dll`, `aegis_ipc.dll` and
-`aegis-nose.exe`, plus `configs\`, `drivers\` and
-`scripts\install_aegis.ps1`.
+`aegis_etw_helper.dll`, `aegis_fim_helper.dll`, `aegis_ipc.dll`,
+plus `configs\`, `drivers\aegis_wfp.sys` and `scripts\install_aegis.ps1`.
+`aegis-nose.exe` and `aegis_minifilter.sys` ride the NSIS installer path
+(`tools\installer.py`), not the bundle zip.
+
+The bundle-path installer (`scripts\install_aegis.ps1`) hash-verifies
+every manifest artifact, reports Authenticode status (unsigned builds
+warn; a broken signature fails closed), registers and starts the
+`AegisNids` service, and supports rollback (`-Rollback`) and uninstall
+(`-Uninstall`, operator configs preserved). `scripts\verify_release.ps1`
+re-verifies a bundle read-only before any install.
 
 `python tools\installer.py --package` generates `installer.generated.nsi`
 and builds `aegis-installer-*.exe` with NSIS (fail-closed without

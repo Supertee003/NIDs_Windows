@@ -1,8 +1,8 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-19T11:21:46.462310+00:00",
+  "generated_at": "2026-10-19T11:39:14.112305+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1698,
+  "total_files": 1699,
   "by_role": {
     "documentation": 558,
     "build-config": 211,
@@ -10,7 +10,7 @@
     "source": 336,
     "lockfile": 6,
     "rust-build": 4,
-    "test-artifact": 201,
+    "test-artifact": 202,
     "config-data": 34,
     "architecture-decision": 10,
     "step-document": 2,
@@ -6324,6 +6324,10 @@
       "role": "test-artifact"
     },
     "tests/release/test_refresh_adopt.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/release/test_release_tooling.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

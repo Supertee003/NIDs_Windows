@@ -542,3 +542,45 @@ gate (ไม่แตะ) และ wire contract ไม่เปลี่ยน
 - Hygiene: cython build regenerate tracked fast_scan.c ใน working copy (restore แล้ว; CI ephemeral + job นี้ไม่มี
   digest gate และ python-tests ที่มี digest gate ไม่ build module นี้); ลบ pyd cp311 ที่ venv สร้างทิ้ง;
   ไม่มี enforcement เปลี่ยน; live daemon ยัง binary เก่า (redeploy ค้างตามเดิม)
+
+## 20. Slice RELEASE-TOOLING: pipeline release ตรง bundle จริง - IMPLEMENTED (E2)
+
+ฐาน HEAD e1ff552; patch เดียว (commit: RELEASE-TOOLING) - ดู EVI entry "RELEASE-TOOLING"
++ admin-evidence/release-tooling-20261019/
+
+- ปิด §7 จาก deep scan (re-verify ทุกข้อกับ source จริงที่ HEAD ก่อนแก้) + carryover จาก §17
+  (release_candidate): verify_release.ps1 เดิม verify layout ที่ตายแล้ว (aegis-nids-v*.zip / bin\aegis_nids.exe /
+  release-manifest.json / src\release_info.zig ซึ่งไม่มีอยู่จริง) -> เขียนใหม่เป็น read-only verifier ของ bundle
+  ปัจจุบัน (aegis-nids-windows-*, manifest.json artifacts SHA256+length, required set, canonical_rules)
+  ไม่มี Expand/Compress/New/Remove-Item/Set-Location เลย (ปักด้วย pin)
+- release_package.ps1 = deprecation tombstone แบบ fail-closed (exit 1 + ชี้ package_release.ps1 /
+  verify_release.ps1); ตัด body 2.x ทั้งหมด - ตัวเก่าดูได้ใน git history + สำเนา frozen ใต้
+  release/T20-final/46b93dc/scripts/
+- install_aegis.ps1 parity กับ NSIS path (tools/installer.py + docs/DEPLOYMENT.md): #Requires -RunAsAdministrator,
+  BundleRoot optional (ให้ -Rollback/-Uninstall รันเดี่ยวได้ โดยมี check "required for install"), hash-verify
+  ทุก artifact ก่อนแตะระบบ (ของเดิม - คงไว้), +Authenticode status gate (Valid ผ่าน / NotSigned + NotTrusted =
+  warn จนกว่าจะมี EV cert/HLK / อื่นๆ รวม HashMismatch = fail closed), +register AegisNids (sc query guard,
+  auto-start, description, failure restart/5000/restart/15000/restart/60000 ตรง NSIS), +sc start พร้อมเตือนถ้า
+  LASTEXITCODE != 0, +-Uninstall (ลบ AegisNids + runtime/drivers/scripts + manifest.json/README.txt; AegisWfp
+  ลบเฉพาะเมื่อ binPath อยู่ใต้ InstallRoot ไม่งั้นปล่อยไว้ + แจ้ง; คง configs ของ operator - parity NSIS uninstall)
+- package_release.ps1: driver source เปลี่ยนเป็น build\x64\wfp\aegis_wfp.sys (canonical WDK output ตาม
+  DEPLOY-120; drivers\wfp_callout\aegis_wfp.sys = pre-EVT-231 artifact ที่ installer pin ห้าม ship ซ้ำ) +
+  bundle ship verify_release.ps1 ในตัว + README ใหม่ (verify/uninstall commands)
+- tools/release_candidate.py: ตัด core/*.zig copy loop + empty core/ dir + cite core/policy_signing.zig ->
+  src/policy/policy_signing.zig (authority จริงที่ daemon/handler_registry ใช้); docstring เลิกอ้าง
+  release_package.ps1 (deprecated แล้ว)
+- docs/DEPLOYMENT.md: แก้ให้ตรงความจริง - bundle ไม่เคยมี aegis-nose.exe (เดิมเขียนว่ามี); nose/minifilter =
+  เนื้อหาฝั่ง NSIS installer path; +สรุปความสามารถ install_aegis (verify/signature/service/uninstall) และชี้
+  verify_release.ps1
+- TDD: RED = tests/release/test_release_tooling.py ใหม่ 10 failed / 1 passed (parse guard) -> GREEN = 11 passed;
+  functional proof: verify_release.ps1 บน synthetic bundle (PASS -> tamper = SHA256 mismatch -> missing required
+  file = FAIL; tree hash ไม่เปลี่ยน = read-only จริง) + บน bundle จริง 20261017 (9/9 artifacts, ทั้ง explicit
+  -BundleRoot และ default discovery) + Parser::ParseFile clean ทั้ง 4 สคริปต์
+- Gates: focused 89 passed (tests/release + stale-doc-sweep + operator-portable); full pytest CI scope 950 passed
+  / 2 skipped / 27 subtests; zig build rc=0; release_engineering --verify เห็น drift 6 รายการตามคาด (5 ไฟล์ที่แก้ +
+  runtime_manifest จาก restamp รอบก่อน) -> --refresh-digests 610/610 (source_commit=e1ff552) -> verify OK;
+  EVI entry (E2) + summary E2 124->125, known_gaps 233; inventory regen 1699 ไฟล์ (+1 test ใหม่); validator 3 passed
+- Hygiene: ไม่มี enforcement เปลี่ยน (blocks delta 0); agent non-elevated ทั้งรอบ - ไม่รัน installer จริง (pin เป็น
+  structural + parse + synthetic); bundle tracked 20261017 คงเป็น frozen snapshot (สำเนา install_aegis.ps1 เก่า
+  ใน bundle ไม่แก้); NSIS template ไม่แตะ (Authenticode runtime check ฝั่ง NSIS รอ signing gate G4 - บันทึกเป็น
+  remaining); live daemon ยัง binary เก่า (redeploy ค้างตามเดิม)

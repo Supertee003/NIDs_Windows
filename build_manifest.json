@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "a38f414",
+  "source_commit": "e1ff552",
   "build_date": "2026-10-13T01:11:10.065507+00:00",
   "build_host": "windows",
   "platform": {
@@ -1039,7 +1039,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18564,
-      "sha256": "996bdccbec99708eff4e39cb07749bcc57849493a7255203c9d738040ca27df4",
+      "sha256": "9c46cc97aaacf4d2221a1939ff74b21e5283e413ca22406f4af86964463c5f92",
       "language": "json"
     },
     {
@@ -1296,8 +1296,8 @@
     },
     {
       "path": "scripts/install_aegis.ps1",
-      "size": 2363,
-      "sha256": "1672a1e6a532516746aef82d37fc54bc2c823c7b1488d43fa0c6afaa12da801e",
+      "size": 6425,
+      "sha256": "0d26ee9bae8f258fc81196d3990dd8b6621a0af0ceca67e145374071adad602b",
       "language": "script"
     },
     {
@@ -1326,8 +1326,8 @@
     },
     {
       "path": "scripts/package_release.ps1",
-      "size": 3134,
-      "sha256": "5a3987577fd03738e1c2de24801faae4d9fbad578cc949caca5b94953deecbd4",
+      "size": 3456,
+      "sha256": "598ef458350390156de20b219b488e5656214c50bdaf54227b1ce71a2976b02a",
       "language": "script"
     },
     {
@@ -1368,8 +1368,8 @@
     },
     {
       "path": "scripts/release_package.ps1",
-      "size": 6732,
-      "sha256": "768c3e262a98cf66d910235d13bec647714359ac7fe60be65eb137cf0efda7eb",
+      "size": 1151,
+      "sha256": "ceb58cb8568dc2cc1d4186bf96987950d6146787b00a3db5dabc18ce1c858326",
       "language": "script"
     },
     {
@@ -1572,8 +1572,8 @@
     },
     {
       "path": "scripts/verify_release.ps1",
-      "size": 5100,
-      "sha256": "919991226dda527dc25a4ecdb870b3f14996fd0e13404025143f7b9cc91ed4d8",
+      "size": 5546,
+      "sha256": "2eb1b24696c71d152ed0ccd0b01f3457569e29707051f1bc8a4f416b583b41ae",
       "language": "script"
     },
     {
@@ -3708,8 +3708,8 @@
     },
     {
       "path": "tools/release_candidate.py",
-      "size": 10794,
-      "sha256": "8b66205dff99e86f5d89c2d3f1fcd149d148bce0f519a13bfcdf514f0317cea5",
+      "size": 10648,
+      "sha256": "91bb8fa9ba9f7282bcba3ad5fe6c3b79c2cf3597aa8550b35f2e523c64d03d09",
       "language": "python/cython"
     },
     {

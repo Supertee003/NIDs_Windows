@@ -1,5 +1,5 @@
 {
- "head_sha": "a38f4148234bbe549740122652034eb7e335dcb2",
+ "head_sha": "e1ff552576f53e6f030405ebff496b13e6c65e44",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-10-19",
  "generator_version": "3.0",
@@ -6272,12 +6272,25 @@
    "command": "go test ./... -v -> 8 new handler tests GREEN on first run (pins of existing behavior; the RED-first defect drive for this surface was /api/health in DEADCODE-QUARANTINE) + go vet ./... clean; full pytest 939 passed / 2 skipped / 27 subtests",
    "expected": "The documented endpoint set behaves as its consumers rely on: GET / links the API surface; /api/alerts serves every added alert as a JSON array; /api/alerts/critical passes only level=critical; /api/alerts/{hash} answers 200 with the exact alert, 404 on an unknown hash, 400 on an empty hash; /api/stats reports total_alerts / total_sessions / timestamp; /api/sessions serves correlated timelines and /api/sessions/{id} rejects non-numeric ids (400) and returns text/plain timelines; /api/purge is POST-only (405), rejects malformed JSON (400) and returns {purged:N}",
    "actual": "All green with httptest only (no listener, no disk state): 8 tests on a shared newHandlerTestServer; the by-hash test recomputes the dedup hash via computeHash so the round trip is exact; the purge test keeps fresh alerts (purged=0) proving the cutoff semantics; no handler behavior changed - the tests freeze the current contract"
+  },
+  {
+   "id": "RELEASE-TOOLING",
+   "title": "Release tooling tells the truth: the bundle verifier targets the current aegis-nids-windows-* layout (read-only, manifest SHA256+length gate); the legacy 2.x packager is a fail-closed deprecation tombstone; the bundle installer registers/starts the AegisNids service (NSIS parity) and gains -Uninstall (configs preserved) plus an Authenticode status gate; the packager stages the canonical WDK driver and ships the verifier; the RC assembler no longer copies the dead core/ tree",
+   "level": "E2",
+   "component": "scripts+release-bundle+tools",
+   "flow_id": "REL-TOOLING-001",
+   "head_sha": "e1ff552",
+   "timestamp": "2026-10-19",
+   "result": "PASS",
+   "command": "TDD RED->GREEN. tests/release/test_release_tooling.py (new, 11 tests): RED 10 failed / 1 passed (parse guard) -> GREEN 11 passed; functional proof: verify_release.ps1 against a synthetic bundle in tmp_path -> VERIFICATION PASSED, tampered artifact -> SHA256 mismatch fail, missing required file -> fail, bundle tree hash-unchanged = read-only proven; verify_release.ps1 against the real tracked 20261017 bundle -> PASS 9/9 artifacts (explicit -BundleRoot and default latest-bundle discovery); Parser::ParseFile clean on all 4 scripts; focused suites 89 passed (tests/release + tests/docs/test_stale_doc_sweep.py + tests/runtime/test_operator_scripts_portable.py); full pytest CI scope 950 passed / 2 skipped / 27 subtests; zig build rc=0; release_engineering --refresh-digests 610/610 -> --verify OK (source_commit=e1ff552)",
+   "expected": "Operators can verify a packaged bundle without touching it: verify_release.ps1 discovers the latest release\\aegis-nids-windows-* (or an explicit -BundleRoot) and fails closed unless every manifest artifact matches its recorded SHA256 + length, the canonical required files exist, and canonical_rules is shipped; nothing is extracted, created, or deleted. scripts/release_package.ps1 cannot silently produce the dead 2.x layout: it exits 1 and points at package_release.ps1 / verify_release.ps1. install_aegis.ps1 reaches NSIS-path parity: elevation enforced via #Requires; every artifact hash-verified before any mutation; Authenticode status Valid=ok, NotSigned/NotTrusted=warn (until the EV-cert/HLK signing gate), anything else = fail closed; AegisNids registered only when absent (auto-start + restart/5000/15000/60000 recovery, same contract as tools/installer.py) and started; -Uninstall removes the service + runtime/drivers/scripts while preserving operator configs, and an externally-managed AegisWfp survives (sc qc binPath check). package_release.ps1 stages build\\x64\\wfp\\aegis_wfp.sys (canonical WDK output per DEPLOY-120) instead of the pre-EVT-231 in-tree copy and ships verify_release.ps1 inside the bundle. tools/release_candidate.py carries no core/-era paths and cites the live signing authority. docs/DEPLOYMENT.md matches the real bundle content",
+   "actual": "All green. verify_release.ps1 rewritten (no Set-Location; no Expand-Archive / Compress-Archive / New-Item / Remove-Item - structurally read-only, pinned by absence). release_package.ps1 replaced by a 20-line tombstone (exit 1; legacy body survives only in git history and the frozen release/T20-final/46b93dc/scripts copy). install_aegis.ps1 rewritten: #Requires -RunAsAdministrator; BundleRoot now optional with an explicit install-mode check so -Rollback/-Uninstall run standalone; Authenticode loop over manifest .exe/.dll (switch Valid/NotSigned/NotTrusted/default-throw); AegisNids created behind an sc query guard and started with a LASTEXITCODE warning; -Uninstall deletes AegisNids + only an AegisWfp whose qc binPath lives under $InstallRoot, removes runtime/drivers/scripts + manifest.json/README.txt and prints 'Configs preserved: $InstallRoot\\configs'. The v6 manifest.artifacts guard and the pre-mutation hash loop are retained. package_release.ps1: driver Source -> build\\x64\\wfp\\aegis_wfp.sys (drivers\\wfp_callout\\aegis_wfp.sys is the pre-EVT-231 artifact the installer pins forbid shipping); bundle scripts/ now also carries verify_release.ps1; README.txt documents verify/uninstall. release_candidate.py: the REPO/core/*.zig copy loop and the empty core/ dir are gone; signatures.json cites src/policy/policy_signing.zig (the live daemon/handler_registry authority); docstring no longer cites the deprecated packager. docs/DEPLOYMENT.md corrected - the bundle never contained aegis-nose.exe (the doc claimed it did); nose/minifilter documented as NSIS-path content. Digest drift from the five edited digested artifacts refreshed 610/610. The tracked 20261017 bundle stays a frozen snapshot (its old install_aegis.ps1 copy untouched). No enforcement change (blocks delta 0); agent non-elevated throughout - the installer was not executed (structural + parse + synthetic-bundle proofs only); NSIS-template Authenticode runtime check deferred to the G4 signing gate (recorded as remaining risk)"
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 25,
-  "E2_count": 124,
+  "E2_count": 125,
   "E3_count": 10,
   "E4_count": 15,
   "E5_count": 88,
