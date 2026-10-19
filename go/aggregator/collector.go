@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -41,6 +42,12 @@ type Collector struct {
 	offset     int64
 	mu         sync.Mutex
 	stopCh     chan struct{}
+
+	// DEADCODE-QUARANTINE: real accounting for the health endpoint (was a
+	// hardcoded zero block, so a supervisor could not see ingest dying).
+	ingested     atomic.Uint64 // NDJSON lines parsed into alerts
+	parseErrors  atomic.Uint64 // non-empty lines that failed to parse
+	lastIngestMs atomic.Int64  // Unix ms of the last successful ingest; 0 = never
 }
 
 // NewCollector creates a new log file collector
@@ -155,6 +162,7 @@ func (c *Collector) readNewLines() {
 
 		var entry LogEntry
 		if err := json.Unmarshal(line, &entry); err != nil {
+			c.parseErrors.Add(1) // surfaced as counters.errors in /api/health
 			continue
 		}
 
@@ -174,6 +182,8 @@ func (c *Collector) readNewLines() {
 		}
 
 		c.aggregator.AddAlert(alert)
+		c.ingested.Add(1)
+		c.lastIngestMs.Store(time.Now().UnixMilli())
 
 		// Log critical alerts to console
 		if alert.Level == "critical" {
@@ -192,4 +202,10 @@ func (c *Collector) readNewLines() {
 func (c *Collector) Stop() {
 	close(c.stopCh)
 	c.watcher.Close()
+}
+
+// Stats reports the collector's real ingest accounting for /api/health.
+// lastIngestMs is 0 until the first successful parse (honest "never").
+func (c *Collector) Stats() (ingested uint64, parseErrors uint64, lastIngestMs int64) {
+	return c.ingested.Load(), c.parseErrors.Load(), c.lastIngestMs.Load()
 }

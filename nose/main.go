@@ -30,9 +30,43 @@ import (
 // Parsed by tests/runtime/test_version.py.
 const AEGIS_NOSE_VERSION = "5.0.0"
 
+// NOSE-HEALTH-190 (DEADCODE-QUARANTINE): headless beacon counters must move
+// with real work — the old block hardcoded zeros, so a supervisor could not
+// tell a live collector loop from a dead one. In headless mode nose's events
+// are its collector samples: in_events counts samples consumed, out_events
+// counts beacons emitted, last_event_ms is the age of the most recent sample
+// (0 = none yet; >5x the health interval = soft failure, RUNTIME_CONTRACT
+// §4.1). Capture-mode frame counters are reported daemon-side (nose_frames_*).
+type headlessTelemetry struct {
+	inEvents  uint64
+	outEvents uint64
+	lastEvent time.Time // zero = nothing processed yet
+}
+
+func (t *headlessTelemetry) noteSamples(n int, now time.Time) {
+	if n == 0 {
+		return
+	}
+	t.inEvents += uint64(n)
+	t.lastEvent = now
+}
+
+// noteBeacon counts a beacon once it is on stdout; the payload of that
+// beacon carries the pre-increment value (prior beacons only).
+func (t *headlessTelemetry) noteBeacon() {
+	t.outEvents++
+}
+
+func (t *headlessTelemetry) lastEventAgeMs(now time.Time) int64 {
+	if t.lastEvent.IsZero() {
+		return 0 // no event yet — honest "never", not a fake freshness
+	}
+	return now.Sub(t.lastEvent).Milliseconds()
+}
+
 // NOSE-JSON-166: headless beacon constructor (extracted for contract
 // tests; behavior identical to the former inline literal).
-func buildHeadlessState(resData ResourceData, trafData TrafficData, thrData ThreatData, startTime time.Time, pid int) map[string]interface{} {
+func buildHeadlessState(resData ResourceData, trafData TrafficData, thrData ThreatData, tel *headlessTelemetry, startTime time.Time, pid int) map[string]interface{} {
 	return map[string]interface{}{
 		"op":            "HEALTH",
 		"state":         "RUNNING",
@@ -41,12 +75,12 @@ func buildHeadlessState(resData ResourceData, trafData TrafficData, thrData Thre
 		"version":       AEGIS_NOSE_VERSION,
 		"pid":           pid,
 		"uptime_ms":     time.Since(startTime).Milliseconds(),
-		"last_event_ms": 0,
+		"last_event_ms": tel.lastEventAgeMs(time.Now()),
 		"counters": map[string]interface{}{
-			"in_events":  0,
-			"out_events": 0,
-			"errors":     0,
-			"dropped":    0,
+			"in_events":  tel.inEvents,
+			"out_events": tel.outEvents,
+			"errors":     0, // no error path in the synthetic headless loop
+			"dropped":    0, // no drop path in the synthetic headless loop
 		},
 		"deps": []map[string]string{
 			{"name": "core", "state": "RUNNING"},
@@ -178,34 +212,42 @@ func main() {
 		ticker := time.NewTicker(2 * time.Second)
 		defer ticker.Stop()
 
+		// NOSE-HEALTH-190: count the samples this loop actually consumed.
+		tel := &headlessTelemetry{}
 		for range ticker.C {
 			var resData ResourceData
 			var trafData TrafficData
 			var thrData ThreatData
 
+			consumed := 0
 			// Non-blocking read from channels
 			select {
 			case resData = <-resourceCh:
+				consumed++
 			default:
 			}
 			select {
 			case trafData = <-trafficCh:
+				consumed++
 			default:
 			}
 			select {
 			case thrData = <-threatCh:
+				consumed++
 			default:
 			}
+			tel.noteSamples(consumed, time.Now())
 
 			// Construct unified JSON state with HEALTH envelope.
 			// Schema fields required by RUNTIME_CONTRACT.md §4.1:
 			//   component, state, pid, uptime_ms, last_event_ms,
 			//   counters (in_events, out_events, errors, dropped), deps
-			state := buildHeadlessState(resData, trafData, thrData, startTime, os.Getpid())
+			state := buildHeadlessState(resData, trafData, thrData, tel, startTime, os.Getpid())
 
 			jsonBytes, err := json.Marshal(state)
 			if err == nil {
 				fmt.Println(string(jsonBytes))
+				tel.noteBeacon()
 			}
 		}
 	} else {

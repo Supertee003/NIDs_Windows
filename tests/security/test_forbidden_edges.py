@@ -140,6 +140,31 @@ def test_bridge_block_stays_fail_closed():
         assert "return -2" in m.group(1), f"{fn} must stay fail-closed (-2)"
 
 
+def test_bridge_command_transport_stays_fail_closed():
+    """DEADCODE-QUARANTINE: the legacy bridge has NO command transport.
+
+    `aegis_bridge_send_command` used to print "Command sent: type=.."
+    and return 0 while sending nothing anywhere — a production mock:
+    a caller believing a command left the process is worse than a
+    refusal. Both command exports must fail closed (-2) like
+    block/unblock, and no fake-success string may come back.
+    """
+    text = (REPO / "bridge" / "aegis_ipc.cpp").read_text(encoding="utf-8")
+    for fn in ("aegis_bridge_send_command", "aegis_bridge_receive_command"):
+        m = re.search(r"int32_t " + fn + r"\(.*?\)\s*\{(.*?)\n\}", text, re.S)
+        assert m, f"{fn} implementation missing"
+        assert "return -2" in m.group(1), (
+            f"{fn} must fail closed (-2) without a command transport"
+        )
+    # Code lines only: comments may (and do) narrate the old fake success.
+    code = "\n".join(
+        line for _, line in code_lines(REPO / "bridge" / "aegis_ipc.cpp", "//")
+    )
+    assert "Command sent" not in code, (
+        "bridge must never claim a command was sent when no transport exists"
+    )
+
+
 def test_zig_pep_extern_lives_in_one_module():
     """Only pep_bindings.zig may declare the aegis_pep FFI; no sec_monitor extern."""
     hits_outside = []

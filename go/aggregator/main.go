@@ -152,6 +152,21 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
         // supervisor and tests/runtime/test_health.py can validate the
         // response (was: {"status":"healthy","timestamp":...}).
         uptimeMs := time.Since(s.startTime).Milliseconds()
+        // DEADCODE-QUARANTINE: real ingest accounting instead of hardcoded
+        // zeros. in_events = NDJSON lines parsed since start; errors = parse
+        // failures; last_event_ms = age of the last successful ingest
+        // (0 = none yet, honest "never"). out_events/dropped stay 0: this
+        // is a pull-only REST surface (no event egress, no drop path).
+        var inEvents, errors uint64
+        lastEventMs := int64(0)
+        if s.collector != nil {
+                ingested, parseErrors, lastIngestMs := s.collector.Stats()
+                inEvents = ingested
+                errors = parseErrors
+                if lastIngestMs > 0 {
+                        lastEventMs = time.Now().UnixMilli() - lastIngestMs
+                }
+        }
         response := map[string]interface{}{
                 "op":             "HEALTH",
                 "state":          "RUNNING",
@@ -161,11 +176,11 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
                 "version":        "0.1.0",
                 "pid":            os.Getpid(),
                 "uptime_ms":      uptimeMs,
-                "last_event_ms":  0,
+                "last_event_ms":  lastEventMs,
                 "counters": map[string]interface{}{
-                        "in_events":  0,
+                        "in_events":  inEvents,
                         "out_events": 0,
-                        "errors":     0,
+                        "errors":     errors,
                         "dropped":    0,
                 },
                 "deps": []map[string]string{

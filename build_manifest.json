@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "67ff30e",
+  "source_commit": "ba7d926",
   "build_date": "2026-10-13T01:11:10.065507+00:00",
   "build_host": "windows",
   "platform": {
@@ -552,8 +552,8 @@
     },
     {
       "path": "bridge/aegis_ipc.cpp",
-      "size": 12482,
-      "sha256": "dc058dd483077785c1548b20eaa17bf278db5a209a49acd54aba4a56942ed8bc",
+      "size": 13112,
+      "sha256": "565d73d4ef6a94152ec3472bb873663b99a95fa30027fc6a4f84cf6616a1b181",
       "language": "c/c++"
     },
     {
@@ -780,8 +780,8 @@
     },
     {
       "path": "go/aggregator/collector.go",
-      "size": 4389,
-      "sha256": "3aeeac97faf996147353d41e4f5cc6d5e7c3f7ad325ef2adee5e9feedad92ca8",
+      "size": 5203,
+      "sha256": "10ef43e2f4016fd03a631e3450a838df71ebff788268310b3c01b292a6a4c1db",
       "language": "go"
     },
     {
@@ -816,14 +816,14 @@
     },
     {
       "path": "go/aggregator/main.go",
-      "size": 8319,
-      "sha256": "c68fde5d1e0e0878e752936199b879fabc043eeb1eff6e466a625844b3ce4a04",
+      "size": 9103,
+      "sha256": "a7d2bb5053000a584e961abf72531ed1834b77366974a158b8f8120e2122b670",
       "language": "go"
     },
     {
       "path": "go/aggregator/main_test.go",
-      "size": 819,
-      "sha256": "081b6b9168ae9403eb5570ecf2e1273330607c5af1d92b4e7a4827a603fbca1e",
+      "size": 4079,
+      "sha256": "08b7f64e8e2d362a0e87d65983d5d96bc9581e5079d24ea1e3689268068d6605",
       "language": "go"
     },
     {
@@ -930,8 +930,8 @@
     },
     {
       "path": "nose/headless_test.go",
-      "size": 1843,
-      "sha256": "351515760362aaf3323c2bbd0444587b599000c9ffb3d04a71b808a4b35380ae",
+      "size": 3864,
+      "sha256": "31f3cbe4343041946ee8160af91d9db5c6a085a183be1e313ef874ca67565b5d",
       "language": "go"
     },
     {
@@ -954,8 +954,8 @@
     },
     {
       "path": "nose/main.go",
-      "size": 7460,
-      "sha256": "f046ecd87a6d377687fdca0a26b2ecf0b65e1ccbe43c5f84eb16bcbd3f4cc598",
+      "size": 9071,
+      "sha256": "9038c4e75a3c7198a7c20e6809b818e24b240da761d81bdb963476c64749afc3",
       "language": "go"
     },
     {
@@ -1039,7 +1039,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18564,
-      "sha256": "7aed406b2bec17833b2555d7c0275503c986f36ffd8f714030471a1364a69e5a",
+      "sha256": "8323a975e81e4631636a2588481cf8b3ee7845fea473acf3ab0d976f6b3b4d87",
       "language": "json"
     },
     {
@@ -1650,8 +1650,8 @@
     },
     {
       "path": "src/capture/flow_types.zig",
-      "size": 576,
-      "sha256": "9efa4362d32d49fde6a8c7d0120ea685bc60699e735ceaf4284a8ea35c35531a",
+      "size": 949,
+      "sha256": "5131f7ebc0208584b5a4e92a834f26772dad705f4dc955a828f23013c0c6d290",
       "language": "zig"
     },
     {
@@ -1692,8 +1692,8 @@
     },
     {
       "path": "src/capture/npcap_test_live.zig",
-      "size": 19462,
-      "sha256": "f7274d9dacdba48df8ce3b4c44cbcff8a2a88a808ccde691eb0c5015a4bed137",
+      "size": 19862,
+      "sha256": "71b3a87d7869f0d4b1cc2afb3f2b361fe2689e56e945f1423605164f36814887",
       "language": "zig"
     },
     {
@@ -1806,15 +1806,9 @@
     },
     {
       "path": "src/control/handler_registry.zig",
-      "size": 137871,
-      "sha256": "9d53e8a216e9216abe67d860e4db081979e14a4f2b33ba2b9a1e343ab1587779",
+      "size": 143919,
+      "sha256": "e00a3f0a999ede6b0953914b7b7a247cd90ae24ab452baac800d12765e7ee951",
       "language": "zig"
-    },
-    {
-      "path": "src/control/health/runtime_health.zig.scaffold",
-      "size": 12238,
-      "sha256": "0752e9defb33591fa1a205a301e85952a43930fb5b66ba7d48351c2695bd36b2",
-      "language": "data"
     },
     {
       "path": "src/control/protocol.zig",
@@ -2046,8 +2040,8 @@
     },
     {
       "path": "src/detection/threat_tracker.zig",
-      "size": 26196,
-      "sha256": "fc3dbf7a03a1d92f5e955eae1f9e73d0a46c08983b00f83be337de2e1ca6b7f0",
+      "size": 28953,
+      "sha256": "59356b5685b1231a96e93d69d96509175a3b0672c4ec11328a76e778d3343162",
       "language": "zig"
     },
     {
@@ -2895,12 +2889,6 @@
       "size": 12112,
       "sha256": "f3c2cdfcf176a70f5da0d504b8ec70cc670e27075560fd505c8947ab0eac30b0",
       "language": "zig"
-    },
-    {
-      "path": "src/tests/integration/golden_path_ffi.zig.scaffold",
-      "size": 14019,
-      "sha256": "acc9a52bac76969bd53f47e6d8c3039ce29972d86b9c76c315f4bc52c3938fb8",
-      "language": "data"
     },
     {
       "path": "src/tests/integration/hids_integration.zig",

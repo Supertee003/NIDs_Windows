@@ -349,6 +349,37 @@ pub fn snapshotOpenIncidents(buf: []SnapshotRow, total_out: *u64) usize {
     return out;
 }
 
+/// DEADCODE-QUARANTINE: single-incident lookup for the control plane
+/// (`incidents.show`). Scans the FULL incident table under the same mutex
+/// every mutation takes — never the SNAPSHOT_CAP-bounded view, so a valid
+/// id outside the top-64 list is found instead of misreported as missing.
+/// Returns true and fills `out` on a hit; false leaves `out` untouched.
+/// No live tracker counts as "no such incident in this process" (unit
+/// tests, tooling): the honest answer from a process that holds no
+/// incident state, never a stale read.
+pub fn snapshotIncidentById(id: u64, out: *SnapshotRow) bool {
+    const self = g_live orelse return false;
+    self.mutex.lock();
+    defer self.mutex.unlock();
+    var i: usize = 0;
+    while (i < self.incident_count) : (i += 1) {
+        const inc = &self.incidents[i];
+        if (inc.id == id) {
+            out.* = .{
+                .id = inc.id,
+                .flow_id = inc.flow_id,
+                .src_ip = std.mem.readInt(u32, inc.src_ip[0..4], .little),
+                .severity = @intFromEnum(inc.severity),
+                .state = @intFromEnum(inc.state),
+                .score = inc.score,
+                .evidence_count = inc.evidence_count,
+            };
+            return true;
+        }
+    }
+    return false;
+}
+
 // ============================================================================
 // Tests
 // ============================================================================
@@ -637,4 +668,40 @@ test "EVT-210 snapshotOpenIncidents bounds rows but reports the true total" {
     try std.testing.expectEqual(@as(u64, 5), total); // bounded view, true total
     try std.testing.expectEqual(@as(u32, 105), buf[0].score);
     try std.testing.expectEqual(@as(u32, 104), buf[1].score);
+}
+
+test "DEADCODE-QUARANTINE: snapshotIncidentById finds any id in the full table" {
+    var tt = ThreatTracker.init(std.testing.allocator);
+    defer tt.deinit();
+    g_live = &tt;
+    defer g_live = null;
+
+    var flow: u64 = 1;
+    while (flow <= 3) : (flow += 1) {
+        var ev = event.IpcEvent.init(.signature_match);
+        ev.flow_id = flow;
+        ev.timestamp_ns = 1000 * flow;
+        ev.event_id = flow;
+        ev.src_ip = 0xC0A87E00 + @as(u32, @intCast(flow));
+        _ = try tt.observeFlowThreat(&ev, if (flow == 2) 300 else 100);
+    }
+
+    // Ids are assigned 1..3 in creation order; look up the middle one.
+    var row: SnapshotRow = undefined;
+    try std.testing.expect(snapshotIncidentById(2, &row));
+    try std.testing.expectEqual(@as(u64, 2), row.id);
+    try std.testing.expectEqual(@as(u64, 2), row.flow_id);
+    try std.testing.expectEqual(@as(u32, 0xC0A87E02), row.src_ip);
+    try std.testing.expectEqual(@as(u32, 300), row.score);
+    try std.testing.expectEqual(@as(u8, @intFromEnum(event.EventSeverity.alert)), row.severity);
+    try std.testing.expectEqual(@as(u8, @intFromEnum(IncidentState.open)), row.state);
+
+    // A miss must be a miss, never a stale row.
+    try std.testing.expect(!snapshotIncidentById(9999, &row));
+}
+
+test "DEADCODE-QUARANTINE: snapshotIncidentById is honest without a live tracker" {
+    g_live = null;
+    var row: SnapshotRow = undefined;
+    try std.testing.expect(!snapshotIncidentById(1, &row));
 }

@@ -361,16 +361,23 @@ AEGIS_BRIDGE_API int32_t aegis_bridge_unblock_ip(uint32_t ip) {
     return -2; // ENFORCEMENT_UNAVAILABLE / not an authorization result
 }
 
+// SAFETY CONTAINMENT (PHASE-0): the legacy bridge carries no command
+// transport. The old export printed a success line and returned 0 while
+// sending nothing anywhere — a caller believing a command left the process
+// is worse than a refusal. Kept ABI, fail-closed: -2 with the real route.
+// DEADCODE-QUARANTINE.
 AEGIS_BRIDGE_API int32_t aegis_bridge_send_command(const Aegis::Bridge::IpcCommand* cmd) {
     if (!cmd) return -1;
-    fprintf(stdout, "[AEGIS Bridge] Command sent: type=%u target=%u\n",
-        cmd->command_id, cmd->target_subsystem);
-    return 0;
+    fprintf(stderr, "[AEGIS Bridge] Command rejected: no command transport; use the control pipe (type=%u)\n",
+        cmd->command_id);
+    return -2; // TRANSPORT_UNAVAILABLE / not an authorization result
 }
 
+// SAFETY CONTAINMENT (PHASE-0): no command transport exists either way.
 AEGIS_BRIDGE_API int32_t aegis_bridge_receive_command(Aegis::Bridge::IpcCommand* cmd) {
     if (!cmd) return -1;
-    return -2;
+    fprintf(stderr, "[AEGIS Bridge] Command receive rejected: no command transport; use the control pipe\n");
+    return -2; // TRANSPORT_UNAVAILABLE / not an authorization result
 }
 
 AEGIS_BRIDGE_API uint32_t aegis_bridge_get_event_count() {

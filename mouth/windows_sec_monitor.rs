@@ -120,6 +120,24 @@ mod health_pipe {
     pub static START_TICK: std::sync::Once = std::sync::Once::new();
     pub static mut START_INSTANT: Option<Instant> = None;
 
+    /// DEADCODE-QUARANTINE: counters must move with real work, never sit at
+    /// a hardcoded zero (a supervisor could not tell a live tail from a
+    /// wedged one). Mouth's event stream is the core NDJSON log it tails
+    /// and displays: in_events counts ingested lines and LAST_EVENT_TICK
+    /// records the tick of the most recent one, so last_event_ms grows when
+    /// the tail loop stops. ERRORS/DROPPED stay 0: the loop has no
+    /// error/drop path (non-matching lines are skipped by design, not
+    /// dropped).
+    pub fn note_log_event() {
+        IN_EVENTS.fetch_add(1, Ordering::AcqRel);
+        LAST_EVENT_TICK.store(unsafe { GetTickCount64() }, Ordering::Release);
+    }
+
+    /// One health probe answered (response flushed) — mouth's only egress.
+    pub fn note_response_flushed() {
+        OUT_EVENTS.fetch_add(1, Ordering::AcqRel);
+    }
+
     const PIPE_NAME: &[u8] = b"\\\\.\\pipe\\aegis-mouth-health\0";
 
     pub fn server_loop(start_time: Instant) {
@@ -191,7 +209,7 @@ mod health_pipe {
                 // Build JSON response.
                 let now = GetTickCount64();
                 let last_event = LAST_EVENT_TICK.load(Ordering::Acquire);
-                let last_event_ms: u64 = if last_event > 0 { now.saturating_sub(last_event) } else { 0 };
+                let last_event_ms = super::last_event_age_ms(now, last_event);
                 let uptime_ms = start_time.elapsed().as_millis() as u64;
                 let latency_start = now;
 
@@ -235,6 +253,7 @@ mod health_pipe {
                 );
                 GetOverlappedResult(h_pipe, &mut write_ov, &mut written, 1);
                 FlushFileBuffers(h_pipe);
+                note_response_flushed(); // counted once the reply is on the wire
                 CloseHandle(h_pipe);
                 CloseHandle(h_event);
             }
@@ -315,6 +334,16 @@ fn annotation_for(log_path: &str) -> String {
         format!("{}defcon_annotations.json", &log_path[..=idx])
     } else {
         "defcon_annotations.json".to_string()
+    }
+}
+
+/// DEADCODE-QUARANTINE: age of the last processed event; 0 = none yet
+/// (honest "never"), saturating so clock skew never underflows.
+fn last_event_age_ms(now: u64, last_event: u64) -> u64 {
+    if last_event == 0 {
+        0
+    } else {
+        now.saturating_sub(last_event)
     }
 }
 
@@ -1215,7 +1244,8 @@ fn render_dashboard(
 mod receipt_tests {
     use super::{
         annotation_for, defcon_for_level, extract_json_field, is_confirmed_block,
-        parse_daemon_defcon, resolve_defcon, resolve_log_path_from, AlertFeed, MitigationFeed,
+        last_event_age_ms, parse_daemon_defcon, resolve_defcon, resolve_log_path_from, AlertFeed,
+        MitigationFeed,
     };
 
     #[test]
@@ -1349,6 +1379,45 @@ mod receipt_tests {
         assert_eq!(defcon_for_level(5).label, "SAFE");
         assert_eq!(defcon_for_level(99).label, "SAFE");
     }
+
+    #[test]
+    fn last_event_age_is_honest_and_saturating() {
+        // DEADCODE-QUARANTINE: 0 = never processed (honest), clock skew
+        // must clamp instead of underflowing a u64 subtraction.
+        assert_eq!(last_event_age_ms(5000, 0), 0);
+        assert_eq!(last_event_age_ms(5000, 4000), 1000);
+        assert_eq!(last_event_age_ms(4000, 5000), 0);
+    }
+}
+
+// =====================================================================
+// HEALTH COUNTER PINS (DEADCODE-QUARANTINE)
+// =====================================================================
+// The health pipe's counters must move with real work — the old response
+// reported hardcoded zeros, so a supervisor could not tell a live tail
+// loop from a wedged one. Windows-only because the pipe module itself is
+// (non-Windows builds use the daemon_pipe stub).
+#[cfg(all(test, windows))]
+mod health_counter_tests {
+    use std::sync::atomic::Ordering;
+
+    use super::health_pipe::{
+        note_log_event, note_response_flushed, IN_EVENTS, LAST_EVENT_TICK, OUT_EVENTS,
+    };
+
+    #[test]
+    fn counters_move_with_real_work() {
+        // Read-then-delta keeps the assertion order-independent; no other
+        // test in this binary touches these statics.
+        let in0 = IN_EVENTS.load(Ordering::Acquire);
+        let out0 = OUT_EVENTS.load(Ordering::Acquire);
+        note_log_event();
+        note_log_event();
+        note_response_flushed();
+        assert_eq!(IN_EVENTS.load(Ordering::Acquire), in0 + 2);
+        assert_eq!(OUT_EVENTS.load(Ordering::Acquire), out0 + 1);
+        assert!(LAST_EVENT_TICK.load(Ordering::Acquire) > 0);
+    }
 }
 
 // =====================================================================
@@ -1392,6 +1461,10 @@ fn main() {
             for line in &new_lines {
                 alert_feed.push_from_log(line);
                 mitigation_feed.add_from_log(line);
+                // DEADCODE-QUARANTINE: health counters track the tail — the
+                // displayed security events ARE the lines ingested here.
+                #[cfg(windows)]
+                health_pipe::note_log_event();
             }
         } else {
             tail = TailReader::new(&config.log_path);

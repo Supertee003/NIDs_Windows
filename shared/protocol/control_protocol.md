@@ -162,6 +162,18 @@ mutation/postcondition flags.
 Legacy aliases (accepted, same command): `status`, `health`, `health.check`,
 `version`.
 
+Honest-state notes (read before automating these):
+- `runtime.start` is an idempotent assertion against the serving owner; it
+  never creates a second worker set.
+- `runtime.stop` / `runtime.restart` are registered but answer
+  `NOT_IMPLEMENTED` / `UNAVAILABLE` until a daemon supervisor owns a
+  verified stop/join/start transaction. They never report a fabricated
+  success (DEADCODE-QUARANTINE decision, pinned in handler tests).
+- `incidents.show` requires `{"id": <u64>}` and returns that one incident,
+  looked up in the full tracker table (not the bounded list view); a miss
+  answers `INCIDENT_NOT_FOUND`. `incidents.list` remains the bounded
+  detail view (`incident_view_cap`).
+
 ## Retired names (v1-era, UNKNOWN_COMMAND on v2 daemons)
 
 These names appear in v1-era docs and the dead `tools/aegisctl/commands/`

@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-18T13:12:02.314117+00:00",
+  "generated_at": "2026-10-19T10:43:26.755267+00:00",
   "generator": "generate_truth_artifacts.py",
   "total_files": 1698,
   "by_role": {
     "documentation": 558,
     "build-config": 211,
-    "other": 21,
+    "other": 19,
     "source": 336,
     "lockfile": 6,
     "rust-build": 4,
-    "test-artifact": 199,
+    "test-artifact": 201,
     "config-data": 34,
     "architecture-decision": 10,
     "step-document": 2,
@@ -5003,10 +5003,6 @@
       "class": "canonical-source",
       "role": "production-source"
     },
-    "src/control/health/runtime_health.zig.scaffold": {
-      "class": "unclassified",
-      "role": "other"
-    },
     "src/control/protocol.zig": {
       "class": "canonical-source",
       "role": "production-source"
@@ -5731,10 +5727,6 @@
       "class": "canonical-source",
       "role": "production-source"
     },
-    "src/tests/integration/golden_path_ffi.zig.scaffold": {
-      "class": "unclassified",
-      "role": "other"
-    },
     "src/tests/integration/hids_integration.zig": {
       "class": "canonical-source",
       "role": "production-source"
@@ -6095,6 +6087,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/brain/test_cython_prefilter.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/brain/test_error_counter.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -6244,6 +6240,10 @@
       "role": "test-artifact"
     },
     "tests/cython/test_cython_profile.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/docs/test_stale_doc_sweep.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

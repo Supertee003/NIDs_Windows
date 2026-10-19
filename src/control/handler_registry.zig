@@ -830,8 +830,39 @@ const handlers = struct {
         return out.toOwnedSlice() catch null;
     }
 
-    fn incidentsShow(a: std.mem.Allocator, _: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
-        return incidentsList(a, std.json.Value{ .null = {} }, ctx);
+    fn incidentsShow(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        // DEADCODE-QUARANTINE: a real show-by-id. The old handler was an
+        // alias for incidents.list that silently dropped the payload — a
+        // client asking for one incident received every incident. Contract
+        // follows forensics.show: {"id": <u64>} is required, and the
+        // lookup scans the FULL tracker table (never the SNAPSHOT_CAP
+        // view) so a valid id outside the top-64 list is found, not
+        // misreported as missing.
+        const requested_id = payloadU64(payload, "id") orelse {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "id is required";
+            return null;
+        };
+        var row: tracker_mod.SnapshotRow = undefined;
+        if (!tracker_mod.snapshotIncidentById(requested_id, &row)) {
+            ctx.failure_code = "INCIDENT_NOT_FOUND";
+            ctx.failure_state = "NOT_FOUND";
+            ctx.failure_message = "no incident with the requested id";
+            return null;
+        }
+        return std.fmt.allocPrint(a, "{{\"id\":{},\"flow_id\":{},\"src_ip\":\"{}.{}.{}.{}\",\"severity\":\"{s}\",\"state\":\"{s}\",\"score\":{},\"evidence\":{}}}", .{
+            row.id,
+            row.flow_id,
+            (row.src_ip >> 24) & 0xFF,
+            (row.src_ip >> 16) & 0xFF,
+            (row.src_ip >> 8) & 0xFF,
+            row.src_ip & 0xFF,
+            severityName(row.severity),
+            incidentStateName(row.state),
+            row.score,
+            row.evidence_count,
+        }) catch null;
     }
 
     fn policyList(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
@@ -2717,4 +2748,88 @@ test "EVT-176 forensics.list rule filter attributes exact rule ids" {
     try std.testing.expect(std.mem.indexOf(u8, out, "\"record_seq\":2") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"record_seq\":1") == null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"records_returned\":2") != null);
+}
+
+test "DEADCODE-QUARANTINE: incidentsShow requires an id and answers NOT_FOUND honestly" {
+    // The old handler was an alias for incidents.list: the payload was
+    // silently dropped, so a client asking for one incident received
+    // every incident. Missing id must be rejected; a valid id with no
+    // incident state in this process must be a named miss, never a list.
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 41, .caller_role = .read, .caller_pid = 0 };
+    const none = handlers.incidentsShow(std.testing.allocator, std.json.Value{ .null = {} }, &ctx);
+    try std.testing.expect(none == null);
+    try std.testing.expectEqualStrings("INVALID_INPUT", ctx.failure_code.?);
+    try std.testing.expectEqualStrings("REJECTED", ctx.failure_state.?);
+
+    tracker_mod.g_live = null;
+    var obj = std.json.Value{ .object = std.json.ObjectMap.init(std.testing.allocator) };
+    defer obj.object.deinit();
+    try obj.object.put("id", .{ .integer = 7 });
+    const miss = handlers.incidentsShow(std.testing.allocator, obj, &ctx);
+    try std.testing.expect(miss == null);
+    try std.testing.expectEqualStrings("INCIDENT_NOT_FOUND", ctx.failure_code.?);
+    try std.testing.expectEqualStrings("NOT_FOUND", ctx.failure_state.?);
+}
+
+test "DEADCODE-QUARANTINE: incidentsShow returns exactly the requested incident" {
+    var tt = tracker_mod.ThreatTracker.init(std.testing.allocator);
+    defer tt.deinit();
+    tracker_mod.g_live = &tt;
+    defer tracker_mod.g_live = null;
+
+    var ev_a = event_contract.IpcEvent.init(.signature_match);
+    ev_a.flow_id = 11;
+    ev_a.timestamp_ns = 1000;
+    ev_a.event_id = 11;
+    ev_a.src_ip = 0x0A000001;
+    const inc_a = (try tt.observeFlowThreat(&ev_a, 100)).?;
+
+    var ev_b = event_contract.IpcEvent.init(.signature_match);
+    ev_b.flow_id = 12;
+    ev_b.timestamp_ns = 2000;
+    ev_b.event_id = 12;
+    ev_b.src_ip = 0xC0A87E14;
+    _ = try tt.observeFlowThreat(&ev_b, 300);
+
+    var obj = std.json.Value{ .object = std.json.ObjectMap.init(std.testing.allocator) };
+    defer obj.object.deinit();
+    try obj.object.put("id", .{ .integer = @intCast(inc_a.id) });
+
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 42, .caller_role = .read, .caller_pid = 0 };
+    const body = handlers.incidentsShow(std.testing.allocator, obj, &ctx) orelse return error.TestUnexpectedResult;
+    defer std.testing.allocator.free(body);
+
+    // One incident — not the list shape, not the sibling's data.
+    try std.testing.expect(std.mem.indexOf(u8, body, "\"incidents\"") == null);
+    try std.testing.expect(std.mem.indexOf(u8, body, "192.168.126.20") == null);
+    const parsed = try std.json.parseFromSlice(std.json.Value, std.testing.allocator, body, .{});
+    defer parsed.deinit();
+    const doc = parsed.value.object;
+    try std.testing.expectEqual(@as(i64, @intCast(inc_a.id)), doc.get("id").?.integer);
+    try std.testing.expectEqual(@as(i64, 11), doc.get("flow_id").?.integer);
+    try std.testing.expectEqualStrings("10.0.0.1", doc.get("src_ip").?.string);
+    try std.testing.expectEqual(@as(i64, 100), doc.get("score").?.integer);
+    try std.testing.expectEqualStrings("open", doc.get("state").?.string);
+}
+
+test "DEADCODE-QUARANTINE: runtime.stop refuses until a supervisor exists" {
+    // Decision pin (do not weaken): the control endpoint cannot claim
+    // STOPPED until a daemon supervisor has signalled, joined, and
+    // verified every worker. Until that owner exists, the only honest
+    // answer is NOT_IMPLEMENTED — never a fabricated success.
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 43, .caller_role = .privileged, .caller_pid = 0 };
+    const out = handlers.runtimeStop(std.testing.allocator, std.json.Value{ .null = {} }, &ctx);
+    try std.testing.expect(out == null);
+    try std.testing.expectEqualStrings("NOT_IMPLEMENTED", ctx.failure_code.?);
+    try std.testing.expectEqualStrings("UNAVAILABLE", ctx.failure_state.?);
+    try std.testing.expect(ctx.failure_message.?.len > 0);
+}
+
+test "DEADCODE-QUARANTINE: runtime.restart refuses until a supervisor exists" {
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 44, .caller_role = .privileged, .caller_pid = 0 };
+    const out = handlers.runtimeRestart(std.testing.allocator, std.json.Value{ .null = {} }, &ctx);
+    try std.testing.expect(out == null);
+    try std.testing.expectEqualStrings("NOT_IMPLEMENTED", ctx.failure_code.?);
+    try std.testing.expectEqualStrings("UNAVAILABLE", ctx.failure_state.?);
+    try std.testing.expect(ctx.failure_message.?.len > 0);
 }

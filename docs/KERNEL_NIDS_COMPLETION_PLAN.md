@@ -452,3 +452,51 @@ gate (ไม่แตะ) และ wire contract ไม่เปลี่ยน
   release-note text ที่แก้); truth.py verify TRUTH_VALID (restamp หลัง commit)
 - Hygiene: 9 pins ใหม่เป็น read-only guards (ห้ามเขียน tree); ไม่มี enforcement เปลี่ยน (production ยัง
   detection-only, blocks delta 0); EOL คงเดิมต่อไฟล์ (LF ยกเว้น CLI_COMMANDS.md / CONTRACT_MAP.json = CRLF)
+
+## 18. Slice DEADCODE-QUARANTINE: dead code ถูกกักกันอย่างมีกลไก + HEALTH counters บอกความจริง - IMPLEMENTED (E2)
+
+ฐาน HEAD ba7d926; patch เดียว (commit: DEADCODE-QUARANTINE) - ดู EVI entries "DEADCODE-QUARANTINE" + "CONTROL-HEALTH-HONESTY"
++ admin-evidence/deadcode-quarantine-20261019/
+
+- ปิด P2 จาก deep scan (35 ไฟล์แตะไม่ถึงจากทุก build root / 2 scaffolds superseded / incidents.show alias ทิ้ง payload /
+  bridge command fake-success / runtime.stop/restart ค้างตัดสินใจ / HEALTH counters ปลอม 0 สาม components) - detection-only
+  ทั้งหมด ไม่แตะ enforcement (blocks delta 0); agent non-elevated ทั้งรอบ
+- Closure pin (mechanized quarantine): tests/security/test_zig_test_scope.py เพิ่ม BUILD_ROOTS 6 ตัว (main/daemon/all_tests/
+  fuzz_entry/perf_bench_main/integration_test_main) + QUARANTINED_UNREACHABLE 35 ไฟล์ (7 non-test + 28 test-path) + assert
+  สองทิศ (registered ต้องยังตาย / ไฟล์ตายต้องถูก register = ห้าม rot เงียบ, ห้าม promote เงียบ); ตัดสินใจไม่ rename 35 ไฟล์
+  (จะพัง 6+ pins/manifest) - กลไกกักกันคือ registry นี้ + status headers; เติม status header 2 ไฟล์ที่ยังขาด
+  (capture/flow_types.zig, capture/npcap_test_live.zig; reliability.zig มี REL-SPEC-050 อยู่แล้ว)
+- ลบ 2 scaffolds (git rm): control/health/runtime_health.zig.scaffold (แทนด้วย state_machine+handler_registry) +
+  tests/integration/golden_path_ffi.zig.scaffold (แทนด้วย wire v2 tests); --refresh-digests drop entries ให้เอง
+  (610 artifacts kept, 11 digests updated, dropped 2, source_commit=ba7d926) - ไม่มี pin/manifest อ้างชื่อเดิมเหลือ
+- incidents.show = show-by-id จริง (เดิม alias ของ incidents.list ที่ทิ้ง payload -> client ขอ 1 ตัวได้ทั้งลิสต์):
+  ต้องมี {"id":<u64>} ไม่งั้น INVALID_INPUT/REJECTED; miss = INCIDENT_NOT_FOUND/NOT_FOUND; lookup ผ่าน
+  threat_tracker.snapshotIncidentById สแกนตารางเต็ม MAX_INCIDENTS=4096 ใต้ mutex (ไม่ใช้ view SNAPSHOT_CAP 64 -
+  id ที่ valid นอก top-64 ต้องเจอ); ไม่ wire CLI (zero callers; doc table ยังจริง); 6 zig tests ใหม่ (2 tracker + 4 handler)
+- bridge command exports fail-closed (production mock): aegis_bridge_send_command เดิมปริ้นต์ "Command sent: type=.."
+  + return 0 ทั้งที่ส่งจริงที่ไหนไม่ได้เลย -> -2 + stderr rejection note; receive_command -2 + note เช่นกัน; pin ใหม่
+  tests/security/test_forbidden_edges.py::test_bridge_command_transport_stays_fail_closed สแกนเฉพาะ code lines
+  (comments เล่าประวัติได้) เป็น sibling ของ block/unblock fail-closed pin
+- runtime.stop/restart = decision pin (ไม่ implement จนกว่าจะมี daemon supervisor ที่ signalled/joined/verified จริง;
+  สอดคล้อง tests/runtime/test_harness_scaffold.py ที่ NotImplementedError by design): เพิ่ม 2 zig tests ปักพฤติกรรม
+  NOT_IMPLEMENTED/UNAVAILABLE + honest-state notes 3 ข้อใน shared/protocol/control_protocol.md (runtime.start idempotent /
+  stop-restart refuse / incidents.show payload+miss semantics)
+- HEALTH counters บอกความจริง 3 components (เดิม hardcoded zeros -> supervisor แยกไม่ออกว่า loop ตายหรือไม่):
+  nose headlessTelemetry (in = samples ที่ consume, out = beacons ที่ emit หลัง print, last_event_ms = age ของ sample;
+  0 = none yet) ผ่าน buildHeadlessState (schema §4.1 เดิม); aggregator Collector atomics (ingested/parseErrors/
+  lastIngestMs) + Stats() เข้า handleHealth (out_events/dropped คง 0 พร้อม comment pull-only/no-drop-path);
+  mouth health_pipe (in = บรรทัด log ที่ tail, out = probe ที่ flush response, last_event_age_ms saturating 0="never");
+  probe ตั้งใจไม่แตะ tail timestamp เพื่อให้ tail ค้างมองเห็นได้; errors/dropped คง 0 พร้อม comment จุดที่ไม่มีทางเดิน
+- inventory.json + reference_map.json regenerated (ครั้งแรกนับจาก slice 1-3; snapshot catch-up: sizes/counts +
+  ลบ scaffolds + เพิ่มไฟล์เทสต์ของ slice ก่อน; ไม่มี freshness gate แต่เดินตาม rebaseline rule); เจอ ghost ระหว่าง regen:
+  nose/aegis-nose.exe~ (go build temp ค้างตั้งแต่ 2026-10-07; ลบไม่ได้ด้วย ACL/ล็อกของผู้ใช้ปัจจุบัน) -> ย้ายออกจาก tree
+  ไป admin-evidence (gitignored) แล้ว regen จน 0 ghosts
+- TDD: RED->GREEN ครบทุก workstream - bridge pin RED->GREEN; closure pin demo จับไฟล์ปลอมจริง (temp runner
+  src/zz_deadcode_focus_tmp.zig ถูกฟ้องเป็น unregistered dead code -> ลบ -> เขียว); zig focused RED compile
+  (undeclared snapshotIncidentById) + RED assertion (incidentsShow คืน list) -> GREEN 354/354; nose RED signature ->
+  GREEN; aggregator RED c.Stats -> GREEN; mouth RED unresolved helpers -> GREEN 13 passed
+- Gates: zig build rc=0; zig build test rc=0; go test+vet nose/aggregator rc=0; cargo test mouth 13 passed +
+  cargo build --release rc=0; full pytest CI scope 933 passed / 2 skipped / 27 subtests; EVI 2 entries (E2) +
+  summary E2 120->122, known_gaps 230; restamp 9 maps หลัง commit + truth.py verify TRUTH_VALID
+- Hygiene/พฤติกรรม: temp runner ไม่ค้างใน src/ (closure pin บังคับ); EOL เดิมต่อไฟล์ (LF ยกเว้น CLI_COMMANDS.md /
+  CONTRACT_MAP.json / plan = CRLF); ไม่มี enforcement เปลี่ยน; live daemon ยัง binary เก่า (redeploy ค้างตามเดิม)

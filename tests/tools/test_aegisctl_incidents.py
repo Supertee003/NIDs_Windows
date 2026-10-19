@@ -144,3 +144,15 @@ def test_zig_wiring_pins_snapshot_and_publication():
     assert "incident_view_cap" in handler
     assert "pub fn snapshotOpenIncidents" in tracker
     assert "g_live = &tt" in daemon
+
+
+def test_zig_wiring_pins_incidents_show_is_a_real_show():
+    # DEADCODE-QUARANTINE: `incidents.show` was a list alias that dropped
+    # its payload — a client asking for one incident silently received
+    # every incident. The show path must use the full-table by-id lookup
+    # (SNAPSHOT_CAP must NOT decide whether a valid id is found).
+    handler = HANDLER.read_text(encoding="utf-8")
+    tracker = TRACKER.read_text(encoding="utf-8")
+    assert "snapshotIncidentById" in handler
+    assert "pub fn snapshotIncidentById" in tracker
+    assert "INCIDENT_NOT_FOUND" in handler

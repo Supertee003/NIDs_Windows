@@ -34,6 +34,12 @@
 // Notes:
 //   - Windows: run as Administrator (Npcap admin-only mode restricts capture)
 //   - Capture is PASSIVE - nothing is transmitted by this tool
+//   - Status (DEADCODE-QUARANTINE 2026-10-19): operator verification tool,
+//     not compiled by any build step (zig build / CMake / go build ignore
+//     it; rebuild ad hoc per the command above). Registered unreachable in
+//     tests/security/test_zig_test_scope.py; the capture-surface allow-list
+//     in tests/host_telemetry/test_t10 keeps it out of the duplicate-path
+//     scan by name.
 
 const std = @import("std");
 const npcap = @import("npcap_capture.zig");

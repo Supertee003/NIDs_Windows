@@ -1,5 +1,5 @@
 {
- "head_sha": "67ff30efe77cecbf525062df092e339c98487f3e",
+ "head_sha": "ba7d926ffd30886a87e0885d0750592915ff9fc6",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-10-19",
  "generator_version": "3.0",
@@ -6220,12 +6220,38 @@
    "command": "python -m pytest tests/docs/test_stale_doc_sweep.py -q (RED 9 failed -> GREEN 9 passed); full pytest suite; zig build + full zig test battery; python tools/truth.py verify",
    "expected": "no doc claim contradicts source at HEAD: CLI list == parser (33 commands), WFP/PEP status == implemented reality, DEPLOYMENT == build_truth, runtime docs clean of removed axum/:8080, .analysis files banner-marked HISTORICAL, CONTRACT_MAP carries wire v2, release notes reference current paths",
    "actual": "all 9 pins green; docs re-verified item-by-item against source at 67ff30e; EVI v6 traceability gap closed (V6-FLOW-036, V6-DETECT-037 retroactive entries added)"
+  },
+  {
+   "id": "DEADCODE-QUARANTINE",
+   "title": "Dead-code quarantine mechanized: build-root import closure pin registers the 35 unreachable files both directions; 2 superseded scaffolds deleted (manifest refresh dropped exactly their entries); incidents.show became a real show-by-id (was a list alias that silently dropped its payload); bridge command exports fail closed (-2, fake 'command sent' success removed); runtime.stop/restart decision pinned honest NOT_IMPLEMENTED + protocol doc note",
+   "level": "E2",
+   "component": "repo-hygiene",
+   "flow_id": "FOR-004",
+   "head_sha": "ba7d926",
+   "timestamp": "2026-10-19",
+   "result": "PASS",
+   "command": "TDD RED->GREEN. pytest tests/security/test_forbidden_edges.py (bridge pin RED: fake-success body present -> GREEN after containment); closure pin tests/security/test_zig_test_scope.py (mutation demo: the focused-runner temp file src/zz_deadcode_focus_tmp.zig was caught as unregistered dead code, then removed -> green); focused zig runner (RED compile 'undeclared identifier snapshotIncidentById', then RED assertion 'incidentsShow returned the incidents list', GREEN 354/354); zig build rc=0; zig build test rc=0; python -m pytest tests/ -q --ignore=tests/test_e2e.py -> 933 passed / 2 skipped / 27 subtests; python tools/release_engineering.py --refresh-digests -> 610 artifacts kept, 11 digests updated, 2 scaffold entries dropped, source_commit=ba7d926; inventory.json + reference_map.json regenerated (0 ghost entries)",
+   "expected": "Every src/*.zig file is either reachable from the six build roots or registered in QUARANTINED_UNREACHABLE (registered files stay dead; nothing rots silently); the two .scaffold files are gone from tree, manifest and inventory; incidents.show with {\"id\":N} returns exactly incident N looked up in the full incident table or an honest INVALID_INPUT/INCIDENT_NOT_FOUND; aegis_bridge_send/receive_command return -2 and never print a success line; runtime.stop/restart answer NOT_IMPLEMENTED/UNAVAILABLE and the protocol doc says so; all suites green",
+   "actual": "All green: closure pin proves 244 reachable / 35 quarantined with both-direction assertions (and caught the planted temp file on first run); scaffolds deleted and the manifest refresh dropped exactly 2 entries (610/610 digests match); incidentsShow rewritten on payloadU64 + tracker.snapshotIncidentById under the table mutex (full 4096-row scan, never the 64-row list view) with 6 new in-file zig tests including the runtime.stop/restart refusal pins; bridge exports -2 with a stderr rejection note (pin scans code lines only, comments may narrate history); control_protocol.md honest-state notes added; inventory total_files 1698 with 0 ghost entries after relocating a stray 2026-10-07 go build temp (nose/aegis-nose.exe~) out of the tree"
+  },
+  {
+   "id": "CONTROL-HEALTH-HONESTY",
+   "title": "HEALTH counters tell the truth in three components: nose headless beacons count consumed collector samples and the real sample age (was hardcoded zeros); aggregator /api/health reports NDJSON lines parsed, parse failures and last-ingest age (was hardcoded zeros); mouth health pipe counts tailed log lines and flushed probe responses with a growing last-line age (was load-only, never written)",
+   "level": "E2",
+   "component": "nose+aggregator+mouth",
+   "flow_id": "CONTROL-001",
+   "head_sha": "ba7d926",
+   "timestamp": "2026-10-19",
+   "result": "PASS",
+   "command": "TDD RED->GREEN. nose: go test ./... (RED: undefined headlessTelemetry + signature mismatch -> GREEN ok 9.810s) + go vet clean; go/aggregator: go test ./... (RED: c.Stats undefined -> GREEN ok 0.937s) incl. TestHealthReportsCollectorStats and TestHealthReportsHonestZeroBeforeAnyIngest + go vet clean; mouth: cargo test --manifest-path mouth/Cargo.toml (RED: unresolved note_log_event / note_response_flushed / last_event_age_ms -> GREEN 13 passed incl. health_counter_tests::counters_move_with_real_work) + cargo build --release rc=0; full pytest 933 passed / 2 skipped / 27 subtests",
+   "expected": "A live component's counters move with its real work and a wedged loop is visible: nose in_events increments per consumed sample, last_event_ms is the age of the last sample (0 = honest never before any event); aggregator in_events = lines parsed, errors = parse failures, last_event_ms = age of the last successful ingest (0 before any); mouth in_events = tailed lines, out_events = flushed probe responses, last_event_ms grows when the tail loop stalls; the RUNTIME_CONTRACT §4.1 schema shape is unchanged",
+   "actual": "All green: nose headlessTelemetry wired through buildHeadlessState (schema keys unchanged; a beacon's payload carries the prior-beacon out count by design, documented); aggregator Collector gained atomic ingested/parseErrors/lastIngestMs + Stats() and handleHealth computes the age (out_events/dropped stay 0 with an explicit 'pull-only, no drop path' comment); mouth health_pipe gained note_log_event / note_response_flushed + a pure saturating last_event_age_ms (0 = never) wired into server_loop and the tail loop (probes deliberately do NOT refresh the tail timestamp, so a wedged tail stays visible); errors/dropped remain 0 with comments wherever no such path exists"
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 25,
-  "E2_count": 120,
+  "E2_count": 122,
   "E3_count": 10,
   "E4_count": 15,
   "E5_count": 88,

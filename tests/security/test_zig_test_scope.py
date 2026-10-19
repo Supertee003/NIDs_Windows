@@ -242,3 +242,124 @@ def test_cli_imports_is_wired_for_compile_coverage():
     assert "src/tests/cli_imports.zig" in _covered(), (
         "cli_imports.zig is not reachable: 16 CLI tools compile unchecked"
     )
+
+
+# ---------------------------------------------------------------------------
+# DEADCODE-QUARANTINE (2026-10-19): build-root import closure.
+#
+# Six files are the only entry points any build step compiles (zig build:
+# main.zig; zig build test: all_tests.zig; fuzz: fuzz_entry.zig; tool
+# binaries: perf_bench_main.zig + integration_test_main.zig; service:
+# daemon.zig). A src/*.zig file unreachable from ALL of them is dead code:
+# never compiled, never executed, its tests silent-dead (the SCOPE-101
+# failure class). The 35 files below were verified unreachable at ba7d926
+# (75 production / 244 all-roots / 35 dead; AEGIS-DEEP-SCAN-REPORT.md §3).
+#
+# This pin IS the quarantine mechanism:
+#   - a registered file must stay dead (wiring it into production or a
+#     test root is a conscious promotion — drop the entry in the same
+#     patch, updating OUT_OF_UNIT above when the file is test-bearing);
+#   - a dead file must be registered (nothing rots silently).
+# It cannot silently shrink or grow.
+# ---------------------------------------------------------------------------
+
+BUILD_ROOTS = frozenset({
+    "src/main.zig",
+    "src/daemon.zig",
+    "src/all_tests.zig",
+    "src/fuzz_entry.zig",
+    "src/perf_bench_main.zig",
+    "src/integration_test_main.zig",
+})
+
+QUARANTINED_UNREACHABLE = frozenset({
+    # Non-test modules with no importer anywhere (headers state their
+    # status; four protect reviewed design intent — see test_forbidden_edges).
+    "src/capture/flow_types.zig",
+    "src/capture/npcap_test_live.zig",
+    "src/federation/federation.zig",
+    "src/policy/dispatcher.zig",
+    "src/policy/dispatcher_phase_b.zig",
+    "src/reliability/lifecycle.zig",
+    "src/reliability/reliability.zig",
+    # Operator harnesses (core-tools step compiles only perf_bench and
+    # integration_test mains — these facades are wired nowhere).
+    "src/tests/integration/correlation_integration.zig",
+    "src/tests/integration/detection_integration.zig",
+    "src/tests/integration/fault_injection_integration.zig",
+    "src/tests/integration/flow_integration.zig",
+    "src/tests/integration/forensics_integration.zig",
+    "src/tests/integration/golden_path_e3.zig",
+    "src/tests/integration/hids_integration.zig",
+    "src/tests/integration/ips_canary_integration.zig",
+    "src/tests/integration/ips_simulation_integration.zig",
+    "src/tests/integration/nose_integration.zig",
+    "src/tests/integration/policy_integration.zig",
+    "src/tests/integration/policy_plane_integration.zig",
+    "src/tests/integration/rag_integration.zig",
+    "src/tests/integration/release_engineering_integration.zig",
+    "src/tests/integration/replay_integration.zig",
+    "src/tests/integration/threat_intel_integration.zig",
+    "src/tests/integration/xdr_harden_integration.zig",
+    # Proof CLIs (same standing as integration).
+    "src/tests/proofs/audit_trail_proof.zig",
+    "src/tests/proofs/correlation_proof.zig",
+    "src/tests/proofs/detection_fabric_proof.zig",
+    "src/tests/proofs/flow_state_proof.zig",
+    "src/tests/proofs/forensic_replay_proof.zig",
+    "src/tests/proofs/health_monitoring_proof.zig",
+    "src/tests/proofs/intelligence_proof.zig",
+    "src/tests/proofs/pep_enforcement_proof.zig",
+    "src/tests/proofs/policy_plane_proof.zig",
+    "src/tests/proofs/siem_integration_proof.zig",
+    "src/tests/proofs/telemetry_export_proof.zig",
+})
+
+
+def _all_src_zig_files() -> set[str]:
+    out: set[str] = set()
+    for p in (REPO_ROOT / "src").rglob("*.zig"):
+        if p.name.endswith(".scaffold"):
+            continue
+        out.add(str(p.relative_to(REPO_ROOT)).replace("\\", "/"))
+    return out
+
+
+def _root_closure() -> set[str]:
+    """Transitive @import closure of the six build roots."""
+    seen: set[str] = set()
+    queue = list(BUILD_ROOTS)
+    while queue:
+        rel = queue.pop()
+        if rel in seen:
+            continue
+        seen.add(rel)
+        for nxt in _imports_of(REPO_ROOT / rel):
+            if nxt not in seen:
+                queue.append(nxt)
+    return seen
+
+
+def test_build_root_closure_equals_the_quarantine_registry():
+    universe = _all_src_zig_files()
+    for root in BUILD_ROOTS:
+        assert (REPO_ROOT / root).is_file(), f"build root missing: {root}"
+
+    missing = sorted(QUARANTINED_UNREACHABLE - universe)
+    assert not missing, (
+        "quarantined files no longer exist — delete the registry entry "
+        f"together with the file: {missing}"
+    )
+
+    reachable = _root_closure()
+    promoted = sorted(QUARANTINED_UNREACHABLE & reachable)
+    assert not promoted, (
+        "quarantined files gained a build-root edge (silent revival) — "
+        f"drop the entry in the same patch as the wiring: {promoted}"
+    )
+
+    unregistered = sorted(universe - reachable - QUARANTINED_UNREACHABLE)
+    assert not unregistered, (
+        "src/*.zig files unreachable from every build root are unregistered "
+        f"dead code — wire them or register them here: {unregistered}"
+    )
