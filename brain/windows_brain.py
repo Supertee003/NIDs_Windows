@@ -169,12 +169,19 @@ BRAIN_AUTH_SECRET = _brain_secret()
 # ⚡ Import Cython Hotspots (Phase 19 GAP-1: Wire Phase 17 module)
 # Old: tried pyximport with broken brain/cython/aegis_hotspot.pyx (never compiled)
 # New: uses compiled aegis_brain_cython module (Phase 17)
+# BRAIN-FASTPATH-FIX: the Case-2 pre-filter detectors are imported here
+# too; identical pure-Python mirrors exist (fallback below + the bridge),
+# so the pre-filter block runs on every build, not only where the
+# accelerator module was compiled.
 try:
     from aegis_brain_cython.bridge import (
         scan_payload as cython_scan_payload,
         get_severity as cython_get_severity,
         compute_defcon as cython_compute_defcon,
         is_available as cython_is_available,
+        scan_nop_sled,
+        scan_shellcode_markers,
+        detect_repeated_byte,
     )
     CYTHON_AVAILABLE = cython_is_available()
     if CYTHON_AVAILABLE:
@@ -196,6 +203,68 @@ except ImportError as e:
         if m >= 10: return 3
         if m >= 1: return 4
         return 5
+
+    # BRAIN-FASTPATH-FIX: Case-2 pre-filter mirrors. Behaviorally identical
+    # to aegis_brain_cython/bridge.py and to the retired
+    # aegis_hotspot.pyx hotspots (longest NOP run / marker list / longest
+    # repeated-byte run) -- keep the mirrors in sync.
+    def scan_nop_sled(payload, min_seq=50):
+        best = 0
+        best_offset = 0
+        run = 0
+        start = 0
+        for i, byte in enumerate(payload):
+            if byte == 0x90:
+                if run == 0:
+                    start = i
+                run += 1
+                if run > best:
+                    best = run
+                    best_offset = start
+            else:
+                run = 0
+        return (best >= min_seq, best, best_offset)
+
+    def scan_shellcode_markers(payload):
+        results = []
+        if len(payload) < 4:
+            return results
+        i = payload.find(b"\x0c\x0c\x0c\x0c")
+        if i != -1:
+            results.append(("heap_spray_0c", i))
+        if len(payload) >= 8:
+            i = payload.find(b"meterpre")
+            if i != -1:
+                results.append(("meterpreter", i))
+        i = payload.find(b"\xcc" * 8)
+        if i != -1:
+            results.append(("int3_padding", i))
+        return results
+
+    def detect_repeated_byte(payload, min_run=200):
+        if len(payload) < min_run:
+            return (False, 0, 0, 0)
+        run_byte = payload[0]
+        run_len = 1
+        start = 0
+        best = 0
+        best_byte = 0
+        best_offset = 0
+        for i in range(1, len(payload)):
+            byte = payload[i]
+            if byte == run_byte:
+                run_len += 1
+                if run_len > best:
+                    best = run_len
+                    best_byte = run_byte
+                    best_offset = start
+            else:
+                run_byte = byte
+                run_len = 1
+                start = i
+        if best >= min_run:
+            return (True, best_byte, best, best_offset)
+        return (False, 0, 0, 0)
 
 LOG_FILE = "logs/anomalous.json"
 RULES_FILE = os.path.join(os.path.dirname(__file__), "..", "configs", "Rules.json")
@@ -887,38 +956,40 @@ def main():
             payload = log_entry.get("raw_payload", raw_payload)
             payload_bytes = payload.encode("utf-8", errors="ignore")
 
-            # --- ⚡ Cython Fast-Path Pre-filter (C-Speed) ---
+            # --- Case-2 fast-path pre-filter (BRAIN-FASTPATH-FIX: runs on
+            # every build; accelerated bindings bind above, pure-Python
+            # mirrors live in the import fallback, so detection never
+            # depends on whether the accelerator module was compiled) ---
             cython_matched = False
-            if CYTHON_AVAILABLE:
-                # 1. Check for NOP Sled
-                found, count, offset = scan_nop_sled(payload_bytes, 50)
-                if found:
-                    match_name = f"NOP Sled Detected (len={count})"
+            # 1. Check for NOP Sled
+            found, count, offset = scan_nop_sled(payload_bytes, 50)
+            if found:
+                match_name = f"NOP Sled Detected (len={count})"
+                match_policy = "BLOCK"
+                match_rule_id = "CYTHON-001"
+                match_severity = 3  # Critical
+                cython_matched = True
+
+            # 2. Check for Shellcode Markers
+            if not cython_matched:
+                markers = scan_shellcode_markers(payload_bytes)
+                if markers:
+                    marker_names = ", ".join([m[0] for m in markers])
+                    match_name = f"Shellcode Markers: {marker_names}"
                     match_policy = "BLOCK"
-                    match_rule_id = "CYTHON-001"
+                    match_rule_id = "CYTHON-002"
                     match_severity = 3  # Critical
                     cython_matched = True
-                
-                # 2. Check for Shellcode Markers
-                if not cython_matched:
-                    markers = scan_shellcode_markers(payload_bytes)
-                    if markers:
-                        marker_names = ", ".join([m[0] for m in markers])
-                        match_name = f"Shellcode Markers: {marker_names}"
-                        match_policy = "BLOCK"
-                        match_rule_id = "CYTHON-002"
-                        match_severity = 3  # Critical
-                        cython_matched = True
-                
-                # 3. Check for Heap Spray
-                if not cython_matched:
-                    found, byte_val, run_length, offset = detect_repeated_byte(payload_bytes, 200)
-                    if found:
-                        match_name = f"Heap Spray Detected (byte={hex(byte_val)}, len={run_length})"
-                        match_policy = "BLOCK"
-                        match_rule_id = "CYTHON-003"
-                        match_severity = 3  # Critical
-                        cython_matched = True
+
+            # 3. Check for Heap Spray
+            if not cython_matched:
+                found, byte_val, run_length, offset = detect_repeated_byte(payload_bytes, 200)
+                if found:
+                    match_name = f"Heap Spray Detected (byte={hex(byte_val)}, len={run_length})"
+                    match_policy = "BLOCK"
+                    match_rule_id = "CYTHON-003"
+                    match_severity = 3  # Critical
+                    cython_matched = True
 
             if cython_matched:
                 print(f"{UI.DANGER}[CYTHON MATCH]{UI.RESET} {ts} | Threat: {match_name} | Policy: {match_policy} | Src: {src_ip}")

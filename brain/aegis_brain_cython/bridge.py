@@ -81,6 +81,80 @@ def _python_payload_too_large(payload: bytes, max_size: int) -> bool:
     return len(payload) > max_size
 
 
+# BRAIN-FASTPATH-FIX: Case-2 pre-filter detectors. Semantics mirror the
+# retired brain/cython/aegis_hotspot.pyx hotspots 2 and 5 exactly
+# (longest-run NOP sled, marker list, longest repeated-byte run); the
+# windows_brain.py import fallback carries identical mirrors for hosts
+# where this package is not importable. A C accelerator for these three
+# is a follow-up for fast_scan.pyx -- behavior must not change when it
+# lands.
+
+def _python_scan_nop_sled(payload: bytes, min_seq: int = 50):
+    """Pure Python fallback: longest 0x90 run. Returns (found, run_len, offset)."""
+    best = 0
+    best_offset = 0
+    run = 0
+    start = 0
+    for i, byte in enumerate(payload):
+        if byte == 0x90:
+            if run == 0:
+                start = i
+            run += 1
+            if run > best:
+                best = run
+                best_offset = start
+        else:
+            run = 0
+    return (best >= min_seq, best, best_offset)
+
+
+def _python_scan_shellcode_markers(payload: bytes):
+    """Pure Python fallback: [(marker_name, offset)] for known markers."""
+    results = []
+    if len(payload) < 4:
+        return results
+    i = payload.find(b"\x0c\x0c\x0c\x0c")
+    if i != -1:
+        results.append(("heap_spray_0c", i))
+    if len(payload) >= 8:
+        i = payload.find(b"meterpre")
+        if i != -1:
+            results.append(("meterpreter", i))
+    i = payload.find(b"\xcc" * 8)
+    if i != -1:
+        results.append(("int3_padding", i))
+    return results
+
+
+def _python_detect_repeated_byte(payload: bytes, min_run: int = 200):
+    """Pure Python fallback: longest identical-byte run >= min_run.
+
+    Returns (found, byte_value, run_length, offset)."""
+    if len(payload) < min_run:
+        return (False, 0, 0, 0)
+    run_byte = payload[0]
+    run_len = 1
+    start = 0
+    best = 0
+    best_byte = 0
+    best_offset = 0
+    for i in range(1, len(payload)):
+        byte = payload[i]
+        if byte == run_byte:
+            run_len += 1
+            if run_len > best:
+                best = run_len
+                best_byte = run_byte
+                best_offset = start
+        else:
+            run_byte = byte
+            run_len = 1
+            start = i
+    if best >= min_run:
+        return (True, best_byte, best, best_offset)
+    return (False, 0, 0, 0)
+
+
 # ============================================================
 # Public API (uses Cython if available, else Python)
 # ============================================================
@@ -126,6 +200,26 @@ def check_payload_size(payload: bytes, max_size: int) -> bool:
     if CYTHON_AVAILABLE:
         return payload_too_large(payload, max_size)
     return _python_payload_too_large(payload, max_size)
+
+
+# --- BRAIN-FASTPATH-FIX: Case-2 fast-path pre-filter detectors ---------
+# Consumed by brain/windows_brain.py's Case-2 block. Return shapes are
+# load-bearing: (found, run_len, offset) / [(name, offset)] /
+# (found, byte, run_len, offset).
+
+def scan_nop_sled(payload: bytes, min_seq: int = 50):
+    """Longest 0x90 run: (found >= min_seq, run_length, run_offset)."""
+    return _python_scan_nop_sled(payload, min_seq)
+
+
+def scan_shellcode_markers(payload: bytes):
+    """Known shellcode markers: [(marker_name, offset), ...], in detection order."""
+    return _python_scan_shellcode_markers(payload)
+
+
+def detect_repeated_byte(payload: bytes, min_run: int = 200):
+    """Longest identical-byte run: (found >= min_run, byte, run_length, offset)."""
+    return _python_detect_repeated_byte(payload, min_run)
 
 
 def is_available() -> bool:

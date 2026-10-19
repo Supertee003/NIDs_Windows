@@ -1,5 +1,5 @@
 {
- "head_sha": "6488fcdc89347c45395c0ae6155bbb350ec3d1c7",
+ "head_sha": "dba2d75bcd5152ccf8193d6f5e3e54449fa07d68",
  "created_at": "2026-09-24",
  "generator_version": "3.0",
  "evidence_levels": {
@@ -6150,6 +6150,23 @@
    "description": "Pre-lab validation for the pending G2 session (docs+evidence only; no code change). Same commit ships the RB-012/013 elevation notes.",
    "tests": "live raw-envelope probes (4); source role-table cross-check",
    "files_changed": "docs/runbooks/RB-012-wfp-block-lab-proof.md, docs/runbooks/RB-013-quarantine-lab-proof.md, docs/KERNEL_NIDS_COMPLETION_PLAN.md, EVIDENCE_INDEX.json"
+  },
+  {
+   "id": "BRAIN-FASTPATH-FIX",
+   "title": "Tier-2 Case-2 pre-filter restored: scan_nop_sled / scan_shellcode_markers / detect_repeated_byte now exist (aegis_brain_cython.bridge + pure-Python mirrors) - previously every forwarded event NameError'd and the regex scan was skipped whenever the accelerator was compiled",
+   "level": "E4",
+   "component": "brain",
+   "flow_id": "BRAIN-001",
+   "head_sha": "dba2d75",
+   "timestamp": "2026-10-19",
+   "result": "PASS",
+   "command": "python -m pytest tests/brain/test_cython_prefilter.py -q (RED: 6 unit AttributeError + behavioral failure showing \"[ERROR] name 'scan_nop_sled' is not defined\" from the real brain process; then GREEN: 7 passed); python -m pytest tests/brain -q (50 passed)",
+   "expected": "A Case-2 (\"Forwarded: No Tier-1 Match\") datagram whose payload trips detect_repeated_byte (250 identical bytes >= 200) produces a [CYTHON MATCH] line, rule CYTHON-003, an anomalous.json record, and no NameError - on every build (accelerator compiled or not).",
+   "actual": "GREEN as expected: subprocess brain (isolated port, scrubbed secret, tmp cwd, -u) detected CYTHON-003 'Heap Spray Detected (byte=0x41, len=250)' in stdout and tmp logs/anomalous.json; the old failure signature is absent. Unit pins: longest-run NOP sled + boundary 50; marker order heap_spray_0c/meterpreter/int3_padding with offsets; repeated-byte boundary 200; empty/short payloads -> (False,0,0[,0]).",
+   "finding": "brain/windows_brain.py's 'Cython Fast-Path Pre-filter' block called scan_nop_sled / scan_shellcode_markers / detect_repeated_byte that were defined nowhere: the defining aegis_hotspot.pyx was retired and aegis_brain_cython exported a different API. With the compiled accelerator present (production host ships fast_scan.cp314-win_amd64.pyd) every forwarded event raised NameError inside the main loop, the generic handler counted an [ERROR], and run_regex_scan was skipped for that event - Tier-2 blind on exactly the forwarded events this path exists for; with the module absent the block was skipped entirely, so the intended detection never ran anywhere.",
+   "description": "Fix: the three detectors live in aegis_brain_cython.bridge (pure Python; C acceleration is a fast_scan.pyx follow-up) with behaviorally identical mirrors in the windows_brain.py import fallback, and the pre-filter block no longer sits behind `if CYTHON_AVAILABLE` so detection never depends on whether the optional accelerator was compiled (build/runtime parity). Return shapes match the call sites and replicate the retired pyx hotspot semantics: (found, run_len, offset) / [(name, offset)] / (found, byte, run_len, offset).",
+   "tests": "tests/brain/test_cython_prefilter.py (new, 7: 6 x E2 unit semantics + 1 x E4-local loopback brain subprocess asserting stdout [CYTHON MATCH]/CYTHON-003 and tmp logs/anomalous.json)",
+   "files_changed": "brain/windows_brain.py, brain/aegis_brain_cython/bridge.py, tests/brain/test_cython_prefilter.py, EVIDENCE_INDEX.json, docs/KERNEL_NIDS_COMPLETION_PLAN.md"
   }
  ],
  "evidence_level_summary": {
@@ -6157,7 +6174,7 @@
   "E1_count": 24,
   "E2_count": 117,
   "E3_count": 10,
-  "E4_count": 14,
+  "E4_count": 15,
   "E5_count": 88,
   "E6_count": 0,
   "E7_count": 1

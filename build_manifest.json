@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "6488fcd",
+  "source_commit": "dba2d75",
   "build_date": "2026-10-13T01:11:10.065507+00:00",
   "build_host": "windows",
   "platform": {
@@ -258,8 +258,8 @@
     },
     {
       "path": "brain/aegis_brain_cython/bridge.py",
-      "size": 5081,
-      "sha256": "82d373e112762d0b3602f19d26f6a9849dc05de7613665d417c8b912aa31d4e0",
+      "size": 8189,
+      "sha256": "1805379cc88dd07682b97737df204dbc93e9877d1779cadf9a47acff96b298e8",
       "language": "python/cython"
     },
     {
@@ -498,8 +498,8 @@
     },
     {
       "path": "brain/windows_brain.py",
-      "size": 46220,
-      "sha256": "233fe7afe779a26128825557ab329c174b42152e749b83ba9470fb750a94de84",
+      "size": 48608,
+      "sha256": "f7098d25965aa24aa11702e58b4a92929d57d55d976dc2a90e555cf2907405b9",
       "language": "python/cython"
     },
     {
@@ -1039,7 +1039,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18564,
-      "sha256": "cb7ee5ac5dcc416324d0c449b295dd9f55a1c35ab0dd7f3d4c6a4aea0f77d12f",
+      "sha256": "6f433efca23bc0bb924e7c0771c51faa19998fe9d25f7eca5fd55778afe1ddc1",
       "language": "json"
     },
     {

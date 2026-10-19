@@ -356,3 +356,23 @@ gate (ไม่แตะ) และ wire contract ไม่เปลี่ยน
 - post-commit artifact rehearsal (E1, commit SLICE-C-LAB-ART): binary default ไม่มี literal เฉพาะของ gate opener แม้แต่ตัวเดียว (comptime flag ตัดโค้ดทั้งชุด) ขณะที่ lab build มีครบ; runtime strings อยู่ทั้งสอง build; live ยืนยันยังรัน binary เก่า (ไม่มี gate_source) - ไม่มี deploy ในสไลซ์นี้
 - runbook precision สำหรับ E5: RB-012 step 1 require เพิ่ม gate_source:"lab-build-optin"; RB-013 ระบุ closed-gate answer ที่ reason เริ่ม prevention_gate_closed; operator tool post-redeploy-gate-check.py เพิ่มใน kit
 - runbook precision 2 - elevation: ขั้นที่ mutate (RB-012: two-person/approve/block/rollback; RB-013: approve/quarantine/unblock) เป็น privileged-only (pipe role = client token elevation) จึงต้องรันจาก elevated shell; พิสูจน์กับ live แล้วแบบ deny-only (unelevated block/two_person -> AUTH_DENIED ก่อนถึง handler; verify=operate ผ่าน; kit: raw-role-probe.txt) - RB-012/RB-013/checklist ระบุครบ
+## 15. Slice BRAIN-FASTPATH-FIX: คืนชีพ Tier-2 Case-2 pre-filter - IMPLEMENTED (E2/E4-local)
+
+ฐาน HEAD dba2d75; patch เดียว (commit: BRAIN-FASTPATH-FIX) - ดู EVI entry "BRAIN-FASTPATH-FIX" + รายงาน deep scan ใน admin-evidence/deep-scan-20261019/
+
+- ปิด P0 จาก deep scan: บล็อก "Cython Fast-Path Pre-filter" ของ brain/windows_brain.py เรียก scan_nop_sled /
+  scan_shellcode_markers / detect_repeated_byte ที่ไม่ถูกนิยามที่ไหนเลย (aegis_hotspot.pyx เดิม retired,
+  API แทนคือ aegis_brain_cython) => บนโฮสต์ที่มี accelerator compile อยู่ (production มี fast_scan.pyd)
+  ทุก event Case-2 ("Forwarded: No Tier-1 Match") โยน NameError เข้า generic handler -> นับ [ERROR]
+  และข้าม run_regex_scan ของ event นั้น => Tier-2 ตาบอดกับ event ที่ส่งต่อมา;
+  บนโฮสต์ที่ไม่มี module บล็อกถูกข้าม => detection นี้ไม่เคยทำงานที่ไหนเลย
+- แก้: 3 detectors ย้ายมาอยู่ที่ aegis_brain_cython.bridge เป็น pure Python (C acceleration เป็น follow-up
+  ของ fast_scan.pyx) + mirrors ที่ import fallback ของ windows_brain.py + ปลด gate `if CYTHON_AVAILABLE`
+  ของบล็อก pre-filter: detection ต้องไม่ขึ้นกับสถานะ compile ของ accelerator (build/runtime parity);
+  return shapes ตรง call sites เดิม ((found,run,offset) / [(name,offset)] / (found,byte,run,offset)) และ semantics ตรง pyx เดิม
+- TDD: RED = unit 6 fail (AttributeError) + behavioral fail โดยเห็น `[ERROR] name 'scan_nop_sled' is not defined`
+  จาก brain process จริง -> GREEN = 7 passed (tests/brain/test_cython_prefilter.py ใหม่: 6 unit + 1 subprocess loopback
+  พายโลด 250 ไบต์ชนะ CYTHON-003 ตรวจทั้ง stdout และ tmp logs/anomalous.json); tests/brain ทั้งหมด 50 passed
+- Hygiene: เทสต์เขียน logs/anomalous.json ลง cwd ชั่วคราว (tmp_path) ไม่แตะ tree; spawn child ด้วย -u ให้เห็น match print ขณะรัน
+- พฤติกรรมหลังแก้: pre-filter รันทุก build (accelerator = ความเร็วเท่านั้น), regex scan ไม่ถูกข้าม, ไม่มี enforcement ใหม่
+- ยังเปิด: C acceleration ของ 3 detectors (ถ้าต้องการ perf), prod redeploy daemon (ค้างเดิมจาก V6-QUEUE-DROP), G2 lab (operator)
