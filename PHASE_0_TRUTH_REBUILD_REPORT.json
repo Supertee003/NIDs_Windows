@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-10-19T12:34:57.975614+00:00",
-  "head": "557b4cef00cf5a17d73afab35b5db3b073ec3059",
+  "generated_at": "2026-10-19T13:16:35.739202+00:00",
+  "head": "dcb22a5a5b5a6f01f4b4106e3248e7f7b3df94b2",
   "steps": [
     {
       "label": "inventory/reference",
@@ -30,7 +30,7 @@
         "verify"
       ],
       "returncode": 0,
-      "stdout": "HEAD: 557b4cef00cf5a17d73afab35b5db3b073ec3059\n------------------------------------------------------------------------\n  SYSTEM_MAP.json              head_sha       PASS\n  FLOW_MAP.json                head_sha       PASS\n  AUTHORITY_MAP.json           head_sha       PASS\n  CONTRACT_MAP.json            head_sha       PASS\n  EVIDENCE_INDEX.json          head_sha       PASS\n  build_truth.json             head_sha       PASS\n  runtime_manifest.json        head_sha       PASS\n  build_manifest.json          source_commit  PASS\n  AI_CONTEXT.md                markdown_head  PASS\n  inventory.json               none           PASS (no SHA expected)\n  reference_map.json           none           PASS (no SHA expected)\n------------------------------------------------------------------------\nTRUTH_VALID — all artifacts carry current HEAD\n",
+      "stdout": "HEAD: dcb22a5a5b5a6f01f4b4106e3248e7f7b3df94b2\n------------------------------------------------------------------------\n  SYSTEM_MAP.json              head_sha       PASS\n  FLOW_MAP.json                head_sha       PASS\n  AUTHORITY_MAP.json           head_sha       PASS\n  CONTRACT_MAP.json            head_sha       PASS\n  EVIDENCE_INDEX.json          head_sha       PASS\n  build_truth.json             head_sha       PASS\n  runtime_manifest.json        head_sha       PASS\n  build_manifest.json          source_commit  PASS\n  AI_CONTEXT.md                markdown_head  PASS\n  inventory.json               none           PASS (no SHA expected)\n  reference_map.json           none           PASS (no SHA expected)\n------------------------------------------------------------------------\nTRUTH_VALID — all artifacts carry current HEAD\n",
       "stderr": ""
     }
   ],

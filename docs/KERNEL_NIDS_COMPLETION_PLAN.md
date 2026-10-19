@@ -655,3 +655,26 @@ gate (ไม่แตะ) และ wire contract ไม่เปลี่ยน
   valid; ไม่มี unresolved)
 - Hygiene: ไม่แตะ enforcement (blocks delta 0); agent non-elevated ทั้งรอบ; ไม่ push; digest
   order = truth rebuild ก่อน refresh (runtime_manifest เป็น artifact)
+
+## 23. Operator cutover: redeploy daemon dcb22a5 ขึ้น production สำเร็จ (2026-10-19 20:07) - EXECUTED (E5)
+
+- operator (elevated) รัน Block A/B จาก `admin-evidence/operator-queue-20261019/`: staged `f223dcce…`
+  hash-check ผ่าน -> backup live เป็น `.pre-dcb22a5` (`7cf8999a…`) -> Stop/swap/Start -> re-hash ตรง ->
+  service RUNNING (Manual); Block B (non-elevated) เก็บ `after-*.txt` ครบ
+- ก่อน cutover: gate-check FAIL (`no gate_source field: the OLD binary is still running`)
+  แต่ v6 verify PASS อยู่แล้ว (306 submitted / 306 read)
+- หลัง cutover: gate-check PASS `VERDICT: PASS - post-SLICE-C-LAB binary live; gate hard-closed; detection-only`
+  (`gate_source:"closed"`, `prevention_gate:"closed"`, `host_effect_capable:false`); v6 live verify PASS
+  (delta 476 submitted / 476 read / 0 dropped — counters รีเซ็ตที่ daemon restart ตามดีไซน์)
+- status: RUNNING 7/7 subsystems, v5.0.0, PID 13796 (start 20:07:00); health: rules 23 / policies 6 /
+  defcon HIGH(3) / nose_connected true / endpoint ownership CLEAR; nose PID 21568 (10/15) รอดจาก
+  restart + reconnect เอง (frames ไหลเข้า daemon ใหม่)
+- deltas ที่ยังไม่ active (optional): BRAIN-FASTPATH-FIX (brain PID 8944, 10/15 -> RB-017),
+  nose/aggregator health-honesty counters (restart รอบถัดไป) — §6 ของ README ใน package
+- rollback: `runtime\aegis_nids.exe.pre-dcb22a5` + `rollback\` ใน package (`7cf8999a…`) — ยังไม่ถูกใช้
+- records: EVI `CUTOVER-DCB22A5` (E5) + entry UPDATEs (V6-QUEUE-DROP / SLICE-C-LAB / SLICE-C-LAB-ART)
+  + postscripts ใน closeout ทุกไฟล์ที่ค้าง "redeploy pending" (supersede ครบ)
+- hygiene: detection-only ตลอด (blocks delta 0); ไม่มี enforcement เปิด; agent non-elevated ทั้งรอบ; ไม่ push
+- คิว operator คงเหลือ: G2 lab campaign (RB-012 -> RB-013; checklist @ `dcb22a5` — บันทึก SHA จริง),
+  DEPLOY-120 installer host drill, RB-014/015/018/021, RB-016/017, G4 signing, external review, CI decision
+

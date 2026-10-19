@@ -1,10 +1,10 @@
 {
   "runtime_version": "5.0.0",
-  "head_sha": "557b4cef00cf5a17d73afab35b5db3b073ec3059",
+  "head_sha": "dcb22a5a5b5a6f01f4b4106e3248e7f7b3df94b2",
   "entrypoint": "src/main.zig",
   "production_binary": "zig-out/bin/aegis_nids.exe",
-  "source_commit": "557b4ce",
-  "date": "2026-10-19T12:34:57.774997+00:00",
+  "source_commit": "dcb22a5",
+  "date": "2026-10-19T13:16:35.563707+00:00",
   "production_modules": 3,
   "modules": {
     "nose/capture.go": {

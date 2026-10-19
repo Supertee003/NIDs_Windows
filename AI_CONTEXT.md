@@ -4,7 +4,7 @@
 
 
 
-**HEAD:** `557b4cef00cf5a17d73afab35b5db3b073ec3059` (working tree has uncommitted changes)
+**HEAD:** `dcb22a5a5b5a6f01f4b4106e3248e7f7b3df94b2` (working tree has uncommitted changes)
 
 **BRANCH:** `main`
 
@@ -344,6 +344,15 @@ Previous phases:
   decoder parity, fail-closed test truth, bridge exports, brain suite, TS path
   refs, golden 10/10, e2e 38/0, live CLI proof, rule fixtures 22/22.
   Evidence: EVIDENCE_INDEX.json VOL01–VOL11 entries (49 total).
+
+- Kernel-level NIDS detection loop (2026-10-18/19): IMPLEMENTED + LIVE — V6-QUEUE-DROP,
+  SLICE-C-LAB (+ artifact rehearsal), BRAIN-FASTPATH-FIX, POLICY-EVAL-FULL, STALE-DOC-SWEEP,
+  DEADCODE-QUARANTINE, CI-GAPS, RELEASE-TOOLING, LEFTOVER-SWEEP, REL-CLOSURE; operator
+  cutover 2026-10-19 20:07 deployed daemon `dcb22a5` (sha256 `f223dcce…`) — live gate
+  hard-closed (gate_source 'closed', detection-only), gate-check + v6 live verify PASS.
+  Remaining queue: G2 lab campaign (RB-012→013), DEPLOY-120 drill, RB-014/015/018/021,
+  RB-016/017, G4 signing, external review, CI push decision.
+  Evidence: EVI CUTOVER-DCB22A5 (E5) + entries V6-QUEUE-DROP..REL-CLOSURE.
 
 
 

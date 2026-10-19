@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-19T12:34:57.660472+00:00",
+  "generated_at": "2026-10-19T13:16:35.454402+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1697,
@@ -1950,7 +1950,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 17856
+      "size": 18539
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -3978,7 +3978,7 @@
       "path": "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 70674
+      "size": 76455
     },
     {
       "path": "docs/MASTER_TARGET_ALIGNMENT_2026-09-14.md",
@@ -4662,7 +4662,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 574237
+      "size": 584444
     },
     {
       "path": "fix_bridge_banner.py",
@@ -5046,7 +5046,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 5710
+      "size": 5715
     },
     {
       "path": "README.md",
