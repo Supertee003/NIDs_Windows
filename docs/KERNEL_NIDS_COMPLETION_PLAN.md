@@ -500,3 +500,45 @@ gate (ไม่แตะ) และ wire contract ไม่เปลี่ยน
   summary E2 120->122, known_gaps 230; restamp 9 maps หลัง commit + truth.py verify TRUTH_VALID
 - Hygiene/พฤติกรรม: temp runner ไม่ค้างใน src/ (closure pin บังคับ); EOL เดิมต่อไฟล์ (LF ยกเว้น CLI_COMMANDS.md /
   CONTRACT_MAP.json / plan = CRLF); ไม่มี enforcement เปลี่ยน; live daemon ยัง binary เก่า (redeploy ค้างตามเดิม)
+
+## 19. Slice CI-GAPS: ปิดช่องว่าง CI จาก deep scan §9 - IMPLEMENTED (E2)
+
+ฐาน HEAD a38f414; patch เดียว (commit: CI-GAPS) - ดู EVI entries "CI-GAPS" + "CI-AGGREGATOR-HTTP"
++ admin-evidence/ci-gaps-20261019/
+
+- ปิด §9 gaps ทั้งหมด: brain/test_*.py ไม่เคยรันใน CI / aegis_brain_cython (accelerator ที่ production ship
+  เป็น fast_scan.cp3xx-win_amd64.pyd) ไม่ถูก build+test / mouth + aegis_dashboard ไม่มี gate / drivers ไม่มี job /
+  e2e ถูก ignore / aggregator HTTP แทบไม่มีเทสต์ / trivy non-blocking ยังไม่ถูกทบทวน; detection-only ไม่แตะ
+  enforcement (blocks delta 0); agent non-elevated
+- ci.yml jobs ใหม่: brain-tests (CANONICAL required: python -m pytest brain/ -q, py3.11 + requirements)
+  + cython-build-test (CANONICAL required: build brain/aegis_brain_cython + test_fast_scan + Case-2 pre-filter pin
+  ใน accelerated config) -> เพิ่มเข้า ci-matrix needs ทั้งคู่ เพื่อให้ check_results fail pipeline ได้จริง;
+  mouth-build-test + dashboard-build-test (SUPPORT: cargo test + cargo build --release ตาม manifest จริง);
+  drivers-wdk-build (manual-only workflow_dispatch ผ่าน scripts/build_drivers.bat จนกว่าจะเห็น hosted run เขียวก่อน
+  ค่อย promote เป็น PR gate); trivy comment เพิ่มผล review (คง non-blocking เพราะยังไม่มี triage SLA)
+- ci_coverage.json: cython-scan = required:true + note ใหม่ (เดิม note อ้าง "built inside python-tests" ซึ่งจริงเฉพาะ
+  brain/cython T5b ไม่ใช่ accelerator); shield = job "shield-build" จริง (required:false เพราะ runtime โหลดแบบ
+  fail-safe: ไม่มี DLL/symbol = verdict unknown พฤติกรรมเดิมทุกบิต ตาม src/policy/shield_screen.zig ไม่ใช่
+  fail-closed); entries ใหม่ brain/mouth/aegis-dashboard/drivers/e2e (e2e = documented decision: legacy harness
+  อ้าง bridge/aegis_bridge.exe ที่ canonical build ไม่ผลิต -> job จะได้แค่ skip เงียบ = green wash; canonical
+  integration coverage = zig build test + tests/runtime phase-t + python-tests + brain-tests)
+- pins: tests/release/test_ci_gates.py +6 (job contents ของ brain/cython/operator tools, drivers manual-only,
+  required ทุกตัวต้องถึง needs ของ gate, coverage entries ต้องชี้ job จริงหรือมี note, matrix สะท้อนความจริงใหม่)
+  เป็น text-scrape ล้วน zero new dependency (dev venv ไม่มี pyyaml - RED รอบแรกจับได้จึงเปลี่ยนวิธี)
+- gating proof (E2): simulated toJSON(needs) ผ่าน tools/ci_coverage.py check_results - all-success=0,
+  brain-failed=1, brain-absent=1, cython-cancelled=1, shield-failed=0 (SUPPORT non-fatal) ตรงตาม semantics
+- local job-command proofs: py3.11 venv (Astral/CPython3.11.16 = Python เดียวกับ CI) brain suite 88 passed
+  fallback config (accelerator absent) + build_ext cp311 rc=0 + test_fast_scan 27 + pre-filter 7 (accelerated);
+  py3.14 ได้ทั้ง accelerated และ fallback (88/7 ทั้งคู่, ซ่อน pyd ชั่วคราวแล้ว restore); mouth 13 passed +
+  release build rc=0; dashboard 8 passed + release build rc=0; drivers job รัน local ไม่ได้ (ไม่มี WDK)
+  = เหตุผลของ manual-only
+- aggregator HTTP: +8 handler tests ใน go/aggregator/main_test.go (root/alerts/critical/by-hash round-trip
+  200-404-400/stats/sessions/session-id/purge 405-400-200) - pins ของ behavior ที่ถูกอยู่แล้ว (GREEN first run
+  ไม่มี RED; defect drive เดิมคือ /api/health ใน slice DEADCODE-QUARANTINE) + go vet clean
+- Gates: pins RED->GREEN (5 fail -> 9 passed); ci_coverage exit 0 (optional gap เดียว = e2e->); full pytest
+  CI scope 939 passed / 2 skipped / 27 subtests; zig build rc=0; release_engineering --refresh-digests 610/610
+  (source_commit=a38f414); EVI 2 entries (E2) + summary E2 122->124, known_gaps 232; restamp 9 maps หลัง commit +
+  truth.py verify TRUTH_VALID
+- Hygiene: cython build regenerate tracked fast_scan.c ใน working copy (restore แล้ว; CI ephemeral + job นี้ไม่มี
+  digest gate และ python-tests ที่มี digest gate ไม่ build module นี้); ลบ pyd cp311 ที่ venv สร้างทิ้ง;
+  ไม่มี enforcement เปลี่ยน; live daemon ยัง binary เก่า (redeploy ค้างตามเดิม)

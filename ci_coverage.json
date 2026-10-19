@@ -66,17 +66,57 @@
             "id": "cython-scan",
             "language": "cython",
             "job": "cython-build-test",
-            "required": false,
+            "required": true,
             "classification": "CANONICAL",
-            "note": "Cython extensions are built inside python-tests; no dedicated job yet (documented gap)."
+            "note": "Dedicated job builds + unit-tests the shipped accelerator (brain/aegis_brain_cython -> fast_scan.cp3xx-win_amd64.pyd on the production host) and re-runs the Case-2 pre-filter pin with the compiled module present. The retired brain/cython/aegis_hotspot.pyx is not built; the live T5b regex accelerator (brain/cython) keeps its build inside python-tests."
         },
         {
             "id": "shield",
             "language": "rust",
+            "job": "shield-build",
+            "required": false,
+            "classification": "SUPPORT",
+            "note": "QUARANTINED_P0 (GAP-007, migration slice PEP-001) - duplicate PEP + WFP enforcement; screening helper only, NOT an enforcement authority. Build+test run in the `shield-build` job. Non-gating by contract: the runtime loads sec_monitor.dll DynLib-style with a fail-safe default (no DLL/symbol => `unknown` verdict, prior behavior bit-identical; src/policy/shield_screen.zig), so a missing shield never breaks canonical health. See runtime_manifest.json rust_shield_tier3 for full quarantine status."
+        },
+        {
+            "id": "brain",
+            "language": "python",
+            "job": "brain-tests",
+            "required": true,
+            "classification": "CANONICAL",
+            "note": "Tier-2 analytics suite (brain/test_*.py). Ran nowhere in CI before CI-GAPS: pytest's target was tests/ only, so a broken brain module could pass every gate."
+        },
+        {
+            "id": "mouth",
+            "language": "rust",
+            "job": "mouth-build-test",
+            "required": false,
+            "classification": "SUPPORT",
+            "note": "Optional standalone operator monitor (Defender/PowerShell/Firewall tail + DEFCON GUI). std-only; never linked into the runtime and holds no authority."
+        },
+        {
+            "id": "aegis-dashboard",
+            "language": "rust",
+            "job": "dashboard-build-test",
+            "required": false,
+            "classification": "SUPPORT",
+            "note": "Complementary egui operator console. Reads state; no enforcement authority."
+        },
+        {
+            "id": "drivers",
+            "language": "c",
+            "job": "drivers-wdk-build",
+            "required": false,
+            "classification": "SUPPORT",
+            "note": "WFP callout + minifilter sources. Manual-only job (workflow_dispatch) until a hosted WDK run is observed green, so PRs carry no unverified red signal; operator build path stays scripts/build_drivers.bat and install drill DEPLOY-120 (E5) remains the verification gate."
+        },
+        {
+            "id": "e2e",
+            "language": "python",
             "job": "",
             "required": false,
             "classification": "SUPPORT",
-            "note": "QUARANTINED_P0 (GAP-007, migration slice PEP-001) - duplicate PEP + WFP enforcement; screening helper only, NOT an enforcement authority. Built externally via `cargo build --release --manifest-path shield/Cargo.toml`. Not on golden path; no dedicated CI job. See runtime_manifest.json rust_shield_tier3 for full quarantine status."
+            "note": "tests/test_e2e.py is a legacy Phase-1 manual harness around bridge/aegis_bridge.exe, which the canonical build never produces (bridge/ is legacy C++ outside the build). A CI job would only re-print silent skips (green wash), so its absence is a decision; canonical integration coverage is zig build test + tests/runtime (phase-t) + python-tests + brain-tests."
         },
         {
             "id": "security-scan",

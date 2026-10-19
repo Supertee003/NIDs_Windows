@@ -1,5 +1,5 @@
 {
- "head_sha": "ba7d926ffd30886a87e0885d0750592915ff9fc6",
+ "head_sha": "a38f4148234bbe549740122652034eb7e335dcb2",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-10-19",
  "generator_version": "3.0",
@@ -6246,12 +6246,38 @@
    "command": "TDD RED->GREEN. nose: go test ./... (RED: undefined headlessTelemetry + signature mismatch -> GREEN ok 9.810s) + go vet clean; go/aggregator: go test ./... (RED: c.Stats undefined -> GREEN ok 0.937s) incl. TestHealthReportsCollectorStats and TestHealthReportsHonestZeroBeforeAnyIngest + go vet clean; mouth: cargo test --manifest-path mouth/Cargo.toml (RED: unresolved note_log_event / note_response_flushed / last_event_age_ms -> GREEN 13 passed incl. health_counter_tests::counters_move_with_real_work) + cargo build --release rc=0; full pytest 933 passed / 2 skipped / 27 subtests",
    "expected": "A live component's counters move with its real work and a wedged loop is visible: nose in_events increments per consumed sample, last_event_ms is the age of the last sample (0 = honest never before any event); aggregator in_events = lines parsed, errors = parse failures, last_event_ms = age of the last successful ingest (0 before any); mouth in_events = tailed lines, out_events = flushed probe responses, last_event_ms grows when the tail loop stalls; the RUNTIME_CONTRACT §4.1 schema shape is unchanged",
    "actual": "All green: nose headlessTelemetry wired through buildHeadlessState (schema keys unchanged; a beacon's payload carries the prior-beacon out count by design, documented); aggregator Collector gained atomic ingested/parseErrors/lastIngestMs + Stats() and handleHealth computes the age (out_events/dropped stay 0 with an explicit 'pull-only, no drop path' comment); mouth health_pipe gained note_log_event / note_response_flushed + a pure saturating last_event_age_ms (0 = never) wired into server_loop and the tail loop (probes deliberately do NOT refresh the tail timestamp, so a wedged tail stays visible); errors/dropped remain 0 with comments wherever no such path exists"
+  },
+  {
+   "id": "CI-GAPS",
+   "title": "CI coverage gaps closed (deep scan section 9): the Tier-2 brain suite and the shipped Cython accelerator are now gated (brain-tests, cython-build-test as required jobs in ci-matrix needs); mouth + aegis_dashboard got build/test jobs (SUPPORT); the WDK drivers job is manual-only (workflow_dispatch) until a hosted run is verified; the coverage matrix is fixed (cython-scan required with a true note; shield's real job wired, non-gating per its fail-safe load contract); e2e omission is a documented decision, not a green-wash job",
+   "level": "E2",
+   "component": "ci+brain+mouth+dashboard+drivers",
+   "flow_id": "CI-001",
+   "head_sha": "a38f414",
+   "timestamp": "2026-10-19",
+   "result": "PASS",
+   "command": "TDD RED->GREEN. tests/release/test_ci_gates.py: 5 new pins RED (brain-tests / cython-build-test / mouth-build-test / dashboard-build-test / drivers-wdk-build absent; cython-scan note claim 'built inside python-tests' stale; a coverage project not resolving to any workflow job) -> GREEN 9 passed; python tools/ci_coverage.py exit 0 (every required project has a job; sole optional gap e2e->); simulated toJSON(needs) gating proofs via ci_coverage.check_results (all-success=0, brain-failed=1, brain-absent=1, cython-cancelled=1, shield-failed=0); job commands run locally: py3.11 venv (Astral/CPython3.11.16, the CI Python) pytest brain/ -q -> 88 passed fallback config, setup.py build_ext --inplace rc=0 (cp311), test_fast_scan.py 27 passed, tests/brain/test_cython_prefilter.py 7 passed accelerated; py3.14 accelerated AND fallback both 88/7 (pyd temporarily hidden, restored); cargo test + build --release mouth 13 passed rc=0; cargo test aegis_dashboard 8 passed + release build rc=0; full pytest 939 passed / 2 skipped / 27 subtests; zig build rc=0; release_engineering --refresh-digests 610/610 (source_commit=a38f414)",
+   "expected": "Every deep scan section 9 CI gap is gated or carries a written decision: brain/test_*.py runs as a required job; the shipped accelerator builds + its unit suite + the Case-2 pre-filter pin run in the accelerated configuration as a required job; mouth/dashboard build+test as SUPPORT (reported, non-gating); the WDK drivers build exists as a manual workflow_dispatch job; shield's real job is named in the matrix (non-gating by its fail-safe advisory contract); no green-wash e2e job; every required project's job reaches ci-matrix needs so check_results can fail the pipeline",
+   "actual": "All green: 6 pins in tests/release/test_ci_gates.py (text-scrape, zero pyyaml dependency - the dev venv lacks it) prove job contents and gate wiring; ci.yml gained brain-tests + cython-build-test (required, added to ci-matrix needs) and mouth-build-test + dashboard-build-test + drivers-wdk-build (SUPPORT; drivers gated to workflow_dispatch); ci_coverage.json: cython-scan required:true with an honest note, shield wired to shield-build (required:false - runtime load is fail-safe, not fail-closed), new entries brain/mouth/aegis-dashboard/drivers/e2e; gating semantics proven against simulated needs payloads; every new job command executed locally green on the CI Python (3.11) and the dev Python (3.14); the local cython build regenerated the tracked generated brain/aegis_brain_cython/fast_scan.c (restored; in CI the job is ephemeral and runs no digest gate, and python-tests - which does - never builds this module)"
+  },
+  {
+   "id": "CI-AGGREGATOR-HTTP",
+   "title": "Aggregator REST surface pinned with real handler tests: root page, alerts list, critical filter, alert-by-hash round trip (200/404/400), stats counters, sessions, session-by-id and the purge method/body contract (was: only /api/health had any test)",
+   "level": "E2",
+   "component": "go-aggregator",
+   "flow_id": "CONTROL-001",
+   "head_sha": "a38f414",
+   "timestamp": "2026-10-19",
+   "result": "PASS",
+   "command": "go test ./... -v -> 8 new handler tests GREEN on first run (pins of existing behavior; the RED-first defect drive for this surface was /api/health in DEADCODE-QUARANTINE) + go vet ./... clean; full pytest 939 passed / 2 skipped / 27 subtests",
+   "expected": "The documented endpoint set behaves as its consumers rely on: GET / links the API surface; /api/alerts serves every added alert as a JSON array; /api/alerts/critical passes only level=critical; /api/alerts/{hash} answers 200 with the exact alert, 404 on an unknown hash, 400 on an empty hash; /api/stats reports total_alerts / total_sessions / timestamp; /api/sessions serves correlated timelines and /api/sessions/{id} rejects non-numeric ids (400) and returns text/plain timelines; /api/purge is POST-only (405), rejects malformed JSON (400) and returns {purged:N}",
+   "actual": "All green with httptest only (no listener, no disk state): 8 tests on a shared newHandlerTestServer; the by-hash test recomputes the dedup hash via computeHash so the round trip is exact; the purge test keeps fresh alerts (purged=0) proving the cutoff semantics; no handler behavior changed - the tests freeze the current contract"
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 25,
-  "E2_count": 122,
+  "E2_count": 124,
   "E3_count": 10,
   "E4_count": 15,
   "E5_count": 88,

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-19T10:43:26.751807+00:00",
+  "generated_at": "2026-10-19T11:21:46.458064+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1698,
@@ -174,7 +174,7 @@
       "path": ".github/workflows/ci.yml",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 8734
+      "size": 12359
     },
     {
       "path": ".github/workflows/host-regression.yml",
@@ -2604,7 +2604,7 @@
       "path": "brain/aegis_brain_cython/fast_scan.c",
       "class": "canonical-source",
       "role": "source",
-      "size": 479511
+      "size": 468223
     },
     {
       "path": "brain/aegis_brain_cython/fast_scan.pyx",
@@ -2934,7 +2934,7 @@
       "path": "build_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 127614
+      "size": 127616
     },
     {
       "path": "build_truth.json",
@@ -2958,7 +2958,7 @@
       "path": "ci_coverage.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 3132
+      "size": 5647
     },
     {
       "path": "CMakeLists.txt",
@@ -3978,7 +3978,7 @@
       "path": "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 50031
+      "size": 61837
     },
     {
       "path": "docs/MASTER_TARGET_ALIGNMENT_2026-09-14.md",
@@ -4668,7 +4668,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 553950
+      "size": 564275
     },
     {
       "path": "fix_bridge_banner.py",
@@ -4752,7 +4752,7 @@
       "path": "go/aggregator/main_test.go",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 4079
+      "size": 11231
     },
     {
       "path": "go/aggregator/README.md",
@@ -4800,7 +4800,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 274802
+      "size": 274669
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -5076,7 +5076,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 225438
+      "size": 225344
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -9006,7 +9006,7 @@
       "path": "tests/release/test_ci_gates.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 1733
+      "size": 8182
     },
     {
       "path": "tests/release/test_evidence_index_valid.py",
