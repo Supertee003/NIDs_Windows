@@ -1,5 +1,12 @@
 # AEGIS NIDS — Local Runbook
 
+> **HISTORICAL (re-verified 2026-10-19):** this runbook describes the
+> pre-single-spine "hub-and-spoke" bring-up (bridge-first, `dist/` and
+> `scripts/` era). It is kept for history and is NOT current truth; for
+> the current runtime follow AGENTS.md canonical commands and
+> `runtime_manifest.json`. Known rot beyond that is bannered inline where
+> it was corrected in this pass (dashboard / web UI).
+
 > Operator-facing runbook for running AEGIS on a single developer machine.
 > Use this document to bring the system up from a clean clone, verify it is
 > healthy, generate synthetic traffic, observe events, and shut it down
@@ -46,7 +53,7 @@ missing toolchain.
 Verify the endpoints listed in `COMPONENT_MATRIX.md` §3 are free:
 
 ```bat
-netstat -ano | findstr ":9999 :9100 :9200 :8080 :12345"
+netstat -ano | findstr ":9999 :9100 :9200 :12345 :5000"
 ```
 
 If any of those ports are bound by a non-AEGIS process, free them before
@@ -327,9 +334,20 @@ powershell -Command "Get-Content logs\brain.log -Wait -Tail 10"
 
 ### 9.3 Watch the dashboard (optional)
 
-If you started the dashboard in §2, open a browser to
-`http://127.0.0.1:8080`. The dashboard polls the aggregator REST API
-every 1 s and renders the live event stream.
+Terminal view (no browser):
+
+```bat
+python tools\aegisctl.py dashboard --watch
+```
+
+Web view (Flask; serves the unified snapshot, health, rules and incidents):
+
+```bat
+python -m tools.aegisctl.web_dashboard.app
+```
+
+Then open `http://127.0.0.1:5000/` (`DASHBOARD_PORT` overrides the port).
+The legacy window viewer (`aegis_dashboard.exe`, egui) has no HTTP server.
 
 ### 9.4 Use the CLI console
 

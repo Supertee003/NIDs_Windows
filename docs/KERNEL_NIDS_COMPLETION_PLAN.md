@@ -410,3 +410,45 @@ gate (ไม่แตะ) และ wire contract ไม่เปลี่ยน
   ไม่มี proven execution edge) - ลบและ rerun scope เขียว; ยืนยันว่า hygiene pin ทำงานจริง
 - พฤติกรรมเปลี่ยน: matched_policy ของ event severity==6 เข้า rule 1 (block) ก่อน - ตรง intent ของ config; enforcement
   ไม่ขยับ (gate/trust/PEP เดิม, production ยัง detection-only, blocks delta 0); live daemon ยังเป็น binary เก่า (redeploy ค้าง)
+## 17. Slice STALE-DOC-SWEEP: truth docs ตรงกับ source จริง - IMPLEMENTED (E1)
+
+ฐาน HEAD 67ff30e; patch เดียว (commit: STALE-DOC-SWEEP) - ดู EVI entry "STALE-DOC-SWEEP" + admin-evidence/stale-doc-sweep-20261019/
+
+- ปิด P2 จาก deep scan (docs เก่าไม่ตรง source; re-verified ทุกข้อกับ source จริงก่อนแก้; banner + targeted fix
+  ไม่ rewrite - คงโครงที่ tests/runtime/test_component_matrix.py pin ไว้):
+  docs/WFP_IOCTL_STATUS.md เดิม "tracking-only" -> "IMPLEMENTED (lab-gated)" (callout = copy-only fail-open
+  observe path + IOCTL ครบ 5 ตัว READ/BLOCK_FLOW/STATS/UNBLOCK_FLOW/QUERY_FILTER; block = FWP_ACTION_BLOCK
+  exact-flow filter ที่ FWPM_LAYER_ALE_AUTH_CONNECT_V4 + filter_id read-back; src/policy/wfp_ioctl.zig READ-ONLY
+  ตาม PEP-001; bridge = src/windows/wfp_ioctl.c -> aegis_wfp_user.dll; enforcement authority = rust-src wfp_adapter
+  ที่ fail-closed ESCALATE reason 4)
+- docs/PEP_QUARANTINE_STATUS.md เดิม "deferred" -> "IMPLEMENTED (QUAR-RCPT-112)" (EVT-112 @82e9f4a; primitive =
+  flow-block เดียวกับ block ทุกด่าน: capability 0x01 / severity >= 7 two-person / quota T3-QUOTA / adapter
+  filter_id; control path: prevention gate -> enforceQuarantineFlow -> queryFilterResult read-back ->
+  EnforcementReceipt, mismatch = POSTCONDITION_FAILED + cleanup)
+- docs/CLI_COMMANDS.md: ถอด 5 commands ผี (api/backup/logs/restore/watchdog) + เติม 11 ที่ขาด (queue/snapshot/
+  readiness/forensics/bridge/brain/components/graph/iptest/authority/help) -> ตรง parser จริง 33 commands;
+  ชี้ package กักกัน tools/legacy/aegisctl_commands_quarantined/ (ไม่ wired)
+- docs/DEPLOYMENT.md: build order canonical ตาม build_truth.json (zig / cargo / root cmake 3 DLL / bridge cmake 3 /
+  go nose / shield / brain / go aggregator / egui dashboard / WDK 4 scripts / ts_policy advisory), release layout
+  runtime\, sc create AegisNids + sc failure ตรง installer.py, rollback RB-005 ผ่าน tools/upgrade_rollback.py,
+  troubleshooting ชี้ port 5000 (Flask web dashboard = ตัวจริง; egui dashboard ไม่มี HTTP server)
+- docs/runtime/COMPONENT_MATRIX.md + LOCAL_RUNBOOK.md: ตัด axum/:8080 ที่ตายแล้ว (axum ถอน - Cargo.toml GAP-5);
+  web view = python -m tools.aegisctl.web_dashboard.app port 5000 (DASHBOARD_PORT), terminal view =
+  aegisctl dashboard --watch; egui aegis_dashboard.exe = local viewer ไม่มี HTTP
+- .analysis/security.md + control.md: banner HISTORICAL (ตรวจที่ HEAD 46b93dc ราว 2026-09; findings บางส่วนถูกแก้/
+  แทนแล้วโดย slice หลัง) + ตัดคำกล่าว "current HEAD"; ไม่แตะเนื้อเชิงประวัติศาสตร์
+- CONTRACT_MAP.json: เพิ่ม supplementary contract WIRE_PROTOCOL_V2 (shared/protocol/wire_v2.md; magic 0x57455631
+  "WEV1" + canonical event 0x41454731 "AEG1"; v2 = 16B header + 133B payload = 149B)
+- tools/release_candidate.py: KNOWN_LIMITATIONS เลิกอ้าง core/ (authority = src/policy + rust-src; installer =
+  tools/installer.py) + rollback doc ชี้ src/control/handler_registry.zig / src/platform/win32_pipe.zig;
+  ค้างถึง slice RELEASE-TOOLING: assembler ยัง copy REPO/core/*.zig + cite core/policy_signing.zig (โค้ดยุค T20)
+- EVI: เพิ่ม V6-FLOW-036 (E2 @bde1c2c) + V6-DETECT-037 (E2 @3bd965c) ปิดช่อง traceability ของ commit ที่ลงจริง
+  (in-file pins มีครบแล้ว) + entry STALE-DOC-SWEEP (E1) + last_updated_at; summary E1 24->25, E2 118->120
+- TDD: RED = tests/docs/test_stale_doc_sweep.py 9 failed (red-01.txt) -> GREEN = 9 passed (green-01.txt);
+  focused 137 passed (focused-01.txt)
+- Gates: zig build rc=0; full zig suite 2182 passed / 1 skipped / 0 failed (zig-suite-run.txt); full pytest
+  (CI scope tests/ --ignore=tests/test_e2e.py) 930 passed / 2 skipped / 27 subtests (pytest-full.txt);
+  release_engineering --verify 612/612 ตรง (--refresh-digests 1 ไฟล์: release_candidate.py - digest drift จาก
+  release-note text ที่แก้); truth.py verify TRUTH_VALID (restamp หลัง commit)
+- Hygiene: 9 pins ใหม่เป็น read-only guards (ห้ามเขียน tree); ไม่มี enforcement เปลี่ยน (production ยัง
+  detection-only, blocks delta 0); EOL คงเดิมต่อไฟล์ (LF ยกเว้น CLI_COMMANDS.md / CONTRACT_MAP.json = CRLF)

@@ -1,5 +1,5 @@
 {
-  "head_sha": "d8a2064bac18fb839b0affd990b1d140f4ed5817",
+  "head_sha": "67ff30efe77cecbf525062df092e339c98487f3e",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -209,6 +209,15 @@
       "schema": "Binary frame: 16-byte header + 109-byte payload = 125 bytes",
       "version": "1.0",
       "magic": "0x57455631"
+    },
+    {
+      "id": "WIRE_PROTOCOL_V2",
+      "name": "Wire Protocol v2 (full IPv6 identity)",
+      "file": "shared/protocol/wire_v2.md",
+      "implementation": "src/contract/canonical_event.zig (serializeV2 / deserializeDispatch / validateDecodedFrame)",
+      "schema": "16-byte header + 133-byte payload = 149 bytes (v1 109-byte payload + 24-byte IPv6 tail); version field 1|2",
+      "version": "2.0",
+      "magic": "0x57455631 (WEV1, shared with v1; the version field selects v2)"
     },
     {
       "id": "FORENSIC_RECORD",

@@ -1,66 +1,49 @@
-# PEP Quarantine Status: DEFERRED
+# PEP Quarantine Status: IMPLEMENTED (QUAR-RCPT-112)
 
-## Current State
+Updated 2026-10-19. Supersedes the earlier "deferred" status.
 
-The PEP (Policy Enforcement Point) quarantine action is currently **deferred** -- it returns a "deferred" status rather than executing immediately.
+## Current state
 
-**Location**: `core/pep_enforcement_proof.zig` (G10)
-**Test**: `test "executeDecision for quarantine returns deferred"`
+Quarantine is implemented and executes through the Rust PEP as a per-flow
+traffic constraint. No separate filter class exists below the PEP: the
+primitive is the same WFP flow-block used by `block`, and the quarantine
+semantics travel in the returned decision/receipt (`DECISION_QUARANTINE`),
+which the Zig verifier keys on.
 
-## Why Deferred?
+Where it lives (verified at this HEAD):
 
-Quarantine requires isolating a source IP/host, which involves:
-1. WFP filter installation (kernel-mode callout driver)
-2. Minifilter rule injection (file system isolation)
-3. Network isolation (block all traffic from source)
+- `rust-src/lib.rs` - `ACTION_QUARANTINE` clears the same bars as block:
+  capability bit `0x01`, the severity >= 7 two-person approval gate, the
+  shared per-source quota window (T3-QUOTA), and adapter execution that
+  mints a `filter_id`. If the WFP adapter is absent the decision fails
+  closed to `DECISION_ESCALATE` (reason 4). Evidence: EVI `EVT-112`
+  (landed `82e9f4a`, "per-flow quarantine enforced"), with Rust pins
+  `pep_quarantine_no_capability_returns_escalate_with_reason`,
+  `pep_quarantine_without_adapter_fails_closed_no_filter` and
+  `high_severity_quarantine_without_approval_escalates_for_approval`.
+- `src/policy/pep_bindings.zig` - `enforceQuarantineFlow(...)` mirrors the
+  block entry point and fails closed without a provider (pinned by
+  `QUAR-RCPT-112: enforceQuarantineFlow fails closed without provider`).
+- `src/control/handler_registry.zig` - the control-plane quarantine
+  request path: prevention-gate check first (`PREVENTION_GATE_CLOSED`
+  while the gate is closed), then `enforceQuarantineFlow`, then an
+  exact-filter read-back (`queryFilterResult`); a mismatched or absent
+  filter is cleaned up and rejected as `POSTCONDITION_FAILED`, and only
+  then is an `EnforcementReceipt` minted.
 
-These operations are **not yet implemented** in the current build. The deferred queue (G10) handles retry logic:
+## What gates quarantine live (by design)
 
-```
-executeDecision(quarantine) -> status=deferred, reason=unsupported_action
-                            -> enqueue in DeferredQueue (max 64 entries)
-                            -> retry up to MAX_RETRY_COUNT=3
-                            -> drop after max retries
-```
+- Prevention gate: closed in every default/production build
+  (`-Dlab-prevention-gate` off); the lab opening requires the RB-012 /
+  RB-013 sequence on an isolated lab VM.
+- Live production daemon currently runs detection-only (operator redeploy
+  pending); `blocks delta 0`.
+- Drivers are test-signed until production signing (EV certificate / HLK).
 
-## Impact
+## History
 
-- **Detection**: Unaffected (detection still produces evidence)
-- **Policy**: Unaffected (policy still makes decisions)
-- **Forensic**: Unaffected (forensic records the "deferred" status)
-- **Enforcement**: Quarantine NOT executed (system continues without isolation)
-
-## Resolution Path
-
-To implement quarantine:
-
-1. **Implement kernel IOCTL handler** in `drivers/wfp_callout/`:
-   - `IOCTL_AEGIS_QUARANTINE_SOURCE` -- block all traffic from source IP
-   - Reference: `core/wfp_ioctl.zig` (currently tracking-only mode)
-
-2. **Implement minifilter rule** in `drivers/minifilter/`:
-   - File system isolation for quarantined processes
-   - Reference: `core/pipe_monitor.zig`
-
-3. **Update PEP execution** in `core/rust_pep.zig`:
-   - Call kernel IOCTL for quarantine action
-   - Return `status=executed` on success
-
-4. **Update proof** in `core/pep_enforcement_proof.zig`:
-   - Change quarantine from "deferred" to "executed"
-   - Update test expectations
-
-## Compliance Impact
-
-**SOC 2**: A1.3 (Recovery infrastructure) -- quarantine not required for compliance.
-**ISO 27001**: A.8.23 (Web filtering) -- PEP block/alert still satisfies this control.
-**NIST CSF**: RS.MI (Mitigation) -- block/rate_limit satisfy this; quarantine is additive.
-
-**Conclusion**: Deferring quarantine does NOT break compliance. Block and rate_limit are the primary enforcement actions; quarantine is an additional isolation mechanism for severe threats.
-
-## Tracking
-
-- **Priority**: P2 (medium)
-- **Status**: Deferred (documented)
-- **Owner**: TBD
-- **ETA**: Post-G22 polish
+The previous version of this file described quarantine as "deferred"
+(enqueued for retry, never executed) and pointed at proof/test files
+under the removed `core` tree. That description stopped being true when
+QUAR-RCPT-112 landed (EVT-112): quarantine now executes through the same
+WFP flow-block path, gated exactly like block.

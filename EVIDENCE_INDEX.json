@@ -1,6 +1,7 @@
 {
- "head_sha": "d8a2064bac18fb839b0affd990b1d140f4ed5817",
+ "head_sha": "67ff30efe77cecbf525062df092e339c98487f3e",
  "created_at": "2026-09-24",
+ "last_updated_at": "2026-10-19",
  "generator_version": "3.0",
  "evidence_levels": {
   "E0": "No evidence",
@@ -6180,12 +6181,51 @@
    "command": "zig test focus (RED: evaluator 0P/6F -> GREEN 26/26; loader compile-RED -> GREEN 37/37; signature pin RED at policy_plane.zig:580 -> GREEN 62/62); real configs/policies.json evidence runner: 6 loaded / 0 rejected / severity==6 -> rule 1 block (37/37); zig build rc=0; full zig suite 2182 passed / 1 skipped / 0 failed (rerun; run 1 hit the known PERF-FLAKE RegistryWatchQueue threshold miss); python -m pytest tests -q 928 passed / 2 skipped / 27 subtests (incl. frozen wire contract)",
    "expected": "configs/policies.json rule 1 `severity gte 6` (block) includes EventSeverity.critical == 6; JSON match/nomatch predicates carry their value_str pattern instead of matching every event; multi-clause OR / multi-predicate AND evaluate in full; `.in` is real membership (list or single value); unknown field/op, cross-domain payloads, malformed id/ttl/value and condition-less entries are rejected with a counted reason - no @intCast crash, no silent .kind/.eq reshaping.",
    "actual": "All pinned and GREEN. The real config loads 6/6 with 0 rejected; a severity==6 event now matches id 1 block_critical_threats (pre-fix the loader lowered gte to gt and the event matched nothing). Evaluator pins: cross-domain ops, empty patterns and absent strings never match. policy_plane compiler test pins signature == 0 (hash != signature). Transcripts: admin-evidence/policy-eval-full-20261019/ (red-01..red-04, green-01..green-04)."
+  },
+  {
+   "id": "V6-FLOW-036",
+   "title": "v2 sidecars survive queue to flow key (is_ipv6, u32 identity untouched) [retroactive traceability entry]",
+   "level": "E2",
+   "component": "zig-pipeline",
+   "flow_id": "FOR-001",
+   "head_sha": "bde1c2c",
+   "timestamp": "2026-10-05",
+   "result": "PASS",
+   "command": "zig build test (full suite) rerun in STALE-DOC-SWEEP gates; in-file pins: src/capture/flow_table.zig 'FlowKey v6 full identity never collides with truncated v4 view', src/capture/nose_pipe_reader.zig 'reader accepts v1 and v2 frame lengths', src/pipeline/event_queue.zig 'pushDecodedFrame carries v2 sidecars; v1 path queues nulls'",
+   "expected": "decoded v2 frames carry full 128-bit IPv6 identity through dequeue into the flow key without colliding with the truncated v4 identity view; v1 frames behave byte-identically to before",
+   "actual": "pins green; behavior landed at bde1c2c (2026-10-05); entry added retroactively by STALE-DOC-SWEEP (EVI traceability gap)"
+  },
+  {
+   "id": "V6-DETECT-037",
+   "title": "anomaly baseline follows queue sidecars (fallback byte-identical) [retroactive traceability entry]",
+   "level": "E2",
+   "component": "zig-detection",
+   "flow_id": "FOR-001",
+   "head_sha": "3bd965c",
+   "timestamp": "2026-10-05",
+   "result": "PASS",
+   "command": "zig build test (full suite) rerun in STALE-DOC-SWEEP gates; in-file pin: src/detection/anomaly_detector.zig 'entityKeyBytes prefers sidecar, falls back to padded u32'",
+   "expected": "anomaly baselines key by full v6 identity when queue sidecars are present; baseline behavior byte-identical to the u32 identity when absent",
+   "actual": "pin green; behavior landed at 3bd965c (2026-10-05); entry added retroactively by STALE-DOC-SWEEP (EVI traceability gap)"
+  },
+  {
+   "id": "STALE-DOC-SWEEP",
+   "title": "Truth-doc sweep: WFP/PEP/CLI/deployment/runtime docs, analysis banners, CONTRACT_MAP wire v2, release notes and EVI traceability re-verified against source (9 new doc-parity pins)",
+   "level": "E1",
+   "component": "docs",
+   "flow_id": "TRUTH-001",
+   "head_sha": "67ff30e",
+   "timestamp": "2026-10-19",
+   "result": "PASS",
+   "command": "python -m pytest tests/docs/test_stale_doc_sweep.py -q (RED 9 failed -> GREEN 9 passed); full pytest suite; zig build + full zig test battery; python tools/truth.py verify",
+   "expected": "no doc claim contradicts source at HEAD: CLI list == parser (33 commands), WFP/PEP status == implemented reality, DEPLOYMENT == build_truth, runtime docs clean of removed axum/:8080, .analysis files banner-marked HISTORICAL, CONTRACT_MAP carries wire v2, release notes reference current paths",
+   "actual": "all 9 pins green; docs re-verified item-by-item against source at 67ff30e; EVI v6 traceability gap closed (V6-FLOW-036, V6-DETECT-037 retroactive entries added)"
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
-  "E1_count": 24,
-  "E2_count": 118,
+  "E1_count": 25,
+  "E2_count": 120,
   "E3_count": 10,
   "E4_count": 15,
   "E5_count": 88,

@@ -1,68 +1,95 @@
-# AEGIS NIDS Deployment Guide (Phase 20, DOC-2)
+# AEGIS NIDS Deployment Guide (updated 2026-10-19)
 
 ## Prerequisites
 
 ### Build Tools
-- **Zig 0.13** — Core engine
-- **Visual Studio 2022** (C++ Build Tools) — C++ Bridge + Cython
-- **Rust/Cargo** — Dashboard + Shield
-- **Go 1.21+** — Aggregator
-- **Python 3.10+** — Brain + CLI tools + Cython
+- **Zig 0.13** - runtime spine (`aegis_nids.exe`)
+- **Rust (stable) / Cargo** - PEP (`aegis_pep.dll`); optional Shield
+  payload-screening support DLL and dashboard
+- **CMake + MSVC** - native adapters (WFP user / ETW / FIM DLLs)
+- **Go 1.22+** - acquisition (nose); optional aggregator
+- **Python 3.11+** - brain (Tier-2) + operator CLI
+- **Node.js** - policy authoring (TypeScript; advisory only)
+- **NSIS (makensis)** - installer packaging (`tools\installer.py --package`);
+  fail-closed when absent
 
 ### Runtime
 - Windows 10/11 x64
-- Administrator privileges (for WFP driver + named pipes)
+- Administrator privileges (drivers, services, named pipes)
 
 ## Build Order
 
-```bash
-# 1. Build Zig Core (produces aegis.exe)
-cd core
+Canonical commands per `build_truth.json` (run from the repo root):
+
+```bat
+:: 1. Runtime spine (Zig)
 zig build
+::    -> zig-out\bin\aegis_nids.exe
 
-# 2. Build C++ Bridge (produces aegis_ipc.dll)
-cd ../bridge
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --config Release
-
-# 3. Build Rust Shield (produces sec_monitor.dll)
-cd ../shield
+:: 2. Enforcement (Rust PEP)
 cargo build --release
-rem The crate's lib name is "sec_monitor", so cargo emits
-rem shield\target\release\sec_monitor.dll directly (loaded by the Zig core).
+::    -> target\release\aegis_pep.dll
 
-# 4. Build Dashboard (produces aegis_dashboard.exe)
-cd ../aegis_dashboard
-cargo build --release
+:: 3. Native adapters (root CMake)
+cmake -B build && cmake --build build
+::    -> build\Release\aegis_wfp_user.dll, aegis_etw_helper.dll, aegis_fim_helper.dll
 
-# 5. Build Go Aggregator (produces aegis-aggregator.exe)
-cd ../go/aggregator
-go mod tidy
-go build -o aegis-aggregator.exe .
+:: 4. C++ bridge (IPC / adapter / DEFCON)
+cd bridge && cmake -B build && cmake --build build
+::    -> dist\aegis_ipc.dll, dist\aegis_adapter.dll, dist\aegis_bridge.exe
 
-# 6. Compile Cython (produces fast_scan.pyd)
-cd ../../brain/aegis_brain_cython
-python setup.py build_ext --inplace
+:: 5. Acquisition (Go)
+cd nose && go build -o aegis-nose.exe .
 
-# 7. Install Python dependencies
-pip install cython
+:: 6. Shield payload screening (optional SUPPORT DLL)
+cd shield && cargo build --release
+::    -> shield\target\release\sec_monitor.dll
 
-# 8. Build + sign the kernel telemetry drivers (kernel sensors need these;
-#    the installer packages build\x64\... outputs and registers services)
-powershell -ExecutionPolicy Bypass -File scripts/wdk_build_production.ps1   # -> build\x64\wfp\aegis_wfp.sys
-powershell -ExecutionPolicy Bypass -File scripts/wfp_sign.ps1              # test sign (cert + signature)
-powershell -ExecutionPolicy Bypass -File scripts/wdk_build_minifilter.ps1  # -> build\x64\minifilter\aegis_minifilter.sys
-powershell -ExecutionPolicy Bypass -File scripts/minifilter_sign.ps1       # test sign (cert + signature)
+:: 7. Brain (Tier-2) - interpreted; optional Cython acceleration
+python brain\windows_brain.py
+::    (optional: cd brain\aegis_brain_cython && python setup.py build_ext --inplace)
+
+:: 8. Aggregator (optional)
+cd go\aggregator && go build -o aegis-aggregator.exe .
+
+:: 9. Dashboard (optional, egui local viewer)
+cd aegis_dashboard && cargo build --release
+
+:: 10. Kernel telemetry drivers (lab / test-signed; see next section)
+powershell -ExecutionPolicy Bypass -File scripts/wdk_build_production.ps1
+::    -> build\x64\wfp\aegis_wfp.sys
+powershell -ExecutionPolicy Bypass -File scripts/wfp_sign.ps1
+::    test sign (cert + signature)
+powershell -ExecutionPolicy Bypass -File scripts/wdk_build_minifilter.ps1
+::    -> build\x64\minifilter\aegis_minifilter.sys
+powershell -ExecutionPolicy Bypass -File scripts/minifilter_sign.ps1
+::    test sign (cert + signature)
+
+:: 11. Policy authoring (advisory only, no build output)
+cd ts_policy && npm run typecheck && npm run test:all
 ```
 
-## Install Order
+## Install Order (packaged release)
 
-1. **Zig Core** — `aegis.exe` (main NIDS process)
-2. **C++ Bridge** — `aegis_ipc.dll` (in `bridge/` directory)
-3. **Rust Shield** — `sec_monitor.dll` (in `shield/target/release/`)
-4. **Python Brain** — `python brain/windows_brain.py`
-5. **Go Aggregator** — `go/aggregator/aegis-aggregator.exe`
-6. **Dashboard** — `aegis_dashboard.exe` (optional, for monitoring)
+A packaged release (`aegis-nids-windows-*`) ships `runtime\` with
+`aegis_nids.exe`, `aegis_pep.dll`, `aegis_wfp_user.dll`,
+`aegis_etw_helper.dll`, `aegis_fim_helper.dll`, `aegis_ipc.dll` and
+`aegis-nose.exe`, plus `configs\`, `drivers\` and
+`scripts\install_aegis.ps1`.
+
+`python tools\installer.py --package` generates `installer.generated.nsi`
+and builds `aegis-installer-*.exe` with NSIS (fail-closed without
+makensis). Setup installs the runtime under `<install>\runtime\`, stops
+a running service before replacing binaries, and registers the daemon
+service:
+
+```bat
+sc create AegisNids binPath= "<install>\runtime\aegis_nids.exe" start= auto
+sc failure AegisNids reset= 86400 actions= restart/5000/restart/15000/restart/60000
+```
+
+Uninstall unloads the driver services, deletes them, and removes the
+System32 driver copies.
 
 ## Kernel Telemetry Drivers (DEPLOY-120)
 
@@ -81,7 +108,7 @@ Packaged sources are the canonical WDK build outputs
 deploy during development (and that EVT-231/EVT-232 proved live). If those
 outputs are absent at packaging time the installer still builds (`/nonfatal`)
 and setup skips the matching service with an honest log line - build + sign
-the drivers first (Build Order steps 8-9).
+the drivers first (Build Order step 10).
 
 Prerequisite - test signing: the drivers are signed with the local
 `CN=AEGIS NIDS Test Signing` certificate. Loading them requires:
@@ -118,54 +145,59 @@ decision still open).
 
 ## Post-Install Verification
 
-```bash
-# 1. Check all subsystems
-python scripts/aegis_status.py
+```bat
+:: 1. Check all subsystems
+python scripts\aegis_status.py
 
-# 2. Verify Go aggregator
-python scripts/aegis_api.py
+:: 2. Verify Go aggregator
+python scripts\aegis_api.py
 
-# 3. Check Prometheus metrics
-python scripts/aegis_metrics.py --print
+:: 3. Check Prometheus metrics
+python scripts\aegis_metrics.py --print
 
-# 4. Verify Rules.json integrity
-python scripts/aegis_rules.py --sign
-python scripts/aegis_rules.py --verify
+:: 4. Verify Rules.json integrity
+python scripts\aegis_rules.py --sign
+python scripts\aegis_rules.py --verify
 
-# 5. Check DEFCON level
-python scripts/aegis_defcon.py
+:: 5. Check DEFCON level
+python scripts\aegis_defcon.py
 ```
 
 ## Service Configuration
 
-### Zig Core (as Windows Service)
-```powershell
-sc.exe create AEGIS_NIDS binPath= "C:\AEGIS\aegis.exe" start= auto
-sc.exe description AEGIS_NIDS "AEGIS NIDS Core - 3-Tier Detection Engine"
-sc.exe start AEGIS_NIDS
-```
+The setup registers the daemon service `AegisNids` (binPath
+`<install>\runtime\aegis_nids.exe`, start= auto, restart-on-failure; see
+Install Order). Day-to-day control goes through the operator CLI:
 
-### Go Aggregator (background)
 ```powershell
-Start-Process -NoNewWindow -FilePath "aegis-aggregator.exe"
-```
-
-### Prometheus Metrics
-```powershell
-Start-Process -NoNewWindow -FilePath "python" -ArgumentList "scripts/aegis_metrics.py"
+python tools\aegisctl.py status
+python tools\aegisctl.py start      # asks the daemon; the opener owns OS processes
+python tools\aegisctl.py stop
 ```
 
 ## Log Management
 
-- **Log rotation**: Automatic at 100MB, keeps 7 files
-- **Payload capture**: Block-event payloads saved to `logs/payloads/`
-- **Blocked IPs**: Persisted to `logs/blocked_ips.json`
+- `logs\aegis_core.ndjson` - NDJSON evidence projection written by the
+  daemon (forensic pipeline + SIEM forwarder source)
+- `logs\payloads\` - payload samples saved by the forensic logger
+  (`src/forensic/forensic_log.zig`)
+- `logs\control_audit.ndjson` - control-plane audit ring export
+- `logs\blocked_ips.json` - legacy script stack bookkeeping
+  (`scripts\aegis_block.py`), not the daemon
 
 ## Rollback Procedure
 
-1. Stop AEGIS service: `sc.exe stop AEGIS_NIDS`
-2. Restore from `.phase*_backup` files
-3. Restart service: `sc.exe start AEGIS_NIDS`
+1. Stop the service: `sc.exe stop AegisNids`
+2. Snapshot / inspect / revert configuration state:
+
+```bat
+python tools\upgrade_rollback.py snapshot
+python tools\upgrade_rollback.py report --json
+python tools\upgrade_rollback.py rollback --snapshot <id>
+```
+
+   (Runbook: `docs/runbooks/RB-005-config-rollback.md`)
+3. Start the service: `sc.exe start AegisNids`
 
 ## Troubleshooting
 
@@ -173,8 +205,8 @@ Start-Process -NoNewWindow -FilePath "python" -ArgumentList "scripts/aegis_metri
 |-------|-----|
 | BUILD FAILED | Check Zig version: `zig version` (must be 0.13) |
 | SDDL error | Run as Administrator |
-| UDP send failed | Check Brain is running on port 9999 |
-| Dashboard empty | Check `logs/aegis_core.ndjson` exists |
-| HMAC mismatch | Regenerate: `python aegis_rules.py --sign` |
-| AegisWfp / AegisMinifilter missing after setup | Driver build outputs were absent at packaging time: run Build Order steps 8-9, repackage, reinstall |
+| UDP send failed | Brain not listening: check `127.0.0.1:9999` (UDP health probe) |
+| Web dashboard empty | Start `python -m tools.aegisctl.web_dashboard.app` (port 5000, `DASHBOARD_PORT` overrides) and confirm `logs\aegis_core.ndjson` exists; terminal view: `python tools\aegisctl.py dashboard --watch` |
+| HMAC mismatch | Regenerate: `python scripts\aegis_rules.py --sign` |
+| AegisWfp / AegisMinifilter missing after setup | Driver build outputs were absent at packaging time: run Build Order step 10, repackage, reinstall |
 | Driver service fails to start (577/0x8007041F, 1275) | Test-signed driver not trusted: enable testsigning (`bcdedit /set testsigning on` + reboot) and install the signing cert (`scripts\wfp_sign.ps1` / `scripts\minifilter_sign.ps1`) |
