@@ -411,9 +411,13 @@ exact `FIN|PSH|URG` frames -> 5 rows (using the TEST-NET-only raw sender
 10 ICMP 0 / 60 ICMP 1. Queue dropped stayed 10,337 and shed stayed
 56,936; readiness was RUNNING and the gate stayed closed. This closes
 `RB-021-NOSE-FLAGS` at EVI `RB-021-NOSE-FLAGS-LIVE-PASS-20261020`.
-The stale-process gap `DEPLOY-131-NOSE-STALE-PROCESS` remains OPEN for
-installer/verifier hardening so a future upgrade cannot silently leave a
-pre-patch process image running. The isolated Kali->Win11 E5 re-proof
+The stale-process gap `DEPLOY-131-NOSE-STALE-PROCESS` is closed at EVI
+`DEPLOY-131-VERIFY-PROCESS-20261020`: the verifier now rejects
+missing/duplicate/stale/mixed daemon or Nose process images and passes
+24/24 on the current host; its self-test fails stale/mixed/empty and
+passes fresh. The installer still needs the operator restart step, but a
+future stale image can no longer silently pass verification. The isolated
+Kali->Win11 E5 re-proof
 (normal handshake/ping below threshold, scan/flood above threshold, one
 row per window) remains tracked as `DEPLOY-130-L4-RATE-E5`; do not claim
 it from unit tests or from the TEST-NET run. `forensics verify` stays ok

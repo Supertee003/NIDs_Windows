@@ -1848,6 +1848,38 @@
    ],
    "host_effect_confirmed": false,
    "prevention_gate": "closed"
+  },
+  {
+   "id": "DEPLOY-131-VERIFY-PROCESS-20261020",
+   "title": "Deploy verifier now fails closed on stale/duplicate process images; live 24/24 and self-test pass (E5)",
+   "level": "E5",
+   "component": "deployment/installer",
+   "flow_id": "DATA-001",
+   "head_sha": "de574b6",
+   "timestamp": "2026-10-20",
+   "result": "PASS",
+   "command": "deploy131-verify-live.ps1 -ProcessCheckSelfTest; deploy131-verify-live.ps1 -RepoRoot D:\\NIDs_Windows -KitDir ...",
+   "expected": "A file-only byte check must not pass when the running Nose or daemon process image predates the installed binary. The verifier must fail on missing, duplicate, stale, or mixed process sets, and pass only when exactly one current process matches each binary.",
+   "actual": "PASS. Self-test: stale=False fresh=True mixed=False empty=False -> PROCESS_CHECK_SELFTEST_OK. Live verifier: LIVE_VERIFY_OK (24/24). daemon_process_single_and_newer_than_live_binary: count=1 pid=13108 created=2026-10-20T17:54:49.8572220+07:00 binary_mtime=2026-10-20 17:20:16. nose_process_single_and_newer_than_live_binary: count=1 pid=3632 created=2026-10-20T19:51:55.5351490+07:00 binary_mtime=2026-10-20 17:20:00. All prior 22 byte/service gates still pass.",
+   "finding": "The DEPLOY-131 verifier now rejects the exact stale-process failure that made live TCP flags inert: a replaced file plus an old process image. It also rejects duplicate process images. The current live state passes 24/24. The installer still does not auto-restart Nose; the operator runbook requires restart-nose.ps1, but a future stale process can no longer silently pass verification.",
+   "description": "Read-only verifier hardening (DEPLOY-131-VERIFY-PROCESS-001). No runtime, service, gate, or host-effect change. The self-test exercises the pure process-image predicate with stale, fresh, mixed, and empty sets; the live run exercises the actual Win32_Process and installed-binary timestamps.",
+   "files_verified": [
+    "admin-evidence/deploy131-nose-flags-20261020/deploy131-verify-live.ps1",
+    "admin-evidence/deploy131-nose-flags-20261020/process-verify-24.txt",
+    "admin-evidence/deploy131-nose-flags-20261020/process-check-selftest.txt"
+   ],
+   "files_changed": [
+    "admin-evidence/deploy131-nose-flags-20261020/deploy131-verify-live.ps1"
+   ],
+   "tests": [
+    "PROCESS_CHECK_SELFTEST_OK: stale=False fresh=True mixed=False empty=False",
+    "LIVE_VERIFY_OK (24/24)",
+    "daemon process: pid 13108 created after live binary",
+    "nose process: pid 3632 created after live binary",
+    "all 22 prior installer/byte/config/manifest/service gates still PASS"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed"
   }
  ],
  "known_gaps": [
@@ -7059,19 +7091,22 @@
   {
    "id": "DEPLOY-131-NOSE-STALE-PROCESS",
    "severity": "P1",
-   "title": "DEPLOY-131 replaced aegis-nose.exe without restarting the process; a stale image can make live TCP flags inert",
-   "description": "The DEPLOY-131 installer and verifier prove file byte identity (Nose 735E2B8A..., source de574b6), but the supervised Go Nose process PID 21568 was created 2026-10-15 08:09:13, before the patched binary was built on 2026-10-20 17:20:01. The old process image still emits CanonicalEvents without the ContextFlags TCP-flags lane. A quiet canonical-path R9006 control saw 20 distinct destination ports on the wire with zero new queue drops but produced 0 R9006 rows; R9002 still fired, proving the path is alive. This is a build/runtime mismatch (stop-the-line trigger) and a deployment lifecycle gap, not a source-lane regression. The verifier checks files and services, not the process image creation time. MITIGATED LIVE 2026-10-20 19:51:55: the operator stopped PID 21568 and started PID 3632 from the patched binary; post-restart R9006/R9007 controls passed. The gap remains OPEN for installer/verifier hardening: a future in-place upgrade can repeat the stale image, and the verifier still checks file hashes/services rather than process creation time.",
-   "status": "OPEN",
+   "title": "DEPLOY-131 upgrade can leave a stale Nose process; verifier must reject stale process images",
+   "description": "The DEPLOY-131 installer and verifier prove file byte identity (Nose 735E2B8A..., source de574b6), but the supervised Go Nose process PID 21568 was created 2026-10-15 08:09:13, before the patched binary was built on 2026-10-20 17:20:01. The old process image still emits CanonicalEvents without the ContextFlags TCP-flags lane. A quiet canonical-path R9006 control saw 20 distinct destination ports on the wire with zero new queue drops but produced 0 R9006 rows; R9002 still fired, proving the path is alive. This is a build/runtime mismatch (stop-the-line trigger) and a deployment lifecycle gap, not a source-lane regression. The verifier checks files and services, not the process image creation time. MITIGATED LIVE 2026-10-20 19:51:55: the operator stopped PID 21568 and started PID 3632 from the patched binary; post-restart R9006/R9007 controls passed. The gap remains OPEN for installer/verifier hardening: a future in-place upgrade can repeat the stale image, and the verifier still checks file hashes/services rather than process creation time. CLOSED 2026-10-20: the verifier now gates daemon/Nose process creation time against the installed binary and rejects missing, duplicate, stale, or mixed process sets. Self-test proves the predicate fails stale/mixed/empty and passes fresh; live verification is 24/24. The installer still does not auto-restart Nose, so the operator must run restart-nose.ps1 after an upgrade; a future stale process now fails closed instead of silently passing.",
+   "status": "CLOSED",
    "found_at": "2026-10-20",
    "required_evidence": [
     "DONE 2026-10-20 19:51:55: operator stopped PID 21568 and started PID 3632 from the patched binary; process creation 19:51:55 > binary build 17:20:01.",
     "DONE 2026-10-20: nose_connected=true; frames_read/submitted advancing; zero pipe errors/rejections; post-restart R9006/R9007 controls PASS.",
     "DONE: R9006 one-port 0 / 20-port 1; R9007 normal SYN 0 / five exact XMAS 5; zero new queue drops.",
     "DONE: pre-restart baseline 5/5 exact 0x29 on wire / 0 rows; post-restart same five frames -> 5 rows.",
-    "OPEN: installer/verifier hardening so a future in-place upgrade cannot leave a stale Nose process passing verification (process-image creation check and/or installer restart)."
+    "DONE: verifier hardening adds daemon/Nose process-image gates; self-test stale=False fresh=True mixed=False empty=False; live verifier 24/24. Installer auto-restart remains an explicit operator runbook step, not a silent pass."
    ],
-   "evidence": "EVI RB-021-NOSE-FLAGS-LIVE-ATTEMPT-20261020 (E5 FAIL); EVI DEPLOY-131-INSTALL-20261020 (E5 install PASS); admin-evidence/rb021-nose-stale-20261020/processes.txt; admin-evidence/rb021-nose-stale-20261020/r9006-quiet-attempt.txt; EVI RB-021-R9007-PRE-RESTART-20261020 (E5 FAIL baseline, 5/5 wire / 0 rows); EVI RB-021-NOSE-FLAGS-LIVE-PASS-20261020 (E5 PASS after manual restart); PID 3632 created 2026-10-20 19:51:55",
-   "source_fix": "none; live process restarted manually 2026-10-20 19:51:55; installer/verifier hardening still OPEN"
+   "evidence": "EVI RB-021-NOSE-FLAGS-LIVE-ATTEMPT-20261020 (E5 FAIL); EVI DEPLOY-131-INSTALL-20261020 (E5 install PASS); admin-evidence/rb021-nose-stale-20261020/processes.txt; admin-evidence/rb021-nose-stale-20261020/r9006-quiet-attempt.txt; EVI RB-021-R9007-PRE-RESTART-20261020 (E5 FAIL baseline, 5/5 wire / 0 rows); EVI RB-021-NOSE-FLAGS-LIVE-PASS-20261020 (E5 PASS after manual restart); PID 3632 created 2026-10-20 19:51:55; EVI DEPLOY-131-VERIFY-PROCESS-20261020 (E5 PASS: self-test + 24/24 live)",
+   "source_fix": "DEPLOY-131-VERIFY-PROCESS-001 in the kit verifier; installer auto-restart remains an operator runbook step",
+   "closed_at": "2026-10-20",
+   "closed_by": "DEPLOY-131-VERIFY-PROCESS-20261020",
+   "resolution": "The stale-process failure is now fail-closed at the deployment verifier: file replacement alone cannot pass unless exactly one daemon and one Nose process were created after the installed binaries. The live host passes 24/24 after the operator restart. Installer auto-restart is still not implemented; the runbook requires restart-nose.ps1 after upgrades, and omission will fail verification."
   }
  ],
  "evidence_level_summary": {
@@ -7080,7 +7115,7 @@
   "E2_count": 130,
   "E3_count": 14,
   "E4_count": 15,
-  "E5_count": 102,
+  "E5_count": 103,
   "E6_count": 0,
   "E7_count": 1
  }
