@@ -1720,6 +1720,69 @@
    ],
    "host_effect_confirmed": false,
    "prevention_gate": "closed"
+  },
+  {
+   "id": "DEPLOY-131-INSTALL-20261020",
+   "title": "DEPLOY-131 installed; live byte identity and services pass 22/22 (E5 install)",
+   "level": "E5",
+   "component": "deployment/installer",
+   "flow_id": "DATA-001",
+   "head_sha": "de574b6",
+   "timestamp": "2026-10-20",
+   "result": "PASS",
+   "command": "operator-run admin-evidence/deploy131-nose-flags-20261020/aegis_setup.exe (elevated); deploy131-verify-live.ps1 -RepoRoot D:\\NIDs_Windows -KitDir ...",
+   "expected": "After an in-place install, the live daemon and Nose files equal the repo build at source de574b6; all runtime/config/manifest bytes match; the three services are running; no enforcement or gate change.",
+   "actual": "PASS. LIVE_VERIFY_OK (22/22). Live daemon E19C76C3... == repo; live Nose 735E2B8A... == repo; build_manifest source de574b6; rules/policies/manifest byte-equal; AegisNids/AegisWfp/AegisMinifilter running. Daemon process PID 13108 started 2026-10-20 17:54:49. The installer hash/size gate passed on the corrected rerun (7C4B2C19..., 7,425,997 B).",
+   "finding": "The install is byte-identical and service-ready, but this E5 is install-only. The supervised Go Nose process PID 21568 started 2026-10-15 08:09:13, before the new binary was built at 2026-10-20 17:20:01, so the running process image is pre-patch even though the file hash matches. That process-lifecycle defect is tracked separately; live R9006/R9007 are still unproven.",
+   "description": "The first verifier invocation passed 21/22 with expected=powershell, an operator parameter-binding error, not an artifact mismatch. The rerun without the bad -ExpectedSha256 binding produced 22/22. No file, service, gate, or host-effect state was changed by the verifier.",
+   "files_verified": [
+    "admin-evidence/deploy131-nose-flags-20261020/postinstall-verify.txt",
+    "admin-evidence/rb021-nose-stale-20261020/processes.txt",
+    "C:/Program Files/AEGIS NIDS/runtime/aegis_nids.exe",
+    "C:/Program Files/AEGIS NIDS/runtime/aegis-nose.exe"
+   ],
+   "files_changed": [],
+   "tests": [
+    "deploy131-verify-live.ps1: LIVE_VERIFY_OK (22/22)",
+    "live vs repo daemon: E19C76C3... == E19C76C3...",
+    "live vs repo Nose file: 735E2B8A... == 735E2B8A...",
+    "services: AegisNids, AegisWfp, AegisMinifilter RUNNING"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed"
+  },
+  {
+   "id": "RB-021-NOSE-FLAGS-LIVE-ATTEMPT-20261020",
+   "title": "R9006 live control still 0/20 on a quiet queue; running Nose process predates the flags build (E5 FAIL)",
+   "level": "E5",
+   "component": "capture/go-nose",
+   "flow_id": "DATA-001",
+   "head_sha": "de574b6",
+   "timestamp": "2026-10-20",
+   "result": "FAIL",
+   "command": "run-rate-controls.ps1 against TEST-NET 192.0.2.1 from 192.168.1.39; independent dumpcap; aegisctl queue/status/readiness/enforce; CIM process creation check",
+   "expected": "With DEPLOY-131 installed and a quiet queue, a SYN scan to >=20 distinct destination ports produces exactly one R9006 row, and 60 ICMP produces one R9002 row; one-port and 10-ICMP negatives produce none.",
+   "actual": "FAIL for R9006. Quiet attempt at 17:58:47: wire capture saw 20 distinct SYN destination ports and 42 SYN frames; queue pushed 311,075 -> 355,521 with dropped 1,316 -> 1,316 and shed 21,132 -> 21,132 (zero new drops); R9006 rows = 0. R9002 positive produced exactly one row. The first attempt at 17:56:36 had queue dropped +1,316 and was discarded as invalid for the flag claim.",
+   "finding": "The live Go Nose process PID 21568 was created 2026-10-15 08:09:13, five days before the patched Nose binary was built (2026-10-20 17:20:01, 735E2B8A...). Replacing the file did not restart the process, so the old image still emits events without the ContextFlags TCP-flags lane. The daemon (PID 13108, new) receives no flags, so R9006/R9007 cannot match. This is a deployment/process-lifecycle failure, not a lane source regression; the source fix remains E2-proven. No live R9006/R9007 claim is made.",
+   "description": "Read-only verifier plus TEST-NET traffic controls; detection-only, gate closed, no host effect. The first control was under install/startup queue pressure and is not used as evidence for or against the flag lane. The second quiet control isolates the flag result: 20 ports on the wire, zero queue drops, zero R9006 rows.",
+   "files_verified": [
+    "admin-evidence/rb021-nose-stale-20261020/README.md",
+    "admin-evidence/rb021-nose-stale-20261020/processes.txt",
+    "admin-evidence/rb021-nose-stale-20261020/r9006-quiet-attempt.txt",
+    "admin-evidence/rb021-nose-stale-20261020/r9006-quiet-attempt.pcapng",
+    "admin-evidence/deploy131-nose-flags-20261020/rate-e5-testnet-20261020-175636.txt",
+    "admin-evidence/deploy131-nose-flags-20261020/rate-e5-testnet-20261020-175847.txt"
+   ],
+   "files_changed": [],
+   "tests": [
+    "wire: 20 distinct SYN destination ports, 42 SYN frames, 60 ICMP, 10 ICMP",
+    "quiet queue: +44,446 pushed, +0 dropped, +0 shed",
+    "R9006: 0 rows (FAIL)",
+    "R9002: exactly 1 row (PASS)",
+    "process: Nose PID 21568 created 2026-10-15 08:09:13 vs binary 2026-10-20 17:20:01"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed"
   }
  ],
  "known_gaps": [
@@ -6880,7 +6943,7 @@
    "id": "DEPLOY-130-L4-RATE-E5",
    "severity": "P2",
    "title": "Live E5 proof of L4 rate/window behavior after deploying the 8a7f301 artifact",
-   "description": "Artifact 04F9... built from source 8a7f301 was installed on 2026-10-20; the live byte-equality verifier passed 22/22 and readiness is RUNNING with the gate closed. R9002 live rate/window behavior PASSED on the canonical path: 10 pings produced no new row and 60 pings produced exactly one new row. R9006 remains UNPROVEN: a live 20-distinct-port SYN scan produced 0 rows because canonical Go Nose events have no TCP-flags sidecar (new gap RB-021-NOSE-FLAGS). The host-generated TEST-NET method is not the isolated Kali->Win11 lab E5 required by the kit. The child stays OPEN. Source fix de574b6 now carries Nose TCP flags to the Zig queue at E2, but the installed artifact remains pre-patch; live R9006/R9007 proof is still required before this child can close.",
+   "description": "DEPLOY-131 (source de574b6) was installed on 2026-10-20 and the live byte-equality verifier passed 22/22. R9002 live rate/window behavior is PASS (10 pings no row; 60 ICMP one row). R9006/R9007 remain UNPROVEN: the quiet 20-distinct-port control produced 0 R9006 rows with zero new queue drops because the running Nose process PID 21568 predates the patched binary; the old image sends no TCP flags. New gap DEPLOY-131-NOSE-STALE-PROCESS tracks the process restart. The host-generated TEST-NET method is also not the isolated Kali->Win11 lab E5 required by the kit. The child stays OPEN.",
    "status": "OPEN",
    "found_at": "2026-10-20",
    "required_evidence": [
@@ -6889,10 +6952,12 @@
     "OPEN: R9006 on a path that actually evaluates TCP flags (canonical Nose fix or direct-pinned lab), with one-port negative and >=20-distinct-port positive producing at most one row per source/window.",
     "OPEN: repeat the negative/positive controls from the isolated Kali->Win11 lab per the kit, or explicitly re-scope the child with the operator.",
     "OPEN: install/restart an artifact containing de574b6 and run the canonical-path R9006 one-port negative / >=20-distinct-port positive and R9007 exact FIN|PSH|URG controls with queue/readiness/gate evidence.",
-    "READY, NOT INSTALLED: DEPLOY-131 kit 7C4B2C19... carries source de574b6; install, restart/readiness, LIVE_VERIFY_OK (22/22), then canonical-path R9006/R9007 controls.",
-    "DONE (observation only, E5): 60s quiet live sample shows +20,008 pushed and +0 dropped/shed; cumulative 232,149 drops are startup/build-storm pressure, not idle loss. Controls must still record queue deltas."
+    "DONE (observation only, E5): 60s quiet live sample shows +20,008 pushed and +0 dropped/shed; cumulative 232,149 drops are startup/build-storm pressure, not idle loss. Controls must still record queue deltas.",
+    "DONE 2026-10-20: DEPLOY-131 installed; LIVE_VERIFY_OK (22/22); source de574b6; daemon new. Install-only.",
+    "OPEN: restart the supervised Nose process (PID 21568, created 2026-10-15) and verify the new process image before any R9006/R9007 claim.",
+    "OPEN: quiet canonical-path R9006/R9007 controls with zero new queue drops; host-generated TEST-NET remains partial until the isolated lab is restored."
    ],
-   "evidence": "EVI DEPLOY-130-L4-RATE-INSTALL-20261020 (E5 install); EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL); EVI RB-021-L4-RATE-E2-20261020; EVI DEPLOY-130-L4-RATE-PKG-20261020; gap RB-021-NOSE-FLAGS OPEN; admin-evidence/deploy130-l4-rate-20261020/postinstall-verify.txt and rate-e5-testnet-20261020-164841.txt; EVI RB-021-NOSE-FLAGS-E2-20261020 (E2 PASS at de574b6, source-only); EVI DEPLOY-131-NOSE-FLAGS-PKG-20261020 (E3 packaging; not installed); EVI QUEUE-PRESSURE-OBS-20261020 (E5 observation, zero idle delta)"
+   "evidence": "EVI DEPLOY-130-L4-RATE-INSTALL-20261020 (E5 install); EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL); EVI RB-021-L4-RATE-E2-20261020; EVI DEPLOY-130-L4-RATE-PKG-20261020; gap RB-021-NOSE-FLAGS OPEN; admin-evidence/deploy130-l4-rate-20261020/postinstall-verify.txt and rate-e5-testnet-20261020-164841.txt; EVI RB-021-NOSE-FLAGS-E2-20261020 (E2 PASS at de574b6, source-only); EVI DEPLOY-131-NOSE-FLAGS-PKG-20261020 (E3 packaging; not installed); EVI QUEUE-PRESSURE-OBS-20261020 (E5 observation, zero idle delta); EVI DEPLOY-131-INSTALL-20261020 (E5 install PASS); EVI RB-021-NOSE-FLAGS-LIVE-ATTEMPT-20261020 (E5 FAIL, stale Nose); gap DEPLOY-131-NOSE-STALE-PROCESS OPEN"
   },
   {
    "id": "DEPLOY-120-E5",
@@ -6916,18 +6981,36 @@
    "id": "RB-021-NOSE-FLAGS",
    "severity": "P1",
    "title": "Canonical Go Nose events carry no TCP-flags sidecar, so R9006/R9007 L4 flag rules are inert on the production capture path",
-   "description": "The canonical Nose path delivers a 109-byte CanonicalEvent without TCP flags and enters the Zig queue via pushEvent, which sets QueuedEvent.tcp_flags=0. event_processor.zig evaluates L4 rules only for ev.source==.capture_npcap and passes qe.tcp_flags to l4_matcher.matches; FLAGS:S (R9006) and FLAGS:FPU (R9007) therefore cannot match Nose events. Only the direct Zig Npcap packet_callback calls pushEventWithTcpFlags. The historical 2026-10-20 R9006/R9007 rows used the direct VMnet1 pin; the production service currently uses unpinned Go Nose on Wi-Fi. A live 20-distinct-port SYN scan produced 0 R9006 rows while an independent capture proved the SYN wire traffic. R9002 is unaffected because it matches protocol only and is live-proven on this path. SOURCE FIX AT E2: patch RB021-NOSE-FLAGS-001 (source commit de574b6) records the raw TCP flags byte in the existing ContextFlags transport lane (bits 16..23, valid bit24); Go Nose sets it and Zig pushDecodedFrame extracts it into QueuedEvent.tcp_flags. The flag is not yet closed: the installed live artifact is still pre-patch. After the operator installs and restarts the patched artifact, run the live canonical-path negative/positive controls before changing status.",
+   "description": "The canonical Nose path originally delivered a 109-byte CanonicalEvent without TCP flags, so R9006/R9007 were inert on the production capture path. SOURCE FIX AT E2: patch RB021-NOSE-FLAGS-001 (source commit de574b6) records the raw TCP flags byte in the existing ContextFlags lane (bits 16..23, valid bit24); Go Nose sets it and Zig pushDecodedFrame extracts it. DEPLOY-131 was installed on 2026-10-20 and the live verifier passed 22/22, but the running Nose process PID 21568 was created 2026-10-15, before the patched binary was built. The old process still emits no flags; a quiet 20-port R9006 control produced 0 rows with zero queue drops while R9002 fired. The gap remains OPEN pending a process restart and live controls; new gap DEPLOY-131-NOSE-STALE-PROCESS tracks the deployment lifecycle defect.",
    "status": "OPEN",
    "found_at": "2026-10-20",
    "required_evidence": [
     "DONE at E2 (de574b6): a contract-safe ContextFlags transport lane carries TCP flags from Go Nose to Zig; all codec constants and the Python round-trip are pinned in tests/contracts/test_canonical_context_flags.py. OPEN: install the patched artifact and prove the live path.",
     "Live canonical-path negative/positive controls: one-port handshake produces no R9006; >=20 distinct destination ports produce exactly one R9006 per source/window; exact FIN|PSH|URG produces the specified R9007 behavior.",
     "Queue drop counters, readiness, and prevention_gate closed documented for the same run.",
-    "OPEN: install the patched artifact, restart AegisNids, and run the live canonical-path negative/positive controls; the current 04F9E0DB... install is pre-patch and cannot close this gap.",
-    "READY, NOT INSTALLED: DEPLOY-131 kit 7C4B2C19... (source de574b6) is payload-verified; operator install + LIVE_VERIFY_OK (22/22) + live controls still required. Pre-install verifier baseline is 18/22."
+    "DONE 2026-10-20: DEPLOY-131 installed; LIVE_VERIFY_OK (22/22); daemon and Nose files equal source de574b6. This is install-only.",
+    "OPEN: restart the supervised Nose process (PID 21568 predates the build); verify process creation time > 2026-10-20 17:20:01 and frames advancing.",
+    "OPEN: quiet canonical-path R9006 one-port negative / >=20-distinct-port positive and R9007 exact FIN|PSH|URG controls; no live claim until they pass."
    ],
-   "evidence": "EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL; wire 20 distinct SYN, 0 R9006); EVI RB-021-L4-RATE-E2-20261020; src/pipeline/event_processor.zig:154; src/pipeline/event_queue.zig:71; src/pipeline/packet_callback.zig:91; docs/runbooks/RB-021-hostonly-lab-proof.md; historical R9006/R9007 rows used direct VMnet1 pin; EVI RB-021-NOSE-FLAGS-E2-20261020 (E2 PASS at de574b6); source commit de574b6; EVI DEPLOY-131-NOSE-FLAGS-PKG-20261020 (E3 PASS, packaging only)",
+   "evidence": "EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL; wire 20 distinct SYN, 0 R9006); EVI RB-021-L4-RATE-E2-20261020; src/pipeline/event_processor.zig:154; src/pipeline/event_queue.zig:71; src/pipeline/packet_callback.zig:91; docs/runbooks/RB-021-hostonly-lab-proof.md; historical R9006/R9007 rows used direct VMnet1 pin; EVI RB-021-NOSE-FLAGS-E2-20261020 (E2 PASS at de574b6); source commit de574b6; EVI DEPLOY-131-NOSE-FLAGS-PKG-20261020 (E3 PASS, packaging only); EVI DEPLOY-131-INSTALL-20261020 (E5 install PASS, 22/22); EVI RB-021-NOSE-FLAGS-LIVE-ATTEMPT-20261020 (E5 FAIL: quiet 20-port control, 0 rows, stale Nose PID 21568); gap DEPLOY-131-NOSE-STALE-PROCESS OPEN",
    "source_fix": "de574b6 (RB021-NOSE-FLAGS-001, E2; 109/133-byte wire layout unchanged)"
+  },
+  {
+   "id": "DEPLOY-131-NOSE-STALE-PROCESS",
+   "severity": "P1",
+   "title": "DEPLOY-131 replaced aegis-nose.exe but left the pre-patch Nose process running, so live TCP flags are inert",
+   "description": "The DEPLOY-131 installer and verifier prove file byte identity (Nose 735E2B8A..., source de574b6), but the supervised Go Nose process PID 21568 was created 2026-10-15 08:09:13, before the patched binary was built on 2026-10-20 17:20:01. The old process image still emits CanonicalEvents without the ContextFlags TCP-flags lane. A quiet canonical-path R9006 control saw 20 distinct destination ports on the wire with zero new queue drops but produced 0 R9006 rows; R9002 still fired, proving the path is alive. This is a build/runtime mismatch (stop-the-line trigger) and a deployment lifecycle gap, not a source-lane regression. The verifier checks files and services, not the process image creation time.",
+   "status": "OPEN",
+   "found_at": "2026-10-20",
+   "required_evidence": [
+    "Operator-elevated restart of the supervised Nose process so its creation time is later than the 2026-10-20 17:20:01 binary build (aegis_open.py close/open or taskkill + supervised start).",
+    "Post-restart proof: process name/PID/creation time, nose_connected=true, frames_read/submitted advancing, zero pipe errors/rejections.",
+    "Quiet canonical-path R9006: one-port negative = 0 rows; >=20 distinct ports = exactly 1 row, with zero new queue drops.",
+    "R9007 exact FIN|PSH|URG control: expected rows per matching packet; normal SYN does not match.",
+    "Verifier improvement or explicit process-image check so a stale process cannot pass as installed."
+   ],
+   "evidence": "EVI RB-021-NOSE-FLAGS-LIVE-ATTEMPT-20261020 (E5 FAIL); EVI DEPLOY-131-INSTALL-20261020 (E5 install PASS); admin-evidence/rb021-nose-stale-20261020/processes.txt; admin-evidence/rb021-nose-stale-20261020/r9006-quiet-attempt.txt",
+   "source_fix": "none; deployment restart required (source de574b6 is already in the file)"
   }
  ],
  "evidence_level_summary": {
@@ -6936,7 +7019,7 @@
   "E2_count": 130,
   "E3_count": 14,
   "E4_count": 15,
-  "E5_count": 98,
+  "E5_count": 100,
   "E6_count": 0,
   "E7_count": 1
  }

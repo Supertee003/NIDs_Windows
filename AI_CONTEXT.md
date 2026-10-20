@@ -389,23 +389,31 @@ Previous phases:
   RB021-NOSE-FLAGS-001 (E2, source commit de574b6) now
   carries the raw TCP flags byte in the existing ContextFlags lane
   (bits 16..23, valid bit24; wire remains 109/133 bytes) and extracts it in
-  pushDecodedFrame. Go/Zig/Python tests and zig build pass. Deployment kit
-  deploy131-nose-flags-20261020 (installer 7C4B2C19..., source de574b6) is
-  prepared and payload-verified; it is NOT installed. Its read-only
-  pre-install verifier is 18/22, failing exactly daemon/nose/manifest/source
-  as expected against the old live build. There is NO live R9006/R9007
-  result; gap stays OPEN until install + live proof. Queue pressure is
-  separately labeled: the 60 s quiet sample held dropped=232,149 and
-  shed=131,545 while pushed rose +20,008 with zero per-source drop delta;
-  cumulative loss correlates with startup plus the 17:20 build/test storm,
-  so controls must compare deltas (EVI QUEUE-PRESSURE-OBS-20261020).
+  pushDecodedFrame. Go/Zig/Python tests and zig build pass. DEPLOY-131
+  (installer 7C4B2C19..., source de574b6) was installed on 2026-10-20 and
+  the live verifier passed 22/22. HOWEVER, the running Go Nose process PID
+  21568 was created 2026-10-15 08:09:13, before the patched Nose binary was
+  built at 2026-10-20 17:20:01; the file was replaced but the old process
+  image still emits no TCP flags. A quiet 20-distinct-port control at
+  17:58:47 saw 20 ports on the wire, +0 queue drops, but 0 R9006 rows;
+  R9002 fired exactly once. The first 17:56 control had +1,316 queue drops
+  and is not used as flag evidence. New gap DEPLOY-131-NOSE-STALE-PROCESS
+  (P1) tracks the process-lifecycle defect. There is NO live R9006/R9007
+  result; RB-021 stays OPEN until the operator restarts Nose and the
+  controls pass. Queue pressure is separately labeled: the pre-install
+  60 s quiet sample held dropped=232,149 and shed=131,545 while pushed rose
+  +20,008 with zero per-source drop delta; cumulative loss correlates with
+  startup plus the 17:20 build/test storm, so controls must compare deltas
+  (EVI QUEUE-PRESSURE-OBS-20261020).
   This TEST-NET run is not the isolated Kali->Win11 lab E5; child gap
   DEPLOY-130-L4-RATE-E5 remains OPEN (R9002 live done; R9006/R9007 pending).
   Evidence: EVI RB-021-L4-RATE-E2-20261020 (E2); EVI
   DEPLOY-130-L4-RATE-INSTALL-20261020 (E5 install);
   EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL); EVI
   DEPLOY-130-L4-RATE-PKG-20261020 (E3 packaging); EVI
-  DEPLOY-131-NOSE-FLAGS-PKG-20261020 (E3 packaging, ready not installed);
+  DEPLOY-131-NOSE-FLAGS-PKG-20261020 (E3 packaging, installed);
+  EVI DEPLOY-131-INSTALL-20261020 (E5 install PASS 22/22);
+  EVI RB-021-NOSE-FLAGS-LIVE-ATTEMPT-20261020 (E5 FAIL, stale Nose);
   EVI QUEUE-PRESSURE-OBS-20261020 (E5 observation, zero idle delta);
   tests in
   src/pipeline/l4_matcher.zig + tests/security/test_l4_rate_config.py;
