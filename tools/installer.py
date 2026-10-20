@@ -134,6 +134,10 @@ RequestExecutionLevel admin
 ShowInstDetails show
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
+!include "FileFunc.nsh"
+Var ExistingRoot
+Var ExistingValid
+
 VIAddVersionKey "PrivateBuild" "${APPNAME} ${APPVERSION} @AEGIS_COMMIT@"
 VIProductVersion "5.0.0.0"
 VIAddVersionKey "ProductName" "AEGIS NIDS"
@@ -153,6 +157,44 @@ VIAddVersionKey "FileDescription" "AEGIS Network Intrusion Detection System"
 
 !insertmacro MUI_LANGUAGE "English"
 
+; DEPLOY-120-PATHFIX: adopt an existing AegisNids service path instead of
+; trusting $PROGRAMFILES64. A registered service is authoritative: setup
+; must upgrade its actual runtime, never create a sibling duplicate.
+Function .onInit
+  StrCpy $ExistingRoot ""
+  StrCpy $ExistingValid "0"
+  ReadRegStr $0 HKLM "SYSTEM\CurrentControlSet\Services\AegisNids" "ImagePath"
+  ${If} $0 != ""
+    ; Normalize surrounding quotes and the optional \??\ native prefix.
+    StrCpy $1 $0 1
+    ${If} $1 == '"'
+      StrCpy $0 $0 "" 1
+      StrCpy $0 $0 -1
+    ${EndIf}
+    StrCpy $1 $0 4
+    ${If} $1 == "\??\"
+      StrCpy $0 $0 "" 4
+    ${EndIf}
+    ${GetFileName} "$0" $1
+    ${GetParent} "$0" $2
+    ${GetFileName} "$2" $3
+    ${GetParent} "$2" $4
+    ${If} $1 == "aegis_nids.exe"
+      ${If} $3 == "runtime"
+        StrCpy $ExistingRoot $4
+        StrCpy $ExistingValid "1"
+        StrCpy $INSTDIR $ExistingRoot
+      ${Else}
+        MessageBox MB_ICONSTOP "AEGIS NIDS service path is not the canonical <install>\runtime\aegis_nids.exe: $0. Refusing to install over an unexpected service path."
+        Abort
+      ${EndIf}
+    ${Else}
+      MessageBox MB_ICONSTOP "AEGIS NIDS service path is not the canonical <install>\runtime\aegis_nids.exe: $0. Refusing to install over an unexpected service path."
+      Abort
+    ${EndIf}
+  ${EndIf}
+FunctionEnd
+
 ; Canonical install layout (matches src/core/runtime_paths.zig):
 ;   <install>\runtime\  binaries (service entrypoint + DLLs + nose)
 ;   <install>\configs\  Rules.json + policies.json
@@ -165,6 +207,21 @@ VIAddVersionKey "FileDescription" "AEGIS Network Intrusion Detection System"
 ; setup logs each driver's signature status - see docs/DEPLOYMENT.md.
 ; Production signing (EV cert/HLK) is still pending.
 Section "Install"
+  ; DEPLOY-120-PATHFIX: .onInit adopts the registered service path. If the
+  ; directory page is changed to a different path, abort before stopping the
+  ; service or copying any file: a second runtime would diverge from the SCM
+  ; binPath and its uninstaller would target shared services.
+  ${If} $ExistingValid == "1"
+    StrCpy $5 $INSTDIR 1 -1
+    ${If} $5 == "\"
+      StrCpy $INSTDIR $INSTDIR -1
+    ${EndIf}
+    ${If} $INSTDIR != $ExistingRoot
+      MessageBox MB_ICONSTOP "AEGIS NIDS is already installed at $ExistingRoot. Setup must upgrade that existing path; refusing to create a duplicate runtime at $INSTDIR. Keep the detected directory or uninstall the existing service first."
+      Abort
+    ${EndIf}
+  ${EndIf}
+
   ; Upgrade safety (EVT-221): a running service locks its own image, so a
   ; reinstall/upgrade over a live install fails mid-copy without this stop.
   ; Reinstall-safe: an absent service/process just logs and continues;
@@ -268,6 +325,45 @@ Section "Start AEGIS Service Now"
 SectionEnd
 
 Section "Uninstall"
+  ; DEPLOY-120-PATHFIX: an uninstaller deletes the shared AegisNids service
+  ; and the driver services. If the registered service does not live under
+  ; this $INSTDIR, this is a duplicate/stale uninstaller: abort before
+  ; deleting anything.
+  ReadRegStr $0 HKLM "SYSTEM\CurrentControlSet\Services\AegisNids" "ImagePath"
+  ${If} $0 != ""
+    StrCpy $1 $0 1
+    ${If} $1 == '"'
+      StrCpy $0 $0 "" 1
+      StrCpy $0 $0 -1
+    ${EndIf}
+    StrCpy $1 $0 4
+    ${If} $1 == "\??\"
+      StrCpy $0 $0 "" 4
+    ${EndIf}
+    ${GetFileName} "$0" $1
+    ${GetParent} "$0" $2
+    ${GetFileName} "$2" $3
+    ${GetParent} "$2" $4
+    ${If} $1 == "aegis_nids.exe"
+      ${If} $3 == "runtime"
+        StrCpy $5 $INSTDIR 1 -1
+        ${If} $5 == "\"
+          StrCpy $INSTDIR $INSTDIR -1
+        ${EndIf}
+        ${If} $4 != $INSTDIR
+          MessageBox MB_ICONSTOP "Refusing to uninstall: AegisNids service path $0 is not under $INSTDIR. Run the official uninstaller for the registered install; a duplicate runtime must not delete shared services."
+          Abort
+        ${EndIf}
+      ${Else}
+        MessageBox MB_ICONSTOP "Refusing to uninstall: AegisNids service path is not the canonical <install>\runtime\aegis_nids.exe: $0."
+        Abort
+      ${EndIf}
+    ${Else}
+      MessageBox MB_ICONSTOP "Refusing to uninstall: AegisNids service path is not the canonical <install>\runtime\aegis_nids.exe: $0."
+      Abort
+    ${EndIf}
+  ${EndIf}
+
   nsExec::ExecToLog "sc stop AegisNids"
   nsExec::ExecToLog "sc delete AegisNids"
   ; Kernel telemetry drivers (DEPLOY-120): unload before delete before

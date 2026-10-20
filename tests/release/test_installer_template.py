@@ -232,3 +232,63 @@ def test_find_makensis_prefers_path_then_standard_dirs(tmp_path, monkeypatch):
     fake = nsis / "makensis.exe"
     fake.write_text("", encoding="utf-8")
     assert mod.find_makensis() == str(fake)
+
+
+# ---------------------------------------------------------------------
+# DEPLOY-120-PATHFIX: never create a second runtime beside a live service
+# ---------------------------------------------------------------------
+
+
+def test_existing_service_path_is_detected_and_selected_on_init():
+    """The installer must adopt the registered AegisNids ImagePath instead of
+    blindly using $PROGRAMFILES64. The 2026-10-20 E5 attempt chose
+    D:\\Program Files\\AEGIS NIDS while the service still ran from
+    C:\\Program Files\\AEGIS NIDS, creating a duplicate runtime."""
+    mod = _load()
+    tpl = mod.NSIS_TEMPLATE
+    assert '!include "FileFunc.nsh"' in tpl
+    assert "Var ExistingRoot" in tpl
+    assert "Var ExistingValid" in tpl
+    assert ('ReadRegStr $0 HKLM "SYSTEM\\CurrentControlSet\\Services\\AegisNids" '
+            '"ImagePath"') in tpl
+    oninit = tpl.split("Function .onInit", 1)[1].split("FunctionEnd", 1)[0]
+    assert "StrCpy $INSTDIR $ExistingRoot" in oninit
+    assert "${GetFileName}" in oninit
+    assert "${GetParent}" in oninit
+    assert 'StrCpy $0 $0 "" 1' in oninit
+    assert "StrCpy $0 $0 -1" in oninit
+
+
+def test_install_aborts_before_stopping_when_directory_differs():
+    mod = _load()
+    tpl = mod.NSIS_TEMPLATE
+    install = tpl.split('Section "Install"', 1)[1]
+    stop = install.index('nsExec::ExecToLog "sc stop AegisNids"')
+    guard = install[:stop]
+    assert '${If} $ExistingValid == "1"' in guard
+    assert "${If} $INSTDIR != $ExistingRoot" in guard
+    assert "duplicate runtime" in guard.lower()
+    assert "Abort" in guard
+
+
+def test_uninstall_aborts_before_service_delete_when_path_mismatches():
+    mod = _load()
+    tpl = mod.NSIS_TEMPLATE
+    un = tpl.split('Section "Uninstall"', 1)[1]
+    delete = un.index('nsExec::ExecToLog "sc stop AegisNids"')
+    guard = un[:delete]
+    assert ('ReadRegStr $0 HKLM "SYSTEM\\CurrentControlSet\\Services\\AegisNids" '
+            '"ImagePath"') in guard
+    assert "${If} $4 != $INSTDIR" in guard
+    assert "Refusing to uninstall" in guard
+    assert "Abort" in guard
+
+
+def test_generate_nsi_carries_existing_service_guard(tmp_path):
+    mod = _load()
+    out = tmp_path / "pathguard.nsi"
+    mod.generate_nsi(out)
+    text = out.read_text(encoding="utf-8")
+    assert "Function .onInit" in text
+    assert "Var ExistingRoot" in text
+    assert "duplicate runtime" in text.lower()

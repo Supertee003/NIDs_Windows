@@ -1344,6 +1344,66 @@
     "EVIDENCE_INDEX.json",
     "AI_CONTEXT.md"
    ]
+  },
+  {
+   "id": "DEPLOY-120-PATHFIX-20261020",
+   "title": "DEPLOY-120-PATHFIX: installer adopts the existing AegisNids service path, refuses a duplicate runtime, and the uninstaller refuses a non-matching service path; 62/62 build gates",
+   "level": "E3",
+   "component": "release+packaging+installer",
+   "flow_id": "DATA-001",
+   "head_sha": "fd7b424",
+   "timestamp": "2026-10-20",
+   "result": "PASS",
+   "command": "Agent (non-elevated): python -m pytest tests/release/test_installer_template.py -q -> 21 passed; powershell -NoProfile -ExecutionPolicy Bypass -File admin-evidence/deploy120-refresh-20261020/deploy120-proof.ps1 -> python tools/installer.py --package (makensis v3.12) -> 62/62 gates, including a generated-NSI existing-service guard gate. No installer execution; no service changes.",
+   "expected": "The canonical NSIS generator must read the existing AegisNids ImagePath and adopt its parent as $INSTDIR; a changed directory page must abort before the service is stopped or any file is copied; the Uninstall section must abort before stopping/deleting shared services when the service path is not under $INSTDIR. Focused tests pin the guard; the build proof must remain payload-identical and include the guard.",
+   "actual": "PASS 62/62 gates. Fixed installer sha256 65204BFFD392AF385DD26F71C686EDC421EA9B87D5E3E96E36F1E2498B612DE3 x 7,424,088 B. Focused installer tests 21/21. Generated NSI contains Function .onInit, the AegisNids ImagePath ReadRegStr, 'duplicate runtime', and 'Refusing to uninstall'. Daemon packaged=repo=live 47AB80850512353B9FCB43F6C21AF614614EDC6E6467A096AAB971B79B2F7042 (no downgrade); PEP/IPC/WFP-user, nose/adapter/bridge, drivers, Rules/policies, and build_manifest parity otherwise unchanged. Build source fd7b424 (tools/ and tests/ are records/tooling paths under ADR-0008); records HEAD at build 08f45e5.",
+   "finding": "E3 build/payload parity plus the path guard only. This contains the 2026-10-20 duplicate-runtime defect recorded in DEPLOY-120-E5-ATTEMPT-20261020: the pre-guard E80352D7 artifact installed D:\\Program Files\\AEGIS NIDS while the service stayed on C:\\. E5 remains OPEN; the fixed artifact must be used for the operator rerun, expecting C:\\ on the directory page and LIVE_VERIFY_OK (22/22). Do not claim E5 PASS from this E3 proof.",
+   "description": "tools/installer.py: adds FileFunc.nsh, ExistingRoot/ExistingValid variables, .onInit service-path adoption and normalization (quotes, optional \\??\\ prefix), Install-section directory-mismatch abort before stop/copy, and Uninstall-section path guard before service/driver deletion. tests/release/test_installer_template.py: 4 new pins (21 total in the file). Kit: admin-evidence/deploy120-refresh-20261020/ (gitignored) README + E5-ATTEMPT-FAILED.md updated; fixed aegis_setup.exe. No host install.",
+   "files_verified": [
+    "tools/installer.py",
+    "tests/release/test_installer_template.py",
+    "installer.generated.nsi",
+    "admin-evidence/deploy120-refresh-20261020/aegis_setup.exe",
+    "admin-evidence/deploy120-refresh-20261020/deploy120-result.json",
+    "admin-evidence/deploy120-refresh-20261020/deploy120-run.log",
+    "build_manifest.json"
+   ],
+   "files_changed": [
+    "tools/installer.py",
+    "tests/release/test_installer_template.py",
+    "EVIDENCE_INDEX.json",
+    "AI_CONTEXT.md",
+    "build_manifest.json"
+   ],
+   "tests": [
+    "tests/release/test_installer_template.py: 21/21 pass (4 DEPLOY-120-PATHFIX pins: existing service path detected and selected on .onInit; install aborts before stop on directory mismatch; uninstall aborts before service delete on path mismatch; generate_nsi carries the guard)",
+    "deploy120-proof.ps1: 62/62 gates PASS; installer compiles with makensis v3.12; fixed installer 65204BFF... x 7,424,088 B; daemon 47AB8085 no downgrade; no elevated install"
+   ]
+  },
+  {
+   "id": "DEPLOY-120-E5-ATTEMPT-20261020",
+   "title": "DEPLOY-120 E5 attempt: pre-guard installer created a duplicate D:\\Program Files\\AEGIS NIDS while the live service stayed on C:\\; verifier 12/21",
+   "level": "E5",
+   "component": "release+packaging+installer",
+   "flow_id": "DATA-001",
+   "head_sha": "08f45e5",
+   "timestamp": "2026-10-20",
+   "result": "FAIL",
+   "command": "Operator elevated: ran the pre-guard refresh installer (E80352D7... from the 2026-10-20 kit), then admin-evidence/deploy120-refresh-20261020/deploy120-verify-live.ps1; agent read-only checks of sc qc AegisNids, service/driver state, gate, readiness, v6; elevated containment via deploy120-containment.ps1.",
+   "expected": "The installer upgrades the existing C:\\Program Files\\AEGIS NIDS runtime, keeps AegisNids on that path, installs the new helpers, and the strict verifier returns LIVE_VERIFY_OK (22/22) with gate closed and readiness ready; then uninstall/reinstall.",
+   "actual": "FAILED. The installer created a complete second runtime at D:\\Program Files\\AEGIS NIDS; sc qc AegisNids still reported C:\\Program Files\\AEGIS NIDS\\runtime\\aegis_nids.exe; sc create AegisNids failed (already exists) and did not change the service path. The strict verifier returned LIVE_VERIFY_FAIL (12/21) because the C:\\ install was not upgraded. D:\\ had no running process. Containment PASS at 13:37: D:\\ absent (install, D-targeted uninstall keys, Start Menu shortcuts), C:\\ service and AegisWfp/AegisMinifilter RUNNING, gate closed, readiness ready (6 policies / 23 rules). The D:\\ uninstaller was never run.",
+   "finding": "E5 is NOT PASS. This is the stop-the-line duplicate-runtime failure that motivated DEPLOY-120-PATHFIX (E3 PASS): .onInit now adopts the existing service path, the Install section aborts on a directory mismatch before stopping/copying, and the Uninstall section refuses a non-matching service path. The pre-guard E80352D7 artifact is historical and must not be reused; E5 remains OPEN pending the fixed-artifact rerun.",
+   "description": "Failure record (gitignored kit): admin-evidence/deploy120-refresh-20261020/E5-ATTEMPT-FAILED.md, containment.txt, drill-pre-verify.txt, drill-before-hashes.txt, drill-before-sc.txt, drill-before-service.txt, drill-before-process.txt, drill-backup/. The duplicate D:\\ tree was removed only by containment; C:\\ was not uninstalled and its drivers were not removed.",
+   "files_verified": [
+    "admin-evidence/deploy120-refresh-20261020/E5-ATTEMPT-FAILED.md",
+    "admin-evidence/deploy120-refresh-20261020/containment.txt",
+    "admin-evidence/deploy120-refresh-20261020/drill-pre-verify.txt",
+    "admin-evidence/deploy120-refresh-20261020/drill-before-hashes.txt",
+    "admin-evidence/deploy120-refresh-20261020/drill-before-sc.txt",
+    "admin-evidence/deploy120-refresh-20261020/drill-before-service.txt",
+    "admin-evidence/deploy120-refresh-20261020/drill-before-process.txt"
+   ],
+   "files_changed": []
   }
  ],
  "known_gaps": [
@@ -6496,15 +6556,31 @@
     "negative control showing normal handshakes/pings below a threshold do not fire"
    ],
    "evidence": "EVI RB-021-L4-20261020; RB-021 runbook L4 close-out record; admin-evidence/lab-session-20261020-l4/RESULTS-L4-20261020.md (gitignored)"
+  },
+  {
+   "id": "DEPLOY-120-E5",
+   "severity": "P1",
+   "title": "DEPLOY-120 E5 host drill after path fix: upgrade the live C:\\ install with the fixed installer, pass LIVE_VERIFY_OK (22/22), then uninstall/reinstall",
+   "description": "The first 2026-10-20 E5 attempt used the pre-guard installer and created a duplicate D:\\Program Files\\AEGIS NIDS; containment removed D:\\ only and the C:\\ service/drivers stayed running. DEPLOY-120-PATHFIX now adopts the existing AegisNids path, aborts on a directory mismatch before stop/copy, and guards the uninstaller; E3 proof is 62/62. The E5 host drill is still unrun and requires operator elevation.",
+   "status": "OPEN",
+   "level": "E5",
+   "component": "release+packaging+installer",
+   "required_evidence": [
+    "fixed installer shows the existing C:\\Program Files\\AEGIS NIDS path and does not create a second runtime",
+    "deploy120-verify-live.ps1 returns LIVE_VERIFY_OK (22/22) after the upgrade; gate closed and readiness ready",
+    "uninstall removes the C:\\ service/drivers and preserves configs; reinstall returns 22/22"
+   ],
+   "evidence": "DEPLOY-120-PATHFIX-20261020 (E3 PASS, fixed installer 65204BFF...); DEPLOY-120-E5-ATTEMPT-20261020 (E5 FAIL, duplicate D:\\); kit E5-ATTEMPT-FAILED.md",
+   "opened_at": "2026-10-20"
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 25,
   "E2_count": 128,
-  "E3_count": 11,
+  "E3_count": 12,
   "E4_count": 15,
-  "E5_count": 92,
+  "E5_count": 94,
   "E6_count": 0,
   "E7_count": 1
  }

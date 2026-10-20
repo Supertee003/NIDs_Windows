@@ -3504,8 +3504,8 @@
     },
     {
       "path": "tools/installer.py",
-      "size": 17925,
-      "sha256": "5b93056e382d3f0181912e25c43c0e7648fe869f06f558aa90a9ade8fee92419",
+      "size": 21495,
+      "sha256": "1202877780995759aed951e6d299ae5fb68d07c411bd37357a9fea54c38f6396",
       "language": "python/cython"
     },
     {
