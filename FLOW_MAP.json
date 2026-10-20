@@ -1,5 +1,5 @@
 {
-  "head_sha": "8a7f30197ce75b3d2e63b4448a03c9117af005df",
+  "head_sha": "de574b6bad6b2677afc5be754b9213d9335ccb8e",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -29,9 +29,10 @@
           "owner": "Go Nose",
           "component": "go_nose",
           "input": "RawPacket",
-          "output": "CanonicalEvent (109 bytes)",
+          "output": "CanonicalEvent (109-byte v1 / 133-byte v2; ContextFlags carries TCP flags)",
           "file": "nose/canonical.go",
-          "contract": "CONTRACT-01"
+          "contract": "CONTRACT-01",
+          "note": "RB021: raw TCP flags travel in ContextFlags bits 16..23 with valid bit 24; the wire length/offset is unchanged."
         },
         {
           "step": 3,
@@ -39,7 +40,7 @@
           "plane": "PLANE-A â†’ PLANE-B",
           "owner": "Go â†’ Zig",
           "component": "c_abi",
-          "input": "CanonicalEvent bytes",
+          "input": "CanonicalEvent bytes (v1 109 / v2 133; ContextFlags TCP-flags lane)",
           "output": "EventQueue",
           "file": "nose/pipe_writer.go",
           "boundary": "C ABI"
@@ -63,7 +64,7 @@
           "input": "FlowRecord + CanonicalEvent",
           "output": "DetectionResult",
           "file": "src/detection/signature_engine.zig",
-          "note": "Payload rules use Aho-Corasick; rules with layer=L4 are parsed separately (src/pipeline/l4_matcher.zig) and matched per packet on protocol/TCP flags, not on payload text (2026-10-20 lab; rate semantics remain RB-021-L4-RATE)."
+          "note": "Payload rules use Aho-Corasick; rules with layer=L4 are parsed separately (src/pipeline/l4_matcher.zig) and matched per packet on protocol/TCP flags, not on payload text. Canonical Nose now supplies flags through the ContextFlags lane (RB021 E2); live R9006/R9007 proof is still pending."
         },
         {
           "step": 6,

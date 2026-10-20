@@ -1,5 +1,5 @@
 {
-  "head_sha": "8a7f30197ce75b3d2e63b4448a03c9117af005df",
+  "head_sha": "de574b6bad6b2677afc5be754b9213d9335ccb8e",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -31,7 +31,7 @@
         "protocol": "protocol(1) + direction(1) + layer_id(1) + is_pipe(1) = 4 bytes",
         "detection": "event_type(4) + severity(1) + rule_id(4) + ruleset_version(8) = 17 bytes",
         "payload": "payload_length(4) + payload_hash(8) = 12 bytes",
-        "policy": "policy_action(1) + enforcement_status(1) + defcon_impact(1) + context_flags(4) = 7 bytes",
+        "policy": "policy_action(1) + enforcement_status(1) + defcon_impact(1) + context_flags(4; bits 16..23 = raw TCP flags, bit 24 = valid, RB021) = 7 bytes",
         "reserved": "reserved(16) = 16 bytes"
       }
     },

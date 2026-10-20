@@ -1,5 +1,5 @@
 {
- "head_sha": "8a7f30197ce75b3d2e63b4448a03c9117af005df",
+ "head_sha": "de574b6bad6b2677afc5be754b9213d9335ccb8e",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-10-20",
  "generator_version": "3.0",
@@ -1584,6 +1584,63 @@
     "pcap sha256 3BFCBA70FC53F9D6FD080DE033C87BE589766C2839E2AB0A5670522FDC121137",
     "R9002 negative 10 = 0 new rows; positive 60 = 1 new row; R9006 positive 20 distinct ports = 0 rows",
     "readiness RUNNING; prevention_gate closed; queue drop counters unchanged across the controls"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed"
+  },
+  {
+   "id": "RB-021-NOSE-FLAGS-E2-20261020",
+   "title": "RB-021 Nose TCP-flags transport lane implemented and unit-proven (E2)",
+   "level": "E2",
+   "component": "contract/canonical_event + pipeline/event_queue + nose/capture",
+   "flow_id": "DATA-001",
+   "head_sha": "de574b6",
+   "timestamp": "2026-10-20",
+   "result": "PASS",
+   "command": "go test ./...; zig build test --summary all; zig build; go build -o aegis-nose.exe .; python -m pytest tests/contracts/test_canonical_context_flags.py tests/contracts/test_contract_fixtures.py -q",
+   "expected": "Go Nose TCP events carry the exact raw TCP flags byte (FIN=0x01 .. CWR=0x80) in an additive ContextFlags lane without changing the 109-byte v1 or 133-byte v2 wire layout. Zig pushDecodedFrame extracts the lane into QueuedEvent.tcp_flags so L4 FLAGS:S and FLAGS:FPU consume the same evidence as the direct Zig Npcap path. A producer without flag evidence must remain distinguishable from an observed zero flags byte.",
+   "actual": "PASS at E2. nose/capture.go sets the lane from gopacket TCP booleans (SYN=0x02, XMAS=FIN|PSH|URG=0x29; UDP leaves it absent) and the lane survives v1 Serialize/Deserialize. src/contract/canonical_event.zig provides setTcpFlags/getTcpFlags with a valid bit; src/pipeline/event_queue.zig extracts it in pushDecodedFrame and the queue test proves tcp_flags=0x02 reaches an l4.matches FLAGS:S predicate. Go tests pass; zig build test reports 2202/2203 passed with 1 skipped; Python contract tests report 21 passed; zig build and go build pass. No live install or live R9006/R9007 claim was made.",
+   "finding": "This closes the code-path half of RB-021-NOSE-FLAGS at E2: the production canonical Nose path can now carry TCP flags without a wire-layout change, and the Zig queue/L4 predicate can consume them. It does NOT close the gap: the installed 04F9E0DB... artifact is still pre-patch, so the gap remains OPEN until the patched artifact is installed, restarted, and live-proven with one-port negative, >=20-distinct-port R9006 positive, and exact FIN|PSH|URG R9007 controls.",
+   "description": "Patch RB021-NOSE-FLAGS-001 uses previously unused ContextFlags bits: bits 16..23 hold the raw TCP flags byte and bit24 marks the lane valid; absence stays distinct from zero. Existing allocations (RAG/v6/L7 below bit 14) do not overlap. Go Nose writes the lane in eventFromPacket; Zig pushDecodedFrame reads it into the existing QueuedEvent.tcp_flags sidecar. The wire stays byte-identical in size and offsets; C++/Python constants are pinned by the contract test. No enforcement, no host effect, no prevention-gate change.",
+   "files_verified": [
+    "nose/canonical.go",
+    "nose/capture.go",
+    "nose/capture_hermetic_test.go",
+    "src/contract/canonical_event.zig",
+    "src/pipeline/event_queue.zig",
+    "src/pipeline/event_processor.zig",
+    "src/pipeline/l4_matcher.zig",
+    "shared/protocol/wire_v1.md",
+    "shared/protocol/wire_v2.md",
+    "shared/wire/wire_codec.h",
+    "shared/wire/wire_codec.py",
+    "brain/canonical_event.py",
+    "tests/contracts/test_canonical_context_flags.py",
+    "docs/runbooks/RB-021-hostonly-lab-proof.md"
+   ],
+   "files_changed": [
+    "nose/canonical.go",
+    "nose/capture.go",
+    "nose/capture_hermetic_test.go",
+    "src/contract/canonical_event.zig",
+    "src/pipeline/event_queue.zig",
+    "src/pipeline/event_processor.zig",
+    "shared/protocol/wire_v1.md",
+    "shared/protocol/wire_v2.md",
+    "shared/wire/wire_codec.h",
+    "shared/wire/wire_codec.py",
+    "brain/canonical_event.py",
+    "docs/contracts/canonical-event-v1.md",
+    "docs/runbooks/RB-021-hostonly-lab-proof.md",
+    "tests/contracts/test_canonical_context_flags.py"
+   ],
+   "tests": [
+    "go test ./...: pass",
+    "zig build test --summary all: 2202/2203 passed, 1 skipped; 4/4 steps succeeded",
+    "python -m pytest tests/contracts/test_canonical_context_flags.py tests/contracts/test_contract_fixtures.py -q: 21 passed",
+    "zig build: pass; zig-out/bin/aegis_nids.exe sha256 E19C76C3EA493B6FCF4DB840F061DA1563A64791213797C8891C6A7C52B9D770",
+    "go build -o aegis-nose.exe .: pass; sha256 735E2B8A9A6836E7407C20DC152CEB50164304CA2879AF14DEA8277F350C5C2E",
+    "git diff --check: clean"
    ],
    "host_effect_confirmed": false,
    "prevention_gate": "closed"
@@ -6747,16 +6804,17 @@
    "id": "DEPLOY-130-L4-RATE-E5",
    "severity": "P2",
    "title": "Live E5 proof of L4 rate/window behavior after deploying the 8a7f301 artifact",
-   "description": "Artifact 04F9... built from source 8a7f301 was installed on 2026-10-20; the live byte-equality verifier passed 22/22 and readiness is RUNNING with the gate closed. R9002 live rate/window behavior PASSED on the canonical path: 10 pings produced no new row and 60 pings produced exactly one new row. R9006 remains UNPROVEN: a live 20-distinct-port SYN scan produced 0 rows because canonical Go Nose events have no TCP-flags sidecar (new gap RB-021-NOSE-FLAGS). The host-generated TEST-NET method is not the isolated Kali->Win11 lab E5 required by the kit. The child stays OPEN.",
+   "description": "Artifact 04F9... built from source 8a7f301 was installed on 2026-10-20; the live byte-equality verifier passed 22/22 and readiness is RUNNING with the gate closed. R9002 live rate/window behavior PASSED on the canonical path: 10 pings produced no new row and 60 pings produced exactly one new row. R9006 remains UNPROVEN: a live 20-distinct-port SYN scan produced 0 rows because canonical Go Nose events have no TCP-flags sidecar (new gap RB-021-NOSE-FLAGS). The host-generated TEST-NET method is not the isolated Kali->Win11 lab E5 required by the kit. The child stays OPEN. Source fix de574b6 now carries Nose TCP flags to the Zig queue at E2, but the installed artifact remains pre-patch; live R9006/R9007 proof is still required before this child can close.",
    "status": "OPEN",
    "found_at": "2026-10-20",
    "required_evidence": [
     "DONE 2026-10-20: install an artifact built from 8a7f301 and pass the live verifier (22/22) with the new Rules.json.",
     "DONE for R9002 2026-10-20: 10 pings below threshold produce no new R9002; 60 ICMP packet burst produces exactly one R9002 row (TEST-NET host path; not isolated Kali->Win11 lab).",
     "OPEN: R9006 on a path that actually evaluates TCP flags (canonical Nose fix or direct-pinned lab), with one-port negative and >=20-distinct-port positive producing at most one row per source/window.",
-    "OPEN: repeat the negative/positive controls from the isolated Kali->Win11 lab per the kit, or explicitly re-scope the child with the operator."
+    "OPEN: repeat the negative/positive controls from the isolated Kali->Win11 lab per the kit, or explicitly re-scope the child with the operator.",
+    "OPEN: install/restart an artifact containing de574b6 and run the canonical-path R9006 one-port negative / >=20-distinct-port positive and R9007 exact FIN|PSH|URG controls with queue/readiness/gate evidence."
    ],
-   "evidence": "EVI DEPLOY-130-L4-RATE-INSTALL-20261020 (E5 install); EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL); EVI RB-021-L4-RATE-E2-20261020; EVI DEPLOY-130-L4-RATE-PKG-20261020; gap RB-021-NOSE-FLAGS OPEN; admin-evidence/deploy130-l4-rate-20261020/postinstall-verify.txt and rate-e5-testnet-20261020-164841.txt"
+   "evidence": "EVI DEPLOY-130-L4-RATE-INSTALL-20261020 (E5 install); EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL); EVI RB-021-L4-RATE-E2-20261020; EVI DEPLOY-130-L4-RATE-PKG-20261020; gap RB-021-NOSE-FLAGS OPEN; admin-evidence/deploy130-l4-rate-20261020/postinstall-verify.txt and rate-e5-testnet-20261020-164841.txt; EVI RB-021-NOSE-FLAGS-E2-20261020 (E2 PASS at de574b6, source-only)"
   },
   {
    "id": "DEPLOY-120-E5",
@@ -6780,21 +6838,23 @@
    "id": "RB-021-NOSE-FLAGS",
    "severity": "P1",
    "title": "Canonical Go Nose events carry no TCP-flags sidecar, so R9006/R9007 L4 flag rules are inert on the production capture path",
-   "description": "The canonical Nose path delivers a 109-byte CanonicalEvent without TCP flags and enters the Zig queue via pushEvent, which sets QueuedEvent.tcp_flags=0. event_processor.zig evaluates L4 rules only for ev.source==.capture_npcap and passes qe.tcp_flags to l4_matcher.matches; FLAGS:S (R9006) and FLAGS:FPU (R9007) therefore cannot match Nose events. Only the direct Zig Npcap packet_callback calls pushEventWithTcpFlags. The historical 2026-10-20 R9006/R9007 rows used the direct VMnet1 pin; the production service currently uses unpinned Go Nose on Wi-Fi. A live 20-distinct-port SYN scan produced 0 R9006 rows while an independent capture proved the SYN wire traffic. R9002 is unaffected because it matches protocol only and is live-proven on this path.",
+   "description": "The canonical Nose path delivers a 109-byte CanonicalEvent without TCP flags and enters the Zig queue via pushEvent, which sets QueuedEvent.tcp_flags=0. event_processor.zig evaluates L4 rules only for ev.source==.capture_npcap and passes qe.tcp_flags to l4_matcher.matches; FLAGS:S (R9006) and FLAGS:FPU (R9007) therefore cannot match Nose events. Only the direct Zig Npcap packet_callback calls pushEventWithTcpFlags. The historical 2026-10-20 R9006/R9007 rows used the direct VMnet1 pin; the production service currently uses unpinned Go Nose on Wi-Fi. A live 20-distinct-port SYN scan produced 0 R9006 rows while an independent capture proved the SYN wire traffic. R9002 is unaffected because it matches protocol only and is live-proven on this path. SOURCE FIX AT E2: patch RB021-NOSE-FLAGS-001 (source commit de574b6) records the raw TCP flags byte in the existing ContextFlags transport lane (bits 16..23, valid bit24); Go Nose sets it and Zig pushDecodedFrame extracts it into QueuedEvent.tcp_flags. The flag is not yet closed: the installed live artifact is still pre-patch. After the operator installs and restarts the patched artifact, run the live canonical-path negative/positive controls before changing status.",
    "status": "OPEN",
    "found_at": "2026-10-20",
    "required_evidence": [
-    "A contract-safe canonical-path fix that carries TCP flags (or equivalent scan metadata) from Go Nose to Zig, updating every affected codec/fixture in one patch; or an explicit production capture design that uses direct Npcap with the flags sidecar and no duplicate packet path.",
+    "DONE at E2 (de574b6): a contract-safe ContextFlags transport lane carries TCP flags from Go Nose to Zig; all codec constants and the Python round-trip are pinned in tests/contracts/test_canonical_context_flags.py. OPEN: install the patched artifact and prove the live path.",
     "Live canonical-path negative/positive controls: one-port handshake produces no R9006; >=20 distinct destination ports produce exactly one R9006 per source/window; exact FIN|PSH|URG produces the specified R9007 behavior.",
-    "Queue drop counters, readiness, and prevention_gate closed documented for the same run."
+    "Queue drop counters, readiness, and prevention_gate closed documented for the same run.",
+    "OPEN: install the patched artifact, restart AegisNids, and run the live canonical-path negative/positive controls; the current 04F9E0DB... install is pre-patch and cannot close this gap."
    ],
-   "evidence": "EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL; wire 20 distinct SYN, 0 R9006); EVI RB-021-L4-RATE-E2-20261020; src/pipeline/event_processor.zig:154; src/pipeline/event_queue.zig:71; src/pipeline/packet_callback.zig:91; docs/runbooks/RB-021-hostonly-lab-proof.md; historical R9006/R9007 rows used direct VMnet1 pin"
+   "evidence": "EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL; wire 20 distinct SYN, 0 R9006); EVI RB-021-L4-RATE-E2-20261020; src/pipeline/event_processor.zig:154; src/pipeline/event_queue.zig:71; src/pipeline/packet_callback.zig:91; docs/runbooks/RB-021-hostonly-lab-proof.md; historical R9006/R9007 rows used direct VMnet1 pin; EVI RB-021-NOSE-FLAGS-E2-20261020 (E2 PASS at de574b6); source commit de574b6",
+   "source_fix": "de574b6 (RB021-NOSE-FLAGS-001, E2; 109/133-byte wire layout unchanged)"
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 25,
-  "E2_count": 129,
+  "E2_count": 130,
   "E3_count": 13,
   "E4_count": 15,
   "E5_count": 97,
