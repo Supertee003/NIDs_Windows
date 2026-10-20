@@ -11,6 +11,7 @@ const event = @import("../contract/event.zig");
 const diag = @import("../core/diagnostics.zig");
 const flow = @import("../capture/flow_table.zig");
 const sig = @import("../detection/signature_engine.zig");
+const l4 = @import("l4_matcher.zig");
 const anom = @import("../detection/anomaly_detector.zig");
 const corr_mod = @import("../detection/correlator.zig");
 const tracker = @import("../detection/threat_tracker.zig");
@@ -112,10 +113,18 @@ fn processEvent(
         matched_rule_id = ev.rule_id;
         _ = state.g_pipeline_detections.fetchAdd(1, .monotonic);
     }
+    var active_ac: ?*sig.AhoCorasick = null;
+    var l4_rules: [l4.MAX_RULES]l4.Rule = l4.empty_rules;
+    var l4_count: usize = 0;
+    state.g_ac_mutex.lock();
+    active_ac = state.g_active_ac;
+    l4_count = @min(state.g_l4_rule_count, l4.MAX_RULES);
+    if (l4_count > 0) {
+        @memcpy(l4_rules[0..l4_count], state.g_l4_rules[0..l4_count]);
+    }
+    state.g_ac_mutex.unlock();
+
     if (qe.payload_len > 0) {
-        state.g_ac_mutex.lock();
-        const active_ac = state.g_active_ac;
-        state.g_ac_mutex.unlock();
         if (active_ac) |the_ac| {
             const payload_slice = qe.payload[0..qe.payload_len];
             // GAP-015: matchFirst, not match. The pipeline consumes only
@@ -132,6 +141,23 @@ fn processEvent(
                 ev.rule_id = matched_rule_id;
                 ev.kind = .signature_match;
                 _ = state.g_pipeline_detections.fetchAdd(1, .monotonic);
+            }
+        }
+    }
+
+    // L4 predicate matching. The AC owns payload bytes; layer=="L4" rules
+    // own packet metadata (protocol, exact TCP flags, target ports) and never
+    // enter the AC. Only a directly observed Npcap frame has trustworthy
+    // flags today; other producers leave the sidecar at 0, so a flags rule
+    // cannot accidentally match their zero-filled metadata.
+    if (matched_rule_id == 0 and l4_count > 0 and ev.source == .capture_npcap) {
+        for (l4_rules[0..l4_count]) |rule| {
+            if (l4.matches(&rule, ev.src_port, ev.dst_port, ev.protocol, qe.tcp_flags)) {
+                matched_rule_id = rule.rule_id;
+                ev.rule_id = matched_rule_id;
+                ev.kind = .signature_match;
+                _ = state.g_pipeline_detections.fetchAdd(1, .monotonic);
+                break;
             }
         }
     }
@@ -557,12 +583,8 @@ test "assignFlowId stamps stable per-flow identity" {
     // gets another. Without the stamp every event kept flow_id=0 and the
     // threat tracker scored the whole world on shared Flow 0.
     var ft = flow.FlowTable{};
-    const k1 = flow.FlowKey.normalize(
-        [_]u8{ 10, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-        [_]u8{ 10, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, 1000, 80, 6, false);
-    const k2 = flow.FlowKey.normalize(
-        [_]u8{ 10, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-        [_]u8{ 10, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, 1000, 80, 6, false);
+    const k1 = flow.FlowKey.normalize([_]u8{ 10, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, [_]u8{ 10, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, 1000, 80, 6, false);
+    const k2 = flow.FlowKey.normalize([_]u8{ 10, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, [_]u8{ 10, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, 1000, 80, 6, false);
     var eva = event.IpcEvent.init(.packet_captured);
     var evb = event.IpcEvent.init(.packet_captured);
     var evc = event.IpcEvent.init(.packet_captured);
@@ -582,12 +604,8 @@ test "stamped flow ids isolate threat incidents per flow" {
     var ft = flow.FlowTable{};
     var tt = tracker.ThreatTracker.init(std.testing.allocator);
     defer tt.deinit();
-    const kh = flow.FlowKey.normalize(
-        [_]u8{ 10, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-        [_]u8{ 10, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, 5000, 443, 6, false);
-    const kq = flow.FlowKey.normalize(
-        [_]u8{ 10, 9, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-        [_]u8{ 10, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, 5001, 443, 6, false);
+    const kh = flow.FlowKey.normalize([_]u8{ 10, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, [_]u8{ 10, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, 5000, 443, 6, false);
+    const kq = flow.FlowKey.normalize([_]u8{ 10, 9, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, [_]u8{ 10, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, 5001, 443, 6, false);
     var evh = event.IpcEvent.init(.signature_match);
     evh.event_id = 101;
     evh.timestamp_ns = 1000;
@@ -603,7 +621,8 @@ test "stamped flow ids isolate threat incidents per flow" {
     try std.testing.expectEqual(@as(u32, 1), tt.incident_count);
 }
 
-test "brainInspect is a safe no-op without detections or loop" {    var ev = event.IpcEvent.init(.packet_captured);
+test "brainInspect is a safe no-op without detections or loop" {
+    var ev = event.IpcEvent.init(.packet_captured);
     ev.src_ip = 0xC0A80164;
     // Closed loop: formats nothing, sends nothing.
     state.g_brain_enabled.store(false, .release);

@@ -7,6 +7,7 @@ const std = @import("std");
 const diag = @import("../core/diagnostics.zig");
 const runtime_paths = @import("../core/runtime_paths.zig");
 const sig = @import("../detection/signature_engine.zig");
+const l4 = @import("l4_matcher.zig");
 const state = @import("runtime_state.zig");
 
 /// Hash a rule_id string (e.g. "R0056") to a deterministic u32.
@@ -235,6 +236,8 @@ pub fn reloadRules() ReloadReport {
     };
 
     var report = ReloadReport{};
+    var l4_rules: [l4.MAX_RULES]l4.Rule = l4.empty_rules;
+    var l4_count: usize = 0;
     var disabled_map = loadDisabledMap();
     defer disabled_map.deinit();
     blk: {
@@ -301,6 +304,20 @@ pub fn reloadRules() ReloadReport {
                 report.recordSkip(c.reason, c.id);
                 continue;
             }
+            if (l4.isL4(rule_val)) {
+                if (l4.parse(rule_val, c.pattern.?, hashRuleId(c.id.?))) |l4_rule| {
+                    if (l4_count < l4.MAX_RULES) {
+                        l4_rules[l4_count] = l4_rule;
+                        l4_count += 1;
+                        report.loaded += 1;
+                    } else {
+                        report.recordSkip(.malformed, c.id);
+                    }
+                } else {
+                    report.recordSkip(.malformed, c.id);
+                }
+                continue;
+            }
             const rule_id = hashRuleId(c.id.?);
             heap_ac.addPattern(rule_id, c.pattern.?) catch |err| {
                 diag.warn("reload: failed to add pattern for {s}: {}", .{ c.id.?, err });
@@ -323,6 +340,8 @@ pub fn reloadRules() ReloadReport {
         state.g_ac_mutex.lock();
         const old_ac_ptr = state.g_active_ac;
         state.g_active_ac = heap_ac;
+        state.g_l4_rules = l4_rules;
+        state.g_l4_rule_count = l4_count;
         state.g_rules_loaded.store(report.loaded, .monotonic);
         state.g_ac_mutex.unlock();
 
@@ -335,9 +354,9 @@ pub fn reloadRules() ReloadReport {
         _ = old_ac_ptr;
         if (report.totalSkipped() > 0) {
             diag.info("reload: loaded {} rules (swap complete), skipped {} (no_pattern={} disabled={} malformed={} add_failed={})", .{
-                report.loaded, report.totalSkipped(),
+                report.loaded,             report.totalSkipped(),
                 report.skipped_no_pattern, report.skipped_disabled,
-                report.skipped_malformed, report.skipped_add_failed,
+                report.skipped_malformed,  report.skipped_add_failed,
             });
         } else {
             diag.info("reload: loaded {} rules (swap complete)", .{report.loaded});
@@ -362,6 +381,9 @@ pub fn reloadRules() ReloadReport {
 /// tier starts reading rule actions.
 pub fn loadRulesInto(ac: *sig.AhoCorasick, bytes: []const u8, rules_path: []const u8) ReloadReport {
     var report = ReloadReport{};
+    var l4_rules: [l4.MAX_RULES]l4.Rule = l4.empty_rules;
+    var l4_count: usize = 0;
+    var ac_ready = false;
     var disabled_map = loadDisabledMap();
     defer disabled_map.deinit();
     blk: {
@@ -391,6 +413,20 @@ pub fn loadRulesInto(ac: *sig.AhoCorasick, bytes: []const u8, rules_path: []cons
                 report.recordSkip(c.reason, c.id);
                 continue;
             }
+            if (l4.isL4(rule_val)) {
+                if (l4.parse(rule_val, c.pattern.?, hashRuleId(c.id.?))) |l4_rule| {
+                    if (l4_count < l4.MAX_RULES) {
+                        l4_rules[l4_count] = l4_rule;
+                        l4_count += 1;
+                        report.loaded += 1;
+                    } else {
+                        report.recordSkip(.malformed, c.id);
+                    }
+                } else {
+                    report.recordSkip(.malformed, c.id);
+                }
+                continue;
+            }
             const rule_id = hashRuleId(c.id.?);
             ac.addPattern(rule_id, c.pattern.?) catch |err| {
                 diag.warn("failed to add pattern for {s}: {}", .{ c.id.?, err });
@@ -404,12 +440,22 @@ pub fn loadRulesInto(ac: *sig.AhoCorasick, bytes: []const u8, rules_path: []cons
             diag.err("failed to build Aho-Corasick automaton: {}", .{err});
             break :blk;
         };
+        ac_ready = true;
+    }
+    if (ac_ready) {
+        // Publish the L4 half of the same parsed catalog only after the AC
+        // build succeeded. Startup is single-threaded, but taking the same
+        // mutex keeps the invariant identical to the reload swap.
+        state.g_ac_mutex.lock();
+        state.g_l4_rules = l4_rules;
+        state.g_l4_rule_count = l4_count;
+        state.g_ac_mutex.unlock();
     }
     if (report.totalSkipped() > 0) {
         diag.info("startup: loaded {} rules, skipped {} (no_pattern={} disabled={} malformed={} add_failed={})", .{
-            report.loaded, report.totalSkipped(),
+            report.loaded,             report.totalSkipped(),
             report.skipped_no_pattern, report.skipped_disabled,
-            report.skipped_malformed, report.skipped_add_failed,
+            report.skipped_malformed,  report.skipped_add_failed,
         });
     }
     return report;
@@ -519,6 +565,41 @@ test "BE-DRIFT-098: loadRulesInto reports named skips end to end" {
     try std.testing.expectEqualStrings("R0103", rep.skippedId(1));
     // Completeness: every catalog entry is accounted for.
     try std.testing.expectEqual(@as(usize, 5), rep.loaded + rep.totalSkipped());
+}
+
+test "L4 rules load into the predicate table, never the payload AC" {
+    const doc =
+        \\{"nids_rules": [
+        \\ {"rule_id": "R0056", "layer": "L7", "match_pattern": "' OR 1=1"},
+        \\ {"rule_id": "R9002", "layer": "L4", "match_pattern": "PROTO:ICMP", "target_protocols": ["ICMP"], "target_ports": []},
+        \\ {"rule_id": "R9006", "layer": "L4", "match_pattern": "FLAGS:S", "target_protocols": ["TCP"], "target_ports": []},
+        \\ {"rule_id": "R9007", "layer": "L4", "match_pattern": "FLAGS:FPU", "target_protocols": ["TCP"], "target_ports": []}
+        \\]}
+    ;
+    var ac = sig.AhoCorasick.init(std.testing.allocator, 100) catch unreachable;
+    defer ac.deinit();
+    defer {
+        state.g_ac_mutex.lock();
+        state.g_l4_rules = l4.empty_rules;
+        state.g_l4_rule_count = 0;
+        state.g_ac_mutex.unlock();
+    }
+
+    const rep = loadRulesInto(&ac, doc, "test-l4-rules.json");
+    try std.testing.expectEqual(@as(u32, 4), rep.loaded);
+    try std.testing.expectEqual(@as(u32, 0), rep.totalSkipped());
+    try std.testing.expectEqual(@as(usize, 3), state.g_l4_rule_count);
+
+    // A synthetic payload token must not hit the AC after the layer split.
+    try std.testing.expect(ac.matchFirst("FLAGS:S") == null);
+    try std.testing.expect(ac.matchFirst("FLAGS:FPU") == null);
+    const payload_hit = ac.matchFirst("' OR 1=1").?;
+    try std.testing.expectEqual(hashRuleId("R0056"), payload_hit.rule_id);
+
+    const syn = state.g_l4_rules[1];
+    try std.testing.expectEqual(hashRuleId("R9006"), syn.rule_id);
+    try std.testing.expect(l4.matches(&syn, 40000, 445, 6, 0x02));
+    try std.testing.expect(!l4.matches(&syn, 40000, 445, 6, 0x12));
 }
 
 test "BE-DRIFT-098: writeJsonString escapes operator-controlled IDs" {

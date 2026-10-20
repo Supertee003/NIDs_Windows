@@ -7,6 +7,7 @@
 
 const std = @import("std");
 const sig = @import("../detection/signature_engine.zig");
+const l4 = @import("l4_matcher.zig");
 const watchdog = @import("../reliability/watchdog.zig");
 const fault = @import("../reliability/fault_injection.zig");
 const hist = @import("../reliability/latency_histogram.zig");
@@ -266,6 +267,14 @@ test "lastEventAgeMs: §4.1 age semantics, clamped (EVT-222)" {
 // pipe thread rebuilds a new AC and swaps the pointer atomically.
 pub var g_active_ac: ?*sig.AhoCorasick = null;
 pub var g_ac_mutex: std.Thread.Mutex = .{};
+
+// L4 predicate rules (layer=="L4") loaded from the same Rules.json as the
+// AC. The reload path swaps this table and g_active_ac under g_ac_mutex so
+// the pipeline never observes a half-updated rule set. Fixed size: the
+// catalog has three L4 rules today; a larger set is a deliberate limit, not
+// silent truncation (rule_loader records a named skip past MAX_RULES).
+pub var g_l4_rules: [l4.MAX_RULES]l4.Rule = l4.empty_rules;
+pub var g_l4_rule_count: usize = 0;
 
 // PATCH-29/30/31: Reliability globals (initialized by daemon.zig)
 pub var g_wd: watchdog.ReliabilityWatchdog = undefined;

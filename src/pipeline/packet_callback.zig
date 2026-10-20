@@ -38,6 +38,7 @@ pub fn packetCallback(ctx: *anyopaque, hdr: *const npcap.pcap_pkthdr, data: []co
     else
         @as(u64, @intCast(@max(@as(i128, 0), std.time.nanoTimestamp())));
 
+    var tcp_flags: u8 = 0;
     if (is_ipv4 and data.len >= 34) {
         // Parse IPv4 header (starts at offset 14)
         const ip_offset: usize = 14;
@@ -61,6 +62,7 @@ pub fn packetCallback(ctx: *anyopaque, hdr: *const npcap.pcap_pkthdr, data: []co
             ev.src_port = @as(u16, data[transport_offset]) << 8 | data[transport_offset + 1];
             ev.dst_port = @as(u16, data[transport_offset + 2]) << 8 | data[transport_offset + 3];
         }
+        tcp_flags = tcpFlagsAt(data, transport_offset, ev.protocol);
     } else if (is_ipv6 and data.len >= 54) {
         // Parse IPv6 header (starts at offset 14, fixed 40 bytes)
         const ip6_offset: usize = 14;
@@ -78,6 +80,7 @@ pub fn packetCallback(ctx: *anyopaque, hdr: *const npcap.pcap_pkthdr, data: []co
             ev.src_port = @as(u16, data[transport_offset]) << 8 | data[transport_offset + 1];
             ev.dst_port = @as(u16, data[transport_offset + 2]) << 8 | data[transport_offset + 3];
         }
+        tcp_flags = tcpFlagsAt(data, transport_offset, ev.protocol);
     } else {
         return; // Not parseable
     }
@@ -85,10 +88,27 @@ pub fn packetCallback(ctx: *anyopaque, hdr: *const npcap.pcap_pkthdr, data: []co
     ev.payload_len = @intCast(@min(data.len, 65535));
     ev.event_id = diag.metrics.packets_captured.get();
 
-    // Push event + full payload into pipeline queue
-    if (!queue.pushEvent(ev, data)) {
+    // Push event + full payload into pipeline queue. tcp_flags is an
+    // in-memory sidecar; it never enters the canonical wire event.
+    if (!queue.pushEventWithTcpFlags(ev, data, tcp_flags)) {
         diag.metrics.events_dropped.inc();
     }
+}
+
+/// Read the TCP flags byte at the start of the transport header. Any
+/// non-TCP protocol or truncated header yields 0 ("no flag evidence").
+fn tcpFlagsAt(data: []const u8, transport_offset: usize, protocol: u8) u8 {
+    if (protocol != 6) return 0;
+    if (transport_offset + 14 > data.len) return 0;
+    return data[transport_offset + 13];
+}
+
+test "tcpFlagsAt reads SYN and refuses non-TCP or truncated frames" {
+    var frame = [_]u8{0} ** 54; // Ethernet + IPv4 + 20-byte TCP header
+    frame[34 + 13] = 0x02; // SYN
+    try std.testing.expectEqual(@as(u8, 0x02), tcpFlagsAt(&frame, 34, 6));
+    try std.testing.expectEqual(@as(u8, 0), tcpFlagsAt(&frame, 34, 17));
+    try std.testing.expectEqual(@as(u8, 0), tcpFlagsAt(frame[0..40], 34, 6));
 }
 
 /// Npcap capture thread — runs NpcapAdapter and pushes packets into pipeline.

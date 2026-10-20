@@ -35,6 +35,12 @@ pub const QueuedEvent = struct {
     payload_len: u16 = 0,
     src_ipv6: ?[16]u8 = null,
     dst_ipv6: ?[16]u8 = null,
+    /// TCP flags observed on the frame. In-memory sidecar only: the wire
+    /// CanonicalEvent has no flags field. The direct Npcap path sets this
+    /// from the transport header; every other producer leaves it 0, which
+    /// means "no flag evidence" (L4 flags rules do not match), not "flags
+    /// are zero on the wire".
+    tcp_flags: u8 = 0,
 };
 
 var g_event_queue: [PIPELINE_QUEUE_SIZE]QueuedEvent = undefined;
@@ -63,7 +69,13 @@ var g_queue_producer_mutex: std.Thread.Mutex = .{};
 /// Push an event + optional payload into the pipeline queue.
 /// Returns true if accepted, false if queue is full (event dropped).
 pub fn pushEvent(ev: event.IpcEvent, payload: []const u8) bool {
-    return pushEventWithAddrs(ev, payload, null, null);
+    return pushEventFull(ev, payload, null, null, 0);
+}
+
+/// pushEvent with the TCP flags observed by the direct Npcap parser.
+/// The sidecar is in-memory only and is consumed by layer=="L4" matching.
+pub fn pushEventWithTcpFlags(ev: event.IpcEvent, payload: []const u8, tcp_flags: u8) bool {
+    return pushEventFull(ev, payload, null, null, tcp_flags);
 }
 
 /// pushEvent with v2 full-address sidecars. The sidecars are written into
@@ -72,6 +84,10 @@ pub fn pushEvent(ev: event.IpcEvent, payload: []const u8) bool {
 /// sidecars (v1 frames, ETW/FIM/registry/brain sensors, tests) use
 /// pushEvent and queue exactly as before.
 pub fn pushEventWithAddrs(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst_ipv6: ?[16]u8) bool {
+    return pushEventFull(ev, payload, src_ipv6, dst_ipv6, 0);
+}
+
+fn pushEventFull(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst_ipv6: ?[16]u8, tcp_flags: u8) bool {
     g_queue_producer_mutex.lock();
     defer g_queue_producer_mutex.unlock();
     const head = g_queue_head.load(.monotonic);
@@ -89,6 +105,7 @@ pub fn pushEventWithAddrs(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[1
     qe.payload_len = @intCast(copy_len);
     qe.src_ipv6 = src_ipv6;
     qe.dst_ipv6 = dst_ipv6;
+    qe.tcp_flags = tcp_flags;
     g_event_queue[head % PIPELINE_QUEUE_SIZE] = qe;
     g_queue_head.store(head + 1, .release);
     _ = g_ingress_pushed[src_ord].fetchAdd(1, .monotonic);
@@ -397,6 +414,19 @@ test "pushCanonicalEventWithPayload preserves bounded payload" {
     const queued = popEvent().?;
     try std.testing.expectEqual(payload.len, queued.payload_len);
     try std.testing.expectEqualSlices(u8, payload, queued.payload[0..payload.len]);
+}
+
+test "tcp flag sidecar rides with the direct-capture event" {
+    var ev = event.IpcEvent.init(.packet_captured);
+    ev.source = .capture_npcap;
+    try std.testing.expect(pushEventWithTcpFlags(ev, "frame", 0x02));
+    const queued = popEvent().?;
+    try std.testing.expectEqual(@as(u8, 0x02), queued.tcp_flags);
+
+    // Producers without flag evidence use the default push and must not
+    // invent SYN/FPU evidence.
+    try std.testing.expect(pushEvent(ev, "frame"));
+    try std.testing.expectEqual(@as(u8, 0), popEvent().?.tcp_flags);
 }
 
 test "LEN-CLAIM-100: oversize payload truncates to prefix, wire claim kept" {

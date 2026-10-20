@@ -149,6 +149,7 @@ comptime {
     // refactor away from those paths would kill them without tripping any
     // pin. Direct edges make the execution guarantee explicit and
     // permanent. Zero behavior change: every one of these already runs.
+    _ = @import("pipeline/l4_matcher.zig");
     _ = @import("pipeline/rule_loader.zig");
     _ = @import("detection/threat_tracker.zig");
     _ = @import("detection/correlator.zig");
