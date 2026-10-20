@@ -208,6 +208,24 @@ def test_uninstall_removes_driver_services_and_system32_copies():
     assert 'Delete "$SYSDIR\\drivers\\aegis_minifilter.sys"' in un
 
 
+def test_uninstall_waits_for_kernel_image_release_before_delete():
+    """2026-10-20 E5 teardown: services went 1060 but both System32 driver
+    copies remained, because Delete raced the filter/driver unload. Pin the
+    kill/wait/retry order and the reboot-safe fallback."""
+    mod = _load()
+    tpl = mod.NSIS_TEMPLATE
+    un = tpl.split('Section "Uninstall"', 1)[1]
+    wfp_stop = un.index('nsExec::ExecToLog "sc stop AegisWfp"')
+    delete_wfp = un.index('Delete "$SYSDIR\\drivers\\aegis_wfp.sys"', wfp_stop)
+    assert un.index("Sleep 2000", wfp_stop) < delete_wfp
+    assert un.index("Sleep 6000", wfp_stop) < delete_wfp
+    assert 'Delete /REBOOTOK "$SYSDIR\\drivers\\aegis_wfp.sys"' in un
+    assert 'Delete /REBOOTOK "$SYSDIR\\drivers\\aegis_minifilter.sys"' in un
+    assert 'taskkill /f /im aegis_nids.exe' in un
+    assert un.index("taskkill /f /im aegis_nids.exe") < \
+        un.index('nsExec::ExecToLog "sc delete AegisNids"')
+
+
 def test_generate_nsi_annotates_driver_presence(tmp_path):
     mod = _load()
     out = tmp_path / "drivers.nsi"

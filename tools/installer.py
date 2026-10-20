@@ -365,17 +365,36 @@ Section "Uninstall"
   ${EndIf}
 
   nsExec::ExecToLog "sc stop AegisNids"
+  nsExec::ExecToLog "taskkill /f /im aegis_nids.exe"
+  Sleep 2000
   nsExec::ExecToLog "sc delete AegisNids"
   ; Kernel telemetry drivers (DEPLOY-120): unload before delete before
   ; removing the System32 copies. The altitude values live inside the
   ; service key and go with sc delete - never DeleteRegKey an SCM key.
   nsExec::ExecToLog "fltmc unload AegisMinifilter"
+  Sleep 3000
   nsExec::ExecToLog "sc stop AegisMinifilter"
   nsExec::ExecToLog "sc delete AegisMinifilter"
   nsExec::ExecToLog "sc stop AegisWfp"
+  Sleep 2000
   nsExec::ExecToLog "sc delete AegisWfp"
+  ; 2026-10-20 E5 teardown: the first fixed installer deleted the services
+  ; but raced the kernel image release, leaving aegis_wfp.sys and
+  ; aegis_minifilter.sys in System32 (the services were already 1060).
+  ; Wait for the unload to settle, then retry; a still-locked image is
+  ; scheduled with /REBOOTOK rather than silently left behind.
+  Sleep 6000
   Delete "$SYSDIR\drivers\aegis_wfp.sys"
   Delete "$SYSDIR\drivers\aegis_minifilter.sys"
+  Sleep 1000
+  ${If} ${FileExists} "$SYSDIR\drivers\aegis_wfp.sys"
+    Delete /REBOOTOK "$SYSDIR\drivers\aegis_wfp.sys"
+    DetailPrint "AEGIS: aegis_wfp.sys still locked; scheduled for deletion at reboot"
+  ${EndIf}
+  ${If} ${FileExists} "$SYSDIR\drivers\aegis_minifilter.sys"
+    Delete /REBOOTOK "$SYSDIR\drivers\aegis_minifilter.sys"
+    DetailPrint "AEGIS: aegis_minifilter.sys still locked; scheduled for deletion at reboot"
+  ${EndIf}
   Delete "$SMPROGRAMS\AEGIS NIDS\AEGIS Snapshot.lnk"
   Delete "$SMPROGRAMS\AEGIS NIDS\Uninstall AEGIS.lnk"
   RMDir "$SMPROGRAMS\AEGIS NIDS"
