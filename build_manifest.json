@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "dcb22a5",
+  "source_commit": "fd7b424",
   "build_date": "2026-10-13T01:11:10.065507+00:00",
   "build_host": "windows",
   "platform": {
@@ -1027,7 +1027,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18563,
-      "sha256": "d61d694a839b198ef8bed73e868865854c1b9628460427f769b2dabb8020ecf0",
+      "sha256": "7efc85c94c28b0199297f5884e479f4220d4366284def25a54658d8f64512274",
       "language": "json"
     },
     {
@@ -1307,6 +1307,18 @@
       "language": "data"
     },
     {
+      "path": "scripts/minifilter_service.ps1",
+      "size": 9278,
+      "sha256": "ce1f1b7daa3908d709404a1647e2d67ce62e3c5f7e08baebde809c24d853356e",
+      "language": "script"
+    },
+    {
+      "path": "scripts/minifilter_sign.ps1",
+      "size": 7544,
+      "sha256": "e75746319194490a133fe2ccd9a590db62bdd00cb59ef4e4fe42e4610ad043f5",
+      "language": "script"
+    },
+    {
       "path": "scripts/ml_train.py",
       "size": 13019,
       "sha256": "66939ceef3726f99460af54ce7427edb834964a1b8c5a037c4262c84a5043ab6",
@@ -1565,6 +1577,12 @@
       "language": "script"
     },
     {
+      "path": "scripts/wdk_build_minifilter.ps1",
+      "size": 8831,
+      "sha256": "7437528f9f60cd654d70c17d600f9dde25a46ac739cc707f2a45fd7341af7abb",
+      "language": "script"
+    },
+    {
       "path": "scripts/wdk_build_production.ps1",
       "size": 13043,
       "sha256": "7279aae60b47da60552ddd40b3571c440cb2ac6592a9e066efa148cef3bad654",
@@ -1620,8 +1638,8 @@
     },
     {
       "path": "src/all_tests.zig",
-      "size": 10733,
-      "sha256": "01d2640e14cc3abf8204f5a10f9f827b7eeaedbdc43279633991c7e5a77fc437",
+      "size": 10777,
+      "sha256": "e4862e4ffd1794e54411b4332f6c491b13771e5f12fd3352371f707eaf5f8e90",
       "language": "zig"
     },
     {
@@ -2250,32 +2268,38 @@
     },
     {
       "path": "src/pipeline/event_processor.zig",
-      "size": 33181,
-      "sha256": "5f57b706c7f1a02122c1f3313cb47a23ac119ff28684715dd68209aa5ffec2b0",
+      "size": 34272,
+      "sha256": "66210571d772507326c3f10ddfdf3a05d73e572b969e6969ba3f31e560228b7b",
       "language": "zig"
     },
     {
       "path": "src/pipeline/event_queue.zig",
-      "size": 23960,
-      "sha256": "d44fda4c0e50441b73d662d365b5a4ccafeee5333e2a189d80bb0e6aec455260",
+      "size": 25371,
+      "sha256": "31da1c714287971d087a80d2015193b0cc5393f860e10240b23121ecd7f02207",
+      "language": "zig"
+    },
+    {
+      "path": "src/pipeline/l4_matcher.zig",
+      "size": 8733,
+      "sha256": "920f4aa8512cea975432bb210778ae2e4420bbf4c2aac2f29a8b4d2fd8f4ad24",
       "language": "zig"
     },
     {
       "path": "src/pipeline/packet_callback.zig",
-      "size": 9929,
-      "sha256": "1ec65115e4bd2acae8129d1f8a22c9d5a70e69e6ce99bfa48da095da3ec9940b",
+      "size": 10953,
+      "sha256": "03b4995bf1080eb73bfbbb472fc703bd2862102540239ef07a6d3acb62e53a8d",
       "language": "zig"
     },
     {
       "path": "src/pipeline/rule_loader.zig",
-      "size": 23764,
-      "sha256": "ea17874a99214bf99d8fe93e96fe84fee2a5faad138be8e087f9efb3d0af7bdc",
+      "size": 27338,
+      "sha256": "b827a50ec20ea9ef0c39ae66ef74b6cfe679b29cfdc36b1346532031a9a34add",
       "language": "zig"
     },
     {
       "path": "src/pipeline/runtime_state.zig",
-      "size": 16237,
-      "sha256": "0256fca6c79455422a18dec2a5d36793f5b2412d7e04eb58a748ece25458cf7c",
+      "size": 16744,
+      "sha256": "d04ed9e3cd0af67fad0b1b2f1c6dda38b7539624ed6a94d1531f0db050688bb4",
       "language": "zig"
     },
     {

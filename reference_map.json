@@ -1,8 +1,8 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-20T04:13:49.450825+00:00",
+  "generated_at": "2026-10-20T04:48:53.032035+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1699,
+  "total_files": 1700,
   "by_role": {
     "documentation": 558,
     "build-config": 210,
@@ -16,7 +16,7 @@
     "step-document": 2,
     "go-source": 8,
     "makefile": 1,
-    "production-source": 275,
+    "production-source": 276,
     "legacy-source": 32,
     "quarantined": 1
   },
@@ -137,6 +137,7 @@
     "src/pipeline/data_plane_contract.zig",
     "src/pipeline/event_processor.zig",
     "src/pipeline/event_queue.zig",
+    "src/pipeline/l4_matcher.zig",
     "src/pipeline/packet_callback.zig",
     "src/pipeline/rule_loader.zig",
     "src/pipeline/runtime_state.zig",
@@ -5304,6 +5305,10 @@
       "role": "production-source"
     },
     "src/pipeline/event_queue.zig": {
+      "class": "canonical-source",
+      "role": "production-source"
+    },
+    "src/pipeline/l4_matcher.zig": {
       "class": "canonical-source",
       "role": "production-source"
     },

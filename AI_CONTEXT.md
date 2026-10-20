@@ -4,7 +4,7 @@
 
 
 
-**HEAD:** `dcb22a5a5b5a6f01f4b4106e3248e7f7b3df94b2` (build source commit — ADR-0008)
+**HEAD:** `fd7b424fdbd10e1509b7ce87f9eb890da551f6b6` (build source commit — ADR-0008)
 
 **BRANCH:** `main`
 
@@ -350,16 +350,20 @@ Previous phases:
   DEADCODE-QUARANTINE, CI-GAPS, RELEASE-TOOLING, LEFTOVER-SWEEP, REL-CLOSURE; operator
   cutover 2026-10-19 20:07 deployed daemon `dcb22a5` (sha256 `f223dcce…`) — live gate
   hard-closed (gate_source 'closed', detection-only), gate-check + v6 live verify PASS.
-  Remaining queue: G2 lab campaign (RB-012→013), DEPLOY-120 drill, RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (partial),
+  Remaining queue: G2 lab campaign (RB-012→013), DEPLOY-120 drill, RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate semantics open),
   RB-016/017, G4 signing, external review, CI first push (truth semantics fixed 2026-10-20; push approval pending).
   Evidence: EVI CUTOVER-DCB22A5 (E5) + entries V6-QUEUE-DROP..REL-CLOSURE.
 
-- RB-021 host-only lab proof (2026-10-20): PARTIAL - capture path + 5/8 network rules
-  proven on the live VMnet1-pinned daemon (R0056/R0088/R0089/R9059 + R9064 conditional);
-  the 3 L4 rule IDs (R9002/R9006/R9007) are payload-token rules and real nmap/hping3
-  traffic produced 0 rows (synthetic-token smoke only). Gap RB-021-L4-MATCHER opened.
-  Evidence: EVI RB-021-HOSTONLY-20261020 (E5, result PARTIAL); kit
-  admin-evidence/lab-session-20261020/ (gitignored).
+- RB-021 host-only lab proof (2026-10-20): L4 CLOSE-OUT PASS (E5, per-packet).
+  Pre-fix run at e616bad/F223DCCE proved the capture path + 5/8 L7 rules but real
+  nmap/hping3 produced 0 L4 rows. At fd7b424/47AB8085 the L4 matcher produced 706
+  .10 rows: R9006 200, R9007 200, R9002 305 (5 preflight + 300 hping3), R0088 1
+  (ACK capture-positive control); L4-token ACK negative controls were 0 rows
+  (5->5 and 706->706). All rows observed, host_effect_confirmed=false, blocks 0,
+  gate closed; restore PID 7420 pin absent. Not rate/scan detection: R9006 any
+  SYN, R9002 any ICMP, R9007 exact 0x29; gap RB-021-L4-RATE open.
+  Evidence: EVI RB-021-L4-20261020 (E5); kit
+  admin-evidence/lab-session-20261020-l4/ (gitignored).
 
 - RB-018 host-only WFP observe-only (2026-10-20): PASS - L4_HOSTONLY_TRANSPORT_PASS at 865217b;
   live host VMnet1 .1 + Kali .10:58874 -> :49152; 4 expected-flow frames in 10 complete 48-byte
@@ -369,7 +373,7 @@ Previous phases:
 
 - CI truth source-commit semantics (2026-10-20): IMPLEMENTED - ADR-0008; truth.py keys on the last
   source/build commit (dcb22a5), verifies ancestry + clean source paths; maps/AI_CONTEXT/EVI/
-  build_manifest/runtime_manifest carry dcb22a5; clean-checkout truth PASS + release PASS;
+  build_manifest/runtime_manifest carry the current build source commit (fd7b424); clean-checkout truth PASS + release PASS;
   full suite 963P/2S/27 subtests (exit 0); tests pinned at tests/release/test_truth_source_commit.py; EVI CI-TRUTH-SOURCE-COMMIT (E2). First
   hosted CI push still operator (no push).
 

@@ -252,7 +252,10 @@ while -- copy the exe only after `sc.exe query` prints STATE: 1 STOPPED
    release bundles. No service restart was needed (only backup/inert
    files changed).
 
-## Lab-run record (2026-10-20, Kali .10 -> Win11 .20, live host .1)
+## Lab-run record (2026-10-20, pre-fix: Kali .10 -> Win11 .20, live host .1)
+
+This run predates the L4 matcher; its L4 rows are historical. The
+close-out record below supersedes only the L4 result.
 
 Run at HEAD `e616bad`; deployed daemon sha256 `F223DCCE...` (PID 10032,
 started 08:56:47) with the machine `AEGIS_DAEMON_IFACE` pinned to VMnet1;
@@ -294,14 +297,67 @@ restart, PID 9384, 7/7 subsystems, packets advancing, gate still
 (gitignored): `admin-evidence/lab-session-20261020/`
 (RESULTS-20261020.md, captures/, closeout/).
 
+## Lab-run record (2026-10-20, L4 matcher close-out: Kali .10 -> host .1)
+
+Source `fd7b424`; deployed exe `47AB808505...` (PID 3912) with the
+machine `AEGIS_DAEMON_IFACE` pinned to VMnet1. The Win11 `.20` victim was
+off (its VM also needs an encryption password), so the live NIDS host
+`.1` was the target; the L4 predicate is target-independent. Gate
+`closed`/detection-only throughout. The daemon's own direct capture path
+was used; `events count --src-ip` filters the durable evidence log.
+
+| step (Kali .10 -> .1) | `.10` before -> after | rows | rule hash |
+|---|---|---|---|
+| preflight `ping` (1 + 3) | 0 -> 5 | 5 | `1812566754` R9002 |
+| negative: TCP ACK + `FLAGS:S FLAGS:FPU PROTO:ICMP` | 5 -> 5 | 0 | -- |
+| `nmap -sS -Pn -n -p 1-100 --max-retries 1 --host-timeout 20s` | 5 -> 205 | 200 | `1745456278` R9006 |
+| `nmap -sX ...` (same range) | 205 -> 405 | 200 | `1762233897` R9007 |
+| `hping3 --icmp -i u1000 -c 300` | 405 -> 705 | 300 | `1812566754` R9002 |
+| positive: TCP ACK + `../../etc/passwd` | 705 -> 706 | 1 | `4254503461` R0088 |
+| negative: same ACK shape + L4 tokens | 706 -> 706 | 0 | -- |
+
+Final: 706 `.10` rows (R9002 305, R9006 200, R9007 200, R0088 1); every
+row `signature_match`/`observed`/`host_effect_confirmed=false`;
+`metrics.blocks = 0`; `enforce status` `prevention_gate: closed`,
+`tier3_enforcing: false`; `readiness` 23 rules/6 policies, `ready: true`.
+`forensic verify` `verified: true`; the 16K ring churned under the prod
+`0.0.0.0` host-event storm (records 626247, retained 16384), so the
+durable rows were snapshotted before the live log rotates:
+`admin-evidence/lab-session-20261020-l4/lab-rows-706.ndjson`
+(sha256 `90EF0BAF...`).
+
+The two ACK controls use the same shape (one ACK, port 80, no reply,
+40/20 data bytes). The L7 payload in the positive control fired R0088
+(`payload_len=74`), proving the ACK-with-payload path was captured; the
+L4-token ACK then produced no row. This is the regression proof that the
+L4 rules are no longer Aho-Corasick payload-token rules: they are parsed
+into the separate L4 table and evaluated only for `.capture_npcap` events
+when no payload rule matched. TCP flags ride the in-memory
+`QueuedEvent.tcp_flags` sidecar; the wire contract is unchanged.
+
+A 100-port nmap scan produced 200 matching packets (retry or duplicate
+capture); counts are matching packets, not distinct ports. The five
+preflight R9002 rows are real pings and are included in 305.
+
+Restore (operator, elevated): `OPERATOR-RESTORE.ps1` removed the machine
+pin and restarted `AegisNids` (PID 7420); `AEGIS_DAEMON_IFACE=absent`;
+deployed exe unchanged `47AB8085...`; rules 23; gate still `closed`;
+nose frames 15597 -> 16543 -> 17207; no new `.10` rows. Evidence kit
+(gitignored): `admin-evidence/lab-session-20261020-l4/`
+(RESULTS-L4-20261020.md, lab-rows-706.ndjson, captures).
+
 ## Verification
 
-Per-rule table, one row each: script ran (rc 0) AND a detection row
-with the attacker IP exists (events --src-ip) AND the rule search
-hits. See the 2026-10-20 record: 5/8 network rule IDs matched real Kali
-traffic (R9064 conditional); the three L4 rule IDs are payload-token
-matches only (synthetic), not L4 detection. 15/15 host rules from
-canaries. `forensics verify` stays ok + verified true throughout.
+Per-rule table, one row each: script/command ran (rc 0) AND a detection
+row with the attacker IP exists (events --src-ip) AND the rule's own
+bytes/flags explain the match. The pre-fix 2026-10-20 record has 5/8
+network rule IDs from real traffic (R9064 conditional) and the three L4
+rule IDs token-only. The L4 close-out record above now has real
+per-packet rows for R9002/R9006/R9007 (305/200/200) plus paired ACK
+negative/positive controls; R9064 remains conditional. The L4 rows are
+per-packet predicate matches, not rate/scan/flood verdicts; the
+rate/window gap is `RB-021-L4-RATE`. 15/15 host rules from canaries.
+`forensics verify` stays ok + verified true throughout.
 
 Attribution rules (2026-10-17 findings): count a row as wire-fire proof
 only if the target resolved (Step 1/3) AND the rule's own pattern
@@ -326,9 +382,16 @@ host effect was ever applied, so no effect needs undoing.
   same precedent as the marked-canary demo). A fully isolated ring
   needs a second daemon, which does not exist (single-owner contract).
 - Recon scans draw victim RSTs; irrelevant -- detection keys on the
-  attack payload crossing the wire, not on victim cooperation.
+  attack payload or L4 header fields crossing the wire, not on victim
+  cooperation.
 - `--intense` floods are bounded (3x); do not loop scripts -- the
   queue sheds overload and the test becomes a DoS of your own NIDS.
+- L4 rules are per-packet predicates, not rate/window detectors: R9006
+  matches any exact SYN (normal handshakes included), R9002 any ICMP,
+  R9007 exact FIN+PSH+URG. No rate/scan/flood state exists; tracked as
+  `RB-021-L4-RATE`.
+- A 100-port nmap scan can produce 200 matching packets (retry or
+  duplicate capture); count packets, not ports.
 - The WFP proof slot holds one filter; concurrent BLOCK proofs
   serialize, they do not parallelize.
 - Direct VMnet1 capture stores every frame as a >=1500-byte window

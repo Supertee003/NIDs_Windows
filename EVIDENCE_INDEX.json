@@ -1,5 +1,5 @@
 {
- "head_sha": "dcb22a5a5b5a6f01f4b4106e3248e7f7b3df94b2",
+ "head_sha": "fd7b424fdbd10e1509b7ce87f9eb890da551f6b6",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-10-20",
  "generator_version": "3.0",
@@ -1276,6 +1276,37 @@
     "PHASE_0_TRUTH_REBUILD_REPORT.json",
     ".github/workflows/ci.yml",
     "docs/runbooks/RB-020-observability-manual.md"
+   ]
+  },
+  {
+   "id": "RB-021-L4-20261020",
+   "title": "RB-021 L4 matcher close-out: real ICMP/SYN/XMAS wire traffic matches R9002/R9006/R9007 per packet; the same tokens in an ACK payload match nothing",
+   "level": "E5",
+   "component": "windows-host+runtime+kali-lab+detection",
+   "flow_id": "DATA-001",
+   "head_sha": "fd7b424",
+   "timestamp": "2026-10-20",
+   "result": "PASS",
+   "command": "Operator (elevated): OPERATOR-DEPLOY.ps1 deployed aegis_nids.exe 47AB8085... and pinned machine AEGIS_DAEMON_IFACE to VMnet1; service started (PID 3912). Agent: zig build / zig build test at source fd7b424; from Kali .10 to host .1: ping preflight, nmap -sS and -sX -Pn -n -p 1-100 --max-retries 1 --host-timeout 20s, hping3 --icmp -i u1000 -c 300; TCP ACK negative controls carrying FLAGS:S FLAGS:FPU PROTO:ICMP; TCP ACK positive control carrying ../../etc/passwd; events count/tail --src-ip 192.168.126.10; enforce status; readiness; forensic verify. Operator restore: OPERATOR-RESTORE.ps1 removed the pin and restarted (PID 7420).",
+   "expected": "Real L4 frames produce attributable .10 rows with the three L4 rule hashes; the same tokens in a TCP ACK payload produce no L4 row; the ACK payload path stays capturable (positive control); gate stays closed/detection-only; restore returns prod capture with no new .126 rows.",
+   "actual": "PASS - 706 .10 rows: R9006 1745456278 = 200, R9007 1762233897 = 200, R9002 1812566754 = 305 (5 preflight pings + 300 hping3), R0088 4254503461 = 1 (capture-positive control). Count transitions: 0->5 preflight; 5->5 L4-token ACK negative 1; 5->205 nmap -sS; 205->405 nmap -sX; 405->705 hping3 ICMP; 705->706 ACK positive R0088; 706->706 L4-token ACK negative 2. Every row signature_match/observed/host_effect_confirmed=false; blocks 0; gate closed; readiness 23 rules/6 policies; forensic verify true; ring churn 626247 records/16384 retained/609863 overwritten, with the durable rows snapshotted to lab-rows-706.ndjson sha256 90EF0BAF529FD2C958938087799913CAE2B0B1496F624C7F1D7EB194E5317D0A. Restore: PID 7420, pin absent, deployed exe unchanged, nose frames 15597->16543->17207, no new .10 rows.",
+   "finding": "The L4 matcher closes RB-021-L4-MATCHER at E5 for per-packet L4 predicates. It is not rate/scan/flood detection: R9006 matches any exact SYN (normal handshakes included), R9002 any ICMP, R9007 exact FIN+PSH+URG; the rule names imply rate semantics that remain unimplemented (RB-021-L4-RATE). The nmap 100-port scans produced 200 matching packets each; counts are matching packets, not distinct ports. The target was the NIDS host .1 because the Win11 .20 victim was off/encrypted; the L4 predicate is target-independent. No host effect, no enforcement.",
+   "description": "Records the 2026-10-20 L4 matcher close-out lab on the live Windows host and Kali .10: implementation at fd7b424/47AB8085, real nmap/hping3 L4 rows, paired ACK negative/positive controls, gate/observation checks, forensic integrity, snapshot, and restore. Evidence kit (gitignored): admin-evidence/lab-session-20261020-l4/ (RESULTS-L4-20261020.md, lab-rows-706.ndjson, captures).",
+   "files_verified": [
+    "src/all_tests.zig",
+    "src/pipeline/event_processor.zig",
+    "src/pipeline/event_queue.zig",
+    "src/pipeline/l4_matcher.zig",
+    "src/pipeline/packet_callback.zig",
+    "src/pipeline/rule_loader.zig",
+    "src/pipeline/runtime_state.zig",
+    "configs/Rules.json"
+   ],
+   "files_changed": [
+    "docs/runbooks/RB-021-hostonly-lab-proof.md",
+    "FLOW_MAP.json",
+    "EVIDENCE_INDEX.json",
+    "AI_CONTEXT.md"
    ]
   }
  ],
@@ -6406,13 +6437,29 @@
    "severity": "P2",
    "title": "L4 network rules (R9002/R9006/R9007) are payload-token rules; real ICMP/SYN/XMAS is not detected",
    "description": "The canonical matcher loads each rule's match_pattern as a literal substring (payload-only contract; src/pipeline/rule_loader.zig). R9002/R9006/R9007 use PROTO:ICMP/FLAGS:S/FLAGS:FPU tokens, so real ICMP/SYN/XMAS frames never match. 2026-10-20 lab: nmap -sS, nmap -sX and hping3 300 ICMP produced 0 rows; synthetic HTTP tokens fired the rule IDs (rule-engine smoke only).",
-   "status": "OPEN",
+   "status": "CLOSED",
    "found_at": "2026-10-20",
    "required_evidence": [
     "real ICMP/SYN/XMAS lab rows for R9002/R9006/R9007",
     "L4 protocol/flag matcher, or explicit removal of the L4 rules from the real-detection claim"
    ],
-   "evidence": "EVI RB-021-HOSTONLY-20261020; admin-evidence/lab-session-20261020/RESULTS-20261020.md (gitignored)"
+   "evidence": "EVI RB-021-L4-20261020; admin-evidence/lab-session-20261020-l4/ (RESULTS-L4-20261020.md, lab-rows-706.ndjson sha256 90EF0BAF529FD2C958938087799913CAE2B0B1496F624C7F1D7EB194E5317D0A); RB-021 runbook L4 close-out record.",
+   "closed_at": "2026-10-20",
+   "closed_by": "RB-021-L4-20261020",
+   "resolution": "L4 rules are parsed into a separate L4 table (src/pipeline/l4_matcher.zig) and evaluated only for .capture_npcap events when no payload rule matched; TCP flags travel as the in-memory QueuedEvent.tcp_flags sidecar and Aho-Corasick excludes L4 rules. Real lab at fd7b424: R9006 200, R9007 200, R9002 305 rows from Kali .10 -> host .1; L4-token ACK negative controls produced 0 rows (5->5 and 706->706); the same ACK shape with ../../etc/passwd fired R0088, proving payload capture. All 706 rows observed, host_effect_confirmed=false, blocks 0, gate closed. Rate/scan semantics split to RB-021-L4-RATE."
+  },
+  {
+   "id": "RB-021-L4-RATE",
+   "severity": "P2",
+   "title": "L4 rules are per-packet predicates, not rate/window flood or scan detectors",
+   "description": "R9006 fires on any exact SYN (normal handshakes included); R9002 on any ICMP echo/reply; R9007 on exact FIN+PSH+URG. No rate, window, or scan-pattern state exists. The rule names (TCP SYN Stealth Scan, ICMP Flood) imply rate semantics that are not implemented. The 2026-10-20 lab is explicit about this: a 100-port nmap scan produced 200 matching packets and 300 hping3 ICMP packets produced 300 rows -- per-packet matches, not flood/scan verdicts.",
+   "status": "OPEN",
+   "found_at": "2026-10-20",
+   "required_evidence": [
+    "rate/window state and threshold tests for SYN/ICMP, or an explicit rename/reclassification to per-packet predicates",
+    "negative control showing normal handshakes/pings below a threshold do not fire"
+   ],
+   "evidence": "EVI RB-021-L4-20261020; RB-021 runbook L4 close-out record; admin-evidence/lab-session-20261020-l4/RESULTS-L4-20261020.md (gitignored)"
   }
  ],
  "evidence_level_summary": {
@@ -6421,7 +6468,7 @@
   "E2_count": 128,
   "E3_count": 10,
   "E4_count": 15,
-  "E5_count": 91,
+  "E5_count": 92,
   "E6_count": 0,
   "E7_count": 1
  }

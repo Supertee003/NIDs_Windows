@@ -1,14 +1,14 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-20T04:13:49.448045+00:00",
+  "generated_at": "2026-10-20T04:48:53.029215+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1699,
+  "total_files": 1700,
   "by_class": {
     "canonical-docs": 571,
     "canonical-build": 221,
     "unclassified": 19,
-    "canonical-source": 618,
+    "canonical-source": 619,
     "canonical-test": 203,
     "canonical-config": 34,
     "legacy": 33
@@ -6870,7 +6870,7 @@
       "path": "src/all_tests.zig",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 10733
+      "size": 10777
     },
     {
       "path": "src/capture/flow_engine.zig",
@@ -7500,31 +7500,37 @@
       "path": "src/pipeline/event_processor.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 33181
+      "size": 34272
     },
     {
       "path": "src/pipeline/event_queue.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 23960
+      "size": 25371
+    },
+    {
+      "path": "src/pipeline/l4_matcher.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 8733
     },
     {
       "path": "src/pipeline/packet_callback.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 9929
+      "size": 10953
     },
     {
       "path": "src/pipeline/rule_loader.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 23764
+      "size": 27338
     },
     {
       "path": "src/pipeline/runtime_state.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 16237
+      "size": 16744
     },
     {
       "path": "src/pipeline/telemetry_threads.zig",
