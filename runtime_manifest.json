@@ -4,7 +4,7 @@
   "entrypoint": "src/main.zig",
   "production_binary": "zig-out/bin/aegis_nids.exe",
   "source_commit": "de574b6",
-  "date": "2026-10-20T10:28:09.461911+00:00",
+  "date": "2026-10-20T10:33:44.406272+00:00",
   "production_modules": 3,
   "modules": {
     "nose/capture.go": {

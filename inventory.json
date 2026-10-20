@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-20T10:28:09.335245+00:00",
+  "generated_at": "2026-10-20T10:34:20.035536+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1701,
@@ -4800,7 +4800,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 275198
+      "size": 275197
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -5052,7 +5052,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9114
+      "size": 8769
     },
     {
       "path": "README.md",
