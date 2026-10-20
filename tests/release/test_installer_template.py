@@ -132,12 +132,12 @@ def test_driver_sources_match_service_script_defaults():
 def test_driver_service_registration_matches_proven_scripts():
     mod = _load()
     tpl = mod.NSIS_TEMPLATE
-    # WFP: kernel/demand, System32 copy, no DisplayName (wfp_service.ps1).
+    # WFP: kernel/demand, System32 path, no DisplayName (wfp_service.ps1).
     assert ('sc create AegisWfp type= kernel start= demand '
-            'binPath= "$SYSDIR\\drivers\\aegis_wfp.sys"') in tpl
+            'binPath= "$WINDIR\\System32\\drivers\\aegis_wfp.sys"') in tpl
     # Minifilter: filesys/demand + DisplayName (minifilter_service.ps1).
     assert ('sc create AegisMinifilter type= filesys start= demand '
-            'binPath= "$SYSDIR\\drivers\\aegis_minifilter.sys" '
+            'binPath= "$WINDIR\\System32\\drivers\\aegis_minifilter.sys" '
             'DisplayName= "AEGIS NIDS Minifilter Driver"') in tpl
 
 
@@ -176,6 +176,22 @@ def test_driver_registration_guarded_and_signature_status_logged():
     assert "Get-AuthenticodeSignature" in tpl
 
 
+def test_installer_copies_drivers_through_sysnative():
+    """2026-10-20 E5: NSIS is 32-bit; $SYSDIR file I/O is redirected to
+    SysWOW64. The payload copy and signature check must use Sysnative, while
+    the SCM ImagePath stays the real System32 path."""
+    mod = _load()
+    tpl = mod.NSIS_TEMPLATE
+    for name in ("aegis_wfp.sys", "aegis_minifilter.sys"):
+        assert (f'cmd /c copy /y "$INSTDIR\\drivers\\{name}" '
+                f'"$WINDIR\\Sysnative\\drivers\\{name}"') in tpl
+        assert f'Get-AuthenticodeSignature $WINDIR\\Sysnative\\drivers\\{name}' in tpl
+        assert f'Delete "$WINDIR\\SysWOW64\\drivers\\{name}"' in tpl
+        assert f'binPath= "$WINDIR\\System32\\drivers\\{name}"' in tpl
+    assert 'copy /y "$INSTDIR\\drivers\\aegis_wfp.sys" "$SYSDIR' not in tpl
+    assert 'Delete "$SYSDIR\\drivers' not in tpl
+
+
 def test_driver_teardown_precedes_copy_and_create():
     mod = _load()
     tpl = mod.NSIS_TEMPLATE
@@ -204,23 +220,28 @@ def test_uninstall_removes_driver_services_and_system32_copies():
     for cmd in ("fltmc unload AegisMinifilter", "sc delete AegisMinifilter",
                 "sc delete AegisWfp"):
         assert cmd in un, cmd
-    assert 'Delete "$SYSDIR\\drivers\\aegis_wfp.sys"' in un
-    assert 'Delete "$SYSDIR\\drivers\\aegis_minifilter.sys"' in un
+    for name in ("aegis_wfp.sys", "aegis_minifilter.sys"):
+        assert f'Delete "$WINDIR\\Sysnative\\drivers\\{name}"' in un
+        assert f'Delete "$WINDIR\\SysWOW64\\drivers\\{name}"' in un
+    assert 'Delete "$SYSDIR\\drivers' not in un
 
 
 def test_uninstall_waits_for_kernel_image_release_before_delete():
     """2026-10-20 E5 teardown: services went 1060 but both System32 driver
-    copies remained, because Delete raced the filter/driver unload. Pin the
-    kill/wait/retry order and the reboot-safe fallback."""
+    copies remained. The immediate Delete races the unload and, because NSIS
+    is 32-bit, $SYSDIR file I/O is redirected to SysWOW64. Pin the
+    kill/wait/retry order, Sysnative target, and reboot-safe fallback."""
     mod = _load()
     tpl = mod.NSIS_TEMPLATE
     un = tpl.split('Section "Uninstall"', 1)[1]
     wfp_stop = un.index('nsExec::ExecToLog "sc stop AegisWfp"')
-    delete_wfp = un.index('Delete "$SYSDIR\\drivers\\aegis_wfp.sys"', wfp_stop)
+    delete_wfp = un.index('Delete "$WINDIR\\Sysnative\\drivers\\aegis_wfp.sys"', wfp_stop)
     assert un.index("Sleep 2000", wfp_stop) < delete_wfp
     assert un.index("Sleep 6000", wfp_stop) < delete_wfp
-    assert 'Delete /REBOOTOK "$SYSDIR\\drivers\\aegis_wfp.sys"' in un
-    assert 'Delete /REBOOTOK "$SYSDIR\\drivers\\aegis_minifilter.sys"' in un
+    assert 'Delete /REBOOTOK "$WINDIR\\Sysnative\\drivers\\aegis_wfp.sys"' in un
+    assert 'Delete /REBOOTOK "$WINDIR\\Sysnative\\drivers\\aegis_minifilter.sys"' in un
+    assert 'Delete /REBOOTOK "$WINDIR\\SysWOW64\\drivers\\aegis_wfp.sys"' in un
+    assert 'Delete /REBOOTOK "$WINDIR\\SysWOW64\\drivers\\aegis_minifilter.sys"' in un
     assert 'taskkill /f /im aegis_nids.exe' in un
     assert un.index("taskkill /f /im aegis_nids.exe") < \
         un.index('nsExec::ExecToLog "sc delete AegisNids"')

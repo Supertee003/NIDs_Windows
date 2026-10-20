@@ -275,16 +275,21 @@ Section "Install"
   nsExec::ExecToLog "sc delete AegisWfp"
   Sleep 1500
   ${If} ${FileExists} "$INSTDIR\drivers\aegis_wfp.sys"
-    nsExec::ExecToLog 'cmd /c copy /y "$INSTDIR\drivers\aegis_wfp.sys" "$SYSDIR\drivers\aegis_wfp.sys"'
-    nsExec::ExecToLog 'powershell -NoProfile -Command "Write-Host AEGIS_DRIVER_SIG_WFP (Get-AuthenticodeSignature $SYSDIR\drivers\aegis_wfp.sys).Status"'
-    nsExec::ExecToLog 'sc create AegisWfp type= kernel start= demand binPath= "$SYSDIR\drivers\aegis_wfp.sys"'
+    ; 2026-10-20 E5: NSIS is 32-bit, so file I/O to $SYSDIR is redirected
+    ; to SysWOW64. Copy through Sysnative so the kernel image really lands
+    ; in 64-bit System32 (the service path is the literal System32 path).
+    nsExec::ExecToLog 'cmd /c copy /y "$INSTDIR\drivers\aegis_wfp.sys" "$WINDIR\Sysnative\drivers\aegis_wfp.sys"'
+    nsExec::ExecToLog 'powershell -NoProfile -Command "Write-Host AEGIS_DRIVER_SIG_WFP (Get-AuthenticodeSignature $WINDIR\Sysnative\drivers\aegis_wfp.sys).Status"'
+    Delete "$WINDIR\SysWOW64\drivers\aegis_wfp.sys"
+    nsExec::ExecToLog 'sc create AegisWfp type= kernel start= demand binPath= "$WINDIR\System32\drivers\aegis_wfp.sys"'
   ${Else}
     DetailPrint "AEGIS: aegis_wfp.sys not in payload - AegisWfp service not registered (build it: scripts\wdk_build_production.ps1)"
   ${EndIf}
   ${If} ${FileExists} "$INSTDIR\drivers\aegis_minifilter.sys"
-    nsExec::ExecToLog 'cmd /c copy /y "$INSTDIR\drivers\aegis_minifilter.sys" "$SYSDIR\drivers\aegis_minifilter.sys"'
-    nsExec::ExecToLog 'powershell -NoProfile -Command "Write-Host AEGIS_DRIVER_SIG_FIM (Get-AuthenticodeSignature $SYSDIR\drivers\aegis_minifilter.sys).Status"'
-    nsExec::ExecToLog 'sc create AegisMinifilter type= filesys start= demand binPath= "$SYSDIR\drivers\aegis_minifilter.sys" DisplayName= "AEGIS NIDS Minifilter Driver"'
+    nsExec::ExecToLog 'cmd /c copy /y "$INSTDIR\drivers\aegis_minifilter.sys" "$WINDIR\Sysnative\drivers\aegis_minifilter.sys"'
+    nsExec::ExecToLog 'powershell -NoProfile -Command "Write-Host AEGIS_DRIVER_SIG_FIM (Get-AuthenticodeSignature $WINDIR\Sysnative\drivers\aegis_minifilter.sys).Status"'
+    Delete "$WINDIR\SysWOW64\drivers\aegis_minifilter.sys"
+    nsExec::ExecToLog 'sc create AegisMinifilter type= filesys start= demand binPath= "$WINDIR\System32\drivers\aegis_minifilter.sys" DisplayName= "AEGIS NIDS Minifilter Driver"'
     ; Altitude: both registration forms (FLTMGR consumes the service-key
     ; value or the Instances\DefaultInstance shape depending on the load
     ; path). WriteRegStr writes values only - it never recreates the key -
@@ -381,19 +386,32 @@ Section "Uninstall"
   ; 2026-10-20 E5 teardown: the first fixed installer deleted the services
   ; but raced the kernel image release, leaving aegis_wfp.sys and
   ; aegis_minifilter.sys in System32 (the services were already 1060).
+  ; The deeper cause: NSIS is 32-bit, so $SYSDIR file I/O was redirected to
+  ; SysWOW64. Delete through Sysnative for the real System32 image, and
+  ; clean a stale SysWOW64 copy left by the earlier artifact.
   ; Wait for the unload to settle, then retry; a still-locked image is
   ; scheduled with /REBOOTOK rather than silently left behind.
   Sleep 6000
-  Delete "$SYSDIR\drivers\aegis_wfp.sys"
-  Delete "$SYSDIR\drivers\aegis_minifilter.sys"
+  Delete "$WINDIR\Sysnative\drivers\aegis_wfp.sys"
+  Delete "$WINDIR\Sysnative\drivers\aegis_minifilter.sys"
+  Delete "$WINDIR\SysWOW64\drivers\aegis_wfp.sys"
+  Delete "$WINDIR\SysWOW64\drivers\aegis_minifilter.sys"
   Sleep 1000
-  ${If} ${FileExists} "$SYSDIR\drivers\aegis_wfp.sys"
-    Delete /REBOOTOK "$SYSDIR\drivers\aegis_wfp.sys"
+  ${If} ${FileExists} "$WINDIR\Sysnative\drivers\aegis_wfp.sys"
+    Delete /REBOOTOK "$WINDIR\Sysnative\drivers\aegis_wfp.sys"
     DetailPrint "AEGIS: aegis_wfp.sys still locked; scheduled for deletion at reboot"
   ${EndIf}
-  ${If} ${FileExists} "$SYSDIR\drivers\aegis_minifilter.sys"
-    Delete /REBOOTOK "$SYSDIR\drivers\aegis_minifilter.sys"
+  ${If} ${FileExists} "$WINDIR\Sysnative\drivers\aegis_minifilter.sys"
+    Delete /REBOOTOK "$WINDIR\Sysnative\drivers\aegis_minifilter.sys"
     DetailPrint "AEGIS: aegis_minifilter.sys still locked; scheduled for deletion at reboot"
+  ${EndIf}
+  ${If} ${FileExists} "$WINDIR\SysWOW64\drivers\aegis_wfp.sys"
+    Delete /REBOOTOK "$WINDIR\SysWOW64\drivers\aegis_wfp.sys"
+    DetailPrint "AEGIS: stale SysWOW64 aegis_wfp.sys scheduled for deletion at reboot"
+  ${EndIf}
+  ${If} ${FileExists} "$WINDIR\SysWOW64\drivers\aegis_minifilter.sys"
+    Delete /REBOOTOK "$WINDIR\SysWOW64\drivers\aegis_minifilter.sys"
+    DetailPrint "AEGIS: stale SysWOW64 aegis_minifilter.sys scheduled for deletion at reboot"
   ${EndIf}
   Delete "$SMPROGRAMS\AEGIS NIDS\AEGIS Snapshot.lnk"
   Delete "$SMPROGRAMS\AEGIS NIDS\Uninstall AEGIS.lnk"
