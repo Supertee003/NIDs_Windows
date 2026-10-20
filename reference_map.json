@@ -1,8 +1,8 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-20T04:48:53.032035+00:00",
+  "generated_at": "2026-10-20T09:01:15.108571+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1700,
+  "total_files": 1701,
   "by_role": {
     "documentation": 558,
     "build-config": 210,
@@ -10,7 +10,7 @@
     "source": 335,
     "lockfile": 6,
     "rust-build": 4,
-    "test-artifact": 203,
+    "test-artifact": 204,
     "config-data": 34,
     "architecture-decision": 11,
     "step-document": 2,
@@ -6497,6 +6497,10 @@
       "role": "test-artifact"
     },
     "tests/security/test_forbidden_edges.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_l4_rate_config.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

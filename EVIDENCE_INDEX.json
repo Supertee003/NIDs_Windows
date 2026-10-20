@@ -1,5 +1,5 @@
 {
- "head_sha": "fd7b424fdbd10e1509b7ce87f9eb890da551f6b6",
+ "head_sha": "8a7f30197ce75b3d2e63b4448a03c9117af005df",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-10-20",
  "generator_version": "3.0",
@@ -1441,6 +1441,53 @@
     "full pytest: 969 passed, 2 skipped, 27 subtests; release_engineering --verify 612/612; truth TRUTH_VALID",
     "operator E5 full drill: phase 0 22/22; uninstall 1060/drivers False/configs preserved; reinstall 22/22; SysWOW64 absent at all three phases; E5_DRILL_OK"
    ]
+  },
+  {
+   "id": "RB-021-L4-RATE-E2-20261020",
+   "title": "RB-021 L4 rate/window semantics implemented and unit-proven (E2)",
+   "level": "E2",
+   "component": "pipeline/l4_matcher",
+   "flow_id": "DATA-001",
+   "head_sha": "8a7f301",
+   "timestamp": "2026-10-20",
+   "result": "PASS",
+   "command": "zig test src/pipeline/l4_matcher.zig (6/6); zig build test (pass); zig build (pass); python -m pytest tests -q (979 passed, 2 skipped, 27 subtests passed)",
+   "expected": "Opt-in rate blocks are parsed from configs/Rules.json; R9002 fires once when >=50 ICMP packets from one source arrive within 1000 ms; R9006 fires once when >=20 distinct destination ports from one source arrive within 10000 ms; R9007 stays per-packet; normal handshakes/pings below threshold do not fire; state is per source and resets on rules reload.",
+   "actual": "PASS. Rules.json carries rate_mode=count/threshold=50/window=1000 for R9002 and rate_mode=distinct_dst_ports/threshold=20/window=10000 for R9006; R9007 has no rate block. Zig tests cover parser acceptance/rejection, the 49th-vs-50th ICMP boundary, the 19-vs-20 distinct-port boundary, duplicate-port suppression, once-per-window emission and re-arm, source and IPv4/IPv6 separation, reset, and the stateless R9007 behavior. Config pins assert canonical values and L4-only placement. zig build and zig build test pass. No host effect, no enforcement.",
+   "finding": "The code-semantics gap RB-021-L4-RATE is closed at E2. This is not a live rate claim: the deployed artifact 1593260B... was built before source 8a7f301 and still runs per-packet predicates. The historical lab rows (R9002 305, R9006 200, R9007 200) remain per-packet evidence. The child gap DEPLOY-130-L4-RATE-E5 stays OPEN until an artifact built from this source is installed and the normal-below-threshold / scan-above-threshold controls are run on the host.",
+   "description": "Implementation slice: src/pipeline/l4_matcher.zig now has a fixed-size RateTracker keyed by rule + full source address + IPv4/IPv6 identity; runtime_state.zig owns the tracker/mutex; rule_loader.zig resets it after a rules swap; event_processor.zig consults it only after a packet matches the L4 predicate. configs/Rules.json opts in R9002 and R9006; R9007 remains exact FIN|PSH|URG per-packet. Tests/vectors/rules22 were aligned; tests/security/test_l4_rate_config.py pins the configuration. The live installation was NOT changed and no installer was deployed in this slice.",
+   "files_verified": [
+    "src/pipeline/l4_matcher.zig",
+    "src/pipeline/runtime_state.zig",
+    "src/pipeline/rule_loader.zig",
+    "src/pipeline/event_processor.zig",
+    "configs/Rules.json",
+    "tests/security/test_l4_rate_config.py",
+    "tests/vectors/rules22/R9002.json",
+    "tests/vectors/rules22/R9006.json",
+    "docs/runbooks/RB-021-hostonly-lab-proof.md"
+   ],
+   "files_changed": [
+    "src/pipeline/l4_matcher.zig",
+    "src/pipeline/runtime_state.zig",
+    "src/pipeline/rule_loader.zig",
+    "src/pipeline/event_processor.zig",
+    "configs/Rules.json",
+    "tests/security/test_l4_rate_config.py",
+    "tests/vectors/rules22/R9002.json",
+    "tests/vectors/rules22/R9006.json",
+    "docs/runbooks/RB-021-hostonly-lab-proof.md",
+    "AI_CONTEXT.md"
+   ],
+   "tests": [
+    "zig test src/pipeline/l4_matcher.zig: 6/6 passed",
+    "zig build test: passed",
+    "zig build: passed",
+    "python -m pytest tests/security/test_l4_rate_config.py tests/security/test_detection_contract_pin.py tests/contracts/test_contract_fixtures.py -q: 34 passed",
+    "python -m pytest tests -q: 979 passed, 2 skipped, 27 subtests passed"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed"
   }
  ],
  "known_gaps": [
@@ -6585,14 +6632,31 @@
    "id": "RB-021-L4-RATE",
    "severity": "P2",
    "title": "L4 rules are per-packet predicates, not rate/window flood or scan detectors",
-   "description": "R9006 fires on any exact SYN (normal handshakes included); R9002 on any ICMP echo/reply; R9007 on exact FIN+PSH+URG. No rate, window, or scan-pattern state exists. The rule names (TCP SYN Stealth Scan, ICMP Flood) imply rate semantics that are not implemented. The 2026-10-20 lab is explicit about this: a 100-port nmap scan produced 200 matching packets and 300 hping3 ICMP packets produced 300 rows -- per-packet matches, not flood/scan verdicts.",
-   "status": "OPEN",
+   "description": "R9006 fired on any exact SYN (normal handshakes included); R9002 on any ICMP echo/reply; R9007 on exact FIN+PSH+URG. No rate, window, or scan-pattern state existed at discovery. The rule names (TCP SYN Stealth Scan, ICMP Flood) implied rate semantics that were not implemented. The 2026-10-20 lab is explicit about this: a 100-port nmap scan produced 200 matching packets and 300 hping3 ICMP packets produced 300 rows -- per-packet matches, not flood/scan verdicts.",
+   "status": "CLOSED",
    "found_at": "2026-10-20",
+   "closed_at": "2026-10-20",
+   "closed_by": "RB-021-L4-RATE-E2-20261020",
    "required_evidence": [
     "rate/window state and threshold tests for SYN/ICMP, or an explicit rename/reclassification to per-packet predicates",
     "negative control showing normal handshakes/pings below a threshold do not fire"
    ],
-   "evidence": "EVI RB-021-L4-20261020; RB-021 runbook L4 close-out record; admin-evidence/lab-session-20261020-l4/RESULTS-L4-20261020.md (gitignored)"
+   "resolution": "Implemented opt-in L4 rate/window semantics in src/pipeline/l4_matcher.zig, config-driven by configs/Rules.json. R9002: count >=50 ICMP packets per source per 1000 ms. R9006: >=20 distinct destination ports per source per 10000 ms. Both emit once per source/window; R9007 remains exact FIN|PSH|URG per-packet. The tracker keys rule + full source address + IPv4/IPv6 identity, is a fixed 256-entry table, and resets on rules reload. Zig tests cover the 49th-vs-50th ICMP boundary, 19-vs-20 distinct-port boundary, duplicate-port suppression, once-per-window emission/re-arm, source and address-family separation, reset, and the stateless R9007 path; negative controls prove a normal single handshake and sub-threshold pings do not fire. Config pins are in tests/security/test_l4_rate_config.py. This closes the code-semantics gap at E2; it is NOT a live rate claim. The deployed artifact 1593260B... predates source 8a7f301. Live rate proof is the separate child gap DEPLOY-130-L4-RATE-E5.",
+   "evidence": "EVI RB-021-L4-RATE-E2-20261020 (E2); EVI RB-021-L4-20261020 (historical per-packet E5); RB-021 runbook rate/window section; child gap DEPLOY-130-L4-RATE-E5 OPEN"
+  },
+  {
+   "id": "DEPLOY-130-L4-RATE-E5",
+   "severity": "P2",
+   "title": "Live E5 proof of L4 rate/window behavior after deploying the 8a7f301 artifact",
+   "description": "Source 8a7f301 implements R9002/R9006 rate windows and tests them at E2, but the currently installed artifact 1593260B... predates that source and still runs per-packet predicates. No live rate behavior has been observed. The deployed configuration hash also predates the new rate blocks (repo Rules.json now differs from the installed 444F8956... copy).",
+   "status": "OPEN",
+   "found_at": "2026-10-20",
+   "required_evidence": [
+    "install an artifact built from 8a7f301 and pass the live verifier (22/22) with the new Rules.json",
+    "normal handshake and pings below threshold produce no new R9006/R9002 rows",
+    "a scan of >=20 distinct ports and >=50 ICMP packets per source/window produce one alert per window, not per-packet rows"
+   ],
+   "evidence": "EVI RB-021-L4-RATE-E2-20261020 (code/tests); live artifact 1593260B...; RB-021 runbook rate/window section"
   },
   {
    "id": "DEPLOY-120-E5",
@@ -6616,7 +6680,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 25,
-  "E2_count": 128,
+  "E2_count": 129,
   "E3_count": 12,
   "E4_count": 15,
   "E5_count": 95,
