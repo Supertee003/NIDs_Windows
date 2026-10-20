@@ -55,3 +55,13 @@ This proves transport telemetry correlation. It does **not** prove a rule match 
 A timeout or missing expected frame is a sensor, routing, firewall, binding, or driver-layer failure—not a reason to enable enforcement. A run with frames but no expected-flow match is `L4_DEVICE_READBACK_PASS` only.
 
 Do not run WFP block or PEP tests from this runbook.
+
+## 2026-10-20 lab-run record — L4_HOSTONLY_TRANSPORT_PASS (E5)
+
+- HEAD `865217b` (runtime unchanged); live Windows host; VMnet1 `192.168.126.1`; Kali `192.168.126.10`.
+- Operator (elevated): `.\scripts\run_wfp_hostonly_observe_only.ps1 -ExpectedKaliIp 192.168.126.10 -ListenPort 49152 -WaitSeconds 60 -ProofOutput 'admin-evidence\lab-qualification-20261020\rb018'`.
+- Agent: copied `scripts/kali_hostonly_probe.sh` to Kali; waited for `READY.txt`; ran the probe with nonce `AEGIS_L4_20261020`.
+- Result: `passed: true`; `AegisWfp` Running; `GENERIC_READ`; requested `GET_STATS`/`READ_EVENTS`; `BLOCK_FLOW`/`UNBLOCK_FLOW` not called; `events_read_bytes: 1119`, `complete_event_frames: 10`, `trailing_event_bytes: 0`, header 48; `expected_flow.required: true`, `matches: 4` for `192.168.126.10:58874 -> 192.168.126.1:49152`; `prevention_gate: closed`; `host_effect: none`.
+- Kali probe: `probe=benign_hostonly_tcp`, `curl: (52) Empty reply from server` (the disposable listener closes without HTTP), `probe_complete=true`, `rc=0`.
+- Evidence (gitignored): `admin-evidence/lab-qualification-20261020/rb018/` (`console.log`, `kali-probe.log`, `READY.txt`, `probe-status.txt`); results at `RESULTS-20261020.md`.
+- Scope: transport telemetry only; `rule_id=0`; not a rule-match/L7/host-effect proof. No firewall command; gate stayed closed. E5 PASS.

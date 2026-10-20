@@ -1,5 +1,5 @@
 {
- "head_sha": "e616badf3bf2863d05f9851e4ce261d05dcf73bf",
+ "head_sha": "865217b431b917d447278ff11ba3dc66e0528e28",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-10-20",
  "generator_version": "3.0",
@@ -1221,6 +1221,26 @@
    "description": "Records the 2026-10-20 RB-021 host-only run on the pinned VMnet1 daemon: capture canary, 8-script wrapper, supplementary real L4 attempts, synthetic token smoke, ring/forensic caveat, and restore verification. Evidence kit (gitignored): admin-evidence/lab-session-20261020/ (RESULTS-20261020.md, captures/, closeout/, prestate/).",
    "files_changed": [
     "docs/runbooks/RB-021-hostonly-lab-proof.md",
+    "EVIDENCE_INDEX.json",
+    "AI_CONTEXT.md"
+   ]
+  },
+  {
+   "id": "RB-018-HOSTONLY-20261020",
+   "title": "RB-018 host-only WFP observe-only transport PASS: Kali .10 probe to host .1:49152, expected-flow frames read back via GENERIC_READ",
+   "level": "E5",
+   "component": "windows-host+wfp+kali-lab",
+   "flow_id": "L4-WFP",
+   "head_sha": "865217b",
+   "timestamp": "2026-10-20",
+   "result": "PASS",
+   "command": "Operator (elevated): .\\scripts\\run_wfp_hostonly_observe_only.ps1 -ExpectedKaliIp 192.168.126.10 -ListenPort 49152 -WaitSeconds 60 -ProofOutput admin-evidence\\lab-qualification-20261020\\rb018. Agent: copied scripts/kali_hostonly_probe.sh to Kali via vmrun, waited for READY.txt, ran the probe with nonce AEGIS_L4_20261020.",
+   "expected": "L4_HOSTONLY_TRANSPORT_PASS: AegisWfp running; GENERIC_READ; GET_STATS/READ_EVENTS only; BLOCK_FLOW/UNBLOCK_FLOW not called; complete 48-byte frame; expected Kali source/port matched; prevention_gate closed; host_effect none.",
+   "actual": "passed true. AegisWfp Running; device \\\\.\\AegisWfpDevice; GET_STATS/READ_EVENTS only; no forbidden codes called; events_read_bytes 1119; complete_event_frames 10; trailing_event_bytes 0; header 48; expected_flow required true, matches 4 for 192.168.126.10:58874 -> 192.168.126.1:49152; prevention_gate closed; host_effect none. Kali probe benign_hostonly_tcp, curl 52 empty reply is the disposable listener close, probe_complete true, rc 0.",
+   "finding": "Transport telemetry only: the frames carry rule_id=0, so this is not a rule-match, L7, or host-effect proof. No firewall command was used; the inbound TCP/49152 probe connected with the host firewall enabled on all profiles. Capture path and gate-closed invariant verified; production daemon unchanged.",
+   "description": "Records the 2026-10-20 RB-018 host-only WFP observe-only run on the live Windows host with the Kali VM. Evidence kit (gitignored): admin-evidence/lab-qualification-20261020/rb018/ (console.log, kali-probe.log, READY.txt, probe-status.txt, RESULTS-20261020.md).",
+   "files_changed": [
+    "docs/runbooks/RB-018-hostonly-observe-only-qualification.md",
     "EVIDENCE_INDEX.json",
     "AI_CONTEXT.md"
    ]
@@ -6368,7 +6388,7 @@
   "E2_count": 127,
   "E3_count": 10,
   "E4_count": 15,
-  "E5_count": 90,
+  "E5_count": 91,
   "E6_count": 0,
   "E7_count": 1
  }

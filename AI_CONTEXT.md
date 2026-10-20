@@ -4,7 +4,7 @@
 
 
 
-**HEAD:** `e616badf3bf2863d05f9851e4ce261d05dcf73bf` (working tree has uncommitted changes)
+**HEAD:** `865217b431b917d447278ff11ba3dc66e0528e28` (working tree has uncommitted changes)
 
 **BRANCH:** `main`
 
@@ -350,7 +350,7 @@ Previous phases:
   DEADCODE-QUARANTINE, CI-GAPS, RELEASE-TOOLING, LEFTOVER-SWEEP, REL-CLOSURE; operator
   cutover 2026-10-19 20:07 deployed daemon `dcb22a5` (sha256 `f223dcce…`) — live gate
   hard-closed (gate_source 'closed', detection-only), gate-check + v6 live verify PASS.
-  Remaining queue: G2 lab campaign (RB-012→013), DEPLOY-120 drill, RB-014/015/018, RB-021 (partial),
+  Remaining queue: G2 lab campaign (RB-012→013), DEPLOY-120 drill, RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (partial),
   RB-016/017, G4 signing, external review, CI push decision.
   Evidence: EVI CUTOVER-DCB22A5 (E5) + entries V6-QUEUE-DROP..REL-CLOSURE.
 
@@ -360,6 +360,12 @@ Previous phases:
   traffic produced 0 rows (synthetic-token smoke only). Gap RB-021-L4-MATCHER opened.
   Evidence: EVI RB-021-HOSTONLY-20261020 (E5, result PARTIAL); kit
   admin-evidence/lab-session-20261020/ (gitignored).
+
+- RB-018 host-only WFP observe-only (2026-10-20): PASS - L4_HOSTONLY_TRANSPORT_PASS at 865217b;
+  live host VMnet1 .1 + Kali .10:58874 -> :49152; 4 expected-flow frames in 10 complete 48-byte
+  frames; AegisWfp Running/GENERIC_READ; GET_STATS/READ_EVENTS only; no BLOCK_FLOW/UNBLOCK_FLOW;
+  gate closed; host_effect none. Transport-only, not rule-match/L7/host-effect.
+  Evidence: EVI RB-018-HOSTONLY-20261020 (E5); kit admin-evidence/lab-qualification-20261020/rb018/ (gitignored).
 
 
 
