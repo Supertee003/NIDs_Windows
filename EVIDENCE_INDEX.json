@@ -1488,6 +1488,37 @@
    ],
    "host_effect_confirmed": false,
    "prevention_gate": "closed"
+  },
+  {
+   "id": "DEPLOY-130-L4-RATE-PKG-20261020",
+   "title": "DEPLOY-130 L4 rate/window installer built and payload-verified (packaging only)",
+   "level": "E3",
+   "component": "release/packaging",
+   "flow_id": "DATA-001",
+   "head_sha": "8a7f301",
+   "timestamp": "2026-10-20",
+   "result": "PASS",
+   "command": "python tools/installer.py --package --output admin-evidence/deploy130-l4-rate-20261020/aegis_setup.exe; 7z x + SHA-256 payload comparison; powershell -File deploy130-verify-live.ps1 (pre-install, expected mismatches)",
+   "expected": "A new installer built from source 8a7f301 carries the rate-enabled Rules.json and daemon, contains the unchanged runtime/driver set, and the read-only pre-install verifier reports only the four expected stale-live mismatches (daemon, rules, manifest hash, manifest source commit).",
+   "actual": "PASS. Artifact SHA-256 04F9E0DB63858AB3FDF4FC78692D34F87C983CD6FFCB0FA0F405468785F8A05C, 7,425,672 bytes, 18 payload files. Extracted configs/Rules.json = 87B97448... (repo) and runtime/aegis_nids.exe = D67267E2... (zig-out). Pre-install verifier: LIVE_VERIFY_FAIL (18/22); the four failures are exactly live_daemon_eq_repo (47AB8085 vs D67267E2), live_rules_byte_eq_repo (444F8956 vs 87B97448), live_build_manifest_eq_repo, and live_build_manifest_source_commit (fd7b424 vs 8a7f301). Services still Running; gate not touched. No install was performed.",
+   "finding": "The rate-enabled artifact exists and its payload is byte-identical to this source tree. This is packaging evidence only: the host still runs the old artifact, so it is NOT E5 and NOT live rate proof. The child gap DEPLOY-130-L4-RATE-E5 remains OPEN until an elevated operator installs this artifact, the post-install verifier returns 22/22, and the normal-below-threshold / scan-above-threshold lab controls are observed.",
+   "description": "Artifact preparation for the RB-021-L4-RATE live proof. The kit is at admin-evidence/deploy130-l4-rate-20261020 (gitignored): aegis_setup.exe, deploy130-verify-live.ps1 (read-only 22-gate verifier), README with artifact hashes and the rate proof checklist, and preinstall-verify.txt. The installer was built after the E2 source commit and current build_manifest; the payload rules/daemon match the repo. No service, driver, config, or gate mutation was made by this evidence step.",
+   "files_verified": [
+    "admin-evidence/deploy130-l4-rate-20261020/aegis_setup.exe",
+    "admin-evidence/deploy130-l4-rate-20261020/deploy130-verify-live.ps1",
+    "admin-evidence/deploy130-l4-rate-20261020/README.md",
+    "configs/Rules.json",
+    "zig-out/bin/aegis_nids.exe"
+   ],
+   "files_changed": [],
+   "tests": [
+    "installer package: rc 0; artifact 04F9... x 7,425,672 B",
+    "7z payload extraction: 18 files; rules 87B97448... and daemon D67267E2... match",
+    "deploy130-verify-live.ps1 pre-install: 18/22 with only the four expected stale-live mismatches",
+    "zig build / zig build test / full pytest already passed for source 8a7f301 (E2 entry)"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed"
   }
  ],
  "known_gaps": [
@@ -6656,7 +6687,7 @@
     "normal handshake and pings below threshold produce no new R9006/R9002 rows",
     "a scan of >=20 distinct ports and >=50 ICMP packets per source/window produce one alert per window, not per-packet rows"
    ],
-   "evidence": "EVI RB-021-L4-RATE-E2-20261020 (code/tests); live artifact 1593260B...; RB-021 runbook rate/window section"
+   "evidence": "EVI RB-021-L4-RATE-E2-20261020 (code/tests); EVI DEPLOY-130-L4-RATE-PKG-20261020 (artifact 04F9..., payload verified, not installed); live artifact 1593260B...; RB-021 runbook rate/window section"
   },
   {
    "id": "DEPLOY-120-E5",
@@ -6681,7 +6712,7 @@
   "E0_count": 0,
   "E1_count": 25,
   "E2_count": 129,
-  "E3_count": 12,
+  "E3_count": 13,
   "E4_count": 15,
   "E5_count": 95,
   "E6_count": 0,

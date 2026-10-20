@@ -375,7 +375,11 @@ Previous phases:
   19 distinct ports). Gap RB-021-L4-RATE CLOSED at E2; live E5 proof of
   rate behavior is NOT performed: deployed artifact 1593260B... predates
   this source. Child gap DEPLOY-130-L4-RATE-E5 remains OPEN.
-  Evidence: EVI RB-021-L4-RATE-E2-20261020 (E2); tests in
+  Artifact 04F9E0DB63858AB3FDF4FC78692D34F87C983CD6FFCB0FA0F405468785F8A05C
+  (7,425,672 B) built 2026-10-20 and payload-verified against this source, but
+  NOT installed; the live host still runs 1593260B.../444F8956... .
+  Evidence: EVI RB-021-L4-RATE-E2-20261020 (E2); EVI
+  DEPLOY-130-L4-RATE-PKG-20261020 (E3 packaging only); tests in
   src/pipeline/l4_matcher.zig + tests/security/test_l4_rate_config.py.
 
 - RB-018 host-only WFP observe-only (2026-10-20): PASS - L4_HOSTONLY_TRANSPORT_PASS at 865217b;
