@@ -1644,6 +1644,49 @@
    ],
    "host_effect_confirmed": false,
    "prevention_gate": "closed"
+  },
+  {
+   "id": "DEPLOY-131-NOSE-FLAGS-PKG-20261020",
+   "title": "DEPLOY-131 Nose TCP-flags installer packaged and payload-verified (E3)",
+   "level": "E3",
+   "component": "release/installer",
+   "flow_id": "DATA-001",
+   "head_sha": "de574b6",
+   "timestamp": "2026-10-20",
+   "result": "PASS",
+   "command": "python tools/installer.py --package --output admin-evidence/deploy131-nose-flags-20261020/aegis_setup.exe; 7z x; Get-FileHash on 14 payloads; python tools/release_engineering.py --verify; python tools/truth.py verify; deploy131-verify-live.ps1 (pre-install)",
+   "expected": "The DEPLOY-131 installer carries source de574b6 with the new Zig daemon (E19C...) and Go Nose (735E...) plus unchanged payloads; every packaged payload hash equals the current repo; release digest verification is 612/612; the pre-install live verifier fails only on the intentionally not-yet-installed daemon, Nose, build_manifest and source commit.",
+   "actual": "PASS. aegis_setup.exe sha256 7C4B2C19B56B8ADD0B3B09744E607BF18FE6AA919F2156BBF5BC3E1E1A2EF6BC, size 7,425,997 B. 7z found 18 embedded files (14 payloads + 4 NSIS plug-ins). All 14 payload hashes match the repo, including daemon E19C76C3..., Nose 735E2B8A..., build_manifest 5BF0B2E0..., Rules 87B97448..., WFP driver AD23EFB9..., minifilter 082F6A43.... release_engineering --verify = 612/612 at source de574b6; truth.py verify = TRUTH_VALID. The pre-install verifier recorded 18/22: only live_daemon_eq_repo, live_nose_eq_repo, live_build_manifest_eq_repo and live_build_manifest_source_commit fail, exactly as expected because the old 04F9.../8a7f301 build is still live.",
+   "finding": "The patched installer is ready for an operator install, but nothing was installed and no live behavior changed. The pre-install verifier is a deliberate baseline, not an E5 pass. RB-021-NOSE-FLAGS and DEPLOY-130-L4-RATE-E5 stay OPEN until the operator installs this kit, restarts/repairs readiness if needed, gets LIVE_VERIFY_OK (22/22), and runs the canonical-path R9006/R9007 controls.",
+   "description": "Packaging-only evidence. The installer was generated with NSIS from the current build_manifest.json; no service was stopped, no file was copied to Program Files, and prevention_gate stayed closed. The old deploy130 kit remains the rollback artifact; its uninstaller must not be used against the new artifact. The stale root D:\\NIDs_Windows\\aegis_setup.exe (A6F748...) was not used.",
+   "files_verified": [
+    "admin-evidence/deploy131-nose-flags-20261020/aegis_setup.exe",
+    "admin-evidence/deploy131-nose-flags-20261020/README.md",
+    "admin-evidence/deploy131-nose-flags-20261020/deploy131-verify-live.ps1",
+    "admin-evidence/deploy131-nose-flags-20261020/preinstall-verify.txt",
+    "zig-out/bin/aegis_nids.exe",
+    "nose/aegis-nose.exe",
+    "build_manifest.json",
+    "configs/Rules.json",
+    "configs/policies.json",
+    "build/x64/wfp/aegis_wfp.sys",
+    "build/x64/minifilter/aegis_minifilter.sys"
+   ],
+   "files_changed": [
+    "admin-evidence/deploy131-nose-flags-20261020/aegis_setup.exe",
+    "admin-evidence/deploy131-nose-flags-20261020/README.md",
+    "admin-evidence/deploy131-nose-flags-20261020/deploy131-verify-live.ps1",
+    "admin-evidence/deploy131-nose-flags-20261020/preinstall-verify.txt"
+   ],
+   "tests": [
+    "installer build: pass (NSIS, 7,425,997 B)",
+    "payload extraction: 18 embedded files; 14/14 payload hashes match repo",
+    "release_engineering --verify: 612/612, source de574b6",
+    "truth.py verify: TRUTH_VALID",
+    "pre-install verifier: LIVE_VERIFY_FAIL (18/22), only the four expected pre-patch mismatches"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed"
   }
  ],
  "known_gaps": [
@@ -6812,9 +6855,10 @@
     "DONE for R9002 2026-10-20: 10 pings below threshold produce no new R9002; 60 ICMP packet burst produces exactly one R9002 row (TEST-NET host path; not isolated Kali->Win11 lab).",
     "OPEN: R9006 on a path that actually evaluates TCP flags (canonical Nose fix or direct-pinned lab), with one-port negative and >=20-distinct-port positive producing at most one row per source/window.",
     "OPEN: repeat the negative/positive controls from the isolated Kali->Win11 lab per the kit, or explicitly re-scope the child with the operator.",
-    "OPEN: install/restart an artifact containing de574b6 and run the canonical-path R9006 one-port negative / >=20-distinct-port positive and R9007 exact FIN|PSH|URG controls with queue/readiness/gate evidence."
+    "OPEN: install/restart an artifact containing de574b6 and run the canonical-path R9006 one-port negative / >=20-distinct-port positive and R9007 exact FIN|PSH|URG controls with queue/readiness/gate evidence.",
+    "READY, NOT INSTALLED: DEPLOY-131 kit 7C4B2C19... carries source de574b6; install, restart/readiness, LIVE_VERIFY_OK (22/22), then canonical-path R9006/R9007 controls."
    ],
-   "evidence": "EVI DEPLOY-130-L4-RATE-INSTALL-20261020 (E5 install); EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL); EVI RB-021-L4-RATE-E2-20261020; EVI DEPLOY-130-L4-RATE-PKG-20261020; gap RB-021-NOSE-FLAGS OPEN; admin-evidence/deploy130-l4-rate-20261020/postinstall-verify.txt and rate-e5-testnet-20261020-164841.txt; EVI RB-021-NOSE-FLAGS-E2-20261020 (E2 PASS at de574b6, source-only)"
+   "evidence": "EVI DEPLOY-130-L4-RATE-INSTALL-20261020 (E5 install); EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL); EVI RB-021-L4-RATE-E2-20261020; EVI DEPLOY-130-L4-RATE-PKG-20261020; gap RB-021-NOSE-FLAGS OPEN; admin-evidence/deploy130-l4-rate-20261020/postinstall-verify.txt and rate-e5-testnet-20261020-164841.txt; EVI RB-021-NOSE-FLAGS-E2-20261020 (E2 PASS at de574b6, source-only); EVI DEPLOY-131-NOSE-FLAGS-PKG-20261020 (E3 packaging; not installed)"
   },
   {
    "id": "DEPLOY-120-E5",
@@ -6845,9 +6889,10 @@
     "DONE at E2 (de574b6): a contract-safe ContextFlags transport lane carries TCP flags from Go Nose to Zig; all codec constants and the Python round-trip are pinned in tests/contracts/test_canonical_context_flags.py. OPEN: install the patched artifact and prove the live path.",
     "Live canonical-path negative/positive controls: one-port handshake produces no R9006; >=20 distinct destination ports produce exactly one R9006 per source/window; exact FIN|PSH|URG produces the specified R9007 behavior.",
     "Queue drop counters, readiness, and prevention_gate closed documented for the same run.",
-    "OPEN: install the patched artifact, restart AegisNids, and run the live canonical-path negative/positive controls; the current 04F9E0DB... install is pre-patch and cannot close this gap."
+    "OPEN: install the patched artifact, restart AegisNids, and run the live canonical-path negative/positive controls; the current 04F9E0DB... install is pre-patch and cannot close this gap.",
+    "READY, NOT INSTALLED: DEPLOY-131 kit 7C4B2C19... (source de574b6) is payload-verified; operator install + LIVE_VERIFY_OK (22/22) + live controls still required. Pre-install verifier baseline is 18/22."
    ],
-   "evidence": "EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL; wire 20 distinct SYN, 0 R9006); EVI RB-021-L4-RATE-E2-20261020; src/pipeline/event_processor.zig:154; src/pipeline/event_queue.zig:71; src/pipeline/packet_callback.zig:91; docs/runbooks/RB-021-hostonly-lab-proof.md; historical R9006/R9007 rows used direct VMnet1 pin; EVI RB-021-NOSE-FLAGS-E2-20261020 (E2 PASS at de574b6); source commit de574b6",
+   "evidence": "EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL; wire 20 distinct SYN, 0 R9006); EVI RB-021-L4-RATE-E2-20261020; src/pipeline/event_processor.zig:154; src/pipeline/event_queue.zig:71; src/pipeline/packet_callback.zig:91; docs/runbooks/RB-021-hostonly-lab-proof.md; historical R9006/R9007 rows used direct VMnet1 pin; EVI RB-021-NOSE-FLAGS-E2-20261020 (E2 PASS at de574b6); source commit de574b6; EVI DEPLOY-131-NOSE-FLAGS-PKG-20261020 (E3 PASS, packaging only)",
    "source_fix": "de574b6 (RB021-NOSE-FLAGS-001, E2; 109/133-byte wire layout unchanged)"
   }
  ],
@@ -6855,7 +6900,7 @@
   "E0_count": 0,
   "E1_count": 25,
   "E2_count": 130,
-  "E3_count": 13,
+  "E3_count": 14,
   "E4_count": 15,
   "E5_count": 97,
   "E6_count": 0,

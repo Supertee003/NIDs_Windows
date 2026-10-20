@@ -389,15 +389,20 @@ Previous phases:
   RB021-NOSE-FLAGS-001 (E2, source commit de574b6) now
   carries the raw TCP flags byte in the existing ContextFlags lane
   (bits 16..23, valid bit24; wire remains 109/133 bytes) and extracts it in
-  pushDecodedFrame. Go/Zig/Python tests and zig build pass. The installed
-  live artifact is still the pre-patch build, so there is NO live
-  R9006/R9007 result; gap stays OPEN until install + live proof.
+  pushDecodedFrame. Go/Zig/Python tests and zig build pass. Deployment kit
+  deploy131-nose-flags-20261020 (installer 7C4B2C19..., source de574b6) is
+  prepared and payload-verified; it is NOT installed. Its read-only
+  pre-install verifier is 18/22, failing exactly daemon/nose/manifest/source
+  as expected against the old live build. There is NO live R9006/R9007
+  result; gap stays OPEN until install + live proof.
   This TEST-NET run is not the isolated Kali->Win11 lab E5; child gap
   DEPLOY-130-L4-RATE-E5 remains OPEN (R9002 live done; R9006/R9007 pending).
   Evidence: EVI RB-021-L4-RATE-E2-20261020 (E2); EVI
   DEPLOY-130-L4-RATE-INSTALL-20261020 (E5 install);
   EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL); EVI
-  DEPLOY-130-L4-RATE-PKG-20261020 (E3 packaging); tests in
+  DEPLOY-130-L4-RATE-PKG-20261020 (E3 packaging); EVI
+  DEPLOY-131-NOSE-FLAGS-PKG-20261020 (E3 packaging, ready not installed);
+  tests in
   src/pipeline/l4_matcher.zig + tests/security/test_l4_rate_config.py;
   patch tests in nose/capture_hermetic_test.go,
   src/contract/canonical_event.zig, src/pipeline/event_queue.zig, and
