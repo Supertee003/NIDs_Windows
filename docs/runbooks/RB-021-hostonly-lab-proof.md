@@ -417,11 +417,50 @@ missing/duplicate/stale/mixed daemon or Nose process images and passes
 24/24 on the current host; its self-test fails stale/mixed/empty and
 passes fresh. The installer still needs the operator restart step, but a
 future stale image can no longer silently pass verification. The isolated
-Kali->Win11 E5 re-proof
-(normal handshake/ping below threshold, scan/flood above threshold, one
-row per window) remains tracked as `DEPLOY-130-L4-RATE-E5`; do not claim
-it from unit tests or from the TEST-NET run. `forensics verify` stays ok
-+ verified true throughout.
+Kali->Win11 E5 re-proof passed on 2026-10-20; see the subsection below.
+`forensics verify` stays ok + verified true throughout.
+
+### Isolated Kali -> Win11 rate lab PASS (2026-10-20 21:00-21:01)
+
+Topology: Kali `192.168.126.10` -> Win11 victim `192.168.126.20` on
+VMnet1; NIDS host `192.168.126.1`. Independent `dumpcap` on host VMnet1
+saw the VM-to-VM ping pair. Deployed daemon PID 13108 (source `de574b6`,
+sha256 `E19C76C3...`) was **not** restarted for the lab.
+
+| Phase | Wire | `.10` rows | Expected |
+|---|---|---:|---|
+| R9002 10 ICMP | 10/10 replies | 0 | 0 |
+| R9002 60 ICMP (`hping3 -i u1000`) | 60/60 replies | 1 | 1 |
+| R9006 one SYN port | port 80 open | 0 | 0 |
+| R9006 40 SYN ports | 40 filtered | 1 | 1 |
+| R9007 normal SYN (same 40-port traffic) | SYN only | 0 | 0 |
+| R9007 30-port XMAS | 30 open/filtered | 60 | >= 1 |
+| R9006 during XMAS | XMAS only | 0 | 0 |
+
+All 62 phase rows were `observed`, `host_effect_confirmed=false`;
+`capture_npcap` dropped stayed 3181 and `dropped_total` stayed 132111;
+readiness was RUNNING; `prevention_gate=closed`; the DEPLOY-131 verifier
+returned `LIVE_VERIFY_OK (24/24)`. Gap
+`DEPLOY-130-L4-RATE-E5` is CLOSED at EVI
+`DEPLOY-130-L4-RATE-E5-LAB-20261020`.
+
+Capture-path caveat: the current daemon process still had the direct Zig
+Npcap VMnet1 path active although registry `AEGIS_DAEMON_IFACE` was
+absent. The L7 probe `../../etc/passwd` from Kali `.10` -> Win11 `.20`
+produced R0088 on the live process, proving full-packet direct capture
+(Nose-pipe frames are metadata-only). No pin was set/removed and no
+service was restarted. Behavior is consistent with a startup-time lab
+pin retained in the process environment from its 17:54:49 creation; the
+environment block was not directly readable from the medium-integrity
+token. A restart will read the absent registry value and disable the
+path. This lab is E5 for the running artifact, not a claim
+that the canonical Nose path carried it (that is the separate TEST-NET
+proof above). The registry/process drift is OPEN as
+`DEPLOY-132-DAEMON-IFACE-ENV-STALE`; an operator restart with the pin
+absent must clear it and prove the direct path is off while Nose stays
+connected. Kit:
+`admin-evidence/lab-rate-e5-20261020/run-nopin-20261020-210026/`
+(gitignored).
 
 Attribution rules (2026-10-17 findings): count a row as wire-fire proof
 only if the target resolved (Step 1/3) AND the rule's own pattern
@@ -453,14 +492,19 @@ host effect was ever applied, so no effect needs undoing.
 - The 2026-10-20 305/200/200 L4 rows were per-packet: R9006 matched any
   exact SYN (normal handshakes included), R9002 any ICMP, R9007 exact
   FIN+PSH+URG. They were produced by the pre-rate source and must not be
-  described as scan/flood verdicts. The current installed artifact
-  carries the rate/window state, but only R9002 has live rate proof so far.
-- The installed `04F9E0DB...` artifact still has no TCP flags on the
-  canonical Nose path; `R9006`/`R9007` remain unmatched there. Source
-  patch `RB021-NOSE-FLAGS-001` fixes the path at E2, but until the patched
-  artifact is installed and live-proven, gap `RB-021-NOSE-FLAGS` (P1)
-  stays OPEN. Do not use the pre-patch 20-port scan to claim a rate or
-  flags failure, and do not use the E2 tests to claim E5.
+  described as scan/flood verdicts. The current installed `de574b6`
+  artifact carries the rate/window state; the canonical-Nose TEST-NET
+  pass and the isolated Kali->Win11 lab both proved R9002/R9006 rate
+  behavior, with R9007 confirmed per-packet.
+- The installed `de574b6` artifact carries TCP flags on the canonical
+  Nose path; `R9006`/`R9007` live controls passed after the operator
+  restarted Nose PID 3632. The isolated lab also passed through the
+  current process's direct VMnet1 path. Do not use the pre-patch 20-port
+  scan to claim a rate or flags failure, and do not use E2 tests to
+  claim E5. The remaining capture-path issue is the OPEN P3
+  `DEPLOY-132-DAEMON-IFACE-ENV-STALE`: the live daemon process retains
+  the VMnet1 direct path while the registry pin is absent, so an operator
+  restart is needed to return to canonical-only capture.
 - A 100-port nmap scan can produce 200 matching packets (retry or
   duplicate capture); the old per-packet rows count packets, not ports.
   The current R9006 state counts distinct destination ports instead.

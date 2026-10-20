@@ -1880,6 +1880,68 @@
    ],
    "host_effect_confirmed": false,
    "prevention_gate": "closed"
+  },
+  {
+   "id": "DEPLOY-130-L4-RATE-E5-LAB-20261020",
+   "title": "Isolated Kali .10 -> Win11 .20 lab PASS for R9002/R9006 rate and R9007 XMAS (E5)",
+   "level": "E5",
+   "component": "detection/l4-rate",
+   "flow_id": "DATA-001",
+   "head_sha": "de574b6",
+   "timestamp": "2026-10-20",
+   "result": "PASS",
+   "command": "powershell -NoProfile -ExecutionPolicy Bypass -File admin-evidence/lab-rate-e5-20261020/run-rate-lab-e5-nopin.ps1",
+   "expected": "On an isolated VMnet1 segment, Kali .10 -> Win11 .20: 10 ICMP -> 0 R9002; 60 ICMP -> exactly 1 R9002; one SYN port -> 0 R9006; 40 SYN ports -> exactly 1 R9006; normal SYN -> 0 R9007; 30-port XMAS -> >=1 R9007. Gate stays closed; no host effect; no new capture_npcap drops; verifier 24/24.",
+   "actual": "PASS. r9002-neg 0; r9002-pos 1; r9006-neg 0; r9006-pos 1; R9007 during normal SYN 0; r9007-pos 60 (30 ports, per-packet/duplicate capture); R9006 during XMAS 0. Kali wire: 10/10 and 60/60 ICMP replies; port 80 open; 40 SYNs filtered; 30 XMAS filtered. All 62 rows observed, host_effect false. capture_npcap dropped 3181 -> 3181; dropped_total 132111 -> 132111. readiness RUNNING; gate closed. DEPLOY-131 verifier LIVE_VERIFY_OK (24/24). 15/15 lab assertions.",
+   "finding": "The deployed rate tracker enforces the configured count and distinct-dst-port windows on real isolated traffic: one row per source/window above threshold and zero below. R9007 remains per-packet and is not a rate rule. The lab was carried by the current daemon process's direct Zig Npcap VMnet1 path, not by a new pin or service restart; the canonical Nose TEST-NET proof remains separate. The registry pin was absent while the direct path was active, which is recorded as DEPLOY-132-DAEMON-IFACE-ENV-STALE.",
+   "description": "Isolated lab: Kali 192.168.126.10 -> Win11 victim 192.168.126.20 on VMnet1; NIDS host 192.168.126.1. dumpcap independently saw the VM-to-VM ping pair. No service restart, no pin change, no enforcement; detection-only throughout.",
+   "files_verified": [
+    "admin-evidence/lab-rate-e5-20261020/run-nopin-20261020-210026/results.json",
+    "admin-evidence/lab-rate-e5-20261020/run-nopin-20261020-210026/lab.log",
+    "admin-evidence/lab-rate-e5-20261020/run-nopin-20261020-210026/postlab-verify.txt",
+    "admin-evidence/lab-rate-e5-20261020/run-nopin-20261020-210026/capture-path/vmnet1-vm2vm.pcapng"
+   ],
+   "files_changed": [],
+   "tests": [
+    "r9002-neg=0, r9002-pos=1",
+    "r9006-neg=0, r9006-pos=1",
+    "r9007 normal SYN=0; XMAS=60 rows for 30 ports",
+    "all 62 rows observed, host_effect_true=0",
+    "capture_npcap dropped 3181 -> 3181",
+    "prevention_gate=closed; readiness RUNNING",
+    "LIVE_VERIFY_OK (24/24)"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed"
+  },
+  {
+   "id": "DEPLOY-132-DAEMON-IFACE-ENV-DRIFT-20261020",
+   "title": "Observation: daemon PID 13108 direct-captures VMnet1 while the registry pin is absent (E5 FAIL invariant)",
+   "level": "E5",
+   "component": "deployment/runtime-config",
+   "flow_id": "DATA-001",
+   "head_sha": "de574b6",
+   "timestamp": "2026-10-20",
+   "result": "FAIL",
+   "command": "Get-ItemProperty HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment AEGIS_DAEMON_IFACE; L7 probe: hping3 -A -p 80 -d 20 -E l7-token.txt -c 1 192.168.126.20",
+   "expected": "With AEGIS_DAEMON_IFACE absent, the current daemon process should have the direct Zig Npcap path disabled; VMnet1 full-packet L7 probes should produce no R0088 row. A restart would be the only transition.",
+   "actual": "Registry AEGIS_DAEMON_IFACE=absent, but the current daemon PID 13108 (created 2026-10-20 17:54:49) still direct-captured VMnet1: the Kali .10 -> Win11 .20 ACK with payload ../../etc/passwd produced exactly one R0088 (4254503461) row, event_id 1496, observed/host_effect false. Nose-pipe frames are metadata-only, so this is the direct full-packet path. Behavior is consistent with a startup-time pin retained in the process environment; the environment block was not directly readable from the medium-integrity token. A service restart will read the absent registry value and disable it.",
+   "finding": "Runtime/config drift, not a detection failure: the live process is not in the configuration the registry describes. The direct path is disjoint from the Wi-Fi Nose path in this host state, and no duplicate event IDs were observed, so this is not a policy bypass or enforcement issue. It is a lab-mode residue that must be cleared by an operator restart before claiming canonical-only capture. The isolated rate lab is valid for the running process but must carry this caveat.",
+   "description": "Discovered while characterizing the capture path used by the isolated rate lab. No service restart was possible from the medium-integrity agent token; the registry is already absent. The direct path is proven by the L7 R0088 hit, which Nose metadata cannot produce.",
+   "files_verified": [
+    "admin-evidence/lab-rate-e5-20261020/run-nopin-20261020-210026/capture-path/probe-l7-path-rows.json",
+    "admin-evidence/lab-rate-e5-20261020/run-nopin-20261020-210026/capture-path/probe-l7-path.txt",
+    "admin-evidence/lab-rate-e5-20261020/run-nopin-20261020-210026/before-status.json"
+   ],
+   "files_changed": [],
+   "tests": [
+    "registry AEGIS_DAEMON_IFACE=absent",
+    "L7 R0088 from 192.168.126.10 -> 192.168.126.20 = 1 row",
+    "event_id 1496, enforcement_status=observed, host_effect_confirmed=false",
+    "daemon PID 13108 created 17:54:49; no restart during the lab"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed"
   }
  ],
  "known_gaps": [
@@ -7033,23 +7095,27 @@
     "rate/window state and threshold tests for SYN/ICMP, or an explicit rename/reclassification to per-packet predicates",
     "negative control showing normal handshakes/pings below a threshold do not fire"
    ],
-   "resolution": "Implemented opt-in L4 rate/window semantics in src/pipeline/l4_matcher.zig, config-driven by configs/Rules.json. R9002: count >=50 ICMP packets per source per 1000 ms. R9006: >=20 distinct destination ports per source per 10000 ms. Both emit once per source/window; R9007 remains exact FIN|PSH|URG per-packet. The tracker keys rule + full source address + IPv4/IPv6 identity, is a fixed 256-entry table, and resets on rules reload. Zig tests cover the 49th-vs-50th ICMP boundary, 19-vs-20 distinct-port boundary, duplicate-port suppression, once-per-window emission/re-arm, source and address-family separation, reset, and the stateless R9007 path; negative controls prove a normal single handshake and sub-threshold pings do not fire. Config pins are in tests/security/test_l4_rate_config.py. This closes the code-semantics gap at E2; the installed 04F9... artifact (2026-10-20) later proved R9002 live at E5, while R9006 live proof remains blocked by the separate RB-021-NOSE-FLAGS production-path gap.",
-   "evidence": "EVI RB-021-L4-RATE-E2-20261020 (E2); EVI DEPLOY-130-L4-RATE-INSTALL-20261020 (E5 install); EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (R9002 PASS, R9006 blocked); EVI RB-021-L4-20261020 (historical per-packet E5); RB-021 runbook rate/window section; child gap DEPLOY-130-L4-RATE-E5 OPEN; gap RB-021-NOSE-FLAGS OPEN"
+   "resolution": "Implemented opt-in L4 rate/window semantics in src/pipeline/l4_matcher.zig, config-driven by configs/Rules.json. R9002: count >=50 ICMP packets per source per 1000 ms. R9006: >=20 distinct destination ports per source per 10000 ms. Both emit once per source/window; R9007 remains exact FIN|PSH|URG per-packet. The tracker keys rule + full source address + IPv4/IPv6 identity, is a fixed 256-entry table, and resets on rules reload. Zig tests cover the 49th-vs-50th ICMP boundary, 19-vs-20 distinct-port boundary, duplicate-port suppression, once-per-window emission/re-arm, source and address-family separation, reset, and the stateless R9007 path; negative controls prove a normal single handshake and sub-threshold pings do not fire. Config pins are in tests/security/test_l4_rate_config.py. This closes the code-semantics gap at E2; the installed 04F9... artifact (2026-10-20) later proved R9002 live at E5, while R9006/R9007 live proof is now recorded on the canonical Nose path and in the isolated lab.",
+   "evidence": "EVI RB-021-L4-RATE-E2-20261020 (E2); EVI DEPLOY-130-L4-RATE-INSTALL-20261020 (E5 install); EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (R9002 PASS, R9006 blocked); EVI RB-021-L4-20261020 (historical per-packet E5); RB-021 runbook rate/window section; child gap DEPLOY-130-L4-RATE-E5 CLOSED at EVI DEPLOY-130-L4-RATE-E5-LAB-20261020; gap RB-021-NOSE-FLAGS CLOSED at EVI RB-021-NOSE-FLAGS-LIVE-PASS-20261020"
   },
   {
    "id": "DEPLOY-130-L4-RATE-E5",
    "severity": "P2",
    "title": "Live E5 proof of L4 rate/window behavior on the deployed de574b6 artifact",
-   "description": "DEPLOY-131 (source de574b6) was installed on 2026-10-20 and the live byte-equality verifier passed 22/22. After the operator restarted the stale Nose process, the host-generated TEST-NET canonical-path proof passed for all three rules: R9002 10 ICMP -> 0 and 60 ICMP -> 1; R9006 one port -> 0 and 20 distinct ports -> 1; R9007 normal SYN -> 0 and five exact FIN|PSH|URG -> 5. Queue dropped/shed did not increase; readiness was RUNNING and the gate stayed closed. The child remains OPEN only for the isolated Kali->Win11 lab E5 required by the kit (VMs down/encrypted/NAT), or an explicit operator re-scope. This TEST-NET run is not that lab.",
-   "status": "OPEN",
+   "description": "DEPLOY-131 (source de574b6) was installed on 2026-10-20 and the live byte-equality verifier passed 22/22. After the operator restarted the stale Nose process, the host-generated TEST-NET canonical-path proof passed for all three rules: R9002 10 ICMP -> 0 and 60 ICMP -> 1; R9006 one port -> 0 and 20 distinct ports -> 1; R9007 normal SYN -> 0 and five exact FIN|PSH|URG -> 5. Queue dropped/shed did not increase; readiness was RUNNING and the gate stayed closed. That TEST-NET run was not the isolated lab, so the child remained open until the isolated Kali->Win11 lab below. CLOSED 2026-10-20: the isolated Kali .10 -> Win11 .20 lab passed on VMnet1. R9002 10/60 -> 0/1; R9006 one/40 ports -> 0/1; R9007 normal SYN 0 / 30-port XMAS 60 rows; all rows observed with host_effect false; capture_npcap drops unchanged; gate closed; verifier 24/24. The lab was carried by the current process's direct VMnet1 path, not a new pin or restart; the canonical Nose TEST-NET E5 remains a separate proof.",
+   "status": "CLOSED",
    "found_at": "2026-10-20",
    "required_evidence": [
     "DONE 2026-10-20: DEPLOY-131 installed; LIVE_VERIFY_OK (22/22); source de574b6; daemon new.",
-    "DONE 2026-10-20: Nose restarted PID 3632 (19:51:55); R9002 10/60 PASS; R9006 one-port 0 / 20-port 1; R9007 normal SYN 0 / five exact XMAS 5; queue dropped/shed unchanged; readiness RUNNING; prevention_gate closed.",
-    "OPEN: repeat the negative/positive controls from the isolated Kali->Win11 lab per the kit, or explicitly re-scope the child with the operator.",
-    "OPEN: resolve the isolated-lab blockers (VMs down, Win11 VMX encrypted, Kali NAT instead of host-only VMnet1) and record the lab E5."
+    "DONE 2026-10-20: Nose restarted PID 3632 (19:51:55); canonical TEST-NET R9002 10/60 PASS; R9006 one-port 0 / 20-port 1; R9007 normal SYN 0 / five exact XMAS 5; queue dropped/shed unchanged; readiness RUNNING; prevention_gate closed.",
+    "DONE 2026-10-20: isolated Kali .10 -> Win11 .20 on VMnet1; dumpcap saw the VM-to-VM pair; R9002 10/60 -> 0/1; R9006 1/40 ports -> 0/1; R9007 normal SYN 0 / 30-port XMAS 60; all 62 rows observed/host_effect false; capture_npcap drops 3181->3181; verifier 24/24.",
+    "DONE: capture-path caveat recorded: current daemon PID 13108 direct-captures VMnet1 while the registry pin is absent; no pin/restart during the lab. Drift tracked as DEPLOY-132-DAEMON-IFACE-ENV-STALE."
    ],
-   "evidence": "EVI DEPLOY-130-L4-RATE-INSTALL-20261020 (E5 install); EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL); EVI RB-021-L4-RATE-E2-20261020; EVI DEPLOY-130-L4-RATE-PKG-20261020; gap RB-021-NOSE-FLAGS OPEN; admin-evidence/deploy130-l4-rate-20261020/postinstall-verify.txt and rate-e5-testnet-20261020-164841.txt; EVI RB-021-NOSE-FLAGS-E2-20261020 (E2 PASS at de574b6, source-only); EVI DEPLOY-131-NOSE-FLAGS-PKG-20261020 (E3 packaging; not installed); EVI QUEUE-PRESSURE-OBS-20261020 (E5 observation, zero idle delta); EVI DEPLOY-131-INSTALL-20261020 (E5 install PASS); EVI RB-021-NOSE-FLAGS-LIVE-ATTEMPT-20261020 (E5 FAIL, stale Nose); gap DEPLOY-131-NOSE-STALE-PROCESS OPEN; EVI RB-021-R9007-PRE-RESTART-20261020 (E5 FAIL baseline); EVI RB-021-NOSE-FLAGS-LIVE-PASS-20261020 (E5 PASS, host-generated TEST-NET: R9002/R9006/R9007 all pass, zero new queue drops)"
+   "evidence": "EVI DEPLOY-130-L4-RATE-INSTALL-20261020 (E5 install); EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (historical E5 PARTIAL; TEST-NET only); EVI RB-021-L4-RATE-E2-20261020 (E2); EVI DEPLOY-130-L4-RATE-PKG-20261020 (E3); EVI RB-021-NOSE-FLAGS-E2-20261020 (E2); EVI DEPLOY-131-NOSE-FLAGS-PKG-20261020 (E3); EVI QUEUE-PRESSURE-OBS-20261020 (E5 observation); EVI DEPLOY-131-INSTALL-20261020 (E5 install); EVI RB-021-NOSE-FLAGS-LIVE-ATTEMPT-20261020 (historical E5 FAIL); EVI RB-021-R9007-PRE-RESTART-20261020 (historical E5 FAIL); EVI RB-021-NOSE-FLAGS-LIVE-PASS-20261020 (E5 PASS canonical Nose); EVI DEPLOY-131-VERIFY-PROCESS-20261020 (E5 PASS 24/24); EVI DEPLOY-130-L4-RATE-E5-LAB-20261020 (E5 PASS isolated Kali .10 -> Win11 .20)",
+   "closed_at": "2026-10-20",
+   "closed_by": "DEPLOY-130-L4-RATE-E5-LAB-20261020",
+   "resolution": "The deployed artifact passed the isolated Kali->Win11 rate lab. R9002 and R9006 emit exactly one row per source/window above threshold and zero below; R9007 remains per-packet. The gate stayed closed and no host effect occurred. The lab used the current process's direct VMnet1 path; canonical Nose TEST-NET carriage is a separate E5. The registry/process pin drift is not part of this closed child and is tracked under DEPLOY-132.",
+   "source_fix": "none; isolated lab proof at de574b6"
   },
   {
    "id": "DEPLOY-120-E5",
@@ -7107,6 +7173,21 @@
    "closed_at": "2026-10-20",
    "closed_by": "DEPLOY-131-VERIFY-PROCESS-20261020",
    "resolution": "The stale-process failure is now fail-closed at the deployment verifier: file replacement alone cannot pass unless exactly one daemon and one Nose process were created after the installed binaries. The live host passes 24/24 after the operator restart. Installer auto-restart is still not implemented; the runbook requires restart-nose.ps1 after upgrades, and omission will fail verification."
+  },
+  {
+   "id": "DEPLOY-132-DAEMON-IFACE-ENV-STALE",
+   "severity": "P3",
+   "title": "Daemon process retains VMnet1 direct capture while registry AEGIS_DAEMON_IFACE is absent",
+   "description": "The running daemon PID 13108 (created 2026-10-20 17:54:49) still has the direct Zig Npcap path active on VMnet1 even though AEGIS_DAEMON_IFACE is absent from the machine environment. The L7 probe ../../etc/passwd from Kali .10 -> Win11 .20 produced R0088 on the live process, proving full-packet direct capture; Nose-pipe frames cannot carry payload. Behavior is consistent with a startup-time pin retained in the process environment after the registry value was removed; the environment block was not directly readable from the medium-integrity token. A service restart will read the absent value and disable the direct path. Detection-only; gate closed; no host effect; direct VMnet1 traffic is disjoint from the Wi-Fi Nose path in this state, but the live process is not in the configuration the registry says.",
+   "status": "OPEN",
+   "found_at": "2026-10-20",
+   "required_evidence": [
+    "DONE 2026-10-20: registry AEGIS_DAEMON_IFACE=absent while daemon PID 13108 direct-captured VMnet1 (L7 R0088, event_id 1496, observed/host_effect false).",
+    "OPEN: operator restart AegisNids with the registry pin absent; verify a new daemon PID and direct path disabled (VMnet1 L7 probe yields 0 R0088) while Nose remains connected.",
+    "OPEN: run the DEPLOY-131 verifier 24/24 after the restart and confirm no new .10 rows from the probe; then close or explicitly accept lab mode."
+   ],
+   "evidence": "EVI DEPLOY-132-DAEMON-IFACE-ENV-DRIFT-20261020 (E5 FAIL invariant); admin-evidence/lab-rate-e5-20261020/run-nopin-20261020-210026/capture-path/probe-l7-path-rows.json",
+   "source_fix": "none; operator service restart with pin absent"
   }
  ],
  "evidence_level_summary": {
@@ -7115,7 +7196,7 @@
   "E2_count": 130,
   "E3_count": 14,
   "E4_count": 15,
-  "E5_count": 103,
+  "E5_count": 105,
   "E6_count": 0,
   "E7_count": 1
  }

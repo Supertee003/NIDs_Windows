@@ -350,7 +350,7 @@ Previous phases:
   DEADCODE-QUARANTINE, CI-GAPS, RELEASE-TOOLING, LEFTOVER-SWEEP, REL-CLOSURE; operator
   cutover 2026-10-19 20:07 deployed daemon `dcb22a5` (sha256 `f223dcce…`) — live gate
   hard-closed (gate_source 'closed', detection-only), gate-check + v6 live verify PASS.
-  Remaining queue: G2 lab campaign (RB-012→013), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window E2 2026-10-20; install E5 22/22; R9002 live rate PASS; R9006 blocked by canonical-Nose flags gap; rate E5 OPEN),
+  Remaining queue: G2 lab campaign (RB-012→013), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window E2 2026-10-20; install E5 24/24 verifier; R9002/R9006/R9007 live PASS; isolated Kali→Win11 rate E5 CLOSED 2026-10-20; DEPLOY-132 process-pin drift OPEN P3),
   RB-016/017, G4 signing, external review, CI first push (truth semantics fixed 2026-10-20; push approval pending).
   Evidence: EVI CUTOVER-DCB22A5 (E5) + entries V6-QUEUE-DROP..REL-CLOSURE.
 
@@ -403,10 +403,9 @@ Previous phases:
   rejects missing/duplicate/stale/mixed daemon or Nose process images and
   passes 24/24 on the current host; its self-test is stale=False fresh=True
   mixed=False empty=False. The installer still needs the operator restart
-  step, but a future stale image now fails closed rather than passing. This
-  is host-generated TEST-NET, not the isolated Kali->Win11 lab; child gap
-  DEPLOY-130-L4-RATE-E5 remains OPEN only for that lab or an explicit
-  operator re-scope. Queue pressure is separately labeled: the pre-install
+  step, but a future stale image now fails closed rather than passing. Those
+  live rows were host-generated TEST-NET and are the canonical-Nose proof;
+  the isolated Kali->Win11 lab is recorded separately below. Queue pressure is separately labeled: the pre-install
   60 s quiet sample held dropped=232,149 and shed=131,545 while pushed rose
   +20,008 with zero per-source drop delta; cumulative loss correlates with
   startup plus the 17:20 build/test storm, so controls must compare deltas
@@ -427,6 +426,35 @@ Previous phases:
   patch tests in nose/capture_hermetic_test.go,
   src/contract/canonical_event.zig, src/pipeline/event_queue.zig, and
   tests/contracts/test_canonical_context_flags.py.
+
+- DEPLOY-130-L4-RATE-E5 isolated lab (2026-10-20 21:00-21:01): PASS at E5.
+  Exact isolated segment: Kali 192.168.126.10 -> Win11 victim
+  192.168.126.20 on VMnet1; NIDS host 192.168.126.1. Independent
+  dumpcap on host VMnet1 saw the VM-to-VM ping pair. Deployed daemon
+  PID 13108 (source de574b6, sha256 E19C76C3...) was not restarted.
+  R9002 10 ICMP -> 0 / 60 ICMP -> exactly 1; R9006 one port -> 0 /
+  40 distinct SYN ports -> exactly 1; R9007 normal SYN -> 0 / 30-port
+  XMAS -> 60 rows (per-packet, retry/duplicate capture). All 62 rows
+  observed, host_effect_confirmed=false; capture_npcap drops
+  3181->3181; readiness RUNNING; prevention_gate closed; verifier
+  LIVE_VERIFY_OK (24/24). Gap DEPLOY-130-L4-RATE-E5 is CLOSED at EVI
+  DEPLOY-130-L4-RATE-E5-LAB-20261020.
+  Capture-path caveat: the current daemon process still had the direct
+  Zig Npcap VMnet1 path active although registry AEGIS_DAEMON_IFACE was
+  absent. The L7 R0088 probe `../../etc/passwd` from Kali .10 -> Win11
+  .20 hit the live process, proving full-packet direct capture (Nose-pipe
+  frames are metadata-only). No pin was set/removed and no service was
+  restarted. Behavior is consistent with a startup-time lab pin retained
+  in the process environment from its 17:54:49 creation; the environment
+  block was not directly readable from the medium-integrity token. A
+  restart will read the absent registry value and disable the path. This
+  lab is E5 for the running artifact,
+  not a claim that the canonical Nose path carried it. The registry/
+  process drift is OPEN as DEPLOY-132-DAEMON-IFACE-ENV-STALE (P3).
+  Evidence: EVI DEPLOY-130-L4-RATE-E5-LAB-20261020 (E5 PASS); EVI
+  DEPLOY-132-DAEMON-IFACE-ENV-DRIFT-20261020 (E5 FAIL invariant);
+  kit admin-evidence/lab-rate-e5-20261020/run-nopin-20261020-210026/
+  (gitignored).
 
 - RB-018 host-only WFP observe-only (2026-10-20): PASS - L4_HOSTONLY_TRANSPORT_PASS at 865217b;
   live host VMnet1 .1 + Kali .10:58874 -> :49152; 4 expected-flow frames in 10 complete 48-byte
