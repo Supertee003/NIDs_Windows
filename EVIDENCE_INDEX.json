@@ -1687,6 +1687,39 @@
    ],
    "host_effect_confirmed": false,
    "prevention_gate": "closed"
+  },
+  {
+   "id": "QUEUE-PRESSURE-OBS-20261020",
+   "title": "Queue drops are labeled cumulative pressure, not idle loss: 60s live sample has zero new drops (E5 observation)",
+   "level": "E5",
+   "component": "pipeline/event_queue",
+   "flow_id": "DATA-001",
+   "head_sha": "8a7f301",
+   "timestamp": "2026-10-20",
+   "result": "PASS",
+   "command": "python tools/aegisctl.py queue --json (before/after 60s); status --json; readiness; enforce status",
+   "expected": "During a quiet 60s window on the live host, pushed_total increases while dropped_total and shed_overload stay constant. Per-source dropped deltas are all zero. Readiness stays RUNNING/ready, and the prevention gate stays closed.",
+   "actual": "PASS. 2026-10-20T17:39:33.4149366+07:00 -> 17:40:34.2583429+07:00, daemon PID 25576, uptime 3,701,498 ms. pushed_total 4,008,554 -> 4,028,562 (+20,008); dropped_total 232,149 -> 232,149 (0); shed_overload 131,545 -> 131,545 (0); depth 109 -> 113. Per-source dropped deltas: npcap 0, ETW 0, FIM 0, registry 0, WFP 0. Readiness state=RUNNING, ready=true, degraded=false, overall_gate=true; gate detection-only, prevention_gate=closed, host_effect_capable=false.",
+   "finding": "The cumulative 232,149 drops are labeled and did not grow during the quiet sample. They split as FIM 163,599, ETW 57,209, npcap 11,048, WFP 292, registry 1; nose_frames_dropped=11,048 equals the npcap queue bucket with zero rejected frames and zero pipe errors. The timeline (process start ~16:35, testnet baseline 130,332 at 16:48, 232,149 after the 17:20 build/test, zero new drops at 17:39-17:40) is consistent with startup and self-inflicted build/test ETW/FIM storms, not ongoing idle loss. This does NOT close GAP-015, does NOT prove rate E5, and does NOT change the gate.",
+   "description": "Read-only live observation of the installed pre-patch 04F9.../8a7f301 runtime. Nothing was installed, restarted, reset, or enforced. The evidence files are under admin-evidence/queue-pressure-20261020/ (ignored runtime artifacts). Rate controls must use queue.stats deltas; no cumulative counter may be reset or ignored.",
+   "files_verified": [
+    "admin-evidence/queue-pressure-20261020/README.md",
+    "admin-evidence/queue-pressure-20261020/queue-before.json",
+    "admin-evidence/queue-pressure-20261020/queue-after.json",
+    "admin-evidence/queue-pressure-20261020/status-before.json",
+    "admin-evidence/queue-pressure-20261020/status-after.json",
+    "admin-evidence/queue-pressure-20261020/readiness.json",
+    "admin-evidence/queue-pressure-20261020/gate.json",
+    "admin-evidence/queue-pressure-20261020/sample-times.txt"
+   ],
+   "files_changed": [],
+   "tests": [
+    "60s quiet live sample: +20,008 pushed, +0 dropped, +0 shed",
+    "readiness: RUNNING/ready/degraded=false/overall_gate=true",
+    "gate: detection-only, prevention_gate=closed, host_effect_capable=false"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed"
   }
  ],
  "known_gaps": [
@@ -6856,9 +6889,10 @@
     "OPEN: R9006 on a path that actually evaluates TCP flags (canonical Nose fix or direct-pinned lab), with one-port negative and >=20-distinct-port positive producing at most one row per source/window.",
     "OPEN: repeat the negative/positive controls from the isolated Kali->Win11 lab per the kit, or explicitly re-scope the child with the operator.",
     "OPEN: install/restart an artifact containing de574b6 and run the canonical-path R9006 one-port negative / >=20-distinct-port positive and R9007 exact FIN|PSH|URG controls with queue/readiness/gate evidence.",
-    "READY, NOT INSTALLED: DEPLOY-131 kit 7C4B2C19... carries source de574b6; install, restart/readiness, LIVE_VERIFY_OK (22/22), then canonical-path R9006/R9007 controls."
+    "READY, NOT INSTALLED: DEPLOY-131 kit 7C4B2C19... carries source de574b6; install, restart/readiness, LIVE_VERIFY_OK (22/22), then canonical-path R9006/R9007 controls.",
+    "DONE (observation only, E5): 60s quiet live sample shows +20,008 pushed and +0 dropped/shed; cumulative 232,149 drops are startup/build-storm pressure, not idle loss. Controls must still record queue deltas."
    ],
-   "evidence": "EVI DEPLOY-130-L4-RATE-INSTALL-20261020 (E5 install); EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL); EVI RB-021-L4-RATE-E2-20261020; EVI DEPLOY-130-L4-RATE-PKG-20261020; gap RB-021-NOSE-FLAGS OPEN; admin-evidence/deploy130-l4-rate-20261020/postinstall-verify.txt and rate-e5-testnet-20261020-164841.txt; EVI RB-021-NOSE-FLAGS-E2-20261020 (E2 PASS at de574b6, source-only); EVI DEPLOY-131-NOSE-FLAGS-PKG-20261020 (E3 packaging; not installed)"
+   "evidence": "EVI DEPLOY-130-L4-RATE-INSTALL-20261020 (E5 install); EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL); EVI RB-021-L4-RATE-E2-20261020; EVI DEPLOY-130-L4-RATE-PKG-20261020; gap RB-021-NOSE-FLAGS OPEN; admin-evidence/deploy130-l4-rate-20261020/postinstall-verify.txt and rate-e5-testnet-20261020-164841.txt; EVI RB-021-NOSE-FLAGS-E2-20261020 (E2 PASS at de574b6, source-only); EVI DEPLOY-131-NOSE-FLAGS-PKG-20261020 (E3 packaging; not installed); EVI QUEUE-PRESSURE-OBS-20261020 (E5 observation, zero idle delta)"
   },
   {
    "id": "DEPLOY-120-E5",
@@ -6902,7 +6936,7 @@
   "E2_count": 130,
   "E3_count": 14,
   "E4_count": 15,
-  "E5_count": 97,
+  "E5_count": 98,
   "E6_count": 0,
   "E7_count": 1
  }

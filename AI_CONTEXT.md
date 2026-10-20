@@ -394,7 +394,11 @@ Previous phases:
   prepared and payload-verified; it is NOT installed. Its read-only
   pre-install verifier is 18/22, failing exactly daemon/nose/manifest/source
   as expected against the old live build. There is NO live R9006/R9007
-  result; gap stays OPEN until install + live proof.
+  result; gap stays OPEN until install + live proof. Queue pressure is
+  separately labeled: the 60 s quiet sample held dropped=232,149 and
+  shed=131,545 while pushed rose +20,008 with zero per-source drop delta;
+  cumulative loss correlates with startup plus the 17:20 build/test storm,
+  so controls must compare deltas (EVI QUEUE-PRESSURE-OBS-20261020).
   This TEST-NET run is not the isolated Kali->Win11 lab E5; child gap
   DEPLOY-130-L4-RATE-E5 remains OPEN (R9002 live done; R9006/R9007 pending).
   Evidence: EVI RB-021-L4-RATE-E2-20261020 (E2); EVI
@@ -402,6 +406,7 @@ Previous phases:
   EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL); EVI
   DEPLOY-130-L4-RATE-PKG-20261020 (E3 packaging); EVI
   DEPLOY-131-NOSE-FLAGS-PKG-20261020 (E3 packaging, ready not installed);
+  EVI QUEUE-PRESSURE-OBS-20261020 (E5 observation, zero idle delta);
   tests in
   src/pipeline/l4_matcher.zig + tests/security/test_l4_rate_config.py;
   patch tests in nose/capture_hermetic_test.go,
