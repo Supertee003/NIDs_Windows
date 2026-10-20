@@ -381,34 +381,32 @@ Previous phases:
   code rollback. Install E5 is recorded separately.
   Live rate attempt (host-generated TEST-NET, independent dumpcap): R9002
   PASS - 10 pings produced 0 new rows and a 60-packet burst produced exactly
-  one new row (one alert in the 1000 ms window). R9006 BLOCKED - a live
-  20-distinct-port SYN scan was proven on the wire (42 SYN frames, 20 unique
-  ports) but produced 0 rows, because canonical Go Nose events enter the Zig
-  queue with tcp_flags=0; only direct Zig Npcap uses pushEventWithTcpFlags.
-  Gap RB-021-NOSE-FLAGS (P1) tracks the production-path fix. Source patch
-  RB021-NOSE-FLAGS-001 (E2, source commit de574b6) now
-  carries the raw TCP flags byte in the existing ContextFlags lane
-  (bits 16..23, valid bit24; wire remains 109/133 bytes) and extracts it in
-  pushDecodedFrame. Go/Zig/Python tests and zig build pass. DEPLOY-131
-  (installer 7C4B2C19..., source de574b6) was installed on 2026-10-20 and
-  the live verifier passed 22/22. HOWEVER, the running Go Nose process PID
-  21568 was created 2026-10-15 08:09:13, before the patched Nose binary was
-  built at 2026-10-20 17:20:01; the file was replaced but the old process
-  image still emits no TCP flags. A quiet 20-distinct-port control at
-  17:58:47 saw 20 ports on the wire, +0 queue drops, but 0 R9006 rows;
-  R9002 fired exactly once. Five exact FIN|PSH|URG frames were also
-  captured 5/5 on the wire with 0 R9007 rows (pre-restart baseline). The
-  first 17:56 control had +1,316 queue drops
-  and is not used as flag evidence. New gap DEPLOY-131-NOSE-STALE-PROCESS
-  (P1) tracks the process-lifecycle defect. There is NO live R9006/R9007
-  result; RB-021 stays OPEN until the operator restarts Nose and the
-  controls pass. Queue pressure is separately labeled: the pre-install
+  one new row (one alert in the 1000 ms window). R9006/R9007 LIVE PASS
+  (2026-10-20 19:53-19:54) after the operator restarted Nose. Source patch
+  RB021-NOSE-FLAGS-001 (E2, source commit de574b6) carries the raw TCP
+  flags byte in the existing ContextFlags lane (bits 16..23, valid bit24;
+  wire remains 109/133 bytes) and extracts it in pushDecodedFrame. Go/Zig/
+  Python tests and zig build pass. DEPLOY-131 (installer 7C4B2C19...,
+  source de574b6) was installed; verifier LIVE_VERIFY_OK (22/22). The first
+  install left Nose PID 21568 (created 2026-10-15 08:09:13) running, before
+  the patched binary build at 2026-10-20 17:20:01; a quiet 20-port control
+  produced 0 R9006 and five exact FIN|PSH|URG produced 0 R9007 with zero
+  queue drops. Operator stopped 21568 and started PID 3632 at 19:51:55 from
+  the patched binary. Post-restart: R9006 one-port 0 / 20 distinct ports
+  exactly 1; R9007 normal SYN 0 / five exact FIN|PSH|URG -> 5 rows; R9002
+  10 ICMP 0 / 60 ICMP 1; queue dropped 10,337->10,337 and shed
+  56,936->56,936; readiness RUNNING; prevention_gate closed; host_effect
+  false. RB-021-NOSE-FLAGS is CLOSED at EVI
+  RB-021-NOSE-FLAGS-LIVE-PASS-20261020. Gap DEPLOY-131-NOSE-STALE-PROCESS
+  remains OPEN for installer/verifier process-image hardening (the live
+  blocker is cleared by the manual restart). This is host-generated
+  TEST-NET, not the isolated Kali->Win11 lab; child gap
+  DEPLOY-130-L4-RATE-E5 remains OPEN only for that lab or an explicit
+  operator re-scope. Queue pressure is separately labeled: the pre-install
   60 s quiet sample held dropped=232,149 and shed=131,545 while pushed rose
   +20,008 with zero per-source drop delta; cumulative loss correlates with
   startup plus the 17:20 build/test storm, so controls must compare deltas
   (EVI QUEUE-PRESSURE-OBS-20261020).
-  This TEST-NET run is not the isolated Kali->Win11 lab E5; child gap
-  DEPLOY-130-L4-RATE-E5 remains OPEN (R9002 live done; R9006/R9007 pending).
   Evidence: EVI RB-021-L4-RATE-E2-20261020 (E2); EVI
   DEPLOY-130-L4-RATE-INSTALL-20261020 (E5 install);
   EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL); EVI
@@ -417,6 +415,7 @@ Previous phases:
   EVI DEPLOY-131-INSTALL-20261020 (E5 install PASS 22/22);
   EVI RB-021-NOSE-FLAGS-LIVE-ATTEMPT-20261020 (E5 FAIL, stale Nose);
   EVI RB-021-R9007-PRE-RESTART-20261020 (E5 FAIL baseline, 5/5 wire, 0 rows);
+  EVI RB-021-NOSE-FLAGS-LIVE-PASS-20261020 (E5 PASS, R9006/R9007 live);
   EVI QUEUE-PRESSURE-OBS-20261020 (E5 observation, zero idle delta);
   tests in
   src/pipeline/l4_matcher.zig + tests/security/test_l4_rate_config.py;

@@ -390,20 +390,34 @@ SYN scan produced 0 `R9006` rows even though the independent wire capture
 proved 20 distinct ports. This is a production-path detection gap
 (`RB-021-NOSE-FLAGS`, P1), not a rate-tracker failure.
 
-Source patch `RB021-NOSE-FLAGS-001` now records the raw TCP flags byte in
+Source patch `RB021-NOSE-FLAGS-001` records the raw TCP flags byte in
 the existing `ContextFlags` transport lane (bits 16..23, valid bit 24)
 without changing the 109/133-byte wire layout. Go Nose sets the lane in
 `eventFromPacket`; Zig `pushDecodedFrame` extracts it into
 `QueuedEvent.tcp_flags`; Go, Zig, and Python contract tests plus `zig
-build` pass (E2). The installed live artifact is still the pre-patch
-`04F9E0DB...` build, so there is **no live R9006/R9007 result yet**. After
-the operator installs and restarts the patched artifact, rerun the
-20-port SYN and XMAS controls; keep the gap OPEN until that live result
-exists. The isolated Kali->Win11 E5 re-proof (normal handshake/ping below
-threshold, scan/flood above threshold, one row per window) remains
-tracked as `DEPLOY-130-L4-RATE-E5`; do not claim it from unit tests or
-from the TEST-NET run. `forensics verify` stays ok + verified true
-throughout.
+build` pass (E2). DEPLOY-131 (source `de574b6`) was installed on
+2026-10-20; the live verifier passed 22/22. The installer replaced the
+Nose file but did **not** restart the running process: PID 21568 was
+created 2026-10-15, five days before the patched binary was built at
+17:20:01. A quiet 20-port control produced 0 R9006 rows and five exact
+`FIN|PSH|URG` frames produced 0 R9007 rows even though the wire saw the
+traffic, with zero new queue drops. The operator stopped PID 21568 and
+started PID 3632 at 19:51:55 from the patched binary.
+
+Post-restart live pass (2026-10-20 19:53-19:54): `R9006` one-port
+negative 0 / 20 distinct ports exactly 1; `R9007` normal SYN 0 / five
+exact `FIN|PSH|URG` frames -> 5 rows (using the TEST-NET-only raw sender
+`admin-evidence/deploy131-nose-flags-20261020/send-xmas.py`); `R9002`
+10 ICMP 0 / 60 ICMP 1. Queue dropped stayed 10,337 and shed stayed
+56,936; readiness was RUNNING and the gate stayed closed. This closes
+`RB-021-NOSE-FLAGS` at EVI `RB-021-NOSE-FLAGS-LIVE-PASS-20261020`.
+The stale-process gap `DEPLOY-131-NOSE-STALE-PROCESS` remains OPEN for
+installer/verifier hardening so a future upgrade cannot silently leave a
+pre-patch process image running. The isolated Kali->Win11 E5 re-proof
+(normal handshake/ping below threshold, scan/flood above threshold, one
+row per window) remains tracked as `DEPLOY-130-L4-RATE-E5`; do not claim
+it from unit tests or from the TEST-NET run. `forensics verify` stays ok
++ verified true throughout.
 
 Attribution rules (2026-10-17 findings): count a row as wire-fire proof
 only if the target resolved (Step 1/3) AND the rule's own pattern
