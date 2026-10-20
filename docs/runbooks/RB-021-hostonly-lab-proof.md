@@ -252,12 +252,56 @@ while -- copy the exe only after `sc.exe query` prints STATE: 1 STOPPED
    release bundles. No service restart was needed (only backup/inert
    files changed).
 
+## Lab-run record (2026-10-20, Kali .10 -> Win11 .20, live host .1)
+
+Run at HEAD `e616bad`; deployed daemon sha256 `F223DCCE...` (PID 10032,
+started 08:56:47) with the machine `AEGIS_DAEMON_IFACE` pinned to VMnet1;
+gate `closed`/detection-only throughout. Baseline: 4 `.10` rows at
+08:30:53 (pre-pin). The post-pin R0088 canary produced 2 new `.10` rows
+at 08:57:23 (R0088 + R1005), proving the direct capture path. The full
+8-script wrapper ran rc=0 in 43.8 s; supplementary real `nmap -sS` /
+`nmap -sX` and `hping3 --icmp 300` tests ran for the L4 rules. There are
+18 `.10` events total (4 pre-pin baseline + 14 new; 11 real-traffic rows
++ 3 synthetic-token rows); every row is `observed`, gate closed.
+
+| rule | real-traffic rows | token-smoke rows | verdict |
+|---|---|---|---|
+| R0056 | 1 (first payload) | - | PASS (second payload lacks `' OR 1=1`) |
+| R0088 | 2 (+ R1005 x2) | - | PASS (`/etc/passwd`) |
+| R0089 | 1 | - | PASS |
+| R9059 | 1 | - | PASS |
+| R9064 | 0 from script; 2 from `;whoami` query/body | - | CONDITIONAL (script uses `;id`/`;cat`) |
+| R9002 | 0 (`hping3` 300 ICMP) | 1 | NOT DETECTED (L4); token-only |
+| R9006 | 0 (`nmap -sS`) | 1 | NOT DETECTED (L4); token-only |
+| R9007 | 0 (`nmap -sX`) | 1 | NOT DETECTED (L4); token-only |
+
+The L4 result is structural, not a capture failure: the canonical matcher
+(`src/pipeline/rule_loader.zig`) loads each rule's `match_pattern` as a
+literal (payload-only contract; `target_protocols`/`target_ports` are not
+consulted). R9002/R9006/R9007 use `PROTO:ICMP`/`FLAGS:S`/`FLAGS:FPU`
+tokens, so real L4 frames cannot match; HTTP payloads containing the
+tokens fire the rule IDs (eids 1288/1297/1329) as a rule-engine smoke
+only. This matches the documented synthetic qualification caveat
+(`docs/AEGIS_PRODUCTION_HANDOFF_2026-09-22.md`: synthetic fixture
+matching is not real-sensor/IPS evidence) and is tracked as gap
+`RB-021-L4-MATCHER`. `forensics verify` stayed `verified: true`, but a
+prod `0.0.0.0` host-event storm churned the 16K ring; per-rule
+`forensic search` returned 0 for the real rows (the append-only
+`aegis_core.ndjson` is the durable evidence; the session rows are in
+the rotated `aegis_core.1.ndjson`, 18 `.10` rows). Restore: env delete +
+restart, PID 9384, 7/7 subsystems, packets advancing, gate still
+`closed`, zero `.126` rows in the new log generation. Evidence kit
+(gitignored): `admin-evidence/lab-session-20261020/`
+(RESULTS-20261020.md, captures/, closeout/).
+
 ## Verification
 
 Per-rule table, one row each: script ran (rc 0) AND a detection row
 with the attacker IP exists (events --src-ip) AND the rule search
-hits. 8/8 network rules from Kali, 15/15 host rules from canaries.
-`forensics verify` stays ok + verified true throughout.
+hits. See the 2026-10-20 record: 5/8 network rule IDs matched real Kali
+traffic (R9064 conditional); the three L4 rule IDs are payload-token
+matches only (synthetic), not L4 detection. 15/15 host rules from
+canaries. `forensics verify` stays ok + verified true throughout.
 
 Attribution rules (2026-10-17 findings): count a row as wire-fire proof
 only if the target resolved (Step 1/3) AND the rule's own pattern

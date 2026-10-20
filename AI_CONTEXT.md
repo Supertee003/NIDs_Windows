@@ -4,7 +4,7 @@
 
 
 
-**HEAD:** `dcb22a5a5b5a6f01f4b4106e3248e7f7b3df94b2` (working tree has uncommitted changes)
+**HEAD:** `e616badf3bf2863d05f9851e4ce261d05dcf73bf` (working tree has uncommitted changes)
 
 **BRANCH:** `main`
 
@@ -350,9 +350,16 @@ Previous phases:
   DEADCODE-QUARANTINE, CI-GAPS, RELEASE-TOOLING, LEFTOVER-SWEEP, REL-CLOSURE; operator
   cutover 2026-10-19 20:07 deployed daemon `dcb22a5` (sha256 `f223dcce…`) — live gate
   hard-closed (gate_source 'closed', detection-only), gate-check + v6 live verify PASS.
-  Remaining queue: G2 lab campaign (RB-012→013), DEPLOY-120 drill, RB-014/015/018/021,
+  Remaining queue: G2 lab campaign (RB-012→013), DEPLOY-120 drill, RB-014/015/018, RB-021 (partial),
   RB-016/017, G4 signing, external review, CI push decision.
   Evidence: EVI CUTOVER-DCB22A5 (E5) + entries V6-QUEUE-DROP..REL-CLOSURE.
+
+- RB-021 host-only lab proof (2026-10-20): PARTIAL - capture path + 5/8 network rules
+  proven on the live VMnet1-pinned daemon (R0056/R0088/R0089/R9059 + R9064 conditional);
+  the 3 L4 rule IDs (R9002/R9006/R9007) are payload-token rules and real nmap/hping3
+  traffic produced 0 rows (synthetic-token smoke only). Gap RB-021-L4-MATCHER opened.
+  Evidence: EVI RB-021-HOSTONLY-20261020 (E5, result PARTIAL); kit
+  admin-evidence/lab-session-20261020/ (gitignored).
 
 
 

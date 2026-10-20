@@ -1,7 +1,7 @@
 {
- "head_sha": "dcb22a5a5b5a6f01f4b4106e3248e7f7b3df94b2",
+ "head_sha": "e616badf3bf2863d05f9851e4ce261d05dcf73bf",
  "created_at": "2026-09-24",
- "last_updated_at": "2026-10-19",
+ "last_updated_at": "2026-10-20",
  "generator_version": "3.0",
  "evidence_levels": {
   "E0": "No evidence",
@@ -1204,6 +1204,26 @@
    ],
    "finding": "implemented + verified",
    "result": "PASS"
+  },
+  {
+   "id": "RB-021-HOSTONLY-20261020",
+   "title": "RB-021 host-only lab proof: capture path PASS; 5/8 network rules matched real Kali traffic; the 3 L4 rules are payload-token-only (real ICMP/SYN/XMAS produced 0 rows)",
+   "level": "E5",
+   "component": "windows-host+runtime+kali-lab",
+   "flow_id": "FOR-001",
+   "head_sha": "e616bad",
+   "timestamp": "2026-10-20",
+   "result": "PARTIAL",
+   "command": "Operator (elevated): set the machine AEGIS_DAEMON_IFACE to the VMnet1 Npcap device; sc stop/start AegisNids (PID 10032, 08:56:47). Agent: R0088 canary; /home/kali/run_all.sh (8 scripts, rc 0, 43.8 s); supplementary nmap -sS/-sX -Pn -p 1-100 and hping3 --icmp -i u1000 --count 300; events count/tail --src-ip 192.168.126.10; forensics verify. Operator restore: REG DELETE machine env; sc stop/start (PID 9384, 09:13:40).",
+   "expected": "Pin the daemon's direct capture to VMnet1; real Kali traffic produces attributable .10 rows; all eight network rule IDs fire from the wire; gate stays closed/detection-only; restore returns prod capture with zero new .126 rows.",
+   "actual": "Capture path PASS: post-pin R0088 canary 2 rows (eids 22/31, 08:57:23). 18 .10 events total (4 pre-pin baseline at 08:30:53 + 14 new): real L7 rows R0056 1, R0088 2 (+R1005 x2), R0089 1, R9059 1, R9064 2 (only with ';whoami' in query/body; the script's ';id'/';cat' path payloads = 0). Real L4 attacks (nmap -sS, nmap -sX, hping3 300 ICMP) = 0 rows for R9006/R9007/R9002; synthetic HTTP tokens 'FLAGS:S'/'FLAGS:FPU'/'PROTO:ICMP' fired the three rule IDs (eids 1297/1329/1288) as rule-engine smoke only. All rows policy block/policy_id 3/enforcement_status observed/host_effect_confirmed false; gate closed. forensics verify true; ring churn (records 695482, retained 16384, oldest 679098, overwritten 679098) from a 0.0.0.0 R1004/R2002 host-event storm; per-rule forensic search 0 for real rows except R9064=2; durable rows in aegis_core.ndjson (rotated .1 = 18 .10 rows). Restore: machine env absent, PID 9384 RUNNING, 7/7 subsystems, packets advancing (11348 -> 11394), gate closed, current log generation 0 .126 rows.",
+   "finding": "RB-021 is only PARTIALLY met as real-network detection: the capture path and the five L7 rules are proven at E5 on the live host; R9064 is conditional on the rule's ';whoami' match_pattern (the script uses ';id'/';cat'); the three L4 rule IDs are payload-token rules (match_pattern PROTO:ICMP / FLAGS:S / FLAGS:FPU) and real ICMP/SYN/XMAS traffic produces zero rows. The runbook's '8/8 network rules from Kali' line must not be read as L4 detection; the synthetic rows are rule-engine smoke only. Gap: RB-021-L4-MATCHER. Capture, attribution and gate-closed invariants all hold.",
+   "description": "Records the 2026-10-20 RB-021 host-only run on the pinned VMnet1 daemon: capture canary, 8-script wrapper, supplementary real L4 attempts, synthetic token smoke, ring/forensic caveat, and restore verification. Evidence kit (gitignored): admin-evidence/lab-session-20261020/ (RESULTS-20261020.md, captures/, closeout/, prestate/).",
+   "files_changed": [
+    "docs/runbooks/RB-021-hostonly-lab-proof.md",
+    "EVIDENCE_INDEX.json",
+    "AI_CONTEXT.md"
+   ]
   }
  ],
  "known_gaps": [
@@ -6327,6 +6347,19 @@
    "finding": "The cutover is clean and matches the rehearsal byte-for-byte: the additive gate_source arrives live (absent before -> 'closed' after), the daemon-side 10/18-19 slices are live, and the production posture stays detection-only by construction. The 10/18 v6 deploy (an operator action never recorded in a kit) is hereby recorded and re-verified. Remaining operator queue: G2 lab campaign (RB-012 -> RB-013 at dcb22a5), DEPLOY-120 installer host drill, RB-014/015/018/021, RB-016/017, G4 signing, external review, CI push decision.",
    "description": "Records pass for the operator cutover: new EVI entry; UPDATE notes appended to V6-QUEUE-DROP (live flip), SLICE-C-LAB (gate_source live), SLICE-C-LAB-ART (default binary live); 'redeploy pending' postscripts appended to the admin-evidence closeouts; plan section 23; AI_CONTEXT phase line. Evidence kit (gitignored): admin-evidence/operator-queue-20261019/ (before-*/after-*.txt, staged-probe.txt, cutover-result.md). No tracked runtime or source change in this records commit - the deployed artifact was already built from dcb22a5.",
    "files_changed": "EVIDENCE_INDEX.json, AI_CONTEXT.md, docs/KERNEL_NIDS_COMPLETION_PLAN.md"
+  },
+  {
+   "id": "RB-021-L4-MATCHER",
+   "severity": "P2",
+   "title": "L4 network rules (R9002/R9006/R9007) are payload-token rules; real ICMP/SYN/XMAS is not detected",
+   "description": "The canonical matcher loads each rule's match_pattern as a literal substring (payload-only contract; src/pipeline/rule_loader.zig). R9002/R9006/R9007 use PROTO:ICMP/FLAGS:S/FLAGS:FPU tokens, so real ICMP/SYN/XMAS frames never match. 2026-10-20 lab: nmap -sS, nmap -sX and hping3 300 ICMP produced 0 rows; synthetic HTTP tokens fired the rule IDs (rule-engine smoke only).",
+   "status": "OPEN",
+   "found_at": "2026-10-20",
+   "required_evidence": [
+    "real ICMP/SYN/XMAS lab rows for R9002/R9006/R9007",
+    "L4 protocol/flag matcher, or explicit removal of the L4 rules from the real-detection claim"
+   ],
+   "evidence": "EVI RB-021-HOSTONLY-20261020; admin-evidence/lab-session-20261020/RESULTS-20261020.md (gitignored)"
   }
  ],
  "evidence_level_summary": {
@@ -6335,7 +6368,7 @@
   "E2_count": 127,
   "E3_count": 10,
   "E4_count": 15,
-  "E5_count": 89,
+  "E5_count": 90,
   "E6_count": 0,
   "E7_count": 1
  }
