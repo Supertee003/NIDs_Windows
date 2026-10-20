@@ -378,13 +378,21 @@ and positive controls are Zig unit tests in
 `src/pipeline/l4_matcher.zig` and the configuration pins are
 `tests/security/test_l4_rate_config.py` (E2).
 
-This closes the code-semantics gap at E2. It does **not** prove live
-rate behavior: the deployed artifact `1593260B...` predates this source,
-so the 2026-10-20 lab rows and the live service remain pre-rate. A live
-E5 re-proof (normal handshake/ping below threshold, scan/flood above
-threshold, one row per window) is tracked separately as
-`DEPLOY-130-L4-RATE-E5`; do not claim it from these unit tests.
-`forensics verify` stays ok + verified true throughout.
+This closes the code-semantics gap at E2. The rate-enabled artifact
+`04F9E0DB...` was installed on 2026-10-20 and the live verifier passed
+22/22. A host-generated TEST-NET run proved `R9002` live on the canonical
+path: 10 pings produced no new row and a 60-packet burst produced exactly
+one new row. `R9006` could not be assessed there: canonical Go Nose
+events carry no TCP-flags sidecar (`pushEvent` sets
+`QueuedEvent.tcp_flags=0`), so the flags-gated `R9006`/`R9007` rules are
+inert unless the daemon is pinned to direct Zig Npcap. A live 20-port SYN
+scan produced 0 `R9006` rows even though the independent wire capture
+proved 20 distinct ports. This is tracked as gap `RB-021-NOSE-FLAGS`
+(P1) and is not a rate-tracker failure. The isolated Kali->Win11 E5
+re-proof (normal handshake/ping below threshold, scan/flood above
+threshold, one row per window) remains tracked as
+`DEPLOY-130-L4-RATE-E5`; do not claim it from unit tests or from the
+TEST-NET run. `forensics verify` stays ok + verified true throughout.
 
 Attribution rules (2026-10-17 findings): count a row as wire-fire proof
 only if the target resolved (Step 1/3) AND the rule's own pattern
@@ -413,11 +421,17 @@ host effect was ever applied, so no effect needs undoing.
   cooperation.
 - `--intense` floods are bounded (3x); do not loop scripts -- the
   queue sheds overload and the test becomes a DoS of your own NIDS.
-- The 2026-10-20 L4 rows were per-packet: R9006 matched any exact SYN
-  (normal handshakes included), R9002 any ICMP, R9007 exact FIN+PSH+URG.
-  Current source adds the rate/window state above; the deployed artifact
-  does not yet contain it. Do not describe the historical 305/200/200
-  rows as scan/flood verdicts.
+- The 2026-10-20 305/200/200 L4 rows were per-packet: R9006 matched any
+  exact SYN (normal handshakes included), R9002 any ICMP, R9007 exact
+  FIN+PSH+URG. They were produced by the pre-rate source and must not be
+  described as scan/flood verdicts. The current installed artifact
+  carries the rate/window state, but only R9002 has live rate proof so far.
+- Canonical Go Nose events do not carry TCP flags. `R9006` and `R9007`
+  match against the in-memory `QueuedEvent.tcp_flags` sidecar, which is
+  populated only by the direct Zig Npcap `packet_callback`; an unpinned
+  Nose service therefore cannot fire those flags-gated rules. Gap
+  `RB-021-NOSE-FLAGS` (P1) is OPEN. A flags proof needs the direct VMnet1
+  pin (and a lab target), or a canonical-path TCP-flags fix.
 - A 100-port nmap scan can produce 200 matching packets (retry or
   duplicate capture); the old per-packet rows count packets, not ports.
   The current R9006 state counts distinct destination ports instead.

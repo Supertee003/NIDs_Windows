@@ -350,7 +350,7 @@ Previous phases:
   DEADCODE-QUARANTINE, CI-GAPS, RELEASE-TOOLING, LEFTOVER-SWEEP, REL-CLOSURE; operator
   cutover 2026-10-19 20:07 deployed daemon `dcb22a5` (sha256 `f223dcce…`) — live gate
   hard-closed (gate_source 'closed', detection-only), gate-check + v6 live verify PASS.
-  Remaining queue: G2 lab campaign (RB-012→013), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window code E2 2026-10-20, live E5 pending),
+  Remaining queue: G2 lab campaign (RB-012→013), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window E2 2026-10-20; install E5 22/22; R9002 live rate PASS; R9006 blocked by canonical-Nose flags gap; rate E5 OPEN),
   RB-016/017, G4 signing, external review, CI first push (truth semantics fixed 2026-10-20; push approval pending).
   Evidence: EVI CUTOVER-DCB22A5 (E5) + entries V6-QUEUE-DROP..REL-CLOSURE.
 
@@ -372,14 +372,26 @@ Previous phases:
   rule+full source+IPv4/IPv6, fixed 256-entry table, reset on rules reload.
   Zig tests cover positive thresholds, duplicate-port suppression, source
   separation, reset, and negative controls (single handshake, 49 ICMP,
-  19 distinct ports). Gap RB-021-L4-RATE CLOSED at E2; live E5 proof of
-  rate behavior is NOT performed: deployed artifact 1593260B... predates
-  this source. Child gap DEPLOY-130-L4-RATE-E5 remains OPEN.
+  19 distinct ports). Gap RB-021-L4-RATE CLOSED at E2.
   Artifact 04F9E0DB63858AB3FDF4FC78692D34F87C983CD6FFCB0FA0F405468785F8A05C
-  (7,425,672 B) built 2026-10-20 and payload-verified against this source, but
-  NOT installed; the live host still runs 1593260B.../444F8956... .
+  (7,425,672 B) was INSTALLED on 2026-10-20. Live verifier is
+  LIVE_VERIFY_OK (22/22); live daemon D67267E2..., rules 87B97448...,
+  manifest 1336453D... source 8a7f301, readiness RUNNING, gate closed. The
+  post-install startup race was recovered by Restart-Service AegisNids; no
+  code rollback. Install E5 is recorded separately.
+  Live rate attempt (host-generated TEST-NET, independent dumpcap): R9002
+  PASS - 10 pings produced 0 new rows and a 60-packet burst produced exactly
+  one new row (one alert in the 1000 ms window). R9006 BLOCKED - a live
+  20-distinct-port SYN scan was proven on the wire (42 SYN frames, 20 unique
+  ports) but produced 0 rows, because canonical Go Nose events enter the Zig
+  queue with tcp_flags=0; only direct Zig Npcap uses pushEventWithTcpFlags.
+  New gap RB-021-NOSE-FLAGS (P1 OPEN) tracks the production-path fix.
+  This TEST-NET run is not the isolated Kali->Win11 lab E5; child gap
+  DEPLOY-130-L4-RATE-E5 remains OPEN (R9002 live done; R9006 pending).
   Evidence: EVI RB-021-L4-RATE-E2-20261020 (E2); EVI
-  DEPLOY-130-L4-RATE-PKG-20261020 (E3 packaging only); tests in
+  DEPLOY-130-L4-RATE-INSTALL-20261020 (E5 install);
+  EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL); EVI
+  DEPLOY-130-L4-RATE-PKG-20261020 (E3 packaging); tests in
   src/pipeline/l4_matcher.zig + tests/security/test_l4_rate_config.py.
 
 - RB-018 host-only WFP observe-only (2026-10-20): PASS - L4_HOSTONLY_TRANSPORT_PASS at 865217b;

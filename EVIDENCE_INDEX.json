@@ -1519,6 +1519,74 @@
    ],
    "host_effect_confirmed": false,
    "prevention_gate": "closed"
+  },
+  {
+   "id": "DEPLOY-130-L4-RATE-INSTALL-20261020",
+   "title": "DEPLOY-130 install E5: live runtime byte-equal to source 8a7f301 (22/22 verifier), readiness RUNNING, gate closed",
+   "level": "E5",
+   "component": "release/deploy+live-verification",
+   "flow_id": "DATA-001",
+   "head_sha": "8a7f301",
+   "timestamp": "2026-10-20",
+   "result": "PASS",
+   "command": "operator elevated install of admin-evidence/deploy130-l4-rate-20261020/aegis_setup.exe; powershell -NoProfile -ExecutionPolicy Bypass -File admin-evidence/deploy130-l4-rate-20261020/deploy130-verify-live.ps1 -RepoRoot D:\\NIDs_Windows -KitDir D:\\NIDs_Windows\\admin-evidence\\deploy130-l4-rate-20261020; python tools\\aegisctl.py readiness; python tools\\aegisctl.py enforce status",
+   "expected": "The 04F9... installer installs its byte-identical 8a7f301 payload; the live verifier returns LIVE_VERIFY_OK (22/22); all three services are running; readiness is ready; the prevention gate remains closed.",
+   "actual": "PASS. Installer SHA-256 04F9E0DB63858AB3FDF4FC78692D34F87C983CD6FFCB0FA0F405468785F8A05C, 7,425,672 B. Live daemon D67267E2..., Rules.json 87B97448..., build_manifest 1336453D... source 8a7f301; verifier LIVE_VERIFY_OK (22/22). AegisNids/AegisWfp/AegisMinifilter Running. readiness state=RUNNING, ready=true, degraded=false; enforce status prevention_gate=closed, host_effect_capable=false, enforcement_mode=detection-only. The post-install AegisNids startup race (auto-restart before the WFP/minifilter services loaded) was recovered with elevated Restart-Service AegisNids; no code rollback. The old 1593260B... kit remains the rollback artifact.",
+   "finding": "Install/byte-equality E5 PASS only. The 22/22 verifier proves the live runtime matches the repo; it does NOT prove rate behavior. The rate child gap DEPLOY-130-L4-RATE-E5 remains OPEN.",
+   "description": "DEPLOY-130 host install and read-only verification after building the 8a7f301 rate artifact. The live host now runs the rate-enabled daemon and Rules.json. The verifier was run with explicit RepoRoot and KitDir after an earlier invocation used the stale root aegis_setup.exe (A6F748...) and an empty repo path; the explicit run is the current install record.",
+   "files_verified": [
+    "admin-evidence/deploy130-l4-rate-20261020/aegis_setup.exe",
+    "admin-evidence/deploy130-l4-rate-20261020/deploy130-verify-live.ps1",
+    "admin-evidence/deploy130-l4-rate-20261020/postinstall-verify.txt",
+    "C:\\Program Files\\AEGIS NIDS\\runtime\\aegis_nids.exe",
+    "C:\\Program Files\\AEGIS NIDS\\configs\\Rules.json",
+    "C:\\Program Files\\AEGIS NIDS\\build_manifest.json",
+    "configs/Rules.json",
+    "zig-out/bin/aegis_nids.exe"
+   ],
+   "files_changed": [],
+   "tests": [
+    "deploy130-verify-live.ps1 with RepoRoot and KitDir: LIVE_VERIFY_OK (22/22), exit 0",
+    "live daemon D67267E2... = repo; Rules 87B97448... = repo; build_manifest source 8a7f301",
+    "aegisctl readiness: state=RUNNING, ready=true, degraded=false",
+    "aegisctl enforce status: prevention_gate=closed, host_effect_capable=false"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed"
+  },
+  {
+   "id": "DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020",
+   "title": "DEPLOY-130 rate E5 attempt (TEST-NET): R9002 live rate PASS; R9006 positive scan produced 0 rows because canonical Nose events carry no TCP-flags sidecar",
+   "level": "E5",
+   "component": "pipeline/l4_matcher+canonical-nose+live-verification",
+   "flow_id": "DATA-001",
+   "head_sha": "8a7f301",
+   "timestamp": "2026-10-20",
+   "result": "PARTIAL",
+   "command": "run-rate-e5.ps1: dumpcap on Wi-Fi host 192.0.2.1; 10 ICMP then one TCP connect :80 (negative); 20 TCP connects :1-20 then 60 ICMP (positive); Python aegis_core.ndjson probe for source 192.168.1.39; tshark wire counts; aegisctl readiness/enforce/queue",
+   "expected": "Ten ICMP and one TCP SYN are below threshold and produce zero new R9002/R9006 rows; 20 distinct destination ports produce exactly one R9006 row; 60 ICMP packets inside 1000 ms produce exactly one R9002 row; the independent wire capture shows 10 negative ICMP, one SYN to port 80, 60 positive ICMP, and ports 1-20; readiness stays RUNNING and the gate stays closed.",
+   "actual": "Wire PASS: dumpcap captured 112 packets, 0 dropped; 10 negative ICMP + 60 positive ICMP; one SYN to port 80; 42 SYN frames comprising 20 distinct positive ports (1-20). R9002 PASS: negative 10 produced 0 new rows; positive 60 produced exactly one new row (event_id 57256283, ts_ms 1792489759864, src 192.168.1.39, payload_len 0, policy=block, host_effect_confirmed=false); baseline had one older R9002 row (event_id 56906937). R9006 BLOCKED: negative and positive both produced 0 rows. readiness stayed RUNNING/ready and gate stayed closed; queue dropped counter 130332 and shed_overload 43881 were unchanged before/after.",
+   "finding": "R9002 rate/window behavior is supported live on the canonical Nose path: 49-vs-50 style threshold behavior was exercised as 10 (no row) and 60 (one row), with one alert per window. R9006 cannot be assessed on this path: event_processor.zig matches FLAGS:S against QueuedEvent.tcp_flags, but canonical Go Nose enters through pushEvent (tcp_flags=0); only direct Zig packet_callback uses pushEventWithTcpFlags. Therefore the 20-port wire scan produced no R9006 row even though the wire capture proves 20 distinct destination ports. This is a production-path detection gap (new gap RB-021-NOSE-FLAGS), not evidence that the R9006 rate tracker itself is wrong. The TEST-NET host-generated run is also not the isolated Kali->Win11 lab E5 required by the kit README; the child gap DEPLOY-130-L4-RATE-E5 stays OPEN.",
+   "description": "Safe live controls generated from the NIDS host to the reserved TEST-NET address 192.0.2.1, with independent dumpcap/tShark wire proof and direct aegis_core.ndjson filtering. This avoided production targets and encrypted/down lab VMs. It exercised the installed 8a7f301 artifact with the prevention gate closed; no enforcement was requested or observed. The 20-port SYN scan was real wire traffic, not a synthetic event injection.",
+   "files_verified": [
+    "admin-evidence/deploy130-l4-rate-20261020/rate-e5-testnet-20261020-164841.txt",
+    "admin-evidence/deploy130-l4-rate-20261020/rate-e5-testnet-20261020-164841.pcapng",
+    "src/pipeline/event_processor.zig",
+    "src/pipeline/event_queue.zig",
+    "src/pipeline/packet_callback.zig",
+    "src/pipeline/l4_matcher.zig",
+    "C:\\Windows\\System32\\logs\\aegis_core.ndjson"
+   ],
+   "files_changed": [],
+   "tests": [
+    "wire capture: 112 packets, 0 dropped; 10 negative ICMP, 60 positive ICMP, port 80 negative SYN, ports 1-20 positive SYN",
+    "result file sha256 A1EC9E2FDD2C5BFFE2E476C1255A5386C3F17F2ECE863E7722A4F556FE18C490",
+    "pcap sha256 3BFCBA70FC53F9D6FD080DE033C87BE589766C2839E2AB0A5670522FDC121137",
+    "R9002 negative 10 = 0 new rows; positive 60 = 1 new row; R9006 positive 20 distinct ports = 0 rows",
+    "readiness RUNNING; prevention_gate closed; queue drop counters unchanged across the controls"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed"
   }
  ],
  "known_gaps": [
@@ -6672,22 +6740,23 @@
     "rate/window state and threshold tests for SYN/ICMP, or an explicit rename/reclassification to per-packet predicates",
     "negative control showing normal handshakes/pings below a threshold do not fire"
    ],
-   "resolution": "Implemented opt-in L4 rate/window semantics in src/pipeline/l4_matcher.zig, config-driven by configs/Rules.json. R9002: count >=50 ICMP packets per source per 1000 ms. R9006: >=20 distinct destination ports per source per 10000 ms. Both emit once per source/window; R9007 remains exact FIN|PSH|URG per-packet. The tracker keys rule + full source address + IPv4/IPv6 identity, is a fixed 256-entry table, and resets on rules reload. Zig tests cover the 49th-vs-50th ICMP boundary, 19-vs-20 distinct-port boundary, duplicate-port suppression, once-per-window emission/re-arm, source and address-family separation, reset, and the stateless R9007 path; negative controls prove a normal single handshake and sub-threshold pings do not fire. Config pins are in tests/security/test_l4_rate_config.py. This closes the code-semantics gap at E2; it is NOT a live rate claim. The deployed artifact 1593260B... predates source 8a7f301. Live rate proof is the separate child gap DEPLOY-130-L4-RATE-E5.",
-   "evidence": "EVI RB-021-L4-RATE-E2-20261020 (E2); EVI RB-021-L4-20261020 (historical per-packet E5); RB-021 runbook rate/window section; child gap DEPLOY-130-L4-RATE-E5 OPEN"
+   "resolution": "Implemented opt-in L4 rate/window semantics in src/pipeline/l4_matcher.zig, config-driven by configs/Rules.json. R9002: count >=50 ICMP packets per source per 1000 ms. R9006: >=20 distinct destination ports per source per 10000 ms. Both emit once per source/window; R9007 remains exact FIN|PSH|URG per-packet. The tracker keys rule + full source address + IPv4/IPv6 identity, is a fixed 256-entry table, and resets on rules reload. Zig tests cover the 49th-vs-50th ICMP boundary, 19-vs-20 distinct-port boundary, duplicate-port suppression, once-per-window emission/re-arm, source and address-family separation, reset, and the stateless R9007 path; negative controls prove a normal single handshake and sub-threshold pings do not fire. Config pins are in tests/security/test_l4_rate_config.py. This closes the code-semantics gap at E2; the installed 04F9... artifact (2026-10-20) later proved R9002 live at E5, while R9006 live proof remains blocked by the separate RB-021-NOSE-FLAGS production-path gap.",
+   "evidence": "EVI RB-021-L4-RATE-E2-20261020 (E2); EVI DEPLOY-130-L4-RATE-INSTALL-20261020 (E5 install); EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (R9002 PASS, R9006 blocked); EVI RB-021-L4-20261020 (historical per-packet E5); RB-021 runbook rate/window section; child gap DEPLOY-130-L4-RATE-E5 OPEN; gap RB-021-NOSE-FLAGS OPEN"
   },
   {
    "id": "DEPLOY-130-L4-RATE-E5",
    "severity": "P2",
    "title": "Live E5 proof of L4 rate/window behavior after deploying the 8a7f301 artifact",
-   "description": "Source 8a7f301 implements R9002/R9006 rate windows and tests them at E2, but the currently installed artifact 1593260B... predates that source and still runs per-packet predicates. No live rate behavior has been observed. The deployed configuration hash also predates the new rate blocks (repo Rules.json now differs from the installed 444F8956... copy).",
+   "description": "Artifact 04F9... built from source 8a7f301 was installed on 2026-10-20; the live byte-equality verifier passed 22/22 and readiness is RUNNING with the gate closed. R9002 live rate/window behavior PASSED on the canonical path: 10 pings produced no new row and 60 pings produced exactly one new row. R9006 remains UNPROVEN: a live 20-distinct-port SYN scan produced 0 rows because canonical Go Nose events have no TCP-flags sidecar (new gap RB-021-NOSE-FLAGS). The host-generated TEST-NET method is not the isolated Kali->Win11 lab E5 required by the kit. The child stays OPEN.",
    "status": "OPEN",
    "found_at": "2026-10-20",
    "required_evidence": [
-    "install an artifact built from 8a7f301 and pass the live verifier (22/22) with the new Rules.json",
-    "normal handshake and pings below threshold produce no new R9006/R9002 rows",
-    "a scan of >=20 distinct ports and >=50 ICMP packets per source/window produce one alert per window, not per-packet rows"
+    "DONE 2026-10-20: install an artifact built from 8a7f301 and pass the live verifier (22/22) with the new Rules.json.",
+    "DONE for R9002 2026-10-20: 10 pings below threshold produce no new R9002; 60 ICMP packet burst produces exactly one R9002 row (TEST-NET host path; not isolated Kali->Win11 lab).",
+    "OPEN: R9006 on a path that actually evaluates TCP flags (canonical Nose fix or direct-pinned lab), with one-port negative and >=20-distinct-port positive producing at most one row per source/window.",
+    "OPEN: repeat the negative/positive controls from the isolated Kali->Win11 lab per the kit, or explicitly re-scope the child with the operator."
    ],
-   "evidence": "EVI RB-021-L4-RATE-E2-20261020 (code/tests); EVI DEPLOY-130-L4-RATE-PKG-20261020 (artifact 04F9..., payload verified, not installed); live artifact 1593260B...; RB-021 runbook rate/window section"
+   "evidence": "EVI DEPLOY-130-L4-RATE-INSTALL-20261020 (E5 install); EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL); EVI RB-021-L4-RATE-E2-20261020; EVI DEPLOY-130-L4-RATE-PKG-20261020; gap RB-021-NOSE-FLAGS OPEN; admin-evidence/deploy130-l4-rate-20261020/postinstall-verify.txt and rate-e5-testnet-20261020-164841.txt"
   },
   {
    "id": "DEPLOY-120-E5",
@@ -6706,6 +6775,20 @@
    "opened_at": "2026-10-20",
    "closed_at": "2026-10-20",
    "closure_evidence": "admin-evidence/deploy120-uninstallfix-20261020/drill-uninstall-reinstall-20261020.log: services 1060; System32 and SysWOW64 driver files False; config 444F8956... preserved; reinstall C:\\; LIVE_VERIFY_OK (22/22); gate closed; readiness ready; E5_DRILL_OK."
+  },
+  {
+   "id": "RB-021-NOSE-FLAGS",
+   "severity": "P1",
+   "title": "Canonical Go Nose events carry no TCP-flags sidecar, so R9006/R9007 L4 flag rules are inert on the production capture path",
+   "description": "The canonical Nose path delivers a 109-byte CanonicalEvent without TCP flags and enters the Zig queue via pushEvent, which sets QueuedEvent.tcp_flags=0. event_processor.zig evaluates L4 rules only for ev.source==.capture_npcap and passes qe.tcp_flags to l4_matcher.matches; FLAGS:S (R9006) and FLAGS:FPU (R9007) therefore cannot match Nose events. Only the direct Zig Npcap packet_callback calls pushEventWithTcpFlags. The historical 2026-10-20 R9006/R9007 rows used the direct VMnet1 pin; the production service currently uses unpinned Go Nose on Wi-Fi. A live 20-distinct-port SYN scan produced 0 R9006 rows while an independent capture proved the SYN wire traffic. R9002 is unaffected because it matches protocol only and is live-proven on this path.",
+   "status": "OPEN",
+   "found_at": "2026-10-20",
+   "required_evidence": [
+    "A contract-safe canonical-path fix that carries TCP flags (or equivalent scan metadata) from Go Nose to Zig, updating every affected codec/fixture in one patch; or an explicit production capture design that uses direct Npcap with the flags sidecar and no duplicate packet path.",
+    "Live canonical-path negative/positive controls: one-port handshake produces no R9006; >=20 distinct destination ports produce exactly one R9006 per source/window; exact FIN|PSH|URG produces the specified R9007 behavior.",
+    "Queue drop counters, readiness, and prevention_gate closed documented for the same run."
+   ],
+   "evidence": "EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL; wire 20 distinct SYN, 0 R9006); EVI RB-021-L4-RATE-E2-20261020; src/pipeline/event_processor.zig:154; src/pipeline/event_queue.zig:71; src/pipeline/packet_callback.zig:91; docs/runbooks/RB-021-hostonly-lab-proof.md; historical R9006/R9007 rows used direct VMnet1 pin"
   }
  ],
  "evidence_level_summary": {
@@ -6714,7 +6797,7 @@
   "E2_count": 129,
   "E3_count": 13,
   "E4_count": 15,
-  "E5_count": 95,
+  "E5_count": 97,
   "E6_count": 0,
   "E7_count": 1
  }
