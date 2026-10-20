@@ -350,7 +350,7 @@ Previous phases:
   DEADCODE-QUARANTINE, CI-GAPS, RELEASE-TOOLING, LEFTOVER-SWEEP, REL-CLOSURE; operator
   cutover 2026-10-19 20:07 deployed daemon `dcb22a5` (sha256 `f223dcce…`) — live gate
   hard-closed (gate_source 'closed', detection-only), gate-check + v6 live verify PASS.
-  Remaining queue: G2 lab campaign (RB-012→013), DEPLOY-120 drill, RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate semantics open),
+  Remaining queue: G2 lab campaign (RB-012→013), DEPLOY-120 drill (kit refreshed 2026-10-20; E5 pending), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate semantics open),
   RB-016/017, G4 signing, external review, CI first push (truth semantics fixed 2026-10-20; push approval pending).
   Evidence: EVI CUTOVER-DCB22A5 (E5) + entries V6-QUEUE-DROP..REL-CLOSURE.
 
@@ -371,8 +371,14 @@ Previous phases:
   gate closed; host_effect none. Transport-only, not rule-match/L7/host-effect.
   Evidence: EVI RB-018-HOSTONLY-20261020 (E5); kit admin-evidence/lab-qualification-20261020/rb018/ (gitignored).
 
+- DEPLOY-120 installer refresh (2026-10-20): E3 PASS - installer rebuilt at build source fd7b424 /
+  records 18c3b65; payload daemon 47AB8085 == live (no downgrade), 61/61 gates; ETW/FIM helpers
+  known 10/08 -> 10/16 upgrades; old 10/19 kit (payload f223dcce) is stale and must not be installed;
+  E5 elevated install -> verify -> uninstall -> reinstall pending.
+  Evidence: EVI DEPLOY-120-REFRESH-20261020 (E3); kit admin-evidence/deploy120-refresh-20261020/ (gitignored).
+
 - CI truth source-commit semantics (2026-10-20): IMPLEMENTED - ADR-0008; truth.py keys on the last
-  source/build commit (dcb22a5), verifies ancestry + clean source paths; maps/AI_CONTEXT/EVI/
+  source/build commit (current fd7b424), verifies ancestry + clean source paths; maps/AI_CONTEXT/EVI/
   build_manifest/runtime_manifest carry the current build source commit (fd7b424); clean-checkout truth PASS + release PASS;
   full suite 963P/2S/27 subtests (exit 0); tests pinned at tests/release/test_truth_source_commit.py; EVI CI-TRUTH-SOURCE-COMMIT (E2). First
   hosted CI push still operator (no push).

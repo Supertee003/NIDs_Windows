@@ -1308,6 +1308,42 @@
     "EVIDENCE_INDEX.json",
     "AI_CONTEXT.md"
    ]
+  },
+  {
+   "id": "DEPLOY-120-REFRESH-20261020",
+   "title": "DEPLOY-120 refresh: installer payload rebuilt at fd7b424 carries the live daemon 47AB8085 (no downgrade) plus runtime parity; 61/61 build gates",
+   "level": "E3",
+   "component": "release+packaging+installer",
+   "flow_id": "DATA-001",
+   "head_sha": "fd7b424",
+   "timestamp": "2026-10-20",
+   "result": "PASS",
+   "command": "Agent (non-elevated, read-only SCM): powershell -NoProfile -ExecutionPolicy Bypass -File admin-evidence/deploy120-refresh-20261020/deploy120-proof.ps1 -> python tools/installer.py --package (makensis v3.12) builds aegis_setup.exe; 7z extraction; 61 gates covering drivers, NSI registration, live registry, runtime payload, configs, and build_manifest. Live daemon was read-only 47AB8085; no service changes were made by the proof.",
+   "expected": "The refreshed installer packages the current build source fd7b424: daemon 47AB8085, PEP/IPC/WFP-user byte-identical to repo and live; nose/adapter/bridge packaged; ETW/FIM helpers the known 10/08 -> 10/16 upgrade; drivers AD23EFB9/082F6A43 equal to System32; Rules.json parsed equal to live; policies equal; build_manifest source fd7b424. No daemon downgrade.",
+   "actual": "PASS 61/61. Installer sha256 E80352D7E704652B910F5EE400CA1908B7BFE1AA5241769F1B39D0DE6AA24808 x 7,423,056 B. Daemon packaged=repo=live 47AB80850512353B9FCB43F6C21AF614614EDC6E6467A096AAB971B79B2F7042. PEP 617FA3C7..., IPC 838281DA..., WFP-user EF9BFD22... all equal. ETW helper live E43C469D... -> repo/packaged 09453FE1...; FIM live AB1D8294... -> repo/packaged 1291A73E...; both known upgrades. Nose 59559328..., adapter AEFBB4BB..., bridge 35250194... packaged == repo. Drivers WFP AD23EFB9... / minifilter 082F6A43... packaged == System32 == repo; both test-signed Valid. Rules repo/packaged 444F8956... vs live D7F110F6... parsed JSON EQUAL (whitespace-only). Policies B7224FA0... all equal. build_manifest packaged==repo D3BEDE15..., source_commit fd7b424 (ancestor of records HEAD 18c3b65). Live AegisWfp/AegisMinifilter RUNNING. Strict after-install verifier prepared; pre-install control 12/21, failing only the planned installer changes.",
+   "finding": "E3 build/payload parity only. The E5 elevated install -> verify -> uninstall -> reinstall drill is pending the operator. The 10/19 kit is stale (payload daemon f223dcce) and must not be installed; the 10/18 kit is older still. The helper DLL changes are intentional upgrades, while daemon/PEP/IPC/WFP-user are byte-identical. The strict verifier expects 22/22 after install.",
+   "description": "Refresh kit (gitignored): admin-evidence/deploy120-refresh-20261020/ (README.md, deploy120-proof.ps1, deploy120-verify-live.ps1, deploy120-result.json, deploy120-run.log, aegis_setup.exe, installer.generated.nsi, extract/). Rebuilt after the live daemon moved to the L4 matcher 47AB8085 at source fd7b424.",
+   "files_verified": [
+    "tools/installer.py",
+    "installer.nsi",
+    "installer/aegis.nsi",
+    "build_manifest.json",
+    "configs/Rules.json",
+    "configs/policies.json",
+    "scripts/wfp_service.ps1",
+    "scripts/minifilter_service.ps1",
+    "zig-out/bin/aegis_nids.exe",
+    "target/release/aegis_pep.dll",
+    "nose/aegis-nose.exe",
+    "dist/aegis_adapter.dll",
+    "dist/aegis_bridge.exe",
+    "build/x64/wfp/aegis_wfp.sys",
+    "build/x64/minifilter/aegis_minifilter.sys"
+   ],
+   "files_changed": [
+    "EVIDENCE_INDEX.json",
+    "AI_CONTEXT.md"
+   ]
   }
  ],
  "known_gaps": [
@@ -6466,7 +6502,7 @@
   "E0_count": 0,
   "E1_count": 25,
   "E2_count": 128,
-  "E3_count": 10,
+  "E3_count": 11,
   "E4_count": 15,
   "E5_count": 92,
   "E6_count": 0,
