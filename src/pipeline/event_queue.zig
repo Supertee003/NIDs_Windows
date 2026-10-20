@@ -36,10 +36,12 @@ pub const QueuedEvent = struct {
     src_ipv6: ?[16]u8 = null,
     dst_ipv6: ?[16]u8 = null,
     /// TCP flags observed on the frame. In-memory sidecar only: the wire
-    /// CanonicalEvent has no flags field. The direct Npcap path sets this
-    /// from the transport header; every other producer leaves it 0, which
-    /// means "no flag evidence" (L4 flags rules do not match), not "flags
-    /// are zero on the wire".
+    /// CanonicalEvent has no dedicated flags field. The direct Npcap path
+    /// sets this from the transport header; the canonical Nose path sets
+    /// the ContextFlags transport lane and pushDecodedFrame extracts it
+    /// here. Producers without flag evidence leave it 0, which means "no
+    /// flag evidence" (L4 flags rules do not match), not "flags are zero
+    /// on the wire".
     tcp_flags: u8 = 0,
 };
 
@@ -230,7 +232,12 @@ pub fn pushDecodedFrame(frame: *const canonical.DecodedFrame, payload: []const u
     ev.payload_len = ce.payload_length;
     ev.payload_hash = @truncate(ce.payload_hash);
     ev.flags = ce.context_flags;
-    return pushEventWithAddrs(ev, payload, frame.src_ipv6, frame.dst_ipv6);
+    // RB-021-NOSE-FLAGS: wire-decoded Nose events carry the raw TCP flags
+    // byte in the ContextFlags transport lane. Populate the same in-memory
+    // sidecar the direct Npcap path already uses, so L4 FLAGS predicates
+    // match on both acquisition paths. Absence stays 0 ("no evidence").
+    const tcp_flags = canonical.getTcpFlags(ce) orelse 0;
+    return pushEventFull(ev, payload, frame.src_ipv6, frame.dst_ipv6, tcp_flags);
 }
 
 test "pushCanonicalEventWithPayload attributes the observing sensor" {
@@ -426,6 +433,41 @@ test "tcp flag sidecar rides with the direct-capture event" {
     // Producers without flag evidence use the default push and must not
     // invent SYN/FPU evidence.
     try std.testing.expect(pushEvent(ev, "frame"));
+    try std.testing.expectEqual(@as(u8, 0), popEvent().?.tcp_flags);
+}
+
+test "wire-decoded Nose TCP flags reach the L4 sidecar" {
+    // RB-021-NOSE-FLAGS end-to-end at unit level: serialize a canonical
+    // Nose event with the ContextFlags transport lane, dispatch it exactly
+    // as nose_pipe_reader does, and prove the queue carries the same flags
+    // byte the direct Npcap path supplies.
+    var ce = canonical.create(.npcap_sensor);
+    ce.event_type = .forward;
+    ce.protocol = 6;
+    ce.source_port = 49152;
+    ce.dest_port = 22;
+    canonical.setTcpFlags(&ce, 0x02); // SYN
+    var wire: [canonical.WIRE_PAYLOAD_SIZE]u8 = undefined;
+    const n = try canonical.serializeToBytes(&ce, &wire);
+    const frame = canonical.deserializeDispatch(wire[0..n]).?;
+    try std.testing.expect(pushDecodedFrame(&frame, &[_]u8{}));
+    const queued = popEvent().?;
+    try std.testing.expectEqual(event.EventSource.capture_npcap, queued.ev.source);
+    try std.testing.expectEqual(@as(u8, 0x02), queued.tcp_flags);
+
+    // The queued sidecar is directly consumable by the L4 predicate that
+    // R9006 uses (FLAGS:S, exact SYN).
+    const l4 = @import("l4_matcher.zig");
+    var rule = l4.Rule{ .rule_id = 9006, .protocol = 6, .flags_value = 0x02 };
+    try std.testing.expect(l4.matches(&rule, queued.ev.src_port, queued.ev.dst_port, queued.ev.protocol, queued.tcp_flags));
+
+    // No lane means no flag evidence; the zero-filled sidecar must not be
+    // treated as an observed SYN or XMAS byte.
+    var plain = canonical.create(.npcap_sensor);
+    plain.event_type = .forward;
+    plain.protocol = 6;
+    const plain_frame = canonical.DecodedFrame{ .event = plain, .src_ipv6 = null, .dst_ipv6 = null };
+    try std.testing.expect(pushDecodedFrame(&plain_frame, &[_]u8{}));
     try std.testing.expectEqual(@as(u8, 0), popEvent().?.tcp_flags);
 }
 

@@ -27,6 +27,12 @@ EVENT_VERSION_V2 = 2
 V6_TAIL_SIZE = 24
 WIRE_V2_SIZE = WIRE_SIZE + V6_TAIL_SIZE  # 133
 CONTEXT_V6_TRUNCATED = 1 << 2
+# Additive ContextFlags transport-metadata lane (RB-021-NOSE-FLAGS):
+# bits 16..23 = raw TCP flags byte, bit24 = valid. Wire size is unchanged;
+# this mirrors nose/canonical.go and shared/wire/wire_codec.py.
+CONTEXT_TCP_FLAGS_SHIFT = 16
+CONTEXT_TCP_FLAGS_MASK = 0xFF << CONTEXT_TCP_FLAGS_SHIFT
+CONTEXT_TCP_FLAGS_VALID = 1 << 24
 EVENT_CUSTOM = 0xFFFFFFFF
 
 # Frozen ordinals — MUST match src/contract/canonical_event.zig.

@@ -48,3 +48,63 @@ def test_zig_declares_v6_truncated_bit_with_no_ipv4_rule():
     assert match, "canonical_event.zig must declare CONTEXT_V6_TRUNCATED"
     assert int(match.group(1)) == EXPECTED_BIT
     assert "must never be treated as IPv4" in src or "must not" in src.lower()
+
+
+# RB-021-NOSE-FLAGS: the TCP-flags lane is additive ContextFlags metadata.
+# It must be identical in every codec even though only Go writes it and Zig
+# consumes it; the wire layout itself stays 109/133 bytes.
+TCP_FLAGS_SHIFT = 16
+TCP_FLAGS_VALID_BIT = 24
+
+
+def test_tcp_flags_lane_constants_across_codecs():
+    go_src = GO_CANONICAL.read_text(encoding="utf-8")
+    assert re.search(r"ContextTCPFlagsShift\s+uint32\s*=\s*16", go_src)
+    assert re.search(r"ContextTCPFlagsValid\s+uint32\s*=\s*1\s*<<\s*24", go_src)
+    assert "func (e *CanonicalEvent) SetTCPFlags" in go_src
+    assert "func (e *CanonicalEvent) TCPFlags" in go_src
+
+    zig_src = ZIG_CANONICAL.read_text(encoding="utf-8")
+    assert re.search(r"CONTEXT_TCP_FLAGS_SHIFT\s*:\s*u5\s*=\s*16", zig_src)
+    assert re.search(r"CONTEXT_TCP_FLAGS_VALID\s*:\s*u32\s*=\s*1\s*<<\s*24", zig_src)
+    assert "pub fn setTcpFlags" in zig_src
+    assert "pub fn getTcpFlags" in zig_src
+
+    py_src = (REPO_ROOT / "shared" / "wire" / "wire_codec.py").read_text(encoding="utf-8")
+    assert f"CONTEXT_TCP_FLAGS_SHIFT: int = {TCP_FLAGS_SHIFT}" in py_src
+    assert f"CONTEXT_TCP_FLAGS_VALID: int = 1 << {TCP_FLAGS_VALID_BIT}" in py_src
+
+    brain_src = (REPO_ROOT / "brain" / "canonical_event.py").read_text(encoding="utf-8")
+    assert f"CONTEXT_TCP_FLAGS_SHIFT = {TCP_FLAGS_SHIFT}" in brain_src
+    assert f"CONTEXT_TCP_FLAGS_VALID = 1 << {TCP_FLAGS_VALID_BIT}" in brain_src
+
+    cpp_src = (REPO_ROOT / "shared" / "wire" / "wire_codec.h").read_text(encoding="utf-8")
+    assert "CONTEXT_TCP_FLAGS_SHIFT = 16" in cpp_src
+    assert "CONTEXT_TCP_FLAGS_VALID = (1u << 24)" in cpp_src
+
+
+def test_python_codec_round_trips_tcp_flags_lane():
+    from shared.wire.wire_codec import (
+        CONTEXT_TCP_FLAGS_MASK,
+        CONTEXT_TCP_FLAGS_VALID,
+        CanonicalEvent,
+        WireCodec,
+    )
+
+    flags = 0x29  # FIN|PSH|URG (R9007)
+    lane = CONTEXT_TCP_FLAGS_VALID | (flags << TCP_FLAGS_SHIFT)
+    ev = CanonicalEvent(
+        source_ip=0x0A000005,
+        dest_ip=0xC0A80101,
+        source_port=40000,
+        dest_port=443,
+        protocol=6,
+        context_flags=lane,
+    )
+    wire = WireCodec.encode_event(ev)
+    assert len(wire) == 109
+    back = WireCodec.decode_event(wire)
+    assert back is not None
+    assert back.context_flags == lane
+    assert (back.context_flags & CONTEXT_TCP_FLAGS_MASK) != 0
+    assert (back.context_flags & CONTEXT_TCP_FLAGS_VALID) != 0

@@ -43,6 +43,13 @@ V6_TAIL_SIZE: int = 24
 WIRE_V2_PAYLOAD_SIZE: int = WIRE_PAYLOAD_SIZE + V6_TAIL_SIZE  # 133
 WIRE_V2_FRAME_SIZE: int = WIRE_HEADER_SIZE + WIRE_V2_PAYLOAD_SIZE  # 149
 CONTEXT_V6_TRUNCATED: int = 1 << 2
+# Additive ContextFlags transport-metadata lane (RB-021-NOSE-FLAGS):
+# bits 16..23 = raw TCP flags byte (FIN=0x01 .. CWR=0x80), bit24 = valid.
+# This does not change the 109-byte v1 or 133-byte v2 wire layout; existing
+# allocations (RAG bits 0..3, L7 bits 8..13) do not overlap.
+CONTEXT_TCP_FLAGS_SHIFT: int = 16
+CONTEXT_TCP_FLAGS_MASK: int = 0xFF << CONTEXT_TCP_FLAGS_SHIFT
+CONTEXT_TCP_FLAGS_VALID: int = 1 << 24
 
 
 class PayloadType(IntEnum):

@@ -260,6 +260,12 @@ func eventFromPacket(packet gopacket.Packet) *CanonicalEvent {
 			ev.SourcePort = uint16(tr.SrcPort)
 			ev.DestPort = uint16(tr.DstPort)
 			ev.Protocol = 6
+			// RB-021-NOSE-FLAGS: carry the raw flags byte in the
+			// ContextFlags transport lane. The byte layout matches the
+			// direct Zig path's transport-header byte 13 (FIN..CWR), so
+			// FLAGS:S / FLAGS:FPU predicates see the same evidence on
+			// both acquisition paths.
+			ev.SetTCPFlags(tcpFlagsByte(tr))
 		case *layers.UDP:
 			ev.SourcePort = uint16(tr.SrcPort)
 			ev.DestPort = uint16(tr.DstPort)
@@ -277,6 +283,39 @@ func eventFromPacket(packet gopacket.Packet) *CanonicalEvent {
 		ev.PayloadHash = quickHash(data)
 	}
 	return ev
+}
+
+// tcpFlagsByte renders the TCP control bits in the same one-byte layout
+// the packet header uses (FIN=0x01, SYN=0x02, RST=0x04, PSH=0x08,
+// ACK=0x10, URG=0x20, ECE=0x40, CWR=0x80). NS lives in the preceding
+// byte and is intentionally not part of the L4 predicate vocabulary.
+func tcpFlagsByte(tcp *layers.TCP) uint8 {
+	var flags uint8
+	if tcp.FIN {
+		flags |= 0x01
+	}
+	if tcp.SYN {
+		flags |= 0x02
+	}
+	if tcp.RST {
+		flags |= 0x04
+	}
+	if tcp.PSH {
+		flags |= 0x08
+	}
+	if tcp.ACK {
+		flags |= 0x10
+	}
+	if tcp.URG {
+		flags |= 0x20
+	}
+	if tcp.ECE {
+		flags |= 0x40
+	}
+	if tcp.CWR {
+		flags |= 0x80
+	}
+	return flags
 }
 
 // quickHash gives a numeric dedup reference from the payload bytes.

@@ -22,6 +22,10 @@ v2 payload: 133 bytes = v1 109 bytes ++ v6 tail 24 bytes
 - `ContextFlags` bit2 semantics are UNCHANGED: set whenever the 32-bit IP
   fields hold first-4-bytes-of-IPv6 (i.e. "not IPv4 identity") — in v1
   (truncated, tail absent) and in v2 (full bytes in tail) alike.
+- The additive transport-metadata lane (`bits 16..23` raw TCP flags,
+  `bit 24` valid) is identical in v1 and v2 because v2 starts with the
+  frozen v1 prefix. It changes no wire length or field offset; see
+  `wire_v1.md`.
 - A v2 frame MUST carry the full 24-byte tail. `version == 2` with length
   109 is malformed and must be rejected. Unknown versions are rejected
   (wire_v1.md rule 6 still holds).

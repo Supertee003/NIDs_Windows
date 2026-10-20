@@ -378,21 +378,32 @@ and positive controls are Zig unit tests in
 `src/pipeline/l4_matcher.zig` and the configuration pins are
 `tests/security/test_l4_rate_config.py` (E2).
 
-This closes the code-semantics gap at E2. The rate-enabled artifact
-`04F9E0DB...` was installed on 2026-10-20 and the live verifier passed
-22/22. A host-generated TEST-NET run proved `R9002` live on the canonical
-path: 10 pings produced no new row and a 60-packet burst produced exactly
-one new row. `R9006` could not be assessed there: canonical Go Nose
-events carry no TCP-flags sidecar (`pushEvent` sets
-`QueuedEvent.tcp_flags=0`), so the flags-gated `R9006`/`R9007` rules are
-inert unless the daemon is pinned to direct Zig Npcap. A live 20-port SYN
-scan produced 0 `R9006` rows even though the independent wire capture
-proved 20 distinct ports. This is tracked as gap `RB-021-NOSE-FLAGS`
-(P1) and is not a rate-tracker failure. The isolated Kali->Win11 E5
-re-proof (normal handshake/ping below threshold, scan/flood above
-threshold, one row per window) remains tracked as
-`DEPLOY-130-L4-RATE-E5`; do not claim it from unit tests or from the
-TEST-NET run. `forensics verify` stays ok + verified true throughout.
+This closes the rate/window code semantics at E2. The rate-enabled
+artifact `04F9E0DB...` was installed on 2026-10-20 and the live verifier
+passed 22/22. A host-generated TEST-NET run proved `R9002` live on the
+canonical path: 10 pings produced no new row and a 60-packet burst
+produced exactly one new row. `R9006` could not be assessed there:
+canonical Go Nose events carried no TCP-flags sidecar (`pushEvent` set
+`QueuedEvent.tcp_flags=0`), so the flags-gated `R9006`/`R9007` rules were
+inert unless the daemon was pinned to direct Zig Npcap. A live 20-port
+SYN scan produced 0 `R9006` rows even though the independent wire capture
+proved 20 distinct ports. This is a production-path detection gap
+(`RB-021-NOSE-FLAGS`, P1), not a rate-tracker failure.
+
+Source patch `RB021-NOSE-FLAGS-001` now records the raw TCP flags byte in
+the existing `ContextFlags` transport lane (bits 16..23, valid bit 24)
+without changing the 109/133-byte wire layout. Go Nose sets the lane in
+`eventFromPacket`; Zig `pushDecodedFrame` extracts it into
+`QueuedEvent.tcp_flags`; Go, Zig, and Python contract tests plus `zig
+build` pass (E2). The installed live artifact is still the pre-patch
+`04F9E0DB...` build, so there is **no live R9006/R9007 result yet**. After
+the operator installs and restarts the patched artifact, rerun the
+20-port SYN and XMAS controls; keep the gap OPEN until that live result
+exists. The isolated Kali->Win11 E5 re-proof (normal handshake/ping below
+threshold, scan/flood above threshold, one row per window) remains
+tracked as `DEPLOY-130-L4-RATE-E5`; do not claim it from unit tests or
+from the TEST-NET run. `forensics verify` stays ok + verified true
+throughout.
 
 Attribution rules (2026-10-17 findings): count a row as wire-fire proof
 only if the target resolved (Step 1/3) AND the rule's own pattern
@@ -426,12 +437,12 @@ host effect was ever applied, so no effect needs undoing.
   FIN+PSH+URG. They were produced by the pre-rate source and must not be
   described as scan/flood verdicts. The current installed artifact
   carries the rate/window state, but only R9002 has live rate proof so far.
-- Canonical Go Nose events do not carry TCP flags. `R9006` and `R9007`
-  match against the in-memory `QueuedEvent.tcp_flags` sidecar, which is
-  populated only by the direct Zig Npcap `packet_callback`; an unpinned
-  Nose service therefore cannot fire those flags-gated rules. Gap
-  `RB-021-NOSE-FLAGS` (P1) is OPEN. A flags proof needs the direct VMnet1
-  pin (and a lab target), or a canonical-path TCP-flags fix.
+- The installed `04F9E0DB...` artifact still has no TCP flags on the
+  canonical Nose path; `R9006`/`R9007` remain unmatched there. Source
+  patch `RB021-NOSE-FLAGS-001` fixes the path at E2, but until the patched
+  artifact is installed and live-proven, gap `RB-021-NOSE-FLAGS` (P1)
+  stays OPEN. Do not use the pre-patch 20-port scan to claim a rate or
+  flags failure, and do not use the E2 tests to claim E5.
 - A 100-port nmap scan can produce 200 matching packets (retry or
   duplicate capture); the old per-packet rows count packets, not ports.
   The current R9006 state counts distinct destination ports instead.

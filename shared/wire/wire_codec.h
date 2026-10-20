@@ -45,6 +45,14 @@ static constexpr size_t   WIRE_V2_PAYLOAD_SIZE = WIRE_PAYLOAD_SIZE + V6_TAIL_SIZ
 static constexpr size_t   WIRE_V2_FRAME_SIZE  = WIRE_HEADER_SIZE + WIRE_V2_PAYLOAD_SIZE; // 149
 static constexpr uint32_t CONTEXT_V6_TRUNCATED = (1u << 2);
 
+// Additive ContextFlags transport-metadata lane (RB-021-NOSE-FLAGS):
+// bits 16..23 = raw TCP flags byte (FIN=0x01 .. CWR=0x80), bit24 = valid.
+// The 109-byte v1 / 133-byte v2 wire layout is unchanged; existing
+// allocations (RAG bits 0..3, L7 bits 8..13) do not overlap.
+static constexpr uint32_t CONTEXT_TCP_FLAGS_SHIFT = 16;
+static constexpr uint32_t CONTEXT_TCP_FLAGS_MASK = (0xFFu << CONTEXT_TCP_FLAGS_SHIFT);
+static constexpr uint32_t CONTEXT_TCP_FLAGS_VALID = (1u << 24);
+
 enum class PayloadType : uint16_t {
     canonical_event = 0,
     command         = 1,

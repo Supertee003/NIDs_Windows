@@ -148,9 +148,10 @@ fn processEvent(
 
     // L4 predicate matching. The AC owns payload bytes; layer=="L4" rules
     // own packet metadata (protocol, exact TCP flags, target ports) and never
-    // enter the AC. Only a directly observed Npcap frame has trustworthy
-    // flags today; other producers leave the sidecar at 0, so a flags rule
-    // cannot accidentally match their zero-filled metadata.
+    // enter the AC. Both Npcap acquisition paths (direct Zig callback and
+    // canonical Go Nose through the ContextFlags transport lane) supply
+    // trustworthy flags; other producers leave the sidecar at 0, so a flags
+    // rule cannot accidentally match their zero-filled metadata.
     if (matched_rule_id == 0 and l4_count > 0 and ev.source == .capture_npcap) {
         for (l4_rules[0..l4_count]) |rule| {
             if (!l4.matches(&rule, ev.src_port, ev.dst_port, ev.protocol, qe.tcp_flags)) continue;

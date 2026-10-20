@@ -97,6 +97,31 @@ pub const CanonicalEvent = extern struct {
 /// not treat such identity as IPv4.
 pub const CONTEXT_V6_TRUNCATED: u32 = 1 << 2;
 
+// ── ContextFlags transport-metadata lane (RB-021-NOSE-FLAGS) ──────────
+// Bits 16..23 carry the raw TCP flags byte observed by the acquisition
+// path; bit24 marks the lane valid. This is an additive semantic use of
+// previously unused ContextFlags bits, not a wire-layout change: v1 stays
+// 109 bytes and v2 stays 133. Existing allocations (RAG bits 0..3, L7
+// bits 8..13) are disjoint. Absence (bit24 clear) means "no flag
+// evidence", never "the observed flags byte was zero".
+pub const CONTEXT_TCP_FLAGS_SHIFT: u5 = 16;
+pub const CONTEXT_TCP_FLAGS_MASK: u32 = 0xFF << CONTEXT_TCP_FLAGS_SHIFT;
+pub const CONTEXT_TCP_FLAGS_VALID: u32 = 1 << 24;
+
+/// Record the raw TCP flags byte in the ContextFlags transport lane.
+pub fn setTcpFlags(event: *CanonicalEvent, flags: u8) void {
+    event.context_flags = (event.context_flags & ~(CONTEXT_TCP_FLAGS_MASK | CONTEXT_TCP_FLAGS_VALID)) |
+        CONTEXT_TCP_FLAGS_VALID |
+        (@as(u32, flags) << CONTEXT_TCP_FLAGS_SHIFT);
+}
+
+/// Return the observed TCP flags, or null when the producer supplied no
+/// flag evidence. A valid zero byte is distinct from absence.
+pub fn getTcpFlags(event: *const CanonicalEvent) ?u8 {
+    if ((event.context_flags & CONTEXT_TCP_FLAGS_VALID) == 0) return null;
+    return @truncate((event.context_flags & CONTEXT_TCP_FLAGS_MASK) >> CONTEXT_TCP_FLAGS_SHIFT);
+}
+
 /// reserved[0..4]  = process_id (u32 LE) ΓÇö host telemetry PID
 /// reserved[4..8]  = parent_process_id (u32 LE)
 /// reserved[8]     = process event type (HIDS ProcessEventType)
@@ -1156,4 +1181,27 @@ test "over-length v1 frame decodes as v1 (version authoritative)" {
     try std.testing.expect(frame.src_ipv6 == null);
     try std.testing.expect(frame.dst_ipv6 == null);
     try std.testing.expectEqual(ev.source_ip, frame.event.source_ip);
+}
+
+test "TCP flags transport lane is valid, exact, and absence-distinct" {
+    // RB-021-NOSE-FLAGS: the lane is additive ContextFlags metadata, not a
+    // wire field. Absence must stay distinguishable from an observed 0.
+    var ev = create(.npcap_sensor);
+    try std.testing.expect(getTcpFlags(&ev) == null);
+
+    setTcpFlags(&ev, 0x02); // SYN
+    try std.testing.expectEqual(@as(?u8, 0x02), getTcpFlags(&ev));
+    try std.testing.expect((ev.context_flags & CONTEXT_TCP_FLAGS_VALID) != 0);
+
+    setTcpFlags(&ev, 0x00); // observed zero flags, still valid evidence
+    try std.testing.expectEqual(@as(?u8, 0x00), getTcpFlags(&ev));
+
+    setTcpFlags(&ev, 0x29); // FIN|PSH|URG (R9007)
+    try std.testing.expectEqual(@as(?u8, 0x29), getTcpFlags(&ev));
+
+    // Replacing the lane must not disturb neighboring allocations.
+    ev.context_flags |= CONTEXT_V6_TRUNCATED;
+    setTcpFlags(&ev, 0x12); // SYN|ACK
+    try std.testing.expectEqual(@as(?u8, 0x12), getTcpFlags(&ev));
+    try std.testing.expect((ev.context_flags & CONTEXT_V6_TRUNCATED) != 0);
 }

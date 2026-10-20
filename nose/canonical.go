@@ -120,17 +120,17 @@ func classifyGo(src byte) byte {
 // Ordinals MUST match Zig EventType (VOL01-FOUNDATION-002: was iota-based
 // and wrong for every value except block; now explicit).
 const (
-	EventBlock        EventType = 0
-	EventMatch        EventType = 1
-	EventForward      EventType = 2
-	EventIpBlocked    EventType = 3
-	EventRejected     EventType = 4
-	EventSessionStart EventType = 5
-	EventSessionEnd   EventType = 6
+	EventBlock         EventType = 0
+	EventMatch         EventType = 1
+	EventForward       EventType = 2
+	EventIpBlocked     EventType = 3
+	EventRejected      EventType = 4
+	EventSessionStart  EventType = 5
+	EventSessionEnd    EventType = 6
 	EventRulesetReload EventType = 7
-	EventShutdown     EventType = 8
-	EventStartup      EventType = 9
-	EventCustom       EventType = 0xFFFFFFFF
+	EventShutdown      EventType = 8
+	EventStartup       EventType = 9
+	EventCustom        EventType = 0xFFFFFFFF
 )
 
 // Compatibility names used by the capture path. Untyped so they assign to
@@ -241,11 +241,39 @@ type CanonicalEvent struct {
 // bit2 means SourceIP/DestIP carry only the first 4 bytes of each IPv6
 // address: identity is degraded by construction (v1 wire has no v6 fields)
 // and must never be treated as an IPv4 identity.
+//
+// Additive transport-metadata lane (RB-021-NOSE-FLAGS): bits 16..23 hold
+// the raw TCP flags byte observed by Nose, and bit24 says the lane is
+// valid. This is a semantic allocation of previously unused ContextFlags
+// bits, not a wire-layout change: v1 stays 109 bytes and v2 stays 133.
+// Existing allocations (RAG bits 0..3, L7 bits 8..13) do not overlap.
 const (
 	ContextThreatIntelMatch uint32 = 1 << 0
 	ContextCorrelationMatch uint32 = 1 << 1
 	ContextV6Truncated      uint32 = 1 << 2
+
+	ContextTCPFlagsShift uint32 = 16
+	ContextTCPFlagsMask  uint32 = 0xFF << ContextTCPFlagsShift
+	ContextTCPFlagsValid uint32 = 1 << 24
 )
+
+// SetTCPFlags records the raw TCP flags byte (FIN=0x01 .. CWR=0x80) in the
+// ContextFlags transport lane. Callers set this only when they actually
+// observed a TCP header; absence is distinct from a zero flags byte.
+func (e *CanonicalEvent) SetTCPFlags(flags uint8) {
+	e.ContextFlags = (e.ContextFlags &^ (ContextTCPFlagsMask | ContextTCPFlagsValid)) |
+		ContextTCPFlagsValid |
+		(uint32(flags) << ContextTCPFlagsShift)
+}
+
+// TCPFlags returns the observed TCP flags and whether the lane is valid.
+func (e *CanonicalEvent) TCPFlags() (uint8, bool) {
+	if e.ContextFlags&ContextTCPFlagsValid == 0 {
+		return 0, false
+	}
+	return uint8((e.ContextFlags & ContextTCPFlagsMask) >> ContextTCPFlagsShift), true
+}
+
 const (
 	ResOffPid        = 0  // reserved[0..4]   = PID
 	ResOffPpid       = 4  // reserved[4..8]   = PPID

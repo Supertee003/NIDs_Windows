@@ -95,6 +95,25 @@ Offset  Size  Field
 Total:  109 bytes
 ```
 
+### ContextFlags transport-metadata lane (RB-021-NOSE-FLAGS)
+
+The bytes and field offsets above are unchanged. The `context_flags` u32 has
+an established extension area (RAG uses bits 0..3 and the L7 classifier uses
+bits 8..13). The canonical Nose capture path now allocates the following
+previously unused bits to carry observed TCP control metadata:
+
+```
+bit 24      TCP_FLAGS_VALID (0 = no flag evidence, 1 = lane is valid)
+bits 16..23 raw TCP flags byte (FIN=0x01, SYN=0x02, RST=0x04,
+            PSH=0x08, ACK=0x10, URG=0x20, ECE=0x40, CWR=0x80)
+bits 25..31 reserved, must stay 0
+```
+
+Absence (valid bit clear) is distinct from an observed zero flags byte.
+This is a semantic allocation inside an existing u32, not a wire-layout
+change: v1 stays 109 bytes, v2 stays 133 bytes, and codecs that do not
+interpret the lane continue to round-trip `context_flags` verbatim.
+
 ### STEP 2 MUST rules for payload encoding:
 - Same explicit `writeInt` / `readInt` approach as header
 - **NO** `memcpy(event_struct)` — even with `#pragma pack(push, 1)`, struct layout varies by language (Rust enum tags, Zig extern alignment, etc.)
