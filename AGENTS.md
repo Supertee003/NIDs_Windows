@@ -1,7 +1,7 @@
 # AGENTS.md — AEGIS NIDS Windows
 ## Version 2.0 — Current-HEAD Vertical Slice Workflow
 
-**HEAD:** `48eb2a72265a15c1b780a6bfa76d4f4dae2fc7f2`
+**HEAD:** `dcb22a5a5b5a6f01f4b4106e3248e7f7b3df94b2` (build source commit; see ADR-0008)
 **Applies to:** All human + AI agents contributing to AEGIS NIDS Windows
 
 ---
@@ -59,7 +59,7 @@ When sources disagree, use this order:
 8. README
 9. AI assumptions
 
-Never treat an old report as current truth. If a report contains a different HEAD SHA, mark it HISTORICAL.
+Never treat an old report as current truth. If a report's recorded source commit is not the current build source commit, mark it HISTORICAL.
 
 ---
 
@@ -80,7 +80,7 @@ Never treat an old report as current truth. If a report contains a different HEA
 
 Every machine map includes: `head_sha`, `created_at`, `generator_version`.
 
-If a map has a different HEAD than the current source, it is STALE. Do not use it as current truth.
+Machine maps carry the **build source commit** — the last commit that touched the source/build tree — not the records commit (ADR-0008). `python tools/truth.py verify` checks that the maps carry the source commit, that it is an ancestor of HEAD, and that the source paths are clean. A records-only commit does not make a map stale; a source/build change does.
 
 ---
 
@@ -153,7 +153,7 @@ git ls-files
 
 Read: `AI_CONTEXT.md`, `SYSTEM_MAP.json`, `FLOW_MAP.json`, `AUTHORITY_MAP.json`, `CONTRACT_MAP.json`, `EVIDENCE_INDEX.json`
 
-If any machine map has a different HEAD: MARK STALE. Do not use it as current truth.
+If any machine map does not carry the build source commit, or the source paths changed since that commit: MARK STALE. Do not use it as current truth.
 
 ---
 
@@ -288,7 +288,7 @@ Test-Path AUTHORITY_MAP.json   # True
 Test-Path CONTRACT_MAP.json   # True
 Test-Path EVIDENCE_INDEX.json   # True
 
-# Truth artifacts carry current HEAD (no stale SHA)
+# Truth artifacts carry the build source commit (ADR-0008)
 python tools/truth.py verify   # TRUTH_VALID, exit 0
 ```
 

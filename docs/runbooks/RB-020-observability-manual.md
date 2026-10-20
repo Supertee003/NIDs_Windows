@@ -190,8 +190,8 @@ Web UI: http://127.0.0.1:5000/ (loopback-only, GET-only).
 python tools/upgrade_rollback.py snapshot --json      # capture restore point
 python tools/upgrade_rollback.py report --json        # what would roll back
 python tools/upgrade_rollback.py rollback --snapshot ID --json   # [MUTATES] restore
-python tools/truth.py verify                          # maps carry HEAD (seconds)
-python tools/release_engineering.py --verify          # 611 digests (seconds)
+python tools/truth.py verify                          # maps carry the build source commit (seconds)
+python tools/release_engineering.py --verify          # 608 digests (seconds)
 python tools/fresh_deploy.py --plan                   # deploy dry-run, writes nothing
 ```
 

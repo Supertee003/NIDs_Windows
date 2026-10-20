@@ -161,10 +161,11 @@ jobs:
       # recorded digests drift, the build-manifest verify gate below FAILS.
       - name: Verify build manifest provenance (drift gate)
         run: python tools/release_engineering.py --verify
-      # CI-GATE-107: machine-map truth stamps must carry the current HEAD.
-      # A stale map (different HEAD than the source) is not current truth
-      # and fails here, same as the pre-commit check.
-      - name: Verify machine-map truth stamps (HEAD gate)
+      # CI-GATE-107: machine-map truth stamps must carry the build source
+      # commit (ADR-0008). A records-only commit does not invalidate them; a
+      # source/build change or a dirty source tree fails here, same as the
+      # pre-commit check.
+      - name: Verify machine-map truth stamps (source-commit gate)
         run: python tools/truth.py verify
       - name: Run tests
         run: python -m pytest tests/ -v --ignore=tests/test_e2e.py

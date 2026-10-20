@@ -47,6 +47,9 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from truth import git_source  # noqa: E402 — tools/ is the script directory
+
 VERSION = "5.0.0"
 MANIFEST_PATH = ROOT / "build_manifest.json"
 
@@ -121,17 +124,14 @@ def _is_releasable(rel: str, visible: set[str] | None) -> bool:
 
 
 def git_source_commit() -> str:
-    """Short SHA of the source commit every artifact maps back to."""
+    """Short SHA of the build source commit every artifact maps back to.
+
+    ADR-0008: records-only commits must not re-stamp the release manifest.
+    """
     try:
-        out = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            cwd=str(ROOT), capture_output=True, text=True, timeout=10,
-        )
-        if out.returncode == 0:
-            return out.stdout.strip()
+        return git_source()[:7]
     except Exception:
-        pass
-    return "unknown"
+        return "unknown"
 
 
 def normalized_bytes(path: Path) -> bytes:

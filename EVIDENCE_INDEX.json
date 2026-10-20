@@ -1,5 +1,5 @@
 {
- "head_sha": "865217b431b917d447278ff11ba3dc66e0528e28",
+ "head_sha": "dcb22a5a5b5a6f01f4b4106e3248e7f7b3df94b2",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-10-20",
  "generator_version": "3.0",
@@ -1243,6 +1243,39 @@
     "docs/runbooks/RB-018-hostonly-observe-only-qualification.md",
     "EVIDENCE_INDEX.json",
     "AI_CONTEXT.md"
+   ]
+  },
+  {
+   "id": "CI-TRUTH-SOURCE-COMMIT",
+   "title": "CI truth gate: source-commit semantics (ADR-0008) - clean checkout truth PASS + release PASS",
+   "level": "E2",
+   "component": "truth-tooling+ci+docs",
+   "flow_id": "CI-TRUTH",
+   "head_sha": "dcb22a5",
+   "timestamp": "2026-10-20",
+   "result": "PASS",
+   "command": "python -m pytest tests/release/test_truth_source_commit.py -q; python tools/rebuild_truth.py; python tools/truth.py verify; python tools/release_engineering.py --verify; python -m pytest tests/ -q --ignore=tests/test_e2e.py",
+   "expected": "The verifier accepts a source commit that is an ancestor of HEAD, rejects a docs/records commit used as the source, rejects a source older than the actual last source change, and rejects a non-ancestor source; a clean records-only tree passes truth and release checks.",
+   "actual": "4/4 new pins PASS; rebuild valid=true; truth.py TRUTH_VALID at HEAD 6a4d248 (source dcb22a5 ancestor, source tree clean); release_engineering --verify OK 608/608 (source_commit=dcb22a5); full suite 963 passed / 2 skipped / 27 subtests (exit 0). A handled Windows first-chance exception (0x80320003) is printed by tests/wfp/test_t11_windows_host.py; it is not a test failure. CI truth-step wording and the RB-020 runbook were aligned with ADR-0008 (no behavior change).",
+   "finding": "The CI truth/release inversion is closed locally: maps carry the build source commit (dcb22a5), records-only commits leave a clean tree, and no head overlay is needed. The first hosted CI run remains operator-gated because the agent never pushes; the tag package-release payload blocker is unchanged.",
+   "description": "ADR-0008 + source-commit semantics in tools/truth.py, source stamp in tools/rebuild_truth.py and tools/create_manifest.py, source stamping in tools/release_engineering.py --refresh-digests, and CI/RB-020 wording aligned with ADR-0008. Pins: tests/release/test_truth_source_commit.py.",
+   "files_changed": [
+    "tools/truth.py",
+    "tools/rebuild_truth.py",
+    "tools/create_manifest.py",
+    "tools/release_engineering.py",
+    "tests/release/test_truth_source_commit.py",
+    "docs/adr/0008-truth-source-commit-semantics.md",
+    "AGENTS.md",
+    "AI_CONTEXT.md",
+    "EVIDENCE_INDEX.json",
+    "build_manifest.json",
+    "runtime_manifest.json",
+    "inventory.json",
+    "reference_map.json",
+    "PHASE_0_TRUTH_REBUILD_REPORT.json",
+    ".github/workflows/ci.yml",
+    "docs/runbooks/RB-020-observability-manual.md"
    ]
   }
  ],
@@ -6385,7 +6418,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 25,
-  "E2_count": 127,
+  "E2_count": 128,
   "E3_count": 10,
   "E4_count": 15,
   "E5_count": 91,

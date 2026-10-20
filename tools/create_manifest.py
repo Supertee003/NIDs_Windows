@@ -1,23 +1,15 @@
-import re
-from pathlib import Path
 import json
-import subprocess
+import re
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 repo = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from truth import git_source  # noqa: E402 — tools/ is the script directory
 
-def current_head() -> str:
-    result = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        cwd=repo,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return result.stdout.strip()
-
-head_sha = current_head()
-source_commit = head_sha[:7]
+source_full = git_source()
+source_short = source_full[:7]
 generated_at = datetime.now(timezone.utc).isoformat()
 
 main_text = (repo / 'src/main.zig').read_text(encoding='utf-8', errors='ignore')
@@ -146,10 +138,10 @@ authority_invariants = [
 
 manifest = {
     'runtime_version': '5.0.0',
-    'head_sha': head_sha,
+    'head_sha': source_full,
     'entrypoint': 'src/main.zig',
     'production_binary': 'zig-out/bin/aegis_nids.exe',
-    'source_commit': source_commit,
+    'source_commit': source_short,
     'date': generated_at,
     'production_modules': len(production_modules),
     'modules': modules,

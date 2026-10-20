@@ -4,7 +4,7 @@
 
 
 
-**HEAD:** `865217b431b917d447278ff11ba3dc66e0528e28` (working tree has uncommitted changes)
+**HEAD:** `dcb22a5a5b5a6f01f4b4106e3248e7f7b3df94b2` (build source commit — ADR-0008)
 
 **BRANCH:** `main`
 
@@ -351,7 +351,7 @@ Previous phases:
   cutover 2026-10-19 20:07 deployed daemon `dcb22a5` (sha256 `f223dcce…`) — live gate
   hard-closed (gate_source 'closed', detection-only), gate-check + v6 live verify PASS.
   Remaining queue: G2 lab campaign (RB-012→013), DEPLOY-120 drill, RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (partial),
-  RB-016/017, G4 signing, external review, CI push decision.
+  RB-016/017, G4 signing, external review, CI first push (truth semantics fixed 2026-10-20; push approval pending).
   Evidence: EVI CUTOVER-DCB22A5 (E5) + entries V6-QUEUE-DROP..REL-CLOSURE.
 
 - RB-021 host-only lab proof (2026-10-20): PARTIAL - capture path + 5/8 network rules
@@ -366,6 +366,12 @@ Previous phases:
   frames; AegisWfp Running/GENERIC_READ; GET_STATS/READ_EVENTS only; no BLOCK_FLOW/UNBLOCK_FLOW;
   gate closed; host_effect none. Transport-only, not rule-match/L7/host-effect.
   Evidence: EVI RB-018-HOSTONLY-20261020 (E5); kit admin-evidence/lab-qualification-20261020/rb018/ (gitignored).
+
+- CI truth source-commit semantics (2026-10-20): IMPLEMENTED - ADR-0008; truth.py keys on the last
+  source/build commit (dcb22a5), verifies ancestry + clean source paths; maps/AI_CONTEXT/EVI/
+  build_manifest/runtime_manifest carry dcb22a5; clean-checkout truth PASS + release PASS;
+  full suite 963P/2S/27 subtests (exit 0); tests pinned at tests/release/test_truth_source_commit.py; EVI CI-TRUTH-SOURCE-COMMIT (E2). First
+  hosted CI push still operator (no push).
 
 
 
