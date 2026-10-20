@@ -276,6 +276,12 @@ pub var g_ac_mutex: std.Thread.Mutex = .{};
 pub var g_l4_rules: [l4.MAX_RULES]l4.Rule = l4.empty_rules;
 pub var g_l4_rule_count: usize = 0;
 
+// L4 rate/window state. One consumer observes; g_l4_rate_mutex serializes
+// that observer with rules.reload, which resets the table when the catalog
+// changes (a threshold from an old rule must never suppress a new rule).
+pub var g_l4_rate: l4.RateTracker = .{};
+pub var g_l4_rate_mutex: std.Thread.Mutex = .{};
+
 // PATCH-29/30/31: Reliability globals (initialized by daemon.zig)
 pub var g_wd: watchdog.ReliabilityWatchdog = undefined;
 pub var g_fi: fault.FaultInjector = undefined;

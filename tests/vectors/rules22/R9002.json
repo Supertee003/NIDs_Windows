@@ -3,6 +3,9 @@
   "rule_id": "R9002",
   "name": "ICMP Flood (DoS)",
   "layer": "L4",
+  "rate_mode": "count",
+  "rate_threshold": 50,
+  "rate_window_ms": 1000,
   "severity": "High",
   "action": "Drop",
   "patterns": {

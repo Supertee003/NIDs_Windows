@@ -70,7 +70,8 @@ fn processEvent(
     // mutex hold; readers snapshot under the same mutex.
     var t_prev = std.time.nanoTimestamp();
     // CTRL-002: real liveness timestamp for the health contract (§4.1).
-    state.g_last_event_ms.store(std.time.milliTimestamp(), .monotonic);
+    const now_ms = std.time.milliTimestamp();
+    state.g_last_event_ms.store(now_ms, .monotonic);
 
     // Create security decision trace (128 bytes on stack)
     const trace_id = state.g_trace_id.fetchAdd(1, .monotonic) + 1;
@@ -152,13 +153,29 @@ fn processEvent(
     // cannot accidentally match their zero-filled metadata.
     if (matched_rule_id == 0 and l4_count > 0 and ev.source == .capture_npcap) {
         for (l4_rules[0..l4_count]) |rule| {
-            if (l4.matches(&rule, ev.src_port, ev.dst_port, ev.protocol, qe.tcp_flags)) {
-                matched_rule_id = rule.rule_id;
-                ev.rule_id = matched_rule_id;
-                ev.kind = .signature_match;
-                _ = state.g_pipeline_detections.fetchAdd(1, .monotonic);
-                break;
+            if (!l4.matches(&rule, ev.src_port, ev.dst_port, ev.protocol, qe.tcp_flags)) continue;
+
+            // Rate/window rules emit one detection per source/window at the
+            // threshold. Per-packet rules skip this branch and retain the
+            // pre-existing every-matching-packet behavior.
+            if (rule.rate_mode != .none) {
+                state.g_l4_rate_mutex.lock();
+                const rate_hit = state.g_l4_rate.observe(
+                    &rule,
+                    src_ip_bytes,
+                    is_ipv6,
+                    ev.dst_port,
+                    now_ms,
+                );
+                state.g_l4_rate_mutex.unlock();
+                if (!rate_hit) continue;
             }
+
+            matched_rule_id = rule.rule_id;
+            ev.rule_id = matched_rule_id;
+            ev.kind = .signature_match;
+            _ = state.g_pipeline_detections.fetchAdd(1, .monotonic);
+            break;
         }
     }
     t_prev = markStage(.flow_to_detection, t_prev);

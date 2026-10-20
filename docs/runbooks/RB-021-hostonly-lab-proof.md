@@ -352,11 +352,38 @@ Per-rule table, one row each: script/command ran (rc 0) AND a detection
 row with the attacker IP exists (events --src-ip) AND the rule's own
 bytes/flags explain the match. The pre-fix 2026-10-20 record has 5/8
 network rule IDs from real traffic (R9064 conditional) and the three L4
-rule IDs token-only. The L4 close-out record above now has real
-per-packet rows for R9002/R9006/R9007 (305/200/200) plus paired ACK
-negative/positive controls; R9064 remains conditional. The L4 rows are
-per-packet predicate matches, not rate/scan/flood verdicts; the
-rate/window gap is `RB-021-L4-RATE`. 15/15 host rules from canaries.
+rule IDs token-only. The L4 close-out record above has real per-packet
+rows for R9002/R9006/R9007 (305/200/200) plus paired ACK
+negative/positive controls; R9064 remains conditional. Those 706 rows
+were produced by the pre-rate source `fd7b424` and are historical
+per-packet evidence, not rate/scan/flood verdicts. 15/15 host rules from
+canaries.
+
+## Rate/window semantics (2026-10-20)
+
+The current source adds an opt-in rate block to the L4 matcher; the
+canonical `configs/Rules.json` opts in for two rules:
+
+| Rule | State | Threshold | Window | Emission |
+|---|---|---:|---:|---|
+| `R9002` ICMP Flood | per source packet count | 50 ICMP | 1000 ms | first packet reaching 50; one per window |
+| `R9006` TCP SYN Stealth Scan | per source distinct destination ports | 20 ports | 10000 ms | first packet reaching 20; one per window |
+| `R9007` TCP XMAS | per-packet exact `FIN|PSH|URG` | n/a | n/a | every matching packet |
+
+The state is keyed by rule id + full source address + IPv4/IPv6 identity;
+the table is fixed-size (256 entries) and reset on a rules reload. A
+normal single handshake is a valid SYN predicate but does not reach the
+scan threshold; normal pings below 50/1000 ms do not fire. The negative
+and positive controls are Zig unit tests in
+`src/pipeline/l4_matcher.zig` and the configuration pins are
+`tests/security/test_l4_rate_config.py` (E2).
+
+This closes the code-semantics gap at E2. It does **not** prove live
+rate behavior: the deployed artifact `1593260B...` predates this source,
+so the 2026-10-20 lab rows and the live service remain pre-rate. A live
+E5 re-proof (normal handshake/ping below threshold, scan/flood above
+threshold, one row per window) is tracked separately as
+`DEPLOY-130-L4-RATE-E5`; do not claim it from these unit tests.
 `forensics verify` stays ok + verified true throughout.
 
 Attribution rules (2026-10-17 findings): count a row as wire-fire proof
@@ -386,12 +413,14 @@ host effect was ever applied, so no effect needs undoing.
   cooperation.
 - `--intense` floods are bounded (3x); do not loop scripts -- the
   queue sheds overload and the test becomes a DoS of your own NIDS.
-- L4 rules are per-packet predicates, not rate/window detectors: R9006
-  matches any exact SYN (normal handshakes included), R9002 any ICMP,
-  R9007 exact FIN+PSH+URG. No rate/scan/flood state exists; tracked as
-  `RB-021-L4-RATE`.
+- The 2026-10-20 L4 rows were per-packet: R9006 matched any exact SYN
+  (normal handshakes included), R9002 any ICMP, R9007 exact FIN+PSH+URG.
+  Current source adds the rate/window state above; the deployed artifact
+  does not yet contain it. Do not describe the historical 305/200/200
+  rows as scan/flood verdicts.
 - A 100-port nmap scan can produce 200 matching packets (retry or
-  duplicate capture); count packets, not ports.
+  duplicate capture); the old per-packet rows count packets, not ports.
+  The current R9006 state counts distinct destination ports instead.
 - The WFP proof slot holds one filter; concurrent BLOCK proofs
   serialize, they do not parallelize.
 - Direct VMnet1 capture stores every frame as a >=1500-byte window

@@ -342,6 +342,9 @@ pub fn reloadRules() ReloadReport {
         state.g_active_ac = heap_ac;
         state.g_l4_rules = l4_rules;
         state.g_l4_rule_count = l4_count;
+        state.g_l4_rate_mutex.lock();
+        state.g_l4_rate.reset();
+        state.g_l4_rate_mutex.unlock();
         state.g_rules_loaded.store(report.loaded, .monotonic);
         state.g_ac_mutex.unlock();
 
@@ -449,6 +452,9 @@ pub fn loadRulesInto(ac: *sig.AhoCorasick, bytes: []const u8, rules_path: []cons
         state.g_ac_mutex.lock();
         state.g_l4_rules = l4_rules;
         state.g_l4_rule_count = l4_count;
+        state.g_l4_rate_mutex.lock();
+        state.g_l4_rate.reset();
+        state.g_l4_rate_mutex.unlock();
         state.g_ac_mutex.unlock();
     }
     if (report.totalSkipped() > 0) {

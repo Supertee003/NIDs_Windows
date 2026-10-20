@@ -350,7 +350,7 @@ Previous phases:
   DEADCODE-QUARANTINE, CI-GAPS, RELEASE-TOOLING, LEFTOVER-SWEEP, REL-CLOSURE; operator
   cutover 2026-10-19 20:07 deployed daemon `dcb22a5` (sha256 `f223dcce…`) — live gate
   hard-closed (gate_source 'closed', detection-only), gate-check + v6 live verify PASS.
-  Remaining queue: G2 lab campaign (RB-012→013), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate semantics open),
+  Remaining queue: G2 lab campaign (RB-012→013), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window code E2 2026-10-20, live E5 pending),
   RB-016/017, G4 signing, external review, CI first push (truth semantics fixed 2026-10-20; push approval pending).
   Evidence: EVI CUTOVER-DCB22A5 (E5) + entries V6-QUEUE-DROP..REL-CLOSURE.
 
@@ -360,10 +360,23 @@ Previous phases:
   .10 rows: R9006 200, R9007 200, R9002 305 (5 preflight + 300 hping3), R0088 1
   (ACK capture-positive control); L4-token ACK negative controls were 0 rows
   (5->5 and 706->706). All rows observed, host_effect_confirmed=false, blocks 0,
-  gate closed; restore PID 7420 pin absent. Not rate/scan detection: R9006 any
-  SYN, R9002 any ICMP, R9007 exact 0x29; gap RB-021-L4-RATE open.
+  gate closed; restore PID 7420 pin absent. Those 706 rows were per-packet:
+  R9006 any exact SYN, R9002 any ICMP, R9007 exact 0x29.
   Evidence: EVI RB-021-L4-20261020 (E5); kit
   admin-evidence/lab-session-20261020-l4/ (gitignored).
+
+- RB-021 L4 rate/window semantics (2026-10-20): IMPLEMENTED at E2 - opt-in
+  rate blocks in configs/Rules.json: R9002 count >=50 ICMP/source/1000 ms,
+  R9006 >=20 distinct destination ports/source/10000 ms, one alert per
+  window; R9007 remains exact FIN|PSH|URG per-packet. State is keyed by
+  rule+full source+IPv4/IPv6, fixed 256-entry table, reset on rules reload.
+  Zig tests cover positive thresholds, duplicate-port suppression, source
+  separation, reset, and negative controls (single handshake, 49 ICMP,
+  19 distinct ports). Gap RB-021-L4-RATE CLOSED at E2; live E5 proof of
+  rate behavior is NOT performed: deployed artifact 1593260B... predates
+  this source. Child gap DEPLOY-130-L4-RATE-E5 remains OPEN.
+  Evidence: EVI RB-021-L4-RATE-E2-20261020 (E2); tests in
+  src/pipeline/l4_matcher.zig + tests/security/test_l4_rate_config.py.
 
 - RB-018 host-only WFP observe-only (2026-10-20): PASS - L4_HOSTONLY_TRANSPORT_PASS at 865217b;
   live host VMnet1 .1 + Kali .10:58874 -> :49152; 4 expected-flow frames in 10 complete 48-byte

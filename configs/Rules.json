@@ -86,7 +86,10 @@
       "target_ports": [],
       "target_protocols": [
         "ICMP"
-      ]
+      ],
+      "rate_mode": "count",
+      "rate_threshold": 50,
+      "rate_window_ms": 1000
     },
     {
       "rule_id": "R9006",
@@ -101,7 +104,10 @@
       "target_ports": [],
       "target_protocols": [
         "TCP"
-      ]
+      ],
+      "rate_mode": "distinct_dst_ports",
+      "rate_threshold": 20,
+      "rate_window_ms": 10000
     },
     {
       "rule_id": "R9007",

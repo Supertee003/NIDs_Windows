@@ -3,6 +3,9 @@
   "rule_id": "R9006",
   "name": "TCP SYN Stealth Scan",
   "layer": "L4",
+  "rate_mode": "distinct_dst_ports",
+  "rate_threshold": 20,
+  "rate_window_ms": 10000,
   "severity": "Medium",
   "action": "Alert",
   "patterns": {
