@@ -350,7 +350,7 @@ Previous phases:
   DEADCODE-QUARANTINE, CI-GAPS, RELEASE-TOOLING, LEFTOVER-SWEEP, REL-CLOSURE; operator
   cutover 2026-10-19 20:07 deployed daemon `dcb22a5` (sha256 `f223dcce…`) — live gate
   hard-closed (gate_source 'closed', detection-only), gate-check + v6 live verify PASS.
-  Remaining queue: G2 lab campaign (RB-012→013), DEPLOY-120 drill (E5 attempt FAILED duplicate D:\; contained; PATHFIX E3 PASS; E5 rerun pending), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate semantics open),
+  Remaining queue: G2 lab campaign (RB-012→013), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate semantics open),
   RB-016/017, G4 signing, external review, CI first push (truth semantics fixed 2026-10-20; push approval pending).
   Evidence: EVI CUTOVER-DCB22A5 (E5) + entries V6-QUEUE-DROP..REL-CLOSURE.
 
@@ -371,17 +371,20 @@ Previous phases:
   gate closed; host_effect none. Transport-only, not rule-match/L7/host-effect.
   Evidence: EVI RB-018-HOSTONLY-20261020 (E5); kit admin-evidence/lab-qualification-20261020/rb018/ (gitignored).
 
-- DEPLOY-120 installer refresh + path fix (2026-10-20): E3 PASS - installer rebuilt at build source fd7b424 /
-  records 08f45e5; payload daemon 47AB8085 == live (no downgrade); fixed installer proof 62/62 gates;
-  ETW/FIM helpers known upgrades. First E5 attempt (pre-guard E80352D7) FAILED: it created a duplicate
-  D:\Program Files\AEGIS NIDS while AegisNids stayed C:\; verifier 12/21. Containment PASS: D:\ removed,
-  C:\ service + AegisWfp/AegisMinifilter RUNNING, gate closed, readiness ready. DEPLOY-120-PATHFIX:
-  .onInit adopts the existing AegisNids ImagePath, Install aborts on a directory mismatch before stop/copy,
-  Uninstall refuses a non-matching service path; fixed installer 65204BFF... x 7,424,088 B. E5 remains OPEN
-  pending the operator fixed-artifact install -> verify 22/22 -> uninstall -> reinstall. Old 10/19 kit and
-  pre-guard E803 are historical; do not install.
+- DEPLOY-120 installer E5 (2026-10-20): PASS at 15:30:23, artifact 1593260B... x 7,424,345 B,
+  proof 66/66. Final drill: upgrade install 22/22 -> uninstall removed all three services (1060),
+  both System32 driver files, and both SysWOW64 stale copies, configs preserved 444F8956... ->
+  reinstall C:\ returned 22/22, gate closed, readiness ready. E5_DRILL_OK recorded in
+  admin-evidence/deploy120-uninstallfix-20261020/drill-uninstall-reinstall-20261020.log.
+  Two defects were exposed and fixed en route: (1) the pre-guard E80352D7 artifact created a
+  duplicate D:\ runtime (contained); DEPLOY-120-PATHFIX adopted the existing C:\ service path and
+  guarded Uninstall; (2) the fixed uninstaller still left System32 drivers because 32-bit NSIS
+  redirected $SYSDIR file I/O to SysWOW64. Commit 4dc9c09 uses $WINDIR\Sysnative for driver
+  copy/delete/signature, keeps SCM ImagePath on literal System32, and cleans stale SysWOW64 copies.
+  Old 10/19 kit, pre-guard E803, and the intermediate 65204BFF/D9CBB293 artifacts are historical.
   Evidence: EVI DEPLOY-120-REFRESH-20261020 (E3), DEPLOY-120-PATHFIX-20261020 (E3),
-  DEPLOY-120-E5-ATTEMPT-20261020 (E5 FAIL), gap DEPLOY-120-E5 OPEN; kit gitignored.
+  DEPLOY-120-E5-ATTEMPT-20261020 (E5 FAIL), DEPLOY-120-E5-20261020 (E5 PASS);
+  gap DEPLOY-120-E5 CLOSED; kit gitignored.
 
 - CI truth source-commit semantics (2026-10-20): IMPLEMENTED - ADR-0008; truth.py keys on the last
   source/build commit (current fd7b424), verifies ancestry + clean source paths; maps/AI_CONTEXT/EVI/

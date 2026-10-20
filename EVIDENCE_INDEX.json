@@ -1404,6 +1404,43 @@
     "admin-evidence/deploy120-refresh-20261020/drill-before-process.txt"
    ],
    "files_changed": []
+  },
+  {
+   "id": "DEPLOY-120-E5-20261020",
+   "title": "DEPLOY-120 E5 PASS: fixed installer/upgrade -> 22/22 -> uninstall removed all services + System32/SysWOW64 driver copies -> reinstall -> 22/22",
+   "level": "E5",
+   "component": "release+packaging+installer+windows-host",
+   "flow_id": "DATA-001",
+   "head_sha": "fd7b424",
+   "timestamp": "2026-10-20",
+   "result": "PASS",
+   "command": "Operator (elevated): cd D:\\NIDs_Windows\\admin-evidence\\deploy120-uninstallfix-20261020; .\\E5-UNINSTALL-REINSTALL.ps1 at 15:29. Phase 0 installed artifact 1593260B... and ran deploy120-verify-live.ps1; phase 1 ran the fixed uninstaller; phase 2 reinstalled the same artifact; final live verifier + aegisctl enforce status/readiness. Agent read-only checks of services, D:\\, System32/SysWOW64 paths, gate, readiness. No push.",
+   "expected": "Upgrade the live C:\\ install with artifact 1593260B... and return 22/22 with no stale SysWOW64 copies; uninstall removes AegisNids/AegisWfp/AegisMinifilter (services 1060) and both System32 + SysWOW64 driver copies while preserving Rules.json; reinstall returns C:\\, 22/22, gate closed, readiness ready. E5 is not pass on the phase-0 verifier alone.",
+   "actual": "PASS at 15:30:23. Phase 0 installer exit 0; newart_service_path C:\\Program Files\\AEGIS NIDS\\runtime\\aegis_nids.exe; config preserved 444F8956...; verifier 22/22; SysWOW64 wfp/fim absent. Phase 1 uninstaller exit 0; services AegisNids/AegisWfp/AegisMinifilter absent (1060); System32 aegis_wfp.sys and aegis_minifilter.sys absent; SysWOW64 copies absent; config preserved 444F8956... Phase 2 installer exit 0; D:\\ absent; path C:\\; config preserved; verifier 22/22; gate closed/detection-only; readiness ready (6 policies/23 rules). Final log: E5_DRILL_OK: uninstall -> 1060/False/configs preserved -> reinstall C:\\ -> verifier 22/22.",
+   "finding": "E5 closes after three 2026-10-20 attempts. The pre-guard E80352D7 installer created a duplicate D:\\ runtime (contained). The 65204BFF PATHFIX upgrade reached 22/22 but its uninstaller raced the unload and, more fundamentally, 32-bit NSIS redirected $SYSDIR file I/O to SysWOW64, so System32 drivers survived. Commit 4dc9c09 uses $WINDIR\\Sysnative for copy/delete/signature, keeps the SCM ImagePath on literal System32, and cleans stale SysWOW64 copies; proof 66/66. This is detection-only host verification: gate closed, host_effect false, no prevention/rate claim.",
+   "description": "Records close for E5. Evidence kit (gitignored): admin-evidence/deploy120-uninstallfix-20261020/ with aegis_setup.exe 1593260B... x 7,424,345 B, deploy120-result.json (66/66), deploy120-run.log, drill-uninstall-reinstall-20261020.log, drill-newart-install-verify.txt (22/22), drill-after-reinstall-verify.txt (22/22), enforce/readiness captures, E5-PARTIAL-UNINSTALL-20261020.md (historical failure), README.md, E5-PASS-20261020.md. No source/runtime change in this records commit; source remains fd7b424.",
+   "files_verified": [
+    "admin-evidence/deploy120-uninstallfix-20261020/aegis_setup.exe",
+    "admin-evidence/deploy120-uninstallfix-20261020/deploy120-result.json",
+    "admin-evidence/deploy120-uninstallfix-20261020/deploy120-run.log",
+    "admin-evidence/deploy120-uninstallfix-20261020/drill-uninstall-reinstall-20261020.log",
+    "admin-evidence/deploy120-uninstallfix-20261020/drill-newart-install-verify.txt",
+    "admin-evidence/deploy120-uninstallfix-20261020/drill-after-reinstall-verify.txt",
+    "admin-evidence/deploy120-uninstallfix-20261020/drill-after-reinstall-enforce.txt",
+    "admin-evidence/deploy120-uninstallfix-20261020/drill-after-reinstall-readiness.txt",
+    "admin-evidence/deploy120-uninstallfix-20261020/E5-PASS-20261020.md",
+    "C:\\Program Files\\AEGIS NIDS\\configs\\Rules.json"
+   ],
+   "files_changed": [
+    "EVIDENCE_INDEX.json",
+    "AI_CONTEXT.md"
+   ],
+   "tests": [
+    "deploy120-proof.ps1: PASS 66/66 gates; artifact 1593260B6D5CB4179C70FE80773728AA1CBDD8A171FDBF3D6878E0FD5BDBEA42 x 7,424,345 B; source fd7b424",
+    "tests/release/test_installer_template.py: 23/23 pass (Sysnative copy/delete/signature + System32 SCM path + SysWOW64 cleanup + wait/retry pins)",
+    "full pytest: 969 passed, 2 skipped, 27 subtests; release_engineering --verify 612/612; truth TRUTH_VALID",
+    "operator E5 full drill: phase 0 22/22; uninstall 1060/drivers False/configs preserved; reinstall 22/22; SysWOW64 absent at all three phases; E5_DRILL_OK"
+   ]
   }
  ],
  "known_gaps": [
@@ -6561,8 +6598,8 @@
    "id": "DEPLOY-120-E5",
    "severity": "P1",
    "title": "DEPLOY-120 E5 host drill after path fix: upgrade the live C:\\ install with the fixed installer, pass LIVE_VERIFY_OK (22/22), then uninstall/reinstall",
-   "description": "The first 2026-10-20 E5 attempt used the pre-guard installer and created a duplicate D:\\Program Files\\AEGIS NIDS; containment removed D:\\ only and the C:\\ service/drivers stayed running. DEPLOY-120-PATHFIX now adopts the existing AegisNids path, aborts on a directory mismatch before stop/copy, and guards the uninstaller; E3 proof is 62/62. The E5 host drill is still unrun and requires operator elevation.",
-   "status": "OPEN",
+   "description": "CLOSED 2026-10-20. The first E5 attempt used the pre-guard E80352D7 installer and created a duplicate D:\\Program Files\\AEGIS NIDS; containment removed D:\\ only. DEPLOY-120-PATHFIX made the installer adopt the registered C:\\ path and guard the uninstaller. The next teardown exposed a second defect: 32-bit NSIS redirected $SYSDIR file I/O to SysWOW64, leaving the real System32 driver copies behind. DEPLOY-120-UNINSTALLFIX2 uses $WINDIR\\Sysnative for driver copy/delete/signature, keeps SCM ImagePath on System32, and cleans stale SysWOW64 copies. Final E5 full drill PASS at 15:30:23 with artifact 1593260B... (proof 66/66): upgrade 22/22 -> uninstall 1060/System32 false/SysWOW64 false/configs preserved -> reinstall C:\\ 22/22; gate closed and readiness ready.",
+   "status": "CLOSED",
    "level": "E5",
    "component": "release+packaging+installer",
    "required_evidence": [
@@ -6570,8 +6607,10 @@
     "deploy120-verify-live.ps1 returns LIVE_VERIFY_OK (22/22) after the upgrade; gate closed and readiness ready",
     "uninstall removes the C:\\ service/drivers and preserves configs; reinstall returns 22/22"
    ],
-   "evidence": "DEPLOY-120-PATHFIX-20261020 (E3 PASS, fixed installer 65204BFF...); DEPLOY-120-E5-ATTEMPT-20261020 (E5 FAIL, duplicate D:\\); kit E5-ATTEMPT-FAILED.md",
-   "opened_at": "2026-10-20"
+   "evidence": "DEPLOY-120-E5-20261020 (E5 PASS, artifact 1593260B... proof 66/66, E5_DRILL_OK 2026-10-20 15:30:23); DEPLOY-120-E5-ATTEMPT-20261020 (E5 FAIL, duplicate D:\\); DEPLOY-120-PATHFIX-20261020 (E3 PASS, 65204BFF...); kit E5-PARTIAL-UNINSTALL-20261020.md (32-bit redirection finding); E5-ATTEMPT-FAILED.md",
+   "opened_at": "2026-10-20",
+   "closed_at": "2026-10-20",
+   "closure_evidence": "admin-evidence/deploy120-uninstallfix-20261020/drill-uninstall-reinstall-20261020.log: services 1060; System32 and SysWOW64 driver files False; config 444F8956... preserved; reinstall C:\\; LIVE_VERIFY_OK (22/22); gate closed; readiness ready; E5_DRILL_OK."
   }
  ],
  "evidence_level_summary": {
@@ -6580,7 +6619,7 @@
   "E2_count": 128,
   "E3_count": 12,
   "E4_count": 15,
-  "E5_count": 94,
+  "E5_count": 95,
   "E6_count": 0,
   "E7_count": 1
  }
