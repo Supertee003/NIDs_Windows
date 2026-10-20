@@ -396,7 +396,9 @@ Previous phases:
   built at 2026-10-20 17:20:01; the file was replaced but the old process
   image still emits no TCP flags. A quiet 20-distinct-port control at
   17:58:47 saw 20 ports on the wire, +0 queue drops, but 0 R9006 rows;
-  R9002 fired exactly once. The first 17:56 control had +1,316 queue drops
+  R9002 fired exactly once. Five exact FIN|PSH|URG frames were also
+  captured 5/5 on the wire with 0 R9007 rows (pre-restart baseline). The
+  first 17:56 control had +1,316 queue drops
   and is not used as flag evidence. New gap DEPLOY-131-NOSE-STALE-PROCESS
   (P1) tracks the process-lifecycle defect. There is NO live R9006/R9007
   result; RB-021 stays OPEN until the operator restarts Nose and the
@@ -414,6 +416,7 @@ Previous phases:
   DEPLOY-131-NOSE-FLAGS-PKG-20261020 (E3 packaging, installed);
   EVI DEPLOY-131-INSTALL-20261020 (E5 install PASS 22/22);
   EVI RB-021-NOSE-FLAGS-LIVE-ATTEMPT-20261020 (E5 FAIL, stale Nose);
+  EVI RB-021-R9007-PRE-RESTART-20261020 (E5 FAIL baseline, 5/5 wire, 0 rows);
   EVI QUEUE-PRESSURE-OBS-20261020 (E5 observation, zero idle delta);
   tests in
   src/pipeline/l4_matcher.zig + tests/security/test_l4_rate_config.py;

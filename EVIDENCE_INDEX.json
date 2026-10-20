@@ -1783,6 +1783,34 @@
    ],
    "host_effect_confirmed": false,
    "prevention_gate": "closed"
+  },
+  {
+   "id": "RB-021-R9007-PRE-RESTART-20261020",
+   "title": "R9007 exact XMAS baseline on the stale Nose process: 5/5 on wire, 0 rows (E5 FAIL)",
+   "level": "E5",
+   "component": "capture/go-nose",
+   "flow_id": "DATA-001",
+   "head_sha": "de574b6",
+   "timestamp": "2026-10-20",
+   "result": "FAIL",
+   "command": "send-xmas.py --count 5 --dst-port 443 --src-port-base 54000; independent dumpcap -i 6; tshark tcp.flags==0x29; read C:\\Windows\\System32\\logs\\aegis_core.ndjson",
+   "expected": "Five exact FIN|PSH|URG (0x29) frames on the TEST-NET wire should produce the specified R9007 rows once the patched Nose process is live.",
+   "actual": "FAIL (expected while stale). send-xmas.py emitted 5 frames from 192.168.1.39:54000-54004 to 192.0.2.1:443 with flags 0x29; independent dumpcap captured 5/5 with tcp.flags 0x0029; the NIDS produced 0 rows for src 192.168.1.39 since the send timestamp.",
+   "finding": "This is the pre-restart baseline for R9007. The running Nose PID 21568 (created 2026-10-15) cannot carry the flags lane. After the operator restarts Nose, repeat the same five-frame send and require five R9007 rows; only that post-restart result can support a live claim.",
+   "description": "Detection-only TEST-NET-1 traffic; no enforcement or host effect. The raw sender uses the installed Npcap wpcap.dll and requires no administrator privilege on this host; it refuses targets outside 192.0.2.0/24. The baseline is not an R9007 rule regression.",
+   "files_verified": [
+    "admin-evidence/rb021-nose-stale-20261020/r9007-pre-restart.txt",
+    "admin-evidence/rb021-nose-stale-20261020/r9007-pre-restart.pcapng",
+    "admin-evidence/deploy131-nose-flags-20261020/send-xmas.py"
+   ],
+   "files_changed": [],
+   "tests": [
+    "wire: 5/5 exact 0x29, source ports 54000-54004",
+    "NIDS: 0 R9007 rows (FAIL, stale Nose)",
+    "prevention_gate: closed; host_effect: false"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed"
   }
  ],
  "known_gaps": [
@@ -6955,9 +6983,10 @@
     "DONE (observation only, E5): 60s quiet live sample shows +20,008 pushed and +0 dropped/shed; cumulative 232,149 drops are startup/build-storm pressure, not idle loss. Controls must still record queue deltas.",
     "DONE 2026-10-20: DEPLOY-131 installed; LIVE_VERIFY_OK (22/22); source de574b6; daemon new. Install-only.",
     "OPEN: restart the supervised Nose process (PID 21568, created 2026-10-15) and verify the new process image before any R9006/R9007 claim.",
-    "OPEN: quiet canonical-path R9006/R9007 controls with zero new queue drops; host-generated TEST-NET remains partial until the isolated lab is restored."
+    "OPEN: quiet canonical-path R9006/R9007 controls with zero new queue drops; host-generated TEST-NET remains partial until the isolated lab is restored.",
+    "R9007 pre-restart baseline recorded; post-restart five-frame XMAS send must produce five rows."
    ],
-   "evidence": "EVI DEPLOY-130-L4-RATE-INSTALL-20261020 (E5 install); EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL); EVI RB-021-L4-RATE-E2-20261020; EVI DEPLOY-130-L4-RATE-PKG-20261020; gap RB-021-NOSE-FLAGS OPEN; admin-evidence/deploy130-l4-rate-20261020/postinstall-verify.txt and rate-e5-testnet-20261020-164841.txt; EVI RB-021-NOSE-FLAGS-E2-20261020 (E2 PASS at de574b6, source-only); EVI DEPLOY-131-NOSE-FLAGS-PKG-20261020 (E3 packaging; not installed); EVI QUEUE-PRESSURE-OBS-20261020 (E5 observation, zero idle delta); EVI DEPLOY-131-INSTALL-20261020 (E5 install PASS); EVI RB-021-NOSE-FLAGS-LIVE-ATTEMPT-20261020 (E5 FAIL, stale Nose); gap DEPLOY-131-NOSE-STALE-PROCESS OPEN"
+   "evidence": "EVI DEPLOY-130-L4-RATE-INSTALL-20261020 (E5 install); EVI DEPLOY-130-L4-RATE-E5-ATTEMPT-20261020 (E5 PARTIAL); EVI RB-021-L4-RATE-E2-20261020; EVI DEPLOY-130-L4-RATE-PKG-20261020; gap RB-021-NOSE-FLAGS OPEN; admin-evidence/deploy130-l4-rate-20261020/postinstall-verify.txt and rate-e5-testnet-20261020-164841.txt; EVI RB-021-NOSE-FLAGS-E2-20261020 (E2 PASS at de574b6, source-only); EVI DEPLOY-131-NOSE-FLAGS-PKG-20261020 (E3 packaging; not installed); EVI QUEUE-PRESSURE-OBS-20261020 (E5 observation, zero idle delta); EVI DEPLOY-131-INSTALL-20261020 (E5 install PASS); EVI RB-021-NOSE-FLAGS-LIVE-ATTEMPT-20261020 (E5 FAIL, stale Nose); gap DEPLOY-131-NOSE-STALE-PROCESS OPEN; EVI RB-021-R9007-PRE-RESTART-20261020 (E5 FAIL baseline)"
   },
   {
    "id": "DEPLOY-120-E5",
@@ -7007,9 +7036,10 @@
     "Post-restart proof: process name/PID/creation time, nose_connected=true, frames_read/submitted advancing, zero pipe errors/rejections.",
     "Quiet canonical-path R9006: one-port negative = 0 rows; >=20 distinct ports = exactly 1 row, with zero new queue drops.",
     "R9007 exact FIN|PSH|URG control: expected rows per matching packet; normal SYN does not match.",
-    "Verifier improvement or explicit process-image check so a stale process cannot pass as installed."
+    "Verifier improvement or explicit process-image check so a stale process cannot pass as installed.",
+    "R9007 pre-restart baseline is recorded (5/5 exact 0x29 on wire, 0 rows); repeat the same send after Nose restart and require 5 R9007 rows."
    ],
-   "evidence": "EVI RB-021-NOSE-FLAGS-LIVE-ATTEMPT-20261020 (E5 FAIL); EVI DEPLOY-131-INSTALL-20261020 (E5 install PASS); admin-evidence/rb021-nose-stale-20261020/processes.txt; admin-evidence/rb021-nose-stale-20261020/r9006-quiet-attempt.txt",
+   "evidence": "EVI RB-021-NOSE-FLAGS-LIVE-ATTEMPT-20261020 (E5 FAIL); EVI DEPLOY-131-INSTALL-20261020 (E5 install PASS); admin-evidence/rb021-nose-stale-20261020/processes.txt; admin-evidence/rb021-nose-stale-20261020/r9006-quiet-attempt.txt; EVI RB-021-R9007-PRE-RESTART-20261020 (E5 FAIL baseline, 5/5 wire / 0 rows)",
    "source_fix": "none; deployment restart required (source de574b6 is already in the file)"
   }
  ],
@@ -7019,7 +7049,7 @@
   "E2_count": 130,
   "E3_count": 14,
   "E4_count": 15,
-  "E5_count": 100,
+  "E5_count": 101,
   "E6_count": 0,
   "E7_count": 1
  }
