@@ -1,7 +1,7 @@
 {
  "head_sha": "de574b6bad6b2677afc5be754b9213d9335ccb8e",
  "created_at": "2026-09-24",
- "last_updated_at": "2026-10-20",
+ "last_updated_at": "2026-10-21",
  "generator_version": "3.0",
  "evidence_levels": {
   "E0": "No evidence",
@@ -1939,6 +1939,37 @@
     "L7 R0088 from 192.168.126.10 -> 192.168.126.20 = 1 row",
     "event_id 1496, enforcement_status=observed, host_effect_confirmed=false",
     "daemon PID 13108 created 17:54:49; no restart during the lab"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed"
+  },
+  {
+   "id": "DEPLOY-132-SCM-ENV-CACHE-20261020",
+   "title": "Service restart does not clear the VMnet1 lab pin; the SCM cached environment still supplies AEGIS_DAEMON_IFACE (E5 FAIL clear attempt)",
+   "level": "E5",
+   "component": "deployment/runtime-config",
+   "flow_id": "DATA-001",
+   "head_sha": "de574b6",
+   "timestamp": "2026-10-20",
+   "result": "FAIL",
+   "command": "elevated powershell -NoProfile -ExecutionPolicy Bypass -File admin-evidence/lab-rate-e5-20261020/clear-daemon-interface-drift.ps1; elevated powershell -NoProfile -ExecutionPolicy Bypass -File admin-evidence/lab-rate-e5-20261020/dump-daemon-env.ps1",
+   "expected": "After sc stop/start with the machine registry AEGIS_DAEMON_IFACE absent, the new daemon PID should have no AEGIS_DAEMON_IFACE in its process environment; a Kali .10 -> host .1 L7 probe should produce 0 R0088 rows; Nose should reconnect; the verifier should be 24/24.",
+   "actual": "FAIL. The restart produced daemon PID 2772 (old 13108) at 2026-10-20 21:24:46; registry pin absent; Nose reconnected as PID 3632; readiness ready; gate closed; verifier LIVE_VERIFY_OK (24/24). The Kali .10 -> host .1 hping3 ACK with payload ../../etc/passwd produced exactly one R0088 (4254503461) row (event_id 1, payload_len 74, observed, host_effect_confirmed=false), so the direct path was still active. A read-only PEB dump of PID 2772 showed AEGIS_DAEMON_IFACE=\\Device\\NPF_{CE375996-106D-46F7-A67C-0168EAE8C96F} (VMnet1); Nose PID 3632 had no AEGIS_DAEMON_IFACE; services.exe is a protected process and its environment could not be opened even elevated. The machine and service-specific Environment registry values are absent. 9/10 clear assertions passed; the only failure was direct_path_off_r0088_zero.",
+   "finding": "The pin is cached in the service control manager process environment, not in the current registry. A service restart alone is insufficient. The rate lab remains valid for the running pinned process, but DEPLOY-132 stays OPEN until a host reboot rebuilds the SCM environment. No enforcement, no host effect; gate closed. R0088 alone is not exclusive to direct capture because Go Nose has its own payload signature classifier, but Nose is pinned to Wi-Fi and has no daemon-iface pin, while the daemon environment dump proves the VMnet1 pin.",
+   "description": "Clear attempt for DEPLOY-132. The first attempt failed before any restart because the Win11 victim .20 was off; the second used the NIDS host .1 as the probe target and restarted AegisNids. The negative probe still hit, and the daemon environment dump identified the SCM cache. Do not rerun the clear script expecting a different result before the host reboot; the clear script is valid again only after the SCM environment is rebuilt.",
+   "files_verified": [
+    "admin-evidence/lab-rate-e5-20261020/clear-drift-20261020-212433/clear.log",
+    "admin-evidence/lab-rate-e5-20261020/clear-drift-20261020-212433/probe-rows.json",
+    "admin-evidence/lab-rate-e5-20261020/clear-drift-20261020-212433/daemon-env-dump.txt",
+    "admin-evidence/lab-rate-e5-20261020/clear-drift-20261020-212433/postrestart-verify.txt"
+   ],
+   "files_changed": [],
+   "tests": [
+    "registry AEGIS_DAEMON_IFACE=absent",
+    "daemon PID 13108 -> 2772; Nose PID 3632 reconnected",
+    "Kali .10 -> host .1 R0088 = 1 row (expected 0)",
+    "daemon PID 2772 env: AEGIS_DAEMON_IFACE=\\Device\\NPF_{CE375996-...}; Nose env: absent",
+    "verifier LIVE_VERIFY_OK (24/24); gate closed; 9/10 clear assertions"
    ],
    "host_effect_confirmed": false,
    "prevention_gate": "closed"
@@ -7178,16 +7209,17 @@
    "id": "DEPLOY-132-DAEMON-IFACE-ENV-STALE",
    "severity": "P3",
    "title": "Daemon process retains VMnet1 direct capture while registry AEGIS_DAEMON_IFACE is absent",
-   "description": "The running daemon PID 13108 (created 2026-10-20 17:54:49) still has the direct Zig Npcap path active on VMnet1 even though AEGIS_DAEMON_IFACE is absent from the machine environment. The L7 probe ../../etc/passwd from Kali .10 -> Win11 .20 produced R0088 on the live process, proving full-packet direct capture; Nose-pipe frames cannot carry payload. Behavior is consistent with a startup-time pin retained in the process environment after the registry value was removed; the environment block was not directly readable from the medium-integrity token. A service restart will read the absent value and disable the direct path. Detection-only; gate closed; no host effect; direct VMnet1 traffic is disjoint from the Wi-Fi Nose path in this state, but the live process is not in the configuration the registry says.",
+   "description": "The service restart on 2026-10-20 21:24 created daemon PID 2772, but its process environment still contained AEGIS_DAEMON_IFACE=\\Device\\NPF_{CE375996-106D-46F7-A67C-0168EAE8C96F} even though the machine registry value and the service-specific Environment value are both absent. The pin is cached in the service control manager environment block; a service restart is insufficient. The Kali .10 -> host .1 L7 probe produced one R0088 row on the restarted process, and the read-only PEB dump confirmed the daemon pin while Nose had no pin and remained on the Wi-Fi capture device. Detection-only; gate closed; no host effect. A host reboot (or equivalent SCM environment rebuild) is required. Note: Go Nose has its own payload signature classifier, so an R0088 row alone is not exclusive to the direct path; the attribution here rests on the disjoint Wi-Fi Nose interface and the direct daemon environment dump.",
    "status": "OPEN",
    "found_at": "2026-10-20",
    "required_evidence": [
     "DONE 2026-10-20: registry AEGIS_DAEMON_IFACE=absent while daemon PID 13108 direct-captured VMnet1 (L7 R0088, event_id 1496, observed/host_effect false).",
-    "OPEN: operator restart AegisNids with the registry pin absent; verify a new daemon PID and direct path disabled (VMnet1 L7 probe yields 0 R0088) while Nose remains connected.",
-    "OPEN: run the DEPLOY-131 verifier 24/24 after the restart and confirm no new .10 rows from the probe; then close or explicitly accept lab mode."
+    "DONE 2026-10-20: service restart produced PID 2772 with AEGIS_DAEMON_IFACE=VMnet1 in its process env while registry/service Environment were absent; R0088=1; verifier 24/24. EVI DEPLOY-132-SCM-ENV-CACHE-20261020.",
+    "DONE 2026-10-20: Nose environment had no AEGIS_DAEMON_IFACE and Nose stayed on the Wi-Fi capture device; the VMnet1 R0088 row is not a Nose signature row.",
+    "OPEN: host reboot at the operator maintenance window (SCM environment rebuild); after reboot verify the daemon env has no AEGIS_DAEMON_IFACE, the VMnet1 L7 probe yields 0 R0088, Nose reconnects, and the verifier is 24/24; then close DEPLOY-132."
    ],
-   "evidence": "EVI DEPLOY-132-DAEMON-IFACE-ENV-DRIFT-20261020 (E5 FAIL invariant); admin-evidence/lab-rate-e5-20261020/run-nopin-20261020-210026/capture-path/probe-l7-path-rows.json",
-   "source_fix": "none; operator service restart with pin absent"
+   "evidence": "EVI DEPLOY-132-DAEMON-IFACE-ENV-DRIFT-20261020 (E5 FAIL invariant); EVI DEPLOY-132-SCM-ENV-CACHE-20261020 (E5 FAIL clear attempt, daemon env dump); admin-evidence/lab-rate-e5-20261020/clear-drift-20261020-212433/",
+   "source_fix": "none in source; operator host reboot required to rebuild the SCM environment block"
   }
  ],
  "evidence_level_summary": {
@@ -7196,7 +7228,7 @@
   "E2_count": 130,
   "E3_count": 14,
   "E4_count": 15,
-  "E5_count": 105,
+  "E5_count": 106,
   "E6_count": 0,
   "E7_count": 1
  }

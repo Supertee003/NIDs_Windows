@@ -447,20 +447,32 @@ returned `LIVE_VERIFY_OK (24/24)`. Gap
 Capture-path caveat: the current daemon process still had the direct Zig
 Npcap VMnet1 path active although registry `AEGIS_DAEMON_IFACE` was
 absent. The L7 probe `../../etc/passwd` from Kali `.10` -> Win11 `.20`
-produced R0088 on the live process, proving full-packet direct capture
-(Nose-pipe frames are metadata-only). No pin was set/removed and no
-service was restarted. Behavior is consistent with a startup-time lab
-pin retained in the process environment from its 17:54:49 creation; the
-environment block was not directly readable from the medium-integrity
-token. A restart will read the absent registry value and disable the
-path. This lab is E5 for the running artifact, not a claim
-that the canonical Nose path carried it (that is the separate TEST-NET
-proof above). The registry/process drift is OPEN as
-`DEPLOY-132-DAEMON-IFACE-ENV-STALE`; an operator restart with the pin
-absent must clear it and prove the direct path is off while Nose stays
-connected. Kit:
+produced R0088 on the live process, proving full-packet direct capture.
+Go Nose also has a payload signature classifier, so R0088 alone is not
+exclusive to the direct path; however, Nose was pinned to Wi-Fi and the
+probe was on VMnet1. No pin was set/removed and no service was restarted
+during the lab. A service restart on 2026-10-20 21:24 produced daemon
+PID 2772 but still carried `AEGIS_DAEMON_IFACE=VMnet1`; a read-only PEB
+dump confirmed the daemon pin while Nose had no pin. The pin is cached
+in the SCM environment block, so a service restart is insufficient; a
+host reboot is required. This lab is E5 for the running artifact, not a
+claim that the canonical Nose path carried it (that is the separate
+TEST-NET proof above). The registry/process drift is OPEN as
+`DEPLOY-132-DAEMON-IFACE-ENV-STALE`. Do not rerun the clear script
+before a reboot; after the reboot, start Kali and Nose and rerun it.
+Expected: daemon env without the pin, VMnet1 L7 probe R0088=0, Nose
+connected, verifier 24/24. Kit:
 `admin-evidence/lab-rate-e5-20261020/run-nopin-20261020-210026/`
 (gitignored).
+
+Post-reboot clear (2026-10-21): the 2026-10-20 21:24 service restart
+proved the pin is cached in the SCM environment, not read from the
+registry at every start. Do not rerun the clear script before a reboot;
+it will fail the same way. After the host reboot: start Kali
+`192.168.126.10`; start Nose with `restart-nose.ps1` (Wi-Fi GUID);
+run `clear-daemon-interface-drift.ps1` elevated. Expected
+`DRIFT_CLEARED`, R0088=0, Nose connected, verifier 24/24. If it still
+fails, run `dump-daemon-env.ps1` and keep `DEPLOY-132` OPEN.
 
 Attribution rules (2026-10-17 findings): count a row as wire-fire proof
 only if the target resolved (Step 1/3) AND the rule's own pattern
@@ -502,9 +514,9 @@ host effect was ever applied, so no effect needs undoing.
   current process's direct VMnet1 path. Do not use the pre-patch 20-port
   scan to claim a rate or flags failure, and do not use E2 tests to
   claim E5. The remaining capture-path issue is the OPEN P3
-  `DEPLOY-132-DAEMON-IFACE-ENV-STALE`: the live daemon process retains
-  the VMnet1 direct path while the registry pin is absent, so an operator
-  restart is needed to return to canonical-only capture.
+  `DEPLOY-132-DAEMON-IFACE-ENV-STALE`: the live daemon process still
+  carries the VMnet1 pin from the SCM cached environment after a service
+  restart; a host reboot is required to return to canonical-only capture.
 - A 100-port nmap scan can produce 200 matching packets (retry or
   duplicate capture); the old per-packet rows count packets, not ports.
   The current R9006 state counts distinct destination ports instead.

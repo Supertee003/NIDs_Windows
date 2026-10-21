@@ -350,7 +350,7 @@ Previous phases:
   DEADCODE-QUARANTINE, CI-GAPS, RELEASE-TOOLING, LEFTOVER-SWEEP, REL-CLOSURE; operator
   cutover 2026-10-19 20:07 deployed daemon `dcb22a5` (sha256 `f223dcce…`) — live gate
   hard-closed (gate_source 'closed', detection-only), gate-check + v6 live verify PASS.
-  Remaining queue: G2 lab campaign (RB-012→013), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window E2 2026-10-20; install E5 24/24 verifier; R9002/R9006/R9007 live PASS; isolated Kali→Win11 rate E5 CLOSED 2026-10-20; DEPLOY-132 process-pin drift OPEN P3),
+  Remaining queue: G2 lab campaign (RB-012→013), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window E2 2026-10-20; install E5 24/24 verifier; R9002/R9006/R9007 live PASS; isolated Kali→Win11 rate E5 CLOSED 2026-10-20; DEPLOY-132 process-pin drift OPEN P3 — service restart did not clear; SCM-cached pin; host reboot required),
   RB-016/017, G4 signing, external review, CI first push (truth semantics fixed 2026-10-20; push approval pending).
   Evidence: EVI CUTOVER-DCB22A5 (E5) + entries V6-QUEUE-DROP..REL-CLOSURE.
 
@@ -442,17 +442,21 @@ Previous phases:
   Capture-path caveat: the current daemon process still had the direct
   Zig Npcap VMnet1 path active although registry AEGIS_DAEMON_IFACE was
   absent. The L7 R0088 probe `../../etc/passwd` from Kali .10 -> Win11
-  .20 hit the live process, proving full-packet direct capture (Nose-pipe
-  frames are metadata-only). No pin was set/removed and no service was
-  restarted. Behavior is consistent with a startup-time lab pin retained
-  in the process environment from its 17:54:49 creation; the environment
-  block was not directly readable from the medium-integrity token. A
-  restart will read the absent registry value and disable the path. This
-  lab is E5 for the running artifact,
+  .20 hit the live process, proving full-packet direct capture. Go Nose
+  also has a payload signature classifier, so R0088 alone is not
+  exclusive to the direct path; however, Nose was pinned to the Wi-Fi
+  device and the probe was on VMnet1. No pin was set/removed and no
+  service was restarted during the lab. A service restart on 2026-10-20
+  21:24 produced PID 2772 but still carried
+  AEGIS_DAEMON_IFACE=VMnet1; a read-only PEB dump confirmed the daemon
+  pin, and Nose had no pin. The pin is cached in the SCM environment
+  block, so a service restart is insufficient; a host reboot is
+  required. This lab is E5 for the running artifact,
   not a claim that the canonical Nose path carried it. The registry/
   process drift is OPEN as DEPLOY-132-DAEMON-IFACE-ENV-STALE (P3).
   Evidence: EVI DEPLOY-130-L4-RATE-E5-LAB-20261020 (E5 PASS); EVI
-  DEPLOY-132-DAEMON-IFACE-ENV-DRIFT-20261020 (E5 FAIL invariant);
+  DEPLOY-132-DAEMON-IFACE-ENV-DRIFT-20261020 (E5 FAIL invariant); EVI
+  DEPLOY-132-SCM-ENV-CACHE-20261020 (E5 FAIL clear attempt);
   kit admin-evidence/lab-rate-e5-20261020/run-nopin-20261020-210026/
   (gitignored).
 
