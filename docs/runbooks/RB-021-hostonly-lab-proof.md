@@ -444,35 +444,51 @@ returned `LIVE_VERIFY_OK (24/24)`. Gap
 `DEPLOY-130-L4-RATE-E5` is CLOSED at EVI
 `DEPLOY-130-L4-RATE-E5-LAB-20261020`.
 
-Capture-path caveat: the current daemon process still had the direct Zig
-Npcap VMnet1 path active although registry `AEGIS_DAEMON_IFACE` was
-absent. The L7 probe `../../etc/passwd` from Kali `.10` -> Win11 `.20`
-produced R0088 on the live process, proving full-packet direct capture.
-Go Nose also has a payload signature classifier, so R0088 alone is not
-exclusive to the direct path; however, Nose was pinned to Wi-Fi and the
-probe was on VMnet1. No pin was set/removed and no service was restarted
-during the lab. A service restart on 2026-10-20 21:24 produced daemon
-PID 2772 but still carried `AEGIS_DAEMON_IFACE=VMnet1`; a read-only PEB
-dump confirmed the daemon pin while Nose had no pin. The pin is cached
-in the SCM environment block, so a service restart is insufficient; a
-host reboot is required. This lab is E5 for the running artifact, not a
-claim that the canonical Nose path carried it (that is the separate
-TEST-NET proof above). The registry/process drift is OPEN as
-`DEPLOY-132-DAEMON-IFACE-ENV-STALE`. Do not rerun the clear script
-before a reboot; after the reboot, start Kali and Nose and rerun it.
-Expected: daemon env without the pin, VMnet1 L7 probe R0088=0, Nose
-connected, verifier 24/24. Kit:
-`admin-evidence/lab-rate-e5-20261020/run-nopin-20261020-210026/`
-(gitignored).
+Capture-path caveat (historical for the 2026-10-20 lab): the daemon
+process used by the lab still had the direct Zig Npcap VMnet1 path active
+although registry `AEGIS_DAEMON_IFACE` was absent. The L7 probe
+`../../etc/passwd` from Kali `.10` -> Win11 `.20` produced R0088 on the
+live process, proving full-packet direct capture. Go Nose also has a
+payload signature classifier, so R0088 alone is not exclusive to the
+direct path; however, Nose was pinned to Wi-Fi and the probe was on
+VMnet1. No pin was set/removed and no service was restarted during the
+lab. A service restart on 2026-10-20 21:24 produced daemon PID 2772 but
+still carried `AEGIS_DAEMON_IFACE=VMnet1`; a read-only PEB dump confirmed
+the daemon pin while Nose had no pin. The pin was cached in the SCM
+environment block, so a service restart was insufficient. This lab is E5
+for the running artifact, not a claim that the canonical Nose path
+carried it (that is the separate TEST-NET proof above).
 
-Post-reboot clear (2026-10-21): the 2026-10-20 21:24 service restart
-proved the pin is cached in the SCM environment, not read from the
-registry at every start. Do not rerun the clear script before a reboot;
-it will fail the same way. After the host reboot: start Kali
-`192.168.126.10`; start Nose with `restart-nose.ps1` (Wi-Fi GUID);
-run `clear-daemon-interface-drift.ps1` elevated. Expected
-`DRIFT_CLEARED`, R0088=0, Nose connected, verifier 24/24. If it still
-fails, run `dump-daemon-env.ps1` and keep `DEPLOY-132` OPEN.
+CLOSED 2026-10-21: a host reboot at 07:48:30 rebuilt the SCM
+environment. The post-reboot daemon PID 23632 PEB dump had no
+`AEGIS_DAEMON_IFACE`; the clear restart to PID 18276 produced 0 R0088
+rows for the Kali `.10` -> host `.1` L7 probe; Nose PID 15500 reconnected;
+readiness was RUNNING/ready; the verifier returned `LIVE_VERIFY_OK
+(24/24)`; `prevention_gate=closed`; no host effect. Gap
+`DEPLOY-132-DAEMON-IFACE-ENV-STALE` is CLOSED at EVI
+`DEPLOY-132-POST-REBOOT-20261021`. Kit:
+`admin-evidence/lab-rate-e5-20261020/post-reboot-20261021-080531/` and
+`clear-drift-20261021-080635/` (gitignored).
+
+Post-reboot clear procedure (2026-10-21): the 2026-10-20 21:24 service
+restart proved the pin is cached in the SCM environment, not read from
+the registry at every start. A host reboot is required. Use the elevated
+wrapper:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "D:\NIDs_Windows\admin-evidence\lab-rate-e5-20261020\post-reboot-deploy132.ps1"
+```
+
+The wrapper starts the demand-start `AegisWfp` and `AegisMinifilter`
+drivers (both are `DEMAND_START` and are not running after a reboot),
+restarts `AegisNids` once if readiness still samples
+`capabilities.wfp=false`, starts Nose on the Wi-Fi GUID, dumps the daemon
+PEB environment, asserts the pin is absent, then runs
+`clear-daemon-interface-drift.ps1` (restart + R0088 probe + verifier).
+Expected `DRIFT_CLEARED`, R0088=0, Nose connected, verifier 24/24. If it
+still fails, run `dump-daemon-env.ps1` and keep `DEPLOY-132` OPEN. Without
+the driver-start step, readiness is fail-closed `DEGRADED`; that is not
+a pin and not an enforcement state.
 
 Attribution rules (2026-10-17 findings): count a row as wire-fire proof
 only if the target resolved (Step 1/3) AND the rule's own pattern
@@ -513,10 +529,12 @@ host effect was ever applied, so no effect needs undoing.
   restarted Nose PID 3632. The isolated lab also passed through the
   current process's direct VMnet1 path. Do not use the pre-patch 20-port
   scan to claim a rate or flags failure, and do not use E2 tests to
-  claim E5. The remaining capture-path issue is the OPEN P3
-  `DEPLOY-132-DAEMON-IFACE-ENV-STALE`: the live daemon process still
-  carries the VMnet1 pin from the SCM cached environment after a service
-  restart; a host reboot is required to return to canonical-only capture.
+  claim E5. The 2026-10-20 capture-path issue was CLOSED 2026-10-21:
+  host reboot cleared the SCM-cached pin; daemon PID 23632 PEB dump had no
+  `AEGIS_DAEMON_IFACE`; the clear restart to PID 18276 produced R0088=0;
+  Nose reconnected; verifier 24/24. Demand-start `AegisWfp` and
+  `AegisMinifilter` must be started after a reboot (the wrapper does it);
+  otherwise readiness is fail-closed `DEGRADED`.
 - A 100-port nmap scan can produce 200 matching packets (retry or
   duplicate capture); the old per-packet rows count packets, not ports.
   The current R9006 state counts distinct destination ports instead.
