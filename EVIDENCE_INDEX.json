@@ -2017,6 +2017,52 @@
    ],
    "host_effect_confirmed": false,
    "prevention_gate": "closed"
+  },
+  {
+   "id": "G2-RB012-013-LAB-20261021",
+   "title": "G2 lab: RB-012 WFP block PASS; RB-013 control-path quarantine PASS; pipeline mirror counter UNMET (E5 PARTIAL)",
+   "level": "E5",
+   "component": "policy/enforcement",
+   "flow_id": "DATA-001",
+   "head_sha": "de574b6",
+   "timestamp": "2026-10-21",
+   "result": "PARTIAL",
+   "command": "isolated Win11 lab VM 192.168.126.20; remote-task.ps1 over SMB C$ + G2Svc; lab build zig build -Dlab-prevention-gate=true; g2-rb012-final2.ps1 (request 93001); g2-rb013-control.ps1 (request 93002); g2-collect-evidence.ps1; g2-restore-base.ps1",
+   "expected": "RB-012: open lab gate, provider ready, two-person, block receipt decision=block with nonzero filter, verify MATCH, canary blocked during and restored after, unblock ROLLED_BACK/ABSENT, no proof filter left. RB-013: severity>=7 quarantine receipt decision=quarantine, verify MATCH, canary blocked during and restored after, unblock ROLLED_BACK/ABSENT, and QUARANTINED_CONFIRMED/g_confirmed_quarantines observed in the Zig mirror.",
+   "actual": "RB-012 PASS: request 93001, filter 78093, receipt ENFORCED/block/host_effect_confirmed=true, verify MATCH, canary 203.0.113.10:443 reachable before / WinError 10013 during / reachable after, unblock ROLLED_BACK/ABSENT, no proof key in WFP export. RB-013 control path PASS: request 93002, filter 78094, receipt ENFORCED/decision=quarantine/host_effect_confirmed=true, verify MATCH, canary blocked during and restored after, unblock ROLLED_BACK/ABSENT. RB-013 mirror sub-check UNMET: enforcement.quarantine calls enforceQuarantineFlow directly and does not increment g_confirmed_quarantines or emit QUARANTINED_CONFIRMED; that path exists only in ActionDispatcher.dispatchWithReceipt from the pipeline, configs/policies.json has no quarantine action, and trust was 0. Last 50,000 forensic log lines had no 9302/action_quarantine/QUARANTINED_CONFIRMED; service log dir empty; no control_audit.ndjson. A lab-only user-DLL patch (F0B1CB3C...) mapped the provider's exact FWP_E_FILTER_NOT_FOUND (0x80320003) to present=0; patch saved, not in HEAD, production runtime untouched. Lab driver DF42... current-source signed build installed, then base driver AD23... restored. Cleanup: G2Svc/G2Exec deleted, listener stopped, 203.0.113.10 alias removed, lab trust/env removed, default daemon F223... + base user DLL EF9B... + base driver AD23... restored; post-restore gate closed, detection-only, host_effect_capable=false. Snapshot G2-LAB-BASE-20261021 is operator-reported and was not independently restored.",
+   "finding": "The lab proves the control-plane WFP block and quarantine receipts, exact read-back, traffic effect, and filter-addressed rollback on the isolated VM. G2 is PARTIAL rather than fully closed: the RB-013 Zig mirror counter/log is not reachable from the control verb and no pipeline quarantine policy/wiring exists. The rollback proof also depends on a lab-only user-DLL absence-mapping patch that must be upstreamed or replaced by a driver fix before any production enforcement claim. Production remains detection-only with the gate closed; no production host effect.",
+   "description": "G2 lab qualification on the operator-provisioned isolated Win11 VM. The campaign intentionally used AEGIS_POLICY_ENFORCE_TRUSTED=0 on machine and service environments to suppress the trusted pipeline's zero-target proof filter; the control block/quarantine path does not require policy trust, and the signed policy envelope still verified VALID. RB-012 and RB-013 control receipts, verify, canary traffic, and rollback are recorded. The mirror-counter criterion is explicitly recorded as unmet rather than inferred. All lab services, listener, alias, trust files, and env were removed; default runtime artifacts were restored; snapshot restore remains operator-side.",
+   "files_verified": [
+    "admin-evidence/lab-qualification-20261021/G2-RESULTS.md",
+    "admin-evidence/lab-qualification-20261021/mirror-counter-gap.txt",
+    "admin-evidence/lab-qualification-20261021/lab-only-adapter-patch.md",
+    "admin-evidence/lab-qualification-20261021/remote-evidence/rb012-final-93001.json",
+    "admin-evidence/lab-qualification-20261021/remote-evidence/rb013-control-93002.json",
+    "admin-evidence/lab-qualification-20261021/remote-evidence/g2-rb012final2.log",
+    "admin-evidence/lab-qualification-20261021/remote-evidence/g2-rb013control.log",
+    "admin-evidence/lab-qualification-20261021/remote-evidence/g2-restorebase.log",
+    "admin-evidence/lab-qualification-20261021/remote-evidence/artifact-hashes.txt",
+    "admin-evidence/lab-qualification-20261021/remote-evidence/policy-verify.txt",
+    "admin-evidence/lab-qualification-20261021/remote-evidence/wfp_ioctl-query-absent.patch",
+    "admin-evidence/lab-qualification-20261021/remote-evidence/wfp-filters-post-rb012-final.xml",
+    "admin-evidence/lab-qualification-20261021/remote-evidence/wfp-filters-post-rb013.xml",
+    "admin-evidence/lab-qualification-20261021/remote-evidence/wfp-filters-restored-base.xml"
+   ],
+   "files_changed": [
+    "admin-evidence/lab-qualification-20261021/G2-RESULTS.md",
+    "admin-evidence/lab-qualification-20261021/mirror-counter-gap.txt",
+    "admin-evidence/lab-qualification-20261021/lab-only-adapter-patch.md",
+    "admin-evidence/lab-qualification-20261021/remote-evidence/",
+    "admin-evidence/queue-progress-20261021.md",
+    "EVIDENCE_INDEX.json"
+   ],
+   "tests": [
+    "RB-012 control block: PASS (receipt/verify/traffic/rollback/filter absence)",
+    "RB-013 control quarantine: PASS (receipt/verify/traffic/rollback/filter absence)",
+    "RB-013 mirror counter: UNMET (control verb bypasses pipeline mirror)"
+   ],
+   "host_effect_confirmed": true,
+   "prevention_gate": "open-lab-only"
   }
  ],
  "known_gaps": [
@@ -7268,6 +7314,20 @@
    "closed_at": "2026-10-21",
    "closed_by": "DEPLOY-132-POST-REBOOT-20261021",
    "resolution": "The host reboot cleared the SCM-cached VMnet1 pin. The post-reboot daemon PEB dump (PID 23632) had no AEGIS_DAEMON_IFACE; the clear restart to PID 18276 produced zero R0088 rows for the Kali .10 -> host .1 L7 probe, Nose PID 15500 reconnected, readiness was RUNNING/ready, and the verifier passed 24/24. Gate remained closed and no host effect occurred. The demand-start WFP/minifilter drivers were started before readiness; that is an operational post-reboot prerequisite, not a pin."
+  },
+  {
+   "id": "G2-RB013-MIRROR-20261021",
+   "severity": "P1",
+   "title": "RB-013 control-path quarantine receipt is not captured by the Zig pipeline mirror; g_confirmed_quarantines/QUARANTINED_CONFIRMED never fire",
+   "description": "enforcement.quarantine (src/control/handler_registry.zig:1911) calls PepEnforcer.enforceQuarantineFlow directly and returns a validated receipt. The Zig mirror increment and QUARANTINED_CONFIRMED log exist only in ActionDispatcher.dispatchWithReceipt (src/policy/action_dispatcher.zig:136-145), reached from the pipeline (src/pipeline/event_processor.zig:293). configs/policies.json has no quarantine action and the lab used AEGIS_POLICY_ENFORCE_TRUSTED=0, so the pipeline branch was not exercised. The control receipt/verify/traffic/rollback proof passes; the mirror counter/log criterion is UNMET. This is a control-path vs pipeline-mirror coverage gap, not a receipt or host-effect failure.",
+   "status": "OPEN",
+   "found_at": "2026-10-21",
+   "required_evidence": [
+    "Add a quarantine policy action and pipeline wiring (or a control-path receipt capture path) that reaches the Zig mirror without enabling the zero-target trusted pipeline behavior.",
+    "Re-run RB-013 on the isolated lab VM with severity >=7 and capture QUARANTINED_CONFIRMED plus a nonzero/incremented g_confirmed_quarantines.",
+    "Keep the control receipt/verify/traffic/rollback evidence from EVI G2-RB012-013-LAB-20261021."
+   ],
+   "evidence": "EVI G2-RB012-013-LAB-20261021 (E5 PARTIAL); admin-evidence/lab-qualification-20261021/mirror-counter-gap.txt; admin-evidence/lab-qualification-20261021/remote-evidence/g2-mirrorgap.log; src/control/handler_registry.zig:1911; src/policy/action_dispatcher.zig:136-145; src/pipeline/event_processor.zig:293; configs/policies.json (no quarantine action)."
   }
  ],
  "evidence_level_summary": {
@@ -7276,7 +7336,7 @@
   "E2_count": 130,
   "E3_count": 14,
   "E4_count": 15,
-  "E5_count": 107,
+  "E5_count": 108,
   "E6_count": 0,
   "E7_count": 1
  }
