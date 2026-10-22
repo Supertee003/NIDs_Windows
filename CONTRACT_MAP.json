@@ -1,5 +1,5 @@
 {
-  "head_sha": "82214c6c7c492a8781bbfcf788d3868200d98199",
+  "head_sha": "23b9c1d05344e763f617c3dbe43000071badaacb",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -54,7 +54,7 @@
       "types": {
         "PepDecision": "enum(u8): allow=0, block=1, rate_limit=2, quarantine=3, escalate=4, drop=5",
         "PepContext": "extern struct (24 bytes): caller_pid, caller_capability_mask, request_id, policy_version",
-        "PepRequest": "extern struct (64 bytes): decision_kind, requested_action, flow_id, src/dst ip/port, protocol, policy_id, severity, ctx@40",
+        "PepRequest": "extern struct (64 bytes): decision_kind, requested_action, flow_id, src/dst ip/port, protocol, policy_id, severity, direction@37 (0=outbound dst_ip/dst_port; 1=inbound peer src_ip + local dst_port), ctx@40",
         "PepResponse": "extern struct (24 bytes): decision, reason, quota_remaining, signed_by, filter_id",
         "PepFilterState": "packed struct (20 bytes): filter_id, remote_ipv4, remote_port, protocol, present, provider_status"
       },
@@ -74,7 +74,8 @@
       "invariants": [
         "Rust PEP is the ONLY final enforcement authority",
         "No component may bypass PEP for privileged actions",
-        "PEP responses are signed (Ed25519) for audit trail"
+        "PEP responses are signed (Ed25519) for audit trail",
+        "PepRequest.direction uses historical padding at offset 37; size stays 64, ctx stays at 40, and direction values other than 0/1 fail closed"
       ]
     },
     {

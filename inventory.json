@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-22T06:14:39.908883+00:00",
+  "generated_at": "2026-10-22T06:51:27.929701+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1701,
@@ -678,7 +678,7 @@
       "path": "admin-evidence/wfp-user-bridge-provenance.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 650
+      "size": 636
     },
     {
       "path": "aegis-audit-20260927-231728/00-summary.txt",
@@ -1950,7 +1950,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 30773
+      "size": 32313
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -3144,7 +3144,7 @@
       "path": "CONTRACT_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9954
+      "size": 10449
     },
     {
       "path": "contracts/fixtures/abi/event_boundaries.json",
@@ -4320,13 +4320,13 @@
       "path": "drivers/wfp_callout/aegis_wfp.c",
       "class": "canonical-source",
       "role": "source",
-      "size": 23537
+      "size": 25142
     },
     {
       "path": "drivers/wfp_callout/aegis_wfp.h",
       "class": "canonical-source",
       "role": "source",
-      "size": 6309
+      "size": 6806
     },
     {
       "path": "drivers/wfp_callout/aegis_wfp.inf",
@@ -4668,7 +4668,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 701223
+      "size": 715301
     },
     {
       "path": "fix_bridge_banner.py",
@@ -4692,7 +4692,7 @@
       "path": "FLOW_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 13619
+      "size": 14044
     },
     {
       "path": "go/aggregator/alert.go",
@@ -5052,7 +5052,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 8769
+      "size": 9114
     },
     {
       "path": "README.md",
@@ -6144,7 +6144,7 @@
       "path": "rust-src/lib.rs",
       "class": "canonical-source",
       "role": "source",
-      "size": 95110
+      "size": 99103
     },
     {
       "path": "sbom.spdx.json",
@@ -7038,7 +7038,7 @@
       "path": "src/control/handler_registry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 145030
+      "size": 152381
     },
     {
       "path": "src/control/protocol.zig",
@@ -7584,7 +7584,7 @@
       "path": "src/policy/pep_bindings.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 31495
+      "size": 35156
     },
     {
       "path": "src/policy/policy_contract.zig",
@@ -8538,7 +8538,7 @@
       "path": "src/windows/wfp_ioctl.c",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 8196
+      "size": 8326
     },
     {
       "path": "src/windows/win32_io.zig",
