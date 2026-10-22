@@ -129,6 +129,10 @@ class PepRequest(ctypes.Structure):
         ("protocol", ctypes.c_uint8),
         ("policy_id", ctypes.c_uint32),
         ("severity", ctypes.c_uint8),
+        # FFI-001 direction byte: 0=outbound dst_ip/dst_port,
+        # 1=inbound peer src_ip + local dst_port. Reuses historical padding;
+        # the struct stays 64 bytes and ctx stays at offset 40.
+        ("direction", ctypes.c_uint8),
         ("ctx", PepContext),
     ]
 
@@ -164,6 +168,7 @@ def assert_pep_abi_layout() -> None:
     assert PepRequest.protocol.offset == 28
     assert PepRequest.policy_id.offset == 32
     assert PepRequest.severity.offset == 36
+    assert PepRequest.direction.offset == 37
     assert PepRequest.ctx.offset == 40
 
     assert PepResponse.decision.offset == 0

@@ -26,6 +26,11 @@
 #define IOCTL_AEGIS_UNBLOCK_FLOW CTL_CODE(FILE_DEVICE_NETWORK, 0x803, METHOD_BUFFERED, FILE_WRITE_DATA)
 #define IOCTL_AEGIS_QUERY_FILTER CTL_CODE(FILE_DEVICE_NETWORK, 0x804, METHOD_BUFFERED, FILE_READ_DATA)
 
+/* FWP_E_FILTER_NOT_FOUND. Some WDK/user header layouts omit the alias; the
+ * numeric status is stable. Only this exact value (or its Win32 alias,
+ * ERROR_NOT_FOUND) is treated as a valid absent postcondition. */
+#define AEGIS_FWP_E_FILTER_NOT_FOUND 0x80320003UL
+
 #pragma pack(push, 1)
 typedef struct _AEGIS_WFP_FLOW_REQUEST {
     uint32_t remote_ipv4;
@@ -181,7 +186,21 @@ int aegis_wfp_ioctl_query_filter(uint64_t filter_id,
     query.filter_id = filter_id;
     ZeroMemory(state, sizeof(*state));
     if (wfp_ioctl_send(IOCTL_AEGIS_QUERY_FILTER, &query, sizeof(query),
-                       state, sizeof(*state), &out_len) != 0) return -1;
+                       state, sizeof(*state), &out_len) != 0) {
+        /* Exact-filter absence is a valid postcondition. The kernel provider
+         * can surface FWP_E_FILTER_NOT_FOUND (or ERROR_NOT_FOUND) instead of
+         * a zeroed success record; translate only that exact status, never a
+         * transport failure. This keeps "absent" distinct from a query
+         * transport error for the unblock/rollback postcondition. */
+        DWORD err = GetLastError();
+        if (err == AEGIS_FWP_E_FILTER_NOT_FOUND || err == ERROR_NOT_FOUND) {
+            ZeroMemory(state, sizeof(*state));
+            state->filter_id = filter_id;
+            state->provider_status = err;
+            return 0;
+        }
+        return -1;
+    }
     return out_len == sizeof(*state) ? 0 : -1;
 }
 
