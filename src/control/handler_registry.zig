@@ -2090,7 +2090,7 @@ const handlers = struct {
         // consumers (Python int, Rust as_u64) take full width; JS Number
         // stays precise to 2^53, unreachable in practice.
         return std.fmt.allocPrint(a,
-            \\{{"uptime_sec":{},"rules_loaded":{},"packets_captured":{},"events_processed":{},"forensic_records":{},"flows_active":{},"incidents_open":{},"detections":{},"anomalies":{},"blocks":{},"errors":{},"siem":{{"enabled":{},"forwarded":{},"failed":{},"spooled":{},"batches":{},"retries":{}}},"policy_ir":{{"loaded":{},"rules":{},"hash":"{s}","verified":{}}}}}
+            \\{{"uptime_sec":{},"rules_loaded":{},"packets_captured":{},"events_processed":{},"forensic_records":{},"flows_active":{},"incidents_open":{},"detections":{},"anomalies":{},"blocks":{},"confirmed_blocks":{},"confirmed_quarantines":{},"errors":{},"siem":{{"enabled":{},"forwarded":{},"failed":{},"spooled":{},"batches":{},"retries":{}}},"policy_ir":{{"loaded":{},"rules":{},"hash":"{s}","verified":{}}}}}
         , .{
             uptime_sec,
             state_mod.g_rules_loaded.load(.acquire),
@@ -2102,6 +2102,8 @@ const handlers = struct {
             state_mod.g_pipeline_detections.load(.acquire),
             diag.metrics.anomalies_detected.get(),
             diag.metrics.blocks_issued.get(),
+            state_mod.g_confirmed_blocks.load(.acquire),
+            state_mod.g_confirmed_quarantines.load(.acquire),
             diag.metrics.errors.get(),
             siem_enabled,
             siem.total_events_forwarded,
@@ -2324,6 +2326,10 @@ test "metricsSnapshot exposes SIEM durability counters" {
     try std.testing.expect(std.mem.indexOf(u8, out, "\"loaded\":false") != null);
     // POL-SIGN-079B: observe-only verdict rides along, false by default.
     try std.testing.expect(std.mem.indexOf(u8, out, "\"verified\":false") != null);
+    // G2-METRICS-001: the receipt-verified host-effect counters are
+    // operator-visible without relying on a stderr diagnostic stream.
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"confirmed_blocks\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"confirmed_quarantines\"") != null);
 }
 
 test "queueStats emits parseable JSON with shed and etw keys (GAP-015)" {
@@ -2400,12 +2406,22 @@ test "metricsSnapshot prints lifetime counters at full u64 width" {
     // round-trip through the formatter with every digit intact.
     const state = @import("../pipeline/runtime_state.zig");
     const prev = state.g_nose_frames_submitted.load(.acquire);
-    defer state.g_nose_frames_submitted.store(prev, .monotonic);
+    const prev_blocks = state.g_confirmed_blocks.load(.acquire);
+    const prev_quarantines = state.g_confirmed_quarantines.load(.acquire);
+    defer {
+        state.g_nose_frames_submitted.store(prev, .monotonic);
+        state.g_confirmed_blocks.store(prev_blocks, .monotonic);
+        state.g_confirmed_quarantines.store(prev_quarantines, .monotonic);
+    }
     state.g_nose_frames_submitted.store(0x1_0000_0042, .monotonic);
+    state.g_confirmed_blocks.store(0x1_0000_0042, .monotonic);
+    state.g_confirmed_quarantines.store(0x1_0000_0043, .monotonic);
     var ctx = HandlerContext{ .start_ns = 0, .request_id = 19, .caller_role = .read, .caller_pid = 0 };
     const out = handlers.metricsSnapshot(std.testing.allocator, .{ .null = {} }, &ctx).?;
     defer std.testing.allocator.free(out);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"packets_captured\":4294967362") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"confirmed_blocks\":4294967362") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"confirmed_quarantines\":4294967363") != null);
 }
 
 test "enforcementStatus exposes shield screening flags" {
