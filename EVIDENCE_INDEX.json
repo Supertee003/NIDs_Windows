@@ -1,5 +1,5 @@
 {
- "head_sha": "e9e6ddfc4a99467b19328b895ca21c8c3e2d6950",
+ "head_sha": "6a407cbe3b64a09645c9c09b9de9969c4c971cd6",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-10-22",
  "generator_version": "3.0",
@@ -2292,6 +2292,68 @@
     "PEP unblock capability test: PASS (PEP_UNBLOCK_NO_CAPABILITY=-3)",
     "Full WFP blocks host test: NOT RUN intentionally; skipped at host-effect-unavailable during a mistaken full-file invocation; proof key absent afterward",
     "Exact-not-found branch host execution: NOT RUN (compile-only; lab re-run G2-ABSENCE-LAB-20261022)"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed"
+  },
+  {
+   "id": "G2-VERIFY-DIR-001",
+   "title": "WFP postcondition query is layer-scoped; inbound verify cannot be satisfied by an outbound filter (E2 + compile)",
+   "level": "E2",
+   "component": "policy/enforcement",
+   "flow_id": "FFI-001",
+   "head_sha": "6a407cb",
+   "timestamp": "2026-10-22",
+   "result": "PASS",
+   "command": "zig build test --summary all; cargo build --release; cargo test --release; scripts/wdk_build_production.ps1; scripts/build_wfp_user_bridge.ps1; python -m pytest tests/tools/test_no_shadow_dll.py tests/security/test_prevention_gate_surface.py tests/contracts/test_pep_abi_layout.py tests/wfp/test_t11_windows_host.py -q",
+   "expected": "The provider query names the WFP layer it attests. Direction 0 queries ALE_AUTH_CONNECT_V4 with the remote port; direction 1 queries ALE_AUTH_RECV_ACCEPT_V4 with the local port. Unknown directions fail closed. A missing direction-aware bridge export fails closed instead of falling back to the outbound query. enforcement.verify passes the target direction; enforcement.unblock proves absence on both layers.",
+   "actual": "PASS (E2 + compile): Zig 2209/2210 passed, 1 skipped (4/4 build steps); Rust 49 passed, 1 ignored plus keygen 3 passed; WDK driver BUILD OK (aegis_wfp.sys sha256 F54CFB7F7852ED396043FF3CB534E9EC2F9E4BC2CE296A145BF46A0AEDB6E277); bridge build PASS (aegis_wfp_user.dll sha256 9D5D7D46AD2385EAF7656C2B59F23F0ABB0B84DEDB296740DAB3ADD3B6283380; 5/5 exports verified, dumpbin unavailable so the script printed a warning); lab-gate daemon build PASS (sha256 0F3F866AF2596831A932061A24E1C68290DE9A192C65B5B0DBACCBE119C05035); targeted pytest 16 passed, 2 skipped. No WFP host execution was performed in this patch; the lab proof remains G2-INBOUND-VERIFIER-20261021 and G2-ABSENCE-LAB-20261022.",
+   "finding": "The v1 lab kit used AEGIS_WFP_DIRECTION_ANY and PepFilterState had no direction field, so an outbound filter with the same remote IP/port/protocol could satisfy an inbound enforcement.verify call and report present=MATCH for the wrong layer. The query ABI now carries direction (16-byte AEGIS_WFP_FILTER_QUERY: filter_id + direction@8 + 7 reserved), the legacy 8-byte input defaults to outbound, and the Rust adapter requires the direction-aware export for direction 1. lab-kit-20261022-v2 supersedes v1. This closes the verifier false-positive path in source; it is not a lab host-effect proof.",
+   "description": "Direction-scoped WFP postcondition query. AEGIS_WFP_FILTER_QUERY grows to 16 bytes with direction@8; the driver rejects unknown directions and matches only the named layer. src/windows/wfp_ioctl.c adds aegis_wfp_ioctl_query_filter_dir and keeps aegis_wfp_ioctl_query_filter as an outbound-only legacy wrapper. rust-src/lib.rs adds an optional aegis_wfp_ioctl_query_filter_dir bridge import and exports aegis_pep_query_filter_dir; a missing export fails closed. src/policy/pep_bindings.zig threads direction through queryFilter/queryFilterResult and ReceiptTarget. src/control/handler_registry.zig verifies with target.direction and makes enforcement.unblock prove absence on both directions. CONTRACT_MAP.json, shared/abi/pep_abi.md, and docs/WFP_IOCTL_STATUS.md record the contract. No gate, authority, or production enforcement change.",
+   "files_verified": [
+    "drivers/wfp_callout/aegis_wfp.h",
+    "drivers/wfp_callout/aegis_wfp.c",
+    "src/windows/wfp_ioctl.c",
+    "rust-src/lib.rs",
+    "src/policy/pep_bindings.zig",
+    "src/control/handler_registry.zig",
+    "CONTRACT_MAP.json",
+    "shared/abi/pep_abi.md"
+   ],
+   "files_changed": [
+    "drivers/wfp_callout/aegis_wfp.h",
+    "drivers/wfp_callout/aegis_wfp.c",
+    "src/windows/wfp_ioctl.c",
+    "rust-src/lib.rs",
+    "src/policy/pep_bindings.zig",
+    "src/control/handler_registry.zig",
+    "CONTRACT_MAP.json",
+    "shared/abi/pep_abi.md",
+    "docs/WFP_IOCTL_STATUS.md",
+    "scripts/build_wfp_user_bridge.ps1",
+    "tests/contracts/test_pep_abi_layout.py",
+    "tests/tools/test_no_shadow_dll.py",
+    "EVIDENCE_INDEX.json",
+    "AI_CONTEXT.md",
+    "SYSTEM_MAP.json",
+    "FLOW_MAP.json",
+    "AUTHORITY_MAP.json",
+    "build_truth.json",
+    "build_manifest.json",
+    "runtime_manifest.json",
+    "inventory.json",
+    "reference_map.json"
+   ],
+   "tests": [
+    "Zig direction-scoped query and ABI assertions: PASS (direction@37, query size 16)",
+    "Rust aegis_pep_query_filter_dir rejects direction >1 and filter_id 0: PASS",
+    "enforcement.verify passes target.direction; unblock requires outbound and inbound absence: PASS",
+    "zig build test --summary all: PASS (2209/2210 passed, 1 skipped; 4/4 steps)",
+    "cargo test --release: PASS (49 passed, 1 ignored; keygen 3 passed)",
+    "WDK driver build: PASS (F54CFB7F7852ED396043FF3CB534E9EC2F9E4BC2CE296A145BF46A0AEDB6E277)",
+    "User bridge build and 5/5 export probe: PASS (9D5D7D46AD2385EAF7656C2B59F23F0ABB0B84DEDB296740DAB3ADD3B6283380)",
+    "Targeted pytest: PASS (16 passed, 2 skipped)",
+    "WFP host execution: NOT RUN (E2 + compile only; lab re-run required)"
    ],
    "host_effect_confirmed": false,
    "prevention_gate": "closed"
@@ -7565,13 +7627,14 @@
    "id": "G2-INBOUND-VERIFIER-20261021",
    "severity": "P1",
    "title": "Inbound control verify returned null on 2026-10-21; explicit direction/peer API added, lab re-run pending",
-   "description": "The inbound G2 proof created filter 73000 on FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4 with action FWP_ACTION_BLOCK, remote peer 192.168.126.1, local port 443, and protocol 6. The 2026-10-21 enforcement.verify call with filter_id 73000 returned null while the filter was present and blocking. The archived control-proof scripts pass dst_ip=203.0.113.10 (the outbound proof target); filter 73000's remote address is the inbound peer 192.168.126.1, so an exact tuple comparison cannot match when the caller supplies the original destination instead of the peer. The pipeline receipt verifier was already inbound-aware in the lab build and returned confirmed=true. The control API had no explicit direction/peer field. G2-DIRECTION-001 (2026-10-22) upstreams the direction byte, derives the receipt tuple from ev.src_ip/ev.dst_port for capture_wfp, and adds direction:1 + src_ip to enforcement.verify (legacy dst_ip/dst_port remains for direction 0). The 2026-10-21 null remains a valid observation; a new lab run is required to prove the API.",
+   "description": "The inbound G2 proof created filter 73000 on FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4 with action FWP_ACTION_BLOCK, remote peer 192.168.126.1, local port 443, and protocol 6. The 2026-10-21 enforcement.verify call with filter_id 73000 returned null while the filter was present and blocking. The archived control-proof scripts pass dst_ip=203.0.113.10 (the outbound proof target); filter 73000's remote address is the inbound peer 192.168.126.1, so an exact tuple comparison cannot match when the caller supplies the original destination instead of the peer. The pipeline receipt verifier was already inbound-aware in the lab build and returned confirmed=true. The control API had no explicit direction/peer field. G2-DIRECTION-001 (2026-10-22) upstreams the direction byte, derives the receipt tuple from ev.src_ip/ev.dst_port for capture_wfp, and adds direction:1 + src_ip to enforcement.verify (legacy dst_ip/dst_port remains for direction 0). The 2026-10-21 null remains a valid observation; a new lab run is required to prove the API. G2-VERIFY-DIR-001 (2026-10-22) closes the query-side false positive: the provider query now names the WFP layer, so an outbound filter cannot satisfy an inbound verify. Use lab-kit-20261022-v2 only; v1 is superseded.",
    "status": "OPEN",
    "found_at": "2026-10-21",
    "required_evidence": [
     "Re-run enforcement.verify with direction:1, src_ip:192.168.126.1, dst_port:443, protocol:6 against the inbound proof filter; require verified:true, present:true, postcondition:MATCH.",
     "Keep the lab WFP XML and canary gap as the 2026-10-21 effect proof; do not retroactively label the null as a pass.",
-    "Confirm the installed lab driver accepts direction 1 and the query matcher returns the peer/local-port tuple."
+    "Confirm the installed lab driver accepts direction 1 and the query matcher returns the peer/local-port tuple.",
+    "Confirm the installed bridge exports aegis_wfp_ioctl_query_filter_dir (lab-kit-20261022-v2); v1 must not be used."
    ],
    "evidence": "EVI G2-INBOUND-PIPELINE-20261021; EVI G2-DIRECTION-001; admin-evidence/lab-qualification-20261021/g2-inbound-20261021/g2-postcanary.log (verify_73000=null); admin-evidence/lab-qualification-20261021/g2-inbound-20261021/wfp-filters-post-canary.xml (filter 73000 present, layer RECV_ACCEPT_V4); src/policy/pep_bindings.zig; src/control/handler_registry.zig; drivers/wfp_callout/aegis_wfp.c; rust-src/lib.rs."
   },
@@ -7579,11 +7642,11 @@
    "id": "G2-DUPFILTER-REPEAT-20261022",
    "severity": "P1",
    "title": "Repeated inbound quarantine still needs a lab proof that the duplicate path reuses the filter instead of escalating",
-   "description": "G2-DUPFILTER-001 makes a same-tuple duplicate add idempotent in the driver and the WDK build passes. The 2026-10-21 lab PEP log recorded repeated pep=escalate reason=4 after the first quarantine, consistent with the fixed proof key. No lab host execution has been performed with the new driver; a re-run must show the second matching event reuses filter 73000 (or a new receipt with the same filter ID), no escalation storm, and a confirmed receipt.",
+   "description": "G2-DUPFILTER-001 makes a same-tuple duplicate add idempotent in the driver and the WDK build passes. The 2026-10-21 lab PEP log recorded repeated pep=escalate reason=4 after the first quarantine, consistent with the fixed proof key. lab-kit-20261022-v2 carries the current driver (F54CFB7F) and bridge (9D5D7D46). No lab host execution has been performed with the new driver; a re-run must show the second matching event reuses filter 73000 (or a new receipt with the same filter ID), no escalation storm, and a confirmed receipt.",
    "status": "OPEN",
    "found_at": "2026-10-22",
    "required_evidence": [
-    "Install the G2-DUPFILTER-001 driver on the isolated lab VM and run two matching inbound quarantine events.",
+    "Install the lab-kit-20261022-v2 driver/bridge on the isolated lab VM and run two matching inbound quarantine events.",
     "Require the second block to return the existing filter ID, the PEP receipt to confirm, and no repeated escalate reason=4.",
     "Keep the production gate closed; do not treat compile success as host proof."
    ],
@@ -7593,16 +7656,17 @@
    "id": "G2-ABSENCE-LAB-20261022",
    "severity": "P1",
    "title": "Exact-not-found bridge mapping and direction ABI test need a lab re-proof from current HEAD",
-   "description": "G2-ABSENCE-001 upstreams the lab-only exact FWP_E_FILTER_NOT_FOUND/ERROR_NOT_FOUND -> present=0 mapping and pins PepRequest.direction@37 in the host ABI test. The 2026-10-21 lab run proved ROLLED_BACK/ABSENT with the lab-only DLL F0B1CB, not the current HEAD bridge FD3A8FAB. The non-lab host has no host effect provider; the full blocks test was not run and the proof key is absent. Production enforcement must not be claimed until the current bridge is re-run on the isolated lab VM.",
+   "description": "G2-ABSENCE-001 upstreams the lab-only exact FWP_E_FILTER_NOT_FOUND/ERROR_NOT_FOUND -> present=0 mapping and pins PepRequest.direction@37 in the host ABI test. The 2026-10-21 lab run proved ROLLED_BACK/ABSENT with the lab-only DLL F0B1CB, not a current-HEAD bridge. G2-VERIFY-DIR-001 changes the bridge to 9D5D7D46 and makes enforcement.unblock prove absence on both the outbound and inbound layers, so an inbound filter can no longer be called absent through the outbound query. The non-lab host has no host effect provider; the full blocks test was not run and the proof key is absent. Production enforcement must not be claimed until the current bridge is re-run on the isolated lab VM.",
    "status": "OPEN",
    "found_at": "2026-10-22",
    "required_evidence": [
-    "Install the current HEAD bridge FD3A8FAB on the isolated lab VM together with the lab driver.",
+    "Install the current-HEAD bridge 9D5D7D46 from lab-kit-20261022-v2 on the isolated lab VM together with the lab driver.",
     "Delete a test filter and call enforcement.unblock; require ROLLED_BACK/ABSENT, not CLEANUP_POSTCONDITION_FAILED.",
+    "Require the unblock absence proof to query both directions; an inbound filter must not be reported absent through the outbound query.",
     "Confirm a real transport failure still returns -1 and is not reported as absent.",
     "Keep the production gate closed; do not treat the ABI test or compile as host proof."
    ],
-   "evidence": "EVI G2-ABSENCE-001; admin-evidence/g2-direction-20261022/PATCH-ABSENCE.md; admin-evidence/g2-direction-20261022/HOST-TEST-NEAR-MISS.md; admin-evidence/lab-qualification-20261021/lab-only-adapter-patch.md; admin-evidence/lab-qualification-20261021/remote-evidence/wfp_ioctl-query-absent.patch."
+   "evidence": "EVI G2-ABSENCE-001; EVI G2-VERIFY-DIR-001; admin-evidence/g2-direction-20261022/PATCH-ABSENCE.md; admin-evidence/g2-direction-20261022/HOST-TEST-NEAR-MISS.md; admin-evidence/lab-qualification-20261021/lab-only-adapter-patch.md; admin-evidence/lab-qualification-20261021/remote-evidence/wfp_ioctl-query-absent.patch."
   },
   {
    "id": "G2-INBOUND-RESTORE-20261021",
@@ -7624,7 +7688,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 27,
-  "E2_count": 132,
+  "E2_count": 133,
   "E3_count": 14,
   "E4_count": 15,
   "E5_count": 109,

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-22T14:50:43.714921+00:00",
+  "generated_at": "2026-10-22T16:29:31.959507+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1701,
@@ -678,7 +678,7 @@
       "path": "admin-evidence/wfp-user-bridge-provenance.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 636
+      "size": 778
     },
     {
       "path": "aegis-audit-20260927-231728/00-summary.txt",
@@ -3144,7 +3144,7 @@
       "path": "CONTRACT_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 10449
+      "size": 10961
     },
     {
       "path": "contracts/fixtures/abi/event_boundaries.json",
@@ -4278,7 +4278,7 @@
       "path": "docs/WFP_IOCTL_STATUS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 3436
+      "size": 3727
     },
     {
       "path": "drivers/minifilter/aegis_minifilter.c",
@@ -4320,13 +4320,13 @@
       "path": "drivers/wfp_callout/aegis_wfp.c",
       "class": "canonical-source",
       "role": "source",
-      "size": 28972
+      "size": 29144
     },
     {
       "path": "drivers/wfp_callout/aegis_wfp.h",
       "class": "canonical-source",
       "role": "source",
-      "size": 7120
+      "size": 7402
     },
     {
       "path": "drivers/wfp_callout/aegis_wfp.inf",
@@ -6144,7 +6144,7 @@
       "path": "rust-src/lib.rs",
       "class": "canonical-source",
       "role": "source",
-      "size": 99103
+      "size": 102464
     },
     {
       "path": "sbom.spdx.json",
@@ -6306,7 +6306,7 @@
       "path": "scripts/build_wfp_user_bridge.ps1",
       "class": "canonical-source",
       "role": "source",
-      "size": 3850
+      "size": 4136
     },
     {
       "path": "scripts/check_brain.py",
@@ -6738,7 +6738,7 @@
       "path": "shared/abi/pep_abi.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4659
+      "size": 5013
     },
     {
       "path": "shared/abi/runtime_abi.md",
@@ -7038,7 +7038,7 @@
       "path": "src/control/handler_registry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 152381
+      "size": 153364
     },
     {
       "path": "src/control/protocol.zig",
@@ -7584,7 +7584,7 @@
       "path": "src/policy/pep_bindings.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 35156
+      "size": 35713
     },
     {
       "path": "src/policy/policy_contract.zig",
@@ -8538,7 +8538,7 @@
       "path": "src/windows/wfp_ioctl.c",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 9260
+      "size": 10028
     },
     {
       "path": "src/windows/win32_io.zig",
@@ -8874,7 +8874,7 @@
       "path": "tests/contracts/test_pep_abi_layout.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 12153
+      "size": 12178
     },
     {
       "path": "tests/cython/profile_brain_hotspot.py",
@@ -9486,7 +9486,7 @@
       "path": "tests/tools/test_no_shadow_dll.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 2362
+      "size": 2402
     },
     {
       "path": "tests/tools/test_notifier_failclosed.py",

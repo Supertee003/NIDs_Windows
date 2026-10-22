@@ -4,7 +4,7 @@
 
 
 
-**HEAD:** `e9e6ddfc4a99467b19328b895ca21c8c3e2d6950` (build source commit — ADR-0008)
+**HEAD:** `6a407cbe3b64a09645c9c09b9de9969c4c971cd6` (build source commit — ADR-0008)
 
 **BRANCH:** `main`
 
@@ -350,7 +350,7 @@ Previous phases:
   DEADCODE-QUARANTINE, CI-GAPS, RELEASE-TOOLING, LEFTOVER-SWEEP, REL-CLOSURE; operator
   cutover 2026-10-19 20:07 deployed daemon `dcb22a5` (sha256 `f223dcce…`) — live gate
   hard-closed (gate_source 'closed', detection-only), gate-check + v6 live verify PASS.
-  Remaining queue: G2 lab campaign executed 2026-10-21 (RB-012 PASS; RB-013 control-path PASS; inbound pipeline quarantine PASS with filter 73000 and confirmed=true, EVI G2-INBOUND-PIPELINE-20261021; direct mirror log/counter OPEN for the 2026-10-21 run as G2-RB013-MIRROR-20261021 (metrics now exposes the counters, G2-METRICS-001 E2); inbound control verify null explained by outbound-target payload, direction/src_ip API added, lab re-run pending as G2-INBOUND-VERIFIER-20261021; absence mapping upstreamed, lab re-run pending as G2-ABSENCE-LAB-20261022; duplicate-filter repeat pending as G2-DUPFILTER-REPEAT-20261022; lab VM snapshot restore PENDING as G2-INBOUND-RESTORE-20261021), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window E2 2026-10-20; install E5 24/24 verifier; R9002/R9006/R9007 live PASS; isolated Kali→Win11 rate E5 CLOSED 2026-10-20; DEPLOY-132 process-pin drift CLOSED 2026-10-21 — host reboot cleared SCM cache; post-reboot PEB dump no pin, R0088=0, verifier 24/24),
+  Remaining queue: G2 lab campaign executed 2026-10-21 (RB-012 PASS; RB-013 control-path PASS; inbound pipeline quarantine PASS with filter 73000 and confirmed=true, EVI G2-INBOUND-PIPELINE-20261021; direct mirror log/counter OPEN for the 2026-10-21 run as G2-RB013-MIRROR-20261021 (metrics now exposes the counters, G2-METRICS-001 E2); inbound control verify null explained by outbound-target payload, direction/src_ip API added and the provider query layer-scoped (G2-VERIFY-DIR-001; lab-kit v2), lab re-run pending as G2-INBOUND-VERIFIER-20261021; absence mapping upstreamed, lab re-run pending as G2-ABSENCE-LAB-20261022; duplicate-filter repeat pending as G2-DUPFILTER-REPEAT-20261022; lab VM snapshot restore PENDING as G2-INBOUND-RESTORE-20261021), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window E2 2026-10-20; install E5 24/24 verifier; R9002/R9006/R9007 live PASS; isolated Kali→Win11 rate E5 CLOSED 2026-10-20; DEPLOY-132 process-pin drift CLOSED 2026-10-21 — host reboot cleared SCM cache; post-reboot PEB dump no pin, R0088=0, verifier 24/24),
   RB-016/017, G4 signing, external review, CI first push (truth semantics fixed 2026-10-20; push approval pending).
   Evidence: EVI CUTOVER-DCB22A5 (E5) + entries V6-QUEUE-DROP..REL-CLOSURE.
 
@@ -403,15 +403,17 @@ Previous phases:
   G2-DUPFILTER-REPEAT-20261022. Production detection-only, gate closed.
 
 - G2 lab re-run preparation (2026-10-22): lab gate-open build staged at
-  admin-evidence/g2-direction-20261022/lab-kit-20261022 (daemon BCF2401D...,
-  PEP 5594..., bridge FD3A8FAB..., unsigned driver 9476F609...). Current-HEAD
-  tests re-passed: Zig 2209/2210 pass + 1 skip; Rust release 48 pass + 3
-  contract tests pass, 1 ignored. Production posture rechecked read-only:
-  detection-only, gate closed, host_effect_capable false. Lab install is still
-  blocked: SMB aegis-lab authentication is rejected, WinRM default credentials
-  are refused by client policy, and the 2026-10-22 443 port check may have
-  created a new proof filter. No further 443 traffic; operator must confirm
-  restore/access and remove any filter before INSTALL.txt is followed.
+  admin-evidence/g2-direction-20261022/lab-kit-20261022-v2 (daemon 0F3F866A...,
+  PEP 8E11ED18..., bridge 9D5D7D46..., unsigned driver F54CFB7F...).
+  lab-kit-20261022-v1 is SUPERSEDED: its query path could attest an inbound
+  filter through the outbound layer. Current-HEAD tests re-passed: Zig
+  2209/2210 pass + 1 skip; Rust release 49 pass, 1 ignored, keygen 3 pass.
+  Production posture rechecked read-only: detection-only, gate closed,
+  host_effect_capable false. Lab install is still blocked: SMB aegis-lab
+  authentication is rejected, WinRM default credentials are refused by client
+  policy, and the 2026-10-22 443 port check may have created a new proof
+  filter. No further 443 traffic; operator must confirm restore/access and
+  remove any filter before INSTALL.txt is followed. Use v2 only.
 
 - G2 exact-not-found absence patch (2026-10-22): IMPLEMENTED at E1 compile
   (G2-ABSENCE-001) - the user bridge maps only FWP_E_FILTER_NOT_FOUND /
@@ -423,6 +425,21 @@ Previous phases:
   afterward (near-miss note). The exact-status branch is compile-only from
   this HEAD; lab re-proof pending as G2-ABSENCE-LAB-20261022. Production
   detection-only, gate closed.
+
+- G2 direction-scoped verifier patch (2026-10-22): IMPLEMENTED at E2
+  (G2-VERIFY-DIR-001) - the WFP postcondition query now names the layer
+  (16-byte AEGIS_WFP_FILTER_QUERY: filter_id + direction@8 + reserved).
+  Direction 0 keeps ALE_AUTH_CONNECT_V4 + remote port; direction 1 uses
+  ALE_AUTH_RECV_ACCEPT_V4 + local port; unknown directions fail closed. The
+  bridge adds aegis_wfp_ioctl_query_filter_dir and the PEP adds
+  aegis_pep_query_filter_dir; a missing direction-aware export fails closed
+  instead of falling back to the outbound query. enforcement.verify passes
+  target.direction; enforcement.unblock proves absence on both layers. Zig
+  2209/2210 + 1 skipped; Rust 49 pass + 1 ignored; WDK driver F54CFB7F...;
+  bridge 9D5D7D46...; lab-gate daemon 0F3F866A.... This closes the v1
+  false-positive path in source; lab re-runs G2-INBOUND-VERIFIER-20261021 and
+  G2-ABSENCE-LAB-20261022 remain OPEN. Production detection-only, gate closed.
+  Evidence: EVI G2-VERIFY-DIR-001.
 
 - RB-021 host-only lab proof (2026-10-20): L4 CLOSE-OUT PASS (E5, per-packet).
   Pre-fix run at e616bad/F223DCCE proved the capture path + 5/8 L7 rules but real
