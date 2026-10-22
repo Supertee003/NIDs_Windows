@@ -7398,7 +7398,7 @@
    "id": "G2-INBOUND-RESTORE-20261021",
    "severity": "P1",
    "title": "Inbound G2 lab VM baseline restore and artifact cleanup are not verified",
-   "description": "The inbound run installed lab daemon 9D88, PEP AC9B, driver 71D1, lab policy DB67, trust key 8, AEGIS_POLICY_ENFORCE_TRUSTED=1, canary listeners/alias/firewall/tasks. The agent did not execute the custom baseline restore. On 2026-10-22 the VM answered ping and TCP 445 but SMB authentication for aegis-lab failed and VMware required the encryption password; the operator reports snapshot restore G2-LAB-BASE-20261021 is in progress. Until the operator confirms, the VM may still carry the inbound lab set.",
+   "description": "The inbound run installed lab daemon 9D88, PEP AC9B, driver 71D1, lab policy DB67, trust key 8, AEGIS_POLICY_ENFORCE_TRUSTED=1, canary listeners/alias/firewall/tasks. The agent did not execute the custom baseline restore. On 2026-10-22 the VM answered ping and TCP 445/5985, TCP 443 was closed (canary listener no longer listening), but SMB authentication for aegis-lab failed and VMware required the encryption password; the operator reports snapshot restore G2-LAB-BASE-20261021 is in progress. Until the operator confirms, the daemon/PEP/driver hashes, base policy, WFP proof count, and gate state remain unverified.",
    "status": "OPEN",
    "found_at": "2026-10-21",
    "required_evidence": [
