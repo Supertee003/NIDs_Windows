@@ -350,9 +350,25 @@ Previous phases:
   DEADCODE-QUARANTINE, CI-GAPS, RELEASE-TOOLING, LEFTOVER-SWEEP, REL-CLOSURE; operator
   cutover 2026-10-19 20:07 deployed daemon `dcb22a5` (sha256 `f223dcce…`) — live gate
   hard-closed (gate_source 'closed', detection-only), gate-check + v6 live verify PASS.
-  Remaining queue: G2 lab campaign executed 2026-10-21 (RB-012 PASS; RB-013 control-path PASS; mirror sub-check OPEN as G2-RB013-MIRROR-20261021), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window E2 2026-10-20; install E5 24/24 verifier; R9002/R9006/R9007 live PASS; isolated Kali→Win11 rate E5 CLOSED 2026-10-20; DEPLOY-132 process-pin drift CLOSED 2026-10-21 — host reboot cleared SCM cache; post-reboot PEB dump no pin, R0088=0, verifier 24/24),
+  Remaining queue: G2 lab campaign executed 2026-10-21 (RB-012 PASS; RB-013 control-path PASS; inbound pipeline quarantine PASS with filter 73000 and confirmed=true, EVI G2-INBOUND-PIPELINE-20261021; direct mirror log/counter OPEN as G2-RB013-MIRROR-20261021; inbound verifier null as G2-INBOUND-VERIFIER-20261021; lab VM snapshot restore PENDING as G2-INBOUND-RESTORE-20261021), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window E2 2026-10-20; install E5 24/24 verifier; R9002/R9006/R9007 live PASS; isolated Kali→Win11 rate E5 CLOSED 2026-10-20; DEPLOY-132 process-pin drift CLOSED 2026-10-21 — host reboot cleared SCM cache; post-reboot PEB dump no pin, R0088=0, verifier 24/24),
   RB-016/017, G4 signing, external review, CI first push (truth semantics fixed 2026-10-20; push approval pending).
   Evidence: EVI CUTOVER-DCB22A5 (E5) + entries V6-QUEUE-DROP..REL-CLOSURE.
+
+- G2 inbound pipeline quarantine (2026-10-21 late): PASS functional / PARTIAL
+  observable (E5 lab-only). Installed daemon 9D88..., PEP AC9B..., driver
+  71D1... (signature Valid), lab policy DB67... (kind=1 + dst_port=443 ->
+  quarantine). A lab-only PepRequest padding byte at offset 37 selects inbound
+  recv-accept; the 64-byte ABI and ctx offset 40 are unchanged. Canary
+  192.168.126.1 -> :443 was accepted at 05:29:14; WFP filter 73000
+  (RECV_ACCEPT_V4, BLOCK, remote .1, local 443, proto 6) was present; the
+  second canary was not accepted; PEP logged confirmed=true; unblock returned
+  ROLLED_BACK/ABSENT; the post-rollback canary was accepted at 05:31:30 and
+  re-triggered 73001, removed by 05:35:30 (VM-local log). Direct
+  QUARANTINED_CONFIRMED/g_confirmed_quarantines were not captured and
+  enforcement.verify returned null for the inbound filter. Host tree restored
+  to HEAD 2b31198; truth verify PASS. Lab VM snapshot restore PENDING;
+  production detection-only, gate closed. Evidence: EVI
+  G2-INBOUND-PIPELINE-20261021.
 
 - RB-021 host-only lab proof (2026-10-20): L4 CLOSE-OUT PASS (E5, per-packet).
   Pre-fix run at e616bad/F223DCCE proved the capture path + 5/8 L7 rules but real

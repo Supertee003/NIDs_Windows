@@ -1,7 +1,7 @@
 {
  "head_sha": "de574b6bad6b2677afc5be754b9213d9335ccb8e",
  "created_at": "2026-09-24",
- "last_updated_at": "2026-10-21",
+ "last_updated_at": "2026-10-22",
  "generator_version": "3.0",
  "evidence_levels": {
   "E0": "No evidence",
@@ -2060,6 +2060,57 @@
     "RB-012 control block: PASS (receipt/verify/traffic/rollback/filter absence)",
     "RB-013 control quarantine: PASS (receipt/verify/traffic/rollback/filter absence)",
     "RB-013 mirror counter: UNMET (control verb bypasses pipeline mirror)"
+   ],
+   "host_effect_confirmed": true,
+   "prevention_gate": "open-lab-only"
+  },
+  {
+   "id": "G2-INBOUND-PIPELINE-20261021",
+   "title": "G2 inbound pipeline: RB-013 quarantine receipt, WFP inbound block, canary gap, rollback; direct mirror log/counter still unobserved (E5 PARTIAL)",
+   "level": "E5",
+   "component": "policy/enforcement",
+   "flow_id": "DATA-001",
+   "head_sha": "de574b6",
+   "timestamp": "2026-10-21",
+   "result": "PARTIAL",
+   "command": "isolated Win11 lab VM 192.168.126.20; lab build zig build -Dlab-prevention-gate=true; lab-only PepRequest direction byte at offset 37; install daemon 9D88/PEP AC9B/driver 71D1; lab policy kind=1 dst_port=443 -> quarantine; canary 192.168.126.1 -> 192.168.126.20:443; netsh wfp show filters; enforcement.unblock 72998/73000; operator snapshot restore pending",
+   "expected": "The inbound WFP event matches policy 3, the PEP quarantine receipt names an inbound filter, that filter blocks the second canary, unblock removes it and restores traffic, and QUARANTINED_CONFIRMED plus a nonzero g_confirmed_quarantines are observed.",
+   "actual": "PASS functional: 05:24 install daemon 9D88/PEP AC9B/driver 71D1 with signature Valid (thumb 60B0...), gate lab-build-optin, provider_ready true, tier3_enforcing true, policy VALID, two-person on. 05:28:26 stale proof filter 72998 removed (ROLLED_BACK/ABSENT, proof count 0). 05:29:14 accept 192.168.126.1:51617; policy eval kind=1 src=0xc0a87e01 dst=0xc0a87e14 sport=51617 dport=443 proto=6 match=yes id=3; PEP quarantine filter=73000 confirmed=true. WFP 73000 is layer FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4, action FWP_ACTION_BLOCK, conditions remote 192.168.126.1, local port 443, protocol 6. Canary 2 produced no accept line (session TIMEOUT); the next matching event sport=51618 was evaluated and the PEP logged no second 73000 quarantine. 05:31:24 unblock 73000 ROLLED_BACK/ABSENT, verify_after null, proof count 0. 05:31:30 post-rollback accept 56983; the still-loaded policy created 73001; 05:35:30 73001 removed per VM-local log (not copied back), final proof count 0. PARTIAL: direct QUARANTINED_CONFIRMED and g_confirmed_quarantines were not observed; the forensic ring tail was not queried before VM access was lost; enforcement.verify returned null for the inbound filter; host_effect_confirmed stayed false and metrics.blocks stayed 0 because the status field is provider-attested aggregate and blocks counts block actions only. VM restore is pending; on 2026-10-22 SMB auth for aegis-lab failed and VMware required the encryption password.",
+   "finding": "The inbound path is the first lab run to exercise the pipeline quarantine branch rather than the control verb: policy 3 matched, the PEP created an inbound WFP filter, the filter blocked traffic, and rollback removed it. The confirmed=true line is the return of dispatchWithReceipt, whose quarantine branch is the only return-true path after same-decision receipt verification, action_quarantine projection, counter increment, and forensic write, so the functional branch is proven. The lab diagnostic event_processor.zig that emitted the line was not copied back; the archived source zip is the host HEAD (4BD5...). G2 remains PARTIAL because the direct log line and counter value were not captured and the control verifier cannot attest inbound filters. Production remains detection-only with the gate closed; no production host effect.",
+   "description": "Lab-only RB-013 pipeline proof on the isolated Win11 VM. A lab policy maps WFP packet_captured events with dst_port 443 to quarantine; a lab-only direction byte in PepRequest padding keeps the 64-byte ABI and selects the inbound recv-accept layer for the driver. The filter is scoped to the lab peer and local port 443. The pre-existing absence-mapping user-DLL patch and the direction patch are not in HEAD. All local evidence is preserved; the VM baseline restore is operator-side and pending.",
+   "files_verified": [
+    "admin-evidence/lab-qualification-20261021/G2-RESULTS.md",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/g2-inbound-build.log",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/g2-inbound-install.log",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/g2-precanary-state.log",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/g2-postcanary.log",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/g2-canary-eth-accepts.log",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/g2-unblock-72998.log",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/g2-unblock-73000.log",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/policy-eval.log",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/policy-pep.log",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/wfp-filters-post-canary.xml",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/wfp-filters-post-rollback.xml",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/wfp-filters-post-unblock.xml",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/lab-policies.json",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/lab-policies.sig.json",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/lab-policy_trust.json",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/host-inbound.patch.diff",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/pep_bindings-C100-inbound.zig",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/aegis_nids-9D88.exe",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/aegis_pep-AC9B.dll",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/aegis_wfp-71D1-signed.sys"
+   ],
+   "files_changed": [
+    "admin-evidence/lab-qualification-20261021/G2-RESULTS.md",
+    "EVIDENCE_INDEX.json",
+    "AI_CONTEXT.md"
+   ],
+   "tests": [
+    "Inbound pipeline quarantine: PASS (policy match, PEP confirmed=true, WFP filter 73000, second canary not accepted, unblock ABSENT)",
+    "Direct mirror observable: UNMET (QUARANTINED_CONFIRMED/counter not captured; ring tail not queried)",
+    "Inbound enforcement.verify: UNMET (verify_73000=null)",
+    "VM restore: PENDING (operator snapshot restore in progress)"
    ],
    "host_effect_confirmed": true,
    "prevention_gate": "open-lab-only"
@@ -7318,16 +7369,45 @@
   {
    "id": "G2-RB013-MIRROR-20261021",
    "severity": "P1",
-   "title": "RB-013 control-path quarantine receipt is not captured by the Zig pipeline mirror; g_confirmed_quarantines/QUARANTINED_CONFIRMED never fire",
-   "description": "enforcement.quarantine (src/control/handler_registry.zig:1911) calls PepEnforcer.enforceQuarantineFlow directly and returns a validated receipt. The Zig mirror increment and QUARANTINED_CONFIRMED log exist only in ActionDispatcher.dispatchWithReceipt (src/policy/action_dispatcher.zig:136-145), reached from the pipeline (src/pipeline/event_processor.zig:293). configs/policies.json has no quarantine action and the lab used AEGIS_POLICY_ENFORCE_TRUSTED=0, so the pipeline branch was not exercised. The control receipt/verify/traffic/rollback proof passes; the mirror counter/log criterion is UNMET. This is a control-path vs pipeline-mirror coverage gap, not a receipt or host-effect failure.",
+   "title": "RB-013 pipeline mirror executes on inbound WFP events, but direct QUARANTINED_CONFIRMED/g_confirmed_quarantines observation remains unproven",
+   "description": "The first RB-013 run used enforcement.quarantine (src/control/handler_registry.zig:1911), which calls PepEnforcer.enforceQuarantineFlow directly and never enters ActionDispatcher.dispatchWithReceipt. A later inbound run did exercise the pipeline: a lab policy matched a WFP packet_captured event (kind=1, dst_port=443), the PEP produced a quarantine receipt naming filter 73000, the filter blocked the second canary, and policy-pep.log recorded confirmed=true. The confirmed bool is the return of dispatchWithReceipt, so the receipt-verified branch ran. However, the direct QUARANTINED_CONFIRMED log line and a nonzero g_confirmed_quarantines value were not captured: the service diagnostic stream was not persisted and the forensic-ring tail was not queried before VM access was lost. The functional path is proven; the direct mirror observable remains UNMET. This is an observability gap, not a receipt or host-effect failure.",
    "status": "OPEN",
    "found_at": "2026-10-21",
    "required_evidence": [
-    "Add a quarantine policy action and pipeline wiring (or a control-path receipt capture path) that reaches the Zig mirror without enabling the zero-target trusted pipeline behavior.",
-    "Re-run RB-013 on the isolated lab VM with severity >=7 and capture QUARANTINED_CONFIRMED plus a nonzero/incremented g_confirmed_quarantines.",
+    "Capture QUARANTINED_CONFIRMED and a nonzero/incremented g_confirmed_quarantines from the inbound pipeline path (forensic ring record kind 65 or a persisted diagnostic stream).",
+    "Keep the functional inbound evidence from EVI G2-INBOUND-PIPELINE-20261021: policy match, PEP confirmed=true filter 73000, WFP filter tuple, canary gap, unblock ABSENT.",
     "Keep the control receipt/verify/traffic/rollback evidence from EVI G2-RB012-013-LAB-20261021."
    ],
-   "evidence": "EVI G2-RB012-013-LAB-20261021 (E5 PARTIAL); admin-evidence/lab-qualification-20261021/mirror-counter-gap.txt; admin-evidence/lab-qualification-20261021/remote-evidence/g2-mirrorgap.log; src/control/handler_registry.zig:1911; src/policy/action_dispatcher.zig:136-145; src/pipeline/event_processor.zig:293; configs/policies.json (no quarantine action)."
+   "evidence": "EVI G2-INBOUND-PIPELINE-20261021 (E5 PARTIAL); EVI G2-RB012-013-LAB-20261021 (E5 PARTIAL); admin-evidence/lab-qualification-20261021/g2-inbound-20261021/policy-pep.log; admin-evidence/lab-qualification-20261021/g2-inbound-20261021/g2-postcanary.log; admin-evidence/lab-qualification-20261021/g2-inbound-20261021/wfp-filters-post-canary.xml; admin-evidence/lab-qualification-20261021/mirror-counter-gap.txt; src/policy/action_dispatcher.zig:136-145; src/pipeline/event_processor.zig:293."
+  },
+  {
+   "id": "G2-INBOUND-VERIFIER-20261021",
+   "severity": "P1",
+   "title": "enforcement.verify returns null for inbound WFP proof filters",
+   "description": "The inbound G2 proof created filter 73000 on FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4 with action FWP_ACTION_BLOCK, remote peer 192.168.126.1, local port 443, and protocol 6. enforcement.verify with filter_id 73000 returned null even though the filter was present and blocking. The control verifier/receipt path is outbound-only or does not carry the direction byte, so it cannot attest inbound enforcement. The lab proved the effect with the WFP XML export and the canary accept gap; production must not claim inbound verification until the verifier is direction-aware.",
+   "status": "OPEN",
+   "found_at": "2026-10-21",
+   "required_evidence": [
+    "Make enforcement.verify direction-aware: use the receipt/filter layer (connect vs recv-accept) and match the remote peer and local service port accordingly.",
+    "Re-run verify against an inbound proof filter and require verified:true, present:true, postcondition:MATCH.",
+    "Keep the lab WFP XML and canary gap as the current effect proof."
+   ],
+   "evidence": "EVI G2-INBOUND-PIPELINE-20261021; admin-evidence/lab-qualification-20261021/g2-inbound-20261021/g2-postcanary.log (verify_73000=null); admin-evidence/lab-qualification-20261021/g2-inbound-20261021/wfp-filters-post-canary.xml (filter 73000 present, layer RECV_ACCEPT_V4); src/policy/pep_bindings.zig; drivers/wfp_callout/aegis_wfp.c (lab direction patch)."
+  },
+  {
+   "id": "G2-INBOUND-RESTORE-20261021",
+   "severity": "P1",
+   "title": "Inbound G2 lab VM baseline restore and artifact cleanup are not verified",
+   "description": "The inbound run installed lab daemon 9D88, PEP AC9B, driver 71D1, lab policy DB67, trust key 8, AEGIS_POLICY_ENFORCE_TRUSTED=1, canary listeners/alias/firewall/tasks. The agent did not execute the custom baseline restore. On 2026-10-22 the VM answered ping and TCP 445 but SMB authentication for aegis-lab failed and VMware required the encryption password; the operator reports snapshot restore G2-LAB-BASE-20261021 is in progress. Until the operator confirms, the VM may still carry the inbound lab set.",
+   "status": "OPEN",
+   "found_at": "2026-10-21",
+   "required_evidence": [
+    "Operator restores G2-LAB-BASE-20261021 and confirms completion.",
+    "Verify daemon 8FEB, PEP 617F, bridge EF9B, driver AD23, and base policies B7224FA01572A637336AF6629D2A63C44FD9C53854DFD401D6264E5249CA3A4E.",
+    "Verify no lab trust/env, no G2CanaryEth/G2CanaryLoop/G2ElevRun/G2LabNormal tasks, no 203.0.113.10 alias, no G2Canary443 rule, listeners stopped, proof count 0.",
+    "Verify enforce status detection-only, prevention_gate closed, host_effect_capable false."
+   ],
+   "evidence": "EVI G2-INBOUND-PIPELINE-20261021; admin-evidence/lab-qualification-20261021/G2-RESULTS.md (Inbound-run restore - PENDING); VM 192.168.126.20 SMB/VMware access failure 2026-10-22."
   }
  ],
  "evidence_level_summary": {
@@ -7336,7 +7416,7 @@
   "E2_count": 130,
   "E3_count": 14,
   "E4_count": 15,
-  "E5_count": 108,
+  "E5_count": 109,
   "E6_count": 0,
   "E7_count": 1
  }
