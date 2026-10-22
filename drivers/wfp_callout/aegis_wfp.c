@@ -345,6 +345,7 @@ NTSTATUS AegisWfpBlockFlow(PIRP Irp) {
     FWPM_FILTER_CONDITION0 condition[3];
     FWPM_FILTER0 filter;
     UINT64 filterId = 0;
+    BOOLEAN inbound;
     NTSTATUS status;
 
     if (inputLen < sizeof(AEGIS_WFP_FLOW_REQUEST) ||
@@ -354,6 +355,13 @@ NTSTATUS AegisWfpBlockFlow(PIRP Irp) {
 
     request = (AEGIS_WFP_FLOW_REQUEST *)Irp->AssociatedIrp.SystemBuffer;
     response = (AEGIS_WFP_FLOW_RESPONSE *)Irp->AssociatedIrp.SystemBuffer;
+
+    /* Only bit 0 is defined. Reject unknown direction bits instead of
+     * silently creating a filter whose layer does not match the caller. */
+    if (request->direction > 1) {
+        return STATUS_INVALID_PARAMETER;
+    }
+    inbound = (request->direction & 0x01u) != 0;
 
     RtlZeroMemory(&session, sizeof(session));
     session.displayData.name = L"AEGIS WFP Port Proof Session";
@@ -366,7 +374,11 @@ NTSTATUS AegisWfpBlockFlow(PIRP Irp) {
     condition[0].matchType = FWP_MATCH_EQUAL;
     condition[0].conditionValue.type = FWP_UINT32;
     condition[0].conditionValue.uint32 = request->remote_ipv4;
-    condition[1].fieldKey = FWPM_CONDITION_IP_REMOTE_PORT;
+    /* The direction byte selects the service-port condition. Outbound
+     * filters match the remote service port; inbound filters match the
+     * local service port while the remote address remains the peer. */
+    condition[1].fieldKey = inbound ? FWPM_CONDITION_IP_LOCAL_PORT
+                                    : FWPM_CONDITION_IP_REMOTE_PORT;
     condition[1].matchType = FWP_MATCH_EQUAL;
     condition[1].conditionValue.type = FWP_UINT16;
     condition[1].conditionValue.uint16 = request->remote_port;
@@ -379,9 +391,12 @@ NTSTATUS AegisWfpBlockFlow(PIRP Irp) {
     filter.filterKey = AEGIS_PROOF_FILTER_KEY;
     filter.displayData.name = L"AEGIS WFP TCP Port Proof Filter";
     filter.displayData.description = L"AEGIS PEP-authorized port-specific proof filter";
-    // Port-specific outbound enforcement belongs to the ALE connect layer.
-    // Leaving layerKey unset makes the filter's effective layer ambiguous.
-    filter.layerKey = FWPM_LAYER_ALE_AUTH_CONNECT_V4;
+    /* Port-specific enforcement must select the layer that matches the
+     * direction. Outbound connects use ALE_AUTH_CONNECT_V4 with a remote-port
+     * condition; inbound accepts use ALE_AUTH_RECV_ACCEPT_V4 with a
+     * local-port condition. Leaving layerKey ambiguous is forbidden. */
+    filter.layerKey = inbound ? FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4
+                              : FWPM_LAYER_ALE_AUTH_CONNECT_V4;
     filter.weight.type = FWP_UINT8;
     filter.weight.uint8 = 15;
     filter.numFilterConditions = 3;
@@ -514,15 +529,28 @@ static BOOLEAN AegisWfpFilterMatchesProof(const FWPM_FILTER0 *filter,
     BOOLEAN hasRemoteIpv4 = FALSE;
     BOOLEAN hasRemotePort = FALSE;
     BOOLEAN hasProtocol = FALSE;
+    BOOLEAN outboundLayer;
+    BOOLEAN inboundLayer;
     UINT32 i;
 
     if (filter == NULL ||
         RtlCompareMemory(&filter->filterKey, &AEGIS_PROOF_FILTER_KEY,
                          sizeof(GUID)) != sizeof(GUID) ||
-        RtlCompareMemory(&filter->layerKey, &FWPM_LAYER_ALE_AUTH_CONNECT_V4,
-                         sizeof(GUID)) != sizeof(GUID) ||
         filter->action.type != FWP_ACTION_BLOCK ||
         filter->numFilterConditions == 0 || filter->filterCondition == NULL) {
+        return FALSE;
+    }
+
+    /* Accept exactly the two layers the block path can mint. The read-back
+     * tuple is the peer address plus the service port: the remote port for
+     * outbound filters, the local port for inbound filters. */
+    outboundLayer = RtlCompareMemory(&filter->layerKey,
+                                     &FWPM_LAYER_ALE_AUTH_CONNECT_V4,
+                                     sizeof(GUID)) == sizeof(GUID);
+    inboundLayer = RtlCompareMemory(&filter->layerKey,
+                                    &FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4,
+                                    sizeof(GUID)) == sizeof(GUID);
+    if (!outboundLayer && !inboundLayer) {
         return FALSE;
     }
 
@@ -538,9 +566,12 @@ static BOOLEAN AegisWfpFilterMatchesProof(const FWPM_FILTER0 *filter,
             condition->matchType == FWP_MATCH_EQUAL) {
             *remoteIpv4 = condition->conditionValue.uint32;
             hasRemoteIpv4 = TRUE;
-        } else if (RtlCompareMemory(&condition->fieldKey,
-                                    &FWPM_CONDITION_IP_REMOTE_PORT,
-                                    sizeof(GUID)) == sizeof(GUID) &&
+        } else if ((RtlCompareMemory(&condition->fieldKey,
+                                     &FWPM_CONDITION_IP_REMOTE_PORT,
+                                     sizeof(GUID)) == sizeof(GUID) ||
+                    RtlCompareMemory(&condition->fieldKey,
+                                     &FWPM_CONDITION_IP_LOCAL_PORT,
+                                     sizeof(GUID)) == sizeof(GUID)) &&
                    condition->conditionValue.type == FWP_UINT16 &&
                    condition->matchType == FWP_MATCH_EQUAL) {
             *remotePort = condition->conditionValue.uint16;

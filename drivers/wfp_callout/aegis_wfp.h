@@ -46,14 +46,23 @@
 
 /* Port-specific enforcement contract. All multi-byte fields use the same
  * host representation across the Rust/C boundary; IPv4 is network order,
- * protocol is IANA (6=TCP, 17=UDP), and port is host-order UINT16. */
+ * protocol is IANA (6=TCP, 17=UDP), and port is host-order UINT16.
+ *
+ * `direction` bit 0 selects the WFP layer. 0 keeps the historical outbound
+ * ALE_AUTH_CONNECT_V4 filter (remote_ipv4/remote_port = peer/remote service
+ * port). 1 selects inbound ALE_AUTH_RECV_ACCEPT_V4 (remote_ipv4 = peer
+ * source address, remote_port = local service port). The byte was previously
+ * reserved and the struct remains 8 bytes; the user-mode bridge forwards it
+ * unchanged. Unknown direction bits are rejected by the driver. */
 #pragma pack(push, 1)
 typedef struct _AEGIS_WFP_FLOW_REQUEST {
     UINT32 remote_ipv4;
     UINT16 remote_port;
     UINT8  protocol;
-    UINT8  reserved;
+    UINT8  direction;
 } AEGIS_WFP_FLOW_REQUEST;
+
+C_ASSERT(sizeof(AEGIS_WFP_FLOW_REQUEST) == 8);
 
 typedef struct _AEGIS_WFP_FLOW_RESPONSE {
     UINT64 filter_id;

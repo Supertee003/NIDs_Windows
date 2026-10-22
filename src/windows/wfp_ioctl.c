@@ -31,7 +31,9 @@ typedef struct _AEGIS_WFP_FLOW_REQUEST {
     uint32_t remote_ipv4;
     uint16_t remote_port;
     uint8_t  protocol;
-    uint8_t  reserved;
+    /* 0 = outbound ALE_AUTH_CONNECT_V4; 1 = inbound
+     * ALE_AUTH_RECV_ACCEPT_V4. The bridge forwards this byte unchanged. */
+    uint8_t  direction;
 } AEGIS_WFP_FLOW_REQUEST;
 
 typedef struct _AEGIS_WFP_FLOW_RESPONSE {

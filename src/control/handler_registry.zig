@@ -1642,56 +1642,119 @@ const handlers = struct {
             .{ action, sev_val.integer }) catch null;
     }
 
-    fn enforcementVerify(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+    const VerifyTarget = struct {
+        filter_id: u64,
+        direction: u8,
+        remote_ipv4: u32,
+        service_port: u16,
+        protocol: u8,
+    };
+
+    /// Parse the exact postcondition tuple. Direction 0 keeps the historical
+    /// outbound dst_ip/dst_port contract. Direction 1 names the inbound peer
+    /// (src_ip) and the local service port (dst_port). The explicit direction
+    /// removes the ambiguity that made an inbound verify look like a mismatch
+    /// when the caller supplied the original destination instead of the peer.
+    fn parseVerifyTarget(payload: std.json.Value, ctx: *HandlerContext) ?VerifyTarget {
         const filter_id = payloadU64(payload, "filter_id") orelse {
             ctx.failure_code = "INVALID_INPUT";
             ctx.failure_state = "REJECTED";
             ctx.failure_message = "filter_id from an EnforcementReceipt is required";
             return null;
         };
-        const expected_ip = payloadU64(payload, "dst_ip") orelse {
+        const direction_present = payload == .object and payload.object.get("direction") != null;
+        const direction_u64 = if (direction_present)
+            payloadU64(payload, "direction") orelse {
+                ctx.failure_code = "INVALID_INPUT";
+                ctx.failure_state = "REJECTED";
+                ctx.failure_message = "direction must be 0 (outbound) or 1 (inbound)";
+                return null;
+            }
+        else
+            0;
+        if (direction_u64 > 1) {
             ctx.failure_code = "INVALID_INPUT";
             ctx.failure_state = "REJECTED";
-            ctx.failure_message = "dst_ip is required for exact postcondition verification";
+            ctx.failure_message = "direction must be 0 (outbound) or 1 (inbound)";
             return null;
-        };
-        const expected_port = payloadU64(payload, "dst_port") orelse {
+        }
+        const direction: u8 = @intCast(direction_u64);
+        const remote_ipv4 = if (direction == 1)
+            payloadU64(payload, "src_ip") orelse {
+                ctx.failure_code = "INVALID_INPUT";
+                ctx.failure_state = "REJECTED";
+                ctx.failure_message = "src_ip is required for inbound postcondition verification";
+                return null;
+            }
+        else
+            payloadU64(payload, "dst_ip") orelse {
+                ctx.failure_code = "INVALID_INPUT";
+                ctx.failure_state = "REJECTED";
+                ctx.failure_message = "dst_ip is required for outbound postcondition verification";
+                return null;
+            };
+        if (direction == 1 and remote_ipv4 == 0) {
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "src_ip must be nonzero for inbound postcondition verification";
+            return null;
+        }
+        const service_port = payloadU64(payload, "dst_port") orelse {
             ctx.failure_code = "INVALID_INPUT";
             ctx.failure_state = "REJECTED";
             ctx.failure_message = "dst_port is required for exact postcondition verification";
             return null;
         };
-        const expected_protocol = payloadU64(payload, "protocol") orelse {
+        const proto = payloadU64(payload, "protocol") orelse {
             ctx.failure_code = "INVALID_INPUT";
             ctx.failure_state = "REJECTED";
             ctx.failure_message = "protocol is required for exact postcondition verification";
             return null;
         };
-        if (filter_id == 0 or expected_ip > std.math.maxInt(u32) or
-            expected_port > std.math.maxInt(u16) or expected_protocol > std.math.maxInt(u8))
+        if (filter_id == 0 or remote_ipv4 > std.math.maxInt(u32) or
+            service_port > std.math.maxInt(u16) or proto > std.math.maxInt(u8))
         {
             ctx.failure_code = "INVALID_INPUT";
             ctx.failure_state = "REJECTED";
             ctx.failure_message = "postcondition fields exceed ABI bounds";
             return null;
         }
+        return .{
+            .filter_id = filter_id,
+            .direction = direction,
+            .remote_ipv4 = @intCast(remote_ipv4),
+            .service_port = @intCast(service_port),
+            .protocol = @intCast(proto),
+        };
+    }
+
+    fn verifyStateMatches(target: VerifyTarget, state: pep_bindings.PepFilterState) bool {
+        return state.filterId() == target.filter_id and
+            state.remoteIpv4() == target.remote_ipv4 and
+            state.remotePort() == target.service_port and
+            state.protocol() == target.protocol and
+            state.present() != 0;
+    }
+
+    fn enforcementVerify(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        const target = parseVerifyTarget(payload, ctx) orelse return null;
         var pep = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available.load(.acquire) };
-        const state = pep.queryFilter(filter_id) orelse {
+        const state = pep.queryFilter(target.filter_id) orelse {
             ctx.failure_code = "POSTCONDITION_FAILED";
             ctx.failure_state = "DEGRADED";
             ctx.failure_message = "receipt filter is not present or provider query failed";
             return null;
         };
-        if (state.remoteIpv4() != @as(u32, @intCast(expected_ip)) or
-            state.remotePort() != @as(u16, @intCast(expected_port)) or
-            state.protocol() != @as(u8, @intCast(expected_protocol)))
-        {
+        if (!verifyStateMatches(target, state)) {
             ctx.failure_code = "POSTCONDITION_FAILED";
             ctx.failure_state = "DEGRADED";
             ctx.failure_message = "receipt filter does not match the requested exact flow";
             return null;
         }
-        return std.fmt.allocPrint(a, "{{\"verified\":true,\"filter_id\":{},\"present\":true,\"dst_ip\":{},\"dst_port\":{},\"protocol\":{},\"postcondition\":\"MATCH\"}}", .{ filter_id, expected_ip, expected_port, expected_protocol }) catch null;
+        if (target.direction == 1) {
+            return std.fmt.allocPrint(a, "{{\"verified\":true,\"filter_id\":{},\"present\":true,\"direction\":1,\"remote_ipv4\":{},\"src_ip\":{},\"dst_port\":{},\"protocol\":{},\"postcondition\":\"MATCH\"}}", .{ target.filter_id, target.remote_ipv4, target.remote_ipv4, target.service_port, target.protocol }) catch null;
+        }
+        return std.fmt.allocPrint(a, "{{\"verified\":true,\"filter_id\":{},\"present\":true,\"direction\":0,\"remote_ipv4\":{},\"dst_ip\":{},\"dst_port\":{},\"protocol\":{},\"postcondition\":\"MATCH\"}}", .{ target.filter_id, target.remote_ipv4, target.remote_ipv4, target.service_port, target.protocol }) catch null;
     }
 
     fn payloadU64(payload: std.json.Value, key: []const u8) ?u64 {
@@ -2422,6 +2485,87 @@ test "metricsSnapshot prints lifetime counters at full u64 width" {
     try std.testing.expect(std.mem.indexOf(u8, out, "\"packets_captured\":4294967362") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"confirmed_blocks\":4294967362") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\"confirmed_quarantines\":4294967363") != null);
+}
+
+test "enforcement.verify parses legacy outbound target" {
+    // No direction keeps the historical dst_ip/dst_port contract.
+    const parsed = std.json.parseFromSlice(std.json.Value, std.testing.allocator, "{\"filter_id\":78093,\"dst_ip\":3405803786,\"dst_port\":443,\"protocol\":6}", .{}) catch unreachable;
+    defer parsed.deinit();
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 31, .caller_role = .read, .caller_pid = 0 };
+    const target = handlers.parseVerifyTarget(parsed.value, &ctx).?;
+    try std.testing.expectEqual(@as(u64, 78093), target.filter_id);
+    try std.testing.expectEqual(@as(u8, 0), target.direction);
+    try std.testing.expectEqual(@as(u32, 3405803786), target.remote_ipv4);
+    try std.testing.expectEqual(@as(u16, 443), target.service_port);
+    try std.testing.expectEqual(@as(u8, 6), target.protocol);
+    try std.testing.expectEqual(@as(?[]const u8, null), ctx.failure_code);
+}
+
+test "enforcement.verify parses inbound peer/local-port target" {
+    // Direction 1 names the inbound peer (src_ip) and the local service port
+    // (dst_port); the original destination is not the WFP remote address.
+    const parsed = std.json.parseFromSlice(std.json.Value, std.testing.allocator, "{\"filter_id\":73000,\"direction\":1,\"src_ip\":3232239105,\"dst_port\":443,\"protocol\":6}", .{}) catch unreachable;
+    defer parsed.deinit();
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 32, .caller_role = .read, .caller_pid = 0 };
+    const target = handlers.parseVerifyTarget(parsed.value, &ctx).?;
+    try std.testing.expectEqual(@as(u8, 1), target.direction);
+    try std.testing.expectEqual(@as(u32, 3232239105), target.remote_ipv4);
+    try std.testing.expectEqual(@as(u16, 443), target.service_port);
+    try std.testing.expectEqual(@as(?[]const u8, null), ctx.failure_code);
+}
+
+test "enforcement.verify matches inbound peer and rejects the original destination" {
+    // Pins the 2026-10-21 control-path null: the filter's remote address for
+    // an inbound filter is the peer (192.168.126.1), not the original
+    // destination (203.0.113.10). The read-back tuple must match exactly.
+    var bytes = [_]u8{0} ** 20;
+    std.mem.writeInt(u64, bytes[0..8], 73000, .little);
+    std.mem.writeInt(u32, bytes[8..12], 0xC0A87E01, .little);
+    std.mem.writeInt(u16, bytes[12..14], 443, .little);
+    bytes[14] = 6;
+    bytes[15] = 1;
+    const state = pep_bindings.PepFilterState{ .bytes = bytes };
+
+    const inbound = handlers.VerifyTarget{
+        .filter_id = 73000,
+        .direction = 1,
+        .remote_ipv4 = 0xC0A87E01,
+        .service_port = 443,
+        .protocol = 6,
+    };
+    try std.testing.expect(handlers.verifyStateMatches(inbound, state));
+
+    const wrong_remote = handlers.VerifyTarget{
+        .filter_id = 73000,
+        .direction = 1,
+        .remote_ipv4 = 0xCB00710A,
+        .service_port = 443,
+        .protocol = 6,
+    };
+    try std.testing.expect(!handlers.verifyStateMatches(wrong_remote, state));
+
+    const wrong_port = handlers.VerifyTarget{
+        .filter_id = 73000,
+        .direction = 1,
+        .remote_ipv4 = 0xC0A87E01,
+        .service_port = 444,
+        .protocol = 6,
+    };
+    try std.testing.expect(!handlers.verifyStateMatches(wrong_port, state));
+}
+
+test "enforcement.verify rejects unknown direction and missing inbound peer" {
+    const bad_direction = std.json.parseFromSlice(std.json.Value, std.testing.allocator, "{\"filter_id\":73000,\"direction\":2,\"src_ip\":3232239105,\"dst_port\":443,\"protocol\":6}", .{}) catch unreachable;
+    defer bad_direction.deinit();
+    var ctx1 = HandlerContext{ .start_ns = 0, .request_id = 33, .caller_role = .read, .caller_pid = 0 };
+    try std.testing.expect(handlers.parseVerifyTarget(bad_direction.value, &ctx1) == null);
+    try std.testing.expectEqualStrings("INVALID_INPUT", ctx1.failure_code.?);
+
+    const missing_peer = std.json.parseFromSlice(std.json.Value, std.testing.allocator, "{\"filter_id\":73000,\"direction\":1,\"dst_ip\":3232239136,\"dst_port\":443,\"protocol\":6}", .{}) catch unreachable;
+    defer missing_peer.deinit();
+    var ctx2 = HandlerContext{ .start_ns = 0, .request_id = 34, .caller_role = .read, .caller_pid = 0 };
+    try std.testing.expect(handlers.parseVerifyTarget(missing_peer.value, &ctx2) == null);
+    try std.testing.expectEqualStrings("INVALID_INPUT", ctx2.failure_code.?);
 }
 
 test "enforcementStatus exposes shield screening flags" {

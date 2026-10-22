@@ -41,8 +41,39 @@ pub const PepRequest = extern struct {
     protocol: u8,
     policy_id: u32,
     severity: u8,
+    // FFI-001 direction byte: reuses historical padding between severity and
+    // ctx, so PepRequest stays 64 bytes and ctx stays at offset 40.
+    // 0 = outbound/default (dst_ip/dst_port); 1 = inbound WFP capture
+    // (peer src_ip + local service dst_port). Unknown values fail closed in
+    // the Rust PEP; the Zig side only emits 0 or 1.
+    direction: u8 = 0,
     ctx: PepContext,
 };
+
+/// Map an event source to the WFP direction byte. Only the kernel WFP
+/// telemetry source is inbound; every other path keeps the historical
+/// outbound dst_ip/dst_port contract.
+pub fn requestDirection(ev: *const event.IpcEvent) u8 {
+    return if (ev.source == .capture_wfp) 1 else 0;
+}
+
+/// The WFP read-back tuple a receipt must match. Inbound WFP capture uses
+/// the peer source address with the local service port; every other path
+/// keeps dst_ip/dst_port. A zero inbound peer fails closed.
+pub const ReceiptTarget = struct {
+    remote_ipv4: u32,
+    service_port: u16,
+    protocol: u8,
+};
+
+pub fn receiptTarget(ev: *const event.IpcEvent) ?ReceiptTarget {
+    if (ev.source == .capture_wfp and ev.src_ip == 0) return null;
+    return .{
+        .remote_ipv4 = if (ev.source == .capture_wfp) ev.src_ip else ev.dst_ip,
+        .service_port = ev.dst_port,
+        .protocol = ev.protocol,
+    };
+}
 
 pub const PepResponse = extern struct {
     decision: u8,
@@ -177,6 +208,7 @@ pub const PepEnforcer = struct {
             .protocol = ev.protocol,
             .policy_id = p.id,
             .severity = @intFromEnum(ev.severity),
+            .direction = requestDirection(ev),
             .ctx = .{ .caller_pid = caller_pid, .caller_capability_mask = caller_caps, .request_id = request_id },
         };
         var resp: PepResponse = undefined;
@@ -367,11 +399,12 @@ pub const PepEnforcer = struct {
     ) bool {
         if (receipt.filter_id == 0) return false;
         if (receipt.decision != .block and receipt.decision != .quarantine) return false;
+        const target = receiptTarget(ev) orelse return false;
         return switch (self.queryFilterResult(receipt.filter_id)) {
             .present => |state| state.filterId() == receipt.filter_id and
-                state.remoteIpv4() == ev.dst_ip and
-                state.remotePort() == ev.dst_port and
-                state.protocol() == ev.protocol and
+                state.remoteIpv4() == target.remote_ipv4 and
+                state.remotePort() == target.service_port and
+                state.protocol() == target.protocol and
                 state.present() != 0,
             .absent, .query_error => false,
         };
@@ -561,10 +594,13 @@ test "FFI-001: PepContext field offsets match Rust" {
 
 test "FFI-001: PepRequest size matches Rust" {
     // Rust #[repr(C)] PepRequest:
-    //   decision_kind: u8 (1) + padding(7) + flow_id: u64 (8) + src_ip: u32 (4) +
-    //   dst_ip: u32 (4) + src_port: u16 (2) + dst_port: u16 (2) + policy_id: u32 (4) +
-    //   severity: u8 (1) + padding(7) + ctx: PepContext (24)
-    // = 1+7+8+4+4+2+2+4+1+7+24 = 64 bytes
+    //   decision_kind u8 (1) + requested_action u8 (1) + padding(6) +
+    //   flow_id u64 (8) + src_ip u32 (4) + dst_ip u32 (4) +
+    //   src_port u16 (2) + dst_port u16 (2) + policy_id u32 (4) +
+    //   severity u8 (1) + direction u8 (1) + padding(2) +
+    //   ctx PepContext (24) + tail padding(4)
+    // = 64 bytes. The direction byte reuses historical padding; ctx stays
+    // at offset 40 and no field before it moves.
     try std.testing.expectEqual(@as(usize, 64), @sizeOf(PepRequest));
 }
 
@@ -580,7 +616,56 @@ test "FFI-001: PepRequest field offsets match Rust" {
     try std.testing.expectEqual(@as(usize, 28), @offsetOf(PepRequest, "protocol"));
     try std.testing.expectEqual(@as(usize, 32), @offsetOf(PepRequest, "policy_id"));
     try std.testing.expectEqual(@as(usize, 36), @offsetOf(PepRequest, "severity"));
+    try std.testing.expectEqual(@as(usize, 37), @offsetOf(PepRequest, "direction"));
     try std.testing.expectEqual(@as(usize, 40), @offsetOf(PepRequest, "ctx"));
+}
+
+test "FFI-001: requestDirection marks only WFP capture inbound" {
+    var wfp = event.IpcEvent.init(.packet_captured);
+    wfp.source = .capture_wfp;
+    try std.testing.expectEqual(@as(u8, 1), requestDirection(&wfp));
+
+    var npcap = event.IpcEvent.init(.packet_captured);
+    npcap.source = .capture_npcap;
+    try std.testing.expectEqual(@as(u8, 0), requestDirection(&npcap));
+
+    var policy_ev = event.IpcEvent.init(.flow_created);
+    policy_ev.source = .policy;
+    try std.testing.expectEqual(@as(u8, 0), requestDirection(&policy_ev));
+}
+
+test "FFI-001: receiptTarget uses peer/local port for WFP capture" {
+    var wfp = event.IpcEvent.init(.packet_captured);
+    wfp.source = .capture_wfp;
+    wfp.src_ip = 0xC0A87E01;
+    wfp.dst_ip = 0xC0A87E14;
+    wfp.src_port = 51617;
+    wfp.dst_port = 443;
+    wfp.protocol = 6;
+    const inbound = receiptTarget(&wfp).?;
+    try std.testing.expectEqual(@as(u32, 0xC0A87E01), inbound.remote_ipv4);
+    try std.testing.expectEqual(@as(u16, 443), inbound.service_port);
+    try std.testing.expectEqual(@as(u8, 6), inbound.protocol);
+
+    var outbound = event.IpcEvent.init(.flow_created);
+    outbound.source = .policy;
+    outbound.src_ip = 0xC0A87E01;
+    outbound.dst_ip = 0xCB00710A;
+    outbound.dst_port = 443;
+    outbound.protocol = 6;
+    const egress = receiptTarget(&outbound).?;
+    try std.testing.expectEqual(@as(u32, 0xCB00710A), egress.remote_ipv4);
+    try std.testing.expectEqual(@as(u16, 443), egress.service_port);
+}
+
+test "FFI-001: receiptTarget fails closed on zero inbound peer" {
+    var wfp = event.IpcEvent.init(.packet_captured);
+    wfp.source = .capture_wfp;
+    wfp.src_ip = 0;
+    wfp.dst_ip = 0xC0A87E14;
+    wfp.dst_port = 443;
+    wfp.protocol = 6;
+    try std.testing.expect(receiptTarget(&wfp) == null);
 }
 
 test "FFI-001: PepResponse size matches Rust" {
@@ -650,6 +735,7 @@ test "FFI-001: PepRequest binary serialization roundtrip" {
         .protocol = 6,
         .policy_id = 42,
         .severity = 7,
+        .direction = 1,
         .ctx = .{
             .caller_pid = 1234,
             .caller_capability_mask = 0xFF,
@@ -663,6 +749,9 @@ test "FFI-001: PepRequest binary serialization roundtrip" {
     // Verify flow_id at offset 8 (little-endian u64)
     const flow_id_bytes = bytes[8..16];
     try std.testing.expectEqual(@as(u8, 0x08), flow_id_bytes[0]); // LE first byte
+    // The direction byte stays at 37 and ctx stays at 40.
+    try std.testing.expectEqual(@as(u8, 1), bytes[37]);
+    try std.testing.expectEqual(@as(usize, 40), @offsetOf(PepRequest, "ctx"));
 }
 
 test "FFI-001: flow enforcement uses policy block ordinal" {

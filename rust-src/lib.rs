@@ -219,7 +219,48 @@ pub struct PepRequest {
     pub protocol: u8,
     pub policy_id: u32,
     pub severity: u8,
+    // FFI-001 direction byte: reuses historical padding between severity and
+    // ctx. 0 = outbound/default (dst_ip/dst_port); 1 = inbound WFP capture
+    // (peer src_ip + local service dst_port). The 64-byte ABI and ctx@40 are
+    // frozen by the compile-time assertions below.
+    pub direction: u8,
     pub ctx: PepContext,
+}
+
+const _: () = {
+    assert!(std::mem::size_of::<PepRequest>() == 64);
+    assert!(std::mem::offset_of!(PepRequest, direction) == 37);
+    assert!(std::mem::offset_of!(PepRequest, ctx) == 40);
+};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FlowTarget {
+    pub remote_ipv4: u32,
+    pub remote_port: u16,
+    pub protocol: u8,
+    pub direction: u8,
+}
+
+/// Resolve the WFP flow tuple for a PEP request. Direction 0 is the historical
+/// outbound path (dst_ip/dst_port). Direction 1 is inbound WFP capture (peer
+/// src_ip + local service dst_port). Unknown directions and a zero inbound
+/// peer fail closed.
+pub fn flow_target(req: &PepRequest) -> Option<FlowTarget> {
+    match req.direction {
+        0 => Some(FlowTarget {
+            remote_ipv4: req.dst_ip,
+            remote_port: req.dst_port,
+            protocol: req.protocol,
+            direction: 0,
+        }),
+        1 if req.src_ip != 0 => Some(FlowTarget {
+            remote_ipv4: req.src_ip,
+            remote_port: req.dst_port,
+            protocol: req.protocol,
+            direction: 1,
+        }),
+        _ => None,
+    }
 }
 
 #[repr(C)]
@@ -282,7 +323,10 @@ mod wfp_adapter {
         pub remote_ipv4: u32,
         pub remote_port: u16,
         pub protocol: u8,
-        pub reserved: u8,
+        // 0 = outbound ALE_AUTH_CONNECT_V4; 1 = inbound
+        // ALE_AUTH_RECV_ACCEPT_V4. The user-mode bridge forwards this byte
+        // unchanged; the struct remains 8 bytes.
+        pub direction: u8,
     }
 
     #[repr(C, packed)]
@@ -729,14 +773,24 @@ pub unsafe extern "C" fn aegis_pep_enforce(
         #[cfg(windows)]
         {
             // PEP-ADAPTER-CACHE-073: cached bridge (re-probes on failure).
-            let flow = wfp_adapter::FlowRequest {
-                remote_ipv4: req.dst_ip,
-                remote_port: req.dst_port,
-                protocol: req.protocol,
-                reserved: 0,
-            };
-            match adapter_cache::with_adapter(|adapter| adapter.block_flow(&flow)) {
-                Some(id) => filter_id = id,
+            // Direction 1 is inbound WFP capture: the peer is src_ip and the
+            // local service port is dst_port. Unknown directions fail closed.
+            match flow_target(req) {
+                Some(target) => {
+                    let flow = wfp_adapter::FlowRequest {
+                        remote_ipv4: target.remote_ipv4,
+                        remote_port: target.remote_port,
+                        protocol: target.protocol,
+                        direction: target.direction,
+                    };
+                    match adapter_cache::with_adapter(|adapter| adapter.block_flow(&flow)) {
+                        Some(id) => filter_id = id,
+                        None => {
+                            decision = DECISION_ESCALATE;
+                            reason = 4;
+                        }
+                    }
+                }
                 None => {
                     decision = DECISION_ESCALATE;
                     reason = 4;
@@ -1549,6 +1603,56 @@ mod tests {
         }
     }
 
+    fn target_request(direction: u8, src_ip: u32, dst_ip: u32) -> PepRequest {
+        PepRequest {
+            decision_kind: 0,
+            requested_action: ACTION_BLOCK,
+            flow_id: 1,
+            src_ip,
+            dst_ip,
+            src_port: 12345,
+            dst_port: 443,
+            protocol: 6,
+            policy_id: 3,
+            severity: 9,
+            direction,
+            ctx: PepContext {
+                caller_pid: 1,
+                caller_capability_mask: 1,
+                request_id: 1,
+                policy_version: 0,
+            },
+        }
+    }
+
+    #[test]
+    fn flow_target_outbound_uses_dst_tuple() {
+        let req = target_request(0, 0xC0A87E01, 0xCB00710A);
+        let target = flow_target(&req).unwrap();
+        assert_eq!(target.remote_ipv4, 0xCB00710A);
+        assert_eq!(target.remote_port, 443);
+        assert_eq!(target.protocol, 6);
+        assert_eq!(target.direction, 0);
+    }
+
+    #[test]
+    fn flow_target_inbound_uses_peer_and_local_port() {
+        let req = target_request(1, 0xC0A87E01, 0xC0A87E14);
+        let target = flow_target(&req).unwrap();
+        assert_eq!(target.remote_ipv4, 0xC0A87E01);
+        assert_eq!(target.remote_port, 443);
+        assert_eq!(target.protocol, 6);
+        assert_eq!(target.direction, 1);
+    }
+
+    #[test]
+    fn flow_target_fails_closed_for_zero_peer_and_unknown_direction() {
+        let zero_peer = target_request(1, 0, 0xC0A87E14);
+        assert!(flow_target(&zero_peer).is_none());
+        let unknown = target_request(2, 0xC0A87E01, 0xC0A87E14);
+        assert!(flow_target(&unknown).is_none());
+    }
+
     #[test]
     fn quota_consume_exhausts_at_default_and_fails_closed() {
         let mut state = PepState {
@@ -2055,6 +2159,7 @@ mod tests {
             protocol: 6,
             policy_id: 9,
             severity: 9,
+            direction: 0,
             ctx: PepContext {
                 caller_pid: 1,
                 caller_capability_mask: 1,
@@ -2131,6 +2236,7 @@ mod tests {
             protocol: 6,
             policy_id: 7,
             severity: 4,
+            direction: 0,
             ctx: PepContext {
                 caller_pid: 1,
                 caller_capability_mask: 1,
@@ -2180,6 +2286,7 @@ mod tests {
             protocol: 6,
             policy_id: 1,
             severity: 4,
+            direction: 0,
             ctx: PepContext {
                 caller_pid: 1,
                 caller_capability_mask: 1,
@@ -2214,6 +2321,7 @@ mod tests {
             protocol: 6,
             policy_id: 1,
             severity: 4,
+            direction: 0,
             ctx: PepContext {
                 caller_pid: 1,
                 caller_capability_mask: 0, // no capability
@@ -2249,6 +2357,7 @@ mod tests {
             protocol: 6,
             policy_id: 1,
             severity: 4,
+            direction: 0,
             ctx: PepContext {
                 caller_pid: 1,
                 caller_capability_mask: 0, // no capability
@@ -2287,6 +2396,7 @@ mod tests {
             protocol: 6,
             policy_id: 1,
             severity: 4,
+            direction: 0,
             ctx: PepContext {
                 caller_pid: 1,
                 caller_capability_mask: 1,
@@ -2324,6 +2434,7 @@ mod tests {
             protocol: 6,
             policy_id: 9,
             severity: 9,
+            direction: 0,
             ctx: PepContext {
                 caller_pid: 1,
                 caller_capability_mask: 1,
@@ -2362,6 +2473,7 @@ mod tests {
             protocol: 6,
             policy_id: 1,
             severity: 8,
+            direction: 0,
             ctx: PepContext {
                 caller_pid: 1,
                 caller_capability_mask: 0,
@@ -2399,6 +2511,7 @@ mod tests {
             protocol: 6,
             policy_id: 1,
             severity: 4,
+            direction: 0,
             ctx: PepContext {
                 caller_pid: 1,
                 caller_capability_mask: 1,
