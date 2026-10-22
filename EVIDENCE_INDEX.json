@@ -7608,16 +7608,17 @@
    "id": "G2-INBOUND-RESTORE-20261021",
    "severity": "P1",
    "title": "Inbound G2 lab VM baseline restore and artifact cleanup are not verified",
-   "description": "The inbound run installed lab daemon 9D88, PEP AC9B, driver 71D1, lab policy DB67, trust key 8, AEGIS_POLICY_ENFORCE_TRUSTED=1, canary listeners/alias/firewall/tasks. The agent did not execute the custom baseline restore. On 2026-10-22 the VM answered ping and TCP 445/5985, TCP 443 was closed (canary listener no longer listening), but SMB authentication for aegis-lab failed and VMware required the encryption password; the operator reports snapshot restore G2-LAB-BASE-20261021 is in progress. Until the operator confirms, the daemon/PEP/driver hashes, base policy, WFP proof count, and gate state remain unverified.",
+   "description": "The inbound run installed lab daemon 9D88, PEP AC9B, driver 71D1, lab policy DB67, trust key 8, AEGIS_POLICY_ENFORCE_TRUSTED=1, canary listeners/alias/firewall/tasks. The agent did not execute the custom baseline restore. On 2026-10-22 the VM answered ping and TCP 445/5985; an earlier check found TCP 443 closed, but a later recheck found it OPEN and made one TCP connect to 443. That connect is canary-like and may have triggered the still-loaded lab policy, possibly creating a new proof filter (e.g., 73002). No further 443 traffic was sent. SMB authentication for aegis-lab failed and VMware required the encryption password; the operator reports snapshot restore G2-LAB-BASE-20261021 is in progress. Until the operator confirms, the daemon/PEP/driver hashes, base policy, WFP proof count, and gate state remain unverified.",
    "status": "OPEN",
    "found_at": "2026-10-21",
    "required_evidence": [
     "Operator restores G2-LAB-BASE-20261021 and confirms completion.",
     "Verify daemon 8FEB, PEP 617F, bridge EF9B, driver AD23, and base policies B7224FA01572A637336AF6629D2A63C44FD9C53854DFD401D6264E5249CA3A4E.",
     "Verify no lab trust/env, no G2CanaryEth/G2CanaryLoop/G2ElevRun/G2LabNormal tasks, no 203.0.113.10 alias, no G2Canary443 rule, listeners stopped, proof count 0.",
+    "Confirm no new proof filter (e.g., 73002) was created by the 2026-10-22 TCP connect to 443; remove it with the filter-id rollback path if present.",
     "Verify enforce status detection-only, prevention_gate closed, host_effect_capable false."
    ],
-   "evidence": "EVI G2-INBOUND-PIPELINE-20261021; admin-evidence/lab-qualification-20261021/G2-RESULTS.md (Inbound-run restore - PENDING); VM 192.168.126.20 SMB/VMware access failure 2026-10-22."
+   "evidence": "EVI G2-INBOUND-PIPELINE-20261021; admin-evidence/lab-qualification-20261021/G2-RESULTS.md (Inbound-run restore - PENDING); admin-evidence/g2-direction-20261022/vm-recheck-20261022.txt (443 open; one connect; no further traffic); VM 192.168.126.20 SMB/VMware access failure 2026-10-22."
   }
  ],
  "evidence_level_summary": {

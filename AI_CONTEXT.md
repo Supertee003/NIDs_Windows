@@ -366,9 +366,12 @@ Previous phases:
   re-triggered 73001, removed by 05:35:30 (VM-local log). Direct
   QUARANTINED_CONFIRMED/g_confirmed_quarantines were not captured and
   enforcement.verify returned null for the inbound filter. Host tree restored
-  to HEAD 2b31198; truth verify PASS. Lab VM snapshot restore PENDING;
-  production detection-only, gate closed. Evidence: EVI
-  G2-INBOUND-PIPELINE-20261021.
+  to HEAD 2b31198; truth verify PASS. Lab VM snapshot restore PENDING; a
+  2026-10-22 recheck found TCP 443 open and made one TCP connect, which is
+  canary-like and may have triggered the still-loaded lab policy; no further
+  443 traffic was sent and the restore must enumerate/remove any new proof
+  filter. Production detection-only, gate closed. Evidence: EVI
+  G2-INBOUND-PIPELINE-20261021; vm-recheck-20261022.txt.
 
 - G2 metrics observability patch (2026-10-22): IMPLEMENTED at E2 - metrics.snapshot
   now emits confirmed_blocks and confirmed_quarantines as read-only atomic loads
