@@ -4,7 +4,7 @@
 
 
 
-**HEAD:** `de574b6bad6b2677afc5be754b9213d9335ccb8e` (build source commit — ADR-0008)
+**HEAD:** `82214c6c7c492a8781bbfcf788d3868200d98199` (build source commit — ADR-0008)
 
 **BRANCH:** `main`
 
@@ -350,7 +350,7 @@ Previous phases:
   DEADCODE-QUARANTINE, CI-GAPS, RELEASE-TOOLING, LEFTOVER-SWEEP, REL-CLOSURE; operator
   cutover 2026-10-19 20:07 deployed daemon `dcb22a5` (sha256 `f223dcce…`) — live gate
   hard-closed (gate_source 'closed', detection-only), gate-check + v6 live verify PASS.
-  Remaining queue: G2 lab campaign executed 2026-10-21 (RB-012 PASS; RB-013 control-path PASS; inbound pipeline quarantine PASS with filter 73000 and confirmed=true, EVI G2-INBOUND-PIPELINE-20261021; direct mirror log/counter OPEN as G2-RB013-MIRROR-20261021; inbound verifier null as G2-INBOUND-VERIFIER-20261021; lab VM snapshot restore PENDING as G2-INBOUND-RESTORE-20261021), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window E2 2026-10-20; install E5 24/24 verifier; R9002/R9006/R9007 live PASS; isolated Kali→Win11 rate E5 CLOSED 2026-10-20; DEPLOY-132 process-pin drift CLOSED 2026-10-21 — host reboot cleared SCM cache; post-reboot PEB dump no pin, R0088=0, verifier 24/24),
+  Remaining queue: G2 lab campaign executed 2026-10-21 (RB-012 PASS; RB-013 control-path PASS; inbound pipeline quarantine PASS with filter 73000 and confirmed=true, EVI G2-INBOUND-PIPELINE-20261021; direct mirror log/counter OPEN for the 2026-10-21 run as G2-RB013-MIRROR-20261021 (metrics now exposes the counters, G2-METRICS-001 E2); inbound verifier null as G2-INBOUND-VERIFIER-20261021; lab VM snapshot restore PENDING as G2-INBOUND-RESTORE-20261021), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window E2 2026-10-20; install E5 24/24 verifier; R9002/R9006/R9007 live PASS; isolated Kali→Win11 rate E5 CLOSED 2026-10-20; DEPLOY-132 process-pin drift CLOSED 2026-10-21 — host reboot cleared SCM cache; post-reboot PEB dump no pin, R0088=0, verifier 24/24),
   RB-016/017, G4 signing, external review, CI first push (truth semantics fixed 2026-10-20; push approval pending).
   Evidence: EVI CUTOVER-DCB22A5 (E5) + entries V6-QUEUE-DROP..REL-CLOSURE.
 
@@ -369,6 +369,14 @@ Previous phases:
   to HEAD 2b31198; truth verify PASS. Lab VM snapshot restore PENDING;
   production detection-only, gate closed. Evidence: EVI
   G2-INBOUND-PIPELINE-20261021.
+
+- G2 metrics observability patch (2026-10-22): IMPLEMENTED at E2 - metrics.snapshot
+  now emits confirmed_blocks and confirmed_quarantines as read-only atomic loads
+  of g_confirmed_blocks/g_confirmed_quarantines, so a future lab run can capture
+  the receipt-verified counter through the control API without a persisted stderr
+  stream. Unit tests cover key presence and full u64 width; zig build test PASS.
+  This does not retroactively close G2-RB013-MIRROR-20261021. Production remains
+  detection-only, gate closed. Evidence: EVI G2-METRICS-001.
 
 - RB-021 host-only lab proof (2026-10-20): L4 CLOSE-OUT PASS (E5, per-packet).
   Pre-fix run at e616bad/F223DCCE proved the capture path + 5/8 L7 rules but real

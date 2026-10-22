@@ -1,5 +1,5 @@
 {
- "head_sha": "de574b6bad6b2677afc5be754b9213d9335ccb8e",
+ "head_sha": "82214c6c7c492a8781bbfcf788d3868200d98199",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-10-22",
  "generator_version": "3.0",
@@ -2115,6 +2115,47 @@
    ],
    "host_effect_confirmed": true,
    "prevention_gate": "open-lab-only"
+  },
+  {
+   "id": "G2-METRICS-001",
+   "title": "Metrics expose receipt-verified block/quarantine counters (E2)",
+   "level": "E2",
+   "component": "control/metrics",
+   "flow_id": "CONTROL-001",
+   "head_sha": "82214c6",
+   "timestamp": "2026-10-22",
+   "result": "PASS",
+   "command": "zig build test",
+   "expected": "metrics.snapshot returns additive confirmed_blocks and confirmed_quarantines keys carrying the full u64 values of runtime_state.g_confirmed_blocks and g_confirmed_quarantines; no existing key or value changes.",
+   "actual": "PASS: metricsSnapshot now emits confirmed_blocks and confirmed_quarantines after blocks; unit tests assert both keys and the full-width values 4294967362/4294967363; zig build test exit 0. This makes a future lab run observable through the existing metrics verb without a persisted stderr stream. It does not retroactively close G2-RB013-MIRROR-20261021.",
+   "finding": "The G2 inbound run could not observe g_confirmed_quarantines because the counter was only consumed by DEFCON and never surfaced in metrics. The new keys are read-only atomic loads; no enforcement behavior, ABI, wire format, or authority changed.",
+   "description": "Additive observability patch for the G2 mirror gap. The receipt-verified counters are now part of the operator-visible metrics payload, so the next lab run can capture the post-quarantine value from metrics.snapshot instead of relying on the daemon diagnostic stream or the forensic ring tail.",
+   "files_verified": [
+    "src/control/handler_registry.zig",
+    "src/pipeline/runtime_state.zig",
+    "src/policy/action_dispatcher.zig"
+   ],
+   "files_changed": [
+    "src/control/handler_registry.zig",
+    "EVIDENCE_INDEX.json",
+    "AI_CONTEXT.md",
+    "SYSTEM_MAP.json",
+    "FLOW_MAP.json",
+    "AUTHORITY_MAP.json",
+    "CONTRACT_MAP.json",
+    "build_truth.json",
+    "build_manifest.json",
+    "runtime_manifest.json",
+    "inventory.json",
+    "reference_map.json"
+   ],
+   "tests": [
+    "metricsSnapshot exposes SIEM durability counters: PASS (confirmed keys present)",
+    "metricsSnapshot prints lifetime counters at full u64 width: PASS (confirmed counters 4294967362/4294967363)",
+    "zig build test: PASS (exit 0)"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed"
   }
  ],
  "known_gaps": [
@@ -7414,7 +7455,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 25,
-  "E2_count": 130,
+  "E2_count": 131,
   "E3_count": 14,
   "E4_count": 15,
   "E5_count": 109,
