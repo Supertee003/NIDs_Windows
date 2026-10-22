@@ -402,6 +402,17 @@ Previous phases:
   yet, so the repeated-quarantine escalation remains OPEN as
   G2-DUPFILTER-REPEAT-20261022. Production detection-only, gate closed.
 
+- G2 lab re-run preparation (2026-10-22): lab gate-open build staged at
+  admin-evidence/g2-direction-20261022/lab-kit-20261022 (daemon BCF2401D...,
+  PEP 5594..., bridge FD3A8FAB..., unsigned driver 9476F609...). Current-HEAD
+  tests re-passed: Zig 2209/2210 pass + 1 skip; Rust release 48 pass + 3
+  contract tests pass, 1 ignored. Production posture rechecked read-only:
+  detection-only, gate closed, host_effect_capable false. Lab install is still
+  blocked: SMB aegis-lab authentication is rejected, WinRM default credentials
+  are refused by client policy, and the 2026-10-22 443 port check may have
+  created a new proof filter. No further 443 traffic; operator must confirm
+  restore/access and remove any filter before INSTALL.txt is followed.
+
 - G2 exact-not-found absence patch (2026-10-22): IMPLEMENTED at E1 compile
   (G2-ABSENCE-001) - the user bridge maps only FWP_E_FILTER_NOT_FOUND /
   ERROR_NOT_FOUND to a zeroed present=0 state with the requested filter_id;
