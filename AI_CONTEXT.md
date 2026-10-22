@@ -4,7 +4,7 @@
 
 
 
-**HEAD:** `23b9c1d05344e763f617c3dbe43000071badaacb` (build source commit — ADR-0008)
+**HEAD:** `1425af0dda6786c98135a28662d380382002ef4c` (build source commit — ADR-0008)
 
 **BRANCH:** `main`
 
@@ -389,6 +389,15 @@ Previous phases:
   outbound target (203.0.113.10) vs the inbound peer (192.168.126.1); the gap
   stays OPEN until a lab re-run. Production detection-only, gate closed.
   Evidence: EVI G2-DIRECTION-001.
+
+- G2 duplicate-filter idempotence (2026-10-22): IMPLEMENTED at E1 compile
+  (G2-DUPFILTER-001) - on FWP_E_ALREADY_EXISTS / OBJECT_NAME_COLLISION the
+  driver queries the fixed key and returns the existing filter ID only when
+  direction/layer/tuple match; mismatches fail closed. The query matcher now
+  requires the layer-appropriate port condition and rejects ambiguous filters.
+  WDK driver BUILD OK (aegis_wfp.sys sha256 9476F609...); no lab host execution
+  yet, so the repeated-quarantine escalation remains OPEN as
+  G2-DUPFILTER-REPEAT-20261022. Production detection-only, gate closed.
 
 - RB-021 host-only lab proof (2026-10-20): L4 CLOSE-OUT PASS (E5, per-packet).
   Pre-fix run at e616bad/F223DCCE proved the capture path + 5/8 L7 rules but real

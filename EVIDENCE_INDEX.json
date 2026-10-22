@@ -1,5 +1,5 @@
 {
- "head_sha": "23b9c1d05344e763f617c3dbe43000071badaacb",
+ "head_sha": "1425af0dda6786c98135a28662d380382002ef4c",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-10-22",
  "generator_version": "3.0",
@@ -2208,6 +2208,47 @@
     "cargo test --lib: PASS (48 passed, 1 ignored)",
     "WDK driver build: PASS (BUILD OK)",
     "user bridge build: PASS (passed:true)"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed"
+  },
+  {
+   "id": "G2-DUPFILTER-001",
+   "title": "Duplicate fixed-key WFP proof-filter adds are idempotent for the same layer/direction/tuple (E1 compile)",
+   "level": "E1",
+   "component": "drivers/wfp_callout",
+   "flow_id": "DATA-001",
+   "head_sha": "1425af0",
+   "timestamp": "2026-10-22",
+   "result": "PASS",
+   "command": "scripts/wdk_build_production.ps1",
+   "expected": "A repeated block for the same direction/layer/tuple returns the existing filter ID instead of an error; a mismatched or stale fixed-key filter fails closed; the query matcher reads the layer-appropriate port condition.",
+   "actual": "PASS (compile only): the WDK build succeeds. The new path handles FWP_E_ALREADY_EXISTS / STATUS_OBJECT_NAME_COLLISION / STATUS_OBJECT_NAME_EXISTS by querying the fixed key, validating the layer+direction+remote IP+service port+protocol, and returning the existing filter ID; mismatches return STATUS_OBJECT_NAME_COLLISION. No WFP host execution was performed in this patch; the lab re-run is required to prove the repeated-quarantine path no longer escalates.",
+   "finding": "The lab PEP log showed repeated pep=escalate reason=4 after the first successful quarantine, consistent with the fixed AEGIS_PROOF_FILTER_KEY rejecting a second FwpmFilterAdd0. The duplicate path now makes the same tuple idempotent without weakening the ownership marker. A cross-direction collision (same fixed key on the other WFP layer) still fails closed; a future patch may need per-direction keys.",
+   "description": "Driver idempotence patch for the fixed proof-filter key. On duplicate status, query FwpmFilterGetByKey0, validate the existing filter against the requested direction/layer/tuple with AegisWfpFilterMatchesProof/AegisWfpFilterMatchesRequest, and return its ID only on an exact match. The matcher now requires the layer-appropriate port condition (CONNECT+remote for outbound, RECV_ACCEPT+local for inbound); the read-only query path accepts either layer but rejects ambiguous filters.",
+   "files_verified": [
+    "drivers/wfp_callout/aegis_wfp.c",
+    "drivers/wfp_callout/aegis_wfp.h"
+   ],
+   "files_changed": [
+    "drivers/wfp_callout/aegis_wfp.c",
+    "drivers/wfp_callout/aegis_wfp.h",
+    "EVIDENCE_INDEX.json",
+    "AI_CONTEXT.md",
+    "SYSTEM_MAP.json",
+    "FLOW_MAP.json",
+    "AUTHORITY_MAP.json",
+    "CONTRACT_MAP.json",
+    "build_truth.json",
+    "build_manifest.json",
+    "runtime_manifest.json",
+    "inventory.json",
+    "reference_map.json"
+   ],
+   "tests": [
+    "WDK driver build: PASS (BUILD OK; aegis_wfp.sys sha256 9476F6090233C6EC69E438333E9E47261ADFB0B5F9F31E180C6E785277054B2F)",
+    "Host WFP execution: NOT RUN (compile-only; lab re-run required)",
+    "User bridge rebuild: PASS (unchanged hash 247DED873ED3DF0E40BE148EF4E0588ECCA99011EB1E410E2D20FD93B44B5F13)"
    ],
    "host_effect_confirmed": false,
    "prevention_gate": "closed"
@@ -7492,6 +7533,20 @@
    "evidence": "EVI G2-INBOUND-PIPELINE-20261021; EVI G2-DIRECTION-001; admin-evidence/lab-qualification-20261021/g2-inbound-20261021/g2-postcanary.log (verify_73000=null); admin-evidence/lab-qualification-20261021/g2-inbound-20261021/wfp-filters-post-canary.xml (filter 73000 present, layer RECV_ACCEPT_V4); src/policy/pep_bindings.zig; src/control/handler_registry.zig; drivers/wfp_callout/aegis_wfp.c; rust-src/lib.rs."
   },
   {
+   "id": "G2-DUPFILTER-REPEAT-20261022",
+   "severity": "P1",
+   "title": "Repeated inbound quarantine still needs a lab proof that the duplicate path reuses the filter instead of escalating",
+   "description": "G2-DUPFILTER-001 makes a same-tuple duplicate add idempotent in the driver and the WDK build passes. The 2026-10-21 lab PEP log recorded repeated pep=escalate reason=4 after the first quarantine, consistent with the fixed proof key. No lab host execution has been performed with the new driver; a re-run must show the second matching event reuses filter 73000 (or a new receipt with the same filter ID), no escalation storm, and a confirmed receipt.",
+   "status": "OPEN",
+   "found_at": "2026-10-22",
+   "required_evidence": [
+    "Install the G2-DUPFILTER-001 driver on the isolated lab VM and run two matching inbound quarantine events.",
+    "Require the second block to return the existing filter ID, the PEP receipt to confirm, and no repeated escalate reason=4.",
+    "Keep the production gate closed; do not treat compile success as host proof."
+   ],
+   "evidence": "EVI G2-DUPFILTER-001; admin-evidence/g2-direction-20261022/wdk-build-duplicate.log; admin-evidence/lab-qualification-20261021/g2-inbound-20261021/policy-pep.log (repeated escalate reason=4)."
+  },
+  {
    "id": "G2-INBOUND-RESTORE-20261021",
    "severity": "P1",
    "title": "Inbound G2 lab VM baseline restore and artifact cleanup are not verified",
@@ -7509,7 +7564,7 @@
  ],
  "evidence_level_summary": {
   "E0_count": 0,
-  "E1_count": 25,
+  "E1_count": 26,
   "E2_count": 132,
   "E3_count": 14,
   "E4_count": 15,
