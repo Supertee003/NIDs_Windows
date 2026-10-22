@@ -2099,7 +2099,8 @@
     "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/pep_bindings-C100-inbound.zig",
     "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/aegis_nids-9D88.exe",
     "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/aegis_pep-AC9B.dll",
-    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/aegis_wfp-71D1-signed.sys"
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/aegis_wfp-71D1-signed.sys",
+    "admin-evidence/lab-qualification-20261021/g2-inbound-20261021/SHA256SUMS.txt"
    ],
    "files_changed": [
     "admin-evidence/lab-qualification-20261021/G2-RESULTS.md",
