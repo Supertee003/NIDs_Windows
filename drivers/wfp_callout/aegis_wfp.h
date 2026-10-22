@@ -33,6 +33,13 @@
 #define FWP_E_FILTER_NOT_FOUND ((NTSTATUS)0x80320003L)
 #endif
 
+/* The fixed proof-filter key is intentionally idempotent. A duplicate add
+ * returns this status; the block path queries the existing key and returns
+ * its filter ID only when the layer, direction, and tuple all match. */
+#ifndef FWP_E_ALREADY_EXISTS
+#define FWP_E_ALREADY_EXISTS ((NTSTATUS)0x80320009L)
+#endif
+
 /* ====== IOCTL Codes ====== */
 #define IOCTL_AEGIS_READ_EVENTS  CTL_CODE(FILE_DEVICE_NETWORK, 0x800, METHOD_BUFFERED, FILE_READ_DATA)
 #define IOCTL_AEGIS_BLOCK_FLOW   CTL_CODE(FILE_DEVICE_NETWORK, 0x801, METHOD_BUFFERED, FILE_WRITE_DATA)

@@ -79,6 +79,10 @@ NTSTATUS AegisWfpUnblockFlow(PIRP Irp);
 NTSTATUS AegisWfpQueryFilter(PIRP Irp);
 NTSTATUS AegisWfpDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp);
 
+static BOOLEAN AegisWfpFilterMatchesRequest(const FWPM_FILTER0 *filter,
+                                            const AEGIS_WFP_FLOW_REQUEST *request,
+                                            UINT64 *filterId);
+
 // ====== DriverEntry ======
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
@@ -405,6 +409,30 @@ NTSTATUS AegisWfpBlockFlow(PIRP Irp) {
     filter.flags = FWPM_FILTER_FLAG_PERSISTENT;
 
     status = FwpmFilterAdd0(engineHandle, &filter, NULL, &filterId);
+    if (status == (NTSTATUS)FWP_E_ALREADY_EXISTS ||
+        status == STATUS_OBJECT_NAME_COLLISION ||
+        status == STATUS_OBJECT_NAME_EXISTS) {
+        /* The proof key is fixed, so a repeated block for the same tuple is
+         * idempotent. Return the existing filter ID only after proving the
+         * existing object has the requested layer, direction, and exact
+         * tuple. Any mismatch fails closed instead of aliasing a foreign or
+         * stale filter. */
+        FWPM_FILTER0 *existing = NULL;
+        status = FwpmFilterGetByKey0(engineHandle, &AEGIS_PROOF_FILTER_KEY,
+                                     &existing);
+        if (NT_SUCCESS(status) && existing != NULL) {
+            UINT64 existingId = 0;
+            if (AegisWfpFilterMatchesRequest(existing, request, &existingId)) {
+                filterId = existingId;
+                status = STATUS_SUCCESS;
+            } else {
+                status = STATUS_OBJECT_NAME_COLLISION;
+            }
+            FwpmFreeMemory0((void **)&existing);
+        } else if (NT_SUCCESS(status)) {
+            status = STATUS_OBJECT_NAME_COLLISION;
+        }
+    }
     if (NT_SUCCESS(status)) {
         RtlZeroMemory(response, sizeof(*response));
         response->filter_id = filterId;
@@ -522,15 +550,21 @@ NTSTATUS AegisWfpUnblockFlow(PIRP Irp) {
     return STATUS_SUCCESS;
 }
 
+#define AEGIS_WFP_DIRECTION_ANY 0xFFu
+
 static BOOLEAN AegisWfpFilterMatchesProof(const FWPM_FILTER0 *filter,
+                                          UINT8 direction,
                                           UINT32 *remoteIpv4,
                                           UINT16 *remotePort,
                                           UINT8 *protocol) {
     BOOLEAN hasRemoteIpv4 = FALSE;
     BOOLEAN hasRemotePort = FALSE;
+    BOOLEAN hasLocalPort = FALSE;
     BOOLEAN hasProtocol = FALSE;
     BOOLEAN outboundLayer;
     BOOLEAN inboundLayer;
+    BOOLEAN expectLocalPort;
+    UINT16 servicePort = 0;
     UINT32 i;
 
     if (filter == NULL ||
@@ -541,9 +575,9 @@ static BOOLEAN AegisWfpFilterMatchesProof(const FWPM_FILTER0 *filter,
         return FALSE;
     }
 
-    /* Accept exactly the two layers the block path can mint. The read-back
-     * tuple is the peer address plus the service port: the remote port for
-     * outbound filters, the local port for inbound filters. */
+    /* Accept exactly the two layers the block path can mint. Direction 0 is
+     * outbound (CONNECT + remote port), 1 is inbound (RECV_ACCEPT + local
+     * port), and 0xFF is the read-only query path that accepts either. */
     outboundLayer = RtlCompareMemory(&filter->layerKey,
                                      &FWPM_LAYER_ALE_AUTH_CONNECT_V4,
                                      sizeof(GUID)) == sizeof(GUID);
@@ -553,6 +587,21 @@ static BOOLEAN AegisWfpFilterMatchesProof(const FWPM_FILTER0 *filter,
     if (!outboundLayer && !inboundLayer) {
         return FALSE;
     }
+    if (direction == 0 && !outboundLayer) {
+        return FALSE;
+    }
+    if (direction == 1 && !inboundLayer) {
+        return FALSE;
+    }
+    if (direction != 0 && direction != 1 &&
+        direction != AEGIS_WFP_DIRECTION_ANY) {
+        return FALSE;
+    }
+
+    /* Read the service port from the condition that matches the layer. A
+     * direction-specific filter must carry exactly that condition; a filter
+     * with both port conditions is ambiguous and fails closed. */
+    expectLocalPort = inboundLayer;
 
     for (i = 0; i < filter->numFilterConditions; ++i) {
         const FWPM_FILTER_CONDITION0 *condition = &filter->filterCondition[i];
@@ -566,16 +615,24 @@ static BOOLEAN AegisWfpFilterMatchesProof(const FWPM_FILTER0 *filter,
             condition->matchType == FWP_MATCH_EQUAL) {
             *remoteIpv4 = condition->conditionValue.uint32;
             hasRemoteIpv4 = TRUE;
-        } else if ((RtlCompareMemory(&condition->fieldKey,
-                                     &FWPM_CONDITION_IP_REMOTE_PORT,
-                                     sizeof(GUID)) == sizeof(GUID) ||
-                    RtlCompareMemory(&condition->fieldKey,
-                                     &FWPM_CONDITION_IP_LOCAL_PORT,
-                                     sizeof(GUID)) == sizeof(GUID)) &&
+        } else if (RtlCompareMemory(&condition->fieldKey,
+                                    &FWPM_CONDITION_IP_REMOTE_PORT,
+                                    sizeof(GUID)) == sizeof(GUID) &&
                    condition->conditionValue.type == FWP_UINT16 &&
                    condition->matchType == FWP_MATCH_EQUAL) {
-            *remotePort = condition->conditionValue.uint16;
             hasRemotePort = TRUE;
+            if (!expectLocalPort) {
+                servicePort = condition->conditionValue.uint16;
+            }
+        } else if (RtlCompareMemory(&condition->fieldKey,
+                                    &FWPM_CONDITION_IP_LOCAL_PORT,
+                                    sizeof(GUID)) == sizeof(GUID) &&
+                   condition->conditionValue.type == FWP_UINT16 &&
+                   condition->matchType == FWP_MATCH_EQUAL) {
+            hasLocalPort = TRUE;
+            if (expectLocalPort) {
+                servicePort = condition->conditionValue.uint16;
+            }
         } else if (RtlCompareMemory(&condition->fieldKey,
                                     &FWPM_CONDITION_IP_PROTOCOL,
                                     sizeof(GUID)) == sizeof(GUID) &&
@@ -586,7 +643,52 @@ static BOOLEAN AegisWfpFilterMatchesProof(const FWPM_FILTER0 *filter,
         }
     }
 
-    return hasRemoteIpv4 && hasRemotePort && hasProtocol;
+    if (direction == 0 && (!hasRemotePort || hasLocalPort)) {
+        return FALSE;
+    }
+    if (direction == 1 && (!hasLocalPort || hasRemotePort)) {
+        return FALSE;
+    }
+    if (direction == AEGIS_WFP_DIRECTION_ANY) {
+        if (hasRemotePort && hasLocalPort) {
+            return FALSE;
+        }
+        if (!((outboundLayer && hasRemotePort) ||
+              (inboundLayer && hasLocalPort))) {
+            return FALSE;
+        }
+    }
+    if (!hasRemoteIpv4 || !hasProtocol) {
+        return FALSE;
+    }
+    *remotePort = servicePort;
+    return TRUE;
+}
+
+static BOOLEAN AegisWfpFilterMatchesRequest(const FWPM_FILTER0 *filter,
+                                            const AEGIS_WFP_FLOW_REQUEST *request,
+                                            UINT64 *filterId) {
+    UINT32 remoteIpv4 = 0;
+    UINT16 remotePort = 0;
+    UINT8 protocol = 0;
+
+    if (filter == NULL || request == NULL || filterId == NULL) {
+        return FALSE;
+    }
+    if (request->direction > 1 || filter->filterId == 0) {
+        return FALSE;
+    }
+    if (!AegisWfpFilterMatchesProof(filter, request->direction,
+                                    &remoteIpv4, &remotePort, &protocol)) {
+        return FALSE;
+    }
+    if (remoteIpv4 != request->remote_ipv4 ||
+        remotePort != request->remote_port ||
+        protocol != request->protocol) {
+        return FALSE;
+    }
+    *filterId = filter->filterId;
+    return TRUE;
 }
 
 /* Read-only provider-backed postcondition attestation. The query identity is
@@ -630,7 +732,8 @@ NTSTATUS AegisWfpQueryFilter(PIRP Irp) {
         return status;
     }
 
-    if (AegisWfpFilterMatchesProof(filter, &remoteIpv4, &remotePort, &protocol)) {
+    if (AegisWfpFilterMatchesProof(filter, AEGIS_WFP_DIRECTION_ANY,
+                                   &remoteIpv4, &remotePort, &protocol)) {
         state->remote_ipv4 = remoteIpv4;
         state->remote_port = remotePort;
         state->protocol = protocol;
