@@ -4,7 +4,7 @@
 
 
 
-**HEAD:** `1425af0dda6786c98135a28662d380382002ef4c` (build source commit — ADR-0008)
+**HEAD:** `e9e6ddfc4a99467b19328b895ca21c8c3e2d6950` (build source commit — ADR-0008)
 
 **BRANCH:** `main`
 
@@ -350,7 +350,7 @@ Previous phases:
   DEADCODE-QUARANTINE, CI-GAPS, RELEASE-TOOLING, LEFTOVER-SWEEP, REL-CLOSURE; operator
   cutover 2026-10-19 20:07 deployed daemon `dcb22a5` (sha256 `f223dcce…`) — live gate
   hard-closed (gate_source 'closed', detection-only), gate-check + v6 live verify PASS.
-  Remaining queue: G2 lab campaign executed 2026-10-21 (RB-012 PASS; RB-013 control-path PASS; inbound pipeline quarantine PASS with filter 73000 and confirmed=true, EVI G2-INBOUND-PIPELINE-20261021; direct mirror log/counter OPEN for the 2026-10-21 run as G2-RB013-MIRROR-20261021 (metrics now exposes the counters, G2-METRICS-001 E2); inbound control verify null explained by outbound-target payload, direction/src_ip API added, lab re-run pending as G2-INBOUND-VERIFIER-20261021; lab VM snapshot restore PENDING as G2-INBOUND-RESTORE-20261021), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window E2 2026-10-20; install E5 24/24 verifier; R9002/R9006/R9007 live PASS; isolated Kali→Win11 rate E5 CLOSED 2026-10-20; DEPLOY-132 process-pin drift CLOSED 2026-10-21 — host reboot cleared SCM cache; post-reboot PEB dump no pin, R0088=0, verifier 24/24),
+  Remaining queue: G2 lab campaign executed 2026-10-21 (RB-012 PASS; RB-013 control-path PASS; inbound pipeline quarantine PASS with filter 73000 and confirmed=true, EVI G2-INBOUND-PIPELINE-20261021; direct mirror log/counter OPEN for the 2026-10-21 run as G2-RB013-MIRROR-20261021 (metrics now exposes the counters, G2-METRICS-001 E2); inbound control verify null explained by outbound-target payload, direction/src_ip API added, lab re-run pending as G2-INBOUND-VERIFIER-20261021; absence mapping upstreamed, lab re-run pending as G2-ABSENCE-LAB-20261022; duplicate-filter repeat pending as G2-DUPFILTER-REPEAT-20261022; lab VM snapshot restore PENDING as G2-INBOUND-RESTORE-20261021), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window E2 2026-10-20; install E5 24/24 verifier; R9002/R9006/R9007 live PASS; isolated Kali→Win11 rate E5 CLOSED 2026-10-20; DEPLOY-132 process-pin drift CLOSED 2026-10-21 — host reboot cleared SCM cache; post-reboot PEB dump no pin, R0088=0, verifier 24/24),
   RB-016/017, G4 signing, external review, CI first push (truth semantics fixed 2026-10-20; push approval pending).
   Evidence: EVI CUTOVER-DCB22A5 (E5) + entries V6-QUEUE-DROP..REL-CLOSURE.
 
@@ -398,6 +398,17 @@ Previous phases:
   WDK driver BUILD OK (aegis_wfp.sys sha256 9476F609...); no lab host execution
   yet, so the repeated-quarantine escalation remains OPEN as
   G2-DUPFILTER-REPEAT-20261022. Production detection-only, gate closed.
+
+- G2 exact-not-found absence patch (2026-10-22): IMPLEMENTED at E1 compile
+  (G2-ABSENCE-001) - the user bridge maps only FWP_E_FILTER_NOT_FOUND /
+  ERROR_NOT_FOUND to a zeroed present=0 state with the requested filter_id;
+  every other query failure stays -1. The Windows host ABI test now pins
+  PepRequest.direction@37. User bridge BUILD PASS (aegis_wfp_user.dll sha256
+  FD3A8FAB...); ABI and capability tests PASS. A mistaken full-file host test
+  invocation skipped at host-effect-unavailable and the proof key was absent
+  afterward (near-miss note). The exact-status branch is compile-only from
+  this HEAD; lab re-proof pending as G2-ABSENCE-LAB-20261022. Production
+  detection-only, gate closed.
 
 - RB-021 host-only lab proof (2026-10-20): L4 CLOSE-OUT PASS (E5, per-packet).
   Pre-fix run at e616bad/F223DCCE proved the capture path + 5/8 L7 rules but real

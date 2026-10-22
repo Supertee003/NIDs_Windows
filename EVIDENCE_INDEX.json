@@ -1,5 +1,5 @@
 {
- "head_sha": "1425af0dda6786c98135a28662d380382002ef4c",
+ "head_sha": "e9e6ddfc4a99467b19328b895ca21c8c3e2d6950",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-10-22",
  "generator_version": "3.0",
@@ -2249,6 +2249,49 @@
     "WDK driver build: PASS (BUILD OK; aegis_wfp.sys sha256 9476F6090233C6EC69E438333E9E47261ADFB0B5F9F31E180C6E785277054B2F)",
     "Host WFP execution: NOT RUN (compile-only; lab re-run required)",
     "User bridge rebuild: PASS (unchanged hash 247DED873ED3DF0E40BE148EF4E0588ECCA99011EB1E410E2D20FD93B44B5F13)"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed"
+  },
+  {
+   "id": "G2-ABSENCE-001",
+   "title": "User bridge maps exact filter-not-found to absent; host ABI pins direction@37 (E1 compile + ABI test)",
+   "level": "E1",
+   "component": "windows/wfp-bridge",
+   "flow_id": "FFI-001",
+   "head_sha": "e9e6ddf",
+   "timestamp": "2026-10-22",
+   "result": "PASS",
+   "command": "scripts/build_wfp_user_bridge.ps1; python -m pytest tests/wfp/test_t11_windows_host.py -q -k abi; python -m pytest tests/wfp/test_t11_windows_host.py -q -k unblock_requires_capability",
+   "expected": "aegis_wfp_ioctl_query_filter returns 0 with present=0 for exactly FWP_E_FILTER_NOT_FOUND/ERROR_NOT_FOUND, and -1 for every other failure; PepRequest direction stays at offset 37 with ctx@40 and size 64.",
+   "actual": "PASS: user bridge build passed (aegis_wfp_user.dll sha256 FD3A8FAB03D76053A5E14D5AD9236BD5CF987DA04A02D7EE4048EF9B1DC71117). ABI test passed; capability test passed; the full blocks test was not run intentionally and skipped at host-effect-unavailable during a mistaken full-file invocation. A read-only FwpmFilterGetByKey0 afterward returned 0x80320003 (PROOF_FILTER_ABSENT), so no filter was left. The exact-status branch is compile-only from this HEAD; the 2026-10-21 lab patch is the E5 proof for the behavior.",
+   "finding": "The base bridge returned -1 on FWP_E_FILTER_NOT_FOUND, so enforcement.unblock could not distinguish absent from a transport error and reported CLEANUP_POSTCONDITION_FAILED after a successful delete. The lab-only patch fixed this; G2-ABSENCE-001 upstreams only the exact-status mapping and keeps every other error fatal. The host ABI test now pins direction@37, closing the test gap left by the direction patch.",
+   "description": "Upstreams the exact-not-found mapping in the WFP user bridge and updates the Windows host ABI test. The bridge does not create, delete, or modify filters. No gate, authority, or driver change. The production PEP was not rebuilt; the test used target/release/aegis_pep.dll sha256 559417799CFA215CC193D82DA1280A7D71CE7CEBB4A0560192251C10D554EE58. The host blocks test is explicitly out of scope for this host.",
+   "files_verified": [
+    "src/windows/wfp_ioctl.c",
+    "tests/wfp/test_t11_windows_host.py"
+   ],
+   "files_changed": [
+    "src/windows/wfp_ioctl.c",
+    "tests/wfp/test_t11_windows_host.py",
+    "EVIDENCE_INDEX.json",
+    "AI_CONTEXT.md",
+    "SYSTEM_MAP.json",
+    "FLOW_MAP.json",
+    "AUTHORITY_MAP.json",
+    "CONTRACT_MAP.json",
+    "build_truth.json",
+    "build_manifest.json",
+    "runtime_manifest.json",
+    "inventory.json",
+    "reference_map.json"
+   ],
+   "tests": [
+    "User bridge build: PASS (passed:true; FD3A8FAB03D76053A5E14D5AD9236BD5CF987DA04A02D7EE4048EF9B1DC71117)",
+    "PepRequest ABI test (direction@37, ctx@40, size 64): PASS",
+    "PEP unblock capability test: PASS (PEP_UNBLOCK_NO_CAPABILITY=-3)",
+    "Full WFP blocks host test: NOT RUN intentionally; skipped at host-effect-unavailable during a mistaken full-file invocation; proof key absent afterward",
+    "Exact-not-found branch host execution: NOT RUN (compile-only; lab re-run G2-ABSENCE-LAB-20261022)"
    ],
    "host_effect_confirmed": false,
    "prevention_gate": "closed"
@@ -7547,6 +7590,21 @@
    "evidence": "EVI G2-DUPFILTER-001; admin-evidence/g2-direction-20261022/wdk-build-duplicate.log; admin-evidence/lab-qualification-20261021/g2-inbound-20261021/policy-pep.log (repeated escalate reason=4)."
   },
   {
+   "id": "G2-ABSENCE-LAB-20261022",
+   "severity": "P1",
+   "title": "Exact-not-found bridge mapping and direction ABI test need a lab re-proof from current HEAD",
+   "description": "G2-ABSENCE-001 upstreams the lab-only exact FWP_E_FILTER_NOT_FOUND/ERROR_NOT_FOUND -> present=0 mapping and pins PepRequest.direction@37 in the host ABI test. The 2026-10-21 lab run proved ROLLED_BACK/ABSENT with the lab-only DLL F0B1CB, not the current HEAD bridge FD3A8FAB. The non-lab host has no host effect provider; the full blocks test was not run and the proof key is absent. Production enforcement must not be claimed until the current bridge is re-run on the isolated lab VM.",
+   "status": "OPEN",
+   "found_at": "2026-10-22",
+   "required_evidence": [
+    "Install the current HEAD bridge FD3A8FAB on the isolated lab VM together with the lab driver.",
+    "Delete a test filter and call enforcement.unblock; require ROLLED_BACK/ABSENT, not CLEANUP_POSTCONDITION_FAILED.",
+    "Confirm a real transport failure still returns -1 and is not reported as absent.",
+    "Keep the production gate closed; do not treat the ABI test or compile as host proof."
+   ],
+   "evidence": "EVI G2-ABSENCE-001; admin-evidence/g2-direction-20261022/PATCH-ABSENCE.md; admin-evidence/g2-direction-20261022/HOST-TEST-NEAR-MISS.md; admin-evidence/lab-qualification-20261021/lab-only-adapter-patch.md; admin-evidence/lab-qualification-20261021/remote-evidence/wfp_ioctl-query-absent.patch."
+  },
+  {
    "id": "G2-INBOUND-RESTORE-20261021",
    "severity": "P1",
    "title": "Inbound G2 lab VM baseline restore and artifact cleanup are not verified",
@@ -7564,7 +7622,7 @@
  ],
  "evidence_level_summary": {
   "E0_count": 0,
-  "E1_count": 26,
+  "E1_count": 27,
   "E2_count": 132,
   "E3_count": 14,
   "E4_count": 15,
