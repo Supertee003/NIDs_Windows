@@ -78,7 +78,14 @@ typedef struct _AEGIS_WFP_FLOW_RESPONSE {
 
 typedef struct _AEGIS_WFP_FILTER_QUERY {
     UINT64 filter_id;
+    /* 0 = outbound ALE_AUTH_CONNECT_V4; 1 = inbound
+     * ALE_AUTH_RECV_ACCEPT_V4. The query must name the layer it is
+     * attesting; an 8-byte legacy input defaults to outbound. */
+    UINT8  direction;
+    UINT8  reserved[7];
 } AEGIS_WFP_FILTER_QUERY;
+
+C_ASSERT(sizeof(AEGIS_WFP_FILTER_QUERY) == 16);
 
 typedef struct _AEGIS_WFP_FILTER_STATE {
     UINT64 filter_id;

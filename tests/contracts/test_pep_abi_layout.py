@@ -60,6 +60,7 @@ CANONICAL_OFFSETS: Dict[str, Dict[str, int]] = {
         "protocol": 28,
         "policy_id": 32,
         "severity": 36,
+        "direction": 37,
         "ctx": 40,
     },
     "PepResponse": {

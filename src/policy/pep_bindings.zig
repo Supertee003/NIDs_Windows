@@ -61,6 +61,7 @@ pub fn requestDirection(ev: *const event.IpcEvent) u8 {
 /// the peer source address with the local service port; every other path
 /// keeps dst_ip/dst_port. A zero inbound peer fails closed.
 pub const ReceiptTarget = struct {
+    direction: u8,
     remote_ipv4: u32,
     service_port: u16,
     protocol: u8,
@@ -69,6 +70,7 @@ pub const ReceiptTarget = struct {
 pub fn receiptTarget(ev: *const event.IpcEvent) ?ReceiptTarget {
     if (ev.source == .capture_wfp and ev.src_ip == 0) return null;
     return .{
+        .direction = requestDirection(ev),
         .remote_ipv4 = if (ev.source == .capture_wfp) ev.src_ip else ev.dst_ip,
         .service_port = ev.dst_port,
         .protocol = ev.protocol,
@@ -157,6 +159,7 @@ pub fn hostEffectGuardVerdict(gate_open: bool, action: policy.Action, trusted: b
 extern "aegis_pep" fn aegis_pep_enforce(req: *const PepRequest, resp: *PepResponse) c_int;
 extern "aegis_pep" fn aegis_pep_unblock_filter(filter_id: u64, caller_pid: u32, caller_capability_mask: u32, request_id: u64) c_int;
 extern "aegis_pep" fn aegis_pep_query_filter(filter_id: u64, out: *PepFilterState) c_int;
+extern "aegis_pep" fn aegis_pep_query_filter_dir(filter_id: u64, direction: u8, out: *PepFilterState) c_int;
 extern "aegis_pep" fn aegis_pep_init() c_int;
 extern "aegis_pep" fn aegis_pep_provider_ready() c_int;
 extern "aegis_pep" fn aegis_pep_shutdown() void;
@@ -367,8 +370,8 @@ pub const PepEnforcer = struct {
         return aegis_pep_unblock_filter(filter_id, caller_pid, caller_caps, request_id) == 0;
     }
 
-    pub fn queryFilter(self: *PepEnforcer, filter_id: u64) ?PepFilterState {
-        return switch (self.queryFilterResult(filter_id)) {
+    pub fn queryFilter(self: *PepEnforcer, filter_id: u64, direction: u8) ?PepFilterState {
+        return switch (self.queryFilterResult(filter_id, direction)) {
             .present => |state| state,
             .absent => null,
             .query_error => null,
@@ -376,11 +379,13 @@ pub const PepEnforcer = struct {
     }
 
     /// Preserve the provider distinction between an exact filter that is
-    /// absent and a query transport/provider failure.
-    pub fn queryFilterResult(self: *PepEnforcer, filter_id: u64) FilterQueryResult {
-        if (!self.available or filter_id == 0) return .query_error;
+    /// absent and a query transport/provider failure. The direction is part
+    /// of the query, not just the response: the provider must attest the
+    /// outbound or inbound WFP layer that the caller intends to prove.
+    pub fn queryFilterResult(self: *PepEnforcer, filter_id: u64, direction: u8) FilterQueryResult {
+        if (!self.available or filter_id == 0 or direction > 1) return .query_error;
         var state: PepFilterState = .{ .bytes = undefined };
-        if (aegis_pep_query_filter(filter_id, &state) != 0) return .query_error;
+        if (aegis_pep_query_filter_dir(filter_id, direction, &state) != 0) return .query_error;
         if (state.filterId() != filter_id) return .query_error;
         return if (state.present() != 0) .{ .present = state } else .{ .absent = state };
     }
@@ -400,7 +405,7 @@ pub const PepEnforcer = struct {
         if (receipt.filter_id == 0) return false;
         if (receipt.decision != .block and receipt.decision != .quarantine) return false;
         const target = receiptTarget(ev) orelse return false;
-        return switch (self.queryFilterResult(receipt.filter_id)) {
+        return switch (self.queryFilterResult(receipt.filter_id, target.direction)) {
             .present => |state| state.filterId() == receipt.filter_id and
                 state.remoteIpv4() == target.remote_ipv4 and
                 state.remotePort() == target.service_port and
@@ -643,6 +648,7 @@ test "FFI-001: receiptTarget uses peer/local port for WFP capture" {
     wfp.dst_port = 443;
     wfp.protocol = 6;
     const inbound = receiptTarget(&wfp).?;
+    try std.testing.expectEqual(@as(u8, 1), inbound.direction);
     try std.testing.expectEqual(@as(u32, 0xC0A87E01), inbound.remote_ipv4);
     try std.testing.expectEqual(@as(u16, 443), inbound.service_port);
     try std.testing.expectEqual(@as(u8, 6), inbound.protocol);
@@ -654,6 +660,7 @@ test "FFI-001: receiptTarget uses peer/local port for WFP capture" {
     outbound.dst_port = 443;
     outbound.protocol = 6;
     const egress = receiptTarget(&outbound).?;
+    try std.testing.expectEqual(@as(u8, 0), egress.direction);
     try std.testing.expectEqual(@as(u32, 0xCB00710A), egress.remote_ipv4);
     try std.testing.expectEqual(@as(u16, 443), egress.service_port);
 }

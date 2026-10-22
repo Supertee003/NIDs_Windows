@@ -550,8 +550,6 @@ NTSTATUS AegisWfpUnblockFlow(PIRP Irp) {
     return STATUS_SUCCESS;
 }
 
-#define AEGIS_WFP_DIRECTION_ANY 0xFFu
-
 static BOOLEAN AegisWfpFilterMatchesProof(const FWPM_FILTER0 *filter,
                                           UINT8 direction,
                                           UINT32 *remoteIpv4,
@@ -577,7 +575,8 @@ static BOOLEAN AegisWfpFilterMatchesProof(const FWPM_FILTER0 *filter,
 
     /* Accept exactly the two layers the block path can mint. Direction 0 is
      * outbound (CONNECT + remote port), 1 is inbound (RECV_ACCEPT + local
-     * port), and 0xFF is the read-only query path that accepts either. */
+     * port). Unknown directions fail closed; there is no any-direction
+     * query path, because that would attest the wrong layer. */
     outboundLayer = RtlCompareMemory(&filter->layerKey,
                                      &FWPM_LAYER_ALE_AUTH_CONNECT_V4,
                                      sizeof(GUID)) == sizeof(GUID);
@@ -593,8 +592,7 @@ static BOOLEAN AegisWfpFilterMatchesProof(const FWPM_FILTER0 *filter,
     if (direction == 1 && !inboundLayer) {
         return FALSE;
     }
-    if (direction != 0 && direction != 1 &&
-        direction != AEGIS_WFP_DIRECTION_ANY) {
+    if (direction != 0 && direction != 1) {
         return FALSE;
     }
 
@@ -649,15 +647,6 @@ static BOOLEAN AegisWfpFilterMatchesProof(const FWPM_FILTER0 *filter,
     if (direction == 1 && (!hasLocalPort || hasRemotePort)) {
         return FALSE;
     }
-    if (direction == AEGIS_WFP_DIRECTION_ANY) {
-        if (hasRemotePort && hasLocalPort) {
-            return FALSE;
-        }
-        if (!((outboundLayer && hasRemotePort) ||
-              (inboundLayer && hasLocalPort))) {
-            return FALSE;
-        }
-    }
     if (!hasRemoteIpv4 || !hasProtocol) {
         return FALSE;
     }
@@ -703,12 +692,23 @@ NTSTATUS AegisWfpQueryFilter(PIRP Irp) {
     UINT32 remoteIpv4 = 0;
     UINT16 remotePort = 0;
     UINT8 protocol = 0;
-    if (stack->Parameters.DeviceIoControl.InputBufferLength < sizeof(AEGIS_WFP_FILTER_QUERY) ||
+    UINT8 direction = 0;
+    /* The legacy query was 8 bytes and meant the outbound layer. Accept it
+     * for old bridges, but never infer a non-default direction: a 16-byte
+     * query must name direction 0 or 1 explicitly. */
+    if (stack->Parameters.DeviceIoControl.InputBufferLength < sizeof(UINT64) ||
         stack->Parameters.DeviceIoControl.OutputBufferLength < sizeof(AEGIS_WFP_FILTER_STATE)) {
         return STATUS_BUFFER_TOO_SMALL;
     }
     AEGIS_WFP_FILTER_STATE *state = (AEGIS_WFP_FILTER_STATE *)Irp->AssociatedIrp.SystemBuffer;
-    UINT64 requested_filter_id = ((AEGIS_WFP_FILTER_QUERY *)Irp->AssociatedIrp.SystemBuffer)->filter_id;
+    AEGIS_WFP_FILTER_QUERY *query = (AEGIS_WFP_FILTER_QUERY *)Irp->AssociatedIrp.SystemBuffer;
+    UINT64 requested_filter_id = query->filter_id;
+    if (stack->Parameters.DeviceIoControl.InputBufferLength >= sizeof(AEGIS_WFP_FILTER_QUERY)) {
+        direction = query->direction;
+        if (direction > 1) {
+            return STATUS_INVALID_PARAMETER;
+        }
+    }
     RtlZeroMemory(state, sizeof(*state));
     state->filter_id = requested_filter_id;
     if (requested_filter_id == 0) {
@@ -732,7 +732,7 @@ NTSTATUS AegisWfpQueryFilter(PIRP Irp) {
         return status;
     }
 
-    if (AegisWfpFilterMatchesProof(filter, AEGIS_WFP_DIRECTION_ANY,
+    if (AegisWfpFilterMatchesProof(filter, direction,
                                    &remoteIpv4, &remotePort, &protocol)) {
         state->remote_ipv4 = remoteIpv4;
         state->remote_port = remotePort;

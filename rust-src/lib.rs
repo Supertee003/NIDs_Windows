@@ -348,6 +348,7 @@ mod wfp_adapter {
     type WfpBlockFlow = unsafe extern "system" fn(*const FlowRequest, *mut FlowResponse) -> i32;
     type WfpUnblockFilter = unsafe extern "system" fn(u64) -> i32;
     type WfpQueryFilter = unsafe extern "system" fn(u64, *mut FilterState) -> i32;
+    type WfpQueryFilterDir = unsafe extern "system" fn(u64, u8, *mut FilterState) -> i32;
     type WfpOpen = unsafe extern "system" fn() -> i32;
     type WfpClose = unsafe extern "system" fn() -> i32;
     type WfpReadEvents = unsafe extern "system" fn(*mut u8, u32, *mut u32) -> i32;
@@ -367,6 +368,10 @@ mod wfp_adapter {
         block_flow: WfpBlockFlow,
         unblock_filter: WfpUnblockFilter,
         query_filter: WfpQueryFilter,
+        /// Direction-aware postcondition query. Optional so a newer PEP can
+        /// fail closed against an older bridge instead of calling the
+        /// outbound-only query for an inbound attestation.
+        query_filter_dir: Option<WfpQueryFilterDir>,
         /// EVT-211: optional read-only telemetry export. Optional on
         /// purpose: a provider copy that predates the read surface must
         /// still attest for enforcement; its reads surface as unavailable.
@@ -401,6 +406,7 @@ mod wfp_adapter {
                 let block_flow_name = b"aegis_wfp_ioctl_block_flow\0";
                 let unblock_filter_name = b"aegis_wfp_ioctl_unblock_filter\0";
             let query_filter_name = b"aegis_wfp_ioctl_query_filter\0";
+            let query_filter_dir_name = b"aegis_wfp_ioctl_query_filter_dir\0";
             let open_name = b"aegis_wfp_ioctl_open\0";
             let close_name = b"aegis_wfp_ioctl_close\0";
             let read_events_name = b"aegis_wfp_ioctl_read_events\0";
@@ -409,6 +415,7 @@ mod wfp_adapter {
             let block_flow = unsafe { GetProcAddress(module, block_flow_name.as_ptr()) };
             let unblock_filter = unsafe { GetProcAddress(module, unblock_filter_name.as_ptr()) };
             let query_filter = unsafe { GetProcAddress(module, query_filter_name.as_ptr()) };
+            let query_filter_dir = unsafe { GetProcAddress(module, query_filter_dir_name.as_ptr()) };
             let read_events = unsafe { GetProcAddress(module, read_events_name.as_ptr()) };
             if open.is_null() || block_flow.is_null() || unblock_filter.is_null() || query_filter.is_null() {
                 unsafe { FreeLibrary(module) };
@@ -430,6 +437,14 @@ mod wfp_adapter {
             } else {
                 Some(unsafe { transmute::<*mut c_void, WfpClose>(close) })
             };
+            // Direction-aware query is optional: a PEP paired with an older
+            // bridge must fail closed for inbound attestation, never fall
+            // back to the outbound-only query.
+            let query_filter_dir = if query_filter_dir.is_null() {
+                None
+            } else {
+                Some(unsafe { transmute::<*mut c_void, WfpQueryFilterDir>(query_filter_dir) })
+            };
 
             // EVT-212: probe open BEFORE assembling the owner struct. The
             // old order built `Self` first and dropped it on the failure
@@ -449,6 +464,7 @@ mod wfp_adapter {
                 block_flow: unsafe { transmute(block_flow) },
                 unblock_filter: unsafe { transmute(unblock_filter) },
                 query_filter: unsafe { transmute(query_filter) },
+                query_filter_dir,
                 read_events,
             });
         }
@@ -476,6 +492,25 @@ mod wfp_adapter {
                 protocol: 0, present: 0, provider_status: 0,
             };
             let rc = unsafe { (self.query_filter)(filter_id, &mut state) };
+            if rc == 0 && state.filter_id == filter_id {
+                Some(state)
+            } else {
+                None
+            }
+        }
+
+        /// Exact-filter read-back scoped to the WFP layer the caller is
+        /// attesting. The bridge/IOCTL must carry direction; an older bridge
+        /// without the export returns None so an inbound proof fails closed
+        /// instead of reusing the outbound query.
+        pub fn query_filter_dir(&self, filter_id: u64, direction: u8) -> Option<FilterState> {
+            if filter_id == 0 || direction > 1 { return None; }
+            let f = self.query_filter_dir?;
+            let mut state = FilterState {
+                filter_id: 0, remote_ipv4: 0, remote_port: 0,
+                protocol: 0, present: 0, provider_status: 0,
+            };
+            let rc = unsafe { f(filter_id, direction, &mut state) };
             if rc == 0 && state.filter_id == filter_id {
                 Some(state)
             } else {
@@ -901,6 +936,37 @@ pub extern "C" fn aegis_pep_query_filter(
     {
         if let Some(adapter) = wfp_adapter::Adapter::load() {
             if let Some(state) = adapter.query_filter(filter_id) {
+                unsafe {
+                    (*out).filter_id = state.filter_id;
+                    (*out).remote_ipv4 = state.remote_ipv4;
+                    (*out).remote_port = state.remote_port;
+                    (*out).protocol = state.protocol;
+                    (*out).present = state.present;
+                    (*out).provider_status = state.provider_status;
+                }
+                return 0;
+            }
+        }
+    }
+    -2
+}
+
+/// Direction-aware exact-filter postcondition query. The bridge must support
+/// the direction-scoped IOCTL; if it does not, this fails closed (-2) rather
+/// than attesting an inbound filter through the outbound-only query.
+#[no_mangle]
+pub extern "C" fn aegis_pep_query_filter_dir(
+    filter_id: u64,
+    direction: u8,
+    out: *mut PepFilterState,
+) -> c_int {
+    if filter_id == 0 || direction > 1 || out.is_null() {
+        return -3;
+    }
+    #[cfg(windows)]
+    {
+        if let Some(adapter) = wfp_adapter::Adapter::load() {
+            if let Some(state) = adapter.query_filter_dir(filter_id, direction) {
                 unsafe {
                     (*out).filter_id = state.filter_id;
                     (*out).remote_ipv4 = state.remote_ipv4;
@@ -1601,6 +1667,16 @@ mod tests {
         unsafe {
             assert_eq!(aegis_pep_enforce(std::ptr::null(), std::ptr::null_mut()), -1);
         }
+    }
+
+    #[test]
+    fn query_filter_dir_rejects_unknown_direction_and_zero_id() {
+        let mut state = PepFilterState {
+            filter_id: 0, remote_ipv4: 0, remote_port: 0,
+            protocol: 0, present: 0, provider_status: 0,
+        };
+        assert_eq!(unsafe { aegis_pep_query_filter_dir(1, 2, &mut state) }, -3);
+        assert_eq!(unsafe { aegis_pep_query_filter_dir(0, 0, &mut state) }, -3);
     }
 
     fn target_request(direction: u8, src_ip: u32, dst_ip: u32) -> PepRequest {

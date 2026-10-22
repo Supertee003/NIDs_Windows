@@ -47,7 +47,10 @@ Write-Host "[3/5] Installing bridge beside runtime executable"
 # (root 9/20 copy lacked aegis_wfp_ioctl_query_filter). Consumers use
 # zig-out/bin and build/Release; nothing reads the root copy on purpose.
 $destinations = @(
-    (Join-Path $Repo "zig-out\bin\aegis_wfp_user.dll")
+    (Join-Path $Repo "zig-out\bin\aegis_wfp_user.dll"),
+    # The Rust adapter's documented fallback candidate. Keep it in sync
+    # with the built DLL; a stale copy here can shadow the real bridge.
+    (Join-Path $Repo "build\Release\aegis_wfp_user.dll")
 )
 foreach ($destination in $destinations) {
     New-Item -ItemType Directory -Force (Split-Path -Parent $destination) | Out-Null
@@ -67,7 +70,9 @@ $record = [ordered]@{
         'aegis_wfp_ioctl_block_ip',
         'aegis_wfp_ioctl_unblock_ip',
         'aegis_wfp_ioctl_block_flow',
-        'aegis_wfp_ioctl_unblock_filter'
+        'aegis_wfp_ioctl_unblock_filter',
+        'aegis_wfp_ioctl_query_filter',
+        'aegis_wfp_ioctl_query_filter_dir'
     )
 }
 $record | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $evidence 'wfp-user-bridge-provenance.json') -Encoding utf8

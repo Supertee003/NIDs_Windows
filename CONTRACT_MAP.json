@@ -56,7 +56,8 @@
         "PepContext": "extern struct (24 bytes): caller_pid, caller_capability_mask, request_id, policy_version",
         "PepRequest": "extern struct (64 bytes): decision_kind, requested_action, flow_id, src/dst ip/port, protocol, policy_id, severity, direction@37 (0=outbound dst_ip/dst_port; 1=inbound peer src_ip + local dst_port), ctx@40",
         "PepResponse": "extern struct (24 bytes): decision, reason, quota_remaining, signed_by, filter_id",
-        "PepFilterState": "packed struct (20 bytes): filter_id, remote_ipv4, remote_port, protocol, present, provider_status"
+        "PepFilterState": "packed struct (20 bytes): filter_id, remote_ipv4, remote_port, protocol, present, provider_status",
+        "AEGIS_WFP_FILTER_QUERY": "packed struct (16 bytes): filter_id, direction@8, reserved[7]; direction 0=outbound, 1=inbound; an 8-byte legacy input is outbound-only"
       },
       "functions": [
         "aegis_pep_init() -> c_int",
@@ -64,7 +65,8 @@
         "aegis_pep_enforce(req: *PepRequest, resp: *PepResponse) -> c_int",
         "aegis_pep_unblock_ip(ipv4: u32, caller_pid: u32, caller_capability_mask: u32, request_id: u64) -> c_int [FROZEN STUB]",
         "aegis_pep_unblock_filter(filter_id: u64, caller_pid: u32, caller_capability_mask: u32, request_id: u64) -> c_int [ACTIVE]",
-        "aegis_pep_query_filter(filter_id: u64, out: *PepFilterState) -> c_int",
+        "aegis_pep_query_filter(filter_id: u64, out: *PepFilterState) -> c_int [legacy outbound-only]",
+        "aegis_pep_query_filter_dir(filter_id: u64, direction: u8, out: *PepFilterState) -> c_int [direction 0/1; unknown or missing bridge export fails closed]",
         "aegis_pep_provider_ready() -> c_int",
         "aegis_pep_quota_remaining(src_ip: u32) -> u32",
         "aegis_pep_set_two_person_rule(enabled: u32, caller_capability_mask: u32) -> c_int [0 ok, -3 no capability]",
@@ -75,7 +77,8 @@
         "Rust PEP is the ONLY final enforcement authority",
         "No component may bypass PEP for privileged actions",
         "PEP responses are signed (Ed25519) for audit trail",
-        "PepRequest.direction uses historical padding at offset 37; size stays 64, ctx stays at 40, and direction values other than 0/1 fail closed"
+        "PepRequest.direction uses historical padding at offset 37; size stays 64, ctx stays at 40, and direction values other than 0/1 fail closed",
+        "Postcondition queries are layer-scoped: outbound (0) and inbound (1) never share an attestation, and unblock proves absence on both layers"
       ]
     },
     {

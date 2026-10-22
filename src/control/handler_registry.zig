@@ -1728,6 +1728,9 @@ const handlers = struct {
         };
     }
 
+    /// The provider query is already scoped to target.direction, so a
+    /// wrong-layer filter cannot produce `present` here. Keep the tuple
+    /// comparison exact; direction is not a field of the 20-byte read-back.
     fn verifyStateMatches(target: VerifyTarget, state: pep_bindings.PepFilterState) bool {
         return state.filterId() == target.filter_id and
             state.remoteIpv4() == target.remote_ipv4 and
@@ -1739,7 +1742,7 @@ const handlers = struct {
     fn enforcementVerify(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
         const target = parseVerifyTarget(payload, ctx) orelse return null;
         var pep = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available.load(.acquire) };
-        const state = pep.queryFilter(target.filter_id) orelse {
+        const state = pep.queryFilter(target.filter_id, target.direction) orelse {
             ctx.failure_code = "POSTCONDITION_FAILED";
             ctx.failure_state = "DEGRADED";
             ctx.failure_message = "receipt filter is not present or provider query failed";
@@ -1855,7 +1858,7 @@ const handlers = struct {
             ctx.failure_message = "Rust PEP did not return a validated host-effect receipt";
             return null;
         };
-        const queried = switch (pep.queryFilterResult(receipt.filter_id)) {
+        const queried = switch (pep.queryFilterResult(receipt.filter_id, 0)) {
             .present => |state| state,
             .absent => {
                 _ = pep.unblockFilter(receipt.filter_id, ctx.caller_pid, 1, ctx.request_id);
@@ -1977,7 +1980,7 @@ const handlers = struct {
             ctx.failure_message = "Rust PEP did not return a validated quarantine receipt";
             return null;
         };
-        const queried = switch (pep.queryFilterResult(receipt.filter_id)) {
+        const queried = switch (pep.queryFilterResult(receipt.filter_id, 0)) {
             .present => |state| state,
             .absent => {
                 _ = pep.unblockFilter(receipt.filter_id, ctx.caller_pid, 1, ctx.request_id);
@@ -2052,21 +2055,36 @@ const handlers = struct {
             ctx.failure_message = "Rust PEP could not remove the exact receipt filter";
             return null;
         }
-        switch (pep.queryFilterResult(filter_id)) {
-            .absent => return std.fmt.allocPrint(a, "{{\"status\":\"ROLLED_BACK\",\"filter_id\":{},\"present\":false,\"postcondition\":\"ABSENT\"}}", .{filter_id}) catch null,
-            .present => {
-                ctx.failure_code = "CLEANUP_POSTCONDITION_FAILED";
-                ctx.failure_state = "ROLLBACK_PENDING";
-                ctx.failure_message = "filter removal returned but the exact filter is still present";
-                return null;
-            },
+        // The unblock payload may name either an outbound or an inbound
+        // receipt filter. Prove absence on both layers; a single-direction
+        // query would call an inbound filter "absent" while it still exists.
+        const outbound_absent = switch (pep.queryFilterResult(filter_id, 0)) {
+            .absent => true,
+            .present => false,
             .query_error => {
                 ctx.failure_code = "CLEANUP_POSTCONDITION_FAILED";
                 ctx.failure_state = "ROLLBACK_PENDING";
-                ctx.failure_message = "filter removal returned but exact filter absence could not be proven";
+                ctx.failure_message = "filter removal returned but outbound absence could not be proven";
                 return null;
             },
+        };
+        const inbound_absent = switch (pep.queryFilterResult(filter_id, 1)) {
+            .absent => true,
+            .present => false,
+            .query_error => {
+                ctx.failure_code = "CLEANUP_POSTCONDITION_FAILED";
+                ctx.failure_state = "ROLLBACK_PENDING";
+                ctx.failure_message = "filter removal returned but inbound absence could not be proven";
+                return null;
+            },
+        };
+        if (outbound_absent and inbound_absent) {
+            return std.fmt.allocPrint(a, "{{\"status\":\"ROLLED_BACK\",\"filter_id\":{},\"present\":false,\"postcondition\":\"ABSENT\"}}", .{filter_id}) catch null;
         }
+        ctx.failure_code = "CLEANUP_POSTCONDITION_FAILED";
+        ctx.failure_state = "ROLLBACK_PENDING";
+        ctx.failure_message = "filter removal returned but the exact filter is still present";
+        return null;
     }
 
     /// T3-TWOP-023: privileged control-plane edge for the two-person rule.

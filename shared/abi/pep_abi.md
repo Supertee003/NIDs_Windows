@@ -97,8 +97,18 @@ int aegis_pep_unblock_filter(
     uint64_t request_id
 );
 
-// Query WFP filter state into a 20-byte PepFilterState
+// Query WFP filter state into a 20-byte PepFilterState.
+// Legacy entry point: outbound layer only (direction 0).
 int aegis_pep_query_filter(uint64_t filter_id, void* out_state);
+
+// Direction-aware query (0 = outbound, 1 = inbound). The provider must
+// attest the named WFP layer; an older bridge without this export fails
+// closed. Unknown direction values return -3.
+int aegis_pep_query_filter_dir(
+    uint64_t filter_id,
+    uint8_t direction,
+    void* out_state
+);
 
 // Provider readiness probe (1 = WFP provider reachable). EVT-212: attests
 // through the cached sole-owner adapter (adopts/reuses its single device

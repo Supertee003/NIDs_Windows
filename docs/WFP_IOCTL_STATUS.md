@@ -19,8 +19,11 @@ The WFP stack has two implemented layers:
      `IOCTL_AEGIS_QUERY_FILTER` (read);
    - `IOCTL_AEGIS_BLOCK_FLOW` installs an exact-flow WFP filter
      (remote IPv4 + port + protocol) with `FWP_ACTION_BLOCK` at
-     `FWPM_LAYER_ALE_AUTH_CONNECT_V4` and returns its `filter_id`;
-     unblock/query operate on that id.
+     `FWPM_LAYER_ALE_AUTH_CONNECT_V4` for outbound (direction 0) or
+     `FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4` for inbound capture
+     (direction 1), and returns its `filter_id`; unblock/query operate
+     on that id. The query input names the direction so an outbound
+     read-back can never attest an inbound filter.
 2. User-mode boundary:
    - `src/policy/wfp_ioctl.zig` is READ-ONLY telemetry transport
      (PEP-001): privileged block/unblock is prohibited in this module.
@@ -32,7 +35,8 @@ The WFP stack has two implemented layers:
    - `rust-src/lib.rs` (`wfp_adapter` + `adapter_cache`) is the sole
      enforcement authority: it loads `aegis_wfp_user.dll`, requires the
      exports `aegis_wfp_ioctl_open/block_flow/unblock_filter/query_filter`
-     (telemetry-only `read_events`/`close` are optional), and executes
+     (direction-aware `query_filter_dir` is required for inbound
+     attestation; telemetry-only `read_events`/`close` are optional), and executes
      block / quarantine decisions as exact-flow filters via
      `IOCTL_AEGIS_BLOCK_FLOW`, with an exact-filter read-back
      (`IOCTL_AEGIS_QUERY_FILTER`) postcondition. When the adapter is

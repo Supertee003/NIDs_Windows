@@ -10,7 +10,7 @@ Pinned here, all without elevation and without touching the host:
   S1. No bridge DLL in the repo root (the build script no longer drops
       one there; consumers use build/Release and zig-out/bin).
   S2. build_wfp_user_bridge.ps1 has no repo-root destination.
-  S3. The fallback candidate (build/Release) exports all four bridge
+  S3. The fallback candidate (build/Release) exports all five bridge
       symbols (load + GetProcAddress only -- the device is never opened).
 """
 from __future__ import annotations
@@ -25,6 +25,7 @@ BRIDGE_EXPORTS = (
     "aegis_wfp_ioctl_block_flow",
     "aegis_wfp_ioctl_unblock_filter",
     "aegis_wfp_ioctl_query_filter",
+    "aegis_wfp_ioctl_query_filter_dir",
 )
 
 

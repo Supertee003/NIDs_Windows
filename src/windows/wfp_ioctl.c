@@ -48,6 +48,11 @@ typedef struct _AEGIS_WFP_FLOW_RESPONSE {
 
 typedef struct _AEGIS_WFP_FILTER_QUERY {
     uint64_t filter_id;
+    /* 0 = outbound ALE_AUTH_CONNECT_V4; 1 = inbound
+     * ALE_AUTH_RECV_ACCEPT_V4. The query must name the layer it is
+     * attesting; an 8-byte legacy input defaults to outbound. */
+    uint8_t  direction;
+    uint8_t  reserved[7];
 } AEGIS_WFP_FILTER_QUERY;
 
 typedef struct _AEGIS_WFP_FILTER_STATE {
@@ -65,8 +70,8 @@ typedef char aegis_flow_request_must_be_8_bytes[
     sizeof(AEGIS_WFP_FLOW_REQUEST) == 8 ? 1 : -1];
 typedef char aegis_flow_response_must_be_12_bytes[
     sizeof(AEGIS_WFP_FLOW_RESPONSE) == 12 ? 1 : -1];
-typedef char aegis_filter_query_must_be_8_bytes[
-    sizeof(AEGIS_WFP_FILTER_QUERY) == 8 ? 1 : -1];
+typedef char aegis_filter_query_must_be_16_bytes[
+    sizeof(AEGIS_WFP_FILTER_QUERY) == 16 ? 1 : -1];
 typedef char aegis_filter_state_must_be_20_bytes[
     sizeof(AEGIS_WFP_FILTER_STATE) == 20 ? 1 : -1];
 
@@ -178,12 +183,15 @@ int aegis_wfp_ioctl_unblock_filter(uint64_t filter_id) {
 
 /* Read-only exact-filter postcondition query. The filter_id is mandatory;
  * IP-only lookup is intentionally unsupported. */
-int aegis_wfp_ioctl_query_filter(uint64_t filter_id,
-                                 AEGIS_WFP_FILTER_STATE *state) {
+int aegis_wfp_ioctl_query_filter_dir(uint64_t filter_id,
+                                     uint8_t direction,
+                                     AEGIS_WFP_FILTER_STATE *state) {
     DWORD out_len = 0;
     AEGIS_WFP_FILTER_QUERY query;
-    if (filter_id == 0 || state == NULL) return -1;
+    if (filter_id == 0 || state == NULL || direction > 1) return -1;
+    ZeroMemory(&query, sizeof(query));
     query.filter_id = filter_id;
+    query.direction = direction;
     ZeroMemory(state, sizeof(*state));
     if (wfp_ioctl_send(IOCTL_AEGIS_QUERY_FILTER, &query, sizeof(query),
                        state, sizeof(*state), &out_len) != 0) {
@@ -202,6 +210,14 @@ int aegis_wfp_ioctl_query_filter(uint64_t filter_id,
         return -1;
     }
     return out_len == sizeof(*state) ? 0 : -1;
+}
+
+/* Legacy outbound-only entry point. Kept for older PEP copies; new callers
+ * must use the direction-aware export so an inbound filter cannot be
+ * attested through an outbound query. */
+int aegis_wfp_ioctl_query_filter(uint64_t filter_id,
+                                 AEGIS_WFP_FILTER_STATE *state) {
+    return aegis_wfp_ioctl_query_filter_dir(filter_id, 0, state);
 }
 
 int aegis_wfp_ioctl_read_events(void *out_buf, uint32_t buf_size,
