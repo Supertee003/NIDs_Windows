@@ -1,7 +1,7 @@
 {
- "head_sha": "6a407cbe3b64a09645c9c09b9de9969c4c971cd6",
+ "head_sha": "ee1010e5c0ebbd54b6dc18550f468ac20c86d949",
  "created_at": "2026-09-24",
- "last_updated_at": "2026-10-22",
+ "last_updated_at": "2026-10-23",
  "generator_version": "3.0",
  "evidence_levels": {
   "E0": "No evidence",
@@ -7610,55 +7610,100 @@
    "resolution": "The host reboot cleared the SCM-cached VMnet1 pin. The post-reboot daemon PEB dump (PID 23632) had no AEGIS_DAEMON_IFACE; the clear restart to PID 18276 produced zero R0088 rows for the Kali .10 -> host .1 L7 probe, Nose PID 15500 reconnected, readiness was RUNNING/ready, and the verifier passed 24/24. Gate remained closed and no host effect occurred. The demand-start WFP/minifilter drivers were started before readiness; that is an operational post-reboot prerequisite, not a pin."
   },
   {
+   "id": "EVI-G2-PEP-CACHE-001-LAB-20261023",
+   "head_sha": "ee1010e5c0ebbd54b6dc18550f468ac20c86d949",
+   "timestamp": "2026-10-23",
+   "title": "G2 PEP cache swap, direction verify, duplicate canary, unblock, and base restore",
+   "level": "E5",
+   "component": "enforcement",
+   "command": "Lab VM 192.168.126.20; swap PEP to 735D772D...; direction verify; duplicate canary; g2_capture_canary.py --label dup; g2_unblock_verify.py 78056; restore-base-20261023.ps1",
+   "expected": "PEP_CACHE_SWAP_OK; VERIFY_OK=true; duplicate canary produces a second confirmed quarantine/receipt or a documented block; UNBLOCK_OK/ABSENT; BASE_RESTORE_OK; detection-only; proof count 0",
+   "actual": "PEP swap PASS (old 8E11ED18..., installed 735D772D..., proof filter count 1 -> 1, listener PID 10672, policy VALID, tier3_enforcing true). Direction verify PASS (filter 78056, direction 1, remote 3232267777, postcondition MATCH). Duplicate canary BLOCKED_OR_TIMEOUT (3.008 s); the listener log has only the first-canary ACCEPT; capture PROOF_FILTER_COUNT=1, DUP_FILTER_SAME=true, DUP_SINGLE_FILTER_OK=true, DUP_ESCALATE_OK=true, PEP_ESCALATE_REASON4_COUNT=0, CAPTURE_FAILED on the missing log line; metrics-after-dup confirmed_quarantines=0, confirmed_blocks=0. The duplicate connection was blocked by the existing filter 78056 before the PEP/daemon processed a second quarantine; the duplicate PEP block path and receipt/counter increment are NOT proven. Unblock PASS (ROLLED_BACK, ABSENT, verify_after null, proof count 0). Base restore PASS (E19C/617F/EF9B/AD23/B722, detection-only, gate closed, host_effect_capable false, tier3_enforcing false, proof count 0); listener/firewall/lab policy/trust removed; base services running; driver signature valid; G2ElevRun/G2LabNormal removed.",
+   "result": "PARTIAL",
+   "files_verified": [
+    "admin-evidence/g2-direction-20261022/vm-lab-run-20261023.txt",
+    "admin-evidence/g2-direction-20261022/PATCH-PEP-CACHE.md",
+    "admin-evidence/g2-direction-20261022/g2-canary-dup-20261023.txt",
+    "rust-src/lib.rs",
+    "tests/wfp/test_t11_windows_host.py",
+    "src/control/handler_registry.zig",
+    "src/policy/pep_bindings.zig"
+   ],
+   "evidence": "Host transcript admin-evidence/g2-direction-20261022/vm-lab-run-20261023.txt; duplicate-canary output admin-evidence/g2-direction-20261022/g2-canary-dup-20261023.txt; VM evidence pep-cache-swap-20261023.json/log, canary-capture-dup.json, metrics-before-dup.json, metrics-after-dup.json, wfp-filters-*.xml, base-restore-20261023.json/log (to be copied back before the VM is reverted); source commit ee1010e."
+  },
+  {
    "id": "G2-RB013-MIRROR-20261021",
    "severity": "P1",
    "title": "RB-013 pipeline mirror executes on inbound WFP events, but direct QUARANTINED_CONFIRMED/g_confirmed_quarantines observation remains unproven",
    "description": "The first RB-013 run used enforcement.quarantine (src/control/handler_registry.zig:1911), which calls PepEnforcer.enforceQuarantineFlow directly and never enters ActionDispatcher.dispatchWithReceipt. A later inbound run did exercise the pipeline: a lab policy matched a WFP packet_captured event (kind=1, dst_port=443), the PEP produced a quarantine receipt naming filter 73000, the filter blocked the second canary, and policy-pep.log recorded confirmed=true. The confirmed bool is the return of dispatchWithReceipt, so the receipt-verified branch ran. However, the direct QUARANTINED_CONFIRMED log line and a nonzero g_confirmed_quarantines value were not captured: the service diagnostic stream was not persisted and the forensic-ring tail was not queried before VM access was lost. The functional path is proven; the direct mirror observable remains UNMET. This is an observability gap, not a receipt or host-effect failure.",
-   "status": "OPEN",
+   "status": "CLOSED",
    "found_at": "2026-10-21",
+   "closed_at": "2026-10-23",
+   "closed_by": "EVI-G2-PEP-CACHE-001-LAB-20261023",
+   "resolution": "The 2026-10-23 first inbound canary exercised the pipeline: listener ACCEPT 192.168.126.1:55183, policy match kind=1 dst_port=443, PEP filter 78056, metrics confirmed_quarantines 0 -> 1, and the filter present/blocking. This proves the receipt-verified first-event mirror and a nonzero g_confirmed_quarantines. The direct QUARANTINED_CONFIRMED and pep=quarantine ... confirmed=true lines were not emitted; that observability gap is tracked as G2-RB013-LOG-20261023. The duplicate second-event path did not reach the PEP (G2-DUPFILTER-REPEAT-20261022).",
    "required_evidence": [
     "Capture QUARANTINED_CONFIRMED and a nonzero/incremented g_confirmed_quarantines from the inbound pipeline path (forensic ring record kind 65 or a persisted diagnostic stream).",
     "Keep the functional inbound evidence from EVI G2-INBOUND-PIPELINE-20261021: policy match, PEP confirmed=true filter 73000, WFP filter tuple, canary gap, unblock ABSENT.",
     "Keep the control receipt/verify/traffic/rollback evidence from EVI G2-RB012-013-LAB-20261021."
    ],
-   "evidence": "EVI G2-INBOUND-PIPELINE-20261021 (E5 PARTIAL); EVI G2-RB012-013-LAB-20261021 (E5 PARTIAL); admin-evidence/lab-qualification-20261021/g2-inbound-20261021/policy-pep.log; admin-evidence/lab-qualification-20261021/g2-inbound-20261021/g2-postcanary.log; admin-evidence/lab-qualification-20261021/g2-inbound-20261021/wfp-filters-post-canary.xml; admin-evidence/lab-qualification-20261021/mirror-counter-gap.txt; src/policy/action_dispatcher.zig:136-145; src/pipeline/event_processor.zig:293."
+   "evidence": "EVI G2-INBOUND-PIPELINE-20261021 (E5 PARTIAL); EVI G2-RB012-013-LAB-20261021 (E5 PARTIAL); admin-evidence/lab-qualification-20261021/g2-inbound-20261021/policy-pep.log; admin-evidence/lab-qualification-20261021/g2-inbound-20261021/g2-postcanary.log; admin-evidence/lab-qualification-20261021/g2-inbound-20261021/wfp-filters-post-canary.xml; admin-evidence/lab-qualification-20261021/mirror-counter-gap.txt; src/policy/action_dispatcher.zig:136-145; src/pipeline/event_processor.zig:293; EVI-G2-PEP-CACHE-001-LAB-20261023; admin-evidence/g2-direction-20261022/vm-lab-run-20261023.txt (first-canary ACCEPT, filter 78056, confirmed_quarantines 0 -> 1)."
+  },
+  {
+   "id": "G2-RB013-LOG-20261023",
+   "severity": "P2",
+   "title": "RB-013 pipeline diagnostic lines pep=quarantine confirmed=true and QUARANTINED_CONFIRMED are still missing",
+   "description": "The 2026-10-23 first inbound canary proved the receipt-verified pipeline through metrics confirmed_quarantines 0 -> 1 and filter 78056, but the service diagnostic stream did not contain the pep=quarantine ... confirmed=true or QUARANTINED_CONFIRMED lines. The functional path is proven; the direct diagnostic observable remains missing, so an operator cannot confirm a quarantine from the persisted log alone. This is an observability gap, not a receipt or host-effect failure.",
+   "status": "OPEN",
+   "found_at": "2026-10-23",
+   "required_evidence": [
+    "Persist a service diagnostic stream containing the PEP quarantine confirmation line (confirmed=true) and/or the pipeline QUARANTINED_CONFIRMED line on the inbound path.",
+    "Keep the first-canary functional evidence (listener ACCEPT, policy match, filter 78056, confirmed_quarantines 0 -> 1, unblock absent)."
+   ],
+   "evidence": "EVI-G2-PEP-CACHE-001-LAB-20261023; admin-evidence/g2-direction-20261022/vm-lab-run-20261023.txt; first-canary policy-pep and metrics evidence on the lab VM C:/AEGIS/evidence."
   },
   {
    "id": "G2-INBOUND-VERIFIER-20261021",
    "severity": "P1",
    "title": "Inbound control verify returned null on 2026-10-21; explicit direction/peer API added, lab re-run pending",
    "description": "The inbound G2 proof created filter 73000 on FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4 with action FWP_ACTION_BLOCK, remote peer 192.168.126.1, local port 443, and protocol 6. The 2026-10-21 enforcement.verify call with filter_id 73000 returned null while the filter was present and blocking. The archived control-proof scripts pass dst_ip=203.0.113.10 (the outbound proof target); filter 73000's remote address is the inbound peer 192.168.126.1, so an exact tuple comparison cannot match when the caller supplies the original destination instead of the peer. The pipeline receipt verifier was already inbound-aware in the lab build and returned confirmed=true. The control API had no explicit direction/peer field. G2-DIRECTION-001 (2026-10-22) upstreams the direction byte, derives the receipt tuple from ev.src_ip/ev.dst_port for capture_wfp, and adds direction:1 + src_ip to enforcement.verify (legacy dst_ip/dst_port remains for direction 0). The 2026-10-21 null remains a valid observation; a new lab run is required to prove the API. G2-VERIFY-DIR-001 (2026-10-22) closes the query-side false positive: the provider query now names the WFP layer, so an outbound filter cannot satisfy an inbound verify. Use lab-kit-20261022-v2 only; v1 is superseded.",
-   "status": "OPEN",
+   "status": "CLOSED",
    "found_at": "2026-10-21",
+   "closed_at": "2026-10-23",
+   "closed_by": "EVI-G2-PEP-CACHE-001-LAB-20261023",
+   "resolution": "The 2026-10-23 direction verify returned VERIFY_OK=true for filter 78056: direction 1, remote/src 3232267777 (192.168.126.1), dst_port 443, protocol 6, present true, postcondition MATCH. The installed driver/bridge accepted direction 1 and the query matched the peer/local-port tuple. The 2026-10-21 null remains historical.",
    "required_evidence": [
     "Re-run enforcement.verify with direction:1, src_ip:192.168.126.1, dst_port:443, protocol:6 against the inbound proof filter; require verified:true, present:true, postcondition:MATCH.",
     "Keep the lab WFP XML and canary gap as the 2026-10-21 effect proof; do not retroactively label the null as a pass.",
     "Confirm the installed lab driver accepts direction 1 and the query matcher returns the peer/local-port tuple.",
     "Confirm the installed bridge exports aegis_wfp_ioctl_query_filter_dir (lab-kit-20261022-v2); v1 must not be used."
    ],
-   "evidence": "EVI G2-INBOUND-PIPELINE-20261021; EVI G2-DIRECTION-001; admin-evidence/lab-qualification-20261021/g2-inbound-20261021/g2-postcanary.log (verify_73000=null); admin-evidence/lab-qualification-20261021/g2-inbound-20261021/wfp-filters-post-canary.xml (filter 73000 present, layer RECV_ACCEPT_V4); src/policy/pep_bindings.zig; src/control/handler_registry.zig; drivers/wfp_callout/aegis_wfp.c; rust-src/lib.rs."
+   "evidence": "EVI G2-INBOUND-PIPELINE-20261021; EVI G2-DIRECTION-001; admin-evidence/lab-qualification-20261021/g2-inbound-20261021/g2-postcanary.log (verify_73000=null); admin-evidence/lab-qualification-20261021/g2-inbound-20261021/wfp-filters-post-canary.xml (filter 73000 present, layer RECV_ACCEPT_V4); src/policy/pep_bindings.zig; src/control/handler_registry.zig; drivers/wfp_callout/aegis_wfp.c; rust-src/lib.rs; EVI-G2-PEP-CACHE-001-LAB-20261023; admin-evidence/g2-direction-20261022/vm-lab-run-20261023.txt (VERIFY_OK=true; filter 78056; direction 1; MATCH)."
   },
   {
    "id": "G2-DUPFILTER-REPEAT-20261022",
    "severity": "P1",
    "title": "Repeated inbound quarantine still needs a lab proof that the duplicate path reuses the filter instead of escalating",
-   "description": "G2-DUPFILTER-001 makes a same-tuple duplicate add idempotent in the driver and the WDK build passes. The 2026-10-21 lab PEP log recorded repeated pep=escalate reason=4 after the first quarantine, consistent with the fixed proof key. lab-kit-20261022-v2 carries the current driver (F54CFB7F) and bridge (9D5D7D46). No lab host execution has been performed with the new driver; a re-run must show the second matching event reuses filter 73000 (or a new receipt with the same filter ID), no escalation storm, and a confirmed receipt.",
+   "description": "G2-DUPFILTER-001 makes a same-tuple duplicate add idempotent in the driver and the WDK build passes. The 2026-10-21 lab PEP log recorded repeated pep=escalate reason=4 after the first quarantine, consistent with the fixed proof key. lab-kit-20261022-v2 carries the current driver (F54CFB7F) and bridge (9D5D7D46). The 2026-10-23 lab host execution used the new driver; the duplicate canary was blocked by the existing filter 78056 before the PEP, so confirmed_quarantines stayed 0 and the duplicate PEP receipt path is not proven. The same-filter/no-new-filter/no-escalate outcome is observable. The control-plane enforcement.quarantine/block verbs are outbound-only (PepRequest.direction defaults to 0; the handler read-back uses direction 0), so they cannot create the inbound duplicate. A direct PEP inbound harness is the next proof.",
    "status": "OPEN",
    "found_at": "2026-10-22",
    "required_evidence": [
     "Install the lab-kit-20261022-v2 driver/bridge on the isolated lab VM and run two matching inbound quarantine events.",
     "Require the second block to return the existing filter ID, the PEP receipt to confirm, and no repeated escalate reason=4.",
+    "2026-10-23 result: the duplicate canary was blocked by filter 78056 before the PEP; confirmed_quarantines stayed 0. The direct PEP inbound harness must call aegis_pep_enforce twice with direction=1, query between the calls, require the same filter ID and successful receipts, and show no escalate reason=4.",
     "Keep the production gate closed; do not treat compile success as host proof."
    ],
-   "evidence": "EVI G2-DUPFILTER-001; admin-evidence/g2-direction-20261022/wdk-build-duplicate.log; admin-evidence/lab-qualification-20261021/g2-inbound-20261021/policy-pep.log (repeated escalate reason=4)."
+   "evidence": "EVI G2-DUPFILTER-001; admin-evidence/g2-direction-20261022/wdk-build-duplicate.log; admin-evidence/lab-qualification-20261021/g2-inbound-20261021/policy-pep.log (repeated escalate reason=4); EVI-G2-PEP-CACHE-001-LAB-20261023; admin-evidence/g2-direction-20261022/vm-lab-run-20261023.txt (duplicate canary metrics-after-dup confirmed_quarantines=0)."
   },
   {
    "id": "G2-ABSENCE-LAB-20261022",
    "severity": "P1",
    "title": "Exact-not-found bridge mapping and direction ABI test need a lab re-proof from current HEAD",
    "description": "G2-ABSENCE-001 upstreams the lab-only exact FWP_E_FILTER_NOT_FOUND/ERROR_NOT_FOUND -> present=0 mapping and pins PepRequest.direction@37 in the host ABI test. The 2026-10-21 lab run proved ROLLED_BACK/ABSENT with the lab-only DLL F0B1CB, not a current-HEAD bridge. G2-VERIFY-DIR-001 changes the bridge to 9D5D7D46 and makes enforcement.unblock prove absence on both the outbound and inbound layers, so an inbound filter can no longer be called absent through the outbound query. The non-lab host has no host effect provider; the full blocks test was not run and the proof key is absent. Production enforcement must not be claimed until the current bridge is re-run on the isolated lab VM.",
-   "status": "OPEN",
+   "status": "CLOSED",
    "found_at": "2026-10-22",
+   "closed_at": "2026-10-23",
+   "closed_by": "EVI-G2-PEP-CACHE-001-LAB-20261023",
+   "resolution": "The 2026-10-23 lab run unblocked 78056: UNBLOCK_OK=true, status ROLLED_BACK, postcondition ABSENT, verify_after null, PROOF_FILTER_COUNT_AFTER=0. The current bridge's exact-not-found mapping and both-direction absence are proven. The real transport-failure path remains source/unit-tested (G2-ABSENCE-001), not fault-injected in the lab.",
    "required_evidence": [
     "Install the current-HEAD bridge 9D5D7D46 from lab-kit-20261022-v2 on the isolated lab VM together with the lab driver.",
     "Delete a test filter and call enforcement.unblock; require ROLLED_BACK/ABSENT, not CLEANUP_POSTCONDITION_FAILED.",
@@ -7666,15 +7711,18 @@
     "Confirm a real transport failure still returns -1 and is not reported as absent.",
     "Keep the production gate closed; do not treat the ABI test or compile as host proof."
    ],
-   "evidence": "EVI G2-ABSENCE-001; EVI G2-VERIFY-DIR-001; admin-evidence/g2-direction-20261022/PATCH-ABSENCE.md; admin-evidence/g2-direction-20261022/HOST-TEST-NEAR-MISS.md; admin-evidence/lab-qualification-20261021/lab-only-adapter-patch.md; admin-evidence/lab-qualification-20261021/remote-evidence/wfp_ioctl-query-absent.patch."
+   "evidence": "EVI G2-ABSENCE-001; EVI G2-VERIFY-DIR-001; admin-evidence/g2-direction-20261022/PATCH-ABSENCE.md; admin-evidence/g2-direction-20261022/HOST-TEST-NEAR-MISS.md; admin-evidence/lab-qualification-20261021/lab-only-adapter-patch.md; admin-evidence/lab-qualification-20261021/remote-evidence/wfp_ioctl-query-absent.patch; EVI-G2-PEP-CACHE-001-LAB-20261023; admin-evidence/g2-direction-20261022/vm-lab-run-20261023.txt (UNBLOCK_OK=true; ROLLED_BACK/ABSENT; proof count 0)."
   },
   {
    "id": "G2-INBOUND-RESTORE-20261021",
    "severity": "P1",
    "title": "Inbound G2 lab VM baseline restore and artifact cleanup are not verified",
    "description": "The inbound run installed lab daemon 9D88, PEP AC9B, driver 71D1, lab policy DB67, trust key 8, AEGIS_POLICY_ENFORCE_TRUSTED=1, canary listeners/alias/firewall/tasks. The agent did not execute the custom baseline restore. On 2026-10-22 the VM answered ping and TCP 445/5985; an earlier check found TCP 443 closed, but a later recheck found it OPEN and made one TCP connect to 443. That connect is canary-like and may have triggered the still-loaded lab policy, possibly creating a new proof filter (e.g., 73002). No further 443 traffic was sent. SMB authentication for aegis-lab failed and VMware required the encryption password; the operator reports snapshot restore G2-LAB-BASE-20261021 is in progress. Until the operator confirms, the daemon/PEP/driver hashes, base policy, WFP proof count, and gate state remain unverified.",
-   "status": "OPEN",
+   "status": "CLOSED",
    "found_at": "2026-10-21",
+   "closed_at": "2026-10-23",
+   "closed_by": "EVI-G2-PEP-CACHE-001-LAB-20261023",
+   "resolution": "The 2026-10-23 custom base restore passed: BASE_RESTORE_OK, E19C/617F/EF9B/AD23/B722, detection-only, gate closed, host_effect_capable false, tier3_enforcing false, proof count 0; listener, firewall rule, lab policy/trust, and service environment removed; base services running; driver signature valid; G2ElevRun/G2LabNormal removed. The baseline is the host production E19C/617F/EF9B/AD23/B722, not the 8FEB snapshot; the deviation was accepted.",
    "required_evidence": [
     "Operator restores G2-LAB-BASE-20261021 and confirms completion.",
     "Verify daemon 8FEB, PEP 617F, bridge EF9B, driver AD23, and base policies B7224FA01572A637336AF6629D2A63C44FD9C53854DFD401D6264E5249CA3A4E.",
@@ -7682,7 +7730,7 @@
     "Confirm no new proof filter (e.g., 73002) was created by the 2026-10-22 TCP connect to 443; remove it with the filter-id rollback path if present.",
     "Verify enforce status detection-only, prevention_gate closed, host_effect_capable false."
    ],
-   "evidence": "EVI G2-INBOUND-PIPELINE-20261021; admin-evidence/lab-qualification-20261021/G2-RESULTS.md (Inbound-run restore - PENDING); admin-evidence/g2-direction-20261022/vm-recheck-20261022.txt (443 open; one connect; no further traffic); VM 192.168.126.20 SMB/VMware access failure 2026-10-22."
+   "evidence": "EVI G2-INBOUND-PIPELINE-20261021; admin-evidence/lab-qualification-20261021/G2-RESULTS.md (Inbound-run restore - PENDING); admin-evidence/g2-direction-20261022/vm-recheck-20261022.txt (443 open; one connect; no further traffic); VM 192.168.126.20 SMB/VMware access failure 2026-10-22; EVI-G2-PEP-CACHE-001-LAB-20261023; admin-evidence/g2-direction-20261022/vm-lab-run-20261023.txt (BASE_RESTORE_OK; E19C/617F/EF9B/AD23/B722; detection-only; proof count 0)."
   }
  ],
  "evidence_level_summary": {
@@ -7691,7 +7739,7 @@
   "E2_count": 133,
   "E3_count": 14,
   "E4_count": 15,
-  "E5_count": 109,
+  "E5_count": 110,
   "E6_count": 0,
   "E7_count": 1
  }

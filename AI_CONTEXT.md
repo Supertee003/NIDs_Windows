@@ -4,11 +4,11 @@
 
 
 
-**HEAD:** `6a407cbe3b64a09645c9c09b9de9969c4c971cd6` (build source commit — ADR-0008)
+**HEAD:** `ee1010e5c0ebbd54b6dc18550f468ac20c86d949` (build source commit — ADR-0008)
 
 **BRANCH:** `main`
 
-**GENERATED:** 2026-09-24T00:00:00.000000+00:00
+**GENERATED:** 2026-10-23T00:00:00.000000+00:00
 
 **GENERATOR:** opencode agent (TRUTH-REBUILD current-HEAD resync)
 
@@ -350,7 +350,7 @@ Previous phases:
   DEADCODE-QUARANTINE, CI-GAPS, RELEASE-TOOLING, LEFTOVER-SWEEP, REL-CLOSURE; operator
   cutover 2026-10-19 20:07 deployed daemon `dcb22a5` (sha256 `f223dcce…`) — live gate
   hard-closed (gate_source 'closed', detection-only), gate-check + v6 live verify PASS.
-  Remaining queue: G2 lab campaign executed 2026-10-21 (RB-012 PASS; RB-013 control-path PASS; inbound pipeline quarantine PASS with filter 73000 and confirmed=true, EVI G2-INBOUND-PIPELINE-20261021; direct mirror log/counter OPEN for the 2026-10-21 run as G2-RB013-MIRROR-20261021 (metrics now exposes the counters, G2-METRICS-001 E2); inbound control verify null explained by outbound-target payload, direction/src_ip API added and the provider query layer-scoped (G2-VERIFY-DIR-001; lab-kit v2), lab re-run pending as G2-INBOUND-VERIFIER-20261021; absence mapping upstreamed, lab re-run pending as G2-ABSENCE-LAB-20261022; duplicate-filter repeat pending as G2-DUPFILTER-REPEAT-20261022; lab VM snapshot restore PENDING as G2-INBOUND-RESTORE-20261021), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window E2 2026-10-20; install E5 24/24 verifier; R9002/R9006/R9007 live PASS; isolated Kali→Win11 rate E5 CLOSED 2026-10-20; DEPLOY-132 process-pin drift CLOSED 2026-10-21 — host reboot cleared SCM cache; post-reboot PEB dump no pin, R0088=0, verifier 24/24),
+  Remaining queue: G2 lab campaign 2026-10-23 (PEP cache swap PASS; direction verify PASS; duplicate canary blocked by existing filter 78056 with confirmed_quarantines=0, so G2-DUPFILTER-REPEAT-20261022 is OPEN; G2-RB013-MIRROR-20261021 CLOSED on the first-canary metric 0 -> 1; G2-RB013-LOG-20261023 OPEN P2; G2-INBOUND-VERIFIER-20261021 CLOSED; G2-ABSENCE-LAB-20261022 CLOSED; G2-INBOUND-RESTORE-20261021 CLOSED with the E19C host-production baseline, not 8FEB; G2 gate NOT PASS; next direct PEP inbound duplicate harness), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window E2 2026-10-20; install E5 24/24 verifier; R9002/R9006/R9007 live PASS; isolated Kali→Win11 rate E5 CLOSED 2026-10-20; DEPLOY-132 process-pin drift CLOSED 2026-10-21 — host reboot cleared SCM cache; post-reboot PEB dump no pin, R0088=0, verifier 24/24),
   RB-016/017, G4 signing, external review, CI first push (truth semantics fixed 2026-10-20; push approval pending).
   Evidence: EVI CUTOVER-DCB22A5 (E5) + entries V6-QUEUE-DROP..REL-CLOSURE.
 
@@ -440,6 +440,35 @@ Previous phases:
   false-positive path in source; lab re-runs G2-INBOUND-VERIFIER-20261021 and
   G2-ABSENCE-LAB-20261022 remain OPEN. Production detection-only, gate closed.
   Evidence: EVI G2-VERIFY-DIR-001.
+
+- G2 pep-cache/duplicate lab run (2026-10-23): source patch G2-PEP-CACHE-001
+  at HEAD ee1010e (PEP query/unblock use adapter_cache::with_adapter; the
+  private Adapter::load whose Drop closed the shared WFP handle is gone).
+  E2: cargo test 49 pass / 1 ignored + keygen 3; clean PEP build 735D772D...
+  (release DLL hash is not byte-stable across rebuilds). E5 lab
+  (192.168.126.20, lab-only, base restored): PEP swap OK; direction verify
+  VERIFY_OK=true (filter 78056, direction 1, remote 3232267777, MATCH);
+  duplicate canary BLOCKED_OR_TIMEOUT by the existing filter 78056, the
+  listener had no new ACCEPT, and confirmed_quarantines stayed 0; the same
+  filter / no new filter / no escalate reason=4 outcome is observable, but the
+  duplicate PEP inbound path and receipt are NOT proven. Unblock
+  UNBLOCK_OK/ROLLED_BACK/ABSENT, proof count 0. Base restore BASE_RESTORE_OK
+  to host-production E19C/617F/EF9B/AD23/B722 (not the 8FEB snapshot; the
+  deviation was accepted), detection-only, gate closed, host_effect_capable
+  false, tier3_enforcing false, proof count 0; listener/firewall/lab
+  policy/trust removed; G2ElevRun/G2LabNormal removed. Status:
+  G2-DUPFILTER-REPEAT-20261022 OPEN; G2-RB013-MIRROR-20261021 CLOSED on the
+  first-canary metric 0 -> 1; G2-RB013-LOG-20261023 OPEN P2;
+  G2-INBOUND-VERIFIER-20261021 CLOSED; G2-ABSENCE-LAB-20261022 CLOSED;
+  G2-INBOUND-RESTORE-20261021 CLOSED. G2 gate NOT PASS. The control-plane
+  enforcement.quarantine/block verbs are outbound-only (PepRequest.direction
+  defaults to 0; the handler read-back uses direction 0), so they cannot prove
+  the inbound duplicate; the next proof is a direct PEP inbound harness (two
+  aegis_pep_enforce calls with direction=1, a query between them, same filter
+  ID / successful receipts / no escalate reason=4) or accepting the gap.
+  No production enforcement. Evidence: EVI-G2-PEP-CACHE-001-LAB-20261023;
+  admin-evidence/g2-direction-20261022/PATCH-PEP-CACHE.md;
+  admin-evidence/g2-direction-20261022/vm-lab-run-20261023.txt.
 
 - RB-021 host-only lab proof (2026-10-20): L4 CLOSE-OUT PASS (E5, per-packet).
   Pre-fix run at e616bad/F223DCCE proved the capture path + 5/8 L7 rules but real
@@ -587,8 +616,8 @@ Previous phases:
   gap DEPLOY-120-E5 CLOSED; kit gitignored.
 
 - CI truth source-commit semantics (2026-10-20): IMPLEMENTED - ADR-0008; truth.py keys on the last
-  source/build commit (current fd7b424), verifies ancestry + clean source paths; maps/AI_CONTEXT/EVI/
-  build_manifest/runtime_manifest carry the current build source commit (fd7b424); clean-checkout truth PASS + release PASS;
+  source/build commit (current ee1010e), verifies ancestry + clean source paths; maps/AI_CONTEXT/EVI/
+  build_manifest/runtime_manifest carry the current build source commit (ee1010e); clean-checkout truth PASS + release PASS;
   full suite 963P/2S/27 subtests (exit 0); tests pinned at tests/release/test_truth_source_commit.py; EVI CI-TRUTH-SOURCE-COMMIT (E2). First
   hosted CI push still operator (no push).
 
