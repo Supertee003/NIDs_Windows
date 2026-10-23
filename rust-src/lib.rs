@@ -912,10 +912,20 @@ pub extern "C" fn aegis_pep_unblock_filter(
 
     #[cfg(windows)]
     {
-        if let Some(adapter) = wfp_adapter::Adapter::load() {
+        // PEP-ADAPTER-CACHE-074: the cache owns the sole WFP bridge handle.
+        // A private load-and-drop here closed the shared g_wfp_device and made
+        // the next block fail once with escalate reason=4. Keep unblock on the
+        // same cached adapter as block/query.
+        if adapter_cache::with_adapter(|adapter| {
             if adapter.unblock_filter(filter_id) {
-                return 0;
+                Some(())
+            } else {
+                None
             }
+        })
+        .is_some()
+        {
+            return 0;
         }
     }
 
@@ -934,18 +944,19 @@ pub extern "C" fn aegis_pep_query_filter(
     }
     #[cfg(windows)]
     {
-        if let Some(adapter) = wfp_adapter::Adapter::load() {
-            if let Some(state) = adapter.query_filter(filter_id) {
-                unsafe {
-                    (*out).filter_id = state.filter_id;
-                    (*out).remote_ipv4 = state.remote_ipv4;
-                    (*out).remote_port = state.remote_port;
-                    (*out).protocol = state.protocol;
-                    (*out).present = state.present;
-                    (*out).provider_status = state.provider_status;
-                }
-                return 0;
+        // PEP-ADAPTER-CACHE-074: query through the cached sole-owner adapter.
+        // Dropping a private adapter closed g_wfp_device and invalidated the
+        // block path's cached handle.
+        if let Some(state) = adapter_cache::with_adapter(|adapter| adapter.query_filter(filter_id)) {
+            unsafe {
+                (*out).filter_id = state.filter_id;
+                (*out).remote_ipv4 = state.remote_ipv4;
+                (*out).remote_port = state.remote_port;
+                (*out).protocol = state.protocol;
+                (*out).present = state.present;
+                (*out).provider_status = state.provider_status;
             }
+            return 0;
         }
     }
     -2
@@ -965,18 +976,21 @@ pub extern "C" fn aegis_pep_query_filter_dir(
     }
     #[cfg(windows)]
     {
-        if let Some(adapter) = wfp_adapter::Adapter::load() {
-            if let Some(state) = adapter.query_filter_dir(filter_id, direction) {
-                unsafe {
-                    (*out).filter_id = state.filter_id;
-                    (*out).remote_ipv4 = state.remote_ipv4;
-                    (*out).remote_port = state.remote_port;
-                    (*out).protocol = state.protocol;
-                    (*out).present = state.present;
-                    (*out).provider_status = state.provider_status;
-                }
-                return 0;
+        // PEP-ADAPTER-CACHE-074: the direction-aware receipt query is the
+        // first read after a block. It must use the cached handle, not a
+        // private adapter whose Drop closes the shared g_wfp_device.
+        if let Some(state) =
+            adapter_cache::with_adapter(|adapter| adapter.query_filter_dir(filter_id, direction))
+        {
+            unsafe {
+                (*out).filter_id = state.filter_id;
+                (*out).remote_ipv4 = state.remote_ipv4;
+                (*out).remote_port = state.remote_port;
+                (*out).protocol = state.protocol;
+                (*out).present = state.present;
+                (*out).provider_status = state.provider_status;
             }
+            return 0;
         }
     }
     -2
