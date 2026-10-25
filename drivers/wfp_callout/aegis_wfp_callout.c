@@ -394,8 +394,7 @@ VOID AegisWfpUnregisterCallout(void)
         NTSTATUS status = FwpmFilterDeleteById0(g_WfpEngineHandle,
                                                 g_CaptureFilterId);
         if (!NT_SUCCESS(status) &&
-            status != FWP_E_FILTER_NOT_FOUND &&
-            status != STATUS_NOT_FOUND) {
+            !AegisWfpFilterNotFound(status)) {
             DbgPrint("[AEGIS WFP] Capture filter delete failed (id=%llu): 0x%08X\n",
                 g_CaptureFilterId, status);
             /* Keep the id: a later engine-close backstop still owns the
@@ -420,8 +419,7 @@ VOID AegisWfpUnregisterCallout(void)
         for (;;) {
             NTSTATUS status = FwpsCalloutUnregisterById0(g_CalloutId);
             if (NT_SUCCESS(status) ||
-                status == FWP_E_CALLOUT_NOT_FOUND ||
-                status == STATUS_NOT_FOUND) {
+                AegisWfpCalloutNotFound(status)) {
                 DbgPrint("[AEGIS WFP] Runtime callout unregistered (id=%u)\n",
                     g_CalloutId);
                 g_CalloutId = 0;
@@ -440,8 +438,7 @@ VOID AegisWfpUnregisterCallout(void)
         NTSTATUS status = FwpmCalloutDeleteByKey0(g_WfpEngineHandle,
                                                   &AEGIS_CALLOUT_KEY);
         if (!NT_SUCCESS(status) &&
-            status != FWP_E_CALLOUT_NOT_FOUND &&
-            status != STATUS_NOT_FOUND) {
+            !AegisWfpCalloutNotFound(status)) {
             DbgPrint("[AEGIS WFP] BLM callout delete failed: 0x%08X\n",
                 status);
         }

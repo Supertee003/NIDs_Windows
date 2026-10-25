@@ -352,7 +352,7 @@ def test_driver_cleanup_is_fail_closed_and_uncapped() -> None:
     assert "AegisWfpRecordFirstFailure(&result, status)" in cleanup
     assert "resolved == 0" in cleanup
     assert "FwpmProviderDeleteByKey0" in cleanup
-    assert "if (status == FWP_E_PROVIDER_NOT_FOUND)" in cleanup
+    assert "if (AegisWfpProviderNotFound(status))" in cleanup
     assert "AegisWfpDeleteLegacyProofFilter" in cleanup
     assert "AegisWfpFilterOwnedByProvider(filter)" in cleanup
 
@@ -360,9 +360,20 @@ def test_driver_cleanup_is_fail_closed_and_uncapped() -> None:
 def test_driver_empty_proof_enumeration_is_not_a_startup_failure() -> None:
     """A fresh provider has no filters; WFP not-found means empty, not fatal."""
     source = DRIVER_SOURCE.read_text(encoding="utf-8", errors="ignore")
+    header = DRIVER_HEADER.read_text(encoding="utf-8", errors="ignore")
+    helper = header.split("static __inline BOOLEAN AegisWfpFilterNotFound", 1)[
+        1
+    ].split("}", 1)[0]
     enum = source.split("static NTSTATUS AegisWfpEnumProofFilters", 1)[1].split(
         "static NTSTATUS AegisWfpRecoverProofFilter", 1
     )[0]
+
+    for token in (
+        "FWP_E_FILTER_NOT_FOUND",
+        "STATUS_FWP_FILTER_NOT_FOUND",
+        "STATUS_NOT_FOUND",
+    ):
+        assert token in helper, f"empty-enumeration helper misses {token}"
 
     create = enum.split("status = FwpmFilterCreateEnumHandle0", 1)[1].split(
         "for (;;)", 1
@@ -372,14 +383,33 @@ def test_driver_empty_proof_enumeration_is_not_a_startup_failure() -> None:
     )[0]
 
     for block, terminator in ((create, "continue;"), (listing, "break;")):
-        assert "FWP_E_FILTER_NOT_FOUND" in block
-        assert "STATUS_NOT_FOUND" in block
-        branch = block.split("FWP_E_FILTER_NOT_FOUND", 1)[1].split(
-            terminator, 1
-        )[0]
+        assert "AegisWfpFilterNotFound(status)" in block
+        branch = block.split(
+            "if (AegisWfpFilterNotFound(status))", 1
+        )[1].split(terminator, 1)[0]
         assert "AegisWfpRecordFirstFailure" not in branch, (
             "empty enumeration must not be recorded as a startup failure"
         )
+
+
+def test_driver_accepts_kernel_wfp_status_aliases() -> None:
+    """Kernel WFP returns STATUS_FWP_*, not only the user-mode FWP_E_* form."""
+    header = DRIVER_HEADER.read_text(encoding="utf-8", errors="ignore")
+    source = DRIVER_SOURCE.read_text(encoding="utf-8", errors="ignore")
+    callout = DRIVER_CALLOUT.read_text(encoding="utf-8", errors="ignore")
+
+    for token in (
+        "STATUS_FWP_CALLOUT_NOT_FOUND",
+        "STATUS_FWP_FILTER_NOT_FOUND",
+        "STATUS_FWP_PROVIDER_NOT_FOUND",
+        "STATUS_FWP_ALREADY_EXISTS",
+    ):
+        assert token in header
+    assert "if (AegisWfpAlreadyExists(status))" in source
+    assert "AegisWfpProviderNotFound(status)" in source
+    assert "AegisWfpCalloutNotFound(status)" in callout
+    assert "status != FWP_E_FILTER_NOT_FOUND" not in source
+    assert "status != FWP_E_CALLOUT_NOT_FOUND" not in callout
 
 
 def test_driver_proof_provider_failure_is_staged_and_fail_closed() -> None:

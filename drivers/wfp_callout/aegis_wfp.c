@@ -276,7 +276,7 @@ static NTSTATUS AegisWfpEnsureProofProvider(void)
         L"Owns receipt-backed AEGIS WFP proof filters";
     provider.flags = FWPM_PROVIDER_FLAG_PERSISTENT;
     status = FwpmProviderAdd0(g_WfpEngineHandle, &provider, NULL);
-    if (status == (NTSTATUS)FWP_E_ALREADY_EXISTS) {
+    if (AegisWfpAlreadyExists(status)) {
         status = STATUS_SUCCESS;
     }
     if (NT_SUCCESS(status)) {
@@ -327,8 +327,7 @@ static NTSTATUS AegisWfpEnumProofFilters(AEGIS_PROOF_ENUM_CB callback,
             /* WFP may report an empty provider-owned set as not-found when
              * the enum handle is created. That is an empty enumeration, not
              * a startup failure: a fresh provider has no proof filters yet. */
-            if (status == FWP_E_FILTER_NOT_FOUND ||
-                status == STATUS_NOT_FOUND) {
+            if (AegisWfpFilterNotFound(status)) {
                 DbgPrint("[AEGIS WFP] proof enum create: no matching filters\n");
                 continue;
             }
@@ -349,8 +348,7 @@ static NTSTATUS AegisWfpEnumProofFilters(AEGIS_PROOF_ENUM_CB callback,
                 /* FwpmFilterEnum0 returns FWP_E_FILTER_NOT_FOUND when the
                  * provider-owned set is empty (the normal fresh-start case).
                  * Do not turn that into a DriverEntry failure. */
-                if (status == FWP_E_FILTER_NOT_FOUND ||
-                    status == STATUS_NOT_FOUND) {
+                if (AegisWfpFilterNotFound(status)) {
                     DbgPrint("[AEGIS WFP] proof enum: no matching filters\n");
                     if (entries != NULL) {
                         FwpmFreeMemory0((void **)&entries);
@@ -413,8 +411,7 @@ static NTSTATUS AegisWfpRecoverProofFilter(const FWPM_FILTER0 *filter,
      * the next block request mints a fresh enabled filter. */
     if ((filter->flags & FWPM_FILTER_FLAG_DISABLED) != 0) {
         status = FwpmFilterDeleteById0(g_WfpEngineHandle, filter->filterId);
-        if (NT_SUCCESS(status) || status == FWP_E_FILTER_NOT_FOUND ||
-            status == STATUS_NOT_FOUND) {
+        if (NT_SUCCESS(status) || AegisWfpFilterNotFound(status)) {
             DbgPrint("[AEGIS WFP] removed disabled proof filter id=%llu\n",
                      filter->filterId);
             return STATUS_SUCCESS;
@@ -448,7 +445,7 @@ static NTSTATUS AegisWfpDeleteLegacyProofFilter(void)
     status = FwpmFilterGetByKey0(g_WfpEngineHandle, &AEGIS_PROOF_FILTER_KEY,
                                  &legacy);
     if (!NT_SUCCESS(status)) {
-        if (status == FWP_E_FILTER_NOT_FOUND || status == STATUS_NOT_FOUND) {
+        if (AegisWfpFilterNotFound(status)) {
             return STATUS_SUCCESS;
         }
         DbgPrint("[AEGIS WFP] legacy proof lookup failed: 0x%08X\n", status);
@@ -466,7 +463,7 @@ static NTSTATUS AegisWfpDeleteLegacyProofFilter(void)
          AegisWfpFilterOwnedByProvider(legacy))) {
         status = FwpmFilterDeleteById0(g_WfpEngineHandle, legacy->filterId);
         if (!NT_SUCCESS(status) &&
-            status != FWP_E_FILTER_NOT_FOUND && status != STATUS_NOT_FOUND) {
+            !AegisWfpFilterNotFound(status)) {
             DbgPrint("[AEGIS WFP] legacy fixed-key proof filter %llu delete failed: 0x%08X\n",
                      legacy->filterId, status);
             result = status;
@@ -574,8 +571,7 @@ NTSTATUS AegisWfpCleanupProofFilters(void)
 
             status = FwpmFilterGetById0(g_WfpEngineHandle, filterId, &filter);
             if (!NT_SUCCESS(status)) {
-                if (status == FWP_E_FILTER_NOT_FOUND ||
-                    status == STATUS_NOT_FOUND) {
+                if (AegisWfpFilterNotFound(status)) {
                     /* Already absent: the cleanup postcondition holds. */
                     AegisWfpRemoveProofById(filterId);
                     resolved++;
@@ -595,8 +591,7 @@ NTSTATUS AegisWfpCleanupProofFilters(void)
                 continue;
             }
             status = FwpmFilterDeleteById0(g_WfpEngineHandle, filterId);
-            if (NT_SUCCESS(status) || status == FWP_E_FILTER_NOT_FOUND ||
-                status == STATUS_NOT_FOUND) {
+            if (NT_SUCCESS(status) || AegisWfpFilterNotFound(status)) {
                 AegisWfpRemoveProofById(filterId);
                 resolved++;
             } else {
@@ -628,7 +623,7 @@ NTSTATUS AegisWfpCleanupProofFilters(void)
     if (g_ProofProviderReady) {
         status = FwpmProviderDeleteByKey0(g_WfpEngineHandle,
                                           &AEGIS_PROOF_PROVIDER_KEY);
-        if (status == FWP_E_PROVIDER_NOT_FOUND) {
+        if (AegisWfpProviderNotFound(status)) {
             status = STATUS_SUCCESS;
         }
         if (!NT_SUCCESS(status)) {
@@ -1088,7 +1083,7 @@ NTSTATUS AegisWfpBlockFlow(PIRP Irp) {
                      entry->filterId);
             goto done;
         }
-        if (status == FWP_E_FILTER_NOT_FOUND || status == STATUS_NOT_FOUND) {
+        if (AegisWfpFilterNotFound(status)) {
             UINT64 staleId = entry->filterId;
             AegisWfpRemoveProofById(staleId);
             if (g_ProofFilterId == staleId) {
@@ -1143,7 +1138,7 @@ NTSTATUS AegisWfpBlockFlow(PIRP Irp) {
     filter.flags = FWPM_FILTER_FLAG_PERSISTENT;
 
     status = FwpmFilterAdd0(g_WfpEngineHandle, &filter, NULL, &filterId);
-    if (status == (NTSTATUS)FWP_E_ALREADY_EXISTS ||
+    if (AegisWfpAlreadyExists(status) ||
         status == STATUS_OBJECT_NAME_COLLISION ||
         status == STATUS_OBJECT_NAME_EXISTS) {
         /* The table is the authoritative index. A duplicate with no table
@@ -1164,8 +1159,7 @@ NTSTATUS AegisWfpBlockFlow(PIRP Irp) {
         NTSTATUS deleteStatus = FwpmFilterDeleteById0(g_WfpEngineHandle,
                                                       filterId);
         if (!NT_SUCCESS(deleteStatus) &&
-            deleteStatus != FWP_E_FILTER_NOT_FOUND &&
-            deleteStatus != STATUS_NOT_FOUND) {
+            !AegisWfpFilterNotFound(deleteStatus)) {
             DbgPrint("[AEGIS WFP] rollback of untracked proof id=%llu failed: 0x%08X\n",
                      filterId, deleteStatus);
             status = deleteStatus;
@@ -1250,7 +1244,7 @@ NTSTATUS AegisWfpUnblockFlow(PIRP Irp) {
     FWPM_FILTER0 *ownedFilter = NULL;
     status = FwpmFilterGetById0(g_WfpEngineHandle, filterId, &ownedFilter);
     if (!NT_SUCCESS(status)) {
-        if (status == FWP_E_FILTER_NOT_FOUND || status == STATUS_NOT_FOUND) {
+        if (AegisWfpFilterNotFound(status)) {
             /* Absence is the postcondition cleanup asks for. Keep the table
              * coherent and report success so rollback is idempotent. */
             AegisWfpRemoveProofById(filterId);
@@ -1273,7 +1267,7 @@ NTSTATUS AegisWfpUnblockFlow(PIRP Irp) {
     // Remove the provider-owned filter by exact receipt ID.
     status = FwpmFilterDeleteById0(g_WfpEngineHandle, filterId);
     if (!NT_SUCCESS(status) &&
-        status != FWP_E_FILTER_NOT_FOUND && status != STATUS_NOT_FOUND) {
+        !AegisWfpFilterNotFound(status)) {
         KdPrint(("AEGIS WFP: FwpmFilterDeleteById0 failed: 0x%08X\n", status));
         AegisWfpReleaseProofLock();
         return status;
@@ -1472,7 +1466,7 @@ NTSTATUS AegisWfpQueryFilter(PIRP Irp) {
     status = FwpmFilterGetById0(engineHandle, requested_filter_id, &filter);
     if (!NT_SUCCESS(status)) {
         FwpmEngineClose0(engineHandle);
-        if (status == FWP_E_FILTER_NOT_FOUND || status == STATUS_NOT_FOUND) {
+        if (AegisWfpFilterNotFound(status)) {
             /* Preserve the provider's exact absence status; do not normalize
              * it to a different code than the one WFP returned. */
             state->provider_status = (UINT32)status;

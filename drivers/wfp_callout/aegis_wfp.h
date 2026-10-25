@@ -38,13 +38,56 @@
 #ifndef FWP_E_PROVIDER_NOT_FOUND
 #define FWP_E_PROVIDER_NOT_FOUND ((NTSTATUS)0x80320005L)
 #endif
+#ifndef FWP_E_ALREADY_EXISTS
+#define FWP_E_ALREADY_EXISTS ((NTSTATUS)0x80320009L)
+#endif
+#ifndef STATUS_FWP_CALLOUT_NOT_FOUND
+#define STATUS_FWP_CALLOUT_NOT_FOUND ((NTSTATUS)0xC0220001L)
+#endif
+#ifndef STATUS_FWP_FILTER_NOT_FOUND
+#define STATUS_FWP_FILTER_NOT_FOUND ((NTSTATUS)0xC0220003L)
+#endif
+#ifndef STATUS_FWP_PROVIDER_NOT_FOUND
+#define STATUS_FWP_PROVIDER_NOT_FOUND ((NTSTATUS)0xC0220005L)
+#endif
+#ifndef STATUS_FWP_ALREADY_EXISTS
+#define STATUS_FWP_ALREADY_EXISTS ((NTSTATUS)0xC0220009L)
+#endif
+
+/* Kernel-mode WFP returns STATUS_FWP_* while some wrappers expose the
+ * user-mode FWP_E_* HRESULT bit-patterns. Both forms describe the same
+ * object state; compare through these helpers so a clean startup never
+ * mistakes absence for a fatal error. */
+static __inline BOOLEAN AegisWfpFilterNotFound(NTSTATUS status)
+{
+    return status == (NTSTATUS)FWP_E_FILTER_NOT_FOUND ||
+           status == STATUS_FWP_FILTER_NOT_FOUND ||
+           status == STATUS_NOT_FOUND;
+}
+
+static __inline BOOLEAN AegisWfpCalloutNotFound(NTSTATUS status)
+{
+    return status == (NTSTATUS)FWP_E_CALLOUT_NOT_FOUND ||
+           status == STATUS_FWP_CALLOUT_NOT_FOUND ||
+           status == STATUS_NOT_FOUND;
+}
+
+static __inline BOOLEAN AegisWfpProviderNotFound(NTSTATUS status)
+{
+    return status == (NTSTATUS)FWP_E_PROVIDER_NOT_FOUND ||
+           status == STATUS_FWP_PROVIDER_NOT_FOUND ||
+           status == STATUS_NOT_FOUND;
+}
+
+static __inline BOOLEAN AegisWfpAlreadyExists(NTSTATUS status)
+{
+    return status == (NTSTATUS)FWP_E_ALREADY_EXISTS ||
+           status == STATUS_FWP_ALREADY_EXISTS;
+}
 
 /* Duplicate proof-filter adds are idempotent. The block path derives one
  * stable key per (direction, tuple), so a repeated block can return the
  * filter it already owns instead of minting a second one. */
-#ifndef FWP_E_ALREADY_EXISTS
-#define FWP_E_ALREADY_EXISTS ((NTSTATUS)0x80320009L)
-#endif
 
 /* Proof filters are owned by a provider object, not by a single shared
  * filter key. The provider is the ownership marker: a filter matching a

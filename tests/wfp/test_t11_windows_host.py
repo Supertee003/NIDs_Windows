@@ -110,6 +110,8 @@ PEP_UNBLOCK_RECEIPT_REQUIRED = -4
 # direct) so a re-run cannot trip over old litter on an already-loaded driver.
 PROOF_FILTER_KEY = "{b2c3d4e5-f607-4b8c-9d0e-1f2a3b4c5d6e}"
 FWP_E_FILTER_NOT_FOUND = 0x80320003
+STATUS_FWP_FILTER_NOT_FOUND = 0xC0220003
+NTSTATUS_NOT_FOUND = 0xC0000034
 STATUS_NOT_FOUND = 0x80000002
 
 
@@ -521,6 +523,8 @@ def test_rust_pep_duplicate_inbound_quarantine_is_idempotent() -> None:
                 )
                 assert state.provider_status in (
                     FWP_E_FILTER_NOT_FOUND,
+                    STATUS_FWP_FILTER_NOT_FOUND,
+                    NTSTATUS_NOT_FOUND,
                     STATUS_NOT_FOUND,
                 ), (
                     "post-unblock provider status does not describe absence: "
