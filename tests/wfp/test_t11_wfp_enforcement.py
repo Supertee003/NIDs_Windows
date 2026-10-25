@@ -357,6 +357,48 @@ def test_driver_cleanup_is_fail_closed_and_uncapped() -> None:
     assert "AegisWfpFilterOwnedByProvider(filter)" in cleanup
 
 
+def test_driver_empty_proof_enumeration_is_not_a_startup_failure() -> None:
+    """A fresh provider has no filters; WFP not-found means empty, not fatal."""
+    source = DRIVER_SOURCE.read_text(encoding="utf-8", errors="ignore")
+    enum = source.split("static NTSTATUS AegisWfpEnumProofFilters", 1)[1].split(
+        "static NTSTATUS AegisWfpRecoverProofFilter", 1
+    )[0]
+
+    create = enum.split("status = FwpmFilterCreateEnumHandle0", 1)[1].split(
+        "for (;;)", 1
+    )[0]
+    listing = enum.split("status = FwpmFilterEnum0", 1)[1].split(
+        "if (count == 0)", 1
+    )[0]
+
+    for block, terminator in ((create, "continue;"), (listing, "break;")):
+        assert "FWP_E_FILTER_NOT_FOUND" in block
+        assert "STATUS_NOT_FOUND" in block
+        branch = block.split("FWP_E_FILTER_NOT_FOUND", 1)[1].split(
+            terminator, 1
+        )[0]
+        assert "AegisWfpRecordFirstFailure" not in branch, (
+            "empty enumeration must not be recorded as a startup failure"
+        )
+
+
+def test_driver_proof_provider_failure_is_staged_and_fail_closed() -> None:
+    """A proof-provider failure must be diagnosable without hiding cleanup."""
+    source = DRIVER_SOURCE.read_text(encoding="utf-8", errors="ignore")
+    header = DRIVER_HEADER.read_text(encoding="utf-8", errors="ignore")
+    callout = DRIVER_CALLOUT.read_text(encoding="utf-8", errors="ignore")
+    entry = source.split("NTSTATUS DriverEntry", 1)[1].split(
+        "// ====== Unload ======", 1
+    )[0]
+
+    assert "AEGIS_STAGE_PROOF_PROVIDER = 6" in header
+    assert "NTSTATUS AegisWfpStartupFailure(" in header
+    assert "AegisWfpStartupFailure(AEGIS_STAGE_PROOF_PROVIDER," in entry
+    assert "cleanupStatus = AegisWfpCleanupProofFilters();" in entry
+    assert "return startupStatus;" in entry
+    assert "case AEGIS_STAGE_PROOF_PROVIDER:" in callout
+
+
 def test_callout_has_no_fixed_key_proof_recovery() -> None:
     """Legacy key cleanup belongs to prepare/cleanup, not callout registration."""
     callout = DRIVER_CALLOUT.read_text(encoding="utf-8", errors="ignore")

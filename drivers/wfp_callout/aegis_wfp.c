@@ -324,6 +324,14 @@ static NTSTATUS AegisWfpEnumProofFilters(AEGIS_PROOF_ENUM_CB callback,
         status = FwpmFilterCreateEnumHandle0(g_WfpEngineHandle, &template,
                                              &enumHandle);
         if (!NT_SUCCESS(status)) {
+            /* WFP may report an empty provider-owned set as not-found when
+             * the enum handle is created. That is an empty enumeration, not
+             * a startup failure: a fresh provider has no proof filters yet. */
+            if (status == FWP_E_FILTER_NOT_FOUND ||
+                status == STATUS_NOT_FOUND) {
+                DbgPrint("[AEGIS WFP] proof enum create: no matching filters\n");
+                continue;
+            }
             DbgPrint("[AEGIS WFP] proof enum create failed: 0x%08X\n", status);
             AegisWfpRecordFirstFailure(&result, status);
             continue;
@@ -338,6 +346,17 @@ static NTSTATUS AegisWfpEnumProofFilters(AEGIS_PROOF_ENUM_CB callback,
                                      AEGIS_PROOF_TABLE_CAPACITY,
                                      &entries, &count);
             if (!NT_SUCCESS(status)) {
+                /* FwpmFilterEnum0 returns FWP_E_FILTER_NOT_FOUND when the
+                 * provider-owned set is empty (the normal fresh-start case).
+                 * Do not turn that into a DriverEntry failure. */
+                if (status == FWP_E_FILTER_NOT_FOUND ||
+                    status == STATUS_NOT_FOUND) {
+                    DbgPrint("[AEGIS WFP] proof enum: no matching filters\n");
+                    if (entries != NULL) {
+                        FwpmFreeMemory0((void **)&entries);
+                    }
+                    break;
+                }
                 DbgPrint("[AEGIS WFP] proof enum failed: 0x%08X\n", status);
                 AegisWfpRecordFirstFailure(&result, status);
                 if (entries != NULL) {
@@ -738,8 +757,11 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
     status = AegisWfpPrepareProofProvider();
     if (!NT_SUCCESS(status)) {
         NTSTATUS cleanupStatus;
+        NTSTATUS startupStatus;
         DbgPrint("[AEGIS WFP] Proof provider preparation failed: 0x%08X\n",
                  status);
+        startupStatus = AegisWfpStartupFailure(AEGIS_STAGE_PROOF_PROVIDER,
+                                               status);
         cleanupStatus = AegisWfpCleanupProofFilters();
         if (!NT_SUCCESS(cleanupStatus)) {
             DbgPrint("[AEGIS WFP] Proof cleanup after prepare failure failed: 0x%08X\n",
@@ -754,7 +776,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
         }
         IoDeleteSymbolicLink(&g_SymlinkName);
         IoDeleteDevice(g_DeviceObject);
-        return status;
+        return startupStatus;
     }
 
     DbgPrint("[AEGIS WFP] Driver initialized successfully — Device: \\Device\\AegisWfpDevice\n");

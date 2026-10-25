@@ -15,14 +15,7 @@
 
 /* WinDbg/DbgView are not required for startup diagnosis. Persist the failing
  * registration stage and status in the System event log. DumpData[0] is the
- * stage ID below; DumpData[1] is the raw NTSTATUS/WFP status. */
-enum {
-    AEGIS_STAGE_ENGINE_OPEN = 1,
-    AEGIS_STAGE_CALLOUT_ADD = 3,
-    AEGIS_STAGE_CALLOUT_REGISTER = 4,
-    AEGIS_STAGE_FILTER_ADD = 5
-};
-
+ * stage ID; DumpData[1] is the raw NTSTATUS/WFP status. */
 static VOID AegisWfpLogStartupFailure(ULONG stage, NTSTATUS status)
 {
     PIO_ERROR_LOG_PACKET packet;
@@ -35,6 +28,7 @@ static VOID AegisWfpLogStartupFailure(ULONG stage, NTSTATUS status)
     case AEGIS_STAGE_CALLOUT_ADD:    stageName = L"FwpmCalloutAdd0"; break;
     case AEGIS_STAGE_CALLOUT_REGISTER: stageName = L"FwpsCalloutRegister0"; break;
     case AEGIS_STAGE_FILTER_ADD:     stageName = L"FwpmFilterAdd0"; break;
+    case AEGIS_STAGE_PROOF_PROVIDER: stageName = L"AegisWfpPrepareProofProvider"; break;
     default: break;
     }
     stageBytes = (wcslen(stageName) + 1) * sizeof(WCHAR);
@@ -64,7 +58,7 @@ static VOID AegisWfpLogStartupFailure(ULONG stage, NTSTATUS status)
 
 /* SCM exposes this stage code even without WinDbg/DbgView. The original WFP
  * status is still written to the System error-log packet. */
-static NTSTATUS AegisWfpStartupFailure(ULONG stage, NTSTATUS status)
+NTSTATUS AegisWfpStartupFailure(ULONG stage, NTSTATUS status)
 {
     AegisWfpLogStartupFailure(stage, status);
     return (NTSTATUS)(0xE0010000UL | (stage & 0xFF));

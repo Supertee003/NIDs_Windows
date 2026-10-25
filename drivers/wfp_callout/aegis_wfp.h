@@ -198,9 +198,19 @@ extern PDEVICE_OBJECT g_DeviceObject;
 
 /* ====== Cross-file declarations ====== */
 
+/* Startup failure stage IDs persisted in the System error log. */
+enum {
+    AEGIS_STAGE_ENGINE_OPEN = 1,
+    AEGIS_STAGE_CALLOUT_ADD = 3,
+    AEGIS_STAGE_CALLOUT_REGISTER = 4,
+    AEGIS_STAGE_FILTER_ADD = 5,
+    AEGIS_STAGE_PROOF_PROVIDER = 6
+};
+
 /* aegis_wfp_callout.c */
 NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject);
 VOID     AegisWfpUnregisterCallout(void);
+NTSTATUS AegisWfpStartupFailure(ULONG stage, NTSTATUS status);
 
 /* aegis_wfp.c: provider registration + recovery of persistent proof filters.
  * Called after the callout/capture registration succeeds and before any user
