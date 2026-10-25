@@ -264,7 +264,7 @@ fn processEvent(
     // 6. PEP enforcement (final authorization gate)
     // Only PEP call — ActionDispatcher must NOT call PEP again
     var pep_decision: pep.PepDecision = .allow;
-    var confirmed_block = false;
+    var confirmed_effect = false;
     var pep_req_id: u64 = 0;
     var receipt_filter_id: u64 = 0;
     if (matched_policy) |pol| {
@@ -290,14 +290,14 @@ fn processEvent(
         // provider postcondition and never calls enforcement again.
         // BE-EVI-097: the bool gates the evidence-log enforced claim —
         // only a provider-read-back-verified receipt counts.
-        confirmed_block = dispatcher.ActionDispatcher.dispatchWithReceipt(
+        confirmed_effect = dispatcher.ActionDispatcher.dispatchWithReceipt(
             &ev_copy,
             pol,
             pep_decision,
             pep_enf,
             pep_enf.lastReceipt(),
         );
-        if (confirmed_block) {
+        if (confirmed_effect) {
             if (pep_enf.lastReceipt()) |r| {
                 receipt_filter_id = r.filter_id;
             }
@@ -356,7 +356,7 @@ fn processEvent(
     // Drop-on-error by construction (forensic_log.log never raises); the
     // forensic ring above stays the detection record.
     if (matched_rule_id != 0 and state.g_evidence_log_enabled) {
-        evidenceLog(ev, matched_rule_id, ev_severity, policy_action, matched_policy, confirmed_block, receipt_filter_id, pep_req_id, decision_trace.trace_id, audit_id, qe.payload[0..qe.payload_len], qe.src_ipv6, qe.dst_ipv6);
+        evidenceLog(ev, matched_rule_id, ev_severity, policy_action, matched_policy, confirmed_effect, pep_decision, receipt_filter_id, pep_req_id, decision_trace.trace_id, audit_id, qe.payload[0..qe.payload_len], qe.src_ipv6, qe.dst_ipv6);
     }
 }
 
@@ -371,6 +371,7 @@ fn evidenceLog(
     action: policy.Action,
     matched_policy: ?policy.Policy,
     confirmed: bool,
+    decision_kind: pep.PepDecision,
     filter_id: u64,
     pep_req_id: u64,
     trace_id: u64,
@@ -393,7 +394,7 @@ fn evidenceLog(
     const dst_ip6: ?[]const u8 = if (dst6) |d6| formatIp6(d6, &dst6_buf) else null;
     forensic_log.log(.{
         .level = log_level,
-        .event = @tagName(ev.kind),
+        .event = evidenceEventName(ev.kind, confirmed, decision_kind),
         .rule = rule,
         .src_ip = ev.src_ip,
         .src_ipv6 = src_ip6,
@@ -410,10 +411,37 @@ fn evidenceLog(
         .host_effect_confirmed = confirmed,
         .filter_id = filter_id,
         .request_id = pep_req_id,
-        .decision = if (confirmed) "block" else null,
+        .decision = evidenceDecisionLabel(confirmed, decision_kind),
+        .extra = evidenceConfirmationMarker(confirmed, decision_kind),
         .provider = if (confirmed) "wfp" else null,
         .receipt_version = if (confirmed) 1 else 0,
     });
+}
+
+/// The persisted evidence event name. A confirmed quarantine is its own
+/// kernel action, not a detection row: operators and the web reader must be
+/// able to prove the quarantine from the NDJSON file alone (RB-013).
+fn evidenceEventName(kind: event.EventKind, confirmed: bool, decision: pep.PepDecision) []const u8 {
+    if (confirmed and decision == .quarantine) return "action_quarantine";
+    return @tagName(kind);
+}
+
+/// The receipt decision vocabulary readers validate. Never label a
+/// quarantine receipt as a block; an unconfirmed action has no decision.
+fn evidenceDecisionLabel(confirmed: bool, decision: pep.PepDecision) ?[]const u8 {
+    if (!confirmed) return null;
+    return switch (decision) {
+        .block => "block",
+        .quarantine => "quarantine",
+        else => null,
+    };
+}
+
+/// Stable grep marker for a receipt-verified quarantine. Additive to the
+/// evidence schema (the generic `extra` field is ignored by old readers).
+fn evidenceConfirmationMarker(confirmed: bool, decision: pep.PepDecision) ?[]const u8 {
+    if (confirmed and decision == .quarantine) return "QUARANTINED_CONFIRMED";
+    return null;
 }
 
 /// Stamp the flow table's identity onto the event (FLOW-ID-051).
@@ -576,6 +604,19 @@ test "siemForward clamps hostile timestamps instead of trapping (GAP-016)" {
     ev.src_ip = 0xC0A80164;
     ev.dst_ip = 0x0A000001;
     siemForward(&ev, 4242, .alert, .alert, null, null);
+}
+
+test "RB-013: confirmed quarantine has its own evidence identity" {
+    try std.testing.expectEqualStrings("action_quarantine", evidenceEventName(.signature_match, true, .quarantine));
+    try std.testing.expectEqualStrings("quarantine", evidenceDecisionLabel(true, .quarantine).?);
+    try std.testing.expectEqualStrings("QUARANTINED_CONFIRMED", evidenceConfirmationMarker(true, .quarantine).?);
+    // A detection row keeps its rule-kind event and gets no quarantine mark.
+    try std.testing.expectEqualStrings("signature_match", evidenceEventName(.signature_match, true, .block));
+    try std.testing.expectEqualStrings("block", evidenceDecisionLabel(true, .block).?);
+    try std.testing.expect(evidenceConfirmationMarker(true, .block) == null);
+    // Unconfirmed actions never claim a decision or a confirmation marker.
+    try std.testing.expect(evidenceDecisionLabel(false, .quarantine) == null);
+    try std.testing.expect(evidenceConfirmationMarker(false, .quarantine) == null);
 }
 
 test "formatIp6 renders full hextets deterministically" {

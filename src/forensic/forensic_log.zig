@@ -634,6 +634,44 @@ test "BE-EVI-097: formatLogLine receipt set satisfies every reader recipe" {
     }
 }
 
+test "RB-013: formatLogLine carries the confirmed-quarantine marker" {
+    var buf: [2048]u8 = undefined;
+    var fbs = std.io.fixedBufferStream(&buf);
+    formatLogLine(.{
+        .level = .critical,
+        .event = "action_quarantine",
+        .rule = "4237725842",
+        .src_ip = 0xCB00710A,
+        .policy = "quarantine",
+        .policy_id = 3,
+        .event_id = 401,
+        .trace_id = 402,
+        .audit_id = 403,
+        .enforcement_status = "enforced",
+        .host_effect_confirmed = true,
+        .filter_id = 78056,
+        .request_id = 404,
+        .decision = "quarantine",
+        .extra = "QUARANTINED_CONFIRMED",
+        .provider = "wfp",
+        .receipt_version = 1,
+    }, 1700000000003, 9003, fbs.writer());
+    const line = fbs.getWritten();
+    for ([_][]const u8{
+        "\"event\":\"action_quarantine\"",
+        "\"decision\":\"quarantine\"",
+        "\"extra\":\"QUARANTINED_CONFIRMED\"",
+        "\"enforcement_status\":\"enforced\"",
+        "\"host_effect_confirmed\":true",
+        "\"filter_id\":78056",
+        "\"request_id\":404",
+        "\"provider\":\"wfp\"",
+        "\"receipt_version\":1",
+    }) |key| {
+        try std.testing.expect(std.mem.indexOf(u8, line, key) != null);
+    }
+}
+
 test "BE-EVI-097: formatLogLine prefers v6 sidecars, escapes rule names" {
     var buf: [2048]u8 = undefined;
     var fbs = std.io.fixedBufferStream(&buf);

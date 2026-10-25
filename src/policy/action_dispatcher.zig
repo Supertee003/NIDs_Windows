@@ -96,9 +96,9 @@ pub const ActionDispatcher = struct {
 
     /// Receipt-aware dispatch path. The legacy dispatch API intentionally
     /// remains unconfirmed because it has no receipt argument. This path is
-    /// the only one allowed to emit BLOCKED_CONFIRMED. Returns true only
-    /// when a verified receipt proved the host effect (BE-EVI-097: the
-    /// evidence-log projection gates its enforced claim on this).
+    /// the only one allowed to emit a confirmed block or quarantine. Returns
+    /// true only when a verified receipt proved the host effect (BE-EVI-097:
+    /// the evidence-log projection gates its enforced claim on this).
     pub fn dispatchWithReceipt(
         ev: *const event.IpcEvent,
         p: policy.Policy,
@@ -128,11 +128,9 @@ pub const ActionDispatcher = struct {
         // branch exactly (same-decision guard, tuple-matched read-back,
         // daemon-owned counter, forensic projection) but emits
         // action_quarantine/quarantined instead of action_block/blocked.
-        // OPEN EDGE (Rust): the PEP has no quarantine-enforce path yet
-        // (enforceFlow hardcodes ACTION_BLOCK; no quarantine filter
-        // exists to read back), so no valid quarantine receipt can exist
-        // today — this branch is reachable only when that lands. Until
-        // then quarantine stays on the best-effort legacy path below.
+        // QUAR-RCPT-112: the Rust PEP executes quarantine through the same
+        // flow-block primitive and returns DECISION_QUARANTINE with a
+        // filter_id, so the receipt is verifiable exactly like a block.
         if (decision == .quarantine) {
             if (receipt) |r| {
                 if (r.decision == .quarantine and enforcer.verifyEnforcementReceipt(ev, r)) {

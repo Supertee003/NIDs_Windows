@@ -8,11 +8,14 @@ records evidence, because a commit cannot contain its own SHA.
 The verifier:
   1. computes the source commit with `git log -1 -- <SOURCE_PATHS>`,
   2. requires every head_sha/markdown_head/source_commit field to carry it,
-  3. requires the source commit to be an ancestor of HEAD, and
-  4. requires the source paths to be clean between the source and HEAD.
+  3. requires the source commit to be an ancestor of HEAD,
+  4. requires the source paths to be clean between the source and HEAD, and
+  5. requires the source/build worktree itself to be clean (tracked changes and
+     untracked source/build files both invalidate the maps).
 
 A records-only commit therefore does not invalidate truth artifacts; a source
-or build change after the recorded source does.
+or build change after the recorded source does. Uncommitted source/build work
+is never current truth either.
 
 Usage:
     python tools/truth.py verify          # human-readable output
@@ -55,6 +58,11 @@ SOURCE_PATHS = (
     "Cargo.lock",
     "CMakeLists.txt",
     "requirements.txt",
+    # The WDK scripts are the only definition of the kernel compile/link
+    # flags; CMake delegates to them. They are build inputs, unlike the
+    # evidence/signing/deployment wrappers that consume their output.
+    "scripts/wdk_build_production.ps1",
+    "scripts/wdk_build_minifilter.ps1",
 )
 
 # ── Artifact definitions ──────────────────────────────────────────
@@ -128,6 +136,27 @@ def source_tree_clean(source: str, head: str) -> bool:
     return result.returncode == 0
 
 
+def source_worktree_changes() -> list[str]:
+    """Return tracked or untracked changes under the source/build paths.
+
+    Committed history alone is not enough: a dirty source tree means the maps
+    were generated from different bytes than the ones a build would use now.
+    Untracked source files count as changes; ignored build outputs do not.
+    """
+    result = subprocess.run(
+        [
+            "git", "status", "--porcelain=v1", "--untracked-files=all",
+            "--", *SOURCE_PATHS,
+        ],
+        capture_output=True, text=True, cwd=ROOT,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"git status source paths failed: {result.stderr.strip()}"
+        )
+    return [line for line in result.stdout.splitlines() if line.strip()]
+
+
 def read_json_head_sha(path: Path) -> str | None:
     """Extract head_sha from a JSON file's top-level field."""
     if not path.exists():
@@ -166,8 +195,10 @@ def verify(strict: bool = False) -> dict:
     source_short = source[:7]
     ancestor = is_ancestor(source, head)
     tree_clean = source_tree_clean(source, head) if ancestor else False
+    worktree_changes = source_worktree_changes()
+    worktree_clean = not worktree_changes
     results = []
-    all_ok = ancestor and tree_clean
+    all_ok = ancestor and tree_clean and worktree_clean
 
     # The source commit itself is the provenance root for every artifact.
     results.append({
@@ -185,6 +216,19 @@ def verify(strict: bool = False) -> dict:
         "actual": "clean" if tree_clean else "changed",
         "status": "PASS" if tree_clean else "CHANGED",
         "ok": tree_clean,
+    })
+    results.append({
+        "file": "<source-worktree>",
+        "type": "worktree",
+        "expected": "clean working tree",
+        "actual": (
+            "clean" if worktree_clean
+            else f"dirty ({len(worktree_changes)} path(s)): "
+            + ", ".join(worktree_changes[:3])
+            + (" ..." if len(worktree_changes) > 3 else "")
+        ),
+        "status": "PASS" if worktree_clean else "DIRTY",
+        "ok": worktree_clean,
     })
 
     # JSON files with head_sha (full 40-char)
@@ -280,6 +324,8 @@ def verify(strict: bool = False) -> dict:
         "source_short": source_short,
         "source_is_ancestor": ancestor,
         "source_paths_clean": tree_clean,
+        "source_worktree_clean": worktree_clean,
+        "source_worktree_changes": worktree_changes,
         "valid": all_ok,
         "results": results,
     }
@@ -300,7 +346,8 @@ def print_human(res: dict) -> None:
     if res["valid"]:
         print(
             "TRUTH_VALID — artifacts carry build source "
-            f"{res['source_short']} (ancestor of HEAD; source tree clean)"
+            f"{res['source_short']} (ancestor of HEAD; source history and "
+            "worktree clean)"
         )
     else:
         bad = [r["file"] for r in res["results"] if not r.get("ok", True)]

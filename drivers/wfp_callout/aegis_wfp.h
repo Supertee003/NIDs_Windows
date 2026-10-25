@@ -29,16 +29,31 @@
  * shared bit-pattern for the kernel recovery path and compare status values
  * as ULONGs so signed/unsigned NTSTATUS representation cannot change the
  * missing-filter decision. */
+#ifndef FWP_E_CALLOUT_NOT_FOUND
+#define FWP_E_CALLOUT_NOT_FOUND ((NTSTATUS)0x80320001L)
+#endif
 #ifndef FWP_E_FILTER_NOT_FOUND
 #define FWP_E_FILTER_NOT_FOUND ((NTSTATUS)0x80320003L)
 #endif
+#ifndef FWP_E_PROVIDER_NOT_FOUND
+#define FWP_E_PROVIDER_NOT_FOUND ((NTSTATUS)0x80320005L)
+#endif
 
-/* The fixed proof-filter key is intentionally idempotent. A duplicate add
- * returns this status; the block path queries the existing key and returns
- * its filter ID only when the layer, direction, and tuple all match. */
+/* Duplicate proof-filter adds are idempotent. The block path derives one
+ * stable key per (direction, tuple), so a repeated block can return the
+ * filter it already owns instead of minting a second one. */
 #ifndef FWP_E_ALREADY_EXISTS
 #define FWP_E_ALREADY_EXISTS ((NTSTATUS)0x80320009L)
 #endif
+
+/* Proof filters are owned by a provider object, not by a single shared
+ * filter key. The provider is the ownership marker: a filter matching a
+ * proof tuple is only trusted when providerKey is this GUID. It also lets
+ * driver restart/unload enumerate every filter this driver minted.
+ *
+ * AEGIS_PROOF_FILTER_KEY is the retired single-key identity. It remains only
+ * so a driver start can remove the stale filter left by an older build. */
+#define AEGIS_PROOF_TABLE_CAPACITY 64
 
 /* ====== IOCTL Codes ====== */
 #define IOCTL_AEGIS_READ_EVENTS  CTL_CODE(FILE_DEVICE_NETWORK, 0x800, METHOD_BUFFERED, FILE_READ_DATA)
@@ -156,6 +171,7 @@ typedef struct _AEGIS_RING_STATS {
 /* ====== GUID (defined via DEFINE_GUID in aegis_wfp.c) ====== */
 extern const GUID AEGIS_CALLOUT_KEY;
 extern const GUID AEGIS_PROOF_FILTER_KEY;
+extern const GUID AEGIS_PROOF_PROVIDER_KEY;
 
 /* ====== Globals (defined in aegis_wfp.c) ====== */
 extern PVOID          g_RingBuffer;
@@ -171,6 +187,9 @@ extern ULONG          g_WfpTotalBytesRead;
 extern HANDLE         g_WfpEngineHandle;
 extern UINT32         g_CalloutId;
 extern UINT64         g_CaptureFilterId;
+/* Classify-call rundown: unload waits here before the capture filter, runtime
+ * callout, engine, or ring is torn down. */
+extern EX_RUNDOWN_REF g_CalloutRundown;
 extern UINT64         g_ProofFilterId;
 extern UINT32         g_BlockedIp;
 extern UINT16         g_BlockedPort;
@@ -182,5 +201,16 @@ extern PDEVICE_OBJECT g_DeviceObject;
 /* aegis_wfp_callout.c */
 NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject);
 VOID     AegisWfpUnregisterCallout(void);
+
+/* aegis_wfp.c: provider registration + recovery of persistent proof filters.
+ * Called after the callout/capture registration succeeds and before any user
+ * IOCTL can mint a proof filter. The provider owns only proof filters; the
+ * capture filter intentionally has no provider identity. */
+NTSTATUS AegisWfpPrepareProofProvider(void);
+/* Delete every proof filter this provider owns, the retired fixed-key filter,
+ * and the provider itself. Returns the first failure: callers must not report
+ * cleanup success when absence of the provider or its filters is unproven.
+ * Must run before the engine handle is closed. */
+NTSTATUS AegisWfpCleanupProofFilters(void);
 
 #endif /* AEGIS_WFP_H */

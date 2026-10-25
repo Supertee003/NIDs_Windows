@@ -219,7 +219,10 @@ foreach ($f in $srcFiles) {
     $objFiles += $objPath
     Info "Compiling $f (x64, kernel mode)..."
     # /wd4324 (WDK header padding noise) /wd4100 (unreferenced params) - cosmetic only.
-    & $cl /nologo /kernel /W4 /GS- /O2 /wd4324 /wd4100 /c `
+    # /Brepro: deterministic object code (no wall-clock/build-path entropy).
+    # The driver candidate hash is pinned by sign/deploy/proof scripts, so a
+    # rebuild from the same sources and toolchain must reproduce the same .sys.
+    & $cl /nologo /kernel /W4 /GS- /O2 /Brepro /wd4324 /wd4100 /c `
         /D_AMD64_ /DAMD64 /D_WIN64 `
         /DNDIS_WDM=1 /DNDIS630 `
         /DNTDDI_VERSION=0x0A000000 /D_OEMNETWORK=25 `
@@ -248,7 +251,7 @@ foreach ($l in @("ndis.lib", "uuid.lib")) {
 }
 $linkArgs = @(
     "/nologo", "/DRIVER", "/SUBSYSTEM:NATIVE", "/ENTRY:DriverEntry",
-    "/NODEFAULTLIB",
+    "/NODEFAULTLIB", "/Brepro",
     "/OUT:$sysFile"
 ) + $objFiles + @(
     "/LIBPATH:$kmLib", "/LIBPATH:$msvcLib", "/LIBPATH:$umLib"

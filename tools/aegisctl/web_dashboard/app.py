@@ -27,7 +27,13 @@ from flask import Flask, Response, jsonify, render_template_string
 
 from ..api.control_api import get_health_payload, load_rules, query_control
 from ..components import components_status
-from ..contracts import incident_from_record, project_operator_state
+from ..contracts import (
+    CONFIRMED_BLOCK_STATUS,
+    CONFIRMED_EFFECT_STATUSES,
+    CONFIRMED_QUARANTINE_STATUS,
+    incident_from_record,
+    project_operator_state,
+)
 
 app = Flask(__name__)
 app.config["JSON_SORT_KEYS"] = False
@@ -63,7 +69,9 @@ FEED_LIMIT = 50
 FEED_SCAN_BYTES = 262_144
 # Statuses that may only be shown when a receipt validates; anything else
 # from a log line is a decision label, not a confirmed host effect.
-ENFORCEMENT_CLAIM_STATUSES = {"ENFORCED", "BLOCKED", "BLOCKED_CONFIRMED"}
+ENFORCEMENT_CLAIM_STATUSES = (
+    {"ENFORCED", "BLOCKED"} | set(CONFIRMED_EFFECT_STATUSES)
+)
 
 
 def _read(command: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -160,6 +168,19 @@ def _severity_order(value: Any) -> int:
     return {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}.get(str(value).lower(), 5)
 
 
+def _confirmed_counts(records: list[dict[str, Any]]) -> tuple[int, int]:
+    """Count validated host effects without folding quarantine into block."""
+    blocks = sum(
+        1 for r in records
+        if r.get("receipt_valid") and r.get("status") == CONFIRMED_BLOCK_STATUS
+    )
+    quarantines = sum(
+        1 for r in records
+        if r.get("receipt_valid") and r.get("status") == CONFIRMED_QUARANTINE_STATUS
+    )
+    return blocks, quarantines
+
+
 def _threat_posture(records: list[dict[str, Any]], health: dict[str, Any] | None = None) -> dict[str, Any]:
     """Presentation-only threat posture (FE-DEF-095a: daemon is the authority).
 
@@ -173,19 +194,22 @@ def _threat_posture(records: list[dict[str, Any]], health: dict[str, Any] | None
         level = health.get("defcon_level")
         label = health.get("defcon_label")
         if isinstance(level, int) and 1 <= level <= 5 and isinstance(label, str) and label:
-            confirmed = sum(1 for r in records if r.get("receipt_valid"))
+            confirmed_blocks, confirmed_quarantines = _confirmed_counts(records)
             return {
                 "defcon": level,
                 "label": label,
                 "critical": sum(1 for r in records if _severity_order(r.get("severity")) == 0),
                 "high": sum(1 for r in records if _severity_order(r.get("severity")) == 1),
-                "confirmed_blocks": confirmed,
+                "confirmed_blocks": confirmed_blocks,
+                "confirmed_quarantines": confirmed_quarantines,
+                "confirmed_effects": confirmed_blocks + confirmed_quarantines,
                 "records": len(records),
                 "basis": "daemon authority (control plane), not an enforcement claim",
             }
     critical = sum(1 for r in records if _severity_order(r.get("severity")) == 0)
     high = sum(1 for r in records if _severity_order(r.get("severity")) == 1)
-    confirmed = sum(1 for r in records if r.get("receipt_valid"))
+    confirmed_blocks, confirmed_quarantines = _confirmed_counts(records)
+    confirmed = confirmed_blocks + confirmed_quarantines
     total = len(records)
     if critical >= 10 or confirmed >= 5:
         defcon = 1
@@ -203,7 +227,9 @@ def _threat_posture(records: list[dict[str, Any]], health: dict[str, Any] | None
         "label": labels[defcon],
         "critical": critical,
         "high": high,
-        "confirmed_blocks": confirmed,
+        "confirmed_blocks": confirmed_blocks,
+        "confirmed_quarantines": confirmed_quarantines,
+        "confirmed_effects": confirmed,
         "records": total,
         "basis": "derived from evidence log, not an enforcement claim",
     }
@@ -490,7 +516,7 @@ tr:last-child td{border-bottom:none}
 .sev-medium{background:rgba(255,217,61,.13);color:var(--med)}
 .sev-low,.sev-info,.sev-unknown{background:#1c2a34;color:var(--low)}
 .st-PEP_UNVERIFIED{background:rgba(255,200,87,.15);color:var(--warn)}
-.st-BLOCKED_CONFIRMED{background:rgba(96,211,148,.18);color:var(--ok)}
+.st-BLOCKED_CONFIRMED,.st-QUARANTINED_CONFIRMED{background:rgba(96,211,148,.18);color:var(--ok)}
 .st-ENFORCED,.st-DETECTED,.st-OBSERVED,.st-ALERTED{background:#1c2a34;color:var(--text)}
 .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
 .controls input[type=search]{flex:1;min-width:180px;background:#0d151c;border:1px solid var(--line);border-radius:7px;color:var(--text);padding:7px 10px;font-size:13px}
@@ -535,7 +561,7 @@ footer{color:var(--muted);font-size:11.5px;text-align:center;margin-top:26px}
       </select>
       <select id="stFilter">
         <option value="">All statuses</option><option>DETECTED</option><option>OBSERVED</option><option>ALERTED</option>
-        <option>PEP_UNVERIFIED</option><option>BLOCKED_CONFIRMED</option>
+        <option>PEP_UNVERIFIED</option><option>BLOCKED_CONFIRMED</option><option>QUARANTINED_CONFIRMED</option>
       </select>
       <label><input type="checkbox" id="confirmedOnly"> confirmed only</label>
       <span class="small muted" id="feedCount"></span>
@@ -560,7 +586,7 @@ footer{color:var(--muted);font-size:11.5px;text-align:center;margin-top:26px}
       <div class="panel" id="enforcement">
         <h2>Enforcement</h2>
         <div id="enfBody" class="kv"></div>
-        <div class="receipt-note">Confirmed blocks require a validated EnforcementReceipt (status ENFORCED + host-effect proof + provider read-back). Log lines and policy labels alone never count.</div>
+        <div class="receipt-note">Confirmed blocks and quarantines require a validated EnforcementReceipt (status ENFORCED + host-effect proof + provider read-back). Log lines and policy labels alone never count.</div>
       </div>
       <div class="panel" id="system">
         <h2>Runtime &amp; Subsystems</h2>
@@ -630,7 +656,7 @@ function renderOverview(){
   let out='<div class="cards">';
   out+=kpi('Runtime',statePill(h.state,h.degraded),'','uptime '+uptime(h.uptime_ms)+', v'+esc(h.version||'?'));
   out+=kpi('Threat Posture',`DEFCON ${t.defcon||5} · ${esc(t.label||'—')}`,t.defcon<=2?'crit':(t.defcon===3?'warn':'ok'),
-    `${num(t.records)} records · ${num(t.critical)} critical · ${num(t.confirmed_blocks)} confirmed`);
+    `${num(t.records)} records · ${num(t.critical)} critical · ${num(t.confirmed_blocks)} blocks · ${num(t.confirmed_quarantines)} quarantines`);
   out+=kpi('Enforcement Mode',esc(o.enforcement_label||'—'),o.enforcement_label==='ENFORCEMENT_READY'?'ok':(o.enforcement_label==='OBSERVE_ONLY'?'warn':'bad'),
     'gate '+(o.prevention_gate||'closed')+(o.host_effect_capable?' · host-effect capable':' · no host effect'));
   out+=kpi('Events',num(events),'ok',errors?`${num(errors)} errors`:'no errors');
@@ -708,6 +734,7 @@ function renderEnforcement(){
     ['Tier-3',esc(e.tier3||'—')+(e.tier3_enforcing?' <span class="pill ok">ENFORCING</span>':'')],
     ['Enforcement mode',esc(e.enforcement_mode||'detection-only')],
     ['Confirmed blocks (window)',num(t.confirmed_blocks),t.confirmed_blocks?'ok':''],
+    ['Confirmed quarantines (window)',num(t.confirmed_quarantines),t.confirmed_quarantines?'ok':''],
     ['Receipt required',snap?esc(String(e.receipt_required)): 'yes'],
   ]);
 }

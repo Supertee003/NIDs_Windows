@@ -29,6 +29,13 @@ PEP_DECISION_ORDINALS = {
 
 RECEIPT_VERSION = 1
 CONFIRMED_STATUS = "enforced"
+CONFIRMED_BLOCK_STATUS = "BLOCKED_CONFIRMED"
+CONFIRMED_QUARANTINE_STATUS = "QUARANTINED_CONFIRMED"
+CONFIRMED_EFFECT_STATUSES = frozenset({
+    CONFIRMED_BLOCK_STATUS,
+    CONFIRMED_QUARANTINE_STATUS,
+})
+_CONFIRMED_DECISIONS = {"block": CONFIRMED_BLOCK_STATUS, "quarantine": CONFIRMED_QUARANTINE_STATUS}
 
 
 def validate_enforcement_receipt(receipt: Mapping[str, Any]) -> tuple[bool, list[str]]:
@@ -59,6 +66,8 @@ def validate_enforcement_receipt(receipt: Mapping[str, Any]) -> tuple[bool, list
                 errors.append(f"zero:{key}")
         if not str(receipt.get("provider", "")):
             errors.append("empty:provider")
+        if str(receipt.get("decision", "")).lower() not in _CONFIRMED_DECISIONS:
+            errors.append("invalid:confirmed_decision")
         if not confirmed:
             errors.append("enforced_requires_host_effect_confirmation")
     return not errors, errors
@@ -102,12 +111,21 @@ def incident_from_record(record: Mapping[str, Any]) -> dict[str, Any]:
     receipt = record.get("enforcement_receipt")
     receipt_ok = False
     receipt_errors: list[str] = []
+    decision = ""
     if isinstance(receipt, Mapping):
         receipt_ok, receipt_errors = validate_enforcement_receipt(receipt)
         # A structurally valid pending/simulated receipt is useful evidence,
         # but it is never a confirmed host effect.
-        receipt_ok = receipt_ok and str(receipt.get("status", "")).lower() == CONFIRMED_STATUS and bool(receipt.get("host_effect_confirmed", False))
-    status = "BLOCKED_CONFIRMED" if receipt_ok else str(record.get("status", "OBSERVED")).upper()
+        receipt_ok = (
+            receipt_ok
+            and str(receipt.get("status", "")).lower() == CONFIRMED_STATUS
+            and bool(receipt.get("host_effect_confirmed", False))
+        )
+        decision = str(receipt.get("decision", "")).lower()
+    if receipt_ok:
+        status = _CONFIRMED_DECISIONS[decision]
+    else:
+        status = str(record.get("status", "OBSERVED")).upper()
     return {
         "incident_id": record.get("incident_id", record.get("event_id", 0)),
         "event_id": record.get("event_id", 0),
@@ -118,6 +136,7 @@ def incident_from_record(record: Mapping[str, Any]) -> dict[str, Any]:
         "dst_ip": record.get("dst_ip"),
         "timestamp_ms": record.get("timestamp_ms", record.get("ts_ms", 0)),
         "status": status,
+        "decision": decision if receipt_ok else None,
         "receipt_valid": receipt_ok,
         "receipt_errors": receipt_errors,
         "evidence": record.get("evidence", record.get("reason", "")),
@@ -127,6 +146,9 @@ def incident_from_record(record: Mapping[str, Any]) -> dict[str, Any]:
 __all__ = [
     "POLICY_ACTION_ORDINALS",
     "PEP_DECISION_ORDINALS",
+    "CONFIRMED_BLOCK_STATUS",
+    "CONFIRMED_QUARANTINE_STATUS",
+    "CONFIRMED_EFFECT_STATUSES",
     "validate_enforcement_receipt",
     "project_operator_state",
     "incident_from_record",

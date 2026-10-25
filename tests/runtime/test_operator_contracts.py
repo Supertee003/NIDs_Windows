@@ -55,6 +55,23 @@ class TestReceiptValidation(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("host_effect_requires_enforced", errors)
 
+    def test_confirmed_decision_must_be_block_or_quarantine(self):
+        r = self.valid()
+        r["decision"] = "rate_limit"
+        ok, errors = validate_enforcement_receipt(r)
+        self.assertFalse(ok)
+        self.assertIn("invalid:confirmed_decision", errors)
+
+    def test_quarantine_maps_to_its_own_operator_status(self):
+        r = self.valid()
+        r["decision"] = "quarantine"
+        incident = incident_from_record(
+            {"event_id": 20, "status": "observed", "enforcement_receipt": r}
+        )
+        self.assertEqual(incident["status"], "QUARANTINED_CONFIRMED")
+        self.assertEqual(incident["decision"], "quarantine")
+        self.assertTrue(incident["receipt_valid"])
+
 
 class TestOperatorProjection(unittest.TestCase):
     def test_closed_gate_is_observe_only(self):

@@ -57,7 +57,9 @@ if ([string]::IsNullOrWhiteSpace($WfpXmlPath)) {
 
 $wfpXml = Join-Path $EvidenceDir "wfp_state.xml"
 if (-not [string]::IsNullOrWhiteSpace($WfpXmlPath) -and (Test-Path $WfpXmlPath)) {
-    Copy-Item $WfpXmlPath $wfpXml -Force
+    if ([System.IO.Path]::GetFullPath($WfpXmlPath) -ne [System.IO.Path]::GetFullPath($wfpXml)) {
+        Copy-Item $WfpXmlPath $wfpXml -Force
+    }
 } else {
     netsh wfp show state file=$wfpXml 2>&1 | Out-String | Set-Content -Path (Join-Path $EvidenceDir "netsh_attempt.log") -Encoding UTF8
     if (-not (Test-Path $wfpXml)) {
@@ -77,29 +79,40 @@ $filter_summary = [System.Collections.Generic.List[object]]::new()
 $filter_ids = [System.Collections.Generic.HashSet[string]]::new()
 if (Test-Path $wfpXml) {
     try {
-        $xml = [xml](Get-Content $wfpXml -Encoding UTF8 -Raw)
+        # netsh appends a second <firewallState> document after </wfpstate>;
+        # a whole-file [xml] cast fails on that trailing root. Parse the WFP
+        # document only (BUG-20261024: previous //Filter query matched nothing).
+        $raw = Get-Content $wfpXml -Encoding UTF8 -Raw
+        $end = $raw.IndexOf("</wfpstate>")
+        if ($end -ge 0) { $raw = $raw.Substring(0, $end + "</wfpstate>".Length) }
+        $xml = [xml]$raw
         if ($xml -and $xml.SelectNodes) {
-            $nodes = @()
-            $xml.SelectNodes("//Filter") | ForEach-Object { $nodes += $_ }
-            if ($nodes.Count -eq 0) {
-                $xml.SelectNodes("//filter") | ForEach-Object { $nodes += $_ }
-            }
+            # Filters are <filters numItems="N"><item><filterId>…; callouts and
+            # sessions use <item> too, so select only items carrying a filterId.
+            $nodes = @($xml.SelectNodes("//item[filterId]"))
             foreach ($n in $nodes) {
                 $id = $n.SelectSingleNode("filterId"); $id = if ($id) { $id.InnerText } else { $null }
                 $name = $n.SelectSingleNode("displayData/name"); $name = if ($name) { $name.InnerText } else { $null }
-                $provider = $n.SelectSingleNode("providerKey/guid"); $provider = if ($provider) { $provider.InnerText } else { $null }
-                $action = $n.SelectSingleNode("action"); $action = if ($action) { $action.InnerText } else { $null }
-                $flags = $n.SelectSingleNode("flags"); $flags = if ($flags) { $flags.InnerText } else { $null }
-                $layer = $n.SelectSingleNode("subLayerKey/name"); $layer = if ($layer) { $layer.InnerText } else { $null }
+                $desc = $n.SelectSingleNode("displayData/description"); $desc = if ($desc) { $desc.InnerText } else { $null }
+                $provider = $n.SelectSingleNode("providerKey"); $provider = if ($provider) { $provider.InnerText } else { $null }
+                $action = $n.SelectSingleNode("action/type"); $action = if ($action) { $action.InnerText } else { $null }
+                $layer = $n.SelectSingleNode("layerKey"); $layer = if ($layer) { $layer.InnerText } else { $null }
+                $subLayer = $n.SelectSingleNode("subLayerKey"); $subLayer = if ($subLayer) { $subLayer.InnerText } else { $null }
+                $flagNodes = @($n.SelectNodes("flags/item"))
+                $flags = ($flagNodes | ForEach-Object { $_.InnerText }) -join ","
+                $persistent = $flagNodes | Where-Object { $_.InnerText -match "PERSISTENT" }
                 if ($id) {
                     $filter_ids.Add($id) | Out-Null
                     $row = [ordered]@{
                         filterId = $id
                         displayName = $name
+                        description = $desc
                         provider = $provider
                         action = $action
+                        layer = $layer
                         flags = $flags
-                        subLayer = $layer
+                        persistent = [bool]$persistent
+                        subLayer = $subLayer
                     }
                     $filter_summary.Add($row)
                 }
@@ -152,6 +165,19 @@ $result["stale_ids"] = $stale
 $result["firewall_rules_matched"] = $fw_rules.Count
 $result["filter_summary_sample"] = $filter_summary | Select-Object -First 50
 $result["firewall_rules_sample"] = $fw_rules | Select-Object -First 50
+
+# AEGIS-labelled filters are the host-effect residue this capture exists for.
+# Separate permits (installer/app allow rules) from blocks (stale enforcement).
+$aegis_filters = @($filter_summary | Where-Object {
+    ($_.displayName -match "AEGIS") -or ($_.description -match "AEGIS")
+})
+$result["aegis_filter_count"] = $aegis_filters.Count
+$result["aegis_block_filters"] = @($aegis_filters | Where-Object {
+    $_.action -match "BLOCK"
+})
+$result["aegis_persistent_filters"] = @($aegis_filters | Where-Object {
+    $_.persistent
+})
 
 $result | ConvertTo-Json -Depth 20 | Set-Content (Join-Path $EvidenceDir "result.json") -Encoding UTF8
 $filter_summary | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $EvidenceDir "wfp_state_id_scan.json") -Encoding UTF8

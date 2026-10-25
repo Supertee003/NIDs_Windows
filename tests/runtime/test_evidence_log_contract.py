@@ -42,7 +42,7 @@ def test_daemon_projects_detections_to_the_evidence_log():
 def test_enforced_claim_is_gated_on_the_dispatch_verdict():
     assert "pub fn dispatchWithReceipt(" in DISPATCHER
     assert ") bool {" in DISPATCHER
-    assert "confirmed_block = dispatcher.ActionDispatcher.dispatchWithReceipt(" in PROCESSOR
+    assert "confirmed_effect = dispatcher.ActionDispatcher.dispatchWithReceipt(" in PROCESSOR
 
 
 def test_writer_emits_every_key_readers_gate_on():
@@ -62,6 +62,36 @@ def test_writer_emits_every_key_readers_gate_on():
 def test_writer_tests_execute_in_the_unit_binary():
     closure = (REPO_ROOT / "src" / "all_tests.zig").read_text(encoding="utf-8")
     assert "forensic/forensic_log.zig" in closure
+
+
+def test_confirmed_quarantine_is_its_own_observable_event():
+    """RB-013: a receipt-verified quarantine must be distinguishable from a
+    block in the persisted NDJSON, not folded into decision=block."""
+    assert "evidenceEventName(" in PROCESSOR
+    assert "evidenceDecisionLabel(" in PROCESSOR
+    assert "evidenceConfirmationMarker(" in PROCESSOR
+    assert '"action_quarantine"' in PROCESSOR
+    assert '"QUARANTINED_CONFIRMED"' in PROCESSOR
+
+
+def test_quarantine_receipt_passes_the_operator_contract():
+    from tools.aegisctl.contracts import validate_enforcement_receipt
+
+    receipt = {
+        "request_id": 404,
+        "event_id": 401,
+        "policy_id": 3,
+        "trace_id": 402,
+        "audit_id": 403,
+        "decision": "quarantine",
+        "status": "enforced",
+        "provider": "wfp",
+        "host_effect_confirmed": True,
+        "filter_id": 78056,
+        "receipt_version": 1,
+    }
+    ok, errors = validate_enforcement_receipt(receipt)
+    assert ok, errors
 
 
 ENFORCED_LINE = {
@@ -88,6 +118,15 @@ ENFORCED_LINE = {
     "receipt_version": 1,
 }
 
+QUARANTINE_LINE = dict(
+    ENFORCED_LINE,
+    event="action_quarantine",
+    policy="quarantine",
+    decision="quarantine",
+    policy_id=5,
+)
+
+
 OBSERVED_LINE = {
     "ts_ms": 1791296893401,
     "level": "warn",
@@ -112,9 +151,42 @@ def test_writer_enforced_line_validates_end_to_end():
     assert incident["src_ip"] == "192.168.1.100"
 
 
+def test_writer_quarantine_line_is_not_reported_as_a_block():
+    from tools.aegisctl.web_dashboard import app as dashboard
+
+    incident = dashboard._record_to_incident(dict(QUARANTINE_LINE))
+    assert incident["receipt_valid"] is True
+    assert incident["status"] == "QUARANTINED_CONFIRMED"
+    assert incident["decision"] == "quarantine"
+
+
+def test_threat_posture_counts_blocks_and_quarantines_separately():
+    from tools.aegisctl.web_dashboard import app as dashboard
+
+    incidents = [
+        dashboard._record_to_incident(dict(ENFORCED_LINE)),
+        dashboard._record_to_incident(dict(QUARANTINE_LINE)),
+    ]
+    threat = dashboard._threat_posture(incidents)
+    assert threat["confirmed_blocks"] == 1
+    assert threat["confirmed_quarantines"] == 1
+    assert threat["confirmed_effects"] == 2
+
+
+def test_unconfirmed_quarantine_never_claims_confirmed_status():
+    from tools.aegisctl.web_dashboard import app as dashboard
+
+    line = dict(QUARANTINE_LINE, host_effect_confirmed=False)
+    incident = dashboard._record_to_incident(line)
+    assert incident["receipt_valid"] is False
+    assert incident["status"] == "PEP_UNVERIFIED"
+
+
 def test_writer_observed_line_never_claims_enforcement():
     from tools.aegisctl.web_dashboard import app as dashboard
 
     incident = dashboard._record_to_incident(dict(OBSERVED_LINE))
     assert incident["receipt_valid"] is False
-    assert incident["status"] not in ("ENFORCED", "BLOCKED", "BLOCKED_CONFIRMED")
+    assert incident["status"] not in (
+        "ENFORCED", "BLOCKED", "BLOCKED_CONFIRMED", "QUARANTINED_CONFIRMED"
+    )

@@ -38,18 +38,24 @@ the source/build tree. Records-only commits do not move it.
    that source commit (full SHA in maps/AI_CONTEXT/EVIDENCE_INDEX/
    `build_truth.json`/`runtime_manifest.json`; 7-char in `build_manifest.json`
    and `runtime_manifest.source_commit`);
-3. requires the source commit to be an ancestor of HEAD; and
-4. requires `git diff --quiet <source> HEAD -- <SOURCE_PATHS>`.
+3. requires the source commit to be an ancestor of HEAD;
+4. requires `git diff --quiet <source> HEAD -- <SOURCE_PATHS>`; and
+5. requires the source/build worktree itself to be clean, including untracked
+   source/build files (ignored build outputs do not count).
 
 `SOURCE_PATHS` is the build-source boundary:
 
 ```
 src  rust-src  shield  nose  go  brain  drivers  shared  bridge  mouth
 configs  build.zig  Cargo.toml  Cargo.lock  CMakeLists.txt  requirements.txt
+scripts/wdk_build_production.ps1  scripts/wdk_build_minifilter.ps1
 ```
 
-Docs, evidence, tests, tooling, CI metadata, and auxiliary material are
-records-only and are deliberately excluded.
+The two WDK scripts are included because they are the sole definition of the
+kernel-mode compile/link (CMake delegates to them); changing a flag changes the
+artifact. Evidence, signing, deployment, and other wrapper scripts remain
+records-only. Docs, evidence, tests, tooling, CI metadata, and auxiliary
+material are likewise records-only and are deliberately excluded.
 
 `tools/create_manifest.py` writes the source commit (not HEAD) into
 `runtime_manifest.json`. `tools/rebuild_truth.py` stamps the source commit into
@@ -73,7 +79,8 @@ this decision.
    operator (the agent never pushes).
 5. The rule is pinned by `tests/release/test_truth_source_commit.py`:
    source-ancestor accepted, docs commit as source rejected, source changed
-   after recording rejected, non-ancestor source rejected.
+   after recording rejected, non-ancestor source rejected, dirty tracked and
+   untracked source rejected, and a WDK build-script commit moves the source.
 
 ## Alternatives rejected
 

@@ -122,6 +122,52 @@ def test_rejects_source_changed_after_recorded(tmp_path: Path) -> None:
     assert result.returncode != 0, result.stdout
 
 
+def test_wdk_build_script_is_a_source_input(tmp_path: Path) -> None:
+    """The WDK script defines kernel flags; it is not records-only."""
+    repo = _new_repo(tmp_path)
+    _commit(repo, "src/main.zig", "v1\n", "source")
+    script = _commit(
+        repo,
+        "scripts/wdk_build_production.ps1",
+        "# build flags\n",
+        "driver build flags",
+    )
+    _write_artifacts(repo, script, script[:7])
+
+    result = _run(repo)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "TRUTH_VALID" in result.stdout
+
+
+def test_rejects_dirty_tracked_source_file(tmp_path: Path) -> None:
+    """A source edit after the maps were written is not current truth."""
+    repo = _new_repo(tmp_path)
+    source = _commit(repo, "src/main.zig", "v1\n", "source")
+    _commit(repo, "docs/notes.md", "records\n", "records")
+    _write_artifacts(repo, source, source[:7])
+    (repo / "src" / "main.zig").write_text("dirty\n", encoding="utf-8")
+
+    result = _run(repo)
+
+    assert result.returncode != 0, result.stdout
+    assert "DIRTY" in result.stdout
+
+
+def test_rejects_untracked_source_file(tmp_path: Path) -> None:
+    """An untracked build input can still change the produced runtime."""
+    repo = _new_repo(tmp_path)
+    source = _commit(repo, "src/main.zig", "v1\n", "source")
+    _commit(repo, "docs/notes.md", "records\n", "records")
+    _write_artifacts(repo, source, source[:7])
+    (repo / "src" / "new_module.zig").write_text("new\n", encoding="utf-8")
+
+    result = _run(repo)
+
+    assert result.returncode != 0, result.stdout
+    assert "DIRTY" in result.stdout
+
+
 def test_rejects_non_ancestor_source(tmp_path: Path) -> None:
     repo = _new_repo(tmp_path)
     _commit(repo, "src/main.zig", "v1\n", "source")

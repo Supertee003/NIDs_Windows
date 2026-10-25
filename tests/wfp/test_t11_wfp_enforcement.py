@@ -20,6 +20,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DRIVER_HEADER = REPO_ROOT / "drivers" / "wfp_callout" / "aegis_wfp.h"
 DRIVER_SOURCE = REPO_ROOT / "drivers" / "wfp_callout" / "aegis_wfp.c"
+DRIVER_CALLOUT = REPO_ROOT / "drivers" / "wfp_callout" / "aegis_wfp_callout.c"
 
 # The single authoritative Windows WFP enforcement module.
 WFP_ENFORCEMENT_MODULE = "src/policy/wfp_production.zig"
@@ -183,3 +184,242 @@ def test_driver_unblock_contract_matches_user_adapter() -> None:
             encoding="utf-8", errors="ignore"
         )
     )
+
+
+def test_driver_rejects_unknown_flow_direction() -> None:
+    """An unknown direction must never mint an outbound proof filter."""
+    source = DRIVER_SOURCE.read_text(encoding="utf-8", errors="ignore")
+    block = source.split("NTSTATUS AegisWfpBlockFlow(PIRP Irp) {", 1)[1].split(
+        "NTSTATUS AegisWfpGetStats(PIRP Irp) {", 1
+    )[0]
+    assert block.count("if (request->direction > 1)") == 1
+    assert "return STATUS_INVALID_PARAMETER;" in block
+
+
+def test_driver_initializes_passive_level_proof_lock() -> None:
+    """WFP management APIs require PASSIVE_LEVEL; a FAST_MUTEX is invalid."""
+    source = DRIVER_SOURCE.read_text(encoding="utf-8", errors="ignore")
+    header = DRIVER_HEADER.read_text(encoding="utf-8", errors="ignore")
+
+    assert "KeInitializeMutex(&g_ProofLock, 0);" in source
+    assert "g_ProofLockReady = TRUE;" in source
+    assert "KeWaitForSingleObject(&g_ProofLock" in source
+    assert "return status == STATUS_SUCCESS ? STATUS_SUCCESS : status;" in source
+    assert "KeReleaseMutex(&g_ProofLock" in source
+    assert "ExAcquireFastMutex" not in source
+    assert "ExReleaseFastMutex" not in source
+    assert "NTSTATUS AegisWfpCleanupProofFilters(void);" in header
+
+
+def test_driver_lifecycle_prepares_after_register_and_cleans_before_unregister() -> None:
+    """The proof provider and its persistent filters must have one owner."""
+    source = DRIVER_SOURCE.read_text(encoding="utf-8", errors="ignore")
+
+    entry = source.split("NTSTATUS DriverEntry", 1)[1].split(
+        "// ====== Unload ======", 1
+    )[0]
+    assert entry.index("AegisWfpRegisterCallout(DriverObject)") < entry.index(
+        "AegisWfpPrepareProofProvider()"
+    ), "proof provider must be prepared after the callout/filter registers"
+
+    unload = source.split("// ====== Unload ======", 1)[1].split(
+        "// ====== IRP_MJ_CREATE", 1
+    )[0]
+    assert unload.index("AegisWfpCleanupProofFilters()") < unload.index(
+        "AegisWfpUnregisterCallout()"
+    ), "proof cleanup must run while the WFP engine is still open"
+
+    assert "cleanupStatus = AegisWfpCleanupProofFilters();" in entry, (
+        "prepare failure must attempt provider/proof cleanup before unregister"
+    )
+    assert "AegisWfpUnregisterCallout();" in entry
+
+
+def test_driver_uses_static_session_for_persistent_proof_objects() -> None:
+    """Persistent proof objects require a non-dynamic WFP engine session."""
+    callout = DRIVER_CALLOUT.read_text(encoding="utf-8", errors="ignore")
+    source = DRIVER_SOURCE.read_text(encoding="utf-8", errors="ignore")
+    register = callout.split("NTSTATUS AegisWfpRegisterCallout", 1)[1].split(
+        "VOID AegisWfpUnregisterCallout", 1
+    )[0]
+
+    assert "session.flags = 0;" in register
+    assert "FWPM_SESSION_FLAG_DYNAMIC" not in register
+    assert "FWPM_PROVIDER_FLAG_PERSISTENT" in source
+    assert "FWPM_FILTER_FLAG_PERSISTENT" in source
+    # The read-only attestation session is separate but also static: the
+    # kernel WFP contract has no dynamic-session requirement, and a static
+    # read-only session cannot leak persistent objects.
+    query = source.split("NTSTATUS AegisWfpQueryFilter", 1)[1].split(
+        "// ====== WFP Callout Registration", 1
+    )[0]
+    assert "session.flags = 0;" in query
+    assert "FWPM_SESSION_FLAG_DYNAMIC" not in query
+
+
+def test_driver_drains_irps_before_unload_teardown() -> None:
+    """Unload must not close the engine or free the ring under an in-flight IRP."""
+    source = DRIVER_SOURCE.read_text(encoding="utf-8", errors="ignore")
+    unload = source.split("// ====== Unload ======", 1)[1].split(
+        "// ====== IRP_MJ_CREATE", 1
+    )[0]
+
+    assert "IoInitializeRemoveLock(&g_RemoveLock, 'AEGR', 0, 0);" in source
+    assert source.count("IoAcquireRemoveLock(&g_RemoveLock, Irp)") >= 3
+    assert "IoReleaseRemoveLock(&g_RemoveLock, Irp);" in source
+    assert "IoAcquireRemoveLock(&g_RemoveLock, NULL);" in unload
+    assert "IoReleaseRemoveLockAndWait(&g_RemoveLock, NULL);" in unload
+    assert unload.index("IoAcquireRemoveLock(&g_RemoveLock, NULL)") < unload.index(
+        "IoReleaseRemoveLockAndWait"
+    ), "the unload thread must hold the remove lock before releasing-and-waiting"
+    assert unload.index("IoReleaseRemoveLockAndWait") < unload.index(
+        "AegisWfpCleanupProofFilters()"
+    ), "in-flight proof IOCTLs must drain before persistent cleanup"
+    assert unload.index("IoReleaseRemoveLockAndWait") < unload.index(
+        "AegisWfpUnregisterCallout()"
+    ), "in-flight IOCTLs must drain before the engine handle closes"
+    assert unload.index("IoReleaseRemoveLockAndWait") < unload.index(
+        "ExFreePool(g_RingBuffer)"
+    ), "in-flight event reads must drain before the ring is freed"
+
+
+def test_classify_is_drained_before_callout_teardown() -> None:
+    """Unload must not free the ring while a classify call can still write it."""
+    source = DRIVER_SOURCE.read_text(encoding="utf-8", errors="ignore")
+    callout = DRIVER_CALLOUT.read_text(encoding="utf-8", errors="ignore")
+    classify = callout.split("void AegisWfpClassifyFn", 1)[1].split(
+        "/* ====== Notify Callback", 1
+    )[0]
+    unregister = callout.split("VOID AegisWfpUnregisterCallout", 1)[1]
+
+    assert "ExInitializeRundownProtection(&g_CalloutRundown);" in source
+    assert "ExAcquireRundownProtection(&g_CalloutRundown)" in classify
+    assert classify.index("ExAcquireRundownProtection") < classify.index(
+        "KeAcquireSpinLock(&g_RingLock"
+    )
+    assert "ExReleaseRundownProtection(&g_CalloutRundown);" in classify
+    assert classify.index("ExReleaseRundownProtection") > classify.index(
+        "KeReleaseSpinLock(&g_RingLock"
+    )
+    assert "ExWaitForRundownProtectionRelease(&g_CalloutRundown);" in unregister
+    assert unregister.index("ExWaitForRundownProtectionRelease") < unregister.index(
+        "FwpmFilterDeleteById0"
+    ), "no classify may still reference the ring when teardown starts"
+
+
+def test_driver_rejects_and_removes_disabled_proof_filters() -> None:
+    """A BFE-disabled persistent filter is absent, never confirmed enforcement."""
+    source = DRIVER_SOURCE.read_text(encoding="utf-8", errors="ignore")
+    match = source.split("static BOOLEAN AegisWfpFilterMatchesProof", 1)[1].split(
+        "static BOOLEAN AegisWfpFilterMatchesRequest", 1
+    )[0]
+    recover = source.split("static NTSTATUS AegisWfpRecoverProofFilter", 1)[1].split(
+        "/* Older builds installed one filter", 1
+    )[0]
+
+    assert "filter->flags & FWPM_FILTER_FLAG_DISABLED" in match
+    assert "filter->numFilterConditions != 3" in match, (
+        "attestation must reject a narrowed or widened proof filter"
+    )
+    assert "filter->flags & FWPM_FILTER_FLAG_DISABLED" in recover
+    assert "FwpmFilterDeleteById0(g_WfpEngineHandle, filter->filterId)" in recover
+
+
+def test_callout_removes_blm_callout_by_stable_key() -> None:
+    """The runtime callout id must not be reused as the BLM callout id."""
+    callout = DRIVER_CALLOUT.read_text(encoding="utf-8", errors="ignore")
+    unregister = callout.split("VOID AegisWfpUnregisterCallout", 1)[1]
+    assert "FwpmCalloutDeleteByKey0(g_WfpEngineHandle, &AEGIS_CALLOUT_KEY)" in callout
+    assert "FwpmCalloutDeleteById0" not in callout
+    assert "FWPM_FILTER_FLAG_PERMIT_IF_CALLOUT_UNREGISTERED" in callout
+    assert unregister.index("FwpmFilterDeleteById0") < unregister.index(
+        "FwpsCalloutUnregisterById0"
+    ), "the terminating capture filter must go before runtime unregister"
+    assert "KeDelayExecutionThread(KernelMode, FALSE, &delay);" in unregister, (
+        "unload must not return while the runtime callout is still registered"
+    )
+
+
+def test_driver_cleanup_is_fail_closed_and_uncapped() -> None:
+    """Cleanup must surface deletion/provider failures and drain all batches."""
+    source = DRIVER_SOURCE.read_text(encoding="utf-8", errors="ignore")
+    cleanup = source.split("NTSTATUS AegisWfpCleanupProofFilters", 1)[1].split(
+        "// ====== DriverEntry", 1
+    )[0]
+
+    assert "for (;;)" in cleanup
+    assert "snapshot.count == 0" in cleanup
+    assert "AegisWfpRecordFirstFailure(&result, status)" in cleanup
+    assert "resolved == 0" in cleanup
+    assert "FwpmProviderDeleteByKey0" in cleanup
+    assert "if (status == FWP_E_PROVIDER_NOT_FOUND)" in cleanup
+    assert "AegisWfpDeleteLegacyProofFilter" in cleanup
+    assert "AegisWfpFilterOwnedByProvider(filter)" in cleanup
+
+
+def test_callout_has_no_fixed_key_proof_recovery() -> None:
+    """Legacy key cleanup belongs to prepare/cleanup, not callout registration."""
+    callout = DRIVER_CALLOUT.read_text(encoding="utf-8", errors="ignore")
+    assert "recoveredProof" not in callout
+    assert "FwpmFilterGetByKey0" not in callout
+    assert "AEGIS_STAGE_PROOF_LOOKUP" not in callout
+
+
+def test_wdk_build_and_host_scripts_are_pinned_and_secret_free() -> None:
+    """The candidate hash cannot be a moving target between build and deploy."""
+    build = (REPO_ROOT / "scripts" / "wdk_build_production.ps1").read_text(
+        encoding="utf-8", errors="ignore"
+    )
+    sign = (REPO_ROOT / "scripts" / "sign_wfp_driver_20261024.ps1").read_text(
+        encoding="utf-8", errors="ignore"
+    )
+    deploy = (REPO_ROOT / "scripts" / "deploy_wfp_driver_20261024.ps1").read_text(
+        encoding="utf-8", errors="ignore"
+    )
+    runner = (REPO_ROOT / "scripts" / "run_g2_dupfilter_proof.ps1").read_text(
+        encoding="utf-8", errors="ignore"
+    )
+    host = (REPO_ROOT / "tests" / "wfp" / "test_t11_windows_host.py").read_text(
+        encoding="utf-8", errors="ignore"
+    )
+    cleanup = (REPO_ROOT / "scripts" / "cleanup_stale_aegis_firewall.ps1").read_text(
+        encoding="utf-8", errors="ignore"
+    )
+
+    assert build.count("/Brepro") >= 2, "cl and link must both be deterministic"
+
+    assert "[Parameter(Mandatory = $true)]" in sign
+    assert "$ExpectedUnsignedSha256" in sign
+    assert "/sha1" in sign
+    assert "ConvertTo-SecureString" not in sign
+    assert "$password" not in sign.lower()
+
+    assert "$ExpectedCandidateSha256" in deploy
+    assert "$ExpectedBackupSha256" in deploy
+    assert "aegis_wfp.sys.before-" in deploy
+    assert "Get-Sha256 $backup" in deploy
+    assert "Copy-Item $backup $dst -Force" in deploy
+    assert "aegisctl.py readiness" in deploy
+    assert "daemon-rollback-stop-scm" in deploy
+
+    assert "apply is disabled" in cleanup
+    assert "Remove-NetFirewallRule" not in cleanup
+    assert "DRY_RUN" in cleanup
+
+    assert "$ExpectedDriverSha256" in runner
+    assert "$ExpectedPepSha256" in runner
+    assert "DUP_FILTER_SAME=true" in runner
+    assert "DUP_UNBLOCK_RC=0" in runner
+    assert "DUP_UNBLOCK_PRESENT=0" in runner
+    assert "escalate reason=4" in runner
+    assert "no_skip" in runner
+    assert "AEGIS_EXPECTED_DRIVER_SHA256" in runner
+    assert "AEGIS_EXPECTED_PEP_SHA256" in runner
+    assert "AEGIS_EXPECTED_BRIDGE_SHA256" in runner
+    assert "ARTIFACT_BRIDGE_LOADED_SHA256" in runner
+    assert "BRIDGE_LOADED_PATH" in runner
+
+    assert "AEGIS_EXPECTED_DRIVER_SHA256" in host
+    assert "AEGIS_EXPECTED_PEP_SHA256" in host
+    assert "AEGIS_EXPECTED_BRIDGE_SHA256" in host
+    assert 'GetModuleHandleW("aegis_wfp_user.dll")' in host

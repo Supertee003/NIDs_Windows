@@ -18,7 +18,6 @@
  * stage ID below; DumpData[1] is the raw NTSTATUS/WFP status. */
 enum {
     AEGIS_STAGE_ENGINE_OPEN = 1,
-    AEGIS_STAGE_PROOF_LOOKUP = 2,
     AEGIS_STAGE_CALLOUT_ADD = 3,
     AEGIS_STAGE_CALLOUT_REGISTER = 4,
     AEGIS_STAGE_FILTER_ADD = 5
@@ -33,7 +32,6 @@ static VOID AegisWfpLogStartupFailure(ULONG stage, NTSTATUS status)
 
     switch (stage) {
     case AEGIS_STAGE_ENGINE_OPEN:     stageName = L"FwpmEngineOpen0"; break;
-    case AEGIS_STAGE_PROOF_LOOKUP:   stageName = L"FwpmFilterGetByKey0"; break;
     case AEGIS_STAGE_CALLOUT_ADD:    stageName = L"FwpmCalloutAdd0"; break;
     case AEGIS_STAGE_CALLOUT_REGISTER: stageName = L"FwpsCalloutRegister0"; break;
     case AEGIS_STAGE_FILTER_ADD:     stageName = L"FwpmFilterAdd0"; break;
@@ -121,6 +119,15 @@ void AegisWfpClassifyFn(
 
     if (!classifyOut)
         return;
+
+    /* Unload owns a rundown gate: while it waits, no classify may touch the
+     * ring or engine. A callout that arrives after the gate closes must still
+     * return a fail-open action. */
+    if (!ExAcquireRundownProtection(&g_CalloutRundown)) {
+        classifyOut->actionType = FWP_ACTION_PERMIT;
+        classifyOut->rights    &= ~FWPS_RIGHT_ACTION_WRITE;
+        return;
+    }
 
     /* --- Zero-init event header --- */
     RtlZeroMemory(&hdr, sizeof(hdr));
@@ -223,6 +230,8 @@ void AegisWfpClassifyFn(
     /* FAIL-OPEN: always permit */
     classifyOut->actionType = FWP_ACTION_PERMIT;
     classifyOut->rights    &= ~FWPS_RIGHT_ACTION_WRITE;
+
+    ExReleaseRundownProtection(&g_CalloutRundown);
 }
 
 /* ====== Notify Callback ====== */
@@ -249,10 +258,15 @@ VOID AegisWfpFlowDeleteFn(
 }
 
 /* ====== Register WFP Callout + Add Filter (C2 FIX) ======
- * 1. FwpmEngineOpen0  - open BLM session (dynamic = auto-cleanup)
+ * 1. FwpmEngineOpen0  - open a non-dynamic BLM session
  * 2. FwpmCalloutAdd0  - register callout in BLM store
  * 3. FwpsCalloutRegister0 - bind runtime callbacks
  * 4. FwpmFilterAdd0   - C2: add filter so callout is INVOKED
+ *
+ * The session must stay non-dynamic: the proof provider and its filters are
+ * persistent objects, and WFP rejects persistent objects added through a
+ * dynamic session. The capture callout/filter are explicitly removed during
+ * unload; closing the static session is the final backstop.
  */
 NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject)
 {
@@ -265,9 +279,13 @@ NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject)
 
     DbgPrint("[AEGIS WFP] Registering callout + filter...\n");
 
-    /* 1. Open WFP engine session */
+    /* 1. Open WFP engine session. Keep this static (flags = 0): the proof
+     * provider and proof filters are FWPM_*_FLAG_PERSISTENT and WFP does not
+     * permit persistent objects in a dynamic session. This is also the single
+     * engine handle used by the callout registration and proof lifecycle. */
     RtlZeroMemory(&session, sizeof(session));
-    session.flags = FWPM_SESSION_FLAG_DYNAMIC;
+    session.displayData.name = L"AEGIS NIDS WFP Session";
+    session.flags = 0;
     status = FwpmEngineOpen0(NULL, RPC_C_AUTHN_WINNT,
         NULL, &session, &g_WfpEngineHandle);
     if (!NT_SUCCESS(status)) {
@@ -276,26 +294,9 @@ NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject)
     }
     DbgPrint("[AEGIS WFP] stage=FwpmEngineOpen0 status=0x%08X\n", status);
 
-    /* Recover the persistent receipt-owned proof filter if the driver was
-     * restarted. A missing key is normal; any other provider error is fatal.
-     * Recovery intentionally does not delete or recreate the filter. */
-    FWPM_FILTER0 *recoveredProof = NULL;
-    status = FwpmFilterGetByKey0(g_WfpEngineHandle,
-        &AEGIS_PROOF_FILTER_KEY, &recoveredProof);
-    if (NT_SUCCESS(status)) {
-        g_ProofFilterId = recoveredProof->filterId;
-        DbgPrint("[AEGIS WFP] Recovered proof filter (id=%llu)\n",
-            g_ProofFilterId);
-        FwpmFreeMemory0((void **)&recoveredProof);
-    } else {
-        /* Proof filter recovery is advisory only. A missing or unavailable
-         * receipt must never prevent the authoritative callout/filter from
-         * registering; later stages still fail closed if WFP itself is bad. */
-        DbgPrint("[AEGIS WFP] stage=FwpmFilterGetByKey0 status=0x%08X (recovery unavailable; continue)\n",
-            status);
-    }
-
-    /* 2. Register callout in BLM store */
+    /* 2. Register callout in BLM store. The proof provider is established by
+     * AegisWfpPrepareProofProvider() after this registration succeeds; the
+     * retired fixed-key recovery path must not run here. */
     RtlZeroMemory(&callout, sizeof(callout));
     callout.calloutKey       = AEGIS_CALLOUT_KEY;
     callout.displayData.name        = L"AEGIS NIDS Network Capture";
@@ -326,10 +327,13 @@ NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject)
     if (!NT_SUCCESS(status)) {
         DbgPrint("[AEGIS WFP] stage=FwpsCalloutRegister0 status=0x%08X\n",
             status);
-        FwpmCalloutDeleteById0(g_WfpEngineHandle,
-            (UINT64)g_CalloutId);  /* FIX 5: cast UINT32 -> UINT64 */
+        /* g_CalloutId is the BLM id here; delete by the stable callout key
+         * rather than relying on the id that the runtime registration would
+         * have replaced. */
+        FwpmCalloutDeleteByKey0(g_WfpEngineHandle, &AEGIS_CALLOUT_KEY);
         FwpmEngineClose0(g_WfpEngineHandle);
         g_WfpEngineHandle = NULL;
+        g_CalloutId = 0;
         return AegisWfpStartupFailure(AEGIS_STAGE_CALLOUT_REGISTER, status);
     }
     DbgPrint("[AEGIS WFP] stage=FwpsCalloutRegister0 status=0x%08X id=%u\n",
@@ -350,6 +354,10 @@ NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject)
     filter.displayData.name        = L"AEGIS Inbound Transport V4 Capture";
     filter.displayData.description = L"Inspects all inbound IPv4 transport packets";
     filter.action                 = action;
+    /* Fail-open teardown: if this callout is unregistered while the filter is
+     * still present (or deletion fails), WFP must permit the traffic rather
+     * than treat the terminating callout action as BLOCK. */
+    filter.flags                  = FWPM_FILTER_FLAG_PERMIT_IF_CALLOUT_UNREGISTERED;
     /* FIX 4: filter.weight removed - RtlZeroMemory sets FWP_EMPTY */
     filter.numFilterConditions    = 0;
     filter.filterCondition        = NULL;
@@ -359,10 +367,10 @@ NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject)
     if (!NT_SUCCESS(status)) {
         DbgPrint("[AEGIS WFP] stage=FwpmFilterAdd0 status=0x%08X\n", status);
         FwpsCalloutUnregisterById0(g_CalloutId);
-        FwpmCalloutDeleteById0(g_WfpEngineHandle,
-            (UINT64)g_CalloutId);  /* FIX 5: cast */
+        FwpmCalloutDeleteByKey0(g_WfpEngineHandle, &AEGIS_CALLOUT_KEY);
         FwpmEngineClose0(g_WfpEngineHandle);
         g_WfpEngineHandle = NULL;
+        g_CalloutId = 0;
         return AegisWfpStartupFailure(AEGIS_STAGE_FILTER_ADD, status);
     }
     DbgPrint("[AEGIS WFP] stage=FwpmFilterAdd0 status=0x%08X id=%llu\n",
@@ -377,26 +385,71 @@ NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject)
 /* ====== Unregister WFP Callout + Delete Filter ====== */
 VOID AegisWfpUnregisterCallout(void)
 {
-    /* 1. Unregister runtime callout */
-    if (g_CalloutId) {
-        FwpsCalloutUnregisterById0(g_CalloutId);
-        DbgPrint("[AEGIS WFP] Runtime callout unregistered (id=%u)\n",
-            g_CalloutId);
-        g_CalloutId = 0;
-    }
+    /* 0. Drain classify calls first. New classify calls fail open at the
+     * rundown gate; this wait returns only after every in-flight callout has
+     * released the ring. The filter is still present during the wait, but the
+     * callout action remains fail-open. */
+    ExWaitForRundownProtectionRelease(&g_CalloutRundown);
 
-    /* 2. Close engine session (dynamic session auto-deletes filter
-     *    and callout from BLM store, but we clean up explicitly) */
-    if (g_WfpEngineHandle) {
-        if (g_CaptureFilterId) {
-            FwpmFilterDeleteById0(g_WfpEngineHandle, g_CaptureFilterId);
-            DbgPrint("[AEGIS WFP] Capture filter deleted (id=%llu)\n", g_CaptureFilterId);
+    /* 1. Remove the terminating capture filter before unregistering the
+     * runtime callout. Unregistering first would make WFP treat that filter's
+     * callout action as BLOCK until the filter is deleted. The filter also
+     * carries PERMIT_IF_CALLOUT_UNREGISTERED as a second fail-open guard in
+     * case this delete fails. */
+    if (g_WfpEngineHandle && g_CaptureFilterId) {
+        NTSTATUS status = FwpmFilterDeleteById0(g_WfpEngineHandle,
+                                                g_CaptureFilterId);
+        if (!NT_SUCCESS(status) &&
+            status != FWP_E_FILTER_NOT_FOUND &&
+            status != STATUS_NOT_FOUND) {
+            DbgPrint("[AEGIS WFP] Capture filter delete failed (id=%llu): 0x%08X\n",
+                g_CaptureFilterId, status);
+            /* Keep the id: a later engine-close backstop still owns the
+             * nonpersistent object, and the permit-if-unregistered flag keeps
+             * traffic fail-open if the callout is torn down first. */
+        } else {
+            DbgPrint("[AEGIS WFP] Capture filter deleted (id=%llu)\n",
+                g_CaptureFilterId);
             g_CaptureFilterId = 0;
         }
-        if (g_CalloutId) {
-            FwpmCalloutDeleteById0(g_WfpEngineHandle,
-                (UINT64)g_CalloutId);  /* FIX 5: cast */
-            g_CalloutId = 0;
+    }
+
+    /* 2. Unregister runtime callout. The unload contract requires success
+     * before returning; a callout whose code is still registered must never
+     * outlive this driver image. Flow contexts are not used, so the only
+     * expected transient failure is a concurrent in-flight classify, which
+     * the rundown wait above has already drained. Retry rather than returning
+     * an unloaded callback pointer. */
+    if (g_CalloutId) {
+        LARGE_INTEGER delay;
+        delay.QuadPart = -100000; /* 10 ms, relative */
+        for (;;) {
+            NTSTATUS status = FwpsCalloutUnregisterById0(g_CalloutId);
+            if (NT_SUCCESS(status) ||
+                status == FWP_E_CALLOUT_NOT_FOUND ||
+                status == STATUS_NOT_FOUND) {
+                DbgPrint("[AEGIS WFP] Runtime callout unregistered (id=%u)\n",
+                    g_CalloutId);
+                g_CalloutId = 0;
+                break;
+            }
+            DbgPrint("[AEGIS WFP] Runtime callout unregister pending (id=%u): 0x%08X; retrying\n",
+                g_CalloutId, status);
+            KeDelayExecutionThread(KernelMode, FALSE, &delay);
+        }
+    }
+
+    /* 3. Remove the BLM callout and close the static engine session. The
+     * session is static because the proof provider is persistent; closing it
+     * is the final backstop, not the only cleanup. */
+    if (g_WfpEngineHandle) {
+        NTSTATUS status = FwpmCalloutDeleteByKey0(g_WfpEngineHandle,
+                                                  &AEGIS_CALLOUT_KEY);
+        if (!NT_SUCCESS(status) &&
+            status != FWP_E_CALLOUT_NOT_FOUND &&
+            status != STATUS_NOT_FOUND) {
+            DbgPrint("[AEGIS WFP] BLM callout delete failed: 0x%08X\n",
+                status);
         }
         FwpmEngineClose0(g_WfpEngineHandle);
         g_WfpEngineHandle = NULL;

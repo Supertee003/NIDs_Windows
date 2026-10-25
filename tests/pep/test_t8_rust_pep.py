@@ -237,10 +237,18 @@ def test_flow_request_uses_policy_action_block_not_response_decision() -> None:
 
 
 def test_wfp_flow_response_contract_is_complete() -> None:
-    """User and kernel paths must return the packed response and byte count."""
+    """User and kernel paths must return the packed response and byte count.
+
+    G2-VERIFY-DIR-001 made the proof filter direction-aware: outbound
+    connects use ALE_AUTH_CONNECT_V4 with a remote-port condition, inbound
+    accepts use ALE_AUTH_RECV_ACCEPT_V4 with a local-port condition. Pin the
+    conditional layerKey rather than the pre-direction literal, so neither
+    layer can silently disappear from the driver contract.
+    """
     user = (REPO_ROOT / "src" / "windows" / "wfp_ioctl.c").read_text(encoding="utf-8")
     kernel = (REPO_ROOT / "drivers" / "wfp_callout" / "aegis_wfp.c").read_text(encoding="utf-8")
     assert "sizeof(AEGIS_WFP_FLOW_RESPONSE) == 12" in user
     assert "response->provider_status == 0" in user
-    assert "filter.layerKey = FWPM_LAYER_ALE_AUTH_CONNECT_V4;" in kernel
+    assert "filter.layerKey = inbound ? FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4" in kernel
+    assert ": FWPM_LAYER_ALE_AUTH_CONNECT_V4;" in kernel
     assert "Irp->IoStatus.Information = sizeof(*response);" in kernel

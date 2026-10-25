@@ -323,9 +323,9 @@ pub const PepEnforcer = struct {
     /// receipt shape); only the requested action and the accepted decision
     /// differ. The Rust side executes quarantine through the flow-block
     /// primitive and returns DECISION_QUARANTINE with a filter_id, which is
-    /// what verifyEnforcementReceipt keys on. Caller wiring (which policy
-    /// actions route here vs legacy dispatch) is a separate, unexecuted
-    /// step — this function only makes the request provable.
+    /// what verifyEnforcementReceipt keys on. The pipeline routes policy
+    /// quarantine through the generic enforce() path; this direct-flow
+    /// entry point serves the control-plane ceremony and host harness.
     pub fn enforceQuarantineFlow(
         self: *PepEnforcer,
         dst_ip: u32,
