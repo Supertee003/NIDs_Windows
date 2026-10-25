@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-25T08:34:03.515522+00:00",
+  "generated_at": "2026-10-25T09:47:27.987447+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1705,
@@ -2934,7 +2934,7 @@
       "path": "build_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 128245
+      "size": 128858
     },
     {
       "path": "build_truth.json",
@@ -4320,13 +4320,13 @@
       "path": "drivers/wfp_callout/aegis_wfp.c",
       "class": "canonical-source",
       "role": "source",
-      "size": 56393
+      "size": 57591
     },
     {
       "path": "drivers/wfp_callout/aegis_wfp.h",
       "class": "canonical-source",
       "role": "source",
-      "size": 8939
+      "size": 9251
     },
     {
       "path": "drivers/wfp_callout/aegis_wfp.inf",
@@ -4338,7 +4338,7 @@
       "path": "drivers/wfp_callout/aegis_wfp_callout.c",
       "class": "canonical-source",
       "role": "source",
-      "size": 18686
+      "size": 18616
     },
     {
       "path": "drivers/wfp_callout/quarantined/aegis_wfp_comm.c",
@@ -4668,7 +4668,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 738137
+      "size": 739215
     },
     {
       "path": "fix_bridge_banner.py",
@@ -4800,7 +4800,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 275200
+      "size": 275810
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -5052,7 +5052,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9114
+      "size": 9396
     },
     {
       "path": "README.md",
@@ -5064,7 +5064,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 225794
+      "size": 226258
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -6132,7 +6132,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 18563
+      "size": 19059
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",
@@ -9702,7 +9702,7 @@
       "path": "tests/wfp/test_t11_wfp_enforcement.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 19421
+      "size": 21268
     },
     {
       "path": "tests/wfp/test_t11_windows_host.py",
