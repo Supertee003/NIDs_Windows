@@ -1,13 +1,13 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-22T16:29:31.962571+00:00",
+  "generated_at": "2026-10-25T08:34:03.520538+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1701,
+  "total_files": 1705,
   "by_role": {
     "documentation": 558,
     "build-config": 210,
     "other": 19,
-    "source": 335,
+    "source": 339,
     "lockfile": 6,
     "rust-build": 4,
     "test-artifact": 204,
@@ -4528,11 +4528,19 @@
       "class": "canonical-build",
       "role": "build-config"
     },
+    "scripts/cleanup_stale_aegis_firewall.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
     "scripts/create_test_vectors.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
     "scripts/Dashboard.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/deploy_wfp_driver_20261024.ps1": {
       "class": "canonical-source",
       "role": "source"
     },
@@ -4664,6 +4672,10 @@
       "class": "canonical-source",
       "role": "source"
     },
+    "scripts/run_g2_dupfilter_proof.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
     "scripts/run_host_production_preflight.ps1": {
       "class": "canonical-source",
       "role": "source"
@@ -4723,6 +4735,10 @@
     "scripts/setup_aegis.bat": {
       "class": "canonical-build",
       "role": "build-config"
+    },
+    "scripts/sign_wfp_driver_20261024.ps1": {
+      "class": "canonical-source",
+      "role": "source"
     },
     "scripts/stop_aegis.bat": {
       "class": "canonical-build",

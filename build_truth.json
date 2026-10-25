@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "generated_at": "2026-10-23T00:00:00.000000+00:00",
-  "head_sha": "ee1010e5c0ebbd54b6dc18550f468ac20c86d949",
+  "head_sha": "1089462d357610590c35de8f514b2c3e62361d80",
   "build_commands": {
     "zig": {
       "command": "zig build",
@@ -36,6 +36,15 @@
       ],
       "source_root": "bridge/aegis_ipc.cpp",
       "notes": "CMake builds C++ bridge (IPC, adapter, DEFCON)"
+    },
+    "wfp_driver": {
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/wdk_build_production.ps1",
+      "produces": [
+        "build/x64/wfp/aegis_wfp.sys"
+      ],
+      "source_root": "drivers/wfp_callout/aegis_wfp.c",
+      "classification": "CANONICAL",
+      "notes": "Sole WDK compile/link definition; /Brepro is applied to both compile and link so the unsigned candidate hash is reproducible. The signed/deployed hash is pinned separately by the host scripts."
     },
     "go": {
       "command": "cd nose && go build -o aegis-nose.exe .",
