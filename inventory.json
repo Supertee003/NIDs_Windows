@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-25T09:47:27.987447+00:00",
+  "generated_at": "2026-10-25T10:08:03.839772+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1705,
@@ -4320,13 +4320,13 @@
       "path": "drivers/wfp_callout/aegis_wfp.c",
       "class": "canonical-source",
       "role": "source",
-      "size": 57591
+      "size": 57084
     },
     {
       "path": "drivers/wfp_callout/aegis_wfp.h",
       "class": "canonical-source",
       "role": "source",
-      "size": 9251
+      "size": 10753
     },
     {
       "path": "drivers/wfp_callout/aegis_wfp.inf",
@@ -4338,7 +4338,7 @@
       "path": "drivers/wfp_callout/aegis_wfp_callout.c",
       "class": "canonical-source",
       "role": "source",
-      "size": 18616
+      "size": 18482
     },
     {
       "path": "drivers/wfp_callout/quarantined/aegis_wfp_comm.c",
@@ -4668,7 +4668,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 739215
+      "size": 739988
     },
     {
       "path": "fix_bridge_banner.py",
@@ -9702,13 +9702,13 @@
       "path": "tests/wfp/test_t11_wfp_enforcement.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 21268
+      "size": 22500
     },
     {
       "path": "tests/wfp/test_t11_windows_host.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 23282
+      "size": 23448
     },
     {
       "path": "tmp_prompt.txt",
