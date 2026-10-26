@@ -1,8 +1,18 @@
 # O2 E5 proof: verify an outbound WFP record reaches the authenticated
-# forensic read path with direction=1. Observe-only; uses loopback TCP only,
+# forensic read path with direction=1. Observe-only; uses an operator-controlled remote TCP sink,
 # stops/restarts Nose to make WFP the sole submitted ingress, and never opens
 # prevention or changes WFP filters/services.
+# Requires an operator-controlled remote TCP listener accepting the marker.
 # Requires elevated PowerShell because the running Nose process is protected.
+param(
+    [Parameter(Mandatory = $true)]
+    [ValidateNotNullOrEmpty()]
+    [string]$RemoteAddress,
+
+    [Parameter(Mandatory = $true)]
+    [ValidateRange(1, 65535)]
+    [int]$RemotePort
+)
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $repo = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
@@ -13,6 +23,8 @@ $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $jsonPath = Join-Path $evDir "e5d-o2-direction-$stamp.json"
 $transcriptPath = Join-Path $evDir "e5d-o2-direction-$stamp.log"
 $nosePath = 'C:\Program Files\AEGIS NIDS\runtime\aegis-nose.exe'
+$daemonPath = 'C:\Program Files\AEGIS NIDS\runtime\aegis_nids.exe'
+$expectedDaemonHash = 'E19370F598507FBC9A1194EA8182059B319DFAF76DFF4D3DE34814C57386B407'
 Start-Transcript -Path $transcriptPath -Force
 
 function Invoke-JsonCommand([string[]]$Command) {
@@ -45,10 +57,18 @@ $result = [ordered]@{
     service_before = (Get-Service AegisNids).Status.ToString()
     driver_before = (Get-Service AegisWfp).Status.ToString()
     takeover_observed = $false
-    marker_received_by_loopback_server = $false
+    marker_sent_to_remote = $false
     forensic_match = $false
     outbound_direction_observed = $false
+    forensic_query_records_matched = 0
+    forensic_query_records_returned = 0
+    diagnostic_marker_records = @()
+    forensic_integrity_during_probe = $null
     handback_observed = $false
+    nose_frames_advanced_after_handback = $false
+    nose_frames_submitted_advanced_after_handback = $false
+    remote_address = $RemoteAddress
+    remote_port = $RemotePort
     prevention_gate_before = $null
     prevention_gate_after = $null
     snapshots = @()
@@ -57,6 +77,7 @@ $noseStopped = $false
 $noseStarted = $false
 $existingNose = @()
 $startedNose = $null
+$baseline = $null
 
 try {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -72,20 +93,30 @@ try {
     if ($enforceBefore.prevention_gate -ne 'closed' -or $enforceBefore.host_effect_capable) {
         throw 'Refusing proof unless prevention_gate=closed and host_effect_capable=false.'
     }
+    $result.daemon_sha256 = (Get-FileHash -LiteralPath $daemonPath -Algorithm SHA256).Hash.ToUpperInvariant()
+    if ($result.daemon_sha256 -ne $expectedDaemonHash) {
+        throw "Installed daemon hash $($result.daemon_sha256) does not match the E5-pinned candidate $expectedDaemonHash."
+    }
+    $featureProbe = Invoke-JsonCommand @('tools/aegisctl.py', 'forensics', 'list', '--json', '--limit', '1')
+    $probeRecords = @($featureProbe.records)
+    if ($probeRecords.Count -eq 0) { throw 'Cannot validate runtime feature support: forensic ring has no retained records.' }
+    if (-not $probeRecords[0].PSObject.Properties['direction']) {
+        throw 'The live daemon predates O2 direction metadata; deploy the current zig-out/bin/aegis_nids.exe before running this E5 proof.'
+    }
     if (-not (Test-Path -LiteralPath $nosePath -PathType Leaf)) { throw "Nose binary missing: $nosePath" }
     $result.nose_sha256 = (Get-FileHash -LiteralPath $nosePath -Algorithm SHA256).Hash.ToUpperInvariant()
     $existingNose = @(Get-Process -Name 'aegis-nose' -ErrorAction SilentlyContinue)
     if ($existingNose.Count -ne 1) { throw "Expected one Nose process; found $($existingNose.Count)." }
 
-    $before = Get-Snapshot
-    $result.snapshots += $before
-    if ($before.mode -ne 'npcap_primary' -or -not $before.nose_connected) {
+    $baseline = Get-Snapshot
+    $result.snapshots += $baseline
+    if ($baseline.mode -ne 'npcap_primary' -or -not $baseline.nose_connected) {
         throw 'Require a flowing npcap_primary baseline before takeover.'
     }
 
     $enforceSource = (Invoke-JsonCommand @('tools/aegisctl.py', 'forensics', 'verify'))
     if ($enforceSource.verified -ne $true) { throw 'Forensic hash chain is not verified before the probe.' }
-    Write-Host "baseline mode=$($before.mode) wfp_rows=$($before.wfp_rows) nose_frames=$($before.nose_frames_submitted)"
+    Write-Host "baseline mode=$($baseline.mode) wfp_rows=$($baseline.wfp_rows) nose_frames=$($baseline.nose_frames_submitted)"
 
     Stop-Process -Id $existingNose[0].Id -Force
     $noseStopped = $true
@@ -101,42 +132,38 @@ try {
     } while ((Get-Date) -lt $deadline)
     if (-not $result.takeover_observed) { throw 'Kernel fallback was not observed within 45 seconds.' }
 
-    # Generate a unique one-way TCP payload on loopback. No external host,
-    # policy edit, filter mutation, or prevention request is involved.
+    # Send a unique one-way TCP payload to an operator-controlled remote
+    # listener. Loopback is excluded because its server-side inbound callback
+    # can record the same payload as direction=0.
     $marker = "AEGIS-O2-DIRECTION-$([Guid]::NewGuid().ToString('N'))"
     $result.marker = $marker
     $markerBytes = [Text.Encoding]::ASCII.GetBytes($marker)
-    $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 0)
-    $listener.Start()
+    $client = [Net.Sockets.TcpClient]::new()
     try {
-        $port = ([Net.IPEndPoint]$listener.LocalEndpoint).Port
-        $result.loopback_port = $port
-        $client = [Net.Sockets.TcpClient]::new()
-        try {
-            $client.Connect([Net.IPAddress]::Loopback, $port)
-            $server = $listener.AcceptTcpClient()
-            try {
-                $clientStream = $client.GetStream()
-                $clientStream.Write($markerBytes, 0, $markerBytes.Length)
-                $clientStream.Flush()
-                $serverStream = $server.GetStream()
-                $received = New-Object byte[] $markerBytes.Length
-                $read = 0
-                while ($read -lt $received.Length) {
-                    $chunk = $serverStream.Read($received, $read, $received.Length - $read)
-                    if ($chunk -le 0) { break }
-                    $read += $chunk
-                }
-                $result.marker_received_by_loopback_server = ($read -eq $markerBytes.Length -and
-                    [Text.Encoding]::ASCII.GetString($received, 0, $read) -ceq $marker)
-            } finally { $server.Dispose() }
-        } finally { $client.Dispose() }
-    } finally { $listener.Stop() }
-    if (-not $result.marker_received_by_loopback_server) { throw 'Loopback server did not receive the exact marker.' }
+        $client.Connect($RemoteAddress, $RemotePort)
+        $stream = $client.GetStream()
+        $stream.Write($markerBytes, 0, $markerBytes.Length)
+        $stream.Flush()
+        $result.marker_sent_to_remote = $true
+    } finally { $client.Dispose() }
+    if (-not $result.marker_sent_to_remote) { throw 'Remote TCP sink did not accept the marker write.' }
+
+    # Capture transport activity before querying forensic attribution so a
+    # missing record still leaves evidence of whether the WFP ring advanced.
+    $afterTraffic = Get-Snapshot
+    $result.snapshots += $afterTraffic
+    $result.wfp_rows_advanced = ($afterTraffic.wfp_rows -gt $baseline.wfp_rows)
 
     $deadline = (Get-Date).AddSeconds(20)
     do {
-        $matches = Invoke-JsonCommand @('tools/aegisctl.py', 'forensics', 'list', '--json', '--limit', '1000', '--source', '1', '--payload-prefix', $marker)
+        # Do not filter by source here: keep marker-matching rows from any
+        # source so the proof can distinguish attribution drift from a
+        # missing payload/evidence record.
+        $matches = Invoke-JsonCommand @('tools/aegisctl.py', 'forensics', 'list', '--json', '--limit', '1000', '--payload-prefix', $marker)
+        $result.forensic_query_records_matched = [uint64]$matches.records_matched
+        $result.forensic_query_records_returned = [uint64]$matches.records_returned
+        $result.forensic_integrity_during_probe = $matches.integrity
+        $result.diagnostic_marker_records = @($matches.records)
         $record = $matches.records | Where-Object { $_.source_name -eq 'wfp_sensor' -and $_.direction -eq 1 } | Select-Object -First 1
         if ($record) {
             $result.forensic_match = $true
@@ -149,12 +176,11 @@ try {
         Start-Sleep -Milliseconds 500
     } while ((Get-Date) -lt $deadline)
     if (-not $result.outbound_direction_observed) {
-        throw 'No authenticated WFP forensic record with matching payload prefix and direction=1 was returned.'
+        $observed = if ($result.diagnostic_marker_records.Count -gt 0) {
+            ($result.diagnostic_marker_records | ForEach-Object { "source=$($_.source_name) direction=$($_.direction) seq=$($_.record_seq)" }) -join '; '
+        } else { 'no exact payload-prefix record from any source' }
+        throw "No authenticated WFP forensic record with matching payload prefix and direction=1 was returned; matched=$($result.forensic_query_records_matched) records=[$observed]."
     }
-
-    $afterTraffic = Get-Snapshot
-    $result.snapshots += $afterTraffic
-    $result.wfp_rows_advanced = ($afterTraffic.wfp_rows -gt $before.wfp_rows)
 } catch {
     $result.error = $_.Exception.Message
 } finally {
@@ -182,7 +208,13 @@ try {
             try {
                 $snap = Get-Snapshot
                 $result.snapshots += $snap
-                if ($snap.mode -eq 'npcap_primary' -and $snap.nose_connected) {
+                if ($baseline) {
+                    $result.nose_frames_advanced_after_handback = $snap.nose_frames_read -gt $baseline.nose_frames_read
+                    $result.nose_frames_submitted_advanced_after_handback = $snap.nose_frames_submitted -gt $baseline.nose_frames_submitted
+                }
+                if ($snap.mode -eq 'npcap_primary' -and $snap.nose_connected -and
+                    $result.nose_frames_advanced_after_handback -and
+                    $result.nose_frames_submitted_advanced_after_handback) {
                     $result.handback_observed = $true
                     break
                 }
@@ -198,13 +230,15 @@ try {
         $result.forensic_chain_after = Invoke-JsonCommand @('tools/aegisctl.py', 'forensics', 'verify')
     } catch { $result.forensic_chain_error = $_.Exception.Message }
     $result.finished_at = [DateTime]::Now.ToString('o')
-    $result.gate = ($result.takeover_observed -and $result.marker_received_by_loopback_server -and
+    $result.gate = ($result.takeover_observed -and $result.marker_sent_to_remote -and
         $result.outbound_direction_observed -and $result.wfp_rows_advanced -and
-        $result.handback_observed -and $result.prevention_gate_before -eq 'closed' -and
+        $result.handback_observed -and $result.nose_frames_advanced_after_handback -and
+        $result.nose_frames_submitted_advanced_after_handback -and
+        $result.prevention_gate_before -eq 'closed' -and
         $result.prevention_gate_after -eq 'closed' -and -not $result.host_effect_capable_after -and
         $result.forensic_chain_after.verified -eq $true)
     $result | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $jsonPath -Encoding UTF8
-    Write-Host "takeover=$($result.takeover_observed) marker=$($result.marker_received_by_loopback_server) outbound_direction=$($result.outbound_direction_observed) wfp_rows_advanced=$($result.wfp_rows_advanced) handback=$($result.handback_observed) gate=$($result.gate)"
+    Write-Host "takeover=$($result.takeover_observed) marker_sent=$($result.marker_sent_to_remote) outbound_direction=$($result.outbound_direction_observed) wfp_rows_advanced=$($result.wfp_rows_advanced) handback=$($result.handback_observed) nose_read_advanced=$($result.nose_frames_advanced_after_handback) nose_submitted_advanced=$($result.nose_frames_submitted_advanced_after_handback) gate=$($result.gate)"
     Stop-Transcript
 }
 

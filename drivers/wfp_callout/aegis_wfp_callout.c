@@ -4,14 +4,15 @@
  * C1 FIX: Extracts 5-tuple from inFixedValues->incomingValue[]
  *         indexed by FWPS_FIELD_INBOUND_TRANSPORT_V4_* constants.
  * C2 FIX: Calls FwpmFilterAdd0 so callout is actually invoked.
- * EVT-231: classify copies a bounded raw payload (<= AEGIS_MAX_PAYLOAD_SIZE
- *         bytes as delivered at the transport layer) into the ring after
- *         the 48-byte header.
+ * EVT-231 / O2: classify copies a bounded L4 payload (<= AEGIS_MAX_PAYLOAD_SIZE)
+ *         into the ring after the 48-byte header. Outbound callbacks strip
+ *         the TCP/UDP header required by the WFP layer's data offset.
  *
  * FAIL-OPEN design: classify never blocks packets.
  */
 
 #include "aegis_wfp.h"
+#include "aegis_wfp_payload.h"
 
 /* WinDbg/DbgView are not required for startup diagnosis. Persist the failing
  * registration stage and status in the System event log. DumpData[0] is the
@@ -93,35 +94,75 @@ static VOID AegisWfpEmitRecord(AEGIS_EVENT_HEADER *hdr, void *layerData)
 {
     KIRQL  oldIrql;
     SIZE_T usedSpace, totalSize;
+    SIZE_T payloadOffset = 0;
+    SIZE_T availablePayload = 0;
+    SIZE_T readLength = 0;
     PNET_BUFFER_LIST nbl = (PNET_BUFFER_LIST)layerData;
     PNET_BUFFER nb = NULL;
     ULONG  availableBytes = 0;
     ULONG  copyLen = 0;
     PVOID  payload = NULL;
+    PVOID  layerHeader = NULL;
+    ULONG  headerBytes = 0;
+    BOOLEAN payloadRangeValid = FALSE;
 
     if (nbl != NULL) {
         nb = NET_BUFFER_LIST_FIRST_NB(nbl);
     }
     if (nb != NULL) {
         availableBytes = NET_BUFFER_DATA_LENGTH(nb);
-        copyLen = (availableBytes > AEGIS_MAX_PAYLOAD_SIZE)
-            ? AEGIS_MAX_PAYLOAD_SIZE : availableBytes;
     }
-    hdr->payload_length = copyLen;
-    totalSize = sizeof(AEGIS_EVENT_HEADER) + (SIZE_T)copyLen;
+    hdr->payload_length = 0;
+    totalSize = sizeof(AEGIS_EVENT_HEADER);
 
     KeAcquireSpinLock(&g_RingLock, &oldIrql);
+
+    if (nb != NULL) {
+        if (hdr->direction == 1) {
+            if (hdr->protocol == 6) {
+                headerBytes = 20; /* Minimum TCP header; data offset gives full size. */
+            } else if (hdr->protocol == 17) {
+                headerBytes = 8; /* UDP header. */
+            }
+            if (headerBytes > 0 && availableBytes >= headerBytes) {
+                layerHeader = NdisGetDataBuffer(nb, headerBytes,
+                    g_PayloadScratch, 1, 0);
+            }
+        }
+        payloadRangeValid = (BOOLEAN)(aegis_wfp_get_payload_slice(
+            (const unsigned char *)layerHeader,
+            availableBytes,
+            (unsigned char)hdr->protocol,
+            (unsigned char)hdr->direction,
+            &payloadOffset,
+            &availablePayload) != 0);
+        if (payloadRangeValid) {
+            copyLen = (availablePayload > AEGIS_MAX_PAYLOAD_SIZE)
+                ? AEGIS_MAX_PAYLOAD_SIZE : (ULONG)availablePayload;
+        }
+        hdr->payload_length = copyLen;
+        totalSize = sizeof(AEGIS_EVENT_HEADER) + (SIZE_T)copyLen;
+    }
 
     /* Gather the payload under the ring lock: NdisGetDataBuffer returns a
      * pointer into the packet when the data is contiguous, else copies
      * into the pre-allocated non-paged scratch buffer (never the kernel
-     * stack). */
+     * stack). Outbound transport buffers begin with TCP/UDP headers, so read
+     * through the validated header offset before writing only payload bytes. */
     if (copyLen > 0) {
-        payload = NdisGetDataBuffer(nb, copyLen, g_PayloadScratch, 1, 0);
+        readLength = payloadOffset + (SIZE_T)copyLen;
+        if (readLength > AEGIS_MAX_CAPTURE_WINDOW) {
+            payload = NULL;
+        } else {
+            payload = NdisGetDataBuffer(nb, (ULONG)readLength,
+                g_PayloadScratch, 1, 0);
+        }
         if (payload == NULL) {
             copyLen = 0;
             hdr->payload_length = 0;
             totalSize = sizeof(AEGIS_EVENT_HEADER);
+        } else {
+            payload = (PUCHAR)payload + payloadOffset;
         }
     }
     usedSpace = AEGIS_RING_USED();

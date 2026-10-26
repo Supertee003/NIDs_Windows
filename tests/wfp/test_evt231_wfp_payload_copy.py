@@ -34,7 +34,12 @@ def test_callout_copies_bounded_payload_into_record():
     assert "NdisGetDataBuffer" in text
     assert "NET_BUFFER_LIST_FIRST_NB" in text
     assert "NET_BUFFER_DATA_LENGTH" in text
+    assert "aegis_wfp_get_payload_slice" in text
+    assert "payloadOffset" in text
+    assert "AEGIS_MAX_CAPTURE_WINDOW" in text
     assert "g_PayloadScratch" in text
+    emit = text.split("static VOID AegisWfpEmitRecord", 1)[1].split("/* ====== WFP Inbound", 1)[0]
+    assert emit.index("KeAcquireSpinLock") < emit.index("NdisGetDataBuffer")
     assert "AEGIS_MAX_PAYLOAD_SIZE" in text
     # Fail-open must survive the payload path.
     assert "FWP_ACTION_PERMIT" in text
@@ -65,7 +70,7 @@ def test_stats_populate_all_counters():
 def test_zig_loop_documents_bounded_copy():
     text = TELEMETRY.read_text(encoding="utf-8")
     assert "AEGIS_MAX_PAYLOAD_SIZE" in text
-    assert "payload_length == 0 is the degraded" in text
+    assert "payload_length == 0 means empty, unavailable, or unsupported/malformed" in text
     # The stale "5-tuples only, payload_length = 0 by construction" claim
     # must not return: the driver now carries bounded raw bytes.
     assert "driver ring carries 5-tuples" not in text

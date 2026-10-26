@@ -7,9 +7,10 @@
  * cross-file function declarations.
  *
  * EVT-231: a ring record is the 48-byte header followed by
- * payload_length raw transport-layer bytes (bounded by
- * AEGIS_MAX_PAYLOAD_SIZE). READ_EVENTS returns whole records only; it
- * never splits one across reads.
+ * payload_length raw transport payload bytes (bounded by
+ * AEGIS_MAX_PAYLOAD_SIZE). Outbound WFP buffers start at the transport
+ * header, which the producer strips before writing this field. READ_EVENTS
+ * returns whole records only; it never splits one across reads.
  */
 
 #ifndef AEGIS_WFP_H
@@ -161,10 +162,13 @@ typedef struct _AEGIS_WFP_FILTER_STATE {
 
 /* ====== Ring Buffer ====== */
 #define AEGIS_RING_BUFFER_SIZE     (2 * 1024 * 1024)   /* 2 MB */
-/* EVT-231: max raw packet bytes copied per record. Records are variable
+/* EVT-231: max raw payload bytes copied per record. Records are variable
  * length (48-byte header + payload_length); consumers advance by
  * 48 + payload_length, never a fixed stride. */
 #define AEGIS_MAX_PAYLOAD_SIZE     4096
+#define AEGIS_MAX_TRANSPORT_HEADER_SIZE 60 /* maximum TCP header with options */
+#define AEGIS_MAX_CAPTURE_WINDOW \
+    (AEGIS_MAX_PAYLOAD_SIZE + AEGIS_MAX_TRANSPORT_HEADER_SIZE)
 
 /* Ring used-space helper (call under spinlock) */
 #define AEGIS_RING_USED() \
@@ -189,7 +193,7 @@ typedef struct _AEGIS_EVENT_HEADER {
     UINT8   direction;      /* 0=inbound, 1=outbound */
     UINT8   layer_id;       /* WFP layer ID (low byte) */
     UINT8   flags;          /* Reserved */
-    UINT32  payload_length; /* EVT-231: raw bytes after header (0=copy unavailable; <= AEGIS_MAX_PAYLOAD_SIZE) */
+    UINT32  payload_length; /* EVT-231: payload bytes (0=empty/unavailable/unsupported; <= AEGIS_MAX_PAYLOAD_SIZE) */
     UINT32  rule_id;        /* Matched rule ID (0=none) */
     UINT32  severity;       /* 0=Low 1=Med 2=High 3=Critical */
     UINT32  reserved;       /* Reserved */

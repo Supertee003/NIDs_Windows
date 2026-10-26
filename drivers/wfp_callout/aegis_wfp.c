@@ -730,7 +730,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 
     /* EVT-231: non-paged payload scratch for NdisGetDataBuffer. */
     g_PayloadScratch = ExAllocatePoolWithTag(NonPagedPoolNx,
-        AEGIS_MAX_PAYLOAD_SIZE, 'AEGP');
+        AEGIS_MAX_CAPTURE_WINDOW, 'AEGP');
     if (!g_PayloadScratch) {
         DbgPrint("[AEGIS WFP] Failed to allocate payload scratch\n");
         ExFreePool(g_RingBuffer);

@@ -7,11 +7,12 @@
 //! queue. A missing provider read surface is LABELED, not silent: the loop
 //! stamps runtime_state.g_wfp_provider_state, which control/queue renders
 //! as the `wfp` block of queue.stats. Since EVT-231 the driver ring
-//! copies a bounded raw payload per record (up to AEGIS_MAX_PAYLOAD_SIZE
-//! = 4096 bytes exactly as delivered at the transport layer: on the
-//! verified loopback path the bytes begin at the transport payload, no
-//! transport header, no stream reassembly);
-//! payload_length == 0 is the degraded copy-unavailable case. This loop still performs no L7 matching itself
+//! copies a bounded transport payload per record (up to
+//! AEGIS_MAX_PAYLOAD_SIZE = 4096 bytes; inbound data starts at payload,
+//! outbound TCP/UDP headers are validated and stripped before copy, and no
+//! stream reassembly is performed);
+//! payload_length == 0 means empty, unavailable, or unsupported/malformed
+//! outbound transport data. This loop still performs no L7 matching itself
 //! -- it transports the bytes; flow/5-tuple fields remain the primary
 //! signal, and any content matching must name the bounded-copy limit
 //! rather than imply reassembled streams.
