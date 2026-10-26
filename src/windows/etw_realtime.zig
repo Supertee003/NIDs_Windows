@@ -1038,13 +1038,36 @@ extern "aegis_etw_helper" fn aegis_etw_start(session_name: [*]const u8, provider
 extern "aegis_etw_helper" fn aegis_etw_stop(session_name: [*]const u8) c_int;
 extern "aegis_etw_helper" fn aegis_etw_set_callback(cb: *const fn (ctx: *anyopaque, rec: *const NativeEtwEvent, ext_data: [*]const u8, ext_len: usize) callconv(.C) void, ctx: *anyopaque) c_int;
 
+fn wrapEtwEvent(c: *anyopaque, native: *const NativeEtwEvent, ext_data: [*]const u8, ext_len: usize) callconv(.C) void {
+    const outer: *EtwSource = @ptrCast(@alignCast(c));
+    var rec = EtwEventRecord{
+        .timestamp_ns = native.timestamp_ns,
+        .provider_guid = native.provider_guid,
+        .event_id = @intCast(@min(native.event_id, @as(u32, std.math.maxInt(u16)))),
+        .process_id = native.process_id,
+        .thread_id = native.thread_id,
+    };
+    // GAP-015 G4: pre-decode gate. ~97% of native records are
+    // unmapped pairs the classifier would drop AFTER full TDH decode;
+    // skip decode + callback here (no behavior change — those records
+    // never entered). Counted apart so a nonzero classifier-side
+    // unmapped count means gate/classifier drift.
+    if (!shouldDecodeEtw(&rec.provider_guid, rec.event_id)) {
+        _ = g_etw_predecode_dropped.fetchAdd(1, .monotonic);
+        outer.events_received += 1;
+        return;
+    }
+    decodeTdhPayload(&rec, ext_data[0..ext_len]);
+    if (outer.callback) |cb_fn| cb_fn(c, &rec, ext_data[0..ext_len]);
+    outer.events_received += 1;
+}
+
 pub const EtwSource = struct {
     session_name: [64]u8 = [_]u8{0} ** 64,
     running: std.atomic.Value(bool) = std.atomic.Value(bool).init(false),
     events_received: u64 = 0,
     events_dropped: u64 = 0,
     callback: ?EtwCallback = null,
-    callback_ctx: ?*anyopaque = null,
 
     pub fn init() EtwSource {
         var s = EtwSource{};
@@ -1073,38 +1096,30 @@ pub const EtwSource = struct {
         diag.info("ETW session {s} stopped", .{name_z});
     }
 
-    pub fn setCallback(self: *EtwSource, ctx: *anyopaque, cb: EtwCallback) !void {
-        self.callback_ctx = ctx;
+    pub fn setCallback(self: *EtwSource, cb: EtwCallback) !void {
         self.callback = cb;
-        const wrapper = struct {
-            fn wrap(c: *anyopaque, native: *const NativeEtwEvent, ext_data: [*]const u8, ext_len: usize) callconv(.C) void {
-                const outer: *EtwSource = @ptrCast(@alignCast(c));
-                var rec = EtwEventRecord{
-                    .timestamp_ns = native.timestamp_ns,
-                    .provider_guid = native.provider_guid,
-                    .event_id = @intCast(@min(native.event_id, @as(u32, std.math.maxInt(u16)))),
-                    .process_id = native.process_id,
-                    .thread_id = native.thread_id,
-                };
-                // GAP-015 G4: pre-decode gate. ~97% of native records are
-                // unmapped pairs the classifier would drop AFTER full TDH
-                // decode; skip decode + callback here (no behavior change —
-                // those records never entered). Counted apart so a nonzero
-                // classifier-side unmapped count means gate/classifier drift.
-                if (!shouldDecodeEtw(&rec.provider_guid, rec.event_id)) {
-                    _ = g_etw_predecode_dropped.fetchAdd(1, .monotonic);
-                    outer.events_received += 1;
-                    return;
-                }
-                decodeTdhPayload(&rec, ext_data[0..ext_len]);
-                if (outer.callback) |cb_fn| cb_fn(outer.callback_ctx.?, &rec, ext_data[0..ext_len]);
-                outer.events_received += 1;
-            }
-        };
-        const rc = aegis_etw_set_callback(wrapper.wrap, @ptrCast(self));
+        const rc = aegis_etw_set_callback(wrapEtwEvent, @ptrCast(self));
         if (rc != 0) return error.EtwSetCallbackFailed;
     }
 };
+
+fn testEtwCallbackContext(ctx: *anyopaque, _: *const EtwEventRecord, _: []const u8) void {
+    const source: *EtwSource = @ptrCast(@alignCast(ctx));
+    source.events_dropped += 1;
+}
+
+test "ETW native wrapper passes its source context to callback" {
+    var source = EtwSource.init();
+    source.callback = testEtwCallbackContext;
+
+    var native = std.mem.zeroes(NativeEtwEvent);
+    native.event_id = 1;
+    native.provider_guid = KERNEL_PROCESS_GUID.guid;
+    wrapEtwEvent(@ptrCast(&source), &native, "", 0);
+
+    try std.testing.expectEqual(@as(u64, 1), source.events_received);
+    try std.testing.expectEqual(@as(u64, 1), source.events_dropped);
+}
 
 /// GAP-015 G4: records worth TDH-decoding. Mirrors the kept arms of the
 /// pipeline classifier (telemetry_threads.classifyEtwEvent) — the parity

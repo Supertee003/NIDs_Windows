@@ -124,7 +124,7 @@ pub fn etwThread(source: *etw.EtwSource) void {
     defer source.stop();
 
     // Set callback to push ETW events into pipeline
-    source.setCallback(undefined, etwCallback) catch |err| {
+    source.setCallback(etwCallback) catch |err| {
         diag.warn("ETW setCallback failed: {}", .{err});
         state.markWorkerFailure(.etw);
         return;
