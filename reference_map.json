@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-26T05:51:59.255742+00:00",
+  "generated_at": "2026-10-26T08:58:01.373371+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1708,
+  "total_files": 1726,
   "by_role": {
     "documentation": 558,
     "build-config": 210,
     "other": 19,
-    "source": 339,
+    "source": 356,
     "lockfile": 6,
     "rust-build": 4,
-    "test-artifact": 206,
+    "test-artifact": 207,
     "config-data": 34,
     "architecture-decision": 11,
     "step-document": 2,
@@ -4405,6 +4405,10 @@
       "class": "canonical-build",
       "role": "build-config"
     },
+    "scripts/_probe_nose_proc.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
     "scripts/add_web_evidence.py": {
       "class": "canonical-source",
       "role": "source"
@@ -4554,6 +4558,74 @@
       "role": "build-config"
     },
     "scripts/doc_checker.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_arbiter_handback.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_arbiter_redeploy.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_arbiter_swap_test.ps1": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "scripts/e5_arbiter_swap_verified.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_cdb_repro.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_cdb_repro2.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_deploy_abi_set.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_driver_swap.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_driver_swap_resume.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_eventlog_probe.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_localdumps_repro.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_nose_parent_probe.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_outbound_probe.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_pe_export_diff.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_repro_crash.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_rollback_daemon.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_wer_dump.ps1": {
       "class": "canonical-source",
       "role": "source"
     },

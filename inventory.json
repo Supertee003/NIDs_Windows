@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-26T05:51:59.251564+00:00",
+  "generated_at": "2026-10-26T08:58:01.370582+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1708,
+  "total_files": 1726,
   "by_class": {
     "canonical-docs": 571,
     "canonical-build": 221,
     "unclassified": 19,
-    "canonical-source": 624,
-    "canonical-test": 206,
+    "canonical-source": 641,
+    "canonical-test": 207,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -3144,7 +3144,7 @@
       "path": "CONTRACT_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 10961
+      "size": 11126
     },
     {
       "path": "contracts/fixtures/abi/event_boundaries.json",
@@ -3984,7 +3984,7 @@
       "path": "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 81984
+      "size": 89483
     },
     {
       "path": "docs/MASTER_TARGET_ALIGNMENT_2026-09-14.md",
@@ -4278,7 +4278,7 @@
       "path": "docs/WFP_IOCTL_STATUS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5401
+      "size": 6287
     },
     {
       "path": "drivers/minifilter/aegis_minifilter.c",
@@ -4668,7 +4668,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 740891
+      "size": 753813
     },
     {
       "path": "fix_bridge_banner.py",
@@ -4692,7 +4692,7 @@
       "path": "FLOW_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 14044
+      "size": 14073
     },
     {
       "path": "go/aggregator/alert.go",
@@ -4800,7 +4800,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 276299
+      "size": 278894
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -5052,7 +5052,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9571
+      "size": 9534
     },
     {
       "path": "README.md",
@@ -5064,7 +5064,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 226675
+      "size": 228624
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -6153,6 +6153,12 @@
       "size": 361635
     },
     {
+      "path": "scripts/_probe_nose_proc.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 627
+    },
+    {
       "path": "scripts/add_web_evidence.py",
       "class": "canonical-source",
       "role": "source",
@@ -6379,6 +6385,108 @@
       "class": "canonical-source",
       "role": "source",
       "size": 11606
+    },
+    {
+      "path": "scripts/e5_arbiter_handback.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2874
+    },
+    {
+      "path": "scripts/e5_arbiter_redeploy.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3426
+    },
+    {
+      "path": "scripts/e5_arbiter_swap_test.ps1",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 3062
+    },
+    {
+      "path": "scripts/e5_arbiter_swap_verified.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 6665
+    },
+    {
+      "path": "scripts/e5_cdb_repro.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2355
+    },
+    {
+      "path": "scripts/e5_cdb_repro2.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2427
+    },
+    {
+      "path": "scripts/e5_deploy_abi_set.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4431
+    },
+    {
+      "path": "scripts/e5_driver_swap.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2827
+    },
+    {
+      "path": "scripts/e5_driver_swap_resume.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4364
+    },
+    {
+      "path": "scripts/e5_eventlog_probe.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1032
+    },
+    {
+      "path": "scripts/e5_localdumps_repro.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2784
+    },
+    {
+      "path": "scripts/e5_nose_parent_probe.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 1740
+    },
+    {
+      "path": "scripts/e5_outbound_probe.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 5978
+    },
+    {
+      "path": "scripts/e5_pe_export_diff.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4033
+    },
+    {
+      "path": "scripts/e5_repro_crash.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2053
+    },
+    {
+      "path": "scripts/e5_rollback_daemon.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 972
+    },
+    {
+      "path": "scripts/e5_wer_dump.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2254
     },
     {
       "path": "scripts/fim_rule_canary_scan.py",
@@ -6798,7 +6906,7 @@
       "path": "shared/protocol/control_protocol.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 7498
+      "size": 7725
     },
     {
       "path": "shared/protocol/protocol.md",
@@ -7068,7 +7176,7 @@
       "path": "src/control/handler_registry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 154842
+      "size": 156961
     },
     {
       "path": "src/control/protocol.zig",
@@ -7398,7 +7506,7 @@
       "path": "src/forensic/forensic_pipeline.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 31997
+      "size": 34863
     },
     {
       "path": "src/forensic/forensics_engine.zig",
@@ -7530,13 +7638,13 @@
       "path": "src/pipeline/event_processor.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 37303
+      "size": 37559
     },
     {
       "path": "src/pipeline/event_queue.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 27651
+      "size": 28462
     },
     {
       "path": "src/pipeline/l4_matcher.zig",
@@ -9714,7 +9822,7 @@
       "path": "tests/wfp/test_kernel_bidirectional_capture.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 3744
+      "size": 4756
     },
     {
       "path": "tests/wfp/test_t11_wfp_enforcement.py",

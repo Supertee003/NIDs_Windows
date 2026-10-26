@@ -1,5 +1,5 @@
 {
-  "head_sha": "767cb98fc8178c048144199ec177a36b73ddd6db",
+  "head_sha": "d0de7d7a2557eac7d40d20b73e04c77f3a3e98e7",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -227,8 +227,8 @@
       "id": "FORENSIC_RECORD",
       "name": "Forensic Record",
       "file": "src/forensic/forensic_pipeline.zig",
-      "schema": "4KB slot with RecordHeader (144 bytes) + payload + hash chain",
-      "version": "5.0"
+      "schema": "4KB slot with RecordHeader (144 bytes) + payload + hash chain; reserved[4]=direction metadata version 1 and reserved[3]=direction 0/1; legacy/unknown direction remains null; forensics.list/show/export expose additive direction",
+      "version": "5.1"
     },
     {
       "id": "DECISION_TRACE",
