@@ -1,8 +1,8 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-25T10:08:03.842433+00:00",
+  "generated_at": "2026-10-26T05:51:59.255742+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1705,
+  "total_files": 1708,
   "by_role": {
     "documentation": 558,
     "build-config": 210,
@@ -10,13 +10,13 @@
     "source": 339,
     "lockfile": 6,
     "rust-build": 4,
-    "test-artifact": 204,
+    "test-artifact": 206,
     "config-data": 34,
     "architecture-decision": 11,
     "step-document": 2,
     "go-source": 8,
     "makefile": 1,
-    "production-source": 276,
+    "production-source": 277,
     "legacy-source": 32,
     "quarantined": 1
   },
@@ -46,6 +46,7 @@
     "src/capture/packet_decoder.zig",
     "src/capture/pipe_monitor.zig",
     "src/capture/proto/parsers.zig",
+    "src/capture/source_arbiter.zig",
     "src/capture/stream_reassembly.zig",
     "src/capture/wfp_telemetry.zig",
     "src/capture/windows_capture.zig",
@@ -4952,6 +4953,10 @@
       "class": "canonical-source",
       "role": "production-source"
     },
+    "src/capture/source_arbiter.zig": {
+      "class": "canonical-source",
+      "role": "production-source"
+    },
     "src/capture/stream_reassembly.zig": {
       "class": "canonical-source",
       "role": "production-source"
@@ -6764,7 +6769,15 @@
       "class": "canonical-build",
       "role": "build-config"
     },
+    "tests/wfp/test_capture_source_arbitration.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/wfp/test_evt231_wfp_payload_copy.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/wfp/test_kernel_bidirectional_capture.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
