@@ -107,6 +107,39 @@ def test_format_queue_rows_labels_wfp_unknown():
     )
 
 
+def test_format_queue_rows_renders_capture_arbitration():
+    # PHASE-6: an operator must see WHICH source owns network ingress and
+    # how many kernel rows were shadowed while the packet path owned it.
+    response = dict(SAMPLE)
+    response["wfp"] = {
+        "state": "ok", "reads": 42, "rows": 7, "last_bytes": 256,
+        "mode": "npcap_primary", "reason": "none", "shadow_rows": 19,
+        "kernel_owned": False,
+    }
+    rows = cli._format_queue_rows(response)
+    assert (
+        "  wfp state=ok reads=42 rows=7 last_bytes=256 "
+        "mode=npcap_primary shadow=19" in rows
+    )
+
+
+def test_format_queue_rows_labels_kernel_owned_ingress():
+    # Kernel fallback is a legitimate state, not a failure: say who owns
+    # ingress and why, instead of implying rows are merely missing.
+    response = dict(SAMPLE)
+    response["wfp"] = {
+        "state": "ok", "reads": 8, "rows": 120, "last_bytes": 512,
+        "mode": "kernel_fallback", "reason": "nose_absent",
+        "shadow_rows": 0, "kernel_owned": True,
+    }
+    rows = cli._format_queue_rows(response)
+    assert (
+        "  wfp state=ok reads=8 rows=120 last_bytes=512 "
+        "mode=kernel_fallback reason=nose_absent (kernel owns network ingress; "
+        "Npcap not delivering)" in rows
+    )
+
+
 def test_format_queue_rows_omits_wfp_when_absent():
     # Daemons that predate the wfp block must not get an invented row.
     rows = cli._format_queue_rows(SAMPLE)

@@ -480,10 +480,20 @@ def _format_queue_rows(response: dict) -> list[str]:
             f"rows={wfp.get('rows', '?')} "
             f"last_bytes={wfp.get('last_bytes', '?')}"
         )
+        # PHASE-6: which acquisition source owns network ingress. Older
+        # daemons omit these fields; rendering stays byte-identical then.
+        if wfp.get("mode"):
+            row += f" mode={wfp['mode']}"
+            if wfp.get("reason") and wfp["reason"] != "none":
+                row += f" reason={wfp['reason']}"
+            if wfp.get("shadow_rows"):
+                row += f" shadow={wfp['shadow_rows']}"
         if state == "unavailable":
             row += " (kernel flow rows absent until provider returns)"
         elif state == "unknown":
             row += " (telemetry loop has not reported)"
+        elif wfp.get("kernel_owned"):
+            row += " (kernel owns network ingress; Npcap not delivering)"
         rows.append(row)
     mf = response.get("minifilter") or {}
     if mf:

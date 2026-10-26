@@ -27,6 +27,13 @@ DEFINE_GUID(AEGIS_CALLOUT_KEY,
     0xa1b2c3d4, 0xe5f6, 0x4a7b,
     0x8c, 0x9d, 0x0e, 0x1f, 0x2a, 0x3b, 0x4c, 0x5d);
 
+// O2: outbound IPv4 transport capture is a distinct callout identity so the
+// two layers can be registered, torn down, and audited independently.
+// {E5F60718-293A-4DBF-8C3D-4E5F60718293}
+DEFINE_GUID(AEGIS_OUTBOUND_CALLOUT_KEY,
+    0xe5f60718, 0x293a, 0x4dbf,
+    0x8c, 0x3d, 0x4e, 0x5f, 0x60, 0x71, 0x82, 0x93);
+
 // Retired single-key identity for the receipt-owned proof filter. It is no
 // longer used to create filters; a driver start deletes the stale filter an
 // older build left under this key.
@@ -73,6 +80,8 @@ ULONG g_WfpTotalBytesRead = 0;
 HANDLE g_WfpEngineHandle = NULL;
 UINT32 g_CalloutId = 0;
 UINT64 g_CaptureFilterId = 0;
+UINT32 g_OutboundCalloutId = 0;
+UINT64 g_OutboundCaptureFilterId = 0;
 EX_RUNDOWN_REF g_CalloutRundown;
 UINT64 g_ProofFilterId = 0;
 UINT32 g_BlockedIp = 0;

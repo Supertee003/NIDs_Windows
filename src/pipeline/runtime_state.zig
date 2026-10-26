@@ -208,6 +208,15 @@ pub var g_wfp_provider_state = std.atomic.Value(u8).init(@intFromEnum(WfpProvide
 pub var g_wfp_reads = std.atomic.Value(u64).init(0); // provider poll calls answered
 pub var g_wfp_rows = std.atomic.Value(u64).init(0); // ring records submitted to the pipeline
 pub var g_wfp_last_bytes = std.atomic.Value(u64).init(0); // bytes in the last answered read
+// PHASE-6: network acquisition arbitration (capture/source_arbiter.zig).
+// The WFP telemetry loop is the single writer of mode/reason; the control
+// plane renders them in queue.stats. `shadow_rows` counts kernel records
+// that were DRAINED but not submitted because the packet path owns
+// ingress — evidence the kernel saw traffic Npcap did not deliver, never a
+// silent drop. Ordinals: source_arbiter.Mode / source_arbiter.Reason.
+pub var g_capture_mode = std.atomic.Value(u8).init(0); // 0 = undecided
+pub var g_capture_reason = std.atomic.Value(u8).init(0);
+pub var g_wfp_shadow_rows = std.atomic.Value(u64).init(0);
 // EVT-230: kernel minifilter host-telemetry health (file/process events via
 // \AegisMinifilterPort). The reader loop owns these; control/queue renders
 // them so a driver-absent host shows a LABELED `unavailable` state, never a

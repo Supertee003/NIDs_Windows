@@ -678,3 +678,62 @@ gate (ไม่แตะ) และ wire contract ไม่เปลี่ยน
 - คิว operator คงเหลือ: G2 lab campaign (RB-012 -> RB-013; checklist @ `dcb22a5` — บันทึก SHA จริง),
   DEPLOY-120 installer host drill, RB-014/015/018/021, RB-016/017, G4 signing, external review, CI decision
 
+## 24. Slice O2: Kernel outbound IPv4 capture - IMPLEMENTED (E2, host proof pending)
+
+ปิดช่อง "kernel L7 เห็นแค่ inbound" ที่ NIC-001 (§11) วัดไว้: driver เดิมมี callout
+เดียวที่ `FWPM_LAYER_INBOUND_TRANSPORT_V4` ทำให้ detection ฝั่ง kernel ไม่เห็น
+outbound payload (C2/exfil) เลย
+
+- เพิ่ม callout ที่สองที่ `FWPM_LAYER_OUTBOUND_TRANSPORT_V4` (`AEGIS_OUTBOUND_CALLOUT_KEY`)
+  พร้อม filter แบบ terminating + `PERMIT_IF_CALLOUT_UNREGISTERED` เหมือน inbound
+- ใช้ record 48-byte เดิมและ ring เดียวกัน; `header.direction=1` เป็นตัวแยก
+  (0=inbound) — ไม่มี ABI/wire change, ไม่แตะ enforcement
+- inbound/outbound ใช้ emit helper ตัวเดียว (`AegisWfpEmitRecord`) เพื่อไม่ให้
+  ring writer สองทางเบี่ยงกัน; acquire rundown ก่อน emit และ release หลัง emit
+- teardown: ลบ outbound filter -> unregister outbound runtime -> ลบ BLM callout
+  ทั้งสอง key -> ปิด engine; startup ล้มกลางทางเรียก `AegisWfpUnregisterCallout()`
+  เพื่อไม่ให้เหลือคู่ callout ครึ่งเดียว
+- Zig reader: `ParsedRecord.direction` อ่านจาก header และส่งเข้า
+  `canonical_event.direction` (เดิมทิ้งค่าทำให้ outbound ถูกติดป้ายเป็น inbound)
+- tests: `tests/wfp/test_kernel_bidirectional_capture.py` + อัปเดต pin ของ
+  classify/rundown; `tests/wfp` 33 passed / 3 skipped (elevated host tests);
+  `zig build` exit 0; `zig build test` exit 0 (มี benchmark `registry_trie`
+  flaky หนึ่งรอบจากภาระเครื่อง แล้วผ่านเมื่อรันซ้ำ)
+- unsigned build: `build/x64/wfp/aegis_wfp.sys` 39,936 B
+  SHA-256 `7EDE4DCD4DC1D24CC2A98916648258A7B98437C0D8ECD70A0C3144C08D87A7C9`
+  (WDK build OK; ยังไม่ sign/ไม่ deploy)
+- ยังไม่ปิด: host proof (deploy + canary outbound จริง), และ O1 (kernel IPv6)
+  ซึ่งต้องมี record-header v2/ABI decision ก่อน
+- หมายเหตุ: host ปัจจุบันยังรัน driver candidate `95C7…` (G2 Fix 2) อยู่ — slice นี้
+  เป็น source/build เท่านั้น ไม่ได้สลับไดรเวอร์บนเครื่อง
+
+
+## 25. Slice ACQ-ARB: network acquisition arbitration (Npcap vs WFP kernel) - IMPLEMENTED (E2, host switch pending)
+
+ปิดข้อ DP-10 (สอง sensor family เป็น ingress พร้อมกัน = duplicate semantics):
+ก่อน slice นี้ WFP telemetry submit ทุก row เข้า pipeline พร้อมกับ Nose/Npcap
+ทำให้ event identity ซ้ำ, flow packet/byte นับซ้ำ และ rate rule เห็นซ้ำ
+
+- `src/capture/source_arbiter.zig` เป็นผู้ตัดสินเจ้าของ ingress แต่เพียงผู้เดียว
+  (pure decision + unit tests, ไม่แตะ device handle / enforcement):
+  - `npcap_primary` = Nose connected+ready -> Nose submit, kernel ring ยังถูก
+    drain แต่ row ถูกนับ `g_wfp_shadow_rows` และไม่ submit
+  - `kernel_fallback` = Nose absent หรือ Nose submitted counter นิ่ง >= `STALL_MS`
+    (10s) ขณะที่ kernel ยังเห็น row -> kernel submit ทั้ง inbound/outbound
+  - `split_lab` = `AEGIS_CAPTURE_SPLIT=1` opt-in เฉพาะ interface ที่พิสูจน์แล้วว่า
+    disjoint (lab); default ปิด
+  - `none` = ไม่มี source; รายงานตรง ไม่แกล้งเป็น primary
+- takeover ต้องมีหลักฐานสองอย่างพร้อมกัน: มี kernel row ขณะ Nose counter นิ่ง
+  และนิ่งครบ 10s — network idle เปล่า ๆ ไม่ทำให้ mode กระพริบ; Nose กลับมา
+  ส่ง frame เมื่อไร arbiter จะ stand down ก่อน submit record ถัดไป (overlap
+  สูงสุดคือ record ที่ in flight อยู่แล้ว)
+- `wfp_telemetry.zig` ถาม arbiter ต่อ record; shadow path ยัง advance ring
+  ตามปกติ (ไม่ให้ ring 2 MB overflow) แต่ไม่เรียก `submitRecord`
+- control plane: `queue.stats.wfp` เพิ่ม `mode`, `reason`, `shadow_rows`,
+  `kernel_owned`; `aegisctl queue` แสดง mode/reason/shadow และบอกเมื่อ kernel
+  เป็นเจ้าของ ingress (ไม่ใช่ "row หาย")
+- tests: Zig unit suite ของ arbiter (state, stall rule, idle no-flap, resume
+  stand-down, split opt-in) + `tests/wfp/test_capture_source_arbitration.py`
+  (static pins) + `tests/tools/test_aegisctl_queue.py` (render)
+- ยังไม่ปิด: host proof E5 ของการสลับ state (หยุด Nose -> kernel_fallback,
+  กลับมา -> npcap_primary) และ O1 (kernel IPv6)

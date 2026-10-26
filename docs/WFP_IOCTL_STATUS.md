@@ -10,9 +10,12 @@ The WFP stack has two implemented layers:
 1. Kernel driver `drivers/wfp_callout/` (`aegis_wfp.sys`; sources
    `aegis_wfp.c` / `aegis_wfp_callout.c` / `aegis_wfp.h`; device
    `\\.\AegisWfpDevice`):
-   - registers an inbound IPv4 callout at `FWPM_LAYER_INBOUND_TRANSPORT_V4`
-     that copies packet payloads into a 2 MB ring for telemetry. The copy
-     path is observe-only / fail-open by design - nothing blocks there;
+   - registers **two** IPv4 transport callouts: inbound at
+     `FWPM_LAYER_INBOUND_TRANSPORT_V4` and outbound at
+     `FWPM_LAYER_OUTBOUND_TRANSPORT_V4`. Both copy packet payloads into the
+     same 2 MB ring using the same 48-byte record; the header `direction`
+     byte (0=inbound, 1=outbound) is the discriminator. The copy path is
+     observe-only / fail-open by design - nothing blocks there;
    - processes the full control IOCTL set:
      `IOCTL_AEGIS_READ_EVENTS` (read), `IOCTL_AEGIS_BLOCK_FLOW` (write),
      `IOCTL_AEGIS_GET_STATS` (read), `IOCTL_AEGIS_UNBLOCK_FLOW` (write),
@@ -41,6 +44,29 @@ The WFP stack has two implemented layers:
      `IOCTL_AEGIS_BLOCK_FLOW`, with an exact-filter read-back
      (`IOCTL_AEGIS_QUERY_FILTER`) postcondition. When the adapter is
      absent it fails closed (`DECISION_ESCALATE`, reason 4) - never open.
+
+## Network acquisition states (PHASE-6)
+
+Npcap (via Go Nose) and the WFP kernel ring cannot both own detection
+ingress: two sources duplicate event identities, double flow packet/byte
+accounting, and double rate-rule observations (DP-10). The runtime states
+the owner explicitly (`src/capture/source_arbiter.zig`) and reports it in
+`queue.stats` under `wfp.mode` / `wfp.reason` / `wfp.shadow_rows`:
+
+| mode | condition | Npcap rows | kernel rows |
+|---|---|---|---|
+| `npcap_primary` | Nose connected + ready and producing | submitted | drained, counted as shadow, NOT submitted |
+| `kernel_fallback` | Nose absent, or Nose submitted-frame count stalled >= 10 s while the kernel keeps seeing rows | submitted if present | submitted (inbound + outbound) |
+| `split_lab` | `AEGIS_CAPTURE_SPLIT=1` opt-in, disjoint interfaces only | submitted | submitted |
+| `none` | neither source available | - | - |
+
+The kernel ring is always drained, even in shadow mode: a 2 MB ring must
+never overflow because the consumer disagreed with the mode. Shadow rows
+are evidence the kernel saw traffic the packet path did not deliver, and
+`g_wfp_shadow_rows` makes that countable instead of silent. Takeover is
+evidence-driven (kernel rows while the Nose submitted-frame counter stands still), so
+an idle network never flaps the mode; a resumed Nose stands the kernel
+back down before the next record is submitted.
 
 ## What gates enforcement today (by design)
 

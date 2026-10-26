@@ -213,6 +213,10 @@ typedef struct _AEGIS_RING_STATS {
 
 /* ====== GUID (defined via DEFINE_GUID in aegis_wfp.c) ====== */
 extern const GUID AEGIS_CALLOUT_KEY;
+/* O2 kernel capture: outbound IPv4 transport has its own callout key, runtime
+ * id, and capture filter. It shares the inbound ring and 48-byte record; the
+ * header direction byte (0=inbound, 1=outbound) is the only discriminator. */
+extern const GUID AEGIS_OUTBOUND_CALLOUT_KEY;
 extern const GUID AEGIS_PROOF_FILTER_KEY;
 extern const GUID AEGIS_PROOF_PROVIDER_KEY;
 
@@ -230,6 +234,8 @@ extern ULONG          g_WfpTotalBytesRead;
 extern HANDLE         g_WfpEngineHandle;
 extern UINT32         g_CalloutId;
 extern UINT64         g_CaptureFilterId;
+extern UINT32         g_OutboundCalloutId;
+extern UINT64         g_OutboundCaptureFilterId;
 /* Classify-call rundown: unload waits here before the capture filter, runtime
  * callout, engine, or ring is torn down. */
 extern EX_RUNDOWN_REF g_CalloutRundown;
@@ -250,7 +256,21 @@ enum {
     AEGIS_STAGE_PROOF_PROVIDER = 6
 };
 
-/* aegis_wfp_callout.c */
+/* aegis_wfp_callout.c — inbound and outbound transport classify callbacks. */
+void AegisWfpClassifyFn(
+    IN const FWPS_INCOMING_VALUES0          *inFixedValues,
+    IN const FWPS_INCOMING_METADATA_VALUES0 *inMetaValues,
+    IN OUT void                             *layerData,
+    IN const FWPS_FILTER0                   *filter,
+    IN UINT64                               flowContext,
+    IN OUT FWPS_CLASSIFY_OUT0               *classifyOut);
+void AegisWfpOutboundClassifyFn(
+    IN const FWPS_INCOMING_VALUES0          *inFixedValues,
+    IN const FWPS_INCOMING_METADATA_VALUES0 *inMetaValues,
+    IN OUT void                             *layerData,
+    IN const FWPS_FILTER0                   *filter,
+    IN UINT64                               flowContext,
+    IN OUT FWPS_CLASSIFY_OUT0               *classifyOut);
 NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject);
 VOID     AegisWfpUnregisterCallout(void);
 NTSTATUS AegisWfpStartupFailure(ULONG stage, NTSTATUS status);

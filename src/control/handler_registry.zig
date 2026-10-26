@@ -18,6 +18,7 @@ const siem_mod = @import("../forensic/siem_forwarder.zig");
 const event_queue = @import("../pipeline/event_queue.zig");
 const event_contract = @import("../contract/event.zig");
 const telemetry = @import("../pipeline/telemetry_threads.zig");
+const source_arbiter = @import("../capture/source_arbiter.zig");
 const etw_rt = @import("../windows/etw_realtime.zig");
 const fault = @import("../reliability/fault_injection.zig");
 const tracker_mod = @import("../detection/threat_tracker.zig");
@@ -729,11 +730,19 @@ const handlers = struct {
         // loop. "unavailable" is a LABELED absence (no silent zero);
         // rows>0 is the only "kernel flows are flowing" claim.
         writer.writeAll(",\"wfp\":{") catch return null;
-        writer.print("\"state\":\"{s}\",\"reads\":{},\"rows\":{},\"last_bytes\":{}}}", .{
+        // PHASE-6: acquisition arbitration. `mode` names which source owns
+        // network ingress; `shadow_rows` counts kernel rows drained while
+        // the packet path owns it (visible, never a silent drop).
+        const cap_mode = state_mod.g_capture_mode.load(.acquire);
+        writer.print("\"state\":\"{s}\",\"reads\":{},\"rows\":{},\"last_bytes\":{},\"mode\":\"{s}\",\"reason\":\"{s}\",\"shadow_rows\":{},\"kernel_owned\":{}}}", .{
             providerStateName(state_mod.g_wfp_provider_state.load(.acquire)),
             state_mod.g_wfp_reads.load(.acquire),
             state_mod.g_wfp_rows.load(.acquire),
             state_mod.g_wfp_last_bytes.load(.acquire),
+            source_arbiter.modeName(cap_mode),
+            source_arbiter.reasonName(state_mod.g_capture_reason.load(.acquire)),
+            state_mod.g_wfp_shadow_rows.load(.acquire),
+            cap_mode == @intFromEnum(source_arbiter.Mode.kernel_fallback),
         }) catch return null;
         // EVT-230: kernel minifilter host telemetry health (file/process
         // events via \AegisMinifilterPort), stamped by the reader loop.
@@ -2441,6 +2450,18 @@ test "queueStats emits parseable JSON with shed and etw keys (GAP-015)" {
     try std.testing.expect(wfp.contains("reads"));
     try std.testing.expect(wfp.contains("rows"));
     try std.testing.expect(wfp.contains("last_bytes"));
+    // PHASE-6: acquisition arbitration is stated, not inferred: which
+    // source owns ingress, why, and how many kernel rows it shadowed.
+    try std.testing.expect(wfp.contains("mode"));
+    try std.testing.expect(wfp.contains("reason"));
+    try std.testing.expect(wfp.contains("shadow_rows"));
+    try std.testing.expect(wfp.contains("kernel_owned"));
+    // Until the telemetry loop publishes a decision the fields report the
+    // honest pre-decision state, not an invented primary mode.
+    try std.testing.expectEqualStrings("undecided", wfp.get("mode").?.string);
+    try std.testing.expectEqualStrings("none", wfp.get("reason").?.string);
+    try std.testing.expectEqual(@as(i64, 0), wfp.get("shadow_rows").?.integer);
+    try std.testing.expect(!wfp.get("kernel_owned").?.bool);
     // EVT-230: the minifilter health block (same labeled-absence rule as
     // wfp) plus the KERNEL ring's own dropped counter - loss visibility.
     try std.testing.expect(root.contains("minifilter"));

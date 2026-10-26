@@ -130,6 +130,7 @@ comptime {
     _ = @import("capture/l7_classifier.zig");
     _ = @import("capture/minifilter_reader.zig");
     _ = @import("capture/nose_pipe_reader.zig");
+    _ = @import("capture/source_arbiter.zig");
     _ = @import("capture/wfp_telemetry.zig");
     _ = @import("capture/pipe_monitor.zig");
     _ = @import("control/audit.zig");

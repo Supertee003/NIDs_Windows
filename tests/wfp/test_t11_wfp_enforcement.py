@@ -294,12 +294,19 @@ def test_classify_is_drained_before_callout_teardown() -> None:
 
     assert "ExInitializeRundownProtection(&g_CalloutRundown);" in source
     assert "ExAcquireRundownProtection(&g_CalloutRundown)" in classify
+    # Both directions share one emit helper; the ring lock lives there, so
+    # the gate must be held before the call and released after it returns.
+    emit = callout.split("static VOID AegisWfpEmitRecord", 1)[1].split(
+        "/* ====== WFP Inbound Classify Callback", 1
+    )[0]
+    assert "KeAcquireSpinLock(&g_RingLock" in emit
+    assert "KeReleaseSpinLock(&g_RingLock" in emit
     assert classify.index("ExAcquireRundownProtection") < classify.index(
-        "KeAcquireSpinLock(&g_RingLock"
+        "AegisWfpEmitRecord(&hdr, layerData);"
     )
     assert "ExReleaseRundownProtection(&g_CalloutRundown);" in classify
     assert classify.index("ExReleaseRundownProtection") > classify.index(
-        "KeReleaseSpinLock(&g_RingLock"
+        "AegisWfpEmitRecord(&hdr, layerData);"
     )
     assert "ExWaitForRundownProtectionRelease(&g_CalloutRundown);" in unregister
     assert unregister.index("ExWaitForRundownProtectionRelease") < unregister.index(

@@ -84,7 +84,68 @@ static VOID AegisWfpRingWrite(const VOID *source, SIZE_T length)
     g_RingWriteOffset %= g_RingBufferSize;
 }
 
-/* ====== WFP Classify Callback ======
+/* ====== Shared ring record emit (EVT-231 / O2) ======
+ * Called with the rundown gate held and a fully populated 48-byte header.
+ * Copies a bounded raw payload and writes one variable-length record
+ * (header + payload) under the ring lock. Fail-open: a gather failure
+ * degrades the record to the header (payload_length = 0). */
+static VOID AegisWfpEmitRecord(AEGIS_EVENT_HEADER *hdr, void *layerData)
+{
+    KIRQL  oldIrql;
+    SIZE_T usedSpace, totalSize;
+    PNET_BUFFER_LIST nbl = (PNET_BUFFER_LIST)layerData;
+    PNET_BUFFER nb = NULL;
+    ULONG  availableBytes = 0;
+    ULONG  copyLen = 0;
+    PVOID  payload = NULL;
+
+    if (nbl != NULL) {
+        nb = NET_BUFFER_LIST_FIRST_NB(nbl);
+    }
+    if (nb != NULL) {
+        availableBytes = NET_BUFFER_DATA_LENGTH(nb);
+        copyLen = (availableBytes > AEGIS_MAX_PAYLOAD_SIZE)
+            ? AEGIS_MAX_PAYLOAD_SIZE : availableBytes;
+    }
+    hdr->payload_length = copyLen;
+    totalSize = sizeof(AEGIS_EVENT_HEADER) + (SIZE_T)copyLen;
+
+    KeAcquireSpinLock(&g_RingLock, &oldIrql);
+
+    /* Gather the payload under the ring lock: NdisGetDataBuffer returns a
+     * pointer into the packet when the data is contiguous, else copies
+     * into the pre-allocated non-paged scratch buffer (never the kernel
+     * stack). */
+    if (copyLen > 0) {
+        payload = NdisGetDataBuffer(nb, copyLen, g_PayloadScratch, 1, 0);
+        if (payload == NULL) {
+            copyLen = 0;
+            hdr->payload_length = 0;
+            totalSize = sizeof(AEGIS_EVENT_HEADER);
+        }
+    }
+    usedSpace = AEGIS_RING_USED();
+
+    /* Strict less-than keeps empty/full unambiguous: AEGIS_RING_USED
+     * reads used == size as empty, so a write must never fill the ring
+     * exactly. Honest accounting: drops are counted, not just logged. */
+    if (totalSize < g_RingBufferSize - usedSpace) {
+        AegisWfpRingWrite(hdr, sizeof(AEGIS_EVENT_HEADER));
+        if (copyLen > 0) {
+            AegisWfpRingWrite(payload, copyLen);
+        }
+        g_WfpTotalEventsWritten++;
+        g_WfpTotalBytesWritten += (ULONG)totalSize;
+    } else {
+        g_WfpTotalDrops++;
+        DbgPrint("[AEGIS WFP] Ring buffer full, event dropped (drops=%lu)\n",
+            g_WfpTotalDrops);
+    }
+
+    KeReleaseSpinLock(&g_RingLock, oldIrql);
+}
+
+/* ====== WFP Inbound Classify Callback ======
  * Called by WFP for every inbound IPv4 transport packet. Extracts the
  * 5-tuple, copies a bounded raw payload (EVT-231), and writes one
  * variable-length record (48-byte header + payload) to the ring buffer.
@@ -99,13 +160,6 @@ void AegisWfpClassifyFn(
     IN OUT FWPS_CLASSIFY_OUT0               *classifyOut)
 {
     AEGIS_EVENT_HEADER hdr;
-    KIRQL  oldIrql;
-    SIZE_T usedSpace, totalSize;
-    PNET_BUFFER_LIST nbl;
-    PNET_BUFFER nb = NULL;
-    ULONG  availableBytes = 0;
-    ULONG  copyLen = 0;
-    PVOID  payload = NULL;
 
     UNREFERENCED_PARAMETER(inMetaValues);
     UNREFERENCED_PARAMETER(filter);
@@ -163,63 +217,81 @@ void AegisWfpClassifyFn(
      * FWPS_INCOMING_METADATA_VALUES0 in WDK 10.0.28000) */
     hdr.layer_id = 0;  /* implicit: FWPM_LAYER_INBOUND_TRANSPORT_V4 */
 
-    /* --- EVT-231: bounded kernel payload copy ---
-     * layerData is the WFP NET_BUFFER_LIST for the inbound transport
-     * layer. Copy at most AEGIS_MAX_PAYLOAD_SIZE raw bytes exactly as
-     * delivered at the layer: no L7 parse, no stream reassembly, and no
-     * assumption about which header the bytes start with. Verified on the
-     * loopback test path (EVT-231 probe dump): the delivered data begins
-     * at the transport payload -- a 180-byte UDP payload was copied
-     * byte-exact with no UDP header. Fail-open: when the bytes cannot be
-     * gathered the record degrades to the 48-byte header
-     * (payload_length = 0) and the packet is still permitted. */
-    nbl = (PNET_BUFFER_LIST)layerData;
-    if (nbl != NULL) {
-        nb = NET_BUFFER_LIST_FIRST_NB(nbl);
-    }
-    if (nb != NULL) {
-        availableBytes = NET_BUFFER_DATA_LENGTH(nb);
-        copyLen = (availableBytes > AEGIS_MAX_PAYLOAD_SIZE)
-            ? AEGIS_MAX_PAYLOAD_SIZE : availableBytes;
-    }
-    hdr.payload_length = copyLen;
+    /* EVT-231: bounded kernel payload copy. Verified on the loopback test
+     * path: the delivered data begins at the transport payload -- a
+     * 180-byte UDP payload was copied byte-exact with no UDP header.
+     * Fail-open: a gather failure degrades the record to the header. */
+    AegisWfpEmitRecord(&hdr, layerData);
 
-    totalSize = sizeof(AEGIS_EVENT_HEADER) + (SIZE_T)copyLen;
+    /* FAIL-OPEN: always permit */
+    classifyOut->actionType = FWP_ACTION_PERMIT;
+    classifyOut->rights    &= ~FWPS_RIGHT_ACTION_WRITE;
 
-    KeAcquireSpinLock(&g_RingLock, &oldIrql);
+    ExReleaseRundownProtection(&g_CalloutRundown);
+}
 
-    /* Gather the payload under the ring lock: NdisGetDataBuffer returns a
-     * pointer into the packet when the data is contiguous, else copies
-     * into the pre-allocated non-paged scratch buffer (never the kernel
-     * stack). */
-    if (copyLen > 0) {
-        payload = NdisGetDataBuffer(nb, copyLen, g_PayloadScratch, 1, 0);
-        if (payload == NULL) {
-            copyLen = 0;
-            hdr.payload_length = 0;
-            totalSize = sizeof(AEGIS_EVENT_HEADER);
-        }
-    }
+/* ====== WFP Outbound Classify Callback (O2) ======
+ * Mirrors the inbound path at FWPM_LAYER_OUTBOUND_TRANSPORT_V4. The only
+ * record discriminator is the header direction byte (1=outbound); the
+ * 48-byte header and ring contract are unchanged. Always permits. */
+void AegisWfpOutboundClassifyFn(
+    IN const FWPS_INCOMING_VALUES0          *inFixedValues,
+    IN const FWPS_INCOMING_METADATA_VALUES0 *inMetaValues,
+    IN OUT void                             *layerData,
+    IN const FWPS_FILTER0                   *filter,
+    IN UINT64                               flowContext,
+    IN OUT FWPS_CLASSIFY_OUT0               *classifyOut)
+{
+    AEGIS_EVENT_HEADER hdr;
 
-    usedSpace = AEGIS_RING_USED();
+    UNREFERENCED_PARAMETER(inMetaValues);
+    UNREFERENCED_PARAMETER(filter);
+    UNREFERENCED_PARAMETER(flowContext);
 
-    /* Strict less-than keeps empty/full unambiguous: AEGIS_RING_USED
-     * reads used == size as empty, so a write must never fill the ring
-     * exactly. Honest accounting: drops are counted, not just logged. */
-    if (totalSize < g_RingBufferSize - usedSpace) {
-        AegisWfpRingWrite(&hdr, sizeof(AEGIS_EVENT_HEADER));
-        if (copyLen > 0) {
-            AegisWfpRingWrite(payload, copyLen);
-        }
-        g_WfpTotalEventsWritten++;
-        g_WfpTotalBytesWritten += (ULONG)totalSize;
-    } else {
-        g_WfpTotalDrops++;
-        DbgPrint("[AEGIS WFP] Ring buffer full, event dropped (drops=%lu)\n",
-            g_WfpTotalDrops);
+    if (!classifyOut)
+        return;
+
+    if (!ExAcquireRundownProtection(&g_CalloutRundown)) {
+        classifyOut->actionType = FWP_ACTION_PERMIT;
+        classifyOut->rights    &= ~FWPS_RIGHT_ACTION_WRITE;
+        return;
     }
 
-    KeReleaseSpinLock(&g_RingLock, oldIrql);
+    RtlZeroMemory(&hdr, sizeof(hdr));
+    hdr.event_type = 0;   /* NETWORK */
+    hdr.direction  = 1;   /* outbound */
+    hdr.timestamp  = KeQueryPerformanceCounter(NULL).QuadPart;
+
+    hdr.protocol =
+        inFixedValues->incomingValue[
+            FWPS_FIELD_OUTBOUND_TRANSPORT_V4_IP_PROTOCOL
+        ].value.uint8;
+
+    hdr.source_ip =
+        inFixedValues->incomingValue[
+            FWPS_FIELD_OUTBOUND_TRANSPORT_V4_IP_LOCAL_ADDRESS
+        ].value.uint32;
+
+    hdr.dest_ip =
+        inFixedValues->incomingValue[
+            FWPS_FIELD_OUTBOUND_TRANSPORT_V4_IP_REMOTE_ADDRESS
+        ].value.uint32;
+
+    hdr.source_port =
+        inFixedValues->incomingValue[
+            FWPS_FIELD_OUTBOUND_TRANSPORT_V4_IP_LOCAL_PORT
+        ].value.uint16;
+
+    hdr.dest_port =
+        inFixedValues->incomingValue[
+            FWPS_FIELD_OUTBOUND_TRANSPORT_V4_IP_REMOTE_PORT
+        ].value.uint16;
+
+    /* Distinguish the layer for diagnostics. Consumers key on direction;
+     * the record layout and ring contract are unchanged. */
+    hdr.layer_id = 1;  /* FWPM_LAYER_OUTBOUND_TRANSPORT_V4 */
+
+    AegisWfpEmitRecord(&hdr, layerData);
 
     /* FAIL-OPEN: always permit */
     classifyOut->actionType = FWP_ACTION_PERMIT;
@@ -370,9 +442,68 @@ NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject)
     DbgPrint("[AEGIS WFP] stage=FwpmFilterAdd0 status=0x%08X id=%llu\n",
         status, g_CaptureFilterId);
 
+    /* 5. O2: outbound IPv4 transport capture. Same 48-byte record and ring
+     * contract; header.direction=1 marks the origin. Any failure here tears
+     * the whole pair down via AegisWfpUnregisterCallout, so a half-registered
+     * capture can never survive. */
+    RtlZeroMemory(&callout, sizeof(callout));
+    callout.calloutKey       = AEGIS_OUTBOUND_CALLOUT_KEY;
+    callout.displayData.name        = L"AEGIS NIDS Outbound Capture";
+    callout.displayData.description = L"Captures outbound IPv4 transport packets";
+    callout.applicableLayer  = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
+
+    status = FwpmCalloutAdd0(g_WfpEngineHandle, &callout,
+        NULL, &g_OutboundCalloutId);
+    if (!NT_SUCCESS(status)) {
+        DbgPrint("[AEGIS WFP] stage=FwpmCalloutAdd0(outbound) status=0x%08X\n",
+            status);
+        AegisWfpUnregisterCallout();
+        return AegisWfpStartupFailure(AEGIS_STAGE_CALLOUT_ADD, status);
+    }
+
+    RtlZeroMemory(&sCallout, sizeof(sCallout));
+    sCallout.calloutKey   = AEGIS_OUTBOUND_CALLOUT_KEY;
+    sCallout.classifyFn   = AegisWfpOutboundClassifyFn;
+    sCallout.notifyFn     = AegisWfpNotifyFn;
+    sCallout.flowDeleteFn = AegisWfpFlowDeleteFn;
+
+    status = FwpsCalloutRegister0(DriverObject, &sCallout,
+        &g_OutboundCalloutId);
+    if (!NT_SUCCESS(status)) {
+        DbgPrint("[AEGIS WFP] stage=FwpsCalloutRegister0(outbound) status=0x%08X\n",
+            status);
+        AegisWfpUnregisterCallout();
+        return AegisWfpStartupFailure(AEGIS_STAGE_CALLOUT_REGISTER, status);
+    }
+
+    RtlZeroMemory(&filter, sizeof(filter));
+    action.type       = FWP_ACTION_CALLOUT_TERMINATING;
+    action.calloutKey = AEGIS_OUTBOUND_CALLOUT_KEY;
+
+    filter.layerKey              = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
+    filter.displayData.name        = L"AEGIS Outbound Transport V4 Capture";
+    filter.displayData.description = L"Inspects all outbound IPv4 transport packets";
+    filter.action                 = action;
+    filter.flags                  = FWPM_FILTER_FLAG_PERMIT_IF_CALLOUT_UNREGISTERED;
+    filter.numFilterConditions    = 0;
+    filter.filterCondition        = NULL;
+
+    status = FwpmFilterAdd0(g_WfpEngineHandle, &filter,
+        NULL, &g_OutboundCaptureFilterId);
+    if (!NT_SUCCESS(status)) {
+        DbgPrint("[AEGIS WFP] stage=FwpmFilterAdd0(outbound) status=0x%08X\n",
+            status);
+        AegisWfpUnregisterCallout();
+        return AegisWfpStartupFailure(AEGIS_STAGE_FILTER_ADD, status);
+    }
+    DbgPrint("[AEGIS WFP] stage=FwpmFilterAdd0(outbound) status=0x%08X id=%llu\n",
+        status, g_OutboundCaptureFilterId);
+
     DbgPrint("[AEGIS WFP] Callout + filter registered - "
-        "CalloutID: %u, FilterID: %llu\n",
-        g_CalloutId, g_CaptureFilterId);
+        "CalloutID: %u, FilterID: %llu, OutboundCalloutID: %u, "
+        "OutboundFilterID: %llu\n",
+        g_CalloutId, g_CaptureFilterId,
+        g_OutboundCalloutId, g_OutboundCaptureFilterId);
     return STATUS_SUCCESS;
 }
 
@@ -384,6 +515,40 @@ VOID AegisWfpUnregisterCallout(void)
      * released the ring. The filter is still present during the wait, but the
      * callout action remains fail-open. */
     ExWaitForRundownProtectionRelease(&g_CalloutRundown);
+
+    /* 1a. O2: remove the outbound capture pair before the inbound pair. The
+     * same filter-before-callout order keeps WFP fail-open if a delete fails. */
+    if (g_WfpEngineHandle && g_OutboundCaptureFilterId) {
+        NTSTATUS status = FwpmFilterDeleteById0(g_WfpEngineHandle,
+                                                g_OutboundCaptureFilterId);
+        if (!NT_SUCCESS(status) &&
+            !AegisWfpFilterNotFound(status)) {
+            DbgPrint("[AEGIS WFP] Outbound capture filter delete failed (id=%llu): 0x%08X\n",
+                g_OutboundCaptureFilterId, status);
+        } else {
+            DbgPrint("[AEGIS WFP] Outbound capture filter deleted (id=%llu)\n",
+                g_OutboundCaptureFilterId);
+            g_OutboundCaptureFilterId = 0;
+        }
+    }
+
+    if (g_OutboundCalloutId) {
+        LARGE_INTEGER delay;
+        delay.QuadPart = -100000; /* 10 ms, relative */
+        for (;;) {
+            NTSTATUS status = FwpsCalloutUnregisterById0(g_OutboundCalloutId);
+            if (NT_SUCCESS(status) ||
+                AegisWfpCalloutNotFound(status)) {
+                DbgPrint("[AEGIS WFP] Outbound runtime callout unregistered (id=%u)\n",
+                    g_OutboundCalloutId);
+                g_OutboundCalloutId = 0;
+                break;
+            }
+            DbgPrint("[AEGIS WFP] Outbound unregister pending (id=%u): 0x%08X; retrying\n",
+                g_OutboundCalloutId, status);
+            KeDelayExecutionThread(KernelMode, FALSE, &delay);
+        }
+    }
 
     /* 1. Remove the terminating capture filter before unregistering the
      * runtime callout. Unregistering first would make WFP treat that filter's
@@ -436,7 +601,14 @@ VOID AegisWfpUnregisterCallout(void)
      * is the final backstop, not the only cleanup. */
     if (g_WfpEngineHandle) {
         NTSTATUS status = FwpmCalloutDeleteByKey0(g_WfpEngineHandle,
-                                                  &AEGIS_CALLOUT_KEY);
+                                                  &AEGIS_OUTBOUND_CALLOUT_KEY);
+        if (!NT_SUCCESS(status) &&
+            !AegisWfpCalloutNotFound(status)) {
+            DbgPrint("[AEGIS WFP] Outbound BLM callout delete failed: 0x%08X\n",
+                status);
+        }
+        status = FwpmCalloutDeleteByKey0(g_WfpEngineHandle,
+                                         &AEGIS_CALLOUT_KEY);
         if (!NT_SUCCESS(status) &&
             !AegisWfpCalloutNotFound(status)) {
             DbgPrint("[AEGIS WFP] BLM callout delete failed: 0x%08X\n",

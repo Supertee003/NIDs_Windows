@@ -826,7 +826,8 @@ function renderKernel(){
   const mState=m?(m.state==='ok'?'<span class="pill ok">OK</span>':`<span class="pill warn">${esc(m.state||'?')}</span>`):'<span class="pill mut">NO DATA</span>';
   const pushed=Number(kp.pushed||0)+Number(kf.pushed||0),dropped=Number(kp.dropped||0)+Number(kf.dropped||0);
   let html='<div class="cards">';
-  html+=kpi('WFP payload callout',wState,'',w?`reads ${num(w.reads)} · rows ${num(w.rows)} · last ${num(w.last_bytes)} B`:'no wfp block in queue.stats');
+  const wArb=w&&w.mode?` · ${esc(w.mode)}${w.kernel_owned?' (owner)':''}${Number(w.shadow_rows||0)>0?' · shadow '+num(w.shadow_rows):''}`:'';
+  html+=kpi('WFP payload callout',wState,'',w?`reads ${num(w.reads)} · rows ${num(w.rows)} · last ${num(w.last_bytes)} B${wArb}`:'no wfp block in queue.stats');
   html+=kpi('Minifilter (file/process)',mState,'',m?`reads ${num(m.reads)} · rows ${num(m.rows)} · dropped ${num(m.dropped)}`:'no minifilter block in queue.stats');
   html+=kpi('Kernel ingress pushed',num(pushed),'ok',`wfp ${num(kp.pushed)} · fim ${num(kf.pushed)}`);
   html+=kpi('Kernel ingress dropped',num(dropped),dropped?'warn':'ok',`wfp ${num(kp.dropped)} · fim ${num(kf.dropped)}`);
