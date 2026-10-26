@@ -152,6 +152,10 @@ mutation/postcondition flags.
 | `enforcement.block` | PRIVILEGED | yes | Block an exact flow through Rust PEP |
 | `enforcement.unblock` | PRIVILEGED | yes | Remove a filter by receipt filter_id |
 | `enforcement.two_person` | PRIVILEGED | yes | Two-person rule on/off (Rust PEP) |
+
+`forensics.list`, `forensics.show`, and `forensics.export` include an additive
+`direction` field for canonical network events (`0` inbound, `1` outbound).
+Records written before direction metadata was available report `null`.
 | `enforcement.approve` | PRIVILEGED | yes | One-shot second-human approval |
 | `enforcement.quarantine` | PRIVILEGED | yes | Quarantine an exact flow (severity-gated, DECISION_QUARANTINE receipt) |
 | `metrics.snapshot` | READ | no | Metrics snapshot |
