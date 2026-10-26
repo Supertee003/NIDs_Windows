@@ -73,6 +73,16 @@ pub const PAYLOAD_BYTES: usize = RECORD_BYTES - HEADER_BYTES - 4; // 4 for CRC
 ///   1 = canonical (`reserved[6]` holds a canonical_event.EventSource ordinal)
 /// Readers must honour this byte; a legacy 99 (system) is not a canonical 99.
 pub const SOURCE_SPACE_CANONICAL: u8 = 1;
+/// reserved[4] is the direction metadata version; reserved[3] carries the
+/// direction byte. Zero version is legacy/unknown, so old records are never
+/// misread as inbound merely because their reserved bytes were zero-filled.
+pub const DIRECTION_METADATA_VERSION: u8 = 1;
+
+pub fn recordDirection(header: *align(1) const RecordHeader) ?u8 {
+    if (header.reserved[4] != DIRECTION_METADATA_VERSION) return null;
+    if (header.reserved[3] > 1) return null;
+    return header.reserved[3];
+}
 
 /// Canonical source for a raw record, honouring the source-space version byte.
 /// Unknown ordinals in either space resolve to `.external` instead of being
@@ -178,15 +188,45 @@ pub const ForensicRing = struct {
         pep_decision: u8,
         severity: u8,
     ) u64 {
+        return self.appendInternal(ev, payload, audit_id, policy_id, pep_decision, severity, null);
+    }
+
+    /// Append a canonical network event with its direction sidecar. The
+    /// record header layout stays fixed; direction uses a versioned reserved
+    /// byte so records written before this field remain direction-unknown.
+    pub fn appendWithDirection(
+        self: *ForensicRing,
+        ev: *const event.IpcEvent,
+        payload: []const u8,
+        audit_id: u64,
+        policy_id: u32,
+        pep_decision: u8,
+        severity: u8,
+        direction: u8,
+    ) u64 {
+        std.debug.assert(direction <= 1);
+        return self.appendInternal(ev, payload, audit_id, policy_id, pep_decision, severity, direction);
+    }
+
+    fn appendInternal(
+        self: *ForensicRing,
+        ev: *const event.IpcEvent,
+        payload: []const u8,
+        audit_id: u64,
+        policy_id: u32,
+        pep_decision: u8,
+        severity: u8,
+        direction: ?u8,
+    ) u64 {
         self.mutex.lock();
         defer self.mutex.unlock();
         const write_at = self.head % self.storage.len;
         if (write_at + RECORD_BYTES > self.storage.len) {
-            return self.appendWrapped(ev, payload, audit_id, policy_id, pep_decision, severity);
+            return self.appendWrapped(ev, payload, audit_id, policy_id, pep_decision, severity, direction);
         }
         const slot = self.storage[write_at .. write_at + RECORD_BYTES];
         // Step 1: Write header + payload (CRC computed AFTER hash embedding)
-        self.writeSlot(slot, ev, payload, audit_id, policy_id, pep_decision, severity);
+        self.writeSlot(slot, ev, payload, audit_id, policy_id, pep_decision, severity, direction);
         // Step 2: Compute hash over (slot excluding current_hash + CRC) + last_hash
         const record_hash = self.computeRecordHash(slot, &self.last_hash);
         // Step 3: Embed hash into record's current_hash field
@@ -238,6 +278,7 @@ pub const ForensicRing = struct {
         policy_id: u32,
         pep_decision: u8,
         severity: u8,
+        direction: ?u8,
     ) u64 {
         const at = self.head % self.storage.len;
         const first_chunk = self.storage.len - at;
@@ -246,7 +287,7 @@ pub const ForensicRing = struct {
         }
         const slot = self.storage[0..RECORD_BYTES];
         // Step 1: Write header + payload
-        self.writeSlot(slot, ev, payload, audit_id, policy_id, pep_decision, severity);
+        self.writeSlot(slot, ev, payload, audit_id, policy_id, pep_decision, severity, direction);
         // Step 2: Compute hash
         const record_hash = self.computeRecordHash(slot, &self.last_hash);
         // Step 3: Embed hash
@@ -273,6 +314,7 @@ pub const ForensicRing = struct {
         policy_id: u32,
         pep_decision: u8,
         severity: u8,
+        direction: ?u8,
     ) void {
         @memset(slot, 0);
         var hdr = RecordHeader{
@@ -290,9 +332,8 @@ pub const ForensicRing = struct {
             .prev_hash = self.last_hash,
             .current_hash = [_]u8{0} ** HASH_BYTES, // filled after hash computation
             .reserved = [_]u8{
-                0, 0, 0, 0, 0,
-                SOURCE_SPACE_CANONICAL,
-                @intFromEnum(canonicalSourceOf(ev.source)),
+                0,                      0,                                          0, direction orelse 0, if (direction != null) DIRECTION_METADATA_VERSION else 0,
+                SOURCE_SPACE_CANONICAL, @intFromEnum(canonicalSourceOf(ev.source)),
             },
         };
         @memcpy(slot[0..@sizeOf(RecordHeader)], std.mem.asBytes(&hdr));
@@ -440,6 +481,29 @@ test "ForensicRing append and read" {
     defer std.testing.allocator.free(rec);
     try std.testing.expect(ForensicRing.verifyRecord(rec));
     try std.testing.expect(ForensicRing.verifyRecordHash(rec));
+}
+
+test "forensic direction is versioned and old records remain unknown" {
+    var ring = try ForensicRing.initMemory(std.testing.allocator, 4 * RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+    var ev = event.IpcEvent.init(.packet_captured);
+    ev.now();
+
+    _ = ring.appendWithDirection(&ev, "outbound", 0, 0, 0, 0, 1);
+    _ = ring.append(&ev, "legacy", 0, 0, 0, 0);
+
+    const outbound = ring.readRecord(0, std.testing.allocator) orelse return error.OutOfMemory;
+    defer std.testing.allocator.free(outbound);
+    const outbound_header = std.mem.bytesAsValue(RecordHeader, outbound[0..HEADER_BYTES]);
+    try std.testing.expectEqual(@as(?u8, 1), recordDirection(outbound_header));
+    try std.testing.expect(ForensicRing.verifyRecord(outbound));
+    try std.testing.expect(ForensicRing.verifyRecordHash(outbound));
+
+    const legacy = ring.readRecord(1, std.testing.allocator) orelse return error.OutOfMemory;
+    defer std.testing.allocator.free(legacy);
+    const legacy_header = std.mem.bytesAsValue(RecordHeader, legacy[0..HEADER_BYTES]);
+    try std.testing.expect(recordDirection(legacy_header) == null);
+    try std.testing.expect(ring.verifyHashChain());
 }
 
 test "ForensicRing wraps around" {

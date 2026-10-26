@@ -19,6 +19,10 @@ HEADER = DRIVER_DIR / "aegis_wfp.h"
 DRIVER = DRIVER_DIR / "aegis_wfp.c"
 CALLOUT = DRIVER_DIR / "aegis_wfp_callout.c"
 TELEMETRY = REPO_ROOT / "src" / "capture" / "wfp_telemetry.zig"
+QUEUE = REPO_ROOT / "src" / "pipeline" / "event_queue.zig"
+PROCESSOR = REPO_ROOT / "src" / "pipeline" / "event_processor.zig"
+FORENSIC = REPO_ROOT / "src" / "forensic" / "forensic_pipeline.zig"
+HANDLER = REPO_ROOT / "src" / "control" / "handler_registry.zig"
 
 
 def test_header_declares_outbound_callout_identity() -> None:
@@ -84,3 +88,20 @@ def test_zig_reader_forwards_kernel_direction() -> None:
     assert ".direction = hdr.direction," in text
     assert "ce.direction = rec.direction;" in text
     assert "direction: u8," in text
+
+
+def test_direction_survives_queue_and_forensic_readback() -> None:
+    queue = QUEUE.read_text(encoding="utf-8")
+    processor = PROCESSOR.read_text(encoding="utf-8")
+    forensic = FORENSIC.read_text(encoding="utf-8")
+    handler = HANDLER.read_text(encoding="utf-8")
+
+    assert "direction: ?u8 = null" in queue
+    assert "if (ce.direction > 1) return false;" in queue
+    assert "qe.direction = direction;" in queue
+    assert "tcp_flags, ce.direction" in queue
+    assert "forensic_ring.appendWithDirection" in processor
+    assert "pub fn appendWithDirection" in forensic
+    assert "DIRECTION_METADATA_VERSION" in forensic
+    assert '\\"direction\\":{s}' in handler
+    assert handler.count("directionJson(header)") == 3  # list, show, export

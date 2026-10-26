@@ -1064,7 +1064,7 @@ const handlers = struct {
     /// Upper bound for one serialized record entry plus its separator comma.
     /// Fixed-width integers and bounded source names keep every entry below
     /// this, so the writer can stop before the response crosses the budget.
-    const FORENSIC_ENTRY_MAX_BYTES: usize = 224;
+    const FORENSIC_ENTRY_MAX_BYTES: usize = 240;
     /// Reserve for the closing fields (counts, integrity, continuation).
     const FORENSIC_FOOTER_BYTES: usize = 256;
 
@@ -1181,7 +1181,7 @@ const handlers = struct {
             if (!first) writer.writeByte(',') catch return null;
             first = false;
             writer.print(
-                "{{\"record_seq\":{},\"event_id\":{},\"rule_id\":{},\"source\":{},\"source_name\":\"{s}\",\"source_space\":\"{s}\",\"payload_len\":{},\"verified\":true}}",
+                "{{\"record_seq\":{},\"event_id\":{},\"rule_id\":{},\"source\":{},\"source_name\":\"{s}\",\"source_space\":\"{s}\",\"payload_len\":{},\"direction\":{s},\"verified\":true}}",
                 .{
                     header.record_seq,
                     header.ev_id,
@@ -1190,6 +1190,7 @@ const handlers = struct {
                     origin.name,
                     origin.space,
                     header.payload_len,
+                    directionJson(header),
                 },
             ) catch return null;
             returned += 1;
@@ -1294,7 +1295,7 @@ const handlers = struct {
         const origin = forensicRecordOrigin(header.reserved[6], header.reserved[5]);
         return std.fmt.allocPrint(
             a,
-            "{{\"record_seq\":{},\"event_id\":{},\"rule_id\":{},\"source\":{},\"source_name\":\"{s}\",\"source_space\":\"{s}\",\"payload_len\":{},\"verified\":true}}",
+            "{{\"record_seq\":{},\"event_id\":{},\"rule_id\":{},\"source\":{},\"source_name\":\"{s}\",\"source_space\":\"{s}\",\"payload_len\":{},\"direction\":{s},\"verified\":true}}",
             .{
                 header.record_seq,
                 header.ev_id,
@@ -1303,8 +1304,16 @@ const handlers = struct {
                 origin.name,
                 origin.space,
                 header.payload_len,
+                directionJson(header),
             },
         ) catch null;
+    }
+
+    fn directionJson(header: *align(1) const forensic_pipeline.RecordHeader) []const u8 {
+        return if (forensic_pipeline.recordDirection(header)) |direction|
+            (if (direction == 0) "0" else "1")
+        else
+            "null";
     }
 
     fn forensicsVerify(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
@@ -1448,7 +1457,7 @@ const handlers = struct {
             var line_buf: [512]u8 = undefined;
             var fbs = std.io.fixedBufferStream(&line_buf);
             fbs.writer().print(
-                "{{\"record_seq\":{},\"event_id\":{},\"rule_id\":{},\"source\":{},\"source_name\":\"{s}\",\"source_space\":\"{s}\",\"payload_len\":{},\"verified\":true}}\n",
+                "{{\"record_seq\":{},\"event_id\":{},\"rule_id\":{},\"source\":{},\"source_name\":\"{s}\",\"source_space\":\"{s}\",\"payload_len\":{},\"direction\":{s},\"verified\":true}}\n",
                 .{
                     header.record_seq,
                     header.ev_id,
@@ -1457,6 +1466,7 @@ const handlers = struct {
                     origin.name,
                     origin.space,
                     header.payload_len,
+                    directionJson(header),
                 },
             ) catch return ExportError.WriteFailed;
             const line = fbs.getWritten();
@@ -2916,6 +2926,32 @@ test "GAP-015 forensics.list after-cursor windows under ring wrap" {
     defer std.testing.allocator.free(out_all);
     try std.testing.expect(std.mem.indexOf(u8, out_all, "\"record_seq\":3") != null);
     try std.testing.expect(std.mem.indexOf(u8, out_all, "\"record_seq\":4") != null);
+}
+
+test "forensics.list exposes canonical direction and preserves legacy unknown" {
+    const event_mod = @import("../contract/event.zig");
+    const state_mod = @import("../pipeline/runtime_state.zig");
+    var ring = try forensic_pipeline.ForensicRing.initMemory(std.testing.allocator, 4 * forensic_pipeline.RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+
+    var outbound = event_mod.IpcEvent.init(.packet_captured);
+    outbound.event_id = 601;
+    _ = ring.appendWithDirection(&outbound, "direction-proof", 0, 0, 0, 2, 1);
+    var legacy = event_mod.IpcEvent.init(.packet_captured);
+    legacy.event_id = 602;
+    _ = ring.append(&legacy, "legacy-record", 0, 0, 0, 2);
+
+    const prev = state_mod.g_forensic_ring;
+    state_mod.g_forensic_ring = &ring;
+    defer state_mod.g_forensic_ring = prev;
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 36, .caller_role = .read, .caller_pid = 0 };
+    const query = std.json.parseFromSlice(std.json.Value, std.testing.allocator, "{\"limit\":10}", .{}) catch unreachable;
+    defer query.deinit();
+    const out = handlers.forensicsList(std.testing.allocator, query.value, &ctx).?;
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"event_id\":601") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"event_id\":601,\"rule_id\":0,\"source\":0,\"source_name\":\"zig_core\",\"source_space\":\"canonical\",\"payload_len\":15,\"direction\":1") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"event_id\":602,\"rule_id\":0,\"source\":0,\"source_name\":\"zig_core\",\"source_space\":\"canonical\",\"payload_len\":13,\"direction\":null") != null);
 }
 
 test "EVT-176 forensics.list rule filter attributes exact rule ids" {

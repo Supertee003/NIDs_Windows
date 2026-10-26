@@ -43,6 +43,9 @@ pub const QueuedEvent = struct {
     /// flag evidence" (L4 flags rules do not match), not "flags are zero
     /// on the wire".
     tcp_flags: u8 = 0,
+    /// Direction from a canonical network event. Null means the producer
+    /// did not provide direction metadata; keep it distinct from inbound.
+    direction: ?u8 = null,
 };
 
 var g_event_queue: [PIPELINE_QUEUE_SIZE]QueuedEvent = undefined;
@@ -71,13 +74,13 @@ var g_queue_producer_mutex: std.Thread.Mutex = .{};
 /// Push an event + optional payload into the pipeline queue.
 /// Returns true if accepted, false if queue is full (event dropped).
 pub fn pushEvent(ev: event.IpcEvent, payload: []const u8) bool {
-    return pushEventFull(ev, payload, null, null, 0);
+    return pushEventFull(ev, payload, null, null, 0, null);
 }
 
 /// pushEvent with the TCP flags observed by the direct Npcap parser.
 /// The sidecar is in-memory only and is consumed by layer=="L4" matching.
 pub fn pushEventWithTcpFlags(ev: event.IpcEvent, payload: []const u8, tcp_flags: u8) bool {
-    return pushEventFull(ev, payload, null, null, tcp_flags);
+    return pushEventFull(ev, payload, null, null, tcp_flags, null);
 }
 
 /// pushEvent with v2 full-address sidecars. The sidecars are written into
@@ -86,10 +89,10 @@ pub fn pushEventWithTcpFlags(ev: event.IpcEvent, payload: []const u8, tcp_flags:
 /// sidecars (v1 frames, ETW/FIM/registry/brain sensors, tests) use
 /// pushEvent and queue exactly as before.
 pub fn pushEventWithAddrs(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst_ipv6: ?[16]u8) bool {
-    return pushEventFull(ev, payload, src_ipv6, dst_ipv6, 0);
+    return pushEventFull(ev, payload, src_ipv6, dst_ipv6, 0, null);
 }
 
-fn pushEventFull(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst_ipv6: ?[16]u8, tcp_flags: u8) bool {
+fn pushEventFull(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst_ipv6: ?[16]u8, tcp_flags: u8, direction: ?u8) bool {
     g_queue_producer_mutex.lock();
     defer g_queue_producer_mutex.unlock();
     const head = g_queue_head.load(.monotonic);
@@ -108,6 +111,7 @@ fn pushEventFull(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst
     qe.src_ipv6 = src_ipv6;
     qe.dst_ipv6 = dst_ipv6;
     qe.tcp_flags = tcp_flags;
+    qe.direction = direction;
     g_event_queue[head % PIPELINE_QUEUE_SIZE] = qe;
     g_queue_head.store(head + 1, .release);
     _ = g_ingress_pushed[src_ord].fetchAdd(1, .monotonic);
@@ -200,6 +204,7 @@ fn classifyForward(ce: *const canonical.CanonicalEvent) event.EventKind {
 pub fn pushDecodedFrame(frame: *const canonical.DecodedFrame, payload: []const u8) bool {
     if (!canonical.validateDecodedFrame(frame)) return false;
     const ce = &frame.event;
+    if (ce.direction > 1) return false;
 
     const kind: event.EventKind = switch (ce.event_type) {
         .block, .ip_blocked => .action_block,
@@ -237,7 +242,7 @@ pub fn pushDecodedFrame(frame: *const canonical.DecodedFrame, payload: []const u
     // sidecar the direct Npcap path already uses, so L4 FLAGS predicates
     // match on both acquisition paths. Absence stays 0 ("no evidence").
     const tcp_flags = canonical.getTcpFlags(ce) orelse 0;
-    return pushEventFull(ev, payload, frame.src_ipv6, frame.dst_ipv6, tcp_flags);
+    return pushEventFull(ev, payload, frame.src_ipv6, frame.dst_ipv6, tcp_flags, ce.direction);
 }
 
 test "pushCanonicalEventWithPayload attributes the observing sensor" {
@@ -285,6 +290,7 @@ test "pushDecodedFrame carries v2 sidecars; v1 path queues nulls" {
     // version-1 event with sidecars is a shape no codec can emit; the
     // decoded-frame gate now rejects it (see the shape-gate test below).
     ce.version = canonical.EVENT_VERSION_V2;
+    ce.direction = 1;
     const src6 = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
     const dst6 = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2 };
     ce.source_ip = std.mem.readInt(u32, src6[0..4], .big);
@@ -299,6 +305,7 @@ test "pushDecodedFrame carries v2 sidecars; v1 path queues nulls" {
     // u32 detection identity is unchanged by the sidecars.
     try std.testing.expectEqual(ce.source_ip, queued.ev.src_ip);
     try std.testing.expectEqual(ce.dest_ip, queued.ev.dst_ip);
+    try std.testing.expectEqual(@as(?u8, 1), queued.direction);
 
     // v1 path: a fresh v1 event queues with null sidecars (unchanged shape).
     var ce_v1 = canonical.create(.npcap_sensor);
@@ -306,6 +313,16 @@ test "pushDecodedFrame carries v2 sidecars; v1 path queues nulls" {
     const queued_v1 = popEvent().?;
     try std.testing.expect(queued_v1.src_ipv6 == null);
     try std.testing.expect(queued_v1.dst_ipv6 == null);
+    try std.testing.expectEqual(@as(?u8, 0), queued_v1.direction);
+}
+
+test "pushDecodedFrame rejects unknown direction values" {
+    var ce = canonical.create(.wfp_sensor);
+    ce.event_type = .forward;
+    ce.direction = 2;
+    const frame = canonical.DecodedFrame{ .event = ce, .src_ipv6 = null, .dst_ipv6 = null };
+    try std.testing.expect(!pushDecodedFrame(&frame, &[_]u8{}));
+    try std.testing.expect(popEvent() == null);
 }
 
 test "wire-decoded v2 frame survives the queue gate (V6-QUEUE-DROP regression)" {
