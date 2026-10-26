@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-26T08:58:01.373371+00:00",
+  "generated_at": "2026-10-26T10:57:42.765031+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1726,
+  "total_files": 1737,
   "by_role": {
     "documentation": 558,
-    "build-config": 210,
+    "build-config": 211,
     "other": 19,
-    "source": 356,
+    "source": 364,
     "lockfile": 6,
     "rust-build": 4,
-    "test-artifact": 207,
+    "test-artifact": 209,
     "config-data": 34,
     "architecture-decision": 11,
     "step-document": 2,
@@ -3197,6 +3197,10 @@
       "class": "canonical-source",
       "role": "source"
     },
+    "drivers/wfp_callout/aegis_wfp_payload.h": {
+      "class": "canonical-source",
+      "role": "source"
+    },
     "drivers/wfp_callout/quarantined/aegis_wfp_comm.c": {
       "class": "canonical-source",
       "role": "source"
@@ -4561,6 +4565,10 @@
       "class": "canonical-source",
       "role": "source"
     },
+    "scripts/e5-o2-remote-sink.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
     "scripts/e5_arbiter_handback.ps1": {
       "class": "canonical-source",
       "role": "source"
@@ -4606,6 +4614,34 @@
       "role": "source"
     },
     "scripts/e5_nose_parent_probe.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_o2_deploy_candidate.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_o2_direction_verified.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_o2_exit_diagnostic.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_o2_functional_proof.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_o2_payload_offset_proof.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_o2_remote_tcp_sink.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/e5_o2_rollback_candidate.ps1": {
       "class": "canonical-source",
       "role": "source"
     },
@@ -6858,6 +6894,14 @@
       "role": "test-artifact"
     },
     "tests/wfp/test_t11_windows_host.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/wfp/test_wfp_payload_slice.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/wfp/wfp_payload_slice_test.c": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

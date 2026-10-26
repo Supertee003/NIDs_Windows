@@ -699,16 +699,155 @@ outbound payload (C2/exfil) เลย
   classify/rundown; `tests/wfp` 33 passed / 3 skipped (elevated host tests);
   `zig build` exit 0; `zig build test` exit 0 (มี benchmark `registry_trie`
   flaky หนึ่งรอบจากภาระเครื่อง แล้วผ่านเมื่อรันซ้ำ)
-- unsigned build: `build/x64/wfp/aegis_wfp.sys` 39,936 B
-  SHA-256 `7EDE4DCD4DC1D24CC2A98916648258A7B98437C0D8ECD70A0C3144C08D87A7C9`
-  (WDK build OK; ยังไม่ sign/ไม่ deploy)
-- ยังไม่ปิด: host proof (deploy + canary outbound จริง), และ O1 (kernel IPv6)
+- O2 direction handoff (2026-10-26): พบว่า reader set direction ลงใน
+  `CanonicalEvent` แต่ queue adapter ไม่พาไปต่อ; เพิ่ม in-memory sidecar ผ่าน
+  queue และบันทึกลง forensic reserved metadata แบบ versioned (RecordHeader
+  ยัง 144 B / slot 4 KB เท่าเดิม). `forensics.list/show/export` ส่ง
+  `direction` เพิ่ม; record เก่า/producer ที่ไม่รู้ทิศทางได้ `null`. Targeted
+  Zig tests 10/10 และ Python tests 11/11 ผ่าน; full `zig build test` ยังชน
+  `RegistryWatchQueue` benchmark threshold สองรอบ (4,598.9 และ 4,202.2 ต่อ
+  floor 5,000), ไม่ใช่ direction assertion. เป็น E2 เท่านั้น; host E5 ยังรอ.
+- `zig build -Doptimize=ReleaseSafe` ผ่าน; candidate runtime `zig-out/bin/aegis_nids.exe` SHA-256
+  `28E7DAD7D5FFDAFABF7A6EFDBA625BB1E516FC772EE32A9CC9B3F73931DA412A`.
+  Live service ยังใช้ `C:\Program Files\AEGIS NIDS\runtime\aegis_nids.exe`
+  SHA-256 `464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61`;
+  candidate ยังไม่ได้ deploy. เตรียม runner
+  `scripts/e5_o2_direction_verified.ps1` (AST parse PASS; ยังไม่ execute):
+  preflight ปฏิเสธ daemon เก่าก่อนหยุด Nose, proof ใช้ loopback marker เท่านั้น,
+  ต้องเห็น forensic `source=wfp_sensor`, `direction=1`, gate ปิด และ handback.
+- E5D attempt (2026-10-26 16:08:28): runner หยุดที่ preflight ตามที่ออกแบบ
+  เพราะ live daemon ยังเป็น hash `464E765B…` และไม่มี `direction`; ไม่มีการหยุด
+  Nose หรือส่ง marker. Services ยัง RUNNING, prevention gate ยังปิด และ forensic
+  verify เป็น `verified=true`. ผลนี้เป็น `BLOCKED_PRE_DEPLOYMENT`, ไม่ใช่ E5
+  capture proof. เตรียม `scripts/e5_o2_deploy_candidate.ps1` สำหรับติดตั้ง
+  candidate แบบ hash-pinned (`28E7DAD7…`) พร้อม backup/rollback; ต้องรันแบบ
+  Administrator ก่อน แล้วจึงรัน `scripts/e5_o2_direction_verified.ps1` ซ้ำ.
+- E5 deployment/readiness failure (2026-10-26 16:14): candidate
+  `28E7DAD7…` เริ่มเป็น service process PID 28188 แต่ readiness query
+  `forensics.list` ล้มเหลวและ deployment script rollback กลับ daemon เก่า
+  `464E765B…`. WER `APPCRASH` exception `0x80000003`, offset
+  `0x000000000009179a` เป็น process เก่าที่ถูก stop: faulting PID 11848 ตรงกับ
+  daemon ก่อน deploy และ PE timestamp `0x6addf4cd` ตรงกับไบนารีเก่า. ยังไม่มี
+  หลักฐานว่า candidate crash; สาเหตุ readiness query ยังไม่ทราบ. WER harvest มี
+  `Report.wer` เท่านั้น ไม่มี `.dmp`/stack. หลัง rollback services RUNNING, Nose
+  connected, prevention gate ปิด และ forensic verify ผ่าน. E5 runner รอบถัดไป
+  หยุดที่ stale-runtime preflight. แยกวิเคราะห์ readiness failure และ old-daemon
+  stop-time APPCRASH ตาม issue [#24](https://github.com/Supertee003/NIDs_Windows/issues/24);
+  O2 host proof ยัง pending.
+- Rollback E5 (2026-10-26 16:35:54): คืน daemon base `464E765B…` ด้วย backup
+  ที่ hash ตรง; AegisNids/AegisWfp กลับ RUNNING, Nose connected และ counters
+  เดิน, `prevention_gate=closed`, `host_effect_capable=false`, forensic verify
+  ผ่าน. Candidate stability issue #24 ยังเปิด; ไม่ได้รัน direction capture proof.
+- Deployment helper รอบ 16:29:49 ทำงานพร้อม transcript และ retry forensic-
+  direction readiness สูงสุด 45 วินาที; probe ผ่านแต่ candidate service ออก
+  ภายหลังด้วย 1067. เก็บ transcript ไว้และยังต้องหาสาเหตุ runtime exit ก่อน
+  ใช้ candidate อีกครั้ง.
+- E5 CDB diagnostic (2026-10-26 16:45:39): แนบ debugger กับ candidate PID
+  3492 และจับ `RtlExitUserProcess` stack: `aegis_nids!abort` → `panicImpl` →
+  `default_panic`; `symchk` ยืนยัน PDB ตรงกับ candidate และ map return address
+  `0x00dff45d` กลับไปที่ `src/windows/etw_realtime.zig:1100` ภายใน
+  `wrap`, จุดที่เรียก callback (`cb_fn(outer.callback_ctx.?, ...)`). Stack
+  ยังไม่บอกว่า panic จาก optional unwrap หรือภายใน `etwCallback`. เหตุการณ์
+  SCM 7031 ที่ 16:45:45.728 เกิด ~1.2 วินาทีหลัง PID 3492 start จึงเป็นช่วง
+  runtime แรก ไม่ใช่ shutdown.
+  JSON field `exit_trace_captured_by_cdb=false` ผิดจาก script throw ก่อน parse
+  marker แต่ CDB log มี `[O2EXIT] ntdll!RtlExitUserProcess` และ stack ครบ.
+  rollback คืน base hash `464E765B…`, service RUNNING, gate ปิด, forensic verify
+  ผ่าน; ไม่ได้ทำ O2 traffic proof. เป็น STOP-THE-LINE: ห้าม deploy candidate หรือ
+  ทำ O2 probe ซ้ำจนกว่าจะได้ panic source/repro และแก้พร้อม verification; issue
+  [#24](https://github.com/Supertee003/NIDs_Windows/issues/24) อัปเดตแล้ว;
+  attribution `aegis_etw_helper!wrap+0x3fd` และคำว่า shutdown ใน note ก่อนหน้า
+  เป็นการอ่านผิดและถูกถอน ตาม correction comments.
+- Patch O2-ETW-CONTEXT-001 (DATA-001; target HEAD `1294da6`; final HEAD
+  `15a677b`): เปลี่ยน
+  `EtwSource.setCallback` ให้ไม่รับ callback context จาก caller และส่ง `EtwSource`
+  pointer ที่ native helper ถืออยู่เข้า callback โดยตรง; `etwThread` จึงไม่ส่ง
+  `undefined` อีก. FFI signature, event schema, detection, authority, driver และ
+  prevention ไม่เปลี่ยน. เพิ่ม synthetic native-record regression test. Focused
+  test ผ่าน Debug/ReleaseSafe 2/2, ETW module tests 107/107, ReleaseSafe build
+  ผ่าน และ PDB ตรงกับ candidate SHA-256
+  `E19370F598507FBC9A1194EA8182059B319DFAF76DFF4D3DE34814C57386B407`.
+  Full `zig build test`: 2,224 ผ่าน, 1 skipped, 1 benchmark miss (`RegistryWatchQueue`
+  4,684 vs floor 5,000). Candidate ยังไม่ติดตั้ง; E5 stability/capture proof pending.
+  Runner `scripts/e5_o2_exit_diagnostic.ps1` pin candidate hash ใหม่และแก้การอ่าน
+  marker เพื่อไม่ให้ JSON พลาด exit trace.
+- E5 stability (2026-10-26 17:01:34): patched candidate `E19370F5…` ผ่าน
+  direction readiness และคงอยู่ครบ 30 วินาที ไม่มี service-exit 7031 ระหว่าง
+  window; CDB จับ `RtlExitUserProcess` หลังสคริปต์สั่ง stop เพื่อ rollback เท่านั้น.
+  Rollback คืน base `464E765B…`, services กลับ RUNNING, prevention gate ปิดและ
+  forensic verify ผ่าน. อัปเดต deploy/rollback runners และเพิ่ม hash pin ใน
+  direction proof script. เตรียม `scripts/e5_o2_functional_proof.ps1` ให้รัน
+  deploy → outbound proof → rollback และ post-rollback checks ในคำสั่งเดียว;
+  proof ต้องเห็น matched `wfp_sensor` record
+  `direction=1`, WFP rows เพิ่ม, Nose handback ที่ read/submitted counters เดินต่อ
+  และ gate ปิด.
+- Functional orchestrator run (2026-10-26 17:06:20): deploy candidate สำเร็จและ
+  forensic readiness ผ่าน แต่ helper ของ orchestrator จับ stdout รวมกับ child
+  exit code จึงหยุดก่อน direction proof. `finally` เรียก rollback และ log ยืนยัน
+  `ROLLBACK_OK`; orchestrator JSON รายงาน rollback false จากบั๊กเดียวกัน. ตรวจ
+  host แยกแล้ว base hash ถูกติดตั้ง, services RUNNING, gate ปิด และ forensic
+  verify ผ่าน. แก้ subprocess runner เป็น `Start-Process -Wait -PassThru`;
+  dry-run ยืนยัน exit code 0/7 ถูกแยกถูกต้อง.
+- Outbound E5 attempt (2026-10-26 17:10): takeover ไป kernel fallback, marker ถึง
+  loopback server, WFP rows เพิ่ม 4→49 และ handback กลับ Npcap พร้อม Nose read /
+  submitted counters เดิน. แต่ไม่พบ forensic marker record ที่ source=1 และ
+  direction=1; gate จึง FAIL. Orchestrator result ไม่มี direction exit code เพราะ
+  `Start-Process -Wait` รอ child tree รวม Nose ที่ยังรันหลัง handback; direction
+  script JSON มีผล probe จริง. Rollback สำเร็จ, base hash กลับ, services RUNNING,
+  prevention gate ปิด, forensic verify ผ่าน. แก้ wait ให้รอเฉพาะ PowerShell process
+  และปรับ probe ให้ query marker โดยไม่กรอง source พร้อมบันทึก WFP rows ก่อน query.
+  O2 capture proof ยัง pending จนกว่าจะระบุได้ว่า record attribution/payload หาย
+  ตรงจุดใดและรอบถัดไปพบ `direction=1`.
+- E5 รอบ 17:21 (2026-10-26) ใช้ query marker แบบไม่กรอง source แล้ว: พบ
+  forensic record ที่ยืนยัน hash chain ได้ (`wfp_sensor`, payload 51 B, seq 20393)
+  แต่ `direction=0`; takeover, WFP rows 18→72, handback และ Nose counters ผ่าน.
+  Source inspection ยืนยัน driver ที่ติดตั้ง hash `49E65BB1…` ตรงกับ O2 signed
+  candidate และมี callback แยก inbound (`direction=0`) / outbound (`direction=1`).
+  Probe ปัจจุบันเชื่อม TCP ไป loopback listener บนเครื่องเดียวกัน จึงพิสูจน์เพียง
+  inbound record ที่เห็น ไม่ใช่ outbound capture. Rollback กลับ base daemon
+  `464E765B…` ผ่าน, services RUNNING, prevention gate ปิด, forensic verify ผ่าน.
+  ไม่มีหลักฐาน ABI/driver contract mismatch และยังไม่แก้ source/driver; เปลี่ยน
+  probe ขั้นต่อไปให้ใช้ controlled remote endpoint และจับคู่ marker/tuple กับ
+  `direction=1`. O2 E5 gate ยังคง FAIL; ดู evidence
+  `O2-OUTBOUND-LOOPBACK-INBOUND-ONLY-PARTIAL-E5-20261026-172112`.
+- ปรับ `scripts/e5_o2_direction_verified.ps1` และ orchestrator ให้รับ
+  `-RemoteAddress` / `-RemotePort` สำหรับ controlled TCP sink แล้ว; ก่อนรันให้
+  เลือกเครื่องปลายทางที่ผู้ใช้ควบคุมและยืนยันว่ามี listener รับ connection. ไม่ส่ง
+  marker ไป public third-party endpoint. ยังไม่ได้รัน host proof รอบใหม่.
+- E5 remote-sink รอบ 17:42: Windows VM `192.168.126.20:47821` รับ marker
+  `AEGIS-O2-DIRECTION-0195cf3b9374463a92ecf458a4fb367c` ตรงกับที่ส่ง; takeover,
+  WFP rows 0→6, handback/Nose counters และ rollback ผ่าน. แต่ query forensics แบบ
+  payload-prefix ได้ 0 records; จึงยังพิสูจน์ outbound capture ไม่ได้. JSON แสดง
+  `marker_sent_to_remote=true`; console ยังพิมพ์ field loopback เก่าจึงขึ้น
+  `marker=False` (แก้ script แล้ว). ขั้นถัดไปตรวจว่าข้อมูลขาออกหายที่ payload
+  offset/truncation หรือ ring-to-forensics; gate ยังคง FAIL. ดู
+  `O2-REMOTE-SINK-OUTBOUND-FORENSIC-MISS-E5-20261026-174241`.
+- Patch `O2-OUTBOUND-PAYLOAD-OFFSET-001` (DATA-001; target `15a677b`, final
+  source commit `26513a2`) แก้ contract mismatch: inbound transport buffer เริ่ม
+  ที่ payload ส่วน outbound เริ่มที่ TCP/UDP header. Shared pure-C helper ตรวจ
+  TCP data offset / UDP length แล้วคัดลอกเฉพาะ payload; scratch window เพิ่ม
+  สูงสุด 60 B เพื่อเก็บ TCP options ระหว่าง gather และอ่าน header ภายใต้ ring lock
+  เดียวกัน. Record ยังคง 48 B, IOCTL/authority ไม่เปลี่ยน, malformed/unsupported
+  outbound เป็น header-only และยัง permit. WFP tests 42 passed/3 skipped; WDK
+  build PASS, unsigned hash `E0C368C1…`. `truth.py verify` PASS หลัง commit และ
+  `tools/rebuild_truth.py` rebaseline maps. E5 ยังรอ elevated operator proof;
+  ใช้ VM sink ที่ `192.168.126.20:47821` และรัน
+  `scripts/e5_o2_payload_offset_proof.ps1 -RemoteAddress 192.168.126.20 -RemotePort 47821`.
+  Wrapper sign/deploys candidate, รัน functional proof และคืน driver เดิมใน finally;
+  gate ต้องปิดและ rollback/forensic verification ผ่าน.
+- current unsigned payload-offset build: `build/x64/wfp/aegis_wfp.sys` 39,936 B
+  SHA-256 `E0C368C1917D589F9850B2CB36F990D38D90BAC0D71B1DF43FABD2AEBC2B1A37`
+  (WDK build OK; ยังไม่ sign/ไม่ deploy; host driver ยังคง hash `49E65BB1…`).
+- ยังไม่ปิด: host proof ของ outbound capture (E5) และ O1 (kernel IPv6)
   ซึ่งต้องมี record-header v2/ABI decision ก่อน
-- หมายเหตุ: host ปัจจุบันยังรัน driver candidate `95C7…` (G2 Fix 2) อยู่ — slice นี้
-  เป็น source/build เท่านั้น ไม่ได้สลับไดรเวอร์บนเครื่อง
+- อัปเดต live state (2026-10-26): E5-A สลับ driver จาก `95C7…` เป็น O2 signed
+  candidate `49E65BB12B4FC164F0B0C255AC75CDFA096F17AC77B056586BF16891FCDABE8C`
+  (unsigned build `7EDE4DCD…`), signature Valid; AegisWfp และ AegisNids กลับมา
+  RUNNING. หลักฐานนี้ยืนยันการติดตั้ง/เริ่มบริการเท่านั้น ไม่ยืนยัน outbound capture;
+  probe เดิมใช้ parser แบบ fixed 48-byte stride จึงไม่นับเป็น functional proof.
 
 
-## 25. Slice ACQ-ARB: network acquisition arbitration (Npcap vs WFP kernel) - IMPLEMENTED (E2, host switch pending)
+## 25. Slice ACQ-ARB: network acquisition arbitration (Npcap vs WFP kernel) - IMPLEMENTED (E2, host switch E5 PASS)
 
 ปิดข้อ DP-10 (สอง sensor family เป็น ingress พร้อมกัน = duplicate semantics):
 ก่อน slice นี้ WFP telemetry submit ทุก row เข้า pipeline พร้อมกับ Nose/Npcap
@@ -735,5 +874,67 @@ outbound payload (C2/exfil) เลย
 - tests: Zig unit suite ของ arbiter (state, stall rule, idle no-flap, resume
   stand-down, split opt-in) + `tests/wfp/test_capture_source_arbitration.py`
   (static pins) + `tests/tools/test_aegisctl_queue.py` (render)
-- ยังไม่ปิด: host proof E5 ของการสลับ state (หยุด Nose -> kernel_fallback,
-  กลับมา -> npcap_primary) และ O1 (kernel IPv6)
+- Host proof E5: **PASS** — harness `scripts/e5_arbiter_swap_verified.ps1` verified
+  `npcap_primary → kernel_fallback → npcap_primary`; Nose frame read/submitted
+  เพิ่มขึ้นและ WFP shadow rows เพิ่มขึ้นหลัง handback. Prevention gate ปิดและ
+  `host_effect_capable=false` ทั้งก่อน/หลัง. หลักฐานเดิมที่ล้มเหลวเพราะขาด
+  `-capture` ยังเก็บเป็น E5 PARTIAL แยกไว้. O1 (kernel IPv6) ยังรอการตัดสินใจ
+  record identity.
+
+## 26. O1 (Kernel IPv6) - Decision Brief ของ record-header v2 (2026-10-26, รอการตัดสินใจ)
+
+สถานะต้นทางที่ยืนยันแล้ว (ไม่เดา):
+- kernel capture = v4-only (NIC-001 §11 วัดจริง: v6 marker ตอบผ่าน wire แต่ record 0 — callout
+  ผูก INBOUND/OUTBOUND_TRANSPORT_V4 เท่านั้น)
+- ring record = header 48 ไบต์ (`AEGIS_EVENT_HEADER`) + payload แปรผัน; consumer advance
+  48+payload_length เสมอ; C_ASSERT pin 48 พร้อมคำสั่ง "Do not shrink" (EVT-213)
+- Nose ปล่อย wire v2 frame ครบแล้ว (NIC-001: 200/200 dst6 ตรง) และ V6-QUEUE-DROP (§12) ทำให้
+  pipeline รับ v2 frame ไม่ทิ้งเงียบ — เส้นทาง consumer ด้าน npcap พร้อมสำหรับ v6 ตั้งแต่วันนั้น
+- การตัดสินแบบของ ADR-0006 (ฟอเรนซิก): "no layout break" เท่านั้น — O1 ใช้
+  หลักเดียวกันได้ถ้าทางเลือกยังเปิดให้ทำ
+
+### ทางเลือก header/identity (ต้องเลือกก่อนเขียนโค้ด 1 ไบต์)
+
+- **ทาง A - แนะนำ: sidecar-in-payload (ไม่แตะ header)**
+  - `flags` bit0 = "v6 sidecar นำหน้า payload": payload เริ่มด้วย src16 (16 ไบต์) + dst16 (16
+    ไบต์) แล้วตามด้วย payload จริง (payload_length รวมทั้งหมด); u32 IP fields เก็บ prefix
+    4 ไบต์แรกให้ตรงกับ sidecar (สัญญา IpMismatch ของ canon มีอยู่แล้ว)
+  - ABI/สตรายด์/ring stats/minifilter ไม่เปลี่ยน; งานนี้ไม่แตะ shared wire codec (แปลว่า
+    ไม่โดนกฎ one-schema-N-codecs เพราะ kernel ring record กับ wire frame คนละสัญญา)
+  - decoder ด้าน Zig (`wfp_telemetry.zig`/ParsedRecord) อ่าน sidecar 32 ไบต์
+    ส่งเข้า src_ipv6/dst_ipv6 ของ canonical; acceptance = sidecars ครบทั้งคู่เท่านั้น
+- **ทาง B: header v2 จริง (stride 48→72/80)** เกิดเฉพาะเมื่อ (ก) ต้องการจะขยาย identity เพิ่ม
+  ตอนนั้น (ท้าย v6 interface-id), (ข) ต้องเปิด enforcement v6 โดยเอา identity
+  เข้า ioctl เดียวกัน — นี่คือ ABI break + dual-read; ถ้าเลือกทางนี้ต้องมี ADR
+  แยก + คิว dual window ของ decoder ทุกภาษา; ข้อเสนอเบื้องต้นวันนี้ = ทาง A
+
+### งานด้าน driver (ครบคู่เมื่อดำเนินงาน)
+
+- เพิ่ม callout V6 สองชั้น: `FWPM_LAYER_INBOUND_TRANSPORT_V6` +
+  `FWPM_LAYER_OUTBOUND_TRANSPORT_V6`; key/runtime-id/capture-filter ครบคู่แบบ
+  outbound v4 เดิม; emit helper ตัวเดียว (`AegisWfpEmitRecord`) ให้ v4/v6 ใช้ร่วมกัน;
+  teardown unregister ครบคู่ทั้ง v4/v6 (ห้ามเหลือครึ่ง)
+- เงื่อนไข fail-open เท่านั้น (capture); enforcement v6 ไม่อยู่ในขอบเขต O1 (Slice C
+  ยังคงปิดตามปกติ)
+
+### คิวการทำงาน (หลังผู้ตัดสินใจเลือกทาง)
+
+1. zig unit test ก่อน (แดง): header parse + sidecar ครบ/ไม่ครบ + pin ทิศทาง v6 rows
+2. driver: รับ V6 callouts + sidecar emit + C_ASSERT เดิม 48 ยังคงเขียว (Zig build + WDK build)
+3. zig reader: decode sidecar -> canonical sidecars; negative = sidecar ครึ่งเดียว reject ให้เขียว
+4. host proof E5 บน lab (เทคนิค driver-swap แบบ g2-dupfilter-20261025d: candidate hash pin
+   + backup + rollback verify) แล้ว probe: DNSv6/ICMPv6 marker จับได้จริงบน ring และ
+   queue.stats เห็น event v6 ผลลัพธ์ detection (ไม่แตะ enforcement)
+5. rebaseline: plan/FLOW_MAP/CONTRACT_MAP/EVIDENCE_INDEX + ปิดหัวข้อ O1 ในแผนหลัก
+
+### เกณฑ์จบงาน (completion gate)
+
+- record v6 ผ่าน pipeline ถึง canonical sidecars ครบ โดย ABI header 48 ไม่ถูกแตะ และ v4 path
+  regression suite ยังเขียวทั้งชุด
+- host E5: v6 marker traffic จับได้ + v4 rows ยังถูกต้องเดิม + shadow/arbiter ยังรายงานชัดตามเดิมทั้งคู่
+- ไม่แตะ enforcement/PEP; `blocks delta 0` ยังคงสถานะตาม §13
+
+### ความเสี่ยง/ขอบเขตที่ต้องรัด
+- guard ของ decoder: payload_length >= 32 เสมอเมื่อ bit0 flags เปิด (ป้องกัน payload
+  สั้นกว่า sidecar); ring 2 MB ยังบัญชีขนาดจริงตาม advance rule เดิม
+- deploy driver ครั้งนี้ = สลับ candidate (test-signed ตามขั้นปัจจุบัน); เตรียม rollback hash pin เสมอ

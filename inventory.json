@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-26T08:58:01.370582+00:00",
+  "generated_at": "2026-10-26T10:57:42.760665+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1726,
+  "total_files": 1737,
   "by_class": {
     "canonical-docs": 571,
-    "canonical-build": 221,
+    "canonical-build": 222,
     "unclassified": 19,
-    "canonical-source": 641,
-    "canonical-test": 207,
+    "canonical-source": 649,
+    "canonical-test": 209,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -3984,7 +3984,7 @@
       "path": "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 89483
+      "size": 101749
     },
     {
       "path": "docs/MASTER_TARGET_ALIGNMENT_2026-09-14.md",
@@ -4278,7 +4278,7 @@
       "path": "docs/WFP_IOCTL_STATUS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 6287
+      "size": 6601
     },
     {
       "path": "drivers/minifilter/aegis_minifilter.c",
@@ -4320,13 +4320,13 @@
       "path": "drivers/wfp_callout/aegis_wfp.c",
       "class": "canonical-source",
       "role": "source",
-      "size": 57470
+      "size": 57472
     },
     {
       "path": "drivers/wfp_callout/aegis_wfp.h",
       "class": "canonical-source",
       "role": "source",
-      "size": 11928
+      "size": 12222
     },
     {
       "path": "drivers/wfp_callout/aegis_wfp.inf",
@@ -4338,7 +4338,13 @@
       "path": "drivers/wfp_callout/aegis_wfp_callout.c",
       "class": "canonical-source",
       "role": "source",
-      "size": 25470
+      "size": 27082
+    },
+    {
+      "path": "drivers/wfp_callout/aegis_wfp_payload.h",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2211
     },
     {
       "path": "drivers/wfp_callout/quarantined/aegis_wfp_comm.c",
@@ -4668,7 +4674,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 753813
+      "size": 785115
     },
     {
       "path": "fix_bridge_banner.py",
@@ -4800,7 +4806,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 278894
+      "size": 279495
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -5052,7 +5058,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9534
+      "size": 9396
     },
     {
       "path": "README.md",
@@ -5064,7 +5070,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 228624
+      "size": 229079
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -6387,6 +6393,12 @@
       "size": 11606
     },
     {
+      "path": "scripts/e5-o2-remote-sink.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 421
+    },
+    {
       "path": "scripts/e5_arbiter_handback.ps1",
       "class": "canonical-source",
       "role": "source",
@@ -6457,6 +6469,48 @@
       "class": "canonical-source",
       "role": "source",
       "size": 1740
+    },
+    {
+      "path": "scripts/e5_o2_deploy_candidate.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 7655
+    },
+    {
+      "path": "scripts/e5_o2_direction_verified.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 12910
+    },
+    {
+      "path": "scripts/e5_o2_exit_diagnostic.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 13756
+    },
+    {
+      "path": "scripts/e5_o2_functional_proof.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 6779
+    },
+    {
+      "path": "scripts/e5_o2_payload_offset_proof.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 10894
+    },
+    {
+      "path": "scripts/e5_o2_remote_tcp_sink.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 2982
+    },
+    {
+      "path": "scripts/e5_o2_rollback_candidate.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3876
     },
     {
       "path": "scripts/e5_outbound_probe.py",
@@ -7098,7 +7152,7 @@
       "path": "src/capture/wfp_telemetry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 14541
+      "size": 14565
     },
     {
       "path": "src/capture/windows_capture.zig",
@@ -7674,7 +7728,7 @@
       "path": "src/pipeline/telemetry_threads.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 22002
+      "size": 21991
     },
     {
       "path": "src/platform/win32_pipe.zig",
@@ -8586,7 +8640,7 @@
       "path": "src/windows/etw_realtime.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 46391
+      "size": 46628
     },
     {
       "path": "src/windows/fim.zig",
@@ -9816,7 +9870,7 @@
       "path": "tests/wfp/test_evt231_wfp_payload_copy.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 3142
+      "size": 3483
     },
     {
       "path": "tests/wfp/test_kernel_bidirectional_capture.py",
@@ -9835,6 +9889,18 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 23448
+    },
+    {
+      "path": "tests/wfp/test_wfp_payload_slice.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 1338
+    },
+    {
+      "path": "tests/wfp/wfp_payload_slice_test.c",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 3788
     },
     {
       "path": "tmp_prompt.txt",

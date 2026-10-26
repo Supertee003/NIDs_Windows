@@ -1,6 +1,7 @@
 # WFP IOCTL & Enforcement Status: IMPLEMENTED (lab-gated)
 
-Updated 2026-10-19. Supersedes the earlier "tracking-only" description
+Updated 2026-10-19; arbitration live-state note appended 2026-10-26
+(E5-C arbiter host proof). Supersedes the earlier "tracking-only" description
 (see History below).
 
 ## Current state
@@ -12,9 +13,13 @@ The WFP stack has two implemented layers:
    `\\.\AegisWfpDevice`):
    - registers **two** IPv4 transport callouts: inbound at
      `FWPM_LAYER_INBOUND_TRANSPORT_V4` and outbound at
-     `FWPM_LAYER_OUTBOUND_TRANSPORT_V4`. Both copy packet payloads into the
+     `FWPM_LAYER_OUTBOUND_TRANSPORT_V4`. Both copy L4 payload bytes into the
      same 2 MB ring using the same 48-byte record; the header `direction`
-     byte (0=inbound, 1=outbound) is the discriminator. The copy path is
+     byte (0=inbound, 1=outbound) is the discriminator. Inbound transport
+     data starts at payload; outbound starts at the TCP/UDP header, which the
+     producer validates and strips (TCP data offset / UDP length) before copy.
+     Malformed or unsupported outbound transport data keeps the event header,
+     records zero payload bytes, and remains fail-open. The copy path is
      observe-only / fail-open by design - nothing blocks there;
    - processes the full control IOCTL set:
      `IOCTL_AEGIS_READ_EVENTS` (read), `IOCTL_AEGIS_BLOCK_FLOW` (write),
@@ -73,10 +78,26 @@ back down before the next record is submitted.
 - The prevention gate (`-Dlab-prevention-gate`, default false) is the
   master switch for host mutation; every default/production build refuses
   block/quarantine/rate_limit at the Zig boundary before the provider.
-- The live production daemon currently runs detection-only (pre-V6 binary;
-  operator redeploy pending) and reports `blocks delta 0`.
+- The runtime daemon file is pinned at SHA-256
+  `464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61`; the
+  runtime Nose file is `735E2B8A9A6836E7407C20DC152CEB50164304CA2879AF14DEA8277F350C5C2E`.
+  E5-A replaced the prior G2 candidate `95C7E749…F8CCE03` with the signed
+  O2 candidate `49E65BB12B4FC164F0B0C255AC75CDFA096F17AC77B056586BF16891FCDABE8C`
+  (unsigned build `7EDE4DCD…`); AegisWfp and AegisNids returned RUNNING. This
+  proves deployment only; O2 outbound capture still lacks valid host functional
+  evidence.
+  The corrected E5-C host proof observed `npcap_primary → kernel_fallback →
+  npcap_primary`, with Nose frames and kernel shadow rows advancing. The
+  prevention gate remained closed and `host_effect_capable=false` throughout.
+  The earlier run that launched Nose without `-capture` remains recorded as
+  PARTIAL; see `admin-evidence/e5-host-proof-20261026/E5C-ARBITER-E2E-20261026.md`.
 - The kernel drivers are test-signed until production signing (EV
   certificate / HLK) lands.
+- Current source adds outbound TCP/UDP transport-header validation/stripping
+  before the bounded ring payload copy (source commit `26513a2`, unsigned build
+  SHA-256 `E0C368C1…`). This candidate has not been signed or deployed; the
+  live driver remains the prior signed O2 image until the E5 rollback-wrapped
+  operator proof completes.
 - End-to-end live enforcement proof is the operator lab sequence
   RB-012 -> RB-013 on an isolated lab VM (G2).
 

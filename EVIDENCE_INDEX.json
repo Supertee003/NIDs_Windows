@@ -1,7 +1,7 @@
 {
- "head_sha": "767cb98fc8178c048144199ec177a36b73ddd6db",
+ "head_sha": "26513a26efe26b1c006cdd8fc5c98338a950ef50",
  "created_at": "2026-09-24",
- "last_updated_at": "2026-10-25",
+ "last_updated_at": "2026-10-26",
  "generator_version": "3.0",
  "evidence_levels": {
   "E0": "No evidence",
@@ -2357,6 +2357,559 @@
    ],
    "host_effect_confirmed": false,
    "prevention_gate": "closed"
+  },
+  {
+   "id": "ACQ-ARB-E5-20261026",
+   "head_sha": "767cb98fc8178c048144199ec177a36b73ddd6db",
+   "timestamp": "2026-10-26",
+   "title": "Capture-source arbiter host proof: takeover observed; handback unresolved (E5 PARTIAL)",
+   "level": "E5",
+   "component": "capture/source_arbiter",
+   "flow_id": "DATA-001",
+   "command": "scripts/e5_arbiter_swap_test.ps1; scripts/e5_arbiter_handback.ps1; scripts/e5_arbiter_swap_verified.ps1",
+   "expected": "From npcap_primary, stop Nose and observe kernel_fallback; restart Nose in capture mode and observe npcap_primary, increasing Nose frames and kernel shadow rows; keep prevention gate closed.",
+   "actual": "PARTIAL. The original swap JSON records takeover_observed=true, handback_observed=false, final kernel_fallback/nose_absent, and gate=false. The original harness starts Nose without -capture, so it did not establish a valid capture-mode handback. The service-restart continuation also ended without observing handback. The corrected harness parsed successfully, but its non-elevated host attempt was denied when stopping the protected Nose process, before any system change. A later read-only snapshot saw npcap_primary and live Nose counters but was not part of the controlled transition and is not accepted as handback evidence. Enforcement status was detection-only, prevention_gate=closed, host_effect_capable=false.",
+   "result": "PARTIAL",
+   "files_verified": [
+    "scripts/e5_arbiter_swap_test.ps1",
+    "scripts/e5_arbiter_handback.ps1",
+    "scripts/e5_arbiter_swap_verified.ps1",
+    "scripts/aegis_open.py",
+    "nose/main.go",
+    "admin-evidence/e5-host-proof-20261026/e5c-arbiter-swap-result.json",
+    "admin-evidence/e5-host-proof-20261026/e5c-arbiter-swap.log",
+    "admin-evidence/e5-host-proof-20261026/e5c-arbiter-handback.log",
+    "admin-evidence/e5-host-proof-20261026/e5c-arbiter-verified-20261026-153404.json"
+   ],
+   "files_changed": [
+    "scripts/e5_arbiter_swap_verified.ps1",
+    "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
+    "docs/WFP_IOCTL_STATUS.md",
+    "admin-evidence/e5-host-proof-20261026/E5C-ARBITER-E2E-20261026.md",
+    "EVIDENCE_INDEX.json"
+   ],
+   "tests": [
+    "PowerShell AST parse of corrected harness: PASS",
+    "Host transition attempt: BLOCKED before mutation (Stop-Process access denied to Nose PID 7272); not a handback proof",
+    "Read-only enforcement status: detection-only, prevention_gate=closed, host_effect_capable=false"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed",
+   "evidence": "admin-evidence/e5-host-proof-20261026/e5c-arbiter-swap-result.json; e5c-arbiter-swap.log; e5c-arbiter-handback.log; e5c-arbiter-verified-20261026-153404.json/.log; E5C-ARBITER-E2E-20261026.md (corrected)."
+  },
+  {
+   "id": "ACQ-ARB-E5-VERIFIED-20261026",
+   "head_sha": "767cb98fc8178c048144199ec177a36b73ddd6db",
+   "timestamp": "2026-10-26",
+   "title": "Capture-source arbiter controlled takeover and handback verified on Windows host (E5 PASS)",
+   "level": "E5",
+   "component": "capture/source_arbiter",
+   "flow_id": "DATA-001",
+   "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/e5_arbiter_swap_verified.ps1 (elevated)",
+   "expected": "Observe npcap_primary baseline, takeover to kernel_fallback after Nose stops, and handback to npcap_primary after Nose restarts with -capture; Nose frames and kernel shadow rows advance; gate remains closed.",
+   "actual": "PASS. Baseline npcap_primary: Nose frames read/submitted 2,759,222/1,625,952 and shadow_rows=181,734. After stop: kernel_fallback, reason=nose_absent, kernel_owned=true. After restart with -capture: npcap_primary, Nose frames read/submitted 2,759,284/1,626,014 (+62/+62), shadow_rows=181,747 (+13). WFP rows 3,086→3,088; WFP dropped stayed 8. prevention_gate was closed before and after; host_effect_capable=false after; gate=true. No enforcement action was requested or confirmed.",
+   "result": "PASS",
+   "files_verified": [
+    "src/capture/source_arbiter.zig",
+    "src/capture/wfp_telemetry.zig",
+    "scripts/aegis_open.py",
+    "scripts/e5_arbiter_swap_verified.ps1",
+    "admin-evidence/e5-host-proof-20261026/e5c-arbiter-verified-20261026-153820.json",
+    "admin-evidence/e5-host-proof-20261026/e5c-arbiter-verified-20261026-153820.log"
+   ],
+   "files_changed": [
+    "scripts/e5_arbiter_swap_verified.ps1",
+    "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
+    "docs/WFP_IOCTL_STATUS.md",
+    "admin-evidence/e5-host-proof-20261026/E5C-ARBITER-E2E-20261026.md",
+    "EVIDENCE_INDEX.json"
+   ],
+   "tests": [
+    "PowerShell AST parse: PASS",
+    "Controlled Windows host transition: PASS (takeover, handback, Nose frames, WFP shadow rows)",
+    "Read-only enforcement status: PASS (detection-only, prevention_gate=closed, host_effect_capable=false)"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed",
+   "artifact_hashes": {
+    "daemon_file_sha256": "464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61",
+    "nose_file_sha256": "735E2B8A9A6836E7407C20DC152CEB50164304CA2879AF14DEA8277F350C5C2E"
+   },
+   "evidence": "admin-evidence/e5-host-proof-20261026/e5c-arbiter-verified-20261026-153820.json/.log; E5C-ARBITER-E2E-20261026.md (corrected); enforcement.status and queue snapshots."
+  },
+  {
+   "id": "O2-DRIVER-DEPLOY-E5-PARTIAL-20261026",
+   "head_sha": "767cb98fc8178c048144199ec177a36b73ddd6db",
+   "timestamp": "2026-10-26",
+   "title": "O2 signed outbound-capture candidate installed and services restarted; functional capture proof pending (E5 PARTIAL)",
+   "level": "E5",
+   "component": "drivers/wfp_callout",
+   "expected": "Deploy the signed O2 candidate after hash and signer checks; restart AegisWfp and AegisNids; then separately prove outbound capture through the runtime pipeline.",
+   "actual": "The elevated E5-A script verified source candidate SHA-256 49E65BB12B4FC164F0B0C255AC75CDFA096F17AC77B056586BF16891FCDABE8C, Valid signer 00E92849867308596564D134BB981EF726798E97, and prior installed SHA-256 95C7E749F45602EB6423C842734239450039627D710DBAF27B5FDDA52F8CCE03. It replaced the driver and observed AegisWfp and AegisNids return RUNNING. No valid end-to-end outbound capture result is established; the old fixed-48-byte-stride probe is not accepted as functional evidence.",
+   "result": "PARTIAL",
+   "files_verified": [
+    "scripts/e5_driver_swap_resume.ps1",
+    "admin-evidence/e5-host-proof-20261026/e5a-resume.log",
+    "admin-evidence/e5-host-proof-20261026/e5a-swap-result.json",
+    "build/x64/wfp/aegis_wfp.sys"
+   ],
+   "tests": [
+    "Candidate SHA-256 and Authenticode signer pin: PASS",
+    "AegisWfp returned RUNNING: PASS",
+    "AegisNids returned RUNNING: PASS",
+    "O2 outbound capture functional proof: NOT ESTABLISHED"
+   ],
+   "host_effect_confirmed": false,
+   "evidence": "admin-evidence/e5-host-proof-20261026/e5a-resume.log; e5a-swap-result.json; e5a-driver-swap.log (initial locked-file attempt, superseded by successful resume)."
+  },
+  {
+   "id": "O2-DIRECTION-PIPELINE-E2-20261026",
+   "head_sha": "d0de7d7a2557eac7d40d20b73e04c77f3a3e98e7",
+   "timestamp": "2026-10-26",
+   "title": "O2 direction preserved from WFP canonical event through queue and forensic readback (E2)",
+   "level": "E2",
+   "component": "capture/wfp_telemetry -> pipeline/event_queue -> forensic/forensic_pipeline",
+   "flow_id": "DATA-001",
+   "expected": "For WFP network records, preserve direction 0/1 through the in-memory queue and authenticated forensic record read paths; old records and producers without direction remain explicitly unknown; retain the existing 96-byte IpcEvent ABI and 144-byte forensic header size.",
+   "actual": "PASS at source/unit level. Queue adapter carries CanonicalEvent.direction as an optional sidecar and rejects values above 1. Forensic RecordHeader reserved bytes carry versioned direction metadata without changing size; forensics.list/show/export expose direction or null. The forensic hash/CRC covers the new metadata. No shared event wire codec or enforcement authority changed.",
+   "result": "PASS",
+   "files_verified": [
+    "src/capture/wfp_telemetry.zig",
+    "src/pipeline/event_queue.zig",
+    "src/pipeline/event_processor.zig",
+    "src/forensic/forensic_pipeline.zig",
+    "src/control/handler_registry.zig",
+    "tests/wfp/test_kernel_bidirectional_capture.py",
+    "scripts/e5_o2_direction_verified.ps1",
+    "zig-out/bin/aegis_nids.exe"
+   ],
+   "files_changed": [
+    "src/pipeline/event_queue.zig",
+    "src/pipeline/event_processor.zig",
+    "src/forensic/forensic_pipeline.zig",
+    "src/control/handler_registry.zig",
+    "tests/wfp/test_kernel_bidirectional_capture.py",
+    "scripts/e5_o2_direction_verified.ps1",
+    "FLOW_MAP.json",
+    "CONTRACT_MAP.json",
+    "shared/protocol/control_protocol.md",
+    "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
+    "EVIDENCE_INDEX.json"
+   ],
+   "tests": [
+    "Focused Zig direction-filtered tests: 10/10 PASS",
+    "Targeted Python WFP + forensic source-contract tests: 11/11 PASS",
+    "zig fmt --check on four changed Zig files: PASS",
+    "zig build -Doptimize=ReleaseSafe: PASS; candidate daemon SHA-256 28E7DAD7D5FFDAFABF7A6EFDBA625BB1E516FC772EE32A9CC9B3F73931DA412A",
+    "PowerShell AST parse of E5 runner: PASS (runner not executed)",
+    "Full zig build test: 2223/2225 passed, 1 skipped, 1 unrelated RegistryWatchQueue benchmark threshold failure on two runs; the focused direction tests pass."
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed",
+   "evidence": "Focused local unit/static verification only; O2 host E5 functional capture proof remains pending. Candidate daemon 28E7DAD7D5FFDAFABF7A6EFDBA625BB1E516FC772EE32A9CC9B3F73931DA412A is built but not deployed; live service file remains 464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61. E5 runner scripts/e5_o2_direction_verified.ps1 preflights for the direction field before stopping Nose."
+  },
+  {
+   "id": "O2-DIRECTION-DEPLOY-PREFLIGHT-E5-20261026-160828",
+   "head_sha": "1294da6935e63e8d10cee0351906e0d020f155d4",
+   "timestamp": "2026-10-26T16:08:28+07:00",
+   "title": "O2 direction E5 attempt safely aborted because the installed daemon predates direction metadata",
+   "level": "E5",
+   "component": "runtime daemon deployment preflight",
+   "flow_id": "DATA-001",
+   "expected": "Verify the installed runtime exposes the direction field before stopping Nose or generating probe traffic.",
+   "actual": "The elevated proof runner aborted during preflight before takeover or traffic generation. Installed daemon SHA-256 was 464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61; ReleaseSafe candidate SHA-256 is 28E7DAD7D5FFDAFABF7A6EFDBA625BB1E516FC772EE32A9CC9B3F73931DA412A. AegisNids and AegisWfp remained RUNNING, Nose was not stopped, prevention_gate stayed closed, host_effect_capable stayed false, and forensic chain verification returned verified=true. No E5 functional capture claim is established.",
+   "result": "BLOCKED_PRE_DEPLOYMENT",
+   "files_verified": [
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-direction-20261026-160828.log",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-direction-20261026-160828.json",
+    "scripts/e5_o2_direction_verified.ps1",
+    "scripts/e5_o2_deploy_candidate.ps1"
+   ],
+   "tests": [
+    "Installed runtime direction-field preflight: FAIL (expected stale runtime detected)",
+    "Nose takeover and loopback marker: NOT RUN",
+    "Prevention gate closed before and after: PASS",
+    "Forensic chain integrity: PASS"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed",
+   "evidence": "admin-evidence/e5-host-proof-20261026/e5d-o2-direction-20261026-160828.log and matching JSON; failed preflight correctly prevented mutation."
+  },
+  {
+   "id": "O2-DIRECTION-DEPLOY-READINESS-E5-20261026-161427",
+   "head_sha": "1294da6935e63e8d10cee0351906e0d020f155d4",
+   "timestamp": "2026-10-26T16:14:27+07:00",
+   "title": "ReleaseSafe O2 candidate fails forensic readiness query; WER event belongs to prior daemon stop",
+   "level": "E5",
+   "component": "runtime daemon startup",
+   "flow_id": "DATA-001",
+   "expected": "Candidate daemon starts and serves the authenticated forensic direction preflight while prevention remains closed.",
+   "actual": "Candidate SHA-256 28E7DAD7D5FFDAFABF7A6EFDBA625BB1E516FC772EE32A9CC9B3F73931DA412A reached a failed forensics.list readiness query; candidate process crash was not established. The WER APPCRASH at 0x80000003 / offset 0x000000000009179a belongs to the prior daemon: faulting PID 0x2E48 is decimal 11848, matching the pre-deploy service PID, and PE timestamp 0x6addf4cd matches the old daemon image. The deployment script restored prior runtime SHA-256 464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61. Subsequent E5 runner attempt safely aborted on stale-runtime preflight before stopping Nose or sending a marker. Services are RUNNING, Nose is connected, prevention_gate is closed, host_effect_capable=false per enforce status, and forensic verification is true. O2 host capture proof remains pending.",
+   "result": "READINESS_QUERY_FAILED_ROLLED_BACK",
+   "files_verified": [
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-direction-20261026-161450.log",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-direction-20261026-161450.json",
+    "admin-evidence/e5-host-proof-20261026/e5c-wer-harvest.log",
+    "admin-evidence/e5-host-proof-20261026/wer/AppCrash_aegis_nids.exe_967ef0291e2ca48c8df78d82a37ebde2ada16c9_735bfc40_45b39a35-992f-491d-8b5b-8ef69b383893/Report.wer",
+    "scripts/e5_o2_deploy_candidate.ps1",
+    "scripts/e5_o2_direction_verified.ps1"
+   ],
+   "tests": [
+    "Candidate forensics.list readiness query: FAIL",
+    "Candidate process APPCRASH: NOT ESTABLISHED",
+    "Prior daemon stop-time APPCRASH (PID 11848, matching PE timestamp): OBSERVED",
+    "WER stack symbolization: NOT AVAILABLE (archived folder contains Report.wer only; no dump)",
+    "Deployment rollback to prior daemon: PASS",
+    "AegisNids and AegisWfp RUNNING after rollback: PASS",
+    "Prevention gate closed and forensic chain verified: PASS",
+    "O2 outbound direction capture proof: NOT ESTABLISHED"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed",
+   "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24#issuecomment-6413628197",
+   "evidence": "Windows Application Error/WER event at 2026-10-26 16:14:27, correlated to pre-deploy PID and PE timestamp; deployment transcript and E5D JSON retained under admin-evidence/e5-host-proof-20261026. Harvested WER folder contains Report.wer only, with no dump."
+  },
+  {
+   "id": "O2-CANDIDATE-SERVICE-EXIT-E5-20261026-163100",
+   "head_sha": "1294da6935e63e8d10cee0351906e0d020f155d4",
+   "timestamp": "2026-10-26T16:31:00+07:00",
+   "title": "Pinned O2 candidate passes forensic direction readiness, then AegisNids service exits with 1067",
+   "level": "E5",
+   "component": "runtime daemon service stability",
+   "flow_id": "DATA-001",
+   "expected": "After candidate startup and direction-field readiness, AegisNids remains RUNNING for the O2 host capture proof.",
+   "actual": "The deployment transcript confirms installed candidate SHA-256 28E7DAD7D5FFDAFABF7A6EFDBA625BB1E516FC772EE32A9CC9B3F73931DA412A, successful forensics.list direction-field readiness, and prevention_gate=closed. The daemon service later terminated with SCM exit code 1067. Event 7031 recorded failure count 5 at 16:29:59 and count 6 at 16:31:00, with 60-second automatic restart. At 16:31:03 AegisNids was STOPPED, AegisWfp was RUNNING, the candidate hash remained installed, and no daemon process was present. No matching Application Error/WER event was found for this interval. This is an unexplained service exit, not a proven candidate APPCRASH. O2 E5 capture was not run.",
+   "result": "READINESS_PASS_RUNTIME_STABILITY_FAIL",
+   "files_verified": [
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-deploy-20261026-162948.log",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-service-exit-20261026-163103.json",
+    "scripts/e5_o2_rollback_candidate.ps1"
+   ],
+   "tests": [
+    "Candidate hash pin and installation: PASS",
+    "Forensic direction-field readiness probe: PASS",
+    "Prevention gate at deploy: closed",
+    "AegisNids stable after readiness: FAIL (service exit 1067; SCM 7031 restart loop)",
+    "O2 outbound direction host capture: NOT RUN"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed_at_deploy; current_query_unavailable_while_service_stopped",
+   "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24",
+   "evidence": "Deployment transcript and captured System event 7031 records in admin-evidence/e5-host-proof-20261026; service/process/hash snapshot captured at 2026-10-26 16:31:39+07:00."
+  },
+  {
+   "id": "O2-CANDIDATE-ROLLBACK-E5-20261026-163550",
+   "head_sha": "1294da6935e63e8d10cee0351906e0d020f155d4",
+   "timestamp": "2026-10-26T16:35:54+07:00",
+   "title": "Hash-verified rollback restored the pre-O2 daemon and service health",
+   "level": "E5",
+   "component": "runtime daemon rollback",
+   "flow_id": "DATA-001",
+   "expected": "Restore the verified pre-O2 runtime after candidate exit; confirm service readiness, closed prevention gate, and forensic integrity.",
+   "actual": "Elevated rollback script verified candidate hash 28E7DAD7D5FFDAFABF7A6EFDBA625BB1E516FC772EE32A9CC9B3F73931DA412A and backup hash 464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61, restored the backup, and reported ROLLBACK_OK. Follow-up host reads confirm AegisNids and AegisWfp RUNNING, daemon PID 18072, health runtime_state RUNNING, Nose connected with counters advancing, enforce status prevention_gate=closed and host_effect_capable=false, and forensic verification=true.",
+   "result": "PASS",
+   "files_verified": [
+    "scripts/e5_o2_rollback_candidate.ps1",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-rollback-20261026-163550.log"
+   ],
+   "tests": [
+    "Backup hash verification: PASS",
+    "Installed daemon restored to pinned base hash: PASS",
+    "AegisNids and AegisWfp RUNNING: PASS",
+    "Nose connected and capture counters advancing: PASS",
+    "prevention_gate=closed and host_effect_capable=false: PASS",
+    "forensics.verify: PASS"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed",
+   "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24",
+   "evidence": "Elevated rollback transcript plus read-only post-rollback health, service, enforce, and forensic queries."
+  },
+  {
+   "id": "O2-CANDIDATE-ETW-PANIC-E5-20261026-164539",
+   "head_sha": "1294da6935e63e8d10cee0351906e0d020f155d4",
+   "timestamp": "2026-10-26T16:45:39+07:00",
+   "title": "CDB captures candidate Zig panic while ETW ProcessTrace is active; rollback verified",
+   "level": "E5",
+   "component": "runtime ETW callback stability",
+   "flow_id": "DATA-001",
+   "expected": "Capture the candidate process exit path, then restore the pinned base daemon with prevention gate closed.",
+   "actual": "CDB attached to candidate PID 3492. Its log records [O2EXIT] ntdll!RtlExitUserProcess and stack frames through aegis_nids!abort, panicImpl, default_panic, aegis_etw_helper!aegis_etw_stop+0x695, sechost!ProcessTrace+0x435, and aegis_etw_helper!aegis_etw_stop+0x3d7. symchk confirms zig-out/bin/aegis_nids.pdb matches the exact candidate; offline CDB maps live return address 0x00dff45d (module base 0x00d50000) to src/windows/etw_realtime.zig:1100, in wrap at cb_fn(outer.callback_ctx.?, &rec, ext_data[0..ext_len]). This narrows the panic to the downstream callback call or optional context unwrap, but does not distinguish them or identify the panic condition. SCM 7031 at 16:45:45.728 was ~1.2 seconds after candidate PID 3492 started at 16:45:44.494; this was early runtime, not shutdown. Installed and workspace helper DLL hashes match (09453FE127EB2584115D309F06CEC395D795C3BA7294E4E07E7F81E280B23FB1). Diagnostic JSON exit_trace_captured_by_cdb is false because the script threw immediately when CDB exited before parsing the log; the CDB log itself proves the trace. Rollback restored base hash 464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61; service is RUNNING, prevention_gate=closed, and forensic verification=true. No O2 traffic proof was run. Earlier helper!wrap attribution and shutdown timing statements were incorrect and withdrawn (correction comments 6413016362 and 6413050803).",
+   "result": "CANDIDATE_PANIC_IN_ETW_CALLBACK_CALLSITE_ROOT_CONDITION_UNKNOWN",
+   "files_verified": [
+    "scripts/e5_o2_exit_diagnostic.ps1",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-exit-20261026-164539.log",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-exit-20261026-164539-cdb.log",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-exit-20261026-164539.json"
+   ],
+   "tests": [
+    "Candidate and base SHA-256 pin checks: PASS",
+    "CDB captured RtlExitUserProcess and panic stack during ETW ProcessTrace: PASS",
+    "Candidate 30-second stability window: NOT REACHED",
+    "Base daemon rollback and service RUNNING: PASS",
+    "prevention_gate=closed and forensic verification=true after rollback: PASS",
+    "O2 outbound direction host capture: NOT RUN"
+   ],
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed",
+   "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24#issuecomment-6413016362",
+   "evidence": "CDB stack from the elevated diagnostic plus matching-PDB symbol and line lookup; full log, JSON, and transcript are under admin-evidence/e5-host-proof-20261026. The callsite is identified, but the panic expression and invariant remain unconfirmed."
+  },
+  {
+   "id": "O2-ETW-CONTEXT-E2-20261026-165700",
+   "head_sha": "1294da6935e63e8d10cee0351906e0d020f155d4",
+   "timestamp": "2026-10-26T16:57:00+07:00",
+   "title": "ETW callback bridge now passes its owning source context without undefined input",
+   "level": "E2",
+   "component": "ETW native-to-Zig callback path",
+   "flow_id": "DATA-001",
+   "patch_id": "O2-ETW-CONTEXT-001",
+   "target_head": "1294da6935e63e8d10cee0351906e0d020f155d4",
+   "final_head": "15a677bd7c8b89944b444dde37888c4c4608379f",
+   "target_files": [
+    "src/windows/etw_realtime.zig",
+    "src/pipeline/telemetry_threads.zig"
+   ],
+   "expected": "The ETW wrapper always supplies the owning EtwSource as callback context; no caller passes undefined and the native FFI callback ABI and event flow remain unchanged.",
+   "actual": "Removed the external callback-context parameter from EtwSource.setCallback. wrapEtwEvent now forwards the native helper's source pointer directly to the callback. etwThread no longer passes undefined. Added a synthetic native-record unit test that verifies the callback receives and uses that source pointer. No FFI declaration, event schema, detection, policy, driver, or prevention behavior changed.",
+   "result": "E2_PASS_E5_STABILITY_PASS_CAPTURE_PENDING",
+   "files_verified": [
+    "src/windows/etw_realtime.zig",
+    "src/pipeline/telemetry_threads.zig",
+    "scripts/e5_o2_exit_diagnostic.ps1"
+   ],
+   "tests": [
+    "Focused ETW wrapper test, Debug: 2/2 PASS",
+    "Focused ETW wrapper test, ReleaseSafe: 2/2 PASS",
+    "ETW module import test set: 107/107 PASS",
+    "Full zig build test: 2224 passed, 1 skipped, 1 unrelated RegistryWatchQueue benchmark threshold failure (4684 vs 5000)",
+    "zig build -Doptimize=ReleaseSafe: PASS",
+    "symchk candidate/PDB match with line data: PASS",
+    "Installed base daemon restored to pinned base hash; AegisNids/AegisWfp RUNNING after E5 diagnostic"
+   ],
+   "candidate_sha256": "E19370F598507FBC9A1194EA8182059B319DFAF76DFF4D3DE34814C57386B407",
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed; unchanged",
+   "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24#issuecomment-6413318906",
+   "evidence": "ReleaseSafe candidate and matching PDB are local under zig-out/bin; focused tests ran through a temporary test root removed after each run. Candidate E5 30-second stability now passes (O2-CANDIDATE-STABILITY-E5-20261026-170134); outbound capture remains pending."
+  },
+  {
+   "id": "O2-CANDIDATE-STABILITY-E5-20261026-170134",
+   "head_sha": "15a677bd7c8b89944b444dde37888c4c4608379f",
+   "timestamp": "2026-10-26T17:02:15+07:00",
+   "title": "Patched O2 candidate passes forensic readiness and 30-second stability; rollback verified",
+   "level": "E5",
+   "component": "ETW callback runtime stability",
+   "flow_id": "DATA-001",
+   "patch_id": "O2-ETW-CONTEXT-001",
+   "expected": "Candidate E19370F5 passes forensic direction readiness, remains running for 30 seconds, and is rolled back to the verified base with prevention gate closed.",
+   "actual": "Candidate SHA-256 E19370F598507FBC9A1194EA8182059B319DFAF76DFF4D3DE34814C57386B407 ran as PID 9484. Direction-bearing forensics.list readiness passed, no service-exit 7031 event was recorded during the diagnostic window, and the process remained alive for the full 30 seconds. The CDB RtlExitUserProcess trace occurred only after the script intentionally stopped the candidate for rollback. Rollback restored base SHA-256 464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61. Post-run JSON reports rollback_verified=true, prevention_gate_before/after=closed, forensic_verified_after=true; read-only host checks confirm AegisNids and AegisWfp RUNNING with the base image installed. O2 outbound packet capture proof was not run.",
+   "result": "E5_CANDIDATE_STABILITY_PASS_ROLLBACK_PASS_CAPTURE_PENDING",
+   "files_verified": [
+    "scripts/e5_o2_exit_diagnostic.ps1",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-exit-20261026-170134.log",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-exit-20261026-170134-cdb.log",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-exit-20261026-170134.json"
+   ],
+   "tests": [
+    "Candidate hash pin and install: PASS",
+    "Forensic direction readiness: PASS",
+    "30-second candidate stability: PASS",
+    "Unexpected exit during stability window: NO",
+    "Verified rollback to base hash: PASS",
+    "AegisNids/AegisWfp RUNNING after rollback: PASS",
+    "prevention_gate=closed and forensic verification: PASS",
+    "O2 outbound capture and handback: NOT RUN"
+   ],
+   "candidate_sha256": "E19370F598507FBC9A1194EA8182059B319DFAF76DFF4D3DE34814C57386B407",
+   "base_sha256": "464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61",
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed",
+   "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24#issuecomment-6413318906",
+   "evidence": "Host transcript, CDB log, and result JSON under admin-evidence/e5-host-proof-20261026; post-run runtime hash and service states confirmed separately."
+  },
+  {
+   "id": "O2-FUNCTIONAL-ORCHESTRATOR-PARTIAL-E5-20261026-170620",
+   "head_sha": "15a677bd7c8b89944b444dde37888c4c4608379f",
+   "timestamp": "2026-10-26T17:06:20+07:00",
+   "title": "Functional proof orchestration stopped after successful deploy due to stdout/exit-code handling defect",
+   "level": "E5",
+   "component": "O2 E5 operator orchestration",
+   "flow_id": "DATA-001",
+   "expected": "Deploy candidate, run outbound proof, and unconditionally roll back while reporting independent child exit codes.",
+   "actual": "The deployment helper installed candidate hash E19370F598507FBC9A1194EA8182059B319DFAF76DFF4D3DE34814C57386B407 and reached direction readiness. The orchestration function collected child stdout together with LASTEXITCODE, treated the output array as a deployment failure, and skipped the direction proof. Its finally block invoked rollback; the helper reported ROLLBACK_OK and restored base hash 464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61. The orchestration JSON incorrectly reports rollback_verified=false because it repeated the same child-output/exit-code handling bug. Independent read-only checks confirm base hash installed, AegisNids/AegisWfp RUNNING, prevention_gate=closed, and forensics.verify=true. No outbound marker proof ran and no service failure was observed.",
+   "result": "DEPLOY_PASS_DIRECTION_NOT_RUN_ROLLBACK_PASS_ORCHESTRATOR_REPORTING_DEFECT",
+   "files_verified": [
+    "scripts/e5_o2_functional_proof.ps1",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-functional-20261026-170620.log",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-functional-20261026-170620.json",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-deploy-20261026-170620.log",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-rollback-20261026-170630.log"
+   ],
+   "tests": [
+    "Candidate deploy helper and forensic readiness: PASS",
+    "Direction proof: NOT RUN",
+    "Rollback helper: PASS (ROLLBACK_OK)",
+    "Post-run base hash and service status: PASS",
+    "prevention_gate=closed and forensics.verify: PASS",
+    "Child-process exit-code capture regression check: PASS (exit codes 0 and 7)"
+   ],
+   "candidate_sha256": "E19370F598507FBC9A1194EA8182059B319DFAF76DFF4D3DE34814C57386B407",
+   "base_sha256": "464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61",
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed",
+   "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24#issuecomment-6413628197",
+   "evidence": "Orchestrator result JSON is explicitly not authoritative for rollback because it miscaptured the child process output; the nested rollback transcript plus independent service/hash/enforce/forensic queries establish successful recovery. Orchestrator helper is fixed and AST-parsed; no host proof rerun yet."
+  },
+  {
+   "id": "O2-OUTBOUND-PROBE-PARTIAL-E5-20261026-171038",
+   "head_sha": "15a677bd7c8b89944b444dde37888c4c4608379f",
+   "timestamp": "2026-10-26T17:16:50+07:00",
+   "title": "O2 loopback probe proves takeover, packet delivery, and handback but finds no direction=1 forensic match",
+   "level": "E5",
+   "component": "O2 outbound WFP-to-forensic path",
+   "flow_id": "DATA-001",
+   "patch_id": "O2-ETW-CONTEXT-001",
+   "expected": "A unique outbound loopback marker produces an authenticated wfp_sensor forensic record with direction=1, WFP rows advance, Nose handback resumes, and the runner rolls back the candidate.",
+   "actual": "Candidate E19370F598507FBC9A1194EA8182059B319DFAF76DFF4D3DE34814C57386B407 installed and passed readiness. The probe observed npcap_primary to kernel_fallback takeover, the exact marker reached its loopback server, WFP rows rose 4 to 49, and handback returned to npcap_primary with Nose read/submitted counters advancing. The forensics.list query constrained to source=1 and the marker prefix returned no wfp_sensor record with direction=1. The direction proof gate was false. The orchestration result has direction_exit_code=null because Start-Process -Wait remained waiting on the persistent Nose descendant until the orchestration was interrupted; the direction script's own JSON is authoritative for the failed proof. Finally rollback reported ROLLBACK_OK and restored base hash 464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61. Independent checks confirm both services RUNNING, prevention_gate=closed, and forensic verification=true. No host effect occurred.",
+   "result": "TAKEOVER_MARKER_HANDBACK_PASS_OUTBOUND_FORENSIC_MATCH_FAIL_ROLLBACK_PASS",
+   "files_verified": [
+    "scripts/e5_o2_functional_proof.ps1",
+    "scripts/e5_o2_direction_verified.ps1",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-functional-20261026-171038.json",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-functional-20261026-171038.log",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-direction-20261026-171051.json",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-direction-20261026-171051.log",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-deploy-20261026-171039.log",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-rollback-20261026-171638.log"
+   ],
+   "tests": [
+    "Candidate hash pin, deploy, and forensic readiness: PASS",
+    "Npcap to kernel_fallback takeover: PASS",
+    "Exact loopback marker delivered: PASS",
+    "WFP rows advanced 4 to 49: PASS",
+    "wfp_sensor marker forensic direction=1: FAIL / not found under source=1 filter",
+    "Npcap handback plus Nose read/submitted advancement: PASS",
+    "Rollback to base and service RUNNING: PASS",
+    "prevention_gate=closed and forensic verification: PASS"
+   ],
+   "candidate_sha256": "E19370F598507FBC9A1194EA8182059B319DFAF76DFF4D3DE34814C57386B407",
+   "base_sha256": "464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61",
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed",
+   "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24",
+   "evidence": "The source-constrained query did not establish whether the failure is wrong canonical source attribution or absence/truncation of the marker payload in forensics. Updated diagnostics now query the marker across all sources and snapshot WFP rows before forensic lookup; one more controlled E5 run is needed."
+  },
+  {
+   "id": "O2-OUTBOUND-LOOPBACK-INBOUND-ONLY-PARTIAL-E5-20261026-172112",
+   "head_sha": "15a677bd7c8b89944b444dde37888c4c4608379f",
+   "timestamp": "2026-10-26T17:21:56+07:00",
+   "title": "O2 loopback marker is verified in inbound WFP record; outbound proof remains open",
+   "level": "E5",
+   "component": "O2 outbound WFP-to-forensic path",
+   "flow_id": "DATA-001",
+   "patch_id": "O2-ETW-CONTEXT-001",
+   "expected": "A unique outbound marker produces a verified wfp_sensor forensic record with direction=1; WFP takeover/handback succeeds and rollback restores the base daemon.",
+   "actual": "Candidate daemon E19370F598507FBC9A1194EA8182059B319DFAF76DFF4D3DE34814C57386B407 observed kernel_fallback takeover, marker delivery, WFP rows advancing 18 to 72, and npcap_primary handback with Nose read/submitted counters advancing. An unrestricted marker-prefix forensics query returned one integrity-verified canonical wfp_sensor record (seq 20393, event 11286, payload_len 51), but its direction was 0, so the direction gate failed. Source inspection confirms the installed driver hash 49E65BB12B4FC164F0B0C255AC75CDFA096F17AC77B056586BF16891FCDABE8C matches the O2 candidate and has separate inbound/outbound callbacks; inbound sets direction=0 and outbound sets direction=1. The current proof generates traffic to a loopback listener on the same host and therefore does not demonstrate the outbound record. The functional runner rolled back to base daemon SHA-256 464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61; both services RUNNING, prevention_gate closed, host_effect_capable=false, forensic verification true. No enforcement or host effect occurred.",
+   "result": "TAKEOVER_MARKER_INBOUND_FORENSIC_RECORD_PASS_OUTBOUND_DIRECTION_FAIL_HANDBACK_ROLLBACK_PASS",
+   "files_verified": [
+    "drivers/wfp_callout/aegis_wfp_callout.c",
+    "scripts/e5_o2_direction_verified.ps1",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-direction-20261026-172112.json",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-direction-20261026-172112.log",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-functional-20261026-172103.json",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-rollback-20261026-172146.log"
+   ],
+   "tests": [
+    "Marker prefix matched a verified wfp_sensor record: PASS",
+    "Observed marker record direction=1: FAIL (record direction=0)",
+    "Kernel fallback takeover and WFP rows advanced: PASS",
+    "Npcap handback and Nose read/submitted counters advanced: PASS",
+    "Rollback restored base daemon and services RUNNING: PASS",
+    "prevention_gate=closed, host_effect_capable=false, forensic verification: PASS",
+    "Installed WFP driver SHA-256 matches signed O2 source candidate: PASS"
+   ],
+   "candidate_daemon_sha256": "E19370F598507FBC9A1194EA8182059B319DFAF76DFF4D3DE34814C57386B407",
+   "candidate_driver_sha256": "49E65BB12B4FC164F0B0C255AC75CDFA096F17AC77B056586BF16891FCDABE8C",
+   "base_daemon_sha256": "464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61",
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed",
+   "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24",
+   "evidence": "This is partial E5 evidence only. The same-host loopback probe established an inbound record, not outbound capture. Next proof must generate an outbound flow to a controlled external/remote endpoint and attribute its exact marker/tuple to direction=1, then verify handback and rollback. No source/driver code change is justified by this run alone."
+  },
+  {
+   "id": "O2-REMOTE-SINK-OUTBOUND-FORENSIC-MISS-E5-20261026-174241",
+   "head_sha": "15a677bd7c8b89944b444dde37888c4c4608379f",
+   "timestamp": "2026-10-26T17:43:12+07:00",
+   "title": "Remote VM receives O2 marker, but daemon has no marker-prefix forensic record",
+   "level": "E5",
+   "component": "O2 outbound WFP-to-forensic path",
+   "flow_id": "DATA-001",
+   "patch_id": "O2-ETW-CONTEXT-001",
+   "expected": "Send a unique marker from the NIDS host to the controlled Windows VM sink at 192.168.126.20:47821; observe its verified forensic record with direction=1, then hand back and rollback.",
+   "actual": "The VM sink printed the exact marker AEGIS-O2-DIRECTION-0195cf3b9374463a92ecf458a4fb367c. Direction JSON confirms marker_sent_to_remote=true and takeover_observed=true. WFP queue rows rose from 0 baseline to 6 during kernel_fallback; after handback the queue was npcap_primary and Nose read/submitted counters advanced. Forensics query across all sources returned records_matched=0 for the exact marker prefix; outbound_direction_observed=false and gate=false. Functional orchestration rolled back candidate daemon E19370F598507FBC9A1194EA8182059B319DFAF76DFF4D3DE34814C57386B407 to base 464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61. Post-checks report rollback_verified=true, prevention_gate_after=closed and forensic_verified_after=true. The direction transcript still printed the obsolete marker_received_by_loopback_server field, which was false despite marker_sent_to_remote=true in JSON; the display/gate field has now been corrected in the script. This proves remote delivery but does not prove outbound WFP marker capture; zero matches may reflect missing/truncated payload or that the outbound record is not entering the forensic queue.",
+   "result": "REMOTE_MARKER_DELIVERED_TAKEOVER_HANDBACK_ROLLBACK_PASS_OUTBOUND_FORENSIC_MATCH_FAIL",
+   "files_verified": [
+    "scripts/e5_o2_direction_verified.ps1",
+    "scripts/e5_o2_functional_proof.ps1",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-direction-20261026-174241.json",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-direction-20261026-174241.log",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-functional-20261026-174234.json",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-rollback-20261026-174312.log"
+   ],
+   "tests": [
+    "Controlled VM sink received the exact marker: PASS",
+    "Candidate readiness and kernel fallback takeover: PASS",
+    "Marker-prefix forensic match across all sources: FAIL (0 records)",
+    "Npcap handback and Nose read/submitted counters advanced: PASS",
+    "Rollback to base daemon and services RUNNING: PASS",
+    "prevention_gate=closed and forensic verification: PASS"
+   ],
+   "candidate_daemon_sha256": "E19370F598507FBC9A1194EA8182059B319DFAF76DFF4D3DE34814C57386B407",
+   "base_daemon_sha256": "464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61",
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed",
+   "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24",
+   "evidence": "The VM listener proves TCP marker delivery to 192.168.126.20:47821. The query uses exact payload-prefix semantics. Microsoft WFP Data Offset Positions confirms that inbound transport starts at data while outbound transport starts at the transport header; the prior shared copy path therefore put TCP/UDP headers before outbound marker bytes. Patch O2-OUTBOUND-PAYLOAD-OFFSET-001 strips and validates those headers while preserving the 48-byte record ABI. Local E2 tests and WDK build pass; signed-driver deployment and E5 host proof remain pending. Prevention remains closed."
+  },
+  {
+   "id": "O2-OUTBOUND-PAYLOAD-OFFSET-E2-20261026",
+   "head_sha": "26513a26efe26b1c006cdd8fc5c98338a950ef50",
+   "timestamp": "2026-10-26T18:05:00+07:00",
+   "title": "Outbound WFP transport headers are normalized before payload copy (E2; E5 pending)",
+   "level": "E2",
+   "component": "WFP driver outbound capture payload contract",
+   "flow_id": "DATA-001",
+   "patch_id": "O2-OUTBOUND-PAYLOAD-OFFSET-001",
+   "target_head": "15a677bd7c8b89944b444dde37888c4c4608379f",
+   "final_head": "26513a26efe26b1c006cdd8fc5c98338a950ef50",
+   "expected": "For outbound IPv4 TCP/UDP WFP records, validate and strip the transport header before copying the bounded payload; retain fail-open behavior, the 48-byte record ABI, direction=1, and prevention_gate=closed.",
+   "actual": "Added shared pure-C payload-slice logic used by the WFP callout and host regression harness. Inbound retains offset 0; outbound TCP validates the minimum header and data-offset field, outbound UDP validates its 8-byte header and declared length, and malformed/unsupported outbound data emits a header-only event without blocking the packet. Scratch capacity now includes the maximum TCP header, and header inspection remains inside the ring spinlock to protect the shared scratch buffer. No record layout, IOCTL, or authority changed. Commit 26513a26efe26b1c006cdd8fc5c98338a950ef50.",
+   "contract_impact": "Outbound payload bytes now exclude the TCP/UDP transport header; payload_length=0 also represents empty or unsupported/malformed outbound payloads.",
+   "abi_impact": "None; AEGIS_EVENT_HEADER remains 48 bytes and variable record stride is unchanged.",
+   "authority_impact": "None; telemetry remains fail-open and observe-only; prevention gate remains closed.",
+   "state_impact": "No host state changed. Candidate driver was not signed or deployed by this local build session.",
+   "files_verified": [
+    "drivers/wfp_callout/aegis_wfp_payload.h",
+    "drivers/wfp_callout/aegis_wfp_callout.c",
+    "drivers/wfp_callout/aegis_wfp.c",
+    "drivers/wfp_callout/aegis_wfp.h",
+    "src/capture/wfp_telemetry.zig",
+    "tests/wfp/wfp_payload_slice_test.c",
+    "tests/wfp/test_wfp_payload_slice.py",
+    "tests/wfp/test_evt231_wfp_payload_copy.py",
+    "scripts/e5_o2_payload_offset_proof.ps1"
+   ],
+   "build_result": "WDK build PASS: build/x64/wfp/aegis_wfp.sys, 39,936 bytes, unsigned SHA-256 E0C368C1917D589F9850B2CB36F990D38D90BAC0D71B1DF43FABD2AEBC2B1A37. Two existing ExAllocatePoolWithTag C4996 deprecation warnings remain; no new callout warning.",
+   "test_result": "PASS: python -m pytest tests/wfp -q = 42 passed, 3 skipped; C regression exercises inbound offset, TCP 20/40-byte headers, UDP header/declared length, malformed and unsupported outbound inputs. PowerShell AST parse passed for the direction, functional, remote sink, and deploy/proof scripts.",
+   "windows_result": "E5 not yet run with the patched driver. Operator proof wrapper scripts/wfp_sign.ps1 for the existing test signer, deploys candidate E0C368..., runs the remote-sink functional proof, and restores the prior signed driver in finally.",
+   "evidence_level": "E2",
+   "candidate_unsigned_driver_sha256": "E0C368C1917D589F9850B2CB36F990D38D90BAC0D71B1DF43FABD2AEBC2B1A37",
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed",
+   "completion_gate": "E2 PASS; E5 outbound marker/direction proof pending",
+   "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24",
+   "evidence": "Microsoft WFP layer offset reference: https://learn.microsoft.com/en-us/windows-hardware/drivers/network/data-offset-positions. Current E5 remote marker run proves delivery only; next E5 must show exact marker as a wfp_sensor record with direction=1, then handback/rollback and gate/forensic verification."
   }
  ],
  "known_gaps": [
@@ -7732,15 +8285,52 @@
     "Verify enforce status detection-only, prevention_gate closed, host_effect_capable false."
    ],
    "evidence": "EVI G2-INBOUND-PIPELINE-20261021; admin-evidence/lab-qualification-20261021/G2-RESULTS.md (Inbound-run restore - PENDING); admin-evidence/g2-direction-20261022/vm-recheck-20261022.txt (443 open; one connect; no further traffic); VM 192.168.126.20 SMB/VMware access failure 2026-10-22; EVI-G2-PEP-CACHE-001-LAB-20261023; admin-evidence/g2-direction-20261022/vm-lab-run-20261023.txt (BASE_RESTORE_OK; E19C/617F/EF9B/AD23/B722; detection-only; proof count 0)."
+  },
+  {
+   "id": "ACQ-ARB-HANDBACK-20261026",
+   "severity": "P1",
+   "title": "ACQ-ARB host handback to Npcap has not been proven with Nose in capture mode",
+   "description": "The source arbiter has E2 coverage and the host probe observed takeover to kernel_fallback. The host handback proof is incomplete: the original harness started aegis-nose.exe without -capture, its raw result records handback_observed=false, and the follow-up attempt to run a corrected proof was blocked by process access denied before changing system state. A later npcap_primary observation was not causally tied to the controlled transition.",
+   "status": "CLOSED",
+   "found_at": "2026-10-26",
+   "closed_at": "2026-10-26",
+   "closed_by": "ACQ-ARB-E5-VERIFIED-20261026",
+   "resolution": "The corrected elevated host proof observed npcap_primary → kernel_fallback → npcap_primary. Nose read/submitted counters advanced 62/62 and kernel shadow_rows advanced 13 after handback. The prevention gate remained closed and host_effect_capable=false. The earlier no-capture attempt remains as separate E5 PARTIAL evidence.",
+   "required_evidence": [
+    "Run scripts/e5_arbiter_swap_verified.ps1 from elevated PowerShell while AegisNids is RUNNING and prevention_gate=closed.",
+    "Capture baseline npcap_primary, controlled Nose stop, kernel_fallback/kernel_owned, and handback after Nose starts with -capture.",
+    "Require Nose frames read/submitted to increase and WFP shadow_rows to increase after handback.",
+    "Record gate closed and host_effect_capable=false at both ends; preserve all logs and JSON under admin-evidence.",
+    "Update this gap and EVIDENCE_INDEX only from the resulting raw proof."
+   ],
+   "evidence": "ACQ-ARB-E5-20261026 (E5 PARTIAL); admin-evidence/e5-host-proof-20261026/e5c-arbiter-swap-result.json and e5c-arbiter-verified-20261026-153404.json."
+  },
+  {
+   "id": "O2-DIRECTION-LOSS-20261026",
+   "severity": "P1",
+   "title": "WFP direction was lost between canonical decode and forensic evidence",
+   "description": "The WFP reader populated CanonicalEvent.direction, but the legacy queue adapter did not preserve it and the forensic RecordHeader had no direction metadata. This prevented trustworthy outbound attribution in the evidence path.",
+   "status": "CLOSED",
+   "found_at": "2026-10-26",
+   "closed_at": "2026-10-26",
+   "closed_by": "O2-DIRECTION-PIPELINE-E2-20261026",
+   "resolution": "Added an optional in-memory queue direction sidecar, rejected unknown canonical direction values, preserved known direction in versioned forensic reserved bytes, and exposed direction/null through list, show, and export. The 96-byte IpcEvent and 144-byte RecordHeader sizes are unchanged. Focused Zig tests passed 10/10 and targeted Python tests passed 11/11. E5 live capture remains a separate open requirement.",
+   "required_evidence": [
+    "WFP decoded direction survives the queue adapter without changing the event wire ABI.",
+    "Forensic records preserve direction in authenticated/hash-covered metadata and legacy records remain unknown.",
+    "forensics.list, forensics.show, and forensics.export expose consistent direction metadata.",
+    "Run focused unit and contract tests; do not claim host capture proof from source tests."
+   ],
+   "evidence": "O2-DIRECTION-PIPELINE-E2-20261026; zig test --test-filter direction (10/10); tests/wfp/test_kernel_bidirectional_capture.py + tests/forensics/test_forensic_source_space.py (11/11)."
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 27,
-  "E2_count": 133,
+  "E2_count": 136,
   "E3_count": 14,
   "E4_count": 15,
-  "E5_count": 110,
+  "E5_count": 123,
   "E6_count": 0,
   "E7_count": 1
  }
