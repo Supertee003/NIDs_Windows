@@ -62,6 +62,7 @@ $result = [ordered]@{
     outbound_direction_observed = $false
     forensic_query_records_matched = 0
     forensic_query_records_returned = 0
+    forensic_readiness_attempts = 0
     diagnostic_marker_records = @()
     forensic_integrity_during_probe = $null
     handback_observed = $false
@@ -97,11 +98,34 @@ try {
     if ($result.daemon_sha256 -ne $expectedDaemonHash) {
         throw "Installed daemon hash $($result.daemon_sha256) does not match the E5-pinned candidate $expectedDaemonHash."
     }
-    $featureProbe = Invoke-JsonCommand @('tools/aegisctl.py', 'forensics', 'list', '--json', '--limit', '1')
-    $probeRecords = @($featureProbe.records)
-    if ($probeRecords.Count -eq 0) { throw 'Cannot validate runtime feature support: forensic ring has no retained records.' }
-    if (-not $probeRecords[0].PSObject.Properties['direction']) {
-        throw 'The live daemon predates O2 direction metadata; deploy the current zig-out/bin/aegis_nids.exe before running this E5 proof.'
+    $featureProbe = $null
+    $probeRecords = @()
+    $lastFeatureProbeError = 'No forensic records returned yet.'
+    $readinessDeadline = (Get-Date).AddSeconds(45)
+    do {
+        $result.forensic_readiness_attempts++
+        $candidateFeatureProbe = $null
+        try {
+            $candidateFeatureProbe = Invoke-JsonCommand @('tools/aegisctl.py', 'forensics', 'list', '--json', '--limit', '1')
+        } catch {
+            $lastFeatureProbeError = $_.Exception.Message
+        }
+        if ($candidateFeatureProbe) {
+            $candidateRecords = @($candidateFeatureProbe.records)
+            if ($candidateRecords.Count -gt 0) {
+                if (-not $candidateRecords[0].PSObject.Properties['direction']) {
+                    throw 'The live daemon predates O2 direction metadata; deploy the current zig-out/bin/aegis_nids.exe before running this E5 proof.'
+                }
+                $featureProbe = $candidateFeatureProbe
+                $probeRecords = $candidateRecords
+                break
+            }
+            $lastFeatureProbeError = 'Control responded, but the forensic ring has no retained records yet.'
+        }
+        if ((Get-Date) -lt $readinessDeadline) { Start-Sleep -Seconds 1 }
+    } while ((Get-Date) -lt $readinessDeadline)
+    if (-not $featureProbe) {
+        throw "Cannot validate runtime feature support after 45 seconds: $lastFeatureProbeError"
     }
     if (-not (Test-Path -LiteralPath $nosePath -PathType Leaf)) { throw "Nose binary missing: $nosePath" }
     $result.nose_sha256 = (Get-FileHash -LiteralPath $nosePath -Algorithm SHA256).Hash.ToUpperInvariant()
