@@ -16,6 +16,9 @@ comptime {
     // EVT-156: bridge_init carries inline unit tests (HMAC goldens + spool
     // join ownership) that never ran -- the module was never imported here.
     _ = @import("core/bridge_init.zig");
+    // RB013-LOG: the daemon's diagnostic file-sink install is unit-pinned;
+    // pull the runtime spine into the test graph.
+    _ = @import("daemon.zig");
     _ = @import("tests/capture/npcap_adapter.zig");
     _ = @import("tests/capture/packet_decoder.zig");
     _ = @import("tests/capture/flow_table.zig");

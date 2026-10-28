@@ -161,11 +161,43 @@ fn publishPipeObservation(observation: pipe_monitor.PipeObservation, payload: []
     return event_queue.pushEvent(ev, payload);
 }
 
+// RB013-LOG: service mode previously installed only a stderr sink, so
+// confirmed-quarantine diagnostic lines (pep=quarantine confirmed=true,
+// action=QUARANTINED_CONFIRMED) died with the process and the service
+// diagnostic stream stayed empty. installDiagnosticFileSink tees the stream
+// into a persisted file under <exe_dir>/../logs (install layout:
+// runtime\..\logs; dev layout: zig-out\..\logs). dir_override exists for
+// tests and lab harnesses. Failure is fail-open: the stream stays on stderr
+// only and the daemon keeps running.
+var g_diag_file_sink: ?diag.FileSink = null;
+var g_diag_tee: ?diag.TeeSink = null;
+
+pub fn installDiagnosticFileSink(alloc: std.mem.Allocator, dir_override: ?[]const u8) bool {
+    const dir = dir_override orelse blk: {
+        const exe_dir = std.fs.selfExeDirPathAlloc(alloc) catch return false;
+        defer alloc.free(exe_dir);
+        break :blk std.fs.path.join(alloc, &.{ exe_dir, "..", "logs" }) catch return false;
+    };
+    defer if (dir_override == null) alloc.free(dir);
+    std.fs.cwd().makePath(dir) catch return false;
+    const path = std.fs.path.join(alloc, &.{ dir, "aegis-daemon-diagnostic.log" }) catch return false;
+    defer alloc.free(path);
+    g_diag_file_sink = diag.FileSink.init(path) catch return false;
+    g_diag_tee = diag.TeeSink.init(diag.StderrSink.init(), g_diag_file_sink.?.sink());
+    diag.Logger.setSink(g_diag_tee.?.sink());
+    return true;
+}
+
 pub fn runDaemon() !void {
     // Install the sink before any startup work so failures before the control
     // pipe exists are still visible to the console/service harness.
     diag.Logger.setSink(diag.StderrSink.init());
     diag.Logger.setLevel(.info);
+    // RB013-LOG: tee the diagnostic stream into a persisted file so
+    // service-mode confirmation lines survive after exit. Console harnesses
+    // keep their stderr capture; if the file cannot be opened the stream
+    // falls back to stderr only.
+    _ = installDiagnosticFileSink(std.heap.page_allocator, null);
     diag.info("AEGIS NIDS v5.0+ starting up", .{});
 
     // Startup diagnostics are intentionally limited to resolved paths and
@@ -784,4 +816,47 @@ pub fn runDaemon() !void {
     }
 
     diag.info("AEGIS NIDS shutting down", .{});
+}
+
+test "installDiagnosticFileSink persists diagnostic lines to a file" {
+    const alloc = std.testing.allocator;
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const dir_path = try tmp.dir.realpathAlloc(alloc, ".");
+    defer alloc.free(dir_path);
+    const prev_sink = diag.Logger.getSink();
+    // Never restore null: a null prev makes this restore a no-op and leaves
+    // the logger pointing at this test's tee after its globals are torn down.
+    defer diag.Logger.setSink(prev_sink orelse diag.StderrSink.init());
+    // Close the module-level sink before tmp cleanup: the FileHandle inside
+    // g_diag_file_sink must not outlive the directory it points into.
+    defer {
+        if (g_diag_file_sink) |*fs| fs.deinit();
+        g_diag_file_sink = null;
+        g_diag_tee = null;
+    }
+    try std.testing.expect(installDiagnosticFileSink(alloc, dir_path));
+    diag.info("rb013 tee probe line", .{});
+    const data = try tmp.dir.readFileAlloc(alloc, "aegis-daemon-diagnostic.log", 1 << 16);
+    defer alloc.free(data);
+    try std.testing.expect(std.mem.indexOf(u8, data, "rb013 tee probe line") != null);
+    try std.testing.expect(std.mem.indexOf(u8, data, "[info]") != null);
+}
+
+test "installDiagnosticFileSink is fail-open on an impossible directory" {
+    const alloc = std.testing.allocator;
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    // A regular file where makePath needs a directory makes the path
+    // impossible on every platform; the helper must report failure without
+    // panicking and leave the logger usable.
+    try tmp.dir.writeFile(.{ .sub_path = "blocker", .data = "" });
+    const tmp_real = try tmp.dir.realpathAlloc(alloc, ".");
+    defer alloc.free(tmp_real);
+    const blocked = try std.fs.path.join(alloc, &.{ tmp_real, "blocker", "sub" });
+    defer alloc.free(blocked);
+    const prev_sink = diag.Logger.getSink();
+    defer diag.Logger.setSink(prev_sink orelse diag.StderrSink.init());
+    try std.testing.expect(!installDiagnosticFileSink(alloc, blocked));
+    diag.info("rb013 fallback probe", .{});
 }

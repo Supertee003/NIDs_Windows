@@ -46,6 +46,10 @@ pub const Logger = struct {
         sink = s;
     }
 
+    pub fn getSink() ?Sink {
+        return sink;
+    }
+
     pub fn enabled(level: Level) bool {
         return @intFromEnum(level) >= @intFromEnum(min_level);
     }
@@ -124,6 +128,40 @@ pub const FileSink = struct {
         const self: *FileSink = @ptrCast(@alignCast(ctx));
         const ts = std.time.timestamp();
         try self.file.writer().print("{d} [{s}] {s}\n", .{ ts, @tagName(level), msg });
+    }
+};
+
+// TeeSink — fan one diagnostic line out to two sinks (e.g. stderr + file).
+// RB013-LOG: service mode must persist the diagnostic stream, while console
+// and lab harnesses keep reading stderr. The tee attempts BOTH branches and
+// reports failure only when both fail, so a closed console never suppresses
+// a persisted line (and vice versa); the Logger drop counter then reflects
+// only lines lost on every branch.
+pub const TeeSink = struct {
+    first: Sink,
+    second: Sink,
+
+    pub fn init(first: Sink, second: Sink) TeeSink {
+        return .{ .first = first, .second = second };
+    }
+
+    pub fn sink(self: *TeeSink) Sink {
+        return .{ .ctx = @ptrCast(self), .writeFn = writeFn };
+    }
+
+    fn writeFn(ctx: *anyopaque, level: Level, msg: []const u8) !void {
+        const self: *TeeSink = @ptrCast(@alignCast(ctx));
+        var err_first: ?anyerror = null;
+        var err_second: ?anyerror = null;
+        self.first.write(level, msg) catch |e| {
+            err_first = e;
+        };
+        self.second.write(level, msg) catch |e| {
+            err_second = e;
+        };
+        if (err_first) |e| {
+            if (err_second != null) return e;
+        }
     }
 };
 
@@ -254,4 +292,76 @@ test "StderrSink does not panic" {
     Logger.setSink(StderrSink.init());
     Logger.setLevel(.trace);
     info("test message {d}", .{42});
+}
+
+test "FileSink persists diagnostic lines" {
+    const alloc = std.testing.allocator;
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const tmp_real = try tmp.dir.realpathAlloc(alloc, ".");
+    defer alloc.free(tmp_real);
+    const path = try std.fs.path.join(alloc, &.{ tmp_real, "probe.log" });
+    defer alloc.free(path);
+    var fs = try FileSink.init(path);
+    defer fs.deinit();
+    const prev_sink = Logger.getSink();
+    defer Logger.setSink(prev_sink orelse StderrSink.init());
+    Logger.setSink(fs.sink());
+    info("file sink probe {d}", .{7});
+    const data = try tmp.dir.readFileAlloc(alloc, "probe.log", 1 << 16);
+    defer alloc.free(data);
+    try std.testing.expect(std.mem.indexOf(u8, data, "file sink probe 7") != null);
+    try std.testing.expect(std.mem.indexOf(u8, data, "[info]") != null);
+}
+
+test "TeeSink writes to both branches" {
+    const alloc = std.testing.allocator;
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const tmp_real = try tmp.dir.realpathAlloc(alloc, ".");
+    defer alloc.free(tmp_real);
+    const path_a = try std.fs.path.join(alloc, &.{ tmp_real, "tee-a.log" });
+    defer alloc.free(path_a);
+    const path_b = try std.fs.path.join(alloc, &.{ tmp_real, "tee-b.log" });
+    defer alloc.free(path_b);
+    var sink_a = try FileSink.init(path_a);
+    defer sink_a.deinit();
+    var sink_b = try FileSink.init(path_b);
+    defer sink_b.deinit();
+    var tee = TeeSink.init(sink_a.sink(), sink_b.sink());
+    const prev_sink = Logger.getSink();
+    defer Logger.setSink(prev_sink orelse StderrSink.init());
+    Logger.setSink(tee.sink());
+    info("tee probe", .{});
+    const data_a = try tmp.dir.readFileAlloc(alloc, "tee-a.log", 1 << 16);
+    defer alloc.free(data_a);
+    const data_b = try tmp.dir.readFileAlloc(alloc, "tee-b.log", 1 << 16);
+    defer alloc.free(data_b);
+    try std.testing.expect(std.mem.indexOf(u8, data_a, "tee probe") != null);
+    try std.testing.expect(std.mem.indexOf(u8, data_b, "tee probe") != null);
+}
+
+test "TeeSink survives a failing branch" {
+    const alloc = std.testing.allocator;
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const tmp_real = try tmp.dir.realpathAlloc(alloc, ".");
+    defer alloc.free(tmp_real);
+    const path = try std.fs.path.join(alloc, &.{ tmp_real, "tee-survivor.log" });
+    defer alloc.free(path);
+    var live = try FileSink.init(path);
+    defer live.deinit();
+    // A read-only handle fails every write deterministically; the tee must
+    // still deliver the line through the healthy branch.
+    const dead = try tmp.dir.createFile("dead.log", .{ .read = true });
+    defer dead.close();
+    var dead_sink = FileSink{ .file = dead };
+    var tee = TeeSink.init(dead_sink.sink(), live.sink());
+    const prev_sink = Logger.getSink();
+    defer Logger.setSink(prev_sink orelse StderrSink.init());
+    Logger.setSink(tee.sink());
+    info("tee survivor probe", .{});
+    const data = try tmp.dir.readFileAlloc(alloc, "tee-survivor.log", 1 << 16);
+    defer alloc.free(data);
+    try std.testing.expect(std.mem.indexOf(u8, data, "tee survivor probe") != null);
 }

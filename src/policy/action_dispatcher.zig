@@ -137,6 +137,10 @@ pub const ActionDispatcher = struct {
                     var confirmed = ev.*;
                     confirmed.kind = .action_quarantine;
                     confirmed.fate = .quarantined;
+                    // RB013-LOG: name the PEP confirmation explicitly so the
+                    // persisted diagnostic stream carries the receipt-verified
+                    // host effect, not just the pipeline status string.
+                    diag.info("pep=quarantine confirmed=true filter_id={d}", .{r.filter_id});
                     diag.info("action=QUARANTINED_CONFIRMED rule={d} policy_id={d} filter_id={d}", .{ ev.rule_id, p.id, r.filter_id });
                     _ = runtime_state.g_confirmed_quarantines.fetchAdd(1, .monotonic);
                     _ = ForensicBackend.write(&confirmed);

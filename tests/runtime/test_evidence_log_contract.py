@@ -74,6 +74,21 @@ def test_confirmed_quarantine_is_its_own_observable_event():
     assert '"QUARANTINED_CONFIRMED"' in PROCESSOR
 
 
+def test_confirmed_quarantine_reaches_a_persisted_diagnostic_stream():
+    """RB-013 (G2-RB013-LOG): the receipt-verified quarantine must survive in
+    a persisted diagnostic stream, not stderr alone. The dispatcher names the
+    PEP confirmation explicitly and the daemon tees the diagnostic stream
+    into a file sink, so service mode leaves the confirmation lines on disk.
+    The zig unit tests (src/core/diagnostics.zig, src/daemon.zig, pulled into
+    the test graph via all_tests.zig) prove the sink behavior at E2."""
+    assert 'diag.info("pep=quarantine confirmed=true filter_id={d}"' in DISPATCHER
+    daemon = (REPO_ROOT / "src" / "daemon.zig").read_text(encoding="utf-8")
+    assert "installDiagnosticFileSink" in daemon
+    assert "TeeSink.init(diag.StderrSink.init()" in daemon
+    all_tests = (REPO_ROOT / "src" / "all_tests.zig").read_text(encoding="utf-8")
+    assert '@import("daemon.zig")' in all_tests
+
+
 def test_quarantine_receipt_passes_the_operator_contract():
     from tools.aegisctl.contracts import validate_enforcement_receipt
 
