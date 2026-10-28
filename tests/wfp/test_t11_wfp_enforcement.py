@@ -302,11 +302,11 @@ def test_classify_is_drained_before_callout_teardown() -> None:
     assert "KeAcquireSpinLock(&g_RingLock" in emit
     assert "KeReleaseSpinLock(&g_RingLock" in emit
     assert classify.index("ExAcquireRundownProtection") < classify.index(
-        "AegisWfpEmitRecord(&hdr, layerData);"
+        "AegisWfpEmitRecord(&hdr, layerData, NULL, NULL);"
     )
     assert "ExReleaseRundownProtection(&g_CalloutRundown);" in classify
     assert classify.index("ExReleaseRundownProtection") > classify.index(
-        "AegisWfpEmitRecord(&hdr, layerData);"
+        "AegisWfpEmitRecord(&hdr, layerData, NULL, NULL);"
     )
     assert "ExWaitForRundownProtectionRelease(&g_CalloutRundown);" in unregister
     assert unregister.index("ExWaitForRundownProtectionRelease") < unregister.index(

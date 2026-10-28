@@ -34,6 +34,19 @@ DEFINE_GUID(AEGIS_OUTBOUND_CALLOUT_KEY,
     0xe5f60718, 0x293a, 0x4dbf,
     0x8c, 0x3d, 0x4e, 0x5f, 0x60, 0x71, 0x82, 0x93);
 
+// O1 (plan §26 ทาง A): IPv6 transport capture pairs are distinct callout
+// identities so all four layers register, tear down, and audit
+// independently. Fresh keys; a v4 identity is never reused.
+// {F6A71829-3A4B-4DBF-8C3D-5E6F708192A4}
+DEFINE_GUID(AEGIS_INBOUND_V6_CALLOUT_KEY,
+    0xf6a71829, 0x3a4b, 0x4dbf,
+    0x8c, 0x3d, 0x5e, 0x6f, 0x70, 0x81, 0x92, 0xa4);
+
+// {A7B82930-4B5C-4DAE-9F2B-6F708192B315}
+DEFINE_GUID(AEGIS_OUTBOUND_V6_CALLOUT_KEY,
+    0xa7b82930, 0x4b5c, 0x4dae,
+    0x9f, 0x2b, 0x6f, 0x70, 0x81, 0x92, 0xb3, 0x15);
+
 // Retired single-key identity for the receipt-owned proof filter. It is no
 // longer used to create filters; a driver start deletes the stale filter an
 // older build left under this key.
@@ -82,6 +95,11 @@ UINT32 g_CalloutId = 0;
 UINT64 g_CaptureFilterId = 0;
 UINT32 g_OutboundCalloutId = 0;
 UINT64 g_OutboundCaptureFilterId = 0;
+/* O1 (plan §26 ทาง A): IPv6 transport capture pairs. */
+UINT32 g_InboundV6CalloutId = 0;
+UINT64 g_InboundV6FilterId = 0;
+UINT32 g_OutboundV6CalloutId = 0;
+UINT64 g_OutboundV6FilterId = 0;
 EX_RUNDOWN_REF g_CalloutRundown;
 UINT64 g_ProofFilterId = 0;
 UINT32 g_BlockedIp = 0;

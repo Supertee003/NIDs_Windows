@@ -12,7 +12,12 @@
 //! outbound TCP/UDP headers are validated and stripped before copy, and no
 //! stream reassembly is performed);
 //! payload_length == 0 means empty, unavailable, or unsupported/malformed
-//! outbound transport data. This loop still performs no L7 matching itself
+//! outbound transport data. Since O1 (plan §26 ทาง A) a v6-flagged record
+//! (header flags bit0) leads its payload with a 32-byte identity sidecar
+//! (src16 ++ dst16, raw network order): the decoder strips it into full v6
+//! sidecars (DecodedFrame.src_ipv6/dst_ipv6) and the payload view becomes
+//! the L7 body only; the ring advance still follows the header claim. This
+//! loop still performs no L7 matching itself
 //! -- it transports the bytes; flow/5-tuple fields remain the primary
 //! signal, and any content matching must name the bounded-copy limit
 //! rather than imply reassembled streams.
@@ -43,6 +48,11 @@ const IDLE_SLEEP_MS: u64 = 1000;
 /// Driver u32 IPs are FWPM network-order integers: stored as-is, which
 /// IS the BE canonical convention (Go nose identical). Do NOT byte-swap
 /// here (EVT-201 class): the shared projector renders BE.
+///
+/// O1 (§26 ทาง A): for a v6-flagged record (header flags bit0) the payload
+/// LEADS with a 32-byte identity sidecar (src16 ++ dst16, raw network
+/// order); parseRecord strips it into the two full-address fields below
+/// and .payload becomes the L7 body only. v4 rows keep null sidecars.
 pub const ParsedRecord = struct {
     source_ip: u32,
     dest_ip: u32,
@@ -54,7 +64,26 @@ pub const ParsedRecord = struct {
     rule_id: u32,
     severity: u8,
     payload: []const u8,
+    src_ipv6: ?[16]u8 = null,
+    dst_ipv6: ?[16]u8 = null,
+
+    /// Ring advance for this record (EVT-213: the 48-byte header plus
+    /// everything the header's payload_length claims, always). For v6 rows
+    /// the claim includes the 32-byte sidecar the decoder already stripped
+    /// from .payload, so the stride cannot be re-derived from the payload
+    /// view; both sidecar halves are set together or not at all.
+    pub fn advanceBytes(self: ParsedRecord) usize {
+        const side: usize = if (self.src_ipv6 != null) V6_SIDECAR_SIZE else 0;
+        return @sizeOf(rust_pep.WfpEventHeader) + self.payload.len + side;
+    }
 };
+
+/// O1 §26 ทาง A: header flags bit0 marks a v6 identity sidecar leading the
+/// payload (src16 ++ dst16 before the L7 body). The 48-byte header layout
+/// is untouched; only this flag and the payload content change.
+pub const FLAG_V6_SIDECAR: u8 = 1 << 0;
+/// src16 (16 bytes) ++ dst16 (16 bytes), raw network order.
+pub const V6_SIDECAR_SIZE: usize = 32;
 
 /// Parse one header-prefixed record. Null on truncation (caller skips,
 /// never partial-submits).
@@ -65,7 +94,7 @@ pub fn parseRecord(buf: []const u8) ?ParsedRecord {
     const total = @sizeOf(H) +| hdr.payload_length;
     if (buf.len < total) return null;
     const sev: u8 = if (hdr.severity > 3) 3 else @intCast(hdr.severity);
-    return .{
+    var rec = ParsedRecord{
         .source_ip = hdr.source_ip,
         .dest_ip = hdr.dest_ip,
         .source_port = hdr.source_port,
@@ -77,11 +106,29 @@ pub fn parseRecord(buf: []const u8) ?ParsedRecord {
         .severity = sev,
         .payload = buf[@sizeOf(H)..total],
     };
+    if ((hdr.flags & FLAG_V6_SIDECAR) != 0) {
+        // Acceptance is fail-closed: BOTH sidecar halves must be present.
+        // A record flagged v6 whose claimed payload is shorter than the
+        // sidecar is malformed (producer/consumer ABI disagreement) and is
+        // skipped whole — never partial-submitted, same as any truncation.
+        if (rec.payload.len < V6_SIDECAR_SIZE) return null;
+        var src: [16]u8 = undefined;
+        var dst: [16]u8 = undefined;
+        @memcpy(&src, rec.payload[0..16]);
+        @memcpy(&dst, rec.payload[16..32]);
+        rec.src_ipv6 = src;
+        rec.dst_ipv6 = dst;
+        rec.payload = rec.payload[V6_SIDECAR_SIZE..];
+    }
+    return rec;
 }
 
-/// Submit one parsed record to the pipeline queue. Returns false when
-/// the queue is full (dropped + counted, never blocking capture).
-pub fn submitRecord(rec: ParsedRecord) bool {
+/// Build the canonical decoded frame for one parsed ring record. v4 rows
+/// stay v1 (null sidecars); v6 rows are promoted to wire v2 — both sidecar
+/// halves + version 2 + the truncated-identity flag — exactly the shape the
+/// Go nose path pushes (§12) and validateDecodedFrame gates. Pure function:
+/// no queue, no global state.
+pub fn decodedFrame(rec: ParsedRecord) canonical.DecodedFrame {
     var ce = canonical.create(.wfp_sensor);
     ce.source_ip = rec.source_ip;
     ce.dest_ip = rec.dest_ip;
@@ -92,7 +139,17 @@ pub fn submitRecord(rec: ParsedRecord) bool {
     ce.layer_id = rec.layer_id;
     ce.rule_id = rec.rule_id;
     ce.severity = rec.severity;
-    const frame = canonical.DecodedFrame{ .event = ce, .src_ipv6 = null, .dst_ipv6 = null };
+    if (rec.src_ipv6 != null) {
+        ce.version = canonical.EVENT_VERSION_V2;
+        ce.context_flags |= canonical.CONTEXT_V6_TRUNCATED;
+    }
+    return .{ .event = ce, .src_ipv6 = rec.src_ipv6, .dst_ipv6 = rec.dst_ipv6 };
+}
+
+/// Submit one parsed record to the pipeline queue. Returns false when
+/// the queue is full (dropped + counted, never blocking capture).
+pub fn submitRecord(rec: ParsedRecord) bool {
+    const frame = decodedFrame(rec);
     return pipeline_queue.pushDecodedFrame(&frame, rec.payload);
 }
 
@@ -181,7 +238,11 @@ pub fn telemetryLoop(stopSignal: *std.atomic.Value(bool)) void {
                     var off: usize = 0;
                     while (off < n) {
                         const rec = parseRecord(ring[off..n]) orelse break;
-                        const adv = @sizeOf(rust_pep.WfpEventHeader) + rec.payload.len;
+                        // EVT-213: advance by the header plus the claimed
+                        // payload_length; for O1 v6 rows the claim includes
+                        // the identity sidecar the decoder stripped from
+                        // the payload view (see ParsedRecord.advanceBytes).
+                        const adv = rec.advanceBytes();
                         const d = arbiter.evaluate(.{
                             .nose_ready = runtime_state.g_nose_ready.load(.acquire),
                             .nose_connected = runtime_state.g_nose_connected.load(.acquire),
@@ -297,4 +358,124 @@ test "EVT-213: records advance by the 48-byte wrapped header stride" {
     try std.testing.expectEqual(@as(u32, 0x0A000002), r1.source_ip);
     try std.testing.expectEqual(@as(u16, 443), r1.dest_port);
     try std.testing.expectEqual(@as(usize, 0), r1.payload.len);
+}
+
+// ============================================================
+// O1 (§26 ทาง A): v6 identity sidecar-in-payload
+// flags bit0 => the payload lead is src16 (16B) ++ dst16 (16B);
+// payload_length claims sidecar + body; header stays 48 bytes.
+// ============================================================
+
+/// Fill a 48-byte record header the way the kernel writes it (LE integers,
+/// FWPM network-order IP values, flags @19, payload_length @20).
+fn writeRingHeader(buf: []u8, flags: u8, payload_len: u32, src_ip: u32, dst_ip: u32, direction: u8) void {
+    @memset(buf, 0);
+    std.mem.writeInt(u32, buf[4..8], src_ip, .little);
+    std.mem.writeInt(u32, buf[8..12], dst_ip, .little);
+    std.mem.writeInt(u16, buf[12..14], 49152, .little);
+    std.mem.writeInt(u16, buf[14..16], 445, .little);
+    buf[16] = 6; // TCP
+    buf[17] = direction;
+    buf[19] = flags;
+    std.mem.writeInt(u32, buf[20..24], payload_len, .little);
+}
+
+test "O1: flags bit0 promotes the payload lead into full v6 sidecars" {
+    const src6 = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01 };
+    const dst6 = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x02 };
+    var buf: [48 + 32 + 5]u8 = [_]u8{0} ** (48 + 32 + 5);
+    // u32 identity = first 4 sidecar bytes as a BE integer value (the Go
+    // nose convention: BE.Uint32(addr[:4]); FWPM stores the value as-is).
+    writeRingHeader(
+        &buf,
+        0x01, // flags bit0: v6 sidecar leads the payload
+        32 + 5, // claim includes the sidecar
+        std.mem.readInt(u32, src6[0..4], .big),
+        std.mem.readInt(u32, dst6[0..4], .big),
+        0,
+    );
+    @memcpy(buf[48..][0..16], &src6);
+    @memcpy(buf[48 + 16 ..][0..16], &dst6);
+    @memcpy(buf[48 + 32 ..][0..5], "hello");
+
+    const rec = parseRecord(&buf) orelse return error.TestUnexpectedResult;
+    const got_src = rec.src_ipv6 orelse return error.TestUnexpectedResult;
+    const got_dst = rec.dst_ipv6 orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqualSlices(u8, &src6, &got_src);
+    try std.testing.expectEqualSlices(u8, &dst6, &got_dst);
+    try std.testing.expectEqualSlices(u8, "hello", rec.payload);
+    // BE pass-through: the u32 identity equals the sidecar's first 4 bytes
+    // (the convention serializeV2's IpMismatch contract pins downstream).
+    try std.testing.expectEqual(std.mem.readInt(u32, src6[0..4], .big), rec.source_ip);
+    try std.testing.expectEqual(std.mem.readInt(u32, dst6[0..4], .big), rec.dest_ip);
+    // Ring stride: 48 header + 32 sidecar + 5 body. The sidecar counts
+    // toward the advance even though the decoder stripped it from .payload
+    // (EVT-213: advance = header + the claimed payload_length, always).
+    try std.testing.expectEqual(@as(usize, 48 + 32 + 5), rec.advanceBytes());
+}
+
+test "O1: a v6-flagged record shorter than its sidecar is rejected whole" {
+    var buf: [48 + 16]u8 = [_]u8{0} ** (48 + 16);
+    writeRingHeader(&buf, 0x01, 16, 0, 0, 0); // claim 16 < src16++dst16
+    try std.testing.expect(parseRecord(&buf) == null);
+    // Boundary: one byte short of the sidecar stays rejected.
+    writeRingHeader(&buf, 0x01, 31, 0, 0, 0);
+    try std.testing.expect(parseRecord(&buf) == null);
+}
+
+test "O1: clear flags keep v4 rows sidecar-free (regression)" {
+    var buf: [48 + 3]u8 = [_]u8{0} ** (48 + 3);
+    writeRingHeader(&buf, 0x00, 3, 0xC0A80127, 0x08080808, 0);
+    @memcpy(buf[48..][0..3], "SYN");
+    const rec = parseRecord(&buf) orelse return error.TestUnexpectedResult;
+    try std.testing.expect(rec.src_ipv6 == null);
+    try std.testing.expect(rec.dst_ipv6 == null);
+    try std.testing.expectEqualSlices(u8, "SYN", rec.payload);
+    try std.testing.expectEqual(@as(usize, 48 + 3), rec.advanceBytes());
+}
+
+test "O1: an exactly-32-byte sidecar record is accepted with an empty body" {
+    var buf: [48 + 32]u8 = [_]u8{0} ** (48 + 32);
+    writeRingHeader(&buf, 0x01, 32, 0x20010DB8, 0x20010DB8, 0);
+    buf[48] = 0x20; // src6[0]
+    buf[48 + 16] = 0x20; // dst6[0]
+    const rec = parseRecord(&buf) orelse return error.TestUnexpectedResult;
+    const got_src = rec.src_ipv6 orelse return error.TestUnexpectedResult;
+    const got_dst = rec.dst_ipv6 orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(@as(u8, 0x20), got_src[0]);
+    try std.testing.expectEqual(@as(u8, 0x20), got_dst[0]);
+    try std.testing.expectEqual(@as(usize, 0), rec.payload.len);
+    try std.testing.expectEqual(@as(usize, 48 + 32), rec.advanceBytes());
+}
+
+test "O1: v6 outbound rows keep direction=1 through the decode" {
+    var buf: [48 + 32]u8 = [_]u8{0} ** (48 + 32);
+    writeRingHeader(&buf, 0x01, 32, 0x20010DB8, 0x20010DB8, 1);
+    const rec = parseRecord(&buf) orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqual(@as(u8, 1), rec.direction);
+    try std.testing.expect(rec.src_ipv6 != null);
+    try std.testing.expect(rec.dst_ipv6 != null);
+}
+
+test "O1: decodedFrame promotes v6 rows to wire v2 and keeps v4 rows v1" {
+    var buf6: [48 + 32 + 3]u8 = [_]u8{0} ** (48 + 32 + 3);
+    writeRingHeader(&buf6, 0x01, 32 + 3, 0x20010DB8, 0x20010DB9, 0);
+    @memcpy(buf6[48 + 32 ..][0..3], "abc");
+    const rec6 = parseRecord(&buf6) orelse return error.TestUnexpectedResult;
+    const f6 = decodedFrame(rec6);
+    // The queue's own gate (V6-QUEUE-DROP shape contract) accepts it:
+    try std.testing.expect(canonical.validateDecodedFrame(&f6));
+    try std.testing.expectEqual(canonical.EVENT_VERSION_V2, f6.event.version);
+    try std.testing.expect(f6.event.context_flags & canonical.CONTEXT_V6_TRUNCATED != 0);
+    try std.testing.expect(f6.src_ipv6 != null);
+    try std.testing.expect(f6.dst_ipv6 != null);
+
+    var buf4: [48 + 2]u8 = [_]u8{0} ** (48 + 2);
+    writeRingHeader(&buf4, 0x00, 2, 0x0A000001, 0x0A000002, 1);
+    const rec4 = parseRecord(&buf4) orelse return error.TestUnexpectedResult;
+    const f4 = decodedFrame(rec4);
+    try std.testing.expect(canonical.validateDecodedFrame(&f4));
+    try std.testing.expectEqual(canonical.EVENT_VERSION, f4.event.version);
+    try std.testing.expect(f4.src_ipv6 == null);
+    try std.testing.expect(f4.dst_ipv6 == null);
 }

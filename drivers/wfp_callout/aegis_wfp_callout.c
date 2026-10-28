@@ -7,6 +7,9 @@
  * EVT-231 / O2: classify copies a bounded L4 payload (<= AEGIS_MAX_PAYLOAD_SIZE)
  *         into the ring after the 48-byte header. Outbound callbacks strip
  *         the TCP/UDP header required by the WFP layer's data offset.
+ * O1 (plan §26 ทาง A): IPv6 transport pairs emit a 32-byte identity sidecar
+ *         (src16 ++ dst16) behind header flags bit0, leading the payload;
+ *         the body budget shrinks so payload_length stays within contract.
  *
  * FAIL-OPEN design: classify never blocks packets.
  */
@@ -85,12 +88,23 @@ static VOID AegisWfpRingWrite(const VOID *source, SIZE_T length)
     g_RingWriteOffset %= g_RingBufferSize;
 }
 
-/* ====== Shared ring record emit (EVT-231 / O2) ======
+/* ====== Shared ring record emit (EVT-231 / O2 / O1) ======
  * Called with the rundown gate held and a fully populated 48-byte header.
  * Copies a bounded raw payload and writes one variable-length record
- * (header + payload) under the ring lock. Fail-open: a gather failure
- * degrades the record to the header (payload_length = 0). */
-static VOID AegisWfpEmitRecord(AEGIS_EVENT_HEADER *hdr, void *layerData)
+ * (header [+ v6 sidecar] + payload) under the ring lock. Fail-open: a
+ * gather failure degrades the record to the header plus any captured v6
+ * identity sidecar (payload_length = sidecar only).
+ *
+ * O1 (plan §26 ทาง A): when src6/dst6 are both non-NULL the record is
+ * IPv6 — a 32-byte identity sidecar (src16 ++ dst16, raw network order)
+ * leads the payload behind AEGIS_EVENT_FLAG_V6_SIDECAR, and the L7 body
+ * budget shrinks to AEGIS_MAX_PAYLOAD_SIZE - 32 so payload_length never
+ * exceeds the reader's write contract. NULL/NULL is the v4 path: no flag,
+ * no sidecar, unchanged record shape. The flag is only ever set alongside
+ * a written sidecar, so the consumer's fail-closed guard
+ * (payload_length >= 32 when bit0 set) can never trip on our records. */
+static VOID AegisWfpEmitRecord(AEGIS_EVENT_HEADER *hdr, void *layerData,
+                               const UINT8 *src6, const UINT8 *dst6)
 {
     KIRQL  oldIrql;
     SIZE_T usedSpace, totalSize;
@@ -105,6 +119,18 @@ static VOID AegisWfpEmitRecord(AEGIS_EVENT_HEADER *hdr, void *layerData)
     PVOID  layerHeader = NULL;
     ULONG  headerBytes = 0;
     BOOLEAN payloadRangeValid = FALSE;
+    UINT8  sidecarBuf[AEGIS_V6_SIDECAR_SIZE];
+    SIZE_T sidecarLen = 0;
+
+    /* Snapshot the identity before the ring lock: the fixed-value pointers
+     * stay valid for the whole classify call, but a single contiguous
+     * sidecar write keeps the record one atomic tail under the lock. */
+    if (src6 != NULL && dst6 != NULL) {
+        RtlCopyMemory(sidecarBuf, src6, 16);
+        RtlCopyMemory(sidecarBuf + 16, dst6, 16);
+        sidecarLen = AEGIS_V6_SIDECAR_SIZE;
+        hdr->flags |= AEGIS_EVENT_FLAG_V6_SIDECAR;
+    }
 
     if (nbl != NULL) {
         nb = NET_BUFFER_LIST_FIRST_NB(nbl);
@@ -112,8 +138,14 @@ static VOID AegisWfpEmitRecord(AEGIS_EVENT_HEADER *hdr, void *layerData)
     if (nb != NULL) {
         availableBytes = NET_BUFFER_DATA_LENGTH(nb);
     }
+    /* The sidecar is part of the record tail even when no packet payload
+     * can be gathered: a flagged record always carries its 32 bytes. */
     hdr->payload_length = 0;
     totalSize = sizeof(AEGIS_EVENT_HEADER);
+    if (sidecarLen > 0) {
+        hdr->payload_length = (UINT32)sidecarLen;
+        totalSize += sidecarLen;
+    }
 
     KeAcquireSpinLock(&g_RingLock, &oldIrql);
 
@@ -137,11 +169,15 @@ static VOID AegisWfpEmitRecord(AEGIS_EVENT_HEADER *hdr, void *layerData)
             &payloadOffset,
             &availablePayload) != 0);
         if (payloadRangeValid) {
-            copyLen = (availablePayload > AEGIS_MAX_PAYLOAD_SIZE)
-                ? AEGIS_MAX_PAYLOAD_SIZE : (ULONG)availablePayload;
+            /* O1: the sidecar shares the payload budget, so a v6 record's
+             * body can never push payload_length past AEGIS_MAX_PAYLOAD_SIZE
+             * (the reader resets the ring on any larger claim). */
+            copyLen = (availablePayload > AEGIS_MAX_PAYLOAD_SIZE - sidecarLen)
+                ? (ULONG)(AEGIS_MAX_PAYLOAD_SIZE - sidecarLen)
+                : (ULONG)availablePayload;
         }
-        hdr->payload_length = copyLen;
-        totalSize = sizeof(AEGIS_EVENT_HEADER) + (SIZE_T)copyLen;
+        hdr->payload_length = (UINT32)(sidecarLen + copyLen);
+        totalSize = sizeof(AEGIS_EVENT_HEADER) + sidecarLen + (SIZE_T)copyLen;
     }
 
     /* Gather the payload under the ring lock: NdisGetDataBuffer returns a
@@ -158,9 +194,11 @@ static VOID AegisWfpEmitRecord(AEGIS_EVENT_HEADER *hdr, void *layerData)
                 g_PayloadScratch, 1, 0);
         }
         if (payload == NULL) {
+            /* Degrade to header + sidecar: the v6 identity stays valid and
+             * the flagged record keeps carrying its 32 bytes. */
             copyLen = 0;
-            hdr->payload_length = 0;
-            totalSize = sizeof(AEGIS_EVENT_HEADER);
+            hdr->payload_length = (UINT32)sidecarLen;
+            totalSize = sizeof(AEGIS_EVENT_HEADER) + sidecarLen;
         } else {
             payload = (PUCHAR)payload + payloadOffset;
         }
@@ -172,6 +210,9 @@ static VOID AegisWfpEmitRecord(AEGIS_EVENT_HEADER *hdr, void *layerData)
      * exactly. Honest accounting: drops are counted, not just logged. */
     if (totalSize < g_RingBufferSize - usedSpace) {
         AegisWfpRingWrite(hdr, sizeof(AEGIS_EVENT_HEADER));
+        if (sidecarLen > 0) {
+            AegisWfpRingWrite(sidecarBuf, sidecarLen);
+        }
         if (copyLen > 0) {
             AegisWfpRingWrite(payload, copyLen);
         }
@@ -262,7 +303,7 @@ void AegisWfpClassifyFn(
      * path: the delivered data begins at the transport payload -- a
      * 180-byte UDP payload was copied byte-exact with no UDP header.
      * Fail-open: a gather failure degrades the record to the header. */
-    AegisWfpEmitRecord(&hdr, layerData);
+    AegisWfpEmitRecord(&hdr, layerData, NULL, NULL);
 
     /* FAIL-OPEN: always permit */
     classifyOut->actionType = FWP_ACTION_PERMIT;
@@ -332,7 +373,169 @@ void AegisWfpOutboundClassifyFn(
      * the record layout and ring contract are unchanged. */
     hdr.layer_id = 1;  /* FWPM_LAYER_OUTBOUND_TRANSPORT_V4 */
 
-    AegisWfpEmitRecord(&hdr, layerData);
+    AegisWfpEmitRecord(&hdr, layerData, NULL, NULL);
+
+    /* FAIL-OPEN: always permit */
+    classifyOut->actionType = FWP_ACTION_PERMIT;
+    classifyOut->rights    &= ~FWPS_RIGHT_ACTION_WRITE;
+
+    ExReleaseRundownProtection(&g_CalloutRundown);
+}
+
+/* ====== O1 (plan §26 ทาง A): IPv6 transport capture pair ======
+ * Mirrors the v4 pair at the IPv6 transport layers. Same 48-byte header,
+ * same ring contract, plus a 32-byte identity sidecar (src16 ++ dst16)
+ * that leads the payload behind AEGIS_EVENT_FLAG_V6_SIDECAR. The u32
+ * identity fields keep the BE-canonical convention: the first four
+ * address bytes composed as a big-endian integer value — the same
+ * derivation the Go nose path uses (BE.Uint32(addr[:4])). WFP hands v6
+ * addresses in network order, so the composition is a plain byte shift.
+ * Always permits (fail-open); capture only, never enforcement. */
+
+/* First four address bytes as the BE integer value the consumer expects. */
+static UINT32 AegisWfpV6Prefix32(const UINT8 addr[16])
+{
+    return ((UINT32)addr[0] << 24) | ((UINT32)addr[1] << 16) |
+           ((UINT32)addr[2] << 8)  |  (UINT32)addr[3];
+}
+
+/* ====== WFP Inbound V6 Classify Callback (O1) ====== */
+void AegisWfpInboundV6ClassifyFn(
+    IN const FWPS_INCOMING_VALUES0          *inFixedValues,
+    IN const FWPS_INCOMING_METADATA_VALUES0 *inMetaValues,
+    IN OUT void                             *layerData,
+    IN const FWPS_FILTER0                   *filter,
+    IN UINT64                               flowContext,
+    IN OUT FWPS_CLASSIFY_OUT0               *classifyOut)
+{
+    AEGIS_EVENT_HEADER hdr;
+    const FWP_BYTE_ARRAY16 *remote6 = NULL;
+    const FWP_BYTE_ARRAY16 *local6 = NULL;
+
+    UNREFERENCED_PARAMETER(inMetaValues);
+    UNREFERENCED_PARAMETER(filter);
+    UNREFERENCED_PARAMETER(flowContext);
+
+    if (!classifyOut)
+        return;
+
+    if (!ExAcquireRundownProtection(&g_CalloutRundown)) {
+        classifyOut->actionType = FWP_ACTION_PERMIT;
+        classifyOut->rights    &= ~FWPS_RIGHT_ACTION_WRITE;
+        return;
+    }
+
+    RtlZeroMemory(&hdr, sizeof(hdr));
+    hdr.event_type = 0;   /* NETWORK */
+    hdr.direction  = 0;   /* inbound */
+    hdr.timestamp  = KeQueryPerformanceCounter(NULL).QuadPart;
+
+    hdr.protocol =
+        inFixedValues->incomingValue[
+            FWPS_FIELD_INBOUND_TRANSPORT_V6_IP_PROTOCOL
+        ].value.uint8;
+
+    /* Remote = sender (source), local = receiver (destination). */
+    remote6 = inFixedValues->incomingValue[
+        FWPS_FIELD_INBOUND_TRANSPORT_V6_IP_REMOTE_ADDRESS].value.byteArray16;
+    local6 = inFixedValues->incomingValue[
+        FWPS_FIELD_INBOUND_TRANSPORT_V6_IP_LOCAL_ADDRESS].value.byteArray16;
+
+    hdr.source_port =
+        inFixedValues->incomingValue[
+            FWPS_FIELD_INBOUND_TRANSPORT_V6_IP_REMOTE_PORT
+        ].value.uint16;
+
+    hdr.dest_port =
+        inFixedValues->incomingValue[
+            FWPS_FIELD_INBOUND_TRANSPORT_V6_IP_LOCAL_PORT
+        ].value.uint16;
+
+    hdr.layer_id = 2;  /* FWPM_LAYER_INBOUND_TRANSPORT_V6 (diagnostic) */
+
+    if (remote6 != NULL && local6 != NULL) {
+        /* O1: u32 identity = first 4 sidecar bytes as a BE integer value
+         * (Go convention); the full 16-byte addresses ride the sidecar. */
+        hdr.source_ip = AegisWfpV6Prefix32(remote6->byteArray16);
+        hdr.dest_ip   = AegisWfpV6Prefix32(local6->byteArray16);
+        AegisWfpEmitRecord(&hdr, layerData,
+                           remote6->byteArray16, local6->byteArray16);
+    } else {
+        /* Unreachable for WFP-populated v6 transport fixed values; degrade
+         * to a v4-shaped header-only record (no flag, no sidecar) rather
+         * than emit a flagged tail the decoder would fail-closed on. */
+        AegisWfpEmitRecord(&hdr, layerData, NULL, NULL);
+    }
+
+    /* FAIL-OPEN: always permit */
+    classifyOut->actionType = FWP_ACTION_PERMIT;
+    classifyOut->rights    &= ~FWPS_RIGHT_ACTION_WRITE;
+
+    ExReleaseRundownProtection(&g_CalloutRundown);
+}
+
+/* ====== WFP Outbound V6 Classify Callback (O1) ====== */
+void AegisWfpOutboundV6ClassifyFn(
+    IN const FWPS_INCOMING_VALUES0          *inFixedValues,
+    IN const FWPS_INCOMING_METADATA_VALUES0 *inMetaValues,
+    IN OUT void                             *layerData,
+    IN const FWPS_FILTER0                   *filter,
+    IN UINT64                               flowContext,
+    IN OUT FWPS_CLASSIFY_OUT0               *classifyOut)
+{
+    AEGIS_EVENT_HEADER hdr;
+    const FWP_BYTE_ARRAY16 *local6 = NULL;
+    const FWP_BYTE_ARRAY16 *remote6 = NULL;
+
+    UNREFERENCED_PARAMETER(inMetaValues);
+    UNREFERENCED_PARAMETER(filter);
+    UNREFERENCED_PARAMETER(flowContext);
+
+    if (!classifyOut)
+        return;
+
+    if (!ExAcquireRundownProtection(&g_CalloutRundown)) {
+        classifyOut->actionType = FWP_ACTION_PERMIT;
+        classifyOut->rights    &= ~FWPS_RIGHT_ACTION_WRITE;
+        return;
+    }
+
+    RtlZeroMemory(&hdr, sizeof(hdr));
+    hdr.event_type = 0;   /* NETWORK */
+    hdr.direction  = 1;   /* outbound */
+    hdr.timestamp  = KeQueryPerformanceCounter(NULL).QuadPart;
+
+    hdr.protocol =
+        inFixedValues->incomingValue[
+            FWPS_FIELD_OUTBOUND_TRANSPORT_V6_IP_PROTOCOL
+        ].value.uint8;
+
+    /* Local = sender (source), remote = receiver (destination). */
+    local6 = inFixedValues->incomingValue[
+        FWPS_FIELD_OUTBOUND_TRANSPORT_V6_IP_LOCAL_ADDRESS].value.byteArray16;
+    remote6 = inFixedValues->incomingValue[
+        FWPS_FIELD_OUTBOUND_TRANSPORT_V6_IP_REMOTE_ADDRESS].value.byteArray16;
+
+    hdr.source_port =
+        inFixedValues->incomingValue[
+            FWPS_FIELD_OUTBOUND_TRANSPORT_V6_IP_LOCAL_PORT
+        ].value.uint16;
+
+    hdr.dest_port =
+        inFixedValues->incomingValue[
+            FWPS_FIELD_OUTBOUND_TRANSPORT_V6_IP_REMOTE_PORT
+        ].value.uint16;
+
+    hdr.layer_id = 3;  /* FWPM_LAYER_OUTBOUND_TRANSPORT_V6 (diagnostic) */
+
+    if (local6 != NULL && remote6 != NULL) {
+        hdr.source_ip = AegisWfpV6Prefix32(local6->byteArray16);
+        hdr.dest_ip   = AegisWfpV6Prefix32(remote6->byteArray16);
+        AegisWfpEmitRecord(&hdr, layerData,
+                           local6->byteArray16, remote6->byteArray16);
+    } else {
+        AegisWfpEmitRecord(&hdr, layerData, NULL, NULL);
+    }
 
     /* FAIL-OPEN: always permit */
     classifyOut->actionType = FWP_ACTION_PERMIT;
@@ -540,11 +743,128 @@ NTSTATUS AegisWfpRegisterCallout(PDRIVER_OBJECT DriverObject)
     DbgPrint("[AEGIS WFP] stage=FwpmFilterAdd0(outbound) status=0x%08X id=%llu\n",
         status, g_OutboundCaptureFilterId);
 
+    /* 6. O1 (plan §26 ทาง A): inbound IPv6 transport capture pair. Same
+     * 48-byte record and ring contract; header flags bit0 marks the 32-byte
+     * identity sidecar leading the payload, direction=0 / layer_id=2 mark
+     * the origin. Any failure tears the whole registration down via
+     * AegisWfpUnregisterCallout — never a half pair. */
+    RtlZeroMemory(&callout, sizeof(callout));
+    callout.calloutKey       = AEGIS_INBOUND_V6_CALLOUT_KEY;
+    callout.displayData.name        = L"AEGIS NIDS Inbound V6 Capture";
+    callout.displayData.description = L"Captures inbound IPv6 transport packets";
+    callout.applicableLayer  = FWPM_LAYER_INBOUND_TRANSPORT_V6;
+
+    status = FwpmCalloutAdd0(g_WfpEngineHandle, &callout,
+        NULL, &g_InboundV6CalloutId);
+    if (!NT_SUCCESS(status)) {
+        DbgPrint("[AEGIS WFP] stage=FwpmCalloutAdd0(inbound-v6) status=0x%08X\n",
+            status);
+        AegisWfpUnregisterCallout();
+        return AegisWfpStartupFailure(AEGIS_STAGE_CALLOUT_ADD, status);
+    }
+
+    RtlZeroMemory(&sCallout, sizeof(sCallout));
+    sCallout.calloutKey   = AEGIS_INBOUND_V6_CALLOUT_KEY;
+    sCallout.classifyFn   = AegisWfpInboundV6ClassifyFn;
+    sCallout.notifyFn     = AegisWfpNotifyFn;
+    sCallout.flowDeleteFn = AegisWfpFlowDeleteFn;
+
+    status = FwpsCalloutRegister0(DriverObject, &sCallout,
+        &g_InboundV6CalloutId);
+    if (!NT_SUCCESS(status)) {
+        DbgPrint("[AEGIS WFP] stage=FwpsCalloutRegister0(inbound-v6) status=0x%08X\n",
+            status);
+        AegisWfpUnregisterCallout();
+        return AegisWfpStartupFailure(AEGIS_STAGE_CALLOUT_REGISTER, status);
+    }
+
+    RtlZeroMemory(&filter, sizeof(filter));
+    action.type       = FWP_ACTION_CALLOUT_TERMINATING;
+    action.calloutKey = AEGIS_INBOUND_V6_CALLOUT_KEY;
+
+    filter.layerKey              = FWPM_LAYER_INBOUND_TRANSPORT_V6;
+    filter.displayData.name        = L"AEGIS Inbound Transport V6 Capture";
+    filter.displayData.description = L"Inspects all inbound IPv6 transport packets";
+    filter.action                 = action;
+    filter.flags                  = FWPM_FILTER_FLAG_PERMIT_IF_CALLOUT_UNREGISTERED;
+    filter.numFilterConditions    = 0;
+    filter.filterCondition        = NULL;
+
+    status = FwpmFilterAdd0(g_WfpEngineHandle, &filter,
+        NULL, &g_InboundV6FilterId);
+    if (!NT_SUCCESS(status)) {
+        DbgPrint("[AEGIS WFP] stage=FwpmFilterAdd0(inbound-v6) status=0x%08X\n",
+            status);
+        AegisWfpUnregisterCallout();
+        return AegisWfpStartupFailure(AEGIS_STAGE_FILTER_ADD, status);
+    }
+    DbgPrint("[AEGIS WFP] stage=FwpmFilterAdd0(inbound-v6) status=0x%08X id=%llu\n",
+        status, g_InboundV6FilterId);
+
+    /* 7. O1: outbound IPv6 transport capture pair. Same contract as step 6
+     * with direction=1 and layer_id=3. */
+    RtlZeroMemory(&callout, sizeof(callout));
+    callout.calloutKey       = AEGIS_OUTBOUND_V6_CALLOUT_KEY;
+    callout.displayData.name        = L"AEGIS NIDS Outbound V6 Capture";
+    callout.displayData.description = L"Captures outbound IPv6 transport packets";
+    callout.applicableLayer  = FWPM_LAYER_OUTBOUND_TRANSPORT_V6;
+
+    status = FwpmCalloutAdd0(g_WfpEngineHandle, &callout,
+        NULL, &g_OutboundV6CalloutId);
+    if (!NT_SUCCESS(status)) {
+        DbgPrint("[AEGIS WFP] stage=FwpmCalloutAdd0(outbound-v6) status=0x%08X\n",
+            status);
+        AegisWfpUnregisterCallout();
+        return AegisWfpStartupFailure(AEGIS_STAGE_CALLOUT_ADD, status);
+    }
+
+    RtlZeroMemory(&sCallout, sizeof(sCallout));
+    sCallout.calloutKey   = AEGIS_OUTBOUND_V6_CALLOUT_KEY;
+    sCallout.classifyFn   = AegisWfpOutboundV6ClassifyFn;
+    sCallout.notifyFn     = AegisWfpNotifyFn;
+    sCallout.flowDeleteFn = AegisWfpFlowDeleteFn;
+
+    status = FwpsCalloutRegister0(DriverObject, &sCallout,
+        &g_OutboundV6CalloutId);
+    if (!NT_SUCCESS(status)) {
+        DbgPrint("[AEGIS WFP] stage=FwpsCalloutRegister0(outbound-v6) status=0x%08X\n",
+            status);
+        AegisWfpUnregisterCallout();
+        return AegisWfpStartupFailure(AEGIS_STAGE_CALLOUT_REGISTER, status);
+    }
+
+    RtlZeroMemory(&filter, sizeof(filter));
+    action.type       = FWP_ACTION_CALLOUT_TERMINATING;
+    action.calloutKey = AEGIS_OUTBOUND_V6_CALLOUT_KEY;
+
+    filter.layerKey              = FWPM_LAYER_OUTBOUND_TRANSPORT_V6;
+    filter.displayData.name        = L"AEGIS Outbound Transport V6 Capture";
+    filter.displayData.description = L"Inspects all outbound IPv6 transport packets";
+    filter.action                 = action;
+    filter.flags                  = FWPM_FILTER_FLAG_PERMIT_IF_CALLOUT_UNREGISTERED;
+    filter.numFilterConditions    = 0;
+    filter.filterCondition        = NULL;
+
+    status = FwpmFilterAdd0(g_WfpEngineHandle, &filter,
+        NULL, &g_OutboundV6FilterId);
+    if (!NT_SUCCESS(status)) {
+        DbgPrint("[AEGIS WFP] stage=FwpmFilterAdd0(outbound-v6) status=0x%08X\n",
+            status);
+        AegisWfpUnregisterCallout();
+        return AegisWfpStartupFailure(AEGIS_STAGE_FILTER_ADD, status);
+    }
+    DbgPrint("[AEGIS WFP] stage=FwpmFilterAdd0(outbound-v6) status=0x%08X id=%llu\n",
+        status, g_OutboundV6FilterId);
+
     DbgPrint("[AEGIS WFP] Callout + filter registered - "
         "CalloutID: %u, FilterID: %llu, OutboundCalloutID: %u, "
-        "OutboundFilterID: %llu\n",
+        "OutboundFilterID: %llu, InboundV6CalloutID: %u, "
+        "InboundV6FilterID: %llu, OutboundV6CalloutID: %u, "
+        "OutboundV6FilterID: %llu\n",
         g_CalloutId, g_CaptureFilterId,
-        g_OutboundCalloutId, g_OutboundCaptureFilterId);
+        g_OutboundCalloutId, g_OutboundCaptureFilterId,
+        g_InboundV6CalloutId, g_InboundV6FilterId,
+        g_OutboundV6CalloutId, g_OutboundV6FilterId);
     return STATUS_SUCCESS;
 }
 
@@ -556,6 +876,74 @@ VOID AegisWfpUnregisterCallout(void)
      * released the ring. The filter is still present during the wait, but the
      * callout action remains fail-open. */
     ExWaitForRundownProtectionRelease(&g_CalloutRundown);
+
+    /* 0a. O1 (plan §26 ทาง A): remove the IPv6 capture pairs before the v4
+     * pairs. The same filter-before-callout order keeps WFP fail-open if a
+     * delete fails; every id guard tolerates a pair that never registered
+     * (a step-6/7 failure path lands here with the later pairs still 0). */
+    if (g_WfpEngineHandle && g_OutboundV6FilterId) {
+        NTSTATUS status = FwpmFilterDeleteById0(g_WfpEngineHandle,
+                                                g_OutboundV6FilterId);
+        if (!NT_SUCCESS(status) &&
+            !AegisWfpFilterNotFound(status)) {
+            DbgPrint("[AEGIS WFP] Outbound V6 capture filter delete failed (id=%llu): 0x%08X\n",
+                g_OutboundV6FilterId, status);
+        } else {
+            DbgPrint("[AEGIS WFP] Outbound V6 capture filter deleted (id=%llu)\n",
+                g_OutboundV6FilterId);
+            g_OutboundV6FilterId = 0;
+        }
+    }
+
+    if (g_OutboundV6CalloutId) {
+        LARGE_INTEGER delay;
+        delay.QuadPart = -100000; /* 10 ms, relative */
+        for (;;) {
+            NTSTATUS status = FwpsCalloutUnregisterById0(g_OutboundV6CalloutId);
+            if (NT_SUCCESS(status) ||
+                AegisWfpCalloutNotFound(status)) {
+                DbgPrint("[AEGIS WFP] Outbound V6 runtime callout unregistered (id=%u)\n",
+                    g_OutboundV6CalloutId);
+                g_OutboundV6CalloutId = 0;
+                break;
+            }
+            DbgPrint("[AEGIS WFP] Outbound V6 unregister pending (id=%u): 0x%08X; retrying\n",
+                g_OutboundV6CalloutId, status);
+            KeDelayExecutionThread(KernelMode, FALSE, &delay);
+        }
+    }
+
+    if (g_WfpEngineHandle && g_InboundV6FilterId) {
+        NTSTATUS status = FwpmFilterDeleteById0(g_WfpEngineHandle,
+                                                g_InboundV6FilterId);
+        if (!NT_SUCCESS(status) &&
+            !AegisWfpFilterNotFound(status)) {
+            DbgPrint("[AEGIS WFP] Inbound V6 capture filter delete failed (id=%llu): 0x%08X\n",
+                g_InboundV6FilterId, status);
+        } else {
+            DbgPrint("[AEGIS WFP] Inbound V6 capture filter deleted (id=%llu)\n",
+                g_InboundV6FilterId);
+            g_InboundV6FilterId = 0;
+        }
+    }
+
+    if (g_InboundV6CalloutId) {
+        LARGE_INTEGER delay;
+        delay.QuadPart = -100000; /* 10 ms, relative */
+        for (;;) {
+            NTSTATUS status = FwpsCalloutUnregisterById0(g_InboundV6CalloutId);
+            if (NT_SUCCESS(status) ||
+                AegisWfpCalloutNotFound(status)) {
+                DbgPrint("[AEGIS WFP] Inbound V6 runtime callout unregistered (id=%u)\n",
+                    g_InboundV6CalloutId);
+                g_InboundV6CalloutId = 0;
+                break;
+            }
+            DbgPrint("[AEGIS WFP] Inbound V6 unregister pending (id=%u): 0x%08X; retrying\n",
+                g_InboundV6CalloutId, status);
+            KeDelayExecutionThread(KernelMode, FALSE, &delay);
+        }
+    }
 
     /* 1a. O2: remove the outbound capture pair before the inbound pair. The
      * same filter-before-callout order keeps WFP fail-open if a delete fails. */
@@ -642,6 +1030,20 @@ VOID AegisWfpUnregisterCallout(void)
      * is the final backstop, not the only cleanup. */
     if (g_WfpEngineHandle) {
         NTSTATUS status = FwpmCalloutDeleteByKey0(g_WfpEngineHandle,
+                                                  &AEGIS_OUTBOUND_V6_CALLOUT_KEY);
+        if (!NT_SUCCESS(status) &&
+            !AegisWfpCalloutNotFound(status)) {
+            DbgPrint("[AEGIS WFP] Outbound V6 BLM callout delete failed: 0x%08X\n",
+                status);
+        }
+        status = FwpmCalloutDeleteByKey0(g_WfpEngineHandle,
+                                         &AEGIS_INBOUND_V6_CALLOUT_KEY);
+        if (!NT_SUCCESS(status) &&
+            !AegisWfpCalloutNotFound(status)) {
+            DbgPrint("[AEGIS WFP] Inbound V6 BLM callout delete failed: 0x%08X\n",
+                status);
+        }
+        status = FwpmCalloutDeleteByKey0(g_WfpEngineHandle,
                                                   &AEGIS_OUTBOUND_CALLOUT_KEY);
         if (!NT_SUCCESS(status) &&
             !AegisWfpCalloutNotFound(status)) {

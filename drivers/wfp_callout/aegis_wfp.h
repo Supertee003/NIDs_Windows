@@ -170,6 +170,18 @@ typedef struct _AEGIS_WFP_FILTER_STATE {
 #define AEGIS_MAX_CAPTURE_WINDOW \
     (AEGIS_MAX_PAYLOAD_SIZE + AEGIS_MAX_TRANSPORT_HEADER_SIZE)
 
+/* ====== O1 (plan §26 ทาง A): IPv6 identity sidecar-in-payload ======
+ * A record flagged AEGIS_EVENT_FLAG_V6_SIDECAR leads its payload with
+ * AEGIS_V6_SIDECAR_SIZE bytes (src16 ++ dst16, raw network order) before
+ * the L7 body; payload_length claims sidecar + body and stays
+ * <= AEGIS_MAX_PAYLOAD_SIZE (the body budget shrinks by the sidecar).
+ * The 48-byte header layout is untouched. The flag is written only when
+ * the full 32-byte sidecar is written with it, so the consumer's
+ * fail-closed guard (payload_length >= 32 when bit0 set) never trips on
+ * a record this driver emits. */
+#define AEGIS_EVENT_FLAG_V6_SIDECAR 0x01
+#define AEGIS_V6_SIDECAR_SIZE       32  /* src16 (16) ++ dst16 (16) */
+
 /* Ring used-space helper (call under spinlock) */
 #define AEGIS_RING_USED() \
     ((g_RingWriteOffset >= g_RingReadOffset) ? \
@@ -192,7 +204,7 @@ typedef struct _AEGIS_EVENT_HEADER {
     UINT8   protocol;       /* 6=TCP, 17=UDP, 1=ICMP */
     UINT8   direction;      /* 0=inbound, 1=outbound */
     UINT8   layer_id;       /* WFP layer ID (low byte) */
-    UINT8   flags;          /* Reserved */
+    UINT8   flags;          /* O1: bit0 = AEGIS_EVENT_FLAG_V6_SIDECAR; rest reserved */
     UINT32  payload_length; /* EVT-231: payload bytes (0=empty/unavailable/unsupported; <= AEGIS_MAX_PAYLOAD_SIZE) */
     UINT32  rule_id;        /* Matched rule ID (0=none) */
     UINT32  severity;       /* 0=Low 1=Med 2=High 3=Critical */
@@ -221,6 +233,10 @@ extern const GUID AEGIS_CALLOUT_KEY;
  * id, and capture filter. It shares the inbound ring and 48-byte record; the
  * header direction byte (0=inbound, 1=outbound) is the only discriminator. */
 extern const GUID AEGIS_OUTBOUND_CALLOUT_KEY;
+/* O1 (plan §26 ทาง A): IPv6 transport capture pairs share the v4 ring and
+ * the 48-byte record; header flags bit0 + direction mark the origin. */
+extern const GUID AEGIS_INBOUND_V6_CALLOUT_KEY;
+extern const GUID AEGIS_OUTBOUND_V6_CALLOUT_KEY;
 extern const GUID AEGIS_PROOF_FILTER_KEY;
 extern const GUID AEGIS_PROOF_PROVIDER_KEY;
 
@@ -240,6 +256,12 @@ extern UINT32         g_CalloutId;
 extern UINT64         g_CaptureFilterId;
 extern UINT32         g_OutboundCalloutId;
 extern UINT64         g_OutboundCaptureFilterId;
+/* O1 (plan §26 ทาง A): IPv6 transport capture pairs. Zero means the pair
+ * was never registered; teardown tolerates any prefix of failures. */
+extern UINT32         g_InboundV6CalloutId;
+extern UINT64         g_InboundV6FilterId;
+extern UINT32         g_OutboundV6CalloutId;
+extern UINT64         g_OutboundV6FilterId;
 /* Classify-call rundown: unload waits here before the capture filter, runtime
  * callout, engine, or ring is torn down. */
 extern EX_RUNDOWN_REF g_CalloutRundown;
@@ -269,6 +291,22 @@ void AegisWfpClassifyFn(
     IN UINT64                               flowContext,
     IN OUT FWPS_CLASSIFY_OUT0               *classifyOut);
 void AegisWfpOutboundClassifyFn(
+    IN const FWPS_INCOMING_VALUES0          *inFixedValues,
+    IN const FWPS_INCOMING_METADATA_VALUES0 *inMetaValues,
+    IN OUT void                             *layerData,
+    IN const FWPS_FILTER0                   *filter,
+    IN UINT64                               flowContext,
+    IN OUT FWPS_CLASSIFY_OUT0               *classifyOut);
+/* O1 (plan §26 ทาง A): IPv6 transport classify callbacks. Same record and
+ * fail-open contract as the v4 pair; layer_id 2=inbound-v6, 3=outbound-v6. */
+void AegisWfpInboundV6ClassifyFn(
+    IN const FWPS_INCOMING_VALUES0          *inFixedValues,
+    IN const FWPS_INCOMING_METADATA_VALUES0 *inMetaValues,
+    IN OUT void                             *layerData,
+    IN const FWPS_FILTER0                   *filter,
+    IN UINT64                               flowContext,
+    IN OUT FWPS_CLASSIFY_OUT0               *classifyOut);
+void AegisWfpOutboundV6ClassifyFn(
     IN const FWPS_INCOMING_VALUES0          *inFixedValues,
     IN const FWPS_INCOMING_METADATA_VALUES0 *inMetaValues,
     IN OUT void                             *layerData,
