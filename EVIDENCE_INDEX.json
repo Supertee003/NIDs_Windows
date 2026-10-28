@@ -2943,6 +2943,36 @@
    "completion_gate": "E5 PASS; gap G2-DUPFILTER-REPEAT-20261022 CLOSED",
    "issue": null,
    "evidence": "admin-evidence/g2-dupfilter-20261028/host-run-result.json; admin-evidence/g2-dupfilter-20261028/host-run.txt"
+  },
+  {
+   "id": "REL-REBASE-E2-20261028",
+   "head_sha": "26513a26efe26b1c006cdd8fc5c98338a950ef50",
+   "timestamp": "2026-10-28T17:10:00+07:00",
+   "title": "Release digests re-stamped at source 26513a2 after the O2 slice; release gate and fresh_deploy preflight green again (E2)",
+   "level": "E2",
+   "component": "tools/release_engineering.py release digest gate",
+   "flow_id": "REL-001",
+   "patch_id": "REL-REBASE-20261028",
+   "target_head": "26513a26efe26b1c006cdd8fc5c98338a950ef50",
+   "expected": "After the O2 slice (source 26513a2) changed 12 listed artifacts, --verify must match all 616 recorded digests at that source commit so the release gate and fresh_deploy preflight are green.",
+   "actual": "PASS. tools/release_engineering.py --refresh-digests updated exactly the 12 O2-touched artifacts (runtime_manifest.json; src/all_tests.zig; src/capture/wfp_telemetry.zig; src/control/handler_registry.zig; src/forensic/forensic_pipeline.zig; src/pipeline/event_processor.zig; src/pipeline/event_queue.zig; src/pipeline/runtime_state.zig; src/pipeline/telemetry_threads.zig; src/windows/etw_realtime.zig; tools/aegisctl.py; tools/aegisctl/web_dashboard/app.py); artifact set unchanged (kept 616, dropped 0, adopted 0); --verify OK 616/616 with source_commit=26513a2. ADR-0008/EVT-103 respected: the stamp carries the build source commit, the artifact set was not grown, and runtime_manifest.json content is unchanged in this commit.",
+   "contract_impact": "None; digest re-stamp only, artifact set unchanged.",
+   "abi_impact": "None.",
+   "authority_impact": "None; release provenance bookkeeping only.",
+   "state_impact": "No runtime state changed; services untouched.",
+   "files_verified": [
+    "tools/release_engineering.py",
+    "build_manifest.json"
+   ],
+   "build_result": "No rebuild; --verify 616/616 present at source_commit=26513a2.",
+   "test_result": "PASS: tools/release_engineering.py --verify rc=0; tests/release/test_fresh_deploy.py 3 passed; tests/release/test_t17_perf_ci_installer.py::test_ac3_verify_mode_detects_drift passed; full suite re-run: 1019 passed, 4 skipped, 27 subtests, 0 failed.",
+   "windows_result": "Not a host-effect slice; suite-level verification only.",
+   "evidence_level": "E2",
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed",
+   "completion_gate": "E2 PASS; full pytest tests suite green (0 failed) at HEAD 841e565",
+   "issue": null,
+   "evidence": "commit 841e565 (records: re-stamp release digests at source 26513a2); tools/release_engineering.py --refresh-digests/--verify transcripts in this entry's test_result"
   }
  ],
  "known_gaps": [
@@ -8364,7 +8394,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 27,
-  "E2_count": 136,
+  "E2_count": 137,
   "E3_count": 14,
   "E4_count": 15,
   "E5_count": 124,
