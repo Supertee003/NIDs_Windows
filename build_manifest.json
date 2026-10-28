@@ -1027,7 +1027,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 18563,
-      "sha256": "9a5a1e56407a4e6a4ca84973be1f499d729bd430ef38428e66e9e156c3ebb741",
+      "sha256": "e2322da99141de6aa866aa3b666a13fe5192792d9e2f87f10f3db850defaa1af",
       "language": "json"
     },
     {
@@ -1662,8 +1662,8 @@
     },
     {
       "path": "src/all_tests.zig",
-      "size": 10777,
-      "sha256": "e4862e4ffd1794e54411b4332f6c491b13771e5f12fd3352371f707eaf5f8e90",
+      "size": 10824,
+      "sha256": "6edcfd38dda66377003f091517663645b458d7ab220d0987e7f7a8b9d08a3254",
       "language": "zig"
     },
     {
@@ -1752,8 +1752,8 @@
     },
     {
       "path": "src/capture/wfp_telemetry.zig",
-      "size": 9843,
-      "sha256": "e58e9b7a3ff0ea9c099630e5b32b8150ba46ec05fe6dd0944db370ef352964e2",
+      "size": 14565,
+      "sha256": "8447f96a844acf2c8e350d35aa1fa83d5dd84080e6828d1d734722de285f7035",
       "language": "zig"
     },
     {
@@ -1836,8 +1836,8 @@
     },
     {
       "path": "src/control/handler_registry.zig",
-      "size": 153364,
-      "sha256": "5083bcb725d422b06d716344d7acd79ea8c1b0ea4d10d9ca6ba94d9d85ef2625",
+      "size": 156961,
+      "sha256": "baa50e8821dabe406dc13f8655e9b83b166312a0f41fcfb63b403379fb83ecf6",
       "language": "zig"
     },
     {
@@ -2160,8 +2160,8 @@
     },
     {
       "path": "src/forensic/forensic_pipeline.zig",
-      "size": 31997,
-      "sha256": "d5382b0c0d6d7e1a1d7627924f113c3d8003962f5e74f5f7d317c02ff61e4186",
+      "size": 34863,
+      "sha256": "50ebb329ff874662c182582427ceb41de54469685b4da62574f91ea8b20717e9",
       "language": "zig"
     },
     {
@@ -2292,14 +2292,14 @@
     },
     {
       "path": "src/pipeline/event_processor.zig",
-      "size": 37303,
-      "sha256": "cb3b5ddb832241cbdef1a6491ec0d1389591f62ae4508d03ca257f3c54f5b8b1",
+      "size": 37559,
+      "sha256": "582ef7bf5857146b360e95a95c87a064d7228c690563e01956060de22a1adf73",
       "language": "zig"
     },
     {
       "path": "src/pipeline/event_queue.zig",
-      "size": 27651,
-      "sha256": "d84839c876867eea1e3c29039ca797ce03553ababcd644860172f5d3df4cc80e",
+      "size": 28462,
+      "sha256": "112465e8a90d8c0a39fbfa1617909992b55b879661d0f3287bc5fa517059b30d",
       "language": "zig"
     },
     {
@@ -2322,14 +2322,14 @@
     },
     {
       "path": "src/pipeline/runtime_state.zig",
-      "size": 17060,
-      "sha256": "78e10bf653528c574ab218053031af0fcc8278aaf239870a9af0cd3913edbf73",
+      "size": 17688,
+      "sha256": "f3085182141778dedd7f190467166d06223286cc5780355aaa8c985aa4ec9982",
       "language": "zig"
     },
     {
       "path": "src/pipeline/telemetry_threads.zig",
-      "size": 22002,
-      "sha256": "39a3252d6b8fe95bcf84279181db7c81de87932f36bac9717f0a6b22673b4629",
+      "size": 21991,
+      "sha256": "fc09ee923fd96ebe10077c4f479cf1e5784b2ed72d428633c7e7c7ba5ea0d2c3",
       "language": "zig"
     },
     {
@@ -3240,8 +3240,8 @@
     },
     {
       "path": "src/windows/etw_realtime.zig",
-      "size": 46391,
-      "sha256": "fbb8c44f495e06a08369ccabfe2cebe6ec4bad6694314dcc820d72917b14df27",
+      "size": 46628,
+      "sha256": "f9bd88315cfa6bb0e7bba47e35f280c7ab954e80c02ac0e6f511abc5b511178e",
       "language": "zig"
     },
     {
@@ -3378,8 +3378,8 @@
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 107114,
-      "sha256": "3e947f5c505dcc49ec084332347cd48b3a2a8ce924492eeac15fc68bcbcf83a8",
+      "size": 107648,
+      "sha256": "d29629ca1aa570040467502938a086629c83b3ddee28405ec5cea849a36f2caf",
       "language": "python/cython"
     },
     {
@@ -3444,8 +3444,8 @@
     },
     {
       "path": "tools/aegisctl/web_dashboard/app.py",
-      "size": 50361,
-      "sha256": "4688ada26747709161672f23f6feee67b1d519dcbb909d9dbbff50fe745269bd",
+      "size": 50512,
+      "sha256": "730516720acae9b8b2facf7602e59a6ea049139f48a0dd39bb7071a494845392",
       "language": "python/cython"
     },
     {
