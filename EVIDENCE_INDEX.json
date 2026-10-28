@@ -2973,6 +2973,41 @@
    "completion_gate": "E2 PASS; full pytest tests suite green (0 failed) at HEAD 841e565",
    "issue": null,
    "evidence": "commit 841e565 (records: re-stamp release digests at source 26513a2); tools/release_engineering.py --refresh-digests/--verify transcripts in this entry's test_result"
+  },
+  {
+   "id": "RB013-LOG-E2-20261028",
+   "head_sha": "56501bbd300ca6ecbed7c92b0102b005d6f2509b",
+   "timestamp": "2026-10-28T20:05:00+07:00",
+   "title": "Service diagnostic stream persistence (TeeSink) + pep=quarantine confirmation line; RB-013 observability implementation lands at E2",
+   "level": "E2",
+   "component": "src/core/diagnostics.zig; src/daemon.zig; src/policy/action_dispatcher.zig",
+   "flow_id": "G2",
+   "patch_id": "G2-RB013-LOG-20261028",
+   "target_head": "56501bbd300ca6ecbed7c92b0102b005d6f2509b",
+   "expected": "A receipt-verified quarantine must leave both the PEP confirmation line (pep=quarantine confirmed=true filter_id=N) and the pipeline QUARANTINED_CONFIRMED line in a persisted diagnostic stream; service mode must not lose diagnostic lines with stderr alone.",
+   "actual": "PASS at E2. src/core/diagnostics.zig adds TeeSink (attempts both branches, reports failure only when both branches fail) and Logger.getSink; src/daemon.zig adds installDiagnosticFileSink(alloc, dir_override) wired at runDaemon start - it tees stderr + <exe_dir>/../logs/aegis-daemon-diagnostic.log (install layout runtime\\..\\logs), fail-open on file errors; src/policy/action_dispatcher.zig emits pep=quarantine confirmed=true filter_id={d} at the receipt-verified quarantine branch before the existing action=QUARANTINED_CONFIRMED line. New zig tests: FileSink persists lines; TeeSink writes both branches; TeeSink survives a failing branch (read-only handle); installDiagnosticFileSink persists to file and is fail-open on an impossible directory; daemon.zig pulled into the all_tests test graph so its inline tests run. Source-pin contract test test_confirmed_quarantine_reaches_a_persisted_diagnostic_stream added to tests/runtime/test_evidence_log_contract.py.",
+   "contract_impact": "None; no wire, ABI, or schema change. The diagnostic stream gains a persisted file sink (runtime state under logs/, untracked).",
+   "abi_impact": "None.",
+   "authority_impact": "None; observability only, no enforcement or authority change.",
+   "state_impact": "The daemon now writes aegis-daemon-diagnostic.log under <exe_dir>/../logs at startup; no runtime schema, service state, or detection behavior change.",
+   "files_changed": [
+    "src/core/diagnostics.zig",
+    "src/daemon.zig",
+    "src/policy/action_dispatcher.zig",
+    "src/all_tests.zig",
+    "tests/runtime/test_evidence_log_contract.py"
+   ],
+   "old_flow_new_flow": "OLD: diag lines -> stderr only (lost in service mode). NEW: diag lines -> TeeSink(stderr + aegis-daemon-diagnostic.log), fail-open.",
+   "invariant": "A receipt-verified quarantine increments g_confirmed_quarantines, writes the forensic record, and now also emits pep=quarantine confirmed=true + action=QUARANTINED_CONFIRMED into a persisted stream.",
+   "build_result": "zig build RC=0; zig build test RC=0 (2231 tests incl. 7 new sink/install tests; one perf-threshold flake under load re-run green).",
+   "test_result": "PASS: zig build test RC=0; python -m pytest tests -q: 1020 passed, 4 skipped, 27 subtests, 0 failed (1019 previous + 1 new contract test). Mid-slice pytest showed exactly the 4 release-digest tests failing (expected drift before the bounded re-stamp); after refresh-digests + rebaseline commit 3bf8825, --verify OK 616/616 at source_commit=56501bb and the release tests pass (5 passed).",
+   "windows_result": "Not a host-effect slice; unit-level verification only. E5 (persisted stream during a real canary on a deployed daemon) pending separate operator authorization.",
+   "evidence_level": "E2",
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed",
+   "completion_gate": "E2 PASS; both suites green; E5 requires a lab canary run + daemon deploy under separate operator authorization (no duplicate canary without separate approval).",
+   "issue": null,
+   "evidence": "commits 56501bb (source), 3bf8825 (rebaseline); admin-evidence/b1-pytest-final.txt; admin-evidence/b1-pytest.txt (mid-slice digest-drift run)."
   }
  ],
  "known_gaps": [
@@ -8268,14 +8303,14 @@
    "id": "G2-RB013-LOG-20261023",
    "severity": "P2",
    "title": "RB-013 pipeline diagnostic lines pep=quarantine confirmed=true and QUARANTINED_CONFIRMED are still missing",
-   "description": "The 2026-10-23 first inbound canary proved the receipt-verified pipeline through metrics confirmed_quarantines 0 -> 1 and filter 78056, but the service diagnostic stream did not contain the pep=quarantine ... confirmed=true or QUARANTINED_CONFIRMED lines. The functional path is proven; the direct diagnostic observable remains missing, so an operator cannot confirm a quarantine from the persisted log alone. This is an observability gap, not a receipt or host-effect failure.",
+   "description": "The 2026-10-23 first inbound canary proved the receipt-verified pipeline through metrics confirmed_quarantines 0 -> 1 and filter 78056, but the service diagnostic stream did not contain the pep=quarantine ... confirmed=true or QUARANTINED_CONFIRMED lines. The functional path is proven; the direct diagnostic observable remains missing, so an operator cannot confirm a quarantine from the persisted log alone. This is an observability gap, not a receipt or host-effect failure. On 2026-10-28 the observability implementation landed at E2 (EVT RB013-LOG-E2-20261028, source 56501bb): the daemon tees its diagnostic stream into <exe_dir>/../logs/aegis-daemon-diagnostic.log (fail-open, stderr unchanged for console harnesses) and the receipt-verified quarantine branch emits pep=quarantine confirmed=true filter_id={d} before the existing action=QUARANTINED_CONFIRMED line. Unit-pinned by zig tests plus a source-pin contract test; the persisted-stream-during-canary E5 proof still requires a new lab canary run and a deployed daemon, which needs separate operator authorization.",
    "status": "OPEN",
    "found_at": "2026-10-23",
    "required_evidence": [
     "Persist a service diagnostic stream containing the PEP quarantine confirmation line (confirmed=true) and/or the pipeline QUARANTINED_CONFIRMED line on the inbound path.",
     "Keep the first-canary functional evidence (listener ACCEPT, policy match, filter 78056, confirmed_quarantines 0 -> 1, unblock absent)."
    ],
-   "evidence": "EVI-G2-PEP-CACHE-001-LAB-20261023; admin-evidence/g2-direction-20261022/vm-lab-run-20261023.txt; first-canary policy-pep and metrics evidence on the lab VM C:/AEGIS/evidence."
+   "evidence": "EVI-G2-PEP-CACHE-001-LAB-20261023; admin-evidence/g2-direction-20261022/vm-lab-run-20261023.txt; first-canary policy-pep and metrics evidence on the lab VM C:/AEGIS/evidence.; commits 56501bb/3bf8825; admin-evidence/b1-pytest-final.txt"
   },
   {
    "id": "G2-INBOUND-VERIFIER-20261021",
@@ -8394,7 +8429,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 27,
-  "E2_count": 137,
+  "E2_count": 138,
   "E3_count": 14,
   "E4_count": 15,
   "E5_count": 124,
