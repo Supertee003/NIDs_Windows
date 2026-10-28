@@ -98,6 +98,11 @@ back down before the next record is submitted.
   SHA-256 `E0C368C1…`). This candidate has not been signed or deployed; the
   live driver remains the prior signed O2 image until the E5 rollback-wrapped
   operator proof completes.
+
+- 2026-10-28: the direct-PEP G2 duplicate-filter proof re-ran against this deployed O2 signed image (49E65BB1…) with
+  every DUP marker true (filter id 7167880 reused, unblock rc=0, absence present=0, no skip); see
+  admin-evidence/g2-dupfilter-20261028. The O2 outbound E5 direction proof remains open until the signed offset
+  candidate replay (29ED40E3…D55, from unsigned E0C368C1…) passes.
 - End-to-end live enforcement proof is the operator lab sequence
   RB-012 -> RB-013 on an isolated lab VM (G2).
 

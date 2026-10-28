@@ -1,7 +1,7 @@
 {
  "head_sha": "26513a26efe26b1c006cdd8fc5c98338a950ef50",
  "created_at": "2026-09-24",
- "last_updated_at": "2026-10-26",
+ "last_updated_at": "2026-10-28",
  "generator_version": "3.0",
  "evidence_levels": {
   "E0": "No evidence",
@@ -2910,6 +2910,39 @@
    "completion_gate": "E2 PASS; E5 outbound marker/direction proof pending",
    "issue": "https://github.com/Supertee003/NIDs_Windows/issues/24",
    "evidence": "Microsoft WFP layer offset reference: https://learn.microsoft.com/en-us/windows-hardware/drivers/network/data-offset-positions. Current E5 remote marker run proves delivery only; next E5 must show exact marker as a wfp_sensor record with direction=1, then handback/rollback and gate/forensic verification."
+  },
+  {
+   "id": "G2-DUPFILTER-HOST-PROOF-E5-20261028",
+   "head_sha": "26513a26efe26b1c006cdd8fc5c98338a950ef50",
+   "timestamp": "2026-10-28T15:01:53+07:00",
+   "title": "Duplicate inbound quarantine reuses one provider-owned filter id on the deployed signed driver (E5)",
+   "level": "E5",
+   "component": "WFP callout duplicate filter idempotence (G2)",
+   "flow_id": "DATA-001",
+   "patch_id": "G2-DUPFILTER-REPEAT-20261028",
+   "target_head": "f0132541b014ffe87997d42e749f17d14d9becd3",
+   "final_head": "b6c959461de3c22ddcde37e78cbcca6c54169993",
+   "expected": "The elevated direct-PEP harness must call aegis_pep_enforce twice with direction=1 for 203.0.113.10:8443 proto=6, query between the calls, reuse the same provider-owned filter ID without escalation reason=4, then receipt-aware unblock with rc=0 and a present=0 absence query, with the exact driver/PEP/bridge hashes pinned and no skipped test.",
+   "actual": "PASS. The deployed signed driver 49E65BB12B4FC164F0B0C255AC75CDFA096F17AC77B056586BF16891FCDABE8C (O2-era candidate containing the f013254 alias helpers; signer 00E92849867308596564D134BB981EF726798E97) accepted the duplicate add as idempotent. Markers: ARTIFACT_DRIVER_SHA256=49E65BB1...; ARTIFACT_PEP_SHA256=C7F2...; ARTIFACT_BRIDGE_LOADED_SHA256=2E7F...; DUP_FIRST_FILTER_ID=7167880 direction=1 remote=0xcb00710a:8443 proto=6; DUP_FILTER_SAME=true filter_id=7167880 reason=5; DUP_UNBLOCK_RC=0 filter_id=7167880; DUP_UNBLOCK_PRESENT=0 filter_id=7167880 provider_status=0xc0220003; no_escalate_reason_4=true; no_skip=true; pytest_exit=0 (1 passed in 0.07s).",
+   "contract_impact": "None; confirms the existing duplicate idempotence and unblock contract on the live WFP stack.",
+   "abi_impact": "None; PepRequest 64 B / PepResponse 24 B asserted by the harness layout checks.",
+   "authority_impact": "None; direct-PEP lab path only; production prevention gate stayed closed and host_effect_capable=false.",
+   "state_impact": "One scoped proof filter (id 7167880, TEST-NET-3 203.0.113.10:8443) was installed during the run and removed before exit (DUP_UNBLOCK_PRESENT=0). No driver, daemon, PEP, or bridge was deployed by this run.",
+   "files_verified": [
+    "scripts/run_g2_dupfilter_proof.ps1",
+    "tests/wfp/test_t11_windows_host.py",
+    "drivers/wfp_callout/aegis_wfp.c",
+    "drivers/wfp_callout/aegis_wfp.h"
+   ],
+   "build_result": "No rebuild; runtime binaries hash-verified in place: driver 49E65BB1... (41,360 B, Valid, signer 00E9...), PEP C7F2..., bridge 2E7F....",
+   "test_result": "PASS: scripts/run_g2_dupfilter_proof.ps1 elevated run; pytest 1 passed in 0.07s; host-run-result.json markers all true, failures=[].",
+   "windows_result": "Host E5 on the deployed signed driver; AegisNids and AegisWfp stayed RUNNING; production detection-only preserved.",
+   "evidence_level": "E5",
+   "host_effect_confirmed": true,
+   "prevention_gate": "closed",
+   "completion_gate": "E5 PASS; gap G2-DUPFILTER-REPEAT-20261022 CLOSED",
+   "issue": null,
+   "evidence": "admin-evidence/g2-dupfilter-20261028/host-run-result.json; admin-evidence/g2-dupfilter-20261028/host-run.txt"
   }
  ],
  "known_gaps": [
@@ -8236,17 +8269,21 @@
    "id": "G2-DUPFILTER-REPEAT-20261022",
    "severity": "P1",
    "title": "Repeated inbound quarantine still needs a lab proof that the duplicate path reuses the filter instead of escalating",
-   "description": "G2-DUPFILTER-001 made the original fixed-key add idempotent. Source commit 1089462 introduced one provider-owned key per (direction, tuple), exact three-condition attestation, disabled/legacy-filter recovery, and a direct inbound duplicate harness. The frozen unsigned candidate AFE1317DAAE218262771BEA8FAE29DF51724218DF521E5615B8CDA05E39D08BB (37,376 bytes) was reproduced and signed as 8A9A8D3A0EDD821D7797880A452C04BAB0CB6CB6598718ACFBD52AAF70CF9952 (38,800 bytes, Valid, signer 00E92849867308596564D134BB981EF726798E97). On 2026-10-25 that signed candidate was deployed; AegisWfp failed to start with 0x80320003 (FWP_E_FILTER_NOT_FOUND), the deploy script restored base AD23EFB97C06D8E73BF34D09BF5B9A5076BDA378D5A97ECD72CACA82183AEEAF, and services returned RUNNING with rollback_verified=true. Source commit 49e1af6 made the empty proof enumeration non-fatal, but signed candidate 8132C3BF71ACADD15B1DB336C1D78155748CBC41C9EDD7A3DF450BE2F924C395 (39,312 bytes, Valid, signer 00E92849867308596564D134BB981EF726798E97) was then deployed on 2026-10-25 and AegisWfp still failed at stage 6 with SCM 0xE0010006. The AegisWfp System event recorded raw 0xC0220003 (STATUS_FWP_FILTER_NOT_FOUND) at AegisWfpPrepareProofProvider; the deploy restored base AD23EFB97C06D8E73BF34D09BF5B9A5076BDA378D5A97ECD72CACA82183AEEAF and the services returned RUNNING. Source commit f0132541b014ffe87997d42e749f17d14d9becd3 centralizes both the FWP_E_* HRESULT and STATUS_FWP_* NTSTATUS object-state aliases across legacy lookup, recovery, cleanup, block re-attestation, unblock, and query, and accepts STATUS_FWP_ALREADY_EXISTS for the persistent provider. The new unsigned candidate is 8FFEDB9EAD3211EAE5B9938DF7B6177F6FD4FD0FB916152AD6AD1E0A0E5AF41A (37,888 bytes) and is signed as 95C7E749F45602EB6423C842734239450039627D710DBAF27B5FDDA52F8CCE03 (39,312 bytes, Valid, signer 00E92849867308596564D134BB981EF726798E97). This signed candidate is not deployed and no host proof has run. PEP C7F200793AC87B00C6887712428E99DF06083E2289FCF567AC4491064ED15ED8 and primary bridge 2E7FBEFFB46492950D8A95C2CCBD44DFEC61CF60E8F91930F1A603AED5B3E416 are unchanged. The 2026-10-23 lab duplicate canary was blocked by filter 78056 before the PEP, so confirmed_quarantines stayed 0 and the duplicate receipt path remains unproven on-host.",
-   "status": "OPEN",
+   "description": "G2-DUPFILTER-001 made the original fixed-key add idempotent. Source commit 1089462 introduced one provider-owned key per (direction, tuple), exact three-condition attestation, disabled/legacy-filter recovery, and a direct inbound duplicate harness. The frozen unsigned candidate AFE1317DAAE218262771BEA8FAE29DF51724218DF521E5615B8CDA05E39D08BB (37,376 bytes) was reproduced and signed as 8A9A8D3A0EDD821D7797880A452C04BAB0CB6CB6598718ACFBD52AAF70CF9952 (38,800 bytes, Valid, signer 00E92849867308596564D134BB981EF726798E97). On 2026-10-25 that signed candidate was deployed; AegisWfp failed to start with 0x80320003 (FWP_E_FILTER_NOT_FOUND), the deploy script restored base AD23EFB97C06D8E73BF34D09BF5B9A5076BDA378D5A97ECD72CACA82183AEEAF, and services returned RUNNING with rollback_verified=true. Source commit 49e1af6 made the empty proof enumeration non-fatal, but signed candidate 8132C3BF71ACADD15B1DB336C1D78155748CBC41C9EDD7A3DF450BE2F924C395 (39,312 bytes, Valid, signer 00E92849867308596564D134BB981EF726798E97) was then deployed on 2026-10-25 and AegisWfp still failed at stage 6 with SCM 0xE0010006. The AegisWfp System event recorded raw 0xC0220003 (STATUS_FWP_FILTER_NOT_FOUND) at AegisWfpPrepareProofProvider; the deploy restored base AD23EFB97C06D8E73BF34D09BF5B9A5076BDA378D5A97ECD72CACA82183AEEAF and the services returned RUNNING. Source commit f0132541b014ffe87997d42e749f17d14d9becd3 centralizes both the FWP_E_* HRESULT and STATUS_FWP_* NTSTATUS object-state aliases across legacy lookup, recovery, cleanup, block re-attestation, unblock, and query, and accepts STATUS_FWP_ALREADY_EXISTS for the persistent provider. The new unsigned candidate is 8FFEDB9EAD3211EAE5B9938DF7B6177F6FD4FD0FB916152AD6AD1E0A0E5AF41A (37,888 bytes) and is signed as 95C7E749F45602EB6423C842734239450039627D710DBAF27B5FDDA52F8CCE03 (39,312 bytes, Valid, signer 00E92849867308596564D134BB981EF726798E97). The 95C7 candidate was deployed 2026-10-25 18:04 and AegisWfp started, but the elevated wrapper was interrupted before the proof ran. The host then advanced to the O2-era signed driver 49E65BB12B4FC164F0B0C255AC75CDFA096F17AC77B056586BF16891FCDABE8C (same f013254 alias-fix lineage), and on 2026-10-28 the elevated direct-PEP duplicate proof ran against that deployed driver with every marker true (G2-DUPFILTER-HOST-PROOF-E5-20261028), closing the gap on the currently deployed signed image. PEP C7F200793AC87B00C6887712428E99DF06083E2289FCF567AC4491064ED15ED8 and primary bridge 2E7FBEFFB46492950D8A95C2CCBD44DFEC61CF60E8F91930F1A603AED5B3E416 are unchanged. The 2026-10-23 lab duplicate canary was blocked by filter 78056 before the PEP, so confirmed_quarantines stayed 0 and the duplicate receipt path remains unproven on-host.",
+   "status": "CLOSED",
    "found_at": "2026-10-22",
    "required_evidence": [
     "The fixed signed candidate is 95C7E749F45602EB6423C842734239450039627D710DBAF27B5FDDA52F8CCE03; deploy only this exact hash after a fresh hash-verified backup of base AD23EFB97C06D8E73BF34D09BF5B9A5076BDA378D5A97ECD72CACA82183AEEAF.",
     "Stop AegisNids and AegisWfp, create a fresh hash-verified backup of the loaded base driver AD23EFB97C06D8E73BF34D09BF5B9A5076BDA378D5A97ECD72CACA82183AEEAF, and deploy the fixed signed candidate with the exact driver, PEP, and bridge hashes pinned.",
     "Run scripts/run_g2_dupfilter_proof.ps1 elevated. Its direct PEP harness must call aegis_pep_enforce twice with direction=1, query between the calls, reuse the same filter ID, and show no escalate reason=4.",
     "Require the exact markers ARTIFACT_DRIVER_SHA256, ARTIFACT_PEP_SHA256, ARTIFACT_BRIDGE_LOADED_SHA256, DUP_FILTER_SAME=true, DUP_UNBLOCK_RC=0, DUP_UNBLOCK_PRESENT=0, and no skipped test; roll back to the hash-verified base driver on any failure.",
-    "Keep the production gate closed and do not send a duplicate canary. The first canary remains the separate WFP pipeline proof."
+    "Keep the production gate closed and do not send a duplicate canary. The first canary remains the separate WFP pipeline proof.",
+    "2026-10-28 closure note: the proof ran on the currently deployed signed O2 driver 49E65BB1..., which carries the same f013254 alias-fix lineage; the 95C7 host slot was superseded by the O2 candidate after the 95C7 deploy succeeded 2026-10-25 18:04 with the proof run interrupted."
    ],
-   "evidence": "EVI G2-DUPFILTER-001; source f0132541b014ffe87997d42e749f17d14d9becd3; admin-evidence/g2-dupfilter-20261025b/elevated-result-20261025b.json (failed 8A9A deploy, base restored); admin-evidence/g2-dupfilter-20261025b/driver-start.txt (0x80320003); admin-evidence/g2-dupfilter-20261025c/elevated-result-20261025c.json (failed 8132 deploy, base restored); admin-evidence/g2-dupfilter-20261025c/driver-start.txt (0xE0010006); admin-evidence/g2-dupfilter-20261025c/event-20261025c-aegiswfp-stage6.xml (raw 0xC0220003 at stage 6); admin-evidence/g2-dupfilter-20261025c/event-20261025c-aegiswfp-stage6.txt; admin-evidence/g2-dupfilter-20261025d/wdk-build-fix2b.log; admin-evidence/g2-dupfilter-20261025d/wdk-build-fix2b-repeat.log; admin-evidence/g2-dupfilter-20261025d/sign-fix2b.log; admin-evidence/g2-dupfilter-20261025d/aegis_wfp.8FFEDB9E.unsigned.sys; admin-evidence/g2-dupfilter-20261025d/aegis_wfp.signed-95C7E749F45602EB6423C842734239450039627D710DBAF27B5FDDA52F8CCE03.sys; scripts/run_g2_dupfilter_proof.ps1; tests/wfp/test_t11_windows_host.py; historical admin-evidence/g2-direction-20261022/wdk-build-duplicate.log and vm-lab-run-20261023.txt (duplicate canary confirmed_quarantines=0)."
+   "evidence": "EVI G2-DUPFILTER-001; source f0132541b014ffe87997d42e749f17d14d9becd3; admin-evidence/g2-dupfilter-20261025b/elevated-result-20261025b.json (failed 8A9A deploy, base restored); admin-evidence/g2-dupfilter-20261025b/driver-start.txt (0x80320003); admin-evidence/g2-dupfilter-20261025c/elevated-result-20261025c.json (failed 8132 deploy, base restored); admin-evidence/g2-dupfilter-20261025c/driver-start.txt (0xE0010006); admin-evidence/g2-dupfilter-20261025c/event-20261025c-aegiswfp-stage6.xml (raw 0xC0220003 at stage 6); admin-evidence/g2-dupfilter-20261025c/event-20261025c-aegiswfp-stage6.txt; admin-evidence/g2-dupfilter-20261025d/wdk-build-fix2b.log; admin-evidence/g2-dupfilter-20261025d/wdk-build-fix2b-repeat.log; admin-evidence/g2-dupfilter-20261025d/sign-fix2b.log; admin-evidence/g2-dupfilter-20261025d/aegis_wfp.8FFEDB9E.unsigned.sys; admin-evidence/g2-dupfilter-20261025d/aegis_wfp.signed-95C7E749F45602EB6423C842734239450039627D710DBAF27B5FDDA52F8CCE03.sys; scripts/run_g2_dupfilter_proof.ps1; tests/wfp/test_t11_windows_host.py; historical admin-evidence/g2-direction-20261022/wdk-build-duplicate.log and vm-lab-run-20261023.txt (duplicate canary confirmed_quarantines=0).; admin-evidence/g2-dupfilter-20261028/host-run-result.json (markers all true, pytest 1 passed); admin-evidence/g2-dupfilter-20261028/host-run.txt; G2-DUPFILTER-HOST-PROOF-E5-20261028",
+   "closed_at": "2026-10-28",
+   "closed_by": "opencode agent; elevated E5 host proof approved by operator (UAC 2026-10-28 15:01)",
+   "resolution": "Duplicate fixed-key add is idempotent on the deployed signed driver: the same provider-owned filter id was reused (7167880, reason=5), no escalation reason=4 was emitted, receipt-aware unblock returned rc=0 with the absence query confirmed (DUP_UNBLOCK_PRESENT=0, provider_status=0xc0220003), and no test was skipped; all artifact hashes pinned (driver 49E65BB1..., PEP C7F2..., bridge 2E7F...). Production prevention gate stayed closed; no duplicate canary was sent."
   },
   {
    "id": "G2-ABSENCE-LAB-20261022",
@@ -8330,7 +8367,7 @@
   "E2_count": 136,
   "E3_count": 14,
   "E4_count": 15,
-  "E5_count": 123,
+  "E5_count": 124,
   "E6_count": 0,
   "E7_count": 1
  }
