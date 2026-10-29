@@ -1,7 +1,7 @@
 {
  "head_sha": "24d8d817ace8f9322d9c35a2b697938b7be72b58",
  "created_at": "2026-09-24",
- "last_updated_at": "2026-10-28",
+ "last_updated_at": "2026-10-29",
  "generator_version": "3.0",
  "evidence_levels": {
   "E0": "No evidence",
@@ -3008,6 +3008,43 @@
    "completion_gate": "E2 PASS; both suites green; E5 requires a lab canary run + daemon deploy under separate operator authorization (no duplicate canary without separate approval).",
    "issue": null,
    "evidence": "commits 56501bb (source), 3bf8825 (rebaseline); admin-evidence/b1-pytest-final.txt; admin-evidence/b1-pytest.txt (mid-slice digest-drift run)."
+  },
+  {
+   "id": "O1-V6-SIDECAR-E2-20261029",
+   "head_sha": "24d8d817ace8f9322d9c35a2b697938b7be72b58",
+   "timestamp": "2026-10-29T10:30:00+07:00",
+   "title": "Kernel IPv6 transport capture via identity sidecar-in-payload (plan 26 route A) lands at E2; driver built, all suites green; E5 kernel v6 marker pending lab",
+   "level": "E2",
+   "component": "drivers/wfp_callout (aegis_wfp.h/.c/aegis_wfp_callout.c); src/capture/wfp_telemetry.zig",
+   "flow_id": "DATA-001",
+   "patch_id": "O1-V6-SIDECAR-20261029",
+   "target_head": "24d8d817ace8f9322d9c35a2b697938b7be72b58",
+   "final_head": "f1302f52eb93eeeaa29b551b892acc9e58bb9dc1",
+   "expected": "IPv6 transport rows must reach the ring and pipeline without touching the 48-byte header ABI or the shared wire codec: flags bit0 marks a 32-byte identity sidecar (src16 ++ dst16, raw network order) leading the payload, payload_length claims sidecar + body and never exceeds AEGIS_MAX_PAYLOAD_SIZE (the reader resets the ring on a larger claim), acceptance is fail-closed (a flagged claim shorter than the sidecar skips the whole record), v6 rows promote to wire v2 (EVENT_VERSION_V2 + CONTEXT_V6_TRUNCATED) exactly like the Go nose path, and the ring advance stays 48 + claimed payload_length. Capture only: fail-open PERMIT, no v6 enforcement.",
+   "actual": "PASS at E2. Decoder (wfp_telemetry.zig): ParsedRecord gains src_ipv6/dst_ipv6 (?[16]u8) + advanceBytes() (48 + payload.len + 32 when sidecar present); FLAG_V6_SIDECAR=0x01, V6_SIDECAR_SIZE=32; parseRecord strips the sidecar with the fail-closed guard; new pure decodedFrame() promotes v6 rows to v2 and keeps v4 rows v1; submitRecord pushes through the existing V6-QUEUE-DROP gate; telemetryLoop advances by rec.advanceBytes(). Driver: two fresh callout keys (AEGIS_INBOUND_V6_CALLOUT_KEY {F6A71829-3A4B-4DBF-8C3D-5E6F708192A4}, AEGIS_OUTBOUND_V6_CALLOUT_KEY {A7B82930-4B5C-4DAE-9F2B-6F708192B315}) + 4 new ids; registration steps 6-7 add both v6 pairs with PERMIT_IF_CALLOUT_UNREGISTERED filters (layer_id 2=in-v6, 3=out-v6 diagnostic) and any failure tears the whole registration down (no half pair); AegisWfpEmitRecord(hdr, layerData, src6, dst6) snapshots the identity into a 32-byte stack buffer, sets the flag only alongside a written sidecar, caps the L7 body at AEGIS_MAX_PAYLOAD_SIZE-32, writes header->sidecar->payload, and a gather failure degrades to header+sidecar (never a flagged record without its 32 bytes); u32 identity = first 4 sidecar bytes as a BE integer value (Go convention); teardown removes v6 pairs before the v4 pairs and deletes both v6 BLM keys.",
+   "contract_impact": "Additive, backward-compatible: header ABI unchanged (C_ASSERT 48 green); the ring tail gains one flag-gated 32-byte lead for v6 rows only; DecodedFrame v2 shape identical to the existing Go wire-v2 contract (no wire codec change).",
+   "abi_impact": "AEGIS_EVENT_HEADER untouched (48 bytes; flags bit0 was Reserved). Ring stride stays header+claimed payload_length (sidecar included) for every consumer; the only ring parser (zig parseRecord) is sidecar-aware; the C bridge and Rust adapter copy raw bytes and need no change.",
+   "authority_impact": "None. Capture-only fail-open PERMIT at both v6 layers; no v6 enforcement, no new privileged surface; WFP authority structure unchanged (2 -> 4 capture pairs, same owner).",
+   "state_impact": "The driver now registers 2 more callout/filter pairs (v6 in/out) at start; ring records for v6 traffic are longer by 32 bytes; no schema, queue, or detection state change.",
+   "files_changed": [
+    "drivers/wfp_callout/aegis_wfp.h",
+    "drivers/wfp_callout/aegis_wfp.c",
+    "drivers/wfp_callout/aegis_wfp_callout.c",
+    "src/capture/wfp_telemetry.zig",
+    "tests/wfp/test_kernel_bidirectional_capture.py",
+    "tests/wfp/test_t11_wfp_enforcement.py"
+   ],
+   "old_flow_new_flow": "OLD: kernel ring carries IPv4 transport rows only (NIC-001 measured kernel v6 rows = 0). NEW: v4 rows unchanged; v6 transport rows enter the same ring as 48B header + 32B identity sidecar + bounded L7 body and promote to wire v2 frames in the pipeline.",
+   "invariant": "flags bit0 is set only when the full 32-byte sidecar is written; payload_length <= AEGIS_MAX_PAYLOAD_SIZE always; the ring advance is always 48 + claimed payload_length; a flagged record with a claim shorter than 32 bytes is never submitted.",
+   "build_result": "WDK driver build RC=0 (scripts/wdk_build_production.ps1): build/x64/wfp/aegis_wfp.sys 44544 bytes, SHA-256 A583B630BCE55C7FBDE6B29B59657BABD0BD00910151F9257147F20DDE96732C, C_ASSERT(sizeof(AEGIS_EVENT_HEADER)==48) green. zig build test RC=0.",
+   "test_result": "PASS: zig build test RC=0 with 6 new O1 unit tests (sidecar decode, short-claim guard, v4 regression, exact-32 empty body, direction passthrough, decodedFrame v2 promotion gated by validateDecodedFrame). python -m pytest tests -q: 1025 passed, 4 skipped, 27 subtests, 0 failed (1020 previous + 5 new static pins: header v6 contract, four-pair registration/teardown, v6 classify shape, emit budget/order, zig reader pins). Mid-slice pytest showed exactly the 3 pre-O1 static pins + 4 release-digest tests failing (expected drift); after the source-pin update and refresh-digests + rebaseline commit f1302f5, release tests pass (5 passed) and --verify OK 616/616 at source_commit=24d8d81.",
+   "windows_result": "Build-only on this host (wdk_build_production.ps1); the new .sys is not deployed - the live driver stays at the O2 build until the E5 lab proof with hash-pinned snapshot/rollback under separate operator authorization.",
+   "evidence_level": "E2",
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed",
+   "completion_gate": "E2 PASS: decoder + driver + static/units all green. E5 pending: deploy the sidecar driver (hash pin + rollback verify), drive real v6 traffic through the kernel, pin the v6 marker on the ring + queue.stats v6 rows + v4 regression + ring-drops delta 0 - requires the lab VM/UAC session (currently paused with A1; no host mutation without separate authorization).",
+   "issue": null,
+   "evidence": "commits 24d8d81 (source), f1302f5 (rebaseline); build/x64/wfp/aegis_wfp.sys SHA-256 A583B630BCE55C7FBDE6B29B59657BABD0BD00910151F9257147F20DDE96732C; tools/truth.py verify TRUTH_VALID at source 24d8d81."
   }
  ],
  "known_gaps": [
@@ -8429,7 +8466,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 27,
-  "E2_count": 138,
+  "E2_count": 139,
   "E3_count": 14,
   "E4_count": 15,
   "E5_count": 124,
