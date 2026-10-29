@@ -881,7 +881,17 @@ outbound payload (C2/exfil) เลย
   `-capture` ยังเก็บเป็น E5 PARTIAL แยกไว้. O1 (kernel IPv6) ยังรอการตัดสินใจ
   record identity.
 
-## 26. O1 (Kernel IPv6) - Decision Brief ของ record-header v2 (2026-10-26, รอการตัดสินใจ)
+## 26. O1 (Kernel IPv6) - record-header v2 (ตัดสินใจแล้ว: ทาง A; steps 1-3 landed 2026-10-29, E5 รอ lab)
+
+> **สถานะ 2026-10-29:** ตัดสินใจเลือก **ทาง A (sidecar-in-payload)** และดำเนินการแล้ว:
+> steps 1-3 เสร็จที่ source commit `24d8d81` (feat(O1) — decoder + driver v6 pairs + pins;
+> rebaseline `f1302f5`; EVT `O1-V6-SIDECAR-E2-20261029`, E2_count=139). WDK build เขียว
+> (`aegis_wfp.sys` SHA-256 `A583B630…DE96732C`, C_ASSERT 48 ยังเขียว), zig build test RC=0
+> (+6 O1 unit tests), pytest 1025 passed / 0 failed (+5 static pins), truth TRUTH_VALID.
+> **ขั้น 4 (host E5)** — deploy candidate driver + v6 marker จับได้จริงบน ring — **ยังไม่ทำ:
+> รอ lab VM/UAC ที่ operable (พักร่วมกับ A1 ตามการตัดสินใจของผู้ดำเนินการ 2026-10-28)**.
+> ขั้น 5 (rebaseline) เสร็จ: FLOW_MAP/CONTRACT_MAP/EVIDENCE_INDEX ปรับแล้ว และหัวข้อนี้
+> ปิดสถานะด้วยบล็อกนี้. ส่วนเนื้อหาด้านล่างคงไว้เป็น decision brief เดิม (บันทึกวันตัดสินใจ).
 
 สถานะต้นทางที่ยืนยันแล้ว (ไม่เดา):
 - kernel capture = v4-only (NIC-001 §11 วัดจริง: v6 marker ตอบผ่าน wire แต่ record 0 — callout
