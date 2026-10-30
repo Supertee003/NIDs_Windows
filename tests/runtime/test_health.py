@@ -257,12 +257,50 @@ class TestControlApiHealthPayload(unittest.TestCase):
         self.assertTrue(payload["tier3"]["ready"])
         self.assertTrue(payload["tier3"]["dependency_ready"])
         self.assertFalse(payload["tier3"]["provider_ready"])
+        self.assertFalse(payload["tier3"]["provider_capable"])
         self.assertFalse(payload["tier3"]["host_effect_capable"])
         self.assertTrue(payload["rust_shield"]["pep_ready"])
         self.assertFalse(payload["rust_shield"]["provider_ready"])
+        self.assertFalse(payload["rust_shield"]["provider_capable"])
         self.assertFalse(payload["rust_shield"]["host_effect_capable"])
         self.assertEqual(payload["state"], "DEGRADED")
         self.assertTrue(payload["degraded"])
+
+    def test_provider_ready_never_projects_production_host_effect(self):
+        daemon_health = {
+            "component": "core",
+            "state": "RUNNING",
+            "runtime_state": "RUNNING",
+            "pid": 4321,
+            "uptime_ms": 100,
+            "last_event_ms": 0,
+            "capabilities": {"wfp": True},
+            "subsystems": [
+                {"name": "rust_pep", "state": "RUNNING", "pid": 4321},
+                {"name": "tier3", "state": "RUNNING", "pid": 4321},
+            ],
+            "workers": {
+                "pipeline_ready": True,
+                "sensor_ready": True,
+                "nose_ready": True,
+                "etw_ready": True,
+                "fim_ready": True,
+                "registry_ready": True,
+                "failure_mask": 0,
+            },
+            "data_plane": {},
+        }
+        with patch.object(control_api, "_query_daemon_retry", return_value=daemon_health), \
+             patch.object(control_api, "get_all_status", return_value=[]), \
+             patch.object(control_api, "compute_health_state", return_value=("RUNNING", False)):
+            payload = control_api.get_health_payload()
+
+        self.assertTrue(payload["tier3"]["provider_ready"])
+        self.assertTrue(payload["tier3"]["provider_capable"])
+        self.assertFalse(payload["tier3"]["host_effect_capable"])
+        self.assertTrue(payload["rust_pep"]["provider_ready"])
+        self.assertTrue(payload["rust_pep"]["provider_capable"])
+        self.assertFalse(payload["rust_pep"]["host_effect_capable"])
 
     def test_payload_reports_subsystem_states_and_monotonic_uptime(self):
         statuses = [

@@ -1,8 +1,14 @@
 # 10 - Current Phase
 
-## Status: G23 Consolidation Phase
+## Status: Kernel NIDS Consolidation and Evidence Closure
 
-G1-G21 rewrite complete. G22 final polish complete. G23 consolidation in progress.
+G1-G21 rewrite complete. G22 final polish complete. G23 consolidation is being
+closed against the current Kernel NIDS source and live evidence. The production
+product is detection-only; enforcement activation is permanently out of scope.
+
+Provider readiness, WFP transport, and retained PEP boundaries may exist for
+diagnostics, fail-closed behavior, or historical/lab evidence, but they do not
+authorize a production host effect.
 
 ## G23 Goals
 
@@ -33,14 +39,18 @@ ONE EVENT
 
 And CI proves: C/C++ + Zig + Go + Rust + Python/Cython + Drivers as one product.
 
-## Next Phases (after consolidation)
+## Remaining closure work
 
-1. IPS (Intrusion Prevention System) - active blocking
-2. XDR (Extended Detection & Response) - cross-platform
-3. Advanced RAG - richer context
-4. Future LLM assistance - Brain enhancements
+1. Keep health, enforcement status, CLI, and dashboard semantics aligned:
+   provider readiness is diagnostic capability; production host effect remains
+   false and the prevention gate remains closed.
+2. Complete current-head Zig test evidence with a readable PASS/FAIL result.
+3. Rebaseline current evidence and classify older IPS/WFP material as historical
+   or lab-only without deleting it.
+4. Complete supervised RB-017 Brain evidence without starting a second listener
+   or changing the production detection-only gate.
 
-These build on top of the stabilized spine. Do NOT start them until consolidation is complete.
+Do not introduce an IPS activation phase into the production roadmap.
 
 ## Team Command
 

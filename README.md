@@ -1,8 +1,7 @@
-# AEGIS NIDS for Windows
+# AEGIS Kernel NIDS for Windows
+AEGIS is a Windows-native, kernel-assisted network intrusion detection system. It combines kernel network telemetry, host telemetry, rule matching, policy evaluation, operator control, and forensic evidence in one supervised runtime. Production behavior is detection-only: findings are recorded and explained, not applied as host blocking or quarantine.
 
-AEGIS is a production-oriented Windows-native network intrusion detection and response platform. It combines kernel-assisted network telemetry, host telemetry, rule matching, policy evaluation, operator control, and forensic evidence in one supervised runtime.
-
-> **Release status:** The repository is maintained with production-grade contracts, authority boundaries, runbooks, and acceptance gates. The current release is approved for development, qualification, and observe-only operation. Production IPS blocking remains **not accepted** until the isolated Windows host-effect proof, receipt validation, cleanup, signing, rollback, and recovery gates are complete.
+> **Release status:** The repository is maintained with production-grade contracts, authority boundaries, runbooks, and acceptance gates. The current release is approved for development, qualification, and observe-only operation. Enforcement activation is permanently outside the production product scope; historical IPS/WFP proof material is retained only as historical or lab evidence.
 
 ### Project 2 Runtime Gate
 
@@ -40,7 +39,7 @@ The current verified operator state is:
 | Authority invariant | `HELD` |
 | Prevention gate | `CLOSED` |
 | Enforcement mode | `DETECTION-ONLY` |
-| Provider ready | `false` |
+| Provider ready | diagnostic capability only |
 | Host effect capable | `false` |
 | Host effect | `NOT_PROVEN` |
 | Forensic integrity | `OK` |
@@ -56,11 +55,11 @@ must not be displayed as a confirmed host block unless a valid,
 receipt-backed postcondition contains `status=ENFORCED` and
 `host_effect_confirmed=true`.
 
-The current release is an observe-only, fail-closed NIDS release candidate.
-Production IPS blocking remains **not accepted**.
+The current release is an observe-only, fail-closed Kernel NIDS release.
+Production host enforcement is not a pending feature; it is outside the product scope.
 ```
 
-This README is the official entry point for developers, reviewers, lab operators, and release operators. It describes the production reference architecture, the current verified path, the required deployment controls, and the acceptance evidence needed before an IPS release can be promoted. It distinguishes source implementation from active runtime capability and from production acceptance.
+This README is the official entry point for developers, reviewers, lab operators, and release operators. It describes the production reference architecture, the current verified detection path, the required deployment controls, and the evidence needed to operate the Kernel NIDS safely. It distinguishes source implementation, diagnostic provider readiness, and actual host effect; provider readiness never opens the production prevention gate.
 
 ## What AEGIS does
 
@@ -287,14 +286,13 @@ The **why** field is especially important for failure handling. A record that sa
 | **Synthetic qualification** | Verify rule definitions against deterministic fixtures | No |
 | **Observe-only** | Observe WFP, FIM, ETW, and ingress events on a real Windows host | No |
 | **Degraded detection** | Continue safe telemetry when an optional or privileged dependency is unavailable | No |
-| **Controlled IPS proof** | Isolated lab validation of a reversible WFP effect | Not enabled by default |
-| **Production IPS** | Future release target | **Not yet accepted** |
+| **Historical/lab proof** | Retained evidence for past WFP/PEP qualification | Never part of production runtime |
 
-Do not use the current repository as a production blocking appliance. The prevention gate must remain closed until the project publishes a completed host-effect acceptance record.
+Do not use the current repository as a production blocking appliance. The prevention gate remains closed because production host enforcement is outside the product scope.
 
 ### Capability and evidence status
 
-Production release decisions use evidence, not the presence of source files. The following matrix is the current release interpretation:
+Production release decisions use evidence, not the presence of source files. The following matrix is the current detection release interpretation:
 
 | Capability | Source implementation | Active runtime path | Observe proof | Host-effect proof |
 |---|---:|---:|---:|---:|
@@ -303,7 +301,7 @@ Production release decisions use evidence, not the presence of source files. The
 | FIM real notifications | Yes | Yes | Proof and normalization in progress | Not applicable |
 | ETW and Registry adapters | Yes | Worker paths present | Coverage must be verified per host profile | Not applicable |
 | Rule-22 synthetic qualification | Yes | Yes | Passed for the qualification fixtures | Not applicable |
-| EnforcementReceipt v1 validation | Yes | Guarded | Structural tests passed | Host postcondition pending |
+| EnforcementReceipt v1 validation | Retained boundary | Guarded | Structural tests passed | Not a production acceptance gate |
 | WFP block and cleanup | Yes, guarded | Gate closed | Not applicable | Not accepted |
 
 `Yes` in the source column means that code exists. It does not mean that the capability is enabled, verified on the current build, or accepted for production. A release may be promoted only when the corresponding runtime and evidence columns satisfy the release gate.
@@ -606,22 +604,21 @@ A signature error, a stale installed driver, or a `Stop Pending` state must be r
 
 `DEGRADED` is an explicit safety state. Inspect `health --json` for worker failure reasons, data-plane counters, PEP readiness, WFP provider readiness, FIM readiness, and forensic integrity. The correct response is to fix the missing dependency or remain in detection-only mode, not to assume that enforcement succeeded.
 
-## Production-readiness gates
+## Production detection-readiness gates
 
-AEGIS should not be marketed or deployed as production IPS until all of the following are complete on the current build:
+AEGIS is marketed and operated as a production Kernel NIDS, not as an IPS. The current build must satisfy the following detection-readiness conditions:
 
 - One authoritative runtime owner is verified after clean install and restart.
 - Canonical event and policy contracts pass cross-language tests.
 - WFP observe-only telemetry is reproducible on the supported Windows versions.
 - FIM events are normalized and linked to Rule-22 evidence.
-- EnforcementReceipt v1 contains request, event, trace, audit, provider, filter, and host-postcondition fields.
-- A controlled block proof shows a real reversible WFP effect.
-- Cleanup removes the exact receipt filter and is independently verified.
-- Restart and recovery leave no stale process, filter, pipe, or forensic inconsistency.
+- EnforcementReceipt v1 remains a retained, fail-closed boundary and never claims a host effect without proof.
+- No production command opens the prevention gate or applies a host mutation.
+- Restart and recovery leave no stale process, pipe, or forensic inconsistency.
 - Driver, binaries, configuration, and policy artifacts are signed or verified according to the release profile.
 - A clean installation, rollback, and release-manifest verification pass.
 
-Until then, the correct product statement is **Windows-native NIDS with observe-only and controlled-lab IPS development**, not production prevention.
+The correct product statement is **Windows-native Kernel NIDS with detection-only, observe-only, and forensic evidence capabilities**. Historical or lab IPS material must not be presented as a production feature.
 
 ## Documentation map
 

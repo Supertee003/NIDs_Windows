@@ -8550,12 +8550,38 @@
     "Run focused unit and contract tests; do not claim host capture proof from source tests."
    ],
    "evidence": "O2-DIRECTION-PIPELINE-E2-20261026; zig test --test-filter direction (10/10); tests/wfp/test_kernel_bidirectional_capture.py + tests/forensics/test_forensic_source_space.py (11/11)."
+  },
+  {
+   "id": "OBSERVABILITY-DETECTION-ONLY-20261030",
+   "severity": "P1",
+   "title": "Production health projection distinguishes provider capability from host effect",
+   "description": "The control API now exposes provider_capable as diagnostic technical readiness while host_effect_capable is permanently false in the production health projection. This aligns health, enforcement status, CLI, and dashboard semantics with the owner decision that AEGIS is a detection-only Kernel NIDS and enforcement activation is out of scope.",
+   "level": "E2",
+   "component": "control_api",
+   "flow_id": "CONTROL-001",
+   "files_changed": [
+    "tools/aegisctl/api/control_api.py",
+    "tests/runtime/test_health.py",
+    "README.md",
+    "docs/ai-context/10-current-phase.md"
+   ],
+   "tests": [
+    "health/operator/web regression: 49 passed",
+    "Python security/contracts/release gates: 204 passed",
+    "brain import hygiene: 2 passed",
+    "zig build test --summary all: 4/4 steps succeeded",
+    "live enforce status: detection-only, prevention_gate=closed, host_effect_capable=false",
+    "live authority: HELD"
+   ],
+   "result": "PASS",
+   "finding": "provider_ready/provider_capable may be true as diagnostic capability, but host_effect_capable and host_effect_confirmed remain false and no production gate opens.",
+   "timestamp": "2026-10-30"
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 27,
-  "E2_count": 139,
+  "E2_count": 140,
   "E3_count": 14,
   "E4_count": 15,
   "E5_count": 126,

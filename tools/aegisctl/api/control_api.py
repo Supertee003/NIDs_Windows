@@ -1092,7 +1092,10 @@ def get_health_payload() -> Dict[str, Any]:
         tier3_diagnostics["provider_ready"] = tier3_diagnostics["dependency_ready"] and bool(
             capabilities.get("wfp", False)
         )
-        tier3_diagnostics["host_effect_capable"] = tier3_diagnostics["provider_ready"] and tier3_ready
+        # Production is permanently detection-only. Keep technical provider
+        # readiness visible without projecting it as a host effect capability.
+        tier3_diagnostics["provider_capable"] = tier3_diagnostics["provider_ready"] and tier3_ready
+        tier3_diagnostics["host_effect_capable"] = False
         computed_state, computed_degraded = compute_health_state()
         # The daemon is authoritative for the current canonical subsystem
         # names and worker postconditions. The legacy compute_health_state()
@@ -1171,7 +1174,8 @@ def get_health_payload() -> Dict[str, Any]:
             "pep_ready": shield_running,
             "policy_authority": shield_running,
             "provider_ready": shield_wfp_ready,
-            "host_effect_capable": shield_wfp_ready,
+            "provider_capable": shield_wfp_ready,
+            "host_effect_capable": False,
             "wfp": "READY" if shield_wfp_ready else "UNAVAILABLE",
             "error": None if shield_running else "rust_shield_not_ready",
         }
@@ -1287,6 +1291,7 @@ def _diagnostic_health_payload(reason: str) -> Dict[str, Any]:
             "pep_ready": False,
             "policy_authority": False,
             "provider_ready": False,
+            "provider_capable": False,
             "host_effect_capable": False,
             "wfp": "UNAVAILABLE",
             "error": "control_daemon_unavailable",
@@ -1298,6 +1303,7 @@ def _diagnostic_health_payload(reason: str) -> Dict[str, Any]:
             "pep_ready": False,
             "policy_authority": False,
             "provider_ready": False,
+            "provider_capable": False,
             "host_effect_capable": False,
             "wfp": "UNAVAILABLE",
             "error": "control_daemon_unavailable",
@@ -1346,6 +1352,7 @@ def _tier3_artifact_diagnostics() -> Dict[str, Any]:
         "artifact_path": str(found) if found is not None else None,
         "dependency_ready": False,
         "provider_ready": False,
+        "provider_capable": False,
         "host_effect_capable": False,
     }
 
