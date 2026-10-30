@@ -40,6 +40,46 @@ fn markStage(stage: hist.Stage, since_ns: i128) i128 {
     return now;
 }
 
+/// Persist one queued event through the canonical forensic writer. The queue
+/// rejects split IPv6 pairs, so a full pair is always recorded atomically.
+fn appendForensicRecord(
+    ring: *forensic.ForensicRing,
+    qe: *const queue.QueuedEvent,
+    ev: *const event.IpcEvent,
+    audit_id: u64,
+    policy_id: u32,
+    pep_decision: u8,
+    severity: u8,
+) u64 {
+    if (qe.src_ipv6) |src6| {
+        if (qe.dst_ipv6) |dst6| {
+            return ring.appendWithNetworkMetadata(
+                ev,
+                qe.payload[0..qe.payload_len],
+                audit_id,
+                policy_id,
+                pep_decision,
+                severity,
+                qe.direction,
+                src6,
+                dst6,
+            );
+        }
+    }
+    if (qe.direction) |direction| {
+        return ring.appendWithDirection(
+            ev,
+            qe.payload[0..qe.payload_len],
+            audit_id,
+            policy_id,
+            pep_decision,
+            severity,
+            direction,
+        );
+    }
+    return ring.append(ev, qe.payload[0..qe.payload_len], audit_id, policy_id, pep_decision, severity);
+}
+
 /// Process a single event through the detection pipeline:
 ///   1. Flow table lookup/update
 ///   2. Aho-Corasick signature matching
@@ -328,10 +368,15 @@ fn processEvent(
     });
 
     // 7. Forensic recording (captures full pipeline result)
-    const forensic_seq = if (qe.direction) |direction|
-        forensic_ring.appendWithDirection(ev, qe.payload[0..qe.payload_len], audit_id, if (matched_policy) |pol| pol.id else @as(u32, 0), @intFromEnum(pep_decision), @intFromEnum(ev_copy.severity), direction)
-    else
-        forensic_ring.append(ev, qe.payload[0..qe.payload_len], audit_id, if (matched_policy) |pol| pol.id else @as(u32, 0), @intFromEnum(pep_decision), @intFromEnum(ev_copy.severity));
+    const forensic_seq = appendForensicRecord(
+        forensic_ring,
+        qe,
+        ev,
+        audit_id,
+        if (matched_policy) |pol| pol.id else @as(u32, 0),
+        @intFromEnum(pep_decision),
+        @intFromEnum(ev_copy.severity),
+    );
     if (forensic_seq != 0) {
         _ = state.g_forensic_records_written.fetchAdd(1, .monotonic);
     }
@@ -498,16 +543,7 @@ fn brainSeverity(severity: event.EventSeverity) []const u8 {
 /// code printed the u32 prefix as a dotted quad, disguising a v6 source
 /// as a v4 address on the only wired forensic string path.
 fn formatIp6(addr: [16]u8, buf: *[48]u8) []const u8 {
-    // Full 8-hextet form ("2001:0db8:0000:..."): deterministic and
-    // unambiguous; no :: compression games across languages.
-    var fbs = std.io.fixedBufferStream(buf);
-    const w = fbs.writer();
-    for (0..8) |g| {
-        if (g != 0) w.writeByte(':') catch return buf[0..fbs.pos];
-        const group: u16 = (@as(u16, addr[2 * g]) << 8) | addr[2 * g + 1];
-        w.print("{x:0>4}", .{group}) catch return buf[0..fbs.pos];
-    }
-    return buf[0..fbs.pos];
+    return forensic.formatIpv6(addr, buf);
 }
 
 fn siemForward(ev: *const event.IpcEvent, rule_id: u32, severity: event.EventSeverity, action: policy.Action, src6: ?[16]u8, dst6: ?[16]u8) void {
@@ -626,6 +662,32 @@ test "formatIp6 renders full hextets deterministically" {
     var buf: [48]u8 = undefined;
     const loop = [_]u8{0} ** 15 ++ [_]u8{1};
     try std.testing.expectEqualStrings("0000:0000:0000:0000:0000:0000:0000:0001", formatIp6(loop, &buf));
+}
+
+test "event processor forensic append preserves queued IPv6 sidecars" {
+    var ring = try forensic.ForensicRing.initMemory(std.testing.allocator, 2 * forensic.RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+    var ev = event.IpcEvent.init(.signature_match);
+    ev.event_id = 8080;
+    const src6 = [16]u8{ 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
+    const dst6 = [16]u8{ 0x26, 0x06, 0x47, 0, 0x47, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x11, 0x11 };
+    const body = "queued-v6-payload";
+    var qe = queue.QueuedEvent{ .ev = ev };
+    @memcpy(qe.payload[0..body.len], body);
+    qe.payload_len = body.len;
+    qe.src_ipv6 = src6;
+    qe.dst_ipv6 = dst6;
+    qe.direction = 1;
+
+    _ = appendForensicRecord(&ring, &qe, &ev, 42, 0, 0, 3);
+    const raw = ring.readRecord(0, std.testing.allocator) orelse return error.OutOfMemory;
+    defer std.testing.allocator.free(raw);
+    const view = forensic.decodeRecordPayload(raw) orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqualSlices(u8, body, view.payload);
+    try std.testing.expectEqual(src6, view.src_ipv6.?);
+    try std.testing.expectEqual(dst6, view.dst_ipv6.?);
+    try std.testing.expectEqual(@as(?u8, 1), view.direction);
+    try std.testing.expect(forensic.ForensicRing.verifyRecord(raw));
 }
 
 test "brainSeverity speaks the brain Low/Medium/High/Critical vocabulary" {

@@ -98,6 +98,13 @@ fn pushEventFull(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst
     const head = g_queue_head.load(.monotonic);
     const tail = g_queue_tail.load(.acquire);
     const src_ord: usize = @intFromEnum(ev.source);
+    if ((src_ipv6 == null) != (dst_ipv6 == null)) {
+        // A v6 endpoint pair is atomic metadata: accepting only one endpoint
+        // would create a forensic record that looks complete but is not.
+        _ = state.g_queue_drops.fetchAdd(1, .monotonic);
+        _ = g_ingress_dropped[src_ord].fetchAdd(1, .monotonic);
+        return false;
+    }
     if (head -% tail >= PIPELINE_QUEUE_SIZE) {
         // Queue full — drop event
         _ = state.g_queue_drops.fetchAdd(1, .monotonic);
@@ -588,4 +595,11 @@ pub fn popEvent() ?QueuedEvent {
     const qe = g_event_queue[tail % PIPELINE_QUEUE_SIZE];
     g_queue_tail.store(tail + 1, .release);
     return qe;
+}
+
+test "pushEventWithAddrs rejects one-sided IPv6 metadata" {
+    const ev = event.IpcEvent.init(.packet_captured);
+    const src6 = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
+    try std.testing.expect(!pushEventWithAddrs(ev, &[_]u8{}, src6, null));
+    try std.testing.expect(popEvent() == null);
 }
