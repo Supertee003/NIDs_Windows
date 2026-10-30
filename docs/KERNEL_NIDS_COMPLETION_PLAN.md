@@ -238,7 +238,7 @@ gate (ไม่แตะ) และ wire contract ไม่เปลี่ยน
   แผนนี้, EVIDENCE_INDEX + maps
 - คงเหลือ: operator redeploy + live verify (E5), production signing (EV cert/HLK), Slice C decision
 
-## 13. Slice C (Enforcement Activation) - Decision Brief (2026-10-18, รอการตัดสินใจ)
+## 13. Slice C (Enforcement Activation) - Decision Brief (2026-10-18; ตัดสินใจแล้ว 2026-10-30: ออกจาก scope — ผลิตภัณฑ์คือ Kernel NIDS)
 
 ข้อกำหนดปัจจุบัน: production เป็น detection-only; Slice C "ไม่จำเป็น" - ส่วนนี้สรุปสถานะที่ยืนยันแล้ว
 และทางเลือกไว้ให้ตัดสินใจได้ทันทีโดยไม่ต้อง recon ใหม่
@@ -319,7 +319,20 @@ gate (ไม่แตะ) และ wire contract ไม่เปลี่ยน
 - ถ้ายังไม่มี use case enforcement: คง A - เอกสารนี้พร้อมใช้ทันทีเมื่อต้องการ
 - ถ้าจะเดินหน้า: เริ่ม B เท่านั้น (lab-scoped; ไม่แตะ production) - C รอ B + G3 + G4 ครบก่อน
 
-สถานะการตัดสินใจ: PENDING (รอ operator/user)
+สถานะการตัดสินใจ: **ตัดสินแล้ว 2026-10-30 (ผู้ดำเนินการ/เจ้าของโปรเจ็ค) — เลือกทาง A ถาวรตามตัวตนของผลิตภัณฑ์**
+
+> ผู้ดำเนินการยืนยันว่า AEGIS คือ **ระบบตรวจจับการบุกรุกระดับ kernel (Kernel NIDS)**
+> ไม่ใช่ระบบป้องกันการบุกรุก (NIPS) — enforcement/prevention activation (ทาง B/C ของ
+> section นี้) ออกจาก scope ของผลิตภัณฑ์โดยการตัดสินของเจ้าของ ไม่ใช่งานที่ "ค้างรอทำ"
+> production คง detection-only ตามที่ gate ปิดอยู่แล้ว; Slice C-lab/G1-G4 ของ 13.2
+> เหลือเป็นความสามารถในเชิงเทคนิคที่พร้อมใช้ถ้าวันหนึ่งเปลี่ยนใจ (เอกสารยังคงรายงาน
+> ความจริงของโค้ดเดิม) แต่ไม่นับเป็น remaining work ของแผนอีกต่อไป
+>
+> ย้ำหลักการ truth ของโปรเจ็คตามที่เจ้าของกำกับ (2026-10-30): สถานะ "เป็นระบบ NIDS
+> ระดับ kernel แล้วหรือยัง" พิสูจน์จาก **source code ทั้งหมดที่ HEAD ปัจจุบัน** เป็นหลัก
+> (ตามลำดับ source-of-truth ของ AGENTS.md) เอกสารบางส่วนถูกแก้ทีหลังงาน backend/
+> frontend จึงต้องอ่านคู่กับโค้ดเสมอ และการปรับเอกสารให้ตรงโค้ดเป็นงาน records ปกติ
+> ไม่ใช่หลักฐานพฤติกรรมระบบ
 
 ### 13.7 เอกสาร Design Review ของกลไกเปิด gate (G1) - draft
 
