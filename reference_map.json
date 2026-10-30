@@ -1,13 +1,13 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-28T13:54:17.292676+00:00",
+  "generated_at": "2026-10-30T16:21:10.366586+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1737,
+  "total_files": 1739,
   "by_role": {
     "documentation": 558,
-    "build-config": 211,
+    "build-config": 212,
     "other": 19,
-    "source": 364,
+    "source": 365,
     "lockfile": 6,
     "rust-build": 4,
     "test-artifact": 209,
@@ -3677,6 +3677,10 @@
       "class": "canonical-build",
       "role": "build-config"
     },
+    "pytest.ini": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
     "README.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -4514,6 +4518,10 @@
       "role": "build-config"
     },
     "scripts/build_wfp_user_bridge.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "scripts/c1_e5_sidecar_proof.ps1": {
       "class": "canonical-source",
       "role": "source"
     },

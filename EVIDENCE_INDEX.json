@@ -1,5 +1,5 @@
 {
- "head_sha": "795fdc52b7ce1983544730c49f5c708f8d50c839",
+ "head_sha": "06d15329fe10aa16057372ce9932b1a375bfc5d2",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-10-30",
  "generator_version": "3.0",
@@ -3134,6 +3134,36 @@
    "completion_gate": "E5 PASS; O2 host proof (plan section 24) closed. Outbound v4 kernel capture is now proven ring-to-forensics; issue #24 remains closed (candidate stable through the full window); no enforcement was enabled.",
    "issue": null,
    "evidence": "admin-evidence/e5-host-proof-20261026/e5d-o2-offset-proof-20261030-150536.json (direction_gate=true, driver_rollback_verified=true, prevention_gate_after=closed, forensic_verified_after=true); e5d-o2-functional-20261030-150552.json; e5d-o2-direction-20261030-150558.json (gate=true, forensic_record direction=1 payload_len=51 verified=true); transcripts e5d-o2-offset-proof-20261030-150536.log, e5d-o2-functional-20261030-150552.log, e5d-o2-direction-20261030-150558.log; signed candidate aegis_wfp_payload_offset_f63195b0.sys; rollback pins driver 49E65BB12B4FC164F0B0C255AC75CDFA096F17AC77B056586BF16891FCDABE8C and daemon 464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61."
+  },
+  {
+   "id": "O1-V6-SIDECAR-E2-20261030",
+   "severity": "P1",
+   "title": "Kernel IDS IPv6 identity is preserved through authenticated forensic records",
+   "description": "Atomic IPv6 endpoint metadata flows from queue validation through event processing into a versioned forensic sidecar. The sidecar is covered by record integrity verification, decoded separately from logical payload, and legacy payload-only records remain compatible.",
+   "level": "E2",
+   "component": "forensic_pipeline",
+   "flow_id": "DATA-001 / EVIDENCE-001",
+   "files_changed": [
+    "src/forensic/forensic_pipeline.zig",
+    "src/pipeline/event_processor.zig",
+    "src/pipeline/event_queue.zig",
+    "admin-evidence/o1-v6-sidecar-20261030/closeout.md"
+   ],
+   "tests": [
+    "zig build test",
+    "zig build",
+    "cargo test: 49 passed, 1 isolated WFP-provider test ignored",
+    "cargo build --release",
+    "cmake Release native adapter build",
+    "Go Nose build",
+    "focused Python suite: 95 passed",
+    "TypeScript typecheck and tests: 76 passed",
+    "python tools/truth.py verify: TRUTH_VALID"
+   ],
+   "result": "PASS",
+   "finding": "Production remains detection-only; this slice adds no prevention or enforcement authority.",
+   "timestamp": "2026-10-30",
+   "source_commit": "06d15329fe10aa16057372ce9932b1a375bfc5d2"
   }
  ],
  "known_gaps": [
@@ -8613,7 +8643,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 27,
-  "E2_count": 141,
+  "E2_count": 47,
   "E3_count": 14,
   "E4_count": 15,
   "E5_count": 126,
