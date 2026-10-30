@@ -505,6 +505,25 @@ pub const ForensicRing = struct {
         return allocator.dupe(u8, self.storage[off .. off + RECORD_BYTES]) catch null;
     }
 
+    /// Read back the authenticated hash for a record accepted by append.
+    /// The caller supplies the one-based append ordinal returned by append;
+    /// an overwritten or unavailable record fails closed.
+    pub fn recordHash(self: *ForensicRing, append_ordinal: u64) ?[HASH_BYTES]u8 {
+        self.mutex.lock();
+        defer self.mutex.unlock();
+        if (append_ordinal == 0 or append_ordinal > self.written) return null;
+        const index = append_ordinal - 1;
+        const num_slots = self.storage.len / RECORD_BYTES;
+        const oldest: u64 = if (self.written > num_slots) self.written - num_slots else 0;
+        if (index < oldest) return null;
+        const off = (index * RECORD_BYTES) % self.storage.len;
+        if (off + RECORD_BYTES > self.storage.len) return null;
+        const slot = self.storage[off .. off + RECORD_BYTES];
+        const header = std.mem.bytesAsValue(RecordHeader, slot[0..HEADER_BYTES]);
+        if (header.record_seq != index) return null;
+        return header.current_hash;
+    }
+
     /// Verify CRC32 of a record slot.
     pub fn verifyRecord(slot: []const u8) bool {
         if (slot.len < RECORD_BYTES) return false;
@@ -590,6 +609,20 @@ test "ForensicRing append and read" {
     defer std.testing.allocator.free(rec);
     try std.testing.expect(ForensicRing.verifyRecord(rec));
     try std.testing.expect(ForensicRing.verifyRecordHash(rec));
+}
+
+test "ForensicRing recordHash reads the authenticated hash for an accepted append" {
+    var ring = try ForensicRing.initMemory(std.testing.allocator, 2 * RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+    var ev = event.IpcEvent.init(.signature_match);
+    ev.event_id = 77;
+    ev.rule_id = 9001;
+    ev.timestamp_ns = 1;
+    const ordinal = ring.append(&ev, "evidence", 0, 0, 0, 4);
+    const hash = ring.recordHash(ordinal).?;
+    try std.testing.expect(!std.mem.eql(u8, &hash, &([_]u8{0} ** HASH_BYTES)));
+    try std.testing.expect(ring.recordHash(0) == null);
+    try std.testing.expect(ring.recordHash(ordinal + 1) == null);
 }
 
 test "forensic direction is versioned and old records remain unknown" {

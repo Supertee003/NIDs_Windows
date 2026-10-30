@@ -19,6 +19,7 @@ const policy = @import("../policy/policy_ir.zig");
 const pep = @import("../policy/pep_bindings.zig");
 const forensic = @import("../forensic/forensic_pipeline.zig");
 const forensic_log = @import("../forensic/forensic_log.zig");
+const ids_receipt = @import("../forensic/ids_evidence_receipt.zig");
 const trace_mod = @import("../forensic/decision_trace.zig");
 const dispatcher = @import("../policy/action_dispatcher.zig");
 const watchdog = @import("../reliability/watchdog.zig");
@@ -380,6 +381,16 @@ fn processEvent(
     if (forensic_seq != 0) {
         _ = state.g_forensic_records_written.fetchAdd(1, .monotonic);
     }
+    // IDS-INT-001: issue a recording-only receipt after the forensic writer
+    // accepts the exact detection record and its authenticated hash is read
+    // back. This never represents a host effect or an enforcement receipt.
+    const ids_evidence_receipt: ?ids_receipt.Receipt = if (matched_rule_id != 0 and forensic_seq != 0)
+        if (forensic_ring.recordHash(forensic_seq)) |record_hash|
+            ids_receipt.issue(ev, forensic_seq, record_hash, ids_receipt.RUNTIME_DETECTOR_ID, ids_receipt.RUNTIME_DETECTOR_VERSION, 100)
+        else
+            null
+    else
+        null;
     _ = markStage(.action_to_forensic, t_prev);
 
     // 8. SIEM forwarding (detections only; observe path, never host effects).
@@ -404,7 +415,7 @@ fn processEvent(
     // Drop-on-error by construction (forensic_log.log never raises); the
     // forensic ring above stays the detection record.
     if (matched_rule_id != 0 and state.g_evidence_log_enabled) {
-        evidenceLog(ev, matched_rule_id, ev_severity, policy_action, matched_policy, confirmed_effect, pep_decision, receipt_filter_id, pep_req_id, decision_trace.trace_id, audit_id, qe.payload[0..qe.payload_len], qe.src_ipv6, qe.dst_ipv6);
+        evidenceLog(ev, matched_rule_id, ev_severity, policy_action, matched_policy, confirmed_effect, pep_decision, receipt_filter_id, pep_req_id, decision_trace.trace_id, audit_id, qe.payload[0..qe.payload_len], qe.src_ipv6, qe.dst_ipv6, ids_evidence_receipt);
     }
 }
 
@@ -427,6 +438,7 @@ fn evidenceLog(
     payload: []const u8,
     src6: ?[16]u8,
     dst6: ?[16]u8,
+    ids_evidence_receipt: ?ids_receipt.Receipt,
 ) void {
     const log_level: forensic_log.LogLevel = switch (severity) {
         .critical, .emergency => .critical,
@@ -438,8 +450,10 @@ fn evidenceLog(
     const rule = std.fmt.bufPrint(&rule_buf, "{d}", .{rule_id}) catch return;
     var src6_buf: [48]u8 = undefined;
     var dst6_buf: [48]u8 = undefined;
+    var ids_hash_buf: [ids_receipt.HASH_BYTES * 2]u8 = undefined;
     const src_ip6: ?[]const u8 = if (src6) |s6| formatIp6(s6, &src6_buf) else null;
     const dst_ip6: ?[]const u8 = if (dst6) |d6| formatIp6(d6, &dst6_buf) else null;
+    const ids_hash: ?[]const u8 = if (ids_evidence_receipt) |r| formatReceiptHash(r.forensic_hash, &ids_hash_buf) else null;
     forensic_log.log(.{
         .level = log_level,
         .event = evidenceEventName(ev.kind, confirmed, decision_kind),
@@ -463,7 +477,20 @@ fn evidenceLog(
         .extra = evidenceConfirmationMarker(confirmed, decision_kind),
         .provider = if (confirmed) "wfp" else null,
         .receipt_version = if (confirmed) 1 else 0,
+        .ids_receipt_version = if (ids_evidence_receipt != null) ids_receipt.VERSION else 0,
+        .ids_receipt_sequence = if (ids_evidence_receipt) |r| r.forensic_sequence else 0,
+        .ids_receipt_hash = ids_hash,
     });
+}
+
+fn formatReceiptHash(hash: [ids_receipt.HASH_BYTES]u8, output: []u8) []const u8 {
+    if (output.len < ids_receipt.HASH_BYTES * 2) return output[0..0];
+    const digits = "0123456789abcdef";
+    for (hash, 0..) |byte, index| {
+        output[index * 2] = digits[byte >> 4];
+        output[index * 2 + 1] = digits[byte & 0x0f];
+    }
+    return output[0 .. ids_receipt.HASH_BYTES * 2];
 }
 
 /// The persisted evidence event name. A confirmed quarantine is its own

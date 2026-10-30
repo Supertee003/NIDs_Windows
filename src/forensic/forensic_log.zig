@@ -263,6 +263,10 @@ pub const LogEvent = struct {
     decision: ?[]const u8 = null,
     provider: ?[]const u8 = null,
     receipt_version: u8 = 0,
+    // IDS-INT-001: recording proof only; never an enforcement claim.
+    ids_receipt_version: u16 = 0,
+    ids_receipt_sequence: u64 = 0,
+    ids_receipt_hash: ?[]const u8 = null,
 };
 
 // ============================================================
@@ -354,6 +358,12 @@ pub fn formatLogLine(event: LogEvent, epoch_ms: i64, mono_ns: i128, writer: anyt
         writer.print(",\"provider\":\"{s}\"", .{prov}) catch return;
     }
     writer.print(",\"receipt_version\":{d}", .{event.receipt_version}) catch return;
+    if (event.ids_receipt_version != 0) {
+        writer.print(",\"ids_receipt_version\":{d},\"ids_receipt_sequence\":{d}", .{ event.ids_receipt_version, event.ids_receipt_sequence }) catch return;
+        if (event.ids_receipt_hash) |hash| {
+            writer.print(",\"ids_receipt_hash\":\"{s}\"", .{hash}) catch return;
+        }
+    }
 
     writer.print("}}\n", .{}) catch return;
 }
