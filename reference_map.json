@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-30T17:06:54.718867+00:00",
+  "generated_at": "2026-10-30T17:13:15.664381+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1742,
+  "total_files": 1743,
   "by_role": {
-    "documentation": 559,
+    "documentation": 560,
     "build-config": 212,
     "other": 19,
     "source": 365,
@@ -597,6 +597,10 @@
     "admin-evidence/health-wfp-provider-attested.json": {
       "class": "canonical-build",
       "role": "build-config"
+    },
+    "admin-evidence/ids-evidence-receipt-20261031/closeout.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
     },
     "admin-evidence/inspect_pep_exports.ps1": {
       "class": "canonical-source",

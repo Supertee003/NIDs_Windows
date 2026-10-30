@@ -1,5 +1,5 @@
 {
- "head_sha": "beab13fdbc786c369b3aed7eac0f075b8f0888fc",
+ "head_sha": "53737e88da79027358546cefef336ba46b1dcebd",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-10-31",
  "generator_version": "3.0",
@@ -3190,6 +3190,32 @@
    "result": "PASS_WITH_UNRELATED_BLOCKER",
    "finding": "The IDS receipt proves recording and traceability only. It cannot represent a provider, filter, action, or host effect. Full Zig-suite release evidence remains blocked by the existing compliance-log 10 MB limit failure.",
    "evidence": "admin-evidence/ids-evidence-receipt-20261031/closeout.md",
+   "timestamp": "2026-10-31"
+  },
+  {
+   "id": "IDS-NPCAP-002-E3-20261031",
+   "severity": "P1",
+   "title": "Direct Npcap IDS sensor requires proven disjointness from Go Nose",
+   "description": "Direct Npcap remains opt-in and full-payload. Daemon startup now requires AEGIS_NOSE_IFACE and rejects missing, equal, or substring-overlapping selectors before spawning the auxiliary sensor.",
+   "level": "E3",
+   "component": "npcap_adapter",
+   "flow_id": "AEGIS_DAEMON_IFACE + AEGIS_NOSE_IFACE -> disjointness proof -> direct Npcap full payload -> canonical queue -> detection -> IDS Evidence Receipt",
+   "head_sha": "53737e88da79027358546cefef336ba46b1dcebd",
+   "files_changed": [
+    "src/capture/npcap_adapter.zig",
+    "src/daemon.zig",
+    "admin-evidence/ids-npcap-002-20261031/closeout.md"
+   ],
+   "tests": [
+    "zig build: PASS",
+    "zig build test: 2242/2245 passed; direct-Npcap and daemon selector tests passed",
+    "full-suite blockers: compliance log >10 MB and RegistryWatchQueue performance threshold flake",
+    "python tools/rebuild_truth.py: PASS",
+    "python tools/truth.py verify: PASS"
+   ],
+   "result": "PASS_WITH_UNRELATED_BLOCKERS",
+   "finding": "Direct Npcap cannot start without an explicit Go Nose selector and a conservative disjointness proof. No enforcement authority was added. No E5 live Windows dual-interface proof is claimed.",
+   "evidence": "admin-evidence/ids-npcap-002-20261031/closeout.md",
    "timestamp": "2026-10-31"
   }
  ],
@@ -8671,7 +8697,7 @@
   "E0_count": 0,
   "E1_count": 27,
   "E2_count": 47,
-  "E3_count": 15,
+  "E3_count": 16,
   "E4_count": 15,
   "E5_count": 126,
   "E6_count": 0,
