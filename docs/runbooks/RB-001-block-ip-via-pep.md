@@ -1,11 +1,14 @@
 # RB-001: Block IP via PEP
 
+> **HISTORICAL/LAB REFERENCE — NOT FOR PRODUCTION.** AEGIS is a
+> detection-only Kernel NIDS; production host enforcement is out of scope.
+
 ## Objective
 
 Respond to a confirmed-malicious source IP through the PEP-gated block
 flow. On this production host the gate is closed, so a block is
-REFUSED by design -- this runbook proves the refusal path too. Real
-blocking happens only on the lab cutover (RB-012, WARDEN_CUTOVER_SPEC).
+REFUSED by design -- this runbook proves the refusal path too. Any positive
+host-effect material below is historical/lab evidence, not a product roadmap.
 
 ## Prerequisites
 

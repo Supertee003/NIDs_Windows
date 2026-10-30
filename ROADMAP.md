@@ -35,8 +35,8 @@ Foundation modules: contracts, capture, decoding, detection, policy, forensics.
 | I20 | Forensic Record Pipeline                | Zig      | src/forensic/forensic_pipeline.zig           |
 | I21 | Replay Engine (PCAP Replay)              | Zig      | src/forensic/replay_engine.zig               |
 
-### Part II â€” Production Hardening (II01â€“II22)
-Windows telemetry, reliability, federation, XDR, operations, release.
+### Part II â€” Production Detection Hardening (II01â€“II22)
+Windows telemetry, reliability, federation, XDR, operations, and release for the detection-only Kernel NIDS. Host enforcement is not a production deliverable.
 
 | ID    | Module                                    | Language | Output Artifact                              |
 |-------|-------------------------------------------|----------|----------------------------------------------|
@@ -44,7 +44,7 @@ Windows telemetry, reliability, federation, XDR, operations, release.
 | II02  | File Integrity Monitor                    | Zig+C    | src/windows/fim.zig, src/windows/fim_native.c |
 | II03  | Registry Monitor (Trie-based Rules)       | Zig      | src/windows/registry_monitor.zig             |
 | II04  | Process & Thread Injection Detector       | Zig      | src/windows/injection_detector.zig           |
-| II05  | WFP Block Action (Kernel Callout)         | C        | src/windows/aegis_wfp.c                       |
+| II05  | WFP Kernel Telemetry Boundary              | C        | src/windows/aegis_wfp.c                       |
 | II06  | Host Telemetry Aggregator                 | Zig      | src/windows/host_telemetry.zig                |
 | II07  | Reliability Watchdog                      | Zig      | src/reliability/watchdog.zig                 |
 | II08  | Security Self-Hardening                   | Zig+Py   | src/reliability/security_check.zig, tools/security_hardening.py |

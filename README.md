@@ -569,7 +569,7 @@ Rule-22 qualification has three separate acceptance levels:
 2. **Real sensor observation:** a WFP, FIM, ETW, registry, or ingress event is captured and normalized.
 3. **Controlled response:** a policy decision is linked to a valid receipt and a verified reversible host postcondition.
 
-Passing level 1 does not imply passing levels 2 or 3. The current project focus is to complete real sensor observation before enabling controlled IPS proof.
+Passing level 1 does not imply passing level 2. Level 3 is retained only as a historical/lab receipt contract; it is not a production activation roadmap. The current project focus is real sensor observation, detection fidelity, forensic linkage, and fail-closed operation.
 
 ## Troubleshooting and provenance
 

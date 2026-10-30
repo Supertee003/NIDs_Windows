@@ -1,12 +1,15 @@
 # AEGIS NIDS Runbooks
 
-This directory contains operational runbooks for the AEGIS NIDS system.
+This directory contains operational runbooks for the AEGIS detection-only Kernel NIDS.
+Production operation is observe-only: the prevention gate is closed and no runbook
+may be used to activate host enforcement. RB-001, RB-012, and RB-013 are retained
+as historical/lab references only and are not production procedures.
 
 ## Runbook Index
 
 | ID | Type | Title | Module | Status |
 |----|------|-------|--------|--------|
-| [RB-001](RB-001-block-ip-via-pep.md) | Incident Response | Block IP via PEP | pep_enforcement_proof | procedure |
+| [RB-001](RB-001-block-ip-via-pep.md) | Historical/Lab Reference | Block IP via PEP | pep_enforcement_proof | NOT FOR PRODUCTION |
 | [RB-002](RB-002-forensic-query.md) | Incident Response | Forensic query for incident reconstruction | forensic_replay_proof | procedure |
 | [RB-003](RB-003-audit-tamper-investigation.md) | Incident Response | Audit trail tamper investigation | audit_trail_proof | procedure |
 | [RB-004](RB-004-restore-from-snapshot.md) | Recovery | Restore from snapshot | backup_recovery_proof | procedure |
@@ -17,8 +20,8 @@ This directory contains operational runbooks for the AEGIS NIDS system.
 | [RB-009](RB-009-hot-reload-config.md) | Deployment | Hot reload config (no restart) | config_reload_proof | procedure |
 | [RB-010](RB-010-telemetry-export-setup.md) | Deployment | Telemetry export setup | telemetry_export_proof | procedure |
 | [RB-011](RB-011-policy-ir-mirror-workflow.md) | Deployment | Author, seal, export, verify TS policy IR mirror | policy_ir_proof | procedure |
-| [RB-012](RB-012-wfp-block-lab-proof.md) | Lab Proof | WFP BLOCK live proof (isolated lab VM only) | enforcement_proof | NOT YET EXECUTED |
-| [RB-013](RB-013-quarantine-lab-proof.md) | Lab Proof | Quarantine positive-path proof (isolated lab VM only) | enforcement_proof | NOT YET EXECUTED |
+| [RB-012](RB-012-wfp-block-lab-proof.md) | Historical/Lab Reference | WFP BLOCK live proof (isolated lab VM only) | enforcement_proof | OUT OF PRODUCT SCOPE |
+| [RB-013](RB-013-quarantine-lab-proof.md) | Historical/Lab Reference | Quarantine positive-path proof (isolated lab VM only) | enforcement_proof | OUT OF PRODUCT SCOPE |
 | [RB-014](RB-014-federation-lab-proof.md) | Lab Proof | Federation live cluster verification (lab) | federation_proof | NOT YET EXECUTED |
 | [RB-015](RB-015-siem-delivery-proof.md) | Lab Proof | SIEM delivery proof (lab) | siem_proof | NOT YET EXECUTED |
 | [RB-016](RB-016-production-trust-checklist.md) | Deployment | Production trust (signed policy, secrets, gates) | policy_signing | OPERATOR ACTION |

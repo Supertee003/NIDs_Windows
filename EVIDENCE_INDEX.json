@@ -8576,12 +8576,44 @@
    "result": "PASS",
    "finding": "provider_ready/provider_capable may be true as diagnostic capability, but host_effect_capable and host_effect_confirmed remain false and no production gate opens.",
    "timestamp": "2026-10-30"
+  },
+  {
+   "id": "VERIFICATION-CANONICAL-DISCOVERY-E2-20261030",
+   "severity": "P1",
+   "title": "Canonical Python test discovery and release verification are clean",
+   "description": "Pytest discovery is now constrained to tests/ so archived review bundles, release snapshots, and binary result files cannot contaminate the canonical suite. Release manifest digests were refreshed for the reviewed source/doc changes.",
+   "level": "E2",
+   "component": "release_engineering",
+   "flow_id": "RELEASE-001",
+   "files_changed": [
+    "pytest.ini",
+    "build_manifest.json",
+    "README.md",
+    "ROADMAP.md",
+    "docs/runbooks/README.md",
+    "docs/runbooks/RB-001-block-ip-via-pep.md",
+    "docs/runbooks/RB-012-wfp-block-lab-proof.md",
+    "docs/runbooks/RB-013-quarantine-lab-proof.md",
+    "docs/AEGIS_PRODUCTION_HANDOFF_2026-09-22.md"
+   ],
+   "tests": [
+    "python -m pytest -q: 938 passed, 4 skipped, 27 subtests passed",
+    "release_engineering.py --verify: 616 artifacts match",
+    "zig build test --summary all: 4/4 steps succeeded",
+    "cargo build --release and cargo test: 49 passed, 1 isolated test ignored",
+    "cmake configure/build Release: native DLLs built",
+    "go build -o aegis-nose.exe: PASS",
+    "TypeScript typecheck and test: 76 passed"
+   ],
+   "result": "PASS",
+   "finding": "Root pytest now executes only canonical tests/; historical evidence bundles remain available without affecting release gates.",
+   "timestamp": "2026-10-30"
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 27,
-  "E2_count": 140,
+  "E2_count": 141,
   "E3_count": 14,
   "E4_count": 15,
   "E5_count": 126,

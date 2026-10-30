@@ -1,5 +1,9 @@
 # RB-013: Quarantine Positive-Path Proof (Isolated Lab VM ONLY)
 
+> **HISTORICAL/LAB REFERENCE — OUT OF PRODUCT SCOPE.** This document is
+> retained for provenance and must never be treated as a production feature
+> or activation roadmap for the detection-only Kernel NIDS.
+
 > **NEVER run on production.** Quarantine is a host-effect decision
 > executed through the WFP flow-block primitive. Same isolation and
 > target rules as RB-012 (host-only lab network, TEST-NET targets only).
