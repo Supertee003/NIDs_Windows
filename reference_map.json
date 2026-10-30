@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-30T16:21:10.366586+00:00",
+  "generated_at": "2026-10-30T17:06:54.718867+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1739,
+  "total_files": 1742,
   "by_role": {
-    "documentation": 558,
+    "documentation": 559,
     "build-config": 212,
     "other": 19,
     "source": 365,
@@ -12,11 +12,11 @@
     "rust-build": 4,
     "test-artifact": 209,
     "config-data": 34,
-    "architecture-decision": 11,
+    "architecture-decision": 12,
     "step-document": 2,
     "go-source": 8,
     "makefile": 1,
-    "production-source": 277,
+    "production-source": 278,
     "legacy-source": 32,
     "quarantined": 1
   },
@@ -117,6 +117,7 @@
     "src/forensic/forensic_log.zig",
     "src/forensic/forensic_pipeline.zig",
     "src/forensic/forensics_engine.zig",
+    "src/forensic/ids_evidence_receipt.zig",
     "src/forensic/installer.zig",
     "src/forensic/integration_contract.zig",
     "src/forensic/policy_contract.zig",
@@ -610,6 +611,10 @@
       "role": "documentation"
     },
     "admin-evidence/nose-devices-latest.txt": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "admin-evidence/o1-v6-sidecar-20261030/closeout.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -2490,6 +2495,10 @@
       "role": "architecture-decision"
     },
     "docs/adr/0008-truth-source-commit-semantics.md": {
+      "class": "canonical-docs",
+      "role": "architecture-decision"
+    },
+    "docs/adr/0009-kernel-ids-integrity-plane.md": {
       "class": "canonical-docs",
       "role": "architecture-decision"
     },
@@ -5354,6 +5363,10 @@
       "role": "production-source"
     },
     "src/forensic/forensics_engine.zig": {
+      "class": "canonical-source",
+      "role": "production-source"
+    },
+    "src/forensic/ids_evidence_receipt.zig": {
       "class": "canonical-source",
       "role": "production-source"
     },
