@@ -881,17 +881,34 @@ outbound payload (C2/exfil) เลย
   `-capture` ยังเก็บเป็น E5 PARTIAL แยกไว้. O1 (kernel IPv6) ยังรอการตัดสินใจ
   record identity.
 
-## 26. O1 (Kernel IPv6) - record-header v2 (ตัดสินใจแล้ว: ทาง A; steps 1-3 landed 2026-10-29, E5 รอ lab)
+## 26. O1 (Kernel IPv6) - record-header v2 (ตัดสินใจแล้ว: ทาง A; steps 1-3 landed 2026-10-29, step 4 E5 PASS 2026-10-30)
 
-> **สถานะ 2026-10-29:** ตัดสินใจเลือก **ทาง A (sidecar-in-payload)** และดำเนินการแล้ว:
-> steps 1-3 เสร็จที่ source commit `24d8d81` (feat(O1) — decoder + driver v6 pairs + pins;
-> rebaseline `f1302f5`; EVT `O1-V6-SIDECAR-E2-20261029`, E2_count=139). WDK build เขียว
-> (`aegis_wfp.sys` SHA-256 `A583B630…DE96732C`, C_ASSERT 48 ยังเขียว), zig build test RC=0
-> (+6 O1 unit tests), pytest 1025 passed / 0 failed (+5 static pins), truth TRUTH_VALID.
-> **ขั้น 4 (host E5)** — deploy candidate driver + v6 marker จับได้จริงบน ring — **ยังไม่ทำ:
-> รอ lab VM/UAC ที่ operable (พักร่วมกับ A1 ตามการตัดสินใจของผู้ดำเนินการ 2026-10-28)**.
-> ขั้น 5 (rebaseline) เสร็จ: FLOW_MAP/CONTRACT_MAP/EVIDENCE_INDEX ปรับแล้ว และหัวข้อนี้
-> ปิดสถานะด้วยบล็อกนี้. ส่วนเนื้อหาด้านล่างคงไว้เป็น decision brief เดิม (บันทึกวันตัดสินใจ).
+> **สถานะ 2026-10-30 (ปิดครบ 5 ขั้น):** O1 ใช้ **ทาง A (sidecar-in-payload)** และพิสูจน์ครบแล้ว:
+> - steps 1-3 ที่ source commit `24d8d81` (decoder + driver v6 pairs + pins; rebaseline `f1302f5`;
+>   EVT `O1-V6-SIDECAR-E2-20261029`, E2_count=139). WDK build เขียว (`aegis_wfp.sys` SHA-256
+>   `A583B630…DE96732C`, C_ASSERT 48 เขียว), zig build test RC=0 (+6 O1 unit tests),
+>   pytest 1025 passed / 0 failed (+5 static pins), truth TRUTH_VALID.
+> - **ขั้น 4 (host E5) PASS 2026-10-30 12:27** — elevated run `scripts/c1_e5_sidecar_proof.ps1`
+>   (hash pin + test-sign + auto-rollback): unsigned candidate `A583B630…` → signed
+>   `F63195B0…` (45,968 B, signer CN=AEGIS NIDS Test Signing) ติดตั้งและรันจริง; อ่าน ring
+>   ด้วย GENERIC_READ เท่านั้น (GET_STATS/READ_EVENTS): 894,306 ไบต์/14 reads, 858 records,
+>   0 drops, 0 trailing. **812 v6 records** มี flags bit0 + payload_length ≥ 32, **33 records
+>   probe-attributed** (TCP6 `::1` และ TCP6 host link-local `fe80::fad7:f941:3f9d:195c%24`
+>   ทั้ง inbound layer 2 และ outbound layer 3); ICMPv6 proto 58 ก็เห็นใน ring (outbound 32 /
+>   inbound 72 ไบต์ = sidecar 32 + ICMPv6 40), identity prefix
+>   `{20010FB1:99, FE800000:16, 20010FB0:666, 26064700:4, 00000000:27}`; identity mismatch 0,
+>   short claim 0, oversize claim 0. **46 v4 records** ยังรูปเดิม (flags clear, 16 attributed
+>   จาก `127.0.0.1` regression). Rollback: driver กลับ `49E65BB1…`, daemon `464E765B…`,
+>   gate closed, forensics verified=true/integrity=ok, services Running.
+> - บั๊กที่เจอระหว่างทำหลักฐาน (แก้ในสคริปต์ ไม่ใช่ production): PS 5.1 `@($List[object])`
+>   โยน `Argument types do not match` → `.ToArray()`; driver `READ_EVENTS` คืน batch สั้นที่
+>   ขอบ record → drain วนจน `bytes == 0` (ไม่หยุดที่ `< 65536`).
+> - หลักฐาน: `admin-evidence/c1-e5-20261029/c1-e5-sidecar-result-20261030-122702.json` (+`.log`);
+>   attempt ที่ล้ม 2 ครั้ง (`…121927`, `…122311`) เก็บไว้เป็นประวัติของบั๊กข้างต้น.
+>   EVT: `O1-V6-SIDECAR-E5-20261030`. ขั้น 5: source ไม่เปลี่ยน (script อยู่ใต้ `scripts/` ซึ่ง
+>   ไม่ใช่ SOURCE_PATHS) maps จึงคงที่ `24d8d81`; ไม่แตะ build_manifest (ชุด artifact คงเดิม
+>   616/616 — script เป็น evidence tooling ที่ติดตามใน git + EVT).
+> ส่วนเนื้อหาด้านล่างคงไว้เป็น decision brief เดิม (บันทึกวันตัดสินใจ).
 
 สถานะต้นทางที่ยืนยันแล้ว (ไม่เดา):
 - kernel capture = v4-only (NIC-001 §11 วัดจริง: v6 marker ตอบผ่าน wire แต่ record 0 — callout
@@ -935,7 +952,11 @@ outbound payload (C2/exfil) เลย
 4. host proof E5 บน lab (เทคนิค driver-swap แบบ g2-dupfilter-20261025d: candidate hash pin
    + backup + rollback verify) แล้ว probe: DNSv6/ICMPv6 marker จับได้จริงบน ring และ
    queue.stats เห็น event v6 ผลลัพธ์ detection (ไม่แตะ enforcement)
+   — **ดำเนินการแล้ว 2026-10-30: PASS** (858 records, 812 v6, 33 probe-attributed, v4 regression
+   46/16, zero defects, rollback verified; ดูบล็อกสถานะด้านบน)
 5. rebaseline: plan/FLOW_MAP/CONTRACT_MAP/EVIDENCE_INDEX + ปิดหัวข้อ O1 ในแผนหลัก
+   — **ดำเนินการแล้ว:** source คงที่ `24d8d81` (script ไม่อยู่ใน SOURCE_PATHS), EVT
+   `O1-V6-SIDECAR-E5-20261030` บันทึกแล้ว, build_manifest adopt proof script
 
 ### เกณฑ์จบงาน (completion gate)
 

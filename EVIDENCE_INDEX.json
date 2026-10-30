@@ -1,7 +1,7 @@
 {
  "head_sha": "24d8d817ace8f9322d9c35a2b697938b7be72b58",
  "created_at": "2026-09-24",
- "last_updated_at": "2026-10-29",
+ "last_updated_at": "2026-10-30",
  "generator_version": "3.0",
  "evidence_levels": {
   "E0": "No evidence",
@@ -3045,6 +3045,49 @@
    "completion_gate": "E2 PASS: decoder + driver + static/units all green. E5 pending: deploy the sidecar driver (hash pin + rollback verify), drive real v6 traffic through the kernel, pin the v6 marker on the ring + queue.stats v6 rows + v4 regression + ring-drops delta 0 - requires the lab VM/UAC session (currently paused with A1; no host mutation without separate authorization).",
    "issue": null,
    "evidence": "commits 24d8d81 (source), f1302f5 (rebaseline); build/x64/wfp/aegis_wfp.sys SHA-256 A583B630BCE55C7FBDE6B29B59657BABD0BD00910151F9257147F20DDE96732C; tools/truth.py verify TRUTH_VALID at source 24d8d81."
+  },
+  {
+   "id": "O1-V6-SIDECAR-E5-20261030",
+   "head_sha": "24d8d817ace8f9322d9c35a2b697938b7be72b58",
+   "timestamp": "2026-10-30T12:27:17+07:00",
+   "title": "Kernel IPv6 identity-sidecar proven on the live ring: 812 v6 records (33 probe-attributed incl. fe80:: host link-local), v4 regression clean, zero defects, hash-pinned rollback verified (E5 PASS)",
+   "level": "E5",
+   "component": "drivers/wfp_callout ring emission (aegis_wfp.sys) + scripts/c1_e5_sidecar_proof.ps1",
+   "flow_id": "DATA-001",
+   "patch_id": "O1-V6-SIDECAR-E5-20261030",
+   "target_head": "6e38c1474e8bc06e1a418ea9acf84d5729b7977e",
+   "final_head": "6e38c1474e8bc06e1a418ea9acf84d5729b7977e",
+   "expected": "The O1 driver build (unsigned A583B630...; signed F63195B0...) must emit IPv6 transport records whose payload leads with the 32-byte identity sidecar (src16 ++ dst16) behind flags bit0, with the header u32 identity equal to the BE value of the first four sidecar bytes, payload_length >= 32 and <= 4096, ring stride exactly 48 + payload_length, and v4 records unchanged (flag clear). Probe traffic (TCP6 ::1, TCP6 host link-local fe80::fad7:f941:3f9d:195c%24, ICMPv6 ::1, UDP6 ::1, TCP4 127.0.0.1 regression) must be observable on the ring (port-attributed for TCP/UDP; ICMPv6 identified by proto 58). The hash-pinned baseline driver/daemon must then be restored with the prevention gate still closed and the forensic chain valid.",
+   "actual": "PASS (exit 0, attempts=1, all 17 criteria true). The elevated wrapper pinned the unsigned O1 build A583B630... (44,544 B), test-signed an evidence copy to F63195B0... (45,968 B; Authenticode Valid; signer CN=AEGIS NIDS Test Signing, thumbprint 00E92849867308596564D134BB981EF726798E97), stopped AegisNids to free the exclusive device handle, installed the signed candidate and started AegisWfp. Ring read via GENERIC_READ IOCTLs only (GET_STATS 0x00126008, READ_EVENTS 0x00126000): 894,306 bytes in 14 reads, 858 whole records, 0 drops, 0 trailing bytes. 812 v6 records carried flags bit0 with payload_length >= 32; 33 were attributed to the probe ports; identity prefixes {20010FB1:99, FE800000:16, 20010FB0:666, 26064700:4, 00000000:27}; identity_mismatch=0, short_claim=0, oversize_claim=0. Attributed v6 samples show ::1 -> ::1 TCP pairs at layer 3 (outbound) and layer 2 (inbound) and fe80::fad7:f941:3f9d:195c -> fe80::fad7:f941:3f9d:195c TCP pairs at both layers; ICMPv6 ::1 records appear as proto 58 (outbound payload_length 32, inbound 72 = 32 sidecar + 40 ICMPv6). 46 v4 records kept the old shape (flags clear), 16 attributed to the 127.0.0.1 TCP4 regression. Rollback restored driver 49E65BB1... and daemon 464E765B..., restarted both services, forensics verify verified=true integrity=ok, prevention gate closed and host_effect_capable=false.",
+   "contract_impact": "None beyond the already-landed additive O1 contract: header ABI unchanged (C_ASSERT 48), ring stride remains 48 + claimed payload_length, and the v6 sidecar is flag-gated to v6 records only. No shared wire codec change.",
+   "abi_impact": "None; AEGIS_EVENT_HEADER stays 48 bytes and the live proof parsed 858 records with zero trailing bytes.",
+   "authority_impact": "None; capture-only fail-open driver, no enforcement action, gate closed before and after, host_effect_capable=false.",
+   "state_impact": "The signed O1 candidate was temporarily installed on the host, then rolled back to the pinned baseline before the run exited. Final deployed state: driver 49E65BB1..., daemon 464E765B..., AegisWfp and AegisNids Running, prevention gate closed.",
+   "files_verified": [
+    "scripts/c1_e5_sidecar_proof.ps1",
+    "drivers/wfp_callout/aegis_wfp_callout.c",
+    "drivers/wfp_callout/aegis_wfp.h",
+    "src/capture/wfp_telemetry.zig",
+    "admin-evidence/c1-e5-20261029/c1-e5-sidecar-result-20261030-122702.json",
+    "admin-evidence/c1-e5-20261029/c1-e5-sidecar-proof-20261030-122702.log",
+    "admin-evidence/c1-e5-20261029/aegis_wfp_v6_sidecar_signed.sys",
+    "admin-evidence/c1-e5-20261029/aegis_wfp_v6_sidecar_unsigned.sys",
+    "admin-evidence/c1-e5-20261029/aegis_wfp_pre_v6_sidecar_49e65bb1.sys"
+   ],
+   "files_changed": [
+    "scripts/c1_e5_sidecar_proof.ps1",
+    "EVIDENCE_INDEX.json",
+    "docs/KERNEL_NIDS_COMPLETION_PLAN.md"
+   ],
+   "build_result": "No rebuild in this patch. Candidate bytes are the O1 build at source 24d8d81: unsigned A583B630... (44,544 B); the signed evidence copy F63195B0... (45,968 B) was produced by scripts/wfp_sign.ps1 and verified Authenticode Valid.",
+   "test_result": "PASS: scripts/c1_e5_sidecar_proof.ps1 elevated run exit 0; 17/17 criteria true; parser self-test on synthetic v6/v4/short-claim records passed before the host run. The two failed attempts (12:19:27, 12:23:11) exposed and fixed two runtime bugs in the wrapper: PowerShell 5.1 @($List[object]) throws 'Argument types do not match' (use .ToArray()) and READ_EVENTS returns short batches at record boundaries (drain until bytes == 0). Both attempts rolled back cleanly and are retained as historical evidence. tools/release_engineering.py --verify OK 616/616 at source_commit=24d8d81 (artifact set unchanged; the proof script is evidence tooling tracked in git, not a release artifact).",
+   "windows_result": "E5 PASS on LAPTOP-PPN (Windows 11 26100): signed candidate installed and running; raw ring showed 812 v6 records with the sidecar, 33 attributed to probes including the host link-local fe80::fad7:f941:3f9d:195c on both v6 transport layers, ICMPv6 proto 58 records, and 46 unchanged v4 records with 16 probe-attributed; zero identity/length/alignment defects; rollback restored the pinned baseline with both services Running.",
+   "evidence_level": "E5",
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed",
+   "completion_gate": "E5 PASS; plan section 26 step 4 closed. The Zig sidecar decoder remains E2-proven (O1-V6-SIDECAR-E2-20261029); this entry proves kernel ring emission on the real host. No enforcement was enabled.",
+   "issue": null,
+   "evidence": "admin-evidence/c1-e5-20261029/c1-e5-sidecar-result-20261030-122702.json (passed=true, failed_criteria=[]); c1-e5-sidecar-proof-20261030-122702.log; signed candidate F63195B02C87A99A442A34CCF7025F18431C5E1FACAB804D5050029FFFA21F63; rollback pins driver 49E65BB12B4FC164F0B0C255AC75CDFA096F17AC77B056586BF16891FCDABE8C and daemon 464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61."
   }
  ],
  "known_gaps": [
@@ -8469,7 +8512,7 @@
   "E2_count": 139,
   "E3_count": 14,
   "E4_count": 15,
-  "E5_count": 124,
+  "E5_count": 125,
   "E6_count": 0,
   "E7_count": 1
  }
