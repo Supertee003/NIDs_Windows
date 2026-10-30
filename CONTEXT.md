@@ -36,6 +36,19 @@ A tracked security case opened when correlated threat crosses a
 threshold. Incidents escalate; Detections do not.
 _Avoid_: alert, case, ticket
 
+**Detection Authority**:
+The Zig Runtime Spine's authority to orchestrate detectors, correlation, and
+the detection verdict. A sensor acquires evidence; it does not own this
+authority. The Detection Authority cannot approve a privileged host effect.
+_Avoid_: enforcement authority, sensor authority
+
+**IDS Evidence Receipt**:
+The immutable acknowledgement that the IDS accepted and recorded one
+detector result with its source, event identity, provenance, and forensic
+position. It proves recording and traceability only; it never proves that a
+host effect occurred.
+_Avoid_: enforcement receipt, block receipt
+
 ### Authorizing
 
 **Policy**:
