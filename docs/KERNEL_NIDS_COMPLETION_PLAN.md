@@ -678,7 +678,31 @@ gate (ไม่แตะ) และ wire contract ไม่เปลี่ยน
 - คิว operator คงเหลือ: G2 lab campaign (RB-012 -> RB-013; checklist @ `dcb22a5` — บันทึก SHA จริง),
   DEPLOY-120 installer host drill, RB-014/015/018/021, RB-016/017, G4 signing, external review, CI decision
 
-## 24. Slice O2: Kernel outbound IPv4 capture - IMPLEMENTED (E2, host proof pending)
+## 24. Slice O2: Kernel outbound IPv4 capture - IMPLEMENTED (E2, host proof E5 PASS 2026-10-30)
+
+> **สถานะ 2026-10-30 (host proof ปิดแล้ว):** outbound v4 capture พิสูจน์ครบวง
+> **ring → daemon queue → authenticated forensic → CLI query** แล้วด้วย loopback probe
+> (EVT `O2-OUTBOUND-FORENSIC-E5-20261030`). Candidate = O1 build ที่ source `24d8d81`
+> (unsigned `A583B630…` rebuild ด้วย /Brepro ได้ hash เดิมเป๊ะ; sign เป็น `F63195B0…`,
+> Authenticode Valid) + daemon ReleaseSafe `8B312864…` (build ใหม่ 14:57, pin ใน E5
+> scripts ทั้งชุด). ลำดับพิสูจน์: หยุด Nose → takeover `kernel_fallback` (nose_absent) →
+> ส่ง marker 51 ไบต์ `AEGIS-O2-DIRECTION-1192fcd3…` ไป loopback sink (ephemeral port
+> 59607; server รับ marker ตรงเป๊ะ) → WFP rows 10→52 ระหว่าง takeover (361 หลัง
+> handback), nose_frames_submitted 465→1254 พร้อม handback กลับ `npcap_primary` →
+> payload-prefix query เจอ **2 records: outbound `direction=1` seq 97417 (payload_len 51,
+> verified=true)** และ inbound duplicate `direction=0` seq 97418 ตามที่คาด → gate ปิด
+> ทั้งก่อน/ระหว่าง/หลัง, forensic integrity ok ระหว่าง probe. Rollback คืน driver
+> `49E65BB1…`, daemon `464E765B…`, services Running, gate closed, forensic verify ผ่าน.
+> แปลว่า payload-offset fix (source `26513a2`) + O2 direction handoff ทำงานจริงบน host;
+> ความล้มเหลวของรอบ 2026-10-26 (17:21 loopback เจอแต่ direction=0, 17:42 remote-sink
+> หา payload ไม่เจอ) ปิดจากสาเหตุ driver ตอนนั้นยังไม่มี offset fix — ไม่ใช่ regression ใหม่.
+> Loopback mode กลับมาใช้ได้เพราะหลักฐาน O1 E5 รอบเช้า (v4 loopback records
+> `direction=1` + payload 14 ไบต์เต็ม) ยืนยันว่า outbound callback ยิงบน loopback จริง;
+> scripts ทั้ง 5 ไฟล์ถูกอัปเดต pin + เปิด `-RemoteAddress/-RemotePort` เป็น optional
+> (loopback = default, remote sink ยังใช้ได้เมื่อ VM online). Issue #24 ยังปิดอยู่
+> (candidate คงอยู่ตลอด window). หลักฐาน:
+> `admin-evidence/e5-host-proof-20261026/e5d-o2-offset-proof-20261030-150536.json`
+> (+ functional/direction JSON + transcripts 3 ไฟล์).
 
 ปิดช่อง "kernel L7 เห็นแค่ inbound" ที่ NIC-001 (§11) วัดไว้: driver เดิมมี callout
 เดียวที่ `FWPM_LAYER_INBOUND_TRANSPORT_V4` ทำให้ detection ฝั่ง kernel ไม่เห็น
@@ -835,11 +859,17 @@ outbound payload (C2/exfil) เลย
   `scripts/e5_o2_payload_offset_proof.ps1 -RemoteAddress 192.168.126.20 -RemotePort 47821`.
   Wrapper sign/deploys candidate, รัน functional proof และคืน driver เดิมใน finally;
   gate ต้องปิดและ rollback/forensic verification ผ่าน.
-- current unsigned payload-offset build: `build/x64/wfp/aegis_wfp.sys` 39,936 B
-  SHA-256 `E0C368C1917D589F9850B2CB36F990D38D90BAC0D71B1DF43FABD2AEBC2B1A37`
-  (WDK build OK; ยังไม่ sign/ไม่ deploy; host driver ยังคง hash `49E65BB1…`).
-- ยังไม่ปิด: host proof ของ outbound capture (E5) และ O1 (kernel IPv6)
-  ซึ่งต้องมี record-header v2/ABI decision ก่อน
+  — **ดำเนินการแล้ว 2026-10-30: PASS แบบ loopback mode** (VM sink offline; หลักฐาน O1
+  E5 ยืนยัน outbound callback ยิงบน loopback จริง) กับ candidate ปัจจุบัน `A583B630…` +
+  daemon `8B312864…`; ดูบล็อกสถานะด้านบนและ EVT `O2-OUTBOUND-FORENSIC-E5-20261030`.
+- current unsigned payload-offset build: ถูกแทนที่ด้วย O1 build ที่ source `24d8d81`
+  (รวม payload-offset fix): `build/x64/wfp/aegis_wfp.sys` 44,544 B
+  SHA-256 `A583B630BCE55C7FBDE6B29B59657BABD0BD00910151F9257147F20DDE96732C`
+  (WDK /Brepro rebuild 30-10 ได้ hash เดิม; signed `F63195B0…`; พิสูจน์บน host แล้ว
+  วันนี้ แล้ว rollback — host driver ยังคง hash `49E65BB1…`).
+- ~~ยังไม่ปิด: host proof ของ outbound capture (E5) และ O1 (kernel IPv6)~~
+  **ปิดครบแล้ว 2026-10-30**: O2 host proof = EVT `O2-OUTBOUND-FORENSIC-E5-20261030`
+  (ดูบล็อกสถานะด้านบน); O1 = EVT `O1-V6-SIDECAR-E5-20261030` (section 26).
 - อัปเดต live state (2026-10-26): E5-A สลับ driver จาก `95C7…` เป็น O2 signed
   candidate `49E65BB12B4FC164F0B0C255AC75CDFA096F17AC77B056586BF16891FCDABE8C`
   (unsigned build `7EDE4DCD…`), signature Valid; AegisWfp และ AegisNids กลับมา

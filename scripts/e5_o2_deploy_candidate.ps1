@@ -8,7 +8,7 @@ Set-Location $repo
 
 $runtime = 'C:\Program Files\AEGIS NIDS\runtime\aegis_nids.exe'
 $candidate = Join-Path $repo 'zig-out\bin\aegis_nids.exe'
-$expected = 'E19370F598507FBC9A1194EA8182059B319DFAF76DFF4D3DE34814C57386B407'
+$expected = '8B3128640C0E6F5EACB85E751471441646A350290A569ED2608757DBD84EAE4F'
 $evidenceDir = Join-Path $repo 'admin-evidence\e5-host-proof-20261026'
 $backup = Join-Path $evidenceDir 'aegis_nids_pre_o2_direction_464e765b.exe'
 $transcript = Join-Path $evidenceDir ("e5d-o2-deploy-{0}.log" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))

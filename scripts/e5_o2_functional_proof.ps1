@@ -1,12 +1,8 @@
 # One-command O2 E5 functional proof with unconditional candidate rollback.
 # Run from elevated PowerShell. The child scripts preserve their own raw logs.
 param(
-    [Parameter(Mandatory = $true)]
-    [ValidateNotNullOrEmpty()]
     [string]$RemoteAddress,
 
-    [Parameter(Mandatory = $true)]
-    [ValidateRange(1, 65535)]
     [int]$RemotePort
 )
 $ErrorActionPreference = 'Stop'
@@ -15,7 +11,7 @@ $repo = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
 Set-Location $repo
 
 $runtime = 'C:\Program Files\AEGIS NIDS\runtime\aegis_nids.exe'
-$candidateHash = 'E19370F598507FBC9A1194EA8182059B319DFAF76DFF4D3DE34814C57386B407'
+$candidateHash = '8B3128640C0E6F5EACB85E751471441646A350290A569ED2608757DBD84EAE4F'
 $baseHash = '464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61'
 $evidenceDir = Join-Path $repo 'admin-evidence\e5-host-proof-20261026'
 $scriptsDir = Join-Path $repo 'scripts'
@@ -78,7 +74,12 @@ try {
     $deployExit = Invoke-ChildScript $deployScript
     if ($deployExit -ne 0) { throw "Candidate deployment helper exited $deployExit." }
 
-    $directionExit = Invoke-ChildScript $directionScript @('-RemoteAddress', $RemoteAddress, '-RemotePort', [string]$RemotePort)
+    $directionArgs = @()
+    if ($RemoteAddress) {
+        if ($RemotePort -lt 1) { throw 'Remote mode requires a valid -RemotePort.' }
+        $directionArgs = @('-RemoteAddress', $RemoteAddress, '-RemotePort', [string]$RemotePort)
+    }
+    $directionExit = Invoke-ChildScript $directionScript $directionArgs
     $directionFiles = @(
         Get-ChildItem -LiteralPath $evidenceDir -Filter 'e5d-o2-direction-*.json' -File -ErrorAction SilentlyContinue |
             Where-Object { $_.FullName -notin $directionFilesBefore -and $_.LastWriteTime -ge $startAt } |

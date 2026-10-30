@@ -1,12 +1,9 @@
 # Build-sign-deploy-test-rollback the O2 payload-offset driver slice.
-# Run elevated with the controlled TCP sink already listening on the remote VM.
+# Run elevated. Default probe sink is loopback (see e5_o2_direction_verified.ps1);
+# pass -RemoteAddress/-RemotePort when an operator-controlled remote TCP sink is listening.
 param(
-    [Parameter(Mandatory = $true)]
-    [ValidateNotNullOrEmpty()]
     [string]$RemoteAddress,
 
-    [Parameter(Mandatory = $true)]
-    [ValidateRange(1, 65535)]
     [int]$RemotePort
 )
 $ErrorActionPreference = 'Stop'
@@ -14,7 +11,9 @@ $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
 Set-Location $repo
 
-$expectedUnsigned = 'E0C368C1917D589F9850B2CB36F990D38D90BAC0D71B1DF43FABD2AEBC2B1A37'
+# Current candidate = O1 build at source 24d8d81 (includes the O2 payload-offset
+# fix AND the O1 v6 sidecar); rebuilt with /Brepro so this pin is reproducible.
+$expectedUnsigned = 'A583B630BCE55C7FBDE6B29B59657BABD0BD00910151F9257147F20DDE96732C'
 $expectedInstalledDriver = '49E65BB12B4FC164F0B0C255AC75CDFA096F17AC77B056586BF16891FCDABE8C'
 $expectedSigner = '00E92849867308596564D134BB981EF726798E97'
 $baseDaemon = '464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61'
@@ -143,10 +142,15 @@ try {
         throw 'Prevention gate changed during driver deployment; stop and investigate.'
     }
 
-    Write-Host "Running marker proof to ${RemoteAddress}:$RemotePort; remote sink must already be listening."
-    $child = Start-Process -FilePath $powerShell `
-        -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"{0}"' -f $functionalScript),
-            '-RemoteAddress', $RemoteAddress, '-RemotePort', [string]$RemotePort) `
+    $proofArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"{0}"' -f $functionalScript))
+    if ($RemoteAddress) {
+        if ($RemotePort -lt 1) { throw 'Remote mode requires a valid -RemotePort.' }
+        Write-Host "Running marker proof to ${RemoteAddress}:$RemotePort; remote sink must already be listening."
+        $proofArgs += @('-RemoteAddress', $RemoteAddress, '-RemotePort', [string]$RemotePort)
+    } else {
+        Write-Host 'Running marker proof to the loopback sink (default mode).'
+    }
+    $child = Start-Process -FilePath $powerShell -ArgumentList $proofArgs `
         -WorkingDirectory $repo -PassThru -NoNewWindow
     $child.WaitForExit()
     $child.Refresh()
@@ -200,6 +204,7 @@ try {
         candidate_signed_sha256 = $signedHash
         original_driver_sha256 = $expectedInstalledDriver
         original_daemon_sha256 = $baseDaemon
+        probe_mode = if ($RemoteAddress) { 'remote' } else { 'loopback' }
         remote_address = $RemoteAddress
         remote_port = $RemotePort
         functional_proof_exit_code = $proofExit

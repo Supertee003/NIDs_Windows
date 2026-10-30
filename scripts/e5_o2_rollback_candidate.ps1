@@ -7,7 +7,7 @@ Set-Location $repo
 
 $runtime = 'C:\Program Files\AEGIS NIDS\runtime\aegis_nids.exe'
 $backup = Join-Path $repo 'admin-evidence\e5-host-proof-20261026\aegis_nids_pre_o2_direction_464e765b.exe'
-$candidateHash = 'E19370F598507FBC9A1194EA8182059B319DFAF76DFF4D3DE34814C57386B407'
+$candidateHash = '8B3128640C0E6F5EACB85E751471441646A350290A569ED2608757DBD84EAE4F'
 $baseHash = '464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61'
 $transcript = Join-Path (Split-Path $backup) ("e5d-o2-rollback-{0}.log" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
 

@@ -3088,6 +3088,52 @@
    "completion_gate": "E5 PASS; plan section 26 step 4 closed. The Zig sidecar decoder remains E2-proven (O1-V6-SIDECAR-E2-20261029); this entry proves kernel ring emission on the real host. No enforcement was enabled.",
    "issue": null,
    "evidence": "admin-evidence/c1-e5-20261029/c1-e5-sidecar-result-20261030-122702.json (passed=true, failed_criteria=[]); c1-e5-sidecar-proof-20261030-122702.log; signed candidate F63195B02C87A99A442A34CCF7025F18431C5E1FACAB804D5050029FFFA21F63; rollback pins driver 49E65BB12B4FC164F0B0C255AC75CDFA096F17AC77B056586BF16891FCDABE8C and daemon 464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61."
+  },
+  {
+   "id": "O2-OUTBOUND-FORENSIC-E5-20261030",
+   "head_sha": "24d8d817ace8f9322d9c35a2b697938b7be72b58",
+   "timestamp": "2026-10-30T15:05:36+07:00",
+   "title": "Kernel outbound IPv4 capture proven end-to-end: WFP outbound record with the full 51-byte marker reaches the authenticated forensic read path with direction=1 (loopback probe, E5 PASS)",
+   "level": "E5",
+   "component": "drivers/wfp_callout outbound capture + aegis_nids ring reader/queue/forensics + scripts/e5_o2_payload_offset_proof.ps1",
+   "flow_id": "DATA-001",
+   "patch_id": "O2-OUTBOUND-FORENSIC-E5-20261030",
+   "target_head": "dd2e4c6d74916b7cb36d8627b69ea96c545cf707",
+   "final_head": "dd2e4c6d74916b7cb36d8627b69ea96c545cf707",
+   "expected": "With the O1/payload-offset driver build (unsigned A583B630...; signed F63195B0...) and the current ReleaseSafe daemon candidate 8B312864... installed, a unique 51-byte TCP marker sent to a loopback sink while Nose is stopped (kernel_fallback takeover) must produce an authenticated forensic record with source=wfp_sensor, direction=1, the exact marker payload, and a verified hash chain; the WFP ring rows must advance, Nose must hand back to npcap_primary with read/submitted counters advancing, the prevention gate must stay closed, and the pinned baseline driver 49E65BB1... and daemon 464E765B... must be restored with both services Running.",
+   "actual": "PASS (wrapper exit 0, direction gate=true, rollback verified). The elevated wrapper pinned unsigned driver A583B630... (rebuilt with /Brepro from source 24d8d81; hash reproduced exactly), test-signed it to F63195B0... (Authenticode Valid, signer CN=AEGIS NIDS Test Signing, thumbprint 00E92849867308596564D134BB981EF726798E97), swapped the driver stack, deployed daemon candidate 8B312864... and ran the direction proof in loopback mode (probe_mode=loopback, ephemeral port 59607). Nose stop triggered kernel_fallback takeover (reason nose_absent); the loopback server received the exact marker AEGIS-O2-DIRECTION-1192fcd399d149948e7eaf5b77de6887; WFP rows advanced 10 -> 52 during takeover (361 after handback) and nose_frames_submitted advanced 465 -> 1254 with handback to npcap_primary observed. The forensic payload-prefix query matched 2 records: outbound direction=1 record_seq=97417 (event_id 19212, payload_len 51, verified=true) and the expected inbound duplicate direction=0 record_seq=97418; forensic integrity during the probe was ok with readiness on attempt 1. Rollback restored driver 49E65BB1..., daemon 464E765B..., both services Running, prevention gate closed, host_effect_capable=false, forensics verify verified=true integrity=ok. This closes the O2 host-proof gap left by the 2026-10-26 attempts (loopback direction=0 only at 17:21 with the pre-offset driver; remote-sink payload miss at 17:42): the outbound transport payload-offset fix (source 26513a2) is now proven on the real host, and the O1 E5 ring parse from 2026-10-30 (v4 loopback records with direction=1 and the full 14-byte probe payload) is corroborated through the complete daemon pipeline.",
+   "contract_impact": "None; record header stays 48 bytes, ring stride is unchanged, and the direction sidecar is the already-landed in-queue forensic reserved-metadata mechanism (RecordHeader 144 B / slot 4 KB unchanged). No shared wire codec change.",
+   "abi_impact": "None; no IOCTL, header or ring layout change. The deployed candidate is the O1 build (A583B630...) whose C_ASSERT 48 remains green.",
+   "authority_impact": "None; capture-only proof, no enforcement action, prevention gate closed before/during/after, host_effect_capable=false throughout.",
+   "state_impact": "The signed O1 driver build and the daemon candidate were temporarily installed on the host, then rolled back to the pinned baseline before the wrapper exited. Final deployed state: driver 49E65BB1..., daemon 464E765B..., AegisWfp and AegisNids Running, prevention gate closed.",
+   "files_verified": [
+    "scripts/e5_o2_payload_offset_proof.ps1",
+    "scripts/e5_o2_functional_proof.ps1",
+    "scripts/e5_o2_direction_verified.ps1",
+    "scripts/e5_o2_deploy_candidate.ps1",
+    "scripts/e5_o2_rollback_candidate.ps1",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-offset-proof-20261030-150536.json",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-functional-20261030-150552.json",
+    "admin-evidence/e5-host-proof-20261026/e5d-o2-direction-20261030-150558.json"
+   ],
+   "files_changed": [
+    "scripts/e5_o2_payload_offset_proof.ps1",
+    "scripts/e5_o2_functional_proof.ps1",
+    "scripts/e5_o2_direction_verified.ps1",
+    "scripts/e5_o2_deploy_candidate.ps1",
+    "scripts/e5_o2_rollback_candidate.ps1",
+    "EVIDENCE_INDEX.json",
+    "docs/KERNEL_NIDS_COMPLETION_PLAN.md"
+   ],
+   "build_result": "Candidates rebuilt from the clean worktree at source 24d8d81: WDK production build reproduced unsigned aegis_wfp.sys SHA-256 A583B630... exactly (/Brepro); zig build -Doptimize=ReleaseSafe produced aegis_nids.exe SHA-256 8B312864... (fresh 14:57 build, pinned in all E5 scripts). Signed candidate F63195B0... (45,968 B) via scripts/wfp_sign.ps1.",
+   "test_result": "PASS: elevated wrapper scripts/e5_o2_payload_offset_proof.ps1 exit 0; AST parse PASS 5/5 modified scripts before execution; direction gate=true (all sub-criteria true: takeover, marker delivered and received, outbound direction=1 forensic match, wfp_rows advanced, handback, nose read/submitted advanced, gate closed before/after, forensic chain verified); rollback_verified=true. tools/truth.py verify TRUTH_VALID (source unchanged: scripts/ is outside SOURCE_PATHS, so maps stay at 24d8d81).",
+   "windows_result": "E5 PASS on LAPTOP-PPN (Windows 11 26100): signed payload-offset/O1 driver installed and running; kernel outbound v4 loopback capture observed through the complete pipeline (driver ring -> daemon queue -> authenticated forensic store -> CLI query) with direction=1 and the full marker payload; arbitration takeover/handback verified; baseline driver/daemon restored with both services Running and the prevention gate closed.",
+   "evidence_level": "E5",
+   "host_effect_confirmed": false,
+   "prevention_gate": "closed",
+   "completion_gate": "E5 PASS; O2 host proof (plan section 24) closed. Outbound v4 kernel capture is now proven ring-to-forensics; issue #24 remains closed (candidate stable through the full window); no enforcement was enabled.",
+   "issue": null,
+   "evidence": "admin-evidence/e5-host-proof-20261026/e5d-o2-offset-proof-20261030-150536.json (direction_gate=true, driver_rollback_verified=true, prevention_gate_after=closed, forensic_verified_after=true); e5d-o2-functional-20261030-150552.json; e5d-o2-direction-20261030-150558.json (gate=true, forensic_record direction=1 payload_len=51 verified=true); transcripts e5d-o2-offset-proof-20261030-150536.log, e5d-o2-functional-20261030-150552.log, e5d-o2-direction-20261030-150558.log; signed candidate aegis_wfp_payload_offset_f63195b0.sys; rollback pins driver 49E65BB12B4FC164F0B0C255AC75CDFA096F17AC77B056586BF16891FCDABE8C and daemon 464E765BAED95C47C0ECCABCC4C47EF682D96762A8C44B329B7B536AB656BC61."
   }
  ],
  "known_gaps": [
@@ -8512,7 +8558,7 @@
   "E2_count": 139,
   "E3_count": 14,
   "E4_count": 15,
-  "E5_count": 125,
+  "E5_count": 126,
   "E6_count": 0,
   "E7_count": 1
  }

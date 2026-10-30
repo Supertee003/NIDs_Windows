@@ -1,16 +1,18 @@
 # O2 E5 proof: verify an outbound WFP record reaches the authenticated
-# forensic read path with direction=1. Observe-only; uses an operator-controlled remote TCP sink,
-# stops/restarts Nose to make WFP the sole submitted ingress, and never opens
+# forensic read path with direction=1. Observe-only; sends a unique TCP marker
+# (default: loopback sink on an ephemeral port; the inbound direction=0
+# duplicate is expected and ignored by the gate, which requires the
+# direction=1 outbound record specifically). Optionally targets an
+# operator-controlled remote TCP sink via -RemoteAddress/-RemotePort.
+# Stops/restarts Nose to make WFP the sole submitted ingress, and never opens
 # prevention or changes WFP filters/services.
-# Requires an operator-controlled remote TCP listener accepting the marker.
+# Loopback mode is valid since the payload-offset driver build: the O1 sidecar
+# E5 ring parse (2026-10-30) showed v4 loopback records with direction=1 and
+# the full 14-byte probe payload, so the outbound loopback callback fires.
 # Requires elevated PowerShell because the running Nose process is protected.
 param(
-    [Parameter(Mandatory = $true)]
-    [ValidateNotNullOrEmpty()]
     [string]$RemoteAddress,
 
-    [Parameter(Mandatory = $true)]
-    [ValidateRange(1, 65535)]
     [int]$RemotePort
 )
 $ErrorActionPreference = 'Stop'
@@ -24,7 +26,9 @@ $jsonPath = Join-Path $evDir "e5d-o2-direction-$stamp.json"
 $transcriptPath = Join-Path $evDir "e5d-o2-direction-$stamp.log"
 $nosePath = 'C:\Program Files\AEGIS NIDS\runtime\aegis-nose.exe'
 $daemonPath = 'C:\Program Files\AEGIS NIDS\runtime\aegis_nids.exe'
-$expectedDaemonHash = 'E19370F598507FBC9A1194EA8182059B319DFAF76DFF4D3DE34814C57386B407'
+$expectedDaemonHash = '8B3128640C0E6F5EACB85E751471441646A350290A569ED2608757DBD84EAE4F'
+$probeMode = if ($RemoteAddress) { 'remote' } else { 'loopback' }
+if ($probeMode -eq 'remote' -and $RemotePort -lt 1) { throw 'Remote mode requires a valid -RemotePort.' }
 Start-Transcript -Path $transcriptPath -Force
 
 function Invoke-JsonCommand([string[]]$Command) {
@@ -68,8 +72,7 @@ $result = [ordered]@{
     handback_observed = $false
     nose_frames_advanced_after_handback = $false
     nose_frames_submitted_advanced_after_handback = $false
-    remote_address = $RemoteAddress
-    remote_port = $RemotePort
+    probe_mode = $probeMode
     prevention_gate_before = $null
     prevention_gate_after = $null
     snapshots = @()
@@ -156,21 +159,60 @@ try {
     } while ((Get-Date) -lt $deadline)
     if (-not $result.takeover_observed) { throw 'Kernel fallback was not observed within 45 seconds.' }
 
-    # Send a unique one-way TCP payload to an operator-controlled remote
-    # listener. Loopback is excluded because its server-side inbound callback
-    # can record the same payload as direction=0.
+    # Send a unique one-way TCP marker to the probe sink. Default: a loopback
+    # listener on an ephemeral port; the server-side inbound callback can
+    # record the same payload as direction=0 — expected and ignored, the gate
+    # below requires the direction=1 outbound record specifically. With
+    # -RemoteAddress/-RemotePort the marker goes to an operator-controlled
+    # remote listener instead.
     $marker = "AEGIS-O2-DIRECTION-$([Guid]::NewGuid().ToString('N'))"
     $result.marker = $marker
+    $result.probe_mode = $probeMode
+    if ($probeMode -eq 'remote') {
+        $result.remote_address = $RemoteAddress
+        $result.remote_port = $RemotePort
+    }
     $markerBytes = [Text.Encoding]::ASCII.GetBytes($marker)
-    $client = [Net.Sockets.TcpClient]::new()
-    try {
-        $client.Connect($RemoteAddress, $RemotePort)
-        $stream = $client.GetStream()
-        $stream.Write($markerBytes, 0, $markerBytes.Length)
-        $stream.Flush()
-        $result.marker_sent_to_remote = $true
-    } finally { $client.Dispose() }
-    if (-not $result.marker_sent_to_remote) { throw 'Remote TCP sink did not accept the marker write.' }
+    if ($probeMode -eq 'loopback') {
+        $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 0)
+        $listener.Start()
+        try {
+            $result.loopback_port = $listener.LocalEndpoint.Port
+            $client = [Net.Sockets.TcpClient]::new()
+            try {
+                $client.Connect([Net.IPAddress]::Loopback, $result.loopback_port)
+                $server = $listener.AcceptTcpClient()
+                try {
+                    $clientStream = $client.GetStream()
+                    $clientStream.Write($markerBytes, 0, $markerBytes.Length)
+                    $clientStream.Flush()
+                    $result.marker_sent_to_remote = $true
+                    $serverStream = $server.GetStream()
+                    $received = New-Object byte[] $markerBytes.Length
+                    $read = 0
+                    while ($read -lt $received.Length) {
+                        $chunk = $serverStream.Read($received, $read, $received.Length - $read)
+                        if ($chunk -le 0) { break }
+                        $read += $chunk
+                    }
+                    $result.marker_received_by_loopback_server = ($read -eq $markerBytes.Length -and
+                        [Text.Encoding]::ASCII.GetString($received, 0, $read) -ceq $marker)
+                } finally { $server.Dispose() }
+            } finally { $client.Dispose() }
+        } finally { $listener.Stop() }
+        if (-not $result.marker_sent_to_remote) { throw 'Loopback sink did not accept the marker write.' }
+        if (-not $result.marker_received_by_loopback_server) { throw 'Loopback server did not receive the exact marker.' }
+    } else {
+        $client = [Net.Sockets.TcpClient]::new()
+        try {
+            $client.Connect($RemoteAddress, $RemotePort)
+            $stream = $client.GetStream()
+            $stream.Write($markerBytes, 0, $markerBytes.Length)
+            $stream.Flush()
+            $result.marker_sent_to_remote = $true
+        } finally { $client.Dispose() }
+        if (-not $result.marker_sent_to_remote) { throw 'Remote TCP sink did not accept the marker write.' }
+    }
 
     # Capture transport activity before querying forensic attribution so a
     # missing record still leaves evidence of whether the WFP ring advanced.
