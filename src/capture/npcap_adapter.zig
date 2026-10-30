@@ -105,6 +105,10 @@ fn isVirtualOrUnsupportedDescription(description: ?[*:0]const u8) bool {
 // reads those for the Go nose process, and sharing one knob would swing
 // the prod nose onto the lab interface on the next keeper restart.
 pub const DAEMON_IFACE_ENV = "AEGIS_DAEMON_IFACE";
+/// Exact interface selector passed to the Go Nose `--iface` capture process.
+/// Required when the direct lab sensor is enabled; absence means overlap is
+/// unknown and the direct sensor must remain disabled.
+pub const NOSE_IFACE_ENV = "AEGIS_NOSE_IFACE";
 
 /// Pure matcher, unit-tested without Npcap hardware. Empty filter never
 /// matches (unset means auto-select, handled by the caller).
@@ -123,6 +127,23 @@ pub fn deviceMatchesFilter(name: []const u8, desc: []const u8, filter: []const u
     const fl = filter_lower[0..filter.len];
     return std.mem.indexOf(u8, name_lower[0..nl], fl) != null or
         std.mem.indexOf(u8, desc_lower[0..dl], fl) != null;
+}
+
+/// Prove that two operator-declared interface selectors cannot identify the
+/// same Npcap adapter. The predicate is intentionally conservative: equal or
+/// substring-overlapping selectors are treated as unsafe because daemon-side
+/// selectors may be friendly descriptions while Nose uses an exact name.
+/// Empty means "unknown", so it is never considered disjoint.
+pub fn interfaceSelectorsDisjoint(direct: []const u8, nose: []const u8) bool {
+    if (direct.len == 0 or nose.len == 0) return false;
+    var direct_lower: [256]u8 = undefined;
+    var nose_lower: [256]u8 = undefined;
+    if (direct.len > direct_lower.len or nose.len > nose_lower.len) return false;
+    _ = std.ascii.lowerString(direct_lower[0..direct.len], direct);
+    _ = std.ascii.lowerString(nose_lower[0..nose.len], nose);
+    const d = direct_lower[0..direct.len];
+    const n = nose_lower[0..nose.len];
+    return std.mem.indexOf(u8, d, n) == null and std.mem.indexOf(u8, n, d) == null;
 }
 
 pub const NpcapAdapter = struct {
@@ -364,6 +385,16 @@ test "deviceMatchesFilter pins lab selection without hardware" {
     // Overlong filters fall back to exact compare only (no truncation).
     var long: [300]u8 = [_]u8{'x'} ** 300;
     try std.testing.expect(!deviceMatchesFilter(guid, desc, &long));
+}
+
+test "interfaceSelectorsDisjoint fails closed for missing or overlapping selectors" {
+    try std.testing.expect(!interfaceSelectorsDisjoint("VMnet1", ""));
+    try std.testing.expect(!interfaceSelectorsDisjoint("", "Ethernet 2"));
+    try std.testing.expect(!interfaceSelectorsDisjoint("VMnet1", "vmNET1"));
+    try std.testing.expect(!interfaceSelectorsDisjoint("VMnet1", "VMnet"));
+    try std.testing.expect(!interfaceSelectorsDisjoint("Ethernet 2", "Ethernet"));
+    try std.testing.expect(interfaceSelectorsDisjoint("VMnet1", "Ethernet 2"));
+    try std.testing.expect(interfaceSelectorsDisjoint("Wi-Fi", "Ethernet"));
 }
 
 test "Windows pcap_pkthdr matches Npcap ABI" {

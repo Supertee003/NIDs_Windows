@@ -19,6 +19,7 @@ const manifest = @import("contract/runtime_manifest.zig");
 const diag = @import("core/diagnostics.zig");
 const mem = @import("core/memory_pool.zig");
 const flow = @import("capture/flow_table.zig");
+const npcap = @import("capture/npcap_adapter.zig");
 const sig = @import("detection/signature_engine.zig");
 const anom = @import("detection/anomaly_detector.zig");
 const tracker = @import("detection/threat_tracker.zig");
@@ -60,6 +61,17 @@ const federation_uplink = @import("federation/cluster_uplink.zig");
 const SERVICE_RUNNING: u32 = 0x00000004;
 const runtime_sm = @import("control.zig").state_machine;
 extern "kernel32" fn GetCurrentProcessId() std.os.windows.DWORD;
+
+fn directNpcapSelectorsAllowed(lab_selector: []const u8, nose_selector: ?[]const u8) bool {
+    const nose = nose_selector orelse return false;
+    return npcap.interfaceSelectorsDisjoint(lab_selector, nose);
+}
+
+test "direct Npcap requires an explicitly disjoint Go Nose selector" {
+    try std.testing.expect(!directNpcapSelectorsAllowed("VMnet1", null));
+    try std.testing.expect(!directNpcapSelectorsAllowed("VMnet1", "VMnet1"));
+    try std.testing.expect(directNpcapSelectorsAllowed("VMnet1", "Ethernet 2"));
+}
 
 /// PHASE-1: the daemon owns every worker handle it creates. Control handlers
 /// may request a transition, but only this supervisor can signal, join, and
@@ -656,18 +668,28 @@ pub fn runDaemon() !void {
         // nose path, so no duplicates arise, and nose-pipe frames are
         // metadata-only (lengths+hashes, no payload bytes) while direct
         // capture pushes full packets -- L7 Tier-1 can only match here.
+        // AEGIS_NOSE_IFACE must also name the exact selector passed to the Go
+        // Nose --iface process. Missing/overlapping selectors fail closed.
         // Unset keeps the historical disabled behavior byte-identically.
         // A set-but-unmatched value fails closed inside NpcapAdapter.open.
-        const lab_iface = std.process.getEnvVarOwned(std.heap.page_allocator, "AEGIS_DAEMON_IFACE") catch null;
+        const lab_iface = std.process.getEnvVarOwned(std.heap.page_allocator, npcap.DAEMON_IFACE_ENV) catch null;
+        const nose_iface = std.process.getEnvVarOwned(std.heap.page_allocator, npcap.NOSE_IFACE_ENV) catch null;
+        defer if (nose_iface) |value| std.heap.page_allocator.free(value);
         if (lab_iface) |filter| {
             defer std.heap.page_allocator.free(filter);
             if (filter.len > 0) {
-                supervisor.direct_capture = std.Thread.spawn(.{}, packet_callback.captureThread, .{}) catch |err| blk: {
-                    diag.warn("failed to spawn direct capture thread: {} -- lab capture disabled", .{err});
-                    state.markWorkerFailure(.sensor);
-                    break :blk null;
-                };
-                if (supervisor.direct_capture != null) diag.info("direct Zig Npcap capture STARTED (lab interface pin: {s})", .{filter});
+                if (nose_iface == null or nose_iface.?.len == 0) {
+                    diag.err("{s} is set but {s} is missing -- refusing direct Npcap because Go Nose interface is unknown", .{ npcap.DAEMON_IFACE_ENV, npcap.NOSE_IFACE_ENV });
+                } else if (!directNpcapSelectorsAllowed(filter, nose_iface)) {
+                    diag.err("direct Npcap selector {s} overlaps Go Nose selector {s} -- direct capture disabled", .{ filter, nose_iface.? });
+                } else {
+                    supervisor.direct_capture = std.Thread.spawn(.{}, packet_callback.captureThread, .{}) catch |err| blk: {
+                        diag.warn("failed to spawn direct capture thread: {} -- lab capture disabled", .{err});
+                        state.markWorkerFailure(.sensor);
+                        break :blk null;
+                    };
+                    if (supervisor.direct_capture != null) diag.info("direct Zig Npcap capture STARTED (lab={s}, nose={s}, selectors proven disjoint)", .{ filter, nose_iface.? });
+                }
             } else {
                 diag.info("direct Zig Npcap capture disabled; Go Nose is canonical network ingress", .{});
             }
