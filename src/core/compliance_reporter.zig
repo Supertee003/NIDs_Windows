@@ -1,4 +1,4 @@
-﻿// compliance_reporter.zig - AEGIS Compliance Reporter (Phase 40)
+// compliance_reporter.zig - AEGIS Compliance Reporter (Phase 40)
 //
 // STATUS (REL-CLOSURE, 2026-10-19): TEST-GRAPH SCAFFOLD. This module is
 // exercised by the zig test suite only and is not wired into the
@@ -26,6 +26,7 @@ const canonical = @import("../contract/canonical_event.zig");
 
 pub const REPORTS_DIR = "reports";
 pub const MAX_EVENTS_PER_REPORT = 100_000;
+pub const MAX_LOG_LINE_BYTES = 1024 * 1024;
 
 // ============================================================
 // Compliance Frameworks
@@ -313,12 +314,18 @@ pub const ComplianceReporter = struct {
         };
         defer file.close();
 
-        const content = try file.readToEndAlloc(self.allocator, 10 * 1024 * 1024); // 10MB max
-        defer self.allocator.free(content);
+        return self.generateReportFromFile(framework, file);
+    }
 
-        // Parse NDJSON line by line
+    /// Generate a report from an already-open NDJSON file.
+    ///
+    /// The reader is intentionally streaming: forensic logs are append-only and
+    /// may exceed any single allocation limit. Each line is bounded to prevent
+    /// an attacker-controlled record from causing an unbounded allocation, while
+    /// MAX_EVENTS_PER_REPORT bounds the amount of work retained in the report.
+    fn generateReportFromFile(self: *ComplianceReporter, framework: Framework, file: std.fs.File) !ComplianceReport {
+        var reader = file.reader();
         var stats = ReportStats{};
-        var iter = std.mem.tokenizeAny(u8, content, "\n\r");
         var unique_ips = std.StringHashMap(void).init(self.allocator);
         defer {
             var ip_iter = unique_ips.iterator();
@@ -326,7 +333,9 @@ pub const ComplianceReporter = struct {
             unique_ips.deinit();
         }
 
-        while (iter.next()) |line| {
+        while (reader.readUntilDelimiterAlloc(self.allocator, '\n', MAX_LOG_LINE_BYTES)) |raw_line| {
+            defer self.allocator.free(raw_line);
+            const line = std.mem.trimRight(u8, raw_line, "\r");
             if (line.len == 0) continue;
 
             stats.total_events += 1;
@@ -387,6 +396,9 @@ pub const ComplianceReporter = struct {
                     self.allocator.free(ip_dup);
                 }
             }
+        } else |err| switch (err) {
+            error.EndOfStream => {},
+            else => return err,
         }
 
         stats.unique_src_ips = unique_ips.count();
@@ -699,13 +711,23 @@ test "ComplianceReporter generates report from the configured log" {
     var reporter = ComplianceReporter.init(std.testing.allocator);
     defer reporter.deinit();
 
-    // The reporter reads the production-relative forensic log. A repository
-    // test run may contain a fixture or prior forensic output, so this test
-    // validates report construction without assuming the shared log is empty.
-    const result = reporter.generateReport(.pci_dss);
+    // Keep the fixture outside the tracked tree and make it larger than the
+    // old 10 MiB whole-file allocation limit. Streaming must still produce a
+    // report and must stop after the configured event-work bound.
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const log = try tmp.dir.createFile("anomalous.json", .{ .read = true });
+    defer log.close();
+    const line = "{\"attack_type\": \"GATE-B-TEST\", \"src_ip\": \"1.2.3.4\", \"severity\": \"High\", \"status\": \"DETECTED\", \"padding\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}\n";
+    var i: usize = 0;
+    while (i < 80_000) : (i += 1) try log.writer().writeAll(line);
+    try log.seekTo(0);
+
+    const result = reporter.generateReportFromFile(.pci_dss, log);
     if (result) |report| {
         try std.testing.expect(report.framework == .pci_dss);
         try std.testing.expectEqual(@as(u32, 10), report.controls_checked);
+        try std.testing.expectEqual(@as(u64, 80_000), report.stats.total_events);
     } else |_| {
         return error.TestUnexpectedResult;
     }
