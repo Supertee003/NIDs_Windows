@@ -631,6 +631,7 @@ test "TcpTransport recvBytes fails when not connected" {
 }
 
 test "TcpServer bind and listen on ephemeral port" {
+    try requireNetworkIntegration();
     var srv = TcpServer.init();
     defer srv.deinit();
     const addr = std.net.Address.parseIp4("127.0.0.1", 0) catch unreachable;
@@ -641,6 +642,7 @@ test "TcpServer bind and listen on ephemeral port" {
 }
 
 test "TcpServer + TcpTransport connect + send + recv roundtrip" {
+    try requireNetworkIntegration();
     var srv = TcpServer.init();
     defer srv.deinit();
     const addr = std.net.Address.parseIp4("127.0.0.1", 0) catch unreachable;
@@ -692,6 +694,7 @@ test "TcpServer + TcpTransport connect + send + recv roundtrip" {
 }
 
 test "TcpServer + TcpClient full roundtrip via TcpClient wrapper" {
+    try requireNetworkIntegration();
     var srv = TcpServer.init();
     defer srv.deinit();
     const addr = std.net.Address.parseIp4("127.0.0.1", 0) catch unreachable;
@@ -855,6 +858,7 @@ test "FramedReader detects magic mismatch" {
 }
 
 test "FramedReader readFrameFromTransport pulls from transport" {
+    try requireNetworkIntegration();
     // Start a server, connect a client, send a frame, reassemble on the other side
     var srv = TcpServer.init();
     defer srv.deinit();
@@ -914,6 +918,7 @@ test "TcpClient reconnectIfNeeded returns false when already connected" {
 }
 
 test "TcpClient reconnectIfNeeded fails when no listener" {
+    try requireNetworkIntegration();
     // Use a port that's almost certainly closed (port 1 requires root)
     var client = TcpClient.init(.{ .connect_addr = "127.0.0.1:9", .reconnect_max_attempts = 1 });
     defer client.deinit();
@@ -930,6 +935,7 @@ test "TcpClient shouldRetry respects max_attempts" {
 }
 
 test "End-to-end: 2 nodes exchange messages via real TCP" {
+    try requireNetworkIntegration();
     // Spawn a server, accept a connection, exchange 3 framed messages
     var srv = TcpServer.init();
     defer srv.deinit();
@@ -988,6 +994,7 @@ test "End-to-end: 2 nodes exchange messages via real TCP" {
 }
 
 test "TcpTransport detects peer disconnect on recv" {
+    try requireNetworkIntegration();
     var srv = TcpServer.init();
     defer srv.deinit();
     const addr = std.net.Address.parseIp4("127.0.0.1", 0) catch unreachable;
@@ -1025,6 +1032,7 @@ test "TcpTransport detects peer disconnect on recv" {
 }
 
 test "TcpTransport asTransport vtable works through fc.Transport interface" {
+    try requireNetworkIntegration();
     var srv = TcpServer.init();
     defer srv.deinit();
     const addr = std.net.Address.parseIp4("127.0.0.1", 0) catch unreachable;
@@ -1065,6 +1073,7 @@ test "TcpTransport asTransport vtable works through fc.Transport interface" {
 }
 
 test "TcpServer bound address format" {
+    try requireNetworkIntegration();
     var srv = TcpServer.init();
     defer srv.deinit();
     const addr = std.net.Address.parseIp4("127.0.0.1", 0) catch unreachable;
@@ -1129,4 +1138,12 @@ test "FramedReader rejects oversized payload length (FOR-HARD-084)" {
     const res = r.tryReadFrame();
     try std.testing.expect(res == .err);
     try std.testing.expectEqual(fc.DecodeError.PayloadTruncated, res.err);
+}
+
+/// Real socket tests run only through the explicit network integration target.
+/// The canonical unit suite skips them without this opt-in marker.
+fn requireNetworkIntegration() error{SkipZigTest}!void {
+    const marker = std.process.getEnvVarOwned(std.testing.allocator, "AEGIS_TCP_INTEGRATION") catch return error.SkipZigTest;
+    defer std.testing.allocator.free(marker);
+    if (!std.mem.eql(u8, marker, "1")) return error.SkipZigTest;
 }

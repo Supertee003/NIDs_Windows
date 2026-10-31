@@ -204,6 +204,20 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_tests.step);
 
+    // Real loopback TCP checks are opt-in integration tests. Keeping them in
+    // a separate target makes `zig build test` hermetic under restricted
+    // hosts while preserving an explicit authorized-host proof command.
+    const network_integration_tests = b.addTest(.{
+        .root_source_file = b.path("src/tests/federation/federation_tcp.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    network_integration_tests.linkLibC();
+    const run_network_integration = b.addRunArtifact(network_integration_tests);
+    run_network_integration.setEnvironmentVariable("AEGIS_TCP_INTEGRATION", "1");
+    const network_integration_step = b.step("test-network-integration", "Run real loopback TCP integration tests (authorized network host only)");
+    network_integration_step.dependOn(&run_network_integration.step);
+
     const compile_only_step = b.step("compile-only", "Compile operator and CLI tests without running them");
     compile_only_step.dependOn(&compile_only_tests.step);
     test_step.dependOn(&compile_only_tests.step);
