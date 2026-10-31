@@ -173,11 +173,40 @@ pub fn build(b: *std.Build) void {
         std.debug.print("WARNING: target/release/aegis_pep.dll.lib not found for tests; run `cargo build --release` first\n", .{});
     }
 
+    // Compile operator/CLI/harness imports separately from the unit runner.
+    // This artifact is a dependency of `test` for compile coverage only; it
+    // is deliberately never passed to addRunArtifact.
+    const compile_only_tests = b.addTest(.{
+        .root_source_file = b.path("src/compile_only_imports.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    compile_only_tests.root_module.addOptions("core_test_configs", opts);
+    compile_only_tests.linkLibC();
+    compile_only_tests.linkSystemLibrary("tdh");
+    compile_only_tests.linkSystemLibrary("advapi32");
+    compile_only_tests.linkSystemLibrary("ntdll");
+    if (helper_dir) |dir| {
+        compile_only_tests.addLibraryPath(.{ .cwd_relative = dir });
+        compile_only_tests.linkSystemLibrary("aegis_etw_helper");
+        compile_only_tests.linkSystemLibrary("aegis_fim_helper");
+    }
+    if (std.fs.cwd().access("target/release/aegis_pep.lib", .{})) |_| {
+        compile_only_tests.addLibraryPath(.{ .cwd_relative = "target/release" });
+        compile_only_tests.linkSystemLibrary("aegis_pep");
+    } else |_| {
+        std.debug.print("WARNING: target/release/aegis_pep.lib not found for compile-only tests\n", .{});
+    }
+
     const run_tests = b.addRunArtifact(tests);
     run_tests.addPathDir(b.pathFromRoot("target/helpers"));
     run_tests.addPathDir(b.pathFromRoot("target/release"));
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_tests.step);
+
+    const compile_only_step = b.step("compile-only", "Compile operator and CLI tests without running them");
+    compile_only_step.dependOn(&compile_only_tests.step);
+    test_step.dependOn(&compile_only_tests.step);
 
     // ----- Fuzz target -----
     const fuzz = b.addExecutable(.{

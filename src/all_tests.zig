@@ -9,8 +9,6 @@ comptime {
     _ = @import("contract/abi_manifest.zig");
     _ = @import("tests/core/memory_pool.zig");
     _ = @import("tests/core/diagnostics.zig");
-    // REBUILD-002: pull every orphaned src/core module into the test graph
-    _ = @import("tests/core/core_modules.zig");
     // Service-cwd bundle resolution: the installed layout must win over cwd.
     _ = @import("core/runtime_paths.zig");
     // EVT-156: bridge_init carries inline unit tests (HMAC goldens + spool
@@ -111,7 +109,6 @@ comptime {
     _ = @import("capture/npcap_capture.zig");
     _ = @import("main.zig");
     _ = @import("policy/shadow_decision.zig");
-    _ = @import("tests/cli_imports.zig");
     // Pipeline hook tests (T1-SIEM-022 SIEM forwarding pin executes here).
     _ = @import("pipeline/event_processor.zig");
     // LEN-CLAIM-100: direct edge — transitive-only files' tests do NOT
@@ -142,7 +139,6 @@ comptime {
     _ = @import("detection/injection_detector.zig");
     _ = @import("detection/ml_detector.zig");
     _ = @import("federation/cluster_uplink.zig");
-    _ = @import("federation/federation_bench.zig");
     _ = @import("policy/tier3_state.zig");
     _ = @import("policy/shield_screen.zig");
     _ = @import("windows/registry_trie.zig");
@@ -210,6 +206,9 @@ comptime {
     _ = @import("control/protocol.zig");
     _ = @import("control/handler_registry.zig");
     _ = @import("control/defcon.zig");
+    // IDS-COV-001: direct edges ensure these inline tests execute in zig build test.
+    _ = @import("capture/proto/l7_payload.zig");
+    _ = @import("forensic/ids_evidence_receipt.zig");
 }
 
 test "all modules imported successfully" {

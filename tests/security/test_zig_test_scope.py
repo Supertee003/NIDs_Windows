@@ -82,8 +82,7 @@ OUT_OF_UNIT: dict[str, str] = {
     "src/tests/proofs/final_integration_proof.zig": "proof",
     "src/tests/proofs/performance_tuning_proof.zig": "proof",
     # Real TCP + throughput floors (timing-sensitive, operator harness).
-    # NOTE: federation_bench is REACHED via cli_imports (bench CLI) —
-    # no entry needed while that import stands.
+    "src/federation/federation_bench.zig": "bench",
     # Design reference, intentionally uncompiled (REL-SPEC-050 pattern).
     "src/federation/federation.zig": "specimen",
     "src/reliability/reliability.zig": "specimen",
@@ -91,10 +90,12 @@ OUT_OF_UNIT: dict[str, str] = {
     "src/policy/dispatcher.zig": "quarantine",
     "src/policy/dispatcher_phase_b.zig": "quarantine",
     "src/reliability/lifecycle.zig": "quarantine",
-    # SCOPE-102: debug-bisect aggregator — its comptime imports pull
-    # exempt integration/proof/bench scopes into analysis, so wiring it
-    # would silently execute out-of-unit suites. Never production.
+    # SCOPE-102: compile-only test aggregators and operator benchmarks.
+    "src/tests/core/bisect_a.zig": "quarantine",
     "src/tests/core/bisect_b.zig": "quarantine",
+    "src/tests/core/core_modules.zig": "quarantine",
+    "src/tests/cli_imports.zig": "quarantine",
+    "src/compile_only_imports.zig": "quarantine",
     # SCOPE-102 batch 2: operator-run harnesses, never unit-fast.
     "src/core/e2e_harness.zig": "integration",
     "src/core/integration_test.zig": "integration",
@@ -112,8 +113,9 @@ def _imports_of(path: Path) -> set[str]:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return set()
+    code = "\n".join(line.split("//", 1)[0] for line in text.splitlines())
     out: set[str] = set()
-    for m in re.finditer(r'@import\("([^"]+)"\)', text):
+    for m in re.finditer(r'@import\("([^"]+)"\)', code):
         target = m.group(1)
         if target.endswith(".zig") and not target.startswith("std"):
             resolved = (path.parent / target).resolve()
@@ -143,6 +145,25 @@ def _direct_edges() -> set[str]:
     return _imports_of(SRC / "all_tests.zig")
 
 
+def _import_closure(roots: set[str]) -> set[str]:
+    seen: set[str] = set()
+    queue = list(roots)
+    while queue:
+        rel = queue.pop()
+        if rel in seen:
+            continue
+        path = REPO_ROOT / rel
+        if not path.is_file():
+            continue
+        seen.add(rel)
+        queue.extend(_imports_of(path) - seen)
+    return seen
+
+
+def _unit_test_closure() -> set[str]:
+    return _import_closure({"src/all_tests.zig"})
+
+
 def _wrapper_edges() -> set[str]:
     """Files pulled by a tests/ wrapper's `comptime { _ = @import(...); }`.
 
@@ -151,23 +172,27 @@ def _wrapper_edges() -> set[str]:
     shape only — unconventional wrappers don't count.
     """
     covered: set[str] = set()
-    for path in sorted((SRC / "tests").rglob("*.zig")):
+    for rel in sorted(_unit_test_closure()):
+        path = REPO_ROOT / rel
+        try:
+            path.relative_to(SRC / "tests")
+        except ValueError:
+            continue
         try:
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
         code = "\n".join(line.split("//", 1)[0] for line in text.splitlines())
-        for m in re.finditer(
-            r"comptime\s*\{\s*_ = @import\(\"([^\"]+\.zig)\"\)", code
-        ):
-            target = m.group(1)
-            resolved = (path.parent / target).resolve()
-            try:
-                rel = str(resolved.relative_to(REPO_ROOT)).replace("\\", "/")
-            except ValueError:
-                continue
-            if (REPO_ROOT / rel).is_file():
-                covered.add(rel)
+        for block in re.finditer(r"comptime\s*\{([^}]*)\}", code, re.DOTALL):
+            for m in re.finditer(r'@import\("([^"]+\.zig)"\)', block.group(1)):
+                target = m.group(1)
+                resolved = (path.parent / target).resolve()
+                try:
+                    imported_rel = str(resolved.relative_to(REPO_ROOT)).replace("\\", "/")
+                except ValueError:
+                    continue
+                if (REPO_ROOT / imported_rel).is_file():
+                    covered.add(imported_rel)
     return covered
 
 
@@ -203,11 +228,11 @@ def _covered() -> set[str]:
 
 
 def test_out_of_unit_files_stay_out():
-    covered = _covered()
-    leaked = [r for r in OUT_OF_UNIT if r in covered]
+    reachable = _unit_test_closure()
+    leaked = sorted(set(OUT_OF_UNIT) & reachable)
     assert not leaked, (
-        "out-of-unit files gained an execution edge (silent promotion — "
-        f"update the registry consciously): {leaked}"
+        "out-of-unit files are reachable from the canonical unit-test root "
+        f"(move their imports to compile-only/operator roots): {leaked}"
     )
 
 
@@ -237,20 +262,28 @@ def test_baseline_entries_are_still_uncovered():
 
 
 def test_cli_imports_is_wired_for_compile_coverage():
-    # The 16 CLI mains carry no tests but must not rot: cli_imports
-    # exists precisely for compile coverage, so it must be reachable.
-    assert "src/tests/cli_imports.zig" in _covered(), (
-        "cli_imports.zig is not reachable: 16 CLI tools compile unchecked"
-    )
+    compile_root = "src/compile_only_imports.zig"
+    compile_closure = _import_closure({compile_root})
+    assert "src/tests/cli_imports.zig" in compile_closure
+    assert "src/tests/core/core_modules.zig" in compile_closure
+    assert "src/tests/cli_imports.zig" not in _unit_test_closure()
+
+    build = (REPO_ROOT / "build.zig").read_text(encoding="utf-8")
+    assert 'const compile_only_tests = b.addTest(' in build
+    assert 'b.path("src/compile_only_imports.zig")' in build
+    assert 'b.step("compile-only"' in build
+    assert "compile_only_step.dependOn(&compile_only_tests.step)" in build
+    assert "test_step.dependOn(&compile_only_tests.step)" in build
+    assert "b.addRunArtifact(compile_only_tests)" not in build
 
 
 # ---------------------------------------------------------------------------
 # DEADCODE-QUARANTINE (2026-10-19): build-root import closure.
 #
-# Six files are the only entry points any build step compiles (zig build:
-# main.zig; zig build test: all_tests.zig; fuzz: fuzz_entry.zig; tool
-# binaries: perf_bench_main.zig + integration_test_main.zig; service:
-# daemon.zig). A src/*.zig file unreachable from ALL of them is dead code:
+# Seven files are the entry points any build step compiles (zig build:
+# main.zig; zig build test: all_tests.zig + compile_only_imports.zig; fuzz:
+# fuzz_entry.zig; tool binaries: perf_bench_main.zig + integration_test_main.zig;
+# service: daemon.zig). A src/*.zig file unreachable from ALL of them is dead code:
 # never compiled, never executed, its tests silent-dead (the SCOPE-101
 # failure class). The 35 files below were verified unreachable at ba7d926
 # (75 production / 244 all-roots / 35 dead; AEGIS-DEEP-SCAN-REPORT.md §3).
@@ -267,6 +300,7 @@ BUILD_ROOTS = frozenset({
     "src/main.zig",
     "src/daemon.zig",
     "src/all_tests.zig",
+    "src/compile_only_imports.zig",
     "src/fuzz_entry.zig",
     "src/perf_bench_main.zig",
     "src/integration_test_main.zig",
