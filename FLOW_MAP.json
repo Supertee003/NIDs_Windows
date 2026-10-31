@@ -1,5 +1,5 @@
 {
-  "head_sha": "2826d27a03e9434a503d476493b102e75bd1472d",
+  "head_sha": "091a9687c677a2d0ac77f8cb227ccac021b5139e",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -551,7 +551,7 @@
       "type": "lab_test_flow",
       "plane": "PLANE-B",
       "status": "LAB_ONLY_NOT_RUNTIME_WIRED",
-      "description": "Unit-testable Fabric flow only. Caller-created Evidence is grouped by entity and summarized; this is not a production CanonicalEvent-to-IDS-receipt path.",
+      "description": "Lab/test-only vertical proof: caller-created evidence is correlated, persisted as a versioned forensic snapshot, acknowledged by a recording-only IDS receipt after hash read-back, then reconstructed and replayed. The production daemon remains disconnected.",
       "boundary": "In-process Zig module interface; no FFI or daemon connection",
       "layers": [
         {
@@ -562,7 +562,7 @@
           "input": "Caller-created Evidence with source category, entity key, event id, timestamp, and severity",
           "output": "Evidence",
           "file": "src/xdr/xdr_incident_fabric.zig",
-          "note": "No production CanonicalEvent or forensic receipt is supplied."
+          "note": "The lab/test bridge also requires a source IpcEvent whose identity is present in the evidence batch."
         },
         {
           "step": 2,
@@ -581,17 +581,47 @@
           "input": "Incident",
           "output": "Decision{made_ms, severity, confidence, source_categories_used}",
           "file": "src/xdr/xdr_incident_fabric.zig",
-          "note": "No action, policy decision, PEP dispatch, receipt, or host-effect claim exists."
+          "note": "A multi-source advisory only; no action, policy decision, PEP dispatch, or host-effect claim exists."
         },
         {
           "step": 4,
+          "name": "Forensic Snapshot and Record",
+          "plane": "PLANE-B",
+          "owner": "Zig XDR evidence bridge",
+          "input": "Incident evidence + advisory decision",
+          "output": "Versioned snapshot appended to hash-chained forensic ring",
+          "file": "src/xdr/xdr_evidence_flow.zig",
+          "note": "The bridge rejects invalid/multi-entity batches and does not invoke PEP."
+        },
+        {
+          "step": 5,
+          "name": "IDS Evidence Receipt",
+          "plane": "PLANE-B",
+          "owner": "IDS receipt authority",
+          "input": "Accepted forensic sequence + read-back SHA-256",
+          "output": "Non-enforcement receipt bound to the correlation record",
+          "file": "src/forensic/ids_evidence_receipt.zig",
+          "note": "Receipt is issued only after append and hash read-back; it proves recording, never a host effect."
+        },
+        {
+          "step": 6,
+          "name": "Integrity Verification and Replay",
+          "plane": "PLANE-B",
+          "owner": "Zig forensic replay",
+          "input": "Receipt + persisted XDR snapshot",
+          "output": "CRC/hash/identity verification and deterministic assessment comparison",
+          "file": "src/xdr/xdr_evidence_flow.zig",
+          "note": "The integration test also passes the retained record through ReplayVerifier."
+        },
+        {
+          "step": 7,
           "name": "Production Integration Status",
           "plane": "PLANE-B",
           "owner": "Runtime integration",
-          "input": "Not connected",
-          "output": "No daemon route; no forensic append/replay edge",
+          "input": "Production daemon",
+          "output": "No XDR runtime route",
           "file": "src/daemon.zig",
-          "note": "main.zig delegates to the service entrypoint and daemon; daemon has no XDR import or runtime route. Requires a separate vertical slice and source-to-forensic-receipt proof."
+          "note": "The source-to-receipt/replay evidence slice is test/lab-only. Production XDR routing remains a separate open decision and implementation."
         }
       ]
     }

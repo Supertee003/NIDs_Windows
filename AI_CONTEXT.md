@@ -4,7 +4,7 @@
 
 
 
-**HEAD:** `2826d27a03e9434a503d476493b102e75bd1472d` (build source commit — ADR-0008)
+**HEAD:** `091a9687c677a2d0ac77f8cb227ccac021b5139e` (build source commit — ADR-0008)
 
 **BRANCH:** `codex/o2-etw-context`
 
@@ -340,9 +340,12 @@ Current source/build slice (2026-10-31; source commit `88466a6ec6f10c62b97cb0a17
 - MAP-006 source/map reconciliation now reflects Go's named-pipe ingress, optional Brain advisory events, the fail-closed WFP boundary, lab-only XDR, separate replay verification, and historical host/WFP evidence.
 - Verification: MAP-006/WFP/T12/T14 focused pytest 38 passed; `zig build` PASS; full `zig build test` PASS (exit 0); truth rebuild and verification PASS. This is source/build and E2 evidence only.
 - IDS-COV-001 (2026-11-01): commit `3fe2896` wired `l7_payload.zig` and `ids_evidence_receipt.zig` directly into `src/all_tests.zig`; on checkout `cf2f1fc`, the Zig test-scope/MAP-006 gates passed 12/12 and `zig build test` exited 0. The two execution-graph coverage gaps are CLOSED at E2.
-- KIDS-002 (2026-11-01; source commit `8cb2afb`): the gate-closed policy path now uses Rust PEP's evidence-only assessment and skips ActionDispatcher; only the lab gate-open branch retains enforcement. Focused contracts passed 14/14, the assessment fallback unit passed 1/1, and `zig build` passed. Full Zig suite was interrupted before completion because it includes the sandbox-blocked loopback TCP integration test; no full-suite result is claimed. Evidence level E2.
-- VER-002 (2026-11-01; source commit `2826d27`): nine real-loopback TCP tests are opt-in through `zig build test-network-integration`; canonical test execution skips them without `AEGIS_TCP_INTEGRATION=1`. Focused scope gates passed 8/8 and the module's real-socket case skipped as expected. The opt-in integration target was not run. A full canonical `zig build test` was not completed; the compliance reporter's 80,000-event test is a remaining long-running test.
-- Supervised Windows E5/kernel qualification, release readiness, and the separate XDR-to-forensic-receipt/replay flow remain OPEN. Do not claim project completion or production kernel/XDR readiness from these results.
+- KIDS-002 (2026-11-01; source commit `8cb2afb`): the gate-closed policy path now uses Rust PEP's evidence-only assessment and skips ActionDispatcher; only the lab gate-open branch retains enforcement. Focused contracts passed 14/14, the assessment fallback unit passed 1/1, and `zig build` passed. Its full-suite attempt was incomplete at that time; VER-002 later isolated loopback tests and VER-003 established a fresh full-suite pass. Evidence level E2.
+- VER-002 (2026-11-01; source commit `2826d27`): nine real-loopback TCP tests are opt-in through `zig build test-network-integration`; canonical test execution skips them without `AEGIS_TCP_INTEGRATION=1`. Focused scope gates passed 8/8 and the module's real-socket case skipped as expected. The opt-in integration target was not run. The full suite was incomplete at this slice; VER-003 later fixed the long compliance test and established a full-suite pass.
+- VER-003 (2026-11-01; source commit `ba92468`): compliance NDJSON reads are buffered and line storage is reused; the 80,000-event / 19 MB stress test fell from >120 seconds to 4.04 seconds. The registry trie timing assertion was replaced by deterministic prefix correctness checks after it failed once in the full graph but passed in five isolated runs. Final `zig build test` at source `c709c91`: 2,002 passed, 10 skipped, 0 failed; E2.
+- IDS-XDR-006 (2026-11-01; source commit `091a968`): a lab/test-only path now correlates multi-source evidence, persists a versioned XDR snapshot, issues an IDS receipt after forensic hash read-back, and reconstructs/replays the assessment. It is not imported by the production daemon; production XDR wiring remains open.
+- Windows E5 preflight (2026-11-01): VMnet1 is up and the NIDS/Npcap services run, but there are no running VMs, the machine capture pin is absent, and this session is not elevated. RB-021 §2 requires Admin for the pin/restart. No host state or traffic was changed; E5 remains open.
+- Supervised Windows E5/kernel qualification, production XDR runtime integration, and release readiness remain OPEN. Do not claim project completion or production kernel/XDR readiness from these results.
 
 
 Previous phases:

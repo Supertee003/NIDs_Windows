@@ -1,5 +1,5 @@
 {
- "head_sha": "2826d27a03e9434a503d476493b102e75bd1472d",
+ "head_sha": "091a9687c677a2d0ac77f8cb227ccac021b5139e",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-11-01",
  "generator_version": "3.0",
@@ -3374,6 +3374,71 @@
    "result": "PASS_WITH_OPEN_FULL_SUITE_AND_NETWORK_HOST_PROOF",
    "finding": "Canonical test invocation no longer opens real loopback sockets implicitly. This patch does not establish full-suite, Windows host, or release readiness.",
    "evidence_artifact": "admin-evidence/ver-002-20261101/closeout.md"
+  },
+  {
+   "id": "VER-003-20261101",
+   "head_sha": "091a9687c677a2d0ac77f8cb227ccac021b5139e",
+   "timestamp": "2026-11-01",
+   "title": "Full Zig suite restored after buffering compliance log reads",
+   "level": "E2",
+   "component": "compliance_reporter and canonical Zig test suite",
+   "flow_id": "VER-001 / VER-002",
+   "description": "The 80,000-event 19 MB compliance fixture previously exceeded 120 seconds. Buffered file reads plus retained line storage and duplicate-IP allocation avoidance reduce its focused run to 4.04 seconds. A flaky registry-trie timing assertion was replaced by deterministic prefix behavior checks.",
+   "files_changed": [
+    "src/core/compliance_reporter.zig",
+    "src/windows/registry_trie.zig"
+   ],
+   "tests": [
+    "zig test src/core/compliance_reporter.zig -lc --test-filter \"configured log\": 1 passed, 4.04 seconds",
+    "zig build test: 2003 passed, 10 skipped, 0 failed; 6 seconds test runtime"
+   ],
+   "result": "PASS",
+   "finding": "Canonical unit suite is green. The trie unit graph no longer makes a wall-clock speed claim; comparative performance is unproven and belongs in a dedicated benchmark.",
+   "evidence_artifact": "admin-evidence/ver-003-20261101/closeout.md"
+  },
+  {
+   "id": "IDS-XDR-006-20261101",
+   "head_sha": "091a9687c677a2d0ac77f8cb227ccac021b5139e",
+   "timestamp": "2026-11-01",
+   "title": "Lab-only XDR forensic receipt and replay slice",
+   "level": "E2",
+   "component": "src/xdr/xdr_evidence_flow.zig",
+   "flow_id": "XDR-LAB-001",
+   "description": "Multi-source evidence is correlated, serialized as a versioned snapshot, appended to the hash-chained forensic ring, acknowledged by an IDS receipt after hash read-back, then reconstructed and replayed. Not production-daemon wired.",
+   "files_changed": [
+    "src/xdr/xdr_evidence_flow.zig",
+    "src/tests/xdr/xdr_evidence_flow.zig",
+    "src/all_tests.zig",
+    "FLOW_MAP.json"
+   ],
+   "tests": [
+    "zig build test: includes XDR receipt/replay integration; full graph 2002 passed, 10 skipped, 0 failed",
+    "receipt hash tampering is rejected",
+    "XDR single-source, missing source identity, duplicate event and unrelated-entity inputs fail closed"
+   ],
+   "result": "PASS_LAB_TEST_ONLY",
+   "finding": "The source-to-forensic-receipt/replay test slice is proven in memory. Production XDR wiring, Windows E5 and release E7 remain open.",
+   "evidence_artifact": "admin-evidence/ids-xdr-006-20261101/closeout.md"
+  },
+  {
+   "id": "E5-PREFLIGHT-20261101",
+   "head_sha": "091a9687c677a2d0ac77f8cb227ccac021b5139e",
+   "timestamp": "2026-11-01",
+   "title": "RB-021 Windows E5 preflight blocked by missing live lab prerequisites",
+   "level": "E1",
+   "component": "Windows host and isolated VMware lab",
+   "flow_id": "RB-021",
+   "description": "Read-only checks found VMnet1 up at 192.168.126.1, Npcap and AegisNids running, zero running VMs, no machine AEGIS_DAEMON_IFACE pin, and a non-elevated session. RB-021 §2 requires Admin to pin VMnet1 and restart the service.",
+   "files_verified": [
+    "docs/runbooks/RB-021-hostonly-lab-proof.md"
+   ],
+   "tests": [
+    "read-only Windows/VMware/service/adapter preflight",
+    "no VM start, host configuration change, service restart, canary, or attack traffic"
+   ],
+   "result": "BLOCKED_PREFLIGHT",
+   "finding": "No E5 host proof was performed or claimed. Resume in an elevated supervised session after confirming the isolated Kali .10 and Windows .20 guests.",
+   "evidence_artifact": "admin-evidence/e5-preflight-20261101/closeout.md"
   }
  ],
  "known_gaps": [
@@ -8945,8 +9010,8 @@
  ],
  "evidence_level_summary": {
   "E0_count": 0,
-  "E1_count": 27,
-  "E2_count": 150,
+  "E1_count": 28,
+  "E2_count": 152,
   "E3_count": 16,
   "E4_count": 15,
   "E5_count": 126,

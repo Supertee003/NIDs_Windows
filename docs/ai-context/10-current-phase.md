@@ -70,6 +70,31 @@ authorize a production host effect.
   integration, and release E7 remain open. See
   `admin-evidence/kids-002-20261101/closeout.md`.
 
+## Verification, XDR, and Windows Preflight — 2026-11-01
+
+- `VER-003` (source `ba92468`) fixed the compliance reporter's unbuffered
+  byte-at-a-time file scan and repeated per-line allocations. The 80,000-event,
+  19 MB focused test now passes in 4.04 seconds (baseline exceeded 120 seconds).
+  A timing-ratio trie benchmark that failed once in the full graph but passed
+  five isolated runs is now a deterministic prefix-correctness test. No trie
+  speedup claim is made by the unit suite.
+- `IDS-XDR-006` (source `091a968`) adds a lab/test-only vertical slice:
+  multi-source XDR evidence -> versioned snapshot -> hash-chained forensic
+  record -> recording-only IDS receipt -> integrity check -> deterministic
+  replay. It is not wired into the production daemon. `FLOW_MAP.json` now
+  records this exact boundary.
+- Fresh canonical `zig build test`: **2,002 passed, 10 skipped, 0 failed**.
+  Skips include opt-in real-loopback tests. The full `test-network-integration`
+  target was not run.
+- RB-021 Windows preflight is **BLOCKED before E5**: VMnet1 is up at
+  `192.168.126.1`, Npcap and AegisNids are running, but no VMs are running,
+  `AEGIS_DAEMON_IFACE` is unset, and this session is not elevated. RB-021 §2
+  requires Admin to pin VMnet1 and restart the service. No host change or test
+  traffic was performed. See
+  `admin-evidence/e5-preflight-20261101/closeout.md`.
+- `VER-003` and `IDS-XDR-006` close their E2 test slices only. Supervised
+  Windows E5, production XDR runtime wiring, and release E7 remain OPEN.
+
 ## G23 Goals
 
 1. Create canonical architecture documentation
@@ -106,7 +131,9 @@ And CI proves: C/C++ + Zig + Go + Rust + Python/Cython + Drivers as one product.
    against current source. This is not Windows E5, kernel qualification, or ADR-
    0009/release completion.
 2. Produce supervised Windows-host evidence for applicable host telemetry and
-   sensor paths; do not infer E5 from unit tests or a successful build.
+   sensor paths. RB-021 preflight on 2026-11-01 was blocked because no VMs were
+   running, the capture pin was unset, and the session was not elevated; do not
+   infer E5 from unit tests or a successful build.
 3. Continue classifying remaining older IPS/WFP material as historical or
    lab-only without deleting it; the key WFP/host records GAP-002, GAP-005, and
    GAP-009 are now explicitly historical. Keep production host-effect capability false.
@@ -114,8 +141,9 @@ And CI proves: C/C++ + Zig + Go + Rust + Python/Cython + Drivers as one product.
    or changing the production detection-only gate.
 5. The two Zig test execution-graph gaps are closed at E2; preserve that
    distinction from supervised Windows E5 host proof.
-6. Wire the selected XDR advisory flow to canonical detection/forensic evidence
-   only in a separate vertical slice with a validated receipt/replay contract.
+6. `IDS-XDR-006` proves a lab/test advisory XDR-to-forensic-receipt/replay
+   slice at E2. Production runtime routing remains open and requires a separate
+   scope/authority decision before any daemon wiring.
 
 Do not introduce an IPS activation phase into the production roadmap.
 
