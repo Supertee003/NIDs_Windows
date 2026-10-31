@@ -95,6 +95,19 @@ authorize a production host effect.
 - `VER-003` and `IDS-XDR-006` close their E2 test slices only. Supervised
   Windows E5, production XDR runtime wiring, and release E7 remain OPEN.
 
+## VER-004 Windows TCP Error Recovery — 2026-11-01
+
+- Source commit `e233242` avoids Zig 0.13's Windows `std.posix.connect`
+  `WSAEACCES => unreachable` mapping for the standalone federation transport.
+  Winsock access denial now returns `TcpError.AccessDenied` after the failed
+  socket is closed and transport state is reset.
+- Focused mapping test passed 1/1; canonical Zig suite passed 2,003 tests,
+  skipped 10 opt-in cases; network-scope pytest passed 2/2.
+- Evidence is E2 only. Real loopback integration remains unrun in the
+  restricted sandbox; this standalone federation module is not production
+  runtime-wired. Windows E5 and release E7 remain open.
+- See `admin-evidence/ver-004-20261101/closeout.md`.
+
 ## G23 Goals
 
 1. Create canonical architecture documentation

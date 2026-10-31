@@ -1,5 +1,5 @@
 {
- "head_sha": "091a9687c677a2d0ac77f8cb227ccac021b5139e",
+ "head_sha": "e2332422bfeb5b5cca944aa2716360acf2538c3a",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-11-01",
  "generator_version": "3.0",
@@ -8990,6 +8990,28 @@
    "evidence_artifact": "admin-evidence/kids-002-20261101/closeout.md"
   },
   {
+   "id": "VER-004-WIN-SOCKET-001",
+   "head_sha": "e2332422bfeb5b5cca944aa2716360acf2538c3a",
+   "timestamp": "2026-11-01",
+   "title": "Windows TCP WSAEACCES returns recoverable transport error",
+   "level": "E2",
+   "component": "src/federation/federation_tcp.zig",
+   "flow_id": "FED-TCP-001",
+   "description": "Bypasses Zig 0.13 std.posix.connect's WSAEACCES unreachable mapping at the Windows socket boundary and returns TcpError.AccessDenied after closing/resetting the failed socket.",
+   "files_changed": [
+    "src/federation/federation_tcp.zig"
+   ],
+   "tests": [
+    "zig test src/federation/federation_tcp.zig -lc --test-filter Winsock WSAEACCES: 1 passed",
+    "zig build test --summary all: 2003 passed, 10 skipped, 0 failed",
+    "python -m pytest tests/security/test_network_test_scope.py -q: 2 passed",
+    "git diff --check: passed"
+   ],
+   "result": "PASS_E2",
+   "finding": "The access-denied path is recoverable and socket state is reset. Real TCP integration remains opt-in and unrun in the network-restricted sandbox.",
+   "evidence_artifact": "admin-evidence/ver-004-20261101/closeout.md"
+  },
+  {
    "id": "IDS-XDR-005-WIRING-OPEN",
    "severity": "P1",
    "title": "Selected XDR evidence authority remains test/lab-only pending source-to-forensic integration",
@@ -9010,7 +9032,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 28,
-  "E2_count": 152,
+  "E2_count": 153,
   "E3_count": 16,
   "E4_count": 15,
   "E5_count": 126,
