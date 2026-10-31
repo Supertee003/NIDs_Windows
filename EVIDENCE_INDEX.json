@@ -3407,7 +3407,6 @@
    "description": "Multi-source evidence is correlated, serialized as a versioned snapshot, appended to the hash-chained forensic ring, acknowledged by an IDS receipt after hash read-back, then reconstructed and replayed. Not production-daemon wired.",
    "files_changed": [
     "src/xdr/xdr_evidence_flow.zig",
-    "src/tests/xdr/xdr_evidence_flow.zig",
     "src/all_tests.zig",
     "FLOW_MAP.json"
    ],
