@@ -358,8 +358,9 @@ fn processEvent(
     }
     t_prev = markStage(.correlation_to_policy, t_prev);
 
-    // 6. PEP enforcement (final authorization gate)
-    // Only PEP call — ActionDispatcher must NOT call PEP again
+    // 6. Policy assessment. The normal production path is evidence-only:
+    // assessment has no host-effect receipt and never reaches ActionDispatcher.
+    // The separately compiled lab gate retains its isolated enforcement path.
     var pep_decision: pep.PepDecision = .allow;
     var confirmed_effect = false;
     var pep_req_id: u64 = 0;
@@ -367,38 +368,42 @@ fn processEvent(
     if (matched_policy) |pol| {
         // Unique PEP request ID (not event_id)
         pep_req_id = state.g_pep_request_id.fetchAdd(1, .monotonic) + 1;
-        pep_decision = pep_enf.enforce(
-            &ev_copy,
-            pol,
-            state.g_runtime_pid,
-            state.g_runtime_capability_mask,
-            pep_req_id,
-            // SLICE-C-LAB: the prevention gate is read per decision so the
-            // S1 path is gate-controlled (closed by default everywhere).
-            state.g_prevention_gate_open,
-        );
+        if (state.g_prevention_gate_open) {
+            // SLICE-C-LAB: only a build compiled with the opt-in lab gate may
+            // enter this legacy host-effect path.
+            pep_decision = pep_enf.enforce(
+                &ev_copy,
+                pol,
+                state.g_runtime_pid,
+                state.g_runtime_capability_mask,
+                pep_req_id,
+                true,
+            );
+            confirmed_effect = dispatcher.ActionDispatcher.dispatchWithReceipt(
+                &ev_copy,
+                pol,
+                pep_decision,
+                pep_enf,
+                pep_enf.lastReceipt(),
+            );
+            if (confirmed_effect) {
+                if (pep_enf.lastReceipt()) |r| {
+                    receipt_filter_id = r.filter_id;
+                }
+            }
+        } else {
+            pep_decision = pep.assessmentVerdict(pep_enf.assess(
+                &ev_copy,
+                pol,
+                state.g_runtime_pid,
+                state.g_runtime_capability_mask,
+                pep_req_id,
+            ));
+        }
         _ = state.g_pipeline_detections.fetchAdd(1, .monotonic); // policy matched = detection event
 
         // Record PEP decision in trace
         decision_trace.setPepDecision(pep_req_id, @intFromEnum(pep_decision));
-
-        // 6a. Action dispatch (execute enforcement action). The receipt is
-        // produced by the same PEP call above; dispatcher only verifies its
-        // provider postcondition and never calls enforcement again.
-        // BE-EVI-097: the bool gates the evidence-log enforced claim —
-        // only a provider-read-back-verified receipt counts.
-        confirmed_effect = dispatcher.ActionDispatcher.dispatchWithReceipt(
-            &ev_copy,
-            pol,
-            pep_decision,
-            pep_enf,
-            pep_enf.lastReceipt(),
-        );
-        if (confirmed_effect) {
-            if (pep_enf.lastReceipt()) |r| {
-                receipt_filter_id = r.filter_id;
-            }
-        }
     }
     t_prev = markStage(.policy_to_action, t_prev);
 

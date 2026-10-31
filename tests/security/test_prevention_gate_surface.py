@@ -113,11 +113,12 @@ def test_lab_build_flag_absent_from_release_surfaces():
     assert offenders == [], f"lab gate flag leaked into release surfaces: {offenders}"
 
 
-def test_pipeline_enforce_call_passes_the_gate():
+def test_pipeline_enforce_call_is_guarded_by_the_lab_gate():
     text = (REPO / "src" / "pipeline" / "event_processor.zig").read_text(encoding="utf-8")
     assert text.count("pep_enf.enforce(") == 1, "expected exactly one S1 enforce call site"
     idx = text.index("pep_enf.enforce(")
-    window = text[idx: idx + 500]
-    assert "g_prevention_gate_open" in window, (
-        "the S1 enforcement call must pass the prevention gate"
-    )
+    gate = text.rfind("if (state.g_prevention_gate_open)", 0, idx)
+    assert gate >= 0, "the S1 enforcement call must be guarded by the prevention gate"
+    assessment = text.index("} else {", gate)
+    assert idx < assessment, "enforcement must remain inside the gate-open branch"
+    assert "pep.assessmentVerdict(pep_enf.assess(" in text[assessment:]

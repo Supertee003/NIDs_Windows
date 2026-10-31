@@ -99,6 +99,11 @@ pub const PepAssessment = struct {
     reason: u32,
 };
 
+/// Assessment failure must never be projected as an allow decision.
+pub fn assessmentVerdict(assessment: ?PepAssessment) PepDecision {
+    return if (assessment) |value| value.decision else .escalate;
+}
+
 pub const PepEnforcementReceipt = struct {
     decision: PepDecision,
     reason: u32,
@@ -211,9 +216,11 @@ pub const PepEnforcer = struct {
     }
 
     /// Evaluate policy for evidence only. This path never opens or calls a
-    /// WFP adapter and cannot produce an enforcement receipt.
+    /// WFP adapter and cannot produce an enforcement receipt. The assessment
+    /// itself does not depend on provider initialization/readiness.
     pub fn assess(self: *PepEnforcer, ev: *const event.IpcEvent, p: policy.Policy, caller_pid: u32, caller_caps: u32, request_id: u64) ?PepAssessment {
-        if (!self.available or @import("builtin").os.tag != .windows) return null;
+        _ = self;
+        if (@import("builtin").os.tag != .windows) return null;
         var req = PepRequest{
             .decision_kind = @intFromEnum(ev.kind),
             .requested_action = @intFromEnum(p.action),
@@ -736,6 +743,14 @@ test "KIDS-001: PepAssessmentResponse is explicit evidence-only ABI" {
     try std.testing.expectEqual(@as(usize, 8), @offsetOf(PepAssessmentResponse, "host_effect_confirmed"));
     try std.testing.expectEqual(@as(usize, 9), @offsetOf(PepAssessmentResponse, "reserved"));
     try std.testing.expectEqual(@as(usize, 7), @sizeOf([7]u8));
+}
+
+test "KIDS-002: missing assessment fails closed instead of becoming allow" {
+    try std.testing.expectEqual(PepDecision.escalate, assessmentVerdict(null));
+    try std.testing.expectEqual(PepDecision.block, assessmentVerdict(.{
+        .decision = .block,
+        .reason = 0,
+    }));
 }
 
 test "FFI-001: PepDecision enum values match Rust constants" {
