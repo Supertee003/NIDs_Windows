@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-31T05:54:22.540442+00:00",
+  "generated_at": "2026-10-31T06:57:38.222152+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1747,
+  "total_files": 1749,
   "by_role": {
-    "documentation": 563,
+    "documentation": 565,
     "build-config": 212,
     "other": 19,
     "source": 365,
@@ -607,11 +607,19 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "admin-evidence/ids-host-004-20261031/closeout.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "admin-evidence/ids-l7-003-20261031/closeout.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
     "admin-evidence/ids-npcap-002-20261031/closeout.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "admin-evidence/ids-xdr-005-20261031/closeout.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },

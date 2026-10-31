@@ -1,5 +1,5 @@
 {
- "head_sha": "940a6f8c764be96eff5a27b1b581a759f190e143",
+ "head_sha": "88466a6ec6f10c62b97cb0a171c4a90cb4f81645",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-10-31",
  "generator_version": "3.0",
@@ -3240,6 +3240,50 @@
    "result": "PASS_E2_WITH_OPEN_HOST_VERIFICATION",
    "finding": "Bounded source behavior follows ADR-0009. The slice does not prove live ETW/FIM/Registry detector production, Windows-host integration, kernel-driver production qualification, or overall release readiness.",
    "evidence_artifact": "admin-evidence/ids-host-004-20261031/closeout.md"
+  },
+  {
+   "id": "IDS-XDR-005-E2-20261031",
+   "head_sha": "88466a6ec6f10c62b97cb0a171c4a90cb4f81645",
+   "timestamp": "2026-10-31",
+   "title": "IDS-XDR-005: XDR authority restricted to advisory evidence; runtime claims corrected",
+   "severity": "P1",
+   "level": "E2",
+   "component": "xdr_incident_fabric/runtime_spine/manifest",
+   "flow_id": "XDR-LAB-001",
+   "description": "Removed enforcement-shaped DecisionAction values and dispatched_to_pep from the selected XDR fabric. The result now carries severity, confidence, source count, and assessment time only. XDR candidates are absent from production init/shutdown claims; legacy IPS/XDR registry entries are LAB/non-golden.",
+   "files_changed": [
+    "src/xdr/xdr_incident_fabric.zig",
+    "src/contract/runtime_spine.zig",
+    "tests/ips/test_t18_ips_canary_xdr.py",
+    "tools/create_manifest.py",
+    "runtime_manifest.json",
+    "AUTHORITY_MAP.json",
+    "FLOW_MAP.json",
+    "EVIDENCE_INDEX.json",
+    "docs/ai-context/10-current-phase.md",
+    "admin-evidence/ids-xdr-005-20261031/closeout.md",
+    "AI_CONTEXT.md",
+    "SYSTEM_MAP.json",
+    "CONTRACT_MAP.json",
+    "build_truth.json",
+    "build_manifest.json",
+    "PHASE_0_TRUTH_REBUILD_REPORT.json",
+    "inventory.json",
+    "reference_map.json"
+   ],
+   "tests": [
+    "zig test src/xdr/xdr_incident_fabric.zig: 13/13 PASS",
+    "zig test src/contract/runtime_spine.zig: 27/27 PASS",
+    "python -m pytest tests/ips/test_t18_ips_canary_xdr.py -q: 18 passed",
+    "zig build: PASS",
+    "zig build test (last full run before final registry-only adjustment): 2247/2249 passed, 1 skipped, 1 failed in core.perf_benchmark.test.checkThresholds evaluates all benchmarks",
+    "tests/security/test_zig_test_scope.py audit: 2 uncovered test-bearing files remain (src/capture/proto/l7_payload.zig, src/forensic/ids_evidence_receipt.zig); not changed by this slice",
+    "python tools/rebuild_truth.py: valid=true, unresolved=[]; source commit 88466a6ec6f10c62b97cb0a171c4a90cb4f81645",
+    "python tools/truth.py verify: TRUTH_VALID; every required map carries the ADR-0008 build source commit"
+   ],
+   "result": "PASS_WITH_OPEN_BLOCKERS",
+   "finding": "The selected XDR code is now advisory-only and is not represented as a production runtime route. No XDR-to-CanonicalEvent, immutable IDS Evidence Receipt, replay, or Windows-host path was wired or proven; this record is E2 only and does not close IDS-XDR-005, MAP-006, or kernel/Windows qualification.",
+   "evidence_artifact": "admin-evidence/ids-xdr-005-20261031/closeout.md"
   }
  ],
  "known_gaps": [
@@ -8760,12 +8804,29 @@
    "result": "PASS",
    "finding": "The full canonical Zig test graph is green again. The module remains test-graph-only and no production enforcement path changed.",
    "evidence_artifact": "admin-evidence/compliance-reporter-20261031/closeout.md"
+  },
+  {
+   "id": "IDS-XDR-005-WIRING-OPEN",
+   "severity": "P1",
+   "title": "Selected XDR evidence authority remains test/lab-only pending source-to-forensic integration",
+   "description": "src/xdr/xdr_incident_fabric.zig is the selected advisory-only XDR authority, but no production source route associates actual CanonicalEvent/detection identity with an immutable IDS Evidence Receipt and replay. No Windows E5 proof exists.",
+   "status": "OPEN",
+   "found_at": "2026-10-31",
+   "tracking": "GitHub issue #26 / IDS-XDR-005",
+   "required_evidence": [
+    "source-to-forensic-receipt integration tests",
+    "runtime manifest and flow/authority maps reverified",
+    "supervised Windows host evidence where applicable"
+   ],
+   "evidence": [
+    "admin-evidence/ids-xdr-005-20261031/closeout.md"
+   ]
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 27,
-  "E2_count": 50,
+  "E2_count": 51,
   "E3_count": 16,
   "E4_count": 15,
   "E5_count": 126,

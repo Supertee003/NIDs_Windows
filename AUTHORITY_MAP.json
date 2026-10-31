@@ -1,5 +1,5 @@
 {
-  "head_sha": "940a6f8c764be96eff5a27b1b581a759f190e143",
+  "head_sha": "88466a6ec6f10c62b97cb0a171c4a90cb4f81645",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -80,12 +80,14 @@
             "action dispatch",
             "forensic recording",
             "control pipe",
-            "diagnostics"
+            "diagnostics",
+            "selected XDR evidence correlation (advisory-only; lab/test-only; not runtime-wired)"
           ],
           "does_not_own": [
             "privileged enforcement",
             "crypto operations",
-            "policy signature verification"
+            "policy signature verification",
+            "XDR policy or PEP dispatch"
           ],
           "files": [
             "src/main.zig",
@@ -100,7 +102,7 @@
             "src/xdr/*.zig",
             "src/windows/*.zig"
           ],
-          "note": "Zig is the runtime spine - the hub. All languages connect through C ABI or FFI."
+          "note": "Zig is the runtime spine - the hub. All languages connect through C ABI or FFI. Selected XDR code authority: src/xdr/xdr_incident_fabric.zig; advisory-only, lab/test-only, and not production-wired. xdr_engine, xdr_harden, xdr_correlator, and xdr_incident_graph remain non-authoritative test/support candidates."
         }
       ]
     },
@@ -430,7 +432,8 @@
     "`go/aggregator/` is an optional operator sidecar and produces no Canonical Event",
     "One canonical operator client: tools/aegisctl.py",
     "Zig is the runtime hub - all languages connect through C ABI or FFI",
-    "Cython is a performance bridge, NOT the system integration bus"
+    "Cython is a performance bridge, NOT the system integration bus",
+    "Selected XDR correlation authority is src/xdr/xdr_incident_fabric.zig; it emits advisory evidence only, has no policy/PEP action surface, and is not production-wired until a source-to-forensic-receipt flow is proven."
   ],
   "stop_the_line": [
     "ABI mismatch",
@@ -451,5 +454,22 @@
     "production mock",
     "build/runtime mismatch",
     "stale evidence"
+  ],
+  "non_authoritative_candidates": [
+    {
+      "id": "XDR_NON_AUTHORITATIVE_CANDIDATES",
+      "selected_authority": "src/xdr/xdr_incident_fabric.zig (advisory-only; LAB/test-only)",
+      "files": [
+        "src/xdr/xdr_engine.zig",
+        "src/xdr/xdr_harden.zig",
+        "src/xdr/xdr_correlator.zig",
+        "src/xdr/xdr_incident_graph.zig",
+        "src/tests/integration/xdr_harden_integration.zig"
+      ],
+      "status": "NOT_SELECTED / TEST-SUPPORT ONLY",
+      "reason": "Source audit found no production main/daemon/build references. xdr_harden_integration is referenced by the quarantined lifecycle; other modules are in the unit-test graph. Do not wire these alternatives into production.",
+      "tracking": "IDS-XDR-005 / GitHub issue #26",
+      "completion_gate": "OPEN: source-to-forensic receipt integration and Windows E5 evidence are not proven."
+    }
   ]
 }

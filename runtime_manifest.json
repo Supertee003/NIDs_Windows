@@ -1,10 +1,10 @@
 {
   "runtime_version": "5.0.0",
-  "head_sha": "940a6f8c764be96eff5a27b1b581a759f190e143",
+  "head_sha": "88466a6ec6f10c62b97cb0a171c4a90cb4f81645",
   "entrypoint": "src/main.zig",
   "production_binary": "zig-out/bin/aegis_nids.exe",
-  "source_commit": "940a6f8",
-  "date": "2026-10-31T05:54:22.695861+00:00",
+  "source_commit": "88466a6",
+  "date": "2026-10-31T06:57:38.433139+00:00",
   "production_modules": 3,
   "modules": {
     "nose/capture.go": {
@@ -166,19 +166,22 @@
       "canonical_path": "src/federation/cluster_uplink.zig"
     },
     "src/windows/ips_canary_order.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "canonical_path": "src/windows/ips_canary_order.zig"
+      "status": "LAB",
+      "golden_path": false,
+      "canonical_path": "src/windows/ips_canary_order.zig",
+      "role": "Historical/lab IPS helper; not a production runtime route and does not authorize production host effects"
     },
     "src/core/real_ips_path.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "canonical_path": "src/core/real_ips_path.zig"
+      "status": "LAB",
+      "golden_path": false,
+      "canonical_path": "src/core/real_ips_path.zig",
+      "role": "Historical/lab IPS helper; not a production runtime route and does not authorize production host effects"
     },
     "src/xdr/xdr_incident_fabric.zig": {
-      "status": "REAL",
-      "golden_path": true,
-      "canonical_path": "src/xdr/xdr_incident_fabric.zig"
+      "status": "LAB",
+      "golden_path": false,
+      "canonical_path": "src/xdr/xdr_incident_fabric.zig",
+      "role": "Selected multi-source XDR evidence authority; advisory-only and not runtime-wired pending source-to-forensic proof"
     },
     "core/fault_matrix.zig": {
       "status": "REAL",
@@ -358,8 +361,8 @@
     "federation authority: remote nodes exchange reports and threat intelligence only; enforcement stays local",
     "federation: reports only, enforcement stays local",
     "federation transport is TLS (no plaintext production transport)",
-    "canary order is scope -> target -> expiry -> rollback -> audit; every privileged request is dispatched_to_pep",
-    "real IPS path is receipt-gated and multi-source XDR records incident evidence before operator action",
+    "canary order and legacy IPS helpers are lab-only; production remains detection-only and no host effect is inferred from these modules",
+    "multi-source XDR correlation uses src/xdr/xdr_incident_fabric.zig as the selected evidence-only authority; it is not daemon-wired pending source-to-forensic proof",
     "decision trace records the eight-link request-to-source chain for every privileged action",
     "shadow decision is advisory only and cannot replace the final authority review",
     "security replay is deterministic and final authority review is required before release",
@@ -418,11 +421,9 @@
     "reliability/latency_histogram.zig",
     "federation/cluster_coord.zig",
     "federation/node_registry.zig",
-    "federation/aggregator.zig",
-    "xdr/xdr_engine.zig"
+    "federation/aggregator.zig"
   ],
   "shutdown_order": [
-    "xdr/xdr_engine.zig",
     "federation/cluster_coord.zig",
     "reliability/fault_injection.zig",
     "reliability/watchdog.zig",

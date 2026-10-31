@@ -4,13 +4,13 @@
 
 
 
-**HEAD:** `940a6f8c764be96eff5a27b1b581a759f190e143` (build source commit — ADR-0008)
+**HEAD:** `88466a6ec6f10c62b97cb0a171c4a90cb4f81645` (build source commit — ADR-0008)
 
-**BRANCH:** `main`
+**BRANCH:** `codex/o2-etw-context`
 
-**GENERATED:** 2026-10-23T00:00:00.000000+00:00
+**GENERATED:** 2026-10-31T13:54:48+07:00
 
-**GENERATOR:** opencode agent (TRUTH-REBUILD current-HEAD resync)
+**GENERATOR:** Manus + `tools/rebuild_truth.py` (ADR-0008 source-commit stamp)
 
 **ARCHITECTURE:** Hub-and-Spoke with Plane Separation
 
@@ -325,6 +325,13 @@ cd ts_policy && npm run typecheck && npm run test:all   → (advisory only, no o
 
 **ARCHITECTURE STABILIZATION** (Hub-and-Spoke + Plane Separation)
 
+
+
+Current source/build slice (2026-10-31; source commit `88466a6ec6f10c62b97cb0a171c4a90cb4f81645`):
+
+- IDS-XDR-005 makes `src/xdr/xdr_incident_fabric.zig` advisory-only and LAB/test-only; no XDR implementation is connected to the production daemon.
+- Focused checks pass: XDR 13/13, runtime-spine 27/27, T18 pytest 18 passed, `zig build` PASS. The last full Zig test graph had one performance-threshold failure and was not rerun after the final registry-only correction.
+- `MAP-006`, source-to-forensic-receipt integration, test-scope coverage gaps, and supervised Windows E5 evidence remain OPEN. Do not claim project completion or production kernel/XDR readiness from these E2 results.
 
 
 Previous phases:

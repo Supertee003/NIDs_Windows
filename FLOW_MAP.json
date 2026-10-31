@@ -1,5 +1,5 @@
 {
-  "head_sha": "940a6f8c764be96eff5a27b1b581a759f190e143",
+  "head_sha": "88466a6ec6f10c62b97cb0a171c4a90cb4f81645",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -418,6 +418,56 @@
           "input": "CanonicalEvent (C ABI)",
           "output": "EventQueue",
           "file": "src/contract/event_fabric.zig"
+        }
+      ]
+    },
+    {
+      "id": "XDR-LAB-001",
+      "name": "Standalone XDR multi-source evidence correlation (LAB/test-only)",
+      "type": "lab_test_flow",
+      "plane": "PLANE-B",
+      "status": "LAB_ONLY_NOT_RUNTIME_WIRED",
+      "description": "Unit-testable Fabric flow only. Caller-created Evidence is grouped by entity and summarized; this is not a production CanonicalEvent-to-IDS-receipt path.",
+      "boundary": "In-process Zig module interface; no FFI or daemon connection",
+      "layers": [
+        {
+          "step": 1,
+          "name": "Evidence Input",
+          "plane": "PLANE-B",
+          "owner": "XDR test caller",
+          "input": "Caller-created Evidence with source category, entity key, event id, timestamp, and severity",
+          "output": "Evidence",
+          "file": "src/xdr/xdr_incident_fabric.zig",
+          "note": "No production CanonicalEvent or forensic receipt is supplied."
+        },
+        {
+          "step": 2,
+          "name": "Multi-source Incident Correlation",
+          "plane": "PLANE-B",
+          "owner": "Zig XDR fabric",
+          "input": "Evidence[]",
+          "output": "Incident with source-category bitmask and maximum observed severity",
+          "file": "src/xdr/xdr_incident_fabric.zig"
+        },
+        {
+          "step": 3,
+          "name": "Advisory Summary",
+          "plane": "PLANE-B",
+          "owner": "Zig XDR fabric",
+          "input": "Incident",
+          "output": "Decision{made_ms, severity, confidence, source_categories_used}",
+          "file": "src/xdr/xdr_incident_fabric.zig",
+          "note": "No action, policy decision, PEP dispatch, receipt, or host-effect claim exists."
+        },
+        {
+          "step": 4,
+          "name": "Production Integration Status",
+          "plane": "PLANE-B",
+          "owner": "Runtime integration",
+          "input": "Not connected",
+          "output": "No daemon route; no forensic append/replay edge",
+          "file": "src/main.zig / src/daemon.zig",
+          "note": "Requires a separate vertical slice and source-to-forensic-receipt proof."
         }
       ]
     }
