@@ -3326,7 +3326,31 @@
     "result": "PASS_WITH_OPEN_KERNEL_E5_AND_XDR_INTEGRATION",
     "finding": "MAP-006 source/map reconciliation is verified at E2. This does not prove a kernel-resident detector, supervised Windows E5, release readiness, or the separate XDR-to-forensic-receipt/replay flow; production host-effect activation remains out of scope.",
     "evidence_artifact": "admin-evidence/map006-runtime-truth-20261031/closeout.md"
-   }
+   },
+  {
+   "id": "IDS-COV-001-20261101",
+   "head_sha": "cf2f1fca6aa25f72706d61734b1f361ba794c0dd",
+   "timestamp": "2026-11-01",
+   "title": "Zig L7 payload and IDS receipt tests execute in the canonical test graph",
+   "level": "E2",
+   "component": "capture/forensic/test-graph",
+   "flow_id": "VER-001",
+   "description": "Commit 3fe2896 added direct imports for l7_payload.zig and ids_evidence_receipt.zig to src/all_tests.zig. Current-checkout test-scope and MAP-006 contracts pass, and the canonical Zig test graph exits successfully.",
+   "files_verified": [
+    "src/all_tests.zig",
+    "src/capture/proto/l7_payload.zig",
+    "src/forensic/ids_evidence_receipt.zig",
+    "tests/security/test_zig_test_scope.py",
+    "tests/security/test_map006_runtime_truth.py"
+   ],
+   "tests": [
+    "python -m pytest tests/security/test_zig_test_scope.py tests/security/test_map006_runtime_truth.py -q: 12 passed",
+    "zig build test: exit code 0"
+   ],
+   "result": "PASS",
+   "finding": "The two documented Zig test execution-graph gaps are closed at E2. This is not Windows E5/kernel qualification or release evidence.",
+   "evidence_artifact": "admin-evidence/ids-cov-001-20261101/closeout.md"
+  }
  ],
  "known_gaps": [
   {
@@ -8871,7 +8895,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 27,
-  "E2_count": 147,
+  "E2_count": 148,
   "E3_count": 16,
   "E4_count": 15,
   "E5_count": 126,

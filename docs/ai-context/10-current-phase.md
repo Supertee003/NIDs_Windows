@@ -43,6 +43,19 @@ authorize a production host effect.
 - Windows E5, the two execution-graph coverage gaps, and the separate XDR evidence
   integration remain open. See `admin-evidence/ids-xdr-005-20261031/closeout.md`.
 
+## IDS-COV-001 Current-Head Update — 2026-11-01
+
+- Commit `3fe2896` added direct `all_tests.zig` import edges for
+  `src/capture/proto/l7_payload.zig` and
+  `src/forensic/ids_evidence_receipt.zig`; both modules are now in the canonical
+  Zig test execution graph.
+- On checkout `cf2f1fca6aa25f72706d61734b1f361ba794c0dd`,
+  `python -m pytest tests/security/test_zig_test_scope.py tests/security/test_map006_runtime_truth.py -q`
+  passed 12/12 and `zig build test` exited 0.
+- This closes the two execution-graph coverage gaps at E2. It does not establish
+  supervised Windows E5/kernel qualification, XDR production integration, or
+  release readiness. Evidence: `admin-evidence/ids-cov-001-20261101/closeout.md`.
+
 ## G23 Goals
 
 1. Create canonical architecture documentation
@@ -85,8 +98,8 @@ And CI proves: C/C++ + Zig + Go + Rust + Python/Cython + Drivers as one product.
    GAP-009 are now explicitly historical. Keep production host-effect capability false.
 4. Complete supervised RB-017 Brain evidence without starting a second listener
    or changing the production detection-only gate.
-5. The full Zig test graph is green (2026-10-31); close the two remaining
-   test-scope coverage gaps and preserve that distinction from E5 host proof.
+5. The two Zig test execution-graph gaps are closed at E2; preserve that
+   distinction from supervised Windows E5 host proof.
 6. Wire the selected XDR advisory flow to canonical detection/forensic evidence
    only in a separate vertical slice with a validated receipt/replay contract.
 

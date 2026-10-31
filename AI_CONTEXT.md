@@ -339,7 +339,8 @@ Current source/build slice (2026-10-31; source commit `88466a6ec6f10c62b97cb0a17
 - IDS-XDR-005 makes `src/xdr/xdr_incident_fabric.zig` advisory-only and LAB/test-only; no XDR implementation is connected to the production daemon.
 - MAP-006 source/map reconciliation now reflects Go's named-pipe ingress, optional Brain advisory events, the fail-closed WFP boundary, lab-only XDR, separate replay verification, and historical host/WFP evidence.
 - Verification: MAP-006/WFP/T12/T14 focused pytest 38 passed; `zig build` PASS; full `zig build test` PASS (exit 0); truth rebuild and verification PASS. This is source/build and E2 evidence only.
-- Supervised Windows E5/kernel qualification, release readiness, execution-graph coverage gaps, and the separate XDR-to-forensic-receipt/replay flow remain OPEN. Do not claim project completion or production kernel/XDR readiness from these results.
+- IDS-COV-001 (2026-11-01): commit `3fe2896` wired `l7_payload.zig` and `ids_evidence_receipt.zig` directly into `src/all_tests.zig`; on checkout `cf2f1fc`, the Zig test-scope/MAP-006 gates passed 12/12 and `zig build test` exited 0. The two execution-graph coverage gaps are CLOSED at E2.
+- Supervised Windows E5/kernel qualification, release readiness, and the separate XDR-to-forensic-receipt/replay flow remain OPEN. Do not claim project completion or production kernel/XDR readiness from these results.
 
 
 Previous phases:
