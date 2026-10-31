@@ -72,6 +72,7 @@ pub const TcpError = error{
     ListenFailed,
     AcceptFailed,
     ConnectFailed,
+    AccessDenied,
     SetSockOptFailed,
     InvalidAddress,
     ConnectionReset,
@@ -184,11 +185,21 @@ pub const TcpTransport = struct {
             posix.close(fd);
             return err;
         };
-        posix.connect(fd, &addr.any, addr.getOsSockLen()) catch {
-            self.fd = INVALID_FD;
-            posix.close(fd);
-            return error.ConnectFailed;
-        };
+        if (builtin.os.tag == .windows) {
+            const winsock = std.os.windows.ws2_32;
+            if (winsock.connect(fd, &addr.any, @intCast(addr.getOsSockLen())) != 0) {
+                const connect_error = mapWindowsConnectError(@intFromEnum(winsock.WSAGetLastError()));
+                self.fd = INVALID_FD;
+                posix.close(fd);
+                return connect_error;
+            }
+        } else {
+            posix.connect(fd, &addr.any, addr.getOsSockLen()) catch {
+                self.fd = INVALID_FD;
+                posix.close(fd);
+                return error.ConnectFailed;
+            };
+        }
         self.connected = true;
     }
 
@@ -306,6 +317,18 @@ pub const TcpTransport = struct {
         self.total_recv_failures = 0;
     }
 };
+
+/// Keep Winsock access denial recoverable. Zig 0.13's std.posix.connect
+/// treats WSAEACCES as unreachable on Windows, which can trap test/runtime
+/// processes when local policy denies an outbound connection.
+fn mapWindowsConnectError(code: u16) TcpError {
+    return if (code == 10013) error.AccessDenied else error.ConnectFailed;
+}
+
+test "Winsock WSAEACCES is returned as a recoverable transport error" {
+    try std.testing.expect(mapWindowsConnectError(10013) == error.AccessDenied);
+    try std.testing.expect(mapWindowsConnectError(10061) == error.ConnectFailed);
+}
 
 // ============================================================
 // TcpServer: bind + listen + accept
