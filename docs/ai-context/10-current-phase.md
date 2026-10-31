@@ -56,6 +56,20 @@ authorize a production host effect.
   supervised Windows E5/kernel qualification, XDR production integration, or
   release readiness. Evidence: `admin-evidence/ids-cov-001-20261101/closeout.md`.
 
+## KIDS-002 Current-Head Update — 2026-11-01
+
+- Source commit `8cb2afb` routes the normal gate-closed policy path through the
+  Rust evidence-only assessment ABI. The lab gate-open branch is the only event
+  processor path that calls PEP enforcement or ActionDispatcher.
+- Focused assessment/gate/ABI contracts passed 14/14, the Rust-backed Zig
+  assessment fallback unit passed 1/1, and `zig build` passed. The full
+  `zig build test` was interrupted before completion because it includes a
+  loopback TCP integration test blocked by this sandbox's network policy; this
+  run is not counted as pass or product failure.
+- Evidence is E2 source/build only. Windows E5, XDR receipt/replay
+  integration, and release E7 remain open. See
+  `admin-evidence/kids-002-20261101/closeout.md`.
+
 ## G23 Goals
 
 1. Create canonical architecture documentation

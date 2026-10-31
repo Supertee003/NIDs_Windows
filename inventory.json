@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-31T17:30:14.413118+00:00",
+  "generated_at": "2026-10-31T22:04:16.277823+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1750,
+  "total_files": 1755,
   "by_class": {
-    "canonical-docs": 579,
+    "canonical-docs": 582,
     "canonical-build": 223,
     "unclassified": 19,
-    "canonical-source": 652,
-    "canonical-test": 210,
+    "canonical-source": 653,
+    "canonical-test": 211,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -445,6 +445,12 @@
       "class": "canonical-build",
       "role": "build-config",
       "size": 4462
+    },
+    {
+      "path": "admin-evidence/ids-cov-001-20261101/closeout.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2437
     },
     {
       "path": "admin-evidence/ids-evidence-receipt-20261031/closeout.md",
@@ -1992,7 +1998,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 40066
+      "size": 40382
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -2616,7 +2622,7 @@
       "path": "AUTHORITY_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 17959
+      "size": 18063
     },
     {
       "path": "brain/__init__.py",
@@ -2970,7 +2976,7 @@
       "path": "build.zig",
       "class": "canonical-source",
       "role": "source",
-      "size": 10141
+      "size": 11585
     },
     {
       "path": "build_manifest.json",
@@ -3186,7 +3192,7 @@
       "path": "CONTRACT_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 12380
+      "size": 12414
     },
     {
       "path": "contracts/fixtures/abi/event_boundaries.json",
@@ -3486,7 +3492,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4882
+      "size": 5574
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -4722,7 +4728,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 838901
+      "size": 840192
     },
     {
       "path": "fix_bridge_banner.py",
@@ -4746,7 +4752,7 @@
       "path": "FLOW_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 23600
+      "size": 23874
     },
     {
       "path": "go/aggregator/alert.go",
@@ -4854,7 +4860,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 282680
+      "size": 272163
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -5103,10 +5109,22 @@
       "size": 1025
     },
     {
+      "path": "outputs/AEGIS-Kernel-IDS-completion-plan.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 25173
+    },
+    {
+      "path": "outputs/KIDS-001-implementation-plan.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 8709
+    },
+    {
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9642
+      "size": 10769
     },
     {
       "path": "pytest.ini",
@@ -5124,7 +5142,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 231630
+      "size": 224312
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -6192,7 +6210,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 22885
+      "size": 22505
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",
@@ -6204,7 +6222,7 @@
       "path": "rust-src/lib.rs",
       "class": "canonical-source",
       "role": "source",
-      "size": 103121
+      "size": 106716
     },
     {
       "path": "sbom.spdx.json",
@@ -6984,13 +7002,13 @@
       "path": "shared/abi/pep_abi.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5013
+      "size": 6038
     },
     {
       "path": "shared/abi/runtime_abi.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2855
+      "size": 3049
     },
     {
       "path": "shared/errors/error_codes.md",
@@ -7116,7 +7134,7 @@
       "path": "src/all_tests.zig",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 10982
+      "size": 10953
     },
     {
       "path": "src/capture/flow_engine.zig",
@@ -7225,6 +7243,12 @@
       "class": "canonical-source",
       "role": "production-source",
       "size": 11376
+    },
+    {
+      "path": "src/compile_only_imports.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 362
     },
     {
       "path": "src/contract/abi_manifest.zig",
@@ -7764,7 +7788,7 @@
       "path": "src/pipeline/event_processor.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 44983
+      "size": 45088
     },
     {
       "path": "src/pipeline/event_queue.zig",
@@ -7848,7 +7872,7 @@
       "path": "src/policy/pep_bindings.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 35719
+      "size": 38803
     },
     {
       "path": "src/policy/policy_contract.zig",
@@ -8868,7 +8892,7 @@
       "path": "SYSTEM_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 17801
+      "size": 17884
     },
     {
       "path": "test_needs.py",
@@ -9138,7 +9162,7 @@
       "path": "tests/contracts/test_pep_abi_layout.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 12178
+      "size": 12638
     },
     {
       "path": "tests/cython/profile_brain_hotspot.py",
@@ -9495,6 +9519,12 @@
       "size": 7808
     },
     {
+      "path": "tests/security/test_assessment_only_pipeline.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 1237
+    },
+    {
       "path": "tests/security/test_canary_magic.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -9588,7 +9618,7 @@
       "path": "tests/security/test_prevention_gate_surface.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 4951
+      "size": 5164
     },
     {
       "path": "tests/security/test_receipt_contract.py",
@@ -9636,7 +9666,7 @@
       "path": "tests/security/test_zig_test_scope.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 15795
+      "size": 17086
     },
     {
       "path": "tests/test_e2e.py",
@@ -9966,7 +9996,7 @@
       "path": "tests/wfp/test_t11_windows_host.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 23448
+      "size": 24057
     },
     {
       "path": "tests/wfp/test_wfp_payload_slice.py",

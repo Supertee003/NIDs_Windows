@@ -1,22 +1,22 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-31T17:30:14.419015+00:00",
+  "generated_at": "2026-10-31T22:04:16.280863+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1750,
+  "total_files": 1755,
   "by_role": {
-    "documentation": 565,
+    "documentation": 568,
     "build-config": 212,
     "other": 19,
     "source": 365,
     "lockfile": 6,
     "rust-build": 4,
-    "test-artifact": 210,
+    "test-artifact": 211,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
     "go-source": 8,
     "makefile": 1,
-    "production-source": 279,
+    "production-source": 280,
     "legacy-source": 32,
     "quarantined": 1
   },
@@ -51,6 +51,7 @@
     "src/capture/stream_reassembly.zig",
     "src/capture/wfp_telemetry.zig",
     "src/capture/windows_capture.zig",
+    "src/compile_only_imports.zig",
     "src/contract/abi_manifest.zig",
     "src/contract/canonical_event.zig",
     "src/contract/event.zig",
@@ -602,6 +603,10 @@
     "admin-evidence/health-wfp-provider-attested.json": {
       "class": "canonical-build",
       "role": "build-config"
+    },
+    "admin-evidence/ids-cov-001-20261101/closeout.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
     },
     "admin-evidence/ids-evidence-receipt-20261031/closeout.md": {
       "class": "canonical-docs",
@@ -3707,6 +3712,14 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "outputs/AEGIS-Kernel-IDS-completion-plan.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "outputs/KIDS-001-implementation-plan.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "PHASE_0_TRUTH_REBUILD_REPORT.json": {
       "class": "canonical-build",
       "role": "build-config"
@@ -5120,6 +5133,10 @@
       "role": "production-source"
     },
     "src/capture/windows_capture.zig": {
+      "class": "canonical-source",
+      "role": "production-source"
+    },
+    "src/compile_only_imports.zig": {
       "class": "canonical-source",
       "role": "production-source"
     },
@@ -6632,6 +6649,10 @@
       "role": "test-artifact"
     },
     "tests/runtime/test_wire.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_assessment_only_pipeline.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

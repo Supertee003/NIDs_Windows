@@ -1,5 +1,5 @@
 {
- "head_sha": "e22fca94839c5db0abec08a7bced7b691d9d2b1a",
+ "head_sha": "8cb2afb162432318fe7f08dba3fe29f201445868",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-11-01",
  "generator_version": "3.0",
@@ -8875,6 +8875,33 @@
    "evidence_artifact": "admin-evidence/compliance-reporter-20261031/closeout.md"
   },
   {
+   "id": "KIDS-002-20261101",
+   "head_sha": "8cb2afb162432318fe7f08dba3fe29f201445868",
+   "timestamp": "2026-11-01",
+   "title": "Gate-closed policy flow uses evidence-only PEP assessment",
+   "level": "E2",
+   "component": "pipeline/policy/forensic",
+   "flow_id": "IDS-001",
+   "description": "The production gate-closed policy path now calls the evidence-only Rust PEP assessment ABI and does not call enforcement or ActionDispatcher. The gate-open enforcement branch remains restricted to explicit lab builds.",
+   "files_changed": [
+    "src/pipeline/event_processor.zig",
+    "src/policy/pep_bindings.zig",
+    "tests/security/test_assessment_only_pipeline.py",
+    "tests/security/test_prevention_gate_surface.py"
+   ],
+   "tests": [
+    "focused assessment/gate/ABI pytest suite: 14 passed",
+    "zig test src/policy/pep_bindings.zig --test-filter KIDS-002: 1 passed",
+    "zig build: PASS",
+    "zig build test: interrupted before completion because the canonical suite includes the sandbox-blocked real loopback integration test; no result claimed",
+    "python tools/rebuild_truth.py: valid=true, unresolved=[]",
+    "python tools/truth.py verify: TRUTH_VALID after source rebaseline"
+   ],
+   "result": "PASS_WITH_OPEN_FULL_SUITE_AND_HOST_EVIDENCE",
+   "finding": "Gate-closed policy assessments are evidence-only; no ABI or event wire schema changed. This E2 result does not prove Windows E5/kernel qualification or release readiness.",
+   "evidence_artifact": "admin-evidence/kids-002-20261101/closeout.md"
+  },
+  {
    "id": "IDS-XDR-005-WIRING-OPEN",
    "severity": "P1",
    "title": "Selected XDR evidence authority remains test/lab-only pending source-to-forensic integration",
@@ -8895,7 +8922,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 27,
-  "E2_count": 148,
+  "E2_count": 149,
   "E3_count": 16,
   "E4_count": 15,
   "E5_count": 126,
