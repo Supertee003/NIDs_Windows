@@ -62,7 +62,7 @@ AUTHORITY_MODULES = [
     'src/federation/cluster_coord.zig', 'src/federation/federation_codec.zig',
     'src/federation/federation_tcp.zig', 'src/federation/federation_rust_tls.zig',
     'src/federation/cluster_uplink.zig',
-    # IPS/XDR.
+    # Historical/lab IPS helpers and the selected XDR evidence correlator.
     'src/windows/ips_canary_order.zig', 'src/core/real_ips_path.zig',
     'src/xdr/xdr_incident_fabric.zig',
     # Reliability and release engineering.
@@ -103,6 +103,9 @@ for display_path in AUTHORITY_MODULES:
             'src/capture/npcap_capture.zig',
             'src/capture/proto/l7_payload.zig',
             'src/detection/proto_anomaly.zig',
+            'src/windows/ips_canary_order.zig',
+            'src/core/real_ips_path.zig',
+            'src/xdr/xdr_incident_fabric.zig',
         },
         'canonical_path': canonical_path,
     }
@@ -110,9 +113,22 @@ for display_path in AUTHORITY_MODULES:
         'src/capture/npcap_capture.zig',
         'src/capture/proto/l7_payload.zig',
         'src/detection/proto_anomaly.zig',
+        'src/windows/ips_canary_order.zig',
+        'src/core/real_ips_path.zig',
+        'src/xdr/xdr_incident_fabric.zig',
     }:
         entry['status'] = 'LAB'
+        entry['golden_path'] = False
+    if display_path in {
+        'src/capture/npcap_capture.zig',
+        'src/capture/proto/l7_payload.zig',
+        'src/detection/proto_anomaly.zig',
+    }:
         entry['role'] = 'Detection-only direct-Npcap full-payload path; disjoint interface required; no host effects'
+    if display_path in {'src/windows/ips_canary_order.zig', 'src/core/real_ips_path.zig'}:
+        entry['role'] = 'Historical/lab IPS helper; not a production runtime route and does not authorize production host effects'
+    if display_path == 'src/xdr/xdr_incident_fabric.zig':
+        entry['role'] = 'Selected multi-source XDR evidence authority; advisory-only and not runtime-wired pending source-to-forensic proof'
     if display_path == 'core/windows_adapters.zig':
         entry['role'] = 'Windows adapter framework; 100/100 tests; no policy authority'
     if display_path != canonical_path:
@@ -134,8 +150,8 @@ authority_invariants = [
     'federation authority: remote nodes exchange reports and threat intelligence only; enforcement stays local',
     'federation: reports only, enforcement stays local',
     'federation transport is TLS (no plaintext production transport)',
-    'canary order is scope -> target -> expiry -> rollback -> audit; every privileged request is dispatched_to_pep',
-    'real IPS path is receipt-gated and multi-source XDR records incident evidence before operator action',
+    'canary order and legacy IPS helpers are lab-only; production remains detection-only and no host effect is inferred from these modules',
+    'multi-source XDR correlation uses src/xdr/xdr_incident_fabric.zig as the selected evidence-only authority; it is not daemon-wired pending source-to-forensic proof',
     'decision trace records the eight-link request-to-source chain for every privileged action',
     'shadow decision is advisory only and cannot replace the final authority review',
     'security replay is deterministic and final authority review is required before release',
@@ -199,10 +215,8 @@ manifest = {
         'federation/cluster_coord.zig',
         'federation/node_registry.zig',
         'federation/aggregator.zig',
-        'xdr/xdr_engine.zig',
     ],
     'shutdown_order': [
-        'xdr/xdr_engine.zig',
         'federation/cluster_coord.zig',
         'reliability/fault_injection.zig',
         'reliability/watchdog.zig',

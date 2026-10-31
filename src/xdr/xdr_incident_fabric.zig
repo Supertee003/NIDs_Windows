@@ -5,14 +5,16 @@
 //!   Network, Host, Process, File, Registry, Identity, Threat Intel,
 //!   Historical, Federation
 //!
-//! Pipeline: Entity -> Evidence -> Incident -> Decision -> Action.
+//! Pipeline: Entity -> Evidence -> Incident -> advisory assessment.
 //!   Entity    = pivoting key (ip / host / process / file / registry key /
 //!               identity / indicator / historical indicator / node)
 //!   Evidence  = one observation tagged with its source category + severity
 //!   Incident  = aggregate keyed by entity: distinct-source bitmask, evidence
 //!               event list, severest severity
-//!   Decision  = severity aggregation into an enforcement action
-//!   Action    = the decided action, dispatched to the Rust PEP (dispatched_to_pep)
+//!   Assessment = severity and source-count summary for evidence review only
+//!
+//! This module has no policy or enforcement authority. An assessment is not a
+//! host action, PEP request, enforcement receipt, or proof of a host effect.
 //!
 //! A single incident MUST hold evidence from multiple source categories
 //! (AC3): distinctSources() >= 2 is the XDR criterion exercised by tests.
@@ -83,34 +85,13 @@ pub const Evidence = struct {
     }
 };
 
-pub const DecisionAction = enum(u8) {
-    monitor = 0,
-    allow = 1,
-    rate_limit = 2,
-    quarantine = 3,
-    block = 4,
-
-    pub fn label(self: DecisionAction) []const u8 {
-        return switch (self) {
-            .monitor => "monitor",
-            .allow => "allow",
-            .rate_limit => "rate_limit",
-            .quarantine => "quarantine",
-            .block => "block",
-        };
-    }
-
-    pub fn isEnforcement(self: DecisionAction) bool {
-        return self == .rate_limit or self == .quarantine or self == .block;
-    }
-};
-
+/// Advisory summary of correlation results. It carries no action field and no
+/// enforcement/dispatch state; callers may record or present it as evidence.
 pub const Decision = struct {
     made_ms: i64 = 0,
-    action: DecisionAction = .monitor,
+    severity: u8 = 0,
     confidence: u8 = 0,
     source_categories_used: u8 = 0,
-    dispatched_to_pep: bool = false,
 };
 
 pub const Incident = struct {
@@ -195,20 +176,13 @@ pub const Fabric = struct {
     pub fn decide(self: *Fabric, idx: usize, now_ms: i64) ?Decision {
         if (idx >= self.incident_count) return null;
         const inc = &self.incidents[idx];
-        const d: DecisionAction = switch (inc.severest) {
-            0, 1 => .monitor,
-            2 => .rate_limit,
-            3 => .quarantine,
-            else => .block,
-        };
         const srcs = inc.distinctSources();
         const confidence: u8 = @intCast(@min(@as(u32, 100), 50 + @as(u32, srcs) * 10));
         inc.decision = .{
             .made_ms = now_ms,
-            .action = d,
+            .severity = inc.severest,
             .confidence = confidence,
             .source_categories_used = srcs,
-            .dispatched_to_pep = d.isEnforcement(),
         };
         return inc.decision;
     }
@@ -334,40 +308,52 @@ test "severest severity is tracked across sources" {
     try std.testing.expectEqual(@as(u32, 4), f.severest(0));
 }
 
-test "decision for critical multi-source incident is block, dispatched to PEP" {
+test "critical multi-source decision is an advisory evidence assessment" {
     var f = Fabric{};
     _ = f.ingest(makeEv(.network, "203.0.113.55", 1, 1000, 4));
     _ = f.ingest(makeEv(.threat_intel, "203.0.113.55", 2, 1050, 4));
     _ = f.ingest(makeEv(.identity, "203.0.113.55", 3, 1100, 4));
     const d = f.decide(0, 2000).?;
-    try std.testing.expectEqual(DecisionAction.block, d.action);
-    try std.testing.expectEqual(true, d.dispatched_to_pep);
+    try std.testing.expectEqual(@as(u8, 4), d.severity);
     try std.testing.expectEqual(@as(u8, 3), d.source_categories_used);
+    try std.testing.expectEqual(@as(i64, 2000), d.made_ms);
     try std.testing.expect(d.confidence > 50);
 }
 
-test "decision for high-severity two-source incident is quarantine" {
+test "high severity remains evidence severity, not a host action" {
     var f = Fabric{};
     _ = f.ingest(makeEv(.file, "host-a", 1, 1000, 3));
     _ = f.ingest(makeEv(.host, "host-a", 2, 1050, 3));
     const d = f.decide(0, 2000).?;
-    try std.testing.expectEqual(DecisionAction.quarantine, d.action);
-    try std.testing.expectEqual(true, d.dispatched_to_pep);
+    try std.testing.expectEqual(@as(u8, 3), d.severity);
+    try std.testing.expectEqual(@as(u8, 2), d.source_categories_used);
 }
 
-test "decision for suspicious two-source incident is rate-limit" {
+test "medium severity remains evidence severity, not a host action" {
     var f = Fabric{};
     _ = f.ingest(makeEv(.process, "host-a", 1, 1000, 2));
     _ = f.ingest(makeEv(.historical, "host-a", 2, 1050, 2));
     const d = f.decide(0, 2000).?;
-    try std.testing.expectEqual(DecisionAction.rate_limit, d.action);
-    try std.testing.expectEqual(true, d.dispatched_to_pep);
+    try std.testing.expectEqual(@as(u8, 2), d.severity);
+    try std.testing.expectEqual(@as(u8, 2), d.source_categories_used);
 }
 
-test "decision for low-severity single-source incident is monitor, not dispatched" {
+test "low severity remains evidence severity, not a host action" {
     var f = Fabric{};
     _ = f.ingest(makeEv(.network, "host-a", 1, 1000, 1));
     const d = f.decide(0, 2000).?;
-    try std.testing.expectEqual(DecisionAction.monitor, d.action);
-    try std.testing.expectEqual(false, d.dispatched_to_pep);
+    try std.testing.expectEqual(@as(u8, 1), d.severity);
+    try std.testing.expectEqual(@as(u8, 1), d.source_categories_used);
+}
+
+test "critical multi-source decision preserves evidence severity as advisory data" {
+    var f = Fabric{};
+    _ = f.ingest(makeEv(.network, "203.0.113.55", 1, 1000, 4));
+    _ = f.ingest(makeEv(.threat_intel, "203.0.113.55", 2, 1050, 4));
+    _ = f.ingest(makeEv(.identity, "203.0.113.55", 3, 1100, 4));
+    const d = f.decide(0, 2000).?;
+    try std.testing.expectEqual(@as(u8, 4), d.severity);
+    try std.testing.expectEqual(@as(u8, 3), d.source_categories_used);
+    try std.testing.expectEqual(@as(i64, 2000), d.made_ms);
+    try std.testing.expect(d.confidence > 50);
 }

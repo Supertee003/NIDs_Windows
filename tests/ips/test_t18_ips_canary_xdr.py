@@ -1,25 +1,25 @@
-"""T18: IPS Canary order -> Real IPS path -> XDR multi-source fabric (Steps 53-55).
+"""T18 legacy lab IPS tests plus the ADR-0009 XDR evidence contract.
 
 Acceptance criteria:
-  AC1. IPS progresses through the canary order -- Detection Only -> Shadow ->
+  AC1. Lab-only IPS code progresses through the canary order -- Detection Only -> Shadow ->
        Canary -> Limited Enforcement -> Expanded Enforcement -- with the canary
        specifying scope, target, expiry, rollback, and audit.
-  AC2. Real IPS blocks through Rust PEP + WFP, tested across allow / block /
+  AC2. Lab-only IPS helpers exercise the Rust PEP + WFP contract across allow / block /
        quarantine / rate-limit / expiry / revoke / rollback / driver-unavailable
-       (driver-unavailable is fail-closed).
-  AC3. XDR produces incidents combining evidence from multiple source categories
+       (driver-unavailable is fail-closed); this does not enable production IPS.
+  AC3. XDR combines evidence from multiple source categories
        (Network / Host / Process / File / Registry / Identity / Threat Intel /
-       Historical / Federation) through Entity -> Evidence -> Incident ->
-       Decision -> Action.
+       Historical / Federation) into an advisory incident assessment only; it
+       has no policy action and cannot claim PEP dispatch.
 
-This file proves the invariants structurally against the authoritative modules
-and runtime_manifest.json; the semantic gates (state machines, rule lifecycles,
-incident aggregation) are proven by the modules' own Zig test suites.
+This file proves structural invariants against lab/test modules and
+runtime_manifest.json; it is not production host-effect evidence. Semantic
+incident aggregation is exercised by the module's Zig test suite.
 
-Authoritative modules (registered in runtime_manifest.json):
-  core/ips_canary_order.zig     - T18 AC1 (canary order + scope/expiry/rollback/audit)
-  core/real_ips_path.zig        - T18 AC2 (real IPS chain + enforcement matrix)
-  core/xdr_incident_fabric.zig  - T18 AC3 (9-source evidence -> incident -> decision/action)
+Registered lab/test modules in runtime_manifest.json:
+  src/windows/ips_canary_order.zig - T18 AC1 (lab-only canary order)
+  src/core/real_ips_path.zig       - T18 AC2 (lab-only IPS contract)
+  src/xdr/xdr_incident_fabric.zig  - ADR-0009 selected XDR authority (advisory-only, not runtime-wired)
 """
 from __future__ import annotations
 
@@ -89,24 +89,33 @@ def _read(rel: str) -> str:
 # Manifest registration
 # ---------------------------------------------------------------------------
 
-def test_manifest_declares_t18_modules_real() -> None:
-    """The three T18 authoritative modules must be REAL in the manifest."""
+def test_manifest_declares_t18_modules_non_production() -> None:
+    """Legacy IPS and the selected XDR fabric must not be golden-path production modules."""
     manifest = _manifest()
     for mod in (CANARY_MODULE, REAL_IPS_MODULE, XDR_MODULE):
         assert mod in manifest["modules"], f"{mod} not in runtime_manifest.json"
-        assert manifest["modules"][mod]["status"] == "REAL", (
-            f"{mod} must be REAL (T18); got {manifest['modules'][mod]}"
+        assert manifest["modules"][mod]["status"] == "LAB", (
+            f"{mod} must be LAB-only; got {manifest['modules'][mod]}"
         )
+        assert manifest["modules"][mod]["golden_path"] is False
+    assert "not runtime-wired" in manifest["modules"][XDR_MODULE]["role"]
 
 
-def test_authority_invariants_declare_t18() -> None:
-    """authority_invariants must name the canary order, the real IPS path,
-    and the multi-source XDR criterion."""
+def test_authority_invariants_declare_lab_ips_and_evidence_only_xdr() -> None:
+    """Authority claims must keep IPS lab-only and XDR evidence-only."""
     joined = "\n".join(_manifest()["authority_invariants"])
     assert "canary order" in joined
-    assert "real IPS path" in joined
+    assert "lab-only" in joined.lower()
     assert "multi-source" in joined
-    assert "dispatched_to_pep" in joined
+    assert "evidence-only" in joined
+    assert "dispatched_to_pep" not in joined
+
+
+def test_manifest_does_not_claim_unwired_xdr_runtime_order() -> None:
+    """No XDR candidate is production-started until source-to-forensic wiring is proven."""
+    manifest = _manifest()
+    for order in ("init_order", "shutdown_order"):
+        assert not any("xdr" in module.lower() for module in manifest[order])
 
 
 # ---------------------------------------------------------------------------
@@ -227,7 +236,7 @@ def test_ac2_real_block_is_rule_based() -> None:
 
 
 # ---------------------------------------------------------------------------
-# AC3 - XDR multi-source incidents (Entity -> Evidence -> Incident -> Decision -> Action)
+# AC3 - XDR multi-source evidence correlation (advisory assessment only)
 # ---------------------------------------------------------------------------
 
 def test_ac3_all_nine_source_categories_present() -> None:
@@ -239,23 +248,29 @@ def test_ac3_all_nine_source_categories_present() -> None:
 
 
 def test_ac3_pipeline_stages_present() -> None:
-    """Entity -> Evidence -> Incident -> Decision -> Action are all named."""
+    """Entity -> Evidence -> Incident -> advisory assessment has no action stage."""
     src = _read(XDR_MODULE)
-    for term in ("Evidence", "Incident", "Decision", "Action", "entity"):
+    for term in ("Evidence", "Incident", "Decision", "Assessment", "entity"):
         assert term in src, f"pipeline stage missing {term!r}"
+    assert "Action" not in src
 
 
-def test_ac3_single_incident_holds_multiple_sources() -> None:
-    """distinctSources() (>= 2 evidence categories per incident) is the
-    XDR criterion, and enforcement decisions dispatch to the PEP."""
+def test_ac3_single_incident_holds_multiple_sources_without_pep_dispatch_claim() -> None:
+    """Multi-source correlation is advisory evidence and cannot claim PEP dispatch."""
     src = _read(XDR_MODULE)
     assert "distinctSources" in src
     assert "source_bitmask" in src or "sources" in src
-    assert "dispatched_to_pep" in src
+    assert "dispatched_to_pep" not in src
+    assert "isEnforcement" not in src
 
 
-def test_ac3_enforcement_decision_maps_source_evidence_to_action() -> None:
-    """Severity aggregation maps to monitor/rate-limit/quarantine/block."""
+def test_ac3_decision_reports_evidence_severity_without_action_authority() -> None:
+    """The public assessment preserves severity and correlation only."""
     src = _read(XDR_MODULE)
-    for action in ("monitor", "rate_limit", "quarantine", "block"):
-        assert f'"{action}"' in src or action in src, f"decision action missing {action!r}"
+    assert "pub fn decide(" in src
+    assert "pub const Decision = struct" in src
+    assert "source_categories_used" in src
+    assert "DecisionAction" not in src
+    assert "dispatched_to_pep" not in src
+    for forbidden in ("rate_limit", "quarantine", "DecisionAction.block"):
+        assert forbidden not in src, f"XDR must not expose enforcement action {forbidden!r}"
