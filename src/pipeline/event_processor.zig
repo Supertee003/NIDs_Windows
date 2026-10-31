@@ -10,7 +10,9 @@ const builtin = @import("builtin");
 const event = @import("../contract/event.zig");
 const diag = @import("../core/diagnostics.zig");
 const flow = @import("../capture/flow_table.zig");
+const l7_payload = @import("../capture/proto/l7_payload.zig");
 const sig = @import("../detection/signature_engine.zig");
+const proto_anomaly = @import("../detection/proto_anomaly.zig");
 const l4 = @import("l4_matcher.zig");
 const anom = @import("../detection/anomaly_detector.zig");
 const corr_mod = @import("../detection/correlator.zig");
@@ -147,6 +149,7 @@ fn processEvent(
     // 2. Aho-Corasick signature matching (if rules are loaded)
     // Use mutex-protected global AC pointer for hot-reload support
     var matched_rule_id: u32 = 0;
+    var protocol_anomaly_rule_id: u32 = 0;
     // The frozen 109-byte Canonical Event carries detection metadata but not
     // raw payload bytes. Preserve that contract: an upstream classifier may
     // provide rule_id/event_type, and the Zig pipeline must carry it into
@@ -220,6 +223,25 @@ fn processEvent(
             break;
         }
     }
+
+    // IDS-L7-003: direct Npcap is the only ingress with a full Ethernet
+    // payload. Extract the transport payload defensively and run the existing
+    // protocol checks as observe-only evidence. Do not populate
+    // matched_rule_id: protocol anomalies must not enter policy, PEP, or
+    // ActionDispatcher. Their stable rule ID is carried by the event and IDS
+    // Evidence Receipt/forensic path only.
+    if (ev.source == .capture_npcap and qe.payload_len > 0) {
+        if (l7_payload.extractEthernet(qe.payload[0..qe.payload_len])) |payload| {
+            var dns_name_scratch: [256]u8 = undefined;
+            if (proto_anomaly.inspect(ev.protocol, ev.src_port, ev.dst_port, payload, &dns_name_scratch)) |anomaly| {
+                protocol_anomaly_rule_id = proto_anomaly.ruleId(anomaly.kind);
+                ev.rule_id = protocol_anomaly_rule_id;
+                ev.kind = .protocol_anomaly;
+                ev.severity = @enumFromInt(@min(anomaly.severity, @as(u8, 7)));
+                _ = state.g_pipeline_detections.fetchAdd(1, .monotonic);
+            }
+        }
+    }
     t_prev = markStage(.flow_to_detection, t_prev);
 
     // 2b. Correlation (multi-event rules). A correlation hit on an event
@@ -280,9 +302,11 @@ fn processEvent(
         _ = state.g_critical_detections.fetchAdd(1, .monotonic);
     }
 
+    const detection_rule_id = if (matched_rule_id != 0) matched_rule_id else protocol_anomaly_rule_id;
+
     // Record detection result in trace
     decision_trace.setDetection(
-        matched_rule_id,
+        detection_rule_id,
         if (active_incident) |inc| @as(u64, inc.id) else @as(u64, 0),
         if (active_incident) |inc| @as(u8, @intFromEnum(inc.severity)) else @as(u8, 0),
     );
@@ -293,12 +317,16 @@ fn processEvent(
     var matched_policy: ?policy.Policy = null;
     ev_copy.severity = ev_severity;
     const eval_ctx = policy.EvalContext{ .ev = &ev_copy };
-    if (ps.evaluate(eval_ctx)) |pol| {
-        matched_policy = pol;
-        policy_action = pol.action;
-        _ = state.g_pipeline_policies_matched.fetchAdd(1, .monotonic);
-        // Record policy match in trace (Policy has no version field; use 1)
-        decision_trace.setPolicy(pol.id, 1);
+    // Protocol anomalies are evidence-only. A nonzero event rule_id is useful
+    // for receipts, but must not by itself authorize policy evaluation.
+    if (matched_rule_id != 0) {
+        if (ps.evaluate(eval_ctx)) |pol| {
+            matched_policy = pol;
+            policy_action = pol.action;
+            _ = state.g_pipeline_policies_matched.fetchAdd(1, .monotonic);
+            // Record policy match in trace (Policy has no version field; use 1)
+            decision_trace.setPolicy(pol.id, 1);
+        }
     }
     t_prev = markStage(.correlation_to_policy, t_prev);
 
@@ -384,7 +412,7 @@ fn processEvent(
     // IDS-INT-001: issue a recording-only receipt after the forensic writer
     // accepts the exact detection record and its authenticated hash is read
     // back. This never represents a host effect or an enforcement receipt.
-    const ids_evidence_receipt: ?ids_receipt.Receipt = if (matched_rule_id != 0 and forensic_seq != 0)
+    const ids_evidence_receipt: ?ids_receipt.Receipt = if (detection_rule_id != 0 and forensic_seq != 0)
         if (forensic_ring.recordHash(forensic_seq)) |record_hash|
             ids_receipt.issue(ev, forensic_seq, record_hash, ids_receipt.RUNTIME_DETECTOR_ID, ids_receipt.RUNTIME_DETECTOR_VERSION, 100)
         else
@@ -397,7 +425,7 @@ fn processEvent(
     // Zero-cost when uninitialized: one bool check. The forwarder duplicates
     // all strings, so stack buffers below never escape this call.
     if (siem_mod.isEnabled()) {
-        siemForward(ev, matched_rule_id, ev_severity, policy_action, qe.src_ipv6, qe.dst_ipv6);
+        siemForward(ev, detection_rule_id, ev_severity, policy_action, qe.src_ipv6, qe.dst_ipv6);
         if (siem_mod.shouldFlush()) siem_mod.flush();
     }
 
@@ -406,7 +434,7 @@ fn processEvent(
     // the opt-in sensor pipe. Advisory only: never blocks, enforces, or
     // gates detection. Zero-cost when the loop is closed (one bool check).
     if (state.g_brain_enabled.load(.acquire)) {
-        brainInspect(ev, matched_rule_id, ev_severity, policy_action);
+        brainInspect(ev, detection_rule_id, ev_severity, policy_action);
     }
 
     // 10. Evidence-log projection (detections only, on by default).
@@ -414,8 +442,8 @@ fn processEvent(
     // logs/aegis_core.ndjson — the file the whole frontend fleet tails.
     // Drop-on-error by construction (forensic_log.log never raises); the
     // forensic ring above stays the detection record.
-    if (matched_rule_id != 0 and state.g_evidence_log_enabled) {
-        evidenceLog(ev, matched_rule_id, ev_severity, policy_action, matched_policy, confirmed_effect, pep_decision, receipt_filter_id, pep_req_id, decision_trace.trace_id, audit_id, qe.payload[0..qe.payload_len], qe.src_ipv6, qe.dst_ipv6, ids_evidence_receipt);
+    if (detection_rule_id != 0 and state.g_evidence_log_enabled) {
+        evidenceLog(ev, detection_rule_id, ev_severity, policy_action, matched_policy, confirmed_effect, pep_decision, receipt_filter_id, pep_req_id, decision_trace.trace_id, audit_id, qe.payload[0..qe.payload_len], qe.src_ipv6, qe.dst_ipv6, ids_evidence_receipt);
     }
 }
 

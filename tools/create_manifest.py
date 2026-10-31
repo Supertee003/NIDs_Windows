@@ -46,6 +46,7 @@ AUTHORITY_MODULES = [
     'nose/capture.go', 'nose/canonical.go', 'nose/pipe_writer.go',
     'core/nose_pipe_reader.zig', 'core/event_fabric.zig',
     'src/capture/npcap_capture.zig', 'src/windows/windows_adapters.zig',
+    'src/capture/proto/l7_payload.zig', 'src/detection/proto_anomaly.zig',
     'core/windows_adapters.zig',
     # Policy and enforcement boundary.
     'src/policy/wfp_production.zig', 'rust-src/lib.rs',
@@ -99,9 +100,19 @@ for display_path in AUTHORITY_MODULES:
             'tools/release_engineering.py', 'tools/installer.py',
             'tools/ci_coverage.py', 'ci_coverage.json',
             'tools/upgrade_rollback.py', 'build_manifest.json',
+            'src/capture/npcap_capture.zig',
+            'src/capture/proto/l7_payload.zig',
+            'src/detection/proto_anomaly.zig',
         },
         'canonical_path': canonical_path,
     }
+    if display_path in {
+        'src/capture/npcap_capture.zig',
+        'src/capture/proto/l7_payload.zig',
+        'src/detection/proto_anomaly.zig',
+    }:
+        entry['status'] = 'LAB'
+        entry['role'] = 'Detection-only direct-Npcap full-payload path; disjoint interface required; no host effects'
     if display_path == 'core/windows_adapters.zig':
         entry['role'] = 'Windows adapter framework; 100/100 tests; no policy authority'
     if display_path != canonical_path:
@@ -109,7 +120,8 @@ for display_path in AUTHORITY_MODULES:
     modules[display_path] = entry
 
 authority_invariants = [
-    'host-network source: src/capture/npcap_capture.zig is the single authoritative source for Windows host network telemetry; one model -> CanonicalEvent -> Zig Flow',
+    'production packet source: Go Nose is the canonical acquisition path; direct Npcap is a disjoint lab-only full-payload IDS sensor and never a second production ingress',
+    'L7 protocol anomaly path is evidence-only: extraction -> protocol detector -> forensic record -> IDS Evidence Receipt; it cannot authorize policy or host effects',
     'WFP enforcement module: src/policy/wfp_production.zig is the single authoritative WFP enforcement module; Rust PEP is the only route and a validated receipt is required',
     'Rust PEP is the final security authority for privileged actions; Python, TypeScript, Go, C++, and federation layers may request but never enforce',
     'control plane routes through aegisctl and the authenticated named pipe; never "Everyone" for privileged control operations',
@@ -169,6 +181,7 @@ manifest = {
         'capture/packet_decoder.zig',
         'capture/flow_table.zig',
         'capture/proto/parsers.zig',
+        'capture/proto/l7_payload.zig',
         'capture/stream_reassembly.zig',
         'detection/signature_engine.zig',
         'detection/anomaly_detector.zig',
@@ -217,12 +230,13 @@ manifest = {
     'subsystem_modules': {k: v for k, v in sorted(subsystems.items())},
     'golden_path': [
         'windows/host_telemetry.zig (host network telemetry)',
-        'acquisition',
-        'capture/npcap_adapter.zig (packet capture)',
+        'nose/capture.go -> nose/pipe_writer.go (production acquisition)',
+        'capture/nose_pipe_reader.zig',
         'canonical_event',
         'event_fabric',
         'flow',
         'detection (evidence)',
+        'direct Npcap -> l7_payload -> proto_anomaly (LAB, observe-only, disjoint interface)',
         'verdict',
         'correlation',
         'threat_intel',

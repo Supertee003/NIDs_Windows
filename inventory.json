@@ -1,14 +1,14 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-30T17:13:15.660362+00:00",
+  "generated_at": "2026-10-31T05:09:25.555254+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1743,
+  "total_files": 1745,
   "by_class": {
-    "canonical-docs": 574,
+    "canonical-docs": 575,
     "canonical-build": 223,
     "unclassified": 19,
-    "canonical-source": 651,
+    "canonical-source": 652,
     "canonical-test": 209,
     "canonical-config": 34,
     "legacy": 33
@@ -445,6 +445,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 3486
+    },
+    {
+      "path": "admin-evidence/ids-npcap-002-20261031/closeout.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4049
     },
     {
       "path": "admin-evidence/inspect_pep_exports.ps1",
@@ -4692,7 +4698,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 826730
+      "size": 828197
     },
     {
       "path": "fix_bridge_banner.py",
@@ -4824,7 +4830,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 281340
+      "size": 281516
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -5094,7 +5100,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 230535
+      "size": 230675
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -7161,6 +7167,12 @@
       "size": 13443
     },
     {
+      "path": "src/capture/proto/l7_payload.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 3183
+    },
+    {
       "path": "src/capture/proto/parsers.zig",
       "class": "canonical-source",
       "role": "production-source",
@@ -7470,7 +7482,7 @@
       "path": "src/detection/proto_anomaly.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 4842
+      "size": 6761
     },
     {
       "path": "src/detection/rag_engine.zig",
@@ -7728,7 +7740,7 @@
       "path": "src/pipeline/event_processor.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 40896
+      "size": 42495
     },
     {
       "path": "src/pipeline/event_queue.zig",
