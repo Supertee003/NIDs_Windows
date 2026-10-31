@@ -12,16 +12,16 @@
         "Go",
         "C/C++"
       ],
-      "boundary": "C ABI â†’ Zig Runtime Spine",
+      "boundary": "Go Nose named pipe; C/C++ C ABI -> Zig Runtime Spine",
       "components": [
         {
           "id": "GO_NOSE",
           "language": "Go",
-          "role": "Packet acquisition authority",
+          "role": "Canonical packet acquisition and event-frame production authority",
           "scope": [
             "packet capture",
             "flow collection",
-            "IPC reader",
+            "length-prefixed named-pipe writer",
             "canonical event production"
           ],
           "does_not_own": [
@@ -32,7 +32,7 @@
           "files": [
             "nose/*.go"
           ],
-          "boundary": "C ABI â†’ Zig",
+          "boundary": "Length-prefixed Windows named pipe -> Zig Nose reader",
           "note": "`go/aggregator/` is NOT part of the acquisition authority. It is an optional operator alert sidecar (SUPPORT) that reads NDJSON logs and serves REST :9200. It produces no Canonical Event."
         },
         {
@@ -102,7 +102,7 @@
             "src/xdr/*.zig",
             "src/windows/*.zig"
           ],
-          "note": "Zig is the runtime spine - the hub. All languages connect through C ABI or FFI. Selected XDR code authority: src/xdr/xdr_incident_fabric.zig; advisory-only, lab/test-only, and not production-wired. xdr_engine, xdr_harden, xdr_correlator, and xdr_incident_graph remain non-authoritative test/support candidates."
+          "note": "Zig is the runtime spine. Transports are contract-specific: Go Nose uses a length-prefixed named pipe; C/C++ use C ABI; Rust uses PEP ABI; Python uses the Analytics Contract; TypeScript uses the Control Protocol. Selected XDR code authority: src/xdr/xdr_incident_fabric.zig; advisory-only, lab/test-only, and not production-wired. xdr_engine, xdr_harden, xdr_correlator, and xdr_incident_graph remain non-authoritative test/support candidates."
         }
       ]
     },
@@ -114,12 +114,12 @@
         "Python",
         "Cython"
       ],
-      "boundary": "Analytics Contract â†’ Zig Runtime Spine",
+      "boundary": "Optional Python UDP inspection offer and opt-in advisory sensor-pipe event return; no direct policy feedback",
       "components": [
         {
           "id": "PYTHON_BRAIN",
           "language": "Python",
-          "role": "Analytics authority",
+          "role": "Optional advisory analytics authority; not a policy or enforcement authority",
           "scope": [
             "threat analysis",
             "regex scanning",
@@ -130,13 +130,14 @@
           "does_not_own": [
             "privileged OS calls",
             "enforcement",
+            "policy decisions",
             "runtime orchestration"
           ],
           "files": [
             "brain/windows_brain.py",
             "brain/**/*.py"
           ],
-          "boundary": "Analytics Contract â†’ Zig"
+          "boundary": "Optional UDP inspection offer and opt-in named-pipe advisory event return; no direct policy feedback"
         },
         {
           "id": "CYTHON_BRIDGE",
@@ -164,7 +165,7 @@
     {
       "id": "PLANE-D",
       "name": "Security",
-      "description": "Rust PEP, crypto, WFP enforcement",
+      "description": "Rust PEP and crypto authority; production host-effect activation is out of scope",
       "languages": [
         "Rust"
       ],
@@ -173,12 +174,12 @@
         {
           "id": "RUST_PEP",
           "language": "Rust",
-          "role": "Security enforcement authority",
+          "role": "Sole retained PEP authority for privileged host effects; production activation is out of scope",
           "scope": [
             "policy signature verification",
             "Ed25519 crypto",
             "TLS",
-            "WFP enforcement",
+            "privileged WFP host-effect enforcement boundary (production disabled; telemetry is observe-only in PLANE-A)",
             "authorization decisions",
             "trust store management"
           ],
@@ -193,7 +194,7 @@
           ],
           "boundary": "PEP ABI â†’ Zig",
           "is_final_enforcement": true,
-          "note": "There is exactly ONE security truth: the Rust PEP (rust-src/). No other component may claim final enforcement authority. The former duplicate PEP + WFP surface in `shield/` is fully REMOVED (PEP-001, 2026-10-17): `pep.rs` is gone (advisory screening lives in `shield/src/screen.rs`), `windows_enforce.rs` is deleted, and the PEP exports are gone (P0-7 CLOSED)."
+          "note": "There is exactly ONE privileged host-effect authority: the Rust PEP (rust-src/). Production mode is detection-only and host-effect activation is out of scope; the prevention gate defaults closed. No other component may claim final enforcement authority. The former duplicate PEP + WFP surface in `shield/` is fully REMOVED (PEP-001, 2026-10-17)."
         },
         {
           "id": "SHIELD_TIER3",
@@ -277,12 +278,12 @@
     }
   ],
   "hub_and_spoke": {
-    "hub": "Zig Runtime Spine",
-    "spokes": [
-      {
-        "language": "Go",
-        "boundary": "C ABI",
-        "direction": "inbound"
+      "hub": "Zig Runtime Spine",
+      "spokes": [
+        {
+          "language": "Go",
+          "boundary": "Length-prefixed named pipe",
+          "direction": "inbound"
       },
       {
         "language": "C/C++",
@@ -317,16 +318,16 @@
       "id": "SECURITY_TRUTH",
       "name": "Rust PEP",
       "language": "Rust",
-      "authority": "Final security truth and enforcement authority",
+      "authority": "Final security authority for privileged host effects; production activation is out of scope",
       "scope": [
-        "security enforcement",
+        "privileged host-effect authorization (production activation disabled)",
         "PEP validation",
         "crypto verification"
       ],
       "files": [
         "rust-src/lib.rs"
       ],
-      "note": "There is exactly ONE security truth: the Rust PEP. No other component may claim final enforcement authority."
+      "note": "There is exactly ONE retained PEP authority: Rust PEP. Production is detection-only; PEP/provider presence or a PEP receipt does not establish production host-effect capability."
     },
     {
       "id": "RUNTIME_TRUTH",
@@ -344,7 +345,7 @@
         "src/main.zig",
         "src/contract/*.zig"
       ],
-      "note": "Zig is the runtime spine - the hub. All languages connect through C ABI or FFI."
+      "note": "Zig is the runtime spine. Transport is contract-specific: Go named pipe, C/C++ C ABI, Rust PEP ABI, Python Analytics Contract, and TypeScript Control Protocol."
     },
     {
       "id": "ACQUISITION_TRUTH",
@@ -354,12 +355,13 @@
       "scope": [
         "packet capture",
         "flow collection",
-        "IPC reader"
+        "CanonicalEvent frame production",
+        "named-pipe transport writer"
       ],
       "files": [
         "nose/*.go"
       ],
-      "note": "Go is the acquisition authority - sensors and I/O."
+      "note": "Go Nose is the canonical packet acquisition authority; the production Zig runtime reads its length-prefixed named-pipe frames."
     },
     {
       "id": "ANALYTICS_TRUTH",
@@ -420,9 +422,9 @@
     }
   ],
   "invariants": [
-    "Exactly one production enforcement authority (Rust PEP)",
+    "Rust PEP is the sole retained enforcement authority; production host-effect activation is out of scope and production mode remains detection-only",
     "shield/ exports a payload-screening symbol only; its former PEP and WFP enforcement modules are REMOVED (PEP-001) and must not reappear",
-    "Every privileged action passes through Rust PEP",
+    "Any privileged host effect must pass through Rust PEP; production host-effect activation is out of scope",
     "No UI may become an authoritative state owner",
     "No second runtime may exist",
     "No second Canonical Event may exist",
@@ -431,7 +433,8 @@
     "`shield/` is a payload-screening SUPPORT crate only; its former enforcement modules are removed from the tree (PEP-001)",
     "`go/aggregator/` is an optional operator sidecar and produces no Canonical Event",
     "One canonical operator client: tools/aegisctl.py",
-    "Zig is the runtime hub - all languages connect through C ABI or FFI",
+    "Production host-effect activation is out of scope; the default build prevention gate is closed",
+    "Zig is the runtime hub - transports follow their contracts: Go named pipe, C/C++ C ABI, Rust PEP ABI, Python Analytics Contract, TypeScript Control Protocol",
     "Cython is a performance bridge, NOT the system integration bus",
     "Selected XDR correlation authority is src/xdr/xdr_incident_fabric.zig; it emits advisory evidence only, has no policy/PEP action surface, and is not production-wired until a source-to-forensic-receipt flow is proven."
   ],
@@ -453,7 +456,8 @@
     "forensic inconsistency",
     "production mock",
     "build/runtime mismatch",
-    "stale evidence"
+    "stale evidence",
+    "contradictory source-of-truth documents"
   ],
   "non_authoritative_candidates": [
     {

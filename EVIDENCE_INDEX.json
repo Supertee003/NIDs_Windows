@@ -1,7 +1,7 @@
 {
  "head_sha": "88466a6ec6f10c62b97cb0a171c4a90cb4f81645",
  "created_at": "2026-09-24",
- "last_updated_at": "2026-10-31",
+ "last_updated_at": "2026-11-01",
  "generator_version": "3.0",
  "evidence_levels": {
   "E0": "No evidence",
@@ -3282,9 +3282,51 @@
     "python tools/truth.py verify: TRUTH_VALID; every required map carries the ADR-0008 build source commit"
    ],
    "result": "PASS_WITH_OPEN_BLOCKERS",
-   "finding": "The selected XDR code is now advisory-only and is not represented as a production runtime route. No XDR-to-CanonicalEvent, immutable IDS Evidence Receipt, replay, or Windows-host path was wired or proven; this record is E2 only and does not close IDS-XDR-005, MAP-006, or kernel/Windows qualification.",
-   "evidence_artifact": "admin-evidence/ids-xdr-005-20261031/closeout.md"
-  }
+    "finding": "At this evidence point, the selected XDR code was advisory-only and not represented as a production route. The subsequent MAP-006 source/map reconciliation is recorded separately; XDR-to-CanonicalEvent/receipt/replay integration and kernel/Windows qualification remain open.",
+    "evidence_artifact": "admin-evidence/ids-xdr-005-20261031/closeout.md",
+    "historical_disposition": "HISTORICAL_SNAPSHOT: predates the MAP-006 source/map reconciliation recorded in admin-evidence/map006-runtime-truth-20261031/closeout.md; its open XDR integration and E5 statements remain current."
+   },
+   {
+    "id": "MAP-006-E2-20261031",
+    "head_sha": "88466a6ec6f10c62b97cb0a171c4a90cb4f81645",
+    "timestamp": "2026-10-31",
+    "title": "MAP-006 source-map reconciliation matches current production wiring",
+    "severity": "P1",
+    "level": "E2",
+    "component": "runtime_manifest/flow_map/authority_map/system_map/contract_map",
+    "flow_id": "DATA-001",
+    "description": "Reconciled source-backed transport, optional advisory, fail-closed WFP, XDR lab-only, forensic receipt/replay, and evidence-limit claims. No runtime source or wire contract changed.",
+    "files_changed": [
+     "tools/create_manifest.py",
+     "runtime_manifest.json",
+     "FLOW_MAP.json",
+     "SYSTEM_MAP.json",
+     "AUTHORITY_MAP.json",
+     "CONTRACT_MAP.json",
+     "AI_CONTEXT.md",
+     "EVIDENCE_INDEX.json",
+     "docs/ai-context/10-current-phase.md",
+     "tests/security/test_map006_runtime_truth.py",
+     "tests/wfp/test_t11_wfp_enforcement.py",
+     "tests/forensics/test_t12_forensics_replay.py",
+     "tests/e2e/test_t14_windows_golden_path.py",
+     "admin-evidence/map006-runtime-truth-20261031/closeout.md",
+     "PHASE_0_TRUTH_REBUILD_REPORT.json",
+     "inventory.json",
+     "reference_map.json"
+    ],
+    "tests": [
+     "python -m pytest -q tests/security/test_map006_runtime_truth.py tests/wfp/test_t11_wfp_enforcement.py tests/forensics/test_t12_forensics_replay.py tests/e2e/test_t14_windows_golden_path.py: 38 passed",
+     "zig build: PASS on Windows desktop",
+     "zig build test: PASS, exit code 0",
+     "python tools/rebuild_truth.py: valid=true, unresolved=[]",
+     "python tools/truth.py verify: TRUTH_VALID after final post-patch rebuild",
+     "python -m pytest -q tests/release/test_evidence_index_valid.py plus MAP-006/WFP/T12/T14 focused suites: 41 passed"
+    ],
+    "result": "PASS_WITH_OPEN_KERNEL_E5_AND_XDR_INTEGRATION",
+    "finding": "MAP-006 source/map reconciliation is verified at E2. This does not prove a kernel-resident detector, supervised Windows E5, release readiness, or the separate XDR-to-forensic-receipt/replay flow; production host-effect activation remains out of scope.",
+    "evidence_artifact": "admin-evidence/map006-runtime-truth-20261031/closeout.md"
+   }
  ],
  "known_gaps": [
   {
@@ -3307,8 +3349,8 @@
   {
    "id": "GAP-002",
    "severity": "P1",
-   "title": "WFP enforcement not host-verified",
-   "description": "WFP code exists but no Windows host test proves actual network filtering behavior.",
+   "title": "[HISTORICAL] WFP enforcement not host-verified (2026-09-10 record)",
+   "description": "HISTORICAL GAP SNAPSHOT: WFP code existed but the recorded snapshot lacked Windows host proof; its later closure describes a prior bridge test, not current production capability or current-head E5/kernel qualification.",
    "status": "CLOSED",
    "closed_at": "2026-09-10",
    "closed_by": "EVT-026",
@@ -3316,17 +3358,19 @@
     "PEP authorization â†’ filter operation â†’ observed network effect â†’ rollback"
    ],
    "resolution": "WFP enforcement verified on Windows host via bridge test. Block/unblock IP via Windows Firewall succeeds. 36/36 bridge tests pass.",
-   "evidence": "EVT-026: Bridge test 36/36 pass. Test 9: IPS Block/Unblock verified on Windows host. Block IP 192.168.1.1 via Windows Firewall succeeds. Unblock IP 192.168.1.1 succeeds."
+   "evidence": "EVT-026: Bridge test 36/36 pass. Test 9: IPS Block/Unblock verified on Windows host. Block IP 192.168.1.1 via Windows Firewall succeeds. Unblock IP 192.168.1.1 succeeds.",
+   "historical_disposition": "HISTORICAL_ONLY: ADR-0009 production scope is detection-only; production host-effect activation is out of scope and current Windows E5/kernel qualification is NOT_PROVEN."
   },
   {
    "id": "GAP-005",
    "severity": "P1",
-   "title": "WFP driver BlockFlow not implemented",
+   "title": "[HISTORICAL] WFP driver BlockFlow not implemented (2026-09-10 record)",
    "description": "The WFP callout driver (aegis_wfp.c) BlockFlow IOCTL handler logs the request but never calls FwpmFilterAdd0(). Returns STATUS_SUCCESS without actually blocking.",
    "status": "CLOSED",
    "closed_at": "2026-09-10",
    "resolution": "WFP BlockFlow implemented with FwpmEngineOpen0, FwpmFilterAdd0, and FwpmEngineClose0. UnblockFlow implemented with FwpmFilterDeleteById0. GetStats implemented with FwpmFilterCreateEnumHandle0 and FwpmFilterEnum0.",
-   "evidence": "aegis_wfp.c: BlockFlow, UnblockFlow, GetStats all implemented with proper WFP API calls."
+   "evidence": "aegis_wfp.c: BlockFlow, UnblockFlow, GetStats all implemented with proper WFP API calls.",
+   "historical_disposition": "HISTORICAL_IMPLEMENTATION_NOTE: this prior driver implementation record does not mean a production WFP enforcement route is active or authorized; current production mode remains detection-only."
   },
   {
    "id": "GAP-006",
@@ -3489,7 +3533,7 @@
   {
    "id": "GAP-009",
    "severity": "P1",
-   "title": "npcap/etw/fim runtime state is not instrumented",
+   "title": "[HISTORICAL] npcap/etw/fim runtime-state snapshot (2026-10-09)",
    "description": "health checks for npcap, etw and fim report capability-only because the runtime does not publish their live state. On the Windows host, ETW start fails, FIM fails for System32 and SysWOW64, and Npcap fails to open an adapter, while the runtime keeps running.",
    "status": "CLOSED",
    "required_evidence": [
@@ -3500,7 +3544,8 @@
    "resolution": "CLOSED 2026-10-09 (EVT-118): all workers flags live and true in deployed-service health (etw/fim/registry/nose/pipeline/sensor_ready, zero failures); Npcap proven live earlier (43,835 packets/15s, EVT-089/CAP-E2E-177); ETW proven live now (source=10 records flowing in the forensic ring, ring growing ~1000 records between consecutive queries); FIM System32/SysWOW64 watches plus registry events observed live in the daemon log. The elevation-era symptoms that defined this gap are gone on the current deployment.",
    "closed_by": "EVT-081+EVT-089+EVT-118",
    "closed_at": "2026-10-09",
-   "evidence": "EVT-034 records checks[] detail capability-only. EVT-081 bounds the elevation remainder. EVT-091 (ETW-GUID-180) statically closes the ETW leg — GUIDs and classifier gates pinned to host ground truth, silent-loss issue filed as GAP-012 — live ETW records still blocked on redeploy."
+   "evidence": "EVT-034 records checks[] detail capability-only. EVT-081 bounds the elevation remainder. EVT-091 (ETW-GUID-180) statically closes the ETW leg — GUIDs and classifier gates pinned to host ground truth, silent-loss issue filed as GAP-012 — live ETW records still blocked on redeploy.",
+   "historical_disposition": "HISTORICAL_ONLY: the 2026-10-09 deployment snapshot does not establish current-head host behavior; current Windows E5 and kernel-driver production qualification remain open."
   },
   {
    "id": "GAP-010",
@@ -8826,7 +8871,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 27,
-  "E2_count": 51,
+  "E2_count": 147,
   "E3_count": 16,
   "E4_count": 15,
   "E5_count": 126,

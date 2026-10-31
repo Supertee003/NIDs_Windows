@@ -1,8 +1,8 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-31T06:57:38.222152+00:00",
+  "generated_at": "2026-10-31T17:30:14.419015+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1749,
+  "total_files": 1750,
   "by_role": {
     "documentation": 565,
     "build-config": 212,
@@ -10,7 +10,7 @@
     "source": 365,
     "lockfile": 6,
     "rust-build": 4,
-    "test-artifact": 209,
+    "test-artifact": 210,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -6684,6 +6684,10 @@
       "role": "test-artifact"
     },
     "tests/security/test_loopback_only.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_map006_runtime_truth.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

@@ -10,8 +10,8 @@
       "file": "shared/event/canonical_event.md",
       "implementation": "src/contract/canonical_event.zig",
       "c_header": "shared/schema/canonical_event_v1.h",
-      "producer": "All sensors (Go, C++, Zig, Python)",
-      "consumer": "All subsystems (Zig Runtime, Detection, Policy, Forensic)",
+      "producer": "Go Nose emits CanonicalEvent wire frames; Zig validates and admits them. C/C++ adapters use separate declared C ABI contracts. Python Brain returns a separate JSON advisory sensor event, not this wire schema.",
+      "consumer": "Zig CanonicalEvent validation, EventQueue, and IDS processing pipeline",
       "schema": "109-byte extern struct (little-endian, fixed-width)",
       "version": "1.0",
       "magic": "0x41454731",
@@ -24,6 +24,10 @@
       ],
       "cross_language": true,
       "frozen": true,
+      "transport_notes": {
+        "Go Nose -> Zig runtime": "Length-prefixed binary CanonicalEvent frames over the Windows named pipe \\\\.\\pipe\\aegis_nose; non-Windows development uses a loopback TCP fallback. This is not a C ABI call.",
+        "C/C++ native adapters": "Use the separately declared C ABI adapter contracts."
+      },
       "fields": {
         "header": "magic(4) + version(2) + struct_size(2) + event_id(8) = 16 bytes",
         "timestamps": "timestamp_ms(8) + monotonic_ns(8) = 16 bytes",
@@ -76,6 +80,7 @@
       "invariants": [
         "Rust PEP is the ONLY final enforcement authority",
         "No component may bypass PEP for privileged actions",
+        "The ABI defines authority and transport contracts; it does not activate production host effects. Production mode is detection-only and the default prevention gate is closed.",
         "PEP responses are signed (Ed25519) for audit trail",
         "PepRequest.direction uses historical padding at offset 37; size stays 64, ctx stays at 40, and direction values other than 0/1 fail closed",
         "Postcondition queries are layer-scoped: outbound (0) and inbound (1) never share an attestation, and unblock proves absence on both layers"
@@ -99,7 +104,7 @@
         "production": "12 modules (core runtime)",
         "acquisition": "4 modules (sensors)",
         "intelligence": "4 modules (Python Brain, RAG)",
-        "security": "4 modules (Rust PEP, WFP)",
+        "security": "Rust PEP authority + fail-closed WFP boundary; production host-effect activation is out of scope",
         "control": "4 modules (TypeScript, CLI)",
         "tooling": "4 modules (benchmarks, tests)",
         "proof": "4 modules (verification)"
@@ -115,18 +120,24 @@
         "forensics"
       ],
       "golden_path": [
-        "source",
-        "fabric",
-        "dispatcher",
+        "Go Nose named-pipe ingress",
+        "CanonicalEvent validation and EventQueue",
         "flow",
         "detection",
-        "verdict",
-        "correlation",
-        "threat_intel",
-        "brain",
-        "policy",
-        "pep",
-        "forensics"
+        "correlation (network detections; host telemetry evidence-only)",
+        "policy observation (matched network detections only)",
+        "PEP authorization guard (production host effects disabled/out of scope)",
+        "receipt-aware action dispatch (no production host effect)",
+        "decision trace and audit",
+        "forensic record",
+        "IDS Evidence Receipt (record-only, after hash read-back)",
+        "optional advisory projections"
+      ],
+      "verification_path": [
+        "forensic integrity verify",
+        "replay",
+        "compare",
+        "evidence result"
       ]
     },
     {

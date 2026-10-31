@@ -1,16 +1,17 @@
-"""T11: Real Windows WFP enforcement separated + Rust PEP only path proof (Step 33).
+"""T11: Fail-closed WFP boundary and retained Rust PEP authority (Step 33).
 
 The T11 acceptance criteria are:
-  AC1. Real WFP enforcement is separated from the Rust PEP path.
-  AC2. The Rust PEP path is the only path to enforcement.
-  AC3. No other path bypasses the Rust PEP path.
+  AC1. Rust PEP remains the sole authority for privileged host effects.
+  AC2. Production host-effect activation remains out of scope; the WFP
+       production boundary fails closed and is not a golden-path route.
+  AC3. No other path bypasses the Rust PEP authority.
 
-The architecture: `core/wfp_production.zig` is the REAL WFP enforcement
-module. `core/rust_pep.zig` is the Rust PEP path. The Rust PEP path
-is the only path to enforcement; no other path bypasses it.
+The source path is `src/policy/wfp_production.zig`, which returns
+`unavailable`; `rust-src/lib.rs` remains the sole PEP authority. Static
+driver-contract tests below do not qualify production host effects or
+Windows E5 readiness.
 
-This file proves the invariants by scanning the repo for WFP enforcement
-modules and asserting the architectural constraints.
+This file pins fail-closed boundaries and rejects duplicate WFP paths.
 """
 from __future__ import annotations
 
@@ -22,8 +23,8 @@ DRIVER_HEADER = REPO_ROOT / "drivers" / "wfp_callout" / "aegis_wfp.h"
 DRIVER_SOURCE = REPO_ROOT / "drivers" / "wfp_callout" / "aegis_wfp.c"
 DRIVER_CALLOUT = REPO_ROOT / "drivers" / "wfp_callout" / "aegis_wfp_callout.c"
 
-# The single authoritative Windows WFP enforcement module.
-WFP_ENFORCEMENT_MODULE = "src/policy/wfp_production.zig"
+# The non-enforcing, fail-closed WFP boundary.
+WFP_BOUNDARY_MODULE = "src/policy/wfp_production.zig"
 
 # The Rust PEP path.
 RUST_PEP_MODULE = "rust-src/lib.rs"
@@ -51,12 +52,15 @@ FORBIDDEN_ENFORCEMENT_PATTERNS = [
 WFP_PRIVILEGED_CALL = re.compile(r'\bwfp_ioctl\.(?:block_ip|unblock_ip)\s*\(')
 
 
-def test_single_authoritative_wfp_enforcement_module_exists() -> None:
-    """AC1: The single authoritative Windows WFP enforcement module exists."""
-    p = REPO_ROOT / WFP_ENFORCEMENT_MODULE
+def test_wfp_boundary_is_fail_closed_not_a_production_route() -> None:
+    """AC2: The present Zig WFP boundary fails closed without PEP/provider wiring."""
+    p = REPO_ROOT / WFP_BOUNDARY_MODULE
     assert p.is_file(), (
-        f"authoritative WFP enforcement module missing: {WFP_ENFORCEMENT_MODULE}"
+        f"WFP boundary missing: {WFP_BOUNDARY_MODULE}"
     )
+    source = p.read_text(encoding="utf-8")
+    assert "return .unavailable;" in source
+    assert "does not" in source and "mutate filters directly" in source
 
 
 def test_rust_pep_path_exists() -> None:
@@ -104,8 +108,8 @@ def test_no_duplicate_wfp_enforcement_path() -> None:
 
 
 def test_rust_pep_is_only_path_to_enforcement() -> None:
-    """AC2: The Rust PEP path is the only path to enforcement."""
-    # The Rust PEP is the only authority. Zig must not expose the transport.
+    """AC1: Any privileged host effect must pass through Rust PEP; production activation is disabled."""
+    # Rust PEP is the sole authority. Zig must not expose the transport.
     assert (REPO_ROOT / RUST_PEP_MODULE).is_file()
     violations: list[str] = []
     for path in (REPO_ROOT / "src").rglob("*.zig"):
@@ -134,40 +138,29 @@ def test_no_other_path_bypasses_rust_pep_path() -> None:
     )
 
 
-def test_manifest_documents_wfp_enforcement_module() -> None:
-    """AC1 (manifest): The runtime_manifest.json must document the
-    authoritative WFP enforcement module (wfp_production.zig) as REAL
-    and on the golden path."""
+def test_manifest_marks_wfp_boundary_outside_the_production_golden_path() -> None:
+    """AC2 (manifest): Document the real fail-closed boundary, not a production enforcement route."""
     import json
     manifest = json.loads((REPO_ROOT / "runtime_manifest.json").read_text(encoding="utf-8"))
-    mod = manifest["modules"].get(WFP_ENFORCEMENT_MODULE)
+    mod = manifest["modules"].get(WFP_BOUNDARY_MODULE)
     assert mod is not None, (
-        f"{WFP_ENFORCEMENT_MODULE} must be in runtime_manifest.json (T11 authoritative enforcement module)"
+        f"{WFP_BOUNDARY_MODULE} must be in runtime_manifest.json"
     )
     assert mod.get("status") == "REAL", (
-        f"{WFP_ENFORCEMENT_MODULE} must be REAL (T11 authoritative enforcement module); got {mod}"
+        f"{WFP_BOUNDARY_MODULE} source must be classified REAL; got {mod}"
     )
-    assert mod.get("golden_path") is True, (
-        f"{WFP_ENFORCEMENT_MODULE} must be on the golden path"
-    )
+    assert mod.get("golden_path") is False
+    assert "fail-closed" in mod.get("role", "").lower()
 
 
-def test_authority_invariants_declare_wfp_enforcement_module() -> None:
-    """AC1: The authority_invariants section of the manifest must
-    document the single WFP enforcement module."""
+def test_authority_invariants_keep_production_detection_only() -> None:
+    """AC1/AC2: The manifest must separate PEP authority from production capability."""
     import json
     manifest = json.loads((REPO_ROOT / "runtime_manifest.json").read_text(encoding="utf-8"))
-    invariants = manifest.get("authority_invariants", [])
-    # At least one invariant must mention "WFP enforcement" or
-    # "WFP enforcement module" with a single-source statement.
-    matching = [
-        line for line in invariants
-        if ("WFP enforcement" in line or "WFP enforcement module" in line)
-        and ("single" in line or "one" in line or "authoritative" in line)
-    ]
-    assert matching, (
-        f"authority_invariants must declare a single WFP enforcement module (T11 AC1); got: {invariants}"
-    )
+    invariants = "\n".join(manifest.get("authority_invariants", [])).lower()
+    assert "rust pep remains the sole authority" in invariants
+    assert "production is detection-only" in invariants
+    assert "wfp_production.zig is a fail-closed boundary" in invariants
 
 
 def test_driver_unblock_contract_matches_user_adapter() -> None:

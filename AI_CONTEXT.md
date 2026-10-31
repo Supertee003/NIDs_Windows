@@ -8,9 +8,16 @@
 
 **BRANCH:** `codex/o2-etw-context`
 
-**GENERATED:** 2026-10-31T13:54:48+07:00
+**GENERATED:** 2026-11-01T00:27:30+07:00
 
 **GENERATOR:** Manus + `tools/rebuild_truth.py` (ADR-0008 source-commit stamp)
+
+## Current Operational Truth — 2026-10-31
+
+- Production mode is detection-only. Rust PEP remains the sole privileged authority, but production host-effect activation is out of scope; `src/policy/wfp_production.zig` fails closed and is not a production WFP enforcement route.
+- Go Nose sends length-prefixed CanonicalEvent frames over `\\.\pipe\aegis_nose` to the Zig reader; C/C++ adapters use separate C ABI contracts.
+- Python Brain inspection is optional. UDP offers are fire-and-forget; opt-in findings return only as advisory sensor events. The Phase-B BrainAdvisor dispatcher is test-harness-only, and XDR remains lab/test-only and not daemon-wired.
+- Current evidence does not establish Windows E5/kernel qualification or release readiness. Treat older deployment/evidence narratives below as historical unless their source commit and current-head proof are explicitly verified.
 
 **ARCHITECTURE:** Hub-and-Spoke with Plane Separation
 
@@ -32,7 +39,7 @@
 
 
 
-AEGIS is a **Security Operations Machine** — a Windows-native Network Intrusion Detection System with seven-language architecture. It is NOT a single-file project. It is a runtime with capture, detection, policy, enforcement, forensics, and control planes.
+AEGIS is a **Security Operations Machine** — a Windows-native Network Intrusion Detection System with seven-language architecture. It is NOT a single-file project. It is a runtime with capture, detection, policy observation, forensics, and control planes; production host-effect activation is out of scope.
 
 
 
@@ -44,7 +51,7 @@ AEGIS is a **Security Operations Machine** — a Windows-native Network Intrusio
 
 - **Python/Cython** = Intelligence (Brain, RAG, analytics)
 
-- **Rust** = Security (PEP, crypto, WFP enforcement)
+- **Rust** = Security (sole PEP/crypto authority; production host-effect activation out of scope)
 
 - **TypeScript** = Control (policy authoring, CLI, UI)
 
@@ -145,11 +152,11 @@ AEGIS is a **Security Operations Machine** — a Windows-native Network Intrusio
 
                               ▼
 
-                    Windows Enforcement
+                    Host Effects: OUT OF SCOPE
 
                               │
 
-                             WFP
+                    WFP boundary: fail-closed
 
                               │
 
@@ -175,13 +182,13 @@ AEGIS is a **Security Operations Machine** — a Windows-native Network Intrusio
 
 |---|---|---|---|
 
-| A: Acquisition | Go, C/C++ | Sensors, Windows adapters | C ABI → Zig |
+| A: Acquisition | Go, C/C++ | Sensors, Windows adapters | Go Nose named pipe; C/C++ C ABI → Zig |
 
 | B: Runtime | Zig | Spine, Event Fabric, Flow, Detection, Correlation | Hub |
 
-| C: Intelligence | Python, Cython | Brain, RAG, Analytics | Analytics Contract → Zig |
+| C: Intelligence | Python, Cython | Brain, RAG, Analytics | Optional Python UDP offer + opt-in advisory event return; no direct policy feedback |
 
-| D: Security | Rust | PEP, Crypto, WFP enforcement | PEP ABI → Zig |
+| D: Security | Rust | PEP and crypto authority; production host effects disabled/out of scope | PEP ABI → Zig |
 
 | E: Control | TypeScript | Policy authoring, CLI, UI | Control Protocol → Zig |
 
@@ -249,7 +256,7 @@ cd ts_policy && npm run typecheck && npm run test:all   → (advisory only, no o
 
 | Python | Brain (Tier-2), analytics, RAG | Privileged OS calls, enforcement |
 
-| Rust | Crypto, trust, PEP, authorization, WFP/security enforcement | Detection logic |
+| Rust | Crypto, trust, sole PEP/authorization authority; production host-effect activation is out of scope | Detection logic |
 
 | TypeScript | Policy authoring, simulation, compiler | Enforcement, runtime |
 
@@ -287,13 +294,13 @@ cd ts_policy && npm run typecheck && npm run test:all   → (advisory only, no o
 
 |---|---|---|
 
-| Go → C ABI → Zig | Acquisition | ✅ Correct |
+| Go Nose → length-prefixed named pipe → Zig | Production acquisition | ✅ Correct |
 
 | C++ → C ABI → Zig | Native adapters | ✅ Correct |
 
 | Python ↔ Cython ↔ C/C++ | Performance bridge | ✅ Correct |
 
-| Zig ↔ Rust FFI | PEP enforcement | ✅ Correct |
+| Zig ↔ Rust PEP ABI | Sole privileged authority; production host-effect activation out of scope | ✅ Correct |
 
 | TypeScript → Control Protocol → Zig | Policy/UI | ✅ Correct |
 
@@ -330,8 +337,9 @@ cd ts_policy && npm run typecheck && npm run test:all   → (advisory only, no o
 Current source/build slice (2026-10-31; source commit `88466a6ec6f10c62b97cb0a171c4a90cb4f81645`):
 
 - IDS-XDR-005 makes `src/xdr/xdr_incident_fabric.zig` advisory-only and LAB/test-only; no XDR implementation is connected to the production daemon.
-- Focused checks pass: XDR 13/13, runtime-spine 27/27, T18 pytest 18 passed, `zig build` PASS. The last full Zig test graph had one performance-threshold failure and was not rerun after the final registry-only correction.
-- `MAP-006`, source-to-forensic-receipt integration, test-scope coverage gaps, and supervised Windows E5 evidence remain OPEN. Do not claim project completion or production kernel/XDR readiness from these E2 results.
+- MAP-006 source/map reconciliation now reflects Go's named-pipe ingress, optional Brain advisory events, the fail-closed WFP boundary, lab-only XDR, separate replay verification, and historical host/WFP evidence.
+- Verification: MAP-006/WFP/T12/T14 focused pytest 38 passed; `zig build` PASS; full `zig build test` PASS (exit 0); truth rebuild and verification PASS. This is source/build and E2 evidence only.
+- Supervised Windows E5/kernel qualification, release readiness, execution-graph coverage gaps, and the separate XDR-to-forensic-receipt/replay flow remain OPEN. Do not claim project completion or production kernel/XDR readiness from these results.
 
 
 Previous phases:
@@ -352,7 +360,7 @@ Previous phases:
   refs, golden 10/10, e2e 38/0, live CLI proof, rule fixtures 22/22.
   Evidence: EVIDENCE_INDEX.json VOL01–VOL11 entries (49 total).
 
-- Kernel-level NIDS detection loop (2026-10-18/19): IMPLEMENTED + LIVE — V6-QUEUE-DROP,
+- HISTORICAL deployment/evidence narrative (2026-10-18/19; not current-head kernel/E5 proof): the prior kernel-level NIDS detection-loop report listed V6-QUEUE-DROP,
   SLICE-C-LAB (+ artifact rehearsal), BRAIN-FASTPATH-FIX, POLICY-EVAL-FULL, STALE-DOC-SWEEP,
   DEADCODE-QUARANTINE, CI-GAPS, RELEASE-TOOLING, LEFTOVER-SWEEP, REL-CLOSURE; operator
   cutover 2026-10-19 20:07 deployed daemon `dcb22a5` (sha256 `f223dcce…`) — live gate

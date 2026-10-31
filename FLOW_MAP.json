@@ -6,11 +6,12 @@
   "flows": [
     {
       "id": "DATA-001",
-      "name": "Packet Capture â†’ Canonical Event â†’ Detection â†’ Policy â†’ Enforcement â†’ Audit â†’ Forensics",
+      "status": "PRODUCTION_DETECTION_ONLY",
+      "name": "Production IDS: Go Nose -> Canonical Event -> Detection -> Forensic Record -> IDS Evidence Receipt",
       "type": "data_plane",
-      "plane": "PLANE-A â†’ PLANE-B â†’ PLANE-D",
-      "description": "Primary network data path from packet capture to forensic recording",
-      "boundary": "C ABI (Go â†’ Zig) â†’ PEP ABI (Zig â†’ Rust)",
+      "plane": "PLANE-A -> PLANE-B -> PLANE-D (conditional PEP) -> PLANE-B evidence",
+      "description": "Canonical production network IDS path. Host telemetry is evidence-only; host-effect activation is out of scope. Direct Npcap full-payload capture and XDR are separate lab/test paths.",
+      "boundary": "Go Nose length-prefixed named pipe -> Zig; conditional Rust PEP ABI; no production host effect",
       "layers": [
         {
           "step": 1,
@@ -18,9 +19,10 @@
           "plane": "PLANE-A",
           "owner": "Go Nose",
           "component": "go_nose",
-          "input": "Raw network packets via Npcap",
+          "input": "Raw network packets from Go Nose capture (Npcap backend on Windows)",
           "output": "RawPacket",
-          "file": "nose/capture.go"
+          "file": "nose/capture.go",
+          "note": "Go Nose is the canonical production ingress. The separate direct-Npcap full-payload path is lab-only and must use a disjoint interface."
         },
         {
           "step": 2,
@@ -36,14 +38,15 @@
         },
         {
           "step": 3,
-          "name": "C ABI Transport",
-          "plane": "PLANE-A â†’ PLANE-B",
-          "owner": "Go â†’ Zig",
-          "component": "c_abi",
-          "input": "CanonicalEvent bytes (v1 109 / v2 133; ContextFlags TCP-flags lane)",
-          "output": "EventQueue",
+          "name": "Length-Prefixed Named-Pipe Transport",
+          "plane": "PLANE-A -> PLANE-B",
+          "owner": "Go Nose -> Zig",
+          "component": "go_nose",
+          "input": "CanonicalEvent frame (u32 LE length + 109-byte v1 or 133-byte v2 wire bytes)",
+          "output": "Validated CanonicalEvent admitted to EventQueue",
           "file": "nose/pipe_writer.go",
-          "boundary": "C ABI"
+          "consumer_file": "src/capture/nose_pipe_reader.zig",
+          "boundary": "Windows named pipe \\\\.\\pipe\\aegis_nose; loopback TCP is a non-Windows development fallback"
         },
         {
           "step": 4,
@@ -88,55 +91,103 @@
         },
         {
           "step": 8,
-          "name": "Policy Evaluation",
-          "plane": "PLANE-B â†’ PLANE-D",
-          "owner": "Zig â†’ Rust PEP",
-          "component": "rust_pep",
-          "input": "Incident + PolicyIR",
-          "output": "PEPDecision",
-          "file": "src/policy/pep_bindings.zig",
-          "contract": "CONTRACT-02",
-          "boundary": "PEP ABI"
+          "name": "Policy Observation",
+          "plane": "PLANE-B",
+          "owner": "Zig",
+          "component": "zig_core",
+          "input": "Matched network detection + policy rules",
+          "output": "Policy action (when a network rule matches)",
+          "file": "src/pipeline/event_processor.zig",
+          "note": "Host telemetry and protocol-anomaly-only events may be recorded but do not authorize policy evaluation or host effects."
         },
         {
           "step": 9,
-          "name": "Action Dispatch",
-          "plane": "PLANE-B",
-          "owner": "Zig",
-          "component": "zig_core",
-          "input": "PEPDecision",
-          "output": "ActionResult",
-          "file": "src/policy/action_dispatcher.zig"
+          "name": "Conditional Rust PEP Guard",
+          "plane": "PLANE-B -> PLANE-D",
+          "owner": "Zig -> Rust PEP",
+          "component": "rust_pep",
+          "input": "Matched policy action + event context",
+          "output": "PEP decision; host-mutating actions escalate while the lab gate is closed",
+          "file": "src/policy/pep_bindings.zig",
+          "contract": "CONTRACT-02",
+          "boundary": "PEP ABI",
+          "note": "The compile-time lab prevention gate defaults false. Production host-effect activation is out of scope."
         },
         {
           "step": 10,
-          "name": "Decision Trace",
+          "name": "Receipt-Aware Action Dispatch",
           "plane": "PLANE-B",
           "owner": "Zig",
           "component": "zig_core",
-          "input": "full pipeline context",
-          "output": "SecurityDecisionTrace (128 bytes)",
-          "file": "src/forensic/decision_trace.zig"
+          "input": "PEP decision + provider receipt",
+          "output": "ActionResult; no production host effect",
+          "file": "src/policy/action_dispatcher.zig",
+          "note": "Host effects remain out of scope in production; any lab effect requires a validated provider read-back receipt."
         },
         {
           "step": 11,
+          "name": "Decision Trace and Audit",
+          "plane": "PLANE-B",
+          "owner": "Zig",
+          "component": "zig_core",
+          "input": "Full pipeline context",
+          "output": "SecurityDecisionTrace + audit log entry",
+          "file": "src/pipeline/event_processor.zig",
+          "note": "The audit trace is written before forensic append."
+        },
+        {
+          "step": 12,
           "name": "Forensic Record",
           "plane": "PLANE-B",
           "owner": "Zig",
           "component": "zig_core",
-          "input": "QueuedEvent + DetectionResult + PEPDecision + DecisionTrace",
-          "output": "ForensicRecord (4KB slot with embedded hash chain; canonical direction when known)",
+          "input": "QueuedEvent + detection + policy/PEP decision + audit identity",
+          "output": "ForensicRecord in the hash-chained runtime ring",
           "file": "src/forensic/forensic_pipeline.zig"
         },
         {
-          "step": 12,
-          "name": "Audit",
+          "step": 13,
+          "name": "IDS Evidence Receipt",
           "plane": "PLANE-B",
           "owner": "Zig",
           "component": "zig_core",
-          "input": "full pipeline context",
-          "output": "AuditLog entry",
-          "file": "src/core/diagnostics.zig"
+          "input": "Detection identity + accepted forensic sequence + authenticated record hash read-back",
+          "output": "Recording-only IDS Evidence Receipt (no host-effect claim)",
+          "file": "src/pipeline/event_processor.zig",
+          "receipt_contract": "src/forensic/ids_evidence_receipt.zig"
+        },
+        {
+          "step": 14,
+          "name": "Optional SIEM Projection",
+          "plane": "PLANE-B",
+          "owner": "Zig",
+          "component": "zig_core",
+          "input": "Detection event",
+          "output": "Advisory SIEM record",
+          "file": "src/forensic/siem_forwarder.zig",
+          "note": "Observe-only; not an enforcement or policy authority."
+        },
+        {
+          "step": 15,
+          "name": "Optional Brain Inspection",
+          "plane": "PLANE-B -> PLANE-C",
+          "owner": "Zig -> Python Brain",
+          "component": "python_brain",
+          "input": "Detection event (only when AEGIS_BRAIN=1)",
+          "output": "Fire-and-forget UDP JSON inspection offer; no in-band decision response",
+          "file": "src/pipeline/event_processor.zig",
+          "note": "Optional and non-blocking. Any Python finding returns only as a separate opt-in BRAIN-002 advisory sensor event; it does not directly gate policy or host effects."
+        },
+        {
+          "step": 16,
+          "name": "NDJSON Evidence Projection",
+          "plane": "PLANE-B",
+          "owner": "Zig",
+          "component": "zig_core",
+          "input": "Detection + recording-only IDS receipt",
+          "output": "Evidence log record",
+          "file": "src/pipeline/event_processor.zig",
+          "note": "The forensic ring remains the detection record; this projection does not claim host effect."
         }
       ]
     },
@@ -165,7 +216,7 @@
           "owner": "CLI â†’ Zig",
           "input": "CommandRequest (JSON)",
           "output": "PipeMessage",
-          "file": "src/main.zig (named pipe server)",
+          "file": "src/platform/win32_pipe.zig",
           "boundary": "Control Protocol"
         },
         {
@@ -208,48 +259,120 @@
     },
     {
       "id": "BRAIN-001",
-      "name": "Event â†’ Brain Analysis â†’ Threat Score â†’ Zig",
-      "type": "intelligence_plane",
-      "plane": "PLANE-B â†’ PLANE-C â†’ PLANE-B",
-      "description": "Python Brain analytics path",
-      "boundary": "Analytics Contract",
+      "name": "Phase-B RAG + BrainAdvisor Policy Flow (test-harness only)",
+      "type": "lab_test_flow",
+      "plane": "PLANE-B reference/testing",
+      "status": "LAB_TEST_ONLY_NOT_RUNTIME_WIRED",
+      "description": "The Phase-B Universe-B dispatcher integrates RAG, the Zig BrainAdvisor, and policy test facades. The dispatcher is explicitly quarantined from the daemon; this is not the Python Brain runtime path or a production policy flow.",
+      "boundary": "In-process reference/test harness; forbidden from the production daemon",
       "layers": [
         {
           "step": 1,
-          "name": "Analysis Request",
+          "name": "Phase-B Dispatcher Harness",
           "plane": "PLANE-B",
-          "owner": "Zig",
-          "input": "CanonicalEvent",
-          "output": "AnalysisRequest",
-          "file": "src/detection/rag_engine.zig"
+          "owner": "Zig test harness",
+          "input": "CanonicalEvent in the Universe-B harness",
+          "output": "Reference multi-stage analysis context",
+          "file": "src/policy/dispatcher_phase_b.zig"
         },
         {
           "step": 2,
-          "name": "Python Brain",
+          "name": "RAG Context Enrichment",
           "plane": "PLANE-C",
-          "owner": "Python Brain",
-          "input": "AnalysisRequest",
-          "output": "ThreatScore",
-          "file": "brain/windows_brain.py"
+          "owner": "Zig reference module",
+          "input": "CanonicalEvent",
+          "output": "Advisory RagContext",
+          "file": "src/detection/rag_engine.zig"
         },
         {
           "step": 3,
-          "name": "Cython Hot Loop",
-          "plane": "PLANE-C",
-          "owner": "Cython",
-          "input": "FeatureVector",
-          "output": "ComputedFeatures",
-          "file": "brain/**/*.pyx",
-          "note": "Cython is a performance bridge, NOT the system integration bus"
+          "name": "Zig BrainAdvisor",
+          "plane": "PLANE-B",
+          "owner": "Zig reference module",
+          "input": "Detection, correlation, flow, threat-intel, and RAG context",
+          "output": "BrainAdvice (recommendation only)",
+          "file": "src/core/brain_engine.zig",
+          "note": "This is not brain/windows_brain.py and is not a production daemon integration."
         },
         {
           "step": 4,
-          "name": "Threat Score Response",
-          "plane": "PLANE-C â†’ PLANE-B",
-          "owner": "Python â†’ Zig",
-          "input": "ThreatScore",
-          "output": "UpdatedThreatLevel",
-          "file": "src/detection/rag_engine.zig"
+          "name": "Policy Reference Facade",
+          "plane": "PLANE-B",
+          "owner": "Integration test facades",
+          "input": "BrainAdvice + event context",
+          "output": "Reference policy decision",
+          "file": "src/policy/dispatcher_phase_b.zig"
+        },
+        {
+          "step": 5,
+          "name": "Production Wiring Status",
+          "plane": "PLANE-B",
+          "owner": "Runtime integration",
+          "input": "Daemon startup and production imports",
+          "output": "Not wired; dispatcher is test-harness-only",
+          "file": "src/daemon.zig",
+          "note": "Pinned by tests/security/test_forbidden_edges.py; do not promote this reference flow to production without a separate vertical slice."
+        }
+      ]
+    },
+    {
+      "id": "BRAIN-002",
+      "name": "Optional Python Brain Inspection -> Advisory Sensor Event",
+      "type": "advisory_sensor_flow",
+      "plane": "PLANE-B -> PLANE-C -> PLANE-A -> PLANE-B",
+      "status": "OPTIONAL_ADVISORY_NOT_A_DIRECT_POLICY_DECISION",
+      "description": "When AEGIS_BRAIN=1, Zig offers detected events to Python over UDP. When AEGIS_SENSOR_PIPE=1, Python may return a finding as a new advisory anomaly event through the admin-only sensor pipe. This is not a direct ThreatScore-to-policy command.",
+      "boundary": "UDP 127.0.0.1:9999 offer; opt-in admin-only named pipe \\\\.\\pipe\\aegis_sensor_pipe_t1 return",
+      "layers": [
+        {
+          "step": 1,
+          "name": "Optional Detection Offer",
+          "plane": "PLANE-B -> PLANE-C",
+          "owner": "Zig event processor",
+          "input": "Matched detection identity and event metadata",
+          "output": "JSON inspection offer (AEGIS_BRAIN=1 only)",
+          "file": "src/pipeline/event_processor.zig",
+          "bridge_file": "src/core/bridge_init.zig"
+        },
+        {
+          "step": 2,
+          "name": "Python Brain Inspection",
+          "plane": "PLANE-C",
+          "owner": "Python Brain",
+          "input": "UDP inspection offer",
+          "output": "Optional Tier-2 finding",
+          "file": "brain/windows_brain.py",
+          "note": "The offer is fire-and-forget; the live pipeline does not wait for a response."
+        },
+        {
+          "step": 3,
+          "name": "Opt-In Finding Return",
+          "plane": "PLANE-C -> PLANE-A",
+          "owner": "Python Brain",
+          "input": "Tier-2 finding with rule, severity, and network metadata",
+          "output": "JSON payload sent only when AEGIS_SENSOR_PIPE=1",
+          "file": "brain/windows_brain.py",
+          "note": "A failed or disabled sensor-pipe send is not a detection or enforcement claim."
+        },
+        {
+          "step": 4,
+          "name": "Brain Provenance Event Admission",
+          "plane": "PLANE-A -> PLANE-B",
+          "owner": "Zig sensor-pipe adapter",
+          "input": "JSON finding from the named pipe",
+          "output": "IpcEvent(source=detection_brain, kind=anomaly_detected) in daemon event queue",
+          "file": "src/core/nids_capture.zig",
+          "note": "The adapter assigns brain provenance and submits an event; it does not issue a policy action."
+        },
+        {
+          "step": 5,
+          "name": "Standard IDS Event Processing",
+          "plane": "PLANE-B",
+          "owner": "Zig event processor",
+          "input": "Queued advisory Brain event",
+          "output": "Standard detection/recording path; any policy decision remains subject to the production PEP guard",
+          "file": "src/pipeline/event_processor.zig",
+          "note": "No direct score feedback, policy bypass, or host-effect claim is made by the Brain event itself."
         }
       ]
     },
@@ -394,30 +517,31 @@
     },
     {
       "id": "FFI-003",
-      "name": "Go â†” Zig Acquisition FFI",
-      "type": "ffi_boundary",
+      "name": "Go Nose â†” Zig Named-Pipe Acquisition Transport",
+      "type": "transport_boundary",
       "plane": "PLANE-A â†” PLANE-B",
-      "description": "Cross-language boundary between Go sensors and Zig runtime",
+      "description": "Production Go Nose CanonicalEvent framing over a Windows named pipe; the path is not a C ABI call",
       "contract": "CONTRACT-01",
-      "boundary": "C ABI",
+      "boundary": "Length-prefixed named pipe (u32 LE frame length + canonical wire bytes)",
       "layers": [
         {
           "step": 1,
-          "name": "Sensor Call",
+          "name": "Go Nose Frame Writer",
           "plane": "PLANE-A",
-          "owner": "Go",
-          "input": "CanonicalEvent",
-          "output": "FFI call to Zig",
-          "file": "nose/canonical.go"
+          "owner": "Go Nose",
+          "input": "CanonicalEvent (109-byte v1 or 133-byte v2)",
+          "output": "Length-prefixed binary frame",
+          "file": "nose/pipe_writer.go",
+          "boundary": "\\\\.\\pipe\\aegis_nose"
         },
         {
           "step": 2,
-          "name": "Event Ingestion",
+          "name": "Zig Frame Validation and Queue Admission",
           "plane": "PLANE-B",
-          "owner": "Zig",
-          "input": "CanonicalEvent (C ABI)",
-          "output": "EventQueue",
-          "file": "src/contract/event_fabric.zig"
+          "owner": "Zig Nose reader",
+          "input": "Length-prefixed binary frame",
+          "output": "Validated CanonicalEvent in EventQueue",
+          "file": "src/capture/nose_pipe_reader.zig"
         }
       ]
     },
@@ -466,8 +590,8 @@
           "owner": "Runtime integration",
           "input": "Not connected",
           "output": "No daemon route; no forensic append/replay edge",
-          "file": "src/main.zig / src/daemon.zig",
-          "note": "Requires a separate vertical slice and source-to-forensic-receipt proof."
+          "file": "src/daemon.zig",
+          "note": "main.zig delegates to the service entrypoint and daemon; daemon has no XDR import or runtime route. Requires a separate vertical slice and source-to-forensic-receipt proof."
         }
       ]
     }

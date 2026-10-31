@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-31T06:57:38.217241+00:00",
+  "generated_at": "2026-10-31T17:30:14.413118+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1749,
+  "total_files": 1750,
   "by_class": {
     "canonical-docs": 579,
     "canonical-build": 223,
     "unclassified": 19,
     "canonical-source": 652,
-    "canonical-test": 209,
+    "canonical-test": 210,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -474,7 +474,7 @@
       "path": "admin-evidence/ids-xdr-005-20261031/closeout.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 6399
+      "size": 6470
     },
     {
       "path": "admin-evidence/inspect_pep_exports.ps1",
@@ -1992,7 +1992,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 38549
+      "size": 40066
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -2616,7 +2616,7 @@
       "path": "AUTHORITY_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 16605
+      "size": 17959
     },
     {
       "path": "brain/__init__.py",
@@ -3186,7 +3186,7 @@
       "path": "CONTRACT_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 11126
+      "size": 12380
     },
     {
       "path": "contracts/fixtures/abi/event_boundaries.json",
@@ -3486,7 +3486,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4552
+      "size": 4882
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -4722,7 +4722,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 835651
+      "size": 838901
     },
     {
       "path": "fix_bridge_banner.py",
@@ -4746,7 +4746,7 @@
       "path": "FLOW_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 16234
+      "size": 23600
     },
     {
       "path": "go/aggregator/alert.go",
@@ -4854,7 +4854,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 282352
+      "size": 282680
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -5106,7 +5106,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9396
+      "size": 9642
     },
     {
       "path": "pytest.ini",
@@ -5124,7 +5124,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 231372
+      "size": 231630
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -6192,7 +6192,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 20468
+      "size": 22885
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",
@@ -8868,7 +8868,7 @@
       "path": "SYSTEM_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 16619
+      "size": 17801
     },
     {
       "path": "test_needs.py",
@@ -9186,7 +9186,7 @@
       "path": "tests/e2e/test_t14_windows_golden_path.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 11926
+      "size": 4837
     },
     {
       "path": "tests/federation/test_t13_federation_tls.py",
@@ -9216,7 +9216,7 @@
       "path": "tests/forensics/test_t12_forensics_replay.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 11486
+      "size": 3392
     },
     {
       "path": "tests/host_telemetry/test_t10_single_source.py",
@@ -9571,6 +9571,12 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 3117
+    },
+    {
+      "path": "tests/security/test_map006_runtime_truth.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 5720
     },
     {
       "path": "tests/security/test_nose_log_discipline.py",
@@ -9954,7 +9960,7 @@
       "path": "tests/wfp/test_t11_wfp_enforcement.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 22924
+      "size": 22725
     },
     {
       "path": "tests/wfp/test_t11_windows_host.py",
@@ -10080,7 +10086,7 @@
       "path": "tools/create_manifest.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 16698
+      "size": 19326
     },
     {
       "path": "tools/deploy_windows.py",

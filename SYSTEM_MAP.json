@@ -14,7 +14,7 @@
         "Go",
         "C/C++"
       ],
-      "boundary": "C ABI â†’ Zig Runtime Spine"
+      "boundary": "Go Nose length-prefixed named pipe; C/C++ native adapters use C ABI -> Zig Runtime Spine"
     },
     {
       "id": "PLANE-B",
@@ -33,12 +33,12 @@
         "Python",
         "Cython"
       ],
-      "boundary": "Analytics Contract â†’ Zig Runtime Spine"
+      "boundary": "Optional Python UDP inspection offer and opt-in advisory sensor event return; no direct policy feedback"
     },
     {
       "id": "PLANE-D",
       "name": "Security",
-      "description": "Rust PEP, crypto, WFP enforcement",
+      "description": "Rust PEP and crypto authority; production host-effect activation is out of scope",
       "languages": [
         "Rust"
       ],
@@ -61,7 +61,7 @@
       "language": "Zig",
       "tier": 1,
       "plane": "PLANE-B",
-      "role": "Runtime spine: event fabric, flow, detection, correlation, policy orchestration, forensics",
+      "role": "Production detection-only runtime spine: event fabric, flow, detection, correlation, policy observation, and forensics",
       "entrypoint": "src/main.zig",
       "build_command": "zig build",
       "artifact": "zig-out/bin/aegis_nids.exe",
@@ -111,7 +111,7 @@
         {
           "name": "capture/npcap_adapter",
           "file": "src/capture/npcap_adapter.zig",
-          "role": "Npcap FFI: pcap_create/activate/next_ex"
+          "role": "Direct Npcap adapter for the lab-only disjoint full-payload sensor path; not canonical production ingress"
         },
         {
           "name": "capture/packet_decoder",
@@ -176,7 +176,7 @@
         {
           "name": "policy/action_dispatcher",
           "file": "src/policy/action_dispatcher.zig",
-          "role": "Enforcement action execution"
+          "role": "Receipt-aware action dispatch; production host-effect activation is out of scope"
         },
         {
           "name": "forensic/forensic_pipeline",
@@ -291,7 +291,12 @@
         {
           "name": "xdr/xdr_engine",
           "file": "src/xdr/xdr_engine.zig",
-          "role": "Cross-layer detection and response"
+          "role": "Legacy/test-support XDR candidate; not selected and not production-wired"
+        },
+        {
+          "name": "xdr/xdr_incident_fabric",
+          "file": "src/xdr/xdr_incident_fabric.zig",
+          "role": "Selected advisory-only XDR fabric; lab/test-only and not production-wired"
         },
         {
           "name": "windows/etw_realtime",
@@ -325,7 +330,7 @@
       "language": "Rust",
       "tier": 3,
       "plane": "PLANE-D",
-      "role": "Policy Enforcement Point + Federation TLS",
+      "role": "Sole retained PEP security authority + Federation TLS; production host-effect activation is out of scope",
       "entrypoint": "rust-src/lib.rs",
       "build_command": "cargo build --release",
       "artifact": "target/release/aegis_pep.dll",
@@ -337,14 +342,15 @@
         "parking_lot"
       ],
       "boundary": "PEP ABI â†’ Zig",
-      "is_final_enforcement": true
+      "is_final_enforcement": true,
+      "note": "Rust PEP remains the single authority for privileged host effects, but this product's production mode is detection-only. The default build prevention gate is closed; PEP/provider presence does not establish production host-effect capability."
     },
     {
       "id": "go_nose",
       "language": "Go",
       "tier": 2,
       "plane": "PLANE-A",
-      "role": "Packet acquisition, flow collection, IPC reader",
+      "role": "Canonical packet acquisition, CanonicalEvent production, and named-pipe writer",
       "entrypoint": "nose/main.go",
       "build_command": "cd nose && go build -o aegis-nose.exe .",
       "artifact": "nose/aegis-nose.exe",
@@ -352,14 +358,14 @@
         "gopacket",
         "bubbletea"
       ],
-      "boundary": "C ABI â†’ Zig"
+      "boundary": "Length-prefixed Windows named pipe -> Zig Nose reader; non-Windows development fallback uses loopback TCP"
     },
     {
       "id": "cpp_native",
       "language": "C/C++",
       "tier": 2,
       "plane": "PLANE-A",
-      "role": "Windows native adapters: WFP, ETW, FIM",
+      "role": "Windows native adapters and telemetry: WFP boundary, ETW, FIM; no production WFP enforcement route",
       "entrypoint": "src/windows/aegis_wfp.c",
       "build_command": "cmake -B build && cmake --build build",
       "artifacts": [
@@ -389,10 +395,10 @@
       "language": "Python",
       "tier": 2,
       "plane": "PLANE-C",
-      "role": "Threat analysis, regex scanning, analytics",
+      "role": "Optional threat analysis and analytics; advisory findings only; no policy/enforcement authority",
       "entrypoint": "brain/windows_brain.py",
       "build_command": "(interpreted)",
-      "boundary": "Analytics Contract â†’ Zig"
+      "boundary": "Optional UDP inspection offer; opt-in admin-only named-pipe advisory event return; no direct policy command"
     },
     {
       "id": "ts_policy",
@@ -414,7 +420,7 @@
       "role": "Multi-node event aggregation",
       "entrypoint": "go/aggregator/main.go",
       "build_command": "cd go/aggregator && go build -o aegis-aggregator.exe .",
-      "boundary": "C ABI â†’ Zig",
+      "boundary": "Optional operator REST sidecar on :9200; no CanonicalEvent production or Zig C ABI ingress",
       "classification": "SUPPORT",
       "note": "Optional operator alert sidecar (REST :9200). Not on the golden path; produces no Canonical Event."
     },

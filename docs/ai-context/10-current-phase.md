@@ -33,13 +33,15 @@ authorize a production host effect.
   optional runtime-spine entry were removed. Other XDR modules remain
   non-authoritative test/support candidates.
 - Focused results: XDR 13/13, runtime-spine 27/27, T18 pytest 18 passed, and
-  `zig build` PASS. Last full `zig build test` run before the final registry-only
-  correction was 2247/2249 passed, 1 skipped, 1 failed at the performance
-  threshold test; the full graph was not rerun after that correction.
+  `zig build` PASS. The MAP-006/WFP/T12/T14 focused pytest set passes 38/38;
+  current `zig build test` also passes (exit 0).
 - Test-scope audit still finds `src/capture/proto/l7_payload.zig` and
   `src/forensic/ids_evidence_receipt.zig` without execution-graph coverage.
-  Windows E5, source-to-forensic receipt wiring, MAP-006, and GitHub issue #26
-  remain open. See `admin-evidence/ids-xdr-005-20261031/closeout.md`.
+- MAP-006 source/map reconciliation is now verified at E2; it does not establish
+  Windows E5/kernel qualification or release readiness. The base IDS receipt is
+  source-wired; the separate XDR-to-forensic-receipt/replay flow remains open.
+- Windows E5, the two execution-graph coverage gaps, and the separate XDR evidence
+  integration remain open. See `admin-evidence/ids-xdr-005-20261031/closeout.md`.
 
 ## G23 Goals
 
@@ -72,17 +74,19 @@ And CI proves: C/C++ + Zig + Go + Rust + Python/Cython + Drivers as one product.
 
 ## Remaining closure work
 
-1. Complete `MAP-006`: reconcile runtime manifest, flow map, authority map, and
-   evidence index against actual current code/runtime wiring; the XDR claims
-   corrected by IDS-XDR-005 do not close the wider audit.
+1. `MAP-006` source/map reconciliation is **PASS at E2** (2026-11-01): runtime
+   manifest, flow/authority/system/contract maps, and evidence index were checked
+   against current source. This is not Windows E5, kernel qualification, or ADR-
+   0009/release completion.
 2. Produce supervised Windows-host evidence for applicable host telemetry and
    sensor paths; do not infer E5 from unit tests or a successful build.
-3. Classify older IPS/WFP material as historical or lab-only without deleting
-   it, and keep production host-effect capability false.
+3. Continue classifying remaining older IPS/WFP material as historical or
+   lab-only without deleting it; the key WFP/host records GAP-002, GAP-005, and
+   GAP-009 are now explicitly historical. Keep production host-effect capability false.
 4. Complete supervised RB-017 Brain evidence without starting a second listener
    or changing the production detection-only gate.
-5. Re-establish a green full Zig test graph and close the two test-scope coverage
-   gaps; do not treat targeted tests as full-suite proof.
+5. The full Zig test graph is green (2026-10-31); close the two remaining
+   test-scope coverage gaps and preserve that distinction from E5 host proof.
 6. Wire the selected XDR advisory flow to canonical detection/forensic evidence
    only in a separate vertical slice with a validated receipt/replay contract.
 
