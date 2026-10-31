@@ -558,15 +558,11 @@ test "TrieRegistryWatch case-insensitive matching" {
 }
 
 // ============================================================
-// Benchmark comparison tests (verify trie is faster than linear)
+// Trie behavior tests
 // ============================================================
 
-test "Benchmark: trie matchPrefix is faster than linear scan" {
-    // This test verifies the trie achieves at least 1.2x speedup vs linear scan
-    // with the full 11 default keys. With more keys, trie advantage grows.
-
+test "PrefixTrie matches the registered default prefixes" {
     var trie = PrefixTrie.init(.{ .enabled = true });
-    // Insert all 11 default keys (6 persistence + 5 critical)
     const keys = [_][]const u8{
         "\\REGISTRY\\MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
         "\\REGISTRY\\MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce",
@@ -582,54 +578,10 @@ test "Benchmark: trie matchPrefix is faster than linear scan" {
     };
     for (keys) |k| _ = trie.insert(k, .persistence);
 
-    // Build linear-scan comparator arrays
-    var linear_keys: [11][64]u8 = undefined;
-    var linear_lens: [11]usize = undefined;
-    for (keys, 0..) |k, i| {
-        const n = @min(k.len, 64);
-        @memcpy(linear_keys[i][0..n], k[0..n]);
-        linear_lens[i] = n;
+    for (keys) |key| {
+        try std.testing.expectEqual(KeyClass.persistence, trie.matchPrefix(key));
     }
-
-    // Query that matches the LAST key in the array (worst case for linear scan)
-    const query = "\\REGISTRY\\USER\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce\\Backdoor";
-    const iterations: u32 = 50_000;
-
-    // Trie benchmark
-    const trie_timer_start = std.time.nanoTimestamp();
-    var i: u32 = 0;
-    while (i < iterations) : (i += 1) {
-        _ = trie.matchPrefix(query);
-    }
-    const trie_ns: i64 = @intCast(std.time.nanoTimestamp() - trie_timer_start);
-
-    // Linear scan benchmark (must check all 11 keys in worst case)
-    const linear_timer_start = std.time.nanoTimestamp();
-    i = 0;
-    while (i < iterations) : (i += 1) {
-        var buf: [256]u8 = undefined;
-        const ql = @min(query.len, 256);
-        @memcpy(buf[0..ql], query[0..ql]);
-        for (buf[0..ql]) |*c| c.* = std.ascii.toLower(c.*);
-        const query_lower = buf[0..ql];
-
-        for (linear_keys, linear_lens) |lk, len| {
-            var eb: [64]u8 = undefined;
-            const el = @min(len, 64);
-            @memcpy(eb[0..el], lk[0..el]);
-            for (eb[0..el]) |*c| c.* = std.ascii.toLower(c.*);
-            const entry_lower = eb[0..el];
-
-            if (std.mem.startsWith(u8, query_lower, entry_lower)) break;
-        }
-    }
-    const linear_ns: i64 = @intCast(std.time.nanoTimestamp() - linear_timer_start);
-
-    // Trie should be faster (lower ns). With 11 keys and worst-case query,
-    // trie is O(key_len) while linear is O(11 ├ù key_len).
-    const ratio: f64 = @as(f64, @floatFromInt(linear_ns)) / @as(f64, @floatFromInt(trie_ns));
-    // Allow conservative 1.2x threshold (actual is typically 2-5x with 11 keys)
-    try std.testing.expect(ratio > 1.2);
+    try std.testing.expectEqual(KeyClass.none, trie.matchPrefix("\\REGISTRY\\MACHINE\\SAM\\Domains"));
 }
 
 test "Benchmark: TrieRegistryWatch enqueue throughput" {

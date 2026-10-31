@@ -324,18 +324,25 @@ pub const ComplianceReporter = struct {
     /// an attacker-controlled record from causing an unbounded allocation, while
     /// MAX_EVENTS_PER_REPORT bounds the amount of work retained in the report.
     fn generateReportFromFile(self: *ComplianceReporter, framework: Framework, file: std.fs.File) !ComplianceReport {
-        var reader = file.reader();
+        var buffered_reader = std.io.bufferedReader(file.reader());
+        var reader = buffered_reader.reader();
         var stats = ReportStats{};
         var unique_ips = std.StringHashMap(void).init(self.allocator);
+        var raw_line = std.ArrayList(u8).init(self.allocator);
+        defer raw_line.deinit();
         defer {
             var ip_iter = unique_ips.iterator();
             while (ip_iter.next()) |entry| self.allocator.free(entry.key_ptr.*);
             unique_ips.deinit();
         }
 
-        while (reader.readUntilDelimiterAlloc(self.allocator, '\n', MAX_LOG_LINE_BYTES)) |raw_line| {
-            defer self.allocator.free(raw_line);
-            const line = std.mem.trimRight(u8, raw_line, "\r");
+        while (true) {
+            raw_line.clearRetainingCapacity();
+            reader.readUntilDelimiterArrayList(&raw_line, '\n', MAX_LOG_LINE_BYTES) catch |err| switch (err) {
+                error.EndOfStream => break,
+                else => return err,
+            };
+            const line = std.mem.trimRight(u8, raw_line.items, "\r");
             if (line.len == 0) continue;
 
             stats.total_events += 1;
@@ -390,15 +397,8 @@ pub const ComplianceReporter = struct {
 
             // Track unique source IPs
             if (src_ip.len > 0) {
-                const ip_dup = try self.allocator.dupe(u8, src_ip);
-                const gop = try unique_ips.getOrPut(ip_dup);
-                if (gop.found_existing) {
-                    self.allocator.free(ip_dup);
-                }
+                try trackUniqueIp(self.allocator, &unique_ips, src_ip);
             }
-        } else |err| switch (err) {
-            error.EndOfStream => {},
-            else => return err,
         }
 
         stats.unique_src_ips = unique_ips.count();
@@ -538,6 +538,14 @@ fn extractJsonString(line: []const u8, key: []const u8) []const u8 {
     const start = i;
     while (i < after_key.len and after_key[i] != ',' and after_key[i] != '}' and after_key[i] != ' ') i += 1;
     return after_key[start..i];
+}
+
+fn trackUniqueIp(allocator: std.mem.Allocator, unique_ips: *std.StringHashMap(void), src_ip: []const u8) !void {
+    if (unique_ips.contains(src_ip)) return;
+
+    const ip_dup = try allocator.dupe(u8, src_ip);
+    errdefer allocator.free(ip_dup);
+    try unique_ips.put(ip_dup, {});
 }
 
 // ============================================================
@@ -707,6 +715,20 @@ test "extractJsonString returns empty for missing key" {
     try std.testing.expect(result.len == 0);
 }
 
+test "trackUniqueIp avoids allocation when an address is already present" {
+    var unique_ips = std.StringHashMap(void).init(std.testing.allocator);
+    defer {
+        var iter = unique_ips.iterator();
+        while (iter.next()) |entry| std.testing.allocator.free(entry.key_ptr.*);
+        unique_ips.deinit();
+    }
+
+    try trackUniqueIp(std.testing.allocator, &unique_ips, "192.0.2.10");
+    var failing = std.testing.FailingAllocator.init(std.testing.allocator, .{ .fail_index = 0 });
+    try trackUniqueIp(failing.allocator(), &unique_ips, "192.0.2.10");
+    try std.testing.expectEqual(@as(usize, 1), unique_ips.count());
+}
+
 test "ComplianceReporter generates report from the configured log" {
     var reporter = ComplianceReporter.init(std.testing.allocator);
     defer reporter.deinit();
@@ -719,8 +741,11 @@ test "ComplianceReporter generates report from the configured log" {
     const log = try tmp.dir.createFile("anomalous.json", .{ .read = true });
     defer log.close();
     const line = "{\"attack_type\": \"GATE-B-TEST\", \"src_ip\": \"1.2.3.4\", \"severity\": \"High\", \"status\": \"DETECTED\", \"padding\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}\n";
+    var buffered = std.io.bufferedWriter(log.writer());
+    const writer = buffered.writer();
     var i: usize = 0;
-    while (i < 80_000) : (i += 1) try log.writer().writeAll(line);
+    while (i < 80_000) : (i += 1) try writer.writeAll(line);
+    try buffered.flush();
     try log.seekTo(0);
 
     const result = reporter.generateReportFromFile(.pci_dss, log);
