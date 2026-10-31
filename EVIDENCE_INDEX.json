@@ -1,5 +1,5 @@
 {
- "head_sha": "53737e88da79027358546cefef336ba46b1dcebd",
+ "head_sha": "3d4a0fd132abcb7faf1ade7673c8830e3448d43a",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-10-31",
  "generator_version": "3.0",
@@ -8691,12 +8691,38 @@
    "result": "PASS",
    "finding": "Root pytest now executes only canonical tests/; historical evidence bundles remain available without affecting release gates.",
    "timestamp": "2026-10-30"
+  },
+  {
+   "id": "IDS-L7-003-20261031",
+   "head_sha": "3d4a0fd132abcb7faf1ade7673c8830e3448d43a",
+   "timestamp": "2026-10-31",
+   "title": "IDS-L7-003: direct Npcap lab payload extraction to protocol anomaly evidence",
+   "level": "E2",
+   "component": "capture/detection/forensic",
+   "flow_id": "DATA-001",
+   "description": "Direct Npcap full Ethernet frames are defensively reduced to TCP/UDP application payloads and passed to the existing HTTP/DNS/TLS/SMB anomaly checks. Stable anomaly rule IDs are recorded through the forensic and IDS evidence paths only; the policy, PEP, and ActionDispatcher path remains gated on ordinary matched rules.",
+   "files_changed": [
+    "src/capture/proto/l7_payload.zig",
+    "src/detection/proto_anomaly.zig",
+    "src/pipeline/event_processor.zig",
+    "tools/create_manifest.py",
+    "runtime_manifest.json"
+   ],
+   "tests": [
+    "zig test src/capture/proto/l7_payload.zig: 2/2 passed",
+    "zig build test: 2245/2247 passed, 1 skipped; unrelated ComplianceReporter log-size failure remains",
+    "focused manifest/truth/detection-only contract suite: 34 passed",
+    "python tools/rebuild_truth.py: valid, unresolved=[]"
+   ],
+   "result": "PASS_WITH_OPEN_BLOCKER",
+   "finding": "The slice is wired and compile-tested at E2. Direct Npcap and L7 anomaly modules remain LAB/observe-only until a disjoint-interface Windows host run supplies E5 evidence. Rust PEP remains the sole privileged authority.",
+   "evidence_artifact": "admin-evidence/ids-l7-003-20261031/closeout.md"
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 27,
-  "E2_count": 47,
+  "E2_count": 48,
   "E3_count": 16,
   "E4_count": 15,
   "E5_count": 126,

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-31T05:09:25.555254+00:00",
+  "generated_at": "2026-10-31T05:11:52.069837+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1745,
@@ -4830,7 +4830,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 281516
+      "size": 281843
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -5100,7 +5100,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 230675
+      "size": 230971
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -6168,7 +6168,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 19059
+      "size": 20057
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",
@@ -10056,7 +10056,7 @@
       "path": "tools/create_manifest.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 14860
+      "size": 15732
     },
     {
       "path": "tools/deploy_windows.py",
