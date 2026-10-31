@@ -31,6 +31,23 @@ const queue = @import("event_queue.zig");
 const siem_mod = @import("../forensic/siem_forwarder.zig");
 const brain_mod = @import("../core/bridge_init.zig");
 
+/// Host telemetry is evidence/advisory input under ADR-0009. Keep the source
+/// classification explicit so even a host event labeled `signature_match`
+/// cannot enter threat scoring or policy/PEP through a shared code path.
+fn isHostTelemetrySource(source: event.EventSource) bool {
+    return switch (source) {
+        .capture_etw, .capture_fim, .capture_registry => true,
+        else => false,
+    };
+}
+
+/// Return an upstream host-detector identity for forensic recording and an
+/// IDS Evidence Receipt only. Network capture keeps its existing paths.
+fn hostDetectorRuleId(ev: *const event.IpcEvent) u32 {
+    if (ev.rule_id == 0) return 0;
+    return if (isHostTelemetrySource(ev.source)) ev.rule_id else 0;
+}
+
 /// GAP-015 p95: record one stage interval and return now for chaining.
 /// Mutex-guarded like the whole-pipeline observe (same race, same fix);
 /// saturating cast keeps a clock step harmless instead of trapping.
@@ -154,7 +171,7 @@ fn processEvent(
     // raw payload bytes. Preserve that contract: an upstream classifier may
     // provide rule_id/event_type, and the Zig pipeline must carry it into
     // policy evaluation without attempting a second payload interpretation.
-    if (ev.kind == .signature_match and ev.rule_id != 0) {
+    if (!isHostTelemetrySource(ev.source) and ev.kind == .signature_match and ev.rule_id != 0) {
         matched_rule_id = ev.rule_id;
         _ = state.g_pipeline_detections.fetchAdd(1, .monotonic);
     }
@@ -242,6 +259,10 @@ fn processEvent(
             }
         }
     }
+    // IDS-HOST-004: host adapters may provide a detector rule identity on the
+    // canonical event. Keep it out of matched_rule_id so host evidence cannot
+    // enter policy, threat tracking, PEP, or ActionDispatcher by convenience.
+    const host_detector_rule_id = hostDetectorRuleId(ev);
     t_prev = markStage(.flow_to_detection, t_prev);
 
     // 2b. Correlation (multi-event rules). A correlation hit on an event
@@ -279,11 +300,12 @@ fn processEvent(
         diag.metrics.anomalies_detected.inc();
     }
 
-    // 4. Threat tracking (if detection matched)
+    // 4. Threat tracking (if detection matched). Host telemetry is evidence-
+    // only and must not affect threat scores or open runtime incidents.
     // Capture incident result — escalate severity when threshold crossed
     var active_incident: ?tracker.Incident = null;
     var ev_severity = ev.severity; // track severity escalation
-    if (matched_rule_id != 0) {
+    if (matched_rule_id != 0 and !isHostTelemetrySource(ev.source)) {
         if (tt.observeFlowThreat(ev, 10) catch null) |inc| {
             // Incident created: threat score crossed threshold
             active_incident = inc.*;
@@ -298,11 +320,16 @@ fn processEvent(
     // FE-DEF-095a: daemon-owned critical input. Counted once per matched
     // event at final (possibly incident-escalated) severity — never from
     // file contents. Feeds control/defcon.zig via healthJson.
-    if (matched_rule_id != 0 and (ev_severity == .critical or ev_severity == .emergency)) {
+    if (matched_rule_id != 0 and !isHostTelemetrySource(ev.source) and (ev_severity == .critical or ev_severity == .emergency)) {
         _ = state.g_critical_detections.fetchAdd(1, .monotonic);
     }
 
-    const detection_rule_id = if (matched_rule_id != 0) matched_rule_id else protocol_anomaly_rule_id;
+    const detection_rule_id = if (matched_rule_id != 0)
+        matched_rule_id
+    else if (protocol_anomaly_rule_id != 0)
+        protocol_anomaly_rule_id
+    else
+        host_detector_rule_id;
 
     // Record detection result in trace
     decision_trace.setDetection(
@@ -312,14 +339,15 @@ fn processEvent(
     );
     t_prev = markStage(.detection_to_correlation, t_prev);
 
-    // 5. Policy evaluation — use escalated severity for policy matching
+    // 5. Policy evaluation — use escalated severity for policy matching.
+    // Host-source detections can be recorded, but never authorize host effects.
     var policy_action: policy.Action = .pass;
     var matched_policy: ?policy.Policy = null;
     ev_copy.severity = ev_severity;
     const eval_ctx = policy.EvalContext{ .ev = &ev_copy };
     // Protocol anomalies are evidence-only. A nonzero event rule_id is useful
     // for receipts, but must not by itself authorize policy evaluation.
-    if (matched_rule_id != 0) {
+    if (matched_rule_id != 0 and !isHostTelemetrySource(ev.source)) {
         if (ps.evaluate(eval_ctx)) |pol| {
             matched_policy = pol;
             policy_action = pol.action;
@@ -812,6 +840,28 @@ test "brainInspect is a safe no-op without detections or loop" {
     brainInspect(&ev, 4242, .alert, .alert);
     brainInspect(&ev, 0, .info, .pass);
     state.g_brain_enabled.store(false, .release);
+}
+
+test "IDS-HOST-004: host detector identity is evidence-only" {
+    inline for (.{ event.EventSource.capture_etw, .capture_fim, .capture_registry }) |source| {
+        var ev = event.IpcEvent.init(.signature_match);
+        ev.source = source;
+        ev.rule_id = 0xA001;
+        try std.testing.expect(isHostTelemetrySource(source));
+        try std.testing.expectEqual(@as(u32, 0xA001), hostDetectorRuleId(&ev));
+    }
+
+    // Network detections keep their existing signature path and cannot be
+    // misclassified as upstream host detector evidence.
+    var network_ev = event.IpcEvent.init(.signature_match);
+    network_ev.source = .capture_npcap;
+    network_ev.rule_id = 0xB002;
+    try std.testing.expect(!isHostTelemetrySource(network_ev.source));
+    try std.testing.expectEqual(@as(u32, 0), hostDetectorRuleId(&network_ev));
+
+    // Brain/advisory input is also outside the host detector identity channel.
+    network_ev.source = .detection_brain;
+    try std.testing.expectEqual(@as(u32, 0), hostDetectorRuleId(&network_ev));
 }
 
 /// Main pipeline loop: pops events from queue and processes them.
