@@ -10,6 +10,17 @@ Provider readiness, WFP transport, and retained PEP boundaries may exist for
 diagnostics, fail-closed behavior, or historical/lab evidence, but they do not
 authorize a production host effect.
 
+## Current-Head Evidence Update — 2026-10-31
+
+- `IDS-HOST-004` is implemented at source commit `940a6f8` (E2): ETW/FIM/Registry
+  detector identities may flow to forensic evidence/IDS receipts, but host
+  telemetry cannot enter threat scoring or policy/PEP/ActionDispatcher.
+- `zig build` and `zig build test` passed; the focused detection-authority and
+  prevention-gate pytest contracts passed 20/20. Truth artifacts verify cleanly.
+- This is source/build and unit/component evidence only. It is not Windows-host
+  E5 proof, full ADR-0009 closure, kernel-driver production qualification, or
+  release approval. See `admin-evidence/ids-host-004-20261031/closeout.md`.
+
 ## G23 Goals
 
 1. Create canonical architecture documentation
@@ -41,12 +52,12 @@ And CI proves: C/C++ + Zig + Go + Rust + Python/Cython + Drivers as one product.
 
 ## Remaining closure work
 
-1. Keep health, enforcement status, CLI, and dashboard semantics aligned:
-   provider readiness is diagnostic capability; production host effect remains
-   false and the prevention gate remains closed.
-2. Complete current-head Zig test evidence with a readable PASS/FAIL result.
-3. Rebaseline current evidence and classify older IPS/WFP material as historical
-   or lab-only without deleting it.
+1. Complete `MAP-006`: reconcile runtime manifest, flow map, authority map, and
+   evidence index against actual current code/runtime wiring.
+2. Produce supervised Windows-host evidence for applicable host telemetry and
+   sensor paths; do not infer E5 from unit tests or a successful build.
+3. Classify older IPS/WFP material as historical or lab-only without deleting
+   it, and keep production host-effect capability false.
 4. Complete supervised RB-017 Brain evidence without starting a second listener
    or changing the production detection-only gate.
 

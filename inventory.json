@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-31T05:30:38.391651+00:00",
+  "generated_at": "2026-10-31T05:54:22.536713+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1746,
+  "total_files": 1747,
   "by_class": {
-    "canonical-docs": 576,
+    "canonical-docs": 577,
     "canonical-build": 223,
     "unclassified": 19,
     "canonical-source": 652,
@@ -205,6 +205,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 30055
+    },
+    {
+      "path": "admin-evidence/compliance-reporter-20261031/closeout.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 868
     },
     {
       "path": "admin-evidence/control-center-final-20260929/authority.txt",
@@ -3468,7 +3474,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2231
+      "size": 2934
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -4704,7 +4710,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 829716
+      "size": 832231
     },
     {
       "path": "fix_bridge_banner.py",
@@ -4836,7 +4842,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 281843
+      "size": 282183
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -5106,7 +5112,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 230971
+      "size": 231240
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -7746,7 +7752,7 @@
       "path": "src/pipeline/event_processor.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 42495
+      "size": 44983
     },
     {
       "path": "src/pipeline/event_queue.zig",

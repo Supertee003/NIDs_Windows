@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-31T05:30:38.397395+00:00",
+  "generated_at": "2026-10-31T05:54:22.540442+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1746,
+  "total_files": 1747,
   "by_role": {
-    "documentation": 562,
+    "documentation": 563,
     "build-config": 212,
     "other": 19,
     "source": 365,
@@ -440,6 +440,10 @@
       "role": "documentation"
     },
     "admin-evidence/code-integrity-events.txt": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "admin-evidence/compliance-reporter-20261031/closeout.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },

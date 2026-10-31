@@ -4,7 +4,7 @@
 
 
 
-**HEAD:** `8c51e23863d472f0b0d4ab3915374d62b5b0e609` (build source commit — ADR-0008)
+**HEAD:** `940a6f8c764be96eff5a27b1b581a759f190e143` (build source commit — ADR-0008)
 
 **BRANCH:** `main`
 

@@ -1,5 +1,5 @@
 {
- "head_sha": "8c51e23863d472f0b0d4ab3915374d62b5b0e609",
+ "head_sha": "940a6f8c764be96eff5a27b1b581a759f190e143",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-10-31",
  "generator_version": "3.0",
@@ -3217,6 +3217,29 @@
    "finding": "Direct Npcap cannot start without an explicit Go Nose selector and a conservative disjointness proof. No enforcement authority was added. No E5 live Windows dual-interface proof is claimed.",
    "evidence": "admin-evidence/ids-npcap-002-20261031/closeout.md",
    "timestamp": "2026-10-31"
+  },
+  {
+   "id": "IDS-HOST-004-20261031",
+   "head_sha": "940a6f8c764be96eff5a27b1b581a759f190e143",
+   "timestamp": "2026-10-31",
+   "title": "IDS-HOST-004: host detector identities remain evidence-only",
+   "level": "E2",
+   "component": "pipeline/detection/forensic",
+   "flow_id": "DATA-001",
+   "description": "ETW/FIM/Registry events may carry upstream detector rule IDs into the existing decision trace, forensic record, and IDS Evidence Receipt path. Host telemetry cannot enter ordinary signature matching, threat scoring, critical detection counts, policy evaluation, Rust PEP, or ActionDispatcher. Network detection behavior is unchanged.",
+   "files_changed": [
+    "src/pipeline/event_processor.zig"
+   ],
+   "tests": [
+    "zig build: PASS",
+    "zig build test: PASS, exit code 0",
+    "tests/security/test_detection_contract_pin.py + tests/security/test_prevention_gate_surface.py: 20 passed",
+    "python tools/rebuild_truth.py: valid=true, unresolved=[]",
+    "python tools/truth.py verify: TRUTH_VALID"
+   ],
+   "result": "PASS_E2_WITH_OPEN_HOST_VERIFICATION",
+   "finding": "Bounded source behavior follows ADR-0009. The slice does not prove live ETW/FIM/Registry detector production, Windows-host integration, kernel-driver production qualification, or overall release readiness.",
+   "evidence_artifact": "admin-evidence/ids-host-004-20261031/closeout.md"
   }
  ],
  "known_gaps": [
@@ -8742,7 +8765,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 27,
-  "E2_count": 49,
+  "E2_count": 50,
   "E3_count": 16,
   "E4_count": 15,
   "E5_count": 126,
