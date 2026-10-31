@@ -272,6 +272,24 @@ pub struct PepResponse {
     pub filter_id: u64,
 }
 
+/// Evidence-only policy assessment. This response deliberately has no quota,
+/// signature, or filter fields: an assessment cannot consume authorization
+/// state or attest a host effect.
+#[repr(C)]
+pub struct PepAssessmentResponse {
+    pub decision: u8,
+    pub reason: u32,
+    pub host_effect_confirmed: u8,
+    pub reserved: [u8; 7],
+}
+
+const _: () = {
+    assert!(std::mem::size_of::<PepAssessmentResponse>() == 16);
+    assert!(std::mem::offset_of!(PepAssessmentResponse, decision) == 0);
+    assert!(std::mem::offset_of!(PepAssessmentResponse, reason) == 4);
+    assert!(std::mem::offset_of!(PepAssessmentResponse, host_effect_confirmed) == 8);
+};
+
 #[repr(C, packed)]
 pub struct PepFilterState {
     pub filter_id: u64,
@@ -300,6 +318,47 @@ const ACTION_RATE_LIMIT: u8 = 3;
 const ACTION_BLOCK: u8 = 4;
 const ACTION_QUARANTINE: u8 = 5;
 const ACTION_ESCALATE: u8 = 6;
+
+#[cfg(test)]
+mod assessment_contract_tests {
+    use super::{assessment_decision, PepAssessmentResponse, PepContext, PepRequest, ACTION_BLOCK, ACTION_ESCALATE, DECISION_BLOCK, DECISION_ESCALATE};
+
+    #[test]
+    fn assessment_response_is_explicitly_non_enforcing() {
+        assert_eq!(std::mem::size_of::<PepAssessmentResponse>(), 16);
+        assert_eq!(std::mem::offset_of!(PepAssessmentResponse, host_effect_confirmed), 8);
+        assert_eq!(ACTION_BLOCK, 4);
+        assert_eq!(ACTION_ESCALATE, 6);
+        assert_eq!(DECISION_BLOCK, 1);
+        assert_eq!(DECISION_ESCALATE, 4);
+    }
+
+    #[test]
+    fn assessment_classifies_block_without_authorizing_host_effect() {
+        let req = PepRequest {
+            decision_kind: 0,
+            requested_action: ACTION_BLOCK,
+            flow_id: 7,
+            src_ip: 0x0a000001,
+            dst_ip: 0x0a000002,
+            src_port: 1234,
+            dst_port: 443,
+            protocol: 6,
+            policy_id: 9,
+            severity: 8,
+            direction: 0,
+            ctx: PepContext {
+                caller_pid: 1,
+                caller_capability_mask: 1,
+                request_id: 11,
+                policy_version: 1,
+            },
+        };
+        let (decision, reason) = assessment_decision(&req);
+        assert_eq!(decision, DECISION_BLOCK);
+        assert_eq!(reason, 0);
+    }
+}
 
 #[cfg(test)]
 mod action_contract_tests {
@@ -690,6 +749,48 @@ fn quota_consume(state: &mut PepState, src_ip: u32, now_ms: u64) -> (u32, bool) 
     }
     entry.count += 1;
     (QUOTA_DEFAULT - entry.count, true)
+}
+
+/// Classify a request for evidence without consuming approvals/quotas or
+/// consulting a host-effect adapter. This is intentionally separate from
+/// `aegis_pep_enforce`, whose legacy path may authorize an adapter call.
+fn assessment_decision(req: &PepRequest) -> (u8, u32) {
+    let privileged = matches!(
+        req.requested_action,
+        ACTION_RATE_LIMIT | ACTION_BLOCK | ACTION_QUARANTINE | ACTION_ESCALATE
+    );
+    if privileged && (req.ctx.caller_capability_mask & 0x01) == 0 {
+        return (DECISION_ESCALATE, 1);
+    }
+    match req.requested_action {
+        ACTION_PASS | ACTION_LOG | ACTION_ALERT => (DECISION_ALLOW, 0),
+        ACTION_ESCALATE => (DECISION_ESCALATE, 2),
+        ACTION_RATE_LIMIT => (DECISION_RATE_LIMIT, 3),
+        ACTION_BLOCK => (DECISION_BLOCK, 0),
+        ACTION_QUARANTINE => (DECISION_QUARANTINE, 0),
+        _ => (DECISION_ESCALATE, 6),
+    }
+}
+
+/// Return an evidence-only policy assessment. This entrypoint never loads or
+/// calls the WFP adapter, never consumes quota/approval state, and always
+/// returns host_effect_confirmed=0 with zeroed reserved bytes.
+#[no_mangle]
+pub unsafe extern "C" fn aegis_pep_assess(
+    req: *const PepRequest,
+    resp: *mut PepAssessmentResponse,
+) -> c_int {
+    if req.is_null() || resp.is_null() {
+        return -1;
+    }
+    let req = unsafe { &*req };
+    let resp = unsafe { &mut *resp };
+    let (decision, reason) = assessment_decision(req);
+    resp.decision = decision;
+    resp.reason = reason;
+    resp.host_effect_confirmed = 0;
+    resp.reserved = [0; 7];
+    0
 }
 
 #[no_mangle]

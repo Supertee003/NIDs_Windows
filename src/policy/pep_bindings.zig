@@ -85,6 +85,20 @@ pub const PepResponse = extern struct {
     filter_id: u64,
 };
 
+/// Explicit evidence-only response. It has no filter/receipt field and the
+/// host-effect flag must remain zero at the FFI boundary.
+pub const PepAssessmentResponse = extern struct {
+    decision: u8,
+    reason: u32,
+    host_effect_confirmed: u8,
+    reserved: [7]u8,
+};
+
+pub const PepAssessment = struct {
+    decision: PepDecision,
+    reason: u32,
+};
+
 pub const PepEnforcementReceipt = struct {
     decision: PepDecision,
     reason: u32,
@@ -157,6 +171,7 @@ pub fn hostEffectGuardVerdict(gate_open: bool, action: policy.Action, trusted: b
 
 // Rust FFI functions
 extern "aegis_pep" fn aegis_pep_enforce(req: *const PepRequest, resp: *PepResponse) c_int;
+extern "aegis_pep" fn aegis_pep_assess(req: *const PepRequest, resp: *PepAssessmentResponse) c_int;
 extern "aegis_pep" fn aegis_pep_unblock_filter(filter_id: u64, caller_pid: u32, caller_capability_mask: u32, request_id: u64) c_int;
 extern "aegis_pep" fn aegis_pep_query_filter(filter_id: u64, out: *PepFilterState) c_int;
 extern "aegis_pep" fn aegis_pep_query_filter_dir(filter_id: u64, direction: u8, out: *PepFilterState) c_int;
@@ -193,6 +208,31 @@ pub const PepEnforcer = struct {
     pub fn providerReady(_: *PepEnforcer) bool {
         if (@import("builtin").os.tag != .windows) return false;
         return aegis_pep_provider_ready() == 1;
+    }
+
+    /// Evaluate policy for evidence only. This path never opens or calls a
+    /// WFP adapter and cannot produce an enforcement receipt.
+    pub fn assess(self: *PepEnforcer, ev: *const event.IpcEvent, p: policy.Policy, caller_pid: u32, caller_caps: u32, request_id: u64) ?PepAssessment {
+        if (!self.available or @import("builtin").os.tag != .windows) return null;
+        var req = PepRequest{
+            .decision_kind = @intFromEnum(ev.kind),
+            .requested_action = @intFromEnum(p.action),
+            .flow_id = ev.flow_id,
+            .src_ip = ev.src_ip,
+            .dst_ip = ev.dst_ip,
+            .src_port = ev.src_port,
+            .dst_port = ev.dst_port,
+            .protocol = ev.protocol,
+            .policy_id = p.id,
+            .severity = @intFromEnum(ev.severity),
+            .direction = requestDirection(ev),
+            .ctx = .{ .caller_pid = caller_pid, .caller_capability_mask = caller_caps, .request_id = request_id },
+        };
+        var resp: PepAssessmentResponse = undefined;
+        if (aegis_pep_assess(&req, &resp) != 0) return null;
+        if (resp.host_effect_confirmed != 0 or !std.mem.eql(u8, &resp.reserved, &([_]u8{0} ** 7))) return null;
+        if (resp.decision > @intFromEnum(PepDecision.drop)) return null;
+        return .{ .decision = @enumFromInt(resp.decision), .reason = resp.reason };
     }
 
     pub fn enforce(self: *PepEnforcer, ev: *const event.IpcEvent, p: policy.Policy, caller_pid: u32, caller_caps: u32, request_id: u64, gate_open: bool) PepDecision {
@@ -689,6 +729,15 @@ test "FFI-001: PepResponse field offsets match Rust" {
     try std.testing.expectEqual(@as(usize, 16), @offsetOf(PepResponse, "filter_id"));
 }
 
+test "KIDS-001: PepAssessmentResponse is explicit evidence-only ABI" {
+    try std.testing.expectEqual(@as(usize, 16), @sizeOf(PepAssessmentResponse));
+    try std.testing.expectEqual(@as(usize, 0), @offsetOf(PepAssessmentResponse, "decision"));
+    try std.testing.expectEqual(@as(usize, 4), @offsetOf(PepAssessmentResponse, "reason"));
+    try std.testing.expectEqual(@as(usize, 8), @offsetOf(PepAssessmentResponse, "host_effect_confirmed"));
+    try std.testing.expectEqual(@as(usize, 9), @offsetOf(PepAssessmentResponse, "reserved"));
+    try std.testing.expectEqual(@as(usize, 7), @sizeOf([7]u8));
+}
+
 test "FFI-001: PepDecision enum values match Rust constants" {
     // Rust: DECISION_ALLOW=0, DECISION_BLOCK=1, DECISION_RATE_LIMIT=2,
     //        DECISION_QUARANTINE=3, DECISION_ESCALATE=4, DECISION_DROP=5
@@ -705,12 +754,14 @@ test "FFI-001: extern function signatures are C ABI" {
     // We can verify by checking the function type is not void
     // In Zig 0.13.0, use @typeInfo(T) == .Fn or check the tag
     const enforce_type = @TypeOf(aegis_pep_enforce);
+    const assess_type = @TypeOf(aegis_pep_assess);
     const init_type = @TypeOf(aegis_pep_init);
     const shutdown_type = @TypeOf(aegis_pep_shutdown);
     const quota_type = @TypeOf(aegis_pep_quota_remaining);
     const read_type = @TypeOf(aegis_pep_read_events);
     // Just verify they compile and are callable — the extern link will be checked at link time
     _ = enforce_type;
+    _ = assess_type;
     _ = init_type;
     _ = shutdown_type;
     _ = quota_type;

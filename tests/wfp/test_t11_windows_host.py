@@ -204,6 +204,16 @@ class PepResponse(ctypes.Structure):
     ]
 
 
+class PepAssessmentResponse(ctypes.Structure):
+    """Rust `#[repr(C)]` evidence-only response (16 bytes)."""
+    _fields_ = [
+        ("decision", ctypes.c_uint8),
+        ("reason", ctypes.c_uint32),
+        ("host_effect_confirmed", ctypes.c_uint8),
+        ("reserved", ctypes.c_uint8 * 7),
+    ]
+
+
 class PepFilterState(ctypes.Structure):
     """Rust `#[repr(C, packed)] PepFilterState` (20 bytes)."""
     _pack_ = 1
@@ -222,6 +232,7 @@ def assert_pep_abi_layout() -> None:
     assert ctypes.sizeof(PepContext) == 24, "PepContext must be 24 bytes"
     assert ctypes.sizeof(PepRequest) == 64, "PepRequest must be 64 bytes"
     assert ctypes.sizeof(PepResponse) == 24, "PepResponse must be 24 bytes"
+    assert ctypes.sizeof(PepAssessmentResponse) == 16, "PepAssessmentResponse must be 16 bytes"
 
     assert PepContext.caller_pid.offset == 0
     assert PepContext.caller_capability_mask.offset == 4
@@ -246,6 +257,11 @@ def assert_pep_abi_layout() -> None:
     assert PepResponse.quota_remaining.offset == 8
     assert PepResponse.signed_by.offset == 12
     assert PepResponse.filter_id.offset == 16
+
+    assert PepAssessmentResponse.decision.offset == 0
+    assert PepAssessmentResponse.reason.offset == 4
+    assert PepAssessmentResponse.host_effect_confirmed.offset == 8
+    assert PepAssessmentResponse.reserved.offset == 9
 
     # Rust `#[repr(C, packed)] PepFilterState` (read-back state).
     assert ctypes.sizeof(PepFilterState) == 20

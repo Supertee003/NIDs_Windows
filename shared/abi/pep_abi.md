@@ -61,6 +61,22 @@ typedef struct {
 } AegisPepResponse;
 ```
 
+### PepAssessmentResponse (16 bytes)
+```c
+typedef struct {
+    uint8_t  decision;               // PepDecision assessment
+    uint32_t reason;                 // assessment reason code
+    uint8_t  host_effect_confirmed;  // MUST always be 0
+    uint8_t  reserved[7];            // MUST always be zero
+} AegisPepAssessmentResponse;
+```
+
+`PepAssessmentResponse` is evidence-only. It contains no filter identifier,
+quota mutation, provider receipt, or authorization state. A `block` or
+`quarantine` decision in this response means `would_block`/`would_quarantine`
+for evidence and operator explanation; it does not mean that host traffic was
+changed.
+
 ## FFI Functions
 
 ```c
@@ -74,6 +90,14 @@ void aegis_pep_shutdown(void);
 int aegis_pep_enforce(
     const AegisPepRequest* req,
     AegisPepResponse* resp
+);
+
+// Evaluate policy for evidence only. Never opens/calls a WFP adapter and never
+// consumes quota or approval state. host_effect_confirmed and reserved bytes
+// are always zero.
+int aegis_pep_assess(
+    const AegisPepRequest* req,
+    AegisPepAssessmentResponse* resp
 );
 
 // Query remaining rate-limit quota for an IP
@@ -159,6 +183,7 @@ Action Dispatcher (block via WFP, quarantine, escalate, etc.)
 
 - PepRequest is 64 bytes (extern struct, no padding)
 - PepResponse is 24 bytes (extern struct: decision + reason + quota + signed_by + filter_id)
+- PepAssessmentResponse is 16 bytes; host_effect_confirmed is always zero and reserved bytes are zero
 - PepContext is 24 bytes; PepFilterState is 20 bytes (packed)
 - Rust PEP is the ONLY final enforcement authority
 - No component may bypass PEP for privileged actions

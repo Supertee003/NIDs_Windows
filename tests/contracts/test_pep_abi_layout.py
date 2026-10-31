@@ -41,7 +41,12 @@ RUST_TO_CTYPES = {
 }
 
 # Canonical CONTRACT-02 layout. Sizes and offsets are the contract.
-CANONICAL_SIZE = {"PepContext": 24, "PepRequest": 64, "PepResponse": 24}
+CANONICAL_SIZE = {
+    "PepContext": 24,
+    "PepRequest": 64,
+    "PepResponse": 24,
+    "PepAssessmentResponse": 16,
+}
 CANONICAL_OFFSETS: Dict[str, Dict[str, int]] = {
     "PepContext": {
         "caller_pid": 0,
@@ -70,9 +75,15 @@ CANONICAL_OFFSETS: Dict[str, Dict[str, int]] = {
         "signed_by": 12,
         "filter_id": 16,
     },
+    "PepAssessmentResponse": {
+        "decision": 0,
+        "reason": 4,
+        "host_effect_confirmed": 8,
+        "reserved": 9,
+    },
 }
 
-STRUCT_NAMES = ("PepContext", "PepRequest", "PepResponse")
+STRUCT_NAMES = ("PepContext", "PepRequest", "PepResponse", "PepAssessmentResponse")
 
 
 def _rust_struct_fields(source: str, struct_name: str) -> List[Tuple[str, str]]:
@@ -88,9 +99,9 @@ def _rust_struct_fields(source: str, struct_name: str) -> List[Tuple[str, str]]:
         line = line.strip()
         if not line.startswith("pub "):
             continue
-        field_match = re.match(r"pub\s+(\w+)\s*:\s*(\w+)\s*,", line)
+        field_match = re.match(r"pub\s+(\w+)\s*:\s*([^,]+),", line)
         if field_match:
-            fields.append((field_match.group(1), field_match.group(2)))
+            fields.append((field_match.group(1), field_match.group(2).strip()))
     return fields
 
 
@@ -101,7 +112,12 @@ def _build_ctypes_structs(source: str) -> Dict[str, type]:
         fields = _rust_struct_fields(source, struct_name)
         ctypes_fields = []
         for field_name, rust_type in fields:
-            if rust_type in RUST_TO_CTYPES:
+            array_match = re.fullmatch(r"\[u8;\s*(\d+)\]", rust_type)
+            if array_match:
+                ctypes_fields.append(
+                    (field_name, RUST_TO_CTYPES["u8"] * int(array_match.group(1)))
+                )
+            elif rust_type in RUST_TO_CTYPES:
                 ctypes_fields.append((field_name, RUST_TO_CTYPES[rust_type]))
             elif rust_type in built:
                 ctypes_fields.append((field_name, built[rust_type]))

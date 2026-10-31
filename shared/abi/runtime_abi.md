@@ -95,6 +95,12 @@ pub extern "C" fn aegis_pep_enforce(
     resp: *mut AegisPepResponse,
 ) -> c_int;
 
+// PEP evidence-only assessment; never invokes a host-effect adapter
+pub extern "C" fn aegis_pep_assess(
+    req: *const AegisPepRequest,
+    resp: *mut AegisPepAssessmentResponse,
+) -> c_int;
+
 // PEP shutdown
 pub extern "C" fn aegis_pep_shutdown();
 ```
