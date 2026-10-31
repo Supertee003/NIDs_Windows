@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-31T05:11:52.069837+00:00",
+  "generated_at": "2026-10-31T05:30:38.391651+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1745,
+  "total_files": 1746,
   "by_class": {
-    "canonical-docs": 575,
+    "canonical-docs": 576,
     "canonical-build": 223,
     "unclassified": 19,
     "canonical-source": 652,
@@ -445,6 +445,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 3486
+    },
+    {
+      "path": "admin-evidence/ids-l7-003-20261031/closeout.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 1745
     },
     {
       "path": "admin-evidence/ids-npcap-002-20261031/closeout.md",
@@ -4698,7 +4704,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 828197
+      "size": 829716
     },
     {
       "path": "fix_bridge_banner.py",
@@ -7320,7 +7326,7 @@
       "path": "src/core/compliance_reporter.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 30499
+      "size": 31838
     },
     {
       "path": "src/core/concurrency_harden.zig",

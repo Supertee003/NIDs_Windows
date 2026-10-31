@@ -1,5 +1,5 @@
 {
- "head_sha": "3d4a0fd132abcb7faf1ade7673c8830e3448d43a",
+ "head_sha": "8c51e23863d472f0b0d4ab3915374d62b5b0e609",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-10-31",
  "generator_version": "3.0",
@@ -8717,12 +8717,32 @@
    "result": "PASS_WITH_OPEN_BLOCKER",
    "finding": "The slice is wired and compile-tested at E2. Direct Npcap and L7 anomaly modules remain LAB/observe-only until a disjoint-interface Windows host run supplies E5 evidence. Rust PEP remains the sole privileged authority.",
    "evidence_artifact": "admin-evidence/ids-l7-003-20261031/closeout.md"
+  },
+  {
+   "id": "TEST-COMPLIANCE-STREAM-20261031",
+   "head_sha": "8c51e23863d472f0b0d4ab3915374d62b5b0e609",
+   "timestamp": "2026-10-31",
+   "title": "ComplianceReporter streams oversized forensic NDJSON without shared-log coupling",
+   "level": "E2",
+   "component": "src/core/compliance_reporter.zig",
+   "flow_id": "VER-001",
+   "description": "The test-graph-only compliance reporter now reads NDJSON incrementally with a bounded line allocation instead of a whole-file 10 MiB allocation. Its regression fixture uses a temporary 80,000-line log larger than 10 MiB and does not write the tracked logs directory.",
+   "files_changed": [
+    "src/core/compliance_reporter.zig"
+   ],
+   "tests": [
+    "zig build test: PASS, exit code 0",
+    "python tools/rebuild_truth.py: valid=true, unresolved=[]"
+   ],
+   "result": "PASS",
+   "finding": "The full canonical Zig test graph is green again. The module remains test-graph-only and no production enforcement path changed.",
+   "evidence_artifact": "admin-evidence/compliance-reporter-20261031/closeout.md"
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 27,
-  "E2_count": 48,
+  "E2_count": 49,
   "E3_count": 16,
   "E4_count": 15,
   "E5_count": 126,

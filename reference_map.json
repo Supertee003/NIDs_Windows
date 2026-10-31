@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-31T05:11:52.074417+00:00",
+  "generated_at": "2026-10-31T05:30:38.397395+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1745,
+  "total_files": 1746,
   "by_role": {
-    "documentation": 561,
+    "documentation": 562,
     "build-config": 212,
     "other": 19,
     "source": 365,
@@ -600,6 +600,10 @@
       "role": "build-config"
     },
     "admin-evidence/ids-evidence-receipt-20261031/closeout.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "admin-evidence/ids-l7-003-20261031/closeout.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
