@@ -1,22 +1,22 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-10-31T22:04:16.280863+00:00",
+  "generated_at": "2026-11-01T08:53:19.768182+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1755,
+  "total_files": 1766,
   "by_role": {
-    "documentation": 568,
-    "build-config": 212,
+    "documentation": 576,
+    "build-config": 213,
     "other": 19,
     "source": 365,
     "lockfile": 6,
     "rust-build": 4,
-    "test-artifact": 211,
+    "test-artifact": 212,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
     "go-source": 8,
     "makefile": 1,
-    "production-source": 280,
+    "production-source": 281,
     "legacy-source": 32,
     "quarantined": 1
   },
@@ -311,6 +311,7 @@
     "src/windows/windows_adapters.zig",
     "src/xdr/xdr_correlator.zig",
     "src/xdr/xdr_engine.zig",
+    "src/xdr/xdr_evidence_flow.zig",
     "src/xdr/xdr_harden.zig",
     "src/xdr/xdr_incident_fabric.zig",
     "src/xdr/xdr_incident_graph.zig"
@@ -520,6 +521,14 @@
       "class": "canonical-build",
       "role": "build-config"
     },
+    "admin-evidence/e5-preflight-20261101/closeout.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "admin-evidence/e5-recheck-20261101/closeout.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "admin-evidence/forensics-verify-direct.txt": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -628,9 +637,17 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "admin-evidence/ids-xdr-006-20261101/closeout.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "admin-evidence/inspect_pep_exports.ps1": {
       "class": "canonical-source",
       "role": "source"
+    },
+    "admin-evidence/kids-002-20261101/closeout.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
     },
     "admin-evidence/lifecycle-recovery-proof.txt": {
       "class": "canonical-docs",
@@ -760,6 +777,10 @@
       "class": "canonical-build",
       "role": "build-config"
     },
+    "admin-evidence/rel-manifest-refresh-20261101/closeout.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "admin-evidence/service-cim.txt": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -773,6 +794,18 @@
       "role": "documentation"
     },
     "admin-evidence/service-queryex.txt": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "admin-evidence/ver-002-20261101/closeout.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "admin-evidence/ver-003-20261101/closeout.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "admin-evidence/ver-004-20261101/closeout.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -3540,6 +3573,10 @@
       "class": "canonical-build",
       "role": "build-config"
     },
+    "installer-e233242-20261101.nsi": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
     "installer.nsi": {
       "class": "canonical-build",
       "role": "build-config"
@@ -6208,6 +6245,10 @@
       "class": "canonical-source",
       "role": "production-source"
     },
+    "src/xdr/xdr_evidence_flow.zig": {
+      "class": "canonical-source",
+      "role": "production-source"
+    },
     "src/xdr/xdr_harden.zig": {
       "class": "canonical-source",
       "role": "production-source"
@@ -6709,6 +6750,10 @@
       "role": "test-artifact"
     },
     "tests/security/test_map006_runtime_truth.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_network_test_scope.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

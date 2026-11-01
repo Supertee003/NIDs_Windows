@@ -70,6 +70,14 @@ authorize a production host effect.
   integration, and release E7 remain open. See
   `admin-evidence/kids-002-20261101/closeout.md`.
 
+## QLOSS-HEALTH-001 Update — 2026-11-01
+
+- Source commit `1edb2b1a008614e21c39bb9b8a6044c316f3fd37` now counts minifilter EventQueue rejections separately and exposes them in `queue.stats` / health. Health reports `DEGRADED` when queue drops, Nose rejects/drops/pipe errors, or minifilter ring/pipeline loss is nonzero.
+- `zig build test --summary all`: 2,004 passed, 10 skipped, 0 failed. `zig build`: PASS. Evidence level E2; no ABI, wire, policy-authority, or enforcement change.
+- The live incident had 164,069 cumulative queue drops and 3,140 minifilter ring drops; this patch makes loss visible in readiness but does not eliminate overload. Counters are process-lifetime cumulative; qualify deltas after a clean deployment.
+- Workspace build image SHA-256: `749784FE150076600DE09E2CF0926EEAE0F4483442E8E5A0B9C5EE849E17C610`. It has not been installed. Windows service was stopped for verification and is awaiting elevated restart; this session received Access denied on SCM start. Issue #29 remains OPEN until rollback-capable deployment and bounded Windows verification.
+- The earlier Kali R9006 run scanned 10 ports, below its configured threshold of 20 distinct ports. It is not a valid detection-failure result. Resume the demo only after service is running and a current-source build is deployed; see `admin-evidence/qloss-health-001-20261101/closeout.md`.
+
 ## Verification, XDR, and Windows Preflight — 2026-11-01
 
 - `VER-003` (source `ba92468`) fixed the compliance reporter's unbuffered

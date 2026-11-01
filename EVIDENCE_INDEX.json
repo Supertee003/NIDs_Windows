@@ -1,5 +1,5 @@
 {
- "head_sha": "e2332422bfeb5b5cca944aa2716360acf2538c3a",
+ "head_sha": "1edb2b1a008614e21c39bb9b8a6044c316f3fd37",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-11-01",
  "generator_version": "3.0",
@@ -3438,6 +3438,31 @@
    "result": "BLOCKED_PREFLIGHT",
    "finding": "No E5 host proof was performed or claimed. Resume in an elevated supervised session after confirming the isolated Kali .10 and Windows .20 guests.",
    "evidence_artifact": "admin-evidence/e5-preflight-20261101/closeout.md"
+  },
+  {
+   "id": "QLOSS-HEALTH-001-20261101",
+   "head_sha": "1edb2b1a008614e21c39bb9b8a6044c316f3fd37",
+   "timestamp": "2026-11-01",
+   "title": "Queue ingress loss is exposed and degrades operational health",
+   "level": "E2",
+   "component": "Zig minifilter ingress and control health",
+   "flow_id": "HOST-001",
+   "description": "Minifilter queue rejections now have a dedicated atomic counter, exposed separately from kernel ring overflow in queue.stats. Health reports DEGRADED and emits data_integrity counters whenever shared queue drops, Nose rejection/drop/pipe errors, or minifilter ring/pipeline loss is nonzero. No wire, ABI, policy authority, or enforcement behavior changed.",
+   "files_changed": [
+    "src/pipeline/runtime_state.zig",
+    "src/capture/minifilter_reader.zig",
+    "src/control/handler_registry.zig",
+    "src/control/state_machine.zig"
+   ],
+   "tests": [
+    "zig build test --summary all: 2004 passed, 10 skipped, 0 failed",
+    "zig build: PASS",
+    "git diff --check: PASS"
+   ],
+   "result": "PASS_E2_SOURCE_AND_BUILD; WINDOWS_DEPLOYMENT_PENDING",
+   "actual": "Health-loss regression test proves a nonzero queue drop produces state=DEGRADED, degraded=true and data_integrity.queue_dropped_total=1. The source build is not installed on the Windows host. AegisNids was stopped for verification; restart by an elevated operator remains pending in this session.",
+   "evidence_artifact": "admin-evidence/qloss-health-001-20261101/closeout.md",
+   "tracking": "GitHub issue #29 remains OPEN until current build deployment and bounded Windows validation."
   }
  ],
  "known_gaps": [
@@ -9099,7 +9124,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 30,
-  "E2_count": 153,
+  "E2_count": 154,
   "E3_count": 16,
   "E4_count": 15,
   "E5_count": 126,

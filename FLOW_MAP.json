@@ -1,5 +1,5 @@
 {
-  "head_sha": "e2332422bfeb5b5cca944aa2716360acf2538c3a",
+  "head_sha": "1edb2b1a008614e21c39bb9b8a6044c316f3fd37",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -622,6 +622,56 @@
           "output": "No XDR runtime route",
           "file": "src/daemon.zig",
           "note": "The source-to-receipt/replay evidence slice is test/lab-only. Production XDR routing remains a separate open decision and implementation."
+        }
+      ]
+    },
+    {
+      "id": "HOST-001",
+      "name": "Minifilter kernel rows -> EventQueue -> data-integrity health",
+      "type": "host_telemetry_data_plane",
+      "plane": "PLANE-A -> PLANE-B",
+      "status": "PRODUCTION_EVIDENCE_ONLY",
+      "description": "Kernel minifilter file/process records are pulled by the Zig reader and admitted to the shared EventQueue. Kernel-ring overflow and queue rejection are separate counters; any observed ingress loss makes health DEGRADED. This path records evidence only and cannot authorize policy or host effects.",
+      "boundary": "Filter Manager communication port -> Zig minifilter reader -> shared EventQueue -> queue.stats / health",
+      "layers": [
+        {
+          "step": 1,
+          "name": "Kernel event collection",
+          "plane": "PLANE-A",
+          "owner": "Windows minifilter driver",
+          "input": "File/process callbacks",
+          "output": "Records in the kernel ring; ring overflow counter",
+          "file": "drivers/minifilter/"
+        },
+        {
+          "step": 2,
+          "name": "Ring read and canonical conversion",
+          "plane": "PLANE-A -> PLANE-B",
+          "owner": "Zig minifilter reader",
+          "input": "Pulled kernel records",
+          "output": "Canonical host events submitted to EventQueue",
+          "file": "src/capture/minifilter_reader.zig"
+        },
+        {
+          "step": 3,
+          "name": "Queue admission and loss accounting",
+          "plane": "PLANE-B",
+          "owner": "Zig EventQueue / runtime state",
+          "input": "Canonical host events",
+          "output": "Queued events or separately counted pipeline rejections",
+          "file": "src/pipeline/event_queue.zig",
+          "counter_file": "src/pipeline/runtime_state.zig"
+        },
+        {
+          "step": 4,
+          "name": "Operational health and operator visibility",
+          "plane": "PLANE-B",
+          "owner": "Zig control plane",
+          "input": "Queue, Nose, and minifilter loss counters",
+          "output": "DEGRADED health and labeled integrity counters",
+          "file": "src/control/state_machine.zig",
+          "api_file": "src/control/handler_registry.zig",
+          "note": "Cumulative loss counters remain visible for the daemon lifetime; no automatic enforcement or service stop."
         }
       ]
     }
