@@ -76,24 +76,58 @@ typedef struct {
 
 static DWORD WINAPI fim_thread(LPVOID arg) {
     aegis_fim_session_t* s = (aegis_fim_session_t*)arg;
-    while (InterlockedCompareExchange(&s->running, 1, 1)) {
+    for (;;) {
         DWORD bytes_returned = 0;
+        DWORD read_error = ERROR_SUCCESS;
+
+        /* Serialize the running check and I/O submission with stop().
+         * Otherwise stop can cancel before this request exists, after which
+         * this worker could submit an uncancelled read and outlive its session. */
+        EnterCriticalSection(&s->lock);
+        if (!InterlockedCompareExchange(&s->running, 1, 1)) {
+            LeaveCriticalSection(&s->lock);
+            break;
+        }
         while (s->data_ready && InterlockedCompareExchange(&s->running, 1, 1)) {
+            LeaveCriticalSection(&s->lock);
             Sleep(10);
+            EnterCriticalSection(&s->lock);
+        }
+        if (!InterlockedCompareExchange(&s->running, 1, 1)) {
+            LeaveCriticalSection(&s->lock);
+            break;
+        }
+        if (!ResetEvent(s->event)) {
+            DWORD error = GetLastError();
+            LeaveCriticalSection(&s->lock);
+            fprintf(stderr, "[FIM] ResetEvent failed: %lu\n", error);
+            break;
         }
         memset(&s->overlapped, 0, sizeof(OVERLAPPED));
         s->overlapped.hEvent = s->event;
         BOOL ok = ReadDirectoryChangesW(
             s->dir_handle, s->buffer, AEGIS_FIM_BUFFER_SIZE,
-            s->recursive, s->filter, &bytes_returned, &s->overlapped, NULL);
-        if (!ok) {
-            fprintf(stderr, "[FIM] ReadDirectoryChangesW failed: %lu\n", GetLastError());
+            s->recursive, s->filter, NULL, &s->overlapped, NULL);
+        if (!ok) read_error = GetLastError();
+        LeaveCriticalSection(&s->lock);
+
+        if (!ok && read_error != ERROR_IO_PENDING) {
+            if (InterlockedCompareExchange(&s->running, 1, 1))
+                fprintf(stderr, "[FIM] ReadDirectoryChangesW failed: %lu\n", read_error);
             break;
         }
-        WaitForSingleObject(s->overlapped.hEvent, INFINITE);
+        DWORD wait_result = WaitForSingleObject(s->overlapped.hEvent, INFINITE);
+        if (wait_result != WAIT_OBJECT_0) {
+            DWORD error = (wait_result == WAIT_FAILED) ? GetLastError() : ERROR_INVALID_DATA;
+            fprintf(stderr, "[FIM] overlapped event wait failed: result=%lu error=%lu\n",
+                    wait_result, error);
+            break;
+        }
         if (!GetOverlappedResult(s->dir_handle, &s->overlapped, &bytes_returned, FALSE)) {
-            if (InterlockedCompareExchange(&s->running, 1, 1))
-                fprintf(stderr, "[FIM] GetOverlappedResult failed: %lu\n", GetLastError());
+            DWORD error = GetLastError();
+            if (InterlockedCompareExchange(&s->running, 1, 1)) {
+                fprintf(stderr, "[FIM] GetOverlappedResult failed: %lu\n", error);
+            }
             continue;
         }
         if (bytes_returned == 0) continue;
@@ -158,9 +192,28 @@ void* aegis_fim_start(const char* path, uint32_t recursive, uint32_t filter) {
 int aegis_fim_stop(void* handle) {
     aegis_fim_session_t* s = (aegis_fim_session_t*)handle;
     if (!s) return -1;
+
+    /* Use the same lock as read submission so cancellation cannot happen
+     * just before the worker starts a new request. */
+    EnterCriticalSection(&s->lock);
     InterlockedExchange(&s->running, 0);
-    CancelIoEx(s->dir_handle, NULL);
-    WaitForSingleObject(s->thread, 5000);
+    BOOL cancel_ok = CancelIoEx(s->dir_handle, NULL);
+    DWORD cancel_error = cancel_ok ? ERROR_SUCCESS : GetLastError();
+    LeaveCriticalSection(&s->lock);
+    if (!cancel_ok && cancel_error != ERROR_NOT_FOUND) {
+        fprintf(stderr, "[FIM] CancelIoEx failed: %lu; waiting for worker before release\n",
+                cancel_error);
+    }
+
+    /* Never free session memory while the native worker may still reference
+     * it. Cancellation completion wakes the worker's event wait. */
+    DWORD wait_result = WaitForSingleObject(s->thread, INFINITE);
+    if (wait_result != WAIT_OBJECT_0) {
+        DWORD error = (wait_result == WAIT_FAILED) ? GetLastError() : ERROR_INVALID_DATA;
+        fprintf(stderr, "[FIM] worker did not signal termination: result=%lu error=%lu; session retained\n",
+                wait_result, error);
+        return -2;
+    }
     CloseHandle(s->thread);
     CloseHandle(s->dir_handle);
     CloseHandle(s->event);
