@@ -9038,6 +9038,29 @@
    "evidence_artifact": "admin-evidence/e5-recheck-20261101/closeout.md"
   },
   {
+   "id": "REL-MANIFEST-001-20261101",
+   "head_sha": "e2332422bfeb5b5cca944aa2716360acf2538c3a",
+   "timestamp": "2026-11-01",
+   "title": "Refreshed current-source digests for the existing release artifact set",
+   "level": "E1",
+   "component": "release manifest and fresh-deploy read-only preflight",
+   "flow_id": "REL-001",
+   "description": "Refreshed digests/sizes for 19 changed entries in the existing 616-artifact set, with no additions or drops. The package plan now passes preflight and config validation; mutating snapshot/package steps remain deferred.",
+   "files_changed": [
+    "build_manifest.json",
+    "runtime_manifest.json"
+   ],
+   "tests": [
+    "python tools/release_engineering.py --refresh-digests: 616 present, 19 updated, 0 dropped, 0 adopted",
+    "python tools/release_engineering.py --verify: 616/616 PASS",
+    "python tools/fresh_deploy.py --plan --json: read-only steps PASS",
+    "python tools/truth.py verify: TRUTH_VALID at source e233242"
+   ],
+   "result": "PASS_READ_ONLY_PREFLIGHT",
+   "finding": "Manifest drift is resolved. Installed service hash mismatch, current-source deployment, and Windows E5 remain OPEN.",
+   "evidence_artifact": "admin-evidence/rel-manifest-refresh-20261101/closeout.md"
+  },
+  {
    "id": "IDS-XDR-005-WIRING-OPEN",
    "severity": "P1",
    "title": "Selected XDR evidence authority remains test/lab-only pending source-to-forensic integration",
@@ -9058,12 +9081,12 @@
    "id": "E5-CURRENT-RUNTIME-MISMATCH",
    "severity": "P1",
    "title": "RB-021 host is pinned to VMnet1 but the running service image is not the current workspace build",
-   "description": "Installed aegis_nids.exe and zig-out/bin/aegis_nids.exe SHA-256 differ. The installed file is dated 2026-10-25; the current workspace build is dated 2026-11-01. The read-only fresh-deploy preflight also fails at release_engineering.py --verify. The Kali canary sequence must not run until a verified current-source deployment path and rollback point are available.",
+   "description": "Installed aegis_nids.exe and zig-out/bin/aegis_nids.exe SHA-256 differ. The installed file is dated 2026-10-25; the current workspace build is dated 2026-11-01. Release digests and read-only fresh-deploy preflight now pass (REL-MANIFEST-001), but current-source deployment and a verified binary rollback point are still missing. The Kali canary sequence must not run until those are available.",
    "status": "OPEN",
    "found_at": "2026-11-01",
    "tracking": "Local stop-the-line record; GitHub issue creation unavailable in this session",
    "required_evidence": [
-    "Resolve tools/release_engineering.py --verify failure and validate the deployment manifest.",
+    "Create a rollback point that includes the installed runtime binary and package current source.",
     "Deploy with a verified rollback point and verify the service executable hash/source commit.",
     "Repeat RB-021 raw visibility, Kali attribution, and observe-only canary checks.",
     "Restore the VMnet1 machine pin and verify normal host capture after the bounded lab window."
@@ -9075,7 +9098,7 @@
  ],
  "evidence_level_summary": {
   "E0_count": 0,
-  "E1_count": 29,
+  "E1_count": 30,
   "E2_count": 153,
   "E3_count": 16,
   "E4_count": 15,

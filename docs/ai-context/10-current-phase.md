@@ -150,7 +150,10 @@ And CI proves: C/C++ + Zig + Go + Rust + Python/Cython + Drivers as one product.
    the current workspace build, and `fresh_deploy.py --plan` fails its release
    manifest preflight. No Kali canary was sent; do not claim E5 until a verified
    current-source deployment and rollback point are available. See
-   `admin-evidence/e5-recheck-20261101/closeout.md`.
+   `admin-evidence/e5-recheck-20261101/closeout.md`. REL-MANIFEST-001 now
+   refreshes the existing 616-entry release digest set; `release_engineering
+   --verify` and `fresh_deploy --plan` pass. This clears preflight only and
+   does not install or qualify the current build.
 3. Continue classifying remaining older IPS/WFP material as historical or
    lab-only without deleting it; the key WFP/host records GAP-002, GAP-005, and
    GAP-009 are now explicitly historical. Keep production host-effect capability false.

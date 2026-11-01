@@ -582,8 +582,8 @@
     },
     {
       "path": "build.zig",
-      "size": 10141,
-      "sha256": "3c075d0277faa316cc6a36a21ade7b3e584cd93a1e38a043be91d34614919269",
+      "size": 12427,
+      "sha256": "dfe05d861ee67160186bf2524c669db994c6b37e95226d1c1cbb7786b51643a7",
       "language": "zig"
     },
     {
@@ -1026,8 +1026,8 @@
     },
     {
       "path": "runtime_manifest.json",
-      "size": 18563,
-      "sha256": "96cc046564f05c5ab9b4fe6cce8fb69df33b1892a819420e9ef7cddd1e48fcb2",
+      "size": 22337,
+      "sha256": "fb3f608441eba321b39e9c1a46954acd9c96e1968eb27547b54def0107dfcce6",
       "language": "json"
     },
     {
@@ -1038,8 +1038,8 @@
     },
     {
       "path": "rust-src/lib.rs",
-      "size": 103121,
-      "sha256": "61dda041e3732c6554a88e94617fe0ed3b94c0c4b11a7ea8b77c8b64e3d12b9f",
+      "size": 106716,
+      "sha256": "7698e97f135d7738ea73d80553776a5606d7967850b918af91cb03f8b10b392a",
       "language": "rust"
     },
     {
@@ -1662,8 +1662,8 @@
     },
     {
       "path": "src/all_tests.zig",
-      "size": 10982,
-      "sha256": "bbd00416e4a23e7acb42d7fda4ccccf7706748dabdd691e1e1b16ef9ea9927b2",
+      "size": 10999,
+      "sha256": "6c0fd6961334f337e310c03ff7faa21dd65fca4f99d06eb2156df77f8225ebdf",
       "language": "zig"
     },
     {
@@ -1710,8 +1710,8 @@
     },
     {
       "path": "src/capture/npcap_adapter.zig",
-      "size": 18323,
-      "sha256": "77dfd03fc90dc04aa8adb79a67926d8ec933c236e0e3c03ed4ab7b5d2d612e0d",
+      "size": 20179,
+      "sha256": "3a20b9a2ccb1e305571dd3ea5ebf39af4dc87f0fdcba32a3702704e2f06cb841",
       "language": "zig"
     },
     {
@@ -1800,8 +1800,8 @@
     },
     {
       "path": "src/contract/runtime_spine.zig",
-      "size": 27499,
-      "sha256": "103197f21c6afb31673e6093fe5d0ce6a27aaaeec730e7f0ed21df05aac5b861",
+      "size": 27685,
+      "sha256": "bbcb84853eac708df998b065ec1322d97b8576ceb2ee48dd1a6768f45cf3c41b",
       "language": "zig"
     },
     {
@@ -1878,8 +1878,8 @@
     },
     {
       "path": "src/core/compliance_reporter.zig",
-      "size": 30499,
-      "sha256": "5cec62a89636ba6436430ca1b711fb8afeda0ee7082977409a7067b29e1fe3c6",
+      "size": 32907,
+      "sha256": "fc4df294d361dceef4355101b416576be761a63d9ed7c703701e19f9d8faebd9",
       "language": "zig"
     },
     {
@@ -1986,8 +1986,8 @@
     },
     {
       "path": "src/daemon.zig",
-      "size": 45700,
-      "sha256": "45d064d59e657a6c9c887840e7215846b723b60b744da0ccf011d4856aebac54",
+      "size": 47186,
+      "sha256": "74f1994df3f759870355f53b609a4db09178c48857a8d15246c409ffae47470b",
       "language": "zig"
     },
     {
@@ -2040,8 +2040,8 @@
     },
     {
       "path": "src/detection/proto_anomaly.zig",
-      "size": 4842,
-      "sha256": "a916d681d184df4b21ff13197fd44853d6eed05c1e89ab986c90dc36b980642d",
+      "size": 6761,
+      "sha256": "e922c225670c73d18b3abf5d6586073a4207f8e7c28914e717e9ef5c72c7d36e",
       "language": "zig"
     },
     {
@@ -2124,8 +2124,8 @@
     },
     {
       "path": "src/federation/federation_tcp.zig",
-      "size": 41734,
-      "sha256": "16dd928e9cd56b4b420d4a7aaded3a99c8a7205095e0581d7a5d8bc37759c75e",
+      "size": 43558,
+      "sha256": "1884d70255f3040142b986ead11efd5f0f5b1daee3c991c8f6c5a76d4a916982",
       "language": "zig"
     },
     {
@@ -2154,14 +2154,14 @@
     },
     {
       "path": "src/forensic/forensic_log.zig",
-      "size": 25443,
-      "sha256": "a06aaedfcb7949b5e83b7e68844b9d4cfba00a75e78e03f4bf399f8a426fc50d",
+      "size": 25964,
+      "sha256": "860c87e965ff84137333311ffaa0c8bbca485e889a327adfc4974c4149bb8e9e",
       "language": "zig"
     },
     {
       "path": "src/forensic/forensic_pipeline.zig",
-      "size": 34863,
-      "sha256": "50ebb329ff874662c182582427ceb41de54469685b4da62574f91ea8b20717e9",
+      "size": 43668,
+      "sha256": "a4d505d771e73c99d526db29b1547fd3c3979cbcff4f1b8624a75743b79a18ad",
       "language": "zig"
     },
     {
@@ -2244,8 +2244,8 @@
     },
     {
       "path": "src/forensic/siem_forwarder.zig",
-      "size": 52441,
-      "sha256": "4491308067bd96ead024498068e7a5ff74314d75aaccdc944740ab71eb75694b",
+      "size": 52566,
+      "sha256": "4817e3390b5b97ad529cc6be7b639837436faddf9ae485c4cd56446a80f1e61a",
       "language": "zig"
     },
     {
@@ -2292,14 +2292,14 @@
     },
     {
       "path": "src/pipeline/event_processor.zig",
-      "size": 37559,
-      "sha256": "582ef7bf5857146b360e95a95c87a064d7228c690563e01956060de22a1adf73",
+      "size": 45088,
+      "sha256": "af89dbeb19add66a3d32480c7af30854288955a1d5b29655465475c8e83055c3",
       "language": "zig"
     },
     {
       "path": "src/pipeline/event_queue.zig",
-      "size": 28462,
-      "sha256": "112465e8a90d8c0a39fbfa1617909992b55b879661d0f3287bc5fa517059b30d",
+      "size": 29141,
+      "sha256": "1d3a243683423aaf7b61d1cd29eb943d88921110ea2b3a4c4531021084ace08a",
       "language": "zig"
     },
     {
@@ -2376,8 +2376,8 @@
     },
     {
       "path": "src/policy/pep_bindings.zig",
-      "size": 35719,
-      "sha256": "3bd0a0d9df91f92e6f179e7ea5f881684ef352003ec44752465c2830fc3cd00c",
+      "size": 38803,
+      "sha256": "147c72c8a9eec7438d4dbe568816f5bb6b649f34f9b8dfa30c85dfa73eee83df",
       "language": "zig"
     },
     {
@@ -3324,8 +3324,8 @@
     },
     {
       "path": "src/windows/registry_trie.zig",
-      "size": 29361,
-      "sha256": "abce4dd48ad8a5e699a546c314fa418f47686cf89793ba080b4d8e97e7a7208f",
+      "size": 27339,
+      "sha256": "5ac2439c19f40e8bffce56f59d1d624ad54c582b6badfb6f734f238f5209f002",
       "language": "zig"
     },
     {
@@ -3366,8 +3366,8 @@
     },
     {
       "path": "src/xdr/xdr_incident_fabric.zig",
-      "size": 12859,
-      "sha256": "743e3958f660f791258fc04c2f3db5160191e1a499e17f083a086a2f1757bd57",
+      "size": 12821,
+      "sha256": "c6d023352ac480feeae8ca5f5839c3fa15fc4fb2c57cb76d5add3f14bba88429",
       "language": "zig"
     },
     {
@@ -3474,8 +3474,8 @@
     },
     {
       "path": "tools/create_manifest.py",
-      "size": 14860,
-      "sha256": "95896a8dc4643bdae51ecf06bd49e7b9dd6118286ffc990f8869c13a6eadc0d4",
+      "size": 19326,
+      "sha256": "43a879587cd3971d554a47f34232cc9e788abcffe5db20cad11899bcf49e9dcc",
       "language": "python/cython"
     },
     {
