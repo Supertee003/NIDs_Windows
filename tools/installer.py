@@ -431,14 +431,10 @@ def generate_nsi(nsi_path: Path) -> None:
     """Generate installer NSI from build_manifest.json."""
     manifest = load_manifest()
     components = manifest_components(manifest)
-
-    try:
-        head = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            cwd=str(ROOT), capture_output=True, text=True,
-        ).stdout.strip() or "unknown"
-    except Exception:
-        head = "unknown"
+    # ADR-0008 distinguishes the build source commit from records-only HEAD
+    # commits. Embed the same provenance stamp as the manifest, not whatever
+    # commit happened to update documentation last.
+    head = str(manifest.get("source_commit", "")).strip()[:7] or "unknown"
 
     lines = []
     for comp in components:

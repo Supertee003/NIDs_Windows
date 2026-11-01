@@ -68,6 +68,25 @@ def test_generate_nsi_splices_manifest_block_inside_install(tmp_path):
     assert _file_lines_outside_sections(text) == []
 
 
+def test_generate_nsi_embeds_build_source_commit_not_records_head(tmp_path, monkeypatch):
+    import json
+
+    mod = _load()
+    manifest = tmp_path / "build_manifest.json"
+    manifest.write_text(
+        json.dumps({"source_commit": "abc123456789", "components": []}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(mod, "MANIFEST_PATH", manifest)
+    out = tmp_path / "source-stamp.nsi"
+
+    mod.generate_nsi(out)
+
+    text = out.read_text(encoding="utf-8")
+    assert '!define AEGIS_COMMIT "abc1234"' in text
+    assert 'PrivateBuild" "${APPNAME} ${APPVERSION} abc1234"' in text
+
+
 def test_preprocessor_defines_are_real_and_version_block_is_valid_nsis():
     """EVT-220: the template's four '#!define' lines were NSIS comments ('#'
     starts a comment), so APPNAME/APPVERSION/PUBLISHER/AEGIS_COMMIT never
