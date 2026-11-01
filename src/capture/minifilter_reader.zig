@@ -198,7 +198,6 @@ const STATS_POLL_EVERY: u64 = 64;
 // ====== Statistics ======
 var g_events_received: u64 = 0;
 var g_events_processed: u64 = 0;
-var g_event_queue_full: u64 = 0;
 
 fn stopRequested() bool {
     return bridge_init.g_shutdown.load(.seq_cst) or runtime_state.g_stop_requested.load(.acquire);
@@ -312,9 +311,9 @@ pub fn minifilterReaderLoop() void {
                             diag.debug("[MINI] {s} pid={d} {s}", .{ eventTypeToString(rec.event_type), rec.process_id, path });
                         }
                     } else {
-                        g_event_queue_full += 1;
-                        if (g_event_queue_full == 1 or g_event_queue_full % 1024 == 0) {
-                            diag.warn("[MINI] pipeline queue full - {d} kernel rows dropped at ingress", .{g_event_queue_full});
+                        const dropped = runtime_state.g_minifilter_pipeline_dropped.fetchAdd(1, .monotonic) + 1;
+                        if (dropped == 1 or dropped % 1024 == 0) {
+                            diag.warn("[MINI] pipeline queue full - {d} kernel rows dropped at ingress", .{dropped});
                         }
                     }
                 }

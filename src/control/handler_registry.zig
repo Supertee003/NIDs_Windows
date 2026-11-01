@@ -684,11 +684,12 @@ const handlers = struct {
         var out = std.ArrayList(u8).init(a);
         errdefer out.deinit();
         var writer = out.writer();
-        writer.print("{{\"queue_size\":{},\"depth\":{},\"pushed_total\":{},\"dropped_total\":{},\"shed_overload\":{},\"by_source\":[", .{
+        writer.print("{{\"queue_size\":{},\"depth\":{},\"pushed_total\":{},\"dropped_total\":{},\"minifilter_pipeline_dropped\":{},\"shed_overload\":{},\"by_source\":[", .{
             event_queue.PIPELINE_QUEUE_SIZE,
             event_queue.queueDepth(),
             pushed_total,
             dropped_total,
+            state_mod.g_minifilter_pipeline_dropped.load(.acquire),
             telemetry.g_shed_overload.load(.acquire),
         }) catch return null;
         var first = true;
@@ -747,14 +748,16 @@ const handlers = struct {
         // EVT-230: kernel minifilter host telemetry health (file/process
         // events via \AegisMinifilterPort), stamped by the reader loop.
         // Same labeled-absence rule as wfp; `dropped` is the KERNEL ring's
-        // own loss counter, so ring overflow is never silent.
+        // own loss counter, so ring overflow is never silent. `pipeline_dropped`
+        // separately counts rows rejected after leaving the kernel ring.
         writer.writeAll(",\"minifilter\":{") catch return null;
-        writer.print("\"state\":\"{s}\",\"reads\":{},\"rows\":{},\"last_bytes\":{},\"dropped\":{}}}}}", .{
+        writer.print("\"state\":\"{s}\",\"reads\":{},\"rows\":{},\"last_bytes\":{},\"dropped\":{},\"pipeline_dropped\":{}}}}}", .{
             providerStateName(state_mod.g_minifilter_state.load(.acquire)),
             state_mod.g_minifilter_reads.load(.acquire),
             state_mod.g_minifilter_rows.load(.acquire),
             state_mod.g_minifilter_last_bytes.load(.acquire),
             state_mod.g_minifilter_dropped.load(.acquire),
+            state_mod.g_minifilter_pipeline_dropped.load(.acquire),
         }) catch return null;
         return out.toOwnedSlice() catch null;
     }
@@ -2446,6 +2449,7 @@ test "queueStats emits parseable JSON with shed and etw keys (GAP-015)" {
     const root = parsed.value.object;
     try std.testing.expect(root.contains("queue_size"));
     try std.testing.expect(root.contains("shed_overload"));
+    try std.testing.expect(root.contains("minifilter_pipeline_dropped"));
     try std.testing.expect(root.contains("by_source"));
     try std.testing.expect(root.contains("pipeline"));
     try std.testing.expect(root.contains("etw"));
@@ -2481,6 +2485,7 @@ test "queueStats emits parseable JSON with shed and etw keys (GAP-015)" {
     try std.testing.expect(mf.contains("rows"));
     try std.testing.expect(mf.contains("last_bytes"));
     try std.testing.expect(mf.contains("dropped"));
+    try std.testing.expect(mf.contains("pipeline_dropped"));
 }
 
 test "ceremonyRequestId prefers explicit identity, falls back to ctx (G5)" {

@@ -229,6 +229,7 @@ pub var g_minifilter_reads = std.atomic.Value(u64).init(0); // READ_EVENTS pulls
 pub var g_minifilter_rows = std.atomic.Value(u64).init(0); // kernel records submitted to the pipeline
 pub var g_minifilter_last_bytes = std.atomic.Value(u64).init(0); // bytes in the last answered pull
 pub var g_minifilter_dropped = std.atomic.Value(u64).init(0); // kernel ring DroppedEvents (polled)
+pub var g_minifilter_pipeline_dropped = std.atomic.Value(u64).init(0); // rows rejected by shared EventQueue
 /// Identity used for events originating from the verified daemon process.
 /// Set during daemon startup; never use a fabricated all-capability mask.
 pub var g_runtime_pid: u32 = 0;
