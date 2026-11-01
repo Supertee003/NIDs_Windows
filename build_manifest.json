@@ -1027,7 +1027,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 22337,
-      "sha256": "fb3f608441eba321b39e9c1a46954acd9c96e1968eb27547b54def0107dfcce6",
+      "sha256": "8d7e35d83eb9b6fa55a9e72f13b12bdbd6afb66931301d0a8602606dfe021a62",
       "language": "json"
     },
     {
@@ -1692,8 +1692,8 @@
     },
     {
       "path": "src/capture/minifilter_reader.zig",
-      "size": 19354,
-      "sha256": "5c085ead37a64a2f4069e415e0cef4f2182b85e250121ce38b144c3e63273c17",
+      "size": 19352,
+      "sha256": "134e1b25506f6bd33bb5cf03eac9c06d6b82b884809414d9a19d2effe6e07f69",
       "language": "zig"
     },
     {
@@ -1836,8 +1836,8 @@
     },
     {
       "path": "src/control/handler_registry.zig",
-      "size": 156961,
-      "sha256": "baa50e8821dabe406dc13f8655e9b83b166312a0f41fcfb63b403379fb83ecf6",
+      "size": 157384,
+      "sha256": "d48119b9f22fa5f553e9c53cf03e94094fe1ff908ac48c29f453554482ea06fb",
       "language": "zig"
     },
     {
@@ -1848,8 +1848,8 @@
     },
     {
       "path": "src/control/state_machine.zig",
-      "size": 21855,
-      "sha256": "9380d6deaa425b3f62c0655cfbce014bb0c0e96e4f3bccbd268264b828a485a2",
+      "size": 25100,
+      "sha256": "90dd918203ed07f8426e08452eaf2df089f7d4caf290a80def87a42b318beec1",
       "language": "zig"
     },
     {
@@ -2322,8 +2322,8 @@
     },
     {
       "path": "src/pipeline/runtime_state.zig",
-      "size": 17688,
-      "sha256": "f3085182141778dedd7f190467166d06223286cc5780355aaa8c985aa4ec9982",
+      "size": 17797,
+      "sha256": "856c0aa9ffd1abfcd7d2cf9a23636c0cd0fa4df370cc01d3c5872577025acd65",
       "language": "zig"
     },
     {

@@ -3460,7 +3460,7 @@
     "git diff --check: PASS"
    ],
    "result": "PASS_E2_SOURCE_AND_BUILD; WINDOWS_DEPLOYMENT_PENDING",
-   "actual": "Health-loss regression test proves a nonzero queue drop produces state=DEGRADED, degraded=true and data_integrity.queue_dropped_total=1. The source build is not installed on the Windows host. AegisNids was stopped for verification; restart by an elevated operator remains pending in this session.",
+   "actual": "Source regression proves a queue drop produces state=DEGRADED, degraded=true and data_integrity.queue_dropped_total=1. After the operator restarted the old installed binary (SHA-256 8A195ABA73C66DB61A8810329C9B4414926B1813D731FDA8524792C47BB566D6), health still said RUNNING/degraded=false. A sample at uptime 18.7s showed EventQueue dropped_total=4,655 (capture_etw=2,125; capture_fim=2,530), depth=15,323/16,384; minifilter kernel ring counter read 466,949 (no before/after delta established). New source image SHA-256 749784FE150076600DE09E2CF0926EEAE0F4483442E8E5A0B9C5EE849E17C610 remains uninstalled. Rollback package SHA-256 37E9A198500A94DF363FFFA1C96C1C16D0CE59C283AC95235A9B0F61ACA54790 is retained; snapshot ID 20261101091936. Current-source installer SHA-256 488845A8A7D9B3648AF38A59E612074F933B4C6FA2E9A6C7BA9C31F01AC9DE7B is stamped 1edb2b1 and includes both driver payloads, but remains uninstalled. Release verification is 616/616; fresh_deploy --plan passes.",
    "evidence_artifact": "admin-evidence/qloss-health-001-20261101/closeout.md",
    "tracking": "GitHub issue #29 remains OPEN until current build deployment and bounded Windows validation."
   }
@@ -3805,7 +3805,7 @@
    "id": "GAP-016",
    "severity": "P1",
    "title": "Service crash resilience: 02:50 int3 crash on superseded binary plus a 2h blind gap with no SCM recovery",
-   "description": "Found while closing the loop (EVT-133): the Application log holds a 0x80000003 (int3) crash of the DEPLOYED service binary at 02:50:57 on an older build (PE stamp differs from current), and sc qfailure shows NO recovery actions — the service sat dead until the next operator redeploy (~2h blind). Root cause of that crash is unproven (candidates from the era: since-pinned u8-wrap/u32-narrow/pre-mutex classes); a full -ODebug panic-class sweep found no legitimate-input storm panic remaining and closed the three genuine residuals in EVT-133. Remaining: SCM recovery config + watchdog scheduling (both operator one-liners, no daemon change; watchdog script added and proven exit 0 live).",
+   "description": "Live E5 observations found cumulative EventQueue drops (164,069 in a prior sample; after restarting the still-old installed image, 4,655 drops in a daemon uptime sample of 18.7s), queue depth 15,323/16,384, and a minifilter kernel ring counter read of 466,949 (no delta established). Health still said RUNNING. QLOSS-HEALTH-001 adds loss-attributed counters and DEGRADED health at E2, but the new source build has not been installed or verified on the Windows host. The post-restart queue drops prove ongoing ingress loss under the old binary.",
    "status": "CLOSED",
    "required_evidence": [
     "CLOSED EVT-134: SCM failure recovery configured (3x restart/60s shown)",
