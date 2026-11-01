@@ -9012,6 +9012,32 @@
    "evidence_artifact": "admin-evidence/ver-004-20261101/closeout.md"
   },
   {
+   "id": "E5-RECHECK-STALE-IMAGE-20261101",
+   "head_sha": "e2332422bfeb5b5cca944aa2716360acf2538c3a",
+   "timestamp": "2026-11-01",
+   "title": "RB-021 recheck blocked before canaries by installed runtime mismatch",
+   "level": "E1",
+   "component": "Windows service deployment and VMnet1 capture preflight",
+   "flow_id": "DATA-001 / RB-021",
+   "description": "Both VMs are reachable and the host is pinned to VMnet1, but the running installed executable differs from the current workspace build. No Kali canary was sent.",
+   "files_verified": [
+    "C:\\Program Files\\AEGIS NIDS\\runtime\\aegis_nids.exe",
+    "zig-out/bin/aegis_nids.exe",
+    "docs/runbooks/RB-021-hostonly-lab-proof.md",
+    "tools/fresh_deploy.py"
+   ],
+   "tests": [
+    "zig build --summary all: 11/11 steps succeeded",
+    "raw VMnet1 capture probe: 34 frames while host pinged victim; later Kali observation windows: 0 frames",
+    "aegisctl readiness: ready=true; authority invariant: HELD",
+    "installed/workspace SHA-256 differ",
+    "python tools/fresh_deploy.py --plan --json: FAIL at release_engineering.py --verify; packaging/deploy skipped"
+   ],
+   "result": "BLOCKED_E5_NO_CURRENT_SOURCE_CANARY",
+   "finding": "Host observability may still capture normal LAN traffic while AEGIS_DAEMON_IFACE is pinned to VMnet1. Resolve deployment preflight and verify the runtime image/source before restarting this lab; no E5 result is claimed.",
+   "evidence_artifact": "admin-evidence/e5-recheck-20261101/closeout.md"
+  },
+  {
    "id": "IDS-XDR-005-WIRING-OPEN",
    "severity": "P1",
    "title": "Selected XDR evidence authority remains test/lab-only pending source-to-forensic integration",
@@ -9027,11 +9053,29 @@
    "evidence": [
     "admin-evidence/ids-xdr-005-20261031/closeout.md"
    ]
+  },
+  {
+   "id": "E5-CURRENT-RUNTIME-MISMATCH",
+   "severity": "P1",
+   "title": "RB-021 host is pinned to VMnet1 but the running service image is not the current workspace build",
+   "description": "Installed aegis_nids.exe and zig-out/bin/aegis_nids.exe SHA-256 differ. The installed file is dated 2026-10-25; the current workspace build is dated 2026-11-01. The read-only fresh-deploy preflight also fails at release_engineering.py --verify. The Kali canary sequence must not run until a verified current-source deployment path and rollback point are available.",
+   "status": "OPEN",
+   "found_at": "2026-11-01",
+   "tracking": "Local stop-the-line record; GitHub issue creation unavailable in this session",
+   "required_evidence": [
+    "Resolve tools/release_engineering.py --verify failure and validate the deployment manifest.",
+    "Deploy with a verified rollback point and verify the service executable hash/source commit.",
+    "Repeat RB-021 raw visibility, Kali attribution, and observe-only canary checks.",
+    "Restore the VMnet1 machine pin and verify normal host capture after the bounded lab window."
+   ],
+   "evidence": [
+    "admin-evidence/e5-recheck-20261101/closeout.md"
+   ]
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
-  "E1_count": 28,
+  "E1_count": 29,
   "E2_count": 153,
   "E3_count": 16,
   "E4_count": 15,

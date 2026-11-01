@@ -144,9 +144,13 @@ And CI proves: C/C++ + Zig + Go + Rust + Python/Cython + Drivers as one product.
    against current source. This is not Windows E5, kernel qualification, or ADR-
    0009/release completion.
 2. Produce supervised Windows-host evidence for applicable host telemetry and
-   sensor paths. RB-021 preflight on 2026-11-01 was blocked because no VMs were
-   running, the capture pin was unset, and the session was not elevated; do not
-   infer E5 from unit tests or a successful build.
+   sensor paths. RB-021 recheck on 2026-11-01 confirmed both VMs are reachable,
+   the operator pinned VMnet1, `AegisNids` is ready, and the raw capture device
+   works. Stop-line remains OPEN: the installed service image hash differs from
+   the current workspace build, and `fresh_deploy.py --plan` fails its release
+   manifest preflight. No Kali canary was sent; do not claim E5 until a verified
+   current-source deployment and rollback point are available. See
+   `admin-evidence/e5-recheck-20261101/closeout.md`.
 3. Continue classifying remaining older IPS/WFP material as historical or
    lab-only without deleting it; the key WFP/host records GAP-002, GAP-005, and
    GAP-009 are now explicitly historical. Keep production host-effect capability false.
