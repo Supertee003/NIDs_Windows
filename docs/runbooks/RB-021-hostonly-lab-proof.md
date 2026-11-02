@@ -26,10 +26,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\rb021_current_sour
 
 Only `RB021_PREFLIGHT_PASS` permits the canary phase. The gate compares the
 installed service executable SHA-256 with `zig-out\bin\aegis_nids.exe`, checks
-the build manifest source commit against `git HEAD`, requires the service and
-VMnet1 link to be live, requires the machine capture pin, and requires ARP
-neighbors for both Kali and Victim. A blocked result is an honest E1
-preflight failure; it must not be converted into an E5 claim.
+the build manifest source commit against the current **build-source commit**
+(not a later records-only HEAD), requires the service and VMnet1 link to be
+live, requires the machine capture pin, and requires ARP neighbors for both
+Kali and Victim. A blocked result is an honest E1 preflight failure; it must
+not be converted into an E5 claim.
 
 ## Prerequisites
 

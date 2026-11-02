@@ -34,13 +34,16 @@ $principal = [Security.Principal.WindowsPrincipal]::new($identity)
 Check 'elevated_session' $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) 'Administrator token is required for the bounded RB-021 service/interface round-trip.'
 
 $gitHead = (& git -c "safe.directory=$repo" -C $repo rev-parse HEAD 2>$null).Trim()
+$buildSourcePaths = @('src', 'rust-src', 'shield', 'nose', 'go', 'brain', 'drivers', 'shared', 'build.zig', 'build.zig.zon', 'CMakeLists.txt', 'Cargo.toml', 'go.mod', 'ts_policy')
+$buildSource = (& git -c "safe.directory=$repo" -C $repo log -1 --format=%H -- $buildSourcePaths 2>$null).Trim()
 $manifest = $null
 if (Test-Path (Join-Path $repo 'build_manifest.json')) {
     try { $manifest = Get-Content (Join-Path $repo 'build_manifest.json') -Raw | ConvertFrom-Json } catch {}
 }
 $manifestSource = if ($manifest -and $manifest.source_commit) { [string]$manifest.source_commit } else { '' }
 Check 'source_commit_available' ($gitHead -match '^[0-9a-f]{40}$') "git HEAD=$gitHead"
-Check 'build_manifest_source' (($manifestSource -ne '') -and $gitHead.StartsWith($manifestSource)) "build_manifest.source_commit=$manifestSource; git HEAD=$gitHead"
+Check 'build_source_available' ($buildSource -match '^[0-9a-f]{40}$') "build_source_commit=$buildSource"
+Check 'build_manifest_source' (($manifestSource -ne '') -and $buildSource.StartsWith($manifestSource)) "build_manifest.source_commit=$manifestSource; build_source_commit=$buildSource; records_head=$gitHead"
 
 $buildHash = Hash (Join-Path $repo $BuildRuntimePath)
 $installedHash = Hash $InstalledRuntimePath
@@ -69,7 +72,8 @@ $record = [ordered]@{
     proof = 'rb021_current_source_preflight'
     result = if ($failures.Count -eq 0) { 'RB021_PREFLIGHT_PASS' } else { 'RB021_PREFLIGHT_BLOCKED' }
     evidence_level = 'E1'
-    source_commit = $gitHead
+    records_head = $gitHead
+    build_source_commit = $buildSource
     build_runtime = [ordered]@{ path = $BuildRuntimePath; sha256 = $buildHash }
     installed_runtime = [ordered]@{ path = $InstalledRuntimePath; sha256 = $installedHash }
     topology = [ordered]@{ kali = $ExpectedKaliIp; victim = $ExpectedVictimIp; nids = $ExpectedNidsIp; machine_pin = $machinePin }

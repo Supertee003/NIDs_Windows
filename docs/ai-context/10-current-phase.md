@@ -106,8 +106,9 @@ authorize a production host effect.
   `scripts/rb021_current_source_preflight.ps1`. It must emit
   `RB021_PREFLIGHT_PASS` before any Kali canary; it checks current HEAD/build
   manifest, installed runtime SHA-256, service state, VMnet1, machine capture
-  pin, and Kali/Victim ARP neighbors. A blocked preflight remains E1 and must
-  not be promoted to E5 by reusing historical evidence.
+  pin, and Kali/Victim ARP neighbors. The manifest is compared to the
+  build-source commit, not a later records-only HEAD. A blocked preflight
+  remains E1 and must not be promoted to E5 by reusing historical evidence.
 
 ## VER-004 Windows TCP Error Recovery — 2026-11-01
 
