@@ -163,6 +163,13 @@ Records written before direction metadata was available report `null`.
 | `federation.status` | READ | no | Federation cluster status |
 | `daemon.shutdown` | PRIVILEGED | yes | Shutdown daemon |
 
+> **Production posture:** production builds are detection-only.
+> `enforcement.block` and `enforcement.quarantine` answer
+> `PREVENTION_GATE_CLOSED` / `UNAVAILABLE` and never reach the PEP effect
+> path. `enforcement.unblock` is cleanup-only: it removes an exact filter by
+> receipt ID and cannot create one. The table describes the retained control
+> surface, not a production enforcement capability.
+
 Legacy aliases (accepted, same command): `status`, `health`, `health.check`,
 `version`.
 
