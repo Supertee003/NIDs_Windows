@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-02T04:30:56.748514+00:00",
+  "generated_at": "2026-11-02T04:40:55.782026+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1769,
@@ -3546,7 +3546,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 11671
+      "size": 11757
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -4284,7 +4284,7 @@
       "path": "docs/runbooks/RB-021-hostonly-lab-proof.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 32623
+      "size": 32680
     },
     {
       "path": "docs/runbooks/README.md",
@@ -4920,7 +4920,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 285461
+      "size": 285786
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -5184,7 +5184,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9987
+      "size": 9618
     },
     {
       "path": "pytest.ini",
@@ -5202,7 +5202,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 233871
+      "size": 234124
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -6786,7 +6786,7 @@
       "path": "scripts/rb021_current_source_preflight.ps1",
       "class": "canonical-source",
       "role": "source",
-      "size": 4856
+      "size": 5334
     },
     {
       "path": "scripts/read_vectors.py",
