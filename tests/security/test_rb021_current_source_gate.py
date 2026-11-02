@@ -31,3 +31,13 @@ def test_rb021_runbook_distinguishes_e1_preflight_from_e5():
     assert "not E5-complete" in text
     assert "Only `RB021_PREFLIGHT_PASS` permits the canary phase." in text
     assert "Do not use a bypass switch" in text
+
+
+def test_rb021_runbook_separates_wfp_readback_from_victim_canaries():
+    text = " ".join(RUNBOOK.read_text(encoding="utf-8").replace("\\n", " ").split())
+    assert "must not be used as the RB-021 Kali-to-Victim canary" in text
+    assert "kali_hostonly_probe.sh 192.168.126.1 49152" in text
+    assert "nmap -sS -Pn -n -p 1-40" in text
+    assert "nmap -sX -Pn -n -p 1-30" in text
+    assert "ping -c 60 -i 0.02" in text
+    assert "below the current R9006 threshold" in text

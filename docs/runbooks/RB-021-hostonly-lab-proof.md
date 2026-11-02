@@ -69,7 +69,18 @@ frames (2026-10-17: a 50-frame unicast burst to a dead .10 -> 0 rows;
 a 1000-frame burst to .10 while an entry existed -> 999/1000 rows in 236 ms).
 Broadcast always transmits -- it is the capture-liveness test.
 
-For the full RB-021 wrapper, keep the current-source gate enabled:
+The `run_wfp_hostonly_observe_only.ps1` wrapper is an RB-018-style WFP
+readback proof. Its `-ExternalListenPort` listener is on the NIDS host
+(`192.168.126.1`), so it must not be used as the RB-021 Kali-to-Victim
+canary. If Kali does not connect to `.1:49152`, its timeout is expected and
+does not prove that traffic to Victim `.20` was not detected.
+
+For RB-021, keep the current-source gate enabled by running the preflight above,
+then run the detection canaries below. Do not use the WFP listener command as a
+substitute for these Victim-targeted probes.
+
+If an independent WFP readback is also required, run it separately and point
+Kali at the NIDS host, not the Victim:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run_wfp_hostonly_observe_only.ps1 `
@@ -79,7 +90,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run_wfp_hostonly_o
   -ListenPort 49152 `
   -WaitSeconds 60 `
   -RequireCurrentSource `
-  -ProofOutput .\admin-evidence\rb021-current-source-proof
+  -ProofOutput .\admin-evidence\rb018-wfp-readback
+```
+
+From Kali, the matching readback probe is:
+
+```bash
+./kali_hostonly_probe.sh 192.168.126.1 49152
 ```
 
 The wrapper stops before opening its listener when the preflight is blocked.
@@ -122,9 +139,10 @@ sc.exe start AegisNids
 ### 3. Fire the network rules from Kali (in this order)
 
 ```
-python3 R9006_syn_stealth_scan.py --target 192.168.126.20
-python3 R9007_xmas_scan.py --target 192.168.126.20
-python3 R9002_icmp_flood.py --target 192.168.126.20
+# Threshold-valid L4 controls: R9006 >=20 distinct ports, R9002 >=50 ICMP/s.
+nmap -sS -Pn -n -p 1-40 --max-retries 1 --host-timeout 30s 192.168.126.20
+nmap -sX -Pn -n -p 1-30 --max-retries 1 --host-timeout 30s 192.168.126.20
+ping -c 60 -i 0.02 192.168.126.20
 python3 R9059_xss_basic.py --target 192.168.126.20
 python3 R0056_sqli_auth_bypass.py --target 192.168.126.20
 python3 R9064_cmdi_semicolon.py --target 192.168.126.20
@@ -132,7 +150,11 @@ python3 R0088_path_traversal.py --target 192.168.126.20
 python3 R0089_rfi_param.py --target 192.168.126.20
 ```
 
-`--intense` repeats 3x. Every script prints its own verify hint.
+The standalone R9006/R9007 scripts default to only 10 ports, which is below
+the current R9006 threshold and is not a valid positive proof. The R9002
+`hping3` helper is optional; if it returns nonzero, use the 60-packet `ping`
+control above and record the tool/return code. Every script prints its own
+verify hint.
 
 Fire only at a live, resolved victim: .20 must be up, present in
 `arp -a -N 192.168.126.1`, and answer a captured ping. Unicast
