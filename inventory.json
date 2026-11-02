@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-02T04:57:04.010571+00:00",
+  "generated_at": "2026-11-02T05:31:48.375414+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1769,
+  "total_files": 1770,
   "by_class": {
     "canonical-docs": 591,
     "canonical-build": 224,
     "unclassified": 19,
     "canonical-source": 655,
-    "canonical-test": 213,
+    "canonical-test": 214,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -4284,7 +4284,7 @@
       "path": "docs/runbooks/RB-021-hostonly-lab-proof.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 33729
+      "size": 34032
     },
     {
       "path": "docs/runbooks/README.md",
@@ -5088,7 +5088,13 @@
       "path": "nose/main.go",
       "class": "canonical-source",
       "role": "source",
-      "size": 9071
+      "size": 9722
+    },
+    {
+      "path": "nose/main_test.go",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 1062
     },
     {
       "path": "nose/model.go",
@@ -6786,7 +6792,7 @@
       "path": "scripts/rb021_current_source_preflight.ps1",
       "class": "canonical-source",
       "role": "source",
-      "size": 6310
+      "size": 7641
     },
     {
       "path": "scripts/read_vectors.py",
@@ -9702,7 +9708,7 @@
       "path": "tests/security/test_rb021_current_source_gate.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 1844
+      "size": 1943
     },
     {
       "path": "tests/security/test_receipt_contract.py",

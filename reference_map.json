@@ -1,8 +1,8 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-02T04:57:04.014562+00:00",
+  "generated_at": "2026-11-02T05:31:48.382676+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1769,
+  "total_files": 1770,
   "by_role": {
     "documentation": 577,
     "build-config": 213,
@@ -10,7 +10,7 @@
     "source": 366,
     "lockfile": 6,
     "rust-build": 4,
-    "test-artifact": 213,
+    "test-artifact": 214,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -3700,6 +3700,10 @@
     "nose/main.go": {
       "class": "canonical-source",
       "role": "source"
+    },
+    "nose/main_test.go": {
+      "class": "canonical-test",
+      "role": "test-artifact"
     },
     "nose/model.go": {
       "class": "canonical-source",
