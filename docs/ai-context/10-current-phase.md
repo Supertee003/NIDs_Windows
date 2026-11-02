@@ -95,6 +95,32 @@ authorize a production host effect.
   wait behind an existing host backlog; this slice prevents admission refusal,
   not queueing latency. No Windows E5 proof is claimed.
 
+## RB013-LOG-E5-20261102 — 2026-11-02
+
+- `G2-RB013-LOG-20261023` is **CLOSED** by a lab-kit E5 on the isolated Win11
+  VM `192.168.126.20`. The deployed lab-gate kit (daemon `86D4DD77...`, PEP
+  `C7F20079...`, bridge `9D5D7D46...`, signed driver `8A2B3F12...`, lab policy
+  `DB67B1B5...`) accepted one inbound canary at `2026-11-02T00:17:47-08:00`
+  and persisted 8 diagnostic lines at `00:17:52`:
+  four `pep=quarantine confirmed=true filter_id=77892` and four
+  `action=QUARANTINED_CONFIRMED rule=0 policy_id=3 filter_id=77892`.
+- The line is emitted only inside the receipt-verified quarantine branch
+  (`decision == quarantine`, receipt decision match, and
+  `verifyEnforcementReceipt` true), so it is not a request echo. The P1
+  observability gap is closed.
+- Restore returned the exact baseline hashes (`E19C/617F/EF9B/AD23/B722`), both
+  services Running, `prevention_gate=closed`, `tier3_enforcing=false`,
+  `enforcement_mode=detection-only`, and removed the lab payload. The
+  production host was not touched.
+- Caveat: the kit predates current HEAD (it lacks the `53737e8`
+  `AEGIS_NOSE_IFACE` marker; its daemon size matches a fresh `24d8d81`
+  lab-gate build). This is lab-kit E5, not current-source E5. No second
+  canary, no `metrics_after`, and no post-restore WFP enumeration were
+  captured. `E5-CURRENT-RUNTIME-MISMATCH` and `IDS-XDR-005-WIRING-OPEN`
+  remain OPEN.
+- Evidence: `admin-evidence/rb013-log-e5-20261030/closeout.md` and
+  `EVIDENCE_INDEX.json` entry `RB013-LOG-E5-20261102`.
+
 ## Verification, XDR, and Windows Preflight — 2026-11-01
 
 - `VER-003` (source `ba92468`) fixed the compliance reporter's unbuffered
@@ -185,7 +211,9 @@ And CI proves: C/C++ + Zig + Go + Rust + Python/Cython + Drivers as one product.
    `admin-evidence/e5-recheck-20261101/closeout.md`. REL-MANIFEST-001 now
    refreshes the existing 616-entry release digest set; `release_engineering
    --verify` and `fresh_deploy --plan` pass. This clears preflight only and
-   does not install or qualify the current build.
+   does not install or qualify the current build. The 2026-11-02 lab-kit E5
+   closed only the RB-013 persisted-log gap; it does not clear this
+   current-runtime mismatch.
 3. Continue classifying remaining older IPS/WFP material as historical or
    lab-only without deleting it; the key WFP/host records GAP-002, GAP-005, and
    GAP-009 are now explicitly historical. Keep production host-effect capability false.

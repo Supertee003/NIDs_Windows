@@ -278,7 +278,7 @@ gate (ไม่แตะ) และ wire contract ไม่เปลี่ยน
     BLOCKED_CONFIRMED ต้องมี receipt + host postcondition เท่านั้น; soak 24h (zero PEP_UNVERIFIED,
     zero receipt mismatch, ring verify + replay); rollback drill <5 นาที; prod non-goals:
     ห้าม flip/re-install/re-sign/filter change - driver คง RUNNING (telemetry), gate คงปิด
-  - RB-012 / RB-013 (lab proof; status NOT YET EXECUTED), RB-016 (production trust, OPERATOR ACTION),
+  - RB-012 / RB-013 (lab proof; status NOT YET EXECUTED as of this 2026-10-18 decision brief; see §27 for the 2026-11-02 RB-013 lab-kit diagnostic proof), RB-016 (production trust, OPERATOR ACTION),
     RB-001 (IR)
   - .analysis/security.md: detection-only จนกว่า P0/Gate A-E ผ่านที่ HEAD ปัจจุบัน
   - configs/aegis.conf [ips]: QUARANTINED (observe-only)
@@ -1018,3 +1018,42 @@ outbound payload (C2/exfil) เลย
 - guard ของ decoder: payload_length >= 32 เสมอเมื่อ bit0 flags เปิด (ป้องกัน payload
   สั้นกว่า sidecar); ring 2 MB ยังบัญชีขนาดจริงตาม advance rule เดิม
 - deploy driver ครั้งนี้ = สลับ candidate (test-signed ตามขั้นปัจจุบัน); เตรียม rollback hash pin เสมอ
+
+
+## 27. RB-013 persisted diagnostic lab-kit E5 (2026-11-02) - G2-RB013-LOG CLOSED
+
+> **สถานะ:** ปิดเฉพาะช่องว่าง observability ของ RB-013 ด้วย lab kit รุ่นก่อน HEAD
+> ปัจจุบัน ไม่ใช่ current-source E5 และไม่เปลี่ยนสถานะ detection-only ของ production.
+
+- PATCH-ID: `RB013-LOG-E5-20261102`; FLOW: `DATA-001 / RB-013`.
+- สภาพแวดล้อม: Win11 lab VM `192.168.126.20` (isolated VMnet1), host `192.168.126.1`,
+  lab build `zig build -Dlab-prevention-gate=true`; canary เดียว เวลา
+  `2026-11-02T00:17:47-08:00` (host `15:17:47+07:00`).
+- Kit ที่ติดตั้ง: daemon `86D4DD77...`, PEP `C7F20079...`, bridge `9D5D7D46...`,
+  signed driver `8A2B3F12...` (เซ็นบน host ด้วย `CN=AEGIS Test Signer`,
+  thumbprint `60B05537...`; guest ตรวจ `Valid Signature verified.`),
+  lab policy `DB67B1B5...`.
+- ผล: listener ได้ `ACCEPT 2026-11-02T00:17:47 192.168.126.1:60477`; diagnostic log
+  `...\logs\aegis-daemon-diagnostic.log` (11,895,220 bytes, SHA-256
+  `AC5CA4D6...`) มี 8 บรรทัดที่ epoch `1793607472` = `00:17:52-08:00`:
+  `pep=quarantine confirmed=true filter_id=77892` 4 บรรทัด และ
+  `action=QUARANTINED_CONFIRMED rule=0 policy_id=3 filter_id=77892` 4 บรรทัด.
+- บรรทัดนี้ถูก emit หลัง `verifyEnforcementReceipt` ผ่านเท่านั้น
+  (`src/policy/action_dispatcher.zig` ที่ `24d8d81`) จึงเป็น receipt-verified
+  quarantine branch ไม่ใช่ request echo. ช่องว่าง `G2-RB013-LOG-20261023` ปิด.
+- Restore: `RESTORE_OK=True`; baseline `E19C/617F/EF9B/AD23/B722` ตรงทั้งหมด;
+  `AegisWfp`/`AegisNids` Running; `prevention_gate=closed`,
+  `tier3_enforcing=false`, `enforcement_mode=detection-only`; lab payload ถูกลบ.
+- ข้อจำกัด: ไม่ได้ยิง canary ที่สอง จึงไม่ได้ re-prove blocking effect;
+  ไม่ได้เก็บ `metrics_after`; ไม่ได้ enumerate WFP filter หลัง restore
+  (ถือว่าถูกลบตาม unload cleanup ของ `AegisWfp`); ไม่มี source commit ฝังใน
+  binary. ขนาด daemon `9,731,584` ตรงกับ build ใหม่ของ `24d8d81` แต่ hash
+  ไม่ตรง จึงไม่อ้าง bit-identical reproduction. Kit ไม่มี `AEGIS_NOSE_IFACE`
+  ของ `53737e8` จึงเป็นรุ่นก่อน HEAD.
+- หลักฐาน: `admin-evidence/rb013-log-e5-20261030/closeout.md`,
+  `evidence-20261102/collect2.json`, `diag-hits.txt`,
+  `guest-run-current-20261102.log`, `host-canary.json`, `listener.log`,
+  `enforce-status-lab.json`, `enforce-status-restored.json`,
+  `metrics-before.json`, `EVIDENCE_INDEX.json` entry `RB013-LOG-E5-20261102`.
+- ยังเปิด: `E5-CURRENT-RUNTIME-MISMATCH` (current-source deployment + rollback)
+  และ `IDS-XDR-005-WIRING-OPEN` (scope decision แยก).

@@ -371,7 +371,7 @@ Previous phases:
   DEADCODE-QUARANTINE, CI-GAPS, RELEASE-TOOLING, LEFTOVER-SWEEP, REL-CLOSURE; operator
   cutover 2026-10-19 20:07 deployed daemon `dcb22a5` (sha256 `f223dcce…`) — live gate
   hard-closed (gate_source 'closed', detection-only), gate-check + v6 live verify PASS.
-  Remaining queue: G2 lab campaign 2026-10-23 (PEP cache swap PASS; direction verify PASS; duplicate canary blocked by existing filter 78056 with confirmed_quarantines=0, so G2-DUPFILTER-REPEAT-20261022 is OPEN; G2-RB013-MIRROR-20261021 CLOSED on the first-canary metric 0 -> 1; G2-RB013-LOG-20261023 OPEN P2; G2-INBOUND-VERIFIER-20261021 CLOSED; G2-ABSENCE-LAB-20261022 CLOSED; G2-INBOUND-RESTORE-20261021 CLOSED with the E19C host-production baseline, not 8FEB; G2 gate NOT PASS; next direct PEP inbound duplicate harness), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window E2 2026-10-20; install E5 24/24 verifier; R9002/R9006/R9007 live PASS; isolated Kali→Win11 rate E5 CLOSED 2026-10-20; DEPLOY-132 process-pin drift CLOSED 2026-10-21 — host reboot cleared SCM cache; post-reboot PEB dump no pin, R0088=0, verifier 24/24),
+  Remaining queue: G2 lab campaign 2026-10-23 (PEP cache swap PASS; direction verify PASS; duplicate canary blocked by existing filter 78056 with confirmed_quarantines=0, so G2-DUPFILTER-REPEAT-20261022 is OPEN; G2-RB013-MIRROR-20261021 CLOSED on the first-canary metric 0 -> 1; G2-RB013-LOG-20261023 OPEN P2 (closed 2026-11-02 by RB013-LOG-E5-20261102); G2-INBOUND-VERIFIER-20261021 CLOSED; G2-ABSENCE-LAB-20261022 CLOSED; G2-INBOUND-RESTORE-20261021 CLOSED with the E19C host-production baseline, not 8FEB; G2 gate NOT PASS; next direct PEP inbound duplicate harness), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window E2 2026-10-20; install E5 24/24 verifier; R9002/R9006/R9007 live PASS; isolated Kali→Win11 rate E5 CLOSED 2026-10-20; DEPLOY-132 process-pin drift CLOSED 2026-10-21 — host reboot cleared SCM cache; post-reboot PEB dump no pin, R0088=0, verifier 24/24),
   RB-016/017, G4 signing, external review, CI first push (truth semantics fixed 2026-10-20; push approval pending).
   Evidence: EVI CUTOVER-DCB22A5 (E5) + entries V6-QUEUE-DROP..REL-CLOSURE.
 
@@ -479,7 +479,7 @@ Previous phases:
   false, tier3_enforcing false, proof count 0; listener/firewall/lab
   policy/trust removed; G2ElevRun/G2LabNormal removed. Status:
   G2-DUPFILTER-REPEAT-20261022 OPEN; G2-RB013-MIRROR-20261021 CLOSED on the
-  first-canary metric 0 -> 1; G2-RB013-LOG-20261023 OPEN P2;
+  first-canary metric 0 -> 1; G2-RB013-LOG-20261023 OPEN P2 (closed 2026-11-02 by RB013-LOG-E5-20261102);
   G2-INBOUND-VERIFIER-20261021 CLOSED; G2-ABSENCE-LAB-20261022 CLOSED;
   G2-INBOUND-RESTORE-20261021 CLOSED. G2 gate NOT PASS. The control-plane
   enforcement.quarantine/block verbs are outbound-only (PepRequest.direction
@@ -490,6 +490,21 @@ Previous phases:
   No production enforcement. Evidence: EVI-G2-PEP-CACHE-001-LAB-20261023;
   admin-evidence/g2-direction-20261022/PATCH-PEP-CACHE.md;
   admin-evidence/g2-direction-20261022/vm-lab-run-20261023.txt.
+
+- RB-013 persisted diagnostic lab-kit E5 (2026-11-02): G2-RB013-LOG-20261023
+  CLOSED by RB013-LOG-E5-20261102. On isolated Win11 192.168.126.20 the
+  lab-gate kit (daemon 86D4DD77..., PEP C7F20079..., bridge 9D5D7D46...,
+  signed driver 8A2B3F12..., lab policy DB67B1B5...) accepted one inbound
+  canary at 00:17:47 -08:00 and persisted 8 lines at 00:17:52
+  (`pep=quarantine confirmed=true` and `action=QUARANTINED_CONFIRMED`,
+  filter 77892). The line is emitted only after the quarantine receipt passes
+  verifyEnforcementReceipt, so it is not a request echo. Restore returned
+  E19C/617F/EF9B/AD23/B722 with both services Running, prevention_gate=closed,
+  tier3_enforcing=false, detection-only, and the lab payload removed. The kit
+  predates current HEAD (no AEGIS_NOSE_IFACE; its daemon size matches a fresh
+  24d8d81 lab-gate build), so this is lab-kit E5, not current-source E5. No
+  second canary, no metrics_after, and no post-restore WFP enumeration were
+  captured. See admin-evidence/rb013-log-e5-20261030/closeout.md.
 
 - RB-021 host-only lab proof (2026-10-20): L4 CLOSE-OUT PASS (E5, per-packet).
   Pre-fix run at e616bad/F223DCCE proved the capture path + 5/8 L7 rules but real

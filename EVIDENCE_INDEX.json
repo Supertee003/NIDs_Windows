@@ -3515,6 +3515,61 @@
    "actual": "No product source changed. The T10 test no longer writes runtime_manifest.json; it asserts Go Nose is REAL/golden path and direct Npcap is LAB/not golden path. The build_manifest refresh updated nine drifted digests without adding or dropping artifacts. This is not Windows E5, kernel qualification, or a new release bundle.",
    "evidence_artifact": "admin-evidence/test-drift-20261102/closeout.md",
    "tracking": "Local record; no GitHub issue opened in this session."
+  },
+  {
+   "id": "RB013-LOG-E5-20261102",
+   "head_sha": "24d8d817ace8f9322d9c35a2b697938b7be72b58",
+   "timestamp": "2026-11-02T15:17:52+07:00",
+   "title": "RB-013 persisted diagnostic lines proven on the isolated lab VM; G2-RB013-LOG-20261023 closed (E5, lab kit)",
+   "level": "E5",
+   "component": "src/policy/action_dispatcher.zig receipt-verified quarantine branch + src/daemon.zig diagnostic file tee + lab kit rb013_e5_guest.ps1",
+   "flow_id": "DATA-001 / RB-013",
+   "patch_id": "RB013-LOG-E5-20261102",
+   "target_head": "24d8d817ace8f9322d9c35a2b697938b7be72b58",
+   "final_head": "3db5ba770798dda2c56e5eba51e4896fdef32b08",
+   "workspace_head": "3db5ba770798dda2c56e5eba51e4896fdef32b08",
+   "build_source": "d02261e08f6b5d150771fb2a88bd0e009c792c57",
+   "expected": "On the isolated Win11 lab VM 192.168.126.20, a single inbound canary from 192.168.126.1 to port 443 must produce a persisted service diagnostic stream containing pep=quarantine confirmed=true filter_id=<id> and action=QUARANTINED_CONFIRMED rule=0 policy_id=3 filter_id=<id>. The branch must be the receipt-verified quarantine path, not a request echo. The lab kit must then restore the exact baseline hashes, both services, and the closed detection-only gate, with the lab payload removed.",
+   "actual": "PASS for the persisted-log gap. The lab kit (daemon 86D4DD77..., PEP C7F20079..., bridge 9D5D7D46..., signed driver 8A2B3F12..., lab policy DB67B1B5...) was installed after the guest verified the driver Authenticode seal ('Valid Signature verified.' at 00:17:19-08:00) and the lab policy (00:17:40). Gate status was open with gate_source=lab-build-optin, tier3_enforcing=true, enforcement_mode=provider-attested-enforcement-enabled, receipt_required=true. metrics immediately before the canary recorded confirmed_quarantines=0, blocks=0, errors=0. The listener was ready at 00:17:46; the single host canary at 00:17:47 returned ACCEPT in 0.016s and the guest listener logged 'ACCEPT 2026-11-02T00:17:47 192.168.126.1:60477'. The persisted diagnostic log (11,895,220 bytes, SHA-256 AC5CA4D6B9D3888BD9B403776BB1C3D42489DD6C2E34F32FA4B1E21AD7A201AE; last 4 MiB read with shared access) contained exactly 8 hits, all at epoch 1793607472 = 2026-11-02T00:17:52-08:00 = 15:17:52+07:00: four 'pep=quarantine confirmed=true filter_id=77892' lines and four 'action=QUARANTINED_CONFIRMED rule=0 policy_id=3 filter_id=77892' lines. Restore at 00:17:55-00:18:14 stopped and restarted both services, restored all seven baseline hashes, returned prevention_gate=closed, tier3_enforcing=false, enforcement_mode=detection-only, host_effect_capable=false, and removed the lab payload.",
+   "contract_impact": "None. Diagnostic text only; no event wire schema, policy IR, control protocol, or shared codec change.",
+   "abi_impact": "None. No ABI, driver IOCTL, or FFI layout change.",
+   "authority_impact": "None in production. The gate-open authority existed only in the isolated lab VM for the run; the restored state is detection-only and host_effect_capable=false. This run made no production host install or gate change.",
+   "state_impact": "Lab-only temporary install. Baseline daemon E19C76C3..., PEP 617FA3C7..., bridge EF9BFD22..., driver AD23EFB9..., policies B7224FA0..., Rules 87B97448... all match after restore; AegisWfp and AegisNids are Running. Filter 77892 absence after restore is inferred from the AegisWfp unload cleanup contract because no post-restore netsh enumeration was captured. The lab and restored status files were captured before the canary and after the baseline restart, respectively; neither is a post-event status projection.",
+   "files_verified": [
+    "admin-evidence/rb013-log-e5-20261030/evidence-20261102/collect2.json",
+    "admin-evidence/rb013-log-e5-20261030/evidence-20261102/diag-hits.txt",
+    "admin-evidence/rb013-log-e5-20261030/evidence-20261102/guest-run-current-20261102.log",
+    "admin-evidence/rb013-log-e5-20261030/evidence-20261102/guest-run-full-20261102.log",
+    "admin-evidence/rb013-log-e5-20261030/evidence-20261102/listener.log",
+    "admin-evidence/rb013-log-e5-20261030/evidence-20261102/host-canary.json",
+    "admin-evidence/rb013-log-e5-20261030/evidence-20261102/enforce-status-lab.json",
+    "admin-evidence/rb013-log-e5-20261030/evidence-20261102/enforce-status-restored.json",
+    "admin-evidence/rb013-log-e5-20261030/evidence-20261102/metrics-before.json",
+    "admin-evidence/rb013-log-e5-20261030/evidence-20261102/policy-verify-lab.json",
+    "admin-evidence/rb013-log-e5-20261030/evidence-20261102/preflight.json",
+    "admin-evidence/rb013-log-e5-20261030/evidence-20261102/ready.json",
+    "admin-evidence/rb013-log-e5-20261030/evidence-20261102/sign.json",
+    "admin-evidence/rb013-log-e5-20261030/kit/rb013_e5_guest.ps1",
+    "admin-evidence/rb013-log-e5-20261030/kit/rb013_e5_collect2.ps1",
+    "src/policy/action_dispatcher.zig",
+    "src/daemon.zig"
+   ],
+   "files_changed": [
+    "admin-evidence/rb013-log-e5-20261030/closeout.md",
+    "EVIDENCE_INDEX.json",
+    "AI_CONTEXT.md",
+    "docs/ai-context/10-current-phase.md",
+    "docs/KERNEL_NIDS_COMPLETION_PLAN.md"
+   ],
+   "build_result": "No product rebuild in this patch. The deployed kit predates current HEAD: a fresh detached build of 24d8d81 with 'zig build -Dlab-prevention-gate=true' (Debug) produced exactly 9,731,584 bytes (hash 074E316847CB7638F7FF3561ECFEF52874D08D460E2E1318529D58CDE95C80F5), the same size as the kit daemon but not a bit-identical match, so exact binary reproduction is not claimed. There are no source changes under src/, build.zig, drivers/, rust-src/, or nose/ between 24d8d81 and 53737e8; the kit lacks the 53737e8 AEGIS_NOSE_IFACE marker, placing it before that commit.",
+   "test_result": "PASS: guest preflight, kit download hash check, Authenticode verification, lab policy verification, listener ready, one canary, persisted diagnostic hits=8, and restore all succeeded. The collector reported COLLECT_DIAG_PEP=True, COLLECT_DIAG_QUARANTINED=True, COLLECT_DIAG_HITS=8. No unit suite was run as part of this evidence-only patch.",
+   "windows_result": "E5 PASS on isolated Win11 VM 192.168.126.20 for the persisted diagnostic observable. The first canary was accepted at 00:17:47; the receipt-verified quarantine branch persisted four confirmation pairs at 00:17:52 with filter 77892; restore returned the VM to the closed detection-only baseline with matching hashes and both services Running. No production host install or gate change was made. This is not a block-effect re-proof (no second canary), not a current-source E5, and not release qualification.",
+   "evidence_level": "E5",
+   "host_effect_confirmed": true,
+   "prevention_gate": "closed (restored); open only in the isolated lab VM during the run",
+   "completion_gate": "G2-RB013-LOG-20261023 CLOSED. The functional block-effect evidence remains the earlier 2026-10-21/23 lab runs. E5-CURRENT-RUNTIME-MISMATCH and IDS-XDR-005-WIRING-OPEN remain OPEN.",
+   "issue": null,
+   "evidence": "admin-evidence/rb013-log-e5-20261030/closeout.md; evidence-20261102/collect2.json (diag hits=8, all epoch 1793607472, filter 77892); evidence-20261102/diag-hits.txt; evidence-20261102/guest-run-current-20261102.log; evidence-20261102/host-canary.json (ACCEPT, 0.016s); evidence-20261102/listener.log (ACCEPT 2026-11-02T00:17:47 192.168.126.1:60477); evidence-20261102/enforce-status-lab.json; evidence-20261102/enforce-status-restored.json; evidence-20261102/metrics-before.json (confirmed_quarantines=0). Lab kit daemon 86D4DD77438ED91C057422D1DF48D484AE4DE167F7202658950D1A8D778145C1; PEP C7F200793AC87B00C6887712428E99DF06083E2289FCF567AC4491064ED15ED8; bridge 9D5D7D46AD2385EAF7656C2B59F23F0ABB0B84DEDB296740DAB3ADD3B6283380; signed driver 8A2B3F1284CE0828AD4CB18A0AC7335CB5BB040DEDE7379F51E08B96395E7C74; lab policy DB67B1B5465BC1B17AE2AC4B73506DAF4B00067F5FD57054AA75D8F8B48035F9."
   }
  ],
  "known_gaps": [
@@ -8812,15 +8867,18 @@
   {
    "id": "G2-RB013-LOG-20261023",
    "severity": "P2",
-   "title": "RB-013 pipeline diagnostic lines pep=quarantine confirmed=true and QUARANTINED_CONFIRMED are still missing",
-   "description": "The 2026-10-23 first inbound canary proved the receipt-verified pipeline through metrics confirmed_quarantines 0 -> 1 and filter 78056, but the service diagnostic stream did not contain the pep=quarantine ... confirmed=true or QUARANTINED_CONFIRMED lines. The functional path is proven; the direct diagnostic observable remains missing, so an operator cannot confirm a quarantine from the persisted log alone. This is an observability gap, not a receipt or host-effect failure. On 2026-10-28 the observability implementation landed at E2 (EVT RB013-LOG-E2-20261028, source 56501bb): the daemon tees its diagnostic stream into <exe_dir>/../logs/aegis-daemon-diagnostic.log (fail-open, stderr unchanged for console harnesses) and the receipt-verified quarantine branch emits pep=quarantine confirmed=true filter_id={d} before the existing action=QUARANTINED_CONFIRMED line. Unit-pinned by zig tests plus a source-pin contract test; the persisted-stream-during-canary E5 proof still requires a new lab canary run and a deployed daemon, which needs separate operator authorization.",
-   "status": "OPEN",
+   "title": "RB-013 pipeline diagnostic lines pep=quarantine confirmed=true and QUARANTINED_CONFIRMED were missing (closed 2026-11-02)",
+   "description": "The 2026-10-23 first inbound canary proved the receipt-verified pipeline through metrics confirmed_quarantines 0 -> 1 and filter 78056, but the service diagnostic stream did not contain the pep=quarantine ... confirmed=true or QUARANTINED_CONFIRMED lines. The functional path is proven; the direct diagnostic observable remains missing, so an operator cannot confirm a quarantine from the persisted log alone. This is an observability gap, not a receipt or host-effect failure. On 2026-10-28 the observability implementation landed at E2 (EVT RB013-LOG-E2-20261028, source 56501bb): the daemon tees its diagnostic stream into <exe_dir>/../logs/aegis-daemon-diagnostic.log (fail-open, stderr unchanged for console harnesses) and the receipt-verified quarantine branch emits pep=quarantine confirmed=true filter_id={d} before the existing action=QUARANTINED_CONFIRMED line. Unit-pinned by zig tests plus a source-pin contract test. The persisted-stream-during-canary E5 proof was recorded on 2026-11-02 as RB013-LOG-E5-20261102; see resolution.",
+   "status": "CLOSED",
    "found_at": "2026-10-23",
    "required_evidence": [
     "Persist a service diagnostic stream containing the PEP quarantine confirmation line (confirmed=true) and/or the pipeline QUARANTINED_CONFIRMED line on the inbound path.",
     "Keep the first-canary functional evidence (listener ACCEPT, policy match, filter 78056, confirmed_quarantines 0 -> 1, unblock absent)."
    ],
-   "evidence": "EVI-G2-PEP-CACHE-001-LAB-20261023; admin-evidence/g2-direction-20261022/vm-lab-run-20261023.txt; first-canary policy-pep and metrics evidence on the lab VM C:/AEGIS/evidence.; commits 56501bb/3bf8825; admin-evidence/b1-pytest-final.txt"
+   "evidence": "RB013-LOG-E5-20261102; admin-evidence/rb013-log-e5-20261030/closeout.md; admin-evidence/rb013-log-e5-20261030/evidence-20261102/collect2.json; admin-evidence/rb013-log-e5-20261030/evidence-20261102/diag-hits.txt; admin-evidence/rb013-log-e5-20261030/evidence-20261102/guest-run-current-20261102.log; admin-evidence/rb013-log-e5-20261030/evidence-20261102/host-canary.json; admin-evidence/rb013-log-e5-20261030/evidence-20261102/listener.log; admin-evidence/rb013-log-e5-20261030/evidence-20261102/enforce-status-lab.json; admin-evidence/rb013-log-e5-20261030/evidence-20261102/enforce-status-restored.json; admin-evidence/rb013-log-e5-20261030/evidence-20261102/metrics-before.json",
+   "closed_at": "2026-11-02",
+   "closed_by": "RB013-LOG-E5-20261102",
+   "resolution": "Closed by the 2026-11-02 isolated-lab run. The persisted service diagnostic stream C:\\Program Files\\AEGIS NIDS\\logs\\aegis-daemon-diagnostic.log (11,895,220 bytes; SHA-256 AC5CA4D6B9D3888BD9B403776BB1C3D42489DD6C2E34F32FA4B1E21AD7A201AE) contained 8 hits at epoch 1793607472 = 2026-11-02T00:17:52-08:00: four 'pep=quarantine confirmed=true filter_id=77892' lines and four 'action=QUARANTINED_CONFIRMED rule=0 policy_id=3 filter_id=77892' lines. The line is emitted only inside the receipt-verified quarantine branch (decision==quarantine, receipt.decision==quarantine, verifyEnforcementReceipt true), so it is not a request echo. The single canary was accepted (host ACCEPT, guest ACCEPT 00:17:47 from 192.168.126.1:60477) and the VM was restored to the exact baseline hashes with prevention_gate=closed, tier3_enforcing=false, enforcement_mode=detection-only, and the lab payload removed. The lab kit is not current HEAD: it predates 53737e8 (no AEGIS_NOSE_IFACE) and its daemon size matches a fresh 24d8d81 lab-gate build. This is lab-kit E5, not current-source E5; no second canary or post-restore WFP enumeration was captured."
   },
   {
    "id": "G2-INBOUND-VERIFIER-20261021",
@@ -9179,7 +9237,7 @@
   "E2_count": 156,
   "E3_count": 16,
   "E4_count": 15,
-  "E5_count": 126,
+  "E5_count": 127,
   "E6_count": 0,
   "E7_count": 1
  }
