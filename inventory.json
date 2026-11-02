@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-01T08:53:19.765471+00:00",
+  "generated_at": "2026-11-02T04:30:56.748514+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1766,
+  "total_files": 1769,
   "by_class": {
-    "canonical-docs": 590,
+    "canonical-docs": 591,
     "canonical-build": 224,
     "unclassified": 19,
-    "canonical-source": 654,
-    "canonical-test": 212,
+    "canonical-source": 655,
+    "canonical-test": 213,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -703,6 +703,12 @@
       "class": "canonical-build",
       "role": "build-config",
       "size": 3416
+    },
+    {
+      "path": "admin-evidence/qloss-health-001-20261101/closeout.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5645
     },
     {
       "path": "admin-evidence/rel-manifest-refresh-20261101/closeout.md",
@@ -3540,7 +3546,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10892
+      "size": 11671
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -4278,7 +4284,7 @@
       "path": "docs/runbooks/RB-021-hostonly-lab-proof.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 30968
+      "size": 32623
     },
     {
       "path": "docs/runbooks/README.md",
@@ -4776,7 +4782,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 853342
+      "size": 853874
     },
     {
       "path": "fix_bridge_banner.py",
@@ -4914,7 +4920,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 285288
+      "size": 285461
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -5178,7 +5184,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9984
+      "size": 9987
     },
     {
       "path": "pytest.ini",
@@ -5196,7 +5202,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 233735
+      "size": 233871
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -6777,6 +6783,12 @@
       "size": 4502
     },
     {
+      "path": "scripts/rb021_current_source_preflight.ps1",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 4856
+    },
+    {
       "path": "scripts/read_vectors.py",
       "class": "canonical-source",
       "role": "source",
@@ -6924,7 +6936,7 @@
       "path": "scripts/run_wfp_hostonly_observe_only.ps1",
       "class": "canonical-source",
       "role": "source",
-      "size": 1410
+      "size": 2210
     },
     {
       "path": "scripts/run_wfp_l4_observe_only_proof.ps1",
@@ -8802,7 +8814,7 @@
       "path": "src/windows/fim_native.c",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 7235
+      "size": 9572
     },
     {
       "path": "src/windows/hids_engine.zig",
@@ -9498,7 +9510,7 @@
       "path": "tests/runtime/test_health.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 22215
+      "size": 23344
     },
     {
       "path": "tests/runtime/test_incident_ttl.py",
@@ -9685,6 +9697,12 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 5164
+    },
+    {
+      "path": "tests/security/test_rb021_current_source_gate.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 1275
     },
     {
       "path": "tests/security/test_receipt_contract.py",
@@ -10098,7 +10116,7 @@
       "path": "tools/aegisctl/api/control_api.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 62611
+      "size": 63612
     },
     {
       "path": "tools/aegisctl/client.py",

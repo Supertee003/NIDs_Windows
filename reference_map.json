@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-01T08:53:19.768182+00:00",
+  "generated_at": "2026-11-02T04:30:56.756698+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1766,
+  "total_files": 1769,
   "by_role": {
-    "documentation": 576,
+    "documentation": 577,
     "build-config": 213,
     "other": 19,
-    "source": 365,
+    "source": 366,
     "lockfile": 6,
     "rust-build": 4,
-    "test-artifact": 212,
+    "test-artifact": 213,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -776,6 +776,10 @@
     "admin-evidence/project2-live/baseline-snapshot.json": {
       "class": "canonical-build",
       "role": "build-config"
+    },
+    "admin-evidence/qloss-health-001-20261101/closeout.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
     },
     "admin-evidence/rel-manifest-refresh-20261101/closeout.md": {
       "class": "canonical-docs",
@@ -4825,6 +4829,10 @@
       "class": "canonical-source",
       "role": "source"
     },
+    "scripts/rb021_current_source_preflight.ps1": {
+      "class": "canonical-source",
+      "role": "source"
+    },
     "scripts/read_vectors.py": {
       "class": "canonical-source",
       "role": "source"
@@ -6762,6 +6770,10 @@
       "role": "test-artifact"
     },
     "tests/security/test_prevention_gate_surface.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_rb021_current_source_gate.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
