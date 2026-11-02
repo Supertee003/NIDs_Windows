@@ -684,9 +684,11 @@ const handlers = struct {
         var out = std.ArrayList(u8).init(a);
         errdefer out.deinit();
         var writer = out.writer();
-        writer.print("{{\"queue_size\":{},\"depth\":{},\"pushed_total\":{},\"dropped_total\":{},\"minifilter_pipeline_dropped\":{},\"shed_overload\":{},\"by_source\":[", .{
+        writer.print("{{\"queue_size\":{},\"depth\":{},\"reserved_network_slots\":{},\"reserved_tail_shed\":{},\"pushed_total\":{},\"dropped_total\":{},\"minifilter_pipeline_dropped\":{},\"shed_overload\":{},\"by_source\":[", .{
             event_queue.PIPELINE_QUEUE_SIZE,
             event_queue.queueDepth(),
+            event_queue.RESERVED_NETWORK_SLOTS,
+            state_mod.g_reserved_tail_shed.load(.acquire),
             pushed_total,
             dropped_total,
             state_mod.g_minifilter_pipeline_dropped.load(.acquire),
@@ -2448,6 +2450,12 @@ test "queueStats emits parseable JSON with shed and etw keys (GAP-015)" {
     defer parsed.deinit();
     const root = parsed.value.object;
     try std.testing.expect(root.contains("queue_size"));
+    // IDS-QUEUE-001: the network admission reserve and its refusal cause are
+    // stated, so a drop below queue_size is explainable rather than a bug.
+    try std.testing.expect(root.contains("reserved_network_slots"));
+    try std.testing.expect(root.contains("reserved_tail_shed"));
+    try std.testing.expectEqual(@as(i64, @intCast(event_queue.RESERVED_NETWORK_SLOTS)), root.get("reserved_network_slots").?.integer);
+    try std.testing.expect(root.get("reserved_tail_shed").?.integer >= 0);
     try std.testing.expect(root.contains("shed_overload"));
     try std.testing.expect(root.contains("minifilter_pipeline_dropped"));
     try std.testing.expect(root.contains("by_source"));

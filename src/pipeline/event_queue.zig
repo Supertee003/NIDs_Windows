@@ -15,6 +15,18 @@ pub const PIPELINE_QUEUE_SIZE: usize = 16384;
 // still drops on a sustained mean deficit, and queue.stats now proves it.
 // Memory cost: 16k slots x ~1.6KB ~= 26MB. All references are symbolic.
 pub const MAX_PAYLOAD_BYTES: usize = 1500; // MTU-sized payload buffer
+// IDS-QUEUE-001: reserve a bounded tail for network observations. Host
+// telemetry is intentionally shed before this reserve is consumed so ETW/FIM
+// storms cannot consume the kernel IDS network admission tail. This changes
+// admission fairness only: the queue remains FIFO, so a network event can
+// still wait behind an existing host backlog, but it is not refused while the
+// reserve is free. Every refusal stays visible in the per-source counters,
+// and reserved-tail sheds are counted separately from true full-queue drops.
+pub const RESERVED_NETWORK_SLOTS: usize = 1024;
+
+fn isNetworkObservation(source: event.EventSource) bool {
+    return source == .capture_npcap or source == .capture_wfp;
+}
 
 /// Queued event: wraps IpcEvent + actual packet payload bytes.
 /// The payload is needed for Aho-Corasick signature matching.
@@ -108,6 +120,19 @@ fn pushEventFull(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst
     if (head -% tail >= PIPELINE_QUEUE_SIZE) {
         // Queue full — drop event
         _ = state.g_queue_drops.fetchAdd(1, .monotonic);
+        _ = g_ingress_dropped[src_ord].fetchAdd(1, .monotonic);
+        return false;
+    }
+    const depth = head -% tail;
+    if (!isNetworkObservation(ev.source) and
+        depth >= PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS)
+    {
+        // Preserve the reserved network tail under host-telemetry pressure.
+        // Count it as an admission refusal (health must degrade), but also
+        // count the cause so queue.stats can distinguish this from a full
+        // queue. Callers already expose the source-specific counter.
+        _ = state.g_queue_drops.fetchAdd(1, .monotonic);
+        _ = state.g_reserved_tail_shed.fetchAdd(1, .monotonic);
         _ = g_ingress_dropped[src_ord].fetchAdd(1, .monotonic);
         return false;
     }
@@ -582,6 +607,43 @@ test "GAP-015 ingress accounting counts pushes and drops by source" {
     try std.testing.expect(drained >= accepted + 2);
     try std.testing.expect(popEvent() == null);
     try std.testing.expectEqual(@as(u64, 0), queueDepth());
+}
+
+test "IDS-QUEUE-001 reserves network tail from host telemetry flood" {
+    while (popEvent()) |_| {}
+
+    const reserved_before = state.g_reserved_tail_shed.load(.acquire);
+    const drops_before = state.g_queue_drops.load(.acquire);
+
+    var host = event.IpcEvent.init(.fim_change);
+    host.source = .capture_fim;
+    var filled: usize = 0;
+    while (filled < PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS) : (filled += 1) {
+        try std.testing.expect(pushEvent(host, &[_]u8{}));
+    }
+
+    // Host telemetry is refused at the reserve boundary, not at capacity.
+    try std.testing.expect(!pushEvent(host, &[_]u8{}));
+    try std.testing.expectEqual(@as(u64, PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS), queueDepth());
+    try std.testing.expectEqual(reserved_before + 1, state.g_reserved_tail_shed.load(.acquire));
+    try std.testing.expectEqual(drops_before + 1, state.g_queue_drops.load(.acquire));
+
+    // A network observation still enters the reserved tail.
+    var network = event.IpcEvent.init(.packet_captured);
+    network.source = .capture_npcap;
+    try std.testing.expect(pushEvent(network, &[_]u8{}));
+
+    // Fill the reserve with network observations. A host refusal at true
+    // capacity is a full-queue drop, never mislabeled as a reserved shed.
+    var reserve: usize = 1;
+    while (reserve < RESERVED_NETWORK_SLOTS) : (reserve += 1) {
+        try std.testing.expect(pushEvent(network, &[_]u8{}));
+    }
+    try std.testing.expect(!pushEvent(host, &[_]u8{}));
+    try std.testing.expectEqual(reserved_before + 1, state.g_reserved_tail_shed.load(.acquire));
+    try std.testing.expectEqual(drops_before + 2, state.g_queue_drops.load(.acquire));
+
+    while (popEvent()) |_| {}
 }
 
 /// Pop the next queued event from the pipeline queue.

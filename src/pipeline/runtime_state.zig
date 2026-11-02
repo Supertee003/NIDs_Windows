@@ -237,7 +237,12 @@ pub var g_runtime_pid: u32 = 0;
 pub var g_runtime_capability_mask: u32 = 0;
 pub var g_incidents_total = std.atomic.Value(u64).init(0); // real incident count from ThreatTracker
 pub var g_incidents_open = std.atomic.Value(u64).init(0); // currently open incidents
-pub var g_queue_drops = std.atomic.Value(u64).init(0); // events dropped due to queue full
+pub var g_queue_drops = std.atomic.Value(u64).init(0); // events refused by queue admission (full or reserved-tail shed)
+/// IDS-QUEUE-001: subset of g_queue_drops refused specifically because host
+/// telemetry reached the reserved network tail. Exposed separately so an
+/// operator can distinguish "queue actually full" from "network reserve
+/// protected"; it never changes admission or health behavior by itself.
+pub var g_reserved_tail_shed = std.atomic.Value(u64).init(0);
 // Canonical Go Nose -> Zig reader counters. These are deliberately separate
 // from process liveness: RUNNING does not imply that the data plane is active.
 pub var g_nose_connected = std.atomic.Value(bool).init(false);
