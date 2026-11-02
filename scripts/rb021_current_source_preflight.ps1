@@ -62,6 +62,17 @@ Check 'nids_vmnet_link_up' ($null -ne $adapter -and $adapter.Status -eq 'Up') "i
 $machinePin = [Environment]::GetEnvironmentVariable('AEGIS_DAEMON_IFACE', 'Machine')
 Check 'daemon_vmnet_pin_present' (-not [string]::IsNullOrWhiteSpace($machinePin)) "AEGIS_DAEMON_IFACE=$machinePin"
 
+$daemonProcess = @(Get-Process -Name 'aegis_nids' -ErrorAction SilentlyContinue | Select-Object -First 1)
+$daemonPid = if ($daemonProcess.Count -gt 0) { [int]$daemonProcess[0].Id } else { 0 }
+$dumpScript = Join-Path $repo 'admin-evidence\lab-rate-e5-20261020\dump-daemon-env.ps1'
+$processPin = ''
+if (($daemonPid -gt 0) -and (Test-Path -LiteralPath $dumpScript)) {
+    $dump = @(& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $dumpScript -TargetPid $daemonPid 2>&1)
+    $pinLine = $dump | ForEach-Object { $_.ToString() } | Where-Object { $_ -match '^AEGIS_DAEMON_IFACE=' } | Select-Object -First 1
+    if ($pinLine) { $processPin = ($pinLine -split '=', 2)[1] }
+}
+Check 'daemon_process_pin_matches' (($daemonPid -gt 0) -and ($processPin -eq $machinePin) -and (-not [string]::IsNullOrWhiteSpace($processPin))) "daemon_pid=$daemonPid process_AEGIS_DAEMON_IFACE=$processPin machine_AEGIS_DAEMON_IFACE=$machinePin"
+
 $arp = @(arp.exe -a -N $ExpectedNidsIp 2>$null)
 $kaliSeen = ($arp -match [regex]::Escape($ExpectedKaliIp)).Count -gt 0
 $victimSeen = ($arp -match [regex]::Escape($ExpectedVictimIp)).Count -gt 0
@@ -76,7 +87,7 @@ $record = [ordered]@{
     build_source_commit = $buildSource
     build_runtime = [ordered]@{ path = $BuildRuntimePath; sha256 = $buildHash }
     installed_runtime = [ordered]@{ path = $InstalledRuntimePath; sha256 = $installedHash }
-    topology = [ordered]@{ kali = $ExpectedKaliIp; victim = $ExpectedVictimIp; nids = $ExpectedNidsIp; machine_pin = $machinePin }
+    topology = [ordered]@{ kali = $ExpectedKaliIp; victim = $ExpectedVictimIp; nids = $ExpectedNidsIp; machine_pin = $machinePin; daemon_pid = $daemonPid; process_pin = $processPin }
     checks = $checks
     failures = @($failures)
     host_effect_confirmed = $false

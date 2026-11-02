@@ -12,6 +12,8 @@ def test_rb021_preflight_is_current_source_and_detection_only():
     assert "RB021_PREFLIGHT_PASS" in text
     assert "RB021_PREFLIGHT_BLOCKED" in text
     assert "installed_matches_current_build" in text
+    assert "daemon_process_pin_matches" in text
+    assert "dump-daemon-env.ps1" in text
     assert "build_manifest_source" in text
     assert "host_effect_confirmed = $false" in text
     assert "prevention_gate = 'closed'" in text
