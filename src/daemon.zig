@@ -21,8 +21,8 @@ const mem = @import("core/memory_pool.zig");
 const flow = @import("capture/flow_table.zig");
 const npcap = @import("capture/npcap_adapter.zig");
 const sig = @import("detection/signature_engine.zig");
-const anom = @import("detection/anomaly_detector.zig");
-const tracker = @import("detection/threat_tracker.zig");
+const anom = @import("detection/anomaly_detector.zig");    const tracker = @import("detection/threat_tracker.zig");
+const xdr_runtime = @import("xdr/xdr_runtime.zig");
 const policy = @import("policy/policy_ir.zig");
 const policy_plane = @import("policy/policy_plane.zig");
 const policy_signing = @import("policy/policy_signing.zig");
@@ -504,6 +504,12 @@ pub fn runDaemon() !void {
     // worker spawns. The incidents handler reads a bounded, mutex-copied
     // snapshot through this pointer; nothing else dereferences it.
     tracker.g_live = &tt;
+
+    // XDR-WIRE-001: publish the advisory evidence fabric before any worker
+    // spawns (same pattern as tracker.g_live). Advisory only: xdr.list is
+    // the sole consumer; DEFCON, threat scoring, policy, PEP and
+    // ActionDispatcher never read the fabric.
+    xdr_runtime.startLive();
 
     // Tier-1 correlation stage (FLOW_MAP DATA-001 step 6). Static rule set:
     // IDs live in the 9000 block, outside the FNV-1a signature space, so a

@@ -30,6 +30,7 @@ const state = @import("runtime_state.zig");
 const queue = @import("event_queue.zig");
 const siem_mod = @import("../forensic/siem_forwarder.zig");
 const brain_mod = @import("../core/bridge_init.zig");
+const xdr_runtime = @import("../xdr/xdr_runtime.zig");
 
 /// Host telemetry is evidence/advisory input under ADR-0009. Keep the source
 /// classification explicit so even a host event labeled `signature_match`
@@ -39,6 +40,31 @@ fn isHostTelemetrySource(source: event.EventSource) bool {
         .capture_etw, .capture_fim, .capture_registry => true,
         else => false,
     };
+}
+
+/// XDR-WIRE-001 advisory entity key. Full v6 identity wins when the queue
+/// sidecar carries it (never the documented prefix-as-address wart);
+/// otherwise the v4 dotted source address; a zero address is refused.
+fn xdrEntityKey(sidecar: ?[16]u8, v4: u32, buf: *[64]u8) []const u8 {
+    if (sidecar) |full6| {
+        const hex_chars = "0123456789abcdef";
+        buf[0] = 'v';
+        buf[1] = '6';
+        buf[2] = ':';
+        var i: usize = 0;
+        while (i < 16) : (i += 1) {
+            buf[3 + i * 2] = hex_chars[full6[i] >> 4];
+            buf[4 + i * 2] = hex_chars[full6[i] & 0x0F];
+        }
+        return buf[0..35];
+    }
+    if (v4 == 0) return "";
+    return std.fmt.bufPrint(buf, "v4:{d}.{d}.{d}.{d}", .{
+        (v4 >> 24) & 0xFF,
+        (v4 >> 16) & 0xFF,
+        (v4 >> 8) & 0xFF,
+        v4 & 0xFF,
+    }) catch "";
 }
 
 /// Return an upstream host-detector identity for forensic recording and an
@@ -337,6 +363,27 @@ fn processEvent(
         if (active_incident) |inc| @as(u64, inc.id) else @as(u64, 0),
         if (active_incident) |inc| @as(u8, @intFromEnum(inc.severity)) else @as(u8, 0),
     );
+
+    // XDR-WIRE-001: advisory evidence feed. Only detection-identity events
+    // (rule_id != 0) are classified into the XDR evidence fabric; the result
+    // is a read-only advisory summary exposed via xdr.list. This call
+    // consumes nothing and authorizes nothing: DEFCON, threat scoring,
+    // policy, PEP and ActionDispatcher never read the fabric.
+    if (detection_rule_id != 0) {
+        if (xdr_runtime.categoryForSource(ev.source)) |xdr_cat| {
+            var xdr_entity: [64]u8 = undefined;
+            const entity = xdrEntityKey(qe.src_ipv6, ev.src_ip, &xdr_entity);
+            if (entity.len > 0) {
+                _ = xdr_runtime.observe(
+                    xdr_cat,
+                    entity,
+                    ev.event_id,
+                    @intCast(ev.timestamp_ns / std.time.ns_per_ms),
+                    @intFromEnum(ev_severity),
+                );
+            }
+        }
+    }
     t_prev = markStage(.detection_to_correlation, t_prev);
 
     // 5. Policy evaluation — use escalated severity for policy matching.

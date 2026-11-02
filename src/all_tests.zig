@@ -99,6 +99,7 @@ comptime {
     _ = @import("xdr/xdr_correlator.zig");
     _ = @import("xdr/xdr_harden.zig");
     _ = @import("xdr/xdr_incident_fabric.zig");
+    _ = @import("xdr/xdr_runtime.zig");
     _ = @import("xdr/xdr_evidence_flow.zig");
     _ = @import("xdr/xdr_incident_graph.zig");
     _ = @import("windows/cpp_adapter.zig");

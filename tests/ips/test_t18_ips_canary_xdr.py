@@ -18,8 +18,7 @@ incident aggregation is exercised by the module's Zig test suite.
 
 Registered lab/test modules in runtime_manifest.json:
   src/windows/ips_canary_order.zig - T18 AC1 (lab-only canary order)
-  src/core/real_ips_path.zig       - T18 AC2 (lab-only IPS contract)
-  src/xdr/xdr_incident_fabric.zig  - ADR-0009 selected XDR authority (advisory-only, not runtime-wired)
+  src/core/real_ips_path.zig       - T18 AC2 (lab-only IPS contract)   src/xdr/xdr_incident_fabric.zig  - ADR-0009 selected XDR authority (advisory-only; runtime-wired read-only via XDR-WIRE-001)
 """
 from __future__ import annotations
 
@@ -98,7 +97,8 @@ def test_manifest_declares_t18_modules_non_production() -> None:
             f"{mod} must be LAB-only; got {manifest['modules'][mod]}"
         )
         assert manifest["modules"][mod]["golden_path"] is False
-    assert "not runtime-wired" in manifest["modules"][XDR_MODULE]["role"]
+    assert "advisory-only" in manifest["modules"][XDR_MODULE]["role"]
+    assert "read-only" in manifest["modules"][XDR_MODULE]["role"]
 
 
 def test_authority_invariants_declare_lab_ips_and_evidence_only_xdr() -> None:
@@ -112,7 +112,8 @@ def test_authority_invariants_declare_lab_ips_and_evidence_only_xdr() -> None:
 
 
 def test_manifest_does_not_claim_unwired_xdr_runtime_order() -> None:
-    """No XDR candidate is production-started until source-to-forensic wiring is proven."""
+    """The advisory XDR fabric is module-wired (XDR-WIRE-001) but is still not a
+    named runtime init/shutdown stage until source-to-forensic wiring is proven."""
     manifest = _manifest()
     for order in ("init_order", "shutdown_order"):
         assert not any("xdr" in module.lower() for module in manifest[order])

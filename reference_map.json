@@ -1,8 +1,8 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-02T07:39:10.515867+00:00",
+  "generated_at": "2026-11-02T10:37:15.622534+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1767,
+  "total_files": 1769,
   "by_role": {
     "documentation": 575,
     "build-config": 212,
@@ -10,13 +10,13 @@
     "source": 366,
     "lockfile": 6,
     "rust-build": 4,
-    "test-artifact": 214,
+    "test-artifact": 215,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
     "go-source": 8,
     "makefile": 1,
-    "production-source": 281,
+    "production-source": 282,
     "legacy-source": 32,
     "quarantined": 1
   },
@@ -314,7 +314,8 @@
     "src/xdr/xdr_evidence_flow.zig",
     "src/xdr/xdr_harden.zig",
     "src/xdr/xdr_incident_fabric.zig",
-    "src/xdr/xdr_incident_graph.zig"
+    "src/xdr/xdr_incident_graph.zig",
+    "src/xdr/xdr_runtime.zig"
   ],
   "files": {
     ".analysis/baseline-go-test.txt": {
@@ -6261,6 +6262,10 @@
       "class": "canonical-source",
       "role": "production-source"
     },
+    "src/xdr/xdr_runtime.zig": {
+      "class": "canonical-source",
+      "role": "production-source"
+    },
     "static-authority-scan.txt": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -6794,6 +6799,10 @@
       "role": "test-artifact"
     },
     "tests/security/test_version_truth.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_xdr_wire_advisory.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

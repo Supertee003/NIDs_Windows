@@ -135,7 +135,7 @@ for display_path in AUTHORITY_MODULES:
     if display_path in {'src/windows/ips_canary_order.zig', 'src/core/real_ips_path.zig'}:
         entry['role'] = 'Historical/lab IPS helper; not a production runtime route and does not authorize production host effects'
     if display_path == 'src/xdr/xdr_incident_fabric.zig':
-        entry['role'] = 'Selected multi-source XDR evidence authority; advisory-only and not runtime-wired pending source-to-forensic proof'
+        entry['role'] = 'Selected multi-source XDR evidence authority; advisory-only and runtime-wired read-only (XDR-WIRE-001) via xdr.list; no decision/effect path'
     if display_path == 'src/policy/wfp_production.zig':
         entry['role'] = 'Fail-closed WFP boundary; submitViaPep returns unavailable; no production host effect or runtime WFP enforcement'
     if display_path == 'core/windows_adapters.zig':
@@ -161,7 +161,7 @@ authority_invariants = [
     'federation: reports only, enforcement stays local',
     'federation transport is TLS (no plaintext production transport)',
     'canary order, legacy IPS helpers, and direct Npcap full-payload capture are lab-only; production remains detection-only and no host effect is inferred from these modules',
-    'multi-source XDR correlation uses src/xdr/xdr_incident_fabric.zig as the selected evidence-only authority; it is not daemon-wired pending source-to-forensic proof',
+    'multi-source XDR correlation uses src/xdr/xdr_incident_fabric.zig as the selected evidence-only authority; it is advisory-wired read-only (XDR-WIRE-001), exposed only through xdr.list, and no consumer passes it to scoring, policy, PEP or host effects; the full source-to-forensic-receipt XDR flow remains OPEN',
     'decision trace records the eight-link request-to-source chain for every privileged action',
     'shadow decision is advisory only and cannot replace the final authority review',
     'security replay is deterministic and final authority review is required before release',
@@ -287,9 +287,9 @@ manifest = {
         },
         {
             'id': 'XDR-LAB',
-            'status': 'LAB_ONLY_NOT_RUNTIME_WIRED',
-            'path': 'src/xdr/xdr_incident_fabric.zig',
-            'constraint': 'advisory evidence only; no daemon route or source-to-forensic receipt/replay proof',
+            'status': 'ADVISORY_WIRED_READ_ONLY',
+            'path': 'src/xdr/xdr_incident_fabric.zig -> xdr_runtime.zig',
+            'constraint': 'advisory evidence only: detection-identity feed + xdr.list read view; no decision/effect path; source-to-forensic receipt/replay proof remains OPEN',
         },
     ],
     'ABI_versions': {

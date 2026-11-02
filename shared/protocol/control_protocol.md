@@ -137,6 +137,7 @@ mutation/postcondition flags.
 | `queue.stats` | READ | no | Queue ingress per source plus pipeline latency snapshot |
 | `incidents.list` | READ | no | List incidents |
 | `incidents.show` | READ | no | Show incident details |
+| `xdr.list` | READ | no | List advisory XDR evidence incidents (read-only, never a host action) |
 | `policy.list` | READ | no | List policies |
 | `policy.validate` | READ | no | Validate policies |
 | `policy.verify` | OPERATE | no | Verify policy signatures |

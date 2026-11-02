@@ -81,7 +81,7 @@
             "forensic recording",
             "control pipe",
             "diagnostics",
-            "selected XDR evidence correlation (advisory-only; lab/test-only; not runtime-wired)"
+            "selected XDR evidence correlation (advisory-only; runtime-wired read-only via XDR-WIRE-001: detection-identity feed + xdr.list; no decision/effect path)"
           ],
           "does_not_own": [
             "privileged enforcement",
@@ -102,7 +102,7 @@
             "src/xdr/*.zig",
             "src/windows/*.zig"
           ],
-          "note": "Zig is the runtime spine. Transports are contract-specific: Go Nose uses a length-prefixed named pipe; C/C++ use C ABI; Rust uses PEP ABI; Python uses the Analytics Contract; TypeScript uses the Control Protocol. Selected XDR code authority: src/xdr/xdr_incident_fabric.zig; advisory-only, lab/test-only, and not production-wired. xdr_engine, xdr_harden, xdr_correlator, and xdr_incident_graph remain non-authoritative test/support candidates."
+          "note": "Zig is the runtime spine. Transports are contract-specific: Go Nose uses a length-prefixed named pipe; C/C++ use C ABI; Rust uses PEP ABI; Python uses the Analytics Contract; TypeScript uses the Control Protocol. Selected XDR code authority: src/xdr/xdr_incident_fabric.zig; advisory-only and runtime-wired read-only (XDR-WIRE-001) exposed via xdr.list, with no policy/PEP/dispatch consumption; the full source-to-forensic-receipt XDR flow remains open. xdr_engine, xdr_harden, xdr_correlator, and xdr_incident_graph remain non-authoritative test/support candidates."
         }
       ]
     },
@@ -436,7 +436,7 @@
     "Production host-effect activation is out of scope; the default build prevention gate is closed",
     "Zig is the runtime hub - transports follow their contracts: Go named pipe, C/C++ C ABI, Rust PEP ABI, Python Analytics Contract, TypeScript Control Protocol",
     "Cython is a performance bridge, NOT the system integration bus",
-    "Selected XDR correlation authority is src/xdr/xdr_incident_fabric.zig; it emits advisory evidence only, has no policy/PEP action surface, and is not production-wired until a source-to-forensic-receipt flow is proven."
+    "Selected XDR correlation authority is src/xdr/xdr_incident_fabric.zig; it emits advisory evidence only, has no policy/PEP action surface, and is runtime-wired read-only (XDR-WIRE-001): detection-identity events feed it and xdr.list is its sole consumer; the full source-to-forensic-receipt flow is not proven."
   ],
   "stop_the_line": [
     "ABI mismatch",
@@ -462,7 +462,7 @@
   "non_authoritative_candidates": [
     {
       "id": "XDR_NON_AUTHORITATIVE_CANDIDATES",
-      "selected_authority": "src/xdr/xdr_incident_fabric.zig (advisory-only; LAB/test-only)",
+      "selected_authority": "src/xdr/xdr_incident_fabric.zig (advisory-only; runtime-wired read-only via XDR-WIRE-001)",
       "files": [
         "src/xdr/xdr_engine.zig",
         "src/xdr/xdr_harden.zig",

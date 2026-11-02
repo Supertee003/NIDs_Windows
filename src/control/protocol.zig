@@ -42,6 +42,8 @@ pub const Command = enum(u16) {
     // --- incidents domain ---
     incidents_list = 500,
     incidents_show = 501,
+    // XDR-WIRE-001: advisory read-only evidence view (no action field).
+    xdr_list = 510,
 
     // --- policy domain ---
     policy_list = 600,
@@ -95,6 +97,7 @@ pub const Command = enum(u16) {
             .{ .name = "queue.stats", .cmd = .queue_stats },
             .{ .name = "incidents.list", .cmd = .incidents_list },
             .{ .name = "incidents.show", .cmd = .incidents_show },
+            .{ .name = "xdr.list", .cmd = .xdr_list },
             .{ .name = "policy.list", .cmd = .policy_list },
             .{ .name = "policy.validate", .cmd = .policy_validate },
             .{ .name = "policy.verify", .cmd = .policy_verify },
@@ -224,6 +227,7 @@ pub fn contract(cmd: Command) CommandContract {
         // --- incidents domain ---
         .incidents_list => .{ .command = cmd, .name = "incidents.list", .required_role = .read, .description = "List incidents", .is_mutation = false, .has_postcondition = false },
         .incidents_show => .{ .command = cmd, .name = "incidents.show", .required_role = .read, .description = "Show incident details", .is_mutation = false, .has_postcondition = false },
+        .xdr_list => .{ .command = cmd, .name = "xdr.list", .required_role = .read, .description = "List advisory XDR evidence incidents (read-only, never a host action)", .is_mutation = false, .has_postcondition = false },
 
         // --- policy domain ---
         .policy_list => .{ .command = cmd, .name = "policy.list", .required_role = .read, .description = "List policies", .is_mutation = false, .has_postcondition = false },

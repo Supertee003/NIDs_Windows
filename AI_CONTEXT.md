@@ -16,7 +16,7 @@
 
 - Production mode is detection-only. Rust PEP remains the sole privileged authority, but production host-effect activation is out of scope; `src/policy/wfp_production.zig` fails closed and is not a production WFP enforcement route.
 - Go Nose sends length-prefixed CanonicalEvent frames over `\\.\pipe\aegis_nose` to the Zig reader; C/C++ adapters use separate C ABI contracts.
-- Python Brain inspection is optional. UDP offers are fire-and-forget; opt-in findings return only as advisory sensor events. The Phase-B BrainAdvisor dispatcher is test-harness-only, and XDR remains lab/test-only and not daemon-wired.
+- Python Brain inspection is optional. UDP offers are fire-and-forget; opt-in findings return only as advisory sensor events. The Phase-B BrainAdvisor dispatcher is test-harness-only, and XDR is advisory-wired read-only at current HEAD (XDR-WIRE-001: detection-identity events feed the fabric; `xdr.list` is its sole consumer; no scoring/policy/PEP/host-effect path; the source-to-forensic receipt proof remains open).
 - Current evidence does not establish Windows E5/kernel qualification or release readiness. Treat older deployment/evidence narratives below as historical unless their source commit and current-head proof are explicitly verified.
 
 **ARCHITECTURE:** Hub-and-Spoke with Plane Separation

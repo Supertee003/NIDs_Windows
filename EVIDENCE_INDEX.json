@@ -9194,12 +9194,37 @@
    "result": "PASS_READ_ONLY_PREFLIGHT",
    "finding": "Manifest drift is resolved. Installed service hash mismatch, current-source deployment, and Windows E5 remain OPEN.",
    "evidence_artifact": "admin-evidence/rel-manifest-refresh-20261101/closeout.md"
+  },   {
+   "id": "XDR-WIRE-001",
+   "head_sha": null,
+   "timestamp": "2026-11-02",
+   "title": "Advisory XDR fabric wired into the runtime as read-only evidence (xdr.list); boundary pins intact",
+   "level": "E3",
+   "component": "zig_core",
+   "command": "zig build test; pytest tests/security/test_xdr_wire_advisory.py tests/ips/test_t18_ips_canary_xdr.py",
+   "expected": "detection-identity events fold into the advisory fabric; xdr.list is its sole consumer; no scoring/policy/PEP/host-effect path; spine registry pin intact",
+   "actual": "event_processor feeds the fabric after detection; daemon startLive publishes it; xdr.list (op 510) reads it; RuntimeSpine pin still rejects registry membership",
+   "result": "PASS",
+   "files_verified": [
+    "src/xdr/xdr_runtime.zig",
+    "src/xdr/xdr_incident_fabric.zig",
+    "src/pipeline/event_processor.zig",
+    "src/daemon.zig",
+    "src/control/protocol.zig",
+    "src/control/handler_registry.zig",
+    "tests/security/test_xdr_wire_advisory.py"
+   ],
+   "tests": [
+    "zig build test --summary all: exit 0",
+    "pytest tests/security/test_xdr_wire_advisory.py tests/ips/test_t18_ips_canary_xdr.py: 23 passed"
+   ],
+   "result_note": "Advisory-only read-only wiring; full source-to-forensic-receipt integration (IDS-XDR-005) remains OPEN",  "evidence_artifact": "admin-evidence/xdr-wire-001-20261102/closeout.md"
   },
   {
    "id": "IDS-XDR-005-WIRING-OPEN",
-   "severity": "P1",
-   "title": "Selected XDR evidence authority remains test/lab-only pending source-to-forensic integration",
-   "description": "src/xdr/xdr_incident_fabric.zig is the selected advisory-only XDR authority, but no production source route associates actual CanonicalEvent/detection identity with an immutable IDS Evidence Receipt and replay. No Windows E5 proof exists.",
+   "severity": "P2",
+   "title": "Selected XDR evidence authority is advisory-wired read-only (XDR-WIRE-001); source-to-forensic integration still open",
+   "description": "src/xdr/xdr_incident_fabric.zig is now advisory-wired read-only (XDR-WIRE-001): detection-identity events fold into the fabric and xdr.list is its sole view. Remaining gap: no production source route associates the fabric's incident evidence with an immutable IDS Evidence Receipt and replay. No Windows E5 proof exists.",
    "status": "OPEN",
    "found_at": "2026-10-31",
    "tracking": "GitHub issue #26 / IDS-XDR-005",

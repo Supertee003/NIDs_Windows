@@ -22,6 +22,7 @@ const source_arbiter = @import("../capture/source_arbiter.zig");
 const etw_rt = @import("../windows/etw_realtime.zig");
 const fault = @import("../reliability/fault_injection.zig");
 const tracker_mod = @import("../detection/threat_tracker.zig");
+const xdr_runtime = @import("../xdr/xdr_runtime.zig");
 
 // ============================================================
 // Handler Function Signature
@@ -291,6 +292,7 @@ pub fn initHandlers() void {
     registerHandler(.queue_stats, handlers.queueStats);
     registerHandler(.incidents_list, handlers.incidentsList);
     registerHandler(.incidents_show, handlers.incidentsShow);
+    registerHandler(.xdr_list, handlers.xdrList);
     registerHandler(.policy_list, handlers.policyList);
     registerHandler(.policy_validate, handlers.policyValidate);
     registerHandler(.policy_verify, handlers.policyVerify);
@@ -877,6 +879,13 @@ const handlers = struct {
             row.score,
             row.evidence_count,
         }) catch null;
+    }
+
+    fn xdrList(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
+        // XDR-WIRE-001: advisory read-only evidence view. The fabric owns
+        // its own counters; nothing here may mutate state or feed DEFCON,
+        // policy, PEP, or ActionDispatcher. Honest-empty before startLive().
+        return xdr_runtime.listJson(a);
     }
 
     fn policyList(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
