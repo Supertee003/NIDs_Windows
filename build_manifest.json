@@ -210,8 +210,8 @@
     },
     {
       "path": ".gitignore",
-      "size": 2237,
-      "sha256": "ba25710bbc09f84dcfd94c1b3db60a9e080dd0dd2895deac216b9eef364d760c",
+      "size": 2335,
+      "sha256": "50ed9b741609fc493060e0eaacdd4a394b8ebc94b5bd38ac2fbdf76f5245a290",
       "language": "data"
     },
     {
@@ -942,8 +942,8 @@
     },
     {
       "path": "nose/main.go",
-      "size": 9071,
-      "sha256": "9038c4e75a3c7198a7c20e6809b818e24b240da761d81bdb963476c64749afc3",
+      "size": 9722,
+      "sha256": "fb8b0d680a4370859295e3164d4177504459d0dfe395b1a08714228fd6e82852",
       "language": "go"
     },
     {
@@ -1027,7 +1027,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 22337,
-      "sha256": "8d7e35d83eb9b6fa55a9e72f13b12bdbd6afb66931301d0a8602606dfe021a62",
+      "sha256": "895a02c639d792ce91ec5ae75c22d2204570baffa2b3be89d07aa712327d2166",
       "language": "json"
     },
     {
@@ -1518,8 +1518,8 @@
     },
     {
       "path": "scripts/run_wfp_hostonly_observe_only.ps1",
-      "size": 1410,
-      "sha256": "4fcd188193afe6b5e10ec6aa98a1ef5d3eeeb9b5a5cb575264580d6ca95a683c",
+      "size": 2210,
+      "sha256": "39858992900f6e0bc65f957e2e8d592caa7bf30748342fa05979ee159e543355",
       "language": "script"
     },
     {
@@ -1836,8 +1836,8 @@
     },
     {
       "path": "src/control/handler_registry.zig",
-      "size": 157384,
-      "sha256": "d48119b9f22fa5f553e9c53cf03e94094fe1ff908ac48c29f453554482ea06fb",
+      "size": 158045,
+      "sha256": "84c482da50f92cd50f39b62b3ac98abc5f422e14b8dfe028f9af4be9b1b08d91",
       "language": "zig"
     },
     {
@@ -2298,8 +2298,8 @@
     },
     {
       "path": "src/pipeline/event_queue.zig",
-      "size": 29141,
-      "sha256": "1d3a243683423aaf7b61d1cd29eb943d88921110ea2b3a4c4531021084ace08a",
+      "size": 32214,
+      "sha256": "9636b68d6ad7d81f9975ff5752bea7b2e58b6f213dcbe7185cc27a5e8ae48995",
       "language": "zig"
     },
     {
@@ -2322,8 +2322,8 @@
     },
     {
       "path": "src/pipeline/runtime_state.zig",
-      "size": 17797,
-      "sha256": "856c0aa9ffd1abfcd7d2cf9a23636c0cd0fa4df370cc01d3c5872577025acd65",
+      "size": 18186,
+      "sha256": "0c718aa38cd761cd6ecbdf5aebcef8e3a35ffe8c186463fddae01aaa1bb734f4",
       "language": "zig"
     },
     {
@@ -3252,8 +3252,8 @@
     },
     {
       "path": "src/windows/fim_native.c",
-      "size": 7235,
-      "sha256": "9369d860c4233e35c1f5b668eb511dc399f177a840509a501e899134b3fbdf62",
+      "size": 9572,
+      "sha256": "e0182619257cb9c777a8aa4ef9848f063ae85f73d6c1f6b562946526d1a2761a",
       "language": "c/c++"
     },
     {
@@ -3396,8 +3396,8 @@
     },
     {
       "path": "tools/aegisctl/api/control_api.py",
-      "size": 62611,
-      "sha256": "2ba58f338d485d15acf3e941f8ffd4b7b5a7afabd636fca6c96376a7f70d3709",
+      "size": 63612,
+      "sha256": "e3fb528324356539f4f5e73daa9ce1c8563e4694ca132f4eec61caf19d4bd90d",
       "language": "python/cython"
     },
     {

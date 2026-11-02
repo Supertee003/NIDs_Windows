@@ -252,9 +252,10 @@ def test_large_control_response_is_accumulated_across_message_reads(monkeypatch,
     try:
         # Canonical retry path for single-instance contention (dashboard
         # refresh, web snapshots, parallel scans share the real pipe).
-        # The fixture's own signal/connect race is fixed structurally
-        # (overlapped Connect, above); this stays as belt-and-braces.
-        response = control_api._query_daemon_retry("forensics.list", {"limit": 1000}, attempts=8)
+        # The fixture signals `listening` before ConnectNamedPipe, so a loaded
+        # full-suite run can deschedule the server between those calls. Keep a
+        # generous retry budget; this is fixture scheduling, not daemon loss.
+        response = control_api._query_daemon_retry("forensics.list", {"limit": 1000}, attempts=40)
     finally:
         server.join(timeout=10)
     assert not failures, f"named-pipe fixture failed: {failures}"

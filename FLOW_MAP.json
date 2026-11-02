@@ -641,7 +641,8 @@
           "owner": "Windows minifilter driver",
           "input": "File/process callbacks",
           "output": "Records in the kernel ring; ring overflow counter",
-          "file": "drivers/minifilter/"
+          "file": "drivers/minifilter/aegis_minifilter.c",
+          "driver_dir": "drivers/minifilter/"
         },
         {
           "step": 2,

@@ -14,6 +14,8 @@ brain_tier2 provenance. Pinned here:
 """
 from __future__ import annotations
 
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -23,11 +25,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from brain.windows_brain import (  # noqa: E402
-    SENSOR_PIPE_ENABLED,
     _send_via_ctypes,
     build_sensor_payload,
     fnv1a32,
-    send_to_sensor_pipe,
 )
 
 MISSING_PIPE = "\\\\.\\pipe\\aegis_probe_nonexistent_9z"
@@ -48,8 +48,27 @@ def test_sensor_payload_shape_and_rule_hashing():
 
 
 def test_sensor_pipe_disabled_by_default_reports_disabled():
-    assert SENSOR_PIPE_ENABLED is False
-    assert send_to_sensor_pipe({"source": "brain_tier2"}) == "DISABLED"
+    # The module reads AEGIS_SENSOR_PIPE at import time, so an operator shell
+    # that exports it would otherwise flip this default-off pin. Probe the
+    # contract in a clean child process instead of mutating this interpreter.
+    env = {k: v for k, v in os.environ.items() if k != "AEGIS_SENSOR_PIPE"}
+    probe = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from brain.windows_brain import SENSOR_PIPE_ENABLED, send_to_sensor_pipe;"
+            "print('ENABLED=' + str(SENSOR_PIPE_ENABLED));"
+            "print('SEND=' + send_to_sensor_pipe({'source': 'brain_tier2'}))",
+        ],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert probe.returncode == 0, probe.stderr
+    assert "ENABLED=False" in probe.stdout, probe.stdout
+    assert "SEND=DISABLED" in probe.stdout, probe.stdout
 
 
 def test_ctypes_fallback_reports_failed_on_missing_pipe():

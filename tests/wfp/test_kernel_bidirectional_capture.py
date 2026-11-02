@@ -241,7 +241,7 @@ def test_direction_survives_queue_and_forensic_readback() -> None:
     assert "if (ce.direction > 1) return false;" in queue
     assert "qe.direction = direction;" in queue
     assert "tcp_flags, ce.direction" in queue
-    assert "forensic_ring.appendWithDirection" in processor
+    assert "ring.appendWithDirection" in processor
     assert "pub fn appendWithDirection" in forensic
     assert "DIRECTION_METADATA_VERSION" in forensic
     assert '\\"direction\\":{s}' in handler
