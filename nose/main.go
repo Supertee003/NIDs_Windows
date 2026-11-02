@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -29,6 +30,19 @@ import (
 // AEGIS_NOSE_VERSION is the SEMVER reported by `aegis-nose --version`.
 // Parsed by tests/runtime/test_version.py.
 const AEGIS_NOSE_VERSION = "5.0.0"
+
+// RB-021: the daemon's direct-Npcap guard verifies the exact selector owned by
+// this process. Publish only an explicitly selected interface; auto-selection
+// must remain unverifiable and therefore cannot authorize direct Npcap.
+const noseIfaceEnv = "AEGIS_NOSE_IFACE"
+
+func publishCaptureInterface(selector string) error {
+	selector = strings.TrimSpace(selector)
+	if selector == "" {
+		return os.Unsetenv(noseIfaceEnv)
+	}
+	return os.Setenv(noseIfaceEnv, selector)
+}
 
 // NOSE-HEALTH-190 (DEADCODE-QUARANTINE): headless beacon counters must move
 // with real work — the old block hardcoded zeros, so a supervisor could not
@@ -174,6 +188,10 @@ func main() {
 
 	// CAPTURE MODE: acquisition-only packet capture feeding the Zig core.
 	if *capture {
+		if err := publishCaptureInterface(*captureIface); err != nil {
+			fmt.Fprintf(os.Stderr, "[AEGIS NOSE] cannot publish capture interface: %v\n", err)
+			os.Exit(1)
+		}
 		stop := make(chan struct{})
 		go func() {
 			if err := runCapture(*captureIface, *capturePipe, stop); err != nil {
