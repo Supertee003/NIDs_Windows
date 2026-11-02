@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-02T10:37:15.619486+00:00",
+  "generated_at": "2026-11-02T10:55:25.807316+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1769,
@@ -2052,7 +2052,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 43475
+      "size": 43658
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -2676,7 +2676,7 @@
       "path": "AUTHORITY_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 18063
+      "size": 18375
     },
     {
       "path": "brain/__init__.py",
@@ -3036,7 +3036,7 @@
       "path": "build_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 128860
+      "size": 135798
     },
     {
       "path": "build_truth.json",
@@ -4782,7 +4782,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 867350
+      "size": 868856
     },
     {
       "path": "fix_bridge_banner.py",
@@ -4914,7 +4914,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 285449
+      "size": 285759
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -5172,7 +5172,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9642
+      "size": 10009
     },
     {
       "path": "pytest.ini",
@@ -5190,7 +5190,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 233861
+      "size": 234130
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -6258,7 +6258,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 22885
+      "size": 23140
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",
@@ -7092,7 +7092,7 @@
       "path": "shared/protocol/control_protocol.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 8128
+      "size": 8227
     },
     {
       "path": "shared/protocol/protocol.md",
@@ -8934,7 +8934,7 @@
       "path": "src/xdr/xdr_runtime.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 10521
+      "size": 10443
     },
     {
       "path": "static-authority-scan.txt",
@@ -9324,7 +9324,7 @@
       "path": "tests/ips/test_t18_ips_canary_xdr.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 10050
+      "size": 10208
     },
     {
       "path": "tests/lab/__init__.py",
@@ -10200,7 +10200,7 @@
       "path": "tools/create_manifest.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 19326
+      "size": 19581
     },
     {
       "path": "tools/deploy_windows.py",
