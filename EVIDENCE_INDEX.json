@@ -3487,6 +3487,34 @@
    "actual": "The new unit test fills 15,360 host events, proves the next host event is refused at the reserve boundary, proves a network event still enters the reserve, fills the reserve with network events, and proves a host refusal at true capacity increments only the full-queue counter. queue.stats parses and reports reserved_network_slots=1024 plus reserved_tail_shed. No Windows host proof was performed; the installed service image remains older than this source build.",
    "evidence_artifact": "admin-evidence/ids-queue-001-20261102/closeout.md",
    "tracking": "Local record; no GitHub issue opened in this session."
+  },
+  {
+   "id": "TEST-DRIFT-20261102",
+   "head_sha": "d02261e08f6b5d150771fb2a88bd0e009c792c57",
+   "timestamp": "2026-11-02",
+   "title": "Full Python suite green; stale pins and a tracked-state test write repaired",
+   "level": "E2",
+   "component": "Python test suite, truth maps, and release artifact digests",
+   "flow_id": "DATA-001",
+   "description": "The full tests/ suite now passes 940 with 4 skips. Four pre-existing failures were repaired without product changes: the brain sensor-pipe default is probed hermetically, the forensic pagination fixture tolerates scheduling delay, the T10 manifest tests are read-only and assert the current Go Nose production / direct-Npcap lab split, and the WFP direction pin matches ring.appendWithDirection. FLOW_MAP HOST-001 now names the driver source file, and build_manifest digests were refreshed for the existing 616-artifact set.",
+   "files_changed": [
+    "tests/brain/test_sensor_pipe.py",
+    "tests/forensics/test_forensic_pagination.py",
+    "tests/host_telemetry/test_t10_single_source.py",
+    "tests/wfp/test_kernel_bidirectional_capture.py",
+    "FLOW_MAP.json",
+    "build_manifest.json"
+   ],
+   "tests": [
+    "python -m pytest tests -q: 940 passed, 4 skipped, 27 subtests passed",
+    "python tools/release_engineering.py --verify: 616 artifacts match (source_commit=d02261e)",
+    "python tools/truth.py verify: TRUTH_VALID",
+    "git diff --check: PASS"
+   ],
+   "result": "PASS_E2_TEST_AND_TRUTH_ONLY; NO_PRODUCT_CHANGE",
+   "actual": "No product source changed. The T10 test no longer writes runtime_manifest.json; it asserts Go Nose is REAL/golden path and direct Npcap is LAB/not golden path. The build_manifest refresh updated nine drifted digests without adding or dropping artifacts. This is not Windows E5, kernel qualification, or a new release bundle.",
+   "evidence_artifact": "admin-evidence/test-drift-20261102/closeout.md",
+   "tracking": "Local record; no GitHub issue opened in this session."
   }
  ],
  "known_gaps": [
@@ -9148,7 +9176,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 30,
-  "E2_count": 155,
+  "E2_count": 156,
   "E3_count": 16,
   "E4_count": 15,
   "E5_count": 126,
