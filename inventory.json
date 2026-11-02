@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-02T04:40:55.782026+00:00",
+  "generated_at": "2026-11-02T04:47:59.616329+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1769,
@@ -4284,7 +4284,7 @@
       "path": "docs/runbooks/RB-021-hostonly-lab-proof.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 32680
+      "size": 33729
     },
     {
       "path": "docs/runbooks/README.md",
@@ -9702,7 +9702,7 @@
       "path": "tests/security/test_rb021_current_source_gate.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 1275
+      "size": 1755
     },
     {
       "path": "tests/security/test_receipt_contract.py",
