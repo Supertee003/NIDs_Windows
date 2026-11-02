@@ -9,6 +9,28 @@ every firing is attributable to the attacker IP. Network rules fire
 from wire traffic alone (no victim cooperation needed); host rules run
 as canaries on the monitored host itself.
 
+## Current-source completion gate
+
+This runbook is **not E5-complete** until the current-source preflight and the
+bounded Kali-to-Victim canary both pass. Historical records from earlier
+artifacts remain useful context, but they do not qualify the current HEAD.
+Run the read-only gate first from an elevated PowerShell session:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\rb021_current_source_preflight.ps1 `
+  -ExpectedKaliIp 192.168.126.10 `
+  -ExpectedVictimIp 192.168.126.20 `
+  -ExpectedNidsIp 192.168.126.1 `
+  -ProofOutput .\admin-evidence\rb021-current-source-preflight
+```
+
+Only `RB021_PREFLIGHT_PASS` permits the canary phase. The gate compares the
+installed service executable SHA-256 with `zig-out\bin\aegis_nids.exe`, checks
+the build manifest source commit against `git HEAD`, requires the service and
+VMnet1 link to be live, requires the machine capture pin, and requires ARP
+neighbors for both Kali and Victim. A blocked result is an honest E1
+preflight failure; it must not be converted into an E5 claim.
+
 ## Prerequisites
 
 - VMware host-only network up: Kali .10, victim Win11 .20, NIDS host
@@ -45,6 +67,23 @@ live entry is dropped by the host stack pre-wire and produces zero
 frames (2026-10-17: a 50-frame unicast burst to a dead .10 -> 0 rows;
 a 1000-frame burst to .10 while an entry existed -> 999/1000 rows in 236 ms).
 Broadcast always transmits -- it is the capture-liveness test.
+
+For the full RB-021 wrapper, keep the current-source gate enabled:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run_wfp_hostonly_observe_only.ps1 `
+  -ExpectedKaliIp 192.168.126.10 `
+  -ExpectedVictimIp 192.168.126.20 `
+  -ExpectedNidsIp 192.168.126.1 `
+  -ListenPort 49152 `
+  -WaitSeconds 60 `
+  -RequireCurrentSource `
+  -ProofOutput .\admin-evidence\rb021-current-source-proof
+```
+
+The wrapper stops before opening its listener when the preflight is blocked.
+Do not use a bypass switch or copy an executable manually; resolve the
+deployment/rollback gate first.
 
 ### 2. Point daemon capture at VMnet1 (one Admin round-trip)
 

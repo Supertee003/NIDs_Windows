@@ -102,6 +102,12 @@ authorize a production host effect.
   `admin-evidence/e5-preflight-20261101/closeout.md`.
 - `VER-003` and `IDS-XDR-006` close their E2 test slices only. Supervised
   Windows E5, production XDR runtime wiring, and release E7 remain OPEN.
+- RB-021 remediation now has a fail-closed read-only gate at
+  `scripts/rb021_current_source_preflight.ps1`. It must emit
+  `RB021_PREFLIGHT_PASS` before any Kali canary; it checks current HEAD/build
+  manifest, installed runtime SHA-256, service state, VMnet1, machine capture
+  pin, and Kali/Victim ARP neighbors. A blocked preflight remains E1 and must
+  not be promoted to E5 by reusing historical evidence.
 
 ## VER-004 Windows TCP Error Recovery — 2026-11-01
 

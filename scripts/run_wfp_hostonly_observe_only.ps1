@@ -1,9 +1,12 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory=$true)][string]$ExpectedKaliIp,
+    [string]$ExpectedVictimIp = '192.168.126.20',
+    [string]$ExpectedNidsIp = '192.168.126.1',
     [int]$ListenPort = 49152,
     [int]$WaitSeconds = 30,
-    [string]$ProofOutput = ''
+    [string]$ProofOutput = '',
+    [switch]$RequireCurrentSource
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,6 +16,21 @@ if (-not $ProofOutput) { $ProofOutput = Join-Path $repo ("analysis\hostonly-wfp-
 New-Item -ItemType Directory -Force -Path $ProofOutput | Out-Null
 $ready = Join-Path $ProofOutput 'READY.txt'
 $console = Join-Path $ProofOutput 'console.log'
+
+if ($RequireCurrentSource) {
+    $preflight = Join-Path $repo 'scripts\rb021_current_source_preflight.ps1'
+    Write-Host 'Running RB-021 current-source preflight before opening the listener.'
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $preflight `
+        -ExpectedKaliIp $ExpectedKaliIp `
+        -ExpectedVictimIp $ExpectedVictimIp `
+        -ExpectedNidsIp $ExpectedNidsIp `
+        -ProofOutput (Join-Path $ProofOutput 'preflight')
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error 'RB-021 stopped before canary: current-source preflight did not pass.'
+        Write-Host "Evidence directory: $ProofOutput"
+        exit $LASTEXITCODE
+    }
+}
 
 Write-Host "Starting WFP collector before waiting for Kali probe."
 Write-Host "Expected Kali IP: $ExpectedKaliIp"
