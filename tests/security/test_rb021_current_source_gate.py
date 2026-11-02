@@ -14,6 +14,8 @@ def test_rb021_preflight_is_current_source_and_detection_only():
     assert "installed_matches_current_build" in text
     assert "daemon_process_pin_matches" in text
     assert "dump-daemon-env.ps1" in text
+    assert "nose_process_pin_matches" in text
+    assert "direct_npcap_selectors_disjoint" in text
     assert "build_manifest_source" in text
     assert "host_effect_confirmed = $false" in text
     assert "prevention_gate = 'closed'" in text

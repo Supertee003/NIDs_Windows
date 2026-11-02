@@ -381,6 +381,35 @@ class TestControlApiHealthPayload(unittest.TestCase):
             "in_events": 100, "out_events": 90, "errors": 3, "dropped": 12,
         })
 
+    def test_data_integrity_counters_are_forwarded_from_daemon(self):
+        integrity = {
+            "queue_dropped_total": 7,
+            "nose_frames_rejected": 2,
+            "nose_frames_dropped": 3,
+            "nose_pipe_errors": 4,
+            "minifilter_ring_dropped": 5,
+            "minifilter_pipeline_dropped": 6,
+        }
+        payload = self._payload_for(self._daemon_with(data_integrity=integrity))
+        self.assertEqual(payload["data_integrity"], integrity)
+
+    def test_data_integrity_absence_and_malformed_counters_are_honest(self):
+        legacy = self._payload_for(self._daemon_with())
+        self.assertEqual(legacy["data_integrity"], {})
+
+        malformed = self._payload_for(self._daemon_with(data_integrity={
+            "queue_dropped_total": True,
+            "nose_frames_rejected": -1,
+            "nose_frames_dropped": "3",
+            "nose_pipe_errors": 0,
+            "minifilter_ring_dropped": 2,
+            "unknown": 99,
+        }))
+        self.assertEqual(malformed["data_integrity"], {
+            "nose_pipe_errors": 0,
+            "minifilter_ring_dropped": 2,
+        })
+
     def test_counters_synthesized_when_daemon_lacks_them(self):
         # Pre-slice daemons carry no counters: fall back to data_plane.
         payload = self._payload_for(self._daemon_with())

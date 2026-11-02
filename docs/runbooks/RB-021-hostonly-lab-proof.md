@@ -43,6 +43,10 @@ not be converted into an E5 claim.
   targets outside `192.168.126.0/24` by construction).
 - Elevation: restarting the service and setting machine env need Admin;
   reads need nothing. No second nose is used (retired -- see Step 2).
+- When `AEGIS_DAEMON_IFACE` is set for this lab, `AEGIS_NOSE_IFACE` is also
+  mandatory. It must equal the exact selector passed to the running Go Nose
+  `--iface` process and must be disjoint from the daemon selector. Missing,
+  stale, equal, or overlapping selectors disable direct Npcap fail-closed.
 - Victim listener on :80 (Admin PowerShell on the victim ONCE — any TCP
   payload needs an established connection before it exists on the wire;
   without it every L7 script reports `port closed` and nothing is sent):

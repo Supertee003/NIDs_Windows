@@ -1035,6 +1035,33 @@ def _daemon_counters_or_synthesized(daemon_health: Dict[str, Any],
     return dict(synthesized)
 
 
+def _daemon_data_integrity(daemon_health: Dict[str, Any]) -> Dict[str, int]:
+    """Project validated ingress-loss counters from daemon health.
+
+    Older daemon builds do not emit this additive object. Preserve that as
+    an empty mapping, and omit malformed/unknown individual counters rather
+    than turning them into misleading zeroes.
+    """
+    raw = daemon_health.get("data_integrity")
+    if not isinstance(raw, dict):
+        return {}
+    keys = (
+        "queue_dropped_total",
+        "nose_frames_rejected",
+        "nose_frames_dropped",
+        "nose_pipe_errors",
+        "minifilter_ring_dropped",
+        "minifilter_pipeline_dropped",
+    )
+    projected: Dict[str, int] = {}
+    for key in keys:
+        value = raw.get(key)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            continue
+        projected[key] = value
+    return projected
+
+
 def get_health_payload() -> Dict[str, Any]:
     """Get the health check payload conforming to RUNTIME_CONTRACT.md §4.1.
 
@@ -1233,6 +1260,7 @@ def get_health_payload() -> Dict[str, Any]:
             "capabilities": daemon_health.get("capabilities", {}),
             "workers": workers,
             "data_plane": data_plane,
+            "data_integrity": _daemon_data_integrity(daemon_health),
             "endpoint_ownership": summarize_endpoint_ownership(get_endpoint_ownership_cached()),
             "exactly_once": exactly_once,
         }
@@ -1283,6 +1311,7 @@ def _diagnostic_health_payload(reason: str) -> Dict[str, Any]:
             "dropped": 0,
         },
         "subsystems": subsystem_payload,
+        "data_integrity": {},
         "tier3": {"ready": False, "state": "UNAVAILABLE"},
         "rust_pep": {
             "state": "UNAVAILABLE",
