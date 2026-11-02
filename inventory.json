@@ -1,12 +1,12 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-02T05:31:48.375414+00:00",
+  "generated_at": "2026-11-02T07:12:10.746294+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1770,
+  "total_files": 1767,
   "by_class": {
-    "canonical-docs": 591,
-    "canonical-build": 224,
+    "canonical-docs": 589,
+    "canonical-build": 223,
     "unclassified": 19,
     "canonical-source": 655,
     "canonical-test": 214,
@@ -3546,7 +3546,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 11757
+      "size": 12734
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -4092,7 +4092,7 @@
       "path": "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 112421
+      "size": 113168
     },
     {
       "path": "docs/MASTER_TARGET_ALIGNMENT_2026-09-14.md",
@@ -4782,7 +4782,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 853874
+      "size": 855732
     },
     {
       "path": "fix_bridge_banner.py",
@@ -4905,12 +4905,6 @@
       "size": 4918
     },
     {
-      "path": "installer-e233242-20261101.nsi",
-      "class": "canonical-build",
-      "role": "build-config",
-      "size": 15485
-    },
-    {
       "path": "installer.nsi",
       "class": "canonical-build",
       "role": "build-config",
@@ -4920,7 +4914,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 285786
+      "size": 285449
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -5175,22 +5169,10 @@
       "size": 1025
     },
     {
-      "path": "outputs/AEGIS-Kernel-IDS-completion-plan.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 25173
-    },
-    {
-      "path": "outputs/KIDS-001-implementation-plan.md",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 8709
-    },
-    {
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9618
+      "size": 10125
     },
     {
       "path": "pytest.ini",
@@ -5202,13 +5184,13 @@
       "path": "README.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 31110
+      "size": 31535
     },
     {
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 234124
+      "size": 233861
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -7110,7 +7092,7 @@
       "path": "shared/protocol/control_protocol.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 7725
+      "size": 8128
     },
     {
       "path": "shared/protocol/protocol.md",
@@ -7392,7 +7374,7 @@
       "path": "src/control/handler_registry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 160459
+      "size": 158045
     },
     {
       "path": "src/control/protocol.zig",
@@ -7866,7 +7848,7 @@
       "path": "src/pipeline/event_queue.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 29141
+      "size": 32214
     },
     {
       "path": "src/pipeline/l4_matcher.zig",
@@ -7890,7 +7872,7 @@
       "path": "src/pipeline/runtime_state.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 18112
+      "size": 18186
     },
     {
       "path": "src/pipeline/telemetry_threads.zig",

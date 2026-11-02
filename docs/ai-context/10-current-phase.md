@@ -78,6 +78,23 @@ authorize a production host effect.
 - Workspace build image SHA-256: `749784FE150076600DE09E2CF0926EEAE0F4483442E8E5A0B9C5EE849E17C610`. Rollback-capable installer is prepared at `admin-evidence/qloss-health-001-20261101/AEGIS-NIDS-5.0.0-1edb2b1-20261101.exe` (SHA-256 `488845A8A7D9B3648AF38A59E612074F933B4C6FA2E9A6C7BA9C31F01AC9DE7B`); release verification 616/616 and fresh_deploy plan pass. After restart of the old image, live health still said RUNNING despite queue drops=4,655 and depth=15,323/16,384 at 18.7s uptime (ETW=2,125, FIM=2,530); minifilter ring counter read 466,949 without an established delta. Service is now STOPPED; new installer is ready but uninstalled. Issue #29 remains OPEN until deployment and bounded Windows verification.
 - The earlier Kali R9006 run scanned 10 ports, below its configured threshold of 20 distinct ports. It is not a valid detection-failure result. Resume the demo only after service is running and a current-source build is deployed; see `admin-evidence/qloss-health-001-20261101/closeout.md`.
 
+## IDS-QUEUE-001 Update — 2026-11-02
+
+- Source commit `56ac99f` reserves the final 1,024 slots of the shared
+  16,384-slot pipeline queue for `capture_npcap` / `capture_wfp`. Host
+  telemetry is refused at the reserve boundary so an ETW/FIM/registry flood
+  cannot consume the network admission tail.
+- Reserved-tail sheds increment the existing queue-drop counter (health still
+  degrades) and a new `reserved_tail_shed` counter. `queue.stats` reports
+  `reserved_network_slots` and `reserved_tail_shed`, so a refusal below
+  `queue_size` is explainable rather than a bug.
+- `zig build test --summary all`: 2,005 passed, 10 skipped, 0 failed.
+  `zig build`: PASS. Evidence level E2; no wire, ABI, policy, PEP, driver, or
+  enforcement change.
+- The queue remains FIFO. A network event admitted into the reserve can still
+  wait behind an existing host backlog; this slice prevents admission refusal,
+  not queueing latency. No Windows E5 proof is claimed.
+
 ## Verification, XDR, and Windows Preflight — 2026-11-01
 
 - `VER-003` (source `ba92468`) fixed the compliance reporter's unbuffered

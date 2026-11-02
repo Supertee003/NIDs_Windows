@@ -76,14 +76,14 @@ Network / host activity
         |
         +--> Policy decision
         |
-        +--> Rust PEP authority
+        +--> Rust PEP policy assessment (evidence only)
         |
-        +--> WFP host effect provider
+        +--> WFP telemetry provider (host effect is lab-only, not production)
         |
         +--> Forensic record, audit trail and operator views
 ```
 
-The Zig daemon is the runtime owner. Rust PEP is the only component allowed to authorize privileged enforcement. The user-mode WFP adapter and kernel WFP callout are effect-provider layers; their low-level IOCTL functions must be reached only through the authorized runtime path and must not be called directly by Python, Go, TypeScript, dashboards, or detection code. Those components may observe, analyze, request, or display state, but they must not independently mutate Windows filtering state.
+The Zig daemon is the runtime owner. Production Rust PEP evaluates policy and returns an assessment for evidence; it does not authorize a host effect. The user-mode WFP adapter and kernel WFP callout retain historical lab-only mutation code, but a production build has no reachable path that can create or confirm a host filter. A privileged cleanup command can remove only a pre-existing filter marked with the AEGIS proof-provider GUID; it cannot create one. Those components may observe, analyze, request, or display state, but they must not independently mutate Windows filtering state.
 
 A policy action named `BLOCK` is not evidence that a host block occurred. A confirmed block requires a valid `EnforcementReceipt` with a verified host postcondition.
 
@@ -112,20 +112,24 @@ The architecture is easiest to understand as a sequence of **observation, normal
 6. Decide
    Policy authority maps evidence to ALLOW, ALERT, ESCALATE, or BLOCK_REQUESTED
           |
-7. Authorize
-   Rust PEP validates capability, policy, target, expiry, and request freshness
+7. Authorize (LAB-ONLY, not production)
+   The isolated lab build may validate a host-effect request; production
+   Rust PEP only returns an evidence assessment.
           |
-8. Apply effect
-   WFP may apply a reversible host effect only when the prevention gate is open
+8. Apply effect (LAB-ONLY, not production)
+   The lab gate may apply a reversible WFP filter; production never opens it.
           |
-9. Verify
-   The runtime checks the host postcondition and creates EnforcementReceipt v1
+9. Verify (LAB-ONLY, not production)
+   The lab path checks the host postcondition and creates EnforcementReceipt v1.
           |
 10. Remember and present
     Forensic/audit records are written; CLI and dashboards display the result
 ```
 
-The current supported path stops safely after steps 1–6 for observe-only operation. Steps 7–9 are present as guarded enforcement boundaries, but the prevention gate remains closed until the isolated WFP proof is accepted.
+Production stops after step 6: the policy decision is assessed and recorded as
+evidence, with no host effect. Steps 7–9 exist only in the separately compiled
+lab gate and are retained for historical qualification; enforcement activation
+is outside the production product scope.
 
 ### What each layer is allowed to claim
 
@@ -188,6 +192,10 @@ File change under the configured watch root
 The `AEGIS_FIM_PROOF_ROOT` environment variable selects a disposable directory for testing. It is intentionally opt-in so that a proof does not mutate or monitor Windows system directories unnecessarily.
 
 ### Enforcement lifecycle
+
+> **Historical/lab-only.** This section documents the retained
+> `EnforcementReceipt v1` semantics for past lab qualification. It is not a
+> production capability and must not be read as a pending activation plan.
 
 The enforcement path has four different meanings that must not be collapsed:
 

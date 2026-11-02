@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-02T05:31:48.382676+00:00",
+  "generated_at": "2026-11-02T07:12:10.749523+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1770,
+  "total_files": 1767,
   "by_role": {
-    "documentation": 577,
-    "build-config": 213,
+    "documentation": 575,
+    "build-config": 212,
     "other": 19,
     "source": 366,
     "lockfile": 6,
@@ -3577,10 +3577,6 @@
       "class": "canonical-build",
       "role": "build-config"
     },
-    "installer-e233242-20261101.nsi": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
     "installer.nsi": {
       "class": "canonical-build",
       "role": "build-config"
@@ -3756,14 +3752,6 @@
     "nose/traffic_sys_windows_test.go": {
       "class": "canonical-test",
       "role": "test-artifact"
-    },
-    "outputs/AEGIS-Kernel-IDS-completion-plan.md": {
-      "class": "canonical-docs",
-      "role": "documentation"
-    },
-    "outputs/KIDS-001-implementation-plan.md": {
-      "class": "canonical-docs",
-      "role": "documentation"
     },
     "PHASE_0_TRUTH_REBUILD_REPORT.json": {
       "class": "canonical-build",

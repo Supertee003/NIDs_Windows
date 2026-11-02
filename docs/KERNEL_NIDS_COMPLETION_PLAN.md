@@ -1,5 +1,11 @@
 # แผนความสมบูรณ์: Kernel-level Network IDS (AEGIS NIDS Windows)
 
+> **สถานะปัจจุบัน (2026-11-02):** ผลิตภัณฑ์คือ **Kernel-level IDS (detection/evidence only)**.
+> WFP เป็น observe-only sensor, Rust PEP เป็น assessment-only และ production
+> ไม่มี reachable host-effect path; lab gate เป็น build แยกและไม่ใช่ผลิตภัณฑ์.
+> เนื้อหา §1 และ Phase 3 ด้านล่างเป็นบันทึกประวัติศาสตร์จากการประเมินก่อน pivot.
+> Source of truth คือ code ที่ HEAD ปัจจุบัน ไม่ใช่ข้อความเก่าในเอกสารนี้.
+
 สถานะฐาน: `64df058` — pytest 727, zig suite, truth, release 539/539, audit 100% (ดู EVIDENCE_INDEX.json EVT-091–099)
 
 ## 1. ผลออดิต: ระบบวันนี้คืออะไร

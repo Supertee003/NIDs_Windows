@@ -1,7 +1,7 @@
 {
- "head_sha": "bebb5440299230264c963c9c15cadbe79fe5c902",
+ "head_sha": "d02261e08f6b5d150771fb2a88bd0e009c792c57",
  "created_at": "2026-09-24",
- "last_updated_at": "2026-11-01",
+ "last_updated_at": "2026-11-02",
  "generator_version": "3.0",
  "evidence_levels": {
   "E0": "No evidence",
@@ -3463,6 +3463,30 @@
    "actual": "Source regression proves a queue drop produces state=DEGRADED, degraded=true and data_integrity.queue_dropped_total=1. After the operator restarted the old installed binary (SHA-256 8A195ABA73C66DB61A8810329C9B4414926B1813D731FDA8524792C47BB566D6), health still said RUNNING/degraded=false. A sample at uptime 18.7s showed EventQueue dropped_total=4,655 (capture_etw=2,125; capture_fim=2,530), depth=15,323/16,384; minifilter kernel ring counter read 466,949 (no before/after delta established). New source image SHA-256 749784FE150076600DE09E2CF0926EEAE0F4483442E8E5A0B9C5EE849E17C610 remains uninstalled. Rollback package SHA-256 37E9A198500A94DF363FFFA1C96C1C16D0CE59C283AC95235A9B0F61ACA54790 is retained; snapshot ID 20261101091936. Current-source installer SHA-256 488845A8A7D9B3648AF38A59E612074F933B4C6FA2E9A6C7BA9C31F01AC9DE7B is stamped 1edb2b1 and includes both driver payloads, but remains uninstalled. Release verification is 616/616; fresh_deploy --plan passes.",
    "evidence_artifact": "admin-evidence/qloss-health-001-20261101/closeout.md",
    "tracking": "GitHub issue #29 remains OPEN until current build deployment and bounded Windows validation."
+  },
+  {
+   "id": "IDS-QUEUE-001-20261102",
+   "head_sha": "56ac99fff56272c782ce088b433884c8e2d754b1",
+   "timestamp": "2026-11-02",
+   "title": "Network observations keep a reserved admission tail under host telemetry floods",
+   "level": "E2",
+   "component": "Zig shared EventQueue admission and control queue.stats",
+   "flow_id": "DATA-001",
+   "description": "The shared 16,384-slot pipeline queue now reserves its final 1,024 slots for capture_npcap/capture_wfp observations. Non-network host telemetry is refused at the reserve boundary, counted as an admission refusal for health, and separately counted as a reserved-tail shed so queue.stats can distinguish it from a true full-queue drop. The queue remains FIFO, so this prevents admission refusal, not queueing latency. No wire, ABI, policy, PEP, driver, or enforcement behavior changed.",
+   "files_changed": [
+    "src/pipeline/event_queue.zig",
+    "src/pipeline/runtime_state.zig",
+    "src/control/handler_registry.zig"
+   ],
+   "tests": [
+    "zig build test --summary all: 2005 passed, 10 skipped, 0 failed",
+    "zig build: PASS",
+    "git diff --check: PASS"
+   ],
+   "result": "PASS_E2_SOURCE_AND_BUILD; WINDOWS_DEPLOYMENT_PENDING",
+   "actual": "The new unit test fills 15,360 host events, proves the next host event is refused at the reserve boundary, proves a network event still enters the reserve, fills the reserve with network events, and proves a host refusal at true capacity increments only the full-queue counter. queue.stats parses and reports reserved_network_slots=1024 plus reserved_tail_shed. No Windows host proof was performed; the installed service image remains older than this source build.",
+   "evidence_artifact": "admin-evidence/ids-queue-001-20261102/closeout.md",
+   "tracking": "Local record; no GitHub issue opened in this session."
   }
  ],
  "known_gaps": [
@@ -9124,7 +9148,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 30,
-  "E2_count": 154,
+  "E2_count": 155,
   "E3_count": 16,
   "E4_count": 15,
   "E5_count": 126,
