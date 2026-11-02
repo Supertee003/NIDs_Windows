@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-02T04:47:59.616329+00:00",
+  "generated_at": "2026-11-02T04:57:04.010571+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1769,
@@ -6786,7 +6786,7 @@
       "path": "scripts/rb021_current_source_preflight.ps1",
       "class": "canonical-source",
       "role": "source",
-      "size": 5334
+      "size": 6310
     },
     {
       "path": "scripts/read_vectors.py",
@@ -9702,7 +9702,7 @@
       "path": "tests/security/test_rb021_current_source_gate.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 1755
+      "size": 1844
     },
     {
       "path": "tests/security/test_receipt_contract.py",
