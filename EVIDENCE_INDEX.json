@@ -1,7 +1,7 @@
 {
- "head_sha": "ce171f9cb55a9b462ca33123a011fb6cb464653c",
+ "head_sha": "f7c626df89bc18b31d0132181d0a4632d6b1e6f3",
  "created_at": "2026-09-24",
- "last_updated_at": "2026-11-02",
+ "last_updated_at": "2026-11-03",
  "generator_version": "3.0",
  "evidence_levels": {
   "E0": "No evidence",
@@ -3284,7 +3284,7 @@
    "result": "PASS_WITH_OPEN_BLOCKERS",
    "finding": "At this evidence point, the selected XDR code was advisory-only and not represented as a production route. The subsequent MAP-006 source/map reconciliation is recorded separately; XDR-to-CanonicalEvent/receipt/replay integration and kernel/Windows qualification remain open.",
    "evidence_artifact": "admin-evidence/ids-xdr-005-20261031/closeout.md",
-   "historical_disposition": "HISTORICAL_SNAPSHOT: predates the MAP-006 source/map reconciliation recorded in admin-evidence/map006-runtime-truth-20261031/closeout.md; its open XDR integration and E5 statements remain current."
+   "historical_disposition": "HISTORICAL_SNAPSHOT: predates the MAP-006 source/map reconciliation recorded in admin-evidence/map006-runtime-truth-20261031/closeout.md; XDR-RECEIPT-002 (2026-11-03) later proved the source-to-forensic receipt/replay integration at E2, while Windows E5 remains open."
   },
   {
    "id": "MAP-006-E2-20261031",
@@ -3417,7 +3417,47 @@
    ],
    "result": "PASS_LAB_TEST_ONLY",
    "finding": "The source-to-forensic-receipt/replay test slice is proven in memory. Production XDR wiring, Windows E5 and release E7 remain open.",
-   "evidence_artifact": "admin-evidence/ids-xdr-006-20261101/closeout.md"
+   "evidence_artifact": "admin-evidence/ids-xdr-006-20261101/closeout.md",
+   "superseded_by": "XDR-RECEIPT-002-20261103",
+   "historical_disposition": "HISTORICAL: production wiring was added later by XDR-RECEIPT-002 at source f7c626d; this entry remains the lab-slice record."
+  },
+  {
+   "id": "XDR-RECEIPT-002-20261103",
+   "head_sha": "f7c626df89bc18b31d0132181d0a4632d6b1e6f3",
+   "timestamp": "2026-11-03",
+   "title": "Frozen advisory XDR assessments persist as IDS evidence receipts and replay (XDR-RECEIPT-002)",
+   "level": "E2",
+   "component": "src/pipeline/event_processor.zig + src/xdr/xdr_runtime.zig + src/xdr/xdr_incident_fabric.zig + src/xdr/xdr_evidence_flow.zig",
+   "flow_id": "XDR-PROD-001",
+   "patch_id": "XDR-RECEIPT-002",
+   "target_head": "f7c626df89bc18b31d0132181d0a4632d6b1e6f3",
+   "final_head": "f7c626df89bc18b31d0132181d0a4632d6b1e6f3",
+   "build_source": "f7c626df89bc18b31d0132181d0a4632d6b1e6f3",
+   "description": "The production detection pipeline now hands each classified detection-identity event to the advisory XDR runtime. When a multi-source assessment freezes, recordXdrAdvisoryReceipt calls xdr_evidence_flow.recordAssessment, which appends a versioned snapshot to the hash-chained forensic ring, reads back the authenticated record hash, issues a non-enforcement IDS Evidence Receipt, and supports deterministic replay. ObserveOutcome is reset per observation so stale frozen rows cannot leak into a later batch. Receipt counters are exposed through xdr.list. The receipt value is discarded by the caller: no policy, PEP, DEFCON, ActionDispatcher, or host-effect consumer exists.",
+   "files_changed": [
+    "src/pipeline/event_processor.zig",
+    "src/xdr/xdr_runtime.zig",
+    "src/xdr/xdr_incident_fabric.zig",
+    "src/xdr/xdr_evidence_flow.zig",
+    "tests/security/test_xdr_wire_advisory.py",
+    "FLOW_MAP.json",
+    "SYSTEM_MAP.json",
+    "AUTHORITY_MAP.json",
+    "runtime_manifest.json",
+    "tools/create_manifest.py",
+    "EVIDENCE_INDEX.json"
+   ],
+   "expected": "A frozen multi-source advisory assessment must append its batch to the forensic ring, issue a recording-only IDS receipt only after hash read-back, and replay to an identical advisory decision; no decision/effect path may consume it.",
+   "tests": [
+    "zig build: PASS, exit 0",
+    "zig build test --summary all: 2011 passed, 10 skipped, 0 failed, exit 0",
+    "focused pytest (assessment_only, forbidden_edges, map006, prevention_gate, receipt_contract, xdr_wire_advisory, zig_test_scope): 50 passed",
+    "python tools/truth.py verify: TRUTH_VALID at source f7c626d",
+    "python tools/release_engineering.py --verify: all recorded artifacts match"
+   ],
+   "result": "PASS_E2_SOURCE_AND_BUILD; WINDOWS_E5_PENDING",
+   "actual": "The frozen batch is proven at Zig unit/component level and through the runtime freeze handoff test: two source categories freeze, the snapshot records, the receipt is non-enforcement, and replay reproduces the same decision. Security pins reject any policy/PEP/DEFCON/dispatch import or branch. No Windows host proof was performed; E5-CURRENT-RUNTIME-MISMATCH remains OPEN and the RB-021 canary was not run.",
+   "evidence_artifact": "admin-evidence/xdr-receipt-002-20261103/"
   },
   {
    "id": "E5-PREFLIGHT-20261101",
@@ -9223,44 +9263,48 @@
   {
    "id": "IDS-XDR-005-WIRING-OPEN",
    "severity": "P2",
-   "title": "Selected XDR evidence authority is advisory-wired read-only (XDR-WIRE-001); source-to-forensic integration still open",
-   "description": "src/xdr/xdr_incident_fabric.zig is now advisory-wired read-only (XDR-WIRE-001): detection-identity events fold into the fabric and xdr.list is its sole view. Remaining gap: no production source route associates the fabric's incident evidence with an immutable IDS Evidence Receipt and replay. No Windows E5 proof exists.",
+   "title": "Selected XDR evidence authority is advisory-wired; source-to-forensic receipt/replay is E2-proven, Windows E5 still open",
+   "description": "src/xdr/xdr_incident_fabric.zig is advisory-wired (XDR-WIRE-001): detection-identity events fold into the fabric and xdr.list exposes its advisory view and receipt counters. XDR-RECEIPT-002 now persists frozen multi-source assessments to the hash-chained forensic ring, issues an IDS Evidence Receipt after hash read-back, and replays the assessment. Remaining gap: no Windows E5 host proof of the recording-only route; no deployment/canary evidence exists for the current source.",
    "status": "OPEN",
    "found_at": "2026-10-31",
    "tracking": "GitHub issue #26 / IDS-XDR-005",
    "required_evidence": [
-    "source-to-forensic-receipt integration tests",
+    "Windows E5 host proof of the recording-only receipt/replay route",
     "runtime manifest and flow/authority maps reverified",
-    "supervised Windows host evidence where applicable"
+    "bounded RB-021 preflight/canary after current-source deployment (requires separate authorization)"
    ],
    "evidence": [
-    "admin-evidence/ids-xdr-005-20261031/closeout.md"
+    "admin-evidence/ids-xdr-005-20261031/closeout.md",
+    "admin-evidence/xdr-receipt-002-20261103/",
+    "EVIDENCE_INDEX.json#XDR-RECEIPT-002-20261103"
    ]
   },
   {
    "id": "E5-CURRENT-RUNTIME-MISMATCH",
    "severity": "P1",
    "title": "RB-021 host is pinned to VMnet1 but the running service image is not the current workspace build",
-   "description": "Installed aegis_nids.exe and zig-out/bin/aegis_nids.exe SHA-256 differ. The installed file is dated 2026-10-25; the current workspace build is dated 2026-11-01. Release digests and read-only fresh-deploy preflight now pass (REL-MANIFEST-001), but current-source deployment and a verified binary rollback point are still missing. The Kali canary sequence must not run until those are available.",
+   "description": "The installed service image at C:\\Program Files\\AEGIS NIDS\\runtime\\aegis_nids.exe is SHA-256 948996C396D2C2A605F37A90D627BB98D7D83064C60B90EC4F0DC7B7DC3F52C7 from source commit d02261e (616-artifact manifest). The workspace zig-out\\bin\\aegis_nids.exe built from source f7c626d (after XDR-RECEIPT-002) is SHA-256 D34D350A2BA051405A0F8DD66F9D492A9F3C94E1FDAC102BF1AA482EED763439 (11,352,064 bytes, 2026-11-03T14:37:46+07:00), so the running service is not the current workspace build. The d02261e deployment evidence (36/36 checks, RB021_PREFLIGHT_PASS) is historical and does not cover f7c626d. Current-source deployment, a verified rollback point for f7c626d, and the bounded RB-021 canary remain outstanding; the canary must not run until deployment and preflight pass.",
    "status": "OPEN",
    "found_at": "2026-11-01",
    "tracking": "Local stop-the-line record; GitHub issue creation unavailable in this session",
    "required_evidence": [
     "Create a rollback point that includes the installed runtime binary and package current source.",
-    "Deploy with a verified rollback point and verify the service executable hash/source commit.",
-    "Repeat RB-021 raw visibility, Kali attribution, and observe-only canary checks.",
+    "Deploy f7c626d with a verified rollback point and verify the service executable hash/source commit.",
+    "Repeat RB-021 raw visibility, Kali attribution, and observe-only canary checks (separate authorization).",
     "Restore the VMnet1 machine pin and verify normal host capture after the bounded lab window."
    ],
    "evidence": [
-    "admin-evidence/e5-recheck-20261101/closeout.md"
+    "admin-evidence/e5-recheck-20261101/closeout.md",
+    "admin-evidence/e5-current-source-20261102/HISTORICAL-d02261e-source-drift.md",
+    "admin-evidence/e5-current-source-20261102/current-health-20261103.txt"
    ]
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 30,
-  "E2_count": 156,
-  "E3_count": 16,
+  "E2_count": 157,
+  "E3_count": 17,
   "E4_count": 15,
   "E5_count": 127,
   "E6_count": 0,

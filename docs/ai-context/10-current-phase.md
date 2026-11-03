@@ -10,6 +10,25 @@ Provider readiness, WFP transport, and retained PEP boundaries may exist for
 diagnostics, fail-closed behavior, or historical/lab evidence, but they do not
 authorize a production host effect.
 
+## XDR-RECEIPT-002 Current-Head Update - 2026-11-03
+
+- Source commit `f7c626df89bc18b31d0132181d0a4632d6b1e6f3` wires the
+  recording-only advisory XDR bridge into the production detection pipeline.
+  Detection-identity events feed the selected fabric; a frozen multi-source
+  assessment is appended to the hash-chained forensic ring, an IDS Evidence
+  Receipt is issued only after hash read-back, and replay verifies the
+  assessment. `xdr.list` exposes `receipts_recorded`, `receipts_failed`, and
+  `receipts_skipped`.
+- The receipt value is discarded by the caller. No policy, PEP, DEFCON,
+  ActionDispatcher, or host-effect consumer reads XDR output. The boundary is
+  pinned by `tests/security/test_xdr_wire_advisory.py`.
+- Evidence is E2 source/build only: `zig build` PASS; `zig build test
+  --summary all` 2011/2021 passed, 10 skipped, 0 failed; focused pytest 50
+  passed. No Windows host proof exists, so `E5-CURRENT-RUNTIME-MISMATCH` and
+  the Windows E5 portion of `IDS-XDR-005-WIRING-OPEN` remain OPEN.
+- Earlier IDS-XDR-005/006 sections below describe the historical pre-wiring
+  snapshot and are retained as history, not current truth.
+
 ## Current-Head Evidence Update — 2026-10-31
 
 - `IDS-HOST-004` is implemented at source commit `940a6f8` (E2): ETW/FIM/Registry

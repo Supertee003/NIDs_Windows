@@ -1,5 +1,5 @@
 {
-  "head_sha": "ce171f9cb55a9b462ca33123a011fb6cb464653c",
+  "head_sha": "f7c626df89bc18b31d0132181d0a4632d6b1e6f3",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -10,7 +10,7 @@
       "name": "Production IDS: Go Nose -> Canonical Event -> Detection -> Forensic Record -> IDS Evidence Receipt",
       "type": "data_plane",
       "plane": "PLANE-A -> PLANE-B -> PLANE-D (conditional PEP) -> PLANE-B evidence",
-      "description": "Canonical production network IDS path. Host telemetry is evidence-only; host-effect activation is out of scope. Direct Npcap full-payload capture and XDR are separate lab/test paths.",
+      "description": "Canonical production network IDS path. Host telemetry is evidence-only; host-effect activation is out of scope. Direct Npcap full-payload capture is a separate lab/test path; XDR is advisory recording-only on the production detection path and is documented in XDR-PROD-001.",
       "boundary": "Go Nose length-prefixed named pipe -> Zig; conditional Rust PEP ABI; no production host effect",
       "layers": [
         {
@@ -550,8 +550,8 @@
       "name": "Standalone XDR multi-source evidence correlation (LAB/test-only)",
       "type": "lab_test_flow",
       "plane": "PLANE-B",
-      "status": "LAB_ONLY_NOT_RUNTIME_WIRED",
-      "description": "Lab/test-only vertical proof: caller-created evidence is correlated, persisted as a versioned forensic snapshot, acknowledged by a recording-only IDS receipt after hash read-back, then reconstructed and replayed. The production daemon remains disconnected.",
+      "status": "LAB_STANDALONE_PROD_RECORDING_ONLY",
+      "description": "Lab/test-only standalone proof of the advisory XDR evidence bridge: caller-created evidence is correlated, persisted as a versioned forensic snapshot, acknowledged by a recording-only IDS receipt after hash read-back, then reconstructed and replayed. Production imports the same bridge only through recordXdrAdvisoryReceipt; that route is documented in XDR-PROD-001.",
       "boundary": "In-process Zig module interface; no FFI or daemon connection",
       "layers": [
         {
@@ -619,9 +619,102 @@
           "plane": "PLANE-B",
           "owner": "Runtime integration",
           "input": "Production daemon",
-          "output": "No XDR runtime route",
+          "output": "Production recording-only route XDR-PROD-001",
           "file": "src/daemon.zig",
-          "note": "The source-to-receipt/replay evidence slice is test/lab-only. Production XDR routing remains a separate open decision and implementation."
+          "note": "This caller-driven proof remains lab-only. Production imports the bridge only through pipeline/event_processor.recordXdrAdvisoryReceipt; no policy/PEP/DEFCON/ActionDispatcher/host-effect consumer exists."
+        }
+      ]
+    },
+    {
+      "id": "XDR-PROD-001",
+      "name": "Production advisory XDR recording-only source-to-forensic receipt and replay",
+      "type": "evidence_plane",
+      "plane": "PLANE-B",
+      "status": "PRODUCTION_RECORDING_ONLY",
+      "description": "Detection-identity events feed the selected advisory XDR fabric. When a multi-source advisory assessment freezes, the observation batch is appended to the hash-chained forensic ring, an IDS Evidence Receipt is issued after hash read-back, and the assessment can be replayed. The receipt is recording-only: it proves evidence persistence, never a host effect, and no policy/PEP/DEFCON/ActionDispatcher consumer reads it.",
+      "boundary": "In-process Zig only: event_processor -> xdr_runtime -> xdr_incident_fabric -> xdr_evidence_flow -> forensic ring + ids_evidence_receipt; no provider or enforcement ABI",
+      "layers": [
+        {
+          "step": 1,
+          "name": "Detection Identity Gate",
+          "plane": "PLANE-B",
+          "owner": "Zig detection pipeline",
+          "input": "Detection event with rule identity",
+          "output": "Classified advisory observation candidate",
+          "file": "src/pipeline/event_processor.zig",
+          "note": "The feed runs only when detection_rule_id != 0 and the event source maps to an XDR category; plain packets never enter."
+        },
+        {
+          "step": 2,
+          "name": "Advisory Observation Handoff",
+          "plane": "PLANE-B",
+          "owner": "Zig XDR runtime adapter",
+          "input": "Source category, entity key, severity, source event",
+          "output": "ObserveOutcome with incident id and optional frozen batch",
+          "file": "src/xdr/xdr_runtime.zig",
+          "note": "ObserveOutcome is reset before every observation so stale rows cannot be mistaken for a new freeze. Refusals are fail-soft and counted; this adapter computes no score and requests no action."
+        },
+        {
+          "step": 3,
+          "name": "Multi-source Advisory Freeze",
+          "plane": "PLANE-B",
+          "owner": "Zig XDR fabric",
+          "input": "Evidence rows for one entity",
+          "output": "Advisory Decision (severity, confidence, source count)",
+          "file": "src/xdr/xdr_incident_fabric.zig",
+          "note": "An assessment freezes only when at least two distinct source categories are present; the Decision has no action field."
+        },
+        {
+          "step": 4,
+          "name": "Forensic Snapshot Append",
+          "plane": "PLANE-B",
+          "owner": "Zig XDR evidence bridge",
+          "input": "Frozen assessment batch + source event",
+          "output": "Accepted forensic sequence and versioned XDR snapshot",
+          "file": "src/xdr/xdr_evidence_flow.zig",
+          "note": "The bridge rejects zero source ids, non-multi-source batches, multi-entity evidence, and source events absent from the batch."
+        },
+        {
+          "step": 5,
+          "name": "Hash Read-back and IDS Evidence Receipt",
+          "plane": "PLANE-B",
+          "owner": "Zig forensic authority",
+          "input": "Accepted snapshot sequence + authenticated record hash",
+          "output": "Recording-only IDS Evidence Receipt bound to the record",
+          "file": "src/xdr/xdr_evidence_flow.zig",
+          "receipt_contract": "src/forensic/ids_evidence_receipt.zig",
+          "note": "A receipt is issued only after append and recordHash read-back. It is a non-enforcement IDS receipt and contains no provider, filter, or host-action field."
+        },
+        {
+          "step": 6,
+          "name": "Replay Verification",
+          "plane": "PLANE-B",
+          "owner": "Zig XDR evidence bridge",
+          "input": "Receipt + persisted snapshot",
+          "output": "Reconstructed assessment after hash/identity/replay checks",
+          "file": "src/xdr/xdr_evidence_flow.zig",
+          "note": "Replay compares the frozen advisory assessment deterministically; it does not re-run policy, PEP, or any host effect."
+        },
+        {
+          "step": 7,
+          "name": "Advisory Read View and Receipt Counters",
+          "plane": "PLANE-B",
+          "owner": "Zig control plane",
+          "input": "Recorded receipt counters and in-memory incidents",
+          "output": "xdr.list read-only JSON",
+          "file": "src/control/handler_registry.zig",
+          "consumer_file": "src/xdr/xdr_runtime.zig",
+          "note": "xdr.list is the sole consumer and is read-role/non-mutating. It exposes receipts_recorded, receipts_failed, and receipts_skipped; no consumer may branch policy or host effects on this view."
+        },
+        {
+          "step": 8,
+          "name": "Recording-only Boundary",
+          "plane": "PLANE-B",
+          "owner": "Zig detection pipeline",
+          "input": "Recorded assessment result",
+          "output": "Discarded value; no decision input",
+          "file": "src/pipeline/event_processor.zig",
+          "note": "The receipt value is discarded by the caller. No policy, PEP, DEFCON, ActionDispatcher, or host-effect path consumes XDR output; Windows E5 host proof of this route remains OPEN."
         }
       ]
     },

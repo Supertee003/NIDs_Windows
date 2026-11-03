@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "ce171f9",
+  "source_commit": "f7c626d",
   "build_date": "2026-10-23T00:00:00.000000+00:00",
   "build_host": "windows",
   "platform": {
@@ -210,8 +210,8 @@
     },
     {
       "path": ".gitignore",
-      "size": 2335,
-      "sha256": "50ed9b741609fc493060e0eaacdd4a394b8ebc94b5bd38ac2fbdf76f5245a290",
+      "size": 2433,
+      "sha256": "85a2b1892b39513d4b4541a65c2bfc5f6aa3bdedf2d6491cf618cf9ed5517618",
       "language": "data"
     },
     {
@@ -1032,8 +1032,8 @@
     },
     {
       "path": "runtime_manifest.json",
-      "size": 22592,
-      "sha256": "d1f83201e17b9fcc898533c325d2a869f61c1046fbc8ac53207dbf2e66a24037",
+      "size": 22821,
+      "sha256": "4a49300cc8776f96ec26a7b4aec7b0da85b81b154e8992bc0c0ea3558fee99c2",
       "language": "json"
     },
     {
@@ -2490,8 +2490,8 @@
     },
     {
       "path": "src/pipeline/event_processor.zig",
-      "size": 46906,
-      "sha256": "fbd82a8da6a81c476d5694a9baf594f37a6b5cecb72ee785757925c0e50c7309",
+      "size": 48494,
+      "sha256": "f8ff6f46c869b55428c5dd78b8161baa3c7c9597bcd2579d509606d7f600926e",
       "language": "zig"
     },
     {
@@ -3558,8 +3558,8 @@
     },
     {
       "path": "src/xdr/xdr_evidence_flow.zig",
-      "size": 17196,
-      "sha256": "ea377e51a075da23fbce1fa7e41b9b295db9aca5d95f2e1953acbdc0353ff4e8",
+      "size": 19003,
+      "sha256": "7b9f9c75507c502c9c62fbbb025c2f785f030e497f027bc72c47fb383d78d525",
       "language": "zig"
     },
     {
@@ -3570,8 +3570,8 @@
     },
     {
       "path": "src/xdr/xdr_incident_fabric.zig",
-      "size": 12821,
-      "sha256": "c6d023352ac480feeae8ca5f5839c3fa15fc4fb2c57cb76d5add3f14bba88429",
+      "size": 13971,
+      "sha256": "8abced4aa99bd971202fb3d26adb2f5251d13a5810f088042ea2ef9f3271ed0a",
       "language": "zig"
     },
     {
@@ -3582,8 +3582,8 @@
     },
     {
       "path": "src/xdr/xdr_runtime.zig",
-      "size": 10443,
-      "sha256": "2ed69ae0b032cae521b6f35e95d92dcd84cfd6169462f08f3209bbb3d010fa24",
+      "size": 15915,
+      "sha256": "04a7ed74f6f16ac978bd09dee7c88c937994a5a6fdaa0d8e9f0cccefeb06d425",
       "language": "zig"
     },
     {
@@ -3684,8 +3684,8 @@
     },
     {
       "path": "tools/create_manifest.py",
-      "size": 19581,
-      "sha256": "2fd4bb68825f6a7f88d561dd1b08dc64c1b31e8f7b193a8282b1fe240d626b7d",
+      "size": 19810,
+      "sha256": "970f1e2ced46db1519cc514faf4c88c8dd3cb413b7c381524b9cb504fe9e2640",
       "language": "python/cython"
     },
     {

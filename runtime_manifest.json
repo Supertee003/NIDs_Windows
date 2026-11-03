@@ -1,10 +1,10 @@
 {
   "runtime_version": "5.0.0",
-  "head_sha": "ce171f9cb55a9b462ca33123a011fb6cb464653c",
+  "head_sha": "f7c626df89bc18b31d0132181d0a4632d6b1e6f3",
   "entrypoint": "src/main.zig",
   "production_binary": "zig-out/bin/aegis_nids.exe",
-  "source_commit": "ce171f9",
-  "date": "2026-11-02T10:55:25.889681+00:00",
+  "source_commit": "f7c626d",
+  "date": "2026-11-03T07:52:36.371683+00:00",
   "production_modules": 3,
   "modules": {
     "nose/capture.go": {
@@ -192,7 +192,7 @@
       "status": "LAB",
       "golden_path": false,
       "canonical_path": "src/xdr/xdr_incident_fabric.zig",
-      "role": "Selected multi-source XDR evidence authority; advisory-only and runtime-wired read-only (XDR-WIRE-001) via xdr.list; no decision/effect path"
+      "role": "Selected multi-source XDR evidence authority; advisory-only and runtime-wired read-only evidence (XDR-WIRE-001) with recording-only source-to-forensic receipt/replay (XDR-RECEIPT-002) via xdr.list; no decision/effect path; Windows E5 open"
     },
     "core/fault_matrix.zig": {
       "status": "REAL",
@@ -374,7 +374,7 @@
     "federation: reports only, enforcement stays local",
     "federation transport is TLS (no plaintext production transport)",
     "canary order, legacy IPS helpers, and direct Npcap full-payload capture are lab-only; production remains detection-only and no host effect is inferred from these modules",
-    "multi-source XDR correlation uses src/xdr/xdr_incident_fabric.zig as the selected evidence-only authority; it is advisory-wired read-only (XDR-WIRE-001), exposed only through xdr.list, and no consumer passes it to scoring, policy, PEP or host effects; the full source-to-forensic-receipt XDR flow remains OPEN",
+    "multi-source XDR correlation uses src/xdr/xdr_incident_fabric.zig as the selected evidence-only authority; it is advisory-wired read-only (XDR-WIRE-001), and XDR-RECEIPT-002 records frozen multi-source assessments as IDS receipts after hash read-back with replay; xdr.list is the only read view, no consumer passes XDR output to scoring, policy, PEP, DEFCON or host effects, and Windows E5 remains OPEN",
     "decision trace records the eight-link request-to-source chain for every privileged action",
     "shadow decision is advisory only and cannot replace the final authority review",
     "security replay is deterministic and final authority review is required before release",
@@ -507,9 +507,9 @@
     },
     {
       "id": "XDR-LAB",
-      "status": "ADVISORY_WIRED_READ_ONLY",
-      "path": "src/xdr/xdr_incident_fabric.zig -> xdr_runtime.zig",
-      "constraint": "advisory evidence only: detection-identity feed + xdr.list read view; no decision/effect path; source-to-forensic receipt/replay proof remains OPEN"
+      "status": "ADVISORY_RECORDING_ONLY",
+      "path": "src/xdr/xdr_incident_fabric.zig -> xdr_runtime.zig -> xdr_evidence_flow.zig",
+      "constraint": "advisory evidence only: detection-identity feed + recording-only receipt/replay + xdr.list read view; no decision/effect path; Windows E5 host proof remains OPEN"
     }
   ],
   "ABI_versions": {

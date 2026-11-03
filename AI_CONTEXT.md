@@ -4,11 +4,11 @@
 
 
 
-**HEAD:** `ce171f9cb55a9b462ca33123a011fb6cb464653c` (build source commit — ADR-0008)
+**HEAD:** `f7c626df89bc18b31d0132181d0a4632d6b1e6f3` (build source commit — ADR-0008)
 
 **BRANCH:** `codex/o2-etw-context`
 
-**GENERATED:** 2026-11-01T00:27:30+07:00
+**GENERATED:** 2026-11-03T14:45:00+07:00
 
 **GENERATOR:** Manus + `tools/rebuild_truth.py` (ADR-0008 source-commit stamp)
 
@@ -16,7 +16,7 @@
 
 - Production mode is detection-only. Rust PEP remains the sole privileged authority, but production host-effect activation is out of scope; `src/policy/wfp_production.zig` fails closed and is not a production WFP enforcement route.
 - Go Nose sends length-prefixed CanonicalEvent frames over `\\.\pipe\aegis_nose` to the Zig reader; C/C++ adapters use separate C ABI contracts.
-- Python Brain inspection is optional. UDP offers are fire-and-forget; opt-in findings return only as advisory sensor events. The Phase-B BrainAdvisor dispatcher is test-harness-only, and XDR is advisory-wired read-only at current HEAD (XDR-WIRE-001: detection-identity events feed the fabric; `xdr.list` is its sole consumer; no scoring/policy/PEP/host-effect path; the source-to-forensic receipt proof remains open).
+- Python Brain inspection is optional. UDP offers are fire-and-forget; opt-in findings return only as advisory sensor events. The Phase-B BrainAdvisor dispatcher is test-harness-only. XDR is advisory recording-only at current HEAD: XDR-WIRE-001 feeds the selected fabric from detection-identity events, and XDR-RECEIPT-002 persists frozen multi-source assessments as IDS Evidence Receipts after forensic hash read-back with replay. The receipt value is discarded; no scoring, policy, PEP, DEFCON, ActionDispatcher, or host-effect consumer exists. Windows E5 remains open.
 - Current evidence does not establish Windows E5/kernel qualification or release readiness. Treat older deployment/evidence narratives below as historical unless their source commit and current-head proof are explicitly verified.
 
 **ARCHITECTURE:** Hub-and-Spoke with Plane Separation
@@ -334,18 +334,19 @@ cd ts_policy && npm run typecheck && npm run test:all   → (advisory only, no o
 
 
 
-Current source/build slice (2026-10-31; source commit `88466a6ec6f10c62b97cb0a171c4a90cb4f81645`):
+Current source/build slice (2026-11-03; source commit `f7c626df89bc18b31d0132181d0a4632d6b1e6f3`):
 
-- IDS-XDR-005 makes `src/xdr/xdr_incident_fabric.zig` advisory-only and LAB/test-only; no XDR implementation is connected to the production daemon.
-- MAP-006 source/map reconciliation now reflects Go's named-pipe ingress, optional Brain advisory events, the fail-closed WFP boundary, lab-only XDR, separate replay verification, and historical host/WFP evidence.
+- XDR-RECEIPT-002 (2026-11-03; source commit `f7c626d`) wires the recording-only advisory bridge into the production detection pipeline. A detection-identity event feeds the selected XDR fabric; when a multi-source assessment freezes, the batch is appended to the hash-chained forensic ring, an IDS Evidence Receipt is issued after hash read-back, and replay verifies the assessment. `xdr.list` exposes receipt counters. The receipt value is discarded; no policy/PEP/DEFCON/ActionDispatcher/host-effect consumer exists. Windows E5 remains open.
+- HISTORICAL (source `88466a6`, 2026-10-31): IDS-XDR-005 made `src/xdr/xdr_incident_fabric.zig` advisory-only and removed enforcement-shaped fields. XDR was not yet connected to the production daemon at that snapshot.
+- MAP-006 source/map reconciliation now reflects Go's named-pipe ingress, optional Brain advisory events, the fail-closed WFP boundary, advisory recording-only XDR, separate replay verification, and historical host/WFP evidence.
 - Verification: MAP-006/WFP/T12/T14 focused pytest 38 passed; `zig build` PASS; full `zig build test` PASS (exit 0); truth rebuild and verification PASS. This is source/build and E2 evidence only.
 - IDS-COV-001 (2026-11-01): commit `3fe2896` wired `l7_payload.zig` and `ids_evidence_receipt.zig` directly into `src/all_tests.zig`; on checkout `cf2f1fc`, the Zig test-scope/MAP-006 gates passed 12/12 and `zig build test` exited 0. The two execution-graph coverage gaps are CLOSED at E2.
 - KIDS-002 (2026-11-01; source commit `8cb2afb`): the gate-closed policy path now uses Rust PEP's evidence-only assessment and skips ActionDispatcher; only the lab gate-open branch retains enforcement. Focused contracts passed 14/14, the assessment fallback unit passed 1/1, and `zig build` passed. Its full-suite attempt was incomplete at that time; VER-002 later isolated loopback tests and VER-003 established a fresh full-suite pass. Evidence level E2.
 - VER-002 (2026-11-01; source commit `2826d27`): nine real-loopback TCP tests are opt-in through `zig build test-network-integration`; canonical test execution skips them without `AEGIS_TCP_INTEGRATION=1`. Focused scope gates passed 8/8 and the module's real-socket case skipped as expected. The opt-in integration target was not run. The full suite was incomplete at this slice; VER-003 later fixed the long compliance test and established a full-suite pass.
 - VER-003 (2026-11-01; source commit `ba92468`): compliance NDJSON reads are buffered and line storage is reused; the 80,000-event / 19 MB stress test fell from >120 seconds to 4.04 seconds. The registry trie timing assertion was replaced by deterministic prefix correctness checks after it failed once in the full graph but passed in five isolated runs. Final `zig build test` at source `c709c91`: 2,002 passed, 10 skipped, 0 failed; E2.
-- IDS-XDR-006 (2026-11-01; source commit `091a968`): a lab/test-only path now correlates multi-source evidence, persists a versioned XDR snapshot, issues an IDS receipt after forensic hash read-back, and reconstructs/replays the assessment. It is not imported by the production daemon; production XDR wiring remains open.
+- HISTORICAL: IDS-XDR-006 (2026-11-01; source commit `091a968`) proved the lab/test-only XDR evidence slice: correlate multi-source evidence, persist a versioned snapshot, issue an IDS receipt after forensic hash read-back, and reconstruct/replay the assessment. It was not imported by the production daemon at that snapshot; XDR-RECEIPT-002 later wired the same bridge as recording-only.
 - Windows E5 preflight (2026-11-01): VMnet1 is up and the NIDS/Npcap services run, but there are no running VMs, the machine capture pin is absent, and this session is not elevated. RB-021 §2 requires Admin for the pin/restart. No host state or traffic was changed; E5 remains open.
-- Supervised Windows E5/kernel qualification, production XDR runtime integration, and release readiness remain OPEN. Do not claim project completion or production kernel/XDR readiness from these results.
+- Supervised Windows E5/kernel qualification and release readiness remain OPEN. XDR source integration is E2-proven only; no Windows host proof of the recording-only receipt/replay route exists. Do not claim project completion, production kernel readiness, or Windows E5 closure from these results.
 
 
 Previous phases:

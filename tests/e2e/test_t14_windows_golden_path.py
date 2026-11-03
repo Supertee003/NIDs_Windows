@@ -95,5 +95,9 @@ def test_prevention_and_xdr_routes_are_not_production_host_effect_capabilities()
         assert modules[module]["status"] == "LAB"
         assert modules[module]["golden_path"] is False
     assert modules["src/policy/wfp_production.zig"]["golden_path"] is False
-    assert any(item["id"] == "XDR-LAB-001" and item["status"] == "LAB_ONLY_NOT_RUNTIME_WIRED"
-               for item in _json("FLOW_MAP.json")["flows"])
+    flows = _json("FLOW_MAP.json")["flows"]
+    lab = next(item for item in flows if item["id"] == "XDR-LAB-001")
+    assert lab["status"] == "LAB_STANDALONE_PROD_RECORDING_ONLY"
+    prod = next(item for item in flows if item["id"] == "XDR-PROD-001")
+    assert prod["status"] == "PRODUCTION_RECORDING_ONLY"
+    assert "recording-only" in prod["description"].lower()
