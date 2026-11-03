@@ -3460,6 +3460,29 @@
    "evidence_artifact": "admin-evidence/xdr-receipt-002-20261103/"
   },
   {
+   "id": "E5-DEPLOY-F7C626D-20261103",
+   "head_sha": "f7c626df89bc18b31d0132181d0a4632d6b1e6f3",
+   "timestamp": "2026-11-03",
+   "title": "Current-source f7c626d runtime deployed and verified on the Windows host (no canary)",
+   "level": "E5",
+   "component": "Windows host services AegisNids / AegisWfp / AegisMinifilter and the installed runtime payload",
+   "flow_id": "RB-021 / E5-CURRENT-RUNTIME-MISMATCH",
+   "patch_id": "E5-DEPLOY-F7C626D",
+   "target_head": "1d881ee655d2ceaafaace55a46df046b02166ad4",
+   "final_head": "1d881ee655d2ceaafaace55a46df046b02166ad4",
+   "build_source": "f7c626df89bc18b31d0132181d0a4632d6b1e6f3",
+   "description": "The f7c626d package (SHA-256 983C9A5D9F43ACCA9729E7B89AE67A42E0AA005AFC929729D33D361F37E9ED6D) was installed silently with an elevated token after capturing a rollback point of the installed d02261e runtime, configs, drivers, System32 copies and SCM definitions. Only runtime\\aegis_nids.exe (D34D350A2BA051405A0F8DD66F9D492A9F3C94E1FDAC102BF1AA482EED763439) and build_manifest.json changed; all other payload files are byte-identical to the previous install.",
+   "expected": "Install the current build, keep the prevention gate closed, and verify every installed hash, the embedded manifest source commit, the service image path, driver signatures/load state, capture pins, and the single-nose invariant on the Windows host.",
+   "tests": [
+    "elevated NSIS silent install: exit 0",
+    "deploy-current-source.ps1 verification: 36 checks, 35 passed, 1 blocked (rb021_preflight only)",
+    "post-deploy re-check: installed daemon == workspace daemon, manifest source f7c626d, 4 services Running, gate closed"
+   ],
+   "result": "PASS_E5_DEPLOY_AND_INSTALLED_RUNTIME_VERIFICATION; RB021_PREFLIGHT_BLOCKED_ON_LAB_ARP; CANARY_NOT_RUN",
+   "actual": "All identity, hash, service, driver, pin, and policy-posture checks passed. The RB-021 preflight reported RB021_PREFLIGHT_BLOCKED because the isolated lab VMs are not running, so no 192.168.126.10/192.168.126.20 ARP neighbors exist; every preflight identity and capture-pin check passed. No canary was sent, no gate was opened, and no host effect was enabled. Scope is deployment plus installed-runtime verification, not detection or canary E5.",
+   "evidence_artifact": "admin-evidence/e5-current-source-20261103/closeout.md"
+  },
+  {
    "id": "E5-PREFLIGHT-20261101",
    "head_sha": "091a9687c677a2d0ac77f8cb227ccac021b5139e",
    "timestamp": "2026-11-01",
@@ -9281,22 +9304,22 @@
   },
   {
    "id": "E5-CURRENT-RUNTIME-MISMATCH",
-   "severity": "P1",
-   "title": "RB-021 host is pinned to VMnet1 but the running service image is not the current workspace build",
-   "description": "The installed service image at C:\\Program Files\\AEGIS NIDS\\runtime\\aegis_nids.exe is SHA-256 948996C396D2C2A605F37A90D627BB98D7D83064C60B90EC4F0DC7B7DC3F52C7 from source commit d02261e (616-artifact manifest). The workspace zig-out\\bin\\aegis_nids.exe built from source f7c626d (after XDR-RECEIPT-002) is SHA-256 D34D350A2BA051405A0F8DD66F9D492A9F3C94E1FDAC102BF1AA482EED763439 (11,352,064 bytes, 2026-11-03T14:37:46+07:00), so the running service is not the current workspace build. The d02261e deployment evidence (36/36 checks, RB021_PREFLIGHT_PASS) is historical and does not cover f7c626d. Current-source deployment, a verified rollback point for f7c626d, and the bounded RB-021 canary remain outstanding; the canary must not run until deployment and preflight pass.",
+   "severity": "P2",
+   "title": "Current-source f7c626d is deployed; RB-021 lab qualification and canary remain outstanding",
+   "description": "The P1 mismatch is cleared: the installed service image at C:\\Program Files\\AEGIS NIDS\\runtime\\aegis_nids.exe is now SHA-256 D34D350A2BA051405A0F8DD66F9D492A9F3C94E1FDAC102BF1AA482EED763439 (11,352,064 bytes), identical to the workspace build from source f7c626d, and the installed build_manifest.json carries source f7c626d. The install used a captured d02261e rollback point and passed every hash, service, driver, capture-pin and policy-posture check (35/36); the one blocked check is the RB-021 preflight, which cannot see the Kali/Victim ARP neighbors because the isolated lab VMs are not running. Remaining work is lab qualification of this deployment: start the VMs, pass the RB-021 preflight, then run the observe-only canary under separate authorization.",
    "status": "OPEN",
    "found_at": "2026-11-01",
    "tracking": "Local stop-the-line record; GitHub issue creation unavailable in this session",
    "required_evidence": [
-    "Create a rollback point that includes the installed runtime binary and package current source.",
-    "Deploy f7c626d with a verified rollback point and verify the service executable hash/source commit.",
-    "Repeat RB-021 raw visibility, Kali attribution, and observe-only canary checks (separate authorization).",
+    "Start the isolated Kali/Victim VMs so the RB-021 preflight can see the lab ARP neighbors.",
+    "Repeat RB-021 raw visibility, Kali attribution, and observe-only canary checks against the deployed f7c626d runtime (separate authorization).",
     "Restore the VMnet1 machine pin and verify normal host capture after the bounded lab window."
    ],
    "evidence": [
     "admin-evidence/e5-recheck-20261101/closeout.md",
     "admin-evidence/e5-current-source-20261102/HISTORICAL-d02261e-source-drift.md",
-    "admin-evidence/e5-current-source-20261102/current-health-20261103.txt"
+    "admin-evidence/e5-current-source-20261103/closeout.md",
+    "EVIDENCE_INDEX.json#E5-DEPLOY-F7C626D-20261103"
    ]
   }
  ],
@@ -9306,7 +9329,7 @@
   "E2_count": 157,
   "E3_count": 17,
   "E4_count": 15,
-  "E5_count": 127,
+  "E5_count": 128,
   "E6_count": 0,
   "E7_count": 1
  }

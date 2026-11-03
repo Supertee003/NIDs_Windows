@@ -10,6 +10,35 @@ Provider readiness, WFP transport, and retained PEP boundaries may exist for
 diagnostics, fail-closed behavior, or historical/lab evidence, but they do not
 authorize a production host effect.
 
+## E5-DEPLOY-F7C626D Current-Head Update - 2026-11-03
+
+- The current-source package (`AEGIS-NIDS-5.0.0-f7c626d-20261103.exe`,
+  SHA-256 `983C9A5D...`) was installed silently with an elevated token after
+  capturing a rollback point (`rollback-installed/`, `ROLLBACK.md`) of the
+  installed d02261e runtime, configs, drivers, System32 copies and SCM
+  definitions.
+- Installed daemon `aegis_nids.exe` is SHA-256 `D34D350A...` (11,352,064
+  bytes), identical to the workspace build from source `f7c626d`, and the
+  installed `build_manifest.json` carries source `f7c626d`. Only the daemon and
+  the manifest changed; every other payload file is byte-identical.
+- 35 of 36 verification checks passed: install identity, all payload hashes,
+  service ImagePath, System32 driver copies and Authenticode status,
+  `fltmc` minifilter load, daemon/loaded-PEP paths and hashes, single nose
+  instance, machine/process capture pins, and
+  `prevention_gate=closed`, `enforcement_mode=detection-only`,
+  `tier3_enforcing=false`, `host_effect_capable=false`.
+- The blocked check is `rb021_preflight` (`RB021_PREFLIGHT_BLOCKED`): the
+  preflight cannot see the `192.168.126.10` / `192.168.126.20` ARP neighbors
+  because the isolated lab VMs are not running. Every preflight identity and
+  capture-pin check passed.
+- No canary was sent, no prevention gate was opened, and no host effect was
+  enabled. This is E5 for installation and installed-runtime verification, not
+  detection, canary, or release evidence. `E5-CURRENT-RUNTIME-MISMATCH` is
+  narrowed to lab qualification; `IDS-XDR-005-WIRING-OPEN` still lacks host
+  proof of the recording-only receipt/replay route.
+- Evidence: `admin-evidence/e5-current-source-20261103/closeout.md` and
+  `EVIDENCE_INDEX.json` entry `E5-DEPLOY-F7C626D-20261103`.
+
 ## XDR-RECEIPT-002 Current-Head Update - 2026-11-03
 
 - Source commit `f7c626df89bc18b31d0132181d0a4632d6b1e6f3` wires the
@@ -24,8 +53,9 @@ authorize a production host effect.
   pinned by `tests/security/test_xdr_wire_advisory.py`.
 - Evidence is E2 source/build only: `zig build` PASS; `zig build test
   --summary all` 2011/2021 passed, 10 skipped, 0 failed; focused pytest 50
-  passed. No Windows host proof exists, so `E5-CURRENT-RUNTIME-MISMATCH` and
-  the Windows E5 portion of `IDS-XDR-005-WIRING-OPEN` remain OPEN.
+  passed. At that slice no Windows host proof existed. E5-DEPLOY-F7C626D later
+  deployed this source, but the Windows host proof of the receipt/replay route
+  (`IDS-XDR-005-WIRING-OPEN`) and the RB-021 canary remain OPEN.
 - Earlier IDS-XDR-005/006 sections below describe the historical pre-wiring
   snapshot and are retained as history, not current truth.
 
