@@ -27,17 +27,37 @@ authorize a production host effect.
   instance, machine/process capture pins, and
   `prevention_gate=closed`, `enforcement_mode=detection-only`,
   `tier3_enforcing=false`, `host_effect_capable=false`.
-- The blocked check is `rb021_preflight` (`RB021_PREFLIGHT_BLOCKED`): the
-  preflight cannot see the `192.168.126.10` / `192.168.126.20` ARP neighbors
-  because the isolated lab VMs are not running. Every preflight identity and
-  capture-pin check passed.
+- The blocked check was `rb021_preflight` (`RB021_PREFLIGHT_BLOCKED`): the
+  preflight could not see the `192.168.126.10` / `192.168.126.20` ARP
+  neighbors because the isolated lab VMs were not running. Every preflight
+  identity and capture-pin check passed.
 - No canary was sent, no prevention gate was opened, and no host effect was
   enabled. This is E5 for installation and installed-runtime verification, not
-  detection, canary, or release evidence. `E5-CURRENT-RUNTIME-MISMATCH` is
-  narrowed to lab qualification; `IDS-XDR-005-WIRING-OPEN` still lacks host
-  proof of the recording-only receipt/replay route.
+  detection, canary, or release evidence. `IDS-XDR-005-WIRING-OPEN` still
+  lacks host proof of the recording-only receipt/replay route.
 - Evidence: `admin-evidence/e5-current-source-20261103/closeout.md` and
   `EVIDENCE_INDEX.json` entry `E5-DEPLOY-F7C626D-20261103`.
+
+## RB021-PREFLIGHT-PASS-20261103 Current-Head Update - 2026-11-03
+
+- Both isolated lab guests were powered on (Kali `192.168.126.10`, Windows 11
+  victim `192.168.126.20`) and `scripts/rb021_current_source_preflight.ps1`
+  returned `RB021_PREFLIGHT_PASS` with 17/17 checks against the deployed
+  `f7c626d` runtime (build and installed daemon both `D34D350A...`, manifest
+  source `f7c626d`, pins matched and disjoint, both lab ARP neighbors seen).
+  Evidence level E1; no canary was sent.
+- The same window found a live production defect: the machine
+  `AEGIS_DAEMON_IFACE` pin was still set to the VMnet1 device and inherited by
+  the running daemon, so the deployed runtime had been capturing the isolated
+  lab segment instead of the host interface. The pin was removed, `AegisNids`
+  restarted, and host capture confirmed live (`packets_captured` 337 -> 677 in
+  12 s). Filed and closed as `PROD-CAPTURE-PIN-LEFT-SET-20261103` (P1).
+- `E5-CURRENT-RUNTIME-MISMATCH` is now narrowed to the observe-only canary,
+  which still requires separate authorization. `prevention_gate=closed`,
+  `host_effect_confirmed=false`, `enforcement_mode=detection-only` throughout.
+- Evidence: `admin-evidence/rb021-window-20261103/` (`lab-window.log`,
+  `preflight/preflight.json`, `closeout.md`) and `EVIDENCE_INDEX.json` entry
+  `RB021-PREFLIGHT-PASS-20261103`.
 
 ## XDR-RECEIPT-002 Current-Head Update - 2026-11-03
 

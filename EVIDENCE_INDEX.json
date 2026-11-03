@@ -3484,6 +3484,29 @@
    "evidence_artifact": "admin-evidence/e5-current-source-20261103/closeout.md"
   },
   {
+   "id": "RB021-PREFLIGHT-PASS-20261103",
+   "head_sha": "75ce4d15bdff6fa7f7fe7fbacdb830c4af97aa42",
+   "timestamp": "2026-11-03",
+   "title": "RB-021 current-source preflight passes on the deployed f7c626d runtime (no canary)",
+   "level": "E1",
+   "component": "Windows host, isolated VMware lab (VMnet1), AegisNids service",
+   "flow_id": "RB-021 / E5-CURRENT-RUNTIME-MISMATCH",
+   "patch_id": "RB021-PREFLIGHT-20261103",
+   "build_source": "f7c626df89bc18b31d0132181d0a4632d6b1e6f3",
+   "description": "Both isolated lab guests were powered on (Kali 192.168.126.10, Windows 11 victim 192.168.126.20). The machine AEGIS_DAEMON_IFACE pin was found still set to the VMnet1 device from an earlier lab window, so AegisNids was restarted once to adopt it, scripts/rb021_current_source_preflight.ps1 was run, and the pin was then removed with a second restart to restore production capture.",
+   "expected": "Every RB-021 preflight check passes against the deployed f7c626d runtime, the lab window is bounded to one service round-trip, and production capture is restored afterwards.",
+   "tests": [
+    "scripts/rb021_current_source_preflight.ps1: RB021_PREFLIGHT_PASS, 17/17 checks, exit 0",
+    "identity: records HEAD 75ce4d1, build source f7c626d, build and installed daemon both D34D350A2BA051405A0F8DD66F9D492A9F3C94E1FDAC102BF1AA482EED763439",
+    "capture pins: daemon and nose selectors present, matched to their processes, and disjoint",
+    "lab topology: both 192.168.126.10 and 192.168.126.20 ARP neighbors present on VMnet1",
+    "restore: pin unset, AegisNids restarted, live system.health packets_captured rose 337 -> 677 in 12s on host capture"
+   ],
+   "result": "PASS_PREFLIGHT_E1; CANARY_NOT_RUN; host_effect_confirmed=false; prevention_gate=closed",
+   "actual": "The preflight that was BLOCKED at deploy time now passes because the lab guests are running and the daemon process carries the pinned selector. No canary traffic was sent, no gate was opened, the prevention gate stayed closed, and no host enforcement occurred. The service round-trip is the only host change and it was reverted in the same run.",
+   "evidence_artifact": "admin-evidence/rb021-window-20261103/lab-window.log"
+  },
+  {
    "id": "E5-PREFLIGHT-20261101",
    "head_sha": "091a9687c677a2d0ac77f8cb227ccac021b5139e",
    "timestamp": "2026-11-01",
@@ -9310,10 +9333,23 @@
    ]
   },
   {
+   "id": "PROD-CAPTURE-PIN-LEFT-SET-20261103",
+   "severity": "P1",
+   "title": "Production daemon capture was still pinned to the lab VMnet1 device",
+   "description": "The 2026-11-03 lab window found the machine variable AEGIS_DAEMON_IFACE still set to the VMnet1 Npcap device and inherited by the running AegisNids process, so the deployed detection-only runtime was capturing the isolated lab segment instead of the host's real interface. A previous bounded lab window left the pin in place; the runbook requires it to be removed when the window closes.",
+   "status": "CLOSED",
+   "closed_at": "2026-11-03",
+   "closure_evidence": "admin-evidence/rb021-window-20261103/lab-window.log records the pre-state pin, the lab-window restart, the RB021_PREFLIGHT_PASS result, the REG DELETE of AEGIS_DAEMON_IFACE, the restore restart (daemon pid 12024, no AEGIS_DAEMON_IFACE in its process environment) and a live system.health read showing packets_captured rising 337 -> 677 in 12s on the restored host capture.",
+   "evidence": [
+    "admin-evidence/rb021-window-20261103/lab-window.log",
+    "EVIDENCE_INDEX.json#RB021-PREFLIGHT-PASS-20261103"
+   ]
+  },
+  {
    "id": "E5-CURRENT-RUNTIME-MISMATCH",
    "severity": "P2",
-   "title": "Current-source f7c626d is deployed; RB-021 lab qualification and canary remain outstanding",
-   "description": "The P1 mismatch is cleared: the installed service image at C:\\Program Files\\AEGIS NIDS\\runtime\\aegis_nids.exe is now SHA-256 D34D350A2BA051405A0F8DD66F9D492A9F3C94E1FDAC102BF1AA482EED763439 (11,352,064 bytes), identical to the workspace build from source f7c626d, and the installed build_manifest.json carries source f7c626d. The install used a captured d02261e rollback point and passed every hash, service, driver, capture-pin and policy-posture check (35/36); the one blocked check is the RB-021 preflight, which cannot see the Kali/Victim ARP neighbors because the isolated lab VMs are not running. Remaining work is lab qualification of this deployment: start the VMs, pass the RB-021 preflight, then run the observe-only canary under separate authorization.",
+   "title": "Current-source f7c626d is deployed and the RB-021 preflight passes; the observe-only canary remains outstanding",
+   "description": "The P1 mismatch is cleared: the installed service image at C:\\Program Files\\AEGIS NIDS\\runtime\\aegis_nids.exe is now SHA-256 D34D350A2BA051405A0F8DD66F9D492A9F3C94E1FDAC102BF1AA482EED763439 (11,352,064 bytes), identical to the workspace build from source f7c626d, and the installed build_manifest.json carries source f7c626d. The install used a captured d02261e rollback point and passed every hash, service, driver, capture-pin and policy-posture check (35/36); the one blocked check is the RB-021 preflight, which cannot see the Kali/Victim ARP neighbors because the isolated lab VMs are not running. Lab qualification is now complete for the preflight: both isolated guests were powered on and scripts/rb021_current_source_preflight.ps1 returned RB021_PREFLIGHT_PASS with 17/17 checks on this deployment (EVIDENCE_INDEX#RB021-PREFLIGHT-PASS-20261103), after which the VMnet1 pin was removed and production capture restored. The only remaining work is the observe-only canary under separate authorization.",
    "status": "OPEN",
    "found_at": "2026-11-01",
    "tracking": "Local stop-the-line record; GitHub issue creation unavailable in this session",
@@ -9322,17 +9358,24 @@
     "Repeat RB-021 raw visibility, Kali attribution, and observe-only canary checks against the deployed f7c626d runtime (separate authorization).",
     "Restore the VMnet1 machine pin and verify normal host capture after the bounded lab window."
    ],
+   "required_evidence_status": [
+    "DONE 2026-11-03: both lab guests were powered on and the preflight saw both ARP neighbors (RB021_PREFLIGHT_PASS).",
+    "OPEN: observe-only canary against the deployed runtime, still requiring separate authorization.",
+    "DONE 2026-11-03: the pin was removed, the service restarted, and host capture confirmed live (337 -> 677 packets in 12s); the stale pin was filed and closed as PROD-CAPTURE-PIN-LEFT-SET-20261103."
+   ],
    "evidence": [
     "admin-evidence/e5-recheck-20261101/closeout.md",
     "admin-evidence/e5-current-source-20261102/HISTORICAL-d02261e-source-drift.md",
     "admin-evidence/e5-current-source-20261103/closeout.md",
-    "EVIDENCE_INDEX.json#E5-DEPLOY-F7C626D-20261103"
+    "admin-evidence/rb021-window-20261103/lab-window.log",
+    "EVIDENCE_INDEX.json#E5-DEPLOY-F7C626D-20261103",
+    "EVIDENCE_INDEX.json#RB021-PREFLIGHT-PASS-20261103"
    ]
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
-  "E1_count": 30,
+  "E1_count": 31,
   "E2_count": 157,
   "E3_count": 17,
   "E4_count": 15,
