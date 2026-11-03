@@ -3476,10 +3476,11 @@
    "tests": [
     "elevated NSIS silent install: exit 0",
     "deploy-current-source.ps1 verification: 36 checks, 35 passed, 1 blocked (rb021_preflight only)",
-    "post-deploy re-check: installed daemon == workspace daemon, manifest source f7c626d, 4 services Running, gate closed"
+    "post-deploy re-check: installed daemon == workspace daemon, manifest source f7c626d, 4 services Running, gate closed",
+    "live xdr.list on the deployed daemon: receipt counters present, advisory fabric ingesting (2 evidence rows, 1 single-source incident, 0 advisories, 0 receipts)"
    ],
    "result": "PASS_E5_DEPLOY_AND_INSTALLED_RUNTIME_VERIFICATION; RB021_PREFLIGHT_BLOCKED_ON_LAB_ARP; CANARY_NOT_RUN",
-   "actual": "All identity, hash, service, driver, pin, and policy-posture checks passed. The RB-021 preflight reported RB021_PREFLIGHT_BLOCKED because the isolated lab VMs are not running, so no 192.168.126.10/192.168.126.20 ARP neighbors exist; every preflight identity and capture-pin check passed. No canary was sent, no gate was opened, and no host effect was enabled. Scope is deployment plus installed-runtime verification, not detection or canary E5.",
+   "actual": "All identity, hash, service, driver, pin, and policy-posture checks passed; a live read-only xdr.list confirmed the deployed binary exposes the XDR-RECEIPT-002 receipt counters and is ingesting advisory observations (single-source only, so no receipt has been issued yet). The RB-021 preflight reported RB021_PREFLIGHT_BLOCKED because the isolated lab VMs are not running, so no 192.168.126.10/192.168.126.20 ARP neighbors exist; every preflight identity and capture-pin check passed. No canary was sent, no gate was opened, and no host effect was enabled. Scope is deployment plus installed-runtime verification, not detection or canary E5.",
    "evidence_artifact": "admin-evidence/e5-current-source-20261103/closeout.md"
   },
   {
