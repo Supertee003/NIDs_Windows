@@ -14,6 +14,8 @@ decision recorded in docs/ai-context/10-current-phase.md):
       non-mutation, no postcondition.
   P4. The runtime spine manifest pin still rejects XDR modules
       (evidence-only modules must not claim runtime-spine authority).
+  P5. The XDR runtime module stays in the canonical Zig test graph.
+  P6. The recording-only receipt bridge imports no decision/effect authority.
 """
 from __future__ import annotations
 
@@ -54,7 +56,13 @@ def test_p2_event_processor_feeds_only_the_advisory_surface():
     # every xdr_runtime use is an advisory accessor (paren = call site;
     # the import path `xdr_runtime.zig` must not count as a call)
     uses = set(re.findall(r"xdr_runtime\.(\w+)\s*\(", proc))
-    allowed = {"categoryForSource", "observe"}
+    allowed = {
+        "categoryForSource",
+        "observeEvent",
+        "noteReceiptRecorded",
+        "noteReceiptFailed",
+        "noteReceiptSkipped",
+    }
     assert uses <= allowed, f"unexpected xdr_runtime uses: {uses - allowed}"
     # the feed site carries the advisory boundary comment contract
     assert "advisory evidence feed" in (SRC / "pipeline/event_processor.zig").read_text(
@@ -63,6 +71,15 @@ def test_p2_event_processor_feeds_only_the_advisory_surface():
     # the feed happens only when a detection identity exists
     feed = re.search(r"if \(detection_rule_id != 0\)", proc)
     assert feed, "XDR feed must be gated on detection identity"
+    # XDR-RECEIPT-002: the receipt helper is recording-only. It may call the
+    # evidence bridge and counters, but no policy/PEP/DEFCON/dispatch surface.
+    helper = re.search(r"fn recordXdrAdvisoryReceipt\(.*?\n\}", proc, re.S)
+    assert helper, "recording-only XDR receipt helper missing"
+    receipt_body = helper.group(0).lower()
+    for forbidden in ("policy", "pep", "defcon", "dispatch", "enforce"):
+        assert forbidden not in receipt_body, f"XDR receipt helper touches {forbidden}"
+    # the pipeline discards the receipt value; it never branches on it
+    assert "_ = recordXdrAdvisoryReceipt(" in proc
 
 
 def test_p3_xdr_list_contract_is_read_only():
@@ -101,3 +118,17 @@ def test_p4_runtime_spine_pin_intact():
 def test_p5_new_module_in_zig_test_graph():
     scope = (REPO / "src/all_tests.zig").read_text(encoding="utf-8", errors="replace")
     assert "_ = @import(\"xdr/xdr_runtime.zig\");" in scope
+
+
+def test_p6_xdr_receipt_bridge_is_recording_only():
+    flow = body("xdr/xdr_evidence_flow.zig")
+    for needle in (
+        "policy_ir",
+        "pep_bindings",
+        "action_dispatcher",
+        "defcon",
+        "tier3_state",
+    ):
+        assert f'@import("{needle}' not in flow, f"xdr_evidence_flow must not import {needle}"
+    assert "ids_evidence_receipt" in flow
+    assert "recordAssessment" in flow

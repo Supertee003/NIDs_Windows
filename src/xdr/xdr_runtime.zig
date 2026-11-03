@@ -17,6 +17,12 @@
 //!     pin must keep rejecting it there.
 //!   - Only events with detection identity (rule_id != 0) are fed; plain
 //!     packets never enter the fabric.
+//!   - XDR-RECEIPT-002: when an advisory decision freezes, this module
+//!     hands the caller the retained evidence batch through ObserveOutcome
+//!     and exposes receipt persisted/failed/skipped counters. It does NOT
+//!     touch the forensic ring itself: the recording-only persistence
+//!     lives in pipeline/event_processor.recordXdrAdvisoryReceipt, which
+//!     issues an IDS Evidence Receipt via xdr_evidence_flow.recordAssessment.
 //!
 //! Fail-soft: fixed capacity, dropped observations are counted, never
 //! fatal. Without startLive() both observex and the handler answer
@@ -35,12 +41,30 @@ pub const SNAPSHOT_CAP: usize = 32;
 
 pub const SNAPSHOT_TAG = "advisory_read_only";
 
+/// XDR-RECEIPT-002: what the caller receives from one observation. It is
+/// filled only when the advisory decision crossed multi-source and froze;
+/// the retained evidence rows are the receipt batch (replay-deterministic
+/// from the fabric incident).
+pub const ObserveOutcome = struct {
+    frozen: bool = false,
+    entity_len: usize = 0,
+    entity: [fab.MAX_KEY_LEN]u8 = undefined,
+    rows: [fab.MAX_EVIDENCE]Evidence = undefined,
+    row_count: usize = 0,
+    decision: fab.Decision = .{},
+};
+
 var g_mutex: std.Thread.Mutex = .{};
 var g_fabric: fab.Fabric = .{};
 var g_started: bool = false;
 var g_evidence_total: u64 = 0;
 var g_observation_dropped: u64 = 0;
 var g_advisories_total: u64 = 0;
+// XDR-RECEIPT-002: receipt persistence counters (read-only evidence
+// counters like everything else here; never health or decision inputs).
+var g_receipts_recorded: u64 = 0;
+var g_receipts_failed: u64 = 0;
+var g_receipts_skipped: u64 = 0;
 
 /// Map a canonical event source to its XDR evidence category. Detection
 /// results (detection_*/policy/system) stay unmapped: their underlying
@@ -79,7 +103,33 @@ pub fn observe(
     ts_ms: i64,
     severity: u8,
 ) u64 {
+    var src = event.IpcEvent.init(.signature_match);
+    src.event_id = event_id;
+    src.timestamp_ns = if (ts_ms <= 0)
+        0
+    else
+        @as(u64, @intCast(@min(ts_ms, std.math.maxInt(i64) / std.time.ns_per_ms))) * std.time.ns_per_ms;
+    var local_out = ObserveOutcome{};
+    return observeEvent(&local_out, category, entity, severity, &src);
+}
+
+/// Advisory evidence ingest with the full source-event context. Same
+/// refusal/fail-soft contract as observe(); additionally hands the caller
+/// the frozen advisory batch (ObserveOutcome.frozen) so the recording-only
+/// receipt step can persist it without this module touching the ring.
+pub fn observeEvent(
+    out: *ObserveOutcome,
+    category: SourceCategory,
+    entity: []const u8,
+    severity: u8,
+    source_event: *const event.IpcEvent,
+) u64 {
+    // Clear any previous frozen batch before this observation. A caller that
+    // reuses one outcome must never mistake stale rows for a new freeze.
+    out.* = .{};
     if (!g_started) return 0;
+    const event_id = source_event.event_id;
+    const ts_ms = std.math.cast(i64, source_event.timestamp_ns / std.time.ns_per_ms) orelse 0;
     if (event_id == 0 or entity.len == 0 or entity.len > fab.MAX_KEY_LEN) {
         g_mutex.lock();
         g_observation_dropped += 1;
@@ -123,6 +173,14 @@ pub fn observe(
     if (g_fabric.distinctSources(at) >= 2 and g_fabric.incidents[at].decision == null) {
         _ = g_fabric.decide(at, ts_ms);
         g_advisories_total += 1;
+        const inc = &g_fabric.incidents[at];
+        out.* = .{ .frozen = true };
+        out.entity_len = inc.entity_len;
+        @memcpy(out.entity[0..inc.entity_len], inc.entity[0..inc.entity_len]);
+        if (inc.decision) |d| out.decision = d;
+        const rows = inc.evidenceRows();
+        out.row_count = rows.len;
+        @memcpy(out.rows[0..rows.len], rows);
     }
     return inc_id;
 }
@@ -132,6 +190,45 @@ pub fn advisoryCount() u64 {
     g_mutex.lock();
     defer g_mutex.unlock();
     return g_advisories_total;
+}
+
+/// XDR-RECEIPT-002 receipt-persistence counters. The mutators are called
+/// only from the recording-only helper in pipeline/event_processor; they
+/// change nothing but evidence numbers.
+pub fn noteReceiptRecorded() void {
+    g_mutex.lock();
+    defer g_mutex.unlock();
+    g_receipts_recorded += 1;
+}
+
+pub fn noteReceiptFailed() void {
+    g_mutex.lock();
+    defer g_mutex.unlock();
+    g_receipts_failed += 1;
+}
+
+pub fn noteReceiptSkipped() void {
+    g_mutex.lock();
+    defer g_mutex.unlock();
+    g_receipts_skipped += 1;
+}
+
+pub fn receiptsRecorded() u64 {
+    g_mutex.lock();
+    defer g_mutex.unlock();
+    return g_receipts_recorded;
+}
+
+pub fn receiptsFailed() u64 {
+    g_mutex.lock();
+    defer g_mutex.unlock();
+    return g_receipts_failed;
+}
+
+pub fn receiptsSkipped() u64 {
+    g_mutex.lock();
+    defer g_mutex.unlock();
+    return g_receipts_skipped;
 }
 
 pub fn evidenceTotal() u64 {
@@ -155,16 +252,22 @@ pub fn listJson(a: std.mem.Allocator) ?[]const u8 {
     const evidence_total = g_evidence_total;
     const dropped = g_observation_dropped;
     const advisories = g_advisories_total;
+    const receipts_recorded = g_receipts_recorded;
+    const receipts_failed = g_receipts_failed;
+    const receipts_skipped = g_receipts_skipped;
 
     var out = std.ArrayList(u8).init(a);
     defer out.deinit();
     const writer = out.writer();
-    writer.print("{{\"xdr_scope\":\"{s}\",\"started\":{},\"evidence_total\":{d},\"observations_dropped\":{d},\"advisories_total\":{d},\"incidents\":[", .{
+    writer.print("{{\"xdr_scope\":\"{s}\",\"started\":{},\"evidence_total\":{d},\"observations_dropped\":{d},\"advisories_total\":{d},\"receipts_recorded\":{d},\"receipts_failed\":{d},\"receipts_skipped\":{d},\"incidents\":[", .{
         SNAPSHOT_TAG,
         live,
         evidence_total,
         dropped,
         advisories,
+        receipts_recorded,
+        receipts_failed,
+        receipts_skipped,
     }) catch {
         g_mutex.unlock();
         return null;
@@ -248,6 +351,43 @@ test "xdr_runtime multi-source crossing freezes an advisory decision" {
     try std.testing.expect(std.mem.indexOf(u8, json2, "\"source_categories_used\":2") != null);
     try std.testing.expect(std.mem.indexOf(u8, json2, "action") == null);
     try std.testing.expect(std.mem.indexOf(u8, json2, "enforce") == null);
+}
+
+test "xdr_runtime frozen outcome carries the replay batch and clears stale state" {
+    startLive();
+    var net = event.IpcEvent.init(.signature_match);
+    net.event_id = 201;
+    net.timestamp_ns = 1_700_000_000_000_000_000;
+    net.source = .capture_npcap;
+    net.rule_id = 9001;
+
+    var out = ObserveOutcome{};
+    _ = observeEvent(&out, .network, "203.0.113.77", 4, &net);
+    try std.testing.expect(!out.frozen);
+
+    var host = event.IpcEvent.init(.signature_match);
+    host.event_id = 202;
+    host.timestamp_ns = net.timestamp_ns + 100 * std.time.ns_per_ms;
+    host.source = .capture_etw;
+    host.rule_id = 9002;
+    _ = observeEvent(&out, .host, "203.0.113.77", 3, &host);
+
+    try std.testing.expect(out.frozen);
+    try std.testing.expectEqual(@as(usize, 2), out.row_count);
+    try std.testing.expectEqual(@as(u64, 201), out.rows[0].event_id);
+    try std.testing.expectEqual(@as(u64, 202), out.rows[1].event_id);
+    try std.testing.expectEqual(SourceCategory.network, out.rows[0].source);
+    try std.testing.expectEqual(SourceCategory.host, out.rows[1].source);
+    try std.testing.expectEqual(@as(u8, 2), out.decision.source_categories_used);
+    try std.testing.expect(std.mem.eql(u8, out.entity[0..out.entity_len], "203.0.113.77"));
+
+    var later = event.IpcEvent.init(.signature_match);
+    later.event_id = 203;
+    later.timestamp_ns = host.timestamp_ns + std.time.ns_per_ms;
+    later.source = .capture_npcap;
+    _ = observeEvent(&out, .network, "198.51.100.9", 2, &later);
+    try std.testing.expect(!out.frozen);
+    try std.testing.expectEqual(@as(usize, 0), out.row_count);
 }
 
 test "xdr_runtime categoryForSource is closed and honest" {

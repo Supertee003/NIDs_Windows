@@ -103,6 +103,10 @@ pub const Incident = struct {
     severest: u8 = 0,
     sources: u64 = 0,
     evidence_event_ids: [MAX_EVIDENCE]u64 = undefined,
+    /// XDR-RECEIPT-002: full observation rows retained alongside the event
+    /// ids so the recorded receipt batch is exactly replay-deterministic
+    /// from the live incident (evidence_count rows, one per unique id).
+    evidence_rows: [MAX_EVIDENCE]Evidence = undefined,
     evidence_count: usize = 0,
     decision: ?Decision = null,
 
@@ -121,6 +125,12 @@ pub const Incident = struct {
 
     pub fn hasSource(self: *const Incident, cat: SourceCategory) bool {
         return (self.sources & cat.bit()) != 0;
+    }
+
+    /// XDR-RECEIPT-002: read-only view over the retained observation rows
+    /// (bounded by evidence_count; never beyond the table).
+    pub fn evidenceRows(self: *const Incident) []const Evidence {
+        return self.evidence_rows[0..self.evidence_count];
     }
 };
 
@@ -193,10 +203,22 @@ pub const Fabric = struct {
         if (ev.severity > inc.severest) inc.severest = ev.severity;
         inc.sources |= ev.source.bit();
         for (inc.evidence_event_ids[0..inc.evidence_count]) |id| {
-            if (id == ev.event_id) return; // dedupe
+            // Dedupe by event id: escalate the retained row's severity so the
+            // row table stays the replay-deterministic source of truth for
+            // the recorded assessment batch (XDR-RECEIPT-002).
+            if (id == ev.event_id) {
+                for (inc.evidence_rows[0..inc.evidence_count]) |*row| {
+                    if (row.event_id == ev.event_id) {
+                        if (ev.severity > row.severity) row.severity = ev.severity;
+                        break;
+                    }
+                }
+                return;
+            }
         }
         if (inc.evidence_count < MAX_EVIDENCE) {
             inc.evidence_event_ids[inc.evidence_count] = ev.event_id;
+            inc.evidence_rows[inc.evidence_count] = ev.*;
             inc.evidence_count += 1;
         }
     }
@@ -232,7 +254,7 @@ fn makeEv(
 test "nine source categories with labels and bits" {
     try std.testing.expectEqual(@as(usize, 9), CATEGORY_COUNT);
     const want = [_][]const u8{
-        "network", "host",  "process",    "file",  "registry",
+        "network",  "host",         "process",    "file",       "registry",
         "identity", "threat_intel", "historical", "federation",
     };
     for (SOURCE_CATEGORIES, want) |cat, label| {
@@ -276,7 +298,7 @@ test "incident holds evidence from multiple source categories (XDR criterion)" {
 test "all nine categories can converge on one entity" {
     var f = Fabric{};
     const cats = [_]SourceCategory{
-        .network, .host,  .process,       .file,  .registry,
+        .network,  .host,         .process,    .file,       .registry,
         .identity, .threat_intel, .historical, .federation,
     };
     for (cats, 1..) |c, i| {

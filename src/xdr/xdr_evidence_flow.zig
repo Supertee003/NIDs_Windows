@@ -1,9 +1,11 @@
-//! LAB/test-only vertical slice for advisory XDR evidence.
+//! Recording-only advisory XDR evidence bridge.
 //!
-//! This module proves the selected XDR fabric can serialize an assessment to
-//! the forensic ring, issue a recording-only IDS receipt after hash read-back,
-//! and reproduce the assessment from the persisted record. It is deliberately
-//! not imported by the production daemon.
+//! This module serializes a frozen multi-source XDR assessment to the
+//! hash-chained forensic ring, issues a non-enforcement IDS Evidence Receipt
+//! after hash read-back, and reproduces the assessment from the persisted
+//! record. XDR-RECEIPT-002 wires it into the production detection pipeline
+//! only through `pipeline/event_processor.recordXdrAdvisoryReceipt`; it does
+//! not call policy, PEP, DEFCON, or any host-effect path.
 
 const std = @import("std");
 const event = @import("../contract/event.zig");
@@ -347,6 +349,40 @@ test "XDR assessment persists, issues an IDS receipt, and replays from the recor
     verifier.finalize();
     try std.testing.expect(verifier.decision.pass);
     try std.testing.expectEqual(@as(u64, 1), verifier.decision.events_matched);
+}
+
+test "XDR runtime freeze batch records and replays through the evidence flow" {
+    const xdr_runtime = @import("xdr_runtime.zig");
+    xdr_runtime.startLive();
+
+    var net = event.IpcEvent.init(.signature_match);
+    net.event_id = 501;
+    net.timestamp_ns = 1_700_000_100_000_000_000;
+    net.source = .capture_npcap;
+    net.rule_id = 9001;
+    var host = event.IpcEvent.init(.signature_match);
+    host.event_id = 502;
+    host.timestamp_ns = net.timestamp_ns + 100 * std.time.ns_per_ms;
+    host.source = .capture_etw;
+    host.rule_id = 9002;
+
+    var out = xdr_runtime.ObserveOutcome{};
+    _ = xdr_runtime.observeEvent(&out, .network, "203.0.113.88", 4, &net);
+    _ = xdr_runtime.observeEvent(&out, .host, "203.0.113.88", 3, &host);
+    try std.testing.expect(out.frozen);
+    try std.testing.expectEqual(@as(usize, 2), out.row_count);
+
+    var ring = try forensic.ForensicRing.initMemory(std.testing.allocator, 16 * 1024);
+    defer ring.deinit(std.testing.allocator);
+    const assessed_at_ms = std.math.cast(i64, host.timestamp_ns / std.time.ns_per_ms).?;
+    const recorded = try recordAssessment(&ring, &host, out.rows[0..out.row_count], assessed_at_ms);
+    try std.testing.expect(recorded.receipt.isNonEnforcement());
+    try std.testing.expectEqual(@as(u8, 2), recorded.decision.source_categories_used);
+
+    const replayed = try replayFromReceipt(std.testing.allocator, &ring, recorded.receipt);
+    try std.testing.expectEqual(recorded.incident_id, replayed.incident_id);
+    try std.testing.expectEqual(recorded.source_event_id, replayed.source_event_id);
+    try std.testing.expect(sameDecision(recorded.decision, replayed.decision));
 }
 
 test "XDR evidence flow rejects unrelated entities and source events" {

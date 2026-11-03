@@ -31,6 +31,7 @@ const queue = @import("event_queue.zig");
 const siem_mod = @import("../forensic/siem_forwarder.zig");
 const brain_mod = @import("../core/bridge_init.zig");
 const xdr_runtime = @import("../xdr/xdr_runtime.zig");
+const xdr_evidence_flow = @import("../xdr/xdr_evidence_flow.zig");
 
 /// Host telemetry is evidence/advisory input under ADR-0009. Keep the source
 /// classification explicit so even a host event labeled `signature_match`
@@ -124,6 +125,38 @@ fn appendForensicRecord(
         );
     }
     return ring.append(ev, qe.payload[0..qe.payload_len], audit_id, policy_id, pep_decision, severity);
+}
+
+/// XDR-RECEIPT-002: persist one frozen advisory XDR assessment through the
+/// recording-only evidence bridge. The bridge appends a versioned snapshot to
+/// the hash-chained forensic ring and issues an IDS Evidence Receipt after
+/// hash read-back. This helper has no policy/PEP/DEFCON input or output; a
+/// failure is counted and dropped, never escalated.
+fn recordXdrAdvisoryReceipt(
+    ring: *forensic.ForensicRing,
+    out: *const xdr_runtime.ObserveOutcome,
+    source_event: *const event.IpcEvent,
+) ?xdr_evidence_flow.RecordedAssessment {
+    if (!out.frozen or out.row_count == 0 or out.row_count > out.rows.len) return null;
+    if (source_event.event_id == 0 or source_event.timestamp_ns == 0) {
+        xdr_runtime.noteReceiptSkipped();
+        return null;
+    }
+    const assessed_at_ms = std.math.cast(i64, source_event.timestamp_ns / std.time.ns_per_ms) orelse {
+        xdr_runtime.noteReceiptSkipped();
+        return null;
+    };
+    const recorded = xdr_evidence_flow.recordAssessment(
+        ring,
+        source_event,
+        out.rows[0..out.row_count],
+        assessed_at_ms,
+    ) catch {
+        xdr_runtime.noteReceiptFailed();
+        return null;
+    };
+    xdr_runtime.noteReceiptRecorded();
+    return recorded;
 }
 
 /// Process a single event through the detection pipeline:
@@ -369,18 +402,18 @@ fn processEvent(
     // is a read-only advisory summary exposed via xdr.list. This call
     // consumes nothing and authorizes nothing: DEFCON, threat scoring,
     // policy, PEP and ActionDispatcher never read the fabric.
+    // XDR-RECEIPT-002: when the advisory decision freezes (multi-source),
+    // the observation batch is recorded to the forensic ring under an IDS
+    // Evidence Receipt (recording-only, replay-verifiable). Receipt
+    // persistence never feeds policy/PEP/DEFCON under any circumstances.
     if (detection_rule_id != 0) {
         if (xdr_runtime.categoryForSource(ev.source)) |xdr_cat| {
             var xdr_entity: [64]u8 = undefined;
             const entity = xdrEntityKey(qe.src_ipv6, ev.src_ip, &xdr_entity);
             if (entity.len > 0) {
-                _ = xdr_runtime.observe(
-                    xdr_cat,
-                    entity,
-                    ev.event_id,
-                    @intCast(ev.timestamp_ns / std.time.ns_per_ms),
-                    @intFromEnum(ev_severity),
-                );
+                var xdr_out: xdr_runtime.ObserveOutcome = .{};
+                _ = xdr_runtime.observeEvent(&xdr_out, xdr_cat, entity, @intFromEnum(ev_severity), ev);
+                _ = recordXdrAdvisoryReceipt(forensic_ring, &xdr_out, ev);
             }
         }
     }
