@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-03T09:53:49.916673+00:00",
+  "generated_at": "2026-11-03T10:37:26.255835+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1769,
@@ -4782,7 +4782,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 866384
+      "size": 867030
     },
     {
       "path": "fix_bridge_banner.py",

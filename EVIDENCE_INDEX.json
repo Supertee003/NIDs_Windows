@@ -9060,6 +9060,9 @@
   {
    "id": "OBSERVABILITY-DETECTION-ONLY-20261030",
    "severity": "P1",
+   "status": "CLOSED",
+   "closed_at": "2026-10-30",
+   "closure_evidence": "Re-verified on the f7c626d runtime 2026-11-03: live enforcement.status returns provider_ready=true, host_effect_capable=false, prevention_gate=closed, enforcement_mode=detection-only; tests/runtime/test_health.py and the operator/web regression remain green.",
    "title": "Production health projection distinguishes provider capability from host effect",
    "description": "The control API now exposes provider_capable as diagnostic technical readiness while host_effect_capable is permanently false in the production health projection. This aligns health, enforcement status, CLI, and dashboard semantics with the owner decision that AEGIS is a detection-only Kernel NIDS and enforcement activation is out of scope.",
    "level": "E2",
@@ -9086,6 +9089,9 @@
   {
    "id": "VERIFICATION-CANONICAL-DISCOVERY-E2-20261030",
    "severity": "P1",
+   "status": "CLOSED",
+   "closed_at": "2026-10-30",
+   "closure_evidence": "Re-verified 2026-11-03: pytest.ini still pins testpaths=tests (950 tests collected, no archived bundle or release snapshot collected) and release_engineering.py --verify reports 651/651 artifacts matching their recorded digests.",
    "title": "Canonical Python test discovery and release verification are clean",
    "description": "Pytest discovery is now constrained to tests/ so archived review bundles, release snapshots, and binary result files cannot contaminate the canonical suite. Release manifest digests were refreshed for the reviewed source/doc changes.",
    "level": "E2",
