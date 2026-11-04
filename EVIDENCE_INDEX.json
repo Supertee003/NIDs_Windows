@@ -1,7 +1,7 @@
 {
  "head_sha": "f7c626df89bc18b31d0132181d0a4632d6b1e6f3",
  "created_at": "2026-09-24",
- "last_updated_at": "2026-11-03",
+ "last_updated_at": "2026-11-04",
  "generator_version": "3.0",
  "evidence_levels": {
   "E0": "No evidence",
@@ -3657,6 +3657,38 @@
    "completion_gate": "G2-RB013-LOG-20261023 CLOSED. The functional block-effect evidence remains the earlier 2026-10-21/23 lab runs. E5-CURRENT-RUNTIME-MISMATCH and IDS-XDR-005-WIRING-OPEN remain OPEN.",
    "issue": null,
    "evidence": "admin-evidence/rb013-log-e5-20261030/closeout.md; evidence-20261102/collect2.json (diag hits=8, all epoch 1793607472, filter 77892); evidence-20261102/diag-hits.txt; evidence-20261102/guest-run-current-20261102.log; evidence-20261102/host-canary.json (ACCEPT, 0.016s); evidence-20261102/listener.log (ACCEPT 2026-11-02T00:17:47 192.168.126.1:60477); evidence-20261102/enforce-status-lab.json; evidence-20261102/enforce-status-restored.json; evidence-20261102/metrics-before.json (confirmed_quarantines=0). Lab kit daemon 86D4DD77438ED91C057422D1DF48D484AE4DE167F7202658950D1A8D778145C1; PEP C7F200793AC87B00C6887712428E99DF06083E2289FCF567AC4491064ED15ED8; bridge 9D5D7D46AD2385EAF7656C2B59F23F0ABB0B84DEDB296740DAB3ADD3B6283380; signed driver 8A2B3F1284CE0828AD4CB18A0AC7335CB5BB040DEDE7379F51E08B96395E7C74; lab policy DB67B1B5465BC1B17AE2AC4B73506DAF4B00067F5FD57054AA75D8F8B48035F9."
+  },
+  {
+   "id": "RB-021-CANARY-F7C626D-20261104",
+   "head_sha": "1afde37696e195877900fdf4b30b53768d72d9b9",
+   "timestamp": "2026-11-04",
+   "title": "RB-021 observe-only canary against the deployed f7c626d runtime: 70 real Kali rows across 9 rule IDs; gate closed, no host effect",
+   "level": "E5",
+   "component": "Windows host (AegisNids f7c626d) + VMnet1 Npcap capture + isolated Kali/Victim lab",
+   "flow_id": "RB-021 / E5-CURRENT-RUNTIME-MISMATCH",
+   "patch_id": "RB-021-CANARY-20261104",
+   "target_head": "1afde37696e195877900fdf4b30b53768d72d9b9",
+   "final_head": "1afde37696e195877900fdf4b30b53768d72d9b9",
+   "build_source": "f7c626df89bc18b31d0132181d0a4632d6b1e6f3",
+   "installed_sha256": "D34D350A2BA051405A0F8DD66F9D492A9F3C94E1FDAC102BF1AA482EED763439",
+   "description": "Two bounded elevated windows pinned the daemon to the VMnet1 Npcap device (machine variable plus the per-service Environment override that defeats the SCM cache), restarted AegisNids, passed the RB-021 current-source preflight 16/16, waited for real Kali traffic, snapshotted the core-log delta, then deleted the pin, restarted, PEB-verified the pin was gone and sampled live production capture. Round 1 swept ICMP/SYN/XMAS/L7 probes; round 2 targeted R9002 (hping3 120 ICMP at 1000 pkt/s) and R9064 (literal ';whoami').",
+   "expected": "Real traffic from 192.168.126.10 produces attributable rows for the exercised rule IDs; every row stays observation-only (enforcement_status=observed, host_effect_confirmed=false, blocks=0); the gate stays closed; the VMnet1 pin is removed and production capture resumes without a reboot.",
+   "tests": [
+    "elevated canary window round 1: preflight PASS, 67 attacker rows, restore PASS (daemon PID 16144, pin absent, packets +62/12s)",
+    "elevated canary window round 2: preflight PASS, 3 attacker rows, restore PASS (daemon PID 8116, pin absent, packets +36/12s)",
+    "per-rule attribution: R9007 60, R0088 2, R9064 2, R9002 1, R9006 1, R0056 1, R0089 1, R9059 1 (+R1005 1 cross-layer artifact)",
+    "independent post-restore checks: 70 rows, forensic verify verified=true/integrity=ok, enforce gate closed, blocks=0"
+   ],
+   "result": "PASS_E5_OBSERVE_ONLY_CANARY; no host effect; single-source scope",
+   "actual": "All 70 rows carry src_ip=192.168.126.10, event=signature_match, enforcement_status=observed and host_effect_confirmed=false; metrics show blocks=0 and the enforcement status reports detection-only with prevention_gate=closed and tier3_enforcing=false. R9002 fired only after the ICMP rate crossed 50/1000ms (hping3, 120 packets in 329ms) and R9064 fired only with the rule's literal ';whoami'; the round-1 60-ping burst and the stock ';id' script were correctly silent, which is a probe limit, not a detector miss. R1005 fired from the literal 'hosts' inside the R0088 traversal payload and is recorded as a matcher-scope artifact, not host-file evidence. Restore removed the machine pin and the per-service Environment value, PEB showed no daemon pin, the nose pin stayed on the production device, and packets advanced 44->106 and 74->110 in 12s with no reboot. Readiness remains degraded=true with overall_gate=false because the daemon health payload reports data-loss counters (queue/minifilter drops, QLOSS-HEALTH-001), while all 7 subsystems are RUNNING and every worker is ready. The canary is single-source: no multi-source XDR assessment, receipt, or replay was exercised, so IDS-XDR-005-WIRING-OPEN stays OPEN.",
+   "limits": [
+    "Single attacker source; xdr.list after the restore restart reports evidence_total=0, receipts_recorded=0, incidents=[] and no multi-source assessment was made.",
+    "L7 probes carried rule literals over TCP/445 only; not an exploit chain.",
+    "Detection rows land 2.9-4.1s after the phase start under ambient host telemetry queue delay.",
+    "R1005 is a cross-layer literal-match artifact from the R0088 payload.",
+    "Readiness degradation is pre-existing data-loss health reporting, unrelated to the canary."
+   ],
+   "evidence_artifact": "admin-evidence/rb021-canary-20261104/closeout.md"
   }
  ],
  "known_gaps": [
@@ -9317,7 +9349,7 @@
    "id": "IDS-XDR-005-WIRING-OPEN",
    "severity": "P2",
    "title": "Selected XDR evidence authority is advisory-wired; source-to-forensic receipt/replay is E2-proven, Windows E5 still open",
-   "description": "src/xdr/xdr_incident_fabric.zig is advisory-wired (XDR-WIRE-001): detection-identity events fold into the fabric and xdr.list exposes its advisory view and receipt counters. XDR-RECEIPT-002 now persists frozen multi-source assessments to the hash-chained forensic ring, issues an IDS Evidence Receipt after hash read-back, and replays the assessment. Remaining gap: no Windows E5 host proof of the recording-only route; no deployment/canary evidence exists for the current source.",
+   "description": "src/xdr/xdr_incident_fabric.zig is advisory-wired (XDR-WIRE-001): detection-identity events fold into the fabric and xdr.list exposes its advisory view and receipt counters. XDR-RECEIPT-002 now persists frozen multi-source assessments to the hash-chained forensic ring, issues an IDS Evidence Receipt after hash read-back, and replays the assessment. Remaining gap: no Windows E5 host proof of the recording-only route. Current-source deployment and canary evidence now exists (E5-DEPLOY-F7C626D, RB-021-CANARY-F7C626D-20261104), and the 2026-11-04 RB-021 canary proves the current-source wire/detection path on the Windows host, but it is single-source: xdr.list after the restore restart reports evidence_total=0, receipts_recorded=0 and incidents=[], and no frozen multi-source assessment or replay was exercised. The host proof of the recording-only receipt/replay route is therefore still missing.",
    "status": "OPEN",
    "found_at": "2026-10-31",
    "tracking": "GitHub issue #26 / IDS-XDR-005",
@@ -9329,7 +9361,14 @@
    "evidence": [
     "admin-evidence/ids-xdr-005-20261031/closeout.md",
     "admin-evidence/xdr-receipt-002-20261103/",
-    "EVIDENCE_INDEX.json#XDR-RECEIPT-002-20261103"
+    "EVIDENCE_INDEX.json#XDR-RECEIPT-002-20261103",
+    "admin-evidence/rb021-canary-20261104/closeout.md",
+    "EVIDENCE_INDEX.json#RB-021-CANARY-F7C626D-20261104"
+   ],
+   "required_evidence_status": [
+    "OPEN: Windows E5 host proof of the recording-only receipt/replay route (needs a frozen multi-source assessment; the 2026-11-04 canary was single-source and reset on restart).",
+    "DONE 2026-11-04: bounded RB-021 preflight/canary on the current source ran observe-only with the gate closed (RB-021-CANARY-F7C626D-20261104); it did not exercise receipt/replay.",
+    "OPEN: runtime manifest and flow/authority maps reverified against the receipt/replay route."
    ]
   },
   {
@@ -9348,9 +9387,9 @@
   {
    "id": "E5-CURRENT-RUNTIME-MISMATCH",
    "severity": "P2",
-   "title": "Current-source f7c626d is deployed and the RB-021 preflight passes; the observe-only canary remains outstanding",
-   "description": "The P1 mismatch is cleared: the installed service image at C:\\Program Files\\AEGIS NIDS\\runtime\\aegis_nids.exe is now SHA-256 D34D350A2BA051405A0F8DD66F9D492A9F3C94E1FDAC102BF1AA482EED763439 (11,352,064 bytes), identical to the workspace build from source f7c626d, and the installed build_manifest.json carries source f7c626d. The install used a captured d02261e rollback point and passed every hash, service, driver, capture-pin and policy-posture check (35/36); the one blocked check is the RB-021 preflight, which cannot see the Kali/Victim ARP neighbors because the isolated lab VMs are not running. Lab qualification is now complete for the preflight: both isolated guests were powered on and scripts/rb021_current_source_preflight.ps1 returned RB021_PREFLIGHT_PASS with 17/17 checks on this deployment (EVIDENCE_INDEX#RB021-PREFLIGHT-PASS-20261103), after which the VMnet1 pin was removed and production capture restored. The only remaining work is the observe-only canary under separate authorization.",
-   "status": "OPEN",
+   "title": "Current-source f7c626d observe-only canary passed on the Windows host; runtime mismatch closed",
+   "description": "The deployed runtime is f7c626d and the P1 mismatch is cleared. The last open item, an observe-only canary on that deployment, was completed on 2026-11-04: two bounded windows produced 70 real rows from the isolated Kali attacker across R9002/R9006/R9007/R0056/R0088/R0089/R9059/R9064 (plus one R1005 cross-layer artifact), all observation-only. The canary is single-source, so it does not prove XDR receipt/replay; that remains IDS-XDR-005-WIRING-OPEN.",
+   "status": "CLOSED",
    "found_at": "2026-11-01",
    "tracking": "Local stop-the-line record; GitHub issue creation unavailable in this session",
    "required_evidence": [
@@ -9360,8 +9399,8 @@
    ],
    "required_evidence_status": [
     "DONE 2026-11-03: both lab guests were powered on and the preflight saw both ARP neighbors (RB021_PREFLIGHT_PASS).",
-    "OPEN: observe-only canary against the deployed runtime, still requiring separate authorization.",
-    "DONE 2026-11-03: the pin was removed, the service restarted, and host capture confirmed live (337 -> 677 packets in 12s); the stale pin was filed and closed as PROD-CAPTURE-PIN-LEFT-SET-20261103."
+    "DONE 2026-11-04: observe-only canary against the deployed runtime sent real Kali traffic; 70 rows across 9 rule IDs, single-source, no host effect (RB-021-CANARY-F7C626D-20261104).",
+    "DONE 2026-11-03 and again 2026-11-04: the pin was removed, the service restarted, PEB-verified, and host capture confirmed live; no reboot required in the 2026-11-04 windows."
    ],
    "evidence": [
     "admin-evidence/e5-recheck-20261101/closeout.md",
@@ -9369,8 +9408,12 @@
     "admin-evidence/e5-current-source-20261103/closeout.md",
     "admin-evidence/rb021-window-20261103/lab-window.log",
     "EVIDENCE_INDEX.json#E5-DEPLOY-F7C626D-20261103",
-    "EVIDENCE_INDEX.json#RB021-PREFLIGHT-PASS-20261103"
-   ]
+    "EVIDENCE_INDEX.json#RB021-PREFLIGHT-PASS-20261103",
+    "admin-evidence/rb021-canary-20261104/closeout.md",
+    "EVIDENCE_INDEX.json#RB-021-CANARY-F7C626D-20261104"
+   ],
+   "closed_at": "2026-11-04",
+   "closure_evidence": "admin-evidence/rb021-canary-20261104/closeout.md records two bounded windows on the deployed f7c626d runtime (installed SHA-256 D34D350A...): both preflights returned RB021_PREFLIGHT_PASS (16/16), 70 real rows from 192.168.126.10 were attributed across 9 rule IDs, every row stayed enforcement_status=observed / host_effect_confirmed=false, blocks stayed 0, the gate stayed closed, and both restores removed the machine pin and the per-service Environment value, PEB-verified no daemon pin, and showed production packets advancing (44->106 and 74->110 in 12s) without a reboot. EVIDENCE_INDEX#RB-021-CANARY-F7C626D-20261104."
   }
  ],
  "evidence_level_summary": {
@@ -9379,7 +9422,7 @@
   "E2_count": 157,
   "E3_count": 17,
   "E4_count": 15,
-  "E5_count": 128,
+  "E5_count": 129,
   "E6_count": 0,
   "E7_count": 1
  }

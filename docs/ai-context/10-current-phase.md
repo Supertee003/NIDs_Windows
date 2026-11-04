@@ -10,6 +10,38 @@ Provider readiness, WFP transport, and retained PEP boundaries may exist for
 diagnostics, fail-closed behavior, or historical/lab evidence, but they do not
 authorize a production host effect.
 
+## RB-021 Observe-Only Canary E5 — 2026-11-04
+
+- `E5-CURRENT-RUNTIME-MISMATCH` is **CLOSED**. Two bounded elevated windows on
+  the deployed `f7c626d` runtime (installed daemon `D34D350A...`, build source
+  `f7c626d`, records HEAD `1afde37`) pinned the daemon to VMnet1, passed
+  `RB021_PREFLIGHT_PASS` (all 16 named checks) in both rounds, and captured
+  70 real rows from isolated Kali `192.168.126.10` against victim
+  `192.168.126.20`.
+- Per-rule attribution: `R9007` 60, `R0088` 2, `R9064` 2, `R9002` 1,
+  `R9006` 1, `R0056` 1, `R0089` 1, `R9059` 1, plus one `R1005` cross-layer
+  artifact (the literal `hosts` inside the `R0088` traversal payload). Real
+  L4 traffic now fires `R9006`/`R9007`/`R9002`, unlike the 2026-10-20
+  payload-token baseline; `R9002` needed `hping3` at 1000 pkt/s to cross
+  50 packets/1000 ms, and `R9064` needed the rule's literal `;whoami` rather
+  than the stock `;id`/`;cat` script.
+- Every row is `src_ip=192.168.126.10`, `event=signature_match`,
+  `enforcement_status=observed`, `host_effect_confirmed=false`;
+  `blocks=0`, `prevention_gate=closed`, `tier3_enforcing=false` throughout.
+  The restore removed the machine pin and the per-service `Environment`
+  value, PEB-verified no daemon pin, and showed production packets advancing
+  (44 -> 106 and 74 -> 110 in 12 s) with no reboot.
+- The canary is single-source. `xdr.list` after the restore restart reports
+  `evidence_total=0`, `receipts_recorded=0`, `incidents=[]`, and no frozen
+  multi-source assessment or replay was exercised, so
+  `IDS-XDR-005-WIRING-OPEN` remains OPEN.
+- Readiness remains `degraded=true` / `overall_gate=false` from the
+  pre-existing data-loss counters (`QLOSS-HEALTH-001`), while all 7
+  subsystems are RUNNING and every worker is ready.
+- Evidence: `admin-evidence/rb021-canary-20261104/closeout.md`,
+  `attribution.json` / `attribution.md`, and `EVIDENCE_INDEX.json` entry
+  `RB-021-CANARY-F7C626D-20261104`.
+
 ## E5-DEPLOY-F7C626D Current-Head Update - 2026-11-03
 
 - The current-source package (`AEGIS-NIDS-5.0.0-f7c626d-20261103.exe`,
@@ -42,18 +74,20 @@ authorize a production host effect.
 
 - Both isolated lab guests were powered on (Kali `192.168.126.10`, Windows 11
   victim `192.168.126.20`) and `scripts/rb021_current_source_preflight.ps1`
-  returned `RB021_PREFLIGHT_PASS` with 17/17 checks against the deployed
-  `f7c626d` runtime (build and installed daemon both `D34D350A...`, manifest
-  source `f7c626d`, pins matched and disjoint, both lab ARP neighbors seen).
-  Evidence level E1; no canary was sent.
+  returned `RB021_PREFLIGHT_PASS` against the deployed `f7c626d` runtime
+  (build and installed daemon both `D34D350A...`, manifest source `f7c626d`,
+  pins matched and disjoint, both lab ARP neighbors seen). The script emits 16
+  named checks; this record originally said "17/17" by miscount. Evidence
+  level E1; no canary was sent in that window.
 - The same window found a live production defect: the machine
   `AEGIS_DAEMON_IFACE` pin was still set to the VMnet1 device and inherited by
   the running daemon, so the deployed runtime had been capturing the isolated
   lab segment instead of the host interface. The pin was removed, `AegisNids`
   restarted, and host capture confirmed live (`packets_captured` 337 -> 677 in
   12 s). Filed and closed as `PROD-CAPTURE-PIN-LEFT-SET-20261103` (P1).
-- `E5-CURRENT-RUNTIME-MISMATCH` is now narrowed to the observe-only canary,
-  which still requires separate authorization. `prevention_gate=closed`,
+- `E5-CURRENT-RUNTIME-MISMATCH` was at that point narrowed to the observe-only
+  canary, which required separate authorization; it was closed on 2026-11-04
+  (see the section above). `prevention_gate=closed`,
   `host_effect_confirmed=false`, `enforcement_mode=detection-only` throughout.
 - Evidence: `admin-evidence/rb021-window-20261103/` (`lab-window.log`,
   `preflight/preflight.json`, `closeout.md`) and `EVIDENCE_INDEX.json` entry
@@ -74,8 +108,10 @@ authorize a production host effect.
 - Evidence is E2 source/build only: `zig build` PASS; `zig build test
   --summary all` 2011/2021 passed, 10 skipped, 0 failed; focused pytest 50
   passed. At that slice no Windows host proof existed. E5-DEPLOY-F7C626D later
-  deployed this source, but the Windows host proof of the receipt/replay route
-  (`IDS-XDR-005-WIRING-OPEN`) and the RB-021 canary remain OPEN.
+  deployed this source and the 2026-11-04 RB-021 canary proved the current-source
+  detection path on the host, but the canary was single-source and the fabric
+  resets on restart, so the Windows host proof of the receipt/replay route
+  (`IDS-XDR-005-WIRING-OPEN`) remains OPEN.
 - Earlier IDS-XDR-005/006 sections below describe the historical pre-wiring
   snapshot and are retained as history, not current truth.
 
@@ -282,7 +318,10 @@ And CI proves: C/C++ + Zig + Go + Rust + Python/Cython + Drivers as one product.
    --verify` and `fresh_deploy --plan` pass. This clears preflight only and
    does not install or qualify the current build. The 2026-11-02 lab-kit E5
    closed only the RB-013 persisted-log gap; it does not clear this
-   current-runtime mismatch.
+   current-runtime mismatch. That mismatch was cleared on 2026-11-04: the
+   observe-only canary on the deployed `f7c626d` runtime produced 70
+   attributed rows with the gate closed
+   (`RB-021-CANARY-F7C626D-20261104`).
 3. Continue classifying remaining older IPS/WFP material as historical or
    lab-only without deleting it; the key WFP/host records GAP-002, GAP-005, and
    GAP-009 are now explicitly historical. Keep production host-effect capability false.

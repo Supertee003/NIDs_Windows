@@ -32,6 +32,11 @@ live, requires the machine capture pin, and requires ARP neighbors for both
 Kali and Victim. A blocked result is an honest E1 preflight failure; it must
 not be converted into an E5 claim.
 
+The gate has passed end to end for build source `f7c626d` (records HEAD
+`1afde37`, 2026-11-04): both canary rounds returned `RB021_PREFLIGHT_PASS`
+(16 named checks) and produced 70 attributed rows. That pass qualifies
+`f7c626d` only; a new build source needs a new preflight and canary run.
+
 ## Prerequisites
 
 - VMware host-only network up: Kali .10, victim Win11 .20, NIDS host
@@ -411,6 +416,65 @@ deployed exe unchanged `47AB8085...`; rules 23; gate still `closed`;
 nose frames 15597 -> 16543 -> 17207; no new `.10` rows. Evidence kit
 (gitignored): `admin-evidence/lab-session-20261020-l4/`
 (RESULTS-L4-20261020.md, lab-rows-706.ndjson, captures).
+
+## Lab-run record (2026-11-04, current-source observe-only canary: Kali .10 -> Win11 .20)
+
+Records HEAD `1afde37`; build source `f7c626d`; installed daemon
+`D34D350A...` (11,352,064 bytes), identical to `zig-out\bin\aegis_nids.exe`;
+gate `closed`/detection-only throughout. Two elevated windows used
+`admin-evidence/rb021-canary-20261104/canary-window.ps1`, which set the
+machine `AEGIS_DAEMON_IFACE` **and** the per-service
+`HKLM\SYSTEM\CurrentControlSet\Services\AegisNids\Environment` value (the SCM
+on this host caches the machine block; DEPLOY-132), restarted `AegisNids`,
+required `RB021_PREFLIGHT_PASS`, waited for real Kali traffic, copied the
+`aegis_core.ndjson` delta, then removed both pins, restarted, PEB-verified the
+daemon environment and sampled production capture. No reboot was needed.
+
+The victim exposed only TCP/445, so the L7 probes ran with `--port 445`; the
+scripts still sent their own payloads. Round 2 used `hping3` for R9002 and an
+explicit `;whoami` payload for R9064.
+
+| round / phase | Kali command | rows | rule |
+|---|---|---|---|
+| 1 SYN, 40 ports | `nmap -sS -Pn -n -p 1-40 --max-retries 1 --host-timeout 30s` | 1 | R9006 `1745456278` |
+| 1 XMAS, 30 ports | `nmap -sX -Pn -n -p 1-30 --max-retries 1 --host-timeout 30s` | 60 | R9007 `1762233897` |
+| 1 XSS | `R9059_xss_basic.py --target .20 --port 445` | 1 | R9059 `4009890390` |
+| 1 SQLi | `R0056_sqli_auth_bypass.py --target .20 --port 445` | 1 | R0056 `2107512682` |
+| 1 traversal | `R0088_path_traversal.py --target .20 --port 445` | 2 (+1) | R0088 `4254503461` (+ R1005 `3746875899` artifact) |
+| 1 RFI | `R0089_rfi_param.py --target .20 --port 445` | 1 | R0089 `4237725842` |
+| 2 ICMP flood | `hping3 --icmp -i u1000 -c 120 .20` | 1 | R9002 `1812566754` |
+| 2 command injection | two literal `;whoami` requests over TCP/445 | 2 | R9064 `4194591294` |
+
+The R9007 count is matching packets, not distinct ports: 30 rows from each of
+two source ports, one per probed port per scan pass. Round 1's 60-ping burst
+(1.428 s) stayed below R9002's 50 packets/1000 ms and produced 0 rows; the
+stock `R9064` script sends `;id`/`;cat`, while the rule loads
+`match_pattern ";whoami"` literally, so it also produced 0 rows. Both are
+probe/threshold facts, not detector misses; round 2 crossed both conditions.
+`R1005` matched the literal `hosts` inside the R0088 traversal payload and is
+a matcher-scope artifact, not a host-file event.
+
+Totals: 70 rows, all `src_ip=192.168.126.10`, `signature_match`,
+`enforcement_status=observed`, `host_effect_confirmed=false`; `blocks=0`;
+`prevention_gate=closed`; `tier3_enforcing=false`. Detection rows landed
+2.9-4.1 s after their phase start (queue delay under ambient host telemetry).
+
+Restore: round 1 removed both pins and restarted (PID 16144), packets
+44 -> 106 in 12 s; round 2 PID 8116, packets 74 -> 110 in 12 s; machine pin
+and service `Environment` absent, daemon PEB shows no `AEGIS_DAEMON_IFACE`,
+nose pin unchanged (`...5FD31C6E...`). Final `status` 7/7,
+`events count --src-ip` 70 (last row `07:21:46.806Z`), `forensic verify`
+`verified: true` / `integrity: ok`. `readiness` stays `degraded=true` /
+`overall_gate=false` from the pre-existing data-loss counters
+(`QLOSS-HEALTH-001`) while all 7 subsystems are RUNNING and every worker is
+ready; the network source itself recorded `dropped=0` in both rounds.
+
+This is single-source canary evidence: no multi-source XDR
+assessment/receipt/replay was exercised, and the fabric resets on restart, so
+`IDS-XDR-005-WIRING-OPEN` remains OPEN. Evidence kit (gitignored):
+`admin-evidence/rb021-canary-20261104/` (`closeout.md`, `attribution.json`,
+`attribution.md`, both `canary-window.json` records, PEB dumps, Kali probe
+outputs).
 
 ## Verification
 
