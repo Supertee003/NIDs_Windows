@@ -9349,7 +9349,7 @@
    "id": "IDS-XDR-005-WIRING-OPEN",
    "severity": "P2",
    "title": "Selected XDR evidence authority is advisory-wired; source-to-forensic receipt/replay is E2-proven, Windows E5 still open",
-   "description": "src/xdr/xdr_incident_fabric.zig is advisory-wired (XDR-WIRE-001): detection-identity events fold into the fabric and xdr.list exposes its advisory view and receipt counters. XDR-RECEIPT-002 now persists frozen multi-source assessments to the hash-chained forensic ring, issues an IDS Evidence Receipt after hash read-back, and replays the assessment. Remaining gap: no Windows E5 host proof of the recording-only route. Current-source deployment and canary evidence now exists (E5-DEPLOY-F7C626D, RB-021-CANARY-F7C626D-20261104), and the 2026-11-04 RB-021 canary proves the current-source wire/detection path on the Windows host, but it is single-source: xdr.list after the restore restart reports evidence_total=0, receipts_recorded=0 and incidents=[], and no frozen multi-source assessment or replay was exercised. The host proof of the recording-only receipt/replay route is therefore still missing.",
+   "description": "src/xdr/xdr_incident_fabric.zig is advisory-wired (XDR-WIRE-001): detection-identity events fold into the fabric and xdr.list exposes its advisory view and receipt counters. XDR-RECEIPT-002 now persists frozen multi-source assessments to the hash-chained forensic ring, issues an IDS Evidence Receipt after hash read-back, and replays the assessment. Remaining gap: no Windows E5 host proof of the recording-only route. Current-source deployment and canary evidence now exists (E5-DEPLOY-F7C626D, RB-021-CANARY-F7C626D-20261104), and the 2026-11-04 RB-021 canary proves the current-source wire/detection path on the Windows host, but it is single-source: xdr.list after the restore restart reports evidence_total=0, receipts_recorded=0 and incidents=[], and no frozen multi-source assessment or replay was exercised. The host proof of the recording-only receipt/replay route is therefore still missing. A read-only reachability audit on 2026-11-04 found a structural blocker: the multi-source freeze trigger cannot fire from the live production ingest at current HEAD. The XDR entity key is the event source IP (src/pipeline/event_processor.zig:412, empty at :62 when the IPv4 source is zero), and only the network producers populate it. ETW, FIM, Registry and Minifilter events leave src_ip at zero (src/pipeline/telemetry_threads.zig:147-152,314-318,362-366; src/capture/minifilter_reader.zig:225-235), and federation is status-only in this standalone daemon (src/control/protocol.zig:259-260). All live XDR evidence therefore lands in the single 'network' category, so distinctSources can never reach the two-category threshold at src/xdr/xdr_runtime.zig:173. The E2 receipt/replay proof is unchanged, but no lab canary can close the E5 route until the entity/category wiring is fixed or explicitly redefined. Tracked as XDR-005-LIVE-MULTISOURCE-UNREACHABLE.",
    "status": "OPEN",
    "found_at": "2026-10-31",
    "tracking": "GitHub issue #26 / IDS-XDR-005",
@@ -9363,12 +9363,15 @@
     "admin-evidence/xdr-receipt-002-20261103/",
     "EVIDENCE_INDEX.json#XDR-RECEIPT-002-20261103",
     "admin-evidence/rb021-canary-20261104/closeout.md",
-    "EVIDENCE_INDEX.json#RB-021-CANARY-F7C626D-20261104"
+    "EVIDENCE_INDEX.json#RB-021-CANARY-F7C626D-20261104",
+    "admin-evidence/xdr-005-reachability-20261104/closeout.md",
+    "admin-evidence/xdr-005-reachability-20261104/xdr-list-20261104.json"
    ],
    "required_evidence_status": [
     "OPEN: Windows E5 host proof of the recording-only receipt/replay route (needs a frozen multi-source assessment; the 2026-11-04 canary was single-source and reset on restart).",
     "DONE 2026-11-04: bounded RB-021 preflight/canary on the current source ran observe-only with the gate closed (RB-021-CANARY-F7C626D-20261104); it did not exercise receipt/replay.",
-    "OPEN: runtime manifest and flow/authority maps reverified against the receipt/replay route."
+    "OPEN: runtime manifest and flow/authority maps reverified against the receipt/replay route.",
+    "OPEN 2026-11-04: live multi-source is unreachable at current HEAD because only network events carry the XDR entity key; host/FIM/registry events set src_ip=0 and federation is status-only (XDR-005-LIVE-MULTISOURCE-UNREACHABLE)."
    ]
   },
   {
@@ -9414,6 +9417,28 @@
    ],
    "closed_at": "2026-11-04",
    "closure_evidence": "admin-evidence/rb021-canary-20261104/closeout.md records two bounded windows on the deployed f7c626d runtime (installed SHA-256 D34D350A...): both preflights returned RB021_PREFLIGHT_PASS (16/16), 70 real rows from 192.168.126.10 were attributed across 9 rule IDs, every row stayed enforcement_status=observed / host_effect_confirmed=false, blocks stayed 0, the gate stayed closed, and both restores removed the machine pin and the per-service Environment value, PEB-verified no daemon pin, and showed production packets advancing (44->106 and 74->110 in 12s) without a reboot. EVIDENCE_INDEX#RB-021-CANARY-F7C626D-20261104."
+  },
+  {
+   "id": "XDR-005-LIVE-MULTISOURCE-UNREACHABLE",
+   "severity": "P2",
+   "title": "XDR multi-source assessments are unreachable from live ingest: only network events carry the entity key",
+   "description": "Read-only audit on 2026-11-04 of the current-source daemon. XDR-RECEIPT-002 persists a frozen multi-source assessment and replays it, but the live pipeline can only produce one XDR source category. The entity key is the event source IP (src/pipeline/event_processor.zig:412; empty when the IPv4 source is zero, :62). npcap and WFP populate it but both map to 'network'; ETW/FIM/registry events never assign src_ip (src/pipeline/telemetry_threads.zig:147-152,314-318,362-366), and the minifilter canonical event leaves source_ip at zero (src/capture/minifilter_reader.zig:225-235). Federation is status-only in this standalone daemon (src/control/protocol.zig:259-260). The freeze requires distinctSources >= 2 (src/xdr/xdr_runtime.zig:173), so receipts_recorded stays 0 by construction. Live xdr.list at 07:40:39Z showed evidence_total=3, receipts_recorded=0, and both incidents at distinct_sources=1. The E2 receipt/replay tests remain valid because they hand the runtime a frozen batch directly; the E5 gap is the missing live multi-source trigger.",
+   "status": "OPEN",
+   "found_at": "2026-11-04",
+   "tracking": "Local stop-the-line record; GitHub issue #26 / IDS-XDR-005",
+   "required_evidence": [
+    "Decide the multi-source entity model for host/file/registry telemetry (or an explicitly approved alternative live second source).",
+    "Implement and pin the wiring without touching policy, PEP, DEFCON, ActionDispatcher, or any host-effect path.",
+    "Prove a frozen multi-source assessment, IDS Evidence Receipt, and replay at E5 on the Windows host."
+   ],
+   "required_evidence_status": [
+    "OPEN: entity-model decision and source wiring.",
+    "OPEN: Windows E5 frozen multi-source assessment + receipt + replay."
+   ],
+   "evidence": [
+    "admin-evidence/xdr-005-reachability-20261104/closeout.md",
+    "admin-evidence/xdr-005-reachability-20261104/xdr-list-20261104.json"
+   ]
   }
  ],
  "evidence_level_summary": {
