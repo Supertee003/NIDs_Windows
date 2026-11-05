@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-05T10:12:38.152648+00:00",
+  "generated_at": "2026-11-05T10:20:07.385157+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1774,
+  "total_files": 1776,
   "by_role": {
     "documentation": 576,
     "build-config": 212,
     "other": 19,
-    "source": 367,
+    "source": 368,
     "lockfile": 6,
     "rust-build": 4,
-    "test-artifact": 216,
+    "test-artifact": 217,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -6924,6 +6924,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/tools/test_taxii_push.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/tools/test_web_dashboard.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -7321,6 +7325,10 @@
       "role": "source"
     },
     "tools/stix_export.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
+    "tools/taxii_push.py": {
       "class": "canonical-source",
       "role": "source"
     },

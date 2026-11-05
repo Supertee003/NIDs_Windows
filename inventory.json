@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-05T10:12:38.149682+00:00",
+  "generated_at": "2026-11-05T10:20:07.382130+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1774,
+  "total_files": 1776,
   "by_class": {
     "canonical-docs": 590,
     "canonical-build": 223,
     "unclassified": 19,
-    "canonical-source": 659,
-    "canonical-test": 216,
+    "canonical-source": 660,
+    "canonical-test": 217,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -3786,7 +3786,7 @@
       "path": "docs/CLI_COMMANDS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2009
+      "size": 2039
     },
     {
       "path": "docs/contracts/canonical-event-v1.md",
@@ -9921,6 +9921,12 @@
       "size": 9886
     },
     {
+      "path": "tests/tools/test_taxii_push.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 9109
+    },
+    {
       "path": "tests/tools/test_web_dashboard.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -10519,6 +10525,12 @@
       "class": "canonical-source",
       "role": "source",
       "size": 12438
+    },
+    {
+      "path": "tools/taxii_push.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 7839
     },
     {
       "path": "tools/truth.py",
