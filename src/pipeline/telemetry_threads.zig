@@ -449,7 +449,7 @@ fn emitHostObservation(observed: *const host_net.Observed) void {
 fn hostNetSleepInterruptible(ms: u32) void {
     var remaining = ms;
     while (remaining > 0 and !state.g_stop_requested.load(.acquire)) {
-        const step = @min(remaining, 50);
+        const step: u32 = @min(remaining, 50);
         std.time.sleep(step * std.time.ns_per_ms);
         remaining -= step;
     }
