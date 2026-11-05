@@ -187,6 +187,7 @@ pub fn canonicalSourceOf(src: event.EventSource) canonical_event.EventSource {
         .capture_etw => .host_telemetry,
         .capture_fim => .file_sensor,
         .capture_registry => .registry_sensor,
+        .capture_host_net => .host_telemetry,
         .capture_pipe_monitor => .pipe_monitor,
         .capture_wfp => .wfp_sensor,
         .detection_sig => .zig_core,
@@ -203,6 +204,7 @@ pub fn canonicalSourceOf(src: event.EventSource) canonical_event.EventSource {
 test "canonicalSourceOf maps every legacy pipeline source into the canonical space" {
     try std.testing.expectEqual(canonical_event.EventSource.npcap_sensor, canonicalSourceOf(.capture_npcap));
     try std.testing.expectEqual(canonical_event.EventSource.host_telemetry, canonicalSourceOf(.capture_etw));
+    try std.testing.expectEqual(canonical_event.EventSource.host_telemetry, canonicalSourceOf(.capture_host_net));
     try std.testing.expectEqual(canonical_event.EventSource.file_sensor, canonicalSourceOf(.capture_fim));
     try std.testing.expectEqual(canonical_event.EventSource.registry_sensor, canonicalSourceOf(.capture_registry));
     try std.testing.expectEqual(canonical_event.EventSource.pipe_monitor, canonicalSourceOf(.capture_pipe_monitor));
@@ -436,13 +438,15 @@ pub const ForensicRing = struct {
                 if (network_addresses != null) NETWORK_METADATA_VERSION else 0,
                 if (network_addresses != null) NETWORK_METADATA_IPV6 else 0,
                 if (network_addresses != null) IPV6_SIDECAR_LENGTH else 0,
-                direction orelse 0, if (direction != null) DIRECTION_METADATA_VERSION else 0,
-                SOURCE_SPACE_CANONICAL, @intFromEnum(canonicalSourceOf(ev.source)),
+                direction orelse 0,
+                if (direction != null) DIRECTION_METADATA_VERSION else 0,
+                SOURCE_SPACE_CANONICAL,
+                @intFromEnum(canonicalSourceOf(ev.source)),
             },
         };
         @memcpy(slot[0..@sizeOf(RecordHeader)], std.mem.asBytes(&hdr));
         if (network_addresses) |addresses| {
-            const prefix = slot[@sizeOf(RecordHeader) ..][0..IPV6_SIDECAR_BYTES];
+            const prefix = slot[@sizeOf(RecordHeader)..][0..IPV6_SIDECAR_BYTES];
             @memcpy(prefix[0..16], &addresses.src_ipv6);
             @memcpy(prefix[16..32], &addresses.dst_ipv6);
         }

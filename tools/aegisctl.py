@@ -545,6 +545,17 @@ def cmd_federation(args) -> int:
     return _print_control_query("federation.status", as_json=getattr(args, "json", True))
 
 
+def cmd_xdr(args) -> int:
+    """Advisory XDR evidence views (read-only; never a host action)."""
+    sub = getattr(args, "xdr_command", None) or "list"
+    if sub == "verify":
+        limit = max(1, min(int(getattr(args, "limit", 8)), 64))
+        return _print_control_query(
+            "xdr.verify", as_json=getattr(args, "json", True), payload={"limit": limit}
+        )
+    return _print_control_query("xdr.list", as_json=getattr(args, "json", True))
+
+
 def cmd_snapshot(args) -> int:
     """Emit one authoritative daemon snapshot for dashboards and automation."""
     if not CONTROL_API_AVAILABLE:
@@ -2250,6 +2261,17 @@ def main() -> int:
     federation = sub.add_parser("federation", help="Show federation cluster status")
     federation.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
     federation.set_defaults(func=cmd_federation)
+    xdr_p = sub.add_parser("xdr", help="Advisory XDR evidence (read-only, never a host action)")
+    xdr_sub = xdr_p.add_subparsers(dest="xdr_command")
+    xdr_list_p = xdr_sub.add_parser("list", help="List advisory XDR incidents")
+    xdr_list_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    xdr_verify_p = xdr_sub.add_parser(
+        "verify", help="Replay-verify persisted multi-source XDR snapshots (read-only)"
+    )
+    xdr_verify_p.add_argument("--limit", type=int, default=8,
+                              help="Newest XDR snapshots to verify; default 8, capped at 64")
+    xdr_verify_p.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    xdr_p.set_defaults(func=cmd_xdr)
     sub.add_parser("snapshot", help="Emit one JSON runtime snapshot for dashboards").set_defaults(func=cmd_snapshot)
     readiness = sub.add_parser("readiness", help="Evaluate the production readiness gate")
     readiness.add_argument("--pretty", action="store_true", help="Pretty-print JSON")

@@ -21,7 +21,8 @@ const mem = @import("core/memory_pool.zig");
 const flow = @import("capture/flow_table.zig");
 const npcap = @import("capture/npcap_adapter.zig");
 const sig = @import("detection/signature_engine.zig");
-const anom = @import("detection/anomaly_detector.zig");    const tracker = @import("detection/threat_tracker.zig");
+const anom = @import("detection/anomaly_detector.zig");
+const tracker = @import("detection/threat_tracker.zig");
 const xdr_runtime = @import("xdr/xdr_runtime.zig");
 const policy = @import("policy/policy_ir.zig");
 const policy_plane = @import("policy/policy_plane.zig");
@@ -40,6 +41,7 @@ const legacy_capture = @import("core/nids_capture.zig");
 
 // PATCH-20: Windows Data Plane adapters (Phase 3)
 const inj_det = @import("windows/injection_detector.zig");
+const host_net = @import("windows/host_net.zig");
 
 // Refactored modules (this extraction)
 const state = @import("pipeline/runtime_state.zig");
@@ -86,6 +88,7 @@ const RuntimeSupervisor = struct {
     etw: ?std.Thread = null,
     fim: ?std.Thread = null,
     registry: ?std.Thread = null,
+    hostnet: ?std.Thread = null,
     pipe_monitor: ?std.Thread = null,
 
     pub fn requestStop(_: *RuntimeSupervisor) void {
@@ -98,6 +101,8 @@ const RuntimeSupervisor = struct {
         // Join in reverse startup order. Every handle is joined exactly once.
         if (self.registry) |thread| thread.join();
         self.registry = null;
+        if (self.hostnet) |thread| thread.join();
+        self.hostnet = null;
         if (self.pipe_monitor) |thread| thread.join();
         self.pipe_monitor = null;
         if (self.fim) |thread| thread.join();
@@ -162,7 +167,8 @@ fn initSiemFromEnv() void {
     });
 }
 
-fn publishPipeObservation(observation: pipe_monitor.PipeObservation, payload: []const u8) bool {    var ev = event.IpcEvent.init(.signature_match);
+fn publishPipeObservation(observation: pipe_monitor.PipeObservation, payload: []const u8) bool {
+    var ev = event.IpcEvent.init(.signature_match);
     ev.source = .capture_pipe_monitor;
     ev.event_id = event.nextEventId();
     ev.trace_id = ev.event_id;
@@ -759,6 +765,24 @@ pub fn runDaemon() !void {
             state.markWorkerFailure(.registry);
             break :blk null;
         };
+
+        // XDR-005-A: observe-only Windows TCP endpoint telemetry. Default-on
+        // with the AEGIS_HOSTNET=0 kill switch. It is deliberately outside
+        // the readiness barrier and the status subsystem list: this is an
+        // advisory evidence source, and a table-query failure must not block
+        // or degrade the rest of the daemon.
+        const hostnet_cfg = host_net.initFromEnv();
+        if (hostnet_cfg.enabled) {
+            supervisor.hostnet = std.Thread.spawn(.{}, telemetry.hostNetThread, .{}) catch |err| blk: {
+                diag.warn("failed to spawn host_net thread: {} — host socket telemetry disabled", .{err});
+                break :blk null;
+            };
+            if (supervisor.hostnet != null) {
+                diag.info("host_net observe-only TCP telemetry started interval_ms={d}", .{hostnet_cfg.poll_ms});
+            }
+        } else {
+            diag.info("host_net disabled by AEGIS_HOSTNET kill switch", .{});
+        }
 
         // Bounded readiness barrier: thread creation alone is not readiness.
         // The C++/Windows telemetry subsystem is represented by ETW, FIM, and

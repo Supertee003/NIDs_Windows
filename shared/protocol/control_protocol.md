@@ -138,6 +138,7 @@ mutation/postcondition flags.
 | `incidents.list` | READ | no | List incidents |
 | `incidents.show` | READ | no | Show incident details |
 | `xdr.list` | READ | no | List advisory XDR evidence incidents (read-only, never a host action) |
+| `xdr.verify` | READ | no | Replay-verify persisted advisory XDR snapshots (read-only, proves replay integrity; receipt tokens are not persisted) |
 | `policy.list` | READ | no | List policies |
 | `policy.validate` | READ | no | Validate policies |
 | `policy.verify` | OPERATE | no | Verify policy signatures |

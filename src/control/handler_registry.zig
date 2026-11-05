@@ -18,11 +18,13 @@ const siem_mod = @import("../forensic/siem_forwarder.zig");
 const event_queue = @import("../pipeline/event_queue.zig");
 const event_contract = @import("../contract/event.zig");
 const telemetry = @import("../pipeline/telemetry_threads.zig");
+const host_net = @import("../windows/host_net.zig");
 const source_arbiter = @import("../capture/source_arbiter.zig");
 const etw_rt = @import("../windows/etw_realtime.zig");
 const fault = @import("../reliability/fault_injection.zig");
 const tracker_mod = @import("../detection/threat_tracker.zig");
 const xdr_runtime = @import("../xdr/xdr_runtime.zig");
+const xdr_evidence_flow = @import("../xdr/xdr_evidence_flow.zig");
 
 // ============================================================
 // Handler Function Signature
@@ -293,6 +295,7 @@ pub fn initHandlers() void {
     registerHandler(.incidents_list, handlers.incidentsList);
     registerHandler(.incidents_show, handlers.incidentsShow);
     registerHandler(.xdr_list, handlers.xdrList);
+    registerHandler(.xdr_verify, handlers.xdrVerify);
     registerHandler(.policy_list, handlers.policyList);
     registerHandler(.policy_validate, handlers.policyValidate);
     registerHandler(.policy_verify, handlers.policyVerify);
@@ -611,9 +614,9 @@ const handlers = struct {
         errdefer out.deinit();
         var writer = out.writer();
         writer.print("{{\"rules_loaded\":{},\"previous_rules_loaded\":{},\"status\":\"reloaded\",\"postcondition\":\"ACTIVE\",\"skipped\":{{\"no_pattern\":{},\"disabled\":{},\"malformed\":{},\"add_failed\":{}}},\"skipped_ids\":[", .{
-            rep.loaded, previous_count,
+            rep.loaded,             previous_count,
             rep.skipped_no_pattern, rep.skipped_disabled,
-            rep.skipped_malformed, rep.skipped_add_failed,
+            rep.skipped_malformed,  rep.skipped_add_failed,
         }) catch return null;
         var si: usize = 0;
         while (si < rep.skipped_id_count) : (si += 1) {
@@ -755,7 +758,7 @@ const handlers = struct {
         // own loss counter, so ring overflow is never silent. `pipeline_dropped`
         // separately counts rows rejected after leaving the kernel ring.
         writer.writeAll(",\"minifilter\":{") catch return null;
-        writer.print("\"state\":\"{s}\",\"reads\":{},\"rows\":{},\"last_bytes\":{},\"dropped\":{},\"pipeline_dropped\":{}}}}}", .{
+        writer.print("\"state\":\"{s}\",\"reads\":{},\"rows\":{},\"last_bytes\":{},\"dropped\":{},\"pipeline_dropped\":{}}}", .{
             providerStateName(state_mod.g_minifilter_state.load(.acquire)),
             state_mod.g_minifilter_reads.load(.acquire),
             state_mod.g_minifilter_rows.load(.acquire),
@@ -763,6 +766,26 @@ const handlers = struct {
             state_mod.g_minifilter_dropped.load(.acquire),
             state_mod.g_minifilter_pipeline_dropped.load(.acquire),
         }) catch return null;
+        // XDR-005-A: observe-only Windows TCP endpoint telemetry health.
+        // `seeded` is the poll that establishes the baseline and emits
+        // nothing; `poll_errors` is nonfatal by contract (the loop beats
+        // the watchdog even on failure). No action/enforcement fields.
+        const hn = host_net.snapshot();
+        writer.writeAll(",\"host_net\":{") catch return null;
+        writer.print("\"enabled\":{},\"ready\":{},\"seeded\":{},\"polls\":{},\"poll_errors\":{},\"rows_seen\":{},\"tracked\":{},\"emitted\":{},\"emit_deferred\":{},\"overflow\":{},\"last_poll_ms\":{}}}", .{
+            hn.enabled,
+            hn.ready,
+            hn.seeded,
+            hn.polls,
+            hn.poll_errors,
+            hn.rows_seen,
+            hn.tracked,
+            hn.emitted,
+            hn.emit_deferred,
+            hn.overflow,
+            hn.last_poll_ms,
+        }) catch return null;
+        writer.writeByte('}') catch return null;
         return out.toOwnedSlice() catch null;
     }
 
@@ -888,6 +911,117 @@ const handlers = struct {
         return xdr_runtime.listJson(a);
     }
 
+    fn xdrVerify(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
+        // XDR-005-B: read-only snapshot replay. Scan the forensic ring from
+        // newest to oldest, prefilter on the correlation header, and replay
+        // each persisted multi-source snapshot through
+        // xdr_evidence_flow.replayRecord (CRC + per-record hash + ring
+        // linkage + snapshot re-assessment). Nothing here detects, decides,
+        // enforces, or writes: it only proves a persisted record still
+        // replays to the decision it recorded.
+        //
+        // Limitation stated in the response `note`: receipt tokens are not
+        // persisted by design, so post-hoc replay cannot prove that a token
+        // was issued. Token issuance stays live evidence in xdr.list.
+        var limit: u64 = 8;
+        if (payload == .object) {
+            if (payload.object.get("limit")) |lv| {
+                if (lv != .integer or lv.integer <= 0) {
+                    ctx.failure_code = "INVALID_ARGUMENT";
+                    ctx.failure_state = "REJECTED";
+                    ctx.failure_message = "limit must be a positive integer";
+                    return null;
+                }
+                limit = @min(@as(u64, @intCast(lv.integer)), 64);
+            }
+        }
+        const note = "persisted-snapshot replay; receipt tokens are not persisted, so this proves replay integrity, not token issuance";
+
+        const ring = state_mod.g_forensic_ring orelse {
+            return std.fmt.allocPrint(a, "{{\"available\":false,\"ring_records\":0,\"retained\":0,\"scanned\":0,\"xdr_records\":0,\"verified\":0,\"failed\":0,\"vanished\":0,\"limit\":{d},\"note\":\"{s}\",\"records\":[]}}", .{ limit, note }) catch null;
+        };
+
+        const total = ring.recordCount();
+        const slots: u64 = @intCast(ring.capacity() / forensic_pipeline.RECORD_BYTES);
+        const retained: u64 = @min(total, slots);
+        const oldest_seq: u64 = if (retained > 0) total - retained + 1 else 1;
+
+        var rows = std.ArrayList(u8).init(a);
+        defer rows.deinit();
+        const rw = rows.writer();
+
+        var scanned: u64 = 0;
+        var xdr_records: u64 = 0;
+        var verified: u64 = 0;
+        var failed: u64 = 0;
+        var vanished: u64 = 0;
+
+        var seq = total;
+        while (retained > 0 and seq >= oldest_seq and xdr_records < limit) : (seq -= 1) {
+            scanned += 1;
+            const slot = ring.readRecord(seq - 1, a) orelse {
+                vanished += 1;
+                continue;
+            };
+            defer a.free(slot);
+            if (slot.len != forensic_pipeline.RECORD_BYTES) {
+                vanished += 1;
+                continue;
+            }
+            const header = std.mem.bytesAsValue(forensic_pipeline.RecordHeader, slot[0..forensic_pipeline.HEADER_BYTES]);
+            // A wrapped offset can hold a newer record: sequence identity is
+            // checked before the header is trusted for attribution.
+            if (header.record_seq != seq - 1) {
+                vanished += 1;
+                continue;
+            }
+            if (header.magic != forensic_pipeline.RECORD_MAGIC or
+                header.kind != @intFromEnum(event_contract.EventKind.correlation_match) or
+                header.rule_id != xdr_evidence_flow.MULTI_SOURCE_RULE_ID)
+            {
+                continue;
+            }
+            xdr_records += 1;
+
+            if (xdr_evidence_flow.replayRecord(a, ring, seq)) |outcome| {
+                verified += 1;
+                if (rows.items.len != 0) rw.writeByte(',') catch return null;
+                rw.print("{{\"sequence\":{d},\"incident_id\":{d},\"source_event_id\":{d},\"evidence\":{d},\"severity\":{d},\"confidence\":{d},\"source_categories\":[", .{
+                    seq,
+                    outcome.incident_id,
+                    outcome.source_event_id,
+                    outcome.evidence_count,
+                    outcome.decision.severity,
+                    outcome.decision.confidence,
+                }) catch return null;
+                var i: usize = 0;
+                const cat_count: usize = outcome.decision.source_categories_used;
+                while (i < cat_count) : (i += 1) {
+                    if (i != 0) rw.writeByte(',') catch return null;
+                    rw.print("\"{s}\"", .{outcome.categories[i].label()}) catch return null;
+                }
+                rw.writeAll("],\"verified\":true,\"error\":null}") catch return null;
+            } else |err| {
+                failed += 1;
+                if (rows.items.len != 0) rw.writeByte(',') catch return null;
+                rw.print("{{\"sequence\":{d},\"incident_id\":null,\"source_event_id\":null,\"evidence\":0,\"severity\":0,\"confidence\":0,\"source_categories\":[],\"verified\":false,\"error\":\"{s}\"}}", .{ seq, @errorName(err) }) catch return null;
+            }
+        }
+
+        return std.fmt.allocPrint(a, "{{\"available\":true,\"ring_records\":{d},\"retained\":{d},\"scanned\":{d},\"xdr_records\":{d},\"verified\":{d},\"failed\":{d},\"vanished\":{d},\"limit\":{d},\"note\":\"{s}\",\"records\":[{s}]}}", .{
+            total,
+            retained,
+            scanned,
+            xdr_records,
+            verified,
+            failed,
+            vanished,
+            limit,
+            note,
+            rows.items,
+        }) catch null;
+    }
+
     fn policyList(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
         return std.fmt.allocPrint(a, "{{\"policies_loaded\":{}}}", .{state_mod.g_policies_loaded.load(.acquire)}) catch null;
     }
@@ -1006,17 +1140,21 @@ const handlers = struct {
         defer a.free(root);
         const pol = policy_signing.verifyEnvelope(a, root, "policies.json", "policies.sig.json");
         const mir = policy_signing.verifyEnvelope(a, root, "policy_ir.json", "policy_ir.sig.json");
-        return std.fmt.allocPrint(a,
-            "{{\"verified\":{},\"policies\":{{\"present\":{},\"sidecar\":{},\"anchors\":\"{s}\",\"anchors_broken\":{},\"valid\":{},\"reason\":\"{s}\"}},\"policy_ir\":{{\"present\":{},\"sidecar\":{},\"anchors\":\"{s}\",\"anchors_broken\":{},\"valid\":{},\"reason\":\"{s}\"}}}}",
-            .{
-                pol.valid,
-                pol.doc_present, pol.sidecar_present,
-                pol.anchor_source.toString(), pol.anchors_broken,
-                pol.valid, pol.reason.toString(),
-                mir.doc_present, mir.sidecar_present,
-                mir.anchor_source.toString(), mir.anchors_broken,
-                mir.valid, mir.reason.toString(),
-            }) catch null;
+        return std.fmt.allocPrint(a, "{{\"verified\":{},\"policies\":{{\"present\":{},\"sidecar\":{},\"anchors\":\"{s}\",\"anchors_broken\":{},\"valid\":{},\"reason\":\"{s}\"}},\"policy_ir\":{{\"present\":{},\"sidecar\":{},\"anchors\":\"{s}\",\"anchors_broken\":{},\"valid\":{},\"reason\":\"{s}\"}}}}", .{
+            pol.valid,
+            pol.doc_present,
+            pol.sidecar_present,
+            pol.anchor_source.toString(),
+            pol.anchors_broken,
+            pol.valid,
+            pol.reason.toString(),
+            mir.doc_present,
+            mir.sidecar_present,
+            mir.anchor_source.toString(),
+            mir.anchors_broken,
+            mir.valid,
+            mir.reason.toString(),
+        }) catch null;
     }
 
     fn policySimulate(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
@@ -1251,11 +1389,11 @@ const handlers = struct {
         const requested_seq =
             payloadU64(payload, "record_seq") orelse
             payloadU64(payload, "id") orelse {
-                ctx.failure_code = "INVALID_INPUT";
-                ctx.failure_state = "REJECTED";
-                ctx.failure_message = "record_seq is required";
-                return null;
-            };
+            ctx.failure_code = "INVALID_INPUT";
+            ctx.failure_state = "REJECTED";
+            ctx.failure_message = "record_seq is required";
+            return null;
+        };
 
         const ring = state_mod.g_forensic_ring orelse {
             ctx.failure_code = "UNAVAILABLE";
@@ -1284,7 +1422,8 @@ const handlers = struct {
         defer a.free(record);
 
         if (record.len < forensic_pipeline.HEADER_BYTES or
-            !forensic_pipeline.ForensicRing.verifyRecord(record)) {
+            !forensic_pipeline.ForensicRing.verifyRecord(record))
+        {
             ctx.failure_code = "RECORD_INTEGRITY_FAILED";
             ctx.failure_state = "INTEGRITY_ERROR";
             ctx.failure_message = "forensic record verification failed";
@@ -1414,7 +1553,8 @@ const handlers = struct {
             hex[2 * i] = digits[b >> 4];
             hex[2 * i + 1] = digits[b & 0xF];
         }
-        return std.fmt.allocPrint(a,
+        return std.fmt.allocPrint(
+            a,
             "{{\"exported\":true,\"path\":\"{s}\",\"records\":{},\"truncated\":{},\"integrity\":\"ok\",\"sha256\":\"{s}\",\"oldest_record_seq\":{},\"postcondition\":\"WRITTEN_VERIFIED\"}}",
             .{ abs_path, res.records, res.truncated, hex, res.oldest },
         ) catch null;
@@ -1661,18 +1801,12 @@ const handlers = struct {
         var probe = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available.load(.acquire) };
         const provider_ready = probe.providerReady();
         if (!gate_open) {
-            return std.fmt.allocPrint(a,
-                "{{\"simulated\":true,\"enforced\":false,\"host_effect_confirmed\":false,\"action\":\"{s}\",\"severity\":{},\"prevention_gate\":\"closed\",\"provider_ready\":{},\"outcome\":\"allow\",\"reason\":\"prevention_gate_closed;detection-only;pep_not_invoked\"}}",
-                .{ action, sev_val.integer, provider_ready }) catch null;
+            return std.fmt.allocPrint(a, "{{\"simulated\":true,\"enforced\":false,\"host_effect_confirmed\":false,\"action\":\"{s}\",\"severity\":{},\"prevention_gate\":\"closed\",\"provider_ready\":{},\"outcome\":\"allow\",\"reason\":\"prevention_gate_closed;detection-only;pep_not_invoked\"}}", .{ action, sev_val.integer, provider_ready }) catch null;
         }
         if (!provider_ready) {
-            return std.fmt.allocPrint(a,
-                "{{\"simulated\":true,\"enforced\":false,\"host_effect_confirmed\":false,\"action\":\"{s}\",\"severity\":{},\"prevention_gate\":\"open\",\"provider_ready\":false,\"outcome\":\"escalate\",\"reason\":\"provider_unavailable;pep_not_invoked\"}}",
-                .{ action, sev_val.integer }) catch null;
+            return std.fmt.allocPrint(a, "{{\"simulated\":true,\"enforced\":false,\"host_effect_confirmed\":false,\"action\":\"{s}\",\"severity\":{},\"prevention_gate\":\"open\",\"provider_ready\":false,\"outcome\":\"escalate\",\"reason\":\"provider_unavailable;pep_not_invoked\"}}", .{ action, sev_val.integer }) catch null;
         }
-        return std.fmt.allocPrint(a,
-            "{{\"simulated\":true,\"enforced\":false,\"host_effect_confirmed\":false,\"action\":\"{s}\",\"severity\":{},\"prevention_gate\":\"open\",\"provider_ready\":true,\"outcome\":\"would_request\",\"reason\":\"simulation_only;pep_not_invoked;approval_state_pep_held\"}}",
-            .{ action, sev_val.integer }) catch null;
+        return std.fmt.allocPrint(a, "{{\"simulated\":true,\"enforced\":false,\"host_effect_confirmed\":false,\"action\":\"{s}\",\"severity\":{},\"prevention_gate\":\"open\",\"provider_ready\":true,\"outcome\":\"would_request\",\"reason\":\"simulation_only;pep_not_invoked;approval_state_pep_held\"}}", .{ action, sev_val.integer }) catch null;
     }
 
     const VerifyTarget = struct {
@@ -2847,7 +2981,8 @@ test "BE-EXP-099: export honors limit with truncation flagged" {
     try std.testing.expect(res.truncated);
 }
 
-test "BE-EXP-099: export on empty ring writes zero records, still verified" {    var ring = try forensic_pipeline.ForensicRing.initMemory(std.testing.allocator, 4 * forensic_pipeline.RECORD_BYTES);
+test "BE-EXP-099: export on empty ring writes zero records, still verified" {
+    var ring = try forensic_pipeline.ForensicRing.initMemory(std.testing.allocator, 4 * forensic_pipeline.RECORD_BYTES);
     defer ring.deinit(std.testing.allocator);
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
@@ -3026,6 +3161,60 @@ test "DEADCODE-QUARANTINE: incidentsShow requires an id and answers NOT_FOUND ho
     try std.testing.expect(miss == null);
     try std.testing.expectEqualStrings("INCIDENT_NOT_FOUND", ctx.failure_code.?);
     try std.testing.expectEqualStrings("NOT_FOUND", ctx.failure_state.?);
+}
+
+test "XDR-005-B: xdr.verify replays persisted snapshots and reports honest-empty" {
+    const event_mod = @import("../contract/event.zig");
+    const fabric = @import("../xdr/xdr_incident_fabric.zig");
+    const state_mod = @import("../pipeline/runtime_state.zig");
+
+    var ctx = HandlerContext{ .start_ns = 0, .request_id = 51, .caller_role = .read, .caller_pid = 0 };
+
+    // No ring: honest-unavailable body, never an error/throw.
+    const prev = state_mod.g_forensic_ring;
+    state_mod.g_forensic_ring = null;
+    const unavailable = handlers.xdrVerify(std.testing.allocator, .{ .null = {} }, &ctx) orelse return error.TestUnexpectedResult;
+    defer std.testing.allocator.free(unavailable);
+    try std.testing.expect(std.mem.indexOf(u8, unavailable, "\"available\":false") != null);
+
+    var ring = try forensic_pipeline.ForensicRing.initMemory(std.testing.allocator, 8 * forensic_pipeline.RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+    defer state_mod.g_forensic_ring = prev;
+
+    var source_event = event_mod.IpcEvent.init(.signature_match);
+    source_event.timestamp_ns = 1_700_000_000_000_000_000;
+    source_event.event_id = 801;
+    source_event.source = .capture_npcap;
+    source_event.rule_id = 9001;
+
+    var network = fabric.Evidence{ .source = .network, .event_id = 801, .ts_ms = 1700000000000, .severity = 4 };
+    @memcpy(network.entity[0..12], "203.0.113.77");
+    network.entity_len = 12;
+    var host = fabric.Evidence{ .source = .host, .event_id = 802, .ts_ms = 1700000000100, .severity = 3 };
+    @memcpy(host.entity[0..12], "203.0.113.77");
+    host.entity_len = 12;
+    const evidence = [_]fabric.Evidence{ network, host };
+    const recorded = try xdr_evidence_flow.recordAssessment(&ring, &source_event, &evidence, 1700000000200);
+
+    // A newer non-XDR record proves the prefilter skips noise instead of
+    // counting it as a failed snapshot.
+    var plain = event_mod.IpcEvent.init(.packet_captured);
+    plain.event_id = 803;
+    plain.timestamp_ns = 1_700_000_000_500_000_000;
+    _ = ring.append(&plain, "noise", 0, 0, 0, 1);
+
+    state_mod.g_forensic_ring = &ring;
+    const out = handlers.xdrVerify(std.testing.allocator, .{ .null = {} }, &ctx) orelse return error.TestUnexpectedResult;
+    defer std.testing.allocator.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"available\":true") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"xdr_records\":1") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"verified\":1") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"failed\":0") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"source_categories\":[\"network\",\"host\"]") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "token issuance") != null);
+    var seq_buf: [32]u8 = undefined;
+    const seq = try std.fmt.bufPrint(&seq_buf, "\"sequence\":{d}", .{recorded.forensic_sequence});
+    try std.testing.expect(std.mem.indexOf(u8, out, seq) != null);
 }
 
 test "DEADCODE-QUARANTINE: incidentsShow returns exactly the requested incident" {

@@ -38,7 +38,7 @@ const xdr_evidence_flow = @import("../xdr/xdr_evidence_flow.zig");
 /// cannot enter threat scoring or policy/PEP through a shared code path.
 fn isHostTelemetrySource(source: event.EventSource) bool {
     return switch (source) {
-        .capture_etw, .capture_fim, .capture_registry => true,
+        .capture_etw, .capture_fim, .capture_registry, .capture_host_net => true,
         else => false,
     };
 }
@@ -66,6 +66,18 @@ fn xdrEntityKey(sidecar: ?[16]u8, v4: u32, buf: *[64]u8) []const u8 {
         (v4 >> 8) & 0xFF,
         v4 & 0xFF,
     }) catch "";
+}
+
+/// XDR-005-A: the only host evidence the XDR fabric accepts without a
+/// detection identity. Exact tuple, no wildcards: a host socket observation
+/// is `capture_host_net` + `host_socket_observed` + `rule_id == 0` plus a
+/// nonzero peer address. Anything else must follow the detection-identity
+/// path or stay out of XDR entirely.
+fn isXdrHostSocketObservation(ev: *const event.IpcEvent, src6: ?[16]u8) bool {
+    return ev.source == .capture_host_net and
+        ev.kind == .host_socket_observed and
+        ev.rule_id == 0 and
+        (ev.src_ip != 0 or src6 != null);
 }
 
 /// Return an upstream host-detector identity for forensic recording and an
@@ -219,7 +231,9 @@ fn processEvent(
     // FLOW-ID-051: stamp the table's flow identity onto the event. The
     // lookup result used to be discarded, so every event kept flow_id=0
     // and the threat tracker scored the whole world on one shared Flow 0.
-    assignFlowId(ft, ev, fkey);
+    // XDR-005-A: a host socket observation is connection state, not a
+    // packet; it gets no phantom flow and keeps flow_id=0.
+    if (ev.source != .capture_host_net) assignFlowId(ft, ev, fkey);
     t_prev = markStage(.decode_to_flow, t_prev);
 
     // 2. Aho-Corasick signature matching (if rules are loaded)
@@ -245,7 +259,11 @@ fn processEvent(
     }
     state.g_ac_mutex.unlock();
 
-    if (qe.payload_len > 0) {
+    // The host_net payload is a short observation string, not packet bytes:
+    // running the AC matcher over it would fabricate detections from text
+    // that never crossed the wire. Other host producers (ETW/FIM/registry)
+    // keep their existing behavior.
+    if (qe.payload_len > 0 and ev.source != .capture_host_net) {
         if (active_ac) |the_ac| {
             const payload_slice = qe.payload[0..qe.payload_len];
             // GAP-015: matchFirst, not match. The pipeline consumes only
@@ -397,24 +415,30 @@ fn processEvent(
         if (active_incident) |inc| @as(u8, @intFromEnum(inc.severity)) else @as(u8, 0),
     );
 
-    // XDR-WIRE-001: advisory evidence feed. Only detection-identity events
+    // XDR-WIRE-001: advisory evidence feed. Detection-identity events
     // (rule_id != 0) are classified into the XDR evidence fabric; the result
     // is a read-only advisory summary exposed via xdr.list. This call
     // consumes nothing and authorizes nothing: DEFCON, threat scoring,
     // policy, PEP and ActionDispatcher never read the fabric.
+    // XDR-005-A: host socket observations have no detection identity, so
+    // they enter through the host-only pending gate instead. That gate can
+    // join a recent network incident but never opens one by itself.
     // XDR-RECEIPT-002: when the advisory decision freezes (multi-source),
     // the observation batch is recorded to the forensic ring under an IDS
     // Evidence Receipt (recording-only, replay-verifiable). Receipt
     // persistence never feeds policy/PEP/DEFCON under any circumstances.
-    if (detection_rule_id != 0) {
-        if (xdr_runtime.categoryForSource(ev.source)) |xdr_cat| {
-            var xdr_entity: [64]u8 = undefined;
-            const entity = xdrEntityKey(qe.src_ipv6, ev.src_ip, &xdr_entity);
-            if (entity.len > 0) {
-                var xdr_out: xdr_runtime.ObserveOutcome = .{};
+    const host_obs = isXdrHostSocketObservation(ev, qe.src_ipv6);
+    if (detection_rule_id != 0 or host_obs) {
+        var xdr_entity: [64]u8 = undefined;
+        const entity = xdrEntityKey(qe.src_ipv6, ev.src_ip, &xdr_entity);
+        if (entity.len > 0) {
+            var xdr_out: xdr_runtime.ObserveOutcome = .{};
+            if (host_obs and detection_rule_id == 0) {
+                _ = xdr_runtime.observeHostObservation(&xdr_out, entity, @intFromEnum(ev_severity), ev);
+            } else if (xdr_runtime.categoryForSource(ev.source)) |xdr_cat| {
                 _ = xdr_runtime.observeEvent(&xdr_out, xdr_cat, entity, @intFromEnum(ev_severity), ev);
-                _ = recordXdrAdvisoryReceipt(forensic_ring, &xdr_out, ev);
             }
+            _ = recordXdrAdvisoryReceipt(forensic_ring, &xdr_out, ev);
         }
     }
     t_prev = markStage(.detection_to_correlation, t_prev);
@@ -925,6 +949,39 @@ test "brainInspect is a safe no-op without detections or loop" {
     brainInspect(&ev, 4242, .alert, .alert);
     brainInspect(&ev, 0, .info, .pass);
     state.g_brain_enabled.store(false, .release);
+}
+
+test "XDR-005-A: host socket predicate is an exact tuple" {
+    var ev = event.IpcEvent.init(.host_socket_observed);
+    ev.source = .capture_host_net;
+    ev.src_ip = 0xC0A87E0A;
+
+    try std.testing.expect(isXdrHostSocketObservation(&ev, null));
+    var entity_buf: [64]u8 = undefined;
+    try std.testing.expectEqualStrings("v4:192.168.126.10", xdrEntityKey(null, ev.src_ip, &entity_buf));
+
+    // A detection identity is never a host socket observation.
+    ev.rule_id = 9001;
+    try std.testing.expect(!isXdrHostSocketObservation(&ev, null));
+    ev.rule_id = 0;
+
+    // Wrong kind/source are refused.
+    ev.kind = .signature_match;
+    try std.testing.expect(!isXdrHostSocketObservation(&ev, null));
+    ev.kind = .host_socket_observed;
+    ev.source = .capture_etw;
+    try std.testing.expect(!isXdrHostSocketObservation(&ev, null));
+    ev.source = .capture_host_net;
+
+    // No peer address at all is refused; a v6 sidecar is an address.
+    ev.src_ip = 0;
+    try std.testing.expect(!isXdrHostSocketObservation(&ev, null));
+    const v6 = [_]u8{0} ** 16;
+    try std.testing.expect(isXdrHostSocketObservation(&ev, v6));
+
+    // Host_net is host telemetry, so policy/threat/policy paths exclude it.
+    try std.testing.expect(isHostTelemetrySource(.capture_host_net));
+    try std.testing.expectEqual(@as(u32, 0), hostDetectorRuleId(&ev));
 }
 
 test "IDS-HOST-004: host detector identity is evidence-only" {

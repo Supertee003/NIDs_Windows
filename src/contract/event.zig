@@ -66,6 +66,9 @@ pub const EventKind = enum(u8) {
     fim_change = 75,
     reg_change = 76,
     injection_detected = 77,
+    /// XDR-005-A: one newly observed established TCP endpoint pair from the
+    /// Windows owner-PID table. Evidence-only; never a detection identity.
+    host_socket_observed = 78,
     federation_heartbeat = 90,
     federation_aggregate = 91,
     federation_leader_change = 92,
@@ -106,6 +109,9 @@ pub const EventSource = enum(u8) {
     capture_fim = 3,
     capture_registry = 4,
     capture_pipe_monitor = 5,
+    /// XDR-005-A: Windows TCP table observation (GetExtendedTcpTable).
+    /// Host evidence, not a network capture and not a detection source.
+    capture_host_net = 6,
     detection_sig = 10,
     detection_anom = 11,
     detection_corr = 12,
@@ -134,6 +140,7 @@ pub fn legacySourceName(ordinal: u8, buf: []u8) []const u8 {
         3 => "capture_fim",
         4 => "capture_registry",
         5 => "capture_pipe_monitor",
+        6 => "capture_host_net",
         10 => "detection_sig",
         11 => "detection_anom",
         12 => "detection_corr",
@@ -267,6 +274,7 @@ test "legacySourceName covers every named source, formats the rest (GAP-015)" {
     try std.testing.expectEqualStrings("capture_etw", legacySourceName(2, &buf));
     try std.testing.expectEqualStrings("capture_fim", legacySourceName(3, &buf));
     try std.testing.expectEqualStrings("capture_registry", legacySourceName(4, &buf));
+    try std.testing.expectEqualStrings("capture_host_net", legacySourceName(6, &buf));
     try std.testing.expectEqualStrings("capture_wfp", legacySourceName(21, &buf));
     try std.testing.expectEqualStrings("system", legacySourceName(99, &buf));
     // Pipe-sensor JSON arrives as .system (nids_capture); it must stay

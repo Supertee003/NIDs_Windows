@@ -11,6 +11,7 @@ const diag = @import("../core/diagnostics.zig");
 const etw = @import("../windows/etw_realtime.zig");
 const fim_mod = @import("../windows/fim.zig");
 const reg_mon = @import("../windows/registry_monitor.zig");
+const host_net = @import("../windows/host_net.zig");
 const state = @import("runtime_state.zig");
 const queue = @import("event_queue.zig");
 
@@ -369,6 +370,89 @@ pub fn registryThread(monitor: *reg_mon.RegistryMonitor) void {
         std.time.sleep(500 * std.time.ns_per_ms); // poll every 500ms
     }
     diag.info("Registry thread stopped", .{});
+}
+
+/// XDR-005-A: observe-only Windows TCP endpoint telemetry. Polls the owner-
+/// PID tables, diffs against the previous snapshot, and pushes one
+/// `host_socket_observed` event per newly seen established connection.
+///
+/// The loop beats the watchdog every iteration, including table-query
+/// errors: an advisory source must never cause a daemon restart. Queue
+/// refusals are visible in `queue.stats.by_source.capture_host_net`.
+pub fn hostNetThread() void {
+    diag.info("host_net thread starting", .{});
+    if (builtin.os.tag != .windows) {
+        diag.info("host_net: non-Windows platform, skipping", .{});
+        return;
+    }
+    defer host_net.noteStopped();
+
+    const poll_ms = host_net.pollIntervalMs();
+    diag.info("host_net observe-only TCP table polling active interval_ms={d}", .{poll_ms});
+
+    var tracker = host_net.Tracker{};
+    var rows: [host_net.MAX_TRACKED]host_net.Observed = undefined;
+    var emit_buf: [host_net.MAX_EMIT_PER_POLL]host_net.Observed = undefined;
+    var poll_errors: u64 = 0;
+
+    while (!state.g_stop_requested.load(.acquire)) {
+        state.g_wd.beatLazy(&state.g_wd_hostnet_slot, .host_telemetry, "hostnet");
+
+        const result = host_net.poll(&rows) catch |err| {
+            poll_errors += 1;
+            host_net.notePollError();
+            // Advisory source: log the first failure and then sparsely.
+            // Every attempt still beats the watchdog above.
+            if (poll_errors == 1 or poll_errors % 60 == 0) {
+                diag.warn("host_net poll failed ({d} total): {}", .{ poll_errors, err });
+            }
+            hostNetSleepInterruptible(poll_ms);
+            continue;
+        };
+
+        host_net.notePoll(result);
+        const emitted = tracker.diff(rows[0..result.count], &emit_buf);
+        host_net.noteTracker(&tracker);
+        for (emit_buf[0..emitted]) |*observed| {
+            emitHostObservation(observed);
+        }
+        host_net.noteEmitted(emitted);
+
+        hostNetSleepInterruptible(poll_ms);
+    }
+
+    host_net.noteTracker(&tracker);
+    diag.info("host_net thread stopped", .{});
+}
+
+fn emitHostObservation(observed: *const host_net.Observed) void {
+    var payload_buf: [160]u8 = undefined;
+    const payload = host_net.formatPayload(observed, &payload_buf);
+
+    var ev = host_net.toIpcEvent(observed);
+    // Same process-wide sequence as the ETW adapter: downstream trace,
+    // forensic and XDR joins need one monotonic event identity.
+    ev.event_id = diag.metrics.events_emitted.next();
+    ev.setPayload(payload);
+
+    const accepted = switch (observed.family) {
+        .v4 => queue.pushEvent(ev, payload),
+        .v6 => queue.pushEventWithAddrs(ev, payload, observed.remote_addr, observed.local_addr),
+    };
+    if (!accepted) {
+        // queue.stats counts the refusal in by_source.capture_host_net; no
+        // second private counter is needed and no observation is retried
+        // (the next table poll would see the same live connection).
+    }
+}
+
+fn hostNetSleepInterruptible(ms: u32) void {
+    var remaining = ms;
+    while (remaining > 0 and !state.g_stop_requested.load(.acquire)) {
+        const step = @min(remaining, 50);
+        std.time.sleep(step * std.time.ns_per_ms);
+        remaining -= step;
+    }
 }
 
 test "ETW classifier gates pinned to host manifest ground truth (EVT-091)" {

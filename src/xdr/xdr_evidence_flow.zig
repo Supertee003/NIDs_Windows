@@ -40,6 +40,11 @@ pub const ReplayOutcome = struct {
     source_event_id: u64,
     forensic_sequence: u64,
     decision: xdr.Decision,
+    /// Number of persisted observation rows replayed from the snapshot.
+    evidence_count: usize = 0,
+    /// Ordered source categories present in the rebuilt incident. Only the
+    /// first `decision.source_categories_used` entries are valid.
+    categories: [xdr.MAX_EVIDENCE]xdr.SourceCategory = undefined,
 };
 
 const Snapshot = struct {
@@ -140,26 +145,106 @@ pub fn replayFromReceipt(
     if (!receipt.isNonEnforcement()) return error.InvalidReceipt;
     if (receipt.detector_id != XDR_DETECTOR_ID or receipt.detector_version != XDR_DETECTOR_VERSION) return error.WrongDetector;
     if (receipt.forensic_sequence == 0) return error.InvalidSequence;
+    return replaySlot(allocator, ring, receipt.forensic_sequence, .{
+        .event_id = receipt.event_id,
+        .payload_hash = receipt.payload_hash,
+        .incident_id = receipt.incident_id,
+        .record_hash = receipt.forensic_hash,
+        .require_zig_core = true,
+    });
+}
 
-    const slot = ring.readRecord(receipt.forensic_sequence - 1, allocator) orelse return error.ForensicRecordUnavailable;
+/// XDR-005-B: verify and replay a persisted multi-source snapshot record from
+/// its one-based append ordinal, without a receipt token.
+///
+/// This proves the record's CRC, its authenticated per-record hash, its
+/// linkage to the previous retained record, and that replaying the snapshot
+/// reproduces the decision it recorded. It does NOT prove that an IDS receipt
+/// token was ever issued: receipt tokens are never persisted (by design), so
+/// issuance is live evidence in `xdr.list` (`receipts_recorded` / `failed`).
+///
+/// Read-only: nothing is written to the ring and no detection/policy/PEP path
+/// is executed.
+pub fn replayRecord(
+    allocator: std.mem.Allocator,
+    ring: *forensic.ForensicRing,
+    forensic_sequence: u64,
+) !ReplayOutcome {
+    return replaySlot(allocator, ring, forensic_sequence, .{});
+}
+
+const ReplayExpectations = struct {
+    event_id: ?u64 = null,
+    payload_hash: ?u32 = null,
+    incident_id: ?u64 = null,
+    /// Stored authenticated hash a receipt claims for this sequence. Only a
+    /// receipt can supply it; post-hoc replay verifies the record itself.
+    record_hash: ?[forensic.HASH_BYTES]u8 = null,
+    require_zig_core: bool = false,
+};
+
+fn replaySlot(
+    allocator: std.mem.Allocator,
+    ring: *forensic.ForensicRing,
+    forensic_sequence: u64,
+    expect: ReplayExpectations,
+) !ReplayOutcome {
+    if (forensic_sequence == 0) return error.InvalidSequence;
+    const slot = ring.readRecord(forensic_sequence - 1, allocator) orelse return error.ForensicRecordUnavailable;
     defer allocator.free(slot);
+    if (slot.len != forensic.RECORD_BYTES) return error.InvalidForensicPayload;
     if (!forensic.ForensicRing.verifyRecord(slot)) return error.ForensicCrcMismatch;
     if (!forensic.ForensicRing.verifyRecordHash(slot)) return error.ForensicHashMismatch;
 
     const header = std.mem.bytesAsValue(forensic.RecordHeader, slot[0..forensic.HEADER_BYTES]);
-    if (header.record_seq != receipt.forensic_sequence - 1 or header.ev_id != receipt.event_id or
-        header.kind != @intFromEnum(event.EventKind.correlation_match) or header.rule_id != MULTI_SOURCE_RULE_ID or
-        header.policy_id != 0 or header.pep_decision != 0 or receipt.source != .zig_core)
+    // A wrapped slot still resolves to this offset but holds a different
+    // record; sequence identity is part of the proof, not an assumption.
+    if (header.record_seq != forensic_sequence - 1) return error.ForensicRecordUnavailable;
+    if (header.kind != @intFromEnum(event.EventKind.correlation_match) or
+        header.rule_id != MULTI_SOURCE_RULE_ID or
+        header.policy_id != 0 or header.pep_decision != 0)
     {
         return error.ReceiptRecordMismatch;
     }
-    const hash = ring.recordHash(receipt.forensic_sequence) orelse return error.ForensicRecordUnavailable;
-    if (!std.mem.eql(u8, &hash, &receipt.forensic_hash)) return error.ReceiptHashMismatch;
+    if (expect.event_id) |id| {
+        if (header.ev_id != id) return error.ReceiptRecordMismatch;
+    }
+    if (expect.require_zig_core) {
+        if (forensic.canonicalSourceFromRecord(header.reserved[6], header.reserved[5]) != .zig_core) {
+            return error.ReceiptRecordMismatch;
+        }
+    }
+    if (expect.record_hash) |want| {
+        const hash = ring.recordHash(forensic_sequence) orelse return error.ForensicRecordUnavailable;
+        if (!std.mem.eql(u8, &hash, &want)) return error.ReceiptHashMismatch;
+    }
+    // Ring-wrap linkage: when the previous retained record is intact, its
+    // current hash must be this record's committed prev hash. The oldest
+    // retained record's predecessor has been overwritten, so linkage is
+    // skipped there (its own hash still commits to the stored prev hash).
+    if (forensic_sequence > 1) {
+        if (ring.readRecord(forensic_sequence - 2, allocator)) |prev_slot| {
+            defer allocator.free(prev_slot);
+            if (prev_slot.len == forensic.RECORD_BYTES) {
+                const prev_header = std.mem.bytesAsValue(forensic.RecordHeader, prev_slot[0..forensic.HEADER_BYTES]);
+                if (prev_header.magic == forensic.RECORD_MAGIC and
+                    prev_header.record_seq == forensic_sequence - 2 and
+                    !std.mem.eql(u8, &header.prev_hash, &prev_header.current_hash))
+                {
+                    return error.ForensicChainMismatch;
+                }
+            }
+        }
+    }
 
     const view = forensic.decodeRecordPayload(slot) orelse return error.InvalidForensicPayload;
-    if (event.fnv1a32(view.payload) != receipt.payload_hash) return error.PayloadHashMismatch;
+    if (expect.payload_hash) |hash| {
+        if (event.fnv1a32(view.payload) != hash) return error.PayloadHashMismatch;
+    }
     const snapshot = try decodeSnapshot(view.payload);
-    if (snapshot.incident_id != receipt.incident_id) return error.ReceiptIncidentMismatch;
+    if (expect.incident_id) |id| {
+        if (snapshot.incident_id != id) return error.ReceiptIncidentMismatch;
+    }
 
     var fabric = xdr.Fabric{};
     for (snapshot.evidence[0..snapshot.evidence_count]) |observation| {
@@ -177,12 +262,21 @@ pub fn replayFromReceipt(
     if (replayed.source_categories_used < 2 or fabric.incidents[0].incident_id != snapshot.incident_id or !sameDecision(replayed, snapshot.decision)) {
         return error.ReplayMismatch;
     }
-    return .{
+    var outcome = ReplayOutcome{
         .incident_id = snapshot.incident_id,
         .source_event_id = snapshot.source_event_id,
-        .forensic_sequence = receipt.forensic_sequence,
+        .forensic_sequence = forensic_sequence,
         .decision = replayed,
+        .evidence_count = snapshot.evidence_count,
     };
+    var category_count: usize = 0;
+    for (xdr.SOURCE_CATEGORIES) |cat| {
+        if (fabric.incidents[0].hasSource(cat)) {
+            outcome.categories[category_count] = cat;
+            category_count += 1;
+        }
+    }
+    return outcome;
 }
 
 fn encodeSnapshot(
@@ -349,6 +443,49 @@ test "XDR assessment persists, issues an IDS receipt, and replays from the recor
     verifier.finalize();
     try std.testing.expect(verifier.decision.pass);
     try std.testing.expectEqual(@as(u64, 1), verifier.decision.events_matched);
+}
+
+test "XDR-005-B: replayRecord verifies a persisted snapshot and fails closed" {
+    var ring = try forensic.ForensicRing.initMemory(std.testing.allocator, 16 * 1024);
+    defer ring.deinit(std.testing.allocator);
+
+    var source_event = event.IpcEvent.init(.signature_match);
+    source_event.timestamp_ns = 1_700_000_000_000_000_000;
+    source_event.event_id = 61;
+    source_event.source = .capture_npcap;
+    source_event.rule_id = 9001;
+
+    var network = xdr.Evidence{ .source = .network, .event_id = 61, .ts_ms = 1700000000000, .severity = 4 };
+    @memcpy(network.entity[0..11], "203.0.113.9");
+    network.entity_len = 11;
+    var host = xdr.Evidence{ .source = .host, .event_id = 62, .ts_ms = 1700000000100, .severity = 3 };
+    @memcpy(host.entity[0..11], "203.0.113.9");
+    host.entity_len = 11;
+    const evidence = [_]xdr.Evidence{ network, host };
+
+    const recorded = try recordAssessment(&ring, &source_event, &evidence, 1700000000200);
+    const replayed = try replayRecord(std.testing.allocator, &ring, recorded.forensic_sequence);
+    try std.testing.expectEqual(recorded.incident_id, replayed.incident_id);
+    try std.testing.expectEqual(recorded.source_event_id, replayed.source_event_id);
+    try std.testing.expectEqual(@as(usize, 2), replayed.evidence_count);
+    try std.testing.expectEqual(xdr.SourceCategory.network, replayed.categories[0]);
+    try std.testing.expectEqual(xdr.SourceCategory.host, replayed.categories[1]);
+    try std.testing.expect(sameDecision(recorded.decision, replayed.decision));
+
+    // Out-of-range and zero sequences fail closed, never "verified".
+    try std.testing.expectError(error.ForensicRecordUnavailable, replayRecord(std.testing.allocator, &ring, ring.recordCount() + 1));
+    try std.testing.expectError(error.InvalidSequence, replayRecord(std.testing.allocator, &ring, 0));
+
+    // A non-XDR record is refused by header kind/rule before any replay.
+    var plain = event.IpcEvent.init(.packet_captured);
+    plain.timestamp_ns = 1;
+    plain.event_id = 63;
+    const plain_seq = ring.append(&plain, "not-an-xdr-snapshot", 0, 0, 0, 1);
+    try std.testing.expectError(error.ReceiptRecordMismatch, replayRecord(std.testing.allocator, &ring, plain_seq));
+
+    // Payload tampering breaks CRC before any replay work happens.
+    ring.storage[forensic.HEADER_BYTES] ^= 0xFF;
+    try std.testing.expectError(error.ForensicCrcMismatch, replayRecord(std.testing.allocator, &ring, recorded.forensic_sequence));
 }
 
 test "XDR runtime freeze batch records and replays through the evidence flow" {

@@ -65,6 +65,7 @@ comptime {
     _ = @import("tests/windows/etw_realtime.zig");
     _ = @import("tests/windows/fim.zig");
     _ = @import("tests/windows/registry_monitor.zig");
+    _ = @import("tests/windows/host_net.zig");
     _ = @import("tests/windows/injection_detector.zig");
     _ = @import("tests/windows/host_telemetry.zig");
     _ = @import("windows/adapter_contract.zig");

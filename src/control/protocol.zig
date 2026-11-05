@@ -44,6 +44,8 @@ pub const Command = enum(u16) {
     incidents_show = 501,
     // XDR-WIRE-001: advisory read-only evidence view (no action field).
     xdr_list = 510,
+    // XDR-005-B: replay-verify persisted advisory snapshots (read-only).
+    xdr_verify = 511,
 
     // --- policy domain ---
     policy_list = 600,
@@ -98,6 +100,7 @@ pub const Command = enum(u16) {
             .{ .name = "incidents.list", .cmd = .incidents_list },
             .{ .name = "incidents.show", .cmd = .incidents_show },
             .{ .name = "xdr.list", .cmd = .xdr_list },
+            .{ .name = "xdr.verify", .cmd = .xdr_verify },
             .{ .name = "policy.list", .cmd = .policy_list },
             .{ .name = "policy.validate", .cmd = .policy_validate },
             .{ .name = "policy.verify", .cmd = .policy_verify },
@@ -228,6 +231,7 @@ pub fn contract(cmd: Command) CommandContract {
         .incidents_list => .{ .command = cmd, .name = "incidents.list", .required_role = .read, .description = "List incidents", .is_mutation = false, .has_postcondition = false },
         .incidents_show => .{ .command = cmd, .name = "incidents.show", .required_role = .read, .description = "Show incident details", .is_mutation = false, .has_postcondition = false },
         .xdr_list => .{ .command = cmd, .name = "xdr.list", .required_role = .read, .description = "List advisory XDR evidence incidents (read-only, never a host action)", .is_mutation = false, .has_postcondition = false },
+        .xdr_verify => .{ .command = cmd, .name = "xdr.verify", .required_role = .read, .description = "Replay-verify persisted advisory XDR snapshots (read-only, never a host action)", .is_mutation = false, .has_postcondition = false },
 
         // --- policy domain ---
         .policy_list => .{ .command = cmd, .name = "policy.list", .required_role = .read, .description = "List policies", .is_mutation = false, .has_postcondition = false },
@@ -295,7 +299,7 @@ pub const Result = struct {
 
     pub fn errorResult(code: []const u8, state: []const u8, message: []const u8) Result {
         return .{ .ok = false, .code = code, .state = state, .data = .{ .object = .{
-            .{"message", .{ .string = message }},
+            .{ "message", .{ .string = message } },
         } } };
     }
 };
@@ -361,6 +365,21 @@ test "contracts: federation.status is read-only" {
     try std.testing.expectEqual(Role.read, c_fed.required_role);
     try std.testing.expect(!c_fed.is_mutation);
     try std.testing.expect(!c_fed.has_postcondition);
+}
+
+test "contracts: XDR surfaces are read-only and never postconditioned" {
+    // XDR-WIRE-001 / XDR-005-B: both views are evidence reads. A mutation or
+    // postcondition flag here would imply the control plane acts on the host.
+    const c_list = contract(.xdr_list);
+    try std.testing.expectEqual(Role.read, c_list.required_role);
+    try std.testing.expect(!c_list.is_mutation);
+    try std.testing.expect(!c_list.has_postcondition);
+
+    const c_verify = contract(.xdr_verify);
+    try std.testing.expectEqual(Role.read, c_verify.required_role);
+    try std.testing.expect(!c_verify.is_mutation);
+    try std.testing.expect(!c_verify.has_postcondition);
+    try std.testing.expectEqual(Command.xdr_verify, Command.fromString("xdr.verify").?);
 }
 
 test "contracts: two-person commands are privileged mutations" {

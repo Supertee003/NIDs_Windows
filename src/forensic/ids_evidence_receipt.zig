@@ -88,6 +88,7 @@ fn sourceOf(source: event.EventSource) canonical.EventSource {
         .capture_etw => .host_telemetry,
         .capture_fim => .file_sensor,
         .capture_registry => .registry_sensor,
+        .capture_host_net => .host_telemetry,
         .capture_pipe_monitor => .pipe_monitor,
         .capture_wfp => .wfp_sensor,
         .detection_brain => .python_brain,

@@ -318,3 +318,7 @@ pub var g_wd_sensor_slot: ?usize = null;
 pub var g_wd_etw_slot: ?usize = null;
 pub var g_wd_fim_slot: ?usize = null;
 pub var g_wd_registry_slot: ?usize = null;
+/// XDR-005-A: host_net is an advisory telemetry source; it beats the generic
+/// host-telemetry watchdog from its own loop and is not part of the startup
+/// readiness barrier.
+pub var g_wd_hostnet_slot: ?usize = null;
