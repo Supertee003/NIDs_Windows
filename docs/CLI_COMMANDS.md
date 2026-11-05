@@ -46,6 +46,7 @@ python tools/aegisctl.py start
 python tools/aegisctl.py status
 python tools/aegisctl.py stop
 python tools/aegisctl.py version
+python tools/aegisctl.py xdr
 ```
 
 Nested command help is available from the parent command, for example:

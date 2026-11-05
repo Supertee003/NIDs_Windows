@@ -1,7 +1,7 @@
 {
  "head_sha": "fc108b06a3451042ecb615f3f7d994737869a33c",
  "created_at": "2026-09-24",
- "last_updated_at": "2026-11-04",
+ "last_updated_at": "2026-11-05",
  "generator_version": "3.0",
  "evidence_levels": {
   "E0": "No evidence",
@@ -3689,6 +3689,66 @@
     "Readiness degradation is pre-existing data-loss health reporting, unrelated to the canary."
    ],
    "evidence_artifact": "admin-evidence/rb021-canary-20261104/closeout.md"
+  },
+  {
+   "id": "XDR-005-HOSTNET-WIRING-E2-20261105",
+   "head_sha": "13a9ad10fc0a09ce380482c2ebe2fc0b3bfcb49e",
+   "timestamp": "2026-11-05",
+   "title": "XDR-005 host TCP wiring lands in-tree and test-proven at fc108b0: EventKind 78, pending join, xdr.verify replay read-only",
+   "level": "E2",
+   "component": "src/windows/host_net.zig + xdr_runtime/xdr_evidence_flow + event_processor/telemetry_threads + control handler_registry/protocol",
+   "flow_id": "XDR-005 (host observation -> pending join -> advisory freeze -> receipt -> replay verify)",
+   "patch_id": "XDR-005-A + XDR-005-B",
+   "target_head": "bb61f352420071842f23aa2f76c5c2bfbd412ac9",
+   "final_head": "13a9ad10fc0a09ce380482c2ebe2fc0b3bfcb49e",
+   "build_source": "fc108b06a3451042e6b3c1",
+   "installed_sha256": null,
+   "description": "PATCH-ID XDR-005-A/B at commit 0d8d93e adds observe-only Windows TCP table polling: host observations join a recent network incident or wait in a bounded pending table, the entity key stays event source IP, and xdr.verify replays the persisted snapshot read-only. fc108b0 keeps production building (u32 poll-sleep step). Worktree binary rebuilt: zig-out/bin/aegis_nids.exe sha256 eb9f44ab..., 12,028,928 bytes. IN-SCOPE observe-only host TCP polling; OUT-OF-SCOPE any policy/PEP/DEFCON input, host effect, receipt-token persistence.",
+   "expected": "All unit + contract tests for the new wiring pass on the tree and the production executable still builds from source; nothing is deployed or host-activated.",
+   "tests": [
+    "tests/security/test_xdr_wire_advisory.py 8/8 passed (rc=0)",
+    "zig build test across the whole tree: exit 0 at fc108b0",
+    "python tools/truth.py verify: TRUTH_VALID, source fc108b0 ancestor of HEAD, worktree clean",
+    "python tools/release_engineering.py --verify: 651/651 artifacts match digests"
+   ],
+   "result": "PASS_E2_IN_TREE; not deployed; host proof still open",
+   "actual": "Both the slice's pytest (8/8) and the full zig test build (exit 0) pass at current HEAD; the release truth gates are green. The live daemon still runs the installed f7c626d image (D34D350A...), so none of the new wiring is host-verified yet.",
+   "limits": [
+    "No Windows E5 host verification of the host-polling path; the deployed daemon unchanged.",
+    "Multi-source freeze/receipt/replay across real traffic still awaits install + multi-source lab traffic.",
+    "installed_sha256 is None: the entry covers tree-level proof only."
+   ],
+   "evidence_artifact": "docs/XDR-005_MULTISOURCE_SLICE_DESIGN.md"
+  },
+  {
+   "id": "STIX-EXPORT-ADAPTER-E2-20261105",
+   "head_sha": "6b3c4ff429b0c46a6ca34adf56e5b7bb094298fe",
+   "timestamp": "2026-11-05",
+   "title": "Read-only STIX 2.1 export of xdr.list incidents: deterministic SCO ids, validated bundle, live daemon export of 10 objects",
+   "level": "E2",
+   "component": "tools/stix_export.py + tests/tools/test_stix_export.py (advisory export surface, no runtime change)",
+   "flow_id": "STIX-EXPORT (xdr.list -> observed-data + SCO bundle)",
+   "patch_id": "STIX-EXPORT-001",
+   "target_head": "13a9ad10fc0a09ce380482c2ebe2fc0b3bfcb49e",
+   "final_head": "6b3c4ff429b0c46a6ca34adf56e5b7bb094298fe",
+   "build_source": "fc108b06a3451042ecb615f3f7d994737869a33c",
+   "installed_sha256": null,
+   "description": "Advisory adapter maps each xdr.list incident to an observed-data SDO referencing an ipv4-addr/ipv6-addr SCO with deterministic UUIDv5 ids in a fixed project namespace. AEGIS facts ride on x_aegis_* custom properties. Unvalidatable entities are counted and skipped, never guessed; evidence=0 renders number_observed=1 per the STIX minimum; no indicator objects because the control view carries no rule attribution. CLI reads a captured file or performs a read-only daemon query and fails closed on malformed input (exit 2).",
+   "expected": "Unit tests cover entity validation (leading-zero octets rejected, packed v6 unpacked/compressed), determinism, skip-counting, bundle shape and CLI fail-closed behavior; a live read-only export produces a structurally valid bundle.",
+   "tests": [
+    "pytest tests/tools/test_stix_export.py: 33/33 passed",
+    "tests/brain/test_import_hygiene.py: 2/2 passed (module import has no host effects)",
+    "live export (read-only daemon query): WROTE 10 objects, incidents=5, skipped=0, exit 0",
+    "build_bundle output validates clean: validate_bundle errors == []"
+   ],
+   "result": "PASS_E2_ADVISORY_EXPORT; runtime untouched, detection-only gate unaffected",
+   "actual": "All 33 unit tests and both import-hygiene pins pass; the live daemon export produced admin-evidence/stix-export-20261105/xdr-20261105.stix.json with 5 observed-data objects, 5 deterministic SCOs and zero skipped entities, shape-validated clean.",
+   "limits": [
+    "Summary-level only: xdr.list carries counters, not raw findings or rule attribution, so no indicator/observables beyond IPs.",
+    "No TAXII transport; export is file/stdout.",
+    "E2 advisory surface only: this proves nothing about detection or host behavior."
+   ],
+   "evidence_artifact": "admin-evidence/stix-export-20261105/xdr-20261105.stix.json"
   }
  ],
  "known_gaps": [
@@ -9319,7 +9379,8 @@
    "result": "PASS_READ_ONLY_PREFLIGHT",
    "finding": "Manifest drift is resolved. Installed service hash mismatch, current-source deployment, and Windows E5 remain OPEN.",
    "evidence_artifact": "admin-evidence/rel-manifest-refresh-20261101/closeout.md"
-  },   {
+  },
+  {
    "id": "XDR-WIRE-001",
    "head_sha": null,
    "timestamp": "2026-11-02",
@@ -9343,13 +9404,14 @@
     "zig build test --summary all: exit 0",
     "pytest tests/security/test_xdr_wire_advisory.py tests/ips/test_t18_ips_canary_xdr.py: 23 passed"
    ],
-   "result_note": "Advisory-only read-only wiring; full source-to-forensic-receipt integration (IDS-XDR-005) remains OPEN",  "evidence_artifact": "admin-evidence/xdr-wire-001-20261102/closeout.md"
+   "result_note": "Advisory-only read-only wiring; full source-to-forensic-receipt integration (IDS-XDR-005) remains OPEN",
+   "evidence_artifact": "admin-evidence/xdr-wire-001-20261102/closeout.md"
   },
   {
    "id": "IDS-XDR-005-WIRING-OPEN",
    "severity": "P2",
    "title": "Selected XDR evidence authority is advisory-wired; source-to-forensic receipt/replay is E2-proven, Windows E5 still open",
-   "description": "src/xdr/xdr_incident_fabric.zig is advisory-wired (XDR-WIRE-001): detection-identity events fold into the fabric and xdr.list exposes its advisory view and receipt counters. XDR-RECEIPT-002 now persists frozen multi-source assessments to the hash-chained forensic ring, issues an IDS Evidence Receipt after hash read-back, and replays the assessment. Remaining gap: no Windows E5 host proof of the recording-only route. Current-source deployment and canary evidence now exists (E5-DEPLOY-F7C626D, RB-021-CANARY-F7C626D-20261104), and the 2026-11-04 RB-021 canary proves the current-source wire/detection path on the Windows host, but it is single-source: xdr.list after the restore restart reports evidence_total=0, receipts_recorded=0 and incidents=[], and no frozen multi-source assessment or replay was exercised. The host proof of the recording-only receipt/replay route is therefore still missing. A read-only reachability audit on 2026-11-04 found a structural blocker: the multi-source freeze trigger cannot fire from the live production ingest at current HEAD. The XDR entity key is the event source IP (src/pipeline/event_processor.zig:412, empty at :62 when the IPv4 source is zero), and only the network producers populate it. ETW, FIM, Registry and Minifilter events leave src_ip at zero (src/pipeline/telemetry_threads.zig:147-152,314-318,362-366; src/capture/minifilter_reader.zig:225-235), and federation is status-only in this standalone daemon (src/control/protocol.zig:259-260). All live XDR evidence therefore lands in the single 'network' category, so distinctSources can never reach the two-category threshold at src/xdr/xdr_runtime.zig:173. The E2 receipt/replay proof is unchanged, but no lab canary can close the E5 route until the entity/category wiring is fixed or explicitly redefined. Tracked as XDR-005-LIVE-MULTISOURCE-UNREACHABLE.",
+   "description": "src/xdr/xdr_incident_fabric.zig is advisory-wired (XDR-WIRE-001): detection-identity events fold into the fabric and xdr.list exposes its advisory view and receipt counters. XDR-RECEIPT-002 now persists frozen multi-source assessments to the hash-chained forensic ring, issues an IDS Evidence Receipt after hash read-back, and replays the assessment. Remaining gap: no Windows E5 host proof of the recording-only route. Current-source deployment and canary evidence now exists (E5-DEPLOY-F7C626D, RB-021-CANARY-F7C626D-20261104), and the 2026-11-04 RB-021 canary proves the current-source wire/detection path on the Windows host, but it is single-source: xdr.list after the restore restart reports evidence_total=0, receipts_recorded=0 and incidents=[], and no frozen multi-source assessment or replay was exercised. The host proof of the recording-only receipt/replay route is therefore still missing. A read-only reachability audit on 2026-11-04 found a structural blocker: the multi-source freeze trigger cannot fire from the live production ingest at current HEAD. The XDR entity key is the event source IP (src/pipeline/event_processor.zig:412, empty at :62 when the IPv4 source is zero), and only the network producers populate it. ETW, FIM, Registry and Minifilter events leave src_ip at zero (src/pipeline/telemetry_threads.zig:147-152,314-318,362-366; src/capture/minifilter_reader.zig:225-235), and federation is status-only in this standalone daemon (src/control/protocol.zig:259-260). All live XDR evidence therefore lands in the single 'network' category, so distinctSources can never reach the two-category threshold at src/xdr/xdr_runtime.zig:173. The E2 receipt/replay proof is unchanged, but no lab canary can close the E5 route until the entity/category wiring is fixed or explicitly redefined. Tracked as XDR-005-LIVE-MULTISOURCE-UNREACHABLE. UPDATE 2026-11-05: the host TCP wiring itself is now in-tree and E2-proven (XDR-005-HOSTNET-WIRING-E2-20261105); a STIX 2.1 advisory export of the fabric exists (STIX-EXPORT-ADAPTER-E2-20261105). OPEN unchanged: deployed f7c626d daemon cannot yet prove either path on the host; close after installing the fc108b0 build and exercising multi-source traffic.",
    "status": "OPEN",
    "found_at": "2026-10-31",
    "tracking": "GitHub issue #26 / IDS-XDR-005",
@@ -9422,7 +9484,7 @@
    "id": "XDR-005-LIVE-MULTISOURCE-UNREACHABLE",
    "severity": "P2",
    "title": "XDR multi-source assessments are unreachable from live ingest: only network events carry the entity key",
-   "description": "Read-only audit on 2026-11-04 of the current-source daemon. XDR-RECEIPT-002 persists a frozen multi-source assessment and replays it, but the live pipeline can only produce one XDR source category. The entity key is the event source IP (src/pipeline/event_processor.zig:412; empty when the IPv4 source is zero, :62). npcap and WFP populate it but both map to 'network'; ETW/FIM/registry events never assign src_ip (src/pipeline/telemetry_threads.zig:147-152,314-318,362-366), and the minifilter canonical event leaves source_ip at zero (src/capture/minifilter_reader.zig:225-235). Federation is status-only in this standalone daemon (src/control/protocol.zig:259-260). The freeze requires distinctSources >= 2 (src/xdr/xdr_runtime.zig:173), so receipts_recorded stays 0 by construction. Live xdr.list at 07:40:39Z showed evidence_total=3, receipts_recorded=0, and both incidents at distinct_sources=1. The E2 receipt/replay tests remain valid because they hand the runtime a frozen batch directly; the E5 gap is the missing live multi-source trigger.",
+   "description": "Read-only audit on 2026-11-04 of the current-source daemon. XDR-RECEIPT-002 persists a frozen multi-source assessment and replays it, but the live pipeline can only produce one XDR source category. The entity key is the event source IP (src/pipeline/event_processor.zig:412; empty when the IPv4 source is zero, :62). npcap and WFP populate it but both map to 'network'; ETW/FIM/registry events never assign src_ip (src/pipeline/telemetry_threads.zig:147-152,314-318,362-366), and the minifilter canonical event leaves source_ip at zero (src/capture/minifilter_reader.zig:225-235). Federation is status-only in this standalone daemon (src/control/protocol.zig:259-260). The freeze requires distinctSources >= 2 (src/xdr/xdr_runtime.zig:173), so receipts_recorded stays 0 by construction. Live xdr.list at 07:40:39Z showed evidence_total=3, receipts_recorded=0, and both incidents at distinct_sources=1. The E2 receipt/replay tests remain valid because they hand the runtime a frozen batch directly; the E5 gap is the missing live multi-source trigger. UPDATE 2026-11-05: an in-tree fix landed (0d8d93e, XDR-005-A/B): observe-only Windows TCP polling now joins network incidents via a bounded pending table and xdr.verify replays persisted snapshots, test-proven at E2 (XDR-005-HOSTNET-WIRING-E2-20261105) with the production build green at fc108b0. Still OPEN: the deployed daemon predates the fix, so live reachability and a multi-source host freeze/receipt/replay remain unproven.",
    "status": "OPEN",
    "found_at": "2026-11-04",
    "tracking": "Local stop-the-line record; GitHub issue #26 / IDS-XDR-005",
@@ -9444,7 +9506,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 31,
-  "E2_count": 157,
+  "E2_count": 159,
   "E3_count": 17,
   "E4_count": 15,
   "E5_count": 129,
