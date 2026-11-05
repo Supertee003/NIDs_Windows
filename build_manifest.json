@@ -1033,7 +1033,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 22821,
-      "sha256": "7b9d2bac8990962b2ebd9ec059d77f91c7892064cb415a13c5337e77682d4a7f",
+      "sha256": "80819015b70e9ce600733b9c9c791c89f80d9a1f9f1731ab7e0b4fa49ebf172c",
       "language": "json"
     },
     {
@@ -1836,8 +1836,8 @@
     },
     {
       "path": "src/all_tests.zig",
-      "size": 11039,
-      "sha256": "3592571e2cb30bb4e8777640525acab50f017b5d7acff3e0ea589b28578645e0",
+      "size": 11086,
+      "sha256": "216f495fb78cc1b89ae733d9650fbb3eb99657b55c4e29b0145a7619225f2d55",
       "language": "zig"
     },
     {
@@ -1968,8 +1968,8 @@
     },
     {
       "path": "src/contract/event.zig",
-      "size": 8342,
-      "sha256": "3636aaf5e2bba227b4064a73001ff4749944f1688ff41b0b4bd1cabc69b21916",
+      "size": 8817,
+      "sha256": "22794066ea8a7c80e162443d1f67cdbc1eb626fe5d1d76d21582326c95584682",
       "language": "zig"
     },
     {
@@ -2028,14 +2028,14 @@
     },
     {
       "path": "src/control/handler_registry.zig",
-      "size": 158515,
-      "sha256": "625c1f85263dda5b8e2909440fe6ba17df33a04ce3119cd672a576d76a1865eb",
+      "size": 168007,
+      "sha256": "6def7129bbe2785e27e093a9865d31e4525f00574a0e1429f45a451326f1617d",
       "language": "zig"
     },
     {
       "path": "src/control/protocol.zig",
-      "size": 21355,
-      "sha256": "54e962d0a92e72e6fafed6168608feed1b9686a8a400ba4fac290a4854cb94b7",
+      "size": 22503,
+      "sha256": "e8f6875ea5796dbb6b01d4019d4e1cd74afb2515a78712433801dfa5187654f3",
       "language": "zig"
     },
     {
@@ -2178,8 +2178,8 @@
     },
     {
       "path": "src/daemon.zig",
-      "size": 47535,
-      "sha256": "867404456c3f6ded8b60ec9b2a36b62b1804a19990af59450c11bd16be9a6a98",
+      "size": 48676,
+      "sha256": "dc7daa0527cfa23e54b2666b4c5c25ea2f00aea9d5963797c0af5854fd23ae54",
       "language": "zig"
     },
     {
@@ -2352,8 +2352,8 @@
     },
     {
       "path": "src/forensic/forensic_pipeline.zig",
-      "size": 43668,
-      "sha256": "a4d505d771e73c99d526db29b1547fd3c3979cbcff4f1b8624a75743b79a18ad",
+      "size": 43860,
+      "sha256": "8d77ac54a886d6691bd974463d0e35ee8fbc4a6c4aaae1c160fe0bfd0a6f19e8",
       "language": "zig"
     },
     {
@@ -2364,8 +2364,8 @@
     },
     {
       "path": "src/forensic/ids_evidence_receipt.zig",
-      "size": 4751,
-      "sha256": "de72c4d2e4369668d24859a12f7cdcad54c9dfe92e7f28be34a8e33c6e04e5f7",
+      "size": 4797,
+      "sha256": "087d03b2e7ffcae6823bcf72cb6f890d73c213587e30cdc90edab0395eb08785",
       "language": "zig"
     },
     {
@@ -2490,8 +2490,8 @@
     },
     {
       "path": "src/pipeline/event_processor.zig",
-      "size": 48494,
-      "sha256": "f8ff6f46c869b55428c5dd78b8161baa3c7c9597bcd2579d509606d7f600926e",
+      "size": 51356,
+      "sha256": "e5b16a761d40597532b206348d40d417aaf4798ef2fceb769e48c4e57051c8e4",
       "language": "zig"
     },
     {
@@ -2520,14 +2520,14 @@
     },
     {
       "path": "src/pipeline/runtime_state.zig",
-      "size": 18186,
-      "sha256": "0c718aa38cd761cd6ecbdf5aebcef8e3a35ffe8c186463fddae01aaa1bb734f4",
+      "size": 18406,
+      "sha256": "1fdd4242f31082e707138b0313264a55513db005ecd0e8894e0e630a827c8145",
       "language": "zig"
     },
     {
       "path": "src/pipeline/telemetry_threads.zig",
-      "size": 21991,
-      "sha256": "fc09ee923fd96ebe10077c4f479cf1e5784b2ed72d428633c7e7c7ba5ea0d2c3",
+      "size": 25304,
+      "sha256": "f606a2b4838b787a8f84998519e04b6f544538df4857693da8b6d6238885db88",
       "language": "zig"
     },
     {
@@ -3558,8 +3558,8 @@
     },
     {
       "path": "src/xdr/xdr_evidence_flow.zig",
-      "size": 19003,
-      "sha256": "7b9f9c75507c502c9c62fbbb025c2f785f030e497f027bc72c47fb383d78d525",
+      "size": 25365,
+      "sha256": "3fc4d826ad610c2d6187b9165c408d9681615b01ba9ca6b46c55e4955ac85d27",
       "language": "zig"
     },
     {
@@ -3582,14 +3582,14 @@
     },
     {
       "path": "src/xdr/xdr_runtime.zig",
-      "size": 15915,
-      "sha256": "04a7ed74f6f16ac978bd09dee7c88c937994a5a6fdaa0d8e9f0cccefeb06d425",
+      "size": 35718,
+      "sha256": "3fb3b02df12c86417fe8820d26ddc709e089d15e4f65d41ce54b3ca5da7dea28",
       "language": "zig"
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 107648,
-      "sha256": "d29629ca1aa570040467502938a086629c83b3ddee28405ec5cea849a36f2caf",
+      "size": 108855,
+      "sha256": "2667b9f0dbb6609098424d75a408a7dcdd220cc7f2e012c0340dcbf42338c979",
       "language": "python/cython"
     },
     {

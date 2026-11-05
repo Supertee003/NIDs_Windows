@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-05T06:55:11.977974+00:00",
+  "generated_at": "2026-11-05T10:03:41.796462+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1772,
+  "total_files": 1774,
   "by_class": {
     "canonical-docs": 590,
     "canonical-build": 223,
     "unclassified": 19,
-    "canonical-source": 658,
-    "canonical-test": 215,
+    "canonical-source": 659,
+    "canonical-test": 216,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -9915,6 +9915,12 @@
       "size": 2804
     },
     {
+      "path": "tests/tools/test_stix_export.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 9886
+    },
+    {
       "path": "tests/tools/test_web_dashboard.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -10507,6 +10513,12 @@
       "class": "canonical-source",
       "role": "source",
       "size": 2197
+    },
+    {
+      "path": "tools/stix_export.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 12438
     },
     {
       "path": "tools/truth.py",
