@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-05T06:53:12.174356+00:00",
+  "generated_at": "2026-11-05T06:55:11.977974+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1772,
@@ -4788,7 +4788,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 880128
+      "size": 889582
     },
     {
       "path": "fix_bridge_banner.py",
@@ -4920,7 +4920,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 285759
+      "size": 286227
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -5178,7 +5178,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9642
+      "size": 9987
     },
     {
       "path": "pytest.ini",
@@ -5196,7 +5196,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 234130
+      "size": 234560
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -7884,7 +7884,7 @@
       "path": "src/pipeline/telemetry_threads.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 25299
+      "size": 25304
     },
     {
       "path": "src/platform/win32_pipe.zig",
