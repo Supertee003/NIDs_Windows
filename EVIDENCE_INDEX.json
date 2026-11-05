@@ -3749,6 +3749,37 @@
     "E2 advisory surface only: this proves nothing about detection or host behavior."
    ],
    "evidence_artifact": "admin-evidence/stix-export-20261105/xdr-20261105.stix.json"
+  },
+  {
+   "id": "TAXII-PUSH-E2-20261105",
+   "head_sha": "efc83e1",
+   "timestamp": "2026-11-05",
+   "title": "Fail-closed TAXII 2.1 push client proven against a loopback stub: 202-only, credential-free diagnostics",
+   "level": "E2",
+   "component": "tools/taxii_push.py + tests/tools/test_taxii_push.py (transport only; advisory data from the STIX export)",
+   "flow_id": "TAXII-PUSH (STIX bundle -> /collections/<id>/objects/ -> 202)",
+   "patch_id": "TAXII-PUSH-001",
+   "target_head": "e4dd56b",
+   "final_head": "efc83e1",
+   "build_source": "fc108b06a3451042ecb615f3f7d994737869a33c",
+   "installed_sha256": null,
+   "description": "Transport-only client posts the default interchange envelope ({id, objects}) with Content-Type application/stix+json;version=2.1 and Accept application/taxii+json;version=2.1, accepting only the canonical 202. Fail-closed policy: configuration from AEGIS_TAXII_* env vars only, https required unless --allow-http (loopback-only flag), the bundle must pass structural validation before any network I/O, malformed 2xx besides 202 is rejected, and every failure exits 2 with one diagnostic that excludes credentials.",
+   "expected": "Unit tests pin URL/auth construction, validation gating, 202 vs other statuses, CLI https policy and credential non-disclosure; a loopback stub round-trip proves the full push path without leaving the host.",
+   "tests": [
+    "pytest tests/tools/test_taxii_push.py: 22/22 passed",
+    "loopback TAXII stub round-trip: POST /taxii2/collections/coll-loopback/objects/, headers correct, status=202, objects=2",
+    "status matrix 200/401/403/404/500 each fails closed with an explicit diagnostic",
+    "tests/brain/test_import_hygiene.py + STIX export suite: 35/35 passed",
+    "truth gates green: truth.py verify TRUTH_VALID; release_engineering --verify 651/651 at fc108b0"
+   ],
+   "result": "PASS_E2_TRANSPORT; executive data remains advisory export scope only",
+   "actual": "All 22 client tests and the combined hygiene/export run pass; no external network was contacted (stub on 127.0.0.1 only). The runtime service, its detection-only gate and the deployed f7c626d daemon are untouched.",
+   "limits": [
+    "No real TAXII server exercised; the canonical contract is pinned against the local stub only.",
+    "Discovery/collection-negotiation endpoints are out of scope; a configured objects endpoint is the single contact point.",
+    "Delivery of real bundles to an operator-owned TAXII service remains unperformed."
+   ],
+   "evidence_artifact": "tools/taxii_push.py"
   }
  ],
  "known_gaps": [
@@ -9506,7 +9537,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 31,
-  "E2_count": 159,
+  "E2_count": 160,
   "E3_count": 17,
   "E4_count": 15,
   "E5_count": 129,

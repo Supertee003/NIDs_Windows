@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-05T10:20:07.382130+00:00",
+  "generated_at": "2026-11-05T10:21:12.303596+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1776,
@@ -4788,7 +4788,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 905086
+      "size": 907699
     },
     {
       "path": "fix_bridge_banner.py",
@@ -4920,7 +4920,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 286514
+      "size": 286798
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -5196,7 +5196,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 234774
+      "size": 234986
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
