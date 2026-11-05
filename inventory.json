@@ -1,14 +1,14 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-03T11:22:12.649874+00:00",
+  "generated_at": "2026-11-05T06:53:12.174356+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1769,
+  "total_files": 1772,
   "by_class": {
-    "canonical-docs": 589,
+    "canonical-docs": 590,
     "canonical-build": 223,
     "unclassified": 19,
-    "canonical-source": 656,
+    "canonical-source": 658,
     "canonical-test": 215,
     "canonical-config": 34,
     "legacy": 33
@@ -2052,7 +2052,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 45781
+      "size": 46992
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -3546,7 +3546,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 18784
+      "size": 21228
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -4284,7 +4284,7 @@
       "path": "docs/runbooks/RB-021-hostonly-lab-proof.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 34032
+      "size": 38029
     },
     {
       "path": "docs/runbooks/README.md",
@@ -4387,6 +4387,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 7229
+    },
+    {
+      "path": "docs/XDR-005_MULTISOURCE_SLICE_DESIGN.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 46825
     },
     {
       "path": "drivers/minifilter/aegis_minifilter.c",
@@ -4782,7 +4788,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 871250
+      "size": 880128
     },
     {
       "path": "fix_bridge_banner.py",
@@ -7092,7 +7098,7 @@
       "path": "shared/protocol/control_protocol.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 8227
+      "size": 8376
     },
     {
       "path": "shared/protocol/protocol.md",
@@ -7188,7 +7194,7 @@
       "path": "src/all_tests.zig",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 11039
+      "size": 11086
     },
     {
       "path": "src/capture/flow_engine.zig",
@@ -7320,7 +7326,7 @@
       "path": "src/contract/event.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 8342
+      "size": 8817
     },
     {
       "path": "src/contract/event_fabric.zig",
@@ -7374,13 +7380,13 @@
       "path": "src/control/handler_registry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 158515
+      "size": 168007
     },
     {
       "path": "src/control/protocol.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 21355
+      "size": 22503
     },
     {
       "path": "src/control/state_machine.zig",
@@ -7530,7 +7536,7 @@
       "path": "src/daemon.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 47535
+      "size": 48676
     },
     {
       "path": "src/detection/anomaly_detector.zig",
@@ -7704,7 +7710,7 @@
       "path": "src/forensic/forensic_pipeline.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 43668
+      "size": 43860
     },
     {
       "path": "src/forensic/forensics_engine.zig",
@@ -7716,7 +7722,7 @@
       "path": "src/forensic/ids_evidence_receipt.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 4751
+      "size": 4797
     },
     {
       "path": "src/forensic/installer.zig",
@@ -7842,7 +7848,7 @@
       "path": "src/pipeline/event_processor.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 48494
+      "size": 51356
     },
     {
       "path": "src/pipeline/event_queue.zig",
@@ -7872,13 +7878,13 @@
       "path": "src/pipeline/runtime_state.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 18186
+      "size": 18406
     },
     {
       "path": "src/pipeline/telemetry_threads.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 21991
+      "size": 25299
     },
     {
       "path": "src/platform/win32_pipe.zig",
@@ -8739,6 +8745,12 @@
       "size": 221
     },
     {
+      "path": "src/tests/windows/host_net.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 1260
+    },
+    {
       "path": "src/tests/windows/host_telemetry.zig",
       "class": "canonical-source",
       "role": "production-source",
@@ -8815,6 +8827,12 @@
       "class": "canonical-source",
       "role": "production-source",
       "size": 2311
+    },
+    {
+      "path": "src/windows/host_net.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 31059
     },
     {
       "path": "src/windows/host_telemetry.zig",
@@ -8910,7 +8928,7 @@
       "path": "src/xdr/xdr_evidence_flow.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 19003
+      "size": 25365
     },
     {
       "path": "src/xdr/xdr_harden.zig",
@@ -8934,7 +8952,7 @@
       "path": "src/xdr/xdr_runtime.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 15915
+      "size": 35718
     },
     {
       "path": "static-authority-scan.txt",
@@ -9744,7 +9762,7 @@
       "path": "tests/security/test_xdr_wire_advisory.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 5368
+      "size": 9356
     },
     {
       "path": "tests/security/test_zig_test_scope.py",
@@ -10170,7 +10188,7 @@
       "path": "tools/aegisctl.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 107648
+      "size": 108855
     },
     {
       "path": "tools/audit_kernel_runtime.py",

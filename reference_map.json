@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-03T11:22:12.652748+00:00",
+  "generated_at": "2026-11-05T06:53:12.177259+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1769,
+  "total_files": 1772,
   "by_role": {
-    "documentation": 575,
+    "documentation": 576,
     "build-config": 212,
     "other": 19,
     "source": 366,
@@ -16,7 +16,7 @@
     "step-document": 2,
     "go-source": 8,
     "makefile": 1,
-    "production-source": 282,
+    "production-source": 284,
     "legacy-source": 32,
     "quarantined": 1
   },
@@ -283,6 +283,7 @@
     "src/tests/stubs/fim_helper_stub.c",
     "src/tests/windows/etw_realtime.zig",
     "src/tests/windows/fim.zig",
+    "src/tests/windows/host_net.zig",
     "src/tests/windows/host_telemetry.zig",
     "src/tests/windows/injection_detector.zig",
     "src/tests/windows/registry_monitor.zig",
@@ -296,6 +297,7 @@
     "src/windows/fim_native.c",
     "src/windows/hids_engine.zig",
     "src/windows/hids_process_monitor.zig",
+    "src/windows/host_net.zig",
     "src/windows/host_telemetry.zig",
     "src/windows/host_telemetry_detectors.zig",
     "src/windows/host_telemetry_mock.zig",
@@ -3234,6 +3236,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "docs/XDR-005_MULTISOURCE_SLICE_DESIGN.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "drivers/minifilter/aegis_minifilter.c": {
       "class": "canonical-source",
       "role": "source"
@@ -6134,6 +6140,10 @@
       "class": "canonical-source",
       "role": "production-source"
     },
+    "src/tests/windows/host_net.zig": {
+      "class": "canonical-source",
+      "role": "production-source"
+    },
     "src/tests/windows/host_telemetry.zig": {
       "class": "canonical-source",
       "role": "production-source"
@@ -6183,6 +6193,10 @@
       "role": "production-source"
     },
     "src/windows/hids_process_monitor.zig": {
+      "class": "canonical-source",
+      "role": "production-source"
+    },
+    "src/windows/host_net.zig": {
       "class": "canonical-source",
       "role": "production-source"
     },
