@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-06T16:49:27.073070+00:00",
+  "generated_at": "2026-11-06T17:01:43.477314+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1481,
@@ -2424,7 +2424,7 @@
       "path": "docs/runbooks/RB-006-subsystem-health-check.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 3392
+      "size": 3849
     },
     {
       "path": "docs/runbooks/RB-007-performance-tuning.md",
@@ -3408,7 +3408,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9987
+      "size": 9642
     },
     {
       "path": "pytest.ini",
@@ -5610,7 +5610,7 @@
       "path": "src/control/handler_registry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 168067
+      "size": 168359
     },
     {
       "path": "src/control/protocol.zig",
@@ -6084,7 +6084,7 @@
       "path": "src/pipeline/event_queue.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 33841
+      "size": 38788
     },
     {
       "path": "src/pipeline/l4_matcher.zig",
@@ -6108,7 +6108,7 @@
       "path": "src/pipeline/runtime_state.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 18406
+      "size": 18680
     },
     {
       "path": "src/pipeline/telemetry_threads.zig",

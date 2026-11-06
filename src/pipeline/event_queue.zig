@@ -26,12 +26,14 @@ pub const RESERVED_NETWORK_SLOTS: usize = 1024;
 // QLOSS-FAIRSHARE-001: the host tail above is shared by every host sensor,
 // and a FIM storm can take all of it, leaving ETW/registry blind while the
 // kernel-side ring stays silent. A single host source may therefore own at
-// most 80% of the host tail; the remaining 20% stays reachable by the other
-// host sensors and the network reserve is untouched. This is isolation, not
-// throughput: the dominant source still drops during its own storm, but it
-// can no longer starve the streams a detection depends on.
-pub const SOURCE_OCCUPANCY_CAP: usize =
-    (PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS) / 5 * 4;
+// most half of the host tail, which guarantees every other host sensor at
+// least the other half no matter how hard the storm pushes. The network
+// reserve above remains untouched. This is isolation, not throughput: the
+// storming source still drops its own events, but it cannot blind a stream a
+// detection depends on. 80/20 was measured first and failed exactly that test:
+// FIM still drove total occupancy to the shared boundary, where the tail check
+// refuses ETW too.
+pub const SOURCE_OCCUPANCY_CAP: usize = (PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS) / 2;
 
 fn isNetworkObservation(source: event.EventSource) bool {
     return source == .capture_npcap or source == .capture_wfp;
