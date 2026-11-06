@@ -1,8 +1,8 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-06T18:45:22.227378+00:00",
+  "generated_at": "2026-11-06T19:03:13.997048+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1483,
+  "total_files": 1484,
   "by_role": {
     "documentation": 326,
     "build-config": 171,
@@ -16,7 +16,7 @@
     "step-document": 2,
     "go-source": 8,
     "makefile": 1,
-    "production-source": 284,
+    "production-source": 285,
     "legacy-source": 32,
     "quarantined": 1
   },
@@ -114,6 +114,7 @@
     "src/federation/federation_tcp.zig",
     "src/federation/node_registry.zig",
     "src/forensic/abi_contract.zig",
+    "src/forensic/crc32_slicing.zig",
     "src/forensic/decision_trace.zig",
     "src/forensic/evidence_record.zig",
     "src/forensic/forensic_log.zig",
@@ -4261,6 +4262,10 @@
       "role": "production-source"
     },
     "src/forensic/abi_contract.zig": {
+      "class": "canonical-source",
+      "role": "production-source"
+    },
+    "src/forensic/crc32_slicing.zig": {
       "class": "canonical-source",
       "role": "production-source"
     },
