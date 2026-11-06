@@ -515,8 +515,14 @@ fn processEvent(
     const audit_id = state.g_pipeline_audit_id.fetchAdd(1, .monotonic);
     decision_trace.setAuditId(audit_id);
 
-    // Structured audit log from trace
-    diag.info("AUDIT trace_id={} audit_id={} event_id={} rule={} incident={} policy={} pep_req={} decision={s} result={s} src={x}:{d} dst={x}:{d} proto={d}", .{
+    // Structured audit log from trace.
+    // QLOSS-LOG-VERBOSE: this line is emitted for EVERY processed event. On
+    // the production host the allow-only rows (rule=0 policy=0) produced
+    // ~5,300 lines/second and ~55 GB/day of diagnostic output, which the
+    // rotation cap then churned through every ~100 s. Allow rows with no
+    // policy match are still audited (audit_id, decision trace, forensic
+    // ring) but are no longer persisted at info level.
+    diag.Logger.log(auditLevelFor(matched_policy != null, pep_decision), "AUDIT trace_id={} audit_id={} event_id={} rule={} incident={} policy={} pep_req={} decision={s} result={s} src={x}:{d} dst={x}:{d} proto={d}", .{
         decision_trace.trace_id,
         audit_id,
         ev.event_id,
@@ -661,6 +667,15 @@ fn formatReceiptHash(hash: [ids_receipt.HASH_BYTES]u8, output: []u8) []const u8 
 /// The persisted evidence event name. A confirmed quarantine is its own
 /// kernel action, not a detection row: operators and the web reader must be
 /// able to prove the quarantine from the NDJSON file alone (RB-013).
+/// Persisted level for the per-event AUDIT row. Anything that matched a
+/// policy or produced a non-allow verdict stays at info so the security
+/// trail is unchanged; pure allow-with-no-match rows drop to debug, where the
+/// default info level filters them out of the persisted stream.
+pub fn auditLevelFor(policy_matched: bool, decision: pep.PepDecision) diag.Level {
+    if (policy_matched or decision != .allow) return .info;
+    return .debug;
+}
+
 fn evidenceEventName(kind: event.EventKind, confirmed: bool, decision: pep.PepDecision) []const u8 {
     if (confirmed and decision == .quarantine) return "action_quarantine";
     return @tagName(kind);
@@ -774,6 +789,19 @@ fn siemForward(ev: *const event.IpcEvent, rule_id: u32, severity: event.EventSev
 // ============================================================
 // Tests (T1-SIEM-022)
 // ============================================================
+
+test "auditLevelFor keeps matched and non-allow rows at info" {
+    // Allow-with-no-match is the per-packet noise that filled the log; it must
+    // stay below the default info level.
+    try std.testing.expectEqual(diag.Level.debug, auditLevelFor(false, .allow));
+    // Any matched policy keeps the row, whatever the verdict.
+    try std.testing.expectEqual(diag.Level.info, auditLevelFor(true, .allow));
+    // Any non-allow verdict keeps the row even without a policy match.
+    for ([_]pep.PepDecision{ .block, .rate_limit, .quarantine, .escalate, .drop }) |d| {
+        try std.testing.expectEqual(diag.Level.info, auditLevelFor(false, d));
+        try std.testing.expectEqual(diag.Level.info, auditLevelFor(true, d));
+    }
+}
 
 test "siemForward buffers detections and ignores non-detections" {
     const dest = "siem_pipeline_probe.json";
