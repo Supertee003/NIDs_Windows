@@ -107,27 +107,74 @@ pub const StderrSink = struct {
     }
 };
 
+// QLOSS-DISK-001: the persisted diagnostic stream had no bound. On the
+// production host `logs/aegis-daemon-diagnostic.log` reached 40.9 GB and
+// filled the system drive, which is a product defect, not operator misuse:
+// a service that writes an unbounded file will eventually exhaust any disk.
+// FileSink now rotates at a byte cap, keeping exactly one previous file as
+// `<path>.1`. A legacy oversized file is rotated on the first write after a
+// restart, so deploying this build alone stops the growth; the stale `.1`
+// then disappears on the next rotation.
+pub const DEFAULT_MAX_BYTES: u64 = 64 * 1024 * 1024;
+
 pub const FileSink = struct {
     file: std.fs.File,
+    /// Owned copy of the path, present only for sinks created by init*.
+    /// A null path disables rotation (synthetic/test sinks).
+    path: ?[]u8 = null,
+    size: u64 = 0,
+    max_bytes: u64 = DEFAULT_MAX_BYTES,
 
     pub fn init(path: []const u8) !FileSink {
-        const f = try std.fs.cwd().createFile(path, .{ .truncate = false });
+        return initWithLimit(path, DEFAULT_MAX_BYTES);
+    }
+
+    pub fn initWithLimit(path: []const u8, max_bytes: u64) !FileSink {
+        const owned = try std.heap.page_allocator.dupe(u8, path);
+        errdefer std.heap.page_allocator.free(owned);
+        const f = try std.fs.cwd().createFile(owned, .{ .truncate = false });
+        errdefer f.close();
         try f.seekFromEnd(0);
-        return .{ .file = f };
+        return .{ .file = f, .path = owned, .size = try f.getEndPos(), .max_bytes = max_bytes };
     }
 
     pub fn deinit(self: *FileSink) void {
         self.file.close();
+        if (self.path) |p| {
+            std.heap.page_allocator.free(p);
+            self.path = null;
+        }
     }
 
     pub fn sink(self: *FileSink) Sink {
         return .{ .ctx = @ptrCast(self), .writeFn = writeFn };
     }
 
+    /// Move the current file to `<path>.1` and start a fresh one. The rename
+    /// replaces any previous backup, so total on-disk growth stays bounded by
+    /// two caps. Rename failures are swallowed: losing the backup is better
+    /// than dropping the diagnostic line.
+    fn rotate(self: *FileSink) !void {
+        const p = self.path orelse return;
+        const backup = try std.fmt.allocPrint(std.heap.page_allocator, "{s}.1", .{p});
+        defer std.heap.page_allocator.free(backup);
+        self.file.close();
+        std.fs.cwd().deleteFile(backup) catch {};
+        std.fs.cwd().rename(p, backup) catch {};
+        self.file = try std.fs.cwd().createFile(p, .{ .truncate = true });
+        self.size = 0;
+    }
+
     fn writeFn(ctx: *anyopaque, level: Level, msg: []const u8) !void {
         const self: *FileSink = @ptrCast(@alignCast(ctx));
         const ts = std.time.timestamp();
-        try self.file.writer().print("{d} [{s}] {s}\n", .{ ts, @tagName(level), msg });
+        var buf: [4096]u8 = undefined;
+        const line = std.fmt.bufPrint(&buf, "{d} [{s}] {s}\n", .{ ts, @tagName(level), msg }) catch return error.MessageTooLong;
+        if (self.path != null and self.size + line.len > self.max_bytes) {
+            try self.rotate();
+        }
+        try self.file.writeAll(line);
+        self.size += line.len;
     }
 };
 
@@ -312,6 +359,62 @@ test "FileSink persists diagnostic lines" {
     defer alloc.free(data);
     try std.testing.expect(std.mem.indexOf(u8, data, "file sink probe 7") != null);
     try std.testing.expect(std.mem.indexOf(u8, data, "[info]") != null);
+}
+
+test "FileSink rotates at the byte cap and keeps one backup" {
+    const alloc = std.testing.allocator;
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const tmp_real = try tmp.dir.realpathAlloc(alloc, ".");
+    defer alloc.free(tmp_real);
+    const path = try std.fs.path.join(alloc, &.{ tmp_real, "capped.log" });
+    defer alloc.free(path);
+    var fs = try FileSink.initWithLimit(path, 200);
+    defer fs.deinit();
+    const prev_sink = Logger.getSink();
+    defer Logger.setSink(prev_sink orelse StderrSink.init());
+    Logger.setSink(fs.sink());
+    var i: usize = 0;
+    while (i < 40) : (i += 1) {
+        info("capped probe line {d} padding padding", .{i});
+    }
+    const live = try tmp.dir.statFile("capped.log");
+    try std.testing.expect(live.size <= 200);
+    const backup = try tmp.dir.statFile("capped.log.1");
+    try std.testing.expect(backup.size <= 200);
+    const data = try tmp.dir.readFileAlloc(alloc, "capped.log", 1 << 16);
+    defer alloc.free(data);
+    try std.testing.expect(std.mem.indexOf(u8, data, "capped probe line") != null);
+    // Upper bound on total persisted bytes: two caps, not unbounded growth.
+    try std.testing.expect(live.size + backup.size <= 400);
+}
+
+test "FileSink rotates a legacy oversized file on the first write" {
+    const alloc = std.testing.allocator;
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const tmp_real = try tmp.dir.realpathAlloc(alloc, ".");
+    defer alloc.free(tmp_real);
+    const path = try std.fs.path.join(alloc, &.{ tmp_real, "legacy.log" });
+    defer alloc.free(path);
+    {
+        const f = try tmp.dir.createFile("legacy.log", .{});
+        defer f.close();
+        const filler = try alloc.alloc(u8, 1000);
+        defer alloc.free(filler);
+        @memset(filler, 'x');
+        try f.writeAll(filler);
+    }
+    var fs = try FileSink.initWithLimit(path, 256);
+    defer fs.deinit();
+    const prev_sink = Logger.getSink();
+    defer Logger.setSink(prev_sink orelse StderrSink.init());
+    Logger.setSink(fs.sink());
+    info("first line after legacy growth", .{});
+    const live = try tmp.dir.statFile("legacy.log");
+    try std.testing.expect(live.size <= 256);
+    const backup = try tmp.dir.statFile("legacy.log.1");
+    try std.testing.expectEqual(@as(u64, 1000), backup.size);
 }
 
 test "TeeSink writes to both branches" {
