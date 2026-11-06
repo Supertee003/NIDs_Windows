@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-06T17:24:23.343351+00:00",
+  "generated_at": "2026-11-06T17:48:41.406633+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1481,
@@ -270,7 +270,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 56575
+      "size": 56943
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -1776,7 +1776,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 38152
+      "size": 38874
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -3018,7 +3018,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 930970
+      "size": 933946
     },
     {
       "path": "fix_bridge_banner.py",
@@ -5610,7 +5610,7 @@
       "path": "src/control/handler_registry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 168359
+      "size": 168506
     },
     {
       "path": "src/control/protocol.zig",
@@ -6084,7 +6084,7 @@
       "path": "src/pipeline/event_queue.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 38971
+      "size": 44218
     },
     {
       "path": "src/pipeline/l4_matcher.zig",
@@ -6108,7 +6108,7 @@
       "path": "src/pipeline/runtime_state.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 18680
+      "size": 18951
     },
     {
       "path": "src/pipeline/telemetry_threads.zig",

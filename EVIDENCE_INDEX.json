@@ -1,5 +1,5 @@
 {
- "head_sha": "fadc216f4fa9cfb3418739c52c8c2611c7e91a8d",
+ "head_sha": "ad9733c5810acba78029a5ce4460c0c13dcfe9b4",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-11-06",
  "generator_version": "3.0",
@@ -20,6 +20,32 @@
   "E7": "Release verification"
  },
  "evidence": [
+  {
+   "id": "QLOSS-CRITICAL-001-E5-20261107",
+   "head_sha": "ad9733c",
+   "timestamp": "2026-11-07",
+   "title": "Critical admission class protects system-tree FIM writes from ordinary churn",
+   "level": "E5",
+   "component": "Windows host runtime (pipeline queue admission, FIM critical class)",
+   "flow_id": "QLOSS-HEALTH-001",
+   "description": "Deployed source ad9733c (daemon 4F7FAEF7..., package 4755E7D8..., driver unchanged 10C41E80...) which reserves the last 1,024 slots of the host tail for FIM events under C:\\Windows\\System32 or C:\\Windows\\SysWOW64 and exempts them from the per-source share; ordinary host telemetry now stops at WORKING_HOST_TAIL = 14,336. A verify-only 180 s window with the same 20,000-file churn reports 27/28 checks, ring_dropped=0, depth_peak 14,345 (above WORKING_HOST_TAIL only by the 9 protected rows that used the reserve), FIM 309,723 pushed / 271,887 dropped, ETW 245,343 pushed / 42,456 dropped, and critical_pushed_total=264 from natural System32 activity. The single failing check samples instantaneous etw_active and read 0 at a drained moment.",
+   "files_verified": [
+    "admin-evidence/e5-deploy-ad9733c-20261106/deploy-result-20261107_004428.json",
+    "admin-evidence/e5-deploy-ad9733c-20261106/peak-watch-20261107_004428.ndjson",
+    "admin-evidence/e5-deploy-ad9733c-20261106/post-install-enforce-20261107_004208.txt",
+    "src/pipeline/event_queue.zig",
+    "src/control/handler_registry.zig"
+   ],
+   "tests": [
+    "zig build test --summary all: 2041 passed / 10 skipped / 0 failed (protected reserve under a full working tail, network reserve untouched, lookalike paths rejected)",
+    "installed runtime 4F7FAEF7 matches package 4755E7D8; build_manifest source ad9733c; driver Valid; gate closed / detection-only / tier3_enforcing=false",
+    "180 s churn: ring 0, depth_peak 14,345, critical_pushed_total=264, quota_shed 87,096, tail_shed 227,254",
+    "ETW stayed reachable: 245,343 pushed during the run"
+   ],
+   "result": "PASS_E5_CRITICAL_CLASS",
+   "finding": "The class works and is observable: protected rows are counted (264 during real System32 activity, none injected) and depth_peak exceeds the ordinary working tail by exactly the number of protected rows admitted into the reserve, which is the mechanism showing up in the measurement. Two honest limits. (1) The protection was NOT exercised adversarially: writing into System32 to force a storm is an unrequested host change, so the guarantee is proven at unit level (E2) and by construction, not by a live protected storm. (2) The single failing check is a measurement artifact, not starvation - etw_active is instantaneous and was sampled at 0 while the queue had drained, whereas ETW pushed 245,343 events in the same window. The check should assert a pushed delta instead of an instantaneous occupancy.",
+   "evidence_artifact": "admin-evidence/e5-deploy-ad9733c-20261106/deploy-result-20261107_004428.json"
+  },
   {
    "id": "QLOSS-FAIRSHARE-001-E5-20261107",
    "head_sha": "fadc216",
@@ -9831,7 +9857,7 @@
   "E2_count": 161,
   "E3_count": 17,
   "E4_count": 15,
-  "E5_count": 137,
+  "E5_count": 138,
   "E6_count": 0,
   "E7_count": 1
  }

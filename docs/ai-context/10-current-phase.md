@@ -555,6 +555,16 @@ rest is documentation hygiene.
    own excess (~181k rows under the synthetic burst) and ETW's residual drops
    are its own overflow from the same churn, so reducing either stream's volume
    (sensor-side aggregation/rate shaping) remains the recorded next decision.
+   Critical admission then landed (`ad9733c`): the last 1,024 host slots belong
+   to FIM writes under `Windows\System32`/`SysWOW64`, exempt from the per-source
+   share, and ordinary telemetry stops at 14,336 so that reserve is free
+   (`QLOSS-CRITICAL-001-E5-20261107`, 27/28 checks). Measured: `depth_peak`
+   14,345 — above the working tail by exactly the protected rows admitted —
+   `critical_pushed_total` 264 from real System32 activity, ring 0. Limits: the
+   protection was not exercised adversarially (a System32 storm would be an
+   unrequested host change), and the one failing check is a sampling artifact
+   (`etw_active` read 0 at a drained moment while ETW pushed 245,343 in the
+   window).
    Also open: production driver signing (the ring change is test-signed).
 2. **Supervised Windows E5 / kernel qualification — OPEN.** Any new
    current-source E5 must redeploy a verified candidate with a rollback point
