@@ -26,8 +26,15 @@
  * ~80%+ on this lab host with the counter non-silent (see EVIDENCE_INDEX
  * EVT-230). 1 MiB = ~2220 records = several seconds of burst headroom at
  * observed peak rates. No wire/layout change: the record struct and the
- * READ_EVENTS contract are unchanged. */
-#define AEGIS_RING_SIZE             (1024 * 1024)
+ * READ_EVENTS contract are unchanged.
+ *
+ * QLOSS-RING-001 (2026-11-06): once the diagnostic-log backpressure was
+ * removed the queue stopped dropping entirely, and the only remaining loss
+ * was this ring: 8,627 records shed in 157 s (~55/s) on a host draining
+ * ~1,250 records/s, i.e. burst overflow while the reader was mid-pull, not
+ * a sustained throughput deficit. 4 MiB absorbs four times the burst with
+ * 4 MB non-paged memory and no other change. */
+#define AEGIS_RING_SIZE             (4 * 1024 * 1024)
 
 /* C5: User->Kernel message commands */
 #define AEGIS_MSG_READ_EVENTS       1
