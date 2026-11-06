@@ -10,6 +10,26 @@ Provider readiness, WFP transport, and retained PEP boundaries may exist for
 diagnostics, fail-closed behavior, or historical/lab evidence, but they do not
 authorize a production host effect.
 
+## QLOSS-DISK-001 — 2026-11-06
+
+- The persisted diagnostic stream had no size bound. On this host
+  `C:\Program Files\AEGIS NIDS\logs\aegis-daemon-diagnostic.log` reached
+  **40.9 GB** (40,921,296,585 bytes) and drove `C:` to 0 bytes free, breaking
+  unrelated tooling that stages output under the system temp directory.
+- `FileSink` now rotates at 64 MiB (`DEFAULT_MAX_BYTES`) and keeps exactly one
+  backup at `<path>.1`, bounding total growth to two caps. A legacy oversized
+  file rotates on the first write after restart, so the built fix stops the
+  growth without a manual delete; the stale backup then disappears on the next
+  rotation (commit `a9e8de3`, evidence `QLOSS-DISK-001-E2-20261106`).
+- Proven at E2 only: `zig build` exit 0, `zig build test --summary all` 2,036
+  passed / 10 skipped / 0 failed, with tests pinning the cap, the single
+  backup, and the legacy first-write rotation. The installed host still runs
+  the unbounded f7c626d image and the 40.9 GB file is still present; stopping
+  the growth and reclaiming the space need an owner-approved elevated deploy
+  plus an explicit delete of the stale file.
+- The raw growth rate also means the diagnostic stream is far too verbose per
+  captured packet; that is separate from the QLOSS admission work below.
+
 ## Project State Audit — 2026-11-06
 
 - Read-only audit at records HEAD `f325ef6` (build source `572ff13`). Gates are
@@ -433,6 +453,11 @@ rest is documentation hygiene.
    is still the restored `D34D350A...` (f7c626d); the newer `fc108b0` candidate
    `EB9F44AB...` was proven at E5 and deliberately rolled back. This is a
    deployment decision, not drift.
+   The current source now also carries the bounded diagnostic log
+   (`QLOSS-DISK-001`, `a9e8de3`), which the installed image lacks: until it is
+   deployed, the host still writes an unbounded `aegis-daemon-diagnostic.log`
+   (40.9 GB at the 2026-11-06 audit). Deploying it and deleting the stale file
+   are owner-approved elevated actions.
 3. **`RB-017` Brain supervised bring-up — BLOCKED.** The only listener is pid
    31516 (`pythonw.exe`, session 0, created 2026-10-31, parent gone) with an
    unreadable command line, `endpoint_ownership=FOREIGN`, and no SCM service or

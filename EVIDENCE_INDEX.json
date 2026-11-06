@@ -1,5 +1,5 @@
 {
- "head_sha": "572ff132a988c9950fde713696038087a89132b1",
+ "head_sha": "a9e8de3462b09d59c9817f62a698a227ed257b90",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-11-06",
  "generator_version": "3.0",
@@ -20,6 +20,29 @@
   "E7": "Release verification"
  },
  "evidence": [
+  {
+   "id": "QLOSS-DISK-001-E2-20261106",
+   "head_sha": "a9e8de3",
+   "timestamp": "2026-11-06",
+   "title": "Bounded diagnostic-log rotation closes unbounded growth that filled the system drive",
+   "level": "E2",
+   "component": "src/core/diagnostics.zig (FileSink), daemon diagnostic tee",
+   "flow_id": "OBSERVABILITY-DISK",
+   "description": "The persisted diagnostic stream (RB013-LOG TeeSink -> <exe_dir>/../logs/aegis-daemon-diagnostic.log) had no size bound. On the production host that file reached 40.9 GB (40,921,296,585 bytes at capture) and drove C: to 0 bytes free, breaking unrelated tooling that stages output under the system temp directory. FileSink now rotates at DEFAULT_MAX_BYTES = 64 MiB, keeps exactly one backup at <path>.1 (total bounded by two caps), and rotates a legacy oversized file on the first write after restart so deploying the build stops growth without a manual delete. The sink owns its path copy and frees it in deinit; path-less synthetic sinks keep the previous behaviour.",
+   "files_verified": [
+    "src/core/diagnostics.zig",
+    "src/daemon.zig"
+   ],
+   "tests": [
+    "zig build (exit 0)",
+    "zig build test --summary all: 2,036 passed / 10 skipped / 0 failed",
+    "FileSink rotates at the byte cap and keeps one backup",
+    "FileSink rotates a legacy oversized file on the first write"
+   ],
+   "result": "PASS_E2",
+   "finding": "In-tree fix proven at E2 only. The installed host still runs the f7c626d image with the unbounded sink and the 40.9 GB file is still present; stopping the growth and reclaiming the space needs an owner-approved elevated deploy and an explicit delete of the stale file. Raw log growth also indicates the diagnostic stream is far too verbose per captured packet, which the QLOSS admission work should address separately.",
+   "evidence_artifact": "admin-evidence/project-state-audit-20261106/closeout.md"
+  },
   {
    "id": "PROJECT-STATE-AUDIT-20261106",
    "head_sha": "f325ef6ba91132d53f15fad143440c8d514838a0",
@@ -9649,7 +9672,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 32,
-  "E2_count": 160,
+  "E2_count": 161,
   "E3_count": 17,
   "E4_count": 15,
   "E5_count": 131,
