@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-06T06:53:18.872661+00:00",
+  "generated_at": "2026-11-06T07:02:44.053008+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1776,
@@ -3546,7 +3546,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 24851
+      "size": 25001
     },
     {
       "path": "docs/ai-context/governance.md",

@@ -339,8 +339,9 @@ And CI proves: C/C++ + Zig + Go + Rust + Python/Cython + Drivers as one product.
   the persisted snapshot read-only. Proven in-tree: the slice's pytest 8/8
   (`tests/security/test_xdr_wire_advisory.py`), full `zig build test` exit 0,
   and both truth gates green (`truth.py verify` TRUTH_VALID, release verify
-  651/651) at build source `fc108b0`. NOT deployed: the daemon still runs the
-  installed f7c626d image, so no host proof exists yet.
+  651/651) at build source `fc108b0`. The slice was later deployed for the
+  2026-11-05 E5 run (`XDR-005-E5-20261105`) and the daemon was restored to the
+  installed f7c626d image afterwards.
 - `STIX-EXPORT-ADAPTER-E2-20261105` (E2): read-only STIX 2.1 export adapter
   (`tools/stix_export.py`, commit `6b3c4ff`) maps `xdr.list` incidents to
   `observed-data` SDOs referencing deterministic `ipv4-addr`/`ipv6-addr` SCOs
@@ -351,10 +352,10 @@ And CI proves: C/C++ + Zig + Go + Rust + Python/Cython + Drivers as one product.
   from the running daemon (10 objects, 5 incidents, 0 skipped; artifact
   `admin-evidence/stix-export-20261105/xdr-20261105.stix.json`). No TAXII
   transport; the runtime and the detection-only gate are untouched.
-- `XDR-005-LIVE-MULTISOURCE-UNREACHABLE` and `IDS-XDR-005-WIRING-OPEN` stay
-  OPEN with updated descriptions: the fix exists at E2, but the deployed
-  daemon predates it, so closing either requires an install of the `fc108b0`
-  build plus multi-source lab traffic.
+- `XDR-005-LIVE-MULTISOURCE-UNREACHABLE` and `IDS-XDR-005-WIRING-OPEN` are
+  **CLOSED** by the 2026-11-05 E5 run (`XDR-005-E5-20261105`): the `fc108b0`
+  candidate was installed and produced a live network+host multi-source
+  incident, receipt, and replay, then restored to the f7c626d image.
 
 ## Remaining closure work
 
@@ -385,9 +386,10 @@ And CI proves: C/C++ + Zig + Go + Rust + Python/Cython + Drivers as one product.
    or changing the production detection-only gate.
 5. The two Zig test execution-graph gaps are closed at E2; preserve that
    distinction from supervised Windows E5 host proof.
-6. `IDS-XDR-006` proves a lab/test advisory XDR-to-forensic-receipt/replay
-   slice at E2. Production runtime routing remains open and requires a separate
-   scope/authority decision before any daemon wiring.
+6. `IDS-XDR-006` proved a lab/test advisory XDR-to-forensic-receipt/replay
+   slice at E2. Production runtime routing was subsequently wired
+   (XDR-WIRE-001/XDR-RECEIPT-002) and proven at E5 by `XDR-005-E5-20261105`;
+   the XDR path remains advisory and recording-only.
 
 Do not introduce an IPS activation phase into the production roadmap.
 
