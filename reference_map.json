@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-06T17:48:41.411074+00:00",
+  "generated_at": "2026-11-06T18:02:13.221102+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1481,
+  "total_files": 1482,
   "by_role": {
-    "documentation": 324,
+    "documentation": 325,
     "build-config": 171,
     "other": 18,
     "lockfile": 6,
@@ -1391,6 +1391,10 @@
     "docs/adr/0009-kernel-ids-integrity-plane.md": {
       "class": "canonical-docs",
       "role": "architecture-decision"
+    },
+    "docs/adr/0010-host-telemetry-admission.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
     },
     "docs/adr/ADR-CORE-LEGACY-CLASSIFICATION.md": {
       "class": "canonical-docs",
