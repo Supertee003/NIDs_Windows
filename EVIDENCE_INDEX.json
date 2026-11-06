@@ -21,6 +21,31 @@
  },
  "evidence": [
   {
+   "id": "E5-DEPLOY-A9E8DE3-LOGCAP",
+   "head_sha": "a9e8de3",
+   "timestamp": "2026-11-06",
+   "title": "Bounded diagnostic log deployed to the Windows host: 41.0 GB reclaimed and live rotation proven",
+   "level": "E5",
+   "component": "Windows host install (AegisNids service), diagnostics FileSink",
+   "flow_id": "OBSERVABILITY-DISK",
+   "description": "Package AEGIS-NIDS-5.0.0-a9e8de3-20261106.exe (SHA-256 84FFC725...) was installed silently after a verified rollback point (prior daemon EB9F44AB..., which is what the host actually ran; the earlier narrative's D34D350A (f7c626d) was wrong). 42/42 checks passed: elevated session, package hash, prior identity, rollback hash, all 13 payload hashes, build_manifest source a9e8de3, service ImagePath, both System32 driver hashes and Valid signatures, minifilter loaded, daemon process path and loaded PEP hash, single nose instance, and gate posture. With the service stopped the stale logs/aegis-daemon-diagnostic.log was deleted (41,042,778,303 bytes), taking C: free space from 4,264,660,992 bytes to about 43 GB. The 64 MiB cap was then exercised by real load: the live file reached 63,895,068 bytes, rotated (backup 67,108,793 bytes), and rotated a second time, never exceeding the cap.",
+   "files_verified": [
+    "admin-evidence/e5-deploy-a9e8de3-20261106/deploy-result-20261106_225417.json",
+    "admin-evidence/e5-deploy-a9e8de3-20261106/deploy-20261106_225417.log",
+    "admin-evidence/e5-deploy-a9e8de3-20261106/log-cap-watch.txt",
+    "admin-evidence/e5-deploy-a9e8de3-20261106/rollback-installed/runtime/aegis_nids.exe",
+    "src/core/diagnostics.zig"
+   ],
+   "tests": [
+    "42/42 deploy checks (elevated Windows host install)",
+    "live log rotation observed twice within 4 minutes of real daemon output",
+    "prevention_gate=closed; enforcement_mode=detection-only; tier3_enforcing=false; host_effect_capable=false"
+   ],
+   "result": "PASS_E5_INSTALL_AND_CAP",
+   "finding": "QLOSS-DISK-001 is closed at E5 for bounded growth: the host no longer writes an unbounded diagnostic file. This is installation identity plus live file-behavior proof, not kernel qualification or a canary. Remaining risk: the diagnostic stream is loud (~55 GB/day of writes, rotation every ~100 s), so verbosity reduction stays with the QLOSS admission work. Rollback is available at admin-evidence/e5-deploy-a9e8de3-20261106/rollback-installed (daemon EB9F44AB...).",
+   "evidence_artifact": "admin-evidence/e5-deploy-a9e8de3-20261106/closeout.md"
+  },
+  {
    "id": "QLOSS-DISK-001-E2-20261106",
    "head_sha": "a9e8de3",
    "timestamp": "2026-11-06",
@@ -51,7 +76,7 @@
    "level": "E1",
    "component": "repository gates + live Windows host (read-only)",
    "flow_id": "PROJECT-CLOSURE",
-   "description": "Read-only audit at build source 572ff13. truth.py verify reported TRUTH_VALID (exit 0), release_engineering.py --verify matched 651/651 artifacts, and zig build test --summary all ran 2,034 passed / 10 skipped / 0 failed. The live installed daemon is still the restored f7c626d image D34D350A (pid 20668, 7/7 subsystems RUNNING, authority invariant HELD, host_effect_capable=false) with readiness degraded=true and overall_gate=false. QLOSS-HEALTH-001 loss is active: queue_dropped_total 1,377,719, minifilter_pipeline_dropped 1,154,171, minifilter_ring_dropped 37,011, nose_frames_dropped 221,956 of 851,219 frames read. The only Brain listener is pid 31516 (pythonw.exe, session 0, created 2026-10-31, parent pid 16036 gone) with an unreadable command line, health endpoint_ownership=FOREIGN, and no SCM service or scheduled task supervising it.",
+   "description": "Read-only audit at build source 572ff13. truth.py verify reported TRUTH_VALID (exit 0), release_engineering.py --verify matched 651/651 artifacts, and zig build test --summary all ran 2,034 passed / 10 skipped / 0 failed. At audit time the installed daemon was recorded as the restored f7c626d image D34D350A; the same-day deploy re-read the host and found EB9F44AB (fc108b0), so that line is corrected by E5-DEPLOY-A9E8DE3-LOGCAP (pid 20668, 7/7 subsystems RUNNING, authority invariant HELD, host_effect_capable=false) with readiness degraded=true and overall_gate=false. QLOSS-HEALTH-001 loss is active: queue_dropped_total 1,377,719, minifilter_pipeline_dropped 1,154,171, minifilter_ring_dropped 37,011, nose_frames_dropped 221,956 of 851,219 frames read. The only Brain listener is pid 31516 (pythonw.exe, session 0, created 2026-10-31, parent pid 16036 gone) with an unreadable command line, health endpoint_ownership=FOREIGN, and no SCM service or scheduled task supervising it.",
    "files_verified": [
     "EVIDENCE_INDEX.json",
     "AI_CONTEXT.md",
@@ -9675,7 +9700,7 @@
   "E2_count": 161,
   "E3_count": 17,
   "E4_count": 15,
-  "E5_count": 131,
+  "E5_count": 132,
   "E6_count": 0,
   "E7_count": 1
  }

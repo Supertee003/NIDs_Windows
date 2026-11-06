@@ -10,6 +10,31 @@ Provider readiness, WFP transport, and retained PEP boundaries may exist for
 diagnostics, fail-closed behavior, or historical/lab evidence, but they do not
 authorize a production host effect.
 
+## E5 Deploy — Bounded Diagnostic Log (`a9e8de3`) — 2026-11-06
+
+- Source `a9e8de3` is installed on the Windows host: daemon
+  `F4BC3A85...`, `build_manifest.json` source `a9e8de3`, package
+  `84FFC725...` (7,522,128 bytes). **42/42 checks passed** with a verified
+  rollback point (`rollback-installed/`, prior daemon `EB9F44AB...`).
+- The stale 41.0 GB `aegis-daemon-diagnostic.log` (41,042,778,303 bytes) was
+  deleted with the service stopped; free space went from 4.26 GB to ~43 GB.
+- The cap was proven live, not assumed: the daemon writes ~560-690 KB/s, so it
+  filled 64 MiB within ~100 s, rotated (live file reset, backup 67,108,793
+  bytes), refilled, and rotated again. The live file never exceeded the cap and
+  total persisted growth stayed at two caps.
+- Posture unchanged: `prevention_gate=closed`, `enforcement_mode=detection-only`,
+  `tier3_enforcing=false`, `host_effect_capable=false`. No canary was sent.
+  `QLOSS-DISK-001` is CLOSED at E5 for bounded growth.
+- Correction recorded here because runtime wins over narrative: the earlier
+  audit said the installed image was the restored `D34D350A...` (f7c626d). The
+  host actually ran `EB9F44AB...` (fc108b0), verified by hash before the
+  install. Nothing in the posture claims changes.
+- Still open: the stream is loud (~55 GB/day of writes, rotation every ~100 s).
+  Bounding the file stopped disk exhaustion; it did not reduce the churn, so
+  log-verbosity reduction is tracked with the QLOSS admission work.
+- Evidence: `admin-evidence/e5-deploy-a9e8de3-20261106/closeout.md`,
+  `deploy-result-20261106_225417.json`, `log-cap-watch.txt`.
+
 ## QLOSS-DISK-001 — 2026-11-06
 
 - The persisted diagnostic stream had no size bound. On this host
@@ -21,14 +46,14 @@ authorize a production host effect.
   file rotates on the first write after restart, so the built fix stops the
   growth without a manual delete; the stale backup then disappears on the next
   rotation (commit `a9e8de3`, evidence `QLOSS-DISK-001-E2-20261106`).
-- Proven at E2 only: `zig build` exit 0, `zig build test --summary all` 2,036
+- Proven at E2: `zig build` exit 0, `zig build test --summary all` 2,036
   passed / 10 skipped / 0 failed, with tests pinning the cap, the single
-  backup, and the legacy first-write rotation. The installed host still runs
-  the unbounded f7c626d image and the 40.9 GB file is still present; stopping
-  the growth and reclaiming the space need an owner-approved elevated deploy
-  plus an explicit delete of the stale file.
+  backup, and the legacy first-write rotation. **Deployed the same day (E5)**:
+  see the section above — the 41.0 GB file is gone, free space is back to
+  ~43 GB, and live rotation was observed twice.
 - The raw growth rate also means the diagnostic stream is far too verbose per
-  captured packet; that is separate from the QLOSS admission work below.
+  captured packet (~55 GB/day of writes); bounding the file did not reduce the
+  churn. That work stays with the QLOSS admission item below.
 
 ## Project State Audit — 2026-11-06
 
@@ -36,8 +61,11 @@ authorize a production host effect.
   green: `truth.py verify` `TRUTH_VALID`, release verify 651/651 artifacts, and
   `zig build test --summary all` 2,034 passed / 10 skipped / 0 failed (exit 0).
   E2 source/build truth only; no E5 claim.
-- Live host: installed runtime is still the restored f7c626d image
-  (`D34D350A...`), 7/7 subsystems RUNNING (pid 20668), driver present,
+- Live host: at audit time the installed daemon was reported here as the
+  restored f7c626d image (`D34D350A...`); the 2026-11-06 deploy re-read the
+  host and found `EB9F44AB...` (the fc108b0 candidate). Runtime wins — the
+  audit line is corrected, and the host now runs `F4BC3A85...` (a9e8de3).
+  At audit time: 7/7 subsystems RUNNING (pid 20668), driver present,
   `authority` invariant HELD, `readiness` `worker_gate=true` / `missing=[]`
   but `degraded=true` / `overall_gate=false`, `host_effect_capable=false`.
 - `QLOSS-HEALTH-001` loss is live: `queue_dropped_total=1,377,719`,
@@ -453,11 +481,10 @@ rest is documentation hygiene.
    is still the restored `D34D350A...` (f7c626d); the newer `fc108b0` candidate
    `EB9F44AB...` was proven at E5 and deliberately rolled back. This is a
    deployment decision, not drift.
-   The current source now also carries the bounded diagnostic log
-   (`QLOSS-DISK-001`, `a9e8de3`), which the installed image lacks: until it is
-   deployed, the host still writes an unbounded `aegis-daemon-diagnostic.log`
-   (40.9 GB at the 2026-11-06 audit). Deploying it and deleting the stale file
-   are owner-approved elevated actions.
+   The bounded diagnostic log (`QLOSS-DISK-001`, `a9e8de3`) is already
+   deployed and proven live (see the 2026-11-06 E5 section); the installed
+   daemon is now `F4BC3A85...`. What remains open here is the broader kernel
+   qualification, not the log bound.
 3. **`RB-017` Brain supervised bring-up — BLOCKED.** The only listener is pid
    31516 (`pythonw.exe`, session 0, created 2026-10-31, parent gone) with an
    unreadable command line, `endpoint_ownership=FOREIGN`, and no SCM service or
