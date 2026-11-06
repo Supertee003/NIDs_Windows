@@ -75,6 +75,19 @@ pub var g_ingress_dropped: [256]std.atomic.Value(u64) = [_]std.atomic.Value(u64)
 pub fn queueDepth() u64 {
     return g_queue_head.load(.acquire) -% g_queue_tail.load(.acquire);
 }
+
+// QLOSS-QUEUE-BURST-001: high-water mark of occupancy since process start.
+// A burst that sheds at the reserve boundary leaves depth already drained by
+// the time anyone samples, so the instantaneous depth cannot size capacity.
+// Only producers write it and they hold g_queue_producer_mutex across the
+// whole reserve+publish transaction, so no update can be lost; readers treat
+// it as measurement only and never branch on it.
+var g_queue_peak_depth: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
+
+/// Peak occupancy observed since the daemon started (0 until the first push).
+pub fn queuePeakDepth() u64 {
+    return g_queue_peak_depth.load(.acquire);
+}
 var g_queue_mutex: std.Thread.Mutex = .{};
 // A producer must reserve a head position and publish the completed slot as
 // one transaction.  A load/store pair is not a reservation primitive: two
@@ -146,6 +159,9 @@ fn pushEventFull(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst
     qe.direction = direction;
     g_event_queue[head % PIPELINE_QUEUE_SIZE] = qe;
     g_queue_head.store(head + 1, .release);
+    if (depth + 1 > g_queue_peak_depth.load(.monotonic)) {
+        g_queue_peak_depth.store(depth + 1, .monotonic);
+    }
     _ = g_ingress_pushed[src_ord].fetchAdd(1, .monotonic);
     return true;
 }
@@ -558,6 +574,24 @@ fn producerStressWorker(ctx: *ProducerStressContext) void {
             _ = ctx.accepted.fetchAdd(1, .monotonic);
         }
     }
+}
+
+test "queue peak depth records the high-water mark, not the sampled depth" {
+    while (popEvent()) |_| {}
+    try std.testing.expectEqual(@as(u64, 0), queueDepth());
+    const before = queuePeakDepth();
+    var ev = event.IpcEvent.init(.packet_captured);
+    ev.source = @enumFromInt(78);
+    var pushed: u64 = 0;
+    while (pushed < 5) : (pushed += 1) try std.testing.expect(pushEvent(ev, "p"));
+    try std.testing.expectEqual(@as(u64, 5), queueDepth());
+    try std.testing.expect(queuePeakDepth() >= 5);
+    // Draining lowers depth but never the high-water mark: that is the whole
+    // point of the counter for burst sizing.
+    while (popEvent()) |_| {}
+    try std.testing.expectEqual(@as(u64, 0), queueDepth());
+    try std.testing.expect(queuePeakDepth() >= 5);
+    try std.testing.expect(queuePeakDepth() >= before);
 }
 
 test "multi producer reservation conserves accepted events" {

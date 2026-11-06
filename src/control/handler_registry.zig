@@ -689,9 +689,10 @@ const handlers = struct {
         var out = std.ArrayList(u8).init(a);
         errdefer out.deinit();
         var writer = out.writer();
-        writer.print("{{\"queue_size\":{},\"depth\":{},\"reserved_network_slots\":{},\"reserved_tail_shed\":{},\"pushed_total\":{},\"dropped_total\":{},\"minifilter_pipeline_dropped\":{},\"shed_overload\":{},\"by_source\":[", .{
+        writer.print("{{\"queue_size\":{},\"depth\":{},\"depth_peak\":{},\"reserved_network_slots\":{},\"reserved_tail_shed\":{},\"pushed_total\":{},\"dropped_total\":{},\"minifilter_pipeline_dropped\":{},\"shed_overload\":{},\"by_source\":[", .{
             event_queue.PIPELINE_QUEUE_SIZE,
             event_queue.queueDepth(),
+            event_queue.queuePeakDepth(),
             event_queue.RESERVED_NETWORK_SLOTS,
             state_mod.g_reserved_tail_shed.load(.acquire),
             pushed_total,
