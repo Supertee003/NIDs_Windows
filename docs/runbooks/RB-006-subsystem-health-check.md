@@ -37,7 +37,13 @@ read-only and safe to run anytime, on any state.
    python tools\aegisctl.py metrics
    python tools\aegisctl.py queue
    ```
-   - Watch `depth` vs `queue_size`, `dropped_total`, `shed_overload`.
+   - Watch `depth` vs `depth_peak` vs `queue_size`, `dropped_total`,
+     `shed_overload`. `depth` is a sample; `depth_peak` is the high-water mark
+     since daemon start, so a burst that already drained is still visible.
+   - Read the refusal cause before tuning capacity: `reserved_tail_shed`
+     (host telemetry at the network reserve), `source_quota_shed` (one host
+     sensor hit its `source_occupancy_cap` share), or plain `dropped_total`
+     growth (true full queue). `by_source[].active` shows who holds the space.
    - Nose frames must advance between two reads minutes apart
      (`frames_read` is per-daemon-lifetime: a reset means the daemon
      restarted, not that data was lost).

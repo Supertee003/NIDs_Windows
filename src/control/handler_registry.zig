@@ -673,12 +673,13 @@ const handlers = struct {
     fn queueStats(a: std.mem.Allocator, _: std.json.Value, _: *HandlerContext) ?[]const u8 {
         var pushed_total: u64 = 0;
         var dropped_total: u64 = 0;
-        var buckets: [256]struct { pushed: u64, dropped: u64 } = undefined;
+        var buckets: [256]struct { pushed: u64, dropped: u64, active: u64 } = undefined;
         var i: usize = 0;
         while (i < 256) : (i += 1) {
             const p = event_queue.g_ingress_pushed[i].load(.acquire);
             const d = event_queue.g_ingress_dropped[i].load(.acquire);
-            buckets[i] = .{ .pushed = p, .dropped = d };
+            const act = event_queue.g_ingress_active[i].load(.acquire);
+            buckets[i] = .{ .pushed = p, .dropped = d, .active = act };
             pushed_total += p;
             dropped_total += d;
         }
@@ -689,12 +690,14 @@ const handlers = struct {
         var out = std.ArrayList(u8).init(a);
         errdefer out.deinit();
         var writer = out.writer();
-        writer.print("{{\"queue_size\":{},\"depth\":{},\"depth_peak\":{},\"reserved_network_slots\":{},\"reserved_tail_shed\":{},\"pushed_total\":{},\"dropped_total\":{},\"minifilter_pipeline_dropped\":{},\"shed_overload\":{},\"by_source\":[", .{
+        writer.print("{{\"queue_size\":{},\"depth\":{},\"depth_peak\":{},\"reserved_network_slots\":{},\"source_occupancy_cap\":{},\"reserved_tail_shed\":{},\"source_quota_shed\":{},\"pushed_total\":{},\"dropped_total\":{},\"minifilter_pipeline_dropped\":{},\"shed_overload\":{},\"by_source\":[", .{
             event_queue.PIPELINE_QUEUE_SIZE,
             event_queue.queueDepth(),
             event_queue.queuePeakDepth(),
             event_queue.RESERVED_NETWORK_SLOTS,
+            event_queue.SOURCE_OCCUPANCY_CAP,
             state_mod.g_reserved_tail_shed.load(.acquire),
+            state_mod.g_source_quota_shed.load(.acquire),
             pushed_total,
             dropped_total,
             state_mod.g_minifilter_pipeline_dropped.load(.acquire),
@@ -708,8 +711,8 @@ const handlers = struct {
             const name = event_contract.legacySourceName(@intCast(ord), &name_buf);
             if (!first) writer.writeByte(',') catch return null;
             first = false;
-            writer.print("{{\"ordinal\":{},\"name\":\"{s}\",\"pushed\":{},\"dropped\":{}}}", .{
-                ord, name, buckets[ord].pushed, buckets[ord].dropped,
+            writer.print("{{\"ordinal\":{},\"name\":\"{s}\",\"pushed\":{},\"dropped\":{},\"active\":{}}}", .{
+                ord, name, buckets[ord].pushed, buckets[ord].dropped, buckets[ord].active,
             }) catch return null;
         }
         writer.writeAll("],\"pipeline\":[") catch return null;

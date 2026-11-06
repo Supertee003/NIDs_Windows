@@ -23,6 +23,15 @@ pub const MAX_PAYLOAD_BYTES: usize = 1500; // MTU-sized payload buffer
 // reserve is free. Every refusal stays visible in the per-source counters,
 // and reserved-tail sheds are counted separately from true full-queue drops.
 pub const RESERVED_NETWORK_SLOTS: usize = 1024;
+// QLOSS-FAIRSHARE-001: the host tail above is shared by every host sensor,
+// and a FIM storm can take all of it, leaving ETW/registry blind while the
+// kernel-side ring stays silent. A single host source may therefore own at
+// most 80% of the host tail; the remaining 20% stays reachable by the other
+// host sensors and the network reserve is untouched. This is isolation, not
+// throughput: the dominant source still drops during its own storm, but it
+// can no longer starve the streams a detection depends on.
+pub const SOURCE_OCCUPANCY_CAP: usize =
+    (PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS) / 5 * 4;
 
 fn isNetworkObservation(source: event.EventSource) bool {
     return source == .capture_npcap or source == .capture_wfp;
@@ -69,6 +78,10 @@ var g_queue_tail: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 // only: no push/drop decision reads them, so behavior is unchanged.
 pub var g_ingress_pushed: [256]std.atomic.Value(u64) = [_]std.atomic.Value(u64){std.atomic.Value(u64).init(0)} ** 256;
 pub var g_ingress_dropped: [256]std.atomic.Value(u64) = [_]std.atomic.Value(u64){std.atomic.Value(u64).init(0)} ** 256;
+// QLOSS-FAIRSHARE-001: how many queued events each source currently owns.
+// Admission compares it against SOURCE_OCCUPANCY_CAP; queue.stats exposes it
+// so an operator can see which sensor is holding the space.
+pub var g_ingress_active: [256]std.atomic.Value(u64) = [_]std.atomic.Value(u64){std.atomic.Value(u64).init(0)} ** 256;
 
 /// Current queue occupancy (head - tail, wrapping). Control-plane readers
 /// use this for queue.stats; producers/consumers never branch on it.
@@ -149,6 +162,18 @@ fn pushEventFull(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst
         _ = g_ingress_dropped[src_ord].fetchAdd(1, .monotonic);
         return false;
     }
+    if (!isNetworkObservation(ev.source) and
+        g_ingress_active[src_ord].load(.monotonic) >= SOURCE_OCCUPANCY_CAP)
+    {
+        // QLOSS-FAIRSHARE-001: this source already owns its share of the host
+        // tail, so its next event is refused while the other host sensors keep
+        // their reachable share. Counted as a refusal (health must degrade) and
+        // attributed separately so the cause is not confused with a full queue.
+        _ = state.g_queue_drops.fetchAdd(1, .monotonic);
+        _ = state.g_source_quota_shed.fetchAdd(1, .monotonic);
+        _ = g_ingress_dropped[src_ord].fetchAdd(1, .monotonic);
+        return false;
+    }
     var qe = QueuedEvent{ .ev = ev };
     const copy_len = @min(payload.len, MAX_PAYLOAD_BYTES);
     @memcpy(qe.payload[0..copy_len], payload[0..copy_len]);
@@ -158,6 +183,9 @@ fn pushEventFull(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst
     qe.tcp_flags = tcp_flags;
     qe.direction = direction;
     g_event_queue[head % PIPELINE_QUEUE_SIZE] = qe;
+    // Claim the source's occupancy BEFORE the slot is published, so a consumer
+    // can never release a slot this producer has not yet counted.
+    _ = g_ingress_active[src_ord].fetchAdd(1, .monotonic);
     g_queue_head.store(head + 1, .release);
     if (depth + 1 > g_queue_peak_depth.load(.monotonic)) {
         g_queue_peak_depth.store(depth + 1, .monotonic);
@@ -576,6 +604,45 @@ fn producerStressWorker(ctx: *ProducerStressContext) void {
     }
 }
 
+test "QLOSS-FAIRSHARE-001 a host storm cannot consume the whole host tail" {
+    while (popEvent()) |_| {}
+    try std.testing.expectEqual(@as(u64, 0), queueDepth());
+    const fim_ord: usize = @intFromEnum(event.EventSource.capture_fim);
+    const etw_ord: usize = @intFromEnum(event.EventSource.capture_etw);
+    const shed0 = state.g_source_quota_shed.load(.acquire);
+    const tail0 = state.g_reserved_tail_shed.load(.acquire);
+    const host_tail = PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS;
+
+    var ev = event.IpcEvent.init(.packet_captured);
+    ev.source = .capture_fim;
+    var fim_accepted: usize = 0;
+    while (fim_accepted < PIPELINE_QUEUE_SIZE) : (fim_accepted += 1) {
+        if (!pushEvent(ev, "x")) break;
+    }
+    try std.testing.expectEqual(SOURCE_OCCUPANCY_CAP, fim_accepted);
+    try std.testing.expectEqual(@as(u64, SOURCE_OCCUPANCY_CAP), g_ingress_active[fim_ord].load(.acquire));
+    // Refused by the per-source cap, not by the shared tail: the distinction is
+    // what lets an operator tell starvation policy from a full queue.
+    try std.testing.expect(state.g_source_quota_shed.load(.acquire) - shed0 >= 1);
+    try std.testing.expectEqual(tail0, state.g_reserved_tail_shed.load(.acquire));
+
+    // The rest of the host tail is still reachable by another host sensor.
+    ev.source = .capture_etw;
+    var etw_accepted: usize = 0;
+    while (etw_accepted < host_tail) : (etw_accepted += 1) {
+        if (!pushEvent(ev, "y")) break;
+    }
+    try std.testing.expectEqual(host_tail - SOURCE_OCCUPANCY_CAP, etw_accepted);
+    try std.testing.expectEqual(@as(u64, host_tail - SOURCE_OCCUPANCY_CAP), g_ingress_active[etw_ord].load(.acquire));
+    try std.testing.expectEqual(@as(u64, host_tail), queueDepth());
+
+    // Occupancy is released on pop, so a drained queue grants the cap again.
+    while (popEvent()) |_| {}
+    try std.testing.expectEqual(@as(u64, 0), queueDepth());
+    try std.testing.expectEqual(@as(u64, 0), g_ingress_active[fim_ord].load(.acquire));
+    try std.testing.expectEqual(@as(u64, 0), g_ingress_active[etw_ord].load(.acquire));
+}
+
 test "queue peak depth records the high-water mark, not the sampled depth" {
     while (popEvent()) |_| {}
     try std.testing.expectEqual(@as(u64, 0), queueDepth());
@@ -649,18 +716,30 @@ test "IDS-QUEUE-001 reserves network tail from host telemetry flood" {
     const reserved_before = state.g_reserved_tail_shed.load(.acquire);
     const drops_before = state.g_queue_drops.load(.acquire);
 
+    const host_tail = PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS;
     var host = event.IpcEvent.init(.fim_change);
     host.source = .capture_fim;
     var filled: usize = 0;
-    while (filled < PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS) : (filled += 1) {
+    // QLOSS-FAIRSHARE-001: one host source owns at most its share, so FIM alone
+    // stops at the per-source cap rather than at the shared host tail.
+    while (filled < SOURCE_OCCUPANCY_CAP) : (filled += 1) {
         try std.testing.expect(pushEvent(host, &[_]u8{}));
     }
-
-    // Host telemetry is refused at the reserve boundary, not at capacity.
     try std.testing.expect(!pushEvent(host, &[_]u8{}));
-    try std.testing.expectEqual(@as(u64, PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS), queueDepth());
+    try std.testing.expectEqual(@as(u64, SOURCE_OCCUPANCY_CAP), queueDepth());
+    try std.testing.expectEqual(reserved_before, state.g_reserved_tail_shed.load(.acquire));
+
+    // The rest of the host tail stays reachable by another host sensor...
+    var etw = event.IpcEvent.init(.fim_change);
+    etw.source = .capture_etw;
+    while (filled < host_tail) : (filled += 1) {
+        try std.testing.expect(pushEvent(etw, &[_]u8{}));
+    }
+    // ...and host telemetry is refused at the reserve boundary, not at capacity.
+    try std.testing.expect(!pushEvent(etw, &[_]u8{}));
+    try std.testing.expectEqual(@as(u64, host_tail), queueDepth());
     try std.testing.expectEqual(reserved_before + 1, state.g_reserved_tail_shed.load(.acquire));
-    try std.testing.expectEqual(drops_before + 1, state.g_queue_drops.load(.acquire));
+    try std.testing.expectEqual(drops_before + 2, state.g_queue_drops.load(.acquire));
 
     // A network observation still enters the reserved tail.
     var network = event.IpcEvent.init(.packet_captured);
@@ -668,14 +747,16 @@ test "IDS-QUEUE-001 reserves network tail from host telemetry flood" {
     try std.testing.expect(pushEvent(network, &[_]u8{}));
 
     // Fill the reserve with network observations. A host refusal at true
-    // capacity is a full-queue drop, never mislabeled as a reserved shed.
+    // capacity is counted as a reserved shed, never as quota starvation.
     var reserve: usize = 1;
     while (reserve < RESERVED_NETWORK_SLOTS) : (reserve += 1) {
         try std.testing.expect(pushEvent(network, &[_]u8{}));
     }
-    try std.testing.expect(!pushEvent(host, &[_]u8{}));
+    // At true capacity the full-queue refusal wins, so the reserve shed counter
+    // does not move a second time.
+    try std.testing.expect(!pushEvent(etw, &[_]u8{}));
     try std.testing.expectEqual(reserved_before + 1, state.g_reserved_tail_shed.load(.acquire));
-    try std.testing.expectEqual(drops_before + 2, state.g_queue_drops.load(.acquire));
+    try std.testing.expectEqual(drops_before + 3, state.g_queue_drops.load(.acquire));
 
     while (popEvent()) |_| {}
 }
@@ -690,6 +771,10 @@ pub fn popEvent() ?QueuedEvent {
     if (tail == head) return null;
     const qe = g_event_queue[tail % PIPELINE_QUEUE_SIZE];
     g_queue_tail.store(tail + 1, .release);
+    // QLOSS-FAIRSHARE-001: release the source's occupancy exactly once per
+    // popped slot; the producer counted it before publishing the slot.
+    const src_ord: usize = @intFromEnum(qe.ev.source);
+    _ = g_ingress_active[src_ord].fetchSub(1, .monotonic);
     return qe;
 }
 

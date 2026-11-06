@@ -243,6 +243,10 @@ pub var g_queue_drops = std.atomic.Value(u64).init(0); // events refused by queu
 /// operator can distinguish "queue actually full" from "network reserve
 /// protected"; it never changes admission or health behavior by itself.
 pub var g_reserved_tail_shed = std.atomic.Value(u64).init(0);
+/// QLOSS-FAIRSHARE-001: host-source refusals caused by the per-source
+/// occupancy cap rather than by a full queue. Counted in g_queue_drops too, so
+/// health still degrades; this counter only names the cause.
+pub var g_source_quota_shed = std.atomic.Value(u64).init(0);
 // Canonical Go Nose -> Zig reader counters. These are deliberately separate
 // from process liveness: RUNNING does not imply that the data plane is active.
 pub var g_nose_connected = std.atomic.Value(bool).init(false);
