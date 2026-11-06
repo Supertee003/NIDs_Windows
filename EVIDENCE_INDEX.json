@@ -21,6 +21,31 @@
  },
  "evidence": [
   {
+   "id": "PROJECT-STATE-AUDIT-20261106",
+   "head_sha": "f325ef6ba91132d53f15fad143440c8d514838a0",
+   "timestamp": "2026-11-06",
+   "title": "Project state audit: repo gates green, live loss active, RB-017 brain listener is an unsupervised orphan",
+   "level": "E1",
+   "component": "repository gates + live Windows host (read-only)",
+   "flow_id": "PROJECT-CLOSURE",
+   "description": "Read-only audit at build source 572ff13. truth.py verify reported TRUTH_VALID (exit 0), release_engineering.py --verify matched 651/651 artifacts, and zig build test --summary all ran 2,034 passed / 10 skipped / 0 failed. The live installed daemon is still the restored f7c626d image D34D350A (pid 20668, 7/7 subsystems RUNNING, authority invariant HELD, host_effect_capable=false) with readiness degraded=true and overall_gate=false. QLOSS-HEALTH-001 loss is active: queue_dropped_total 1,377,719, minifilter_pipeline_dropped 1,154,171, minifilter_ring_dropped 37,011, nose_frames_dropped 221,956 of 851,219 frames read. The only Brain listener is pid 31516 (pythonw.exe, session 0, created 2026-10-31, parent pid 16036 gone) with an unreadable command line, health endpoint_ownership=FOREIGN, and no SCM service or scheduled task supervising it.",
+   "files_verified": [
+    "EVIDENCE_INDEX.json",
+    "AI_CONTEXT.md",
+    "docs/ai-context/10-current-phase.md"
+   ],
+   "tests": [
+    "python tools/truth.py verify",
+    "python tools/release_engineering.py --verify",
+    "zig build test --summary all",
+    "aegisctl status/health/readiness/authority/bridge (read-only)",
+    "Get-CimInstance Win32_Process for pid 31516"
+   ],
+   "result": "AUDIT_RECORDED",
+   "finding": "E2 source/build truth is green at this HEAD; no new E5 is claimed. QLOSS-HEALTH-001 overload (issue #29) remains OPEN, RB-017 cannot pass with a FOREIGN unsupervised listener, and the remaining blockers are QLOSS elimination, supervised Windows E5/kernel qualification, the approved RB-017 restart, signed release/E7, and the pending CI push. A host incident is recorded: C: reached 0 bytes free and broke tools staging output on C:/Windows temp until %LOCALAPPDATA%/Temp was cleared (~4.4 GB recovered); no repository artifact was affected.",
+   "evidence_artifact": "admin-evidence/project-state-audit-20261106/closeout.md"
+  },
+  {
    "id": "EVT-001",
    "head_sha": "ec12182ad785c1af9b5321b735297c46e62a2b34",
    "timestamp": "2026-09-09",
@@ -9623,7 +9648,7 @@
  ],
  "evidence_level_summary": {
   "E0_count": 0,
-  "E1_count": 31,
+  "E1_count": 32,
   "E2_count": 160,
   "E3_count": 17,
   "E4_count": 15,

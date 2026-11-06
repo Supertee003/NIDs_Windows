@@ -10,6 +10,36 @@ Provider readiness, WFP transport, and retained PEP boundaries may exist for
 diagnostics, fail-closed behavior, or historical/lab evidence, but they do not
 authorize a production host effect.
 
+## Project State Audit — 2026-11-06
+
+- Read-only audit at records HEAD `f325ef6` (build source `572ff13`). Gates are
+  green: `truth.py verify` `TRUTH_VALID`, release verify 651/651 artifacts, and
+  `zig build test --summary all` 2,034 passed / 10 skipped / 0 failed (exit 0).
+  E2 source/build truth only; no E5 claim.
+- Live host: installed runtime is still the restored f7c626d image
+  (`D34D350A...`), 7/7 subsystems RUNNING (pid 20668), driver present,
+  `authority` invariant HELD, `readiness` `worker_gate=true` / `missing=[]`
+  but `degraded=true` / `overall_gate=false`, `host_effect_capable=false`.
+- `QLOSS-HEALTH-001` loss is live: `queue_dropped_total=1,377,719`,
+  `minifilter_pipeline_dropped=1,154,171`, `minifilter_ring_dropped=37,011`,
+  `nose_frames_dropped=221,956` of 851,219 frames read. The observability half
+  stays closed; issue #29 (the overload itself) stays OPEN.
+- `RB-017` is **not** satisfied: the only brain listener is pid 31516
+  (`pythonw.exe`, session 0, created 2026-10-31, parent pid 16036 gone) with an
+  unreadable command line, health `endpoint_ownership=FOREIGN`, and no SCM
+  service or scheduled task supervising it. It is an unsupervised orphan, not
+  a supervised bring-up; the return-path (`brain_tier2`) proof was not
+  attempted. Closes only with an approved elevated stop plus a supervised run.
+- Host incident recorded: `C:` reached 0 bytes free and broke tools staging
+  output on `C:\...\Temp` (Python `OSError: [Errno 28]`); only
+  `%LOCALAPPDATA%\Temp` was cleared (~4.4 GB recovered). The repository lives
+  on `D:` and no repository artifact was affected. The drive is still 99% used
+  and reclaiming the rest is a host-owner task.
+- Evidence: `admin-evidence/project-state-audit-20261106/closeout.md` with
+  `truth-verify.txt`, `release-verify.txt`, `status.txt`, `health.txt`,
+  `readiness.txt`, `authority.txt`, `bridge.txt`, `brain-pid-31516.txt`;
+  index entry `PROJECT-STATE-AUDIT-20261106`.
+
 ## XDR-005 Multi-Source E5 — 2026-11-05
 
 - `IDS-XDR-005-WIRING-OPEN` and `XDR-005-LIVE-MULTISOURCE-UNREACHABLE` are
@@ -383,32 +413,47 @@ And CI proves: C/C++ + Zig + Go + Rust + Python/Cython + Drivers as one product.
 
 ## Remaining closure work
 
-1. `MAP-006` source/map reconciliation is **PASS at E2** (2026-11-01): runtime
-   manifest, flow/authority/system/contract maps, and evidence index were checked
-   against current source. This is not Windows E5, kernel qualification, or ADR-
-   0009/release completion.
-2. Produce supervised Windows-host evidence for applicable host telemetry and
-   sensor paths. The RB-021 recheck on 2026-11-01 confirmed both VMs and the
-   raw capture device were reachable, but the installed image then differed
-   from the workspace build. That current-runtime mismatch was cleared on
-   2026-11-04 by the observe-only canary on the deployed `f7c626d` runtime
-   (70 attributed rows, gate closed, `RB-021-CANARY-F7C626D-20261104`). The
-   2026-11-05 XDR-005 E5 run then installed candidate `EB9F44AB...` (build
-   source `fc108b0`) and restored `D34D350A...`. Broader supervised Windows
-   E5/kernel qualification remains OPEN: any new current-source E5 must
-   redeploy a verified candidate with a rollback point and pass the RB-021
-   preflight first. See `admin-evidence/e5-recheck-20261101/closeout.md`.
-3. Continue classifying remaining older IPS/WFP material as historical or
-   lab-only without deleting it; the key WFP/host records GAP-002, GAP-005, and
-   GAP-009 are now explicitly historical. Keep production host-effect capability false.
-4. Complete supervised RB-017 Brain evidence without starting a second listener
-   or changing the production detection-only gate.
-5. The two Zig test execution-graph gaps are closed at E2; preserve that
-   distinction from supervised Windows E5 host proof.
-6. `IDS-XDR-006` proved a lab/test advisory XDR-to-forensic-receipt/replay
-   slice at E2. Production runtime routing was subsequently wired
-   (XDR-WIRE-001/XDR-RECEIPT-002) and proven at E5 by `XDR-005-E5-20261105`;
-   the XDR path remains advisory and recording-only.
+Open register as of the 2026-11-06 audit (records HEAD `f325ef6`, build source
+`572ff13`). Items 1-3 below are the only work that still blocks "finished"; the
+rest is documentation hygiene.
+
+1. **`QLOSS-HEALTH-001` overload elimination — OPEN (issue #29).** The loss is
+   live on the deployed runtime (queue drops 1,377,719; minifilter pipeline
+   1,154,171; Nose frames dropped 221,956 of 851,219 read). `1edb2b1` made the
+   loss visible and `56ac99f` reserved the network tail; neither reduces host
+   admission pressure. Next slice: a host-telemetry admission policy
+   (coalescing or a separate host queue) with a deterministic unit proof, then a
+   bounded E5 delta measurement against a clean restart. Readiness must stop
+   reporting `degraded=true` only when the deltas are actually zero, never by
+   relaxing the gate.
+2. **Supervised Windows E5 / kernel qualification — OPEN.** Any new
+   current-source E5 must redeploy a verified candidate with a rollback point
+   and pass the RB-021 preflight first (pattern: `E5-DEPLOY-F7C626D-20261103`,
+   `RB-021-CANARY-F7C626D-20261104`, `XDR-005-E5-20261105`). The installed image
+   is still the restored `D34D350A...` (f7c626d); the newer `fc108b0` candidate
+   `EB9F44AB...` was proven at E5 and deliberately rolled back. This is a
+   deployment decision, not drift.
+3. **`RB-017` Brain supervised bring-up — BLOCKED.** The only listener is pid
+   31516 (`pythonw.exe`, session 0, created 2026-10-31, parent gone) with an
+   unreadable command line, `endpoint_ownership=FOREIGN`, and no SCM service or
+   scheduled task supervising it. Needs an approved elevated stop of that
+   orphan, then a supervised `python brain/windows_brain.py` run with
+   `AEGIS_BRAIN_SECRET` on both ends, `aegisctl bridge` ownership corroboration,
+   and fixture traffic proving `brain_tier2` provenance. Do not start a second
+   listener and do not change the detection-only gate.
+4. **Signed release package / E7 — OPEN.** Requires signing key material,
+   provenance, and an owner decision. Nothing in the current evidence set
+   changes this.
+5. **CI first push — PENDING owner approval.** Truth semantics were fixed
+   2026-10-20 and `truth.py verify` is green with `fetch-depth: 0`; the push
+   itself is not authorized.
+6. **Historical classification of older IPS/WFP material — on-going.** Keep
+   classifying without deleting; GAP-002, GAP-005, and GAP-009 are explicitly
+   historical. Production host-effect capability must stay false.
+
+Completed and not to be re-opened as work items: `MAP-006` (PASS at E2), the two
+Zig test execution-graph gaps (E2), `IDS-XDR-006` wiring (advisory, proven at E5
+by `XDR-005-E5-20261105`), and the `E5-CURRENT-RUNTIME-MISMATCH` clearances.
 
 Do not introduce an IPS activation phase into the production roadmap.
 
