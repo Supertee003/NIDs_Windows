@@ -1,5 +1,5 @@
 {
- "head_sha": "33be54a1dc6de03b6e0cdeb82d7b2683a1cb5a9f",
+ "head_sha": "fadc216f4fa9cfb3418739c52c8c2611c7e91a8d",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-11-06",
  "generator_version": "3.0",
@@ -20,6 +20,34 @@
   "E7": "Release verification"
  },
  "evidence": [
+  {
+   "id": "QLOSS-FAIRSHARE-001-E5-20261107",
+   "head_sha": "fadc216",
+   "timestamp": "2026-11-07",
+   "title": "Per-source fair admission: a FIM storm can no longer consume the whole host tail",
+   "level": "E5",
+   "component": "Windows host runtime (pipeline queue admission)",
+   "flow_id": "QLOSS-HEALTH-001",
+   "description": "Deployed per-source occupancy caps on the host tail and measured the split on the same 20,000-file churn burst twice. 80/20 (source 33be54a, daemon 09FB0A15...) was measured first and failed: FIM dropped 142,228 while ETW still dropped 25,666, because FIM drove total occupancy to the shared boundary where the tail check refuses ETW before the per-source cap is consulted. The cap was therefore changed to half the host tail (7,680 slots each, source fadc216, daemon 1463BC10..., package 06500028...). On the 50/50 build a final verify-only run reports PASS=True 27/27: FIM occupied 7,554 of its 7,680 share and dropped 181,283, ETW stayed reachable with 7,242 active and dropped 31,487, ring_dropped=0, depth_peak 15,620 within the 16,384 queue.",
+   "files_verified": [
+    "admin-evidence/e5-deploy-33be54a-20261106/deploy-result-20261107_000341.json",
+    "admin-evidence/e5-deploy-fadc216-20261106/deploy-result-20261107_001048.json",
+    "admin-evidence/e5-deploy-fadc216-20261106/deploy-result-20261107_002004.json",
+    "admin-evidence/e5-deploy-fadc216-20261106/peak-watch-20261107_002004.ndjson",
+    "src/pipeline/event_queue.zig",
+    "src/control/handler_registry.zig",
+    "docs/runbooks/RB-006-subsystem-health-check.md"
+   ],
+   "tests": [
+    "zig build test --summary all: 2039 passed / 10 skipped / 0 failed (cap, reachable remainder, occupancy release on pop)",
+    "80/20 measurement: fim 142,228 dropped, etw 25,666 dropped, quota_shed 490, fim_active 9,590 (isolation FAILED)",
+    "50/50 verify-only: fim 181,283 dropped / fim_active 7,554; etw 31,487 dropped / etw_active 7,242; quota_shed 363,930; ring 0",
+    "installed runtime 1463BC10 matches package 06500028; build_manifest source fadc216; driver Valid; gate closed / detection-only / tier3_enforcing=false"
+   ],
+   "result": "PASS_E5_FAIR_ADMISSION",
+   "finding": "Isolation now holds as a guarantee, not a hope: whatever the storm does, another host source keeps half the host tail reachable, and the measurement shows ETW holding 7,242 of its 7,680 share while FIM was pinned at 7,554. Two honest limits. (1) This does not reduce total loss: FIM still sheds its own excess (~181k rows in this synthetic burst), and the total dropped across the run is unchanged or slightly higher, because isolation trades total throughput for stream completeness. (2) ETW's residual ~31k drops are its own overflow, not starvation: the same file churn floods the kernel file provider too, so ETW would exceed any share it was given. Reducing either stream's volume still needs sensor-side aggregation or rate shaping, which remains the recorded next decision. Also note the counters shown in the last run are cumulative since daemon start (three measurement runs on one install), so only the per-run deltas above are comparable.",
+   "evidence_artifact": "admin-evidence/e5-deploy-fadc216-20261106/deploy-result-20261107_002004.json"
+  },
   {
    "id": "QLOSS-FIM-STORM-20261106",
    "head_sha": "86024fb",
@@ -9803,7 +9831,7 @@
   "E2_count": 161,
   "E3_count": 17,
   "E4_count": 15,
-  "E5_count": 136,
+  "E5_count": 137,
   "E6_count": 0,
   "E7_count": 1
  }

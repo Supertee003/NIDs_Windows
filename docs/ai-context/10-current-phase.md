@@ -544,10 +544,18 @@ rest is documentation hygiene.
    reporting artifact.
    Sizing was then measured rather than guessed (`86024fb` adds `depth_peak`): a
    churn burst demanded >157,000 events with FIM alone shedding 131,065, so slot
-   count is the wrong lever (a ~36x queue, ~950 MB, would be needed). The next
-   slice is a decision between FIM ingress aggregation/rate-shaping and
-   per-source fair admission — both change detection or fairness policy. Also
-   open: production driver signing (the ring change is test-signed).
+   count is the wrong lever (a ~36x queue, ~950 MB, would be needed).
+   Per-source fair admission then landed (`fadc216`, cap = half the host tail):
+   a storming source may own at most 7,680 slots, so every other host sensor
+   keeps the other half reachable. The 80/20 split was measured first and
+   rejected — FIM still drove total occupancy to the shared boundary and ETW
+   dropped 25,666 — while the 50/50 build verifies at E5 with ETW holding 7,242
+   of its 7,680 share while FIM sat at 7,554 (`QLOSS-FAIRSHARE-001-E5-20261107`,
+   27/27 checks). **This is isolation, not loss reduction:** FIM still sheds its
+   own excess (~181k rows under the synthetic burst) and ETW's residual drops
+   are its own overflow from the same churn, so reducing either stream's volume
+   (sensor-side aggregation/rate shaping) remains the recorded next decision.
+   Also open: production driver signing (the ring change is test-signed).
 2. **Supervised Windows E5 / kernel qualification — OPEN.** Any new
    current-source E5 must redeploy a verified candidate with a rollback point
    and pass the RB-021 preflight first (pattern: `E5-DEPLOY-F7C626D-20261103`,
