@@ -94,6 +94,28 @@ recorded as the open decision, not silently approximated.
   refusal counters and warns that `depth` is a sample while `depth_peak` is the
   high-water mark, because drained bursts are invisible in the former.
 
+## Correction (2026-11-07, after ReleaseSafe)
+
+`zig build` defaulted to `.Debug`, so every binary that produced the numbers above
+was unoptimized. Once the default became `.ReleaseSafe` (`61ef9b2`), the
+forensic append mean fell from **217 us to 38 us** and a 60,000-file churn
+sustained **2,930 rows/s with 439 drops (0.12%)**, ring 0, depth drained to 0
+(`QLOSS-CONSUMER-001-E5-20261107`).
+
+Two statements in this ADR are therefore revised, not deleted:
+
+- The **1,325 rows/s** figure was a *saturated drain rate*, not the consumer's
+  capacity. Capacity is at least 2,930 rows/s on this host.
+- The **"10:1 producer/consumer gap"** used above to reject buffering was
+  substantially an artifact of the Debug build. The conclusion that a sustained
+  deficit cannot be buffered away still holds in principle, but the ratio that
+  justified it was inflated, so WAL should be re-evaluated against a measured
+  ReleaseSafe deficit rather than the old number.
+
+What does not change: forensic append still dominates per-event cost (38 us of
+the ~48 us `capture_to_decode` mean), so the next lever is inside that stage —
+the 4 KiB zero/hash/CRC passes — not worker parallelism.
+
 ## Open work (explicitly out of scope here)
 
 1. Reduce ingress volume at the sensor: FIM/ETW aggregation or debouncing for

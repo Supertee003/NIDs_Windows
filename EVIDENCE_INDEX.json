@@ -1,5 +1,5 @@
 {
- "head_sha": "2729583f30d981e1c4cb457a8b08db7a327281a2",
+ "head_sha": "61ef9b246e0d52e99f43d5d2dfc200c08e62a609",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-11-06",
  "generator_version": "3.0",
@@ -20,6 +20,32 @@
   "E7": "Release verification"
  },
  "evidence": [
+  {
+   "id": "QLOSS-CONSUMER-001-E5-20261107",
+   "head_sha": "61ef9b2",
+   "timestamp": "2026-11-07",
+   "title": "Forensic sub-stage timing exposed an unoptimized Debug build as the consumer bottleneck",
+   "level": "E5",
+   "component": "Windows host runtime (pipeline consumer, build configuration)",
+   "flow_id": "QLOSS-HEALTH-001",
+   "description": "Splitting action_to_forensic into forensic_append / forensic_hash / receipt_issue located the stall: append carried 27.5 ms max and 217 us mean while hash (20 ns) and receipt (30 ns) were negligible. A scratch benchmark (not shipped) showed a fixed ~34 us per 4 KiB append in Debug versus ~12 us in ReleaseSafe, independent of ring size and payload length, and build.zig defaulted to .Debug - so every shipped binary and every earlier measurement ran unoptimized. The default is now .ReleaseSafe with runtime safety checks intact. After installing source 61ef9b2 (daemon 7590FA2A..., package 28797574..., driver unchanged 10C41E80..., manifest 61ef9b2, 17/17 install checks): forensic_append mean 217 us -> 38 us, capture_to_decode 235 us -> 48 us, and a 60,000-file churn sustained 2,930 rows/s with 439 drops total (quota_shed 439, tail_shed 0), ring 0, depth drained to 0, depth_peak 13,006.",
+   "files_verified": [
+    "admin-evidence/e5-deploy-2729583-20261107/install-result-20261107_011844.json",
+    "admin-evidence/e5-deploy-release-20261107/install-result-20261107_013110.json",
+    "src/pipeline/event_processor.zig",
+    "src/reliability/latency_histogram.zig",
+    "build.zig"
+   ],
+   "tests": [
+    "zig build test --summary all in ReleaseSafe: 2041 passed / 10 skipped / 0 failed",
+    "scratch bench: 34.0 us/append (Debug) vs 12.2 us/append (ReleaseSafe), flat across 4-64 MiB rings and 32-1400 B payloads",
+    "20,000-file churn on the ReleaseSafe build: 0 drops (previously 94,345), depth_peak 4,075 of 14,336",
+    "60,000-file churn: 2,930 rows/s over 123 s, 439 drops (0.12%), ring 0, depth 0"
+   ],
+   "result": "PASS_E5_RELEASE_SAFE",
+   "finding": "The dominant consumer cost was the build mode, not an algorithm. Two earlier conclusions were therefore wrong and are corrected here: the observed 1,325 rows/s was a saturated drain rate rather than the consumer's capacity, and the '10:1 producer/consumer gap' that justified rejecting buffering as a fix was substantially an artifact of running an unoptimized binary. What survives is the qualitative finding that forensic append dominates per-event cost (38 us of the ~48 us capture_to_decode mean), so the next lever is inside that stage - the 4 KiB zero/hash/CRC passes - not worker parallelism. Limits: the churn is synthetic; the 2,930 rows/s figure includes a 439-row shortfall attributed to the FIM per-source quota, and capacity was not pushed past that point.",
+   "evidence_artifact": "admin-evidence/e5-deploy-release-20261107/install-result-20261107_013110.json"
+  },
   {
    "id": "QLOSS-CRITICAL-001-E5-20261107",
    "head_sha": "ad9733c",
@@ -9857,7 +9883,7 @@
   "E2_count": 161,
   "E3_count": 17,
   "E4_count": 15,
-  "E5_count": 138,
+  "E5_count": 139,
   "E6_count": 0,
   "E7_count": 1
  }

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-06T18:10:05.649857+00:00",
+  "generated_at": "2026-11-06T18:35:03.902392+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1482,
@@ -270,7 +270,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 56943
+      "size": 56409
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -1260,7 +1260,7 @@
       "path": "build.zig",
       "class": "canonical-source",
       "role": "source",
-      "size": 12427
+      "size": 12954
     },
     {
       "path": "build_manifest.json",
@@ -1626,7 +1626,7 @@
       "path": "docs/adr/0010-host-telemetry-admission.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 6085
+      "size": 7263
     },
     {
       "path": "docs/adr/ADR-CORE-LEGACY-CLASSIFICATION.md",
@@ -3024,7 +3024,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 933946
+      "size": 936888
     },
     {
       "path": "fix_bridge_banner.py",
@@ -3414,7 +3414,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9642
+      "size": 9987
     },
     {
       "path": "pytest.ini",
