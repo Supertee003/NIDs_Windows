@@ -9,7 +9,14 @@ pub fn build(b: *std.Build) void {
     // Declare this option explicitly for Zig 0.13.0. Some 0.13 builds do
     // not expose the standard helper's `-Doptimize` registration reliably
     // when the build graph is loaded from a cached Windows build runner.
-    const optimize = b.option(std.builtin.OptimizeMode, "optimize", "Build optimization mode") orelse .Debug;
+    // QLOSS-CONSUMER-001: this defaulted to .Debug, so the daemon that shipped
+    // and every measurement taken from it ran an unoptimized binary. The
+    // forensic append alone costs ~34 us/record in Debug versus ~12 us in
+    // ReleaseSafe (measured on the 4 KiB record path), and that cost sits on the
+    // single consumer thread. ReleaseSafe keeps every runtime safety check, so
+    // the default now ships an optimized binary with checks intact; pass
+    // -Doptimize=Debug explicitly for a debug session.
+    const optimize = b.option(std.builtin.OptimizeMode, "optimize", "Build optimization mode") orelse .ReleaseSafe;
 
     // SLICE-C-LAB: lab-only prevention-gate open path. Defaults to false and
     // is never passed by release/CI scripts (pinned by

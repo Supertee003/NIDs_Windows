@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-06T18:02:13.218032+00:00",
+  "generated_at": "2026-11-06T18:10:05.649857+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1482,
@@ -3156,7 +3156,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 233725
+      "size": 233886
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3432,7 +3432,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 192682
+      "size": 192807
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -5616,7 +5616,7 @@
       "path": "src/control/handler_registry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 168506
+      "size": 168650
     },
     {
       "path": "src/control/protocol.zig",
@@ -6084,7 +6084,7 @@
       "path": "src/pipeline/event_processor.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 53036
+      "size": 53927
     },
     {
       "path": "src/pipeline/event_queue.zig",
@@ -6264,7 +6264,7 @@
       "path": "src/reliability/latency_histogram.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 5768
+      "size": 6061
     },
     {
       "path": "src/reliability/lifecycle.zig",
