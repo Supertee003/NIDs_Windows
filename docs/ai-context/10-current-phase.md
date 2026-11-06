@@ -210,8 +210,28 @@ authorize a production host effect.
 - Source commit `1edb2b1a008614e21c39bb9b8a6044c316f3fd37` now counts minifilter EventQueue rejections separately and exposes them in `queue.stats` / health. Health reports `DEGRADED` when queue drops, Nose rejects/drops/pipe errors, or minifilter ring/pipeline loss is nonzero.
 - `zig build test --summary all`: 2,004 passed, 10 skipped, 0 failed. `zig build`: PASS. Evidence level E2; no ABI, wire, policy-authority, or enforcement change.
 - The live incident had 164,069 cumulative queue drops and 3,140 minifilter ring drops; this patch makes loss visible in readiness but does not eliminate overload. Counters are process-lifetime cumulative; qualify deltas after a clean deployment.
-- Workspace build image SHA-256: `749784FE150076600DE09E2CF0926EEAE0F4483442E8E5A0B9C5EE849E17C610`. Rollback-capable installer is prepared at `admin-evidence/qloss-health-001-20261101/AEGIS-NIDS-5.0.0-1edb2b1-20261101.exe` (SHA-256 `488845A8A7D9B3648AF38A59E612074F933B4C6FA2E9A6C7BA9C31F01AC9DE7B`); release verification 616/616 and fresh_deploy plan pass. After restart of the old image, live health still said RUNNING despite queue drops=4,655 and depth=15,323/16,384 at 18.7s uptime (ETW=2,125, FIM=2,530); minifilter ring counter read 466,949 without an established delta. Service is now STOPPED; new installer is ready but uninstalled. Issue #29 remains OPEN until deployment and bounded Windows verification.
+- Workspace build image SHA-256: `749784FE150076600DE09E2CF0926EEAE0F4483442E8E5A0B9C5EE849E17C610`. Rollback-capable installer is prepared at `admin-evidence/qloss-health-001-20261101/AEGIS-NIDS-5.0.0-1edb2b1-20261101.exe` (SHA-256 `488845A8A7D9B3648AF38A59E612074F933B4C6FA2E9A6C7BA9C31F01AC9DE7B`); release verification 616/616 and fresh_deploy plan pass. After restart of the old image, live health still said RUNNING despite queue drops=4,655 and depth=15,323/16,384 at 18.7s uptime (ETW=2,125, FIM=2,530); minifilter ring counter read 466,949 without an established delta. At that snapshot the service was STOPPED and the new installer was uninstalled; issue #29 remained OPEN for deployment and bounded Windows verification. **Superseded for the deployment half by the 2026-11-04 E5 update below** — the loss itself is still OPEN.
 - The earlier Kali R9006 run scanned 10 ports, below its configured threshold of 20 distinct ports. It is not a valid detection-failure result. Resume the demo only after service is running and a current-source build is deployed; see `admin-evidence/qloss-health-001-20261101/closeout.md`.
+
+## QLOSS-HEALTH-001 E5 Update — 2026-11-04
+
+- The `1edb2b1` observability fix is present in the deployed `f7c626d`
+  runtime (`D34D350A...`). During the post-restore RB-021 checks, the live
+  health payload at `2026-11-04T07:30:40Z` reported `state=DEGRADED`,
+  `runtime_state=RUNNING`, `degraded=true`,
+  `queue_dropped_total=65104`, `minifilter_ring_dropped=364820`, and
+  `minifilter_pipeline_dropped=47775`, while 7/7 subsystems were RUNNING
+  and every worker was ready. The readiness sample 30 s earlier already
+  reported `degraded=true` / `overall_gate=false` with `worker_gate=true`
+  and no missing workers or failure reasons.
+- Network ingress dropped 0 in both canary rounds (`capture_npcap`
+  `dropped=0`), so the counters are host-telemetry loss
+  (ETW/FIM/minifilter), not canary-induced. This clears the
+  deployment-pending half of QLOSS-HEALTH-001 at E5; the underlying data
+  loss is not eliminated, readiness remains degraded, and issue #29 stays
+  OPEN for the loss itself.
+- Evidence: `admin-evidence/rb021-canary-20261104/post-restore/health-degradation.json`,
+  `final-checks.txt`, and `EVIDENCE_INDEX.json#QLOSS-HEALTH-001-E5-20261104`.
 
 ## IDS-QUEUE-001 Update — 2026-11-02
 
