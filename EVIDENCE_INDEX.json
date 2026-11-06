@@ -21,6 +21,29 @@
  },
  "evidence": [
   {
+   "id": "QLOSS-QUEUE-BURST-20261106",
+   "head_sha": "05ebba0",
+   "timestamp": "2026-11-06",
+   "title": "Correction: a later host burst overflows the pipeline queue while the 4 MiB ring stays clean",
+   "level": "E5",
+   "component": "Windows host runtime (pipeline queue admission)",
+   "flow_id": "QLOSS-HEALTH-001",
+   "description": "After the ring deploy's 180 s clean window (drops 0 over 178,499 rows), a subsequent host burst pushed the 16,384-slot pipeline queue to its reserve boundary: dropped_total reached 10,408 (capture_fim 9,553, capture_etw 855) with minifilter ring drops still 0, and readiness returned to degraded=true / overall_gate=false. A 60 s follow-up sampling found the drop counter frozen (no ongoing loss) while depth oscillated between 19 and 12,469, i.e. one absorbed burst that exceeded available headroom, not a sustained throughput deficit (rows were draining ~992-1,250/s).",
+   "files_verified": [
+    "admin-evidence/qloss-sample-20261106/burst-watch.txt",
+    "admin-evidence/qloss-sample-20261106/queue-samples.ndjson",
+    "src/pipeline/event_queue.zig"
+   ],
+   "tests": [
+    "20-sample burst watch after the episode: dropped_total constant, depth 19..12,469",
+    "ring_dropped=0 throughout the burst",
+    "readiness degraded=true after the burst"
+   ],
+   "result": "OPEN_BURST_OVERFLOW",
+   "finding": "The queue's burst headroom is insufficient on this host: 16,384 slots (~26 MB of static state at ~1.6 KB/slot) minus the 1,024 reserved network tail left host telemetry refused during a single spike. This is a real loss and is recorded as OPEN rather than hidden behind the earlier zero window. Next slice must size capacity from a measured peak depth through a burst, or coalesce repeated FIM events for the same path at ingress; raising the queue alone must be justified by memory cost.",
+   "evidence_artifact": "admin-evidence/qloss-sample-20261106/burst-watch.txt"
+  },
+  {
    "id": "E5-DEPLOY-05EBBA0-RING4M",
    "head_sha": "05ebba0",
    "timestamp": "2026-11-06",
@@ -44,7 +67,7 @@
     "prevention_gate=closed; enforcement_mode=detection-only; tier3_enforcing=false"
    ],
    "result": "PASS_E5_ZERO_LOSS",
-   "finding": "The live QLOSS loss is CLOSED by measurement: zero drops across all three stages and non-degraded readiness with all counters zero. Gate semantics were not relaxed. Open follow-ups: the driver is test-signed (production signing still required for release), zero loss was measured at current load so a heavier burst could still overflow 4 MiB (the counter remains visible), and 4 MiB of non-paged pool is now held permanently. Rollback: admin-evidence/e5-deploy-05ebba0-20261106/rollback-installed plus rollback-aegis_minifilter.sys.",
+   "finding": "The kernel ring loss is eliminated and stays at 0. CORRECTION (same evening): the 180 s window was not steady state. A later host burst overflowed the 16,384-slot pipeline queue with 10,408 drops (FIM 9,553, ETW 855) while ring_dropped stayed 0, and readiness returned to degraded=true, so QLOSS-HEALTH-001 is PARTIALLY CLOSED rather than closed; see QLOSS-QUEUE-BURST-20261106. Gate semantics were never relaxed. Open: production driver signing (test-signed driver), queue burst headroom. Rollback: admin-evidence/e5-deploy-05ebba0-20261106/rollback-installed plus rollback-aegis_minifilter.sys.",
    "evidence_artifact": "admin-evidence/e5-deploy-05ebba0-20261106/closeout.md"
   },
   {
@@ -9753,7 +9776,7 @@
   "E2_count": 161,
   "E3_count": 17,
   "E4_count": 15,
-  "E5_count": 134,
+  "E5_count": 135,
   "E6_count": 0,
   "E7_count": 1
  }

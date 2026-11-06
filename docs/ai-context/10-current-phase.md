@@ -25,11 +25,18 @@ authorize a production host effect.
   (`082F6A43...`).
 - Measured over a fresh 180 s driver load: ring drops **0**, pipeline drops
   **0**, queue drops **0**, 178,499 rows drained (~992/s).
-- **`readiness` now reports `degraded=false`, `ready=true`,
-  `overall_gate=true`, `missing=[]`, `failure_reasons=[]`** and every
-  `data_integrity` counter is 0 — the first non-degraded reading on this host
-  derived from measurement rather than a cleared counter. QLOSS-HEALTH-001's
-  live loss is CLOSED.
+- For ~3 minutes after the fresh load `readiness` reported
+  `degraded=false`, `ready=true`, `overall_gate=true` with every
+  `data_integrity` counter at 0 — the first non-degraded reading on this host
+  derived from measurement.
+- **Correction, same evening:** that clean window was NOT steady state. A later
+  host burst pushed the queue to its reserve boundary and produced 10,408 queue
+  drops (FIM 9,553, ETW 855) while `ring_dropped` stayed **0**; `readiness`
+  returned to `degraded=true`. The ring fix holds; the pipeline queue's burst
+  headroom does not. 16,384 slots at ~1.6 KB each is ~26 MB of static state, so
+  the next step is sized from a measured peak depth, not guessed:  `QLOSS-QUEUE-BURST-20261106`.
+  QLOSS-HEALTH-001 is therefore **PARTIALLY CLOSED**: ring loss eliminated, host
+  admission burst still open.
 - Limits: the driver is **test-signed** (production signing still open); zero
   loss holds at the current load, and a heavier burst can still overflow 4 MiB
   — the counter stays visible so any recurrence is measurable, not silent;
@@ -516,17 +523,20 @@ Open register as of the 2026-11-06 audit (records HEAD `f325ef6`, build source
 `572ff13`). Items 1-3 below are the only work that still blocks "finished"; the
 rest is documentation hygiene.
 
-1. **`QLOSS-HEALTH-001` overload — CLOSED at E5 (2026-11-06).** The observed
-   loss was traced in measured steps: per-event allow audit rows created the
-   backpressure (`940714b`), after which the queue dropped nothing (0/143 s),
-   and the last loss was kernel ring burst overflow (`05ebba0`, ring 1 MiB ->
-   4 MiB). A fresh 180 s window reports ring/pipeline/queue drops all 0 over
-   178,499 drained rows, and `readiness` is `degraded=false` /
-   `overall_gate=true` with every counter 0. Gate semantics were **not**
-   relaxed to get there. Remaining follow-ups, tracked here rather than
-   re-opened as a loss item: production driver signing (the ring change is
-   test-signed), and re-measuring loss under a deliberately heavier burst to
-   size the next headroom if needed.
+1. **`QLOSS-HEALTH-001` — PARTIALLY CLOSED (2026-11-06).** Measured in steps:
+   per-event allow audit rows created the backpressure (`940714b`); after that
+   the queue was clean for 143 s (0 drops, 120 samples, max depth 3,988); the
+   kernel ring burst overflow was then fixed (`05ebba0`, 1 MiB -> 4 MiB) and
+   stays at **0 drops**. But a later host burst still overflowed the 16,384-slot
+   pipeline queue: **10,408 drops** (FIM 9,553, ETW 855) in one episode with
+   `ring_dropped=0`, and readiness returned to `degraded=true`. Gate semantics
+   were **not** relaxed at any point, so this is a real open loss, not a
+   reporting artifact.
+   Next slice must be sized from measurement, not guessed: capture peak
+   `queue.depth` through a burst, then choose between more queue slots
+   (16,384 slots ~ 26 MB of static state, so capacity is not free) and ingress
+   coalescing of repeated FIM events for the same path. Also open: production
+   driver signing (the ring change is test-signed).
 2. **Supervised Windows E5 / kernel qualification — OPEN.** Any new
    current-source E5 must redeploy a verified candidate with a rollback point
    and pass the RB-021 preflight first (pattern: `E5-DEPLOY-F7C626D-20261103`,
