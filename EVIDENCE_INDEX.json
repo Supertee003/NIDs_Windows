@@ -1,8 +1,14 @@
 {
- "head_sha": "fc108b06a3451042ecb615f3f7d994737869a33c",
+ "head_sha": "572ff132a988c9950fde713696038087a89132b1",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-11-06",
  "generator_version": "3.0",
+ "artifact_retention": {
+  "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
+  "audit_scan_dumps": "Local-only. aegis-audit-*/ (24.25 GiB) was removed from git history and from the working tree on 2026-11-06; archived at D:/AEGIS_archive/audit-dumps.",
+  "history_rewrite": "analysis/HISTORY_REWRITE_20261106.md",
+  "commit_map": "analysis/history-rewrite-20261106/commit-map.txt"
+ },
  "evidence_levels": {
   "E0": "No evidence",
   "E1": "Static inspection / AST analysis",

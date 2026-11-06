@@ -108,6 +108,8 @@ evidence/phase8-lab-*/
 scripts/kali_attacks/
 scripts/gen_kali_22.py
 scripts/kali_attack_nids.py
+# --- Audit scan dumps (operator archive, never repo truth) ---
+aegis-audit-*/
 # --- Admin evidence (runtime state) ---
 # Per-run gate receipts, probes, and audits land here (see README Project 2
 # Runtime Gate). Never tracked; EVIDENCE_INDEX.json is the committed index.
