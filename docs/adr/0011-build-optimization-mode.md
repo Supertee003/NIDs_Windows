@@ -61,3 +61,39 @@ Measured on the same host and the same synthetic churn:
    the operator as a failed check, not as slow throughput.
 3. Throughput claims must state the build mode. Every number in ADR-0010 taken
    before `61ef9b2` is Debug-build data.
+
+## Follow-up measurement: which pass inside the append actually costs
+
+ADR-0010 left "38 us of the ~48 us `capture_to_decode` mean sits in
+`forensic_append`" unresolved, with three candidate passes over the 4 KiB slot.
+Measured individually at ReleaseSafe (4,000 records, 4,092 B CRC coverage,
+`.work/bench_passes.zig`):
+
+| Pass | Per record | Share |
+|---|---|---|
+| `@memset(slot, 0)` | 0.04 us | <1% |
+| SHA-256 over 4,060 B | 2.53 us | 23% |
+| **CRC32 over 4,092 B** | **7.60 us** | **69%** |
+| composite | 11.05 us | - |
+
+The assumed hotspot (SHA-256) was not the hotspot. `std.hash.Crc32` is a
+byte-at-a-time table walk (~537 MB/s), so the cheapest integrity pass dominated
+the most expensive one by 3x.
+
+Resolution: `src/forensic/crc32_slicing.zig` computes the same ISO-HDLC function
+eight bytes at a time (**7.62 us -> 1.85 us, 4.1x**). This is a speed
+substitution, not a contract change - same polynomial, same refin/refout, same
+init/xorout - so every record stays byte-identical, the hash chain is untouched,
+and no stored vector had to be regenerated. Six tests in that module pin equality
+against `std.hash.Crc32` as an oracle across every length up to 64 B, unaligned
+windows, a full 4 KiB record, streamed splits, empty input, and the ISO-HDLC
+check value `0xCBF43926`.
+
+Rejected: the SSE4.2 `crc32` instruction (2-10x faster still) because it computes
+**CRC-32C (Castagnoli)**, a different polynomial; using it would change every
+stored CRC and therefore the forensic format. Hardcoding that shift was not worth
+a format break to win ~1.4 us.
+
+Remaining: after the swap, append is ~5.2 us with SHA-256 the largest part
+(2.53 us, 49%). Zig 0.13's `Sha256` has no SHA-NI dispatch, so the next step
+would be a format-preserving hardware hash path, measured before adopted.

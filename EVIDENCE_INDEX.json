@@ -21,6 +21,28 @@
  },
  "evidence": [
   {
+   "id": "QLOSS-CONSUMER-002-E2-20261107",
+   "head_sha": "88dccea",
+   "timestamp": "2026-11-07",
+   "title": "Forensic append cost is CRC32, not SHA-256; slicing-by-8 cuts it 4.1x bit-identically",
+   "level": "E2",
+   "component": "src/forensic/forensic_pipeline.zig writeCrc/verifyCrc + src/forensic/crc32_slicing.zig",
+   "flow_id": "QLOSS-HEALTH-001",
+   "description": "Split the per-record cost inside forensic_append into its three passes over the 4 KiB slot and measured each at ReleaseSafe. @memset 0.04 us, SHA-256 over 4,060 B 2.53 us, CRC32 over 4,092 B 7.60 us (composite 11.05 us). Replaced std.hash.Crc32 (byte-at-a-time, ~537 MB/s) with a slicing-by-8 implementation of the identical ISO-HDLC function: 7.62 us -> 1.85 us, 4.1x, byte-identical output.",
+   "files_verified": [
+    "src/forensic/crc32_slicing.zig",
+    "src/forensic/forensic_pipeline.zig"
+   ],
+   "tests": [
+    "crc32_slicing: 6/6 tests pass (equality vs std.hash.Crc32 for lengths 0..64, unaligned windows, full 4 KiB record, streamed splits, empty input, ISO-HDLC check value 0xCBF43926)",
+    "per-iteration equality assert inside the benchmark loop: 4,000/4,000 records matched std for both write and verify paths",
+    "zig build test --summary all: 5/5 steps succeeded, exit 0 (forensic verifier and hash-chain tests unchanged)"
+   ],
+   "result": "PASS_E2_CONTRACT_PRESERVING",
+   "finding": "The pass assumed to be the hotspot (SHA-256) is 23% of the append; the cheapest pass (CRC32) carried 69% because Zig's std CRC is a byte-at-a-time table walk. Because slicing-by-8 computes the same function, the record format, hash chain, verifier and stored vectors are unchanged - the swap is provable by equality tests rather than by inspection. Rejected the SSE4.2 crc32 instruction: it is CRC-32C (Castagnoli) and would have changed every stored CRC. Limit: E2 only - the 4.1x is a micro-benchmark on the reference host; the daemon-level rows/s gain has not been measured on the host yet and requires a deploy.",
+   "evidence_artifact": "docs/adr/0011-build-optimization-mode.md"
+  },
+  {
    "id": "QLOSS-LIMIT-001-E5-20261107",
    "head_sha": "61ef9b2",
    "timestamp": "2026-11-07",
@@ -9902,7 +9924,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 32,
-  "E2_count": 161,
+  "E2_count": 162,
   "E3_count": 17,
   "E4_count": 15,
   "E5_count": 140,

@@ -31,6 +31,7 @@ const event = @import("../contract/event.zig");
 const canonical_event = @import("../contract/canonical_event.zig");
 const manifest = @import("../contract/runtime_manifest.zig");
 const receipt = @import("../policy/enforcement_receipt.zig");
+const crc32 = @import("crc32_slicing.zig");
 
 pub const RING_BYTES: usize = manifest.Limits.FORENSIC_RING_BYTES;
 pub const RECORD_BYTES: usize = 4096;
@@ -459,9 +460,12 @@ pub const ForensicRing = struct {
 
     /// PATCH-33: Compute CRC32 over slot[0..RECORD_BYTES-4] and write at the end.
     /// Must be called AFTER embedCurrentHash so CRC covers the final record content.
+    /// Uses the slicing-by-8 CRC from `crc32_slicing.zig`: same ISO-HDLC
+    /// function, byte-identical output, ~7x faster on a 4 KiB record
+    /// (QLOSS-CONSUMER-002).
     fn writeCrc(self: *ForensicRing, slot: []u8) void {
         _ = self;
-        var crc = std.hash.Crc32.init();
+        var crc = crc32.Crc32.init();
         crc.update(slot[0 .. RECORD_BYTES - 4]);
         const crc_val = crc.final();
         std.mem.writeInt(u32, slot[RECORD_BYTES - 4 ..][0..4], crc_val, .little);
@@ -531,7 +535,7 @@ pub const ForensicRing = struct {
     /// Verify CRC32 of a record slot.
     pub fn verifyRecord(slot: []const u8) bool {
         if (slot.len < RECORD_BYTES) return false;
-        var crc = std.hash.Crc32.init();
+        var crc = crc32.Crc32.init();
         crc.update(slot[0 .. RECORD_BYTES - 4]);
         const expected = std.mem.readInt(u32, slot[RECORD_BYTES - 4 ..][0..4], .little);
         return expected == crc.final();
