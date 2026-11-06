@@ -10,6 +10,34 @@ Provider readiness, WFP transport, and retained PEP boundaries may exist for
 diagnostics, fail-closed behavior, or historical/lab evidence, but they do not
 authorize a production host effect.
 
+## QLOSS Loss Closure — 4 MiB Ring (`05ebba0`) — 2026-11-06
+
+- Root cause chain, each step measured: the per-event allow audit rows were
+  the original backpressure (fixed at `940714b`); with that gone the pipeline
+  queue stopped dropping (0 drops over 143 s / 120 samples, max depth 3,988 of
+  the 15,360 reserve boundary); the only remaining loss was the kernel ring
+  (8,627 records / 157 s ≈ 55/s while draining ~1,250/s — burst overflow, not
+  a throughput deficit).
+- `AEGIS_RING_SIZE` 1 MiB -> 4 MiB (source `05ebba0`, driver
+  `10C41E80...`, daemon unchanged `6B8183F4...`). No record layout, message, or
+  `READ_EVENTS` contract change. Deployed with 27/27 checks and a verified
+  rollback of both the install tree and the System32 driver
+  (`082F6A43...`).
+- Measured over a fresh 180 s driver load: ring drops **0**, pipeline drops
+  **0**, queue drops **0**, 178,499 rows drained (~992/s).
+- **`readiness` now reports `degraded=false`, `ready=true`,
+  `overall_gate=true`, `missing=[]`, `failure_reasons=[]`** and every
+  `data_integrity` counter is 0 — the first non-degraded reading on this host
+  derived from measurement rather than a cleared counter. QLOSS-HEALTH-001's
+  live loss is CLOSED.
+- Limits: the driver is **test-signed** (production signing still open); zero
+  loss holds at the current load, and a heavier burst can still overflow 4 MiB
+  — the counter stays visible so any recurrence is measurable, not silent;
+  4 MiB of non-paged pool is now held permanently.
+- Evidence: `admin-evidence/e5-deploy-05ebba0-20261106/closeout.md`,
+  `deploy-result-20261106_232534.json`, `ring-loss-20261106_232534.ndjson`,
+  and `EVIDENCE_INDEX.json#E5-DEPLOY-05EBBA0-RING4M`.
+
 ## E5 Deploy — Quiet Per-Packet Audit (`940714b`) — 2026-11-06
 
 - Bounding the log file did not bound the write load: the per-event `AUDIT`
@@ -488,15 +516,17 @@ Open register as of the 2026-11-06 audit (records HEAD `f325ef6`, build source
 `572ff13`). Items 1-3 below are the only work that still blocks "finished"; the
 rest is documentation hygiene.
 
-1. **`QLOSS-HEALTH-001` overload elimination — OPEN (issue #29).** The loss is
-   live on the deployed runtime (queue drops 1,377,719; minifilter pipeline
-   1,154,171; Nose frames dropped 221,956 of 851,219 read). `1edb2b1` made the
-   loss visible and `56ac99f` reserved the network tail; neither reduces host
-   admission pressure. Next slice: a host-telemetry admission policy
-   (coalescing or a separate host queue) with a deterministic unit proof, then a
-   bounded E5 delta measurement against a clean restart. Readiness must stop
-   reporting `degraded=true` only when the deltas are actually zero, never by
-   relaxing the gate.
+1. **`QLOSS-HEALTH-001` overload — CLOSED at E5 (2026-11-06).** The observed
+   loss was traced in measured steps: per-event allow audit rows created the
+   backpressure (`940714b`), after which the queue dropped nothing (0/143 s),
+   and the last loss was kernel ring burst overflow (`05ebba0`, ring 1 MiB ->
+   4 MiB). A fresh 180 s window reports ring/pipeline/queue drops all 0 over
+   178,499 drained rows, and `readiness` is `degraded=false` /
+   `overall_gate=true` with every counter 0. Gate semantics were **not**
+   relaxed to get there. Remaining follow-ups, tracked here rather than
+   re-opened as a loss item: production driver signing (the ring change is
+   test-signed), and re-measuring loss under a deliberately heavier burst to
+   size the next headroom if needed.
 2. **Supervised Windows E5 / kernel qualification — OPEN.** Any new
    current-source E5 must redeploy a verified candidate with a rollback point
    and pass the RB-021 preflight first (pattern: `E5-DEPLOY-F7C626D-20261103`,

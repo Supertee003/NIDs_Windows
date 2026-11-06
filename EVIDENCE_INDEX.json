@@ -1,5 +1,5 @@
 {
- "head_sha": "940714b5692e8de08c49899bb9eabaefdcc44ab3",
+ "head_sha": "05ebba03b0a2c962e37001fa57f6b76efba022d5",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-11-06",
  "generator_version": "3.0",
@@ -20,6 +20,33 @@
   "E7": "Release verification"
  },
  "evidence": [
+  {
+   "id": "E5-DEPLOY-05EBBA0-RING4M",
+   "head_sha": "05ebba0",
+   "timestamp": "2026-11-06",
+   "title": "QLOSS loss closed: 4 MiB minifilter ring yields zero drops and non-degraded readiness",
+   "level": "E5",
+   "component": "Windows host install, aegis_minifilter.sys kernel ring, readiness",
+   "flow_id": "QLOSS-HEALTH-001",
+   "description": "After the allow-row audit volume fix the pipeline queue dropped nothing over 143 s (120 samples, max depth 3,988 of the 15,360 reserve boundary), isolating the remaining loss to the kernel ring: 8,627 records shed in 157 s (~55/s) while the host drained ~1,250 records/s, i.e. burst overflow during a pull. AEGIS_RING_SIZE was raised from 1 MiB to 4 MiB with no record layout, message, or READ_EVENTS change. Package AEGIS-NIDS-5.0.0-05ebba0-20261106.exe (SHA-256 047B4D57...) installed with 27/27 checks; the installer unloaded the filter, copied the new test-signed .sys (SHA-256 10C41E80..., signature Valid) into System32, recreated the service and reloaded it; rollback captured for both the install tree and the previous driver (082F6A43...). Over a fresh 180 s window the host drained 178,499 rows with ring drops 0, pipeline drops 0 and queue drops 0, and readiness reported degraded=false, ready=true, overall_gate=true with every data_integrity counter at 0.",
+   "files_verified": [
+    "admin-evidence/e5-deploy-05ebba0-20261106/deploy-result-20261106_232534.json",
+    "admin-evidence/e5-deploy-05ebba0-20261106/ring-loss-20261106_232534.ndjson",
+    "admin-evidence/e5-deploy-05ebba0-20261106/readiness.txt",
+    "admin-evidence/e5-deploy-05ebba0-20261106/rollback-aegis_minifilter.sys",
+    "drivers/minifilter/aegis_minifilter.h"
+   ],
+   "tests": [
+    "27/27 deploy checks (elevated Windows host install, driver unload/reload)",
+    "180 s loss window: ring 0, pipeline 0, queue 0 over 178,499 rows",
+    "readiness degraded=false / ready=true / overall_gate=true",
+    "driver signature Valid (test-signed AEGIS Test Signer)",
+    "prevention_gate=closed; enforcement_mode=detection-only; tier3_enforcing=false"
+   ],
+   "result": "PASS_E5_ZERO_LOSS",
+   "finding": "The live QLOSS loss is CLOSED by measurement: zero drops across all three stages and non-degraded readiness with all counters zero. Gate semantics were not relaxed. Open follow-ups: the driver is test-signed (production signing still required for release), zero loss was measured at current load so a heavier burst could still overflow 4 MiB (the counter remains visible), and 4 MiB of non-paged pool is now held permanently. Rollback: admin-evidence/e5-deploy-05ebba0-20261106/rollback-installed plus rollback-aegis_minifilter.sys.",
+   "evidence_artifact": "admin-evidence/e5-deploy-05ebba0-20261106/closeout.md"
+  },
   {
    "id": "E5-DEPLOY-940714B-QUIET-AUDIT",
    "head_sha": "940714b",
@@ -9726,7 +9753,7 @@
   "E2_count": 161,
   "E3_count": 17,
   "E4_count": 15,
-  "E5_count": 133,
+  "E5_count": 134,
   "E6_count": 0,
   "E7_count": 1
  }

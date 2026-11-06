@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-06T16:13:20.502306+00:00",
+  "generated_at": "2026-11-06T16:30:05.064396+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1481,
@@ -270,7 +270,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 54207
+      "size": 55405
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -1776,7 +1776,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 34107
+      "size": 35988
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -2634,7 +2634,7 @@
       "path": "drivers/minifilter/aegis_minifilter.h",
       "class": "canonical-source",
       "role": "source",
-      "size": 3341
+      "size": 3767
     },
     {
       "path": "drivers/minifilter/aegis_minifilter.inf",
@@ -3018,7 +3018,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 919886
+      "size": 922673
     },
     {
       "path": "fix_bridge_banner.py",
