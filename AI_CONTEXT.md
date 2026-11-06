@@ -12,6 +12,14 @@
 
 **GENERATOR:** Manus + `tools/rebuild_truth.py` (ADR-0008 source-commit stamp)
 
+> HISTORY REWRITE (2026-11-06): published history was rewritten to remove
+> `aegis-audit-*/` (13.8 GB of scan dumps) and the local-only
+> `admin-evidence/`. Pre-rewrite SHAs cited in older evidence remain
+> resolvable through `analysis/HISTORY_REWRITE_20261106.md` and
+> `analysis/history-rewrite-20261106/commit-map.txt` (for example
+> `fc108b0` → `572ff13`, `f7c626d` → `e06fcc3`, `13a9ad1` → `db911c8`).
+> The build source content is unchanged.
+
 ## Current Operational Truth — 2026-10-31
 
 - Production mode is detection-only. Rust PEP remains the sole privileged authority, but production host-effect activation is out of scope; `src/policy/wfp_production.zig` fails closed and is not a production WFP enforcement route.

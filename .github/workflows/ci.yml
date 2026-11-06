@@ -142,6 +142,11 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # ADR-0008 provenance needs real history: on a depth-1 clone the
+          # tip becomes a graft root, so `git log -1 -- <SOURCE_PATHS>` reports
+          # the tip and tools/truth.py verify fails every records-only commit.
+          fetch-depth: 0
       # Line-ending truth lives in .gitattributes (`* text eol=lf`). CI must
       # verify the checkout, never mutate it — a job that rewrites tracked
       # files can hide drift instead of reporting it.

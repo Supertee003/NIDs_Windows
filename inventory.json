@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-06T10:49:22.628697+00:00",
+  "generated_at": "2026-11-06T10:52:12.056494+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1481,
@@ -174,7 +174,7 @@
       "path": ".github/workflows/ci.yml",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 12417
+      "size": 12690
     },
     {
       "path": ".github/workflows/host-regression.yml",
@@ -270,7 +270,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 49515
+      "size": 49978
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -3408,7 +3408,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9987
+      "size": 9642
     },
     {
       "path": "pytest.ini",

@@ -198,8 +198,8 @@
   "artifacts": [
     {
       "path": ".github/workflows/ci.yml",
-      "size": 12417,
-      "sha256": "c9c7808fe70422db6ae9fc78ee586d884d9553b5e843dc9b2abe912b9f852387",
+      "size": 12690,
+      "sha256": "c7f1a6deb365ac1d4d71341fb1ec463b0b32a8f6985d39c3995ae55208eb5126",
       "language": "yaml"
     },
     {
@@ -1033,7 +1033,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 22821,
-      "sha256": "86f9eb0d925b1b90fcbb35f9858cb044cfa859ae453de7d094c16e835e42e4b8",
+      "sha256": "40a0ecc394eb1ddd16b1332641379dd9130e23e5822eb8eda0ed91c0c210c811",
       "language": "json"
     },
     {
