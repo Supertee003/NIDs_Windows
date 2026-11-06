@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-06T19:03:13.990123+00:00",
+  "generated_at": "2026-11-06T19:13:12.143376+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1484,
@@ -270,7 +270,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 56409
+      "size": 57387
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -1632,7 +1632,7 @@
       "path": "docs/adr/0011-build-optimization-mode.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4724
+      "size": 5457
     },
     {
       "path": "docs/adr/ADR-CORE-LEGACY-CLASSIFICATION.md",
@@ -3030,7 +3030,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 941035
+      "size": 943346
     },
     {
       "path": "fix_bridge_banner.py",
@@ -3162,7 +3162,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 234046
+      "size": 234202
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3420,7 +3420,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9642
+      "size": 9987
     },
     {
       "path": "pytest.ini",
@@ -3438,7 +3438,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 192931
+      "size": 193090
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",

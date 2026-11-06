@@ -21,6 +21,32 @@
  },
  "evidence": [
   {
+   "id": "QLOSS-CONSUMER-002-E5-20261107",
+   "head_sha": "34198a3",
+   "timestamp": "2026-11-07",
+   "title": "Sliced CRC32 cuts host forensic_append 36.9% with zero drops and clean readiness",
+   "level": "E5",
+   "component": "Windows host runtime (AegisNids daemon 6326AB5D..., source 34198a3)",
+   "flow_id": "QLOSS-HEALTH-001",
+   "description": "Deployed the slicing-by-8 CRC32 build (17/17 install checks PASS, rollback point captured first) and compared the daemon's own sub-stage latency before and after on the same host. forensic_append 28.65 us -> 18.08 us mean, capture_to_decode 36.03 -> 28.17 us. Ran with dropped_total 0 and readiness clean.",
+   "files_verified": [
+    "admin-evidence/e5-deploy-crc-20261107/install-result-20261107_020855.json",
+    "admin-evidence/e5-deploy-crc-20261107/queue-before.json",
+    "admin-evidence/e5-deploy-crc-20261107/queue-after.json",
+    "admin-evidence/e5-deploy-crc-20261107/readiness-after.json"
+   ],
+   "tests": [
+    "install: 17/17 PASS (package sha, prior identities, rollback copy, service stop/start, all five runtime hashes, driver signature Valid, manifest source_commit 34198a3)",
+    "forensic_append mean 28.65 us (n=1,380,137) -> 18.08 us (n=84,198), -36.9%; p99 524 -> 262 us; max 19.9 -> 5.5 ms",
+    "capture_to_decode 36.03 -> 28.17 us (-21.8%)",
+    "post-deploy: depth 70, depth_peak 2,600, dropped_total 0, critical_pushed_total 363",
+    "readiness: degraded=false, ready=true, overall_gate=true, worker_gate=true, policies 6, rules 23"
+   ],
+   "result": "PASS_E5",
+   "finding": "The contract-preserving CRC swap holds up on the host, not just in a micro-benchmark: the append dropped by 10.6 us per record and the end-to-end capture_to_decode stage by 7.9 us, with no drops and clean readiness. The host gain is larger than the isolated 5.8 us pass delta, so the optimized pass also relieved in-situ cache/mutex cost. receipt_issue moved from 0.00 to 0.02 us mean - sub-tick noise, not a regression. Limit: the sample windows differ in size (1.38M vs 84K events) because the counter is cumulative since daemon start; the comparison is same-host, same-workload-class, not a controlled burst.",
+   "evidence_artifact": "admin-evidence/e5-deploy-crc-20261107/install-result-20261107_020855.json"
+  },
+  {
    "id": "QLOSS-CONSUMER-002-E2-20261107",
    "head_sha": "88dccea",
    "timestamp": "2026-11-07",
@@ -9927,7 +9953,7 @@
   "E2_count": 162,
   "E3_count": 17,
   "E4_count": 15,
-  "E5_count": 140,
+  "E5_count": 141,
   "E6_count": 0,
   "E7_count": 1
  }

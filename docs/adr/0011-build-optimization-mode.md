@@ -94,6 +94,17 @@ Rejected: the SSE4.2 `crc32` instruction (2-10x faster still) because it compute
 stored CRC and therefore the forensic format. Hardcoding that shift was not worth
 a format break to win ~1.4 us.
 
-Remaining: after the swap, append is ~5.2 us with SHA-256 the largest part
-(2.53 us, 49%). Zig 0.13's `Sha256` has no SHA-NI dispatch, so the next step
-would be a format-preserving hardware hash path, measured before adopted.
+Confirmed on the host (E5, `QLOSS-CONSUMER-002-E5-20261107`): installing the
+sliced build moved `forensic_append` from **28.65 us to 18.08 us mean (-36.9%, p99
+524 us -> 262 us, max 19.9 ms -> 5.5 ms)** and `capture_to_decode` from 36.03 to
+28.17 us, with `dropped_total` 0, `critical_pushed_total` 363, and readiness
+`degraded=false / ready=true / overall_gate=true`. The host gain (-10.6 us)
+exceeds the isolated benchmark delta (-5.8 us), which is consistent with the
+4 KiB pass also paying cache and mutex costs in situ.
+
+Remaining: after the swap, append is ~18 us on the host with SHA-256 the largest
+identified part (2.53 us isolated). Zig 0.13's `Sha256` has no SHA-NI dispatch, so
+the next step would be a format-preserving hardware hash path, measured before
+adopted. The gap between 18 us measured and ~11 us of accounted passes is
+unnamed overhead (ring-wrap `@memset` of the tail region, mutex handoff, cache
+misses) and is the real next target.
