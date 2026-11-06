@@ -21,6 +21,28 @@
  },
  "evidence": [
   {
+   "id": "QLOSS-LIMIT-001-E5-20261107",
+   "head_sha": "61ef9b2",
+   "timestamp": "2026-11-07",
+   "title": "ReleaseSafe breaking point is not reached at 120,000 files; ring and critical class hold",
+   "level": "E5",
+   "component": "Windows host runtime (pipeline consumer under sustained churn)",
+   "flow_id": "QLOSS-HEALTH-001",
+   "description": "Pushed the synthetic churn from 20,000 to 120,000 files on the installed ReleaseSafe daemon (7590FA2A..., source 61ef9b2) and sampled after the burst. Result: 3,427 rows/s over 187 s, 283 FIM drops (0.02% of pushed), 5,901 ETW drops, ring_dropped 0, reserved_tail_shed 0, depth drained from a 13,451 peak to 92, critical_pushed_total 859 with no critical rows in any drop counter. The queue never reached its 16,384 capacity and no admission layer beyond per-source quota fired.",
+   "files_verified": [
+    "admin-evidence/e5-deploy-release-20261107/install-result-20261107_013110.json",
+    "src/pipeline/event_queue.zig"
+   ],
+   "tests": [
+    "120,000-file burst: 3,427 rows/s, 283 drops, ring 0, depth peak 13,451 -> 92",
+    "per-source: FIM 1,381,541 pushed / 283 dropped; ETW 1,166,419 / 5,901; npcap 16,221 / 0",
+    "readiness after restart: degraded=false, ready=true, overall_gate=true, all counters 0"
+   ],
+   "result": "PASS_E5_NO_BREAKING_POINT",
+   "finding": "The breaking point is above 120,000 files on this host in ReleaseSafe: the queue peaked at 13,451 of 16,384 and drained to 92, so nothing hit the hard capacity wall and the only refusals came from the per-source share (quota_shed 6,184) plus ordinary pressure. The protected class behaved as designed under this load - 859 System32 rows admitted and none present in any shed counter - and the kernel ring stayed at zero. Limit: this is a synthetic churn on one host, capacity beyond 120,000 files is unmeasured, and critical protection was still not exercised adversarially.",
+   "evidence_artifact": "admin-evidence/e5-deploy-release-20261107/install-result-20261107_013110.json"
+  },
+  {
    "id": "QLOSS-CONSUMER-001-E5-20261107",
    "head_sha": "61ef9b2",
    "timestamp": "2026-11-07",
@@ -9883,7 +9905,7 @@
   "E2_count": 161,
   "E3_count": 17,
   "E4_count": 15,
-  "E5_count": 139,
+  "E5_count": 140,
   "E6_count": 0,
   "E7_count": 1
  }

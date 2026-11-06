@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-06T18:35:03.905519+00:00",
+  "generated_at": "2026-11-06T18:45:22.227378+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1482,
+  "total_files": 1483,
   "by_role": {
-    "documentation": 325,
+    "documentation": 326,
     "build-config": 171,
     "other": 18,
     "lockfile": 6,
@@ -1393,6 +1393,10 @@
       "role": "architecture-decision"
     },
     "docs/adr/0010-host-telemetry-admission.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/adr/0011-build-optimization-mode.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
