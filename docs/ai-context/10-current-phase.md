@@ -10,6 +10,35 @@ Provider readiness, WFP transport, and retained PEP boundaries may exist for
 diagnostics, fail-closed behavior, or historical/lab evidence, but they do not
 authorize a production host effect.
 
+## XDR-005 Multi-Source E5 — 2026-11-05
+
+- `IDS-XDR-005-WIRING-OPEN` and `XDR-005-LIVE-MULTISOURCE-UNREACHABLE` are
+  **CLOSED** at E5. A bounded elevated window installed candidate
+  `EB9F44AB...` (build source `fc108b0`, records HEAD `13a9ad1`) and pinned
+  the daemon to VMnet1.
+- Real R9064 literal `;whoami` traffic from isolated Kali `192.168.126.10`
+  joined observe-only host TCP evidence for the same entity: incident
+  `v4:192.168.126.10`, `distinct_sources=2`, categories
+  `[network,host]`, evidence 10, severity 2, confidence 70,
+  `receipts_recorded=2`, `receipts_failed=0`, `receipts_skipped=0`.
+- `aegisctl xdr verify` replayed persisted sequence `1060875` (source event
+  51, evidence 10, categories `[network,host]`) with `verified=1`,
+  `failed=0`. `forensics verify` returned `verified=true` / `integrity=ok`;
+  `blocks=0`; `prevention_gate=closed`; `host_effect_capable=false`.
+- Restore returned the daemon to `D34D350A...`, removed the machine
+  `AEGIS_DAEMON_IFACE` and per-service `Environment` values, PEB-verified no
+  daemon pin, kept Nose on the production device, and showed production
+  packets advancing (1,868 -> 2,050) with no reboot.
+- The first attempt is retained as functional evidence. Its route produced
+  the same multi-source incident and receipts, but its single harness verify
+  call ran after the 16,384-slot ring wrapped (~4 s retention at ~4,000
+  records/s). A pinned tight loop captured 7 verified hits
+  (sequences `2024863` and `2029076`). Only attempt 2 is the clean harness
+  PASS (`XDR005_E5_PASS=True`).
+- Evidence: `admin-evidence/xdr005-e5-20261105/closeout.md`,
+  `e5-window.json`, `during/`, `post-restore-independent/`, `attempt1/`, and
+  `EVIDENCE_INDEX.json#XDR-005-E5-20261105`.
+
 ## RB-021 Observe-Only Canary E5 — 2026-11-04
 
 - `E5-CURRENT-RUNTIME-MISMATCH` is **CLOSED**. Two bounded elevated windows on
@@ -33,8 +62,8 @@ authorize a production host effect.
   (44 -> 106 and 74 -> 110 in 12 s) with no reboot.
 - The canary is single-source. `xdr.list` after the restore restart reports
   `evidence_total=0`, `receipts_recorded=0`, `incidents=[]`, and no frozen
-  multi-source assessment or replay was exercised, so
-  `IDS-XDR-005-WIRING-OPEN` remains OPEN.
+  multi-source assessment or replay was exercised. The later 2026-11-05
+  XDR-005 E5 run closed `IDS-XDR-005-WIRING-OPEN` (see the section above).
 - Readiness remains `degraded=true` / `overall_gate=false` from the
   pre-existing data-loss counters (`QLOSS-HEALTH-001`), while all 7
   subsystems are RUNNING and every worker is ready.
@@ -65,8 +94,9 @@ authorize a production host effect.
   identity and capture-pin check passed.
 - No canary was sent, no prevention gate was opened, and no host effect was
   enabled. This is E5 for installation and installed-runtime verification, not
-  detection, canary, or release evidence. `IDS-XDR-005-WIRING-OPEN` still
-  lacks host proof of the recording-only receipt/replay route.
+  detection, canary, or release evidence. The missing host proof of the
+  recording-only receipt/replay route was later recorded on 2026-11-05
+  (`XDR-005-E5-20261105`).
 - Evidence: `admin-evidence/e5-current-source-20261103/closeout.md` and
   `EVIDENCE_INDEX.json` entry `E5-DEPLOY-F7C626D-20261103`.
 
@@ -107,11 +137,11 @@ authorize a production host effect.
   pinned by `tests/security/test_xdr_wire_advisory.py`.
 - Evidence is E2 source/build only: `zig build` PASS; `zig build test
   --summary all` 2011/2021 passed, 10 skipped, 0 failed; focused pytest 50
-  passed. At that slice no Windows host proof existed. E5-DEPLOY-F7C626D later
-  deployed this source and the 2026-11-04 RB-021 canary proved the current-source
-  detection path on the host, but the canary was single-source and the fabric
-  resets on restart, so the Windows host proof of the receipt/replay route
-  (`IDS-XDR-005-WIRING-OPEN`) remains OPEN.
+  passed. E5-DEPLOY-F7C626D later deployed this source and the 2026-11-04
+  RB-021 canary proved the current-source detection path on the host, but that
+  canary was single-source. The Windows host proof of the receipt/replay route
+  was recorded on 2026-11-05 as `XDR-005-E5-20261105`
+  (`IDS-XDR-005-WIRING-OPEN` CLOSED).
 - Earlier IDS-XDR-005/006 sections below describe the historical pre-wiring
   snapshot and are retained as history, not current truth.
 

@@ -3780,6 +3780,42 @@
     "Delivery of real bundles to an operator-owned TAXII service remains unperformed."
    ],
    "evidence_artifact": "tools/taxii_push.py"
+  },
+  {
+   "id": "XDR-005-E5-20261105",
+   "head_sha": "13a9ad10fc0a09ce380482c2ebe2fc0b3bfcb49e",
+   "timestamp": "2026-11-05",
+   "title": "XDR-005 E5: live network+host multi-source freeze, IDS Evidence Receipt, and persisted-snapshot replay on the Windows host",
+   "level": "E5",
+   "component": "Windows host AegisNids candidate EB9F44AB (observe-only host TCP-table source) + isolated Kali lab",
+   "flow_id": "IDS-XDR-005",
+   "patch_id": "XDR-005-A / XDR-005-B",
+   "target_head": "13a9ad10fc0a09ce380482c2ebe2fc0b3bfcb49e",
+   "final_head": "13a9ad10fc0a09ce380482c2ebe2fc0b3bfcb49e",
+   "build_source": "fc108b06a3451042ecb615f3f7d994737869a33c",
+   "candidate_sha256": "EB9F44ABD7E061D79A0B621A0A078D6DD500CDB2BD9DE10BFF385BDC7F78FA54",
+   "installed_sha256_restored": "D34D350A2BA051405A0F8DD66F9D492A9F3C94E1FDAC102BF1AA482EED763439",
+   "description": "A bounded elevated window installed candidate EB9F44AB, pinned the daemon to the VMnet1 Npcap device, seeded the observe-only host TCP-table source, and ran a real R9064 literal ';whoami' canary from isolated Kali 192.168.126.10 over TCP/445. Idle connections kept real ESTAB rows for the 2 s host poll; payloads were sent on separate connections. The host observation entered through the host-only pending gate and joined network evidence for the same entity, freezing one advisory multi-source assessment. The recording-only bridge persisted it to the hash-chained forensic ring, issued an IDS Evidence Receipt after hash read-back, and the harness replayed the persisted snapshot with a 250 ms/30 s verify poll. The window then restored the production binary, pins, service environment and capture path.",
+   "expected": "The .10 entity reaches distinct_sources=2 with categories [network,host]; receipts_recorded>=1 and receipts_failed=0; xdr verify returns verified>=1 with failed=0; forensics integrity is ok; blocks=0; the gate stays closed; restore removes the pin and production capture resumes without a reboot.",
+   "tests": [
+    "attempt 1 (08:24:25Z-08:37:08Z): incident .10 distinct_sources=2 [network,host], receipts 2/0, forensics ok, blocks 0, restore PASS; harness single verify after 3 s returned 0 because the 16,384-slot ring retains ~4 s at ~4,000 records/s",
+    "attempt 1 tight-loop re-check while pinned: 7 verified hits, sequences 2024863 (source event 328) and 2029076 (source event 334), categories [network,host], failed=0",
+    "attempt 2 (09:23:30Z-09:30:02Z): incident .10 distinct_sources=2 [network,host], evidence 10, confidence 70, receipts 2/0, host_net offered 30 / joined 2 / pending 10 / expired 16",
+    "attempt 2 xdr verify: attempts=1, verified=1, failed=0, sequence 1060875, source_event 51, evidence 10, categories [network,host], confidence 70",
+    "attempt 2 forensics: verified=true, integrity=ok, records 1,072,093, retained 16,384; blocks=0; gate closed; host_effect_capable=false",
+    "restore: installed D34D350A..., machine/service pins absent, daemon PEB pin absent, nose pin 5FD31C6E..., packets 1,868->2,050, requires_reboot=false; independent check packets +438/8 s"
+   ],
+   "result": "PASS_E5_MULTISOURCE_RECEIPT_REPLAY",
+   "actual": "e5-window.json reports pass=true and XDR005_E5_PASS=True. The live list shows incident v4:192.168.126.10 with distinct_sources=2, source_categories [network,host], evidence=10, severity 2, confidence 70; advisories_total=2; receipts_recorded=2, receipts_failed=0, receipts_skipped=0. xdr verify replayed persisted sequence 1060875 (source event 51) with verified=true, error=null, evidence=10, categories [network,host], severity 2, confidence 70. The replay record's incident_id is fabric-local (1) and is not compared to the live list id (2); identity is the source event, evidence count, categories and decision. forensics verify returned verified=true/integrity=ok; blocks=0; prevention_gate=closed; host_effect_capable=false. Restore returned the installed daemon to D34D350A..., removed the machine AEGIS_DAEMON_IFACE and per-service Environment values, PEB-verified no daemon pin, kept Nose on the production device, and showed production packets advancing with no reboot. Attempt 1 is retained: its route worked (7 pinned verify hits) but its harness verify call ran after ring retention, so only attempt 2 is the clean PASS.",
+   "limits": [
+    "Replay incident_id is fabric-local; the snapshot is correlated to the live incident by source_event_id/evidence/categories/decision.",
+    "Receipt tokens are not persisted by design; replay proves snapshot integrity, while token issuance is proven by receipts_recorded/receipts_failed.",
+    "The ring retains only ~4 s on this host under ambient load; delayed single-shot verification is not evidence either way.",
+    "Short-lived connections can be missed by the 2 s TCP-table poll; held connections are required for a deterministic host row.",
+    "Join is proven for inbound traffic whose peer is the NIDS host; VM-to-VM traffic is not in the host TCP table.",
+    "Host-only observations never open an incident; they remain pending until network evidence for the same entity arrives within the 120 s TTL."
+   ],
+   "evidence_artifact": "admin-evidence/xdr005-e5-20261105/closeout.md"
   }
  ],
  "known_gaps": [
@@ -9441,9 +9477,11 @@
   {
    "id": "IDS-XDR-005-WIRING-OPEN",
    "severity": "P2",
-   "title": "Selected XDR evidence authority is advisory-wired; source-to-forensic receipt/replay is E2-proven, Windows E5 still open",
+   "title": "Selected XDR evidence authority is advisory and recording-only; live multi-source receipt/replay proven at E5 on 2026-11-05",
    "description": "src/xdr/xdr_incident_fabric.zig is advisory-wired (XDR-WIRE-001): detection-identity events fold into the fabric and xdr.list exposes its advisory view and receipt counters. XDR-RECEIPT-002 now persists frozen multi-source assessments to the hash-chained forensic ring, issues an IDS Evidence Receipt after hash read-back, and replays the assessment. Remaining gap: no Windows E5 host proof of the recording-only route. Current-source deployment and canary evidence now exists (E5-DEPLOY-F7C626D, RB-021-CANARY-F7C626D-20261104), and the 2026-11-04 RB-021 canary proves the current-source wire/detection path on the Windows host, but it is single-source: xdr.list after the restore restart reports evidence_total=0, receipts_recorded=0 and incidents=[], and no frozen multi-source assessment or replay was exercised. The host proof of the recording-only receipt/replay route is therefore still missing. A read-only reachability audit on 2026-11-04 found a structural blocker: the multi-source freeze trigger cannot fire from the live production ingest at current HEAD. The XDR entity key is the event source IP (src/pipeline/event_processor.zig:412, empty at :62 when the IPv4 source is zero), and only the network producers populate it. ETW, FIM, Registry and Minifilter events leave src_ip at zero (src/pipeline/telemetry_threads.zig:147-152,314-318,362-366; src/capture/minifilter_reader.zig:225-235), and federation is status-only in this standalone daemon (src/control/protocol.zig:259-260). All live XDR evidence therefore lands in the single 'network' category, so distinctSources can never reach the two-category threshold at src/xdr/xdr_runtime.zig:173. The E2 receipt/replay proof is unchanged, but no lab canary can close the E5 route until the entity/category wiring is fixed or explicitly redefined. Tracked as XDR-005-LIVE-MULTISOURCE-UNREACHABLE. UPDATE 2026-11-05: the host TCP wiring itself is now in-tree and E2-proven (XDR-005-HOSTNET-WIRING-E2-20261105); a STIX 2.1 advisory export of the fabric exists (STIX-EXPORT-ADAPTER-E2-20261105). OPEN unchanged: deployed f7c626d daemon cannot yet prove either path on the host; close after installing the fc108b0 build and exercising multi-source traffic.",
-   "status": "OPEN",
+   "status": "CLOSED",
+   "closed_at": "2026-11-05",
+   "closed_by": "XDR-005-E5-20261105",
    "found_at": "2026-10-31",
    "tracking": "GitHub issue #26 / IDS-XDR-005",
    "required_evidence": [
@@ -9458,14 +9496,19 @@
     "admin-evidence/rb021-canary-20261104/closeout.md",
     "EVIDENCE_INDEX.json#RB-021-CANARY-F7C626D-20261104",
     "admin-evidence/xdr-005-reachability-20261104/closeout.md",
-    "admin-evidence/xdr-005-reachability-20261104/xdr-list-20261104.json"
+    "admin-evidence/xdr-005-reachability-20261104/xdr-list-20261104.json",
+    "admin-evidence/xdr005-e5-20261105/closeout.md",
+    "admin-evidence/xdr005-e5-20261105/e5-window.json",
+    "admin-evidence/xdr005-e5-20261105/during/",
+    "EVIDENCE_INDEX.json#XDR-005-E5-20261105"
    ],
    "required_evidence_status": [
-    "OPEN: Windows E5 host proof of the recording-only receipt/replay route (needs a frozen multi-source assessment; the 2026-11-04 canary was single-source and reset on restart).",
+    "DONE 2026-11-05: live multi-source .10 incident (network+host, evidence 10) persisted an IDS Evidence Receipt (2 recorded, 0 failed) and replayed from the forensic ring (sequence 1060875, verified=1, failed=0).",
     "DONE 2026-11-04: bounded RB-021 preflight/canary on the current source ran observe-only with the gate closed (RB-021-CANARY-F7C626D-20261104); it did not exercise receipt/replay.",
-    "OPEN: runtime manifest and flow/authority maps reverified against the receipt/replay route.",
-    "OPEN 2026-11-04: live multi-source is unreachable at current HEAD because only network events carry the XDR entity key; host/FIM/registry events set src_ip=0 and federation is status-only (XDR-005-LIVE-MULTISOURCE-UNREACHABLE)."
-   ]
+    "DONE 2026-11-05: truth rebuild/verify and release verification ran after the E5 records update; XDR-005-A/B are in the source/build maps at fc108b0.",
+    "DONE 2026-11-05: XDR-005-A added the observe-only host TCP source with a pending-join gate; the live host run reached distinct_sources=2 and closed XDR-005-LIVE-MULTISOURCE-UNREACHABLE."
+   ],
+   "resolution": "DONE 2026-11-05 (E5). Candidate EB9F44AB... was deployed in a bounded elevated window, pinned to VMnet1, and a real R9064 ';whoami' canary from Kali 192.168.126.10 joined observe-only host TCP evidence for the same entity. xdr.list reported distinct_sources=2, source_categories [network,host], evidence=10, confidence=70, receipts_recorded=2, receipts_failed=0; xdr.verify replayed persisted sequence 1060875 (source event 51) with verified=true/failed=0; forensics integrity=ok; blocks=0; gate closed. Restore returned D34D350A..., removed the machine/service pins, PEB-verified no daemon pin, kept Nose on the production device, and showed production packets advancing with no reboot. e5-window.json reports pass=true / XDR005_E5_PASS=True. Evidence: admin-evidence/xdr005-e5-20261105/closeout.md."
   },
   {
    "id": "PROD-CAPTURE-PIN-LEFT-SET-20261103",
@@ -9514,9 +9557,11 @@
   {
    "id": "XDR-005-LIVE-MULTISOURCE-UNREACHABLE",
    "severity": "P2",
-   "title": "XDR multi-source assessments are unreachable from live ingest: only network events carry the entity key",
-   "description": "Read-only audit on 2026-11-04 of the current-source daemon. XDR-RECEIPT-002 persists a frozen multi-source assessment and replays it, but the live pipeline can only produce one XDR source category. The entity key is the event source IP (src/pipeline/event_processor.zig:412; empty when the IPv4 source is zero, :62). npcap and WFP populate it but both map to 'network'; ETW/FIM/registry events never assign src_ip (src/pipeline/telemetry_threads.zig:147-152,314-318,362-366), and the minifilter canonical event leaves source_ip at zero (src/capture/minifilter_reader.zig:225-235). Federation is status-only in this standalone daemon (src/control/protocol.zig:259-260). The freeze requires distinctSources >= 2 (src/xdr/xdr_runtime.zig:173), so receipts_recorded stays 0 by construction. Live xdr.list at 07:40:39Z showed evidence_total=3, receipts_recorded=0, and both incidents at distinct_sources=1. The E2 receipt/replay tests remain valid because they hand the runtime a frozen batch directly; the E5 gap is the missing live multi-source trigger. UPDATE 2026-11-05: an in-tree fix landed (0d8d93e, XDR-005-A/B): observe-only Windows TCP polling now joins network incidents via a bounded pending table and xdr.verify replays persisted snapshots, test-proven at E2 (XDR-005-HOSTNET-WIRING-E2-20261105) with the production build green at fc108b0. Still OPEN: the deployed daemon predates the fix, so live reachability and a multi-source host freeze/receipt/replay remain unproven.",
-   "status": "OPEN",
+   "title": "XDR multi-source assessments were unreachable from live ingest; observe-only host TCP join fixed and proven at E5",
+   "description": "Read-only audit on 2026-11-04 of the current-source daemon. XDR-RECEIPT-002 persists a frozen multi-source assessment and replays it, but the live pipeline can only produce one XDR source category. The entity key is the event source IP (src/pipeline/event_processor.zig:412; empty when the IPv4 source is zero, :62). npcap and WFP populate it but both map to 'network'; ETW/FIM/registry events never assign src_ip (src/pipeline/telemetry_threads.zig:147-152,314-318,362-366), and the minifilter canonical event leaves source_ip at zero (src/capture/minifilter_reader.zig:225-235). Federation is status-only in this standalone daemon (src/control/protocol.zig:259-260). The freeze requires distinctSources >= 2 (src/xdr/xdr_runtime.zig:173), so receipts_recorded stays 0 by construction. Live xdr.list at 07:40:39Z showed evidence_total=3, receipts_recorded=0, and both incidents at distinct_sources=1. The E2 receipt/replay tests remain valid because they hand the runtime a frozen batch directly; the E5 gap is the missing live multi-source trigger. UPDATE 2026-11-05: an in-tree fix landed (0d8d93e, XDR-005-A/B): observe-only Windows TCP polling now joins network incidents via a bounded pending table and xdr.verify replays persisted snapshots, test-proven at E2 (XDR-005-HOSTNET-WIRING-E2-20261105) with the production build green at fc108b0. CLOSED 2026-11-05: the fc108b0 candidate was deployed in a bounded window and the live host produced a network+host multi-source freeze, receipt, and replay (XDR-005-E5-20261105).",
+   "status": "CLOSED",
+   "closed_at": "2026-11-05",
+   "closed_by": "XDR-005-E5-20261105",
    "found_at": "2026-11-04",
    "tracking": "Local stop-the-line record; GitHub issue #26 / IDS-XDR-005",
    "required_evidence": [
@@ -9525,13 +9570,17 @@
     "Prove a frozen multi-source assessment, IDS Evidence Receipt, and replay at E5 on the Windows host."
    ],
    "required_evidence_status": [
-    "OPEN: entity-model decision and source wiring.",
-    "OPEN: Windows E5 frozen multi-source assessment + receipt + replay."
+    "DONE 2026-11-05: observe-only host TCP table source + entity join via the bounded pending table (XDR-005-A); no policy/PEP/DEFCON/ActionDispatcher path.",
+    "DONE 2026-11-05: Windows host .10 incident distinct_sources=2 [network,host], receipts 2/0, xdr.verify verified=1/failed=0."
    ],
    "evidence": [
     "admin-evidence/xdr-005-reachability-20261104/closeout.md",
-    "admin-evidence/xdr-005-reachability-20261104/xdr-list-20261104.json"
-   ]
+    "admin-evidence/xdr-005-reachability-20261104/xdr-list-20261104.json",
+    "admin-evidence/xdr005-e5-20261105/closeout.md",
+    "admin-evidence/xdr005-e5-20261105/e5-window.json",
+    "EVIDENCE_INDEX.json#XDR-005-E5-20261105"
+   ],
+   "resolution": "DONE 2026-11-05 (E5). XDR-005-A added a recording-only host TCP observation source (capture_host_net / host_socket_observed, category host, rule_id 0) and a bounded pending join so a host-only observation never opens an incident; it joins network evidence for the same entity within the 120 s TTL. XDR-005-B added read-only persisted-snapshot replay (xdr.verify). On the real host, Kali .10 produced incident v4:192.168.126.10 with distinct_sources=2, categories [network,host], evidence=10, receipts_recorded=2, receipts_failed=0, and xdr.verify replayed sequence 1060875 with verified=1/failed=0; blocks=0, gate closed, restore clean. Evidence: admin-evidence/xdr005-e5-20261105/closeout.md."
   }
  ],
  "evidence_level_summary": {

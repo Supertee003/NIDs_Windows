@@ -470,8 +470,12 @@ nose pin unchanged (`...5FD31C6E...`). Final `status` 7/7,
 ready; the network source itself recorded `dropped=0` in both rounds.
 
 This is single-source canary evidence: no multi-source XDR
-assessment/receipt/replay was exercised, and the fabric resets on restart, so
-`IDS-XDR-005-WIRING-OPEN` remains OPEN. Evidence kit (gitignored):
+assessment/receipt/replay was exercised, and the fabric resets on restart.
+**Update 2026-11-05:** the later XDR-005 E5 run proved the recording-only
+multi-source route on the host and CLOSED `IDS-XDR-005-WIRING-OPEN` (evidence:
+`admin-evidence/xdr005-e5-20261105/closeout.md`,
+`EVIDENCE_INDEX.json#XDR-005-E5-20261105`). This RB-021 canary remains the
+single-source detection-path evidence. Evidence kit (gitignored):
 `admin-evidence/rb021-canary-20261104/` (`closeout.md`, `attribution.json`,
 `attribution.md`, both `canary-window.json` records, PEB dumps, Kali probe
 outputs).

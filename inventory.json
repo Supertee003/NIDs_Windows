@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-05T10:21:12.303596+00:00",
+  "generated_at": "2026-11-06T06:53:18.872661+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1776,
@@ -2052,7 +2052,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 46992
+      "size": 48214
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -2676,7 +2676,7 @@
       "path": "AUTHORITY_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 18676
+      "size": 18672
     },
     {
       "path": "brain/__init__.py",
@@ -3546,7 +3546,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 23026
+      "size": 24851
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -4092,7 +4092,7 @@
       "path": "docs/KERNEL_NIDS_COMPLETION_PLAN.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 116506
+      "size": 116651
     },
     {
       "path": "docs/MASTER_TARGET_ALIGNMENT_2026-09-14.md",
@@ -4284,7 +4284,7 @@
       "path": "docs/runbooks/RB-021-hostonly-lab-proof.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 38029
+      "size": 38302
     },
     {
       "path": "docs/runbooks/README.md",
@@ -4392,7 +4392,7 @@
       "path": "docs/XDR-005_MULTISOURCE_SLICE_DESIGN.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 46825
+      "size": 47778
     },
     {
       "path": "drivers/minifilter/aegis_minifilter.c",
@@ -4788,7 +4788,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 907699
+      "size": 896131
     },
     {
       "path": "fix_bridge_banner.py",

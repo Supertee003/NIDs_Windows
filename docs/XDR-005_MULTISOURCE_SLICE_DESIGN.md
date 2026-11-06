@@ -1,11 +1,11 @@
 # XDR-005 Multi-Source Slice — Design & Patch Declaration
 
-**Status:** DESIGN ONLY — เอกสารนี้ไม่มีการแก้โค้ด, build, ติดตั้ง, restart service หรือ push
+**Status:** IMPLEMENTED — PATCH A/B landed; E2 + E5 PASS recorded 2026-11-05
 **Prepared:** 2026-11-04
-**Target HEAD:** `bb61f35` (build source commit `f7c626d`)
+**Target HEAD:** `13a9ad1` (build source commit `fc108b0`); design prepared at `bb61f35` (build source `f7c626d`)
 **Flow ID:** `IDS-XDR-005`
-**Gap:** `IDS-XDR-005-WIRING-OPEN`
-**Blocker:** `XDR-005-LIVE-MULTISOURCE-UNREACHABLE`
+**Gap:** `IDS-XDR-005-WIRING-OPEN` — CLOSED 2026-11-05
+**Blocker:** `XDR-005-LIVE-MULTISOURCE-UNREACHABLE` — CLOSED 2026-11-05
 
 **Owner constraints ที่ต้องคงไว้ตลอด slice นี้**
 
@@ -17,6 +17,16 @@
 - หลักฐาน E5 ต้องมาจาก host จริง ไม่ใช่จาก mock หรือการแก้ JSON
 - การ deploy/restart service ต้องประสาน UAC และขออนุมัติแยก
 - ห้าม push จนกว่าจะได้รับอนุมัติแยก
+
+**Current status (2026-11-05):** PATCH A (observe-only host TCP source +
+bounded pending join) and PATCH B (`xdr.verify` persisted-snapshot replay) are
+implemented at build source `fc108b0`. E5 passed on the real Windows host with
+candidate `EB9F44AB...`: incident `v4:192.168.126.10` reached
+`distinct_sources=2` (`[network,host]`, evidence 10, confidence 70),
+`receipts_recorded=2`, `receipts_failed=0`, `xdr.verify` replayed sequence
+1060875 with `verified=1/failed=0`, `forensics` integrity `ok`, `blocks=0`,
+gate closed, and restore was clean (`XDR005_E5_PASS=True`). Both gaps are
+CLOSED. Evidence: `admin-evidence/xdr005-e5-20261105/closeout.md`.
 
 ---
 
@@ -838,17 +848,22 @@ host observation ครั้งแรก (ไม่ได้ refresh ระห�
 
 `IDS-XDR-005-WIRING-OPEN` ปิดได้เมื่อ:
 
-- [ ] PATCH A ผ่าน E2 ทั้งหมด และ worktree สะอาด
-- [ ] PATCH B ผ่าน E2 และ `xdr.verify` read-only pin
-- [ ] build/deploy current source พร้อม UAC coordination
-- [ ] E5 canary ผ่านทั้ง negative control และ positive canary
-- [ ] `receipts_recorded >= 1`, `receipts_failed == 0`, `xdr.verify` ผ่าน
-- [ ] `forensics verify` integrity ok, `blocks=0`, gate closed
-- [ ] restore ผ่าน (pin/env/packet flow)
-- [ ] truth maps rebaseline + `python tools/truth.py verify` = TRUTH_VALID
-- [ ] `python tools/release_engineering.py --verify` ผ่าน
-- [ ] evidence index + closeout + docs อัปเดต
-- [ ] ไม่มี push จนได้รับอนุมัติ
+- [x] PATCH A ผ่าน E2 ทั้งหมด และ worktree สะอาด
+- [x] PATCH B ผ่าน E2 และ `xdr.verify` read-only pin
+- [x] build/deploy current source พร้อม UAC coordination
+- [x] E5 canary ผ่านทั้ง negative control และ positive canary
+- [x] `receipts_recorded >= 1`, `receipts_failed == 0`, `xdr.verify` ผ่าน
+- [x] `forensics verify` integrity ok, `blocks=0`, gate closed
+- [x] restore ผ่าน (pin/env/packet flow)
+- [x] truth maps rebaseline + `python tools/truth.py verify` = TRUTH_VALID
+- [x] `python tools/release_engineering.py --verify` ผ่าน
+- [x] evidence index + closeout + docs อัปเดต
+- [x] ไม่มี push จนได้รับอนุมัติ (ยังไม่ push)
+
+**E5 close-out:** `admin-evidence/xdr005-e5-20261105/closeout.md`;
+machine summary `e5-window.json` reports `pass=true` /
+`XDR005_E5_PASS=True` on attempt 2. Attempt 1 is retained as functional
+evidence but its single harness verify ran after ring retention.
 
 ---
 

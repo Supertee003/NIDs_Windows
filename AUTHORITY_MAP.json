@@ -473,7 +473,7 @@
       "status": "NOT_SELECTED / TEST-SUPPORT ONLY",
       "reason": "Source audit found no production main/daemon/build references. xdr_harden_integration is referenced by the quarantined lifecycle; other modules are in the unit-test graph. Do not wire these alternatives into production.",
       "tracking": "IDS-XDR-005 / GitHub issue #26",
-      "completion_gate": "OPEN: source integration is E2-proven (XDR-RECEIPT-002 records frozen multi-source assessments as IDS receipts and replays them); Windows E5 host evidence is not proven."
+      "completion_gate": "CLOSED 2026-11-05: source integration is E2-proven and Windows E5 host evidence is recorded (XDR-005-E5-20261105); recording-only, advisory, and no host-effect path."
     }
   ]
 }

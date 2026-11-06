@@ -1057,3 +1057,5 @@ outbound payload (C2/exfil) เลย
   `metrics-before.json`, `EVIDENCE_INDEX.json` entry `RB013-LOG-E5-20261102`.
 - ยังเปิด: `E5-CURRENT-RUNTIME-MISMATCH` (current-source deployment + rollback)
   และ `IDS-XDR-005-WIRING-OPEN` (scope decision แยก).
+- UPDATE 2026-11-05: `IDS-XDR-005-WIRING-OPEN` is CLOSED at E5
+  (`EVIDENCE_INDEX.json#XDR-005-E5-20261105`); this RB013 record is historical.
