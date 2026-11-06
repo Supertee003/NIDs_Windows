@@ -1,5 +1,5 @@
 {
- "head_sha": "05ebba03b0a2c962e37001fa57f6b76efba022d5",
+ "head_sha": "86024fbf0392ffbb49bd99d3ede6b9174dfe490a",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-11-06",
  "generator_version": "3.0",
@@ -21,6 +21,33 @@
  },
  "evidence": [
   {
+   "id": "QLOSS-FIM-STORM-20261106",
+   "head_sha": "86024fb",
+   "timestamp": "2026-11-06",
+   "title": "Peak-depth instrumentation proves queue capacity is the wrong lever: FIM ingress volume dominates",
+   "level": "E5",
+   "component": "Windows host runtime (pipeline admission, FIM/ETW ingress mix)",
+   "flow_id": "QLOSS-HEALTH-001",
+   "description": "Deployed the daemon that reports depth_peak (source 86024fb, installed daemon 9582AA5C..., driver unchanged 10C41E80...). A 324 s window with a synthetic 20,000-file churn in .work/burst reached the host reserve boundary and refused 141,426 events (all counted as reserved_tail_shed) with ring_dropped=0 and pipeline_dropped=125,490. By-source totals at the end of the run: capture_fim 519,226 pushed / 131,065 dropped, capture_etw 427,807 pushed / 18,798 dropped, capture_registry 276 pushed / 3 dropped. depth_peak pinned at 15,364 of the 15,360 host boundary, i.e. the counter can only report boundary contact because admission caps occupancy.",
+   "files_verified": [
+    "admin-evidence/e5-deploy-86024fb-20261106/peak-watch-20261106_234137.ndjson",
+    "admin-evidence/e5-deploy-86024fb-20261106/post-install-enforce-20261106_234137.txt",
+    "admin-evidence/e5-deploy-86024fb-20261106/deploy-20261106_234137.log",
+    "admin-evidence/e5-deploy-86024fb-20261106/AEGIS-NIDS-5.0.0-86024fb-20261106.exe",
+    "src/pipeline/event_queue.zig",
+    "src/control/handler_registry.zig"
+   ],
+   "tests": [
+    "zig build test --summary all: 2038 passed / 10 skipped / 0 failed (new high-water-mark test)",
+    "installed runtime aegis_nids.exe sha256 9582AA5C... matches the packaged build",
+    "build_manifest.json source_commit=86024fb; minifilter signature Valid; gate closed / detection-only / tier3_enforcing=false",
+    "360 s window (108 samples): depth_peak=15,364, ring_dropped=0, reserved_tail_shed=141,426"
+   ],
+   "result": "PASS_INSTRUMENTED_BUT_SIZED_OUT",
+   "finding": "The measurement kills the capacity hypothesis the previous slice proposed. During churn the ingress demanded at least 157,000 events while the consumer drained ~1,000-1,250/s, and FIM alone shed 131,065 - one sensor's volume, not a marginal shortfall. Adding slots would need ~36x the queue (roughly 950 MB of static state) to absorb this burst, and 32,768 slots (+26 MB) would only have moved the boundary. The real lever is FIM ingress volume: aggregate or rate-shape repeated file-operation events at the sensor, or add per-source fair admission so an ETW/FIM storm cannot consume the whole host tail. Both change detection semantics or fairness policy, so they are recorded as the decision instead of being guessed into the code. Caveat: the burst was synthetic (a deliberately created 20,000-file churn), so its magnitude is a stress probe, not a host observation; the earlier organic burst was 10,408 drops.",
+   "evidence_artifact": "admin-evidence/e5-deploy-86024fb-20261106/peak-watch-20261106_234137.ndjson"
+  },
+  {
    "id": "QLOSS-QUEUE-BURST-20261106",
    "head_sha": "05ebba0",
    "timestamp": "2026-11-06",
@@ -40,7 +67,7 @@
     "readiness degraded=true after the burst"
    ],
    "result": "OPEN_BURST_OVERFLOW",
-   "finding": "The queue's burst headroom is insufficient on this host: 16,384 slots (~26 MB of static state at ~1.6 KB/slot) minus the 1,024 reserved network tail left host telemetry refused during a single spike. This is a real loss and is recorded as OPEN rather than hidden behind the earlier zero window. Next slice must size capacity from a measured peak depth through a burst, or coalesce repeated FIM events for the same path at ingress; raising the queue alone must be justified by memory cost.",
+   "finding": "The queue's burst headroom is insufficient on this host, but the follow-up slice (QLOSS-FIM-STORM-20261106) showed capacity is not the fix: with depth_peak instrumented, a churn burst demanded >157,000 events and FIM alone shed 131,065, so slot count would need a ~36x increase (~950 MB) to absorb it. Next lever is FIM ingress aggregation/rate-shaping or per-source fair admission, both of which change detection or fairness policy and are therefore an explicit decision, not a silent patch.",
    "evidence_artifact": "admin-evidence/qloss-sample-20261106/burst-watch.txt"
   },
   {
@@ -9776,7 +9803,7 @@
   "E2_count": 161,
   "E3_count": 17,
   "E4_count": 15,
-  "E5_count": 135,
+  "E5_count": 136,
   "E6_count": 0,
   "E7_count": 1
  }

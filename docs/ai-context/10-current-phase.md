@@ -32,11 +32,21 @@ authorize a production host effect.
 - **Correction, same evening:** that clean window was NOT steady state. A later
   host burst pushed the queue to its reserve boundary and produced 10,408 queue
   drops (FIM 9,553, ETW 855) while `ring_dropped` stayed **0**; `readiness`
-  returned to `degraded=true`. The ring fix holds; the pipeline queue's burst
-  headroom does not. 16,384 slots at ~1.6 KB each is ~26 MB of static state, so
-  the next step is sized from a measured peak depth, not guessed:  `QLOSS-QUEUE-BURST-20261106`.
-  QLOSS-HEALTH-001 is therefore **PARTIALLY CLOSED**: ring loss eliminated, host
-  admission burst still open.
+  returned to `degraded=true` (`QLOSS-QUEUE-BURST-20261106`).
+- **Sized from measurement instead of guessed (`QLOSS-FIM-STORM-20261106`):**
+  `queue.stats` now reports `depth_peak` (source `86024fb`, daemon
+  `9582AA5C...`). Under a deliberate 20,000-file churn the boundary was hit:
+  `depth_peak=15,364` of 15,360, `reserved_tail_shed=141,426`, FIM
+  `131,065 dropped / 519,226 pushed` versus ETW `18,798 / 427,807`, ring 0.
+  That kills the capacity hypothesis: absorbing this demand would need ~36x the
+  queue (~950 MB), and +26 MB would only move the boundary. The lever is FIM
+  ingress volume (aggregate or rate-shape repeated file operations) or per-
+  source fair admission so one storm cannot consume the whole host tail — both
+  are policy/detection decisions, so they are recorded rather than silently
+  patched.
+- QLOSS-HEALTH-001 is therefore **PARTIALLY CLOSED**: ring loss eliminated
+  (0 drops), host admission under storm still open, readiness `degraded=true`
+  until the ingress decision is taken.
 - Limits: the driver is **test-signed** (production signing still open); zero
   loss holds at the current load, and a heavier burst can still overflow 4 MiB
   — the counter stays visible so any recurrence is measurable, not silent;
@@ -532,11 +542,12 @@ rest is documentation hygiene.
    `ring_dropped=0`, and readiness returned to `degraded=true`. Gate semantics
    were **not** relaxed at any point, so this is a real open loss, not a
    reporting artifact.
-   Next slice must be sized from measurement, not guessed: capture peak
-   `queue.depth` through a burst, then choose between more queue slots
-   (16,384 slots ~ 26 MB of static state, so capacity is not free) and ingress
-   coalescing of repeated FIM events for the same path. Also open: production
-   driver signing (the ring change is test-signed).
+   Sizing was then measured rather than guessed (`86024fb` adds `depth_peak`): a
+   churn burst demanded >157,000 events with FIM alone shedding 131,065, so slot
+   count is the wrong lever (a ~36x queue, ~950 MB, would be needed). The next
+   slice is a decision between FIM ingress aggregation/rate-shaping and
+   per-source fair admission — both change detection or fairness policy. Also
+   open: production driver signing (the ring change is test-signed).
 2. **Supervised Windows E5 / kernel qualification — OPEN.** Any new
    current-source E5 must redeploy a verified candidate with a rollback point
    and pass the RB-021 preflight first (pattern: `E5-DEPLOY-F7C626D-20261103`,
