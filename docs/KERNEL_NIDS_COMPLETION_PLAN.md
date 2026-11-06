@@ -1058,4 +1058,7 @@ outbound payload (C2/exfil) เลย
 - ยังเปิด: `E5-CURRENT-RUNTIME-MISMATCH` (current-source deployment + rollback)
   และ `IDS-XDR-005-WIRING-OPEN` (scope decision แยก).
 - UPDATE 2026-11-05: `IDS-XDR-005-WIRING-OPEN` is CLOSED at E5
-  (`EVIDENCE_INDEX.json#XDR-005-E5-20261105`); this RB013 record is historical.
+  (`EVIDENCE_INDEX.json#XDR-005-E5-20261105`); `E5-CURRENT-RUNTIME-MISMATCH`
+  was CLOSED on 2026-11-04 by `RB-021-CANARY-F7C626D-20261104`. Broader
+  supervised Windows E5/kernel qualification remains open; this RB013 record
+  is historical.

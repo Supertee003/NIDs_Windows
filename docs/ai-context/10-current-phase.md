@@ -271,8 +271,9 @@ authorize a production host effect.
   `AEGIS_NOSE_IFACE` marker; its daemon size matches a fresh `24d8d81`
   lab-gate build). This is lab-kit E5, not current-source E5. No second
   canary, no `metrics_after`, and no post-restore WFP enumeration were
-  captured. `E5-CURRENT-RUNTIME-MISMATCH` and `IDS-XDR-005-WIRING-OPEN`
-  remain OPEN.
+  captured. At that snapshot `E5-CURRENT-RUNTIME-MISMATCH` and
+  `IDS-XDR-005-WIRING-OPEN` were OPEN; both were later CLOSED
+  (`RB-021-CANARY-F7C626D-20261104`, `XDR-005-E5-20261105`).
 - Evidence: `admin-evidence/rb013-log-e5-20261030/closeout.md` and
   `EVIDENCE_INDEX.json` entry `RB013-LOG-E5-20261102`.
 
@@ -298,8 +299,11 @@ authorize a production host effect.
   requires Admin to pin VMnet1 and restart the service. No host change or test
   traffic was performed. See
   `admin-evidence/e5-preflight-20261101/closeout.md`.
-- `VER-003` and `IDS-XDR-006` close their E2 test slices only. Supervised
-  Windows E5, production XDR runtime wiring, and release E7 remain OPEN.
+- `VER-003` and `IDS-XDR-006` close their E2 test slices only. At that
+  snapshot supervised Windows E5, production XDR runtime wiring, and release
+  E7 were open. Production XDR routing was later wired and proven at E5
+  (`XDR-005-E5-20261105`); supervised Windows E5/kernel qualification and
+  release E7 remain OPEN as broader scope.
 - RB-021 remediation now has a fail-closed read-only gate at
   `scripts/rb021_current_source_preflight.ps1`. It must emit
   `RB021_PREFLIGHT_PASS` before any Kali canary; it checks current HEAD/build
@@ -384,21 +388,16 @@ And CI proves: C/C++ + Zig + Go + Rust + Python/Cython + Drivers as one product.
    against current source. This is not Windows E5, kernel qualification, or ADR-
    0009/release completion.
 2. Produce supervised Windows-host evidence for applicable host telemetry and
-   sensor paths. RB-021 recheck on 2026-11-01 confirmed both VMs are reachable,
-   the operator pinned VMnet1, `AegisNids` is ready, and the raw capture device
-   works. Stop-line remains OPEN: the installed service image hash differs from
-   the current workspace build, and `fresh_deploy.py --plan` fails its release
-   manifest preflight. No Kali canary was sent; do not claim E5 until a verified
-   current-source deployment and rollback point are available. See
-   `admin-evidence/e5-recheck-20261101/closeout.md`. REL-MANIFEST-001 now
-   refreshes the existing 616-entry release digest set; `release_engineering
-   --verify` and `fresh_deploy --plan` pass. This clears preflight only and
-   does not install or qualify the current build. The 2026-11-02 lab-kit E5
-   closed only the RB-013 persisted-log gap; it does not clear this
-   current-runtime mismatch. That mismatch was cleared on 2026-11-04: the
-   observe-only canary on the deployed `f7c626d` runtime produced 70
-   attributed rows with the gate closed
-   (`RB-021-CANARY-F7C626D-20261104`).
+   sensor paths. The RB-021 recheck on 2026-11-01 confirmed both VMs and the
+   raw capture device were reachable, but the installed image then differed
+   from the workspace build. That current-runtime mismatch was cleared on
+   2026-11-04 by the observe-only canary on the deployed `f7c626d` runtime
+   (70 attributed rows, gate closed, `RB-021-CANARY-F7C626D-20261104`). The
+   2026-11-05 XDR-005 E5 run then installed candidate `EB9F44AB...` (build
+   source `fc108b0`) and restored `D34D350A...`. Broader supervised Windows
+   E5/kernel qualification remains OPEN: any new current-source E5 must
+   redeploy a verified candidate with a rollback point and pass the RB-021
+   preflight first. See `admin-evidence/e5-recheck-20261101/closeout.md`.
 3. Continue classifying remaining older IPS/WFP material as historical or
    lab-only without deleting it; the key WFP/host records GAP-002, GAP-005, and
    GAP-009 are now explicitly historical. Keep production host-effect capability false.

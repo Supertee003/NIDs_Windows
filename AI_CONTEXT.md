@@ -376,7 +376,7 @@ Previous phases:
   DEADCODE-QUARANTINE, CI-GAPS, RELEASE-TOOLING, LEFTOVER-SWEEP, REL-CLOSURE; operator
   cutover 2026-10-19 20:07 deployed daemon `dcb22a5` (sha256 `f223dcce…`) — live gate
   hard-closed (gate_source 'closed', detection-only), gate-check + v6 live verify PASS.
-  Remaining queue: G2 lab campaign 2026-10-23 (PEP cache swap PASS; direction verify PASS; duplicate canary blocked by existing filter 78056 with confirmed_quarantines=0, so G2-DUPFILTER-REPEAT-20261022 is OPEN; G2-RB013-MIRROR-20261021 CLOSED on the first-canary metric 0 -> 1; G2-RB013-LOG-20261023 OPEN P2 (closed 2026-11-02 by RB013-LOG-E5-20261102); G2-INBOUND-VERIFIER-20261021 CLOSED; G2-ABSENCE-LAB-20261022 CLOSED; G2-INBOUND-RESTORE-20261021 CLOSED with the E19C host-production baseline, not 8FEB; G2 gate NOT PASS; next direct PEP inbound duplicate harness), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window E2 2026-10-20; install E5 24/24 verifier; R9002/R9006/R9007 live PASS; isolated Kali→Win11 rate E5 CLOSED 2026-10-20; DEPLOY-132 process-pin drift CLOSED 2026-10-21 — host reboot cleared SCM cache; post-reboot PEB dump no pin, R0088=0, verifier 24/24),
+  Remaining queue: G2 lab campaign 2026-10-23 (PEP cache swap PASS; direction verify PASS; duplicate canary blocked by existing filter 78056 with confirmed_quarantines=0, so G2-DUPFILTER-REPEAT-20261022 was OPEN at that snapshot (closed 2026-10-28 by G2-DUPFILTER-HOST-PROOF-E5-20261028); G2-RB013-MIRROR-20261021 CLOSED on the first-canary metric 0 -> 1; G2-RB013-LOG-20261023 OPEN P2 (closed 2026-11-02 by RB013-LOG-E5-20261102); G2-INBOUND-VERIFIER-20261021 CLOSED; G2-ABSENCE-LAB-20261022 CLOSED; G2-INBOUND-RESTORE-20261021 CLOSED with the E19C host-production baseline, not 8FEB; G2 gate was NOT PASS at that snapshot; next direct PEP inbound duplicate harness), RB-014/015, RB-018 (PASS 2026-10-20), RB-021 (L4 close-out PASS 2026-10-20; rate/window E2 2026-10-20; install E5 24/24 verifier; R9002/R9006/R9007 live PASS; isolated Kali→Win11 rate E5 CLOSED 2026-10-20; DEPLOY-132 process-pin drift CLOSED 2026-10-21 — host reboot cleared SCM cache; post-reboot PEB dump no pin, R0088=0, verifier 24/24),
   RB-016/017, G4 signing, external review, CI first push (truth semantics fixed 2026-10-20; push approval pending).
   Evidence: EVI CUTOVER-DCB22A5 (E5) + entries V6-QUEUE-DROP..REL-CLOSURE.
 
@@ -416,7 +416,8 @@ Previous phases:
   inbound tuple. Zig 2209 pass/1 skip; Rust 48 pass/1 ignore; WDK driver and
   user bridge build PASS. The 2026-10-21 verify_73000=null is explained by the
   outbound target (203.0.113.10) vs the inbound peer (192.168.126.1); the gap
-  stays OPEN until a lab re-run. Production detection-only, gate closed.
+  stayed OPEN until the 2026-10-23 lab run closed it
+  (EVI-G2-PEP-CACHE-001-LAB-20261023). Production detection-only, gate closed.
   Evidence: EVI G2-DIRECTION-001.
 
 - G2 duplicate-filter idempotence (2026-10-22): IMPLEMENTED at E1 compile
@@ -425,8 +426,9 @@ Previous phases:
   direction/layer/tuple match; mismatches fail closed. The query matcher now
   requires the layer-appropriate port condition and rejects ambiguous filters.
   WDK driver BUILD OK (aegis_wfp.sys sha256 9476F609...); no lab host execution
-  yet, so the repeated-quarantine escalation remains OPEN as
-  G2-DUPFILTER-REPEAT-20261022. Production detection-only, gate closed.
+  yet; the repeated-quarantine escalation was OPEN as
+  G2-DUPFILTER-REPEAT-20261022 until the 2026-10-28 host proof closed it.
+  Production detection-only, gate closed.
 
 - G2 lab re-run preparation (2026-10-22): lab gate-open build staged at
   admin-evidence/g2-direction-20261022/lab-kit-20261022-v2 (daemon 0F3F866A...,
@@ -463,8 +465,10 @@ Previous phases:
   target.direction; enforcement.unblock proves absence on both layers. Zig
   2209/2210 + 1 skipped; Rust 49 pass + 1 ignored; WDK driver F54CFB7F...;
   bridge 9D5D7D46...; lab-gate daemon 0F3F866A.... This closes the v1
-  false-positive path in source; lab re-runs G2-INBOUND-VERIFIER-20261021 and
-  G2-ABSENCE-LAB-20261022 remain OPEN. Production detection-only, gate closed.
+  false-positive path in source; at that snapshot the lab re-runs
+  G2-INBOUND-VERIFIER-20261021 and G2-ABSENCE-LAB-20261022 were still open;
+  both were closed on 2026-10-23 by EVI-G2-PEP-CACHE-001-LAB-20261023.
+  Production detection-only, gate closed.
   Evidence: EVI G2-VERIFY-DIR-001.
 
 - G2 pep-cache/duplicate lab run (2026-10-23): source patch G2-PEP-CACHE-001
@@ -483,10 +487,11 @@ Previous phases:
   deviation was accepted), detection-only, gate closed, host_effect_capable
   false, tier3_enforcing false, proof count 0; listener/firewall/lab
   policy/trust removed; G2ElevRun/G2LabNormal removed. Status:
-  G2-DUPFILTER-REPEAT-20261022 OPEN; G2-RB013-MIRROR-20261021 CLOSED on the
+  G2-DUPFILTER-REPEAT-20261022 was OPEN at that snapshot (closed
+  2026-10-28 by G2-DUPFILTER-HOST-PROOF-E5-20261028); G2-RB013-MIRROR-20261021 CLOSED on the
   first-canary metric 0 -> 1; G2-RB013-LOG-20261023 OPEN P2 (closed 2026-11-02 by RB013-LOG-E5-20261102);
   G2-INBOUND-VERIFIER-20261021 CLOSED; G2-ABSENCE-LAB-20261022 CLOSED;
-  G2-INBOUND-RESTORE-20261021 CLOSED. G2 gate NOT PASS. The control-plane
+  G2-INBOUND-RESTORE-20261021 CLOSED. G2 gate was NOT PASS at that snapshot. The control-plane
   enforcement.quarantine/block verbs are outbound-only (PepRequest.direction
   defaults to 0; the handler read-back uses direction 0), so they cannot prove
   the inbound duplicate; the next proof is a direct PEP inbound harness (two
@@ -744,7 +749,9 @@ P0 risks as of HEAD `60c76fe` (2026-09-12) — HISTORICAL snapshot:
 
   (missing `pid`, `last_event_ms`, `counters`) and reports capability flags
 
-  (`etw`/`fim`/`wfp` = "available") instead of live subsystem state. OPEN.
+  (`etw`/`fim`/`wfp` = "available") instead of live subsystem state. OPEN at
+
+  the time; the update below closes it.
 
   UPDATE (2026-10-17, EVT-219): remainder closed by EVT-097 (live metrics
 
