@@ -540,6 +540,11 @@ fn processEvent(
     });
 
     // 7. Forensic recording (captures full pipeline result)
+    // QLOSS-CONSUMER-001: this step used to report one number, so a 28 ms stall
+    // could belong to the append, the hash read-back or the receipt. Time each
+    // part separately; the three extra clock reads cost ~90 ns per event and
+    // are the only new work on this path.
+    const t_forensic_0 = std.time.nanoTimestamp();
     const forensic_seq = appendForensicRecord(
         forensic_ring,
         qe,
@@ -549,20 +554,30 @@ fn processEvent(
         @intFromEnum(pep_decision),
         @intFromEnum(ev_copy.severity),
     );
+    const t_forensic_1 = std.time.nanoTimestamp();
     if (forensic_seq != 0) {
         _ = state.g_forensic_records_written.fetchAdd(1, .monotonic);
     }
     // IDS-INT-001: issue a recording-only receipt after the forensic writer
     // accepts the exact detection record and its authenticated hash is read
     // back. This never represents a host effect or an enforcement receipt.
-    const ids_evidence_receipt: ?ids_receipt.Receipt = if (detection_rule_id != 0 and forensic_seq != 0)
-        if (forensic_ring.recordHash(forensic_seq)) |record_hash|
-            ids_receipt.issue(ev, forensic_seq, record_hash, ids_receipt.RUNTIME_DETECTOR_ID, ids_receipt.RUNTIME_DETECTOR_VERSION, 100)
-        else
-            null
-    else
-        null;
+    var ids_evidence_receipt: ?ids_receipt.Receipt = null;
+    var t_forensic_2 = t_forensic_1;
+    var t_forensic_3 = t_forensic_1;
+    if (detection_rule_id != 0 and forensic_seq != 0) {
+        const record_hash = forensic_ring.recordHash(forensic_seq);
+        t_forensic_2 = std.time.nanoTimestamp();
+        if (record_hash) |hash| {
+            ids_evidence_receipt = ids_receipt.issue(ev, forensic_seq, hash, ids_receipt.RUNTIME_DETECTOR_ID, ids_receipt.RUNTIME_DETECTOR_VERSION, 100);
+        }
+        t_forensic_3 = std.time.nanoTimestamp();
+    }
     _ = markStage(.action_to_forensic, t_prev);
+    state.g_perf_mutex.lock();
+    state.g_perf.observe(.forensic_append, @intCast(t_forensic_1 - t_forensic_0));
+    state.g_perf.observe(.forensic_hash, @intCast(t_forensic_2 - t_forensic_1));
+    state.g_perf.observe(.receipt_issue, @intCast(t_forensic_3 - t_forensic_2));
+    state.g_perf_mutex.unlock();
 
     // 8. SIEM forwarding (detections only; observe path, never host effects).
     // Zero-cost when uninitialized: one bool check. The forwarder duplicates

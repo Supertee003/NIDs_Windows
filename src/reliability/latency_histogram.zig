@@ -82,6 +82,12 @@ pub const Stage = enum(u8) {
     correlation_to_policy = 5,
     policy_to_action = 6,
     action_to_forensic = 7,
+    // QLOSS-CONSUMER-001: action_to_forensic bundled three different jobs, so
+    // its 28 ms max could not say which one stalls the single-threaded
+    // consumer. These sub-stages split it without changing behavior.
+    forensic_append = 8,
+    forensic_hash = 9,
+    receipt_issue = 10,
 };
 
 pub const PerfTracker = struct {

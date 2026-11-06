@@ -719,9 +719,10 @@ const handlers = struct {
         }
         writer.writeAll("],\"pipeline\":[") catch return null;
         first = true;
-        // PerfSnapshot carries 16 slots but only the 7 named stages are
-        // ever observed; the rest are undefined memory, never read.
-        for (snap.stages[0..7]) |stage| {
+        // PerfSnapshot carries 16 slots but only the declared Stage enum values
+        // are ever observed; the rest are undefined memory, never read.
+        const named_stage_count = @typeInfo(@import("../reliability/latency_histogram.zig").Stage).Enum.fields.len;
+        for (snap.stages[0..named_stage_count]) |stage| {
             if (!first) writer.writeByte(',') catch return null;
             first = false;
             writer.print("{{\"stage\":\"{s}\",\"count\":{},\"p50_ns\":{},\"p95_ns\":{},\"p99_ns\":{},\"mean_ns\":{d},\"max_ns\":{}}}", .{
