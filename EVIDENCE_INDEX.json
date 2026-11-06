@@ -1,5 +1,5 @@
 {
- "head_sha": "a9e8de3462b09d59c9817f62a698a227ed257b90",
+ "head_sha": "940714b5692e8de08c49899bb9eabaefdcc44ab3",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-11-06",
  "generator_version": "3.0",
@@ -20,6 +20,32 @@
   "E7": "Release verification"
  },
  "evidence": [
+  {
+   "id": "E5-DEPLOY-940714B-QUIET-AUDIT",
+   "head_sha": "940714b",
+   "timestamp": "2026-11-06",
+   "title": "Quiet per-packet audit deployed: persisted diagnostics fall from ~40 MB/min to 3.4 KB/min",
+   "level": "E5",
+   "component": "Windows host install (AegisNids service), event processor audit level",
+   "flow_id": "OBSERVABILITY-DISK",
+   "description": "The per-event AUDIT row was emitted for every processed event; on this host every sampled row was rule=0 policy=0 decision=allow (~5,300 lines/s, ~55 GB/day, a 64 MiB rotation every ~100 s). auditLevelFor now keeps matched-policy and non-allow rows at info and drops allow-with-no-match rows to debug. Package AEGIS-NIDS-5.0.0-940714b-20261106.exe (SHA-256 6071E80A...) was installed after a verified rollback point (prior daemon F4BC3A85...). 31/31 checks passed: elevated session, package hash, prior identity, rollback hash, all nine payload hashes, build_manifest source 940714b, service ImagePath, daemon process path, single nose instance and gate posture. Measured on the host: persisted growth in 60 s was 3,439 bytes versus ~34-41 MB for the previous build, no rotation backup appeared within the 180 s observation window, and the log held 16,869 bytes after ~4 minutes.",
+   "files_verified": [
+    "admin-evidence/e5-deploy-940714b-20261106/deploy-result-20261106_230841.json",
+    "admin-evidence/e5-deploy-940714b-20261106/deploy-20261106_230841.log",
+    "admin-evidence/e5-deploy-940714b-20261106/rollback-installed/runtime/aegis_nids.exe",
+    "src/pipeline/event_processor.zig"
+   ],
+   "tests": [
+    "31/31 deploy checks (elevated Windows host install)",
+    "persisted growth 3,439 bytes per 60 s measured post-install",
+    "no rotation backup at 180 s; 16,869 bytes after ~4 minutes",
+    "unit test: auditLevelFor keeps matched and non-allow rows at info",
+    "prevention_gate=closed; enforcement_mode=detection-only; tier3_enforcing=false"
+   ],
+   "result": "PASS_E5_INSTALL_AND_VOLUME",
+   "finding": "Persisted diagnostic volume is reduced by roughly 10,000x with no rotation churn, and audit identity (audit_id, decision trace, forensic ring) is unchanged. Limit: the window carried no policy-matching traffic, so a matched row reaching the persisted file is pinned by the unit test and by the earlier canary's pep=quarantine confirmed=true lines, not re-exercised live. readiness stays degraded from the separate QLOSS queue/minifilter loss. Rollback: admin-evidence/e5-deploy-940714b-20261106/rollback-installed (daemon F4BC3A85...).",
+   "evidence_artifact": "admin-evidence/e5-deploy-940714b-20261106/closeout.md"
+  },
   {
    "id": "E5-DEPLOY-A9E8DE3-LOGCAP",
    "head_sha": "a9e8de3",
@@ -9700,7 +9726,7 @@
   "E2_count": 161,
   "E3_count": 17,
   "E4_count": 15,
-  "E5_count": 132,
+  "E5_count": 133,
   "E6_count": 0,
   "E7_count": 1
  }

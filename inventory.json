@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-06T16:01:20.670441+00:00",
+  "generated_at": "2026-11-06T16:13:20.502306+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1481,
@@ -270,7 +270,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 53132
+      "size": 54207
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -1776,7 +1776,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 32592
+      "size": 34107
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -3018,7 +3018,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 917239
+      "size": 919886
     },
     {
       "path": "fix_bridge_banner.py",
@@ -6078,7 +6078,7 @@
       "path": "src/pipeline/event_processor.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 51356
+      "size": 53036
     },
     {
       "path": "src/pipeline/event_queue.zig",

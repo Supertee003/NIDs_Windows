@@ -10,6 +10,28 @@ Provider readiness, WFP transport, and retained PEP boundaries may exist for
 diagnostics, fail-closed behavior, or historical/lab evidence, but they do not
 authorize a production host effect.
 
+## E5 Deploy — Quiet Per-Packet Audit (`940714b`) — 2026-11-06
+
+- Bounding the log file did not bound the write load: the per-event `AUDIT`
+  row was emitted for every processed event and every sampled row was
+  `rule=0 policy=0 decision=allow` (~5,300 lines/s, ~55 GB/day, rotation every
+  ~100 s). `auditLevelFor` now keeps matched-policy and non-allow rows at
+  `info` and drops allow-with-no-match rows to `debug`; audit identity is
+  unchanged (`audit_id` still increments, the decision trace still records the
+  verdict, the forensic ring still receives the record).
+- Source `940714b` is installed: daemon `6B8183F4...`, package `6071E80A...`,
+  31/31 checks, rollback saved (prior daemon `F4BC3A85...`). No canary;
+  `prevention_gate=closed`, detection-only, `tier3_enforcing=false`.
+- Measured on the host: persisted growth per 60 s fell from ~34–41 MB to
+  **3,439 bytes**, no rotation in the 3-minute window, and the log was
+  16,869 bytes after ~4 minutes — roughly a 10,000× reduction.
+- Scope limit recorded honestly: this window carried no policy-matching
+  traffic, so the positive side (a matched row still persisted) is pinned by
+  the unit test and by the earlier canary's `pep=quarantine confirmed=true`
+  lines, not re-exercised live here.
+- Evidence: `admin-evidence/e5-deploy-940714b-20261106/closeout.md` and
+  `EVIDENCE_INDEX.json#E5-DEPLOY-940714B-QUIET-AUDIT`.
+
 ## E5 Deploy — Bounded Diagnostic Log (`a9e8de3`) — 2026-11-06
 
 - Source `a9e8de3` is installed on the Windows host: daemon
@@ -51,9 +73,10 @@ authorize a production host effect.
   backup, and the legacy first-write rotation. **Deployed the same day (E5)**:
   see the section above — the 41.0 GB file is gone, free space is back to
   ~43 GB, and live rotation was observed twice.
-- The raw growth rate also means the diagnostic stream is far too verbose per
+- The raw growth rate also means the diagnostic stream was far too verbose per
   captured packet (~55 GB/day of writes); bounding the file did not reduce the
-  churn. That work stays with the QLOSS admission item below.
+  churn. That verbosity was then fixed and deployed the same evening (source
+  `940714b`): persisted growth fell to ~3.4 KB/min — see the section above.
 
 ## Project State Audit — 2026-11-06
 
