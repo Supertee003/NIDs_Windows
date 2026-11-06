@@ -35,6 +35,47 @@ pub const RESERVED_NETWORK_SLOTS: usize = 1024;
 // refuses ETW too.
 pub const SOURCE_OCCUPANCY_CAP: usize = (PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS) / 2;
 
+// QLOSS-CRITICAL-001: not every host event is worth the same. A churn of
+// temporary files must never displace a write into a protected system tree, so
+// the last CRITICAL_SLOTS of the host tail are reachable only by FIM events
+// whose path is under Windows\System32 or SysWOW64, and those events are exempt
+// from the per-source share. Non-critical host telemetry stops CRITICAL_SLOTS
+// earlier, which is why ordinary telemetry keeps working while the reserve
+// waits unused.
+pub const CRITICAL_SLOTS: usize = 1024;
+pub const WORKING_HOST_TAIL: usize = PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS - CRITICAL_SLOTS;
+
+// The protected prefixes are the ones configs/runtime.json already declares in
+// `fim_paths`; matching is ASCII case-insensitive because NTFS is. The
+// System32 prefix also covers System32\drivers\etc and every nested tree.
+const CRITICAL_PATH_PREFIXES = [_][]const u8{
+    "c:\\windows\\system32\\",
+    "c:\\windows\\syswow64\\",
+};
+
+/// True when a FIM payload (the file path the minifilter recorded) targets a
+/// protected system tree. Any other source, or any unparseable payload, is
+/// non-critical: the default must be "ordinary", never "protected".
+pub fn isCriticalPath(payload: []const u8) bool {
+    for (CRITICAL_PATH_PREFIXES) |prefix| {
+        if (payload.len < prefix.len) continue;
+        var i: usize = 0;
+        var matches = true;
+        while (i < prefix.len) : (i += 1) {
+            if (std.ascii.toLower(payload[i]) != prefix[i]) {
+                matches = false;
+                break;
+            }
+        }
+        if (matches) return true;
+    }
+    return false;
+}
+
+fn isCriticalHostEvent(ev: event.IpcEvent, payload: []const u8) bool {
+    return ev.source == .capture_fim and isCriticalPath(payload);
+}
+
 fn isNetworkObservation(source: event.EventSource) bool {
     return source == .capture_npcap or source == .capture_wfp;
 }
@@ -152,19 +193,28 @@ fn pushEventFull(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst
         return false;
     }
     const depth = head -% tail;
-    if (!isNetworkObservation(ev.source) and
-        depth >= PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS)
-    {
-        // Preserve the reserved network tail under host-telemetry pressure.
-        // Count it as an admission refusal (health must degrade), but also
-        // count the cause so queue.stats can distinguish this from a full
-        // queue. Callers already expose the source-specific counter.
-        _ = state.g_queue_drops.fetchAdd(1, .monotonic);
-        _ = state.g_reserved_tail_shed.fetchAdd(1, .monotonic);
-        _ = g_ingress_dropped[src_ord].fetchAdd(1, .monotonic);
-        return false;
+    const host_observation = !isNetworkObservation(ev.source);
+    // QLOSS-CRITICAL-001: a protected system-tree write is admitted up to the
+    // full host tail and ignores the per-source share; everything else stops
+    // CRITICAL_SLOTS earlier so that reserve is still free when one arrives.
+    const critical = host_observation and isCriticalHostEvent(ev, payload);
+    if (host_observation) {
+        const host_limit = if (critical)
+            PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS
+        else
+            WORKING_HOST_TAIL;
+        if (depth >= host_limit) {
+            // Preserve the reserved network tail under host-telemetry pressure.
+            // Count it as an admission refusal (health must degrade), but also
+            // count the cause so queue.stats can distinguish this from a full
+            // queue. Callers already expose the source-specific counter.
+            _ = state.g_queue_drops.fetchAdd(1, .monotonic);
+            _ = state.g_reserved_tail_shed.fetchAdd(1, .monotonic);
+            _ = g_ingress_dropped[src_ord].fetchAdd(1, .monotonic);
+            return false;
+        }
     }
-    if (!isNetworkObservation(ev.source) and
+    if (host_observation and !critical and
         g_ingress_active[src_ord].load(.monotonic) >= SOURCE_OCCUPANCY_CAP)
     {
         // QLOSS-FAIRSHARE-001: this source already owns its share of the host
@@ -188,6 +238,7 @@ fn pushEventFull(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst
     // Claim the source's occupancy BEFORE the slot is published, so a consumer
     // can never release a slot this producer has not yet counted.
     _ = g_ingress_active[src_ord].fetchAdd(1, .monotonic);
+    if (critical) _ = state.g_critical_pushed.fetchAdd(1, .monotonic);
     g_queue_head.store(head + 1, .release);
     if (depth + 1 > g_queue_peak_depth.load(.monotonic)) {
         g_queue_peak_depth.store(depth + 1, .monotonic);
@@ -606,6 +657,60 @@ fn producerStressWorker(ctx: *ProducerStressContext) void {
     }
 }
 
+test "QLOSS-CRITICAL-001 a protected system write survives quota and working-tail pressure" {
+    while (popEvent()) |_| {}
+    const fim_ord: usize = @intFromEnum(event.EventSource.capture_fim);
+
+    // Churn ordinary paths until the working tail is full: FIM first (its own
+    // share), then ETW for the remainder.
+    var churn = event.IpcEvent.init(.fim_change);
+    churn.source = .capture_fim;
+    var filled: usize = 0;
+    while (filled < WORKING_HOST_TAIL) : (filled += 1) {
+        if (!pushEvent(churn, "c:\\users\\user\\appdata\\local\\temp\\churn.tmp")) break;
+    }
+    try std.testing.expectEqual(@as(u64, SOURCE_OCCUPANCY_CAP), queueDepth());
+    var noise = event.IpcEvent.init(.fim_change);
+    noise.source = .capture_etw;
+    while (filled < WORKING_HOST_TAIL) : (filled += 1) {
+        if (!pushEvent(noise, "c:\\users\\user\\appdata\\local\\temp\\noise.tmp")) break;
+    }
+    try std.testing.expectEqual(@as(u64, WORKING_HOST_TAIL), queueDepth());
+    try std.testing.expect(!pushEvent(noise, "c:\\users\\user\\appdata\\local\\temp\\noise.tmp"));
+
+    // A System32 write is still admitted, into the reserve nobody else can use,
+    // even though this source is far past its share and the working tail is out.
+    const before = state.g_critical_pushed.load(.acquire);
+    var critical = event.IpcEvent.init(.fim_change);
+    critical.source = .capture_fim;
+    var admitted: usize = 0;
+    while (admitted < CRITICAL_SLOTS + 8) : (admitted += 1) {
+        if (!pushEvent(critical, "C:\\Windows\\System32\\drivers\\etc\\hosts")) break;
+    }
+    try std.testing.expectEqual(CRITICAL_SLOTS, admitted);
+    try std.testing.expect(state.g_critical_pushed.load(.acquire) - before == CRITICAL_SLOTS);
+    try std.testing.expectEqual(@as(u64, PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS), queueDepth());
+
+    // The network reserve is untouched by the protected class.
+    var network = event.IpcEvent.init(.packet_captured);
+    network.source = .capture_npcap;
+    try std.testing.expect(pushEvent(network, &[_]u8{}));
+    try std.testing.expectEqual(@as(u64, PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS + 1), queueDepth());
+    try std.testing.expectEqual(@as(u64, SOURCE_OCCUPANCY_CAP + CRITICAL_SLOTS), g_ingress_active[fim_ord].load(.acquire));
+
+    while (popEvent()) |_| {}
+}
+
+test "isCriticalPath matches protected trees only, case-insensitively" {
+    try std.testing.expect(isCriticalPath("C:\\Windows\\System32\\drivers\\etc\\hosts"));
+    try std.testing.expect(isCriticalPath("c:\\windows\\system32\\winlogon.exe"));
+    try std.testing.expect(isCriticalPath("C:\\Windows\\SysWOW64\\cmd.exe"));
+    try std.testing.expect(!isCriticalPath("C:\\Windows\\Temp\\x.tmp"));
+    try std.testing.expect(!isCriticalPath("D:\\Windows\\System32\\x.dll"));
+    try std.testing.expect(!isCriticalPath(""));
+    try std.testing.expect(!isCriticalPath("C:\\Windows\\System32"));
+}
+
 test "QLOSS-FAIRSHARE-001 a host storm cannot consume the whole host tail" {
     while (popEvent()) |_| {}
     try std.testing.expectEqual(@as(u64, 0), queueDepth());
@@ -634,9 +739,9 @@ test "QLOSS-FAIRSHARE-001 a host storm cannot consume the whole host tail" {
     while (etw_accepted < host_tail) : (etw_accepted += 1) {
         if (!pushEvent(ev, "y")) break;
     }
-    try std.testing.expectEqual(host_tail - SOURCE_OCCUPANCY_CAP, etw_accepted);
-    try std.testing.expectEqual(@as(u64, host_tail - SOURCE_OCCUPANCY_CAP), g_ingress_active[etw_ord].load(.acquire));
-    try std.testing.expectEqual(@as(u64, host_tail), queueDepth());
+    try std.testing.expectEqual(WORKING_HOST_TAIL - SOURCE_OCCUPANCY_CAP, etw_accepted);
+    try std.testing.expectEqual(@as(u64, WORKING_HOST_TAIL - SOURCE_OCCUPANCY_CAP), g_ingress_active[etw_ord].load(.acquire));
+    try std.testing.expectEqual(@as(u64, WORKING_HOST_TAIL), queueDepth());
 
     // Occupancy is released on pop, so a drained queue grants the cap again.
     while (popEvent()) |_| {}
@@ -718,7 +823,6 @@ test "IDS-QUEUE-001 reserves network tail from host telemetry flood" {
     const reserved_before = state.g_reserved_tail_shed.load(.acquire);
     const drops_before = state.g_queue_drops.load(.acquire);
 
-    const host_tail = PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS;
     var host = event.IpcEvent.init(.fim_change);
     host.source = .capture_fim;
     var filled: usize = 0;
@@ -731,15 +835,15 @@ test "IDS-QUEUE-001 reserves network tail from host telemetry flood" {
     try std.testing.expectEqual(@as(u64, SOURCE_OCCUPANCY_CAP), queueDepth());
     try std.testing.expectEqual(reserved_before, state.g_reserved_tail_shed.load(.acquire));
 
-    // The rest of the host tail stays reachable by another host sensor...
+    // The rest of the working tail stays reachable by another host sensor...
     var etw = event.IpcEvent.init(.fim_change);
     etw.source = .capture_etw;
-    while (filled < host_tail) : (filled += 1) {
+    while (filled < WORKING_HOST_TAIL) : (filled += 1) {
         try std.testing.expect(pushEvent(etw, &[_]u8{}));
     }
-    // ...and host telemetry is refused at the reserve boundary, not at capacity.
+    // ...and ordinary host telemetry stops before the critical reserve.
     try std.testing.expect(!pushEvent(etw, &[_]u8{}));
-    try std.testing.expectEqual(@as(u64, host_tail), queueDepth());
+    try std.testing.expectEqual(@as(u64, WORKING_HOST_TAIL), queueDepth());
     try std.testing.expectEqual(reserved_before + 1, state.g_reserved_tail_shed.load(.acquire));
     try std.testing.expectEqual(drops_before + 2, state.g_queue_drops.load(.acquire));
 
@@ -748,10 +852,10 @@ test "IDS-QUEUE-001 reserves network tail from host telemetry flood" {
     network.source = .capture_npcap;
     try std.testing.expect(pushEvent(network, &[_]u8{}));
 
-    // Fill the reserve with network observations. A host refusal at true
-    // capacity is counted as a reserved shed, never as quota starvation.
-    var reserve: usize = 1;
-    while (reserve < RESERVED_NETWORK_SLOTS) : (reserve += 1) {
+    // Fill the rest of the queue with network observations (the reserve plus
+    // the critical slice nobody else may use). A host refusal at true capacity
+    // is counted as a reserved shed, never as quota starvation.
+    while (queueDepth() < PIPELINE_QUEUE_SIZE) {
         try std.testing.expect(pushEvent(network, &[_]u8{}));
     }
     // At true capacity the full-queue refusal wins, so the reserve shed counter

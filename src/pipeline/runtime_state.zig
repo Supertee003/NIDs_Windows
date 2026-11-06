@@ -247,6 +247,10 @@ pub var g_reserved_tail_shed = std.atomic.Value(u64).init(0);
 /// occupancy cap rather than by a full queue. Counted in g_queue_drops too, so
 /// health still degrades; this counter only names the cause.
 pub var g_source_quota_shed = std.atomic.Value(u64).init(0);
+/// QLOSS-CRITICAL-001: FIM events admitted because they target a protected
+/// system tree. Exposed so an operator can see that the reserved slice is
+/// actually carrying protection rather than sitting unused.
+pub var g_critical_pushed = std.atomic.Value(u64).init(0);
 // Canonical Go Nose -> Zig reader counters. These are deliberately separate
 // from process liveness: RUNNING does not imply that the data plane is active.
 pub var g_nose_connected = std.atomic.Value(bool).init(false);
