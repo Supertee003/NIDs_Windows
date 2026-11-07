@@ -588,16 +588,21 @@ work that still blocks "finished"; the rest is documentation hygiene.
 4. **Signed release package / E7 — OPEN.** Requires signing key material,
    provenance, and an owner decision. Nothing in the current evidence set
    changes this.
-5. **CI hosted matrix — FIXES LANDED, RE-RUN PENDING (2026-11-07).** The
-   branch was pushed 2026-11-06 after the history rewrite. Run `42205944646`
-   kept the truth and release gates green and exposed only hosted-runner
-   environment gaps: the Trivy action tag moved to `v0.36.0`, graph deps and
-   the native helper DLLs were absent, daemon-live tests cannot run on a bare
-   runner, operator Kali scripts are gitignored, and the Zig 0.13 skip
-   constant was wrong. Fixes are in source `1b32eaf` and records `b86c738`
-   (marker `host_live`, conditional Kali skip, graph/DLL setup, Trivy tag,
-   `SkipZigTest`, CRC test edge, pipe-fixture fidelity). The re-run verdict is
-   recorded by the next CI run; WDK remains a manual, non-gating job.
+5. **CI hosted matrix — CLOSED (2026-11-07).** Run
+   [`42347458980`](https://github.com/Supertee003/NIDs_Windows/actions/runs/42347458980)
+   on `codex/o2-etw-context` at records head `ce522e5` (build source
+   `1b32eaf`) completed: every gating job passed — Zig, Rust PEP, Rust Shield,
+   C native, Python control plane, Brain, Cython, Go nose, Go aggregator,
+   TypeScript, Mouth, Dashboard, Security Scan (Trivy pinned `v0.36.0`), and
+   the cross-language `ci-matrix`. The run's overall `failure` comes only
+   from `drivers-wdk-build`, the manual WDK job deliberately outside
+   `ci-matrix.needs`; `Package Release` is skipped because this is not a
+   tag/main run. The preceding run `42205944646` had exposed the hosted-runner
+   gaps (Trivy tag, graph deps, native helper DLLs, daemon-live tests,
+   gitignored Kali scripts, Zig 0.13 skip constant); the fixes are in source
+   `1b32eaf` and records `b86c738` (marker `host_live`, conditional Kali skip,
+   graph/DLL setup, Trivy tag, `SkipZigTest`, CRC test edge, pipe-fixture
+   fidelity). WDK remains a manual, non-gating E5/driver item.
 6. **Historical classification of older IPS/WFP material — on-going.** Keep
    classifying without deleting; GAP-002, GAP-005, and GAP-009 are explicitly
    historical. Production host-effect capability must stay false.
