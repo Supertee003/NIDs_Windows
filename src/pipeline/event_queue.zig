@@ -23,17 +23,28 @@ pub const MAX_PAYLOAD_BYTES: usize = 1500; // MTU-sized payload buffer
 // reserve is free. Every refusal stays visible in the per-source counters,
 // and reserved-tail sheds are counted separately from true full-queue drops.
 pub const RESERVED_NETWORK_SLOTS: usize = 1024;
-// QLOSS-FAIRSHARE-001: the host tail above is shared by every host sensor,
-// and a FIM storm can take all of it, leaving ETW/registry blind while the
-// kernel-side ring stays silent. A single host source may therefore own at
-// most half of the host tail, which guarantees every other host sensor at
-// least the other half no matter how hard the storm pushes. The network
-// reserve above remains untouched. This is isolation, not throughput: the
+// QLOSS-FAIRSHARE-001: the working host tail above is shared by every host
+// sensor, and a FIM storm can take all of it, leaving ETW/registry blind while
+// the kernel-side ring stays silent. A single host source may therefore own at
+// most half of the *working* tail, which guarantees a second host sensor at
+// least the other half no matter how hard the storm pushes. The network and
+// critical reserves remain untouched. This is isolation, not throughput: the
 // storming source still drops its own events, but it cannot blind a stream a
 // detection depends on. 80/20 was measured first and failed exactly that test:
 // FIM still drove total occupancy to the shared boundary, where the tail check
 // refuses ETW too.
-pub const SOURCE_OCCUPANCY_CAP: usize = (PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS) / 2;
+//
+// QLOSS-ISOLATION-002: the half must be taken from WORKING_HOST_TAIL, not from
+// (PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS). The latter is 7,680 per
+// source, so two sources can claim 15,360 slots while the shared tail check
+// refuses at 14,336: the second source is stopped by the shared boundary
+// before it ever reaches its own share, which reproduces the same starvation
+// the 80/20 split was rejected for. WORKING_HOST_TAIL/2 = 7,168 makes two
+// shares sum to exactly the tail, so a second source always reaches its cap.
+// Limit: this is pairwise, not N-way, isolation - with three or more host
+// sources the sum of half-shares still exceeds the tail, so a dynamic
+// fair-share is a separate, explicitly-recorded decision.
+pub const SOURCE_OCCUPANCY_CAP: usize = WORKING_HOST_TAIL / 2;
 
 // QLOSS-CRITICAL-001: not every host event is worth the same. A churn of
 // temporary files must never displace a write into a protected system tree, so
@@ -711,6 +722,16 @@ test "isCriticalPath matches protected trees only, case-insensitively" {
     try std.testing.expect(!isCriticalPath("C:\\Windows\\System32"));
 }
 
+test "QLOSS-ISOLATION-002 host shares cannot over-subscribe the working tail" {
+    // The pairwise guarantee is arithmetic: two per-source shares must fit
+    // inside the working tail, or the shared tail check refuses the second
+    // source before it ever reaches its own cap.
+    try std.testing.expectEqual(@as(usize, 0), WORKING_HOST_TAIL % 2);
+    try std.testing.expectEqual(WORKING_HOST_TAIL, 2 * SOURCE_OCCUPANCY_CAP);
+    try std.testing.expect(2 * SOURCE_OCCUPANCY_CAP <= WORKING_HOST_TAIL);
+    try std.testing.expect(SOURCE_OCCUPANCY_CAP < PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS);
+}
+
 test "QLOSS-FAIRSHARE-001 a host storm cannot consume the whole host tail" {
     while (popEvent()) |_| {}
     try std.testing.expectEqual(@as(u64, 0), queueDepth());
@@ -739,8 +760,12 @@ test "QLOSS-FAIRSHARE-001 a host storm cannot consume the whole host tail" {
     while (etw_accepted < host_tail) : (etw_accepted += 1) {
         if (!pushEvent(ev, "y")) break;
     }
-    try std.testing.expectEqual(WORKING_HOST_TAIL - SOURCE_OCCUPANCY_CAP, etw_accepted);
-    try std.testing.expectEqual(@as(u64, WORKING_HOST_TAIL - SOURCE_OCCUPANCY_CAP), g_ingress_active[etw_ord].load(.acquire));
+    // QLOSS-ISOLATION-002: the second source reaches its own full share. With
+    // the old (host-tail) denominator it stopped at WORKING_HOST_TAIL - cap
+    // because the shared boundary fired first, which is the starvation this
+    // test now forbids.
+    try std.testing.expectEqual(SOURCE_OCCUPANCY_CAP, etw_accepted);
+    try std.testing.expectEqual(@as(u64, SOURCE_OCCUPANCY_CAP), g_ingress_active[etw_ord].load(.acquire));
     try std.testing.expectEqual(@as(u64, WORKING_HOST_TAIL), queueDepth());
 
     // Occupancy is released on pop, so a drained queue grants the cap again.
