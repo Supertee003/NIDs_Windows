@@ -236,6 +236,13 @@ def test_large_control_response_is_accumulated_across_message_reads(monkeypatch,
                 for offset in range(0, len(document), 50000):
                     _, written = win32file.WriteFile(handle, document[offset:offset + 50000])
                     assert written > 0
+                # The real daemon flushes before DisconnectNamedPipe
+                # (src/platform/win32_pipe.zig). Disconnect discards unread
+                # pipe data, so without this a client descheduled after its
+                # request loses the whole response: ERROR_PIPE_NOT_CONNECTED
+                # (233), then ERROR_FILE_NOT_FOUND (2) because this one-shot
+                # fixture has no second instance to retry against.
+                win32file.FlushFileBuffers(handle)
             finally:
                 try:
                     win32pipe.DisconnectNamedPipe(handle)

@@ -13,6 +13,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
+
 
 def _load_opener():
     path = Path(__file__).resolve().parents[2] / "scripts" / "aegis_open.py"
@@ -254,6 +256,7 @@ def test_pids_by_cmdline_covers_pythonw():
     assert "python.exe" in seen["cmd"]
 
 
+@pytest.mark.host_live
 def test_udp_port_owner_is_readable_cross_elevation():
     # ... but argv matching cannot see an ELEVATED brain from a plain
     # shell, so the socket owner is authoritative. Live and read-only:

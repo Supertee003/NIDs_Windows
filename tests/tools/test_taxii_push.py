@@ -42,6 +42,13 @@ class _StubHandler(BaseHTTPRequestHandler):
         self.server.requests.append((self.path, self.headers.get("Content-Type"),
                                      self.headers.get("Accept"),
                                      self.headers.get("Authorization")))
+        # Drain the request body before replying. Closing a socket with unread
+        # data makes Windows reset the connection (WinError 10053), which can
+        # hide the stub's status behind a transport error when the client is
+        # still writing. A real TAXII server consumes the bundle first.
+        length = int(self.headers.get("Content-Length") or 0)
+        if length:
+            self.rfile.read(length)
         body = b"{}"
         self.send_response(self.status)
         self.send_header("Content-Type", "application/taxii+json;version=2.1")

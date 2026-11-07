@@ -157,7 +157,7 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt networkx pyvis
       - name: Build Cython extensions
         run: |
           cd brain/cython
@@ -172,8 +172,16 @@ jobs:
       # pre-commit check.
       - name: Verify machine-map truth stamps (source-commit gate)
         run: python tools/truth.py verify
+      - name: Build native helper DLLs (fallback candidate)
+        # tests/tools/test_no_shadow_dll.py probes build/Release/aegis_wfp_user.dll;
+        # before this step that file only existed on developer machines.
+        run: |
+          cmake -B build -S .
+          cmake --build build --config Release
       - name: Run tests
-        run: python -m pytest tests/ -v --ignore=tests/test_e2e.py
+        # host_live tests need the running control daemon/brain and are
+        # exercised on the operator host (E5), not on a bare hosted runner.
+        run: python -m pytest tests/ -v --ignore=tests/test_e2e.py -m "not host_live"
 
   # CI-GAPS (2026-10-19): the Tier-2 brain suite (brain/test_*.py) ran
   # nowhere in CI -- pytest's target was tests/ only, so a broken brain
@@ -224,7 +232,7 @@ jobs:
         # are human-triaged; flipping to exit-code 1 needs that SLA first.
         # CI-GAPS review (2026-10-19): decision re-checked and kept — no
         # triage SLA exists yet; findings stay advisory. Revisit with the SLA.
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .

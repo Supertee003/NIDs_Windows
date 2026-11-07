@@ -19,6 +19,8 @@ import sys
 import unittest
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 AEGISCTL = REPO_ROOT / "tools" / "aegisctl.py"
 
@@ -185,6 +187,7 @@ class TestAegisctlDashboardCommand(unittest.TestCase):
         self.assertIn("def _render_dashboard_once(deep_components", src)
         self.assertIn("_render_dashboard_once(deep_components=True)", src)
 
+    @pytest.mark.host_live
     def test_incidents_list_reports_counters(self):
         # EVT-207: the command every Kali hint points at must exist and
         # report the daemon's counters (quiet reads zero, never an error).
@@ -212,6 +215,7 @@ class TestAegisctlDashboardCommand(unittest.TestCase):
             f"DETECTIONS section must report or admit: {stdout[-500:]!r}"
         )
 
+    @pytest.mark.host_live
     def test_incidents_top_groups_rules(self):
         # EVT-208: ring-derived top-rules view shares the alerts scan core.
         # Quiet hosts print the labeled empty line; firing hosts print rows.
@@ -578,6 +582,7 @@ class TestAegisctlConsoleGraph(unittest.TestCase):
 class TestAegisctlIptest(unittest.TestCase):
     """EVT-167: bounded latency probe instead of the stub (live)."""
 
+    @pytest.mark.host_live
     def test_iptest_reports_bounded_sample(self):
         import json as _json
         rc, stdout, stderr = _run_aegisctl("iptest", "--rounds", "3", "--json", timeout=60)
@@ -611,6 +616,7 @@ class TestForensicSearchContracts(unittest.TestCase):
         self.assertEqual(rc, 2)
         self.assertIn("source_or_payload_prefix", stdout + stderr)
 
+    @pytest.mark.host_live
     def test_rule_field_accepts_catalog_id_shape(self):
         # Live shape only (the daemon filter it addresses deploys
         # separately): catalog id accepted, JSON parses, no traceback.

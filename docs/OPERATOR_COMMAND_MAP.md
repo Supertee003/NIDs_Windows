@@ -29,6 +29,7 @@ with a pointer, or a support script -- ask before running it on prod.
 | `alerts` | Filtered alert-level view only (quiet hosts: empty is normal) |
 | `incidents list` | Threat-tracker counters + open-incident detail (highest score first) |
 | `incidents top` | Top firing rules, ring-derived grouping |
+| `xdr list/verify` | Advisory XDR evidence, read-only (never a host action) |
 | `forensic show/search/verify/export` | Targeted: one record / one field / chain / export |
 | `forensics list/verify` | Bulk: ring pages + chain (different granularity, keep both) |
 | `enforce status` | PEP truth: mode, gate, receipts (detection-only here) |

@@ -16,8 +16,19 @@ import json
 import re
 from pathlib import Path
 
+import pytest
+
 REPO = Path(__file__).resolve().parents[2]
 KALI = REPO / "scripts" / "kali_attacks"
+
+# The attack scripts are operator-generated lab tooling and are deliberately
+# gitignored (.gitignore: "Kali attack simulation scripts"). A fresh clone
+# and hosted CI therefore have no scripts to pin; skip instead of failing.
+# Local/operator runs still enforce the full 23-rule coverage.
+pytestmark = pytest.mark.skipif(
+    not KALI.is_dir() or not any(KALI.glob("R*.py")),
+    reason="scripts/kali_attacks/ is operator-generated lab tooling (gitignored)",
+)
 
 
 def _catalog():
