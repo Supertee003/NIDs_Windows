@@ -56,6 +56,10 @@ comptime {
     _ = @import("tests/forensic/test_fault.zig");
     _ = @import("tests/forensic/test_release.zig");
     _ = @import("forensic/forensic_log.zig");
+    // 34198a3: slicing-by-8 CRC substitution. Its tests pin byte equality
+    // against std.hash.Crc32, so the file needs its own execution edge;
+    // being imported by forensic_log alone is NOT a proven test edge.
+    _ = @import("forensic/crc32_slicing.zig");
     _ = @import("tests/forensic/release_manifest.zig");
     _ = @import("tests/forensic/installer.zig");
     _ = @import("tests/forensic/release_gate.zig");

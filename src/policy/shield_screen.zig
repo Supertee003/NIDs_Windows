@@ -173,8 +173,11 @@ test "shield_screen positive path against cargo-built DLL (host-conditional)" {
     // Must stay LAST in this file: a successful load sets process globals
     // that earlier hermetic tests require to be null.
     var probe: [512]u8 = undefined;
-    const rel = std.fmt.bufPrint(&probe, "{s}", .{CANDIDATE_PATHS[0]}) catch return error.SkipTest;
-    std.fs.cwd().access(rel, .{}) catch return error.SkipTest;
+    // Zig 0.13 only treats error.SkipZigTest as a skip; any other error is a
+    // failure. The old error.SkipTest turned the absent-DLL host-conditional
+    // path into a red CI test instead of a skip.
+    const rel = std.fmt.bufPrint(&probe, "{s}", .{CANDIDATE_PATHS[0]}) catch return error.SkipZigTest;
+    std.fs.cwd().access(rel, .{}) catch return error.SkipZigTest;
     try std.testing.expect(tryLoadDefault());
     try std.testing.expect(isAvailable());
     try std.testing.expectEqual(ScreenVerdict.clean, screen("benign"));
