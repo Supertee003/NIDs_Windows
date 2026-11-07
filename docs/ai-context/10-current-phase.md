@@ -565,6 +565,16 @@ work that still blocks "finished"; the rest is documentation hygiene.
    unrequested host change), and the one failing check is a sampling artifact
    (`etw_active` read 0 at a drained moment while ETW pushed 245,343 in the
    window).
+   A follow-up source fix (`12093dd`, `QLOSS-ISOLATION-002`) corrects the
+   fair-share arithmetic: the cap was halves of the *whole* host tail (7,680),
+   so two sources could claim 15,360 slots while the shared check refuses at
+   `WORKING_HOST_TAIL` 14,336 — the second source was stopped at 6,656 before
+   reaching its own share, which is the 80/20 failure at a smaller scale. The
+   cap is now `WORKING_HOST_TAIL/2 = 7,168`, and a unit invariant pins
+   `2 * cap == WORKING_HOST_TAIL`. This is E2 only (2,048 Zig tests and the
+   full Python suite pass); the installed daemon is unchanged, so no E5 is
+   claimed. It preserves pairwise isolation and does not lower total loss;
+   N-way fairness and FIM ingress aggregation/rate shaping remain open.
    Also open: production driver signing (the ring change is test-signed).
 2. **Supervised Windows E5 / kernel qualification — OPEN.** Any new
    current-source E5 must redeploy a verified candidate with a rollback point

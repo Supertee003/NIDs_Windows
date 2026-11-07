@@ -41,13 +41,24 @@ attributed to a named counter:
 | Layer | Constant | Question it answers |
 |---|---|---|
 | Network reserve | `RESERVED_NETWORK_SLOTS` = 1,024 | Can host telemetry starve the IDS network tail? (No) |
-| Fair share | `SOURCE_OCCUPANCY_CAP` = host tail / 2 = 7,680 | Can one host sensor blind another? (No) |
+| Fair share | `SOURCE_OCCUPANCY_CAP` = working host tail / 2 = 7,168 | Can one host sensor blind another? (No) |
 | Critical class | `CRITICAL_SLOTS` = 1,024, `WORKING_HOST_TAIL` = 14,336 | Can churn displace a write into a protected system tree? (No) |
 
 Refusals are counted as `reserved_tail_shed`, `source_quota_shed`, or plain
 `dropped_total`/full-queue, never silently. `queue.stats` reports `depth_peak`,
 `source_occupancy_cap`, `critical_slots`, `critical_pushed_total`, and
 per-source `active`.
+
+**QLOSS-ISOLATION-002 (2026-11-07).** The fair share must be half of
+`WORKING_HOST_TAIL` (14,336), not half of the whole host tail (15,360). The
+earlier formula produced 7,680 per source, so two sources could claim 15,360
+slots while the shared tail check refuses at 14,336: the second source was
+stopped at 6,656 by the shared boundary before it ever reached its own 7,680
+share — the same starvation the 80/20 split was rejected for, only smaller.
+With 7,168 the two shares sum to exactly the working tail, so a second host
+sensor always reaches its cap. This is pairwise isolation only; with three or
+more host sources the sum of half-shares still exceeds the tail, so a dynamic
+fair-share remains an open decision.
 
 ## Alternatives considered and rejected
 

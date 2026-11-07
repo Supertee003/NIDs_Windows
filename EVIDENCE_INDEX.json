@@ -1,7 +1,7 @@
 {
- "head_sha": "1b32eafc0630b0d6eff31283638033cf11c930ee",
+ "head_sha": "12093dd0a5208498199551e8ce0aebaf58520cde",
  "created_at": "2026-09-24",
- "last_updated_at": "2026-11-06",
+ "last_updated_at": "2026-11-07",
  "generator_version": "3.0",
  "artifact_retention": {
   "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -20,6 +20,29 @@
   "E7": "Release verification"
  },
  "evidence": [
+  {
+   "id": "QLOSS-ISOLATION-002-E2-20261107",
+   "head_sha": "12093dd",
+   "timestamp": "2026-11-07",
+   "title": "Fair share is sized from the working tail: a second host source now reaches its own cap",
+   "level": "E2",
+   "component": "src/pipeline/event_queue.zig SOURCE_OCCUPANCY_CAP",
+   "flow_id": "QLOSS-HEALTH-001",
+   "description": "SOURCE_OCCUPANCY_CAP was (PIPELINE_QUEUE_SIZE - RESERVED_NETWORK_SLOTS)/2 = 7,680. Two host sources could therefore claim 15,360 slots while the shared tail check refuses at WORKING_HOST_TAIL = 14,336, so the second source was stopped at 6,656 by the shared boundary before reaching its own 7,680 share. The cap is now WORKING_HOST_TAIL/2 = 7,168, so two shares sum to exactly the working tail.",
+   "files_verified": [
+    "src/pipeline/event_queue.zig",
+    "docs/adr/0010-host-telemetry-admission.md"
+   ],
+   "tests": [
+    "zig build test --summary all: 5/5 steps succeeded, 2048 passed / 10 skipped / 0 failed",
+    "new QLOSS-ISOLATION-002 invariant test: 2 * SOURCE_OCCUPANCY_CAP == WORKING_HOST_TAIL (7,168 each, 14,336 total)",
+    "QLOSS-FAIRSHARE-001 test now asserts the second source reaches its full 7,168 share, not the 6,656 left by the shared boundary",
+    "python -m pytest tests/ -m 'not host_live': 991 passed / 4 skipped / 5 deselected"
+   ],
+   "result": "PASS_E2_ISOLATION_ARITHMETIC",
+   "finding": "The pairwise isolation guarantee is now arithmetic instead of accidental: the two shares exactly fill the working tail, so a second host sensor is refused by its own quota, not by the shared boundary, and the refusal is attributed to source_quota_shed. This does not reduce the storming source's own loss; that still needs FIM ingress aggregation/rate shaping. Limit: E2 only - the installed daemon is unchanged, so no host measurement is claimed. The guarantee is pairwise, not N-way: with three or more host sources the sum of half-shares still exceeds the tail, so a dynamic fair share remains an explicit decision.",
+   "evidence_artifact": "docs/adr/0010-host-telemetry-admission.md"
+  },
   {
    "id": "QLOSS-CONSUMER-002-E5-20261107",
    "head_sha": "34198a3",
@@ -9945,12 +9968,38 @@
     "EVIDENCE_INDEX.json#XDR-005-E5-20261105"
    ],
    "resolution": "DONE 2026-11-05 (E5). XDR-005-A added a recording-only host TCP observation source (capture_host_net / host_socket_observed, category host, rule_id 0) and a bounded pending join so a host-only observation never opens an incident; it joins network evidence for the same entity within the 120 s TTL. XDR-005-B added read-only persisted-snapshot replay (xdr.verify). On the real host, Kali .10 produced incident v4:192.168.126.10 with distinct_sources=2, categories [network,host], evidence=10, receipts_recorded=2, receipts_failed=0, and xdr.verify replayed sequence 1060875 with verified=1/failed=0; blocks=0, gate closed, restore clean. Evidence: admin-evidence/xdr005-e5-20261105/closeout.md."
+  },
+  {
+   "id": "GAP-QLOSS-ISOLATION-002",
+   "head_sha": "12093dd",
+   "timestamp": "2026-11-07",
+   "title": "Issue #29 QLOSS: fair-share arithmetic fixed at E2; host deploy and FIM ingress reduction remain open",
+   "level": "E2",
+   "component": "src/pipeline/event_queue.zig admission; FIM/ETW ingress volume",
+   "flow_id": "QLOSS-HEALTH-001",
+   "description": "The per-source fair share was over-subscribed against the working tail (two caps 7,680 = 15,360 > 14,336), so the shared boundary could still refuse a second host source before its own cap. Source 12093dd sizes the cap from WORKING_HOST_TAIL and pins the invariant at unit level. The remaining QLOSS loss is the storming source's own excess, which no queue/cap change can remove.",
+   "files_changed": [
+    "src/pipeline/event_queue.zig",
+    "docs/adr/0010-host-telemetry-admission.md"
+   ],
+   "tests": [
+    "zig build test --summary all: 2048 passed / 10 skipped / 0 failed",
+    "python pytest full suite: 991 passed / 4 skipped / 5 deselected"
+   ],
+   "result": "E2_FIXED_HOST_E5_PENDING",
+   "finding": "The isolation defect is closed in source and proven by unit/build tests only. The installed daemon still carries the old 7,680 cap until an operator-approved deploy, and total QLOSS loss is unchanged by this fix.",
+   "required_evidence": [
+    "E5 re-measure on the deployed daemon: queue.stats reports source_occupancy_cap=7168 and a synthetic storm shows the second source reaching 7168 active with source_quota_shed (not reserved_tail_shed) as the refusal cause",
+    "decision and implementation for FIM ingress aggregation/rate shaping, the only lever that reduces the storming source's own loss",
+    "operator-approved UAC deploy of the new daemon before any E5 claim"
+   ],
+   "tracking": "GitHub issue #29 (QLOSS-HEALTH-001 overload; DATA_LOSS_REMAINS)"
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 32,
-  "E2_count": 162,
+  "E2_count": 164,
   "E3_count": 17,
   "E4_count": 15,
   "E5_count": 141,

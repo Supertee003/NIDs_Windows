@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-07T06:31:34.971551+00:00",
+  "generated_at": "2026-11-07T10:58:56.499008+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1484,
@@ -1626,7 +1626,7 @@
       "path": "docs/adr/0010-host-telemetry-admission.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 7263
+      "size": 7993
     },
     {
       "path": "docs/adr/0011-build-optimization-mode.md",
@@ -1788,7 +1788,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 39477
+      "size": 40601
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -3030,7 +3030,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 943346
+      "size": 937301
     },
     {
       "path": "fix_bridge_banner.py",
@@ -6102,7 +6102,7 @@
       "path": "src/pipeline/event_queue.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 44218
+      "size": 45775
     },
     {
       "path": "src/pipeline/l4_matcher.zig",
