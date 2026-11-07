@@ -44,7 +44,9 @@ def test_trivy_pin_is_a_release_tag():
     import re
 
     text = _workflow()
-    assert re.search(r"trivy-action@0\.36\.0", text), "Trivy must stay pinned to a verified release"
+    # trivy-action migrated its tags to the `v` prefix (v0.36.0); the
+    # unprefixed 0.36.0 tag does not exist and made the job unresolvable.
+    assert re.search(r"trivy-action@v0\.36\.0", text), "Trivy must stay pinned to a verified release"
     assert "exit-code: 0" in text
 
 

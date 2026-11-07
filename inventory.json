@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-06T19:13:12.143376+00:00",
+  "generated_at": "2026-11-07T06:31:34.971551+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1484,
@@ -174,7 +174,7 @@
       "path": ".github/workflows/ci.yml",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 12690
+      "size": 13183
     },
     {
       "path": ".github/workflows/host-regression.yml",
@@ -1788,7 +1788,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 38874
+      "size": 39477
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -2352,7 +2352,7 @@
       "path": "docs/OPERATOR_COMMAND_MAP.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 7896
+      "size": 7975
     },
     {
       "path": "docs/P0_P2_OPERATOR_ACCEPTANCE.md",
@@ -3426,7 +3426,7 @@
       "path": "pytest.ini",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 133
+      "size": 276
     },
     {
       "path": "README.md",
@@ -5436,7 +5436,7 @@
       "path": "src/all_tests.zig",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 11086
+      "size": 11352
     },
     {
       "path": "src/capture/flow_engine.zig",
@@ -6228,7 +6228,7 @@
       "path": "src/policy/shield_screen.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 8246
+      "size": 8458
     },
     {
       "path": "src/policy/tier3_state.zig",
@@ -7560,7 +7560,7 @@
       "path": "tests/forensics/test_forensic_pagination.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 13435
+      "size": 13928
     },
     {
       "path": "tests/forensics/test_forensic_source_space.py",
@@ -7602,7 +7602,7 @@
       "path": "tests/lab/test_kali_script_coverage.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 2877
+      "size": 3355
     },
     {
       "path": "tests/lab/test_phase8_lab_scenarios.py",
@@ -7626,7 +7626,7 @@
       "path": "tests/release/test_ci_gates.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 8182
+      "size": 8327
     },
     {
       "path": "tests/release/test_evidence_index_valid.py",
@@ -7704,7 +7704,7 @@
       "path": "tests/runtime/test_aegisctl.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 31112
+      "size": 31235
     },
     {
       "path": "tests/runtime/test_aggregator_entrypoints.py",
@@ -8052,7 +8052,7 @@
       "path": "tests/tools/test_aegis_open.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 14478
+      "size": 14516
     },
     {
       "path": "tests/tools/test_aegisctl_alerts.py",
@@ -8172,7 +8172,7 @@
       "path": "tests/tools/test_taxii_push.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 9109
+      "size": 9532
     },
     {
       "path": "tests/tools/test_web_dashboard.py",

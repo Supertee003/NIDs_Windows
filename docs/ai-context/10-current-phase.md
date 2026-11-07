@@ -529,9 +529,9 @@ And CI proves: C/C++ + Zig + Go + Rust + Python/Cython + Drivers as one product.
 
 ## Remaining closure work
 
-Open register as of the 2026-11-06 audit (records HEAD `f325ef6`, build source
-`572ff13`). Items 1-3 below are the only work that still blocks "finished"; the
-rest is documentation hygiene.
+Open register as of the 2026-11-06 audit, refreshed 2026-11-07 after the
+hosted-CI hardening (build source `1b32eaf`). Items 1-3 below are the only
+work that still blocks "finished"; the rest is documentation hygiene.
 
 1. **`QLOSS-HEALTH-001` — PARTIALLY CLOSED (2026-11-06).** Measured in steps:
    per-event allow audit rows created the backpressure (`940714b`); after that
@@ -588,9 +588,16 @@ rest is documentation hygiene.
 4. **Signed release package / E7 — OPEN.** Requires signing key material,
    provenance, and an owner decision. Nothing in the current evidence set
    changes this.
-5. **CI first push — PENDING owner approval.** Truth semantics were fixed
-   2026-10-20 and `truth.py verify` is green with `fetch-depth: 0`; the push
-   itself is not authorized.
+5. **CI hosted matrix — FIXES LANDED, RE-RUN PENDING (2026-11-07).** The
+   branch was pushed 2026-11-06 after the history rewrite. Run `42205944646`
+   kept the truth and release gates green and exposed only hosted-runner
+   environment gaps: the Trivy action tag moved to `v0.36.0`, graph deps and
+   the native helper DLLs were absent, daemon-live tests cannot run on a bare
+   runner, operator Kali scripts are gitignored, and the Zig 0.13 skip
+   constant was wrong. Fixes are in source `1b32eaf` and records `b86c738`
+   (marker `host_live`, conditional Kali skip, graph/DLL setup, Trivy tag,
+   `SkipZigTest`, CRC test edge, pipe-fixture fidelity). The re-run verdict is
+   recorded by the next CI run; WDK remains a manual, non-gating job.
 6. **Historical classification of older IPS/WFP material — on-going.** Keep
    classifying without deleting; GAP-002, GAP-005, and GAP-009 are explicitly
    historical. Production host-effect capability must stay false.
