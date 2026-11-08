@@ -331,8 +331,10 @@ pub fn minifilterReaderLoop() void {
                         _ = runtime_state.g_fim_batch_duplicates_per_pid.fetchAdd(1, .monotonic);
                         _ = runtime_state.g_fim_minifilter_batch_duplicates_per_pid.fetchAdd(1, .monotonic);
                     }
-                    // Same path, same process, same kernel timestamp: the
-                    // identical callback delivered twice, not two opens.
+                    // A repeated (path, kind, pid, timestamp) key is only a
+                    // candidate duplicate signal. Timestamp resolution and
+                    // collisions do not prove callback identity, so this
+                    // remains measurement-only and never suppresses a row.
                     if (probe_ts.observe(path, rec.event_type, rec.process_id, rec.timestamp)) {
                         _ = runtime_state.g_fim_minifilter_batch_duplicates_same_ts.fetchAdd(1, .monotonic);
                     }

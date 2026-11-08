@@ -32,10 +32,10 @@ pub const Entry = struct {
     /// "how many repeats share path+kind+process" (what a coalescer that
     /// preserves attribution could actually remove).
     pid: u32,
-    /// Kernel event timestamp (100 ns FILETIME). Two records for the same
-    /// callback carry the same timestamp; two distinct opens do not. Used by
-    /// the third probe to tell a duplicate delivery apart from a genuine
-    /// repeat open.
+    /// Kernel event timestamp (100 ns FILETIME), included in the strict
+    /// measurement key. A matching timestamp is only a candidate duplicate
+    /// signal: this field alone does not prove callback identity or exclude
+    /// timestamp collisions between distinct observations.
     ts: i64,
 };
 
@@ -126,16 +126,17 @@ test "pid is part of the identity only when the caller supplies one" {
     try std.testing.expect(per_pid.observe("C:\\a\\x.tmp", 1, 100, 0));
 }
 
-test "timestamp separates one callback reported twice from two opens" {
+test "timestamp participates in the probe key without proving callback identity" {
     var store: [8]Entry = undefined;
     var probe = Probe.init(&store);
     probe.beginBatch();
 
-    // Same path, same process, different kernel timestamps: two separate
-    // opens. Not a duplicate under the timestamp-bearing identity.
+    // Different timestamp means a different measured key. This test does
+    // not claim the timestamps prove distinct opens.
     try std.testing.expect(!probe.observe("C:\\a\\x.tmp", 1, 100, 1000));
     try std.testing.expect(!probe.observe("C:\\a\\x.tmp", 1, 100, 2000));
-    // Same timestamp: the identical record seen twice.
+    // Same timestamp is an exact repeated key in the measurement table, not
+    // proof that the driver delivered one callback twice.
     try std.testing.expect(probe.observe("C:\\a\\x.tmp", 1, 100, 1000));
 }
 
