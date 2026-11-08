@@ -296,10 +296,11 @@ pub fn fimThread(watcher: *fim_mod.FimWatcher) void {
         const data = watcher.poll();
         if (data.len > 0) {
             var offset: usize = 0;
-            // ADR-0012 measurement: one probe per poll batch. 2,048 keys keeps
-            // a 64 KiB batch of short notify records fully representable; a
-            // full table is counted, never silently evicted.
-            var probe_store: [2048]fim_dedup.Entry = undefined;
+            // ADR-0012 measurement: one probe per poll batch. The 64 KiB poll
+            // buffer can hold at most 5,461 minimum-size notify records, so
+            // 8,192 keys represent any real batch; overflow is counted, never
+            // silently evicted.
+            var probe_store: [8192]fim_dedup.Entry = undefined;
             var probe = fim_dedup.Probe.init(&probe_store);
             probe.beginBatch();
             var overflow_counted = false;

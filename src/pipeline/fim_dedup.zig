@@ -8,10 +8,11 @@
 //!
 //! Identity is `Wyhash(kind, path_bytes)` plus the path length. A hash
 //! collision would count a distinct path as a duplicate (over-count); with
-//! 64-bit keys and batches bounded by the 64 KiB poll buffers the chance is
-//! ~n^2/2^65 and it cannot under-count, so the measured ratio is an upper
-//! bound on the duplicates coalescing could remove. That direction is the
-//! safe one for a gate: it can never make coalescing look better than it is.
+//! 64-bit keys and batches bounded by the ingress buffers (256 KiB
+//! minifilter pull, 64 KiB poll) the chance is ~n^2/2^65 and it cannot
+//! under-count, so the measured ratio is an upper bound on the duplicates
+//! coalescing could remove. That direction is the safe one for a gate: it can
+//! never make coalescing look better than it is.
 //!
 //! A full table stops adding keys (and sets `overflowed`) rather than
 //! evicting: an evicted key would re-count a repeat as distinct (under-count)
@@ -37,9 +38,13 @@ pub const Probe = struct {
         return .{ .entries = entries };
     }
 
-    /// Start a new poll batch. The previous batch's keys are dropped.
+    /// Start a new poll batch. The previous batch's keys are dropped, and the
+    /// overflow flag is cleared: it describes this batch, not the probe's
+    /// lifetime. Leaving it set would report every later batch as truncated
+    /// and make the contract that "stats measure what they name" false.
     pub fn beginBatch(self: *Probe) void {
         self.count = 0;
+        self.overflowed = false;
     }
 
     /// Record one observation. Returns true when the same `(path, kind)` was
@@ -109,6 +114,24 @@ test "a full table reports overflow instead of evicting keys" {
     try std.testing.expect(probe.overflowed);
     // Stored keys are still recognised: eviction would lose this.
     try std.testing.expect(probe.observe("C:\\a", 1));
+}
+
+test "beginBatch clears the overflow flag so it describes one batch" {
+    var store: [2]Entry = undefined;
+    var probe = Probe.init(&store);
+
+    probe.beginBatch();
+    try std.testing.expect(!probe.observe("C:\\a", 1));
+    try std.testing.expect(!probe.observe("C:\\b", 1));
+    try std.testing.expect(!probe.observe("C:\\c", 1));
+    try std.testing.expect(probe.overflowed);
+
+    // A later, small batch is NOT truncated; reporting it as such would make
+    // the overflow counter meaningless.
+    probe.beginBatch();
+    try std.testing.expect(!probe.overflowed);
+    try std.testing.expect(!probe.observe("C:\\a", 1));
+    try std.testing.expect(!probe.overflowed);
 }
 
 test "an empty table is always overflow" {

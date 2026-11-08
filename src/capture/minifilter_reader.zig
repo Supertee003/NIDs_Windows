@@ -251,9 +251,10 @@ fn pollKernelStats(hPort: HANDLE) void {
 pub fn minifilterReaderLoop() void {
     diag.info("[MINI] Thread 4 started - minifilter host telemetry (pull model)", .{});
 
-    // ADR-0012 measurement: one probe per pull batch (max 138 fixed records
-    // per 64 KiB pull, so 256 entries never truncate a real batch).
-    var probe_store: [256]fim_dedup.Entry = undefined;
+    // ADR-0012 measurement: one probe per pull batch. READ_BUF_SIZE is
+    // 256 KiB = at most 554 fixed records per pull, so 1,024 keys represent
+    // any real batch; overflow is counted, never silently evicted.
+    var probe_store: [1024]fim_dedup.Entry = undefined;
     var probe = fim_dedup.Probe.init(&probe_store);
 
     while (!stopRequested()) {
