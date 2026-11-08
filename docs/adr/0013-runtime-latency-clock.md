@@ -1,4 +1,4 @@
-# ADR-0012 - Runtime latency is measured with a monotonic clock, never the calendar clock
+# ADR-0013 - Runtime latency is measured with a monotonic clock, never the calendar clock
 
 **Status:** Accepted
 **Date:** 2026-11-08

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T08:46:50.684993+00:00",
+  "generated_at": "2026-11-08T08:49:44.068374+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1489,
@@ -1641,7 +1641,7 @@
       "size": 8323
     },
     {
-      "path": "docs/adr/0012-runtime-latency-clock.md",
+      "path": "docs/adr/0013-runtime-latency-clock.md",
       "class": "canonical-docs",
       "role": "documentation",
       "size": 3235

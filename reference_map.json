@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T08:46:50.688881+00:00",
+  "generated_at": "2026-11-08T08:49:44.071560+00:00",
   "generator": "generate_truth_artifacts.py",
   "total_files": 1489,
   "by_role": {
@@ -1408,7 +1408,7 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
-    "docs/adr/0012-runtime-latency-clock.md": {
+    "docs/adr/0013-runtime-latency-clock.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
