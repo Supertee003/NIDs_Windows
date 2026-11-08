@@ -1030,11 +1030,12 @@ comptime {
 }
 
 extern "aegis_etw_helper" fn aegis_etw_start(session_name: [*]const u8, providers: [*]const [16]u8, provider_count: usize) c_int;
-// Helper return contract (etw_native.c): 0 ready; anything else fail-closed
+// Helper start contract (etw_native.c): 0 ready; any nonzero fails closed
 // (-1 session active, -2 alloc, -3 thread, -4 none enabled, -5 bad name,
-// -6 provider GUID not host-registered [GAP-012 bullet 5], -7 registration
-// query inconclusive). Any nonzero surfaces as error.EtwStartFailed below,
-// so etw_ready is never set on a session that cannot deliver events.
+// -6 provider not registered, -7 registration query inconclusive,
+// -10 readiness-event creation failed). Stop returns 0 only after the trace
+// controller is stopped and the consumer thread is joined; -8 is controller
+// stop failure and -9 is consumer close/join failure. Keep Zig health truthful.
 extern "aegis_etw_helper" fn aegis_etw_stop(session_name: [*]const u8) c_int;
 extern "aegis_etw_helper" fn aegis_etw_set_callback(cb: *const fn (ctx: *anyopaque, rec: *const NativeEtwEvent, ext_data: [*]const u8, ext_len: usize) callconv(.C) void, ctx: *anyopaque) c_int;
 
@@ -1088,11 +1089,15 @@ pub const EtwSource = struct {
         diag.info("ETW session {s} started with {d} providers", .{ name_z, providers.len });
     }
 
-    pub fn stop(self: *EtwSource) void {
+    pub fn stop(self: *EtwSource) !void {
         if (!self.running.load(.acquire)) return;
         const name_z = std.mem.sliceTo(&self.session_name, 0);
-        _ = aegis_etw_stop(name_z.ptr);
         self.running.store(false, .release);
+        const rc = aegis_etw_stop(name_z.ptr);
+        if (rc != 0) {
+            diag.err("aegis_etw_stop failed: rc={d}", .{rc});
+            return error.EtwStopFailed;
+        }
         diag.info("ETW session {s} stopped", .{name_z});
     }
 

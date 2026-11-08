@@ -123,7 +123,10 @@ pub fn etwThread(source: *etw.EtwSource) void {
         state.markWorkerFailure(.etw);
         return;
     };
-    defer source.stop();
+    defer source.stop() catch |err| {
+        diag.err("ETW stop failed: {}", .{err});
+        state.markWorkerFailure(.etw);
+    };
 
     // Set callback to push ETW events into pipeline
     source.setCallback(etwCallback) catch |err| {
