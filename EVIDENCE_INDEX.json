@@ -21,6 +21,32 @@
  },
  "evidence": [
   {
+   "id": "RB-017-TIER2-END-TO-END-E5-20261108",
+   "head_sha": "787455a",
+   "timestamp": "2026-11-08",
+   "title": "A brain-only Tier-2 finding travels the sensor pipe into the daemon queue",
+   "level": "E5",
+   "component": "brain Tier-2 (pid 34700) -> \\.\\pipe\u0007egis_sensor_pipe_t1 -> aegis_nids canonical queue",
+   "flow_id": "RB-017",
+   "description": "Sent one MAC-authenticated Case-2 offer shaped exactly like the daemon's own datagrams (a 300-byte heap-spray payload that no Tier-1 rule matches, forwarded with reason 'Forwarded: No Tier-1 Match'), then read the daemon's per-source counters and the brain's HEALTH around it.",
+   "files_verified": [
+    "admin-evidence/rb017-close-20261108/tier2_e2e.py",
+    "src/core/nids_capture.zig",
+    "brain/windows_brain.py"
+   ],
+   "tests": [
+    "before: detection_brain {pushed 1, dropped 0}; after 4 s: {pushed 2, dropped 0}",
+    "brain HEALTH out_events 0 -> 1, drops {bad_mac 0, no_mac 0} unchanged for this message, sensor_pipe state ok / failed 0",
+    "daemon side: src/core/nids_capture.zig maps source 'brain_tier2' to source detection_brain, kind anomaly_detected, and carries the numeric rule_id (the payload's CYTHON-003 hashes to 2587872532)",
+    "detection-only held: apply_firewall_block DEFERS without an exact port and numeric policy id, so the BLOCK policy requested no host effect (status BLOCK_FAILED)",
+    "pytest tests/brain: 56 passed",
+    "forensic ring, searched within 0.7 s: record_seq 2635027, source 5 (python_brain, canonical space), rule_id 2587872532 = FNV-1a('CYTHON-003'), payload_len 216, verified true"
+   ],
+   "result": "PASS_E5",
+   "finding": "The end-to-end claim is now measured rather than inferred: a finding the brain produced on its own (Case 2) leaves the brain (out_events +1 with the pipe reporting ok), crosses the admin-only pipe (no FAILED), and lands in the daemon's own ingress accounting for detection_brain (pushed +1, dropped 0) within four seconds. This is what Case 1 inhibits on purpose, so the two paths now differ for a stated reason instead of by accident.  The record is in the hash ring, so the vertical slice closes: brain -> pipe -> canonical queue -> forensic record -> verified. Reaching it needs the canonical ordinal: the forensic writer stores python_brain = 5 in the canonical source space, while the queue reports detection_brain = 13, and searching 13 returns nothing on a host that writes ~2,500 records per second into a 16,384-record ring.",
+   "evidence_artifact": "admin-evidence/rb017-close-20261108/tier2_e2e.py"
+  },
+  {
    "id": "RB-017-DROP-ATTRIBUTION-E5-20261108",
    "head_sha": "27aae72",
    "timestamp": "2026-11-08",
@@ -10202,6 +10228,21 @@
    "status": "PASS",
    "closed_at": "2026-11-08",
    "evidence": "RB-017-BRAIN-RETURN-PATH-E5-20261108"
+  },
+  {
+   "id": "GAP-BRAIN-ADVISORY-EVIDENCE",
+   "title": "RESOLVED - a Tier-2 finding IS retained in the forensic ring; the first probes searched the legacy source ordinal",
+   "level": "E5",
+   "component": "daemon forensic ring / aegis_core.ndjson vs source detection_brain (ordinal 13)",
+   "flow_id": "RB-017",
+   "head_sha": "787455a",
+   "timestamp": "2026-11-08",
+   "result": "PASS",
+   "command": "aegisctl forensic search --field source --value 13 (t=0.7 s after the offer); --field payload_prefix --value brain_tier2 (t=0.6 s); --field payload_prefix --value 192.0.2.11 (t=1.3 s); aegisctl events tail --src-ip 192.0.2.9",
+   "expected": "A finding the daemon accepted as detection_brain/anomaly_detected is retrievable as evidence with brain provenance.",
+   "actual": "Retained and verified: `aegisctl forensic search --field source --value 5` within 0.7 s of the offer returned record_seq 2635027 with source 5 = python_brain (canonical space), rule_id 2587872532 = FNV-1a('CYTHON-003'), payload_len 216, verified true. The four earlier probes returned 0 because they searched source 13, the QUEUE ordinal for detection_brain; forensic_pipeline.zig canonicalSourceOf maps it to python_brain = 5 in the canonical source space.",
+   "impact": "No evidence gap. Recorded because the near-miss is instructive: two source-numbering spaces coexist (queue 13, canonical 5), and a wrong ordinal reads exactly like missing evidence.",
+   "next_step": "None for RB-017. If this trips again, `forensic search --field source` should accept the name (python_brain) as well as the ordinal."
   }
  ],
  "evidence_level_summary": {
@@ -10210,7 +10251,7 @@
   "E2_count": 164,
   "E3_count": 17,
   "E4_count": 15,
-  "E5_count": 149,
+  "E5_count": 151,
   "E6_count": 0,
   "E7_count": 1
  }

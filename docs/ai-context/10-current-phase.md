@@ -660,6 +660,15 @@ work that still blocks "finished"; the rest is documentation hygiene.
    `RB-017-ORPHAN-ATTRIBUTION-E5-20261108`,
    `RB-017-RETURN-PATH-OBSERVABILITY-E5-20261108`,
    `RB-017-DROP-ATTRIBUTION-E5-20261108`.
+   (d) *Tier-2 end to end, 2026-11-08:* a Case-2 offer (300-byte heap spray,
+   forwarded by Zig) moved `detection_brain` ingress 1 -> 2 with 0 dropped,
+   took the brain's `out_events` 0 -> 1 with the pipe `ok`, and landed a
+   verified forensic record (`record_seq 2635027`, `python_brain`, canonical
+   source 5, `rule_id 2587872532 = FNV-1a("CYTHON-003")`, `verified true`)
+   within 0.7 s. The first probes read 0 only because they searched the queue
+   ordinal 13 instead of the canonical 5: two source-numbering spaces coexist,
+   and a wrong ordinal looks exactly like missing evidence. Evidence:
+   `RB-017-TIER2-END-TO-END-E5-20261108`.
 4. **Signed release package / E7 — OPEN.** Requires signing key material,
    provenance, and an owner decision. Nothing in the current evidence set
    changes this.
