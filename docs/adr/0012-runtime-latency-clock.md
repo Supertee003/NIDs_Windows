@@ -65,4 +65,6 @@ clock.
 - Watchdog and health thresholds that were tuned against inflated latencies
   should be re-read against the new numbers before they are tightened.
 - The remaining overhead in the append is now measurable: 24.6 us measured
-  against ~11 us of accounted passes, so ~13 us is still unnamed.
+  against ~5.3 us of accounted passes (composite after the CRC32 swap: memset
+  0.04 + SHA-256 2.53 + sliced CRC 1.85, plus the record copy), so roughly
+  19 us is still unnamed and is the next real target.

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T06:57:18.951232+00:00",
+  "generated_at": "2026-11-08T06:58:53.320822+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1489,
@@ -1644,7 +1644,7 @@
       "path": "docs/adr/0012-runtime-latency-clock.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 3094
+      "size": 3235
     },
     {
       "path": "docs/adr/ADR-CORE-LEGACY-CLASSIFICATION.md",
@@ -3042,7 +3042,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 962096
+      "size": 962123
     },
     {
       "path": "fix_bridge_banner.py",
@@ -3174,7 +3174,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 234837
+      "size": 234995
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3432,7 +3432,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9987
+      "size": 9642
     },
     {
       "path": "pytest.ini",
@@ -3450,7 +3450,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 193710
+      "size": 193832
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
