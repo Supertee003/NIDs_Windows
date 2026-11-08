@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T16:27:44.433656+00:00",
+  "generated_at": "2026-11-08T17:11:52.074391+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1499,
+  "total_files": 1500,
   "by_role": {
-    "documentation": 337,
+    "documentation": 338,
     "build-config": 171,
     "other": 18,
     "lockfile": 6,
@@ -577,6 +577,10 @@
       "role": "documentation"
     },
     "analysis/current-head/09-backlog-triage-20261108.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/CORR-SOURCE-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },

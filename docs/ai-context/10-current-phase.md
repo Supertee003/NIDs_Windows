@@ -702,6 +702,18 @@ by `XDR-005-E5-20261105`), and the `E5-CURRENT-RUNTIME-MISMATCH` clearances.
 
 Do not introduce an IPS activation phase into the production roadmap.
 
+## Continuation — CORR-SOURCE-001 (2026-11-09)
+
+At source `f5d3b53`, `processEvent` passed every event to the production
+correlator even though `CONTRACT_MAP.json` states that correlation consumes
+network detections and host telemetry is evidence-only. CORR-SOURCE-001 adds
+a source boundary so ETW, FIM, registry, and host-socket observations cannot
+mutate network correlation windows. Network and Brain advisory source behavior
+is preserved. Full Zig suite: 2,061 passed, 10 skipped; `zig build`: PASS.
+Evidence is E2 only; the Windows victim VM could not resume, so no runtime E5
+is claimed. See `analysis/current-head/CORR-SOURCE-001-20261109.md`. Issues
+#29/#30 and the broader Phase 6–9 completion gates remain open.
+
 ## Team Command
 
 > Do not make the repository larger until you know which files are authoritative.

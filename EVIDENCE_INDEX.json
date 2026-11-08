@@ -1,5 +1,5 @@
 {
-  "head_sha": "f5d3b538fbcf645fe287a56e14940931e3471bb1",
+  "head_sha": "6b728b87e580aa7c1c09eb711087cb32d1b1324f",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-08",
   "generator_version": "3.0",
@@ -20,6 +20,35 @@
     "E7": "Release verification"
   },
   "evidence": [
+    {
+      "id": "CORR-SOURCE-001-E2-20261109",
+      "head_sha": "6b728b87e580aa7c1c09eb711087cb32d1b1324f",
+      "timestamp": "2026-11-09",
+      "title": "Host telemetry is excluded from production network correlation windows",
+      "level": "E2",
+      "component": "src/pipeline/event_processor.zig processEvent correlation boundary",
+      "flow_id": "DATA-001",
+      "description": "Enforced the current contract map: ETW, FIM, registry, and host socket observations remain evidence-only and cannot mutate source-IP-keyed network correlation windows. Network and Brain advisory inputs preserve prior behavior.",
+      "files_verified": [
+        "src/pipeline/event_processor.zig",
+        "CONTRACT_MAP.json",
+        "analysis/current-head/CORR-SOURCE-001-20261109.md"
+      ],
+      "tests": [
+        "zig build test --summary all: 2,061 passed, 10 skipped, 0 failed",
+        "zig build: PASS (ReleaseSafe x86_64-windows)",
+        "zig fmt src/pipeline/event_processor.zig: PASS",
+        "git diff --check: PASS"
+      ],
+      "result": "PASS_E2",
+      "finding": "The source boundary regression test denies correlation input from all four host telemetry sources and preserves network capture, WFP, pipe-monitor, and Brain advisory input. No Windows E5 result is claimed.",
+      "evidence_artifact": "analysis/current-head/CORR-SOURCE-001-20261109.md",
+      "limitations": [
+        "Windows victim VM failed to resume because VMware reported insufficient paging resources",
+        "No deployment or service restart was performed",
+        "Issues #29 and #30 and broader Phase 6–9 gates remain open"
+      ]
+    },
     {
       "id": "L4-FLAGS-R9006-LIVE-E5-VMNET1-20261108",
       "head_sha": "f9be369",

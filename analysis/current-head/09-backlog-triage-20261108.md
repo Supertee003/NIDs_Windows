@@ -89,3 +89,7 @@ Commit `c762deb` prevents host telemetry sources (`capture_etw`, `capture_fim`, 
 
 Commit `f5d3b53` propagates `aegis_fim_stop` failures through `FimWatcher`: only successful stops clear handles, failed handles remain owned for retry, restart is refused while one remains, and the FIM worker marks teardown failure in health. The injected stop-failure test, full Zig suite (2,060 passed, 10 skipped), and `zig build` passed. No live service stop failure or Page Heap cycle was run. See `FIM-STOP-002-20261108.md`. Issue #30 remains open pending Windows lifecycle/crash attribution evidence.
 
+## Continuation update — CORR-SOURCE-001 completed at E2
+
+The production correlator previously observed every event source despite `CONTRACT_MAP.json` specifying network detections and host telemetry as evidence-only. Host-originated signature events could therefore increment source-IP-keyed network correlation windows. `CORR-SOURCE-001` now bypasses correlation for ETW, FIM, registry, and host socket observations while preserving network and Brain advisory behavior. The regression test and full Zig suite passed (2,061 passed, 10 skipped); `zig build` passed. No VM/runtime E5 was performed because the Windows victim VM failed to resume. Issue #29 and #30 plus the broader phase gates remain open. See `CORR-SOURCE-001-20261109.md`.
+

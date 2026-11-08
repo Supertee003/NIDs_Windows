@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T16:27:44.430231+00:00",
+  "generated_at": "2026-11-08T17:11:52.071425+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1499,
+  "total_files": 1500,
   "by_class": {
-    "canonical-docs": 351,
+    "canonical-docs": 352,
     "canonical-build": 182,
     "unclassified": 18,
     "canonical-source": 663,
@@ -396,7 +396,13 @@
       "path": "analysis/current-head/09-backlog-triage-20261108.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 11315
+      "size": 12058
+    },
+    {
+      "path": "analysis/current-head/CORR-SOURCE-001-20261109.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2728
     },
     {
       "path": "analysis/current-head/ETW-LIFE-001-20261108.md",
@@ -1854,7 +1860,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 45593
+      "size": 46321
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -3228,7 +3234,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 236592
+      "size": 236758
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3486,7 +3492,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9642
+      "size": 9774
     },
     {
       "path": "pytest.ini",
@@ -3504,7 +3510,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 195103
+      "size": 195233
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -6162,7 +6168,7 @@
       "path": "src/pipeline/event_processor.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 54732
+      "size": 55611
     },
     {
       "path": "src/pipeline/event_queue.zig",
