@@ -29,6 +29,7 @@ const bridge_init = @import("../core/bridge_init.zig");
 const diag = @import("../core/diagnostics.zig");
 const runtime_state = @import("../pipeline/runtime_state.zig");
 const pipeline_queue = @import("../pipeline/event_queue.zig");
+const fim_dedup = @import("../pipeline/fim_dedup.zig");
 const canonical = @import("../contract/canonical_event.zig");
 const hids = @import("../windows/hids_engine.zig");
 
@@ -250,6 +251,11 @@ fn pollKernelStats(hPort: HANDLE) void {
 pub fn minifilterReaderLoop() void {
     diag.info("[MINI] Thread 4 started - minifilter host telemetry (pull model)", .{});
 
+    // ADR-0012 measurement: one probe per pull batch (max 138 fixed records
+    // per 64 KiB pull, so 256 entries never truncate a real batch).
+    var probe_store: [256]fim_dedup.Entry = undefined;
+    var probe = fim_dedup.Probe.init(&probe_store);
+
     while (!stopRequested()) {
         // ---- connect (retry while the driver is absent/not loaded) ----
         var hPort: HANDLE = INVALID_HANDLE_VALUE;
@@ -291,6 +297,8 @@ pub fn minifilterReaderLoop() void {
                 interruptibleSleep(IDLE_SLEEP_MS);
             } else {
                 var off: usize = 0;
+                probe.beginBatch();
+                var overflow_counted = false;
                 while (off + RECORD_SIZE <= @as(usize, out_len)) : (off += RECORD_SIZE) {
                     const rec = recordAt(ring[0..out_len], off);
                     g_events_received += 1;
@@ -300,6 +308,15 @@ pub fn minifilterReaderLoop() void {
                     }
                     var path_buf: [PATH_UTF8_MAX]u8 = undefined;
                     const path = pathToUtf8(rec, &path_buf);
+                    // ADR-0012 probe (measurement only; nothing is suppressed).
+                    _ = runtime_state.g_fim_batch_records.fetchAdd(1, .monotonic);
+                    if (probe.observe(path, rec.event_type)) {
+                        _ = runtime_state.g_fim_batch_duplicates.fetchAdd(1, .monotonic);
+                    }
+                    if (probe.overflowed and !overflow_counted) {
+                        overflow_counted = true;
+                        _ = runtime_state.g_fim_batch_overflow.fetchAdd(1, .monotonic);
+                    }
                     if (submitRecord(rec, path)) {
                         g_events_processed += 1;
                         _ = runtime_state.g_minifilter_rows.fetchAdd(1, .monotonic);

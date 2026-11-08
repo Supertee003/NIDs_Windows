@@ -251,6 +251,14 @@ pub var g_source_quota_shed = std.atomic.Value(u64).init(0);
 /// system tree. Exposed so an operator can see that the reserved slice is
 /// actually carrying protection rather than sitting unused.
 pub var g_critical_pushed = std.atomic.Value(u64).init(0);
+/// ADR-0012 measurement gate: FIM observations probed for an exact duplicate
+/// `(path, kind)` inside the same poll batch, how many of those repeated an
+/// observation already seen in that batch, and how often the bounded probe
+/// table filled (a full table under-reports duplicates, so it is counted).
+/// Measurement only: no event is suppressed by these counters.
+pub var g_fim_batch_records = std.atomic.Value(u64).init(0);
+pub var g_fim_batch_duplicates = std.atomic.Value(u64).init(0);
+pub var g_fim_batch_overflow = std.atomic.Value(u64).init(0);
 // Canonical Go Nose -> Zig reader counters. These are deliberately separate
 // from process liveness: RUNNING does not imply that the data plane is active.
 pub var g_nose_connected = std.atomic.Value(bool).init(false);

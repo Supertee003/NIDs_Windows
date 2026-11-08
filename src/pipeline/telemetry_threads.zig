@@ -14,6 +14,7 @@ const reg_mon = @import("../windows/registry_monitor.zig");
 const host_net = @import("../windows/host_net.zig");
 const state = @import("runtime_state.zig");
 const queue = @import("event_queue.zig");
+const fim_dedup = @import("fim_dedup.zig");
 
 /// GAP-015 G3: ETW composition accounting. The 4096→16k queue plus tail
 /// fixes did not survive storm load (687k ETW drops in one storm), so the
@@ -295,6 +296,13 @@ pub fn fimThread(watcher: *fim_mod.FimWatcher) void {
         const data = watcher.poll();
         if (data.len > 0) {
             var offset: usize = 0;
+            // ADR-0012 measurement: one probe per poll batch. 2,048 keys keeps
+            // a 64 KiB batch of short notify records fully representable; a
+            // full table is counted, never silently evicted.
+            var probe_store: [2048]fim_dedup.Entry = undefined;
+            var probe = fim_dedup.Probe.init(&probe_store);
+            probe.beginBatch();
+            var overflow_counted = false;
             while (offset < data.len) {
                 var fim_event: fim_mod.FimEvent = .{ .kind = .modified };
                 const used = fim_mod.parseNotifyRecord(data[offset..], &fim_event) catch |err| {
@@ -312,6 +320,15 @@ pub fn fimThread(watcher: *fim_mod.FimWatcher) void {
                     continue;
                 };
                 const path = fim_event.path[0..fim_event.path_len];
+                // ADR-0012 probe (measurement only; nothing is suppressed).
+                _ = state.g_fim_batch_records.fetchAdd(1, .monotonic);
+                if (probe.observe(path, @intFromEnum(fim_event.kind))) {
+                    _ = state.g_fim_batch_duplicates.fetchAdd(1, .monotonic);
+                }
+                if (probe.overflowed and !overflow_counted) {
+                    overflow_counted = true;
+                    _ = state.g_fim_batch_overflow.fetchAdd(1, .monotonic);
+                }
                 var ev = event.IpcEvent.init(.fim_change);
                 ev.source = .capture_fim;
                 ev.timestamp_ns = @intCast(fim_event.timestamp_ns);
