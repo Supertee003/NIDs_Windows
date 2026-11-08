@@ -4531,6 +4531,24 @@
         "E2 source/unit/build evidence only; no service deploy or Windows E5 claim.",
         "Independent stop-line issues #25-#30 remain open; full-suite pass does not close test import scope audit #27."
       ]
+    },
+    {
+      "id": "ISSUE-30-ETW-STOP-LIFETIME-AUDIT-E1-20261108",
+      "title": "ETW stop ignores consumer join timeout and releases shared session resources",
+      "level": "E1",
+      "component": "src/windows/etw_native.c aegis_etw_stop / consumer_thread; src/windows/etw_realtime.zig EtwSource.stop",
+      "flow_id": "REL-003",
+      "head_sha": "cf19e135a1c3f50eb7d8ea95f0d6b9b5f6576c98",
+      "timestamp": "2026-11-08",
+      "result": "STOP_LINE_OPEN",
+      "files_verified": [
+        "src/windows/etw_native.c",
+        "src/windows/etw_realtime.zig",
+        "analysis/current-head/issue-30-etw-stop-line-audit-20261108.md"
+      ],
+      "actual": "Static inspection: aegis_etw_stop waits 5000 ms for consumer_thread but ignores the wait result, closes the thread handle, and frees g_session.properties regardless; EtwSource.stop ignores the native return code and reports stopped. This makes lifetime safety unproven if the consumer has not exited.",
+      "impact": "Potential native lifecycle/memory-safety hazard requiring stop-the-line handling. Not proven as the cause of the historical 0xc0000374 crash.",
+      "next_step": "Define stop/ownership contract, close/unblock trace processing, require successful worker join before release, propagate failure, test partial start/repeated stop/restart, then verify Windows service cycles under Page Heap/debugger."
     }
   ],
   "known_gaps": [
@@ -10386,7 +10404,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 33,
+    "E1_count": 34,
     "E2_count": 67,
     "E3_count": 17,
     "E4_count": 15,

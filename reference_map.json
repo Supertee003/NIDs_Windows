@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T13:20:48.851480+00:00",
+  "generated_at": "2026-11-08T13:23:31.793165+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1492,
+  "total_files": 1493,
   "by_role": {
-    "documentation": 331,
+    "documentation": 332,
     "build-config": 171,
     "other": 18,
     "lockfile": 6,
@@ -581,6 +581,10 @@
       "role": "documentation"
     },
     "analysis/current-head/FOR-BATCH-001-20261108.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/issue-30-etw-stop-line-audit-20261108.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },

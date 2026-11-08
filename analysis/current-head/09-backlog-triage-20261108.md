@@ -18,7 +18,7 @@ Current declared product direction is **user-mode Zig detection over Windows ker
 
 - R9006 and R9007 have recent live VMnet1 capture-path E5 evidence in HEAD commits `a4eb6ba` and `cb28a7c`. This only proves those exact scenarios/path/build; it does not close broader WFP-only ingress (#28), loss (#29), lifecycle (#30), or release gates.
 - Brain anomaly log is bounded in source commit `f9be369` with readers retained; records/evidence refreshed in following commits.
-- FIM teardown candidate fix is committed in current history as `9766525 fix(fim): synchronize native watcher shutdown`; an earlier session recorded Windows native DLL build and 1,000 helper start/stop cycles with Page Heap. That was E3 component evidence, not current installed-service E5. The original crash issue #30 remains open and ETW has a similar unchecked join timeout to audit.
+- FIM teardown candidate fix is committed in current history as `9766525 fix(fim): synchronize native watcher shutdown`; an earlier session recorded Windows native DLL build and 1,000 helper start/stop cycles with Page Heap. That was E3 component evidence, not current installed-service E5. The original crash issue #30 remains open. Current ETW stop inspection found an unchecked 5-second consumer-thread wait followed by handle close and properties free; see `issue-30-etw-stop-line-audit-20261108.md` (E1). This is a lifecycle hazard, not proven as the original crash cause.
 - Prior QLOSS health change exposed ingress loss as `DEGRADED`, but subsequent VM measurements recorded actual queue/ring drops. It surfaced the condition; it did not make the acquisition lossless or qualify a permitted-loss contract.
 
 ## Open stop-the-line register
