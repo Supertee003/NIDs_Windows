@@ -779,3 +779,12 @@ green and full health suite passed (36/36); live Windows CLI now reports
 `analysis/current-head/HEALTH-PROJECTION-001-20261109.md`. Issue #29 remains open
 for source quota/ring loss; #25/#30 and the RB-021 canary/Phase 6–9 gates remain
 open.
+
+## QLOSS-E5 Read-Only Queue Window — 2026-11-09
+
+- A 15-second live `queue.stats` window admitted 186,815 rows (~12,454/s); queue depth fell 271 -> 11. Per-source admission drops, quota sheds, minifilter ring drops, and minifilter pipeline drops did not increase in that window.
+- This is limited E5 evidence, not closure: an adjacent earlier 15-second sample recorded +1,247 ETW quota drops. Cumulative drops remain ETW 21,827, FIM 1,277, minifilter ring 10,906, and minifilter pipeline 1,277 at that earlier snapshot. A bounded clean interval does not remove prior loss or prove steady-state behavior.
+- `forensic_append` p95 was 32.768 µs in the endpoint snapshot. The pipeline drained a small backlog at this observed rate; this alone does not identify a single bottleneck or justify changing forensic integrity work.
+- Minifilter timestamp-key probe comments are corrected by source commit `795246d`; it remains measurement-only. Event identity is unproven and no coalescing was deployed.
+- Evidence: `analysis/current-head/QLoss-E5-STEADY-WINDOW-20261109.md`, `EVIDENCE_INDEX.json#QLOSS-E5-STEADY-WINDOW-20261109`; raw operator snapshots are local-only under `admin-evidence/qloss-steady-window-20261109/`.
+- Issue #29 remains OPEN. Next: collect repeated representative burst windows, quantify loss by source and queue occupancy, then choose bounded admission or throughput changes without dropping identity-critical FIM events.

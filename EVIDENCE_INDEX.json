@@ -4803,6 +4803,25 @@
       "actual": "Timestamp equality is documented only as a repeated measurement key/candidate signal. No event is suppressed; the producer does not currently prove callback identity from timestamp alone.",
       "impact": "Removes a source/documentation contradiction against the open #29 identity stop-line. Does not solve telemetry loss or qualify coalescing.",
       "next_step": "Establish stable producer identity or pursue a lossless capacity/throughput/admission change, then repeat comparable Windows evidence before changing event retention."
+    },
+    {
+      "id": "QLOSS-E5-STEADY-WINDOW-20261109",
+      "title": "Read-only Windows queue window drained backlog without new loss counters during this sample",
+      "level": "E5",
+      "component": "ETW/FIM ingress, bounded pipeline queue, minifilter ring and queue.stats",
+      "flow_id": "QLOSS-HEALTH-001",
+      "head_sha": "795246d7b4794b11c9b45e0b17a43c6cb219602a",
+      "timestamp": "2026-11-09",
+      "result": "PASS_E5_LIMITED_WINDOW",
+      "files_verified": [
+        "analysis/current-head/QLoss-E5-STEADY-WINDOW-20261109.md",
+        "admin-evidence/qloss-steady-window-20261109/before.json",
+        "admin-evidence/qloss-steady-window-20261109/after.json",
+        "admin-evidence/qloss-steady-window-20261109/summary.json"
+      ],
+      "description": "Read-only queue.stats snapshots 15 seconds apart: 186,815 events admitted, queue depth 271->11, and no per-source drop, source quota shed, minifilter ring drop, or minifilter pipeline drop counter increased. A separate adjacent sample recorded +1,247 ETW drops, so this does not establish steady-state no-loss operation.",
+      "impact": "Shows the running consumer can drain a small backlog at the observed load, while #29 remains open for burst-sensitive ETW quota shedding and historical cumulative loss.",
+      "next_step": "Measure representative burst windows and choose a bounded admission/throughput change; retain the minifilter identity stop-line before any coalescing."
     }
   ],
   "known_gaps": [
@@ -10713,7 +10732,7 @@
     "E2_count": 73,
     "E3_count": 12,
     "E4_count": 0,
-    "E5_count": 68,
+    "E5_count": 69,
     "E6_count": 0,
     "E7_count": 0
   }
