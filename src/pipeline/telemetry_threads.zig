@@ -324,7 +324,7 @@ pub fn fimThread(watcher: *fim_mod.FimWatcher) void {
                 // ADR-0012 probe (measurement only; nothing is suppressed).
                 _ = state.g_fim_batch_records.fetchAdd(1, .monotonic);
                 _ = state.g_fim_poll_batch_records.fetchAdd(1, .monotonic);
-                if (probe.observe(path, @intFromEnum(fim_event.kind), 0)) {
+                if (probe.observe(path, @intFromEnum(fim_event.kind), 0, 0)) {
                     _ = state.g_fim_batch_duplicates.fetchAdd(1, .monotonic);
                     _ = state.g_fim_poll_batch_duplicates.fetchAdd(1, .monotonic);
                 }

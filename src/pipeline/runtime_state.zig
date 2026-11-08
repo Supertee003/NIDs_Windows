@@ -273,6 +273,11 @@ pub var g_fim_poll_batch_duplicates = std.atomic.Value(u64).init(0);
 /// process attribution to remove - the fact ADR-0012 actually needs.
 pub var g_fim_batch_duplicates_per_pid = std.atomic.Value(u64).init(0);
 pub var g_fim_minifilter_batch_duplicates_per_pid = std.atomic.Value(u64).init(0);
+/// Repeats that also share the kernel timestamp, i.e. the same callback
+/// delivered twice rather than the same path opened twice. Non-zero here
+/// means duplication exists below the driver callback, which coalescing
+/// would hide rather than fix.
+pub var g_fim_minifilter_batch_duplicates_same_ts = std.atomic.Value(u64).init(0);
 // Canonical Go Nose -> Zig reader counters. These are deliberately separate
 // from process liveness: RUNNING does not imply that the data plane is active.
 pub var g_nose_connected = std.atomic.Value(bool).init(false);

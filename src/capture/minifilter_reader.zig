@@ -258,6 +258,8 @@ pub fn minifilterReaderLoop() void {
     var probe = fim_dedup.Probe.init(&probe_store);
     var probe_pid_store: [1024]fim_dedup.Entry = undefined;
     var probe_pid = fim_dedup.Probe.init(&probe_pid_store);
+    var probe_ts_store: [1024]fim_dedup.Entry = undefined;
+    var probe_ts = fim_dedup.Probe.init(&probe_ts_store);
 
     while (!stopRequested()) {
         // ---- connect (retry while the driver is absent/not loaded) ----
@@ -302,6 +304,7 @@ pub fn minifilterReaderLoop() void {
                 var off: usize = 0;
                 probe.beginBatch();
                 probe_pid.beginBatch();
+                probe_ts.beginBatch();
                 var overflow_counted = false;
                 while (off + RECORD_SIZE <= @as(usize, out_len)) : (off += RECORD_SIZE) {
                     const rec = recordAt(ring[0..out_len], off);
@@ -319,15 +322,20 @@ pub fn minifilterReaderLoop() void {
                     // same-path repeat is not necessarily redundant.
                     _ = runtime_state.g_fim_batch_records.fetchAdd(1, .monotonic);
                     _ = runtime_state.g_fim_minifilter_batch_records.fetchAdd(1, .monotonic);
-                    if (probe.observe(path, rec.event_type, 0)) {
+                    if (probe.observe(path, rec.event_type, 0, 0)) {
                         _ = runtime_state.g_fim_batch_duplicates.fetchAdd(1, .monotonic);
                         _ = runtime_state.g_fim_minifilter_batch_duplicates.fetchAdd(1, .monotonic);
                     }
-                    if (probe_pid.observe(path, rec.event_type, rec.process_id)) {
+                    if (probe_pid.observe(path, rec.event_type, rec.process_id, 0)) {
                         _ = runtime_state.g_fim_batch_duplicates_per_pid.fetchAdd(1, .monotonic);
                         _ = runtime_state.g_fim_minifilter_batch_duplicates_per_pid.fetchAdd(1, .monotonic);
                     }
-                    if ((probe.overflowed or probe_pid.overflowed) and !overflow_counted) {
+                    // Same path, same process, same kernel timestamp: the
+                    // identical callback delivered twice, not two opens.
+                    if (probe_ts.observe(path, rec.event_type, rec.process_id, rec.timestamp)) {
+                        _ = runtime_state.g_fim_minifilter_batch_duplicates_same_ts.fetchAdd(1, .monotonic);
+                    }
+                    if ((probe.overflowed or probe_pid.overflowed or probe_ts.overflowed) and !overflow_counted) {
                         overflow_counted = true;
                         _ = runtime_state.g_fim_batch_overflow.fetchAdd(1, .monotonic);
                     }

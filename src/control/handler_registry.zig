@@ -690,7 +690,7 @@ const handlers = struct {
         var out = std.ArrayList(u8).init(a);
         errdefer out.deinit();
         var writer = out.writer();
-        writer.print("{{\"queue_size\":{},\"depth\":{},\"depth_peak\":{},\"reserved_network_slots\":{},\"source_occupancy_cap\":{},\"critical_slots\":{},\"critical_pushed_total\":{},\"reserved_tail_shed\":{},\"source_quota_shed\":{},\"pushed_total\":{},\"dropped_total\":{},\"minifilter_pipeline_dropped\":{},\"shed_overload\":{},\"fim_probe\":{{\"batch_records\":{},\"batch_duplicates\":{},\"batch_duplicates_per_pid\":{},\"batch_overflow\":{},\"minifilter\":{{\"records\":{},\"duplicates\":{},\"duplicates_per_pid\":{}}},\"native_poll\":{{\"records\":{},\"duplicates\":{}}}}},\"by_source\":[", .{
+        writer.print("{{\"queue_size\":{},\"depth\":{},\"depth_peak\":{},\"reserved_network_slots\":{},\"source_occupancy_cap\":{},\"critical_slots\":{},\"critical_pushed_total\":{},\"reserved_tail_shed\":{},\"source_quota_shed\":{},\"pushed_total\":{},\"dropped_total\":{},\"minifilter_pipeline_dropped\":{},\"shed_overload\":{},\"fim_probe\":{{\"batch_records\":{},\"batch_duplicates\":{},\"batch_duplicates_per_pid\":{},\"batch_overflow\":{},\"minifilter\":{{\"records\":{},\"duplicates\":{},\"duplicates_per_pid\":{},\"duplicates_same_ts\":{}}},\"native_poll\":{{\"records\":{},\"duplicates\":{}}}}},\"by_source\":[", .{
             event_queue.PIPELINE_QUEUE_SIZE,
             event_queue.queueDepth(),
             event_queue.queuePeakDepth(),
@@ -711,6 +711,7 @@ const handlers = struct {
             state_mod.g_fim_minifilter_batch_records.load(.acquire),
             state_mod.g_fim_minifilter_batch_duplicates.load(.acquire),
             state_mod.g_fim_minifilter_batch_duplicates_per_pid.load(.acquire),
+            state_mod.g_fim_minifilter_batch_duplicates_same_ts.load(.acquire),
             state_mod.g_fim_poll_batch_records.load(.acquire),
             state_mod.g_fim_poll_batch_duplicates.load(.acquire),
         }) catch return null;
@@ -2625,6 +2626,7 @@ test "queueStats emits parseable JSON with shed and etw keys (GAP-015)" {
     try std.testing.expect(fim_probe.contains("batch_duplicates_per_pid"));
     try std.testing.expect(fim_probe.contains("batch_overflow"));
     try std.testing.expect(fim_probe.get("minifilter").?.object.contains("duplicates_per_pid"));
+    try std.testing.expect(fim_probe.get("minifilter").?.object.contains("duplicates_same_ts"));
     try std.testing.expect(fim_probe.get("minifilter").?.object.contains("duplicates"));
     try std.testing.expect(fim_probe.get("native_poll").?.object.contains("duplicates"));
     try std.testing.expect(root.contains("minifilter_pipeline_dropped"));
