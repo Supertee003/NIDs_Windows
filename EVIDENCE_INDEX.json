@@ -10428,6 +10428,29 @@
       "actual": "Lifecycle is serialized by statically initialized SRW locks. Stop disables/drains the callback, stops the ETW controller, explicitly closes the consumer trace on stop failure, waits for confirmed consumer-thread exit, then releases handles/properties. Native stop errors are surfaced to Zig and worker health. Partial-start cleanup retains resources when controller cleanup fails.",
       "impact": "Closes the source-level unchecked 5-second join/free defect at E2. Windows E5 service/Page Heap verification and crash-root-cause attribution remain open; a later service query observed RUNNING after STOPPED, with the restart trigger unresolved.",
       "next_step": "Run repeated installed-service start/stop with ETW providers under Page Heap/debugger, capture SCM/Application/WER evidence for the re-start, and verify no leak/crash before closing issue #30."
+    },
+    {
+      "id": "ADR-0012-DUP-RATIO-E5-20261108",
+      "title": "Measured FIM duplicate ratios exceed the loss-reduction threshold for an accepted coalescing slice",
+      "level": "E5",
+      "component": "FIM measurement probe (minifilter + ReadDirectoryChangesW) and queue.stats",
+      "flow_id": "QLOSS-HEALTH-001",
+      "head_sha": "dfececbd708ee5a49f017038568c807aee9b8d72",
+      "timestamp": "2026-11-08",
+      "result": "PASS_E5_MEASUREMENT_GATE_ONLY",
+      "files_verified": [
+        "src/pipeline/fim_dedup.zig",
+        "src/pipeline/telemetry_threads.zig",
+        "src/capture/minifilter_reader.zig",
+        "admin-evidence/adr0012-dup-ratio-20261108/dup-20261108_125329-summary.json",
+        "admin-evidence/adr0012-dup-ratio-20261108/queue-stats-final.json",
+        "admin-evidence/adr0012-dup-ratio-20261108/elevated-deploy-v6-result.json",
+        "admin-evidence/adr0012-dup-ratio-20261108/elevated-revert-result.json"
+      ],
+      "description": "Six-worker, 20,000-file Windows churn measurement on the deployed probe build (source dfececb, ancestor of current HEAD). Per-PID duplicate ratios were 48.177% for create-once (105,765 records / 50,954 duplicates), 49.391% for rewrite (895,546 / 442,323), and 56.992% for recreate (1,722,362 / 981,611). All phases reported zero probe overflow. These measurements exceed the ADR baseline's ~10% FIM-only throughput deficit and pass the pre-implementation decision gate.",
+      "actual": "Measurement only; no coalescer was active. Final queue stats include 575,935 same-timestamp minifilter duplicates and 118,566 pipeline drops. The archived revert result removed AEGIS_FIM_PROOF_ROOT but retained the same installed probe-binary SHA, so it is not binary rollback evidence.",
+      "impact": "Supports implementing the accepted bounded/countable FIM coalescing slice. Does not prove queue drops decrease, prove the source of same-timestamp duplicates, or close issue #29.",
+      "next_step": "Implement counted coalescing, deploy under the existing operator workflow, then rerun comparable churn and require lower FIM pipeline drops, unchanged/better ETW, zero ring loss, and truthful readiness."
     }
   ],
   "evidence_level_summary": {
@@ -10436,7 +10459,7 @@
     "E2_count": 68,
     "E3_count": 17,
     "E4_count": 15,
-    "E5_count": 153,
+    "E5_count": 154,
     "E6_count": 0,
     "E7_count": 1
   }

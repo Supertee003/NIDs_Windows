@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T14:03:03.496704+00:00",
+  "generated_at": "2026-11-08T14:07:37.618452+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1495,
+  "total_files": 1496,
   "by_role": {
-    "documentation": 333,
+    "documentation": 334,
     "build-config": 171,
     "other": 18,
     "lockfile": 6,
@@ -585,6 +585,10 @@
       "role": "documentation"
     },
     "analysis/current-head/FOR-BATCH-001-20261108.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/issue-29-adr0012-measurement-gate-contradiction-20261108.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },

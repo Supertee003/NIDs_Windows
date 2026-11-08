@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T14:03:03.493321+00:00",
+  "generated_at": "2026-11-08T14:07:37.615653+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1495,
+  "total_files": 1496,
   "by_class": {
-    "canonical-docs": 347,
+    "canonical-docs": 348,
     "canonical-build": 182,
     "unclassified": 18,
     "canonical-source": 663,
@@ -396,7 +396,7 @@
       "path": "analysis/current-head/09-backlog-triage-20261108.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 8575
+      "size": 9060
     },
     {
       "path": "analysis/current-head/ETW-LIFE-001-20261108.md",
@@ -409,6 +409,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 4218
+    },
+    {
+      "path": "analysis/current-head/issue-29-adr0012-measurement-gate-contradiction-20261108.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2020
     },
     {
       "path": "analysis/current-head/issue-30-etw-stop-line-audit-20261108.md",
@@ -1668,7 +1674,7 @@
       "path": "docs/adr/0012-fim-ingress-volume.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 8323
+      "size": 8634
     },
     {
       "path": "docs/adr/0013-runtime-latency-clock.md",
@@ -3072,7 +3078,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1024158
+      "size": 1026368
     },
     {
       "path": "fix_bridge_banner.py",
@@ -3204,7 +3210,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 235694
+      "size": 236025
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3462,7 +3468,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9642
+      "size": 9987
     },
     {
       "path": "pytest.ini",
@@ -3480,7 +3486,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 194386
+      "size": 194645
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",

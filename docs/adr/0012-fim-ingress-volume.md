@@ -1,8 +1,8 @@
 # ADR-0012 — FIM ingress volume: reduce it at the sensor, never silently
 
-**Status:** Accepted for the coalescing slice — measurement gate PASSED on the
-Windows host on 2026-11-08 (see *Measurement result*); implementation not yet
-merged
+**Status:** Coalescing slice accepted — duplicate-ratio measurement gate PASSED
+on the Windows host on 2026-11-08 (see *Measurement result*); implementation
+and post-change loss-reduction proof remain open
 **Date:** 2026-11-07
 **Measurement:** 2026-11-08, evidence `ADR-0012-DUP-RATIO-E5-20261108`
 **Supersedes:** —
@@ -58,7 +58,7 @@ under ADR-0009: they never enter threat scoring, policy, PEP, DEFCON, or any
 host effect. Their consumers are forensic recording and the host-telemetry
 stores, which is what bounds the risk of changing their granularity.
 
-## Decision (proposed, not yet implemented)
+## Decision (accepted for implementation; not yet implemented)
 
 **Reduce volume by coalescing exact duplicate `(path, kind)` observations inside
 one 500 ms poll batch, keeping the first observation of each path, and counting
@@ -106,33 +106,32 @@ tracked.
 **Shrink the watched surface (fewer trees, exclusions).** Rejected. It creates
 blind spots, which is a detection-coverage decision, not a volume fix.
 
-## Measurement gate before implementation
+## Measurement result and implementation gate
 
-**Status of the gate (2026-11-08): not yet measured.** ADR-0010's isolation fix
-is now E5-verified on the host (`QLOSS-ISOLATION-002-E5-20261108`), which makes
-this gate the next live step rather than a paper one: the same 90 s churn window
-that produced `fim_active_max 7168` / `source_quota_shed 206,999` is the
-baseline the duplicate ratio must be compared against.
+**Duplicate-ratio gate: PASSED at E5 on 2026-11-08.** The six-worker, 20,000-file
+host measurement in `ADR-0012-DUP-RATIO-E5-20261108` reported per-PID duplicate
+ratios of 48.177% for create-once, 49.391% for rewrite, and 56.992% for
+recreate, with zero probe-table overflow in all three phases. These exceed the
+measured ~10% FIM-only deficit with margin, so this ADR's bounded coalescing
+slice is accepted for implementation. Detailed local-only evidence is retained
+under `admin-evidence/adr0012-dup-ratio-20261108/` and indexed in
+`EVIDENCE_INDEX.json`.
 
-Coalescing only helps if duplicates exist. **Before merging an implementation**,
-the duplicate ratio must be measured on this host, because a ratio below the
-measured deficit (~10% for FIM alone) means the mechanism cannot close the gap
-and the decision must return to consumer throughput:
+The measurement is not proof that coalescing reduces queue loss: no coalescer
+was active. The final queue snapshot also counted 575,935 minifilter records
+with a repeated timestamp, which should be reviewed as possible lower-layer
+duplicate delivery. The initial coalescing patch must preserve the stated
+`(path, kind)`/batch semantics, count every suppressed row, and keep health
+truthful; it must not silently hide ring or pipeline drops.
 
-1. Deploy an instrumented build that reports, per 500 ms poll batch, `records`,
-   `distinct (path, kind)` and the derived duplicate ratio, over the same
-   synthetic 20,000-file churn used by the existing E5 windows.
-2. Accept coalescing only if the duplicate ratio exceeds the measured FIM
-   deficit with margin; otherwise record the negative result and move to the
-   throughput lever.
-3. After implementation, re-run the same churn window and require:
-   `fim_coalesced_total > 0`, FIM `dropped` strictly lower than the 271,887
-   baseline, ETW unchanged or better, `ring_dropped` still 0, and readiness
-   gates not relaxed.
+After implementation, repeat the same host churn and require
+`fim_coalesced_total > 0`, FIM pipeline drops strictly below the comparable
+baseline, ETW unchanged or better, kernel ring drops at 0, and no readiness-gate
+relaxation. If drops do not fall, retain the counted coalescing behavior only
+if its evidence value is accepted and continue with the consumer-throughput
+lever; do not claim issue #29 closed.
 
-None of this is an E5 claim. Nothing here has been deployed.
-
-## Consequences (if accepted)
+## Consequences
 
 - Forensic FIM row count falls by the duplicate ratio; each remaining row is
   still one distinct path per 500 ms. Repeat counts are visible only in
@@ -150,7 +149,10 @@ None of this is an E5 claim. Nothing here has been deployed.
 
 ## Open items
 
-1. Run the duplicate-ratio measurement described above (needs an operator-approved
-   deploy; the installed daemon is unchanged).
-2. Decide whether the `repeat_count` ABI step is warranted after that measurement.
-3. Consumer throughput (batched append) remains open per ADR-0010.
+1. Implement the accepted counted coalescing slice; retain per-path observability
+   and add tests for first occurrence, duplicate count, batch boundaries, and
+   probe overflow behavior.
+2. Re-run the same E5 churn to measure actual FIM queue-drop reduction, ring loss,
+   ETW impact, and readiness without relaxing gates.
+3. Decide whether the `repeat_count` ABI step is warranted from post-change
+   operator needs; consumer throughput (batched append) remains open per ADR-0010.
