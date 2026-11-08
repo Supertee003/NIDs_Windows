@@ -1,5 +1,5 @@
 {
-  "head_sha": "f9be3695f03e278b79d8f853d4ee775b3b328df2",
+  "head_sha": "cf19e135a1c3f50eb7d8ea95f0d6b9b5f6576c98",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-08",
   "generator_version": "3.0",
@@ -4498,6 +4498,39 @@
       "source": "admin-evidence/l4-flags-live-r9007-20261108_164536/RESULT.md",
       "summary": "XMAS scan from 192.168.126.10 to 192.168.126.1 on VMnet1 (nose pinned) produced 25 signature_match events for R9007 (per-packet); forensic verify true.",
       "head_sha": "f9be3695f03e278b79d8f853d4ee775b3b328df2"
+    },
+    {
+      "id": "FOR-BATCH-001-E2-20261108",
+      "head_sha": "cf19e13",
+      "timestamp": "2026-11-08",
+      "title": "Forensic batch append preserves record bytes, hash chain, wrap, and overwrite semantics",
+      "level": "E2",
+      "component": "Zig ForensicRing",
+      "flow_id": "FOR-001",
+      "patch_id": "FOR-BATCH-001",
+      "target_head": "cb28a7c6cb59eedcff40fd265599c545d431c5f8",
+      "final_head": "cf19e13",
+      "build_source": "cf19e13",
+      "description": "appendBatch accepts typed AppendRecord slices, validates all directions before mutation, and serializes through the same appendLocked record writer as single appends. RecordHeader ABI padding is zeroed before hashing/CRC to make authenticated record bytes deterministic. Ring capacities are validated to hold whole records.",
+      "commands": [
+        "zig test src/all_tests.zig --test-filter appendBatch (4 passed)",
+        "zig test src/all_tests.zig --test-filter ForensicRing (20 passed)",
+        "zig test src/all_tests.zig --test-filter rejects capacities that cannot retain whole records (1 passed)",
+        "zig build (PASS)",
+        "zig build test --summary all (2058 passed, 10 skipped, 0 failed)",
+        "git diff --check (PASS)"
+      ],
+      "expected": "Batch append is byte-identical to equivalent individual appends across wrap and metadata; hash chain verifies; invalid batch and invalid capacities fail without partial mutation.",
+      "actual": "All targeted forensic tests pass; full Zig suite passes 2058 tests with 10 skipped; production Zig build passes. Initial byte-equivalence test failed before zeroing implicit header padding, then passed.",
+      "result": "PASS_E2_FORENSIC_BATCH_APPEND",
+      "files_verified": [
+        "src/forensic/forensic_pipeline.zig",
+        "analysis/current-head/FOR-BATCH-001-20261108.md"
+      ],
+      "limits": [
+        "E2 source/unit/build evidence only; no service deploy or Windows E5 claim.",
+        "Independent stop-line issues #25-#30 remain open; full-suite pass does not close test import scope audit #27."
+      ]
     }
   ],
   "known_gaps": [
@@ -10354,7 +10387,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 33,
-    "E2_count": 166,
+    "E2_count": 67,
     "E3_count": 17,
     "E4_count": 15,
     "E5_count": 153,

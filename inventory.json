@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T09:50:04.059243+00:00",
+  "generated_at": "2026-11-08T13:19:00.007910+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1489,
+  "total_files": 1492,
   "by_class": {
-    "canonical-docs": 342,
+    "canonical-docs": 345,
     "canonical-build": 182,
     "unclassified": 18,
     "canonical-source": 663,
@@ -391,6 +391,24 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 60433
+    },
+    {
+      "path": "analysis/current-head/09-backlog-triage-20261108.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 8266
+    },
+    {
+      "path": "analysis/current-head/FOR-BATCH-001-20261108.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4218
+    },
+    {
+      "path": "analysis/current-head/issue-31-forensic-batch-stop-line.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2636
     },
     {
       "path": "analysis/current-head/prepatch-working-tree-safety.diff",
@@ -3042,7 +3060,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1018507
+      "size": 1010242
     },
     {
       "path": "fix_bridge_banner.py",
@@ -5970,7 +5988,7 @@
       "path": "src/forensic/forensic_pipeline.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 44072
+      "size": 54386
     },
     {
       "path": "src/forensic/forensics_engine.zig",
