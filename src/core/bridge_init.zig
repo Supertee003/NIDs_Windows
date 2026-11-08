@@ -16,7 +16,7 @@ const std = @import("std");
 
 pub const AEGIS_VERSION = "1.0.0-dev";
 pub const AEGIS_BUILD = "zig-0.13.0";
-pub const SHIELD_VERSION = "REMOVED";  // PEP-001: shield removed, enforcement via Rust PEP only
+pub const SHIELD_VERSION = "REMOVED"; // PEP-001: shield removed, enforcement via Rust PEP only
 const rust_pep = @import("rust_pep.zig");
 const pep_bindings = @import("../policy/pep_bindings.zig");
 const win = std.os.windows;
@@ -39,17 +39,28 @@ pub const BridgeState = struct {
 
 var g_state = BridgeState{};
 
-/// CTRL-002: read-only snapshot of the bridge/dependency flags so the control
-/// plane can report real subsystem state instead of build-time capability
-/// flags. Used by src/platform/win32_pipe.zig health.check.
+/// CTRL-002: read-only live view of bridge/dependency readiness. WFP is
+/// re-attested through Rust on every snapshot so an early startup failure
+/// cannot leave health permanently stale after the provider becomes ready.
+/// The provider probe is read-only and does not open the prevention gate.
 pub fn status() BridgeState {
-    return g_state;
+    return projectWfpReadiness(g_state, pep_bindings.providerAttested());
 }
 
 /// CTRL-002: true when every in-process bridge subsystem is actually up. When
 /// false the runtime still serves the spine but reports `degraded: true`.
+pub fn isAllActive(snapshot: BridgeState) bool {
+    return snapshot.wfp_ioctl and snapshot.cpp_bridge and snapshot.udp_brain;
+}
+
 pub fn allActive() bool {
-    return g_state.wfp_ioctl and g_state.cpp_bridge and g_state.udp_brain;
+    return isAllActive(status());
+}
+
+fn projectWfpReadiness(snapshot: BridgeState, provider_ready: bool) BridgeState {
+    var current = snapshot;
+    current.wfp_ioctl = provider_ready;
+    return current;
 }
 
 // ============================================================
@@ -62,9 +73,9 @@ pub const AEGIS_IPC_MAGIC: u32 = 0x41454749; // "AEGI" in ASCII
 pub const AEGIS_IPC_VERSION: u16 = 1;
 
 pub const AegisIpcEvent = extern struct {
-    magic: u32,        // B-05: 0x41454749 ("AEGI") - validates struct layout
-    version: u16,      // B-05: struct version (bump on schema change)
-    struct_size: u16,  // B-05: sizeof(AegisIpcEvent) for forward compatibility
+    magic: u32, // B-05: 0x41454749 ("AEGI") - validates struct layout
+    version: u16, // B-05: struct version (bump on schema change)
+    struct_size: u16, // B-05: sizeof(AegisIpcEvent) for forward compatibility
     event_type: u32,
     source_ip: u32,
     dest_ip: u32,
@@ -480,7 +491,7 @@ pub fn shutdownAll() void {
 
 /// Get the current bridge state (for status reporting).
 pub fn getState() BridgeState {
-    return g_state;
+    return status();
 }
 
 // ============================================================
@@ -533,7 +544,6 @@ pub fn getBridgeEventCount() u32 {
 /// P0.2: REMOVED — validatePayloadSafety stub deleted.
 /// Payload safety is now determined by Tier-3 state (tier3_state.zig).
 /// See nids_analyze.zig for the Tier-3 gating check.
-
 /// Send JSON message to Python brain via UDP.
 /// B-10: Uses a 1000-event spool queue ΓÇö if send fails, event is queued
 /// and retried by a background drain. Drops oldest if queue is full.
@@ -602,6 +612,7 @@ pub fn getWfpStats() ?rust_pep.WfpRingStats {
 
 /// Print bridge status (call periodically from a status thread).
 pub fn printStatus() void {
+    const bridge = status();
     if (g_bridge_initialized) {
         const count = getBridgeEventCount();
         const defcon = getDefcon();
@@ -609,7 +620,7 @@ pub fn printStatus() void {
         std.log.info("[BRIDGE] C++ queue: {d} events | DEFCON: {d}", .{ count, defcon });
         std.debug.print("[BRIDGE] C++ queue: {d} events | DEFCON: {d}\n", .{ count, defcon });
     }
-    if (g_state.wfp_ioctl) {
+    if (bridge.wfp_ioctl) {
         if (getWfpStats()) |stats| {
             std.log.info("[BRIDGE] WFP ring: {d}/{} bytes", .{ stats.currentUsedBytes, stats.capacity });
             std.debug.print("[BRIDGE] WFP ring: {d}/{} bytes\n", .{ stats.currentUsedBytes, stats.capacity });
@@ -644,6 +655,16 @@ test "brain wire without secret is the bare body" {
     const wire = try formatBrainWire(std.testing.allocator, "{\"op\":\"HEALTH\"}", null);
     defer std.testing.allocator.free(wire);
     try std.testing.expectEqualStrings("{\"op\":\"HEALTH\"}", wire);
+}
+
+test "bridge health refreshes WFP readiness after a later successful provider probe" {
+    const startup = BridgeState{ .wfp_ioctl = false, .cpp_bridge = true, .udp_brain = true };
+    const current = projectWfpReadiness(startup, true);
+    try std.testing.expect(current.wfp_ioctl);
+    try std.testing.expect(isAllActive(current));
+    const unavailable = projectWfpReadiness(current, false);
+    try std.testing.expect(!unavailable.wfp_ioctl);
+    try std.testing.expect(!isAllActive(unavailable));
 }
 
 test "spool drain thread is stored and joined, never dropped" {

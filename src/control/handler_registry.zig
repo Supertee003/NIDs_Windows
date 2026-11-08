@@ -370,6 +370,7 @@ const handlers = struct {
         // P1: Pull from state machine â€” single source of truth
         const sm = @import("state_machine.zig");
         const bridge = bridge_init.status();
+        const bridge_ready = bridge_init.isAllActive(bridge);
         sm.g_runtime.uptime_ms = @intCast(@divTrunc(std.time.nanoTimestamp() - ctx.start_ns, std.time.ns_per_ms));
         const pid: u32 = GetCurrentProcessId();
         const workers = sm.WorkerReadiness{
@@ -383,7 +384,7 @@ const handlers = struct {
             .failure_reason = state_mod.workerFailureReason(),
             .failure_mask = state_mod.workerFailureMask(),
         };
-        return sm.g_runtime.healthJson(a, pid, bridge_init.allActive(), bridge.wfp_ioctl, bridge.cpp_bridge, bridge.udp_brain, workers) catch |err| {
+        return sm.g_runtime.healthJson(a, pid, bridge_ready, bridge.wfp_ioctl, bridge.cpp_bridge, bridge.udp_brain, workers) catch |err| {
             diag.err("health handler serialization failed: {}", .{err});
             ctx.failure_code = "HEALTH_SERIALIZATION_FAILED";
             ctx.failure_state = "DEGRADED";
