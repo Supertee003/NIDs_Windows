@@ -60,6 +60,17 @@ sensor always reaches its cap. This is pairwise isolation only; with three or
 more host sources the sum of half-shares still exceeds the tail, so a dynamic
 fair-share remains an open decision.
 
+**E5 confirmation (2026-11-08).** The corrected cap is deployed (daemon
+`C5991397...`, source `12093dd`) and measured, not just reasoned about: live
+`queue.stats` reports `source_occupancy_cap=7168`, and a 90 s synthetic churn
+(6 workers × 900 files, 56 samples) produced `fim_active_max 7168`,
+`etw_active_max 7168`, `depth_peak 13,575`, `reserved_tail_shed 0`, and
+`source_quota_shed 206,999` (FIM dropped 206,276 vs ETW 723, ring 0). Both
+sources reached their full share and the shared boundary refused nothing, which
+is exactly what the 7,680 formula made impossible (second source capped at
+6,656). Total loss is unchanged in kind: every refusal is the storming source's
+own excess, so this remains isolation, not loss reduction.
+
 ## Alternatives considered and rejected
 
 **WAL / disk spill buffer.** Rejected as the primary answer. The measured

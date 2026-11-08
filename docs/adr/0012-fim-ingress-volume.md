@@ -105,6 +105,12 @@ blind spots, which is a detection-coverage decision, not a volume fix.
 
 ## Measurement gate before implementation
 
+**Status of the gate (2026-11-08): not yet measured.** ADR-0010's isolation fix
+is now E5-verified on the host (`QLOSS-ISOLATION-002-E5-20261108`), which makes
+this gate the next live step rather than a paper one: the same 90 s churn window
+that produced `fim_active_max 7168` / `source_quota_shed 206,999` is the
+baseline the duplicate ratio must be compared against.
+
 Coalescing only helps if duplicates exist. **Before merging an implementation**,
 the duplicate ratio must be measured on this host, because a ratio below the
 measured deficit (~10% for FIM alone) means the mechanism cannot close the gap

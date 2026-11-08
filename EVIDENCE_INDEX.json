@@ -1,7 +1,7 @@
 {
  "head_sha": "12093dd0a5208498199551e8ce0aebaf58520cde",
  "created_at": "2026-09-24",
- "last_updated_at": "2026-11-07",
+ "last_updated_at": "2026-11-08",
  "generator_version": "3.0",
  "artifact_retention": {
   "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -20,6 +20,53 @@
   "E7": "Release verification"
  },
  "evidence": [
+  {
+   "id": "QLOSS-ISOLATION-002-E5-20261108",
+   "head_sha": "250afb0",
+   "timestamp": "2026-11-08",
+   "title": "Both host sources reach their full working-tail share on the deployed daemon, and the shared boundary never refuses",
+   "level": "E5",
+   "component": "src/pipeline/event_queue.zig SOURCE_OCCUPANCY_CAP (deployed daemon C5991397, source 12093dd)",
+   "flow_id": "QLOSS-HEALTH-001",
+   "description": "Deployed the daemon built from source 12093dd (cap = WORKING_HOST_TAIL / 2 = 7,168) over the installed 6326AB5D image that still carried the 7,680-per-source formula, keeping a hash-verified rollback copy (admin-evidence/rb017-e5-deploy-20261108/rollback/aegis_nids.exe.6326AB5D.bak). A 90 s synthetic file churn (6 workers x 900 files under D:\\tmp\\aegis-storm) was sampled from queue.stats every 2 s (56 samples): source_occupancy_cap 7,168, fim_active_max 7,168, etw_active_max 7,168, depth_peak 13,575 against WORKING_HOST_TAIL 14,336, reserved_tail_shed delta 0, source_quota_shed delta 206,999, FIM dropped delta 206,276 vs ETW 723, minifilter_pipeline_dropped 206,274, ring 0. Service was restarted once for the image swap and once to restore the normal FIM scope; the driver was untouched.",
+   "files_verified": [
+    "src/pipeline/event_queue.zig",
+    "docs/adr/0010-host-telemetry-admission.md"
+   ],
+   "tests": [
+    "live queue.stats on the deployed daemon: source_occupancy_cap 7168, reserved_tail_shed 0",
+    "storm window: fim_active_max 7168 == etw_active_max 7168 == cap (the old 7680 cap could only leave the second source 6656)",
+    "all 206,999 refusals attributed to source_quota_shed, none to reserved_tail_shed",
+    "admin-evidence/rb017-e5-deploy-20261108/storm-20261108_114516-summary.json + storm-20261108_114516.ndjson (56 samples)"
+   ],
+   "result": "PASS_E5_SHARE_ARITHMETIC",
+   "finding": "The pairwise isolation guarantee is now measured on the host, not only proven arithmetically. Both host sources reach their full 7,168 share and the shared tail check refused nothing during the window, so the second source is no longer stopped at 6,656 by the boundary as the old formula required. Limits, stated rather than implied: the refusals are the storming source's own excess (206,999, all source_quota_shed), so total loss is NOT reduced - FIM ingress aggregation (ADR-0012) remains the only lever for that; the churn is synthetic; critical_pushed_total was 0 because no System32 write happened in the window; the deploy used a hash-verified rollback copy and one restart, but the RB-021 preflight was not run for this window; readiness is degraded=true as it was before the deploy.",
+   "evidence_artifact": "admin-evidence/rb017-e5-deploy-20261108/storm-20261108_114516-summary.json"
+  },
+  {
+   "id": "RB-017-BRAIN-SUPERVISED-E5-20261108",
+   "head_sha": "250afb0",
+   "timestamp": "2026-11-08",
+   "title": "Brain listener is supervised by the AegisKeeper scheduled task; the 'no supervisor' premise was a non-elevated blind spot",
+   "level": "E5",
+   "component": "brain/windows_brain.py, Scheduled Task AegisKeeper, src/core/bridge_init.zig secret loading",
+   "flow_id": "V2",
+   "description": "The orphan pythonw.exe pid 31516 (session 0, created 2026-10-31, parent gone) owned UDP 127.0.0.1:9999; a non-elevated Stop-Process returned 'Access is denied', proving the observation limit. An elevated stop succeeded and within ~3 s a new pythonw listener (pid 23136, session 0) appeared under a short-lived launcher. An elevated task query then identified the supervisor: AegisKeeper, principal SYSTEM, action \"pythonw.exe D:\\NIDs_Windows\\scripts\\aegis_open.py keep\". The listener survived a service restart unchanged. aegisctl bridge reports the listener with owner_is_brain true, and aegisctl brain reports RUNNING (in=41,329 out=0 errors=0). A machine-level AEGIS_BRAIN_SECRET (64 chars) is present, so the channel runs MAC-authenticated.",
+   "files_verified": [
+    "brain/windows_brain.py",
+    "src/core/bridge_init.zig",
+    "docs/runbooks/RB-017-brain-bring-up.md"
+   ],
+   "tests": [
+    "elevated schtasks /query /tn \\AegisKeeper: task present, state Ready, principal SYSTEM",
+    "aegisctl bridge: listener pid + owner_is_brain true + this-shell secret configured true",
+    "aegisctl brain: RUNNING in=41329 out=0 errors=0",
+    "listener pid 23136 unchanged across an AegisNids restart"
+   ],
+   "result": "PASS_E5_SUPERVISION_PARTIAL_RETURN_PATH",
+   "finding": "Supervision, ownership and MAC posture are verified; the runbook premise 'no SCM service or scheduled task supervising it' is corrected, because a non-elevated schtasks query of AegisKeeper is access-denied rather than empty. What is NOT verified is the return path: brain out=0 during the window, so no brain_tier2 provenance records were observed, and no fixture was injected to force a finding. RB-017 steps 4-5 therefore stay open. This is also the answer to the earlier 'FOREIGN' ownership flag: the listener is SYSTEM-owned pythonw by design, not a stray process.",
+   "evidence_artifact": "admin-evidence/rb017-e5-deploy-20261108/elevated-20261108-v3-result.json"
+  },
   {
    "id": "QLOSS-ISOLATION-002-E2-20261107",
    "head_sha": "12093dd",
@@ -9986,14 +10033,17 @@
     "zig build test --summary all: 2048 passed / 10 skipped / 0 failed",
     "python pytest full suite: 991 passed / 4 skipped / 5 deselected"
    ],
-   "result": "E2_FIXED_HOST_E5_PENDING",
-   "finding": "The isolation defect is closed in source and proven by unit/build tests only. The installed daemon still carries the old 7,680 cap until an operator-approved deploy, and total QLOSS loss is unchanged by this fix.",
+   "result": "E5_VERIFIED_TOTAL_LOSS_OPEN",
+   "finding": "The isolation defect is closed end to end: source 12093dd is deployed (daemon C5991397), the cap reports 7,168 at runtime, a second host source reaches its full share, and the shared boundary never refuses. What remains open for issue #29 is total loss: the storming source still sheds its own excess (206,999 rows in the 90 s synthetic window) and no queue/cap change can remove that. Levers left: FIM ingress aggregation/rate shaping (ADR-0012, measurement-gated) and consumer throughput.",
    "required_evidence": [
-    "E5 re-measure on the deployed daemon: queue.stats reports source_occupancy_cap=7168 and a synthetic storm shows the second source reaching 7168 active with source_quota_shed (not reserved_tail_shed) as the refusal cause",
-    "decision and implementation for FIM ingress aggregation/rate shaping, the only lever that reduces the storming source's own loss",
-    "operator-approved UAC deploy of the new daemon before any E5 claim"
+    "duplicate-ratio measurement required by ADR-0012 before implementing FIM coalescing (needs an operator-approved deploy)",
+    "E5 re-measure after that change: FIM dropped strictly below the 206,999-row / 90 s baseline with ring 0 and gates unrelaxed",
+    "RB-021-style preflight for the next deploy window (this one used a hash-verified rollback copy but skipped the preflight)"
    ],
-   "tracking": "GitHub issue #29 (QLOSS-HEALTH-001 overload; DATA_LOSS_REMAINS)"
+   "tracking": "GitHub issue #29 (QLOSS-HEALTH-001 overload; DATA_LOSS_REMAINS)",
+   "status": "E5_VERIFIED_TOTAL_LOSS_OPEN",
+   "closed_at": "2026-11-08",
+   "evidence": "QLOSS-ISOLATION-002-E5-20261108: both host sources reach their full 7,168 share on the deployed daemon with reserved_tail_shed 0 and all 206,999 refusals attributed to source_quota_shed."
   }
  ],
  "evidence_level_summary": {
@@ -10002,7 +10052,7 @@
   "E2_count": 164,
   "E3_count": 17,
   "E4_count": 15,
-  "E5_count": 141,
+  "E5_count": 143,
   "E6_count": 0,
   "E7_count": 1
  }

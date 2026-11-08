@@ -582,6 +582,21 @@ work that still blocks "finished"; the rest is documentation hygiene.
    measurement shows the duplicate ratio exceeds the measured FIM deficit
    (~10% at 2,930 rows/s capacity vs ~3,231 rows/s FIM demand). It changes no
    runtime behaviour and is not an E5 claim.
+   **E5 delivered (`QLOSS-ISOLATION-002-E5-20261108`, 2026-11-08).** Source
+   `12093dd` is now deployed: daemon `C5991397...` replaced the installed
+   `6326AB5D...` image with a hash-verified rollback copy, one restart for the
+   swap and one to restore the normal FIM scope, driver untouched. Live
+   `queue.stats` reports `source_occupancy_cap=7168`, and a 90 s synthetic
+   churn (6 workers × 900 files, 56 samples) measured `fim_active_max 7168`,
+   `etw_active_max 7168`, `depth_peak 13,575` (working tail 14,336),
+   `reserved_tail_shed 0`, `source_quota_shed 206,999`, FIM dropped 206,276 vs
+   ETW 723, ring 0. The second source therefore reaches its **full** share and
+   the shared boundary never refuses — the old 7,680 formula could only leave
+   it 6,656. **This closes the isolation defect, not the loss:** every refusal
+   is the storming source's own excess, so issue #29 stays OPEN on volume.
+   Honesty notes: the churn is synthetic, `critical_pushed_total` was 0 (no
+   System32 write in the window), readiness was already `degraded=true`, and
+   the RB-021 preflight was **not** run for this deploy window.
    Also open: production driver signing (the ring change is test-signed).
 2. **Supervised Windows E5 / kernel qualification — OPEN.** Any new
    current-source E5 must redeploy a verified candidate with a rollback point
@@ -594,14 +609,22 @@ work that still blocks "finished"; the rest is documentation hygiene.
    deployed and proven live (see the 2026-11-06 E5 section); the installed
    daemon is now `F4BC3A85...`. What remains open here is the broader kernel
    qualification, not the log bound.
-3. **`RB-017` Brain supervised bring-up — BLOCKED.** The only listener is pid
-   31516 (`pythonw.exe`, session 0, created 2026-10-31, parent gone) with an
-   unreadable command line, `endpoint_ownership=FOREIGN`, and no SCM service or
-   scheduled task supervising it. Needs an approved elevated stop of that
-   orphan, then a supervised `python brain/windows_brain.py` run with
-   `AEGIS_BRAIN_SECRET` on both ends, `aegisctl bridge` ownership corroboration,
-   and fixture traffic proving `brain_tier2` provenance. Do not start a second
-   listener and do not change the detection-only gate.
+3. **`RB-017` Brain supervised bring-up — PARTIAL (2026-11-08).** The premise
+   in the earlier register was wrong, and the correction is measured: an
+   elevated `schtasks /query /tn \AegisKeeper` shows the scheduled task
+   **AegisKeeper** (`SYSTEM`, action `pythonw.exe D:\NIDs_Windows\scripts\aegis_open.py keep`)
+   supervising the brain, so the listener is not unsupervised — a non-elevated
+   task query is *access-denied*, not empty, and that is why it looked orphaned.
+   The orphan `pythonw` pid 31516 was stopped only after elevation (`Stop-Process`
+   non-elevated returned `Access is denied`), port 9999 was freed, and a new
+   supervised listener (pid 23136) appeared within ~3 s and survived an
+   `AegisNids` restart. `aegisctl bridge` reports `owner_is_brain: true`, the
+   machine-level `AEGIS_BRAIN_SECRET` (64 chars) is present so the channel is
+   MAC-authenticated, and `aegisctl brain` reports RUNNING. **Still open:** the
+   return path — `brain` showed `out=0` during the window, so no `brain_tier2`
+   provenance records were observed and RB-017 steps 4–5 (fixture traffic,
+   posture logging evidence) remain unproven. Evidence:
+   `RB-017-BRAIN-SUPERVISED-E5-20261108`.
 4. **Signed release package / E7 — OPEN.** Requires signing key material,
    provenance, and an owner decision. Nothing in the current evidence set
    changes this.
@@ -620,6 +643,11 @@ work that still blocks "finished"; the rest is documentation hygiene.
    `1b32eaf` and records `b86c738` (marker `host_live`, conditional Kali skip,
    graph/DLL setup, Trivy tag, `SkipZigTest`, CRC test edge, pipe-fixture
    fidelity). WDK remains a manual, non-gating E5/driver item.
+   Re-run [`42446770459`](https://github.com/Supertee003/NIDs_Windows/actions/runs/42446770459)
+   (2026-11-08) on `codex/o2-etw-context` at `6840b4d` (build source
+   `12093dd`) reproduced the same shape: every gating job green including
+   `ci-matrix`, WDK the only red job, `Package Release` skipped. `250afb0`
+   afterwards is records/docs only, so the verified build source is unchanged.
 6. **Historical classification of older IPS/WFP material — on-going.** Keep
    classifying without deleting; GAP-002, GAP-005, and GAP-009 are explicitly
    historical. Production host-effect capability must stay false.
