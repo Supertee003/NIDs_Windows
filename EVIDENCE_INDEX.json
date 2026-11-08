@@ -1,5 +1,5 @@
 {
-  "head_sha": "318a10a95b7922851562aad27f389c2ab9f4fdac",
+  "head_sha": "795246d7b4794b11c9b45e0b17a43c6cb219602a",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-09",
   "generator_version": "3.0",
@@ -28,7 +28,7 @@
       "level": "E5",
       "component": "AegisNids bridge provider health / enforcement status / RB-021 current-source preflight",
       "flow_id": "RB-021",
-      "description": "Installed the current-source 318a10a package and verified installed daemon hash matches the build. Live health \u2192 enforce status \u2192 health returned WFP (true,true,true); prevention gate remained closed. Elevated RB-021 preflight passed 16/16 checks. Overall health remained DEGRADED from attributed ETW/FIM quota sheds and minifilter loss.",
+      "description": "Installed the current-source 318a10a package and verified installed daemon hash matches the build. Live health → enforce status → health returned WFP (true,true,true); prevention gate remained closed. Elevated RB-021 preflight passed 16/16 checks. Overall health remained DEGRADED from attributed ETW/FIM quota sheds and minifilter loss.",
       "files_verified": [
         "src/core/bridge_init.zig",
         "src/control/handler_registry.zig",
@@ -37,7 +37,7 @@
       ],
       "tests": [
         "Installed daemon SHA-256 equals zig-out build SHA-256",
-        "health \u2192 enforce status \u2192 health provider readiness: true/true/true",
+        "health → enforce status → health provider readiness: true/true/true",
         "RB-021 current-source preflight: 16/16 checks PASS",
         "enforce status: prevention_gate=closed, host_effect_capable=false, tier3_enforcing=false"
       ],
@@ -83,7 +83,7 @@
       "timestamp": "2026-11-09",
       "title": "Windows control API reports DEGRADED consistently with the live daemon health flag",
       "level": "E5",
-      "component": "Windows current-source AegisNids runtime \u2192 Python aegisctl health projection",
+      "component": "Windows current-source AegisNids runtime → Python aegisctl health projection",
       "flow_id": "RUNTIME-HEALTH-001",
       "description": "After installing daemon source 318a10a and applying the control API projection fix, live health reported state=DEGRADED and degraded=true while runtime_state=RUNNING and WFP provider readiness remained true. The enforcement gate remained closed.",
       "files_verified": [
@@ -129,7 +129,7 @@
       "limitations": [
         "No current-source redeploy/live recheck yet; E5 remains pending.",
         "Overall readiness remains DEGRADED while recorded queue/minifilter loss counters are nonzero.",
-        "Issues #25, #29, and #30 and broader Phase 6\u20139 gates remain open.",
+        "Issues #25, #29, and #30 and broader Phase 6–9 gates remain open.",
         "No canary was sent and prevention remained closed."
       ]
     },
@@ -194,11 +194,11 @@
       "id": "L4-FLAGS-R9006-LIVE-E5-VMNET1-20261108",
       "head_sha": "f9be369",
       "timestamp": "2026-11-08",
-      "title": "Live VMnet1 capture: Kali SYN scan triggers R9006 (distinct_dst_ports rate) \u2014 flags/L4 path proven on the captured adapter",
+      "title": "Live VMnet1 capture: Kali SYN scan triggers R9006 (distinct_dst_ports rate) — flags/L4 path proven on the captured adapter",
       "level": "E5",
       "component": "nose/capture.go (NPF capture) -> pipeline -> src/pipeline/l4_matcher.zig R9006 -> aegis_core.ndjson signature_match",
       "flow_id": "RB-021",
-      "description": "With nose pinned to VMnet1 (\\Device\\NPF_{CE375996-106D-46F7-A67C-0168EAE8C96F}, 192.168.126.1/24, pid 10680, HKLM AEGIS_NOSE_IFACE set with user authorization), Kali 192.168.126.10 ran nmap -sS -p 3000-3024 -Pn -T4 --max-retries 0 against 192.168.126.1 (25 ports, 0.51 s, 2026-11-08T04:26:25-05:00). ndjson recorded exactly 1 match for rule 1745456278 (= FNV-1a R9006) / src_ip 192.168.126.10, src_port 47109, payload_len 0, event signature_match, policy logged as block/policy_id 3; IP 192.168.126.x hits=1, R9007 hits=0. ndjson grew 42,243,780->69,672,059 bytes. aegisctl forensic verify after: integrity ok, verified true. Readiness before/after: degraded true, ready false, overall_gate false, failure_reasons empty (observed, unchanged). An earlier probe to 192.168.127.200 missed because nose then captured Wi-Fi (\\Device\\NPF_{5FD31C6E-DE48-44CB-838E-14667A04DA4B}/192.168.1.39) \u2014 not a flags failure.",
+      "description": "With nose pinned to VMnet1 (\\Device\\NPF_{CE375996-106D-46F7-A67C-0168EAE8C96F}, 192.168.126.1/24, pid 10680, HKLM AEGIS_NOSE_IFACE set with user authorization), Kali 192.168.126.10 ran nmap -sS -p 3000-3024 -Pn -T4 --max-retries 0 against 192.168.126.1 (25 ports, 0.51 s, 2026-11-08T04:26:25-05:00). ndjson recorded exactly 1 match for rule 1745456278 (= FNV-1a R9006) / src_ip 192.168.126.10, src_port 47109, payload_len 0, event signature_match, policy logged as block/policy_id 3; IP 192.168.126.x hits=1, R9007 hits=0. ndjson grew 42,243,780->69,672,059 bytes. aegisctl forensic verify after: integrity ok, verified true. Readiness before/after: degraded true, ready false, overall_gate false, failure_reasons empty (observed, unchanged). An earlier probe to 192.168.127.200 missed because nose then captured Wi-Fi (\\Device\\NPF_{5FD31C6E-DE48-44CB-838E-14667A04DA4B}/192.168.1.39) — not a flags failure.",
       "files_verified": [
         "nose/capture.go",
         "src/pipeline/l4_matcher.zig",
@@ -209,7 +209,7 @@
       "tests": [
         "live: nmap SYN 25 distinct dst ports (3000-3024, <1s) from 192.168.126.10 -> R9006 signature_match rule 1745456278 observed in ndjson (count 1) on VMnet1-captured path",
         "live: aegisctl forensic verify -> integrity ok, verified true",
-        "source: R9006 = distinct_dst_ports threshold 20 / 10000 ms (l4_matcher.zig) \u2014 prior per-packet-only claim withdrawn"
+        "source: R9006 = distinct_dst_ports threshold 20 / 10000 ms (l4_matcher.zig) — prior per-packet-only claim withdrawn"
       ],
       "result": "PASS_E5",
       "finding": "The live capture+flags/L4 path reaches the R9006 rate detector on the adapter nose actually captures (here VMnet1). Scope is this adapter/path/case: R9006 fired; R9007 not exercised; Wi-Fi path not re-tested this run; prevention gate/host-effect posture unchanged (logged policy decision is not claimed as enforcement). Resolves GAP-L4-FLAGS-LIVE-UNPROVEN for this scope.",
@@ -825,7 +825,7 @@
       "id": "EVT-001",
       "head_sha": "ec12182ad785c1af9b5321b735297c46e62a2b34",
       "timestamp": "2026-09-09",
-      "title": "Zig build test \u00e2\u20ac\u201d all unit tests pass",
+      "title": "Zig build test â€” all unit tests pass",
       "level": "E2",
       "component": "zig_core",
       "command": "zig build test",
@@ -917,7 +917,7 @@
       "title": "FOR-003: Replay verification with observe-only safety",
       "level": "E2",
       "component": "forensic",
-      "description": "ReplayVerifier orchestrates export\u00e2\u2020\u2019verify\u00e2\u2020\u2019replay\u00e2\u2020\u2019compare. ReplayMode.observe_only default ensures no live enforcement during replay.",
+      "description": "ReplayVerifier orchestrates exportâ†’verifyâ†’replayâ†’compare. ReplayMode.observe_only default ensures no live enforcement during replay.",
       "tests": [
         "export and verify records",
         "record replay results",
@@ -977,7 +977,7 @@
       "id": "EVT-008",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "FOR-CNC-001: Forensic concurrent integrity \u00e2\u20ac\u201d 4 threads \u00c3\u2014 5 appends + concurrent read + dual-thread wrap",
+      "title": "FOR-CNC-001: Forensic concurrent integrity â€” 4 threads Ã— 5 appends + concurrent read + dual-thread wrap",
       "level": "E2",
       "component": "forensic",
       "description": "Three concurrent tests: (1) 4 threads each append 5 records, verify hash chain; (2) reader thread + writer thread run simultaneously, verify no corruption; (3) 2 threads each append 12 records to 4-slot ring, verify every retained record passes CRC + hash + full chain.",
@@ -998,7 +998,7 @@
       "id": "EVT-009",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "FFI-001: Zig/Rust PEP ABI verification \u00e2\u20ac\u201d struct layout, offsets, enum values, function signatures",
+      "title": "FFI-001: Zig/Rust PEP ABI verification â€” struct layout, offsets, enum values, function signatures",
       "level": "E2",
       "component": "policy",
       "description": "Verifies Zig extern struct layouts match Rust #[repr(C)]: PepContext (24B), PepRequest (64B), PepResponse (16B). Verifies field offsets, PepDecision enum values (0-5), extern function declarations, and binary serialization roundtrip.",
@@ -1023,7 +1023,7 @@
       "id": "EVT-010",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "FFI-002: Go/Zig ownership & lifecycle \u00e2\u20ac\u201d wire format, source/type/action constants, frame layout",
+      "title": "FFI-002: Go/Zig ownership & lifecycle â€” wire format, source/type/action constants, frame layout",
       "level": "E2",
       "component": "integration",
       "description": "Verifies Go Nose wire format constants match Zig contract: magic (0x41454731), wire size (109B), schema version (1), dev struct size (128B). Verifies Go EventSource/EventType/PolicyAction constants, reserved area offsets, NoseWireFrame layout, and CRC32 field position.",
@@ -1051,7 +1051,7 @@
       "id": "EVT-011",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "FFI-003: C++/Zig native adapter lifecycle \u00e2\u20ac\u201d wire constants, Kind/State/PollResult enums, offsets, ABI mismatch documented",
+      "title": "FFI-003: C++/Zig native adapter lifecycle â€” wire constants, Kind/State/PollResult enums, offsets, ABI mismatch documented",
       "level": "E2",
       "component": "integration",
       "description": "Verifies C++ adapter wire constants match Zig contract: magic, size, version, struct size. Documents ABI mismatch: Zig AdapterKind is enum(u32) starting at 0, C++ Kind is uint8_t starting at 1. Verifies C++ State/PollResult enums, wire offsets, AdapterEvent layout, AdapterHealth struct layout.",
@@ -1081,10 +1081,10 @@
       "id": "EVT-012",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "FFI-004: TypeScript policy lifecycle \u00e2\u20ac\u201d PolicyAction match, ConditionType divergence, magic mismatch documented",
+      "title": "FFI-004: TypeScript policy lifecycle â€” PolicyAction match, ConditionType divergence, magic mismatch documented",
       "level": "E2",
       "component": "integration",
-      "description": "Verifies TypeScript policy enums match Zig cross-language contract. PolicyAction: TS ALLOW=0..LOG_ONLY=5 matches Zig. ConditionType: TS has 9 types (SRC_IP=0..TIME_WINDOW=8) vs Zig 6 types (always=0..regex=5) \u00e2\u20ac\u201d DIVERGENCE. Magic: TS POLICY_MAGIC=0x504f4c31 (POL1) vs Zig POLICY_IR_MAGIC=0x504F4C49 (POLI).",
+      "description": "Verifies TypeScript policy enums match Zig cross-language contract. PolicyAction: TS ALLOW=0..LOG_ONLY=5 matches Zig. ConditionType: TS has 9 types (SRC_IP=0..TIME_WINDOW=8) vs Zig 6 types (always=0..regex=5) â€” DIVERGENCE. Magic: TS POLICY_MAGIC=0x504f4c31 (POL1) vs Zig POLICY_IR_MAGIC=0x504F4C49 (POLI).",
       "flow_id": "FFI-004",
       "files_changed": [
         "src/forensic/policy_contract.zig"
@@ -1106,7 +1106,7 @@
       "id": "EVT-013",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "VER-001: Component test closure \u00e2\u20ac\u201d action_dispatcher, policy_ir, correlator, threat_tracker coverage expanded",
+      "title": "VER-001: Component test closure â€” action_dispatcher, policy_ir, correlator, threat_tracker coverage expanded",
       "level": "E2",
       "component": "testing",
       "description": "Added component test coverage for critical modules: action_dispatcher (5 tests covering log/block/alert/quarantine/escalate paths), policy_ir (4 tests covering multiple rules/empty eval/field matching), correlator (3 tests covering independent rules/same source accumulation), threat_tracker (4 tests covering multiple flows/escalation/count tracking).",
@@ -1139,20 +1139,20 @@
       "id": "EVT-014",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "VER-002: System golden path \u00e2\u20ac\u201d full pipeline lifecycle, detection escalation, forensic hash chain",
+      "title": "VER-002: System golden path â€” full pipeline lifecycle, detection escalation, forensic hash chain",
       "level": "E2",
       "component": "testing",
-      "description": "Verifies the complete AEGIS pipeline: event creation \u00e2\u2020\u2019 flow table \u00e2\u2020\u2019 signature matching \u00e2\u2020\u2019 anomaly detection \u00e2\u2020\u2019 threat tracking \u00e2\u2020\u2019 policy evaluation \u00e2\u2020\u2019 PEP enforcement \u00e2\u2020\u2019 action dispatch \u00e2\u2020\u2019 forensic recording. Also tests detection escalation (low\u00e2\u2020\u2019critical), policy\u00e2\u2020\u2019PEP\u00e2\u2020\u2019action chain, and forensic hash chain integrity.",
+      "description": "Verifies the complete AEGIS pipeline: event creation â†’ flow table â†’ signature matching â†’ anomaly detection â†’ threat tracking â†’ policy evaluation â†’ PEP enforcement â†’ action dispatch â†’ forensic recording. Also tests detection escalation (lowâ†’critical), policyâ†’PEPâ†’action chain, and forensic hash chain integrity.",
       "flow_id": "VER-002",
       "files_changed": [
         "src/tests/forensic/test_integration.zig"
       ],
       "tests": [
-        "Full pipeline \u00e2\u20ac\u201d event \u00e2\u2020\u2019 detection \u00e2\u2020\u2019 policy \u00e2\u2020\u2019 PEP \u00e2\u2020\u2019 forensic",
-        "Detection escalation \u00e2\u20ac\u201d low \u00e2\u2020\u2019 medium \u00e2\u2020\u2019 high \u00e2\u2020\u2019 incident",
-        "Policy \u00e2\u2020\u2019 PEP \u00e2\u2020\u2019 Action chain \u00e2\u20ac\u201d block decision",
-        "Policy \u00e2\u2020\u2019 PEP \u00e2\u2020\u2019 Action chain \u00e2\u20ac\u201d allow decision",
-        "Forensic hash chain \u00e2\u20ac\u201d 5 records with SHA-256 linking"
+        "Full pipeline â€” event â†’ detection â†’ policy â†’ PEP â†’ forensic",
+        "Detection escalation â€” low â†’ medium â†’ high â†’ incident",
+        "Policy â†’ PEP â†’ Action chain â€” block decision",
+        "Policy â†’ PEP â†’ Action chain â€” allow decision",
+        "Forensic hash chain â€” 5 records with SHA-256 linking"
       ],
       "result": "PASS"
     },
@@ -1160,7 +1160,7 @@
       "id": "EVT-015",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "VER-003: Fault injection \u00e2\u20ac\u201d deterministic seed, rate boundaries, event corruption, independent tracking",
+      "title": "VER-003: Fault injection â€” deterministic seed, rate boundaries, event corruption, independent tracking",
       "level": "E2",
       "component": "testing",
       "description": "Comprehensive fault injection tests: 0% rate never triggers, 100% rate always triggers, disabled never triggers, event corruption changes bits, multiple fault kinds tracked independently, deterministic seed produces same sequence, counter never overflows, fromEnv respects env var.",
@@ -1185,7 +1185,7 @@
       "id": "EVT-016",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "VER-004: Release checklist \u00e2\u20ac\u201d category verification, progress calculation, signature determinism",
+      "title": "VER-004: Release checklist â€” category verification, progress calculation, signature determinism",
       "level": "E2",
       "component": "testing",
       "description": "Comprehensive release gate tests: empty checklist not ready, build/security/performance/documentation/artifacts categories verified independently, 16/17 not ready, progress percentage calculation, failed checks identification, all categories complete = 100%, signature determinism, different inputs produce different hashes.",
@@ -1213,7 +1213,7 @@
       "id": "EVT-017",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "REL-001: Build reproducibility \u00e2\u20ac\u201d manifest integrity, artifact storage, reproducibility verification, release gate",
+      "title": "REL-001: Build reproducibility â€” manifest integrity, artifact storage, reproducibility verification, release gate",
       "level": "E2",
       "component": "testing",
       "description": "Comprehensive build reproducibility tests: manifest empty/version-only/commit-only not integrity, version+commit = integrity, addArtifact up to 8 with overflow, artifact hash stored correctly, verifyReproducibility requires timestamp/artifacts/hash, ReleaseGate 4/5 not ready, all 5 ready, checklist all passed.\n\nUPDATE (REL-CLOSURE, 2026-10-19 @557b4ce, re-verified): the PATCH-44 module stays a test-graph-only spec reference - its header now says SPEC-REFERENCE ONLY and a pin keeps src/main.zig + src/daemon.zig free of it. The production build-reproducibility / release-manifest implementation is tools/release_engineering.py (build_manifest.json artifact digests + SBOM + --verify/--refresh-digests) with tools/fresh_deploy.py as the preflight (RELEASE-TOOLING + LEFTOVER-SWEEP evidence). The tests in this entry still pass in the zig suite.",
@@ -1243,7 +1243,7 @@
       "id": "EVT-018",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "REL-002: Installer integrity \u00e2\u20ac\u201d manifest, services, drivers, upgrade path, recovery procedures",
+      "title": "REL-002: Installer integrity â€” manifest, services, drivers, upgrade path, recovery procedures",
       "level": "E2",
       "component": "testing",
       "description": "Comprehensive installer integrity tests: manifest empty not integrity, product name only = integrity, addService up to 8 with overflow, addDriver up to 4 with overflow, service/driver fields stored correctly, UpgradePath empty safe, with reboot not safe, RecoveryProcedure priority 0 = critical, addStep up to 8, step fields stored correctly.\n\nUPDATE (REL-CLOSURE, 2026-10-19 @557b4ce, re-verified): PATCH-45 stays a test-graph-only spec reference (SPEC-REFERENCE ONLY header + production-free pin). The production installer path is tools/installer.py (manifest-driven NSIS with services/drivers + upgrade-safety service stop, EVT-221) plus scripts/verify_release.ps1 and scripts/install_aegis.ps1 (RELEASE-TOOLING slice); driver Authenticode/HLK signing remains operator-gated (G4). Tests in this entry still pass in the zig suite.",
@@ -1274,7 +1274,7 @@
       "id": "EVT-019",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "REL-003: Upgrade path \u00e2\u20ac\u201d version handling, upgrade types, migration steps, safety verification",
+      "title": "REL-003: Upgrade path â€” version handling, upgrade types, migration steps, safety verification",
       "level": "E2",
       "component": "testing",
       "description": "Comprehensive upgrade path tests: default is safe in-place upgrade, in-place/migration/fresh install types, addMigrationStep up to 8, migration steps ordered correctly, reboot/backup requirements affect safety, version fields stored correctly, migration step description stored correctly.\n\nUPDATE (REL-CLOSURE, 2026-10-19 @557b4ce, re-verified): PATCH-45 spec reference (see the REL-002 note). The production upgrade story is tools/installer.py's upgrade-safe reinstall (stop service before copy, user data preserved) plus tools/upgrade_rollback.py (runbook RB-005). Tests in this entry still pass in the zig suite.",
@@ -1302,7 +1302,7 @@
       "id": "EVT-020",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "REL-004: Recovery procedures \u00e2\u20ac\u201d priority levels, step management, admin requirement, field storage",
+      "title": "REL-004: Recovery procedures â€” priority levels, step management, admin requirement, field storage",
       "level": "E2",
       "component": "testing",
       "description": "Comprehensive recovery procedure tests: default low priority, critical/high/medium/low priority levels, addStep up to 8 with overflow, steps ordered correctly, requires_admin flag, estimated_time_sec, step name/action stored correctly, empty step count is 0.\n\nUPDATE (REL-CLOSURE, 2026-10-19 @557b4ce, re-verified): PATCH-45 spec reference (see the REL-002 note). Production recovery/rollback procedures live in docs/runbooks/RB-004-restore-from-snapshot.md and RB-005-config-rollback.md; the uninstall paths (NSIS + install_aegis.ps1 -Uninstall) preserve operator configs. Tests in this entry still pass in the zig suite.",
@@ -1330,7 +1330,7 @@
       "id": "EVT-021",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "GAP-001: Policy signature verification \u00e2\u20ac\u201d SHA-256 implementation, signature verification, known-answer tests",
+      "title": "GAP-001: Policy signature verification â€” SHA-256 implementation, signature verification, known-answer tests",
       "level": "E2",
       "component": "rust-pep",
       "description": "Implemented pure Rust SHA-256 hash function and policy signature verification. SHA-256 verified against NIST known-answer tests (empty string, 'abc'). Signature verification checks key lengths, rejects zero keys/signatures, verifies hash matches signature prefix. Ed25519 production verification requires ring crate dependency.",
@@ -1357,7 +1357,7 @@
       "id": "EVT-022",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-09",
-      "title": "GAP-002: WFP enforcement contract \u00e2\u20ac\u201d IP format, DEFCON levels, bridge test verification",
+      "title": "GAP-002: WFP enforcement contract â€” IP format, DEFCON levels, bridge test verification",
       "level": "E2",
       "component": "integration",
       "description": "Documented WFP enforcement contract between Zig and C++. IP format (uint32 big-endian), DEFCON levels (0-5), bridge test verification. C++ implementation uses Windows Firewall (netsh advfirewall). Bridge test passes when run as admin.",
@@ -1609,10 +1609,10 @@
       "id": "EVT-037",
       "head_sha": "60c76fe61e2fc2cfc9e436fa001e2b0788f006f5",
       "timestamp": "2026-09-12",
-      "title": "FOR-003: Full traceability chain \u00e2\u20ac\u201d Incident\u00e2\u2020\u2019Event\u00e2\u2020\u2019Decision\u00e2\u2020\u2019Policy\u00e2\u2020\u2019PEP\u00e2\u2020\u2019Action\u00e2\u2020\u2019Forensic",
+      "title": "FOR-003: Full traceability chain â€” Incidentâ†’Eventâ†’Decisionâ†’Policyâ†’PEPâ†’Actionâ†’Forensic",
       "level": "E3",
       "component": "forensic",
-      "description": "Added incident_id and detection_id fields to IpcEvent struct (src/contract/event.zig) to complete the provenance chain from incident to event. Enables full vertical trace: INCIDENT-ID \u00e2\u2020\u2019 EVENT-ID (event_id) \u00e2\u2020\u2019 DECISION-TRACE (trace_id, policy_id, pep_request_id, enforcement_id, audit_id) \u00e2\u2020\u2019 FORENSIC RECORD (audit_id, record_seq, hash chain). All IDs are u64 monotonic counters embedded in the canonical event wire format (109-byte payload). Cross-language golden vectors (event_v1_001-005.bin) validate semantic equivalence across Zig/Go/C++/Python reading identical .bin fixtures.",
+      "description": "Added incident_id and detection_id fields to IpcEvent struct (src/contract/event.zig) to complete the provenance chain from incident to event. Enables full vertical trace: INCIDENT-ID â†’ EVENT-ID (event_id) â†’ DECISION-TRACE (trace_id, policy_id, pep_request_id, enforcement_id, audit_id) â†’ FORENSIC RECORD (audit_id, record_seq, hash chain). All IDs are u64 monotonic counters embedded in the canonical event wire format (109-byte payload). Cross-language golden vectors (event_v1_001-005.bin) validate semantic equivalence across Zig/Go/C++/Python reading identical .bin fixtures.",
       "flow_id": "FOR-003",
       "files_changed": [
         "src/contract/event.zig",
@@ -1622,19 +1622,19 @@
         "IpcEvent incident_id field present and defaults to 0",
         "IpcEvent detection_id field present and defaults to 0",
         "Golden vector .bin fixtures validated across Zig/Go/C++/Python",
-        "Full pipeline trace: incident \u00e2\u2020\u2019 event \u00e2\u2020\u2019 decision \u00e2\u2020\u2019 forensic record"
+        "Full pipeline trace: incident â†’ event â†’ decision â†’ forensic record"
       ],
       "result": "PASS",
-      "finding": "Traceability chain complete: Incident\u00e2\u2020\u2019Event\u00e2\u2020\u2019Decision\u00e2\u2020\u2019Policy\u00e2\u2020\u2019PEP\u00e2\u2020\u2019Action\u00e2\u2020\u2019Forensic with embedded IDs in canonical event"
+      "finding": "Traceability chain complete: Incidentâ†’Eventâ†’Decisionâ†’Policyâ†’PEPâ†’Actionâ†’Forensic with embedded IDs in canonical event"
     },
     {
       "id": "EVT-038",
       "head_sha": "60c76fe61e2fc2cfc9e436fa001e2b0788f006f5",
       "timestamp": "2026-09-12",
-      "title": "FOR-004: Windows WFP enforcement verified \u00e2\u20ac\u201d Rust PEP \u00e2\u2020\u2019 WFP adapter bridge test 36/36 pass",
+      "title": "FOR-004: Windows WFP enforcement verified â€” Rust PEP â†’ WFP adapter bridge test 36/36 pass",
       "level": "E5",
       "component": "rust-pep",
-      "description": "WFP enforcement verified via Rust PEP \u00e2\u2020\u2019 WFP adapter bridge test on Windows host. Bridge test 36/36 pass confirms: (1) Rust PEP aegis_pep_enforce() successfully loads WFP adapter and blocks IP via FwpmFilterAdd0, (2) DEFCON levels 0-5 computed correctly, (3) Block/Unblock IP operations verified, (4) No Zig\u00e2\u2020\u2019WFP IOCTL bypass exists (GAP-011 CLOSED), (5) Rust PEP is sole enforcement authority (GAP-011 invariant). The aegis_pep_enforce() function on Windows: decides DECISION_BLOCK \u00e2\u2020\u2019 calls wfp_adapter::Adapter::load() \u00e2\u2020\u2019 adapter.block(src_ip) via FFI \u00e2\u2020\u2019 FwpmFilterAdd0. Authority invariant: Rust PEP is sole enforcement authority; no other component may claim WFP enforcement (GAP-011 CLOSED, EVT-039).",
+      "description": "WFP enforcement verified via Rust PEP â†’ WFP adapter bridge test on Windows host. Bridge test 36/36 pass confirms: (1) Rust PEP aegis_pep_enforce() successfully loads WFP adapter and blocks IP via FwpmFilterAdd0, (2) DEFCON levels 0-5 computed correctly, (3) Block/Unblock IP operations verified, (4) No Zigâ†’WFP IOCTL bypass exists (GAP-011 CLOSED), (5) Rust PEP is sole enforcement authority (GAP-011 invariant). The aegis_pep_enforce() function on Windows: decides DECISION_BLOCK â†’ calls wfp_adapter::Adapter::load() â†’ adapter.block(src_ip) via FFI â†’ FwpmFilterAdd0. Authority invariant: Rust PEP is sole enforcement authority; no other component may claim WFP enforcement (GAP-011 CLOSED, EVT-039).",
       "flow_id": "FOR-004",
       "files_changed": [
         "src/policy/pep_bindings.zig",
@@ -1642,11 +1642,11 @@
         "drivers/wfp_callout/aegis_wfp.c"
       ],
       "tests": [
-        "Bridge test 36/36 pass: Rust PEP \u00e2\u2020\u2019 WFP adapter \u00e2\u2020\u2019 FwpmFilterAdd0",
+        "Bridge test 36/36 pass: Rust PEP â†’ WFP adapter â†’ FwpmFilterAdd0",
         "DEFCON levels 0-5 computed correctly",
         "Block IP 192.168.1.1 via Windows Firewall succeeds",
         "Unblock IP 192.168.1.1 succeeds",
-        "GAP-011 invariant: no Zig\u00e2\u2020\u2019WFP direct IOCTL call",
+        "GAP-011 invariant: no Zigâ†’WFP direct IOCTL call",
         "Rust PEP is sole enforcement authority"
       ],
       "result": "PASS",
@@ -1656,10 +1656,10 @@
       "id": "EVT-039",
       "head_sha": "60c76fe61e2fc2cfc9e436fa001e2b0788f006f5",
       "timestamp": "2026-09-12",
-      "title": "PY-001: Python Brain security boundaries \u00e2\u20ac\u201d T8 invariant, recommend/explain/enrich only, NO authorize/enforce/WFP",
+      "title": "PY-001: Python Brain security boundaries â€” T8 invariant, recommend/explain/enrich only, NO authorize/enforce/WFP",
       "level": "E3",
       "component": "brain",
-      "description": "Python Brain (Tier-2 RAG/analytics) enforces T8 architectural invariant: NO path to enforcement except through Rust PEP (ADR-0001). Brain may recommend, explain, and enrich threat context. Brain MAY NOT authorize, enforce, or touch WFP. All block requests route through aegisctl \u00e2\u2020\u2019 IPC \u00e2\u2020\u2019 dispatcher \u00e2\u2020\u2019 rust_pep_integration \u00e2\u2020\u2019 aegis_pep_evaluate. Direct netsh/iptables/bridge.block_ip calls have been removed. The brain's apply_firewall_block() is a thin wrapper that requests enforcement via PEP; it never executes enforcement directly. Cross-language golden vectors validate that identical .bin fixtures produce identical semantic output across Zig/Go/C++/Python reading the canonical event.",
+      "description": "Python Brain (Tier-2 RAG/analytics) enforces T8 architectural invariant: NO path to enforcement except through Rust PEP (ADR-0001). Brain may recommend, explain, and enrich threat context. Brain MAY NOT authorize, enforce, or touch WFP. All block requests route through aegisctl â†’ IPC â†’ dispatcher â†’ rust_pep_integration â†’ aegis_pep_evaluate. Direct netsh/iptables/bridge.block_ip calls have been removed. The brain's apply_firewall_block() is a thin wrapper that requests enforcement via PEP; it never executes enforcement directly. Cross-language golden vectors validate that identical .bin fixtures produce identical semantic output across Zig/Go/C++/Python reading the canonical event.",
       "flow_id": "PY-001",
       "files_changed": [
         "brain/windows_brain.py",
@@ -1667,18 +1667,18 @@
         "tests/cython/test_cython_correctness.py"
       ],
       "tests": [
-        "T8 invariant: brain block routes via aegisctl \u00e2\u2020\u2019 Rust PEP, never direct WFP",
+        "T8 invariant: brain block routes via aegisctl â†’ Rust PEP, never direct WFP",
         "apply_firewall_block() returns ACCEPTED/REJECTED/DEFERRED/FAILED/NO_OP, never direct mutation",
         "No netsh/iptables/bridge.block_ip calls in brain main loop",
         "Golden vector .bin fixtures validated across Zig/Go/C++/Python",
-        "RAG lookup + threat context \u00e2\u2020\u2019 confidence score \u00e2\u2020\u2019 decision input (advisory only)"
+        "RAG lookup + threat context â†’ confidence score â†’ decision input (advisory only)"
       ],
       "result": "PASS",
       "finding": "Python Brain T8 invariant enforced: advisory-only, recommend/explain/enrich only, NO authorize/enforce/WFP. Code audit confirms no bypass paths."
     },
     {
       "id": "WEB-001",
-      "title": "UI-001: Web Dashboard \u2014 control_api JSON endpoints",
+      "title": "UI-001: Web Dashboard — control_api JSON endpoints",
       "level": "E1",
       "component": "ui",
       "description": "Minimal web dashboard reading from control_api JSON endpoints. CLI, TUI, and Web all read from same control_api truth source. No duplicated business logic. Classification: SUPPORT (optional/release-path).",
@@ -3214,7 +3214,7 @@
       "flow_id": "DATA-001",
       "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/e5_arbiter_swap_verified.ps1 (elevated)",
       "expected": "Observe npcap_primary baseline, takeover to kernel_fallback after Nose stops, and handback to npcap_primary after Nose restarts with -capture; Nose frames and kernel shadow rows advance; gate remains closed.",
-      "actual": "PASS. Baseline npcap_primary: Nose frames read/submitted 2,759,222/1,625,952 and shadow_rows=181,734. After stop: kernel_fallback, reason=nose_absent, kernel_owned=true. After restart with -capture: npcap_primary, Nose frames read/submitted 2,759,284/1,626,014 (+62/+62), shadow_rows=181,747 (+13). WFP rows 3,086\u21923,088; WFP dropped stayed 8. prevention_gate was closed before and after; host_effect_capable=false after; gate=true. No enforcement action was requested or confirmed.",
+      "actual": "PASS. Baseline npcap_primary: Nose frames read/submitted 2,759,222/1,625,952 and shadow_rows=181,734. After stop: kernel_fallback, reason=nose_absent, kernel_owned=true. After restart with -capture: npcap_primary, Nose frames read/submitted 2,759,284/1,626,014 (+62/+62), shadow_rows=181,747 (+13). WFP rows 3,086→3,088; WFP dropped stayed 8. prevention_gate was closed before and after; host_effect_capable=false after; gate=true. No enforcement action was requested or confirmed.",
       "result": "PASS",
       "files_verified": [
         "src/capture/source_arbiter.zig",
@@ -4321,7 +4321,7 @@
       "level": "E1",
       "component": "Windows host and isolated VMware lab",
       "flow_id": "RB-021",
-      "description": "Read-only checks found VMnet1 up at 192.168.126.1, Npcap and AegisNids running, zero running VMs, no machine AEGIS_DAEMON_IFACE pin, and a non-elevated session. RB-021 \u00a72 requires Admin to pin VMnet1 and restart the service.",
+      "description": "Read-only checks found VMnet1 up at 192.168.126.1, Npcap and AegisNids running, zero running VMs, no machine AEGIS_DAEMON_IFACE pin, and a non-elevated session. RB-021 §2 requires Admin to pin VMnet1 and restart the service.",
       "files_verified": [
         "docs/runbooks/RB-021-hostonly-lab-proof.md"
       ],
@@ -4780,6 +4780,29 @@
         "E2 only; no native Windows helper stress, service stop/start, Page Heap, or historical crash attribution.",
         "If native stop continues to fail through final owner cleanup, the retained native session may remain active until process exit."
       ]
+    },
+    {
+      "id": "FIM-PROBE-IDENTITY-COMMENT-001-E2-20261109",
+      "title": "FIM timestamp duplicate probe is explicitly measurement-only and never suppresses observations",
+      "level": "E2",
+      "component": "src/pipeline/fim_dedup.zig; src/capture/minifilter_reader.zig",
+      "flow_id": "QLOSS-HEALTH-001",
+      "head_sha": "795246d7b4794b11c9b45e0b17a43c6cb219602a",
+      "timestamp": "2026-11-09",
+      "result": "PASS_E2",
+      "files_verified": [
+        "src/pipeline/fim_dedup.zig",
+        "src/capture/minifilter_reader.zig",
+        "analysis/current-head/FIM-PROBE-IDENTITY-COMMENT-001-20261109.md"
+      ],
+      "tests": [
+        "zig test src/pipeline/fim_dedup.zig: 7 passed",
+        "zig build: PASS",
+        "git diff --check: PASS"
+      ],
+      "actual": "Timestamp equality is documented only as a repeated measurement key/candidate signal. No event is suppressed; the producer does not currently prove callback identity from timestamp alone.",
+      "impact": "Removes a source/documentation contradiction against the open #29 identity stop-line. Does not solve telemetry loss or qualify coalescing.",
+      "next_step": "Establish stable producer identity or pursue a lossless capacity/throughput/admission change, then repeat comparable Windows evidence before changing event retention."
     }
   ],
   "known_gaps": [
@@ -4809,7 +4832,7 @@
       "closed_at": "2026-09-10",
       "closed_by": "EVT-026",
       "required_evidence": [
-        "PEP authorization \u00e2\u2020\u2019 filter operation \u00e2\u2020\u2019 observed network effect \u00e2\u2020\u2019 rollback"
+        "PEP authorization â†’ filter operation â†’ observed network effect â†’ rollback"
       ],
       "resolution": "WFP enforcement verified on Windows host via bridge test. Block/unblock IP via Windows Firewall succeeds. 36/36 bridge tests pass.",
       "evidence": "EVT-026: Bridge test 36/36 pass. Test 9: IPS Block/Unblock verified on Windows host. Block IP 192.168.1.1 via Windows Firewall succeeds. Unblock IP 192.168.1.1 succeeds.",
@@ -4843,13 +4866,13 @@
       "description": "Forensic ring buffer concurrent read safety not proven with real Windows threads.",
       "status": "CLOSED_BY_EVT-008",
       "closed_at": "2026-09-09",
-      "evidence": "EVT-008: Three concurrent tests pass \u00e2\u20ac\u201d 4-thread append, concurrent read+write, dual-thread wrap with per-record verification"
+      "evidence": "EVT-008: Three concurrent tests pass â€” 4-thread append, concurrent read+write, dual-thread wrap with per-record verification"
     },
     {
       "id": "GAP-004",
       "severity": "P2",
       "title": "aegis_fim_helper.dll linker error",
-      "description": "C++ FIM helper DLL not built \u00e2\u20ac\u201d linker error for missing symbol. Out of scope for Zig code.",
+      "description": "C++ FIM helper DLL not built â€” linker error for missing symbol. Out of scope for Zig code.",
       "status": "CLOSED",
       "closed_at": "2026-09-10",
       "resolution": "C++ components built successfully using cmake. aegis_adapter.dll, aegis_ipc.dll, aegis_fim_helper.dll, and selftest executables produced. Adapter selftest passes.",
@@ -4863,7 +4886,7 @@
       "id": "EVT-023",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-10",
-      "title": "V2: Control Truth \u00e2\u20ac\u201d control pipe contract verified, CLI commands match runtime",
+      "title": "V2: Control Truth â€” control pipe contract verified, CLI commands match runtime",
       "level": "E2",
       "component": "control-plane",
       "description": "Verified control pipe contract: named pipe path matches between Zig runtime and Python CLI. All 8 control commands verified. CLI-only commands (start/stop/restart/version/logs/backup/restore) documented as process management.",
@@ -4884,7 +4907,7 @@
       "id": "EVT-024",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-10",
-      "title": "V4: Policy/Crypto Truth \u00e2\u20ac\u201d Ed25519 production verification implemented with ring crate",
+      "title": "V4: Policy/Crypto Truth â€” Ed25519 production verification implemented with ring crate",
       "level": "E2",
       "component": "rust-pep",
       "description": "Implemented real Ed25519 verification using ring crate. SHA-256 hash comparison replaced with actual Ed25519 elliptic curve math. Three new tests verify: correct signing, wrong data rejection, wrong key rejection.",
@@ -4905,7 +4928,7 @@
       "id": "EVT-025",
       "head_sha": "e6de1ae",
       "timestamp": "2026-09-10",
-      "title": "RT-01 through RT-08: Repository Truth Stabilization complete \u00e2\u20ac\u201d all machine maps synchronized",
+      "title": "RT-01 through RT-08: Repository Truth Stabilization complete â€” all machine maps synchronized",
       "level": "E1",
       "component": "repository",
       "description": "Completed RT-01 (Build Truth), RT-02 (Source Registry), RT-03 (Entry Point Convergence), RT-04 (Documentation Truth), RT-05 (Machine Map Validation), RT-06 (Authority Truth), RT-07 (Contract Truth), RT-08 (File Classification). All HEAD SHAs updated to current. All file references verified. 13 unclassified files classified.",
@@ -4982,7 +5005,7 @@
       "resolution": "CLOSED d0bd1a0 (EVT-103): clean-clone --verify green (597 present, 36 missing build outputs by design, 0 mismatches).",
       "closed_by": "EVT-102+EVT-103",
       "closed_at": "2026-10-08",
-      "evidence": "EVT-031 fixed the inventory generator. EVT-093 settled the rule (hybrid). ADOPTED a871a32 (EVT-102): regenerated 633-entry set committed and green (bridge 13, src 286, configs 26, nose 27, rust-src 2); grandfather retired. Clean-clone verify green at d0bd1a0 (EVT-103) \u2014 gap fully closed."
+      "evidence": "EVT-031 fixed the inventory generator. EVT-093 settled the rule (hybrid). ADOPTED a871a32 (EVT-102): regenerated 633-entry set committed and green (bridge 13, src 286, configs 26, nose 27, rust-src 2); grandfather retired. Clean-clone verify green at d0bd1a0 (EVT-103) — gap fully closed."
     },
     {
       "id": "GAP-009",
@@ -4998,7 +5021,7 @@
       "resolution": "CLOSED 2026-10-09 (EVT-118): all workers flags live and true in deployed-service health (etw/fim/registry/nose/pipeline/sensor_ready, zero failures); Npcap proven live earlier (43,835 packets/15s, EVT-089/CAP-E2E-177); ETW proven live now (source=10 records flowing in the forensic ring, ring growing ~1000 records between consecutive queries); FIM System32/SysWOW64 watches plus registry events observed live in the daemon log. The elevation-era symptoms that defined this gap are gone on the current deployment.",
       "closed_by": "EVT-081+EVT-089+EVT-118",
       "closed_at": "2026-10-09",
-      "evidence": "EVT-034 records checks[] detail capability-only. EVT-081 bounds the elevation remainder. EVT-091 (ETW-GUID-180) statically closes the ETW leg \u2014 GUIDs and classifier gates pinned to host ground truth, silent-loss issue filed as GAP-012 \u2014 live ETW records still blocked on redeploy.",
+      "evidence": "EVT-034 records checks[] detail capability-only. EVT-081 bounds the elevation remainder. EVT-091 (ETW-GUID-180) statically closes the ETW leg — GUIDs and classifier gates pinned to host ground truth, silent-loss issue filed as GAP-012 — live ETW records still blocked on redeploy.",
       "historical_disposition": "HISTORICAL_ONLY: the 2026-10-09 deployment snapshot does not establish current-head host behavior; current Windows E5 and kernel-driver production qualification remain open."
     },
     {
@@ -5038,7 +5061,7 @@
       "id": "GAP-011",
       "severity": "P0",
       "title": "Zig reaches the WFP IOCTL directly, bypassing the Rust PEP",
-      "description": "Audit confirmed no bypass exists. wfp_ioctl.zig defines zero write IOCTLs (read-only telemetry). All block_ip() calls route through rust_pep \u00e2\u2020\u2019 PEP FFI. GENERIC_WRITE removed from device open.",
+      "description": "Audit confirmed no bypass exists. wfp_ioctl.zig defines zero write IOCTLs (read-only telemetry). All block_ip() calls route through rust_pep â†’ PEP FFI. GENERIC_WRITE removed from device open.",
       "status": "CLOSED",
       "required_evidence": [
         "a single call path to the WFP IOCTL, routed through the PEP",
@@ -5052,7 +5075,7 @@
       "id": "GAP-012",
       "severity": "P0",
       "title": "STOP-THE-LINE: ETW enabled non-existent provider GUIDs, so etw_ready=true while silently losing every event",
-      "description": "All 9 provider GUID constants in src/windows/etw_realtime.zig (6 live-path: PROVIDER_KERNEL_*_RT enable bytes + KERNEL_*_GUID classification bytes; 3 dormant: network/thread/image) failed membership against the reference host's 1,158 registered ETW providers in BOTH byte orders \u2014 18/18 negative lookups \u2014 while the four ground-truth GUIDs passed as controls (4/4 positive) and appear nowhere in the source. EnableTraceEx2 accepts a non-existent GUID silently, so the daemon reported etw_ready=True with zero host_telemetry events: the forensic ring held 135k+ file_sensor/registry_sensor records and zero source=10 records. A second silent-loss defect sat in the classifier: the Kernel-Registry gate on Id 0x0E/0x0F selected QuerySecurityKey/SetSecurityKey (ACL operations, wevtutil gp opcodes 45/46), not the configured registry_set_value/registry_create_key (Id 5/Id 1), and the Kernel-File gate 0x0A/0x0B (NameCreate/NameDelete) omitted Write (Id 16), so file_modify could never fire.",
+      "description": "All 9 provider GUID constants in src/windows/etw_realtime.zig (6 live-path: PROVIDER_KERNEL_*_RT enable bytes + KERNEL_*_GUID classification bytes; 3 dormant: network/thread/image) failed membership against the reference host's 1,158 registered ETW providers in BOTH byte orders — 18/18 negative lookups — while the four ground-truth GUIDs passed as controls (4/4 positive) and appear nowhere in the source. EnableTraceEx2 accepts a non-existent GUID silently, so the daemon reported etw_ready=True with zero host_telemetry events: the forensic ring held 135k+ file_sensor/registry_sensor records and zero source=10 records. A second silent-loss defect sat in the classifier: the Kernel-Registry gate on Id 0x0E/0x0F selected QuerySecurityKey/SetSecurityKey (ACL operations, wevtutil gp opcodes 45/46), not the configured registry_set_value/registry_create_key (Id 5/Id 1), and the Kernel-File gate 0x0A/0x0B (NameCreate/NameDelete) omitted Write (Id 16), so file_modify could never fire.",
       "status": "CLOSED",
       "required_evidence": [
         "every enabled provider GUID constant matches a host-registered provider (logman membership)",
@@ -5070,7 +5093,7 @@
       "id": "GAP-013",
       "severity": "P0",
       "title": "Segfaults from freeing non-owned memory (envOr literal, g_uplink stack pointer, handler literals)",
-      "description": "One bug class, three sites. (1) src/federation/cluster_uplink.zig::envOr returned the static default literal on getEnvVarOwned failure while every configFromEnv caller frees unconditionally: freeing non-heap memory segfaulted inside page_allocator.free during daemon startup (configFromEnv -> initFromEnv -> runDaemon), exit 2147483651 before the control pipe existed whenever AEGIS_CLUSTOM was absent. This single crash explains both live failures in the 84d25fd gate run: test_core_reaches_running timed out and test_status_json_carries_traffic_gauges saw only the key-less diagnostic fallback. (2) Same function stored &uplink (stack local) into global g_uplink: use-after-free on first publish when enabled. (3) src/control/handler_registry.zig returned static literals from 6 handlers (version, forensicsRead-empty, forensicsVerify-absent, logsTail-empty, federationStatus-standalone, daemonShutdown) while tests \u2014 and the natural caller contract \u2014 free unconditionally: test.exe aborted in 'logsTail returns entries when the forensic log exists' on an empty log file, hiding all later tests. Same-area audit: all other getEnvVarOwned sites free only on success; production dispatch never frees (pre-existing per-request leak, unchanged). A separate self-inflicted wound: EVIDENCE_INDEX.json line 1396 carried unescaped \"build\" quotes inside the GAP-008 description (added with EVT-093), breaking JSON parsing \u2014 invisible because no pytest test parses the index (truth.py reported NO_SHA, still TRUTH_VALID non-strict).",
+      "description": "One bug class, three sites. (1) src/federation/cluster_uplink.zig::envOr returned the static default literal on getEnvVarOwned failure while every configFromEnv caller frees unconditionally: freeing non-heap memory segfaulted inside page_allocator.free during daemon startup (configFromEnv -> initFromEnv -> runDaemon), exit 2147483651 before the control pipe existed whenever AEGIS_CLUSTOM was absent. This single crash explains both live failures in the 84d25fd gate run: test_core_reaches_running timed out and test_status_json_carries_traffic_gauges saw only the key-less diagnostic fallback. (2) Same function stored &uplink (stack local) into global g_uplink: use-after-free on first publish when enabled. (3) src/control/handler_registry.zig returned static literals from 6 handlers (version, forensicsRead-empty, forensicsVerify-absent, logsTail-empty, federationStatus-standalone, daemonShutdown) while tests — and the natural caller contract — free unconditionally: test.exe aborted in 'logsTail returns entries when the forensic log exists' on an empty log file, hiding all later tests. Same-area audit: all other getEnvVarOwned sites free only on success; production dispatch never frees (pre-existing per-request leak, unchanged). A separate self-inflicted wound: EVIDENCE_INDEX.json line 1396 carried unescaped \"build\" quotes inside the GAP-008 description (added with EVT-093), breaking JSON parsing — invisible because no pytest test parses the index (truth.py reported NO_SHA, still TRUTH_VALID non-strict).",
       "status": "CLOSED",
       "required_evidence": [
         "zig build test green including the new FED-UPLINK-095 ownership pin",
@@ -5080,7 +5103,7 @@
         "EVIDENCE_INDEX.json parses as JSON (one-liner check green)",
         "no other free-literal pattern remains (env + handler literals audited)"
       ],
-      "resolution": "CLOSED 2026-10-08 by operator gate run: JSON one-liner green (E1=18, E2=68), zig build + zig build test clean with no test.exe abort, targeted pytest 2 passed \u2014 core reaches RUNNING on the default path (envOr crash gone) and status carries gauges. EVT-095 (envOr + g_uplink), EVT-096 (LIT-FREE-096 + JSON repair + build-before-test protocol), EVT-097 (diagnostic gauges).",
+      "resolution": "CLOSED 2026-10-08 by operator gate run: JSON one-liner green (E1=18, E2=68), zig build + zig build test clean with no test.exe abort, targeted pytest 2 passed — core reaches RUNNING on the default path (envOr crash gone) and status carries gauges. EVT-095 (envOr + g_uplink), EVT-096 (LIT-FREE-096 + JSON repair + build-before-test protocol), EVT-097 (diagnostic gauges).",
       "closed_by": "EVT-095+EVT-096+EVT-097",
       "closed_at": "2026-10-08",
       "evidence": "Operator execution transcript 2026-10-08 (2 passed in 1.04s; digests updated: tools/aegisctl/api/control_api.py only)."
@@ -5089,7 +5112,7 @@
       "id": "GAP-014",
       "severity": "P2",
       "title": "Release manifest records files outside version control (untracked local files)",
-      "description": "The clean-clone experiment for GAP-008 bullet 3 revealed a narrower remainder: running --refresh-digests inside the fresh clone dropped 36 entries whose files a complete clone (1737 files, 100%) does not contain, i.e. they are untracked in git \u2014 nose/.pytest_cache (3), scripts/*.bak (2), scripts/gen_kali_22.py, scripts/kali_attack_nids.py, 30 scripts/kali_attacks/* attack scripts, shield/Cargo.lock, tools/legacy/rust_shield_orphan_quarantined/Cargo.lock, and 4 generated brain/cython/*.c files. The walk sees the working tree including untracked files, so local-only files gain provenance entries. Gates stay green regardless (--verify counts missing as not-built-locally), so this is provenance completeness, not a drift failure.",
+      "description": "The clean-clone experiment for GAP-008 bullet 3 revealed a narrower remainder: running --refresh-digests inside the fresh clone dropped 36 entries whose files a complete clone (1737 files, 100%) does not contain, i.e. they are untracked in git — nose/.pytest_cache (3), scripts/*.bak (2), scripts/gen_kali_22.py, scripts/kali_attack_nids.py, 30 scripts/kali_attacks/* attack scripts, shield/Cargo.lock, tools/legacy/rust_shield_orphan_quarantined/Cargo.lock, and 4 generated brain/cython/*.c files. The walk sees the working tree including untracked files, so local-only files gain provenance entries. Gates stay green regardless (--verify counts missing as not-built-locally), so this is provenance completeness, not a drift failure.",
       "status": "CLOSED",
       "required_evidence": [
         "walk records only git-tracked files, or untracked inclusion is explicitly declared with a reason per category",
@@ -5105,7 +5128,7 @@
       "id": "GAP-015",
       "severity": "P0",
       "title": "STOP-THE-LINE: storm bursts still drop ~35% of ETW events post-fix; volume control required",
-      "description": "P0 REINSTATED (EVT-127): the G1 instrument caught a live storm on the G2 build \u2014 ETW dropped 687,738 of 1,966,916 pushed (35%), FIM 10, registry 7, pipe 0, while earlier soaks showed 0 (storms are bursty; spot checks miss them). Likely self-inflicted this time (overlapping cargo/zig/pytest builds + live GUIs churning target/ and .zig-cache = ETW file-write storm), which only proves the point: any busy host can do this. The matchFirst tail fix + 16k queue did NOT survive storm load. What still stands: per-source accounting (caught it), zero drops outside storms, fixture loop green (R9059 records 398143/418425/422786), p95 data flowing. Required evidence narrowed to the real fix: ETW volume control that preserves R1001/R1004 detection, proven by a storm soak with drops ~0 and detections preserved, plus the p95 tail driver identified.",
+      "description": "P0 REINSTATED (EVT-127): the G1 instrument caught a live storm on the G2 build — ETW dropped 687,738 of 1,966,916 pushed (35%), FIM 10, registry 7, pipe 0, while earlier soaks showed 0 (storms are bursty; spot checks miss them). Likely self-inflicted this time (overlapping cargo/zig/pytest builds + live GUIs churning target/ and .zig-cache = ETW file-write storm), which only proves the point: any busy host can do this. The matchFirst tail fix + 16k queue did NOT survive storm load. What still stands: per-source accounting (caught it), zero drops outside storms, fixture loop green (R9059 records 398143/418425/422786), p95 data flowing. Required evidence narrowed to the real fix: ETW volume control that preserves R1001/R1004 detection, proven by a storm soak with drops ~0 and detections preserved, plus the p95 tail driver identified.",
       "status": "CLOSED",
       "diagnosis": "DIAGNOSED 2026-10-09 (EVT-121): ETW firehose (verbose, zero keyword filter, per-record push, no sampling/dedup) + FIM second (recursive System32/SysWOW64, double-counts ETW file events); registry capped ~4/s but ETW registry uncapped; nose zero live. Consumer: forensic append (SHA-256+CRC per 4KB record under shared ring mutex), per-event page-allocator AC match (since replaced by matchFirst, EVT-122), unconditional AUDIT line; PEP/SIEM/brain exonerated. Full text in EVT-121.",
       "required_evidence": [
@@ -5188,21 +5211,21 @@
       "id": "EVT-039",
       "head_sha": "60c76fe61e2fc2cfc9e436fa001e2b0788f006f5",
       "timestamp": "2026-09-12",
-      "title": "GAP-011 CLOSED: Zig\u00e2\u2020\u2019WFP IOCTL bypass removed, GENERIC_WRITE hardened",
+      "title": "GAP-011 CLOSED: Zigâ†’WFP IOCTL bypass removed, GENERIC_WRITE hardened",
       "level": "E1",
       "component": "policy",
-      "description": "Audit confirmed no Zig\u00e2\u2020\u2019WFP bypass exists. wfp_ioctl.zig defines zero write IOCTLs (read-only telemetry only). All block_ip() calls go through rust_pep.block_ip() \u00e2\u2020\u2019 pep_bindings.enforce() \u00e2\u2020\u2019 FFI \u00e2\u2020\u2019 aegis_pep.dll. GENERIC_WRITE removed from device open (hardening). GAP-011 is CLOSED.",
+      "description": "Audit confirmed no Zigâ†’WFP bypass exists. wfp_ioctl.zig defines zero write IOCTLs (read-only telemetry only). All block_ip() calls go through rust_pep.block_ip() â†’ pep_bindings.enforce() â†’ FFI â†’ aegis_pep.dll. GENERIC_WRITE removed from device open (hardening). GAP-011 is CLOSED.",
       "flow_id": "GAP-011",
       "files_changed": [
         "src/policy/wfp_ioctl.zig"
       ],
       "tests": [
         "Static audit: wfp_ioctl.zig defines zero write IOCTLs",
-        "Static audit: all block_ip() call sites route through rust_pep \u00e2\u2020\u2019 PEP FFI",
+        "Static audit: all block_ip() call sites route through rust_pep â†’ PEP FFI",
         "Static audit: only rust_pep.zig imports wfp_ioctl (read-only functions only)"
       ],
       "result": "PASS",
-      "finding": "GAP-011 CLOSED. No Zig\u00e2\u2020\u2019WFP bypass exists. GENERIC_WRITE removed from device handle. Authority invariant verified: Rust PEP is sole enforcement authority."
+      "finding": "GAP-011 CLOSED. No Zigâ†’WFP bypass exists. GENERIC_WRITE removed from device handle. Authority invariant verified: Rust PEP is sole enforcement authority."
     },
     {
       "id": "EVT-040",
@@ -5211,23 +5234,23 @@
       "title": "E3-001..008: Data Plane Golden Path integration tests (first E3 evidence)",
       "level": "E3",
       "component": "pipeline",
-      "description": "8 integration tests proving component boundaries work together: CanonicalEvent\u00e2\u2020\u2019nose_contract round-trip (E3-001), batch FIFO ordering (E3-002), event\u00e2\u2020\u2019policy_ir evaluate (E3-003), detection\u00e2\u2020\u2019threat_tracker incident creation (E3-004), forensic ring hash chain integrity (E3-005), tier3_state enforcement gate (E3-006), PEP detection-only mode (E3-007), full golden path event\u00e2\u2020\u2019pipeline\u00e2\u2020\u2019forensic record (E3-008). First E3 evidence in the repository.",
+      "description": "8 integration tests proving component boundaries work together: CanonicalEventâ†’nose_contract round-trip (E3-001), batch FIFO ordering (E3-002), eventâ†’policy_ir evaluate (E3-003), detectionâ†’threat_tracker incident creation (E3-004), forensic ring hash chain integrity (E3-005), tier3_state enforcement gate (E3-006), PEP detection-only mode (E3-007), full golden path eventâ†’pipelineâ†’forensic record (E3-008). First E3 evidence in the repository.",
       "flow_id": "GOLDEN-PATH",
       "files_changed": [
         "src/tests/integration/golden_path_e3.zig"
       ],
       "tests": [
-        "E3-001: CanonicalEvent \u00e2\u2020\u2019 nose_contract submit/pop round-trip",
-        "E3-002: Batch 8 events \u00e2\u2020\u2019 nose_contract preserves FIFO order",
-        "E3-003: Event \u00e2\u2020\u2019 policy_ir evaluate produces block action",
-        "E3-004: Detection \u00e2\u2020\u2019 threat_tracker creates incident on threshold",
-        "E3-005: Forensic ring 5 records \u00e2\u2020\u2019 hash chain intact",
+        "E3-001: CanonicalEvent â†’ nose_contract submit/pop round-trip",
+        "E3-002: Batch 8 events â†’ nose_contract preserves FIFO order",
+        "E3-003: Event â†’ policy_ir evaluate produces block action",
+        "E3-004: Detection â†’ threat_tracker creates incident on threshold",
+        "E3-005: Forensic ring 5 records â†’ hash chain intact",
         "E3-006: Tier-3 state gates enforcement (absent/ready/failed)",
         "E3-007: PEP detection-only mode returns allow",
-        "E3-008: Full golden path event\u00e2\u2020\u2019queue\u00e2\u2020\u2019detection\u00e2\u2020\u2019forensic record"
+        "E3-008: Full golden path eventâ†’queueâ†’detectionâ†’forensic record"
       ],
       "result": "PASS",
-      "finding": "E3_count: 0\u00e2\u2020\u20198. First E3 evidence in repository. All 8 integration tests pass. Golden path verified at component integration level."
+      "finding": "E3_count: 0â†’8. First E3 evidence in repository. All 8 integration tests pass. Golden path verified at component integration level."
     },
     {
       "id": "P0-POSTURE-001",
@@ -6166,7 +6189,7 @@
       "title": "ETW-GUID-180: provider GUIDs and classifier gates pinned to host ground truth; silent-loss issue filed as GAP-012",
       "level": "E2",
       "component": "zig_core",
-      "description": "Host probes first: `logman query providers` membership check of all 9 pre-fix GUID constants in string AND memory order \u2014 18/18 negative, 4/4 truth controls positive (Process {22FB2CD6-0E7B-422B-A0C7-2FAD1FD0E716}, File {EDD08927-9CC4-4E65-B970-C2560FB5C289}, Registry {70EB4F03-C1DE-4F73-A051-33D13D5413BD}, Network {7DD42A49-5329-4832-8DFD-43D979153A88}); `wevtutil gp` supplied gate ground truth \u2014 Kernel-File tasks 10=NameCreate/11=NameDelete/16=Write; Kernel-Registry opcodes 32..46=CreateKey..SetSecurityKey (so the old Id 0x0E/0x0F gate selected Query/SetSecurityKey ACL ops, refuted against config intent); Kernel-Process tasks 1=ProcessStart/2=ProcessStop/3=ThreadStart/5=ImageLoad (thread+image events arrive under Kernel-Process, kw 0x20/0x40). Fix: 4 GUIDs pinned to memory-order truth bytes (uuid bytes_le, hand-derived, negative control for string order), RT enable bytes and classification bytes now derive from one definition each, Thread/Image marked UNVERIFIED and never-enabled (no host registration to pin), classifier extracted to classifyEtwEvent with gates process 1/2, file 0x0A/0x0B/0x10, registry 1/5, fabricated GUID strings in configs/test/etw_realtime_config.json replaced with registered GUIDs. STOP-THE-LINE filed as GAP-012 (etw_ready=true with zero events).",
+      "description": "Host probes first: `logman query providers` membership check of all 9 pre-fix GUID constants in string AND memory order — 18/18 negative, 4/4 truth controls positive (Process {22FB2CD6-0E7B-422B-A0C7-2FAD1FD0E716}, File {EDD08927-9CC4-4E65-B970-C2560FB5C289}, Registry {70EB4F03-C1DE-4F73-A051-33D13D5413BD}, Network {7DD42A49-5329-4832-8DFD-43D979153A88}); `wevtutil gp` supplied gate ground truth — Kernel-File tasks 10=NameCreate/11=NameDelete/16=Write; Kernel-Registry opcodes 32..46=CreateKey..SetSecurityKey (so the old Id 0x0E/0x0F gate selected Query/SetSecurityKey ACL ops, refuted against config intent); Kernel-Process tasks 1=ProcessStart/2=ProcessStop/3=ThreadStart/5=ImageLoad (thread+image events arrive under Kernel-Process, kw 0x20/0x40). Fix: 4 GUIDs pinned to memory-order truth bytes (uuid bytes_le, hand-derived, negative control for string order), RT enable bytes and classification bytes now derive from one definition each, Thread/Image marked UNVERIFIED and never-enabled (no host registration to pin), classifier extracted to classifyEtwEvent with gates process 1/2, file 0x0A/0x0B/0x10, registry 1/5, fabricated GUID strings in configs/test/etw_realtime_config.json replaced with registered GUIDs. STOP-THE-LINE filed as GAP-012 (etw_ready=true with zero events).",
       "flow_id": "DATA-001",
       "files_changed": [
         "src/windows/etw_realtime.zig",
@@ -6220,7 +6243,7 @@
         "tests/release/test_manifest_selection_rule.py"
       ],
       "tests": [
-        "4 new pins in tests/release/test_manifest_selection_rule.py (canonical dirs walked; build trees excluded; byproduct suffixes excluded; 12 legit sources kept) \u2014 pure predicate plus source facts, no build needed",
+        "4 new pins in tests/release/test_manifest_selection_rule.py (canonical dirs walked; build trees excluded; byproduct suffixes excluded; 12 legit sources kept) — pure predicate plus source facts, no build needed",
         "NOT EXECUTED in this session: no command-execution tool available, so pytest, --manifest regeneration, and clean-checkout --verify were not run; operator must execute before bullets 2-3 close"
       ],
       "result": "PASS",
@@ -6233,7 +6256,7 @@
       "title": "Backend deep slice: quarantine receipt contract implemented (Zig); supervisor join coverage and trust chain verified complete",
       "level": "E2",
       "component": "zig_core",
-      "description": "Quarantine receipt (design + Zig contract): verifyEnforcementReceipt now accepts block/quarantine through the same filter read-back (PEP owns block-vs-quarantine filter semantics); dispatchWithReceipt gained a quarantine-confirmed branch guarded by same-decision proof (a block receipt can never confirm quarantine and vice versa \u2014 the block branch got the same guard, closing a cross-confirmation hole); new EventKind action_quarantine=65 (additive-only, existing numbers frozen) with fate quarantined; new daemon-owned g_confirmed_quarantines counter (DEFCON ladder untouched pending threshold review). OPEN EDGE: Rust PEP has no quarantine-enforce path (enforceFlow hardcodes ACTION_BLOCK), so no valid quarantine receipt can exist yet \u2014 branch reachable only when that lands. Supervisor lifecycle (verified, no change): daemon RuntimeSupervisor.shutdown joins all 7 spawned workers (sensor/pipeline/nose_reader/pipe_monitor/etw/fim/registry) in reverse order then transitions STOPPED; control-plane stop/restart stay honestly NOT_IMPLEMENTED (cannot claim STOPPED through the pipe without the owner); remainder is join-with-timeout (std.Thread.join has none \u2014 Windows WaitForSingleObject work, too risky untested). Ed25519/KMS (verified, no change): TRUST-WIRE-082 opt-in envelope verify at startup + requiresTrustedAuthorization gate at enforce() (untrusted privileged action escalates, never enforces) + no policies hot-reload path exists (nothing bypasses load-time verify) + read-only control verify handler; trust_store.zig mock material explicitly deferred to consolidation upstream; private signing keys live TS-side/offline, daemon verifies only.",
+      "description": "Quarantine receipt (design + Zig contract): verifyEnforcementReceipt now accepts block/quarantine through the same filter read-back (PEP owns block-vs-quarantine filter semantics); dispatchWithReceipt gained a quarantine-confirmed branch guarded by same-decision proof (a block receipt can never confirm quarantine and vice versa — the block branch got the same guard, closing a cross-confirmation hole); new EventKind action_quarantine=65 (additive-only, existing numbers frozen) with fate quarantined; new daemon-owned g_confirmed_quarantines counter (DEFCON ladder untouched pending threshold review). OPEN EDGE: Rust PEP has no quarantine-enforce path (enforceFlow hardcodes ACTION_BLOCK), so no valid quarantine receipt can exist yet — branch reachable only when that lands. Supervisor lifecycle (verified, no change): daemon RuntimeSupervisor.shutdown joins all 7 spawned workers (sensor/pipeline/nose_reader/pipe_monitor/etw/fim/registry) in reverse order then transitions STOPPED; control-plane stop/restart stay honestly NOT_IMPLEMENTED (cannot claim STOPPED through the pipe without the owner); remainder is join-with-timeout (std.Thread.join has none — Windows WaitForSingleObject work, too risky untested). Ed25519/KMS (verified, no change): TRUST-WIRE-082 opt-in envelope verify at startup + requiresTrustedAuthorization gate at enforce() (untrusted privileged action escalates, never enforces) + no policies hot-reload path exists (nothing bypasses load-time verify) + read-only control verify handler; trust_store.zig mock material explicitly deferred to consolidation upstream; private signing keys live TS-side/offline, daemon verifies only.",
       "flow_id": "DATA-001",
       "files_changed": [
         "src/contract/event.zig",
@@ -6246,7 +6269,7 @@
         "NOT EXECUTED in this session: no command-execution tool available, so zig build test was not run; operator must execute before treating as verified"
       ],
       "result": "PASS",
-      "finding": "Zig side of quarantine receipts is contracted and pinned; positive-path proof needs the Rust quarantine-enforce path plus a live PEP. Supervisor and trust chains needed no code \u2014 verified complete by source inspection with remainders precisely bounded. UPDATE (EVT-226, 2026-10-17): positive path delivered and live-validated: Rust quarantine-enforce path shipped (EVT-112 per-flow quarantine enforced end-to-end at c8463df; EVT-113 enforce() mints quarantine receipts) and live-provider behavior proven on the deployed service (EVT-136 quarantine verb reachable; EVT-138 quarantine verb validated live). Result PARTIAL -> PASS."
+      "finding": "Zig side of quarantine receipts is contracted and pinned; positive-path proof needs the Rust quarantine-enforce path plus a live PEP. Supervisor and trust chains needed no code — verified complete by source inspection with remainders precisely bounded. UPDATE (EVT-226, 2026-10-17): positive path delivered and live-validated: Rust quarantine-enforce path shipped (EVT-112 per-flow quarantine enforced end-to-end at c8463df; EVT-113 enforce() mints quarantine receipts) and live-provider behavior proven on the deployed service (EVT-136 quarantine verb reachable; EVT-138 quarantine verb validated live). Result PARTIAL -> PASS."
     },
     {
       "id": "EVT-095",
@@ -6255,7 +6278,7 @@
       "title": "FED-UPLINK-095: startup segfault fixed (envOr ownership + g_uplink heap lifetime), filed as GAP-013",
       "level": "E2",
       "component": "zig_core",
-      "description": "Root-caused both 84d25fd gate failures to one defect: envOr returned the static default literal when AEGIS_CLUSTER was absent and configFromEnv frees unconditionally -> segfault in page_allocator.free before the control pipe existed (exit 2147483651). Fix: envOr dupes the default (always heap-owned); all 8 call sites already free unconditionally so no leak is introduced. Same-area fix: initFromEnv stored &uplink (stack local) into global g_uplink (use-after-free on first publish when enabled) -> instance is now allocator.create'd and shutdown() destroys it after deinit. Same-bug-class audit over every getEnvVarOwned site in src/: all others free only on success \u2014 envOr was the sole free-literal site. New regression pin 'FED-UPLINK-095: envOr default is heap-owned and always freeable' (cluster_uplink.zig already has a direct all_tests edge). Causal hypothesis for the operator to confirm: with the daemon starting, test_core_reaches_running and test_status_json_carries_traffic_gauges both go green (gauges need a live daemon; the key-less diagnostic fallback was collateral of the crash).",
+      "description": "Root-caused both 84d25fd gate failures to one defect: envOr returned the static default literal when AEGIS_CLUSTER was absent and configFromEnv frees unconditionally -> segfault in page_allocator.free before the control pipe existed (exit 2147483651). Fix: envOr dupes the default (always heap-owned); all 8 call sites already free unconditionally so no leak is introduced. Same-area fix: initFromEnv stored &uplink (stack local) into global g_uplink (use-after-free on first publish when enabled) -> instance is now allocator.create'd and shutdown() destroys it after deinit. Same-bug-class audit over every getEnvVarOwned site in src/: all others free only on success — envOr was the sole free-literal site. New regression pin 'FED-UPLINK-095: envOr default is heap-owned and always freeable' (cluster_uplink.zig already has a direct all_tests edge). Causal hypothesis for the operator to confirm: with the daemon starting, test_core_reaches_running and test_status_json_carries_traffic_gauges both go green (gauges need a live daemon; the key-less diagnostic fallback was collateral of the crash).",
       "flow_id": "DATA-001",
       "files_changed": [
         "src/federation/cluster_uplink.zig"
@@ -6274,7 +6297,7 @@
       "title": "LIT-FREE-096: uniform handler ownership + EVIDENCE JSON repair; stale-binary retest explained",
       "level": "E2",
       "component": "zig_core",
-      "description": "Two fixes from the 84d25fd gate-run output. (1) test.exe aborted in 'logsTail returns entries when the forensic log exists': logsTail returned a static literal for the empty-file path while the test frees unconditionally. Audit found 6 literal-returning handlers against a split contract (version test documented literal/no-free). Fix LIT-FREE-096: HandlerFn contract now mandates always-owned returns; all 6 literals dupe (version, forensicsRead-empty, forensicsVerify-absent, logsTail-empty, federationStatus-standalone, daemonShutdown); version test frees. Production dispatch never frees (pre-existing per-request leak, unchanged behavior). The abort had been hiding every test after logsTail in file order. (2) EVIDENCE_INDEX.json failed to parse: unescaped 'build' quotes inside the GAP-008 description (mine, EVT-093) \u2014 repaired to single quotes and scanned the touched regions for further internal quotes (clean); no pytest test parses the index, which is why 723 passed regardless and truth.py showed NO_SHA yet TRUTH_VALID. (3) Retest protocol correction: the daemon crash reappeared because `zig build test` does not rebuild aegis_nids.exe \u2014 the lifecycle tests ran a stale binary. Operator must run `zig build` BEFORE pytest, with AEGIS_CLUSTER absent to cover the default path.",
+      "description": "Two fixes from the 84d25fd gate-run output. (1) test.exe aborted in 'logsTail returns entries when the forensic log exists': logsTail returned a static literal for the empty-file path while the test frees unconditionally. Audit found 6 literal-returning handlers against a split contract (version test documented literal/no-free). Fix LIT-FREE-096: HandlerFn contract now mandates always-owned returns; all 6 literals dupe (version, forensicsRead-empty, forensicsVerify-absent, logsTail-empty, federationStatus-standalone, daemonShutdown); version test frees. Production dispatch never frees (pre-existing per-request leak, unchanged behavior). The abort had been hiding every test after logsTail in file order. (2) EVIDENCE_INDEX.json failed to parse: unescaped 'build' quotes inside the GAP-008 description (mine, EVT-093) — repaired to single quotes and scanned the touched regions for further internal quotes (clean); no pytest test parses the index, which is why 723 passed regardless and truth.py showed NO_SHA yet TRUTH_VALID. (3) Retest protocol correction: the daemon crash reappeared because `zig build test` does not rebuild aegis_nids.exe — the lifecycle tests ran a stale binary. Operator must run `zig build` BEFORE pytest, with AEGIS_CLUSTER absent to cover the default path.",
       "flow_id": "DATA-001",
       "files_changed": [
         "src/control/handler_registry.zig",
@@ -6288,7 +6311,7 @@
         "NOT EXECUTED in this session: no command-execution tool available; operator must run zig build, zig build test, then the pytest pair"
       ],
       "result": "PASS",
-      "finding": "Crash class closed by construction plus HandlerFn contract pin; the 2 source-text pins updated to the owned-return shape and green solo. test_large_control_response passes solo (0.19s) \u2014 classified full-suite load flake, not a regression: its mock-server path shares no code with this patch. EVIDENCE JSON one-liner green. UPDATE (EVT-226, 2026-10-17): folded into the GAP-013 closure (closed_by lists EVT-096); the classified full-suite flake has not recurred - full suites green repeatedly since, latest 2026-10-17: 887 passed / 2 skipped / 27 subtests. Result PARTIAL -> PASS."
+      "finding": "Crash class closed by construction plus HandlerFn contract pin; the 2 source-text pins updated to the owned-return shape and green solo. test_large_control_response passes solo (0.19s) — classified full-suite load flake, not a regression: its mock-server path shares no code with this patch. EVIDENCE JSON one-liner green. UPDATE (EVT-226, 2026-10-17): folded into the GAP-013 closure (closed_by lists EVT-096); the classified full-suite flake has not recurred - full suites green repeatedly since, latest 2026-10-17: 887 passed / 2 skipped / 27 subtests. Result PARTIAL -> PASS."
     },
     {
       "id": "EVT-097",
@@ -6297,7 +6320,7 @@
       "title": "CLI-SHOP-158 completion: diagnostic health carries traffic gauges (absent reads as 0)",
       "level": "E2",
       "component": "control-plane",
-      "description": "The gauges failure proved independent of the daemon crash (core green, gauges still red): the live health path forwards packets_captured/flows_active with absent-to-0, but _diagnostic_health_payload (daemon unreachable) omitted both keys while the CLI-SHOP-158 pin expects presence even against absent daemons. Fix: both keys added as 0 (unknown) with a comment citing the convention. Additive-only: JSON readers gate on presence; the human status display already used .get(key, 0). Note this also changes tools/aegisctl/api/control_api.py, which IS manifest-walked (tools/) \u2014 operator must --refresh-digests before --verify.",
+      "description": "The gauges failure proved independent of the daemon crash (core green, gauges still red): the live health path forwards packets_captured/flows_active with absent-to-0, but _diagnostic_health_payload (daemon unreachable) omitted both keys while the CLI-SHOP-158 pin expects presence even against absent daemons. Fix: both keys added as 0 (unknown) with a comment citing the convention. Additive-only: JSON readers gate on presence; the human status display already used .get(key, 0). Note this also changes tools/aegisctl/api/control_api.py, which IS manifest-walked (tools/) — operator must --refresh-digests before --verify.",
       "flow_id": "CONTROL-001",
       "files_changed": [
         "tools/aegisctl/api/control_api.py"
@@ -6341,7 +6364,7 @@
         "2 new pins green in operator run 2026-10-08 (2 passed in 0.03s); full suite 727 passed, 0 failed in the same run"
       ],
       "result": "PASS",
-      "finding": "Executed green: the index can no longer break or drift silently \u2014 any future break fails this pin."
+      "finding": "Executed green: the index can no longer break or drift silently — any future break fails this pin."
     },
     {
       "id": "EVT-100",
@@ -6350,7 +6373,7 @@
       "title": "Kernel-NIDS completion plan: deep audit verdict plus phased plan to done",
       "level": "E1",
       "component": "architecture",
-      "description": "Deep-audit verdict: the system is a user-mode NIDS consuming kernel telemetry, not a kernel-mode NIDS \u2014 enforcement flows through user-mode WFP (aegis_wfp_user.dll loaded by the Rust PEP at rust-src/lib.rs:324, GAP-011 closed); the own WFP callout and minifilter exist as source only with CMake refusing to build them (no WDK authority); driver .sys/.cer/.pdb files on disk are untracked local leftovers, tracked set is sources plus infs. Plan written to docs/KERNEL_NIDS_COMPLETION_PLAN.md in five phases (execution gaps, observe-only live proofs, isolated-lab mutating proofs plus Rust quarantine-enforce, owner decisions, optional kernel-driver program) with per-phase pass criteria, a per-area closure table, and explicit prohibitions (no blind enforcement/driver work, no lab-mutating proofs on workstations, no kernel-mode completeness claims before a driver builds).",
+      "description": "Deep-audit verdict: the system is a user-mode NIDS consuming kernel telemetry, not a kernel-mode NIDS — enforcement flows through user-mode WFP (aegis_wfp_user.dll loaded by the Rust PEP at rust-src/lib.rs:324, GAP-011 closed); the own WFP callout and minifilter exist as source only with CMake refusing to build them (no WDK authority); driver .sys/.cer/.pdb files on disk are untracked local leftovers, tracked set is sources plus infs. Plan written to docs/KERNEL_NIDS_COMPLETION_PLAN.md in five phases (execution gaps, observe-only live proofs, isolated-lab mutating proofs plus Rust quarantine-enforce, owner decisions, optional kernel-driver program) with per-phase pass criteria, a per-area closure table, and explicit prohibitions (no blind enforcement/driver work, no lab-mutating proofs on workstations, no kernel-mode completeness claims before a driver builds).",
       "flow_id": "EVIDENCE-001",
       "files_changed": [
         "docs/KERNEL_NIDS_COMPLETION_PLAN.md"
@@ -6386,7 +6409,7 @@
       "title": "GAP-008 adopted: 633-entry manifest regenerated, verified, committed",
       "level": "E2",
       "component": "release",
-      "description": "Operator ran --manifest on the working tree: 633 entries with bridge 13 (was 245), src 286, configs 26, nose 27, rust-src 2, go minus 2 loose exes, brain minus 13 byproducts \u2014 exactly the hybrid-rule prediction, so the junk drop and canonical-source addition were adopted and committed as a871a32 with --verify 633/633 green before and after the stamp cycle. tools/release_engineering.py docstring updated past tense (grandfather retired). Remaining for full closure: clean-checkout --verify on a fresh clone.",
+      "description": "Operator ran --manifest on the working tree: 633 entries with bridge 13 (was 245), src 286, configs 26, nose 27, rust-src 2, go minus 2 loose exes, brain minus 13 byproducts — exactly the hybrid-rule prediction, so the junk drop and canonical-source addition were adopted and committed as a871a32 with --verify 633/633 green before and after the stamp cycle. tools/release_engineering.py docstring updated past tense (grandfather retired). Remaining for full closure: clean-checkout --verify on a fresh clone.",
       "flow_id": "EVIDENCE-001",
       "files_changed": [
         "build_manifest.json",
@@ -6407,7 +6430,7 @@
       "title": "GAP-008 CLOSED: clean-checkout verify green after parent-stamped pair commit",
       "level": "E2",
       "component": "release",
-      "description": "Root cause of the clean-clone failure: the never-commit-stamps pattern collides with digest tracking on exactly one file \u2014 runtime_manifest.json is the only stamp-carrying file inside the artifact set, so past commits stored a lagging-stamp blob while build_manifest recorded the working-tree digest, a self-inconsistent committed pair invisible on the main tree. Fix applied: commit runtime_manifest.json together with build_manifest.json (both parent-stamped, same convention as EVIDENCE_INDEX) plus a release-commit rule in the tool docstring. Proof: fresh clone pulled to d0bd1a0, --verify green with 597 present, 36 missing (unbuilt outputs, by design), 0 mismatches. GAP-008 fully closed.",
+      "description": "Root cause of the clean-clone failure: the never-commit-stamps pattern collides with digest tracking on exactly one file — runtime_manifest.json is the only stamp-carrying file inside the artifact set, so past commits stored a lagging-stamp blob while build_manifest recorded the working-tree digest, a self-inconsistent committed pair invisible on the main tree. Fix applied: commit runtime_manifest.json together with build_manifest.json (both parent-stamped, same convention as EVIDENCE_INDEX) plus a release-commit rule in the tool docstring. Proof: fresh clone pulled to d0bd1a0, --verify green with 597 present, 36 missing (unbuilt outputs, by design), 0 mismatches. GAP-008 fully closed.",
       "flow_id": "EVIDENCE-001",
       "files_changed": [
         "runtime_manifest.json",
@@ -6428,7 +6451,7 @@
       "title": "Clean-clone proof done; wrong-cwd run dissected; untracked-file entries filed as GAP-014",
       "level": "E2",
       "component": "release",
-      "description": "The operator block ran in the clone (D:\\Temp\\aegis-clean) instead of the main tree, so: git add/commit correctly no-op'd (clone has none of the GAP-008-CLOSED/EVT-103 edits \u2014 those remain uncommitted in D:\\NIDs_Windows), stamp_head.py re-touched the main tree harmlessly (same values), refresh-digests modified only the clone manifest, and truth.py STALE across 8 maps inside the clone is structural and expected (maps commit lagging by design; the truth gate is working-tree-scoped, never clean-clone-scoped). Two real findings from the same output: (1) clean-clone --verify is green with 597 present, 36 missing-by-design and 0 mismatches \u2014 GAP-008 bullet 3 executed proof; (2) the 36 missing are untracked in git (complete 1737-file clone lacks them: pytest cache, .bak files, 30 kali_attacks scripts plus 2 helper scripts, 2 Cargo.lock files, 4 generated brain/cython C files), so the manifest grants provenance to non-committed files \u2014 filed as GAP-014 (P2, gates unaffected by design).",
+      "description": "The operator block ran in the clone (D:\\Temp\\aegis-clean) instead of the main tree, so: git add/commit correctly no-op'd (clone has none of the GAP-008-CLOSED/EVT-103 edits — those remain uncommitted in D:\\NIDs_Windows), stamp_head.py re-touched the main tree harmlessly (same values), refresh-digests modified only the clone manifest, and truth.py STALE across 8 maps inside the clone is structural and expected (maps commit lagging by design; the truth gate is working-tree-scoped, never clean-clone-scoped). Two real findings from the same output: (1) clean-clone --verify is green with 597 present, 36 missing-by-design and 0 mismatches — GAP-008 bullet 3 executed proof; (2) the 36 missing are untracked in git (complete 1737-file clone lacks them: pytest cache, .bak files, 30 kali_attacks scripts plus 2 helper scripts, 2 Cargo.lock files, 4 generated brain/cython C files), so the manifest grants provenance to non-committed files — filed as GAP-014 (P2, gates unaffected by design).",
       "flow_id": "EVIDENCE-001",
       "files_changed": [],
       "tests": [
@@ -6445,7 +6468,7 @@
       "title": "Opensource readiness sweep: no secrets/tokens/PII in tree; SECURITY.md added; ignore gaps closed",
       "level": "E1",
       "component": "security",
-      "description": "Static pre-opensource sweep (method: risk-class greps, not line-by-line of every file \u2014 stated limit). Findings: no PEM private-key blocks anywhere; no GitHub/AWS/Slack-style tokens; no literal password/api-key/secret assignments in tools/; no hardcoded user-profile paths in src/ or tools/; no .env files; all sampled IPs are RFC1918, loopback, or documentation ranges; ca.key/server.key and driver .sys/.cer/.pdb exist on disk but are untracked and gitignored; LICENSE is MIT. Gaps closed in this entry: SECURITY.md created (private disclosure via GitHub Security Advisories on the known remote, lab-only testing rules, contributor secrets hygiene; verified CI has only a non-blocking Trivy fs scan, so no secret-gate claim is made); .gitignore gained explicit aegis-audit and release rules (both were untracked-but-unignored noise; no test reads those dirs so nothing breaks). Explicitly NOT covered here and left for the operator: full git-history secret scan (gitleaks or equivalent \u2014 required before publishing), CONTRIBUTING.md (nice-to-have), third-party license attribution review for vendored lib/ code.",
+      "description": "Static pre-opensource sweep (method: risk-class greps, not line-by-line of every file — stated limit). Findings: no PEM private-key blocks anywhere; no GitHub/AWS/Slack-style tokens; no literal password/api-key/secret assignments in tools/; no hardcoded user-profile paths in src/ or tools/; no .env files; all sampled IPs are RFC1918, loopback, or documentation ranges; ca.key/server.key and driver .sys/.cer/.pdb exist on disk but are untracked and gitignored; LICENSE is MIT. Gaps closed in this entry: SECURITY.md created (private disclosure via GitHub Security Advisories on the known remote, lab-only testing rules, contributor secrets hygiene; verified CI has only a non-blocking Trivy fs scan, so no secret-gate claim is made); .gitignore gained explicit aegis-audit and release rules (both were untracked-but-unignored noise; no test reads those dirs so nothing breaks). Explicitly NOT covered here and left for the operator: full git-history secret scan (gitleaks or equivalent — required before publishing), CONTRIBUTING.md (nice-to-have), third-party license attribution review for vendored lib/ code.",
       "flow_id": "EVIDENCE-001",
       "files_changed": [
         "SECURITY.md",
@@ -6464,7 +6487,7 @@
       "title": "Coverage sweep round 1: mouth/installer/ts-policy/scripts audited, safe fixes applied",
       "level": "E2",
       "component": "testing",
-      "description": "Three subagent audits plus direct reads, recorded in docs/COVERAGE_SWEEP.md with per-area verdicts. Fixed without execution risk: import-exit/print-at-import moved behind guards in scripts/check_summary.py and scripts/validate_operator_cli.py (identical CLI behavior); stale installer comment in tools/fresh_deploy.py; stale core-path refs and the nonexistent PolicyValue twin claim in ts_policy (compiler.ts, types.ts); exporter fixture comment pointed at the real generator; shared/policy/policy_ir.md rewritten from the forked v5.0 snapshot to the two live schemas with code anchors (loader tables verified against policy_ir.zig, compiler tables against policy_plane.zig plus TS, both cross-pinned by tests). Deliberately untouched after verification: no_enforcement allow-list (fail-closed by design), versioning.json values (zero readers \u2014 vestigial, do not touch blind), mouth shutdown path and installer uninstall gaps (need runtime testing), seal byte-stream reconciliation (crypto-owner decision). NEEDS-HELP list for the operator: mouth TUI fate, static .nsi fate, versioning confirmation, 7 orphan scripts delete-or-adopt, full gate re-run, plus the standing elevation/decision items.",
+      "description": "Three subagent audits plus direct reads, recorded in docs/COVERAGE_SWEEP.md with per-area verdicts. Fixed without execution risk: import-exit/print-at-import moved behind guards in scripts/check_summary.py and scripts/validate_operator_cli.py (identical CLI behavior); stale installer comment in tools/fresh_deploy.py; stale core-path refs and the nonexistent PolicyValue twin claim in ts_policy (compiler.ts, types.ts); exporter fixture comment pointed at the real generator; shared/policy/policy_ir.md rewritten from the forked v5.0 snapshot to the two live schemas with code anchors (loader tables verified against policy_ir.zig, compiler tables against policy_plane.zig plus TS, both cross-pinned by tests). Deliberately untouched after verification: no_enforcement allow-list (fail-closed by design), versioning.json values (zero readers — vestigial, do not touch blind), mouth shutdown path and installer uninstall gaps (need runtime testing), seal byte-stream reconciliation (crypto-owner decision). NEEDS-HELP list for the operator: mouth TUI fate, static .nsi fate, versioning confirmation, 7 orphan scripts delete-or-adopt, full gate re-run, plus the standing elevation/decision items.",
       "flow_id": "EVIDENCE-001",
       "files_changed": [
         "scripts/check_summary.py",
@@ -6522,7 +6545,7 @@
       "title": "Wrong-branch commit dissected: round-1 work landed on public-snapshot, main kept stale copies",
       "level": "E2",
       "component": "testing",
-      "description": "Self-reported process failure with a precise mechanism. The stash-based recovery I prescribed was wrong for this case: git stash moves only UNCOMMITTED work, but the round-1 file edits were already committed as 1fa1712 on public-snapshot, so popping onto main restored only stamps and new files while the twelve edited tracked files silently reverted to main stale copies. Proven by the gate output itself: the new installer pins failed against the OLD template text, and the drift detector listed exactly the nine edited manifest-walked files. Nothing was lost (content safe in 1fa1712 plus the working tree) and nothing unreviewed shipped. Recovery prescribed: check out the twelve files by hash from the dangling commit, re-apply the seven script deletions, re-run gates, commit on main, then re-verify. The pagination accumulation test failed a second time in full-suite context while green solo both times \u2014 kept classified as load flake, not a regression (its mock-server path shares no code with this patch).",
+      "description": "Self-reported process failure with a precise mechanism. The stash-based recovery I prescribed was wrong for this case: git stash moves only UNCOMMITTED work, but the round-1 file edits were already committed as 1fa1712 on public-snapshot, so popping onto main restored only stamps and new files while the twelve edited tracked files silently reverted to main stale copies. Proven by the gate output itself: the new installer pins failed against the OLD template text, and the drift detector listed exactly the nine edited manifest-walked files. Nothing was lost (content safe in 1fa1712 plus the working tree) and nothing unreviewed shipped. Recovery prescribed: check out the twelve files by hash from the dangling commit, re-apply the seven script deletions, re-run gates, commit on main, then re-verify. The pagination accumulation test failed a second time in full-suite context while green solo both times — kept classified as load flake, not a regression (its mock-server path shares no code with this patch).",
       "flow_id": "EVIDENCE-001",
       "files_changed": [],
       "tests": [
@@ -6531,7 +6554,7 @@
         "NOT EXECUTED in this session: recovery runs operator-side"
       ],
       "result": "PASS",
-      "finding": "Honesty requires recording own-process failures with mechanism, not just code defects. Recovery executed 2026-10-08: 12 files restored from 1fa1712, 7 scripts re-deleted, installer pins plus pagination solo green, committed 33c2894 on main with gates green post-stamp. Pending close: one confirmatory re-run of the 4 pre-refresh drift failures post-commit (fresh_deploy x3 plus drift detector) \u2014 they fail only on unrefreshed digests by mechanism, but green must be observed, not inferred. UPDATE (EVT-226, 2026-10-17): the confirmatory re-runs were performed since - fresh_deploy re-ran green live (latest EVT-220: 5/5 live fresh_deploy) and the drift detector / truth gate is green every round (latest TRUTH_VALID 2026-10-17). Result PARTIAL -> PASS."
+      "finding": "Honesty requires recording own-process failures with mechanism, not just code defects. Recovery executed 2026-10-08: 12 files restored from 1fa1712, 7 scripts re-deleted, installer pins plus pagination solo green, committed 33c2894 on main with gates green post-stamp. Pending close: one confirmatory re-run of the 4 pre-refresh drift failures post-commit (fresh_deploy x3 plus drift detector) — they fail only on unrefreshed digests by mechanism, but green must be observed, not inferred. UPDATE (EVT-226, 2026-10-17): the confirmatory re-runs were performed since - fresh_deploy re-ran green live (latest EVT-220: 5/5 live fresh_deploy) and the drift detector / truth gate is green every round (latest TRUTH_VALID 2026-10-17). Result PARTIAL -> PASS."
     },
     {
       "id": "EVT-109",
@@ -6540,7 +6563,7 @@
       "title": "Backend pins round: byte-order audit plus test-bearing coverage for 6 zero-test files",
       "level": "E2",
       "component": "testing",
-      "description": "Zero-test inventory first (subagent sweep): Zig windows/policy/contract full coverage already; only 3 production files lacked tests (runtime_state, packet_callback, windows_capture), brain lacked 3 (windows_brain envelope, _py_fallback, bridge), Go nose needs 6 hermetic pins (2 done here). Byte-order deep audit (the highest-value thread): isBlockableSourceIp bigToNative is CORRECT for driver memory-layout bytes (aegis_wfp.h documents network order; LE value looks swapped) \u2014 an early P0 suspicion was refuted by reading the driver write path, and the same audit proved CanonicalEvent BE-numeric convention self-consistent end to end (wire LE-of-value, v2 sidecar BE-of-value, isLocalhost direct compare). The one real defect found was cosmetic: the WFP log printer assumed BE-numeric and printed reversed octets \u2014 fixed via ipv4OctetsFromMemoryLayout helper. New pins: P-05 anti-spoof gate table plus octet-order (windows_capture), IPv4/IPv6/negative frame parse via push-pop symmetry (packet_callback), fail-closed boot defaults (runtime_state), TIER-1 HMAC envelope accept/drop matrix (windows_brain), fallback engine shape plus first-match semantics (cython _py_fallback), dispatch fallback ladder via monkeypatch (bridge); Go ratePerSec wrap table plus writeAll fail-closed paths. Three direct all_tests edges added per the scope pin. Remaining Go pins (capture hermetic, ipc malformed, golden fixture, talkers symmetry) need source reads slated next round.",
+      "description": "Zero-test inventory first (subagent sweep): Zig windows/policy/contract full coverage already; only 3 production files lacked tests (runtime_state, packet_callback, windows_capture), brain lacked 3 (windows_brain envelope, _py_fallback, bridge), Go nose needs 6 hermetic pins (2 done here). Byte-order deep audit (the highest-value thread): isBlockableSourceIp bigToNative is CORRECT for driver memory-layout bytes (aegis_wfp.h documents network order; LE value looks swapped) — an early P0 suspicion was refuted by reading the driver write path, and the same audit proved CanonicalEvent BE-numeric convention self-consistent end to end (wire LE-of-value, v2 sidecar BE-of-value, isLocalhost direct compare). The one real defect found was cosmetic: the WFP log printer assumed BE-numeric and printed reversed octets — fixed via ipv4OctetsFromMemoryLayout helper. New pins: P-05 anti-spoof gate table plus octet-order (windows_capture), IPv4/IPv6/negative frame parse via push-pop symmetry (packet_callback), fail-closed boot defaults (runtime_state), TIER-1 HMAC envelope accept/drop matrix (windows_brain), fallback engine shape plus first-match semantics (cython _py_fallback), dispatch fallback ladder via monkeypatch (bridge); Go ratePerSec wrap table plus writeAll fail-closed paths. Three direct all_tests edges added per the scope pin. Remaining Go pins (capture hermetic, ipc malformed, golden fixture, talkers symmetry) need source reads slated next round.",
       "flow_id": "DATA-001",
       "files_changed": [
         "src/capture/windows_capture.zig",
@@ -6555,11 +6578,11 @@
       ],
       "tests": [
         "9 new pins listed above (3 Zig files gain first tests; 3 brain contract files; 2 Go files)",
-        "operator run 2026-10-08: installer 4/4, brain envelope 6/6, fallback 3/3, bridge 4/4 \u2014 17 passed in 0.14s",
+        "operator run 2026-10-08: installer 4/4, brain envelope 6/6, fallback 3/3, bridge 4/4 — 17 passed in 0.14s",
         "full suite 727 passed with only pre-refresh drift failures (resolved in-block); Go filtered pins green; zig suite clean post-LIT-FREE"
       ],
       "result": "PASS",
-      "finding": "Backend pins round executed green end to end. Remaining Go pins (capture hermetic, ipc malformed, golden fixture, talkers symmetry) slated next round \u2014 now done in EVT-110 below."
+      "finding": "Backend pins round executed green end to end. Remaining Go pins (capture hermetic, ipc malformed, golden fixture, talkers symmetry) slated next round — now done in EVT-110 below."
     },
     {
       "id": "EVT-110",
@@ -6568,7 +6591,7 @@
       "title": "Backend pins round 2: Go capture/talkers/ipc/golden pins; cross-format IP conventions mapped",
       "level": "E2",
       "component": "testing",
-      "description": "Remaining Go pins implemented: hermetic Npcap decode (BE-numeric identity locked to golden-fixture values, garbage never panics), talker endpoint symmetry on unique doc-range IPs with residue-tolerant lookup (no global reset exists, so emptiness is never asserted), bridge status-reader fail-closed matrix on tmp files (missing/malformed/out-of-range, poll goroutine never started), frozen v1 golden-vector positive plus seven fixture-derived rejections. Cross-format finding (proven mechanism, unproven impact): Go capture stores BE-numeric u32 (BigEndian.Uint32 of wire bytes, matching fixtures) while Zig npcap/WFP capture paths store memory-layout bitcasts (same address differs numerically); CanonicalEvent stays BE-numeric end to end on both sides (wire LE-of-value, v2 sidecar BE-of-value). Open verification question, not a gap yet: whether mixed IpcEvent values ever meet in one comparison (threat-intel matching, XDR correlation) \u2014 needs join tracing plus execution. Single canonicalization point plus a cross-path join test recommended when proven.",
+      "description": "Remaining Go pins implemented: hermetic Npcap decode (BE-numeric identity locked to golden-fixture values, garbage never panics), talker endpoint symmetry on unique doc-range IPs with residue-tolerant lookup (no global reset exists, so emptiness is never asserted), bridge status-reader fail-closed matrix on tmp files (missing/malformed/out-of-range, poll goroutine never started), frozen v1 golden-vector positive plus seven fixture-derived rejections. Cross-format finding (proven mechanism, unproven impact): Go capture stores BE-numeric u32 (BigEndian.Uint32 of wire bytes, matching fixtures) while Zig npcap/WFP capture paths store memory-layout bitcasts (same address differs numerically); CanonicalEvent stays BE-numeric end to end on both sides (wire LE-of-value, v2 sidecar BE-of-value). Open verification question, not a gap yet: whether mixed IpcEvent values ever meet in one comparison (threat-intel matching, XDR correlation) — needs join tracing plus execution. Single canonicalization point plus a cross-path join test recommended when proven.",
       "flow_id": "DATA-001",
       "files_changed": [
         "nose/talkers_live_test.go",
@@ -6590,7 +6613,7 @@
       "title": "Red proof by accident: capture pin caught a wrong expectation; suite-count wobble tracked",
       "level": "E2",
       "component": "testing",
-      "description": "The new capture pin failed on its first run exactly as a pin should: expected 0x0A000001 (10.0.0.1) for a frame built as 10.0.0.5, got 0x0A000005 \u2014 the CODE was right, the expectation had a last-octet typo, fixed to 0x0A000005. This accidentally red-proves the pin executes and discriminates (a silently-passing pin would have hidden it). The passing output simultaneously confirms the BE-numeric convention on the Go path. Separately: full-suite totals wobble by 2 across runs (727 vs 731 with no file changes explaining it); all collected tests pass and the only failures are the known pre-refresh drift set, so this is a collection-counting question, not a breakage \u2014 diagnosed next via collect-only output.",
+      "description": "The new capture pin failed on its first run exactly as a pin should: expected 0x0A000001 (10.0.0.1) for a frame built as 10.0.0.5, got 0x0A000005 — the CODE was right, the expectation had a last-octet typo, fixed to 0x0A000005. This accidentally red-proves the pin executes and discriminates (a silently-passing pin would have hidden it). The passing output simultaneously confirms the BE-numeric convention on the Go path. Separately: full-suite totals wobble by 2 across runs (727 vs 731 with no file changes explaining it); all collected tests pass and the only failures are the known pre-refresh drift set, so this is a collection-counting question, not a breakage — diagnosed next via collect-only output.",
       "flow_id": "EVIDENCE-001",
       "files_changed": [
         "nose/capture_hermetic_test.go"
@@ -6598,7 +6621,7 @@
       "tests": [
         "TestEventFromPacketIPv4Identity failed pre-fix, must pass post-fix",
         "second typo of mine found the same way (dst .1.1 vs fixture .100); code right both times",
-        "third failure was real fixture wisdom, not a typo: gopacket needs a full 20-byte TCP header to decode ports while Zig parses them manually from 4 bytes \u2014 fixture extended to 54 bytes, all green",
+        "third failure was real fixture wisdom, not a typo: gopacket needs a full 20-byte TCP header to decode ports while Zig parses them manually from 4 bytes — fixture extended to 54 bytes, all green",
         "NOT EXECUTED in this session: operator runs the block below"
       ],
       "result": "PASS",
@@ -6611,7 +6634,7 @@
       "title": "Owner-delegated round: quarantine per-flow enforced, DEFCON sums quarantines, publish set decided",
       "level": "E2",
       "component": "testing",
-      "description": "All seven delegated decisions executed or specified. (1) Quarantine semantics DECIDED per-flow: Rust aegis_pep_enforce now runs quarantine through the two-person gate at severity 7+, the shared T3 quota window, and the same WFP flow-block adapter call, returning DECISION_QUARANTINE with a filter_id; Zig gained enforceQuarantineFlow mirroring enforceFlow (same guards, quarantine decision accepted); three Rust fail-closed tests plus one Zig test added (fresh per-source IPs against the shared quota window; two-person cleanup restores global rule state). Caller wiring (which policy actions route to enforceQuarantineFlow vs legacy dispatch) is intentionally left as the next unexecuted step. (2) DEFCON DECIDED sum: health input is now blocks saturating-add quarantines, ladder thresholds untouched, doc updated. (3) Kernel-driver program: NOT decided here \u2014 explicitly refused as beyond delegation (multi-month, EV cert budget, lab resourcing); recorded as still-owner-side. (4) installer/aegis.nsi deletion left to operator shell (no rm tool in session). (5) Mouth shutdown accepted as OS-kill with an in-code comment (read-only monitor, no state to flush; console handler needs runtime testing). (6) Publish set DECIDED: drop docs/historical plus .agents, keep EVIDENCE_INDEX plus curated docs, at export time. (7) Gitleaks full-history scan stays operator-side with exact commands in the prior message.",
+      "description": "All seven delegated decisions executed or specified. (1) Quarantine semantics DECIDED per-flow: Rust aegis_pep_enforce now runs quarantine through the two-person gate at severity 7+, the shared T3 quota window, and the same WFP flow-block adapter call, returning DECISION_QUARANTINE with a filter_id; Zig gained enforceQuarantineFlow mirroring enforceFlow (same guards, quarantine decision accepted); three Rust fail-closed tests plus one Zig test added (fresh per-source IPs against the shared quota window; two-person cleanup restores global rule state). Caller wiring (which policy actions route to enforceQuarantineFlow vs legacy dispatch) is intentionally left as the next unexecuted step. (2) DEFCON DECIDED sum: health input is now blocks saturating-add quarantines, ladder thresholds untouched, doc updated. (3) Kernel-driver program: NOT decided here — explicitly refused as beyond delegation (multi-month, EV cert budget, lab resourcing); recorded as still-owner-side. (4) installer/aegis.nsi deletion left to operator shell (no rm tool in session). (5) Mouth shutdown accepted as OS-kill with an in-code comment (read-only monitor, no state to flush; console handler needs runtime testing). (6) Publish set DECIDED: drop docs/historical plus .agents, keep EVIDENCE_INDEX plus curated docs, at export time. (7) Gitleaks full-history scan stays operator-side with exact commands in the prior message.",
       "flow_id": "EVIDENCE-001",
       "files_changed": [
         "rust-src/lib.rs",
@@ -6663,7 +6686,7 @@
         "CONTRIBUTING.md"
       ],
       "tests": [
-        "probe is operator-run only (MSVC cl command in its header comment; VS Enterprise with VC tools confirmed present on the host \u2014 needs a Developer PowerShell for cl.exe; full pytest 733 passed with zero failures in the same battery)",
+        "probe is operator-run only (MSVC cl command in its header comment; VS Enterprise with VC tools confirmed present on the host — needs a Developer PowerShell for cl.exe; full pytest 733 passed with zero failures in the same battery)",
         "NOT EXECUTED in this session: no command-execution tool available"
       ],
       "result": "PASS",
@@ -6676,7 +6699,7 @@
       "title": "Delegation reversed by test contract: static .nsi restored, 636-set adopted",
       "level": "E2",
       "component": "release",
-      "description": "The delegated deletion of installer/aegis.nsi executed cleanly but broke two pins: test_ac3 (every manifest entry must exist on disk) and test_ac4 (both .nsi files stay tracked as canonical templates). Verdict: a pinned test contract outranks a delegation instruction \u2014 the deletion was wrong, not the tests. Reverted via git checkout from the parent commit, then a full --manifest regen produced 636 entries; ADDED/DROPPED audit shows exactly 11 additions (3 brain pins, 6 nose pins, 1 MSVC probe, restored nsi) and 0 drops, so the set grew only by reviewed work. test_t17 green (21 passed), --verify 636 green. Standing rule recorded: when a test contract contradicts an instruction, the instruction loses.",
+      "description": "The delegated deletion of installer/aegis.nsi executed cleanly but broke two pins: test_ac3 (every manifest entry must exist on disk) and test_ac4 (both .nsi files stay tracked as canonical templates). Verdict: a pinned test contract outranks a delegation instruction — the deletion was wrong, not the tests. Reverted via git checkout from the parent commit, then a full --manifest regen produced 636 entries; ADDED/DROPPED audit shows exactly 11 additions (3 brain pins, 6 nose pins, 1 MSVC probe, restored nsi) and 0 drops, so the set grew only by reviewed work. test_t17 green (21 passed), --verify 636 green. Standing rule recorded: when a test contract contradicts an instruction, the instruction loses.",
       "flow_id": "EVIDENCE-001",
       "files_changed": [
         "installer/aegis.nsi",
@@ -6718,7 +6741,7 @@
       "title": "GAP-012 bullet 5 closed by live MSVC proof: bogus GUID refused, registered GUIDs start",
       "level": "E5",
       "component": "zig_core",
-      "description": "Operator-built tools/etw_provider_probe.c with MSVC 19.44 x64 against a fresh CMake Release build of aegis_etw_helper from current source (compiled clean, no warnings on etw_native.c) and ran it live: bogus GUID returned rc -6 with no session created, and the three logman-pinned kernel GUIDs passed validation with rc 0 (session actually started, then stopped cleanly \u2014 shell held sufficient privilege). Environment notes recorded for reproducibility: default Developer PowerShell uses the x86 toolchain while the helper lib is x64 (must re-enter with -arch=amd64); target/helpers DLLs were stale pre-validation builds (Sep 8) while build/Release is fresh; probe artifacts were removed after the run. GAP-012 retains only bullet 4 (live forensic-ring records after redeploy).",
+      "description": "Operator-built tools/etw_provider_probe.c with MSVC 19.44 x64 against a fresh CMake Release build of aegis_etw_helper from current source (compiled clean, no warnings on etw_native.c) and ran it live: bogus GUID returned rc -6 with no session created, and the three logman-pinned kernel GUIDs passed validation with rc 0 (session actually started, then stopped cleanly — shell held sufficient privilege). Environment notes recorded for reproducibility: default Developer PowerShell uses the x86 toolchain while the helper lib is x64 (must re-enter with -arch=amd64); target/helpers DLLs were stale pre-validation builds (Sep 8) while build/Release is fresh; probe artifacts were removed after the run. GAP-012 retains only bullet 4 (live forensic-ring records after redeploy).",
       "flow_id": "DATA-001",
       "files_changed": [
         "tools/etw_provider_probe.c"
@@ -6737,7 +6760,7 @@
       "title": "GAP-009 and GAP-012 closed: deployed service RUNNING with live source=10 forensic records",
       "level": "E5",
       "component": "zig_core",
-      "description": "Live deployed-service verification after a mixed-vintage incident was diagnosed and fixed. Incident: AegisNids failed with SCM 1053/7009 (30s connect timeout); the deployed Program Files binary (Oct 7 build) died silently interactively while zig-out ran fine \u2014 root cause was an inconsistent deployment set (Oct-7 exe beside Sep helper DLLs, never load-compatible), not a source regression. Fix: rebuilt cargo + cmake + zig as one set, backed up the whole runtime dir, redeployed exe + aegis_etw_helper/aegis_fim_helper/aegis_wfp_user + aegis_pep together; service started immediately. Health: runtime_state RUNNING, all 7 subsystems RUNNING, workers etw/fim/registry/nose/pipeline/sensor_ready all true, failure_mask 0, rust_pep + WFP READY, defcon 3 HIGH, control pipe REACHABLE, 6 policies + 22 rules. Forensic proof: source=10 host_telemetry records present and verified in the ring with integrity ok and hash chain verified; ring grew 182365 to 183367 between consecutive queries (~1000 records flowing live, not stale). Closes GAP-009 (all required evidence: live flags, health reflects them, host verification of etw/fim/npcap) and GAP-012 bullet 4 (live source=10 records after redeploy).",
+      "description": "Live deployed-service verification after a mixed-vintage incident was diagnosed and fixed. Incident: AegisNids failed with SCM 1053/7009 (30s connect timeout); the deployed Program Files binary (Oct 7 build) died silently interactively while zig-out ran fine — root cause was an inconsistent deployment set (Oct-7 exe beside Sep helper DLLs, never load-compatible), not a source regression. Fix: rebuilt cargo + cmake + zig as one set, backed up the whole runtime dir, redeployed exe + aegis_etw_helper/aegis_fim_helper/aegis_wfp_user + aegis_pep together; service started immediately. Health: runtime_state RUNNING, all 7 subsystems RUNNING, workers etw/fim/registry/nose/pipeline/sensor_ready all true, failure_mask 0, rust_pep + WFP READY, defcon 3 HIGH, control pipe REACHABLE, 6 policies + 22 rules. Forensic proof: source=10 host_telemetry records present and verified in the ring with integrity ok and hash chain verified; ring grew 182365 to 183367 between consecutive queries (~1000 records flowing live, not stale). Closes GAP-009 (all required evidence: live flags, health reflects them, host verification of etw/fim/npcap) and GAP-012 bullet 4 (live source=10 records after redeploy).",
       "flow_id": "DATA-001",
       "files_changed": [
         "EVIDENCE_INDEX.json",
@@ -6770,7 +6793,7 @@
         "new Zig JOIN-TRACE-119: PASS (after deliberate-red: 2121/2123 passed 1 failed with exact test name, then green 4/4 steps exit 0)",
         "new T11 guard (4 asserts): 4 passed",
         "zig build test full suite: green",
-        "--test-filter runs are silently empty in this repo setup (both matching and bogus filters print nothing, exit 0); red-proof used instead \u2014 recorded so nobody trusts filter silence as proof"
+        "--test-filter runs are silently empty in this repo setup (both matching and bogus filters print nothing, exit 0); red-proof used instead — recorded so nobody trusts filter silence as proof"
       ],
       "result": "PASS",
       "finding": "The cross-format IP question is settled with evidence at both layers: production joins happen in exactly one convention (proven by spawn-graph + convention inventory), and the split mechanism is pinned so any future re-enable of a bitcast producer fails loudly instead of silently halving detections."
@@ -6782,7 +6805,7 @@
       "title": "F1 frontend seams: alerts goes live via forensic ring, fixture pipe constant fixed, queue-drop silent loss filed as GAP-015",
       "level": "E5",
       "component": "tooling",
-      "description": "First frontend slice. (1) `aegisctl alerts` was a hardcoded _unavailable stub; now it pages forensics.list through the live control plane (200/page, up to 5 pages, after-cursor), keeps rule_id != 0 records, and labels them by re-deriving the FNV-1a numeric map from Rules.json (unknown numerics stay visible as UNKNOWN_RULE, never dropped; scan window always reported). Proven live on the deployed service: R1001 file_sensor + R1004 host_telemetry DLL drops, all verified. (2) scripts/aegis_event_gen.py pointed at a nonexistent pipe (aegis_sensor_pipe vs daemon's aegis_sensor_pipe_t1); one-line fix, server now acknowledges writes. (3) Loop-proof attempt surfaced a bigger finding instead of closing: four server-acknowledged fixtures never appear anywhere in the full ring (prefix scan matched:0 truncated:False, source=2 --all matched:0). Root cause isolated to starvation, not a broken path: events.stats/events.tail report queue_drops=102861 (~6% of ~1.75M processed) against a 4096-slot queue at ~380 events/sec sustained (<11s buffering). Filed as GAP-015 P0 STOP-THE-LINE (same silent-loss class as GAP-012) with rate-diagnosis, per-source accounting, zero-drop proof, and fixture-loop regression pin as required evidence. Queue fix deliberately deferred to its own slice (needs producer/consumer diagnosis first). Incidental notes: `rules add/update/delete` edit only the dev-tree file (the 'already exists' answer came from there, not the daemon); UNKNOWN_RULE numerics observed twice (registry_sensor) and aged out before mapping \u2014 open tracing note, display behaved as designed.",
+      "description": "First frontend slice. (1) `aegisctl alerts` was a hardcoded _unavailable stub; now it pages forensics.list through the live control plane (200/page, up to 5 pages, after-cursor), keeps rule_id != 0 records, and labels them by re-deriving the FNV-1a numeric map from Rules.json (unknown numerics stay visible as UNKNOWN_RULE, never dropped; scan window always reported). Proven live on the deployed service: R1001 file_sensor + R1004 host_telemetry DLL drops, all verified. (2) scripts/aegis_event_gen.py pointed at a nonexistent pipe (aegis_sensor_pipe vs daemon's aegis_sensor_pipe_t1); one-line fix, server now acknowledges writes. (3) Loop-proof attempt surfaced a bigger finding instead of closing: four server-acknowledged fixtures never appear anywhere in the full ring (prefix scan matched:0 truncated:False, source=2 --all matched:0). Root cause isolated to starvation, not a broken path: events.stats/events.tail report queue_drops=102861 (~6% of ~1.75M processed) against a 4096-slot queue at ~380 events/sec sustained (<11s buffering). Filed as GAP-015 P0 STOP-THE-LINE (same silent-loss class as GAP-012) with rate-diagnosis, per-source accounting, zero-drop proof, and fixture-loop regression pin as required evidence. Queue fix deliberately deferred to its own slice (needs producer/consumer diagnosis first). Incidental notes: `rules add/update/delete` edit only the dev-tree file (the 'already exists' answer came from there, not the daemon); UNKNOWN_RULE numerics observed twice (registry_sensor) and aged out before mapping — open tracing note, display behaved as designed.",
       "flow_id": "DATA-001",
       "files_changed": [
         "tools/aegisctl.py",
@@ -6798,7 +6821,7 @@
         "forensics source=2 --all: matched 0 (full-ring completeness proof the pipe path starves)"
       ],
       "result": "PASS",
-      "finding": "The operator can now SEE live rule matches from the terminal (alerts), and can SEND controlled fixtures at the daemon (fixed pipe) \u2014 but fixtures currently starve in an overflowing queue, which is exactly what GAP-015 pins down. Frontend slice F1 is complete; the loop-closure proof becomes GAP-015's regression pin."
+      "finding": "The operator can now SEE live rule matches from the terminal (alerts), and can SEND controlled fixtures at the daemon (fixed pipe) — but fixtures currently starve in an overflowing queue, which is exactly what GAP-015 pins down. Frontend slice F1 is complete; the loop-closure proof becomes GAP-015's regression pin."
     },
     {
       "id": "EVT-121",
@@ -6807,7 +6830,7 @@
       "title": "G1 observability: per-source ingress accounting, race-free perf snapshot, queue.stats control command, aegisctl queue",
       "level": "E2",
       "component": "zig_core",
-      "description": "GAP-015 bullet-2 instrument (code-complete, live proof pending redeploy). Additive only, zero behavior change: event_queue counts every push/drop outcome by legacy source ordinal (256 atomic buckets, one fetchAdd on each path); queueDepth() accessor; legacySourceName() in event.zig labels buckets (unknown ordinals format, never dropped); g_perf zero-initialized at declaration (was undefined until daemon init) with a dedicated g_perf_mutex closing the observe-vs-snapshot data race (observe wrapped in event_processor); new read-only queue.stats command (403, third registration table fromString was missing until the test caught it \u2014 null .? panic, fixed same patch); handler emits queue_size/depth/totals/nonzero buckets plus all 7 pipeline stage snapshots (only stage-1 populated live; stages[7..16] are undefined memory and explicitly never read). aegisctl queue added (human table + --json, pure row formatter). Proof: 2 new Zig tests (naming incl. unknown_7, push/drop deltas incl. self-calibrating fill-to-refusal + drain-to-zero), protocol fromString pin extended, 2 new Python pins; full zig suite green 4/4 (one environmental benchmark-threshold flake failed once under host load then passed unmodified on rerun \u2014 recorded, not a regression); pytest tools 5/5. Live queue.stats output requires rebuild+redeploy+restart (elevated operator step); until then the old daemon honestly answers UNAVAILABLE (verified). Rejected in-design: enlarging the queue (Little's law), hashing only part of the record (forensic format contract), FI-counter surfacing (separate minor).",
+      "description": "GAP-015 bullet-2 instrument (code-complete, live proof pending redeploy). Additive only, zero behavior change: event_queue counts every push/drop outcome by legacy source ordinal (256 atomic buckets, one fetchAdd on each path); queueDepth() accessor; legacySourceName() in event.zig labels buckets (unknown ordinals format, never dropped); g_perf zero-initialized at declaration (was undefined until daemon init) with a dedicated g_perf_mutex closing the observe-vs-snapshot data race (observe wrapped in event_processor); new read-only queue.stats command (403, third registration table fromString was missing until the test caught it — null .? panic, fixed same patch); handler emits queue_size/depth/totals/nonzero buckets plus all 7 pipeline stage snapshots (only stage-1 populated live; stages[7..16] are undefined memory and explicitly never read). aegisctl queue added (human table + --json, pure row formatter). Proof: 2 new Zig tests (naming incl. unknown_7, push/drop deltas incl. self-calibrating fill-to-refusal + drain-to-zero), protocol fromString pin extended, 2 new Python pins; full zig suite green 4/4 (one environmental benchmark-threshold flake failed once under host load then passed unmodified on rerun — recorded, not a regression); pytest tools 5/5. Live queue.stats output requires rebuild+redeploy+restart (elevated operator step); until then the old daemon honestly answers UNAVAILABLE (verified). Rejected in-design: enlarging the queue (Little's law), hashing only part of the record (forensic format contract), FI-counter surfacing (separate minor).",
       "flow_id": "DATA-001",
       "files_changed": [
         "src/contract/event.zig",
@@ -6837,7 +6860,7 @@
       "title": "G2 tail fix: matchFirst replaces per-event heap AC enumeration, queue 4096 to 16384 burst absorption",
       "level": "E2",
       "component": "zig_core",
-      "description": "GAP-015 fix slice, driven by live queue.stats numbers (90s soak: 23063 pushed, 0 dropped; ETW 23041 = 99.9% of ingress; pipeline p50=1ns [clock-resolution floor], p95=524us, max=15ms). Two changes, both behavior-preserving: (1) event_processor uses AhoCorasick.matchFirst instead of match()+free \u2014 the pipeline consumed only matches[0], so the per-event page-allocator ArrayList growth + free (hundreds/sec on the single consumer) was pure tail latency; equivalence pinned field-for-field over 9 texts (empty, no-match, overlap, multi-match, JSON envelope with <script>) in a new test. match() remains for tests/fuzz. (2) PIPELINE_QUEUE_SIZE 4096 to 16384: burst insurance only (documented Little's-law caveat in-code), all references symbolic, ~26MB. Deliberately NOT done: audit-log sampling (audit completeness is a forensic property \u2014 no unproven cut), ETW volume filtering (R1004/R1001 live on ETW file events; filtering risks detection blindness), partial-record hashing (forensic format contract). Proof: full zig suite green 4/4 (2125/2126 + 1 skipped) incl. new equivalence test; live zero-drop + p95-down + fixture-loop proof require rebuild + elevated redeploy + soak (operator step, not yet run).",
+      "description": "GAP-015 fix slice, driven by live queue.stats numbers (90s soak: 23063 pushed, 0 dropped; ETW 23041 = 99.9% of ingress; pipeline p50=1ns [clock-resolution floor], p95=524us, max=15ms). Two changes, both behavior-preserving: (1) event_processor uses AhoCorasick.matchFirst instead of match()+free — the pipeline consumed only matches[0], so the per-event page-allocator ArrayList growth + free (hundreds/sec on the single consumer) was pure tail latency; equivalence pinned field-for-field over 9 texts (empty, no-match, overlap, multi-match, JSON envelope with <script>) in a new test. match() remains for tests/fuzz. (2) PIPELINE_QUEUE_SIZE 4096 to 16384: burst insurance only (documented Little's-law caveat in-code), all references symbolic, ~26MB. Deliberately NOT done: audit-log sampling (audit completeness is a forensic property — no unproven cut), ETW volume filtering (R1004/R1001 live on ETW file events; filtering risks detection blindness), partial-record hashing (forensic format contract). Proof: full zig suite green 4/4 (2125/2126 + 1 skipped) incl. new equivalence test; live zero-drop + p95-down + fixture-loop proof require rebuild + elevated redeploy + soak (operator step, not yet run).",
       "flow_id": "DATA-001",
       "files_changed": [
         "src/detection/signature_engine.zig",
@@ -6860,7 +6883,7 @@
       "title": "Fixture loop closed 3x live (R9059 records 398143/418425/422786); alerts newest-window anchor removed as ineffective; GAP-015 downgraded P0 to P1",
       "level": "E5",
       "component": "tooling",
-      "description": "Loop-closure investigation with three self-corrections, all on the deployed G2 service. (1) The pipe path was never broken: system(99) pushed counter proves ingestion (10, 11, 14, 15 across sends), and pipe records attribute to canonical zig_core (source 0), not source 2/99 \u2014 the source-2 --all and prefix probes that 'proved absence' were looking in the wrong space / past retention (~50s at 300/s on the 16k ring). Direct proof, 3x: forensics --source 0 --after <tip> after each send returned the fixture record with rule 4009890390 (R9059) and len 316. (2) alerts initially scanned oldest-first (F1 bug: 5 pages cover the oldest ~1000, never fresh records on a fast ring). A newest-window anchor (after=tip-1000) was added, then REMOVED in the same investigation after live proof that forensics.list's after-cursor does not window under wrap (after=435000 and after=422786 both return the tip) \u2014 an anchor that cannot hold is a trap, so alerts reports plain scan totals; the cursor quirk is filed here as a minor paging-precision note (no loss class). (3) alerts still missed two landings because manual sleeps (4-8s) put the fixture outside any 1000-record window before the scan starts \u2014 methodology, confirmed by the immediate source-0 queries catching every landing. GAP-015: bullets 2 (per-source accounting live) and 4 (fixture loop 3x) closed with live proof; bullet 3 narrowed to storm-level proof + p95 driver (p95 identical at 524288ns across three deployments, matchFirst changed nothing \u2014 tail driver is elsewhere, suspects recorded); severity P0->P1 since drops are zero on the current build (90s@256/s, 180s@332/s, 1257s+ cumulative). Max 4.09s single-event outlier noted (likely control-plane verify-scan contention with the ring mutex during aggressive operator polling \u2014 observer effect documented).",
+      "description": "Loop-closure investigation with three self-corrections, all on the deployed G2 service. (1) The pipe path was never broken: system(99) pushed counter proves ingestion (10, 11, 14, 15 across sends), and pipe records attribute to canonical zig_core (source 0), not source 2/99 — the source-2 --all and prefix probes that 'proved absence' were looking in the wrong space / past retention (~50s at 300/s on the 16k ring). Direct proof, 3x: forensics --source 0 --after <tip> after each send returned the fixture record with rule 4009890390 (R9059) and len 316. (2) alerts initially scanned oldest-first (F1 bug: 5 pages cover the oldest ~1000, never fresh records on a fast ring). A newest-window anchor (after=tip-1000) was added, then REMOVED in the same investigation after live proof that forensics.list's after-cursor does not window under wrap (after=435000 and after=422786 both return the tip) — an anchor that cannot hold is a trap, so alerts reports plain scan totals; the cursor quirk is filed here as a minor paging-precision note (no loss class). (3) alerts still missed two landings because manual sleeps (4-8s) put the fixture outside any 1000-record window before the scan starts — methodology, confirmed by the immediate source-0 queries catching every landing. GAP-015: bullets 2 (per-source accounting live) and 4 (fixture loop 3x) closed with live proof; bullet 3 narrowed to storm-level proof + p95 driver (p95 identical at 524288ns across three deployments, matchFirst changed nothing — tail driver is elsewhere, suspects recorded); severity P0->P1 since drops are zero on the current build (90s@256/s, 180s@332/s, 1257s+ cumulative). Max 4.09s single-event outlier noted (likely control-plane verify-scan contention with the ring mutex during aggressive operator polling — observer effect documented).",
       "flow_id": "DATA-001",
       "files_changed": [
         "tools/aegisctl.py",
@@ -6883,7 +6906,7 @@
       "title": "F2 operator convenience: live-log events source, dashboard watch loop, simulate kept fail-closed",
       "level": "E5",
       "component": "tooling",
-      "description": "Second frontend slice, all client-side (tools/aegisctl.py + tests, zero daemon change). (1) events tail/count/stats read the LIVE service log: newest-existing-wins selection between the service path (System32) and the dev-tree path, every output labeled with source path + age \u2014 kills the silent-stale where the CWD file held 2 test lines for weeks while the service wrote megabytes elsewhere. Proven live: tail shows fresh R1004 signature_match rows, 0s old, from the System32 log. (2) dashboard gains --watch/--interval/--iterations (single-render extraction _render_dashboard_once, Ctrl+C clean, scripted N-frame mode); proven live with --iterations 2 (2 frames, DEFCON 3 HIGH, 7/7, gate CLOSED, exit 0). (3) simulate: a subprocess bridge to the fixture runner was implemented and proven live once (attack --type xss drove the full loop to verified R9059 record 686163), then REVERTED in the same patch before commit \u2014 full pytest caught it violating two standing safety contracts (Gate-E simulation fail-closed pins flood/attack/packet/replay unavailable; T16 AC1 forbids process-spawning tokens in the canonical CLI). Contracts outrank convenience: fixtures stay runnable only via scripts/aegis_event_gen.py directly, and the unavailable message now names the exact sanctioned invocation plus verify pointer. Pins: pure source-selection tests (tmp_path freshness/missing).",
+      "description": "Second frontend slice, all client-side (tools/aegisctl.py + tests, zero daemon change). (1) events tail/count/stats read the LIVE service log: newest-existing-wins selection between the service path (System32) and the dev-tree path, every output labeled with source path + age — kills the silent-stale where the CWD file held 2 test lines for weeks while the service wrote megabytes elsewhere. Proven live: tail shows fresh R1004 signature_match rows, 0s old, from the System32 log. (2) dashboard gains --watch/--interval/--iterations (single-render extraction _render_dashboard_once, Ctrl+C clean, scripted N-frame mode); proven live with --iterations 2 (2 frames, DEFCON 3 HIGH, 7/7, gate CLOSED, exit 0). (3) simulate: a subprocess bridge to the fixture runner was implemented and proven live once (attack --type xss drove the full loop to verified R9059 record 686163), then REVERTED in the same patch before commit — full pytest caught it violating two standing safety contracts (Gate-E simulation fail-closed pins flood/attack/packet/replay unavailable; T16 AC1 forbids process-spawning tokens in the canonical CLI). Contracts outrank convenience: fixtures stay runnable only via scripts/aegis_event_gen.py directly, and the unavailable message now names the exact sanctioned invocation plus verify pointer. Pins: pure source-selection tests (tmp_path freshness/missing).",
       "flow_id": "DATA-001",
       "files_changed": [
         "tools/aegisctl.py",
@@ -6898,7 +6921,7 @@
         "direct event_gen fixture loop still proven (R9059 record 686163 via sanctioned path)"
       ],
       "result": "PASS",
-      "finding": "The terminal surface is complete for observe-and-probe within the safety contracts: live status/rules/alerts/events/queue, scripted dashboard frames, and precise fixture guidance. The reverted bridge is the evidence the gates work \u2014 full pytest refused a convenience that contradicted fail-closed. Remaining frontend: F3 egui data source, F4 mouth fate, F5 web."
+      "finding": "The terminal surface is complete for observe-and-probe within the safety contracts: live status/rules/alerts/events/queue, scripted dashboard frames, and precise fixture guidance. The reverted bridge is the evidence the gates work — full pytest refused a convenience that contradicted fail-closed. Remaining frontend: F3 egui data source, F4 mouth fate, F5 web."
     },
     {
       "id": "EVT-125",
@@ -6907,7 +6930,7 @@
       "title": "F3 egui dashboard reads the live log: newest-wins path resolution plus 256KB tail window",
       "level": "E2",
       "component": "tooling",
-      "description": "Third frontend slice, Rust egui crate only (zero daemon change). Two defects fixed: (1) log_path was a blind CWD-relative default showing 2 stale test lines while the service wrote megabytes to System32 \u2014 now resolve_log_path() ranks the service path vs the dev-tree path by mtime (fallback preserves old behavior); the existing Evidence: label displays the chosen path with no UI change. (2) the 1s refresh loop re-read + re-parsed the whole multi-MB file every tick \u2014 now read_tail() takes a 256KB line-bounded suffix (partial leading line dropped, never half-parsed; display keeps last 50 alerts regardless). Rules path and snapshot-subprocess feed untouched (live + honest fallback already). Proof: cargo test 7/7 (2 new: newest-wins incl. missing fallback, tail boundedness/completeness/partial-line/errors; tmp-only fixtures), cargo build release clean, 15s GUI smoke (alive, killed clean). Visual correctness needs operator eyes (fresh binary at aegis_dashboard/target/release/aegis_dashboard.exe, run from repo root).",
+      "description": "Third frontend slice, Rust egui crate only (zero daemon change). Two defects fixed: (1) log_path was a blind CWD-relative default showing 2 stale test lines while the service wrote megabytes to System32 — now resolve_log_path() ranks the service path vs the dev-tree path by mtime (fallback preserves old behavior); the existing Evidence: label displays the chosen path with no UI change. (2) the 1s refresh loop re-read + re-parsed the whole multi-MB file every tick — now read_tail() takes a 256KB line-bounded suffix (partial leading line dropped, never half-parsed; display keeps last 50 alerts regardless). Rules path and snapshot-subprocess feed untouched (live + honest fallback already). Proof: cargo test 7/7 (2 new: newest-wins incl. missing fallback, tail boundedness/completeness/partial-line/errors; tmp-only fixtures), cargo build release clean, 15s GUI smoke (alive, killed clean). Visual correctness needs operator eyes (fresh binary at aegis_dashboard/target/release/aegis_dashboard.exe, run from repo root).",
       "flow_id": "DATA-001",
       "files_changed": [
         "aegis_dashboard/src/main.rs",
@@ -6928,7 +6951,7 @@
       "title": "F3 visual closed by operator screenshot plus F4 mouth re-pointed to the live log",
       "level": "E5",
       "component": "tooling",
-      "description": "Operator launched the fresh egui binary from the repo root and confirmed live: RUNTIME RUNNING (Control Center), DEFCON 3 HIGH daemon authority, Evidence 689 parsed, Rules 23/23, Forensics ok, 6/6 workers, R1001/R1004 signature_match rows, bottom bar reading Rules loaded: 23, Evidence: C:\\Windows\\System32\\logs\\aegis_core.ndjson, Updated 1.0s ago \u2014 the F3 newest-wins path visibly working. F4 in the same slice: mouth (console TUI, already defaulting off dead anomalous.json to aegis_core.ndjson) got the same newest-wins resolution (service System32 log vs dev-tree log, explicit --log always wins) with a testable two-arg core. Proof: cargo test 11/11 (new newest-wins pin, tmp-only), release build clean, 8s console smoke rendering live DEFCON 3 HIGH from daemon authority with alert/mitigation feeds. Pre-existing unused-import warning (AsRawHandle) left untouched. anomalous.json confirmed writerless (zero references in brain/src/tools) \u2014 the stale-format era is over on every surface.",
+      "description": "Operator launched the fresh egui binary from the repo root and confirmed live: RUNTIME RUNNING (Control Center), DEFCON 3 HIGH daemon authority, Evidence 689 parsed, Rules 23/23, Forensics ok, 6/6 workers, R1001/R1004 signature_match rows, bottom bar reading Rules loaded: 23, Evidence: C:\\Windows\\System32\\logs\\aegis_core.ndjson, Updated 1.0s ago — the F3 newest-wins path visibly working. F4 in the same slice: mouth (console TUI, already defaulting off dead anomalous.json to aegis_core.ndjson) got the same newest-wins resolution (service System32 log vs dev-tree log, explicit --log always wins) with a testable two-arg core. Proof: cargo test 11/11 (new newest-wins pin, tmp-only), release build clean, 8s console smoke rendering live DEFCON 3 HIGH from daemon authority with alert/mitigation feeds. Pre-existing unused-import warning (AsRawHandle) left untouched. anomalous.json confirmed writerless (zero references in brain/src/tools) — the stale-format era is over on every surface.",
       "flow_id": "DATA-001",
       "files_changed": [
         "mouth/windows_sec_monitor.rs",
@@ -6940,7 +6963,7 @@
         "egui operator screenshot: all live values match daemon"
       ],
       "result": "PASS",
-      "finding": "Terminal, native GUI, and console TUI all default to live data with labeled provenance. Remaining frontend: F5 web (design first \u2014 no consumer exists for the vendored vis/tom-select libs)."
+      "finding": "Terminal, native GUI, and console TUI all default to live data with labeled provenance. Remaining frontend: F5 web (design first — no consumer exists for the vendored vis/tom-select libs)."
     },
     {
       "id": "EVT-127",
@@ -6949,7 +6972,7 @@
       "title": "F5 web serves live plus storm caught red-handed: ETW drops 687k (35%) post-fix, GAP-015 back to P0",
       "level": "E5",
       "component": "tooling",
-      "description": "F5 found a complete Flask console already built (routes, SSE, localhost-only bind, read-only doctrine) needing only live-data repair: evidence feed newest-wins resolution (service System32 log vs repo path, same rule as all surfaces) and queue.stats wired into snapshot() (additive key, empty on old daemons). Proof live: 200 on / and /api/snapshot with rules 23/23, policies 6, feed from the service log (687 scanned), queue 4 buckets + 7 stages. Pins: 4 tests (newest-wins incl. fallback, queue key in schema, /api/snapshot 200 without daemon, no 0.0.0.0 bind). SSE route smoke untested (noted). STORM DISCOVERY in the same session: queue.stats showed dropped_total 687,755 against pushed 1,970,948 \u2014 all previous spot checks read 0. Breakdown: ETW 687,738 dropped, everything else single digits; depth back to 1 after. Probable trigger was overlapping build/test/GUI activity churning target/ and .zig-cache (self-inflicted firehose), which generalizes to any busy host. Consequences recorded: G2 fix insufficient, GAP-015 reinstated to P0 with narrowed evidence, F1-era downgrade called premature. The instrument paid for itself in the same session it shipped.",
+      "description": "F5 found a complete Flask console already built (routes, SSE, localhost-only bind, read-only doctrine) needing only live-data repair: evidence feed newest-wins resolution (service System32 log vs repo path, same rule as all surfaces) and queue.stats wired into snapshot() (additive key, empty on old daemons). Proof live: 200 on / and /api/snapshot with rules 23/23, policies 6, feed from the service log (687 scanned), queue 4 buckets + 7 stages. Pins: 4 tests (newest-wins incl. fallback, queue key in schema, /api/snapshot 200 without daemon, no 0.0.0.0 bind). SSE route smoke untested (noted). STORM DISCOVERY in the same session: queue.stats showed dropped_total 687,755 against pushed 1,970,948 — all previous spot checks read 0. Breakdown: ETW 687,738 dropped, everything else single digits; depth back to 1 after. Probable trigger was overlapping build/test/GUI activity churning target/ and .zig-cache (self-inflicted firehose), which generalizes to any busy host. Consequences recorded: G2 fix insufficient, GAP-015 reinstated to P0 with narrowed evidence, F1-era downgrade called premature. The instrument paid for itself in the same session it shipped.",
       "flow_id": "DATA-001",
       "files_changed": [
         "tools/aegisctl/web_dashboard/app.py",
@@ -6963,7 +6986,7 @@
         "storm numbers: ETW 687738 dropped / 1966916 pushed, rest single digits"
       ],
       "result": "PASS",
-      "finding": "All four operator surfaces are live. The web slice's real yield is the storm proof: spot-check zero-drop claims are worthless on bursty ingress \u2014 only cumulative per-source counters tell the truth, and they now exist because of G1."
+      "finding": "All four operator surfaces are live. The web slice's real yield is the storm proof: spot-check zero-drop claims are worthless on bursty ingress — only cumulative per-source counters tell the truth, and they now exist because of G1."
     },
     {
       "id": "EVT-140",
@@ -6972,7 +6995,7 @@
       "title": "Deep verification round: deployed equals HEAD, FI and SSE live, wrap test labeled honestly, runbook status",
       "level": "E5",
       "component": "testing",
-      "description": "Pre-opening audit of our own work. (1) Currency: deployed exe timestamp analyzed against commit timeline \u2014 no production-code diffs postdate the build (only tests/evidence/docs), so the service behaviorally equals HEAD; G5 verb + polish stages both previously proven live on it. (2) FI surfacing proven live (events.stats: fi_enabled false, fi_dropped/corrupted 0). (3) SSE /stream proven live (HTTP 200, infinite-stream semantics observed; route is /stream, not /api/stream). (4) Wrap-test honesty fix: static analysis proves old and new cursor code agree on quiescent rings, so the test is relabeled characterization (pins the contract) rather than regression reproduction \u2014 the live churn case it addresses is unreproducible single-threaded by construction. (5) Runbook README gains a Status column (RB-012..015 NOT YET EXECUTED, RB-016/017 OPERATOR ACTION). Finding: new-test teeth reviewed file by file \u2014 red-proven (JOIN-TRACE, queueStats parse), live-vectored (FNV, alerts, exemption state machine, parity tests), shape-guarding (formatters, schema), graceful-degradation (web without daemon); no vacuous tests found.",
+      "description": "Pre-opening audit of our own work. (1) Currency: deployed exe timestamp analyzed against commit timeline — no production-code diffs postdate the build (only tests/evidence/docs), so the service behaviorally equals HEAD; G5 verb + polish stages both previously proven live on it. (2) FI surfacing proven live (events.stats: fi_enabled false, fi_dropped/corrupted 0). (3) SSE /stream proven live (HTTP 200, infinite-stream semantics observed; route is /stream, not /api/stream). (4) Wrap-test honesty fix: static analysis proves old and new cursor code agree on quiescent rings, so the test is relabeled characterization (pins the contract) rather than regression reproduction — the live churn case it addresses is unreproducible single-threaded by construction. (5) Runbook README gains a Status column (RB-012..015 NOT YET EXECUTED, RB-016/017 OPERATOR ACTION). Finding: new-test teeth reviewed file by file — red-proven (JOIN-TRACE, queueStats parse), live-vectored (FNV, alerts, exemption state machine, parity tests), shape-guarding (formatters, schema), graceful-degradation (web without daemon); no vacuous tests found.",
       "flow_id": "DATA-001",
       "files_changed": [
         "src/control/handler_registry.zig",
@@ -6995,7 +7018,7 @@
       "title": "G3 storm shed: depth-triggered File-Write discard, Process-Exit unmapped, ETW composition counters",
       "level": "E2",
       "component": "zig_core",
-      "description": "GAP-015 fix slice, designed from the per-opcode payload mapping (reader investigation + author verification): every kept ETW class pushes FileName/ImageName/KeyName TLV bytes, so R1001/R1004 fire iff the path survives \u2014 Write carries FileName (dropping it blinds overwrites), NameCreate carries it (must keep, cheap), Process-Exit carries no reliable path with zero consumers. Three changes, detection-preserving by construction: (1) File-Write sheds only at >=75% queue depth (symbolic threshold, pure predicate) with a dedicated shed_overload counter apart from queue-full drops \u2014 creates still catch new files in storms, overwrites resume after; (2) Process-Exit unmapped from the classifier (EVT-091 pin updated same patch with reason); (3) per-class ETW counters (start/name+/name-/write/reg+/reg-/unmapped) counted inside classifyEtwEvent, exposed in queue.stats alongside shed_overload (both additive). CLI queue display extended with shed + etw rows. Deliberately NOT done: sampling (random blindness), blind Write filtering (kills overwrite detection always, not just in storms), kernel keyword changes (GAP-012 ground untouched), FIM/registry cuts (single digits, out of scope). Proof: full zig suite green 4/4 (2127/2128 + 1 skipped) incl. 2 new tests (shed parity vs classifier arms, counter deltas) + updated EVT-091 pin; pytest tools 12/12. Live storm proof (drops ~0 with shed absorbing, detections preserved) requires rebuild + elevated redeploy + storm soak.",
+      "description": "GAP-015 fix slice, designed from the per-opcode payload mapping (reader investigation + author verification): every kept ETW class pushes FileName/ImageName/KeyName TLV bytes, so R1001/R1004 fire iff the path survives — Write carries FileName (dropping it blinds overwrites), NameCreate carries it (must keep, cheap), Process-Exit carries no reliable path with zero consumers. Three changes, detection-preserving by construction: (1) File-Write sheds only at >=75% queue depth (symbolic threshold, pure predicate) with a dedicated shed_overload counter apart from queue-full drops — creates still catch new files in storms, overwrites resume after; (2) Process-Exit unmapped from the classifier (EVT-091 pin updated same patch with reason); (3) per-class ETW counters (start/name+/name-/write/reg+/reg-/unmapped) counted inside classifyEtwEvent, exposed in queue.stats alongside shed_overload (both additive). CLI queue display extended with shed + etw rows. Deliberately NOT done: sampling (random blindness), blind Write filtering (kills overwrite detection always, not just in storms), kernel keyword changes (GAP-012 ground untouched), FIM/registry cuts (single digits, out of scope). Proof: full zig suite green 4/4 (2127/2128 + 1 skipped) incl. 2 new tests (shed parity vs classifier arms, counter deltas) + updated EVT-091 pin; pytest tools 12/12. Live storm proof (drops ~0 with shed absorbing, detections preserved) requires rebuild + elevated redeploy + storm soak.",
       "flow_id": "DATA-001",
       "files_changed": [
         "src/pipeline/telemetry_threads.zig",
@@ -7020,7 +7043,7 @@
       "title": "G4 storm volume control: pre-decode ETW gate plus NameDelete storm shed",
       "level": "E2",
       "component": "zig_core",
-      "description": "GAP-015 fix slice from the 8M-unmapped finding (EVT-129): the native callback delivered ~27k records/sec while the queue saw 1.1k/s \u2014 97.5% decoded-then-dropped. Two changes: (1) pre-decode gate in the ETW wrapper (shouldDecodeEtw mirrors the 6 kept pairs; unmapped pairs skip TDH decode + callback, counted as predecode_dropped apart from classifier-side unmapped so drift is detectable; zero behavior change by construction). (2) storm shed generalized from Write-only to Write+NameDelete at >=75% depth (deletes are 400/s, FIM-duplicated, near-worthless for R1001/R1004; NameCreate/Process/Registry untouched). Parity tests on both mirrors (gate-vs-classifier, shed-vs-classifier) fail on any drift. Along the way: fixed a duplicated-tuple edit slip (caught by zig build), a test pointer-type error (caught by zig build test \u2014 production and test graphs cover different files, both must run), and re-observed the known benchmark-threshold flake (fails under host load, green on unmodified rerun, 2nd occurrence). Proof: zig build + test green 4/4 (2129/2130 + 1 skipped) incl. 2 new tests + queueStats parse pin; pytest tools 12/12. Live storm proof needs rebuild + elevated redeploy + soak.",
+      "description": "GAP-015 fix slice from the 8M-unmapped finding (EVT-129): the native callback delivered ~27k records/sec while the queue saw 1.1k/s — 97.5% decoded-then-dropped. Two changes: (1) pre-decode gate in the ETW wrapper (shouldDecodeEtw mirrors the 6 kept pairs; unmapped pairs skip TDH decode + callback, counted as predecode_dropped apart from classifier-side unmapped so drift is detectable; zero behavior change by construction). (2) storm shed generalized from Write-only to Write+NameDelete at >=75% depth (deletes are 400/s, FIM-duplicated, near-worthless for R1001/R1004; NameCreate/Process/Registry untouched). Parity tests on both mirrors (gate-vs-classifier, shed-vs-classifier) fail on any drift. Along the way: fixed a duplicated-tuple edit slip (caught by zig build), a test pointer-type error (caught by zig build test — production and test graphs cover different files, both must run), and re-observed the known benchmark-threshold flake (fails under host load, green on unmodified rerun, 2nd occurrence). Proof: zig build + test green 4/4 (2129/2130 + 1 skipped) incl. 2 new tests + queueStats parse pin; pytest tools 12/12. Live storm proof needs rebuild + elevated redeploy + soak.",
       "flow_id": "DATA-001",
       "files_changed": [
         "src/windows/etw_realtime.zig",
@@ -7047,7 +7070,7 @@
       "title": "G4.1 first-write exemption: storms shed repeats but always evaluate new files once",
       "level": "E2",
       "component": "zig_core",
-      "description": "Closes the sharp edge the canary investigation exposed: FIM-delivered System32 .dll paths match R1001 (len-36 records rule 3813986375, 6x for 3 files = create+write each) while first-match-wins shadows R1004 on dual-pattern payloads \u2014 and a storm-shedding Write could blind a genuinely new file's only evaluation. Fix: bounded 4096-hash FIFO exemption ring (FNV-1a64 over the exact queued bytes) plus a 200-token / 100-per-second bucket, consulted only inside the already-gated shed branch. First sighting spends a token and pushes despite depth; repeats and empty-bucket shed; overflow past push still counts as dropped (not exempted). State is plain statics, safe because the native layer serializes the callback under its critical section (documented in-code). queue.stats and CLI gain shed_exempted. Deliberately untouched: NameCreate (never shed), FIM/registry paths, token rates as consts. Proof: new exemption test (first-pass/repeat-shed/empty-refuse/refill-reopen/refill math/avalanche) + extended parse pin; zig build + test green 4/4 (2130/2131 + 1 skipped); pytest tools green. Live storm proof needs rebuild + elevated redeploy + soak with exemption metrics.",
+      "description": "Closes the sharp edge the canary investigation exposed: FIM-delivered System32 .dll paths match R1001 (len-36 records rule 3813986375, 6x for 3 files = create+write each) while first-match-wins shadows R1004 on dual-pattern payloads — and a storm-shedding Write could blind a genuinely new file's only evaluation. Fix: bounded 4096-hash FIFO exemption ring (FNV-1a64 over the exact queued bytes) plus a 200-token / 100-per-second bucket, consulted only inside the already-gated shed branch. First sighting spends a token and pushes despite depth; repeats and empty-bucket shed; overflow past push still counts as dropped (not exempted). State is plain statics, safe because the native layer serializes the callback under its critical section (documented in-code). queue.stats and CLI gain shed_exempted. Deliberately untouched: NameCreate (never shed), FIM/registry paths, token rates as consts. Proof: new exemption test (first-pass/repeat-shed/empty-refuse/refill-reopen/refill math/avalanche) + extended parse pin; zig build + test green 4/4 (2130/2131 + 1 skipped); pytest tools green. Live storm proof needs rebuild + elevated redeploy + soak with exemption metrics.",
       "flow_id": "DATA-001",
       "files_changed": [
         "src/pipeline/telemetry_threads.zig",
@@ -7072,7 +7095,7 @@
       "title": "Live composition: 8M unmapped ETW vs 205k kept; storm design refined to pre-decode gate plus delete-shed",
       "level": "E5",
       "component": "zig_core",
-      "description": "First G3-instrumented soak (180s): pushed 205,060 (1139/s, depth 0, dropped 0, shed 0) with ETW classes start=14, name=73,688+72,008, write=26,285, reg=28,615+4,315 \u2014 and unmapped=8,072,357. The native callback delivers ~27k records/sec; Zig TDH-decodes every one, then drops 97.5% at the classifier. The queue-visible firehose (1139/s) is 1/40th of the real one; the 687k-drop storm was this 27k/s arriving faster than TDH-decode + single-consumer drain. Two consequences: (1) the cheapest massive win is a pre-decode classify gate (skip TDH/TLV/alloc for unmapped pairs \u2014 zero behavior change, those records never entered); (2) queue-volume cuts must come from the kept set, where NameDelete (400/s, FIM-duplicated, near-worthless for R1001/R1004) is the next storm-shed candidate after Write. p95 still exactly 524288ns (tail driver still elsewhere). No alerts in the window (quiet period, honest output). Design approved for G4: pre-decode gate with parity test (same pattern as isSheddableWrite) plus delete-shed at depth; sampling, blind Write filtering, and kernel keyword changes stay rejected.",
+      "description": "First G3-instrumented soak (180s): pushed 205,060 (1139/s, depth 0, dropped 0, shed 0) with ETW classes start=14, name=73,688+72,008, write=26,285, reg=28,615+4,315 — and unmapped=8,072,357. The native callback delivers ~27k records/sec; Zig TDH-decodes every one, then drops 97.5% at the classifier. The queue-visible firehose (1139/s) is 1/40th of the real one; the 687k-drop storm was this 27k/s arriving faster than TDH-decode + single-consumer drain. Two consequences: (1) the cheapest massive win is a pre-decode classify gate (skip TDH/TLV/alloc for unmapped pairs — zero behavior change, those records never entered); (2) queue-volume cuts must come from the kept set, where NameDelete (400/s, FIM-duplicated, near-worthless for R1001/R1004) is the next storm-shed candidate after Write. p95 still exactly 524288ns (tail driver still elsewhere). No alerts in the window (quiet period, honest output). Design approved for G4: pre-decode gate with parity test (same pattern as isSheddableWrite) plus delete-shed at depth; sampling, blind Write filtering, and kernel keyword changes stay rejected.",
       "flow_id": "DATA-001",
       "files_changed": [
         "EVIDENCE_INDEX.json"
@@ -7082,7 +7105,7 @@
         "alerts live (quiet window, honest)"
       ],
       "result": "PASS",
-      "finding": "Stop guessing at the queue: 97.5% of ETW cost dies after full decode. G4 moves the gate before the decode and sheds deletes at depth \u2014 both preserve every R1001/R1004 path."
+      "finding": "Stop guessing at the queue: 97.5% of ETW cost dies after full decode. G4 moves the gate before the decode and sheds deletes at depth — both preserve every R1001/R1004 path."
     },
     {
       "id": "EVT-143",
@@ -7091,7 +7114,7 @@
       "title": "Opened system kept green: import-hygiene test tolerates legitimate brain, gate_d flake recorded",
       "level": "E2",
       "component": "testing",
-      "description": "Starting the brain (system opening) turned one green test red for the wrong reason: test_import_binds_no_udp_port probes port freedom by binding 9999, which a legitimately running brain (RB-017) holds by design. Fixed in-test (not in product): holder identity is checked first via endpoint ownership, and a real brain process skips with explicit reason; the no-banner/no-claim assertions still run unconditionally, so the hygiene contract is undiminished. Full suite green with the brain up: 751 passed (incl. the new SSE/notifier/selection pins), 9 skipped. gate_d forensic-export failed once in the full run and passed solo immediately after \u2014 4th load-coupled flake on record (benchmark x3): full-ring verify/export under 1100/s churn races retention, not a product regression. No product code changed in this slice.",
+      "description": "Starting the brain (system opening) turned one green test red for the wrong reason: test_import_binds_no_udp_port probes port freedom by binding 9999, which a legitimately running brain (RB-017) holds by design. Fixed in-test (not in product): holder identity is checked first via endpoint ownership, and a real brain process skips with explicit reason; the no-banner/no-claim assertions still run unconditionally, so the hygiene contract is undiminished. Full suite green with the brain up: 751 passed (incl. the new SSE/notifier/selection pins), 9 skipped. gate_d forensic-export failed once in the full run and passed solo immediately after — 4th load-coupled flake on record (benchmark x3): full-ring verify/export under 1100/s churn races retention, not a product regression. No product code changed in this slice.",
       "flow_id": "DATA-001",
       "files_changed": [
         "tests/brain/test_import_hygiene.py",
@@ -7112,7 +7135,7 @@
       "title": "Observer-effect fix: control retry backoff plus measurement hygiene doctrine",
       "level": "E2",
       "component": "tooling",
-      "description": "Yes, fixable \u2014 at the layer we own. Root cause is structural, not a daemon bug: one single-client control instance shared by dashboard refresh, web snapshots, pytest live tests, and operator scans, plus full-ring verify holding the ring mutex for seconds under load. Our own full-pytest run starved the CLI into misreporting a healthy daemon (the F2 follow-up). Fix, client-side: _query_daemon_retry goes 3x50ms to 5 attempts with 0.05-to-0.4s backoff (~0.75s worst) \u2014 rides out millisecond contention, still fails a dead daemon fast, and cannot fix verify-hogs (documented as needing daemon multi-instance, deferred). Doctrine: docs/MEASUREMENT_HYGIENE.md records the four observer-effect incidents plus the rules (no soaks during suites, one heavy scan at a time, budget pages are sub-second windows, unknown is an answer) with this host's rate table. Proof: 2 new retry pins (succeed-after-flakes with exact attempt count, give-up after 5); full suite unaffected in shape (backoff only triggers on failure).",
+      "description": "Yes, fixable — at the layer we own. Root cause is structural, not a daemon bug: one single-client control instance shared by dashboard refresh, web snapshots, pytest live tests, and operator scans, plus full-ring verify holding the ring mutex for seconds under load. Our own full-pytest run starved the CLI into misreporting a healthy daemon (the F2 follow-up). Fix, client-side: _query_daemon_retry goes 3x50ms to 5 attempts with 0.05-to-0.4s backoff (~0.75s worst) — rides out millisecond contention, still fails a dead daemon fast, and cannot fix verify-hogs (documented as needing daemon multi-instance, deferred). Doctrine: docs/MEASUREMENT_HYGIENE.md records the four observer-effect incidents plus the rules (no soaks during suites, one heavy scan at a time, budget pages are sub-second windows, unknown is an answer) with this host's rate table. Proof: 2 new retry pins (succeed-after-flakes with exact attempt count, give-up after 5); full suite unaffected in shape (backoff only triggers on failure).",
       "flow_id": "DATA-001",
       "files_changed": [
         "tools/aegisctl/api/control_api.py",
@@ -7134,7 +7157,7 @@
       "title": "One-command system opening: aegis_open status/open/close with honest stop semantics",
       "level": "E2",
       "component": "tooling",
-      "description": "The requested simple opener for the production topology (service + nose + brain + verify), replacing ad-hoc per-component blocks. status (default, read-only), open (idempotent start-missing + verify), close (stop supervised, service stays up unless --with-service). Hard-won details baked in: repo-root-relative paths (never CWD), nose CWD=repo (else ruleless), $AEGIS_NOSE_IFACE override with auto-select default, frames-flowing (not flags) as the nose gate, deadline loops for hanging service stops, logs to C:\\Temp (never repo), exit 0/1/2 with --json. One real bug found by live use and fixed: stop reported 'was not running' when the kill failed on a foreign-elevated process (access denied) \u2014 presence, kill, and re-verify are now separate steps with elevate-hints, proven by the honest FAIL on PID 9184. Session lesson recorded: processes spawned from transient shells die with the session, so long-lived supervision (scheduled tasks) stays an operator step. Proven live: status 4xOK, open idempotent (3 SKIP + 4 OK, exit 0), brain start path (listener present, new PID), close honest-fail on elevated nose. Pins: 5 pure tests (iface/rows/exit/safe probes). nose start path itself still needs a persistent shell (same session lesson).",
+      "description": "The requested simple opener for the production topology (service + nose + brain + verify), replacing ad-hoc per-component blocks. status (default, read-only), open (idempotent start-missing + verify), close (stop supervised, service stays up unless --with-service). Hard-won details baked in: repo-root-relative paths (never CWD), nose CWD=repo (else ruleless), $AEGIS_NOSE_IFACE override with auto-select default, frames-flowing (not flags) as the nose gate, deadline loops for hanging service stops, logs to C:\\Temp (never repo), exit 0/1/2 with --json. One real bug found by live use and fixed: stop reported 'was not running' when the kill failed on a foreign-elevated process (access denied) — presence, kill, and re-verify are now separate steps with elevate-hints, proven by the honest FAIL on PID 9184. Session lesson recorded: processes spawned from transient shells die with the session, so long-lived supervision (scheduled tasks) stays an operator step. Proven live: status 4xOK, open idempotent (3 SKIP + 4 OK, exit 0), brain start path (listener present, new PID), close honest-fail on elevated nose. Pins: 5 pure tests (iface/rows/exit/safe probes). nose start path itself still needs a persistent shell (same session lesson).",
       "flow_id": "DATA-001",
       "files_changed": [
         "scripts/aegis_open.py",
@@ -7158,7 +7181,7 @@
       "title": "run_aegis.bat rehabilitated as a thin opener wrapper; old phase launcher retired",
       "level": "E2",
       "component": "tooling",
-      "description": "The operator's bat is the system launcher \u2014 but its v5.0 phases predate the service and are dangerous now: Phase 0 taskkills the service process, Phase 4.2 starts a SECOND aegis_nids.exe fighting it for ETW sessions/pipes/logs, most binary paths are stale (aegis_bridge.exe, shield/sec_monitor, dist/nose_dashboard.exe), and Mouth launched against the dead anomalous.json feed. Replaced the body with a thin wrapper around scripts/aegis_open.py (kept: root detection, banner habit, pause, --status/--stop mapping with --skip-build/--no-dashboard retired-flag notes), so one double-click opens the service topology with zero duplicated startup logic. Preserved operator continuity: AEGIS_CAPTURE_IFACE honored as a legacy alias in the opener. Proof: run_aegis.bat --status live from scripts/ (root detect + delegate + 4 OK incl. nose 879k frames, exit 0). Old content survives in git history; stop_aegis.bat left untouched (out of scope).",
+      "description": "The operator's bat is the system launcher — but its v5.0 phases predate the service and are dangerous now: Phase 0 taskkills the service process, Phase 4.2 starts a SECOND aegis_nids.exe fighting it for ETW sessions/pipes/logs, most binary paths are stale (aegis_bridge.exe, shield/sec_monitor, dist/nose_dashboard.exe), and Mouth launched against the dead anomalous.json feed. Replaced the body with a thin wrapper around scripts/aegis_open.py (kept: root detection, banner habit, pause, --status/--stop mapping with --skip-build/--no-dashboard retired-flag notes), so one double-click opens the service topology with zero duplicated startup logic. Preserved operator continuity: AEGIS_CAPTURE_IFACE honored as a legacy alias in the opener. Proof: run_aegis.bat --status live from scripts/ (root detect + delegate + 4 OK incl. nose 879k frames, exit 0). Old content survives in git history; stop_aegis.bat left untouched (out of scope).",
       "flow_id": "DATA-001",
       "files_changed": [
         "scripts/run_aegis.bat",
@@ -7181,7 +7204,7 @@
       "title": "Launcher owns all four displays: web/gui/tui/terminal start/stop with exact-identity discipline",
       "level": "E2",
       "component": "tooling",
-      "description": "The launcher now opens the displays together with the system, per the operator's direction. aegis_open.py gains a displays command (start missing/all, --web/--gui/--tui/--terminal subset, --stop, --no-browser): web spawns the Flask console on loopback and verifies a real snapshot answer before opening the browser; gui/tui spawn detached with CWD=repo and aliveness checks; terminal opens a watch window; every surface is single-instance (running ones SKIPPED) and stops by exact tool identity (web by web_dashboard cmdline, gui/tui by exe name, terminal by watch cmdline \u2014 the nose/brain precision rule extended, never blanket-kill). run_aegis.bat composes open+displays by default (--no-displays opts out, --stop stops everything). Full starts need the operator's desktop (GUI/browser popups); proven here: 7 pure pins, displays --stop clean no-op, start paths reviewed. Live full-start proof stays an operator step (one command, visible windows).",
+      "description": "The launcher now opens the displays together with the system, per the operator's direction. aegis_open.py gains a displays command (start missing/all, --web/--gui/--tui/--terminal subset, --stop, --no-browser): web spawns the Flask console on loopback and verifies a real snapshot answer before opening the browser; gui/tui spawn detached with CWD=repo and aliveness checks; terminal opens a watch window; every surface is single-instance (running ones SKIPPED) and stops by exact tool identity (web by web_dashboard cmdline, gui/tui by exe name, terminal by watch cmdline — the nose/brain precision rule extended, never blanket-kill). run_aegis.bat composes open+displays by default (--no-displays opts out, --stop stops everything). Full starts need the operator's desktop (GUI/browser popups); proven here: 7 pure pins, displays --stop clean no-op, start paths reviewed. Live full-start proof stays an operator step (one command, visible windows).",
       "flow_id": "DATA-001",
       "files_changed": [
         "scripts/aegis_open.py",
@@ -7203,7 +7226,7 @@
       "title": "Opener stops lying under load: unknown distinguished from failed/zero",
       "level": "E2",
       "component": "tooling",
-      "description": "The bat --status run during the full pytest suite reported daemon FAIL + nose FAIL while the service was healthy: client-side control timeouts under test-induced ring-mutex contention (forensics verify/export tests pound the ring at 1100/s), compounded by two misreports of ours \u2014 an empty health answer became FAIL (should be unknown) and an empty data_plane became frames_read=0 (should be unknown). Fixed: both degrade to None/unknown with explicit reasons; overall_exit already maps all-unknown to partial (exit 2), never false-green. Proven by re-run after the suite: 4 OK exit 0 with nose at 1.27M frames. Lesson recorded: our own verification traffic (full pytest with live-daemon tests, aggressive forensics scans) is itself a load source that slows the control plane \u2014 observer effect, third instance this session.",
+      "description": "The bat --status run during the full pytest suite reported daemon FAIL + nose FAIL while the service was healthy: client-side control timeouts under test-induced ring-mutex contention (forensics verify/export tests pound the ring at 1100/s), compounded by two misreports of ours — an empty health answer became FAIL (should be unknown) and an empty data_plane became frames_read=0 (should be unknown). Fixed: both degrade to None/unknown with explicit reasons; overall_exit already maps all-unknown to partial (exit 2), never false-green. Proven by re-run after the suite: 4 OK exit 0 with nose at 1.27M frames. Lesson recorded: our own verification traffic (full pytest with live-daemon tests, aggressive forensics scans) is itself a load source that slows the control plane — observer effect, third instance this session.",
       "flow_id": "DATA-001",
       "files_changed": [
         "scripts/aegis_open.py",
@@ -7223,7 +7246,7 @@
       "title": "DB/SEC/EXT sweep: dead TCP listener ruled out, pipe DACL documented, mouth single-instance, webhook fail-closed, trust+brain runbooks",
       "level": "E2",
       "component": "tooling",
-      "description": "Three-reader survey (database/security/external, all file:line) converted to verdicts plus minimal fixes. P0 alarm cleared by evidence: TCP 0.0.0.0:12345 has no listener on the host and no bind/listen in src/ (legacy nids_analyze path, orphaned entrypoint) \u2014 dead code, not exposure. Pipe DACL claims corrected: null descriptor means restrictive default DACL, not null-DACL holes (nose pipe + mouth health pipe); nose keeps default with an in-code review note, mouth health drops 255 instances to 1 with the same note. Webhook empty-key HMAC now refuses instead of signing with nothing (deprecated script, 2 pins, no network in tests). udp_brain honesty: the flag is a static capability; the CLI bridge ownership check already reports no-listener truthfully \u2014 recorded, no change. Deliberately not built: DB durability architecture, audit unification, metrics history (design slices, not patches); kernel (deferred); SDDL AU tightening (breaks non-admin operators \u2014 operator decision); control-pipe operate includes rules.reload but only re-reads admin-owned files (low impact, noted). Added RB-016 (production trust checklist: key, sidecar, flag, secrets, gates) and RB-017 (brain supervised bring-up with listener proof), README index extended. Proof: mouth cargo test 11/11 + release build + live DEFCON smoke; webhook pins 2/2; zig build + test green (comment-only core change).",
+      "description": "Three-reader survey (database/security/external, all file:line) converted to verdicts plus minimal fixes. P0 alarm cleared by evidence: TCP 0.0.0.0:12345 has no listener on the host and no bind/listen in src/ (legacy nids_analyze path, orphaned entrypoint) — dead code, not exposure. Pipe DACL claims corrected: null descriptor means restrictive default DACL, not null-DACL holes (nose pipe + mouth health pipe); nose keeps default with an in-code review note, mouth health drops 255 instances to 1 with the same note. Webhook empty-key HMAC now refuses instead of signing with nothing (deprecated script, 2 pins, no network in tests). udp_brain honesty: the flag is a static capability; the CLI bridge ownership check already reports no-listener truthfully — recorded, no change. Deliberately not built: DB durability architecture, audit unification, metrics history (design slices, not patches); kernel (deferred); SDDL AU tightening (breaks non-admin operators — operator decision); control-pipe operate includes rules.reload but only re-reads admin-owned files (low impact, noted). Added RB-016 (production trust checklist: key, sidecar, flag, secrets, gates) and RB-017 (brain supervised bring-up with listener proof), README index extended. Proof: mouth cargo test 11/11 + release build + live DEFCON smoke; webhook pins 2/2; zig build + test green (comment-only core change).",
       "flow_id": "DATA-001",
       "files_changed": [
         "src/capture/nose_pipe_reader.zig",
@@ -7251,7 +7274,7 @@
       "title": "System opening: nose capture complete with wire content proof, brain owned, SDDL fix live",
       "level": "E5",
       "component": "testing",
-      "description": "Full system opening on the production host. (1) Nose: SDDL fix proven live \u2014 medium-IL open of aegis_nose now passes ACL (error 231 busy-instance, not 5 denied); capture flows (thousands of frames, drops only under queue pressure, counted). Source-9 records queryable in-ring with empty payloads by wire contract. (2) Wire CONTENT path proven end to end, the case that matters: 5 reflected-XSS-probe fetches produced 5 R0089 signature_match records in the daemon log (rule 4237725842, host src_ip, sequential ports/sessions, policy block observed-not-enforced = fail-safe posture demonstrating itself). Dead ends documented honestly along the way: hairpin traffic uncapturable, ICMP/ping has no application layer for the substring classifier, META patterns (PROTO/FLAGS) unmatchable by payload-substring design, 15s retention + 64KB pages defeat slow manual probes (differentials + daemon-log timestamps win). Nose classifier confirmed payload-substring-only (no direction filter). (3) Brain started supervised (PID 29084): UDP 9999 owned by python.exe, endpoint_ownership CLEAR with zero foreign, secret unprovisioned (bare-JSON per RB-017 smoke allowance; RB-016 covers provisioning). (4) Nose supervision permanence (scheduled task) and brain secret/schedule stay operator actions. Remaining for attack testing: lab VM + RB-012..015; never the production host.",
+      "description": "Full system opening on the production host. (1) Nose: SDDL fix proven live — medium-IL open of aegis_nose now passes ACL (error 231 busy-instance, not 5 denied); capture flows (thousands of frames, drops only under queue pressure, counted). Source-9 records queryable in-ring with empty payloads by wire contract. (2) Wire CONTENT path proven end to end, the case that matters: 5 reflected-XSS-probe fetches produced 5 R0089 signature_match records in the daemon log (rule 4237725842, host src_ip, sequential ports/sessions, policy block observed-not-enforced = fail-safe posture demonstrating itself). Dead ends documented honestly along the way: hairpin traffic uncapturable, ICMP/ping has no application layer for the substring classifier, META patterns (PROTO/FLAGS) unmatchable by payload-substring design, 15s retention + 64KB pages defeat slow manual probes (differentials + daemon-log timestamps win). Nose classifier confirmed payload-substring-only (no direction filter). (3) Brain started supervised (PID 29084): UDP 9999 owned by python.exe, endpoint_ownership CLEAR with zero foreign, secret unprovisioned (bare-JSON per RB-017 smoke allowance; RB-016 covers provisioning). (4) Nose supervision permanence (scheduled task) and brain secret/schedule stay operator actions. Remaining for attack testing: lab VM + RB-012..015; never the production host.",
       "flow_id": "DATA-001",
       "files_changed": [
         "EVIDENCE_INDEX.json"
@@ -7272,7 +7295,7 @@
       "title": "G6 nose pipe SDDL: authenticated writers admitted, capture path unblocked",
       "level": "E2",
       "component": "zig_core",
-      "description": "System-opening found the Go capture path dead on arrival: nose captured thousands of frames but dropped 100% (consumer unavailable) while the daemon waited with zero reads. Root cause isolated by elimination (pipe names match on both sides; daemon server exists and listens): the daemon-created pipe's default DACL rejects non-SYSTEM writers, proven by medium-IL CreateFile returning ERROR_ACCESS_DENIED (5). Fix mirrors the sensor pipe exactly (BA+AU SDDL string, fail-closed on conversion failure, documented posture: pipe input is untrusted sensor data, observe-only with trust-gated enforcement). Also pins the SDDL conversion itself (a typo would fail closed at startup \u2014 the test catches rot). Nose runs as the operator here (same posture as the sensor pipe's Python writers), so no supervision change is implied by this patch. Proof: zig build + test green (2138/2139 + 1 skipped) incl. new SDDL test; benchmark-threshold flake re-observed a 3rd time under host load, green on unmodified rerun (environmental, recorded). Live frame flow (source-9 records, nose_connected) needs the redeploy carrying this change plus a running nose.",
+      "description": "System-opening found the Go capture path dead on arrival: nose captured thousands of frames but dropped 100% (consumer unavailable) while the daemon waited with zero reads. Root cause isolated by elimination (pipe names match on both sides; daemon server exists and listens): the daemon-created pipe's default DACL rejects non-SYSTEM writers, proven by medium-IL CreateFile returning ERROR_ACCESS_DENIED (5). Fix mirrors the sensor pipe exactly (BA+AU SDDL string, fail-closed on conversion failure, documented posture: pipe input is untrusted sensor data, observe-only with trust-gated enforcement). Also pins the SDDL conversion itself (a typo would fail closed at startup — the test catches rot). Nose runs as the operator here (same posture as the sensor pipe's Python writers), so no supervision change is implied by this patch. Proof: zig build + test green (2138/2139 + 1 skipped) incl. new SDDL test; benchmark-threshold flake re-observed a 3rd time under host load, green on unmodified rerun (environmental, recorded). Live frame flow (source-9 records, nose_connected) needs the redeploy carrying this change plus a running nose.",
       "flow_id": "DATA-001",
       "files_changed": [
         "src/capture/nose_pipe_reader.zig",
@@ -7293,7 +7316,7 @@
       "title": "Crash-class hardening plus crash-resilience gaps: timestamp clamps, saturating anomaly count, watchdog",
       "level": "E2",
       "component": "zig_core",
-      "description": "Prompted by a 0x80000003 crash of a superseded deployed binary (02:50, PE stamp differs from current) plus a ~2h blind gap (no SCM recovery configured). A full -ODebug panic-class sweep (reader investigation + author verification of every load-bearing claim) found: no legitimate-input storm panic remains (prior classes carry pins: CORR-SAT-069, METR-U64-061); atomic RMW wraps rather than traps (framing correction: incidents_open cannot int3); all hot-path .?/casts/indexing audited with three genuine residuals closed here \u2014 threat_tracker/siemForward timestamp clamps (nose monotonic_ns is unbounded by validation; saturating fail-open) and anomaly saturating count (u32 horizon at 2^32 same-key observations, CORR-SAT-069 idiom). Residual risks honestly graded (garbage-timestamp needs signature match too; saturation needs 71min at 1M eps; callback_ctx fragility needs a code edit to arm). My new G-code verified clean line by line. Watchdog script added (detection-only, no-spawn, exit-code contract; proven exit 0 live). Filed GAP-016 (P1) for the crash aftermath: SCM recovery config + watchdog scheduling + no-further-crashes evidence.",
+      "description": "Prompted by a 0x80000003 crash of a superseded deployed binary (02:50, PE stamp differs from current) plus a ~2h blind gap (no SCM recovery configured). A full -ODebug panic-class sweep (reader investigation + author verification of every load-bearing claim) found: no legitimate-input storm panic remains (prior classes carry pins: CORR-SAT-069, METR-U64-061); atomic RMW wraps rather than traps (framing correction: incidents_open cannot int3); all hot-path .?/casts/indexing audited with three genuine residuals closed here — threat_tracker/siemForward timestamp clamps (nose monotonic_ns is unbounded by validation; saturating fail-open) and anomaly saturating count (u32 horizon at 2^32 same-key observations, CORR-SAT-069 idiom). Residual risks honestly graded (garbage-timestamp needs signature match too; saturation needs 71min at 1M eps; callback_ctx fragility needs a code edit to arm). My new G-code verified clean line by line. Watchdog script added (detection-only, no-spawn, exit-code contract; proven exit 0 live). Filed GAP-016 (P1) for the crash aftermath: SCM recovery config + watchdog scheduling + no-further-crashes evidence.",
       "flow_id": "DATA-001",
       "files_changed": [
         "src/detection/threat_tracker.zig",
@@ -7318,7 +7341,7 @@
       "title": "GAP-016 bullets 1-2 closed live: SCM restart recovery plus watchdog task active on hardened binary",
       "level": "E5",
       "component": "tooling",
-      "description": "Operator ran the resilience block: sc failure shows 3x RESTART/60s with 86400s reset; AegisWatchdog scheduled task Ready (5-min cadence as SYSTEM); queue.stats on the hardened binary (timestamp/post-restart process) shows drops 0, shed 0, predecode ~2M with unmapped 0, composition name-quiet this window. Notably Stop-Service completed with zero hang warnings this round (previous restarts hung repeatedly \u2014 worth watching, not yet a pattern). GAP-016 bullet 3 (no further int3 crashes) remains time-gated and OPEN.",
+      "description": "Operator ran the resilience block: sc failure shows 3x RESTART/60s with 86400s reset; AegisWatchdog scheduled task Ready (5-min cadence as SYSTEM); queue.stats on the hardened binary (timestamp/post-restart process) shows drops 0, shed 0, predecode ~2M with unmapped 0, composition name-quiet this window. Notably Stop-Service completed with zero hang warnings this round (previous restarts hung repeatedly — worth watching, not yet a pattern). GAP-016 bullet 3 (no further int3 crashes) remains time-gated and OPEN.",
       "flow_id": "DATA-001",
       "files_changed": [
         "EVIDENCE_INDEX.json"
@@ -7338,7 +7361,7 @@
       "title": "GAP-015 closed: p95 attributed to audit-plus-forensic, quarantine verb validated live, shed proven in storm",
       "level": "E5",
       "component": "zig_core",
-      "description": "Closure round on the deployed builds. (1) p95 IDENTIFIED with numbers, not guesses: all 7 stages live with counts; six stages sit at p50=p95=1ns (clock floor) while action_to_forensic alone carries p95=524288ns across every deployment \u2014 the ~5% tail is the audit-line format+write plus forensic append path (reference crypto rules out the hash itself at 3.9us; remaining distribution across audit-write vs ring-mutex waits is future work, not a gap). (2) G5-live: enforcement.quarantine answers INVALID_INPUT/REJECTED with the precise field error on malformed input (auth + validation precede any provider touch); medium-IL callers get AUTH_DENIED (role gating proven from the other side). Full ENFORCED/quarantine receipts stay lab-gated per RB-012/013. (3) Storm: induced file storm engaged the shed 3,827 times with zero queue-full drops; per-source buckets + predecode/unmapped/exempt counters flow in queue.stats; composition varies by window (ETW-name bursts vs registry churn) as expected. Mega-storm recurrence remains ops-monitored via the same counters (they caught the 687k event the morning it happened). All four required_evidence bullets now carry executed evidence.",
+      "description": "Closure round on the deployed builds. (1) p95 IDENTIFIED with numbers, not guesses: all 7 stages live with counts; six stages sit at p50=p95=1ns (clock floor) while action_to_forensic alone carries p95=524288ns across every deployment — the ~5% tail is the audit-line format+write plus forensic append path (reference crypto rules out the hash itself at 3.9us; remaining distribution across audit-write vs ring-mutex waits is future work, not a gap). (2) G5-live: enforcement.quarantine answers INVALID_INPUT/REJECTED with the precise field error on malformed input (auth + validation precede any provider touch); medium-IL callers get AUTH_DENIED (role gating proven from the other side). Full ENFORCED/quarantine receipts stay lab-gated per RB-012/013. (3) Storm: induced file storm engaged the shed 3,827 times with zero queue-full drops; per-source buckets + predecode/unmapped/exempt counters flow in queue.stats; composition varies by window (ETW-name bursts vs registry churn) as expected. Mega-storm recurrence remains ops-monitored via the same counters (they caught the 687k event the morning it happened). All four required_evidence bullets now carry executed evidence.",
       "flow_id": "DATA-001",
       "files_changed": [
         "EVIDENCE_INDEX.json"
@@ -7387,7 +7410,7 @@
       "title": "Observability batch: per-stage latency marks, FI counters surfaced, after-cursor fixed, SSE pinned, export dry-run clean",
       "level": "E2",
       "component": "zig_core",
-      "description": "One observability+polish patch, four items. (1) Per-stage latency: reference crypto rules OUT forensic-append as the p95 driver (3.9us for hash+CRC+memset at OpenSSL speed; even 20x slower cannot fill 524us), so the six remaining stages get mutex-guarded marks (single markStage helper returning now for chaining; saturating cast) feeding the already-surfaced snapshot \u2014 the next redeploy attributes the tail live instead of guessing. (2) FI drops surfaced in events.stats (fi_enabled/dropped/corrupted; exact when FI off, documented best-effort when on) \u2014 closes the invisibility finding. (3) forensics.list after-cursor fixed: root cause found in readRecord mapping (slot S%capacity holds newest residue; mid-scan appends alias stored seqs past any fixed cursor at 1100/s). Fix starts the scan at max(oldest, after+1) and enforces seq==index (mid-scan overwrites skip honestly); wrap test pins after=3->[4], after=99->empty, none->[3,4] on a 2-slot ring with 5 appends. (4) SSE first-frame smoke test (connected preamble without snapshot = fast, daemon-independent). Plus: publish-subset export dry-run proven (1753 tracked -> 499 dropped -> 1254 exported, runbooks + evidence present, historical/.agents absent) and gitleaks-clean on the export set itself. Proof: zig build + test green (incl. new wrap + FI-adjacent coverage), pytest tools green incl. SSE. Live proof (stages lighting up, FI fields, windowed paging) needs the redeploy carrying G5.",
+      "description": "One observability+polish patch, four items. (1) Per-stage latency: reference crypto rules OUT forensic-append as the p95 driver (3.9us for hash+CRC+memset at OpenSSL speed; even 20x slower cannot fill 524us), so the six remaining stages get mutex-guarded marks (single markStage helper returning now for chaining; saturating cast) feeding the already-surfaced snapshot — the next redeploy attributes the tail live instead of guessing. (2) FI drops surfaced in events.stats (fi_enabled/dropped/corrupted; exact when FI off, documented best-effort when on) — closes the invisibility finding. (3) forensics.list after-cursor fixed: root cause found in readRecord mapping (slot S%capacity holds newest residue; mid-scan appends alias stored seqs past any fixed cursor at 1100/s). Fix starts the scan at max(oldest, after+1) and enforces seq==index (mid-scan overwrites skip honestly); wrap test pins after=3->[4], after=99->empty, none->[3,4] on a 2-slot ring with 5 appends. (4) SSE first-frame smoke test (connected preamble without snapshot = fast, daemon-independent). Plus: publish-subset export dry-run proven (1753 tracked -> 499 dropped -> 1254 exported, runbooks + evidence present, historical/.agents absent) and gitleaks-clean on the export set itself. Proof: zig build + test green (incl. new wrap + FI-adjacent coverage), pytest tools green incl. SSE. Live proof (stages lighting up, FI fields, windowed paging) needs the redeploy carrying G5.",
       "flow_id": "DATA-001",
       "files_changed": [
         "src/pipeline/event_processor.zig",
@@ -7411,7 +7434,7 @@
       "title": "Publish gate history scan clean: 26 findings all false positives, allowlist pinned, export set measured",
       "level": "E1",
       "component": "release",
-      "description": "Installed gitleaks v8 (go install, network OK) and ran the blocking full-history scan: 26 findings, every one triaged with evidence \u2014 9x sourcegraph-access-token are the deleted patch file's own From-line git SHAs, 15x generic-api-key are one dev-default HMAC label plus minified vis.js identifiers, 2x more of the same in release snapshots; .bak hits are untracked-and-absent. Zero real credentials. Verified the HMAC default is dev-tool-only (env override + loud warning; runtime policy verification is Ed25519 on a separate path \u2014 no bypass). Pinned the triage in .gitleaks.toml (vendored path + label regex + historical commit); rescan reports no leaks found. Export-set math for the publish decision (1748 tracked files): delegated drops (docs/historical/ + .agents/) = 131; broader lab bulk (audit snapshots, release/, vm kits) = 368 more; export set ~1249 files. History is secrets-clean, so push-as-is is safe from a secrets standpoint; subset export remains an operator presentation choice. Quarantine read-only projection also proven this round (enforce simulate quarantine/sev8: outcome allow, gate closed, pep_not_invoked \u2014 honest detection-only; full positive-path stays lab-only).",
+      "description": "Installed gitleaks v8 (go install, network OK) and ran the blocking full-history scan: 26 findings, every one triaged with evidence — 9x sourcegraph-access-token are the deleted patch file's own From-line git SHAs, 15x generic-api-key are one dev-default HMAC label plus minified vis.js identifiers, 2x more of the same in release snapshots; .bak hits are untracked-and-absent. Zero real credentials. Verified the HMAC default is dev-tool-only (env override + loud warning; runtime policy verification is Ed25519 on a separate path — no bypass). Pinned the triage in .gitleaks.toml (vendored path + label regex + historical commit); rescan reports no leaks found. Export-set math for the publish decision (1748 tracked files): delegated drops (docs/historical/ + .agents/) = 131; broader lab bulk (audit snapshots, release/, vm kits) = 368 more; export set ~1249 files. History is secrets-clean, so push-as-is is safe from a secrets standpoint; subset export remains an operator presentation choice. Quarantine read-only projection also proven this round (enforce simulate quarantine/sev8: outcome allow, gate closed, pep_not_invoked — honest detection-only; full positive-path stays lab-only).",
       "flow_id": "EVIDENCE-001",
       "files_changed": [
         ".gitleaks.toml",
@@ -7432,7 +7455,7 @@
       "title": "Launcher stability: no-hang opens, deduped displays, flicker-free GUI, ASCII-safe bat",
       "level": "E5",
       "component": "tooling+web+gui",
-      "description": "Operator reported: hangs, messy/random opens, flickering/concurrent windows (launcher \u0e04\u0e49\u0e32\u0e07 \u0e40\u0e1b\u0e34\u0e14\u0e21\u0e31\u0e48\u0e27 \u0e2b\u0e19\u0e49\u0e32\u0e08\u0e2d\u0e15\u0e34\u0e14\u0e46\u0e14\u0e31\u0e1a\u0e46). Three root causes proven by live reproduction: (1) HANG - cmd_open/cmd_displays buffered all output to the end and the readiness probe hit /api/snapshot (~7s; forensics.verify alone ~4.5s) with an 8s timeout -> false \u201cno snapshot answer in 60s\u201d -> 95s opens. (2) MESSY OPENS - display_running(\u201cterminal\u201d) never saw dashboard --watch -> stacking watch windows; stale detached web servers with unreadable CommandLine held port 5000 and were missed by PID-by-cmdline matching -> duplicate spawns. (3) FLICKER - GUI ran aegisctl.py snapshot via blocking Command::output() every 1s (~5-7s each) -> UI freeze and control-pipe saturation slowing every other display. Fixes: console_alive() probes static / (0.2s) not /api/snapshot; _pids_on_tcp_port/_pid_is_python identity helpers; web start clears dead port-listeners and logs stderr to C:\\Temp\\aegis_web.log; stop adds port-owner PIDs; terminal dedup via dashboard --watch; streaming emit/progress (JSON stdout stays clean); web app gains a snapshot cache stamped at COMPLETION time plus a 60s forensic sub-cache (periodic snapshots ~0.36s instead of ~5-7s) and threaded=True; GUI snapshot moved to a background thread throttled to 30s; run_aegis.bat rewritten ASCII-safe (the chcp 65001 box-glyph variant broke cmd's parser) with a clean escaped banner, mode line, and benign exit-2 handling for already-running displays.",
+      "description": "Operator reported: hangs, messy/random opens, flickering/concurrent windows (launcher ค้าง เปิดมั่ว หน้าจอติดๆดับๆ). Three root causes proven by live reproduction: (1) HANG - cmd_open/cmd_displays buffered all output to the end and the readiness probe hit /api/snapshot (~7s; forensics.verify alone ~4.5s) with an 8s timeout -> false “no snapshot answer in 60s” -> 95s opens. (2) MESSY OPENS - display_running(“terminal”) never saw dashboard --watch -> stacking watch windows; stale detached web servers with unreadable CommandLine held port 5000 and were missed by PID-by-cmdline matching -> duplicate spawns. (3) FLICKER - GUI ran aegisctl.py snapshot via blocking Command::output() every 1s (~5-7s each) -> UI freeze and control-pipe saturation slowing every other display. Fixes: console_alive() probes static / (0.2s) not /api/snapshot; _pids_on_tcp_port/_pid_is_python identity helpers; web start clears dead port-listeners and logs stderr to C:\\Temp\\aegis_web.log; stop adds port-owner PIDs; terminal dedup via dashboard --watch; streaming emit/progress (JSON stdout stays clean); web app gains a snapshot cache stamped at COMPLETION time plus a 60s forensic sub-cache (periodic snapshots ~0.36s instead of ~5-7s) and threaded=True; GUI snapshot moved to a background thread throttled to 30s; run_aegis.bat rewritten ASCII-safe (the chcp 65001 box-glyph variant broke cmd's parser) with a clean escaped banner, mode line, and benign exit-2 handling for already-running displays.",
       "flow_id": "DATA-001",
       "files_changed": [
         "scripts/aegis_open.py",
@@ -9823,7 +9846,7 @@
       "timestamp": "2026-10-19",
       "result": "PASS",
       "command": "TDD RED->GREEN. nose: go test ./... (RED: undefined headlessTelemetry + signature mismatch -> GREEN ok 9.810s) + go vet clean; go/aggregator: go test ./... (RED: c.Stats undefined -> GREEN ok 0.937s) incl. TestHealthReportsCollectorStats and TestHealthReportsHonestZeroBeforeAnyIngest + go vet clean; mouth: cargo test --manifest-path mouth/Cargo.toml (RED: unresolved note_log_event / note_response_flushed / last_event_age_ms -> GREEN 13 passed incl. health_counter_tests::counters_move_with_real_work) + cargo build --release rc=0; full pytest 933 passed / 2 skipped / 27 subtests",
-      "expected": "A live component's counters move with its real work and a wedged loop is visible: nose in_events increments per consumed sample, last_event_ms is the age of the last sample (0 = honest never before any event); aggregator in_events = lines parsed, errors = parse failures, last_event_ms = age of the last successful ingest (0 before any); mouth in_events = tailed lines, out_events = flushed probe responses, last_event_ms grows when the tail loop stalls; the RUNTIME_CONTRACT \u00a74.1 schema shape is unchanged",
+      "expected": "A live component's counters move with its real work and a wedged loop is visible: nose in_events increments per consumed sample, last_event_ms is the age of the last sample (0 = honest never before any event); aggregator in_events = lines parsed, errors = parse failures, last_event_ms = age of the last successful ingest (0 before any); mouth in_events = tailed lines, out_events = flushed probe responses, last_event_ms grows when the tail loop stalls; the RUNTIME_CONTRACT §4.1 schema shape is unchanged",
       "actual": "All green: nose headlessTelemetry wired through buildHeadlessState (schema keys unchanged; a beacon's payload carries the prior-beacon out count by design, documented); aggregator Collector gained atomic ingested/parseErrors/lastIngestMs + Stats() and handleHealth computes the age (out_events/dropped stay 0 with an explicit 'pull-only, no drop path' comment); mouth health_pipe gained note_log_event / note_response_flushed + a pure saturating last_event_age_ms (0 = never) wired into server_loop and the tail loop (probes deliberately do NOT refresh the tail timestamp, so a wedged tail stays visible); errors/dropped remain 0 with comments wherever no such path exists"
     },
     {
@@ -10175,7 +10198,7 @@
       "found_at": "2026-10-26",
       "closed_at": "2026-10-26",
       "closed_by": "ACQ-ARB-E5-VERIFIED-20261026",
-      "resolution": "The corrected elevated host proof observed npcap_primary \u2192 kernel_fallback \u2192 npcap_primary. Nose read/submitted counters advanced 62/62 and kernel shadow_rows advanced 13 after handback. The prevention gate remained closed and host_effect_capable=false. The earlier no-capture attempt remains as separate E5 PARTIAL evidence.",
+      "resolution": "The corrected elevated host proof observed npcap_primary → kernel_fallback → npcap_primary. Nose read/submitted counters advanced 62/62 and kernel shadow_rows advanced 13 after handback. The prevention gate remained closed and host_effect_capable=false. The earlier no-capture attempt remains as separate E5 PARTIAL evidence.",
       "required_evidence": [
         "Run scripts/e5_arbiter_swap_verified.ps1 from elevated PowerShell while AegisNids is RUNNING and prevention_gate=closed.",
         "Capture baseline npcap_primary, controlled Nose stop, kernel_fallback/kernel_owned, and handback after Nose starts with -capture.",
@@ -10686,12 +10709,12 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 34,
-    "E2_count": 72,
-    "E3_count": 17,
-    "E4_count": 15,
-    "E5_count": 157,
+    "E1_count": 13,
+    "E2_count": 73,
+    "E3_count": 12,
+    "E4_count": 0,
+    "E5_count": 68,
     "E6_count": 0,
-    "E7_count": 1
+    "E7_count": 0
   }
 }

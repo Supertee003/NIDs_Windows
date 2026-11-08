@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T18:09:35.718956+00:00",
+  "generated_at": "2026-11-08T18:20:22.144922+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1503,
+  "total_files": 1504,
   "by_class": {
-    "canonical-docs": 355,
+    "canonical-docs": 356,
     "canonical-build": 182,
     "unclassified": 18,
     "canonical-source": 663,
@@ -411,6 +411,12 @@
       "size": 4847
     },
     {
+      "path": "analysis/current-head/FIM-PROBE-IDENTITY-COMMENT-001-20261109.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 2477
+    },
+    {
       "path": "analysis/current-head/FIM-STOP-002-20261108.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -426,7 +432,7 @@
       "path": "analysis/current-head/HEALTH-PROJECTION-001-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 3855
+      "size": 3849
     },
     {
       "path": "analysis/current-head/HOST-FLOW-001-20261108.md",
@@ -3120,7 +3126,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1030972
+      "size": 1041437
     },
     {
       "path": "fix_bridge_banner.py",
@@ -3252,7 +3258,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 237286
+      "size": 237645
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3528,7 +3534,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 195653
+      "size": 195940
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -5556,7 +5562,7 @@
       "path": "src/capture/minifilter_reader.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 22001
+      "size": 22155
     },
     {
       "path": "src/capture/nose_contract.zig",
@@ -6198,7 +6204,7 @@
       "path": "src/pipeline/fim_dedup.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 7959
+      "size": 8074
     },
     {
       "path": "src/pipeline/l4_matcher.zig",

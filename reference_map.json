@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T18:09:35.724163+00:00",
+  "generated_at": "2026-11-08T18:20:22.148206+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1503,
+  "total_files": 1504,
   "by_role": {
-    "documentation": 341,
+    "documentation": 342,
     "build-config": 171,
     "other": 18,
     "lockfile": 6,
@@ -585,6 +585,10 @@
       "role": "documentation"
     },
     "analysis/current-head/ETW-LIFE-001-20261108.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/FIM-PROBE-IDENTITY-COMMENT-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
