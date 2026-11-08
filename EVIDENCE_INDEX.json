@@ -21,6 +21,27 @@
  },
  "evidence": [
   {
+   "id": "ANOMALOUS-LOG-SIZE-CAP-E2-20261108",
+   "head_sha": "787455a",
+   "timestamp": "2026-11-08",
+   "title": "Bound the append-only anomaly log by shedding the append at a hard ceiling, not by shrinking the file",
+   "level": "E2",
+   "component": "brain/windows_brain.py write_anomaly_log, DROP_REASONS.log_size_cap, AEGIS_ANOMALOUS_MAX_BYTES",
+   "flow_id": "QLOSS-HEALTH-001",
+   "description": "logs/anomalous.json had grown to ~115 MiB over 53 days with no rotation. In-place truncation or rename-rotation would blind the daemon/console tail readers on Windows (they track offsets or hold open handles), which the B2-LOGTH-041 throttle comment already warned about. The bound is therefore tail-safe: at or above AEGIS_ANOMALOUS_MAX_BYTES (default 64 MiB, 0 disables) the append is shed, counted as drops.log_size_cap (and DROPPED_COUNT), and the caller still receives SIZE_CAPPED so Case-2 findings keep delivering through the sensor pipe. The active file is never shrunk.",
+   "files_verified": [
+    "brain/windows_brain.py",
+    "tests/brain/test_brain_udp_auth.py"
+   ],
+   "tests": [
+    "pytest tests/brain/test_brain_udp_auth.py: 15 passed (health schema now names log_size_cap; throttle stays its own reason; size-cap sheds+counts and leaves the file intact; disabled/missing-file paths do not block)",
+    "pytest tests/brain: 58 passed"
+   ],
+   "result": "PASS_E2",
+   "finding": "The rate throttle bounded how fast the file grows; nothing bounded how large it grows. The size cap closes that disk-risk without taking the one action the tailers cannot survive. The pre-existing 115 MiB file is left in place on purpose (shrinking it would break readers and discard history); archiving it is an offline ops step taken with the tailers stopped. HEALTH now distinguishes rate shedding (log_throttle) from size shedding (log_size_cap).",
+   "evidence_artifact": "tests/brain/test_brain_udp_auth.py"
+  },
+  {
    "id": "AEGISCTL-SOURCE-NAME-SEARCH-E2-20261108",
    "head_sha": "787455a",
    "timestamp": "2026-11-08",
@@ -10287,7 +10308,7 @@
  "evidence_level_summary": {
   "E0_count": 0,
   "E1_count": 33,
-  "E2_count": 165,
+  "E2_count": 166,
   "E3_count": 17,
   "E4_count": 15,
   "E5_count": 151,

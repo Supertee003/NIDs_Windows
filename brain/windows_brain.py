@@ -108,7 +108,7 @@ DROPPED_COUNT   = 0
 PIPE_FAIL_COUNT = 0
 # RB-017: "dropped" alone cannot tell an operator which gate fired, so the
 # HEALTH probe could show 98% loss with no cause. Count by reason.
-DROP_REASONS = {"bad_mac": 0, "no_mac": 0, "log_throttle": 0}
+DROP_REASONS = {"bad_mac": 0, "no_mac": 0, "log_throttle": 0, "log_size_cap": 0}
 LAST_EVENT_TS   = 0.0
 BRAIN_START_MS  = int(time.time() * 1000)
 
@@ -283,16 +283,27 @@ SCAN_CHUNK = MAX_PAYLOAD_SIZE
 SCAN_OVERLAP = 1024
 
 # B2-LOGTH-041: anomaly-log write throttle. anomalous.json is append-only
-# with no rotation, so a detection storm would fill the disk while the
-# mouth TUI tails it. Cap appends per wall-clock window; excess findings
-# are still delivered to the sensor pipe + bridge (bounded elsewhere) and
-# counted in DROPPED_COUNT so the HEALTH probe shows the throttle instead
-# of hiding it. Truncation/rotation is deliberately NOT used: the mouth
-# tail reader tracks absolute offsets and would go blind after a shrink.
+# and the daemon/console tail readers track it by offset or open handle, so
+# in-place truncation or rename-rotation would blind them on Windows. The
+# append rate is capped per wall-clock window; when the file itself grows
+# past a hard size ceiling the append is shed instead of rotated, and the
+# shed is counted. Excess findings are still delivered to the sensor pipe +
+# bridge (bounded elsewhere) and counted in DROPPED_COUNT so HEALTH shows
+# the shed instead of hiding it.
 LOG_BURST_MAX = 100
 LOG_WINDOW_SEC = 60.0
 _log_window_start = 0.0
 _log_window_count = 0
+
+# Hard ceiling on the append-only anomaly log (bytes). 0 disables the cap.
+# Default 64 MiB: large enough for long runs, small enough that an
+# unattended host does not fill its disk. The active file is never shrunk
+# in place (that would break offset-tracking tail readers); shedding the
+# append is the only tail-safe bound.
+try:
+    ANOMALOUS_MAX_BYTES = int(os.environ.get("AEGIS_ANOMALOUS_MAX_BYTES", str(64 * 1024 * 1024)))
+except (TypeError, ValueError):
+    ANOMALOUS_MAX_BYTES = 64 * 1024 * 1024
 
 
 def anomaly_log_allowed():
@@ -585,16 +596,39 @@ def init_cython_engine(rules_data):
 
 # ====== Log Writing ======
 
+def _anomalous_log_capped(path=None):
+    """True when the append-only anomaly log has reached its hard size ceiling.
+
+    The active file is never shrunk in place (offset-tracking tail readers on
+    Windows would go blind), so the ceiling sheds the append instead. A
+    missing file or a stat error is treated as "not capped" so a transient
+    filesystem hiccup never suppresses a finding. Never raises.
+    """
+    if not ANOMALOUS_MAX_BYTES or ANOMALOUS_MAX_BYTES <= 0:
+        return False
+    target = path or LOG_FILE
+    try:
+        return os.path.getsize(target) >= ANOMALOUS_MAX_BYTES
+    except OSError:
+        return False
+
+
 def write_anomaly_log(log_entry, attack_type, policy, rule_id, status="DETECTED", path=None):
     """Write an anomaly log entry to anomalous.json.
 
-    Returns "WRITTEN" or "THROTTLED" (burst cap). Only the unbounded file
-    append is shed, and the shed is counted. Whether a throttled finding is
-    still delivered is the CALLER's business: Case 2 (brain-only Tier-2)
-    delivers regardless, while Case 1 (an echo of an event the daemon already
-    owns) delivers nothing on purpose. Measured 2026-11-08: Case 1 is ~all
-    production traffic, so a high throttle count with out_events 0 is normal.
+    Returns "WRITTEN", "THROTTLED" (burst cap), or "SIZE_CAPPED" (hard file
+    ceiling reached). Only the unbounded file append is shed, and the shed is
+    counted. Whether a shed finding is still delivered is the CALLER's
+    business: Case 2 (brain-only Tier-2) delivers regardless, while Case 1
+    (an echo of an event the daemon already owns) delivers nothing on
+    purpose. Measured 2026-11-08: Case 1 is ~all production traffic, so a
+    high throttle count with out_events 0 is normal.
     """
+    if _anomalous_log_capped(path):
+        global DROPPED_COUNT
+        DROPPED_COUNT += 1
+        DROP_REASONS["log_size_cap"] += 1
+        return "SIZE_CAPPED"
     if not anomaly_log_allowed():
         return "THROTTLED"
     log_entry["attack_type"] = attack_type

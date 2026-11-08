@@ -121,12 +121,12 @@ def test_health_response_carries_auth_posture_never_the_value():
 
 
 def test_health_names_every_drop_reason_and_the_pipe_state():
-    # RB-017: HEALTH reported dropped=17139 with out_events=0 and could not say
-    # whether those were MAC failures or the log cap, so a healthy brain looked
-    # like a broken return path for hours. Both readings are now pinned.
+    # RB-017/C3: HEALTH names every shed cause. The append-only anomaly log is
+    # bounded two ways (rate throttle, hard size ceiling) and both must read as
+    # distinct reasons so an operator never has to guess.
     import brain.windows_brain as wb
     doc = wb._health_response()
-    assert set(doc["drops"]) == {"bad_mac", "no_mac", "log_throttle"}
+    assert set(doc["drops"]) == {"bad_mac", "no_mac", "log_throttle", "log_size_cap"}
     assert all(isinstance(v, int) and v >= 0 for v in doc["drops"].values())
     pipe = doc["sensor_pipe"]
     assert set(pipe) == {"enabled", "transport", "state", "failed"}
@@ -147,7 +147,52 @@ def test_log_throttle_is_counted_under_its_own_reason_only():
              patch.object(wb, "_log_window_count", wb.LOG_BURST_MAX):
             assert wb.anomaly_log_allowed() is False
         assert wb.DROP_REASONS["log_throttle"] == before["log_throttle"] + 1
-        for reason in ("bad_mac", "no_mac"):
-            assert wb.DROP_REASONS[reason] == before[reason]
+        for reason, value in before.items():
+            if reason != "log_throttle":
+                assert wb.DROP_REASONS[reason] == value
     finally:
         wb.DROP_REASONS.update(before)
+
+
+def test_size_cap_sheds_the_append_but_keeps_the_file_intact(tmp_path):
+    # A tail-safe bound: once the anomaly log reaches its ceiling the append is
+    # shed and counted, the existing file is never shrunk or renamed, and the
+    # caller still gets an explicit status (so Case 2 can keep delivering).
+    import json
+    from unittest.mock import patch
+    import brain.windows_brain as wb
+    log = tmp_path / "anomalous.json"
+    log.write_text('{"seed":1}\n', encoding="utf-8")
+    ceiling = log.stat().st_size  # already at the ceiling
+    before = dict(wb.DROP_REASONS)
+    before_dropped = wb.DROPPED_COUNT
+    try:
+        with patch.object(wb, "ANOMALOUS_MAX_BYTES", ceiling):
+            status = wb.write_anomaly_log({"x": 1}, "t", "ALERT", "R", path=str(log))
+        assert status == "SIZE_CAPPED"
+        assert log.read_text(encoding="utf-8") == '{"seed":1}\n'  # never shrunk
+        assert wb.DROP_REASONS["log_size_cap"] == before["log_size_cap"] + 1
+        assert wb.DROPPED_COUNT == before_dropped + 1
+        for reason, value in before.items():
+            if reason != "log_size_cap":
+                assert wb.DROP_REASONS[reason] == value
+    finally:
+        wb.DROP_REASONS.update(before)
+        wb.DROPPED_COUNT = before_dropped
+
+
+def test_size_cap_disabled_or_missing_file_does_not_block(tmp_path):
+    # 0 means "no cap" (explicit opt-out), and a missing file cannot be over a
+    # ceiling it does not have - both must still allow the append path.
+    from unittest.mock import patch
+    import brain.windows_brain as wb
+    missing = tmp_path / "nope.json"
+    assert wb._anomalous_log_capped(str(missing)) is False
+    with patch.object(wb, "ANOMALOUS_MAX_BYTES", 0):
+        assert wb._anomalous_log_capped(str(missing)) is False
+    # a real write below the ceiling still lands
+    log = tmp_path / "anomalous.json"
+    with patch.object(wb, "ANOMALOUS_MAX_BYTES", 1024 * 1024), \
+         patch.object(wb, "anomaly_log_allowed", return_value=True):
+        assert wb.write_anomaly_log({"x": 1}, "t", "ALERT", "R", path=str(log)) == "WRITTEN"
+    assert log.exists()
