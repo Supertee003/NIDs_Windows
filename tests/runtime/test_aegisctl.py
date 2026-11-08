@@ -651,6 +651,38 @@ class TestForensicSearchContracts(unittest.TestCase):
         doc = _json.loads(stdout)
         self.assertIn("records_matched", doc)
 
+    def test_source_accepts_the_frozen_name(self):
+        # Two numbering spaces coexist: the queue reports detection_brain (13)
+        # while the forensic writer stores canonical python_brain (5). Searching
+        # the wrong number returns zero records, which reads exactly like
+        # missing evidence, so the frozen name is accepted explicitly.
+        rc, stdout, stderr = _run_aegisctl(
+            "forensic", "search", "--field", "source", "--value", "python_brain",
+            timeout=90)
+        combined = stdout + stderr
+        self.assertNotIn("source_must_be_a_numeric_ordinal", combined)
+        self.assertNotIn("Traceback", combined)
+        self.assertIn(rc, (0, 1), f"name search must not be a usage error, got {rc}")
+
+    def test_frozen_source_table_matches_the_wire_contract(self):
+        # The CLI fallback table is only safe while it equals the frozen
+        # ordinals in brain/canonical_event.py (which pin the Zig contract).
+        import ast
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "brain_canonical_for_sources", REPO_ROOT / "brain" / "canonical_event.py")
+        brain = importlib.util.module_from_spec(spec)
+        sys.modules["brain_canonical_for_sources"] = brain  # dataclasses need it registered
+        spec.loader.exec_module(brain)
+        tree = ast.parse((REPO_ROOT / "tools" / "aegisctl.py").read_text(encoding="utf-8"))
+        table = None
+        for node in tree.body:
+            if (isinstance(node, ast.Assign)
+                    and getattr(node.targets[0], "id", None) == "FROZEN_SOURCE_ORDINALS"):
+                table = ast.literal_eval(node.value)
+        self.assertIsNotNone(table, "FROZEN_SOURCE_ORDINALS not found in aegisctl.py")
+        self.assertEqual(table, brain.SOURCE)
+
 
 class TestRulesWriteRefusedGracefully(unittest.TestCase):
     """EVT-174: unwritable Rules.json must read as a message, not a traceback."""

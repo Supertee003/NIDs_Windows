@@ -35,6 +35,46 @@ TOOLS_DIR = Path(__file__).resolve().parent
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
+# Frozen canonical source ordinals, kept here only as a fallback so a forensic
+# query still works when the brain package is not importable. They MUST match
+# src/contract/canonical_event.zig and brain/canonical_event.py; a test pins
+# the parity (tests/runtime/test_aegisctl.py).
+FROZEN_SOURCE_ORDINALS = {
+    "zig_core": 0, "wfp_sensor": 1, "pipe_sensor": 2, "minifilter": 3,
+    "pipe_monitor": 4, "python_brain": 5, "cpp_bridge": 6,
+    "rust_shield": 7, "go_aggregator": 8, "npcap_sensor": 9,
+    "host_telemetry": 10, "ml_detector": 11, "cluster_federation": 12,
+    "process_sensor": 13, "file_sensor": 14, "registry_sensor": 15,
+    "replay_sensor": 16, "external": 255,
+}
+
+
+def resolve_source_ordinal(value: str):
+    """Map a source name (or a bare ordinal) to the canonical ordinal.
+
+    Two numbering spaces coexist: the queue reports `detection_brain` (13)
+    while the forensic writer stores the canonical `python_brain` (5). A
+    search on the wrong number returns zero records, which reads exactly like
+    missing evidence, so accept the frozen name and let the caller be explicit.
+    Returns None for anything that is neither an ordinal nor a known name.
+    """
+    text = str(value).strip()
+    try:
+        return int(text)
+    except (TypeError, ValueError):
+        pass
+    table = FROZEN_SOURCE_ORDINALS
+    try:
+        repo_root = TOOLS_DIR.parent
+        if str(repo_root) not in sys.path:
+            sys.path.append(str(repo_root))
+        from brain.canonical_event import SOURCE as canonical_source
+
+        table = canonical_source
+    except Exception:  # noqa: BLE001 (fallback table is the contract copy)
+        pass
+    return table.get(text.lower())
+
 # Import control API with ALL business logic
 # The control_api module is a subpackage of the aegisctl package.
 # It contains the single source of truth for control plane business logic,
@@ -1063,16 +1103,20 @@ def cmd_forensic(args) -> int:
         field = str(args.field)
         value = str(args.value)
         if field == "source":
-            # Source is the numeric origin ordinal (9 npcap, 10 host
-            # telemetry), not an IP: reject text cleanly, never traceback.
-            try:
-                payload = {"source": int(value)}
-            except ValueError:
+            # Source is a canonical origin ordinal (5 python_brain, 9 npcap),
+            # not an IP. A name is accepted too: the queue's ordinal and the
+            # canonical one differ, and an unknown number silently matches
+            # nothing. Unrecognized text still fails with guidance, never a
+            # traceback.
+            resolved = resolve_source_ordinal(value)
+            if resolved is None:
                 print(json.dumps({"available": False, "command": "forensics.search",
                                   "reason": "source_must_be_a_numeric_ordinal",
-                                  "hint": "use --field payload_prefix for text"}, sort_keys=True),
+                                  "hint": "use a canonical name (python_brain) or its ordinal, or --field payload_prefix for text"},
+                                 sort_keys=True),
                       file=sys.stderr)
                 return 2
+            payload = {"source": resolved}
         elif field == "rule":
             # Catalog id ("R9059") or bare integer: hashed client-side to
             # the daemon's u32 rule space (FNV-1a, same as the engine).
