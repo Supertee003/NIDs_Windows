@@ -645,17 +645,21 @@ work that still blocks "finished"; the rest is documentation hygiene.
    source-quota sheds (12.5%, `shed_overload` 0) that the daemon honestly
    reported as `data_loss_observed`; a clean restart read
    `degraded=false / ready=true / overall_gate=true`, `dropped_total` 0.
-   Still open on this rail: production offers are dropped ~96% before rule
-   matching (`in_events 17,839 / dropped 17,139 / out_events 0`) with no
-   emitted finding, and the health fields that name the cause
-   (`sensor_pipe`, `drops{bad_mac,no_mac,log_throttle}`) are in source but
-   need one brain restart, which is blocked on elevation approval expiring.
-   Proven meanwhile: the daemon signs every offer (1,683 datagrams/20 s, all
+   The ~96% "drop" that looked like loss is now attributed and is not a
+   defect: after the restart, HEALTH read `in 5,223 / dropped 5,023 /
+   out 0` with `drops {bad_mac 0, no_mac 0, log_throttle 5,023}` and
+   `sensor_pipe {enabled, cython, ok, failed 0}`. The cap is the 100/60 s
+   append bound on `anomalous.json`, and the path it caps is Case 1: events
+   Zig already matched and sent over UDP, which the brain logs as an echo
+   and deliberately does not return through the sensor pipe. `out_events 0`
+   is therefore the correct reading of a quiet return path, and the earlier
+   "unexplained 96% loss" framing is withdrawn. Proven meanwhile: the daemon signs every offer (1,683 datagrams/20 s, all
    `hex.body`, HMAC recomputed from the machine secret matches exactly), the
    pipe accepts an admin/SYSTEM sender (`SENT`), and the daemon records it
    (`detection_brain` pushed 1). Evidence:
    `RB-017-ORPHAN-ATTRIBUTION-E5-20261108`,
-   `RB-017-RETURN-PATH-OBSERVABILITY-E5-20261108`.
+   `RB-017-RETURN-PATH-OBSERVABILITY-E5-20261108`,
+   `RB-017-DROP-ATTRIBUTION-E5-20261108`.
 4. **Signed release package / E7 — OPEN.** Requires signing key material,
    provenance, and an owner decision. Nothing in the current evidence set
    changes this.
