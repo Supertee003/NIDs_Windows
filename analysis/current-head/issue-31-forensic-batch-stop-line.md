@@ -19,3 +19,5 @@ FOR-BATCH-001 is implemented and committed at source commit `cf19e13`.
 - Detailed patch/evidence record: `analysis/current-head/FOR-BATCH-001-20261108.md`.
 
 Issue #31 may close for this source-level/E2 completion gate after maps/evidence rebaseline. This does not close other forensic backlog or Windows E5/release blockers.
+
+Issue #31 closed on 2026-11-08 after E2 verification and truth rebaseline. Closing comment: https://github.com/Supertee003/NIDs_Windows/issues/31#issuecomment-6721995770

@@ -74,4 +74,5 @@ Issue #31 was opened because AGENTS.md explicitly requires filing a stop-line is
 
 The initial scan's incomplete `appendBatch` WIP was resolved in commit `cf19e13`. Tests found and fixed a pre-existing forensic integrity defect: implicit `RecordHeader` padding was copied uninitialized into records before hashing. The patch zeroes that padding without changing the record layout. Targeted forensic tests: 20/20; full Zig suite: 2058 passed, 10 skipped, 0 failed; `zig build`: PASS. The local service remained stopped. See `FOR-BATCH-001-20261108.md`.
 
-The #31 appendBatch slice is complete at E2 after truth/evidence rebaseline. Remaining backend blockers #25–#30 still prevent overall completion and frontend integration.
+Issue #31 was closed after the E2 appendBatch slice passed and truth/evidence rebaseline returned TRUTH_VALID. Remaining backend blockers #25–#30 still prevent overall completion and frontend integration.
+
