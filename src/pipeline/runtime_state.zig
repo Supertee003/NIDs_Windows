@@ -267,6 +267,12 @@ pub var g_fim_minifilter_batch_records = std.atomic.Value(u64).init(0);
 pub var g_fim_minifilter_batch_duplicates = std.atomic.Value(u64).init(0);
 pub var g_fim_poll_batch_records = std.atomic.Value(u64).init(0);
 pub var g_fim_poll_batch_duplicates = std.atomic.Value(u64).init(0);
+/// Repeat observations under a coalescing identity that keeps attribution:
+/// (path, kind, pid) instead of (path, kind). The gap between this and the
+/// raw duplicate count is the volume a coalescer would have to sacrifice
+/// process attribution to remove - the fact ADR-0012 actually needs.
+pub var g_fim_batch_duplicates_per_pid = std.atomic.Value(u64).init(0);
+pub var g_fim_minifilter_batch_duplicates_per_pid = std.atomic.Value(u64).init(0);
 // Canonical Go Nose -> Zig reader counters. These are deliberately separate
 // from process liveness: RUNNING does not imply that the data plane is active.
 pub var g_nose_connected = std.atomic.Value(bool).init(false);

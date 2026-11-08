@@ -1,9 +1,9 @@
-//! fim_dedup.zig — ADR-0012 measurement probe for FIM ingress volume.
+﻿//! fim_dedup.zig â€” ADR-0012 measurement probe for FIM ingress volume.
 //!
 //! Measurement only: this module never suppresses, reorders or mutates an
-//! event. It answers one question per poll batch — "how many of the
+//! event. It answers one question per poll batch â€” "how many of the
 //! observations in this batch repeat a `(path, kind)` already seen in the
-//! same batch?" — so the duplicate ratio that gates ADR-0012 can be read
+//! same batch?" â€” so the duplicate ratio that gates ADR-0012 can be read
 //! from `queue.stats` instead of guessed.
 //!
 //! Identity is `Wyhash(kind, path_bytes)` plus the path length. A hash
@@ -25,6 +25,13 @@ pub const Entry = struct {
     hash: u64,
     kind: u32,
     len: u32,
+    /// Observed process id, or 0 when the caller has no pid (the
+    /// ReadDirectoryChangesW poll path). Part of the identity, so two probes
+    /// can answer the two different questions ADR-0012 has to separate:
+    /// "how many repeats share path+kind" (pid = 0, the raw redundancy) and
+    /// "how many repeats share path+kind+process" (what a coalescer that
+    /// preserves attribution could actually remove).
+    pid: u32,
 };
 
 pub const Probe = struct {
@@ -47,9 +54,9 @@ pub const Probe = struct {
         self.overflowed = false;
     }
 
-    /// Record one observation. Returns true when the same `(path, kind)` was
-    /// already observed in this batch.
-    pub fn observe(self: *Probe, path: []const u8, kind: u32) bool {
+    /// Record one observation. Returns true when the same key was already
+    /// observed in this batch.
+    pub fn observe(self: *Probe, path: []const u8, kind: u32, pid: u32) bool {
         if (self.entries.len == 0) {
             self.overflowed = true;
             return false;
@@ -58,11 +65,14 @@ pub const Probe = struct {
             .hash = std.hash.Wyhash.hash(kind, path),
             .kind = kind,
             .len = @intCast(@min(path.len, std.math.maxInt(u32))),
+            .pid = pid,
         };
         var i: usize = 0;
         while (i < self.count) : (i += 1) {
             const seen = self.entries[i];
-            if (seen.hash == key.hash and seen.kind == key.kind and seen.len == key.len) {
+            if (seen.hash == key.hash and seen.kind == key.kind and
+                seen.len == key.len and seen.pid == key.pid)
+            {
                 return true;
             }
         }
@@ -81,12 +91,33 @@ test "observe finds exact repeats and separates kinds and paths" {
     var probe = Probe.init(&store);
     probe.beginBatch();
 
-    try std.testing.expect(!probe.observe("C:\\a\\x.tmp", 1));
-    try std.testing.expect(!probe.observe("C:\\a\\y.tmp", 1));
-    try std.testing.expect(probe.observe("C:\\a\\x.tmp", 1)); // same path+kind
-    try std.testing.expect(!probe.observe("C:\\a\\x.tmp", 2)); // same path, other kind
-    try std.testing.expect(probe.observe("C:\\a\\x.tmp", 1));
+    try std.testing.expect(!probe.observe("C:\\a\\x.tmp", 1, 0));
+    try std.testing.expect(!probe.observe("C:\\a\\y.tmp", 1, 0));
+    try std.testing.expect(probe.observe("C:\\a\\x.tmp", 1, 0)); // same path+kind
+    try std.testing.expect(!probe.observe("C:\\a\\x.tmp", 2, 0)); // same path, other kind
+    try std.testing.expect(probe.observe("C:\\a\\x.tmp", 1, 0));
     try std.testing.expect(!probe.overflowed);
+}
+
+test "pid is part of the identity only when the caller supplies one" {
+    var store: [8]Entry = undefined;
+
+    // Raw redundancy (what the minifilter loop records for the aggregate
+    // probe): pid is passed as 0, so the same path opened twice by two
+    // processes is one duplicate.
+    var raw = Probe.init(&store);
+    raw.beginBatch();
+    try std.testing.expect(!raw.observe("C:\\a\\x.tmp", 1, 0));
+    try std.testing.expect(raw.observe("C:\\a\\x.tmp", 1, 0));
+
+    // Attribution-preserving redundancy (the second probe): the same two
+    // observations are distinct, so coalescing that keeps process identity
+    // would remove nothing here.
+    var per_pid = Probe.init(&store);
+    per_pid.beginBatch();
+    try std.testing.expect(!per_pid.observe("C:\\a\\x.tmp", 1, 100));
+    try std.testing.expect(!per_pid.observe("C:\\a\\x.tmp", 1, 200));
+    try std.testing.expect(per_pid.observe("C:\\a\\x.tmp", 1, 100));
 }
 
 test "beginBatch resets identity between poll batches" {
@@ -94,11 +125,11 @@ test "beginBatch resets identity between poll batches" {
     var probe = Probe.init(&store);
 
     probe.beginBatch();
-    try std.testing.expect(!probe.observe("C:\\a\\x.tmp", 1));
-    try std.testing.expect(probe.observe("C:\\a\\x.tmp", 1));
+    try std.testing.expect(!probe.observe("C:\\a\\x.tmp", 1, 0));
+    try std.testing.expect(probe.observe("C:\\a\\x.tmp", 1, 0));
 
     probe.beginBatch();
-    try std.testing.expect(!probe.observe("C:\\a\\x.tmp", 1));
+    try std.testing.expect(!probe.observe("C:\\a\\x.tmp", 1, 0));
 }
 
 test "a full table reports overflow instead of evicting keys" {
@@ -106,14 +137,14 @@ test "a full table reports overflow instead of evicting keys" {
     var probe = Probe.init(&store);
     probe.beginBatch();
 
-    try std.testing.expect(!probe.observe("C:\\a", 1));
-    try std.testing.expect(!probe.observe("C:\\b", 1));
+    try std.testing.expect(!probe.observe("C:\\a", 1, 0));
+    try std.testing.expect(!probe.observe("C:\\b", 1, 0));
     try std.testing.expect(!probe.overflowed);
     // Third distinct key cannot be stored: not a duplicate, but visible.
-    try std.testing.expect(!probe.observe("C:\\c", 1));
+    try std.testing.expect(!probe.observe("C:\\c", 1, 0));
     try std.testing.expect(probe.overflowed);
     // Stored keys are still recognised: eviction would lose this.
-    try std.testing.expect(probe.observe("C:\\a", 1));
+    try std.testing.expect(probe.observe("C:\\a", 1, 0));
 }
 
 test "beginBatch clears the overflow flag so it describes one batch" {
@@ -121,22 +152,22 @@ test "beginBatch clears the overflow flag so it describes one batch" {
     var probe = Probe.init(&store);
 
     probe.beginBatch();
-    try std.testing.expect(!probe.observe("C:\\a", 1));
-    try std.testing.expect(!probe.observe("C:\\b", 1));
-    try std.testing.expect(!probe.observe("C:\\c", 1));
+    try std.testing.expect(!probe.observe("C:\\a", 1, 0));
+    try std.testing.expect(!probe.observe("C:\\b", 1, 0));
+    try std.testing.expect(!probe.observe("C:\\c", 1, 0));
     try std.testing.expect(probe.overflowed);
 
     // A later, small batch is NOT truncated; reporting it as such would make
     // the overflow counter meaningless.
     probe.beginBatch();
     try std.testing.expect(!probe.overflowed);
-    try std.testing.expect(!probe.observe("C:\\a", 1));
+    try std.testing.expect(!probe.observe("C:\\a", 1, 0));
     try std.testing.expect(!probe.overflowed);
 }
 
 test "an empty table is always overflow" {
     var probe = Probe.init(&[_]Entry{});
     probe.beginBatch();
-    try std.testing.expect(!probe.observe("C:\\a", 1));
+    try std.testing.expect(!probe.observe("C:\\a", 1, 0));
     try std.testing.expect(probe.overflowed);
 }

@@ -256,6 +256,8 @@ pub fn minifilterReaderLoop() void {
     // any real batch; overflow is counted, never silently evicted.
     var probe_store: [1024]fim_dedup.Entry = undefined;
     var probe = fim_dedup.Probe.init(&probe_store);
+    var probe_pid_store: [1024]fim_dedup.Entry = undefined;
+    var probe_pid = fim_dedup.Probe.init(&probe_pid_store);
 
     while (!stopRequested()) {
         // ---- connect (retry while the driver is absent/not loaded) ----
@@ -299,6 +301,7 @@ pub fn minifilterReaderLoop() void {
             } else {
                 var off: usize = 0;
                 probe.beginBatch();
+                probe_pid.beginBatch();
                 var overflow_counted = false;
                 while (off + RECORD_SIZE <= @as(usize, out_len)) : (off += RECORD_SIZE) {
                     const rec = recordAt(ring[0..out_len], off);
@@ -310,13 +313,21 @@ pub fn minifilterReaderLoop() void {
                     var path_buf: [PATH_UTF8_MAX]u8 = undefined;
                     const path = pathToUtf8(rec, &path_buf);
                     // ADR-0012 probe (measurement only; nothing is suppressed).
+                    // Two identities: raw (path, kind) and attributed
+                    // (path, kind, pid). The driver emits one event per
+                    // IRP_MJ_CREATE completion, i.e. per file *open*, so a
+                    // same-path repeat is not necessarily redundant.
                     _ = runtime_state.g_fim_batch_records.fetchAdd(1, .monotonic);
                     _ = runtime_state.g_fim_minifilter_batch_records.fetchAdd(1, .monotonic);
-                    if (probe.observe(path, rec.event_type)) {
+                    if (probe.observe(path, rec.event_type, 0)) {
                         _ = runtime_state.g_fim_batch_duplicates.fetchAdd(1, .monotonic);
                         _ = runtime_state.g_fim_minifilter_batch_duplicates.fetchAdd(1, .monotonic);
                     }
-                    if (probe.overflowed and !overflow_counted) {
+                    if (probe_pid.observe(path, rec.event_type, rec.process_id)) {
+                        _ = runtime_state.g_fim_batch_duplicates_per_pid.fetchAdd(1, .monotonic);
+                        _ = runtime_state.g_fim_minifilter_batch_duplicates_per_pid.fetchAdd(1, .monotonic);
+                    }
+                    if ((probe.overflowed or probe_pid.overflowed) and !overflow_counted) {
                         overflow_counted = true;
                         _ = runtime_state.g_fim_batch_overflow.fetchAdd(1, .monotonic);
                     }
