@@ -1,7 +1,7 @@
 {
   "head_sha": "6b728b87e580aa7c1c09eb711087cb32d1b1324f",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-08",
+  "last_updated_at": "2026-11-09",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -20,6 +20,34 @@
     "E7": "Release verification"
   },
   "evidence": [
+    {
+      "id": "STOPLINE-WFP-READINESS-001-E5-20261109",
+      "head_sha": "6b728b87e580aa7c1c09eb711087cb32d1b1324f",
+      "timestamp": "2026-11-09",
+      "title": "Current-source Windows runtime has divergent WFP provider readiness surfaces; RB-021 canary blocked",
+      "level": "E5",
+      "component": "AegisWfp driver / Rust PEP provider attestation / daemon health / aegisctl status and queue",
+      "flow_id": "RB-021",
+      "description": "Observed current-source runtime on Windows after deployment. AegisWfp SCM state RUNNING and enforce status provider_ready=true conflicted with daemon capabilities.wfp=false, PEP provider_ready=false, and queue kernel_owned=false. Daemon readiness was DEGRADED with attributed quota sheds and minifilter ring loss. No canary traffic was sent.",
+      "files_verified": [
+        "src/core/bridge_init.zig",
+        "src/policy/pep_bindings.zig",
+        "src/daemon.zig",
+        "src/control/handler_registry.zig",
+        "tools/aegisctl/api/control_api.py",
+        "analysis/current-head/STOPLINE-WFP-READINESS-001-20261109.md"
+      ],
+      "tests": [],
+      "result": "STOP_LINE_CANARY_BLOCKED",
+      "finding": "Separate status probes currently disagree and driver/queue semantics remain unresolved. Do not qualify the current package by canary until one authoritative provider/driver contract and the telemetry/readiness contract are reconciled.",
+      "evidence_artifact": "analysis/current-head/STOPLINE-WFP-READINESS-001-20261109.md",
+      "limitations": [
+        "This is a runtime observation, not source-level correction or a successful canary.",
+        "Prevention gate remained closed; no host-effect action was attempted.",
+        "Queue quota sheds and minifilter ring loss remain unresolved; issue #29 remains open.",
+        "Issue #25 authority reconciliation and issue #30 lifecycle remain open."
+      ]
+    },
     {
       "id": "CORR-SOURCE-001-E2-20261109",
       "head_sha": "6b728b87e580aa7c1c09eb711087cb32d1b1324f",
@@ -10549,7 +10577,7 @@
     "E2_count": 70,
     "E3_count": 17,
     "E4_count": 15,
-    "E5_count": 154,
+    "E5_count": 155,
     "E6_count": 0,
     "E7_count": 1
   }

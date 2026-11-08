@@ -725,3 +725,17 @@ is claimed. See `analysis/current-head/CORR-SOURCE-001-20261109.md`. Issues
 > Give AI the semantic position, ownership, contract, boundaries, allowed files and exit gate before it edits code.
 
 > Every removed legacy path is progress. Every duplicate authority is technical debt.
+
+## STOP-LINE — WFP provider readiness divergence (2026-11-09)
+
+After installing the current-source `6b728b8` package, the Windows host reported
+`AegisWfp` RUNNING while daemon health reported `capabilities.wfp=false` and
+Rust PEP `provider_ready=false` / `wfp=UNAVAILABLE`; `aegisctl enforce status`
+reported `provider_ready=true`. Queue diagnostics said `npcap_primary`,
+`kernel_owned=false`, `rows=0`, `shadow_rows=67887`, while daemon readiness was
+DEGRADED and loss counters were nonzero and increasing. The probe paths differ,
+but correctness is unresolved. No RB-021 canary was sent and the prevention
+gate remains closed. The source code is unchanged; record:
+`analysis/current-head/STOPLINE-WFP-READINESS-001-20261109.md`. Resolve this
+stop-line alongside #25/#29/#30 before claiming current-source runtime
+qualification.
