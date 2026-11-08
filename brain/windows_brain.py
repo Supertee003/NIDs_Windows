@@ -588,9 +588,12 @@ def init_cython_engine(rules_data):
 def write_anomaly_log(log_entry, attack_type, policy, rule_id, status="DETECTED", path=None):
     """Write an anomaly log entry to anomalous.json.
 
-    Returns "WRITTEN" or "THROTTLED" (burst cap). Throttled findings are
-    still delivered through the sensor pipe + bridge by the caller; only
-    the unbounded file append is shed, and the shed is counted.
+    Returns "WRITTEN" or "THROTTLED" (burst cap). Only the unbounded file
+    append is shed, and the shed is counted. Whether a throttled finding is
+    still delivered is the CALLER's business: Case 2 (brain-only Tier-2)
+    delivers regardless, while Case 1 (an echo of an event the daemon already
+    owns) delivers nothing on purpose. Measured 2026-11-08: Case 1 is ~all
+    production traffic, so a high throttle count with out_events 0 is normal.
     """
     if not anomaly_log_allowed():
         return "THROTTLED"
@@ -987,6 +990,13 @@ def main():
                         status = "BLOCK_FAILED"
 
                 write_anomaly_log(log_entry, attack_type, policy, rule_id, status)
+                # No deliver_finding here, deliberately: this event CAME from
+                # the daemon (Zig matched, sent it over UDP), so returning it
+                # through the sensor pipe would hand the daemon its own event
+                # back. Measured 2026-11-08: this path is ~all production
+                # traffic, so HEALTH's drops.log_throttle (the 100/60s cap on
+                # anomalous.json) and out_events 0 are both correct readings
+                # of a quiet return path, not a broken one.
                 continue
 
             # =========================================================

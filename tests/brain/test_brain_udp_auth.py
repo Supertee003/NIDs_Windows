@@ -118,3 +118,36 @@ def test_health_response_carries_auth_posture_never_the_value():
         assert wb._health_response()["auth"] == "on"
     with patch.object(wb, "BRAIN_AUTH_SECRET", None):
         assert wb._health_response()["auth"] == "off"
+
+
+def test_health_names_every_drop_reason_and_the_pipe_state():
+    # RB-017: HEALTH reported dropped=17139 with out_events=0 and could not say
+    # whether those were MAC failures or the log cap, so a healthy brain looked
+    # like a broken return path for hours. Both readings are now pinned.
+    import brain.windows_brain as wb
+    doc = wb._health_response()
+    assert set(doc["drops"]) == {"bad_mac", "no_mac", "log_throttle"}
+    assert all(isinstance(v, int) and v >= 0 for v in doc["drops"].values())
+    pipe = doc["sensor_pipe"]
+    assert set(pipe) == {"enabled", "transport", "state", "failed"}
+    assert pipe["transport"] in ("cython", "ctypes")
+    assert pipe["state"] in ("ok", "failing", "off")
+    assert pipe["state"] == ("off" if not pipe["enabled"]
+                             else ("failing" if pipe["failed"] else "ok"))
+
+
+def test_log_throttle_is_counted_under_its_own_reason_only():
+    # The burst cap on anomalous.json is not an authentication failure; it must
+    # land in log_throttle alone, or HEALTH sends the operator to the wrong cause.
+    from unittest.mock import patch
+    import brain.windows_brain as wb
+    before = dict(wb.DROP_REASONS)
+    try:
+        with patch.object(wb, "_log_window_start", wb.time.monotonic()), \
+             patch.object(wb, "_log_window_count", wb.LOG_BURST_MAX):
+            assert wb.anomaly_log_allowed() is False
+        assert wb.DROP_REASONS["log_throttle"] == before["log_throttle"] + 1
+        for reason in ("bad_mac", "no_mac"):
+            assert wb.DROP_REASONS[reason] == before[reason]
+    finally:
+        wb.DROP_REASONS.update(before)
