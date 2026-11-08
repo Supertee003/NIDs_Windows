@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-07T10:58:56.501748+00:00",
+  "generated_at": "2026-11-08T04:29:21.181648+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1484,
+  "total_files": 1485,
   "by_role": {
-    "documentation": 326,
+    "documentation": 327,
     "build-config": 171,
     "other": 18,
     "lockfile": 6,
@@ -1398,6 +1398,10 @@
       "role": "documentation"
     },
     "docs/adr/0011-build-optimization-mode.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "docs/adr/0012-fim-ingress-volume.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },

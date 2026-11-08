@@ -575,6 +575,13 @@ work that still blocks "finished"; the rest is documentation hygiene.
    full Python suite pass); the installed daemon is unchanged, so no E5 is
    claimed. It preserves pairwise isolation and does not lower total loss;
    N-way fairness and FIM ingress aggregation/rate shaping remain open.
+   ADR-0012 (Proposed, 2026-11-07) now records that remaining decision instead
+   of leaving it as a one-line TODO: coalesce exact duplicate `(path, kind)`
+   observations inside one 500 ms FIM poll batch, count every suppressed
+   duplicate in `fim_coalesced_total`, and implement nothing until a deployed
+   measurement shows the duplicate ratio exceeds the measured FIM deficit
+   (~10% at 2,930 rows/s capacity vs ~3,231 rows/s FIM demand). It changes no
+   runtime behaviour and is not an E5 claim.
    Also open: production driver signing (the ring change is test-signed).
 2. **Supervised Windows E5 / kernel qualification — OPEN.** Any new
    current-source E5 must redeploy a verified candidate with a rollback point

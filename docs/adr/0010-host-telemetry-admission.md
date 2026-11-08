@@ -130,7 +130,9 @@ the 4 KiB zero/hash/CRC passes — not worker parallelism.
 ## Open work (explicitly out of scope here)
 
 1. Reduce ingress volume at the sensor: FIM/ETW aggregation or debouncing for
-   repeated file operations — the only lever that lowers the total.
+   repeated file operations — the only lever that lowers the total. **ADR-0012
+   (Proposed) now records the design, the measurement gate, and the alternatives
+   rejected; it changes no runtime behaviour until that gate is measured.**
 2. Raise consumer throughput (batching, worker pool, async offload) to narrow
    the 10:1 gap; the pipeline audit path is the suspected cost.
 3. If work-conserving quota is still wanted, choose preemption or per-class
