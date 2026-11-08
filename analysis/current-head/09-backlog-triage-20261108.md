@@ -81,3 +81,7 @@ Issue #31 was closed after the E2 appendBatch slice passed and truth/evidence re
 
 The coarse-key FIM coalescing WIP compiled and its focused 8-test module suite plus `zig build test` and `zig build` returned success. During producer-contract review, however, the minifilter path was found to emit one record for each successful `IRP_MJ_CREATE` and assign a fresh timestamp. The WIP omitted that timestamp from its minifilter key and could suppress distinct opens. It is uncommitted, must not be deployed, and does not count as an E2 completion. A local stop-line record was added at `issue-29-minifilter-event-identity-stop-line-20261108.md`; ADR-0012 and the E5 evidence-index entry now mark the coarse duplicate ratio as identity-unverified. Issue #29 remains open. The installed `AegisNids` service was RUNNING during these builds and was not changed.
 
+## Continuation update — HOST-FLOW-001 completed at E2
+
+Commit `c762deb` prevents host telemetry sources (`capture_etw`, `capture_fim`, `capture_registry`, `capture_host_net`) from creating/updating a fabricated network flow keyed by missing/zero endpoints. Network and other sources keep their existing flow assignment. The added source-predicate test passed in the full Windows Zig suite (2,059 passed, 10 skipped) and `zig build` passed. This avoids phantom flow state and some per-event work; it does not prove queue-loss improvement. See `HOST-FLOW-001-20261108.md`. Issue #29 remains open.
+

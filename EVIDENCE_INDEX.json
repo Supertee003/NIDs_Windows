@@ -1,5 +1,5 @@
 {
-  "head_sha": "adb1b73dfde03ece5075239544f7138befa92683",
+  "head_sha": "c762deba5c2d3af9183c3ef7cff75e022c48ea0d",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-08",
   "generator_version": "3.0",
@@ -4549,6 +4549,36 @@
       "actual": "Static inspection: aegis_etw_stop waits 5000 ms for consumer_thread but ignores the wait result, closes the thread handle, and frees g_session.properties regardless; EtwSource.stop ignores the native return code and reports stopped. This makes lifetime safety unproven if the consumer has not exited.",
       "impact": "Potential native lifecycle/memory-safety hazard requiring stop-the-line handling. Not proven as the cause of the historical 0xc0000374 crash.",
       "next_step": "Define stop/ownership contract, close/unblock trace processing, require successful worker join before release, propagate failure, test partial start/repeated stop/restart, then verify Windows service cycles under Page Heap/debugger."
+    },
+    {
+      "id": "HOST-FLOW-001-E2-20261108",
+      "title": "Host telemetry no longer creates fabricated network flow-table entries",
+      "level": "E2",
+      "component": "src/pipeline/event_processor.zig processEvent/shouldAssignFlowId",
+      "flow_id": "DATA-001",
+      "patch_id": "HOST-FLOW-001",
+      "target_head": "f298731cbe69cd22eb5383d03da992fc7ab64ccd",
+      "final_head": "c762deba5c2d3af9183c3ef7cff75e022c48ea0d",
+      "build_source": "c762deba5c2d3af9183c3ef7cff75e022c48ea0d",
+      "description": "Host telemetry sources do not carry network-flow identity in the active production ETW providers, FIM watcher, registry monitor, or host socket observation path. The pipeline now skips FlowTable lookup/create for these sources while retaining existing event, correlation, audit, and forensic processing.",
+      "commands": [
+        "zig build (PASS)",
+        "zig build test --summary all (2059 passed, 10 skipped, 0 failed; 5/5 steps)",
+        "zig fmt --check src/pipeline/event_processor.zig (PASS)",
+        "git diff --check (PASS)",
+        "python tools/truth.py verify (TRUTH_VALID after source rebaseline)"
+      ],
+      "expected": "Host telemetry retains flow_id=0 and does not create/update a fabricated zero-tuple network FlowRecord. Other sources retain existing flow assignment behavior.",
+      "actual": "The source predicate test and full Zig suite pass; the ReleaseSafe x86_64 Windows runtime build passes. The installed service was not deployed or restarted.",
+      "result": "PASS_E2_HOST_FLOW_IDENTITY",
+      "files_verified": [
+        "src/pipeline/event_processor.zig",
+        "analysis/current-head/HOST-FLOW-001-20261108.md"
+      ],
+      "limits": [
+        "E2 source/unit/build evidence only; no E5 service verification or queue-loss reduction is claimed.",
+        "If a future ETW network provider is enabled, it needs a flow-capable event/source contract rather than the current host-telemetry classification."
+      ]
     }
   ],
   "known_gaps": [
@@ -10431,7 +10461,7 @@
     },
     {
       "id": "ADR-0012-DUP-RATIO-E5-20261108",
-      "title": "Measured FIM duplicate ratios exceed the loss-reduction threshold for an accepted coalescing slice",
+      "title": "Measured FIM repeats do not yet establish safely coalescible volume",
       "level": "E5",
       "component": "FIM measurement probe (minifilter + ReadDirectoryChangesW) and queue.stats",
       "flow_id": "QLOSS-HEALTH-001",
@@ -10456,7 +10486,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 34,
-    "E2_count": 68,
+    "E2_count": 69,
     "E3_count": 17,
     "E4_count": 15,
     "E5_count": 154,

@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T14:07:37.615653+00:00",
+  "generated_at": "2026-11-08T16:14:18.860411+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1496,
+  "total_files": 1498,
   "by_class": {
-    "canonical-docs": 348,
+    "canonical-docs": 350,
     "canonical-build": 182,
     "unclassified": 18,
     "canonical-source": 663,
@@ -396,7 +396,7 @@
       "path": "analysis/current-head/09-backlog-triage-20261108.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9060
+      "size": 10749
     },
     {
       "path": "analysis/current-head/ETW-LIFE-001-20261108.md",
@@ -411,10 +411,22 @@
       "size": 4218
     },
     {
+      "path": "analysis/current-head/HOST-FLOW-001-20261108.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3940
+    },
+    {
       "path": "analysis/current-head/issue-29-adr0012-measurement-gate-contradiction-20261108.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2020
+      "size": 2016
+    },
+    {
+      "path": "analysis/current-head/issue-29-minifilter-event-identity-stop-line-20261108.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3127
     },
     {
       "path": "analysis/current-head/issue-30-etw-stop-line-audit-20261108.md",
@@ -1674,7 +1686,7 @@
       "path": "docs/adr/0012-fim-ingress-volume.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 8634
+      "size": 9976
     },
     {
       "path": "docs/adr/0013-runtime-latency-clock.md",
@@ -3078,7 +3090,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1026368
+      "size": 1028541
     },
     {
       "path": "fix_bridge_banner.py",
@@ -3210,7 +3222,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 236025
+      "size": 236592
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3486,7 +3498,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 194645
+      "size": 195103
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -5514,7 +5526,7 @@
       "path": "src/capture/minifilter_reader.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 22485
+      "size": 22001
     },
     {
       "path": "src/capture/nose_contract.zig",
@@ -6144,7 +6156,7 @@
       "path": "src/pipeline/event_processor.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 53900
+      "size": 54732
     },
     {
       "path": "src/pipeline/event_queue.zig",
@@ -6156,7 +6168,7 @@
       "path": "src/pipeline/fim_dedup.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 8151
+      "size": 7959
     },
     {
       "path": "src/pipeline/l4_matcher.zig",
