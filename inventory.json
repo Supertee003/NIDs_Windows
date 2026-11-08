@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T07:53:24.548416+00:00",
+  "generated_at": "2026-11-08T07:55:21.021221+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1489,
@@ -1800,7 +1800,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 43855
+      "size": 44633
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -3432,7 +3432,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9754
+      "size": 9987
     },
     {
       "path": "pytest.ini",

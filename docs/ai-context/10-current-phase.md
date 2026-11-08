@@ -635,6 +635,27 @@ work that still blocks "finished"; the rest is documentation hygiene.
    Operating note: the keeper's five-minute tick bounds brain respawn
    latency (measured 3 m 41 s), so "brain died and did not come back" needs
    at least one full tick before it is a finding.
+   (c) *Correction, 2026-11-08 (later the same day):* two more measured
+   fixes. The ownership census called the supervised SYSTEM brain FOREIGN
+   because an unelevated caller cannot read a session-0 command line, while
+   `aegisctl bridge` already corroborated it from the listener's own HEALTH
+   reply; the census now uses that corroboration and a listener that cannot
+   corroborate still reads FOREIGN. And a red gate seen this session was not
+   the brain at all: an ETW storm from build/test activity produced 97,916
+   source-quota sheds (12.5%, `shed_overload` 0) that the daemon honestly
+   reported as `data_loss_observed`; a clean restart read
+   `degraded=false / ready=true / overall_gate=true`, `dropped_total` 0.
+   Still open on this rail: production offers are dropped ~96% before rule
+   matching (`in_events 17,839 / dropped 17,139 / out_events 0`) with no
+   emitted finding, and the health fields that name the cause
+   (`sensor_pipe`, `drops{bad_mac,no_mac,log_throttle}`) are in source but
+   need one brain restart, which is blocked on elevation approval expiring.
+   Proven meanwhile: the daemon signs every offer (1,683 datagrams/20 s, all
+   `hex.body`, HMAC recomputed from the machine secret matches exactly), the
+   pipe accepts an admin/SYSTEM sender (`SENT`), and the daemon records it
+   (`detection_brain` pushed 1). Evidence:
+   `RB-017-ORPHAN-ATTRIBUTION-E5-20261108`,
+   `RB-017-RETURN-PATH-OBSERVABILITY-E5-20261108`.
 4. **Signed release package / E7 — OPEN.** Requires signing key material,
    provenance, and an owner decision. Nothing in the current evidence set
    changes this.
