@@ -342,6 +342,27 @@ class TestOrphanDetection(unittest.TestCase):
             if found["status"] == "CLEAR":
                 self.assertIsNone(found["pid"])
 
+    def test_invisible_owner_needs_its_own_reply_to_be_owned(self):
+        # RB-017: the supervisor runs the brain as SYSTEM in session 0, where an
+        # unelevated caller cannot read its command line. That must not read as
+        # FOREIGN on its own, and it must not read as OWNED without evidence
+        # either: only the listener's own schema-correct reply promotes it.
+        from unittest.mock import patch
+        from tools.aegisctl.api import control_api
+        with patch.object(control_api, "_udp_listener_pids", return_value=[4242]),              patch.object(control_api, "_process_identity", return_value=("pythonw.exe", "")):
+            unresolved = control_api.detect_foreign_udp_listener(
+                control_api.BRAIN_UDP_PORT, ("windows_brain.py",))
+            self.assertEqual(unresolved[0]["status"], "FOREIGN")
+
+            denied = control_api.detect_foreign_udp_listener(
+                control_api.BRAIN_UDP_PORT, ("windows_brain.py",), lambda _pid: False)
+            self.assertEqual(denied[0]["status"], "FOREIGN")
+
+            confirmed = control_api.detect_foreign_udp_listener(
+                control_api.BRAIN_UDP_PORT, ("windows_brain.py",), lambda pid: pid == 4242)
+            self.assertEqual(confirmed[0]["status"], "OWNED")
+            self.assertIn("corroborated", confirmed[0]["detail"])
+
     def test_owned_markers_recognize_expected_owner(self):
         if sys.platform != "win32":
             self.skipTest("netstat scan is Windows-only")

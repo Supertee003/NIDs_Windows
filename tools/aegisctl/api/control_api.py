@@ -904,15 +904,24 @@ def _process_identity(pid: int):
     return name, cmd
 
 
-def detect_foreign_udp_listener(port, expect_markers):
+def detect_foreign_udp_listener(port, expect_markers, corroborate=None):
     """Classify listeners on an owned UDP channel (GAP-010, read-only).
 
     expect_markers: substrings identifying the legitimate owner (e.g. the
     brain script name). A listener whose command line contains none of
-    them is FOREIGN (possibly orphaned); an invisible command line can
-    neither prove nor disprove ownership, so it is reported FOREIGN with
-    the reason recorded, never silently cleared. Returns finding dicts.
+    them is FOREIGN (possibly orphaned).
+
+    An invisible command line proves nothing either way. The supervisor on
+    this host runs the brain as SYSTEM in session 0, where its command line
+    is unreadable to an unelevated caller, so calling that FOREIGN raised a
+    red gate for a healthy brain. When the caller supplies `corroborate`, an
+    invisible owner is put to that test (for the brain: a schema-correct
+    HEALTH reply from the listener's own pid) and reported OWNED only when
+    it answers; otherwise it stays FOREIGN with the reason recorded, never
+    silently cleared. Returns finding dicts.
     """
+    if corroborate is None:
+        corroborate = lambda _pid: False
     pids = _udp_listener_pids(port)
     if pids is None:
         return [{"port": port, "pid": None, "status": "UNKNOWN",
@@ -923,8 +932,13 @@ def detect_foreign_udp_listener(port, expect_markers):
         if cmd and any(m.lower() in cmd.lower() for m in expect_markers):
             status, detail = "OWNED", (name or "owned process")
         elif not cmd:
-            status = "FOREIGN"
-            detail = "command line not visible; pid %d (%s)" % (pid, name or "unknown image")
+            if corroborate(pid):
+                status = "OWNED"
+                detail = ("%s; ownership corroborated by the listener's own "
+                          "schema-correct reply" % (name or "process"))
+            else:
+                status = "FOREIGN"
+                detail = "command line not visible; pid %d (%s)" % (pid, name or "unknown image")
         else:
             status = "FOREIGN"
             detail = "pid %d (%s) does not match the expected owner" % (pid, name or "unknown image")
@@ -944,9 +958,14 @@ def diagnose_endpoint_ownership():
     control-pipe responder identity. Never kills, restarts, or otherwise
     touches any process: detection only.
     """
+    def _brain_listener_corroborates(pid) -> bool:
+        """EVT-156 identity test: the brain answers HEALTH itself."""
+        health = _udp_health(BRAIN_UDP_PORT)
+        return isinstance(health, dict) and health.get("pid") == pid
+
     findings = []
     for label, port, markers in (("brain channel", 9999, ("windows_brain.py", "brain/")),):
-        for found in detect_foreign_udp_listener(port, markers):
+        for found in detect_foreign_udp_listener(port, markers, _brain_listener_corroborates):
             found = dict(found)
             found["endpoint"] = label
             findings.append(found)

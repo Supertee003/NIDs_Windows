@@ -103,6 +103,12 @@ IN_EVENT_COUNT  = 0
 OUT_EVENT_COUNT = 0
 ERROR_COUNT     = 0
 DROPPED_COUNT   = 0
+# RB-017: a failed return-path send used to be invisible -- HEALTH showed
+# out_events 0 whether the brain had nothing to say or could not say it.
+PIPE_FAIL_COUNT = 0
+# RB-017: "dropped" alone cannot tell an operator which gate fired, so the
+# HEALTH probe could show 98% loss with no cause. Count by reason.
+DROP_REASONS = {"bad_mac": 0, "no_mac": 0, "log_throttle": 0}
 LAST_EVENT_TS   = 0.0
 BRAIN_START_MS  = int(time.time() * 1000)
 
@@ -298,6 +304,7 @@ def anomaly_log_allowed():
         _log_window_count = 0
     if _log_window_count >= LOG_BURST_MAX:
         DROPPED_COUNT += 1
+        DROP_REASONS["log_throttle"] += 1
         return False
     _log_window_count += 1
     return True
@@ -702,10 +709,14 @@ def deliver_finding(payload: dict) -> str:
     (SENT only; FAILED/DISABLED are not emissions) makes the counter mean
     exactly what the schema says: findings the brain handed to the daemon.
     """
-    global OUT_EVENT_COUNT
+    global OUT_EVENT_COUNT, PIPE_FAIL_COUNT
     result = send_to_sensor_pipe(payload)
     if result == "SENT":
         OUT_EVENT_COUNT += 1
+    elif result == "FAILED":
+        # RB-017: count it, so HEALTH can show a broken return path instead of
+        # a silently empty one. Never a detection claim, never retried here.
+        PIPE_FAIL_COUNT += 1
     return result
 
 
@@ -758,6 +769,17 @@ def _health_response() -> dict:
             "out_events": OUT_EVENT_COUNT,
             "errors":     ERROR_COUNT,
             "dropped":    DROPPED_COUNT,
+        },
+        # RB-017: why messages were dropped, so a red gate names its cause.
+        "drops": dict(DROP_REASONS),
+        # RB-017: the return path's own state, so "out_events 0" can be read
+        # correctly from HEALTH: disabled, failing, or simply quiet.
+        "sensor_pipe": {
+            "enabled":   SENSOR_PIPE_ENABLED,
+            "transport": "cython" if _cython_send_bytes is not None else "ctypes",
+            "state":     ("off" if not SENSOR_PIPE_ENABLED
+                          else ("failing" if PIPE_FAIL_COUNT else "ok")),
+            "failed":    PIPE_FAIL_COUNT,
         },
         "deps": [
             {"name": "core", "state": "RUNNING" if BRIDGE_AVAILABLE else "DEGRADED"},
@@ -888,6 +910,7 @@ def main():
                     wire_body, envelope_mac, BRAIN_AUTH_SECRET
                 ):
                     DROPPED_COUNT += 1
+                    DROP_REASONS["bad_mac"] += 1
                     _auth_warn_once("bad-mac", "dropping brain offer with bad MAC")
                     continue
                 msg_bytes = wire_body
@@ -915,6 +938,7 @@ def main():
             # already handled above and stays open by design.
             if envelope_mac is None and BRAIN_AUTH_SECRET is not None:
                 DROPPED_COUNT += 1
+                DROP_REASONS["no_mac"] += 1
                 _auth_warn_once("no-mac", "dropping unauthenticated brain offer (secret configured)")
                 continue
 
