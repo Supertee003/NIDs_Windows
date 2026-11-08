@@ -259,6 +259,14 @@ pub var g_critical_pushed = std.atomic.Value(u64).init(0);
 pub var g_fim_batch_records = std.atomic.Value(u64).init(0);
 pub var g_fim_batch_duplicates = std.atomic.Value(u64).init(0);
 pub var g_fim_batch_overflow = std.atomic.Value(u64).init(0);
+/// The same probe split by ingress path, because the fix (coalesce where the
+/// duplicates actually are) needs to know which sensor produced them: the
+/// minifilter pull (`\AegisMinifilterPort`, file-create records) or the
+/// ReadDirectoryChangesW poll batch.
+pub var g_fim_minifilter_batch_records = std.atomic.Value(u64).init(0);
+pub var g_fim_minifilter_batch_duplicates = std.atomic.Value(u64).init(0);
+pub var g_fim_poll_batch_records = std.atomic.Value(u64).init(0);
+pub var g_fim_poll_batch_duplicates = std.atomic.Value(u64).init(0);
 // Canonical Go Nose -> Zig reader counters. These are deliberately separate
 // from process liveness: RUNNING does not imply that the data plane is active.
 pub var g_nose_connected = std.atomic.Value(bool).init(false);

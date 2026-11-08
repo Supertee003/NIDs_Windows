@@ -310,8 +310,10 @@ pub fn minifilterReaderLoop() void {
                     const path = pathToUtf8(rec, &path_buf);
                     // ADR-0012 probe (measurement only; nothing is suppressed).
                     _ = runtime_state.g_fim_batch_records.fetchAdd(1, .monotonic);
+                    _ = runtime_state.g_fim_minifilter_batch_records.fetchAdd(1, .monotonic);
                     if (probe.observe(path, rec.event_type)) {
                         _ = runtime_state.g_fim_batch_duplicates.fetchAdd(1, .monotonic);
+                        _ = runtime_state.g_fim_minifilter_batch_duplicates.fetchAdd(1, .monotonic);
                     }
                     if (probe.overflowed and !overflow_counted) {
                         overflow_counted = true;

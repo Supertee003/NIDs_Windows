@@ -322,8 +322,10 @@ pub fn fimThread(watcher: *fim_mod.FimWatcher) void {
                 const path = fim_event.path[0..fim_event.path_len];
                 // ADR-0012 probe (measurement only; nothing is suppressed).
                 _ = state.g_fim_batch_records.fetchAdd(1, .monotonic);
+                _ = state.g_fim_poll_batch_records.fetchAdd(1, .monotonic);
                 if (probe.observe(path, @intFromEnum(fim_event.kind))) {
                     _ = state.g_fim_batch_duplicates.fetchAdd(1, .monotonic);
+                    _ = state.g_fim_poll_batch_duplicates.fetchAdd(1, .monotonic);
                 }
                 if (probe.overflowed and !overflow_counted) {
                     overflow_counted = true;
