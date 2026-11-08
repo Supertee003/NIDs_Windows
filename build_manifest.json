@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "74d6ac2",
+  "source_commit": "02b4e5d",
   "build_date": "2026-10-23T00:00:00.000000+00:00",
   "build_host": "windows",
   "platform": {
@@ -1033,7 +1033,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 22821,
-      "sha256": "6948289f9a2cfac92053952d53756dc97ccac3e9b1a2c4d45129565d8ef9cb82",
+      "sha256": "e8e5575a3aa23d3f4ee629e5dfc7200274594e64babf95bc7281c77874d6b5c5",
       "language": "json"
     },
     {
@@ -1836,8 +1836,8 @@
     },
     {
       "path": "src/all_tests.zig",
-      "size": 11352,
-      "sha256": "1c17257668df90aa45295d8b2cc7925c54f9a1d027f3f47b52cc2996a394879d",
+      "size": 11410,
+      "sha256": "9a10e3b9e4b35867f2c1d06e67638633de018d5e6c8ab88cbe2ea7fb557bde0e",
       "language": "zig"
     },
     {
@@ -1866,8 +1866,8 @@
     },
     {
       "path": "src/capture/minifilter_reader.zig",
-      "size": 19352,
-      "sha256": "134e1b25506f6bd33bb5cf03eac9c06d6b82b884809414d9a19d2effe6e07f69",
+      "size": 22001,
+      "sha256": "b757bda5e15732851ffcb10b33663601d9b20ee089c5b5f0d83f4581371d493e",
       "language": "zig"
     },
     {
@@ -2028,8 +2028,8 @@
     },
     {
       "path": "src/control/handler_registry.zig",
-      "size": 168650,
-      "sha256": "3eeef31d34057600804cc34a007d91129ce565bb18599b1b9571185ee0a61aee",
+      "size": 170594,
+      "sha256": "e27e5f2fcf507ad2ace8dc8761048014e104d3aeec26627d7626bbe4ee9cbc8f",
       "language": "zig"
     },
     {
@@ -2490,8 +2490,8 @@
     },
     {
       "path": "src/pipeline/event_processor.zig",
-      "size": 53927,
-      "sha256": "bee0f6864c8b6f67cd46dbb45edd46a9156a159f62cb81153ecf2524ac05860a",
+      "size": 53900,
+      "sha256": "143e05763aa9120bc6ba153ce75e61df30e10d1fae3919fc1b4995ce5ed91848",
       "language": "zig"
     },
     {
@@ -2520,14 +2520,14 @@
     },
     {
       "path": "src/pipeline/runtime_state.zig",
-      "size": 18951,
-      "sha256": "3b86509fafe818d965aa9d63164f4a062da3daa9d035ba39b8b9e4e3a83d8307",
+      "size": 21169,
+      "sha256": "55cb234bee49837e156afa63529a5567c0a8fc6edd3cc1a6b1274c4f1ea7caab",
       "language": "zig"
     },
     {
       "path": "src/pipeline/telemetry_threads.zig",
-      "size": 25304,
-      "sha256": "f606a2b4838b787a8f84998519e04b6f544538df4857693da8b6d6238885db88",
+      "size": 26497,
+      "sha256": "33305d6f03008f1c83a6fc980e6ebfd9e4b48338c95dbba0cb35c7920ec81bc8",
       "language": "zig"
     },
     {

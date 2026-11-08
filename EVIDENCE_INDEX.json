@@ -1,5 +1,5 @@
 {
- "head_sha": "74d6ac2ccd59ea99688d981bffcff677655f5fe0",
+ "head_sha": "02b4e5de7446af6e7ba99d66f93397b90ba6fdef",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-11-08",
  "generator_version": "3.0",
@@ -20,6 +20,36 @@
   "E7": "Release verification"
  },
  "evidence": [
+  {
+   "id": "QLOSS-CLOCK-001-E5-20261108",
+   "head_sha": "02b4e5d",
+   "timestamp": "2026-11-08",
+   "title": "Pipeline latency telemetry now reports durations instead of calendar-clock ticks",
+   "level": "E5",
+   "component": "Windows host runtime (AegisNids daemon 14137674..., source 02b4e5d)",
+   "flow_id": "QLOSS-HEALTH-001",
+   "description": "Replaced the duration clock used by the pipeline stage marks with a monotonic QueryPerformanceCounter clock and deployed it. Probed the old clock directly first, then re-read the daemon's own stage latencies.",
+   "files_verified": [
+    "src/reliability/monotonic_clock.zig",
+    "src/tests/reliability/monotonic_clock.zig",
+    "src/pipeline/event_processor.zig",
+    "admin-evidence/e5-deploy-clock-20261108/install-result-20261108_135045.json",
+    "admin-evidence/e5-deploy-clock-20261108/queue-after.json",
+    "admin-evidence/e5-deploy-clock-20261108/readiness-after.json"
+   ],
+   "tests": [
+    "old clock probe: 199,997/200,000 consecutive nanoTimestamp reads identical; smallest non-zero step 571,000 ns; SHA-256 over 4,060 B measured 0 ns on 64/64 samples",
+    "new clock probe: 6/6 guard tests pass, including 'resolves work far below the calendar clock's tick' and 'a 4 KiB hash measures as non-zero elapsed time'",
+    "zig build test --summary all: 5/5 steps succeeded, 2053 passed, 10 skipped",
+    "install: 17/17 checks ran, host hashes now 14137674.../4EBC0822.../7D1BFC60... with driver signature Valid and manifest source_commit 02b4e5d",
+    "post-deploy forensic_append over 396,555 events: p50 16.4 us, p95 32.8 us, p99 32.8 us, mean 24.6 us, max 15.1 ms - single mode, no 0 ns mass",
+    "post-deploy capture_to_decode: p50 16.4 us, p95 65.5 us, p99 131.1 us, mean 37.5 us",
+    "post-deploy: dropped_total 0, depth 91, depth_peak 2,911; readiness degraded=false, ready=true, overall_gate=true, worker_gate=true"
+   ],
+   "result": "PASS_E5",
+   "finding": "Before the swap the same append reported p50 1 ns and p95 1 ns because every sample shorter than the 571 us tick read as zero; the reported mean was tick size times straddle probability. After the swap the distribution is unimodal (p50 16.4 us, p95 32.8 us) and the mean is 24.6 us, which is consistent with the ~11 us of accounted passes plus in-situ cache/mutex/page-fault cost. Every latency number recorded before this date, including QLOSS-CONSUMER-002-E5, is therefore an approximation and cannot be quoted as microseconds. Deployment deviation: the prior installed daemon hashed 394491E5... instead of the last recorded 6326AB5D..., i.e. a locally built daemon (present in .zig-cache, built 2026-11-08 12:50) had been installed with no evidence record. All other runtime and driver hashes matched, the minifilter signature was Valid, and the deploy replaced it with the attested build; the prior-identity check failed as designed and the run still reported PASS=False until reviewed here.",
+   "evidence_artifact": "admin-evidence/e5-deploy-clock-20261108/install-result-20261108_135045.json"
+  },
   {
    "id": "RB-017-BRAIN-RETURN-PATH-E5-20261108",
    "head_sha": "74d6ac2",
@@ -141,8 +171,9 @@
     "readiness: degraded=false, ready=true, overall_gate=true, worker_gate=true, policies 6, rules 23"
    ],
    "result": "PASS_E5",
-   "finding": "The contract-preserving CRC swap holds up on the host, not just in a micro-benchmark: the append dropped by 10.6 us per record and the end-to-end capture_to_decode stage by 7.9 us, with no drops and clean readiness. The host gain is larger than the isolated 5.8 us pass delta, so the optimized pass also relieved in-situ cache/mutex cost. receipt_issue moved from 0.00 to 0.02 us mean - sub-tick noise, not a regression. Limit: the sample windows differ in size (1.38M vs 84K events) because the counter is cumulative since daemon start; the comparison is same-host, same-workload-class, not a controlled burst.",
-   "evidence_artifact": "admin-evidence/e5-deploy-crc-20261107/install-result-20261107_020855.json"
+   "finding": "The contract-preserving CRC swap holds up on the host, not just in a micro-benchmark: the append dropped by 10.6 us per record and the end-to-end capture_to_decode stage by 7.9 us, with no drops and clean readiness. The host gain is larger than the isolated 5.8 us pass delta, so the optimized pass also relieved in-situ cache/mutex cost. receipt_issue moved from 0.00 to 0.02 us mean - sub-tick noise, not a regression. Limit: the sample windows differ in size (1.38M vs 84K events) because the counter is cumulative since daemon start; the comparison is same-host, same-workload-class, not a controlled burst. CORRECTION (ADR-0012): this comparison was read from std.time.nanoTimestamp, which advances every ~571 us on this host, so the microsecond figures are tick-straddle statistics and must not be quoted as durations. The direction (the sliced CRC made the append cheaper, drops stayed 0, readiness stayed clean) holds; the magnitude is carried by the E2 benchmark, which used std.time.Timer.",
+   "evidence_artifact": "admin-evidence/e5-deploy-crc-20261107/install-result-20261107_020855.json",
+   "superseded_by": "QLOSS-CONSUMER-002-E2-20261107 (quantified) + QLOSS-CLOCK-001-E5-20261108 (instrument)"
   },
   {
    "id": "QLOSS-CONSUMER-002-E2-20261107",
@@ -10105,7 +10136,7 @@
   "E2_count": 164,
   "E3_count": 17,
   "E4_count": 15,
-  "E5_count": 145,
+  "E5_count": 146,
   "E6_count": 0,
   "E7_count": 1
  }

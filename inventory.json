@@ -1,14 +1,14 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T05:00:54.623162+00:00",
+  "generated_at": "2026-11-08T06:57:18.951232+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1485,
+  "total_files": 1489,
   "by_class": {
-    "canonical-docs": 341,
+    "canonical-docs": 342,
     "canonical-build": 182,
     "unclassified": 18,
-    "canonical-source": 660,
+    "canonical-source": 663,
     "canonical-test": 217,
     "canonical-config": 34,
     "legacy": 33
@@ -1632,13 +1632,19 @@
       "path": "docs/adr/0011-build-optimization-mode.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5457
+      "size": 5786
     },
     {
       "path": "docs/adr/0012-fim-ingress-volume.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 8161
+      "size": 8323
+    },
+    {
+      "path": "docs/adr/0012-runtime-latency-clock.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3094
     },
     {
       "path": "docs/adr/ADR-CORE-LEGACY-CLASSIFICATION.md",
@@ -3036,7 +3042,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 948378
+      "size": 962096
     },
     {
       "path": "fix_bridge_banner.py",
@@ -3168,7 +3174,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 234357
+      "size": 234837
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3426,7 +3432,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9642
+      "size": 9987
     },
     {
       "path": "pytest.ini",
@@ -3444,7 +3450,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 193209
+      "size": 193710
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -5442,7 +5448,7 @@
       "path": "src/all_tests.zig",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 11352
+      "size": 11410
     },
     {
       "path": "src/capture/flow_engine.zig",
@@ -5472,7 +5478,7 @@
       "path": "src/capture/minifilter_reader.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 19796
+      "size": 22485
     },
     {
       "path": "src/capture/nose_contract.zig",
@@ -5628,7 +5634,7 @@
       "path": "src/control/handler_registry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 168650
+      "size": 170594
     },
     {
       "path": "src/control/protocol.zig",
@@ -6102,13 +6108,19 @@
       "path": "src/pipeline/event_processor.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 53927
+      "size": 53900
     },
     {
       "path": "src/pipeline/event_queue.zig",
       "class": "canonical-source",
       "role": "production-source",
       "size": 45775
+    },
+    {
+      "path": "src/pipeline/fim_dedup.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 8151
     },
     {
       "path": "src/pipeline/l4_matcher.zig",
@@ -6132,13 +6144,13 @@
       "path": "src/pipeline/runtime_state.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 18951
+      "size": 21169
     },
     {
       "path": "src/pipeline/telemetry_threads.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 25304
+      "size": 26497
     },
     {
       "path": "src/platform/win32_pipe.zig",
@@ -6289,6 +6301,12 @@
       "class": "canonical-source",
       "role": "production-source",
       "size": 23383
+    },
+    {
+      "path": "src/reliability/monotonic_clock.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 3632
     },
     {
       "path": "src/reliability/release_engineering.zig",
@@ -6961,6 +6979,12 @@
       "class": "canonical-source",
       "role": "production-source",
       "size": 271
+    },
+    {
+      "path": "src/tests/reliability/monotonic_clock.zig",
+      "class": "canonical-source",
+      "role": "production-source",
+      "size": 1576
     },
     {
       "path": "src/tests/reliability/security_check.zig",

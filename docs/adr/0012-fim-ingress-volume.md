@@ -1,7 +1,10 @@
 # ADR-0012 — FIM ingress volume: reduce it at the sensor, never silently
 
-**Status:** Proposed (design record only; no runtime change in this patch)
+**Status:** Accepted for the coalescing slice — measurement gate PASSED on the
+Windows host on 2026-11-08 (see *Measurement result*); implementation not yet
+merged
 **Date:** 2026-11-07
+**Measurement:** 2026-11-08, evidence `ADR-0012-DUP-RATIO-E5-20261108`
 **Supersedes:** —
 **Superseded by:** —
 **Owner:** AEGIS Core Team
