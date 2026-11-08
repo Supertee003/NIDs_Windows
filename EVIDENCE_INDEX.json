@@ -1,5 +1,5 @@
 {
-  "head_sha": "cf19e135a1c3f50eb7d8ea95f0d6b9b5f6576c98",
+  "head_sha": "adb1b73dfde03ece5075239544f7138befa92683",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-08",
   "generator_version": "3.0",
@@ -10400,12 +10400,40 @@
       "next_step": "Two ways to close, neither needs a kernel change: (a) read the nose capture selector from the daemon or the process command line under elevation and re-run the 25-SYN burst against that adapter's subnet, or (b) send the same burst from a peer on the captured segment (or a lab scapy/npcap raw sender) and watch for rule 1745456278. Until one of them runs, the honest status is 'flags lane present at source (E1/E2), live behavior unproven'.",
       "resolved_evidence": "L4-FLAGS-R9006-LIVE-E5-VMNET1-20261108",
       "resolution": "Resolved for the VMnet1-captured path (E5, 2026-11-08): with nose on CE375996/192.168.126.1, nmap SYN 25 ports from 192.168.126.10 produced R9006 signature_match rule 1745456278 in ndjson (1 row) and forensic verify remained ok. The earlier miss was an adapter-selection error (probe hit 192.168.127.200 while nose captured Wi-Fi 5FD31C6E), not a dead flags lane. R9007 and other adapters/paths remain out of scope of this closure."
+    },
+    {
+      "id": "ETW-LIFE-001-E2-20261108",
+      "title": "ETW teardown joins the consumer before releasing shared session state and surfaces stop failures",
+      "level": "E2",
+      "component": "src/windows/etw_native.c consumer_thread/aegis_etw_stop; src/windows/etw_realtime.zig EtwSource.stop; src/pipeline/telemetry_threads.zig etwThread",
+      "flow_id": "FFI-002",
+      "head_sha": "adb1b73dfde03ece5075239544f7138befa92683",
+      "timestamp": "2026-11-08",
+      "result": "PASS_E2",
+      "files_verified": [
+        "src/windows/etw_native.c",
+        "src/windows/etw_realtime.zig",
+        "src/pipeline/telemetry_threads.zig",
+        "tests/security/test_etw_lifecycle_contract.py",
+        "analysis/current-head/ETW-LIFE-001-20261108.md"
+      ],
+      "tests": [
+        "cmake -S . -B build: PASS",
+        "cmake --build build --target aegis_etw_helper --config Release: PASS",
+        "zig build: PASS",
+        "zig build test --summary all: 2058 passed, 10 skipped, 0 failed",
+        "python -m pytest tests/security/test_etw_lifecycle_contract.py tests/security/test_etw_session_name.py -q: 9 passed",
+        "zig fmt --check and git diff --check: PASS"
+      ],
+      "actual": "Lifecycle is serialized by statically initialized SRW locks. Stop disables/drains the callback, stops the ETW controller, explicitly closes the consumer trace on stop failure, waits for confirmed consumer-thread exit, then releases handles/properties. Native stop errors are surfaced to Zig and worker health. Partial-start cleanup retains resources when controller cleanup fails.",
+      "impact": "Closes the source-level unchecked 5-second join/free defect at E2. Windows E5 service/Page Heap verification and crash-root-cause attribution remain open; a later service query observed RUNNING after STOPPED, with the restart trigger unresolved.",
+      "next_step": "Run repeated installed-service start/stop with ETW providers under Page Heap/debugger, capture SCM/Application/WER evidence for the re-start, and verify no leak/crash before closing issue #30."
     }
   ],
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 34,
-    "E2_count": 67,
+    "E2_count": 68,
     "E3_count": 17,
     "E4_count": 15,
     "E5_count": 153,

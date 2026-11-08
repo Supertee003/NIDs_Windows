@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T13:23:31.793165+00:00",
+  "generated_at": "2026-11-08T14:03:03.496704+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1493,
+  "total_files": 1495,
   "by_role": {
-    "documentation": 332,
+    "documentation": 333,
     "build-config": 171,
     "other": 18,
     "lockfile": 6,
     "rust-build": 4,
     "source": 367,
-    "test-artifact": 217,
+    "test-artifact": 218,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -577,6 +577,10 @@
       "role": "documentation"
     },
     "analysis/current-head/09-backlog-triage-20261108.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/ETW-LIFE-001-20261108.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -5617,6 +5621,10 @@
       "role": "test-artifact"
     },
     "tests/security/test_enforce_simulate.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_etw_lifecycle_contract.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

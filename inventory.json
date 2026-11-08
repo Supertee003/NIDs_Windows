@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T13:23:31.788236+00:00",
+  "generated_at": "2026-11-08T14:03:03.493321+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1493,
+  "total_files": 1495,
   "by_class": {
-    "canonical-docs": 346,
+    "canonical-docs": 347,
     "canonical-build": 182,
     "unclassified": 18,
     "canonical-source": 663,
-    "canonical-test": 217,
+    "canonical-test": 218,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -396,7 +396,13 @@
       "path": "analysis/current-head/09-backlog-triage-20261108.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 8489
+      "size": 8575
+    },
+    {
+      "path": "analysis/current-head/ETW-LIFE-001-20261108.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4847
     },
     {
       "path": "analysis/current-head/FOR-BATCH-001-20261108.md",
@@ -408,7 +414,7 @@
       "path": "analysis/current-head/issue-30-etw-stop-line-audit-20261108.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2321
+      "size": 4171
     },
     {
       "path": "analysis/current-head/issue-31-forensic-batch-stop-line.md",
@@ -3066,7 +3072,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1022047
+      "size": 1024158
     },
     {
       "path": "fix_bridge_banner.py",
@@ -3198,7 +3204,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 235512
+      "size": 235694
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3474,7 +3480,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 194240
+      "size": 194386
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -6174,7 +6180,7 @@
       "path": "src/pipeline/telemetry_threads.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 26497
+      "size": 26605
     },
     {
       "path": "src/platform/win32_pipe.zig",
@@ -7098,13 +7104,13 @@
       "path": "src/windows/etw_native.c",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 13683
+      "size": 19596
     },
     {
       "path": "src/windows/etw_realtime.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 46628
+      "size": 46849
     },
     {
       "path": "src/windows/fim.zig",
@@ -7957,6 +7963,12 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 3227
+    },
+    {
+      "path": "tests/security/test_etw_lifecycle_contract.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 2039
     },
     {
       "path": "tests/security/test_etw_session_name.py",
