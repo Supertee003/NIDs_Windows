@@ -1,5 +1,5 @@
 {
-  "head_sha": "6b728b87e580aa7c1c09eb711087cb32d1b1324f",
+  "head_sha": "318a10a95b7922851562aad27f389c2ab9f4fdac",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-09",
   "generator_version": "3.0",
@@ -20,6 +20,36 @@
     "E7": "Release verification"
   },
   "evidence": [
+    {
+      "id": "WFP-READINESS-REFRESH-001-E2-20261109",
+      "head_sha": "318a10a95b7922851562aad27f389c2ab9f4fdac",
+      "timestamp": "2026-11-09",
+      "title": "Refresh Rust PEP provider attestation in a single live health snapshot",
+      "level": "E2",
+      "component": "src/core/bridge_init.zig status and src/control/handler_registry.zig health handler",
+      "flow_id": "RB-021",
+      "description": "Fixes stale startup-only WFP readiness projection. Each health response now derives capabilities.wfp and bridge_ready from one current provider attestation snapshot. The provider probe is read-only; no ABI, enforcement authority, gate, or capture behavior changed.",
+      "files_verified": [
+        "src/core/bridge_init.zig",
+        "src/control/handler_registry.zig",
+        "analysis/current-head/WFP-READINESS-REFRESH-001-20261109.md"
+      ],
+      "tests": [
+        "zig test src/core/bridge_init.zig: 5 passed",
+        "zig build test --summary all: 2,062 passed, 10 skipped, 0 failed",
+        "zig build: PASS, ReleaseSafe x86_64-windows",
+        "python tools/truth.py verify: TRUTH_VALID"
+      ],
+      "result": "PASS_E2",
+      "finding": "The prior live sequence (health=false, enforce status=true, health=false) is explained by different sampling times: health retained a startup snapshot while enforcement status probed the provider dynamically. Health now samples once per response and uses that snapshot consistently.",
+      "evidence_artifact": "analysis/current-head/WFP-READINESS-REFRESH-001-20261109.md",
+      "limitations": [
+        "No current-source redeploy/live recheck yet; E5 remains pending.",
+        "Overall readiness remains DEGRADED while recorded queue/minifilter loss counters are nonzero.",
+        "Issues #25, #29, and #30 and broader Phase 6\u20139 gates remain open.",
+        "No canary was sent and prevention remained closed."
+      ]
+    },
     {
       "id": "STOPLINE-WFP-READINESS-001-E5-20261109",
       "head_sha": "6b728b87e580aa7c1c09eb711087cb32d1b1324f",
@@ -10574,7 +10604,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 34,
-    "E2_count": 70,
+    "E2_count": 71,
     "E3_count": 17,
     "E4_count": 15,
     "E5_count": 155,

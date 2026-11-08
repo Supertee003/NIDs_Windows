@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T17:11:52.071425+00:00",
+  "generated_at": "2026-11-08T17:54:40.464346+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1500,
+  "total_files": 1502,
   "by_class": {
-    "canonical-docs": 352,
+    "canonical-docs": 354,
     "canonical-build": 182,
     "unclassified": 18,
     "canonical-source": 663,
@@ -402,7 +402,7 @@
       "path": "analysis/current-head/CORR-SOURCE-001-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2728
+      "size": 2815
     },
     {
       "path": "analysis/current-head/ETW-LIFE-001-20261108.md",
@@ -457,6 +457,18 @@
       "class": "unclassified",
       "role": "other",
       "size": 15943
+    },
+    {
+      "path": "analysis/current-head/STOPLINE-WFP-READINESS-001-20261109.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5016
+    },
+    {
+      "path": "analysis/current-head/WFP-READINESS-REFRESH-001-20261109.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3998
     },
     {
       "path": "analysis/deep_audit/01-runtime-zig.md",
@@ -1860,7 +1872,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 46321
+      "size": 47991
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -3102,7 +3114,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1030609
+      "size": 1025538
     },
     {
       "path": "fix_bridge_banner.py",
@@ -3234,7 +3246,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 236758
+      "size": 237107
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3492,7 +3504,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9774
+      "size": 9987
     },
     {
       "path": "pytest.ini",
@@ -3510,7 +3522,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 195233
+      "size": 195510
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -5694,7 +5706,7 @@
       "path": "src/control/handler_registry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 170594
+      "size": 170645
     },
     {
       "path": "src/control/protocol.zig",
@@ -5730,7 +5742,7 @@
       "path": "src/core/bridge_init.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 27215
+      "size": 28134
     },
     {
       "path": "src/core/canary_progression.zig",

@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T17:11:52.074391+00:00",
+  "generated_at": "2026-11-08T17:54:40.467184+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1500,
+  "total_files": 1502,
   "by_role": {
-    "documentation": 338,
+    "documentation": 340,
     "build-config": 171,
     "other": 18,
     "lockfile": 6,
@@ -619,6 +619,14 @@
     "analysis/current-head/prepatch-working-tree-safety.diff": {
       "class": "unclassified",
       "role": "other"
+    },
+    "analysis/current-head/STOPLINE-WFP-READINESS-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/WFP-READINESS-REFRESH-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
     },
     "analysis/deep_audit/01-runtime-zig.md": {
       "class": "canonical-docs",

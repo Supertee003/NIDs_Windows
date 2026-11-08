@@ -739,3 +739,17 @@ gate remains closed. The source code is unchanged; record:
 `analysis/current-head/STOPLINE-WFP-READINESS-001-20261109.md`. Resolve this
 stop-line alongside #25/#29/#30 before claiming current-source runtime
 qualification.
+
+
+## Continuation — WFP-READINESS-REFRESH-001 E2 complete (2026-11-09)
+
+The stop-line repro consistently returned health WFP false, enforcement status
+provider ready true, then health WFP false. Both surfaces call the same Rust
+provider probe, but the health bridge had retained only the startup result.
+`WFP-READINESS-REFRESH-001` now projects a fresh provider probe into one local
+bridge snapshot per health response and uses that snapshot for both the WFP
+capability and bridge-ready predicate. The focused bridge suite passed 5/5; the
+full Zig suite passed 2,062 tests with 10 skipped; `zig build` passed. Source
+commit: `318a10a`. E2 only: current-source Windows redeploy and live symptom
+recheck remain pending. Prevention stays closed; #25/#29/#30 remain open. See
+`analysis/current-head/WFP-READINESS-REFRESH-001-20261109.md`.
