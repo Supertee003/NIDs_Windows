@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T09:29:31.399508+00:00",
+  "generated_at": "2026-11-08T09:50:04.059243+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1489,
@@ -3042,7 +3042,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 983015
+      "size": 1018507
     },
     {
       "path": "fix_bridge_banner.py",
@@ -3174,7 +3174,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 234995
+      "size": 234996
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3432,7 +3432,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9987
+      "size": 9642
     },
     {
       "path": "pytest.ini",
