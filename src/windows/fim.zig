@@ -148,7 +148,9 @@ pub const FimWatcher = struct {
     }
 
     pub fn deinit(self: *FimWatcher) void {
-        self.stopAll();
+        if (!self.stopAll()) {
+            diag.critical("FIM watcher deinit could not stop every native session; retained worker handles may live until process exit", .{});
+        }
         for (self.rules.items) |r| {
             self.allocator.free(r.path);
         }
@@ -164,20 +166,22 @@ pub const FimWatcher = struct {
 
     pub fn startAll(self: *FimWatcher) !void {
         if (@import("builtin").os.tag != .windows) return error.UnsupportedPlatform;
+        if (self.running.load(.acquire)) return error.AlreadyStarted;
+        if (self.handle_count != 0) return error.NativeHandlesRetained;
         self.handle_count = 0;
         self.handle_rule_indices = [_]usize{0} ** 8;
         var started: usize = 0;
         for (self.rules.items, 0..) |r, rule_index| {
+            if (self.handle_count >= self.handles.len) {
+                diag.warn("FIM watcher handle limit reached; remaining roots are not started", .{});
+                break;
+            }
             const path_z = try self.allocator.dupeZ(u8, r.path);
             defer self.allocator.free(path_z);
             const handle = aegis_fim_start(path_z.ptr, if (r.recursive) 1 else 0, @bitCast(NotifyFilter.all));
             if (handle == null) {
                 diag.err("aegis_fim_start failed for {s}", .{r.path});
                 continue;
-            }
-            if (self.handle_count >= self.handles.len) {
-                _ = aegis_fim_stop(handle.?);
-                break;
             }
             self.handles[self.handle_count] = handle;
             self.handle_rule_indices[self.handle_count] = rule_index;
@@ -192,14 +196,34 @@ pub const FimWatcher = struct {
         self.running.store(true, .release);
     }
 
-    pub fn stopAll(self: *FimWatcher) void {
+    fn stopNativeHandle(handle: *anyopaque) c_int {
+        return aegis_fim_stop(handle);
+    }
+
+    fn stopAllWith(self: *FimWatcher, stop_handle: *const fn (*anyopaque) c_int) bool {
         self.running.store(false, .release);
-        for (self.handles[0..self.handle_count]) |maybe_handle| {
-            if (maybe_handle) |h| _ = aegis_fim_stop(h);
+        var retained_handles = [_]?*anyopaque{null} ** 8;
+        var retained_rule_indices = [_]usize{0} ** 8;
+        var retained_count: usize = 0;
+        var all_stopped = true;
+        for (self.handles[0..self.handle_count], 0..) |maybe_handle, index| {
+            const handle = maybe_handle orelse continue;
+            const rc = stop_handle(handle);
+            if (rc == 0) continue;
+            all_stopped = false;
+            diag.err("aegis_fim_stop failed: rc={d}; retaining native handle for retry", .{rc});
+            retained_handles[retained_count] = handle;
+            retained_rule_indices[retained_count] = self.handle_rule_indices[index];
+            retained_count += 1;
         }
-        self.handles = [_]?*anyopaque{null} ** 8;
-        self.handle_rule_indices = [_]usize{0} ** 8;
-        self.handle_count = 0;
+        self.handles = retained_handles;
+        self.handle_rule_indices = retained_rule_indices;
+        self.handle_count = retained_count;
+        return all_stopped;
+    }
+
+    pub fn stopAll(self: *FimWatcher) bool {
+        return self.stopAllWith(stopNativeHandle);
     }
 
     pub fn poll(self: *FimWatcher) []u8 {
@@ -250,6 +274,33 @@ test "FimWatcher startAll on non-Windows fails" {
     } else {
         try std.testing.expectError(error.UnsupportedPlatform, w.startAll());
     }
+}
+
+fn fixtureFimStop(handle: *anyopaque) c_int {
+    // The synthetic handle 1 stands in for a native stop failure. The other
+    // handle models a successful stop; neither pointer is dereferenced.
+    return if (@intFromPtr(handle) == 1) -2 else 0;
+}
+
+test "FimWatcher retains only native handles whose stop failed" {
+    var w = FimWatcher.init(std.testing.allocator);
+    w.handles[0] = @ptrFromInt(2);
+    w.handle_rule_indices[0] = 3;
+    w.handles[1] = @ptrFromInt(1);
+    w.handle_rule_indices[1] = 7;
+    w.handle_count = 2;
+
+    try std.testing.expect(!w.stopAllWith(fixtureFimStop));
+    try std.testing.expectEqual(@as(usize, 1), w.handle_count);
+    try std.testing.expectEqual(@as(usize, 7), w.handle_rule_indices[0]);
+    try std.testing.expect(w.handles[0] == @as(?*anyopaque, @ptrFromInt(1)));
+    try std.testing.expect(w.handles[1] == null);
+
+    // The native failure is deliberately still owned for retry; remove the
+    // fixture before deinit so it never reaches the real Windows helper.
+    w.handles[0] = null;
+    w.handle_count = 0;
+    w.deinit();
 }
 
 test "NotifyFilter all bits set" {

@@ -290,7 +290,12 @@ pub fn fimThread(watcher: *fim_mod.FimWatcher) void {
         state.markWorkerFailure(.fim);
         return;
     };
-    defer watcher.stopAll();
+    defer {
+        if (!watcher.stopAll()) {
+            diag.critical("FIM native watcher teardown failed; failed sessions were retained for owner retry", .{});
+            state.markWorkerFailure(.fim);
+        }
+    }
     state.g_fim_ready.store(true, .release);
     defer state.g_fim_ready.store(false, .release);
 
