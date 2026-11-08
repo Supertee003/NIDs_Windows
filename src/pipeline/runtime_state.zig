@@ -230,6 +230,11 @@ pub var g_minifilter_rows = std.atomic.Value(u64).init(0); // kernel records sub
 pub var g_minifilter_last_bytes = std.atomic.Value(u64).init(0); // bytes in the last answered pull
 pub var g_minifilter_dropped = std.atomic.Value(u64).init(0); // kernel ring DroppedEvents (polled)
 pub var g_minifilter_pipeline_dropped = std.atomic.Value(u64).init(0); // rows rejected by shared EventQueue
+/// Driver ring `TotalEvents` (GET_STATS slot 0): what the kernel says it wrote.
+/// Compared with `g_events_received` it proves whether one callback can reach
+/// the reader twice; records_read can never exceed this without duplication
+/// below the callback.
+pub var g_minifilter_ring_written = std.atomic.Value(u64).init(0);
 /// Identity used for events originating from the verified daemon process.
 /// Set during daemon startup; never use a fabricated all-capability mask.
 pub var g_runtime_pid: u32 = 0;

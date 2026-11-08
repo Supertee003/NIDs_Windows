@@ -775,12 +775,13 @@ const handlers = struct {
         // own loss counter, so ring overflow is never silent. `pipeline_dropped`
         // separately counts rows rejected after leaving the kernel ring.
         writer.writeAll(",\"minifilter\":{") catch return null;
-        writer.print("\"state\":\"{s}\",\"reads\":{},\"rows\":{},\"last_bytes\":{},\"dropped\":{},\"pipeline_dropped\":{}}}", .{
+        writer.print("\"state\":\"{s}\",\"reads\":{},\"rows\":{},\"last_bytes\":{},\"dropped\":{},\"ring_written\":{},\"pipeline_dropped\":{}}}", .{
             providerStateName(state_mod.g_minifilter_state.load(.acquire)),
             state_mod.g_minifilter_reads.load(.acquire),
             state_mod.g_minifilter_rows.load(.acquire),
             state_mod.g_minifilter_last_bytes.load(.acquire),
             state_mod.g_minifilter_dropped.load(.acquire),
+            state_mod.g_minifilter_ring_written.load(.acquire),
             state_mod.g_minifilter_pipeline_dropped.load(.acquire),
         }) catch return null;
         // XDR-005-A: observe-only Windows TCP endpoint telemetry health.

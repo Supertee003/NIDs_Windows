@@ -244,6 +244,7 @@ fn pollKernelStats(hPort: HANDLE) void {
     var out_len: u32 = 0;
     const hr = FilterSendMessage(hPort, &cmd, @sizeOf(u32), &stats, @as(u32, @sizeOf(@TypeOf(stats))), &out_len);
     if (hr < 0 or out_len < @sizeOf(@TypeOf(stats))) return;
+    runtime_state.g_minifilter_ring_written.store(stats[0], .monotonic);
     runtime_state.g_minifilter_dropped.store(stats[1], .monotonic);
 }
 
