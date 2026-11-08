@@ -753,3 +753,29 @@ full Zig suite passed 2,062 tests with 10 skipped; `zig build` passed. Source
 commit: `318a10a`. E2 only: current-source Windows redeploy and live symptom
 recheck remain pending. Prevention stays closed; #25/#29/#30 remain open. See
 `analysis/current-head/WFP-READINESS-REFRESH-001-20261109.md`.
+
+
+## Continuation — WFP-READINESS-REFRESH-001 E5 scope verified (2026-11-09)
+
+Installed package `AEGIS-NIDS-5.0.0-318a10a-20261109.exe` (SHA-256
+`C5B8B397421A901C7C63CE6CB836905535805095D8F2AE3227EF93E0EBA92F96`);
+installed daemon matched build hash `438F9D5F...CF334`, with build manifest
+source `318a10a`. The live sequence returned WFP `(health, enforce status,
+health)=(true,true,true)`. Elevated RB-021 preflight passed 16/16 checks. The
+operator wrapper hit a PowerShell 5 native-stderr handling error after install;
+separate read-only verification captured the successful result at local-only
+`admin-evidence/wfp-readiness-refresh-001-20261109/postinstall-verification-e5.json`.
+This is bounded E5 provider/status proof only; no Kali canary was sent. Health
+remains DEGRADED: queue quota sheds 13,907 (ETW 12,630; FIM 1,277), minifilter
+ring dropped 10,906, pipeline dropped 1,277.
+
+## Continuation — HEALTH-PROJECTION-001 E2 + bounded E5 (2026-11-09)
+
+A deterministic test reproduced the live `RUNNING` + `degraded=true` mismatch.
+The control API now preserves DEGRADED when the daemon health state or degraded
+bit says so, even while lifecycle `runtime_state` stays RUNNING. Regression red/
+green and full health suite passed (36/36); live Windows CLI now reports
+`state=DEGRADED`, `degraded=true`, WFP ready. Evidence:
+`analysis/current-head/HEALTH-PROJECTION-001-20261109.md`. Issue #29 remains open
+for source quota/ring loss; #25/#30 and the RB-021 canary/Phase 6–9 gates remain
+open.

@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T17:54:40.467184+00:00",
+  "generated_at": "2026-11-08T18:09:35.724163+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1502,
+  "total_files": 1503,
   "by_role": {
-    "documentation": 340,
+    "documentation": 341,
     "build-config": 171,
     "other": 18,
     "lockfile": 6,
@@ -593,6 +593,10 @@
       "role": "documentation"
     },
     "analysis/current-head/FOR-BATCH-001-20261108.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/HEALTH-PROJECTION-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },

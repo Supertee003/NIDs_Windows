@@ -21,6 +21,89 @@
   },
   "evidence": [
     {
+      "id": "WFP-READINESS-REFRESH-001-E5-20261109",
+      "head_sha": "318a10a95b7922851562aad27f389c2ab9f4fdac",
+      "timestamp": "2026-11-09",
+      "title": "Current-source Windows runtime WFP readiness sequence is consistent after install",
+      "level": "E5",
+      "component": "AegisNids bridge provider health / enforcement status / RB-021 current-source preflight",
+      "flow_id": "RB-021",
+      "description": "Installed the current-source 318a10a package and verified installed daemon hash matches the build. Live health \u2192 enforce status \u2192 health returned WFP (true,true,true); prevention gate remained closed. Elevated RB-021 preflight passed 16/16 checks. Overall health remained DEGRADED from attributed ETW/FIM quota sheds and minifilter loss.",
+      "files_verified": [
+        "src/core/bridge_init.zig",
+        "src/control/handler_registry.zig",
+        "scripts/rb021_current_source_preflight.ps1",
+        "analysis/current-head/WFP-READINESS-REFRESH-001-20261109.md"
+      ],
+      "tests": [
+        "Installed daemon SHA-256 equals zig-out build SHA-256",
+        "health \u2192 enforce status \u2192 health provider readiness: true/true/true",
+        "RB-021 current-source preflight: 16/16 checks PASS",
+        "enforce status: prevention_gate=closed, host_effect_capable=false, tier3_enforcing=false"
+      ],
+      "result": "PASS_E5_PROVIDER_STATUS_ONLY",
+      "finding": "The startup-cached provider readiness discrepancy is resolved for the installed current-source runtime. This evidence does not claim RB-021 detection-canary success or overall operational readiness.",
+      "evidence_artifact": "admin-evidence/wfp-readiness-refresh-001-20261109/postinstall-verification-e5.json",
+      "limitations": [
+        "PowerShell 5 wrapper stopped after install because native stderr was treated as a terminating error; subsequent read-only verification and elevated preflight completed successfully.",
+        "No Kali canary was sent.",
+        "Runtime health remains DEGRADED with queue_dropped_total 13,907 and minifilter ring dropped 10,906; issue #29 remains open.",
+        "Production prevention stayed closed; host-effect capability remains false."
+      ]
+    },
+    {
+      "id": "HEALTH-PROJECTION-001-E2-20261109",
+      "head_sha": "318a10a95b7922851562aad27f389c2ab9f4fdac",
+      "timestamp": "2026-11-09",
+      "title": "Do not promote degraded daemon health from RUNNING lifecycle state",
+      "level": "E2",
+      "component": "tools/aegisctl/api/control_api.py get_health_payload",
+      "flow_id": "RUNTIME-HEALTH-001",
+      "description": "Control API now projects DEGRADED whenever daemon health state is DEGRADED or daemon degraded=true, even if daemon runtime_state remains RUNNING. FAILED retains highest precedence; explicit stopped/transitioning states remain preserved.",
+      "files_verified": [
+        "tools/aegisctl/api/control_api.py",
+        "tests/runtime/test_health.py",
+        "analysis/current-head/HEALTH-PROJECTION-001-20261109.md"
+      ],
+      "tests": [
+        "python -m unittest tests.runtime.test_health.TestControlApiHealthPayload.test_degraded_daemon_health_cannot_be_promoted_by_running_runtime_state: red before fix, green after",
+        "python -m unittest tests.runtime.test_health: 36 passed"
+      ],
+      "result": "PASS_E2",
+      "finding": "The live state/degraded contradiction was reproduced in a deterministic control API fixture and is now pinned by regression coverage.",
+      "evidence_artifact": "analysis/current-head/HEALTH-PROJECTION-001-20261109.md",
+      "limitations": [
+        "Does not reduce ETW/FIM quota shedding or minifilter ring loss.",
+        "The Python control tooling change is records-only for ADR-0008 build-source stamping."
+      ]
+    },
+    {
+      "id": "HEALTH-PROJECTION-001-E5-20261109",
+      "head_sha": "318a10a95b7922851562aad27f389c2ab9f4fdac",
+      "timestamp": "2026-11-09",
+      "title": "Windows control API reports DEGRADED consistently with the live daemon health flag",
+      "level": "E5",
+      "component": "Windows current-source AegisNids runtime \u2192 Python aegisctl health projection",
+      "flow_id": "RUNTIME-HEALTH-001",
+      "description": "After installing daemon source 318a10a and applying the control API projection fix, live health reported state=DEGRADED and degraded=true while runtime_state=RUNNING and WFP provider readiness remained true. The enforcement gate remained closed.",
+      "files_verified": [
+        "tools/aegisctl/api/control_api.py",
+        "analysis/current-head/HEALTH-PROJECTION-001-20261109.md",
+        "admin-evidence/wfp-readiness-refresh-001-20261109/postinstall-verification-e5.json"
+      ],
+      "tests": [
+        "Live Windows aegisctl health --json assertion: state=DEGRADED, degraded=true, capabilities.wfp=true",
+        "Live enforce status: provider_ready=true, prevention_gate=closed, host_effect_capable=false"
+      ],
+      "result": "PASS_E5_HEALTH_PROJECTION",
+      "finding": "The CLI health state now matches the daemon degraded flag and no longer presents a RUNNING state alongside degraded=true.",
+      "evidence_artifact": "analysis/current-head/HEALTH-PROJECTION-001-20261109.md",
+      "limitations": [
+        "Health remains DEGRADED due queue/minifilter loss; this is not overall acceptance.",
+        "No Kali detection canary or host-effect test was run."
+      ]
+    },
+    {
       "id": "WFP-READINESS-REFRESH-001-E2-20261109",
       "head_sha": "318a10a95b7922851562aad27f389c2ab9f4fdac",
       "timestamp": "2026-11-09",
@@ -10604,10 +10687,10 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 34,
-    "E2_count": 71,
+    "E2_count": 72,
     "E3_count": 17,
     "E4_count": 15,
-    "E5_count": 155,
+    "E5_count": 157,
     "E6_count": 0,
     "E7_count": 1
   }

@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T17:54:40.464346+00:00",
+  "generated_at": "2026-11-08T18:09:35.718956+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1502,
+  "total_files": 1503,
   "by_class": {
-    "canonical-docs": 354,
+    "canonical-docs": 355,
     "canonical-build": 182,
     "unclassified": 18,
     "canonical-source": 663,
@@ -423,6 +423,12 @@
       "size": 4218
     },
     {
+      "path": "analysis/current-head/HEALTH-PROJECTION-001-20261109.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3855
+    },
+    {
       "path": "analysis/current-head/HOST-FLOW-001-20261108.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -468,7 +474,7 @@
       "path": "analysis/current-head/WFP-READINESS-REFRESH-001-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 3998
+      "size": 4557
     },
     {
       "path": "analysis/deep_audit/01-runtime-zig.md",
@@ -1872,7 +1878,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 47991
+      "size": 49495
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -3114,7 +3120,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1025538
+      "size": 1030972
     },
     {
       "path": "fix_bridge_banner.py",
@@ -3246,7 +3252,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 237107
+      "size": 237286
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3504,7 +3510,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9987
+      "size": 9642
     },
     {
       "path": "pytest.ini",
@@ -3522,7 +3528,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 195510
+      "size": 195653
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -7872,7 +7878,7 @@
       "path": "tests/runtime/test_health.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 23344
+      "size": 24726
     },
     {
       "path": "tests/runtime/test_incident_ttl.py",
@@ -8502,7 +8508,7 @@
       "path": "tools/aegisctl/api/control_api.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 64605
+      "size": 64993
     },
     {
       "path": "tools/aegisctl/client.py",
