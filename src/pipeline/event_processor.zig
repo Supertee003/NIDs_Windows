@@ -44,6 +44,14 @@ fn isHostTelemetrySource(source: event.EventSource) bool {
     };
 }
 
+/// Network flow tables are keyed by transport endpoints. Host telemetry has
+/// no corresponding packet flow, so assigning these events would fabricate a
+/// shared zero-tuple flow. Preserve their event/source identity in evidence;
+/// only network/core sources receive a FlowRecord.
+fn shouldAssignFlowId(source: event.EventSource) bool {
+    return !isHostTelemetrySource(source);
+}
+
 /// XDR-WIRE-001 advisory entity key. Full v6 identity wins when the queue
 /// sidecar carries it (never the documented prefix-as-address wart);
 /// otherwise the v4 dotted source address; a zero address is refused.
@@ -232,9 +240,9 @@ fn processEvent(
     // FLOW-ID-051: stamp the table's flow identity onto the event. The
     // lookup result used to be discarded, so every event kept flow_id=0
     // and the threat tracker scored the whole world on one shared Flow 0.
-    // XDR-005-A: a host socket observation is connection state, not a
-    // packet; it gets no phantom flow and keeps flow_id=0.
-    if (ev.source != .capture_host_net) assignFlowId(ft, ev, fkey);
+    // Host telemetry is an observation, not a network packet flow; it keeps
+    // flow_id=0. Network and core producers retain the existing flow path.
+    if (shouldAssignFlowId(ev.source)) assignFlowId(ft, ev, fkey);
     t_prev = markStage(.decode_to_flow, t_prev);
 
     // 2. Aho-Corasick signature matching (if rules are loaded)
@@ -1048,6 +1056,16 @@ test "IDS-HOST-004: host detector identity is evidence-only" {
     // Brain/advisory input is also outside the host detector identity channel.
     network_ev.source = .detection_brain;
     try std.testing.expectEqual(@as(u32, 0), hostDetectorRuleId(&network_ev));
+}
+
+test "host telemetry does not receive a fabricated network flow id" {
+    inline for (.{ event.EventSource.capture_etw, .capture_fim, .capture_registry, .capture_host_net }) |source| {
+        try std.testing.expect(!shouldAssignFlowId(source));
+    }
+
+    inline for (.{ event.EventSource.capture_npcap, .capture_wfp, .capture_pipe_monitor }) |source| {
+        try std.testing.expect(shouldAssignFlowId(source));
+    }
 }
 
 /// Main pipeline loop: pops events from queue and processes them.
