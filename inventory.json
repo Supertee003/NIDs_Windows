@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T08:26:01.425699+00:00",
+  "generated_at": "2026-11-08T08:46:50.684993+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1489,
@@ -3042,7 +3042,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 973672
+      "size": 977636
     },
     {
       "path": "fix_bridge_banner.py",
@@ -7734,7 +7734,7 @@
       "path": "tests/runtime/test_aegisctl.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 32582
+      "size": 34389
     },
     {
       "path": "tests/runtime/test_aggregator_entrypoints.py",
@@ -8478,7 +8478,7 @@
       "path": "tools/aegisctl.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 108855
+      "size": 110852
     },
     {
       "path": "tools/audit_kernel_runtime.py",

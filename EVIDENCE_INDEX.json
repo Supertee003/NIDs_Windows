@@ -21,6 +21,30 @@
  },
  "evidence": [
   {
+   "id": "AEGISCTL-SOURCE-NAME-SEARCH-E2-20261108",
+   "head_sha": "787455a",
+   "timestamp": "2026-11-08",
+   "title": "forensic search accepts the frozen source name, so a wrong ordinal cannot read as missing evidence",
+   "level": "E2",
+   "component": "tools/aegisctl.py forensic search --field source",
+   "flow_id": "FOR-001",
+   "description": "This session searched the forensic ring with the queue ordinal for the brain (13) and got zero matches four times, which looked like a lost finding. The record existed under the canonical ordinal (python_brain = 5). Two numbering spaces coexist by design; the CLI now resolves the frozen name (or a bare ordinal) instead of requiring the caller to know which space a filter lives in.",
+   "files_verified": [
+    "tools/aegisctl.py",
+    "tests/runtime/test_aegisctl.py",
+    "brain/canonical_event.py",
+    "src/contract/canonical_event.zig"
+   ],
+   "tests": [
+    "pytest tests/runtime/test_aegisctl.py: 50 passed (2 new: name accepted, fallback table equals brain.canonical_event.SOURCE)",
+    "live: forensic search --field source --value python_brain returns available true, integrity ok",
+    "unrecognized text still fails closed: exit 2 with source_must_be_a_numeric_ordinal and no traceback"
+   ],
+   "result": "PASS_E2",
+   "finding": "The filter was never broken; the caller was guessing. Accepting the frozen name removes the guess without weakening the filter: the name resolves through the same table the wire contract pins, an ordinal still works, and unknown text is still a usage error. The parity test is the part that matters long term, because the CLI keeps a fallback copy of the ordinals for when the brain package is not importable.",
+   "evidence_artifact": "tests/runtime/test_aegisctl.py"
+  },
+  {
    "id": "RB-017-TIER2-END-TO-END-E5-20261108",
    "head_sha": "787455a",
    "timestamp": "2026-11-08",
@@ -10243,12 +10267,27 @@
    "actual": "Retained and verified: `aegisctl forensic search --field source --value 5` within 0.7 s of the offer returned record_seq 2635027 with source 5 = python_brain (canonical space), rule_id 2587872532 = FNV-1a('CYTHON-003'), payload_len 216, verified true. The four earlier probes returned 0 because they searched source 13, the QUEUE ordinal for detection_brain; forensic_pipeline.zig canonicalSourceOf maps it to python_brain = 5 in the canonical source space.",
    "impact": "No evidence gap. Recorded because the near-miss is instructive: two source-numbering spaces coexist (queue 13, canonical 5), and a wrong ordinal reads exactly like missing evidence.",
    "next_step": "None for RB-017. If this trips again, `forensic search --field source` should accept the name (python_brain) as well as the ordinal."
+  },
+  {
+   "id": "GAP-L4-FLAGS-LIVE-UNPROVEN",
+   "title": "L4 flag rules exist at source with a rate window, but the live capture path's flags lane is unproven and my first probe did not even reach it",
+   "level": "E1",
+   "component": "src/pipeline/l4_matcher.zig, src/pipeline/rule_loader.zig, nose/capture.go, the installed nose 7D1BFC60",
+   "flow_id": "RB-021",
+   "head_sha": "787455a",
+   "timestamp": "2026-11-08",
+   "result": "OPEN",
+   "command": "25 TCP SYNs to 192.168.127.200 ports 3000-3024 in 1.54 s, then grep aegis_core.ndjson for the target and for rule 1745456278 (= FNV-1a('R9006'))",
+   "expected": "If the captured adapter carries the flags lane, the R9006 rate rule (distinct_dst_ports >= 20 within 10 s) fires and the rows name the scan.",
+   "actual": "Zero rows mentioning 192.168.127.200 and zero rows with rule 1745456278 - the traffic was not captured at all, so the probe says nothing about flags. The host exposes 8 IPv4 addresses (192.168.127.1, 192.168.126.1, 192.168.1.39, three link-local, 172.20.32.1, and loopback-adjacent ones) and nose auto-selects a device; the selected device is not readable unelevated.",
+   "impact": "Source level is solid and my earlier claim that R9006/R9007 are per-packet-only was WRONG and is withdrawn here: l4_matcher.zig configures R9006 as rate_mode distinct_dst_ports with threshold 20 over a 10,000 ms window, R9002 carries an ICMP rate rule, and only R9007 remains a per-packet predicate. nose/capture.go sets the raw TCP flags byte through SetTCPFlags, and the flags commit (3f5477d, 2026-10-20) predates the installed package build (2026-11-02), so the installed binary should carry it - should, not proven.",
+   "next_step": "Two ways to close, neither needs a kernel change: (a) read the nose capture selector from the daemon or the process command line under elevation and re-run the 25-SYN burst against that adapter's subnet, or (b) send the same burst from a peer on the captured segment (or a lab scapy/npcap raw sender) and watch for rule 1745456278. Until one of them runs, the honest status is 'flags lane present at source (E1/E2), live behavior unproven'."
   }
  ],
  "evidence_level_summary": {
   "E0_count": 0,
-  "E1_count": 32,
-  "E2_count": 164,
+  "E1_count": 33,
+  "E2_count": 165,
   "E3_count": 17,
   "E4_count": 15,
   "E5_count": 151,
