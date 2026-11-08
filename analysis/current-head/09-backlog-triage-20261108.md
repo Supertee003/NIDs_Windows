@@ -85,3 +85,7 @@ The coarse-key FIM coalescing WIP compiled and its focused 8-test module suite p
 
 Commit `c762deb` prevents host telemetry sources (`capture_etw`, `capture_fim`, `capture_registry`, `capture_host_net`) from creating/updating a fabricated network flow keyed by missing/zero endpoints. Network and other sources keep their existing flow assignment. The added source-predicate test passed in the full Windows Zig suite (2,059 passed, 10 skipped) and `zig build` passed. This avoids phantom flow state and some per-event work; it does not prove queue-loss improvement. See `HOST-FLOW-001-20261108.md`. Issue #29 remains open.
 
+## Continuation update — FIM-STOP-002 completed at E2
+
+Commit `f5d3b53` propagates `aegis_fim_stop` failures through `FimWatcher`: only successful stops clear handles, failed handles remain owned for retry, restart is refused while one remains, and the FIM worker marks teardown failure in health. The injected stop-failure test, full Zig suite (2,060 passed, 10 skipped), and `zig build` passed. No live service stop failure or Page Heap cycle was run. See `FIM-STOP-002-20261108.md`. Issue #30 remains open pending Windows lifecycle/crash attribution evidence.
+

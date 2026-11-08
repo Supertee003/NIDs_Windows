@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T16:14:18.860411+00:00",
+  "generated_at": "2026-11-08T16:27:44.430231+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1498,
+  "total_files": 1499,
   "by_class": {
-    "canonical-docs": 350,
+    "canonical-docs": 351,
     "canonical-build": 182,
     "unclassified": 18,
     "canonical-source": 663,
@@ -396,13 +396,19 @@
       "path": "analysis/current-head/09-backlog-triage-20261108.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10749
+      "size": 11315
     },
     {
       "path": "analysis/current-head/ETW-LIFE-001-20261108.md",
       "class": "canonical-docs",
       "role": "documentation",
       "size": 4847
+    },
+    {
+      "path": "analysis/current-head/FIM-STOP-002-20261108.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 3937
     },
     {
       "path": "analysis/current-head/FOR-BATCH-001-20261108.md",
@@ -3090,7 +3096,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1028541
+      "size": 1030609
     },
     {
       "path": "fix_bridge_banner.py",
@@ -3480,7 +3486,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9987
+      "size": 9642
     },
     {
       "path": "pytest.ini",
@@ -6198,7 +6204,7 @@
       "path": "src/pipeline/telemetry_threads.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 26605
+      "size": 26798
     },
     {
       "path": "src/platform/win32_pipe.zig",
@@ -7134,7 +7140,7 @@
       "path": "src/windows/fim.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 11109
+      "size": 13401
     },
     {
       "path": "src/windows/fim_native.c",

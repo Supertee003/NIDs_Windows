@@ -1,5 +1,5 @@
 {
-  "head_sha": "c762deba5c2d3af9183c3ef7cff75e022c48ea0d",
+  "head_sha": "f5d3b538fbcf645fe287a56e14940931e3471bb1",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-08",
   "generator_version": "3.0",
@@ -4578,6 +4578,37 @@
       "limits": [
         "E2 source/unit/build evidence only; no E5 service verification or queue-loss reduction is claimed.",
         "If a future ETW network provider is enabled, it needs a flow-capable event/source contract rather than the current host-telemetry classification."
+      ]
+    },
+    {
+      "id": "FIM-STOP-002-E2-20261108",
+      "title": "FIM watcher retains native handles when stop reports failure",
+      "level": "E2",
+      "component": "src/windows/fim.zig FimWatcher.stopAll/deinit; src/pipeline/telemetry_threads.zig fimThread",
+      "flow_id": "REL-003",
+      "patch_id": "FIM-STOP-002",
+      "target_head": "576d8bd110866c7a0e7ab128f347480af70919c9",
+      "final_head": "f5d3b538fbcf645fe287a56e14940931e3471bb1",
+      "build_source": "f5d3b538fbcf645fe287a56e14940931e3471bb1",
+      "description": "FimWatcher now consumes the native stop status, removes only successfully stopped sessions, retains failed handles for owner retry, refuses restart while a failed handle is retained, and reports teardown failure to worker health.",
+      "commands": [
+        "zig build (PASS)",
+        "zig build test --summary all (2060 passed, 10 skipped, 0 failed; 5/5 steps)",
+        "zig fmt --check src/windows/fim.zig src/pipeline/telemetry_threads.zig (PASS)",
+        "git diff --check (PASS)",
+        "python tools/truth.py verify (TRUTH_VALID after source rebaseline)"
+      ],
+      "expected": "No native FIM session handle is silently forgotten when aegis_fim_stop returns an error; worker health reports unconfirmed teardown.",
+      "actual": "Fault-injection unit test proves successful handles are removed and failed handles plus their root association remain available for retry. ReleaseSafe x86_64 Windows build and full Zig suite pass. No installed-service stop failure was injected.",
+      "result": "PASS_E2_FIM_STOP_OWNERSHIP",
+      "files_verified": [
+        "src/windows/fim.zig",
+        "src/pipeline/telemetry_threads.zig",
+        "analysis/current-head/FIM-STOP-002-20261108.md"
+      ],
+      "limits": [
+        "E2 only; no native Windows helper stress, service stop/start, Page Heap, or historical crash attribution.",
+        "If native stop continues to fail through final owner cleanup, the retained native session may remain active until process exit."
       ]
     }
   ],
@@ -10486,7 +10517,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 34,
-    "E2_count": 69,
+    "E2_count": 70,
     "E3_count": 17,
     "E4_count": 15,
     "E5_count": 154,
