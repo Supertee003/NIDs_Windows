@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T08:49:44.068374+00:00",
+  "generated_at": "2026-11-08T09:02:52.290125+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1489,
@@ -1176,7 +1176,7 @@
       "path": "brain/windows_brain.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 51360
+      "size": 52776
     },
     {
       "path": "bridge/__init__.py",
@@ -3042,7 +3042,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 977636
+      "size": 979583
     },
     {
       "path": "fix_bridge_banner.py",
@@ -7308,7 +7308,7 @@
       "path": "tests/brain/test_brain_udp_auth.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 6015
+      "size": 8161
     },
     {
       "path": "tests/brain/test_bridge_edge.py",
