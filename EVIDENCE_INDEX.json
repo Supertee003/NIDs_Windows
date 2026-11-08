@@ -21,6 +21,37 @@
  },
  "evidence": [
   {
+   "id": "L4-FLAGS-R9006-LIVE-E5-VMNET1-20261108",
+   "head_sha": "f9be369",
+   "timestamp": "2026-11-08",
+   "title": "Live VMnet1 capture: Kali SYN scan triggers R9006 (distinct_dst_ports rate) — flags/L4 path proven on the captured adapter",
+   "level": "E5",
+   "component": "nose/capture.go (NPF capture) -> pipeline -> src/pipeline/l4_matcher.zig R9006 -> aegis_core.ndjson signature_match",
+   "flow_id": "RB-021",
+   "description": "With nose pinned to VMnet1 (\\Device\\NPF_{CE375996-106D-46F7-A67C-0168EAE8C96F}, 192.168.126.1/24, pid 10680, HKLM AEGIS_NOSE_IFACE set with user authorization), Kali 192.168.126.10 ran nmap -sS -p 3000-3024 -Pn -T4 --max-retries 0 against 192.168.126.1 (25 ports, 0.51 s, 2026-11-08T04:26:25-05:00). ndjson recorded exactly 1 match for rule 1745456278 (= FNV-1a R9006) / src_ip 192.168.126.10, src_port 47109, payload_len 0, event signature_match, policy logged as block/policy_id 3; IP 192.168.126.x hits=1, R9007 hits=0. ndjson grew 42,243,780->69,672,059 bytes. aegisctl forensic verify after: integrity ok, verified true. Readiness before/after: degraded true, ready false, overall_gate false, failure_reasons empty (observed, unchanged). An earlier probe to 192.168.127.200 missed because nose then captured Wi-Fi (\\Device\\NPF_{5FD31C6E-DE48-44CB-838E-14667A04DA4B}/192.168.1.39) — not a flags failure.",
+   "files_verified": [
+    "nose/capture.go",
+    "src/pipeline/l4_matcher.zig",
+    "src/pipeline/rule_loader.zig",
+    "C:/Windows/System32/logs/aegis_core.ndjson",
+    "admin-evidence/l4-flags-live-20261108_161230/RESULT.md"
+   ],
+   "tests": [
+    "live: nmap SYN 25 distinct dst ports (3000-3024, <1s) from 192.168.126.10 -> R9006 signature_match rule 1745456278 observed in ndjson (count 1) on VMnet1-captured path",
+    "live: aegisctl forensic verify -> integrity ok, verified true",
+    "source: R9006 = distinct_dst_ports threshold 20 / 10000 ms (l4_matcher.zig) — prior per-packet-only claim withdrawn"
+   ],
+   "result": "PASS_E5",
+   "finding": "The live capture+flags/L4 path reaches the R9006 rate detector on the adapter nose actually captures (here VMnet1). Scope is this adapter/path/case: R9006 fired; R9007 not exercised; Wi-Fi path not re-tested this run; prevention gate/host-effect posture unchanged (logged policy decision is not claimed as enforcement). Resolves GAP-L4-FLAGS-LIVE-UNPROVEN for this scope.",
+   "evidence_artifact": "admin-evidence/l4-flags-live-20261108_161230/RESULT.md",
+   "limitations": [
+    "nose remains pinned to VMnet1 (HKLM AEGIS_NOSE_IFACE=CE375996) until restored to Wi-Fi 5FD31C6E",
+    "R9007 (XMAS, per-packet) not exercised",
+    "readiness degraded/overall_gate false (failure_reasons empty) observed before and after; not caused by this test",
+    "logged policy=block is not asserted as host enforcement (prevention_gate posture unchanged)"
+   ]
+  },
+  {
    "id": "ANOMALOUS-LOG-SIZE-CAP-E2-20261108",
    "head_sha": "787455a",
    "timestamp": "2026-11-08",
@@ -10297,12 +10328,14 @@
    "flow_id": "RB-021",
    "head_sha": "787455a",
    "timestamp": "2026-11-08",
-   "result": "OPEN",
+   "result": "RESOLVED",
    "command": "25 TCP SYNs to 192.168.127.200 ports 3000-3024 in 1.54 s, then grep aegis_core.ndjson for the target and for rule 1745456278 (= FNV-1a('R9006'))",
    "expected": "If the captured adapter carries the flags lane, the R9006 rate rule (distinct_dst_ports >= 20 within 10 s) fires and the rows name the scan.",
    "actual": "Zero rows mentioning 192.168.127.200 and zero rows with rule 1745456278 - the traffic was not captured at all, so the probe says nothing about flags. The host exposes 8 IPv4 addresses (192.168.127.1, 192.168.126.1, 192.168.1.39, three link-local, 172.20.32.1, and loopback-adjacent ones) and nose auto-selects a device; the selected device is not readable unelevated.",
    "impact": "Source level is solid and my earlier claim that R9006/R9007 are per-packet-only was WRONG and is withdrawn here: l4_matcher.zig configures R9006 as rate_mode distinct_dst_ports with threshold 20 over a 10,000 ms window, R9002 carries an ICMP rate rule, and only R9007 remains a per-packet predicate. nose/capture.go sets the raw TCP flags byte through SetTCPFlags, and the flags commit (3f5477d, 2026-10-20) predates the installed package build (2026-11-02), so the installed binary should carry it - should, not proven.",
-   "next_step": "Two ways to close, neither needs a kernel change: (a) read the nose capture selector from the daemon or the process command line under elevation and re-run the 25-SYN burst against that adapter's subnet, or (b) send the same burst from a peer on the captured segment (or a lab scapy/npcap raw sender) and watch for rule 1745456278. Until one of them runs, the honest status is 'flags lane present at source (E1/E2), live behavior unproven'."
+   "next_step": "Two ways to close, neither needs a kernel change: (a) read the nose capture selector from the daemon or the process command line under elevation and re-run the 25-SYN burst against that adapter's subnet, or (b) send the same burst from a peer on the captured segment (or a lab scapy/npcap raw sender) and watch for rule 1745456278. Until one of them runs, the honest status is 'flags lane present at source (E1/E2), live behavior unproven'.",
+   "resolved_evidence": "L4-FLAGS-R9006-LIVE-E5-VMNET1-20261108",
+   "resolution": "Resolved for the VMnet1-captured path (E5, 2026-11-08): with nose on CE375996/192.168.126.1, nmap SYN 25 ports from 192.168.126.10 produced R9006 signature_match rule 1745456278 in ndjson (1 row) and forensic verify remained ok. The earlier miss was an adapter-selection error (probe hit 192.168.127.200 while nose captured Wi-Fi 5FD31C6E), not a dead flags lane. R9007 and other adapters/paths remain out of scope of this closure."
   }
  ],
  "evidence_level_summary": {
@@ -10311,7 +10344,7 @@
   "E2_count": 166,
   "E3_count": 17,
   "E4_count": 15,
-  "E5_count": 151,
+  "E5_count": 152,
   "E6_count": 0,
   "E7_count": 1
  }

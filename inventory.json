@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T09:02:52.290125+00:00",
+  "generated_at": "2026-11-08T09:29:31.399508+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1489,
@@ -3042,7 +3042,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 979583
+      "size": 983015
     },
     {
       "path": "fix_bridge_banner.py",
@@ -3432,7 +3432,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9642
+      "size": 9987
     },
     {
       "path": "pytest.ini",
