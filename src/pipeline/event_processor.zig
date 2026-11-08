@@ -26,6 +26,7 @@ const trace_mod = @import("../forensic/decision_trace.zig");
 const dispatcher = @import("../policy/action_dispatcher.zig");
 const watchdog = @import("../reliability/watchdog.zig");
 const hist = @import("../reliability/latency_histogram.zig");
+const clock = @import("../reliability/monotonic_clock.zig");
 const state = @import("runtime_state.zig");
 const queue = @import("event_queue.zig");
 const siem_mod = @import("../forensic/siem_forwarder.zig");
@@ -91,7 +92,7 @@ fn hostDetectorRuleId(ev: *const event.IpcEvent) u32 {
 /// Mutex-guarded like the whole-pipeline observe (same race, same fix);
 /// saturating cast keeps a clock step harmless instead of trapping.
 fn markStage(stage: hist.Stage, since_ns: i128) i128 {
-    const now = std.time.nanoTimestamp();
+    const now = clock.nowNs();
     const delta: u64 = @intCast(@max(0, now - since_ns));
     state.g_perf_mutex.lock();
     state.g_perf.observe(stage, delta);
@@ -199,7 +200,7 @@ fn processEvent(
     // GAP-015 p95: per-stage latency marks (the whole-pipeline observe in
     // pipelineLoop cannot attribute the tail). Each mark is one uncontended
     // mutex hold; readers snapshot under the same mutex.
-    var t_prev = std.time.nanoTimestamp();
+    var t_prev = clock.nowNs();
     // CTRL-002: real liveness timestamp for the health contract (§4.1).
     const now_ms = std.time.milliTimestamp();
     state.g_last_event_ms.store(now_ms, .monotonic);
@@ -544,7 +545,7 @@ fn processEvent(
     // could belong to the append, the hash read-back or the receipt. Time each
     // part separately; the three extra clock reads cost ~90 ns per event and
     // are the only new work on this path.
-    const t_forensic_0 = std.time.nanoTimestamp();
+    const t_forensic_0 = clock.nowNs();
     const forensic_seq = appendForensicRecord(
         forensic_ring,
         qe,
@@ -554,7 +555,7 @@ fn processEvent(
         @intFromEnum(pep_decision),
         @intFromEnum(ev_copy.severity),
     );
-    const t_forensic_1 = std.time.nanoTimestamp();
+    const t_forensic_1 = clock.nowNs();
     if (forensic_seq != 0) {
         _ = state.g_forensic_records_written.fetchAdd(1, .monotonic);
     }
@@ -566,11 +567,11 @@ fn processEvent(
     var t_forensic_3 = t_forensic_1;
     if (detection_rule_id != 0 and forensic_seq != 0) {
         const record_hash = forensic_ring.recordHash(forensic_seq);
-        t_forensic_2 = std.time.nanoTimestamp();
+        t_forensic_2 = clock.nowNs();
         if (record_hash) |hash| {
             ids_evidence_receipt = ids_receipt.issue(ev, forensic_seq, hash, ids_receipt.RUNTIME_DETECTOR_ID, ids_receipt.RUNTIME_DETECTOR_VERSION, 100);
         }
-        t_forensic_3 = std.time.nanoTimestamp();
+        t_forensic_3 = clock.nowNs();
     }
     _ = markStage(.action_to_forensic, t_prev);
     state.g_perf_mutex.lock();
@@ -1087,12 +1088,12 @@ pub fn pipelineLoop(
             // Fault injection — maybe corrupt event
             _ = state.g_fi.maybeCorrupt(&qe.ev);
             // Performance tracking
-            const start = std.time.nanoTimestamp();
+            const start = clock.nowNs();
             processEvent(&qe, ac, ad, ft, corr, tt, ps, pep_enf, forensic_ring, rules_loaded, hist.Stage.capture_to_decode) catch |err| {
                 diag.warn("pipeline processing error: {}", .{err});
             };
             state.g_perf_mutex.lock();
-            state.g_perf.observe(hist.Stage.capture_to_decode, @intCast(std.time.nanoTimestamp() - start));
+            state.g_perf.observe(hist.Stage.capture_to_decode, @intCast(clock.nowNs() - start));
             state.g_perf_mutex.unlock();
             // Bound correlator memory: reap idle windows every 4096 events so
             // spoofed sources cannot grow the window map without bound.

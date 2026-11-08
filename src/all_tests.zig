@@ -79,6 +79,7 @@ comptime {
     _ = @import("tests/reliability/watchdog.zig");
     _ = @import("tests/reliability/security_check.zig");
     _ = @import("tests/reliability/latency_histogram.zig");
+    _ = @import("tests/reliability/monotonic_clock.zig");
     _ = @import("tests/reliability/fault_injection.zig");
     _ = @import("tests/federation/cluster_coord.zig");
     _ = @import("tests/federation/node_registry.zig");
