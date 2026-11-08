@@ -693,6 +693,22 @@ def send_to_sensor_pipe(payload: dict) -> str:
     return _send_via_ctypes(SENSOR_PIPE_NAME, data)
 
 
+def deliver_finding(payload: dict) -> str:
+    """Send one Tier-2 finding and count it only when the transport accepted it.
+
+    B2-OUTCNT-058: `out_events` was declared, reported on HEALTH, and never
+    incremented — the supervisor read a permanent 0 even while findings were
+    being delivered, which reads as "the return path is dead". Counting here
+    (SENT only; FAILED/DISABLED are not emissions) makes the counter mean
+    exactly what the schema says: findings the brain handed to the daemon.
+    """
+    global OUT_EVENT_COUNT
+    result = send_to_sensor_pipe(payload)
+    if result == "SENT":
+        OUT_EVENT_COUNT += 1
+    return result
+
+
 # ====== Bridge Event Polling ======
 
 def poll_bridge_events():
@@ -1020,7 +1036,7 @@ def main():
                         status = "BLOCK_FAILED"
 
                 write_anomaly_log(log_entry, match_name, match_policy, match_rule_id, status)
-                pipe_result = send_to_sensor_pipe(build_sensor_payload(
+                pipe_result = deliver_finding(build_sensor_payload(
                     match_name, match_rule_id, match_severity,
                     src_ip if src_ip != "Unknown" else "0.0.0.0",
                 ))
@@ -1061,7 +1077,7 @@ def main():
                         status = "BLOCK_FAILED"
 
                 write_anomaly_log(log_entry, match_name, match_policy, match_rule_id, status)
-                pipe_result = send_to_sensor_pipe(build_sensor_payload(
+                pipe_result = deliver_finding(build_sensor_payload(
                     match_name, match_rule_id, match_severity,
                     src_ip if src_ip != "Unknown" else "0.0.0.0",
                 ))

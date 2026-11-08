@@ -81,3 +81,27 @@ def test_cython_sender_reports_failed_on_missing_pipe():
         reason="sensor_pipe.pyd not built (fallback path active)",
     )
     assert sensor_pipe.send_bytes(MISSING_PIPE, b'{"a":1}') == "FAILED"
+
+
+def test_deliver_finding_counts_only_accepted_emissions(monkeypatch):
+    """B2-OUTCNT-058: HEALTH out_events must track real deliveries.
+
+    The counter was declared and reported but never incremented, so a
+    supervisor saw out_events=0 while findings were flowing and read it as a
+    dead return path. Only SENT is an emission; FAILED (transport) and
+    DISABLED (opt-in off) are not.
+    """
+    from brain import windows_brain
+
+    monkeypatch.setattr(windows_brain, "OUT_EVENT_COUNT", 0)
+    for transport_result, expected in (
+        ("SENT", 1),
+        ("SENT", 2),
+        ("FAILED", 2),
+        ("DISABLED", 2),
+    ):
+        monkeypatch.setattr(
+            windows_brain, "send_to_sensor_pipe", lambda _payload, r=transport_result: r
+        )
+        assert windows_brain.deliver_finding({"source": "brain_tier2"}) == transport_result
+        assert windows_brain.OUT_EVENT_COUNT == expected, transport_result
