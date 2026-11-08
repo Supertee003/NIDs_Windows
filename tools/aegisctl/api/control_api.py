@@ -1197,16 +1197,22 @@ def get_health_payload() -> Dict[str, Any]:
         # cannot advertise Tier-3 readiness.
         effective_state = computed_state
         effective_degraded = computed_degraded
-        # The daemon runtime state is authoritative.  The compatibility
-        # calculator above still understands historical subsystem names and
-        # may otherwise promote a canonical DEGRADED runtime to READY when
-        # it sees a sparse/renamed subsystem snapshot.
+        # The daemon owns both runtime lifecycle and operational health. Its
+        # lifecycle can remain RUNNING while the health contract is degraded
+        # by data loss; never let that lifecycle value promote a degraded
+        # health result to RUNNING in the control API.
         daemon_runtime_state = str(
             daemon_health.get("runtime_state", daemon_health.get("state", "DEGRADED"))
         ).upper()
-        if daemon_runtime_state in {"DEGRADED", "FAILED", "STOPPED", "STOPPING", "STARTING"}:
+        daemon_health_state = str(daemon_health.get("state", daemon_runtime_state)).upper()
+        daemon_degraded = bool(daemon_health.get("degraded", False))
+        if "FAILED" in {computed_state, daemon_runtime_state, daemon_health_state}:
+            effective_state = "FAILED"
+        elif daemon_runtime_state in {"STOPPED", "STOPPING", "STARTING"}:
             effective_state = daemon_runtime_state
-        effective_degraded = effective_degraded or bool(daemon_health.get("degraded", False))
+        elif daemon_runtime_state == "DEGRADED" or daemon_health_state == "DEGRADED" or daemon_degraded:
+            effective_state = "DEGRADED"
+        effective_degraded = effective_degraded or daemon_degraded
         if daemon_runtime_state != "RUNNING":
             effective_degraded = True
         effective_tier3_ready = tier3_ready and effective_state != "FAILED"

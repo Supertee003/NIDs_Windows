@@ -302,6 +302,40 @@ class TestControlApiHealthPayload(unittest.TestCase):
         self.assertTrue(payload["rust_pep"]["provider_capable"])
         self.assertFalse(payload["rust_pep"]["host_effect_capable"])
 
+    def test_degraded_daemon_health_cannot_be_promoted_by_running_runtime_state(self):
+        daemon_health = {
+            "component": "core",
+            "state": "DEGRADED",
+            "runtime_state": "RUNNING",
+            "degraded": True,
+            "pid": 4321,
+            "uptime_ms": 100,
+            "last_event_ms": 0,
+            "capabilities": {"wfp": True},
+            "subsystems": [
+                {"name": "rust_pep", "state": "RUNNING", "pid": 4321},
+                {"name": "tier3", "state": "RUNNING", "pid": 4321},
+            ],
+            "workers": {
+                "pipeline_ready": True,
+                "sensor_ready": True,
+                "nose_ready": True,
+                "etw_ready": True,
+                "fim_ready": True,
+                "registry_ready": True,
+                "failure_mask": 0,
+            },
+            "data_plane": {},
+            "data_integrity": {"queue_dropped_total": 1},
+        }
+        with patch.object(control_api, "_query_daemon_retry", return_value=daemon_health), \
+             patch.object(control_api, "get_all_status", return_value=[]), \
+             patch.object(control_api, "compute_health_state", return_value=("RUNNING", False)):
+            payload = control_api.get_health_payload()
+
+        self.assertEqual(payload["state"], "DEGRADED")
+        self.assertTrue(payload["degraded"])
+
     def test_payload_reports_subsystem_states_and_monotonic_uptime(self):
         statuses = [
             ("zig", True, 101),
