@@ -1,5 +1,5 @@
 {
- "head_sha": "12093dd0a5208498199551e8ce0aebaf58520cde",
+ "head_sha": "74d6ac2ccd59ea99688d981bffcff677655f5fe0",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-11-08",
  "generator_version": "3.0",
@@ -20,6 +20,33 @@
   "E7": "Release verification"
  },
  "evidence": [
+  {
+   "id": "RB-017-BRAIN-RETURN-PATH-E5-20261108",
+   "head_sha": "74d6ac2",
+   "timestamp": "2026-11-08",
+   "title": "Brain Tier-2 findings return through the sensor pipe with brain_tier2 provenance; out_events counted emissions only after the counter defect was fixed",
+   "level": "E5",
+   "component": "brain/windows_brain.py deliver_finding, src/core/nids_capture.zig applyJsonMetadata, src/forensic/forensic_pipeline.zig python_brain mapping",
+   "flow_id": "BRAIN-001",
+   "description": "Injected a MAC-authenticated offer (hmac-sha256 over the body with the machine-level AEGIS_BRAIN_SECRET, 64 hex chars + '.' + JSON) to the supervised brain at 127.0.0.1:9999. The body carried a 300-byte identical-byte payload under reason 'Forwarded: No Tier-1 Match' and RFC 5737 TEST-NET-1 src_ip 192.0.2.10/11, so the brain's CYTHON-003 heap-spray pre-filter fired while the (always-deferred) block request stayed away from any real host. Three measured facts: (1) the daemon counted the returned finding - queue.stats by_source ordinal 13 'detection_brain' pushed 2 -> 3, dropped 0; (2) the forensic ring holds the record with canonical source 5 'python_brain', rule_id 2587872532 (= FNV-1a('CYTHON-003')), verified true, hash chain integrity ok; (3) HEALTH out_events moved 0 -> 1 only after the brain was reloaded onto 74d6ac2, which is the counter fix. Before the fix the same fixture produced a delivered finding while out_events stayed 0 - the counter, not the transport, was broken.",
+   "files_verified": [
+    "brain/windows_brain.py",
+    "tests/brain/test_sensor_pipe.py",
+    "src/core/nids_capture.zig",
+    "src/forensic/forensic_pipeline.zig",
+    "docs/runbooks/RB-017-brain-bring-up.md"
+   ],
+   "tests": [
+    "python -m pytest tests/brain -q: 54 passed (includes test_deliver_finding_counts_only_accepted_emissions)",
+    "queue.stats: detection_brain bucket pushed 2 -> 3, dropped 0 after the fixture",
+    "forensics.list source=5 after=1,438,000: one record, python_brain, rule_id 2587872532, verified true, integrity ok",
+    "brain HEALTH: in_events 5731 -> 5745, out_events 0 -> 1, errors 0, pid 34228",
+    "admin-evidence/rb017-e5-deploy-20261108/rb017-return-fixture.json"
+   ],
+   "result": "PASS_E5_RETURN_PATH",
+   "finding": "RB-017 steps 4-5 are now satisfied on the host: an advisory Tier-2 finding produced by the supervised brain reaches the daemon as a detection_brain event, is attributed to python_brain in the forensic ring with the correct FNV rule identity, and is counted by the HEALTH output counter. The earlier 'brain out=0 therefore return path unproven' conclusion was wrong in its cause: OUT_EVENT_COUNT was never incremented in any code path (confirmed by grep across brain/, tests/ and the release snapshot), so the counter could not have moved even while deliveries succeeded. Limits, stated rather than implied: the traffic is a local loopback fixture, not live attack traffic; the payload is synthetic; and nothing about the fixture changes the detection-only posture (block requests remain deferred by design).",
+   "evidence_artifact": "admin-evidence/rb017-e5-deploy-20261108/rb017-return-fixture.json"
+  },
   {
    "id": "QLOSS-ISOLATION-002-E5-20261108",
    "head_sha": "250afb0",
@@ -64,8 +91,9 @@
     "listener pid 23136 unchanged across an AegisNids restart"
    ],
    "result": "PASS_E5_SUPERVISION_PARTIAL_RETURN_PATH",
-   "finding": "Supervision, ownership and MAC posture are verified; the runbook premise 'no SCM service or scheduled task supervising it' is corrected, because a non-elevated schtasks query of AegisKeeper is access-denied rather than empty. What is NOT verified is the return path: brain out=0 during the window, so no brain_tier2 provenance records were observed, and no fixture was injected to force a finding. RB-017 steps 4-5 therefore stay open. This is also the answer to the earlier 'FOREIGN' ownership flag: the listener is SYSTEM-owned pythonw by design, not a stray process.",
-   "evidence_artifact": "admin-evidence/rb017-e5-deploy-20261108/elevated-20261108-v3-result.json"
+   "finding": "Supervision, ownership and MAC posture are verified; the runbook premise 'no SCM service or scheduled task supervising it' is corrected, because a non-elevated schtasks query of AegisKeeper is access-denied rather than empty. What is NOT verified is the return path: brain out=0 during the window, so no brain_tier2 provenance records were observed, and no fixture was injected to force a finding. RB-017 steps 4-5 therefore stay open. This is also the answer to the earlier 'FOREIGN' ownership flag: the listener is SYSTEM-owned pythonw by design, not a stray process. SUPERSEDED IN PART on the same day by RB-017-BRAIN-RETURN-PATH-E5-20261108: the return path was proven with a MAC-authenticated fixture (daemon detection_brain pushed, forensic python_brain record with FNV rule identity) and the out=0 that made it look unproven was a counter defect (OUT_EVENT_COUNT never incremented), fixed in 74d6ac2.",
+   "evidence_artifact": "admin-evidence/rb017-e5-deploy-20261108/elevated-20261108-v3-result.json",
+   "superseded_by": "RB-017-BRAIN-RETURN-PATH-E5-20261108"
   },
   {
    "id": "QLOSS-ISOLATION-002-E2-20261107",
@@ -10044,6 +10072,31 @@
    "status": "E5_VERIFIED_TOTAL_LOSS_OPEN",
    "closed_at": "2026-11-08",
    "evidence": "QLOSS-ISOLATION-002-E5-20261108: both host sources reach their full 7,168 share on the deployed daemon with reserved_tail_shed 0 and all 206,999 refusals attributed to source_quota_shed."
+  },
+  {
+   "id": "GAP-BRAIN-OUT-EVENTS",
+   "title": "Brain HEALTH out_events was declared, reported and never incremented - a permanently healthy-looking 0 that read as a dead return path",
+   "level": "E5",
+   "component": "brain/windows_brain.py OUT_EVENT_COUNT",
+   "flow_id": "BRAIN-001",
+   "head_sha": "74d6ac2",
+   "timestamp": "2026-11-08",
+   "result": "PASS",
+   "command": "python -m pytest tests/brain/test_sensor_pipe.py -q; python -m pytest tests/brain -q (54 passed); live fixture against the supervised brain",
+   "expected": "HEALTH out_events counts findings the brain handed to the daemon sensor pipe: SENT increments, FAILED (transport) and DISABLED (opt-in off) do not.",
+   "actual": "Fixed code: out_events 0 -> 1 across one delivered fixture finding on the reloaded supervised brain (pid 34228), while the daemon recorded the matching detection_brain event and python_brain forensic record. Before the fix the same fixture was delivered while out_events stayed 0.",
+   "finding": "The counter was dead code: assigned at import, exposed in the HEALTH schema, asserted by tests/runtime/test_health.py only as a field shape, and incremented nowhere in brain/, tests/ or the release snapshot. The observable consequence was a false negative in supervision: RB-017 was recorded as 'return path unproven' for a path that worked.",
+   "description": "deliver_finding() wraps send_to_sensor_pipe() and increments OUT_EVENT_COUNT only on SENT. Both Tier-2 emission sites (Cython pre-filter match and regex/sensor match) route through it, so there is exactly one counting point.",
+   "files_changed": [
+    "brain/windows_brain.py",
+    "tests/brain/test_sensor_pipe.py"
+   ],
+   "tests": [
+    "test_deliver_finding_counts_only_accepted_emissions pins SENT/SENT/FAILED/DISABLED -> 2"
+   ],
+   "status": "PASS",
+   "closed_at": "2026-11-08",
+   "evidence": "RB-017-BRAIN-RETURN-PATH-E5-20261108"
   }
  ],
  "evidence_level_summary": {
@@ -10052,7 +10105,7 @@
   "E2_count": 164,
   "E3_count": 17,
   "E4_count": 15,
-  "E5_count": 143,
+  "E5_count": 145,
   "E6_count": 0,
   "E7_count": 1
  }

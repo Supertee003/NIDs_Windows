@@ -1,11 +1,22 @@
 # RB-017: Brain (Tier-2) Bring-Up
 
-> The brain is advisory-only and ships stopped: no SCM registration, no
-> daemon spawn, no watchdog. Its absence degrades analytics, never
-> enforcement (block requests from the brain are stubbed FAILED and the
-> PEP gate is fail-closed). The live `udp_brain:true` health bit is
-> sender-side only (socket created); the CLI `bridge` ownership check
-> (`brain channel ... no listener`) is the honest signal today.
+> The brain is advisory-only and is **not** an SCM service and is never
+> spawned by the daemon: algorithms and enforcement stay separated. On the
+> current production host its supervisor is the scheduled task
+> **AegisKeeper** (principal `SYSTEM`), which runs
+> `pythonw.exe scripts/aegis_open.py keep` — a watchdog that converges
+> service+nose+brain **every five minutes** (measured 2026-11-08). Its
+> absence degrades analytics, never enforcement (block requests from the
+> brain are stubbed FAILED and the PEP gate is fail-closed). `udp_brain:true`
+> is sender-side only; the CLI `bridge` ownership check is the honest signal.
+>
+> Two measured traps, both fixed in this runbook's guidance:
+> a **non-elevated** `schtasks /query /tn \AegisKeeper` is *access-denied*,
+> which looks exactly like "no supervisor exists"; and the brain's HEALTH
+> `out_events` counter used to be permanently 0 (never incremented), which
+> looks exactly like "the return path is dead". Ask the daemon
+> (`queue.stats` → `detection_brain`, forensic `python_brain`) before
+> concluding either.
 
 ## Objective
 
@@ -36,6 +47,13 @@ provisioned, findings returning through the sensor pipe, health honest.
    run; promote to a scheduled task / service wrapper only after step 4
    is green twice in a row.
 
+   On this host the supervisor already exists: scheduled task
+   **AegisKeeper** (`SYSTEM`) runs `pythonw scripts/aegis_open.py keep`,
+   which converges service+nose+brain **every five minutes**. A killed
+   brain therefore returns within one tick, not instantly — measured
+   3 m 41 s (stopped 11:54:30, listener back 11:58:11 on 2026-11-08).
+   Query the task **elevated**; non-elevated is access-denied, not absent.
+
 3. **Confirm the listener** (the gap this runbook closes):
    ```
    python tools/aegisctl.py bridge
@@ -48,6 +66,19 @@ provisioned, findings returning through the sensor pipe, health honest.
    the sensor pipe / forensic ring for `brain_tier2` provenance
    records carrying numeric rule identity. Findings arrive as advisory
    detection input (counted, correlated, never a host-effect claim).
+
+   Measured recipe (2026-11-08, E5): with `AEGIS_BRAIN_SECRET` and
+   `AEGIS_SENSOR_PIPE=1` provisioned, send one UDP datagram
+   `<hmac-sha256 hex of body>.<body>` where body is
+   `{"reason":"Forwarded: No Tier-1 Match","src_ip":"192.0.2.10","raw_payload":"A"*300}`
+   (TEST-NET-1 keeps the always-deferred block request off real hosts)
+   and confirm all three of:
+   - `queue` → a `detection_brain` (ordinal 13) bucket with pushed+1;
+   - `forensics.list source=5` → a `python_brain` record whose
+     `rule_id` equals FNV-1a of the matched rule string
+     (`CYTHON-003` → 2587872532), `verified: true`;
+   - brain `HEALTH` → `out_events` +1 (only since 74d6ac2; before that
+     the counter was never incremented and always read 0).
 
 5. **Confirm posture logging**: both ends log MAC posture at startup
    (secret length class, never the value). Bare-JSON operation must be

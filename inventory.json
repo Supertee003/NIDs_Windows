@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T04:48:36.374007+00:00",
+  "generated_at": "2026-11-08T05:00:54.623162+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1485,
@@ -1176,7 +1176,7 @@
       "path": "brain/windows_brain.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 48608
+      "size": 49257
     },
     {
       "path": "bridge/__init__.py",
@@ -1794,7 +1794,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 43275
+      "size": 43855
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -2508,7 +2508,7 @@
       "path": "docs/runbooks/RB-017-brain-bring-up.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 3408
+      "size": 5244
     },
     {
       "path": "docs/runbooks/RB-018-hostonly-observe-only-qualification.md",
@@ -3036,7 +3036,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 942934
+      "size": 948378
     },
     {
       "path": "fix_bridge_banner.py",
@@ -7344,7 +7344,7 @@
       "path": "tests/brain/test_sensor_pipe.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 3026
+      "size": 3958
     },
     {
       "path": "tests/contracts/event_vectors/event_vectors/event_v1_001.bin",

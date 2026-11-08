@@ -146,6 +146,10 @@ authorize a production host effect.
   service or scheduled task supervising it. It is an unsupervised orphan, not
   a supervised bring-up; the return-path (`brain_tier2`) proof was not
   attempted. Closes only with an approved elevated stop plus a supervised run.
+  *(Corrected 2026-11-08 — as of the audit date the observations were what the
+  non-elevated shell could see. The supervisor is the `SYSTEM` scheduled task
+  `AegisKeeper`, `out=0` was a dead counter, and the return path is now
+  E5-proven; see open-register item 3.)*
 - Host incident recorded: `C:` reached 0 bytes free and broke tools staging
   output on `C:\...\Temp` (Python `OSError: [Errno 28]`); only
   `%LOCALAPPDATA%\Temp` was cleared (~4.4 GB recovered). The repository lives
@@ -609,22 +613,28 @@ work that still blocks "finished"; the rest is documentation hygiene.
    deployed and proven live (see the 2026-11-06 E5 section); the installed
    daemon is now `F4BC3A85...`. What remains open here is the broader kernel
    qualification, not the log bound.
-3. **`RB-017` Brain supervised bring-up — PARTIAL (2026-11-08).** The premise
-   in the earlier register was wrong, and the correction is measured: an
-   elevated `schtasks /query /tn \AegisKeeper` shows the scheduled task
-   **AegisKeeper** (`SYSTEM`, action `pythonw.exe D:\NIDs_Windows\scripts\aegis_open.py keep`)
-   supervising the brain, so the listener is not unsupervised — a non-elevated
-   task query is *access-denied*, not empty, and that is why it looked orphaned.
-   The orphan `pythonw` pid 31516 was stopped only after elevation (`Stop-Process`
-   non-elevated returned `Access is denied`), port 9999 was freed, and a new
-   supervised listener (pid 23136) appeared within ~3 s and survived an
-   `AegisNids` restart. `aegisctl bridge` reports `owner_is_brain: true`, the
-   machine-level `AEGIS_BRAIN_SECRET` (64 chars) is present so the channel is
-   MAC-authenticated, and `aegisctl brain` reports RUNNING. **Still open:** the
-   return path — `brain` showed `out=0` during the window, so no `brain_tier2`
-   provenance records were observed and RB-017 steps 4–5 (fixture traffic,
-   posture logging evidence) remain unproven. Evidence:
-   `RB-017-BRAIN-SUPERVISED-E5-20261108`.
+3. **`RB-017` Brain supervised bring-up — CLOSED, E5 (2026-11-08).** The
+   earlier register was wrong twice, and both corrections are measured.
+   (a) *Supervision:* an elevated `schtasks /query /tn \AegisKeeper` shows
+   scheduled task **AegisKeeper** (`SYSTEM`, action
+   `pythonw.exe D:\NIDs_Windows\scripts\aegis_open.py keep`) converging
+   service+nose+brain every five minutes — a non-elevated query is
+   access-denied, which is why the listener looked orphaned. The orphan
+   `pythonw` pid 31516 was stopped under elevation (`Stop-Process`
+   non-elevated returned `Access is denied`), port 9999 was freed, and the
+   supervised listener came back and survived an `AegisNids` restart.
+   (b) *Return path:* `aegisctl brain` showing `out=0` did **not** mean a dead
+   return path — `OUT_EVENT_COUNT` was never incremented anywhere. A
+   MAC-authenticated fixture (300 identical bytes → `CYTHON-003`) produced
+   a daemon `detection_brain` event (pushed 2→3, dropped 0), a forensic
+   `python_brain` record with `rule_id 2587872532 = FNV-1a("CYTHON-003")`
+   and `verified: true`, and — after the counter fix (74d6ac2) and a brain
+   reload — `out_events 0→1`. Evidence:
+   `RB-017-BRAIN-SUPERVISED-E5-20261108`,
+   `RB-017-BRAIN-RETURN-PATH-E5-20261108`, gap `GAP-BRAIN-OUT-EVENTS`.
+   Operating note: the keeper's five-minute tick bounds brain respawn
+   latency (measured 3 m 41 s), so "brain died and did not come back" needs
+   at least one full tick before it is a finding.
 4. **Signed release package / E7 — OPEN.** Requires signing key material,
    provenance, and an owner decision. Nothing in the current evidence set
    changes this.
