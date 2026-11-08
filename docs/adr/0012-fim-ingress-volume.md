@@ -58,26 +58,36 @@ under ADR-0009: they never enter threat scoring, policy, PEP, DEFCON, or any
 host effect. Their consumers are forensic recording and the host-telemetry
 stores, which is what bounds the risk of changing their granularity.
 
-## Decision (accepted for implementation; not yet implemented)
+## Decision (accepted in principle; minifilter implementation blocked)
 
-**Reduce volume by coalescing exact duplicate `(path, kind)` observations inside
-one 500 ms poll batch, keeping the first observation of each path, and counting
-every suppressed duplicate in a new, always-reported counter
-(`fim_coalesced_total`) exposed with the existing queue counters.**
+**Reduce volume only where the source contract proves two rows represent the
+same observation.** Keep the first row and count every suppressed row in an
+always-reported `fim_coalesced_total`. The previously proposed minifilter key
+`(path, kind, pid)` preserves cross-process attribution but does not distinguish
+separate successful opens by the same process; it is not approved for
+deployment. Minifilter identity must include enough producer data to preserve
+distinct callbacks. The native poll source has no PID and may use `(path, kind)`
+within its 500 ms poll batch, subject to its own contract tests.
 
 Rationale for choosing this over the alternatives:
 
 - It needs **no wire or ABI change**: one event still carries one path, and the
   batch boundary already exists (the 500 ms poll). No `EVENT_VERSION` bump and no
   six-codec vector sync is required for the first step.
-- It preserves **evidence per distinct path**: a forensic row still proves that
-  this path changed in this window. What is lost is the repeat count, not the
-  fact of the change.
-- It is **structurally bounded**: at most one event per distinct path per 500 ms,
-  so worst-case ingress is proportional to distinct files touched, not to the
-  number of touches.
+- It can preserve **evidence per path and actor** only when the identity key
+  distinguishes distinct source events. The prior minifilter proposal failed
+  this bar and remains blocked. For native poll records, the first
+  `(path, kind)` observation in a batch is retained; the repeat count is lost,
+  not the fact that the path changed.
+- A valid source-specific key makes the work **structurally bounded** within
+  each batch. Until event identity is proven, the minifilter source keeps every
+  row and receives no suppression benefit from this proposal.
 - It meets ADR-0010's bar that loss must be visible: `fim_coalesced_total` makes
   the reduction a counted decision, never a silent one.
+- Hashes are only an index. The coalescer compares the full path bytes and key
+  fields before suppressing a row, so a hash collision cannot merge distinct
+  files. If its bounded table or path store fills, it fails open for the rest
+  of that batch, increments the visible overflow counter, and submits events.
 
 ## Alternatives considered
 
@@ -108,21 +118,27 @@ blind spots, which is a detection-coverage decision, not a volume fix.
 
 ## Measurement result and implementation gate
 
-**Duplicate-ratio gate: PASSED at E5 on 2026-11-08.** The six-worker, 20,000-file
-host measurement in `ADR-0012-DUP-RATIO-E5-20261108` reported per-PID duplicate
-ratios of 48.177% for create-once, 49.391% for rewrite, and 56.992% for
-recreate, with zero probe-table overflow in all three phases. These exceed the
-measured ~10% FIM-only deficit with margin, so this ADR's bounded coalescing
-slice is accepted for implementation. Detailed local-only evidence is retained
-under `admin-evidence/adr0012-dup-ratio-20261108/` and indexed in
+**Candidate duplicate volume measured at E5 on 2026-11-08; identity gate is
+NOT PASSED.** The six-worker, 20,000-file host measurement in
+`ADR-0012-DUP-RATIO-E5-20261108` reported repeats under the coarse per-PID key
+of 48.177% for create-once, 49.391% for rewrite, and 56.992% for recreate,
+with zero probe-table overflow. Source review then showed that same-key rows can
+be distinct successful opens. These ratios are therefore not valid estimates
+of safely coalescible rows and do not pass the implementation gate. Detailed
+local-only evidence is retained under
+`admin-evidence/adr0012-dup-ratio-20261108/` and indexed in
 `EVIDENCE_INDEX.json`.
 
 The measurement is not proof that coalescing reduces queue loss: no coalescer
-was active. The final queue snapshot also counted 575,935 minifilter records
-with a repeated timestamp, which should be reviewed as possible lower-layer
-duplicate delivery. The initial coalescing patch must preserve the stated
-`(path, kind)`/batch semantics, count every suppressed row, and keep health
-truthful; it must not silently hide ring or pipeline drops.
+was active during the measurement. The final queue snapshot also counted
+575,935 minifilter records with a repeated timestamp; that count does not prove
+duplicate callback delivery. A source review found that each successful
+`IRP_MJ_CREATE` is recorded with a fresh `KeQuerySystemTime` value, so the
+measured per-PID key can conflate distinct opens. The current implementation
+WIP is uncommitted and **must not be deployed** until its minifilter event
+identity preserves distinct callbacks and the corrected duplicate ratio is
+measured. See
+`analysis/current-head/issue-29-minifilter-event-identity-stop-line-20261108.md`.
 
 After implementation, repeat the same host churn and require
 `fim_coalesced_total > 0`, FIM pipeline drops strictly below the comparable
@@ -133,9 +149,10 @@ lever; do not claim issue #29 closed.
 
 ## Consequences
 
-- Forensic FIM row count falls by the duplicate ratio; each remaining row is
-  still one distinct path per 500 ms. Repeat counts are visible only in
-  `fim_coalesced_total`, and only in aggregate.
+- Forensic FIM row count may fall only for identities proven to be duplicates.
+  Until the minifilter identity contract is resolved, its coalescing WIP must
+  not be deployed. Repeats are visible only in `fim_coalesced_total` and source
+  counters, not as per-row repeat counts.
 - Detection rules that would depend on *how often* a path changed in a window
   cannot use FIM repeats at this granularity. No such rule exists today (FIM
   events carry `rule_id = 0` and are advisory), but this must be re-checked if
@@ -149,10 +166,11 @@ lever; do not claim issue #29 closed.
 
 ## Open items
 
-1. Implement the accepted counted coalescing slice; retain per-path observability
-   and add tests for first occurrence, duplicate count, batch boundaries, and
-   probe overflow behavior.
-2. Re-run the same E5 churn to measure actual FIM queue-drop reduction, ring loss,
+1. Resolve the minifilter event-identity stop-line; prove distinct opens are
+   retained before implementing any suppressing coalescer. Native polling can
+   be considered separately under its own producer contract.
+2. Re-run the corrected E5 duplicate-ratio probe, then comparable E5 churn to
+   measure actual FIM queue-drop reduction, ring loss,
    ETW impact, and readiness without relaxing gates.
 3. Decide whether the `repeat_count` ABI step is warranted from post-change
    operator needs; consumer throughput (batched append) remains open per ADR-0010.

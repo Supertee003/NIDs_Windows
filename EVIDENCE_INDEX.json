@@ -10437,7 +10437,7 @@
       "flow_id": "QLOSS-HEALTH-001",
       "head_sha": "dfececbd708ee5a49f017038568c807aee9b8d72",
       "timestamp": "2026-11-08",
-      "result": "PASS_E5_MEASUREMENT_GATE_ONLY",
+      "result": "MEASURED_IDENTITY_UNVERIFIED",
       "files_verified": [
         "src/pipeline/fim_dedup.zig",
         "src/pipeline/telemetry_threads.zig",
@@ -10447,10 +10447,10 @@
         "admin-evidence/adr0012-dup-ratio-20261108/elevated-deploy-v6-result.json",
         "admin-evidence/adr0012-dup-ratio-20261108/elevated-revert-result.json"
       ],
-      "description": "Six-worker, 20,000-file Windows churn measurement on the deployed probe build (source dfececb, ancestor of current HEAD). Per-PID duplicate ratios were 48.177% for create-once (105,765 records / 50,954 duplicates), 49.391% for rewrite (895,546 / 442,323), and 56.992% for recreate (1,722,362 / 981,611). All phases reported zero probe overflow. These measurements exceed the ADR baseline's ~10% FIM-only throughput deficit and pass the pre-implementation decision gate.",
-      "actual": "Measurement only; no coalescer was active. Final queue stats include 575,935 same-timestamp minifilter duplicates and 118,566 pipeline drops. The archived revert result removed AEGIS_FIM_PROOF_ROOT but retained the same installed probe-binary SHA, so it is not binary rollback evidence.",
-      "impact": "Supports implementing the accepted bounded/countable FIM coalescing slice. Does not prove queue drops decrease, prove the source of same-timestamp duplicates, or close issue #29.",
-      "next_step": "Implement counted coalescing, deploy under the existing operator workflow, then rerun comparable churn and require lower FIM pipeline drops, unchanged/better ETW, zero ring loss, and truthful readiness."
+      "description": "Six-worker, 20,000-file Windows churn measurement on the deployed probe build (source dfececb, ancestor of current HEAD). The coarse per-PID key reported 48.177% repeats for create-once (105,765 records / 50,954 duplicates), 49.391% for rewrite (895,546 / 442,323), and 56.992% for recreate (1,722,362 / 981,611). All phases reported zero probe overflow. These are candidate repeat ratios only: source review found one record per successful IRP_MJ_CREATE and fresh KeQuerySystemTime stamping, so same-path/kind/PID rows can be distinct opens. They do not pass the event-identity gate.",
+      "actual": "Measurement only; no coalescer was active. Final queue stats include 575,935 same-timestamp minifilter records and 118,566 pipeline drops. The same-timestamp count is a candidate signal, not proof of duplicate delivery. The archived revert result removed AEGIS_FIM_PROOF_ROOT but retained the same installed probe-binary SHA, so it is not binary rollback evidence.",
+      "impact": "Documents measured repeat volume but does not establish safely coalescible volume, prove queue drops decrease, or close issue #29.",
+      "next_step": "Resolve and test minifilter event identity; re-measure repeats with a safe key before implementing suppression. Then rerun comparable churn and require lower FIM pipeline drops, unchanged/better ETW, zero ring loss, and truthful readiness."
     }
   ],
   "evidence_level_summary": {
