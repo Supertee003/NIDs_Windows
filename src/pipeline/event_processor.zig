@@ -44,6 +44,13 @@ fn isHostTelemetrySource(source: event.EventSource) bool {
     };
 }
 
+/// Correlation rules in the production pipeline consume network detections.
+/// Host telemetry remains available to evidence/XDR, but must not contribute
+/// to a network correlation window keyed only by source address.
+fn shouldObserveCorrelation(source: event.EventSource) bool {
+    return !isHostTelemetrySource(source);
+}
+
 /// Network flow tables are keyed by transport endpoints. Host telemetry has
 /// no corresponding packet flow, so assigning these events would fabricate a
 /// shared zero-tuple flow. Preserve their event/source identity in evidence;
@@ -357,14 +364,16 @@ fn processEvent(
     // rule IDs live in the 9000 block, outside the FNV-1a signature space
     // used by rule_loader hashes. Observe-only: hits count and escalate
     // severity, they never invent host effects.
-    if (corr.observe(ev) catch null) |corr_rule_id| {
-        if (matched_rule_id == 0) {
-            matched_rule_id = corr_rule_id;
-            ev.rule_id = corr_rule_id;
-            ev.kind = .correlation_match;
-            ev.severity = .alert;
-            _ = state.g_pipeline_detections.fetchAdd(1, .monotonic);
-            _ = state.g_pipeline_correlations.fetchAdd(1, .monotonic);
+    if (shouldObserveCorrelation(ev.source)) {
+        if (corr.observe(ev) catch null) |corr_rule_id| {
+            if (matched_rule_id == 0) {
+                matched_rule_id = corr_rule_id;
+                ev.rule_id = corr_rule_id;
+                ev.kind = .correlation_match;
+                ev.severity = .alert;
+                _ = state.g_pipeline_detections.fetchAdd(1, .monotonic);
+                _ = state.g_pipeline_correlations.fetchAdd(1, .monotonic);
+            }
         }
     }
 
@@ -1065,6 +1074,16 @@ test "host telemetry does not receive a fabricated network flow id" {
 
     inline for (.{ event.EventSource.capture_npcap, .capture_wfp, .capture_pipe_monitor }) |source| {
         try std.testing.expect(shouldAssignFlowId(source));
+    }
+}
+
+test "host telemetry cannot contribute to network correlation windows" {
+    inline for (.{ event.EventSource.capture_etw, .capture_fim, .capture_registry, .capture_host_net }) |source| {
+        try std.testing.expect(!shouldObserveCorrelation(source));
+    }
+
+    inline for (.{ event.EventSource.capture_npcap, .capture_pipe_monitor, .capture_wfp, .detection_brain }) |source| {
+        try std.testing.expect(shouldObserveCorrelation(source));
     }
 }
 
