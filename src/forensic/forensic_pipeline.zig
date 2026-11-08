@@ -90,6 +90,19 @@ pub const NetworkAddresses = struct {
     dst_ipv6: [16]u8,
 };
 
+/// One input to a forensic batch append. The event is copied by value; the
+/// payload is borrowed only for the duration of appendBatch.
+pub const AppendRecord = struct {
+    event: event.IpcEvent,
+    payload: []const u8,
+    audit_id: u64 = 0,
+    policy_id: u32 = 0,
+    pep_decision: u8 = 0,
+    severity: u8 = 0,
+    direction: ?u8 = null,
+    network_addresses: ?NetworkAddresses = null,
+};
+
 pub const RecordPayloadView = struct {
     payload: []const u8,
     src_ipv6: ?[16]u8 = null,
@@ -227,6 +240,7 @@ pub const ForensicRing = struct {
     last_hash: [HASH_BYTES]u8 = [_]u8{0} ** HASH_BYTES, // PATCH-33: hash of most recent record
 
     pub fn initMemory(allocator: std.mem.Allocator, size: usize) !ForensicRing {
+        if (size < RECORD_BYTES or size % RECORD_BYTES != 0) return error.InvalidRingSize;
         return .{
             .storage = try allocator.alloc(u8, size),
         };
@@ -249,6 +263,35 @@ pub const ForensicRing = struct {
     /// with no notion of retention loss).
     pub fn overwrittenCount(self: *const ForensicRing) u64 {
         return self.overwritten;
+    }
+
+    /// Append a batch of records under a single mutex acquisition.
+    /// All records are validated before mutation. A successful call appends
+    /// every input in order and returns the ring's new total written count.
+    /// Payloads are variable length and are truncated exactly as append does.
+    pub fn appendBatch(self: *ForensicRing, records: []const AppendRecord) !u64 {
+        for (records) |record| {
+            if (record.direction) |direction| {
+                if (direction > 1) return error.InvalidDirection;
+            }
+        }
+
+        self.mutex.lock();
+        defer self.mutex.unlock();
+
+        for (records) |record| {
+            _ = self.appendLocked(
+                &record.event,
+                record.payload,
+                record.audit_id,
+                record.policy_id,
+                record.pep_decision,
+                record.severity,
+                record.direction,
+                record.network_addresses,
+            );
+        }
+        return self.written;
     }
 
     /// Append one record. Infallible by construction (FOR-HARD-084):
@@ -320,6 +363,22 @@ pub const ForensicRing = struct {
     ) u64 {
         self.mutex.lock();
         defer self.mutex.unlock();
+        return self.appendLocked(ev, payload, audit_id, policy_id, pep_decision, severity, direction, network_addresses);
+    }
+
+    /// Caller must hold `mutex`. Kept as the one record-writing path so
+    /// batched and individual appends have identical wrap/hash/CRC behavior.
+    fn appendLocked(
+        self: *ForensicRing,
+        ev: *const event.IpcEvent,
+        payload: []const u8,
+        audit_id: u64,
+        policy_id: u32,
+        pep_decision: u8,
+        severity: u8,
+        direction: ?u8,
+        network_addresses: ?NetworkAddresses,
+    ) u64 {
         const write_at = self.head % self.storage.len;
         if (write_at + RECORD_BYTES > self.storage.len) {
             return self.appendWrapped(ev, payload, audit_id, policy_id, pep_decision, severity, direction, network_addresses);
@@ -446,6 +505,17 @@ pub const ForensicRing = struct {
             },
         };
         @memcpy(slot[0..@sizeOf(RecordHeader)], std.mem.asBytes(&hdr));
+        // Copying an extern struct also copies its implicit ABI padding. Those
+        // bytes are not initialized by Zig field initializers; zero them before
+        // the slot enters the forensic hash/CRC, or hashes depend on stack data.
+        const kind_end = @offsetOf(RecordHeader, "kind") + @sizeOf(u32);
+        const timestamp_start = @offsetOf(RecordHeader, "ts_ns");
+        @memset(slot[kind_end..timestamp_start], 0);
+        const severity_end = @offsetOf(RecordHeader, "severity") + @sizeOf(u8);
+        const sequence_start = @offsetOf(RecordHeader, "record_seq");
+        @memset(slot[severity_end..sequence_start], 0);
+        const reserved_end = @offsetOf(RecordHeader, "reserved") + @sizeOf([7]u8);
+        @memset(slot[reserved_end..@sizeOf(RecordHeader)], 0);
         if (network_addresses) |addresses| {
             const prefix = slot[@sizeOf(RecordHeader)..][0..IPV6_SIDECAR_BYTES];
             @memcpy(prefix[0..16], &addresses.src_ipv6);
@@ -717,6 +787,164 @@ test "ForensicRing wraps around" {
     }
     try std.testing.expectEqual(@as(u64, 5), ring.recordCount());
     try std.testing.expectEqual(@as(u64, 3), ring.overwritten);
+}
+
+test "ForensicRing appendBatch appends each record to the authenticated chain" {
+    var ring = try ForensicRing.initMemory(std.testing.allocator, 4 * RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+
+    var first = event.IpcEvent.init(.signature_match);
+    first.event_id = 101;
+    first.rule_id = 9006;
+    first.timestamp_ns = 123;
+    var second = event.IpcEvent.init(.anomaly_detected);
+    second.event_id = 102;
+    second.rule_id = 77;
+    second.timestamp_ns = 456;
+
+    const records = [_]AppendRecord{
+        .{ .event = first, .payload = "syn scan", .audit_id = 11, .policy_id = 21, .pep_decision = 1, .severity = 3 },
+        .{ .event = second, .payload = "burst", .audit_id = 12, .policy_id = 22, .pep_decision = 2, .severity = 4 },
+    };
+
+    try std.testing.expectEqual(@as(u64, 2), try ring.appendBatch(&records));
+    try std.testing.expectEqual(@as(u64, 2), ring.recordCount());
+    try std.testing.expectEqual(@as(u64, 0), ring.overwrittenCount());
+    try std.testing.expect(ring.verifyHashChain());
+
+    const first_record = ring.readRecord(0, std.testing.allocator) orelse return error.OutOfMemory;
+    defer std.testing.allocator.free(first_record);
+    const first_header = std.mem.bytesAsValue(RecordHeader, first_record[0..HEADER_BYTES]);
+    try std.testing.expectEqual(@as(u64, 0), first_header.record_seq);
+    try std.testing.expectEqual(@as(u64, 101), first_header.ev_id);
+    try std.testing.expectEqual(@as(u64, 11), first_header.audit_id);
+
+    const second_record = ring.readRecord(1, std.testing.allocator) orelse return error.OutOfMemory;
+    defer std.testing.allocator.free(second_record);
+    const second_header = std.mem.bytesAsValue(RecordHeader, second_record[0..HEADER_BYTES]);
+    try std.testing.expectEqual(@as(u64, 1), second_header.record_seq);
+    try std.testing.expectEqual(@as(u64, 102), second_header.ev_id);
+    try std.testing.expectEqual(@as(u64, 12), second_header.audit_id);
+}
+
+test "ForensicRing appendBatch is byte-identical to appends across wrap and metadata" {
+    var batch_ring = try ForensicRing.initMemory(std.testing.allocator, 2 * RECORD_BYTES);
+    defer batch_ring.deinit(std.testing.allocator);
+    var single_ring = try ForensicRing.initMemory(std.testing.allocator, 2 * RECORD_BYTES);
+    defer single_ring.deinit(std.testing.allocator);
+
+    var seed = event.IpcEvent.init(.packet_captured);
+    seed.event_id = 1;
+    seed.timestamp_ns = 1;
+    _ = batch_ring.append(&seed, "seed", 1, 1, 0, 1);
+    _ = single_ring.append(&seed, "seed", 1, 1, 0, 1);
+
+    var first = event.IpcEvent.init(.signature_match);
+    first.event_id = 2;
+    first.rule_id = 9006;
+    first.timestamp_ns = 2;
+    var second = event.IpcEvent.init(.packet_captured);
+    second.event_id = 3;
+    second.timestamp_ns = 3;
+    var third = event.IpcEvent.init(.anomaly_detected);
+    third.event_id = 4;
+    third.timestamp_ns = 4;
+    var fourth = event.IpcEvent.init(.signature_match);
+    fourth.event_id = 5;
+    fourth.timestamp_ns = 5;
+
+    const src6 = [_]u8{0x20} ++ [_]u8{0} ** 14 ++ [_]u8{1};
+    const dst6 = [_]u8{0x26} ++ [_]u8{0} ** 14 ++ [_]u8{2};
+    const records = [_]AppendRecord{
+        .{ .event = first, .payload = "inbound", .audit_id = 20, .policy_id = 30, .pep_decision = 1, .severity = 2, .direction = 1 },
+        .{ .event = second, .payload = "ipv6 event", .audit_id = 21, .policy_id = 31, .pep_decision = 2, .severity = 3, .direction = 0, .network_addresses = .{ .src_ipv6 = src6, .dst_ipv6 = dst6 } },
+        .{ .event = third, .payload = "plain", .audit_id = 22, .policy_id = 32, .pep_decision = 3, .severity = 4 },
+        .{ .event = fourth, .payload = "last", .audit_id = 23, .policy_id = 33, .pep_decision = 4, .severity = 5, .direction = 1 },
+    };
+
+    try std.testing.expectEqual(@as(u64, 5), try batch_ring.appendBatch(&records));
+    for (records) |record| {
+        if (record.network_addresses) |addresses| {
+            _ = single_ring.appendWithNetworkMetadata(
+                &record.event,
+                record.payload,
+                record.audit_id,
+                record.policy_id,
+                record.pep_decision,
+                record.severity,
+                record.direction,
+                addresses.src_ipv6,
+                addresses.dst_ipv6,
+            );
+        } else if (record.direction) |direction| {
+            _ = single_ring.appendWithDirection(
+                &record.event,
+                record.payload,
+                record.audit_id,
+                record.policy_id,
+                record.pep_decision,
+                record.severity,
+                direction,
+            );
+        } else {
+            _ = single_ring.append(
+                &record.event,
+                record.payload,
+                record.audit_id,
+                record.policy_id,
+                record.pep_decision,
+                record.severity,
+            );
+        }
+    }
+
+    try std.testing.expectEqual(single_ring.recordCount(), batch_ring.recordCount());
+    try std.testing.expectEqual(single_ring.overwrittenCount(), batch_ring.overwrittenCount());
+    try std.testing.expectEqual(single_ring.head, batch_ring.head);
+    try std.testing.expectEqual(single_ring.tail, batch_ring.tail);
+    try std.testing.expectEqual(single_ring.next_seq, batch_ring.next_seq);
+    try std.testing.expectEqualSlices(u8, single_ring.storage, batch_ring.storage);
+    try std.testing.expectEqual(single_ring.getLastHash(), batch_ring.getLastHash());
+    try std.testing.expect(single_ring.verifyHashChain());
+    try std.testing.expect(batch_ring.verifyHashChain());
+}
+
+test "ForensicRing appendBatch validates the whole batch before writing" {
+    var ring = try ForensicRing.initMemory(std.testing.allocator, 2 * RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+
+    var first = event.IpcEvent.init(.signature_match);
+    first.event_id = 1;
+    var invalid = event.IpcEvent.init(.signature_match);
+    invalid.event_id = 2;
+    const records = [_]AppendRecord{
+        .{ .event = first, .payload = "valid" },
+        .{ .event = invalid, .payload = "bad direction", .direction = 2 },
+    };
+
+    try std.testing.expectError(error.InvalidDirection, ring.appendBatch(&records));
+    try std.testing.expectEqual(@as(u64, 0), ring.recordCount());
+    try std.testing.expectEqual(@as(u64, 0), ring.overwrittenCount());
+    try std.testing.expectEqual([_]u8{0} ** HASH_BYTES, ring.getLastHash());
+}
+
+test "ForensicRing appendBatch empty input preserves the chain" {
+    var ring = try ForensicRing.initMemory(std.testing.allocator, 2 * RECORD_BYTES);
+    defer ring.deinit(std.testing.allocator);
+    var ev = event.IpcEvent.init(.signature_match);
+    ev.event_id = 1;
+    _ = ring.append(&ev, "seed", 0, 0, 0, 0);
+    const last_hash = ring.getLastHash();
+
+    try std.testing.expectEqual(@as(u64, 1), try ring.appendBatch(&.{}));
+    try std.testing.expectEqual(@as(u64, 1), ring.recordCount());
+    try std.testing.expectEqual(last_hash, ring.getLastHash());
+}
+
+test "ForensicRing rejects capacities that cannot retain whole records" {
+    try std.testing.expectError(error.InvalidRingSize, ForensicRing.initMemory(std.testing.allocator, 0));
+    try std.testing.expectError(error.InvalidRingSize, ForensicRing.initMemory(std.testing.allocator, RECORD_BYTES - 1));
+    try std.testing.expectError(error.InvalidRingSize, ForensicRing.initMemory(std.testing.allocator, RECORD_BYTES + 1));
 }
 
 test "ForensicRing verify detects corruption" {
