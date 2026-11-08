@@ -1,5 +1,5 @@
 {
- "head_sha": "02b4e5de7446af6e7ba99d66f93397b90ba6fdef",
+ "head_sha": "27aae72caf21c210ff38e8c93fb10a3c6a9d10b5",
  "created_at": "2026-09-24",
  "last_updated_at": "2026-11-08",
  "generator_version": "3.0",
@@ -20,6 +20,55 @@
   "E7": "Release verification"
  },
  "evidence": [
+  {
+   "id": "RB-017-RETURN-PATH-OBSERVABILITY-E5-20261108",
+   "head_sha": "02b4e5d",
+   "timestamp": "2026-11-08",
+   "title": "The brain's return path is observable: pipe transport proven, and a 96% drop rate that HEALTH can now name",
+   "level": "E5",
+   "component": "brain Tier-2 (brain/windows_brain.py) + daemon sensor pipe \\.\\pipe\u0007egis_sensor_pipe_t1",
+   "flow_id": "RB-017",
+   "description": "Established what actually works on the return path and what does not, using the brain's own sender, a wire tap on UDP 9999, and the daemon's own counters.",
+   "files_verified": [
+    "brain/windows_brain.py",
+    "admin-evidence/rb017-close-20261108/probe_pipe.py",
+    "admin-evidence/rb017-close-20261108/probe-pipe.ps1",
+    "admin-evidence/e5-deploy-clock-20261108/queue-after.json"
+   ],
+   "tests": [
+    "wire tap on 127.0.0.1:9999: 1,683 daemon datagrams in 20 s, every one shaped '<64 hex>.<json body>' (MAC signed)",
+    "HMAC recomputed over a captured body with the machine-scope AEGIS_BRAIN_SECRET equals the wire MAC exactly -> the daemon's signing is correct",
+    "elevated probe through the brain's own send_to_sensor_pipe: result SENT (unelevated: FAILED, as the pipe ACL requires)",
+    "daemon side accepted it: queue by_source detection_brain pushed 1",
+    "pytest tests/brain: 54 passed"
+   ],
+   "result": "PASS_E5_PARTIAL",
+   "finding": "Three separate links were proven: the daemon signs offers with HMAC over the exact body, the pipe accepts an admin/SYSTEM sender, and the daemon records what it receives as detection_brain. What is NOT explained is production behaviour: the supervised brain reports in_events 17,839 with dropped 17,139 (96%), out_events 0 and sensor_pipe failed 0, so roughly 700 messages were accepted while no finding was ever emitted - the drop happens before rule matching, which leaves bad MAC versus unsigned as the only gates that can account for it, and the brain's secret is demonstrably the same one the wire uses. HEALTH could not name the cause, which is itself the RB-017 'health honest' gap; the source now reports sensor_pipe {enabled, transport, state, failed} and drops {bad_mac, no_mac, log_throttle}, so one brain restart names the cause. That restart is BLOCKED: two elevation approvals for it expired without execution (no operator present), and the running brain (pid 24560) predates the patch.",
+   "evidence_artifact": "admin-evidence/rb017-close-20261108/probe_pipe.py"
+  },
+  {
+   "id": "RB-017-ORPHAN-ATTRIBUTION-E5-20261108",
+   "head_sha": "02b4e5d",
+   "timestamp": "2026-11-08",
+   "title": "A supervised brain is no longer reported FOREIGN just because its command line is unreadable",
+   "level": "E5",
+   "component": "aegisctl endpoint-ownership census + Windows host (brain pid 14972/19700/24560, SYSTEM, session 0)",
+   "flow_id": "RB-017",
+   "description": "The brain is supervised by the AegisKeeper scheduled task running as SYSTEM in session 0. An unelevated caller cannot read that command line, so the ownership census declared the listener FOREIGN, which made diagnosis red while the brain was healthy and answering HEALTH. Ownership now asks the listener itself: a schema-correct HEALTH reply from the listener's own pid corroborates identity, and a caller that cannot be corroborated still reports FOREIGN.",
+   "files_verified": [
+    "tools/aegisctl/api/control_api.py",
+    "tests/runtime/test_aegisctl.py",
+    "admin-evidence/rb017-close-20261108/"
+   ],
+   "tests": [
+    "pytest tests/runtime/test_aegisctl.py tests/runtime/test_health.py: 82 passed, then 48 passed after adding the corroboration test",
+    "live: aegisctl diagnose reports [OWNED] brain channel ... corroborated ... (pid 34228); aegisctl bridge reports owner_is_brain True",
+    "restart with the build/test storm ended: readiness degraded=false, ready=true, overall_gate=true; queue dropped_total 0, source_quota_shed 0, depth_peak 3,035"
+   ],
+   "result": "PASS_E5",
+   "finding": "The foreign-status gate was wrong in kind, not in degree: it treated 'cannot see the command line' as evidence of foreignness, so a correctly supervised SYSTEM brain could never read clean for an unelevated caller. Two sources of truth already disagreed (bridge said owner_is_brain True while health said FOREIGN); the census now uses the same corroboration. Separately, the red state seen earlier in this session was NOT the brain at all: an ETW storm from this session's build/test activity drove 97,916 source-quota sheds (12.5% of ETW events, shed_overload 0, occupancy cap 7,168) and the daemon correctly reported data_loss_observed. A clean restart cleared it. The fair-share shedding itself is the designed behaviour; the storm is the environmental trigger.",
+   "evidence_artifact": "admin-evidence/rb017-close-20261108/kill-brain-20261108_143304.json"
+  },
   {
    "id": "QLOSS-CLOCK-001-E5-20261108",
    "head_sha": "02b4e5d",
@@ -10136,7 +10185,7 @@
   "E2_count": 164,
   "E3_count": 17,
   "E4_count": 15,
-  "E5_count": 146,
+  "E5_count": 148,
   "E6_count": 0,
   "E7_count": 1
  }

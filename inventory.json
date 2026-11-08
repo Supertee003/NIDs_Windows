@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T06:58:53.320822+00:00",
+  "generated_at": "2026-11-08T07:53:24.548416+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1489,
@@ -1176,7 +1176,7 @@
       "path": "brain/windows_brain.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 49257
+      "size": 50593
     },
     {
       "path": "bridge/__init__.py",
@@ -3042,7 +3042,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 962123
+      "size": 967007
     },
     {
       "path": "fix_bridge_banner.py",
@@ -3432,7 +3432,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9642
+      "size": 9754
     },
     {
       "path": "pytest.ini",
@@ -7734,7 +7734,7 @@
       "path": "tests/runtime/test_aegisctl.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 31235
+      "size": 32582
     },
     {
       "path": "tests/runtime/test_aggregator_entrypoints.py",
@@ -8424,7 +8424,7 @@
       "path": "tools/aegisctl/api/control_api.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 63612
+      "size": 64605
     },
     {
       "path": "tools/aegisctl/client.py",
