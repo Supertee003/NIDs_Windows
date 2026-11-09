@@ -1,7 +1,7 @@
 {
   "head_sha": "a1024f222a0edd3527c367bb812dd4a2fc1326bc",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-09T23:11:52+07:00",
+  "last_updated_at": "2026-11-09T23:45:39+07:00",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -5004,6 +5004,30 @@
         "Sparse IPv4 probe traffic only (67 frames, ICMP/TCP): no throughput, back-pressure or IPv6 v3-tail coverage.",
         "Restart window cost measured at 31 nose-side drops in 14 s; this is operational, not a code defect.",
         "Not E6/E7: single host, single adapter, no release packaging."
+      ]
+    },
+    {
+      "id": "COVERAGE-BOUNDARY-001-E1-20261109",
+      "head_sha": "a1024f2",
+      "timestamp": "2026-11-09",
+      "title": "Coverage boundary survey: which files every evidence entry names, and which modules were never surveyed",
+      "level": "E1",
+      "component": "whole tree (292 src zig files, 10 declared components, EVIDENCE_INDEX 173 entries)",
+      "flow_id": "META-COVERAGE",
+      "description": "Read-only survey. (1) Per-file lexical match of every evidence entry against every source file: 13/15 src/detection files, 17/23 src/windows, 17/22 src/core, 13/21 src/forensic, 11/18 src/policy are never named by any entry, while all of them carry inline unit tests (src/detection alone has 198). (2) @import reachability over 8 build roots returns exactly 35 files outside the graph, byte-identical to the OUT_OF_UNIT registry in tests/security/test_zig_test_scope.py - the boundary is declared, not accidental. (3) Declared components with stale evidence: shield and aggregator last 2026-09-11, dashboard 2026-10-28 with 0 E5, ts_policy 1 undated mention and 0 E5. (4) Undeclared mass: scripts/ 74 of 79 files never named, tools/ 33 of 67, src/platform 2 of 2 with 444 LOC and no record. (5) One measurement of the out-of-unit harnesses, which no gate runs: zig build core-tools exit 0 and aegis_integration_test demo 6/6 PASS at this HEAD - recorded here as a single E3-level observation, not a standing gate.",
+      "tests": [
+        "python admin-evidence/coverage-boundary-20261109/coverage_map.py",
+        "python admin-evidence/coverage-boundary-20261109/reachability.py",
+        "zig build core-tools -> exit 0",
+        "zig-out/bin/aegis_integration_test demo -> 6/6 scenarios PASS"
+      ],
+      "result": "PASS_E1",
+      "finding": "The runtime spine is evidenced; detection, Windows host telemetry, forensic replay and policy internals are unit-tested but unnamed in any evidence record, and the declared support/optional components (shield, aggregator, dashboard, ts_policy) have not been evidenced in up to six weeks. The 35 out-of-unit harness files are a declared exclusion whose execution is not gated.",
+      "evidence_artifact": "analysis/current-head/COVERAGE-BOUNDARY-001-20261109.md",
+      "limitations": [
+        "Lexical matching under-counts single-file components (rust_pep, dashboard) and any module whose name collides with common prose; keyword counts were used for those in the artifact.",
+        "The E3 harness run is one observation at this HEAD, not a repeatable gate; nothing prevents it from rotting again.",
+        "LOC includes generated Cython C in brain/ (80,076 LOC), so brain size is not a proxy for hand-written surface."
       ]
     }
   ],
@@ -10911,7 +10935,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 34,
+    "E1_count": 35,
     "E2_count": 179,
     "E3_count": 17,
     "E4_count": 15,
