@@ -1,5 +1,5 @@
 {
-  "head_sha": "2102a5edacc4b5eaca93c00207d6703a7134d0c3",
+  "head_sha": "a8f3abfdfd577c38618f1342200a10545c41fd5c",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-09",
   "generator_version": "3.0",
@@ -5193,6 +5193,28 @@
         "df -h . (370 GB available)"
       ],
       "limitations": "E2 for the gates: they execute and fail on regression, but they prove properties of the tree, not of the running system. R-01 remains open - five files still contain a block action and the gate only stops new ones. The debt ratchet pins 539 files; naming them is slice A2 work, not done here. Free-space and gitleaks readings are point-in-time."
+    },
+    {
+      "id": "B1-ENFORCEMENT-REFUSAL-E2-20261109",
+      "head_sha": "a8f3abf",
+      "timestamp": "2026-11-09",
+      "title": "Slice B1: both enforcement verbs refuse with DETECTION_ONLY before any gate, closing #25 at the control plane",
+      "level": "E2",
+      "component": "src/control/handler_registry.zig, enforcement.block / enforcement.quarantine",
+      "flow_id": "IDS-PEP-001",
+      "description": "Old flow: a privileged caller with a complete two-person ceremony could reach a block or quarantine handler that returned \"status\":\"ENFORCED\" with \"host_effect_confirmed\":true and a filter id. New flow: enforcementBlock and enforcementQuarantine return null with failure_code DETECTION_ONLY and failure_state REFUSED at the first statement, before the caller-role check, before payload parsing, before any PEP call or receipt. No authorization level, ceremony or payload can reach a host effect. The verbs stay registered so a legacy caller gets the product decision explained rather than an unknown-method error, and enforcement.unblock is untouched because it only cleans up filters that already existed. 232 lines of now-unreachable decision and receipt code were removed with the rewrite, so the claimed effect cannot be reconstructed from the handler.",
+      "artifacts": [
+        "src/control/handler_registry.zig",
+        "tests/wfp/test_t11_wfp_enforcement.py",
+        "analysis/current-head/DEV-PLAN-001-20261109.md"
+      ],
+      "commands": [
+        "zig build test --summary all -> 8/8 steps, 2078/2088 passed, 10 skipped",
+        "python -m pytest tests -q -> 1060 passed, 4 skipped",
+        "python -m pytest tests/wfp/test_t11_wfp_enforcement.py -q",
+        "python tools/rebuild_truth.py -> valid: true, unresolved: []"
+      ],
+      "limitations": "E2: the refusal is proven in the Zig unit graph, not on a running service. The driver still contains the AegisWfpBlockFlow definition and the FWP_ACTION_BLOCK creation it performs; dispatch returns STATUS_NOT_SUPPORTED so it is unreachable, and T11 pins that, but the code is not deleted because cl.exe/WDK is not on PATH here and an unbuilt driver edit would be an unverified change. Host-level proof that no AEGIS block filter exists is slice D2 (E5)."
     }
   ],
   "known_gaps": [
@@ -11100,7 +11122,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 39,
-    "E2_count": 182,
+    "E2_count": 183,
     "E3_count": 17,
     "E4_count": 15,
     "E5_count": 159,

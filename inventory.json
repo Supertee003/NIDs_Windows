@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T18:34:21.212581+00:00",
+  "generated_at": "2026-11-09T18:48:58.185411+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1517,
@@ -264,7 +264,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 56409
+      "size": 57387
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -420,7 +420,7 @@
       "path": "analysis/current-head/DEV-PLAN-001-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 17696
+      "size": 18114
     },
     {
       "path": "analysis/current-head/ETW-LIFE-001-20261108.md",
@@ -1098,7 +1098,7 @@
       "path": "AUTHORITY_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 18281
+      "size": 18760
     },
     {
       "path": "brain/__init__.py",
@@ -1464,7 +1464,7 @@
       "path": "build_truth.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 4342
+      "size": 4462
     },
     {
       "path": "Cargo.lock",
@@ -1668,7 +1668,7 @@
       "path": "CONTRACT_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 12236
+      "size": 12512
     },
     {
       "path": "contracts/fixtures/abi/event_boundaries.json",
@@ -3228,13 +3228,13 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1063468
+      "size": 1065732
     },
     {
       "path": "FLOW_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 32667
+      "size": 33440
     },
     {
       "path": "go/aggregator/alert.go",
@@ -3336,7 +3336,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 229998
+      "size": 231247
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3600,7 +3600,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9693
+      "size": 10041
     },
     {
       "path": "pytest.ini",
@@ -3618,7 +3618,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 190823
+      "size": 191799
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -5808,7 +5808,7 @@
       "path": "src/control/handler_registry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 172457
+      "size": 161251
     },
     {
       "path": "src/control/protocol.zig",
@@ -7416,7 +7416,7 @@
       "path": "SYSTEM_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 24007
+      "size": 24685
     },
     {
       "path": "tests/__init__.py",
@@ -9117,5 +9117,5 @@
       "size": 624
     }
   ],
-  "source_commit": "2102a5e"
+  "source_commit": "a8f3abf"
 }

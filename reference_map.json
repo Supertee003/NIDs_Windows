@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T18:34:21.215893+00:00",
+  "generated_at": "2026-11-09T18:48:58.187927+00:00",
   "generator": "generate_truth_artifacts.py",
   "total_files": 1517,
   "by_role": {
@@ -6393,5 +6393,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "2102a5e"
+  "source_commit": "a8f3abf"
 }
