@@ -8,6 +8,13 @@
 const std = @import("std");
 const clock = @import("../../reliability/monotonic_clock.zig");
 
+// SCOPE-101: the scope audit counts only a direct edge or an import inside
+// `comptime { ... }` as proven execution. The `const` binding above serves the
+// test bodies; this edge records the proven wiring the audit ratchet checks.
+comptime {
+    _ = @import("../../reliability/monotonic_clock.zig");
+}
+
 test "duration marks are read from the high-resolution clock" {
     try std.testing.expect(clock.isHighResolution());
 }
