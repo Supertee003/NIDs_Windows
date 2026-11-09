@@ -29,7 +29,14 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "bridge"))
 
-from brain.cython import bridge_ipc as cy  # noqa: E402
+# R-14: the .pyx is compiled in place, and a clean checkout has no .pyd. Skip
+# with the build command instead of failing collection, so a fresh clone says
+# what it is missing rather than what is broken.
+cy = pytest.importorskip(
+    "brain.cython.bridge_ipc",
+    reason="Cython bridge_ipc extension not built: run "
+           "`python brain/cython/setup.py build_ext --inplace`",
+)
 import aegis_bridge_ctypes as shim  # noqa: E402
 
 
