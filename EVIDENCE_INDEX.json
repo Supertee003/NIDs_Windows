@@ -5144,6 +5144,25 @@
         "python -m pytest tests/docs tests/release tests/security -q (286 passed)"
       ],
       "limitations": "E1: reference absence was proven by search, not by execution of every entry point. The deleted scan dumps were historical output; their findings are not reproducible from this commit and are not cited by any evidence entry. Derived and local-only surfaces were left untouched as requested."
+    },
+    {
+      "id": "DEV-PLAN-001-E1-20261109",
+      "head_sha": "e9aa986",
+      "timestamp": "2026-11-09",
+      "title": "Development plan with a closed risk register: 16 risks, each with a signal, a closing slice and an exit criterion",
+      "level": "E1",
+      "component": "whole project (phases A-E), analysis/current-head/",
+      "flow_id": "META-COVERAGE",
+      "description": "Planning record, not a capability claim. Establishes the order in which the four open stop-the-line issues and the three missing host/release proofs are finished, and states the end state of the project in ten measurable criteria. The risk register is closed by construction: every risk carries a detection signal, a mitigation, the slice that closes it and an exit criterion, and section 3.3 maps each of the 16 risks to exactly one closing slice, so an unmanaged risk is a visible planning defect. Two risks (R-09 signing custody, R-10 host window) cannot be closed by engineering and are recorded with the owner decision they need instead of being left implicit. Rule 11 of the development rules - a new product file without an evidence entry fails a test - is the ratchet that stops the measured 500/652 evidence debt from regrowing.",
+      "artifacts": [
+        "analysis/current-head/DEV-PLAN-001-20261109.md"
+      ],
+      "commands": [
+        "read analysis/current-head/PROJECT-CLOSEOUT-20261109.md, ROADMAP.md, EVIDENCE_INDEX.json known_gaps",
+        "cross-checked baseline against FULL-BOUNDARY-001 and WORK-MAP-001 measurements",
+        "host state re-measured this session (services, drivers, processes, install dir)"
+      ],
+      "limitations": "E1: the plan is a decision record. It closes no risk and asserts no host capability; every E5/E7 row in its definition of done remains unproven until Phase D and E execute. Slice sizes are qualitative (S/M/L); no dates are promised because a slice is done when its gate is met."
     }
   ],
   "known_gaps": [
@@ -11050,7 +11069,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 38,
+    "E1_count": 39,
     "E2_count": 181,
     "E3_count": 17,
     "E4_count": 15,
