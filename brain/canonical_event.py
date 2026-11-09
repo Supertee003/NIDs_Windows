@@ -16,6 +16,7 @@ Total = 109 bytes.
 from __future__ import annotations
 
 import struct
+import zlib
 from dataclasses import dataclass, replace
 
 EVENT_MAGIC = 0x41454731
@@ -34,6 +35,23 @@ CONTEXT_TCP_FLAGS_SHIFT = 16
 CONTEXT_TCP_FLAGS_MASK = 0xFF << CONTEXT_TCP_FLAGS_SHIFT
 CONTEXT_TCP_FLAGS_VALID = 1 << 24
 EVENT_CUSTOM = 0xFFFFFFFF
+
+# Wire v3 (PAYLOAD-ENVELOPE-V3-001): frozen v2 base (zero tail when bit2 is
+# clear) + 32-byte envelope + 0..1024 bounded payload bytes.
+EVENT_VERSION_V3 = 3
+V3_BASE_SIZE = WIRE_V2_SIZE  # 133
+V3_ENVELOPE_SIZE = 32
+WIRE_V3_HEADER_SIZE = V3_BASE_SIZE + V3_ENVELOPE_SIZE  # 165
+V3_MAX_PAYLOAD = 1024
+WIRE_V3_MAX_SIZE = WIRE_V3_HEADER_SIZE + V3_MAX_PAYLOAD  # 1189
+PAYLOAD_UNAVAILABLE = 0
+PAYLOAD_COMPLETE = 1
+PAYLOAD_TRUNCATED = 2
+PAYLOAD_METADATA_ONLY = 3
+V3_FLAG_PAYLOAD_PRESENT = 1 << 0
+V3_FLAG_PROVENANCE_VALID = 1 << 1
+_V3_ENVELOPE = struct.Struct("<HBBHHIQIII")
+assert _V3_ENVELOPE.size == V3_ENVELOPE_SIZE
 
 # Frozen ordinals — MUST match src/contract/canonical_event.zig.
 SOURCE = {
@@ -97,6 +115,16 @@ class CanonicalEvent:
     # order; zeros when decoded from v1 (truncated identity + bit2).
     src_ipv6: bytes = b"\x00" * 16
     dst_ipv6: bytes = b"\x00" * 16
+    # Wire v3 only: bounded payload + provenance. Empty/zero for v1/v2.
+    payload_flags: int = 0
+    payload_completeness: int = PAYLOAD_UNAVAILABLE
+    original_len: int = 0
+    payload_crc32: int = 0
+    capture_sequence: int = 0
+    producer_epoch: int = 0
+    producer_generation: int = 0
+    interface_id: int = 0
+    payload_bytes: bytes = b""
 
 
 def decode(buf: bytes) -> CanonicalEvent:
@@ -108,6 +136,8 @@ def decode(buf: bytes) -> CanonicalEvent:
         # v1 prefix of either length (parity with Go/Zig decoders, which
         # read the first 109 bytes and ignore any tail).
         return _decode_v1(buf)
+    if version == EVENT_VERSION_V3:
+        return _decode_v3(buf)
     if version != EVENT_VERSION_V2 or len(buf) < WIRE_V2_SIZE:
         raise ValueError(f"unsupported version {version} (v2 needs 133+ bytes)")
     ev = _decode_v1(buf)
@@ -124,7 +154,7 @@ def _decode_v1(buf: bytes) -> CanonicalEvent:
     f = _STRUCT.unpack_from(buf, 0)
     if f[0] != EVENT_MAGIC:
         raise ValueError(f"bad magic 0x{f[0]:08X}")
-    if f[1] not in (EVENT_VERSION, EVENT_VERSION_V2):
+    if f[1] not in (EVENT_VERSION, EVENT_VERSION_V2, EVENT_VERSION_V3):
         raise ValueError(f"unsupported version {f[1]}")
     if f[6] not in _VALID_SOURCES:
         raise ValueError(f"unknown source {f[6]}")
@@ -208,3 +238,103 @@ def encode_v2(ev: CanonicalEvent) -> bytes:
     v1 = bytearray(encode(ev))
     v1[4:6] = EVENT_VERSION_V2.to_bytes(2, "little")
     return bytes(v1) + ev.src_ipv6[4:16] + ev.dst_ipv6[4:16]
+
+
+def validate_v3_envelope(ev: CanonicalEvent) -> None:
+    """Strict envelope/payload consistency for the v3 dataclass fields."""
+    payload = ev.payload_bytes
+    if len(payload) > V3_MAX_PAYLOAD:
+        raise ValueError("v3 payload exceeds maximum")
+    if ev.payload_completeness in (PAYLOAD_UNAVAILABLE, PAYLOAD_METADATA_ONLY):
+        if ev.payload_flags & V3_FLAG_PAYLOAD_PRESENT:
+            raise ValueError("v3 metadata-only envelope carries payload")
+        if payload or ev.payload_crc32 != 0:
+            raise ValueError("v3 metadata-only bytes/crc must be empty")
+        if ev.payload_completeness == PAYLOAD_METADATA_ONLY and ev.original_len != 0:
+            raise ValueError("v3 metadata-only original length must be zero")
+    elif ev.payload_completeness == PAYLOAD_COMPLETE:
+        if not (ev.payload_flags & V3_FLAG_PAYLOAD_PRESENT) or not payload:
+            raise ValueError("v3 complete envelope requires payload")
+        if ev.original_len != len(payload):
+            raise ValueError("v3 complete original length mismatch")
+        if zlib.crc32(payload) & 0xFFFFFFFF != ev.payload_crc32:
+            raise ValueError("v3 payload crc mismatch")
+    elif ev.payload_completeness == PAYLOAD_TRUNCATED:
+        if not (ev.payload_flags & V3_FLAG_PAYLOAD_PRESENT) or not payload:
+            raise ValueError("v3 truncated envelope requires payload")
+        if ev.original_len <= len(payload):
+            raise ValueError("v3 truncated original length must exceed captured")
+        if zlib.crc32(payload) & 0xFFFFFFFF != ev.payload_crc32:
+            raise ValueError("v3 payload crc mismatch")
+    else:
+        raise ValueError("unknown v3 completeness")
+    if not (ev.payload_flags & V3_FLAG_PROVENANCE_VALID):
+        if (ev.capture_sequence or ev.producer_epoch or
+                ev.producer_generation or ev.interface_id):
+            raise ValueError("v3 provenance without valid flag")
+
+
+def encode_v3(ev: CanonicalEvent) -> bytes:
+    """Encode a v3 frame: frozen v2 base + envelope + bounded payload."""
+    validate_v3_envelope(ev)
+    if ev.context_flags & CONTEXT_V6_TRUNCATED:
+        base = bytearray(encode_v2(ev))
+    else:
+        base = bytearray(encode(ev)) + bytearray(V6_TAIL_SIZE)
+    base[4:6] = EVENT_VERSION_V3.to_bytes(2, "little")
+    base[6:8] = (128).to_bytes(2, "little")
+    env = _V3_ENVELOPE.pack(
+        ev.payload_flags,
+        ev.payload_completeness,
+        0,  # reserved (wire_v3.md pins this byte to zero)
+        len(ev.payload_bytes),
+        ev.original_len,
+        ev.payload_crc32,
+        ev.capture_sequence,
+        ev.producer_epoch,
+        ev.producer_generation,
+        ev.interface_id,
+    )
+    return bytes(base) + env + ev.payload_bytes
+
+
+def _decode_v3(buf: bytes) -> CanonicalEvent:
+    """Strict v3 decode (exact length, crc scope, v6 tail rules)."""
+    if len(buf) < WIRE_V3_HEADER_SIZE:
+        raise ValueError("short v3 frame")
+    ev = _decode_v1(buf)
+    if ev.struct_size != 128:
+        raise ValueError("v3 struct_size must be the in-memory size (128)")
+    (flags, completeness, reserved, payload_len, original_len, crc,
+     seq, epoch, generation, interface_id) = _V3_ENVELOPE.unpack_from(
+        buf, V3_BASE_SIZE)
+    if reserved != 0:
+        raise ValueError("v3 reserved byte must be zero")
+    if payload_len > V3_MAX_PAYLOAD:
+        raise ValueError("v3 payload exceeds maximum")
+    if len(buf) != WIRE_V3_HEADER_SIZE + payload_len:
+        raise ValueError("v3 frame length mismatch")
+    payload = buf[WIRE_V3_HEADER_SIZE:]
+    ev = replace(
+        ev,
+        payload_flags=flags,
+        payload_completeness=completeness,
+        original_len=original_len,
+        payload_crc32=crc,
+        capture_sequence=seq,
+        producer_epoch=epoch,
+        producer_generation=generation,
+        interface_id=interface_id,
+        payload_bytes=payload,
+    )
+    validate_v3_envelope(ev)
+    if ev.context_flags & CONTEXT_V6_TRUNCATED:
+        tail = buf[WIRE_SIZE:WIRE_V2_SIZE]
+        return replace(
+            ev,
+            src_ipv6=ev.source_ip.to_bytes(4, "big") + tail[0:12],
+            dst_ipv6=ev.dest_ip.to_bytes(4, "big") + tail[12:24],
+        )
+    if any(buf[WIRE_SIZE:WIRE_V2_SIZE]):
+        raise ValueError("v3 non-v6 tail must be zero")
+    return ev

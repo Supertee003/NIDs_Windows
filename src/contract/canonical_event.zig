@@ -424,14 +424,155 @@ pub const V6_TAIL_SIZE: usize = 24;
 /// v2 payload = v1 109 bytes ++ 24-byte tail.
 pub const WIRE_V2_PAYLOAD_SIZE: usize = WIRE_PAYLOAD_SIZE + V6_TAIL_SIZE;
 
+// ============================================================
+// Wire v3 — bounded payload + capture provenance (PAYLOAD-ENVELOPE-V3-001)
+// v1/v2 stay byte-identical and are explicitly metadata-only compatibility
+// frames. v3 = v2 133-byte base (with zero v6 tail when bit2 is clear) +
+// a 32-byte envelope + 0..1024 bounded payload bytes. Zig remains the sole
+// detection-verdict authority: the envelope reports evidence, never a verdict.
+// ============================================================
+
+/// Canonical event wire schema version 3 (bounded payload + provenance).
+pub const EVENT_VERSION_V3: u16 = 3;
+/// v3 base is exactly the v2 layout: 109-byte v1 prefix + 24-byte v6 tail.
+pub const WIRE_V3_BASE_SIZE: usize = WIRE_V2_PAYLOAD_SIZE;
+/// v3 provenance/payload envelope size.
+pub const V3_ENVELOPE_SIZE: usize = 32;
+/// v3 fixed header: base + envelope, before any payload bytes.
+pub const WIRE_V3_HEADER_SIZE: usize = WIRE_V3_BASE_SIZE + V3_ENVELOPE_SIZE;
+/// Hard maximum bounded payload carried on the wire.
+pub const V3_MAX_PAYLOAD: usize = 1024;
+/// Largest complete v3 frame ever accepted.
+pub const WIRE_V3_MAX_SIZE: usize = WIRE_V3_HEADER_SIZE + V3_MAX_PAYLOAD;
+
+/// Explicit payload availability. Absence is not completeness.
+pub const PayloadCompleteness = enum(u8) {
+    unavailable = 0,
+    complete = 1,
+    truncated = 2,
+    metadata_only = 3,
+};
+
+pub const V3PayloadFlags = struct {
+    /// Set iff payload_len > 0 (completeness complete or truncated).
+    pub const PAYLOAD_PRESENT: u16 = 1 << 0;
+    /// Set iff capture_sequence/epoch/generation/interface_id are meaningful.
+    pub const PROVENANCE_VALID: u16 = 1 << 1;
+};
+
+/// v3 envelope. `original_len` is the producer's on-wire frame length;
+/// `payload_len` is how many bytes actually follow the envelope.
+/// `payload_crc32` is CRC32 (IEEE) over exactly those payload bytes.
+pub const V3Envelope = struct {
+    flags: u16 = 0,
+    completeness: PayloadCompleteness = .unavailable,
+    payload_len: u16 = 0,
+    original_len: u16 = 0,
+    payload_crc32: u32 = 0,
+    capture_sequence: u64 = 0,
+    producer_epoch: u32 = 0,
+    producer_generation: u32 = 0,
+    interface_id: u32 = 0,
+
+    pub fn payloadPresent(self: *const V3Envelope) bool {
+        return (self.flags & V3PayloadFlags.PAYLOAD_PRESENT) != 0;
+    }
+
+    pub fn provenanceValid(self: *const V3Envelope) bool {
+        return (self.flags & V3PayloadFlags.PROVENANCE_VALID) != 0;
+    }
+};
+
 /// Version-agnostic decode product. Full addresses are present if and only
-/// if the frame was v2; v1 frames decode with null sidecars (truncated
-/// identity + CONTEXT_V6_TRUNCATED, exactly as before).
+/// if the frame was v2 or a v3 frame with bit2 set; v1 frames decode with
+/// null sidecars (truncated identity + CONTEXT_V6_TRUNCATED, exactly as
+/// before). `envelope`/`payload` are present only for v3 frames.
 pub const DecodedFrame = struct {
     event: CanonicalEvent,
     src_ipv6: ?[16]u8,
     dst_ipv6: ?[16]u8,
+    envelope: ?V3Envelope = null,
+    payload: []const u8 = &.{},
 };
+
+/// Validate an envelope against the payload bytes that will travel with it.
+/// Fail closed: no inferred/derived acceptance, no silent truncation claims.
+pub fn validateV3Envelope(env: *const V3Envelope, payload: []const u8) bool {
+    if (payload.len > V3_MAX_PAYLOAD) return false;
+    if (@as(usize, env.payload_len) != payload.len) return false;
+    const present = env.payloadPresent();
+    switch (env.completeness) {
+        .unavailable, .metadata_only => {
+            if (present) return false;
+            if (payload.len != 0) return false;
+            if (env.payload_crc32 != 0) return false;
+            if (env.completeness == .metadata_only and env.original_len != 0) return false;
+        },
+        .complete => {
+            if (!present) return false;
+            if (payload.len == 0) return false;
+            if (env.original_len != env.payload_len) return false;
+            if (std.hash.Crc32.hash(payload) != env.payload_crc32) return false;
+        },
+        .truncated => {
+            if (!present) return false;
+            if (payload.len == 0) return false;
+            if (env.original_len <= env.payload_len) return false;
+            if (std.hash.Crc32.hash(payload) != env.payload_crc32) return false;
+        },
+    }
+    if (!env.provenanceValid()) {
+        if (env.capture_sequence != 0 or env.producer_epoch != 0 or
+            env.producer_generation != 0 or env.interface_id != 0) return false;
+    }
+    return true;
+}
+
+/// Serialize a v3 frame into `buf`. `src6`/`dst6` must be supplied iff the
+/// event has CONTEXT_V6_TRUNCATED set (v3 keeps the v2 full-identity tail;
+/// without bit2 the 24-byte tail is all zero). Returns the frame length.
+pub fn serializeV3(
+    event: *const CanonicalEvent,
+    src6: ?[16]u8,
+    dst6: ?[16]u8,
+    envelope: V3Envelope,
+    payload: []const u8,
+    buf: []u8,
+) !usize {
+    if (!validateV3Envelope(&envelope, payload)) return error.InvalidEnvelope;
+    const total = WIRE_V3_HEADER_SIZE + payload.len;
+    if (buf.len < total) return error.BufferTooSmall;
+
+    const is_v6 = (event.context_flags & CONTEXT_V6_TRUNCATED) != 0;
+    if (is_v6) {
+        const s = src6 orelse return error.V6AddressRequired;
+        const d = dst6 orelse return error.V6AddressRequired;
+        const n = try serializeV2(event, s, d, buf);
+        std.debug.assert(n == WIRE_V2_PAYLOAD_SIZE);
+    } else {
+        if (src6 != null or dst6 != null) return error.UnexpectedV6Address;
+        const n = try serializeToBytes(event, buf);
+        std.debug.assert(n == WIRE_PAYLOAD_SIZE);
+        @memset(buf[WIRE_PAYLOAD_SIZE..WIRE_V2_PAYLOAD_SIZE], 0);
+    }
+    // Patch the version field after encoding the frozen base.
+    std.mem.writeInt(u16, buf[4..][0..2], EVENT_VERSION_V3, .little);
+
+    const e = WIRE_V3_BASE_SIZE;
+    std.mem.writeInt(u16, buf[e..][0..2], envelope.flags, .little);
+    buf[e + 2] = @intFromEnum(envelope.completeness);
+    buf[e + 3] = 0; // reserved
+    std.mem.writeInt(u16, buf[e + 4 ..][0..2], envelope.payload_len, .little);
+    std.mem.writeInt(u16, buf[e + 6 ..][0..2], envelope.original_len, .little);
+    std.mem.writeInt(u32, buf[e + 8 ..][0..4], envelope.payload_crc32, .little);
+    std.mem.writeInt(u64, buf[e + 12 ..][0..8], envelope.capture_sequence, .little);
+    std.mem.writeInt(u32, buf[e + 20 ..][0..4], envelope.producer_epoch, .little);
+    std.mem.writeInt(u32, buf[e + 24 ..][0..4], envelope.producer_generation, .little);
+    std.mem.writeInt(u32, buf[e + 28 ..][0..4], envelope.interface_id, .little);
+
+    @memcpy(buf[WIRE_V3_HEADER_SIZE..][0..payload.len], payload);
+    return total;
+}
 
 /// Serialize a v2 frame: frozen v1 bytes with version=2 plus the v6 tail.
 /// Requires CONTEXT_V6_TRUNCATED (v2 is only for v6 identity) and
@@ -462,6 +603,7 @@ pub fn deserializeDispatch(bytes: []const u8) ?DecodedFrame {
         const event = deserializeFromBytes(bytes) orelse return null;
         return .{ .event = event, .src_ipv6 = null, .dst_ipv6 = null };
     }
+    if (ver == EVENT_VERSION_V3) return deserializeV3(bytes);
     if (ver != EVENT_VERSION_V2) return null;
     if (bytes.len < WIRE_V2_PAYLOAD_SIZE) return null;
     const event = decodeFields(bytes) orelse return null;
@@ -478,6 +620,58 @@ pub fn deserializeDispatch(bytes: []const u8) ?DecodedFrame {
     std.mem.writeInt(u32, dst6[0..4], event.dest_ip, .big);
     @memcpy(dst6[4..16], bytes[WIRE_PAYLOAD_SIZE + 12 ..][0..12]);
     return .{ .event = event, .src_ipv6 = src6, .dst_ipv6 = dst6 };
+}
+
+/// Decode a v3 frame. Strict: exact length, envelope/payload consistency,
+/// CRC32 scope, and v6 sidecar rules are all enforced (fail closed).
+pub fn deserializeV3(bytes: []const u8) ?DecodedFrame {
+    if (bytes.len < WIRE_V3_HEADER_SIZE) return null;
+    const event = decodeFields(bytes) orelse return null;
+    if (event.magic != EVENT_MAGIC) return null;
+    if (event.version != EVENT_VERSION_V3) return null;
+    if (event.struct_size != EVENT_SCHEMA_SIZE) return null;
+
+    const e = WIRE_V3_BASE_SIZE;
+    // wire_v3.md: any non-zero reserved byte is rejected fail closed. The
+    // encoder always writes 0, so a set byte means a corrupt or foreign
+    // frame, never a forward-compatible extension (that needs a new version).
+    if (bytes[e + 3] != 0) return null;
+    var env = V3Envelope{
+        .flags = std.mem.readInt(u16, bytes[e..][0..2], .little),
+        .completeness = std.meta.intToEnum(PayloadCompleteness, bytes[e + 2]) catch return null,
+        .payload_len = std.mem.readInt(u16, bytes[e + 4 ..][0..2], .little),
+        .original_len = std.mem.readInt(u16, bytes[e + 6 ..][0..2], .little),
+        .payload_crc32 = std.mem.readInt(u32, bytes[e + 8 ..][0..4], .little),
+        .capture_sequence = std.mem.readInt(u64, bytes[e + 12 ..][0..8], .little),
+        .producer_epoch = std.mem.readInt(u32, bytes[e + 20 ..][0..4], .little),
+        .producer_generation = std.mem.readInt(u32, bytes[e + 24 ..][0..4], .little),
+        .interface_id = std.mem.readInt(u32, bytes[e + 28 ..][0..4], .little),
+    };
+    if (env.payload_len > V3_MAX_PAYLOAD) return null;
+    if (bytes.len != WIRE_V3_HEADER_SIZE + @as(usize, env.payload_len)) return null;
+    const payload = bytes[WIRE_V3_HEADER_SIZE..];
+    if (!validateV3Envelope(&env, payload)) return null;
+
+    var src6: ?[16]u8 = null;
+    var dst6: ?[16]u8 = null;
+    const is_v6 = (event.context_flags & CONTEXT_V6_TRUNCATED) != 0;
+    if (is_v6) {
+        var s: [16]u8 = undefined;
+        var d: [16]u8 = undefined;
+        std.mem.writeInt(u32, s[0..4], event.source_ip, .big);
+        @memcpy(s[4..16], bytes[WIRE_PAYLOAD_SIZE..][0..12]);
+        std.mem.writeInt(u32, d[0..4], event.dest_ip, .big);
+        @memcpy(d[4..16], bytes[WIRE_PAYLOAD_SIZE + 12 ..][0..12]);
+        src6 = s;
+        dst6 = d;
+    } else {
+        // The 24-byte tail must be exactly zero when bit2 is clear: a
+        // non-zero tail without the v6 marker is an ambiguity, not evidence.
+        for (bytes[WIRE_PAYLOAD_SIZE..WIRE_V2_PAYLOAD_SIZE]) |b| {
+            if (b != 0) return null;
+        }
+    }
+    return .{ .event = event, .src_ipv6 = src6, .dst_ipv6 = dst6, .envelope = env, .payload = payload };
 }
 
 /// Validate a decoded frame (the wire-dispatch product) for the queue gate.
@@ -500,6 +694,16 @@ pub fn validateDecodedFrame(frame: *const DecodedFrame) bool {
     const has_src = frame.src_ipv6 != null;
     const has_dst = frame.dst_ipv6 != null;
     if (has_src != has_dst) return false; // sidecars are all-or-nothing
+    if (frame.event.version == EVENT_VERSION_V3) {
+        const env = frame.envelope orelse return false;
+        if (!validateV3Envelope(&env, frame.payload)) return false;
+        const bit2 = (frame.event.context_flags & CONTEXT_V6_TRUNCATED) != 0;
+        if (has_src != bit2) return false;
+        return true;
+    }
+    // v1/v2 are metadata-only: an envelope is a shape no frozen encoder
+    // can emit and would mean a codec bug, so reject it loudly.
+    if (frame.envelope != null) return false;
     if (has_src) return frame.event.version == EVENT_VERSION_V2;
     return frame.event.version == EVENT_VERSION;
 }
@@ -1167,6 +1371,92 @@ test "v2 shared vector 006 encodes byte-identical across languages" {
     try std.testing.expectEqualSlices(u8, &addrs.dst, &frame.dst_ipv6.?);
 }
 
+test "v3 shared vector 007 encodes byte-identical across languages" {
+    // Field values frozen by tests/contracts/event_vectors/
+    // generate_test_vectors.py (event_v3_007.bin, 197 bytes = 165 header +
+    // 32 payload). Go SerializeV3 and Python encode_event_v3 pin the same
+    // bytes, so a divergence in any codec fails here or there.
+    const payload = [_]u8{
+        0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47,
+        0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F,
+        0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57,
+        0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x5F,
+    };
+    const ev = CanonicalEvent{
+        .magic = EVENT_MAGIC,
+        .version = EVENT_VERSION,
+        .struct_size = EVENT_SCHEMA_SIZE,
+        .event_id = 7007,
+        .timestamp_ms = 1700000007000,
+        .monotonic_ns = 7000000000,
+        .source = .npcap_sensor,
+        .source_ip = 0x20010DB8,
+        .source_port = 49152,
+        .dest_ip = 0x20010DB8,
+        .dest_port = 443,
+        .session_id = 7070,
+        .protocol = 6,
+        .direction = 0,
+        .layer_id = 0,
+        .is_pipe = 0,
+        .event_type = .forward,
+        .severity = 1,
+        .rule_id = 0,
+        .ruleset_version = 4,
+        .payload_length = payload.len,
+        .payload_hash = 0,
+        .policy_action = .allow,
+        .enforcement_status = 0,
+        .defcon_impact = 5,
+        .context_flags = CONTEXT_V6_TRUNCATED,
+        .reserved = [_]u8{0} ** 16,
+    };
+    const env = V3Envelope{
+        .flags = V3PayloadFlags.PAYLOAD_PRESENT | V3PayloadFlags.PROVENANCE_VALID,
+        .completeness = .complete,
+        .payload_len = payload.len,
+        .original_len = payload.len,
+        .payload_crc32 = std.hash.Crc32.hash(&payload),
+        .capture_sequence = 7007,
+        .producer_epoch = 0x5F5E1000,
+        .producer_generation = 5,
+        .interface_id = 0x0A0B0C0D,
+    };
+    const addrs = v6ProbeAddrs();
+    var buf: [WIRE_V3_MAX_SIZE]u8 = undefined;
+    const n = try serializeV3(&ev, addrs.src, addrs.dst, env, &payload, &buf);
+    try std.testing.expectEqual(WIRE_V3_HEADER_SIZE + payload.len, n);
+
+    const golden: [WIRE_V3_HEADER_SIZE + 32]u8 = .{
+        0x31, 0x47, 0x45, 0x41, 0x03, 0x00, 0x80, 0x00, 0x5F, 0x1B, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x58, 0x83, 0xE5, 0xCF, 0x8B, 0x01, 0x00, 0x00,
+        0x00, 0x86, 0x3B, 0xA1, 0x01, 0x00, 0x00, 0x00, 0x09, 0xB8, 0x0D, 0x01,
+        0x20, 0x00, 0xC0, 0xB8, 0x0D, 0x01, 0x20, 0xBB, 0x01, 0x9E, 0x1B, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00,
+        0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x05, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x02, 0x03, 0x00, 0x01, 0x00, 0x20, 0x00, 0x20, 0x00, 0x58, 0x8E, 0x26,
+        0x5E, 0x5F, 0x1B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x5E,
+        0x5F, 0x05, 0x00, 0x00, 0x00, 0x0D, 0x0C, 0x0B, 0x0A, 0x40, 0x41, 0x42,
+        0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E,
+        0x4F, 0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5A,
+        0x5B, 0x5C, 0x5D, 0x5E, 0x5F,
+    };
+    try std.testing.expectEqualSlices(u8, &golden, buf[0..n]);
+
+    const frame = deserializeDispatch(buf[0..n]).?;
+    try std.testing.expectEqual(EVENT_VERSION_V3, frame.event.version);
+    try std.testing.expectEqualSlices(u8, &addrs.src, &frame.src_ipv6.?);
+    try std.testing.expectEqualSlices(u8, &addrs.dst, &frame.dst_ipv6.?);
+    try std.testing.expectEqual(PayloadCompleteness.complete, frame.envelope.?.completeness);
+    try std.testing.expectEqualSlices(u8, &payload, frame.payload);
+    try std.testing.expect(validateDecodedFrame(&frame));
+}
+
 test "over-length v1 frame decodes as v1 (version authoritative)" {
     // Hardening parity with Go/Python/C++: version 1 with trailing bytes
     // decodes on the frozen v1 path (first 109 bytes, tail ignored).
@@ -1205,3 +1495,158 @@ test "TCP flags transport lane is valid, exact, and absence-distinct" {
     try std.testing.expectEqual(@as(?u8, 0x12), getTcpFlags(&ev));
     try std.testing.expect((ev.context_flags & CONTEXT_V6_TRUNCATED) != 0);
 }
+
+// ============================================================
+// Wire v3 tests (PAYLOAD-ENVELOPE-V3-001)
+// ============================================================
+
+fn v3CompleteEnvelope(payload: []const u8) V3Envelope {
+    return .{
+        .flags = V3PayloadFlags.PAYLOAD_PRESENT | V3PayloadFlags.PROVENANCE_VALID,
+        .completeness = .complete,
+        .payload_len = @intCast(payload.len),
+        .original_len = @intCast(payload.len),
+        .payload_crc32 = std.hash.Crc32.hash(payload),
+        .capture_sequence = 77,
+        .producer_epoch = 0x11223344,
+        .producer_generation = 3,
+        .interface_id = 0x0A0B0C0D,
+    };
+}
+
+test "v3 round-trip carries bounded payload and provenance" {
+    var ev = create(.npcap_sensor);
+    ev.event_type = .forward;
+    ev.source_ip = 0xC0A80164;
+    ev.dest_ip = 0x0A000001;
+    const payload = [_]u8{ 0x45, 0, 0, 0x1c, 1, 2, 3, 4 };
+    const env = v3CompleteEnvelope(&payload);
+
+    var buf: [WIRE_V3_MAX_SIZE]u8 = undefined;
+    const n = try serializeV3(&ev, null, null, env, &payload, &buf);
+    try std.testing.expectEqual(WIRE_V3_HEADER_SIZE + payload.len, n);
+
+    const frame = deserializeDispatch(buf[0..n]).?;
+    try std.testing.expectEqual(EVENT_VERSION_V3, frame.event.version);
+    try std.testing.expect(frame.src_ipv6 == null);
+    try std.testing.expect(frame.dst_ipv6 == null);
+    try std.testing.expect(frame.envelope != null);
+    try std.testing.expectEqual(PayloadCompleteness.complete, frame.envelope.?.completeness);
+    try std.testing.expectEqual(@as(u64, 77), frame.envelope.?.capture_sequence);
+    try std.testing.expectEqualSlices(u8, &payload, frame.payload);
+    try std.testing.expect(validateDecodedFrame(&frame));
+}
+
+test "v3 round-trip preserves full IPv6 identity" {
+    var ev = create(.npcap_sensor);
+    ev.event_type = .forward;
+    const src6 = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
+    const dst6 = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2 };
+    ev.source_ip = std.mem.readInt(u32, src6[0..4], .big);
+    ev.dest_ip = std.mem.readInt(u32, dst6[0..4], .big);
+    ev.context_flags |= CONTEXT_V6_TRUNCATED;
+    const payload = [_]u8{ 9, 8, 7, 6, 5 };
+    const env = v3CompleteEnvelope(&payload);
+
+    var buf: [WIRE_V3_MAX_SIZE]u8 = undefined;
+    const n = try serializeV3(&ev, src6, dst6, env, &payload, &buf);
+    const frame = deserializeDispatch(buf[0..n]).?;
+    try std.testing.expectEqualSlices(u8, &src6, &frame.src_ipv6.?);
+    try std.testing.expectEqualSlices(u8, &dst6, &frame.dst_ipv6.?);
+    try std.testing.expectEqual(EVENT_VERSION_V3, frame.event.version);
+    try std.testing.expect(validateDecodedFrame(&frame));
+}
+
+test "v3 metadata-only and unavailable envelopes carry no payload" {
+    const ev = create(.npcap_sensor);
+    var buf: [WIRE_V3_MAX_SIZE]u8 = undefined;
+    inline for (.{ PayloadCompleteness.metadata_only, PayloadCompleteness.unavailable }) |kind| {
+        const env = V3Envelope{ .completeness = kind };
+        const n = try serializeV3(&ev, null, null, env, &[_]u8{}, &buf);
+        try std.testing.expectEqual(WIRE_V3_HEADER_SIZE, n);
+        const frame = deserializeDispatch(buf[0..n]).?;
+        try std.testing.expectEqual(kind, frame.envelope.?.completeness);
+        try std.testing.expectEqual(@as(usize, 0), frame.payload.len);
+        try std.testing.expect(validateDecodedFrame(&frame));
+    }
+}
+
+test "v3 truncated envelope requires an original length above the captured bytes" {
+    const ev = create(.npcap_sensor);
+    const payload = [_]u8{ 1, 2, 3, 4 };
+    var buf: [WIRE_V3_MAX_SIZE]u8 = undefined;
+
+    var env = V3Envelope{
+        .flags = V3PayloadFlags.PAYLOAD_PRESENT,
+        .completeness = .truncated,
+        .payload_len = payload.len,
+        .original_len = 1500,
+        .payload_crc32 = std.hash.Crc32.hash(&payload),
+    };
+    const n = try serializeV3(&ev, null, null, env, &payload, &buf);
+    const frame = deserializeDispatch(buf[0..n]).?;
+    try std.testing.expectEqual(@as(u16, 1500), frame.envelope.?.original_len);
+    try std.testing.expect(validateDecodedFrame(&frame));
+
+    // truncated with original_len == payload_len is a lie: reject.
+    env.original_len = payload.len;
+    try std.testing.expectError(error.InvalidEnvelope, serializeV3(&ev, null, null, env, &payload, &buf));
+}
+
+test "v3 rejects tampered envelope and mismatched payload" {
+    const ev = create(.npcap_sensor);
+    const payload = [_]u8{ 10, 20, 30, 40, 50, 60 };
+    const env = v3CompleteEnvelope(&payload);
+    var buf: [WIRE_V3_MAX_SIZE]u8 = undefined;
+    const n = try serializeV3(&ev, null, null, env, &payload, &buf);
+
+    // Corrupt payload byte: CRC no longer matches.
+    var bad = buf;
+    bad[WIRE_V3_HEADER_SIZE] ^= 0xFF;
+    try std.testing.expect(deserializeDispatch(bad[0..n]) == null);
+
+    // payload_len says one more byte than is present.
+    bad = buf;
+    std.mem.writeInt(u16, bad[WIRE_V3_BASE_SIZE + 4 ..][0..2], @intCast(payload.len + 1), .little);
+    try std.testing.expect(deserializeDispatch(bad[0..n]) == null);
+
+    // Unknown completeness ordinal.
+    bad = buf;
+    bad[WIRE_V3_BASE_SIZE + 2] = 9;
+    try std.testing.expect(deserializeDispatch(bad[0..n]) == null);
+
+    // Non-zero v6 tail without bit2 is ambiguous and rejected.
+    bad = buf;
+    bad[WIRE_PAYLOAD_SIZE] = 1;
+    try std.testing.expect(deserializeDispatch(bad[0..n]) == null);
+
+    // Extra trailing bytes are rejected: v3 length is exact.
+    try std.testing.expect(deserializeDispatch(buf[0 .. n - 1]) == null);
+
+    // Reserved envelope byte is pinned to 0 by wire_v3.md. The encoder always
+    // writes 0, so a set byte is a corrupt/foreign frame, not an extension.
+    bad = buf;
+    bad[WIRE_V3_BASE_SIZE + 3] = 0x01;
+    try std.testing.expect(deserializeDispatch(bad[0..n]) == null);
+}
+
+test "validateDecodedFrame rejects v3/v1 shape mixing" {
+    const ev = create(.npcap_sensor);
+    const payload = [_]u8{ 1, 2, 3 };
+    const env = v3CompleteEnvelope(&payload);
+
+    // v1 event carrying a v3 envelope is a codec bug shape.
+    const mixed_v1 = DecodedFrame{ .event = ev, .src_ipv6 = null, .dst_ipv6 = null, .envelope = env, .payload = &payload };
+    try std.testing.expect(!validateDecodedFrame(&mixed_v1));
+
+    // v3 event without its envelope is likewise rejected.
+    var ev3 = ev;
+    ev3.version = EVENT_VERSION_V3;
+    const missing_env = DecodedFrame{ .event = ev3, .src_ipv6 = null, .dst_ipv6 = null };
+    try std.testing.expect(!validateDecodedFrame(&missing_env));
+
+    // A correctly shaped v3 frame passes.
+    const ok = DecodedFrame{ .event = ev3, .src_ipv6 = null, .dst_ipv6 = null, .envelope = env, .payload = &payload };
+    try std.testing.expect(validateDecodedFrame(&ok));
+}
+

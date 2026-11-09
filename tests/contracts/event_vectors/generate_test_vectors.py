@@ -250,17 +250,146 @@ v6_fields = {
 vectors_v2 = [("event_v2_006.bin", v6_fields, "IPv6 forward, full identity (2001:db8::1 -> 2001:db8::2:443)")]
 
 # ============================================================
+# Wire v3 vectors (PAYLOAD-ENVELOPE-V3-001)
+# v3 = frozen v2 133-byte base (zero tail when bit2 clear) + 32-byte
+# envelope + bounded payload. Envelope format: "<HBBHHIQIII" = 32 bytes.
+# ============================================================
+
+import zlib
+
+EVENT_VERSION_V3 = 3
+V3_BASE_SIZE = 133
+V3_ENVELOPE_SIZE = 32
+WIRE_V3_HEADER_SIZE = V3_BASE_SIZE + V3_ENVELOPE_SIZE  # 165
+V3_FORMAT = "<HBBHHIQIII"
+assert struct.calcsize(V3_FORMAT) == V3_ENVELOPE_SIZE
+
+
+def v3_bytes(fields, envelope_fields, payload, tail):
+    base = struct.pack(FORMAT_V2, *fields, *tail)
+    assert len(base) == V3_BASE_SIZE
+    # v3 always carries the full 133-byte base, including the zero tail.
+    base = bytearray(base)
+    base[4:6] = EVENT_VERSION_V3.to_bytes(2, "little")
+    base[6:8] = IN_MEMORY_STRUCT_SIZE.to_bytes(2, "little")
+    env = struct.pack(V3_FORMAT, *envelope_fields)
+    assert len(env) == V3_ENVELOPE_SIZE
+    return bytes(base) + env + payload
+
+def v3_base_fields(**overrides):
+    fields = {
+        "magic": EVENT_MAGIC,
+        "version": EVENT_VERSION_V3,
+        "struct_size": IN_MEMORY_STRUCT_SIZE,
+        "event_id": 0,
+        "timestamp_ms": 0,
+        "monotonic_ns": 0,
+        "source": 9,  # npcap_sensor
+        "source_ip": 0,
+        "source_port": 0,
+        "dest_ip": 0,
+        "dest_port": 0,
+        "session_id": 0,
+        "protocol": 6,
+        "direction": 0,
+        "layer_id": 0,
+        "is_pipe": 0,
+        "event_type": 2,  # forward
+        "severity": 0,
+        "rule_id": 0,
+        "ruleset_version": 4,
+        "payload_length": 0,
+        "payload_hash": 0,
+        "policy_action": 0,
+        "enforcement_status": 0,
+        "defcon_impact": 5,
+        "context_flags": 0,
+        "reserved": b"\x00" * 16,
+    }
+    fields.update(overrides)
+    return fields
+
+
+def v3_field_values(fields):
+    return (
+        fields["magic"], fields["version"], fields["struct_size"],
+        fields["event_id"], fields["timestamp_ms"], fields["monotonic_ns"],
+        fields["source"], fields["source_ip"], fields["source_port"],
+        fields["dest_ip"], fields["dest_port"], fields["session_id"],
+        fields["protocol"], fields["direction"], fields["layer_id"], fields["is_pipe"],
+        fields["event_type"], fields["severity"], fields["rule_id"], fields["ruleset_version"],
+        fields["payload_length"], fields["payload_hash"],
+        fields["policy_action"], fields["enforcement_status"], fields["defcon_impact"],
+        fields["context_flags"], fields["reserved"],
+    )
+
+
+# --- Vector 007: IPv6 complete payload (32 bytes) ---
+payload7 = bytes(range(0x40, 0x60))
+f7 = v3_base_fields(
+    event_id=7007, timestamp_ms=1700000007000, monotonic_ns=7000000000,
+    source_ip=0x20010DB8, source_port=49152, dest_ip=0x20010DB8, dest_port=443,
+    session_id=7070, protocol=6, severity=1, ruleset_version=4,
+    payload_length=len(payload7), context_flags=0x04,  # ipv6 bit2
+)
+env7 = (
+    0x0003,  # payload present | provenance valid
+    1,       # complete
+    0,       # reserved
+    len(payload7), len(payload7), zlib.crc32(payload7) & 0xFFFFFFFF,
+    7007, 0x5F5E1000, 5, 0x0A0B0C0D,
+)
+vec7 = v3_bytes(v3_field_values(f7), env7, payload7, (SRC6[4:16], DST6[4:16]))
+vectors_v3 = [
+    ("event_v3_007.bin", vec7, "v3 IPv6 complete payload (32 bytes, provenance valid)",
+     "v3: 133 base + 32 envelope + 32 payload"),
+]
+
+# --- Vector 008: IPv4 truncated payload (64 of 1514 bytes) ---
+payload8 = bytes((i * 7 + 3) & 0xFF for i in range(64))
+f8 = v3_base_fields(
+    event_id=8008, timestamp_ms=1700000008000, monotonic_ns=8000000000,
+    source_ip=0xC0A80164, source_port=40000, dest_ip=0x0A000001, dest_port=53,
+    session_id=8080, protocol=17, direction=1, event_type=2, severity=0,
+    ruleset_version=4, payload_length=len(payload8), policy_action=5,  # log_only
+)
+env8 = (
+    0x0003, 2, 0, len(payload8), 1514, zlib.crc32(payload8) & 0xFFFFFFFF,
+    8008, 0x5F5E1000, 2, 0x01020304,
+)
+vec8 = v3_bytes(v3_field_values(f8), env8, payload8, (b"\x00" * 12, b"\x00" * 12))
+vectors_v3.append((
+    "event_v3_008.bin", vec8, "v3 IPv4 truncated payload (64 of 1514 bytes)",
+    "v3: 133 base + 32 envelope + 64 payload",
+))
+
+# --- Vector 009: IPv4 metadata-only (no payload bytes) ---
+f9 = v3_base_fields(
+    event_id=9009, timestamp_ms=1700000009000, monotonic_ns=9000000000,
+    source_ip=0xC0A80164, source_port=40000, dest_ip=0x0A000001, dest_port=80,
+    session_id=9090, protocol=6, direction=1, event_type=2, severity=0,
+    payload_length=0,
+)
+env9 = (0x0000, 3, 0, 0, 0, 0, 0, 0, 0, 0)
+vec9 = v3_bytes(v3_field_values(f9), env9, b"", (b"\x00" * 12, b"\x00" * 12))
+vectors_v3.append((
+    "event_v3_009.bin", vec9, "v3 IPv4 metadata-only (no payload bytes)",
+    "v3: 133 base + 32 envelope (no payload)",
+))
+
+# ============================================================
 # Write vectors + README
 # ============================================================
 
 readme_lines = [
-    "# Cross-Language Test Vectors for Canonical Event v1",
+    "# Cross-Language Test Vectors for Canonical Event",
     "",
     "## Format",
     "",
-    "Each .bin file is exactly 109 bytes (WIRE_PAYLOAD_SIZE).",
-    "All fields are little-endian, explicit field-by-field encoding.",
-    "No struct memcpy, no pointer cast.",
+    "v1 vectors are exactly 109 bytes; v2 vectors are 133 bytes; v3 vectors",
+    "are 165 + payload-length bytes (133-byte base + 32-byte envelope +",
+    "bounded payload). All fields are little-endian, explicit field-by-field",
+    "encoding. No struct memcpy, no pointer cast.",
     "",
     "## Vectors",
     "",
@@ -349,6 +478,30 @@ for filename, fields, description in vectors_v2:
 
     print(f"  {filename}: {len(data)} bytes, SHA256={sha256[:16]}...")
 
+for filename, data, description, size_note in vectors_v3:
+    filepath = os.path.join(OUTPUT_DIR, filename)
+    with open(filepath, "wb") as f:
+        f.write(data)
+
+    sha256 = hashlib.sha256(data).hexdigest()
+
+    readme_lines.append(f"### {filename}")
+    readme_lines.append(f"- Description: {description}")
+    readme_lines.append(f"- Size: {len(data)} bytes ({size_note})")
+    readme_lines.append(f"- SHA256: `{sha256}`")
+    readme_lines.append(f"- Magic at offset 0: 0x{data[0]:02X}{data[1]:02X}{data[2]:02X}{data[3]:02X}")
+    readme_lines.append("")
+
+    metadata["vectors"].append({
+        "file": filename,
+        "description": description,
+        "sha256": sha256,
+        "size": len(data),
+        "version": EVENT_VERSION_V3,
+    })
+
+    print(f"  {filename}: {len(data)} bytes, SHA256={sha256[:16]}...")
+
 # Write README
 readme_path = os.path.join(OUTPUT_DIR, "README.md")
 with open(readme_path, "w") as f:
@@ -363,5 +516,6 @@ with open(meta_path, "w") as f:
 print(f"\nTest vectors written to: {OUTPUT_DIR}")
 print(f"  5 binary vectors (109 bytes each, v1 frozen)")
 print(f"  1 binary vector (133 bytes, v2 full IPv6)")
+print(f"  3 binary vectors (v3 bounded payload + provenance)")
 print(f"  README.md (human-readable)")
 print(f"  vectors_metadata.json (machine-readable)")

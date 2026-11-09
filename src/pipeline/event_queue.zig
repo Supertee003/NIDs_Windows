@@ -517,6 +517,62 @@ test "wire-decoded v2 frame survives the queue gate (V6-QUEUE-DROP regression)" 
     try std.testing.expectEqual(event.EventKind.dns_response, queued.ev.kind);
 }
 
+test "wire-decoded v3 frame carries payload through the queue gate" {
+    // PAYLOAD-ENVELOPE-V3-001: the exact vector-007 identity must survive
+    // serializeV3 -> deserializeDispatch -> pushDecodedFrame -> popEvent with
+    // its bounded payload, provenance envelope, and full IPv6 identity.
+    var ce = canonical.create(.npcap_sensor);
+    ce.event_id = 7007;
+    ce.timestamp_ms = 1700000007000;
+    ce.monotonic_ns = 7000000000;
+    ce.event_type = .forward;
+    ce.source_ip = 0x20010DB8;
+    ce.source_port = 49152;
+    ce.dest_ip = 0x20010DB8;
+    ce.dest_port = 443;
+    ce.session_id = 7070;
+    ce.protocol = 6;
+    ce.severity = 1;
+    ce.ruleset_version = 4;
+    ce.context_flags |= canonical.CONTEXT_V6_TRUNCATED;
+
+    var payload: [32]u8 = undefined;
+    for (&payload, 0..) |*b, i| b.* = @intCast(0x40 + i);
+    ce.payload_length = payload.len;
+
+    const src6 = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
+    const dst6 = [_]u8{ 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2 };
+    const env = canonical.V3Envelope{
+        .flags = canonical.V3PayloadFlags.PAYLOAD_PRESENT | canonical.V3PayloadFlags.PROVENANCE_VALID,
+        .completeness = .complete,
+        .payload_len = payload.len,
+        .original_len = payload.len,
+        .payload_crc32 = std.hash.Crc32.hash(&payload),
+        .capture_sequence = 7007,
+        .producer_epoch = 0x5F5E1000,
+        .producer_generation = 5,
+        .interface_id = 0x0A0B0C0D,
+    };
+    var wire: [canonical.WIRE_V3_MAX_SIZE]u8 = undefined;
+    const n = try canonical.serializeV3(&ce, src6, dst6, env, &payload, &wire);
+    try std.testing.expectEqual(canonical.WIRE_V3_HEADER_SIZE + payload.len, n);
+
+    const frame = canonical.deserializeDispatch(wire[0..n]).?;
+    try std.testing.expectEqual(canonical.EVENT_VERSION_V3, frame.event.version);
+    try std.testing.expectEqualSlices(u8, &src6, &frame.src_ipv6.?);
+    try std.testing.expectEqualSlices(u8, &dst6, &frame.dst_ipv6.?);
+    try std.testing.expectEqualSlices(u8, &payload, frame.payload);
+
+    try std.testing.expect(pushDecodedFrame(&frame, frame.payload));
+    const queued = popEvent().?;
+    try std.testing.expectEqualSlices(u8, &payload, queued.payload[0..queued.payload_len]);
+    try std.testing.expectEqual(@as(u16, payload.len), queued.payload_len);
+    try std.testing.expectEqualSlices(u8, &src6, &queued.src_ipv6.?);
+    try std.testing.expectEqual(ce.source_ip, queued.ev.src_ip);
+    try std.testing.expectEqual(ce.dest_ip, queued.ev.dst_ip);
+    try std.testing.expectEqual(event.EventKind.packet_captured, queued.ev.kind);
+}
+
 test "decoded-frame gate rejects shapes no codec can emit (V6-QUEUE-DROP)" {
     // Shape-strict fail-closed: sidecars are present iff the frame was wire
     // v2, and wire v2 always decodes to version==EVENT_VERSION_V2 with BOTH

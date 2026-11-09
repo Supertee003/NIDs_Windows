@@ -1,10 +1,11 @@
-# Cross-Language Test Vectors for Canonical Event v1
+# Cross-Language Test Vectors for Canonical Event
 
 ## Format
 
-Each .bin file is exactly 109 bytes (WIRE_PAYLOAD_SIZE).
-All fields are little-endian, explicit field-by-field encoding.
-No struct memcpy, no pointer cast.
+v1 vectors are exactly 109 bytes; v2 vectors are 133 bytes; v3 vectors
+are 165 + payload-length bytes (133-byte base + 32-byte envelope +
+bounded payload). All fields are little-endian, explicit field-by-field
+encoding. No struct memcpy, no pointer cast.
 
 ## Vectors
 
@@ -42,5 +43,23 @@ No struct memcpy, no pointer cast.
 - Description: IPv6 forward, full identity (2001:db8::1 -> 2001:db8::2:443)
 - Size: 133 bytes (v2: 109 + 24 tail)
 - SHA256: `33ba2e8c283b38d00769d828336f2ea841b9676fae24b9c7f99a3539f37d3517`
+- Magic at offset 0: 0x31474541
+
+### event_v3_007.bin
+- Description: v3 IPv6 complete payload (32 bytes, provenance valid)
+- Size: 197 bytes (v3: 133 base + 32 envelope + 32 payload)
+- SHA256: `9ff7422081d350b8c90fb4c44bc322e116e7e0fab4ce5694b99f0c444b6d9707`
+- Magic at offset 0: 0x31474541
+
+### event_v3_008.bin
+- Description: v3 IPv4 truncated payload (64 of 1514 bytes)
+- Size: 229 bytes (v3: 133 base + 32 envelope + 64 payload)
+- SHA256: `fb4d4f71a11f3c585574b587e9d85e138ab99b3672c7d76505acf55b9325a7f6`
+- Magic at offset 0: 0x31474541
+
+### event_v3_009.bin
+- Description: v3 IPv4 metadata-only (no payload bytes)
+- Size: 165 bytes (v3: 133 base + 32 envelope (no payload))
+- SHA256: `8a314ecb9afd167a73d1a162d951259dd226767f78625d899e2d398de97a2ee3`
 - Magic at offset 0: 0x31474541
 

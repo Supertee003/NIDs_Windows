@@ -213,6 +213,27 @@
         "src_tail": "000000000000000000000001",
         "dst_tail": "000000000000000000000002"
       }
+    },
+    {
+      "file": "event_v3_007.bin",
+      "description": "v3 IPv6 complete payload (32 bytes, provenance valid)",
+      "sha256": "9ff7422081d350b8c90fb4c44bc322e116e7e0fab4ce5694b99f0c444b6d9707",
+      "size": 197,
+      "version": 3
+    },
+    {
+      "file": "event_v3_008.bin",
+      "description": "v3 IPv4 truncated payload (64 of 1514 bytes)",
+      "sha256": "fb4d4f71a11f3c585574b587e9d85e138ab99b3672c7d76505acf55b9325a7f6",
+      "size": 229,
+      "version": 3
+    },
+    {
+      "file": "event_v3_009.bin",
+      "description": "v3 IPv4 metadata-only (no payload bytes)",
+      "sha256": "8a314ecb9afd167a73d1a162d951259dd226767f78625d899e2d398de97a2ee3",
+      "size": 165,
+      "version": 3
     }
   ]
 }

@@ -2,9 +2,11 @@
 // capture.go - AEGIS NOSE live packet capture -> CanonicalEvent -> Zig
 // =====================================================================
 // Acquisition-only (ADR-0001): this file captures packets and encodes
-// them into the frozen CanonicalEvent wire format. It performs NO
-// policy decisions and NO enforcement — everything flows to the Zig
-// core, which owns detection + policy + enforcement.
+// them into the CanonicalEvent wire format. It performs NO policy
+// decisions, NO signature verdicts, and NO enforcement — everything flows
+// to the Zig core, which owns detection + policy + enforcement. Live
+// packets are emitted as v3 frames carrying bounded frame bytes and
+// capture provenance (PAYLOAD-ENVELOPE-V3-001).
 //
 // Uses gopacket + Npcap (already installed at C:\Program Files\Npcap).
 // Launch:  nose -capture [-iface eth0] [-pipe \\.\pipe\aegis_nose]
@@ -17,6 +19,7 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
+	"hash/crc32"
 	"net"
 	"os"
 	"strings"
@@ -114,9 +117,10 @@ func validateCaptureInterface(iface string) error {
 // runCapture opens a live pcap handle, encodes packets as canonical
 // events, and streams them to the Zig core pipe until signalled.
 func runCapture(iface string, pipe string, stop <-chan struct{}) error {
-	if err := loadNoseSignatureRules(); err != nil {
-		fmt.Fprintf(os.Stderr, "[NOSE RULES] disabled: %v\n", err)
-	}
+	// Detection authority (ADR-0001 / CONTEXT.md): Go Nose acquires and
+	// reports evidence only. No signature verdict is produced here; Zig is
+	// the sole detection-verdict authority. v3 carries the bounded frame
+	// bytes + provenance to the Zig ingress.
 	if iface == "" {
 		name, err := firstUpDevice()
 		if err != nil {
@@ -144,6 +148,7 @@ func runCapture(iface string, pipe string, stop <-chan struct{}) error {
 	fmt.Fprintf(os.Stderr, "[NOSE CAPTURE] listening on %s -> %s\n", iface, pipe)
 
 	w := NewFrameWriter(pipe)
+	prov := newCaptureProvenance(iface)
 
 	count := 0
 	for {
@@ -170,10 +175,12 @@ func runCapture(iface string, pipe string, stop <-chan struct{}) error {
 			fmt.Fprintf(os.Stderr, "[NOSE CAPTURE] first packet captured: len=%d\n", captureInfo.CaptureLength)
 		}
 		ev := eventFromPacket(packet)
-		classifyNosePacket(ev, packet)
+		// Attach the bounded captured frame bytes + provenance. No verdict,
+		// no rule_id, no event_type reinterpretation: Zig decides.
+		payload, env := captureAttachment(data, captureInfo, ev.EventID, prov)
 		atomic.AddUint64(&stateAtomic.canonical, 1)
 		atomic.AddUint64(&stateAtomic.bytesTotal, uint64(captureInfo.CaptureLength))
-		_ = w.Send(ev)
+		_ = w.SendWithPayload(ev, env, payload)
 		atomic.StoreUint64(&stateAtomic.droppedPipe, droppedVia(w))
 		count++
 		if count%100 == 0 {
@@ -192,6 +199,69 @@ func runCapture(iface string, pipe string, stop <-chan struct{}) error {
 func droppedVia(w *FrameWriter) uint64 {
 	_, dropped := w.Stats()
 	return dropped
+}
+
+// captureProvenance is the producer-side descriptor stamped into every v3
+// envelope. It identifies the acquisition process and interface so Zig can
+// correlate evidence without trusting a Go-side verdict.
+type captureProvenance struct {
+	epoch      uint32
+	generation uint32
+	interfaceID uint32
+}
+
+// newCaptureProvenance derives a stable, opaque interface id (FNV-1a of the
+// Npcap device name) plus the producer epoch for this process.
+func newCaptureProvenance(iface string) captureProvenance {
+	var h uint32 = 0x811c9dc5
+	for i := 0; i < len(iface); i++ {
+		h ^= uint32(iface[i])
+		h *= 0x01000193
+	}
+	return captureProvenance{
+		epoch:       uint32(time.Now().Unix()),
+		generation:  1,
+		interfaceID: h,
+	}
+}
+
+// captureAttachment builds the bounded payload + envelope for one captured
+// frame. `original` is the on-wire frame length; the attached bytes are the
+// raw frame bytes Npcap delivered (bounded to EventV3MaxPayload). Missing or
+// clamped bytes are reported as truncated, never as complete.
+func captureAttachment(frame []byte, ci gopacket.CaptureInfo, seq uint64, prov captureProvenance) ([]byte, V3Envelope) {
+	env := V3Envelope{
+		Flags:              V3FlagProvenanceValid,
+		Completeness:       PayloadUnavailable,
+		CaptureSequence:    seq,
+		ProducerEpoch:      prov.epoch,
+		ProducerGeneration: prov.generation,
+		InterfaceID:        prov.interfaceID,
+	}
+	original := ci.Length
+	if original < 0 {
+		original = 0
+	}
+	if original > 0xFFFF {
+		original = 0xFFFF
+	}
+	env.OriginalLen = uint16(original)
+
+	n := len(frame)
+	if n > EventV3MaxPayload {
+		n = EventV3MaxPayload
+	}
+	if n > 0 {
+		env.Flags |= V3FlagPayloadPresent
+		env.PayloadLen = uint16(n)
+		env.PayloadCRC32 = crc32.ChecksumIEEE(frame[:n])
+		if n == ci.Length {
+			env.Completeness = PayloadComplete
+		} else {
+			env.Completeness = PayloadTruncated
+		}
+	}
+	return frame[:n], env
 }
 
 // eventFromPacket converts one packet into the canonical event schema.

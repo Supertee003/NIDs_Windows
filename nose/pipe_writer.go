@@ -8,7 +8,9 @@
 //
 // Frame protocol (shared with core/nose_pipe_reader.zig):
 //
-//	u32 LE length (109) followed by the raw wire bytes.
+//	u32 LE length (109 v1, 133 v2, or 165..1189 v3) followed by raw wire bytes.
+//	v1/v2 are metadata-only compatibility frames; v3 carries bounded payload
+//	and capture provenance (PAYLOAD-ENVELOPE-V3-001).
 //
 // Reconnection is automatic: if core is not up yet, the writer retries
 // with backoff and drops frames until the reader connects (NIDS must
@@ -130,7 +132,22 @@ func (w *FrameWriter) Send(ev *CanonicalEvent) bool {
 		}
 		wire = v1[:]
 	}
+	return w.sendWire(wire, ev.EventID)
+}
 
+// SendWithPayload emits one v3 frame: the frozen v2 base + provenance/
+// payload envelope + bounded captured bytes. It returns false on envelope
+// validation failure or delivery failure; callers must never treat a
+// rejected capture as delivered.
+func (w *FrameWriter) SendWithPayload(ev *CanonicalEvent, env V3Envelope, payload []byte) bool {
+	wire, serr := ev.SerializeV3(env, payload)
+	if serr != nil {
+		return false
+	}
+	return w.sendWire(wire, ev.EventID)
+}
+
+func (w *FrameWriter) sendWire(wire []byte, eventID uint64) bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -143,7 +160,7 @@ func (w *FrameWriter) Send(ev *CanonicalEvent) bool {
 		return false
 	}
 
-	var frame [4 + EventV2WireSize]byte
+	var frame [4 + EventV3MaxWireSize]byte
 	ple := uint32(len(wire))
 	frame[0] = byte(ple)
 	frame[1] = byte(ple >> 8)
@@ -160,7 +177,7 @@ func (w *FrameWriter) Send(ev *CanonicalEvent) bool {
 	}
 	w.sent++
 	if w.sent == 1 {
-		fmt.Fprintf(os.Stderr, "[NOSE PIPE] first canonical frame sent: %d bytes event_id=%d\n", len(frame), ev.EventID)
+		fmt.Fprintf(os.Stderr, "[NOSE PIPE] first canonical frame sent: %d bytes event_id=%d\n", len(frame), eventID)
 	}
 	return true
 }

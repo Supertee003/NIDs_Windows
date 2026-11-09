@@ -1,5 +1,10 @@
 package main
 
+// NOTE (PAYLOAD-ENVELOPE-V3-001): this file is no longer on the production
+// capture path. Go Nose is acquisition-only; Zig is the sole detection
+// authority. The helpers below are retained only for their historical unit
+// tests and MUST NOT be called from runCapture or any live producer.
+
 import (
 	"encoding/json"
 	"fmt"

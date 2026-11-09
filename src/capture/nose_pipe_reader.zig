@@ -4,7 +4,9 @@
 // process and feeds CanonicalEvents into the Zig fabric (nose_contract).
 //
 // Frame protocol (matches nose/pipe_writer.go):
-//   u32 LE length (109 v1, 133 v2) + raw canonical event bytes.
+//   u32 LE length (109 v1, 133 v2, or 165..1189 v3) + raw canonical event
+//   bytes. v3 (PAYLOAD-ENVELOPE-V3-001) appends a 32-byte provenance/payload
+//   envelope and bounded payload bytes to the frozen v2 base layout.
 // v2 frames (T2-V6-022a) carry the full IPv6 tail; DecodedFrame sidecars
 // survive the queue to the flow/anomaly stages (V6-FLOW-036/V6-DETECT-037)
 // while detection/policy/forensic identity stays u32 + bit2.
@@ -49,6 +51,9 @@ const ERROR_PIPE_CONNECTED = 535;
 const ERROR_PIPE_LISTENING = 536;
 
 const FRAME_SIZE: usize = 109; // canonical.WIRE_PAYLOAD_SIZE
+/// v3 frames are variable length: 165-byte fixed header + 0..1024 payload.
+const V3_MIN_FRAME: u32 = @intCast(canonical.WIRE_V3_HEADER_SIZE);
+const V3_MAX_FRAME: u32 = @intCast(canonical.WIRE_V3_MAX_SIZE);
 
 /// Bound for drain-and-continue on a malformed length (NOSE-DISC-042). A
 /// corrupt length header is a u32 with no credibility: draining more than
@@ -61,11 +66,12 @@ pub const MAX_DISCARD_BYTES: u32 = 64 * 1024;
 /// Pure frame-length classifier so the resync policy is unit-pinned
 /// without a pipe handle. drain = skip-and-continue, resync = drop the
 /// connection and let nose reconnect.
-pub const LengthVerdict = enum { accept_v1, accept_v2, drain, resync };
+pub const LengthVerdict = enum { accept_v1, accept_v2, accept_v3, drain, resync };
 
 pub fn classifyFrameLen(frameLen: u32) LengthVerdict {
     if (frameLen == FRAME_SIZE) return .accept_v1;
     if (frameLen == canonical.WIRE_V2_PAYLOAD_SIZE) return .accept_v2;
+    if (frameLen >= V3_MIN_FRAME and frameLen <= V3_MAX_FRAME) return .accept_v3;
     if (frameLen <= MAX_DISCARD_BYTES) return .drain;
     return .resync;
 }
@@ -185,7 +191,7 @@ fn createPipeServer() !usize {
             PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_NOWAIT,
             1, // single instance: never allow duplicate Nose authorities
             0, // no output buffer
-            FRAME_SIZE * 256, // input buffer: 256 frames
+            canonical.WIRE_V3_MAX_SIZE * 64, // input buffer: 64 max-size frames
             0, // default timeout
             @ptrCast(&sec_attr),
         );
@@ -358,7 +364,7 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
             break;
         }
         if (verdict == .drain) {
-            std.log.warn("[NOSE PIPE] rejected frame length: {d}, expected {d} or {d}", .{ frameLen, FRAME_SIZE, canonical.WIRE_V2_PAYLOAD_SIZE });
+            std.log.warn("[NOSE PIPE] rejected frame length: {d}, expected {d}/{d} or v3 {d}..{d}", .{ frameLen, FRAME_SIZE, canonical.WIRE_V2_PAYLOAD_SIZE, V3_MIN_FRAME, V3_MAX_FRAME });
             // Skip malformed frame: read and discard (bounded by classifier)
             var discard: [256]u8 = undefined;
             var remaining = frameLen;
@@ -372,8 +378,8 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
             continue;
         }
 
-        // Read payload (v1 109 or v2 133 bytes, length-delimited)
-        var payload: [canonical.WIRE_V2_PAYLOAD_SIZE]u8 = undefined;
+        // Read payload (v1 109, v2 133, or v3 165..1189 bytes, length-delimited)
+        var payload: [canonical.WIRE_V3_MAX_SIZE]u8 = undefined;
         const payload_slice = payload[0..frameLen];
         if (!readExact(server, payload_slice, stopSignal)) {
             std.log.warn("[NOSE PIPE] frame payload read failed: GetLastError={d}", .{GetLastError()});
@@ -415,8 +421,10 @@ fn readClientLoop(server: usize, stopSignal: *std.atomic.Value(bool)) void {
         // Submit directly to the queue consumed by event_processor. There is
         // no second acquisition queue between canonical validation and detect.
         // The full DecodedFrame goes in so v2 sidecars survive to the flow
-        // stage (V6-FLOW-036); v1 frames carry null sidecars by construction.
-        if (pipeline_queue.pushDecodedFrame(&frame, &[_]u8{})) {
+        // stage (V6-FLOW-036) and v3 payload/provenance reaches Zig detection.
+        // v1/v2 frames carry no wire payload (metadata-only compatibility);
+        // legacy v3-unaware callers still supply an empty slice.
+        if (pipeline_queue.pushDecodedFrame(&frame, frame.payload)) {
             g_reader_stats.frames_submitted += 1;
             _ = runtime_state.g_nose_frames_submitted.fetchAdd(1, .monotonic);
             std.log.debug("[NOSE PIPE] canonical event submitted: event_id={d}", .{event.event_id});
@@ -441,22 +449,28 @@ test "FRAME_SIZE matches canonical wire payload" {
     try std.testing.expectEqual(canonical.WIRE_PAYLOAD_SIZE, FRAME_SIZE);
 }
 
-test "reader accepts v1 and v2 frame lengths" {
-    // Contract pin: the length-delimited pipe carries 109 (v1, frozen) or
-    // 133 (v2, full IPv6 tail) — anything else is rejected upstream.
+test "reader accepts v1, v2, and v3 frame lengths" {
+    // Contract pin: the length-delimited pipe carries 109 (v1, frozen),
+    // 133 (v2, full IPv6 tail), or a bounded v3 frame (165..1189).
     try std.testing.expectEqual(@as(usize, 109), canonical.WIRE_PAYLOAD_SIZE);
     try std.testing.expectEqual(@as(usize, 133), canonical.WIRE_V2_PAYLOAD_SIZE);
+    try std.testing.expectEqual(@as(usize, 165), canonical.WIRE_V3_HEADER_SIZE);
+    try std.testing.expectEqual(@as(usize, 1189), canonical.WIRE_V3_MAX_SIZE);
 }
 
 test "classifyFrameLen bounds the drain and resyncs on absurd lengths" {
-    // NOSE-DISC-042: legitimate frames (109/133) pass; small garbage is
-    // drained; a corrupt u32 must never stall the reader draining
-    // gigabytes — the connection drops and nose reconnects instead.
+    // NOSE-DISC-042: legitimate frames pass; small garbage is drained; a
+    // corrupt u32 must never stall the reader draining gigabytes — the
+    // connection drops and nose reconnects instead.
     try std.testing.expectEqual(LengthVerdict.accept_v1, classifyFrameLen(109));
     try std.testing.expectEqual(LengthVerdict.accept_v2, classifyFrameLen(133));
+    try std.testing.expectEqual(LengthVerdict.accept_v3, classifyFrameLen(165));
+    try std.testing.expectEqual(LengthVerdict.accept_v3, classifyFrameLen(1189));
     try std.testing.expectEqual(LengthVerdict.drain, classifyFrameLen(0));
     try std.testing.expectEqual(LengthVerdict.drain, classifyFrameLen(108));
     try std.testing.expectEqual(LengthVerdict.drain, classifyFrameLen(134));
+    try std.testing.expectEqual(LengthVerdict.drain, classifyFrameLen(164));
+    try std.testing.expectEqual(LengthVerdict.drain, classifyFrameLen(1190));
     try std.testing.expectEqual(LengthVerdict.drain, classifyFrameLen(MAX_DISCARD_BYTES));
     try std.testing.expectEqual(LengthVerdict.resync, classifyFrameLen(MAX_DISCARD_BYTES + 1));
     try std.testing.expectEqual(LengthVerdict.resync, classifyFrameLen(std.math.maxInt(u32)));

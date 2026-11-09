@@ -409,7 +409,140 @@ inline bool aegis_wire_decode_event_v2(const uint8_t* bytes, size_t bytes_len, C
     return true;
 }
 
-// Version-dispatched decode: 109-byte v1 (sidecars zeroed) or 133-byte v2.
+// --- v3 helpers (bounded payload + capture provenance) ---
+// v3 = v2 133-byte base (zero tail when bit2 is clear) + 32-byte envelope
+// + 0..1024 payload bytes. v1/v2 stay byte-identical metadata-only frames.
+static constexpr uint16_t EVENT_VERSION_V3 = 3;
+static constexpr size_t V3_BASE_SIZE = WIRE_V2_PAYLOAD_SIZE;
+static constexpr size_t V3_ENVELOPE_SIZE = 32;
+static constexpr size_t WIRE_V3_HEADER_SIZE = V3_BASE_SIZE + V3_ENVELOPE_SIZE; // 165
+static constexpr size_t V3_MAX_PAYLOAD = 1024;
+static constexpr size_t WIRE_V3_MAX_SIZE = WIRE_V3_HEADER_SIZE + V3_MAX_PAYLOAD; // 1189
+
+static constexpr uint8_t PAYLOAD_UNAVAILABLE = 0;
+static constexpr uint8_t PAYLOAD_COMPLETE = 1;
+static constexpr uint8_t PAYLOAD_TRUNCATED = 2;
+static constexpr uint8_t PAYLOAD_METADATA_ONLY = 3;
+static constexpr uint16_t V3_FLAG_PAYLOAD_PRESENT = (1u << 0);
+static constexpr uint16_t V3_FLAG_PROVENANCE_VALID = (1u << 1);
+
+struct V3Envelope {
+    uint16_t flags;
+    uint8_t completeness;
+    uint16_t payload_len;
+    uint16_t original_len;
+    uint32_t payload_crc32;
+    uint64_t capture_sequence;
+    uint32_t producer_epoch;
+    uint32_t producer_generation;
+    uint32_t interface_id;
+};
+
+inline bool aegis_v3_envelope_valid(const V3Envelope& env, const uint8_t* payload, size_t payload_len) {
+    if (payload_len > V3_MAX_PAYLOAD) return false;
+    if ((size_t)env.payload_len != payload_len) return false;
+    const bool present = (env.flags & V3_FLAG_PAYLOAD_PRESENT) != 0;
+    if (env.completeness == PAYLOAD_UNAVAILABLE || env.completeness == PAYLOAD_METADATA_ONLY) {
+        if (present || payload_len != 0 || env.payload_crc32 != 0) return false;
+        if (env.completeness == PAYLOAD_METADATA_ONLY && env.original_len != 0) return false;
+    } else if (env.completeness == PAYLOAD_COMPLETE) {
+        if (!present || payload_len == 0) return false;
+        if (env.original_len != env.payload_len) return false;
+        if (aegis_crc32(payload, payload_len) != env.payload_crc32) return false;
+    } else if (env.completeness == PAYLOAD_TRUNCATED) {
+        if (!present || payload_len == 0) return false;
+        if (env.original_len <= env.payload_len) return false;
+        if (aegis_crc32(payload, payload_len) != env.payload_crc32) return false;
+    } else {
+        return false;
+    }
+    if ((env.flags & V3_FLAG_PROVENANCE_VALID) == 0) {
+        if (env.capture_sequence != 0 || env.producer_epoch != 0 ||
+            env.producer_generation != 0 || env.interface_id != 0) return false;
+    }
+    return true;
+}
+
+// Encode a v3 frame into buf. Requires src/dst IPv6 iff bit2 is set.
+// Returns the frame length, or 0 on any validation failure.
+inline size_t aegis_wire_encode_event_v3(uint8_t* buf, size_t buf_len,
+                                         const CanonicalEvent& e,
+                                         const V3Envelope& env,
+                                         const uint8_t* payload, size_t payload_len) {
+    if (!aegis_v3_envelope_valid(env, payload, payload_len)) return 0;
+    const size_t total = WIRE_V3_HEADER_SIZE + payload_len;
+    if (buf_len < total) return 0;
+
+    if ((e.context_flags & CONTEXT_V6_TRUNCATED) != 0) {
+        if (aegis_wire_encode_event_v2(buf, buf_len, e) != WIRE_V2_PAYLOAD_SIZE) return 0;
+    } else {
+        if (aegis_wire_encode_event(buf, buf_len, e) != WIRE_PAYLOAD_SIZE) return 0;
+        ::memset(buf + WIRE_PAYLOAD_SIZE, 0, V6_TAIL_SIZE);
+    }
+    write_u16_le(buf + 4, EVENT_VERSION_V3);
+
+    const size_t off = V3_BASE_SIZE;
+    write_u16_le(buf + off + 0, env.flags);
+    buf[off + 2] = env.completeness;
+    buf[off + 3] = 0;
+    write_u16_le(buf + off + 4, env.payload_len);
+    write_u16_le(buf + off + 6, env.original_len);
+    write_u32_le(buf + off + 8, env.payload_crc32);
+    write_u64_le(buf + off + 12, env.capture_sequence);
+    write_u32_le(buf + off + 20, env.producer_epoch);
+    write_u32_le(buf + off + 24, env.producer_generation);
+    write_u32_le(buf + off + 28, env.interface_id);
+    if (payload_len > 0) ::memcpy(buf + WIRE_V3_HEADER_SIZE, payload, payload_len);
+    return total;
+}
+
+// Decode a strict v3 frame. `payload` aliases the input buffer.
+inline bool aegis_wire_decode_event_v3(const uint8_t* bytes, size_t bytes_len,
+                                       CanonicalEvent& out, V3Envelope& env,
+                                       const uint8_t** payload, size_t* payload_len) {
+    if (bytes_len < WIRE_V3_HEADER_SIZE) return false;
+    uint8_t prefix[WIRE_PAYLOAD_SIZE];
+    ::memcpy(prefix, bytes, WIRE_PAYLOAD_SIZE);
+    write_u16_le(prefix + 4, EVENT_VERSION);
+    if (!aegis_wire_decode_event(prefix, WIRE_PAYLOAD_SIZE, out)) return false;
+
+    const bool is_v6 = (out.context_flags & CONTEXT_V6_TRUNCATED) != 0;
+    if (is_v6) {
+        v6_first4_write_be(out.source_ip, out.src_ipv6);
+        ::memcpy(out.src_ipv6 + 4, bytes + WIRE_PAYLOAD_SIZE, 12);
+        v6_first4_write_be(out.dest_ip, out.dst_ipv6);
+        ::memcpy(out.dst_ipv6 + 4, bytes + WIRE_PAYLOAD_SIZE + 12, 12);
+    } else {
+        for (size_t i = WIRE_PAYLOAD_SIZE; i < V3_BASE_SIZE; ++i) {
+            if (bytes[i] != 0) return false;
+        }
+        ::memset(out.src_ipv6, 0, 16);
+        ::memset(out.dst_ipv6, 0, 16);
+    }
+
+    const size_t off = V3_BASE_SIZE;
+    // wire_v3.md: any non-zero reserved byte is rejected fail closed.
+    if (bytes[off + 3] != 0) return false;
+    env.flags = read_u16_le(bytes + off + 0);
+    env.completeness = bytes[off + 2];
+    env.payload_len = read_u16_le(bytes + off + 4);
+    env.original_len = read_u16_le(bytes + off + 6);
+    env.payload_crc32 = read_u32_le(bytes + off + 8);
+    env.capture_sequence = read_u64_le(bytes + off + 12);
+    env.producer_epoch = read_u32_le(bytes + off + 20);
+    env.producer_generation = read_u32_le(bytes + off + 24);
+    env.interface_id = read_u32_le(bytes + off + 28);
+    if ((size_t)env.payload_len > V3_MAX_PAYLOAD) return false;
+    if (bytes_len != WIRE_V3_HEADER_SIZE + (size_t)env.payload_len) return false;
+    *payload = bytes + WIRE_V3_HEADER_SIZE;
+    *payload_len = env.payload_len;
+    if (!aegis_v3_envelope_valid(env, *payload, *payload_len)) return false;
+    out.version = EVENT_VERSION_V3;
+    return true;
+}
+
+// Version-dispatched decode: 109-byte v1 (sidecars zeroed), 133-byte v2, or
+// a bounded v3 frame. For v3 the caller supplies envelope/payload outputs.
 inline bool aegis_wire_decode_event_dispatch(const uint8_t* bytes, size_t bytes_len, CanonicalEvent& out) {
     if (bytes_len < WIRE_PAYLOAD_SIZE) return false;
     uint16_t ver = (uint16_t)bytes[4] | ((uint16_t)bytes[5] << 8);
@@ -419,6 +552,12 @@ inline bool aegis_wire_decode_event_dispatch(const uint8_t* bytes, size_t bytes_
         ::memset(out.src_ipv6, 0, 16);
         ::memset(out.dst_ipv6, 0, 16);
         return true;
+    }
+    if (ver == EVENT_VERSION_V3) {
+        V3Envelope env;
+        const uint8_t* payload = nullptr;
+        size_t payload_len = 0;
+        return aegis_wire_decode_event_v3(bytes, bytes_len, out, env, &payload, &payload_len);
     }
     if (ver != EVENT_VERSION_V2) return false;
     return aegis_wire_decode_event_v2(bytes, bytes_len, out);

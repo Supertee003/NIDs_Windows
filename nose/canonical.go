@@ -12,6 +12,7 @@ package main
 import (
 	"encoding/binary"
 	"errors"
+	"hash/crc32"
 )
 
 // ── EventSource enum ──────────────────────────────────────────
@@ -234,6 +235,11 @@ type CanonicalEvent struct {
 	// the complete 128-bit addresses in network order when a v2 frame
 	// was decoded, zero otherwise. Never on the v1 wire.
 	Src6, Dst6 [16]byte
+	// Wire v3 bounded payload + provenance (PAYLOAD-ENVELOPE-V3-001).
+	// Populated only by DeserializeV3/DeserializeDispatch for a v3 frame;
+	// nil/empty for the frozen v1/v2 metadata-only compatibility paths.
+	Envelope *V3Envelope
+	Payload  []byte
 }
 
 // ── ContextFlags bits (frozen v1 vocabulary, all languages) ──
@@ -301,6 +307,101 @@ var EventSchemaVersion = uint16(1)
 
 // EventSchemaVersionV2 marks frames carrying the 24-byte IPv6 tail.
 var EventSchemaVersionV2 = uint16(2)
+
+// ── Wire v3: bounded payload + capture provenance ─────────────────
+// v3 = the frozen v2 133-byte base (zero tail when bit2 is clear) + a
+// 32-byte envelope + 0..1024 payload bytes. v1/v2 remain byte-identical
+// metadata-only compatibility frames. Zig owns the detection verdict;
+// this envelope only reports captured evidence.
+var EventSchemaVersionV3 = uint16(3)
+
+const (
+	EventV3BaseSize     = EventV2WireSize // 133
+	EventV3EnvelopeSize = 32
+	EventV3HeaderSize   = EventV3BaseSize + EventV3EnvelopeSize // 165
+	EventV3MaxPayload   = 1024
+	EventV3MaxWireSize  = EventV3HeaderSize + EventV3MaxPayload // 1189
+)
+
+// Payload completeness vocabulary. Absence is distinct from completeness.
+const (
+	PayloadUnavailable  byte = 0
+	PayloadComplete     byte = 1
+	PayloadTruncated    byte = 2
+	PayloadMetadataOnly byte = 3
+)
+
+const (
+	V3FlagPayloadPresent  uint16 = 1 << 0
+	V3FlagProvenanceValid uint16 = 1 << 1
+)
+
+// V3Envelope is the v3 provenance/payload descriptor. OriginalLen is the
+// producer's on-wire frame length; PayloadLen is the number of bytes that
+// actually follow the envelope. PayloadCRC32 is CRC32 (IEEE) over exactly
+// those PayloadLen bytes.
+type V3Envelope struct {
+	Flags              uint16
+	Completeness       byte
+	PayloadLen         uint16
+	OriginalLen        uint16
+	PayloadCRC32       uint32
+	CaptureSequence    uint64
+	ProducerEpoch      uint32
+	ProducerGeneration uint32
+	InterfaceID        uint32
+}
+
+// Validate checks an envelope against the payload bytes that will travel
+// with it. Fail closed: no inferred acceptance, no silent truncation.
+func (env *V3Envelope) Validate(payload []byte) error {
+	if len(payload) > EventV3MaxPayload {
+		return errors.New("canonical: v3 payload exceeds maximum")
+	}
+	if int(env.PayloadLen) != len(payload) {
+		return errors.New("canonical: v3 payload length mismatch")
+	}
+	present := env.Flags&V3FlagPayloadPresent != 0
+	switch env.Completeness {
+	case PayloadUnavailable, PayloadMetadataOnly:
+		if present || len(payload) != 0 || env.PayloadCRC32 != 0 {
+			return errors.New("canonical: v3 metadata-only envelope carries payload")
+		}
+		if env.Completeness == PayloadMetadataOnly && env.OriginalLen != 0 {
+			return errors.New("canonical: v3 metadata-only original length must be zero")
+		}
+	case PayloadComplete:
+		if !present || len(payload) == 0 {
+			return errors.New("canonical: v3 complete envelope requires payload")
+		}
+		if env.OriginalLen != env.PayloadLen {
+			return errors.New("canonical: v3 complete original length mismatch")
+		}
+		if crc32.ChecksumIEEE(payload) != env.PayloadCRC32 {
+			return errors.New("canonical: v3 payload crc mismatch")
+		}
+	case PayloadTruncated:
+		if !present || len(payload) == 0 {
+			return errors.New("canonical: v3 truncated envelope requires payload")
+		}
+		if env.OriginalLen <= env.PayloadLen {
+			return errors.New("canonical: v3 truncated original length must exceed captured")
+		}
+		if crc32.ChecksumIEEE(payload) != env.PayloadCRC32 {
+			return errors.New("canonical: v3 payload crc mismatch")
+		}
+	default:
+		return errors.New("canonical: unknown v3 completeness")
+	}
+	if env.Flags&V3FlagProvenanceValid == 0 {
+		if env.CaptureSequence != 0 || env.ProducerEpoch != 0 ||
+			env.ProducerGeneration != 0 || env.InterfaceID != 0 {
+			return errors.New("canonical: v3 provenance without valid flag")
+		}
+	}
+	return nil
+}
+
 var DefaultDevStructSize = uint16(128) // used by Go; Zig uses @sizeOf
 
 // validSource mirrors Zig deserializeFromBytes: 0-16 or 255.
@@ -465,6 +566,105 @@ func (e *CanonicalEvent) IsV6() bool {
 	return e.ContextFlags&ContextV6Truncated != 0
 }
 
+// SerializeV3 encodes the event as a v3 frame: the frozen v2 base (a zero
+// 24-byte tail when bit2 is clear) + 32-byte envelope + bounded payload.
+// The envelope is validated against the payload before any byte is written.
+func (e *CanonicalEvent) SerializeV3(env V3Envelope, payload []byte) ([]byte, error) {
+	if err := env.Validate(payload); err != nil {
+		return nil, err
+	}
+	base := make([]byte, EventV3BaseSize)
+	if e.IsV6() {
+		v2, err := e.SerializeV2()
+		if err != nil {
+			return nil, err
+		}
+		copy(base, v2[:])
+	} else {
+		v1, err := e.Serialize()
+		if err != nil {
+			return nil, err
+		}
+		copy(base, v1[:])
+	}
+	binary.LittleEndian.PutUint16(base[4:6], EventSchemaVersionV3)
+
+	out := make([]byte, EventV3HeaderSize+len(payload))
+	copy(out, base)
+	off := EventV3BaseSize
+	binary.LittleEndian.PutUint16(out[off:off+2], env.Flags)
+	out[off+2] = env.Completeness
+	out[off+3] = 0 // reserved
+	binary.LittleEndian.PutUint16(out[off+4:off+6], env.PayloadLen)
+	binary.LittleEndian.PutUint16(out[off+6:off+8], env.OriginalLen)
+	binary.LittleEndian.PutUint32(out[off+8:off+12], env.PayloadCRC32)
+	binary.LittleEndian.PutUint64(out[off+12:off+20], env.CaptureSequence)
+	binary.LittleEndian.PutUint32(out[off+20:off+24], env.ProducerEpoch)
+	binary.LittleEndian.PutUint32(out[off+24:off+28], env.ProducerGeneration)
+	binary.LittleEndian.PutUint32(out[off+28:off+32], env.InterfaceID)
+	copy(out[EventV3HeaderSize:], payload)
+	return out, nil
+}
+
+// DeserializeV3 decodes a strict v3 frame. Payload aliases the input slice;
+// callers must consume it before reusing the buffer. Encoding/size/crc/v6
+// tail rules are all enforced (fail closed).
+func DeserializeV3(b []byte) (*CanonicalEvent, error) {
+	if len(b) < EventV3HeaderSize {
+		return nil, errors.New("canonical: short v3 frame")
+	}
+	var prefix [EventWireSize]byte
+	copy(prefix[:], b[:EventWireSize])
+	binary.LittleEndian.PutUint16(prefix[4:6], EventSchemaVersion)
+	ev := &CanonicalEvent{}
+	if !ev.Deserialize(prefix) {
+		return nil, errors.New("canonical: v3 prefix rejected")
+	}
+	isV6 := ev.ContextFlags&ContextV6Truncated != 0
+	if isV6 {
+		binary.BigEndian.PutUint32(ev.Src6[:4], ev.SourceIP)
+		binary.BigEndian.PutUint32(ev.Dst6[:4], ev.DestIP)
+		copy(ev.Src6[4:16], b[EventWireSize:EventWireSize+12])
+		copy(ev.Dst6[4:16], b[EventWireSize+12:EventWireSize+24])
+	} else {
+		for _, x := range b[EventWireSize:EventV3BaseSize] {
+			if x != 0 {
+				return nil, errors.New("canonical: v3 non-v6 tail must be zero")
+			}
+		}
+	}
+	off := EventV3BaseSize
+	// wire_v3.md: any non-zero reserved byte is rejected fail closed. The
+	// encoder always writes 0, so a set byte is a corrupt or foreign frame.
+	if b[off+3] != 0 {
+		return nil, errors.New("canonical: v3 reserved byte must be zero")
+	}
+	env := V3Envelope{
+		Flags:              binary.LittleEndian.Uint16(b[off : off+2]),
+		Completeness:       b[off+2],
+		PayloadLen:         binary.LittleEndian.Uint16(b[off+4 : off+6]),
+		OriginalLen:        binary.LittleEndian.Uint16(b[off+6 : off+8]),
+		PayloadCRC32:       binary.LittleEndian.Uint32(b[off+8 : off+12]),
+		CaptureSequence:    binary.LittleEndian.Uint64(b[off+12 : off+20]),
+		ProducerEpoch:      binary.LittleEndian.Uint32(b[off+20 : off+24]),
+		ProducerGeneration: binary.LittleEndian.Uint32(b[off+24 : off+28]),
+		InterfaceID:        binary.LittleEndian.Uint32(b[off+28 : off+32]),
+	}
+	if int(env.PayloadLen) > EventV3MaxPayload {
+		return nil, errors.New("canonical: v3 payload length exceeds maximum")
+	}
+	if len(b) != EventV3HeaderSize+int(env.PayloadLen) {
+		return nil, errors.New("canonical: v3 frame length mismatch")
+	}
+	payload := b[EventV3HeaderSize:]
+	if err := env.Validate(payload); err != nil {
+		return nil, err
+	}
+	ev.Envelope = &env
+	ev.Payload = payload
+	return ev, nil
+}
+
 // DeserializeDispatch decodes a length-delimited canonical payload of
 // either version: 109-byte v1 (Src6/Dst6 left zero, truncated semantics
 // unchanged) or 133-byte v2 (full addresses reconstructed). Anything
@@ -483,6 +683,9 @@ func DeserializeDispatch(b []byte) (*CanonicalEvent, error) {
 			return nil, errors.New("canonical: v1 rejected")
 		}
 		return ev, nil
+	}
+	if ver == EventSchemaVersionV3 {
+		return DeserializeV3(b)
 	}
 	if ver != EventSchemaVersionV2 {
 		return nil, errors.New("canonical: unknown version")

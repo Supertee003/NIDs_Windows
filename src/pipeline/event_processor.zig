@@ -256,14 +256,12 @@ fn processEvent(
     // Use mutex-protected global AC pointer for hot-reload support
     var matched_rule_id: u32 = 0;
     var protocol_anomaly_rule_id: u32 = 0;
-    // The frozen 109-byte Canonical Event carries detection metadata but not
-    // raw payload bytes. Preserve that contract: an upstream classifier may
-    // provide rule_id/event_type, and the Zig pipeline must carry it into
-    // policy evaluation without attempting a second payload interpretation.
-    if (!isHostTelemetrySource(ev.source) and ev.kind == .signature_match and ev.rule_id != 0) {
-        matched_rule_id = ev.rule_id;
-        _ = state.g_pipeline_detections.fetchAdd(1, .monotonic);
-    }
+    // PAYLOAD-ENVELOPE-V3-001 / ADR-0001: Zig is the sole detection-verdict
+    // authority. Acquisition tiers (Go Nose, WFP, C++) report evidence only.
+    // A signature_match/rule_id arriving from an upstream network producer is
+    // never promoted to a detection here — detections come from the Zig
+    // Aho-Corasick/L4/L7 stages below. Host detector identity stays on its
+    // separate evidence-only channel (`hostDetectorRuleId`).
     var active_ac: ?*sig.AhoCorasick = null;
     var l4_rules: [l4.MAX_RULES]l4.Rule = l4.empty_rules;
     var l4_count: usize = 0;

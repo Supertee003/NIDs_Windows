@@ -2,6 +2,10 @@
 
 ## Status: ACTIVE (v1 frozen — see `wire_v1.md`, never modified by v2)
 
+> v3 is additive on top of this document: it appends a 32-byte envelope and
+> bounded payload to the frozen v2 base (`shared/protocol/wire_v3.md`).
+> v2 frames and this contract are unchanged.
+
 v1 carries only the first 4 bytes of IPv6 addresses (`ContextFlags` bit2 =
 "these 32-bit fields are NOT IPv4 identity"). v2 appends the remaining
 bytes so a v2 reader reconstructs full 128-bit addresses. v1 producers,
