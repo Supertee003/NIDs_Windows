@@ -5366,6 +5366,29 @@
         "python tools/host_soak_check.py --start auto --json analysis/current-head/soak-check-20261109.json"
       ],
       "limitations": "E5 on this host: proves the ordering effect and that the correct order yields RUNNING, not that every start order is safe. The one-shot readiness evaluation is a design smell that remains: a bridge that becomes active later should move the state machine instead of requiring a restart. The 24 h soak has only just started and is IN_PROGRESS, not passed."
+    },
+    {
+      "id": "D4-PAGEHEAP-E5-20261109",
+      "head_sha": "d461c92",
+      "timestamp": "2026-11-09",
+      "title": "Full page heap plus ten start/stop cycles did not reproduce #30: 10/10 RUNNING, live control plane, zero dumps",
+      "level": "E5",
+      "component": "installed aegis_nids.exe D39A1D2CC6CEE76FA0AE35EBB0B497319FA252AC18C1285F408F3E8490925C90, gflags.exe, WER LocalDumps",
+      "flow_id": "QLOSS-HEALTH-001",
+      "description": "D4 ran on the deployed build. Prerequisites verified: gflags.exe and cdb.exe exist under Windows Kits 10.0.28000.0 Debuggers\\x64 and WER LocalDumps is configured (DumpType 2, DumpFolder admin-evidence\\e5-host-proof-20261026\\wer-localdumps). Attempt 1 enabled 'page heap /full' and drove a naive sc stop / 2 s sleep / sc start loop; the start raced the still-stopping service, the process never launched, the loop aborted at cycle 1 and the abort path left AegisNids Stopped until it was started by hand (recorded as a lesson: an abort path must restore the service, not only disable instrumentation). Attempt 2 kept page heap on and waited for SCM Stopped (<=30 s) before each start and Running (<=40 s) after it, with a control-plane status probe per cycle: 10/10 cycles reached RUNNING, every probe answered RUNNING, restarts took 3.3-6.2 s, and zero new dumps appeared.",
+      "artifacts": [
+        "analysis/current-head/HOST-WINDOW-002-20261109.md",
+        "analysis/current-head/soak-check-20261109.json",
+        "analysis/current-head/DEV-PLAN-001-20261109.md"
+      ],
+      "commands": [
+        "gflags /p /enable aegis_nids.exe /full",
+        "sc.exe stop AegisNids (wait Stopped) ; sc.exe start AegisNids (wait Running) x10",
+        "aegisctl status per cycle -> RUNNING",
+        "gflags /p /disable aegis_nids.exe",
+        "python tools/host_soak_check.py --start auto --json analysis/current-head/soak-check-20261109.json"
+      ],
+      "limitations": "Negative result: page heap plus restart does not reproduce the #30 corruption, so the root cause is still unnamed and R-08 stays open. This does not prove the crash was fixed. The 24 h soak restarted at the last cycle (2026-11-10T02:50:02) and is IN_PROGRESS; the transcript lives in gitignored admin-evidence."
     }
   ],
   "known_gaps": [
@@ -11276,7 +11299,7 @@
     "E2_count": 185,
     "E3_count": 17,
     "E4_count": 15,
-    "E5_count": 163,
+    "E5_count": 164,
     "E6_count": 0,
     "E7_count": 1
   }
