@@ -75,6 +75,166 @@
       "tracked": 2
     }
   },
+  "evidence_debt_by_status": {
+    "AGENT_CONFIG": {
+      "tracked": 104,
+      "unnamed": 103
+    },
+    "RECORD": {
+      "tracked": 562,
+      "unnamed": 529
+    },
+    "MIXED": {
+      "tracked": 53,
+      "unnamed": 31
+    },
+    "IN_PRODUCT": {
+      "tracked": 652,
+      "unnamed": 500
+    },
+    "MIRROR": {
+      "tracked": 2,
+      "unnamed": 2
+    },
+    "CONTRACT": {
+      "tracked": 35,
+      "unnamed": 26
+    },
+    "VENDORED": {
+      "tracked": 5,
+      "unnamed": 5
+    },
+    "VERIFICATION": {
+      "tracked": 191,
+      "unnamed": 140
+    },
+    "IN_PRODUCT_ADVISORY": {
+      "tracked": 18,
+      "unnamed": 14
+    }
+  },
+  "evidence_debt_by_unit": {
+    ".agents": {
+      "tracked": 100,
+      "unnamed": 100
+    },
+    ".analysis": {
+      "tracked": 12,
+      "unnamed": 12
+    },
+    ".archify": {
+      "tracked": 12,
+      "unnamed": 12
+    },
+    ".freebuff": {
+      "tracked": 1,
+      "unnamed": 1
+    },
+    "<root>": {
+      "tracked": 53,
+      "unnamed": 31
+    },
+    ".github": {
+      "tracked": 3,
+      "unnamed": 2
+    },
+    "aegis_dashboard": {
+      "tracked": 3,
+      "unnamed": 3
+    },
+    "analysis": {
+      "tracked": 131,
+      "unnamed": 112
+    },
+    "brain": {
+      "tracked": 45,
+      "unnamed": 41
+    },
+    "bridge": {
+      "tracked": 13,
+      "unnamed": 8
+    },
+    "config": {
+      "tracked": 2,
+      "unnamed": 2
+    },
+    "configs": {
+      "tracked": 26,
+      "unnamed": 24
+    },
+    "contracts": {
+      "tracked": 14,
+      "unnamed": 14
+    },
+    "docs": {
+      "tracked": 180,
+      "unnamed": 166
+    },
+    "drivers": {
+      "tracked": 12,
+      "unnamed": 7
+    },
+    "evidence": {
+      "tracked": 52,
+      "unnamed": 52
+    },
+    "go": {
+      "tracked": 14,
+      "unnamed": 14
+    },
+    "installer": {
+      "tracked": 1,
+      "unnamed": 0
+    },
+    "lib": {
+      "tracked": 5,
+      "unnamed": 5
+    },
+    "mouth": {
+      "tracked": 6,
+      "unnamed": 6
+    },
+    "nose": {
+      "tracked": 30,
+      "unnamed": 23
+    },
+    "release": {
+      "tracked": 175,
+      "unnamed": 175
+    },
+    "rust-src": {
+      "tracked": 2,
+      "unnamed": 1
+    },
+    "scripts": {
+      "tracked": 128,
+      "unnamed": 101
+    },
+    "shared": {
+      "tracked": 21,
+      "unnamed": 12
+    },
+    "shield": {
+      "tracked": 3,
+      "unnamed": 2
+    },
+    "src": {
+      "tracked": 299,
+      "unnamed": 214
+    },
+    "tests": {
+      "tracked": 191,
+      "unnamed": 140
+    },
+    "tools": {
+      "tracked": 70,
+      "unnamed": 56
+    },
+    "ts_policy": {
+      "tracked": 18,
+      "unnamed": 14
+    }
+  },
   "units": [
     {
       "unit": ".zig-cache",
