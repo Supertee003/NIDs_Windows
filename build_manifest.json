@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "8c935ff",
+  "source_commit": "a1024f2",
   "build_date": "2026-10-23T00:00:00.000000+00:00",
   "build_host": "windows",
   "platform": {
@@ -288,8 +288,8 @@
     },
     {
       "path": "brain/canonical_event.py",
-      "size": 7240,
-      "sha256": "765255372c423303ff16aeb9e3a3fbb15f9fd386a1b40e8e8fb6e369aaa79c33",
+      "size": 12601,
+      "sha256": "8c529a3aa2d6f9ace44435c21f9427d6858c449fc223b94bfbf52085b6ea5745",
       "language": "python/cython"
     },
     {
@@ -858,8 +858,8 @@
     },
     {
       "path": "nose/canonical.go",
-      "size": 18385,
-      "sha256": "616d4a6f093ed796f0fb881fa903ad6e47c8c7464c52f05fdbd97ebad240a9c3",
+      "size": 25852,
+      "sha256": "3bc0dd7da16ada6489b56b5b132b0d8261a04740e5715a0bf32abe9376d724e4",
       "language": "go"
     },
     {
@@ -870,8 +870,8 @@
     },
     {
       "path": "nose/capture.go",
-      "size": 14927,
-      "sha256": "178897d68baada9b0439d4d2fd000b537b6daff9eca41fc5bc07339238a04cf9",
+      "size": 17332,
+      "sha256": "2b9a2e53c11e1408f4ea535cefba7527a510e06a8d294e3b94cc6951d7c014cb",
       "language": "go"
     },
     {
@@ -960,8 +960,8 @@
     },
     {
       "path": "nose/pipe_writer.go",
-      "size": 4696,
-      "sha256": "9800087df7c0fe69024fc4c93740f72c6984a8e5e1961345f3ff4ef5daf5ecdd",
+      "size": 5423,
+      "sha256": "1241cb1b05fcc11c5706d9360063e8a25ca71c07b139a8f075287cbdf1a00a80",
       "language": "go"
     },
     {
@@ -978,8 +978,8 @@
     },
     {
       "path": "nose/signature_classifier.go",
-      "size": 1893,
-      "sha256": "7f306a4b12771c09d96cb1c2757d789b3fe8738bdd2ac33abae12a0ed00a79b3",
+      "size": 2188,
+      "sha256": "5fe6f5e62272954c4d41c596bd3532e19daf42e23ac20d7a50a47ed37c2c188f",
       "language": "go"
     },
     {
@@ -1032,8 +1032,8 @@
     },
     {
       "path": "runtime_manifest.json",
-      "size": 22821,
-      "sha256": "66a8984eb4dcdd13c9123234c8e34fc46abb91282c8dd7fa73e306a6f459133d",
+      "size": 23219,
+      "sha256": "0fac9ba618a812ae983966b0376d145ec583d94d804b9a617ccfa20eb5054d89",
       "language": "json"
     },
     {
@@ -1044,8 +1044,8 @@
     },
     {
       "path": "rust-src/lib.rs",
-      "size": 106716,
-      "sha256": "7698e97f135d7738ea73d80553776a5606d7967850b918af91cb03f8b10b392a",
+      "size": 106371,
+      "sha256": "50262d7e3fb0e9f839ef5599f81b151ef7952a04e543f9aef6897687c871d89f",
       "language": "rust"
     },
     {
@@ -1620,8 +1620,8 @@
     },
     {
       "path": "scripts/run_g2_dupfilter_proof.ps1",
-      "size": 7361,
-      "sha256": "0514196bb2fc536835ceda5c021e418ef07b6adbfdb71c4d4d34dc0a997409f6",
+      "size": 7332,
+      "sha256": "4c18d9348d33c7de4dd92a53d6b7c0ed2e2dae0a5c6223156289bb6785eca982",
       "language": "script"
     },
     {
@@ -1836,8 +1836,8 @@
     },
     {
       "path": "src/all_tests.zig",
-      "size": 11410,
-      "sha256": "9a10e3b9e4b35867f2c1d06e67638633de018d5e6c8ab88cbe2ea7fb557bde0e",
+      "size": 11604,
+      "sha256": "5e18195aa796861e795d59caee32d4f8d63dd001e346074e6b2bf54ceebe3ba5",
       "language": "zig"
     },
     {
@@ -1866,8 +1866,8 @@
     },
     {
       "path": "src/capture/minifilter_reader.zig",
-      "size": 22001,
-      "sha256": "b757bda5e15732851ffcb10b33663601d9b20ee089c5b5f0d83f4581371d493e",
+      "size": 22155,
+      "sha256": "c50118c300fd5a467d91742525813e07527555d93afc0df83433298f7d803a89",
       "language": "zig"
     },
     {
@@ -1878,8 +1878,8 @@
     },
     {
       "path": "src/capture/nose_pipe_reader.zig",
-      "size": 21612,
-      "sha256": "47803ffefd69a137ec631d4fe0d814d321acdd4661338ab42a9af62cfc2b0859",
+      "size": 22760,
+      "sha256": "a3a7ca1d57fe3e16e31ceb34e9c0cc030d477fb8c2732292d2807b3ced0006eb",
       "language": "zig"
     },
     {
@@ -1962,8 +1962,8 @@
     },
     {
       "path": "src/contract/canonical_event.zig",
-      "size": 51324,
-      "sha256": "f74d417ae0ebaa1ad5e4c7edaefa142f3a72a36d4830d19d610298b940a0f4b3",
+      "size": 71609,
+      "sha256": "6ba929fb06b8b7723d13583f5a88db2b9328afa2531854dfa7705e3506bf5101",
       "language": "zig"
     },
     {
@@ -2028,8 +2028,8 @@
     },
     {
       "path": "src/control/handler_registry.zig",
-      "size": 170594,
-      "sha256": "e27e5f2fcf507ad2ace8dc8761048014e104d3aeec26627d7626bbe4ee9cbc8f",
+      "size": 172457,
+      "sha256": "a9a31c239583a2e84c337a58e59a8d7e6d4566284e7483eed81c9f99da302017",
       "language": "zig"
     },
     {
@@ -2058,8 +2058,8 @@
     },
     {
       "path": "src/core/bridge_init.zig",
-      "size": 27215,
-      "sha256": "606475aa72823d6f9b37105bde5a232db8684fc28a3ab2ec3930267dd61f990f",
+      "size": 28134,
+      "sha256": "1303dc14ffda6087f18992ab983d71ef8044e202108cf9b239f2d272d0539e0b",
       "language": "zig"
     },
     {
@@ -2352,8 +2352,8 @@
     },
     {
       "path": "src/forensic/forensic_pipeline.zig",
-      "size": 44072,
-      "sha256": "ade83214543178356ebaa4dde99e82a7dcd7ed17d126e200ce5f1f54c51426fd",
+      "size": 54386,
+      "sha256": "22b6b23cbfe085f7dd396787c48b77d73395c1729511ba9fa6a0fa72d19810b6",
       "language": "zig"
     },
     {
@@ -2490,14 +2490,14 @@
     },
     {
       "path": "src/pipeline/event_processor.zig",
-      "size": 53900,
-      "sha256": "143e05763aa9120bc6ba153ce75e61df30e10d1fae3919fc1b4995ce5ed91848",
+      "size": 55545,
+      "sha256": "e97ad584d12dfcffa90a6c8b68d9d6d5ca87fdaad4ac075d4bcee89816dd2272",
       "language": "zig"
     },
     {
       "path": "src/pipeline/event_queue.zig",
-      "size": 45775,
-      "sha256": "3b796d5b54beb5990efa3fd1422b3f952a8ca98ca5ecbc5feb8c41d6b2d27a34",
+      "size": 50173,
+      "sha256": "baf63674dc3aa96c2146fae79b0d4727bebde5196606d1188e966f99e1f76ee6",
       "language": "zig"
     },
     {
@@ -2526,8 +2526,8 @@
     },
     {
       "path": "src/pipeline/telemetry_threads.zig",
-      "size": 26497,
-      "sha256": "33305d6f03008f1c83a6fc980e6ebfd9e4b48338c95dbba0cb35c7920ec81bc8",
+      "size": 26798,
+      "sha256": "50909c87775f975cb0405dbff7aa244dd39dffb870d0f869ad40a4663f92bca6",
       "language": "zig"
     },
     {
@@ -3432,20 +3432,20 @@
     },
     {
       "path": "src/windows/etw_native.c",
-      "size": 13683,
-      "sha256": "6ac16448ddc8541ce2862c18e0fae8626e6ca5d8a341f7f9d45085bebd76b942",
+      "size": 19596,
+      "sha256": "f9f99bab3582274c1f3ad8d5ceca5ba171174ec2504238e7d7fa86c55838f856",
       "language": "c/c++"
     },
     {
       "path": "src/windows/etw_realtime.zig",
-      "size": 46628,
-      "sha256": "f9bd88315cfa6bb0e7bba47e35f280c7ab954e80c02ac0e6f511abc5b511178e",
+      "size": 46849,
+      "sha256": "e4f2be5be7d5f9a6bb4e3dde05c101776518368533052ad9057353dfd0fd5809",
       "language": "zig"
     },
     {
       "path": "src/windows/fim.zig",
-      "size": 11109,
-      "sha256": "b28cbf5cffcd4af6c4e05b531d7f7b355801249079096e8b2974a43755cd1834",
+      "size": 13401,
+      "sha256": "40a05d66c91967f3d845daa3f48657351c1dbd2079cd33d2c53af77c7cb7d7c6",
       "language": "zig"
     },
     {
@@ -3606,8 +3606,8 @@
     },
     {
       "path": "tools/aegisctl/api/control_api.py",
-      "size": 64605,
-      "sha256": "2cd996a9112fece64925c13faac8291d28757f4a86b5b02f517ce2728a788217",
+      "size": 64993,
+      "sha256": "4316b2788990b5996d4fdf6b5a4c99543796a37b9fe22a985b291974c0c52550",
       "language": "python/cython"
     },
     {
@@ -3684,8 +3684,8 @@
     },
     {
       "path": "tools/create_manifest.py",
-      "size": 19810,
-      "sha256": "970f1e2ced46db1519cc514faf4c88c8dd3cb413b7c381524b9cb504fe9e2640",
+      "size": 20208,
+      "sha256": "e0fb0951c9ec963b5e586c31c12e28c221591df5b68a731c853cf35b77b29930",
       "language": "python/cython"
     },
     {
@@ -3726,8 +3726,8 @@
     },
     {
       "path": "tools/golden_path_evidence.py",
-      "size": 12348,
-      "sha256": "ffc3f90139a0bcb3452fa0b04f83667fb162fd3540fdf2b22c618b855483d8b1",
+      "size": 12412,
+      "sha256": "9892fcd5b7934da945e6e5407eb9f4f86690f4bc62d93a7ea2b7232a715f0415",
       "language": "python/cython"
     },
     {
@@ -3954,8 +3954,8 @@
     },
     {
       "path": "tools/release_candidate.py",
-      "size": 10648,
-      "sha256": "91bb8fa9ba9f7282bcba3ad5fe6c3b79c2cf3597aa8550b35f2e523c64d03d09",
+      "size": 10759,
+      "sha256": "4bbfa8a087c0598e1bbd0e6f70b8150cb6c5ac68dcf306cabb2b1c8dd217acd3",
       "language": "python/cython"
     },
     {

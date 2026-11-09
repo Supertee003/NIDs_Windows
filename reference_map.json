@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T09:59:51.707000+00:00",
+  "generated_at": "2026-11-09T15:04:35.215375+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1510,
+  "total_files": 1519,
   "by_role": {
-    "documentation": 348,
+    "documentation": 350,
     "build-config": 171,
     "other": 18,
     "lockfile": 6,
     "rust-build": 4,
-    "source": 367,
-    "test-artifact": 218,
+    "source": 368,
+    "test-artifact": 224,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -625,6 +625,10 @@
       "role": "documentation"
     },
     "analysis/current-head/issue-31-forensic-batch-stop-line.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/PAYLOAD-ENVELOPE-V3-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -2632,6 +2636,10 @@
       "class": "canonical-source",
       "role": "source"
     },
+    "nose/payload_v3_test.go": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "nose/pipe_writer.go": {
       "class": "canonical-source",
       "role": "source"
@@ -3988,6 +3996,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "shared/protocol/wire_v3.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "shared/runtime/components.json": {
       "class": "canonical-build",
       "role": "build-config"
@@ -5276,6 +5288,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/brain/test_canonical_event_v3.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/brain/test_cython_prefilter.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -5329,6 +5345,18 @@
       "role": "test-artifact"
     },
     "tests/contracts/event_vectors/event_vectors/event_v2_006.bin": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/contracts/event_vectors/event_vectors/event_v3_007.bin": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/contracts/event_vectors/event_vectors/event_v3_008.bin": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/contracts/event_vectors/event_vectors/event_v3_009.bin": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
@@ -5408,9 +5436,17 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/contracts/test_payload_envelope_v3.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/contracts/test_pep_abi_layout.py": {
       "class": "canonical-test",
       "role": "test-artifact"
+    },
+    "tests/contracts/wire_codec_v3_cpp_check.cpp": {
+      "class": "canonical-source",
+      "role": "source"
     },
     "tests/cython/profile_brain_hotspot.py": {
       "class": "canonical-source",

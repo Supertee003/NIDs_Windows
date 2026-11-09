@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T09:59:51.704360+00:00",
+  "generated_at": "2026-11-09T15:04:35.211140+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1510,
+  "total_files": 1519,
   "by_class": {
-    "canonical-docs": 362,
+    "canonical-docs": 364,
     "canonical-build": 182,
     "unclassified": 18,
-    "canonical-source": 663,
-    "canonical-test": 218,
+    "canonical-source": 664,
+    "canonical-test": 224,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -469,6 +469,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 2805
+    },
+    {
+      "path": "analysis/current-head/PAYLOAD-ENVELOPE-V3-001-20261109.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5741
     },
     {
       "path": "analysis/current-head/prepatch-working-tree-safety.diff",
@@ -1026,7 +1032,7 @@
       "path": "AUTHORITY_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 18783
+      "size": 18772
     },
     {
       "path": "brain/__init__.py",
@@ -1086,7 +1092,7 @@
       "path": "brain/canonical_event.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 7240
+      "size": 12601
     },
     {
       "path": "brain/core_routing.py",
@@ -1386,7 +1392,7 @@
       "path": "build_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 135798
+      "size": 135799
     },
     {
       "path": "build_truth.json",
@@ -1596,7 +1602,7 @@
       "path": "CONTRACT_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 12414
+      "size": 12512
     },
     {
       "path": "contracts/fixtures/abi/event_boundaries.json",
@@ -2136,7 +2142,7 @@
       "path": "docs/ARCHITECTURE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 6612
+      "size": 6723
     },
     {
       "path": "docs/ARCHITECTURE_BOUNDARY.md",
@@ -2496,7 +2502,7 @@
       "path": "docs/PEP_QUARANTINE_STATUS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 2466
+      "size": 2829
     },
     {
       "path": "docs/phases/phase-g-through-x-plan.md",
@@ -3162,7 +3168,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1051382
+      "size": 1043359
     },
     {
       "path": "fix_bridge_banner.py",
@@ -3294,7 +3300,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 238523
+      "size": 240185
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3378,7 +3384,7 @@
       "path": "nose/canonical.go",
       "class": "canonical-source",
       "role": "source",
-      "size": 18385
+      "size": 25852
     },
     {
       "path": "nose/canonical_test.go",
@@ -3390,7 +3396,7 @@
       "path": "nose/capture.go",
       "class": "canonical-source",
       "role": "source",
-      "size": 14927
+      "size": 17332
     },
     {
       "path": "nose/capture_hermetic_test.go",
@@ -3477,10 +3483,16 @@
       "size": 17455
     },
     {
+      "path": "nose/payload_v3_test.go",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 10583
+    },
+    {
       "path": "nose/pipe_writer.go",
       "class": "canonical-source",
       "role": "source",
-      "size": 4696
+      "size": 5423
     },
     {
       "path": "nose/pipe_writer_test.go",
@@ -3504,7 +3516,7 @@
       "path": "nose/signature_classifier.go",
       "class": "canonical-source",
       "role": "source",
-      "size": 1893
+      "size": 2188
     },
     {
       "path": "nose/signature_classifier_test.go",
@@ -3552,7 +3564,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9821
+      "size": 10359
     },
     {
       "path": "pytest.ini",
@@ -3570,7 +3582,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 196637
+      "size": 197938
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -5454,7 +5466,7 @@
       "path": "shared/event/canonical_event.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4340
+      "size": 4494
     },
     {
       "path": "shared/federation/fed_codec.py",
@@ -5508,7 +5520,13 @@
       "path": "shared/protocol/wire_v2.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4001
+      "size": 4195
+    },
+    {
+      "path": "shared/protocol/wire_v3.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 6278
     },
     {
       "path": "shared/runtime/components.json",
@@ -5538,13 +5556,13 @@
       "path": "shared/wire/wire_codec.h",
       "class": "canonical-source",
       "role": "source",
-      "size": 18391
+      "size": 24916
     },
     {
       "path": "shared/wire/wire_codec.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 20067
+      "size": 27707
     },
     {
       "path": "shield/Cargo.toml",
@@ -5610,7 +5628,7 @@
       "path": "src/capture/nose_pipe_reader.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 21612
+      "size": 22760
     },
     {
       "path": "src/capture/npcap_adapter.zig",
@@ -5694,7 +5712,7 @@
       "path": "src/contract/canonical_event.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 51324
+      "size": 71609
     },
     {
       "path": "src/contract/event.zig",
@@ -6228,13 +6246,13 @@
       "path": "src/pipeline/event_processor.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 55611
+      "size": 55545
     },
     {
       "path": "src/pipeline/event_queue.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 47556
+      "size": 50173
     },
     {
       "path": "src/pipeline/fim_dedup.zig",
@@ -7374,7 +7392,7 @@
       "path": "SYSTEM_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 18581
+      "size": 18634
     },
     {
       "path": "test_needs.py",
@@ -7441,6 +7459,12 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 5311
+    },
+    {
+      "path": "tests/brain/test_canonical_event_v3.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 3143
     },
     {
       "path": "tests/brain/test_cython_prefilter.py",
@@ -7527,6 +7551,24 @@
       "size": 133
     },
     {
+      "path": "tests/contracts/event_vectors/event_vectors/event_v3_007.bin",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 197
+    },
+    {
+      "path": "tests/contracts/event_vectors/event_vectors/event_v3_008.bin",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 229
+    },
+    {
+      "path": "tests/contracts/event_vectors/event_vectors/event_v3_009.bin",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 165
+    },
+    {
       "path": "tests/contracts/event_vectors/event_vectors/golden_vectors.json",
       "class": "canonical-build",
       "role": "build-config",
@@ -7536,19 +7578,19 @@
       "path": "tests/contracts/event_vectors/event_vectors/README.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 1594
+      "size": 2467
     },
     {
       "path": "tests/contracts/event_vectors/event_vectors/vectors_metadata.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 6599
+      "size": 7339
     },
     {
       "path": "tests/contracts/event_vectors/generate_test_vectors.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 12393
+      "size": 18226
     },
     {
       "path": "tests/contracts/federation_vectors/fed_v1_001.bin",
@@ -7641,10 +7683,22 @@
       "size": 3396
     },
     {
+      "path": "tests/contracts/test_payload_envelope_v3.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 12536
+    },
+    {
       "path": "tests/contracts/test_pep_abi_layout.py",
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 12643
+    },
+    {
+      "path": "tests/contracts/wire_codec_v3_cpp_check.cpp",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 10669
     },
     {
       "path": "tests/cython/profile_brain_hotspot.py",

@@ -1,5 +1,5 @@
 {
-  "head_sha": "8c935ff46f36eaf57b7904445ef4f8148f3b1c30",
+  "head_sha": "a1024f222a0edd3527c367bb812dd4a2fc1326bc",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-09",
   "generator_version": "3.0",
@@ -4925,6 +4925,50 @@
       "actual": "IOCTL_AEGIS_BLOCK_FLOW dispatch returns STATUS_NOT_SUPPORTED and never calls AegisWfpBlockFlow; aegis_pep_enforce reports BLOCK/QUARANTINE as DECISION_ESCALATE reason 8 with filter_id=0 and never references block_flow/with_adapter; capture callout classify actions are exactly FWP_ACTION_PERMIT; no Zig module calls the privileged WFP transport.",
       "impact": "Closes the source-level contradiction in issue #25 without breaking the ABI: the block symbol/IOCTL remain but are unreachable and hard-fail. No production path can create an AEGIS-owned filter or emit host_effect_confirmed=true.",
       "next_step": "Windows E5 of the retired path is NOT_PROVEN and deliberately not claimed; deploy/host verification remains blocked by test-signing and elevated restart coordination."
+    },
+    {
+      "id": "PAYLOAD-ENVELOPE-V3-001-E2-20261109",
+      "head_sha": "a1024f2",
+      "timestamp": "2026-11-09",
+      "title": "Wire v3 bounded payload and capture provenance decode byte-identically in all codecs",
+      "level": "E2",
+      "component": "shared/wire/wire_codec.{h,py}, nose/canonical.go, src/contract/canonical_event.zig, brain/canonical_event.py",
+      "flow_id": "NOSE-CAPTURE-INGRESS-001",
+      "description": "Additive v3 frame: frozen v2 base + 32-byte envelope + 0..1024 payload. Golden vectors 007/008/009 decode, validate and re-encode byte-identically in Zig, Go, C++ and both Python codecs; v1/v2 vectors stay metadata-only. While verifying the slice, four defects were closed: the reserved envelope byte was unchecked in every decoder, the brain v3 codec was unusable (envelope unpacked into nine names for ten fields), the C++ header had no compilation unit, and upstream signature_match promotion was removed from the pipeline.",
+      "files_verified": [
+        "shared/protocol/wire_v3.md",
+        "shared/wire/wire_codec.h",
+        "shared/wire/wire_codec.py",
+        "brain/canonical_event.py",
+        "nose/canonical.go",
+        "nose/capture.go",
+        "nose/pipe_writer.go",
+        "src/contract/canonical_event.zig",
+        "src/capture/nose_pipe_reader.zig",
+        "src/pipeline/event_queue.zig",
+        "src/pipeline/event_processor.zig",
+        "tests/contracts/wire_codec_v3_cpp_check.cpp",
+        "tests/contracts/test_payload_envelope_v3.py",
+        "tests/brain/test_canonical_event_v3.py",
+        "analysis/current-head/PAYLOAD-ENVELOPE-V3-001-20261109.md"
+      ],
+      "tests": [
+        "g++ -std=c++17 -Wall -Wextra -I. tests/contracts/wire_codec_v3_cpp_check.cpp -> wire_codec_v3_cpp_check: PASS",
+        "python -m pytest tests/contracts -q: 60 passed",
+        "python -m pytest tests/brain/test_canonical_event_v3.py -q: 9 passed",
+        "cd nose && go test -count=1 ./...: ok 9.6s",
+        "zig build test: exit 0",
+        "zig build: exit 0",
+        "cmake --build build: exit 0"
+      ],
+      "result": "PASS_E2",
+      "finding": "All codecs now agree on the v3 frame and on the pinned reserved byte; the brain codec is no longer broken, and the C++ reference header is compiled and vector-checked for the first time.",
+      "evidence_artifact": "analysis/current-head/PAYLOAD-ENVELOPE-V3-001-20261109.md",
+      "limitations": [
+        "E2 only: no live capture run exercised the v3 producer at this revision.",
+        "Rollout ordering constraint: deploy the daemon before a v3 Nose build, or the older daemon discards the new frames.",
+        "Removing upstream signature_match promotion is a semantic change; it is intentional per ADR-0001 and recorded here, not proven by a dedicated regression test."
+      ]
     }
   ],
   "known_gaps": [
@@ -10832,7 +10876,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 34,
-    "E2_count": 178,
+    "E2_count": 179,
     "E3_count": 17,
     "E4_count": 15,
     "E5_count": 158,
