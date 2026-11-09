@@ -5432,6 +5432,25 @@
         "aegisctl queue.stats sampled before/after each run"
       ],
       "limitations": "The 3,553 ops/s sustained run's raw result file was overwritten by the next run, so that row rests on the console transcript (recorded as such in the sweep artifact). Threshold approval is still an owner decision; this entry supplies the numbers, not the policy."
+    },
+    {
+      "id": "R09-DECLARED-LIMITATION-E1-20261109",
+      "head_sha": "d461c92",
+      "timestamp": "2026-11-09",
+      "title": "Release limitation declared: test-signed drivers, unsigned runtime binaries, no timestamping, E7 unreachable",
+      "level": "E1",
+      "component": "analysis/current-head/FREEZE-001-20261109.md, scripts/install_aegis.ps1 warning, signing certificates",
+      "flow_id": "META-COVERAGE",
+      "description": "R-09's exit criterion allowed either a verified production signature or a stated limitation. Custody does not exist, so FREEZE-001 section 3.1 now states it where a reader will meet it: the WFP driver is signed by CN=AEGIS NIDS Test Signing (00E92849867308596564D134BB981EF726798E97) and the minifilter by CN=AEGIS Test Signer (60B05537FEB7A40D6F6624FF5C005C09DC245A63), so kernel load depends on the host trusting those certs or on test signing; six runtime binaries are unsigned and rely on bundle manifest hashes; E7 is unreachable until custody exists; no timestamping or EV/attestation signature is produced; and every window 002 measurement comes from one lab host with those test certs.",
+      "artifacts": [
+        "analysis/current-head/FREEZE-001-20261109.md",
+        "analysis/current-head/DEV-PLAN-001-20261109.md"
+      ],
+      "commands": [
+        "Get-AuthenticodeSignature on both installed drivers -> Valid, test signers",
+        "scripts/verify_release.ps1 -> 9 artifacts hash-verified; installer warns 6 unsigned runtime binaries"
+      ],
+      "limitations": "E1: this is a declaration, not a signing capability. It closes R-09 only in the sense the plan permits (limitation stated); it does not make a release a customer can validate, and it must not be read as a production trust chain."
     }
   ],
   "known_gaps": [
@@ -11338,7 +11357,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 40,
+    "E1_count": 41,
     "E2_count": 185,
     "E3_count": 17,
     "E4_count": 15,
