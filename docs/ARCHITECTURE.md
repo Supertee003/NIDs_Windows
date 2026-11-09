@@ -21,11 +21,12 @@ Core (Zig)       = runtime — no direct enforcement
 Brain (Python)   = advisory — cannot enforce
 Shield (Rust)    = PEP — detection-only policy evaluation, no host effect
 Mouth (Rust)     = display only
-WFP driver       = kernel enforcement, สั่งได้จาก Shield/PEP path เท่านั้น
+WFP driver       = kernel telemetry, observe-only (block IOCTL = STATUS_NOT_SUPPORTED)
 ```
 
 ทุก module ใหม่ต้องเข้ากฎ: Detection/Correlation/Cluster ส่ง **evidence** เท่านั้น
-การ block/kill/quarantine เกิดที่ WFP ผ่าน Rust PEP เท่านั้น
+ไม่มี production path ใดสร้าง host effect; block/kill/quarantine เป็นเพียง
+ข้อเสนอเชิงหลักฐาน (ESCALATE reason 8) ให้มนุษย์พิจารณา
 
 ## 2. Pipeline
 
@@ -33,7 +34,7 @@ WFP driver       = kernel enforcement, สั่งได้จาก Shield/PEP
 Npcap capture (passive) ──────┐
 Host telemetry (ETW/FIM/Reg) ─┤→ CanonicalEvent → EventPump → HostTelemetry
 ML flow detector ─────────────┘        → incidents → ClusterCoord → XdrEngine (CEF→SIEM)
-                                       → enforcement = WFP (Shield only)
+                                       → evidence only (no host effect)
 ```
 
 ## 3. Component Map — Phase 32–44 (สถานะตามจริง ตาม Rule 3)

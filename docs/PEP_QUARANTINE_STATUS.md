@@ -1,8 +1,14 @@
-# PEP Quarantine Status: IMPLEMENTED (QUAR-RCPT-112)
+# PEP Quarantine Status: IMPLEMENTED (QUAR-RCPT-112) — HISTORICAL
+
+> **Current decision (2026-11-09, RETIRE-HOST-EFFECT-001 / issue #25):** the
+> product is detection-only. Quarantine is no longer a filter: a quarantine
+> request is reported as `DECISION_ESCALATE` reason `8` with `filter_id = 0`.
+> The enforcement record below is retained as history and must not be read as
+> current capability.
 
 Updated 2026-10-19. Supersedes the earlier "deferred" status.
 
-## Current state
+## Historical state (2026-10-19)
 
 Quarantine is implemented and executes through the Rust PEP as a per-flow
 traffic constraint. No separate filter class exists below the PEP: the
