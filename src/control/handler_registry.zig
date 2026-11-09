@@ -2005,244 +2005,30 @@ const handlers = struct {
         return if (v == 0) ctx_id else v;
     }
 
+    /// DETECTION-ONLY (issue #25): the confirmed product decision is that this
+    /// IDS never mutates the host. The verb stays registered so a legacy caller
+    /// gets an explicit refusal instead of an unknown-method error, but no
+    /// authorization, ceremony or payload can reach a host effect. Cleanup of
+    /// pre-existing filters stays available through enforcement.unblock.
     fn enforcementBlock(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
-        if (ctx.caller_role != .privileged) {
-            ctx.failure_code = "AUTH_DENIED";
-            ctx.failure_state = "UNAUTHORIZED";
-            ctx.failure_message = "enforcement.block requires privileged control-plane authorization";
-            return null;
-        }
-        const dst_ip = payloadU64(payload, "dst_ip") orelse {
-            ctx.failure_code = "INVALID_INPUT";
-            ctx.failure_state = "REJECTED";
-            ctx.failure_message = "dst_ip must be an IPv4 integer";
-            return null;
-        };
-        const dst_port = payloadU64(payload, "dst_port") orelse {
-            ctx.failure_code = "INVALID_INPUT";
-            ctx.failure_state = "REJECTED";
-            ctx.failure_message = "dst_port is required and must be non-zero";
-            return null;
-        };
-        const protocol_number = payloadU64(payload, "protocol") orelse {
-            ctx.failure_code = "INVALID_INPUT";
-            ctx.failure_state = "REJECTED";
-            ctx.failure_message = "protocol is required";
-            return null;
-        };
-        const policy_id = payloadU64(payload, "policy_id") orelse {
-            ctx.failure_code = "INVALID_INPUT";
-            ctx.failure_state = "REJECTED";
-            ctx.failure_message = "policy_id is required for an authorized action";
-            return null;
-        };
-        const event_id = payloadU64(payload, "event_id") orelse {
-            ctx.failure_code = "INVALID_INPUT";
-            ctx.failure_state = "REJECTED";
-            ctx.failure_message = "event_id is required to link an enforcement receipt to a source event";
-            return null;
-        };
-        const trace_id = payloadU64(payload, "trace_id") orelse {
-            ctx.failure_code = "INVALID_INPUT";
-            ctx.failure_state = "REJECTED";
-            ctx.failure_message = "trace_id is required to link an enforcement receipt to a decision trace";
-            return null;
-        };
-        const severity = payloadU64(payload, "severity") orelse 9;
-        if (dst_ip > std.math.maxInt(u32) or dst_port > std.math.maxInt(u16) or protocol_number > std.math.maxInt(u8) or policy_id > std.math.maxInt(u32) or event_id == 0 or trace_id == 0 or severity > std.math.maxInt(u8)) {
-            ctx.failure_code = "INVALID_INPUT";
-            ctx.failure_state = "REJECTED";
-            ctx.failure_message = "flow fields exceed ABI bounds";
-            return null;
-        }
-        // P0/P1 safety invariant: provider readiness is not host-effect proof.
-        // Mutations stay closed here until the gate opens; the isolated
-        // WFP proof procedure is RB-012 (runbook), not this code path.
-        if (!state_mod.g_prevention_gate_open) {
-            ctx.failure_code = "PREVENTION_GATE_CLOSED";
-            ctx.failure_state = "UNAVAILABLE";
-            ctx.failure_message = "blocking is disabled until controlled host-effect proof and receipt validation complete";
-            return null;
-        }
-        // G5: ceremony identity for the two-person match (see
-        // ceremonyRequestId) — the DLL keys the approval on this id.
-        const ceremony_id = ceremonyRequestId(payload, ctx.request_id);
-        var pep = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available.load(.acquire) };
-        const receipt = pep.enforceFlow(@intCast(dst_ip), @intCast(dst_port), @intCast(protocol_number), @intCast(policy_id), @intCast(severity), ctx.caller_pid, 1, ceremony_id) orelse {
-            ctx.failure_code = "ENFORCEMENT_FAILED";
-            ctx.failure_state = "DEGRADED";
-            ctx.failure_message = "Rust PEP did not return a validated host-effect receipt";
-            return null;
-        };
-        const queried = switch (pep.queryFilterResult(receipt.filter_id, 0)) {
-            .present => |state| state,
-            .absent => {
-                _ = pep.unblockFilter(receipt.filter_id, ctx.caller_pid, 1, ctx.request_id);
-                ctx.failure_code = "POSTCONDITION_FAILED";
-                ctx.failure_state = "DEGRADED";
-                ctx.failure_message = "provider-backed exact filter read-back reported absent after block; cleanup was attempted";
-                return null;
-            },
-            .query_error => {
-                _ = pep.unblockFilter(receipt.filter_id, ctx.caller_pid, 1, ctx.request_id);
-                ctx.failure_code = "POSTCONDITION_FAILED";
-                ctx.failure_state = "DEGRADED";
-                ctx.failure_message = "provider-backed exact filter read-back failed after block; cleanup was attempted";
-                return null;
-            },
-        };
-        if (queried.providerStatus() != 0 or queried.remoteIpv4() != @as(u32, @intCast(dst_ip)) or
-            queried.remotePort() != @as(u16, @intCast(dst_port)) or queried.protocol() != @as(u8, @intCast(protocol_number)))
-        {
-            _ = pep.unblockFilter(receipt.filter_id, ctx.caller_pid, 1, ctx.request_id);
-            ctx.failure_code = "POSTCONDITION_FAILED";
-            ctx.failure_state = "DEGRADED";
-            ctx.failure_message = "provider filter did not match the requested exact flow; cleanup was attempted";
-            return null;
-        }
-        const confirmed = enforcement_receipt.EnforcementReceipt{
-            // G5: the ceremony id is the approved identity (what the
-            // two-person match consumed); audit_id stays the control
-            // message truth for the audit trail.
-            .request_id = ceremony_id,
-            .event_id = event_id,
-            .policy_id = @intCast(policy_id),
-            .decision = 1,
-            .status = .enforced,
-            .provider = "wfp",
-            .filter_id = receipt.filter_id,
-            .host_effect_confirmed = true,
-            .reason = "provider_exact_tuple_match",
-            .trace_id = trace_id,
-            .audit_id = ctx.request_id,
-        };
-        if (!confirmed.isSuccess()) {
-            _ = pep.unblockFilter(receipt.filter_id, ctx.caller_pid, 1, ctx.request_id);
-            ctx.failure_code = "RECEIPT_INVALID";
-            ctx.failure_state = "DEGRADED";
-            ctx.failure_message = "complete EnforcementReceipt v1 validation failed; cleanup was attempted";
-            return null;
-        }
-        return std.fmt.allocPrint(a, "{{\"status\":\"ENFORCED\",\"receipt_version\":{},\"request_id\":{},\"event_id\":{},\"policy_id\":{},\"decision\":\"block\",\"provider\":\"wfp\",\"filter_id\":{},\"host_effect_confirmed\":true,\"trace_id\":{},\"audit_id\":{},\"dst_ip\":{},\"dst_port\":{},\"protocol\":{}}}", .{ enforcement_receipt.EnforcementReceipt.VERSION, confirmed.request_id, confirmed.event_id, confirmed.policy_id, confirmed.filter_id, confirmed.trace_id, confirmed.audit_id, dst_ip, dst_port, protocol_number }) catch null;
+        _ = a;
+        _ = payload;
+        ctx.failure_code = "DETECTION_ONLY";
+        ctx.failure_state = "REFUSED";
+        ctx.failure_message = "enforcement.block is refused: AEGIS is detection-only and never applies a host effect";
+        return null;
     }
 
-    /// G5: quarantine control verb. Mirrors enforcementBlock exactly
-    /// (same gates, same read-back, same cleanup discipline); only the
-    /// requested action and the accepted decision differ. There was no
-    /// operator trigger for DECISION_QUARANTINE before this verb — the
-    /// Rust gate and the Zig mirror existed, proven by unit tests, with
-    /// no control-plane path to reach them (RB-013).
+    /// DETECTION-ONLY (issue #25): same refusal as enforcement.block. A
+    /// quarantine is a host effect; this build classifies and escalates, it
+    /// never applies one.
     fn enforcementQuarantine(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
-        if (ctx.caller_role != .privileged) {
-            ctx.failure_code = "AUTH_DENIED";
-            ctx.failure_state = "UNAUTHORIZED";
-            ctx.failure_message = "enforcement.quarantine requires privileged control-plane authorization";
-            return null;
-        }
-        const dst_ip = payloadU64(payload, "dst_ip") orelse {
-            ctx.failure_code = "INVALID_INPUT";
-            ctx.failure_state = "REJECTED";
-            ctx.failure_message = "dst_ip must be an IPv4 integer";
-            return null;
-        };
-        const dst_port = payloadU64(payload, "dst_port") orelse {
-            ctx.failure_code = "INVALID_INPUT";
-            ctx.failure_state = "REJECTED";
-            ctx.failure_message = "dst_port is required and must be non-zero";
-            return null;
-        };
-        const protocol_number = payloadU64(payload, "protocol") orelse {
-            ctx.failure_code = "INVALID_INPUT";
-            ctx.failure_state = "REJECTED";
-            ctx.failure_message = "protocol is required";
-            return null;
-        };
-        const policy_id = payloadU64(payload, "policy_id") orelse {
-            ctx.failure_code = "INVALID_INPUT";
-            ctx.failure_state = "REJECTED";
-            ctx.failure_message = "policy_id is required for an authorized action";
-            return null;
-        };
-        const event_id = payloadU64(payload, "event_id") orelse {
-            ctx.failure_code = "INVALID_INPUT";
-            ctx.failure_state = "REJECTED";
-            ctx.failure_message = "event_id is required to link an enforcement receipt to a source event";
-            return null;
-        };
-        const trace_id = payloadU64(payload, "trace_id") orelse {
-            ctx.failure_code = "INVALID_INPUT";
-            ctx.failure_state = "REJECTED";
-            ctx.failure_message = "trace_id is required to link an enforcement receipt to a decision trace";
-            return null;
-        };
-        const severity = payloadU64(payload, "severity") orelse 9;
-        if (dst_ip > std.math.maxInt(u32) or dst_port > std.math.maxInt(u16) or protocol_number > std.math.maxInt(u8) or policy_id > std.math.maxInt(u32) or event_id == 0 or trace_id == 0 or severity > std.math.maxInt(u8)) {
-            ctx.failure_code = "INVALID_INPUT";
-            ctx.failure_state = "REJECTED";
-            ctx.failure_message = "flow fields exceed ABI bounds";
-            return null;
-        }
-        if (!state_mod.g_prevention_gate_open) {
-            ctx.failure_code = "PREVENTION_GATE_CLOSED";
-            ctx.failure_state = "UNAVAILABLE";
-            ctx.failure_message = "quarantine is disabled until controlled host-effect proof and receipt validation complete";
-            return null;
-        }
-        const ceremony_id = ceremonyRequestId(payload, ctx.request_id);
-        var pep = pep_bindings.PepEnforcer{ .available = state_mod.g_pep_available.load(.acquire) };
-        const receipt = pep.enforceQuarantineFlow(@intCast(dst_ip), @intCast(dst_port), @intCast(protocol_number), @intCast(policy_id), @intCast(severity), ctx.caller_pid, 1, ceremony_id) orelse {
-            ctx.failure_code = "ENFORCEMENT_FAILED";
-            ctx.failure_state = "DEGRADED";
-            ctx.failure_message = "Rust PEP did not return a validated quarantine receipt";
-            return null;
-        };
-        const queried = switch (pep.queryFilterResult(receipt.filter_id, 0)) {
-            .present => |state| state,
-            .absent => {
-                _ = pep.unblockFilter(receipt.filter_id, ctx.caller_pid, 1, ctx.request_id);
-                ctx.failure_code = "POSTCONDITION_FAILED";
-                ctx.failure_state = "DEGRADED";
-                ctx.failure_message = "provider-backed exact filter read-back reported absent after quarantine; cleanup was attempted";
-                return null;
-            },
-            .query_error => {
-                _ = pep.unblockFilter(receipt.filter_id, ctx.caller_pid, 1, ctx.request_id);
-                ctx.failure_code = "POSTCONDITION_FAILED";
-                ctx.failure_state = "DEGRADED";
-                ctx.failure_message = "provider-backed exact filter read-back failed after quarantine; cleanup was attempted";
-                return null;
-            },
-        };
-        if (queried.providerStatus() != 0 or queried.remoteIpv4() != @as(u32, @intCast(dst_ip)) or
-            queried.remotePort() != @as(u16, @intCast(dst_port)) or queried.protocol() != @as(u8, @intCast(protocol_number)))
-        {
-            _ = pep.unblockFilter(receipt.filter_id, ctx.caller_pid, 1, ctx.request_id);
-            ctx.failure_code = "POSTCONDITION_FAILED";
-            ctx.failure_state = "DEGRADED";
-            ctx.failure_message = "provider filter did not match the requested exact flow; cleanup was attempted";
-            return null;
-        }
-        const confirmed = enforcement_receipt.EnforcementReceipt{
-            .request_id = ceremony_id,
-            .event_id = event_id,
-            .policy_id = @intCast(policy_id),
-            .decision = 3,
-            .status = .enforced,
-            .provider = "wfp",
-            .filter_id = receipt.filter_id,
-            .host_effect_confirmed = true,
-            .reason = "provider_exact_tuple_match",
-            .trace_id = trace_id,
-            .audit_id = ctx.request_id,
-        };
-        if (!confirmed.isSuccess()) {
-            _ = pep.unblockFilter(receipt.filter_id, ctx.caller_pid, 1, ctx.request_id);
-            ctx.failure_code = "RECEIPT_INVALID";
-            ctx.failure_state = "DEGRADED";
-            ctx.failure_message = "complete EnforcementReceipt v1 validation failed; cleanup was attempted";
-            return null;
-        }
-        return std.fmt.allocPrint(a, "{{\"status\":\"ENFORCED\",\"receipt_version\":{},\"request_id\":{},\"event_id\":{},\"policy_id\":{},\"decision\":\"quarantine\",\"provider\":\"wfp\",\"filter_id\":{},\"host_effect_confirmed\":true,\"trace_id\":{},\"audit_id\":{},\"dst_ip\":{},\"dst_port\":{},\"protocol\":{}}}", .{ enforcement_receipt.EnforcementReceipt.VERSION, confirmed.request_id, confirmed.event_id, confirmed.policy_id, confirmed.filter_id, confirmed.trace_id, confirmed.audit_id, dst_ip, dst_port, protocol_number }) catch null;
+        _ = a;
+        _ = payload;
+        ctx.failure_code = "DETECTION_ONLY";
+        ctx.failure_state = "REFUSED";
+        ctx.failure_message = "enforcement.quarantine is refused: AEGIS is detection-only and never applies a host effect";
+        return null;
     }
 
     fn enforcementUnblock(a: std.mem.Allocator, payload: std.json.Value, ctx: *HandlerContext) ?[]const u8 {
@@ -2715,19 +2501,35 @@ test "ceremonyRequestId prefers explicit identity, falls back to ctx (G5)" {
     try std.testing.expectEqual(@as(u64, 41), handlers.ceremonyRequestId(bare.value, 41));
 }
 
-test "enforcementQuarantine rejects malformed input without provider (G5)" {
-    // No PEP provider in unit tests: INVALID_INPUT paths must still hold
-    // (auth + field validation precede any provider touch).
+test "B1: enforcement.quarantine is refused before any gate (issue #25)" {
+    // Nothing can reach a quarantine: not a malformed payload, not an
+    // anonymous caller, not a privileged caller with a complete ceremony.
+    // The refusal comes first, so the reason is the product decision rather
+    // than whichever validation would have failed next.
     var ctx = HandlerContext{ .start_ns = 0, .request_id = 39, .caller_role = .privileged, .caller_pid = 0 };
     const bad = std.json.parseFromSlice(std.json.Value, std.testing.allocator, "{\"dst_ip\":1}", .{}) catch unreachable;
     defer bad.deinit();
     try std.testing.expect(handlers.enforcementQuarantine(std.testing.allocator, bad.value, &ctx) == null);
-    try std.testing.expectEqualStrings("INVALID_INPUT", ctx.failure_code.?);
+    try std.testing.expectEqualStrings("DETECTION_ONLY", ctx.failure_code.?);
+
     var anon = HandlerContext{ .start_ns = 0, .request_id = 39, .caller_role = .read, .caller_pid = 0 };
     const full = std.json.parseFromSlice(std.json.Value, std.testing.allocator, "{\"dst_ip\":1,\"dst_port\":80,\"protocol\":6,\"policy_id\":1,\"event_id\":1,\"trace_id\":1}", .{}) catch unreachable;
     defer full.deinit();
     try std.testing.expect(handlers.enforcementQuarantine(std.testing.allocator, full.value, &anon) == null);
-    try std.testing.expectEqualStrings("AUTH_DENIED", anon.failure_code.?);
+    try std.testing.expectEqualStrings("DETECTION_ONLY", anon.failure_code.?);
+
+    var privileged = HandlerContext{ .start_ns = 0, .request_id = 39, .caller_role = .privileged, .caller_pid = 0 };
+    try std.testing.expect(handlers.enforcementQuarantine(std.testing.allocator, full.value, &privileged) == null);
+    try std.testing.expectEqualStrings("DETECTION_ONLY", privileged.failure_code.?);
+}
+
+test "B1: enforcement.block is refused before any gate (issue #25)" {
+    var payload_ctx = HandlerContext{ .start_ns = 0, .request_id = 40, .caller_role = .privileged, .caller_pid = 0 };
+    const payload = std.json.parseFromSlice(std.json.Value, std.testing.allocator, "{\"dst_ip\":1,\"dst_port\":443,\"protocol\":6,\"policy_id\":2,\"event_id\":3,\"trace_id\":4}", .{}) catch unreachable;
+    defer payload.deinit();
+    try std.testing.expect(handlers.enforcementBlock(std.testing.allocator, payload.value, &payload_ctx) == null);
+    try std.testing.expectEqualStrings("DETECTION_ONLY", payload_ctx.failure_code.?);
+    try std.testing.expectEqualStrings("REFUSED", payload_ctx.failure_state.?);
 }
 
 test "metricsSnapshot prints lifetime counters at full u64 width" {
