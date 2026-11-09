@@ -1,7 +1,7 @@
 {
   "head_sha": "a1024f222a0edd3527c367bb812dd4a2fc1326bc",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-09",
+  "last_updated_at": "2026-11-09T23:11:52+07:00",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -4966,9 +4966,44 @@
       "finding": "All codecs now agree on the v3 frame and on the pinned reserved byte; the brain codec is no longer broken, and the C++ reference header is compiled and vector-checked for the first time.",
       "evidence_artifact": "analysis/current-head/PAYLOAD-ENVELOPE-V3-001-20261109.md",
       "limitations": [
-        "E2 only: no live capture run exercised the v3 producer at this revision.",
-        "Rollout ordering constraint: deploy the daemon before a v3 Nose build, or the older daemon discards the new frames.",
-        "Removing upstream signature_match promotion is a semantic change; it is intentional per ADR-0001 and recorded here, not proven by a dedicated regression test."
+        "E2 only for codec-level agreement; the live producer/consumer run is recorded separately as WIRE-V3-ROLLOUT-001-E5-20261109 (daemon-first rollout measured on this host).",
+        "Rollout ordering constraint: deploy the daemon before a v3 Nose build, or the older daemon drops every v3 frame (measured: +24 drops in 19 s)."
+      ]
+    },
+    {
+      "id": "WIRE-V3-ROLLOUT-001-E5-20261109",
+      "head_sha": "a1024f2",
+      "timestamp": "2026-11-09",
+      "title": "Wire v3 frames flow end-to-end on the live Npcap to pipe to Zig path while the v3-unaware daemon drops exactly those frames",
+      "level": "E5",
+      "component": "nose/capture.go + nose/pipe_writer.go + src/capture/nose_pipe_reader.zig + installed AegisNids service binary",
+      "flow_id": "DATA-001",
+      "description": "Daemon-first rollout on the Windows host with a real adapter. Phase A: HEAD nose (pid 18968) bound to VMnet1 192.168.126.1 with -require-iface against the previously installed daemon (pid 5412); it logged 'first canonical frame sent: 1193 bytes' (4-byte length + 165-byte v3 header + 1024-byte payload) and the old daemon, which classifies frame length before deserialization, counted nose_frames_dropped 0 -> 24 over ~19 s while nose_frames_read stayed on legacy frames only. Phase B: service AegisNids stopped, binary replaced with the HEAD build (sha256 8FC6015B..., previous kept as aegis_nids.exe.pre-wirev3), started as pid 24804; the same nose then produced nose_frames_read 43 / submitted 43 / rejected 0 / dropped 0 / pipe_errors 0 with rules 23 and policies 6 preserved. Phase C after 648.7 s uptime: read 67 / submitted 67 / rejected 0 / dropped 0, last_event_id 98, flows 12, tier3 READY with host_effect_capable false. forensic verify after the swap: verified true, records 87,795, retained 16,384, integrity ok.",
+      "files_verified": [
+        "admin-evidence/wire-v3-e5-20261109/health-baseline.json",
+        "admin-evidence/wire-v3-e5-20261109/health-phaseA.json",
+        "admin-evidence/wire-v3-e5-20261109/health-phaseB.json",
+        "admin-evidence/wire-v3-e5-20261109/health-phaseC.json",
+        "admin-evidence/wire-v3-e5-20261109/nose-phaseA.log",
+        "admin-evidence/wire-v3-e5-20261109/rollout.log",
+        "admin-evidence/wire-v3-e5-20261109/e5_rollout.ps1",
+        "analysis/current-head/WIRE-V3-ROLLOUT-001-20261109.md"
+      ],
+      "tests": [
+        "python tools/aegisctl.py health --json at baseline, phase A, phase B, phase C",
+        "python tools/aegisctl.py forensic verify -> verified true, integrity ok",
+        "sc.exe query AegisNids after swap -> RUNNING",
+        "Get-FileHash installed runtime exe equals zig-out build (8FC6015B...)"
+      ],
+      "result": "PASS_E5",
+      "finding": "The strict v3 decoder accepted every live v3 frame (67/67, rejected 0) with CRC, reserved-byte, length and provenance checks enforced, and the pre-swap daemon demonstrably dropped the same stream (+24 counted drops, zero reads). The rollout order is confirmed by measurement, not by argument: daemon first bounds the loss to the restart window, the reverse order loses every captured frame.",
+      "evidence_artifact": "analysis/current-head/WIRE-V3-ROLLOUT-001-20261109.md",
+      "limitations": [
+        "No independent CRC recomputation of live frames: the out-of-process pipe tap could not accept the nose Go client (pywin32 instance/Go open mismatch), so rejected==0 at the product decoder is the proxy.",
+        "Payload bytes were not read back from the forensic ring: the control surface has no per-record inspection (forensics.show returns control_daemon_query_failed_or_not_implemented).",
+        "Sparse IPv4 probe traffic only (67 frames, ICMP/TCP): no throughput, back-pressure or IPv6 v3-tail coverage.",
+        "Restart window cost measured at 31 nose-side drops in 14 s; this is operational, not a code defect.",
+        "Not E6/E7: single host, single adapter, no release packaging."
       ]
     }
   ],
@@ -10880,7 +10915,7 @@
     "E2_count": 179,
     "E3_count": 17,
     "E4_count": 15,
-    "E5_count": 158,
+    "E5_count": 159,
     "E6_count": 0,
     "E7_count": 1
   }
