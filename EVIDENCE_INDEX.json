@@ -4924,7 +4924,8 @@
       ],
       "actual": "IOCTL_AEGIS_BLOCK_FLOW dispatch returns STATUS_NOT_SUPPORTED and never calls AegisWfpBlockFlow; aegis_pep_enforce reports BLOCK/QUARANTINE as DECISION_ESCALATE reason 8 with filter_id=0 and never references block_flow/with_adapter; capture callout classify actions are exactly FWP_ACTION_PERMIT; no Zig module calls the privileged WFP transport.",
       "impact": "Closes the source-level contradiction in issue #25 without breaking the ABI: the block symbol/IOCTL remain but are unreachable and hard-fail. No production path can create an AEGIS-owned filter or emit host_effect_confirmed=true.",
-      "next_step": "Windows E5 of the retired path is NOT_PROVEN and deliberately not claimed; deploy/host verification remains blocked by test-signing and elevated restart coordination."
+      "next_step": "Windows E5 of the retired path is NOT_PROVEN and deliberately not claimed; deploy/host verification remains blocked by test-signing and elevated restart coordination.",
+      "evidence_artifact": "analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md"
     },
     {
       "id": "PAYLOAD-ENVELOPE-V3-001-E2-20261109",
