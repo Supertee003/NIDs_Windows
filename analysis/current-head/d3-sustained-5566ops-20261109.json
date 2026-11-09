@@ -1,0 +1,35 @@
+{
+  "mode": "sustained",
+  "workers": 4,
+  "duration_s": 60.0,
+  "file_ops": 333952,
+  "file_ops_per_s": 5565.8,
+  "events_pushed": 1984044,
+  "events_dropped": 5470,
+  "drop_ratio_pct": 0.2757,
+  "depth_peak": 11299,
+  "queue_size": 16384,
+  "by_source_delta": {
+    "capture_etw": {
+      "pushed": 971570,
+      "dropped": 5470
+    },
+    "capture_fim": {
+      "pushed": 1004412,
+      "dropped": 0
+    },
+    "capture_host_net": {
+      "pushed": 1,
+      "dropped": 0
+    },
+    "capture_registry": {
+      "pushed": 1,
+      "dropped": 0
+    },
+    "capture_wfp": {
+      "pushed": 8060,
+      "dropped": 0
+    }
+  },
+  "measured_at": "2026-11-10T02:59:15"
+}

@@ -5389,6 +5389,49 @@
         "python tools/host_soak_check.py --start auto --json analysis/current-head/soak-check-20261109.json"
       ],
       "limitations": "Negative result: page heap plus restart does not reproduce the #30 corruption, so the root cause is still unnamed and R-08 stays open. This does not prove the crash was fixed. The 24 h soak restarted at the last cycle (2026-11-10T02:50:02) and is IN_PROGRESS; the transcript lives in gitignored admin-evidence."
+    },
+    {
+      "id": "D6-DRIVER-ROLLBACK-E5-20261109",
+      "head_sha": "d461c92",
+      "timestamp": "2026-11-09",
+      "title": "Driver rollback exercised in both directions: previous signed build loads, current build restores, daemon returns to RUNNING",
+      "level": "E5",
+      "component": "C:\\Program Files\\AEGIS NIDS\\drivers\\aegis_wfp.sys, AegisWfp, AegisNids",
+      "flow_id": "META-COVERAGE",
+      "description": "R-06's exit criterion is 'drivers RUNNING across a reboot with rollback exercised once'. The rollback half ran without a reboot: daemon stopped first, AegisWfp stopped, the previous signed build AD23EFB97C06D8E73BF34D09BF5B9A5076BDA378D5A97ECD72CACA82183AEEAF installed and started (Valid, RUNNING), stopped again, the current build 06CC8E238B79BEC3782F4036BACF058D6B5291B030E59D061FD692F82FB96B50 restored and started (Valid, RUNNING), then AegisNids started last per READINESS-001. Final state: AegisNids, AegisWfp and AegisMinifilter RUNNING and the control plane answering RUNNING. The current driver is preserved as admin-evidence\\host-window-20261109\\aegis_wfp.current.sys.",
+      "artifacts": [
+        "analysis/current-head/HOST-WINDOW-002-20261109.md",
+        "analysis/current-head/DEV-PLAN-001-20261109.md"
+      ],
+      "commands": [
+        "sc.exe stop AegisNids ; sc.exe stop AegisWfp",
+        "Copy-Item build\\x64\\wfp\\aegis_wfp.sys.bak-pre-rebuild -> installed ; sc.exe start AegisWfp",
+        "sc.exe stop AegisWfp ; Copy-Item saved current -> installed ; sc.exe start AegisWfp",
+        "sc.exe start AegisNids ; aegisctl status -> RUNNING"
+      ],
+      "limitations": "E5 for the rollback path only. It does not demonstrate boot survival (R-06's reboot half) and it reverted to a driver from an earlier build, not to a shipping release. Transcript in gitignored admin-evidence."
+    },
+    {
+      "id": "D3B-RATE-SWEEP-E5-20261109",
+      "head_sha": "d461c92",
+      "timestamp": "2026-11-09",
+      "title": "Rate sweep: no ingress drop at 3,553 sustained file-ops/s, 0.28% at 5,566, 0.72% at 10,127 — always capture_etw/fim_change",
+      "level": "E5",
+      "component": "src/pipeline/event_queue.zig counters, queue.stats, deployed aegis_nids.exe D39A1D2CC6CEE76FA0AE35EBB0B497319FA252AC18C1285F408F3E8490925C90",
+      "flow_id": "QLOSS-HEALTH-001",
+      "description": "Four runs against the deployed daemon, all create+delete churn of 64-byte files. Burst 4,765 file-ops/s for 8.4 s: 111,800 events, 0 drops, peak depth 3,842. Burst 10,127 file-ops/s for 19.8 s: 663,778 events, 4,795 drops (0.72%), peak 12,347. Sustained 3,553 file-ops/s for 120 s: 2,570,718 events, 0 drops, peak 4,207. Sustained 5,566 file-ops/s for 60 s: 1,984,044 events, 5,470 drops (0.276%), peak 11,299. Every drop in every run is capture_etw / fim_change / source_quota_shed, while capture_fim carried the same churn with 0 drops. Interpretation: a short spike is absorbed where a sustained rate above roughly 4-5k file-ops/s is not, and the shedding lane is the duplicate ETW FIM lane. Because minifilter records arrive as packet_captured (KIND-ATTR-001), the complete copy of the shed events is not visible to fim_change consumers, which turns a duplicate-lane shed into real FIM loss.",
+      "artifacts": [
+        "analysis/current-head/d3-rate-sweep-20261109.json",
+        "analysis/current-head/d3-sustained-5566ops-20261109.json",
+        "analysis/current-head/d3-burst-attribution-20261109.json",
+        "analysis/current-head/HOST-WINDOW-002-20261109.md"
+      ],
+      "commands": [
+        "D3_SECONDS=120 D3_WORKERS=2 python .work/d3_sustained.py",
+        "D3_SECONDS=60 D3_WORKERS=4 python .work/d3_sustained.py",
+        "aegisctl queue.stats sampled before/after each run"
+      ],
+      "limitations": "The 3,553 ops/s sustained run's raw result file was overwritten by the next run, so that row rests on the console transcript (recorded as such in the sweep artifact). Threshold approval is still an owner decision; this entry supplies the numbers, not the policy."
     }
   ],
   "known_gaps": [
@@ -11299,7 +11342,7 @@
     "E2_count": 185,
     "E3_count": 17,
     "E4_count": 15,
-    "E5_count": 164,
+    "E5_count": 166,
     "E6_count": 0,
     "E7_count": 1
   }
