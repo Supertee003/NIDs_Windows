@@ -1,0 +1,16 @@
+{
+  "verdict": "IN_PROGRESS",
+  "soak_start": "2026-11-10T02:40:55.080973",
+  "checked_at": "2026-11-10T02:41:42",
+  "elapsed_hours": 0.01,
+  "required_hours": 24.0,
+  "services": {
+    "AegisNids": "RUNNING",
+    "AegisAggregator": "RUNNING",
+    "AegisWfp": "RUNNING",
+    "AegisMinifilter": "RUNNING"
+  },
+  "daemon_uptime_hours": 0.01,
+  "daemon_state": "RUNNING",
+  "problems": []
+}

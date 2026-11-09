@@ -5304,6 +5304,68 @@
         "python -m pytest tests/tools/test_package_signature_gate.py -q  -> 3 passed"
       ],
       "limitations": "E2: the gate and its test are static assertions over the packaging script; they do not sign a driver or load one. Why the release path had been producing unsigned-driver bundles unnoticed is not explained by this entry -- it is the same class of failure as R-05, a green installer log standing in for a byte comparison."
+    },
+    {
+      "id": "D3-LOSS-ATTRIBUTION-E5-20261109",
+      "head_sha": "d461c92",
+      "timestamp": "2026-11-09",
+      "title": "Attributable burst loss: 4,795 drops in a 100k-file churn, every one of them capture_etw/fim_change via source_quota_shed",
+      "level": "E5",
+      "component": "src/pipeline/event_queue.zig counters, control handler queue.stats, deployed aegis_nids.exe D39A1D2CC6CEE76FA0AE35EBB0B497319FA252AC18C1285F408F3E8490925C90",
+      "flow_id": "QLOSS-HEALTH-001",
+      "description": "Two bursts ran against the deployed daemon, sampling queue.stats every 250 ms and diffing per source and per source x kind. Light burst: 20,000 create + 20,000 delete in 8.40 s (4,765 file-ops/s) pushed 111,800 events with 0 drops and a peak depth of 3,842 of 16,384. Heavy burst: 4 workers x 25,000 files (100,000 create + 100,000 delete) in 19.75 s (10,127 file-ops/s) pushed 663,778 events with 4,795 drops and a peak depth of 12,347 of 16,384. Attribution: capture_etw 359,918 pushed / 4,795 dropped; capture_fim 300,995 / 0; capture_wfp 2,862 / 0; capture_registry 2 / 0. Per source x kind every drop is capture_etw/fim_change. All 4,795 are source_quota_shed with reserved_tail_shed 0, so the reserved network tail was never touched: drop ratio 0.72% of the burst.",
+      "artifacts": [
+        "analysis/current-head/d3-burst-attribution-20261109.json",
+        "analysis/current-head/d3-burst-idle-reference-20261109.json",
+        "analysis/current-head/HOST-WINDOW-002-20261109.md"
+      ],
+      "commands": [
+        "python .work/d3_burst.py                                   (light: 20k files, 1 worker)",
+        "D3_FILES=25000 D3_WORKERS=4 python .work/d3_burst.py       (heavy: 100k files, 4 workers)",
+        "aegisctl queue.stats sampled at 250 ms, before/after deltas per source and per source x kind"
+      ],
+      "limitations": "The drop is attributable per source and per shed counter, but the per-kind half is only trustworthy for the ETW lane: KIND-ATTR-001 means 300,992 of 300,995 capture_fim events are counted as packet_captured. R-07 also requires an owner-agreed threshold; 0.72% of a deliberate 10k ops/s burst is a measurement, not a decision."
+    },
+    {
+      "id": "KIND-ATTR-001-E5-20261109",
+      "head_sha": "d461c92",
+      "timestamp": "2026-11-09",
+      "title": "Minifilter FIM records ingress as kind packet_captured: no branch of pushDecodedFrame can produce fim_change",
+      "level": "E5",
+      "component": "src/capture/minifilter_reader.zig, src/pipeline/event_queue.zig, src/contract/canonical_event.zig",
+      "flow_id": "QLOSS-HEALTH-001",
+      "description": "minifilter_reader.submitRecord builds its event with canonical.create(.minifilter), which sets event_type = .custom and leaves it there. event_queue.pushDecodedFrame maps .custom => .packet_captured, and its switch has no branch yielding .fim_change. Measured consequence in the heavy burst: 300,992 of 300,995 capture_fim events were counted and delivered as packet_captured with a file path in the payload, while the ETW lane tagged the same churn fim_change (358,570). Two sensors therefore disagree about the kind of the same activity, and any consumer keyed on fim_change cannot see minifilter records at all.",
+      "artifacts": [
+        "analysis/current-head/d3-burst-attribution-20261109.json",
+        "analysis/current-head/HOST-WINDOW-002-20261109.md"
+      ],
+      "commands": [
+        "python tools/wfp_filter_audit.py / aegisctl queue.stats -> by_source_kind shows capture_fim/packet_captured 300,992",
+        "read src/capture/minifilter_reader.zig submitRecord and src/pipeline/event_queue.zig pushDecodedFrame"
+      ],
+      "limitations": "Not repaired deliberately: mapping .minifilter to .fim_change would add a second duplicate FIM stream to every correlator keyed on fim_change (the ETW lane already supplies it), which is a loss-versus-duplication decision of the same class as issue #29. Options are recorded in DEV-PLAN section 3.5 instead of being applied silently."
+    },
+    {
+      "id": "READINESS-001-E5-20261109",
+      "head_sha": "d461c92",
+      "timestamp": "2026-11-09",
+      "title": "A daemon started before its kernel driver advertises DEGRADED forever: readiness is evaluated once and never re-checked",
+      "level": "E5",
+      "component": "src/daemon.zig (bridge_init.allActive -> transition(.degraded)), AegisNids service",
+      "flow_id": "META-COVERAGE",
+      "description": "After the corrected install the deployed daemon reported state DEGRADED while all seven subsystems reported RUNNING. The startup log explains it: '[WFP TELEMETRY] kernel read provider unavailable', '[CAPTURE] network acquisition mode=none reason=no_source', 'runtime degraded: required bridge dependency is unavailable' -- the installer started the service while the WFP driver was still Stopped, so bridge_init.allActive() was false and daemon.zig took transition(.degraded). The state is decided once at startup and is not re-evaluated when the bridge appears. Restarting AegisNids with both drivers Running gave state RUNNING, 'Npcap capture loop starting', registry rule 2 matches on writes, and 18,838 events with 0 drops in 25 s across capture_wfp 6,762, capture_etw 6,814, capture_fim 5,251, capture_registry 9, capture_host_net 2. The soak clock is this restart (2026-11-10T02:40:55) and tools/host_soak_check.py --start auto evaluates it.",
+      "artifacts": [
+        "analysis/current-head/HOST-WINDOW-002-20261109.md",
+        "analysis/current-head/soak-check-20261109.json",
+        "tools/host_soak_check.py",
+        "analysis/current-head/HOST-WINDOW-001-20261109.md"
+      ],
+      "commands": [
+        "Get-Content 'C:\\Program Files\\AEGIS NIDS\\logs\\aegis-daemon-diagnostic.log' | Select-String 'degraded'",
+        "Restart-Service AegisNids -Force   (elevated, with both drivers already Running)",
+        "python tools/host_soak_check.py --start auto --json analysis/current-head/soak-check-20261109.json"
+      ],
+      "limitations": "E5 on this host: proves the ordering effect and that the correct order yields RUNNING, not that every start order is safe. The one-shot readiness evaluation is a design smell that remains: a bridge that becomes active later should move the state machine instead of requiring a restart. The 24 h soak has only just started and is IN_PROGRESS, not passed."
     }
   ],
   "known_gaps": [
@@ -11214,7 +11276,7 @@
     "E2_count": 185,
     "E3_count": 17,
     "E4_count": 15,
-    "E5_count": 160,
+    "E5_count": 163,
     "E6_count": 0,
     "E7_count": 1
   }

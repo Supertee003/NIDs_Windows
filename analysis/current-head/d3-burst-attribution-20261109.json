@@ -1,0 +1,79 @@
+{
+  "burst": {
+    "workers": 4,
+    "files_created": 100000,
+    "files_deleted": 100000,
+    "root": "temp dir under .work",
+    "elapsed_s": 19.75,
+    "events_per_s": 10126.8
+  },
+  "queue": {
+    "pushed_total_delta": 663778,
+    "dropped_total_delta": 4795,
+    "source_quota_shed_delta": 4795,
+    "reserved_tail_shed_delta": 0,
+    "depth_before": 0,
+    "depth_peak_observed": 12347,
+    "queue_size": 16384,
+    "source_occupancy_cap": 7168,
+    "samples": 91,
+    "max_depth_in_samples": 12303
+  },
+  "by_source_delta": {
+    "capture_etw": {
+      "pushed": 359918,
+      "dropped": 4795
+    },
+    "capture_fim": {
+      "pushed": 300995,
+      "dropped": 0
+    },
+    "capture_host_net": {
+      "pushed": 1,
+      "dropped": 0
+    },
+    "capture_registry": {
+      "pushed": 2,
+      "dropped": 0
+    },
+    "capture_wfp": {
+      "pushed": 2862,
+      "dropped": 0
+    }
+  },
+  "by_source_kind_delta": {
+    "capture_etw/etw_process_create": {
+      "pushed": 7,
+      "dropped": 0
+    },
+    "capture_etw/fim_change": {
+      "pushed": 358570,
+      "dropped": 4795
+    },
+    "capture_etw/reg_change": {
+      "pushed": 1341,
+      "dropped": 0
+    },
+    "capture_fim/fim_change": {
+      "pushed": 3,
+      "dropped": 0
+    },
+    "capture_fim/packet_captured": {
+      "pushed": 300992,
+      "dropped": 0
+    },
+    "capture_host_net/host_socket_observed": {
+      "pushed": 1,
+      "dropped": 0
+    },
+    "capture_registry/reg_change": {
+      "pushed": 2,
+      "dropped": 0
+    },
+    "capture_wfp/packet_captured": {
+      "pushed": 2862,
+      "dropped": 0
+    }
+  },
+  "measured_at": "2026-11-10T02:37:48"
+}
