@@ -1,5 +1,5 @@
 {
-  "head_sha": "bb5d780dd60d85dedf0444532afedb72e84ebee1",
+  "head_sha": "8c935ff46f36eaf57b7904445ef4f8148f3b1c30",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-09",
   "generator_version": "3.0",
@@ -4894,6 +4894,37 @@
       "actual": "AUTHORITY_MAP.json simultaneously said the XDR recording-only route had 'Windows E5 host proof remains open' and 'CLOSED 2026-11-05 ... Windows E5 host evidence is recorded (XDR-005-E5-20261105)'. SYSTEM_MAP.json and the manifest generator repeated the one-sided phrase. All three now state the same truthful split: host proof of the recording-only route was recorded on the deployed fc108b0 build on 2026-11-05, and no current-head E5 has been run since. Re-verified that the fabric stays out of the production runtime order (LAB / golden_path false), that no dispatched_to_pep or isEnforcement claim exists, that Decision carries no action field, that xdr.list emits no action/enforce key, and that replayFromReceipt rejects a non-enforcement, wrong-detector, zero-sequence, or tampered-hash receipt.",
       "impact": "Closes issue #26 at E2 by removing a contradictory source-of-truth document rather than narrating around it. It does not add or remove any XDR capability and does not claim current-head Windows E5; the recording-only route remains advisory evidence with no policy/PEP/DEFCON/host-effect consumer.",
       "next_step": "Current-head Windows E5 of the recording-only route remains NOT_PROVEN. Any claim above E2 requires installing a build that contains this HEAD and exercising a live multi-source freeze, receipt and replay on the host."
+    },
+    {
+      "id": "RETIRE-HOST-EFFECT-001-E2-20261109",
+      "title": "WFP block IOCTL and Rust PEP host-effect path retired; product is detection-only",
+      "level": "E2",
+      "component": "drivers/wfp_callout/aegis_wfp.c; rust-src/lib.rs; tests/wfp/*; tools/create_manifest.py; docs/adr/*; docs/architecture/*",
+      "flow_id": "IDS-WFP-001",
+      "head_sha": "bb5d780dd60d85dedf0444532afedb72e84ebee1",
+      "timestamp": "2026-11-09",
+      "result": "PASS_E2",
+      "files_verified": [
+        "analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md",
+        "drivers/wfp_callout/aegis_wfp.c",
+        "rust-src/lib.rs",
+        "tests/wfp/test_t11_wfp_enforcement.py",
+        "tests/wfp/test_t11_windows_host.py",
+        "scripts/run_g2_dupfilter_proof.ps1",
+        "tools/create_manifest.py",
+        "runtime_manifest.json"
+      ],
+      "tests": [
+        "scripts/wdk_build_production.ps1 (PASS; aegis_wfp.sys 2ECE7D52...)",
+        "cargo build --release (PASS, no warnings)",
+        "cargo test (51 passed, 1 ignored, +3 passed)",
+        "zig build (PASS)",
+        "zig build test (PASS)",
+        "python -m pytest -q (1018 passed, 4 skipped)"
+      ],
+      "actual": "IOCTL_AEGIS_BLOCK_FLOW dispatch returns STATUS_NOT_SUPPORTED and never calls AegisWfpBlockFlow; aegis_pep_enforce reports BLOCK/QUARANTINE as DECISION_ESCALATE reason 8 with filter_id=0 and never references block_flow/with_adapter; capture callout classify actions are exactly FWP_ACTION_PERMIT; no Zig module calls the privileged WFP transport.",
+      "impact": "Closes the source-level contradiction in issue #25 without breaking the ABI: the block symbol/IOCTL remain but are unreachable and hard-fail. No production path can create an AEGIS-owned filter or emit host_effect_confirmed=true.",
+      "next_step": "Windows E5 of the retired path is NOT_PROVEN and deliberately not claimed; deploy/host verification remains blocked by test-signing and elevated restart coordination."
     }
   ],
   "known_gaps": [
@@ -10801,7 +10832,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 34,
-    "E2_count": 177,
+    "E2_count": 178,
     "E3_count": 17,
     "E4_count": 15,
     "E5_count": 158,

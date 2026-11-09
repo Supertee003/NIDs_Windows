@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T08:37:11.395336+00:00",
+  "generated_at": "2026-11-09T09:59:51.704360+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1509,
+  "total_files": 1510,
   "by_class": {
-    "canonical-docs": 361,
+    "canonical-docs": 362,
     "canonical-build": 182,
     "unclassified": 18,
     "canonical-source": 663,
@@ -487,6 +487,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 1864
+    },
+    {
+      "path": "analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5062
     },
     {
       "path": "analysis/current-head/STOPLINE-WFP-READINESS-001-20261109.md",
@@ -1686,13 +1692,13 @@
       "path": "docs/adr/0001-architecture-lock.md",
       "class": "canonical-docs",
       "role": "architecture-decision",
-      "size": 2753
+      "size": 2810
     },
     {
       "path": "docs/adr/0002-runtime-convergence-core-is-canonical.md",
       "class": "canonical-docs",
       "role": "architecture-decision",
-      "size": 2904
+      "size": 3268
     },
     {
       "path": "docs/adr/0003-event-canonical-authority-and-capture-ownership.md",
@@ -1854,7 +1860,7 @@
       "path": "docs/ai-context/00-system-context.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 1317
+      "size": 1353
     },
     {
       "path": "docs/ai-context/01-semantic-map.md",
@@ -1890,7 +1896,7 @@
       "path": "docs/ai-context/06-security-boundary.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 1123
+      "size": 1562
     },
     {
       "path": "docs/ai-context/07-error-policy.md",
@@ -1914,7 +1920,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 56948
+      "size": 58463
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -1938,13 +1944,13 @@
       "path": "docs/architecture/ARCHITECTURE-TRUTH.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 14078
+      "size": 14102
     },
     {
       "path": "docs/architecture/ARCHITECTURE_CANONICAL.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 10128
+      "size": 10307
     },
     {
       "path": "docs/architecture/authority-map.md",
@@ -1956,7 +1962,7 @@
       "path": "docs/architecture/authority-matrix.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 3424
+      "size": 3453
     },
     {
       "path": "docs/architecture/BUILD-TRUTH.md",
@@ -2028,7 +2034,7 @@
       "path": "docs/architecture/LANGUAGE_OWNERSHIP.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 4343
+      "size": 4437
     },
     {
       "path": "docs/architecture/legacy-audit-nids-analyze.md",
@@ -2070,13 +2076,13 @@
       "path": "docs/architecture/RUNTIME_SPINE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5748
+      "size": 5827
     },
     {
       "path": "docs/architecture/SHIELD-AUTHORITY.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5569
+      "size": 5641
     },
     {
       "path": "docs/architecture/SHIELD_ARCHITECTURE_DECISION.md",
@@ -2130,7 +2136,7 @@
       "path": "docs/ARCHITECTURE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 6591
+      "size": 6612
     },
     {
       "path": "docs/ARCHITECTURE_BOUNDARY.md",
@@ -2184,7 +2190,7 @@
       "path": "docs/FILE_CLASSIFICATION.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 7322
+      "size": 7419
     },
     {
       "path": "docs/GATE_REPORTS.md",
@@ -2520,7 +2526,7 @@
       "path": "docs/PORTABLE_DEPLOYMENT_AND_WSL2_TESTING.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5140
+      "size": 5234
     },
     {
       "path": "docs/PROJECT_ANALYSIS_2026-09-14.md",
@@ -2742,7 +2748,7 @@
       "path": "docs/USER_OPERATIONS_GUIDE.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5516
+      "size": 5565
     },
     {
       "path": "docs/WARDEN_CUTOVER_SPEC.md",
@@ -2754,7 +2760,7 @@
       "path": "docs/WFP_IOCTL_STATUS.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 7229
+      "size": 7200
     },
     {
       "path": "docs/XDR-005_MULTISOURCE_SLICE_DESIGN.md",
@@ -2802,7 +2808,7 @@
       "path": "drivers/wfp_callout/aegis_wfp.c",
       "class": "canonical-source",
       "role": "source",
-      "size": 58215
+      "size": 58757
     },
     {
       "path": "drivers/wfp_callout/aegis_wfp.h",
@@ -3156,7 +3162,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1049358
+      "size": 1051382
     },
     {
       "path": "fix_bridge_banner.py",
@@ -3288,7 +3294,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 238353
+      "size": 238523
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3546,7 +3552,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9642
+      "size": 9821
     },
     {
       "path": "pytest.ini",
@@ -3564,7 +3570,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 196503
+      "size": 196637
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -4632,7 +4638,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 23599
+      "size": 23767
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",
@@ -4644,7 +4650,7 @@
       "path": "rust-src/lib.rs",
       "class": "canonical-source",
       "role": "source",
-      "size": 106716
+      "size": 106371
     },
     {
       "path": "sbom.spdx.json",
@@ -5226,7 +5232,7 @@
       "path": "scripts/run_g2_dupfilter_proof.ps1",
       "class": "canonical-source",
       "role": "source",
-      "size": 7361
+      "size": 7332
     },
     {
       "path": "scripts/run_host_production_preflight.ps1",
@@ -7638,7 +7644,7 @@
       "path": "tests/contracts/test_pep_abi_layout.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 12638
+      "size": 12643
     },
     {
       "path": "tests/cython/profile_brain_hotspot.py",
@@ -7680,7 +7686,7 @@
       "path": "tests/docs/test_stale_doc_sweep.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 11765
+      "size": 11781
     },
     {
       "path": "tests/e2e/test_t14_windows_golden_path.py",
@@ -7758,7 +7764,7 @@
       "path": "tests/pep/test_t8_rust_pep.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 11449
+      "size": 11505
     },
     {
       "path": "tests/policy_signing/test_t7_signed_policy.py",
@@ -8142,7 +8148,7 @@
       "path": "tests/security/test_t16_security_hardening.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 14645
+      "size": 14763
     },
     {
       "path": "tests/security/test_t19_decision_trace_shadow_replay_review.py",
@@ -8502,13 +8508,13 @@
       "path": "tests/wfp/test_t11_wfp_enforcement.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 22725
+      "size": 23053
     },
     {
       "path": "tests/wfp/test_t11_windows_host.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 24057
+      "size": 18137
     },
     {
       "path": "tests/wfp/test_wfp_payload_slice.py",
@@ -8628,7 +8634,7 @@
       "path": "tools/create_manifest.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 20040
+      "size": 20208
     },
     {
       "path": "tools/deploy_windows.py",
@@ -8670,7 +8676,7 @@
       "path": "tools/golden_path_evidence.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 12348
+      "size": 12412
     },
     {
       "path": "tools/inspect_pe_exports.py",
@@ -8898,7 +8904,7 @@
       "path": "tools/release_candidate.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 10648
+      "size": 10759
     },
     {
       "path": "tools/release_engineering.py",

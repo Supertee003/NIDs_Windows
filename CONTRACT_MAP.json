@@ -1,5 +1,5 @@
 {
-  "head_sha": "bb5d780dd60d85dedf0444532afedb72e84ebee1",
+  "head_sha": "8c935ff46f36eaf57b7904445ef4f8148f3b1c30",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -78,8 +78,8 @@
         "aegis_pep_read_events(out_buf: *u8, buf_size: u32, bytes_read: *u32) -> c_int [READ-ONLY telemetry; 0 ok, -1 no provider read surface, -3 invalid args]"
       ],
       "invariants": [
-        "Rust PEP is the ONLY final enforcement authority",
-        "No component may bypass PEP for privileged actions",
+        "Rust PEP is a detection-only policy evaluation authority; it never authorizes a host effect (RETIRE-HOST-EFFECT-001)",
+        "No component may bypass the detection-only PEP contract or request a host effect",
         "The ABI defines authority and transport contracts; it does not activate production host effects. Production mode is detection-only and the default prevention gate is closed.",
         "PEP responses are signed (Ed25519) for audit trail",
         "PepRequest.direction uses historical padding at offset 37; size stays 64, ctx stays at 40, and direction values other than 0/1 fail closed",

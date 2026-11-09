@@ -1,5 +1,5 @@
 {
-  "head_sha": "bb5d780dd60d85dedf0444532afedb72e84ebee1",
+  "head_sha": "8c935ff46f36eaf57b7904445ef4f8148f3b1c30",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -353,7 +353,7 @@
       ],
       "boundary": "PEP ABI â†’ Zig",
       "is_final_enforcement": true,
-      "note": "Rust PEP remains the single authority for privileged host effects, but this product's production mode is detection-only. The default build prevention gate is closed; PEP/provider presence does not establish production host-effect capability."
+      "note": "Rust PEP is a detection-only policy evaluator (RETIRE-HOST-EFFECT-001): it records evidence and never authorizes a host effect. The default build prevention gate is closed, the driver block IOCTL returns STATUS_NOT_SUPPORTED, and PEP/provider presence does not establish host-effect capability."
     },
     {
       "id": "go_nose",

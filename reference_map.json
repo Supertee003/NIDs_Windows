@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T08:37:11.399715+00:00",
+  "generated_at": "2026-11-09T09:59:51.707000+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1509,
+  "total_files": 1510,
   "by_role": {
-    "documentation": 347,
+    "documentation": 348,
     "build-config": 171,
     "other": 18,
     "lockfile": 6,
@@ -637,6 +637,10 @@
       "role": "documentation"
     },
     "analysis/current-head/QLoss-E5-STEADY-WINDOW-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },

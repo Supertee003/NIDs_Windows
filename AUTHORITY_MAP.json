@@ -1,5 +1,5 @@
 {
-  "head_sha": "bb5d780dd60d85dedf0444532afedb72e84ebee1",
+  "head_sha": "8c935ff46f36eaf57b7904445ef4f8148f3b1c30",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -174,12 +174,12 @@
         {
           "id": "RUST_PEP",
           "language": "Rust",
-          "role": "Sole retained PEP authority for privileged host effects; production activation is out of scope",
+          "role": "Detection-only policy evaluation and evidence authority; never authorizes a host effect",
           "scope": [
             "policy signature verification",
             "Ed25519 crypto",
             "TLS",
-            "privileged WFP host-effect enforcement boundary (production disabled; telemetry is observe-only in PLANE-A)",
+            "policy evaluation and IDS evidence receipts (no host effect)",
             "authorization decisions",
             "trust store management"
           ],
@@ -193,8 +193,8 @@
             "rust-src/lib.rs"
           ],
           "boundary": "PEP ABI â†’ Zig",
-          "is_final_enforcement": true,
-          "note": "There is exactly ONE privileged host-effect authority: the Rust PEP (rust-src/). Production mode is detection-only and host-effect activation is out of scope; the prevention gate defaults closed. No other component may claim final enforcement authority. The former duplicate PEP + WFP surface in `shield/` is fully REMOVED (PEP-001, 2026-10-17)."
+          "is_final_enforcement": false,
+          "note": "The Rust PEP is a detection-only policy evaluator: it records evidence and reports BLOCK/QUARANTINE requests as ESCALATE reason 8. There is NO host-effect authority in production (RETIRE-HOST-EFFECT-001, issue #25): the driver block IOCTL returns STATUS_NOT_SUPPORTED and no path can install an AEGIS-owned filter. The former duplicate PEP + WFP surface in `shield/` is fully REMOVED (PEP-001, 2026-10-17)."
         },
         {
           "id": "SHIELD_TIER3",
@@ -318,9 +318,9 @@
       "id": "SECURITY_TRUTH",
       "name": "Rust PEP",
       "language": "Rust",
-      "authority": "Final security authority for privileged host effects; production activation is out of scope",
+      "authority": "Detection-only policy evaluation authority; never authorizes a host effect",
       "scope": [
-        "privileged host-effect authorization (production activation disabled)",
+        "policy evaluation and evidence receipts (no host effect)",
         "PEP validation",
         "crypto verification"
       ],
@@ -422,14 +422,14 @@
     }
   ],
   "invariants": [
-    "Rust PEP is the sole retained enforcement authority; production host-effect activation is out of scope and production mode remains detection-only",
+    "Rust PEP is a detection-only policy evaluation authority; it never authorizes a host effect, and the driver block IOCTL is unsupported",
     "shield/ exports a payload-screening symbol only; its former PEP and WFP enforcement modules are REMOVED (PEP-001) and must not reappear",
-    "Any privileged host effect must pass through Rust PEP; production host-effect activation is out of scope",
+    "No production path may request a host effect; the driver block IOCTL returns STATUS_NOT_SUPPORTED",
     "No UI may become an authoritative state owner",
     "No second runtime may exist",
     "No second Canonical Event may exist",
     "No second Policy Authority may exist",
-    "No second Enforcement Authority may exist",
+    "No host-effect authority may exist (retired by RETIRE-HOST-EFFECT-001)",
     "`shield/` is a payload-screening SUPPORT crate only; its former enforcement modules are removed from the tree (PEP-001)",
     "`go/aggregator/` is an optional operator sidecar and produces no Canonical Event",
     "One canonical operator client: tools/aegisctl.py",
