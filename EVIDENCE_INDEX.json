@@ -1,5 +1,5 @@
 {
-  "head_sha": "2e715dfdd38a101454def530de55ae00d4b8a28a",
+  "head_sha": "bb5d780dd60d85dedf0444532afedb72e84ebee1",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-09",
   "generator_version": "3.0",
@@ -4845,6 +4845,30 @@
       "actual": "queue.stats gains an additive by_source_kind array over a bounded 256x256 (contract source ordinal, contract EventKind) counter table. The success path increments pushed; the IPv6-pair, queue-full, reserved-tail and per-source-quota refusal paths increment dropped. Only nonzero lanes are emitted, and labels use the contract source space that IpcEvent actually stores. Admission, shedding, ring, policy and detection behavior are unchanged.",
       "impact": "Turns per-source loss into per-source-per-kind loss, which is the measurement prerequisite for attributing issue #29 bursts to FIM create/write/delete versus ETW process/file/registry lanes before choosing bounded admission or throughput work. It does not reduce loss, change coalescing, or close #29.",
       "next_step": "After deploying a build that contains this slice, collect repeated representative burst windows and attribute loss by source and kind; keep the minifilter identity stop-line intact before any coalescing."
+    },
+    {
+      "id": "TEST-SCOPE-001-E2-20261109",
+      "title": "Every test-bearing module has a proven execution edge in the canonical unit root",
+      "level": "E2",
+      "component": "src/all_tests.zig; src/tests/reliability/monotonic_clock.zig; tests/security/test_zig_test_scope.py",
+      "flow_id": "VER-002",
+      "head_sha": "bb5d780dd60d85dedf0444532afedb72e84ebee1",
+      "timestamp": "2026-11-09",
+      "result": "PASS_E2",
+      "files_verified": [
+        "src/all_tests.zig",
+        "src/tests/reliability/monotonic_clock.zig",
+        "analysis/current-head/TEST-SCOPE-001-20261109.md"
+      ],
+      "tests": [
+        "zig build: PASS",
+        "zig build test --summary all (fresh cache): 2069 passed, 10 skipped, 0 failed",
+        "python -m pytest tests/security/test_zig_test_scope.py -q: 6 passed",
+        "git diff --check: PASS"
+      ],
+      "actual": "Closes the red half of the SCOPE-101 ratchet at the parent commit: src/pipeline/fim_dedup.zig had only a transitive import edge and the monotonic_clock wrapper imported its module through a const binding, which the audit does not count as proven wiring. A direct all_tests.zig edge makes the 7 FIM probe tests execute in the canonical suite, and the wrapper now carries the conventional comptime edge. The compile-only separation (src/compile_only_imports.zig never passed to addRunArtifact, exposed as `zig build compile-only`, dependency of the test step) was already in place and pinned; no OUT_OF_UNIT classification changed.",
+      "impact": "Closes issue #27 at E2. The unit root can no longer silently skip a test-bearing module behind a transitive import, and the suite grew by 7 genuinely executing tests rather than by reappearing through a reachability-only argument. No product runtime, contract, ABI, authority or deployment impact.",
+      "next_step": "Keep the scope audit in the pre-merge gate. A future upgrade from convention-based edges to a binary-scan of the built test artifact would be a separate slice."
     }
   ],
   "known_gaps": [
@@ -10752,7 +10776,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 34,
-    "E2_count": 175,
+    "E2_count": 176,
     "E3_count": 17,
     "E4_count": 15,
     "E5_count": 158,

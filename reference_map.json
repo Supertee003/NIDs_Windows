@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T08:18:54.611143+00:00",
+  "generated_at": "2026-11-09T08:25:45.399020+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1506,
+  "total_files": 1507,
   "by_role": {
-    "documentation": 344,
+    "documentation": 345,
     "build-config": 171,
     "other": 18,
     "lockfile": 6,
@@ -637,6 +637,10 @@
       "role": "documentation"
     },
     "analysis/current-head/STOPLINE-WFP-READINESS-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/TEST-SCOPE-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },

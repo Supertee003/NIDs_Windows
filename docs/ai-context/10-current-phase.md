@@ -816,3 +816,31 @@ open.
 - Issue #29 still remains OPEN; #30 and #25-#28 remain open. See
   `analysis/current-head/INGRESS-KIND-ATTRIBUTION-001-20261109.md` and
   `EVIDENCE_INDEX.json#INGRESS-KIND-ATTRIBUTION-001-E2-20261109`.
+
+## Continuation - TEST-SCOPE-001 E2 (2026-11-09, issue #27)
+
+- Issue #27's stop-line was about scope truth: the audit said the unit root was
+  in scope while a recursive import closure reached bench/integration/quarantine
+  files, and its own red assertion named two test-bearing files with no proven
+  execution edge.
+- Three of #27's four requirements were already satisfied and pinned before this
+  slice: the audit matcher walks every `@import` inside each `comptime` block;
+  `src/compile_only_imports.zig` is compiled as a test object that is never
+  passed to `addRunArtifact`, is exposed as `zig build compile-only`, and is a
+  dependency of the `test` step; and `perf_benchmark.zig` /
+  `performance_harness.zig` are classified `bench` in `OUT_OF_UNIT` with a test
+  proving no OUT_OF_UNIT file is reachable from the unit root.
+- The remaining red assertion at the parent commit was
+  `test_every_other_test_file_is_covered` naming `src/pipeline/fim_dedup.zig`
+  and `src/reliability/monotonic_clock.zig`. Source `bb5d780` adds a direct
+  `all_tests.zig` edge for `pipeline/fim_dedup.zig` and the conventional
+  `comptime { _ = @import(...); }` edge in the monotonic-clock wrapper. No scope
+  classification changed and no OUT_OF_UNIT file became reachable.
+- Evidence is E2 only: `zig build` PASS, fresh-cache full suite
+  **2,069 passed / 10 skipped / 0 failed** (the +7 are the FIM probe tests that
+  now genuinely execute), and `tests/security/test_zig_test_scope.py` **6
+  passed** (was 1 failed / 5 passed). `ROLE`/`CONTRACT`/`ABI`/`AUTHORITY` are
+  unchanged; there is no E5 because no product runtime behavior changed.
+- Issue #27 is closed by these commits. See
+  `analysis/current-head/TEST-SCOPE-001-20261109.md` and
+  `EVIDENCE_INDEX.json#TEST-SCOPE-001-E2-20261109`.
