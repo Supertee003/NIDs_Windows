@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T08:25:45.396198+00:00",
+  "generated_at": "2026-11-09T08:29:34.912590+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1507,
+  "total_files": 1508,
   "by_class": {
-    "canonical-docs": 359,
+    "canonical-docs": 360,
     "canonical-build": 182,
     "unclassified": 18,
     "canonical-source": 663,
@@ -499,6 +499,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 4557
+    },
+    {
+      "path": "analysis/current-head/XDR-AUTHORITY-RECONCILE-001-20261109.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5578
     },
     {
       "path": "analysis/deep_audit/01-runtime-zig.md",
@@ -1008,7 +1014,7 @@
       "path": "AUTHORITY_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 18672
+      "size": 18783
     },
     {
       "path": "brain/__init__.py",
@@ -1902,7 +1908,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 54490
+      "size": 56090
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -3144,7 +3150,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1046802
+      "size": 1049358
     },
     {
       "path": "fix_bridge_banner.py",
@@ -3276,7 +3282,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 238004
+      "size": 238172
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3552,7 +3558,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 196226
+      "size": 196358
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -7356,7 +7362,7 @@
       "path": "SYSTEM_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 18510
+      "size": 18581
     },
     {
       "path": "test_needs.py",
@@ -8616,7 +8622,7 @@
       "path": "tools/create_manifest.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 19810
+      "size": 20040
     },
     {
       "path": "tools/deploy_windows.py",

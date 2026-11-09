@@ -436,7 +436,7 @@
     "Production host-effect activation is out of scope; the default build prevention gate is closed",
     "Zig is the runtime hub - transports follow their contracts: Go named pipe, C/C++ C ABI, Rust PEP ABI, Python Analytics Contract, TypeScript Control Protocol",
     "Cython is a performance bridge, NOT the system integration bus",
-    "Selected XDR correlation authority is src/xdr/xdr_incident_fabric.zig; it emits advisory evidence only and has no policy/PEP action surface. Detection-identity events feed it, xdr_evidence_flow persists frozen multi-source assessments as recording-only IDS receipts after hash read-back with replay, and xdr.list exposes the advisory view and receipt counters; no policy/PEP/DEFCON/ActionDispatcher consumer exists. Source integration is E2-proven (XDR-RECEIPT-002); Windows E5 host proof remains open."
+    "Selected XDR correlation authority is src/xdr/xdr_incident_fabric.zig; it emits advisory evidence only and has no policy/PEP action surface. Detection-identity events feed it, xdr_evidence_flow persists frozen multi-source assessments as recording-only IDS receipts after hash read-back with replay, and xdr.list exposes the advisory view and receipt counters; no policy/PEP/DEFCON/ActionDispatcher consumer exists. Source integration is E2-proven (XDR-RECEIPT-002). The recording-only route was host-proven on the deployed fc108b0 build on 2026-11-05 (XDR-005-E5-20261105); current-head Windows E5 is NOT_PROVEN."
   ],
   "stop_the_line": [
     "ABI mismatch",

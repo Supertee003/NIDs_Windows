@@ -296,7 +296,7 @@
         {
           "name": "xdr/xdr_incident_fabric",
           "file": "src/xdr/xdr_incident_fabric.zig",
-          "role": "Selected advisory-only multi-source XDR fabric; production recording-only source-to-forensic receipt/replay via XDR-RECEIPT-002; no decision/effect path; Windows E5 open"
+          "role": "Selected advisory-only multi-source XDR fabric; production recording-only source-to-forensic receipt/replay via XDR-RECEIPT-002; no decision/effect path; host E5 recorded at deployed fc108b0 (XDR-005-E5-20261105), current-head E5 NOT_PROVEN"
         },
         {
           "name": "xdr/xdr_runtime",

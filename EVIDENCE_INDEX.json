@@ -4869,6 +4869,31 @@
       "actual": "Closes the red half of the SCOPE-101 ratchet at the parent commit: src/pipeline/fim_dedup.zig had only a transitive import edge and the monotonic_clock wrapper imported its module through a const binding, which the audit does not count as proven wiring. A direct all_tests.zig edge makes the 7 FIM probe tests execute in the canonical suite, and the wrapper now carries the conventional comptime edge. The compile-only separation (src/compile_only_imports.zig never passed to addRunArtifact, exposed as `zig build compile-only`, dependency of the test step) was already in place and pinned; no OUT_OF_UNIT classification changed.",
       "impact": "Closes issue #27 at E2. The unit root can no longer silently skip a test-bearing module behind a transitive import, and the suite grew by 7 genuinely executing tests rather than by reappearing through a reachability-only argument. No product runtime, contract, ABI, authority or deployment impact.",
       "next_step": "Keep the scope audit in the pre-merge gate. A future upgrade from convention-based edges to a binary-scan of the built test artifact would be a separate slice."
+    },
+    {
+      "id": "XDR-AUTHORITY-RECONCILE-001-E2-20261109",
+      "title": "IDS-XDR-005 authority maps no longer contradict the recorded XDR host proof; advisory boundary re-verified",
+      "level": "E2",
+      "component": "AUTHORITY_MAP.json; SYSTEM_MAP.json; tools/create_manifest.py; src/xdr/*.zig; tests/security/test_xdr_wire_advisory.py",
+      "flow_id": "IDS-XDR-005",
+      "head_sha": "bb5d780dd60d85dedf0444532afedb72e84ebee1",
+      "timestamp": "2026-11-09",
+      "result": "PASS_E2",
+      "files_verified": [
+        "AUTHORITY_MAP.json",
+        "SYSTEM_MAP.json",
+        "tools/create_manifest.py",
+        "analysis/current-head/XDR-AUTHORITY-RECONCILE-001-20261109.md"
+      ],
+      "tests": [
+        "python -m pytest tests/ips/test_t18_ips_canary_xdr.py tests/security/test_xdr_wire_advisory.py tests/security/test_map006_runtime_truth.py tests/e2e/test_t14_windows_golden_path.py tests/tools/test_stix_export.py -q: 71 passed",
+        "python tools/rebuild_truth.py: valid",
+        "python tools/truth.py verify: TRUTH_VALID (build source bb5d780)",
+        "python scripts/check_summary.py: SUMMARY_VALID"
+      ],
+      "actual": "AUTHORITY_MAP.json simultaneously said the XDR recording-only route had 'Windows E5 host proof remains open' and 'CLOSED 2026-11-05 ... Windows E5 host evidence is recorded (XDR-005-E5-20261105)'. SYSTEM_MAP.json and the manifest generator repeated the one-sided phrase. All three now state the same truthful split: host proof of the recording-only route was recorded on the deployed fc108b0 build on 2026-11-05, and no current-head E5 has been run since. Re-verified that the fabric stays out of the production runtime order (LAB / golden_path false), that no dispatched_to_pep or isEnforcement claim exists, that Decision carries no action field, that xdr.list emits no action/enforce key, and that replayFromReceipt rejects a non-enforcement, wrong-detector, zero-sequence, or tampered-hash receipt.",
+      "impact": "Closes issue #26 at E2 by removing a contradictory source-of-truth document rather than narrating around it. It does not add or remove any XDR capability and does not claim current-head Windows E5; the recording-only route remains advisory evidence with no policy/PEP/DEFCON/host-effect consumer.",
+      "next_step": "Current-head Windows E5 of the recording-only route remains NOT_PROVEN. Any claim above E2 requires installing a build that contains this HEAD and exercising a live multi-source freeze, receipt and replay on the host."
     }
   ],
   "known_gaps": [
@@ -10776,7 +10801,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 34,
-    "E2_count": 176,
+    "E2_count": 177,
     "E3_count": 17,
     "E4_count": 15,
     "E5_count": 158,

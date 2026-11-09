@@ -844,3 +844,28 @@ open.
 - Issue #27 is closed by these commits. See
   `analysis/current-head/TEST-SCOPE-001-20261109.md` and
   `EVIDENCE_INDEX.json#TEST-SCOPE-001-E2-20261109`.
+
+## Continuation - XDR-AUTHORITY-RECONCILE-001 E2 (2026-11-09, issue #26)
+
+- Issue #26 (IDS-XDR-005) was still open on a records contradiction, not a code
+  defect: `AUTHORITY_MAP.json` said the XDR recording-only route had "Windows E5
+  host proof remains open" while the same file's completion gate said "CLOSED
+  2026-11-05 ... Windows E5 host evidence is recorded (XDR-005-E5-20261105)".
+  `SYSTEM_MAP.json` and `tools/create_manifest.py` repeated the one-sided
+  phrasing, so the generated manifest carried it too.
+- Fix: all three now state the truthful split - the recording-only route was
+  host-proven on the deployed `fc108b0` build on 2026-11-05
+  (`XDR-005-E5-20261105`), and **no current-head E5 has been run since**. This
+  adds no capability and removes no capability.
+- Boundary re-verified at current HEAD: the fabric is `LAB` /
+  `golden_path: false` and absent from the runtime order; there is no
+  `dispatched_to_pep` or `isEnforcement` claim; `Decision` has no action field;
+  `xdr.list` emits no action/enforce key; `replayFromReceipt` rejects a
+  non-enforcement, wrong-detector, zero-sequence or tampered-hash receipt.
+- Evidence is E2: 71 focused XDR/authority tests passed, `rebuild_truth`
+  regenerated the manifest, `truth.py verify` = TRUTH_VALID at build source
+  `bb5d780`, `check_summary.py` = SUMMARY_VALID.
+- Issue #26 is closed by this records commit. Current-head Windows E5 of the
+  recording-only route remains NOT_PROVEN. See
+  `analysis/current-head/XDR-AUTHORITY-RECONCILE-001-20261109.md` and
+  `EVIDENCE_INDEX.json#XDR-AUTHORITY-RECONCILE-001-E2-20261109`.

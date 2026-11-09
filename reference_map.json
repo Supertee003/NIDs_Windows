@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T08:25:45.399020+00:00",
+  "generated_at": "2026-11-09T08:29:34.915266+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1507,
+  "total_files": 1508,
   "by_role": {
-    "documentation": 345,
+    "documentation": 346,
     "build-config": 171,
     "other": 18,
     "lockfile": 6,
@@ -645,6 +645,10 @@
       "role": "documentation"
     },
     "analysis/current-head/WFP-READINESS-REFRESH-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/XDR-AUTHORITY-RECONCILE-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
