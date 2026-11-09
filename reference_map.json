@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T18:04:55.575296+00:00",
+  "generated_at": "2026-11-09T18:34:21.215893+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1508,
+  "total_files": 1517,
   "by_role": {
-    "documentation": 344,
-    "build-config": 172,
+    "documentation": 346,
+    "build-config": 175,
     "other": 17,
     "lockfile": 6,
     "rust-build": 4,
-    "source": 365,
-    "test-artifact": 222,
+    "source": 366,
+    "test-artifact": 225,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -588,9 +588,21 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/detection-only-baseline.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "analysis/current-head/DEV-PLAN-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/ETW-LIFE-001-20261108.md": {
       "class": "canonical-docs",
       "role": "documentation"
+    },
+    "analysis/current-head/evidence-debt-baseline.json": {
+      "class": "canonical-build",
+      "role": "build-config"
     },
     "analysis/current-head/FIM-PROBE-IDENTITY-COMMENT-001-20261109.md": {
       "class": "canonical-docs",
@@ -601,6 +613,10 @@
       "role": "documentation"
     },
     "analysis/current-head/FOR-BATCH-001-20261108.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/FREEZE-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -615,6 +631,10 @@
     "analysis/current-head/HEALTH-PROJECTION-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
+    },
+    "analysis/current-head/hollow-evidence-baseline.json": {
+      "class": "canonical-build",
+      "role": "build-config"
     },
     "analysis/current-head/HOST-FLOW-001-20261108.md": {
       "class": "canonical-docs",
@@ -5692,6 +5712,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/security/test_detection_only_gate.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/security/test_disabled_rules_authority.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -5705,6 +5729,10 @@
       "role": "test-artifact"
     },
     "tests/security/test_etw_session_name.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_evidence_index_integrity.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
@@ -5749,6 +5777,10 @@
       "role": "test-artifact"
     },
     "tests/security/test_registry_rearm.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/security/test_scope_ratchet.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },
@@ -6080,6 +6112,10 @@
       "class": "canonical-source",
       "role": "source"
     },
+    "tools/evidence_debt.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
     "tools/final_audit.py": {
       "class": "canonical-source",
       "role": "source"
@@ -6356,5 +6392,6 @@
       "class": "canonical-build",
       "role": "build-config"
     }
-  }
+  },
+  "source_commit": "2102a5e"
 }

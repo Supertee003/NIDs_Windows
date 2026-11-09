@@ -5163,6 +5163,36 @@
         "host state re-measured this session (services, drivers, processes, install dir)"
       ],
       "limitations": "E1: the plan is a decision record. It closes no risk and asserts no host capability; every E5/E7 row in its definition of done remains unproven until Phase D and E execute. Slice sizes are qualitative (S/M/L); no dates are promised because a slice is done when its gate is met."
+    },
+    {
+      "id": "META-002-E2-20261109",
+      "head_sha": "0033809",
+      "timestamp": "2026-11-09",
+      "title": "Risk mechanisms landed: debt ratchet, evidence integrity, detection-only gate, map stamping, freeze checklist",
+      "level": "E2",
+      "component": "tools/, tests/security/, analysis/current-head/",
+      "flow_id": "META-COVERAGE",
+      "description": "Turns eight risks from prose into tests that fail on regression. R-04: inventory.json and reference_map.json now carry source_commit and are verified by tools/truth.py instead of being exempt, closing the hole where a stale map was invisible. R-03: tools/evidence_debt.py pins the 539 unnamed product files of 705 and tests/security/test_scope_ratchet.py fails on growth and on untrimmed shrink. R-02/R-13: test_evidence_index_integrity.py requires every new entry to carry title/description/component (31 historical hollow entries pinned in a shrinking baseline), requires an E5/E6/E7 entry to carry a build anchor, and fails when an artifact path disappears. R-11: test_detection_only_gate.py scans product code for block actions and fails on any file beyond the five-file baseline, which makes the detection-only decision enforceable before slice B1 removes them. R-12: gitleaks on the working tree, no findings. R-15: 370 GB free against a 20 GB floor. R-16 was already closed by test_zig_test_scope.py. FREEZE-001 records the freeze rule and the 25-item release checklist. R-01 and R-05..R-10 stay open because they need slice B1 or an elevated host window, and the closure record says so per risk.",
+      "artifacts": [
+        "tests/security/test_scope_ratchet.py",
+        "tests/security/test_evidence_index_integrity.py",
+        "tests/security/test_detection_only_gate.py",
+        "tools/evidence_debt.py",
+        "analysis/current-head/evidence-debt-baseline.json",
+        "analysis/current-head/hollow-evidence-baseline.json",
+        "analysis/current-head/detection-only-baseline.json",
+        "analysis/current-head/FREEZE-001-20261109.md",
+        "analysis/current-head/DEV-PLAN-001-20261109.md"
+      ],
+      "commands": [
+        "python tools/rebuild_truth.py (stamped inventory.json, reference_map.json)",
+        "python tools/truth.py verify -> TRUTH_VALID",
+        "python tools/evidence_debt.py --write (539 unnamed of 705 product files)",
+        "python -m pytest tests/security -q",
+        "gitleaks detect --source . --no-git --redact (exit 0)",
+        "df -h . (370 GB available)"
+      ],
+      "limitations": "E2 for the gates: they execute and fail on regression, but they prove properties of the tree, not of the running system. R-01 remains open - five files still contain a block action and the gate only stops new ones. The debt ratchet pins 539 files; naming them is slice A2 work, not done here. Free-space and gitleaks readings are point-in-time."
     }
   ],
   "known_gaps": [
@@ -11070,7 +11100,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 39,
-    "E2_count": 181,
+    "E2_count": 182,
     "E3_count": 17,
     "E4_count": 15,
     "E5_count": 159,

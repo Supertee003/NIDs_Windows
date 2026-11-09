@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T18:04:55.572720+00:00",
+  "generated_at": "2026-11-09T18:34:21.212581+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1508,
+  "total_files": 1517,
   "by_class": {
-    "canonical-docs": 358,
-    "canonical-build": 183,
+    "canonical-docs": 360,
+    "canonical-build": 186,
     "unclassified": 17,
-    "canonical-source": 661,
-    "canonical-test": 222,
+    "canonical-source": 662,
+    "canonical-test": 225,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -411,10 +411,28 @@
       "size": 10359
     },
     {
+      "path": "analysis/current-head/detection-only-baseline.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1219
+    },
+    {
+      "path": "analysis/current-head/DEV-PLAN-001-20261109.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 17696
+    },
+    {
       "path": "analysis/current-head/ETW-LIFE-001-20261108.md",
       "class": "canonical-docs",
       "role": "documentation",
       "size": 4847
+    },
+    {
+      "path": "analysis/current-head/evidence-debt-baseline.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 21995
     },
     {
       "path": "analysis/current-head/FIM-PROBE-IDENTITY-COMMENT-001-20261109.md",
@@ -435,10 +453,16 @@
       "size": 4218
     },
     {
+      "path": "analysis/current-head/FREEZE-001-20261109.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4413
+    },
+    {
       "path": "analysis/current-head/FULL-BOUNDARY-001-20261109.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 313752
+      "size": 312029
     },
     {
       "path": "analysis/current-head/FULL-BOUNDARY-001-20261109.md",
@@ -451,6 +475,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 3849
+    },
+    {
+      "path": "analysis/current-head/hollow-evidence-baseline.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 1613
     },
     {
       "path": "analysis/current-head/HOST-FLOW-001-20261108.md",
@@ -546,13 +576,13 @@
       "path": "analysis/current-head/WORK-MAP-001-20261109.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 17039
+      "size": 17040
     },
     {
       "path": "analysis/current-head/WORK-MAP-001-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 7607
+      "size": 7606
     },
     {
       "path": "analysis/current-head/XDR-AUTHORITY-RECONCILE-001-20261109.md",
@@ -3198,7 +3228,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1056445
+      "size": 1063468
     },
     {
       "path": "FLOW_MAP.json",
@@ -3306,7 +3336,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 230748
+      "size": 229998
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3570,7 +3600,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9526
+      "size": 9693
     },
     {
       "path": "pytest.ini",
@@ -3588,7 +3618,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 191326
+      "size": 190823
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -4656,7 +4686,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 23219
+      "size": 23767
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",
@@ -8067,6 +8097,12 @@
       "size": 13306
     },
     {
+      "path": "tests/security/test_detection_only_gate.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 3065
+    },
+    {
       "path": "tests/security/test_disabled_rules_authority.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -8089,6 +8125,12 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 2714
+    },
+    {
+      "path": "tests/security/test_evidence_index_integrity.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 3834
     },
     {
       "path": "tests/security/test_fim_longpath.py",
@@ -8155,6 +8197,12 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 1101
+    },
+    {
+      "path": "tests/security/test_scope_ratchet.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 2462
     },
     {
       "path": "tests/security/test_siem_contract.py",
@@ -8649,6 +8697,12 @@
       "size": 3760
     },
     {
+      "path": "tools/evidence_debt.py",
+      "class": "canonical-source",
+      "role": "source",
+      "size": 3363
+    },
+    {
       "path": "tools/final_audit.py",
       "class": "canonical-source",
       "role": "source",
@@ -8898,7 +8952,7 @@
       "path": "tools/rebuild_truth.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 7075
+      "size": 8040
     },
     {
       "path": "tools/release_candidate.py",
@@ -8940,7 +8994,7 @@
       "path": "tools/truth.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 12258
+      "size": 12402
     },
     {
       "path": "tools/update_health_cmd.py",
@@ -9062,5 +9116,6 @@
       "role": "build-config",
       "size": 624
     }
-  ]
+  ],
+  "source_commit": "2102a5e"
 }

@@ -1033,7 +1033,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "e4cadf090d18353e6bea271856a0848b3b4645eebacaac8d3bc412f63c4e77ec",
+      "sha256": "7a0b4edd4d99f97af8275026b074ac2c5052b9cc5a44a0f4950eebc353886cdc",
       "language": "json"
     },
     {
@@ -3948,8 +3948,8 @@
     },
     {
       "path": "tools/rebuild_truth.py",
-      "size": 7075,
-      "sha256": "ab778ee8591f95f75c20ffa667ac38e21678a37e66459cb9489f232738a5d014",
+      "size": 8040,
+      "sha256": "e725924d5df936faa3dd10e718fa5e9582b058bebe6bef0b0c5b705c3cfde83f",
       "language": "python/cython"
     },
     {
@@ -3978,8 +3978,8 @@
     },
     {
       "path": "tools/truth.py",
-      "size": 12258,
-      "sha256": "adc9299acf70d7043348d71cc9d482fcc180e4526bceacd8cf61b83358f816e1",
+      "size": 12402,
+      "sha256": "4ded8b0d7f7eafec2bcaffe07572c474d73f06211527821eec77695ffd0c46c1",
       "language": "python/cython"
     },
     {

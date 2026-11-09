@@ -84,6 +84,34 @@ def validate_json_files(names: list[str]) -> list[dict]:
     return results
 
 
+GENERATED_MAP_FILES = [
+    "inventory.json",
+    "reference_map.json",
+]
+
+
+def stamp_generated_maps(source_short: str) -> list[str]:
+    """Ensure regenerated maps carry source_commit (R-04).
+
+    The generators are deterministic but know nothing about git, so the stamp
+    belongs here: after regeneration, before validation. Without it these two
+    maps could lag the source commit and nothing would notice.
+    """
+    changed: list[str] = []
+    for name in GENERATED_MAP_FILES:
+        path = ROOT / name
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if data.get("source_commit") == source_short:
+            continue
+        data["source_commit"] = source_short
+        path.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False),
+            encoding="utf-8", newline="\n",
+        )
+        changed.append(name)
+    return changed
+
+
 def stamp_source(source: str, source_short: str) -> list[str]:
     """Rewrite head_sha/source_commit/HEAD fields to the source commit."""
     changed: list[str] = []
@@ -140,7 +168,8 @@ def main() -> int:
         run("inventory/reference", [sys.executable, "tools/generate_truth_artifacts.py"]),
         run("runtime manifest", [sys.executable, "tools/create_manifest.py"]),
     ]
-    changed = stamp_source(source, source_short)
+    changed = stamp_generated_maps(source_short)
+    changed += [c for c in stamp_source(source, source_short) if c not in changed]
     steps.append({
         "label": "source stamp",
         "command": [],

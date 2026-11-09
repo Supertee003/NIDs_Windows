@@ -81,16 +81,17 @@ JSON_HEAD_SHA = [
 
 JSON_SOURCE_COMMIT = [
     "build_manifest.json",
+    # R-04: these two carry source_commit too. They used to be exempt, which is
+    # exactly how a stale inventory stayed invisible.
+    "inventory.json",
+    "reference_map.json",
 ]
 
 MARKDOWN_HEAD = [
     "AI_CONTEXT.md",
 ]
 
-NO_SHA_EXPECTED = [
-    "inventory.json",
-    "reference_map.json",
-]
+NO_SHA_EXPECTED: list[str] = []
 
 
 def git_head() -> str:
