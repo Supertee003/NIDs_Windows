@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T08:29:34.915266+00:00",
+  "generated_at": "2026-11-09T08:37:11.399715+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1508,
+  "total_files": 1509,
   "by_role": {
-    "documentation": 346,
+    "documentation": 347,
     "build-config": 171,
     "other": 18,
     "lockfile": 6,
@@ -631,6 +631,10 @@
     "analysis/current-head/prepatch-working-tree-safety.diff": {
       "class": "unclassified",
       "role": "other"
+    },
+    "analysis/current-head/PROJECT-CLOSEOUT-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
     },
     "analysis/current-head/QLoss-E5-STEADY-WINDOW-20261109.md": {
       "class": "canonical-docs",

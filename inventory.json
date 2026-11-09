@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T08:29:34.912590+00:00",
+  "generated_at": "2026-11-09T08:37:11.395336+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1508,
+  "total_files": 1509,
   "by_class": {
-    "canonical-docs": 360,
+    "canonical-docs": 361,
     "canonical-build": 182,
     "unclassified": 18,
     "canonical-source": 663,
@@ -475,6 +475,12 @@
       "class": "unclassified",
       "role": "other",
       "size": 15943
+    },
+    {
+      "path": "analysis/current-head/PROJECT-CLOSEOUT-20261109.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 6161
     },
     {
       "path": "analysis/current-head/QLoss-E5-STEADY-WINDOW-20261109.md",
@@ -1908,7 +1914,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 56090
+      "size": 56948
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -3282,7 +3288,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 238172
+      "size": 238353
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3540,7 +3546,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9987
+      "size": 9642
     },
     {
       "path": "pytest.ini",
@@ -3558,7 +3564,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 196358
+      "size": 196503
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -4626,7 +4632,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 23369
+      "size": 23599
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",

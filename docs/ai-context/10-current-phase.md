@@ -869,3 +869,17 @@ open.
   recording-only route remains NOT_PROVEN. See
   `analysis/current-head/XDR-AUTHORITY-RECONCILE-001-20261109.md` and
   `EVIDENCE_INDEX.json#XDR-AUTHORITY-RECONCILE-001-E2-20261109`.
+
+## Closeout checkpoint (2026-11-09)
+
+- Build source `bb5d780`: canonical suite 2,069 passed / 10 skipped / 0 failed;
+  scope ratchet (#27) and XDR advisory authority (#26) closed at E2; truth and
+  evidence summary valid; release artifact hashes 9/9.
+- Still open and deliberately **not** closed: #25 (driver/PEP/control host-effect
+  paths still contradict the detection-only decision), #28 (ingestion
+  payload/provenance contract), #29 (measured ingress loss), #30 (heap crash).
+  #25/#28 need a coordinated multi-layer patch; #29/#30 need an elevated host
+  window. Current-source deployment, driver load, E5 and E7 are all NOT DONE.
+- Full blocker mapping, the proposed smallest safe #25 slice, and the honest
+  completion statement are in `analysis/current-head/PROJECT-CLOSEOUT-20261109.md`.
+  No release or host-effect claim is made by that record.
