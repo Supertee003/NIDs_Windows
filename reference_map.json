@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T19:03:43.236606+00:00",
+  "generated_at": "2026-11-09T19:05:34.814672+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1518,
+  "total_files": 1519,
   "by_role": {
-    "documentation": 347,
+    "documentation": 348,
     "build-config": 175,
     "other": 17,
     "lockfile": 6,
@@ -641,6 +641,10 @@
       "role": "build-config"
     },
     "analysis/current-head/HOST-FLOW-001-20261108.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/HOST-WINDOW-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },

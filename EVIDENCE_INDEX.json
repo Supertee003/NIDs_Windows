@@ -5237,6 +5237,25 @@
         "python -m pytest tests/brain/test_bridge_ipc.py tests/tools/test_no_shadow_dll.py -q (in the source tree) -> 9 passed"
       ],
       "limitations": "E2 and Python-only: the clone never ran zig build test or cargo, so the Zig and Rust suites still depend on a warmer cache to be checked quickly. 36 skips in the clone versus 4 in the source tree are exactly the build-product and host-state prerequisites, which is the point of the measurement: the difference is now named, not hidden."
+    },
+    {
+      "id": "HOST-WINDOW-001-E1-20261109",
+      "head_sha": "e7d96f1",
+      "timestamp": "2026-11-09",
+      "title": "Host window runbook: D1-D5 ordered, with the real script parameters, per-step pass criteria, abort conditions and a hash-verified rollback",
+      "level": "E1",
+      "component": "scripts/install_aegis.ps1, scripts/wfp_service.ps1, scripts/minifilter_service.ps1, tools/aegisctl.py",
+      "flow_id": "META-COVERAGE",
+      "description": "The four remaining engineering risks (R-05 deploy parity, R-06 driver load, R-07 attributable loss, R-08 heap attribution) were blocked not by unknown work but by an unscheduled window. This record makes the window executable in one session: preflight records the installed binary hashes and backs them up, D1 compares the repo artifact hash against the installed hash and fails the window on a mismatch, D2 loads the drivers through the existing service scripts and proves the absence of an AEGIS-owned BLOCK filter from a WFP state dump rather than from a claim, D3 measures loss with the daemon's own per-source-per-kind counters so the #29 decision cannot be taken on an unattributable number, D4 uses Page Heap over ten start/stop cycles and refuses to call an unfound signature a fix, D5 confirms on the deployed binary that both enforcement verbs refuse with DETECTION_ONLY and that the filter set is unchanged. Rollback restores the step-0.2 hashes and is specified as an early action, not a last resort.",
+      "artifacts": [
+        "analysis/current-head/HOST-WINDOW-001-20261109.md",
+        "analysis/current-head/DEV-PLAN-001-20261109.md"
+      ],
+      "commands": [
+        "read param blocks of scripts/install_aegis.ps1, wfp_service.ps1, minifilter_service.ps1, verify_release.ps1 to use real flags",
+        "cross-checked the four risks and their exit criteria in DEV-PLAN-001 section 3"
+      ],
+      "limitations": "E1: a procedure, not an execution. Nothing in it has been run, the driver state on the host is still Stopped, and deploy parity is still unproven. R-09 (signing key custody) is deliberately outside this document because no command can grant a key."
     }
   ],
   "known_gaps": [
@@ -11143,7 +11162,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 39,
+    "E1_count": 40,
     "E2_count": 184,
     "E3_count": 17,
     "E4_count": 15,
