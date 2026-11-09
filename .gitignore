@@ -116,7 +116,6 @@ aegis-audit-*/
 admin-evidence/
 # --- Generated reports / scratch (runtime artifacts, not part of core repo) ---
 reports/
-tmp_hbc/
 # Client-side conversation attachment cache (session data, never repo truth).
 .cloud-attachments/
 # Agent planning scratch: code is the source of truth, not these drafts.

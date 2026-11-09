@@ -5122,6 +5122,28 @@
         "git ls-files aegis_dashboard shield (3 files each)"
       ],
       "limitations": "E1 only: this is a map, not a runtime proof. Counts were taken immediately before the two artifacts were written and exclude them. Unit boundaries are top-level directories, so a misrouted file inside a directory is still counted under that directory."
+    },
+    {
+      "id": "TRASH-REMOVAL-001-E1-20261109",
+      "head_sha": "94ddb02",
+      "timestamp": "2026-11-09",
+      "title": "Dead residue removed: 12 tracked root dumps, 3 editor backups, an aborted clone, an empty cache and a stale ignore rule",
+      "level": "E1",
+      "component": "repository root, scripts/, tests/runtime/, .gitignore",
+      "flow_id": "META-COVERAGE",
+      "description": "Removed only files that no code, test, tool or document references and that no manifest lists. Deleted from the repository root: test_output.txt, test_results.txt, test_summary.txt, tmp_prompt.txt, vol10_preview.txt, zig_build.err, handoff_summary.txt, .git-ls-files.txt, enforcement-call-sites.txt, static-authority-scan.txt, static-contract-scan.txt, static-lifecycle-scan.txt. Deleted untracked editor backups: scripts/aegis_graph.py.bak, scripts/aegis_graph.py.before-watch.bak, tests/runtime/test_version.py.bak. Deleted the aborted nested clone tmp_hbc/ (origin homebrew-core, no HEAD, 0 tracked files, dated 2026-10-02), the now-empty root __pycache__, and the .gitignore rule tmp_hbc/ that pointed at it. inventory.json, reference_map.json and build_manifest.json were regenerated so the manifests no longer cite the removed paths.",
+      "artifacts": [
+        "analysis/current-head/FULL-BOUNDARY-001-20261109.md",
+        "analysis/current-head/WORK-MAP-001-20261109.md"
+      ],
+      "commands": [
+        "git grep for each path across *.py *.ps1 *.zig *.go *.rs *.ts Makefile CMakeLists.txt *.ini *.toml *.json *.yml (no hits)",
+        "git grep for each path across *.md excluding analysis/ (no hits)",
+        "python tools/rebuild_truth.py (valid: true, unresolved: [])",
+        "python tools/release_engineering.py --refresh-digests (651 artifacts OK)",
+        "python -m pytest tests/docs tests/release tests/security -q (286 passed)"
+      ],
+      "limitations": "E1: reference absence was proven by search, not by execution of every entry point. The deleted scan dumps were historical output; their findings are not reproducible from this commit and are not cited by any evidence entry. Derived and local-only surfaces were left untouched as requested."
     }
   ],
   "known_gaps": [
@@ -11028,7 +11050,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 37,
+    "E1_count": 38,
     "E2_count": 181,
     "E3_count": 17,
     "E4_count": 15,

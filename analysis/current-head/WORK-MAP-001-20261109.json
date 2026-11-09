@@ -3,9 +3,9 @@
   "created_at": "2026-11-09",
   "method": "measured sizes (.work/map_data.json) + hand-authored classification; every unit must appear in CLASS or the generator fails",
   "totals": {
-    "gb": 26.015,
-    "files_on_disk": 120826,
-    "files_tracked": 1622
+    "gb": 26.014,
+    "files_on_disk": 120819,
+    "files_tracked": 1612
   },
   "by_status": {
     "DERIVED": {
@@ -16,21 +16,21 @@
     },
     "LOCAL_ONLY": {
       "units": 8,
-      "gb": 6.8067,
-      "files": 86751,
+      "gb": 6.8079,
+      "files": 86759,
       "tracked": 0
     },
     "IN_PRODUCT": {
       "units": 14,
       "gb": 1.6678,
-      "files": 5457,
+      "files": 5455,
       "tracked": 652
     },
     "RECORD": {
       "units": 6,
       "gb": 0.0599,
       "files": 4090,
-      "tracked": 562
+      "tracked": 564
     },
     "IN_PRODUCT_ADVISORY": {
       "units": 1,
@@ -40,9 +40,9 @@
     },
     "MIXED": {
       "units": 1,
-      "gb": 0.018,
-      "files": 71,
-      "tracked": 53
+      "gb": 0.016,
+      "files": 59,
+      "tracked": 41
     },
     "AGENT_CONFIG": {
       "units": 5,
@@ -53,7 +53,7 @@
     "VERIFICATION": {
       "units": 1,
       "gb": 0.0069,
-      "files": 482,
+      "files": 481,
       "tracked": 191
     },
     "VENDORED": {
@@ -81,12 +81,12 @@
       "unnamed": 103
     },
     "RECORD": {
-      "tracked": 562,
+      "tracked": 564,
       "unnamed": 529
     },
     "MIXED": {
-      "tracked": 53,
-      "unnamed": 31
+      "tracked": 41,
+      "unnamed": 19
     },
     "IN_PRODUCT": {
       "tracked": 652,
@@ -94,7 +94,7 @@
     },
     "MIRROR": {
       "tracked": 2,
-      "unnamed": 2
+      "unnamed": 1
     },
     "CONTRACT": {
       "tracked": 35,
@@ -106,7 +106,7 @@
     },
     "VERIFICATION": {
       "tracked": 191,
-      "unnamed": 140
+      "unnamed": 139
     },
     "IN_PRODUCT_ADVISORY": {
       "tracked": 18,
@@ -131,8 +131,8 @@
       "unnamed": 1
     },
     "<root>": {
-      "tracked": 53,
-      "unnamed": 31
+      "tracked": 41,
+      "unnamed": 19
     },
     ".github": {
       "tracked": 3,
@@ -143,7 +143,7 @@
       "unnamed": 3
     },
     "analysis": {
-      "tracked": 131,
+      "tracked": 133,
       "unnamed": 112
     },
     "brain": {
@@ -156,7 +156,7 @@
     },
     "config": {
       "tracked": 2,
-      "unnamed": 2
+      "unnamed": 1
     },
     "configs": {
       "tracked": 26,
@@ -224,7 +224,7 @@
     },
     "tests": {
       "tracked": 191,
-      "unnamed": 140
+      "unnamed": 139
     },
     "tools": {
       "tracked": 70,
@@ -251,9 +251,9 @@
       "status": "LOCAL_ONLY",
       "authority": "Local scratch",
       "note": "0 tracked",
-      "bytes": 3472454508,
-      "gb": 3.4725,
-      "files_on_disk": 82045,
+      "bytes": 3473508775,
+      "gb": 3.4735,
+      "files_on_disk": 82046,
       "files_tracked": 0
     },
     {
@@ -261,9 +261,9 @@
       "status": "LOCAL_ONLY",
       "authority": "Local survey/evidence scripts",
       "note": "0 tracked",
-      "bytes": 3119977011,
+      "bytes": 3119982008,
       "gb": 3.12,
-      "files_on_disk": 2743,
+      "files_on_disk": 2744,
       "files_tracked": 0
     },
     {
@@ -291,9 +291,9 @@
       "status": "LOCAL_ONLY",
       "authority": "Local runtime logs",
       "note": "0 tracked; some are cited by E5 evidence",
-      "bytes": 213966726,
-      "gb": 0.214,
-      "files_on_disk": 1941,
+      "bytes": 214244042,
+      "gb": 0.2142,
+      "files_on_disk": 1947,
       "files_tracked": 0
     },
     {
@@ -371,10 +371,10 @@
       "status": "MIXED",
       "authority": "Repository root",
       "note": "53 of 71 tracked: truth maps, AGENTS/AI_CONTEXT, 15 handoff notes, 2 installer exes",
-      "bytes": 18027408,
-      "gb": 0.018,
-      "files_on_disk": 71,
-      "files_tracked": 53
+      "bytes": 15988379,
+      "gb": 0.016,
+      "files_on_disk": 59,
+      "files_tracked": 41
     },
     {
       "unit": "tools",
@@ -431,9 +431,9 @@
       "status": "VERIFICATION",
       "authority": "Test tree",
       "note": "191 of 482 tracked",
-      "bytes": 6867240,
+      "bytes": 6859044,
       "gb": 0.0069,
-      "files_on_disk": 482,
+      "files_on_disk": 481,
       "files_tracked": 191
     },
     {
@@ -481,19 +481,19 @@
       "status": "RECORD",
       "authority": "Analysis records",
       "note": "131 of 146 tracked",
-      "bytes": 3141430,
+      "bytes": 3143629,
       "gb": 0.0031,
       "files_on_disk": 148,
-      "files_tracked": 131
+      "files_tracked": 133
     },
     {
       "unit": "scripts",
       "status": "IN_PRODUCT",
       "authority": "Operational scripts",
       "note": "128 of 309 tracked",
-      "bytes": 2416859,
+      "bytes": 2408998,
       "gb": 0.0024,
-      "files_on_disk": 309,
+      "files_on_disk": 307,
       "files_tracked": 128
     },
     {

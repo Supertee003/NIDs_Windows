@@ -1,12 +1,12 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T17:24:15.139155+00:00",
+  "generated_at": "2026-11-09T18:04:55.575296+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1516,
+  "total_files": 1508,
   "by_role": {
-    "documentation": 353,
-    "build-config": 170,
-    "other": 18,
+    "documentation": 344,
+    "build-config": 172,
+    "other": 17,
     "lockfile": 6,
     "rust-build": 4,
     "source": 365,
@@ -420,10 +420,6 @@
       "class": "canonical-build",
       "role": "build-config"
     },
-    ".git-ls-files.txt": {
-      "class": "canonical-docs",
-      "role": "documentation"
-    },
     ".github/PULL_REQUEST_TEMPLATE.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -608,6 +604,14 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/FULL-BOUNDARY-001-20261109.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "analysis/current-head/FULL-BOUNDARY-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/HEALTH-PROJECTION-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -669,6 +673,14 @@
       "role": "documentation"
     },
     "analysis/current-head/WIRE-V3-ROLLOUT-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/WORK-MAP-001-20261109.json": {
+      "class": "canonical-build",
+      "role": "build-config"
+    },
+    "analysis/current-head/WORK-MAP-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -2224,10 +2236,6 @@
       "class": "canonical-source",
       "role": "source"
     },
-    "enforcement-call-sites.txt": {
-      "class": "canonical-docs",
-      "role": "documentation"
-    },
     "evidence/milestone-1-2-20260922-163230/README.txt": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -2499,10 +2507,6 @@
     "go/aggregator/uuid_util.go": {
       "class": "canonical-source",
       "role": "go-source"
-    },
-    "handoff_summary.txt": {
-      "class": "canonical-docs",
-      "role": "documentation"
     },
     "installer/aegis.nsi": {
       "class": "canonical-build",
@@ -5232,33 +5236,9 @@
       "class": "canonical-source",
       "role": "production-source"
     },
-    "static-authority-scan.txt": {
-      "class": "canonical-docs",
-      "role": "documentation"
-    },
-    "static-contract-scan.txt": {
-      "class": "canonical-docs",
-      "role": "documentation"
-    },
-    "static-lifecycle-scan.txt": {
-      "class": "canonical-docs",
-      "role": "documentation"
-    },
     "SYSTEM_MAP.json": {
       "class": "canonical-build",
       "role": "build-config"
-    },
-    "test_output.txt": {
-      "class": "canonical-docs",
-      "role": "documentation"
-    },
-    "test_results.txt": {
-      "class": "canonical-docs",
-      "role": "documentation"
-    },
-    "test_summary.txt": {
-      "class": "canonical-docs",
-      "role": "documentation"
     },
     "tests/__init__.py": {
       "class": "canonical-source",
@@ -6024,10 +6004,6 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
-    "tmp_prompt.txt": {
-      "class": "canonical-docs",
-      "role": "documentation"
-    },
     "tools/aegisctl/__init__.py": {
       "class": "canonical-source",
       "role": "source"
@@ -6379,14 +6355,6 @@
     "ts_policy/tsconfig.json": {
       "class": "canonical-build",
       "role": "build-config"
-    },
-    "vol10_preview.txt": {
-      "class": "canonical-docs",
-      "role": "documentation"
-    },
-    "zig_build.err": {
-      "class": "unclassified",
-      "role": "other"
     }
   }
 }

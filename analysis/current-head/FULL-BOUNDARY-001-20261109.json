@@ -1,60 +1,58 @@
 {
-  "head": "4e98d751406b7d3608df9e17258d6d9871b878da",
+  "head": "94ddb029d42d46c443d381c815130543083c08a9",
   "generated_at": "2026-11-09",
   "proof": {
-    "on_disk_files": 120826,
-    "tracked": 1622,
-    "untracked": 2,
-    "ignored": 119203,
-    "tracked_plus_others": 120827,
+    "on_disk_files": 120819,
+    "tracked": 1612,
+    "untracked": 0,
+    "ignored": 119207,
+    "tracked_plus_others": 120819,
     "unclassified_on_disk": [],
-    "known_but_missing_on_disk": [
-      "tmp_hbc/"
-    ],
-    "sum_of_buckets": 120826,
+    "known_but_missing_on_disk": [],
+    "sum_of_buckets": 120819,
     "rule_gap_count": 0,
     "rule_gap_sample": [],
     "partition_ok": true
   },
   "on_disk_buckets": {
-    "scratch-local": 82045,
+    "scratch-local": 82046,
     "build-output": 25713,
-    "local-evidence": 6250,
-    "runtime-state": 1950,
+    "local-evidence": 6251,
+    "runtime-state": 1956,
     "build-cache": 1657,
-    "verification": 601,
-    "tooling": 579,
+    "verification": 600,
+    "tooling": 577,
     "dependency-cache": 315,
     "native-source": 272,
     "release-artifact": 243,
     "analytics-source": 209,
-    "documentation": 207,
+    "documentation": 197,
     "runtime-source": 190,
     "analysis-record": 177,
     "support-source": 154,
     "agent-config": 112,
     "contract": 46,
     "configuration": 28,
-    "root-file": 21,
+    "root-file": 20,
     "authoring-source": 18,
     "record-map": 13,
     "kernel-source": 13,
-    "repo-metadata": 5,
     "vendored-web": 5,
+    "repo-metadata": 4,
     "ci": 3
   },
   "tracked_by_class": {
     "verification": {
       "files": 310,
-      "unnamed": 255
-    },
-    "documentation": {
-      "files": 207,
-      "unnamed": 189
+      "unnamed": 254
     },
     "tooling": {
       "files": 199,
       "unnamed": 158
+    },
+    "documentation": {
+      "files": 197,
+      "unnamed": 179
     },
     "runtime-source": {
       "files": 188,
@@ -65,7 +63,7 @@
       "unnamed": 175
     },
     "analysis-record": {
-      "files": 155,
+      "files": 157,
       "unnamed": 136
     },
     "agent-config": {
@@ -90,7 +88,7 @@
     },
     "configuration": {
       "files": 28,
-      "unnamed": 26
+      "unnamed": 25
     },
     "support-source": {
       "files": 26,
@@ -108,17 +106,17 @@
       "files": 12,
       "unnamed": 7
     },
-    "repo-metadata": {
-      "files": 5,
-      "unnamed": 3
-    },
-    "root-file": {
-      "files": 5,
-      "unnamed": 3
-    },
     "vendored-web": {
       "files": 5,
       "unnamed": 5
+    },
+    "repo-metadata": {
+      "files": 4,
+      "unnamed": 2
+    },
+    "root-file": {
+      "files": 4,
+      "unnamed": 2
     },
     "ci": {
       "files": 3,
@@ -1002,13 +1000,6 @@
       "bytes": 37
     },
     {
-      "path": ".git-ls-files.txt",
-      "class": "repo-metadata",
-      "ring": "ring3_out_of_contract",
-      "named_by_evidence": false,
-      "bytes": 48408
-    },
-    {
       "path": ".gitattributes",
       "class": "repo-metadata",
       "ring": "ring3_out_of_contract",
@@ -1041,7 +1032,7 @@
       "class": "repo-metadata",
       "ring": "ring3_out_of_contract",
       "named_by_evidence": true,
-      "bytes": 2512
+      "bytes": 2503
     },
     {
       "path": ".gitleaks.toml",
@@ -1181,7 +1172,7 @@
       "class": "record-map",
       "ring": "ring3_out_of_contract",
       "named_by_evidence": true,
-      "bytes": 1054267
+      "bytes": 1056445
     },
     {
       "path": "FLOW_MAP.json",
@@ -1216,7 +1207,7 @@
       "class": "record-map",
       "ring": "ring3_out_of_contract",
       "named_by_evidence": true,
-      "bytes": 9526
+      "bytes": 9642
     },
     {
       "path": "README.md",
@@ -1818,7 +1809,7 @@
       "class": "analysis-record",
       "ring": "ring3_out_of_contract",
       "named_by_evidence": false,
-      "bytes": 313330
+      "bytes": 313752
     },
     {
       "path": "analysis/current-head/FULL-BOUNDARY-001-20261109.md",
@@ -1903,6 +1894,20 @@
       "ring": "ring3_out_of_contract",
       "named_by_evidence": true,
       "bytes": 6197
+    },
+    {
+      "path": "analysis/current-head/WORK-MAP-001-20261109.json",
+      "class": "analysis-record",
+      "ring": "ring3_out_of_contract",
+      "named_by_evidence": true,
+      "bytes": 17039
+    },
+    {
+      "path": "analysis/current-head/WORK-MAP-001-20261109.md",
+      "class": "analysis-record",
+      "ring": "ring3_out_of_contract",
+      "named_by_evidence": true,
+      "bytes": 7607
     },
     {
       "path": "analysis/current-head/XDR-AUTHORITY-RECONCILE-001-20261109.md",
@@ -2615,7 +2620,7 @@
       "path": "config/Rules.json",
       "class": "configuration",
       "ring": "ring1_contract",
-      "named_by_evidence": false,
+      "named_by_evidence": true,
       "bytes": 9035
     },
     {
@@ -4250,13 +4255,6 @@
       "bytes": 7178
     },
     {
-      "path": "enforcement-call-sites.txt",
-      "class": "documentation",
-      "ring": "ring3_out_of_contract",
-      "named_by_evidence": false,
-      "bytes": 10406
-    },
-    {
       "path": "evidence/milestone-1-2-20260922-163230/README.txt",
       "class": "local-evidence",
       "ring": "ring3_out_of_contract",
@@ -4719,13 +4717,6 @@
       "bytes": 319
     },
     {
-      "path": "handoff_summary.txt",
-      "class": "documentation",
-      "ring": "ring3_out_of_contract",
-      "named_by_evidence": false,
-      "bytes": 5540
-    },
-    {
       "path": "installer.nsi",
       "class": "release-artifact",
       "ring": "ring3_out_of_contract",
@@ -4744,7 +4735,7 @@
       "class": "record-map",
       "ring": "ring3_out_of_contract",
       "named_by_evidence": true,
-      "bytes": 230748
+      "bytes": 238872
     },
     {
       "path": "lib/bindings/utils.js",
@@ -5045,7 +5036,7 @@
       "class": "record-map",
       "ring": "ring3_out_of_contract",
       "named_by_evidence": true,
-      "bytes": 191326
+      "bytes": 197026
     },
     {
       "path": "release/T20-final/46b93dc/KNOWN_LIMITATIONS.md",
@@ -6284,7 +6275,7 @@
       "class": "record-map",
       "ring": "ring3_out_of_contract",
       "named_by_evidence": true,
-      "bytes": 23219
+      "bytes": 23767
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",
@@ -9465,48 +9456,6 @@
       "bytes": 35718
     },
     {
-      "path": "static-authority-scan.txt",
-      "class": "documentation",
-      "ring": "ring3_out_of_contract",
-      "named_by_evidence": false,
-      "bytes": 52198
-    },
-    {
-      "path": "static-contract-scan.txt",
-      "class": "documentation",
-      "ring": "ring3_out_of_contract",
-      "named_by_evidence": false,
-      "bytes": 492832
-    },
-    {
-      "path": "static-lifecycle-scan.txt",
-      "class": "documentation",
-      "ring": "ring3_out_of_contract",
-      "named_by_evidence": false,
-      "bytes": 1181356
-    },
-    {
-      "path": "test_output.txt",
-      "class": "documentation",
-      "ring": "ring3_out_of_contract",
-      "named_by_evidence": false,
-      "bytes": 101890
-    },
-    {
-      "path": "test_results.txt",
-      "class": "documentation",
-      "ring": "ring3_out_of_contract",
-      "named_by_evidence": false,
-      "bytes": 101890
-    },
-    {
-      "path": "test_summary.txt",
-      "class": "documentation",
-      "ring": "ring3_out_of_contract",
-      "named_by_evidence": false,
-      "bytes": 46734
-    },
-    {
       "path": "tests/__init__.py",
       "class": "verification",
       "ring": "ring2_support",
@@ -10413,7 +10362,7 @@
       "path": "tests/security/test_single_rule_authority.py",
       "class": "verification",
       "ring": "ring2_support",
-      "named_by_evidence": false,
+      "named_by_evidence": true,
       "bytes": 6653
     },
     {
@@ -10842,13 +10791,6 @@
       "ring": "ring2_support",
       "named_by_evidence": true,
       "bytes": 3788
-    },
-    {
-      "path": "tmp_prompt.txt",
-      "class": "documentation",
-      "ring": "ring3_out_of_contract",
-      "named_by_evidence": false,
-      "bytes": 9852
     },
     {
       "path": "tools/aegisctl.py",
@@ -11465,20 +11407,6 @@
       "ring": "ring2_support",
       "named_by_evidence": false,
       "bytes": 624
-    },
-    {
-      "path": "vol10_preview.txt",
-      "class": "documentation",
-      "ring": "ring3_out_of_contract",
-      "named_by_evidence": false,
-      "bytes": 3142
-    },
-    {
-      "path": "zig_build.err",
-      "class": "root-file",
-      "ring": "ring3_out_of_contract",
-      "named_by_evidence": false,
-      "bytes": 1438
     }
   ],
   "build_units": {

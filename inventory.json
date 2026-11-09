@@ -1,13 +1,13 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T17:24:15.136509+00:00",
+  "generated_at": "2026-11-09T18:04:55.572720+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1516,
+  "total_files": 1508,
   "by_class": {
-    "canonical-docs": 367,
-    "canonical-build": 181,
-    "unclassified": 18,
+    "canonical-docs": 358,
+    "canonical-build": 183,
+    "unclassified": 17,
     "canonical-source": 661,
     "canonical-test": 222,
     "canonical-config": 34,
@@ -157,12 +157,6 @@
       "class": "canonical-build",
       "role": "build-config",
       "size": 3543
-    },
-    {
-      "path": ".git-ls-files.txt",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 48408
     },
     {
       "path": ".github/PULL_REQUEST_TEMPLATE.md",
@@ -441,6 +435,18 @@
       "size": 4218
     },
     {
+      "path": "analysis/current-head/FULL-BOUNDARY-001-20261109.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 313752
+    },
+    {
+      "path": "analysis/current-head/FULL-BOUNDARY-001-20261109.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 6330
+    },
+    {
       "path": "analysis/current-head/HEALTH-PROJECTION-001-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -535,6 +541,18 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 6197
+    },
+    {
+      "path": "analysis/current-head/WORK-MAP-001-20261109.json",
+      "class": "canonical-build",
+      "role": "build-config",
+      "size": 17039
+    },
+    {
+      "path": "analysis/current-head/WORK-MAP-001-20261109.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 7607
     },
     {
       "path": "analysis/current-head/XDR-AUTHORITY-RECONCILE-001-20261109.md",
@@ -2865,12 +2883,6 @@
       "size": 7178
     },
     {
-      "path": "enforcement-call-sites.txt",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 10406
-    },
-    {
       "path": "evidence/milestone-1-2-20260922-163230/README.txt",
       "class": "canonical-docs",
       "role": "documentation",
@@ -3186,7 +3198,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1054267
+      "size": 1056445
     },
     {
       "path": "FLOW_MAP.json",
@@ -3279,12 +3291,6 @@
       "size": 319
     },
     {
-      "path": "handoff_summary.txt",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 5540
-    },
-    {
       "path": "installer/aegis.nsi",
       "class": "canonical-build",
       "role": "build-config",
@@ -3300,7 +3306,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 240186
+      "size": 230748
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3564,7 +3570,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 9938
+      "size": 9526
     },
     {
       "path": "pytest.ini",
@@ -3582,7 +3588,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 197938
+      "size": 191326
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -4650,7 +4656,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 23220
+      "size": 23219
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",
@@ -7377,46 +7383,10 @@
       "size": 35718
     },
     {
-      "path": "static-authority-scan.txt",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 52198
-    },
-    {
-      "path": "static-contract-scan.txt",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 492832
-    },
-    {
-      "path": "static-lifecycle-scan.txt",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 1181356
-    },
-    {
       "path": "SYSTEM_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
       "size": 24007
-    },
-    {
-      "path": "test_output.txt",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 101890
-    },
-    {
-      "path": "test_results.txt",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 101890
-    },
-    {
-      "path": "test_summary.txt",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 46734
     },
     {
       "path": "tests/__init__.py",
@@ -8565,12 +8535,6 @@
       "size": 3788
     },
     {
-      "path": "tmp_prompt.txt",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 9852
-    },
-    {
       "path": "tools/aegisctl/__init__.py",
       "class": "canonical-source",
       "role": "source",
@@ -9097,18 +9061,6 @@
       "class": "canonical-build",
       "role": "build-config",
       "size": 624
-    },
-    {
-      "path": "vol10_preview.txt",
-      "class": "canonical-docs",
-      "role": "documentation",
-      "size": 3142
-    },
-    {
-      "path": "zig_build.err",
-      "class": "unclassified",
-      "role": "other",
-      "size": 1438
     }
   ]
 }
