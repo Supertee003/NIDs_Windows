@@ -1,17 +1,17 @@
 # FULL-BOUNDARY-001 — the whole project, enumerated
 
-- **Generated:** 2026-11-09 from `c9189e7` by `admin-evidence/full-boundary-20261109/full_boundary.py`
+- **Generated:** 2026-11-09 from `4e98d75` by `admin-evidence/full-boundary-20261109/full_boundary.py`
 - **Scope:** every regular file under the project root (`.git` excluded), plus the host surface the project owns. Nothing is dropped: a file that no rule matches fails the run.
 
 ## Completeness proof
 
 | quantity | value |
 |---|---|
-| files on disk (excl. .git) | 120,819 |
-| tracked by git | 1,620 |
-| untracked, not ignored | 1 |
-| ignored by git | 119,199 |
-| classified by a rule | 120,819 |
+| files on disk (excl. .git) | 120,826 |
+| tracked by git | 1,622 |
+| untracked, not ignored | 2 |
+| ignored by git | 119,203 |
+| classified by a rule | 120,826 |
 | unclassified | 0 |
 | rule gaps | 0 |
 | **partition holds** | **True** |
@@ -21,16 +21,16 @@
 ## What the numbers say
 
 - **The repository is 1.3% of the tree.** 1,620 tracked files vs 120,819 on disk: ~82k local scratch (`.work/`), ~26k build output, ~6.2k local evidence, ~2k runtime state, ~1.7k caches. Those 119k files are not the product; they are the working surface that produced it.
-- **Tracked evidence coverage: 1,348 of 1,620 files (83%) are never named by any evidence entry.**
+- **Tracked evidence coverage: 1,350 of 1,622 files (83%) are never named by any evidence entry.**
 - **Ring 1 (contract/runtime) alone: 190 of 301 files (63%) are never named.**
 
 ## On-disk buckets (every file counted once)
 
 | class | files | what it is |
 |---|---:|---|
-| `scratch-local` | 82,042 | `.work/` scratch scripts and run logs |
+| `scratch-local` | 82,045 | `.work/` scratch scripts and run logs |
 | `build-output` | 25,713 | zig-out, target, build, dist, per-crate target |
-| `local-evidence` | 6,249 | evidence/, admin-evidence/, vm_test_kit_* |
+| `local-evidence` | 6,250 | evidence/, admin-evidence/, vm_test_kit_* |
 | `runtime-state` | 1,950 | logs/, reports/, outputs/, pid/, powershell/ |
 | `build-cache` | 1,657 | .zig-cache, __pycache__, .pytest_cache |
 | `verification` | 601 | tests/ and src/tests/ |
@@ -41,7 +41,7 @@
 | `analytics-source` | 209 | brain/ |
 | `documentation` | 207 | docs/ and root handoff notes |
 | `runtime-source` | 190 | src/, nose/, rust-src/ |
-| `analysis-record` | 174 | analysis/, .analysis/, .archify/ |
+| `analysis-record` | 177 | analysis/, .analysis/, .archify/ |
 | `support-source` | 154 | shield/, go/, mouth/, aegis_dashboard/ |
 | `agent-config` | 112 | .agents, .claude, .freebuff, .manus, .cloud-attachments |
 | `contract` | 46 | shared/ and contracts/ |
@@ -53,7 +53,7 @@
 | `repo-metadata` | 5 | .gitattributes, .gitignore, .gitleaks.toml |
 | `vendored-web` | 5 | lib/ (tom-select, vis) |
 | `ci` | 3 | .github/workflows |
-| **total** | **120,819** | |
+| **total** | **120,826** | |
 
 ## Tracked files by class (1,620 total)
 
@@ -64,7 +64,7 @@
 | `tooling` | 199 | 158 | ring2_support |
 | `runtime-source` | 188 | 108 | ring1_contract |
 | `release-artifact` | 177 | 175 | ring3_out_of_contract |
-| `analysis-record` | 153 | 134 | ring3_out_of_contract |
+| `analysis-record` | 155 | 136 | ring3_out_of_contract |
 | `agent-config` | 101 | 101 | ring3_out_of_contract |
 | `local-evidence` | 52 | 52 | ring3_out_of_contract |
 | `analytics-source` | 45 | 41 | ring2_support |

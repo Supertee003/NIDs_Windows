@@ -1,25 +1,25 @@
 {
-  "head": "c9189e740a09b50c20ab87de57905132874e28d0",
+  "head": "4e98d751406b7d3608df9e17258d6d9871b878da",
   "generated_at": "2026-11-09",
   "proof": {
-    "on_disk_files": 120819,
-    "tracked": 1620,
-    "untracked": 1,
-    "ignored": 119199,
-    "tracked_plus_others": 120820,
+    "on_disk_files": 120826,
+    "tracked": 1622,
+    "untracked": 2,
+    "ignored": 119203,
+    "tracked_plus_others": 120827,
     "unclassified_on_disk": [],
     "known_but_missing_on_disk": [
       "tmp_hbc/"
     ],
-    "sum_of_buckets": 120819,
+    "sum_of_buckets": 120826,
     "rule_gap_count": 0,
     "rule_gap_sample": [],
     "partition_ok": true
   },
   "on_disk_buckets": {
-    "scratch-local": 82042,
+    "scratch-local": 82045,
     "build-output": 25713,
-    "local-evidence": 6249,
+    "local-evidence": 6250,
     "runtime-state": 1950,
     "build-cache": 1657,
     "verification": 601,
@@ -30,7 +30,7 @@
     "analytics-source": 209,
     "documentation": 207,
     "runtime-source": 190,
-    "analysis-record": 174,
+    "analysis-record": 177,
     "support-source": 154,
     "agent-config": 112,
     "contract": 46,
@@ -65,8 +65,8 @@
       "unnamed": 175
     },
     "analysis-record": {
-      "files": 153,
-      "unnamed": 134
+      "files": 155,
+      "unnamed": 136
     },
     "agent-config": {
       "files": 101,
@@ -1812,6 +1812,20 @@
       "ring": "ring3_out_of_contract",
       "named_by_evidence": true,
       "bytes": 4218
+    },
+    {
+      "path": "analysis/current-head/FULL-BOUNDARY-001-20261109.json",
+      "class": "analysis-record",
+      "ring": "ring3_out_of_contract",
+      "named_by_evidence": false,
+      "bytes": 313330
+    },
+    {
+      "path": "analysis/current-head/FULL-BOUNDARY-001-20261109.md",
+      "class": "analysis-record",
+      "ring": "ring3_out_of_contract",
+      "named_by_evidence": false,
+      "bytes": 6330
     },
     {
       "path": "analysis/current-head/HEALTH-PROJECTION-001-20261109.md",

@@ -1,0 +1,562 @@
+{
+  "id": "WORK-MAP-001",
+  "created_at": "2026-11-09",
+  "method": "measured sizes (.work/map_data.json) + hand-authored classification; every unit must appear in CLASS or the generator fails",
+  "totals": {
+    "gb": 26.015,
+    "files_on_disk": 120826,
+    "files_tracked": 1622
+  },
+  "by_status": {
+    "DERIVED": {
+      "units": 6,
+      "gb": 17.4075,
+      "files": 23474,
+      "tracked": 0
+    },
+    "LOCAL_ONLY": {
+      "units": 8,
+      "gb": 6.8067,
+      "files": 86751,
+      "tracked": 0
+    },
+    "IN_PRODUCT": {
+      "units": 14,
+      "gb": 1.6678,
+      "files": 5457,
+      "tracked": 652
+    },
+    "RECORD": {
+      "units": 6,
+      "gb": 0.0599,
+      "files": 4090,
+      "tracked": 562
+    },
+    "IN_PRODUCT_ADVISORY": {
+      "units": 1,
+      "gb": 0.0385,
+      "files": 333,
+      "tracked": 18
+    },
+    "MIXED": {
+      "units": 1,
+      "gb": 0.018,
+      "files": 71,
+      "tracked": 53
+    },
+    "AGENT_CONFIG": {
+      "units": 5,
+      "gb": 0.0087,
+      "files": 115,
+      "tracked": 104
+    },
+    "VERIFICATION": {
+      "units": 1,
+      "gb": 0.0069,
+      "files": 482,
+      "tracked": 191
+    },
+    "VENDORED": {
+      "units": 1,
+      "gb": 0.0007,
+      "files": 5,
+      "tracked": 5
+    },
+    "CONTRACT": {
+      "units": 2,
+      "gb": 0.0003,
+      "files": 46,
+      "tracked": 35
+    },
+    "MIRROR": {
+      "units": 1,
+      "gb": 0.0,
+      "files": 2,
+      "tracked": 2
+    }
+  },
+  "units": [
+    {
+      "unit": ".zig-cache",
+      "status": "DERIVED",
+      "authority": "Zig build cache",
+      "note": "reproducible",
+      "bytes": 15075868839,
+      "gb": 15.0759,
+      "files_on_disk": 1652,
+      "files_tracked": 0
+    },
+    {
+      "unit": ".work",
+      "status": "LOCAL_ONLY",
+      "authority": "Local scratch",
+      "note": "0 tracked",
+      "bytes": 3472454508,
+      "gb": 3.4725,
+      "files_on_disk": 82045,
+      "files_tracked": 0
+    },
+    {
+      "unit": "admin-evidence",
+      "status": "LOCAL_ONLY",
+      "authority": "Local survey/evidence scripts",
+      "note": "0 tracked",
+      "bytes": 3119977011,
+      "gb": 3.12,
+      "files_on_disk": 2743,
+      "files_tracked": 0
+    },
+    {
+      "unit": "target",
+      "status": "DERIVED",
+      "authority": "Cargo build output",
+      "note": "reproducible",
+      "bytes": 2153547520,
+      "gb": 2.1535,
+      "files_on_disk": 21330,
+      "files_tracked": 0
+    },
+    {
+      "unit": "aegis_dashboard",
+      "status": "IN_PRODUCT",
+      "authority": "Rust dashboard",
+      "note": "3 of 3,617 files tracked; the other 3,614 are target/ and node_modules",
+      "bytes": 1528019088,
+      "gb": 1.528,
+      "files_on_disk": 3617,
+      "files_tracked": 3
+    },
+    {
+      "unit": "logs",
+      "status": "LOCAL_ONLY",
+      "authority": "Local runtime logs",
+      "note": "0 tracked; some are cited by E5 evidence",
+      "bytes": 213966726,
+      "gb": 0.214,
+      "files_on_disk": 1941,
+      "files_tracked": 0
+    },
+    {
+      "unit": "zig-out",
+      "status": "DERIVED",
+      "authority": "Zig install output",
+      "note": "reproducible",
+      "bytes": 84395734,
+      "gb": 0.0844,
+      "files_on_disk": 30,
+      "files_tracked": 0
+    },
+    {
+      "unit": "build",
+      "status": "DERIVED",
+      "authority": "CMake build output",
+      "note": "reproducible",
+      "bytes": 70509304,
+      "gb": 0.0705,
+      "files_on_disk": 436,
+      "files_tracked": 0
+    },
+    {
+      "unit": "release",
+      "status": "RECORD",
+      "authority": "Per-release manifests, SBOM, checksums",
+      "note": "175 of 239 tracked",
+      "bytes": 44434197,
+      "gb": 0.0444,
+      "files_on_disk": 239,
+      "files_tracked": 175
+    },
+    {
+      "unit": "ts_policy",
+      "status": "IN_PRODUCT_ADVISORY",
+      "authority": "TypeScript policy authoring/compiler",
+      "note": "advisory only: no runtime enforcement authority",
+      "bytes": 38492828,
+      "gb": 0.0385,
+      "files_on_disk": 333,
+      "files_tracked": 18
+    },
+    {
+      "unit": "mouth",
+      "status": "IN_PRODUCT",
+      "authority": "Rust CLI front end",
+      "note": "6 of 290 tracked",
+      "bytes": 37906218,
+      "gb": 0.0379,
+      "files_on_disk": 290,
+      "files_tracked": 6
+    },
+    {
+      "unit": "go",
+      "status": "IN_PRODUCT",
+      "authority": "Go aggregator service",
+      "note": "14 of 18 tracked",
+      "bytes": 35858035,
+      "gb": 0.0359,
+      "files_on_disk": 18,
+      "files_tracked": 14
+    },
+    {
+      "unit": "dist",
+      "status": "DERIVED",
+      "authority": "Staged binaries",
+      "note": "reproducible",
+      "bytes": 23060852,
+      "gb": 0.0231,
+      "files_on_disk": 21,
+      "files_tracked": 0
+    },
+    {
+      "unit": "<root>",
+      "status": "MIXED",
+      "authority": "Repository root",
+      "note": "53 of 71 tracked: truth maps, AGENTS/AI_CONTEXT, 15 handoff notes, 2 installer exes",
+      "bytes": 18027408,
+      "gb": 0.018,
+      "files_on_disk": 71,
+      "files_tracked": 53
+    },
+    {
+      "unit": "tools",
+      "status": "IN_PRODUCT",
+      "authority": "Operator + truth tooling",
+      "note": "70 of 269 tracked",
+      "bytes": 14226113,
+      "gb": 0.0142,
+      "files_on_disk": 269,
+      "files_tracked": 70
+    },
+    {
+      "unit": "shield",
+      "status": "IN_PRODUCT",
+      "authority": "Rust shield crate",
+      "note": "3 tracked source files; 122 files are build output",
+      "bytes": 14188303,
+      "gb": 0.0142,
+      "files_on_disk": 125,
+      "files_tracked": 3
+    },
+    {
+      "unit": "nose",
+      "status": "IN_PRODUCT",
+      "authority": "Go packet acquisition",
+      "note": "30 of 32 tracked",
+      "bytes": 13961149,
+      "gb": 0.014,
+      "files_on_disk": 32,
+      "files_tracked": 30
+    },
+    {
+      "unit": "brain",
+      "status": "IN_PRODUCT",
+      "authority": "Python Tier-2 analytics",
+      "note": "45 of 209 tracked",
+      "bytes": 9773942,
+      "gb": 0.0098,
+      "files_on_disk": 209,
+      "files_tracked": 45
+    },
+    {
+      "unit": ".cloud-attachments",
+      "status": "AGENT_CONFIG",
+      "authority": "Attachment cache",
+      "note": "0 tracked",
+      "bytes": 8413824,
+      "gb": 0.0084,
+      "files_on_disk": 4,
+      "files_tracked": 0
+    },
+    {
+      "unit": "tests",
+      "status": "VERIFICATION",
+      "authority": "Test tree",
+      "note": "191 of 482 tracked",
+      "bytes": 6867240,
+      "gb": 0.0069,
+      "files_on_disk": 482,
+      "files_tracked": 191
+    },
+    {
+      "unit": "bridge",
+      "status": "IN_PRODUCT",
+      "authority": "C ABI bridge to the kernel drivers",
+      "note": "13 of 247 tracked",
+      "bytes": 6564291,
+      "gb": 0.0066,
+      "files_on_disk": 247,
+      "files_tracked": 13
+    },
+    {
+      "unit": ".analysis",
+      "status": "RECORD",
+      "authority": "Analysis scratch records",
+      "note": "12 of 17 tracked",
+      "bytes": 5327581,
+      "gb": 0.0053,
+      "files_on_disk": 17,
+      "files_tracked": 12
+    },
+    {
+      "unit": "src",
+      "status": "IN_PRODUCT",
+      "authority": "Zig runtime spine (event/flow/detection/correlation/forensics)",
+      "note": "299 of 299 files tracked - the only unit with zero untracked surface",
+      "bytes": 4437775,
+      "gb": 0.0044,
+      "files_on_disk": 299,
+      "files_tracked": 299
+    },
+    {
+      "unit": "evidence",
+      "status": "RECORD",
+      "authority": "Tracked evidence artifacts",
+      "note": "52 of 3,494 files tracked",
+      "bytes": 3671504,
+      "gb": 0.0037,
+      "files_on_disk": 3494,
+      "files_tracked": 52
+    },
+    {
+      "unit": "analysis",
+      "status": "RECORD",
+      "authority": "Analysis records",
+      "note": "131 of 146 tracked",
+      "bytes": 3141430,
+      "gb": 0.0031,
+      "files_on_disk": 148,
+      "files_tracked": 131
+    },
+    {
+      "unit": "scripts",
+      "status": "IN_PRODUCT",
+      "authority": "Operational scripts",
+      "note": "128 of 309 tracked",
+      "bytes": 2416859,
+      "gb": 0.0024,
+      "files_on_disk": 309,
+      "files_tracked": 128
+    },
+    {
+      "unit": "docs",
+      "status": "RECORD",
+      "authority": "Documentation",
+      "note": "180 of 180 tracked",
+      "bytes": 1698511,
+      "gb": 0.0017,
+      "files_on_disk": 180,
+      "files_tracked": 180
+    },
+    {
+      "unit": ".archify",
+      "status": "RECORD",
+      "authority": "Generated architecture views",
+      "note": "12 of 12 tracked",
+      "bytes": 1653728,
+      "gb": 0.0017,
+      "files_on_disk": 12,
+      "files_tracked": 12
+    },
+    {
+      "unit": "lib",
+      "status": "VENDORED",
+      "authority": "Vendored UI assets (tom-select, vis)",
+      "note": "no code reference found",
+      "bytes": 749391,
+      "gb": 0.0007,
+      "files_on_disk": 5,
+      "files_tracked": 5
+    },
+    {
+      "unit": "shared",
+      "status": "CONTRACT",
+      "authority": "Cross-language schemas and wire contract",
+      "note": "21 of 32 tracked",
+      "bytes": 279005,
+      "gb": 0.0003,
+      "files_on_disk": 32,
+      "files_tracked": 21
+    },
+    {
+      "unit": ".agents",
+      "status": "AGENT_CONFIG",
+      "authority": "Agent skill definitions",
+      "note": "100 of 100 tracked",
+      "bytes": 255072,
+      "gb": 0.0003,
+      "files_on_disk": 100,
+      "files_tracked": 100
+    },
+    {
+      "unit": "drivers",
+      "status": "IN_PRODUCT",
+      "authority": "Kernel drivers (WFP, minifilter)",
+      "note": "12 of 13 tracked",
+      "bytes": 179989,
+      "gb": 0.0002,
+      "files_on_disk": 13,
+      "files_tracked": 12
+    },
+    {
+      "unit": ".pytest_cache",
+      "status": "DERIVED",
+      "authority": "pytest cache",
+      "note": "reproducible",
+      "bytes": 133383,
+      "gb": 0.0001,
+      "files_on_disk": 5,
+      "files_tracked": 0
+    },
+    {
+      "unit": "rust-src",
+      "status": "IN_PRODUCT",
+      "authority": "Rust PEP / crypto / authorization",
+      "note": "2 of 2 tracked",
+      "bytes": 117971,
+      "gb": 0.0001,
+      "files_on_disk": 2,
+      "files_tracked": 2
+    },
+    {
+      "unit": "reports",
+      "status": "LOCAL_ONLY",
+      "authority": "Local reports",
+      "note": "0 tracked",
+      "bytes": 81009,
+      "gb": 0.0001,
+      "files_on_disk": 2,
+      "files_tracked": 0
+    },
+    {
+      "unit": "configs",
+      "status": "IN_PRODUCT",
+      "authority": "Canonical runtime configuration",
+      "note": "26 of 26 tracked",
+      "bytes": 69020,
+      "gb": 0.0001,
+      "files_on_disk": 26,
+      "files_tracked": 26
+    },
+    {
+      "unit": "vm_test_kit_22rules_20260924-180737",
+      "status": "LOCAL_ONLY",
+      "authority": "VM lab kit",
+      "note": "0 tracked",
+      "bytes": 50459,
+      "gb": 0.0001,
+      "files_on_disk": 13,
+      "files_tracked": 0
+    },
+    {
+      "unit": ".manus",
+      "status": "AGENT_CONFIG",
+      "authority": "Agent tooling state",
+      "note": "0 tracked",
+      "bytes": 45834,
+      "gb": 0.0,
+      "files_on_disk": 6,
+      "files_tracked": 0
+    },
+    {
+      "unit": "outputs",
+      "status": "LOCAL_ONLY",
+      "authority": "Local command output",
+      "note": "0 tracked",
+      "bytes": 33882,
+      "gb": 0.0,
+      "files_on_disk": 2,
+      "files_tracked": 0
+    },
+    {
+      "unit": ".github",
+      "status": "AGENT_CONFIG",
+      "authority": "CI workflows",
+      "note": "3 of 3 tracked",
+      "bytes": 20731,
+      "gb": 0.0,
+      "files_on_disk": 3,
+      "files_tracked": 3
+    },
+    {
+      "unit": "config",
+      "status": "MIRROR",
+      "authority": "Legacy Rules.json packaging mirror",
+      "note": "byte-identical to configs/Rules.json (SHA256 87b97448...), enforced by tests/security/test_single_rule_authority.py; no code loads it",
+      "bytes": 10166,
+      "gb": 0.0,
+      "files_on_disk": 2,
+      "files_tracked": 2
+    },
+    {
+      "unit": "installer",
+      "status": "IN_PRODUCT",
+      "authority": "NSIS packaging definition",
+      "note": "1 of 1 tracked",
+      "bytes": 4918,
+      "gb": 0.0,
+      "files_on_disk": 1,
+      "files_tracked": 1
+    },
+    {
+      "unit": "contracts",
+      "status": "CONTRACT",
+      "authority": "Operator-facing contract reference",
+      "note": "README-referenced only; not loaded by any runtime code path",
+      "bytes": 4260,
+      "gb": 0.0,
+      "files_on_disk": 14,
+      "files_tracked": 14
+    },
+    {
+      "unit": "powershell",
+      "status": "LOCAL_ONLY",
+      "authority": "Local PowerShell diagnostics",
+      "note": "0 tracked",
+      "bytes": 332,
+      "gb": 0.0,
+      "files_on_disk": 1,
+      "files_tracked": 0
+    },
+    {
+      "unit": ".freebuff",
+      "status": "AGENT_CONFIG",
+      "authority": "Freebuff project config",
+      "note": "1 of 2 tracked",
+      "bytes": 151,
+      "gb": 0.0,
+      "files_on_disk": 2,
+      "files_tracked": 1
+    },
+    {
+      "unit": "pid",
+      "status": "LOCAL_ONLY",
+      "authority": "Local pid files",
+      "note": "0 tracked",
+      "bytes": 19,
+      "gb": 0.0,
+      "files_on_disk": 4,
+      "files_tracked": 0
+    }
+  ],
+  "declarations": [
+    {
+      "question": "config/ vs configs/ - which one is authoritative?",
+      "verdict": "configs/ is the live authority; config/Rules.json is a packaging mirror",
+      "proof": "SHA256 of both files is 87b97448e92eacba0534d65c929cf5f9599796b6c3d6a4eccd01cbd8269c4b74; tests/security/test_single_rule_authority.py fails if they diverge or if any code loads rules from config/; tools/aegisctl/api/control_api.py removed the fallback"
+    },
+    {
+      "question": "contracts/ vs shared/ vs tests/contracts/ - three contract locations?",
+      "verdict": "one authority, two consumers: shared/ is the contract authority, contracts/ is operator-facing reference, tests/contracts/ holds producer-owned vectors",
+      "proof": "git grep finds no runtime loader for contracts/; only README and analysis cite it"
+    },
+    {
+      "question": "lib/ - vendored UI assets with no visible consumer",
+      "verdict": "VENDORED, no authority; kept in place, must not be edited as project source",
+      "proof": "git grep for src=\"lib/ or href=\"lib/ returns no hit"
+    },
+    {
+      "question": "aegis_dashboard and shield look huge (1.53 GB, 125 files)",
+      "verdict": "the product surface is 3 tracked files each; the rest is target/ build output",
+      "proof": "git ls-files aegis_dashboard -> Cargo.toml, Cargo.lock, src/main.rs"
+    }
+  ]
+}

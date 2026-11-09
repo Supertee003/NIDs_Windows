@@ -1,7 +1,7 @@
 {
   "head_sha": "2102a5edacc4b5eaca93c00207d6703a7134d0c3",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-09T23:59:00+07:00",
+  "last_updated_at": "2026-11-09",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -5101,6 +5101,27 @@
         "Build success is E1 (static/build proof), not E2 or E5.",
         "mouth and aegis_dashboard have no automated tests in this patch."
       ]
+    },
+    {
+      "id": "WORK-MAP-001-E1-20261109",
+      "head_sha": "4e98d75",
+      "timestamp": "2026-11-09",
+      "title": "Scope register: every unit carries one of eleven statuses, and the boundary is stated in numbers",
+      "level": "E1",
+      "component": "whole tree (46 units), config/, configs/, contracts/, shared/, lib/",
+      "flow_id": "META-COVERAGE",
+      "description": "Static inspection plus measured sizes, with no source change. Each of the 46 top-level units carries exactly one status (IN_PRODUCT, IN_PRODUCT_ADVISORY, CONTRACT, MIRROR, VENDORED, VERIFICATION, RECORD, DERIVED, LOCAL_ONLY, AGENT_CONFIG, MIXED); the generator fails if a unit is missing, so 'in scope' cannot degrade into an omission. Measured: product surface is 652 of 1,622 tracked files (40%), local-only plus derived surface is 110,225 of 120,826 files on disk (91.2%) carrying 0 tracked files. Three ambiguities are resolved by evidence rather than taste: config/Rules.json is a packaging mirror of configs/Rules.json (identical SHA256, enforced by tests/security/test_single_rule_authority.py, no runtime loader); contracts/ is operator-facing reference while shared/ holds the contract authority and tests/contracts/ the producer-owned vectors; lib/ is vendored UI with no code reference. Also recorded: aegis_dashboard and shield each have 3 tracked source files and the rest of their size is target/ output. No file was moved or deleted.",
+      "artifacts": [
+        "analysis/current-head/WORK-MAP-001-20261109.md",
+        "analysis/current-head/WORK-MAP-001-20261109.json"
+      ],
+      "commands": [
+        "python admin-evidence/work-map-20261109/work_map.py (exit 0)",
+        "certutil -hashfile config/Rules.json configs/Rules.json (SHA256 equal)",
+        "git grep for runtime loaders of config/Rules.json, contracts/, lib/",
+        "git ls-files aegis_dashboard shield (3 files each)"
+      ],
+      "limitations": "E1 only: this is a map, not a runtime proof. Counts were taken immediately before the two artifacts were written and exclude them. Unit boundaries are top-level directories, so a misrouted file inside a directory is still counted under that directory."
     }
   ],
   "known_gaps": [
@@ -11007,7 +11028,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 36,
+    "E1_count": 37,
     "E2_count": 181,
     "E3_count": 17,
     "E4_count": 15,
