@@ -132,6 +132,16 @@ var g_queue_tail: std.atomic.Value(u64) = std.atomic.Value(u64).init(0);
 // only: no push/drop decision reads them, so behavior is unchanged.
 pub var g_ingress_pushed: [256]std.atomic.Value(u64) = [_]std.atomic.Value(u64){std.atomic.Value(u64).init(0)} ** 256;
 pub var g_ingress_dropped: [256]std.atomic.Value(u64) = [_]std.atomic.Value(u64){std.atomic.Value(u64).init(0)} ** 256;
+// Bounded second dimension for existing event metadata: source ordinal ×
+// EventKind ordinal. Counters contain no path/PID data and never steer queue
+// admission. This lets queue.stats attribute which classified lane was
+// admitted or refused without creating unbounded per-process/path cardinality.
+pub const SOURCE_KIND_BUCKET_COUNT: usize = 256 * 256;
+pub fn sourceKindIndex(source_ordinal: u8, kind_ordinal: u8) usize {
+    return @as(usize, source_ordinal) * 256 + kind_ordinal;
+}
+pub var g_ingress_kind_pushed: [SOURCE_KIND_BUCKET_COUNT]std.atomic.Value(u64) = [_]std.atomic.Value(u64){std.atomic.Value(u64).init(0)} ** SOURCE_KIND_BUCKET_COUNT;
+pub var g_ingress_kind_dropped: [SOURCE_KIND_BUCKET_COUNT]std.atomic.Value(u64) = [_]std.atomic.Value(u64){std.atomic.Value(u64).init(0)} ** SOURCE_KIND_BUCKET_COUNT;
 // QLOSS-FAIRSHARE-001: how many queued events each source currently owns.
 // Admission compares it against SOURCE_OCCUPANCY_CAP; queue.stats exposes it
 // so an operator can see which sensor is holding the space.
@@ -190,17 +200,21 @@ fn pushEventFull(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst
     const head = g_queue_head.load(.monotonic);
     const tail = g_queue_tail.load(.acquire);
     const src_ord: usize = @intFromEnum(ev.source);
+    const kind_ord: usize = @intFromEnum(ev.kind);
+    const source_kind_idx = src_ord * 256 + kind_ord;
     if ((src_ipv6 == null) != (dst_ipv6 == null)) {
         // A v6 endpoint pair is atomic metadata: accepting only one endpoint
         // would create a forensic record that looks complete but is not.
         _ = state.g_queue_drops.fetchAdd(1, .monotonic);
         _ = g_ingress_dropped[src_ord].fetchAdd(1, .monotonic);
+        _ = g_ingress_kind_dropped[source_kind_idx].fetchAdd(1, .monotonic);
         return false;
     }
     if (head -% tail >= PIPELINE_QUEUE_SIZE) {
         // Queue full — drop event
         _ = state.g_queue_drops.fetchAdd(1, .monotonic);
         _ = g_ingress_dropped[src_ord].fetchAdd(1, .monotonic);
+        _ = g_ingress_kind_dropped[source_kind_idx].fetchAdd(1, .monotonic);
         return false;
     }
     const depth = head -% tail;
@@ -222,6 +236,7 @@ fn pushEventFull(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst
             _ = state.g_queue_drops.fetchAdd(1, .monotonic);
             _ = state.g_reserved_tail_shed.fetchAdd(1, .monotonic);
             _ = g_ingress_dropped[src_ord].fetchAdd(1, .monotonic);
+            _ = g_ingress_kind_dropped[source_kind_idx].fetchAdd(1, .monotonic);
             return false;
         }
     }
@@ -235,6 +250,7 @@ fn pushEventFull(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst
         _ = state.g_queue_drops.fetchAdd(1, .monotonic);
         _ = state.g_source_quota_shed.fetchAdd(1, .monotonic);
         _ = g_ingress_dropped[src_ord].fetchAdd(1, .monotonic);
+        _ = g_ingress_kind_dropped[source_kind_idx].fetchAdd(1, .monotonic);
         return false;
     }
     var qe = QueuedEvent{ .ev = ev };
@@ -255,6 +271,7 @@ fn pushEventFull(ev: event.IpcEvent, payload: []const u8, src_ipv6: ?[16]u8, dst
         g_queue_peak_depth.store(depth + 1, .monotonic);
     }
     _ = g_ingress_pushed[src_ord].fetchAdd(1, .monotonic);
+    _ = g_ingress_kind_pushed[source_kind_idx].fetchAdd(1, .monotonic);
     return true;
 }
 
@@ -816,10 +833,15 @@ test "GAP-015 ingress accounting counts pushes and drops by source" {
     ev.source = @enumFromInt(77);
     const p0 = g_ingress_pushed[77].load(.acquire);
     const d0 = g_ingress_dropped[77].load(.acquire);
+    const kind_idx = sourceKindIndex(77, @intFromEnum(ev.kind));
+    const kp0 = g_ingress_kind_pushed[kind_idx].load(.acquire);
+    const kd0 = g_ingress_kind_dropped[kind_idx].load(.acquire);
     try std.testing.expect(pushEvent(ev, "abc"));
     try std.testing.expect(pushEvent(ev, "def"));
     try std.testing.expectEqual(p0 + 2, g_ingress_pushed[77].load(.acquire));
     try std.testing.expectEqual(d0, g_ingress_dropped[77].load(.acquire));
+    try std.testing.expectEqual(kp0 + 2, g_ingress_kind_pushed[kind_idx].load(.acquire));
+    try std.testing.expectEqual(kd0, g_ingress_kind_dropped[kind_idx].load(.acquire));
     // Drop path: push until refusal (self-calibrating to whatever the
     // earlier tests left in the queue), then drain back to balanced.
     var accepted: u32 = 0;
@@ -835,6 +857,7 @@ test "GAP-015 ingress accounting counts pushes and drops by source" {
     }
     try std.testing.expect(refused >= 3);
     try std.testing.expectEqual(d0 + refused, g_ingress_dropped[77].load(.acquire));
+    try std.testing.expectEqual(kd0 + refused, g_ingress_kind_dropped[kind_idx].load(.acquire));
     var drained: u32 = 0;
     while (popEvent()) |_| drained += 1;
     try std.testing.expect(drained >= accepted + 2);

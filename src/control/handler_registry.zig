@@ -54,6 +54,13 @@ pub const DispatchResult = struct {
     shutdown: bool,
 };
 
+fn eventKindName(ordinal: u8, buf: []u8) []const u8 {
+    inline for (std.meta.fields(event_contract.EventKind)) |field| {
+        if (field.value == ordinal and !std.mem.eql(u8, field.name, "_")) return field.name;
+    }
+    return std.fmt.bufPrint(buf, "unknown_{d}", .{ordinal}) catch "unknown";
+}
+
 fn successEnvelope(a: std.mem.Allocator, data: []const u8, request_id: u64) ![]u8 {
     var data_parsed = std.json.parseFromSlice(std.json.Value, a, data, .{}) catch |err| {
         std.log.err("control health payload JSON validation failed: bytes={d} error={} payload={s}", .{ data.len, err, data });
@@ -727,6 +734,29 @@ const handlers = struct {
             writer.print("{{\"ordinal\":{},\"name\":\"{s}\",\"pushed\":{},\"dropped\":{},\"active\":{}}}", .{
                 ord, name, buckets[ord].pushed, buckets[ord].dropped, buckets[ord].active,
             }) catch return null;
+        }
+        writer.writeAll("],\"by_source_kind\":[") catch return null;
+        first = true;
+        // Bounded source × canonical kind attribution. Only nonzero lanes are
+        // emitted; counters are observational and never influence admission.
+        var source_ord: usize = 0;
+        while (source_ord < 256) : (source_ord += 1) {
+            var kind_ord: usize = 0;
+            while (kind_ord < 256) : (kind_ord += 1) {
+                const idx = source_ord * 256 + kind_ord;
+                const kind_pushed = event_queue.g_ingress_kind_pushed[idx].load(.acquire);
+                const kind_dropped = event_queue.g_ingress_kind_dropped[idx].load(.acquire);
+                if (kind_pushed == 0 and kind_dropped == 0) continue;
+                if (!first) writer.writeByte(',') catch return null;
+                first = false;
+                var source_name_buf: [32]u8 = undefined;
+                var kind_name_buf: [32]u8 = undefined;
+                const source_name = event_contract.legacySourceName(@intCast(source_ord), &source_name_buf);
+                const kind_name = eventKindName(@intCast(kind_ord), &kind_name_buf);
+                writer.print("{{\"source_ordinal\":{},\"source\":\"{s}\",\"kind_ordinal\":{},\"kind\":\"{s}\",\"pushed\":{},\"dropped\":{}}}", .{
+                    source_ord, source_name, kind_ord, kind_name, kind_pushed, kind_dropped,
+                }) catch return null;
+            }
         }
         writer.writeAll("],\"pipeline\":[") catch return null;
         first = true;
@@ -2633,6 +2663,7 @@ test "queueStats emits parseable JSON with shed and etw keys (GAP-015)" {
     try std.testing.expect(fim_probe.get("native_poll").?.object.contains("duplicates"));
     try std.testing.expect(root.contains("minifilter_pipeline_dropped"));
     try std.testing.expect(root.contains("by_source"));
+    try std.testing.expect(root.contains("by_source_kind"));
     try std.testing.expect(root.contains("pipeline"));
     try std.testing.expect(root.contains("etw"));
     try std.testing.expect(root.get("etw").?.object.contains("file_write"));
