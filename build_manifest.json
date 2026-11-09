@@ -1032,8 +1032,8 @@
     },
     {
       "path": "runtime_manifest.json",
-      "size": 23220,
-      "sha256": "ce2862178cb412be88503e7436ea80991fb36ada297368a6b9043de1e2f5658a",
+      "size": 23219,
+      "sha256": "f5ffc5163e75a3acdeb2d75a6078c55bac269e0d7123142f068b1940e51fcb31",
       "language": "json"
     },
     {

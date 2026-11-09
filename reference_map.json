@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T15:04:35.215375+00:00",
+  "generated_at": "2026-11-09T17:24:15.139155+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1519,
+  "total_files": 1516,
   "by_role": {
-    "documentation": 350,
-    "build-config": 171,
+    "documentation": 353,
+    "build-config": 170,
     "other": 18,
     "lockfile": 6,
     "rust-build": 4,
-    "source": 368,
-    "test-artifact": 224,
+    "source": 365,
+    "test-artifact": 222,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -580,7 +580,15 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/BOUNDARY-DECLARATION-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/CORR-SOURCE-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/COVERAGE-BOUNDARY-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -657,6 +665,10 @@
       "role": "documentation"
     },
     "analysis/current-head/WFP-READINESS-REFRESH-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/WIRE-V3-ROLLOUT-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -2427,18 +2439,6 @@
     "EVIDENCE_INDEX.json": {
       "class": "canonical-build",
       "role": "build-config"
-    },
-    "fix_bridge_banner.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "fix_encoding.py": {
-      "class": "canonical-source",
-      "role": "source"
-    },
-    "fix_head.py": {
-      "class": "canonical-source",
-      "role": "source"
     },
     "FLOW_MAP.json": {
       "class": "canonical-build",
@@ -4468,6 +4468,10 @@
       "class": "canonical-source",
       "role": "production-source"
     },
+    "src/out_of_unit_tests.zig": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "src/perf_bench_main.zig": {
       "class": "canonical-source",
       "role": "production-source"
@@ -5244,10 +5248,6 @@
       "class": "canonical-build",
       "role": "build-config"
     },
-    "test_needs.py": {
-      "class": "canonical-test",
-      "role": "test-artifact"
-    },
     "test_output.txt": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -5805,18 +5805,6 @@
       "role": "test-artifact"
     },
     "tests/test_golden_path.py": {
-      "class": "canonical-test",
-      "role": "test-artifact"
-    },
-    "tests/tests/contracts/canonical_event.bin": {
-      "class": "canonical-test",
-      "role": "test-artifact"
-    },
-    "tests/tests/contracts/test_vectors.json": {
-      "class": "canonical-build",
-      "role": "build-config"
-    },
-    "tests/tests/contracts/wire_event.bin": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

@@ -3,8 +3,8 @@
   "head_sha": "2102a5edacc4b5eaca93c00207d6703a7134d0c3",
   "entrypoint": "src/main.zig",
   "production_binary": "zig-out/bin/aegis_nids.exe",
-  "source_commit": "a1024f2",
-  "date": "2026-11-09T15:04:35.448759+00:00",
+  "source_commit": "2102a5e",
+  "date": "2026-11-09T17:24:15.271935+00:00",
   "production_modules": 3,
   "modules": {
     "nose/capture.go": {

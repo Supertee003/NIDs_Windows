@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T15:04:35.211140+00:00",
+  "generated_at": "2026-11-09T17:24:15.136509+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1519,
+  "total_files": 1516,
   "by_class": {
-    "canonical-docs": 364,
-    "canonical-build": 182,
+    "canonical-docs": 367,
+    "canonical-build": 181,
     "unclassified": 18,
-    "canonical-source": 664,
-    "canonical-test": 224,
+    "canonical-source": 661,
+    "canonical-test": 222,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -270,7 +270,7 @@
       "path": "AI_CONTEXT.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 57387
+      "size": 56409
     },
     {
       "path": "analysis/AEGIS_DEEP_ANALYSIS_REPORT_2026-09-21.md",
@@ -399,10 +399,22 @@
       "size": 12058
     },
     {
+      "path": "analysis/current-head/BOUNDARY-DECLARATION-001-20261109.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 6230
+    },
+    {
       "path": "analysis/current-head/CORR-SOURCE-001-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
       "size": 2815
+    },
+    {
+      "path": "analysis/current-head/COVERAGE-BOUNDARY-001-20261109.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 10359
     },
     {
       "path": "analysis/current-head/ETW-LIFE-001-20261108.md",
@@ -474,7 +486,7 @@
       "path": "analysis/current-head/PAYLOAD-ENVELOPE-V3-001-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 5741
+      "size": 5767
     },
     {
       "path": "analysis/current-head/prepatch-working-tree-safety.diff",
@@ -517,6 +529,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 4557
+    },
+    {
+      "path": "analysis/current-head/WIRE-V3-ROLLOUT-001-20261109.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 6197
     },
     {
       "path": "analysis/current-head/XDR-AUTHORITY-RECONCILE-001-20261109.md",
@@ -1032,7 +1050,7 @@
       "path": "AUTHORITY_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 18772
+      "size": 18281
     },
     {
       "path": "brain/__init__.py",
@@ -1386,7 +1404,7 @@
       "path": "build.zig",
       "class": "canonical-source",
       "role": "source",
-      "size": 12954
+      "size": 15015
     },
     {
       "path": "build_manifest.json",
@@ -1398,7 +1416,7 @@
       "path": "build_truth.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 4462
+      "size": 4342
     },
     {
       "path": "Cargo.lock",
@@ -1602,7 +1620,7 @@
       "path": "CONTRACT_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 12512
+      "size": 12236
     },
     {
       "path": "contracts/fixtures/abi/event_boundaries.json",
@@ -3168,31 +3186,13 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1043359
-    },
-    {
-      "path": "fix_bridge_banner.py",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 2143
-    },
-    {
-      "path": "fix_encoding.py",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 1072
-    },
-    {
-      "path": "fix_head.py",
-      "class": "canonical-source",
-      "role": "source",
-      "size": 848
+      "size": 1054267
     },
     {
       "path": "FLOW_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 33440
+      "size": 32667
     },
     {
       "path": "go/aggregator/alert.go",
@@ -3300,7 +3300,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 240185
+      "size": 240186
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3564,7 +3564,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 10359
+      "size": 9938
     },
     {
       "path": "pytest.ini",
@@ -4650,7 +4650,7 @@
       "path": "runtime_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 23767
+      "size": 23220
     },
     {
       "path": "rust-src/bin/aegis_keygen.rs",
@@ -6231,6 +6231,12 @@
       "size": 1327
     },
     {
+      "path": "src/out_of_unit_tests.zig",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 3687
+    },
+    {
       "path": "src/perf_bench_main.zig",
       "class": "canonical-source",
       "role": "production-source",
@@ -6888,7 +6894,7 @@
       "path": "src/tests/integration/golden_path_e3.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 12112
+      "size": 12213
     },
     {
       "path": "src/tests/integration/hids_integration.zig",
@@ -7092,7 +7098,7 @@
       "path": "src/tests/proofs/policy_plane_proof.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 26008
+      "size": 29025
     },
     {
       "path": "src/tests/proofs/siem_integration_proof.zig",
@@ -7392,13 +7398,7 @@
       "path": "SYSTEM_MAP.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 18634
-    },
-    {
-      "path": "test_needs.py",
-      "class": "canonical-test",
-      "role": "test-artifact",
-      "size": 578
+      "size": 24007
     },
     {
       "path": "test_output.txt",
@@ -8226,7 +8226,7 @@
       "path": "tests/security/test_zig_test_scope.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 17086
+      "size": 16795
     },
     {
       "path": "tests/test_e2e.py",
@@ -8239,24 +8239,6 @@
       "class": "canonical-test",
       "role": "test-artifact",
       "size": 10131
-    },
-    {
-      "path": "tests/tests/contracts/canonical_event.bin",
-      "class": "canonical-test",
-      "role": "test-artifact",
-      "size": 109
-    },
-    {
-      "path": "tests/tests/contracts/test_vectors.json",
-      "class": "canonical-build",
-      "role": "build-config",
-      "size": 1006
-    },
-    {
-      "path": "tests/tests/contracts/wire_event.bin",
-      "class": "canonical-test",
-      "role": "test-artifact",
-      "size": 125
     },
     {
       "path": "tests/tools/test_aegis_open.py",
