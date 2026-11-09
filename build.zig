@@ -229,6 +229,43 @@ pub fn build(b: *std.Build) void {
     compile_only_step.dependOn(&compile_only_tests.step);
     test_step.dependOn(&compile_only_tests.step);
 
+    // ----- SCOPE-103: out-of-unit harness execution -----
+    // The integration/proof harnesses were compiled at best and executed by
+    // nobody: `core-tools` only builds two CLIs and `compile_only_imports`
+    // never runs. This artifact gives ~350 harness tests a real run edge so
+    // rot is visible in a gate instead of on an operator's desk. Scopes stay
+    // declared in tests/security/test_zig_test_scope.py.
+    const out_of_unit_tests = b.addTest(.{
+        .root_source_file = b.path("src/out_of_unit_tests.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    out_of_unit_tests.root_module.addOptions("core_test_configs", opts);
+    out_of_unit_tests.linkLibC();
+    out_of_unit_tests.linkSystemLibrary("tdh");
+    out_of_unit_tests.linkSystemLibrary("advapi32");
+    out_of_unit_tests.linkSystemLibrary("ntdll");
+    if (helper_dir) |dir| {
+        out_of_unit_tests.addLibraryPath(.{ .cwd_relative = dir });
+        out_of_unit_tests.linkSystemLibrary("aegis_etw_helper");
+        out_of_unit_tests.linkSystemLibrary("aegis_fim_helper");
+    }
+    if (std.fs.cwd().access("target/release/aegis_pep.lib", .{})) |_| {
+        out_of_unit_tests.addLibraryPath(.{ .cwd_relative = "target/release" });
+        out_of_unit_tests.linkSystemLibrary("aegis_pep");
+    } else |_| {
+        std.debug.print("WARNING: target/release/aegis_pep.lib not found for out-of-unit tests\n", .{});
+    }
+    const run_out_of_unit = b.addRunArtifact(out_of_unit_tests);
+    run_out_of_unit.addPathDir(b.pathFromRoot("target/helpers"));
+    run_out_of_unit.addPathDir(b.pathFromRoot("target/release"));
+    const out_of_unit_step = b.step("test-out-of-unit", "Run integration/proof harness tests (operator scope)");
+    out_of_unit_step.dependOn(&run_out_of_unit.step);
+    // SCOPE-103: the harnesses run in ~1s, so they belong in the default gate
+    // instead of being an optional step nobody invokes. A rot here is now a
+    // failing `zig build test`, not a surprise on an operator's desk.
+    test_step.dependOn(out_of_unit_step);
+
     // ----- Fuzz target -----
     const fuzz = b.addExecutable(.{
         .name = "aegis_fuzz",

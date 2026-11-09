@@ -22,8 +22,10 @@ or a SCOPE101_BASELINE grandfather entry (transitional: files whose
 execution today relies on incidental paths — migrate to a direct edge
 when touched, then drop the entry). New files MUST take a direct edge
 (or wrapper); the pin fails otherwise. Scopes:
-  integration — operator harnesses (core-tools step), never unit-fast
-  proof        — proof CLIs, same standing as integration
+  integration  — operator harnesses, executed by src/out_of_unit_tests.zig
+                 (SCOPE-103: `zig build test` depends on that step; they are
+                 kept out of the unit binary because of their runtime shape)
+  proof        — proof CLIs, same standing as integration (same runner)
   bench        — real I/O + throughput floors (timing-sensitive)
   specimen     — design reference, intentionally uncompiled
   quarantine   — test-harness orchestrators, never production
@@ -39,8 +41,16 @@ SRC = REPO_ROOT / "src"
 
 # Explicit scope per out-of-unit file. Every other test-bearing file
 # under src/ must be reachable from all_tests.zig.
+#
+# SCOPE-103: "out of unit" no longer means "never executed". The
+# integration/proof scopes below are imported by src/out_of_unit_tests.zig,
+# which `zig build test` runs after the unit binary (1,233 tests). When this
+# pin first gained that edge, golden_path_e3.zig had 7 compile errors and
+# policy_plane_proof.zig asserted a retired signature contract — proof that
+# "compiled at best" was hiding real rot. Files stay out of the unit binary
+# for runtime-shape reasons, not to keep them from running.
 OUT_OF_UNIT: dict[str, str] = {
-    # Integration harnesses (operator-run, core-tools step).
+    # Integration harnesses (operator-run scenarios; see out_of_unit_tests.zig).
     "src/tests/integration/correlation_integration.zig": "integration",
     "src/tests/integration/detection_integration.zig": "integration",
     "src/tests/integration/fault_injection_integration.zig": "integration",
@@ -96,6 +106,8 @@ OUT_OF_UNIT: dict[str, str] = {
     "src/tests/core/core_modules.zig": "quarantine",
     "src/tests/cli_imports.zig": "quarantine",
     "src/compile_only_imports.zig": "quarantine",
+    # SCOPE-103: its own runner root, never part of the unit binary.
+    "src/out_of_unit_tests.zig": "quarantine",
     # SCOPE-102 batch 2: operator-run harnesses, never unit-fast.
     "src/core/e2e_harness.zig": "integration",
     "src/core/integration_test.zig": "integration",
@@ -304,49 +316,26 @@ BUILD_ROOTS = frozenset({
     "src/fuzz_entry.zig",
     "src/perf_bench_main.zig",
     "src/integration_test_main.zig",
+    # SCOPE-103: the out-of-unit harness runner. `zig build test` depends on
+    # it, so every file it imports has a real build-root edge (they left
+    # QUARANTINED_UNREACHABLE in the same patch).
+    "src/out_of_unit_tests.zig",
 })
 
 QUARANTINED_UNREACHABLE = frozenset({
     # Non-test modules with no importer anywhere (headers state their
     # status; four protect reviewed design intent — see test_forbidden_edges).
-    "src/capture/flow_types.zig",
+    # SCOPE-103: reachable again via src/out_of_unit_tests.zig (a harness
+    # imports it), so it left this registry.
     "src/capture/npcap_test_live.zig",
     "src/federation/federation.zig",
     "src/policy/dispatcher.zig",
     "src/policy/dispatcher_phase_b.zig",
     "src/reliability/lifecycle.zig",
     "src/reliability/reliability.zig",
-    # Operator harnesses (core-tools step compiles only perf_bench and
-    # integration_test mains — these facades are wired nowhere).
-    "src/tests/integration/correlation_integration.zig",
-    "src/tests/integration/detection_integration.zig",
-    "src/tests/integration/fault_injection_integration.zig",
-    "src/tests/integration/flow_integration.zig",
-    "src/tests/integration/forensics_integration.zig",
-    "src/tests/integration/golden_path_e3.zig",
-    "src/tests/integration/hids_integration.zig",
-    "src/tests/integration/ips_canary_integration.zig",
-    "src/tests/integration/ips_simulation_integration.zig",
-    "src/tests/integration/nose_integration.zig",
-    "src/tests/integration/policy_integration.zig",
-    "src/tests/integration/policy_plane_integration.zig",
-    "src/tests/integration/rag_integration.zig",
-    "src/tests/integration/release_engineering_integration.zig",
-    "src/tests/integration/replay_integration.zig",
-    "src/tests/integration/threat_intel_integration.zig",
-    "src/tests/integration/xdr_harden_integration.zig",
-    # Proof CLIs (same standing as integration).
-    "src/tests/proofs/audit_trail_proof.zig",
-    "src/tests/proofs/correlation_proof.zig",
-    "src/tests/proofs/detection_fabric_proof.zig",
-    "src/tests/proofs/flow_state_proof.zig",
-    "src/tests/proofs/forensic_replay_proof.zig",
-    "src/tests/proofs/health_monitoring_proof.zig",
-    "src/tests/proofs/intelligence_proof.zig",
-    "src/tests/proofs/pep_enforcement_proof.zig",
-    "src/tests/proofs/policy_plane_proof.zig",
-    "src/tests/proofs/siem_integration_proof.zig",
-    "src/tests/proofs/telemetry_export_proof.zig",
+    # SCOPE-103: the integration/proof harnesses used to sit here ("wired
+    # nowhere"). src/out_of_unit_tests.zig is now a build root that imports
+    # them, so they are reachable — and executed — instead of quarantined.
 })
 
 

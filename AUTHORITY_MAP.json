@@ -1,5 +1,5 @@
 {
-  "head_sha": "a1024f222a0edd3527c367bb812dd4a2fc1326bc",
+  "head_sha": "5c04071dfcef1f37305762966d628ddfb6c4456a",
   "created_at": "2026-09-24",
   "generator_version": "3.0",
   "architecture": "Hub-and-Spoke with Plane Separation",
@@ -278,12 +278,12 @@
     }
   ],
   "hub_and_spoke": {
-      "hub": "Zig Runtime Spine",
-      "spokes": [
-        {
-          "language": "Go",
-          "boundary": "Length-prefixed named pipe",
-          "direction": "inbound"
+    "hub": "Zig Runtime Spine",
+    "spokes": [
+      {
+        "language": "Go",
+        "boundary": "Length-prefixed named pipe",
+        "direction": "inbound"
       },
       {
         "language": "C/C++",

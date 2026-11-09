@@ -20,6 +20,28 @@
 
 const std = @import("std");
 const policy_plane = @import("../../policy/policy_plane.zig");
+const policy_signing = @import("../../policy/policy_signing.zig");
+const Ed25519 = std.crypto.sign.Ed25519;
+
+// POLICY-EVAL-FULL: the compiler deliberately leaves PolicyIR.signature at 0.
+// A SHA-256 digest is a fingerprint, not a signature; real signatures come
+// from the Ed25519 signing tier (policy_signing.signPolicy). This proof was
+// still asserting the retired "compiler fabricates a signature" behaviour,
+// so it is retargeted at the contract that actually ships.
+const PROOF_KEY_ID: u32 = 7;
+const PROOF_POLICY_VERSION: u32 = 1;
+
+fn proofKeyPair() Ed25519.KeyPair {
+    var seed: [32]u8 = undefined;
+    for (&seed, 0..) |*b, i| b.* = @truncate(i * 13 + 5);
+    return Ed25519.KeyPair.create(seed) catch unreachable;
+}
+
+fn proofSigner() policy_signing.SignerIdentity {
+    var signer: policy_signing.SignerIdentity = [_]u8{0} ** 16;
+    @memcpy(signer[0..8], "g9-proof");
+    return signer;
+}
 
 // ============================================================
 // Layer Separation (v5.0 Section 23)
@@ -160,7 +182,9 @@ pub fn verifyLayerSeparation() LayerSeparationCheck {
 pub const IRStabilityCheck = struct {
     has_magic: bool,
     has_version: bool,
-    has_signature: bool,
+    /// The compiler must NOT fabricate a signature: signing belongs to the
+    /// Ed25519 tier. True means the slot was left at its documented zero.
+    signature_deferred: bool,
     has_hash: bool,
     can_load_without_typescript: bool,
     rule_count_preserved: bool,
@@ -201,7 +225,7 @@ pub fn verifyIRStability() IRStabilityCheck {
 
     const has_magic = result.ir.magic == policy_plane.POLICY_MAGIC;
     const has_version = result.ir.version == policy_plane.POLICY_IR_VERSION;
-    const has_signature = result.ir.signature != 0;
+    const signature_deferred = result.ir.signature == 0;
     const has_hash = result.ir.hash != 0;
 
     // IR can be loaded (isValid) WITHOUT referencing the original TypeScript source.
@@ -214,11 +238,11 @@ pub fn verifyIRStability() IRStabilityCheck {
     return .{
         .has_magic = has_magic,
         .has_version = has_version,
-        .has_signature = has_signature,
+        .signature_deferred = signature_deferred,
         .has_hash = has_hash,
         .can_load_without_typescript = can_load_without_typescript,
         .rule_count_preserved = rule_count_preserved,
-        .stability_ok = has_magic and has_version and has_signature and
+        .stability_ok = has_magic and has_version and signature_deferred and
             has_hash and can_load_without_typescript and rule_count_preserved,
     };
 }
@@ -275,18 +299,51 @@ pub fn verifySigning() SigningCheck {
     };
     const result_b = compiler_b.compile(&rules_b);
 
-    const signature_present = result_a.ir.signature != 0;
+    // Signing is the Ed25519 tier's job, not the compiler's.
+    const key_pair = proofKeyPair();
+    const expiry_ms = std.time.milliTimestamp() + 3_600_000;
+    const signed_a = policy_signing.signPolicy(
+        &result_a.ir,
+        key_pair,
+        PROOF_KEY_ID,
+        PROOF_POLICY_VERSION,
+        expiry_ms,
+        proofSigner(),
+    ) catch {
+        return .{
+            .signature_present = false,
+            .hash_present = result_a.ir.hash != 0,
+            .signature_tied_to_content = false,
+            .tamper_detected = false,
+            .hash_differs_per_content = false,
+            .signing_ok = false,
+        };
+    };
+    const signed_b = policy_signing.signPolicy(
+        &result_b.ir,
+        key_pair,
+        PROOF_KEY_ID,
+        PROOF_POLICY_VERSION,
+        expiry_ms,
+        proofSigner(),
+    ) catch unreachable;
+
+    const signature_present = !std.mem.allEqual(u8, &signed_a.signature, 0);
     const hash_present = result_a.ir.hash != 0;
 
     // Hash and signature differ for different content (action changed).
     const hash_differs_per_content = result_a.ir.hash != result_b.ir.hash;
-    const signature_differs = result_a.ir.signature != result_b.ir.signature;
+    const signature_differs = !std.mem.eql(u8, &signed_a.signature, &signed_b.signature);
     const signature_tied_to_content = hash_differs_per_content and signature_differs;
 
-    // Tamper detection: flip a bit in the hash; signature no longer matches content.
-    var tampered_ir = result_a.ir;
-    tampered_ir.hash = tampered_ir.hash +% 1;
-    const tamper_detected = tampered_ir.hash != result_a.ir.hash;
+    // Integrity check: the untampered envelope must verify...
+    const trusted = [_]policy_signing.TrustedKey{.{ .key_id = PROOF_KEY_ID, .public_key = key_pair.public_key.toBytes() }};
+    const verifies_clean = policy_signing.verifyPolicy(&signed_a, std.time.milliTimestamp(), &trusted) == .valid;
+
+    // ...and a single flipped bit in the signed content must be rejected.
+    var tampered = signed_a;
+    tampered.ir.hash = tampered.ir.hash +% 1;
+    const tamper_detected = policy_signing.verifyPolicy(&tampered, std.time.milliTimestamp(), &trusted) != .valid;
 
     return .{
         .signature_present = signature_present,
@@ -294,7 +351,7 @@ pub fn verifySigning() SigningCheck {
         .signature_tied_to_content = signature_tied_to_content,
         .tamper_detected = tamper_detected,
         .hash_differs_per_content = hash_differs_per_content,
-        .signing_ok = signature_present and hash_present and
+        .signing_ok = signature_present and hash_present and verifies_clean and
             signature_tied_to_content and tamper_detected and hash_differs_per_content,
     };
 }
@@ -472,7 +529,7 @@ test "verifyIRStability passes (v5.0 Section 38)" {
     try std.testing.expect(check.isPassed());
     try std.testing.expect(check.has_magic);
     try std.testing.expect(check.has_version);
-    try std.testing.expect(check.has_signature);
+    try std.testing.expect(check.signature_deferred);
     try std.testing.expect(check.has_hash);
     try std.testing.expect(check.can_load_without_typescript);
     try std.testing.expect(check.rule_count_preserved);
@@ -532,7 +589,9 @@ test "Policy IR is loadable without TypeScript source" {
     try std.testing.expect(loaded_ir.isValid());
     try std.testing.expect(loaded_ir.ruleCount() == 1);
     try std.testing.expect(loaded_ir.hash != 0);
-    try std.testing.expect(loaded_ir.signature != 0);
+    // POLICY-EVAL-FULL: the compiler never fabricates a signature; only the
+    // Ed25519 signing tier may populate this slot.
+    try std.testing.expect(loaded_ir.signature == 0);
 }
 
 test "Two different policies produce different signatures" {
@@ -568,9 +627,29 @@ test "Two different policies produce different signatures" {
     };
     const result_block = compiler.compile(&rules_block);
 
-    // Same rule structure but different action -> different content -> different hash+sig
+    // Same rule structure but different action -> different content ->
+    // different hash, and (once signed by the Ed25519 tier) different sigs.
     try std.testing.expect(result_alert.ir.hash != result_block.ir.hash);
-    try std.testing.expect(result_alert.ir.signature != result_block.ir.signature);
+
+    const key_pair = proofKeyPair();
+    const expiry_ms = std.time.milliTimestamp() + 3_600_000;
+    const sig_alert = try policy_signing.signPolicy(
+        &result_alert.ir,
+        key_pair,
+        PROOF_KEY_ID,
+        PROOF_POLICY_VERSION,
+        expiry_ms,
+        proofSigner(),
+    );
+    const sig_block = try policy_signing.signPolicy(
+        &result_block.ir,
+        key_pair,
+        PROOF_KEY_ID,
+        PROOF_POLICY_VERSION,
+        expiry_ms,
+        proofSigner(),
+    );
+    try std.testing.expect(!std.mem.eql(u8, &sig_alert.signature, &sig_block.signature));
 }
 
 test "Tampered IR hash is detectable" {

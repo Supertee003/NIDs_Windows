@@ -1,7 +1,7 @@
 {
-  "head_sha": "a1024f222a0edd3527c367bb812dd4a2fc1326bc",
+  "head_sha": "5c04071dfcef1f37305762966d628ddfb6c4456a",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-09T23:45:39+07:00",
+  "last_updated_at": "2026-11-09T23:59:00+07:00",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -5028,6 +5028,78 @@
         "Lexical matching under-counts single-file components (rust_pep, dashboard) and any module whose name collides with common prose; keyword counts were used for those in the artifact.",
         "The E3 harness run is one observation at this HEAD, not a repeatable gate; nothing prevents it from rotting again.",
         "LOC includes generated Cython C in brain/ (80,076 LOC), so brain size is not a proxy for hand-written surface."
+      ]
+    },
+    {
+      "id": "HARNESS-GATE-001-E2-20261109",
+      "head_sha": "5c04071",
+      "timestamp": "2026-11-09",
+      "title": "Integration/proof harnesses have a run edge: 1233 tests green inside zig build test",
+      "level": "E2",
+      "component": "src/tests/integration (24) + src/tests/proofs (17), runner src/out_of_unit_tests.zig",
+      "flow_id": "META-TEST-SCOPE",
+      "description": "Before this patch no gate executed the operator harnesses: `core-tools` compiled two CLIs and compile_only_imports never ran. Adding src/out_of_unit_tests.zig as a test root (`zig build test-out-of-unit`, and `test` depends on it) immediately failed to compile: golden_path_e3.zig had 7 errors against current policy / threat-tracker / forensic APIs, and policy_plane_proof.zig still asserted the retired 'compiler fabricates a signature' contract. Both were repaired against the shipped behavior; no assertion was weakened (the proof now verifies Ed25519 over signed content and rejects a flipped bit). Result: 1233/1233 harness+transitive tests pass, zig build test 8/8 steps, python -m pytest tests/security 182 passed, tests/release+docs+contracts 164 passed.",
+      "artifacts": [
+        "src/out_of_unit_tests.zig",
+        "build.zig",
+        "tests/security/test_zig_test_scope.py",
+        "src/tests/integration/golden_path_e3.zig",
+        "src/tests/proofs/policy_plane_proof.zig"
+      ],
+      "commands": [
+        "zig build test",
+        "zig build test-out-of-unit",
+        "python -m pytest tests/security -q",
+        "python -m pytest tests/release tests/docs tests/contracts -q"
+      ],
+      "limitations": [
+        "E2 only: proves the harness assertions execute and hold; it does not raise any of them to host verification.",
+        "bench scope (federation_bench, perf_benchmark, performance_harness) stays outside this runner by design (timing-sensitive)."
+      ]
+    },
+    {
+      "id": "TS-POLICY-001-E2-20261109",
+      "head_sha": "5c04071",
+      "timestamp": "2026-11-09",
+      "title": "ts_policy carries its first dated, reproducible test record (76/76)",
+      "level": "E2",
+      "component": "ts_policy/",
+      "flow_id": "META-COVERAGE",
+      "description": "ts_policy was classified CANONICAL in SYSTEM_MAP but had one undated mention and zero E5 in EVIDENCE_INDEX. Measured at this HEAD: `npm run typecheck` exit 0 and `npm run test:all` reports 76 tests / 76 pass / 0 fail. It remains an authoring-only layer: no enforcement claim is made or implied.",
+      "artifacts": [
+        "ts_policy/package.json",
+        "ts_policy/src",
+        "ts_policy/tests"
+      ],
+      "commands": [
+        "cd ts_policy && npm run typecheck",
+        "cd ts_policy && npm run test:all"
+      ],
+      "limitations": [
+        "Not E5: nothing in this record proves a host effect, and ts_policy must never produce one."
+      ]
+    },
+    {
+      "id": "COMPONENT-STANDING-001-E1-20261109",
+      "head_sha": "5c04071",
+      "timestamp": "2026-11-09",
+      "title": "Boundary rings declared; mouth and dashboard moved from floating to measured support",
+      "level": "E1",
+      "component": "whole tree (boundary_rings), mouth/, aegis_dashboard/, src/platform/",
+      "flow_id": "META-COVERAGE",
+      "description": "SYSTEM_MAP now declares ring1_contract (8 ordered steps from the canonical contract down to platform adapters), ring2_support and ring3_out_of_contract, so 'no evidence' is a decision instead of an omission. The four components that were floating are resolved by measurement, not by prose: mouth rebuilds (`cargo build --release`, exit 0, std-only) and becomes a declared component; aegis_dashboard rebuilds at this HEAD (exit 0); ts_policy has its own E2 record; src/platform was never actually unused - win32_service.zig is imported by src/main.zig and src/daemon.zig, and win32_pipe.zig has a unit edge from src/all_tests.zig. AegisWfp/AegisMinifilter are declared Ring 1 with no host-level E5 in this build; that stays a known gap.",
+      "artifacts": [
+        "SYSTEM_MAP.json",
+        "analysis/current-head/BOUNDARY-DECLARATION-001-20261109.md"
+      ],
+      "commands": [
+        "cd mouth && cargo build --release",
+        "cd aegis_dashboard && cargo build --release",
+        "grep -rn 'platform/win32_service' --include=*.zig src"
+      ],
+      "limitations": [
+        "Build success is E1 (static/build proof), not E2 or E5.",
+        "mouth and aegis_dashboard have no automated tests in this patch."
       ]
     }
   ],
@@ -10935,8 +11007,8 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 35,
-    "E2_count": 179,
+    "E1_count": 36,
+    "E2_count": 181,
     "E3_count": 17,
     "E4_count": 15,
     "E5_count": 159,

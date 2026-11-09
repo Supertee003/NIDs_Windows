@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "product": "AEGIS NIDS",
   "version": "5.0.0",
-  "source_commit": "a1024f2",
+  "source_commit": "5c04071",
   "build_date": "2026-10-23T00:00:00.000000+00:00",
   "build_host": "windows",
   "platform": {
@@ -582,8 +582,8 @@
     },
     {
       "path": "build.zig",
-      "size": 12954,
-      "sha256": "f3acfc343a4730a509fd5991917bb9222bfd0ca7c47219b8788d824fcfd79c7a",
+      "size": 15015,
+      "sha256": "ebdc58b11cfb4b5b0362e50ceb0114e410f6bc8de7dede5c178b15912857ff7c",
       "language": "zig"
     },
     {
@@ -1032,8 +1032,8 @@
     },
     {
       "path": "runtime_manifest.json",
-      "size": 23219,
-      "sha256": "0fac9ba618a812ae983966b0376d145ec583d94d804b9a617ccfa20eb5054d89",
+      "size": 23220,
+      "sha256": "d56407c3a20813d017fac324895e1adafdbdc0c70ef5864e4e616b8a76f43da7",
       "language": "json"
     },
     {
@@ -3120,8 +3120,8 @@
     },
     {
       "path": "src/tests/integration/golden_path_e3.zig",
-      "size": 12112,
-      "sha256": "f3c2cdfcf176a70f5da0d504b8ec70cc670e27075560fd505c8947ab0eac30b0",
+      "size": 11911,
+      "sha256": "43bdd3cdd58fc7a80d653cfe4382a9946888318fa8d854d5e0e59048b4012c52",
       "language": "zig"
     },
     {
@@ -3324,8 +3324,8 @@
     },
     {
       "path": "src/tests/proofs/policy_plane_proof.zig",
-      "size": 26008,
-      "sha256": "1abdfabc851f921909e56b92b9b246d75d8e5d87729fb0fe092c35360e8d3412",
+      "size": 29025,
+      "sha256": "85e6a261cc4c8d16e227627e528538d37eb31da11690a8a9453b8b092b20c98e",
       "language": "zig"
     },
     {
