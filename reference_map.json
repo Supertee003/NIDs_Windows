@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T18:48:58.187927+00:00",
+  "generated_at": "2026-11-09T19:03:43.236606+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1517,
+  "total_files": 1518,
   "by_role": {
-    "documentation": 346,
+    "documentation": 347,
     "build-config": 175,
     "other": 17,
     "lockfile": 6,
@@ -577,6 +577,10 @@
       "role": "documentation"
     },
     "analysis/current-head/BOUNDARY-DECLARATION-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/clean-checkout-20261109.txt": {
       "class": "canonical-docs",
       "role": "documentation"
     },

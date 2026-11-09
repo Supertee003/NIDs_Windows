@@ -1,0 +1,5 @@
+6ce88d1 test: name unbuilt artifacts as prerequisites instead of failing on them
+
+................sss..................................................... [ 99%]
+.sss.                                                                    [100%]
+1029 passed, 36 skipped, 21 subtests passed in 144.37s (0:02:24)

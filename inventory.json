@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-09T18:48:58.185411+00:00",
+  "generated_at": "2026-11-09T19:03:43.233929+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1517,
+  "total_files": 1518,
   "by_class": {
-    "canonical-docs": 360,
+    "canonical-docs": 361,
     "canonical-build": 186,
     "unclassified": 17,
     "canonical-source": 662,
@@ -399,6 +399,12 @@
       "size": 6230
     },
     {
+      "path": "analysis/current-head/clean-checkout-20261109.txt",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 307
+    },
+    {
       "path": "analysis/current-head/CORR-SOURCE-001-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -420,7 +426,7 @@
       "path": "analysis/current-head/DEV-PLAN-001-20261109.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 18114
+      "size": 18459
     },
     {
       "path": "analysis/current-head/ETW-LIFE-001-20261108.md",
@@ -3228,7 +3234,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1065732
+      "size": 1067842
     },
     {
       "path": "FLOW_MAP.json",
@@ -3336,7 +3342,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 231247
+      "size": 231248
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3600,7 +3606,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 10041
+      "size": 9693
     },
     {
       "path": "pytest.ini",
@@ -7458,7 +7464,7 @@
       "path": "tests/brain/test_bridge_ipc.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 5311
+      "size": 5641
     },
     {
       "path": "tests/brain/test_canonical_event_v3.py",
@@ -8346,7 +8352,7 @@
       "path": "tests/tools/test_no_shadow_dll.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 2402
+      "size": 2645
     },
     {
       "path": "tests/tools/test_notifier_failclosed.py",

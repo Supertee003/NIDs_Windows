@@ -5215,6 +5215,28 @@
         "python tools/rebuild_truth.py -> valid: true, unresolved: []"
       ],
       "limitations": "E2: the refusal is proven in the Zig unit graph, not on a running service. The driver still contains the AegisWfpBlockFlow definition and the FWP_ACTION_BLOCK creation it performs; dispatch returns STATUS_NOT_SUPPORTED so it is unreachable, and T11 pins that, but the code is not deleted because cl.exe/WDK is not on PATH here and an unbuilt driver edit would be an unverified change. Host-level proof that no AEGIS block filter exists is slice D2 (E5)."
+    },
+    {
+      "id": "CLEAN-CHECKOUT-001-E2-20261109",
+      "head_sha": "6ce88d1",
+      "timestamp": "2026-11-09",
+      "title": "Clean clone runs green: two host couplings were the whole difference between 1029 passed and a broken fresh checkout",
+      "level": "E2",
+      "component": "tests/brain/test_bridge_ipc.py, tests/tools/test_no_shadow_dll.py, whole test tree",
+      "flow_id": "META-COVERAGE",
+      "description": "R-14 asked whether the suite grades the tree or the machine. Cloning this repository with git clone --local and running pytest tests in the clone answered it: the first run failed with a collection ImportError (brain.cython.bridge_ipc is a .pyx compiled in place, absent in a fresh clone) and one assertion (build/Release/aegis_wfp_user.dll only exists after scripts/build_wfp_user_bridge.ps1). Both are missing build products, not defects. They now skip with the command that produces them: pytest.importorskip for the Cython module and an explicit file-existence skip for the DLL. A second fresh clone of the fixed commit at the same commit boundary passes with 1029 passed, 36 skipped, 0 failed. The transcript is the artifact; it is the run, not a summary of one.",
+      "artifacts": [
+        "analysis/current-head/clean-checkout-20261109.txt",
+        "tests/brain/test_bridge_ipc.py",
+        "tests/tools/test_no_shadow_dll.py",
+        "analysis/current-head/DEV-PLAN-001-20261109.md"
+      ],
+      "commands": [
+        "git clone --local --no-hardlinks . .work/clean-run",
+        "python -m pytest tests -q (in the clone) -> 1029 passed, 36 skipped, 0 failed",
+        "python -m pytest tests/brain/test_bridge_ipc.py tests/tools/test_no_shadow_dll.py -q (in the source tree) -> 9 passed"
+      ],
+      "limitations": "E2 and Python-only: the clone never ran zig build test or cargo, so the Zig and Rust suites still depend on a warmer cache to be checked quickly. 36 skips in the clone versus 4 in the source tree are exactly the build-product and host-state prerequisites, which is the point of the measurement: the difference is now named, not hidden."
     }
   ],
   "known_gaps": [
@@ -11122,7 +11144,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 39,
-    "E2_count": 183,
+    "E2_count": 184,
     "E3_count": 17,
     "E4_count": 15,
     "E5_count": 159,
