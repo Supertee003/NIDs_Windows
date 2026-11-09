@@ -13,15 +13,16 @@ lives today:
 
   memory safety / bounds / integer overflow
     The screening boundary (shield/src/lib.rs) rejects null and oversize
-    inputs before any slice is constructed; the SOLE enforcement authority
-    is the Rust PEP (rust-src/lib.rs), the only point for privileged
-    actions. Zig stages use safe slices + bounds-checked arrays; fault
+    inputs before any slice is constructed; the detection-only policy
+    evaluation authority is the Rust PEP (rust-src/lib.rs), the only point
+    for policy evaluation, and it never authorizes a host effect. Zig stages
+    use safe slices + bounds-checked arrays; fault
     matrix (core/fault_matrix.zig) counts overflows instead of panicking.
   FFI / ABI
     The screening shim exports exactly one C symbol (aegis_shield_screen),
     loaded DynLib-only by src/policy/shield_screen.zig (no link-time
-    extern); it is advisory-only and never authorizes (enforcement lives
-    solely in rust-src/lib.rs).
+    extern); it is advisory-only and never authorizes (policy evaluation
+    lives solely in rust-src/lib.rs and is detection-only).
   race / deadlock
     Replay is read-only; forensics ring is single-writer; health
     monitoring is isolated from the golden path.
@@ -42,7 +43,8 @@ lives today:
     trust anchors are pinned + verified in rust-src (WebPkiClientVerifier,
     empty roots fail closed).
   privilege boundaries
-    ADR-0001: Rust PEP is the ONLY enforcement authority; approaching it
+    ADR-0001: Rust PEP is the ONLY policy evaluation authority and is
+    detection-only; approaching it
     are only requests. See authority_invariants.
   audit integrity
     control IPC appends an audit record for every authorization decision;

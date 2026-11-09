@@ -109,7 +109,7 @@ def test_wfp_status_doc_matches_current_enforcement_boundary():
     assert "core/" not in text, "WFP doc still references dead core/ paths"
     for marker in (
         "src/policy/wfp_ioctl.zig",  # read-only Zig telemetry bridge (PEP-001)
-        "rust-src",                  # sole enforcement authority
+        "rust-src",                  # detection-only policy evaluation authority
         "PEP-001",
         "IOCTL_AEGIS_BLOCK_FLOW",    # driver IOCTL set is live
         "aegis_wfp_user.dll",        # user-mode bridge the PEP loads

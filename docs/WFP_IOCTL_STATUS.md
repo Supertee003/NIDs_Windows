@@ -39,16 +39,15 @@ The WFP stack has two implemented layers:
      to the Rust PEP;
    - `src/windows/wfp_ioctl.c` (compiled to `aegis_wfp_user.dll` by the
      root CMakeLists.txt) is the user-mode IOCTL bridge that issues
-     block/unblock/query requests to the driver;
-   - `rust-src/lib.rs` (`wfp_adapter` + `adapter_cache`) is the sole
-     enforcement authority: it loads `aegis_wfp_user.dll`, requires the
+     query/unblock cleanup requests to the driver; the driver rejects
+     `IOCTL_AEGIS_BLOCK_FLOW` with `STATUS_NOT_SUPPORTED`;
+   - `rust-src/lib.rs` (`wfp_adapter` + `adapter_cache`) is a
+     detection-only policy evaluator: it records evidence and reports
+     BLOCK/QUARANTINE requests as `DECISION_ESCALATE` reason 8. The
      exports `aegis_wfp_ioctl_open/block_flow/unblock_filter/query_filter`
-     (direction-aware `query_filter_dir` is required for inbound
-     attestation; telemetry-only `read_events`/`close` are optional), and executes
-     block / quarantine decisions as exact-flow filters via
-     `IOCTL_AEGIS_BLOCK_FLOW`, with an exact-filter read-back
-     (`IOCTL_AEGIS_QUERY_FILTER`) postcondition. When the adapter is
-     absent it fails closed (`DECISION_ESCALATE`, reason 4) - never open.
+     remain for ABI stability, but `aegis_pep_enforce` never calls
+     `block_flow`, so `IOCTL_AEGIS_BLOCK_FLOW` is unreachable and no
+     filter or host effect can be minted.
 
 ## Network acquisition states (PHASE-6)
 
@@ -118,7 +117,8 @@ era; PEP-001 split).
 ## Compliance impact (unchanged intent)
 
 - **SOC 2 CC6.1** (logical access controls): PEP validation + audit trail.
-- **ISO 27001 A.8.23** (web filtering): block/alert actions are decided,
-  recorded, and enforced through the gated WFP path.
-- **NIST CSF PR.AC** (access control): the Rust PEP is the sole authority;
-  kernel IOCTLs are reachable only through it (PEP-001).
+- **ISO 27001 A.8.23** (web filtering): block/alert classifications are
+  decided and recorded as evidence; the product does not filter traffic.
+- **NIST CSF PR.AC** (access control): the Rust PEP is the detection-only
+  policy evaluation authority; kernel IOCTLs cannot install a filter
+  (PEP-001, RETIRE-HOST-EFFECT-001).

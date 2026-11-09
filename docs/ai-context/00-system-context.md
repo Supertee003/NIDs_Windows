@@ -20,7 +20,7 @@ Observation -> Canonical Semantics -> Stateful Context -> Evidence -> Decision -
 3. ONE state authority (flow engine)
 4. ONE evidence model (detection produces, verdict aggregates)
 5. ONE decision authority (policy decides, NOT executes)
-6. ONE enforcement authority (Rust PEP, no bypass)
+6. ONE policy evaluation authority (Rust PEP, detection-only evidence; no host effect)
 7. ONE forensic trace (immutable, hash-chained)
 8. ONE replay path (deterministic regression)
 

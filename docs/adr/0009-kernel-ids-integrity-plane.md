@@ -28,7 +28,7 @@ No module may combine these authorities merely for convenience.
 
 | IPS mechanism | IDS use | Prohibited transfer |
 |---|---|---|
-| PEP single authority | one detection orchestration authority in Zig | detector cannot become an enforcement authority |
+| PEP single authority | one evidence-only policy evaluation authority | detector cannot become a host-effect authority |
 | request validation | validate event shape, source, timestamps, payload bounds, rule provenance | do not mutate host state on validation failure |
 | prevention gate | detection-source readiness and capability gates | never turn a sensor-ready flag into a host-effect gate |
 | provider receipt | immutable detection/evidence receipt tying source, detector, event ID, rule, and result | never call it proof of host enforcement |

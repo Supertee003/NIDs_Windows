@@ -33,8 +33,8 @@ GOLDEN_STEPS = [
     "real event", "go/c++ acquisition", "canonical_event", "event_fabric",
     "flow", "detection (evidence)", "verdict", "correlation",
     "threat_intel", "rag (context)", "brain (advisory)", "policy (decision)",
-    "policy signing (ed25519)", "rust pep (enforcement authority)",
-    "wfp (windows enforcement)", "federation (cross-node incident)",
+    "policy signing (ed25519)", "rust pep (detection-only evidence)",
+    "wfp (windows observe-only boundary)", "federation (cross-node incident)",
     "federation TLS (mTLS transport)", "forensics (immutable trace)",
     "replay",
 ]
@@ -226,10 +226,10 @@ def render(ev: dict) -> str:
                            "core/policy_signing.zig (ed25519)",
         "signature_proof": "core/policy_signing.zig (ed25519 signing + "
                            "TrustStore) gate",
-        "pep_result": "shield/src/pep.rs (Rust PEP, sole enforcement "
-                      "authority) + tests/pep",
-        "wfp_result": "drivers/wfp_callout/*.sys kernel enforcement + "
-                      "core/wfp_production.zig + tests/wfp",
+        "pep_result": "rust-src/lib.rs (Rust PEP, detection-only evidence; "
+                      "block/quarantine -> ESCALATE reason 8) + tests/pep",
+        "wfp_result": "drivers/wfp_callout/*.sys observe-only capture; "
+                      "block IOCTL returns STATUS_NOT_SUPPORTED + tests/wfp",
         "windows_evidence": "ETW/FIM helpers, win32 modules, real telemetry "
                             "sources (npcap)",
         "forensic_record": "logs/runtime/audit.ndjson (append-only) + "

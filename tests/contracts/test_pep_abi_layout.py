@@ -1,14 +1,14 @@
 """CONTRACT-02 (PEP ABI) cross-language layout guard.
 
 The PEP ABI is the boundary between the Zig runtime spine and the Rust
-enforcement authority. It is declared three times, in three languages:
+detection-only policy evaluator. It is declared three times, in three languages:
 
   * ``rust-src/lib.rs``                    — ``#[repr(C)]`` structs (owner)
   * ``src/policy/pep_bindings.zig``        — ``extern struct`` + FFI-001 tests
   * ``tests/wfp/test_t11_windows_host.py`` — ``ctypes.Structure`` declarations
 
 Nothing previously asserted that the three declarations agreed. A stale
-Python declaration silently drove the enforcement authority with
+Python declaration silently drove the policy evaluator with
 ``requested_action == 0 == ACTION_PASS`` (so every privileged request answered
 ALLOW) and wrote ``filter_id`` past the end of the caller's allocation.
 

@@ -148,7 +148,7 @@ authority_invariants = [
     'production packet source: Go Nose is the canonical acquisition path; direct Npcap is a disjoint lab-only full-payload IDS sensor and never a second production ingress',
     'L7 protocol anomaly path is evidence-only: extraction -> protocol detector -> forensic record -> IDS Evidence Receipt; it cannot authorize policy or host effects',
     'production is detection-only: host-effect activation is permanently out of scope; the prevention gate defaults closed and the lab-only build option is not a production capability',
-    'Rust PEP remains the sole authority for any privileged host effect; production host-effect activation is out of scope, and a PEP decision or receipt is not evidence of a production host effect',
+    'Rust PEP is detection-only: it evaluates policy and mints evidence, and never authorizes a host effect (retired by RETIRE-HOST-EFFECT-001); a PEP decision or receipt is not evidence of a host effect, and the WFP block IOCTL hard-fails as unsupported',
     'src/policy/wfp_production.zig is a fail-closed boundary that returns unavailable; it is not a production WFP enforcement route',
     'control plane routes through aegisctl and the authenticated named pipe; never "Everyone" for privileged control operations',
     'identifiers are stage-conditional: event_id and forensic sequence identify each IDS receipt; incident, policy, and PEP request identifiers exist only when their respective stages apply',
@@ -171,7 +171,7 @@ authority_invariants = [
     'installer preserves user data and upgrade rollback records RPO and RTO',
     'policy_engine is the canonical policy decision model; unsigned privileged policy is rejected',
     'control plane authority: the Zig control plane authorizes every state mutation; operators act only through tools/aegisctl.py over the authenticated named pipe',
-    'fail-closed: privileged enforcement without a validated Rust PEP receipt is refused (BLOCKED_CONFIRMED is never emitted without receipt); an absent Tier-3 is surfaced, never a silent allow',
+    'fail-closed: no production path can request a host effect; the WFP block IOCTL returns STATUS_NOT_SUPPORTED, the Rust PEP reports block/quarantine requests as ESCALATE reason 8, and capture callouts only permit (BLOCKED_CONFIRMED is never emitted without a receipt, and no receipt can now be minted)',
 ]
 
 manifest = {

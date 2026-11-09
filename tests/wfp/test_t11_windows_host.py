@@ -1,8 +1,10 @@
-"""Windows host verification for the Rust PEP -> WFP adapter path.
+"""Windows host verification for the Rust PEP detection-only contract.
 
 Run explicitly with AEGIS_RUN_WFP_HOST_TESTS=1 on a test-signed Windows host
-with the AEGIS WFP driver installed. The test never calls the WFP helper
-without first entering through aegis_pep.dll.
+with the AEGIS WFP driver installed. The tests enter through aegis_pep.dll and
+pin the confirmed product decision (issue #25): policy evaluation is evidence
+only, block/quarantine requests are reported as ESCALATE reason 8, and no
+WFP filter or other host effect may be produced.
 
 CONTRACT-02 (PEP ABI) is the single source of truth for these layouts. The
 declarations below must reproduce byte-for-byte the Rust `#[repr(C)]` structs
@@ -19,7 +21,7 @@ one byte each, every later field shifted by one byte, so the PEP read
 `requested_action == 0 == ACTION_PASS` and always answered ALLOW, and the
 response write of `filter_id` landed 8 bytes past the Python allocation.
 `assert_pep_abi_layout()` below exists so that drift like that fails loudly
-here instead of silently mis-driving the enforcement authority.
+here instead of silently mis-driving the policy evaluation boundary.
 """
 from __future__ import annotations
 
@@ -92,7 +94,9 @@ DECISION_ESCALATE = 4
 
 # `reason` semantics for DECISION_ESCALATE.
 REASON_AUTHORIZATION_DENIED = 1
-REASON_HOST_EFFECT_UNAVAILABLE = 4
+# DETECTION-ONLY (issue #25): a policy that requests block/quarantine is
+# reported as an escalation for human review; there is no host effect.
+REASON_DETECTION_ONLY = 8
 
 # `policy.Action` ordinals (src/policy/policy_ir.zig). The PEP consumes the
 # policy.Action ABI, not the PepDecision enum.
@@ -280,7 +284,8 @@ def test_pep_abi_layout_matches_contract_02() -> None:
 
 @pytest.mark.skipif(os.name != "nt", reason="requires Windows")
 @pytest.mark.skipif(not HOST_TEST_ENABLED, reason="set AEGIS_RUN_WFP_HOST_TESTS=1")
-def test_rust_pep_blocks_and_unblocks_on_windows() -> None:
+def test_rust_pep_reports_detection_only_for_block_on_windows() -> None:
+    """DETECTION-ONLY (issue #25): a BLOCK request is evidence, not a filter."""
     assert PEP_DLL.is_file(), f"missing PEP artifact: {PEP_DLL}"
     assert_pep_abi_layout()
 
@@ -297,21 +302,9 @@ def test_rust_pep_blocks_and_unblocks_on_windows() -> None:
         ctypes.c_uint64,
     ]
     pep.aegis_pep_unblock_ip.restype = ctypes.c_int
-    pep.aegis_pep_unblock_filter.argtypes = [
-        ctypes.c_uint64,
-        ctypes.c_uint32,
-        ctypes.c_uint32,
-        ctypes.c_uint64,
-    ]
-    pep.aegis_pep_unblock_filter.restype = ctypes.c_int
     pep.aegis_pep_shutdown.restype = None
 
     assert pep.aegis_pep_init() == 0
-    # The current driver keys each proof filter by direction+tuple and tracks
-    # it, so a leftover exact filter is reused. Pre-clean only the retired
-    # fixed key (older builds); 0x80320003 (not found) is the clean-host case.
-    clean_rc = _delete_stale_proof_filter()
-    print(f"proof-key pre-clean rc={clean_rc:#x}")
     try:
         request = PepRequest(
             decision_kind=61,
@@ -323,7 +316,7 @@ def test_rust_pep_blocks_and_unblocks_on_windows() -> None:
             dst_port=443,
             protocol=6,  # TCP
             policy_id=0x1101,
-            severity=4,
+            severity=9,  # privileged severity still must not mint a filter
             ctx=PepContext(
                 caller_pid=os.getpid(),
                 caller_capability_mask=0x01,
@@ -334,52 +327,24 @@ def test_rust_pep_blocks_and_unblocks_on_windows() -> None:
         response = PepResponse()
         assert pep.aegis_pep_enforce(ctypes.byref(request), ctypes.byref(response)) == 0
 
-        # Invariant that must hold on every host, WFP or not: the sole
-        # enforcement authority never answers ALLOW to a privileged BLOCK
-        # request. Returning ALLOW here would be a fail-open.
-        assert response.decision != DECISION_ALLOW, (
-            "PEP answered ALLOW to a privileged BLOCK request; this is a "
-            f"fail-open on the enforcement authority (decision={response.decision})"
+        # The retired enforcement path must never come back on any host.
+        assert response.decision == DECISION_ESCALATE, (
+            "BLOCK must be reported as ESCALATE for human review, got "
+            f"decision={response.decision}"
         )
+        assert response.reason == REASON_DETECTION_ONLY, (
+            f"expected reason={REASON_DETECTION_ONLY} (detection-only), "
+            f"got {response.reason}"
+        )
+        assert response.filter_id == 0, (
+            f"BLOCK minted a WFP filter (filter_id={response.filter_id}); "
+            "the product is detection-only"
+        )
+        print("DETECTION_ONLY_BLOCK=true")
+        print("DETECTION_ONLY_FILTER_ID=0")
 
-        if response.decision != DECISION_BLOCK:
-            # No WFP host effect provider on this host. CONTRACT-02 requires
-            # the PEP to fail closed, so ESCALATE/reason=HOST_EFFECT_UNAVAILABLE
-            # is the correct observable and E5 host verification is not claimed.
-            assert response.decision == DECISION_ESCALATE, (
-                f"expected BLOCK or fail-closed ESCALATE, got {response.decision}"
-            )
-            assert response.reason == REASON_HOST_EFFECT_UNAVAILABLE, (
-                f"expected reason={REASON_HOST_EFFECT_UNAVAILABLE} "
-                f"(host effect unavailable), got {response.reason}"
-            )
-            pytest.skip(
-                "WFP host effect provider unavailable — fail-closed ESCALATE "
-                "observed. For E5 Windows enforcement verification, run ELEVATED "
-                "(WFP filter install needs admin) with the driver installed: "
-                "$env:AEGIS_RUN_WFP_HOST_TESTS='1'; "
-                "python -m pytest tests/wfp/test_t11_windows_host.py -q. "
-                "A BLOCK installs an 8.8.8.8:443 filter whose id is printed; "
-                "remove it afterwards (the test unblocks its own filter, and "
-                "leftovers go to the plan-§6 cleanup round)."
-            )
-
-        # WFP-capable host: a concrete filter must have been installed.
-        assert response.filter_id != 0, "BLOCK without an installed WFP filter_id"
-        # Full receipt lifecycle: the issued filter is removed by its own id
-        # (IP-only cleanup stays rejected below). The id prints as the
-        # cleanup receipt either way.
-        print(f"WFP test filter installed: filter_id={response.filter_id}")
-        assert pep.aegis_pep_unblock_filter(
-            response.filter_id,
-            request.ctx.caller_pid,
-            request.ctx.caller_capability_mask,
-            request.ctx.request_id + 1,
-        ) == 0, "receipt-aware unblock of the issued filter must succeed"
-        print(f"WFP test filter removed: filter_id={response.filter_id}")
-
-        # Receipt-aware unblock is required; IP-only cleanup is intentionally
-        # rejected by the canonical PEP so it cannot bypass receipt ownership.
+        # IP-only cleanup stays receipt-required: a caller cannot use the
+        # legacy cleanup surface to delete a filter it did not receive.
         assert pep.aegis_pep_unblock_ip(
             request.src_ip,
             request.ctx.caller_pid,
@@ -392,17 +357,12 @@ def test_rust_pep_blocks_and_unblocks_on_windows() -> None:
 
 @pytest.mark.skipif(os.name != "nt", reason="requires Windows")
 @pytest.mark.skipif(not HOST_TEST_ENABLED, reason="set AEGIS_RUN_WFP_HOST_TESTS=1")
-def test_rust_pep_duplicate_inbound_quarantine_is_idempotent() -> None:
-    """G2-DUPFILTER-REPEAT: the direct inbound PEP harness.
+def test_rust_pep_reports_detection_only_for_quarantine_on_windows() -> None:
+    """DETECTION-ONLY (issue #25): quarantine is the same escalation, no filter.
 
-    Two identical direction=1 quarantine calls must reuse the same filter id,
-    the direction-scoped read-back must see the exact tuple between them, and
-    the receipt-aware unblock must leave WFP with no proof filter. This is the
-    host proof the 2026-10-23 lab canary could not produce (the second canary
-    was dropped by the first filter before the PEP saw it).
-
-    Non-elevated hosts fail closed with ESCALATE/reason=4 and skip; run
-    elevated with the AEGIS WFP driver installed for the E5 proof.
+    This replaces the retired G2 duplicate-filter proof: there is no filter to
+    duplicate, so the only honest host proof is that two identical inbound
+    quarantine requests both escalate with no filter and no host effect.
     """
     assert PEP_DLL.is_file(), f"missing PEP artifact: {PEP_DLL}"
     if not DRIVER_SYS.is_file():
@@ -417,141 +377,54 @@ def test_rust_pep_duplicate_inbound_quarantine_is_idempotent() -> None:
         ctypes.POINTER(PepRequest), ctypes.POINTER(PepResponse)
     ]
     pep.aegis_pep_enforce.restype = ctypes.c_int
-    pep.aegis_pep_query_filter_dir.argtypes = [
-        ctypes.c_uint64, ctypes.c_uint8, ctypes.POINTER(PepFilterState)
-    ]
-    pep.aegis_pep_query_filter_dir.restype = ctypes.c_int
-    pep.aegis_pep_unblock_filter.argtypes = [
-        ctypes.c_uint64,
-        ctypes.c_uint32,
-        ctypes.c_uint32,
-        ctypes.c_uint64,
-    ]
-    pep.aegis_pep_unblock_filter.restype = ctypes.c_int
     pep.aegis_pep_shutdown.restype = None
 
     assert pep.aegis_pep_init() == 0
-    clean_rc = _delete_stale_proof_filter()
-    print(f"proof-key pre-clean rc={clean_rc:#x}")
-
-    ctx = PepContext(
-        caller_pid=os.getpid(),
-        caller_capability_mask=0x01,
-        request_id=0xD0F10001,
-        policy_version=0,
-    )
-    # TEST-NET-3 peer, local service port 8443: a scoped, harmless tuple.
-    request = PepRequest(
-        decision_kind=61,
-        requested_action=ACTION_QUARANTINE,
-        flow_id=0xD0F10002,
-        src_ip=0xCB00710A,  # 203.0.113.10
-        dst_ip=0,
-        src_port=0,
-        dst_port=8443,
-        protocol=6,  # TCP
-        policy_id=0xD0F10003,
-        severity=4,
-        direction=1,  # inbound WFP capture
-        ctx=ctx,
-    )
-    filter_id = 0
     try:
-        first = PepResponse()
-        assert pep.aegis_pep_enforce(
-            ctypes.byref(request), ctypes.byref(first)
-        ) == 0, "PEP enforce must return a decision, not an error"
-        if first.decision != DECISION_QUARANTINE:
-            assert first.decision == DECISION_ESCALATE, (
-                f"expected QUARANTINE or fail-closed ESCALATE, got {first.decision}"
-            )
-            assert first.reason == REASON_HOST_EFFECT_UNAVAILABLE, (
-                f"expected reason={REASON_HOST_EFFECT_UNAVAILABLE}, got {first.reason}"
-            )
-            pytest.skip(
-                "WFP host effect provider unavailable — fail-closed ESCALATE. "
-                "Run elevated with the AEGIS WFP driver installed to prove the "
-                "duplicate inbound path."
-            )
-        assert first.filter_id != 0, "QUARANTINE without an installed WFP filter_id"
-        filter_id = first.filter_id
-        _assert_loaded_bridge_hash()
-
-        state = PepFilterState()
-        assert pep.aegis_pep_query_filter_dir(
-            filter_id, 1, ctypes.byref(state)
-        ) == 0, "direction-1 postcondition query failed"
-        assert state.present == 1, "filter not present after the first quarantine"
-        assert state.filter_id == filter_id
-        assert state.remote_ipv4 == request.src_ip
-        assert state.remote_port == request.dst_port
-        assert state.protocol == request.protocol
-        print(
-            f"DUP_FIRST_FILTER_ID={filter_id} direction=1 "
-            f"remote={state.remote_ipv4:#x}:{state.remote_port} proto={state.protocol}"
+        # TEST-NET-3 peer, local service port 8443: a scoped, harmless tuple.
+        request = PepRequest(
+            decision_kind=61,
+            requested_action=ACTION_QUARANTINE,
+            flow_id=0xD0F10002,
+            src_ip=0xCB00710A,  # 203.0.113.10
+            dst_ip=0,
+            src_port=0,
+            dst_port=8443,
+            protocol=6,  # TCP
+            policy_id=0xD0F10003,
+            severity=9,
+            direction=1,  # inbound WFP capture
+            ctx=PepContext(
+                caller_pid=os.getpid(),
+                caller_capability_mask=0x01,
+                request_id=0xD0F10001,
+                policy_version=0,
+            ),
         )
 
-        # Second identical request (one-shot request id moves, the flow tuple
-        # does not). The driver must return the existing filter, not a new one
-        # and not escalate reason=4.
-        request.ctx.request_id += 1
-        second = PepResponse()
-        assert pep.aegis_pep_enforce(
-            ctypes.byref(request), ctypes.byref(second)
-        ) == 0
-        assert second.decision == DECISION_QUARANTINE, (
-            f"duplicate quarantine did not confirm (decision={second.decision}, "
-            f"reason={second.reason})"
-        )
-        assert second.reason != REASON_HOST_EFFECT_UNAVAILABLE, (
-            "duplicate quarantine escalated with host-effect-unavailable"
-        )
-        assert second.filter_id == first.filter_id, (
-            f"duplicate path minted a new filter: {first.filter_id} -> {second.filter_id}"
-        )
-        print(
-            f"DUP_FILTER_SAME=true filter_id={second.filter_id} "
-            f"reason={second.reason}"
-        )
+        for attempt in (1, 2):
+            response = PepResponse()
+            assert pep.aegis_pep_enforce(
+                ctypes.byref(request), ctypes.byref(response)
+            ) == 0, "PEP enforce must return a decision, not an error"
+            assert response.decision == DECISION_ESCALATE, (
+                f"attempt {attempt}: quarantine must escalate, got "
+                f"decision={response.decision}, reason={response.reason}"
+            )
+            assert response.reason == REASON_DETECTION_ONLY, (
+                f"attempt {attempt}: expected reason={REASON_DETECTION_ONLY}, "
+                f"got {response.reason}"
+            )
+            assert response.filter_id == 0, (
+                f"attempt {attempt}: quarantine minted filter "
+                f"{response.filter_id}; the product is detection-only"
+            )
+            request.ctx.request_id += 1
+
+        print("DETECTION_ONLY_QUARANTINE=true")
+        print("DETECTION_ONLY_NO_FILTER=true")
     finally:
-        try:
-            if filter_id:
-                rc = pep.aegis_pep_unblock_filter(
-                    filter_id,
-                    ctx.caller_pid,
-                    ctx.caller_capability_mask,
-                    ctx.request_id + 1,
-                )
-                print(f"DUP_UNBLOCK_RC={rc} filter_id={filter_id}")
-                assert rc == 0, (
-                    f"receipt-aware unblock failed: rc={rc} filter_id={filter_id}"
-                )
-
-                # Postcondition: the exact filter is gone and the provider
-                # reports absence, not a wrong-provider/object mismatch.
-                state = PepFilterState()
-                assert pep.aegis_pep_query_filter_dir(
-                    filter_id, 1, ctypes.byref(state)
-                ) == 0, "direction-1 post-unblock query failed"
-                assert state.filter_id == filter_id
-                assert state.present == 0, (
-                    f"proof filter {filter_id} still present after unblock"
-                )
-                assert state.provider_status in (
-                    FWP_E_FILTER_NOT_FOUND,
-                    STATUS_FWP_FILTER_NOT_FOUND,
-                    NTSTATUS_NOT_FOUND,
-                    STATUS_NOT_FOUND,
-                ), (
-                    "post-unblock provider status does not describe absence: "
-                    f"{state.provider_status:#x}"
-                )
-                print(
-                    f"DUP_UNBLOCK_PRESENT=0 filter_id={filter_id} "
-                    f"provider_status={state.provider_status:#x}"
-                )
-        finally:
-            pep.aegis_pep_shutdown()
+        pep.aegis_pep_shutdown()
 
 
 @pytest.mark.skipif(os.name != "nt", reason="requires Windows")

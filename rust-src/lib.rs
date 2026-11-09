@@ -412,6 +412,11 @@ mod wfp_adapter {
     type WfpClose = unsafe extern "system" fn() -> i32;
     type WfpReadEvents = unsafe extern "system" fn(*mut u8, u32, *mut u32) -> i32;
 
+    /// DETECTION-ONLY (issue #25): the legacy host-effect exports (`open`,
+    /// `block_flow`) are retained so a provider DLL that predates the
+    /// retirement still loads and attests, but no production entrypoint may
+    /// call them. They are intentionally unreferenced outside tests.
+    #[allow(dead_code)]
     pub struct Adapter {
         module: *mut c_void,
         open: WfpOpen,
@@ -530,6 +535,9 @@ mod wfp_adapter {
         None
     }
 
+        /// DETECTION-ONLY (issue #25): retained for ABI/tests only; the
+        /// enforce entrypoint must never call it.
+        #[allow(dead_code)]
         pub fn block_flow(&self, request: &FlowRequest) -> Option<u64> {
             let mut response = FlowResponse { filter_id: 0, provider_status: 0 };
             let rc = unsafe { (self.block_flow)(request, &mut response) };
@@ -752,8 +760,8 @@ fn quota_consume(state: &mut PepState, src_ip: u32, now_ms: u64) -> (u32, bool) 
 }
 
 /// Classify a request for evidence without consuming approvals/quotas or
-/// consulting a host-effect adapter. This is intentionally separate from
-/// `aegis_pep_enforce`, whose legacy path may authorize an adapter call.
+/// consulting a host-effect adapter. `aegis_pep_enforce` shares the same
+/// detection-only outcome; neither entrypoint may authorize an adapter call.
 fn assessment_decision(req: &PepRequest) -> (u8, u32) {
     let privileged = matches!(
         req.requested_action,
@@ -804,10 +812,10 @@ pub unsafe extern "C" fn aegis_pep_enforce(
     let req = unsafe { &*req };
     let resp = unsafe { &mut *resp };
 
-    // Default is non-enforcing until authorization and adapter execution both
-    // succeed. An unavailable/failed enforcement path must never look like an
-    // authorized ALLOW to the caller.
-    let mut decision = DECISION_ALLOW;
+    // DETECTION-ONLY (issue #25): every branch below assigns `decision`
+    // explicitly, so there is no implicit ALLOW default that an unclassified
+    // path could inherit.
+    let mut decision: u8;
     let mut reason = 0u32;
     let mut quota_remaining = QUOTA_DEFAULT;
     let signed_by = 0u32;
@@ -835,12 +843,10 @@ pub unsafe extern "C" fn aegis_pep_enforce(
         decision = DECISION_RATE_LIMIT;
         reason = 3; // explicit policy rate limit
     } else if req.requested_action == ACTION_QUARANTINE {
-        // QUAR-RCPT-112: quarantine constrains traffic like a block, so it
-        // clears the same bars: the severity>=7 two-person approval gate
-        // below, the shared quota window, and adapter execution that mints
-        // a filter_id. The WFP primitive underneath is a flow block; the
-        // quarantine semantics live in the returned decision/receipt, which
-        // is what the Zig verifier keys on — never on filter provenance.
+        // QUAR-RCPT-112: quarantine is classified here as evidence.
+        // DETECTION-ONLY (issue #25): it no longer clears an adapter bar or
+        // mints a filter_id; the classification below is converted to an
+        // escalation for human review and never becomes a host effect.
         if req.severity >= 7 && s.two_person_rule {
             // Need approval
             match s.pending_approvals.remove(&req.ctx.request_id) {
@@ -854,7 +860,7 @@ pub unsafe extern "C" fn aegis_pep_enforce(
             }
         } else {
             decision = DECISION_QUARANTINE;
-            reason = 5; // quarantine requested; adapter execution below
+            reason = 5; // quarantine requested; reported as evidence only
         }
     } else if req.requested_action == ACTION_BLOCK {
         // High-severity block — check two-person rule if enabled.
@@ -878,8 +884,8 @@ pub unsafe extern "C" fn aegis_pep_enforce(
         // Unknown action values fail closed as an authorization denial.
         // The default `decision` is DECISION_ALLOW, so this branch must
         // overwrite it — setting only `reason` would return ALLOW for an
-        // unclassifiable request, which is a fail-open on the sole
-        // enforcement authority.
+        // unclassifiable request, which would be a fail-open on the policy
+        // evaluation boundary.
         decision = DECISION_ESCALATE;
         reason = 6;
     }
@@ -906,38 +912,15 @@ pub unsafe extern "C" fn aegis_pep_enforce(
     // primitive (no separate quarantine filter class exists below the PEP);
     // the returned decision/receipt carries the quarantine semantics.
     if decision == DECISION_BLOCK || decision == DECISION_QUARANTINE {
-        #[cfg(windows)]
-        {
-            // PEP-ADAPTER-CACHE-073: cached bridge (re-probes on failure).
-            // Direction 1 is inbound WFP capture: the peer is src_ip and the
-            // local service port is dst_port. Unknown directions fail closed.
-            match flow_target(req) {
-                Some(target) => {
-                    let flow = wfp_adapter::FlowRequest {
-                        remote_ipv4: target.remote_ipv4,
-                        remote_port: target.remote_port,
-                        protocol: target.protocol,
-                        direction: target.direction,
-                    };
-                    match adapter_cache::with_adapter(|adapter| adapter.block_flow(&flow)) {
-                        Some(id) => filter_id = id,
-                        None => {
-                            decision = DECISION_ESCALATE;
-                            reason = 4;
-                        }
-                    }
-                }
-                None => {
-                    decision = DECISION_ESCALATE;
-                    reason = 4;
-                }
-            }
-        }
-        #[cfg(not(windows))]
-        {
-            decision = DECISION_ESCALATE;
-            reason = 4;
-        }
+        // DETECTION-ONLY (issue #25): the confirmed product decision is that
+        // the PEP evaluates policy and records evidence, and never authorizes
+        // a host effect. A policy that requests block/quarantine is surfaced
+        // as an escalation for human review, not as an adapter call. The
+        // adapter cache and symbols stay in the binary for ABI stability, but
+        // this entrypoint must never load, probe, or invoke them.
+        decision = DECISION_ESCALATE;
+        reason = 8; // detection-only: host effect retired by product scope
+        filter_id = 0;
     }
 
     resp.decision = decision;
@@ -2445,7 +2428,7 @@ mod tests {
         unsafe {
             assert_eq!(aegis_pep_enforce(&req, &mut resp), 0);
             assert_eq!(resp.decision, DECISION_ESCALATE);
-            assert_eq!(resp.reason, 4);
+            assert_eq!(resp.reason, 8); // detection-only: no host effect
         }
     }
 
@@ -2465,7 +2448,7 @@ mod tests {
 
     #[test]
     #[ignore = "requires an explicitly isolated WFP provider proof; must not mutate a developer host"]
-    fn pep_enforce_low_severity_requires_wfp_adapter() {
+    fn pep_enforce_block_reports_detection_only_without_host_effect() {
         let req = PepRequest {
             decision_kind: 61,
             requested_action: ACTION_BLOCK,
@@ -2495,7 +2478,8 @@ mod tests {
         unsafe {
             assert_eq!(aegis_pep_enforce(&req, &mut resp), 0);
             assert_eq!(resp.decision, DECISION_ESCALATE);
-            assert_eq!(resp.reason, 4); // host-effect adapter unavailable
+            assert_eq!(resp.reason, 8); // detection-only: no host effect
+            assert_eq!(resp.filter_id, 0);
         }
     }
 
@@ -2572,10 +2556,9 @@ mod tests {
     }
 
     #[test]
-    fn pep_quarantine_without_adapter_fails_closed_no_filter() {
-        // No WFP provider on a dev/CI host: quarantine must surface as
-        // ESCALATE reason 4 with no filter, never a bare QUARANTINE
-        // decision that the Zig verifier could mistake for enforcement.
+    fn pep_quarantine_reports_detection_only_no_filter() {
+        // DETECTION-ONLY (issue #25): quarantine is an escalation for human
+        // review, never a bare QUARANTINE decision and never a filter.
         let req = PepRequest {
             decision_kind: 61,
             requested_action: ACTION_QUARANTINE,
@@ -2605,7 +2588,7 @@ mod tests {
         unsafe {
             assert_eq!(aegis_pep_enforce(&req, &mut resp), 0);
             assert_eq!(resp.decision, DECISION_ESCALATE);
-            assert_eq!(resp.reason, 4); // host-effect adapter unavailable
+            assert_eq!(resp.reason, 8); // detection-only: no host effect
             assert_eq!(resp.filter_id, 0);
         }
     }
@@ -2689,8 +2672,8 @@ mod tests {
     #[test]
     fn pep_unknown_action_fails_closed_as_authorization_denial() {
         // A requested_action byte that is not a policy.Action ordinal must not
-        // be answered with the default DECISION_ALLOW. The sole enforcement
-        // authority has to fail closed for anything it cannot classify.
+        // be answered with the default DECISION_ALLOW. The policy evaluation
+        // boundary has to fail closed for anything it cannot classify.
         let req = PepRequest {
             decision_kind: 61,
             requested_action: 0xFF,

@@ -1,9 +1,10 @@
-# G2-DUPFILTER-REPEAT host proof runner (elevated, lab-only).
+# Detection-only host proof runner (elevated, lab-only).
 #
-# Runs the direct PEP inbound harness: two identical direction=1 quarantines
-# with a direction-1 read-back between them, then a receipt-aware unblock and
-# an absence query. The harness installs one scoped WFP filter for the
-# TEST-NET-3 peer 203.0.113.10 on local TCP port 8443, then removes it.
+# Retired host-effect proof, replaced by RETIRE-HOST-EFFECT-001 (issue #25).
+# This runner no longer installs or removes a WFP filter: the confirmed product
+# decision is detection-only. It drives the direct PEP harness with identical
+# BLOCK and QUARANTINE requests and requires both to come back as ESCALATE
+# reason=8 with filter_id=0, i.e. evidence for human review and no host effect.
 #
 # Requires Administrator and the pinned signed driver already loaded. It does
 # NOT open the production prevention gate, change daemon policy, or restart a
@@ -137,7 +138,7 @@ Write-Host "[g2] bridge_sha256=$bridgeHash"
 Write-Host "[g2] transcript=$log"
 
 python -m pytest `
-    "tests/wfp/test_t11_windows_host.py::test_rust_pep_duplicate_inbound_quarantine_is_idempotent" `
+    "tests/wfp/test_t11_windows_host.py::test_rust_pep_reports_detection_only_for_quarantine_on_windows" `
     -q -s 2>&1 | Tee-Object -FilePath $log
 
 $rc = $LASTEXITCODE
@@ -154,10 +155,8 @@ $markers = [ordered]@{
     pep_hash = [bool]($text -match "(?m)^ARTIFACT_PEP_SHA256=$expectedPep$")
     bridge_hash = [bool]($text -match "(?m)^ARTIFACT_BRIDGE_LOADED_SHA256=$expectedBridge$")
     bridge_loaded = [bool]($text -match "(?m)^BRIDGE_LOADED_PATH=")
-    filter_same = [bool]($text -match "DUP_FILTER_SAME=true")
-    unblock_rc_zero = [bool]($text -match "(?m)^DUP_UNBLOCK_RC=0(\s|$)")
-    unblock_present_zero = [bool]($text -match "(?m)^DUP_UNBLOCK_PRESENT=0(\s|$)")
-    no_escalate_reason_4 = -not [bool]($text -match "escalate reason=4")
+    detection_only_quarantine = [bool]($text -match "DETECTION_ONLY_QUARANTINE=true")
+    detection_only_no_filter = [bool]($text -match "DETECTION_ONLY_NO_FILTER=true")
     no_skip = -not [bool]($text -match "(?m)^\d+ skipped|skipped in")
 }
 
@@ -192,5 +191,5 @@ $result |
 
 Write-Host "[g2] pytest exit=$rc"
 if ($failures.Count -gt 0) { exit 1 }
-Write-Host "[g2] PROOF PASS: duplicate quarantine is idempotent and unblock is absent"
+Write-Host "[g2] PROOF PASS: block/quarantine are detection-only with no host effect"
 exit 0

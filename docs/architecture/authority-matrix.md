@@ -42,7 +42,7 @@ OBSERVABILITY:  EventAccounting + FlowTable + PEP stats + DEFCON + JSONL logs
 
 ## Shield Authority Resolution
 
-- `rust-src/lib.rs` = PRODUCTION (Rust PEP; sole enforcement authority)
+- `rust-src/lib.rs` = PRODUCTION (Rust PEP; detection-only policy evaluation and evidence authority)
 - `shield/` = SUPPORT (Tier-3 advisory payload screening; former duplicate PEP/WFP surface removed by PEP-001, 2026-10-17)
 - `windows_sec_monitor.rs` = TOOL (DEFCON display only)
 

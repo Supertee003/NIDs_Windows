@@ -1,17 +1,20 @@
-"""T11: Fail-closed WFP boundary and retained Rust PEP authority (Step 33).
+"""T11: Detection-only host-effect retirement (issue #25).
 
-The T11 acceptance criteria are:
-  AC1. Rust PEP remains the sole authority for privileged host effects.
-  AC2. Production host-effect activation remains out of scope; the WFP
-       production boundary fails closed and is not a golden-path route.
-  AC3. No other path bypasses the Rust PEP authority.
+The product decision is confirmed and permanent: AEGIS observes traffic and
+never mutates it. The T11 acceptance criteria are now:
 
-The source path is `src/policy/wfp_production.zig`, which returns
-`unavailable`; `rust-src/lib.rs` remains the sole PEP authority. Static
-driver-contract tests below do not qualify production host effects or
-Windows E5 readiness.
+  AC1. No production path can request a host effect. The driver's
+       IOCTL_AEGIS_BLOCK_FLOW dispatch hard-fails as STATUS_NOT_SUPPORTED, the
+       Rust PEP reports BLOCK/QUARANTINE requests as ESCALATE reason 8, and the
+       WFP capture callouts only permit.
+  AC2. The Zig WFP boundary remains fail-closed and is not a golden-path route.
+  AC3. No other path bypasses this contract (no second enforcement path, no
+       Zig module driving the privileged WFP transport).
 
-This file pins fail-closed boundaries and rejects duplicate WFP paths.
+The source path `src/policy/wfp_production.zig` returns `unavailable`; the
+legacy `AegisWfpBlockFlow` handler and `Adapter::block_flow` remain in the
+binaries for ABI stability but are unreachable from production entrypoints.
+Static driver-contract tests below do not qualify Windows E5 readiness.
 """
 from __future__ import annotations
 
@@ -30,8 +33,6 @@ WFP_BOUNDARY_MODULE = "src/policy/wfp_production.zig"
 RUST_PEP_MODULE = "rust-src/lib.rs"
 
 # Forbidden patterns indicating a SECOND enforcement path.
-# Anything that calls FwpmEngineOpen, FwpmFilterAdd, FwpmProviderAdd,
-# or similar is a candidate for a duplicate.
 FORBIDDEN_ENFORCEMENT_PATTERNS = [
     re.compile(r"\bFwpmEngineOpen\b"),
     re.compile(r"\bFwpmFilterAdd\b"),
@@ -48,16 +49,14 @@ FORBIDDEN_ENFORCEMENT_PATTERNS = [
 ]
 
 # No Zig module may import the low-level WFP device transport. WFP access is
-# an implementation detail of the Rust PEP, not a runtime-spine interface.
+# a retired implementation detail, not a runtime-spine interface.
 WFP_PRIVILEGED_CALL = re.compile(r'\bwfp_ioctl\.(?:block_ip|unblock_ip)\s*\(')
 
 
 def test_wfp_boundary_is_fail_closed_not_a_production_route() -> None:
-    """AC2: The present Zig WFP boundary fails closed without PEP/provider wiring."""
+    """AC2: The Zig WFP boundary fails closed without PEP/provider wiring."""
     p = REPO_ROOT / WFP_BOUNDARY_MODULE
-    assert p.is_file(), (
-        f"WFP boundary missing: {WFP_BOUNDARY_MODULE}"
-    )
+    assert p.is_file(), f"WFP boundary missing: {WFP_BOUNDARY_MODULE}"
     source = p.read_text(encoding="utf-8")
     assert "return .unavailable;" in source
     assert "does not" in source and "mutate filters directly" in source
@@ -66,24 +65,13 @@ def test_wfp_boundary_is_fail_closed_not_a_production_route() -> None:
 def test_rust_pep_path_exists() -> None:
     """AC2: The Rust PEP path exists."""
     p = REPO_ROOT / RUST_PEP_MODULE
-    assert p.is_file(), (
-        f"Rust PEP path missing: {RUST_PEP_MODULE}"
-    )
+    assert p.is_file(), f"Rust PEP path missing: {RUST_PEP_MODULE}"
 
 
 def test_no_duplicate_wfp_enforcement_path() -> None:
-    """AC1 (negative): No second/incompatible WFP enforcement path
-    exists. Scan src/ for modules that import Windows WFP APIs
-    at the L2/L3 layer (other than wfp_production.zig and the
-    well-known exceptions: the C++ bridge, the Zig WFP mirror, the
-    cluster federation over loopback)."""
+    """AC3 (negative): No second/incompatible WFP enforcement path exists."""
     violations: list[str] = []
-    # The C++ bridge adapter may use WFP APIs for IPC over loopback;
-    # that's not a WFP enforcement path. Allow `bridge/`.
-    # The WFP mirror is a contract test mirror, not an enforcement path.
     ALLOWED_DIRS = ("src/policy/wfp_production.zig", "src/policy/wfp_")
-    # TEST-001: the old `core/` tree was migrated to src/. Scanning a
-    # non-existent directory made this negative control pass vacuously.
     for path in (REPO_ROOT / "src").rglob("*.zig"):
         rel = path.relative_to(REPO_ROOT).as_posix()
         if any(rel.startswith(a) for a in ALLOWED_DIRS):
@@ -91,26 +79,17 @@ def test_no_duplicate_wfp_enforcement_path() -> None:
         text = path.read_text(encoding="utf-8", errors="ignore")
         for pat in FORBIDDEN_ENFORCEMENT_PATTERNS:
             if pat.search(text):
-                # The search is intentionally lenient: a match in a
-                # comment or test is not a violation, but a match in
-                # actual code is. We just report the file here and
-                # let a human inspect. The contract test is
-                # "exactly one" -- so the test is conservative and
-                # only fails on clearly distinct code paths.
                 if "test" in rel or "Test" in rel:
                     continue
-                # Only count matches in non-test code
                 violations.append(f"{rel}: matches {pat.pattern!r}")
     assert not violations, (
-        "Second WFP enforcement path detected (T11 AC1):\n"
+        "Second WFP enforcement path detected (T11 AC3):\n"
         + "\n".join(f"  {v}" for v in violations)
     )
 
 
-def test_rust_pep_is_only_path_to_enforcement() -> None:
-    """AC1: Any privileged host effect must pass through Rust PEP; production activation is disabled."""
-    # Rust PEP is the sole authority. Zig must not expose the transport.
-    assert (REPO_ROOT / RUST_PEP_MODULE).is_file()
+def test_no_zig_module_drives_privileged_wfp_transport() -> None:
+    """AC1/AC3: No Zig module may call the privileged WFP transport."""
     violations: list[str] = []
     for path in (REPO_ROOT / "src").rglob("*.zig"):
         rel = path.relative_to(REPO_ROOT).as_posix()
@@ -118,28 +97,70 @@ def test_rust_pep_is_only_path_to_enforcement() -> None:
         if WFP_PRIVILEGED_CALL.search(text):
             violations.append(f"{rel}: directly calls privileged WFP transport")
     assert not violations, (
-        "Second path to enforcement detected (T11 AC2):\n"
+        "Path to a privileged WFP transport detected (T11 AC1):\n"
         + "\n".join(f"  {v}" for v in violations)
     )
 
 
-def test_no_other_path_bypasses_rust_pep_path() -> None:
-    """AC3: No other path bypasses the Rust PEP path."""
-    # No Zig module may bypass the Rust PEP by importing the transport.
-    violations: list[str] = []
-    for path in (REPO_ROOT / "src").rglob("*.zig"):
-        rel = path.relative_to(REPO_ROOT).as_posix()
-        text = path.read_text(encoding="utf-8", errors="ignore")
-        if WFP_PRIVILEGED_CALL.search(text):
-            violations.append(f"{rel}: directly calls privileged WFP transport")
-    assert not violations, (
-        "Path bypassing Rust PEP detected (T11 AC3):\n"
-        + "\n".join(f"  {v}" for v in violations)
+def test_driver_block_ioctl_is_a_detection_only_hard_fail() -> None:
+    """AC1: the block IOCTL can never reach the legacy filter-install handler."""
+    source = DRIVER_SOURCE.read_text(encoding="utf-8", errors="ignore")
+    case = source.split("case IOCTL_AEGIS_BLOCK_FLOW:", 1)[1].split(
+        "case IOCTL_AEGIS_UNBLOCK_FLOW:", 1
+    )[0]
+
+    assert "STATUS_NOT_SUPPORTED" in case, (
+        "the block IOCTL must hard-fail as unsupported"
+    )
+    assert "AegisWfpBlockFlow" not in case, (
+        "the block IOCTL dispatch must not call the legacy filter handler"
+    )
+    assert source.count("status = AegisWfpBlockFlow(Irp);") == 0, (
+        "the legacy block handler must be unreachable from the dispatch"
+    )
+    assert "detection-only" in case.lower(), (
+        "the hard-fail must document the product decision"
+    )
+
+
+def test_rust_pep_enforce_never_calls_the_host_effect_adapter() -> None:
+    """AC1: the enforce entrypoint is detection-only and mints no filter."""
+    source = (REPO_ROOT / RUST_PEP_MODULE).read_text(encoding="utf-8", errors="ignore")
+    body = source.split('pub unsafe extern "C" fn aegis_pep_enforce(', 1)[1].split(
+        "\n#[no_mangle]", 1
+    )[0]
+
+    assert "// DETECTION-ONLY (issue #25)" in body
+    assert "block_flow" not in body, (
+        "aegis_pep_enforce must not reference the adapter block_flow"
+    )
+    assert "with_adapter" not in body, (
+        "aegis_pep_enforce must not probe or load the host-effect adapter"
+    )
+    assert "reason = 8" in body, (
+        "block/quarantine must be reported as ESCALATE reason 8"
+    )
+    assert "filter_id = 0" in body, (
+        "the detection-only path must clear the filter receipt"
+    )
+
+
+def test_wfp_capture_callouts_only_permit() -> None:
+    """AC1: capture is observe-only; no callout may classify BLOCK."""
+    callout = DRIVER_CALLOUT.read_text(encoding="utf-8", errors="ignore")
+    assert "FWP_ACTION_PERMIT" in callout
+    assert "FWP_ACTION_BLOCK" not in callout, (
+        "a capture callout must never classify traffic as BLOCK"
+    )
+    actions = re.findall(r"classifyOut->actionType\s*=\s*(\w+)", callout)
+    assert actions, "no classify action assignments found"
+    assert set(actions) == {"FWP_ACTION_PERMIT"}, (
+        f"capture callouts must only permit; found {sorted(set(actions))}"
     )
 
 
 def test_manifest_marks_wfp_boundary_outside_the_production_golden_path() -> None:
-    """AC2 (manifest): Document the real fail-closed boundary, not a production enforcement route."""
+    """AC2 (manifest): the boundary is documented as fail-closed, not a route."""
     import json
     manifest = json.loads((REPO_ROOT / "runtime_manifest.json").read_text(encoding="utf-8"))
     mod = manifest["modules"].get(WFP_BOUNDARY_MODULE)
@@ -154,13 +175,15 @@ def test_manifest_marks_wfp_boundary_outside_the_production_golden_path() -> Non
 
 
 def test_authority_invariants_keep_production_detection_only() -> None:
-    """AC1/AC2: The manifest must separate PEP authority from production capability."""
+    """AC1/AC2: the manifest must state the retired host effect explicitly."""
     import json
     manifest = json.loads((REPO_ROOT / "runtime_manifest.json").read_text(encoding="utf-8"))
     invariants = "\n".join(manifest.get("authority_invariants", [])).lower()
-    assert "rust pep remains the sole authority" in invariants
+    assert "rust pep is detection-only" in invariants
     assert "production is detection-only" in invariants
     assert "wfp_production.zig is a fail-closed boundary" in invariants
+    assert "status_not_supported" in invariants
+    assert "block ioctl" in invariants
 
 
 def test_driver_unblock_contract_matches_user_adapter() -> None:
@@ -240,9 +263,6 @@ def test_driver_uses_static_session_for_persistent_proof_objects() -> None:
     assert "FWPM_SESSION_FLAG_DYNAMIC" not in register
     assert "FWPM_PROVIDER_FLAG_PERSISTENT" in source
     assert "FWPM_FILTER_FLAG_PERSISTENT" in source
-    # The read-only attestation session is separate but also static: the
-    # kernel WFP contract has no dynamic-session requirement, and a static
-    # read-only session cannot leak persistent objects.
     query = source.split("NTSTATUS AegisWfpQueryFilter", 1)[1].split(
         "// ====== WFP Callout Registration", 1
     )[0]
@@ -287,8 +307,6 @@ def test_classify_is_drained_before_callout_teardown() -> None:
 
     assert "ExInitializeRundownProtection(&g_CalloutRundown);" in source
     assert "ExAcquireRundownProtection(&g_CalloutRundown)" in classify
-    # Both directions share one emit helper; the ring lock lives there, so
-    # the gate must be held before the call and released after it returns.
     emit = callout.split("static VOID AegisWfpEmitRecord", 1)[1].split(
         "/* ====== WFP Inbound Classify Callback", 1
     )[0]
@@ -480,10 +498,8 @@ def test_wdk_build_and_host_scripts_are_pinned_and_secret_free() -> None:
 
     assert "$ExpectedDriverSha256" in runner
     assert "$ExpectedPepSha256" in runner
-    assert "DUP_FILTER_SAME=true" in runner
-    assert "DUP_UNBLOCK_RC=0" in runner
-    assert "DUP_UNBLOCK_PRESENT=0" in runner
-    assert "escalate reason=4" in runner
+    assert "DETECTION_ONLY_QUARANTINE=true" in runner
+    assert "DETECTION_ONLY_NO_FILTER=true" in runner
     assert "no_skip" in runner
     assert "AEGIS_EXPECTED_DRIVER_SHA256" in runner
     assert "AEGIS_EXPECTED_PEP_SHA256" in runner
@@ -495,3 +511,4 @@ def test_wdk_build_and_host_scripts_are_pinned_and_secret_free() -> None:
     assert "AEGIS_EXPECTED_PEP_SHA256" in host
     assert "AEGIS_EXPECTED_BRIDGE_SHA256" in host
     assert 'GetModuleHandleW("aegis_wfp_user.dll")' in host
+    assert "REASON_DETECTION_ONLY = 8" in host

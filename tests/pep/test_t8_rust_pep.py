@@ -86,7 +86,7 @@ def _scan_for_enforcement(path: Path) -> list[tuple[int, str]]:
 
 def test_authority_invariants_mark_rust_pep_as_final() -> None:
     """runtime_manifest.json's authority_invariants must declare Rust PEP
-    as the final security authority."""
+    as the detection-only policy evaluation authority (no host effect)."""
     import json
     manifest = json.loads((REPO_ROOT / "runtime_manifest.json").read_text(encoding="utf-8"))
     invariants = manifest.get("authority_invariants", [])
@@ -96,7 +96,7 @@ def test_authority_invariants_mark_rust_pep_as_final() -> None:
 
 
 def test_manifest_lists_rust_src_as_real_enforcement() -> None:
-    """The canonical Rust crate is the enforcement authority."""
+    """The canonical Rust crate is the detection-only policy evaluation authority."""
     import json
     manifest = json.loads((REPO_ROOT / "runtime_manifest.json").read_text(encoding="utf-8"))
     pep = manifest["canonical_entrypoints"]["rust_pep_tier3"]

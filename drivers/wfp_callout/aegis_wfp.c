@@ -921,7 +921,14 @@ NTSTATUS AegisWfpDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
         status = AegisWfpReadEvents(Irp);
         break;
     case IOCTL_AEGIS_BLOCK_FLOW:
-        status = AegisWfpBlockFlow(Irp);
+        /* DETECTION-ONLY (issue #25): the confirmed product decision is that
+         * this IDS observes traffic and never mutates it. The IOCTL code and
+         * the legacy handler remain in the binary for ABI stability, but this
+         * dispatch can never reach it, so no caller -- current or legacy --
+         * can install an AEGIS-owned FWP_ACTION_BLOCK filter through the
+         * driver. Filter cleanup stays available via UNBLOCK below. */
+        KdPrint(("AEGIS WFP: BlockFlow refused - detection-only, no host effect\n"));
+        status = STATUS_NOT_SUPPORTED;
         break;
     case IOCTL_AEGIS_UNBLOCK_FLOW:
         status = AegisWfpUnblockFlow(Irp);

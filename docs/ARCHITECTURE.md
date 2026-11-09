@@ -19,7 +19,7 @@
 Nose (Go/C)      = sensor — observe only, no policy authority
 Core (Zig)       = runtime — no direct enforcement
 Brain (Python)   = advisory — cannot enforce
-Shield (Rust)    = PEP — FINAL enforcement authority
+Shield (Rust)    = PEP — detection-only policy evaluation, no host effect
 Mouth (Rust)     = display only
 WFP driver       = kernel enforcement, สั่งได้จาก Shield/PEP path เท่านั้น
 ```

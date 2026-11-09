@@ -883,3 +883,28 @@ open.
 - Full blocker mapping, the proposed smallest safe #25 slice, and the honest
   completion statement are in `analysis/current-head/PROJECT-CLOSEOUT-20261109.md`.
   No release or host-effect claim is made by that record.
+
+## Continuation - RETIRE-HOST-EFFECT-001 E2 (2026-11-09, issue #25)
+
+- Issue #25 was the last reachable source contradiction with the confirmed
+detection-only decision: the driver still implemented `IOCTL_AEGIS_BLOCK_FLOW`
+and `aegis_pep_enforce` still routed BLOCK/QUARANTINE through
+`adapter.block_flow`. This slice retires the host effect instead of leaving it
+gated-but-present.
+- Driver: the block IOCTL dispatch now returns `STATUS_NOT_SUPPORTED` and
+never calls `AegisWfpBlockFlow`; the legacy handler stays only for ABI
+stability. Rust: `aegis_pep_enforce` reports BLOCK/QUARANTINE as
+`DECISION_ESCALATE` reason `8` with `filter_id = 0` and contains no
+`block_flow`/`with_adapter` reference. Capture callouts remain
+`FWP_ACTION_PERMIT` only. `UNBLOCK` stays cleanup-only.
+- Tests and consumers were realigned: `tests/wfp/test_t11_wfp_enforcement.py`,
+`tests/wfp/test_t11_windows_host.py`, `scripts/run_g2_dupfilter_proof.ps1`,
+manifest invariants, release/golden-path wording, ADRs and architecture docs.
+- Evidence is E2: driver build PASS (`aegis_wfp.sys` SHA-256
+`2ECE7D52DEBFD45DC15FF381B659CE7391C4A4DF89B65746D8F4B5103988C71C`),
+`cargo build --release` no warnings, `cargo test` 51 passed / 1 ignored
+(+3), `zig build` PASS, `zig build test` PASS, `python -m pytest -q` 1018
+passed / 4 skipped.
+- Windows E5 is NOT_PROVEN: the driver is compiled but not deployed or loaded.
+See `analysis/current-head/RETIRE-HOST-EFFECT-001-20261109.md` and
+`EVIDENCE_INDEX.json#RETIRE-HOST-EFFECT-001-E2-20261109`.

@@ -1,6 +1,6 @@
 # AEGIS NIDS User Operations Guide
 
-AEGIS is operated as a single Windows security appliance. The operator should use `aegisctl.py` and the deployment profile rather than editing source files or calling component binaries independently. The Rust PEP is the only enforcement authority. If the PEP, WFP adapter, driver, or required worker is unavailable, AEGIS reports degraded or detection-only mode and does not silently claim that enforcement succeeded.
+AEGIS is operated as a single Windows security appliance. The operator should use `aegisctl.py` and the deployment profile rather than editing source files or calling component binaries independently. The product is detection-only: the Rust PEP evaluates policy and records evidence, and no path can request a host effect. If the PEP, the driver, or a required worker is unavailable, AEGIS reports degraded mode and does not silently claim that enforcement succeeded.
 
 ## First installation
 
