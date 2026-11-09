@@ -18,6 +18,27 @@ $scripts = Join-Path $bundle "scripts"
 
 New-Item -ItemType Directory -Force $runtime,$config,$drivers,$scripts | Out-Null
 
+# PACKAGING-GATE-001: a driver only enters a bundle when its signature is
+# Valid. The 2026-11-09 window found the opposite: the bundle shipped the
+# unsigned build output over a signed installed driver, and the minifilter
+# binary was not packaged at all. Both made D2 (driver load) impossible to
+# prove while looking like a successful install.
+$driverSignatures = @{
+    "build\x64\wfp\aegis_wfp.sys" = "scripts\sign_wfp_driver_20261024.ps1"
+    "build\x64\minifilter\aegis_minifilter.sys" = "scripts\minifilter_sign.ps1"
+}
+foreach ($rel in $driverSignatures.Keys) {
+    $abs = Join-Path $root $rel
+    if (-not (Test-Path $abs -PathType Leaf)) {
+        throw "Missing driver build output: $rel (build it first)"
+    }
+    $sig = Get-AuthenticodeSignature $abs
+    if ($sig.Status -ne "Valid") {
+        throw ("Driver {0} is {1}; sign it before packaging: powershell -File {2}" -f
+               $rel, $sig.Status, $driverSignatures[$rel])
+    }
+}
+
 $artifacts = @(
     @{ Source = "zig-out\bin\aegis_nids.exe"; Destination = "runtime\aegis_nids.exe" },
     @{ Source = "zig-out\bin\aegis_pep.dll"; Destination = "runtime\aegis_pep.dll" },
@@ -27,7 +48,8 @@ $artifacts = @(
     @{ Source = "zig-out\bin\aegis_ipc.dll"; Destination = "runtime\aegis_ipc.dll" },
     @{ Source = "configs\Rules.json"; Destination = "configs\Rules.json" },
     @{ Source = "configs\policies.json"; Destination = "configs\policies.json" },
-    @{ Source = "build\x64\wfp\aegis_wfp.sys"; Destination = "drivers\aegis_wfp.sys" }
+    @{ Source = "build\x64\wfp\aegis_wfp.sys"; Destination = "drivers\aegis_wfp.sys" },
+    @{ Source = "build\x64\minifilter\aegis_minifilter.sys"; Destination = "drivers\aegis_minifilter.sys" }
 )
 
 $manifest = @()

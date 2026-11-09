@@ -5256,6 +5256,54 @@
         "cross-checked the four risks and their exit criteria in DEV-PLAN-001 section 3"
       ],
       "limitations": "E1: a procedure, not an execution. Nothing in it has been run, the driver state on the host is still Stopped, and deploy parity is still unproven. R-09 (signing key custody) is deliberately outside this document because no command can grant a key."
+    },
+    {
+      "id": "HOST-WINDOW-002-E5-20261109",
+      "head_sha": "d461c92",
+      "timestamp": "2026-11-09",
+      "title": "Host window executed: deploy parity proven, both drivers loading, 124 AEGIS filters with zero BLOCK actions, live enforcement verbs refusing with DETECTION_ONLY",
+      "level": "E5",
+      "component": "aegis_nids.exe, aegis_wfp.sys, aegis_minifilter.sys, tools/aegisctl/client.py, tools/wfp_filter_audit.py",
+      "flow_id": "DETECTION-ONLY-BOUNDARY",
+      "description": "D1 measured the installed image before and after deploy. Before: installed 8FC6015B22CCF5B128497C9F360023A91EB92BA0A582912FE9237C62E4C1FBD8 (2026-11-09 22:35) vs repo build D39A1D2CC6CEE76FA0AE35EBB0B497319FA252AC18C1285F408F3E8490925C90 -- a mismatch, meaning every earlier host claim described code without the B1 refusal. After packaging (scripts/package_release.ps1), verify_release.ps1 (9 artifacts hash-verified) and install_aegis.ps1, both hashes are identical. D2 started both drivers: AegisWfp and AegisMinifilter reached STATE 4 RUNNING from their signed current-source builds (06CC8E238B79BEC3782F4036BACF058D6B5291B030E59D061FD692F82FB96B50, 10C41E8043EE08E0F7C51D7ABF0F157FDCC83836B85DD7D45013B2BAE60A21BB) with no bugcheck and no connectivity loss. A netsh wfp show state dump taken afterwards contains 3829 filters, 124 of them AEGIS-named: 120 FWP_ACTION_PERMIT, 4 FWP_ACTION_CALLOUT_TERMINATING and 0 FWP_ACTION_BLOCK. D5 sent enforcement.block and enforcement.quarantine over the control pipe: non-elevated callers got AUTH_DENIED (insufficient privilege) before dispatch, elevated callers got DETECTION_ONLY / REFUSED with audit ids 218810 and 218915 and no host effect.",
+      "artifacts": [
+        "analysis/current-head/HOST-WINDOW-002-20261109.md",
+        "analysis/current-head/wfp-filter-audit-20261109.json",
+        "tools/wfp_filter_audit.py",
+        "analysis/current-head/DEV-PLAN-001-20261109.md"
+      ],
+      "commands": [
+        "powershell -File scripts/package_release.ps1 -Version 6.0.0 -OutputRoot admin-evidence/host-window-20261109",
+        "powershell -File scripts/verify_release.ps1 -BundleRoot <bundle>  -> VERIFICATION PASSED (9 artifacts)",
+        "powershell -File scripts/install_aegis.ps1 -BundleRoot <bundle>   (elevated, user-approved)",
+        "Get-FileHash 'C:\\Program Files\\AEGIS NIDS\\runtime\\aegis_nids.exe' == zig-out/bin/aegis_nids.exe",
+        "sc.exe start AegisWfp; sc.exe start AegisMinifilter; sc.exe query <name>",
+        "netsh wfp show state file=...\\wfp_state_after_d2.xml",
+        "python tools/wfp_filter_audit.py <dump> --require-no-block  -> exit 0, blocking_filter_count 0",
+        "python .work/d5_enforce.py  (as user and elevated) -> AUTH_DENIED then DETECTION_ONLY/REFUSED"
+      ],
+      "limitations": "E5 for D1/D2/D5 only. Nothing was rebooted, so driver load is proven for one session and R-06's reboot-survival criterion is not met. No driver rollback was executed. The host is left with both drivers Running (they were Stopped before the window); sc.exe stop AegisMinifilter; sc.exe stop AegisWfp reverts that. D3 and D4 did not run, so R-07 and R-08 remain open. The drivers are test-signed, so this proves the lab host, not a production signing chain (R-09)."
+    },
+    {
+      "id": "PACKAGING-GATE-001-E2-20261109",
+      "head_sha": "d461c92",
+      "timestamp": "2026-11-09",
+      "title": "The release bundler shipped an unsigned kernel driver over a signed one and omitted the minifilter; both are now gated and pinned",
+      "level": "E2",
+      "component": "scripts/package_release.ps1, scripts/sign_wfp_driver_20261024.ps1, scripts/minifilter_sign.ps1",
+      "flow_id": "META-COVERAGE",
+      "description": "D1 exposed a packaging defect: package_release.ps1 copied build/x64/wfp/aegis_wfp.sys without checking its Authenticode status. That build output was NotSigned, so the installer replaced the installed Valid-signed driver with a binary the kernel loader refuses, while printing 'Installed AEGIS NIDS' and exiting 0. The minifilter had no artifact entry at all, so a bundle could not deploy the capture driver it claims to ship. Repair: sign the pinned build outputs (wfp 2ECE7D52DEBFD45DC15FF381B659CE7391C4A4DF89B65746D8F4B5103988C71C -> 06CC8E238B79BEC3782F4036BACF058D6B5291B030E59D061FD692F82FB96B50, Valid, signer 00E92849867308596564D134BB981EF726798E97; minifilter Valid, signer 60B05537FEB7A40D6F6624FF5C005C09DC245A63), make packaging refuse any driver whose status is not Valid while naming the script that signs it, and add the minifilter to the artifact list. The host was restored to the signed driver before the corrected bundle was installed.",
+      "artifacts": [
+        "scripts/package_release.ps1",
+        "tests/tools/test_package_signature_gate.py",
+        "analysis/current-head/HOST-WINDOW-002-20261109.md"
+      ],
+      "commands": [
+        "powershell -File scripts/sign_wfp_driver_20261024.ps1 -ExpectedUnsignedSha256 2ECE7D52...C71C",
+        "powershell -File scripts/minifilter_sign.ps1",
+        "python -m pytest tests/tools/test_package_signature_gate.py -q  -> 3 passed"
+      ],
+      "limitations": "E2: the gate and its test are static assertions over the packaging script; they do not sign a driver or load one. Why the release path had been producing unsigned-driver bundles unnoticed is not explained by this entry -- it is the same class of failure as R-05, a green installer log standing in for a byte comparison."
     }
   ],
   "known_gaps": [
@@ -11163,10 +11211,10 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 40,
-    "E2_count": 184,
+    "E2_count": 185,
     "E3_count": 17,
     "E4_count": 15,
-    "E5_count": 159,
+    "E5_count": 160,
     "E6_count": 0,
     "E7_count": 1
   }
