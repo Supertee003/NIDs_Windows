@@ -1,5 +1,5 @@
 {
-  "head_sha": "795246d7b4794b11c9b45e0b17a43c6cb219602a",
+  "head_sha": "2e715dfdd38a101454def530de55ae00d4b8a28a",
   "created_at": "2026-09-24",
   "last_updated_at": "2026-11-09",
   "generator_version": "3.0",
@@ -4822,6 +4822,29 @@
       "description": "Read-only queue.stats snapshots 15 seconds apart: 186,815 events admitted, queue depth 271->11, and no per-source drop, source quota shed, minifilter ring drop, or minifilter pipeline drop counter increased. A separate adjacent sample recorded +1,247 ETW drops, so this does not establish steady-state no-loss operation.",
       "impact": "Shows the running consumer can drain a small backlog at the observed load, while #29 remains open for burst-sensitive ETW quota shedding and historical cumulative loss.",
       "next_step": "Measure representative burst windows and choose a bounded admission/throughput change; retain the minifilter identity stop-line before any coalescing."
+    },
+    {
+      "id": "INGRESS-KIND-ATTRIBUTION-001-E2-20261109",
+      "title": "queue.stats attributes ingress admission and refusal by source and event kind",
+      "level": "E2",
+      "component": "src/pipeline/event_queue.zig; src/control/handler_registry.zig",
+      "flow_id": "QLOSS-HEALTH-001",
+      "head_sha": "2e715dfdd38a101454def530de55ae00d4b8a28a",
+      "timestamp": "2026-11-09",
+      "result": "PASS_E2",
+      "files_verified": [
+        "src/pipeline/event_queue.zig",
+        "src/control/handler_registry.zig",
+        "analysis/current-head/INGRESS-KIND-ATTRIBUTION-001-20261109.md"
+      ],
+      "tests": [
+        "zig build: PASS",
+        "zig build test --summary all (fresh cache): 2062 passed, 10 skipped, 0 failed",
+        "git diff --check: PASS"
+      ],
+      "actual": "queue.stats gains an additive by_source_kind array over a bounded 256x256 (contract source ordinal, contract EventKind) counter table. The success path increments pushed; the IPv6-pair, queue-full, reserved-tail and per-source-quota refusal paths increment dropped. Only nonzero lanes are emitted, and labels use the contract source space that IpcEvent actually stores. Admission, shedding, ring, policy and detection behavior are unchanged.",
+      "impact": "Turns per-source loss into per-source-per-kind loss, which is the measurement prerequisite for attributing issue #29 bursts to FIM create/write/delete versus ETW process/file/registry lanes before choosing bounded admission or throughput work. It does not reduce loss, change coalescing, or close #29.",
+      "next_step": "After deploying a build that contains this slice, collect repeated representative burst windows and attribute loss by source and kind; keep the minifilter identity stop-line intact before any coalescing."
     }
   ],
   "known_gaps": [
@@ -10728,12 +10751,12 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 13,
-    "E2_count": 73,
-    "E3_count": 12,
-    "E4_count": 0,
-    "E5_count": 69,
+    "E1_count": 34,
+    "E2_count": 175,
+    "E3_count": 17,
+    "E4_count": 15,
+    "E5_count": 158,
     "E6_count": 0,
-    "E7_count": 0
+    "E7_count": 1
   }
 }

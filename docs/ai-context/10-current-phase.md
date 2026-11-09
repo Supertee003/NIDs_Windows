@@ -788,3 +788,31 @@ open.
 - Minifilter timestamp-key probe comments are corrected by source commit `795246d`; it remains measurement-only. Event identity is unproven and no coalescing was deployed.
 - Evidence: `analysis/current-head/QLoss-E5-STEADY-WINDOW-20261109.md`, `EVIDENCE_INDEX.json#QLOSS-E5-STEADY-WINDOW-20261109`; raw operator snapshots are local-only under `admin-evidence/qloss-steady-window-20261109/`.
 - Issue #29 remains OPEN. Next: collect repeated representative burst windows, quantify loss by source and queue occupancy, then choose bounded admission or throughput changes without dropping identity-critical FIM events.
+
+## Continuation — INGRESS-KIND-ATTRIBUTION-001 E2 (2026-11-09)
+
+- `queue.stats` attributed loss per source only, so a burst could not be tied to
+  the class of event that was refused. Source `2e715df` adds a bounded
+  256 x 256 (contract source ordinal x contract `EventKind`) counter table and
+  emits the nonzero lanes as an additive `by_source_kind` array. The success
+  path and all four refusal paths (IPv6 pair, queue full, reserved tail,
+  per-source quota) are counted; counters are observational and are never read
+  before an admission decision.
+- Why it matters: #29's next step is to attribute bursts per producer lane
+  (FIM create/write/delete versus ETW process/file/registry) before choosing a
+  bounded admission or throughput change. This is a measurement prerequisite,
+  not a loss reduction.
+- Evidence is E2 only: `zig build` PASS and a fresh-cache full suite of
+  **2,062 passed / 10 skipped / 0 failed**. The installed daemon is `318a10a`
+  (`438F9D5F...`), which does not contain this slice, so no E5 is claimed and
+  the host was not restarted.
+- Two records contradictions were corrected in the same records commit:
+  ADR-0012's header claimed the duplicate-ratio gate PASSED while its body
+  records the identity gate NOT PASSED (header now matches the body), and
+  `evidence_level_summary` was re-derived from the entries after its stale
+  values failed `tests/release/test_evidence_index_valid.py` at the parent
+  commit. The derived `E7_count=1` is the historical EVT-220 bundle
+  traceability entry, not a signed-release claim.
+- Issue #29 still remains OPEN; #30 and #25-#28 remain open. See
+  `analysis/current-head/INGRESS-KIND-ATTRIBUTION-001-20261109.md` and
+  `EVIDENCE_INDEX.json#INGRESS-KIND-ATTRIBUTION-001-E2-20261109`.

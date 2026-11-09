@@ -1,8 +1,10 @@
 # ADR-0012 — FIM ingress volume: reduce it at the sensor, never silently
 
-**Status:** Coalescing slice accepted — duplicate-ratio measurement gate PASSED
-on the Windows host on 2026-11-08 (see *Measurement result*); implementation
-and post-change loss-reduction proof remain open
+**Status:** Proposed — candidate duplicate volume was measured at E5 on the
+Windows host on 2026-11-08, but the producer-identity gate **NOT PASSED** (see
+*Measurement result*). No suppressing coalescer may deploy until distinct opens
+are proven retained; implementation and post-change loss-reduction proof remain
+open
 **Date:** 2026-11-07
 **Measurement:** 2026-11-08, evidence `ADR-0012-DUP-RATIO-E5-20261108`
 **Supersedes:** —

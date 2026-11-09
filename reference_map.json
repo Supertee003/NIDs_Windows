@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T18:23:12.777073+00:00",
+  "generated_at": "2026-11-09T08:18:54.611143+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1505,
+  "total_files": 1506,
   "by_role": {
-    "documentation": 343,
+    "documentation": 344,
     "build-config": 171,
     "other": 18,
     "lockfile": 6,
@@ -605,6 +605,10 @@
       "role": "documentation"
     },
     "analysis/current-head/HOST-FLOW-001-20261108.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/INGRESS-KIND-ATTRIBUTION-001-20261109.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },

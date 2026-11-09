@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-08T18:23:12.773959+00:00",
+  "generated_at": "2026-11-09T08:18:54.607628+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1505,
+  "total_files": 1506,
   "by_class": {
-    "canonical-docs": 357,
+    "canonical-docs": 358,
     "canonical-build": 182,
     "unclassified": 18,
     "canonical-source": 663,
@@ -439,6 +439,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 3940
+    },
+    {
+      "path": "analysis/current-head/INGRESS-KIND-ATTRIBUTION-001-20261109.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 7277
     },
     {
       "path": "analysis/current-head/issue-29-adr0012-measurement-gate-contradiction-20261108.md",
@@ -1728,7 +1734,7 @@
       "path": "docs/adr/0012-fim-ingress-volume.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 9976
+      "size": 10090
     },
     {
       "path": "docs/adr/0013-runtime-latency-clock.md",
@@ -1890,7 +1896,7 @@
       "path": "docs/ai-context/10-current-phase.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 50936
+      "size": 52700
     },
     {
       "path": "docs/ai-context/governance.md",
@@ -3132,7 +3138,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1042924
+      "size": 1033992
     },
     {
       "path": "fix_bridge_banner.py",
@@ -3264,7 +3270,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 237645
+      "size": 237821
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3540,7 +3546,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 195940
+      "size": 196080
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -5724,7 +5730,7 @@
       "path": "src/control/handler_registry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 170645
+      "size": 172457
     },
     {
       "path": "src/control/protocol.zig",
@@ -6204,7 +6210,7 @@
       "path": "src/pipeline/event_queue.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 45775
+      "size": 47556
     },
     {
       "path": "src/pipeline/fim_dedup.zig",
