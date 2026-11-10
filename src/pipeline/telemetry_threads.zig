@@ -100,6 +100,31 @@ pub fn shouldShedWrite(depth: u64) bool {
     return depth >= queue.PIPELINE_QUEUE_SIZE * 3 / 4;
 }
 
+/// QLOSS-ETW-PRIORITY-001: reserve the last ETW_SHARE_MARGIN slots of this
+/// source's QLOSS share for the classes that carry detection signal.
+///
+/// The global 3/4 storm line is not enough on this host: ETW can reach its
+/// own SOURCE_OCCUPANCY_CAP while the queue is still below 3/4 full, so a
+/// file-write burst is refused by the per-source share instead of the storm
+/// policy. The live 2026-11-11 soak showed exactly that shape — 145,915
+/// `capture_etw/fim_change` rows and 2,302 `capture_etw/reg_change` rows
+/// counted as `source_quota_shed`, with `shed_overload = 0`. Losing a
+/// registry write to a file-write burst is the wrong priority: Write and
+/// NameDelete are the classes the storm policy already declares sheddable,
+/// while ProcessStart / Registry Create/Set are not.
+///
+/// So the low-value classes now shed when EITHER the queue is 3/4 full OR
+/// this source is within ETW_SHARE_MARGIN of its own cap. The first-sighting
+/// exemption still applies, so a new file's content is evaluated once. This
+/// does not claim zero loss: it makes the loss policy explicit and keeps the
+/// signal-bearing classes reachable.
+pub const ETW_SHARE_MARGIN: u64 = 256;
+
+pub fn etwSharePressure(depth: u64, occupancy: u64) bool {
+    return shouldShedWrite(depth) or
+        occupancy +| ETW_SHARE_MARGIN >= queue.SOURCE_OCCUPANCY_CAP;
+}
+
 /// True for Kernel-File Write (Id 0x10) and NameDelete (Id 0x0B) only.
 /// The classifier owns the opcode mapping; this predicate mirrors its
 /// arms and the parity test below fails if the two ever disagree.
@@ -242,7 +267,9 @@ fn etwCallback(ctx: *anyopaque, rec: *const etw.EtwEventRecord, ext_data: []cons
     // downstream. First sightings are exempt (tryExempt) so a new file's
     // content is always evaluated once even mid-storm; FIM duplicates
     // deletes regardless.
-    if (isStormSheddable(&rec.provider_guid, rec.event_id) and shouldShedWrite(queue.queueDepth())) {
+    if (isStormSheddable(&rec.provider_guid, rec.event_id) and
+        etwSharePressure(queue.queueDepth(), queue.sourceOccupancy(.capture_etw)))
+    {
         if (!tryExempt(payload, std.time.milliTimestamp())) {
             _ = g_shed_overload.fetchAdd(1, .monotonic);
             return;
@@ -602,6 +629,21 @@ test "GAP-015 G3/G4 shed predicate mirrors the classifier storm arms" {
     try std.testing.expect(!shouldShedWrite(queue.PIPELINE_QUEUE_SIZE * 3 / 4 - 1));
     try std.testing.expect(shouldShedWrite(queue.PIPELINE_QUEUE_SIZE * 3 / 4));
     try std.testing.expect(shouldShedWrite(queue.PIPELINE_QUEUE_SIZE * 3));
+}
+
+test "QLOSS-ETW-PRIORITY-001 sheds low-value ETW rows when its own share is near the cap" {
+    // The global storm line still fires first when the whole queue is busy.
+    try std.testing.expect(etwSharePressure(queue.PIPELINE_QUEUE_SIZE * 3 / 4, 0));
+    // A busy ETW share alone is enough, even while the queue looks calm: this
+    // is the shape the 2026-11-11 soak produced (quota drops with shed=0).
+    const cap = queue.SOURCE_OCCUPANCY_CAP;
+    try std.testing.expect(!etwSharePressure(0, cap - ETW_SHARE_MARGIN - 1));
+    try std.testing.expect(etwSharePressure(0, cap - ETW_SHARE_MARGIN));
+    try std.testing.expect(etwSharePressure(0, cap));
+    // Saturation arithmetic: an absurd occupancy cannot wrap and look calm.
+    try std.testing.expect(etwSharePressure(0, std.math.maxInt(u64)));
+    // The reservation is meaningful but small relative to the share.
+    try std.testing.expect(ETW_SHARE_MARGIN < cap / 4);
 }
 
 test "GAP-015 G3 classifier counts every outcome" {
