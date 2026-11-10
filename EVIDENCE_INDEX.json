@@ -1,7 +1,7 @@
 {
   "head_sha": "cf041b83117d84bedefc386baaf55c63031f6d74",
   "created_at": "2026-09-24",
-  "last_updated_at": "2026-11-10",
+  "last_updated_at": "2026-11-11",
   "generator_version": "3.0",
   "artifact_retention": {
     "admin_evidence": "Local-only. Removed from published git history on 2026-11-06; the 99 tracked files are retained in the operator archive and restored to the ignored admin-evidence/ directory. The 63 evidence entries that cite these paths remain historical records.",
@@ -5737,6 +5737,32 @@
         "Wiring the detector needs new ETW opcode parsing and an InjectionEvent producer, plus a detection-identity path into the pipeline - a separate slice with an E5 gate.",
         "Two injection implementations still overlap in source (ProcessInjectionDetector in windows/host_telemetry_detectors.zig and detection/injection_detector.zig); choosing one is an owner design decision.",
         "Six other runtime_manifest flags are still hard-coded true (has_federation, has_tls, has_xdr, has_replay, has_forensic_pipeline, has_fault_injection) and this pin does not cover them."
+      ]
+    },
+    {
+      "id": "READINESS-CAUSE-001-E2-20261110",
+      "head_sha": "cf041b8",
+      "timestamp": "2026-11-10",
+      "title": "A closed readiness gate now names the condition that closed it",
+      "level": "E2",
+      "component": "tools/aegisctl.py, tests/tools/test_readiness_cause.py",
+      "flow_id": "CONTROL-READINESS",
+      "description": "S1-05 residual. `aegisctl readiness` could answer ready:false / overall_gate:false with failure_reasons: [] and degraded_components: [] - a release gate that refuses without an actionable cause. cmd_readiness is now build_readiness(payload), a pure function whose reason list is built from the same conditions the gate tests: state, the six worker flags, rules, degraded subsystems, plus degraded_without_named_component when the aggregate degraded flag cannot be attributed, and a construction guard gate_closed_without_named_cause. Gate semantics are unchanged; only the refusal's explanation. 19 focused tests pass, including a mutation that disables the degraded branch; the live payload on this host now reports [degraded_without_named_component, state_degraded] instead of an empty list. E2 plus E1 live reading, not E5: no daemon behaviour changed.",
+      "evidence_artifact": "analysis/current-head/READINESS-CAUSE-001-20261110.md",
+      "artifacts": [
+        "analysis/current-head/READINESS-CAUSE-001-20261110.md",
+        "tools/aegisctl.py",
+        "tests/tools/test_readiness_cause.py"
+      ],
+      "commands": [
+        "python -m pytest -q tests/tools/test_readiness_cause.py",
+        "python tools/aegisctl.py readiness"
+      ],
+      "limitations": [
+        "E2 plus E1 only: the decision function is tested and the CLI was read on the installed daemon; no host behaviour changed.",
+        "The aggregate `degraded` flag is still not itemised inside the daemon (state_machine.zig / control_api.py); the CLI now names the gap instead of hiding it.",
+        "`health --strict`, web_dashboard/app.py and host_soak_check.py re-derive health from the same payload and were not changed.",
+        "The gate remains worker-flag based; whether a stopped non-required subsystem (e.g. rust_pep in detection-only mode) should close the gate is an owner product decision."
       ]
     }
   ],
@@ -11645,7 +11671,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 20,
-    "E2_count": 89,
+    "E2_count": 90,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 81,

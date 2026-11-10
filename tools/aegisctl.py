@@ -733,16 +733,35 @@ def cmd_forensics(args) -> int:
     return result
 
 
-def cmd_readiness(args) -> int:
-    """Machine-oriented readiness gate for operators and automation."""
-    if not CONTROL_API_AVAILABLE:
-        print(json.dumps({"ready": False, "reason": "control_api_unavailable"}, sort_keys=True))
-        return 3
-    payload = get_health_payload()
-    workers = payload.get("workers", {})
-    required = ["pipeline_ready", "sensor_ready", "nose_ready", "etw_ready", "fim_ready", "registry_ready"]
-    missing_workers = [name for name in required if workers.get(name) is not True]
+READINESS_WORKER_FLAGS = [
+    "pipeline_ready",
+    "sensor_ready",
+    "nose_ready",
+    "etw_ready",
+    "fim_ready",
+    "registry_ready",
+]
+
+
+def build_readiness(payload: dict) -> dict:
+    """Pure readiness gate: every refusal must name a cause.
+
+    READINESS-CAUSE-001: the gate used to be able to answer `ready: false` with
+    `failure_reasons: []` — a release gate that says no without saying why, which
+    an operator cannot act on and an auditor cannot check. The reason list is now
+    built from the same conditions the gate tests, and a final guard appends
+    `gate_closed_without_named_cause` if any future condition is added without a
+    reason. `degraded` is a boolean aggregated upstream from several sources, so
+    a true value with no attributable component is itself named rather than
+    silent.
+    """
+    workers = payload.get("workers") or {}
+    if not isinstance(workers, dict):
+        workers = {}
+    missing_workers = [name for name in READINESS_WORKER_FLAGS if workers.get(name) is not True]
     missing = list(missing_workers)
+    state = str(payload.get("state") or "unknown").upper()
+    degraded = bool(payload.get("degraded", True))
     rules_loaded = int(payload.get("rules_loaded", 0) or 0)
     policies_loaded = int(payload.get("policies_loaded", 0) or 0)
     if rules_loaded <= 0:
@@ -754,23 +773,37 @@ def cmd_readiness(args) -> int:
         if str(status.get("state", "")).upper() in {"DEGRADED", "FAILED", "STOPPED"}:
             degraded_components.append({"name": name, "state": status.get("state"), "error": status.get("error")})
     worker_gate = not missing_workers and not workers.get("failed", False)
-    overall_gate = (
-        payload.get("state") == "RUNNING"
-        and not payload.get("degraded", True)
-        and worker_gate
-        and rules_loaded > 0
-    )
-    reasons = list(workers.get("failure_reasons", []))
+    overall_gate = state == "RUNNING" and not degraded and worker_gate and rules_loaded > 0
+
+    reasons = [str(r) for r in (workers.get("failure_reasons") or []) if str(r).strip()]
+    if state != "RUNNING":
+        reasons.append(f"state_{state.lower()}")
+    if workers.get("failed", False):
+        reasons.append("worker_failed")
+    reasons.extend(f"worker_{name}_not_ready" for name in missing_workers)
     if rules_loaded <= 0:
         reasons.append("rules_not_loaded")
     reasons.extend(
         f"{item['name']}_{str(item.get('error') or item.get('state', 'not_ready')).lower()}"
         for item in degraded_components
     )
-    result = {
+    # `degraded` is aggregated upstream from data loss, lifecycle and subsystem
+    # states. When it is true and none of the above explained it, say that
+    # instead of returning a bare refusal.
+    degradation_named = bool(degraded_components) or any(
+        r.startswith("worker_") or r in {"worker_failed", "rules_not_loaded"} for r in reasons
+    )
+    if degraded and not degradation_named:
+        reasons.append("degraded_without_named_component")
+    if not overall_gate and not reasons:
+        # Unreachable by construction today; it exists so that a future gate
+        # condition cannot reintroduce the silent refusal.
+        reasons.append("gate_closed_without_named_cause")
+
+    return {
         "ready": overall_gate,
-        "state": payload.get("state"),
-        "degraded": payload.get("degraded", True),
+        "state": state,
+        "degraded": degraded,
         "worker_gate": worker_gate,
         "overall_gate": overall_gate,
         "missing": missing,
@@ -779,8 +812,17 @@ def cmd_readiness(args) -> int:
         "degraded_components": degraded_components,
         "failure_reasons": sorted(set(reasons)),
     }
+
+
+def cmd_readiness(args) -> int:
+    """Machine-oriented readiness gate for operators and automation."""
+    if not CONTROL_API_AVAILABLE:
+        print(json.dumps({"ready": False, "reason": "control_api_unavailable"}, sort_keys=True))
+        return 3
+    payload = get_health_payload()
+    result = build_readiness(payload if isinstance(payload, dict) else {})
     print(json.dumps(result, indent=2 if getattr(args, "pretty", False) else None, sort_keys=True))
-    return 0 if overall_gate else 1
+    return 0 if result["overall_gate"] else 1
 
 
 def cmd_rules(args) -> int:
