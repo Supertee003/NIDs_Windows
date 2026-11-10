@@ -263,6 +263,10 @@ pub var g_critical_pushed = std.atomic.Value(u64).init(0);
 /// Measurement only: no event is suppressed by these counters.
 pub var g_fim_batch_records = std.atomic.Value(u64).init(0);
 pub var g_fim_batch_duplicates = std.atomic.Value(u64).init(0);
+/// PACE-MF-001: times the minifilter reader paused instead of overflowing its
+/// own ingress share. A pause is not a loss; the kernel ring is the buffer and
+/// its drop counter (`minifilter_ring_dropped`) is what proves that claim.
+pub var g_fim_pace_waits = std.atomic.Value(u64).init(0);
 pub var g_fim_batch_overflow = std.atomic.Value(u64).init(0);
 /// The same probe split by ingress path, because the fix (coalesce where the
 /// duplicates actually are) needs to know which sensor produced them: the

@@ -84,29 +84,28 @@ pytest tests/tools/test_aegisctl_queue.py   14 passed
   but idle (no FIM rules) would rely on the same `ok` state. The gate is
   connect-state, not event-flow-state.
 
-## 7. E5 deployment status — BLOCKED ON ELEVATION
+## 7. E5 status — dedupe proven live; acceptance rate not yet met
 
-The build that must be measured is staged and identified:
+Deployed on 2026-11-10 15:16 with `run-window-004.ps1` (elevated):
 
-| Item | Value |
+| Fact | Value |
 |---|---|
-| Staged daemon | `zig-out\bin\aegis_nids.exe`, 5,235,712 bytes, SHA-256 `C19C76B1854D8EED5E37D02443DF8486B8896C28F80D08496FCA31DC569EDBB5` |
-| Feature proof in the artifact | strings `AEGIS_ETW_NAME_DEDUPE` and `ETW NameCreate dedupe` present in the built exe |
-| Installed daemon | still the window-003 build (`0DFA3F04C8305CF9…`), untouched |
-| Elevation attempts | 2 × `Start-Process -Verb RunAs` on 2026-11-10, both returned "The operation was canceled by the user" (no interactive consent); direct `sc stop AegisNids` → `Access is denied` (5) |
-| Consequence | no restart, no counter reset, no rate re-measure, no soak start |
+| Installed daemon | `C19C76B1854D8EED…`, 5,235,712 bytes, hash match `true` |
+| Services | `AegisWfp`, `AegisMinifilter`, `AegisNids`, `AegisAggregator` RUNNING |
+| ETW lane, live | `name=0+518,491`, `dedupe=514,955` — every Kernel-File NameCreate is suppressed while the minifilter is `ok` |
+| ETW other classes | `write=544,416`, `delete=518,491`, `reg` unchanged — no coverage cut outside the duplicate |
 
-One elevated run performs the whole window:
+**Dedupe: PROVEN at E5.** The lane it was meant to remove no longer reaches the
+queue (`file_name_create = 0`), and the volume it removed (514,955) matches the
+order of the observed duplicate class.
 
-```
-powershell -NoProfile -ExecutionPolicy Bypass -File D:\NIDs_Windows\admin-evidence\host-window-004-20261110\run-window-004.ps1
-```
+**Acceptance rate: NOT proven.** The same window drove 6,383 op-sets/s (the
+generator did not hold the requested rate; see SOAK-GATE-002) and lost 80,270
+rows. With the duplicate gone the loss moved to the minifilter lane
+(`capture_fim 78,096`), which is refused by its own per-source share
+(`source_quota_shed`), not by total queue capacity (`reserved_tail_shed = 0`).
 
-It deploys the staged daemon (hash-asserted, rollback copy taken), restarts from
-clean counters, re-measures 4,000 op-sets/s for 90 s with the corrected
-`soak_rate.py`, records `rate-4000-dedupe.json`, and writes
-`soak-window-start.json` for the 24 h soak evaluation.
+Consequence: #29 stays open until PACE-MF-001 (SOAK-GATE-002 §7) is deployed and
+the held-rate 4,000 op-sets/s window is green.
 
-**This section claims no E5 result.** Until the run happens, the E5 state of
-ETW-FILE-DEDUPE-001 is NOT_PROVEN.
 

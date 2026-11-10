@@ -212,6 +212,30 @@ fn interruptibleSleep(ms: u64) void {
     }
 }
 
+/// PACE-MF-001: pause this producer while its own ingress share is nearly
+/// full. The kernel ring behind the reader keeps the records, so a small
+/// bounded wait is cheaper than a refused push (which is a real loss). The
+/// bound matters: a stuck consumer must end in a counted drop, not a hung
+/// reader, so at most PACE_MAX_WAITS_MS milliseconds are spent per record.
+const PACE_MARGIN: u64 = 256;
+const PACE_MAX_WAITS_MS: u32 = 5;
+
+/// Pure gate for PACE-MF-001: wait when the producer's own share is within
+/// `margin` slots of the cap. Symbolic so a queue resize moves the line.
+pub fn shouldPace(occupancy: u64, cap: u64, margin: u64) bool {
+    return occupancy + margin >= cap;
+}
+
+fn paceToShare() void {
+    var waits: u32 = 0;
+    while (waits < PACE_MAX_WAITS_MS and !stopRequested() and
+        shouldPace(pipeline_queue.sourceOccupancy(.capture_fim), pipeline_queue.SOURCE_OCCUPANCY_CAP, PACE_MARGIN))
+    {
+        std.time.sleep(1 * std.time.ns_per_ms);
+        waits += 1;
+    }
+}
+
 fn markUnavailable() void {
     runtime_state.g_minifilter_state.store(
         @intFromEnum(runtime_state.MinifilterState.unavailable),
@@ -341,6 +365,19 @@ pub fn minifilterReaderLoop() void {
                     if ((probe.overflowed or probe_pid.overflowed or probe_ts.overflowed) and !overflow_counted) {
                         overflow_counted = true;
                         _ = runtime_state.g_fim_batch_overflow.fetchAdd(1, .monotonic);
+                    }
+                    // PACE-MF-001 (#29): the kernel ring is the buffer behind
+                    // this reader, so a burst can be paused instead of refused.
+                    // Without this, FIM filled its QLOSS share and
+                    // `source_quota_shed` counted 20,430 losses in a 90 s
+                    // window at ~3,887 op-sets/s while the ring stayed clean.
+                    if (shouldPace(
+                        pipeline_queue.sourceOccupancy(.capture_fim),
+                        pipeline_queue.SOURCE_OCCUPANCY_CAP,
+                        PACE_MARGIN,
+                    )) {
+                        _ = runtime_state.g_fim_pace_waits.fetchAdd(1, .monotonic);
+                        paceToShare();
                     }
                     if (submitRecord(rec, path)) {
                         g_events_processed += 1;
@@ -483,4 +520,15 @@ test "eventTypeToString covers every kernel ordinal" {
     try std.testing.expectEqualStrings("PROC_CREATE", eventTypeToString(AEGIS_EVT_PROC_CREATE));
     try std.testing.expectEqualStrings("PROC_EXIT", eventTypeToString(AEGIS_EVT_PROC_EXIT));
     try std.testing.expectEqualStrings("UNKNOWN", eventTypeToString(99));
+}
+
+test "PACE-MF-001 waits only near the producer's own ingress share" {
+    // Below the margin the reader keeps pushing; at/inside the margin it waits
+    // one bounded millisecond at a time instead of taking a counted drop.
+    try std.testing.expect(!shouldPace(0, 7168, 256));
+    try std.testing.expect(!shouldPace(7168 - 257, 7168, 256));
+    try std.testing.expect(shouldPace(7168 - 256, 7168, 256));
+    try std.testing.expect(shouldPace(7168, 7168, 256));
+    // Symbolic against the live queue constants.
+    try std.testing.expect(shouldPace(pipeline_queue.SOURCE_OCCUPANCY_CAP, pipeline_queue.SOURCE_OCCUPANCY_CAP, 0));
 }

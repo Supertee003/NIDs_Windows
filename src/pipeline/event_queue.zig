@@ -177,6 +177,13 @@ var g_queue_mutex: std.Thread.Mutex = .{};
 // introduced; pop remains serialized by the same mutex.
 var g_queue_producer_mutex: std.Thread.Mutex = .{};
 
+/// Current ingress occupancy of one legacy source. Read-only view for
+/// producers that can pace themselves: the minifilter pull loop pauses instead
+/// of overflowing its QLOSS share (the kernel ring behind it is the buffer).
+pub fn sourceOccupancy(source: event.EventSource) u64 {
+    return g_ingress_active[@intFromEnum(source)].load(.monotonic);
+}
+
 /// Push an event + optional payload into the pipeline queue.
 /// Returns true if accepted, false if queue is full (event dropped).
 pub fn pushEvent(ev: event.IpcEvent, payload: []const u8) bool {

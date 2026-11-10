@@ -806,8 +806,10 @@ const handlers = struct {
         // Same labeled-absence rule as wfp; `dropped` is the KERNEL ring's
         // own loss counter, so ring overflow is never silent. `pipeline_dropped`
         // separately counts rows rejected after leaving the kernel ring.
+        // `pace_waits` (PACE-MF-001) shows when the reader chose a bounded wait
+        // over a refused push; it is not a loss counter.
         writer.writeAll(",\"minifilter\":{") catch return null;
-        writer.print("\"state\":\"{s}\",\"reads\":{},\"rows\":{},\"last_bytes\":{},\"dropped\":{},\"ring_written\":{},\"pipeline_dropped\":{}}}", .{
+        writer.print("\"state\":\"{s}\",\"reads\":{},\"rows\":{},\"last_bytes\":{},\"dropped\":{},\"ring_written\":{},\"pipeline_dropped\":{},\"pace_waits\":{}}}", .{
             providerStateName(state_mod.g_minifilter_state.load(.acquire)),
             state_mod.g_minifilter_reads.load(.acquire),
             state_mod.g_minifilter_rows.load(.acquire),
@@ -815,6 +817,7 @@ const handlers = struct {
             state_mod.g_minifilter_dropped.load(.acquire),
             state_mod.g_minifilter_ring_written.load(.acquire),
             state_mod.g_minifilter_pipeline_dropped.load(.acquire),
+            state_mod.g_fim_pace_waits.load(.acquire),
         }) catch return null;
         // XDR-005-A: observe-only Windows TCP endpoint telemetry health.
         // `seeded` is the poll that establishes the baseline and emits
@@ -2447,6 +2450,9 @@ test "queueStats emits parseable JSON with shed and etw keys (GAP-015)" {
     try std.testing.expect(fim_probe.get("minifilter").?.object.contains("duplicates_per_pid"));
     try std.testing.expect(fim_probe.get("minifilter").?.object.contains("duplicates_same_ts"));
     try std.testing.expect(fim_probe.get("minifilter").?.object.contains("duplicates"));
+    // PACE-MF-001: bounded waits are published on the root minifilter health
+    // block, next to the loss counters they replace.
+    try std.testing.expect(root.get("minifilter").?.object.contains("pace_waits"));
     try std.testing.expect(fim_probe.get("native_poll").?.object.contains("duplicates"));
     try std.testing.expect(root.contains("minifilter_pipeline_dropped"));
     try std.testing.expect(root.contains("by_source"));
