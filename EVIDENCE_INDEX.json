@@ -5816,6 +5816,33 @@
         "The default budget of 0 keeps R-08 strict; an owner-approved shed rate must be passed explicitly and then appears in the report.",
         "queue.stats availability is now a soak precondition; an older daemon without the command fails the gate instead of being skipped."
       ]
+    },
+    {
+      "id": "BOOT-RING-LOSS-001-E1-20261111",
+      "head_sha": "4c4ed3a",
+      "timestamp": "2026-11-11",
+      "title": "448 minifilter rows overflow the 4 MiB boot ring before the daemon attaches",
+      "level": "E1",
+      "component": "drivers/minifilter/aegis_minifilter.h, src/capture/minifilter_reader.zig",
+      "flow_id": "QLOSS",
+      "description": "First soak after the 2026-11-11 01:30 reboot failed at 0.06 h with minifilter_ring_dropped=448, queue_dropped_total=0, shed_overload=0. queue.stats: reads=5700 rows=92562 ring_written=113754 dropped=448 pipeline_dropped=0. The 4 MiB ring holds roughly 113k 36-byte records; the daemon process started about 2m25s after boot and the minifilter was already emitting into the ring with no reader attached, so 448 of 113,754 boot records did not fit (0.39%). The driver DroppedEvents is a gauge that survives a daemon restart; only a driver reload zeroes it, which is why a soak armed from the boot state cannot pass at loss-budget 0. This is a kernel-ring loss, distinct from the ETW admission loss measured in QLOSS-ETW-PRIORITY-001. Options recorded: 8 MiB ring (driver candidate), earlier reader attach (source), or a disclosed startup limitation. The 01:29 deploy attempt never replaced the binary (installed image still ED74E56F), so these numbers are from the old build; the new build has not been measured.",
+      "evidence_artifact": "analysis/current-head/BOOT-RING-LOSS-001-20261111.md",
+      "artifacts": [
+        "analysis/current-head/BOOT-RING-LOSS-001-20261111.md",
+        "drivers/minifilter/aegis_minifilter.h",
+        "src/capture/minifilter_reader.zig"
+      ],
+      "commands": [
+        "python tools/aegisctl.py queue --json",
+        "python tools/aegisctl.py health --json",
+        "python tools/host_soak_check.py --start auto --hours 24 --loss-budget 0"
+      ],
+      "limitations": [
+        "E1: host reads only; no fix has been applied.",
+        "Measured on the old deployed build (ED74E56F, source c79c5a1). The 4c4ed3a build was not deployed by the 01:29 window.",
+        "The exact deploy termination is not recorded; the script's new elevation guard and trap close that gap for the next run.",
+        "A driver reload resets the gauge for the steady-state window; it does not fix the boot blind spot."
+      ]
     }
   ],
   "known_gaps": [
@@ -11722,7 +11749,7 @@
   ],
   "evidence_level_summary": {
     "E0_count": 0,
-    "E1_count": 20,
+    "E1_count": 21,
     "E2_count": 92,
     "E3_count": 12,
     "E4_count": 0,
