@@ -7,6 +7,10 @@ const std = @import("std");
 const event = @import("../contract/event.zig");
 const canonical = @import("../contract/canonical_event.zig");
 const state = @import("runtime_state.zig");
+// KIND-ATTR-001: the reserved process-type byte is written by the minifilter
+// producer through hids.ProcessEventType. Importing the enum keeps the mapping
+// numerically honest instead of restating its ordinals here.
+const hids = @import("../windows/hids_engine.zig");
 
 pub const PIPELINE_QUEUE_SIZE: usize = 16384;
 // GAP-015: 4096 slots held under 11 seconds at sustained ingress and the
@@ -353,6 +357,33 @@ fn classifyForward(ce: *const canonical.CanonicalEvent) event.EventKind {
     return .packet_captured;
 }
 
+/// KIND-ATTR-001: `.custom` is the canonical "producer-specific" type, not a
+/// traffic claim. Classify it by provenance so host sensors stop being counted
+/// as captured packets.
+///
+/// The destination kinds already exist (`fim_change=75`, `reg_change=76`,
+/// `etw_process_create=70`, `etw_process_exit=71`), so this changes no wire
+/// value, struct size, or cross-language contract: the canonical event still
+/// claims `.custom`, and Zig - the sole detection authority - decides what that
+/// means. Before this, every minifilter row (`create()` defaults `.event_type`
+/// to `.custom`) reached the queue as `.packet_captured`, which inflated packet
+/// counters and hid FIM volume from kind-based consumers.
+fn classifyCustom(ce: *const canonical.CanonicalEvent) event.EventKind {
+    return switch (ce.source) {
+        .minifilter, .file_sensor => switch (ce.reserved[canonical.RES_OFF_PROC_TYPE]) {
+            @intFromEnum(hids.ProcessEventType.create) => .etw_process_create,
+            @intFromEnum(hids.ProcessEventType.terminate) => .etw_process_exit,
+            // file_create and every unknown ordinal fail toward the file
+            // domain, matching processTypeFor()'s own fail-safe direction.
+            else => .fim_change,
+        },
+        .registry_sensor => .reg_change,
+        // Every other producer keeps the exact previous mapping until its own
+        // attribution is measured: no silent behaviour change by source.
+        else => .packet_captured,
+    };
+}
+
 /// Gate: canonical.validateDecodedFrame - v1 frames (null sidecars) vs v2
 /// frames (version==EVENT_VERSION_V2 + both sidecars); mixed shapes fail
 /// closed. V6-QUEUE-DROP: this gate used the strict event validator
@@ -371,7 +402,7 @@ pub fn pushDecodedFrame(frame: *const canonical.DecodedFrame, payload: []const u
         .session_start, .startup => .system_start,
         .session_end, .shutdown => .system_shutdown,
         .ruleset_reload => .policy_decision,
-        .custom => .packet_captured,
+        .custom => classifyCustom(ce),
     };
     const severity: event.EventSeverity = switch (ce.severity) {
         0 => .info,
@@ -603,6 +634,41 @@ test "decoded-frame gate rejects shapes no codec can emit (V6-QUEUE-DROP)" {
     try std.testing.expect(!r_v1_with_sidecars);
     try std.testing.expect(!r_one_sided);
     try std.testing.expect(!r_bad_magic);
+}
+
+test "classifyCustom names host provenance, never the traffic lane (KIND-ATTR-001)" {
+    // Regression: `canonical.create()` defaults `.event_type` to `.custom`, and
+    // the queue used to translate every `.custom` into `.packet_captured`. A
+    // minifilter FIM row is not a captured packet, and counting it as one both
+    // inflates packet counters and hides FIM volume from kind-based consumers.
+    var host = canonical.create(.minifilter);
+    host.reserved[canonical.RES_OFF_PROC_TYPE] = @intFromEnum(hids.ProcessEventType.file_create);
+    var frame = canonical.DecodedFrame{ .event = host, .src_ipv6 = null, .dst_ipv6 = null };
+    try std.testing.expect(pushDecodedFrame(&frame, "C:\\tmp\\a.txt"));
+    const file_ev = popEvent().?;
+    try std.testing.expectEqual(event.EventKind.fim_change, file_ev.ev.kind);
+    try std.testing.expectEqual(@as(event.EventSource, .capture_fim), file_ev.ev.source);
+
+    host.reserved[canonical.RES_OFF_PROC_TYPE] = @intFromEnum(hids.ProcessEventType.create);
+    frame = canonical.DecodedFrame{ .event = host, .src_ipv6 = null, .dst_ipv6 = null };
+    try std.testing.expect(pushDecodedFrame(&frame, "cmd.exe"));
+    try std.testing.expectEqual(event.EventKind.etw_process_create, popEvent().?.ev.kind);
+
+    host.reserved[canonical.RES_OFF_PROC_TYPE] = @intFromEnum(hids.ProcessEventType.terminate);
+    frame = canonical.DecodedFrame{ .event = host, .src_ipv6 = null, .dst_ipv6 = null };
+    try std.testing.expect(pushDecodedFrame(&frame, "cmd.exe"));
+    try std.testing.expectEqual(event.EventKind.etw_process_exit, popEvent().?.ev.kind);
+
+    const reg = canonical.create(.registry_sensor);
+    frame = canonical.DecodedFrame{ .event = reg, .src_ipv6 = null, .dst_ipv6 = null };
+    try std.testing.expect(pushDecodedFrame(&frame, "HKLM\\Software\\Aegis"));
+    try std.testing.expectEqual(event.EventKind.reg_change, popEvent().?.ev.kind);
+
+    // A packet producer that legitimately sends `.custom` keeps the exact
+    // previous mapping: this change is provenance-scoped, not a global relabel.
+    const pkt = canonical.create(.npcap_sensor);    frame = canonical.DecodedFrame{ .event = pkt, .src_ipv6 = null, .dst_ipv6 = null };
+    try std.testing.expect(pushDecodedFrame(&frame, &[_]u8{}));
+    try std.testing.expectEqual(event.EventKind.packet_captured, popEvent().?.ev.kind);
 }
 
 test "classifyForward names DNS by port, keeps everything else generic" {
