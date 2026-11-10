@@ -151,6 +151,18 @@ pub var g_ingress_kind_dropped: [SOURCE_KIND_BUCKET_COUNT]std.atomic.Value(u64) 
 // so an operator can see which sensor is holding the space.
 pub var g_ingress_active: [256]std.atomic.Value(u64) = [_]std.atomic.Value(u64){std.atomic.Value(u64).init(0)} ** 256;
 
+// VERDICT-AUTH-001 (#28): acquisition tiers report evidence, they never decide
+// a detection. A wire event that arrives carrying a verdict claim (a rule id, a
+// severity ordinal, or a `.match_`/`.block` event type) has that claim cleared
+// at this seam, so after ingress `rule_id != 0` always means Zig's own
+// Aho-Corasick/L4/L7 stage produced it. The claim is counted, never silently
+// discarded: a nonzero counter on a stock host means a producer is still
+// authoring verdicts and must be fixed, not tolerated.
+pub var g_ingress_claims_stripped = std.atomic.Value(u64).init(0);
+pub var g_ingress_claim_rule_id = std.atomic.Value(u64).init(0);
+pub var g_ingress_claim_severity = std.atomic.Value(u64).init(0);
+pub var g_ingress_claim_event_type = std.atomic.Value(u64).init(0);
+
 /// Current queue occupancy (head - tail, wrapping). Control-plane readers
 /// use this for queue.stats; producers/consumers never branch on it.
 pub fn queueDepth() u64 {
@@ -391,6 +403,44 @@ fn classifyCustom(ce: *const canonical.CanonicalEvent) event.EventKind {
     };
 }
 
+/// VERDICT-AUTH-001 (#28): the sanitized view of what an acquisition producer
+/// is allowed to say about detection. `rule_id`/`severity` are always the
+/// authority's defaults and `event_type` is demoted to the evidence carrier
+/// when it claimed a verdict; the `claimed_*` flags say what had to be
+/// removed so the caller can count it.
+pub const SanitizedClaim = struct {
+    rule_id: u32,
+    severity: u8,
+    event_type: canonical.EventType,
+    claimed_rule_id: bool,
+    claimed_severity: bool,
+    claimed_event_type: bool,
+
+    pub fn stripped(self: SanitizedClaim) bool {
+        return self.claimed_rule_id or self.claimed_severity or self.claimed_event_type;
+    }
+};
+
+/// A producer-reported `.match_`/`.block`/`.ip_blocked` type is a verdict
+/// claim, not evidence: Zig's AC/L4/L7 stages decide matches and this build is
+/// observe-only, so no acquisition tier can have produced an enforcement
+/// record that means anything. Such a frame keeps its bytes and identity as a
+/// plain `.forward` record; the claim is counted by the caller.
+pub fn sanitizeAcquisitionClaim(ce: *const canonical.CanonicalEvent) SanitizedClaim {
+    const claims_type = switch (ce.event_type) {
+        .match_, .block, .ip_blocked => true,
+        else => false,
+    };
+    return .{
+        .rule_id = 0,
+        .severity = 0,
+        .event_type = if (claims_type) .forward else ce.event_type,
+        .claimed_rule_id = ce.rule_id != 0,
+        .claimed_severity = ce.severity != 0,
+        .claimed_event_type = claims_type,
+    };
+}
+
 /// Gate: canonical.validateDecodedFrame - v1 frames (null sidecars) vs v2
 /// frames (version==EVENT_VERSION_V2 + both sidecars); mixed shapes fail
 /// closed. V6-QUEUE-DROP: this gate used the strict event validator
@@ -401,7 +451,18 @@ pub fn pushDecodedFrame(frame: *const canonical.DecodedFrame, payload: []const u
     const ce = &frame.event;
     if (ce.direction > 1) return false;
 
-    const kind: event.EventKind = switch (ce.event_type) {
+    // VERDICT-AUTH-001 (#28): the three fields below are the whole detection
+    // verdict vocabulary the wire carries, and Zig recomputes all of them from
+    // the captured bytes. Strip whatever the producer asserted, then count it.
+    const claim = sanitizeAcquisitionClaim(ce);
+    if (claim.stripped()) {
+        _ = g_ingress_claims_stripped.fetchAdd(1, .monotonic);
+        if (claim.claimed_rule_id) _ = g_ingress_claim_rule_id.fetchAdd(1, .monotonic);
+        if (claim.claimed_severity) _ = g_ingress_claim_severity.fetchAdd(1, .monotonic);
+        if (claim.claimed_event_type) _ = g_ingress_claim_event_type.fetchAdd(1, .monotonic);
+    }
+
+    const kind: event.EventKind = switch (claim.event_type) {
         .block, .ip_blocked => .action_block,
         .match_ => .signature_match,
         .forward => classifyForward(ce),
@@ -411,12 +472,9 @@ pub fn pushDecodedFrame(frame: *const canonical.DecodedFrame, payload: []const u
         .ruleset_reload => .policy_decision,
         .custom => classifyCustom(ce),
     };
-    const severity: event.EventSeverity = switch (ce.severity) {
-        0 => .info,
-        1 => .warning,
-        2 => .critical,
-        else => .alert,
-    };
+    // Acquisition severity is stripped above, so a queued record always enters
+    // at info and rises only when a Zig detection stage says so.
+    const severity: event.EventSeverity = .info;
 
     var ev = event.IpcEvent.init(kind);
     ev.source = legacySourceFor(ce.source);
@@ -428,7 +486,7 @@ pub fn pushDecodedFrame(frame: *const canonical.DecodedFrame, payload: []const u
     ev.src_port = ce.source_port;
     ev.dst_port = ce.dest_port;
     ev.protocol = ce.protocol;
-    ev.rule_id = ce.rule_id;
+    ev.rule_id = claim.rule_id;
     ev.payload_len = ce.payload_length;
     ev.payload_hash = @truncate(ce.payload_hash);
     ev.flags = ce.context_flags;
@@ -678,6 +736,51 @@ test "classifyCustom names host provenance, never the traffic lane (KIND-ATTR-00
     try std.testing.expectEqual(event.EventKind.packet_captured, popEvent().?.ev.kind);
 }
 
+test "VERDICT-AUTH-001 clears an acquisition-authored verdict at ingress" {
+    // #28: the acquisition tiers (Go Nose, WFP, C++) report evidence. A
+    // producer that asserts "I matched rule X with severity 3" must not become
+    // a detection by saying so — Zig is the sole verdict authority, and this
+    // function is the one seam every wire producer passes through.
+    var spoof = canonical.create(.npcap_sensor);
+    spoof.event_type = .match_;
+    spoof.rule_id = 0x00C0FFEE;
+    spoof.severity = 3;
+    var frame = canonical.DecodedFrame{ .event = spoof, .src_ipv6 = null, .dst_ipv6 = null };
+    const claims_before = g_ingress_claims_stripped.load(.monotonic);
+    try std.testing.expect(pushDecodedFrame(&frame, &[_]u8{}));
+    const got = popEvent().?;
+    try std.testing.expectEqual(@as(u32, 0), got.ev.rule_id);
+    try std.testing.expectEqual(event.EventSeverity.info, got.ev.severity);
+    try std.testing.expect(got.ev.kind != .signature_match);
+    // The claim is counted, so the removal is observable rather than silent.
+    try std.testing.expect(g_ingress_claims_stripped.load(.monotonic) > claims_before);
+
+    // An honest evidence record keeps every field: no claim means no counter
+    // movement and no relabel of the traffic lane.
+    var honest = canonical.create(.npcap_sensor);
+    honest.event_type = .forward;
+    honest.protocol = 6;
+    honest.source_port = 40000;
+    honest.dest_port = 80;
+    frame = canonical.DecodedFrame{ .event = honest, .src_ipv6 = null, .dst_ipv6 = null };
+    const honest_before = g_ingress_claims_stripped.load(.monotonic);
+    try std.testing.expect(pushDecodedFrame(&frame, &[_]u8{}));
+    try std.testing.expectEqual(honest_before, g_ingress_claims_stripped.load(.monotonic));
+    try std.testing.expectEqual(event.EventKind.packet_captured, popEvent().?.ev.kind);
+
+    // An enforcement claim from acquisition is the same class of overreach:
+    // this build is observe-only, so no producer may hand Zig a `.block`
+    // record and have it scored as a critical detection.
+    var blocker = canonical.create(.npcap_sensor);
+    blocker.event_type = .block;
+    blocker.rule_id = 7;
+    frame = canonical.DecodedFrame{ .event = blocker, .src_ipv6 = null, .dst_ipv6 = null };
+    try std.testing.expect(pushDecodedFrame(&frame, &[_]u8{}));
+    const blocked = popEvent().?;
+    try std.testing.expect(blocked.ev.kind != .action_block);
+    try std.testing.expectEqual(@as(u32, 0), blocked.ev.rule_id);
+}
+
 test "classifyForward names DNS by port, keeps everything else generic" {
     // CORR-DNS-080: UDP/53 traffic gets real kinds; TCP/80, UDP/123,
     // non-forward types, and v4/v6 alike keep prior behavior exactly.
@@ -709,11 +812,14 @@ test "classifyForward names DNS by port, keeps everything else generic" {
     try std.testing.expect(pushDecodedFrame(&f, &[_]u8{}));
     try std.testing.expectEqual(event.EventKind.packet_captured, popEvent().?.ev.kind);
 
+    // VERDICT-AUTH-001 (#28): a producer-authored `.match_` is no longer a
+    // detection. The claim is stripped and the row keeps its evidence
+    // identity, which for UDP/53 is a DNS query.
     q.event_type = .match_;
     q.dest_port = 53;
     f = canonical.DecodedFrame{ .event = q, .src_ipv6 = null, .dst_ipv6 = null };
     try std.testing.expect(pushDecodedFrame(&f, &[_]u8{}));
-    try std.testing.expectEqual(event.EventKind.signature_match, popEvent().?.ev.kind);
+    try std.testing.expectEqual(event.EventKind.dns_query, popEvent().?.ev.kind);
 }
 
 test "pushCanonicalEventWithPayload preserves bounded payload" {

@@ -10,9 +10,9 @@ import (
 // runObserveInjection sends synthetic CanonicalEvent frames through the same
 // version-dispatched FrameWriter used by live Npcap capture (v1 fixtures
 // stay 109 bytes). The fixture
-// is intentionally alert-only: no rule ID, no signature-match event type, and
-// no block policy request. It is for proving ingress/queue/policy/forensic
-// linkage without creating a WFP host effect.
+// is intentionally evidence-only: no rule ID, no signature-match event type,
+// no severity claim, and no block policy request. It is for proving
+// ingress/queue/policy/forensic linkage without creating a WFP host effect.
 func runObserveInjection(pipe string, count int) error {
 	if count < 1 {
 		return fmt.Errorf("inject-observe count must be >= 1")
@@ -35,7 +35,7 @@ func runObserveInjection(pipe string, count int) error {
 			DestPort:          443,
 			Protocol:          6,
 			EventType:         TypeForward,
-			Severity:          1, // canonical High/notice path; no signature rule
+			Severity:          0, // evidence only: Zig assigns any severity
 			RuleID:            0,
 			PolicyAction:      ActionLogOnly,
 			DefconImpact:      5,

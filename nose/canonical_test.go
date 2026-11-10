@@ -340,55 +340,6 @@ func TestEventFromPacketSynthetic(t *testing.T) {
 	}
 }
 
-func TestSignatureClassifierSetsCanonicalMetadata(t *testing.T) {
-	activeNoseSignatureRules = []noseSignatureRule{
-		{RuleID: "TEST1", MatchPattern: "GET", Severity: "High"},
-	}
-	defer func() { activeNoseSignatureRules = nil }()
-
-	ip := &layers.IPv4{Version: 4, IHL: 5, SrcIP: []byte{192, 168, 1, 10}, DstIP: []byte{192, 168, 1, 20}, Protocol: layers.IPProtocolTCP}
-	tcp := &layers.TCP{SrcPort: 50000, DstPort: 80}
-	tcp.SetNetworkLayerForChecksum(ip)
-	buf := gopacket.NewSerializeBuffer()
-	if err := gopacket.SerializeLayers(buf, gopacket.SerializeOptions{ComputeChecksums: true, FixLengths: true}, ip, tcp, gopacket.Payload([]byte("GET / HTTP/1.1\r\n"))); err != nil {
-		t.Fatalf("serialize classifier packet: %v", err)
-	}
-	pkt := gopacket.NewPacket(buf.Bytes(), layers.LayerTypeIPv4, gopacket.NoCopy)
-	ev := eventFromPacket(pkt)
-	classifyNosePacket(ev, pkt)
-
-	if ev.EventType != TypeMatch {
-		t.Fatalf("event type: got %d want %d", ev.EventType, TypeMatch)
-	}
-	if ev.RuleID != hashNoseRuleID("TEST1") {
-		t.Fatalf("rule id mismatch: got %#x want %#x", ev.RuleID, hashNoseRuleID("TEST1"))
-	}
-	if ev.Severity != 2 {
-		t.Fatalf("severity: got %d want 2 for High", ev.Severity)
-	}
-	wire, err := ev.Serialize()
-	if err != nil {
-		t.Fatalf("serialize classified event: %v", err)
-	}
-	if len(wire) != EventWireSize {
-		t.Fatalf("wire size changed: got %d want %d", len(wire), EventWireSize)
-	}
-}
-
-func TestSignatureClassifierIgnoresNonMatchingPayload(t *testing.T) {
-	activeNoseSignatureRules = []noseSignatureRule{
-		{RuleID: "TEST1", MatchPattern: "GET", Severity: "High"},
-	}
-	defer func() { activeNoseSignatureRules = nil }()
-
-	pkt := gopacket.NewPacket([]byte{}, layers.LayerTypeIPv4, gopacket.NoCopy)
-	ev := eventFromPacket(pkt)
-	classifyNosePacket(ev, pkt)
-	if ev.EventType != TypeForward || ev.RuleID != 0 || ev.Severity != 0 {
-		t.Fatalf("non-match mutated canonical metadata: type=%d rule=%d severity=%d", ev.EventType, ev.RuleID, ev.Severity)
-	}
-}
-
 // v6ProbeEvent mirrors the Zig v2 test probe: 2001:0db8::1/::2 with the
 // truncated flag and first-4-byte u32 identity (BigEndian.Uint32(addr[:4])).
 func v6ProbeEvent() *CanonicalEvent {

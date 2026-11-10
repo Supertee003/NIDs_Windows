@@ -116,6 +116,24 @@ closed (no inferred acceptance, no silent truncation).
 by the queue. Mixed shapes (v3 without envelope, v1/v2 with envelope) are
 rejected fail closed.
 
+### Ingress verdict strip (VERDICT-AUTH-001, #28)
+
+Version dispatch gates *shape*; `sanitizeAcquisitionClaim` gates *authority*.
+Every frame that reaches the queue — v1, v2 or v3 — has any producer-authored
+`rule_id`, nonzero `severity`, and `.match_`/`.block`/`.ip_blocked` event type
+cleared before the record becomes an `IpcEvent`, and demoted to a plain
+`.forward` evidence row when it claimed a verdict. Consequences an implementer
+must rely on:
+
+- after ingress, `rule_id != 0` means Zig's own Aho-Corasick / L4 / L7 stage
+  produced it, and nothing else;
+- `queue.stats.ingress_authority.claims_stripped` counts the removal, per field;
+  a nonzero counter on a stock host means a producer is still authoring
+  verdicts and must be fixed;
+- no byte of the frozen v1/v2 base or the v3 envelope changes, so vectors,
+  codecs and `struct_size` are untouched by this rule.
+
+
 ## Golden vectors
 
 `tests/contracts/event_vectors/generate_test_vectors.py` freezes:

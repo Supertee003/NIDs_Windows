@@ -758,7 +758,16 @@ const handlers = struct {
                 }) catch return null;
             }
         }
-        writer.writeAll("],\"pipeline\":[") catch return null;
+        // VERDICT-AUTH-001 (#28): what the acquisition tiers tried to assert as
+        // a detection verdict and had cleared at ingress. Nonzero on a stock
+        // host means a producer is still authoring verdicts.
+        writer.print("],\"ingress_authority\":{{\"claims_stripped\":{},\"rule_id\":{},\"severity\":{},\"event_type\":{}}}", .{
+            event_queue.g_ingress_claims_stripped.load(.acquire),
+            event_queue.g_ingress_claim_rule_id.load(.acquire),
+            event_queue.g_ingress_claim_severity.load(.acquire),
+            event_queue.g_ingress_claim_event_type.load(.acquire),
+        }) catch return null;
+        writer.writeAll(",\"pipeline\":[") catch return null;
         first = true;
         // PerfSnapshot carries 16 slots but only the declared Stage enum values
         // are ever observed; the rest are undefined memory, never read.
@@ -2457,6 +2466,9 @@ test "queueStats emits parseable JSON with shed and etw keys (GAP-015)" {
     try std.testing.expect(root.contains("minifilter_pipeline_dropped"));
     try std.testing.expect(root.contains("by_source"));
     try std.testing.expect(root.contains("by_source_kind"));
+    // VERDICT-AUTH-001 (#28): the acquisition-verdict strip is observable.
+    try std.testing.expect(root.get("ingress_authority").?.object.contains("claims_stripped"));
+    try std.testing.expect(root.get("ingress_authority").?.object.contains("rule_id"));
     try std.testing.expect(root.contains("pipeline"));
     try std.testing.expect(root.contains("etw"));
     try std.testing.expect(root.get("etw").?.object.contains("file_write"));
