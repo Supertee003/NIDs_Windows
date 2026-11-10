@@ -1,4 +1,4 @@
-﻿//! minifilter_reader.zig - AEGIS NIDS Minifilter Reader (Thread 4)
+//! minifilter_reader.zig - AEGIS NIDS Minifilter Reader (Thread 4)
 //!
 //! Kernel host telemetry consumer for the AegisMinifilter driver
 //! (drivers/minifilter/). PULL model, deliberately:
@@ -186,13 +186,19 @@ const AEGIS_MSG_GET_STATS: u32 = 2;
 
 // ====== Loop pacing ======
 // EVT-230 hardening: 256 KiB pull buffer (554 records per pull; the kernel
-// ring is 1 MiB so a saturated ring drains in 4 pulls) and a 50 ms idle
+// ring is 4 MiB so a saturated ring drains in ~16 pulls) and a 50 ms idle
 // wake (was 250 ms - the old cadence left burst capacity on the table and
 // widened the ring's overflow window). Grounded in measured queue.stats
 // data from the EVT-230 incident, not guessed.
+//
+// BOOT-RING-LOSS-001: the connect retry was 10 s. When the boot task starts
+// the minifilter after the daemon (so the ring starts empty), a 10 s retry
+// still allowed ~10 s of boot writes to accumulate; the 2026-11-11 boot
+// proved the ring can fill at >16k records/s. 1 s bounds the backlog to the
+// ring's headroom while costing one cheap port probe per second.
 const READ_BUF_SIZE: usize = 256 * 1024; // 554 records per pull
 const IDLE_SLEEP_MS: u64 = 50;
-const CONNECT_RETRY_MS: u64 = 10_000;
+const CONNECT_RETRY_MS: u64 = 1_000;
 const ERROR_SLEEP_MS: u64 = 1_000;
 const STATS_POLL_EVERY: u64 = 64;
 
