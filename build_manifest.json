@@ -1021,7 +1021,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "44d546cd32804cef1b41c8c41df3df152c95e618ba74f95496d9364cef8cc11f",
+      "sha256": "100f71fcd15ad251f5222da68a7dfd1cefc07d2d22a8d2bda1d8f096f3c5f88a",
       "language": "json"
     },
     {
@@ -1974,8 +1974,8 @@
     },
     {
       "path": "src/contract/runtime_manifest.zig",
-      "size": 6419,
-      "sha256": "64ab360bcbff375b9b183deb13ae0c9554c6a846de8206210b8d93efe948b64c",
+      "size": 7009,
+      "sha256": "f727dffded3dab110a3e2d658446b7714797fdfbd3f5f6914caa784a3d4dea68",
       "language": "zig"
     },
     {
@@ -2166,8 +2166,8 @@
     },
     {
       "path": "src/daemon.zig",
-      "size": 48676,
-      "sha256": "dc7daa0527cfa23e54b2666b4c5c25ea2f00aea9d5963797c0af5854fd23ae54",
+      "size": 49078,
+      "sha256": "87de4983f396087a2da8a00e2112cf6bb27d1e55ba15ef6f8f96f699c37a3a7f",
       "language": "zig"
     },
     {
