@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-10T10:26:12.096023+00:00",
+  "generated_at": "2026-11-10T10:28:22.567895+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
   "total_files": 1550,
@@ -672,7 +672,7 @@
       "path": "analysis/current-head/SYSTEM-SURVEY-001-ADDENDUM-20261110.md",
       "class": "canonical-docs",
       "role": "documentation",
-      "size": 3481
+      "size": 4013
     },
     {
       "path": "analysis/current-head/TEST-HYGIENE-S301-20261110.md",
@@ -3474,7 +3474,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 236498
+      "size": 236499
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3732,7 +3732,7 @@
       "path": "PHASE_0_TRUTH_REBUILD_REPORT.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 10041
+      "size": 9693
     },
     {
       "path": "pytest.ini",

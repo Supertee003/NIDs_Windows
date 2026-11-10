@@ -15,9 +15,9 @@ proves them.
 | S1-01 driver mismatch | **mitigated in tooling** — copy is byte-verified and aborts; the host still runs `F63195B0…` until the host window replaces it | `ISSUE-30-ATTRIBUTION-20261110.md` §5.2 |
 | S2-01 #30 | **diagnosed and explained** — the crashing image is the 2026-10-16 helper; the fix was never staged into `zig-out/bin`; staging gate added. Closure needs the host window | `ISSUE-30-ATTRIBUTION-20261110.md` |
 | S2-02 driver start mode | **open** — needs the reboot decision in the host window | — |
-| S2-03 inert injection detector | **open** | — |
-| S2-05 two installers, two drivers | **open** — `aegis.nsi` still packages the stale `drivers\wfp_callout` copy | — |
-| S3-01 test writes tracked state | **open** | — |
+| S2-03 inert injection detector | **fixed in source** — daemon no longer constructs the detector, `has_injection_detector` is false, the doc row says NOT WIRED, and `tests/security/test_capability_claims.py` fails if any of that reverts; the detector itself stays unwired | `INJECTION-CLAIM-001-20261110.md` |
+| S2-05 two installers, two drivers | **fixed in source** — every packaging entry point now ships `build\x64\wfp\aegis_wfp.sys`, pinned by `tests/release/test_driver_packaging_sources.py`; the two installers still differ in verification strength | `DRIVER-PACKAGING-001-20261110.md` |
+| S3-01 test writes tracked state | **fixed** — the test writes `tmp_path` and an autouse guard forbids the tracked paths | `TEST-HYGIENE-S301-20261110.md` |
 
 ## Corrections to the survey text
 
