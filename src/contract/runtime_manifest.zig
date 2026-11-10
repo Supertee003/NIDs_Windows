@@ -106,7 +106,15 @@ pub fn probeCapabilities() Capability {
     c.has_fim = probeFim();
     c.has_registry_monitor = probeRegistry();
     c.has_wfp_block = probeWfp();
-    c.has_injection_detector = true;
+    // S2-03: was an unconditional `true`, i.e. the manifest advertised T1055
+    // injection detection that no production path executed. The detector module
+    // (detection/injection_detector.zig) is complete and tested, but nothing
+    // builds an InjectionEvent from live telemetry and nothing calls ingest(),
+    // so the honest answer is "not wired". Flip this to a probe when a producer
+    // exists (process-open / thread-create / VirtualAllocEx / image-load ETW
+    // opcodes), because the capability then depends on the ETW session, not on
+    // the module being present.
+    c.has_injection_detector = false;
     c.has_federation = true;
     c.has_tls = true;
     c.has_pep_rust = true;

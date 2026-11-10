@@ -48,10 +48,10 @@ ML flow detector ─────────────┘        → incidents
 | 37 | HIDS correlation | `core/host_telemetry.zig` | LOGIC REAL — รอ adapters ป้อน event จริง |
 | 37E1 | Mock telemetry source | `core/host_telemetry_mock.zig` | MOCK — test scaffolding เท่านั้น |
 | 37E2 | MITRE scenario library | `core/host_telemetry_scenarios.zig` | MOCK (test) |
-| 37E3 | Extended detectors | `core/host_telemetry_detectors.zig` | REAL heuristics; injection detector **ถูกแทนด้วย Ext7** |
+| 37E3 | Extended detectors | `core/host_telemetry_detectors.zig` | REAL heuristics; injection heuristic **ถูกแทนด้วย Ext7** — ทั้งคู่ยังไม่ถูกเรียกจาก production (test/CLI เท่านั้น) |
 | 37E4 | Windows adapters (polling) | `core/windows_adapters.zig` | REAL on Windows (HOST-VERIFIED บางส่วน) — **ถูกแทนด้วย Ext5 ด้าน latency** |
 | 37E5 | ETW realtime source | `core/etw_realtime.zig` | REAL on Windows, stub on Linux |
-| 37E7 | T1055 injection detector | `core/injection_detector.zig` | REAL-time ETW path, ยังไม่ผ่าน Windows-host verification |
+| 37E7 | T1055 injection detector | `core/injection_detector.zig` | **NOT WIRED** — logic REAL + unit-tested, แต่ไม่มีผู้ผลิต event: ETW session ไม่สร้าง `InjectionEvent`, ไม่มี `ingest()` call site, และ `runtime_manifest.has_injection_detector` = false (S2-03) |
 | 39 | Cluster coordination | `core/cluster_coord.zig` | LOGIC REAL — federation transport ต่องานเพิ่ม |
 | 39E1 | Federation codec | `core/federation_codec.zig` | REAL (CRC32 = bit-flip detection ไม่ใช่ tamper resistance) |
 | 39E2 | TCP transport | `core/federation_tcp.zig` | REAL — **plaintext** |

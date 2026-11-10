@@ -40,7 +40,14 @@ const bridge_init = @import("core/bridge_init.zig");
 const legacy_capture = @import("core/nids_capture.zig");
 
 // PATCH-20: Windows Data Plane adapters (Phase 3)
-const inj_det = @import("windows/injection_detector.zig");
+// S2-03: no injection-detector import here on purpose. The T1055 detector in
+// detection/injection_detector.zig is complete and unit-tested, but this daemon
+// has no producer for it: the ETW session parses process/file/registry
+// providers into IpcEvents and never builds an InjectionEvent (process-open,
+// thread-create, VirtualAllocEx, image-load), so constructing the detector here
+// only implied a capability that never ran. Construction returns when a real
+// producer is wired; tests/security/test_capability_claims.py fails if the
+// detector comes back without an ingest() call site.
 const host_net = @import("windows/host_net.zig");
 
 // Refactored modules (this extraction)
@@ -615,8 +622,6 @@ pub fn runDaemon() !void {
     defer fim_watcher.deinit();
     var reg_monitor = @import("windows/registry_monitor.zig").RegistryMonitor.init(std.heap.page_allocator);
     defer reg_monitor.deinit();
-    var inj_detector = inj_det.InjectionDetector.init(std.heap.page_allocator, &inj_det.DEFAULT_RULES);
-    defer inj_detector.deinit();
 
     diag.info("AEGIS NIDS initialization complete — entering main loop", .{}); // 9. Main loop: pipeline processing + control pipe
     // PHASE-1: do not mark every subsystem RUNNING before its worker and
