@@ -5533,6 +5533,67 @@
         "python -m pytest tests/security/test_helper_staging.py -q  -> 4 passed"
       ],
       "limitations": "E2 only: the gate and its tests run against a throwaway tree, and the staging step was executed on this host. Nothing here deploys the fixed helper to a running service or proves #30 is closed; that needs the host window (deploy 5275ED8B, restart, observe no SCM 7031)."
+    },
+    {
+      "id": "HOST-WINDOW-003-DEPLOY-E5-20261110",
+      "head_sha": "78302f1",
+      "timestamp": "2026-11-10",
+      "title": "Deployed source 78302f1 to the host with per-file hash assertions; DAQ parity reached, health left DEGRADED on its own",
+      "level": "E5",
+      "component": "C:\\Program Files\\AEGIS NIDS\\runtime + C:\\Windows\\System32\\drivers",
+      "flow_id": "FLOW-RELEASE-PACKAGE",
+      "description": "Elevated window stopped AegisAggregator/AegisNids, then AegisWfp/AegisMinifilter, and replaced five artifacts, asserting SHA-256 on every destination: aegis_nids.exe 0DFA3F04 (rebuilt with KIND-ATTR-001 and CONTROL-AUTH-001), aegis_fim_helper.dll 5275ED8B (the 2026-11-01 aegis_fim_stop fix that no bundle had ever shipped), aegis_etw_helper.dll AD6D7F1F, aegis_wfp_user.dll 76B46CD6 and aegis_wfp.sys 06CC8E23. The WFP user helper and the driver move as one ABI pair: had the driver refused to unload, the helper would have been left on its old hash. Both drivers stopped and reloaded cleanly and both report Authenticode Valid. Rollback copies of all six previously installed files were taken first, with hashes, in admin-evidence/host-window-003-20261110/rollback. The daemon went from DEGRADED (11 h) to RUNNING/degraded=false once the deployed image matched the source.",
+      "artifacts": [
+        "admin-evidence/host-window-003-20261110/deploy-window-003-result.json",
+        "admin-evidence/host-window-003-20261110/pre-state.json",
+        "analysis/current-head/HOST-WINDOW-003-20261110.md"
+      ],
+      "commands": [
+        "powershell -Verb RunAs -File admin-evidence/host-window-003-20261110/deploy-window-003.ps1"
+      ],
+      "limitations": "A deployment proof, not a stability proof. It cannot say whether the FIM helper fix prevents #30, because no crash-free interval has been observed yet.",
+      "evidence_artifact": "admin-evidence/host-window-003-20261110/deploy-window-003-result.json"
+    },
+    {
+      "id": "KIND-ATTR-001-E5-20261110",
+      "head_sha": "78302f1",
+      "timestamp": "2026-11-10",
+      "title": "Deployed daemon reports host telemetry under fim_change/reg_change, and packets_captured no longer tracks all events",
+      "level": "E5",
+      "component": "src/pipeline/event_queue.zig classifyCustom(), deployed daemon 0DFA3F04",
+      "flow_id": "FLOW-INGRESS-KIND",
+      "description": "queue.stats by_source_kind on the deployed binary: capture_fim -> fim_change 1,455,134 / etw_process_create 2,045 / etw_process_exit 2,047; capture_etw -> fim_change 1,417,538 / reg_change 135,418 / etw_process_create 2,040; capture_registry -> reg_change 360; capture_npcap -> packet_captured 192,594 (unchanged) plus dns_query/dns_response 64/64; capture_wfp -> packet_captured 590. Aggregate: 5,376,449 events processed against 253,139 counted as packets (4.7%), where the pre-deploy daemon reported in_events and packets_captured as the same number (893,223 each).",
+      "artifacts": [
+        "admin-evidence/host-window-003-20261110/kind-attribution-e5.json",
+        "admin-evidence/host-window-003-20261110/post-rate-metrics.json"
+      ],
+      "commands": [
+        "python tools/aegisctl.py queue",
+        "python tools/aegisctl.py metrics"
+      ],
+      "limitations": "The pre-deploy half of the comparison (893,223 = 893,223) is transcript-observed, not archived as a file. The post-deploy table is archived.",
+      "evidence_artifact": "admin-evidence/host-window-003-20261110/kind-attribution-e5.json"
+    },
+    {
+      "id": "QLOSS-RATE-E5-20261110",
+      "head_sha": "78302f1",
+      "timestamp": "2026-11-10",
+      "title": "The owner-accepted 4,000 file-op/s threshold is above this build's zero-loss ceiling: 15,990 rows shed on the duplicate ETW lane",
+      "level": "E5",
+      "component": "src/capture + src/pipeline/event_queue.zig, deployed daemon 0DFA3F04",
+      "flow_id": "QLOSS-HEALTH-001",
+      "description": "Sustained file-op load (open+write+close+unlink, rate measured from completed op-sets) with a settle window that polls until the drop counter is stable across two reads: 1 worker 2,484.2 op-sets/s for 60 s -> 0 drops; 2 workers 3,229.5/s for 60 s -> 0 drops; 3 workers 4,008.6/s for 90 s -> 15,990 drops, all on capture_etw (fim_change 15,989, reg_change 1), while capture_fim lost 0 of 1,455,134 rows. The first version of the harness reported zero drops for the 4,000 run because it read the periodic data_integrity snapshot the instant the generator stopped; the soak gate then failed with queue_dropped_total=15990. The claim is retracted in the window record and the harness now settles before reading.",
+      "artifacts": [
+        "admin-evidence/host-window-003-20261110/rate-1000.json",
+        "admin-evidence/host-window-003-20261110/rate-3000-2w.json",
+        "admin-evidence/host-window-003-20261110/kind-attribution-e5.json",
+        "admin-evidence/host-window-003-20261110/soak-attempt.json"
+      ],
+      "commands": [
+        "python admin-evidence/host-window-003-20261110/soak_rate.py --ops-per-second 4000 --seconds 90 --workers 3"
+      ],
+      "limitations": "Two points bracket the ceiling (3,229 clean, 4,009 lossy); the exact knee is not located. The window therefore cannot start a clean 24 h soak without an elevated daemon restart, and #29 stays open.",
+      "evidence_artifact": "admin-evidence/host-window-003-20261110/kind-attribution-e5.json"
     }
   ],
   "known_gaps": [
@@ -11443,10 +11504,10 @@
     "E2_count": 85,
     "E3_count": 12,
     "E4_count": 0,
-    "E5_count": 77,
+    "E5_count": 80,
     "E6_count": 0,
     "E7_count": 0,
-    "E5_with_artifact_count": 27,
+    "E5_with_artifact_count": 30,
     "known_gaps_count": 271
   }
 }
