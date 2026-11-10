@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-10T09:51:23.427445+00:00",
+  "generated_at": "2026-11-10T10:04:06.834062+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1546,
+  "total_files": 1548,
   "by_class": {
-    "canonical-docs": 375,
+    "canonical-docs": 376,
     "canonical-build": 192,
     "unclassified": 17,
     "canonical-source": 665,
-    "canonical-test": 230,
+    "canonical-test": 231,
     "canonical-config": 34,
     "legacy": 33
   },
@@ -459,6 +459,12 @@
       "size": 27718
     },
     {
+      "path": "analysis/current-head/DRIVER-PACKAGING-001-20261110.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 5729
+    },
+    {
       "path": "analysis/current-head/ETW-FILE-DEDUPE-001-20261110.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -474,7 +480,7 @@
       "path": "analysis/current-head/evidence-debt-baseline.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 21772
+      "size": 21740
     },
     {
       "path": "analysis/current-head/FIM-PROBE-IDENTITY-COMMENT-001-20261109.md",
@@ -3354,7 +3360,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1108880
+      "size": 1111729
     },
     {
       "path": "FLOW_MAP.json",
@@ -3450,7 +3456,7 @@
       "path": "installer/aegis.nsi",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 4918
+      "size": 5439
     },
     {
       "path": "installer.nsi",
@@ -3462,7 +3468,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 235850
+      "size": 235849
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -7953,6 +7959,12 @@
       "size": 8327
     },
     {
+      "path": "tests/release/test_driver_packaging_sources.py",
+      "class": "canonical-test",
+      "role": "test-artifact",
+      "size": 5491
+    },
+    {
       "path": "tests/release/test_evidence_index_valid.py",
       "class": "canonical-test",
       "role": "test-artifact",
@@ -9114,7 +9126,7 @@
       "path": "tools/release_candidate.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 10759
+      "size": 11114
     },
     {
       "path": "tools/release_engineering.py",

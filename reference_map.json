@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-10T09:51:23.430056+00:00",
+  "generated_at": "2026-11-10T10:04:06.844785+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1546,
+  "total_files": 1548,
   "by_role": {
-    "documentation": 361,
+    "documentation": 362,
     "build-config": 181,
     "other": 17,
     "lockfile": 6,
     "rust-build": 4,
     "source": 369,
-    "test-artifact": 230,
+    "test-artifact": 231,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -617,6 +617,10 @@
       "role": "build-config"
     },
     "analysis/current-head/DEV-PLAN-001-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/DRIVER-PACKAGING-001-20261110.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -5613,6 +5617,10 @@
       "role": "test-artifact"
     },
     "tests/release/test_ci_gates.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
+    "tests/release/test_driver_packaging_sources.py": {
       "class": "canonical-test",
       "role": "test-artifact"
     },

@@ -5683,6 +5683,32 @@
         "Four other runtime paths in tools/aegisctl.py (aegis_core.ndjson x2, canary_last.json, anomalous.json) still bypass the resolver; no current test writes them, so they are recorded as residual rather than fixed here.",
         "The AEGIS_LOGS_DIR override is honoured by any process that sets it; the installed service does not, so production state cannot be moved by accident, but an operator shell could point the CLI elsewhere."
       ]
+    },
+    {
+      "id": "DRIVER-PACKAGING-001-E2-20261110",
+      "head_sha": "214dbd3",
+      "timestamp": "2026-11-10",
+      "title": "Every packaging entry point ships the same WDK driver image; the stale tree copy is unreachable",
+      "level": "E2",
+      "component": "installer/aegis.nsi, tools/release_candidate.py, tests/release/test_driver_packaging_sources.py",
+      "flow_id": "RELEASE-PACKAGING",
+      "description": "S2-05: installer/aegis.nsi packaged drivers\\wfp_callout\u0007egis_wfp.sys (28,136 B, Oct 16) while tools/installer.py, scripts/package_release.ps1 and tools/release_candidate.py shipped buildd\\wfp\u0007egis_wfp.sys (42,896 B), so the deployed kernel image depended on which entry point an operator ran; the release candidate copies were additionally guarded by `if p.exists()`, letting it package a missing or stale image silently. The NSIS File directive and the release-candidate DRIVERS list now name the WDK build outputs, and tests/release/test_driver_packaging_sources.py pins the invariant (no entry point names drivers/wfp_callout/*.sys outside a comment, all three driver-shipping entry points name the canonical path, every NSIS File directive that packages a .sys comes from buildd\\, DRIVERS read from the AST equals the two build outputs, no build script writes a .sys back into the retired directory). Only tracked files are inspected, so the .work/clean-run scratch tree cannot decide the verdict. Mutation control: reverting the aegis.nsi directive fails 3 of the 5 tests. The same commit trims analysis/current-head/evidence-debt-baseline.json because the S3-01 evidence entry names tools/aegisctl/config.py, which the ratchet had begun reporting as unclosed.",
+      "evidence_artifact": "analysis/current-head/DRIVER-PACKAGING-001-20261110.md",
+      "artifacts": [
+        "analysis/current-head/DRIVER-PACKAGING-001-20261110.md",
+        "installer/aegis.nsi",
+        "tools/release_candidate.py",
+        "tests/release/test_driver_packaging_sources.py"
+      ],
+      "commands": [
+        "python -m pytest -q tests/release/test_driver_packaging_sources.py",
+        "python -m pytest -q tests/release tests/security tests/tools"
+      ],
+      "limitations": [
+        "E2 only: no host window ran, so the installed AegisWfp image is still whatever the last window left; S1-01 (installed vs repo build) remains open.",
+        "installer/aegis.nsi is still a second installer with weaker guarantees: it performs no driver hash verification, no configs ACL hardening and no uninstall cleanup proof, so shipping the same image does not make the two installers equivalent.",
+        "drivers/wfp_callout/aegis_wfp.sys still exists on disk as untracked build output; no packaging path or build script references it now, but removing it is a host cleanup, not a repository change."
+      ]
     }
   ],
   "known_gaps": [
@@ -11590,7 +11616,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 20,
-    "E2_count": 87,
+    "E2_count": 88,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 81,
