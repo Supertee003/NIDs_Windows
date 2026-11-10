@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-10T05:57:04.033729+00:00",
+  "generated_at": "2026-11-10T08:11:49.016162+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1539,
+  "total_files": 1541,
   "by_class": {
-    "canonical-docs": 369,
+    "canonical-docs": 371,
     "canonical-build": 192,
     "unclassified": 17,
     "canonical-source": 665,
@@ -459,6 +459,12 @@
       "size": 27718
     },
     {
+      "path": "analysis/current-head/ETW-FILE-DEDUPE-001-20261110.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4040
+    },
+    {
       "path": "analysis/current-head/ETW-LIFE-001-20261108.md",
       "class": "canonical-docs",
       "role": "documentation",
@@ -541,6 +547,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 16720
+    },
+    {
+      "path": "analysis/current-head/HOST-WINDOW-003-20261110.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 9710
     },
     {
       "path": "analysis/current-head/INGRESS-KIND-ATTRIBUTION-001-20261109.md",
@@ -3318,7 +3330,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1106025
+      "size": 1111506
     },
     {
       "path": "FLOW_MAP.json",
@@ -3426,7 +3438,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 234735
+      "size": 243956
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3708,7 +3720,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 194540
+      "size": 200993
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -5898,7 +5910,7 @@
       "path": "src/control/handler_registry.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 161251
+      "size": 161579
     },
     {
       "path": "src/control/protocol.zig",
@@ -6420,7 +6432,7 @@
       "path": "src/pipeline/telemetry_threads.zig",
       "class": "canonical-source",
       "role": "production-source",
-      "size": 26798
+      "size": 31519
     },
     {
       "path": "src/platform/win32_pipe.zig",
@@ -8400,7 +8412,7 @@
       "path": "tests/tools/test_aegisctl_queue.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 6972
+      "size": 7656
     },
     {
       "path": "tests/tools/test_analysis_helpers.py",
@@ -8766,7 +8778,7 @@
       "path": "tools/aegisctl.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 110852
+      "size": 111082
     },
     {
       "path": "tools/audit_kernel_runtime.py",
@@ -9248,5 +9260,6 @@
       "role": "build-config",
       "size": 624
     }
-  ]
+  ],
+  "source_commit": "b8497f8"
 }

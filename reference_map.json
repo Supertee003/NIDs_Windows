@@ -1,10 +1,10 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-10T05:57:04.036288+00:00",
+  "generated_at": "2026-11-10T08:11:49.018686+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1539,
+  "total_files": 1541,
   "by_role": {
-    "documentation": 355,
+    "documentation": 357,
     "build-config": 181,
     "other": 17,
     "lockfile": 6,
@@ -620,6 +620,10 @@
       "class": "canonical-docs",
       "role": "documentation"
     },
+    "analysis/current-head/ETW-FILE-DEDUPE-001-20261110.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
     "analysis/current-head/ETW-LIFE-001-20261108.md": {
       "class": "canonical-docs",
       "role": "documentation"
@@ -673,6 +677,10 @@
       "role": "documentation"
     },
     "analysis/current-head/HOST-WINDOW-002-20261109.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
+    },
+    "analysis/current-head/HOST-WINDOW-003-20261110.md": {
       "class": "canonical-docs",
       "role": "documentation"
     },
@@ -6480,5 +6488,6 @@
       "class": "canonical-build",
       "role": "build-config"
     }
-  }
+  },
+  "source_commit": "b8497f8"
 }
