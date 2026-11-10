@@ -1033,7 +1033,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "8c48f336660fe6fd1a54bee0b14ab909c248836af2770933d9d5cc778fc5b2b9",
+      "sha256": "c81572593f04247d6342eef24c7d33d69c9c73398e940f09107e78e977c9d0c5",
       "language": "json"
     },
     {
@@ -2028,8 +2028,8 @@
     },
     {
       "path": "src/control/handler_registry.zig",
-      "size": 161251,
-      "sha256": "cf356fb14801f1834aa63871a9d92691e7ec046d1fa88378cdbf188bc1694820",
+      "size": 161579,
+      "sha256": "64f1bef8920de3e2457426c96a98c171d83c210a450738a45e82178a50fa841c",
       "language": "zig"
     },
     {
@@ -2526,8 +2526,8 @@
     },
     {
       "path": "src/pipeline/telemetry_threads.zig",
-      "size": 26798,
-      "sha256": "50909c87775f975cb0405dbff7aa244dd39dffb870d0f869ad40a4663f92bca6",
+      "size": 31519,
+      "sha256": "9245909a263b9a1141c6873d4cbe6470d3a14369e37626064c53879bbe56dea4",
       "language": "zig"
     },
     {
@@ -3588,8 +3588,8 @@
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 110852,
-      "sha256": "7a4519a684626eeccc50b7c43fa0860bb63707a1c3d617d8256c1f42ffb59cf3",
+      "size": 111082,
+      "sha256": "99da62e1aac2b78fab2e3ef72b82419fa7cf080812f9a195a7d71348d926f6f2",
       "language": "python/cython"
     },
     {
