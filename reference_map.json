@@ -1,16 +1,16 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-10T08:11:49.018686+00:00",
+  "generated_at": "2026-11-10T08:33:43.712904+00:00",
   "generator": "generate_truth_artifacts.py",
-  "total_files": 1541,
+  "total_files": 1544,
   "by_role": {
-    "documentation": 357,
+    "documentation": 358,
     "build-config": 181,
     "other": 17,
     "lockfile": 6,
     "rust-build": 4,
-    "source": 369,
-    "test-artifact": 229,
+    "source": 370,
+    "test-artifact": 230,
     "config-data": 34,
     "architecture-decision": 12,
     "step-document": 2,
@@ -735,6 +735,10 @@
     "analysis/current-head/soak-check-20261109.json": {
       "class": "canonical-build",
       "role": "build-config"
+    },
+    "analysis/current-head/SOAK-GATE-002-20261110.md": {
+      "class": "canonical-docs",
+      "role": "documentation"
     },
     "analysis/current-head/STOPLINE-WFP-READINESS-001-20261109.md": {
       "class": "canonical-docs",
@@ -5980,6 +5984,10 @@
       "class": "canonical-test",
       "role": "test-artifact"
     },
+    "tests/tools/test_soak_rate.py": {
+      "class": "canonical-test",
+      "role": "test-artifact"
+    },
     "tests/tools/test_stix_export.py": {
       "class": "canonical-test",
       "role": "test-artifact"
@@ -6388,6 +6396,10 @@
       "class": "canonical-source",
       "role": "source"
     },
+    "tools/soak_rate.py": {
+      "class": "canonical-source",
+      "role": "source"
+    },
     "tools/stage_helpers.py": {
       "class": "canonical-source",
       "role": "source"
@@ -6489,5 +6501,5 @@
       "role": "build-config"
     }
   },
-  "source_commit": "b8497f8"
+  "source_commit": "c79c5a1"
 }
