@@ -233,6 +233,11 @@ Section "Install"
   SetOutPath "$INSTDIR\configs"
   File /oname=Rules.json "configs\Rules.json"
   File /oname=policies.json "configs\policies.json"
+  ; S1-04: the rule files decide what the NIDS detects, and the daemon reads
+  ; them as SYSTEM. Remove inherited write access from Users/Authenticated
+  ; Users so a non-elevated local user cannot edit detection content. SIDs
+  ; are used instead of names so this is locale-independent.
+  nsExec::ExecToLog 'icacls "$INSTDIR\configs" /inheritance:r /grant:r *S-1-5-18:(OI)(CI)F *S-1-5-32-544:(OI)(CI)F *S-1-5-32-545:(OI)(CI)RX'
 
   SetOutPath "$INSTDIR\runtime"
   File "zig-out\bin\aegis_nids.exe"
@@ -278,7 +283,18 @@ Section "Install"
     ; 2026-10-20 E5: NSIS is 32-bit, so file I/O to $SYSDIR is redirected
     ; to SysWOW64. Copy through Sysnative so the kernel image really lands
     ; in 64-bit System32 (the service path is the literal System32 path).
-    nsExec::ExecToLog 'cmd /c copy /y "$INSTDIR\drivers\aegis_wfp.sys" "$WINDIR\Sysnative\drivers\aegis_wfp.sys"'
+    ; S1-01: `copy /y` exits 0 even when the loaded image makes the
+    ; replacement a silent no-op, and the old post-check inspected the OLD
+    ; file (also Valid). Copy, then byte-compare source vs destination; any
+    ; exit code other than 0 aborts setup instead of leaving a driver in
+    ; System32 that is not the one in the payload.
+    nsExec::ExecToLog 'cmd /c copy /y "$INSTDIR\drivers\aegis_wfp.sys" "$WINDIR\Sysnative\drivers\aegis_wfp.sys" >nul 2>&1 && fc /b "$INSTDIR\drivers\aegis_wfp.sys" "$WINDIR\Sysnative\drivers\aegis_wfp.sys" >nul 2>&1'
+    Pop $0
+    StrCmp $0 "0" wfp_driver_verified
+      MessageBox MB_ICONSTOP "AEGIS: aegis_wfp.sys was NOT replaced in System32 (image still loaded, or content mismatch). Stop the AegisWfp service and reinstall."
+      Abort
+    wfp_driver_verified:
+    DetailPrint "AEGIS: aegis_wfp.sys copied and byte-verified in System32\drivers"
     nsExec::ExecToLog 'powershell -NoProfile -Command "Write-Host AEGIS_DRIVER_SIG_WFP (Get-AuthenticodeSignature $WINDIR\Sysnative\drivers\aegis_wfp.sys).Status"'
     Delete "$WINDIR\SysWOW64\drivers\aegis_wfp.sys"
     nsExec::ExecToLog 'sc create AegisWfp type= kernel start= demand binPath= "$WINDIR\System32\drivers\aegis_wfp.sys"'
@@ -286,7 +302,13 @@ Section "Install"
     DetailPrint "AEGIS: aegis_wfp.sys not in payload - AegisWfp service not registered (build it: scripts\wdk_build_production.ps1)"
   ${EndIf}
   ${If} ${FileExists} "$INSTDIR\drivers\aegis_minifilter.sys"
-    nsExec::ExecToLog 'cmd /c copy /y "$INSTDIR\drivers\aegis_minifilter.sys" "$WINDIR\Sysnative\drivers\aegis_minifilter.sys"'
+    nsExec::ExecToLog 'cmd /c copy /y "$INSTDIR\drivers\aegis_minifilter.sys" "$WINDIR\Sysnative\drivers\aegis_minifilter.sys" >nul 2>&1 && fc /b "$INSTDIR\drivers\aegis_minifilter.sys" "$WINDIR\Sysnative\drivers\aegis_minifilter.sys" >nul 2>&1'
+    Pop $0
+    StrCmp $0 "0" fim_driver_verified
+      MessageBox MB_ICONSTOP "AEGIS: aegis_minifilter.sys was NOT replaced in System32 (filter still attached, or content mismatch). Unload AegisMinifilter and reinstall."
+      Abort
+    fim_driver_verified:
+    DetailPrint "AEGIS: aegis_minifilter.sys copied and byte-verified in System32\drivers"
     nsExec::ExecToLog 'powershell -NoProfile -Command "Write-Host AEGIS_DRIVER_SIG_FIM (Get-AuthenticodeSignature $WINDIR\Sysnative\drivers\aegis_minifilter.sys).Status"'
     Delete "$WINDIR\SysWOW64\drivers\aegis_minifilter.sys"
     nsExec::ExecToLog 'sc create AegisMinifilter type= filesys start= demand binPath= "$WINDIR\System32\drivers\aegis_minifilter.sys" DisplayName= "AEGIS NIDS Minifilter Driver"'
@@ -427,8 +449,36 @@ SectionEnd
 """
 
 
+def packaging_input_problems() -> list[str]:
+    """Refuse to generate a bundle whose native helpers are stale (#30).
+
+    zig-out/bin is what the File directives below read; CMake writes to
+    build/Release. Nothing used to couple them, so every bundle from
+    2026-10-16 to 2026-11-10 shipped a pre-fix aegis_fim_helper.dll that
+    crashed the service in aegis_fim_stop. Packaging a stale helper is a
+    fail-closed condition, not a warning.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import stage_helpers  # noqa: PLC0415
+    except Exception as exc:  # noqa: BLE001 - absence must not be silent
+        return [f"helper staging gate unavailable: {type(exc).__name__}: {exc}"]
+    return stage_helpers.check(ROOT)
+
+
 def generate_nsi(nsi_path: Path) -> None:
     """Generate installer NSI from build_manifest.json."""
+    problems = packaging_input_problems()
+    if problems:
+        for p in problems:
+            print(f"ERROR: {p}", file=sys.stderr)
+        print(
+            "ERROR: refusing to generate an installer from stale native helpers; "
+            "run: cmake --build build --config Release && python tools\\stage_helpers.py --stage",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
     manifest = load_manifest()
     components = manifest_components(manifest)
     # ADR-0008 distinguishes the build source commit from records-only HEAD

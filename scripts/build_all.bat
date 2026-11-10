@@ -73,6 +73,10 @@ if not exist "build\Release\aegis_wfp_user.dll" ( echo   [FAIL] missing aegis_wf
 if not exist "build\Release\aegis_etw_helper.dll" ( echo   [FAIL] missing aegis_etw_helper.dll & exit /b 1 )
 if not exist "build\Release\aegis_fim_helper.dll" ( echo   [FAIL] missing aegis_fim_helper.dll & exit /b 1 )
 echo   [OK] Native Helpers: 3 DLLs in build\Release\
+REM #30 / S1-01: packagers read zig-out\bin, CMake writes build\Release. Stage
+REM with a freshness gate so a stale helper can never be bundled again.
+python tools\stage_helpers.py --stage
+if %errorlevel% neq 0 ( echo   [FAIL] staging native helpers into zig-out\bin & exit /b 1 )
 set /a PASS+=1
 
 REM ====== [2/9] C++ Bridge (CANONICAL, isolated build dir) ======
