@@ -5654,6 +5654,35 @@
         "The WFP driver header's rule_id/severity are now stripped; if the driver populates them, operator attribution for those rows must be re-homed into an evidence field in a separate slice.",
         "The strip changes kind mapping for a producer-authored .match_ (now the evidence carrier, e.g. dns_query), which is intentional but is a behaviour change for any consumer that treated a wire .match_ as a detection."
       ]
+    },
+    {
+      "id": "TEST-HYGIENE-S301-E2-20261110",
+      "head_sha": "4ea8155",
+      "timestamp": "2026-11-10",
+      "title": "S3-01 closed: the candidate-list test no longer writes tracked logs/; runtime paths have one redirectable resolver",
+      "level": "E2",
+      "component": "tests/security/test_candidate_labels.py, tools/aegisctl.py (_logs_dir), tools/aegisctl/config.py (AEGIS_LOGS_DIR), tests/security/test_detection_contract_pin.py",
+      "flow_id": "VER-EVIDENCE-INTEGRITY",
+      "description": "AGENTS.md TEST HYGIENE item 2 forbids tests writing tracked tree state, and tests/security/test_candidate_labels.py created and unlinked logs/blocked_ips.json and logs/quarantine.json inside the repository, dirtying every later truth.py/release run depending on execution order. It could not be moved to tmp_path because aegisctl.py built those two paths by hand (TOOLS_DIR.parent / 'logs' / ...) rather than using the config constants, so nothing could redirect the read. Fix: config.LOGS_DIR honours AEGIS_LOGS_DIR (unset for the installed service), aegisctl._logs_dir() is the single resolver for the two candidate-list views, and the test now writes fixture state in tmp_path with an autouse guard asserting the tracked paths do not appear or disappear around every test. Mutation control: a test that writes logs/blocked_ips.json fails with 'test wrote tracked-tree state under logs/ (TEST HYGIENE item 2)'. Same patch corrects six test_detection_contract_pin.py pins that encoded 'two detection engines' after VERDICT-AUTH-001 deleted the Go classifier, and regenerates the evidence-debt baseline for the two deleted files. 4 tests in the file, 391 in tests/security+tests/tools, all pass; production CLI output is unchanged and creates no file.",
+      "evidence_artifact": "analysis/current-head/TEST-HYGIENE-S301-20261110.md",
+      "artifacts": [
+        "analysis/current-head/TEST-HYGIENE-S301-20261110.md",
+        "tests/security/test_candidate_labels.py",
+        "tests/security/test_detection_contract_pin.py",
+        "tools/aegisctl.py",
+        "tools/aegisctl/config.py"
+      ],
+      "commands": [
+        "python -m pytest -q tests/security/test_candidate_labels.py",
+        "python -m pytest -q tests/security tests/tools",
+        "python tools/aegisctl.py block list",
+        "python tools/evidence_debt.py --write"
+      ],
+      "limitations": [
+        "E2 only: static/unit proof, no host execution belongs to this patch.",
+        "Four other runtime paths in tools/aegisctl.py (aegis_core.ndjson x2, canary_last.json, anomalous.json) still bypass the resolver; no current test writes them, so they are recorded as residual rather than fixed here.",
+        "The AEGIS_LOGS_DIR override is honoured by any process that sets it; the installed service does not, so production state cannot be moved by accident, but an operator shell could point the CLI elsewhere."
+      ]
     }
   ],
   "known_gaps": [
@@ -11561,7 +11590,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 20,
-    "E2_count": 86,
+    "E2_count": 87,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 81,

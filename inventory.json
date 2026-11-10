@@ -1,11 +1,11 @@
 {
   "schema_version": "1.1",
-  "generated_at": "2026-11-10T09:10:23.032469+00:00",
+  "generated_at": "2026-11-10T09:51:23.427445+00:00",
   "generator": "generate_truth_artifacts.py",
   "repo_root": "D:\\NIDs_Windows",
-  "total_files": 1545,
+  "total_files": 1546,
   "by_class": {
-    "canonical-docs": 374,
+    "canonical-docs": 375,
     "canonical-build": 192,
     "unclassified": 17,
     "canonical-source": 665,
@@ -474,7 +474,7 @@
       "path": "analysis/current-head/evidence-debt-baseline.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 21849
+      "size": 21772
     },
     {
       "path": "analysis/current-head/FIM-PROBE-IDENTITY-COMMENT-001-20261109.md",
@@ -661,6 +661,12 @@
       "class": "canonical-docs",
       "role": "documentation",
       "size": 3481
+    },
+    {
+      "path": "analysis/current-head/TEST-HYGIENE-S301-20261110.md",
+      "class": "canonical-docs",
+      "role": "documentation",
+      "size": 4519
     },
     {
       "path": "analysis/current-head/TEST-SCOPE-001-20261109.md",
@@ -1578,7 +1584,7 @@
       "path": "build_manifest.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 135799
+      "size": 135410
     },
     {
       "path": "build_truth.json",
@@ -3348,7 +3354,7 @@
       "path": "EVIDENCE_INDEX.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 1105953
+      "size": 1108880
     },
     {
       "path": "FLOW_MAP.json",
@@ -3456,7 +3462,7 @@
       "path": "inventory.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 235661
+      "size": 235850
     },
     {
       "path": "Invoke-AegisDeepAudit.ps1",
@@ -3732,7 +3738,7 @@
       "path": "reference_map.json",
       "class": "canonical-build",
       "role": "build-config",
-      "size": 195261
+      "size": 195416
     },
     {
       "path": "release/aegis-nids-windows-6.0.0-20260916_223148/configs/policies.json",
@@ -8190,7 +8196,7 @@
       "path": "tests/security/test_candidate_labels.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 2530
+      "size": 3439
     },
     {
       "path": "tests/security/test_cli_mutation_gate.py",
@@ -8208,7 +8214,7 @@
       "path": "tests/security/test_detection_contract_pin.py",
       "class": "canonical-test",
       "role": "test-artifact",
-      "size": 13306
+      "size": 14123
     },
     {
       "path": "tests/security/test_detection_only_gate.py",
@@ -8760,7 +8766,7 @@
       "path": "tools/aegisctl/config.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 2791
+      "size": 3146
     },
     {
       "path": "tools/aegisctl/console.py",
@@ -8796,7 +8802,7 @@
       "path": "tools/aegisctl.py",
       "class": "canonical-source",
       "role": "source",
-      "size": 111082
+      "size": 111619
     },
     {
       "path": "tools/audit_kernel_runtime.py",
