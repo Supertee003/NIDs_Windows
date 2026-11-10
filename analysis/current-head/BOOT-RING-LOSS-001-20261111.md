@@ -41,6 +41,13 @@ the boot was 01:30:26). During the whole initialisation window the minifilter
 was already emitting into the ring with **no reader attached**, so the ring
 filled and the last 448 records were dropped by the driver.
 
+The loader itself had the same `-match`-on-an-array defect as the deploy
+script: `boot-sequence.ps1`'s `State()` compared an array and read `$Matches`,
+so it returned `UNKNOWN` even for a RUNNING service and spent its full retry
+budget on both drivers. That inflated the gap. The loader now joins the
+`sc.exe` output to one string before matching; the demand-start change below
+removes the remaining AUTO_START-before-drivers stop/restart cycle.
+
 The driver's `DroppedEvents` is a gauge, not a per-process counter:
 
 - restarting the daemon alone does **not** reset it;
@@ -73,22 +80,34 @@ no kernel change), with **D** as the interim disclosure and **B** only if a
 future measurement shows the boot task itself is slow. Do not silently reset
 the counter and call the window clean.
 
-## 5. The 01:29 window did not deploy
+## 5. The 01:29 and 01:42 windows did not deploy
 
-`admin-evidence/host-window-006-20261111/deploy-window-006.log` stops after:
+The first attempt (`01:29:00`) stopped logging after the rollback copy, wrote no
+result, and the reboot requested in the same minute ended the run. The second
+attempt (`01:42:29`, elevated) reproduced the failure and named it:
 
 ```
-01:29:00  recorded rollback copy from the live install
-01:29:00  staged=C40DEA47… live=ED74E56F… rollback=ED74E56F…
+01:42:30  staged=C40DEA47… live=ED74E56F… rollback=ED74E56F…
+01:42:30  AegisNids STOPPED
+01:42:30  ABORT (unhandled): The process cannot access the file
+          'C:\Program Files\AEGIS NIDS\runtime\aegis_nids.exe' because it is
+          being used by another process.
 ```
 
-There is no `stopping AegisNids` line and no result JSON. The reboot was
-requested at 01:29:00 with a 60 s delay, and the installed image is still
-`ED74E56F…`. The deploy did not stop, copy, or start anything. The exact
-termination is not recorded (the script had no catch-all trap); the likely
-cause is a non-elevated `sc.exe stop` plus the reboot killing the 90 s wait
-before it could report. The script now refuses to start unless elevated, traps
-terminating errors into a result file, and fails on an `sc.exe` stop error.
+Root cause: `State()` did `$q -match ...` where `$q` is the **array** returned
+by `sc.exe query`. `-match` on a collection does not populate `$Matches`, so
+`State` returned `UNKNOWN`; the `if RUNNING` branch was skipped, the script
+logged `AegisNids STOPPED` unconditionally, and `Copy-Item` hit an image that
+was still mapped by the running daemon. The service was never stopped — it is
+still RUNNING on `ED74E56F…` (pid 19528), so no outage occurred.
+
+The deploy script now:
+
+- joins `sc.exe` output to one string before matching;
+- refuses to run if the state cannot be read;
+- captures the service PID **before** the stop and waits for that process to
+  exit (a stopped service reports PID 0 while its process is still draining);
+- retries the copy for 30 s and restores the service on any abort after stop.
 
 **Consequence:** the 448-row boot loss was measured on the old build. It is
 still the expected shape on `4c4ed3a` (that patch changes the ETW admission
