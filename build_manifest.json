@@ -3576,8 +3576,8 @@
     },
     {
       "path": "tools/aegisctl.py",
-      "size": 111619,
-      "sha256": "566dddfb544c0c384c4ae1b81d65710bb5a1ce0b3f1e9b45426f2d80ebc93eb1",
+      "size": 113461,
+      "sha256": "29ed08e64620a9f8a2c9cbf87c962ceaf0edd4a4314b68430c625fc635cc31c8",
       "language": "python/cython"
     },
     {
