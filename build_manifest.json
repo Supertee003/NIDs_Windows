@@ -1021,7 +1021,7 @@
     {
       "path": "runtime_manifest.json",
       "size": 23219,
-      "sha256": "53daf4dde98f725a535023bdb1e6c80c9ed585b16285e8dd4372f81402574cce",
+      "sha256": "c2fe7c9a3d2af4e9f839d0f4ad1f9276a9189d0fac6518198839b49fc46ed4c5",
       "language": "json"
     },
     {
@@ -1854,8 +1854,8 @@
     },
     {
       "path": "src/capture/minifilter_reader.zig",
-      "size": 24550,
-      "sha256": "609f3e406933d8c15a0b86983457ea3906c1cbdcbaeff1648c0c392945af6669",
+      "size": 24920,
+      "sha256": "be6a8e3b0326dab89adaf6c4a6f5d35028a4a1375b6409a2ed98ab4d68280e3b",
       "language": "zig"
     },
     {
