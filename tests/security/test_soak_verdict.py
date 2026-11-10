@@ -32,8 +32,10 @@ def base_kwargs(**over):
         expect=tuple(RUNNING),
         status={"state": "RUNNING", "uptime_ms": 25 * 3_600_000},
         health={"state": "RUNNING", "degraded": False, "data_integrity": {}},
+        queue={"shed_overload": 0},
         restarts=[],
         loss_budget=0,
+        shed_budget=0,
     )
     kwargs.update(over)
     return kwargs
@@ -102,3 +104,26 @@ def test_incomplete_window_is_not_a_pass() -> None:
     problems, complete = load_tool().evaluate(**base_kwargs(elapsed_h=9.3))
     assert problems == []
     assert complete is False
+
+
+def test_policy_shed_above_budget_fails() -> None:
+    # QLOSS-ETW-PRIORITY-001: converting overflow into deliberate shed must not
+    # make a zero-loss soak pass. The queue counter is part of the verdict.
+    problems, _ = load_tool().evaluate(
+        **base_kwargs(queue={"shed_overload": 145_915})
+    )
+    assert any("shed_overload=145915" in p for p in problems)
+
+
+def test_owner_approved_shed_budget_allows_bounded_policy_loss() -> None:
+    problems, _ = load_tool().evaluate(
+        **base_kwargs(queue={"shed_overload": 150}, shed_budget=200)
+    )
+    assert problems == []
+
+
+def test_queue_stats_unavailable_fails_closed() -> None:
+    problems, _ = load_tool().evaluate(
+        **base_kwargs(queue={"error": "control_daemon_query_failed"})
+    )
+    assert any("queue stats unavailable" in p for p in problems)

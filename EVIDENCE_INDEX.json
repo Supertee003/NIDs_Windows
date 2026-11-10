@@ -5791,6 +5791,31 @@
         "shed_overload is exposed on queue.stats but not in the health payload the soak tool reads, so a soak can pass while policy shed is nonzero. That honesty gap is recorded, not fixed.",
         "Extending storm shed to the per-source boundary changes which rows are lost first; the acceptable loss budget is an owner decision."
       ]
+    },
+    {
+      "id": "SOAK-SHED-BUDGET-001-E2-20261111",
+      "head_sha": "4c4ed3a",
+      "timestamp": "2026-11-11",
+      "title": "The soak verdict counts deliberate policy shed, not just health loss",
+      "level": "E2",
+      "component": "tools/host_soak_check.py, tests/security/test_soak_verdict.py",
+      "flow_id": "QLOSS",
+      "description": "QLOSS-ETW-PRIORITY-001 moves low-value ETW file writes/deletes from source_quota_shed (inside data_integrity.queue_dropped_total) to shed_overload, which is exposed only on queue.stats. host_soak_check.py read only health, so the same discarded rows could leave the counter the soak reads and a zero-loss 24 h window could pass while the queue was still shedding. The tool now reads queue.stats, takes --shed-budget (default 0), fails when shed_overload exceeds it, and fails closed when queue.stats is unavailable; the report carries shed_overload and shed_budget. 11 focused tests pass; the live 8.9 h run still fails on its real 148,217 drops with shed_overload=0.",
+      "evidence_artifact": "analysis/current-head/SOAK-SHED-BUDGET-001-20261111.md",
+      "artifacts": [
+        "analysis/current-head/SOAK-SHED-BUDGET-001-20261111.md",
+        "tools/host_soak_check.py",
+        "tests/security/test_soak_verdict.py"
+      ],
+      "commands": [
+        "python -m pytest -q tests/security/test_soak_verdict.py",
+        "python tools/host_soak_check.py --start auto --hours 24 --loss-budget 0"
+      ],
+      "limitations": [
+        "E2 plus E1: the verdict logic is tested and read live; no host behaviour changed.",
+        "The default budget of 0 keeps R-08 strict; an owner-approved shed rate must be passed explicitly and then appears in the report.",
+        "queue.stats availability is now a soak precondition; an older daemon without the command fails the gate instead of being skipped."
+      ]
     }
   ],
   "known_gaps": [
@@ -11698,7 +11723,7 @@
   "evidence_level_summary": {
     "E0_count": 0,
     "E1_count": 20,
-    "E2_count": 91,
+    "E2_count": 92,
     "E3_count": 12,
     "E4_count": 0,
     "E5_count": 81,

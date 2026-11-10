@@ -13,6 +13,9 @@ dropped queue rows still produced PASS. Every criterion below is now fail-closed
   * daemon reachable, uptime at least the elapsed window,
   * `health.state` must not be DEGRADED,
   * data_integrity loss counters must all be within --loss-budget (default 0),
+  * queue.stats policy shed (`shed_overload`) must be within --shed-budget
+    (default 0) — otherwise a build that converts overflow into a deliberate
+    shed could pass a "zero loss" soak while still discarding rows,
   * no SCM 7031/7034 restart for AegisNids inside the window.
 
 Usage:
@@ -103,6 +106,10 @@ def daemon_health() -> dict:
     return _send("health")
 
 
+def daemon_queue() -> dict:
+    return _send("queue.stats")
+
+
 def restart_events(started: dt.datetime) -> list[str]:
     """SCM 7031/7034 for AegisNids at or after *started* (local time)."""
     stamp = started.strftime("%Y-%m-%dT%H:%M:%S")
@@ -134,8 +141,10 @@ def evaluate(
     expect: tuple[str, ...] | list[str],
     status: dict,
     health: dict,
+    queue: dict | None = None,
     restarts: list[str],
     loss_budget: int,
+    shed_budget: int = 0,
 ) -> tuple[list[str], bool]:
     """Return (problems, complete). Pure function so the verdict is testable."""
     problems: list[str] = []
@@ -169,6 +178,16 @@ def evaluate(
             if isinstance(value, (int, float)) and value > loss_budget:
                 problems.append(f"{key}={int(value)} exceeds the loss budget {loss_budget}")
 
+    if queue is not None:
+        if "error" in queue:
+            problems.append(f"queue stats unavailable: {queue['error']}")
+        else:
+            shed = queue.get("shed_overload")
+            if isinstance(shed, (int, float)) and shed > shed_budget:
+                problems.append(
+                    f"shed_overload={int(shed)} exceeds the policy-shed budget {shed_budget}"
+                )
+
     if restarts:
         problems.append(
             "AegisNids restarted inside the window (SCM 7031/7034): "
@@ -191,6 +210,12 @@ def main(argv: list[str] | None = None) -> int:
         type=int,
         default=0,
         help="owner-approved number of lost rows allowed per counter (default 0)",
+    )
+    parser.add_argument(
+        "--shed-budget",
+        type=int,
+        default=0,
+        help="owner-approved number of deliberate policy-shed rows allowed (default 0)",
     )
     parser.add_argument("--json", type=pathlib.Path, default=None)
     parser.add_argument("--expect", nargs="*", default=list(SERVICES), help="services that must run")
@@ -216,6 +241,7 @@ def main(argv: list[str] | None = None) -> int:
     states = service_states()
     status = daemon_status()
     health = daemon_health()
+    queue = daemon_queue()
     restarts = restart_events(started)
 
     problems, complete = evaluate(
@@ -225,8 +251,10 @@ def main(argv: list[str] | None = None) -> int:
         expect=args.expect,
         status=status,
         health=health,
+        queue=queue,
         restarts=restarts,
         loss_budget=args.loss_budget,
+        shed_budget=args.shed_budget,
     )
     verdict = "FAIL" if problems else ("PASS" if complete else "IN_PROGRESS")
 
@@ -243,7 +271,9 @@ def main(argv: list[str] | None = None) -> int:
         "daemon_state": status.get("state") if isinstance(status, dict) else None,
         "daemon_health_state": health.get("state") if isinstance(health, dict) else None,
         "data_integrity": (health.get("data_integrity") or {}) if isinstance(health, dict) else {},
+        "shed_overload": queue.get("shed_overload") if isinstance(queue, dict) else None,
         "loss_budget": args.loss_budget,
+        "shed_budget": args.shed_budget,
         "scm_restarts": restarts,
         "problems": problems,
     }
