@@ -5870,6 +5870,31 @@
         "A 1 s port retry is more probes while the driver is absent; it does not change the 50 ms steady-state pull loop.",
         "If the boot storm outruns the reader for more than ~7 s after the driver loads, the 4 MiB ring can still overflow; that would need a driver-side ring increase."
       ]
+    },
+    {
+      "id": "BOOT-RING-LOSS-E5-20261111",
+      "head_sha": "1ca18c4",
+      "timestamp": "2026-11-11",
+      "title": "Daemon-first boot with a 1 s minifilter retry: zero ring loss on the host",
+      "level": "E5",
+      "component": "src/capture/minifilter_reader.zig, admin-evidence/host-window-003-20261110/boot-sequence.ps1",
+      "flow_id": "QLOSS",
+      "description": "Installed 21A875CF8F103E3B (source 1ca18c4) on the Windows host and rebooted at 2026-11-11 02:09:14. The fixed boot task started AegisNids at 02:09:50 and AegisMinifilter at 02:09:53 (daemon first), so the reader was already retrying (1 s cadence) when the ring was created. Result: services all RUNNING, health state RUNNING with degraded=false, minifilter_ring_dropped=0, queue_dropped_total=0, no SCM 7031/7034 since boot. The same boot produced shed_overload=18,035 from the ETW admission policy during the boot write storm; its delta over the next 120 s was 0 with 31,868 more rows pushed, so it is a boot transient, not a steady shed. This closes the boot-ring loss measured at 448 (01:30, AUTO_START/driver-first/10 s) and 4,012 (01:49, DEMAND_START/driver-first/10 s) on this host and build.",
+      "evidence_artifact": "analysis/current-head/BOOT-RING-LOSS-E5-20261111.md",
+      "artifacts": [
+        "analysis/current-head/BOOT-RING-LOSS-E5-20261111.md"
+      ],
+      "commands": [
+        "powershell -File admin-evidence/host-window-006-20261111/post-boot-probe.ps1",
+        "python tools/aegisctl.py health --json",
+        "python tools/aegisctl.py queue --json"
+      ],
+      "limitations": [
+        "One lab host, one boot; not fleet behaviour.",
+        "The 24 h soak (R-08) is still open; this record covers the boot path only.",
+        "The boot order and task are local-only; the installer still ships AUTO_START and no loader.",
+        "The 18,035 ETW policy shed at boot is accepted as a transient here and excluded from the steady-state window by a deliberate daemon restart; it is not zero-loss evidence for the ETW lane."
+      ]
     }
   ],
   "known_gaps": [
@@ -11780,10 +11805,10 @@
     "E2_count": 93,
     "E3_count": 12,
     "E4_count": 0,
-    "E5_count": 81,
+    "E5_count": 82,
     "E6_count": 0,
     "E7_count": 0,
-    "E5_with_artifact_count": 31,
+    "E5_with_artifact_count": 32,
     "known_gaps_count": 271
   }
 }
